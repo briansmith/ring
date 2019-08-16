@@ -1799,9 +1799,9 @@ bool ssl_output_cert_chain(SSL_HANDSHAKE *hs);
 // SSLKEYLOGFILE functions.
 
 // ssl_log_secret logs |secret| with label |label|, if logging is enabled for
-// |ssl|. It returns one on success and zero on failure.
-int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
-                   size_t secret_len);
+// |ssl|. It returns true on success and false on failure.
+bool ssl_log_secret(const SSL *ssl, const char *label,
+                    Span<const uint8_t> secret);
 
 
 // ClientHello functions.

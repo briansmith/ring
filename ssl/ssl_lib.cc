@@ -323,46 +323,45 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   }
 }
 
-static int cbb_add_hex(CBB *cbb, const uint8_t *in, size_t in_len) {
+static bool cbb_add_hex(CBB *cbb, Span<const uint8_t> in) {
   static const char hextable[] = "0123456789abcdef";
   uint8_t *out;
 
-  if (!CBB_add_space(cbb, &out, in_len * 2)) {
-    return 0;
+  if (!CBB_add_space(cbb, &out, in.size() * 2)) {
+    return false;
   }
 
-  for (size_t i = 0; i < in_len; i++) {
-    *(out++) = (uint8_t)hextable[in[i] >> 4];
-    *(out++) = (uint8_t)hextable[in[i] & 0xf];
+  for (uint8_t b : in) {
+    *(out++) = (uint8_t)hextable[b >> 4];
+    *(out++) = (uint8_t)hextable[b & 0xf];
   }
 
-  return 1;
+  return true;
 }
 
-int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
-                   size_t secret_len) {
+bool ssl_log_secret(const SSL *ssl, const char *label,
+                    Span<const uint8_t> secret) {
   if (ssl->ctx->keylog_callback == NULL) {
-    return 1;
+    return true;
   }
 
   ScopedCBB cbb;
-  uint8_t *out;
-  size_t out_len;
+  Array<uint8_t> line;
   if (!CBB_init(cbb.get(), strlen(label) + 1 + SSL3_RANDOM_SIZE * 2 + 1 +
-                          secret_len * 2 + 1) ||
-      !CBB_add_bytes(cbb.get(), (const uint8_t *)label, strlen(label)) ||
-      !CBB_add_bytes(cbb.get(), (const uint8_t *)" ", 1) ||
-      !cbb_add_hex(cbb.get(), ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_bytes(cbb.get(), (const uint8_t *)" ", 1) ||
-      !cbb_add_hex(cbb.get(), secret, secret_len) ||
+                               secret.size() * 2 + 1) ||
+      !CBB_add_bytes(cbb.get(), reinterpret_cast<const uint8_t *>(label),
+                     strlen(label)) ||
+      !CBB_add_u8(cbb.get(), ' ') ||
+      !cbb_add_hex(cbb.get(), ssl->s3->client_random) ||
+      !CBB_add_u8(cbb.get(), ' ') ||
+      !cbb_add_hex(cbb.get(), secret) ||
       !CBB_add_u8(cbb.get(), 0 /* NUL */) ||
-      !CBB_finish(cbb.get(), &out, &out_len)) {
-    return 0;
+      !CBBFinishArray(cbb.get(), &line)) {
+    return false;
   }
 
-  ssl->ctx->keylog_callback(ssl, (const char *)out);
-  OPENSSL_free(out);
-  return 1;
+  ssl->ctx->keylog_callback(ssl, reinterpret_cast<const char *>(line.data()));
+  return true;
 }
 
 void ssl_do_info_callback(const SSL *ssl, int type, int value) {

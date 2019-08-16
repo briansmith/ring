@@ -233,7 +233,7 @@ bool tls13_derive_early_secrets(SSL_HANDSHAKE *hs) {
   if (!derive_secret(hs, MakeSpan(hs->early_traffic_secret, hs->hash_len),
                      label_to_span(kTLS13LabelClientEarlyTraffic)) ||
       !ssl_log_secret(ssl, "CLIENT_EARLY_TRAFFIC_SECRET",
-                      hs->early_traffic_secret, hs->hash_len)) {
+                      MakeConstSpan(hs->early_traffic_secret, hs->hash_len))) {
     return false;
   }
 
@@ -262,12 +262,14 @@ bool tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!derive_secret(hs, MakeSpan(hs->client_handshake_secret, hs->hash_len),
                      label_to_span(kTLS13LabelClientHandshakeTraffic)) ||
-      !ssl_log_secret(ssl, "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
-                      hs->client_handshake_secret, hs->hash_len) ||
+      !ssl_log_secret(
+          ssl, "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
+          MakeConstSpan(hs->client_handshake_secret, hs->hash_len)) ||
       !derive_secret(hs, MakeSpan(hs->server_handshake_secret, hs->hash_len),
                      label_to_span(kTLS13LabelServerHandshakeTraffic)) ||
-      !ssl_log_secret(ssl, "SERVER_HANDSHAKE_TRAFFIC_SECRET",
-                      hs->server_handshake_secret, hs->hash_len)) {
+      !ssl_log_secret(
+          ssl, "SERVER_HANDSHAKE_TRAFFIC_SECRET",
+          MakeConstSpan(hs->server_handshake_secret, hs->hash_len))) {
     return false;
   }
 
@@ -297,16 +299,20 @@ bool tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
   ssl->s3->exporter_secret_len = hs->hash_len;
   if (!derive_secret(hs, MakeSpan(hs->client_traffic_secret_0, hs->hash_len),
                      label_to_span(kTLS13LabelClientApplicationTraffic)) ||
-      !ssl_log_secret(ssl, "CLIENT_TRAFFIC_SECRET_0",
-                      hs->client_traffic_secret_0, hs->hash_len) ||
+      !ssl_log_secret(
+          ssl, "CLIENT_TRAFFIC_SECRET_0",
+          MakeConstSpan(hs->client_traffic_secret_0, hs->hash_len)) ||
       !derive_secret(hs, MakeSpan(hs->server_traffic_secret_0, hs->hash_len),
                      label_to_span(kTLS13LabelServerApplicationTraffic)) ||
-      !ssl_log_secret(ssl, "SERVER_TRAFFIC_SECRET_0",
-                      hs->server_traffic_secret_0, hs->hash_len) ||
-      !derive_secret(hs, MakeSpan(ssl->s3->exporter_secret, hs->hash_len),
-                     label_to_span(kTLS13LabelExporter)) ||
-      !ssl_log_secret(ssl, "EXPORTER_SECRET", ssl->s3->exporter_secret,
-                      hs->hash_len)) {
+      !ssl_log_secret(
+          ssl, "SERVER_TRAFFIC_SECRET_0",
+          MakeConstSpan(hs->server_traffic_secret_0, hs->hash_len)) ||
+      !derive_secret(
+          hs, MakeSpan(ssl->s3->exporter_secret, ssl->s3->exporter_secret_len),
+          label_to_span(kTLS13LabelExporter)) ||
+      !ssl_log_secret(ssl, "EXPORTER_SECRET",
+                      MakeConstSpan(ssl->s3->exporter_secret,
+                                    ssl->s3->exporter_secret_len))) {
     return false;
   }
 
