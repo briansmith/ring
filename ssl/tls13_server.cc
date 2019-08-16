@@ -324,10 +324,8 @@ static enum ssl_ticket_aead_result_t select_session(
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  // TODO(davidben,svaldez): Measure this value to decide on tolerance. For
-  // now, accept all values. https://crbug.com/boringssl/113.
-  *out_ticket_age_skew =
-      (int32_t)client_ticket_age - (int32_t)server_ticket_age;
+  *out_ticket_age_skew = static_cast<int32_t>(client_ticket_age) -
+                         static_cast<int32_t>(server_ticket_age);
 
   // Check the PSK binder.
   if (!tls13_verify_psk_binder(hs, session.get(), msg, &binders)) {
