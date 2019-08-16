@@ -1248,26 +1248,22 @@ bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs);
 // tls13_init_key_schedule initializes the handshake hash and key derivation
 // state, and incorporates the PSK. The cipher suite and PRF hash must have been
 // selected at this point. It returns true on success and false on error.
-bool tls13_init_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *psk,
-                             size_t psk_len);
+bool tls13_init_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> psk);
 
 // tls13_init_early_key_schedule initializes the handshake hash and key
 // derivation state from the resumption secret and incorporates the PSK to
 // derive the early secrets. It returns one on success and zero on error.
-bool tls13_init_early_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *psk,
-                                   size_t psk_len);
+bool tls13_init_early_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> psk);
 
 // tls13_advance_key_schedule incorporates |in| into the key schedule with
 // HKDF-Extract. It returns true on success and false on error.
-bool tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
-                               size_t len);
+bool tls13_advance_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> in);
 
 // tls13_set_traffic_key sets the read or write traffic keys to
 // |traffic_secret|. It returns true on success and false on error.
 bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
                            enum evp_aead_direction_t direction,
-                           const uint8_t *traffic_secret,
-                           size_t traffic_secret_len);
+                           Span<const uint8_t> traffic_secret);
 
 // tls13_derive_early_secrets derives the early traffic secret. It returns true
 // on success and false on error.

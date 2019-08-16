@@ -87,7 +87,7 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, bool *out_need_retry,
     return 0;
   }
 
-  return tls13_advance_key_schedule(hs, dhe_secret.data(), dhe_secret.size());
+  return tls13_advance_key_schedule(hs, dhe_secret);
 }
 
 static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
@@ -428,11 +428,12 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
   // Set up the key schedule and incorporate the PSK into the running secret.
   if (ssl->s3->session_reused) {
-    if (!tls13_init_key_schedule(hs, hs->new_session->master_key,
-                                    hs->new_session->master_key_length)) {
+    if (!tls13_init_key_schedule(
+            hs, MakeConstSpan(hs->new_session->master_key,
+                              hs->new_session->master_key_length))) {
       return ssl_hs_error;
     }
-  } else if (!tls13_init_key_schedule(hs, kZeroes, hash_len)) {
+  } else if (!tls13_init_key_schedule(hs, MakeConstSpan(kZeroes, hash_len))) {
     return ssl_hs_error;
   }
 
@@ -606,8 +607,9 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
 
   // Derive and enable the handshake traffic secrets.
   if (!tls13_derive_handshake_secrets(hs) ||
-      !tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
-                             hs->server_handshake_secret, hs->hash_len)) {
+      !tls13_set_traffic_key(
+          ssl, ssl_encryption_handshake, evp_aead_seal,
+          MakeConstSpan(hs->server_handshake_secret, hs->hash_len))) {
     return ssl_hs_error;
   }
 
@@ -715,10 +717,11 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!tls13_add_finished(hs) ||
       // Update the secret to the master secret and derive traffic keys.
-      !tls13_advance_key_schedule(hs, kZeroes, hs->hash_len) ||
+      !tls13_advance_key_schedule(hs, MakeConstSpan(kZeroes, hs->hash_len)) ||
       !tls13_derive_application_secrets(hs) ||
-      !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
-                             hs->server_traffic_secret_0, hs->hash_len)) {
+      !tls13_set_traffic_key(
+          ssl, ssl_encryption_application, evp_aead_seal,
+          MakeConstSpan(hs->server_traffic_secret_0, hs->hash_len))) {
     return ssl_hs_error;
   }
 
@@ -770,8 +773,9 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (ssl->s3->early_data_accepted) {
-    if (!tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_open,
-                               hs->early_traffic_secret, hs->hash_len)) {
+    if (!tls13_set_traffic_key(
+            ssl, ssl_encryption_early_data, evp_aead_open,
+            MakeConstSpan(hs->early_traffic_secret, hs->hash_len))) {
       return ssl_hs_error;
     }
     hs->can_early_write = true;
@@ -805,8 +809,9 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
       ssl->method->next_message(ssl);
     }
   }
-  if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
-                             hs->client_handshake_secret, hs->hash_len)) {
+  if (!tls13_set_traffic_key(
+          ssl, ssl_encryption_handshake, evp_aead_open,
+          MakeConstSpan(hs->client_handshake_secret, hs->hash_len))) {
     return ssl_hs_error;
   }
   hs->tls13_state = ssl->s3->early_data_accepted
@@ -912,8 +917,9 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
       // and derived the resumption secret.
       !tls13_process_finished(hs, msg, ssl->s3->early_data_accepted) ||
       // evp_aead_seal keys have already been switched.
-      !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
-                             hs->client_traffic_secret_0, hs->hash_len)) {
+      !tls13_set_traffic_key(
+          ssl, ssl_encryption_application, evp_aead_open,
+          MakeConstSpan(hs->client_traffic_secret_0, hs->hash_len))) {
     return ssl_hs_error;
   }
 
