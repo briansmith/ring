@@ -57,7 +57,7 @@ static const BN_ULONG ONE[P384_LIMBS] = {
 
 /* XXX: MSVC for x86 warns when it fails to inline these functions it should
  * probably inline. */
-#if defined(_MSC_VER)  && defined(OPENSSL_X86)
+#if defined(_MSC_VER) && !defined(__clang__) && defined(OPENSSL_X86)
 #define INLINE_IF_POSSIBLE __forceinline
 #else
 #define INLINE_IF_POSSIBLE inline
@@ -152,7 +152,7 @@ static void elem_div_by_2(Elem r, const Elem a) {
 #if defined(NDEBUG)
   (void)carry2;
 #endif
-  assert(carry2 == 0);
+  ASSERT(carry2 == 0);
 
   copy_conditional(r, adjusted, is_odd);
 }
@@ -203,7 +203,7 @@ void GFp_p384_elem_neg(Elem r, const Elem a) {
 #if defined(NDEBUG)
   (void)borrow;
 #endif
-  assert(borrow == 0);
+  ASSERT(borrow == 0);
   for (size_t i = 0; i < P384_LIMBS; ++i) {
     r[i] = constant_time_select_w(is_zero, 0, r[i]);
   }

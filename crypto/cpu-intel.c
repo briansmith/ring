@@ -59,7 +59,7 @@
 
 #if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)
 #include <immintrin.h>
 #include <intrin.h>
@@ -74,7 +74,7 @@
 // |*out_edx|.
 static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
                           uint32_t *out_ecx, uint32_t *out_edx, uint32_t leaf) {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
   int tmp[4];
   __cpuid(tmp, (int)leaf);
   *out_eax = (uint32_t)tmp[0];
@@ -107,7 +107,7 @@ static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
 //
 // See https://software.intel.com/en-us/articles/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family
 static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
   return (uint64_t)_xgetbv(xcr);
 #else
   uint32_t eax, edx;

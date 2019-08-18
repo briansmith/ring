@@ -24,6 +24,14 @@ use crate::{error, hmac};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Algorithm(hmac::Algorithm);
 
+impl Algorithm {
+    /// The underlying HMAC algorithm.
+    #[inline]
+    pub fn hmac_algorithm(&self) -> hmac::Algorithm {
+        self.0
+    }
+}
+
 /// HKDF using HMAC-SHA-256.
 pub static HKDF_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
 
@@ -86,17 +94,26 @@ impl From<Okm<'_, Algorithm>> for Salt {
     }
 }
 
-/// The length of the OKM (Output Keying Material) for a `Prf::expand()` call.
+/// The length of the OKM (Output Keying Material) for a `Prk::expand()` call.
 pub trait KeyType {
-    /// The length that `Prf::expand()` should expand its input to.
+    /// The length that `Prk::expand()` should expand its input to.
     fn len(&self) -> usize;
 }
 
 /// A HKDF PRK (pseudorandom key).
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Prk(hmac::Key);
 
 impl Prk {
+    /// Construct a new `Prk` directly with the given value.
+    ///
+    /// Usually one can avoid using this. It is useful when the application
+    /// intentionally wants to leak the PRK secret, e.g. to implement
+    /// `SSLKEYLOGFILE` functionality.
+    pub fn new_less_safe(algorithm: Algorithm, value: &[u8]) -> Self {
+        Self(hmac::Key::new(algorithm.hmac_algorithm(), value))
+    }
+
     /// The [HKDF-Expand] operation.
     ///
     /// [HKDF-Expand]: https://tools.ietf.org/html/rfc5869#section-2.3
@@ -109,7 +126,7 @@ impl Prk {
         len: L,
     ) -> Result<Okm<'a, L>, error::Unspecified> {
         let len_cached = len.len();
-        if len.len() > 255 * self.0.algorithm().digest_algorithm().output_len {
+        if len_cached > 255 * self.0.algorithm().digest_algorithm().output_len {
             return Err(error::Unspecified);
         }
         Ok(Okm {
@@ -145,7 +162,7 @@ pub struct Okm<'a, L: KeyType> {
 }
 
 impl<L: KeyType> Okm<'_, L> {
-    /// The `OkmLength` given to `Prf::expand()`.
+    /// The `OkmLength` given to `Prk::expand()`.
     #[inline]
     pub fn len(&self) -> &L {
         &self.len

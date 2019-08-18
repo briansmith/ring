@@ -252,7 +252,7 @@ void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
   raw_wvalue = (raw_wvalue >> ((index - 1) % 8)) & kMask;
 
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-  assert(!recoded_is_negative);
+  ASSERT(!recoded_is_negative);
   GFp_nistz256_select_w5(r, table, recoded);
 
   while (index >= kWindowSize) {

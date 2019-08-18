@@ -16,6 +16,9 @@
 
 use untrusted;
 
+#[cfg(feature = "std")]
+extern crate std;
+
 /// An error with absolutely no details.
 ///
 /// *ring* uses this unit type as the error type in most of its results

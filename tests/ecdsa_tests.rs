@@ -156,15 +156,6 @@ fn signature_ecdsa_verify_asn1_test() {
                 signature::UnparsedPublicKey::new(alg, &public_key).verify(&msg, &sig);
             assert_eq!(actual_result.is_ok(), is_valid);
 
-            #[allow(deprecated)]
-            let actual_result = signature::verify(
-                alg,
-                untrusted::Input::from(&public_key),
-                untrusted::Input::from(&msg),
-                untrusted::Input::from(&sig),
-            );
-            assert_eq!(actual_result.is_ok(), is_valid);
-
             Ok(())
         },
     );
@@ -197,15 +188,6 @@ fn signature_ecdsa_verify_fixed_test() {
 
             let actual_result =
                 signature::UnparsedPublicKey::new(alg, &public_key).verify(&msg, &sig);
-            assert_eq!(actual_result.is_ok(), is_valid);
-
-            #[allow(deprecated)]
-            let actual_result = signature::verify(
-                alg,
-                untrusted::Input::from(&public_key),
-                untrusted::Input::from(&msg),
-                untrusted::Input::from(&sig),
-            );
             assert_eq!(actual_result.is_ok(), is_valid);
 
             Ok(())

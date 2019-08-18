@@ -31,60 +31,113 @@
     warnings
 )]
 
+use core::ops::RangeFrom;
 use ring::{aead, error, test, test_file};
 
 #[test]
 fn aead_aes_gcm_128() {
-    test_aead(&aead::AES_128_GCM, test_file!("aead_aes_128_gcm_tests.txt"));
+    test_aead(
+        &aead::AES_128_GCM,
+        seal_with_key,
+        open_with_key,
+        test_file!("aead_aes_128_gcm_tests.txt"),
+    );
+    test_aead(
+        &aead::AES_128_GCM,
+        seal_with_less_safe_key,
+        open_with_less_safe_key,
+        test_file!("aead_aes_128_gcm_tests.txt"),
+    );
 }
 
 #[test]
 fn aead_aes_gcm_256() {
-    test_aead(&aead::AES_256_GCM, test_file!("aead_aes_256_gcm_tests.txt"));
+    test_aead(
+        &aead::AES_256_GCM,
+        seal_with_key,
+        open_with_key,
+        test_file!("aead_aes_256_gcm_tests.txt"),
+    );
+    test_aead(
+        &aead::AES_256_GCM,
+        seal_with_less_safe_key,
+        open_with_less_safe_key,
+        test_file!("aead_aes_256_gcm_tests.txt"),
+    );
 }
 
 #[test]
 fn aead_chacha20_poly1305() {
     test_aead(
         &aead::CHACHA20_POLY1305,
+        seal_with_key,
+        open_with_key,
+        test_file!("aead_chacha20_poly1305_tests.txt"),
+    );
+    test_aead(
+        &aead::CHACHA20_POLY1305,
+        seal_with_less_safe_key,
+        open_with_less_safe_key,
         test_file!("aead_chacha20_poly1305_tests.txt"),
     );
 }
 
-fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
+fn test_aead<Seal, Open>(
+    aead_alg: &'static aead::Algorithm,
+    seal: Seal,
+    open: Open,
+    test_file: test::File,
+) where
+    Seal: Fn(
+        &'static aead::Algorithm,
+        &[u8],
+        aead::Nonce,
+        aead::Aad<&[u8]>,
+        &mut Vec<u8>,
+    ) -> Result<(), error::Unspecified>,
+    Open: for<'a> Fn(
+        &'static aead::Algorithm,
+        &[u8],
+        aead::Nonce,
+        aead::Aad<&[u8]>,
+        &'a mut [u8],
+        RangeFrom<usize>,
+    ) -> Result<&'a mut [u8], error::Unspecified>,
+{
     test_aead_key_sizes(aead_alg);
 
     test::run(test_file, |section, test_case| {
         assert_eq!(section, "");
         let key_bytes = test_case.consume_bytes("KEY");
-        let nonce = test_case.consume_bytes("NONCE");
+        let nonce_bytes = test_case.consume_bytes("NONCE");
         let plaintext = test_case.consume_bytes("IN");
-        let ad = test_case.consume_bytes("AD");
+        let aad = test_case.consume_bytes("AD");
         let mut ct = test_case.consume_bytes("CT");
         let tag = test_case.consume_bytes("TAG");
         let error = test_case.consume_optional_string("FAILS");
 
         match &error {
             Some(err) if err == "WRONG_NONCE_LENGTH" => {
-                assert!(aead::Nonce::try_assume_unique_for_key(&nonce).is_err());
+                assert!(aead::Nonce::try_assume_unique_for_key(&nonce_bytes).is_err());
                 return Ok(());
             }
             _ => (),
         };
 
-        let tag_len = aead_alg.tag_len();
         let mut s_in_out = plaintext.clone();
-        for _ in 0..tag_len {
-            s_in_out.push(0);
-        }
-        let mut s_key = make_key(aead_alg, &key_bytes[..], &nonce);
-        let s_result = s_key.seal_in_place(aead::Aad::from(&ad), &mut s_in_out[..], tag_len);
+        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
+        let s_result = seal(
+            aead_alg,
+            &key_bytes[..],
+            nonce,
+            aead::Aad::from(&aad[..]),
+            &mut s_in_out,
+        );
 
         ct.extend(tag);
 
         if s_result.is_ok() {
-            assert_eq!(Ok(ct.len()), s_result);
-            assert_eq!(&ct[..], &s_in_out[..ct.len()]);
+            assert_eq!(&ct, &s_in_out);
         }
 
         // In release builds, test all prefix lengths from 0 to 4096 bytes.
@@ -159,9 +212,15 @@ fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
             }
             o_in_out.extend_from_slice(&ct[..]);
 
-            let mut o_key = make_key(aead_alg, &key_bytes[..], &nonce);
-            let o_result =
-                o_key.open_in_place(aead::Aad::from(&ad), *in_prefix_len, &mut o_in_out[..]);
+            let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
+            let o_result = open(
+                aead_alg,
+                &key_bytes,
+                nonce,
+                aead::Aad::from(&aad[..]),
+                &mut o_in_out,
+                *in_prefix_len..,
+            );
             match error {
                 None => {
                     assert!(s_result.is_ok());
@@ -179,6 +238,52 @@ fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
 
         Ok(())
     });
+}
+
+fn seal_with_key(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: aead::Nonce,
+    aad: aead::Aad<&[u8]>,
+    in_out: &mut Vec<u8>,
+) -> Result<(), error::Unspecified> {
+    let mut s_key: aead::SealingKey<OneNonceSequence> = make_key(algorithm, key, nonce);
+    s_key.seal_in_place_append_tag(aad, in_out)
+}
+
+fn open_with_key<'a>(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: aead::Nonce,
+    aad: aead::Aad<&[u8]>,
+    in_out: &'a mut [u8],
+    ciphertext_and_tag: RangeFrom<usize>,
+) -> Result<&'a mut [u8], error::Unspecified> {
+    let mut o_key: aead::OpeningKey<OneNonceSequence> = make_key(algorithm, key, nonce);
+    o_key.open_within(aad, in_out, ciphertext_and_tag)
+}
+
+fn seal_with_less_safe_key(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: aead::Nonce,
+    aad: aead::Aad<&[u8]>,
+    in_out: &mut Vec<u8>,
+) -> Result<(), error::Unspecified> {
+    let key = make_less_safe_key(algorithm, key);
+    key.seal_in_place_append_tag(nonce, aad, in_out)
+}
+
+fn open_with_less_safe_key<'a>(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: aead::Nonce,
+    aad: aead::Aad<&[u8]>,
+    in_out: &'a mut [u8],
+    ciphertext_and_tag: RangeFrom<usize>,
+) -> Result<&'a mut [u8], error::Unspecified> {
+    let key = make_less_safe_key(algorithm, key);
+    key.open_within(nonce, aad, in_out, ciphertext_and_tag)
 }
 
 fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
@@ -208,17 +313,6 @@ fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
 }
 
 // Test that we reject non-standard nonce sizes.
-//
-// XXX: This test isn't that great in terms of how it tests
-// `open_in_place`. It should be constructing a valid ciphertext using the
-// unsupported nonce size using a different implementation that supports
-// non-standard nonce sizes. So, when `open_in_place` returns
-// `Err(error::Unspecified)`, we don't know if it is because it rejected
-// the non-standard nonce size or because it tried to process the input
-// with the wrong nonce. But at least we're verifying that `open_in_place`
-// won't crash or access out-of-bounds memory (when run under valgrind or
-// similar). The AES-128-GCM tests have some WRONG_NONCE_LENGTH test cases
-// that tests this more correctly.
 #[test]
 fn test_aead_nonce_sizes() -> Result<(), error::Unspecified> {
     let nonce_len = aead::NONCE_LEN;
@@ -284,6 +378,12 @@ fn aead_chacha20_poly1305_openssh() {
 }
 
 #[test]
+fn test_tag_traits() {
+    test::compile_time_assert_send::<aead::Tag>();
+    test::compile_time_assert_sync::<aead::Tag>();
+}
+
+#[test]
 fn test_aead_key_debug() {
     let key_bytes = [0; 32];
     let nonce = [0; aead::NONCE_LEN];
@@ -294,70 +394,60 @@ fn test_aead_key_debug() {
         format!("{:?}", key)
     );
 
-    let sealing_key: aead::Key<aead::Sealing, LessSafeExplicitNonceSequence> =
-        make_key(&aead::CHACHA20_POLY1305, &key_bytes, &nonce);
+    let sealing_key: aead::SealingKey<OneNonceSequence> = make_key(
+        &aead::CHACHA20_POLY1305,
+        &key_bytes,
+        aead::Nonce::try_assume_unique_for_key(&nonce).unwrap(),
+    );
     assert_eq!(
-        "Key { algorithm: CHACHA20_POLY1305, role: Sealing(()) }",
+        "SealingKey { algorithm: CHACHA20_POLY1305 }",
         format!("{:?}", sealing_key)
     );
 
-    let opening_key: aead::Key<aead::Opening, LessSafeExplicitNonceSequence> =
-        make_key(&aead::AES_256_GCM, &key_bytes, &nonce);
+    let opening_key: aead::OpeningKey<OneNonceSequence> = make_key(
+        &aead::AES_256_GCM,
+        &key_bytes,
+        aead::Nonce::try_assume_unique_for_key(&nonce).unwrap(),
+    );
     assert_eq!(
-        "Key { algorithm: AES_256_GCM, role: Opening(()) }",
+        "OpeningKey { algorithm: AES_256_GCM }",
         format!("{:?}", opening_key)
+    );
+
+    let key: aead::LessSafeKey = make_less_safe_key(&aead::CHACHA20_POLY1305, &key_bytes);
+    assert_eq!(
+        "LessSafeKey { algorithm: CHACHA20_POLY1305 }",
+        format!("{:?}", key)
     );
 }
 
-fn make_key<R: aead::Role>(
+fn make_key<K: aead::BoundKey<OneNonceSequence>>(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
-    nonce: &[u8],
-) -> aead::Key<R, LessSafeExplicitNonceSequence> {
+    nonce: aead::Nonce,
+) -> K {
     let key = aead::UnboundKey::new(algorithm, key).unwrap();
-    let mut nonce_sequence = LessSafeExplicitNonceSequence::new(1);
-    nonce_sequence.set_next(aead::Nonce::try_assume_unique_for_key(nonce).unwrap());
-    aead::Key::new(key, nonce_sequence)
+    let nonce_sequence = OneNonceSequence::new(nonce);
+    K::new(key, nonce_sequence)
 }
 
-/// A Nonce sequence that allows nonces to be chosen externally.
-///
-/// Some protocols use "explicit" nonces and allow the sender to choose an
-/// arbitrary nonce. Implementations of such protocols can use a counter for
-/// nonces they send, but they need to use a degenerate `NonceSequence` to
-/// handle nonces they receive, which allows the next `Nonce` returned from
-/// `advance()` to be set before each call to `aead::Key::open_in_place()`.
-/// `aead::Key::nonce_sequence_mut()` returns a mutable reference to the
-/// `NonceSequence` being used to set the next nonce.
-struct LessSafeExplicitNonceSequence {
-    next: Option<aead::Nonce>,
-    allowed_invocations: u64,
+fn make_less_safe_key(algorithm: &'static aead::Algorithm, key: &[u8]) -> aead::LessSafeKey {
+    let key = aead::UnboundKey::new(algorithm, key).unwrap();
+    aead::LessSafeKey::new(key)
 }
 
-impl LessSafeExplicitNonceSequence {
+struct OneNonceSequence(Option<aead::Nonce>);
+
+impl OneNonceSequence {
     /// Constructs the sequence allowing `advance()` to be called
     /// `allowed_invocations` times.
-    fn new(allowed_invocations: u64) -> Self {
-        Self {
-            next: None,
-            allowed_invocations,
-        }
-    }
-
-    /// Sets the next nonce to be returned from `advance()`.
-    ///
-    /// The next call to `advcance()` will return the nonce and forget it.
-    fn set_next(&mut self, next: aead::Nonce) {
-        self.next = Some(next);
+    fn new(nonce: aead::Nonce) -> Self {
+        Self(Some(nonce))
     }
 }
 
-impl aead::NonceSequence for LessSafeExplicitNonceSequence {
+impl aead::NonceSequence for OneNonceSequence {
     fn advance(&mut self) -> Result<aead::Nonce, error::Unspecified> {
-        self.allowed_invocations = self
-            .allowed_invocations
-            .checked_sub(1)
-            .ok_or(error::Unspecified)?;
-        self.next.take().ok_or(error::Unspecified)
+        self.0.take().ok_or(error::Unspecified)
     }
 }

@@ -27,11 +27,11 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(pop)
 #endif
 
@@ -40,7 +40,7 @@
 #include "internal.h"
 #include "../../crypto/internal.h"
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 // '=': conversion from 'int64_t' to 'int32_t', possible loss of data
 #pragma warning(disable: 4242)
 // '=': conversion from 'int32_t' to 'uint8_t', possible loss of data
@@ -102,7 +102,7 @@ static uint64_t load_4(const uint8_t *in) {
 #define assert_fe(f)                                                    \
   do {                                                                  \
     for (unsigned _assert_fe_i = 0; _assert_fe_i < 5; _assert_fe_i++) { \
-      assert(f[_assert_fe_i] <= UINT64_C(0x8cccccccccccc));             \
+      ASSERT(f[_assert_fe_i] <= UINT64_C(0x8cccccccccccc));             \
     }                                                                   \
   } while (0)
 
@@ -119,7 +119,7 @@ static uint64_t load_4(const uint8_t *in) {
 #define assert_fe_loose(f)                                              \
   do {                                                                  \
     for (unsigned _assert_fe_i = 0; _assert_fe_i < 5; _assert_fe_i++) { \
-      assert(f[_assert_fe_i] <= UINT64_C(0x1a666666666664));            \
+      ASSERT(f[_assert_fe_i] <= UINT64_C(0x1a666666666664));            \
     }                                                                   \
   } while (0)
 
@@ -138,7 +138,7 @@ static uint64_t load_4(const uint8_t *in) {
 #define assert_fe(f)                                                     \
   do {                                                                   \
     for (unsigned _assert_fe_i = 0; _assert_fe_i < 10; _assert_fe_i++) { \
-      assert(f[_assert_fe_i] <=                                          \
+      ASSERT(f[_assert_fe_i] <=                                          \
              ((_assert_fe_i & 1) ? 0x2333333u : 0x4666666u));            \
     }                                                                    \
   } while (0)
@@ -156,7 +156,7 @@ static uint64_t load_4(const uint8_t *in) {
 #define assert_fe_loose(f)                                               \
   do {                                                                   \
     for (unsigned _assert_fe_i = 0; _assert_fe_i < 10; _assert_fe_i++) { \
-      assert(f[_assert_fe_i] <=                                          \
+      ASSERT(f[_assert_fe_i] <=                                          \
              ((_assert_fe_i & 1) ? 0x6999999u : 0xd333332u));            \
     }                                                                    \
   } while (0)
@@ -168,7 +168,7 @@ OPENSSL_STATIC_ASSERT(sizeof(fe) == sizeof(fe_limb_t) * FE_NUM_LIMBS,
 
 static void fe_frombytes_strict(fe *h, const uint8_t s[32]) {
   // |fiat_25519_from_bytes| requires the top-most bit be clear.
-  assert((s[31] & 0x80) == 0);
+  ASSERT((s[31] & 0x80) == 0);
   fiat_25519_from_bytes(h->v, s);
   assert_fe(h->v);
 }

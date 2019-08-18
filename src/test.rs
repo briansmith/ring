@@ -123,8 +123,8 @@ use alloc::{format, string::String, vec::Vec};
 #[cfg(feature = "alloc")]
 use crate::{bits, digest, error};
 
-#[cfg(feature = "std")]
-use std::println;
+#[cfg(any(feature = "std", feature = "test_logging"))]
+extern crate std;
 
 /// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
 /// implement `Clone`.
@@ -142,12 +142,8 @@ pub fn compile_time_assert_send<T: Send>() {}
 /// implement `Sync`.
 pub fn compile_time_assert_sync<T: Sync>() {}
 
-/// `compile_time_assert_debug::<T>();` fails to compile if `T` doesn't
-/// implement `Debug`.
-pub fn compile_time_assert_debug<T: core::fmt::Debug>() {}
-
-/// `compile_time_assert_debug::<T>();` fails to compile if `T` doesn't
-/// implement `std::error::Error`.
+/// `compile_time_assert_std_error_error::<T>();` fails to compile if `T`
+/// doesn't implement `std::error::Error`.
 #[cfg(feature = "std")]
 pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 
@@ -155,7 +151,7 @@ pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 /// attribute in the test case must be consumed exactly once; this helps catch
 /// typos and omissions.
 ///
-/// Requires the `std` default feature to be enabled.
+/// Requires the `alloc` default feature to be enabled.
 #[cfg(feature = "alloc")]
 #[derive(Debug)]
 pub struct TestCase {
@@ -313,7 +309,7 @@ pub struct File<'a> {
 /// `f` fails or until all the test vectors have been read. `f` can indicate
 /// failure either by returning `Err()` or by panicking.
 ///
-/// Requires the `std` default feature to be enabled
+/// Requires the `alloc` default feature to be enabled
 #[cfg(feature = "alloc")]
 pub fn run<F>(test_file: File, mut f: F)
 where
@@ -325,16 +321,8 @@ where
     let mut failed = false;
 
     while let Some(mut test_case) = parse_test_case(&mut current_section, lines) {
-        #[cfg(feature = "std")]
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            f(&current_section, &mut test_case)
-        }));
-
-        #[cfg(not(feature = "std"))]
-        let result: Result<_, error::Unspecified> = Ok(f(&current_section, &mut test_case));
-
-        let result = match result {
-            Ok(Ok(())) => {
+        let result = match f(&current_section, &mut test_case) {
+            Ok(()) => {
                 if !test_case
                     .attributes
                     .iter()
@@ -346,22 +334,21 @@ where
                     Err("Test didn't consume all attributes.")
                 }
             }
-            Ok(Err(_)) => Err("Test returned Err(error::Unspecified)."),
-            Err(_) => Err("Test panicked."),
+            Err(error::Unspecified) => Err("Test returned Err(error::Unspecified)."),
         };
 
         if result.is_err() {
             failed = true;
         }
 
-        #[cfg(feature = "std")]
+        #[cfg(feature = "test_logging")]
         {
             if let Err(msg) = result {
-                println!("{}: {}", test_file.file_name, msg);
+                std::println!("{}: {}", test_file.file_name, msg);
 
                 for (name, value, consumed) in test_case.attributes {
                     let consumed_str = if consumed { "" } else { " (unconsumed)" };
-                    println!("{}{} = {}", name, consumed_str, value);
+                    std::println!("{}{} = {}", name, consumed_str, value);
                 }
             };
         }
@@ -418,7 +405,7 @@ fn parse_test_case(
         #[cfg(feature = "test_logging")]
         {
             if let Some(text) = &line {
-                println!("Line: {}", text);
+                std::println!("Line: {}", text);
             }
         }
 
@@ -574,12 +561,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
-    #[cfg_attr(not(feature = "std"), should_panic)]
+    #[should_panic(expected = "Oh noes!")]
     fn one_panics() {
         test::run(test_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
-            panic!("");
+            panic!("Oh noes!");
         });
     }
 
@@ -616,22 +602,19 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
-    #[cfg_attr(not(feature = "std"), should_panic)]
+    #[should_panic(expected = "Oh Noes!")]
     fn first_panic() {
         panic_one(0)
     }
 
     #[test]
-    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
-    #[cfg_attr(not(feature = "std"), should_panic)]
+    #[should_panic(expected = "Oh Noes!")]
     fn middle_panic() {
         panic_one(1)
     }
 
     #[test]
-    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
-    #[cfg_attr(not(feature = "std"), should_panic)]
+    #[should_panic(expected = "Oh Noes!")]
     fn last_panic() {
         panic_one(2)
     }

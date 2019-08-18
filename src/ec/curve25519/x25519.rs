@@ -65,7 +65,7 @@ fn x25519_public_from_private(
     let private_key: &[u8; SCALAR_LEN] = private_key.bytes_less_safe().try_into()?;
     let private_key = ops::MaskedScalar::from_bytes_masked(*private_key);
 
-    #[cfg(target_arch = "arm")]
+    #[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
     {
         if cpu::arm::NEON.available(cpu_features) {
             static MONTGOMERY_BASE_POINT: [u8; 32] = [
@@ -100,14 +100,17 @@ fn x25519_ecdh(
     let my_private_key = ops::MaskedScalar::from_bytes_masked(*my_private_key);
     let peer_public_key: &[u8; PUBLIC_KEY_LEN] = peer_public_key.as_slice_less_safe().try_into()?;
 
-    #[cfg_attr(not(target_arch = "arm"), allow(unused_variables))]
+    #[cfg_attr(
+        not(all(not(target_os = "ios"), target_arch = "arm")),
+        allow(unused_variables)
+    )]
     fn scalar_mult(
         out: &mut ops::EncodedPoint,
         scalar: &ops::MaskedScalar,
         point: &ops::EncodedPoint,
         cpu_features: cpu::Features,
     ) {
-        #[cfg(target_arch = "arm")]
+        #[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
         {
             if cpu::arm::NEON.available(cpu_features) {
                 return x25519_neon(out, scalar, point);
@@ -142,7 +145,7 @@ fn x25519_ecdh(
     Ok(())
 }
 
-#[cfg(target_arch = "arm")]
+#[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
 fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::MaskedScalar, point: &ops::EncodedPoint) {
     versioned_extern! {
         fn GFp_x25519_NEON(

@@ -73,7 +73,7 @@ where
 pub(crate) mod sealed {
     use crate::error;
 
-    pub trait SecureRandom {
+    pub trait SecureRandom: core::fmt::Debug {
         /// Fills `dest` with random bytes.
         fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
     }
@@ -143,6 +143,7 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 /// random number generation.
 ///
 /// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
+#[derive(Clone, Debug)]
 pub struct SystemRandom(());
 
 impl SystemRandom {
@@ -178,6 +179,14 @@ use self::sysrand::fill as fill_impl;
 ))]
 use self::sysrand_or_urandom::fill as fill_impl;
 
+#[cfg(any(
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "solaris"
+))]
+use self::urandom::fill as fill_impl;
+
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use self::darwin::fill as fill_impl;
 
@@ -190,19 +199,21 @@ mod sysrand_chunk {
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        use libc::c_long;
+
         // See `SYS_getrandom` in #include <sys/syscall.h>.
 
         #[cfg(target_arch = "aarch64")]
-        const SYS_GETRANDOM: c::long = 278;
+        const SYS_GETRANDOM: c_long = 278;
 
         #[cfg(target_arch = "arm")]
-        const SYS_GETRANDOM: c::long = 384;
+        const SYS_GETRANDOM: c_long = 384;
 
         #[cfg(target_arch = "x86")]
-        const SYS_GETRANDOM: c::long = 355;
+        const SYS_GETRANDOM: c_long = 355;
 
         #[cfg(target_arch = "x86_64")]
-        const SYS_GETRANDOM: c::long = 318;
+        const SYS_GETRANDOM: c_long = 318;
 
         let chunk_len: c::size_t = dest.len();
         let r = unsafe { libc::syscall(SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, 0) };
@@ -333,13 +344,28 @@ mod sysrand_or_urandom {
 
         match *MECHANISM {
             Mechanism::Sysrand => super::sysrand::fill(dest),
-            Mechanism::DevURandom => urandom_fallback(dest),
+            Mechanism::DevURandom => super::urandom::fill(dest),
         }
     }
+}
 
-    #[cold]
-    #[inline(never)]
-    fn urandom_fallback(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+#[cfg(any(
+    all(
+        any(target_os = "android", target_os = "linux"),
+        feature = "dev_urandom_fallback"
+    ),
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "solaris"
+))]
+mod urandom {
+    use crate::error;
+
+    #[cfg_attr(any(target_os = "android", target_os = "linux"), cold, inline(never))]
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        extern crate std;
+
         use lazy_static::lazy_static;
 
         lazy_static! {

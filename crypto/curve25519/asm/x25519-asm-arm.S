@@ -29,22 +29,15 @@
 #include <boringssl_prefix_symbols_asm.h>
 #endif
 
-#if !defined(__APPLE__)
 .fpu neon
-#endif
 .text
 .align 4
 
 .global GFp_x25519_NEON
 
-#if defined(__APPLE__)
-.private_extern _GFp_x25519_NEON
-_GFp_x25519_NEON:
-#else
 .hidden GFp_x25519_NEON
 .type GFp_x25519_NEON, %function
 GFp_x25519_NEON:
-#endif
 
 vpush {q4,q5,q6,q7}
 mov r12,sp
@@ -60,8 +53,8 @@ mov r0,r0
 mov r1,r1
 mov r2,r2
 add r3,sp,#32
-mov r4, #0
-mov r5, #254
+ldr r4,=0
+ldr r5,=254
 vmov.i32 q0,#1
 vshr.u64 q1,q0,#7
 vshr.u64 q0,q0,#8
@@ -79,7 +72,7 @@ vst1.8 {d4-d5},[r6,: 128]!
 vst1.8 {d4-d5},[r6,: 128]!
 vst1.8 d4,[r6,: 64]
 add r6,r3,#0
-mov r7, #960
+ldr r7,=960
 sub r7,r7,#2
 neg r7,r7
 sub r7,r7,r7,LSL #7

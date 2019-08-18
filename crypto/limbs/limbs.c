@@ -48,7 +48,7 @@ Limb LIMBS_equal_limb(const Limb a[], Limb b, size_t num_limbs) {
   if (num_limbs == 0) {
     return constant_time_is_zero_w(b);
   }
-  assert(num_limbs >= 1);
+  ASSERT(num_limbs >= 1);
   Limb lo_equal = constant_time_eq_w(a[0], b);
   Limb hi_zero = LIMBS_are_zero(&a[1], num_limbs - 1);
   return constant_time_select_w(lo_equal, hi_zero, 0);
@@ -68,7 +68,7 @@ Limb LIMBS_are_even(const Limb a[], size_t num_limbs) {
 
 /* Returns 0xffff...f if |a| is less than |b|, and zero otherwise. */
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
-  assert(num_limbs >= 1);
+  ASSERT(num_limbs >= 1);
   /* There are lots of ways to implement this. It is implemented this way to
    * be consistent with |LIMBS_limbs_reduce_once| and other code that makes such
    * comparisons as part of doing conditional reductions. */
@@ -81,7 +81,7 @@ Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
 }
 
 Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs) {
-  assert(num_limbs >= 1);
+  ASSERT(num_limbs >= 1);
 
   Limb dummy;
   Limb lo = constant_time_is_nonzero_w(limb_sub(&dummy, a[0], b));
@@ -95,7 +95,7 @@ void LIMBS_copy(Limb r[], const Limb a[], size_t num_limbs) {
 
 /* if (r >= m) { r -= m; } */
 void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
-  assert(num_limbs >= 1);
+  ASSERT(num_limbs >= 1);
   /* This could be done more efficiently if we had |num_limbs| of extra space
    * available, by storing |r - m| and then doing a conditional copy of either
    * |r| or |r - m|. But, in order to operate in constant space, with an eye
@@ -111,7 +111,7 @@ void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
     borrow =
         limb_sbb(&r[i], r[i], constant_time_select_w(lt, 0, m[i]), borrow);
   }
-  assert(borrow == 0);
+  ASSERT(borrow == 0);
 }
 
 void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],

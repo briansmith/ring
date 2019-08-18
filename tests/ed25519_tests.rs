@@ -75,15 +75,6 @@ fn test_signature_ed25519() {
                 .is_ok()
         );
 
-        #[allow(deprecated)]
-        let actual_result = signature::verify(
-            &signature::ED25519,
-            untrusted::Input::from(&public_key),
-            untrusted::Input::from(&msg),
-            untrusted::Input::from(&expected_sig),
-        );
-        assert!(actual_result.is_ok());
-
         let mut tampered_sig = expected_sig;
         tampered_sig[0] ^= 1;
 
@@ -92,15 +83,6 @@ fn test_signature_ed25519() {
                 .verify(&msg, &tampered_sig)
                 .is_err()
         );
-
-        #[allow(deprecated)]
-        let actual_result = signature::verify(
-            &signature::ED25519,
-            untrusted::Input::from(&public_key),
-            untrusted::Input::from(&msg),
-            untrusted::Input::from(&tampered_sig),
-        );
-        assert!(actual_result.is_err());
 
         Ok(())
     });

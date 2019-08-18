@@ -278,13 +278,18 @@ fn ring_build_rs_main() {
         ("o", "-o")
     };
 
-    let is_debug = env::var("DEBUG").unwrap() != "false";
+    let is_git = std::fs::metadata(".git").is_ok();
+
+    // Published builds are always release builds.
+    let is_debug = is_git && env::var("DEBUG").unwrap() != "false";
+
     let target = Target {
         arch,
         os,
         env,
         obj_ext,
         obj_opt,
+        is_git,
         is_debug,
     };
     let pregenerated = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
@@ -331,28 +336,14 @@ struct Target {
     env: String,
     obj_ext: &'static str,
     obj_opt: &'static str,
+    is_git: bool,
     is_debug: bool,
-}
-
-impl Target {
-    pub fn arch(&self) -> &str {
-        &self.arch
-    }
-    pub fn os(&self) -> &str {
-        &self.os
-    }
-    pub fn env(&self) -> &str {
-        &self.env
-    }
-    pub fn is_debug(&self) -> bool {
-        self.is_debug
-    }
 }
 
 fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     use std::env;
 
-    if target.arch() == "wasm32" {
+    if &target.arch == "wasm32" {
         return;
     }
 
@@ -379,14 +370,12 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         .iter()
         .find(|entry| {
             let &(entry_arch, entry_os, _) = *entry;
-            entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
+            entry_arch == &target.arch && is_none_or_equals(entry_os, &target.os)
         })
         .unwrap();
 
-    let is_git = std::fs::metadata(".git").is_ok();
-
-    let use_pregenerated = !is_git;
-    let warnings_are_errors = is_git;
+    let use_pregenerated = !target.is_git;
+    let warnings_are_errors = target.is_git;
 
     let asm_dir = if use_pregenerated {
         &pregenerated
@@ -395,12 +384,12 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     };
 
     let perlasm_src_dsts =
-        perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()), perlasm_format);
+        perlasm_src_dsts(asm_dir, &target.arch, Some(&target.os), perlasm_format);
 
     if !use_pregenerated {
         perlasm(
             &perlasm_src_dsts[..],
-            target.arch(),
+            &target.arch,
             perlasm_format,
             Some(includes_modified),
         );
@@ -411,7 +400,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     // For Windows we also pregenerate the object files for non-Git builds so
     // the user doesn't need to install the assembler. On other platforms we
     // assume the C compiler also assembles.
-    if use_pregenerated && target.os() == WINDOWS {
+    if use_pregenerated && &target.os == WINDOWS {
         // The pregenerated object files always use ".obj" as the extension,
         // even when the C/C++ compiler outputs files with the ".o" extension.
         asm_srcs = asm_srcs
@@ -420,7 +409,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
             .collect::<Vec<_>>();
     }
 
-    let core_srcs = sources_for_arch(target.arch())
+    let core_srcs = sources_for_arch(&target.arch)
         .into_iter()
         .filter(|p| !is_perlasm(&p))
         .collect::<Vec<_>>();
@@ -479,7 +468,7 @@ fn build_library(
     let objs = additional_srcs
         .into_iter()
         .chain(srcs.into_iter())
-        .filter(|f| target.env() != "msvc" || f.extension().unwrap().to_str().unwrap() != "S")
+        .filter(|f| &target.env != "msvc" || f.extension().unwrap().to_str().unwrap() != "S")
         .map(|f| {
             compile(
                 f,
@@ -505,7 +494,7 @@ fn build_library(
         for f in LD_FLAGS {
             let _ = c.flag(&f);
         }
-        match target.os() {
+        match target.os.as_str() {
             "macos" => {
                 let _ = c.flag("-fPIC");
                 let _ = c.flag("-Wl,-dead_strip");
@@ -549,10 +538,10 @@ fn compile(
         let mut out_path = out_dir.clone().join(p.file_name().unwrap());
         assert!(out_path.set_extension(target.obj_ext));
         if need_run(&p, &out_path, includes_modified) {
-            let cmd = if target.os() != WINDOWS || ext != "asm" {
+            let cmd = if &target.os != WINDOWS || ext != "asm" {
                 cc(p, ext, target, warnings_are_errors, &out_path, definitions)
             } else {
-                yasm(p, target.arch(), &out_path)
+                yasm(p, &target.arch, &out_path)
             };
 
             run_command(cmd);
@@ -593,11 +582,11 @@ fn cc(
     for f in cpp_flags(target) {
         let _ = c.flag(&f);
     }
-    if target.os() != "none" && target.os() != "redox" && target.os() != "windows" {
+    if &target.os != "none" && &target.os != "redox" && &target.os != "windows" {
         let _ = c.flag("-fstack-protector");
     }
 
-    match (target.os(), target.env()) {
+    match (target.os.as_str(), target.env.as_str()) {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
         ("macos", _) => {
             let _ = c.flag("-gfull");
@@ -607,11 +596,11 @@ fn cc(
             let _ = c.flag("-g3");
         }
     };
-    if !target.is_debug() {
+    if !target.is_debug {
         let _ = c.define("NDEBUG", None);
     }
 
-    if target.env() == "msvc" {
+    if &target.env == "msvc" {
         if std::env::var("OPT_LEVEL").unwrap() == "0" {
             let _ = c.flag("/Od"); // Disable optimization for debug builds.
                                    // run-time checking: (s)tack frame, (u)ninitialized variables
@@ -621,19 +610,15 @@ fn cc(
         }
     }
 
-    if target.env() != "msvc" {
-        let _ = c.define("_XOPEN_SOURCE", Some("700"));
-    }
-
     if warnings_are_errors {
-        let flag = if target.env() != "msvc" {
+        let flag = if &target.env != "msvc" {
             "-Werror"
         } else {
             "/WX"
         };
         let _ = c.flag(flag);
     }
-    if target.env() == "musl" {
+    if &target.env == "musl" {
         // Some platforms enable _FORTIFY_SOURCE by default, but musl
         // libc doesn't support it yet. See
         // http://wiki.musl-libc.org/wiki/Future_Ideas#Fortify

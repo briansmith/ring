@@ -14,34 +14,38 @@
 
 //! C types.
 //!
-//! The libc crate provide the C types for most, but not all, targets that
-//! *ring* supports.
+//! Avoid using the `libc` crate to get C types since `libc` doesn't support
+//! all the targets we need to support. It turns out that the few types we need
+//! are all uniformly defined on the platforms we care about. This will
+//! probably change if/when we support 16-bit platforms or platforms where
+//! `usize` and `uintptr_t` are different sizes.
 
-#[cfg(not(all(target_arch = "wasm32", target_env = "",)))]
-use ::libc;
+// Keep in sync with the checks in base.h that verify these assumptions.
 
-#[cfg(all(target_arch = "wasm32", target_env = ""))]
-mod libc {
-    //! The WASM32 ABI is described at
-    //! https://github.com/WebAssembly/tool-conventions/blob/master/BasicCABI.md#data-representation
+pub(crate) type int = i32;
+pub(crate) type uint = u32;
+pub(crate) type size_t = usize;
 
-    pub(crate) type c_int = i32;
-    pub(crate) type c_uint = u32;
+#[cfg(all(test, any(unix, windows)))]
+mod tests {
+    use crate::c;
 
-    // "The size_t type is defined as unsigned long."
-    // However, we must define it as an alias of `usize` for compatibility with `libc::size_t`.
-    pub(crate) type size_t = usize;
+    #[test]
+    fn test_libc_compatible() {
+        {
+            let x: c::int = 1;
+            let _x: libc::c_int = x;
+        }
+
+        {
+            let x: c::uint = 1;
+            let _x: libc::c_uint = x;
+        }
+
+        {
+            let x: c::size_t = 1;
+            let _x: libc::size_t = x;
+            let _x: usize = x;
+        }
+    }
 }
-
-pub(crate) type size_t = self::libc::size_t;
-pub(crate) type int = self::libc::c_int;
-pub(crate) type uint = self::libc::c_uint;
-
-#[cfg(all(
-    any(target_os = "android", target_os = "linux"),
-    any(target_arch = "aarch64", target_arch = "arm")
-))]
-pub(crate) type ulong = libc::c_ulong;
-
-#[cfg(any(target_os = "android", target_os = "linux"))]
-pub(crate) type long = libc::c_long;

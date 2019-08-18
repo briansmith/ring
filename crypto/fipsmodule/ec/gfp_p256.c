@@ -59,7 +59,7 @@ void GFp_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
 }
 
 void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep) {
-  assert(rep >= 1);
+  ASSERT(rep >= 1);
   GFp_p256_scalar_sqr_mont(r, a);
   for (Limb i = 1; i < rep; ++i) {
     GFp_p256_scalar_sqr_mont(r, r);
@@ -74,7 +74,7 @@ void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep) {
 
 void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
                             int index) {
-  assert(index >= 0);
+  ASSERT(index >= 0);
   size_t index_s = (size_t)index; /* XXX: constant time? */
 
   alignas(32) Elem x; limbs_zero(x, P256_LIMBS);
@@ -97,7 +97,7 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
 
 void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
                             const PRECOMP256_ROW table, int index) {
-  assert(index >= 0);
+  ASSERT(index >= 0);
   size_t index_as_s = (size_t)index; /* XXX: constant time? */
 
   alignas(32) Limb xy[P256_LIMBS * 2];

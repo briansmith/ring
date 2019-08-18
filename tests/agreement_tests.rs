@@ -31,7 +31,52 @@
     warnings
 )]
 
+extern crate alloc;
+
 use ring::{agreement, error, rand, test, test_file};
+
+#[test]
+fn agreement_traits<'a>() {
+    use alloc::vec::Vec;
+
+    let rng = rand::SystemRandom::new();
+    let private_key =
+        agreement::EphemeralPrivateKey::generate(&agreement::ECDH_P256, &rng).unwrap();
+
+    test::compile_time_assert_send::<agreement::EphemeralPrivateKey>();
+    test::compile_time_assert_sync::<agreement::EphemeralPrivateKey>();
+
+    assert_eq!(
+        format!("{:?}", &private_key),
+        "EphemeralPrivateKey { algorithm: Algorithm { curve: P256 } }"
+    );
+
+    let public_key = private_key.compute_public_key().unwrap();
+
+    test::compile_time_assert_clone::<agreement::PublicKey>();
+    test::compile_time_assert_send::<agreement::PublicKey>();
+    test::compile_time_assert_sync::<agreement::PublicKey>();
+
+    // Verify `PublicKey` implements `Debug`.
+    //
+    // TODO: Test the actual output.
+    let _: &dyn core::fmt::Debug = &public_key;
+
+    test::compile_time_assert_clone::<agreement::UnparsedPublicKey<&'a [u8]>>();
+    test::compile_time_assert_copy::<agreement::UnparsedPublicKey<&'a [u8]>>();
+    test::compile_time_assert_sync::<agreement::UnparsedPublicKey<&'a [u8]>>();
+
+    test::compile_time_assert_clone::<agreement::UnparsedPublicKey<Vec<u8>>>();
+    test::compile_time_assert_sync::<agreement::UnparsedPublicKey<Vec<u8>>>();
+
+    let unparsed_public_key =
+        agreement::UnparsedPublicKey::new(&agreement::X25519, &[0x01, 0x02, 0x03]);
+
+    assert_eq!(
+        format!("{:?}", unparsed_public_key),
+        r#"UnparsedPublicKey { algorithm: Algorithm { curve: Curve25519 }, bytes: "010203" }"#
+    );
+}
 
 #[test]
 fn agreement_agree_ephemeral() {
@@ -54,8 +99,12 @@ fn agreement_agree_ephemeral() {
                 let my_public = test_case.consume_bytes("MyQ");
                 let output = test_case.consume_bytes("Output");
 
+                assert_eq!(my_private.algorithm(), alg);
+
                 let computed_public = my_private.compute_public_key().unwrap();
                 assert_eq!(computed_public.as_ref(), &my_public[..]);
+
+                assert_eq!(my_private.algorithm(), alg);
 
                 assert!(
                     agreement::agree_ephemeral(my_private, &peer_public, (), |key_material| {
