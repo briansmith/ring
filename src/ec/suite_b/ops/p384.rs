@@ -325,15 +325,14 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     acc
 }
 
-versioned_extern_def! {
-    unsafe fn GFp_p384_elem_sqr_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-    ) {
-        // XXX: Inefficient. TODO: Make a dedicated squaring routine.
-        GFp_p384_elem_mul_mont(r, a, a);
-    }
+unsafe extern "C" fn GFp_p384_elem_sqr_mont(
+    r: *mut Limb,   // [COMMON_OPS.num_limbs]
+    a: *const Limb, // [COMMON_OPS.num_limbs]
+) {
+    // XXX: Inefficient. TODO: Make a dedicated squaring routine.
+    GFp_p384_elem_mul_mont(r, a, a);
 }
+
 const N_RR_LIMBS: [Limb; MAX_LIMBS] = p384_limbs![
     0x19b409a9, 0x2d319b24, 0xdf1aa419, 0xff3d81e5, 0xfcb82947, 0xbc3e483a, 0x4aab1cc5, 0xd40d4917,
     0x28266895, 0x3fb05b7a, 0x2b39bf21, 0x0c84ee01

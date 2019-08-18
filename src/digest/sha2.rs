@@ -19,27 +19,23 @@ use core::{
 };
 
 #[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
-versioned_extern_def! {
-    pub(super) fn GFp_sha256_block_data_order(
-        state: &mut super::State,
-        data: *const u8,
-        num: c::size_t,
-    ) {
-        let state = unsafe { &mut state.as32 };
-        *state = block_data_order(*state, data, num)
-    }
+pub(super) extern "C" fn GFp_sha256_block_data_order(
+    state: &mut super::State,
+    data: *const u8,
+    num: c::size_t,
+) {
+    let state = unsafe { &mut state.as32 };
+    *state = block_data_order(*state, data, num)
 }
 
 #[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
-versioned_extern_def! {
-    pub(super) fn GFp_sha512_block_data_order(
-        state: &mut super::State,
-        data: *const u8,
-        num: c::size_t,
-    ) {
-        let state = unsafe { &mut state.as64 };
-        *state = block_data_order(*state, data, num)
-    }
+pub(super) extern "C" fn GFp_sha512_block_data_order(
+    state: &mut super::State,
+    data: *const u8,
+    num: c::size_t,
+) {
+    let state = unsafe { &mut state.as64 };
+    *state = block_data_order(*state, data, num)
 }
 
 #[cfg_attr(

@@ -14,7 +14,7 @@ macro_rules! add_version_prefix {
     };
 }
 
-/// Prefixes imported extern "C" references with the BoringSSL symbol prefix.
+/// Prefixes imported extern "C" references with the versioned symbol prefix.
 #[macro_export]
 macro_rules! versioned_extern {
     // Function args w/ trailing comma
@@ -90,35 +90,4 @@ macro_rules! versioned_extern {
 
     // Base case for empty $rest
     () => ()
-}
-
-/// Prefixes exported extern "C" functions with the BoringSSL symbol prefix.
-#[macro_export]
-macro_rules! versioned_extern_def {
-    ($(#[$($attr:tt)*])* $vis:vis unsafe fn $name:ident $($rest:tt)+) => (
-        versioned_extern_def!(
-            [add_version_prefix!($name)]
-            [$(#[$($attr)*])* $vis unsafe extern "C" fn]
-            $name
-            [$($rest)+]
-        );
-    );
-
-    ($(#[$($attr:tt)*])* $vis:vis fn $name:ident $($rest:tt)+) => (
-        versioned_extern_def!(
-            [add_version_prefix!($name)]
-            [$(#[$($attr)*])* $vis extern "C" fn]
-            $name
-            [$($rest)+]
-        );
-    );
-
-    ([$v:expr] [$($pre:tt)+] $name:ident [$($post:tt)+]) => (
-        #[cfg(not(feature = "no_versioned_extern"))]
-        #[link_name = $v]
-        $($pre)+ $name $($post)+
-
-        #[cfg(feature = "no_versioned_extern")]
-        $($pre)+ $name $($post)+
-    );
 }

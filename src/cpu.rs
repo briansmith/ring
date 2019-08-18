@@ -76,7 +76,7 @@ pub(crate) mod arm {
 
         // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
         // across all Android/Linux targets, e.g. musl.
-        versioned_extern! {
+        extern "C" {
             fn getauxval(type_: c_ulong) -> c_ulong;
         }
 
@@ -135,7 +135,7 @@ pub(crate) mod arm {
         type zx_status_t = i32;
 
         #[link(name = "zircon")]
-        versioned_extern! {
+        extern "C" {
             fn zx_system_get_features(kind: u32, features: *mut u32) -> zx_status_t;
         }
 

@@ -33,18 +33,16 @@ fn parity(x: W32, y: W32, z: W32) -> W32 {
 type State = [W32; CHAINING_WORDS];
 const ROUNDS: usize = 80;
 
-versioned_extern_def! {
-    pub(super) fn block_data_order(
-        state: &mut super::State,
-        data: *const u8,
-        num: c::size_t,
-    ) {
-        let state = unsafe { &mut state.as32 };
-        let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
-        let data = data as *const [<W32 as Word>::InputBytes; 16];
-        let blocks = unsafe { core::slice::from_raw_parts(data, num) };
-        *state = block_data_order_(*state, blocks)
-    }
+pub(super) extern "C" fn block_data_order(
+    state: &mut super::State,
+    data: *const u8,
+    num: c::size_t,
+) {
+    let state = unsafe { &mut state.as32 };
+    let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
+    let data = data as *const [<W32 as Word>::InputBytes; 16];
+    let blocks = unsafe { core::slice::from_raw_parts(data, num) };
+    *state = block_data_order_(*state, blocks)
 }
 
 #[inline]
