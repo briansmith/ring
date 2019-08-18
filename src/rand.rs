@@ -402,7 +402,6 @@ mod darwin {
     #[repr(C)]
     struct SecRandomRef([u8; 0]);
 
-    // Don't add the BoringSSL symbol prefix because these are system APIs.
     #[link(name = "Security", kind = "framework")]
     extern "C" {
         static kSecRandomDefault: &'static SecRandomRef;
@@ -429,7 +428,7 @@ mod fuchsia {
     }
 
     #[link(name = "zircon")]
-    versioned_extern! {
+    extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
     }
 }

@@ -41,7 +41,6 @@ mod tests {
 
     #[test]
     fn test_constant_time() -> Result<(), error::Unspecified> {
-        // Don't bother prefixing this test symbol.
         extern "C" {
             fn bssl_constant_time_test_main() -> bssl::Result;
         }
