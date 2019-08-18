@@ -421,7 +421,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         ("ring-test", &test_srcs[..], &[]),
     ];
 
-    let definitions = if env::var("CARGO_FEATURE_BORINGSSL_NO_PREFIX").is_ok() {
+    let definitions = if env::var("CARGO_FEATURE_NO_VERSIONED_EXTERN").is_ok() {
         Vec::new()
     } else {
         let major = env::var("CARGO_PKG_VERSION_MAJOR").unwrap();
@@ -429,7 +429,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         let patch = env::var("CARGO_PKG_VERSION_PATCH").unwrap();
         let version_string = format!("{}_{}_{}", major, minor, patch);
         let prefix = format!("__RUST_RING_{}", version_string);
-        vec![("BORINGSSL_PREFIX", prefix)]
+        vec![("VERSIONED_EXTERN_PREFIX", prefix)]
     };
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
@@ -566,7 +566,7 @@ fn cc(
 ) -> Command {
     let mut c = cc::Build::new();
     let _ = c.include("include");
-    if std::env::var("CARGO_FEATURE_BORINGSSL_NO_PREFIX").is_err() {
+    if std::env::var("CARGO_FEATURE_NO_VERSIONED_EXTERN").is_err() {
         let _ = c.include(format!("{}/{}", PREGENERATED, SYMBOL_PREFIX_INCLUDE));
     }
 

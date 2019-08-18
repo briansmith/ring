@@ -99,9 +99,9 @@ else
 fi
 
 if [[ -z "${ANDROID_ABI-}" ]]; then
-  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X --features boringssl_no_prefix
+  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X --features no_versioned_extern
 else
-  cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X --features boringssl_no_prefix
+  cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X --features no_versioned_extern
 
   if [[ ! -z "${ANDROID_SYSTEM_IMAGE-}" ]]; then
     # Building the AVD is slow. Do it here, after we build the code so that any
@@ -143,7 +143,7 @@ if [[ "$KCOV" == "1" ]]; then
   # we expect people to use in production.
   cargo clean
   RUSTFLAGS="-C link-dead-code" \
-    cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X --features boringssl_no_prefix
+    cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X --features no_versioned_extern
   mk/travis-install-kcov.sh
   for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
     ${HOME}/kcov-${TARGET_X}/bin/kcov \

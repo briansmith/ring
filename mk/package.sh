@@ -10,7 +10,7 @@ if [[ $(git status --porcelain | wc -c) -ne 0 ]]; then
   exit 1
 fi
 
-cargo clean && cargo build --features boringssl_no_prefix
+cargo clean && cargo build --features no_versioned_extern
 go run util/read_symbols.go -out symbols.txt target/*/*/ring-*/out/libring-core.a
 cargo clean
 

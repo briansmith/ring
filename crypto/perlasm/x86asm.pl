@@ -264,15 +264,15 @@ $comment source tree. Do not edit by hand.
 ___
     if ($win32 || $netware) {
         print <<___ unless $masm;
-%ifdef BORINGSSL_PREFIX
-%include "boringssl_prefix_symbols_nasm.inc"
+%ifdef VERSIONED_EXTERN_PREFIX
+%include "versioned_extern_prefix_symbols_nasm.inc"
 %endif
 ___
     } else {
         print <<___;
 #if defined(__i386__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
+#if defined(VERSIONED_EXTERN_PREFIX)
+#include <versioned_extern_prefix_symbols_asm.h>
 #endif
 ___
     }

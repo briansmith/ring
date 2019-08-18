@@ -13,8 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 // This program takes a file containing newline-separated symbols, and generates
-// boringssl_prefix_symbols.h, boringssl_prefix_symbols_asm.h, and
-// boringssl_prefix_symbols_nasm.inc. These header files can be used to build
+// versioned_extern_prefix_symbols.h, versioned_extern_prefix_symbols_asm.h, and
+// versioned_extern_prefix_symbols_nasm.inc. These header files can be used to build
 // BoringSSL with a prefix for all symbols in order to avoid symbol name
 // conflicts when linking a project with multiple copies of BoringSSL; see
 // BUILDING.md for more details.
@@ -87,17 +87,17 @@ func writeCHeader(symbols []string, path string) error {
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// BORINGSSL_ADD_PREFIX pastes two identifiers into one. It performs one
+// ADD_VERSIONED_EXTERN_PREFIX pastes two identifiers into one. It performs one
 // iteration of macro expansion on its arguments before pasting.
-#define BORINGSSL_ADD_PREFIX(a, b) BORINGSSL_ADD_PREFIX_INNER(a, b)
-#define BORINGSSL_ADD_PREFIX_INNER(a, b) a ## _ ## b
+#define ADD_VERSIONED_EXTERN_PREFIX(a, b) ADD_VERSIONED_EXTERN_PREFIX_INNER(a, b)
+#define ADD_VERSIONED_EXTERN_PREFIX_INNER(a, b) a ## _ ## b
 
 `); err != nil {
 		return err
 	}
 
 	for _, symbol := range symbols {
-		if _, err := fmt.Fprintf(f, "#define %s BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, %s)\n", symbol, symbol); err != nil {
+		if _, err := fmt.Fprintf(f, "#define %s ADD_VERSIONED_EXTERN_PREFIX(VERSIONED_EXTERN_PREFIX, %s)\n", symbol, symbol); err != nil {
 			return err
 		}
 	}
@@ -127,21 +127,21 @@ func writeASMHeader(symbols []string, path string) error {
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #if !defined(__APPLE__)
-#include <boringssl_prefix_symbols.h>
+#include <versioned_extern_prefix_symbols.h>
 #else
 // On iOS and macOS, we need to treat assembly symbols differently from other
 // symbols. The linker expects symbols to be prefixed with an underscore.
 // Perlasm thus generates symbol with this underscore applied. Our macros must,
 // in turn, incorporate it.
-#define BORINGSSL_ADD_PREFIX_MAC_ASM(a, b) BORINGSSL_ADD_PREFIX_INNER_MAC_ASM(a, b)
-#define BORINGSSL_ADD_PREFIX_INNER_MAC_ASM(a, b) _ ## a ## _ ## b
+#define ADD_VERSIONED_EXTERN_PREFIX_MAC_ASM(a, b) ADD_VERSIONED_EXTERN_PREFIX_INNER_MAC_ASM(a, b)
+#define ADD_VERSIONED_EXTERN_PREFIX_INNER_MAC_ASM(a, b) _ ## a ## _ ## b
 
 `); err != nil {
 		return err
 	}
 
 	for _, symbol := range symbols {
-		if _, err := fmt.Fprintf(f, "#define _%s BORINGSSL_ADD_PREFIX_MAC_ASM(BORINGSSL_PREFIX, %s)\n", symbol, symbol); err != nil {
+		if _, err := fmt.Fprintf(f, "#define _%s ADD_VERSIONED_EXTERN_PREFIX_MAC_ASM(VERSIONED_EXTERN_PREFIX, %s)\n", symbol, symbol); err != nil {
 			return err
 		}
 	}
@@ -179,7 +179,7 @@ func writeNASMHeader(symbols []string, path string) error {
 	}
 
 	for _, symbol := range symbols {
-		if _, err := fmt.Fprintf(f, "%%xdefine _%s _ %%+ BORINGSSL_PREFIX %%+ _%s\n", symbol, symbol); err != nil {
+		if _, err := fmt.Fprintf(f, "%%xdefine _%s _ %%+ VERSIONED_EXTERN_PREFIX %%+ _%s\n", symbol, symbol); err != nil {
 			return err
 		}
 	}
@@ -189,7 +189,7 @@ func writeNASMHeader(symbols []string, path string) error {
 	}
 
 	for _, symbol := range symbols {
-		if _, err := fmt.Fprintf(f, "%%xdefine %s BORINGSSL_PREFIX %%+ _%s\n", symbol, symbol); err != nil {
+		if _, err := fmt.Fprintf(f, "%%xdefine %s VERSIONED_EXTERN_PREFIX %%+ _%s\n", symbol, symbol); err != nil {
 			return err
 		}
 	}
@@ -214,18 +214,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := writeCHeader(symbols, filepath.Join(*out, "boringssl_prefix_symbols.h")); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing boringssl_prefix_symbols.h: %s\n", err)
+	if err := writeCHeader(symbols, filepath.Join(*out, "versioned_extern_prefix_symbols.h")); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing versioned_extern_prefix_symbols.h: %s\n", err)
 		os.Exit(1)
 	}
 
-	if err := writeASMHeader(symbols, filepath.Join(*out, "boringssl_prefix_symbols_asm.h")); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing boringssl_prefix_symbols_asm.h: %s\n", err)
+	if err := writeASMHeader(symbols, filepath.Join(*out, "versioned_extern_prefix_symbols_asm.h")); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing versioned_extern_prefix_symbols_asm.h: %s\n", err)
 		os.Exit(1)
 	}
 
-	if err := writeNASMHeader(symbols, filepath.Join(*out, "boringssl_prefix_symbols_nasm.inc")); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing boringssl_prefix_symbols_nasm.inc: %s\n", err)
+	if err := writeNASMHeader(symbols, filepath.Join(*out, "versioned_extern_prefix_symbols_nasm.inc")); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing versioned_extern_prefix_symbols_nasm.inc: %s\n", err)
 		os.Exit(1)
 	}
 

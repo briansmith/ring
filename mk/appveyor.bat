@@ -63,10 +63,10 @@ cl /?
 rustc --version
 cargo --version
 
-cargo test -vv --features boringssl_no_prefix %CARGO_MODE%
+cargo test -vv --features no_versioned_extern %CARGO_MODE%
 if %ERRORLEVEL% NEQ 0 exit 1
 
 REM Verify that `cargo build`, independent from `cargo test`, works; i.e.
 REM verify that non-test builds aren't trying to use test-only features.
-cargo build -vv --features boringssl_no_prefix %CARGO_MODE%
+cargo build -vv --features no_versioned_extern %CARGO_MODE%
 if %ERRORLEVEL% NEQ 0 exit 1

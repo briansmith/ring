@@ -1,4 +1,4 @@
-#[cfg(not(feature = "boringssl_no_prefix"))]
+#[cfg(not(feature = "no_versioned_extern"))]
 macro_rules! add_version_prefix {
     ($name:ident) => {
         concat!(
@@ -76,11 +76,11 @@ macro_rules! versioned_extern {
     // Final output
     ([$v:expr] [$($pre:tt)+] $name:ident [$($post:tt)+] $($rest:tt)*) => (
         extern "C" {
-            #[cfg(not(feature = "boringssl_no_prefix"))]
+            #[cfg(not(feature = "no_versioned_extern"))]
             #[link_name = $v]
             $($pre)+ $name $($post)+
 
-            #[cfg(feature = "boringssl_no_prefix")]
+            #[cfg(feature = "no_versioned_extern")]
             $($pre)+ $name $($post)+
         }
 
@@ -114,11 +114,11 @@ macro_rules! versioned_extern_def {
     );
 
     ([$v:expr] [$($pre:tt)+] $name:ident [$($post:tt)+]) => (
-        #[cfg(not(feature = "boringssl_no_prefix"))]
+        #[cfg(not(feature = "no_versioned_extern"))]
         #[link_name = $v]
         $($pre)+ $name $($post)+
 
-        #[cfg(feature = "boringssl_no_prefix")]
+        #[cfg(feature = "no_versioned_extern")]
         $($pre)+ $name $($post)+
     );
 }
