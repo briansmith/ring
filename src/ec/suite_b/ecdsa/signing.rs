@@ -136,6 +136,29 @@ impl EcdsaKeyPair {
         Ok(Self::new(alg, key_pair))
     }
 
+    /// Constructs an ECDSA key pair direclty from the private key bytes.
+    ///
+    /// It is recommended to use `EcdsaKeyPair::from_pkcs8()` instead. When
+    /// that is not practical, it is recommended to use
+    /// `EcdsaKeyPair::from_private_key_and_public_key` instead.
+    ///
+    /// Since the public key is not given, the public key will be computed from
+    /// the private key. It is not possible to detect misuse or corruption of
+    /// the private key since the public key isn't given as input.
+    pub fn from_private_key_unchecked(
+        alg: &'static EcdsaSigningAlgorithm,
+        private_key: &[u8],
+    ) -> Result<Self, error::KeyRejected> {
+        let private_key = ec::Seed::from_bytes(
+            alg.curve,
+            untrusted::Input::from(private_key),
+            cpu::features()
+        ).map_err(|_| error::KeyRejected::invalid_encoding())?;
+        ec::KeyPair::derive(private_key)
+            .map(|key_pair| Self::new(alg, key_pair))
+            .map_err(|_| error::KeyRejected::invalid_encoding())
+    }
+
     fn new(alg: &'static EcdsaSigningAlgorithm, key_pair: ec::KeyPair) -> Self {
         let (seed, public_key) = key_pair.split();
         let d = private_key::private_key_as_scalar(alg.private_key_ops, &seed);
