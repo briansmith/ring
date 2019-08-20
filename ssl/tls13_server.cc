@@ -787,42 +787,42 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (hs->early_data_offered) {
-    // If early data was not accepted, the EndOfEarlyData and ChangeCipherSpec
-    // message will be in the discarded early data.
-    if (hs->ssl->s3->early_data_accepted) {
-      SSLMessage msg;
-      if (!ssl->method->get_message(ssl, &msg)) {
-        return ssl_hs_read_message;
-      }
-
-      if (!ssl_check_message_type(ssl, msg, SSL3_MT_END_OF_EARLY_DATA)) {
-        return ssl_hs_error;
-      }
-      if (CBS_len(&msg.body) != 0) {
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-        return ssl_hs_error;
-      }
-      ssl->method->next_message(ssl);
+  // If early data was not accepted, the EndOfEarlyData will be in the discarded
+  // early data.
+  if (hs->ssl->s3->early_data_accepted) {
+    SSLMessage msg;
+    if (!ssl->method->get_message(ssl, &msg)) {
+      return ssl_hs_read_message;
     }
+    if (!ssl_check_message_type(ssl, msg, SSL3_MT_END_OF_EARLY_DATA)) {
+      return ssl_hs_error;
+    }
+    if (CBS_len(&msg.body) != 0) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return ssl_hs_error;
+    }
+    ssl->method->next_message(ssl);
   }
   if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
                              hs->client_handshake_secret())) {
     return ssl_hs_error;
   }
-  hs->tls13_state = ssl->s3->early_data_accepted
-                        ? state_read_client_finished
-                        : state_read_client_certificate;
+  hs->tls13_state = state_read_client_certificate;
   return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!hs->cert_request) {
-    // OpenSSL returns X509_V_OK when no certificates are requested. This is
-    // classed by them as a bug, but it's assumed by at least NGINX.
-    hs->new_session->verify_result = X509_V_OK;
+    if (!ssl->s3->session_reused) {
+      // OpenSSL returns X509_V_OK when no certificates are requested. This is
+      // classed by them as a bug, but it's assumed by at least NGINX. (Only do
+      // this in full handshakes as resumptions should carry over the previous
+      // |verify_result|, though this is a no-op because servers do not
+      // implement the client's odd soft-fail mode.)
+      hs->new_session->verify_result = X509_V_OK;
+    }
 
     // Skip this state.
     hs->tls13_state = state_read_channel_id;
