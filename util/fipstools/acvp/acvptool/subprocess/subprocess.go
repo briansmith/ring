@@ -36,10 +36,16 @@ func New(path string) (*Subprocess, error) {
 		return nil, err
 	}
 
+	return NewWithIO(cmd, stdin, stdout), nil
+}
+
+// NewWithIO returns a new Subprocess middle layer with the given ReadCloser and
+// WriteCloser. The returned Subprocess will call Wait on the Cmd when closed.
+func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess {
 	m := &Subprocess{
-		cmd:    cmd,
-		stdin:  stdin,
-		stdout: stdout,
+		cmd:	cmd,
+		stdin:  in,
+		stdout: out,
 	}
 
 	m.primitives = map[string]primitive{
@@ -52,7 +58,7 @@ func New(path string) (*Subprocess, error) {
 		"ACVP-AES-CBC": &blockCipher{"AES-CBC", 16, true, m},
 	}
 
-	return m, nil
+	return m
 }
 
 // Close signals the child process to exit and waits for it to complete.
