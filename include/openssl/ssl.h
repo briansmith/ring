@@ -560,6 +560,11 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 #define SSL_ERROR_HANDOFF 17
 #define SSL_ERROR_HANDBACK 18
 
+// SSL_error_description returns a string representation of |err|, where |err|
+// is one of the |SSL_ERROR_*| constants returned by |SSL_get_error|, or NULL
+// if the value is unrecognized.
+OPENSSL_EXPORT const char *SSL_error_description(int err);
+
 // SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
 // and zero on failure.
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
