@@ -109,6 +109,8 @@ extern const uint8_t BORINGSSL_bcm_text_hash[];
 extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
+#else
+static const uint8_t BORINGSSL_bcm_text_hash[SHA512_DIGEST_LENGTH] = {0};
 #endif
 
 static void __attribute__((constructor))
@@ -161,7 +163,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
   }
 #endif
 
-  if (!BORINGSSL_self_test()) {
+  if (!BORINGSSL_self_test(BORINGSSL_bcm_text_hash)) {
     goto err;
   }
 
