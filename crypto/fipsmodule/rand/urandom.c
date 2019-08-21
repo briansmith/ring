@@ -183,6 +183,12 @@ static void init_once(void) {
   }
 #endif  // USE_NR_getrandom
 
+  // Android FIPS builds must support getrandom.
+#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
+  perror("getrandom not found");
+  abort();
+#endif
+
   if (fd == kUnset) {
     do {
       fd = open("/dev/urandom", O_RDONLY);
