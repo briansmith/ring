@@ -4810,6 +4810,7 @@ class MockQUICTransport {
     }
     // The peer may not have configured any keys yet.
     if (peer_->levels_[level].write_secret.empty()) {
+      out->clear();
       return true;
     }
     // Check the peer computed the same key.
