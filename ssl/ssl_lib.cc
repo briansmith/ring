@@ -201,7 +201,7 @@ bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out) {
 void ssl_reset_error_state(SSL *ssl) {
   // Functions which use |SSL_get_error| must reset I/O and error state on
   // entry.
-  ssl->s3->rwstate = SSL_NOTHING;
+  ssl->s3->rwstate = SSL_ERROR_NONE;
   ERR_clear_error();
   ERR_clear_system_error();
 }
@@ -1343,19 +1343,19 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
   }
 
   switch (ssl->s3->rwstate) {
-    case SSL_PENDING_SESSION:
-      return SSL_ERROR_PENDING_SESSION;
+    case SSL_ERROR_PENDING_SESSION:
+    case SSL_ERROR_PENDING_CERTIFICATE:
+    case SSL_ERROR_HANDOFF:
+    case SSL_ERROR_HANDBACK:
+    case SSL_ERROR_WANT_X509_LOOKUP:
+    case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP:
+    case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION:
+    case SSL_ERROR_PENDING_TICKET:
+    case SSL_ERROR_EARLY_DATA_REJECTED:
+    case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
+      return ssl->s3->rwstate;
 
-    case SSL_CERTIFICATE_SELECTION_PENDING:
-      return SSL_ERROR_PENDING_CERTIFICATE;
-
-    case SSL_HANDOFF:
-      return SSL_ERROR_HANDOFF;
-
-    case SSL_HANDBACK:
-      return SSL_ERROR_HANDBACK;
-
-    case SSL_READING: {
+    case SSL_ERROR_WANT_READ: {
       if (ssl->quic_method) {
         return SSL_ERROR_WANT_READ;
       }
@@ -1377,7 +1377,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
       break;
     }
 
-    case SSL_WRITING: {
+    case SSL_ERROR_WANT_WRITE: {
       BIO *bio = SSL_get_wbio(ssl);
       if (BIO_should_write(bio)) {
         return SSL_ERROR_WANT_WRITE;
@@ -1395,24 +1395,6 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
 
       break;
     }
-
-    case SSL_X509_LOOKUP:
-      return SSL_ERROR_WANT_X509_LOOKUP;
-
-    case SSL_CHANNEL_ID_LOOKUP:
-      return SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
-
-    case SSL_PRIVATE_KEY_OPERATION:
-      return SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
-
-    case SSL_PENDING_TICKET:
-      return SSL_ERROR_PENDING_TICKET;
-
-    case SSL_EARLY_DATA_REJECTED:
-      return SSL_ERROR_EARLY_DATA_REJECTED;
-
-    case SSL_CERTIFICATE_VERIFY:
-      return SSL_ERROR_WANT_CERTIFICATE_VERIFY;
   }
 
   return SSL_ERROR_SYSCALL;

@@ -1663,7 +1663,8 @@ struct SSL_HANDSHAKE {
 
   // handback indicates that a server should pause the handshake after
   // finishing operations that require private key material, in such a way that
-  // |SSL_get_error| returns |SSL_HANDBACK|.  It is set by |SSL_apply_handoff|.
+  // |SSL_get_error| returns |SSL_ERROR_HANDBACK|.  It is set by
+  // |SSL_apply_handoff|.
   bool handback : 1;
 
   // cert_compression_negotiated is true iff |cert_compression_alg_id| is valid.
@@ -2201,7 +2202,7 @@ struct SSL3_STATE {
   // This holds a variable that indicates what we were doing when a 0 or -1 is
   // returned.  This is needed for non-blocking IO so we know what request
   // needs re-doing when in SSL_accept or SSL_connect
-  int rwstate = SSL_NOTHING;
+  int rwstate = SSL_ERROR_NONE;
 
   enum ssl_encryption_level_t read_level = ssl_encryption_initial;
   enum ssl_encryption_level_t write_level = ssl_encryption_initial;
@@ -2598,7 +2599,7 @@ struct SSL_CONFIG {
 
   // handoff indicates that a server should stop after receiving the
   // ClientHello and pause the handshake in such a way that |SSL_get_error|
-  // returns |SSL_HANDOFF|. This is copied in |SSL_new| from the |SSL_CTX|
+  // returns |SSL_ERROR_HANDOFF|. This is copied in |SSL_new| from the |SSL_CTX|
   // element of the same name and may be cleared if the handoff is declined.
   bool handoff : 1;
 
@@ -3207,7 +3208,7 @@ struct ssl_ctx_st {
 
   // handoff indicates that a server should stop after receiving the
   // ClientHello and pause the handshake in such a way that |SSL_get_error|
-  // returns |SSL_HANDOFF|.
+  // returns |SSL_ERROR_HANDOFF|.
   bool handoff : 1;
 
   // If enable_early_data is true, early data can be sent and accepted.

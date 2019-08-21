@@ -557,7 +557,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
           hs->wait = ssl_hs_ok;
           // The change cipher spec is omitted in QUIC.
           if (hs->wait != ssl_hs_read_change_cipher_spec) {
-            ssl->s3->rwstate = SSL_READING;
+            ssl->s3->rwstate = SSL_ERROR_WANT_READ;
             return -1;
           }
           break;
@@ -611,53 +611,53 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
       }
 
       case ssl_hs_certificate_selection_pending:
-        ssl->s3->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
+        ssl->s3->rwstate = SSL_ERROR_PENDING_CERTIFICATE;
         hs->wait = ssl_hs_ok;
         return -1;
 
       case ssl_hs_handoff:
-        ssl->s3->rwstate = SSL_HANDOFF;
+        ssl->s3->rwstate = SSL_ERROR_HANDOFF;
         hs->wait = ssl_hs_ok;
         return -1;
 
       case ssl_hs_handback:
-        ssl->s3->rwstate = SSL_HANDBACK;
+        ssl->s3->rwstate = SSL_ERROR_HANDBACK;
         hs->wait = ssl_hs_handback;
         return -1;
 
       case ssl_hs_x509_lookup:
-        ssl->s3->rwstate = SSL_X509_LOOKUP;
+        ssl->s3->rwstate = SSL_ERROR_WANT_X509_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
 
       case ssl_hs_channel_id_lookup:
-        ssl->s3->rwstate = SSL_CHANNEL_ID_LOOKUP;
+        ssl->s3->rwstate = SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
 
       case ssl_hs_private_key_operation:
-        ssl->s3->rwstate = SSL_PRIVATE_KEY_OPERATION;
+        ssl->s3->rwstate = SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
         hs->wait = ssl_hs_ok;
         return -1;
 
       case ssl_hs_pending_session:
-        ssl->s3->rwstate = SSL_PENDING_SESSION;
+        ssl->s3->rwstate = SSL_ERROR_PENDING_SESSION;
         hs->wait = ssl_hs_ok;
         return -1;
 
       case ssl_hs_pending_ticket:
-        ssl->s3->rwstate = SSL_PENDING_TICKET;
+        ssl->s3->rwstate = SSL_ERROR_PENDING_TICKET;
         hs->wait = ssl_hs_ok;
         return -1;
 
       case ssl_hs_certificate_verify:
-        ssl->s3->rwstate = SSL_CERTIFICATE_VERIFY;
+        ssl->s3->rwstate = SSL_ERROR_WANT_CERTIFICATE_VERIFY;
         hs->wait = ssl_hs_ok;
         return -1;
 
       case ssl_hs_early_data_rejected:
         assert(ssl->s3->early_data_reason != ssl_early_data_unknown);
-        ssl->s3->rwstate = SSL_EARLY_DATA_REJECTED;
+        ssl->s3->rwstate = SSL_ERROR_EARLY_DATA_REJECTED;
         // Cause |SSL_write| to start failing immediately.
         hs->can_early_write = false;
         return -1;

@@ -54,7 +54,7 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
   const SSL3_STATE *const s3 = ssl->s3;
   if (!ssl->server ||
       s3->hs == nullptr ||
-      s3->rwstate != SSL_HANDOFF) {
+      s3->rwstate != SSL_ERROR_HANDOFF) {
     return false;
   }
 
@@ -81,7 +81,7 @@ bool SSL_decline_handoff(SSL *ssl) {
   const SSL3_STATE *const s3 = ssl->s3;
   if (!ssl->server ||
       s3->hs == nullptr ||
-      s3->rwstate != SSL_HANDOFF) {
+      s3->rwstate != SSL_ERROR_HANDOFF) {
     return false;
   }
 

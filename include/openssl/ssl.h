@@ -4291,19 +4291,9 @@ OPENSSL_EXPORT const char *SSL_get_cipher_list(const SSL *ssl, int n);
 OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
     SSL_CTX *ctx, int (*cb)(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey));
 
-#define SSL_NOTHING 1
-#define SSL_WRITING 2
-#define SSL_READING 3
-#define SSL_X509_LOOKUP 4
-#define SSL_CHANNEL_ID_LOOKUP 5
-#define SSL_PENDING_SESSION 7
-#define SSL_CERTIFICATE_SELECTION_PENDING 8
-#define SSL_PRIVATE_KEY_OPERATION 9
-#define SSL_PENDING_TICKET 10
-#define SSL_EARLY_DATA_REJECTED 11
-#define SSL_CERTIFICATE_VERIFY 12
-#define SSL_HANDOFF 13
-#define SSL_HANDBACK 14
+#define SSL_NOTHING SSL_ERROR_NONE
+#define SSL_WRITING SSL_ERROR_WANT_WRITE
+#define SSL_READING SSL_ERROR_WANT_READ
 
 // SSL_want returns one of the above values to determine what the most recent
 // operation on |ssl| was blocked on. Use |SSL_get_error| instead.
