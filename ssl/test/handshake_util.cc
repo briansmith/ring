@@ -38,13 +38,12 @@
 using namespace bssl;
 
 bool RetryAsync(SSL *ssl, int ret) {
-  // No error; don't retry.
-  if (ret >= 0) {
+  const TestConfig *config = GetTestConfig(ssl);
+  TestState *test_state = GetTestState(ssl);
+  // No error or not async; don't retry.
+  if (ret >= 0 || !config->async) {
     return false;
   }
-
-  TestState *test_state = GetTestState(ssl);
-  assert(GetTestConfig(ssl)->async);
 
   if (test_state->packeted_bio != nullptr &&
       PacketedBioAdvanceClock(test_state->packeted_bio)) {
@@ -71,8 +70,7 @@ bool RetryAsync(SSL *ssl, int ret) {
       AsyncBioAllowWrite(test_state->async_bio, 1);
       return true;
     case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP: {
-      UniquePtr<EVP_PKEY> pkey =
-          LoadPrivateKey(GetTestConfig(ssl)->send_channel_id);
+      UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(config->send_channel_id);
       if (!pkey) {
         return false;
       }

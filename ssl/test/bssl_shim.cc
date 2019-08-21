@@ -204,7 +204,7 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
         return -1;
       }
     }
-  } while (config->async && RetryAsync(ssl, ret));
+  } while (RetryAsync(ssl, ret));
 
   if (config->peek_then_read && ret > 0) {
     std::unique_ptr<uint8_t[]> buf(new uint8_t[static_cast<size_t>(ret)]);
@@ -233,7 +233,6 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
 // operations. It returns the result of the final |SSL_write| call.
 static int WriteAll(SSL *ssl, const void *in_, size_t in_len) {
   const uint8_t *in = reinterpret_cast<const uint8_t *>(in_);
-  const TestConfig *config = GetTestConfig(ssl);
   int ret;
   do {
     ret = SSL_write(ssl, in, in_len);
@@ -241,29 +240,27 @@ static int WriteAll(SSL *ssl, const void *in_, size_t in_len) {
       in += ret;
       in_len -= ret;
     }
-  } while ((config->async && RetryAsync(ssl, ret)) || (ret > 0 && in_len > 0));
+  } while (RetryAsync(ssl, ret) || (ret > 0 && in_len > 0));
   return ret;
 }
 
 // DoShutdown calls |SSL_shutdown|, resolving any asynchronous operations. It
 // returns the result of the final |SSL_shutdown| call.
 static int DoShutdown(SSL *ssl) {
-  const TestConfig *config = GetTestConfig(ssl);
   int ret;
   do {
     ret = SSL_shutdown(ssl);
-  } while (config->async && RetryAsync(ssl, ret));
+  } while (RetryAsync(ssl, ret));
   return ret;
 }
 
 // DoSendFatalAlert calls |SSL_send_fatal_alert|, resolving any asynchronous
 // operations. It returns the result of the final |SSL_send_fatal_alert| call.
 static int DoSendFatalAlert(SSL *ssl, uint8_t alert) {
-  const TestConfig *config = GetTestConfig(ssl);
   int ret;
   do {
     ret = SSL_send_fatal_alert(ssl, alert);
-  } while (config->async && RetryAsync(ssl, ret));
+  } while (RetryAsync(ssl, ret));
   return ret;
 }
 
@@ -833,7 +830,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       ret = CheckIdempotentError("SSL_do_handshake", ssl, [&]() -> int {
         return SSL_do_handshake(ssl);
       });
-    } while (config->async && RetryAsync(ssl, ret));
+    } while (RetryAsync(ssl, ret));
 
     if (config->forbid_renegotiation_after_handshake) {
       SSL_set_renegotiate_mode(ssl, ssl_renegotiate_never);
@@ -854,7 +851,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     if (config->handshake_twice) {
       do {
         ret = SSL_do_handshake(ssl);
-      } while (config->async && RetryAsync(ssl, ret));
+      } while (RetryAsync(ssl, ret));
       if (ret != 1) {
         return false;
       }
