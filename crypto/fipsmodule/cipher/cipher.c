@@ -125,9 +125,10 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
   return 1;
 }
 
-void EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx) {
+int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx) {
   EVP_CIPHER_CTX_cleanup(ctx);
   EVP_CIPHER_CTX_init(ctx);
+  return 1;
 }
 
 int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
