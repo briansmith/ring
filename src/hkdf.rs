@@ -140,6 +140,15 @@ impl Prk {
             len_cached,
         })
     }
+
+    /// Expand the `Prk` directly to target secret type
+    pub fn expand_to_secret<L, K>(&self, info: &[&[u8]], len: L) -> Result<K, error::Unspecified>
+    where
+        L: KeyType,
+        K: for<'a> From<Okm<'a, L>>,
+    {
+        Ok(self.expand(info, len)?.into())
+    }
 }
 
 impl From<Okm<'_, Algorithm>> for Prk {
