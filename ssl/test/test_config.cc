@@ -153,6 +153,8 @@ const Flag<bool> kBoolFlags[] = {
      &TestConfig::expect_delegated_credential_used},
     {"-enable-pq-experiment-signal", &TestConfig::enable_pq_experiment_signal},
     {"-expect-pq-experiment-signal", &TestConfig::expect_pq_experiment_signal},
+    {"-expect-hrr", &TestConfig::expect_hrr},
+    {"-expect-no-hrr", &TestConfig::expect_no_hrr},
 };
 
 const Flag<std::string> kStringFlags[] = {

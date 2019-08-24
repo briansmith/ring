@@ -145,12 +145,12 @@ var tls13HelloRetryRequest = []uint8{
 type CurveID uint16
 
 const (
-	CurveP224    CurveID = 21
-	CurveP256    CurveID = 23
-	CurveP384    CurveID = 24
-	CurveP521    CurveID = 25
-	CurveX25519  CurveID = 29
-	CurveCECPQ2  CurveID = 16696
+	CurveP224   CurveID = 21
+	CurveP256   CurveID = 23
+	CurveP384   CurveID = 24
+	CurveP521   CurveID = 25
+	CurveX25519 CurveID = 29
+	CurveCECPQ2 CurveID = 16696
 )
 
 // TLS Elliptic Curve Point Formats

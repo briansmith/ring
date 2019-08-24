@@ -128,8 +128,6 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
       scts_requested(false),
       needs_psk_binder(false),
-      received_hello_retry_request(false),
-      sent_hello_retry_request(false),
       handshake_finalized(false),
       accept_psk_mode(false),
       cert_request(false),

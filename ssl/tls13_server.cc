@@ -515,7 +515,7 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->sent_hello_retry_request = true;
+  ssl->s3->used_hello_retry_request = true;
   hs->tls13_state = state_read_second_client_hello;
   return ssl_hs_flush;
 }
@@ -612,7 +612,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!hs->sent_hello_retry_request &&
+  if (!ssl->s3->used_hello_retry_request &&
       !ssl->method->add_change_cipher_spec(ssl)) {
     return ssl_hs_error;
   }

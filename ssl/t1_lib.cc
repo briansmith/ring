@@ -1845,7 +1845,7 @@ static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // Per RFC 8446 section 4.1.4, skip offering the session if the selected
   // cipher in HelloRetryRequest does not match. This avoids performing the
   // transcript hash transformation for multiple hashes.
-  if (hs->received_hello_retry_request &&
+  if (ssl->s3 && ssl->s3->used_hello_retry_request &&
       ssl->session->cipher->algorithm_prf != hs->new_cipher->algorithm_prf) {
     return true;
   }
@@ -2035,7 +2035,7 @@ static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   // The second ClientHello never offers early data, and we must have already
   // filled in |early_data_reason| by this point.
-  if (hs->received_hello_retry_request) {
+  if (ssl->s3->used_hello_retry_request) {
     assert(ssl->s3->early_data_reason != ssl_early_data_unknown);
     return true;
   }
@@ -2089,7 +2089,7 @@ static bool ext_early_data_parse_serverhello(SSL_HANDSHAKE *hs,
                                              CBS *contents) {
   SSL *const ssl = hs->ssl;
   if (contents == NULL) {
-    if (hs->early_data_offered && !hs->received_hello_retry_request) {
+    if (hs->early_data_offered && !ssl->s3->used_hello_retry_request) {
       ssl->s3->early_data_reason = ssl->s3->session_reused
                                        ? ssl_early_data_peer_declined
                                        : ssl_early_data_session_not_resumed;
@@ -2104,7 +2104,7 @@ static bool ext_early_data_parse_serverhello(SSL_HANDSHAKE *hs,
   // If we received an HRR, the second ClientHello never offers early data, so
   // the extensions logic will automatically reject early data extensions as
   // unsolicited. This covered by the ServerAcceptsEarlyDataOnHRR test.
-  assert(!hs->received_hello_retry_request);
+  assert(!ssl->s3->used_hello_retry_request);
 
   if (CBS_len(contents) != 0) {
     *out_alert = SSL_AD_DECODE_ERROR;
@@ -2173,7 +2173,7 @@ static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 
   uint16_t group_id = hs->retry_group;
   uint16_t second_group_id = 0;
-  if (hs->received_hello_retry_request) {
+  if (ssl->s3 && ssl->s3->used_hello_retry_request) {
     // We received a HelloRetryRequest without a new curve, so there is no new
     // share to append. Leave |hs->key_share| as-is.
     if (group_id == 0 &&
@@ -2235,7 +2235,7 @@ static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 
   // Save the contents of the extension to repeat it in the second
   // ClientHello.
-  if (!hs->received_hello_retry_request &&
+  if (ssl->s3 && !ssl->s3->used_hello_retry_request &&
       !hs->key_share_bytes.CopyFrom(
           MakeConstSpan(CBB_data(&kse_bytes), CBB_len(&kse_bytes)))) {
     return false;

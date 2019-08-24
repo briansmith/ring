@@ -4383,6 +4383,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		resumeSession: true,
 		// Ensure session tickets are used, not session IDs.
 		noSessionCache: true,
+		flags:          []string{"-expect-no-hrr"},
 	})
 	tests = append(tests, testCase{
 		name: "Basic-Client-RenewTicket",
@@ -4414,7 +4415,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 		},
 		resumeSession: true,
-		flags:         []string{"-expect-no-session-id"},
+		flags: []string{
+			"-expect-no-session-id",
+			"-expect-no-hrr",
+		},
 	})
 	tests = append(tests, testCase{
 		testType: serverTest,
@@ -4482,6 +4486,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 			// Cover HelloRetryRequest during an ECDHE-PSK resumption.
 			resumeSession: true,
+			flags:         []string{"-expect-hrr"},
 		})
 
 		tests = append(tests, testCase{
@@ -4495,6 +4500,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 			// Cover HelloRetryRequest during an ECDHE-PSK resumption.
 			resumeSession: true,
+			flags:         []string{"-expect-hrr"},
 		})
 
 		tests = append(tests, testCase{
@@ -12538,6 +12544,7 @@ func addTLS13HandshakeTests() {
 			CurvePreferences: []CurveID{CurveX25519},
 		},
 		expectedCurveID: CurveX25519,
+		flags:           []string{"-expect-hrr"},
 	})
 
 	testCases = append(testCases, testCase{
@@ -12551,6 +12558,7 @@ func addTLS13HandshakeTests() {
 		// Although the ClientHello did not predict our preferred curve,
 		// we always select it whether it is predicted or not.
 		expectedCurveID: CurveX25519,
+		flags:           []string{"-expect-hrr"},
 	})
 
 	testCases = append(testCases, testCase{

@@ -3946,6 +3946,11 @@ OPENSSL_EXPORT void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore);
 // mechanism would have aborted |ssl|'s handshake and zero otherwise.
 OPENSSL_EXPORT int SSL_is_tls13_downgrade(const SSL *ssl);
 
+// SSL_used_hello_retry_request returns one if the TLS 1.3 HelloRetryRequest
+// message has been either sent by the server or received by the client. It
+// returns zero otherwise.
+OPENSSL_EXPORT int SSL_used_hello_retry_request(const SSL *ssl);
+
 // SSL_set_jdk11_workaround configures whether to workaround various bugs in
 // JDK 11's TLS 1.3 implementation by disabling TLS 1.3 for such clients.
 //
