@@ -60,6 +60,11 @@ pub(crate) fn features() -> Features {
             {
                 arm::fuchsia_setup();
             }
+
+            #[cfg(all(any(target_os = "freebsd"), target_arch = "aarch64"))]
+            {
+                arm::aarch64_mrs_setup();
+            }
         });
     }
 
@@ -168,10 +173,37 @@ pub(crate) mod arm {
         }
     }
 
+    #[cfg(all(any(target_os = "freebsd"), target_arch = "aarch64"))]
+    pub fn aarch64_mrs_setup() {
+        extern "C" {
+            fn GFp_aarch64_read_isar0() -> u64;
+        }
+
+        #[inline]
+        fn bits_shift(x: u64, high: usize, low: usize) -> u64 {
+            (x >> low) & ((1 << (high - low + 1)) - 1)
+        }
+
+        let mut features = 0;
+        let aa64isar0 = unsafe { GFp_aarch64_read_isar0() };
+
+        if bits_shift(aa64isar0, 7, 4) >= 1 {
+            features |= AES.mask;
+        }
+        if bits_shift(aa64isar0, 7, 4) >= 2 {
+            features |= PMULL.mask;
+        }
+        if bits_shift(aa64isar0, 15, 12) >= 1 {
+            features |= 1 << 4;
+        }
+
+        unsafe { GFp_armcap_P = features };
+    }
+
     pub(crate) struct Feature {
         #[cfg_attr(
             not(all(
-                any(target_os = "android", target_os = "linux", target_os = "fuchsia"),
+                any(target_os = "android", all(target_os = "freebsd", target_arch = "aarch64"), target_os = "linux", target_os = "fuchsia"),
                 any(target_arch = "arm", target_arch = "aarch64")
             )),
             allow(dead_code)
@@ -191,7 +223,7 @@ pub(crate) mod arm {
             }
 
             #[cfg(all(
-                any(target_os = "android", target_os = "linux", target_os = "fuchsia"),
+                any(target_os = "android", all(target_os = "freebsd", target_arch = "aarch64"), target_os = "linux", target_os = "fuchsia"),
                 any(target_arch = "arm", target_arch = "aarch64")
             ))]
             {
@@ -199,7 +231,7 @@ pub(crate) mod arm {
             }
 
             #[cfg(not(all(
-                any(target_os = "android", target_os = "ios", target_os = "linux", target_os = "fuchsia"),
+                any(target_os = "android", all(target_os = "freebsd", target_arch = "aarch64"), target_os = "ios", target_os = "linux", target_os = "fuchsia"),
                 any(target_arch = "arm", target_arch = "aarch64")
             )))]
             {
@@ -231,7 +263,7 @@ pub(crate) mod arm {
     };
 
     #[cfg(all(
-        any(target_os = "android", target_os = "linux", target_os = "fuchsia"),
+        any(target_os = "android", all(target_os = "freebsd", target_arch = "aarch64"), target_os = "linux", target_os = "fuchsia"),
         any(target_arch = "arm", target_arch = "aarch64")
     ))]
     extern "C" {

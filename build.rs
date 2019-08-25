@@ -65,6 +65,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "third_party/fiat/curve25519.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
+    (&[AARCH64], "crypto/cpu-aarch64.c"),
 
     (&[X86], "crypto/fipsmodule/aes/asm/aes-586.pl"),
     (&[X86], "crypto/fipsmodule/aes/asm/aesni-x86.pl"),
