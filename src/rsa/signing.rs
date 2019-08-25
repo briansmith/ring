@@ -599,7 +599,7 @@ impl RsaKeyPair {
         }
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
-        padding_alg.encode(&m_hash, signature, mod_bits, rng)?;
+        padding_alg.encode(m_hash, signature, mod_bits, rng)?;
 
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
