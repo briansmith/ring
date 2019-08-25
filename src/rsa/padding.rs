@@ -34,7 +34,7 @@ pub trait RsaEncoding: Padding {
     #[doc(hidden)]
     fn encode(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m_out: &mut [u8],
         mod_bits: bits::BitLength,
         rng: &dyn rand::SecureRandom,
@@ -48,7 +48,7 @@ pub trait RsaEncoding: Padding {
 pub trait Verification: Padding {
     fn verify(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m: &mut untrusted::Reader,
         mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified>;
@@ -78,7 +78,7 @@ impl Padding for PKCS1 {
 impl RsaEncoding for PKCS1 {
     fn encode(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m_out: &mut [u8],
         _mod_bits: bits::BitLength,
         _rng: &dyn rand::SecureRandom,
@@ -91,7 +91,7 @@ impl RsaEncoding for PKCS1 {
 impl Verification for PKCS1 {
     fn verify(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m: &mut untrusted::Reader,
         mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
@@ -111,7 +111,7 @@ impl Verification for PKCS1 {
 // https://tools.ietf.org/html/rfc3447#section-9.2. This is used by both
 // verification and signing so it needs to be able to handle moduli of the
 // minimum and maximum sizes for both operations.
-fn pkcs1_encode(pkcs1: &PKCS1, m_hash: &digest::Digest, m_out: &mut [u8]) {
+fn pkcs1_encode(pkcs1: &PKCS1, m_hash: digest::Digest, m_out: &mut [u8]) {
     let em = m_out;
 
     let digest_len = pkcs1.digestinfo_prefix.len() + pkcs1.digest_alg.output_len;
@@ -244,7 +244,7 @@ impl RsaEncoding for PSS {
     // https://tools.ietf.org/html/rfc3447#section-9.1.
     fn encode(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m_out: &mut [u8],
         mod_bits: bits::BitLength,
         rng: &dyn rand::SecureRandom,
@@ -316,7 +316,7 @@ impl Verification for PSS {
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m: &mut untrusted::Reader,
         mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
@@ -471,7 +471,7 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], mask: &mut [u8]) {
 
 fn pss_digest(
     digest_alg: &'static digest::Algorithm,
-    m_hash: &digest::Digest,
+    m_hash: digest::Digest,
     salt: &[u8],
 ) -> digest::Digest {
     // Fixed prefix.
@@ -553,7 +553,7 @@ mod test {
                 let is_valid = test_case.consume_string("Result") == "P";
 
                 let actual_result =
-                    encoded.read_all(error::Unspecified, |m| alg.verify(&m_hash, m, bit_len));
+                    encoded.read_all(error::Unspecified, |m| alg.verify(m_hash, m, bit_len));
                 assert_eq!(actual_result.is_ok(), is_valid);
 
                 Ok(())
@@ -593,7 +593,7 @@ mod test {
 
                 let mut m_out = vec![0u8; bit_len.as_usize_bytes_rounded_up()];
                 let digest = digest::digest(alg.digest_alg(), &msg);
-                alg.encode(&digest, &mut m_out, bit_len, &rng).unwrap();
+                alg.encode(digest, &mut m_out, bit_len, &rng).unwrap();
                 assert_eq!(m_out, encoded);
 
                 Ok(())
