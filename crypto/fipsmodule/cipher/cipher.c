@@ -192,7 +192,7 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
 
       case EVP_CIPH_CFB_MODE:
         ctx->num = 0;
-        // fall-through
+        OPENSSL_FALLTHROUGH;
 
       case EVP_CIPH_CBC_MODE:
         assert(EVP_CIPHER_CTX_iv_length(ctx) <= sizeof(ctx->iv));
