@@ -188,7 +188,10 @@ typedef __uint128_t uint128_t;
 #elif defined(__GNUC__) && __GNUC__ >= 7 // gcc 7
 #define OPENSSL_FALLTHROUGH __attribute__ ((fallthrough))
 #elif defined(__clang__)
-#if __has_attribute(fallthrough)
+#if __has_attribute(fallthrough) && __clang_major__ >= 5
+// Clang 3.5, at least, complains about "error: declaration does not declare
+// anything", possibily because we put a semicolon after this macro in
+// practice. Thus limit it to >= Clang 5, which does work.
 #define OPENSSL_FALLTHROUGH __attribute__ ((fallthrough))
 #else // clang versions that do not support fallthrough.
 #define OPENSSL_FALLTHROUGH
