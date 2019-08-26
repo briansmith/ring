@@ -68,6 +68,48 @@
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))  // Unreachable code.
 
+#if defined(BSAES)
+static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
+                                                  uint8_t *out, size_t blocks,
+                                                  const AES_KEY *key,
+                                                  const uint8_t ivec[16]) {
+  // |bsaes_ctr32_encrypt_blocks| is faster than |vpaes_ctr32_encrypt_blocks|,
+  // but it takes at least one full 8-block batch to amortize the conversion.
+  if (blocks < 8) {
+    vpaes_ctr32_encrypt_blocks(in, out, blocks, key, ivec);
+    return;
+  }
+
+  size_t bsaes_blocks = blocks;
+  if (bsaes_blocks % 8 < 6) {
+    // |bsaes_ctr32_encrypt_blocks| internally works in 8-block batches. If the
+    // final batch is too small (under six blocks), it is faster to loop over
+    // |vpaes_encrypt|. Round |bsaes_blocks| down to a multiple of 8.
+    bsaes_blocks -= bsaes_blocks % 8;
+  }
+
+  AES_KEY bsaes;
+  vpaes_encrypt_key_to_bsaes(&bsaes, key);
+  bsaes_ctr32_encrypt_blocks(in, out, bsaes_blocks, &bsaes, ivec);
+  OPENSSL_cleanse(&bsaes, sizeof(bsaes));
+
+  in += 16 * bsaes_blocks;
+  out += 16 * bsaes_blocks;
+  blocks -= bsaes_blocks;
+
+  union {
+    uint32_t u32[4];
+    uint8_t u8[16];
+  } new_ivec;
+  memcpy(new_ivec.u8, ivec, 16);
+  uint32_t ctr = CRYPTO_bswap4(new_ivec.u32[3]) + bsaes_blocks;
+  new_ivec.u32[3] = CRYPTO_bswap4(ctr);
+
+  // Finish any remaining blocks with |vpaes_ctr32_encrypt_blocks|.
+  vpaes_ctr32_encrypt_blocks(in, out, blocks, key, new_ivec.u8);
+}
+#endif  // BSAES
+
 typedef struct {
   union {
     double align;
@@ -110,6 +152,7 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
         dat->stream.cbc = aes_hw_cbc_encrypt;
       }
     } else if (bsaes_capable() && mode == EVP_CIPH_CBC_MODE) {
+      assert(vpaes_capable());
       ret = vpaes_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
       if (ret == 0) {
         vpaes_decrypt_key_to_bsaes(&dat->ks.ks, &dat->ks.ks);
@@ -145,11 +188,6 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     } else if (mode == EVP_CIPH_CTR_MODE) {
       dat->stream.ctr = aes_hw_ctr32_encrypt_blocks;
     }
-  } else if (bsaes_capable() && mode == EVP_CIPH_CTR_MODE) {
-    ret = aes_nohw_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-    // If |dat->stream.ctr| is provided, |dat->block| is never used.
-    dat->block = NULL;
-    dat->stream.ctr = bsaes_ctr32_encrypt_blocks;
   } else if (vpaes_capable()) {
     ret = vpaes_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
     dat->block = vpaes_encrypt;
@@ -159,11 +197,14 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
       dat->stream.cbc = vpaes_cbc_encrypt;
     }
 #endif
-#if defined(VPAES_CTR32)
     if (mode == EVP_CIPH_CTR_MODE) {
+#if defined(BSAES)
+      assert(bsaes_capable());
+      dat->stream.ctr = vpaes_ctr32_encrypt_blocks_with_bsaes;
+#elif defined(VPAES_CTR32)
       dat->stream.ctr = vpaes_ctr32_encrypt_blocks;
-    }
 #endif
+    }
   } else {
     ret = aes_nohw_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
     dat->block = aes_nohw_encrypt;
@@ -252,17 +293,6 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
     return aes_hw_ctr32_encrypt_blocks;
   }
 
-  if (bsaes_capable()) {
-    aes_nohw_set_encrypt_key(key, key_bytes * 8, aes_key);
-    if (gcm_key != NULL) {
-      CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt, 0);
-    }
-    if (out_block) {
-      *out_block = aes_nohw_encrypt;
-    }
-    return bsaes_ctr32_encrypt_blocks;
-  }
-
   if (vpaes_capable()) {
     vpaes_set_encrypt_key(key, key_bytes * 8, aes_key);
     if (out_block) {
@@ -271,7 +301,10 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
     if (gcm_key != NULL) {
       CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt, 0);
     }
-#if defined(VPAES_CTR32)
+#if defined(BSAES)
+    assert(bsaes_capable());
+    return vpaes_ctr32_encrypt_blocks_with_bsaes;
+#elif defined(VPAES_CTR32)
     return vpaes_ctr32_encrypt_blocks;
 #else
     return NULL;

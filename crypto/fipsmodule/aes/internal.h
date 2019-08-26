@@ -51,6 +51,7 @@ OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_ARMv8_AES_capable(); }
 #if defined(OPENSSL_ARM)
 #define BSAES
 #define VPAES
+#define VPAES_CTR32
 OPENSSL_INLINE int bsaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #endif

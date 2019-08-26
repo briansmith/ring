@@ -1281,6 +1281,65 @@ vpaes_decrypt_key_to_bsaes:
 ___
 }
 
+{
+# Register-passed parameters.
+my ($inp, $out, $len, $key) = map("r$_", 0..3);
+# Temporaries. _vpaes_encrypt_core already uses r8..r11, so overlap $ivec and
+# $tmp. $ctr is r7 because it must be preserved across calls.
+my ($ctr, $ivec, $tmp) = map("r$_", 7..9);
+
+# void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
+#                                 const AES_KEY *key, const uint8_t ivec[16]);
+$code .= <<___;
+.globl	vpaes_ctr32_encrypt_blocks
+.type	vpaes_ctr32_encrypt_blocks,%function
+.align	4
+vpaes_ctr32_encrypt_blocks:
+	mov	ip, sp
+	stmdb	sp!, {r7-r11, lr}
+	@ This function uses q4-q7 (d8-d15), which are callee-saved.
+	vstmdb	sp!, {d8-d15}
+
+	cmp	$len, #0
+	@ $ivec is passed on the stack.
+	ldr	$ivec, [ip]
+	beq	.Lctr32_done
+
+	@ _vpaes_encrypt_core expects the key in r2, so swap $len and $key.
+	mov	$tmp, $key
+	mov	$key, $len
+	mov	$len, $tmp
+___
+my ($len, $key) = ($key, $len);
+$code .= <<___;
+
+	@ Load the IV and counter portion.
+	ldr	$ctr, [$ivec, #12]
+	vld1.8	{q7}, [$ivec]
+
+	bl	_vpaes_preheat
+	rev	$ctr, $ctr		@ The counter is big-endian.
+
+.Lctr32_loop:
+	vmov	q0, q7
+	vld1.8	{q6}, [$inp]!		@ Load input ahead of time
+	bl	_vpaes_encrypt_core
+	veor	q0, q0, q6		@ XOR input and result
+	vst1.8	{q0}, [$out]!
+	subs	$len, $len, #1
+	@ Update the counter.
+	add	$ctr, $ctr, #1
+	rev	$tmp, $ctr
+	vmov.32	q7#hi[1], $tmp
+	bne	.Lctr32_loop
+
+.Lctr32_done:
+	vldmia	sp!, {d8-d15}
+	ldmia	sp!, {r7-r11, pc}	@ return
+.size	vpaes_ctr32_encrypt_blocks,.-vpaes_ctr32_encrypt_blocks
+___
+}
+
 foreach (split("\n",$code)) {
 	s/\bq([0-9]+)#(lo|hi)/sprintf "d%d",2*$1+($2 eq "hi")/geo;
 	print $_,"\n";
