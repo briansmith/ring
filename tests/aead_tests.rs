@@ -1,4 +1,4 @@
-// Copyright 2015-2019 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -48,12 +48,6 @@ fn aead_aes_gcm_128() {
         open_with_less_safe_key,
         test_file!("aead_aes_128_gcm_tests.txt"),
     );
-    test_aead(
-        &aead::AES_128_GCM,
-        seal_with_less_safe_random_nonce_key,
-        open_with_less_safe_random_nonce_key,
-        test_file!("aead_aes_128_gcm_tests.txt"),
-    );
 }
 
 #[test]
@@ -70,12 +64,6 @@ fn aead_aes_gcm_256() {
         open_with_less_safe_key,
         test_file!("aead_aes_256_gcm_tests.txt"),
     );
-    test_aead(
-        &aead::AES_256_GCM,
-        seal_with_less_safe_random_nonce_key,
-        open_with_less_safe_random_nonce_key,
-        test_file!("aead_aes_256_gcm_tests.txt"),
-    );
 }
 
 #[test]
@@ -90,12 +78,6 @@ fn aead_chacha20_poly1305() {
         &aead::CHACHA20_POLY1305,
         seal_with_less_safe_key,
         open_with_less_safe_key,
-        test_file!("aead_chacha20_poly1305_tests.txt"),
-    );
-    test_aead(
-        &aead::CHACHA20_POLY1305,
-        seal_with_less_safe_random_nonce_key,
-        open_with_less_safe_random_nonce_key,
         test_file!("aead_chacha20_poly1305_tests.txt"),
     );
 }
@@ -281,33 +263,6 @@ fn open_with_key<'a>(
     o_key.open_within(aad, in_out, ciphertext_and_tag)
 }
 
-fn seal_with_less_safe_random_nonce_key(
-    algorithm: &'static aead::Algorithm,
-    key: &[u8],
-    nonce: aead::Nonce,
-    aad: aead::Aad<&[u8]>,
-    in_out: &mut Vec<u8>,
-) -> Result<(), error::Unspecified> {
-    let rng = test::rand::FixedSliceRandom {
-        bytes: nonce.as_ref(),
-    };
-    let key = make_less_safe_random_nonce_key(algorithm, key);
-    key.seal_with_random_nonce_in_place_append_tag(aad, in_out, &rng)
-        .map(|_: aead::Nonce| ())
-}
-
-fn open_with_less_safe_random_nonce_key<'a>(
-    algorithm: &'static aead::Algorithm,
-    key: &[u8],
-    nonce: aead::Nonce,
-    aad: aead::Aad<&[u8]>,
-    in_out: &'a mut [u8],
-    ciphertext_and_tag: RangeFrom<usize>,
-) -> Result<&'a mut [u8], error::Unspecified> {
-    let key = make_less_safe_random_nonce_key(algorithm, key);
-    key.open_within(nonce, aad, in_out, ciphertext_and_tag)
-}
-
 fn seal_with_less_safe_key(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
@@ -464,13 +419,6 @@ fn test_aead_key_debug() {
         "LessSafeKey { algorithm: CHACHA20_POLY1305 }",
         format!("{:?}", key)
     );
-
-    let key: aead::LessSafeKey<aead::RandomNonces> =
-        make_less_safe_random_nonce_key(&aead::CHACHA20_POLY1305, &key_bytes);
-    assert_eq!(
-        "LessSafeKey { algorithm: CHACHA20_POLY1305 }",
-        format!("{:?}", key)
-    );
 }
 
 fn make_key<K: aead::BoundKey<OneNonceSequence>>(
@@ -481,14 +429,6 @@ fn make_key<K: aead::BoundKey<OneNonceSequence>>(
     let key = aead::UnboundKey::new(algorithm, key).unwrap();
     let nonce_sequence = OneNonceSequence::new(nonce);
     K::new(key, nonce_sequence)
-}
-
-fn make_less_safe_random_nonce_key(
-    algorithm: &'static aead::Algorithm,
-    key: &[u8],
-) -> aead::LessSafeKey<aead::RandomNonces> {
-    let key = aead::UnboundKey::new(algorithm, key).unwrap();
-    aead::LessSafeKey::new(key)
 }
 
 fn make_less_safe_key(algorithm: &'static aead::Algorithm, key: &[u8]) -> aead::LessSafeKey {
