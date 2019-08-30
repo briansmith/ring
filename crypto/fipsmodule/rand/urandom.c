@@ -54,6 +54,10 @@
 #endif
 #endif  // OPENSSL_LINUX
 
+#if defined(OPENSSL_MACOS)
+#include <sys/random.h>
+#endif
+
 #include <openssl/thread.h>
 #include <openssl/mem.h>
 
@@ -176,6 +180,15 @@ static void init_once(void) {
   }
 #endif  // USE_NR_getrandom
 
+#if defined(OPENSSL_MACOS)
+  // getentropy is available in macOS 10.12 and up. iOS 10 and up may also
+  // support it, but the header is missing. See https://crbug.com/boringssl/287.
+  if (__builtin_available(macos 10.12, *)) {
+    *urandom_fd_bss_get() = kHaveGetrandom;
+    return;
+  }
+#endif
+
   // Android FIPS builds must support getrandom.
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
   perror("getrandom not found");
@@ -229,6 +242,9 @@ DEFINE_STATIC_ONCE(wait_for_entropy_once)
 static void wait_for_entropy(void) {
   int fd = *urandom_fd_bss_get();
   if (fd == kHaveGetrandom) {
+    // |getrandom| and |getentropy| support blocking in |fill_with_entropy|
+    // directly. For |getrandom|, we first probe with a non-blocking call to aid
+    // debugging.
 #if defined(USE_NR_getrandom)
     if (*getrandom_ready_bss_get()) {
       // The entropy pool was already initialized in |init_once|.
@@ -260,16 +276,12 @@ static void wait_for_entropy(void) {
           boringssl_getrandom(&dummy, sizeof(dummy), 0 /* no flags */);
     }
 
-    if (getrandom_ret == 1) {
-      return;
+    if (getrandom_ret != 1) {
+      perror("getrandom");
+      abort();
     }
-
-    perror("getrandom");
-    abort();
-#else
-    fprintf(stderr, "urandom fd corrupt.\n");
-    abort();
 #endif  // USE_NR_getrandom
+    return;
   }
 
 #if defined(BORINGSSL_FIPS)
@@ -353,6 +365,19 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block) {
     if (*urandom_fd_bss_get() == kHaveGetrandom) {
 #if defined(USE_NR_getrandom)
       r = boringssl_getrandom(out, len, block ? 0 : GRND_NONBLOCK);
+#elif defined(OPENSSL_MACOS)
+      if (__builtin_available(macos 10.12, *)) {
+        // |getentropy| can only request 256 bytes at a time.
+        size_t todo = len <= 256 ? len : 256;
+        if (getentropy(out, todo) != 0) {
+          r = -1;
+        } else {
+          r = (ssize_t)todo;
+        }
+      } else {
+        fprintf(stderr, "urandom fd corrupt.\n");
+        abort();
+      }
 #else  // USE_NR_getrandom
       fprintf(stderr, "urandom fd corrupt.\n");
       abort();
