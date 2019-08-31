@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include <openssl/aead.h>
+#include <openssl/aes.h>
 #include <openssl/bn.h>
 #include <openssl/curve25519.h>
 #include <openssl/digest.h>
@@ -487,6 +488,75 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
     if (!SpeedAEADChunk(aead, name, chunk_len, ad_len, evp_aead_open)) {
       return false;
     }
+  }
+
+  return true;
+}
+
+static bool SpeedAESBlock(const std::string &name, unsigned bits,
+                          const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  static const uint8_t kZero[32] = {0};
+
+  {
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          AES_KEY key;
+          return AES_set_encrypt_key(kZero, bits, &key) == 0;
+        })) {
+      fprintf(stderr, "AES_set_encrypt_key failed.\n");
+      return false;
+    }
+    results.Print(name + " encrypt setup");
+  }
+
+  {
+    AES_KEY key;
+    if (AES_set_encrypt_key(kZero, bits, &key) != 0) {
+      return false;
+    }
+    uint8_t block[16] = {0};
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          AES_encrypt(block, block, &key);
+          return true;
+        })) {
+      fprintf(stderr, "AES_encrypt failed.\n");
+      return false;
+    }
+    results.Print(name + " encrypt");
+  }
+
+  {
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          AES_KEY key;
+          return AES_set_decrypt_key(kZero, bits, &key) == 0;
+        })) {
+      fprintf(stderr, "AES_set_decrypt_key failed.\n");
+      return false;
+    }
+    results.Print(name + " decrypt setup");
+  }
+
+  {
+    AES_KEY key;
+    if (AES_set_decrypt_key(kZero, bits, &key) != 0) {
+      return false;
+    }
+    uint8_t block[16] = {0};
+    TimeResults results;
+    if (!TimeFunction(&results, [&]() -> bool {
+          AES_decrypt(block, block, &key);
+          return true;
+        })) {
+      fprintf(stderr, "AES_decrypt failed.\n");
+      return false;
+    }
+    results.Print(name + " decrypt");
   }
 
   return true;
@@ -991,6 +1061,8 @@ bool Speed(const std::vector<std::string> &args) {
                      selected) ||
       !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AES-128-CCM-Bluetooth",
                  kTLSADLen, selected) ||
+      !SpeedAESBlock("AES-128", 128, selected) ||
+      !SpeedAESBlock("AES-256", 256, selected) ||
       !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
