@@ -182,11 +182,11 @@ _vpaes_encrypt_core:
 ##
 ##  Inputs:
 ##     %xmm0 and %xmm6 = input
-##     %xmm12-%xmm15 as in _vpaes_preheat
+##     %xmm9 and %xmm10 as in _vpaes_preheat
 ##    (%rdx) = scheduled keys
 ##
 ##  Output in %xmm0 and %xmm6
-##  Clobbers  %xmm1-%xmm5, %xmm7-%xmm11, %r9, %r10, %r11, %rax
+##  Clobbers  %xmm1-%xmm5, %xmm7, %xmm8, %xmm11-%xmm13, %r9, %r10, %r11, %rax
 ##  Preserves %xmm14 and %xmm15
 ##
 ##  This function stitches two parallel instances of _vpaes_encrypt_core. x86_64
