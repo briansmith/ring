@@ -242,11 +242,10 @@ if(WIN32)
   add_definitions(-DNOMINMAX)
   # Allow use of fopen.
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  # VS 2017 and higher supports STL-only warning suppressions. Manually add to
-  # C++ only to work around a CMake quoting bug when using NASM with the Visual
-  # Studio generator. This will be fixed in CMake 3.13.0. See
-  # https://gitlab.kitware.com/cmake/cmake/merge_requests/2179
-  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-D_STL_EXTRA_DISABLED_WARNINGS=4774\ 4987>)
+  # VS 2017 and higher supports STL-only warning suppressions.
+  # A bug in CMake < 3.13.0 may cause the space in this value to
+  # cause issues when building with NASM. In that case, update CMake.
+  add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
 if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR
