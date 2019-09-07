@@ -7,6 +7,7 @@ package runner
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/subtle"
@@ -17,7 +18,6 @@ import (
 	"math/big"
 
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/curve25519"
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/ed25519"
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/hrss"
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/sike"
 )

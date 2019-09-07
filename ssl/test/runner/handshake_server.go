@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/subtle"
@@ -17,8 +18,6 @@ import (
 	"io"
 	"math/big"
 	"time"
-
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/ed25519"
 )
 
 // serverHandshakeState contains details of a server handshake in progress.
@@ -2057,7 +2056,7 @@ func (hs *serverHandshakeState) processCertsFromClient(certificates [][]byte) (c
 	}
 
 	if len(certs) > 0 {
-		pub := getCertificatePublicKey(certs[0])
+		pub := certs[0].PublicKey
 		switch pub.(type) {
 		case *ecdsa.PublicKey, *rsa.PublicKey, ed25519.PublicKey:
 			break
