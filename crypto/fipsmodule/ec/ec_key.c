@@ -369,8 +369,8 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   return 1;
 }
 
-int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
-                                             BIGNUM *y) {
+int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, const BIGNUM *x,
+                                             const BIGNUM *y) {
   EC_POINT *point = NULL;
   int ok = 0;
 

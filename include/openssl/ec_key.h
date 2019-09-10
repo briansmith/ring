@@ -174,8 +174,8 @@ OPENSSL_EXPORT int EC_KEY_check_fips(const EC_KEY *key);
 // EC_KEY_set_public_key_affine_coordinates sets the public key in |key| to
 // (|x|, |y|). It returns one on success and zero otherwise.
 OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
-                                                            BIGNUM *x,
-                                                            BIGNUM *y);
+                                                            const BIGNUM *x,
+                                                            const BIGNUM *y);
 
 // EC_KEY_key2buf encodes the public key in |key| to an allocated octet string
 // and sets |*out_buf| to point to it. It returns the length of the encoded
