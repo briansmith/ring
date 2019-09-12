@@ -15,6 +15,7 @@
 #include <openssl/crypto.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <openssl/aead.h>
 #include <openssl/aes.h>
@@ -36,12 +37,18 @@
 #if !defined(_MSC_VER)
 
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
-// FIPS builds on Android will attempt to write flag files to
-// /dev/boringssl/selftest/ named after the module hash. If the flag file
-// exists, it's assumed that self-tests have already passed and thus do not need
-// to be repeated.
+// FIPS builds on Android will test for flag files, named after the module hash,
+// in /dev/boringssl/selftest/. If such a flag file exists, it's assumed that
+// self-tests have already passed and thus do not need to be repeated. (The
+// integrity tests always run, however.)
+//
+// If self-tests complete successfully and the environment variable named in
+// |kFlagWriteEnableEnvVar| is present, then the flag file will be created. The
+// flag file isn't written without the environment variable being set in order
+// to avoid SELinux violations on Android.
 #define BORINGSSL_FIPS_SELF_TEST_FLAG_FILE
 static const char kFlagPrefix[] = "/dev/boringssl/selftest/";
+static const char kFlagWriteEnableEnvVar[] = "BORINGSSL_SELF_TEST_CREATE_FLAG";
 #endif
 
 static void hexdump(const uint8_t *in, size_t len) {
@@ -611,7 +618,7 @@ int BORINGSSL_self_test(
 
 #if defined(BORINGSSL_FIPS_SELF_TEST_FLAG_FILE)
   // Tests were successful. Write flag file if requested.
-  if (flag_path_valid) {
+  if (flag_path_valid && getenv(kFlagWriteEnableEnvVar) != NULL) {
     const int fd = open(flag_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd >= 0) {
       close(fd);
