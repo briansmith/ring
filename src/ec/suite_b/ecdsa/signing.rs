@@ -127,13 +127,17 @@ impl EcdsaKeyPair {
         private_key: &[u8],
         public_key: &[u8],
     ) -> Result<Self, error::KeyRejected> {
-        let key_pair = ec::suite_b::key_pair_from_bytes(
-            alg.curve,
-            untrusted::Input::from(private_key),
-            untrusted::Input::from(public_key),
-            cpu::features(),
-        )?;
-        Ok(Self::new(alg, key_pair))
+        let pair = Self::from_private_key_unchecked(alg, private_key)?;
+
+        if public_key != pair.public_key.as_ref() {
+            let err = if public_key.len() != pair.public_key.as_ref().len() {
+                error::KeyRejected::invalid_encoding()
+            } else {
+                error::KeyRejected::inconsistent_components()
+            };
+            return Err(err);
+        }
+        Ok(pair)
     }
 
     /// Constructs an ECDSA key pair direclty from the private key bytes.
