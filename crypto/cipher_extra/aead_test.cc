@@ -53,6 +53,8 @@ static const struct KnownAEAD kAEADs[] = {
      true, 0},
     {"AES_128_GCM_NIST", EVP_aead_aes_128_gcm, "nist_cavp/aes_128_gcm.txt",
      false, true, true, 0},
+    {"AES_192_GCM", EVP_aead_aes_192_gcm, "aes_192_gcm_tests.txt", false, true,
+     true, 0},
     {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt", false, true,
      true, 0},
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
@@ -801,9 +803,8 @@ TEST(AEADTest, WycheproofAESGCM) {
         aead = EVP_aead_aes_128_gcm();
         break;
       case 192:
-        // Skip AES-192-GCM tests.
-        t->SkipCurrent();
-        return;
+        aead = EVP_aead_aes_192_gcm();
+        break;
       case 256:
         aead = EVP_aead_aes_256_gcm();
         break;

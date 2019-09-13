@@ -890,7 +890,7 @@ static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
                                   size_t key_len, size_t tag_len) {
   const size_t key_bits = key_len * 8;
 
-  if (key_bits != 128 && key_bits != 256) {
+  if (key_bits != 128 && key_bits != 192 && key_bits != 256) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
     return 0;  // EVP_AEAD_CTX_init should catch this.
   }
@@ -1052,6 +1052,21 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm) {
   memset(out, 0, sizeof(EVP_AEAD));
 
   out->key_len = 16;
+  out->nonce_len = 12;
+  out->overhead = EVP_AEAD_AES_GCM_TAG_LEN;
+  out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+  out->seal_scatter_supports_extra_in = 1;
+
+  out->init = aead_aes_gcm_init;
+  out->cleanup = aead_aes_gcm_cleanup;
+  out->seal_scatter = aead_aes_gcm_seal_scatter;
+  out->open_gather = aead_aes_gcm_open_gather;
+}
+
+DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_192_gcm) {
+  memset(out, 0, sizeof(EVP_AEAD));
+
+  out->key_len = 24;
   out->nonce_len = 12;
   out->overhead = EVP_AEAD_AES_GCM_TAG_LEN;
   out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
