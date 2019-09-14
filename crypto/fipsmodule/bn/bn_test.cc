@@ -2279,6 +2279,32 @@ TEST_F(BNTest, PrimeChecking) {
   EXPECT_EQ(1, is_probably_prime_1);
 }
 
+TEST_F(BNTest, MillerRabinIteration) {
+  FileTestGTest(
+      "crypto/fipsmodule/bn/miller_rabin_tests.txt", [&](FileTest *t) {
+        BIGNUMFileTest bn_test(t, /*large_mask=*/0);
+
+        bssl::UniquePtr<BIGNUM> w = bn_test.GetBIGNUM("W");
+        ASSERT_TRUE(w);
+        bssl::UniquePtr<BIGNUM> b = bn_test.GetBIGNUM("B");
+        ASSERT_TRUE(b);
+        bssl::UniquePtr<BN_MONT_CTX> mont(
+            BN_MONT_CTX_new_consttime(w.get(), ctx()));
+        ASSERT_TRUE(mont);
+
+        bssl::BN_CTXScope scope(ctx());
+        BN_MILLER_RABIN miller_rabin;
+        ASSERT_TRUE(bn_miller_rabin_init(&miller_rabin, mont.get(), ctx()));
+        int possibly_prime;
+        ASSERT_TRUE(bn_miller_rabin_iteration(&miller_rabin, &possibly_prime,
+                                              b.get(), mont.get(), ctx()));
+
+        std::string result;
+        ASSERT_TRUE(t->GetAttribute(&result, "Result"));
+        EXPECT_EQ(result, possibly_prime ? "PossiblyPrime" : "Composite");
+      });
+}
+
 TEST_F(BNTest, NumBitsWord) {
   constexpr BN_ULONG kOne = 1;
 

@@ -594,6 +594,113 @@ int bn_odd_number_is_obviously_composite(const BIGNUM *bn) {
   return bn_trial_division(&prime, bn) && !BN_is_word(bn, prime);
 }
 
+int bn_miller_rabin_init(BN_MILLER_RABIN *miller_rabin, const BN_MONT_CTX *mont,
+                         BN_CTX *ctx) {
+  // This function corresponds to steps 1 through 3 of FIPS 186-4, C.3.1.
+  const BIGNUM *w = &mont->N;
+  // Note we do not call |BN_CTX_start| in this function. We intentionally
+  // allocate values in the containing scope so they outlive this function.
+  miller_rabin->w1 = BN_CTX_get(ctx);
+  miller_rabin->m = BN_CTX_get(ctx);
+  miller_rabin->one_mont = BN_CTX_get(ctx);
+  miller_rabin->w1_mont = BN_CTX_get(ctx);
+  if (miller_rabin->w1 == NULL ||
+      miller_rabin->m == NULL ||
+      miller_rabin->one_mont == NULL ||
+      miller_rabin->w1_mont == NULL) {
+    return 0;
+  }
+
+  // See FIPS 186-4, C.3.1, steps 1 through 3.
+  if (!bn_usub_consttime(miller_rabin->w1, w, BN_value_one())) {
+    return 0;
+  }
+  miller_rabin->a = BN_count_low_zero_bits(miller_rabin->w1);
+  if (!bn_rshift_secret_shift(miller_rabin->m, miller_rabin->w1,
+                              miller_rabin->a, ctx)) {
+    return 0;
+  }
+  miller_rabin->w_bits = BN_num_bits(w);
+
+  // Precompute some values in Montgomery form.
+  if (!bn_one_to_montgomery(miller_rabin->one_mont, mont, ctx) ||
+      // w - 1 is -1 mod w, so we can compute it in the Montgomery domain, -R,
+      // with a subtraction. (|one_mont| cannot be zero.)
+      !bn_usub_consttime(miller_rabin->w1_mont, w, miller_rabin->one_mont)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int bn_miller_rabin_iteration(const BN_MILLER_RABIN *miller_rabin,
+                              int *out_is_possibly_prime, const BIGNUM *b,
+                              const BN_MONT_CTX *mont, BN_CTX *ctx) {
+  // This function corresponds to steps 4.3 through 4.5 of FIPS 186-4, C.3.1.
+  int ret = 0;
+  BN_CTX_start(ctx);
+
+  // Step 4.3. We use Montgomery-encoding for better performance and to avoid
+  // timing leaks.
+  const BIGNUM *w = &mont->N;
+  BIGNUM *z = BN_CTX_get(ctx);
+  if (z == NULL ||
+      !BN_mod_exp_mont_consttime(z, b, miller_rabin->m, w, ctx, mont) ||
+      !BN_to_montgomery(z, z, mont, ctx)) {
+    goto err;
+  }
+
+  // loop_done is all ones if the loop has completed and all zeros otherwise.
+  crypto_word_t loop_done = 0;
+  // is_possibly_prime is all ones if we have determined |b| is not a composite
+  // witness for |w|. This is equivalent to going to step 4.7 in the original
+  // algorithm.
+  crypto_word_t is_possibly_prime = 0;
+
+  // Step 4.4. If z = 1 or z = w-1, b is not a composite witness and w is still
+  // possibly prime.
+  loop_done = BN_equal_consttime(z, miller_rabin->one_mont) |
+              BN_equal_consttime(z, miller_rabin->w1_mont);
+  loop_done = 0 - loop_done;   // Make it all zeros or all ones.
+  is_possibly_prime = loop_done;  // Go to step 4.7 if |loop_done|.
+
+  // Step 4.5.
+  //
+  // To avoid leaking |a|, we run the loop to |w_bits| and mask off all
+  // iterations once |j| = |a|.
+  for (int j = 1; j < miller_rabin->w_bits; j++) {
+    loop_done |= constant_time_eq_int(j, miller_rabin->a);
+
+    // Step 4.5.1.
+    if (!BN_mod_mul_montgomery(z, z, z, mont, ctx)) {
+      goto err;
+    }
+
+    // Step 4.5.2. If z = w-1 and the loop is not done, this is not a composite
+    // witness.
+    crypto_word_t z_is_w1_mont =
+        BN_equal_consttime(z, miller_rabin->w1_mont) & ~loop_done;
+    z_is_w1_mont = 0 - z_is_w1_mont;  // Make it all zeros or all ones.
+    loop_done |= z_is_w1_mont;
+    is_possibly_prime |= z_is_w1_mont;  // Go to step 4.7 if |z_is_w1_mont|.
+
+    // Step 4.5.3. If z = 1 and the loop is not done, the previous value of z
+    // was not -1. There are no non-trivial square roots of 1 modulo a prime, so
+    // w is composite and we may exit in variable time.
+    if (BN_equal_consttime(z, miller_rabin->one_mont) & ~loop_done) {
+      assert(!is_possibly_prime);
+      break;
+    }
+  }
+
+  *out_is_possibly_prime = is_possibly_prime & 1;
+  ret = 1;
+
+err:
+  BN_CTX_end(ctx);
+  return ret;
+}
+
 int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
                       int iterations, BN_CTX *ctx, int do_trial_division,
                       BN_GENCB *cb) {
@@ -646,36 +753,13 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
 
   // See C.3.1 from FIPS 186-4.
   int ret = 0;
-  BN_MONT_CTX *mont = NULL;
   BN_CTX_start(ctx);
-  BIGNUM *w1 = BN_CTX_get(ctx);
-  if (w1 == NULL ||
-      !bn_usub_consttime(w1, w, BN_value_one())) {
-    goto err;
-  }
-
-  // Write w1 as m * 2^a (Steps 1 and 2).
-  int w_len = BN_num_bits(w);
-  int a = BN_count_low_zero_bits(w1);
-  BIGNUM *m = BN_CTX_get(ctx);
-  if (m == NULL ||
-      !bn_rshift_secret_shift(m, w1, a, ctx)) {
-    goto err;
-  }
-
-  // Montgomery setup for computations mod w. Additionally, compute 1 and w - 1
-  // in the Montgomery domain for later comparisons.
   BIGNUM *b = BN_CTX_get(ctx);
-  BIGNUM *z = BN_CTX_get(ctx);
-  BIGNUM *one_mont = BN_CTX_get(ctx);
-  BIGNUM *w1_mont = BN_CTX_get(ctx);
-  mont = BN_MONT_CTX_new_consttime(w, ctx);
-  if (b == NULL || z == NULL || one_mont == NULL || w1_mont == NULL ||
-      mont == NULL ||
-      !bn_one_to_montgomery(one_mont, mont, ctx) ||
-      // w - 1 is -1 mod w, so we can compute it in the Montgomery domain, -R,
-      // with a subtraction. (|one_mont| cannot be zero.)
-      !bn_usub_consttime(w1_mont, w, one_mont)) {
+  BN_MONT_CTX *mont = BN_MONT_CTX_new_consttime(w, ctx);
+  BN_MILLER_RABIN miller_rabin;
+  if (b == NULL || mont == NULL ||
+      // Steps 1-3.
+      !bn_miller_rabin_init(&miller_rabin, mont, ctx)) {
     goto err;
   }
 
@@ -713,64 +797,22 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
   for (int i = 1; (i <= BN_PRIME_CHECKS_BLINDED) |
                   constant_time_lt_w(uniform_iterations, iterations);
        i++) {
+    // Step 4.1-4.2
     int is_uniform;
-    if (// Step 4.1-4.2
-        !bn_rand_secret_range(b, &is_uniform, 2, w1) ||
-        // Step 4.3
-        !BN_mod_exp_mont_consttime(z, b, m, w, ctx, mont)) {
-      goto err;
+    if (!bn_rand_secret_range(b, &is_uniform, 2, miller_rabin.w1)) {
+        goto err;
     }
     uniform_iterations += is_uniform;
 
-    // loop_done is all ones if the loop has completed and all zeros otherwise.
-    crypto_word_t loop_done = 0;
-    // next_iteration is all ones if we should continue to the next iteration
-    // (|b| is not a composite witness for |w|). This is equivalent to going to
-    // step 4.7 in the original algorithm.
-    crypto_word_t next_iteration = 0;
-
-    // Step 4.4. If z = 1 or z = w-1, mask off the loop and continue to the next
-    // iteration (go to step 4.7).
-    loop_done = BN_equal_consttime(z, BN_value_one()) |
-                BN_equal_consttime(z, w1);
-    loop_done = 0 - loop_done;   // Make it all zeros or all ones.
-    next_iteration = loop_done;  // Go to step 4.7 if |loop_done|.
-
-    // Step 4.5. We use Montgomery-encoding for better performance and to avoid
-    // timing leaks.
-    if (!BN_to_montgomery(z, z, mont, ctx)) {
+    // Steps 4.3-4.5
+    int is_possibly_prime = 0;
+    if (!bn_miller_rabin_iteration(&miller_rabin, &is_possibly_prime, b, mont,
+                                   ctx)) {
       goto err;
     }
 
-    // To avoid leaking |a|, we run the loop to |w_len| and mask off all
-    // iterations once |j| = |a|.
-    for (int j = 1; j < w_len; j++) {
-      loop_done |= constant_time_eq_int(j, a);
-
-      // Step 4.5.1.
-      if (!BN_mod_mul_montgomery(z, z, z, mont, ctx)) {
-        goto err;
-      }
-
-      // Step 4.5.2. If z = w-1 and the loop is not done, run through the next
-      // iteration.
-      crypto_word_t z_is_w1_mont = BN_equal_consttime(z, w1_mont) & ~loop_done;
-      z_is_w1_mont = 0 - z_is_w1_mont;  // Make it all zeros or all ones.
-      loop_done |= z_is_w1_mont;
-      next_iteration |= z_is_w1_mont;  // Go to step 4.7 if |z_is_w1_mont|.
-
-      // Step 4.5.3. If z = 1 and the loop is not done, w is composite and we
-      // may exit in variable time.
-      if (BN_equal_consttime(z, one_mont) & ~loop_done) {
-        assert(!next_iteration);
-        break;
-      }
-    }
-
-    if (!next_iteration) {
+    if (!is_possibly_prime) {
       // Step 4.6. We did not see z = w-1 before z = 1, so w must be composite.
-      // (For any prime, the value of z immediately preceding 1 must be -1.
-      // There are no non-trivial square roots of 1 modulo a prime.)
       *out_is_probably_prime = 0;
       ret = 1;
       goto err;
