@@ -594,10 +594,10 @@ int bn_odd_number_is_obviously_composite(const BIGNUM *bn) {
   return bn_trial_division(&prime, bn) && !BN_is_word(bn, prime);
 }
 
-int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
+int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
                       int iterations, BN_CTX *ctx, int do_trial_division,
                       BN_GENCB *cb) {
-  *is_probably_prime = 0;
+  *out_is_probably_prime = 0;
 
   // To support RSA key generation, this function should treat |w| as secret if
   // it is a large prime. Composite numbers are discarded, so they may return
@@ -609,13 +609,13 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
 
   if (!BN_is_odd(w)) {
     // The only even prime is two.
-    *is_probably_prime = BN_is_word(w, 2);
+    *out_is_probably_prime = BN_is_word(w, 2);
     return 1;
   }
 
   // Miller-Rabin does not work for three.
   if (BN_is_word(w, 3)) {
-    *is_probably_prime = 1;
+    *out_is_probably_prime = 1;
     return 1;
   }
 
@@ -623,7 +623,7 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
     // Perform additional trial division checks to discard small primes.
     uint16_t prime;
     if (bn_trial_division(&prime, w)) {
-      *is_probably_prime = BN_is_word(w, prime);
+      *out_is_probably_prime = BN_is_word(w, prime);
       return 1;
     }
     if (!BN_GENCB_call(cb, 1, -1)) {
@@ -771,7 +771,7 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
       // Step 4.6. We did not see z = w-1 before z = 1, so w must be composite.
       // (For any prime, the value of z immediately preceding 1 must be -1.
       // There are no non-trivial square roots of 1 modulo a prime.)
-      *is_probably_prime = 0;
+      *out_is_probably_prime = 0;
       ret = 1;
       goto err;
     }
@@ -783,7 +783,7 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
   }
 
   assert(uniform_iterations >= (crypto_word_t)iterations);
-  *is_probably_prime = 1;
+  *out_is_probably_prime = 1;
   ret = 1;
 
 err:
