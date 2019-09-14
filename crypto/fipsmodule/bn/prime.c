@@ -691,9 +691,9 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
   // discard out-of-range values. To avoid leaking information on |w|, we use
   // |bn_rand_secret_range| which, rather than discarding bad values, adjusts
   // them to be in range. Though not uniformly selected, these adjusted values
-  // are still usable as Rabin-Miller checks.
+  // are still usable as Miller-Rabin checks.
   //
-  // Rabin-Miller is already probabilistic, so we could reach the desired
+  // Miller-Rabin is already probabilistic, so we could reach the desired
   // confidence levels by just suitably increasing the iteration count. However,
   // to align with FIPS 186-4, we use a more pessimal analysis: we do not count
   // the non-uniform values towards the iteration count. As a result, this

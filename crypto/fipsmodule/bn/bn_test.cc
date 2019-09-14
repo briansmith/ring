@@ -2013,7 +2013,7 @@ TEST_F(BNTest, PrimeChecking) {
   EXPECT_EQ(0, is_probably_prime_2);
 
   // The following composite numbers come from http://oeis.org/A014233 and are
-  // such that the first several primes are not a Rabin-Miller composite
+  // such that the first several primes are not a Miller-Rabin composite
   // witness.
   static const char *kA014233[] = {
       "2047",
