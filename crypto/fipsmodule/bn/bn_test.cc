@@ -2012,10 +2012,10 @@ TEST_F(BNTest, PrimeChecking) {
                                 nullptr /* callback */));
   EXPECT_EQ(0, is_probably_prime_2);
 
-  // The following composite numbers come from http://oeis.org/A014233 and are
-  // such that the first several primes are not a Miller-Rabin composite
-  // witness.
-  static const char *kA014233[] = {
+  static const char *kComposites[] = {
+      // The following composite numbers come from http://oeis.org/A014233 and
+      // are such that the first several primes are not a Miller-Rabin composite
+      // witness.
       "2047",
       "1373653",
       "25326001",
@@ -2026,8 +2026,44 @@ TEST_F(BNTest, PrimeChecking) {
       "3825123056546413051",
       "318665857834031151167461",
       "3317044064679887385961981",
+
+      // The following composite numbers come from https://oeis.org/A033181
+      // which lists Euler pseudoprimes. These are false positives for the
+      // Fermat primality
+      // test.
+      "1729",
+      "2465",
+      "15841",
+      "41041",
+      "46657",
+      "75361",
+      "162401",
+      "172081",
+      "399001",
+      "449065",
+      "488881",
+      "530881",
+      "656601",
+      "670033",
+      "838201",
+      "997633",
+      "1050985",
+      "1615681",
+      "1773289",
+      "1857241",
+      "2113921",
+      "2433601",
+      "2455921",
+      "2704801",
+      "3057601",
+      "3224065",
+      "3581761",
+      "3664585",
+      "3828001",
+      "4463641",
+      "4903921",
   };
-  for (const char *str : kA014233) {
+  for (const char *str : kComposites) {
     SCOPED_TRACE(str);
     EXPECT_NE(0, DecimalToBIGNUM(&p, str));
 
