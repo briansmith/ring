@@ -66,6 +66,22 @@
 # We adjust the register usage from x86_64 to avoid this. (Unfortunately, the
 # two-address pshufb always matched these operands, so this is common.)
 #
+# This file also runs against the limit of ARMv7's ADR pseudo-instruction. ADR
+# expands to an ADD or SUB of the pc register to find an address. That immediate
+# must fit in ARM's encoding scheme: 8 bits of constant and 4 bits of rotation.
+# This means larger values must be more aligned.
+#
+# ARM additionally has two encodings, ARM and Thumb mode. Our assembly files may
+# use either encoding (do we actually need to support this?). In ARM mode, the
+# distances get large enough to require 16-byte alignment. Moving constants
+# closer to their use resolves most of this, but common constants in
+# _vpaes_consts are used by the whole file. Affected ADR instructions must be
+# placed at 8 mod 16 (the pc register is 8 ahead). Instructions with this
+# constraint have been commented.
+#
+# For details on ARM's immediate value encoding scheme, see
+# https://alisdair.mcdiarmid.org/arm-immediate-value-encoding/
+#
 # Finally, a summary of armv7 and aarch64 SIMD syntax differences:
 #
 # * armv7 prefixes SIMD instructions with 'v', while aarch64 does not.
@@ -149,98 +165,6 @@ _vpaes_consts:
 .Lk_sb2:	@ sb2u, sb2t
 	.quad	0x69EB88400AE12900, 0xC2A163C8AB82234A
 	.quad	0xE27A93C60B712400, 0x5EB7E955BC982FCD
-
-@
-@  Decryption stuff
-@
-.Lk_dipt:	@ decryption input transform
-	.quad	0x0F505B040B545F00, 0x154A411E114E451A
-	.quad	0x86E383E660056500, 0x12771772F491F194
-.Lk_dsbo:	@ decryption sbox final output
-	.quad	0x1387EA537EF94000, 0xC7AA6DB9D4943E2D
-	.quad	0x12D7560F93441D00, 0xCA4B8159D8C58E9C
-.Lk_dsb9:	@ decryption sbox output *9*u, *9*t
-	.quad	0x851C03539A86D600, 0xCAD51F504F994CC9
-	.quad	0xC03B1789ECD74900, 0x725E2C9EB2FBA565
-.Lk_dsbd:	@ decryption sbox output *D*u, *D*t
-	.quad	0x7D57CCDFE6B1A200, 0xF56E9B13882A4439
-	.quad	0x3CE2FAF724C6CB00, 0x2931180D15DEEFD3
-.Lk_dsbb:	@ decryption sbox output *B*u, *B*t
-	.quad	0xD022649296B44200, 0x602646F6B0F2D404
-	.quad	0xC19498A6CD596700, 0xF3FF0C3E3255AA6B
-.Lk_dsbe:	@ decryption sbox output *E*u, *E*t
-	.quad	0x46F2929626D4D000, 0x2242600464B4F6B0
-	.quad	0x0C55A6CDFFAAC100, 0x9467F36B98593E32
-
-@
-@  Key schedule constants
-@
-.Lk_dksd:	@ decryption key schedule: invskew x*D
-	.quad	0xFEB91A5DA3E44700, 0x0740E3A45A1DBEF9
-	.quad	0x41C277F4B5368300, 0x5FDC69EAAB289D1E
-.Lk_dksb:	@ decryption key schedule: invskew x*B
-	.quad	0x9A4FCA1F8550D500, 0x03D653861CC94C99
-	.quad	0x115BEDA7B6FC4A00, 0xD993256F7E3482C8
-.Lk_dkse:	@ decryption key schedule: invskew x*E + 0x63
-	.quad	0xD5031CCA1FC9D600, 0x53859A4C994F5086
-	.quad	0xA23196054FDC7BE8, 0xCD5EF96A20B31487
-.Lk_dks9:	@ decryption key schedule: invskew x*9
-	.quad	0xB6116FC87ED9A700, 0x4AED933482255BFC
-	.quad	0x4576516227143300, 0x8BB89FACE9DAFDCE
-
-.Lk_rcon:	@ rcon
-	.quad	0x1F8391B9AF9DEEB6, 0x702A98084D7C7D81
-
-.Lk_opt:	@ output transform
-	.quad	0xFF9F4929D6B66000, 0xF7974121DEBE6808
-	.quad	0x01EDBD5150BCEC00, 0xE10D5DB1B05C0CE0
-.Lk_deskew:	@ deskew tables: inverts the sbox's "skew"
-	.quad	0x07E4A34047A4E300, 0x1DFEB95A5DBEF91A
-	.quad	0x5F36B5DC83EA6900, 0x2841C2ABF49D1E77
-
-
-@ Additional constants for converting to bsaes.
-
-@ .Lk_opt_then_skew applies skew(opt(x)) XOR 0x63, where skew is the linear
-@ transform in the AES S-box. 0x63 is incorporated into the low half of the
-@ table. This was computed with the following script:
-@
-@   def u64s_to_u128(x, y):
-@       return x | (y << 64)
-@   def u128_to_u64s(w):
-@       return w & ((1<<64)-1), w >> 64
-@   def get_byte(w, i):
-@       return (w >> (i*8)) & 0xff
-@   def apply_table(table, b):
-@       lo = b & 0xf
-@       hi = b >> 4
-@       return get_byte(table[0], lo) ^ get_byte(table[1], hi)
-@   def opt(b):
-@       table = [
-@           u64s_to_u128(0xFF9F4929D6B66000, 0xF7974121DEBE6808),
-@           u64s_to_u128(0x01EDBD5150BCEC00, 0xE10D5DB1B05C0CE0),
-@       ]
-@       return apply_table(table, b)
-@   def rot_byte(b, n):
-@       return 0xff & ((b << n) | (b >> (8-n)))
-@   def skew(x):
-@       return (x ^ rot_byte(x, 1) ^ rot_byte(x, 2) ^ rot_byte(x, 3) ^
-@               rot_byte(x, 4))
-@   table = [0, 0]
-@   for i in range(16):
-@       table[0] |= (skew(opt(i)) ^ 0x63) << (i*8)
-@       table[1] |= skew(opt(i<<4)) << (i*8)
-@   print("\t.quad\t0x%016x, 0x%016x" % u128_to_u64s(table[0]))
-@   print("\t.quad\t0x%016x, 0x%016x" % u128_to_u64s(table[1]))
-.Lk_opt_then_skew:
-	.quad	0x9cb8436798bc4763, 0x6440bb9f6044bf9b
-	.quad	0x1f30062936192f00, 0xb49bad829db284ab
-
-@ .Lk_decrypt_transform is a permutation which performs an 8-bit left-rotation
-@ followed by a byte-swap on each 32-bit word of a vector. E.g., 0x11223344
-@ becomes 0x22334411 and then 0x11443322.
-.Lk_decrypt_transform:
-	.quad	0x0704050603000102, 0x0f0c0d0e0b08090a
 
 .asciz  "Vector Permutation AES for ARMv7 NEON, Mike Hamburg (Stanford University)"
 .size	_vpaes_consts,.-_vpaes_consts
@@ -405,6 +329,31 @@ vpaes_encrypt:
 	vldmia	sp!, {d8-d11}
 	ldmia	sp!, {r7-r11, pc}	@ return
 .size	vpaes_encrypt,.-vpaes_encrypt
+
+@
+@  Decryption stuff
+@
+.type	_vpaes_decrypt_consts,%object
+.align	4
+.Lk_dipt:	@ decryption input transform
+	.quad	0x0F505B040B545F00, 0x154A411E114E451A
+	.quad	0x86E383E660056500, 0x12771772F491F194
+.Lk_dsbo:	@ decryption sbox final output
+	.quad	0x1387EA537EF94000, 0xC7AA6DB9D4943E2D
+	.quad	0x12D7560F93441D00, 0xCA4B8159D8C58E9C
+.Lk_dsb9:	@ decryption sbox output *9*u, *9*t
+	.quad	0x851C03539A86D600, 0xCAD51F504F994CC9
+	.quad	0xC03B1789ECD74900, 0x725E2C9EB2FBA565
+.Lk_dsbd:	@ decryption sbox output *D*u, *D*t
+	.quad	0x7D57CCDFE6B1A200, 0xF56E9B13882A4439
+	.quad	0x3CE2FAF724C6CB00, 0x2931180D15DEEFD3
+.Lk_dsbb:	@ decryption sbox output *B*u, *B*t
+	.quad	0xD022649296B44200, 0x602646F6B0F2D404
+	.quad	0xC19498A6CD596700, 0xF3FF0C3E3255AA6B
+.Lk_dsbe:	@ decryption sbox output *E*u, *E*t
+	.quad	0x46F2929626D4D000, 0x2242600464B4F6B0
+	.quad	0x0C55A6CDFFAAC100, 0x9467F36B98593E32
+.size	_vpaes_decrypt_consts,.-_vpaes_decrypt_consts
 
 @@
 @@  Decryption core
@@ -613,12 +562,42 @@ $code.=<<___;
 @ We pin some constants for convenience and leave q14 and q15 free to load
 @ others on demand.
 
+@
+@  Key schedule constants
+@
+.type	_vpaes_key_consts,%object
+.align	4
+_vpaes_key_consts:
+.Lk_dksd:	@ decryption key schedule: invskew x*D
+	.quad	0xFEB91A5DA3E44700, 0x0740E3A45A1DBEF9
+	.quad	0x41C277F4B5368300, 0x5FDC69EAAB289D1E
+.Lk_dksb:	@ decryption key schedule: invskew x*B
+	.quad	0x9A4FCA1F8550D500, 0x03D653861CC94C99
+	.quad	0x115BEDA7B6FC4A00, 0xD993256F7E3482C8
+.Lk_dkse:	@ decryption key schedule: invskew x*E + 0x63
+	.quad	0xD5031CCA1FC9D600, 0x53859A4C994F5086
+	.quad	0xA23196054FDC7BE8, 0xCD5EF96A20B31487
+.Lk_dks9:	@ decryption key schedule: invskew x*9
+	.quad	0xB6116FC87ED9A700, 0x4AED933482255BFC
+	.quad	0x4576516227143300, 0x8BB89FACE9DAFDCE
+
+.Lk_rcon:	@ rcon
+	.quad	0x1F8391B9AF9DEEB6, 0x702A98084D7C7D81
+
+.Lk_opt:	@ output transform
+	.quad	0xFF9F4929D6B66000, 0xF7974121DEBE6808
+	.quad	0x01EDBD5150BCEC00, 0xE10D5DB1B05C0CE0
+.Lk_deskew:	@ deskew tables: inverts the sbox's "skew"
+	.quad	0x07E4A34047A4E300, 0x1DFEB95A5DBEF91A
+	.quad	0x5F36B5DC83EA6900, 0x2841C2ABF49D1E77
+.size	_vpaes_key_consts,.-_vpaes_key_consts
+
 .type	_vpaes_key_preheat,%function
 .align	4
 _vpaes_key_preheat:
-	adr	r10, .Lk_inv
 	adr	r11, .Lk_rcon
 	vmov.i8	$s63, #0x5b			@ .Lk_s63
+	adr	r10, .Lk_inv			@ Must be aligned to 8 mod 16.
 	vmov.i8	$s0F, #0x0f			@ .Lk_s0F
 	vld1.64	{$invlo,$invhi}, [r10]		@ .Lk_inv
 	vld1.64	{$rcon}, [r11]			@ .Lk_rcon
@@ -634,17 +613,17 @@ _vpaes_schedule_core:
 
 	bl	_vpaes_key_preheat	@ load the tables
 
+	adr	r11, .Lk_ipt		@ Must be aligned to 8 mod 16.
 	vld1.64	{q0}, [$inp]!		@ vmovdqu	(%rdi),	%xmm0		# load key (unaligned)
 
 	@ input transform
 	@ Use q4 here rather than q3 so .Lschedule_am_decrypting does not
 	@ overlap table and destination.
 	vmov	q4, q0			@ vmovdqa	%xmm0,	%xmm3
-	adr	r11, .Lk_ipt
 	bl	_vpaes_schedule_transform
+	adr	r10, .Lk_sr		@ Must be aligned to 8 mod 16.
 	vmov	q7, q0			@ vmovdqa	%xmm0,	%xmm7
 
-	adr	r10, .Lk_sr		@ lea	.Lk_sr(%rip),%r10
 	add	r8, r8, r10
 	tst	$dir, $dir
 	bne	.Lschedule_am_decrypting
@@ -957,10 +936,10 @@ _vpaes_schedule_transform:
 .type	_vpaes_schedule_mangle,%function
 .align	4
 _vpaes_schedule_mangle:
-	adr	r11, .Lk_mc_forward
-	vmov	q4, q0			@ vmovdqa	%xmm0,	%xmm4	# save xmm0 for later
-	vld1.64	{q5}, [r11]		@ vmovdqa	.Lk_mc_forward(%rip),%xmm5
 	tst	$dir, $dir
+	vmov	q4, q0			@ vmovdqa	%xmm0,	%xmm4	# save xmm0 for later
+	adr	r11, .Lk_mc_forward	@ Must be aligned to 8 mod 16.
+	vld1.64	{q5}, [r11]		@ vmovdqa	.Lk_mc_forward(%rip),%xmm5
 	bne	.Lschedule_mangle_dec
 
 	@ encrypting
@@ -1096,6 +1075,53 @@ my ($out, $inp) = map("r$_", (0..1));
 my ($s0F, $s63, $s63_raw, $mc_forward) = map("q$_", (9..12));
 
 $code .= <<___;
+
+@ Additional constants for converting to bsaes.
+.type	_vpaes_convert_consts,%object
+.align	4
+_vpaes_convert_consts:
+@ .Lk_opt_then_skew applies skew(opt(x)) XOR 0x63, where skew is the linear
+@ transform in the AES S-box. 0x63 is incorporated into the low half of the
+@ table. This was computed with the following script:
+@
+@   def u64s_to_u128(x, y):
+@       return x | (y << 64)
+@   def u128_to_u64s(w):
+@       return w & ((1<<64)-1), w >> 64
+@   def get_byte(w, i):
+@       return (w >> (i*8)) & 0xff
+@   def apply_table(table, b):
+@       lo = b & 0xf
+@       hi = b >> 4
+@       return get_byte(table[0], lo) ^ get_byte(table[1], hi)
+@   def opt(b):
+@       table = [
+@           u64s_to_u128(0xFF9F4929D6B66000, 0xF7974121DEBE6808),
+@           u64s_to_u128(0x01EDBD5150BCEC00, 0xE10D5DB1B05C0CE0),
+@       ]
+@       return apply_table(table, b)
+@   def rot_byte(b, n):
+@       return 0xff & ((b << n) | (b >> (8-n)))
+@   def skew(x):
+@       return (x ^ rot_byte(x, 1) ^ rot_byte(x, 2) ^ rot_byte(x, 3) ^
+@               rot_byte(x, 4))
+@   table = [0, 0]
+@   for i in range(16):
+@       table[0] |= (skew(opt(i)) ^ 0x63) << (i*8)
+@       table[1] |= skew(opt(i<<4)) << (i*8)
+@   print("\t.quad\t0x%016x, 0x%016x" % u128_to_u64s(table[0]))
+@   print("\t.quad\t0x%016x, 0x%016x" % u128_to_u64s(table[1]))
+.Lk_opt_then_skew:
+	.quad	0x9cb8436798bc4763, 0x6440bb9f6044bf9b
+	.quad	0x1f30062936192f00, 0xb49bad829db284ab
+
+@ .Lk_decrypt_transform is a permutation which performs an 8-bit left-rotation
+@ followed by a byte-swap on each 32-bit word of a vector. E.g., 0x11223344
+@ becomes 0x22334411 and then 0x11443322.
+.Lk_decrypt_transform:
+	.quad	0x0704050603000102, 0x0f0c0d0e0b08090a
+.size	_vpaes_convert_consts,.-_vpaes_convert_consts
+
 @ void vpaes_encrypt_key_to_bsaes(AES_KEY *bsaes, const AES_KEY *vpaes);
 .globl	vpaes_encrypt_key_to_bsaes
 .type	vpaes_encrypt_key_to_bsaes,%function
@@ -1115,12 +1141,13 @@ vpaes_encrypt_key_to_bsaes:
 	@ byteswapped, as a convenience for (unsupported) big-endian ARM, at the
 	@ cost of extra REV and VREV32 operations in little-endian ARM.
 
-	adr	r2, .Lk_mc_forward
-	adr	r3, .Lk_sr+0x10
-	adr	r11, .Lk_opt		@ Input to _vpaes_schedule_transform.
-	vld1.64	{$mc_forward}, [r2]
 	vmov.i8	$s0F, #0x0f		@ Required by _vpaes_schedule_transform
+	adr	r2, .Lk_mc_forward	@ Must be aligned to 8 mod 16.
+	add	r3, r2, 0x90		@ .Lk_sr+0x10-.Lk_mc_forward = 0x90 (Apple's toolchain doesn't support the expression)
+
+	vld1.64	{$mc_forward}, [r2]
 	vmov.i8	$s63, #0x5b		@ .Lk_s63 from vpaes-x86_64
+	adr	r11, .Lk_opt		@ Must be aligned to 8 mod 16.
 	vmov.i8	$s63_raw, #0x63		@ .LK_s63 without .Lk_ipt applied
 
 	@ vpaes stores one fewer round count than bsaes, but the number of keys
