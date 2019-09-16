@@ -353,6 +353,97 @@ class Array {
   size_t size_ = 0;
 };
 
+// GrowableArray<T> is an array that owns elements of |T|, backed by an
+// Array<T>. When necessary, pushing will automatically trigger a resize.
+//
+// Note, for simplicity, this class currently differs from |std::vector| in that
+// |T| must be efficiently default-constructible. Allocated elements beyond the
+// end of the array are constructed and destructed.
+template <typename T>
+class GrowableArray {
+ public:
+  GrowableArray() = default;
+  GrowableArray(const GrowableArray &) = delete;
+  GrowableArray(GrowableArray &&other) { *this = std::move(other); }
+  ~GrowableArray() {}
+
+  GrowableArray &operator=(const GrowableArray &) = delete;
+  GrowableArray &operator=(GrowableArray &&other) {
+    size_ = other.size_;
+    other.size_ = 0;
+    array_ = std::move(other.array_);
+    return *this;
+  }
+
+  size_t size() const { return size_; }
+  bool empty() const { return size_ == 0; }
+
+  const T &operator[](size_t i) const { return array_[i]; }
+  T &operator[](size_t i) { return array_[i]; }
+
+  T *begin() { return array_.data(); }
+  const T *cbegin() const { return array_.data(); }
+  T *end() { return array_.data() + size_; }
+  const T *cend() const { return array_.data() + size_; }
+
+  // Push adds |elem| at the end of the internal array, growing if necessary. It
+  // returns false when allocation fails.
+  bool Push(T elem) {
+    if (!MaybeGrow()) {
+      return false;
+    }
+    array_[size_] = std::move(elem);
+    size_++;
+    return true;
+  }
+
+  // CopyFrom replaces the contents of the array with a copy of |in|. It returns
+  // true on success and false on allocation error.
+  bool CopyFrom(Span<const T> in) {
+    if (!array_.CopyFrom(in)) {
+      return false;
+    }
+    size_ = in.size();
+    return true;
+  }
+
+ private:
+  // If there is no room for one more element, creates a new backing array with
+  // double the size of the old one and copies elements over.
+  bool MaybeGrow() {
+    if (array_.size() == 0) {
+      return array_.Init(kDefaultSize);
+    }
+    // No need to grow if we have room for one more T.
+    if (size_ < array_.size()) {
+      return true;
+    }
+    // Double the array's size if it's safe to do so.
+    if (array_.size() > std::numeric_limits<size_t>::max() / 2) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+      return false;
+    }
+    Array<T> new_array;
+    if (!new_array.Init(array_.size() * 2)) {
+      return false;
+    }
+    for (size_t i = 0; i < array_.size(); i++) {
+      new_array[i] = std::move(array_[i]);
+    }
+    array_ = std::move(new_array);
+
+    return true;
+  }
+
+  // |size_| is the number of elements stored in this GrowableArray.
+  size_t size_ = 0;
+  // |array_| is the backing array. Note that |array_.size()| is this
+  // GrowableArray's current capacity and that |size_ <= array_.size()|.
+  Array<T> array_;
+  // |kDefaultSize| is the default initial size of the backing array.
+  static constexpr size_t kDefaultSize = 16;
+};
+
 // CBBFinishArray behaves like |CBB_finish| but stores the result in an Array.
 OPENSSL_EXPORT bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out);
 
