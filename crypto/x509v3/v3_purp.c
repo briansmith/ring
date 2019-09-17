@@ -611,7 +611,7 @@ static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
 static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
                                     int ca)
 {
-    if (xku_reject(x, XKU_SSL_SERVER | XKU_SGC))
+    if (xku_reject(x, XKU_SSL_SERVER))
         return 0;
     if (ca)
         return check_ca(x);
