@@ -942,6 +942,15 @@ OPENSSL_EXPORT int EVP_PKEY_base_id(const EVP_PKEY *pkey);
 #endif
 
 
+// Nodejs compatibility section (hidden).
+//
+// These defines exist for node.js, with the hope that we can eliminate the
+// need for them over time.
+
+#define EVPerr(function, reason) \
+  ERR_put_error(ERR_LIB_EVP, 0, reason, __FILE__, __LINE__)
+
+
 // Private structures.
 
 struct evp_pkey_st {
@@ -1016,5 +1025,6 @@ BSSL_NAMESPACE_END
 #define EVP_R_MEMORY_LIMIT_EXCEEDED 132
 #define EVP_R_INVALID_PARAMETERS 133
 #define EVP_R_INVALID_PEER_KEY 134
+#define EVP_R_NOT_XOF_OR_INVALID_LENGTH 135
 
 #endif  // OPENSSL_HEADER_EVP_H
