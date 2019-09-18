@@ -102,6 +102,11 @@ else
   target_dir=target/$TARGET_X/debug
 fi
 
+if [[ "$TARGET_X" =~ "wasm32-" ]]; then
+  cargo build -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
+  exit 0
+fi
+
 if [[ -z "${ANDROID_ABI-}" ]]; then
   cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
 else

@@ -462,6 +462,14 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=wasm32-wasi  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+
+    - env: TARGET_X=wasm32-unknown-unknown  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: osx

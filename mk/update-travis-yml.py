@@ -37,7 +37,7 @@ linux_compilers = [
     gcc,
 ]
 
-osx_compilers = [
+osx_compilers = wasm_compilers = [
      "", # Don't set CC.'
 ]
 
@@ -49,6 +49,8 @@ compilers = {
     "i686-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-gnu" : linux_compilers,
     "x86_64-apple-darwin" : osx_compilers,
+    "wasm32-wasi" : wasm_compilers,
+    "wasm32-unknown-unknown" : wasm_compilers,
 }
 
 feature_sets = [
@@ -78,6 +80,8 @@ targets = {
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
         "arm-unknown-linux-gnueabihf",
+        "wasm32-wasi",
+        "wasm32-unknown-unknown",
     ],
 }
 
@@ -86,8 +90,9 @@ def format_entries():
                       for rust in rusts
                       for os in oss
                       for target in targets[os]
+                        if not target.startswith("wasm32") or rust == "nightly"
                       for compiler in compilers[target]
-                      for mode in modes
+                      for mode in modes if not target.startswith("wasm32") or mode == "DEBUG"
                       for features in feature_sets])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
@@ -114,9 +119,11 @@ entry_sources_template = """
 
 def format_entry(os, target, compiler, rust, mode, features):
     target_words = target.split("-")
-    arch = target_words[0]
-    vendor = target_words[1]
-    sys = target_words[2]
+    if len(target_words) >= 3:
+        (arch, vendor, sys) = target_words[:3]
+    else:
+        (arch, sys) = target_words
+        vendor = "unknown"
 
     # Currently kcov only runs on Linux.
     #
@@ -152,7 +159,7 @@ def format_entry(os, target, compiler, rust, mode, features):
         components:
         - android-21
         - build-tools-26.0.2"""
-    else:
+    elif len(target_words) > 3:
         abi = target_words[3]
 
     def prefix_all(prefix, xs):
