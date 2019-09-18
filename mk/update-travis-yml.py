@@ -138,10 +138,8 @@ def format_entry(os, target, compiler, rust, mode, features):
     template = entry_template
 
     if sys == "darwin":
-        abi = sys
         sys = "macos"
     elif sys == "androideabi":
-        abi = sys
         sys = "linux"
         template += """
       language: android
@@ -151,7 +149,6 @@ def format_entry(os, target, compiler, rust, mode, features):
         - build-tools-26.0.2
         - sys-img-armeabi-v7a-android-18"""
     elif sys == "android":
-        abi = sys
         sys = "linux"
         template += """
       language: android
@@ -159,8 +156,6 @@ def format_entry(os, target, compiler, rust, mode, features):
         components:
         - android-21
         - build-tools-26.0.2"""
-    elif len(target_words) > 3:
-        abi = target_words[3]
 
     def prefix_all(prefix, xs):
         return [prefix + x for x in xs]
