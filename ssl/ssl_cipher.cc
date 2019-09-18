@@ -1377,6 +1377,10 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
 
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }
 
+uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher) {
+  return static_cast<uint16_t>(cipher->id);
+}
+
 int SSL_CIPHER_is_aead(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_AEAD) != 0;
 }

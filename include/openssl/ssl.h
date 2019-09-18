@@ -1247,9 +1247,13 @@ DEFINE_CONST_STACK_OF(SSL_CIPHER)
 // https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4.
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
 
-// SSL_CIPHER_get_id returns |cipher|'s id. It may be cast to a |uint16_t| to
-// get the cipher suite value.
+// SSL_CIPHER_get_id returns |cipher|'s non-IANA id. This is not its
+// IANA-assigned number, which is called the "value" here, although it may be
+// cast to a |uint16_t| to get it.
 OPENSSL_EXPORT uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher);
+
+// SSL_CIPHER_get_value returns |cipher|'s IANA-assigned number.
+OPENSSL_EXPORT uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher);
 
 // SSL_CIPHER_is_aead returns one if |cipher| uses an AEAD cipher.
 OPENSSL_EXPORT int SSL_CIPHER_is_aead(const SSL_CIPHER *cipher);
