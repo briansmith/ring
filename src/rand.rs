@@ -270,6 +270,17 @@ mod sysrand_chunk {
     }
 }
 
+#[cfg(all(target_arch = "wasm32", target_os = "wasi",))]
+mod sysrand_chunk {
+    use crate::error;
+
+    #[inline]
+    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        wasi::wasi_unstable::random_get(dest).map_err(|_| error::Unspecified)?;
+        Ok(dest.len())
+    }
+}
+
 #[cfg(windows)]
 mod sysrand_chunk {
     use crate::{error, polyfill};
