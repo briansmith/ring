@@ -48,6 +48,11 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 #endif  // X86_64 && SUPPORTS_ABI_TEST
 
+// FIPS mode breaks unwind tests. See https://crbug.com/boringssl/289.
+#if defined(BORINGSSL_FIPS)
+#undef SUPPORTS_UNWIND_TEST
+#endif
+
 
 namespace abi_test {
 
