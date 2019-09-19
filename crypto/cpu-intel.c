@@ -164,17 +164,23 @@ void OPENSSL_cpuid_setup(void) {
   if (is_amd) {
     // See https://www.amd.com/system/files/TechDocs/25481.pdf, page 10.
     const uint32_t base_family = (eax >> 8) & 15;
+    const uint32_t base_model = (eax >> 4) & 15;
 
     uint32_t family = base_family;
+    uint32_t model = base_model;
     if (base_family == 0xf) {
       const uint32_t ext_family = (eax >> 20) & 255;
       family += ext_family;
+      const uint32_t ext_model = (eax >> 16) & 15;
+      model |= ext_model << 4;
     }
 
-    if (family < 0x17) {
+    if (family < 0x17 || (family == 0x17 && 0x70 <= model && model <= 0x7f)) {
       // Disable RDRAND on AMD families before 0x17 (Zen) due to reported
       // failures after suspend.
       // https://bugzilla.redhat.com/show_bug.cgi?id=1150286
+      // Also disable for family 0x17, models 0x70–0x7f, due to possible RDRAND
+      // failures there too.
       ecx &= ~(1u << 30);
     }
   }
