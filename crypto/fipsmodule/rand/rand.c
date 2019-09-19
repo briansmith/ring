@@ -179,7 +179,8 @@ static void rand_get_seed(struct rand_thread_state *state,
 #define FIPS_OVERREAD 10
   uint8_t entropy[CTR_DRBG_ENTROPY_LEN * FIPS_OVERREAD];
 
-  if (!hwrand(entropy, sizeof(entropy))) {
+  int used_hwrand = hwrand(entropy, sizeof(entropy));
+  if (!used_hwrand) {
     CRYPTO_sysrand(entropy, sizeof(entropy));
   }
 
@@ -210,6 +211,17 @@ static void rand_get_seed(struct rand_thread_state *state,
       seed[j] ^= entropy[CTR_DRBG_ENTROPY_LEN * i + j];
     }
   }
+
+#if defined(OPENSSL_URANDOM)
+  // If we used RDRAND, also opportunistically read from the system. This avoids
+  // solely relying on the hardware once the entropy pool has been initialized.
+  if (used_hwrand) {
+    CRYPTO_sysrand_if_available(entropy, CTR_DRBG_ENTROPY_LEN);
+    for (size_t i = 0; i < CTR_DRBG_ENTROPY_LEN; i++) {
+      seed[i] ^= entropy[i];
+    }
+  }
+#endif
 }
 
 #else

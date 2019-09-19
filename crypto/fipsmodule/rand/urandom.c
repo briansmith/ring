@@ -18,8 +18,7 @@
 
 #include <openssl/rand.h>
 
-#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_FUCHSIA) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && !defined(OPENSSL_TRUSTY)
+#if defined(OPENSSL_URANDOM)
 
 #include <assert.h>
 #include <errno.h>
@@ -133,6 +132,12 @@ DEFINE_BSS_GET(int, urandom_fd_requested)
 // urandom_fd is a file descriptor to /dev/urandom. It's protected by |once|.
 DEFINE_BSS_GET(int, urandom_fd)
 
+#if defined(USE_NR_getrandom)
+// getrandom_ready is one if |getrandom| had been initialized by the time
+// |init_once| was called and zero otherwise.
+DEFINE_BSS_GET(int, getrandom_ready)
+#endif
+
 DEFINE_STATIC_ONCE(rand_once)
 
 // init_once initializes the state of this module to values previously
@@ -145,41 +150,28 @@ static void init_once(void) {
   CRYPTO_STATIC_MUTEX_unlock_read(rand_lock_bss_get());
 
 #if defined(USE_NR_getrandom)
+  int have_getrandom;
   uint8_t dummy;
   ssize_t getrandom_ret =
       boringssl_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
-
-  if (getrandom_ret == -1 && errno == EAGAIN) {
-    // Attempt to get the path of the current process to aid in debugging when
-    // something blocks.
-    const char *current_process = "<unknown>";
-#if defined(OPENSSL_HAS_GETAUXVAL)
-    const unsigned long getauxval_ret = getauxval(AT_EXECFN);
-    if (getauxval_ret != 0) {
-      current_process = (const char *)getauxval_ret;
-    }
-#endif
-
-    fprintf(stderr,
-            "%s: getrandom indicates that the entropy pool has not been "
-            "initialized. Rather than continue with poor entropy, this process "
-            "will block until entropy is available.\n",
-            current_process);
-
-    getrandom_ret =
-        boringssl_getrandom(&dummy, sizeof(dummy), 0 /* no flags */);
-  }
-
   if (getrandom_ret == 1) {
-    *urandom_fd_bss_get() = kHaveGetrandom;
-    return;
-  }
-
-  // Ignore ENOSYS and fallthrough to using /dev/urandom, below. Otherwise it's
-  // a fatal error.
-  if (getrandom_ret != -1 || errno != ENOSYS) {
+    *getrandom_ready_bss_get() = 1;
+    have_getrandom = 1;
+  } else if (getrandom_ret == -1 && errno == EAGAIN) {
+    // We have getrandom, but the entropy pool has not been initialized yet.
+    have_getrandom = 1;
+  } else if (getrandom_ret == -1 && errno == ENOSYS) {
+    // Fallthrough to using /dev/urandom, below.
+    have_getrandom = 0;
+  } else {
+    // Other errors are fatal.
     perror("getrandom");
     abort();
+  }
+
+  if (have_getrandom) {
+    *urandom_fd_bss_get() = kHaveGetrandom;
+    return;
   }
 #endif  // USE_NR_getrandom
 
@@ -214,6 +206,71 @@ static void init_once(void) {
     }
   }
 
+  int flags = fcntl(fd, F_GETFD);
+  if (flags == -1) {
+    // Native Client doesn't implement |fcntl|.
+    if (errno != ENOSYS) {
+      perror("failed to get flags from urandom fd");
+      abort();
+    }
+  } else {
+    flags |= FD_CLOEXEC;
+    if (fcntl(fd, F_SETFD, flags) == -1) {
+      perror("failed to set FD_CLOEXEC on urandom fd");
+      abort();
+    }
+  }
+  *urandom_fd_bss_get() = fd;
+}
+
+DEFINE_STATIC_ONCE(wait_for_entropy_once)
+
+static void wait_for_entropy(void) {
+  int fd = *urandom_fd_bss_get();
+  if (fd == kHaveGetrandom) {
+#if defined(USE_NR_getrandom)
+    if (*getrandom_ready_bss_get()) {
+      // The entropy pool was already initialized in |init_once|.
+      return;
+    }
+
+    uint8_t dummy;
+    ssize_t getrandom_ret =
+        boringssl_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
+    if (getrandom_ret == -1 && errno == EAGAIN) {
+      // Attempt to get the path of the current process to aid in debugging when
+      // something blocks.
+      const char *current_process = "<unknown>";
+#if defined(OPENSSL_HAS_GETAUXVAL)
+      const unsigned long getauxval_ret = getauxval(AT_EXECFN);
+      if (getauxval_ret != 0) {
+        current_process = (const char *)getauxval_ret;
+      }
+#endif
+
+      fprintf(
+          stderr,
+          "%s: getrandom indicates that the entropy pool has not been "
+          "initialized. Rather than continue with poor entropy, this process "
+          "will block until entropy is available.\n",
+          current_process);
+
+      getrandom_ret =
+          boringssl_getrandom(&dummy, sizeof(dummy), 0 /* no flags */);
+    }
+
+    if (getrandom_ret == 1) {
+      return;
+    }
+
+    perror("getrandom");
+    abort();
+#else
+    fprintf(stderr, "urandom fd corrupt.\n");
+    abort();
+#endif  // USE_NR_getrandom
+  }
+
 #if defined(BORINGSSL_FIPS)
   // In FIPS mode we ensure that the kernel has sufficient entropy before
   // continuing. This is automatically handled by getrandom, which requires
@@ -235,23 +292,7 @@ static void init_once(void) {
 
     usleep(250000);
   }
-#endif
-
-  int flags = fcntl(fd, F_GETFD);
-  if (flags == -1) {
-    // Native Client doesn't implement |fcntl|.
-    if (errno != ENOSYS) {
-      perror("failed to get flags from urandom fd");
-      abort();
-    }
-  } else {
-    flags |= FD_CLOEXEC;
-    if (fcntl(fd, F_SETFD, flags) == -1) {
-      perror("failed to set FD_CLOEXEC on urandom fd");
-      abort();
-    }
-  }
-  *urandom_fd_bss_get() = fd;
+#endif  // BORINGSSL_FIPS
 }
 
 void RAND_set_urandom_fd(int fd) {
@@ -289,14 +330,28 @@ void RAND_set_urandom_fd(int fd) {
 }
 
 // fill_with_entropy writes |len| bytes of entropy into |out|. It returns one
-// on success and zero on error.
-static char fill_with_entropy(uint8_t *out, size_t len) {
+// on success and zero on error. If |block| is one, this function will block
+// until the entropy pool is initialized. Otherwise, this function may fail,
+// setting |errno| to |EAGAIN| if the entropy pool has not yet been initialized.
+static int fill_with_entropy(uint8_t *out, size_t len, int block) {
+  if (len == 0) {
+    return 1;
+  }
+
+  CRYPTO_once(rand_once_bss_get(), init_once);
+  if (block) {
+    CRYPTO_once(wait_for_entropy_once_bss_get(), wait_for_entropy);
+  }
+
+  // Clear |errno| so it has defined value if |read| or |getrandom|
+  // "successfully" returns zero.
+  errno = 0;
   while (len > 0) {
     ssize_t r;
 
     if (*urandom_fd_bss_get() == kHaveGetrandom) {
 #if defined(USE_NR_getrandom)
-      r = boringssl_getrandom(out, len, 0 /* no flags */);
+      r = boringssl_getrandom(out, len, block ? 0 : GRND_NONBLOCK);
 #else  // USE_NR_getrandom
       fprintf(stderr, "urandom fd corrupt.\n");
       abort();
@@ -319,13 +374,7 @@ static char fill_with_entropy(uint8_t *out, size_t len) {
 
 // CRYPTO_sysrand puts |requested| random bytes into |out|.
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
-  if (requested == 0) {
-    return;
-  }
-
-  CRYPTO_once(rand_once_bss_get(), init_once);
-
-  if (!fill_with_entropy(out, requested)) {
+  if (!fill_with_entropy(out, requested, /*block=*/1)) {
     perror("entropy fill failed");
     abort();
   }
@@ -337,5 +386,17 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 #endif
 }
 
-#endif /* !OPENSSL_WINDOWS && !defined(OPENSSL_FUCHSIA) && \
-          !BORINGSSL_UNSAFE_DETERMINISTIC_MODE && !OPENSSL_TRUSTY */
+#if defined(BORINGSSL_FIPS)
+void CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
+  // Return all zeros if |fill_with_entropy| fails.
+  OPENSSL_memset(out, 0, requested);
+
+  if (!fill_with_entropy(out, requested, /*block=*/0) &&
+      errno != EAGAIN) {
+    perror("opportunistic entropy fill failed");
+    abort();
+  }
+}
+#endif  // BORINGSSL_FIPS
+
+#endif  // OPENSSL_URANDOM
