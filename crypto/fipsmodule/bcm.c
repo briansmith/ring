@@ -19,6 +19,10 @@
 #include <openssl/crypto.h>
 
 #include <stdlib.h>
+#if defined(BORINGSSL_FIPS)
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
@@ -99,6 +103,7 @@
 #if defined(BORINGSSL_FIPS)
 
 #if !defined(OPENSSL_ASAN)
+
 // These symbols are filled in by delocate.go (in static builds) or a linker
 // script (in shared builds). They point to the start and end of the module, and
 // the location of the integrity hash, respectively.
@@ -109,9 +114,31 @@ extern const uint8_t BORINGSSL_bcm_text_hash[];
 extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
+
+#if defined(OPENSSL_ANDROID)
+static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
+  // Android may be compiled in execute-only-memory mode, in which case the
+  // .text segment cannot be read. That conflicts with the need for a FIPS
+  // module to hash its own contents, therefore |mprotect| is used to make
+  // the module's .text readable for the duration of the hashing process. In
+  // other build configurations this is a no-op.
+  const uintptr_t page_size = getpagesize();
+  const uintptr_t page_start =
+      ((uintptr_t)BORINGSSL_bcm_text_start) & ~(page_size - 1);
+
+  if (mprotect((void *)page_start,
+               ((uintptr_t)BORINGSSL_bcm_text_end) - page_start,
+               permission) != 0) {
+    perror("BoringSSL: mprotect");
+  }
+}
+#else
+static void BORINGSSL_maybe_set_module_text_permissions(int permission) {}
+#endif  // !ANDROID
+
 #else
 static const uint8_t BORINGSSL_bcm_text_hash[SHA512_DIGEST_LENGTH] = {0};
-#endif
+#endif  // !ASAN
 
 static void __attribute__((constructor))
 BORINGSSL_bcm_power_on_self_test(void) {
@@ -138,6 +165,8 @@ BORINGSSL_bcm_power_on_self_test(void) {
     fprintf(stderr, "HMAC_Init_ex failed.\n");
     goto err;
   }
+
+  BORINGSSL_maybe_set_module_text_permissions(PROT_READ | PROT_EXEC);
 #if defined(BORINGSSL_SHARED_LIBRARY)
   uint64_t length = end - start;
   HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
@@ -149,6 +178,8 @@ BORINGSSL_bcm_power_on_self_test(void) {
 #else
   HMAC_Update(&hmac_ctx, start, end - start);
 #endif
+  BORINGSSL_maybe_set_module_text_permissions(PROT_EXEC);
+
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");
