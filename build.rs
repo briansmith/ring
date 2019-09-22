@@ -241,6 +241,7 @@ const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
     ("x86", None, "elf"),
     ("arm", Some("ios"), "ios32"),
     ("arm", None, "linux32"),
+    ("wasm32", None, "elf"),
 ];
 
 const WINDOWS: &str = "windows";
@@ -339,7 +340,7 @@ struct Target {
 }
 
 fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
-    if &target.arch == "wasm32" {
+    if &target.arch == "wasm32" && &target.os == "unknown" {
         return;
     }
 
@@ -489,6 +490,16 @@ fn build_library(
                 .and_then(|f| f.to_str())
                 .expect("No filename"),
         );
+
+        if &target.os == "wasi" {
+            let ranlib_cmd = std::env::var("RANLIB");
+            let ranlib_output =
+                Command::new(ranlib_cmd.as_ref().map(|r| r.as_str()).unwrap_or("ranlib"))
+                    .arg(lib_path)
+                    .output()
+                    .expect("ranlib");
+            assert!(ranlib_output.status.success());
+        }
     }
 
     // Link the library. This works even when the library doesn't need to be
@@ -549,7 +560,11 @@ fn cc(
     for f in cpp_flags(target) {
         let _ = c.flag(&f);
     }
-    if &target.os != "none" && &target.os != "redox" && &target.os != "windows" {
+    if &target.os != "none"
+        && &target.os != "redox"
+        && &target.os != "windows"
+        && &target.os != "wasi"
+    {
         let _ = c.flag("-fstack-protector");
     }
 
