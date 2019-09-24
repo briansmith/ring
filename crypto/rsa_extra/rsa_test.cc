@@ -461,7 +461,7 @@ TEST_P(RSAEncryptTest, TestKey) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(, RSAEncryptTest,
+INSTANTIATE_TEST_SUITE_P(All, RSAEncryptTest,
                          testing::ValuesIn(kRSAEncryptParams));
 
 TEST(RSATest, TestDecrypt) {

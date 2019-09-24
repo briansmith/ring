@@ -800,7 +800,7 @@ static std::string CurveToString(
   return OBJ_nid2sn(params.param.nid);
 }
 
-INSTANTIATE_TEST_SUITE_P(, ECCurveTest, testing::ValuesIn(AllCurves()),
+INSTANTIATE_TEST_SUITE_P(All, ECCurveTest, testing::ValuesIn(AllCurves()),
                          CurveToString);
 
 static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {

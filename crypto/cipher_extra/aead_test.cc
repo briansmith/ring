@@ -103,7 +103,7 @@ class PerAEADTest : public testing::TestWithParam<KnownAEAD> {
   const EVP_AEAD *aead() { return GetParam().func(); }
 };
 
-INSTANTIATE_TEST_SUITE_P(, PerAEADTest, testing::ValuesIn(kAEADs),
+INSTANTIATE_TEST_SUITE_P(All, PerAEADTest, testing::ValuesIn(kAEADs),
                          [](const testing::TestParamInfo<KnownAEAD> &params)
                              -> std::string { return params.param.name; });
 
