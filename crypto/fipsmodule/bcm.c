@@ -115,7 +115,7 @@ extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
 
-#if defined(OPENSSL_ANDROID)
+#if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
 static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
   // Android may be compiled in execute-only-memory mode, in which case the
   // .text segment cannot be read. That conflicts with the need for a FIPS
