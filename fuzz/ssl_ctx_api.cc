@@ -253,6 +253,7 @@ static bool GetVector(std::vector<T> *out, CBS *cbs) {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   constexpr size_t kMaxExpensiveAPIs = 100;
+  constexpr size_t kMaxAPIs = 10000;
   unsigned expensive_api_count = 0;
 
   const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
@@ -501,7 +502,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   CBS cbs;
   CBS_init(&cbs, buf, len);
 
-  for (;;) {
+  for (unsigned i = 0; i < kMaxAPIs; i++) {
     uint8_t index;
     if (!CBS_get_u8(&cbs, &index)) {
       break;
