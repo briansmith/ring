@@ -14,8 +14,7 @@
 
 #include <openssl/base.h>
 
-#if !defined(NDEBUG) && !defined(BORINGSSL_FIPS) && \
-    !defined(BORINGSSL_SHARED_LIBRARY)
+#if defined(BORINGSSL_DISPATCH_TEST) && !defined(BORINGSSL_SHARED_LIBRARY)
 
 #include <functional>
 #include <utility>
@@ -148,4 +147,4 @@ TEST_F(ImplDispatchTest, AES_single_block) {
 
 #endif  // X86 || X86_64
 
-#endif  // !NDEBUG && !FIPS && !SHARED_LIBRARY
+#endif  // DISPATCH_TEST && !SHARED_LIBRARY

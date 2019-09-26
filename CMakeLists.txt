@@ -59,9 +59,15 @@ if(BORINGSSL_ALLOW_CXX_RUNTIME)
   add_definitions(-DBORINGSSL_ALLOW_CXX_RUNTIME)
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-  # Windows release builds don't set NDEBUG in NASM flags automatically.
-  set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DNDEBUG")
+string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
+if(NOT FIPS)
+  if(CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithassert" OR
+     NOT CMAKE_BUILD_TYPE_LOWER MATCHES "rel")
+    add_definitions(-DBORINGSSL_DISPATCH_TEST)
+    # CMake automatically connects include_directories to the NASM
+    # command-line, but not add_definitions.
+    set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DBORINGSSL_DISPATCH_TEST")
+  endif()
 endif()
 
 # Add a RelWithAsserts build configuration. It is the same as Release, except it
