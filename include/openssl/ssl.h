@@ -3349,34 +3349,39 @@ OPENSSL_EXPORT void SSL_reset_early_data_reject(SSL *ssl);
 // connections which resumed a session.
 OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
 
+// An ssl_early_data_reason_t describes why 0-RTT was accepted or rejected.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   // The handshake has not progressed far enough for the 0-RTT status to be
   // known.
-  ssl_early_data_unknown,
+  ssl_early_data_unknown = 0,
   // 0-RTT is disabled for this connection.
-  ssl_early_data_disabled,
+  ssl_early_data_disabled = 1,
   // 0-RTT was accepted.
-  ssl_early_data_accepted,
+  ssl_early_data_accepted = 2,
   // The negotiated protocol version does not support 0-RTT.
-  ssl_early_data_protocol_version,
+  ssl_early_data_protocol_version = 3,
   // The peer declined to offer or accept 0-RTT for an unknown reason.
-  ssl_early_data_peer_declined,
+  ssl_early_data_peer_declined = 4,
   // The client did not offer a session.
-  ssl_early_data_no_session_offered,
+  ssl_early_data_no_session_offered = 5,
   // The server declined to resume the session.
-  ssl_early_data_session_not_resumed,
+  ssl_early_data_session_not_resumed = 6,
   // The session does not support 0-RTT.
-  ssl_early_data_unsupported_for_session,
+  ssl_early_data_unsupported_for_session = 7,
   // The server sent a HelloRetryRequest.
-  ssl_early_data_hello_retry_request,
+  ssl_early_data_hello_retry_request = 8,
   // The negotiated ALPN protocol did not match the session.
-  ssl_early_data_alpn_mismatch,
+  ssl_early_data_alpn_mismatch = 9,
   // The connection negotiated Channel ID, which is incompatible with 0-RTT.
-  ssl_early_data_channel_id,
+  ssl_early_data_channel_id = 10,
   // The connection negotiated token binding, which is incompatible with 0-RTT.
-  ssl_early_data_token_binding,
+  ssl_early_data_token_binding = 11,
   // The client and server ticket age were too far apart.
-  ssl_early_data_ticket_age_skew,
+  ssl_early_data_ticket_age_skew = 12,
+  // The value of the largest entry.
+  ssl_early_data_reason_max_value = ssl_early_data_ticket_age_skew,
 };
 
 // SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected
