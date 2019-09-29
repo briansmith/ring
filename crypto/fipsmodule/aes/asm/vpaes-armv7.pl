@@ -335,6 +335,7 @@ vpaes_encrypt:
 @
 .type	_vpaes_decrypt_consts,%object
 .align	4
+_vpaes_decrypt_consts:
 .Lk_dipt:	@ decryption input transform
 	.quad	0x0F505B040B545F00, 0x154A411E114E451A
 	.quad	0x86E383E660056500, 0x12771772F491F194
