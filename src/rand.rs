@@ -183,7 +183,8 @@ use self::sysrand_or_urandom::fill as fill_impl;
     target_os = "freebsd",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "solaris"
+    target_os = "solaris",
+    target_os = "redox"
 ))]
 use self::urandom::fill as fill_impl;
 
@@ -357,7 +358,8 @@ mod sysrand_or_urandom {
     target_os = "freebsd",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "solaris"
+    target_os = "solaris",
+    target_os = "redox"
 ))]
 mod urandom {
     use crate::error;
@@ -368,9 +370,14 @@ mod urandom {
 
         use lazy_static::lazy_static;
 
+        #[cfg(not(target_os = "redox"))]
+        const RAND_LOCATION: &str = "/dev/urandom";
+        #[cfg(target_os = "redox")]
+        const RAND_LOCATION: &str = "rand:";
+
         lazy_static! {
             static ref FILE: Result<std::fs::File, std::io::Error> =
-                std::fs::File::open("/dev/urandom");
+                std::fs::File::open(RAND_LOCATION);
         }
 
         match *FILE {
