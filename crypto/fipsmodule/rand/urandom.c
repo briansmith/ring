@@ -18,6 +18,8 @@
 
 #include <openssl/rand.h>
 
+#include "internal.h"
+
 #if defined(OPENSSL_URANDOM)
 
 #include <assert.h>
@@ -55,7 +57,6 @@
 #include <openssl/thread.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../delocate.h"
 #include "../../internal.h"
 
