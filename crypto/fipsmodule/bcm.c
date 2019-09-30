@@ -154,13 +154,19 @@ BORINGSSL_bcm_power_on_self_test(void) {
   const uint8_t *const rodata_end = BORINGSSL_bcm_rodata_end;
 #endif
 
-  static const uint8_t kHMACKey[64] = {0};
+#if defined(OPENSSL_ANDROID)
+  uint8_t result[SHA256_DIGEST_LENGTH];
+  const EVP_MD *const kHashFunction = EVP_sha256();
+#else
   uint8_t result[SHA512_DIGEST_LENGTH];
+  const EVP_MD *const kHashFunction = EVP_sha512();
+#endif
 
+  static const uint8_t kHMACKey[64] = {0};
   unsigned result_len;
   HMAC_CTX hmac_ctx;
   HMAC_CTX_init(&hmac_ctx);
-  if (!HMAC_Init_ex(&hmac_ctx, kHMACKey, sizeof(kHMACKey), EVP_sha512(),
+  if (!HMAC_Init_ex(&hmac_ctx, kHMACKey, sizeof(kHMACKey), kHashFunction,
                     NULL /* no ENGINE */)) {
     fprintf(stderr, "HMAC_Init_ex failed.\n");
     goto err;
