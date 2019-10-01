@@ -136,8 +136,6 @@ static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
 static void BORINGSSL_maybe_set_module_text_permissions(int permission) {}
 #endif  // !ANDROID
 
-#else
-static const uint8_t BORINGSSL_bcm_text_hash[SHA512_DIGEST_LENGTH] = {0};
 #endif  // !ASAN
 
 static void __attribute__((constructor))
@@ -198,11 +196,15 @@ BORINGSSL_bcm_power_on_self_test(void) {
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
     goto err;
   }
-#endif
 
-  if (!BORINGSSL_self_test(BORINGSSL_bcm_text_hash)) {
+  if (!boringssl_fips_self_test(BORINGSSL_bcm_text_hash, sizeof(result))) {
     goto err;
   }
+#else
+  if (!BORINGSSL_self_test()) {
+    goto err;
+  }
+#endif  // OPENSSL_ASAN
 
   return;
 

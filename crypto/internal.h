@@ -798,6 +798,15 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
 #endif
 
+// boringssl_fips_self_test runs the FIPS KAT-based self tests. It returns one
+// on success and zero on error. The argument is the integrity hash of the FIPS
+// module and may be used to check and write flag files to suppress duplicate
+// self-tests. If |module_hash_len| is zero then no flag file will be checked
+// nor written and tests will always be run.
+int boringssl_fips_self_test(const uint8_t *module_hash,
+                             size_t module_hash_len);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
