@@ -250,7 +250,7 @@ static const size_t kModuleDigestSize = SHA512_DIGEST_LENGTH;
 #endif
 
 int boringssl_fips_self_test(
-    const uint8_t module_hash[kModuleDigestSize], size_t module_hash_len) {
+    const uint8_t *module_hash, size_t module_hash_len) {
 #if defined(BORINGSSL_FIPS_SELF_TEST_FLAG_FILE)
   char flag_path[sizeof(kFlagPrefix) + 2*kModuleDigestSize];
   if (module_hash_len != 0) {
