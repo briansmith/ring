@@ -2022,4 +2022,8 @@ vst1.8 d4,[r0,: 64]
 add sp,sp,#0
 bx lr
 
+#if defined(__ELF__)
+.section	.note.GNU-stack,"",%progbits
+#endif
+
 #endif  /* __arm__ && !OPENSSL_NO_ASM && !__APPLE__ */

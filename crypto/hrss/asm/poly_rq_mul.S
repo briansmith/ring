@@ -8460,4 +8460,8 @@ ret
 .cfi_endproc
 .size poly_Rq_mul,.-poly_Rq_mul
 
+#if defined(__ELF__)
+.section	.note.GNU-stack,"",@progbits
+#endif
+
 #endif
