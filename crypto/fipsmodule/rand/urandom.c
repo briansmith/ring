@@ -36,6 +36,10 @@
 #endif
 #include <sys/syscall.h>
 
+#if defined(OPENSSL_ANDROID)
+#include <sys/system_properties.h>
+#endif
+
 #if !defined(OPENSSL_ANDROID)
 #define OPENSSL_HAS_GETAUXVAL
 #endif
@@ -120,6 +124,9 @@ static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
 #if !defined(GRND_NONBLOCK)
 #define GRND_NONBLOCK 1
 #endif
+#if !defined(GRND_RANDOM)
+#define GRND_RANDOM 2
+#endif
 
 #endif  // OPENSSL_LINUX
 
@@ -138,10 +145,36 @@ DEFINE_BSS_GET(int, urandom_fd_requested)
 DEFINE_BSS_GET(int, urandom_fd)
 
 #if defined(USE_NR_getrandom)
+
 // getrandom_ready is one if |getrandom| had been initialized by the time
 // |init_once| was called and zero otherwise.
 DEFINE_BSS_GET(int, getrandom_ready)
+
+// extra_getrandom_flags_for_seed contains a value that is ORed into the flags
+// for getrandom() when reading entropy for a seed.
+DEFINE_BSS_GET(int, extra_getrandom_flags_for_seed)
+
+// On Android, check a system property to decide whether to set
+// |extra_getrandom_flags_for_seed| otherwise they will default to zero.  If
+// ro.oem_boringcrypto_hwrand is true then |extra_getrandom_flags_for_seed| will
+// be set to GRND_RANDOM, causing all random data to be drawn from the same
+// source as /dev/random.
+static void maybe_set_extra_getrandom_flags(void) {
+#if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
+  char value[PROP_VALUE_MAX + 1];
+  int length = __system_property_get("ro.boringcrypto.hwrand", value);
+  if (length < 0 || length > PROP_VALUE_MAX) {
+    return;
+  }
+
+  value[length] = 0;
+  if (strcasecmp(value, "true") == 0) {
+    *extra_getrandom_flags_for_seed_bss_get() = GRND_RANDOM;
+  }
 #endif
+}
+
+#endif  // USE_NR_getrandom
 
 DEFINE_STATIC_ONCE(rand_once)
 
@@ -176,6 +209,7 @@ static void init_once(void) {
 
   if (have_getrandom) {
     *urandom_fd_bss_get() = kHaveGetrandom;
+    maybe_set_extra_getrandom_flags();
     return;
   }
 #endif  // USE_NR_getrandom
@@ -346,10 +380,22 @@ void RAND_set_urandom_fd(int fd) {
 // on success and zero on error. If |block| is one, this function will block
 // until the entropy pool is initialized. Otherwise, this function may fail,
 // setting |errno| to |EAGAIN| if the entropy pool has not yet been initialized.
-static int fill_with_entropy(uint8_t *out, size_t len, int block) {
+// If |seed| is one, this function will OR in the value of
+// |*extra_getrandom_flags_for_seed()| when using |getrandom|.
+static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   if (len == 0) {
     return 1;
   }
+
+#if defined(USE_NR_getrandom)
+  int getrandom_flags = 0;
+  if (block) {
+    getrandom_flags |= GRND_NONBLOCK;
+  }
+  if (seed) {
+    getrandom_flags |= *extra_getrandom_flags_for_seed_bss_get();
+  }
+#endif
 
   CRYPTO_once(rand_once_bss_get(), init_once);
   if (block) {
@@ -364,7 +410,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block) {
 
     if (*urandom_fd_bss_get() == kHaveGetrandom) {
 #if defined(USE_NR_getrandom)
-      r = boringssl_getrandom(out, len, block ? 0 : GRND_NONBLOCK);
+      r = boringssl_getrandom(out, len, getrandom_flags);
 #elif defined(OPENSSL_MACOS)
       if (__builtin_available(macos 10.12, *)) {
         // |getentropy| can only request 256 bytes at a time.
@@ -400,7 +446,15 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block) {
 
 // CRYPTO_sysrand puts |requested| random bytes into |out|.
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
-  if (!fill_with_entropy(out, requested, /*block=*/1)) {
+  if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/0)) {
+    perror("entropy fill failed");
+    abort();
+  }
+}
+
+#if defined(BORINGSSL_FIPS)
+void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
+  if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/1)) {
     perror("entropy fill failed");
     abort();
   }
@@ -412,12 +466,11 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
 #endif
 }
 
-#if defined(BORINGSSL_FIPS)
 void CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   // Return all zeros if |fill_with_entropy| fails.
   OPENSSL_memset(out, 0, requested);
 
-  if (!fill_with_entropy(out, requested, /*block=*/0) &&
+  if (!fill_with_entropy(out, requested, /*block=*/0, /*seed=*/0) &&
       errno != EAGAIN) {
     perror("opportunistic entropy fill failed");
     abort();

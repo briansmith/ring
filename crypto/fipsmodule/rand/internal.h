@@ -41,6 +41,11 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 void CRYPTO_sysrand(uint8_t *buf, size_t len);
 
 #if defined(OPENSSL_URANDOM) && defined(BORINGSSL_FIPS)
+// CRYPTO_sysrand_for_seed fills |len| bytes at |buf| with entropy from the
+// operating system. It may draw from the |GRND_RANDOM| pool on Android,
+// depending on the vendor's configuration.
+void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
+
 // CRYPTO_sysrand_if_available fills |len| bytes at |buf| with entropy from the
 // operating system, if the entropy pool is initialized. If it is uninitialized,
 // it will not block and will instead fill |buf| with all zeros or early
