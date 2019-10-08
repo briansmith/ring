@@ -2756,8 +2756,8 @@ static bool cert_compression_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   bool first = true;
   CBB contents, algs;
 
-  for (const auto *alg : hs->ssl->ctx->cert_compression_algs.get()) {
-    if (alg->decompress == nullptr) {
+  for (const auto &alg : hs->ssl->ctx->cert_compression_algs) {
+    if (alg.decompress == nullptr) {
       continue;
     }
 
@@ -2767,7 +2767,7 @@ static bool cert_compression_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       return false;
     }
     first = false;
-    if (!CBB_add_u16(&algs, alg->alg_id)) {
+    if (!CBB_add_u16(&algs, alg.alg_id)) {
       return false;
     }
   }
@@ -2794,8 +2794,8 @@ static bool cert_compression_parse_clienthello(SSL_HANDSHAKE *hs,
     return true;
   }
 
-  const size_t num_algs =
-      sk_CertCompressionAlg_num(hs->ssl->ctx->cert_compression_algs.get());
+  const SSL_CTX *ctx = hs->ssl->ctx.get();
+  const size_t num_algs = ctx->cert_compression_algs.size();
 
   CBS alg_ids;
   if (!CBS_get_u8_length_prefixed(contents, &alg_ids) ||
@@ -2823,9 +2823,8 @@ static bool cert_compression_parse_clienthello(SSL_HANDSHAKE *hs,
     given_alg_ids[given_alg_idx++] = alg_id;
 
     for (size_t i = 0; i < num_algs; i++) {
-      const auto *alg = sk_CertCompressionAlg_value(
-          hs->ssl->ctx->cert_compression_algs.get(), i);
-      if (alg->alg_id == alg_id && alg->compress != nullptr) {
+      const auto &alg = ctx->cert_compression_algs[i];
+      if (alg.alg_id == alg_id && alg.compress != nullptr) {
         if (i < best_index) {
           best_index = i;
         }
@@ -2845,10 +2844,7 @@ static bool cert_compression_parse_clienthello(SSL_HANDSHAKE *hs,
   if (best_index < num_algs &&
       ssl_protocol_version(hs->ssl) >= TLS1_3_VERSION) {
     hs->cert_compression_negotiated = true;
-    hs->cert_compression_alg_id =
-        sk_CertCompressionAlg_value(hs->ssl->ctx->cert_compression_algs.get(),
-                                    best_index)
-            ->alg_id;
+    hs->cert_compression_alg_id = ctx->cert_compression_algs[best_index].alg_id;
   }
 
   return true;

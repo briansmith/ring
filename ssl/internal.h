@@ -2246,8 +2246,6 @@ BSSL_NAMESPACE_END
 
 DEFINE_LHASH_OF(SSL_SESSION)
 
-DEFINE_NAMED_STACK_OF(CertCompressionAlg, bssl::CertCompressionAlg)
-
 BSSL_NAMESPACE_BEGIN
 
 // An ssl_shutdown_t describes the shutdown state of one end of the connection,
@@ -3232,7 +3230,7 @@ struct ssl_ctx_st {
   bssl::UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> srtp_profiles;
 
   // Defined compression algorithms for certificates.
-  bssl::UniquePtr<STACK_OF(CertCompressionAlg)> cert_compression_algs;
+  bssl::GrowableArray<bssl::CertCompressionAlg> cert_compression_algs;
 
   // Supported group values inherited by SSL structure
   bssl::Array<uint16_t> supported_group_list;

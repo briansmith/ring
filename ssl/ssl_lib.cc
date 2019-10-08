@@ -2251,36 +2251,17 @@ int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,
                                      ssl_cert_decompression_func_t decompress) {
   assert(compress != nullptr || decompress != nullptr);
 
-  for (const auto *alg : ctx->cert_compression_algs.get()) {
-    if (alg->alg_id == alg_id) {
+  for (const auto &alg : ctx->cert_compression_algs) {
+    if (alg.alg_id == alg_id) {
       return 0;
     }
   }
 
-  UniquePtr<CertCompressionAlg> alg = MakeUnique<CertCompressionAlg>();
-  if (alg == nullptr) {
-    return 0;
-  }
-
-  alg->alg_id = alg_id;
-  alg->compress = compress;
-  alg->decompress = decompress;
-
-  if (ctx->cert_compression_algs == nullptr) {
-    ctx->cert_compression_algs.reset(sk_CertCompressionAlg_new_null());
-    if (ctx->cert_compression_algs == nullptr) {
-      return 0;
-    }
-  }
-
-  if (!PushToStack(ctx->cert_compression_algs.get(), std::move(alg))) {
-    if (sk_CertCompressionAlg_num(ctx->cert_compression_algs.get()) == 0) {
-      ctx->cert_compression_algs.reset();
-    }
-    return 0;
-  }
-
-  return 1;
+  CertCompressionAlg alg;
+  alg.alg_id = alg_id;
+  alg.compress = compress;
+  alg.decompress = decompress;
+  return ctx->cert_compression_algs.Push(alg);
 }
 
 void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx, int enabled) {
