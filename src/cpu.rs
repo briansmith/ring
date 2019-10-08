@@ -178,7 +178,10 @@ pub(crate) mod arm {
         )]
         mask: u32,
 
-        #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+        #[cfg_attr(
+            not(all(target_os = "ios", any(target_arch = "arm", target_arch = "aarch64"))),
+            allow(dead_code)
+        )]
         ios: bool,
     }
 
