@@ -232,7 +232,7 @@ elseif(FIPS_SHARED)
 
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ld -r -T ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+    COMMAND ${CMAKE_LINKER} -r -T ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
     DEPENDS bcm_library fips_shared.lds
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )

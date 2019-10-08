@@ -12,9 +12,11 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <string>
 #include <vector>
 
 #include <assert.h>
+#include <errno.h>
 #include <string.h>
 #include <sys/uio.h>
 #include <unistd.h>
