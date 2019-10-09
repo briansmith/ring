@@ -59,6 +59,7 @@ fn x25519_public_from_private(
 ) -> Result<(), error::Unspecified> {
     let public_out = public_out.try_into()?;
 
+    #[cfg_attr(target_os = "ios", allow(unused_variables))]
     #[cfg(target_arch = "arm")]
     let cpu_features = private_key.cpu_features;
 
