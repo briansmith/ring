@@ -297,9 +297,9 @@ ___
 ___
     }
     print @out;
+    print "#endif\n" unless ($win32 || $netware);
     # See https://www.airs.com/blog/archives/518.
     print ".section\t.note.GNU-stack,\"\",\@progbits\n" if ($elf);
-    print "#endif\n" unless ($win32 || $netware);
 }
 
 sub ::asm_init

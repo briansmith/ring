@@ -2129,8 +2129,8 @@ mov sp,r12
 vpop {q4,q5,q6,q7}
 bx lr
 
+#endif  /* !OPENSSL_NO_ASM && __arm__ && !__APPLE__ */
+
 #if defined(__ELF__)
 .section	.note.GNU-stack,"",%progbits
 #endif
-
-#endif  /* !OPENSSL_NO_ASM && __arm__ && !__APPLE__ */
