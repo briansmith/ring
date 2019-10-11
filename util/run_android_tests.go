@@ -268,12 +268,39 @@ func main() {
 		}
 	}
 
+	var libraries []string
+	if _, err := os.Stat(filepath.Join(*buildDir, "crypto/libcrypto.so")); err == nil {
+		libraries = []string{
+			"libboringssl_gtest.so",
+			"crypto/libcrypto.so",
+			"decrepit/libdecrepit.so",
+			"ssl/libssl.so",
+		}
+	} else if !os.IsNotExist(err) {
+		fmt.Printf("Failed to stat crypto/libcrypto.so: %s\n", err)
+		os.Exit(1)
+	}
+
 	fmt.Printf("Copying test binaries...\n")
 	for _, binary := range binaries {
 		if err := copyFile(filepath.Join(tmpDir, "build", binary), filepath.Join(*buildDir, binary)); err != nil {
 			fmt.Printf("Failed to copy %s: %s\n", binary, err)
 			os.Exit(1)
 		}
+	}
+
+	var envPrefix string
+	if len(libraries) > 0 {
+		fmt.Printf("Copying libraries...\n")
+		for _, library := range libraries {
+			// Place all the libraries in a common directory so they
+			// can be passed to LD_LIBRARY_PATH once.
+			if err := copyFile(filepath.Join(tmpDir, "build", "lib", filepath.Base(library)), filepath.Join(*buildDir, library)); err != nil {
+				fmt.Printf("Failed to copy %s: %s\n", library, err)
+				os.Exit(1)
+			}
+		}
+		envPrefix = "env LD_LIBRARY_PATH=/data/local/tmp/boringssl-tmp/build/lib "
 	}
 
 	fmt.Printf("Copying data files...\n")
@@ -293,7 +320,7 @@ func main() {
 	var unitTestExit int
 	if enableUnitTests() {
 		fmt.Printf("Running unit tests...\n")
-		unitTestExit, err = adbShell(fmt.Sprintf("cd /data/local/tmp/boringssl-tmp && ./util/all_tests -json-output results.json %s", *allTestsArgs))
+		unitTestExit, err = adbShell(fmt.Sprintf("cd /data/local/tmp/boringssl-tmp && %s./util/all_tests -json-output results.json %s", envPrefix, *allTestsArgs))
 		if err != nil {
 			fmt.Printf("Failed to run unit tests: %s\n", err)
 			os.Exit(1)
@@ -303,7 +330,7 @@ func main() {
 	var sslTestExit int
 	if enableSSLTests() {
 		fmt.Printf("Running SSL tests...\n")
-		sslTestExit, err = adbShell(fmt.Sprintf("cd /data/local/tmp/boringssl-tmp/ssl/test/runner && ./runner -json-output ../../../results.json %s", *runnerArgs))
+		sslTestExit, err = adbShell(fmt.Sprintf("cd /data/local/tmp/boringssl-tmp/ssl/test/runner && %s./runner -json-output ../../../results.json %s", envPrefix, *runnerArgs))
 		if err != nil {
 			fmt.Printf("Failed to run SSL tests: %s\n", err)
 			os.Exit(1)
