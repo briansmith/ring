@@ -130,7 +130,7 @@ OPENSSL_EXPORT const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key);
 // EC_KEY_set_private_key sets the private key of |key| to |priv|. It returns
 // one on success and zero otherwise. |key| must already have had a group
 // configured (see |EC_KEY_set_group| and |EC_KEY_new_by_curve_name|).
-OPENSSL_EXPORT int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
+OPENSSL_EXPORT int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *priv);
 
 // EC_KEY_get0_public_key returns a pointer to the public key point inside
 // |key|.
@@ -194,6 +194,20 @@ OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
 // EC_KEY_generate_key_fips behaves like |EC_KEY_generate_key| but performs
 // additional checks for FIPS compliance.
 OPENSSL_EXPORT int EC_KEY_generate_key_fips(EC_KEY *key);
+
+// EC_KEY_derive_from_secret deterministically derives a private key for |group|
+// from an input secret using HKDF-SHA256. It returns a newly-allocated |EC_KEY|
+// on success or NULL on error. |secret| must not be used in any other
+// algorithm. If using a base secret for multiple operations, derive separate
+// values with a KDF such as HKDF first.
+//
+// Note this function implements an arbitrary derivation scheme, rather than any
+// particular standard one. New protocols are recommended to use X25519 and
+// Ed25519, which have standard byte import functions. See
+// |X25519_public_from_private| and |ED25519_keypair_from_seed|.
+OPENSSL_EXPORT EC_KEY *EC_KEY_derive_from_secret(const EC_GROUP *group,
+                                                 const uint8_t *secret,
+                                                 size_t secret_len);
 
 
 // Serialisation.

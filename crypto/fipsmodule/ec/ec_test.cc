@@ -912,3 +912,87 @@ TEST(ECTest, ScalarBaseMultVectors) {
 #endif
   });
 }
+
+static uint8_t FromHexChar(char c) {
+  if ('0' <= c && c <= '9') {
+    return c - '0';
+  }
+  if ('a' <= c && c <= 'f') {
+    return c - 'a' + 10;
+  }
+  abort();
+}
+
+static std::vector<uint8_t> HexToBytes(const char *str) {
+  std::vector<uint8_t> ret;
+  while (str[0] != '\0') {
+    ret.push_back((FromHexChar(str[0]) << 4) | FromHexChar(str[1]));
+    str += 2;
+  }
+  return ret;
+}
+
+TEST(ECTest, DeriveFromSecret) {
+  struct DeriveTest {
+    int curve;
+    std::vector<uint8_t> secret;
+    std::vector<uint8_t> expected_priv;
+    std::vector<uint8_t> expected_pub;
+  };
+  const DeriveTest kDeriveTests[] = {
+      {NID_X9_62_prime256v1, HexToBytes(""),
+       HexToBytes(
+           "b98a86a71efb51ebdac4759937b977e9b0c05224675bb2b6a58ba306e237f4b8"),
+       HexToBytes(
+           "04fbe6cab439918e00231a2ff073cdc25823998864a9eb36f809095a1a919ece875"
+           "a145803fbe89a6cde53936e3c6d9c253ed3d38f5f58cae455c27e95645ceda9")},
+      {NID_X9_62_prime256v1, HexToBytes("123456"),
+       HexToBytes(
+           "44a72bc62087b88e5ab7126766177ed0d8f1ed09ad066cd746527fc201105a7e"),
+       HexToBytes(
+           "04ec0555cd76e991fef7f5504343937d0f38696db3360a4854052cb0d84a377a5a0"
+           "ff64c352755c28692b4ae085c2b817db9a1eddbd22e9cf39c12751e0870791b")},
+      {NID_X9_62_prime256v1, HexToBytes("00000000000000000000000000000000"),
+       HexToBytes(
+           "7ca1e2c83e6a5f2c1b3e7d58180226f269930c4b9fbe2a275096079630b7c57d"),
+       HexToBytes(
+           "0442ef70c8fc0fbe383ed0a0da36f39f9a590f3feebc07863cc858c9a8ef0465731"
+           "0408c249bd4d61929c54b71ffe056e6b4fa1eb537039b43d1c175f0ceab0f89")},
+      {NID_X9_62_prime256v1,
+       HexToBytes(
+           "de9c9b35543aaa0fba039e34e8ca9695da3225c7161c9e3a8c70356cac28c780"),
+       HexToBytes(
+           "659f5abf3b62b9931c29d6ed0722efd2349fa56f54e708cf3272f620f1bc44d0"),
+       HexToBytes(
+           "046741f806b593bf3a3d4a9d76bdcb9b0d7874633cbea8f42c05e78561f7e8ec362"
+           "b9b6f1913ded796fbdafe7f210cea897ac22a4e580c06a60f2659fd09f1830f")},
+      {NID_secp384r1, HexToBytes("123456"),
+       HexToBytes("95cd90d548997de090c7622708eccb7edc1b1bd78d2422235ad97406dada"
+                  "076555309da200096f6e4b36c46002beee89"),
+       HexToBytes(
+           "04007b2d026aa7636fa912c3f970d62bb6c10fa81c8f3290ed90b2d701696d1c6b9"
+           "5af88ce13e962996a7ac37e16527cb5d69bd081b8641d07634cf84b438600ec9434"
+           "15ac6bd7a0236f7ab0ea31ece67df03fa11646ea2b75e73d1b5e45b75c18")},
+  };
+
+  for (const auto &test : kDeriveTests) {
+    SCOPED_TRACE(Bytes(test.secret));
+    bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.curve));
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<EC_KEY> key(EC_KEY_derive_from_secret(
+        group.get(), test.secret.data(), test.secret.size()));
+    ASSERT_TRUE(key);
+
+    std::vector<uint8_t> priv(BN_num_bytes(EC_GROUP_get0_order(group.get())));
+    ASSERT_TRUE(BN_bn2bin_padded(priv.data(), priv.size(),
+                                 EC_KEY_get0_private_key(key.get())));
+    EXPECT_EQ(Bytes(priv), Bytes(test.expected_priv));
+
+    uint8_t *pub = nullptr;
+    size_t pub_len =
+        EC_KEY_key2buf(key.get(), POINT_CONVERSION_UNCOMPRESSED, &pub, nullptr);
+    bssl::UniquePtr<uint8_t> free_pub(pub);
+    EXPECT_NE(pub_len, 0u);
+    EXPECT_EQ(Bytes(pub, pub_len), Bytes(test.expected_pub));
+  }
+}

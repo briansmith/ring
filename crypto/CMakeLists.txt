@@ -268,6 +268,7 @@ add_library(
   ecdh_extra/ecdh_extra.c
   ecdsa_extra/ecdsa_asn1.c
   ec_extra/ec_asn1.c
+  ec_extra/ec_derive.c
   err/err.c
   err_data.c
   engine/engine.c

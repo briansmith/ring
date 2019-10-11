@@ -846,8 +846,9 @@ OPENSSL_EXPORT int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a,
                                     const BN_MONT_CTX *mont, BN_CTX *ctx);
 
 // BN_from_montgomery sets |ret| equal to |a| * R^-1, i.e. translates values out
-// of the Montgomery domain. |a| is assumed to be in the range [0, n), where |n|
-// is the Montgomery modulus. It returns one on success or zero on error.
+// of the Montgomery domain. |a| is assumed to be in the range [0, n*R), where
+// |n| is the Montgomery modulus. Note n < R, so inputs in the range [0, n*n)
+// are valid. This function returns one on success or zero on error.
 OPENSSL_EXPORT int BN_from_montgomery(BIGNUM *ret, const BIGNUM *a,
                                       const BN_MONT_CTX *mont, BN_CTX *ctx);
 
