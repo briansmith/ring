@@ -26,6 +26,16 @@ if %ERRORLEVEL% NEQ 0 (
   exit 1
 )
 
+echo Downloading Nasm...
+powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nasm.us/pub/nasm/releasebuilds/2.14.02/win64/nasm-2.14.02-win64.zip', 'windows_build_tools\nasm.zip')"
+powershell -Command "Expand-Archive -Path windows_build_tools\nasm.zip -DestinationPath windows_build_tools"
+powershell -Command "mv windows_build_tools\nasm-2.14.02\nasm.exe windows_build_tools"
+
+if %ERRORLEVEL% NEQ 0 (
+  echo ...downloading Nasm failed.
+  exit 1
+)
+
 mkdir build
 set RUSTUP_URL=https://win.rustup.rs/%TARGET_ARCH%
 set RUSTUP_EXE=build\rustup-init-%TARGET_ARCH%.exe
