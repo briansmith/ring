@@ -709,11 +709,49 @@ err:
 int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
                       int iterations, BN_CTX *ctx, int do_trial_division,
                       BN_GENCB *cb) {
-  *out_is_probably_prime = 0;
+  // This function's secrecy and performance requirements come from RSA key
+  // generation. We generate RSA keys by selecting two large, secret primes with
+  // rejection sampling.
+  //
+  // We thus treat |w| as secret if turns out to be a large prime. However, if
+  // |w| is composite, we treat this and |w| itself as public. (Conversely, if
+  // |w| is prime, that it is prime is public. Only the value is secret.) This
+  // is fine for RSA key generation, but note it is important that we use
+  // rejection sampling, with each candidate prime chosen independently. This
+  // would not work for, e.g., an algorithm which looked for primes in
+  // consecutive integers. These assumptions allow us to discard composites
+  // quickly. We additionally treat |w| as public when it is a small prime to
+  // simplify trial decryption and some edge cases.
+  //
+  // One RSA key generation will call this function on exactly two primes and
+  // many more composites. The overall cost is a combination of several factors:
+  //
+  // 1. Checking if |w| is divisible by a small prime is much faster than
+  //    learning it is composite by Miller-Rabin (see below for details on that
+  //    cost). Trial division by p saves 1/p of Miller-Rabin calls, so this is
+  //    worthwhile until p exceeds the ratio of the two costs.
+  //
+  // 2. For a random (i.e. non-adversarial) candidate large prime and candidate
+  //    witness, the probability of false witness is very low. (This is why FIPS
+  //    186-4 only requires a few iterations.) Thus composites not discarded by
+  //    trial decryption, in practice, cost one Miller-Rabin iteration. Only the
+  //    two actual primes cost the full iteration count.
+  //
+  // 3. A Miller-Rabin iteration is a modular exponentiation plus |a| additional
+  //    modular squares, where |a| is the number of factors of two in |w-1|. |a|
+  //    is likely small (the distribution falls exponentially), but it is also
+  //    potentially secret, so we loop up to its log(w) upper bound when |w| is
+  //    prime. When |w| is composite, we break early, so only two calls pay this
+  //    cost. (Note that all calls pay the modular exponentiation which is,
+  //    itself, log(w) modular multiplications and squares.)
+  //
+  // 4. While there are only two prime calls, they multiplicatively pay the full
+  //    costs of (2) and (3).
+  //
+  // 5. After the primes are chosen, RSA keys derive some values from the
+  //    primes, but this cost is negligible in comparison.
 
-  // To support RSA key generation, this function should treat |w| as secret if
-  // it is a large prime. Composite numbers are discarded, so they may return
-  // early.
+  *out_is_probably_prime = 0;
 
   if (BN_cmp(w, BN_value_one()) <= 0) {
     return 1;
