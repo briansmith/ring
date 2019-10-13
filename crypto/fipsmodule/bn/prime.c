@@ -650,27 +650,24 @@ int bn_miller_rabin_iteration(const BN_MILLER_RABIN *miller_rabin,
     goto err;
   }
 
-  // loop_done is all ones if the loop has completed and all zeros otherwise.
-  crypto_word_t loop_done = 0;
   // is_possibly_prime is all ones if we have determined |b| is not a composite
   // witness for |w|. This is equivalent to going to step 4.7 in the original
-  // algorithm.
+  // algorithm. To avoid timing leaks, we run the algorithm to the end for prime
+  // inputs.
   crypto_word_t is_possibly_prime = 0;
 
   // Step 4.4. If z = 1 or z = w-1, b is not a composite witness and w is still
   // possibly prime.
-  loop_done = BN_equal_consttime(z, miller_rabin->one_mont) |
-              BN_equal_consttime(z, miller_rabin->w1_mont);
-  loop_done = 0 - loop_done;   // Make it all zeros or all ones.
-  is_possibly_prime = loop_done;  // Go to step 4.7 if |loop_done|.
+  is_possibly_prime = BN_equal_consttime(z, miller_rabin->one_mont) |
+                      BN_equal_consttime(z, miller_rabin->w1_mont);
+  is_possibly_prime = 0 - is_possibly_prime;  // Make it all zeros or all ones.
 
   // Step 4.5.
   //
   // To avoid leaking |a|, we run the loop to |w_bits| and mask off all
   // iterations once |j| = |a|.
   for (int j = 1; j < miller_rabin->w_bits; j++) {
-    loop_done |= constant_time_eq_int(j, miller_rabin->a);
-    if (loop_done & ~is_possibly_prime) {
+    if (constant_time_eq_int(j, miller_rabin->a) & ~is_possibly_prime) {
       // If the loop is done and we haven't seen z = 1 or z = w-1 yet, the
       // value is composite and we can break in variable time.
       break;
@@ -683,17 +680,14 @@ int bn_miller_rabin_iteration(const BN_MILLER_RABIN *miller_rabin,
 
     // Step 4.5.2. If z = w-1 and the loop is not done, this is not a composite
     // witness.
-    crypto_word_t z_is_w1_mont =
-        BN_equal_consttime(z, miller_rabin->w1_mont) & ~loop_done;
-    z_is_w1_mont = 0 - z_is_w1_mont;  // Make it all zeros or all ones.
-    loop_done |= z_is_w1_mont;
+    crypto_word_t z_is_w1_mont = BN_equal_consttime(z, miller_rabin->w1_mont);
+    z_is_w1_mont = 0 - z_is_w1_mont;    // Make it all zeros or all ones.
     is_possibly_prime |= z_is_w1_mont;  // Go to step 4.7 if |z_is_w1_mont|.
 
     // Step 4.5.3. If z = 1 and the loop is not done, the previous value of z
     // was not -1. There are no non-trivial square roots of 1 modulo a prime, so
     // w is composite and we may exit in variable time.
-    if (BN_equal_consttime(z, miller_rabin->one_mont) & ~loop_done) {
-      assert(!is_possibly_prime);
+    if (BN_equal_consttime(z, miller_rabin->one_mont) & ~is_possibly_prime) {
       break;
     }
   }
