@@ -443,6 +443,11 @@ loop:
       goto err;
     }
 
+    // Interleave |ret| and |t|'s primality tests to avoid paying the full
+    // iteration count on |ret| only to quickly discover |t| is composite.
+    //
+    // TODO(davidben): This doesn't quite work because an iteration count of 1
+    // still runs the blinding mechanism.
     for (i = 0; i < checks; i++) {
       j = BN_is_prime_fasttest_ex(ret, 1, ctx, 0, NULL);
       if (j == -1) {
@@ -458,7 +463,7 @@ loop:
         goto loop;
       }
 
-      if (!BN_GENCB_call(cb, i, c1 - 1)) {
+      if (!BN_GENCB_call(cb, BN_GENCB_PRIME_TEST, i)) {
         goto err;
       }
       // We have a safe prime test pass
@@ -669,7 +674,7 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
       *out_is_probably_prime = BN_is_word(w, prime);
       return 1;
     }
-    if (!BN_GENCB_call(cb, 1, -1)) {
+    if (!BN_GENCB_call(cb, BN_GENCB_PRIME_TEST, -1)) {
       return 0;
     }
   }
@@ -755,7 +760,7 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
     }
 
     // Step 4.7
-    if (!BN_GENCB_call(cb, 1, i)) {
+    if (!BN_GENCB_call(cb, BN_GENCB_PRIME_TEST, i - 1)) {
       goto err;
     }
   }
@@ -910,7 +915,7 @@ int BN_enhanced_miller_rabin_primality_test(
 
  loop:
     // Step 4.15
-    if (!BN_GENCB_call(cb, 1, i)) {
+    if (!BN_GENCB_call(cb, BN_GENCB_PRIME_TEST, i - 1)) {
       goto err;
     }
   }
