@@ -931,80 +931,11 @@ err:
 }
 
 static int probable_prime(BIGNUM *rnd, int bits) {
-  uint16_t mods[OPENSSL_ARRAY_SIZE(kPrimes)];
-  const size_t num_primes = num_trial_division_primes(rnd);
-  BN_ULONG delta;
-  BN_ULONG maxdelta = BN_MASK2 - kPrimes[num_primes - 1];
-  char is_single_word = bits <= BN_BITS2;
-
-again:
-  if (!BN_rand(rnd, bits, BN_RAND_TOP_TWO, BN_RAND_BOTTOM_ODD)) {
-    return 0;
-  }
-
-  // we now have a random number 'rnd' to test.
-  for (size_t i = 1; i < num_primes; i++) {
-    mods[i] = bn_mod_u16_consttime(rnd, kPrimes[i]);
-  }
-  // If bits is so small that it fits into a single word then we
-  // additionally don't want to exceed that many bits.
-  if (is_single_word) {
-    BN_ULONG size_limit;
-    if (bits == BN_BITS2) {
-      // Avoid undefined behavior.
-      size_limit = ~((BN_ULONG)0) - BN_get_word(rnd);
-    } else {
-      size_limit = (((BN_ULONG)1) << bits) - BN_get_word(rnd) - 1;
+  do {
+    if (!BN_rand(rnd, bits, BN_RAND_TOP_TWO, BN_RAND_BOTTOM_ODD)) {
+      return 0;
     }
-    if (size_limit < maxdelta) {
-      maxdelta = size_limit;
-    }
-  }
-  delta = 0;
-
-loop:
-  if (is_single_word) {
-    BN_ULONG rnd_word = BN_get_word(rnd);
-
-    // In the case that the candidate prime is a single word then
-    // we check that:
-    //   1) It's greater than kPrimes[i] because we shouldn't reject
-    //      3 as being a prime number because it's a multiple of
-    //      three.
-    //   2) That it's not a multiple of a known prime. We don't
-    //      check that rnd-1 is also coprime to all the known
-    //      primes because there aren't many small primes where
-    //      that's true.
-    for (size_t i = 1; i < num_primes && kPrimes[i] < rnd_word; i++) {
-      if ((mods[i] + delta) % kPrimes[i] == 0) {
-        delta += 2;
-        if (delta > maxdelta) {
-          goto again;
-        }
-        goto loop;
-      }
-    }
-  } else {
-    for (size_t i = 1; i < num_primes; i++) {
-      // check that rnd is not a prime and also
-      // that gcd(rnd-1,primes) == 1 (except for 2)
-      if (((mods[i] + delta) % kPrimes[i]) <= 1) {
-        delta += 2;
-        if (delta > maxdelta) {
-          goto again;
-        }
-        goto loop;
-      }
-    }
-  }
-
-  if (!BN_add_word(rnd, delta)) {
-    return 0;
-  }
-  if (BN_num_bits(rnd) != (unsigned)bits) {
-    goto again;
-  }
-
+  } while (bn_odd_number_is_obviously_composite(rnd));
   return 1;
 }
 
