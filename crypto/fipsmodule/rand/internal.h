@@ -40,7 +40,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 // system.
 void CRYPTO_sysrand(uint8_t *buf, size_t len);
 
-#if defined(OPENSSL_URANDOM) && defined(BORINGSSL_FIPS)
+#if defined(OPENSSL_URANDOM) || defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 // CRYPTO_sysrand_for_seed fills |len| bytes at |buf| with entropy from the
 // operating system. It may draw from the |GRND_RANDOM| pool on Android,
 // depending on the vendor's configuration.
