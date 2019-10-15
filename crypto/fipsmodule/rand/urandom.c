@@ -389,7 +389,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
 
 #if defined(USE_NR_getrandom)
   int getrandom_flags = 0;
-  if (block) {
+  if (!block) {
     getrandom_flags |= GRND_NONBLOCK;
   }
   if (seed) {
