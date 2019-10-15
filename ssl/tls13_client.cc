@@ -894,10 +894,10 @@ bool tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
   }
 
   // Parse out the extensions.
-  bool have_early_data_info = false;
-  CBS early_data_info;
+  bool have_early_data = false;
+  CBS early_data;
   const SSL_EXTENSION_TYPE ext_types[] = {
-      {TLSEXT_TYPE_early_data, &have_early_data_info, &early_data_info},
+      {TLSEXT_TYPE_early_data, &have_early_data, &early_data},
   };
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
@@ -908,9 +908,9 @@ bool tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
     return false;
   }
 
-  if (have_early_data_info) {
-    if (!CBS_get_u32(&early_data_info, &session->ticket_max_early_data) ||
-        CBS_len(&early_data_info) != 0) {
+  if (have_early_data) {
+    if (!CBS_get_u32(&early_data, &session->ticket_max_early_data) ||
+        CBS_len(&early_data) != 0) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return false;

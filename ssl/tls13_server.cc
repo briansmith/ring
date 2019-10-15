@@ -171,10 +171,10 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
     }
 
     if (ssl->enable_early_data) {
-      CBB early_data_info;
+      CBB early_data;
       if (!CBB_add_u16(&extensions, TLSEXT_TYPE_early_data) ||
-          !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||
-          !CBB_add_u32(&early_data_info, session->ticket_max_early_data) ||
+          !CBB_add_u16_length_prefixed(&extensions, &early_data) ||
+          !CBB_add_u32(&early_data, session->ticket_max_early_data) ||
           !CBB_flush(&extensions)) {
         return false;
       }
