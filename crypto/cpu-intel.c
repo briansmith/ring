@@ -123,9 +123,17 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 // and |out[1]|. See the comment in |OPENSSL_cpuid_setup| about this.
 static void handle_cpu_env(uint32_t *out, const char *in) {
   const int invert = in[0] == '~';
-  uint64_t v;
+  const int hex = in[invert] == '0' && in[invert+1] == 'x';
 
-  if (!sscanf(in + invert, "%" PRIu64, &v)) {
+  int sscanf_result;
+  uint64_t v;
+  if (hex) {
+    sscanf_result = sscanf(in + invert + 2, "%" PRIx64, &v);
+  } else {
+    sscanf_result = sscanf(in + invert, "%" PRIu64, &v);
+  }
+
+  if (!sscanf_result) {
     return;
   }
 
