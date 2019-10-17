@@ -55,6 +55,7 @@ func simulateARMCPUsDefault() bool {
 }
 
 type test struct {
+	env              []string
 	args             []string
 	shard, numShards int
 	// cpu, if not empty, contains a code to simulate. For SDE, run `sde64
@@ -148,7 +149,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := path.Join(*buildDir, test.args[0])
 	args := append([]string{}, test.args[1:]...)
 	if *simulateARMCPUs && test.cpu != "" {
-		args = append(args, "--cpu=" + test.cpu)
+		args = append(args, "--cpu="+test.cpu)
 	}
 	if *useSDE {
 		// SDE is neither compatible with the unwind tester nor automatically
@@ -166,6 +167,11 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		cmd = sdeOf(test.cpu, prog, args...)
 	} else {
 		cmd = exec.Command(prog, args...)
+	}
+	if test.env != nil {
+		cmd.Env = make([]string, len(os.Environ()))
+		copy(cmd.Env, os.Environ())
+		cmd.Env = append(cmd.Env, test.env...)
 	}
 	var outBuf bytes.Buffer
 	cmd.Stdout = &outBuf
@@ -258,7 +264,12 @@ func parseTestConfig(filename string) ([]test, error) {
 
 	var result []test
 	for _, args := range testArgs {
-		result = append(result, test{args: args})
+		var env []string
+		for len(args) > 0 && strings.HasPrefix(args[0], "$") {
+			env = append(env, args[0][1:])
+			args = args[1:]
+		}
+		result = append(result, test{args: args, env: env})
 	}
 	return result, nil
 }
@@ -272,11 +283,18 @@ func worker(tests <-chan test, results chan<- result, done *sync.WaitGroup) {
 }
 
 func (t test) shortName() string {
-	return t.args[0] + t.shardMsg() + t.cpuMsg()
+	return t.args[0] + t.shardMsg() + t.cpuMsg() + t.envMsg()
+}
+
+func SpaceIf(returnSpace bool) string {
+	if !returnSpace {
+		return ""
+	}
+	return " "
 }
 
 func (t test) longName() string {
-	return strings.Join(t.args, " ") + t.cpuMsg()
+	return strings.Join(t.env, " ") + SpaceIf(len(t.env) != 0) + strings.Join(t.args, " ") + t.cpuMsg()
 }
 
 func (t test) shardMsg() string {
@@ -293,6 +311,14 @@ func (t test) cpuMsg() string {
 	}
 
 	return fmt.Sprintf(" (for CPU %q)", t.cpu)
+}
+
+func (t test) envMsg() string {
+	if len(t.env) == 0 {
+		return ""
+	}
+
+	return " (custom environment)"
 }
 
 func (t test) getGTestShards() ([]test, error) {

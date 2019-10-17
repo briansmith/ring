@@ -21,7 +21,8 @@
 
 
 #if defined(OPENSSL_X86_64) && defined(OPENSSL_LINUX) && \
-    !defined(BORINGSSL_SHARED_LIBRARY)
+    !defined(BORINGSSL_SHARED_LIBRARY) &&                \
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 
 #include <linux/random.h>
 #include <sys/ptrace.h>
@@ -466,6 +467,9 @@ int main(int argc, char **argv) {
 
 #else
 
-int main(int argc, char **argv) { return 0; }
+int main(int argc, char **argv) {
+  printf("PASS\n");
+  return 0;
+}
 
-#endif  // X86_64 && LINUX && !SHARED_LIBRARY
+#endif  // X86_64 && LINUX && !SHARED_LIBRARY && !UNSAFE_DETERMINISTIC_MODE
