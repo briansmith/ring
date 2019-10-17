@@ -117,6 +117,37 @@ impl<N: NonceSequence> OpeningKey<N> {
         self.open_within(aad, in_out, 0..)
     }
 
+    /// Authenticates and decrypts (“opens”) data in place.
+    ///
+    /// `received_tag` should contain the authentication tag.
+    ///
+    /// `aad` is the additional authenticated data (AAD), if any.
+    ///
+    /// On input, `in_out` must contain the ciphertext. When
+    /// `open_in_place_separate_tag()` returns `Ok(plaintext)`, the input
+    /// ciphertext has been overwritten by the plaintext; `plaintext` will refer
+    /// to the plaintext without the tag.
+    ///
+    /// When `open_in_place_separate_tag()` returns `Err(..)`, `in_out` may have
+    /// been overwritten in an unspecified way.
+    pub fn open_in_place_separate_tag<'in_out, A>(
+        &mut self,
+        aad: Aad<A>,
+        in_out: &'in_out mut [u8],
+        received_tag: &[u8],
+    ) -> Result<&'in_out mut [u8], error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
+        open_in_place_separate_tag(
+            &self.key,
+            self.nonce_sequence.advance()?,
+            aad,
+            in_out,
+            received_tag,
+        )
+    }
+
     /// Authenticates and decrypts (“opens”) data in place, with a shift.
     ///
     /// `aad` is the additional authenticated data (AAD), if any.
@@ -233,6 +264,49 @@ fn open_within_<'in_out, A: AsRef<[u8]>>(
         Aad::from(aad.as_ref()),
         in_out,
         ciphertext_and_tag,
+    )
+}
+
+#[inline]
+fn open_in_place_separate_tag<'in_out, A: AsRef<[u8]>>(
+    key: &UnboundKey,
+    nonce: Nonce,
+    Aad(aad): Aad<A>,
+    in_out: &'in_out mut [u8],
+    received_tag: &[u8],
+) -> Result<&'in_out mut [u8], error::Unspecified> {
+    fn open_within<'in_out>(
+        key: &UnboundKey,
+        nonce: Nonce,
+        aad: Aad<&[u8]>,
+        in_out: &'in_out mut [u8],
+        received_tag: &[u8; TAG_LEN],
+    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+        let ciphertext_len = in_out.len();
+        check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
+        let Tag(calculated_tag) =
+            (key.algorithm.open)(&key.inner, nonce, aad, 0, in_out, key.cpu_features);
+        if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
+            // Zero out the plaintext so that it isn't accidentally leaked or used
+            // after verification fails. It would be safest if we could check the
+            // tag before decrypting, but some `open` implementations interleave
+            // authentication with decryption for performance.
+            for b in in_out {
+                *b = 0;
+            }
+            return Err(error::Unspecified);
+        }
+        // Ciphertext is now decrypted to plaintext.
+        Ok(in_out)
+    }
+
+    use core::convert::TryInto;
+    open_within(
+        key,
+        nonce,
+        Aad::from(aad.as_ref()),
+        in_out,
+        received_tag.try_into()?,
     )
 }
 
@@ -473,6 +547,24 @@ impl LessSafeKey {
         A: AsRef<[u8]>,
     {
         self.open_within(nonce, aad, in_out, 0..)
+    }
+
+    /// Like [`OpeningKey::open_in_place_separate_tag()`], except it accepts an
+    /// arbitrary nonce.
+    ///
+    /// `nonce` must be unique for every use of the key to open data.
+    #[inline]
+    pub fn open_in_place_separate_tag<'in_out, A>(
+        &self,
+        nonce: Nonce,
+        aad: Aad<A>,
+        in_out: &'in_out mut [u8],
+        received_tag: &[u8],
+    ) -> Result<&'in_out mut [u8], error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
+        open_in_place_separate_tag(&self.key, nonce, aad, in_out, received_tag)
     }
 
     /// Like [`OpeningKey::open_within()`], except it accepts an arbitrary nonce.
