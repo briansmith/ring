@@ -150,6 +150,76 @@ impl EphemeralPrivateKey {
     }
 }
 
+/// A reusable private key for use (only) with `agree_reusable`.
+pub struct ReusablePrivateKey {
+    private_key: ec::Seed,
+    algorithm: &'static Algorithm,
+}
+
+derive_debug_via_field!(
+    ReusablePrivateKey,
+    stringify!(ReusablePrivateKey),
+    algorithm
+);
+
+impl ReusablePrivateKey {
+    /// Generate a new reusable private key for the given algorithm.
+    pub fn generate(
+        alg: &'static Algorithm,
+        rng: &dyn rand::SecureRandom,
+    ) -> Result<Self, error::Unspecified> {
+        let cpu_features = cpu::features();
+
+        // NSA Guide Step 1.
+        //
+        // This only handles the key generation part of step 1. The rest of
+        // step one is done by `compute_public_key()`.
+        let private_key = ec::Seed::generate(&alg.curve, rng, cpu_features)?;
+        Ok(Self {
+            private_key,
+            algorithm: alg,
+        })
+    }
+
+    /// Load a reusable private key from some bytes.
+    pub fn from_bytes(alg: &'static Algorithm, bytes: &[u8]) -> Result<Self, error::Unspecified> {
+        let cpu_features = cpu::features();
+
+        let private_key = ec::Seed::from_bytes(&alg.curve, bytes.into(), cpu_features)?;
+        Ok(Self {
+            private_key,
+            algorithm: alg,
+        })
+    }
+
+    /// Computes the public key from the private key.
+    #[inline(always)]
+    pub fn compute_public_key(&self) -> Result<PublicKey, error::Unspecified> {
+        // NSA Guide Step 1.
+        //
+        // Obviously, this only handles the part of Step 1 between the private
+        // key generation and the sending of the public key to the peer. `out`
+        // is what should be sent to the peer.
+        self.private_key
+            .compute_public_key()
+            .map(|public_key| PublicKey {
+                algorithm: self.algorithm,
+                bytes: public_key,
+            })
+    }
+
+    /// The algorithm for the private key.
+    #[inline]
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
+    }
+
+    /// Get raw bytes of this private key.
+    pub fn bytes(&self) -> &[u8] {
+        self.private_key.bytes_less_safe()
+    }
+}
+
 /// A public key for key agreement.
 #[derive(Clone)]
 pub struct PublicKey {
@@ -266,11 +336,18 @@ where
         algorithm: peer_public_key.algorithm,
         bytes: peer_public_key.bytes.as_ref(),
     };
-    agree_ephemeral_(my_private_key, peer_public_key, error_value, kdf)
+    agree_(
+        &my_private_key.algorithm,
+        &my_private_key.private_key,
+        peer_public_key,
+        error_value,
+        kdf,
+    )
 }
 
-fn agree_ephemeral_<F, R, E>(
-    my_private_key: EphemeralPrivateKey,
+fn agree_<F, R, E>(
+    my_private_key_alg: &Algorithm,
+    my_private_key: &ec::Seed,
     peer_public_key: UnparsedPublicKey<&[u8]>,
     error_value: E,
     kdf: F,
@@ -283,11 +360,11 @@ where
     // The domain parameters are hard-coded. This check verifies that the
     // peer's public key's domain parameters match the domain parameters of
     // this private key.
-    if peer_public_key.algorithm != my_private_key.algorithm {
+    if peer_public_key.algorithm != my_private_key_alg {
         return Err(error_value);
     }
 
-    let alg = &my_private_key.algorithm;
+    let alg = my_private_key_alg;
 
     // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
     // to the caller.
@@ -308,7 +385,7 @@ where
     // that doesn't meet the NSA requirement to "zeroize."
     (alg.ecdh)(
         shared_key,
-        &my_private_key.private_key,
+        my_private_key,
         untrusted::Input::from(peer_public_key.bytes),
     )
     .map_err(|_| error_value)?;
@@ -318,4 +395,46 @@ where
     // Again, we have a pretty liberal interpretation of the NIST's spec's
     // "Destroy" that doesn't meet the NSA requirement to "zeroize."
     kdf(shared_key)
+}
+
+/// Performs a key agreement with a reusable private key and the given public
+/// key.
+///
+/// `my_private_key` is the reusable private key to use.
+///
+/// `peer_public_key` is the peer's public key. `agree_reusable` will return
+/// `Err(error_value)` if it does not match `my_private_key's` algorithm/curve.
+/// `agree_reusable` verifies that it is encoded in the standard form for the
+/// algorithm and that the key is *valid*; see the algorithm's documentation for
+/// details on how keys are to be encoded and what constitutes a valid key for
+/// that algorithm.
+///
+/// `error_value` is the value to return if an error occurs before `kdf` is
+/// called, e.g. when decoding of the peer's public key fails or when the public
+/// key is otherwise invalid.
+///
+/// After the key agreement is done, `agree_reusable` calls `kdf` with the raw key
+/// material from the key agreement operation and then returns what `kdf`
+/// returns.
+#[inline]
+pub fn agree_reusable<B: AsRef<[u8]>, F, R, E>(
+    my_private_key: &ReusablePrivateKey,
+    peer_public_key: &UnparsedPublicKey<B>,
+    error_value: E,
+    kdf: F,
+) -> Result<R, E>
+where
+    F: FnOnce(&[u8]) -> Result<R, E>,
+{
+    let peer_public_key = UnparsedPublicKey {
+        algorithm: peer_public_key.algorithm,
+        bytes: peer_public_key.bytes.as_ref(),
+    };
+    agree_(
+        &my_private_key.algorithm,
+        &my_private_key.private_key,
+        peer_public_key,
+        error_value,
+        kdf,
+    )
 }

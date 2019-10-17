@@ -140,6 +140,64 @@ fn agreement_agree_ephemeral() {
 }
 
 #[test]
+fn agreement_agree_reusable() {
+    let rng = rand::SystemRandom::new();
+
+    test::run(test_file!("agreement_tests.txt"), |section, test_case| {
+        assert_eq!(section, "");
+
+        let curve_name = test_case.consume_string("Curve");
+        let alg = alg_from_curve_name(&curve_name);
+        let peer_public = agreement::UnparsedPublicKey::new(alg, test_case.consume_bytes("PeerQ"));
+
+        match test_case.consume_optional_string("Error") {
+            None => {
+                let my_private = test_case.consume_bytes("D");
+                let my_private = agreement::ReusablePrivateKey::from_bytes(alg, &my_private)?;
+                let my_public = test_case.consume_bytes("MyQ");
+                let output = test_case.consume_bytes("Output");
+
+                assert_eq!(my_private.algorithm(), alg);
+
+                let computed_public = my_private.compute_public_key().unwrap();
+                assert_eq!(computed_public.as_ref(), &my_public[..]);
+
+                assert_eq!(my_private.algorithm(), alg);
+
+                assert!(
+                    agreement::agree_reusable(&my_private, &peer_public, (), |key_material| {
+                        assert_eq!(key_material, &output[..]);
+                        Ok(())
+                    })
+                    .is_ok()
+                );
+            }
+
+            Some(_) => {
+                // In the no-heap mode, some algorithms aren't supported so
+                // we have to skip those algorithms' test cases.
+                let dummy_private_key = agreement::ReusablePrivateKey::generate(alg, &rng)?;
+                fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
+                    panic!(
+                        "The KDF was called during ECDH when the peer's \
+                         public key is invalid."
+                    );
+                }
+                assert!(agreement::agree_reusable(
+                    &dummy_private_key,
+                    &peer_public,
+                    (),
+                    kdf_not_called
+                )
+                .is_err());
+            }
+        }
+
+        return Ok(());
+    });
+}
+
+#[test]
 fn test_agreement_ecdh_x25519_rfc_iterated() {
     let mut k = h("0900000000000000000000000000000000000000000000000000000000000000");
     let mut u = k.clone();
@@ -196,11 +254,10 @@ fn x25519(private_key: &[u8], public_key: &[u8]) -> Vec<u8> {
 }
 
 fn x25519_(private_key: &[u8], public_key: &[u8]) -> Result<Vec<u8>, error::Unspecified> {
-    let rng = test::rand::FixedSliceRandom { bytes: private_key };
-    let private_key = agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
+    let private_key = agreement::ReusablePrivateKey::from_bytes(&agreement::X25519, private_key)?;
     let public_key = agreement::UnparsedPublicKey::new(&agreement::X25519, public_key);
-    agreement::agree_ephemeral(
-        private_key,
+    agreement::agree_reusable(
+        &private_key,
         &public_key,
         error::Unspecified,
         |agreed_value| Ok(Vec::from(agreed_value)),
