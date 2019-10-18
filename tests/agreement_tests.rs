@@ -51,6 +51,16 @@ fn agreement_traits<'a>() {
         "EphemeralPrivateKey { algorithm: Algorithm { curve: P256 } }"
     );
 
+    let private_key = agreement::ReusablePrivateKey::generate(&agreement::ECDH_P256, &rng).unwrap();
+
+    test::compile_time_assert_send::<agreement::ReusablePrivateKey>();
+    test::compile_time_assert_sync::<agreement::ReusablePrivateKey>();
+
+    assert_eq!(
+        format!("{:?}", &private_key),
+        "ReusablePrivateKey { algorithm: Algorithm { curve: P256 } }"
+    );
+
     let public_key = private_key.compute_public_key().unwrap();
 
     test::compile_time_assert_clone::<agreement::PublicKey>();
@@ -195,6 +205,30 @@ fn agreement_agree_reusable() {
 
         return Ok(());
     });
+}
+
+#[test]
+fn test_reusable_private_key_to_and_from_bytes() {
+    use ring::rand::SecureRandom;
+    let mut rng = rand::SystemRandom::new();
+
+    let k = agreement::ReusablePrivateKey::generate(&agreement::X25519, &mut rng).unwrap();
+    let bytes = k.bytes();
+    let k1 = agreement::ReusablePrivateKey::from_bytes(&agreement::X25519, bytes).unwrap();
+    assert_eq!(bytes, k1.bytes());
+
+    let key_len = bytes.len();
+
+    let mut bytes = vec![0u8; 2 * key_len];
+    rng.fill(&mut bytes).unwrap();
+
+    for i in 0..=bytes.len() {
+        if i != key_len {
+            assert!(
+                agreement::ReusablePrivateKey::from_bytes(&agreement::X25519, &bytes[..i]).is_err()
+            );
+        }
+    }
 }
 
 #[test]
