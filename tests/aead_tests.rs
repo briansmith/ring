@@ -48,6 +48,7 @@ fn aead_aes_gcm_128() {
         open_with_less_safe_key,
         test_file!("aead_aes_128_gcm_tests.txt"),
     );
+    test_aead_separate_tag(&aead::AES_128_GCM, test_file!("aead_aes_128_gcm_tests.txt"));
 }
 
 #[test]
@@ -64,6 +65,7 @@ fn aead_aes_gcm_256() {
         open_with_less_safe_key,
         test_file!("aead_aes_256_gcm_tests.txt"),
     );
+    test_aead_separate_tag(&aead::AES_256_GCM, test_file!("aead_aes_256_gcm_tests.txt"));
 }
 
 #[test]
@@ -80,6 +82,89 @@ fn aead_chacha20_poly1305() {
         open_with_less_safe_key,
         test_file!("aead_chacha20_poly1305_tests.txt"),
     );
+    test_aead_separate_tag(
+        &aead::CHACHA20_POLY1305,
+        test_file!("aead_chacha20_poly1305_tests.txt"),
+    );
+}
+
+fn test_aead_separate_tag(aead_alg: &'static aead::Algorithm, test_file: test::File) {
+    test::run(test_file, |section, test_case| {
+        assert_eq!(section, "");
+        let key_bytes = test_case.consume_bytes("KEY");
+        let nonce_bytes = test_case.consume_bytes("NONCE");
+        let plaintext = test_case.consume_bytes("IN");
+        let aad = test_case.consume_bytes("AD");
+        let ct = test_case.consume_bytes("CT");
+        let tag = test_case.consume_bytes("TAG");
+        let error = test_case.consume_optional_string("FAILS");
+
+        match &error {
+            Some(err) if err == "WRONG_NONCE_LENGTH" => {
+                assert!(aead::Nonce::try_assume_unique_for_key(&nonce_bytes).is_err());
+                return Ok(());
+            }
+            None => (),
+            Some(error) => {
+                unreachable!("Unexpected error test case: {}", error);
+            }
+        };
+
+        // With LessSafeKey.
+        let less_safe_key = make_less_safe_key(aead_alg, &key_bytes[..]);
+
+        let mut in_out = plaintext.clone();
+        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
+        let s_result_tag = less_safe_key
+            .seal_in_place_separate_tag(nonce, aead::Aad::from(&aad[..]), &mut in_out[..])
+            .unwrap();
+
+        assert_eq!(s_result_tag.as_ref(), &tag[..]);
+        assert_eq!(in_out, ct);
+
+        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
+        let _ = less_safe_key
+            .open_in_place_separate_tag(nonce, aead::Aad::from(&aad[..]), &mut in_out[..], &tag[..])
+            .unwrap();
+
+        assert_eq!(in_out, plaintext);
+
+        // Negative test.
+        let mut wrong_tag = tag.clone();
+        wrong_tag[2] = wrong_tag[2].wrapping_add(1);
+        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
+        let mut in_out = ct.clone();
+        assert!(less_safe_key
+            .open_in_place_separate_tag(
+                nonce,
+                aead::Aad::from(&aad[..]),
+                &mut in_out,
+                &wrong_tag[..]
+            )
+            .is_err());
+
+        // With SealingKey and OpeningKey.
+        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
+        let mut sealing_key: aead::SealingKey<_> = make_key(aead_alg, &key_bytes[..], nonce);
+
+        let mut in_out = plaintext.clone();
+        let s_result_tag = sealing_key
+            .seal_in_place_separate_tag(aead::Aad::from(&aad[..]), &mut in_out[..])
+            .unwrap();
+
+        assert_eq!(s_result_tag.as_ref(), &tag[..]);
+        assert_eq!(in_out, ct);
+
+        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
+        let mut opening_key: aead::OpeningKey<_> = make_key(aead_alg, &key_bytes[..], nonce);
+        let _ = opening_key
+            .open_in_place_separate_tag(aead::Aad::from(&aad[..]), &mut in_out[..], &tag[..])
+            .unwrap();
+
+        assert_eq!(in_out, plaintext);
+
+        Ok(())
+    });
 }
 
 fn test_aead<Seal, Open>(
