@@ -660,8 +660,7 @@ class CipherScorer {
  public:
   CipherScorer(uint16_t group_id)
       : aes_is_fine_(EVP_has_aes_hardware()),
-        security_128_is_fine_(group_id != SSL_CURVE_CECPQ2 &&
-                              group_id != SSL_CURVE_CECPQ2b) {}
+        security_128_is_fine_(group_id != SSL_CURVE_CECPQ2) {}
 
   typedef std::tuple<bool, bool, bool> Score;
 

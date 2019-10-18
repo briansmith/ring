@@ -210,7 +210,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 	if config.Bugs.FailIfCECPQ2Offered {
 		for _, offeredCurve := range hs.clientHello.supportedCurves {
 			if isPqGroup(offeredCurve) {
-				return errors.New("tls: CECPQ2 or CECPQ2b was offered")
+				return errors.New("tls: CECPQ2 was offered")
 			}
 		}
 	}
@@ -1227,7 +1227,7 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 Curves:
 	for _, curve := range hs.clientHello.supportedCurves {
 		if isPqGroup(curve) && c.vers < VersionTLS13 {
-			// CECPQ2 and CECPQ2b is TLS 1.3-only.
+			// CECPQ2 is TLS 1.3-only.
 			continue
 		}
 

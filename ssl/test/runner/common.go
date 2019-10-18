@@ -151,7 +151,6 @@ const (
 	CurveP521    CurveID = 25
 	CurveX25519  CurveID = 29
 	CurveCECPQ2  CurveID = 16696
-	CurveCECPQ2b CurveID = 65074
 )
 
 // TLS Elliptic Curve Point Formats
@@ -1732,7 +1731,7 @@ func (c *Config) maxVersion(isDTLS bool) uint16 {
 	return ret
 }
 
-var defaultCurvePreferences = []CurveID{CurveCECPQ2b, CurveCECPQ2, CurveX25519, CurveP256, CurveP384, CurveP521}
+var defaultCurvePreferences = []CurveID{CurveCECPQ2, CurveX25519, CurveP256, CurveP384, CurveP521}
 
 func (c *Config) curvePreferences() []CurveID {
 	if c == nil || len(c.CurvePreferences) == 0 {

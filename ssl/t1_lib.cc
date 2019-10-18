@@ -200,7 +200,7 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
 }
 
 static bool is_post_quantum_group(uint16_t id) {
-  return id == SSL_CURVE_CECPQ2 || id == SSL_CURVE_CECPQ2b;
+  return id == SSL_CURVE_CECPQ2;
 }
 
 bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
