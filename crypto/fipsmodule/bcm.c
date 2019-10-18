@@ -115,6 +115,26 @@ extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
 #endif
 
+// assert_within is used to sanity check that certain symbols are within the
+// bounds of the integrity check. It checks that start <= symbol < end and
+// aborts otherwise.
+static void assert_within(const void *start, const void *symbol,
+                          const void *end) {
+  const uintptr_t start_val = (uintptr_t) start;
+  const uintptr_t symbol_val = (uintptr_t) symbol;
+  const uintptr_t end_val = (uintptr_t) end;
+
+  if (start_val <= symbol_val && symbol_val < end_val) {
+    return;
+  }
+
+  fprintf(
+      stderr,
+      "FIPS module doesn't span expected symbol. Expected %p <= %p < %p\n",
+      start, symbol, end);
+  BORINGSSL_FIPS_abort();
+}
+
 #if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
 static void BORINGSSL_maybe_set_module_text_permissions(int permission) {
   // Android may be compiled in execute-only-memory mode, in which case the
@@ -147,10 +167,28 @@ BORINGSSL_bcm_power_on_self_test(void) {
   // .text section, which triggers the global-buffer overflow detection.
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
+
+  assert_within(start, AES_encrypt, end);
+  assert_within(start, RSA_sign, end);
+  assert_within(start, RAND_bytes, end);
+  assert_within(start, EC_GROUP_cmp, end);
+  assert_within(start, SHA256_Update, end);
+  assert_within(start, ECDSA_do_verify, end);
+  assert_within(start, EVP_AEAD_CTX_seal, end);
+
 #if defined(BORINGSSL_SHARED_LIBRARY)
   const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;
   const uint8_t *const rodata_end = BORINGSSL_bcm_rodata_end;
+#else
+  // In the static build, read-only data is placed within the .text segment.
+  const uint8_t *const rodata_start = BORINGSSL_bcm_text_start;
+  const uint8_t *const rodata_end = BORINGSSL_bcm_text_end;
 #endif
+
+  assert_within(rodata_start, kPrimes, rodata_end);
+  assert_within(rodata_start, des_skb, rodata_end);
+  assert_within(rodata_start, kP256Params, rodata_end);
+  assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
 #if defined(OPENSSL_ANDROID)
   uint8_t result[SHA256_DIGEST_LENGTH];
