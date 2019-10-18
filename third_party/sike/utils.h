@@ -9,7 +9,7 @@
 
 #include <openssl/base.h>
 
-#include "../crypto/internal.h"
+#include "../../crypto/internal.h"
 #include "sike.h"
 
 // Conversion macro from number of bits to number of bytes
