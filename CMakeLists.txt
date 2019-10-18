@@ -387,6 +387,14 @@ if(FIPS)
       set(FIPS_DELOCATE "1")
     endif()
   endif()
+  if(FIPS_SHARED)
+    # The Android CMake files set -ffunction-sections and -fdata-sections,
+    # which is incompatible with FIPS_SHARED.
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} -fno-function-sections -fno-data-sections")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -fno-function-sections -fno-data-sections")
+  endif()
 endif()
 
 if(OPENSSL_SMALL)
