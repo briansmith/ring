@@ -287,26 +287,6 @@ TEST(AESTest, ABI) {
       block_counts = {0, 1, 8};
     }
 
-    CHECK_ABI(aes_nohw_set_encrypt_key, kKey, bits, &key);
-    CHECK_ABI(aes_nohw_encrypt, block, block, &key);
-#if defined(AES_NOHW_CBC)
-    for (size_t blocks : block_counts) {
-      SCOPED_TRACE(blocks);
-      CHECK_ABI(aes_nohw_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
-                block, AES_ENCRYPT);
-    }
-#endif
-
-    CHECK_ABI(aes_nohw_set_decrypt_key, kKey, bits, &key);
-    CHECK_ABI(aes_nohw_decrypt, block, block, &key);
-#if defined(AES_NOHW_CBC)
-    for (size_t blocks : block_counts) {
-      SCOPED_TRACE(blocks);
-      CHECK_ABI(aes_nohw_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
-                block, AES_DECRYPT);
-    }
-#endif
-
     if (bsaes_capable()) {
       vpaes_set_encrypt_key(kKey, bits, &key);
       CHECK_ABI(vpaes_encrypt_key_to_bsaes, &key, &key);

@@ -173,11 +173,9 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
       ret = aes_nohw_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
       dat->block = aes_nohw_decrypt;
       dat->stream.cbc = NULL;
-#if defined(AES_NOHW_CBC)
       if (mode == EVP_CIPH_CBC_MODE) {
         dat->stream.cbc = aes_nohw_cbc_encrypt;
       }
-#endif
     }
   } else if (hwaes_capable()) {
     ret = aes_hw_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
@@ -209,11 +207,9 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     ret = aes_nohw_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
     dat->block = aes_nohw_encrypt;
     dat->stream.cbc = NULL;
-#if defined(AES_NOHW_CBC)
     if (mode == EVP_CIPH_CBC_MODE) {
       dat->stream.cbc = aes_nohw_cbc_encrypt;
     }
-#endif
   }
 
   if (ret < 0) {
@@ -318,7 +314,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
   if (out_block) {
     *out_block = aes_nohw_encrypt;
   }
-  return NULL;
+  return aes_nohw_ctr32_encrypt_blocks;
 }
 
 #if defined(OPENSSL_32_BIT)
