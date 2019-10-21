@@ -48,7 +48,18 @@ fn aead_aes_gcm_128() {
         open_with_less_safe_key,
         test_file!("aead_aes_128_gcm_tests.txt"),
     );
-    test_aead_separate_tag(&aead::AES_128_GCM, test_file!("aead_aes_128_gcm_tests.txt"));
+    test_aead_separate_tag(
+        &aead::AES_128_GCM,
+        seal_with_key_separate_tag,
+        open_with_key_separate_tag,
+        test_file!("aead_aes_128_gcm_tests.txt"),
+    );
+    test_aead_separate_tag(
+        &aead::AES_128_GCM,
+        seal_with_less_safe_key_separate_tag,
+        open_with_less_safe_key_separate_tag,
+        test_file!("aead_aes_128_gcm_tests.txt"),
+    );
 }
 
 #[test]
@@ -65,7 +76,18 @@ fn aead_aes_gcm_256() {
         open_with_less_safe_key,
         test_file!("aead_aes_256_gcm_tests.txt"),
     );
-    test_aead_separate_tag(&aead::AES_256_GCM, test_file!("aead_aes_256_gcm_tests.txt"));
+    test_aead_separate_tag(
+        &aead::AES_256_GCM,
+        seal_with_key_separate_tag,
+        open_with_key_separate_tag,
+        test_file!("aead_aes_256_gcm_tests.txt"),
+    );
+    test_aead_separate_tag(
+        &aead::AES_256_GCM,
+        seal_with_less_safe_key_separate_tag,
+        open_with_less_safe_key_separate_tag,
+        test_file!("aead_aes_256_gcm_tests.txt"),
+    );
 }
 
 #[test]
@@ -84,11 +106,40 @@ fn aead_chacha20_poly1305() {
     );
     test_aead_separate_tag(
         &aead::CHACHA20_POLY1305,
+        seal_with_key_separate_tag,
+        open_with_key_separate_tag,
+        test_file!("aead_chacha20_poly1305_tests.txt"),
+    );
+    test_aead_separate_tag(
+        &aead::CHACHA20_POLY1305,
+        seal_with_less_safe_key_separate_tag,
+        open_with_less_safe_key_separate_tag,
         test_file!("aead_chacha20_poly1305_tests.txt"),
     );
 }
 
-fn test_aead_separate_tag(aead_alg: &'static aead::Algorithm, test_file: test::File) {
+fn test_aead_separate_tag<Seal, Open>(
+    aead_alg: &'static aead::Algorithm,
+    seal: Seal,
+    open: Open,
+    test_file: test::File,
+) where
+    Seal: Fn(
+        &'static aead::Algorithm,
+        &[u8],
+        aead::Nonce,
+        aead::Aad<&[u8]>,
+        &mut [u8],
+    ) -> Result<aead::Tag, error::Unspecified>,
+    Open: for<'a> Fn(
+        &'static aead::Algorithm,
+        &[u8],
+        aead::Nonce,
+        aead::Aad<&[u8]>,
+        &'a mut [u8],
+        &[u8],
+    ) -> Result<&'a mut [u8], error::Unspecified>,
+{
     test::run(test_file, |section, test_case| {
         assert_eq!(section, "");
         let key_bytes = test_case.consume_bytes("KEY");
@@ -110,59 +161,47 @@ fn test_aead_separate_tag(aead_alg: &'static aead::Algorithm, test_file: test::F
             }
         };
 
-        // With LessSafeKey.
-        let less_safe_key = make_less_safe_key(aead_alg, &key_bytes[..]);
-
-        let mut in_out = plaintext.clone();
+        // Seal.
         let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
-        let tag = aead::Tag::new(&tag[..]).expect("Tag::new failed");
-        let s_result_tag = less_safe_key
-            .seal_in_place_separate_tag(nonce, aead::Aad::from(&aad[..]), &mut in_out[..])
-            .unwrap();
-
-        assert_eq!(s_result_tag.as_ref(), tag.as_ref());
+        let mut in_out = plaintext.clone();
+        let s_result_tag = seal(
+            aead_alg,
+            &key_bytes[..],
+            nonce,
+            aead::Aad::from(&aad[..]),
+            &mut in_out[..],
+        )
+        .unwrap();
+        assert_eq!(s_result_tag.as_ref(), &tag[..]);
         assert_eq!(in_out, ct);
 
+        // Open.
         let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
-        let _ = less_safe_key
-            .open_in_place_separate_tag(nonce, aead::Aad::from(&aad[..]), &mut in_out[..], &tag)
-            .unwrap();
-
+        let _ = open(
+            aead_alg,
+            &key_bytes[..],
+            nonce,
+            aead::Aad::from(&aad[..]),
+            &mut in_out[..],
+            &tag[..],
+        )
+        .unwrap();
         assert_eq!(in_out, plaintext);
 
-        // Negative test.
-        let mut wrong_tag = tag.as_ref().to_vec();
+        // Negative test for open.
+        let mut wrong_tag = tag.clone();
         wrong_tag[2] = wrong_tag[2].wrapping_add(1);
         let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
         let mut in_out = ct.clone();
-        assert!(less_safe_key
-            .open_in_place_separate_tag(
-                nonce,
-                aead::Aad::from(&aad[..]),
-                &mut in_out,
-                &aead::Tag::new(&wrong_tag[..]).expect("Tag::new failed"),
-            )
-            .is_err());
-
-        // With SealingKey and OpeningKey.
-        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
-        let mut sealing_key: aead::SealingKey<_> = make_key(aead_alg, &key_bytes[..], nonce);
-
-        let mut in_out = plaintext.clone();
-        let s_result_tag = sealing_key
-            .seal_in_place_separate_tag(aead::Aad::from(&aad[..]), &mut in_out[..])
-            .unwrap();
-
-        assert_eq!(s_result_tag.as_ref(), tag.as_ref());
-        assert_eq!(in_out, ct);
-
-        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
-        let mut opening_key: aead::OpeningKey<_> = make_key(aead_alg, &key_bytes[..], nonce);
-        let _ = opening_key
-            .open_in_place_separate_tag(aead::Aad::from(&aad[..]), &mut in_out[..], &tag)
-            .unwrap();
-
-        assert_eq!(in_out, plaintext);
+        assert!(open(
+            aead_alg,
+            &key_bytes[..],
+            nonce,
+            aead::Aad::from(&aad[..]),
+            &mut in_out,
+            &wrong_tag[..],
+        )
+        .is_err());
 
         Ok(())
     });
@@ -349,6 +388,29 @@ fn open_with_key<'a>(
     o_key.open_within(aad, in_out, ciphertext_and_tag)
 }
 
+fn seal_with_key_separate_tag(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: aead::Nonce,
+    aad: aead::Aad<&[u8]>,
+    in_out: &mut [u8],
+) -> Result<aead::Tag, error::Unspecified> {
+    let mut s_key: aead::SealingKey<OneNonceSequence> = make_key(algorithm, key, nonce);
+    s_key.seal_in_place_separate_tag(aad, in_out)
+}
+
+fn open_with_key_separate_tag<'a>(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: aead::Nonce,
+    aad: aead::Aad<&[u8]>,
+    in_out: &'a mut [u8],
+    tag: &[u8],
+) -> Result<&'a mut [u8], error::Unspecified> {
+    let mut o_key: aead::OpeningKey<OneNonceSequence> = make_key(algorithm, key, nonce);
+    o_key.open_in_place_separate_tag(aad, in_out, &aead::Tag::new(tag)?)
+}
+
 fn seal_with_less_safe_key(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
@@ -370,6 +432,29 @@ fn open_with_less_safe_key<'a>(
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let key = make_less_safe_key(algorithm, key);
     key.open_within(nonce, aad, in_out, ciphertext_and_tag)
+}
+
+fn seal_with_less_safe_key_separate_tag(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: aead::Nonce,
+    aad: aead::Aad<&[u8]>,
+    in_out: &mut [u8],
+) -> Result<aead::Tag, error::Unspecified> {
+    let key = make_less_safe_key(algorithm, key);
+    key.seal_in_place_separate_tag(nonce, aad, in_out)
+}
+
+fn open_with_less_safe_key_separate_tag<'a>(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: aead::Nonce,
+    aad: aead::Aad<&[u8]>,
+    in_out: &'a mut [u8],
+    tag: &[u8],
+) -> Result<&'a mut [u8], error::Unspecified> {
+    let key = make_less_safe_key(algorithm, key);
+    key.open_in_place_separate_tag(nonce, aad, in_out, &aead::Tag::new(tag)?)
 }
 
 fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
