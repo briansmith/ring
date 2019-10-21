@@ -699,7 +699,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   if (ctx->psk_identity_hint) {
     ssl->config->psk_identity_hint.reset(
-        BUF_strdup(ctx->psk_identity_hint.get()));
+        OPENSSL_strdup(ctx->psk_identity_hint.get()));
     if (ssl->config->psk_identity_hint == nullptr) {
       return nullptr;
     }
@@ -2129,7 +2129,7 @@ int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
     return 0;
   }
-  ssl->hostname.reset(BUF_strdup(name));
+  ssl->hostname.reset(OPENSSL_strdup(name));
   if (ssl->hostname == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -2580,7 +2580,7 @@ static int use_psk_identity_hint(UniquePtr<char> *out,
   // ECDHE_PSK can only spell empty hint. Having different capabilities is odd,
   // so we interpret empty and missing as identical.
   if (identity_hint != NULL && identity_hint[0] != '\0') {
-    out->reset(BUF_strdup(identity_hint));
+    out->reset(OPENSSL_strdup(identity_hint));
     if (*out == nullptr) {
       return 0;
     }

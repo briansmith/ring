@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <array>
 
-#include <openssl/buf.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/span.h>
@@ -184,7 +183,7 @@ static void StrCatSignalSafeImpl(bssl::Span<char> out) {}
 template <typename... Args>
 static void StrCatSignalSafeImpl(bssl::Span<char> out, const char *str,
                                  Args... args) {
-  BUF_strlcat(out.data(), str, out.size());
+  OPENSSL_strlcat(out.data(), str, out.size());
   StrCatSignalSafeImpl(out, args...);
 }
 

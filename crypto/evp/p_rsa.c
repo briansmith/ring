@@ -59,7 +59,6 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -135,7 +134,7 @@ static int pkey_rsa_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   dctx->saltlen = sctx->saltlen;
   if (sctx->oaep_label) {
     OPENSSL_free(dctx->oaep_label);
-    dctx->oaep_label = BUF_memdup(sctx->oaep_label, sctx->oaep_labellen);
+    dctx->oaep_label = OPENSSL_memdup(sctx->oaep_label, sctx->oaep_labellen);
     if (!dctx->oaep_label) {
       return 0;
     }

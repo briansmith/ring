@@ -157,7 +157,6 @@
 
 #include <openssl/aead.h>
 #include <openssl/bn.h>
-#include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
@@ -1291,7 +1290,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
     assert(psk_len <= PSK_MAX_PSK_LEN);
 
-    hs->new_session->psk_identity.reset(BUF_strdup(identity));
+    hs->new_session->psk_identity.reset(OPENSSL_strdup(identity));
     if (hs->new_session->psk_identity == nullptr) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return ssl_hs_error;

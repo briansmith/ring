@@ -18,7 +18,6 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/buf.h>
 #include <openssl/mem.h>
 
 #include "../internal.h"
@@ -649,7 +648,7 @@ int CBB_flush_asn1_set_of(CBB *cbb) {
   // remain valid as we rewrite |cbb|.
   int ret = 0;
   size_t buf_len = CBB_len(cbb);
-  uint8_t *buf = BUF_memdup(CBB_data(cbb), buf_len);
+  uint8_t *buf = OPENSSL_memdup(CBB_data(cbb), buf_len);
   CBS *children = OPENSSL_malloc(num_children * sizeof(CBS));
   if (buf == NULL || children == NULL) {
     goto err;

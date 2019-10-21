@@ -16,7 +16,6 @@
 
 #include <string.h>
 
-#include <openssl/buf.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/digest.h>
@@ -40,8 +39,8 @@ EC_KEY *EC_KEY_derive_from_secret(const EC_GROUP *group, const uint8_t *secret,
   // separated.
   static const char kLabel[] = "derive EC key ";
   char info[sizeof(kLabel) + EC_KEY_DERIVE_MAX_NAME_LEN];
-  BUF_strlcpy(info, kLabel, sizeof(info));
-  BUF_strlcat(info, name, sizeof(info));
+  OPENSSL_strlcpy(info, kLabel, sizeof(info));
+  OPENSSL_strlcat(info, name, sizeof(info));
 
   // Generate 128 bits beyond the group order so the bias is at most 2^-128.
 #define EC_KEY_DERIVE_EXTRA_BITS 128

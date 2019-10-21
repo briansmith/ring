@@ -208,7 +208,8 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
 
   // Copy authentication state.
   if (session->psk_identity != nullptr) {
-    new_session->psk_identity.reset(BUF_strdup(session->psk_identity.get()));
+    new_session->psk_identity.reset(
+        OPENSSL_strdup(session->psk_identity.get()));
     if (new_session->psk_identity == nullptr) {
       return nullptr;
     }

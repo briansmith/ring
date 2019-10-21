@@ -70,7 +70,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include <gtest/gtest.h>
 
-#include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
@@ -280,8 +279,8 @@ static bool SetupContext(FileTest *t, KeyMap *key_map, EVP_PKEY_CTX *ctx) {
     }
     // For historical reasons, |EVP_PKEY_CTX_set0_rsa_oaep_label| expects to be
     // take ownership of the input.
-    bssl::UniquePtr<uint8_t> buf(
-        reinterpret_cast<uint8_t *>(BUF_memdup(label.data(), label.size())));
+    bssl::UniquePtr<uint8_t> buf(reinterpret_cast<uint8_t *>(
+        OPENSSL_memdup(label.data(), label.size())));
     if (!buf ||
         !EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, buf.get(), label.size())) {
       return false;

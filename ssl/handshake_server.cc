@@ -152,7 +152,6 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/ec.h>

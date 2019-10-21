@@ -39,7 +39,6 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 
 #include <openssl/aead.h>
 #include <openssl/bio.h>
-#include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
