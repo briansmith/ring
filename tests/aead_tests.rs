@@ -115,22 +115,23 @@ fn test_aead_separate_tag(aead_alg: &'static aead::Algorithm, test_file: test::F
 
         let mut in_out = plaintext.clone();
         let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
+        let tag = aead::Tag::new(&tag[..]).expect("Tag::new failed");
         let s_result_tag = less_safe_key
             .seal_in_place_separate_tag(nonce, aead::Aad::from(&aad[..]), &mut in_out[..])
             .unwrap();
 
-        assert_eq!(s_result_tag.as_ref(), &tag[..]);
+        assert_eq!(s_result_tag.as_ref(), tag.as_ref());
         assert_eq!(in_out, ct);
 
         let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
         let _ = less_safe_key
-            .open_in_place_separate_tag(nonce, aead::Aad::from(&aad[..]), &mut in_out[..], &tag[..])
+            .open_in_place_separate_tag(nonce, aead::Aad::from(&aad[..]), &mut in_out[..], &tag)
             .unwrap();
 
         assert_eq!(in_out, plaintext);
 
         // Negative test.
-        let mut wrong_tag = tag.clone();
+        let mut wrong_tag = tag.as_ref().to_vec();
         wrong_tag[2] = wrong_tag[2].wrapping_add(1);
         let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
         let mut in_out = ct.clone();
@@ -139,7 +140,7 @@ fn test_aead_separate_tag(aead_alg: &'static aead::Algorithm, test_file: test::F
                 nonce,
                 aead::Aad::from(&aad[..]),
                 &mut in_out,
-                &wrong_tag[..]
+                &aead::Tag::new(&wrong_tag[..]).expect("Tag::new failed"),
             )
             .is_err());
 
@@ -152,13 +153,13 @@ fn test_aead_separate_tag(aead_alg: &'static aead::Algorithm, test_file: test::F
             .seal_in_place_separate_tag(aead::Aad::from(&aad[..]), &mut in_out[..])
             .unwrap();
 
-        assert_eq!(s_result_tag.as_ref(), &tag[..]);
+        assert_eq!(s_result_tag.as_ref(), tag.as_ref());
         assert_eq!(in_out, ct);
 
         let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
         let mut opening_key: aead::OpeningKey<_> = make_key(aead_alg, &key_bytes[..], nonce);
         let _ = opening_key
-            .open_in_place_separate_tag(aead::Aad::from(&aad[..]), &mut in_out[..], &tag[..])
+            .open_in_place_separate_tag(aead::Aad::from(&aad[..]), &mut in_out[..], &tag)
             .unwrap();
 
         assert_eq!(in_out, plaintext);

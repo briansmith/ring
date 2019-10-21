@@ -134,12 +134,12 @@ impl<N: NonceSequence> OpeningKey<N> {
         &mut self,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
-        received_tag: &[u8],
+        received_tag: &Tag,
     ) -> Result<&'in_out mut [u8], error::Unspecified>
     where
         A: AsRef<[u8]>,
     {
-        open_in_place_separate_tag(
+        open_in_place_separate_tag_(
             &self.key,
             self.nonce_sequence.advance()?,
             aad,
@@ -268,25 +268,27 @@ fn open_within_<'in_out, A: AsRef<[u8]>>(
 }
 
 #[inline]
-fn open_in_place_separate_tag<'in_out, A: AsRef<[u8]>>(
+fn open_in_place_separate_tag_<'in_out, A: AsRef<[u8]>>(
     key: &UnboundKey,
     nonce: Nonce,
     Aad(aad): Aad<A>,
     in_out: &'in_out mut [u8],
-    received_tag: &[u8],
+    received_tag: &Tag,
 ) -> Result<&'in_out mut [u8], error::Unspecified> {
-    fn open_within<'in_out>(
+    fn open_in_place_separate_tag<'in_out>(
         key: &UnboundKey,
         nonce: Nonce,
         aad: Aad<&[u8]>,
         in_out: &'in_out mut [u8],
-        received_tag: &[u8; TAG_LEN],
+        received_tag: &Tag,
     ) -> Result<&'in_out mut [u8], error::Unspecified> {
         let ciphertext_len = in_out.len();
         check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
         let Tag(calculated_tag) =
             (key.algorithm.open)(&key.inner, nonce, aad, 0, in_out, key.cpu_features);
-        if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
+        if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag.as_ref())
+            .is_err()
+        {
             // Zero out the plaintext so that it isn't accidentally leaked or used
             // after verification fails. It would be safest if we could check the
             // tag before decrypting, but some `open` implementations interleave
@@ -300,14 +302,7 @@ fn open_in_place_separate_tag<'in_out, A: AsRef<[u8]>>(
         Ok(in_out)
     }
 
-    use core::convert::TryInto;
-    open_within(
-        key,
-        nonce,
-        Aad::from(aad.as_ref()),
-        in_out,
-        received_tag.try_into()?,
-    )
+    open_in_place_separate_tag(key, nonce, Aad::from(aad.as_ref()), in_out, received_tag)
 }
 
 /// An AEAD key for encrypting and signing ("sealing"), bound to a nonce
@@ -559,12 +554,12 @@ impl LessSafeKey {
         nonce: Nonce,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
-        received_tag: &[u8],
+        received_tag: &Tag,
     ) -> Result<&'in_out mut [u8], error::Unspecified>
     where
         A: AsRef<[u8]>,
     {
-        open_in_place_separate_tag(&self.key, nonce, aad, in_out, received_tag)
+        open_in_place_separate_tag_(&self.key, nonce, aad, in_out, received_tag)
     }
 
     /// Like [`OpeningKey::open_within()`], except it accepts an arbitrary nonce.
@@ -729,6 +724,17 @@ impl Eq for Algorithm {}
 #[must_use]
 #[repr(C)]
 pub struct Tag(Block);
+
+impl Tag {
+    /// Construct a `Tag` from the given bytes.
+    ///
+    /// Fails if `bytes` isn't `TAG_LEN` bytes long.
+    pub fn new(bytes: &[u8]) -> Result<Tag, error::Unspecified> {
+        use core::convert::TryInto;
+        let bytes: &[u8; BLOCK_LEN] = bytes.try_into().unwrap();
+        Ok(Tag(bytes.into()))
+    }
+}
 
 impl AsRef<[u8]> for Tag {
     fn as_ref(&self) -> &[u8] {
