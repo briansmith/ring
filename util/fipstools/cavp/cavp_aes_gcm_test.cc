@@ -37,6 +37,8 @@ struct TestCtx {
 static const EVP_AEAD *GetAEAD(const std::string &name, const bool enc) {
   if (name == "aes-128-gcm") {
     return EVP_aead_aes_128_gcm();
+  } else if (name == "aes-192-gcm") {
+    return EVP_aead_aes_192_gcm();
   } else if (name == "aes-256-gcm") {
     return EVP_aead_aes_256_gcm();
   }
