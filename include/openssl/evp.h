@@ -927,6 +927,18 @@ OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
 // EVP_PKEY_base_id calls |EVP_PKEY_id|.
 OPENSSL_EXPORT int EVP_PKEY_base_id(const EVP_PKEY *pkey);
 
+// EVP_PKEY_CTX_set_rsa_pss_keygen_md returns 0.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_keygen_md(EVP_PKEY_CTX *ctx,
+                                                      const EVP_MD *md);
+
+// EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen returns 0.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen(EVP_PKEY_CTX *ctx,
+                                                           int salt_len);
+
+// EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md returns 0.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md(EVP_PKEY_CTX *ctx,
+                                                           const EVP_MD *md);
+
 
 // Preprocessor compatibility section (hidden).
 //

@@ -568,6 +568,19 @@ int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx, int *out_padding) {
                            0, out_padding);
 }
 
+int EVP_PKEY_CTX_set_rsa_pss_keygen_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
+  return 0;
+}
+
+int EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen(EVP_PKEY_CTX *ctx, int salt_len) {
+  return 0;
+}
+
+int EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md(EVP_PKEY_CTX *ctx,
+                                            const EVP_MD *md) {
+  return 0;
+}
+
 int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx, int salt_len) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA,
                            (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY),
