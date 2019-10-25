@@ -23,6 +23,8 @@
 #include <cstdarg>
 
 #include <openssl/aes.h>
+#include <openssl/digest.h>
+#include <openssl/hmac.h>
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
@@ -160,6 +162,56 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
       "  \"revision\": \"1.0\","
       "  \"direction\": [\"encrypt\", \"decrypt\"],"
       "  \"keyLen\": [128, 192, 256]"
+      "},"
+      "{"
+      "  \"algorithm\": \"HMAC-SHA-1\","
+      "  \"revision\": \"1.0\","
+      "  \"keyLen\": [{"
+      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
+      "  }],"
+      "  \"macLen\": [{"
+      "    \"min\": 32, \"max\": 160, \"increment\": 8"
+      "  }]"
+      "},"
+      "{"
+      "  \"algorithm\": \"HMAC-SHA2-224\","
+      "  \"revision\": \"1.0\","
+      "  \"keyLen\": [{"
+      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
+      "  }],"
+      "  \"macLen\": [{"
+      "    \"min\": 32, \"max\": 224, \"increment\": 8"
+      "  }]"
+      "},"
+      "{"
+      "  \"algorithm\": \"HMAC-SHA2-256\","
+      "  \"revision\": \"1.0\","
+      "  \"keyLen\": [{"
+      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
+      "  }],"
+      "  \"macLen\": [{"
+      "    \"min\": 32, \"max\": 256, \"increment\": 8"
+      "  }]"
+      "},"
+      "{"
+      "  \"algorithm\": \"HMAC-SHA2-384\","
+      "  \"revision\": \"1.0\","
+      "  \"keyLen\": [{"
+      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
+      "  }],"
+      "  \"macLen\": [{"
+      "    \"min\": 32, \"max\": 384, \"increment\": 8"
+      "  }]"
+      "},"
+      "{"
+      "  \"algorithm\": \"HMAC-SHA2-512\","
+      "  \"revision\": \"1.0\","
+      "  \"keyLen\": [{"
+      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
+      "  }],"
+      "  \"macLen\": [{"
+      "    \"min\": 32, \"max\": 512, \"increment\": 8"
+      "  }]"
       "}"
       "]";
   return WriteReply(
@@ -216,6 +268,18 @@ static bool AES_CBC(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
 }
 
+template <const EVP_MD *HashFunc()>
+static bool HMAC(const Span<const uint8_t> args[]) {
+  const EVP_MD *const md = HashFunc();
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned digest_len;
+  if (::HMAC(md, args[1].data(), args[1].size(), args[0].data(), args[0].size(),
+             digest, &digest_len) == nullptr) {
+    return false;
+  }
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(digest, digest_len));
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -231,6 +295,11 @@ static constexpr struct {
     {"AES/decrypt", 2, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-CBC/encrypt", 3, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 3, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
+    {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
+    {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
+    {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
+    {"HMAC-SHA2-384", 2, HMAC<EVP_sha384>},
+    {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
 };
 
 int main() {
