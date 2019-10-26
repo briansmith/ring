@@ -537,11 +537,51 @@ pub mod rand {
             assert_eq!(unsafe { *self.current.get() }, self.bytes.len());
         }
     }
+
+    /// A trait for a testing random generator. May only be used for testing
+    pub trait TestRandom {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
+    }
+
+    impl<T: TestRandom + core::fmt::Debug> rand::sealed::SecureRandom for T {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            self.fill_impl(dest)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::rand::TestRandom;
+
+    use crate::rand::SecureRandom;
     use crate::{error, test};
+
+    #[derive(Debug)]
+    struct MyTestRandom;
+
+    impl TestRandom for MyTestRandom {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            // Fill with 1-s:
+            for x in dest {
+                *x = 1;
+            }
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_test_random() {
+        let my_test_random = MyTestRandom;
+
+        let mut array = [0u8; 16];
+        my_test_random.fill(&mut array[..]).unwrap();
+        // Make sure that MyTestRandom works correctly (Fills array with 1-s):
+        for x in &array {
+            assert_eq!(*x, 1);
+        }
+
+    }
 
     #[test]
     fn one_ok() {
