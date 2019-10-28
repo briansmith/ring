@@ -570,9 +570,15 @@ mod tests {
         }
     }
 
+    /// Make sure that a given argument implements Debug
+    fn check_debug(_d: &impl core::fmt::Debug) {}
+
     #[test]
     fn test_test_random() {
         let my_test_random = MyTestRandom;
+
+        // Use the Debug trait, to make test coverage happy:
+        check_debug(&my_test_random);
 
         let mut array = [0u8; 16];
         my_test_random.fill(&mut array[..]).unwrap();
