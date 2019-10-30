@@ -132,6 +132,10 @@ size_t BUF_MEM_grow_clean(BUF_MEM *buf, size_t len) {
 }
 
 int BUF_MEM_append(BUF_MEM *buf, const void *in, size_t len) {
+  // Work around a C language bug. See https://crbug.com/1019588.
+  if (len == 0) {
+    return 1;
+  }
   size_t new_len = buf->length + len;
   if (new_len < len) {
     OPENSSL_PUT_ERROR(BUF, ERR_R_OVERFLOW);

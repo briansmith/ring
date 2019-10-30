@@ -699,7 +699,8 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 
 #if defined(AESNI_GCM)
-  if (ctx->gcm_key.use_aesni_gcm_crypt) {
+  // Check |len| to work around a C language bug. See https://crbug.com/1019588.
+  if (ctx->gcm_key.use_aesni_gcm_crypt && len > 0) {
     // |aesni_gcm_encrypt| may not process all the input given to it. It may
     // not process *any* of its input if it is deemed too small.
     size_t bulk = aesni_gcm_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
@@ -786,7 +787,8 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 
 #if defined(AESNI_GCM)
-  if (ctx->gcm_key.use_aesni_gcm_crypt) {
+  // Check |len| to work around a C language bug. See https://crbug.com/1019588.
+  if (ctx->gcm_key.use_aesni_gcm_crypt && len > 0) {
     // |aesni_gcm_decrypt| may not process all the input given to it. It may
     // not process *any* of its input if it is deemed too small.
     size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);

@@ -662,6 +662,11 @@ void CRYPTO_poly1305_update(poly1305_state *state, const uint8_t *m,
   poly1305_state_internal *st = poly1305_aligned_state(state);
   size_t want;
 
+  // Work around a C language bug. See https://crbug.com/1019588.
+  if (bytes == 0) {
+    return;
+  }
+
   // need at least 32 initial bytes to start the accelerated branch
   if (!st->started) {
     if ((st->leftover == 0) && (bytes > 32)) {

@@ -19,8 +19,8 @@ import urllib2
 # CLANG_REVISION and CLANG_SUB_REVISION determine the build of clang
 # to use. These should be synced with tools/clang/scripts/update.py in
 # Chromium.
-CLANG_REVISION = '8455294f2ac13d587b13d728038a9bffa7185f2b'
-CLANG_SVN_REVISION = '371202'
+CLANG_REVISION = '55c223a7ed522293cf9995d07d348368c345d1f2'
+CLANG_SVN_REVISION = 'n330255'
 CLANG_SUB_REVISION = 1
 
 PACKAGE_VERSION = '%s-%s-%s' % (CLANG_SVN_REVISION, CLANG_REVISION[:8],
