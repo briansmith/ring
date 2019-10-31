@@ -601,6 +601,9 @@ type testCase struct {
 	// sendWarningAlerts is the number of consecutive warning alerts to send
 	// before each test message.
 	sendWarningAlerts int
+	// sendUserCanceledAlerts is the number of consecutive user_canceled alerts to
+	// send before each test message.
+	sendUserCanceledAlerts int
 	// sendBogusAlertType, if true, causes a bogus alert of invalid type to
 	// be sent before each test message.
 	sendBogusAlertType bool
@@ -1003,6 +1006,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 
 		for i := 0; i < test.sendWarningAlerts; i++ {
 			tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
+		}
+
+		for i := 0; i < test.sendUserCanceledAlerts; i++ {
+			tlsConn.SendAlert(alertLevelWarning, alertUserCanceled)
 		}
 
 		if test.sendBogusAlertType {
@@ -2590,8 +2597,28 @@ read alert 1 0
 			expectedError:      ":BAD_ALERT:",
 			expectedLocalError: "remote error: error decoding message",
 		},
+		// Although TLS 1.3 intended to remove warning alerts, it left in
+		// user_canceled. JDK11 misuses this alert as a post-handshake
+		// full-duplex signal. As a workaround, skip user_canceled as in
+		// TLS 1.2, which is consistent with NSS and OpenSSL.
 		{
-			name: "SendWarningAlerts",
+			name: "SendUserCanceledAlerts-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			sendUserCanceledAlerts: 4,
+		},
+		{
+			name: "SendUserCanceledAlerts-TooMany-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			sendUserCanceledAlerts: 5,
+			shouldFail:             true,
+			expectedError:          ":TOO_MANY_WARNING_ALERTS:",
+		},
+		{
+			name: "SendWarningAlerts-TooMany",
 			config: Config{
 				MaxVersion: VersionTLS12,
 			},
@@ -2600,7 +2627,7 @@ read alert 1 0
 			expectedError:     ":TOO_MANY_WARNING_ALERTS:",
 		},
 		{
-			name: "SendWarningAlerts-Async",
+			name: "SendWarningAlerts-TooMany-Async",
 			config: Config{
 				MaxVersion: VersionTLS12,
 			},
