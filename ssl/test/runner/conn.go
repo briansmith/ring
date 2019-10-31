@@ -22,7 +22,6 @@ import (
 )
 
 var errNoCertificateAlert = errors.New("tls: no certificate alert")
-var errEndOfEarlyDataAlert = errors.New("tls: end of early data alert")
 
 // A Conn represents a secured connection.
 // It implements the net.Conn interface.
@@ -1008,10 +1007,6 @@ Again:
 				c.in.freeBlock(b)
 				return errNoCertificateAlert
 			}
-			if alert(data[1]) == alertEndOfEarlyData {
-				c.in.freeBlock(b)
-				return errEndOfEarlyDataAlert
-			}
 
 			// drop on the floor
 			c.in.freeBlock(b)
@@ -1087,7 +1082,7 @@ func (c *Conn) sendAlertLocked(level byte, err alert) error {
 // L < c.out.Mutex.
 func (c *Conn) sendAlert(err alert) error {
 	level := byte(alertLevelError)
-	if err == alertNoRenegotiation || err == alertCloseNotify || err == alertNoCertificate || err == alertEndOfEarlyData {
+	if err == alertNoRenegotiation || err == alertCloseNotify || err == alertNoCertificate {
 		level = alertLevelWarning
 	}
 	return c.SendAlert(level, err)
