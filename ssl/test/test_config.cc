@@ -1143,12 +1143,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   CRYPTO_once(&once, init_once);
   SSL_CTX_set0_buffer_pool(ssl_ctx.get(), g_pool);
 
-  // Enable TLS 1.3 for tests.
-  if (!is_dtls &&
-      !SSL_CTX_set_max_proto_version(ssl_ctx.get(), TLS1_3_VERSION)) {
-    return nullptr;
-  }
-
   std::string cipher_list = "ALL";
   if (!cipher.empty()) {
     cipher_list = cipher;

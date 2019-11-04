@@ -888,8 +888,7 @@ static void ExpectDefaultVersion(uint16_t min_version, uint16_t max_version,
 }
 
 TEST(SSLTest, DefaultVersion) {
-  // TODO(svaldez): Update this when TLS 1.3 is enabled by default.
-  ExpectDefaultVersion(TLS1_VERSION, TLS1_2_VERSION, &TLS_method);
+  ExpectDefaultVersion(TLS1_VERSION, TLS1_3_VERSION, &TLS_method);
   ExpectDefaultVersion(TLS1_VERSION, TLS1_VERSION, &TLSv1_method);
   ExpectDefaultVersion(TLS1_1_VERSION, TLS1_1_VERSION, &TLSv1_1_method);
   ExpectDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &TLSv1_2_method);
@@ -2690,7 +2689,7 @@ TEST(SSLTest, SetVersion) {
 
   // Zero is the default version.
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), 0));
-  EXPECT_EQ(TLS1_2_VERSION, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_EQ(TLS1_3_VERSION, SSL_CTX_get_max_proto_version(ctx.get()));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
   EXPECT_EQ(TLS1_VERSION, SSL_CTX_get_min_proto_version(ctx.get()));
 
@@ -3775,8 +3774,8 @@ TEST(SSLTest, SelectNextProto) {
 }
 
 TEST(SSLTest, SealRecord) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method())),
-      server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
+      server_ctx(SSL_CTX_new(TLSv1_2_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
@@ -3818,8 +3817,8 @@ TEST(SSLTest, SealRecord) {
 }
 
 TEST(SSLTest, SealRecordInPlace) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method())),
-      server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
+      server_ctx(SSL_CTX_new(TLSv1_2_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
@@ -3856,8 +3855,8 @@ TEST(SSLTest, SealRecordInPlace) {
 }
 
 TEST(SSLTest, SealRecordTrailingData) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method())),
-      server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
+      server_ctx(SSL_CTX_new(TLSv1_2_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
@@ -3895,8 +3894,8 @@ TEST(SSLTest, SealRecordTrailingData) {
 }
 
 TEST(SSLTest, SealRecordInvalidSpanSize) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method())),
-      server_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
+      server_ctx(SSL_CTX_new(TLSv1_2_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 

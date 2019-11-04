@@ -150,7 +150,7 @@ static bool set_max_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
                             uint16_t version) {
   // Zero is interpreted as the default maximum version.
   if (version == 0) {
-    *out = method->is_dtls ? DTLS1_2_VERSION : TLS1_2_VERSION;
+    *out = method->is_dtls ? DTLS1_2_VERSION : TLS1_3_VERSION;
     return true;
   }
 
