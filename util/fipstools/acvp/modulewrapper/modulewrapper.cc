@@ -117,122 +117,122 @@ static bool WriteReply(int fd, Args... args) {
 
 static bool GetConfig(const Span<const uint8_t> args[]) {
   static constexpr char kConfig[] =
-      "["
-      "{"
-      "  \"algorithm\": \"SHA2-224\","
-      "  \"revision\": \"1.0\","
-      "  \"messageLength\": [{"
-      "    \"min\": 0, \"max\": 65528, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"SHA2-256\","
-      "  \"revision\": \"1.0\","
-      "  \"messageLength\": [{"
-      "    \"min\": 0, \"max\": 65528, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"SHA2-384\","
-      "  \"revision\": \"1.0\","
-      "  \"messageLength\": [{"
-      "    \"min\": 0, \"max\": 65528, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"SHA2-512\","
-      "  \"revision\": \"1.0\","
-      "  \"messageLength\": [{"
-      "    \"min\": 0, \"max\": 65528, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"SHA-1\","
-      "  \"revision\": \"1.0\","
-      "  \"messageLength\": [{"
-      "    \"min\": 0, \"max\": 65528, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"ACVP-AES-ECB\","
-      "  \"revision\": \"1.0\","
-      "  \"direction\": [\"encrypt\", \"decrypt\"],"
-      "  \"keyLen\": [128, 192, 256]"
-      "},"
-      "{"
-      "  \"algorithm\": \"ACVP-AES-CBC\","
-      "  \"revision\": \"1.0\","
-      "  \"direction\": [\"encrypt\", \"decrypt\"],"
-      "  \"keyLen\": [128, 192, 256]"
-      "},"
-      "{"
-      "  \"algorithm\": \"HMAC-SHA-1\","
-      "  \"revision\": \"1.0\","
-      "  \"keyLen\": [{"
-      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
-      "  }],"
-      "  \"macLen\": [{"
-      "    \"min\": 32, \"max\": 160, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"HMAC-SHA2-224\","
-      "  \"revision\": \"1.0\","
-      "  \"keyLen\": [{"
-      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
-      "  }],"
-      "  \"macLen\": [{"
-      "    \"min\": 32, \"max\": 224, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"HMAC-SHA2-256\","
-      "  \"revision\": \"1.0\","
-      "  \"keyLen\": [{"
-      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
-      "  }],"
-      "  \"macLen\": [{"
-      "    \"min\": 32, \"max\": 256, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"HMAC-SHA2-384\","
-      "  \"revision\": \"1.0\","
-      "  \"keyLen\": [{"
-      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
-      "  }],"
-      "  \"macLen\": [{"
-      "    \"min\": 32, \"max\": 384, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"HMAC-SHA2-512\","
-      "  \"revision\": \"1.0\","
-      "  \"keyLen\": [{"
-      "    \"min\": 8, \"max\": 2048, \"increment\": 8"
-      "  }],"
-      "  \"macLen\": [{"
-      "    \"min\": 32, \"max\": 512, \"increment\": 8"
-      "  }]"
-      "},"
-      "{"
-      "  \"algorithm\": \"ctrDRBG\","
-      "  \"revision\": \"1.0\","
-      "  \"predResistanceEnabled\": [false],"
-      "  \"reseedImplemented\": false,"
-      "  \"capabilities\": [{"
-      "    \"mode\": \"AES-256\","
-      "    \"derFuncEnabled\": false,"
-      "    \"entropyInputLen\": [384],"
-      "    \"nonceLen\": [0],"
-      "    \"persoStringLen\": [{\"min\": 0, \"max\": 384, \"increment\": 16}],"
-      "    \"additionalInputLen\": ["
-      "      {\"min\": 0, \"max\": 384, \"increment\": 16}"
-      "    ],"
-      "    \"returnedBitsLen\": 2048"
-      "  }]"
-      "}"
-      "]";
+      R"([
+      {
+        "algorithm": "SHA2-224",
+        "revision": "1.0",
+        "messageLength": [{
+          "min": 0, "max": 65528, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "SHA2-256",
+        "revision": "1.0",
+        "messageLength": [{
+          "min": 0, "max": 65528, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "SHA2-384",
+        "revision": "1.0",
+        "messageLength": [{
+          "min": 0, "max": 65528, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "SHA2-512",
+        "revision": "1.0",
+        "messageLength": [{
+          "min": 0, "max": 65528, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "SHA-1",
+        "revision": "1.0",
+        "messageLength": [{
+          "min": 0, "max": 65528, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "ACVP-AES-ECB",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [128, 192, 256]
+      },
+      {
+        "algorithm": "ACVP-AES-CBC",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [128, 192, 256]
+      },
+      {
+        "algorithm": "HMAC-SHA-1",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 2048, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 160, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA2-224",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 2048, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 224, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA2-256",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 2048, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 256, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA2-384",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 2048, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 384, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "HMAC-SHA2-512",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 2048, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 512, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "ctrDRBG",
+        "revision": "1.0",
+        "predResistanceEnabled": [false],
+        "reseedImplemented": false,
+        "capabilities": [{
+          "mode": "AES-256",
+          "derFuncEnabled": false,
+          "entropyInputLen": [384],
+          "nonceLen": [0],
+          "persoStringLen": [{"min": 0, "max": 384, "increment": 16}],
+          "additionalInputLen": [
+            {"min": 0, "max": 384, "increment": 16}
+          ],
+          "returnedBitsLen": 2048
+        }]
+      }
+      ])";
   return WriteReply(
       STDOUT_FILENO,
       Span<const uint8_t>(reinterpret_cast<const uint8_t *>(kConfig),
