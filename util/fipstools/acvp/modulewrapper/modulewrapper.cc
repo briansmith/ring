@@ -28,6 +28,8 @@
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
+#include "../../../../crypto/fipsmodule/rand/internal.h"
+
 static constexpr size_t kMaxArgs = 8;
 static constexpr size_t kMaxArgLength = (1 << 20);
 static constexpr size_t kMaxNameLength = 30;
@@ -212,6 +214,23 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
       "  \"macLen\": [{"
       "    \"min\": 32, \"max\": 512, \"increment\": 8"
       "  }]"
+      "},"
+      "{"
+      "  \"algorithm\": \"ctrDRBG\","
+      "  \"revision\": \"1.0\","
+      "  \"predResistanceEnabled\": [false],"
+      "  \"reseedImplemented\": false,"
+      "  \"capabilities\": [{"
+      "    \"mode\": \"AES-256\","
+      "    \"derFuncEnabled\": false,"
+      "    \"entropyInputLen\": [384],"
+      "    \"nonceLen\": [0],"
+      "    \"persoStringLen\": [{\"min\": 0, \"max\": 384, \"increment\": 16}],"
+      "    \"additionalInputLen\": ["
+      "      {\"min\": 0, \"max\": 384, \"increment\": 16}"
+      "    ],"
+      "    \"returnedBitsLen\": 2048"
+      "  }]"
       "}"
       "]";
   return WriteReply(
@@ -280,6 +299,40 @@ static bool HMAC(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(digest, digest_len));
 }
 
+static bool DRBG(const Span<const uint8_t> args[]) {
+  const auto out_len_bytes = args[0];
+  const auto entropy = args[1];
+  const auto personalisation = args[2];
+  const auto additional_data1 = args[3];
+  const auto additional_data2 = args[4];
+  const auto nonce = args[5];
+
+  uint32_t out_len;
+  if (out_len_bytes.size() != sizeof(out_len) ||
+      entropy.size() != CTR_DRBG_ENTROPY_LEN ||
+      // nonces are not supported
+      nonce.size() != 0) {
+    return false;
+  }
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+  if (out_len > (1 << 24)) {
+    return false;
+  }
+  std::vector<uint8_t> out(out_len);
+
+  CTR_DRBG_STATE drbg;
+  if (!CTR_DRBG_init(&drbg, entropy.data(), personalisation.data(),
+                     personalisation.size()) ||
+      !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data1.data(),
+                         additional_data1.size()) ||
+      !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data2.data(),
+                         additional_data2.size())) {
+    return false;
+  }
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -300,6 +353,7 @@ static constexpr struct {
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
     {"HMAC-SHA2-384", 2, HMAC<EVP_sha384>},
     {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
+    {"ctrDRBG/AES-256", 6, DRBG},
 };
 
 int main() {
