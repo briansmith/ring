@@ -29,6 +29,10 @@
 #include <sys/syscall.h>
 #include <sys/user.h>
 
+#if !defined(PTRACE_O_EXITKILL)
+#define PTRACE_O_EXITKILL (1 << 20)
+#endif
+
 #if defined(OPENSSL_NO_ASM)
 static int have_rdrand() { return 0; }
 #endif
