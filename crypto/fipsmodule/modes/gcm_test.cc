@@ -119,7 +119,7 @@ TEST(GCMTest, ByteSwap) {
             CRYPTO_bswap8(UINT64_C(0x0102030405060708)));
 }
 
-#if defined(SUPPORTS_ABI_TEST) && defined(GHASH_ASM)
+#if defined(SUPPORTS_ABI_TEST) && !defined(OPENSSL_NO_ASM)
 TEST(GCMTest, ABI) {
   static const uint64_t kH[2] = {
       UINT64_C(0x66e94bd4ef8a2c3b),
@@ -135,16 +135,11 @@ TEST(GCMTest, ABI) {
   };
 
   alignas(16) u128 Htable[16];
-  CHECK_ABI(gcm_init_4bit, Htable, kH);
 #if defined(GHASH_ASM_X86)
+  CHECK_ABI(gcm_init_4bit, Htable, kH);
   CHECK_ABI(gcm_gmult_4bit_mmx, X, Htable);
   for (size_t blocks : kBlockCounts) {
     CHECK_ABI(gcm_ghash_4bit_mmx, X, Htable, buf, 16 * blocks);
-  }
-#else
-  CHECK_ABI(gcm_gmult_4bit, X, Htable);
-  for (size_t blocks : kBlockCounts) {
-    CHECK_ABI(gcm_ghash_4bit, X, Htable, buf, 16 * blocks);
   }
 #endif  // GHASH_ASM_X86
 
@@ -222,4 +217,4 @@ TEST(GCMTest, ABI) {
   }
 #endif  // GHASH_ASM_ARM
 }
-#endif  // SUPPORTS_ABI_TEST && GHASH_ASM
+#endif  // SUPPORTS_ABI_TEST && !OPENSSL_NO_ASM

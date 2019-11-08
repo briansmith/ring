@@ -83,6 +83,7 @@
 #include "modes/cfb.c"
 #include "modes/ctr.c"
 #include "modes/gcm.c"
+#include "modes/gcm_nohw.c"
 #include "modes/ofb.c"
 #include "modes/polyval.c"
 #include "rand/ctrdrbg.c"
