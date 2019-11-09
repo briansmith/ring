@@ -77,6 +77,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"HMAC-SHA2-512": &hmacPrimitive{"HMAC-SHA2-512", 64, m},
 		"ctrDRBG":       &drbg{"ctrDRBG", map[string]bool{"AES-128": true, "AES-192": true, "AES-256": true}, m},
 		"hmacDRBG":      &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}, m},
+		"ECDSA":         &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m},
 	}
 
 	return m

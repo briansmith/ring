@@ -23,8 +23,13 @@
 #include <cstdarg>
 
 #include <openssl/aes.h>
+#include <openssl/bn.h>
 #include <openssl/digest.h>
+#include <openssl/ec.h>
+#include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
 #include <openssl/hmac.h>
+#include <openssl/obj.h>
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
@@ -231,8 +236,71 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
           ],
           "returnedBitsLen": 2048
         }]
+      },
+      {
+        "algorithm": "ECDSA",
+        "mode": "keyGen",
+        "revision": "1.0",
+        "curve": [
+          "P-224",
+          "P-256",
+          "P-384",
+          "P-521"
+        ],
+        "secretGenerationMode": [
+          "testing candidates"
+        ]
+      },
+      {
+        "algorithm": "ECDSA",
+        "mode": "keyVer",
+        "revision": "1.0",
+        "curve": [
+          "P-224",
+          "P-256",
+          "P-384",
+          "P-521"
+        ]
+      },
+      {
+        "algorithm": "ECDSA",
+        "mode": "sigGen",
+        "revision": "1.0",
+        "capabilities": [{
+          "curve": [
+            "P-224",
+            "P-256",
+            "P-384",
+            "P-521"
+          ],
+          "hashAlg": [
+            "SHA2-224",
+            "SHA2-256",
+            "SHA2-384",
+            "SHA2-512"
+          ]
+        }]
+      },
+      {
+        "algorithm": "ECDSA",
+        "mode": "sigVer",
+        "revision": "1.0",
+        "capabilities": [{
+          "curve": [
+            "P-224",
+            "P-256",
+            "P-384",
+            "P-521"
+          ],
+          "hashAlg": [
+            "SHA2-224",
+            "SHA2-256",
+            "SHA2-384",
+            "SHA2-512"
+          ]
+        }]
       }
-      ])";
+    ])";
   return WriteReply(
       STDOUT_FILENO,
       Span<const uint8_t>(reinterpret_cast<const uint8_t *>(kConfig),
@@ -333,6 +401,171 @@ static bool DRBG(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
 }
 
+static bool StringEq(Span<const uint8_t> a, const char *b) {
+  const size_t len = strlen(b);
+  return a.size() == len && memcmp(a.data(), b, len) == 0;
+}
+
+static bssl::UniquePtr<EC_KEY> ECKeyFromName(Span<const uint8_t> name) {
+  int nid;
+  if (StringEq(name, "P-224")) {
+    nid = NID_secp224r1;
+  } else if (StringEq(name, "P-256")) {
+    nid = NID_X9_62_prime256v1;
+  } else if (StringEq(name, "P-384")) {
+    nid = NID_secp384r1;
+  } else if (StringEq(name, "P-521")) {
+    nid = NID_secp521r1;
+  } else {
+    return nullptr;
+  }
+
+  return bssl::UniquePtr<EC_KEY>(EC_KEY_new_by_curve_name(nid));
+}
+
+static std::vector<uint8_t> BIGNUMBytes(const BIGNUM *bn) {
+  const size_t len = BN_num_bytes(bn);
+  std::vector<uint8_t> ret(len);
+  BN_bn2bin(bn, ret.data());
+  return ret;
+}
+
+static std::pair<std::vector<uint8_t>, std::vector<uint8_t>> GetPublicKeyBytes(
+    const EC_KEY *key) {
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  bssl::UniquePtr<BIGNUM> y(BN_new());
+  if (!EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(key),
+                                           EC_KEY_get0_public_key(key), x.get(),
+                                           y.get(), /*ctx=*/nullptr)) {
+    abort();
+  }
+
+  std::vector<uint8_t> x_bytes = BIGNUMBytes(x.get());
+  std::vector<uint8_t> y_bytes = BIGNUMBytes(y.get());
+
+  return std::make_pair(std::move(x_bytes), std::move(y_bytes));
+}
+
+static bool ECDSAKeyGen(const Span<const uint8_t> args[]) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  if (!key || !EC_KEY_generate_key_fips(key.get())) {
+    return false;
+  }
+
+  const auto pub_key = GetPublicKeyBytes(key.get());
+  std::vector<uint8_t> d_bytes =
+      BIGNUMBytes(EC_KEY_get0_private_key(key.get()));
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(d_bytes),
+                    Span<const uint8_t>(pub_key.first),
+                    Span<const uint8_t>(pub_key.second));
+}
+
+static bssl::UniquePtr<BIGNUM> BytesToBIGNUM(Span<const uint8_t> bytes) {
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  BN_bin2bn(bytes.data(), bytes.size(), bn.get());
+  return bn;
+}
+
+static bool ECDSAKeyVer(const Span<const uint8_t> args[]) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  if (!key) {
+    return false;
+  }
+
+  bssl::UniquePtr<BIGNUM> x(BytesToBIGNUM(args[1]));
+  bssl::UniquePtr<BIGNUM> y(BytesToBIGNUM(args[2]));
+
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(EC_KEY_get0_group(key.get())));
+  uint8_t reply[1];
+  if (!EC_POINT_set_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
+                                           point.get(), x.get(), y.get(),
+                                           /*ctx=*/nullptr) ||
+      !EC_KEY_set_public_key(key.get(), point.get()) ||
+      !EC_KEY_check_fips(key.get())) {
+    reply[0] = 0;
+  } else {
+    reply[0] = 1;
+  }
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(reply));
+}
+
+static const EVP_MD *HashFromName(Span<const uint8_t> name) {
+  if (StringEq(name, "SHA2-224")) {
+    return EVP_sha224();
+  } else if (StringEq(name, "SHA2-256")) {
+    return EVP_sha256();
+  } else if (StringEq(name, "SHA2-384")) {
+    return EVP_sha384();
+  } else if (StringEq(name, "SHA2-512")) {
+    return EVP_sha512();
+  } else {
+    return nullptr;
+  }
+}
+
+static bool ECDSASigGen(const Span<const uint8_t> args[]) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  bssl::UniquePtr<BIGNUM> d = BytesToBIGNUM(args[1]);
+  const EVP_MD *hash = HashFromName(args[2]);
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned digest_len;
+  if (!key || !hash ||
+      !EVP_Digest(args[3].data(), args[3].size(), digest, &digest_len, hash,
+                  /*impl=*/nullptr) ||
+      !EC_KEY_set_private_key(key.get(), d.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_do_sign(digest, digest_len, key.get()));
+  if (!sig) {
+    return false;
+  }
+
+  std::vector<uint8_t> r_bytes(BIGNUMBytes(sig->r));
+  std::vector<uint8_t> s_bytes(BIGNUMBytes(sig->s));
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(r_bytes),
+                    Span<const uint8_t>(s_bytes));
+}
+
+static bool ECDSASigVer(const Span<const uint8_t> args[]) {
+  bssl::UniquePtr<EC_KEY> key = ECKeyFromName(args[0]);
+  const EVP_MD *hash = HashFromName(args[1]);
+  auto msg = args[2];
+  bssl::UniquePtr<BIGNUM> x(BytesToBIGNUM(args[3]));
+  bssl::UniquePtr<BIGNUM> y(BytesToBIGNUM(args[4]));
+  bssl::UniquePtr<BIGNUM> r(BytesToBIGNUM(args[5]));
+  bssl::UniquePtr<BIGNUM> s(BytesToBIGNUM(args[6]));
+  ECDSA_SIG sig;
+  sig.r = r.get();
+  sig.s = s.get();
+
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned digest_len;
+  if (!key || !hash ||
+      !EVP_Digest(msg.data(), msg.size(), digest, &digest_len, hash,
+                  /*impl=*/nullptr)) {
+    return false;
+  }
+
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(EC_KEY_get0_group(key.get())));
+  uint8_t reply[1];
+  if (!EC_POINT_set_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
+                                           point.get(), x.get(), y.get(),
+                                           /*ctx=*/nullptr) ||
+      !EC_KEY_set_public_key(key.get(), point.get()) ||
+      !EC_KEY_check_fips(key.get()) ||
+      !ECDSA_do_verify(digest, digest_len, &sig, key.get())) {
+    reply[0] = 0;
+  } else {
+    reply[0] = 1;
+  }
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(reply));
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -354,6 +587,10 @@ static constexpr struct {
     {"HMAC-SHA2-384", 2, HMAC<EVP_sha384>},
     {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
     {"ctrDRBG/AES-256", 6, DRBG},
+    {"ECDSA/keyGen", 1, ECDSAKeyGen},
+    {"ECDSA/keyVer", 3, ECDSAKeyVer},
+    {"ECDSA/sigGen", 4, ECDSASigGen},
+    {"ECDSA/sigVer", 7, ECDSASigVer},
 };
 
 int main() {
