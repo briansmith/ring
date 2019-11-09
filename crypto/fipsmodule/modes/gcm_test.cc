@@ -135,14 +135,6 @@ TEST(GCMTest, ABI) {
   };
 
   alignas(16) u128 Htable[16];
-#if defined(GHASH_ASM_X86)
-  CHECK_ABI(gcm_init_4bit, Htable, kH);
-  CHECK_ABI(gcm_gmult_4bit_mmx, X, Htable);
-  for (size_t blocks : kBlockCounts) {
-    CHECK_ABI(gcm_ghash_4bit_mmx, X, Htable, buf, 16 * blocks);
-  }
-#endif  // GHASH_ASM_X86
-
 #if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
   if (gcm_ssse3_capable()) {
     CHECK_ABI_SEH(gcm_init_ssse3, Htable, kH);

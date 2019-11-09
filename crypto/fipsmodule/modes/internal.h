@@ -304,9 +304,6 @@ size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 #if defined(OPENSSL_X86)
 #define GHASH_ASM_X86
-void gcm_gmult_4bit_mmx(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_4bit_mmx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                        size_t len);
 #endif  // OPENSSL_X86
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)

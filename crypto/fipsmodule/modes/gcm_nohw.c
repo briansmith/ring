@@ -17,6 +17,10 @@
 #include "../../internal.h"
 #include "internal.h"
 
+#if !defined(BORINGSSL_HAS_UINT128) && defined(__SSE2__)
+#include <emmintrin.h>
+#endif
+
 
 // This file contains a constant-time implementation of GHASH based on the notes
 // in https://bearssl.org/constanttime.html#ghash-for-gcm and the reduction
@@ -75,7 +79,74 @@ static void gcm_mul64_nohw(uint64_t *out_lo, uint64_t *out_hi, uint64_t a,
             ((uint64_t)(extra >> 64));
 }
 
-#else  // !BORINGSSL_HAS_UINT128
+#elif defined(__SSE2__)
+
+static __m128i gcm_mul32_nohw(uint32_t a, uint32_t b) {
+  // One term every four bits means the largest term is 32/4 = 8, which does not
+  // overflow into the next term.
+  __m128i aa = _mm_setr_epi32(a, 0, a, 0);
+  __m128i bb = _mm_setr_epi32(b, 0, b, 0);
+
+  __m128i a0a0 =
+      _mm_and_si128(aa, _mm_setr_epi32(0x11111111, 0, 0x11111111, 0));
+  __m128i a2a2 =
+      _mm_and_si128(aa, _mm_setr_epi32(0x44444444, 0, 0x44444444, 0));
+  __m128i b0b1 =
+      _mm_and_si128(bb, _mm_setr_epi32(0x11111111, 0, 0x22222222, 0));
+  __m128i b2b3 =
+      _mm_and_si128(bb, _mm_setr_epi32(0x44444444, 0, 0x88888888, 0));
+
+  __m128i c0c1 =
+      _mm_xor_si128(_mm_mul_epu32(a0a0, b0b1), _mm_mul_epu32(a2a2, b2b3));
+  __m128i c2c3 =
+      _mm_xor_si128(_mm_mul_epu32(a2a2, b0b1), _mm_mul_epu32(a0a0, b2b3));
+
+  __m128i a1a1 =
+      _mm_and_si128(aa, _mm_setr_epi32(0x22222222, 0, 0x22222222, 0));
+  __m128i a3a3 =
+      _mm_and_si128(aa, _mm_setr_epi32(0x88888888, 0, 0x88888888, 0));
+  __m128i b3b0 =
+      _mm_and_si128(bb, _mm_setr_epi32(0x88888888, 0, 0x11111111, 0));
+  __m128i b1b2 =
+      _mm_and_si128(bb, _mm_setr_epi32(0x22222222, 0, 0x44444444, 0));
+
+  c0c1 = _mm_xor_si128(c0c1, _mm_mul_epu32(a1a1, b3b0));
+  c0c1 = _mm_xor_si128(c0c1, _mm_mul_epu32(a3a3, b1b2));
+  c2c3 = _mm_xor_si128(c2c3, _mm_mul_epu32(a3a3, b3b0));
+  c2c3 = _mm_xor_si128(c2c3, _mm_mul_epu32(a1a1, b1b2));
+
+  c0c1 = _mm_and_si128(
+      c0c1, _mm_setr_epi32(0x11111111, 0x11111111, 0x22222222, 0x22222222));
+  c2c3 = _mm_and_si128(
+      c2c3, _mm_setr_epi32(0x44444444, 0x44444444, 0x88888888, 0x88888888));
+
+  c0c1 = _mm_xor_si128(c0c1, c2c3);
+  // c0 ^= c1
+  c0c1 = _mm_xor_si128(c0c1, _mm_srli_si128(c0c1, 8));
+  return c0c1;
+}
+
+static void gcm_mul64_nohw(uint64_t *out_lo, uint64_t *out_hi, uint64_t a,
+                           uint64_t b) {
+  uint32_t a0 = a & 0xffffffff;
+  uint32_t a1 = a >> 32;
+  uint32_t b0 = b & 0xffffffff;
+  uint32_t b1 = b >> 32;
+  // Karatsuba multiplication.
+  __m128i lo = gcm_mul32_nohw(a0, b0);
+  __m128i hi = gcm_mul32_nohw(a1, b1);
+  __m128i mid = gcm_mul32_nohw(a0 ^ a1, b0 ^ b1);
+  mid = _mm_xor_si128(mid, lo);
+  mid = _mm_xor_si128(mid, hi);
+  __m128i ret = _mm_unpacklo_epi64(lo, hi);
+  mid = _mm_slli_si128(mid, 4);
+  mid = _mm_and_si128(mid, _mm_setr_epi32(0, 0xffffffff, 0xffffffff, 0));
+  ret = _mm_xor_si128(ret, mid);
+  memcpy(out_lo, &ret, 8);
+  memcpy(out_hi, ((char*)&ret) + 8, 8);
+}
+
+#else  // !BORINGSSL_HAS_UINT128 && !__SSE2__
 
 static uint64_t gcm_mul32_nohw(uint32_t a, uint32_t b) {
   // One term every four bits means the largest term is 32/4 = 8, which does not

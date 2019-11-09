@@ -222,19 +222,9 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
   }
 #endif
 
-#if defined(GHASH_ASM_X86)
-  // TODO(davidben): This implementation is not constant-time, but it is
-  // dramatically faster than |gcm_gmult_nohw|. See if we can get a
-  // constant-time SSE2 implementation to close this gap, or decide we don't
-  // care.
-  gcm_init_4bit(out_table, H.u);
-  *out_mult = gcm_gmult_4bit_mmx;
-  *out_hash = gcm_ghash_4bit_mmx;
-#else
   gcm_init_nohw(out_table, H.u);
   *out_mult = gcm_gmult_nohw;
   *out_hash = gcm_ghash_nohw;
-#endif
 }
 
 void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
