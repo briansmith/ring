@@ -261,8 +261,6 @@ OPENSSL_EXPORT void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag,
 
 // GCM assembly.
 
-void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]);
-
 void gcm_init_nohw(u128 Htable[16], const uint64_t H[2]);
 void gcm_gmult_nohw(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_nohw(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,

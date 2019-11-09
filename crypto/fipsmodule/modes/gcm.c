@@ -58,37 +58,45 @@
 #include "../../internal.h"
 
 
-#define REDUCE1BIT(V)                                                 \
-  do {                                                                \
-    if (sizeof(size_t) == 8) {                                        \
-      uint64_t T = UINT64_C(0xe100000000000000) & (0 - ((V).lo & 1)); \
-      (V).lo = ((V).hi << 63) | ((V).lo >> 1);                        \
-      (V).hi = ((V).hi >> 1) ^ T;                                     \
-    } else {                                                          \
-      uint32_t T = 0xe1000000U & (0 - (uint32_t)((V).lo & 1));        \
-      (V).lo = ((V).hi << 63) | ((V).lo >> 1);                        \
-      (V).hi = ((V).hi >> 1) ^ ((uint64_t)T << 32);                   \
-    }                                                                 \
-  } while (0)
-
 // kSizeTWithoutLower4Bits is a mask that can be used to zero the lower four
 // bits of a |size_t|.
 static const size_t kSizeTWithoutLower4Bits = (size_t) -16;
 
-void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]) {
-  u128 V;
 
+#define GCM_MUL(ctx, Xi) gcm_gmult_nohw((ctx)->Xi.u, (ctx)->gcm_key.Htable)
+#define GHASH(ctx, in, len) \
+  gcm_ghash_nohw((ctx)->Xi.u, (ctx)->gcm_key.Htable, in, len)
+// GHASH_CHUNK is "stride parameter" missioned to mitigate cache
+// trashing effect. In other words idea is to hash data while it's
+// still in L1 cache after encryption pass...
+#define GHASH_CHUNK (3 * 1024)
+
+#if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
+static inline void gcm_reduce_1bit(u128 *V) {
+  if (sizeof(size_t) == 8) {
+    uint64_t T = UINT64_C(0xe100000000000000) & (0 - (V->hi & 1));
+    V->hi = (V->lo << 63) | (V->hi >> 1);
+    V->lo = (V->lo >> 1) ^ T;
+  } else {
+    uint32_t T = 0xe1000000U & (0 - (uint32_t)(V->hi & 1));
+    V->hi = (V->lo << 63) | (V->hi >> 1);
+    V->lo = (V->lo >> 1) ^ ((uint64_t)T << 32);
+  }
+}
+
+void gcm_init_ssse3(u128 Htable[16], const uint64_t H[2]) {
   Htable[0].hi = 0;
   Htable[0].lo = 0;
-  V.hi = H[0];
-  V.lo = H[1];
+  u128 V;
+  V.hi = H[1];
+  V.lo = H[0];
 
   Htable[8] = V;
-  REDUCE1BIT(V);
+  gcm_reduce_1bit(&V);
   Htable[4] = V;
-  REDUCE1BIT(V);
+  gcm_reduce_1bit(&V);
   Htable[2] = V;
-  REDUCE1BIT(V);
+  gcm_reduce_1bit(&V);
   Htable[1] = V;
   Htable[3].hi = V.hi ^ Htable[2].hi, Htable[3].lo = V.lo ^ Htable[2].lo;
   V = Htable[4];
@@ -103,29 +111,6 @@ void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]) {
   Htable[13].hi = V.hi ^ Htable[5].hi, Htable[13].lo = V.lo ^ Htable[5].lo;
   Htable[14].hi = V.hi ^ Htable[6].hi, Htable[14].lo = V.lo ^ Htable[6].lo;
   Htable[15].hi = V.hi ^ Htable[7].hi, Htable[15].lo = V.lo ^ Htable[7].lo;
-}
-
-#define GCM_MUL(ctx, Xi) gcm_gmult_nohw((ctx)->Xi.u, (ctx)->gcm_key.Htable)
-#define GHASH(ctx, in, len) \
-  gcm_ghash_nohw((ctx)->Xi.u, (ctx)->gcm_key.Htable, in, len)
-// GHASH_CHUNK is "stride parameter" missioned to mitigate cache
-// trashing effect. In other words idea is to hash data while it's
-// still in L1 cache after encryption pass...
-#define GHASH_CHUNK (3 * 1024)
-
-#if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
-void gcm_init_ssse3(u128 Htable[16], const uint64_t Xi[2]) {
-  // Run the existing 4-bit version.
-  gcm_init_4bit(Htable, Xi);
-
-  // First, swap hi and lo. The "4bit" version places hi first. It treats the
-  // two fields separately, so the order does not matter, but ghash-ssse3 reads
-  // the entire state into one 128-bit register.
-  for (int i = 0; i < 16; i++) {
-    uint64_t tmp = Htable[i].hi;
-    Htable[i].hi = Htable[i].lo;
-    Htable[i].lo = tmp;
-  }
 
   // Treat |Htable| as a 16x16 byte table and transpose it. Thus, Htable[i]
   // contains the i'th byte of j*H for all j.
