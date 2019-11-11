@@ -595,7 +595,7 @@ static constexpr struct {
 
 int main() {
   uint32_t nums[1 + kMaxArgs];
-  uint8_t *buf = nullptr;
+  std::unique_ptr<uint8_t[]> buf;
   size_t buf_len = 0;
   Span<const uint8_t> args[kMaxArgs];
 
@@ -641,19 +641,15 @@ int main() {
     }
 
     if (need > buf_len) {
-      free(buf);
       size_t alloced = need + (need >> 1);
       if (alloced < need) {
         abort();
       }
-      buf = reinterpret_cast<uint8_t *>(malloc(alloced));
-      if (buf == nullptr) {
-        abort();
-      }
+      buf.reset(new uint8_t[alloced]);
       buf_len = alloced;
     }
 
-    if (!ReadAll(STDIN_FILENO, buf, need)) {
+    if (!ReadAll(STDIN_FILENO, buf.get(), need)) {
       return 1;
     }
 
