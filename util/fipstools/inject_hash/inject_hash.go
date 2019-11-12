@@ -39,12 +39,20 @@ import (
 func do(outPath, oInput string, arInput string, useSHA256 bool) error {
 	var objectBytes []byte
 	var isStatic bool
+	var perm os.FileMode
+
 	if len(arInput) > 0 {
 		isStatic = true
 
 		if len(oInput) > 0 {
 			return fmt.Errorf("-in-archive and -in-object are mutually exclusive")
 		}
+
+		fi, err := os.Stat(arInput)
+		if err != nil {
+			return err
+		}
+		perm = fi.Mode()
 
 		arFile, err := os.Open(arInput)
 		if err != nil {
@@ -65,7 +73,12 @@ func do(outPath, oInput string, arInput string, useSHA256 bool) error {
 			objectBytes = contents
 		}
 	} else if len(oInput) > 0 {
-		var err error
+		fi, err := os.Stat(oInput)
+		if err != nil {
+			return err
+		}
+		perm = fi.Mode()
+
 		if objectBytes, err = ioutil.ReadFile(oInput); err != nil {
 			return err
 		}
@@ -237,7 +250,7 @@ func do(outPath, oInput string, arInput string, useSHA256 bool) error {
 
 	copy(objectBytes[offset:], calculated)
 
-	return ioutil.WriteFile(outPath, objectBytes, 0644)
+	return ioutil.WriteFile(outPath, objectBytes, perm & 0777)
 }
 
 func main() {
