@@ -14,6 +14,10 @@
 
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && defined(__linux__)
 
+#if defined(BORINGSSL_PREFIX)
+#include <boringssl_prefix_symbols_asm.h>
+#endif
+
 // This is the polynomial multiplication function from [HRSS], provided by kind
 // permission of the authors.
 //
