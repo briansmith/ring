@@ -760,6 +760,9 @@ func (c *Conn) useInTrafficSecret(version uint16, suite *cipherSuite, secret []b
 	if !c.isClient {
 		side = clientWrite
 	}
+	if c.config.Bugs.MockQUICTransport != nil {
+		c.config.Bugs.MockQUICTransport.readSecret = secret
+	}
 	c.in.useTrafficSecret(version, suite, secret, side)
 	c.seenHandshakePackEnd = false
 	return nil
@@ -769,6 +772,9 @@ func (c *Conn) useOutTrafficSecret(version uint16, suite *cipherSuite, secret []
 	side := serverWrite
 	if c.isClient {
 		side = clientWrite
+	}
+	if c.config.Bugs.MockQUICTransport != nil {
+		c.config.Bugs.MockQUICTransport.writeSecret = secret
 	}
 	c.out.useTrafficSecret(version, suite, secret, side)
 }
@@ -959,14 +965,18 @@ func (c *Conn) readRecord(want recordType) error {
 		break
 	}
 
-	if c.expectTLS13ChangeCipherSpec {
+	if c.expectTLS13ChangeCipherSpec && c.config.Bugs.MockQUICTransport == nil {
 		if err := c.readTLS13ChangeCipherSpec(); err != nil {
 			return err
 		}
 	}
 
 Again:
-	typ, b, err := c.doReadRecord(want)
+	doReadRecord := c.doReadRecord
+	if c.config.Bugs.MockQUICTransport != nil {
+		doReadRecord = c.config.Bugs.MockQUICTransport.readRecord
+	}
+	typ, b, err := doReadRecord(want)
 	if err != nil {
 		return err
 	}
@@ -1140,6 +1150,9 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 
 	if c.isDTLS {
 		return c.dtlsWriteRecord(typ, data)
+	}
+	if c.config.Bugs.MockQUICTransport != nil {
+		return c.config.Bugs.MockQUICTransport.writeRecord(typ, data)
 	}
 
 	if typ == recordTypeHandshake {

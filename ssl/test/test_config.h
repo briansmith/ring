@@ -27,6 +27,7 @@ struct TestConfig {
   int port = 0;
   bool is_server = false;
   bool is_dtls = false;
+  bool is_quic = false;
   int resume_count = 0;
   std::string write_settings;
   bool fallback_scsv = false;

@@ -50,6 +50,10 @@ bool RetryAsync(SSL *ssl, int ret) {
     return SSL_renegotiate(ssl);
   }
 
+  if (test_state->quic_transport && ssl_err == SSL_ERROR_WANT_READ) {
+    return test_state->quic_transport->ReadHandshake();
+  }
+
   if (!config->async) {
     // Only asynchronous tests should trigger other retries.
     return false;
