@@ -471,15 +471,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // Note we defer releasing the early traffic secret to QUIC until after ECDHE
-  // is resolved. The early traffic secret should be derived before the key
-  // schedule incorporates ECDHE, but doing so may reject 0-RTT. To avoid
-  // confusing the caller, we split derivation and releasing the secret to QUIC.
-  if (ssl->s3->early_data_accepted &&
-      !tls13_set_early_secret_for_quic(hs)) {
-    return ssl_hs_error;
-  }
-
   ssl->method->next_message(ssl);
   hs->tls13_state = state_send_server_hello;
   return ssl_hs_ok;
@@ -737,6 +728,19 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->s3->early_data_accepted) {
+    // We defer releasing the early traffic secret to QUIC to this point. First,
+    // the early traffic secret is derived before ECDHE, but ECDHE may later
+    // reject 0-RTT. We only release the secret after 0-RTT is fully resolved.
+    //
+    // Second, 0-RTT data is acknowledged with 1-RTT keys. Both are derived as
+    // part of the ServerHello flight, but future TLS extensions may insert an
+    // asynchronous point in the middle of this flight. We defer releasing the
+    // 0-RTT keys to ensure the QUIC implementation never installs read keys
+    // without the write keys to send the corresponding ACKs.
+    if (!tls13_set_early_secret_for_quic(hs)) {
+      return ssl_hs_error;
+    }
+
     // If accepting 0-RTT, we send tickets half-RTT. This gets the tickets on
     // the wire sooner and also avoids triggering a write on |SSL_read| when
     // processing the client Finished. This requires computing the client

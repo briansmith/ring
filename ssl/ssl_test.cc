@@ -4811,6 +4811,10 @@ class MockQUICTransport {
         expect_read_secret = false;
       } else {
         expect_write_secret = false;
+        if (!HasSecrets(ssl_encryption_application)) {
+          ADD_FAILURE() << "early secrets installed without keys to ACK them";
+          return false;
+        }
       }
     }
 
