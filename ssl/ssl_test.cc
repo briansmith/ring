@@ -5298,6 +5298,53 @@ TEST_F(QUICMethodTest, ZeroRTTReject) {
   }
 }
 
+TEST_F(QUICMethodTest, NoZeroRTTKeysBeforeReverify) {
+  const SSL_QUIC_METHOD quic_method = {
+      SetEncryptionSecretsCallback,
+      AddHandshakeDataCallback,
+      FlushFlightCallback,
+      SendAlertCallback,
+  };
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_early_data_enabled(client_ctx_.get(), 1);
+  SSL_CTX_set_reverify_on_resume(client_ctx_.get(), 1);
+  SSL_CTX_set_early_data_enabled(server_ctx_.get(), 1);
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  bssl::UniquePtr<SSL_SESSION> session = CreateClientSessionForQUIC();
+  ASSERT_TRUE(session);
+
+  ASSERT_TRUE(CreateClientAndServer());
+  SSL_set_session(client_.get(), session.get());
+
+  // Configure the certificate (re)verification to never complete. The client
+  // handshake should pause.
+  SSL_set_custom_verify(
+      client_.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_retry;
+      });
+  ASSERT_EQ(SSL_do_handshake(client_.get()), -1);
+  ASSERT_EQ(SSL_get_error(client_.get(), -1),
+            SSL_ERROR_WANT_CERTIFICATE_VERIFY);
+
+  // The early data keys have not yet been released.
+  EXPECT_FALSE(transport_->client()->HasSecrets(ssl_encryption_early_data));
+
+  // After the verification completes, the handshake progresses to the 0-RTT
+  // point and releases keys.
+  SSL_set_custom_verify(
+      client_.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+  ASSERT_EQ(SSL_do_handshake(client_.get()), 1);
+  EXPECT_TRUE(SSL_in_early_data(client_.get()));
+  EXPECT_TRUE(transport_->client()->HasSecrets(ssl_encryption_early_data));
+}
+
 // Test only releasing data to QUIC one byte at a time on request, to maximize
 // state machine pauses. Additionally, test that existing asynchronous callbacks
 // still work.

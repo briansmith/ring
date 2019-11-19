@@ -593,7 +593,7 @@ static enum ssl_hs_wait_t do_read_server_certificate_verify(
 
 static enum ssl_hs_wait_t do_server_certificate_reverify(
     SSL_HANDSHAKE *hs) {
-  switch (ssl_reverify_peer_cert(hs)) {
+  switch (ssl_reverify_peer_cert(hs, /*send_alert=*/true)) {
     case ssl_verify_ok:
       break;
     case ssl_verify_invalid:

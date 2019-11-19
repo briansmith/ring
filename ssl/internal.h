@@ -1911,7 +1911,8 @@ int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
 enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs);
 // ssl_reverify_peer_cert verifies the peer certificate for |hs| when resuming a
 // session.
-enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs);
+enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs,
+                                                bool send_alert);
 
 enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs);
 bool ssl_send_finished(SSL_HANDSHAKE *hs);

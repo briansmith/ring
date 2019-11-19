@@ -386,7 +386,8 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
 // SSL_VERIFY_NONE
 // 3. We don't call the OCSP callback.
 // 4. We only support custom verify callbacks.
-enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs) {
+enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs,
+                                                bool send_alert) {
   SSL *const ssl = hs->ssl;
   assert(ssl->s3->established_session == nullptr);
   assert(hs->config->verify_mode != SSL_VERIFY_NONE);
@@ -399,7 +400,9 @@ enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs) {
 
   if (ret == ssl_verify_invalid) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+    if (send_alert) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+    }
   }
 
   return ret;
