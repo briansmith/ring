@@ -8763,7 +8763,7 @@ static const ASN1_OBJECT kObjects[NUM_NID] = {
     {"ED448", "ED448", NID_ED448, 3, &kObjectData[6178], 0},
 };
 
-static const unsigned kNIDsInShortNameOrder[] = {
+static const uint16_t kNIDsInShortNameOrder[] = {
     364 /* AD_DVCS */,
     419 /* AES-128-CBC */,
     916 /* AES-128-CBC-HMAC-SHA1 */,
@@ -9717,7 +9717,7 @@ static const unsigned kNIDsInShortNameOrder[] = {
     160 /* x509Crl */,
 };
 
-static const unsigned kNIDsInLongNameOrder[] = {
+static const uint16_t kNIDsInLongNameOrder[] = {
     363 /* AD Time Stamping */,
     405 /* ANSI X9.62 */,
     368 /* Acceptable OCSP Responses */,
@@ -10671,7 +10671,7 @@ static const unsigned kNIDsInLongNameOrder[] = {
     125 /* zlib compression */,
 };
 
-static const unsigned kNIDsInOIDOrder[] = {
+static const uint16_t kNIDsInOIDOrder[] = {
     434 /* 0.9 (OBJ_data) */,
     182 /* 1.2 (OBJ_member_body) */,
     676 /* 1.3 (OBJ_identified_organization) */,

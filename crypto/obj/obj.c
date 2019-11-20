@@ -189,7 +189,7 @@ size_t OBJ_length(const ASN1_OBJECT *obj) {
 // an |ASN1_OBJECT|* that we're looking for and |element| is a pointer to an
 // unsigned int in the array.
 static int obj_cmp(const void *key, const void *element) {
-  unsigned nid = *((const unsigned*) element);
+  uint16_t nid = *((const uint16_t *)element);
   const ASN1_OBJECT *a = key;
   const ASN1_OBJECT *b = &kObjects[nid];
 
@@ -202,8 +202,6 @@ static int obj_cmp(const void *key, const void *element) {
 }
 
 int OBJ_obj2nid(const ASN1_OBJECT *obj) {
-  const unsigned int *nid_ptr;
-
   if (obj == NULL) {
     return NID_undef;
   }
@@ -224,8 +222,9 @@ int OBJ_obj2nid(const ASN1_OBJECT *obj) {
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
 
-  nid_ptr = bsearch(obj, kNIDsInOIDOrder, OPENSSL_ARRAY_SIZE(kNIDsInOIDOrder),
-                    sizeof(kNIDsInOIDOrder[0]), obj_cmp);
+  const uint16_t *nid_ptr =
+      bsearch(obj, kNIDsInOIDOrder, OPENSSL_ARRAY_SIZE(kNIDsInOIDOrder),
+              sizeof(kNIDsInOIDOrder[0]), obj_cmp);
   if (nid_ptr == NULL) {
     return NID_undef;
   }
@@ -250,15 +249,13 @@ int OBJ_cbs2nid(const CBS *cbs) {
 // |key| argument is name that we're looking for and |element| is a pointer to
 // an unsigned int in the array.
 static int short_name_cmp(const void *key, const void *element) {
-  const char *name = (const char *) key;
-  unsigned nid = *((unsigned*) element);
+  const char *name = (const char *)key;
+  uint16_t nid = *((const uint16_t *)element);
 
   return strcmp(name, kObjects[nid].sn);
 }
 
 int OBJ_sn2nid(const char *short_name) {
-  const unsigned int *nid_ptr;
-
   CRYPTO_STATIC_MUTEX_lock_read(&global_added_lock);
   if (global_added_by_short_name != NULL) {
     ASN1_OBJECT *match, template;
@@ -272,9 +269,10 @@ int OBJ_sn2nid(const char *short_name) {
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
 
-  nid_ptr = bsearch(short_name, kNIDsInShortNameOrder,
-                    OPENSSL_ARRAY_SIZE(kNIDsInShortNameOrder),
-                    sizeof(kNIDsInShortNameOrder[0]), short_name_cmp);
+  const uint16_t *nid_ptr =
+      bsearch(short_name, kNIDsInShortNameOrder,
+              OPENSSL_ARRAY_SIZE(kNIDsInShortNameOrder),
+              sizeof(kNIDsInShortNameOrder[0]), short_name_cmp);
   if (nid_ptr == NULL) {
     return NID_undef;
   }
@@ -286,15 +284,13 @@ int OBJ_sn2nid(const char *short_name) {
 // |key| argument is name that we're looking for and |element| is a pointer to
 // an unsigned int in the array.
 static int long_name_cmp(const void *key, const void *element) {
-  const char *name = (const char *) key;
-  unsigned nid = *((unsigned*) element);
+  const char *name = (const char *)key;
+  uint16_t nid = *((const uint16_t *)element);
 
   return strcmp(name, kObjects[nid].ln);
 }
 
 int OBJ_ln2nid(const char *long_name) {
-  const unsigned int *nid_ptr;
-
   CRYPTO_STATIC_MUTEX_lock_read(&global_added_lock);
   if (global_added_by_long_name != NULL) {
     ASN1_OBJECT *match, template;
@@ -308,9 +304,9 @@ int OBJ_ln2nid(const char *long_name) {
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
 
-  nid_ptr = bsearch(long_name, kNIDsInLongNameOrder,
-                    OPENSSL_ARRAY_SIZE(kNIDsInLongNameOrder),
-                    sizeof(kNIDsInLongNameOrder[0]), long_name_cmp);
+  const uint16_t *nid_ptr = bsearch(
+      long_name, kNIDsInLongNameOrder, OPENSSL_ARRAY_SIZE(kNIDsInLongNameOrder),
+      sizeof(kNIDsInLongNameOrder[0]), long_name_cmp);
   if (nid_ptr == NULL) {
     return NID_undef;
   }
