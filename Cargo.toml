@@ -307,7 +307,7 @@ untrusted = { version = "0.7.0" }
 spin = { version = "0.5.2", default-features = false }
 
 
-[target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
+[target.'cfg(any(target_os = "android", target_os = "freebsd", target_os = "linux"))'.dependencies]
 libc = { version = "0.2.48", default-features = false }
 
 [target.'cfg(any(target_os = "android", target_os = "freebsd", target_os = "linux", target_os = "netbsd", target_os = "openbsd", target_os = "solaris"))'.dependencies]

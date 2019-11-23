@@ -165,7 +165,7 @@ impl crate::sealed::Sealed for SystemRandom {}
 
 #[cfg(any(
     all(
-        any(target_os = "android", target_os = "linux"),
+        any(target_os = "android", target_os = "freebsd", target_os = "linux"),
         not(feature = "dev_urandom_fallback")
     ),
     target_arch = "wasm32",
@@ -174,13 +174,12 @@ impl crate::sealed::Sealed for SystemRandom {}
 use self::sysrand::fill as fill_impl;
 
 #[cfg(all(
-    any(target_os = "android", target_os = "linux"),
+    any(target_os = "android", target_os = "freebsd", target_os = "linux"),
     feature = "dev_urandom_fallback"
 ))]
 use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(
-    target_os = "freebsd",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris"
@@ -229,6 +228,42 @@ mod sysrand_chunk {
             {
                 errno = unsafe { *libc::__errno() };
             }
+
+            if errno == libc::EINTR {
+                // If an interrupt occurs while getrandom() is blocking to wait
+                // for the entropy pool, then EINTR is returned. Returning 0
+                // will cause the caller to try again.
+                return Ok(0);
+            }
+            return Err(error::Unspecified);
+        }
+        Ok(r as usize)
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+mod sysrand_chunk {
+    use crate::{c, error};
+
+    #[inline]
+    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        use libc::c_int;
+
+        // See kern/syscalls.master, or the generated `SYS_getrandom` in #include <sys/syscall.h>
+
+        const SYS_GETRANDOM: c_int = 563;
+
+        // As long as we're using libc, it would be preferable if the libc crate provided
+        // getrandom() directly.  It would also be preferable to use __syscall rather than
+        // syscall().  However, at this time the Rust libc crate provides neither of these
+        // functions on FreeBSD.
+
+        // Clamp request size to INT_MAX due to limitation of the return type of libc::syscall()
+        // (c_int).
+        let chunk_len: c::size_t = dest.len().min(c_int::max_value() as usize);
+        let r = unsafe { libc::syscall(SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, 0) };
+        if r < 0 {
+            let errno = unsafe { *libc::__error() };
 
             if errno == libc::EINTR {
                 // If an interrupt occurs while getrandom() is blocking to wait
@@ -296,6 +331,7 @@ mod sysrand_chunk {
 
 #[cfg(any(
     target_os = "android",
+    target_os = "freebsd",
     target_os = "linux",
     target_arch = "wasm32",
     windows
@@ -316,7 +352,7 @@ mod sysrand {
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(
-    any(target_os = "android", target_os = "linux"),
+    any(target_os = "android", target_os = "freebsd", target_os = "linux"),
     feature = "dev_urandom_fallback"
 ))]
 mod sysrand_or_urandom {
@@ -351,10 +387,9 @@ mod sysrand_or_urandom {
 
 #[cfg(any(
     all(
-        any(target_os = "android", target_os = "linux"),
+        any(target_os = "android", target_os = "freebsd", target_os = "linux"),
         feature = "dev_urandom_fallback"
     ),
-    target_os = "freebsd",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris"
@@ -362,7 +397,7 @@ mod sysrand_or_urandom {
 mod urandom {
     use crate::error;
 
-    #[cfg_attr(any(target_os = "android", target_os = "linux"), cold, inline(never))]
+    #[cfg_attr(any(target_os = "android", target_os = "freebsd", target_os = "linux"), cold, inline(never))]
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         extern crate std;
 
