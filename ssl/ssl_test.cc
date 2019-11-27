@@ -4169,10 +4169,15 @@ TEST(SSLTest, Handoff) {
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(handshaker_ctx);
 
+  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_CLIENT);
+  SSL_CTX_sess_set_new_cb(client_ctx.get(), SaveLastSession);
   SSL_CTX_set_handoff_mode(server_ctx.get(), 1);
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
   ASSERT_TRUE(
       SSL_CTX_set_max_proto_version(handshaker_ctx.get(), TLS1_2_VERSION));
+  uint8_t keys[48];
+  SSL_CTX_set_tlsext_ticket_keys(server_ctx.get(), &keys, sizeof(keys));
+  SSL_CTX_set_tlsext_ticket_keys(handshaker_ctx.get(), &keys, sizeof(keys));
 
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
@@ -4181,62 +4186,71 @@ TEST(SSLTest, Handoff) {
   ASSERT_TRUE(SSL_CTX_use_certificate(handshaker_ctx.get(), cert.get()));
   ASSERT_TRUE(SSL_CTX_use_PrivateKey(handshaker_ctx.get(), key.get()));
 
-  bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(), ClientConfig(),
-                                     false /* don't handshake */));
+  for (int i = 0; i < 2; ++i) {
+    bssl::UniquePtr<SSL> client, server;
+    bool is_resume = i > 0;
+    auto config = ClientConfig();
+    if (is_resume) {
+      ASSERT_TRUE(g_last_session);
+      config.session = g_last_session.get();
+    }
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get(), config,
+                                       false /* don't handshake */));
 
-  int client_ret = SSL_do_handshake(client.get());
-  int client_err = SSL_get_error(client.get(), client_ret);
-  ASSERT_EQ(client_err, SSL_ERROR_WANT_READ);
+    int client_ret = SSL_do_handshake(client.get());
+    int client_err = SSL_get_error(client.get(), client_ret);
+    ASSERT_EQ(client_err, SSL_ERROR_WANT_READ);
 
-  int server_ret = SSL_do_handshake(server.get());
-  int server_err = SSL_get_error(server.get(), server_ret);
-  ASSERT_EQ(server_err, SSL_ERROR_HANDOFF);
+    int server_ret = SSL_do_handshake(server.get());
+    int server_err = SSL_get_error(server.get(), server_ret);
+    ASSERT_EQ(server_err, SSL_ERROR_HANDOFF);
 
-  ScopedCBB cbb;
-  Array<uint8_t> handoff;
-  SSL_CLIENT_HELLO hello;
-  ASSERT_TRUE(CBB_init(cbb.get(), 256));
-  ASSERT_TRUE(SSL_serialize_handoff(server.get(), cbb.get(), &hello));
-  ASSERT_TRUE(CBBFinishArray(cbb.get(), &handoff));
+    ScopedCBB cbb;
+    Array<uint8_t> handoff;
+    SSL_CLIENT_HELLO hello;
+    ASSERT_TRUE(CBB_init(cbb.get(), 256));
+    ASSERT_TRUE(SSL_serialize_handoff(server.get(), cbb.get(), &hello));
+    ASSERT_TRUE(CBBFinishArray(cbb.get(), &handoff));
 
-  bssl::UniquePtr<SSL> handshaker(SSL_new(handshaker_ctx.get()));
-  ASSERT_TRUE(SSL_apply_handoff(handshaker.get(), handoff));
+    bssl::UniquePtr<SSL> handshaker(SSL_new(handshaker_ctx.get()));
+    ASSERT_TRUE(SSL_apply_handoff(handshaker.get(), handoff));
 
-  MoveBIOs(handshaker.get(), server.get());
+    MoveBIOs(handshaker.get(), server.get());
 
-  int handshake_ret = SSL_do_handshake(handshaker.get());
-  int handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
-  ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
+    int handshake_ret = SSL_do_handshake(handshaker.get());
+    int handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
+    ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
 
-  // Double-check that additional calls to |SSL_do_handshake| continue
-  // to get |SSL_ERRROR_HANDBACK|.
-  handshake_ret = SSL_do_handshake(handshaker.get());
-  handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
-  ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
+    // Double-check that additional calls to |SSL_do_handshake| continue
+    // to get |SSL_ERRROR_HANDBACK|.
+    handshake_ret = SSL_do_handshake(handshaker.get());
+    handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
+    ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
 
-  ScopedCBB cbb_handback;
-  Array<uint8_t> handback;
-  ASSERT_TRUE(CBB_init(cbb_handback.get(), 1024));
-  ASSERT_TRUE(SSL_serialize_handback(handshaker.get(), cbb_handback.get()));
-  ASSERT_TRUE(CBBFinishArray(cbb_handback.get(), &handback));
+    ScopedCBB cbb_handback;
+    Array<uint8_t> handback;
+    ASSERT_TRUE(CBB_init(cbb_handback.get(), 1024));
+    ASSERT_TRUE(SSL_serialize_handback(handshaker.get(), cbb_handback.get()));
+    ASSERT_TRUE(CBBFinishArray(cbb_handback.get(), &handback));
 
-  bssl::UniquePtr<SSL> server2(SSL_new(server_ctx.get()));
-  ASSERT_TRUE(SSL_apply_handback(server2.get(), handback));
+    bssl::UniquePtr<SSL> server2(SSL_new(server_ctx.get()));
+    ASSERT_TRUE(SSL_apply_handback(server2.get(), handback));
 
-  MoveBIOs(server2.get(), handshaker.get());
-  ASSERT_TRUE(CompleteHandshakes(client.get(), server2.get()));
+    MoveBIOs(server2.get(), handshaker.get());
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server2.get()));
+    EXPECT_EQ(is_resume, SSL_session_reused(client.get()));
 
-  uint8_t byte = 42;
-  EXPECT_EQ(SSL_write(client.get(), &byte, 1), 1);
-  EXPECT_EQ(SSL_read(server2.get(), &byte, 1), 1);
-  EXPECT_EQ(42, byte);
+    uint8_t byte = 42;
+    EXPECT_EQ(SSL_write(client.get(), &byte, 1), 1);
+    EXPECT_EQ(SSL_read(server2.get(), &byte, 1), 1);
+    EXPECT_EQ(42, byte);
 
-  byte = 43;
-  EXPECT_EQ(SSL_write(server2.get(), &byte, 1), 1);
-  EXPECT_EQ(SSL_read(client.get(), &byte, 1), 1);
-  EXPECT_EQ(43, byte);
+    byte = 43;
+    EXPECT_EQ(SSL_write(server2.get(), &byte, 1), 1);
+    EXPECT_EQ(SSL_read(client.get(), &byte, 1), 1);
+    EXPECT_EQ(43, byte);
+  }
 }
 
 TEST(SSLTest, HandoffDeclined) {
