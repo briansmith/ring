@@ -151,8 +151,6 @@ const Flag<bool> kBoolFlags[] = {
     {"-key-update", &TestConfig::key_update},
     {"-expect-delegated-credential-used",
      &TestConfig::expect_delegated_credential_used},
-    {"-enable-pq-experiment-signal", &TestConfig::enable_pq_experiment_signal},
-    {"-expect-pq-experiment-signal", &TestConfig::expect_pq_experiment_signal},
     {"-expect-hrr", &TestConfig::expect_hrr},
     {"-expect-no-hrr", &TestConfig::expect_no_hrr},
 };
@@ -1320,10 +1318,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (server_preference) {
     SSL_CTX_set_options(ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
-  }
-
-  if (enable_pq_experiment_signal) {
-    SSL_CTX_enable_pq_experiment_signal(ssl_ctx.get());
   }
 
   return ssl_ctx;

@@ -227,10 +227,6 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if c.config.Bugs.ExpectPQExperimentSignal != hs.clientHello.pqExperimentSignal {
-		return fmt.Errorf("tls: PQ experiment signal presence (%t) was not what was expected", hs.clientHello.pqExperimentSignal)
-	}
-
 	c.clientVersion = hs.clientHello.vers
 
 	// Use the versions extension if supplied, otherwise use the legacy ClientHello version.
@@ -1450,7 +1446,6 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 	}
 
 	serverExtensions.serverNameAck = c.config.Bugs.SendServerNameAck
-	serverExtensions.pqExperimentSignal = hs.clientHello.pqExperimentSignal
 
 	return nil
 }

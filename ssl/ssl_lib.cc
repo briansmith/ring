@@ -569,8 +569,7 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       false_start_allowed_without_alpn(false),
       ignore_tls13_downgrade(false),
       handoff(false),
-      enable_early_data(false),
-      pq_experiment_signal(false) {
+      enable_early_data(false) {
   CRYPTO_MUTEX_init(&lock);
   CRYPTO_new_ex_data(&ex_data);
 }
@@ -1236,14 +1235,6 @@ int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
   }
 
   return ssl_send_alert_impl(ssl, SSL3_AL_FATAL, alert);
-}
-
-void SSL_CTX_enable_pq_experiment_signal(SSL_CTX *ctx) {
-  ctx->pq_experiment_signal = true;
-}
-
-int SSL_pq_experiment_signal_seen(const SSL *ssl) {
-  return ssl->s3->pq_experiment_signal_seen;
 }
 
 int SSL_set_quic_transport_params(SSL *ssl, const uint8_t *params,

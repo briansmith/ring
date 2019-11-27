@@ -2855,66 +2855,6 @@ static bool cert_compression_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 
-// Post-quantum experiment signal
-//
-// This extension may be used in order to identify a control group for
-// experimenting with post-quantum key exchange algorithms.
-
-static bool ext_pq_experiment_signal_add_clienthello(SSL_HANDSHAKE *hs,
-                                                     CBB *out) {
-  if (hs->ssl->ctx->pq_experiment_signal &&
-      (!CBB_add_u16(out, TLSEXT_TYPE_pq_experiment_signal) ||
-       !CBB_add_u16(out, 0))) {
-    return false;
-  }
-
-  return true;
-}
-
-static bool ext_pq_experiment_signal_parse_serverhello(SSL_HANDSHAKE *hs,
-                                                       uint8_t *out_alert,
-                                                       CBS *contents) {
-  if (contents == nullptr) {
-    return true;
-  }
-
-  if (!hs->ssl->ctx->pq_experiment_signal || CBS_len(contents) != 0) {
-    return false;
-  }
-
-  hs->ssl->s3->pq_experiment_signal_seen = true;
-  return true;
-}
-
-static bool ext_pq_experiment_signal_parse_clienthello(SSL_HANDSHAKE *hs,
-                                                       uint8_t *out_alert,
-                                                       CBS *contents) {
-  if (contents == nullptr) {
-    return true;
-  }
-
-  if (CBS_len(contents) != 0) {
-    return false;
-  }
-
-  if (hs->ssl->ctx->pq_experiment_signal) {
-    hs->ssl->s3->pq_experiment_signal_seen = true;
-  }
-
-  return true;
-}
-
-static bool ext_pq_experiment_signal_add_serverhello(SSL_HANDSHAKE *hs,
-                                                     CBB *out) {
-  if (hs->ssl->s3->pq_experiment_signal_seen &&
-      (!CBB_add_u16(out, TLSEXT_TYPE_pq_experiment_signal) ||
-       !CBB_add_u16(out, 0))) {
-    return false;
-  }
-
-  return true;
-}
-
 // kExtensions contains all the supported extensions.
 static const struct tls_extension kExtensions[] = {
   {
@@ -3102,14 +3042,6 @@ static const struct tls_extension kExtensions[] = {
     forbid_parse_serverhello,
     ext_delegated_credential_parse_clienthello,
     dont_add_serverhello,
-  },
-  {
-    TLSEXT_TYPE_pq_experiment_signal,
-    NULL,
-    ext_pq_experiment_signal_add_clienthello,
-    ext_pq_experiment_signal_parse_serverhello,
-    ext_pq_experiment_signal_parse_clienthello,
-    ext_pq_experiment_signal_add_serverhello,
   },
 };
 

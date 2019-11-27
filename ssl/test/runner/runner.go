@@ -15235,67 +15235,6 @@ func addDelegatedCredentialTests() {
 	})
 }
 
-func addPQExperimentSignalTests() {
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "PQExperimentSignal-Server-NoEchoIfNotConfigured",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectPQExperimentSignal: false,
-			},
-			PQExperimentSignal: true,
-		},
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "PQExperimentSignal-Server-Echo",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectPQExperimentSignal: true,
-			},
-			PQExperimentSignal: true,
-		},
-		flags: []string{
-			"-enable-pq-experiment-signal",
-			"-expect-pq-experiment-signal",
-		},
-	})
-
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "PQExperimentSignal-Client-NotDefault",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectPQExperimentSignal: false,
-			},
-			PQExperimentSignal: true,
-		},
-	})
-
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "PQExperimentSignal-Client",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectPQExperimentSignal: true,
-			},
-		},
-		flags: []string{
-			"-enable-pq-experiment-signal",
-			"-expect-pq-experiment-signal",
-		},
-	})
-}
-
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -15433,7 +15372,6 @@ func main() {
 	addCertCompressionTests()
 	addJDK11WorkaroundTests()
 	addDelegatedCredentialTests()
-	addPQExperimentSignalTests()
 
 	testCases = append(testCases, convertToSplitHandshakeTests(testCases)...)
 

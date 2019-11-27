@@ -3058,19 +3058,6 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 
 
-// Post-quantum experiment signaling extension.
-//
-// *** EXPERIMENTAL ***
-//
-// In order to define a control group in an experiment of post-quantum key
-// agreements, clients and servers may send a non-IANA defined extension as a
-// signaling bit. These functions should not be used without explicit permission
-// from BoringSSL-team.
-
-OPENSSL_EXPORT void SSL_CTX_enable_pq_experiment_signal(SSL_CTX *ctx);
-OPENSSL_EXPORT int SSL_pq_experiment_signal_seen(const SSL *ssl);
-
-
 // QUIC transport parameters.
 //
 // draft-ietf-quic-tls defines a new TLS extension quic_transport_parameters
