@@ -822,6 +822,9 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
                              hs->client_handshake_secret())) {
     return ssl_hs_error;
   }
+  if (hs->handback) {
+    return ssl_hs_handback;
+  }
   hs->tls13_state = state13_read_client_certificate;
   return ssl_hs_ok;
 }

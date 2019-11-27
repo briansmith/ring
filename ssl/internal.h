@@ -1501,6 +1501,7 @@ enum handback_t {
   handback_after_session_resumption,
   handback_after_ecdhe,
   handback_after_handshake,
+  handback_tls13,
 };
 
 
