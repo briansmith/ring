@@ -107,7 +107,7 @@ struct alignas(16) Reg128 {
 #elif defined(OPENSSL_ARM)
 
 // References:
-// AAPCS: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
+// AAPCS: https://developer.arm.com/docs/ihi0042/latest
 // iOS32: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
 // Linux: http://sourcery.mentor.com/sgpp/lite/arm/portal/kbattach142/arm_gnu_linux_%20abi.pdf
 //
@@ -146,7 +146,7 @@ struct alignas(16) Reg128 {
 #elif defined(OPENSSL_AARCH64)
 
 // References:
-// AAPCS64: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
+// AAPCS64: https://developer.arm.com/docs/ihi0055/latest
 // iOS64: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARM64FunctionCallingConventions.html
 //
 // In aarch64, r18 (accessed as w18 or x18 in a 64-bit context) is the platform
