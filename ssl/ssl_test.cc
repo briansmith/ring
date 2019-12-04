@@ -4176,7 +4176,7 @@ TEST(SSLTest, Handoff) {
   ASSERT_TRUE(
       SSL_CTX_set_max_proto_version(handshaker_ctx.get(), TLS1_2_VERSION));
   uint8_t keys[48];
-  SSL_CTX_set_tlsext_ticket_keys(server_ctx.get(), &keys, sizeof(keys));
+  SSL_CTX_get_tlsext_ticket_keys(server_ctx.get(), &keys, sizeof(keys));
   SSL_CTX_set_tlsext_ticket_keys(handshaker_ctx.get(), &keys, sizeof(keys));
 
   bssl::UniquePtr<X509> cert = GetTestCertificate();
