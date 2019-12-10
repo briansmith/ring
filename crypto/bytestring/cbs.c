@@ -437,6 +437,40 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
   return 1;
 }
 
+int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
+  CBS bytes;
+  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER)) {
+    return 0;
+  }
+  const uint8_t *data = CBS_data(&bytes);
+  const size_t len = CBS_len(&bytes);
+
+  if (len == 0 || len > sizeof(int64_t)) {
+    // An INTEGER is encoded with at least one octet.
+    return 0;
+  }
+  if (len > 1) {
+    if (data[0] == 0 && (data[1] & 0x80) == 0) {
+      return 0;  // Extra leading zeros.
+    }
+    if (data[0] == 0xff && (data[1] & 0x80) != 0) {
+      return 0;  // Extra leading 0xff.
+    }
+  }
+
+  union {
+    int64_t i;
+    uint8_t bytes[sizeof(int64_t)];
+  } u;
+  const int is_negative = (data[0] & 0x80);
+  memset(u.bytes, is_negative ? 0xff : 0, sizeof(u.bytes));  // Sign-extend.
+  for (size_t i = 0; i < len; i++) {
+    u.bytes[i] = data[len - i - 1];
+  }
+  *out = u.i;
+  return 1;
+}
+
 int CBS_get_asn1_bool(CBS *cbs, int *out) {
   CBS bytes;
   if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_BOOLEAN) ||

@@ -253,6 +253,11 @@ OPENSSL_EXPORT int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out,
 // in 64 bits.
 OPENSSL_EXPORT int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out);
 
+// CBS_get_asn1_int64 gets an ASN.1 INTEGER from |cbs| using |CBS_get_asn1|
+// and sets |*out| to its value. It returns one on success and zero on error,
+// where error includes the integer being too large to represent in 64 bits.
+OPENSSL_EXPORT int CBS_get_asn1_int64(CBS *cbs, int64_t *out);
+
 // CBS_get_asn1_bool gets an ASN.1 BOOLEAN from |cbs| and sets |*out| to zero
 // or one based on its value. It returns one on success or zero on error.
 OPENSSL_EXPORT int CBS_get_asn1_bool(CBS *cbs, int *out);
@@ -475,6 +480,11 @@ OPENSSL_EXPORT void CBB_discard_child(CBB *cbb);
 // and writes |value| in its contents. It returns one on success and zero on
 // error.
 OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
+
+// CBB_add_asn1_int64 writes an ASN.1 INTEGER into |cbb| using |CBB_add_asn1|
+// and writes |value| in its contents. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT int CBB_add_asn1_int64(CBB *cbb, int64_t value);
 
 // CBB_add_asn1_octet_string writes an ASN.1 OCTET STRING into |cbb| with the
 // given contents. It returns one on success and zero on error.

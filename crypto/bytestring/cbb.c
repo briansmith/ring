@@ -516,6 +516,34 @@ int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
   return CBB_flush(cbb);
 }
 
+int CBB_add_asn1_int64(CBB *cbb, int64_t value) {
+  if (value >= 0) {
+    return CBB_add_asn1_uint64(cbb, value);
+  }
+
+  union {
+    int64_t i;
+    uint8_t bytes[sizeof(int64_t)];
+  } u;
+  u.i = value;
+  int start = 7;
+  // Skip leading sign-extension bytes unless they are necessary.
+  while (start > 0 && (u.bytes[start] == 0xff && (u.bytes[start - 1] & 0x80))) {
+    start--;
+  }
+
+  CBB child;
+  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_INTEGER)) {
+    return 0;
+  }
+  for (int i = start; i >= 0; i--) {
+    if (!CBB_add_u8(&child, u.bytes[i])) {
+      return 0;
+    }
+  }
+  return CBB_flush(cbb);
+}
+
 int CBB_add_asn1_octet_string(CBB *cbb, const uint8_t *data, size_t data_len) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_OCTETSTRING) ||

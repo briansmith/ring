@@ -754,6 +754,79 @@ TEST(CBSTest, ASN1Uint64) {
   }
 }
 
+struct ASN1Int64Test {
+  int64_t value;
+  const char *encoding;
+  size_t encoding_len;
+};
+
+static const ASN1Int64Test kASN1Int64Tests[] = {
+    {0, "\x02\x01\x00", 3},
+    {1, "\x02\x01\x01", 3},
+    {-1, "\x02\x01\xff", 3},
+    {127, "\x02\x01\x7f", 3},
+    {-127, "\x02\x01\x81", 3},
+    {128, "\x02\x02\x00\x80", 4},
+    {-128, "\x02\x01\x80", 3},
+    {129, "\x02\x02\x00\x81", 4},
+    {-129, "\x02\x02\xff\x7f", 4},
+    {0xdeadbeef, "\x02\x05\x00\xde\xad\xbe\xef", 7},
+    {INT64_C(0x0102030405060708), "\x02\x08\x01\x02\x03\x04\x05\x06\x07\x08",
+     10},
+    {INT64_MIN, "\x02\x08\x80\x00\x00\x00\x00\x00\x00\x00", 10},
+    {INT64_MAX, "\x02\x08\x7f\xff\xff\xff\xff\xff\xff\xff", 10},
+};
+
+struct ASN1InvalidInt64Test {
+  const char *encoding;
+  size_t encoding_len;
+};
+
+static const ASN1InvalidInt64Test kASN1InvalidInt64Tests[] = {
+    // Bad tag.
+    {"\x03\x01\x00", 3},
+    // Empty contents.
+    {"\x02\x00", 2},
+    // Overflow.
+    {"\x02\x09\x01\x00\x00\x00\x00\x00\x00\x00\x00", 11},
+    // Leading zeros.
+    {"\x02\x02\x00\x01", 4},
+    // Leading 0xff.
+    {"\x02\x02\xff\xff", 4},
+};
+
+TEST(CBSTest, ASN1Int64) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kASN1Int64Tests); i++) {
+    SCOPED_TRACE(i);
+    const ASN1Int64Test *test = &kASN1Int64Tests[i];
+    CBS cbs;
+    int64_t value;
+    uint8_t *out;
+    size_t len;
+
+    CBS_init(&cbs, (const uint8_t *)test->encoding, test->encoding_len);
+    ASSERT_TRUE(CBS_get_asn1_int64(&cbs, &value));
+    EXPECT_EQ(0u, CBS_len(&cbs));
+    EXPECT_EQ(test->value, value);
+
+    bssl::ScopedCBB cbb;
+    ASSERT_TRUE(CBB_init(cbb.get(), 0));
+    ASSERT_TRUE(CBB_add_asn1_int64(cbb.get(), test->value));
+    ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
+    bssl::UniquePtr<uint8_t> scoper(out);
+    EXPECT_EQ(Bytes(test->encoding, test->encoding_len), Bytes(out, len));
+  }
+
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kASN1InvalidInt64Tests); i++) {
+    const ASN1InvalidInt64Test *test = &kASN1InvalidInt64Tests[i];
+    CBS cbs;
+    int64_t value;
+
+    CBS_init(&cbs, (const uint8_t *)test->encoding, test->encoding_len);
+    EXPECT_FALSE(CBS_get_asn1_int64(&cbs, &value));
+  }
+}
+
 TEST(CBBTest, Zero) {
   CBB cbb;
   CBB_zero(&cbb);
