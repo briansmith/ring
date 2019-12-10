@@ -549,7 +549,7 @@ fn cc(
     for f in cpp_flags(target) {
         let _ = c.flag(&f);
     }
-    if &target.os != "none" && &target.os != "redox" && &target.os != "windows" {
+    if &target.os != "none" && &target.os != "redox" && &target.os != "windows" && &target.os != "vxworks" {
         let _ = c.flag("-fstack-protector");
     }
 
