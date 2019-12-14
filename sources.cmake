@@ -112,6 +112,9 @@ set(
   third_party/wycheproof_testvectors/rsa_oaep_4096_sha512_mgf1sha1_test.txt
   third_party/wycheproof_testvectors/rsa_oaep_4096_sha512_mgf1sha512_test.txt
   third_party/wycheproof_testvectors/rsa_oaep_misc_test.txt
+  third_party/wycheproof_testvectors/rsa_pkcs1_2048_test.txt
+  third_party/wycheproof_testvectors/rsa_pkcs1_3072_test.txt
+  third_party/wycheproof_testvectors/rsa_pkcs1_4096_test.txt
   third_party/wycheproof_testvectors/rsa_pss_2048_sha1_mgf1_20_test.txt
   third_party/wycheproof_testvectors/rsa_pss_2048_sha256_mgf1_0_test.txt
   third_party/wycheproof_testvectors/rsa_pss_2048_sha256_mgf1_32_test.txt

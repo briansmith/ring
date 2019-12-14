@@ -761,8 +761,10 @@ TEST(EVPTest, WycheproofRSAPSS) {
       "third_party/wycheproof_testvectors/rsa_pss_misc_test.txt");
 }
 
-static void RunWycheproofOAEPTest(const char *path) {
-  FileTestGTest(path, [](FileTest *t) {
+static void RunWycheproofDecryptTest(
+    const char *path,
+    std::function<void(FileTest *, EVP_PKEY_CTX *)> setup_cb) {
+  FileTestGTest(path, [&](FileTest *t) {
     t->IgnoreAllUnusedInstructions();
 
     std::vector<uint8_t> pkcs8;
@@ -772,14 +774,8 @@ static void RunWycheproofOAEPTest(const char *path) {
     bssl::UniquePtr<EVP_PKEY> key(EVP_parse_private_key(&cbs));
     ASSERT_TRUE(key);
 
-    const EVP_MD *md = GetWycheproofDigest(t, "sha", true);
-    ASSERT_TRUE(md);
-    const EVP_MD *mgf1_md = GetWycheproofDigest(t, "mgfSha", true);
-    ASSERT_TRUE(mgf1_md);
-
-    std::vector<uint8_t> ct, label, msg;
+    std::vector<uint8_t> ct, msg;
     ASSERT_TRUE(t->GetBytes(&ct, "ct"));
-    ASSERT_TRUE(t->GetBytes(&label, "label"));
     ASSERT_TRUE(t->GetBytes(&msg, "msg"));
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
@@ -787,18 +783,7 @@ static void RunWycheproofOAEPTest(const char *path) {
     bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
     ASSERT_TRUE(ctx);
     ASSERT_TRUE(EVP_PKEY_decrypt_init(ctx.get()));
-    ASSERT_TRUE(
-        EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING));
-    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), md));
-    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(ctx.get(), mgf1_md));
-    bssl::UniquePtr<uint8_t> label_copy(
-        static_cast<uint8_t *>(OPENSSL_memdup(label.data(), label.size())));
-    ASSERT_TRUE(label_copy || label.empty());
-    ASSERT_TRUE(EVP_PKEY_CTX_set0_rsa_oaep_label(ctx.get(), label_copy.get(),
-                                                 label.size()));
-    // |EVP_PKEY_CTX_set0_rsa_oaep_label| takes ownership on success.
-    label_copy.release();
-
+    ASSERT_NO_FATAL_FAILURE(setup_cb(t, ctx.get()));
     std::vector<uint8_t> out(EVP_PKEY_size(key.get()));
     size_t len = out.size();
     int ret =
@@ -811,6 +796,28 @@ static void RunWycheproofOAEPTest(const char *path) {
       out.resize(len);
       EXPECT_EQ(Bytes(msg), Bytes(out));
     }
+  });
+}
+
+static void RunWycheproofOAEPTest(const char *path) {
+  RunWycheproofDecryptTest(path, [](FileTest *t, EVP_PKEY_CTX *ctx) {
+    const EVP_MD *md = GetWycheproofDigest(t, "sha", true);
+    ASSERT_TRUE(md);
+    const EVP_MD *mgf1_md = GetWycheproofDigest(t, "mgfSha", true);
+    ASSERT_TRUE(mgf1_md);
+    std::vector<uint8_t> label;
+    ASSERT_TRUE(t->GetBytes(&label, "label"));
+
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, mgf1_md));
+    bssl::UniquePtr<uint8_t> label_copy(
+        static_cast<uint8_t *>(OPENSSL_memdup(label.data(), label.size())));
+    ASSERT_TRUE(label_copy || label.empty());
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label_copy.get(), label.size()));
+    // |EVP_PKEY_CTX_set0_rsa_oaep_label| takes ownership on success.
+    label_copy.release();
   });
 }
 
@@ -877,4 +884,19 @@ TEST(EVPTest, WycheproofRSAOAEP4096) {
 TEST(EVPTest, WycheproofRSAOAEPMisc) {
   RunWycheproofOAEPTest(
       "third_party/wycheproof_testvectors/rsa_oaep_misc_test.txt");
+}
+
+static void RunWycheproofPKCS1DecryptTest(const char *path) {
+  RunWycheproofDecryptTest(path, [](FileTest *t, EVP_PKEY_CTX *ctx) {
+    // No setup needed. PKCS#1 is, sadly, the default.
+  });
+}
+
+TEST(EVPTest, WycheproofRSAPKCS1Decrypt) {
+  RunWycheproofPKCS1DecryptTest(
+      "third_party/wycheproof_testvectors/rsa_pkcs1_2048_test.txt");
+  RunWycheproofPKCS1DecryptTest(
+      "third_party/wycheproof_testvectors/rsa_pkcs1_3072_test.txt");
+  RunWycheproofPKCS1DecryptTest(
+      "third_party/wycheproof_testvectors/rsa_pkcs1_4096_test.txt");
 }
