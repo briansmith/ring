@@ -103,4 +103,5 @@ set(
   third_party/wycheproof_testvectors/rsa_pss_misc_test.txt
   third_party/wycheproof_testvectors/rsa_signature_test.txt
   third_party/wycheproof_testvectors/x25519_test.txt
+  third_party/wycheproof_testvectors/xchacha20_poly1305_test.txt
 )

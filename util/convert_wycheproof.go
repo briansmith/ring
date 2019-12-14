@@ -231,6 +231,7 @@ var defaultInputs = []string{
 	"rsa_pss_misc_test.json",
 	"rsa_signature_test.json",
 	"x25519_test.json",
+	"xchacha20_poly1305_test.json",
 }
 
 func main() {

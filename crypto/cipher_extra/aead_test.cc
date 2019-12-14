@@ -823,3 +823,12 @@ TEST(AEADTest, WycheproofChaCha20Poly1305) {
     RunWycheproofTestCase(t, EVP_aead_chacha20_poly1305());
   });
 }
+
+TEST(AEADTest, WycheproofXChaCha20Poly1305) {
+  FileTestGTest(
+      "third_party/wycheproof_testvectors/xchacha20_poly1305_test.txt",
+      [](FileTest *t) {
+        t->IgnoreInstruction("keySize");
+        RunWycheproofTestCase(t, EVP_aead_xchacha20_poly1305());
+      });
+}
