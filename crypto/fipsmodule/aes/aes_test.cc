@@ -176,7 +176,7 @@ TEST(AESTest, WycheproofKeyWrap) {
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
 
-    if (result != WycheproofResult::kInvalid) {
+    if (result.IsValid()) {
       ASSERT_GE(ct.size(), 8u);
 
       AES_KEY aes;
@@ -218,7 +218,10 @@ TEST(AESTest, WycheproofKeyWrapWithPadding) {
     // should pass. However, both RFC 5649 and SP 800-38F section 5.3.1 say that
     // the minimum length is one. Therefore we consider test cases with an empty
     // message to be invalid.
-    if (result != WycheproofResult::kInvalid && !msg.empty()) {
+    //
+    // Wycheproof marks various weak parameters as acceptable. We do not enforce
+    // policy in the library, so we map those flags to valid.
+    if (result.IsValid({"SmallKey", "WeakWrapping"}) && !msg.empty()) {
       AES_KEY aes;
       ASSERT_EQ(0, AES_set_decrypt_key(key.data(), 8 * key.size(), &aes));
       std::vector<uint8_t> out(ct.size() - 8);

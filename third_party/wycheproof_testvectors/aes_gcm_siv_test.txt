@@ -383,8 +383,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 43488548d88e6f774bcd2d52c18fbcc933a4e9a9613ff3edbe959ec59522adc098b3133b8d17b9e9dad631ad33752c95
 result = valid
 tag = 00000000000000000000000000000000
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 40
 # Testing for ctr overflow
@@ -395,8 +394,7 @@ key = 00112233445566778899aabbccddeeff
 msg = f012c6a7eb0e8af5bc45e015e7680a693dc709b95383f6a94babec1bc36e4be3cf4f55a31a94f11c6c3f90eed99682bc
 result = valid
 tag = ffffffffffffffffffffffffffffffff
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 41
 # Testing for ctr overflow
@@ -407,8 +405,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 71ceee58179d6fb968521e9594dbf98cc0040f6aa38fe873c32a9b122d6cbfd51aa4778b3f4f37be7348690d97e2468b
 result = valid
 tag = fefffffffefffffffefffffffeffffff
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 42
 # Testing for ctr overflow
@@ -419,8 +416,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 2e14f9e9a09ea204557367898a80dcad117af3666bea25762b70633a9f3614fbe631ba617c371fd5566d5e613496e69f
 result = valid
 tag = ffffff7f00112233445566778899aabb
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 43
 # Testing for ctr overflow
@@ -431,8 +427,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 27fac75879c9d87cd52a0793137ba792f6f145148158eb538f2081e09cd0315986a7025045ecbb2ca1bb18a17bfcd567
 result = valid
 tag = ffffffffffffff7f0011223344556677
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 44
 # Flipped bit 0 in tag
@@ -1153,8 +1148,7 @@ key = 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 msg = bdd411814564c4218d224d50591c818855a862a0a519ac0b3d71a2edb12aa71eb81959bcc6b84c45aa424c9aca0b7bdd
 result = valid
 tag = 00000000000000000000000000000000
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 117
 # Testing for ctr overflow
@@ -1165,8 +1159,7 @@ key = 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 msg = d04846a01f472262e60a1cb4cfcbdcb05c3f819628a3a49395c5dae96c434b2417ce071699afa74a60c32c0bafd9c01a
 result = valid
 tag = ffffffffffffffffffffffffffffffff
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 118
 # Testing for ctr overflow
@@ -1177,8 +1170,7 @@ key = 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 msg = 79637cee9decf33e3080de3d2c55bd21cd529ba8080b583edb6cfe13cda04bd00debe58b8cd48d6e02a1ecfc4d87923a
 result = valid
 tag = fefffffffefffffffefffffffeffffff
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 119
 # Testing for ctr overflow
@@ -1189,8 +1181,7 @@ key = 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 msg = 6492a73880dac7f36743715b0fc7063d3e46a25044310bba5849ed88bfcb54b0adbe3978040bda849906e1aa09d1a8e3
 result = valid
 tag = ffffff7f00112233445566778899aabb
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 120
 # Testing for ctr overflow
@@ -1201,8 +1192,7 @@ key = 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 msg = 7848d9e872f40bca1b82a4e7185fb75193b3496cc1dc2a72b86ed156ab8389e71687ed25eb6485e66561fa8c39853368
 result = valid
 tag = ffffffffffffff7f0011223344556677
-# The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 121
 # Flipped bit 0 in tag

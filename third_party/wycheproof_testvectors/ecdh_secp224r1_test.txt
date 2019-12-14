@@ -20,8 +20,7 @@ private = 565577a49415ca761a0322ad54e4ad0ae7625174baf372c2816f5328
 public = 3032301006072a8648ce3d020106052b81040021031e00027d8ac211e1228eb094e285a957d9912e93deee433ed777440ae9fc71
 result = acceptable
 shared = b8ecdb552d39228ee332bafe4886dbff272f7109edf933bc7542bd4f
-# The point in the public key is compressed. Not every library supports points
-# in compressed format.
+flags = CompressedPoint
 
 # tcId = 3
 # edge case for shared secret
@@ -533,9 +532,7 @@ private = 00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c29b7
 public = 304e301006072a8648ce3d020106052b81040021033a0004478e73465bb1183583f4064e67e8b4343af4a05d29dfc04eb60ac2302e5b9a3a1b32e4208d4c284ff26822e09c3a9a4683443e4a35175504
 result = valid
 shared = 475fd96e0eb8cb8f100a5d7fe043a7a6851d1d611da2643a3c6ae708
-# The private key has a special value. Implementations using addition
-# subtraction chains for the point multiplication may get the point at infinity
-# as an intermediate result. See CVE_2017_10176
+flags = AddSubChain
 
 # tcId = 76
 # edge case private key
@@ -543,9 +540,7 @@ private = 00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a37
 public = 304e301006072a8648ce3d020106052b81040021033a0004478e73465bb1183583f4064e67e8b4343af4a05d29dfc04eb60ac2302e5b9a3a1b32e4208d4c284ff26822e09c3a9a4683443e4a35175504
 result = valid
 shared = 41ef931d669d1f57d8bb95a01a92321da74be8c6cbc3bbe0b2e73ebd
-# The private key has a special value. Implementations using addition
-# subtraction chains for the point multiplication may get the point at infinity
-# as an intermediate result. See CVE_2017_10176
+flags = AddSubChain
 
 # tcId = 77
 # edge case private key
@@ -560,9 +555,7 @@ private = 00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3b
 public = 304e301006072a8648ce3d020106052b81040021033a0004478e73465bb1183583f4064e67e8b4343af4a05d29dfc04eb60ac2302e5b9a3a1b32e4208d4c284ff26822e09c3a9a4683443e4a35175504
 result = valid
 shared = 11ff15126411299cbd49e2b7542e69e91ef132e2551a16ecfebb23a3
-# The private key has a special value. Implementations using addition
-# subtraction chains for the point multiplication may get the point at infinity
-# as an intermediate result. See CVE_2017_10176
+flags = AddSubChain
 
 # tcId = 79
 # point is not on curve
@@ -688,12 +681,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 304e301006072a8648ce3d020106052b81040021033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5d
 result = invalid
 shared = 
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
+flags = InvalidPublic
 
 # tcId = 97
 # public point = (0,0)
@@ -701,12 +689,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 304e301006072a8648ce3d020106052b81040021033a00040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = invalid
 shared = 
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
+flags = InvalidPublic
 
 # tcId = 98
 # order = -26959946667150639794667015087019625940457807714424391721682722368061
@@ -714,20 +697,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201133081d406072a8648ce3d02013081c8020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34021dff0000000000000000000000000000e95d1f470fc1ec22d6baa3a3d5c3020101033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = invalid
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# The order of the public key has been modified. If this order is used in a
-# cryptographic primitive instead of the correct order then private keys may
-# leak. E.g. ECDHC in BC 1.52 suffered from this.
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = WrongOrder,InvalidPublic,UnnamedCurve
 
 # tcId = 99
 # order = 0
@@ -735,20 +705,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 3081f73081b806072a8648ce3d02013081ac020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34020100020101033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = invalid
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# The order of the public key has been modified. If this order is used in a
-# cryptographic primitive instead of the correct order then private keys may
-# leak. E.g. ECDHC in BC 1.52 suffered from this.
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = WrongOrder,InvalidPublic,UnnamedCurve
 
 # tcId = 100
 # order = 1
@@ -756,20 +713,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 3081f73081b806072a8648ce3d02013081ac020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34020101020101033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = acceptable
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# The order of the public key has been modified. If this order is used in a
-# cryptographic primitive instead of the correct order then private keys may
-# leak. E.g. ECDHC in BC 1.52 suffered from this.
-# A parameter that is typically not used for ECDH has been modified. Sometimes
-# libraries ignore small differences between public and private key. For
-# example, a library might ignore an incorrect cofactor in the public key. We
-# consider ignoring such changes as acceptable as long as these differences do
-# not change the outcome of the ECDH computation, i.e. as long as the
-# computation is done on the curve from the private key.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = WrongOrder,UnusedParam,UnnamedCurve
 
 # tcId = 101
 # order = 6277101735386680763835789423207665314073163949517624387909
@@ -777,20 +721,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 3082010f3081d006072a8648ce3d02013081c4020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34021900ffffffffffffffffffffffffffff16a2e0b8f03e13dd2945020101033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = acceptable
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# The order of the public key has been modified. If this order is used in a
-# cryptographic primitive instead of the correct order then private keys may
-# leak. E.g. ECDHC in BC 1.52 suffered from this.
-# A parameter that is typically not used for ECDH has been modified. Sometimes
-# libraries ignore small differences between public and private key. For
-# example, a library might ignore an incorrect cofactor in the public key. We
-# consider ignoring such changes as acceptable as long as these differences do
-# not change the outcome of the ECDH computation, i.e. as long as the
-# computation is done on the curve from the private key.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = WrongOrder,UnusedParam,UnnamedCurve
 
 # tcId = 102
 # generator = (0,0)
@@ -798,17 +729,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201133081d406072a8648ce3d02013081c8020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb40439040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020101033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = acceptable
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# A parameter that is typically not used for ECDH has been modified. Sometimes
-# libraries ignore small differences between public and private key. For
-# example, a library might ignore an incorrect cofactor in the public key. We
-# consider ignoring such changes as acceptable as long as these differences do
-# not change the outcome of the ECDH computation, i.e. as long as the
-# computation is done on the curve from the private key.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = UnusedParam,UnnamedCurve
 
 # tcId = 103
 # generator not on curve
@@ -816,17 +737,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201133081d406072a8648ce3d02013081c8020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e36021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020101033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = acceptable
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# A parameter that is typically not used for ECDH has been modified. Sometimes
-# libraries ignore small differences between public and private key. For
-# example, a library might ignore an incorrect cofactor in the public key. We
-# consider ignoring such changes as acceptable as long as these differences do
-# not change the outcome of the ECDH computation, i.e. as long as the
-# computation is done on the curve from the private key.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = UnusedParam,UnnamedCurve
 
 # tcId = 104
 # cofactor = -1
@@ -834,17 +745,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201133081d406072a8648ce3d02013081c8020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d0201ff033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = invalid
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = InvalidPublic,UnnamedCurve
 
 # tcId = 105
 # cofactor = 0
@@ -852,17 +753,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201133081d406072a8648ce3d02013081c8020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020100033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = invalid
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = InvalidPublic,UnnamedCurve
 
 # tcId = 106
 # cofactor = 2
@@ -870,17 +761,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201133081d406072a8648ce3d02013081c8020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020102033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = acceptable
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# A parameter that is typically not used for ECDH has been modified. Sometimes
-# libraries ignore small differences between public and private key. For
-# example, a library might ignore an incorrect cofactor in the public key. We
-# consider ignoring such changes as acceptable as long as these differences do
-# not change the outcome of the ECDH computation, i.e. as long as the
-# computation is done on the curve from the private key.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = UnusedParam,UnnamedCurve
 
 # tcId = 107
 # cofactor =
@@ -889,17 +770,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 3082012f3081f006072a8648ce3d02013081e4020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = invalid
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = InvalidPublic,UnnamedCurve
 
 # tcId = 108
 # cofactor = None
@@ -907,17 +778,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201103081d106072a8648ce3d02013081c5020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cfffffffffffffffffffffffffffffffefffffffffffffffffffffffe041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = acceptable
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# A parameter that is typically not used for ECDH has been modified. Sometimes
-# libraries ignore small differences between public and private key. For
-# example, a library might ignore an incorrect cofactor in the public key. We
-# consider ignoring such changes as acceptable as long as these differences do
-# not change the outcome of the ECDH computation, i.e. as long as the
-# computation is done on the curve from the private key.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = UnusedParam,UnnamedCurve
 
 # tcId = 109
 # modified prime
@@ -925,20 +786,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201133081d406072a8648ce3d02013081c8020101302806072a8648ce3d0101021d00c123da0a46a971da9468161e61a5c71a02e6c9bdb3392f4016fb457b303c041c3edc25f5b9568e256b97e9e19e5a38e4fd1936424cc6d0bfe904ba83041cb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4043904000000000000000000285145f31ae4d40000000000000000000003387edad63d1a600740ce66b6f04d67ed06ea1a75c16294336ed05b3fa3021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020101033a0004000000000000000000285145f31ae4d40000000000000000000003387edad63d1a600740ce66b6f04d67ed06ea1a75c16294336ed05b3fa3
 result = invalid
 shared = 3de0a5036fcde544c72cbe33cedb8709549bc3b6a4d750ee0de4c80d
-# The modulus of the public key has been modified. The public point of the
-# public key has been chosen so that it is both a point on both the curve of the
-# modified public key and the private key.
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = ModifiedPrime,InvalidPublic,UnnamedCurve
 
 # tcId = 110
 # using secp256r1
@@ -946,12 +794,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 3059301306072a8648ce3d020106082a8648ce3d03010703420004cbf6606595a3ee50f9fceaa2798c2740c82540516b4e5a7d361ff24e9dd15364e5408b2e679f9d5310d1f6893b36ce16b4a507509175fcb52aea53b781556b39
 result = invalid
 shared = 
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
+flags = InvalidPublic
 
 # tcId = 111
 # using secp256k1
@@ -959,12 +802,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 3056301006072a8648ce3d020106052b8104000a03420004a1263e75b87ae0937060ff1472f330ee55cdf8f4329d6284a9ebfbcc856c11684225e72cbebff41e54fb6f00e11afe53a17937bedbf2df787f8ef9584f775838
 result = invalid
 shared = 
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
+flags = InvalidPublic
 
 # tcId = 112
 # a = 0
@@ -972,17 +810,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 3081f83081b906072a8648ce3d02013081ad020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff0000000000000000000000013021040100041cd0d5e347a38ce5b6e1f47edddd8a223bca45d2015de76ec835a4df57043904a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020101033a0004a10fb7bf22d299fc5bc43bd2d0e8da28af28ace8430bee28f9e5b57554275c0615d8d9a3011d7bc4c1c4cf4a834c8dc46f25b98854401a5b
 result = acceptable
 shared = 9b992dad1c2b5dadd3b5aeb84b7a91fb6fe5f46e02ab2c7fa32696a7
-# A parameter that is typically not used for ECDH has been modified. Sometimes
-# libraries ignore small differences between public and private key. For
-# example, a library might ignore an incorrect cofactor in the public key. We
-# consider ignoring such changes as acceptable as long as these differences do
-# not change the outcome of the ECDH computation, i.e. as long as the
-# computation is done on the curve from the private key.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = UnusedParam,UnnamedCurve
 
 # tcId = 113
 # public key of order 3
@@ -990,21 +818,7 @@ private = 00d07629eb653a169ae3231ea1030faaf3e7f8ffe388030ee315d0a1d2
 public = 308201133081d406072a8648ce3d02013081c8020101302806072a8648ce3d0101021d00ffffffffffffffffffffffffffffffff000000000000000000000001303c041cacb441c744c5af60905e78cd53b10f4aec9f30a302bb4ab0aeb53182041c2356bdcb3ae3e1c1e31741c951add1b2b0f87305d01021232aa22e0c043904bafbb7559c7335192c6f0cc5970e9c92a12e9af1a0cb5403d9bcc4eb7a545a1d9302be01456f17846a445ef45ff7c31710b08a6881dc11d1021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020101033a0004bafbb7559c7335192c6f0cc5970e9c92a12e9af1a0cb5403d9bcc4eb85aba5e26cfd41feba90e87b95bba10aa0083ce8ef4f75977e23ee30
 result = invalid
 shared = 
-# The vector contains a weak public key. The curve is not a named curve, the
-# public key point has order 3 and has been chosen to be on the same curve as
-# the private key. This test vector is used to check ECC implementations for
-# missing steps in the verification of the public key.
-# The public key has been modified and is invalid. An implementation should
-# always check whether the public key is valid and on the same curve as the
-# private key. The test vector includes the shared secret computed with the
-# original public key if the public point is on the curve of the private key.
-# Generating a shared secret other than the one with the original key likely
-# indicates that the bug is exploitable.
-# The public key does not use a named curve. RFC 3279 allows to encode such
-# curves by explicitly encoding, the parameters of the curve equation, modulus,
-# generator, order and cofactor. However, many crypto libraries only support
-# named curves. Modifying some of the EC parameters and encoding the
-# corresponding public key as an unnamed curve is a potential attack vector.
+flags = WeakPublicKey,InvalidPublic,UnnamedCurve
 
 # tcId = 114
 # Public key uses wrong curve: secp256r1
@@ -1117,8 +931,7 @@ private = 00fc28a0ca0f8e36b0d4f71421845135a22aef543b9fddf8c775b2d18f
 public = 3032301006072a8648ce3d020106052b81040021031e00020ca753db5ddeca474241f8d2dafc0844343fd0e37eded2f0192d51b2
 result = invalid
 shared = 
-# The point in the public key is compressed. Not every library supports points
-# in compressed format.
+flags = CompressedPoint
 
 # tcId = 130
 # long form encoding of length of sequence
@@ -1126,9 +939,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30814e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 131
 # long form encoding of length of sequence
@@ -1136,9 +947,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f30811006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 132
 # length of sequence contains leading 0
@@ -1146,9 +955,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3082004e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 133
 # length of sequence contains leading 0
@@ -1156,9 +963,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30503082001006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 134
 # wrong length of sequence
@@ -1166,9 +971,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 135
 # wrong length of sequence
@@ -1176,9 +979,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 136
 # wrong length of sequence
@@ -1186,9 +987,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301106072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 137
 # wrong length of sequence
@@ -1196,9 +995,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e300f06072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 138
 # uint32 overflow in length of sequence
@@ -1206,9 +1003,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3085010000004e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 139
 # uint32 overflow in length of sequence
@@ -1216,9 +1011,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30533085010000001006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 140
 # uint64 overflow in length of sequence
@@ -1226,9 +1019,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 308901000000000000004e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 141
 # uint64 overflow in length of sequence
@@ -1236,9 +1027,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3057308901000000000000001006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 142
 # length of sequence = 2**31 - 1
@@ -1246,9 +1035,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30847fffffff301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 143
 # length of sequence = 2**31 - 1
@@ -1256,9 +1043,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 305230847fffffff06072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 144
 # length of sequence = 2**32 - 1
@@ -1266,9 +1051,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3084ffffffff301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 145
 # length of sequence = 2**32 - 1
@@ -1276,9 +1059,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30523084ffffffff06072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 146
 # length of sequence = 2**40 - 1
@@ -1286,9 +1067,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3085ffffffffff301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 147
 # length of sequence = 2**40 - 1
@@ -1296,9 +1075,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30533085ffffffffff06072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 148
 # length of sequence = 2**64 - 1
@@ -1306,9 +1083,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3088ffffffffffffffff301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 149
 # length of sequence = 2**64 - 1
@@ -1316,9 +1091,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30563088ffffffffffffffff06072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 150
 # incorrect length of sequence
@@ -1326,9 +1099,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30ff301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 151
 # incorrect length of sequence
@@ -1336,9 +1107,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e30ff06072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 152
 # indefinite length without termination
@@ -1346,9 +1115,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3080301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 153
 # indefinite length without termination
@@ -1356,9 +1123,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e308006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 154
 # indefinite length without termination
@@ -1366,9 +1131,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006802a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 155
 # indefinite length without termination
@@ -1376,9 +1139,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106802b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 156
 # indefinite length without termination
@@ -1386,9 +1147,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b810400210380000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 157
 # removing sequence
@@ -1396,9 +1155,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 158
 # removing sequence
@@ -1406,9 +1163,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 303c033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 159
 # lonely sequence tag
@@ -1416,9 +1171,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 160
 # lonely sequence tag
@@ -1426,9 +1179,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 303d30033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 161
 # appending 0's to sequence
@@ -1436,9 +1187,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620000
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 162
 # appending 0's to sequence
@@ -1446,9 +1195,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206072a8648ce3d020106052b810400210000033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 163
 # prepending 0's to sequence
@@ -1456,9 +1203,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30500000301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 164
 # prepending 0's to sequence
@@ -1466,9 +1211,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30503012000006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 165
 # appending unused 0's to sequence
@@ -1476,9 +1219,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620000
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 166
 # appending unused 0's to sequence
@@ -1486,9 +1227,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301006072a8648ce3d020106052b810400210000033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 167
 # appending null value to sequence
@@ -1496,9 +1235,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620500
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 168
 # appending null value to sequence
@@ -1506,9 +1243,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206072a8648ce3d020106052b810400210500033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 169
 # including garbage
@@ -1516,9 +1251,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3053498177304e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 170
 # including garbage
@@ -1526,9 +1259,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30522500304e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 171
 # including garbage
@@ -1536,9 +1267,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050304e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620004deadbeef
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 172
 # including garbage
@@ -1546,9 +1275,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30533015498177301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 173
 # including garbage
@@ -1556,9 +1283,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 305230142500301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 174
 # including garbage
@@ -1566,9 +1291,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30563012301006072a8648ce3d020106052b810400210004deadbeef033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 175
 # including garbage
@@ -1576,9 +1299,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30533015260c49817706072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 176
 # including garbage
@@ -1586,9 +1307,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30523014260b250006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 177
 # including garbage
@@ -1596,9 +1315,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30563018260906072a8648ce3d02010004deadbeef06052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 178
 # including garbage
@@ -1606,9 +1323,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3053301506072a8648ce3d0201260a49817706052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 179
 # including garbage
@@ -1616,9 +1331,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301406072a8648ce3d02012609250006052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 180
 # including garbage
@@ -1626,9 +1339,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3056301806072a8648ce3d0201260706052b810400210004deadbeef033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 181
 # including garbage
@@ -1636,9 +1347,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3053301006072a8648ce3d020106052b81040021233f498177033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 182
 # including garbage
@@ -1646,9 +1355,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301006072a8648ce3d020106052b81040021233e2500033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 183
 # including garbage
@@ -1656,9 +1363,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3056301006072a8648ce3d020106052b81040021233c033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620004deadbeef
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 184
 # including undefined tags
@@ -1666,9 +1371,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3056aa00bb00cd00304e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 185
 # including undefined tags
@@ -1676,9 +1379,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3054aa02aabb304e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 186
 # including undefined tags
@@ -1686,9 +1387,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30563018aa00bb00cd00301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 187
 # including undefined tags
@@ -1696,9 +1395,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30543016aa02aabb301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 188
 # including undefined tags
@@ -1706,9 +1403,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30563018260faa00bb00cd0006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 189
 # including undefined tags
@@ -1716,9 +1411,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30543016260daa02aabb06072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 190
 # including undefined tags
@@ -1726,9 +1419,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3056301806072a8648ce3d0201260daa00bb00cd0006052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 191
 # including undefined tags
@@ -1736,9 +1427,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3054301606072a8648ce3d0201260baa02aabb06052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 192
 # including undefined tags
@@ -1746,9 +1435,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3056301006072a8648ce3d020106052b810400212342aa00bb00cd00033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 193
 # including undefined tags
@@ -1756,9 +1443,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3054301006072a8648ce3d020106052b810400212340aa02aabb033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 194
 # truncated length of sequence
@@ -1766,9 +1451,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3081
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 195
 # truncated length of sequence
@@ -1776,9 +1459,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 303e3081033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 196
 # Replacing sequence with NULL
@@ -1786,9 +1467,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 0500
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 197
 # Replacing sequence with NULL
@@ -1796,9 +1475,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 303e0500033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 198
 # changing tag value of sequence
@@ -1806,9 +1483,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 2e4e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 199
 # changing tag value of sequence
@@ -1816,9 +1491,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 2f4e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 200
 # changing tag value of sequence
@@ -1826,9 +1499,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 314e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 201
 # changing tag value of sequence
@@ -1836,9 +1507,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 324e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 202
 # changing tag value of sequence
@@ -1846,9 +1515,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = ff4e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 203
 # changing tag value of sequence
@@ -1856,9 +1523,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e2e1006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 204
 # changing tag value of sequence
@@ -1866,9 +1531,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e2f1006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 205
 # changing tag value of sequence
@@ -1876,9 +1539,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e311006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 206
 # changing tag value of sequence
@@ -1886,9 +1547,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e321006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 207
 # changing tag value of sequence
@@ -1896,9 +1555,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304eff1006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 208
 # dropping value of sequence
@@ -1906,9 +1563,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3000
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 209
 # dropping value of sequence
@@ -1916,9 +1571,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 303e3000033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 210
 # truncated sequence
@@ -1926,9 +1579,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 211
 # truncated sequence
@@ -1936,9 +1587,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d1006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 212
 # truncated sequence
@@ -1946,9 +1595,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d300f06072a8648ce3d020106052b810400033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 213
 # truncated sequence
@@ -1956,9 +1603,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d300f072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 214
 # indefinite length
@@ -1966,9 +1611,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3080301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620000
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 215
 # indefinite length
@@ -1976,9 +1619,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050308006072a8648ce3d020106052b810400210000033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 216
 # indefinite length with truncated delimiter
@@ -1986,9 +1627,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3080301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da6200
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 217
 # indefinite length with truncated delimiter
@@ -1996,9 +1635,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f308006072a8648ce3d020106052b8104002100033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 218
 # indefinite length with additional element
@@ -2006,9 +1643,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3080301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da6205000000
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 219
 # indefinite length with additional element
@@ -2016,9 +1651,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052308006072a8648ce3d020106052b8104002105000000033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 220
 # indefinite length with truncated element
@@ -2026,9 +1659,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3080301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62060811220000
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 221
 # indefinite length with truncated element
@@ -2036,9 +1667,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3054308006072a8648ce3d020106052b81040021060811220000033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 222
 # indefinite length with garbage
@@ -2046,9 +1675,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3080301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620000fe02beef
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 223
 # indefinite length with garbage
@@ -2056,9 +1683,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3054308006072a8648ce3d020106052b810400210000fe02beef033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 224
 # indefinite length with nonempty EOC
@@ -2066,9 +1691,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3080301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620002beef
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 225
 # indefinite length with nonempty EOC
@@ -2076,9 +1699,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052308006072a8648ce3d020106052b810400210002beef033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 226
 # prepend empty sequence
@@ -2086,9 +1707,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30503000301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 227
 # prepend empty sequence
@@ -2096,9 +1715,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30503012300006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 228
 # append empty sequence
@@ -2106,9 +1723,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da623000
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 229
 # append empty sequence
@@ -2116,9 +1731,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206072a8648ce3d020106052b810400213000033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 230
 # append garbage with high tag number
@@ -2126,9 +1739,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3051301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62bf7f00
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 231
 # append garbage with high tag number
@@ -2136,9 +1747,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3051301306072a8648ce3d020106052b81040021bf7f00033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 232
 # sequence of sequence
@@ -2146,9 +1755,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050304e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 233
 # sequence of sequence
@@ -2156,9 +1763,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30503012301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 234
 # truncated sequence: removed last 1 elements
@@ -2166,9 +1771,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3012301006072a8648ce3d020106052b81040021
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 235
 # truncated sequence: removed last 1 elements
@@ -2176,9 +1779,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3047300906072a8648ce3d0201033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 236
 # repeating element in sequence
@@ -2186,9 +1787,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30818a301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 237
 # repeating element in sequence
@@ -2196,9 +1795,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3055301706072a8648ce3d020106052b8104002106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 238
 # long form encoding of length of oid
@@ -2206,9 +1803,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f30110681072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 239
 # long form encoding of length of oid
@@ -2216,9 +1811,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301106072a8648ce3d02010681052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 240
 # length of oid contains leading 0
@@ -2226,9 +1819,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30503012068200072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 241
 # length of oid contains leading 0
@@ -2236,9 +1827,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206072a8648ce3d0201068200052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 242
 # wrong length of oid
@@ -2246,9 +1835,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006082a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 243
 # wrong length of oid
@@ -2256,9 +1843,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006062a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 244
 # wrong length of oid
@@ -2266,9 +1851,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106062b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 245
 # wrong length of oid
@@ -2276,9 +1859,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106042b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 246
 # uint32 overflow in length of oid
@@ -2286,9 +1867,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30533015068501000000072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 247
 # uint32 overflow in length of oid
@@ -2296,9 +1875,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3053301506072a8648ce3d0201068501000000052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 248
 # uint64 overflow in length of oid
@@ -2306,9 +1883,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3057301906890100000000000000072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 249
 # uint64 overflow in length of oid
@@ -2316,9 +1891,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3057301906072a8648ce3d020106890100000000000000052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 250
 # length of oid = 2**31 - 1
@@ -2326,9 +1899,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301406847fffffff2a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 251
 # length of oid = 2**31 - 1
@@ -2336,9 +1907,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301406072a8648ce3d020106847fffffff2b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 252
 # length of oid = 2**32 - 1
@@ -2346,9 +1915,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 305230140684ffffffff2a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 253
 # length of oid = 2**32 - 1
@@ -2356,9 +1923,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301406072a8648ce3d02010684ffffffff2b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 254
 # length of oid = 2**40 - 1
@@ -2366,9 +1931,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 305330150685ffffffffff2a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 255
 # length of oid = 2**40 - 1
@@ -2376,9 +1939,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3053301506072a8648ce3d02010685ffffffffff2b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 256
 # length of oid = 2**64 - 1
@@ -2386,9 +1947,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 305630180688ffffffffffffffff2a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 257
 # length of oid = 2**64 - 1
@@ -2396,9 +1955,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3056301806072a8648ce3d02010688ffffffffffffffff2b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 258
 # incorrect length of oid
@@ -2406,9 +1963,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006ff2a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 259
 # incorrect length of oid
@@ -2416,9 +1971,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106ff2b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 260
 # removing oid
@@ -2426,9 +1979,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3045300706052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 261
 # lonely oid tag
@@ -2436,9 +1987,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304630080606052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 262
 # lonely oid tag
@@ -2446,9 +1995,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3048300a06072a8648ce3d020106033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 263
 # appending 0's to oid
@@ -2456,9 +2003,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206092a8648ce3d0201000006052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 264
 # appending 0's to oid
@@ -2466,9 +2011,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206072a8648ce3d020106072b810400210000033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 265
 # prepending 0's to oid
@@ -2476,9 +2019,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30503012060900002a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 266
 # prepending 0's to oid
@@ -2486,9 +2027,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206072a8648ce3d0201060700002b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 267
 # appending unused 0's to oid
@@ -2496,9 +2035,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206072a8648ce3d0201000006052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 268
 # appending null value to oid
@@ -2506,9 +2043,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206092a8648ce3d0201050006052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 269
 # appending null value to oid
@@ -2516,9 +2051,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301206072a8648ce3d020106072b810400210500033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 270
 # truncated length of oid
@@ -2526,9 +2059,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30473009068106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 271
 # truncated length of oid
@@ -2536,9 +2067,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3049300b06072a8648ce3d02010681033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 272
 # Replacing oid with NULL
@@ -2546,9 +2075,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30473009050006052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 273
 # Replacing oid with NULL
@@ -2556,9 +2083,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3049300b06072a8648ce3d02010500033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 274
 # changing tag value of oid
@@ -2566,9 +2091,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301004072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 275
 # changing tag value of oid
@@ -2576,9 +2099,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301005072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 276
 # changing tag value of oid
@@ -2586,9 +2107,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301007072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 277
 # changing tag value of oid
@@ -2596,9 +2115,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301008072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 278
 # changing tag value of oid
@@ -2606,9 +2123,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e3010ff072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 279
 # changing tag value of oid
@@ -2616,9 +2131,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020104052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 280
 # changing tag value of oid
@@ -2626,9 +2139,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020105052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 281
 # changing tag value of oid
@@ -2636,9 +2147,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020107052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 282
 # changing tag value of oid
@@ -2646,9 +2155,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020108052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 283
 # changing tag value of oid
@@ -2656,9 +2163,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d0201ff052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 284
 # dropping value of oid
@@ -2666,9 +2171,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30473009060006052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 285
 # dropping value of oid
@@ -2676,9 +2179,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3049300b06072a8648ce3d02010600033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 286
 # modify first byte of oid
@@ -2686,9 +2187,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e30100607288648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 287
 # modify first byte of oid
@@ -2696,9 +2195,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052981040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 288
 # modify last byte of oid
@@ -2706,9 +2203,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d028106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 289
 # modify last byte of oid
@@ -2716,9 +2211,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b810400a1033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 290
 # truncated oid
@@ -2726,9 +2219,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d300f06062a8648ce3d0206052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 291
 # truncated oid
@@ -2736,9 +2227,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d300f06068648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 292
 # truncated oid
@@ -2746,9 +2235,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d300f06072a8648ce3d020106042b810400033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 293
 # truncated oid
@@ -2756,9 +2243,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d300f06072a8648ce3d0201060481040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 294
 # wrong oid
@@ -2766,9 +2251,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304c300e06052b0e03021a06052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 295
 # wrong oid
@@ -2776,9 +2259,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30503012060960864801650304020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 296
 # wrong oid
@@ -2786,9 +2267,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b0e03021a033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 297
 # wrong oid
@@ -2796,9 +2275,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301406072a8648ce3d02010609608648016503040201033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 298
 # longer oid
@@ -2806,9 +2283,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301106082a8648ce3d02010106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 299
 # longer oid
@@ -2816,9 +2291,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301106072a8648ce3d020106062b8104002101033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 300
 # oid with modified node
@@ -2826,9 +2299,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d021106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 301
 # oid with modified node
@@ -2836,9 +2307,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 30523014060b2a8648ce3d02888080800106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 302
 # oid with modified node
@@ -2846,9 +2315,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040031033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 303
 # oid with modified node
@@ -2856,9 +2323,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301406072a8648ce3d020106092b8104008880808021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 304
 # large integer in oid
@@ -2866,9 +2331,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3057301906102a8648ce3d028280808080808080800106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 305
 # large integer in oid
@@ -2876,9 +2339,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3057301906072a8648ce3d0201060e2b81040082808080808080808021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 306
 # oid with invalid node
@@ -2886,9 +2347,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301106082a8648ce3d0201e006052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 307
 # oid with invalid node
@@ -2896,9 +2355,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301106082a808648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 308
 # oid with invalid node
@@ -2906,9 +2363,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301106072a8648ce3d020106062b81040021e0033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 309
 # oid with invalid node
@@ -2916,9 +2371,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301106072a8648ce3d020106062b8081040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 310
 # long form encoding of length of bit string
@@ -2926,9 +2379,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304f301006072a8648ce3d020106052b8104002103813a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 311
 # length of bit string contains leading 0
@@ -2936,9 +2387,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301006072a8648ce3d020106052b810400210382003a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 312
 # wrong length of bit string
@@ -2946,9 +2395,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021033b000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 313
 # wrong length of bit string
@@ -2956,9 +2403,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b810400210339000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 314
 # uint32 overflow in length of bit string
@@ -2966,9 +2411,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3053301006072a8648ce3d020106052b810400210385010000003a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 315
 # uint64 overflow in length of bit string
@@ -2976,9 +2419,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3057301006072a8648ce3d020106052b81040021038901000000000000003a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 316
 # length of bit string = 2**31 - 1
@@ -2986,9 +2427,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301006072a8648ce3d020106052b8104002103847fffffff000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 317
 # length of bit string = 2**32 - 1
@@ -2996,9 +2435,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301006072a8648ce3d020106052b810400210384ffffffff000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 318
 # length of bit string = 2**40 - 1
@@ -3006,9 +2443,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3053301006072a8648ce3d020106052b810400210385ffffffffff000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 319
 # length of bit string = 2**64 - 1
@@ -3016,9 +2451,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3056301006072a8648ce3d020106052b810400210388ffffffffffffffff000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 320
 # incorrect length of bit string
@@ -3026,9 +2459,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b8104002103ff000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 321
 # lonely bit string tag
@@ -3036,9 +2467,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3013301006072a8648ce3d020106052b8104002103
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 322
 # appending 0's to bit string
@@ -3046,9 +2475,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301006072a8648ce3d020106052b81040021033c000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620000
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 323
 # prepending 0's to bit string
@@ -3056,9 +2483,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301006072a8648ce3d020106052b81040021033c0000000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 324
 # appending null value to bit string
@@ -3066,9 +2491,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3050301006072a8648ce3d020106052b81040021033c000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da620500
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 325
 # truncated length of bit string
@@ -3076,9 +2499,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3014301006072a8648ce3d020106052b810400210381
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 326
 # Replacing bit string with NULL
@@ -3086,9 +2507,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3014301006072a8648ce3d020106052b810400210500
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 327
 # changing tag value of bit string
@@ -3096,9 +2515,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021013a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 328
 # changing tag value of bit string
@@ -3106,9 +2523,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021023a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 329
 # changing tag value of bit string
@@ -3116,9 +2531,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021043a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 330
 # changing tag value of bit string
@@ -3126,9 +2539,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021053a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 331
 # changing tag value of bit string
@@ -3136,9 +2547,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021ff3a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 332
 # dropping value of bit string
@@ -3146,9 +2555,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3014301006072a8648ce3d020106052b810400210300
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 333
 # modify first byte of bit string
@@ -3156,9 +2563,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021033a020486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 334
 # modify last byte of bit string
@@ -3166,9 +2571,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021033a000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3dae2
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 335
 # truncated bit string
@@ -3176,9 +2579,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d301006072a8648ce3d020106052b810400210339000486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 336
 # truncated bit string
@@ -3186,9 +2587,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304d301006072a8648ce3d020106052b8104002103390486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 337
 # declaring bits as unused in bit string
@@ -3196,9 +2595,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021033a010486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 338
 # unused bits in bit string
@@ -3206,9 +2603,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3052301006072a8648ce3d020106052b81040021033e200486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da6201020304
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 339
 # unused bits in empty bit-string
@@ -3216,9 +2611,7 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 3015301006072a8648ce3d020106052b81040021030103
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 
 # tcId = 340
 # 128 unused bits
@@ -3226,7 +2619,5 @@ private = 00a1b9444f59642d428e2f299055004165a34c3b8796c5057ae8a1a572
 public = 304e301006072a8648ce3d020106052b81040021033a800486e2f72bccd974a3f1a4fc2cdcf22043eaf8be047de6be726b62001fda6f50f6df0b51bee99195d8a1a1c97e59e72fa4fcf8c1d21cb3da62
 result = acceptable
 shared = 85a70fc4dfc8509fb9ba1cfcf1879443e2ce176d794228029b10da63
-# The public key in this test uses an invalid ASN encoding. Some cases where the
-# ASN parser is not strictly checking the ASN format are benign as long as the
-# ECDH computation still returns the correct shared value.
+flags = InvalidAsn
 

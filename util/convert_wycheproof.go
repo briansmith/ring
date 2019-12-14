@@ -174,12 +174,15 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 					return err
 				}
 			}
-			if flags, ok := test["flags"]; ok {
-				for _, flag := range flags.([]interface{}) {
-					if note, ok := w.Notes[flag.(string)]; ok {
-						if err := printComment(f, note); err != nil {
-							return err
-						}
+			if flagsI, ok := test["flags"]; ok {
+				var flags []string
+				for _, flagI := range flagsI.([]interface{}) {
+					flag := flagI.(string)
+					flags = append(flags, flag)
+				}
+				if len(flags) != 0 {
+					if err := printAttribute(f, "flags", strings.Join(flags, ","), false); err != nil {
+						return err
 					}
 				}
 			}

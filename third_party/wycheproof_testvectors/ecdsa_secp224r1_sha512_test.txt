@@ -24,10 +24,7 @@ sig = 303c021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021c394766
 msg = 313233343030
 result = acceptable
 sig = 303c021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021cc6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# Some implementations of ECDSA and DSA incorrectly encode r and s by not
-# including leading zeros in the ASN encoding of integers when necessary. Hence,
-# some implementations (e.g. jdk) allow signatures with incorrect ASN encodings
-# assuming that the signature is otherwise valid.
+flags = MissingZero
 
 # tcId = 3
 # valid
@@ -40,18 +37,14 @@ sig = 303d021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b8
 msg = 313233343030
 result = invalid
 sig = 30813d021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 5
 # length of sequence contains leading 0
 msg = 313233343030
 result = invalid
 sig = 3082003d021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 6
 # wrong length of sequence
@@ -358,9 +351,7 @@ sig = 303c1c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b899
 msg = 313233343030
 result = invalid
 sig = 3080021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e0000
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 57
 # indefinite length with truncated delimiter
@@ -433,36 +424,28 @@ sig = 305c021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b8
 msg = 313233343030
 result = invalid
 sig = 303e02811c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 69
 # long form encoding of length of integer
 msg = 313233343030
 result = invalid
 sig = 303e021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab02811d00c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 70
 # length of integer contains leading 0
 msg = 313233343030
 result = invalid
 sig = 303f0282001c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 71
 # length of integer contains leading 0
 msg = 313233343030
 result = invalid
 sig = 303f021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab0282001d00c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 72
 # wrong length of integer
@@ -607,18 +590,14 @@ sig = 303f021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021f00c6b8
 msg = 313233343030
 result = invalid
 sig = 303f021e0000691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021d00c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 96
 # prepending 0's to integer
 msg = 313233343030
 result = invalid
 sig = 303f021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021f000000c6b899049859a01f5093eab08341ee443f383b77fed04e4a614cbb2e
-# This is a signature with correct values for (r, s) but using some alternative
-# BER encoding instead of DER encoding. Implementations should not accept such
-# signatures to limit signature malleability.
+flags = BER
 
 # tcId = 97
 # appending unused 0's to integer
@@ -907,640 +886,560 @@ sig = 303c021c691c723dd6a7f5d11b8c8e8bd0825c9fab0b99ee2b25f3658fdf92ab021c394766
 msg = 313233343030
 result = invalid
 sig = 3006020100020100
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 145
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3006020100020101
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 146
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30060201000201ff
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 147
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020100021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 148
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020100021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 149
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020100021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 150
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020100021d00ffffffffffffffffffffffffffffffff000000000000000000000001
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 151
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020100021d00ffffffffffffffffffffffffffffffff000000000000000000000002
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 152
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3008020100090380fe01
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 153
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3006020100090142
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 154
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3006020101020100
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 155
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3006020101020101
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 156
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30060201010201ff
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 157
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020101021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 158
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020101021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 159
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020101021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 160
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020101021d00ffffffffffffffffffffffffffffffff000000000000000000000001
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 161
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022020101021d00ffffffffffffffffffffffffffffffff000000000000000000000002
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 162
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3008020101090380fe01
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 163
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3006020101090142
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 164
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30060201ff020100
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 165
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30060201ff020101
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 166
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30060201ff0201ff
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 167
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30220201ff021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 168
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30220201ff021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 169
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30220201ff021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 170
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30220201ff021d00ffffffffffffffffffffffffffffffff000000000000000000000001
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 171
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30220201ff021d00ffffffffffffffffffffffffffffffff000000000000000000000002
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 172
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30080201ff090380fe01
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 173
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 30060201ff090142
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 174
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020100
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 175
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d020101
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 176
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d0201ff
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 177
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 178
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 179
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 180
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d021d00ffffffffffffffffffffffffffffffff000000000000000000000001
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 181
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d021d00ffffffffffffffffffffffffffffffff000000000000000000000002
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 182
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3024021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d090380fe01
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 183
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d090142
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 184
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c020100
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 185
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c020101
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 186
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c0201ff
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 187
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 188
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 189
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 190
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c021d00ffffffffffffffffffffffffffffffff000000000000000000000001
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 191
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c021d00ffffffffffffffffffffffffffffffff000000000000000000000002
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 192
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3024021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c090380fe01
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 193
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c090142
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 194
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e020100
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 195
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e020101
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 196
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e0201ff
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 197
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 198
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 199
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 200
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e021d00ffffffffffffffffffffffffffffffff000000000000000000000001
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 201
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e021d00ffffffffffffffffffffffffffffffff000000000000000000000002
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 202
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3024021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e090380fe01
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 203
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e090142
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 204
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffffffff000000000000000000000001020100
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 205
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffffffff000000000000000000000001020101
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 206
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffffffff0000000000000000000000010201ff
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 207
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000001021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 208
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000001021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 209
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000001021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 210
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000001021d00ffffffffffffffffffffffffffffffff000000000000000000000001
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 211
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000001021d00ffffffffffffffffffffffffffffffff000000000000000000000002
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 212
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3024021d00ffffffffffffffffffffffffffffffff000000000000000000000001090380fe01
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 213
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffffffff000000000000000000000001090142
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 214
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffffffff000000000000000000000002020100
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 215
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffffffff000000000000000000000002020101
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 216
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffffffff0000000000000000000000020201ff
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 217
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000002021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 218
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000002021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3c
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 219
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000002021d00ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3e
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 220
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000002021d00ffffffffffffffffffffffffffffffff000000000000000000000001
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 221
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 303e021d00ffffffffffffffffffffffffffffffff000000000000000000000002021d00ffffffffffffffffffffffffffffffff000000000000000000000002
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 222
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3024021d00ffffffffffffffffffffffffffffffff000000000000000000000002090380fe01
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 223
 # Signature with special case values for r and s
 msg = 313233343030
 result = invalid
 sig = 3022021d00ffffffffffffffffffffffffffffffff000000000000000000000002090142
-# Edge case values such as r=1 and s=0 can lead to forgeries if the ECDSA
-# implementation does not check boundaries and computes s^(-1)==0.
+flags = EdgeCase
 
 # tcId = 224
 # Signature encoding contains wrong types.
@@ -3020,9 +2919,7 @@ sig = 303d021c7ffffffffffffffffffffffffffffffffffffffffffffffffffffffd021d0096da
 msg = 313233343030
 result = valid
 sig = 303e021d00c44503dae85dd5210780f02928b3d927171c578f8603d16b240663c7021d00ec0ce3fa725c1027475a5f5bf4ee980de61c3b4875afe8b654b24ee2
-# Some implementations of ECDSA do not handle duplication and points at infinity
-# correctly. This is a test vector that has been specially crafted to check for
-# such an omission.
+flags = PointDuplication
 
 [key.curve = secp224r1]
 [key.keySize = 224]
@@ -3038,9 +2935,7 @@ sig = 303e021d00c44503dae85dd5210780f02928b3d927171c578f8603d16b240663c7021d00ec
 msg = 313233343030
 result = invalid
 sig = 303e021d00c44503dae85dd5210780f02928b3d927171c578f8603d16b240663c7021d00ec0ce3fa725c1027475a5f5bf4ee980de61c3b4875afe8b654b24ee2
-# Some implementations of ECDSA do not handle duplication and points at infinity
-# correctly. This is a test vector that has been specially crafted to check for
-# such an omission.
+flags = PointDuplication
 
 [key.curve = secp224r1]
 [key.keySize = 224]

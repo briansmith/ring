@@ -500,9 +500,7 @@ key = f3434725c82a7f8bb07df1f8122fb6c9
 msg = 
 result = acceptable
 tag = 44aca00f42e4199b829a55e69b073d9e
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 52
 # small IV sizes
@@ -513,9 +511,7 @@ key = deb62233559b57476602b5adac57c77f
 msg = d8986df0241ed3297582c0c239c724cb
 result = acceptable
 tag = 3290aa95af505a742f517fabcc9b2094
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 128]
 [keySize = 128]
@@ -584,8 +580,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 152a65045fe674f97627427af5be22da
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 60
 # J0:00000000000000000000000000000000
@@ -596,8 +591,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 213a3cb93855d18e69337eee66aeec07
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 61
 # J0:ffffffffffffffffffffffffffffffff
@@ -608,8 +602,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 99b381bfa2af9751c39d1b6e86d1be6a
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 62
 # J0:fffffffffffffffffffffffffffffffe
@@ -620,8 +613,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 5281efc7f13ac8e14ccf5dca7bfbfdd1
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 63
 # J0:fffffffffffffffffffffffffffffffd
@@ -632,8 +624,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = a3ea2c09ee4f8c8a12f45cddf9aeff81
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 64
 # J0:000102030405060708090a0bffffffff
@@ -644,8 +635,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 07eb2fe4a958f8434d40684899507c7c
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 65
 # J0:000102030405060708090a0bfffffffe
@@ -656,8 +646,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = f145c2dcaf339eede427be934357eac0
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 66
 # J0:000102030405060708090a0bfffffffd
@@ -668,8 +657,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = facd0bfe8701b7b4a2ba96d98af52bd9
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 67
 # J0:000102030405060708090a0b7fffffff
@@ -680,8 +668,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = a03e729dcfd7a03155655fece8affd7e
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 68
 # J0:000102030405060708090a0b7ffffffe
@@ -692,8 +679,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 1e43926828bc9a1614c7b1639096c195
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 69
 # J0:000102030405060708090a0bffff7fff
@@ -704,8 +690,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = f08baddf0b5285c91fc06a67fe4708ca
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 70
 # J0:000102030405060708090a0bffff7ffe
@@ -716,8 +701,7 @@ key = 00112233445566778899aabbccddeeff
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 62a4b6875c288345d6a454399eac1afa
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 71
 # special case
@@ -1217,8 +1201,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 09338a42f0acc14f97c064f52f5f1688
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 122
 # J0:00000000000000000000000000000000
@@ -1229,8 +1212,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 90be3606de58bd778fa5beff4a4102bd
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 123
 # J0:ffffffffffffffffffffffffffffffff
@@ -1241,8 +1223,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 6e4d6396125a10df5443bd0cbc8566d1
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 124
 # J0:fffffffffffffffffffffffffffffffe
@@ -1253,8 +1234,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = dc481f172545268eff63ab0490403dc3
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 125
 # J0:fffffffffffffffffffffffffffffffd
@@ -1265,8 +1245,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 8a3a22bf2592958b930292aa47f590e8
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 126
 # J0:000102030405060708090a0bffffffff
@@ -1277,8 +1256,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 2db9dc1b7fd315df1c95432432fcf474
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 127
 # J0:000102030405060708090a0bfffffffe
@@ -1289,8 +1267,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 82ad967f7ac19084354f69a751443fb2
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 128
 # J0:000102030405060708090a0bfffffffd
@@ -1301,8 +1278,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 472d5dd582dc05ef5fc496b612023cb2
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 129
 # J0:000102030405060708090a0b7fffffff
@@ -1313,8 +1289,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = caff723826df150934aee3201ba175e7
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 130
 # J0:000102030405060708090a0b7ffffffe
@@ -1325,8 +1300,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 3b08958be1286c2b4acba02b3674adb2
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 131
 # J0:000102030405060708090a0bffff7fff
@@ -1337,8 +1311,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = c14d52208f0f51b816a48971eaf8ff7e
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 132
 # J0:000102030405060708090a0bffff7ffe
@@ -1349,8 +1322,7 @@ key = 00112233445566778899aabbccddeeff1021324354657687
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = ea2d018099cd7925c507cef0ceddb0ae
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 133
 # special case
@@ -1877,8 +1849,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = d5808a1bd11a01129bf3c6919aff2339
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 187
 # J0:00000000000000000000000000000000
@@ -1889,8 +1860,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 8132e865b69d64ef37db261f80cbbe24
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 188
 # J0:ffffffffffffffffffffffffffffffff
@@ -1901,8 +1871,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 155da6441ec071ef2d8e6cffbacc1c7c
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 189
 # J0:fffffffffffffffffffffffffffffffe
@@ -1913,8 +1882,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 6c574aa6a2490cc3b2f2f8f0ffbc56c4
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 190
 # J0:fffffffffffffffffffffffffffffffd
@@ -1925,8 +1893,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 8082a761e1d755344bf29622144e7d39
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 191
 # J0:000102030405060708090a0bffffffff
@@ -1937,8 +1904,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 033e0ef2953ebfd8425737c7d393f89a
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 192
 # J0:000102030405060708090a0bfffffffe
@@ -1949,8 +1915,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = ca448bb7e52e897eca234ef343d057d0
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 193
 # J0:000102030405060708090a0bfffffffd
@@ -1961,8 +1926,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 84f49740e6757f63dd0df7cb7656d0ef
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 194
 # J0:000102030405060708090a0b7fffffff
@@ -1973,8 +1937,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = 877e15d9889e69a99fcc6d727465c391
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 195
 # J0:000102030405060708090a0b7ffffffe
@@ -1985,8 +1948,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = cd5757626945976ba9f0264bd6bee894
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 196
 # J0:000102030405060708090a0bffff7fff
@@ -1997,8 +1959,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = b015d72da62c81cb4d267253b20db9e5
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 197
 # J0:000102030405060708090a0bffff7ffe
@@ -2009,8 +1970,7 @@ key = 00112233445566778899aabbccddeeff102132435465768798a9bacbdcedfe0f
 msg = 00000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = valid
 tag = ee74ccb30d649ebf6916d05a7dbe5696
-# The counter for AES-GCM is reduced modulo 2**32. This test vector was
-# constructed to test for correct wrapping of the counter.
+flags = ConstructedIv
 
 # tcId = 198
 # special case
@@ -2342,9 +2302,7 @@ key = 8f3f52e3c75c58f5cb261f518f4ad30a
 msg = 
 result = invalid
 tag = cf71978ffcc778f3c85ac9c31b6fe191
-# AES-GCM does not allow an IV of length 0. Encrypting with such an IV leaks the
-# authentication key. Hence using an IV of length 0 is insecure even if the key
-# itself is only used for a single encryption.
+flags = ZeroLengthIv
 
 # tcId = 224
 # 0 size IV is not valid
@@ -2355,9 +2313,7 @@ key = 2a4bf90e56b70fdd8649d775c089de3b
 msg = 324ced6cd15ecc5b3741541e22c18ad9
 result = invalid
 tag = a2c7e8d7a19b884f742dfec3e76c75ee
-# AES-GCM does not allow an IV of length 0. Encrypting with such an IV leaks the
-# authentication key. Hence using an IV of length 0 is insecure even if the key
-# itself is only used for a single encryption.
+flags = ZeroLengthIv
 
 [ivSize = 0]
 [keySize = 192]
@@ -2372,9 +2328,7 @@ key = 0b18d21337035c7baa08211b702fa780ac7c09be8f9ed11f
 msg = 
 result = invalid
 tag = ca69a2eb3a096ea36b1015d5dffff532
-# AES-GCM does not allow an IV of length 0. Encrypting with such an IV leaks the
-# authentication key. Hence using an IV of length 0 is insecure even if the key
-# itself is only used for a single encryption.
+flags = ZeroLengthIv
 
 # tcId = 226
 # 0 size IV is not valid
@@ -2385,9 +2339,7 @@ key = ba76d594a6df915bb7ab7e6d1a8d024b2796336c1b8328a9
 msg = d62f302742d61d823ea991b93430d589
 result = invalid
 tag = 2c9488d53a0b2b5308c2757dfac7219f
-# AES-GCM does not allow an IV of length 0. Encrypting with such an IV leaks the
-# authentication key. Hence using an IV of length 0 is insecure even if the key
-# itself is only used for a single encryption.
+flags = ZeroLengthIv
 
 [ivSize = 0]
 [keySize = 256]
@@ -2402,9 +2354,7 @@ key = 3f8ca47b9a940582644e8ecf9c2d44e8138377a8379c5c11aafe7fec19856cf1
 msg = 
 result = invalid
 tag = 1726aa695fbaa21a1db88455c670a4b0
-# AES-GCM does not allow an IV of length 0. Encrypting with such an IV leaks the
-# authentication key. Hence using an IV of length 0 is insecure even if the key
-# itself is only used for a single encryption.
+flags = ZeroLengthIv
 
 # tcId = 228
 # 0 size IV is not valid
@@ -2415,9 +2365,7 @@ key = 7660d10966c6503903a552dde2a809ede9da490e5e5cc3e349da999671809883
 msg = c314235341debfafa1526bb61044a7f1
 result = invalid
 tag = 8fe0520ad744a11f0ccfd228454363fa
-# AES-GCM does not allow an IV of length 0. Encrypting with such an IV leaks the
-# authentication key. Hence using an IV of length 0 is insecure even if the key
-# itself is only used for a single encryption.
+flags = ZeroLengthIv
 
 [ivSize = 8]
 [keySize = 128]
@@ -2432,9 +2380,7 @@ key = 59a284f50aedd8d3e2a91637d3815579
 msg = 
 result = acceptable
 tag = af498f701d2470695f6e7c8327a2398b
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 230
 # small IV sizes
@@ -2445,9 +2391,7 @@ key = fec58aa8cf06bfe05de829f27ec77693
 msg = f2d99a9f893378e0757d27c2e3a3101b
 result = acceptable
 tag = 96e6fd2cdc707e3ee0a1c90d34c9c36c
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 16]
 [keySize = 128]
@@ -2462,9 +2406,7 @@ key = 88a972cce9eaf5a7813ce8149d0c1d0e
 msg = 
 result = acceptable
 tag = 4ccf1efb4da05b4ae4452aea42f5424b
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 232
 # small IV sizes
@@ -2475,9 +2417,7 @@ key = b43967ee933e4632bd6562ba1201bf83
 msg = 5a6ad6db70591d1e520b0122f05021a0
 result = acceptable
 tag = 98f47a5279cebbcac214515710f6cd8a
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 32]
 [keySize = 128]
@@ -2492,9 +2432,7 @@ key = 4e9a97d3ed54c7b54610793ab05052e1
 msg = 
 result = acceptable
 tag = e574b355bda2980e047e584feb1676ca
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 234
 # small IV sizes
@@ -2505,9 +2443,7 @@ key = d83c1d7a97c43f182409a4aa5609c1b1
 msg = c8f07ba1d65554a9bd40390c30c5529c
 result = acceptable
 tag = 5c0bb79d8240041edce0f94bd4bb384f
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 48]
 [keySize = 128]
@@ -2522,9 +2458,7 @@ key = c6a705677affb49e276d9511caa46145
 msg = 
 result = acceptable
 tag = 1e2ed72af590cafb8647d185865f5463
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 236
 # small IV sizes
@@ -2535,9 +2469,7 @@ key = eba7699b56cc0aa2f66a2a5be9944413
 msg = d021e53d9098a2df3d6b903cdad0cd9c
 result = acceptable
 tag = 9c0e22e5c41b1039ff5661ffaefa8e0f
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 8]
 [keySize = 192]
@@ -2552,9 +2484,7 @@ key = c70ce38e84e5f53ed41c3f0d2ca493412ad32cb04c6e2efa
 msg = 
 result = acceptable
 tag = 08d96edb5e22874cd10cb2256ca04bc6
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 238
 # small IV sizes
@@ -2565,9 +2495,7 @@ key = 74c816b83dfd287210a3e2c6da8d3053bbfbd9b156d3fdd8
 msg = f2b7b2c9b312cf2af78f003df15c8e19
 result = acceptable
 tag = 96a132ed43924e98feb888ff682bdaef
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 16]
 [keySize = 192]
@@ -2582,9 +2510,7 @@ key = cbf45ba488932aea1a10e5862f92e4a7e277bda9f34af6d0
 msg = 
 result = acceptable
 tag = 1f0d23070fcd748e25bf6454f5c9136e
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 240
 # small IV sizes
@@ -2595,9 +2521,7 @@ key = e1c0446f11ae6aa4fa254f9a846fc6e13e45e537e47f2042
 msg = 3a2f5ad0eb216e546e0bcaa377b6cbc7
 result = acceptable
 tag = f6e0a979481f9957ddad0f21a777a73a
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 32]
 [keySize = 192]
@@ -2612,9 +2536,7 @@ key = 567563bf4cf154902275a53bc57cd6dd7b370d27011bdac8
 msg = 
 result = acceptable
 tag = 1475563e3212f3b5e40062569afd71e3
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 242
 # small IV sizes
@@ -2625,9 +2547,7 @@ key = 834d0bb601170865a78139428a1503695a6a291ebd747cd1
 msg = 6f79e18b4acd5a03d3a5f7e1a8d0f183
 result = acceptable
 tag = 03ab26993b701910a2e8ecccd2ba9e52
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 48]
 [keySize = 192]
@@ -2642,9 +2562,7 @@ key = 99fb18f5ba430bb9ea942968ecb799b43406e1af4b6425a1
 msg = 
 result = acceptable
 tag = d7b9a6b58a97982916e83219fbf71b1e
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 244
 # small IV sizes
@@ -2655,9 +2573,7 @@ key = b77b242aa0d51c92fda013e0cb0ef2437399ace5d3f507e4
 msg = 4ba541a9914729216153801340ab1779
 result = acceptable
 tag = c052a55df3926a50990a532efe3d80ec
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 64]
 [keySize = 192]
@@ -2672,9 +2588,7 @@ key = d74599b3d2db81653de43b52fc994c50d0be759fab87c33a
 msg = 
 result = acceptable
 tag = f94f2049a6560c470b3a7ca7bbc31a3d
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 246
 # small IV sizes
@@ -2685,9 +2599,7 @@ key = 0b177198c8b419bf74acc3bc65b5fb3d09a915ff71add754
 msg = c4b1e05ca3d591f9543e64de3fc682ac
 result = acceptable
 tag = 7db7402224fd583e312bc0e61cf11366
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 8]
 [keySize = 256]
@@ -2702,9 +2614,7 @@ key = 8f9a38c1014966e4d9ae736139c5e79b99345874f42d4c7d2c81aa6797c417c0
 msg = 
 result = acceptable
 tag = 2a268bf3a75fd7b00ba230b904bbb014
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 248
 # small IV sizes
@@ -2715,9 +2625,7 @@ key = 144cd8279229e8bb2de99d24e615306663913fe9177fcd270fafec493d43bca1
 msg = 976229f5538f9636476d69f0c328e29d
 result = acceptable
 tag = 8bbad4adc54b37a2b2f0f6e8617548c9
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 16]
 [keySize = 256]
@@ -2732,9 +2640,7 @@ key = 7d31861f9d3536e14016a3216b1042e0d2f7d4614314268b6f834ec7f38bbb65
 msg = 
 result = acceptable
 tag = 1d978a693120c11f6d51a3ed88cd4ace
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 250
 # small IV sizes
@@ -2745,9 +2651,7 @@ key = 22b35fe9623ee11f8b60b6d22db3765b666ed972fa7ccd92b45f22deee02cab1
 msg = 5341c78e4ce5bf8fbc3e077d1990dd5d
 result = acceptable
 tag = b63ff43c12073ec5572b1be70f17e231
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 32]
 [keySize = 256]
@@ -2762,9 +2666,7 @@ key = c224e0bba3d7a99165f7996b67a0fce3e12f2c01179b197b69b7e628bca92096
 msg = 
 result = acceptable
 tag = ae6f7c9a29f0d8204ca50b14a1e0dcf2
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 252
 # small IV sizes
@@ -2775,9 +2677,7 @@ key = 093eb12343537ee8e91c1f715b862603f8daf9d4e1d7d67212a9d68e5aac9358
 msg = 33efb58c91e8c70271870ec00fe2e202
 result = acceptable
 tag = b824c33c13f289429659aa017c632f71
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 48]
 [keySize = 256]
@@ -2792,9 +2692,7 @@ key = 98e6f8ab673e804e865e32403a6551bf807a959343c60d34559360bc295ecb5b
 msg = 
 result = acceptable
 tag = 3db16725fafc828d414ab61c16a6c38f
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 254
 # small IV sizes
@@ -2805,9 +2703,7 @@ key = 0bd0e8e7781166e1d876dec8fad34ba95b032a27cac0551595116091005947b7
 msg = 91222263b12cf5616a049cbe29ab9b5b
 result = acceptable
 tag = c8fc39906aca0c64e14a43ff750abd8a
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 [ivSize = 64]
 [keySize = 256]
@@ -2822,9 +2718,7 @@ key = 61ba694897925d1b4174d40401469c3ef267cdb9f829edb1a10618c16d666059
 msg = 
 result = acceptable
 tag = 1311f9f830d729c189b74ec4f9080fa1
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 
 # tcId = 256
 # small IV sizes
@@ -2835,7 +2729,5 @@ key = 115884f693b155563e9bfb3b07cacb2f7f7caa9bfe51f89e23feb5a9468bfdd0
 msg = 82e3e604d2be8fcab74f638d1e70f24c
 result = acceptable
 tag = af68a37cfefecc4ab99ba50a5353edca
-# AES-GCM leaks the authentication key if the same IV is used twice. Hence short
-# IV sizes are typically discouraged. This test vector uses an IV smaller than
-# 12 bytes
+flags = SmallIv
 

@@ -384,72 +384,56 @@ sig = 9a83eb6dbfd54a31fc1d3c580fc7b2fae4630ca8f0edf803873e433673d7e3d40e94254586
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab067654bce3832c2d76f8f6f5dafc08d9339d4eef676573336a5c51eb6f946b31d
-# EdDSA signatures are non-malleable, if implemented accordingly. Failing to
-# check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7
-# and Section 8.4.
+flags = SignatureMalleability
 
 # tcId = 64
 # checking malleability 
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab05439412b5395d42f462c67008eba6ca839d4eef676573336a5c51eb6f946b32d
-# EdDSA signatures are non-malleable, if implemented accordingly. Failing to
-# check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7
-# and Section 8.4.
+flags = SignatureMalleability
 
 # tcId = 65
 # checking malleability 
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab02ee12ce5875bf9dff26556464bae2ad239d4eef676573336a5c51eb6f946b34d
-# EdDSA signatures are non-malleable, if implemented accordingly. Failing to
-# check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7
-# and Section 8.4.
+flags = SignatureMalleability
 
 # tcId = 66
 # checking malleability 
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab0e2300459f1e742404cd934d2c595a6253ad4eef676573336a5c51eb6f946b38d
-# EdDSA signatures are non-malleable, if implemented accordingly. Failing to
-# check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7
-# and Section 8.4.
+flags = SignatureMalleability
 
 # tcId = 67
 # checking malleability 
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab07a9155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b32d
-# EdDSA signatures are non-malleable, if implemented accordingly. Failing to
-# check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7
-# and Section 8.4.
+flags = SignatureMalleability
 
 # tcId = 68
 # checking malleability 
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab07a9155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b34d
-# EdDSA signatures are non-malleable, if implemented accordingly. Failing to
-# check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7
-# and Section 8.4.
+flags = SignatureMalleability
 
 # tcId = 69
 # checking malleability 
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab07a9155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b38d
-# EdDSA signatures are non-malleable, if implemented accordingly. Failing to
-# check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7
-# and Section 8.4.
+flags = SignatureMalleability
 
 # tcId = 70
 # checking malleability 
 msg = 54657374
 result = invalid
 sig = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab0679155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b38d
-# EdDSA signatures are non-malleable, if implemented accordingly. Failing to
-# check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7
-# and Section 8.4.
+flags = SignatureMalleability
 
 [jwk.crv = Ed25519]
 [jwk.d = CiOiAHKJEjeqCGS1dlE5UUkIeHh4zXcTWgBZiB0xPwA]

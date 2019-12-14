@@ -30,8 +30,7 @@ ct = 9e4510cc84c4bd7abab0a8a5d7f1e6ff3e6777ca2dff9be7e223652239fe57d8
 key = e0e12959109103e30ae8b5684a22e662
 msg = dbb0f2bb2be912a20430972d9842ce3fd3b928e573e1ac8e
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 5
 # wrapped key is longer than wrapping key
@@ -39,8 +38,7 @@ ct = 8fbf39ae583bd4efa7a3e8f7b86870b34766ae7d8923a8e97b0cd289ad98cacb
 key = dd583d9f1059861430ec8b5d8a180e9b
 msg = f2e34f356362a31b51d6e02bcd333c9e6170494ca5ff5487
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 6
 # wrapped key is longer than wrapping key
@@ -48,8 +46,7 @@ ct = df2fbe5fa86418edc7b5b04a4aea724aca17e88cedc84ca8b0b0f048e64590cb
 key = faf5ccfae42b43cee2c5f0f3177a7c5d
 msg = 4e02084833660c463830483b36dab866c64c8cf7429cac3d
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 7
 # wrapped key is longer than wrapping key
@@ -57,8 +54,7 @@ ct = 67f8edf57f84ea0a35b35511d67d3f299c9984b2c07d3809c3d7f5f45091f1a8fbb937ed447
 key = c2b9d23f2831ddcdeb456853d4014db9
 msg = f4cfea98e58b939cc859554385cf3a6c7f8217f728efb431c964786de8274907
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 8
 # wrapped key is longer than wrapping key
@@ -66,8 +62,7 @@ ct = 60d55a22ba7dbd7d8f317388e01e6be561d15d29f85c566f1259aa7e7dc3d5d30e0ef5f4c62
 key = 620a08f320cdedbf7ae551add348d95e
 msg = cec34eaf8e67e1ce619ddfc309531c42f16033a7e2cbc4f5eb3a548164e9b291
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 9
 # wrapped key is longer than wrapping key
@@ -75,8 +70,7 @@ ct = d78a8291108f0f2d8be0ec10ec08240bf4d3021f0a5ed7faba0748db73762f34a0504bd3732
 key = ed089ac274f8c7cea2415671a94b5e53
 msg = 6065e41df14daeeefacac5daeb7674cdc9c1f686013b797153e80ef215893299
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 10
 # Round counter overflows 256
@@ -84,8 +78,7 @@ ct = 9341221aca1c647e2afc2bdd9cf4ed6e60058eb0a84cb3fc2daf3a87d9fad0a1f8268b27aaf
 key = b6121acad51038e11873aaa7e6c7be06
 msg = 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 11
 # wrapping small key
@@ -93,9 +86,7 @@ ct = a65959a600000000
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 12
 # wrapping small key
@@ -103,9 +94,7 @@ ct = 09bcbab50b8dd45ad83412e2919030d3
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 4c
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 13
 # wrapping small key
@@ -113,9 +102,7 @@ ct = 0cbe852cdce4f0b5333366f446b2b1c5
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = be52
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 14
 # wrapping small key
@@ -123,9 +110,7 @@ ct = a9dc66e03435ab3d4f97ff66f2c911a3
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 2d5244
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 15
 # wrapping small key
@@ -133,9 +118,7 @@ ct = 1b970c8ecb4187447e60e6083da03086
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 6c3d3b4c
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 16
 # wrapping small key
@@ -143,9 +126,7 @@ ct = 0344f7b34ab8ef28aaa843f276b0b3d5
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 0412ab3ec6
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 17
 # wrapping small key
@@ -153,9 +134,7 @@ ct = 17356c7148334ca1a24aab7e82a66e18
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 8ae08938929c
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 18
 # wrapping small key
@@ -163,9 +142,7 @@ ct = 1db7510a55591a455d9f8167e6db3c88
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 7c8dfbb68d72af
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 19
 # wrapping small key
@@ -173,9 +150,7 @@ ct = 936fe58b629ea6ec158145218f2361c7
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 536f8f83b64771c1
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 20
 # wrapping small key
@@ -183,9 +158,7 @@ ct = 6787816804b3127d0ca4073f1dba5c4d3db1ec9c227e6556
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 8571f282b18b64ec5e
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 21
 # wrapping small key
@@ -193,9 +166,7 @@ ct = 34131c3bfcc48af15eea8672e52927b462f81d5ba0e6260f
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 8ada889862813e364c4d
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 22
 # wrapping small key
@@ -203,9 +174,7 @@ ct = 4d1ec9287cd4dd378b9aefee79d4ed35bcb98ad9fa9fe529
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = f9c56e8058758a5c7c2baa
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 23
 # wrapping small key
@@ -213,9 +182,7 @@ ct = 7209f5b6bd5d4916f4995d280e9aa89edd5e96e3c9283ad2
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 7c7dbc83fa62206a521ed4ad
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 24
 # wrapping small key
@@ -223,9 +190,7 @@ ct = d85a1efc6ab3a40948f723d9810a5deb019b3ce0208a0d94
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = a6614daf00df6d14f50388bad5
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 25
 # wrapping small key
@@ -233,9 +198,7 @@ ct = 43509b5df3688b6e44c1a994592f4c03da34712f886e63d5
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 450580a47d7008321496bfb82f48
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 26
 # wrapping small key
@@ -243,9 +206,7 @@ ct = 16e369351c40f220d3fb1197f35da652a3a40ca3b1e99bfb
 key = 1abf4b7fa2bb62a78f09ddab04625dca
 msg = 9efd21e13855eea8907afdcd8935f4
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 27
 # Modified IV
@@ -634,8 +595,7 @@ ct = ecac4c91758e1ae7bb010c34f4c5f99a3d728b9fa92cb778d3fe80d777a20d3de85ef46e7a0
 key = 1639f9f81e53e2eeb677a249e5eced3af108971301601a7b
 msg = ec3c6a1f1a9585327fe658490c74635e5300876da5846a629398984fb551d691
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 83
 # wrapped key is longer than wrapping key
@@ -643,8 +603,7 @@ ct = 39b7326a44eaed08bffbd4aeaf3e2c3f899c1fd049384ed7b3eb92b788c6449acd6385f0bb1
 key = 1f22d5658aa685b8ba8659dc342880d5b2399e6a815005b0
 msg = 50be4c1b2f29a63f44d7fc63737f600f0194ea3fb36e173d2ddd19f218656380
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 84
 # wrapped key is longer than wrapping key
@@ -652,8 +611,7 @@ ct = 3d2e9f39c7b13e9585227c4344fbe596f92b002456616f137deacc6a8c941649ce294bb2695
 key = 3a2f4aa50441954bba5a1836294ce071f9296b23dbed6771
 msg = 65da02ff21b483a1e39575490b4319e84ae0299f1f00b3859fbe2e74b3ec2aaf
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 85
 # Round counter overflows 256
@@ -661,8 +619,7 @@ ct = d6aacfb52c26baae78c2f54259a4e4168f817064344e2ba8fbfa7fae9f1fd69bd5bc5c1e20a
 key = b6121acad51038e11873aaa7e6c7be06f93826b74fec0ea1
 msg = 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 86
 # wrapping small key
@@ -670,9 +627,7 @@ ct = a65959a600000000
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 87
 # wrapping small key
@@ -680,9 +635,7 @@ ct = 52c7f388d0d4237afaa29f2b94723475
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = a3
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 88
 # wrapping small key
@@ -690,9 +643,7 @@ ct = 833431ce8799be69b36aafe3f38d9dac
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 594b
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 89
 # wrapping small key
@@ -700,9 +651,7 @@ ct = 31674f46b989f6ead582c70dedc8c6b9
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 72ab34
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 90
 # wrapping small key
@@ -710,9 +659,7 @@ ct = 80535172d2a498aa31601d70fdca9dea
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = d4d9460f
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 91
 # wrapping small key
@@ -720,9 +667,7 @@ ct = 56232300dd7b2a71d2328b6df47af8e3
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 643972e552
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 92
 # wrapping small key
@@ -730,9 +675,7 @@ ct = e27e08efe39adbbad8d300b87be2c258
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = f3cdb73d2561
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 93
 # wrapping small key
@@ -740,9 +683,7 @@ ct = 8f90942cdab33e58b24a23ad7efb7538
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 7b0b53b6429e14
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 94
 # wrapping small key
@@ -750,9 +691,7 @@ ct = 0ebaf23c858015d3bda5b8d908db6049
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 6b2393773e6d1378
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 95
 # wrapping small key
@@ -760,9 +699,7 @@ ct = d56f89977b8eff511158edad6b993007189e5a4b8c0e2faf
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 2c52d6639e769960e8
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 96
 # wrapping small key
@@ -770,9 +707,7 @@ ct = dd889475a76733849f59bed49a15d4315bdb5ba00dc63470
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 707c9356216d69c69048
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 97
 # wrapping small key
@@ -780,9 +715,7 @@ ct = 1a9b3369239b0f40a8dc5bd8d965caf7431445799337b99b
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 615f6fa79e1847e7359a8a
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 98
 # wrapping small key
@@ -790,9 +723,7 @@ ct = 5232f8f6679a17d3303b0bd72b06b56b5089e80372dc295b
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 7f5e999168ec60624426cbb1
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 99
 # wrapping small key
@@ -800,9 +731,7 @@ ct = e5544361c60980f3d38f2d8820a150f48f49ef3f9184b29f
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 3f93aaf4463775baf6c0c975ae
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 100
 # wrapping small key
@@ -810,9 +739,7 @@ ct = 55396065905915ec914b8d1efbf471e37d283fc2c1496b49
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = fefcf10c976309b2beb085771e50
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 101
 # wrapping small key
@@ -820,9 +747,7 @@ ct = d90376be302a24c541bd6d96094f0025e3d73888391b4306
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b
 msg = 6854354d0099f7eff740b0587140b3
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 102
 # Modified IV
@@ -1299,8 +1224,7 @@ ct = 1c6b7e4003384f071bf29baea9098ad81da8e9862909329f52793b35d592c10dba15aa89400
 key = b6121acad51038e11873aaa7e6c7be06f93826b74fec0ea1c02f9981ed49d16a
 msg = 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 result = acceptable
-# The wrapping key should be at least as strong as the key it wraps. The
-# wrapping key in this test vector is shorter than the wrapped key.
+flags = WeakWrapping
 
 # tcId = 171
 # wrapping small key
@@ -1308,9 +1232,7 @@ ct = a65959a600000000
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = 
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 172
 # wrapping small key
@@ -1318,9 +1240,7 @@ ct = 06c1e65ac0f385b4e8c400d229f39422
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = ae
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 173
 # wrapping small key
@@ -1328,9 +1248,7 @@ ct = c98da5936a1313eba1a6773b8060ea5e
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = c548
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 174
 # wrapping small key
@@ -1338,9 +1256,7 @@ ct = b2a77d9b837e87cdb7391e1df7cdaf14
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = f713b9
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 175
 # wrapping small key
@@ -1348,9 +1264,7 @@ ct = d8ecf20191f75aa36686298bfa5022ab
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = f375cbf7
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 176
 # wrapping small key
@@ -1358,9 +1272,7 @@ ct = 077362f50356fc7c54c70f9cb4306f7d
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = d9445094b1
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 177
 # wrapping small key
@@ -1368,9 +1280,7 @@ ct = a4bd6a116ad88a52aae3f0c0cb893f9b
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = fab43e91ae15
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 178
 # wrapping small key
@@ -1378,9 +1288,7 @@ ct = 68a52de00ec0f1ebbedc38fee6be0c23
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = 90735025797bd2
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 179
 # wrapping small key
@@ -1388,9 +1296,7 @@ ct = 3a6746052a1744cfe7e2f36dafc4042d
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = e43f5e4e123a03c4
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 180
 # wrapping small key
@@ -1398,9 +1304,7 @@ ct = db7e73da22219e1baac0f4e955c3db2b900b5d3078f94b59
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = 1723eb9d000916996a
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 181
 # wrapping small key
@@ -1408,9 +1312,7 @@ ct = f77ec14a010777f1f1071808f285c1c00b4e9420f0e8bf48
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = 8b18daecde14b8472ffd
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 182
 # wrapping small key
@@ -1418,9 +1320,7 @@ ct = 6b40d4f0863581a7d0365ad477568bfad94f8bf134984838
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = e5bd6fbacbf3ef0d40c884
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 183
 # wrapping small key
@@ -1428,9 +1328,7 @@ ct = 660f645b02405a18f7225b68c0a09a949b2b5ba784922cfe
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = b3be5e5397df5f46b099e821
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 184
 # wrapping small key
@@ -1438,9 +1336,7 @@ ct = 6bea6bf57601bf063873f47ec3572cfb9cfb595d8bdb5e97
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = 4cdd960cabcf8aaf69c37da1d3
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 185
 # wrapping small key
@@ -1448,9 +1344,7 @@ ct = b631292536aaf02d829cc6d3c39e5a5cd76240889e9d51d0
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = da29e0889cf98742612e0326300b
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 186
 # wrapping small key
@@ -1458,9 +1352,7 @@ ct = de497acf18a177a3a9b3d8da46d74dfa58dcc537a3a95323
 key = 1abf4b7fa2bb62a78f09ddab04625dcacdd9e551d1a69b6b162baa53d2700093
 msg = 72aaee126a822184806c7d22eed66b
 result = acceptable
-# This test vector wraps a key smaller than 128-bits. Rejecting such keys may be
-# reasonable to detect weak keys. Rejecting the keys also simplifies the
-# implementation and its analysis.
+flags = SmallKey
 
 # tcId = 187
 # Modified IV

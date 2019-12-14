@@ -645,13 +645,7 @@ static void RunWycheproofTest(const char *path) {
       bool sig_ok = DSA_check_signature(&valid, digest, digest_len, sig.data(),
                                         sig.size(), dsa) &&
                     valid;
-      if (result == WycheproofResult::kValid) {
-        EXPECT_TRUE(sig_ok);
-      } else if (result == WycheproofResult::kInvalid) {
-        EXPECT_FALSE(sig_ok);
-      } else {
-        // this is a legacy signature, which may or may not be accepted.
-      }
+      EXPECT_EQ(sig_ok, result.IsValid());
     } else {
       bssl::ScopedEVP_MD_CTX ctx;
       EVP_PKEY_CTX *pctx;
@@ -664,14 +658,12 @@ static void RunWycheproofTest(const char *path) {
       }
       int ret = EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), msg.data(),
                                  msg.size());
-      if (result == WycheproofResult::kValid) {
-        EXPECT_EQ(1, ret);
-      } else if (result == WycheproofResult::kInvalid) {
-        EXPECT_EQ(0, ret);
-      } else {
-        // this is a legacy signature, which may or may not be accepted.
-        EXPECT_TRUE(ret == 1 || ret == 0);
-      }
+      // BoringSSL does not enforce policies on weak keys and leaves it to the
+      // caller.
+      EXPECT_EQ(ret,
+                result.IsValid({"SmallModulus", "SmallPublicKey", "WeakHash"})
+                    ? 1
+                    : 0);
     }
   });
 }

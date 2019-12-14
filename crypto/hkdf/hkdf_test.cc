@@ -286,8 +286,8 @@ static void RunWycheproofTest(const char *path, const EVP_MD *md) {
     std::vector<uint8_t> out(atoi(size_str.c_str()));
     bool ret = HKDF(out.data(), out.size(), md, ikm.data(), ikm.size(),
                     salt.data(), salt.size(), info.data(), info.size());
-    EXPECT_EQ(result == WycheproofResult::kValid, ret);
-    if (result == WycheproofResult::kValid) {
+    EXPECT_EQ(result.IsValid(), ret);
+    if (result.IsValid()) {
       EXPECT_EQ(Bytes(okm), Bytes(out));
     }
   });

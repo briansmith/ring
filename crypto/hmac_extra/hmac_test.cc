@@ -142,7 +142,7 @@ static void RunWycheproofTest(const char *path, const EVP_MD *md) {
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
 
-    if (result != WycheproofResult::kValid) {
+    if (!result.IsValid()) {
       // Wycheproof tests assume the HMAC implementation checks the MAC. Ours
       // simply computes the HMAC, so skip the tests with invalid outputs.
       return;

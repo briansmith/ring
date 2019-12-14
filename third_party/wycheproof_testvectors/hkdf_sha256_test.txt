@@ -23,8 +23,7 @@ okm = 8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395fa
 result = valid
 salt = 
 size = 42
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 [keySize = 640]
 
@@ -46,8 +45,7 @@ okm = ae5dbce80bbab5bca5b3c6d3b7e6548fb2c23b2f
 result = valid
 salt = 
 size = 20
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 5
 ikm = e3db76e02278cbd2adbcb4555803da11
@@ -56,8 +54,7 @@ okm = 207ebfa8798c6d8d5260d797fdb9c9969173442186d9e932b18fb589fee2fd00ca4ab49d04
 result = valid
 salt = 
 size = 42
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 6
 ikm = d4dcb92a769f57c8bab8a420ee0aa351
@@ -66,8 +63,7 @@ okm = d875a072bb18fd7717ceaac8829178884b8e51a926849210caf7f42574109f218596e27b92
 result = valid
 salt = 
 size = 64
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 7
 ikm = 2d43e54bf0c94c9cbff4300f4aa69ab8
@@ -76,8 +72,7 @@ okm = 3d36966f29c0561b4e50f9325c7c98292b6d28bc
 result = valid
 salt = 
 size = 20
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 8
 ikm = 4055536896c406d5fe14a6cd6b999bff
@@ -86,8 +81,7 @@ okm = b10173a66a08fffa6cf7c1057744eba73cbbde83a3d8674bb0bc1a46d80792a9d5a0d2ca72
 result = valid
 salt = 
 size = 42
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 9
 ikm = 5b01b2da3166f217cdd68de8af60078f
@@ -96,8 +90,7 @@ okm = 7a8e83577d8aeb830d772d8e42fbd105e54ee3f38da12388030580c8b8935f4a2be01c5092
 result = valid
 salt = 
 size = 64
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 10
 ikm = 467403c2ec02a235bf730ff37e8d8ff3
@@ -228,7 +221,7 @@ okm =
 result = invalid
 salt = 701dfbe3f22c13268a04871dbb9711f371bd702b2bb41dba24409578e6481bc1
 size = 8161
-# The output size of HKDF is limited to 255*size of the hash digest
+flags = SizeTooLarge
 
 # tcId = 26
 # output collision for different salts
@@ -238,8 +231,7 @@ okm = e7f384df2eae32addabd068a758dec84ed7fcfd87a5fcceb37b70c51422d7387
 result = valid
 salt = 
 size = 32
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 27
 # output collision for different salts
@@ -342,8 +334,7 @@ okm = affd91484b5ba2185adb698632e315e1ae238d19
 result = valid
 salt = 
 size = 20
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 38
 ikm = 8c177ab5f40e9c57203883562f01f174070ccd97
@@ -352,8 +343,7 @@ okm = 279bba84f187099f5b5b4f248b7e99114f012b805eb37b4f2bd777c7f626d8026cc3c36afc
 result = valid
 salt = 
 size = 42
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 39
 ikm = e842a4fc1a147cf2f87de9bd5a42fce6457496f7
@@ -362,8 +352,7 @@ okm = d331254a687cdb1572b5061984689d4a3f321ac82248dbf7c88f9c7d43bf295558d945503b
 result = valid
 salt = 
 size = 64
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 40
 ikm = 5b870ee1bb97ee83f67fa7335b4a0f9dadc80d12
@@ -372,8 +361,7 @@ okm = f1e1474524b1de386ef1171e2db18b32e074c2d7
 result = valid
 salt = 
 size = 20
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 41
 ikm = 58ea7ab33acff514ec08f41e59c17a3c66c1ceef
@@ -382,8 +370,7 @@ okm = b35bdc6ce6a357934f6b078e3210d6a1a4427c808f759394f0cbdaeec4de12425c988b7deb
 result = valid
 salt = 
 size = 42
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 42
 ikm = e8d20934b9d320458f4854e2442e2f0fa092f461
@@ -392,8 +379,7 @@ okm = d9ca1874238b99baa7f62f9e61db9ec45bc6c6618030b0c42c71551e0c56d37a7c59b39dbf
 result = valid
 salt = 
 size = 64
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 43
 ikm = dc9e488c684dbf0ac8ff1eefaa0666d413d258f0
@@ -524,7 +510,7 @@ okm =
 result = invalid
 salt = 9ad532fb460bf6d4c3eb565dcb84dd0f3c04c5ce962076f1397ca7ca472ae2c2
 size = 8161
-# The output size of HKDF is limited to 255*size of the hash digest
+flags = SizeTooLarge
 
 # tcId = 59
 # output collision for different salts
@@ -534,8 +520,7 @@ okm = 234b37551fb454431c62edd79d67da984eea21e86e56093cff9645d7f80b8188
 result = valid
 salt = 
 size = 32
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 60
 # output collision for different salts
@@ -638,8 +623,7 @@ okm = dffa900130e1d074c51fe2ed2d7764abe94a2adc
 result = valid
 salt = 
 size = 20
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 71
 ikm = 236c2ba20c72242820f63d3e9c20633162c1cb048a45dea13861e8a138b9640d
@@ -648,8 +632,7 @@ okm = e764a7de3f1a3637f41f102d586b8e98f9e95bbc2db63fdd391ec8141cd326259a533fc4b2
 result = valid
 salt = 
 size = 42
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 72
 ikm = f2cba42dd82acb5d2d569406815a3769b7becb13fa48537fa7d7d5e121081d39
@@ -658,8 +641,7 @@ okm = a9ff577bfbbc7e01651d10589f0958f5ec2316d6ad96f9a8c822e4b0af8a707ed5c04839ac
 result = valid
 salt = 
 size = 64
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 73
 ikm = 73d97f2ffde01b447a5b8573190a8eb4f87f7ac04482836143f780ad876bfffe
@@ -668,8 +650,7 @@ okm = 7e447411adcc3af485031fa5cb8d624c812b4d84
 result = valid
 salt = 
 size = 20
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 74
 ikm = 6948521434707e96fa943e44988d1ad409ec57e6594867e8193e9d727238916d
@@ -678,8 +659,7 @@ okm = c746740b67f49da7bb6f5d5e6cb5e23509bece3637f33c45abd96fd8b1da48772baf655f24
 result = valid
 salt = 
 size = 42
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 75
 ikm = b72b3854923b8a0048497a86bddef962552c8f6b2c72b2b2006a1820fea5c6a9
@@ -688,8 +668,7 @@ okm = 6b00010a427093de7e0eed1f22642b2b034b84ebac3b9002229962ef12e53b5baee7ae771a
 result = valid
 salt = 
 size = 64
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 76
 ikm = 44d774def90685c0e9a685fa50fd434c807d1a57896fa42f91778821fe232057
@@ -844,7 +823,7 @@ okm =
 result = invalid
 salt = 41535a35ec11384df15a0a24a65f067591b446ac4514f7d981724db4900a6106
 size = 8161
-# The output size of HKDF is limited to 255*size of the hash digest
+flags = SizeTooLarge
 
 # tcId = 95
 # output collision for different salts
@@ -854,8 +833,7 @@ okm = 2d0d642aea95ee9892fb87ac392b06aeaead1735c3468fff85c4d65fa62d4a06
 result = valid
 salt = 
 size = 32
-# An empty salt is a valid input for HKDF. It is equivalent to a salt with n
-# zero bytes, where n is the size of the underlying hash function.
+flags = EmptySalt
 
 # tcId = 96
 # output collision for different salts

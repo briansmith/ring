@@ -357,7 +357,7 @@ TEST(CipherTest, WycheproofAESCBC) {
                                              17, 31, 32, 33, 63, 64, 65, 512};
     for (size_t chunk : chunk_sizes) {
       SCOPED_TRACE(chunk);
-      if (result == WycheproofResult::kValid) {
+      if (result.IsValid()) {
         ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
                                        iv.data()));
         ASSERT_TRUE(DoCipher(ctx.get(), &out, ct, chunk));

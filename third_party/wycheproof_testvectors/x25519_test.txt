@@ -19,12 +19,7 @@ private = d85d8c061a50804ac488ad774ac716c3f5ba714b2712e048491379a500211958
 public = 63aa40c6e38346c5caf23a6df0a5e6c80889a08647e551b3563449befcfc9733
 result = acceptable
 shared = 279df67a7c4611db4708a0e8282b195e5ac0ed6f4b2f292c6fbd0acac30d1332
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 3
 # public key on twist
@@ -32,12 +27,7 @@ private = c8b45bfd32e55325d9fd648cb302848039000b390e44d521e58aab3b29a6964b
 public = 0f83c36fded9d32fadf4efa3ae93a90bb5cfa66893bc412c43fa7287dbb99779
 result = acceptable
 shared = 4bc7e01e7d83d6cf67632bf90033487a5fc29eba5328890ea7b1026d23b9a45f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 4
 # public key on twist
@@ -45,12 +35,7 @@ private = f876e34bcbe1f47fbc0fddfd7c1e1aa53d57bfe0f66d243067b424bb6210be51
 public = 0b8211a2b6049097f6871c6c052d3c5fc1ba17da9e32ae458403b05bb283092a
 result = acceptable
 shared = 119d37ed4b109cbd6418b1f28dea83c836c844715cdf98a3a8c362191debd514
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 5
 # public key on twist
@@ -58,12 +43,7 @@ private = 006ac1f3a653a4cdb1d37bba94738f8b957a57beb24d646e994dc29a276aad45
 public = 343ac20a3b9c6a27b1008176509ad30735856ec1c8d8fcae13912d08d152f46c
 result = acceptable
 shared = cc4873aed3fcee4b3aaea7f0d20716b4276359081f634b7bea4b705bfc8a4d3e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 6
 # public key on twist
@@ -71,12 +51,7 @@ private = 08da77b26d06dff9d9f7fd4c5b3769f8cdd5b30516a5ab806be324ff3eb69e60
 public = fa695fc7be8d1be5bf704898f388c452bafdd3b8eae805f8681a8d15c2d4e142
 result = acceptable
 shared = b6f8e2fcb1affc79e2ff798319b2701139b95ad6dd07f05cbac78bd83edfd92e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 7
 # public key on twist
@@ -84,12 +59,7 @@ private = d03edde9f3e7b799045f9ac3793d4a9277dadeadc41bec0290f81f744f73775f
 public = 0200000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = b87a1722cc6c1e2feecb54e97abd5a22acc27616f78f6e315fd2b73d9f221e57
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 8
 # public key on twist
@@ -97,12 +67,7 @@ private = e09d57a914e3c29036fd9a442ba526b5cdcdf28216153e636c10677acab6bd6a
 public = 0300000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = a29d8dad28d590cd3017aa97a4761f851bf1d3672b042a4256a45881e2ad9035
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 9
 # public key on twist
@@ -110,12 +75,7 @@ private = e0ed78e6ee02f08bec1c15d66fbbe5b83ffc37ea14e1512cc1bd4b2ea6d8066f
 public = ff00000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = e703bc8aa94b7d87ba34e2678353d12cdaaa1a97b5ca3e1b8c060c4636087f07
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 10
 # public key on twist
@@ -123,12 +83,7 @@ private = a8a1a2ec9fa9915ae7aace6a37c68591d39e15995c4ef5ebd3561c02f72dda41
 public = ffff000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = ff5cf041e924dbe1a64ac9bdba96bdcdfaf7d59d91c7e33e76ed0e4c8c836446
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 11
 # public key on twist
@@ -136,12 +91,7 @@ private = a8c9df5820eb399d471dfa3215d96055b3c7d0f4ea49f8ab028d6a6e3194517b
 public = 0000010000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = a92a96fa029960f9530e6fe37e2429cd113be4d8f3f4431f8546e6c76351475d
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 12
 # public key on twist
@@ -149,12 +99,7 @@ private = d0d31c491cbd39271859b4a63a316826507b1db8c701709fd0ffe3eb21c4467c
 public = ffffff0f00000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 9f8954868158ec62b6b586b8cae1d67d1b9f4c03d5b3ca0393cee71accc9ab65
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 13
 # public key on twist
@@ -162,12 +107,7 @@ private = d053e7bf1902619cd61c9c739e09d54c4147f46d190720966f7de1d9cffbbd4e
 public = ffffffff00000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 6cbf1dc9af97bc148513a18be4a257de1a3b065584df94e8b43c1ab89720b110
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 14
 # public key on twist
@@ -175,12 +115,7 @@ private = a021d75009a4596e5a33f12921c10f3670933bc80dde3bba22881b6120582144
 public = 0000000000001000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 38284b7086095a9406028c1f800c071ea106039ad7a1d7f82fe00906fd90594b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 15
 # public key on twist
@@ -188,12 +123,7 @@ private = a89c6687f99bd569a01fd8bd438236160d15ce2c57c1d71ebaa3f2da88233863
 public = 0000000000000001000000000000000000000000000000000000000000000000
 result = acceptable
 shared = c721041df0244071794a8db06b9f7eaeec690c257265343666f4416f4166840f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 16
 # public key on twist
@@ -201,12 +131,7 @@ private = 68964bca51465bf0f5ba524b1482ceff0e960a1ed9f48dcc30f1608d0e501a50
 public = ffffffffffffffff000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 25ff9a6631b143dbdbdc207b38e38f832ae079a52a618c534322e77345fd9049
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 17
 # public key on twist
@@ -214,12 +139,7 @@ private = a8e56bb13a9f2b33b8e6750b4a6e6621dc26ae8c5c624a0992c8f0d5b910f170
 public = 0000000000000000000000000000000000000000000000000100000000000000
 result = acceptable
 shared = f294e7922c6cea587aefe72911630d50f2456a2ba7f21207d57f1ecce04f6213
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 18
 # public key on twist
@@ -227,12 +147,7 @@ private = e045f55c159451e97814d747050fd7769bd478434a01876a56e553f66384a74c
 public = ffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000
 result = acceptable
 shared = ff4715bd8cf847b77c244ce2d9b008b19efaa8e845feb85ce4889b5b2c6a4b4d
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 19
 # public key on twist
@@ -240,12 +155,7 @@ private = 105d621e1ef339c3d99245cfb77cd3a5bd0c4427a0e4d8752c3b51f045889b4f
 public = ffffff030000f8ffff1f0000c0ffffff000000feffff070000f0ffff3f000000
 result = acceptable
 shared = 61eace52da5f5ecefafa4f199b077ff64f2e3d2a6ece6f8ec0497826b212ef5f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 20
 # public key on twist
@@ -253,12 +163,7 @@ private = d88a441e706f606ae7f630f8b21f3c2554739e3e549f804118c03771f608017b
 public = ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f0000
 result = acceptable
 shared = ff1b509a0a1a54726086f1e1c0acf040ab463a2a542e5d54e92c6df8126cf636
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 21
 # public key on twist
@@ -266,12 +171,7 @@ private = 80bbad168222276200aafd36f7f25fdc025632d8bf9f6354bb762e06fb63e250
 public = 0000000000000000000000000000000000000000000000000000000000800000
 result = acceptable
 shared = f134e6267bf93903085117b99932cc0c7ba26f25fca12102a26d7533d9c4272a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 22
 # public key on twist
@@ -279,12 +179,7 @@ private = 68e134092e94e622c8a0cd18aff55be23dabd994ebdee982d90601f6f0f4b369
 public = ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1f
 result = acceptable
 shared = 74bfc15e5597e9f5193f941e10a5c008fc89f051392723886a4a8fe5093a7354
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 23
 # public key on twist
@@ -292,12 +187,7 @@ private = e8e43fc1ebac0bbc9b99c8035ee1ac59b90f19a16c42c0b90f96adfcc5fdee78
 public = 0000000000000000000000000000000000000000000000000000000000000020
 result = acceptable
 shared = 0d41a5b3af770bf2fcd34ff7972243a0e2cf4d34f2046a144581ae1ec68df03b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 24
 # public key on twist
@@ -305,12 +195,7 @@ private = 18bffb16f92680a9e267473e43c464476d5372ddd1f664f3d0678efe7c98bc79
 public = 000000fcffff070000e0ffff3f000000ffffff010000f8ffff0f0000c0ffff7f
 result = acceptable
 shared = 5894e0963583ae14a0b80420894167f4b759c8d2eb9b69cb675543f66510f646
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 25
 # public key on twist
@@ -318,12 +203,7 @@ private = 300305eb002bf86c71fe9c0b311993727b9dc618d0ce7251d0dfd8552d17905d
 public = ffffffffffffff00000000000000ffffffffffffff00000000000000ffffff7f
 result = acceptable
 shared = f8624d6e35e6c548ac47832f2e5d151a8e53b9290363b28d2ab8d84ab7cb6a72
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 26
 # public key on twist
@@ -331,12 +211,7 @@ private = 80da9f02842247d4ade5ddbac51dbce55ea7dca2844e7f97ab8987ce7fd8bc71
 public = 00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffff7f
 result = acceptable
 shared = bfe183ba3d4157a7b53ef178613db619e27800f85359c0b39a9fd6e32152c208
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 27
 # public key on twist
@@ -344,12 +219,7 @@ private = 806e7f26ca3246de8182946cbed09f52b95da626c823c7b50450001a47b7b252
 public = edfffffffffffffffffffffffffffeffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = bca4a0724f5c1feb184078448c898c8620e7caf81f64cca746f557dff2498859
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 28
 # public key on twist
@@ -357,12 +227,7 @@ private = 58354fd64bc022cba3a71b2ae64281e4ea7bf6d65fdbaead1440eeb18604fe62
 public = edfffffffffffffeffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = b3418a52464c15ab0cacbbd43887a1199206d59229ced49202300638d7a40f04
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 29
 # public key on twist
@@ -370,12 +235,7 @@ private = f0019cf05159794cc8052b00c2e75b7f46fb6693c4b38c02b12a4fe272e8556a
 public = edffffffffffefffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = fcde6e0a3d5fd5b63f10c2d3aad4efa05196f26bc0cb26fd6d9d3bd015eaa74f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 30
 # public key on twist
@@ -383,12 +243,7 @@ private = d0fca64cc5f3a0c8e75c824e8b09d1615aa79aeba139bb7302e2bb2fcbe54b40
 public = edfeffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 7d62f189444c6231a48afab10a0af2eee4a52e431ea05ff781d616af2114672f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 31
 # public key on twist
@@ -396,12 +251,7 @@ private = d02456e456911d3c6cd054933199807732dfdc958642ad1aebe900c793bef24a
 public = eaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 07ba5fcbda21a9a17845c401492b10e6de0a168d5c94b606694c11bac39bea41
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 32
 # public key = 0
@@ -409,13 +259,7 @@ private = 88227494038f2bb811d47805bcdf04a2ac585ada7f2f23389bfd4658f9ddd45e
 public = 0000000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The public key is insecure and does not belong to a valid private key. Some
-# libraries reject such keys.
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = SmallPublicKey,LowOrderPublic,ZeroSharedSecret
 
 # tcId = 33
 # public key = 1
@@ -423,13 +267,7 @@ private = 48232e8972b61c7e61930eb9450b5070eae1c670475685541f0476217e48184f
 public = 0100000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The public key is insecure and does not belong to a valid private key. Some
-# libraries reject such keys.
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = SmallPublicKey,LowOrderPublic,ZeroSharedSecret
 
 # tcId = 34
 # edge case public key
@@ -640,11 +478,7 @@ private = e0f978dfcd3a8f1a5093418de54136a584c20b7b349afdf6c0520886f95b1272
 public = e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 64
 # public key with low order
@@ -652,11 +486,7 @@ private = 387355d995616090503aafad49da01fb3dc3eda962704eaee6b86f9e20c92579
 public = 5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 65
 # public key with low order
@@ -664,17 +494,7 @@ private = c8fe0df92ae68a03023fc0c9adb9557d31be7feed0d3ab36c558143daf4dbb40
 public = ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,Twist,ZeroSharedSecret
 
 # tcId = 66
 # public key with low order
@@ -682,21 +502,7 @@ private = c8d74acde5934e64b9895d5ff7afbffd7f704f7dfccff7ac28fa62a1e6410347
 public = e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b880
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,NonCanonicalPublic,Twist,ZeroSharedSecret
 
 # tcId = 67
 # public key with low order
@@ -704,21 +510,7 @@ private = b85649d5120e01e8ccaf7b2fb8d81b62e8ad6f3d5c0553fdde1906cb9d79c050
 public = 5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f11d7
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,NonCanonicalPublic,Twist,ZeroSharedSecret
 
 # tcId = 68
 # public key with low order
@@ -726,15 +518,7 @@ private = 2064b2f4c9dc97ec7cf58932fdfa3265ba6ea4d11f0259b8efc8afb35db88c48
 public = ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,NonCanonicalPublic,ZeroSharedSecret
 
 # tcId = 69
 # public key with low order
@@ -742,11 +526,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = 0000000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 70
 # public key with low order
@@ -754,11 +534,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = 0100000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 71
 # public key with low order
@@ -766,11 +542,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 72
 # public key with low order
@@ -778,11 +550,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = 5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 73
 # public key with low order
@@ -790,11 +558,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 74
 # public key with low order
@@ -802,11 +566,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 75
 # public key with low order
@@ -814,11 +574,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 76
 # public key with low order
@@ -826,11 +582,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = 0000000000000000000000000000000000000000000000000000000000000080
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 77
 # public key with low order
@@ -838,11 +590,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = 0100000000000000000000000000000000000000000000000000000000000080
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 78
 # public key with low order
@@ -850,11 +598,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 79
 # public key with low order
@@ -862,11 +606,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = 5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f11d7
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 80
 # public key with low order
@@ -874,11 +614,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b880
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 81
 # public key with low order
@@ -886,11 +622,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 82
 # public key with low order
@@ -898,11 +630,7 @@ private = 786a33a4f7af297a20e7642925932bf509e7070fa1bc36986af1eb13f4f50b55
 public = eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 83
 # public key =
@@ -911,13 +639,7 @@ private = 40ff586e73d61f0960dc2d763ac19e98225f1194f6fe43d5dd97ad55b3d35961
 public = edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The public key is insecure and does not belong to a valid private key. Some
-# libraries reject such keys.
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = SmallPublicKey,LowOrderPublic,ZeroSharedSecret
 
 # tcId = 84
 # public key =
@@ -926,17 +648,7 @@ private = 584fceaebae944bfe93b2e0d0a575f706ce5ada1da2b1311c3b421f9186c7a6f
 public = eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The public key is insecure and does not belong to a valid private key. Some
-# libraries reject such keys.
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = SmallPublicKey,LowOrderPublic,NonCanonicalPublic,ZeroSharedSecret
 
 # tcId = 85
 # non-canonical public key
@@ -944,16 +656,7 @@ private = 0016b62af5cabde8c40938ebf2108e05d27fa0533ed85d70015ad4ad39762d54
 public = efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = b4d10e832714972f96bd3382e4d082a21a8333a16315b3ffb536061d2482360d
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = NonCanonicalPublic,Twist
 
 # tcId = 86
 # non-canonical public key
@@ -961,16 +664,7 @@ private = d83650ba7cec115881916255e3fa5fa0d6b8dcf968731bd2c9d2aec3f561f649
 public = f0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 515eac8f1ed0b00c70762322c3ef86716cd2c51fe77cec3d31b6388bc6eea336
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = NonCanonicalPublic,Twist
 
 # tcId = 87
 # non-canonical public key
@@ -978,10 +672,7 @@ private = 88dd14e2711ebd0b0026c651264ca965e7e3da5082789fbab7e24425e7b4377e
 public = f1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 6919992d6a591e77b3f2bacbd74caf3aea4be4802b18b2bc07eb09ade3ad6662
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
+flags = NonCanonicalPublic
 
 # tcId = 88
 # non-canonical public key
@@ -989,10 +680,7 @@ private = 98c2b08cbac14e15953154e3b558d42bb1268a365b0ef2f22725129d8ac5cb7f
 public = ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 9c034fcd8d3bf69964958c0105161fcb5d1ea5b8f8abb371491e42a7684c2322
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
+flags = NonCanonicalPublic
 
 # tcId = 89
 # non-canonical public key
@@ -1000,16 +688,7 @@ private = c0697b6f05e0f3433b44ea352f20508eb0623098a7770853af5ca09727340c4e
 public = 0200000000000000000000000000000000000000000000000000000000000080
 result = acceptable
 shared = ed18b06da512cab63f22d2d51d77d99facd3c4502e4abf4e97b094c20a9ddf10
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = NonCanonicalPublic,Twist
 
 # tcId = 90
 # non-canonical public key
@@ -1017,16 +696,7 @@ private = 18422b58a18e0f4519b7a887b8cfb649e0bfe4b34d75963350a9944e5b7f5b7e
 public = 0300000000000000000000000000000000000000000000000000000000000080
 result = acceptable
 shared = 448ce410fffc7e6149c5abec0ad5f3607dfde8a34e2ac3243c3009176168b432
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = NonCanonicalPublic,Twist
 
 # tcId = 91
 # non-canonical public key
@@ -1034,10 +704,7 @@ private = 20620d82487707bedf9ee3549e95cb9390d2618f50cf6acba47ffaa103224a6f
 public = 0400000000000000000000000000000000000000000000000000000000000080
 result = acceptable
 shared = 03a633df01480d0d5048d92f51b20dc1d11f73e9515c699429b90a4f6903122a
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
+flags = NonCanonicalPublic
 
 # tcId = 92
 # non-canonical public key
@@ -1045,10 +712,7 @@ private = 285a6a7ceeb7122f2c78d99c53b2a902b490892f7dff326f89d12673c3101b53
 public = daffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = 9b01287717d72f4cfb583ec85f8f936849b17d978dbae7b837db56a62f100a68
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
+flags = NonCanonicalPublic
 
 # tcId = 93
 # non-canonical public key
@@ -1056,10 +720,7 @@ private = c8e0330ae9dceeff887fba761225879a4bd2e0db08799244136e4721b2c88970
 public = dbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = dfe60831c9f4f96c816e51048804dbdc27795d760eced75ef575cbe3b464054b
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
+flags = NonCanonicalPublic
 
 # tcId = 94
 # non-canonical public key
@@ -1067,16 +728,7 @@ private = 10db6210fc1fb13382472fa1787b004b5d11868ab3a79510e0cee30f4a6df26b
 public = dcffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = 50bfa826ca77036dd2bbfd092c3f78e2e4a1f980d7c8e78f2f14dca3cce5cc3c
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = NonCanonicalPublic,Twist
 
 # tcId = 95
 # non-canonical public key
@@ -1084,10 +736,7 @@ private = 9041c6e044a277df8466275ca8b5ee0da7bc028648054ade5c592add3057474e
 public = eaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = 13da5695a4c206115409b5277a934782fe985fa050bc902cba5616f9156fe277
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
+flags = NonCanonicalPublic
 
 # tcId = 96
 # non-canonical public key
@@ -1095,10 +744,7 @@ private = b8d499041a6713c0f6f876db7406587fdb44582f9542356ae89cfa958a34d266
 public = ebffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = 63483b5d69236c63cddbed33d8e22baecc2b0ccf886598e863c844d2bf256704
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
+flags = NonCanonicalPublic
 
 # tcId = 97
 # non-canonical public key
@@ -1106,10 +752,7 @@ private = c85f08e60c845f82099141a66dc4583d2b1040462c544d33d0453b20b1a6377e
 public = ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 result = acceptable
 shared = e9db74bc88d0d9bf046ddd13f943bccbe6dbb47d49323f8dfeedc4a694991a3c
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
+flags = NonCanonicalPublic
 
 # tcId = 98
 # public key =
@@ -1118,17 +761,7 @@ private = 7887889bac4c629a101d3724f2ed8b98d936fde79e1a1f77d86779626bf8f263
 public = 0000000000000000000000000000000000000000000000000000000000000080
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The public key is insecure and does not belong to a valid private key. Some
-# libraries reject such keys.
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = SmallPublicKey,LowOrderPublic,NonCanonicalPublic,ZeroSharedSecret
 
 # tcId = 99
 # public key =
@@ -1137,23 +770,7 @@ private = e07971ee820e48b0b266d8be3cdbbb5e900a43f59ee8535c6572418615de4962
 public = 0100000000000000000000000000000000000000000000000000000000000080
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The public key is insecure and does not belong to a valid private key. Some
-# libraries reject such keys.
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# The public key is in non-canonical form. RFC 7749, section 5 defines the value
-# that this public key represents. Section 7 of the same RFC recommends
-# accepting such keys. If a non-canonical key is accepted then it must follow
-# the RFC.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = SmallPublicKey,LowOrderPublic,NonCanonicalPublic,Twist,ZeroSharedSecret
 
 # tcId = 100
 # RFC 7748
@@ -1182,12 +799,7 @@ private = 60a3a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a9767f
 public = b7b6d39c765cb60c0c8542f4f3952ffb51d3002d4aeb9f8ff988b192043e6d0a
 result = acceptable
 shared = 0200000000000000000000000000000000000000000000000000000000000000
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 104
 # edge case for shared secret
@@ -1209,12 +821,7 @@ private = 60a3a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a9767f
 public = 4977d0d897e1ba566590f60f2eb0db6f7b24c13d436918ccfd32708dfad7e247
 result = acceptable
 shared = feffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 107
 # edge case for shared secret
@@ -1229,12 +836,7 @@ private = 60a3a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a9767f
 public = 97b4fff682df7f096cd1756569e252db482d45406a3198a1aff282a5da474c49
 result = acceptable
 shared = f9ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 109
 # edge case for shared secret
@@ -1256,12 +858,7 @@ private = 60a3a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a9767f
 public = e96d2780e5469a74620ab5aa2f62151d140c473320dbe1b028f1a48f8e76f95f
 result = acceptable
 shared = e5ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 112
 # edge case for shared secret
@@ -1269,12 +866,7 @@ private = 60a3a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a9767f
 public = 8d612c5831aa64b057300e7e310f3aa332af34066fefcab2b089c9592878f832
 result = acceptable
 shared = e3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 113
 # edge case for shared secret
@@ -1289,12 +881,7 @@ private = 60a3a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a9767f
 public = 21a35d5db1b6237c739b56345a930aeee373cdcfb4701266782a8ac594913b29
 result = acceptable
 shared = dbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 115
 # edge case for shared secret
@@ -1302,12 +889,7 @@ private = 60a3a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a9767f
 public = 3e5efb63c352ce942762482bc9337a5d35ba55664743ac5e93d11f957336cb10
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000002
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 116
 # edge case for shared secret
@@ -1315,12 +897,7 @@ private = 60a3a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a9767f
 public = 8e41f05ea3c76572be104ad8788e970863c6e2ca3daae64d1c2f46decfffa571
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000008000
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 117
 # special case public key
@@ -1328,13 +905,7 @@ private = c8d07c46bbfb827753b92c70e49583ce8bfa44641a7382258ea903d6a832c96b
 public = 0000000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The public key is insecure and does not belong to a valid private key. Some
-# libraries reject such keys.
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = SmallPublicKey,LowOrderPublic,ZeroSharedSecret
 
 # tcId = 118
 # special case public key
@@ -1342,13 +913,7 @@ private = 90b7ef237a055f348dcb4c4364a59d7d31edc7ab78f2ca254e2c810975c3f543
 public = 0100000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The public key is insecure and does not belong to a valid private key. Some
-# libraries reject such keys.
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = SmallPublicKey,LowOrderPublic,ZeroSharedSecret
 
 # tcId = 119
 # special case public key
@@ -1356,12 +921,7 @@ private = e0a8be63315c4f0f0a3fee607f44d30a55be63f09561d9af93e0a1c9cf0ed751
 public = 0200000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = 0c50ac2bfb6815b47d0734c5981379882a24a2de6166853c735329d978baee4d
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 120
 # special case public key
@@ -1376,12 +936,7 @@ private = 0092229c753a71284d0853909470ad847ab62f439ea51482fb41d30cc3b44743
 public = 1400000000000000000000000000000000000000000000000000000000000000
 result = acceptable
 shared = c88e719ae5c2248b5f90da346a92ae214f44a5d129fd4e9c26cf6a0da1efe077
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 122
 # special case public key
@@ -1403,12 +958,7 @@ private = 38cfacaa4460796b4de434bdd6739f0d043671f97fa829517511e6b47aa93474
 public = 0100000000000000000000000000010000000000000000000000000000000000
 result = acceptable
 shared = 5dd7d16fff25cc5fdf9e03c3157cb0a235cea17d618f36e6f13461567edeb943
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 125
 # special case public key
@@ -1423,12 +973,7 @@ private = d818fd6971e546447f361d33d3dbb3eadcf02fb28f246f1d5107b9073a93cd4f
 public = 0000000000000000000000000000000000000000000000000000008000000000
 result = acceptable
 shared = 7ed8f2d5424e7ebb3edbdf4abe455447e5a48b658e64abd06c218f33bd151f64
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 127
 # special case public key
@@ -1436,12 +981,7 @@ private = 1021cd8682bdc3f5da9100adff5b2230b3acd836b3a455db8352a2c27e69d17e
 public = ffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000
 result = acceptable
 shared = e8620ed5ca89c72c5ea5503e6dcd01131cd5e875c30e13d5dc619ce28ec7d559
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 128
 # special case public key
@@ -1456,12 +996,7 @@ private = 90b150d462de512056d5bd55173074969b496f262fb6916b733f6263a8078971
 public = a8b9c7372118a53a9de9eaf0868e3b1a3d88e81cb2e407ff7125e9f5c5088715
 result = acceptable
 shared = f86cc7bf1be49574fc97a074282e9bb5cd238e002bc8e9a7b8552b2d60eccb52
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 130
 # special case public key
@@ -1469,12 +1004,7 @@ private = 9887286b3261c8d857a16f6db21277f75d88d4e861b3ebe7596699047e816668
 public = aab9c7372118a53a9de9eaf0868e3b1a3d88e81cb2e407ff7125e9f5c5088715
 result = acceptable
 shared = ccbb8fd9dee165a398b2dbd7c8396f81736c1b3da36b35fbec8f326f38f92767
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 131
 # special case public key
@@ -1496,12 +1026,7 @@ private = 4867a83ee9d01b7510840867db1af6a6049bdbb056b74443f70c358e162c8867
 public = 0000000000000000000000000000000000000000000000000000000000000020
 result = acceptable
 shared = e12cc58fbeb70a5e35c861c33710be6516a6a92e52376060211b2487db542b4f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 134
 # special case public key
@@ -1523,12 +1048,7 @@ private = b876b05daff0530b139d9e11250563418077178246c5fa7005ba00e9b6647763
 public = fbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff2f
 result = acceptable
 shared = 686eb910a937211b9147c8a051a1197906818fdc626668eb5f5d394afd86d41b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 137
 # special case public key
@@ -1550,12 +1070,7 @@ private = a06781fd4c4a0874e00e72ba131b9dd87a83b2904e294de176e8a9af1f695d67
 public = f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3f
 result = acceptable
 shared = e995ad6a1ec6c5ab32922cff9d204721704673143c4a11deaa203f3c81989b3f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 140
 # special case public key
@@ -1563,12 +1078,7 @@ private = b822d72d8b68bdb4fbf67e56a61d672b2c7747e94479fe5ae4072d0accdd6571
 public = feffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3f
 result = acceptable
 shared = 32b6dabe01d13867f3b5b0892fefd80dca666f2edc5afb43cd0baf703c3e6926
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 141
 # special case public key
@@ -1618,12 +1128,7 @@ private = 00c103578d5c079d7bcc22c1c31e787c1b15c57fcb493fdafefa20371cfc746b
 public = 95aff85a6cf2889dc30d68a9fc735e682c140261b37f596a7a101fd8bf6d3e6a
 result = acceptable
 shared = dfa988a477003be125b95ccbf2223d97729577d25e1d6e89e3da0afabdd0ae71
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 148
 # special case public key
@@ -1631,12 +1136,7 @@ private = 7005bb927485c435642b424a3dde014bcf76345e5be64ae6e9b24db39e1cdb51
 public = 434638c8dee75ac56216150f7971c4e5c27717e34d1bf8008eda160a3af7786a
 result = acceptable
 shared = d450af45b8ed5fe140cc5263ffb7b52e66736899a8b872b6e28552129819b25b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 149
 # special case public key
@@ -1679,17 +1179,7 @@ private = 18630f93598637c35da623a74559cf944374a559114c7937811041fc8605564a
 public = ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,Twist,ZeroSharedSecret
 
 # tcId = 155
 # special case for E in multiplication by 2
@@ -1697,12 +1187,7 @@ private = 581ecbda5a4a228044fefd6e03df234558c3c79152c6e2c5e60b142c4f26a851
 public = 0000000000000000000008000000000000000000000000000000000000000000
 result = acceptable
 shared = 59e7b1e6f47065a48bd34913d910176b6792a1372aad22e73cd7df45fcf91a0e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 156
 # special case for E in multiplication by 2
@@ -1731,12 +1216,7 @@ private = 58181f581aa37022ff71c56c6e68e6175d967c5c995a249885f66565074ded4d
 public = 770f4218ef234f5e185466e32442c302bbec21bbb6cd28c979e783fe5013333f
 result = acceptable
 shared = d5d650dc621072eca952e4344efc7320b2b1459aba48f5e2480db881c50cc650
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 160
 # special case for E in multiplication by 2
@@ -1744,12 +1224,7 @@ private = 301c935cae4357070b0adaf9cd6192830b2c989c153729eed99f589eb45f884b
 public = 5c6118c4c74cfb842d9a87449f9d8db8b992d46c5a9093ce2fcb7a49b535c451
 result = acceptable
 shared = 909cc57275d54f20c67b45f9af9484fd67581afb7d887bee1db5461f303ef257
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 161
 # special case for E in multiplication by 2
@@ -1764,12 +1239,7 @@ private = d0c2c49e644ab738270707ff9917065942687e2f12886d961161db46c05b565f
 public = 078fa523498fb51cba1112d83b20af448b8009d8eea14368564d01b8f9b6086f
 result = acceptable
 shared = c0ee59d3685fc2c3c803608b5ee39a7f8da30b48e4293ae011f0ea1e5aeb7173
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 163
 # special case for E in multiplication by 2
@@ -1791,11 +1261,7 @@ private = 5891c9272cf9a197735b701e5715268d36d7436b7e351a3e997a0862e4807d4d
 public = e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 166
 # D = 0 in multiplication by 2
@@ -1803,11 +1269,7 @@ private = c0f9c60aea73731d92ab5ed9f4cea122f9a6eb2577bda72f94948fea4d4cc65d
 public = 5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157
 result = acceptable
 shared = 0000000000000000000000000000000000000000000000000000000000000000
-# The curves and its twists contain some points of low order. This test vector
-# contains a public key with such a point. While many libraries reject such
-# public keys, doing so is not a strict requirement according to RFC 7748.
-# Some libraries include a check that the shared secret is not all-zero. This
-# check is described in Section 6.1 of RFC 7748. 
+flags = LowOrderPublic,ZeroSharedSecret
 
 # tcId = 167
 # special case for DA - CB in multiplication by 2
@@ -1815,12 +1277,7 @@ private = 0066dd7674fe51f9326c1e239b875f8ac0701aae69a804c25fe43595e8660b45
 public = b0224e7134cf92d40a31515f2f0e89c2a2777e8ac2fe741db0dc39399fdf2702
 result = acceptable
 shared = 8dacfe7beaaa62b94bf6e50ee5214d99ad7cda5a431ea0c62f2b20a89d73c62e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 168
 # special case for DA - CB in multiplication by 2
@@ -1835,12 +1292,7 @@ private = 584577669d21ce0ae3e30b02c9783ffe97709cbfe396889aa31e8ee43352dc52
 public = 82a3807bbdec2fa9938fb4141e27dc57456606301f78ff7133cf24f3d13ee117
 result = acceptable
 shared = 2b28cc5140b816add5ad3a77a81b1c073d67bf51bf95bda2064a14eb12d5f766
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 170
 # special case for DA - CB in multiplication by 2
@@ -1890,12 +1342,7 @@ private = 9886602e719bacafea092bb75b51ae7258abe1a364c176857f3dc188c03e6759
 public = bee386527b772490aeb96fc4d23b9304037cb4430f64b228f3d8b3b498319f22
 result = acceptable
 shared = 3fe710d6344ff0cb342e52349e1c5b57b7a271f2a133bb5249bbe40dc86e1b40
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 177
 # special case for x_2 in multiplication by 2
@@ -1931,12 +1378,7 @@ private = e82c480631fb153ba2211fe603032b3e71b162dbd3c11bec03208ffcd510655f
 public = cb3d4a90f86b3011da3369d9988597c7fff1499273b4a04f84d0e26ed1683c0d
 result = acceptable
 shared = dbf6203516635840cf69a02db87cf0d95dae315da7fc1ec7ce2b29e1f2db6666
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 182
 # special case for AA in multiplication by 2
@@ -1944,12 +1386,7 @@ private = c0c01d28c1cab01f59700aca5f18d2697658b37fdd54a339ff391c0a1a1b1645
 public = 101e13f7bc0570fa2638caa20a67c6e0c21dab132f4b456191590264c493d018
 result = acceptable
 shared = 1fe314744390d525278b1f5fbf108101b8ded587081375ed4ac4ac690d92414f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 183
 # special case for AA in multiplication by 2
@@ -1957,12 +1394,7 @@ private = c82bde72df36479688c485a8bf442f4a34412e429c02db97704f03daf4dfd542
 public = dce1ec0843fa8f05d9c7355df598391f3de254ecd0b4ba9e6ea6fd9b3b6c2f67
 result = acceptable
 shared = ad454395ee392be677be7b9cb914038d57d2d87ec56cc98678dd84f19920912b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 184
 # special case for AA in multiplication by 2
@@ -1984,12 +1416,7 @@ private = 004ea3448b84ca509efec5fcc24c63ee984def63b29deb9037894709709c0957
 public = 111e13f7bc0570fa2638caa20a67c6e0c21dab132f4b456191590264c493d018
 result = acceptable
 shared = 7b9dbf8d6c6d65898b518167bf4011d54ddc265d953c0743d7868e22d9909e67
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 187
 # special case for BB in multiplication by 2
@@ -2032,12 +1459,7 @@ private = 184a6cfbabcbd1507a2ea41f52796583dbdb851b88a85781ee8e3c28782c3349
 public = 6dffb0a25888bf23cf1ac701bfbdede8a18e323b9d4d3d31e516a05fce7ce872
 result = acceptable
 shared = e6a2fc8ed93ce3530178fef94bb0056f43118e5be3a6eabee7d2ed384a73800c
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 193
 # special case for D in multiplication by 2
@@ -2045,12 +1467,7 @@ private = c85f954b85bc102aca799671793452176538d077862ee45e0b253619767dff42
 public = 21f86d123c923a92aaf2563df94b5b5c93874f5b7ab9954aaa53e3d72f0ff67e
 result = acceptable
 shared = 7fc28781631410c5a6f25c9cfd91ec0a848adb7a9eb40bc5b495d0f4753f2260
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 194
 # special case for D in multiplication by 2
@@ -2072,12 +1489,7 @@ private = a886033e9dc2b6a913fffbc2bd402e8c11ec34d49c0dc0fa1429329b694a285f
 public = 9316c06d27b24abc673ffb5105c5b9a89bdfaa79e81cdbb89556074377c70320
 result = acceptable
 shared = d53c3d6f538c126b9336785d1d4e6935dc8b21f3d7e9c25bc240a03e39023363
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 197
 # special case for DA + CB in multiplication by 2
@@ -2085,12 +1497,7 @@ private = 98b1cc2020a8ec575d5c46c76024cf7c7ad7628eb909730bc4f460aaf0e6da4b
 public = 8a4179807b07649e04f711bf9473a79993f84293e4a8b9afee44a22ef1000b21
 result = acceptable
 shared = 4531881ad9cf011693ddf02842fbdab86d71e27680e9b4b3f93b4cf15e737e50
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 198
 # special case for DA + CB in multiplication by 2
@@ -2098,12 +1505,7 @@ private = c8e193de162aa349a3432c7a0c0521d92cbc5e3bf82615e42955dd67ec12345f
 public = a773277ae1029f854749137b0f3a02b5b3560b9c4ca4dbdeb3125ec896b81841
 result = acceptable
 shared = 7ba4d3de697aa11addf3911e93c94b7e943beff3e3b1b56b7de4461f9e48be6b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 199
 # special case for DA + CB in multiplication by 2
@@ -2111,12 +1513,7 @@ private = 88e01237b336014075676082afbde51d595d47e1fa5214b51a351abbf6491442
 public = 1eceb2b3763231bc3c99dc62266a09ab5d3661c756524cddc5aabcedee92da61
 result = acceptable
 shared = bcf0884052f912a63bbab8c5c674b91c4989ae051fa07fcf30cb5317fb1f2e72
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 200
 # special case for DA + CB in multiplication by 2
@@ -2124,12 +1521,7 @@ private = e82313e451a198dce4ae95c6832a8281d847fc87b28db00fe43757c16cc49c4a
 public = 9a2acbb3b5a386a6102e3728be3a97de03981d5c71fd2d954604bee3d3d0ce62
 result = acceptable
 shared = e5772a92b103ee696a999705cf07110c460f0545682db3fac5d875d69648bc68
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 201
 # special case for DA + CB in multiplication by 2
@@ -2137,12 +1529,7 @@ private = 2828594d16768e586df39601ecc86d3fad6389d872b53fca3edcaf6fb958f653
 public = 27430e1c2d3089708bca56d7a5ad03792828d47685b6131e023dd0808716b863
 result = acceptable
 shared = 378c29e3be97a21b9f81afca0d0f5c242fd4f896114f77a77155d06ce5fbfa5e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 202
 # special case for z_2 in multiplication by 2
@@ -2171,12 +1558,7 @@ private = a87640cf8237b473c638b3e9df08644e8607e563b5964363ccc42133b2996742
 public = 8a7a939310df7ea768454df51bcd0dfbd7be4fcbb2ffc98429d913ec6911f337
 result = acceptable
 shared = b568ed46d04f6291f8c176dca8aff6d221de4c9cce4b404d5401fbe70a324501
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 206
 # special case for z_2 in multiplication by 2
@@ -2184,12 +1566,7 @@ private = 780c5b882720d85e5ddfaf1033e9a1385df9e21689eeda4dcc7444ad28330a50
 public = fe3590fc382da7a82e28d07fafe40d4afc91183a4536e3e6b550fee84a4b7b4b
 result = acceptable
 shared = 11fb44e810bce8536a957eaa56e02d04dd866700298f13b04ebeb48e20d93647
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 207
 # special case for z_2 in multiplication by 2
@@ -2197,12 +1574,7 @@ private = 209e5e0ae1994bd859ce8992b62ec3a66df2eb50232bcc3a3d27b6614f6b014d
 public = fad9ab3e803b49fc81b27ee69db6fc9fdb82e35453b59ef8fab2a3beb5e1134c
 result = acceptable
 shared = 85d9db8f182bc68db67de3471f786b45b1619aec0f32b108ace30ee7b2624305
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 208
 # special case for z_2 in multiplication by 2
@@ -2224,12 +1596,7 @@ private = d86c18f2be396b3bb72f22e6ece22e273af6e1506a1c09ad4d01bdd2f439f843
 public = 8c9885a26cb334054700a270f7a5f4aac06bad8263b651ebf0712eca1ebb6416
 result = acceptable
 shared = a5952588613eb7a5cd49dd526f1f20a4f0ffe9423e82cea302c2dd90ce559955
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 211
 # special case for A in multiplication by 2
@@ -2237,12 +1604,7 @@ private = f81aadb9053eb698996d0f781d9cda67f82ddefa3987d276ff5a94ffdf5d255f
 public = f6135fe9741c2c9de7dcf7627ef08832f351cb325dbb3a26f93a2b48620e1727
 result = acceptable
 shared = cb6fb623084b6197443ec9ba1050c0923332e5e829ae0194269cfaf920a43601
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 212
 # special case for A in multiplication by 2
@@ -2271,12 +1633,7 @@ private = e88bd02c7016547a24f428bc2a9dcccad6c6f880c17bffcf66fc68459627af4e
 public = 60677a5d934ccbfab8ff5d8f085a0b553f94527d9c49ae140f8ed135e1449b69
 result = acceptable
 shared = 834bbad5470e1498c4b0148782dfe630e8bfadff1997de802ac8ce302a1bda28
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 216
 # special case for B in multiplication by 2
@@ -2284,12 +1641,7 @@ private = 9036ed7d68f7448ac440dc51216b49840dcabd3d5e32e3b4ffc32a5fe9e96742
 public = 8d9885a26cb334054700a270f7a5f4aac06bad8263b651ebf0712eca1ebb6416
 result = acceptable
 shared = ec9070ad3491a5ff50d7d0db6c9c844783dde1c6fbd4fe163e9ade1ce9cd041d
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 217
 # special case for B in multiplication by 2
@@ -2297,12 +1649,7 @@ private = 90c55e77aa0fe4afb1287109fd010f526364dea18d88e2fd870ac01b66e3fa4e
 public = f7135fe9741c2c9de7dcf7627ef08832f351cb325dbb3a26f93a2b48620e1727
 result = acceptable
 shared = dc6d05b92edcdb5dc334b1fc3dff58fe5b24a5c5f0b2d4311555d0fc945d7759
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 218
 # special case for B in multiplication by 2
@@ -2331,12 +1678,7 @@ private = 580f0a9bba7281a30fb033490e0f429f22e3f267852caeacefa3e5291f0e614e
 public = 61677a5d934ccbfab8ff5d8f085a0b553f94527d9c49ae140f8ed135e1449b69
 result = acceptable
 shared = cb92a98b6aa99ac9e3c5750cea6f0846b0181faa5992845b798923d419e82756
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 222
 # special case for C in multiplication by 2
@@ -2344,12 +1686,7 @@ private = 709098feb2e25c67b4bfd3be0a01af409adb6da52b3fbe3d970642dd2c983856
 public = c8239b710136fe431fb4d98436157e47c9e78a10f09ff92e98baff159926061c
 result = acceptable
 shared = f1bd12d9d32c6f4c5b2dcb3a5c52d9fd454d52ca704c2c137956ec8ad9aef107
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 223
 # special case for C in multiplication by 2
@@ -2378,12 +1715,7 @@ private = c887886fd07107c7221f6d9dd36c305ec779ceca132ac933ff77dab2beac6345
 public = 737d45477e2beb77a6c38b98e2a19b05c395df7da998cb91f6dfab5819614f27
 result = acceptable
 shared = 8cf4538ae5f445cc6d273df4ad300a45d7bb2f6e373a562440f1b37773904e32
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 227
 # special case for CB in multiplication by 2
@@ -2405,12 +1737,7 @@ private = 587ac36b9a23594632679adea1a826f2f62d79738220fb487464039f36ca2372
 public = f85a06065ea2527238fc5ec1b75ead9262e6b1aed61feff83b91230aeb4b7d01
 result = acceptable
 shared = f12acd36f6299a4d192c03aa4efeea7df51e2d15d763172e68accf7bc6f5c230
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 230
 # special case for x_2 in multiplication by 3
@@ -2425,12 +1752,7 @@ private = d8f7233e9612c00c9dca2c751ec1d3f5f67bad77c2e714a20e71eb3f220a6671
 public = 696757ced3097fa960c8390a09e8bd6d390dbde8d1fa170261f3422edc192929
 result = acceptable
 shared = 45ecfa275f1daa25d3fadf33cdf89a152afea25eae37e68e00b30c367789887a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 232
 # special case for x_2 in multiplication by 3
@@ -2438,12 +1760,7 @@ private = d80c7c7557c9907e1b11e844bf1369cba669bc38e9b7b253e51f239bda322374
 public = fd84b3f2fbfa16aebf40c27f46e18d77bafa0c7971bedde4909212e771bd3c35
 result = acceptable
 shared = 595e144e07bbe65b38e0e4163d02ad75a65e422e74067db35c90dfa6e055d456
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 233
 # special case for x_2 in multiplication by 3
@@ -2451,12 +1768,7 @@ private = 8002a85115ad7b41c50f84f35fac750ee8e19734807102830ff6a306beed4464
 public = 805485703ccfc4a221ef281267f52b61cebc879f0f13b1e5f521c17352a0784f
 result = acceptable
 shared = 226e16a279ac81e268437eb3e09e07406324cb72a9d4ee58e4cf009147497201
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 234
 # special case for x_2 in multiplication by 3
@@ -2464,12 +1776,7 @@ private = 782db0c8e3e68f106fe0c56415e0bd13d812dea0e94cbd18bdf6761295613a6d
 public = 80642a3279da6bf5fc13db14a569c7089db014225cfcae7dff5a0d25ecc9235b
 result = acceptable
 shared = 790d09b1726d210957ce8f65869ca1ec8fa0b2b06b6bcf9483b3eb55e49e9272
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 235
 # special case for z_2 in multiplication by 3
@@ -2491,12 +1798,7 @@ private = 286a302d5b076d2aba7c2a4daf9e7cc9d8539b7c0391307db65a2f4220d30f70
 public = f26aa6151a4b22390176f6233e742f40f2ecd5137166fb2e1ec9b2f2454ac277
 result = acceptable
 shared = 862df92e25277bd94f9af2e1dda51f905a6e2a3f6068a92fabfc6c53da21ec11
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 238
 # special case for DA - CB in multiplication by 3
@@ -2511,12 +1813,7 @@ private = b0733b4203267ab3c94c506acadb949a76cc600486fcd601478fcdef79c29d6c
 public = d71dd7db122330c9bbaab5da6cf1f6e1c25345ee6a66b17512b1804ace287359
 result = acceptable
 shared = 95f3f1849b0a070184e6077c92ae36ba3324bf1441168b89bb4b9167edd67308
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 240
 # special case for BB in multiplication by 3
@@ -2524,12 +1821,7 @@ private = d844a36b58aefdb08b981796029a2766101884b348f70eed947c2541064caf6a
 public = 737bc07de0729bbcfbee3a08e696f97f3770577e4b01ec108f59caf46406d205
 result = acceptable
 shared = 6a969af6d236aba08fa83160f699e9ed76fb6355f0662f03dbc5915a3c23063e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 241
 # special case for BB in multiplication by 3
@@ -2544,12 +1836,7 @@ private = 787f1ddd78cc6473d3e63949409ad3f35bfe0ce0738f255dee682f2bfbc80f7f
 public = 37cd65d33036205f3449e8655a50d4b0c86fec02100b4f2db7da92dcf5e3aa0a
 result = acceptable
 shared = 13de41659e3e308d6e26c94282fcc3e0364ddf0809ddee6c8e7abb5091b02b00
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 243
 # special case for BB in multiplication by 3
@@ -2557,12 +1844,7 @@ private = 4080ae60a85c1fa95aad9beabd98b405e7f28141bf08f2c9a4fdbde1c5680265
 public = a9b6e8081460383adc587c8f91a02c59a7a35576ca62436ccd1b5fef1b92545d
 result = acceptable
 shared = 69ed8a0a27812ae6741474bd5c6a4e683a126649f7245aa0f91a3a384bcde25a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 244
 # special case for E in multiplication by 3
@@ -2591,12 +1873,7 @@ private = 00022b43775ab2f4b91bc1cb54c97f78026289eaaf02abeed04ca84f736c686c
 public = 2a209e2ace0e3d6973ffbf7403f9857ff97a5fdcd27f2c7098b444fc3c166738
 result = acceptable
 shared = 9f66848681d534e52b659946ea2c92d2fabed43fe6e69032c11153db43dca75b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 248
 # special case for E in multiplication by 3
@@ -2625,12 +1902,7 @@ private = d8815bd144518fa526befdd373f5f9cff254d5d3c4660e8a90ef2a22c6876a74
 public = c3ba28057728d0533965ec34979fe7bd93cf6cb644e8da038baa87997b8dc20e
 result = acceptable
 shared = 74f95b4700f0185f33c5b5528ed5012a3363f8bbd6f6a840aa1f0f3bdb7c9650
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 252
 # special case for AA in multiplication by 3
@@ -2645,12 +1917,7 @@ private = c02609df3d5436c123dcd7ee11f23f1da321666c09f379d37914203340510861
 public = 83f67d7c92b11c8fb072484642a01f43deb022b54d94a4015e39849a2e2e9555
 result = acceptable
 shared = f148716ebe7269a7076f0cf1f22b6978d3c7e3607b0bcc87a8c7a85b9fd20c2f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 254
 # special case for AA in multiplication by 3
@@ -2672,12 +1939,7 @@ private = d0e67f68183a4c1aed9c56864b36278bb7bb75d57a78321bc7c24ff61636607a
 public = d8c8e2c6f33a98525df3767d1d04430dab0bda41f1f904c95bc61cc122caca74
 result = acceptable
 shared = ef7612c156078dae3a81e50ef33951cab661fb07731d8f419bc0105c4d6d6050
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 257
 # special case for AA in multiplication by 3
@@ -2685,12 +1947,7 @@ private = 88eb7775dacc32b045ceb35f261b3616315efa98b780e08c79d544edadb5467d
 public = 1833619516b80db0c05b225509e6698df028d83b66ed6bac6f0f6308970d2c7d
 result = acceptable
 shared = a3cf3d81ec56896a68fca0da6335171d0c622568738c0db26fe117033726a049
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 258
 # special case for AA in multiplication by 3
@@ -2705,12 +1962,7 @@ private = 906a9bfcfd71014d18967680d4509eaa41c666424af98bf9ff7ff49eb1baba41
 public = b9bd793624d6a7e808486110058853edb25e136bd4d6a795d6d2ef53b25e3804
 result = acceptable
 shared = 7c6148134c9e8b2ba5daeca41e6a1f3a82d8f75d0b292b23c40fe7f5ce0a2b7a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 260
 # special case for D in multiplication by 4
@@ -2718,12 +1970,7 @@ private = 28392b1b035a8465aa22aabb571061c6effeed40cc2530b628e4fd40395ae04a
 public = e3f444e208da9043f3f74c20e28d7f404bb687a346709abcd555156f88607820
 result = acceptable
 shared = ea5e772bac4693ce69ea3ac761011fa7674037653a433c7f05456e7291cd3c4e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 261
 # special case for D in multiplication by 4
@@ -2731,12 +1978,7 @@ private = 78cbb35204cc88676c14e0ff18171392e998411b23d905d4c4dceab70511f442
 public = 87b43f90f76d12fb3a469fa8687c27e369d4a82f95cf95e8dc3970de8f86d92b
 result = acceptable
 shared = 81c395aed5cc5f5e2a206a8a4cacecd501df5b81e49433835ad8a3779edffb30
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 262
 # special case for D in multiplication by 4
@@ -2744,12 +1986,7 @@ private = a8225b49ef7b7330e3de787cbc40479644db7ab126370295c94189673430d745
 public = 86441ea06c5cd2a34c6b51261e93a2f30ea7db0f74e14c42f0fc443c6735973c
 result = acceptable
 shared = 513eba5870dc5187e2552fe3ba8292b516d2af9ecb9a9bdc51eac2ce2de40112
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 263
 # special case for D in multiplication by 4
@@ -2757,12 +1994,7 @@ private = 0841e1a5c7420b94b6cc6991316ebdd608626339c09d0f67b24088588b9d0d49
 public = 4624aa4ae9d12725bf92b85f93e3e8cea16b7bd83fda0eb18fab2dbe0e8bf742
 result = acceptable
 shared = 983b7e236ffaddb4b759b7353fe87846f59fb6f28a3ed65c256176b6609b7c6e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 264
 # special case for D in multiplication by 4
@@ -2777,12 +2009,7 @@ private = 6038fb0a830d1001ca8ea74a613ea98f6ab8512644e55e8d45a29071bd4bef45
 public = 8a5f2063f259f3317ae3e0b459f82c4677666e49a2eb9bf0369aee663631265b
 result = acceptable
 shared = a3f7e169db44d0d179c242e66347364ab92744dc6ad80e4775aef7f4ff9d5f34
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 266
 # special case for D in multiplication by 4
@@ -2790,12 +2017,7 @@ private = c04cf129f0b33332e2654f8e45225c042d7fa6cbc793c88bd4c731985289b045
 public = 54cfb6ad0d03e3115acafee12606397f2bb46a8c5f326a255c494118aead3b62
 result = acceptable
 shared = 401aabfbb73fe6694c446ecfffb43006427a9d4756e049a1ffc79578d62f1660
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 267
 # special case for E in multiplication by 4
@@ -2831,12 +2053,7 @@ private = 98452ad7df4e26bc4b3d403f9ebf72bb2d7b6b7d5860dbf6fb9a4f78dc02704a
 public = e559c417da7fd5851352f508b90031d49b5d2d0aac88a9c8b5fb6e80165ac10b
 result = acceptable
 shared = c7c6f6d7ce1e4f54c727e5900686c34e6a6953254bd470bbbf0c7c18bbddad73
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 272
 # special case for B in multiplication by 4
@@ -2844,12 +2061,7 @@ private = a8dbc9be5034ed7fe7f469264f2135e9c67cd30f525570d2d841e4bdeac52349
 public = 746d97e7774292a3d703f604e79d8764c99a6a2fe280eaa9811115f5e038f21a
 result = acceptable
 shared = cf7d2a66ea4dfed94469b2d343533ff302a576f8402ed2187904437038e54665
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 273
 # special case for B in multiplication by 4
@@ -2864,12 +2076,7 @@ private = d0f5e9c43c95b1ffc36f832b943601d5e17647f7d78e2e7710ace63ff274d447
 public = 9c3f0023e1a4832586af2483bbec64ce9f06f3ea806d4019a5e4abb1b5627029
 result = acceptable
 shared = b9f21465615f39dddcc37520ce9b956f7de9883ac93a870d74e388b8e1775463
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 275
 # special case for B in multiplication by 4
@@ -2884,12 +2091,7 @@ private = d0d077c9461f747e5660be85cc620428b4cefe805de0fd254adaa465ea5e784f
 public = c4a19b8686e18c29359aa548427f06a368d55a8737483d4893523adac6795a4c
 result = acceptable
 shared = 652b18ffd41cfb7d1f0b6dc79baa3b2a392ef1617f5cf6259b5b4ff065916a16
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 277
 # special case for B in multiplication by 4
@@ -2911,12 +2113,7 @@ private = 90c3cfedd919a2ccd51fb455649e3ad2da1ef0ff619b59a7f9c55a68a8219645
 public = 1df3dfdab74ff38177dac294b2da2f49a348bc3b3bc6ce9312bea5ef3ecdd30b
 result = acceptable
 shared = bcc95fb4890ed311f3fb4f44c2b60866cdddec97db820a7f79f475337e16284a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 280
 # special case for BB in multiplication by 4
@@ -2931,12 +2128,7 @@ private = c0e05bde7727db4e352b5e7f035327b4d86a42d513ca116e22d64a4ede56434a
 public = b279b6c065f95c7040f148bcb4a3d310e34bdb005931a879be469573deedd041
 result = acceptable
 shared = cce7bb644df94501421db49d15e821c7b0aaabecdf8837ab989b1f23bac08f35
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 282
 # special case for BB in multiplication by 4
@@ -2951,12 +2143,7 @@ private = d80059a8a387e16f6ded6e7e980e806d1f78b470bb61103d0ca70623ccee8b4f
 public = 872897f1bd1885da08b9d03e46811044fbb04186ba30c806f38b94ebdc27186a
 result = acceptable
 shared = bf280aeecb74ab34e1310aa6fe8dc972f94dc40c7f88b72137ccfe34ed343c13
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 284
 # special case for x_2 in multiplication by 4
@@ -2964,12 +2151,7 @@ private = b0a4fe63515169bd82639b515ff7e5c4ac85bba0a53bbaca80477eb3b4250d44
 public = c08f72760d9cb4a542aad6e2af777920c44563bd90356168c3608c6b9af2ef0f
 result = acceptable
 shared = 72566a91ccd2bcf38cf639e4a5fcb296f0b67de192c6091242a62fae467fb635
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 285
 # special case for x_2 in multiplication by 4
@@ -2984,12 +2166,7 @@ private = 6847141d5d4377af96a2a647c642ee81600fe48d3467e3a70f3ee312bb621742
 public = 4959771a931e242d5713d5cb76f33310c6a283df16645604289553809cda6518
 result = acceptable
 shared = 5ba2112a41b5bb381f202446fa9f23c54d2de149f9ad233753417263840ea432
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 287
 # special case for x_2 in multiplication by 4
@@ -2997,12 +2174,7 @@ private = e85f1164e2ab6faf62667c74b03ce529b49a0e2041b1ac0fa242e522d2b7694c
 public = f6fe690cf547049635bb3a7785537b4379c9ee06b46120493b8bdb152e09c81d
 result = acceptable
 shared = a87c9fdf40c409b9edab481b2cc69687ee1ab92e340c3db0107d40b5de6e7a20
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 288
 # special case for x_2 in multiplication by 4
@@ -3010,12 +2182,7 @@ private = 281e1bbfa711de69921a64c5d2183c338db5504606ce2b6b4ce1cdd54b41e14a
 public = b468681a1275850c11d37ec736af939a75a7098514e04cfc1c6ca78239a88426
 result = acceptable
 shared = 3be98798f01e71639f3cb8fd4a17bf273e10c67f8974dd9802eed59d847d4020
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 289
 # special case for x_2 in multiplication by 4
@@ -3030,12 +2197,7 @@ private = 009e8e9fa993804dce94cecb96b1de2568245a97059e4d7ae116ecdb1badd141
 public = fa8f24e944de5d003746d4630350c0f4f6175a3269c19184824105398fbdd329
 result = acceptable
 shared = 56e2bfc7f6ab7da8fc734afc515e57d0794d002434f9bc8e18bd0b72c0df3c4a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 291
 # special case for x_2 in multiplication by 4
@@ -3043,12 +2205,7 @@ private = f01574643f231ffac055bd235ee74dd416b94c8e55a2ab2b4d13a8b788d90148
 public = ae4e37ef53c79e25e8275a60f2fc1dfc277ebc5d3b88428c6432c3f98494212c
 result = acceptable
 shared = 17fa1276d9fd5025172736449a1c0ae33512e5037014a18db5903e47bb3bc950
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 292
 # special case for x_2 in multiplication by 4
@@ -3063,12 +2220,7 @@ private = 70a826b186962218dbafca113319daefb5ddf3cf14e15fe3faadc4c0a2e46648
 public = 5f16aa7ccabf4da6b686bd28c7460e106bb1b97a823792527765c29a9ad8fc71
 result = acceptable
 shared = 30a4ba793f2dffe1700c61428b4d84b5fcd0aa99a23b903f84a48eca5cc9fb0a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 294
 # special case for DA + CB in multiplication by 4
@@ -3090,12 +2242,7 @@ private = 888c6444ff5eb482b2b10bd4e8a01bdccb65f32934d8026106f16a91349f484c
 public = 4eca5f8731b0fa0c106acf578b83a350fa8173a290f1eba803956de34eeb7671
 result = acceptable
 shared = 833afb867054b8b9ac70d6013c163e8b7676fd45ae49a1325f3acb75975d8c13
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 297
 # special case for A in multiplication by 4
@@ -3110,12 +2257,7 @@ private = 90a3aeb1417c3d61c1efef1ac052218fb55d3a59c4fe930b5a33cc5183b48547
 public = 88ae1631cd08ab54c24a31e1fec860391fe29bc50db23eb66709362ec4264929
 result = acceptable
 shared = c1988b6e1f020151ec913b4fb2695bae2c21cc553d0f91cf0c668623a3e5a43d
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 299
 # special case for A in multiplication by 4
@@ -3130,12 +2272,7 @@ private = f825edf1f79eddd715a72b3ac267d6b2e97e18bb13bcafdac5940370b85ba64b
 public = d66a2f9f7577e2df4a56cb51962b3056ff5cc0494c60f39511782e79923edd41
 result = acceptable
 shared = b3b4513f8a3102e1ae782fbc69888177f2c24c569303a5d01ab1c3c5e285524a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 301
 # special case for DA - CB in multiplication by 4
@@ -3150,12 +2287,7 @@ private = b898f0329794747d33269a3989b67e43a7ab5a55fa1210b0e5dba193f4fa094e
 public = 6418d49fe440a755c9ff1a3582d35dc9b44c818498f15782c95284fe868a914c
 result = acceptable
 shared = cdb3ca02d5fdb536dbc7395bab12bdcfd55b1ae771a4176dedb55eb4d755c752
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 303
 # special case for DA - CB in multiplication by 4
@@ -3184,12 +2316,7 @@ private = 702a7448c0ed58e1f4e0e332d096a36360beca2f6955c815bc120b3a691d7742
 public = 4d19e156e084fe582a0eb79b2f12b61d0b03f3f229227e798a933eea5a1b6129
 result = acceptable
 shared = c46057fcf63088b3a80e0be5ce24c8026dfadd341b5d8215b8afcb2a5a02bb2b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 307
 # special case for C in multiplication by 4
@@ -3197,12 +2324,7 @@ private = 50025cb508ad4faa06fafd0f4a33b747ccf1b3573885d3426500d51b56300144
 public = cc4729c4eae292e431ec3a5cf5020e19f9bea50ef3218d9a790034526c3ee14a
 result = acceptable
 shared = d4361e26127adfbe37c2ed8f42cce4ebab8ab74ed9e74f14c3435d612c1a992a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 308
 # special case for C in multiplication by 4
@@ -3245,12 +2367,7 @@ private = 98c092363184e58ad6ce510bd32b309c9d5a46f8d9ee6f64a69d8180bbc6cb45
 public = 340b9f613550d14e3c6256caf029b31cad3fe6db588294e2d3af37605a68d837
 result = acceptable
 shared = 9efe5cd71102d899a333a45ea6d2c089604b926db8c2645ce5ff21492f27a314
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 314
 # special case for CB in multiplication by 4
@@ -3258,12 +2375,7 @@ private = 686e51c00116d1c191aa9d5823b96e5956102e8fe75f5cf2376d99989f6f4342
 public = edfbd6f09aa32435440b0ca8ba436308319613f8f2d501133c526c3ff55c7b3d
 result = acceptable
 shared = 196182095bcd2ef46b18f64c63607e0ab162a0869e6265ac8ae35e358c3d8a63
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 315
 # special case for CB in multiplication by 4
@@ -3271,12 +2383,7 @@ private = 208af2c9442b36b521fc3a1ecefe342aac308bd6e6296ee091c196dc02e7ae40
 public = 9b0538cd618b0a4de09e45420f84d54d74514fbb1a31c1a4aa1e93306f20723f
 result = acceptable
 shared = a3c6b75168211e8e0a49ca815bfe3f469f29864dc8166152b456e7074afa9b5b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 316
 # special case for CB in multiplication by 4
@@ -3298,12 +2405,7 @@ private = 60afc8eb1f87df4b55287f3c4698c5f8b997b28a73c573fc273e9c467fb7e44c
 public = 836c8e45dd890e658c33e69b6f578a5a774c48b435bc3b91ac693df94a055857
 result = acceptable
 shared = c5457487e90932f57b94af2e8750403e09c9ac727e2bd213590462b6937b0753
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 319
 # special case for AA in multiplication by 4
@@ -3318,12 +2420,7 @@ private = b80d8795735806579e71759894939d758853592127efe84fc82eb7cdee45014f
 public = 32f34da84ab4bfca369c4b884691becf54be7fbed16449dc86969da7ea9abf62
 result = acceptable
 shared = 521a5b8149a132d155e6b4ed113900506cfc2f76d2a3e14196d69eb85db3c952
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 321
 # special case for AA in multiplication by 4
@@ -3345,12 +2442,7 @@ private = 8036a4e2e93e9ed82d99d71a522aac9289bd9905fe41d01d08a499376a258442
 public = 18e58df6bfbe184b0e3c7c4bf2a051ed055b793501c0d4fc47bc8a95c4deec7c
 result = acceptable
 shared = ade71d6460287fe808e947560e67a9d6ff2f96eaa1355d2e9fbbe549e883381b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 324
 # special case for DA in multiplication by 4
@@ -3372,12 +2464,7 @@ private = 989eee317b9c254dc023f9e35eff0224bc2e0bc871996b946a96970e7506a85e
 public = 33c94be58b0f0e6cf363e1b12a2ebfb93040715be91518f21df2953eeab5fb01
 result = acceptable
 shared = d4c3b3467714f2d105904a84cc7e81d7f291304e908041682d8906a683c12125
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 327
 # special case for z_2 in multiplication by 5
@@ -3385,12 +2472,7 @@ private = b8355455d358f2dd7c5707b2c6973c9c27b99e7d8ac1650c791e5fdbcbea4957
 public = a218ae9624b07ce05178b9d0cc1b71dee21f27852a2ceb18610b4052b244f00f
 result = acceptable
 shared = 1ebe6ca711a649ae487b332747e3dc0306340560cab6bc6029e44f6a7e0ee41c
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 328
 # special case for z_2 in multiplication by 5
@@ -3398,12 +2480,7 @@ private = 8065567ef082b16c20853487f54893012ba4762224e5c59f250dfbf82581e85a
 public = d7067faeafd3e966e57525f930b3317c9e8b9c9a9ae946e76c1e4602a59a7e33
 result = acceptable
 shared = 03e7a777e648bdc612189f3cd42d34e35736d3e52e6edc8ac873a58e244a6073
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 329
 # special case for z_2 in multiplication by 5
@@ -3411,12 +2488,7 @@ private = 00b51448139a61fe6c5fbf9395877d53d820ef59da3be856458b5eb90985ba53
 public = 8df9682cbe8802478a8531377e752cdde54738d528d639bea9eaf47702f8bf3b
 result = acceptable
 shared = 308ef99dae1064a444fa90775b5dd5b1952d7224a0e5ae031df432640f416208
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 330
 # special case for z_2 in multiplication by 5
@@ -3445,12 +2517,7 @@ private = c0e19634dbf6460e1486930c46e8556b3c16d6de959904600549bb3e08603455
 public = 832a46aec02240d716fe22dea94ad566a3fafbeedcce35c83e41e58076c99749
 result = acceptable
 shared = cd0686b32ea4cddb8e13ff20a78d380749a5d4f6a3dc55d72f4813d949a0ea57
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 334
 # special case for E in multiplication by 5
@@ -3465,12 +2532,7 @@ private = 2896818cddf572521943e9f0c5e845f530b740427588a0f6de2504bd5bf40c53
 public = 6df799bba6cdf5f46a57ab227f93fba491dad296a2fdb7e491921d610cce8f5e
 result = acceptable
 shared = 54f5ae57e676d08c8f8a3cf891e36ddaab751093f92f409060c57e745941700e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 336
 # special case for AA in multiplication by 5
@@ -3492,12 +2554,7 @@ private = 88f9a0d2354adfcbab2d12a0e09b3c7719c944384edfbaa27fe0731cb9c6fc5a
 public = 73bdeef8cc044f5ad8d6a241273e1995e0007dc9e6579046df86aa6cd97f5d2a
 result = acceptable
 shared = 5aa750de4207869ec7fddab34c639559b1eb27ef244aaf2a702c84963b6d6e7c
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 339
 # special case for AA in multiplication by 5
@@ -3540,12 +2597,7 @@ private = 68a3049aef8c069b906cf743286d3952a888bf2b9b93bc8775fb5adde06e9f53
 public = 48d952a2924ff167f037707469ec715da72bb65f49aaf4dce7ec5a17039ddb42
 result = acceptable
 shared = de88af905d37417d8331105345dabaab9fd2d3cb1ee902911c1c8eae2991d911
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 345
 # special case for BB in multiplication by 5
@@ -3560,12 +2612,7 @@ private = 18efcd5fe345be4985316695391d2c952eee13b0e1ee7584721fbe8b19d4fc5f
 public = 9051e55a4050ef4dce0b0c40811f16371e8b16932541da37f069406d848ea424
 result = acceptable
 shared = 212dbf9bc89b6873a60dfc8731a10be11ab2dca4b172142e6c9f06614cd72852
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 347
 # special case for x_2 in multiplication by 5
@@ -3594,12 +2641,7 @@ private = 686be5a12b310420f9bfb209381fd459a5ccd55c752b88337ebe89e1921ae765
 public = 0e67ee5c6b65aa802259810b2605f8d7accf9b49bf14cb4a536928e883172915
 result = acceptable
 shared = 1d730158da880533dbf1e6c64a8e99f9169611660969b0a84fb42dd8dc2efa3d
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 351
 # special case for C in multiplication by 6
@@ -3642,12 +2684,7 @@ private = e879752683cd73a834251c65749135e06eb9064d3ae35095d88cde14a02ba366
 public = 0e9c4431999ef1ce177e900d37ec6ae665e387e2d4fa27cba8e7baebc65c6520
 result = acceptable
 shared = 8ff2ac65c85ee2fe9452fce460f8c87f9570d769cadddc87fe93ef8b7657c726
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 357
 # special case for CB in multiplication by 6
@@ -3655,12 +2692,7 @@ private = 20576ab456da26c18da5fbf06ec4d16564e111bfae2a92b9f6e1927c15770a62
 public = 5761d6c08624104d4117ff17c75e9211a591c9ca9aecca3a665a7ed844195225
 result = acceptable
 shared = 97c91a23c3e4f3ff727d188a352b67ad490b62381566fb3e111cb67aa9e3435c
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 358
 # special case for CB in multiplication by 6
@@ -3696,12 +2728,7 @@ private = d805a7014755dd656f98d2b331f2d2d4912725ef3d03752f26f74dc1ad61666a
 public = a244413ddc3a205d038d64266833eea1efba51ba62c9c6cdcdbe943be52bb00c
 result = acceptable
 shared = 66484a4120e0eb0c7e0505e1d2c5d15de9b52b72e094c9bac88634200c557267
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 363
 # special case for x_2 in multiplication by 6
@@ -3716,12 +2743,7 @@ private = 8021464c64c9d6d3c0c852f6972d11969b04c9e066562fa7f0d5fa0d98ebad62
 public = 6330d3e28a8b6126ace165a9dfccc6e4bd40dbc9768cfb16330cb7f27f906230
 result = acceptable
 shared = 8daf5f4b84730144ea8a53ce39cc907e39a89ed09f0202e7be0d3bda38da663b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 365
 # special case for x_2 in multiplication by 6
@@ -3729,12 +2751,7 @@ private = 707a2d710b32f55c6eba34898020a2fb981d61b1e822fca84c47d9321e279268
 public = 8678aa29cbc06e78b218d22a3e66c38ec0da8fdb0f2570c585c62517c9704f37
 result = acceptable
 shared = da8b7eba6f72c3f3ef33d8982093492e06be39bb0db29c465d95a8e52ef64341
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 366
 # special case for x_2 in multiplication by 6
@@ -3742,12 +2759,7 @@ private = 204a43dea79d779577581b8c2a51be66e1effce96425b7422b9ca65bdf1a4867
 public = 303289c2b1079ea59412faccfeba8c113d2299b9dcfedeabc42697b0829c4658
 result = acceptable
 shared = 0419a71a08d3fdd574cbc932e8f1605933ddcdd9774f5614269b7ed850c8650e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 367
 # special case for x_2 in multiplication by 6
@@ -3776,12 +2788,7 @@ private = b0333f09ac1eaacd3cd617eb8832e9de488b458b735cb4b5345f517130c25d6b
 public = c588dfe6e733d90581cbe112079749d8eb30ab8631134ec29abfb98b32e76522
 result = acceptable
 shared = 6e88bb6bf75596bbe5f1fbe91e365a527a156f4f1b57c13ac1e3e6db93191239
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 371
 # special case for DA - CB in multiplication by 6
@@ -3803,12 +2810,7 @@ private = a8312df473adfec7171e1635f5bad44f0753a88a6b3174ec5ae762703ae25e60
 public = 419a076b179f79720096eaabaf03477e8f89d61f885c8d7f58f6eaa4fa77df5f
 result = acceptable
 shared = c1a96ccba08bdd82d0fc12e8cde4cc1f25cfd5276dce7f18e407ed0e4a898466
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 374
 # special case for DA + CB in multiplication by 6
@@ -3823,12 +2825,7 @@ private = d036308a53c11bebcb02e83688ad74fec43f8462ef4d806272676637d99b3765
 public = 1f06cfe464ccc0e27a5ec5f9edd9bc7bc822ad2ff5068ca5c963d20edd1a2d22
 result = acceptable
 shared = eb40a3974b1b0310b1597d1f1f4101c08dca727455a9d8224cd061a7aa3cb628
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 376
 # special case for DA + CB in multiplication by 6
@@ -3864,12 +2861,7 @@ private = 109acfa638e112f6bbec21e352a74e8fc9b7ffe5d9dc28634eeb516e59830a63
 public = c31e37b04332abca8315f317171566aef38111f622d8bffa29c23c0151cdad6e
 result = acceptable
 shared = 91ac72b0ed8d7fc4c8846b8a2530d9fb8f0532064880c00dab100c977697db28
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 381
 # special case for z_2 in multiplication by 6
@@ -3877,12 +2869,7 @@ private = 685c0784aa6d194c1b859bda44c4e27cd1dfdf34776e498dd03d09f87ae68a65
 public = b775e016b32a97f49971121906763f3a0b41689092b9583b6710cf7dee03a61c
 result = acceptable
 shared = 11393bb548813e04fb54133edbe0626458e80981885e1fe5f3377e8ebe9afa52
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 382
 # special case for z_2 in multiplication by 6
@@ -3890,12 +2877,7 @@ private = 18e9a05a20436cf0dbc3d5b92dac8d996e62ea11fbb3445f29195fc75a8beb69
 public = f8bd0e7cf6ec6186f205ab03ab72c8f6b3cde8f6ad9b166916a04d43d1d6d546
 result = acceptable
 shared = 0a83a224fbfcbc5d0f07f6dd8ebb2e9bbee8134f0fab268002ce837f5495d833
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 383
 # special case for z_2 in multiplication by 6
@@ -3931,12 +2913,7 @@ private = 204a3b5652854ff48e25cd385cabe6360f64ce44fea5621db1fa2f6e219f3063
 public = ed1c82082b74cc2aaebf3dc772ba09557c0fc14139a8814fc5f9370bb8e98858
 result = acceptable
 shared = e0a82f313046024b3cea93b98e2f8ecf228cbfab8ae10b10292c32feccff1603
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 388
 # special case for D in multiplication by 6
@@ -3944,12 +2921,7 @@ private = 88109b1d0e7bace44d41a15d5bcbcd36968c5b8b47c0a2c606b57c4a68cc5f66
 public = 12e1589a34094af5f121c9bd3c1119f2b1f05264c573f667a748683c5633a47e
 result = acceptable
 shared = 1fcc50333eb90706935f25b02f437bfd22b6b16cc375afff8a1aa7432fb86251
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 389
 # special case for DA in multiplication by 6
@@ -3964,12 +2936,7 @@ private = f85a8db44f9e56b11729f51682a9769fc504f93597cbe39444616b224532106e
 public = a819c667ed466bd9a69ea0b38642ee8e53f40a50377b051eb590142dd27e3431
 result = acceptable
 shared = 17f6543c4727e7f129ee82477655577635c125a20c3dc8ba206ca3cc4854ca6c
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 391
 # special case for DA in multiplication by 6
@@ -3984,12 +2951,7 @@ private = e8db2bf1af5b8907420789c56e71414706aef0d9f6ffaed0c249c3b7ab14bf65
 public = e7dd0549a765bbef34be2e8da18a1bc1b989a8b0614d358ebf38c12a9ca64079
 result = acceptable
 shared = 37232fb397af27f5fb5ca493284ff1c5d25786b0d716c73b33aca8d42265f318
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 393
 # special case for z_2 in multiplication by 7
@@ -4004,12 +2966,7 @@ private = d071807d607953da432d8574d5f3f420676dafdbc6a285a36e1d737624d77c75
 public = f226c2d6bd7831eda1b51ee5aec29443a507ef9f7a04e2340f349dbf14933844
 result = acceptable
 shared = a5976fda89954a81e442107f9e416a2b4b481bbd4654ebc0c7b57a78b45b4979
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 395
 # special case for z_2 in multiplication by 7
@@ -4017,12 +2974,7 @@ private = 304b526f6fe994731980c0975529bca4d061017fbec56f6070d42678d3e11177
 public = c5197312de3a7a3ee11b29873bae3fc8c85109c66784804f89435db210fcc24b
 result = acceptable
 shared = 55b5b5eb38b127617ffe00056d84d35a5071d18783e3a82b5f4e131b1538b150
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 396
 # special case for z_2 in multiplication by 7
@@ -4030,12 +2982,7 @@ private = 982ddf2c035789379b8a58917d5c3c6c061b503b19a0028e01894c2eb371d079
 public = 590ed0b879319c38a19962a5d216ff2bfaf33555518877969c20c054cbe43e56
 result = acceptable
 shared = 0080e5b9985a960a832133812a7ab9951c6b2c75894deb3e35509190a6bdf457
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 397
 # special case for z_2 in multiplication by 7
@@ -4071,12 +3018,7 @@ private = 98ff2856ef44b4fa14d86782ea793828bdf6f1ef9b669cac1aae338a7bb69376
 public = 0f460100d88a1d316dff02d1b22ffb2e42d99d0b92474fc3ec7d62567d0cf112
 result = acceptable
 shared = ed83e810ce5ff0868f8589623bb13478dec1c22326c92765ae5e48c84bbabb24
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 402
 # special case for E in multiplication by 7
@@ -4105,12 +3047,7 @@ private = 00615e4697014fc12484ef53a1440206410a8df78caa0bfff82161db83fea574
 public = 102e95eadca7c3c28e5d52336c857bad99ea246f299b06334f401276f49ca814
 result = acceptable
 shared = 3952efb93573ae9ce2162d10e4b8c46435859f3f2778db89f72bc579e695cb51
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 406
 # special case for AA in multiplication by 7
@@ -4118,12 +3055,7 @@ private = 58175113550faad56458fb375a6cb3f05df2f6ff3c4ee09d4a6ba643e022d17a
 public = 3548c16bf31afdcd445ad9bef0e60d7bd6195aa591ca8c82813cd7d446226720
 result = acceptable
 shared = 96128f929fc03c1269d429f609a1a8acac7a758e3446a125ecf4a359a0e37b73
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 407
 # special case for AA in multiplication by 7
@@ -4166,12 +3098,7 @@ private = b0fe7b06b9950600b3a7ce1d7bb2a1d984194cc9d6c8964504c364dd5c875b74
 public = 2743ba408d5f68c65324a485086a004b6bbf784cc9e8b1a7dbeb8c4b9414b018
 result = acceptable
 shared = a6b97da989dccf730f122d455152328051c8ed9abc1815c19eec6501d6cfc77c
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 413
 # special case for x_2 in multiplication by 7
@@ -4193,12 +3120,7 @@ private = f026031ea373e1d16e6e7e0357bc96bc093f4b6bb76a738cbb54fe6cfd2ea271
 public = 1324e0368597b3181555bb5b2cc7b7ebba46931aeabb6f05ababd4240f0fb933
 result = acceptable
 shared = 6dcdf8e86903b0caded124d8a7da18e623430ca869aaf267d31029d93de99e66
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 416
 # special case for x_2 in multiplication by 7
@@ -4206,12 +3128,7 @@ private = 703f4ac8667d77f9536045cf748f18d42345e39ccab10c18dde0f5170d307f73
 public = c7f3842297d6941cac63d6f1bdaea0709437c82dbc9161fc1bae6c79d668eb44
 result = acceptable
 shared = 385ddbf2505ebf537bf5e976b61a4b69d190ae965b7e4a81ae4e1c16b7148748
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 417
 # special case for x_2 in multiplication by 7
@@ -4226,12 +3143,7 @@ private = d0dde8eda38c3783442864c0cb46a0e9832dcf784c21268a21bed2cace87cd70
 public = 2488bb6fadb79d46585ff01c160c5b4172799d92bd168edceb65cededc492762
 result = acceptable
 shared = 510c64151e5d0737fc324bd15fb5d3966908751cd1a06954b556196655ee5540
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 419
 # special case for x_2 in multiplication by 7
@@ -4239,12 +3151,7 @@ private = c09cd47e1ce53604f14e4e13426c8f08962f556bcd81f8d75375b1507c6fda78
 public = a0c1087811af1491171bc51691b8ca84716af36c4baa764ec536280cc1983d6d
 result = acceptable
 shared = 23ef825e1c8e6e64428001a7463e32a9701c81cf78203e6ae753740c91570e6b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 420
 # special case for x_2 in multiplication by 7
@@ -4252,12 +3159,7 @@ private = e09a5f74f318f02303857aa0208d76913d9e240a80549d12013118bad620597f
 public = cc5c97934607d8b981bce1d6a232bb3aecc3001f698ae1ae84938fbf2861077b
 result = acceptable
 shared = 0e55a7ec1a2ddbea1ac5981200812232f7f4c3a60ee3c9ab09f2163bd13da329
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 421
 # special case for DA - CB in multiplication by 7
@@ -4265,12 +3167,7 @@ private = 706cee5f9b357c03b2f1913294f6e4f0ca5a190a87d30268327d0cb6bdd5bc79
 public = 238de7fcc8a3f194c3554c328efb1215d0640ac674b61a98ef934ec004cfd73b
 result = acceptable
 shared = 0681036a0d27583ba6f2be7630613171a33fb8a6c8991c53b379999f0f15923b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 422
 # special case for DA - CB in multiplication by 7
@@ -4299,12 +3196,7 @@ private = a8edec59ae6ba23813ec54d66df152e0626762b97d4b0c20e0dd8a5695d86e47
 public = dc99ad0031463e4537c01e16629966d1b962c0b4e4872f067ca3c26ccc957001
 result = acceptable
 shared = 6cfa935f24b031ff261a7cd3526660fd6b396c5c30e299575f6a322281191e03
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 426
 # special case for D in multiplication by 8
@@ -4319,12 +3211,7 @@ private = a0f20df98b49218ac832f26fa8c218a0d6872eb7aea07c1d43c9ff699b465b47
 public = e7b3205777b375f1b1515a50a16a6067953ff221e12b4f416d74fb28c1c85865
 result = acceptable
 shared = 388ea421650a8d837bad8904018195e99ef494c2d170b93ee721a67d2c108729
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 428
 # special case for DA + CB in multiplication by 8
@@ -4346,12 +3233,7 @@ private = 882f5578ae4a13d8f5af473bdde1709bf2e059df809ee05b505f34de857c3447
 public = 8abb8cfd60c6f8a4d84d0750d3b40a4f846b30edf2052fef7df84142cd0d9e47
 result = acceptable
 shared = 5faba645fc21f9421ebd35c69bdb1d85b46f95e3746ff7f4886bc280a9ab2522
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 431
 # special case for DA + CB in multiplication by 8
@@ -4359,12 +3241,7 @@ private = 98294db7cbf4958bfb3ed21d5d5c91e13cc8dc27b3c716c86f7167a4819f8741
 public = 9fd7b49a08f206688d72db737df8e517aa7b764f5de7c9a2b1c3fcbaa985f64c
 result = acceptable
 shared = 9cb8a0f4ad86a27b96ca61242eab198db2767d3862dd323e41368fcdcc5fab68
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 432
 # special case for DA + CB in multiplication by 8
@@ -4372,12 +3249,7 @@ private = 789bc4047ad81b9b6656eef298b766e8763a2f8ea64e374a603dc1fdf2eee146
 public = c4fefac7acd448e8fd4d6ac4f5dd1bc21f2c67d638444060918fb344aa77e757
 result = acceptable
 shared = 4b42fcf84b51b2b82f1f70b3cf49bd9dc6ab2672920a8de37e81ba7e99acf734
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 433
 # special case for DA + CB in multiplication by 8
@@ -4399,12 +3271,7 @@ private = 382dbe9f10158bfbb7d1d79a35a7809214899a6b8572b35b55875d79bd2f1640
 public = 7976d520f1a2512d564af41c68313f5351b0156d5118be4817f192798ae9777d
 result = acceptable
 shared = 3bb3e30105a71901b115065e39bdb3e053d387b39027b12c92cdf4c638adf00d
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 436
 # special case for AA in multiplication by 8
@@ -4426,12 +3293,7 @@ private = 401539703ca4980db4ba42c59fc29e83b4189f2ddea53ba54ca966c06898a640
 public = eebd858850b56febb707f27a7aad5ff5ab4b0e0c73b9c86ec4ca0f42e7f38e75
 result = acceptable
 shared = 581e4b12b0f39a7cc42dee4513ecfdd20b595f905f17ad8c1fbf1b5cb2068b31
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 439
 # special case for z_2 in multiplication by 8
@@ -4467,12 +3329,7 @@ private = f83e4647e82c560aa082c59641e13bf366be8f24dc01d14801e67841160bed47
 public = 66a09767a0d83bb18d404e1200375a745d1f1f749d5dc6f84a205efa6a11bc65
 result = acceptable
 shared = 1401829aac4e64bcfa297a7effc60477090d3627a64a35b872ae055d2091785f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 444
 # special case for B in multiplication by 8
@@ -4487,12 +3344,7 @@ private = 786a97207adbd4b0d6bfc9f49b18660ad3606c12e325044b8690b4fa07874641
 public = 84c92d8ecf3d0cb22dde7d721f04140c2d9c179cc813ce6cf8db2dce6168880d
 result = acceptable
 shared = 07538f1b6583041c4949fafae3349d62f9dd302d3d86857af0dedc0d5ad6741f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 446
 # special case for C in multiplication by 8
@@ -4500,12 +3352,7 @@ private = 282310210e575a59393cf19bbe6e24752dc247706f1e0031e5d39b2de4fff745
 public = a9cedb9e942a47221e4296953220d10007db327d2acb68da6ef3a4f877b8ef1e
 result = acceptable
 shared = 1223505fbb534c1bc6108e6b98b4f0af29e11158c02d333d6559beecd6d3e558
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 447
 # special case for C in multiplication by 8
@@ -4513,12 +3360,7 @@ private = c8bf2fd4c40d00f1465aada682b12fa92dec10343484ab62b8871337de1d3345
 public = 64e1c0c5f59405bbc6c7db41a3485cc9f91c183b0f2b7e1894a7abd8fbbeeb23
 result = acceptable
 shared = ee031868165f456f75907bf39742b820e0f8e6df9f9768d757d408e1cc92ff7b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 448
 # special case for C in multiplication by 8
@@ -4526,12 +3368,7 @@ private = c06a4a4b70f613136f18c0f88e2245086c3d1a52717210a21ac9d63682f2e740
 public = a68d2f55e60eac7983926310f4fae13f95b2bbf140be5ea91751884d900ab44d
 result = acceptable
 shared = c954fa7b042c32943e03191e367d54be0085fa8950ef2bec99620df79ecbea4b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 449
 # special case for x_2 in multiplication by 8
@@ -4546,12 +3383,7 @@ private = 38141518e8e5efa1d031c6c4d95480239f6c30b8ccd8c751a9e04bd3aec17342
 public = 8f195547346b3d53b7ea4f742b22f1ef7b3cc01a7d3dcd19aa7c5b03f31bd214
 result = acceptable
 shared = a31f6b249d64a87c4aed329c6c05c3f2240b3ca938ccdc920ba8016c1aeaeb45
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 451
 # special case for x_2 in multiplication by 8
@@ -4559,12 +3391,7 @@ private = 207147f2b68fef1efc10a04f988f0eb18b273b0b5ed17aa7af32c90480e19b43
 public = ffc4fe2c2127a309c739565651e9812f834a86dbadbb78776977f786ecdb0217
 result = acceptable
 shared = 4cff9f53ce82064882329a18ea4e4d0bc6d80a631c87c9e6fdc918f9c1bda34a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 452
 # special case for x_2 in multiplication by 8
@@ -4572,12 +3399,7 @@ private = 488084537b840f9c93ca57b3ee80491418d44221113e03f56355302604d03547
 public = 8475babeeab9980d426abd5323dfb335b219e129bddae4d6cebcda50754a6825
 result = acceptable
 shared = 248d3d1a49b7d173eb080ab716ac8fde6bd1c3ed8e7fd5b448af21bcdc2c1616
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 453
 # special case for x_2 in multiplication by 8
@@ -4613,12 +3435,7 @@ private = c05957fbc3a0e2c22a2aef627651ca1e99307b82a0c6170f7950a334f3004941
 public = 4d96320cdb0ca52655e91118c33f93afe4ae69e9e513ff4506750b8ea784ce46
 result = acceptable
 shared = c8d85bfa74b4b26461297b350c975183fea9d33ba29c3a4934509c2ecda58a79
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 458
 # special case for x_2 in multiplication by 8
@@ -4626,12 +3443,7 @@ private = 60111c6629f73635985be964b845f87a88ae5652d45bb1451ce8cfd2ea45fe41
 public = c0ef1b7c20237db370501f24274e4eba91998ae4545f937007e1c4a2eab63365
 result = acceptable
 shared = 22557e0d8741ed2a63afd5e313aa1579fc0c88c7772e23a676c94b60c89df577
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 459
 # special case for x_2 in multiplication by 8
@@ -4653,12 +3465,7 @@ private = 5854ee566878ef8b7ebaf5a058306f250edf0c84fd52af2d74b7ce3c1edda746
 public = 35738dd539d60f69cd1a1cffc8a42b6af68fe7de45392d02831e2a77500ea278
 result = acceptable
 shared = f6d1a664257fa5de3d4d57f04eda2976bf1e35cc3ac513e1ee84d57d2135ed13
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 462
 # special case for x_2 in multiplication by 8
@@ -4666,12 +3473,7 @@ private = 985b551261fce38ddc8ff3add32f5c26811d271b9a1794e249dd76a38df28446
 public = ce932b5af4be4721f96f7b79ba1c43b20687d4af49c37b58dc894279e04bb578
 result = acceptable
 shared = f8f7625ac5bde63f753a9bb4aefbfb9c4647207708af9d774ef08ff1b1e5a354
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 463
 # special case for E in multiplication by 8
@@ -4679,12 +3481,7 @@ private = 8815052344dcad97efd1341e9072a808cf999e46e52cf04e0cfbcd9901e18d43
 public = e3655448339e4850806eb58abba0c89185511ea72c37c49e9583ee6dd235d213
 result = acceptable
 shared = 5e10dfbff4443efcae2ccc78c289a41460d5a82f79df726b8824ccbef7146d40
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 464
 # special case for E in multiplication by 8
@@ -4692,12 +3489,7 @@ private = b8e032e9e5ffbaa004390f3a0b900bc7cf5d11238b7ec964afc4bda2aa6c3444
 public = 4d16965b1637e9d7ae8feb499ed0553962a9aa0022d1620c928072f6501bc41b
 result = acceptable
 shared = 19d7b44c1847c44e8f37a22ab69c180fd9d787f204123013e1b16800b9cd0f57
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 465
 # special case for E in multiplication by 8
@@ -4712,12 +3504,7 @@ private = d039c1b9ec4763e0ad8a0ef2b0870297d0f8b487e660595a484105d180e14a47
 public = d566fab505ac4c7a3dc3b9403ef121392cbbe21216e5bcb8eab2dc9408986e34
 result = acceptable
 shared = 6d7fc5d4a8f534b1bc0fa5e078104234675c02664736957abdb27df6faf07c00
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 467
 # special case for E in multiplication by 8
@@ -4739,12 +3526,7 @@ private = 98b559523bc778b0418af53c0c32f6ff5cf771ff5df8ae7cbf7c3b72aedb5b43
 public = 2d7ab4c6f59865355ee8e9de57db19aadf7708b7c1d1a818487c340623badc6d
 result = acceptable
 shared = 2a0340aaafa05d00529c09057ed0145f34d2de66a3e149cf084ea97168914f39
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 470
 # special case for E in multiplication by 8
@@ -4766,12 +3548,7 @@ private = 101b990bd83d684126ff047d930c27d086a588dd19683d2629f0e34f4374ab41
 public = 42e5a6b8e9654bb4ad624af3f491877977513cc8775c8fb312ad19dbf3903a28
 result = acceptable
 shared = 223f1eb552308373026d11c954684ce6db870b638b190b9443e50aae219f4e3e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 473
 # special case for DA - CB in multiplication by 8
@@ -4779,12 +3556,7 @@ private = 200089b712d9a2050597779d463712fcd223e3d67879c0fb7606f8f5f0efee40
 public = 0a51dd90ab985f6deaf72f16c45014da26df848697f6582d75688f5223342b51
 result = acceptable
 shared = fb95ce4a3c1f325638b7d47f4216d39a7c6c5da9a01caa297c37b62816555b2a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 474
 # special case for DA - CB in multiplication by 8
@@ -4813,12 +3585,7 @@ private = b0ffa5f4922bb117ad75ff43acac62331efaa45536fe88306e4a4cb58db73a47
 public = d128ea3e13325ed6ebd6533a9fd3045a55f25ad8b67def30912843504c1aab29
 result = acceptable
 shared = 30512142d3e3a4cad6726d9d35f2e043fca9dfb750884ae22b2547c840f3587b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 478
 # special case for CB in multiplication by 8
@@ -4826,12 +3593,7 @@ private = 685e3271d2015741756612a930e858b930acf2018145f382c83d8cced2e22044
 public = e079c8f8423165c7e0a2c48b4abe90aece4e6d903d7a5a1625fad0410cd55b32
 result = acceptable
 shared = 5b81b3761a66d199e8ef99d2494bd57a0229d4564a7f6d6055f22aa48681bd3a
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 479
 # special case for BB in multiplication by 8
@@ -4853,12 +3615,7 @@ private = 1893d4388b0e90f0b50208aa8f0cc24f576d03641baf1c3eddb2a3efa69c9d40
 public = 4f5b8b9892b8a46df08d76a4745b1c58d4e7a394905435875688ca11f1e9d86a
 result = acceptable
 shared = a25e1306684ad7870a31f0404566e8d28f2d83d4b9497822c57f8781b18fec20
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 482
 # special case for BB in multiplication by 8
@@ -4866,12 +3623,7 @@ private = 0065171301bf6b90fb16efa35509161f1bd6b3b93130d490af9fe224dd155f45
 public = aa2f02628269139a7a8a16fde95c9bad7da7ffbd5439c396a7d77b6c3213e67f
 result = acceptable
 shared = bb4431bea7a5871c1be27a2674094627eaaa4425c99cd3fa41bd7e13cbd7bf7e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 483
 # special case for A in multiplication by 8
@@ -4886,12 +3638,7 @@ private = 48b98b4a99eadd73012c07fe5c4a0b9590ac55e821353b41d5f665e17188bc41
 public = 479afb1e73dc77c3743e51e9ec0bcc61ce66ed084dc10bfa2794b4c3e4953769
 result = acceptable
 shared = bdef00caa514b2f8ab1fb2241e83787a02601ecdff6cf166c4210f8c1ade4211
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 485
 # special case for DA in multiplication by 8
@@ -4899,12 +3646,7 @@ private = 1897678e38222a61fe105dc6643c1eb5940e8dbc73ed6c00f25a34328f43a641
 public = 378eda41470b0f238a200f80809ad562ca41e62411a61feb7f7e9b752b554642
 result = acceptable
 shared = bfd5b5acd2d89f213a26caf54062f9a24e6f6fd8ddd0cd2e5e47b7fea4a9c537
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 486
 # special case for DA in multiplication by 8
@@ -4926,12 +3668,7 @@ private = 60497d4464ed8823c50fbc6b68620826c4f629c1d9193058df6bf857c6aecc4b
 public = f93a73270ac19194b8e4ffd02be4b1438525f84a76224688ea89a9dd6a1bd623
 result = acceptable
 shared = 7285fbb3f76340a979ab6e288727a2113332cf933809b018b8739a796a09d00b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 489
 # special case for AA in multiplication by 9
@@ -4939,12 +3676,7 @@ private = 08c6cbe03792a3829f06e8ad54c55db113236ac0dcc9ab6a9a6b10eed1041b48
 public = cf80c30fcbfd535666ca1da499e2e99cc537063e2de19458fcf92f5ee34acf47
 result = acceptable
 shared = dabc3bd49f19cf7071802e43c863ed0b1d93a841588098b98a0c581bf4fe0a11
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 490
 # special case for AA in multiplication by 9
@@ -4966,12 +3698,7 @@ private = 783271c21199ba2e94ead92cd9dd79f70aab378b59497455d327a5907dafcb4a
 public = b8649e13843f80cf5702398e4a9a8c378f29da96dfd6579f1eb4f7ea34df6765
 result = acceptable
 shared = 844a5dd5139554ca7b41cbe6a4796193912e7aa4e201cc68944ce2a55774a10f
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 493
 # special case for AA in multiplication by 9
@@ -4986,12 +3713,7 @@ private = 608c84d2b76fccda579e974db3d3b2ce39a6bc0dad440599db22411b60467849
 public = 557b825012d98f065bb95a2ab9b2d2d8b83fd2037912508c263f86d7e36c4f24
 result = acceptable
 shared = 5ce84842dbae8b795b3d545343558045508f271383bfb3dd3943f4101398c864
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 495
 # special case for z_2 in multiplication by 9
@@ -5020,12 +3742,7 @@ private = 6079dae04c40a59ea4e0c8c17092e4c85ea9133d143307363487836df4e30349
 public = ccc1dc186229dba9a9360a0f7ff00247a3732625acaacd18ea13a9a8b40fac4f
 result = acceptable
 shared = 4f678b64fd1f85cbbd5f7e7f3c8ac95ec7500e102e9006d6d42f48fb2473ab02
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 499
 # special case for z_2 in multiplication by 9
@@ -5047,12 +3764,7 @@ private = 10230bd0721f4c8c4b921881dd88c603af501ee80e2102f8acc30cf8b2acd349
 public = e853062b2d6f38d021d645163ea208d0e193a479f11f99971b98e21188fd0b2c
 result = acceptable
 shared = 64bdfa0207a174ca17eeba8df74d79b25f54510e6174923034a4d6ee0c167e7b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 502
 # special case for E in multiplication by 9
@@ -5067,12 +3779,7 @@ private = 9073c1d0a173c7ff02dc966a165993d9c4c9357514f7a6bb7aaa4b0827718948
 public = ff543f1e81996e88631f030ceba7e603b13033efd205e68bd36b28468134aa73
 result = acceptable
 shared = c1b5e5f4401c98fa14eba8aafae30a641bfd8fb132be03413f3bf29290d49e0b
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 504
 # special case for x_2 in multiplication by 9
@@ -5087,12 +3794,7 @@ private = e06fe64e2117796f997bbcd3bcad3067cf1291640a3a643fb359809a4016834d
 public = 88c1ae575ad073dda66c6eacb7b7f436e1f8ad72a0db5c04e5660b7b719e4c4b
 result = acceptable
 shared = 335394be9c154901c0b4063300001804b1cd01b27fa562e44f3302168837166e
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 506
 # special case for x_2 in multiplication by 9
@@ -5100,12 +3802,7 @@ private = 707ee81f113a244c9d87608b12158c50f9ac1f2c8948d170ad16ab0ad866d74b
 public = dcffc4c1e1fba5fda9d5c98421d99c257afa90921bc212a046d90f6683e8a467
 result = acceptable
 shared = 7ecdd54c5e15f7b4061be2c30b5a4884a0256581f87df60d579a3345653eb641
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 507
 # special case for BB in multiplication by 9
@@ -5148,12 +3845,7 @@ private = 58083dd261ad91eff952322ec824c682ffffffffffffffffffffffffffffff5f
 public = 2eae5ec3dd494e9f2d37d258f873a8e6e9d0dbd1e383ef64d98bb91b3e0be035
 result = acceptable
 shared = 2eae5ec3dd494e9f2d37d258f873a8e6e9d0dbd1e383ef64d98bb91b3e0be035
-# Public keys are either points on a given curve or points on its twist. The
-# functions X25519 and X448 are defined for points on a twist with the goal that
-# the output of computations do not leak private keys. Implementations may
-# accept or reject points on a twist. If a point multiplication is performed
-# then it is important that the result is correct, since otherwise attacks with
-# invalid keys are possible.
+flags = Twist
 
 # tcId = 513
 # special case private key
