@@ -706,6 +706,25 @@ TEST(EVPTest, WycheproofEdDSA) {
 
 TEST(EVPTest, WycheproofRSAPKCS1) {
   RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_2048_sha224_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_2048_sha256_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_2048_sha384_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_2048_sha512_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_3072_sha256_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_3072_sha384_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_3072_sha512_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_4096_sha384_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/rsa_signature_4096_sha512_test.txt");
+  // TODO(davidben): Is this file redundant with the tests above?
+  RunWycheproofTest(
       "third_party/wycheproof_testvectors/rsa_signature_test.txt");
 }
 
