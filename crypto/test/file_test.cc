@@ -286,6 +286,10 @@ bool FileTest::GetInstruction(std::string *out_value, const std::string &key) {
   return true;
 }
 
+void FileTest::IgnoreAllUnusedInstructions() {
+  unused_instructions_.clear();
+}
+
 const std::string &FileTest::GetInstructionOrDie(const std::string &key) {
   if (!HasInstruction(key)) {
     abort();

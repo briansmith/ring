@@ -232,6 +232,7 @@ var defaultInputs = []string{
 	"rsa_pss_4096_sha256_mgf1_32_test.json",
 	"rsa_pss_4096_sha512_mgf1_32_test.json",
 	"rsa_pss_misc_test.json",
+	"rsa_sig_gen_misc_test.json",
 	"rsa_signature_2048_sha224_test.json",
 	"rsa_signature_2048_sha256_test.json",
 	"rsa_signature_2048_sha384_test.json",

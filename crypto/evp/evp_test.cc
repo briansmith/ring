@@ -567,30 +567,10 @@ TEST(EVPTest, TestVectors) {
   });
 }
 
-static void RunWycheproofTest(const char *path) {
+static void RunWycheproofVerifyTest(const char *path) {
   SCOPED_TRACE(path);
   FileTestGTest(path, [](FileTest *t) {
-    t->IgnoreInstruction("key.type");
-    // Extra ECDSA fields.
-    t->IgnoreInstruction("key.curve");
-    t->IgnoreInstruction("key.keySize");
-    t->IgnoreInstruction("key.wx");
-    t->IgnoreInstruction("key.wy");
-    t->IgnoreInstruction("key.uncompressed");
-    // Extra RSA fields.
-    t->IgnoreInstruction("e");
-    t->IgnoreInstruction("keyAsn");
-    t->IgnoreInstruction("keysize");
-    t->IgnoreInstruction("n");
-    t->IgnoreAttribute("padding");
-    // Extra EdDSA fields.
-    t->IgnoreInstruction("key.pk");
-    t->IgnoreInstruction("key.sk");
-    // Extra DSA fields.
-    t->IgnoreInstruction("key.g");
-    t->IgnoreInstruction("key.p");
-    t->IgnoreInstruction("key.q");
-    t->IgnoreInstruction("key.y");
+    t->IgnoreAllUnusedInstructions();
 
     std::vector<uint8_t> der;
     ASSERT_TRUE(t->GetInstructionBytes(&der, "keyDer"));
@@ -659,81 +639,124 @@ static void RunWycheproofTest(const char *path) {
 }
 
 TEST(EVPTest, WycheproofDSA) {
-  RunWycheproofTest("third_party/wycheproof_testvectors/dsa_test.txt");
+  RunWycheproofVerifyTest("third_party/wycheproof_testvectors/dsa_test.txt");
 }
 
 TEST(EVPTest, WycheproofECDSAP224) {
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha224_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha256_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha512_test.txt");
 }
 
 TEST(EVPTest, WycheproofECDSAP256) {
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/ecdsa_secp256r1_sha256_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/ecdsa_secp256r1_sha512_test.txt");
 }
 
 TEST(EVPTest, WycheproofECDSAP384) {
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/ecdsa_secp384r1_sha384_test.txt");
 }
 
 TEST(EVPTest, WycheproofECDSAP521) {
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/ecdsa_secp384r1_sha512_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/ecdsa_secp521r1_sha512_test.txt");
 }
 
 TEST(EVPTest, WycheproofEdDSA) {
-  RunWycheproofTest("third_party/wycheproof_testvectors/eddsa_test.txt");
+  RunWycheproofVerifyTest("third_party/wycheproof_testvectors/eddsa_test.txt");
 }
 
 TEST(EVPTest, WycheproofRSAPKCS1) {
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_2048_sha224_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_2048_sha256_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_2048_sha384_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_2048_sha512_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_3072_sha256_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_3072_sha384_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_3072_sha512_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_4096_sha384_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_4096_sha512_test.txt");
   // TODO(davidben): Is this file redundant with the tests above?
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_signature_test.txt");
 }
 
+TEST(EVPTest, WycheproofRSAPKCS1Sign) {
+  FileTestGTest(
+      "third_party/wycheproof_testvectors/rsa_sig_gen_misc_test.txt",
+      [](FileTest *t) {
+        t->IgnoreAllUnusedInstructions();
+
+        std::vector<uint8_t> pkcs8;
+        ASSERT_TRUE(t->GetInstructionBytes(&pkcs8, "privateKeyPkcs8"));
+        CBS cbs;
+        CBS_init(&cbs, pkcs8.data(), pkcs8.size());
+        bssl::UniquePtr<EVP_PKEY> key(EVP_parse_private_key(&cbs));
+        ASSERT_TRUE(key);
+
+        const EVP_MD *md = GetWycheproofDigest(t, "sha", true);
+        ASSERT_TRUE(md);
+
+        std::vector<uint8_t> msg, sig;
+        ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+        ASSERT_TRUE(t->GetBytes(&sig, "sig"));
+        WycheproofResult result;
+        ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+        bssl::ScopedEVP_MD_CTX ctx;
+        EVP_PKEY_CTX *pctx;
+        ASSERT_TRUE(
+            EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr, key.get()));
+        std::vector<uint8_t> out(EVP_PKEY_size(key.get()));
+        size_t len = out.size();
+        int ret =
+            EVP_DigestSign(ctx.get(), out.data(), &len, msg.data(), msg.size());
+        // BoringSSL does not enforce policies on weak keys and leaves it to the
+        // caller.
+        bool is_valid =
+            result.IsValid({"SmallModulus", "SmallPublicKey", "WeakHash"});
+        EXPECT_EQ(ret, is_valid ? 1 : 0);
+        if (is_valid) {
+          out.resize(len);
+          EXPECT_EQ(Bytes(sig), Bytes(out));
+        }
+      });
+}
+
 TEST(EVPTest, WycheproofRSAPSS) {
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_pss_2048_sha1_mgf1_20_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_pss_2048_sha256_mgf1_0_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/"
       "rsa_pss_2048_sha256_mgf1_32_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/"
       "rsa_pss_3072_sha256_mgf1_32_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/"
       "rsa_pss_4096_sha256_mgf1_32_test.txt");
-  RunWycheproofTest(
+  RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/"
       "rsa_pss_4096_sha512_mgf1_32_test.txt");
-  RunWycheproofTest("third_party/wycheproof_testvectors/rsa_pss_misc_test.txt");
+  RunWycheproofVerifyTest(
+      "third_party/wycheproof_testvectors/rsa_pss_misc_test.txt");
 }

@@ -101,6 +101,7 @@ set(
   third_party/wycheproof_testvectors/rsa_pss_4096_sha256_mgf1_32_test.txt
   third_party/wycheproof_testvectors/rsa_pss_4096_sha512_mgf1_32_test.txt
   third_party/wycheproof_testvectors/rsa_pss_misc_test.txt
+  third_party/wycheproof_testvectors/rsa_sig_gen_misc_test.txt
   third_party/wycheproof_testvectors/rsa_signature_2048_sha224_test.txt
   third_party/wycheproof_testvectors/rsa_signature_2048_sha256_test.txt
   third_party/wycheproof_testvectors/rsa_signature_2048_sha384_test.txt

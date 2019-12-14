@@ -179,6 +179,9 @@ class FileTest {
   // IgnoreInstruction marks the instruction with key |key| as used.
   void IgnoreInstruction(const std::string &key) { HasInstruction(key); }
 
+  // IgnoreAllUnusedInstructions disables checking for unused instructions.
+  void IgnoreAllUnusedInstructions();
+
   // GetInstruction looks up the instruction with key |key|. It sets
   // |*out_value| to the value (empty string if the instruction has no value)
   // and returns true if it exists and returns false with an error to |stderr|
