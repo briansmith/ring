@@ -144,10 +144,10 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 
 	for _, group := range w.TestGroups {
 		for _, k := range sortedKeys(group) {
-			// Wycheproof files always include both keyPem and
-			// keyDer. Skip keyPem as they contain newlines. We
-			// process keyDer more easily.
-			if k == "type" || k == "tests" || k == "keyPem" {
+			// Wycheproof files include keys in multiple formats. Skip PEM and
+			// JWK formats. We process DER more easily. PEM has newlines and
+			// JWK is a JSON object.
+			if k == "type" || k == "tests" || strings.HasSuffix(k, "Pem") || strings.HasSuffix(k, "Jwk") || k == "jwk" {
 				continue
 			}
 			if err := printAttribute(f, k, group[k], true); err != nil {
