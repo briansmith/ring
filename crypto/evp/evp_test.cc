@@ -760,3 +760,121 @@ TEST(EVPTest, WycheproofRSAPSS) {
   RunWycheproofVerifyTest(
       "third_party/wycheproof_testvectors/rsa_pss_misc_test.txt");
 }
+
+static void RunWycheproofOAEPTest(const char *path) {
+  FileTestGTest(path, [](FileTest *t) {
+    t->IgnoreAllUnusedInstructions();
+
+    std::vector<uint8_t> pkcs8;
+    ASSERT_TRUE(t->GetInstructionBytes(&pkcs8, "privateKeyPkcs8"));
+    CBS cbs;
+    CBS_init(&cbs, pkcs8.data(), pkcs8.size());
+    bssl::UniquePtr<EVP_PKEY> key(EVP_parse_private_key(&cbs));
+    ASSERT_TRUE(key);
+
+    const EVP_MD *md = GetWycheproofDigest(t, "sha", true);
+    ASSERT_TRUE(md);
+    const EVP_MD *mgf1_md = GetWycheproofDigest(t, "mgfSha", true);
+    ASSERT_TRUE(mgf1_md);
+
+    std::vector<uint8_t> ct, label, msg;
+    ASSERT_TRUE(t->GetBytes(&ct, "ct"));
+    ASSERT_TRUE(t->GetBytes(&label, "label"));
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_decrypt_init(ctx.get()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_oaep_md(ctx.get(), md));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(ctx.get(), mgf1_md));
+    bssl::UniquePtr<uint8_t> label_copy(
+        static_cast<uint8_t *>(OPENSSL_memdup(label.data(), label.size())));
+    ASSERT_TRUE(label_copy || label.empty());
+    ASSERT_TRUE(EVP_PKEY_CTX_set0_rsa_oaep_label(ctx.get(), label_copy.get(),
+                                                 label.size()));
+    // |EVP_PKEY_CTX_set0_rsa_oaep_label| takes ownership on success.
+    label_copy.release();
+
+    std::vector<uint8_t> out(EVP_PKEY_size(key.get()));
+    size_t len = out.size();
+    int ret =
+        EVP_PKEY_decrypt(ctx.get(), out.data(), &len, ct.data(), ct.size());
+    // BoringSSL does not enforce policies on weak keys and leaves it to the
+    // caller.
+    bool is_valid = result.IsValid({"SmallModulus"});
+    EXPECT_EQ(ret, is_valid ? 1 : 0);
+    if (is_valid) {
+      out.resize(len);
+      EXPECT_EQ(Bytes(msg), Bytes(out));
+    }
+  });
+}
+
+TEST(EVPTest, WycheproofRSAOAEP2048) {
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha1_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha224_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha224_mgf1sha224_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha256_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha256_mgf1sha256_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha384_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha384_mgf1sha384_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha512_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_2048_sha512_mgf1sha512_test.txt");
+}
+
+TEST(EVPTest, WycheproofRSAOAEP3072) {
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_3072_sha256_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_3072_sha256_mgf1sha256_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_3072_sha512_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_3072_sha512_mgf1sha512_test.txt");
+}
+
+TEST(EVPTest, WycheproofRSAOAEP4096) {
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_4096_sha256_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_4096_sha256_mgf1sha256_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_4096_sha512_mgf1sha1_test.txt");
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/"
+      "rsa_oaep_4096_sha512_mgf1sha512_test.txt");
+}
+
+TEST(EVPTest, WycheproofRSAOAEPMisc) {
+  RunWycheproofOAEPTest(
+      "third_party/wycheproof_testvectors/rsa_oaep_misc_test.txt");
+}
