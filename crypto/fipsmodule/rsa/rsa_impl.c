@@ -1046,8 +1046,8 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
       if (relatively_prime) {
         // Test |out| for primality (steps 4.5.1 and 5.6.1).
         int is_probable_prime;
-        if (!BN_primality_test(&is_probable_prime, out, BN_prime_checks, ctx, 0,
-                               cb)) {
+        if (!BN_primality_test(&is_probable_prime, out,
+                               BN_prime_checks_for_generation, ctx, 0, cb)) {
           goto err;
         }
         if (is_probable_prime) {

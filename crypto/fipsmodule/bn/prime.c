@@ -210,7 +210,7 @@ static const uint16_t kPrimes[] = {
 };
 
 // BN_prime_checks_for_size returns the number of Miller-Rabin iterations
-// necessary for a 'bits'-bit prime.
+// necessary for generating a 'bits'-bit candidate prime.
 //
 //
 // This table is generated using the algorithm of FIPS PUB 186-4
@@ -604,9 +604,8 @@ err:
   return ret;
 }
 
-int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
-                      int iterations, BN_CTX *ctx, int do_trial_division,
-                      BN_GENCB *cb) {
+int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w, int checks,
+                      BN_CTX *ctx, int do_trial_division, BN_GENCB *cb) {
   // This function's secrecy and performance requirements come from RSA key
   // generation. We generate RSA keys by selecting two large, secret primes with
   // rejection sampling.
@@ -679,8 +678,8 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
     }
   }
 
-  if (iterations == BN_prime_checks) {
-    iterations = BN_prime_checks_for_size(BN_num_bits(w));
+  if (checks == BN_prime_checks_for_generation) {
+    checks = BN_prime_checks_for_size(BN_num_bits(w));
   }
 
   BN_CTX *new_ctx = NULL;
@@ -736,7 +735,7 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
   // Using |constant_time_lt_w| seems to prevent the compiler from optimizing
   // this into two jumps.
   for (int i = 1; (i <= BN_PRIME_CHECKS_BLINDED) |
-                  constant_time_lt_w(uniform_iterations, iterations);
+                  constant_time_lt_w(uniform_iterations, checks);
        i++) {
     // Step 4.1-4.2
     int is_uniform;
@@ -765,7 +764,7 @@ int BN_primality_test(int *out_is_probably_prime, const BIGNUM *w,
     }
   }
 
-  assert(uniform_iterations >= (crypto_word_t)iterations);
+  assert(uniform_iterations >= (crypto_word_t)checks);
   *out_is_probably_prime = 1;
   ret = 1;
 
@@ -792,7 +791,7 @@ int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx,
 }
 
 int BN_enhanced_miller_rabin_primality_test(
-    enum bn_primality_result_t *out_result, const BIGNUM *w, int iterations,
+    enum bn_primality_result_t *out_result, const BIGNUM *w, int checks,
     BN_CTX *ctx, BN_GENCB *cb) {
   // Enhanced Miller-Rabin is only valid on odd integers greater than 3.
   if (!BN_is_odd(w) || BN_cmp_word(w, 3) <= 0) {
@@ -800,8 +799,8 @@ int BN_enhanced_miller_rabin_primality_test(
     return 0;
   }
 
-  if (iterations == BN_prime_checks) {
-    iterations = BN_prime_checks_for_size(BN_num_bits(w));
+  if (checks == BN_prime_checks_for_generation) {
+    checks = BN_prime_checks_for_size(BN_num_bits(w));
   }
 
   int ret = 0;
@@ -848,7 +847,7 @@ int BN_enhanced_miller_rabin_primality_test(
 
   // The following loop performs in inner iteration of the Enhanced Miller-Rabin
   // Primality test (Step 4).
-  for (int i = 1; i <= iterations; i++) {
+  for (int i = 1; i <= checks; i++) {
     // Step 4.1-4.2
     if (!BN_rand_range_ex(b, 2, w1)) {
       goto err;
