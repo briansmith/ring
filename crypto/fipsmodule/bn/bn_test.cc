@@ -73,6 +73,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <gtest/gtest.h>
@@ -91,6 +92,7 @@
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
+#include "../../test/wycheproof_util.h"
 
 
 static int HexToBIGNUM(bssl::UniquePtr<BIGNUM> *out, const char *in) {
@@ -2306,6 +2308,41 @@ TEST_F(BNTest, MillerRabinIteration) {
         std::string result;
         ASSERT_TRUE(t->GetAttribute(&result, "Result"));
         EXPECT_EQ(result, possibly_prime ? "PossiblyPrime" : "Composite");
+      });
+}
+
+TEST_F(BNTest, WycheproofPrimality) {
+  FileTestGTest(
+      "third_party/wycheproof_testvectors/primality_test.txt",
+      [&](FileTest *t) {
+        WycheproofResult result;
+        ASSERT_TRUE(GetWycheproofResult(t, &result));
+        bssl::UniquePtr<BIGNUM> value = GetWycheproofBIGNUM(t, "value", false);
+        ASSERT_TRUE(value);
+
+        for (int checks :
+             {BN_prime_checks_for_validation, BN_prime_checks_for_generation}) {
+          SCOPED_TRACE(checks);
+          if (checks == BN_prime_checks_for_generation &&
+              std::find(result.flags.begin(), result.flags.end(),
+                        "WorstCaseMillerRabin") != result.flags.end()) {
+            // Skip the worst case Miller-Rabin cases.
+            // |BN_prime_checks_for_generation| relies on such values being rare
+            // when generating primes.
+            continue;
+          }
+
+          int is_probably_prime;
+          ASSERT_TRUE(BN_primality_test(&is_probably_prime, value.get(), checks,
+                                        ctx(),
+                                        /*do_trial_division=*/false, nullptr));
+          EXPECT_EQ(result.IsValid() ? 1 : 0, is_probably_prime);
+
+          ASSERT_TRUE(BN_primality_test(&is_probably_prime, value.get(), checks,
+                                        ctx(),
+                                        /*do_trial_division=*/true, nullptr));
+          EXPECT_EQ(result.IsValid() ? 1 : 0, is_probably_prime);
+        }
       });
 }
 

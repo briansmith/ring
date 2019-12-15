@@ -225,6 +225,7 @@ var defaultInputs = []string{
 	"hmac_sha512_test.json",
 	"kw_test.json",
 	"kwp_test.json",
+	"primality_test.json",
 	"rsa_oaep_2048_sha1_mgf1sha1_test.json",
 	"rsa_oaep_2048_sha224_mgf1sha1_test.json",
 	"rsa_oaep_2048_sha224_mgf1sha224_test.json",
