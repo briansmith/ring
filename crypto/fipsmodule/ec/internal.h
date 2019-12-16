@@ -172,6 +172,11 @@ void ec_scalar_inv0_montgomery(const EC_GROUP *group, EC_SCALAR *r,
 int ec_scalar_to_montgomery_inv_vartime(const EC_GROUP *group, EC_SCALAR *r,
                                         const EC_SCALAR *a);
 
+// ec_scalar_select, in constant time, sets |out| to |a| if |mask| is all ones
+// and |b| if |mask| is all zeros.
+void ec_scalar_select(const EC_GROUP *group, EC_SCALAR *out, BN_ULONG mask,
+                      const EC_SCALAR *a, const EC_SCALAR *b);
+
 
 // Field elements.
 

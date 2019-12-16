@@ -98,6 +98,12 @@ void ec_scalar_add(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
   OPENSSL_cleanse(tmp, sizeof(tmp));
 }
 
+void ec_scalar_select(const EC_GROUP *group, EC_SCALAR *out, BN_ULONG mask,
+                      const EC_SCALAR *a, const EC_SCALAR *b) {
+  const BIGNUM *order = &group->order;
+  bn_select_words(out->words, mask, a->words, b->words, order->width);
+}
+
 void ec_scalar_to_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                              const EC_SCALAR *a) {
   const BIGNUM *order = &group->order;
