@@ -24,15 +24,6 @@
 #include <openssl/mem.h>
 #include <openssl/sha.h>
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-#include <emmintrin.h>
-#endif
-
-#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
-    (defined(__ARM_NEON__) || defined(__ARM_NEON))
-#include <arm_neon.h>
-#endif
-
 #if defined(_MSC_VER)
 #define RESTRICT
 #else
@@ -41,6 +32,15 @@
 
 #include "../internal.h"
 #include "internal.h"
+
+#if defined(OPENSSL_SSE2)
+#include <emmintrin.h>
+#endif
+
+#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
+    (defined(__ARM_NEON__) || defined(__ARM_NEON))
+#include <arm_neon.h>
+#endif
 
 // This is an implementation of [HRSS], but with a KEM transformation based on
 // [SXY]. The primary references are:
@@ -63,22 +63,15 @@
 // 128-bit vector. The following functions abstract over the differences between
 // NEON and SSE2 for implementing some vector operations.
 
-// TODO: MSVC can likely also be made to work with vector operations.
-#if ((defined(__SSE__) && defined(OPENSSL_X86)) || defined(OPENSSL_X86_64)) && \
-    (defined(__clang__) || !defined(_MSC_VER))
+// TODO: MSVC can likely also be made to work with vector operations, but ^ must
+// be replaced with _mm_xor_si128, etc.
+#if defined(OPENSSL_SSE2) && (defined(__clang__) || !defined(_MSC_VER))
 
 #define HRSS_HAVE_VECTOR_UNIT
 typedef __m128i vec_t;
 
 // vec_capable returns one iff the current platform supports SSE2.
-static int vec_capable(void) {
-#if defined(__SSE2__)
-  return 1;
-#else
-  int has_sse2 = (OPENSSL_ia32cap_P[0] & (1 << 26)) != 0;
-  return has_sse2;
-#endif
-}
+static int vec_capable(void) { return 1; }
 
 // vec_add performs a pair-wise addition of four uint16s from |a| and |b|.
 static inline vec_t vec_add(vec_t a, vec_t b) { return _mm_add_epi16(a, b); }

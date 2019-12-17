@@ -200,6 +200,14 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_FALLTHROUGH
 #endif
 
+// For convenience in testing 64-bit generic code, we allow disabling SSE2
+// intrinsics via |OPENSSL_NO_SSE2_FOR_TESTING|. x86_64 always has SSE2
+// available, so we would otherwise need to test such code on a non-x86_64
+// platform.
+#if defined(__SSE2__) && !defined(OPENSSL_NO_SSE2_FOR_TESTING)
+#define OPENSSL_SSE2
+#endif
+
 // buffers_alias returns one if |a| and |b| alias and zero otherwise.
 static inline int buffers_alias(const uint8_t *a, size_t a_len,
                                 const uint8_t *b, size_t b_len) {

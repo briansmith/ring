@@ -17,7 +17,7 @@
 #include "../../internal.h"
 #include "internal.h"
 
-#if !defined(BORINGSSL_HAS_UINT128) && defined(__SSE2__)
+#if !defined(BORINGSSL_HAS_UINT128) && defined(OPENSSL_SSE2)
 #include <emmintrin.h>
 #endif
 
@@ -79,7 +79,7 @@ static void gcm_mul64_nohw(uint64_t *out_lo, uint64_t *out_hi, uint64_t a,
             ((uint64_t)(extra >> 64));
 }
 
-#elif defined(__SSE2__)
+#elif defined(OPENSSL_SSE2)
 
 static __m128i gcm_mul32_nohw(uint32_t a, uint32_t b) {
   // One term every four bits means the largest term is 32/4 = 8, which does not
@@ -146,7 +146,7 @@ static void gcm_mul64_nohw(uint64_t *out_lo, uint64_t *out_hi, uint64_t a,
   memcpy(out_hi, ((char*)&ret) + 8, 8);
 }
 
-#else  // !BORINGSSL_HAS_UINT128 && !__SSE2__
+#else  // !BORINGSSL_HAS_UINT128 && !OPENSSL_SSE2
 
 static uint64_t gcm_mul32_nohw(uint32_t a, uint32_t b) {
   // One term every four bits means the largest term is 32/4 = 8, which does not
