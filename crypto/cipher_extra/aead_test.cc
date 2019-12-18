@@ -542,10 +542,10 @@ TEST_P(PerAEADTest, AliasedBuffers) {
 }
 
 TEST_P(PerAEADTest, UnalignedInput) {
-  alignas(64) uint8_t key[EVP_AEAD_MAX_KEY_LENGTH + 1];
-  alignas(64) uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH + 1];
-  alignas(64) uint8_t plaintext[32 + 1];
-  alignas(64) uint8_t ad[32 + 1];
+  alignas(16) uint8_t key[EVP_AEAD_MAX_KEY_LENGTH + 1];
+  alignas(16) uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH + 1];
+  alignas(16) uint8_t plaintext[32 + 1];
+  alignas(16) uint8_t ad[32 + 1];
   OPENSSL_memset(key, 'K', sizeof(key));
   OPENSSL_memset(nonce, 'N', sizeof(nonce));
   OPENSSL_memset(plaintext, 'P', sizeof(plaintext));
@@ -563,7 +563,7 @@ TEST_P(PerAEADTest, UnalignedInput) {
   ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
       ctx.get(), aead(), key + 1, key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
       evp_aead_seal));
-  alignas(64) uint8_t ciphertext[sizeof(plaintext) + EVP_AEAD_MAX_OVERHEAD];
+  alignas(16) uint8_t ciphertext[sizeof(plaintext) + EVP_AEAD_MAX_OVERHEAD];
   size_t ciphertext_len;
   ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext + 1, &ciphertext_len,
                                 sizeof(ciphertext) - 1, nonce + 1, nonce_len,
@@ -571,7 +571,7 @@ TEST_P(PerAEADTest, UnalignedInput) {
                                 ad_len));
 
   // It must successfully decrypt.
-  alignas(64) uint8_t out[sizeof(ciphertext)];
+  alignas(16) uint8_t out[sizeof(ciphertext)];
   ctx.Reset();
   ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
       ctx.get(), aead(), key + 1, key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
@@ -585,7 +585,7 @@ TEST_P(PerAEADTest, UnalignedInput) {
 }
 
 TEST_P(PerAEADTest, Overflow) {
-  alignas(64) uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
+  uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
   OPENSSL_memset(key, 'K', sizeof(key));
 
   bssl::ScopedEVP_AEAD_CTX ctx;
