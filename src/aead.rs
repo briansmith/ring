@@ -57,7 +57,6 @@ pub trait BoundKey<N: NonceSequence>: core::fmt::Debug {
     fn new(key: UnboundKey, nonce_sequence: N) -> Self;
 
     /// The key's AEAD algorithm.
-    #[inline]
     fn algorithm(&self) -> &'static Algorithm;
 }
 
