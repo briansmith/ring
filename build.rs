@@ -418,18 +418,17 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
-    libs.iter()
-        .for_each(|&(lib_name, srcs, additional_srcs)| {
-            build_library(
-                &target,
-                &out_dir,
-                lib_name,
-                srcs,
-                additional_srcs,
-                warnings_are_errors,
-                includes_modified,
-            )
-        });
+    libs.iter().for_each(|&(lib_name, srcs, additional_srcs)| {
+        build_library(
+            &target,
+            &out_dir,
+            lib_name,
+            srcs,
+            additional_srcs,
+            warnings_are_errors,
+            includes_modified,
+        )
+    });
 
     println!(
         "cargo:rustc-link-search=native={}",
