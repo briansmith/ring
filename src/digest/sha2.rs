@@ -278,7 +278,7 @@ impl Word for Wrapping<u64> {
         Wrapping(u64::from_be_bytes(input))
     }
 
-    #[inline]
+    #[inline(always)]
     fn rotr(self, count: u32) -> Self {
         Wrapping(self.0.rotate_right(count))
     }
