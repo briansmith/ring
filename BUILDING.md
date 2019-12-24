@@ -30,10 +30,10 @@ repository. In this case, you must also have Perl installed, because the
 assembly language modules inherited from BoringSSL (inherited from OpenSSL)
 use Perl as a macro assembly language.
 
-When building from Git for Windows, directories containing yasm.exe and
-perl.exe must be in `%PATH%`, where yasm.exe is
-[Yasm](http://yasm.tortall.net/Download.html) 1.3 or later and where perl.exe
-is recommended to be [Strawberry Perl](http://strawberryperl.com).
+When building from Git for Windows, directories containing nasm.exe and
+perl.exe must be in `%PATH%`, where nasm.exe is [Nasm](https://www.nasm.us/)
+2.14 or later and where perl.exe is recommended to be
+[Strawberry Perl](http://strawberryperl.com).
 
 
 Cross Compiling
@@ -45,7 +45,7 @@ compiler that can produce binaries for the intended target.
 
 Besides the required dependencies you need to set the environment variables
 `TARGET_CC` and `TARGET_AR` to the full path of the cross-compiler and the
-cross-archiver respectively.
+cross-archiver respectively. 
 
 
 Supported Toolchains

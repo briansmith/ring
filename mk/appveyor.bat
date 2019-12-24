@@ -19,12 +19,6 @@ echo on
 
 mkdir windows_build_tools
 mkdir windows_build_tools\
-echo Downloading Yasm...
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win64.exe', 'windows_build_tools\yasm.exe')"
-if %ERRORLEVEL% NEQ 0 (
-  echo ...downloading Yasm failed.
-  exit 1
-)
 
 echo Downloading Nasm...
 powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nasm.us/pub/nasm/releasebuilds/2.14.02/win64/nasm-2.14.02-win64.zip', 'windows_build_tools\nasm.zip')"

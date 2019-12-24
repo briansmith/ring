@@ -520,18 +520,13 @@ fn compile(
     if ext == "obj" {
         p.to_str().expect("Invalid path").into()
     } else {
-        let use_nasm = std::env::var("CARGO_FEATURE_NASM").map(|s| s == "1").unwrap_or(false);
         let mut out_path = out_dir.clone().join(p.file_name().unwrap());
         assert!(out_path.set_extension(target.obj_ext));
         if need_run(&p, &out_path, includes_modified) {
             let cmd = if &target.os != WINDOWS || ext != "asm" {
                 cc(p, ext, target, warnings_are_errors, &out_path)
             } else {
-                if use_nasm {
-                    nasm(p, &target.arch, &out_path)
-                } else {
-                    yasm(p, &target.arch, &out_path)
-                }
+                nasm(p, &target.arch, &out_path)
             };
 
             run_command(cmd);
@@ -642,7 +637,6 @@ fn nasm(file: &Path, arch: &str, out_file: &Path) -> Command {
     let _ = c
         .arg("-X")
         .arg("vc")
-        //.arg("--dformat=cv8")
         .arg(oformat)
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
