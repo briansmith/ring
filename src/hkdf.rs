@@ -32,6 +32,10 @@ impl Algorithm {
     }
 }
 
+/// HKDF using HMAC-SHA-1. Obsolete.
+pub static HKDF_SHA1_FOR_LEGACY_USE_ONLY: Algorithm =
+    Algorithm(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY);
+
 /// HKDF using HMAC-SHA-256.
 pub static HKDF_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
 
