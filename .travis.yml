@@ -87,20 +87,14 @@ matrix:
       os: linux
       dist: trusty
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=stable
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: trusty
       addons:
         apt:
           packages:
-            - binutils-dev
-            - g++-7
             - gcc-7
-            - libcurl4-openssl-dev
-            - libdw-dev
-            - libelf-dev
-            - libiberty-dev
           sources:
             - ubuntu-toolchain-r-test
 
@@ -187,24 +181,15 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=stable
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: trusty
       addons:
         apt:
           packages:
-            - g++-7
-            - g++-7-multilib
             - gcc-7
             - gcc-7-multilib
-            - libcurl3:i386
-            - libcurl4-openssl-dev:i386
-            - libdw-dev:i386
-            - libelf-dev:i386
-            - libiberty-dev:i386
-            - libkrb5-dev:i386
-            - libssl-dev:i386
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
@@ -318,14 +303,20 @@ matrix:
       os: linux
       dist: trusty
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
       rust: nightly
       os: linux
       dist: trusty
       addons:
         apt:
           packages:
+            - binutils-dev
+            - g++-7
             - gcc-7
+            - libcurl4-openssl-dev
+            - libdw-dev
+            - libelf-dev
+            - libiberty-dev
           sources:
             - ubuntu-toolchain-r-test
 
@@ -412,15 +403,24 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
       rust: nightly
       os: linux
       dist: trusty
       addons:
         apt:
           packages:
+            - g++-7
+            - g++-7-multilib
             - gcc-7
             - gcc-7-multilib
+            - libcurl3:i386
+            - libcurl4-openssl-dev:i386
+            - libdw-dev:i386
+            - libelf-dev:i386
+            - libiberty-dev:i386
+            - libkrb5-dev:i386
+            - libssl-dev:i386
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test

@@ -142,7 +142,8 @@ if [[ "$KCOV" == "1" ]]; then
   # step above, but then "cargo test" we wouldn't be testing the configuration
   # we expect people to use in production.
   cargo clean
-  RUSTFLAGS="-C link-dead-code" \
+  CARGO_INCREMENTAL=0 \
+  RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Zno-landing-pads" \
     cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X
   mk/travis-install-kcov.sh
   for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
