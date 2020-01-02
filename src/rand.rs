@@ -329,18 +329,15 @@ mod sysrand_or_urandom {
 
     #[inline]
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        use lazy_static::lazy_static;
-
-        lazy_static! {
-            static ref MECHANISM: Mechanism = {
-                let mut dummy = [0u8; 1];
-                if super::sysrand_chunk::chunk(&mut dummy[..]).is_err() {
-                    Mechanism::DevURandom
-                } else {
-                    Mechanism::Sysrand
-                }
-            };
-        }
+        use once_cell::sync::Lazy;
+        static MECHANISM: Lazy<Mechanism> = Lazy::new(|| {
+            let mut dummy = [0u8; 1];
+            if super::sysrand_chunk::chunk(&mut dummy[..]).is_err() {
+                Mechanism::DevURandom
+            } else {
+                Mechanism::Sysrand
+            }
+        });
 
         match *MECHANISM {
             Mechanism::Sysrand => super::sysrand::fill(dest),
@@ -366,12 +363,10 @@ mod urandom {
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         extern crate std;
 
-        use lazy_static::lazy_static;
+        use once_cell::sync::Lazy;
 
-        lazy_static! {
-            static ref FILE: Result<std::fs::File, std::io::Error> =
-                std::fs::File::open("/dev/urandom");
-        }
+        static FILE: Lazy<Result<std::fs::File, std::io::Error>> =
+            Lazy::new(|| std::fs::File::open("/dev/urandom"));
 
         match *FILE {
             Ok(ref file) => {
