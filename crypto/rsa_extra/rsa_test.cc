@@ -1117,4 +1117,38 @@ TEST(RSATest, Threads) {
     thread.join();
   }
 }
-#endif
+
+#if defined(OPENSSL_X86_64)
+// This test might be excessively slow on slower CPUs.
+TEST(RSATest, BlindingCacheConcurrency) {
+  bssl::UniquePtr<RSA> rsa(
+      RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+
+  constexpr size_t kSignaturesPerThread = 100;
+  constexpr size_t kNumThreads = 2048;
+
+  const uint8_t kDummyHash[32] = {0};
+  auto worker = [&] {
+    uint8_t sig[256];
+    ASSERT_LE(RSA_size(rsa.get()), sizeof(sig));
+
+    for (size_t i = 0; i < kSignaturesPerThread; i++) {
+      unsigned sig_len = sizeof(sig);
+      EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), sig,
+                           &sig_len, rsa.get()));
+    }
+  };
+
+  std::vector<std::thread> threads;
+  threads.reserve(kNumThreads);
+  for (size_t i = 0; i < kNumThreads; i++) {
+    threads.emplace_back(worker);
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}
+#endif  // X86_64
+
+#endif  // THREADS
