@@ -913,21 +913,10 @@ TEST(ECTest, ScalarBaseMultVectors) {
   });
 }
 
-static uint8_t FromHexChar(char c) {
-  if ('0' <= c && c <= '9') {
-    return c - '0';
-  }
-  if ('a' <= c && c <= 'f') {
-    return c - 'a' + 10;
-  }
-  abort();
-}
-
 static std::vector<uint8_t> HexToBytes(const char *str) {
   std::vector<uint8_t> ret;
-  while (str[0] != '\0') {
-    ret.push_back((FromHexChar(str[0]) << 4) | FromHexChar(str[1]));
-    str += 2;
+  if (!DecodeHex(&ret, str)) {
+    abort();
   }
   return ret;
 }
