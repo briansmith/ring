@@ -31,7 +31,6 @@
 #include "../internal.h"
 
 #include "aes/aes.c"
-#include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"
 #include "aes/mode_wrappers.c"
 #include "bn/add.c"
