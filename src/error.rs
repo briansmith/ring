@@ -92,16 +92,7 @@ impl core::fmt::Display for Unspecified {
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for Unspecified {
-    #[inline]
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        None
-    }
-
-    fn description(&self) -> &str {
-        Self::description_()
-    }
-}
+impl std::error::Error for Unspecified {}
 
 impl From<untrusted::EndOfInput> for Unspecified {
     fn from(_: untrusted::EndOfInput) -> Self {
@@ -117,10 +108,10 @@ impl From<core::array::TryFromSliceError> for Unspecified {
 
 /// An error parsing or validating a key.
 ///
-/// The `Display` implementation and `<KeyRejected as Error>::description()`
-/// will return a string that will help you better understand why a key was
-/// rejected change which errors are reported in which situations while
-/// minimizing the likelihood that any applications will be broken.
+/// The `Display` implementation will return a string that will help you better
+/// understand why a key was rejected change which errors are reported in which
+/// situations while minimizing the likelihood that any applications will be
+/// broken.
 ///
 /// Here is an incomplete list of reasons a key may be unsupported:
 ///
@@ -149,7 +140,7 @@ impl From<core::array::TryFromSliceError> for Unspecified {
 pub struct KeyRejected(&'static str);
 
 impl KeyRejected {
-    /// The value returned from <Self as std::error::Error>::description()
+    /// The value is used in Display
     pub fn description_(&self) -> &'static str {
         self.0
     }
@@ -200,15 +191,7 @@ impl KeyRejected {
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for KeyRejected {
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        None
-    }
-
-    fn description(&self) -> &str {
-        self.description_()
-    }
-}
+impl std::error::Error for KeyRejected {}
 
 impl core::fmt::Display for KeyRejected {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
