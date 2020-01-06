@@ -23,7 +23,7 @@
 #include "../internal.h"
 
 
-#if !defined(OPENSSL_WINDOWS) && defined(OPENSSL_X86_64)
+#if defined(BORINGSSL_HAS_UINT128) && defined(OPENSSL_X86_64)
 
 #include <emmintrin.h>
 
@@ -853,4 +853,4 @@ poly1305_donna_finish:
   store_u64_le(mac + 8, ((h1 >> 20) | (h2 << 24)));
 }
 
-#endif  // !OPENSSL_WINDOWS && OPENSSL_X86_64
+#endif  // BORINGSSL_HAS_UINT128 && OPENSSL_X86_64
