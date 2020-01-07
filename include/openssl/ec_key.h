@@ -172,7 +172,8 @@ OPENSSL_EXPORT int EC_KEY_check_key(const EC_KEY *key);
 OPENSSL_EXPORT int EC_KEY_check_fips(const EC_KEY *key);
 
 // EC_KEY_set_public_key_affine_coordinates sets the public key in |key| to
-// (|x|, |y|). It returns one on success and zero otherwise.
+// (|x|, |y|). It returns one on success and zero on error. It's considered an
+// error if |x| and |y| do not represent a point on |key|'s curve.
 OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
                                                             const BIGNUM *x,
                                                             const BIGNUM *y);
@@ -180,7 +181,8 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
 // EC_KEY_key2buf encodes the public key in |key| to an allocated octet string
 // and sets |*out_buf| to point to it. It returns the length of the encoded
 // octet string or zero if an error occurred.
-OPENSSL_EXPORT size_t EC_KEY_key2buf(EC_KEY *key, point_conversion_form_t form,
+OPENSSL_EXPORT size_t EC_KEY_key2buf(const EC_KEY *key,
+                                     point_conversion_form_t form,
                                      unsigned char **out_buf, BN_CTX *ctx);
 
 

@@ -394,7 +394,7 @@ err:
   return ok;
 }
 
-size_t EC_KEY_key2buf(EC_KEY *key, point_conversion_form_t form,
+size_t EC_KEY_key2buf(const EC_KEY *key, point_conversion_form_t form,
                       unsigned char **out_buf, BN_CTX *ctx) {
   if (key == NULL || key->pub_key == NULL || key->group == NULL) {
     return 0;
