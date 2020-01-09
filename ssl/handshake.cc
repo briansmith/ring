@@ -621,10 +621,15 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         hs->wait = ssl_hs_ok;
         return -1;
 
-      case ssl_hs_handback:
+      case ssl_hs_handback: {
+        int ret = ssl->method->flush_flight(ssl);
+        if (ret <= 0) {
+          return ret;
+        }
         ssl->s3->rwstate = SSL_ERROR_HANDBACK;
         hs->wait = ssl_hs_handback;
         return -1;
+      }
 
       case ssl_hs_x509_lookup:
         ssl->s3->rwstate = SSL_ERROR_WANT_X509_LOOKUP;
