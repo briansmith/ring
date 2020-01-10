@@ -117,8 +117,14 @@ static const struct argument kArguments[] = {
     },
     {
         "-root-certs", kOptionalArgument,
-        "A filename containing one of more PEM root certificates. Implies that "
+        "A filename containing one or more PEM root certificates. Implies that "
         "verification is required.",
+    },
+    {
+        "-root-cert-dir", kOptionalArgument,
+        "A directory containing one or more root certificate PEM files in "
+        "OpenSSL's hashed-directory format. Implies that verification is "
+        "required.",
     },
     {
         "-early-data", kOptionalArgument, "Enable early data. The argument to "
@@ -493,6 +499,16 @@ bool Client(const std::vector<std::string> &args) {
   if (args_map.count("-root-certs") != 0) {
     if (!SSL_CTX_load_verify_locations(
             ctx.get(), args_map["-root-certs"].c_str(), nullptr)) {
+      fprintf(stderr, "Failed to load root certificates.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
+  }
+
+  if (args_map.count("-root-cert-dir") != 0) {
+    if (!SSL_CTX_load_verify_locations(
+            ctx.get(), nullptr, args_map["-root-cert-dir"].c_str())) {
       fprintf(stderr, "Failed to load root certificates.\n");
       ERR_print_errors_fp(stderr);
       return false;
