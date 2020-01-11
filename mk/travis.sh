@@ -69,6 +69,12 @@ if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   fi
 fi
 
+# This stanza is separate from the above because MUSL requires a target install,
+# but does *not* require special linking / multilib.
+if [[ "$TARGET_X" =~ "x86_64-unknown-linux-musl" ]]; then
+  rustup target add "$TARGET_X"
+fi
+
 if [[ ! -z "${CC_X-}" ]]; then
   export CC=$CC_X
   $CC --version

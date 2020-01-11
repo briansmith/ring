@@ -1,4 +1,4 @@
-﻿# Run this as "python mk/update-travis-yml.py"
+﻿# Run this as "python2 mk/update-travis-yml.py"
 
 # Copyright 2015 Brian Smith.
 #
@@ -48,6 +48,7 @@ compilers = {
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-gnu" : linux_compilers,
+    "x86_64-unknown-linux-musl" : [ "musl-gcc" ], # TODO: musl-clang
     "x86_64-apple-darwin" : osx_compilers,
 }
 
@@ -75,6 +76,7 @@ targets = {
         "aarch64-linux-android",
         "armv7-linux-androideabi",
         "x86_64-unknown-linux-gnu",
+        "x86_64-unknown-linux-musl",
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
         "arm-unknown-linux-gnueabihf",
@@ -211,6 +213,10 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
     if target == "arm-unknown-linux-gnueabihf":
         packages += ["gcc-arm-linux-gnueabihf",
                      "libc6-dev-armhf-cross"]
+    if target == "x86_64-unknown-linux-musl":
+        packages += ["musl", "musl-dev"]
+        if compiler == "musl-gcc":
+            packages += ["musl-tools"]
 
     if arch == "i686":
         if kcov == True:
