@@ -15,8 +15,10 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -24,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -31,9 +34,10 @@ import (
 var (
 	buildDir     = flag.String("build-dir", "build", "Specifies the build directory to push.")
 	adbPath      = flag.String("adb", "adb", "Specifies the adb binary to use. Defaults to looking in PATH.")
+	ndkPath      = flag.String("ndk", "", "Specifies the path to the NDK installation. Defaults to detecting from the build directory.")
 	device       = flag.String("device", "", "Specifies the device or emulator. See adb's -s argument.")
-	aarch64      = flag.Bool("aarch64", false, "Build the test runners for aarch64 instead of arm.")
-	arm          = flag.Int("arm", 7, "Which arm revision to build for.")
+	abi          = flag.String("abi", "", "Specifies the Android ABI to use when building Go tools. Defaults to detecting from the build directory.")
+	apiLevel     = flag.Int("api-level", 0, "Specifies the Android API level to use when building Go tools. Defaults to detecting from the build directory.")
 	suite        = flag.String("suite", "all", "Specifies the test suites to run (all, unit, or ssl).")
 	allTestsArgs = flag.String("all-tests-args", "", "Specifies space-separated arguments to pass to all_tests.go")
 	runnerArgs   = flag.String("runner-args", "", "Specifies space-separated arguments to pass to ssl/test/runner")
@@ -113,12 +117,47 @@ func goTool(args ...string) error {
 	cmd.Stderr = os.Stderr
 
 	cmd.Env = os.Environ()
-	if *aarch64 {
-		cmd.Env = append(cmd.Env, "GOARCH=arm64")
-	} else {
-		cmd.Env = append(cmd.Env, "GOARCH=arm")
-		cmd.Env = append(cmd.Env, fmt.Sprintf("GOARM=%d", *arm))
+
+	// The NDK includes the host platform in the toolchain path.
+	var ndkOS, ndkArch string
+	switch runtime.GOOS {
+	case "linux":
+		ndkOS = "linux"
+	default:
+		return fmt.Errorf("unknown host OS: %q", runtime.GOOS)
 	}
+	switch runtime.GOARCH {
+	case "amd64":
+		ndkArch = "x86_64"
+	default:
+		return fmt.Errorf("unknown host architecture: %q", runtime.GOARCH)
+	}
+	ndkHost := ndkOS + "-" + ndkArch
+
+	// Use the NDK's target-prefixed clang wrappers, so cgo gets the right
+	// flags. See https://developer.android.com/ndk/guides/cmake#android_abi for
+	// Android ABIs.
+	var targetPrefix string
+	switch *abi {
+	case "armeabi-v7a", "armeabi-v7a with NEON":
+		targetPrefix = fmt.Sprintf("armv7a-linux-androideabi%d-", *apiLevel)
+		cmd.Env = append(cmd.Env, "GOARCH=arm")
+		cmd.Env = append(cmd.Env, "GOARM=7")
+	case "arm64-v8a":
+		targetPrefix = fmt.Sprintf("aarch64-linux-android%d-", *apiLevel)
+		cmd.Env = append(cmd.Env, "GOARCH=arm64")
+	default:
+		fmt.Errorf("unknown Android ABI: %q", *abi)
+	}
+
+	// Go's Android support requires cgo and compilers from the NDK. See
+	// https://golang.org/misc/android/README, though note CC_FOR_TARGET only
+	// works when building Go itself. go build only looks at CC.
+	cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
+	cmd.Env = append(cmd.Env, "GOOS=android")
+	toolchainDir := filepath.Join(*ndkPath, "toolchains", "llvm", "prebuilt", ndkHost, "bin")
+	cmd.Env = append(cmd.Env, fmt.Sprintf("CC=%s", filepath.Join(toolchainDir, targetPrefix+"clang")))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("CXX=%s", filepath.Join(toolchainDir, targetPrefix+"clang++")))
 	return cmd.Run()
 }
 
@@ -135,9 +174,75 @@ func setWorkingDirectory() {
 	panic("Couldn't find BUILDING.md in a parent directory!")
 }
 
+func detectOptionsFromCMake() error {
+	if len(*ndkPath) != 0 && len(*abi) != 0 && *apiLevel != 0 {
+		// No need to parse options from CMake.
+		return nil
+	}
+
+	cmakeCache, err := os.Open(filepath.Join(*buildDir, "CMakeCache.txt"))
+	if err != nil {
+		return err
+	}
+	defer cmakeCache.Close()
+
+	cmakeVars := make(map[string]string)
+	scanner := bufio.NewScanner(cmakeCache)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if idx := strings.IndexByte(line, '#'); idx >= 0 {
+			line = line[:idx]
+		}
+		if idx := strings.Index(line, "//"); idx >= 0 {
+			line = line[:idx]
+		}
+		// The syntax for each line is KEY:TYPE=VALUE.
+		equals := strings.IndexByte(line, '=')
+		if equals < 0 {
+			continue
+		}
+		name := line[:equals]
+		value := line[equals+1:]
+		if idx := strings.IndexByte(name, ':'); idx >= 0 {
+			name = name[:idx]
+		}
+		cmakeVars[name] = value
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	if len(*ndkPath) == 0 {
+		var ok bool
+		if *ndkPath, ok = cmakeVars["ANDROID_NDK"]; !ok {
+			return errors.New("ANDROID_NDK not found in CMakeCache.txt")
+		}
+		fmt.Printf("Detected NDK path %q from CMakeCache.txt.\n", *ndkPath)
+	}
+	if len(*abi) == 0 {
+		var ok bool
+		if *abi, ok = cmakeVars["ANDROID_ABI"]; !ok {
+			return errors.New("ANDROID_ABI not found in CMakeCache.txt")
+		}
+		fmt.Printf("Detected ABI %q from CMakeCache.txt.\n", *abi)
+	}
+	if *apiLevel == 0 {
+		apiLevelStr, ok := cmakeVars["ANDROID_NATIVE_API_LEVEL"]
+		if !ok {
+			return errors.New("ANDROID_NATIVE_API_LEVEL not found in CMakeCache.txt")
+		}
+		var err error
+		if *apiLevel, err = strconv.Atoi(apiLevelStr); err != nil {
+			return fmt.Errorf("error parsing ANDROID_NATIVE_API_LEVEL: %s", err)
+		}
+		fmt.Printf("Detected API level %d from CMakeCache.txt.\n", *apiLevel)
+	}
+	return nil
+}
+
 type test struct {
 	args []string
-	env []string
+	env  []string
 }
 
 func parseTestConfig(filename string) ([]test, error) {
@@ -202,6 +307,10 @@ func main() {
 	}
 
 	setWorkingDirectory()
+	if err := detectOptionsFromCMake(); err != nil {
+		fmt.Printf("Error reading options from CMake: %s.\n", err)
+		os.Exit(1)
+	}
 
 	// Clear the target directory.
 	if err := adb("shell", "rm -Rf /data/local/tmp/boringssl-tmp"); err != nil {
