@@ -213,9 +213,13 @@ func detectOptionsFromCMake() error {
 	}
 
 	if len(*ndkPath) == 0 {
-		var ok bool
-		if *ndkPath, ok = cmakeVars["ANDROID_NDK"]; !ok {
-			return errors.New("ANDROID_NDK not found in CMakeCache.txt")
+		if ndk, ok := cmakeVars["ANDROID_NDK"]; ok {
+			*ndkPath = ndk
+		} else if toolchainFile, ok := cmakeVars["CMAKE_TOOLCHAIN_FILE"]; ok {
+			// The toolchain is at build/cmake/android.toolchain.cmake under the NDK.
+			*ndkPath = filepath.Dir(filepath.Dir(filepath.Dir(toolchainFile)))
+		} else {
+			return errors.New("Neither CMAKE_TOOLCHAIN_FILE nor ANDROID_NDK found in CMakeCache.txt")
 		}
 		fmt.Printf("Detected NDK path %q from CMakeCache.txt.\n", *ndkPath)
 	}
