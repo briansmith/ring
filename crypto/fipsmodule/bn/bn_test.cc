@@ -2343,7 +2343,14 @@ TEST_F(BNTest, WycheproofPrimality) {
                                         /*do_trial_division=*/true, nullptr));
           EXPECT_EQ(result.IsValid() ? 1 : 0, is_probably_prime);
         }
+        // Running many large primality tests in a single test case is slow,
+        // so output after test to prevent Chromium from timing out.
+        // Chromium's test infrastructure assume that a test binary not
+        // producing output for too long is hanging.
+        putchar('.');
+        fflush(stdout);
       });
+  putchar('\n');
 }
 
 TEST_F(BNTest, NumBitsWord) {
