@@ -2311,7 +2311,14 @@ TEST_F(BNTest, MillerRabinIteration) {
       });
 }
 
-TEST_F(BNTest, WycheproofPrimality) {
+// These tests are very slow, so only enable them on x86 to avoid timing out
+// tests in downstream consumers testing on, e.g., old Android devices.
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
+#define MAYBE_WycheproofPrimality WycheproofPrimality
+#else
+#define MAYBE_WycheproofPrimality DISABLED_WycheproofPrimality
+#endif
+TEST_F(BNTest, MAYBE_WycheproofPrimality) {
   FileTestGTest(
       "third_party/wycheproof_testvectors/primality_test.txt",
       [&](FileTest *t) {
