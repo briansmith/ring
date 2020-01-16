@@ -1,5 +1,6 @@
 [
 	["crypto/crypto_test"],
+	["crypto/crypto_test", "--gtest_also_run_disabled_tests", "--gtest_filter=RSATest.DISABLED_BlindingCacheConcurrency:BNTest.DISABLED_WycheproofPrimality"],
 	["crypto/urandom_test"],
 	["$OPENSSL_ia32cap=~0x4000000000000000", "crypto/urandom_test"],
 	["crypto/crypto_test", "--fork_unsafe_buffering", "--gtest_filter=RandTest.*:-RandTest.Fork"],

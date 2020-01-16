@@ -2311,14 +2311,10 @@ TEST_F(BNTest, MillerRabinIteration) {
       });
 }
 
-// These tests are very slow, so only enable them on x86 to avoid timing out
-// tests in downstream consumers testing on, e.g., old Android devices.
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
-#define MAYBE_WycheproofPrimality WycheproofPrimality
-#else
-#define MAYBE_WycheproofPrimality DISABLED_WycheproofPrimality
-#endif
-TEST_F(BNTest, MAYBE_WycheproofPrimality) {
+// These tests are very slow, so we disable them by default to avoid timing out
+// downstream consumers. They are enabled when running tests standalone via
+// all_tests.go.
+TEST_F(BNTest, DISABLED_WycheproofPrimality) {
   FileTestGTest(
       "third_party/wycheproof_testvectors/primality_test.txt",
       [&](FileTest *t) {
@@ -2350,14 +2346,7 @@ TEST_F(BNTest, MAYBE_WycheproofPrimality) {
                                         /*do_trial_division=*/true, nullptr));
           EXPECT_EQ(result.IsValid() ? 1 : 0, is_probably_prime);
         }
-        // Running many large primality tests in a single test case is slow,
-        // so output after test to prevent Chromium from timing out.
-        // Chromium's test infrastructure assume that a test binary not
-        // producing output for too long is hanging.
-        putchar('.');
-        fflush(stdout);
       });
-  putchar('\n');
 }
 
 TEST_F(BNTest, NumBitsWord) {
