@@ -120,6 +120,14 @@ int CBS_get_u16(CBS *cbs, uint16_t *out) {
   return 1;
 }
 
+int CBS_get_u16le(CBS *cbs, uint16_t *out) {
+  if (!CBS_get_u16(cbs, out)) {
+    return 0;
+  }
+  *out = CRYPTO_bswap2(*out);
+  return 1;
+}
+
 int CBS_get_u24(CBS *cbs, uint32_t *out) {
   uint64_t v;
   if (!cbs_get_u(cbs, &v, 3)) {
@@ -138,8 +146,24 @@ int CBS_get_u32(CBS *cbs, uint32_t *out) {
   return 1;
 }
 
+int CBS_get_u32le(CBS *cbs, uint32_t *out) {
+  if (!CBS_get_u32(cbs, out)) {
+    return 0;
+  }
+  *out = CRYPTO_bswap4(*out);
+  return 1;
+}
+
 int CBS_get_u64(CBS *cbs, uint64_t *out) {
   return cbs_get_u(cbs, out, 8);
+}
+
+int CBS_get_u64le(CBS *cbs, uint64_t *out) {
+  if (!cbs_get_u(cbs, out, 8)) {
+    return 0;
+  }
+  *out = CRYPTO_bswap8(*out);
+  return 1;
 }
 
 int CBS_get_last_u8(CBS *cbs, uint8_t *out) {

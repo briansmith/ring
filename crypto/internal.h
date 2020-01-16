@@ -689,6 +689,10 @@ OPENSSL_EXPORT void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
 // Endianness conversions.
 
 #if defined(__GNUC__) && __GNUC__ >= 2
+static inline uint16_t CRYPTO_bswap2(uint16_t x) {
+  return __builtin_bswap16(x);
+}
+
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   return __builtin_bswap32(x);
 }
@@ -700,7 +704,11 @@ static inline uint64_t CRYPTO_bswap8(uint64_t x) {
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <stdlib.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
-#pragma intrinsic(_byteswap_uint64, _byteswap_ulong)
+#pragma intrinsic(_byteswap_uint64, _byteswap_ulong, _byteswap_ushort)
+static inline uint16_t CRYPTO_bswap2(uint16_t x) {
+  return _byteswap_ushort(x);
+}
+
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   return _byteswap_ulong(x);
 }
@@ -709,6 +717,10 @@ static inline uint64_t CRYPTO_bswap8(uint64_t x) {
   return _byteswap_uint64(x);
 }
 #else
+static inline uint16_t CRYPTO_bswap2(uint16_t x) {
+  return (x >> 8) | (x << 8);
+}
+
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   x = (x >> 16) | (x << 16);
   x = ((x & 0xff00ff00) >> 8) | ((x & 0x00ff00ff) << 8);

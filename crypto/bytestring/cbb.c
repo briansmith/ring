@@ -447,6 +447,10 @@ int CBB_add_u16(CBB *cbb, uint16_t value) {
   return cbb_buffer_add_u(cbb->base, value, 2);
 }
 
+int CBB_add_u16le(CBB *cbb, uint16_t value) {
+  return CBB_add_u16(cbb, CRYPTO_bswap2(value));
+}
+
 int CBB_add_u24(CBB *cbb, uint32_t value) {
   if (!CBB_flush(cbb)) {
     return 0;
@@ -463,11 +467,19 @@ int CBB_add_u32(CBB *cbb, uint32_t value) {
   return cbb_buffer_add_u(cbb->base, value, 4);
 }
 
+int CBB_add_u32le(CBB *cbb, uint32_t value) {
+  return CBB_add_u32(cbb, CRYPTO_bswap4(value));
+}
+
 int CBB_add_u64(CBB *cbb, uint64_t value) {
   if (!CBB_flush(cbb)) {
     return 0;
   }
   return cbb_buffer_add_u(cbb->base, value, 8);
+}
+
+int CBB_add_u64le(CBB *cbb, uint64_t value) {
+  return CBB_add_u64(cbb, CRYPTO_bswap8(value));
 }
 
 void CBB_discard_child(CBB *cbb) {

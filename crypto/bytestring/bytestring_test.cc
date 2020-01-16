@@ -67,6 +67,14 @@ TEST(CBSTest, GetUint) {
   EXPECT_EQ(0x13u, u8);
   EXPECT_FALSE(CBS_get_u8(&data, &u8));
   EXPECT_FALSE(CBS_get_last_u8(&data, &u8));
+
+  CBS_init(&data, kData, sizeof(kData));
+  ASSERT_TRUE(CBS_get_u16le(&data, &u16));
+  EXPECT_EQ(0x0201u, u16);
+  ASSERT_TRUE(CBS_get_u32le(&data, &u32));
+  EXPECT_EQ(0x06050403u, u32);
+  ASSERT_TRUE(CBS_get_u64le(&data, &u64));
+  EXPECT_EQ(0x0e0d0c0b0a090807u, u64);
 }
 
 TEST(CBSTest, GetPrefixed) {
@@ -316,7 +324,9 @@ TEST(CBBTest, InitUninitialized) {
 TEST(CBBTest, Basic) {
   static const uint8_t kExpected[] = {1,   2,    3,    4,    5,    6,   7,
                                       8,   9,    0xa,  0xb,  0xc,  0xd, 0xe,
-                                      0xf, 0x10, 0x11, 0x12, 0x13, 0x14};
+                                      0xf, 0x10, 0x11, 0x12, 0x13, 0x14, 3, 2,
+                                      10,  9,    8,    7,    0x12, 0x11, 0x10,
+                                      0xf, 0xe,  0xd,  0xc,  0xb};
   uint8_t *buf;
   size_t buf_len;
 
@@ -331,6 +341,9 @@ TEST(CBBTest, Basic) {
   ASSERT_TRUE(CBB_add_u32(cbb.get(), 0x708090a));
   ASSERT_TRUE(CBB_add_u64(cbb.get(), 0xb0c0d0e0f101112));
   ASSERT_TRUE(CBB_add_bytes(cbb.get(), (const uint8_t *)"\x13\x14", 2));
+  ASSERT_TRUE(CBB_add_u16le(cbb.get(), 0x203));
+  ASSERT_TRUE(CBB_add_u32le(cbb.get(), 0x708090a));
+  ASSERT_TRUE(CBB_add_u64le(cbb.get(), 0xb0c0d0e0f101112));
   ASSERT_TRUE(CBB_finish(cbb.get(), &buf, &buf_len));
 
   bssl::UniquePtr<uint8_t> scoper(buf);
