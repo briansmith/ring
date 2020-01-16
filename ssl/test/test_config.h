@@ -159,7 +159,6 @@ struct TestConfig {
   bool ignore_tls13_downgrade = false;
   bool expect_tls13_downgrade = false;
   bool handoff = false;
-  bool no_rsa_pss_rsae_certs = false;
   bool use_ocsp_callback = false;
   bool set_ocsp_in_callback = false;
   bool decline_ocsp_callback = false;

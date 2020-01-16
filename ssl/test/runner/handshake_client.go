@@ -905,10 +905,6 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 				return errors.New("tls: expected no certificate_authorities extension")
 			}
 
-			if err := checkRSAPSSSupport(c.config.Bugs.ExpectRSAPSSSupport, certReq.signatureAlgorithms, certReq.signatureAlgorithmsCert); err != nil {
-				return err
-			}
-
 			if c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
 				certReq.signatureAlgorithms = c.config.signSignatureAlgorithms()
 			}
@@ -1262,9 +1258,6 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	certReq, ok := msg.(*certificateRequestMsg)
 	if ok {
 		certRequested = true
-		if err := checkRSAPSSSupport(c.config.Bugs.ExpectRSAPSSSupport, certReq.signatureAlgorithms, certReq.signatureAlgorithmsCert); err != nil {
-			return err
-		}
 		if c.config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
 			certReq.signatureAlgorithms = c.config.signSignatureAlgorithms()
 		}

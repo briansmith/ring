@@ -2524,13 +2524,6 @@ OPENSSL_EXPORT int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store);
 // Ed25519.
 OPENSSL_EXPORT void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled);
 
-// SSL_CTX_set_rsa_pss_rsae_certs_enabled configures whether |ctx| advertises
-// support for rsa_pss_rsae_* signatures within the certificate chain. It is
-// enabled by default but should be disabled if using a custom certificate
-// verifier which does not support RSA-PSS signatures.
-OPENSSL_EXPORT void SSL_CTX_set_rsa_pss_rsae_certs_enabled(SSL_CTX *ctx,
-                                                           int enabled);
-
 // SSL_CTX_set_verify_algorithm_prefs configures |ctx| to use |prefs| as the
 // preference list when verifying signature's from the peer's long-term key. It
 // returns one on zero on error. |prefs| should not include the internal-only

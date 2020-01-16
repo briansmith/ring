@@ -135,7 +135,6 @@ const Flag<bool> kBoolFlags[] = {
     {"-ignore-tls13-downgrade", &TestConfig::ignore_tls13_downgrade},
     {"-expect-tls13-downgrade", &TestConfig::expect_tls13_downgrade},
     {"-handoff", &TestConfig::handoff},
-    {"-no-rsa-pss-rsae-certs", &TestConfig::no_rsa_pss_rsae_certs},
     {"-use-ocsp-callback", &TestConfig::use_ocsp_callback},
     {"-set-ocsp-in-callback", &TestConfig::set_ocsp_in_callback},
     {"-decline-ocsp-callback", &TestConfig::decline_ocsp_callback},
@@ -1262,9 +1261,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (enable_ed25519) {
     SSL_CTX_set_ed25519_enabled(ssl_ctx.get(), 1);
-  }
-  if (no_rsa_pss_rsae_certs) {
-    SSL_CTX_set_rsa_pss_rsae_certs_enabled(ssl_ctx.get(), 0);
   }
 
   if (!verify_prefs.empty()) {

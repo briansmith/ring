@@ -411,10 +411,6 @@ bool tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
 
 // kVerifySignatureAlgorithms is the default list of accepted signature
 // algorithms for verifying.
-//
-// For now, RSA-PSS signature algorithms are not enabled on Android's system
-// BoringSSL. Once the change in Chrome has stuck and the values are finalized,
-// restore them.
 static const uint16_t kVerifySignatureAlgorithms[] = {
     // List our preferred algorithms first.
     SSL_SIGN_ED25519,
@@ -432,15 +428,10 @@ static const uint16_t kVerifySignatureAlgorithms[] = {
 
     // For now, SHA-1 is still accepted but least preferable.
     SSL_SIGN_RSA_PKCS1_SHA1,
-
 };
 
 // kSignSignatureAlgorithms is the default list of supported signature
 // algorithms for signing.
-//
-// For now, RSA-PSS signature algorithms are not enabled on Android's system
-// BoringSSL. Once the change in Chrome has stuck and the values are finalized,
-// restore them.
 static const uint16_t kSignSignatureAlgorithms[] = {
     // List our preferred algorithms first.
     SSL_SIGN_ED25519,
@@ -472,39 +463,17 @@ struct SSLSignatureAlgorithmList {
       if (skip_ed25519 && sigalg == SSL_SIGN_ED25519) {
         continue;
       }
-      if (skip_rsa_pss_rsae && SSL_is_signature_algorithm_rsa_pss(sigalg)) {
-        continue;
-      }
       *out = sigalg;
       return true;
     }
     return false;
   }
 
-  bool operator==(const SSLSignatureAlgorithmList &other) const {
-    SSLSignatureAlgorithmList a = *this;
-    SSLSignatureAlgorithmList b = other;
-    uint16_t a_val, b_val;
-    while (a.Next(&a_val)) {
-      if (!b.Next(&b_val) ||
-          a_val != b_val) {
-        return false;
-      }
-    }
-    return !b.Next(&b_val);
-  }
-
-  bool operator!=(const SSLSignatureAlgorithmList &other) const {
-    return !(*this == other);
-  }
-
   Span<const uint16_t> list;
   bool skip_ed25519 = false;
-  bool skip_rsa_pss_rsae = false;
 };
 
-static SSLSignatureAlgorithmList tls12_get_verify_sigalgs(const SSL *ssl,
-                                                          bool for_certs) {
+static SSLSignatureAlgorithmList tls12_get_verify_sigalgs(const SSL *ssl) {
   SSLSignatureAlgorithmList ret;
   if (!ssl->config->verify_sigalgs.empty()) {
     ret.list = ssl->config->verify_sigalgs;
@@ -512,14 +481,11 @@ static SSLSignatureAlgorithmList tls12_get_verify_sigalgs(const SSL *ssl,
     ret.list = kVerifySignatureAlgorithms;
     ret.skip_ed25519 = !ssl->ctx->ed25519_enabled;
   }
-  if (for_certs) {
-    ret.skip_rsa_pss_rsae = !ssl->ctx->rsa_pss_rsae_certs_enabled;
-  }
   return ret;
 }
 
-bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out, bool for_certs) {
-  SSLSignatureAlgorithmList list = tls12_get_verify_sigalgs(ssl, for_certs);
+bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
+  SSLSignatureAlgorithmList list = tls12_get_verify_sigalgs(ssl);
   uint16_t sigalg;
   while (list.Next(&sigalg)) {
     if (!CBB_add_u16(out, sigalg)) {
@@ -531,7 +497,7 @@ bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out, bool for_certs) {
 
 bool tls12_check_peer_sigalg(const SSL *ssl, uint8_t *out_alert,
                              uint16_t sigalg) {
-  SSLSignatureAlgorithmList list = tls12_get_verify_sigalgs(ssl, false);
+  SSLSignatureAlgorithmList list = tls12_get_verify_sigalgs(ssl);
   uint16_t verify_sigalg;
   while (list.Next(&verify_sigalg)) {
     if (verify_sigalg == sigalg) {
@@ -542,11 +508,6 @@ bool tls12_check_peer_sigalg(const SSL *ssl, uint8_t *out_alert,
   OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
   *out_alert = SSL_AD_ILLEGAL_PARAMETER;
   return false;
-}
-
-bool tls12_has_different_verify_sigalgs_for_certs(const SSL *ssl) {
-  return tls12_get_verify_sigalgs(ssl, true) !=
-         tls12_get_verify_sigalgs(ssl, false);
 }
 
 // tls_extension represents a TLS extension that is handled internally. The
@@ -980,23 +941,11 @@ static bool ext_sigalgs_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
-  // Prior to TLS 1.3, there was no way to signal different signature algorithm
-  // preferences between the online signature and certificates. If we do not
-  // send the signature_algorithms_cert extension, use the potentially more
-  // restrictive certificate list.
-  //
-  // TODO(davidben): When TLS 1.3 is finalized, we can likely remove the TLS 1.3
-  // check both here and in signature_algorithms_cert. |hs->max_version| is not
-  // the negotiated version. Rather the expectation is that any server consuming
-  // signature algorithms added in TLS 1.3 will also know to look at
-  // signature_algorithms_cert. For now, TLS 1.3 is not quite yet final and it
-  // seems prudent to condition this new extension on it.
-  bool for_certs = hs->max_version < TLS1_3_VERSION;
   CBB contents, sigalgs_cbb;
   if (!CBB_add_u16(out, TLSEXT_TYPE_signature_algorithms) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &sigalgs_cbb) ||
-      !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb, for_certs) ||
+      !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -1015,35 +964,6 @@ static bool ext_sigalgs_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   if (!CBS_get_u16_length_prefixed(contents, &supported_signature_algorithms) ||
       CBS_len(contents) != 0 ||
       !tls1_parse_peer_sigalgs(hs, &supported_signature_algorithms)) {
-    return false;
-  }
-
-  return true;
-}
-
-
-// Signature Algorithms for Certificates.
-//
-// https://tools.ietf.org/html/rfc8446#section-4.2.3
-
-static bool ext_sigalgs_cert_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  SSL *const ssl = hs->ssl;
-  // If this extension is omitted, it defaults to the signature_algorithms
-  // extension, so only emit it if the list is different.
-  //
-  // This extension is also new in TLS 1.3, so omit it if TLS 1.3 is disabled.
-  // There is a corresponding version check in |ext_sigalgs_add_clienthello|.
-  if (hs->max_version < TLS1_3_VERSION ||
-      !tls12_has_different_verify_sigalgs_for_certs(ssl)) {
-    return true;
-  }
-
-  CBB contents, sigalgs_cbb;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_signature_algorithms_cert) ||
-      !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16_length_prefixed(&contents, &sigalgs_cbb) ||
-      !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb, true /* certs */) ||
-      !CBB_flush(out)) {
     return false;
   }
 
@@ -2932,14 +2852,6 @@ static const struct tls_extension kExtensions[] = {
     dont_add_serverhello,
   },
   {
-    TLSEXT_TYPE_signature_algorithms_cert,
-    NULL,
-    ext_sigalgs_cert_add_clienthello,
-    forbid_parse_serverhello,
-    ignore_parse_clienthello,
-    dont_add_serverhello,
-  },
-  {
     TLSEXT_TYPE_next_proto_neg,
     NULL,
     ext_npn_add_clienthello,
@@ -3961,8 +3873,4 @@ int SSL_early_callback_ctx_extension_get(const SSL_CLIENT_HELLO *client_hello,
 
 void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled) {
   ctx->ed25519_enabled = !!enabled;
-}
-
-void SSL_CTX_set_rsa_pss_rsae_certs_enabled(SSL_CTX *ctx, int enabled) {
-  ctx->rsa_pss_rsae_certs_enabled = !!enabled;
 }

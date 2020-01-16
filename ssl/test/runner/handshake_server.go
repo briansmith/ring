@@ -356,10 +356,6 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if err := checkRSAPSSSupport(config.Bugs.ExpectRSAPSSSupport, hs.clientHello.signatureAlgorithms, hs.clientHello.signatureAlgorithmsCert); err != nil {
-		return err
-	}
-
 	applyBugsToClientHello(hs.clientHello, config)
 
 	return nil

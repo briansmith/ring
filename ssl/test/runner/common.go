@@ -10,7 +10,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -530,15 +529,6 @@ const (
 	RSABadValueWrongLeadingByte
 	RSABadValueNoZero
 	NumRSABadValues
-)
-
-type RSAPSSSupport int
-
-const (
-	RSAPSSSupportAny RSAPSSSupport = iota
-	RSAPSSSupportNone
-	RSAPSSSupportOnlineSignatureOnly
-	RSAPSSSupportBoth
 )
 
 type ProtocolBugs struct {
@@ -1580,10 +1570,6 @@ type ProtocolBugs struct {
 	// curves to use compressed coordinates.
 	SendCompressedCoordinates bool
 
-	// ExpectRSAPSSSupport specifies the level of RSA-PSS support expected
-	// from the peer.
-	ExpectRSAPSSSupport RSAPSSSupport
-
 	// SetX25519HighBit, if true, causes X25519 key shares to set their
 	// high-order bit.
 	SetX25519HighBit bool
@@ -2073,51 +2059,4 @@ func containsGREASE(values []uint16) bool {
 		}
 	}
 	return false
-}
-
-func checkRSAPSSSupport(support RSAPSSSupport, sigAlgs, sigAlgsCert []signatureAlgorithm) error {
-	if sigAlgsCert == nil {
-		sigAlgsCert = sigAlgs
-	} else if eqSignatureAlgorithms(sigAlgs, sigAlgsCert) {
-		// The peer should have only sent the list once.
-		return errors.New("tls: signature_algorithms and signature_algorithms_cert extensions were identical")
-	}
-
-	if support == RSAPSSSupportAny {
-		return nil
-	}
-
-	var foundPSS, foundPSSCert bool
-	for _, sigAlg := range sigAlgs {
-		if sigAlg == signatureRSAPSSWithSHA256 || sigAlg == signatureRSAPSSWithSHA384 || sigAlg == signatureRSAPSSWithSHA512 {
-			foundPSS = true
-			break
-		}
-	}
-	for _, sigAlg := range sigAlgsCert {
-		if sigAlg == signatureRSAPSSWithSHA256 || sigAlg == signatureRSAPSSWithSHA384 || sigAlg == signatureRSAPSSWithSHA512 {
-			foundPSSCert = true
-			break
-		}
-	}
-
-	expectPSS := support != RSAPSSSupportNone
-	if foundPSS != expectPSS {
-		if expectPSS {
-			return errors.New("tls: peer did not support PSS")
-		} else {
-			return errors.New("tls: peer unexpectedly supported PSS")
-		}
-	}
-
-	expectPSSCert := support == RSAPSSSupportBoth
-	if foundPSSCert != expectPSSCert {
-		if expectPSSCert {
-			return errors.New("tls: peer did not support PSS in certificates")
-		} else {
-			return errors.New("tls: peer unexpectedly supported PSS in certificates")
-		}
-	}
-
-	return nil
 }

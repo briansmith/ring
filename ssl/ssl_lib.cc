@@ -565,7 +565,6 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       grease_enabled(false),
       allow_unknown_alpn_protos(false),
       ed25519_enabled(false),
-      rsa_pss_rsae_certs_enabled(true),
       false_start_allowed_without_alpn(false),
       ignore_tls13_downgrade(false),
       handoff(false),

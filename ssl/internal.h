@@ -1998,21 +1998,14 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out);
 Span<const uint16_t> tls1_get_peer_verify_algorithms(const SSL_HANDSHAKE *hs);
 
 // tls12_add_verify_sigalgs adds the signature algorithms acceptable for the
-// peer signature to |out|. It returns true on success and false on error. If
-// |for_certs| is true, the potentially more restrictive list of algorithms for
-// certificates is used. Otherwise, the online signature one is used.
-bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out, bool for_certs);
+// peer signature to |out|. It returns true on success and false on error.
+bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out);
 
 // tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
 // signature. It returns true on success and false on error, setting
 // |*out_alert| to an alert to send.
 bool tls12_check_peer_sigalg(const SSL *ssl, uint8_t *out_alert,
                              uint16_t sigalg);
-
-// tls12_has_different_verify_sigalgs_for_certs returns whether |ssl| has a
-// different, more restrictive, list of signature algorithms acceptable for the
-// certificate than the online signature.
-bool tls12_has_different_verify_sigalgs_for_certs(const SSL *ssl);
 
 
 // Underdocumented functions.
@@ -3316,10 +3309,6 @@ struct ssl_ctx_st {
 
   // ed25519_enabled is whether Ed25519 is advertised in the handshake.
   bool ed25519_enabled : 1;
-
-  // rsa_pss_rsae_certs_enabled is whether rsa_pss_rsae_* are supported by the
-  // certificate verifier.
-  bool rsa_pss_rsae_certs_enabled : 1;
 
   // false_start_allowed_without_alpn is whether False Start (if
   // |SSL_MODE_ENABLE_FALSE_START| is enabled) is allowed without ALPN.
