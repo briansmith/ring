@@ -51,7 +51,7 @@ var (
 )
 
 func simulateARMCPUsDefault() bool {
-	return runtime.GOOS == "linux" && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64")
+	return (runtime.GOOS == "linux" || runtime.GOOS == "android") && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64")
 }
 
 type test struct {
