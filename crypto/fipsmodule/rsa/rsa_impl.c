@@ -368,7 +368,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   CRYPTO_MUTEX_lock_write(&rsa->lock);
 
   uint8_t *const free_inuse_flag =
-      memchr(rsa->blindings_inuse, 0, rsa->num_blindings);
+      OPENSSL_memchr(rsa->blindings_inuse, 0, rsa->num_blindings);
   if (free_inuse_flag != NULL) {
     *free_inuse_flag = 1;
     *index_used = free_inuse_flag - rsa->blindings_inuse;
