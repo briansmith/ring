@@ -17,7 +17,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -29,6 +28,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"boringssl.googlesource.com/boringssl/util/testconfig"
 )
 
 var (
@@ -244,37 +245,6 @@ func detectOptionsFromCMake() error {
 	return nil
 }
 
-type test struct {
-	args []string
-	env  []string
-}
-
-func parseTestConfig(filename string) ([]test, error) {
-	in, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer in.Close()
-
-	decoder := json.NewDecoder(in)
-	var result [][]string
-	if err := decoder.Decode(&result); err != nil {
-		return nil, err
-	}
-
-	tests := make([]test, 0, len(result))
-	for _, args := range result {
-		var env []string
-		for len(args) > 0 && strings.HasPrefix(args[0], "$") {
-			env = append(env, args[0][1:])
-			args = args[1:]
-		}
-		tests = append(tests, test{args: args, env: env})
-	}
-
-	return tests, nil
-}
-
 func copyFile(dst, src string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
@@ -338,7 +308,7 @@ func main() {
 			"BUILDING.md",
 		)
 
-		tests, err := parseTestConfig("util/all_tests.json")
+		tests, err := testconfig.ParseTestConfig("util/all_tests.json")
 		if err != nil {
 			fmt.Printf("Failed to parse input: %s\n", err)
 			os.Exit(1)
@@ -346,11 +316,11 @@ func main() {
 
 		seenBinary := make(map[string]struct{})
 		for _, test := range tests {
-			if _, ok := seenBinary[test.args[0]]; !ok {
-				binaries = append(binaries, test.args[0])
-				seenBinary[test.args[0]] = struct{}{}
+			if _, ok := seenBinary[test.Cmd[0]]; !ok {
+				binaries = append(binaries, test.Cmd[0])
+				seenBinary[test.Cmd[0]] = struct{}{}
 			}
-			for _, arg := range test.args[1:] {
+			for _, arg := range test.Cmd[1:] {
 				if strings.Contains(arg, "/") {
 					files = append(files, arg)
 				}
