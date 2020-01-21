@@ -542,6 +542,13 @@ if(NOT OPENSSL_NO_ASM)
   endif()
 endif()
 
+if(BUILD_SHARED_LIBS)
+  add_definitions(-DBORINGSSL_SHARED_LIBRARY)
+  # Enable position-independent code globally. This is needed because
+  # some library targets are OBJECT libraries.
+  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+endif()
+
 include_directories(src/include)
 
 '''
