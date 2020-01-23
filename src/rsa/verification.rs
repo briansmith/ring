@@ -14,8 +14,13 @@
 
 //! Verification of RSA signatures.
 
-use super::{bigint, parse_public_key, RsaParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
-use crate::{bits, cpu, digest, error, sealed, signature};
+use super::{parse_public_key, RsaParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
+use crate::{
+    arithmetic::{bigint, montgomery::Unencoded},
+    bits, cpu, digest, error,
+    limb::LIMB_BYTES,
+    sealed, signature,
+};
 
 use untrusted;
 
@@ -282,12 +287,30 @@ pub(crate) fn verify_rsa_(
 
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
-    let decoded = &mut decoded[..n_bits.as_usize_bytes_rounded_up()];
-    m.fill_be_bytes(decoded);
+    let decoded = fill_be_bytes_n(m, n_bits, &mut decoded);
 
     // Verify the padded message is correct.
     let m_hash = digest::digest(params.padding_alg.digest_alg(), msg.as_slice_less_safe());
     untrusted::Input::from(decoded).read_all(error::Unspecified, |m| {
         params.padding_alg.verify(&m_hash, m, n_bits)
     })
+}
+
+/// Returns the big-endian representation of `elem` that is
+/// the same length as the minimal-length big-endian representation of
+/// the modulus `n`.
+///
+/// `n_bits` must be the bit length of the public modulus `n`.
+fn fill_be_bytes_n(
+    elem: bigint::Elem<N, Unencoded>,
+    n_bits: bits::BitLength,
+    out: &mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
+) -> &[u8] {
+    let n_bytes = n_bits.as_usize_bytes_rounded_up();
+    let n_bytes_padded = ((n_bytes + (LIMB_BYTES - 1)) / LIMB_BYTES) * LIMB_BYTES;
+    let out = &mut out[..n_bytes_padded];
+    elem.fill_be_bytes(out);
+    let (padding, out) = out.split_at(n_bytes_padded - n_bytes);
+    assert!(padding.iter().all(|&b| b == 0));
+    out
 }
