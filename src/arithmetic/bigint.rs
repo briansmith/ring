@@ -853,8 +853,9 @@ pub fn elem_exp_consttime<M>(
                 i: Window,
             ) -> bssl::Result;
         }
+        let num_limbs = r.limbs.len();
         Result::from(unsafe {
-            LIMBS_select_512_32(r.limbs.as_mut_ptr(), table.as_ptr(), r.limbs.len(), i)
+            LIMBS_select_512_32(r.limbs.as_mut_ptr(), table.as_ptr(), num_limbs, i)
         })
         .unwrap();
     }
