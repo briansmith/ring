@@ -224,10 +224,11 @@ fn integrated_aes_gcm<'a>(
                 ) -> c::size_t;
             }
             unsafe {
+                let (input, output, in_out_len) = super::aliasing_pointers(in_out, in_prefix_len);
                 GFp_aesni_gcm_decrypt(
-                    in_out[in_prefix_len..].as_ptr(),
-                    in_out.as_mut_ptr(),
-                    in_out.len() - in_prefix_len,
+                    input,
+                    output,
+                    in_out_len,
                     aes_key.inner_less_safe(),
                     ctr,
                     gcm_ctx,
@@ -246,10 +247,11 @@ fn integrated_aes_gcm<'a>(
                 ) -> c::size_t;
             }
             unsafe {
+                let (input, output, in_out_len) = super::aliasing_pointers(in_out, 0);
                 GFp_aesni_gcm_encrypt(
-                    in_out.as_ptr(),
-                    in_out.as_mut_ptr(),
-                    in_out.len(),
+                    input,
+                    output,
+                    in_out_len,
                     aes_key.inner_less_safe(),
                     ctr,
                     gcm_ctx,

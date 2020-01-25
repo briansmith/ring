@@ -23,7 +23,7 @@
 
 use self::block::{Block, BLOCK_LEN};
 use crate::{constant_time, cpu, error, hkdf, polyfill};
-use core::ops::RangeFrom;
+use core::{convert::TryInto, ops::RangeFrom};
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -675,3 +675,21 @@ mod nonce;
 mod poly1305;
 pub mod quic;
 mod shift;
+
+/// Returns two aliasing pointers to `in_out`, offset by `in_prefix_len`, along
+/// with the length if the input less `in_prefix_len`.
+#[inline]
+unsafe fn aliasing_pointers(
+    in_out: &mut [u8],
+    in_prefix_len: usize,
+) -> (*const u8, *mut u8, usize) {
+    // Compute `in_out.len()` before calling `in_out.as_mut_ptr()`.
+    let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
+
+    let output: *mut u8 = in_out.as_mut_ptr();
+
+    // Construct the `const` pointer from the `mut` pointer.
+    let input: *const u8 = output.offset(in_prefix_len.try_into().unwrap());
+
+    (input, output, in_out_len)
+}

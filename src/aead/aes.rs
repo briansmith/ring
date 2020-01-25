@@ -161,13 +161,10 @@ impl Key {
         direction: Direction,
         ctr: &mut Counter,
     ) {
-        let output: *mut u8 = in_out.as_mut_ptr();
         let in_prefix_len = match direction {
             Direction::Opening { in_prefix_len } => in_prefix_len,
             Direction::Sealing => 0,
         };
-        let input: *const u8 = in_out[in_prefix_len..].as_ptr();
-
         let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
 
         assert_eq!(in_out_len % BLOCK_LEN, 0);
@@ -187,6 +184,7 @@ impl Key {
                     );
                 }
                 unsafe {
+                    let (input, output, _) = super::aliasing_pointers(in_out, in_prefix_len);
                     GFp_aes_hw_ctr32_encrypt_blocks(input, output, blocks, &self.inner, ctr);
                 }
                 ctr.increment_by_less_safe(blocks_u32);
@@ -204,6 +202,7 @@ impl Key {
                     );
                 }
                 unsafe {
+                    let (input, output, _) = super::aliasing_pointers(in_out, in_prefix_len);
                     GFp_vpaes_ctr32_encrypt_blocks(input, output, blocks, &self.inner, ctr);
                 }
                 ctr.increment_by_less_safe(blocks_u32);
@@ -221,6 +220,7 @@ impl Key {
                     );
                 }
                 unsafe {
+                    let (input, output, _) = super::aliasing_pointers(in_out, in_prefix_len);
                     GFp_bsaes_ctr32_encrypt_blocks(input, output, blocks, &self.inner, ctr);
                 }
                 ctr.increment_by_less_safe(blocks_u32);
