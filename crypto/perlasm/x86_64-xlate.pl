@@ -1253,10 +1253,9 @@ while(defined(my $line=<>)) {
 
 print "\n$current_segment\tENDS\n"	if ($current_segment && $masm);
 print "END\n"				if ($masm);
+print "#endif\n"			if ($gas);
 # See https://www.airs.com/blog/archives/518.
 print ".section\t.note.GNU-stack,\"\",\@progbits\n" if ($elf);
-print "#endif\n"			if ($gas);
-
 
 close STDOUT or die "error closing STDOUT";
 
