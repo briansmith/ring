@@ -239,6 +239,7 @@ const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
     ("x86", None, "elf"),
     ("arm", Some("ios"), "ios32"),
     ("arm", None, "linux32"),
+    ("mips64", None, "linux64"),
 ];
 
 const WINDOWS: &str = "windows";
