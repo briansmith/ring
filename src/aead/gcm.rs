@@ -37,6 +37,7 @@ impl Key {
                 }
             }
 
+            #[cfg(not(target_arch = "mips64"))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_init_clmul(key: &mut Key, h: &[u64; 2]);
@@ -119,6 +120,7 @@ impl Context {
                 }
             }
 
+            #[cfg(not(target_arch = "mips64"))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_ghash_clmul(
@@ -171,6 +173,7 @@ impl Context {
         let key_aliasing: *const GCM128_KEY = &self.inner.key;
 
         match detect_implementation(self.cpu_features) {
+            #[cfg(not(target_arch = "mips64"))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_gmult_clmul(ctx: &mut Context, Htable: *const GCM128_KEY);
@@ -212,6 +215,7 @@ impl Context {
     #[cfg(target_arch = "x86_64")]
     pub(super) fn is_avx2(&self, cpu_features: cpu::Features) -> bool {
         match detect_implementation(cpu_features) {
+            #[cfg(not(target_arch = "mips64"))]
             Implementation::CLMUL => has_avx_movbe(self.cpu_features),
             _ => false,
         }
@@ -243,6 +247,7 @@ struct GCM128_CONTEXT {
 }
 
 enum Implementation {
+    #[cfg(not(target_arch = "mips64"))]
     CLMUL,
 
     #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
@@ -252,6 +257,13 @@ enum Implementation {
     Fallback,
 }
 
+#[cfg(target_arch = "mips64")]
+#[inline]
+fn detect_implementation(_cpu: cpu::Features) -> Implementation {
+    Implementation::Fallback
+}
+
+#[cfg(not(target_arch = "mips64"))]
 #[inline]
 fn detect_implementation(cpu: cpu::Features) -> Implementation {
     if (cpu::intel::FXSR.available(cpu) && cpu::intel::PCLMULQDQ.available(cpu))
