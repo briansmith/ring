@@ -48,6 +48,7 @@ impl Key {
         };
 
         match detect_implementation(cpu_features) {
+            #[cfg(not(target_arch = "mips64"))]
             Implementation::HWAES => {
                 extern "C" {
                     fn GFp_aes_hw_set_encrypt_key(
@@ -114,6 +115,7 @@ impl Key {
         let aliasing_mut: *mut Block = &mut a;
 
         match detect_implementation(self.cpu_features) {
+            #[cfg(not(target_arch = "mips64"))]
             Implementation::HWAES => {
                 extern "C" {
                     fn GFp_aes_hw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
@@ -161,11 +163,13 @@ impl Key {
         direction: Direction,
         ctr: &mut Counter,
     ) {
+        #[cfg(not(target_arch = "mips64"))]
         let output: *mut u8 = in_out.as_mut_ptr();
         let in_prefix_len = match direction {
             Direction::Opening { in_prefix_len } => in_prefix_len,
             Direction::Sealing => 0,
         };
+        #[cfg(not(target_arch = "mips64"))]
         let input: *const u8 = in_out[in_prefix_len..].as_ptr();
 
         let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
@@ -176,6 +180,7 @@ impl Key {
         assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
 
         match detect_implementation(self.cpu_features) {
+            #[cfg(not(target_arch = "mips64"))]
             Implementation::HWAES => {
                 extern "C" {
                     fn GFp_aes_hw_ctr32_encrypt_blocks(
@@ -280,6 +285,7 @@ pub type Counter = nonce::Counter<BigEndian<u32>>;
 #[repr(C)] // Only so `Key` can be `#[repr(C)]`
 #[derive(Clone, Copy)]
 pub enum Implementation {
+    #[cfg(not(target_arch = "mips64"))]
     HWAES = 1,
 
     #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
@@ -292,6 +298,12 @@ pub enum Implementation {
     Fallback = 4,
 }
 
+#[cfg(target_arch = "mips64")]
+fn detect_implementation(_cpu_features: cpu::Features) -> Implementation {
+    Implementation::Fallback
+}
+
+#[cfg(not(target_arch = "mips64"))]
 fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     if cpu::intel::AES.available(cpu_features) || cpu::arm::AES.available(cpu_features) {
         return Implementation::HWAES;
