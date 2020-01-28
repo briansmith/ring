@@ -46,6 +46,7 @@ const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
+const MIPS64: &str = "mips64";
 const NEVER: &str = "Don't ever build this file.";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -109,6 +110,8 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+
+    (&[MIPS64], "crypto/fipsmodule/bn/asm/mips-mont.pl"),
 ];
 
 const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
