@@ -1485,6 +1485,7 @@ enum tls13_server_hs_state_t {
   state13_send_server_hello,
   state13_send_server_certificate_verify,
   state13_send_server_finished,
+  state13_send_half_rtt_ticket,
   state13_read_second_client_flight,
   state13_process_end_of_early_data,
   state13_read_client_certificate,

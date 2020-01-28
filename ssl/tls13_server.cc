@@ -697,6 +697,13 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  hs->tls13_state = state13_send_half_rtt_ticket;
+  return ssl_hs_ok;
+}
+
+static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+
   if (ssl->s3->early_data_accepted) {
     // We defer releasing the early traffic secret to QUIC to this point. First,
     // the early traffic secret is derived before ECDHE, but ECDHE may later
@@ -986,6 +993,9 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
       case state13_send_server_finished:
         ret = do_send_server_finished(hs);
         break;
+      case state13_send_half_rtt_ticket:
+        ret = do_send_half_rtt_ticket(hs);
+        break;
       case state13_read_second_client_flight:
         ret = do_read_second_client_flight(hs);
         break;
@@ -1040,6 +1050,8 @@ const char *tls13_server_handshake_state(SSL_HANDSHAKE *hs) {
       return "TLS 1.3 server send_server_hello";
     case state13_send_server_certificate_verify:
       return "TLS 1.3 server send_server_certificate_verify";
+    case state13_send_half_rtt_ticket:
+      return "TLS 1.3 server send_half_rtt_ticket";
     case state13_send_server_finished:
       return "TLS 1.3 server send_server_finished";
     case state13_read_second_client_flight:
