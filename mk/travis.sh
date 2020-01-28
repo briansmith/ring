@@ -37,6 +37,9 @@ armv7-linux-androideabi)
   # export ANDROID_SYSTEM_IMAGE="system-images;android-18;default;armeabi-v7a"
   export ANDROID_ABI=armeabi-v7a
   ;;
+mips64el-unknown-linux-gnuabi64)
+  export QEMU_LD_PREFIX=/usr/mips64el-linux-gnuabi64
+  ;;
 esac
 
 if [[ ! -z "${ANDROID_ABI-}" ]]; then
@@ -49,12 +52,14 @@ if [[ ! -z "${ANDROID_ABI-}" ]]; then
   rustup default
 fi
 
-if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
-  # We need a newer QEMU than Travis has.
-  # sudo is needed until the PPA and its packages are whitelisted.
-  # See https://github.com/travis-ci/apt-source-whitelist/issues/271
-  sudo add-apt-repository ppa:pietro-monteiro/qemu-backport -y
-  sudo apt-get update -qq
+if [[ "$TARGET_X" =~ ^(arm|aarch64|mips) && ! "$TARGET_X" =~ android ]]; then
+  if [[ "$TRAVIS_DIST" == "trusty" ]]; then
+    # We need a newer QEMU than Travis has.
+    # sudo is needed until the PPA and its packages are whitelisted.
+    # See https://github.com/travis-ci/apt-source-whitelist/issues/271
+    sudo add-apt-repository ppa:pietro-monteiro/qemu-backport -y
+    sudo apt-get update -qq
+  fi
   sudo apt-get install --no-install-recommends binfmt-support qemu-user-binfmt -y
 fi
 
