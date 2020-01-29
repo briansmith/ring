@@ -11,9 +11,6 @@
 
 #include <string.h>
 
-#include "crypto/chacha.h"
-#include "crypto/ctype.h"
-
 typedef unsigned int u32;
 typedef unsigned char u8;
 typedef union {
@@ -79,18 +76,10 @@ void ChaCha20_ctr32(unsigned char *out, const unsigned char *inp,
     size_t todo, i;
 
     /* sigma constant "expand 32-byte k" in little-endian encoding */
-    input[0] = ((u32)ossl_toascii('e')) | ((u32)ossl_toascii('x') << 8)
-               | ((u32)ossl_toascii('p') << 16)
-               | ((u32)ossl_toascii('a') << 24);
-    input[1] = ((u32)ossl_toascii('n')) | ((u32)ossl_toascii('d') << 8)
-               | ((u32)ossl_toascii(' ') << 16)
-               | ((u32)ossl_toascii('3') << 24);
-    input[2] = ((u32)ossl_toascii('2')) | ((u32)ossl_toascii('-') << 8)
-               | ((u32)ossl_toascii('b') << 16)
-               | ((u32)ossl_toascii('y') << 24);
-    input[3] = ((u32)ossl_toascii('t')) | ((u32)ossl_toascii('e') << 8)
-               | ((u32)ossl_toascii(' ') << 16)
-               | ((u32)ossl_toascii('k') << 24);
+    input[0] = 0x61707865;
+    input[1] = 0x3320646e;
+    input[2] = 0x79622d32;
+    input[3] = 0x6b206574;
 
     input[4] = key[0];
     input[5] = key[1];
