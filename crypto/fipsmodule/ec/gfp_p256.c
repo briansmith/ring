@@ -52,6 +52,18 @@ void GFp_nistz256_neg(Elem r, const Elem a) {
     r[i] = constant_time_select_w(is_zero, 0, r[i]);
   }
 }
+
+static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
+  static const BN_ULONG Q_N0[] = {
+    BN_MONT_CTX_N0(0x0, 0x1)
+  };
+  /* XXX: Not (clearly) constant-time; inefficient.*/
+  GFp_bn_mul_mont(r, a, b, Q, Q_N0, P256_LIMBS);
+}
+
+void GFp_nistz256_mul_mont(Elem r, const Elem a, const Elem b) {
+  elem_mul_mont(r, a, b);
+}
 #endif
 
 #if !defined(OPENSSL_X86_64)
