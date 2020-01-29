@@ -45,28 +45,6 @@ matrix:
         - build-tools-26.0.2
       dist: trusty
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=armv7a-linux-androideabi18-clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
-      rust: stable
-      os: linux
-      language: android
-      android:
-        components:
-        - android-18
-        - build-tools-26.0.2
-        - sys-img-armeabi-v7a-android-18
-      dist: trusty
-
-    - env: TARGET_X=armv7-linux-androideabi CC_X=armv7a-linux-androideabi18-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
-      rust: stable
-      os: linux
-      language: android
-      android:
-        components:
-        - android-18
-        - build-tools-26.0.2
-        - sys-img-armeabi-v7a-android-18
-      dist: trusty
-
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
@@ -259,28 +237,6 @@ matrix:
         components:
         - android-21
         - build-tools-26.0.2
-      dist: trusty
-
-    - env: TARGET_X=armv7-linux-androideabi CC_X=armv7a-linux-androideabi18-clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
-      rust: nightly
-      os: linux
-      language: android
-      android:
-        components:
-        - android-18
-        - build-tools-26.0.2
-        - sys-img-armeabi-v7a-android-18
-      dist: trusty
-
-    - env: TARGET_X=armv7-linux-androideabi CC_X=armv7a-linux-androideabi18-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
-      rust: nightly
-      os: linux
-      language: android
-      android:
-        components:
-        - android-18
-        - build-tools-26.0.2
-        - sys-img-armeabi-v7a-android-18
       dist: trusty
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
@@ -490,28 +446,6 @@ matrix:
         components:
         - android-21
         - build-tools-26.0.2
-      dist: trusty
-
-    - env: TARGET_X=armv7-linux-androideabi CC_X=armv7a-linux-androideabi18-clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
-      rust: beta
-      os: linux
-      language: android
-      android:
-        components:
-        - android-18
-        - build-tools-26.0.2
-        - sys-img-armeabi-v7a-android-18
-      dist: trusty
-
-    - env: TARGET_X=armv7-linux-androideabi CC_X=armv7a-linux-androideabi18-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
-      rust: beta
-      os: linux
-      language: android
-      android:
-        components:
-        - android-18
-        - build-tools-26.0.2
-        - sys-img-armeabi-v7a-android-18
       dist: trusty
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
