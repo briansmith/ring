@@ -27,10 +27,14 @@ arm-unknown-linux-gnueabihf)
   export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
   ;;
 aarch64-linux-android)
+  # XXX: Tests are built but not run because we couldn't get the emulator to work; see
+  # https://github.com/briansmith/ring/issues/838
   export ANDROID_ABI=aarch64
   ;;
 armv7-linux-androideabi)
-  export ANDROID_SYSTEM_IMAGE="system-images;android-18;default;armeabi-v7a"
+  # XXX: Tests are built but not run because we couldn't get the emulator to work; see
+  # https://github.com/briansmith/ring/issues/838
+  # export ANDROID_SYSTEM_IMAGE="system-images;android-18;default;armeabi-v7a"
   export ANDROID_ABI=armeabi-v7a
   ;;
 esac

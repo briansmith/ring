@@ -73,7 +73,7 @@ targets = {
     ],
     "linux" : [
         "aarch64-linux-android",
-        # TODO: Emulator is broken "armv7-linux-androideabi",
+        "armv7-linux-androideabi",
         "x86_64-unknown-linux-gnu",
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
