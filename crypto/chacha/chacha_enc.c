@@ -67,7 +67,7 @@ static void chacha20_core(chacha_buf *output, const u32 input[16])
     }
 }
 
-void ChaCha20_ctr32(unsigned char *out, const unsigned char *inp,
+void GFp_ChaCha20_ctr32(unsigned char *out, const unsigned char *inp,
                     size_t len, const unsigned int key[8],
                     const unsigned int counter[4])
 {
