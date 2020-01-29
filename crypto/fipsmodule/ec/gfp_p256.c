@@ -32,6 +32,28 @@ void GFp_nistz256_sqr_mont(Elem r, const Elem a) {
 }
 #endif
 
+#if defined(OPENSSL_MIPS64)
+
+static const BN_ULONG Q[P256_LIMBS] = {
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0x00000000, 0xffffffff),
+  TOBN(0x00000000, 0x00000000),
+  TOBN(0xffffffff, 0x00000001),
+};
+
+void GFp_nistz256_neg(Elem r, const Elem a) {
+  Limb is_zero = LIMBS_are_zero(a, P256_LIMBS);
+  Carry borrow = limbs_sub(r, Q, a, P256_LIMBS);
+#if defined(NDEBUG)
+  (void)borrow;
+#endif
+  ASSERT(borrow == 0);
+  for (size_t i = 0; i < P256_LIMBS; ++i) {
+    r[i] = constant_time_select_w(is_zero, 0, r[i]);
+  }
+}
+#endif
+
 #if !defined(OPENSSL_X86_64)
 void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
