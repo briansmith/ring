@@ -284,8 +284,8 @@ static const uint32_t rcon[] = {
 // |bits| must be 128 or 256. 192-bit keys are not supported.
 int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
                                  AES_KEY *aeskey) {
-  assert(key != NULL);
-  assert(aeskey != NULL);
+  ASSERT(key != NULL);
+  ASSERT(aeskey != NULL);
 
   if (bits != 128 && bits != 256) {
     return -2;
@@ -320,7 +320,7 @@ int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
     }
   }
 
-  assert(bits == 256);
+  ASSERT(bits == 256);
   rk[4] = from_be_u32_ptr(key + 16);
   rk[5] = from_be_u32_ptr(key + 20);
   rk[6] = from_be_u32_ptr(key + 24);
@@ -355,7 +355,7 @@ void GFp_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   const uint32_t *rk;
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
 
-  assert(in && out && key);
+  ASSERT(in && out && key);
   rk = key->rd_key;
 
   // map byte array block to cipher state
