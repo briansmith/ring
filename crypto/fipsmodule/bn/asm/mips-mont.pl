@@ -144,8 +144,7 @@ $code.=<<___;
 	slt	$at,$num,4
 	bnez	$at,1f
 	li	$t0,0
-	slt	$at,$num,17	# on in-order CPU
-	bnez	$at,GFp_bn_mul_mont_internal
+	b	GFp_bn_mul_mont_internal
 	nop
 1:	jr	$ra
 	li	$a0,0
