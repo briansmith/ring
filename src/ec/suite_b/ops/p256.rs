@@ -123,12 +123,38 @@ fn p256_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
     acc
 }
 
+#[cfg(not(target_arch = "mips64"))]
 fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
     let mut r = Point::new_at_infinity();
     unsafe {
         GFp_nistz256_point_mul_base(r.xyz.as_mut_ptr(), g_scalar.limbs.as_ptr());
     }
     r
+}
+
+#[cfg(target_arch = "mips64")]
+fn p256_point_mul_base_impl(a: &Scalar) -> Point {
+    // XXX: Not efficient. TODO: Precompute multiples of the generator.
+    static P256_GENERATOR: (Elem<R>, Elem<R>) = (
+        Elem {
+            limbs: p256_limbs![
+                0x18a9143c, 0x79e730d4, 0x5fedb601, 0x75ba95fc,
+                0x77622510, 0x79fb732b, 0xa53755c6, 0x18905f76
+            ],
+            m: PhantomData,
+            encoding: PhantomData,
+        },
+        Elem {
+            limbs: p256_limbs![
+                0xce95560a, 0xddf25357, 0xba19e45c, 0x8b4ab8e4,
+                0xdd21f325, 0xd2e88688, 0x25885d85, 0x8571ff18
+            ],
+            m: PhantomData,
+            encoding: PhantomData,
+        },
+    );
+
+    PRIVATE_KEY_OPS.point_mul(a, &P256_GENERATOR)
 }
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
@@ -318,6 +344,7 @@ extern "C" {
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
     );
+    #[cfg(not(target_arch = "mips64"))]
     fn GFp_nistz256_point_mul_base(
         r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
         g_scalar: *const Limb, // [COMMON_OPS.num_limbs]

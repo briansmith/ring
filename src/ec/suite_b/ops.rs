@@ -793,6 +793,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "mips64"))]
     fn p256_point_sum_mixed_test() {
         extern "C" {
             fn GFp_nistz256_point_add_affine(
@@ -810,6 +811,7 @@ mod tests {
 
     // XXX: There is no `GFp_nistz384_point_add_affine()`.
 
+    #[cfg(not(target_arch = "mips64"))]
     fn point_sum_mixed_test(
         ops: &PrivateKeyOps,
         point_add_affine: unsafe extern "C" fn(
@@ -1045,10 +1047,12 @@ mod tests {
         p
     }
 
+    #[cfg(not(target_arch = "mips64"))]
     struct AffinePoint {
         xy: [Limb; 2 * MAX_LIMBS],
     }
 
+    #[cfg(not(target_arch = "mips64"))]
     fn consume_affine_point(
         ops: &PrivateKeyOps,
         test_case: &mut test::TestCase,

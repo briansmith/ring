@@ -45,6 +45,7 @@ static const Limb ONE[P256_LIMBS] = {
 /* Precomputed tables for the default generator */
 #include "ecp_nistz256_table.inl"
 
+#ifndef OPENSSL_MIPS64
 /* This assumes that |x| and |y| have been each been reduced to their minimal
  * unique representations. */
 static Limb is_infinity(const Limb x[P256_LIMBS],
@@ -55,6 +56,7 @@ static Limb is_infinity(const Limb x[P256_LIMBS],
   }
   return constant_time_is_zero_w(acc);
 }
+#endif
 
 static void copy_conditional(Limb dst[P256_LIMBS],
                              const Limb src[P256_LIMBS], Limb move) {
@@ -74,8 +76,10 @@ static void copy_conditional(Limb dst[P256_LIMBS],
 }
 
 void GFp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
+#ifndef OPENSSL_MIPS64
 void GFp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                    const P256_POINT_AFFINE *b);
+#endif
 #if defined(OPENSSL_X86_64)
 void GFp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
                             const P256_POINT *b);
@@ -303,6 +307,7 @@ static inline void select_precomputed(P256_POINT_AFFINE *p, size_t i,
   copy_conditional(p->Y, neg_y, recoded_is_negative);
 }
 
+#ifndef OPENSSL_MIPS64
 void GFp_nistz256_point_mul_base(P256_POINT *r,
                                  const Limb g_scalar[P256_LIMBS]) {
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
@@ -339,3 +344,4 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
   limbs_copy(r->Y, p.Y, P256_LIMBS);
   limbs_copy(r->Z, p.Z, P256_LIMBS);
 }
+#endif
