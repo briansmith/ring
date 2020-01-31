@@ -231,6 +231,30 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
+      rust: stable
+      os: linux
+      dist: bionic
+      addons:
+        apt:
+          packages:
+            - gcc-mips64el-linux-gnuabi64
+            - libc6-dev-mips64el-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
+      rust: stable
+      os: linux
+      dist: bionic
+      addons:
+        apt:
+          packages:
+            - gcc-mips64el-linux-gnuabi64
+            - libc6-dev-mips64el-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: osx
@@ -462,6 +486,30 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+      dist: bionic
+      addons:
+        apt:
+          packages:
+            - gcc-mips64el-linux-gnuabi64
+            - libc6-dev-mips64el-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+      dist: bionic
+      addons:
+        apt:
+          packages:
+            - gcc-mips64el-linux-gnuabi64
+            - libc6-dev-mips64el-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: osx
@@ -675,6 +723,30 @@ matrix:
           packages:
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
+      rust: beta
+      os: linux
+      dist: bionic
+      addons:
+        apt:
+          packages:
+            - gcc-mips64el-linux-gnuabi64
+            - libc6-dev-mips64el-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
+      rust: beta
+      os: linux
+      dist: bionic
+      addons:
+        apt:
+          packages:
+            - gcc-mips64el-linux-gnuabi64
+            - libc6-dev-mips64el-cross
           sources:
             - ubuntu-toolchain-r-test
 
