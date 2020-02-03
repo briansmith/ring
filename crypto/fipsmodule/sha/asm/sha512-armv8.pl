@@ -50,7 +50,8 @@ if ($flavour && $flavour ne "void") {
     open OUT,"| \"$^X\" $xlate $flavour $output";
     *STDOUT=*OUT;
 } else {
-    open STDOUT,">$output";
+    open OUT,">$output";
+    *STDOUT=*OUT;
 }
 
 if ($output =~ /sha512-armv8/) {
@@ -185,9 +186,12 @@ $func:
 ___
 $code.=<<___	if ($SZ==4);
 #ifndef	__KERNEL__
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
+	adrp	x16,:pg_hi21_nc:GFp_armcap_P
+#else
 	adrp	x16,:pg_hi21:GFp_armcap_P
-	add	x16,x16,:lo12:GFp_armcap_P
-	ldr	w16,[x16]
+#endif
+	ldr	w16,[x16,:lo12:GFp_armcap_P]
 	tst	w16,#ARMV8_SHA256
 	b.ne	.Lv8_entry
 #endif
