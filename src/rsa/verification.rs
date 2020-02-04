@@ -209,7 +209,6 @@ pub struct RsaPublicKeyComponents<B: AsRef<[u8]> + core::fmt::Debug> {
     pub n: B,
 
     /// The public exponent, encoded in big-endian bytes without leading zeros.
-    /// without leading zeros.
     pub e: B,
 }
 
