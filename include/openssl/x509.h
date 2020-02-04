@@ -959,13 +959,13 @@ OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *name, int loc)
 OPENSSL_EXPORT int 		X509_NAME_add_entry(X509_NAME *name,X509_NAME_ENTRY *ne,
 			int loc, int set);
 OPENSSL_EXPORT int X509_NAME_add_entry_by_OBJ(X509_NAME *name, ASN1_OBJECT *obj, int type,
-			unsigned char *bytes, int len, int loc, int set);
+			const unsigned char *bytes, int len, int loc, int set);
 OPENSSL_EXPORT int X509_NAME_add_entry_by_NID(X509_NAME *name, int nid, int type,
-			unsigned char *bytes, int len, int loc, int set);
+			const unsigned char *bytes, int len, int loc, int set);
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(X509_NAME_ENTRY **ne,
 		const char *field, int type, const unsigned char *bytes, int len);
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_NID(X509_NAME_ENTRY **ne, int nid,
-			int type,unsigned char *bytes, int len);
+			int type, const unsigned char *bytes, int len);
 OPENSSL_EXPORT int X509_NAME_add_entry_by_txt(X509_NAME *name, const char *field, int type,
 			const unsigned char *bytes, int len, int loc, int set);
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_OBJ(X509_NAME_ENTRY **ne,
