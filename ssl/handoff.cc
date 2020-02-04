@@ -349,6 +349,10 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
   if (type == handback_tls13 || type == handback_tls13_early_data) {
     early_data_t early_data;
     // Check early data invariants.
+    if (ssl->enable_early_data ==
+        (s3->early_data_reason == ssl_early_data_disabled)) {
+      return false;
+    }
     if (hs->early_data_offered) {
       if (s3->early_data_accepted && !s3->skip_early_data) {
         early_data = early_data_accepted;
@@ -512,6 +516,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
 
     s3->early_data_reason =
         static_cast<ssl_early_data_reason_t>(early_data_reason);
+    ssl->enable_early_data = s3->early_data_reason != ssl_early_data_disabled;
     s3->skip_early_data = false;
     s3->early_data_accepted = false;
     hs->early_data_offered = false;
