@@ -2525,12 +2525,20 @@ OPENSSL_EXPORT int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store);
 OPENSSL_EXPORT void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled);
 
 // SSL_CTX_set_verify_algorithm_prefs configures |ctx| to use |prefs| as the
-// preference list when verifying signature's from the peer's long-term key. It
+// preference list when verifying signatures from the peer's long-term key. It
 // returns one on zero on error. |prefs| should not include the internal-only
 // value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
 OPENSSL_EXPORT int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx,
                                                       const uint16_t *prefs,
                                                       size_t num_prefs);
+
+// SSL_set_verify_algorithm_prefs configures |ssl| to use |prefs| as the
+// preference list when verifying signatures from the peer's long-term key. It
+// returns one on zero on error. |prefs| should not include the internal-only
+// value |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
+                                                  const uint16_t *prefs,
+                                                  size_t num_prefs);
 
 
 // Client certificate CA list.
