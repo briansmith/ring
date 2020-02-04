@@ -70,12 +70,18 @@ fuzzer_mode_shim=$(readlink -f "$fuzzer_mode_build_dir/ssl/test/bssl_shim")
 no_fuzzer_mode_shim=$(readlink -f \
     "$no_fuzzer_mode_build_dir/ssl/test/bssl_shim")
 
+fuzzer_mode_handshaker=$(readlink -f \
+    "$fuzzer_mode_build_dir/ssl/test/handshaker")
+no_fuzzer_mode_handshaker=$(readlink -f \
+    "$no_fuzzer_mode_build_dir/ssl/test/handshaker")
+
 fuzzer_mode_transcripts=$(mktemp -d '/tmp/boringssl-transcript-fuzzer-mode.XXXXXX')
 no_fuzzer_mode_transcripts=$(mktemp -d '/tmp/boringssl-transcript-no-fuzzer-mode.XXXXXX')
 
 echo Recording fuzzer-mode transcripts
 (cd ../ssl/test/runner/ && go test \
     -shim-path "$fuzzer_mode_shim" \
+    -handshaker-path "$fuzzer_mode_handshaker" \
     -transcript-dir "$fuzzer_mode_transcripts" \
     -fuzzer \
     -deterministic) || true
@@ -83,6 +89,7 @@ echo Recording fuzzer-mode transcripts
 echo Recording non-fuzzer-mode transcripts
 (cd ../ssl/test/runner/ && go test \
     -shim-path "$no_fuzzer_mode_shim" \
+    -handshaker-path "$no_fuzzer_mode_handshaker" \
     -transcript-dir "$no_fuzzer_mode_transcripts" \
     -deterministic)
 
