@@ -38,6 +38,7 @@ use ring::{
     signature::{self, KeyPair},
     test, test_file,
 };
+use std::convert::TryFrom;
 
 #[cfg(feature = "alloc")]
 #[test]
@@ -187,11 +188,15 @@ fn test_signature_rsa_pkcs1_verify() {
             let key_bits = untrusted::Input::from(&public_key)
                 .read_all(error::Unspecified, |input| {
                     der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                        let n_len = der::positive_integer(input)?
-                            .big_endian_without_leading_zero()
-                            .len();
-                        let _ = der::positive_integer(input)?;
-                        Ok(n_len * 8)
+                        let n_bytes =
+                            der::positive_integer(input)?.big_endian_without_leading_zero();
+                        let _e = der::positive_integer(input)?;
+
+                        // Because `n_bytes` has the leading zeros stripped and is big-endian, there
+                        // must be less than 8 leading zero bits.
+                        let n_leading_zeros = usize::try_from(n_bytes[0].leading_zeros()).unwrap();
+                        assert!(n_leading_zeros < 8);
+                        Ok((n_bytes.len() * 8) - n_leading_zeros)
                     })
                 })
                 .expect("invalid DER");
