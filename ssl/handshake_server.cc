@@ -1094,7 +1094,7 @@ static enum ssl_hs_wait_t do_send_server_hello_done(SSL_HANDSHAKE *hs) {
         !CBB_add_u8(&cert_types, TLS_CT_ECDSA_SIGN) ||
         (ssl_protocol_version(ssl) >= TLS1_2_VERSION &&
          (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb) ||
-          !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb))) ||
+          !tls12_add_verify_sigalgs(hs, &sigalgs_cbb))) ||
         !ssl_add_client_CA_list(hs, &body) ||
         !ssl_add_message_cbb(ssl, cbb.get())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1439,7 +1439,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
+    if (!tls12_check_peer_sigalg(hs, &alert, signature_algorithm)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }

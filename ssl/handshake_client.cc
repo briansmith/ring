@@ -1050,7 +1050,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
         return ssl_hs_error;
       }
       uint8_t alert = SSL_AD_DECODE_ERROR;
-      if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
+      if (!tls12_check_peer_sigalg(hs, &alert, signature_algorithm)) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
         return ssl_hs_error;
       }
@@ -1273,7 +1273,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     ssl_key_usage_t intended_use = (alg_k & SSL_kRSA)
                                        ? key_usage_encipherment
                                        : key_usage_digital_signature;
-    if (ssl->config->enforce_rsa_key_usage ||
+    if (hs->config->enforce_rsa_key_usage ||
         EVP_PKEY_id(hs->peer_pubkey.get()) != EVP_PKEY_RSA) {
       if (!ssl_cert_check_key_usage(&leaf_cbs, intended_use)) {
         return ssl_hs_error;

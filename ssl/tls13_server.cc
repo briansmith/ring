@@ -627,7 +627,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
         !CBB_add_u16_length_prefixed(&cert_request_extensions,
                                      &sigalg_contents) ||
         !CBB_add_u16_length_prefixed(&sigalg_contents, &sigalgs_cbb) ||
-        !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb)) {
+        !tls12_add_verify_sigalgs(hs, &sigalgs_cbb)) {
       return ssl_hs_error;
     }
 

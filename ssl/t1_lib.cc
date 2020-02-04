@@ -473,10 +473,12 @@ struct SSLSignatureAlgorithmList {
   bool skip_ed25519 = false;
 };
 
-static SSLSignatureAlgorithmList tls12_get_verify_sigalgs(const SSL *ssl) {
+static SSLSignatureAlgorithmList tls12_get_verify_sigalgs(
+    const SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
   SSLSignatureAlgorithmList ret;
-  if (!ssl->config->verify_sigalgs.empty()) {
-    ret.list = ssl->config->verify_sigalgs;
+  if (!hs->config->verify_sigalgs.empty()) {
+    ret.list = hs->config->verify_sigalgs;
   } else {
     ret.list = kVerifySignatureAlgorithms;
     ret.skip_ed25519 = !ssl->ctx->ed25519_enabled;
@@ -484,8 +486,8 @@ static SSLSignatureAlgorithmList tls12_get_verify_sigalgs(const SSL *ssl) {
   return ret;
 }
 
-bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
-  SSLSignatureAlgorithmList list = tls12_get_verify_sigalgs(ssl);
+bool tls12_add_verify_sigalgs(const SSL_HANDSHAKE *hs, CBB *out) {
+  SSLSignatureAlgorithmList list = tls12_get_verify_sigalgs(hs);
   uint16_t sigalg;
   while (list.Next(&sigalg)) {
     if (!CBB_add_u16(out, sigalg)) {
@@ -495,9 +497,9 @@ bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
   return true;
 }
 
-bool tls12_check_peer_sigalg(const SSL *ssl, uint8_t *out_alert,
+bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
                              uint16_t sigalg) {
-  SSLSignatureAlgorithmList list = tls12_get_verify_sigalgs(ssl);
+  SSLSignatureAlgorithmList list = tls12_get_verify_sigalgs(hs);
   uint16_t verify_sigalg;
   while (list.Next(&verify_sigalg)) {
     if (verify_sigalg == sigalg) {
@@ -936,7 +938,6 @@ static bool ext_ticket_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 // https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
 
 static bool ext_sigalgs_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  SSL *const ssl = hs->ssl;
   if (hs->max_version < TLS1_2_VERSION) {
     return true;
   }
@@ -945,7 +946,7 @@ static bool ext_sigalgs_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   if (!CBB_add_u16(out, TLSEXT_TYPE_signature_algorithms) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &sigalgs_cbb) ||
-      !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb) ||
+      !tls12_add_verify_sigalgs(hs, &sigalgs_cbb) ||
       !CBB_flush(out)) {
     return false;
   }
