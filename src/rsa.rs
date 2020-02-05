@@ -25,13 +25,7 @@ use crate::{
     limb,
 };
 
-mod padding;
-
-// `RSA_PKCS1_SHA1` is intentionally not exposed.
-pub use self::padding::{
-    RsaEncoding, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, RSA_PSS_SHA256,
-    RSA_PSS_SHA384, RSA_PSS_SHA512,
-};
+pub(crate) mod padding;
 
 // Maximum RSA modulus size supported for signature verification (in bytes).
 const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = bigint::MODULUS_MAX_LIMBS * limb::LIMB_BYTES;
