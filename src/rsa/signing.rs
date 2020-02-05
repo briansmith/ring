@@ -12,13 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    bigint::{self, Prime},
-    verification, RsaEncoding, N,
-};
+use super::{verification, RsaEncoding, N};
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
-    arithmetic::montgomery::R,
+    arithmetic::{
+        bigint::{self, Prime},
+        montgomery::R,
+    },
     bits, digest,
     error::{self, KeyRejected},
     io::{self, der, der_writer},
