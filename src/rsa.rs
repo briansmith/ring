@@ -55,10 +55,10 @@ fn parse_public_key(
 // Type-level representation of an RSA public modulus *n*. See
 // `super::bigint`'s modulue-level documentation.
 #[derive(Copy, Clone)]
-pub enum N {}
+enum N {}
 
 unsafe impl bigint::PublicModulus for N {}
 
-pub mod verification;
+pub(crate) mod verification;
 
-pub mod signing;
+pub(crate) mod signing;

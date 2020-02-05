@@ -24,9 +24,9 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Key {
-    pub n: bigint::Modulus<N>,
-    pub e: bigint::PublicExponent,
-    pub n_bits: bits::BitLength,
+    pub(super) n: bigint::Modulus<N>,
+    pub(super) e: bigint::PublicExponent,
+    pub(super) n_bits: bits::BitLength,
 }
 
 impl Key {
