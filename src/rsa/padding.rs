@@ -133,36 +133,43 @@ fn pkcs1_encode(pkcs1: &PKCS1, m_hash: &digest::Digest, m_out: &mut [u8]) {
 }
 
 macro_rules! rsa_pkcs1_padding {
-    ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
+    ( $vis:vis $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
       $doc_str:expr ) => {
         #[doc=$doc_str]
-        pub static $PADDING_ALGORITHM: PKCS1 = PKCS1 {
+        $vis static $PADDING_ALGORITHM: PKCS1 = PKCS1 {
             digest_alg: $digest_alg,
             digestinfo_prefix: $digestinfo_prefix,
         };
     };
 }
 
+// Intentionally not exposed except internally for signature verification. At a
+// minimum, we'd need to create test vectors for signing with it, which we
+// don't currently have. But, it's a bad idea to use SHA-1 anyway, so perhaps
+// we just won't ever expose it.
 rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
+    pub(in super) RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
     &digest::SHA1_FOR_LEGACY_USE_ONLY,
     &SHA1_PKCS1_DIGESTINFO_PREFIX,
     "PKCS#1 1.5 padding using SHA-1 for RSA signatures."
 );
+
 rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA256,
+    pub RSA_PKCS1_SHA256,
     &digest::SHA256,
     &SHA256_PKCS1_DIGESTINFO_PREFIX,
     "PKCS#1 1.5 padding using SHA-256 for RSA signatures."
 );
+
 rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA384,
+    pub RSA_PKCS1_SHA384,
     &digest::SHA384,
     &SHA384_PKCS1_DIGESTINFO_PREFIX,
     "PKCS#1 1.5 padding using SHA-384 for RSA signatures."
 );
+
 rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA512,
+    pub RSA_PKCS1_SHA512,
     &digest::SHA512,
     &SHA512_PKCS1_DIGESTINFO_PREFIX,
     "PKCS#1 1.5 padding using SHA-512 for RSA signatures."
@@ -479,30 +486,32 @@ fn pss_digest(
 }
 
 macro_rules! rsa_pss_padding {
-    ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $doc_str:expr ) => {
+    ( $vis:vis $PADDING_ALGORITHM:ident, $digest_alg:expr, $doc_str:expr ) => {
         #[doc=$doc_str]
-        pub static $PADDING_ALGORITHM: PSS = PSS {
+        $vis static $PADDING_ALGORITHM: PSS = PSS {
             digest_alg: $digest_alg,
         };
     };
 }
 
 rsa_pss_padding!(
-    RSA_PSS_SHA256,
+    pub RSA_PSS_SHA256,
     &digest::SHA256,
     "RSA PSS padding using SHA-256 for RSA signatures.\n\nSee
                  \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
                  documentation for more details."
 );
+
 rsa_pss_padding!(
-    RSA_PSS_SHA384,
+    pub RSA_PSS_SHA384,
     &digest::SHA384,
     "RSA PSS padding using SHA-384 for RSA signatures.\n\nSee
                  \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level
                  documentation for more details."
 );
+
 rsa_pss_padding!(
-    RSA_PSS_SHA512,
+    pub RSA_PSS_SHA512,
     &digest::SHA512,
     "RSA PSS padding using SHA-512 for RSA signatures.\n\nSee
                  \"`RSA_PSS_*` Details\" in `ring::signature`'s module-level

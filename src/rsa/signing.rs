@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{verification, RsaEncoding, N};
+use super::{padding::RsaEncoding, verification, N};
+
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
     arithmetic::{
