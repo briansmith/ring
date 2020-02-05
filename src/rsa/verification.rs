@@ -208,47 +208,9 @@ rsa_params!(
              `ring::signature`'s module-level documentation for more details."
 );
 
-/// Low-level API for the verification of RSA signatures.
-///
-/// When the public key is in DER-encoded PKCS#1 ASN.1 format, it is
-/// recommended to use `ring::signature::verify()` with
-/// `ring::signature::RSA_PKCS1_*`, because `ring::signature::verify()`
-/// will handle the parsing in that case. Otherwise, this function can be used
-/// to pass in the raw bytes for the public key components as
-/// `untrusted::Input` arguments.
-//
-// There are a small number of tests that test this directly, but the
-// test coverage for this function mostly depends on the test coverage for the
-// `signature::VerificationAlgorithm` implementation for `RsaParameters`. If we
-// change that, test coverage for `verify_rsa()` will need to be reconsidered.
-// (The NIST test vectors were originally in a form that was optimized for
-// testing `verify_rsa` directly, but the testing work for RSA PKCS#1
-// verification was done during the implementation of
-// `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
-#[derive(Debug)]
-pub struct RsaPublicKeyComponents<B: AsRef<[u8]> + core::fmt::Debug> {
-    /// The public modulus, encoded in big-endian bytes without leading zeros.
-    pub n: B,
+pub use super::public::Components as RsaPublicKeyComponents;
 
-    /// The public exponent, encoded in big-endian bytes without leading zeros.
-    pub e: B,
-}
-
-impl<B: Copy> Copy for RsaPublicKeyComponents<B> where B: AsRef<[u8]> + core::fmt::Debug {}
-
-impl<B: Clone> Clone for RsaPublicKeyComponents<B>
-where
-    B: AsRef<[u8]> + core::fmt::Debug,
-{
-    fn clone(&self) -> Self {
-        Self {
-            n: self.n.clone(),
-            e: self.e.clone(),
-        }
-    }
-}
-
-impl<B> RsaPublicKeyComponents<B>
+impl<B> super::public::Components<B>
 where
     B: AsRef<[u8]> + core::fmt::Debug,
 {
@@ -256,6 +218,22 @@ where
     /// as the public key. `params` determine what algorithm parameters
     /// (padding, digest algorithm, key length range, etc.) are used in the
     /// verification.
+    ///
+    /// When the public key is in DER-encoded PKCS#1 ASN.1 format, it is
+    /// recommended to use `ring::signature::verify()` with
+    /// `ring::signature::RSA_PKCS1_*`, because `ring::signature::verify()`
+    /// will handle the parsing in that case. Otherwise, this function can be used
+    /// to pass in the raw bytes for the public key components as
+    /// `untrusted::Input` arguments.
+    //
+    // There are a small number of tests that test this directly, but the
+    // test coverage for this function mostly depends on the test coverage for the
+    // `signature::VerificationAlgorithm` implementation for `RsaParameters`. If we
+    // change that, test coverage for `verify_rsa()` will need to be reconsidered.
+    // (The NIST test vectors were originally in a form that was optimized for
+    // testing `verify_rsa` directly, but the testing work for RSA PKCS#1
+    // verification was done during the implementation of
+    // `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
     pub fn verify(
         &self,
         params: &RsaParameters,
