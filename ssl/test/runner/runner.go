@@ -8901,151 +8901,166 @@ func addSignatureAlgorithmTests() {
 				continue
 			}
 
-			var shouldSignFail, shouldVerifyFail bool
+			var shouldFail, rejectByDefault bool
 			// ecdsa_sha1 does not exist in TLS 1.3.
 			if ver.version >= VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
-				shouldSignFail = true
-				shouldVerifyFail = true
+				shouldFail = true
 			}
 			// RSA-PKCS1 does not exist in TLS 1.3.
 			if ver.version >= VersionTLS13 && hasComponent(alg.name, "PKCS1") {
-				shouldSignFail = true
-				shouldVerifyFail = true
+				shouldFail = true
 			}
 			// SHA-224 has been removed from TLS 1.3 and, in 1.3,
 			// the curve has to match the hash size.
 			if ver.version >= VersionTLS13 && alg.cert == testCertECDSAP224 {
-				shouldSignFail = true
-				shouldVerifyFail = true
+				shouldFail = true
 			}
 
-			// BoringSSL will sign SHA-1 and SHA-512 with ECDSA but not accept them.
-			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 {
-				shouldVerifyFail = true
+			// By default, BoringSSL does not enable ecdsa_sha1, ecdsa_secp521_sha512, and ed25519.
+			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 || alg.id == signatureEd25519 {
+				rejectByDefault = true
 			}
 
-			var signError, signLocalError, verifyError, verifyLocalError string
-			if shouldSignFail {
+			var signError, signLocalError, verifyError, verifyLocalError, defaultError, defaultLocalError string
+			if shouldFail {
 				signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
 				signLocalError = "remote error: handshake failure"
-			}
-			if shouldVerifyFail {
 				verifyError = ":WRONG_SIGNATURE_TYPE:"
 				verifyLocalError = "remote error"
+				rejectByDefault = true
+			}
+			if rejectByDefault {
+				defaultError = ":WRONG_SIGNATURE_TYPE:"
+				defaultLocalError = "remote error"
 			}
 
 			suffix := "-" + alg.name + "-" + ver.name
 
-			testCases = append(testCases, testCase{
-				name: "ClientAuth-Sign" + suffix,
-				config: Config{
-					MaxVersion: ver.version,
-					ClientAuth: RequireAnyClientCert,
-					VerifySignatureAlgorithms: []signatureAlgorithm{
-						fakeSigAlg1,
-						alg.id,
-						fakeSigAlg2,
-					},
-				},
-				flags: []string{
-					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-					"-enable-all-curves",
-					"-enable-ed25519",
-				},
-				shouldFail:                     shouldSignFail,
-				expectedError:                  signError,
-				expectedLocalError:             signLocalError,
-				expectedPeerSignatureAlgorithm: alg.id,
-			})
+			for _, testType := range []testType{clientTest, serverTest} {
+				prefix := "Client-"
+				if testType == serverTest {
+					prefix = "Server-"
+				}
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ClientAuth-Verify" + suffix,
-				config: Config{
-					MaxVersion:   ver.version,
-					Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-					SignSignatureAlgorithms: []signatureAlgorithm{
-						alg.id,
+				// Test the shim using the algorithm for signing.
+				signTest := testCase{
+					testType: testType,
+					name:     prefix + "Sign" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						VerifySignatureAlgorithms: []signatureAlgorithm{
+							fakeSigAlg1,
+							alg.id,
+							fakeSigAlg2,
+						},
 					},
-					Bugs: ProtocolBugs{
-						SkipECDSACurveCheck:          shouldVerifyFail,
-						IgnoreSignatureVersionChecks: shouldVerifyFail,
-						// Some signature algorithms may not be advertised.
-						IgnorePeerSignatureAlgorithmPreferences: shouldVerifyFail,
+					flags: []string{
+						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						"-enable-all-curves",
 					},
-				},
-				flags: []string{
-					"-require-any-client-certificate",
-					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-					"-enable-all-curves",
-					"-enable-ed25519",
-				},
-				// Resume the session to assert the peer signature
-				// algorithm is reported on both handshakes.
-				resumeSession:      !shouldVerifyFail,
-				shouldFail:         shouldVerifyFail,
-				expectedError:      verifyError,
-				expectedLocalError: verifyLocalError,
-			})
+					shouldFail:                     shouldFail,
+					expectedError:                  signError,
+					expectedLocalError:             signLocalError,
+					expectedPeerSignatureAlgorithm: alg.id,
+				}
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ServerAuth-Sign" + suffix,
-				config: Config{
-					MaxVersion:   ver.version,
-					CipherSuites: signingCiphers,
-					VerifySignatureAlgorithms: []signatureAlgorithm{
-						fakeSigAlg1,
-						alg.id,
-						fakeSigAlg2,
+				// Test that the shim will select the algorithm when configured to only
+				// support it.
+				negotiateTest := testCase{
+					testType: testType,
+					name:     prefix + "Sign-Negotiate" + suffix,
+					config: Config{
+						MaxVersion:                ver.version,
+						VerifySignatureAlgorithms: allAlgorithms,
 					},
-				},
-				flags: []string{
-					"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-					"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-					"-enable-all-curves",
-					"-enable-ed25519",
-				},
-				shouldFail:                     shouldSignFail,
-				expectedError:                  signError,
-				expectedLocalError:             signLocalError,
-				expectedPeerSignatureAlgorithm: alg.id,
-			})
+					flags: []string{
+						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
+						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
+						"-enable-all-curves",
+						"-signing-prefs", strconv.Itoa(int(alg.id)),
+					},
+					expectedPeerSignatureAlgorithm: alg.id,
+				}
 
-			testCases = append(testCases, testCase{
-				name: "ServerAuth-Verify" + suffix,
-				config: Config{
-					MaxVersion:   ver.version,
-					Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-					CipherSuites: signingCiphers,
-					SignSignatureAlgorithms: []signatureAlgorithm{
-						alg.id,
-					},
-					Bugs: ProtocolBugs{
-						SkipECDSACurveCheck:          shouldVerifyFail,
-						IgnoreSignatureVersionChecks: shouldVerifyFail,
-						// Some signature algorithms may not be advertised.
-						IgnorePeerSignatureAlgorithmPreferences: shouldVerifyFail,
-					},
-				},
-				flags: []string{
-					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-					"-enable-all-curves",
-					"-enable-ed25519",
-				},
-				// Resume the session to assert the peer signature
-				// algorithm is reported on both handshakes.
-				resumeSession:      !shouldVerifyFail,
-				shouldFail:         shouldVerifyFail,
-				expectedError:      verifyError,
-				expectedLocalError: verifyLocalError,
-			})
+				if testType == serverTest {
+					// TLS 1.2 servers only sign on some cipher suites.
+					signTest.config.CipherSuites = signingCiphers
+					negotiateTest.config.CipherSuites = signingCiphers
+				} else {
+					// TLS 1.2 clients only sign when the server requests certificates.
+					signTest.config.ClientAuth = RequireAnyClientCert
+					negotiateTest.config.ClientAuth = RequireAnyClientCert
+				}
+				testCases = append(testCases, signTest)
+				if ver.version >= VersionTLS12 && !shouldFail {
+					testCases = append(testCases, negotiateTest)
+				}
 
-			if !shouldVerifyFail {
-				testCases = append(testCases, testCase{
-					testType: serverTest,
-					name:     "ClientAuth-InvalidSignature" + suffix,
+				// Test the shim using the algorithm for verifying.
+				verifyTest := testCase{
+					testType: testType,
+					name:     prefix + "Verify" + suffix,
+					config: Config{
+						MaxVersion:   ver.version,
+						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+						SignSignatureAlgorithms: []signatureAlgorithm{
+							alg.id,
+						},
+						Bugs: ProtocolBugs{
+							SkipECDSACurveCheck:          shouldFail,
+							IgnoreSignatureVersionChecks: shouldFail,
+							// Some signature algorithms may not be advertised.
+							IgnorePeerSignatureAlgorithmPreferences: shouldFail,
+						},
+					},
+					flags: []string{
+						"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
+						"-enable-all-curves",
+						// The algorithm may be disabled by default, so explicitly enable it.
+						"-verify-prefs", strconv.Itoa(int(alg.id)),
+					},
+					// Resume the session to assert the peer signature
+					// algorithm is reported on both handshakes.
+					resumeSession:      !shouldFail,
+					shouldFail:         shouldFail,
+					expectedError:      verifyError,
+					expectedLocalError: verifyLocalError,
+				}
+
+				// Test whether the shim expects the algorithm enabled by default.
+				defaultTest := testCase{
+					testType: testType,
+					name:     prefix + "VerifyDefault" + suffix,
+					config: Config{
+						MaxVersion:   ver.version,
+						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
+						SignSignatureAlgorithms: []signatureAlgorithm{
+							alg.id,
+						},
+						Bugs: ProtocolBugs{
+							SkipECDSACurveCheck:          rejectByDefault,
+							IgnoreSignatureVersionChecks: rejectByDefault,
+							// Some signature algorithms may not be advertised.
+							IgnorePeerSignatureAlgorithmPreferences: rejectByDefault,
+						},
+					},
+					flags: []string{
+						"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
+						"-enable-all-curves",
+					},
+					// Resume the session to assert the peer signature
+					// algorithm is reported on both handshakes.
+					resumeSession:      !rejectByDefault,
+					shouldFail:         rejectByDefault,
+					expectedError:      defaultError,
+					expectedLocalError: defaultLocalError,
+				}
+
+				// Test whether the shim handles invalid signatures for this algorithm.
+				invalidTest := testCase{
+					testType: testType,
+					name:     prefix + "InvalidSignature" + suffix,
 					config: Config{
 						MaxVersion:   ver.version,
 						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
@@ -9057,71 +9072,29 @@ func addSignatureAlgorithmTests() {
 						},
 					},
 					flags: []string{
-						"-require-any-client-certificate",
 						"-enable-all-curves",
-						"-enable-ed25519",
+						// The algorithm may be disabled by default, so explicitly enable it.
+						"-verify-prefs", strconv.Itoa(int(alg.id)),
 					},
 					shouldFail:    true,
 					expectedError: ":BAD_SIGNATURE:",
-				})
+				}
 
-				testCases = append(testCases, testCase{
-					name: "ServerAuth-InvalidSignature" + suffix,
-					config: Config{
-						MaxVersion:   ver.version,
-						Certificates: []Certificate{getRunnerCertificate(alg.cert)},
-						CipherSuites: signingCiphers,
-						SignSignatureAlgorithms: []signatureAlgorithm{
-							alg.id,
-						},
-						Bugs: ProtocolBugs{
-							InvalidSignature: true,
-						},
-					},
-					flags: []string{
-						"-enable-all-curves",
-						"-enable-ed25519",
-					},
-					shouldFail:    true,
-					expectedError: ":BAD_SIGNATURE:",
-				})
-			}
-
-			if ver.version >= VersionTLS12 && !shouldSignFail {
-				testCases = append(testCases, testCase{
-					name: "ClientAuth-Sign-Negotiate" + suffix,
-					config: Config{
-						MaxVersion:                ver.version,
-						ClientAuth:                RequireAnyClientCert,
-						VerifySignatureAlgorithms: allAlgorithms,
-					},
-					flags: []string{
-						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-						"-enable-all-curves",
-						"-enable-ed25519",
-						"-signing-prefs", strconv.Itoa(int(alg.id)),
-					},
-					expectedPeerSignatureAlgorithm: alg.id,
-				})
-
-				testCases = append(testCases, testCase{
-					testType: serverTest,
-					name:     "ServerAuth-Sign-Negotiate" + suffix,
-					config: Config{
-						MaxVersion:                ver.version,
-						CipherSuites:              signingCiphers,
-						VerifySignatureAlgorithms: allAlgorithms,
-					},
-					flags: []string{
-						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
-						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-						"-enable-all-curves",
-						"-enable-ed25519",
-						"-signing-prefs", strconv.Itoa(int(alg.id)),
-					},
-					expectedPeerSignatureAlgorithm: alg.id,
-				})
+				if testType == serverTest {
+					// TLS 1.2 servers only verify when they request client certificates.
+					verifyTest.flags = append(verifyTest.flags, "-require-any-client-certificate")
+					defaultTest.flags = append(defaultTest.flags, "-require-any-client-certificate")
+					invalidTest.flags = append(invalidTest.flags, "-require-any-client-certificate")
+				} else {
+					// TLS 1.2 clients only verify on some cipher suites.
+					verifyTest.config.CipherSuites = signingCiphers
+					defaultTest.config.CipherSuites = signingCiphers
+					invalidTest.config.CipherSuites = signingCiphers
+				}
+				testCases = append(testCases, verifyTest, defaultTest)
+				if !shouldFail {
+					testCases = append(testCases, invalidTest)
+				}
 			}
 		}
 	}
