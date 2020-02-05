@@ -1,34 +1,40 @@
 use super::super::public;
 
 /// RSA key pair components.
-pub struct Components<B> {
+pub struct Components<Public, Private = Public> {
     /// The public key components.
-    pub public_key: public::Components<B>,
+    pub public_key: super::super::public::Components<Public>,
 
     /// The private exponent.
-    pub d: B,
+    pub d: Private,
 
     /// The first prime factor of `d`.
-    pub p: B,
+    pub p: Private,
 
     /// The second prime factor of `d`.
-    pub q: B,
+    pub q: Private,
 
     /// `p`'s public Chinese Remainder Theorem exponent.
-    pub dP: B,
+    pub dP: Private,
 
     /// `q`'s public Chinese Remainder Theorem exponent.
-    pub dQ: B,
+    pub dQ: Private,
 
     /// `q**-1 mod p`.
-    pub qInv: B,
+    pub qInv: Private,
 }
 
-impl<B> Copy for Components<B> where B: Copy {}
-
-impl<B> Clone for Components<B>
+impl<Public, Private> Copy for Components<Public, Private>
 where
-    B: Clone,
+    public::Components<Public>: Copy,
+    Private: Copy,
+{
+}
+
+impl<Public, Private> Clone for Components<Public, Private>
+where
+    public::Components<Public>: Clone,
+    Private: Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -43,9 +49,9 @@ where
     }
 }
 
-impl<B> core::fmt::Debug for Components<B>
+impl<Public, Private> core::fmt::Debug for Components<Public, Private>
 where
-    public::Components<B>: core::fmt::Debug,
+    public::Components<Public>: core::fmt::Debug,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         // Non-public components are intentionally skipped
