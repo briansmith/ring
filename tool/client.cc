@@ -137,9 +137,6 @@ static const struct argument kArguments[] = {
         "file to read from for early data.",
     },
     {
-        "-ed25519", kBooleanArgument, "Advertise Ed25519 support",
-    },
-    {
         "-http-tunnel", kOptionalArgument,
         "An HTTP proxy server to tunnel the TCP connection through",
     },
@@ -529,10 +526,6 @@ bool Client(const std::vector<std::string> &args) {
 
   if (args_map.count("-early-data") != 0) {
     SSL_CTX_set_early_data_enabled(ctx.get(), 1);
-  }
-
-  if (args_map.count("-ed25519") != 0) {
-    SSL_CTX_set_ed25519_enabled(ctx.get(), 1);
   }
 
   if (args_map.count("-debug") != 0) {

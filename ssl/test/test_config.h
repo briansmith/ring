@@ -152,7 +152,6 @@ struct TestConfig {
   bool no_op_extra_handshake = false;
   bool handshake_twice = false;
   bool allow_unknown_alpn_protos = false;
-  bool enable_ed25519 = false;
   bool use_custom_verify_callback = false;
   std::string expect_msg_callback;
   bool allow_false_start_without_alpn = false;

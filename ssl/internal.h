@@ -3309,9 +3309,6 @@ struct ssl_ctx_st {
   // protocols from the peer.
   bool allow_unknown_alpn_protos : 1;
 
-  // ed25519_enabled is whether Ed25519 is advertised in the handshake.
-  bool ed25519_enabled : 1;
-
   // false_start_allowed_without_alpn is whether False Start (if
   // |SSL_MODE_ENABLE_FALSE_START| is enabled) is allowed without ALPN.
   bool false_start_allowed_without_alpn : 1;

@@ -2518,12 +2518,6 @@ OPENSSL_EXPORT int SSL_set0_verify_cert_store(SSL *ssl, X509_STORE *store);
 // reference to |store| will be taken.
 OPENSSL_EXPORT int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store);
 
-// SSL_CTX_set_ed25519_enabled configures whether |ctx| advertises support for
-// the Ed25519 signature algorithm when using the default preference list. It is
-// disabled by default and may be enabled if the certificate verifier supports
-// Ed25519.
-OPENSSL_EXPORT void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled);
-
 // SSL_CTX_set_verify_algorithm_prefs configures |ctx| to use |prefs| as the
 // preference list when verifying signatures from the peer's long-term key. It
 // returns one on zero on error. |prefs| should not include the internal-only

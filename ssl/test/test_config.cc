@@ -128,7 +128,6 @@ const Flag<bool> kBoolFlags[] = {
     {"-no-op-extra-handshake", &TestConfig::no_op_extra_handshake},
     {"-handshake-twice", &TestConfig::handshake_twice},
     {"-allow-unknown-alpn-protos", &TestConfig::allow_unknown_alpn_protos},
-    {"-enable-ed25519", &TestConfig::enable_ed25519},
     {"-use-custom-verify-callback", &TestConfig::use_custom_verify_callback},
     {"-allow-false-start-without-alpn",
      &TestConfig::allow_false_start_without_alpn},
@@ -1257,10 +1256,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (allow_unknown_alpn_protos) {
     SSL_CTX_set_allow_unknown_alpn_protos(ssl_ctx.get(), 1);
-  }
-
-  if (enable_ed25519) {
-    SSL_CTX_set_ed25519_enabled(ssl_ctx.get(), 1);
   }
 
   if (!verify_prefs.empty()) {
