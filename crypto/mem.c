@@ -105,6 +105,10 @@ void sdallocx(void *ptr, size_t size, int flags) {
 }
 
 void *OPENSSL_malloc(size_t size) {
+  if (size + OPENSSL_MALLOC_PREFIX < size) {
+    return NULL;
+  }
+
   void *ptr = malloc(size + OPENSSL_MALLOC_PREFIX);
   if (ptr == NULL) {
     return NULL;
