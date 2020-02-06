@@ -27,10 +27,12 @@ constexpr int kHandbackVersion = 0;
 // early_data_t represents the state of early data in a more compact way than
 // the 3 bits used by the implementation.
 enum early_data_t {
-  early_data_not_offered,
-  early_data_accepted,
-  early_data_rejected_hrr,
-  early_data_skipped,
+  early_data_not_offered = 0,
+  early_data_accepted = 1,
+  early_data_rejected_hrr = 2,
+  early_data_skipped = 3,
+
+  early_data_max_value = early_data_skipped,
 };
 
 // serialize_features adds a description of features supported by this binary to
@@ -499,7 +501,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
         !CBS_get_asn1_bool(&seq, &accept_psk_mode) ||
         !CBS_get_asn1_int64(&seq, &ticket_age_skew) ||
         !CBS_get_asn1_uint64(&seq, &early_data_reason) ||
-        !CBS_get_asn1_uint64(&seq, &early_data)) {
+        early_data_reason > ssl_early_data_reason_max_value ||
+        !CBS_get_asn1_uint64(&seq, &early_data) ||
+        early_data > early_data_max_value) {
       return false;
     }
     if (type == handback_tls13_early_data &&
