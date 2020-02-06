@@ -140,7 +140,7 @@ fn nonnegative_integer<'a>(
             if input.at_end() && first_byte < min_value {
                 return Err(error::Unspecified);
             }
-            let _ = input.read_bytes_to_end();
+            input.skip_to_end();
             Ok(())
         })
     }
@@ -168,7 +168,7 @@ fn nonnegative_integer<'a>(
                     // is set.
                     return Err(error::Unspecified);
                 }
-                let _ = input.read_bytes_to_end();
+                input.skip_to_end();
                 Ok(())
             })?;
             check_minimum(r, min_value)?;
@@ -180,7 +180,7 @@ fn nonnegative_integer<'a>(
             return Err(error::Unspecified);
         }
 
-        let _ = input.read_bytes_to_end();
+        input.skip_to_end();
         check_minimum(value, min_value)?;
         Ok(value)
     })
