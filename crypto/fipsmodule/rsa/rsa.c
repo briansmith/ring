@@ -167,6 +167,22 @@ int RSA_up_ref(RSA *rsa) {
 
 unsigned RSA_bits(const RSA *rsa) { return BN_num_bits(rsa->n); }
 
+const BIGNUM *RSA_get0_n(const RSA *rsa) { return rsa->n; }
+
+const BIGNUM *RSA_get0_e(const RSA *rsa) { return rsa->e; }
+
+const BIGNUM *RSA_get0_d(const RSA *rsa) { return rsa->d; }
+
+const BIGNUM *RSA_get0_p(const RSA *rsa) { return rsa->p; }
+
+const BIGNUM *RSA_get0_q(const RSA *rsa) { return rsa->q; }
+
+const BIGNUM *RSA_get0_dmp1(const RSA *rsa) { return rsa->dmp1; }
+
+const BIGNUM *RSA_get0_dmq1(const RSA *rsa) { return rsa->dmq1; }
+
+const BIGNUM *RSA_get0_iqmp(const RSA *rsa) { return rsa->iqmp; }
+
 void RSA_get0_key(const RSA *rsa, const BIGNUM **out_n, const BIGNUM **out_e,
                   const BIGNUM **out_d) {
   if (out_n != NULL) {
