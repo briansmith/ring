@@ -2837,29 +2837,29 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
 void ssl_send_alert(SSL *ssl, int level, int desc);
 int ssl_send_alert_impl(SSL *ssl, int level, int desc);
-bool ssl3_get_message(const SSL *ssl, SSLMessage *out);
-ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
-                                      uint8_t *out_alert, Span<uint8_t> in);
-void ssl3_next_message(SSL *ssl);
+bool tls_get_message(const SSL *ssl, SSLMessage *out);
+ssl_open_record_t tls_open_handshake(SSL *ssl, size_t *out_consumed,
+                                     uint8_t *out_alert, Span<uint8_t> in);
+void tls_next_message(SSL *ssl);
 
-int ssl3_dispatch_alert(SSL *ssl);
-ssl_open_record_t ssl3_open_app_data(SSL *ssl, Span<uint8_t> *out,
-                                     size_t *out_consumed, uint8_t *out_alert,
-                                     Span<uint8_t> in);
-ssl_open_record_t ssl3_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
-                                               uint8_t *out_alert,
-                                               Span<uint8_t> in);
-int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
-                        int len);
+int tls_dispatch_alert(SSL *ssl);
+ssl_open_record_t tls_open_app_data(SSL *ssl, Span<uint8_t> *out,
+                                    size_t *out_consumed, uint8_t *out_alert,
+                                    Span<uint8_t> in);
+ssl_open_record_t tls_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
+                                              uint8_t *out_alert,
+                                              Span<uint8_t> in);
+int tls_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
+                       int len);
 
-bool ssl3_new(SSL *ssl);
-void ssl3_free(SSL *ssl);
+bool tls_new(SSL *ssl);
+void tls_free(SSL *ssl);
 
-bool ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-bool ssl3_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
-bool ssl3_add_message(SSL *ssl, Array<uint8_t> msg);
-bool ssl3_add_change_cipher_spec(SSL *ssl);
-int ssl3_flush_flight(SSL *ssl);
+bool tls_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+bool tls_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
+bool tls_add_message(SSL *ssl, Array<uint8_t> msg);
+bool tls_add_change_cipher_spec(SSL *ssl);
+int tls_flush_flight(SSL *ssl);
 
 bool dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
 bool dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);

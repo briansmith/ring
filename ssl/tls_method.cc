@@ -67,7 +67,7 @@
 
 BSSL_NAMESPACE_BEGIN
 
-static void ssl3_on_handshake_complete(SSL *ssl) {
+static void tls_on_handshake_complete(SSL *ssl) {
   // The handshake should have released its final message.
   assert(!ssl->s3->has_message);
 
@@ -81,7 +81,7 @@ static void ssl3_on_handshake_complete(SSL *ssl) {
   }
 }
 
-static bool ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
+static bool tls_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   // Cipher changes are forbidden if the current epoch has leftover data.
   if (tls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
@@ -94,7 +94,7 @@ static bool ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   return true;
 }
 
-static bool ssl3_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
+static bool tls_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   if (!tls_flush_pending_hs_data(ssl)) {
     return false;
   }
@@ -106,23 +106,23 @@ static bool ssl3_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
 
 static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     false /* is_dtls */,
-    ssl3_new,
-    ssl3_free,
-    ssl3_get_message,
-    ssl3_next_message,
-    ssl3_open_handshake,
-    ssl3_open_change_cipher_spec,
-    ssl3_open_app_data,
-    ssl3_write_app_data,
-    ssl3_dispatch_alert,
-    ssl3_init_message,
-    ssl3_finish_message,
-    ssl3_add_message,
-    ssl3_add_change_cipher_spec,
-    ssl3_flush_flight,
-    ssl3_on_handshake_complete,
-    ssl3_set_read_state,
-    ssl3_set_write_state,
+    tls_new,
+    tls_free,
+    tls_get_message,
+    tls_next_message,
+    tls_open_handshake,
+    tls_open_change_cipher_spec,
+    tls_open_app_data,
+    tls_write_app_data,
+    tls_dispatch_alert,
+    tls_init_message,
+    tls_finish_message,
+    tls_add_message,
+    tls_add_change_cipher_spec,
+    tls_flush_flight,
+    tls_on_handshake_complete,
+    tls_set_read_state,
+    tls_set_write_state,
 };
 
 static bool ssl_noop_x509_check_client_CA_names(
