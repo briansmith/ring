@@ -40,7 +40,7 @@ fn rsa_from_pkcs8_test() {
             let error = test_case.consume_optional_string("Error");
 
             match (signature::RsaKeyPair::from_pkcs8(&input), error) {
-                (Ok(_), None) => (),
+                (Ok(_), None) => {}
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
                 (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),

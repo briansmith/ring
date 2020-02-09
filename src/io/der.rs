@@ -128,7 +128,7 @@ where
     inner.read_all(error, decoder)
 }
 
-fn nonnegative_integer<'a>(
+pub(crate) fn nonnegative_integer<'a>(
     input: &mut untrusted::Reader<'a>,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
     let value = expect_tag_and_get_value(input, Tag::Integer)?;
