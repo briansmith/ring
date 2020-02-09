@@ -1499,11 +1499,11 @@ enum tls13_server_hs_state_t {
 // handback_t lists the points in the state machine where a handback can occur.
 // These are the different points at which key material is no longer needed.
 enum handback_t {
-  handback_after_session_resumption,
-  handback_after_ecdhe,
-  handback_after_handshake,
-  handback_tls13,
-  handback_tls13_early_data,
+  handback_after_session_resumption = 0,
+  handback_after_ecdhe = 1,
+  handback_after_handshake = 2,
+  handback_tls13 = 3,
+  handback_max_value = handback_tls13,
 };
 
 

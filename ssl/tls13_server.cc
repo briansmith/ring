@@ -705,17 +705,13 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   }
 
   hs->tls13_state = state13_send_half_rtt_ticket;
-  return ssl_hs_ok;
+  return hs->handback ? ssl_hs_handback : ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (ssl->s3->early_data_accepted) {
-    if (hs->handback) {
-      return ssl_hs_handback;
-    }
-
     // We defer releasing the early traffic secret to QUIC to this point. First,
     // the early traffic secret is derived before ECDHE, but ECDHE may later
     // reject 0-RTT. We only release the secret after 0-RTT is fully resolved.
@@ -827,9 +823,6 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
                              hs->client_handshake_secret())) {
     return ssl_hs_error;
-  }
-  if (hs->handback) {
-    return ssl_hs_handback;
   }
   hs->tls13_state = state13_read_client_certificate;
   return ssl_hs_ok;
