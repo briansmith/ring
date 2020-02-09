@@ -325,7 +325,7 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
   *out_mask_a = mask_a;
 }
 
-static const SSL_CIPHER *ssl3_choose_cipher(
+static const SSL_CIPHER *choose_cipher(
     SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
     const SSLCipherPreferenceList *server_pref) {
   SSL *const ssl = hs->ssl;
@@ -699,7 +699,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
   SSLCipherPreferenceList *prefs = hs->config->cipher_list
                                        ? hs->config->cipher_list.get()
                                        : ssl->ctx->cipher_list.get();
-  hs->new_cipher = ssl3_choose_cipher(hs, &client_hello, prefs);
+  hs->new_cipher = choose_cipher(hs, &client_hello, prefs);
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
