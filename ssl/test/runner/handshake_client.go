@@ -441,15 +441,18 @@ NextCipherSuite:
 			helloBytes = hello.marshal()
 		}
 
+		var appendToHello byte
 		if c.config.Bugs.PartialClientFinishedWithClientHello {
-			// Include one byte of Finished. We can compute it
-			// without completing the handshake. This assumes we
-			// negotiate TLS 1.3 with no HelloRetryRequest or
-			// CertificateRequest.
-			toWrite := make([]byte, 0, len(helloBytes)+1)
-			toWrite = append(toWrite, helloBytes...)
-			toWrite = append(toWrite, typeFinished)
-			c.writeRecord(recordTypeHandshake, toWrite)
+			appendToHello = typeFinished
+		} else if c.config.Bugs.PartialEndOfEarlyDataWithClientHello {
+			appendToHello = typeEndOfEarlyData
+		} else if c.config.Bugs.PartialSecondClientHelloAfterFirst {
+			appendToHello = typeClientHello
+		} else if c.config.Bugs.PartialClientKeyExchangeWithClientHello {
+			appendToHello = typeClientKeyExchange
+		}
+		if appendToHello != 0 {
+			c.writeRecord(recordTypeHandshake, append(helloBytes[:len(helloBytes):len(helloBytes)], appendToHello))
 		} else {
 			c.writeRecord(recordTypeHandshake, helloBytes)
 		}
@@ -613,14 +616,25 @@ NextCipherSuite:
 			generatePSKBinders(c.wireVersion, hello, pskCipherSuite, session.masterSecret, helloBytes, helloRetryRequest.marshal(), c.config)
 		}
 		secondHelloBytes = hello.marshal()
+		secondHelloBytesToWrite := secondHelloBytes
+
+		if c.config.Bugs.PartialSecondClientHelloAfterFirst {
+			// The first byte has already been sent.
+			secondHelloBytesToWrite = secondHelloBytesToWrite[1:]
+		}
 
 		if c.config.Bugs.InterleaveEarlyData {
 			c.sendFakeEarlyData(4)
-			c.writeRecord(recordTypeHandshake, secondHelloBytes[:16])
+			c.writeRecord(recordTypeHandshake, secondHelloBytesToWrite[:16])
 			c.sendFakeEarlyData(4)
-			c.writeRecord(recordTypeHandshake, secondHelloBytes[16:])
+			c.writeRecord(recordTypeHandshake, secondHelloBytesToWrite[16:])
+		} else if c.config.Bugs.PartialClientFinishedWithSecondClientHello {
+			toWrite := make([]byte, len(secondHelloBytesToWrite)+1)
+			copy(toWrite, secondHelloBytesToWrite)
+			toWrite[len(secondHelloBytesToWrite)] = typeFinished
+			c.writeRecord(recordTypeHandshake, toWrite)
 		} else {
-			c.writeRecord(recordTypeHandshake, secondHelloBytes)
+			c.writeRecord(recordTypeHandshake, secondHelloBytesToWrite)
 		}
 		c.flushHandshake()
 
@@ -1077,7 +1091,12 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 		endOfEarlyData := new(endOfEarlyDataMsg)
 		endOfEarlyData.nonEmpty = c.config.Bugs.NonEmptyEndOfEarlyData
-		c.writeRecord(recordTypeHandshake, endOfEarlyData.marshal())
+		if c.config.Bugs.PartialEndOfEarlyDataWithClientHello {
+			// The first byte has already been sent.
+			c.writeRecord(recordTypeHandshake, endOfEarlyData.marshal()[1:])
+		} else {
+			c.writeRecord(recordTypeHandshake, endOfEarlyData.marshal())
+		}
 		hs.writeClientHash(endOfEarlyData.marshal())
 	}
 
@@ -1312,7 +1331,12 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if c.config.Bugs.EarlyChangeCipherSpec < 2 {
 			hs.writeClientHash(ckx.marshal())
 		}
-		c.writeRecord(recordTypeHandshake, ckx.marshal())
+		if c.config.Bugs.PartialClientKeyExchangeWithClientHello {
+			// The first byte was already written.
+			c.writeRecord(recordTypeHandshake, ckx.marshal()[1:])
+		} else {
+			c.writeRecord(recordTypeHandshake, ckx.marshal())
+		}
 	}
 
 	if hs.serverHello.extensions.extendedMasterSecret && c.vers >= VersionTLS10 {
@@ -1843,7 +1867,12 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 	c.clientVerify = append(c.clientVerify[:0], finished.verifyData...)
 	hs.finishedBytes = finished.marshal()
 	hs.writeHash(hs.finishedBytes, seqno)
-	postCCSMsgs = append(postCCSMsgs, hs.finishedBytes)
+	if c.config.Bugs.PartialClientFinishedWithClientHello {
+		// The first byte has already been written.
+		postCCSMsgs = append(postCCSMsgs, hs.finishedBytes[1:])
+	} else {
+		postCCSMsgs = append(postCCSMsgs, hs.finishedBytes)
+	}
 
 	if c.config.Bugs.FragmentAcrossChangeCipherSpec {
 		c.writeRecord(recordTypeHandshake, postCCSMsgs[0][:5])

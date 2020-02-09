@@ -657,10 +657,48 @@ type ProtocolBugs struct {
 	// in the same record as ServerHello.
 	PartialEncryptedExtensionsWithServerHello bool
 
-	// PartialClientFinishedWithClientHello, if true, causes the TLS 1.3
-	// client to send part of Finished unencrypted in the same record as
-	// ClientHello.
+	// PartialClientFinishedWithClientHello, if true, causes the TLS 1.2
+	// or TLS 1.3 client to send part of Finished unencrypted in the same
+	// record as ClientHello.
 	PartialClientFinishedWithClientHello bool
+
+	// PartialClientFinishedWithSecondClientHello, if true, causes the
+	// TLS 1.3 client to send part of Finished unencrypted in the same
+	// record as the second ClientHello.
+	PartialClientFinishedWithSecondClientHello bool
+
+	// PartialEndOfEarlyDataWithClientHello, if true, causes the TLS 1.3
+	// client to send part of EndOfEarlyData unencrypted in the same record
+	// as ClientHello.
+	PartialEndOfEarlyDataWithClientHello bool
+
+	// PartialSecondClientHelloAfterFirst, if true, causes the TLS 1.3 client
+	// to send part of the second ClientHello in the same record as the first
+	// one.
+	PartialSecondClientHelloAfterFirst bool
+
+	// PartialClientKeyExchangeWithClientHello, if true, causes the TLS 1.2
+	// client to send part of the ClientKeyExchange in the same record as
+	// the ClientHello.
+	PartialClientKeyExchangeWithClientHello bool
+
+	// PartialNewSessionTicketWithServerHelloDone, if true, causes the TLS 1.2
+	// server to send part of the NewSessionTicket in the same record as
+	// ServerHelloDone.
+	PartialNewSessionTicketWithServerHelloDone bool
+
+	// PartialNewSessionTicketWithServerHelloDone, if true, causes the TLS 1.2
+	// server to send part of the Finshed in the same record as ServerHelloDone.
+	PartialFinishedWithServerHelloDone bool
+
+	// PartialServerHelloWithHelloRetryRequest, if true, causes the TLS 1.3
+	// server to send part of the ServerHello in the same record as
+	// HelloRetryRequest.
+	PartialServerHelloWithHelloRetryRequest bool
+
+	// TrailingDataWithFinished, if true, causes the record containing the
+	// Finished message to include an extra byte of data at the end.
+	TrailingDataWithFinished bool
 
 	// SendV2ClientHello causes the client to send a V2ClientHello
 	// instead of a normal ClientHello.

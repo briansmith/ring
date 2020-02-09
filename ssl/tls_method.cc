@@ -72,10 +72,11 @@ static void tls_on_handshake_complete(SSL *ssl) {
   assert(!ssl->s3->has_message);
 
   // During the handshake, |hs_buf| is retained. Release if it there is no
-  // excess in it. There may be excess left if there server sent Finished and
-  // HelloRequest in the same record.
-  //
-  // TODO(davidben): SChannel does not support this. Reject this case.
+  // excess in it. There should not be any excess because the handshake logic
+  // rejects unprocessed data after each Finished message. Note this means we do
+  // not allow a TLS 1.2 HelloRequest to be packed into the same record as
+  // Finished. (Schannel also rejects this.)
+  assert(!ssl->s3->hs_buf || ssl->s3->hs_buf->length == 0);
   if (ssl->s3->hs_buf && ssl->s3->hs_buf->length == 0) {
     ssl->s3->hs_buf.reset();
   }
@@ -84,7 +85,7 @@ static void tls_on_handshake_complete(SSL *ssl) {
 static bool tls_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   // Cipher changes are forbidden if the current epoch has leftover data.
   if (tls_has_unprocessed_handshake_data(ssl)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESS_HANDSHAKE_DATA);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return false;
   }
@@ -110,6 +111,7 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     tls_free,
     tls_get_message,
     tls_next_message,
+    tls_has_unprocessed_handshake_data,
     tls_open_handshake,
     tls_open_change_cipher_spec,
     tls_open_app_data,

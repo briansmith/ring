@@ -5359,6 +5359,12 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 		})
 
+		halfHelloRequestError := ":UNEXPECTED_RECORD:"
+		if config.packHandshake {
+			// If the HelloRequest is sent in the same record as the server Finished,
+			// BoringSSL rejects it before the handshake completes.
+			halfHelloRequestError = ":EXCESS_HANDSHAKE_DATA:"
+		}
 		tests = append(tests, testCase{
 			name: "SendHalfHelloRequest",
 			config: Config{
@@ -5370,7 +5376,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			sendHalfHelloRequest: true,
 			flags:                []string{"-renegotiate-ignore"},
 			shouldFail:           true,
-			expectedError:        ":UNEXPECTED_RECORD:",
+			expectedError:        halfHelloRequestError,
 		})
 
 		// NPN on client and server; results in post-handshake message.
@@ -8658,8 +8664,8 @@ func addRenegotiationTests() {
 		expectedError: ":UNEXPECTED_MESSAGE:",
 	})
 
-	// Test renegotiation works if HelloRequest and server Finished come in
-	// the same record.
+	// Test that HelloRequest is rejected if it comes in the same record as the
+	// server Finished.
 	testCases = append(testCases, testCase{
 		name: "Renegotiate-Client-Packed",
 		config: Config{
@@ -8669,11 +8675,11 @@ func addRenegotiationTests() {
 				PackHelloRequestWithFinished: true,
 			},
 		},
-		renegotiate: 1,
-		flags: []string{
-			"-renegotiate-freely",
-			"-expect-total-renegotiations", "1",
-		},
+		renegotiate:        1,
+		flags:              []string{"-renegotiate-freely"},
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
 	})
 
 	// Renegotiation is forbidden in TLS 1.3.
@@ -11504,6 +11510,47 @@ func addChangeCipherSpecTests() {
 		})
 	}
 
+	// In TLS 1.2 resumptions, the client sends ClientHello in the first flight
+	// and ChangeCipherSpec + Finished in the second flight. Test the server's
+	// behavior when the Finished message is fragmented across not only
+	// ChangeCipherSpec but also the flight boundary.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "PartialClientFinishedWithClientHello-TLS12-Resume",
+		config: Config{
+			MaxVersion: VersionTLS12,
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				PartialClientFinishedWithClientHello: true,
+			},
+		},
+		resumeSession:      true,
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
+	// In TLS 1.2 full handshakes without tickets, the server's first flight ends
+	// with ServerHelloDone and the second flight is ChangeCipherSpec + Finished.
+	// Test the client's behavior when the Finished message is fragmented across
+	// not only ChangeCipherSpec but also the flight boundary.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "PartialFinishedWithServerHelloDone",
+		config: Config{
+			MaxVersion:             VersionTLS12,
+			SessionTicketsDisabled: true,
+			Bugs: ProtocolBugs{
+				PartialFinishedWithServerHelloDone: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
 	// Test that, in DTLS, ChangeCipherSpec is not allowed when there are
 	// messages in the handshake queue. Do this by testing the server
 	// reading the client Finished, reversing the flight so Finished comes
@@ -11520,7 +11567,7 @@ func addChangeCipherSpecTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":BUFFERED_MESSAGES_ON_CIPHER_CHANGE:",
+		expectedError: ":EXCESS_HANDSHAKE_DATA:",
 	})
 
 	// Test synchronization between encryption changes and the handshake in
@@ -11534,7 +11581,7 @@ func addChangeCipherSpecTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":BUFFERED_MESSAGES_ON_CIPHER_CHANGE:",
+		expectedError: ":EXCESS_HANDSHAKE_DATA:",
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -11546,7 +11593,39 @@ func addChangeCipherSpecTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":BUFFERED_MESSAGES_ON_CIPHER_CHANGE:",
+		expectedError: ":EXCESS_HANDSHAKE_DATA:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "PartialClientFinishedWithSecondClientHello",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// Trigger a curve-based HelloRetryRequest.
+			DefaultCurves: []CurveID{},
+			Bugs: ProtocolBugs{
+				PartialClientFinishedWithSecondClientHello: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":EXCESS_HANDSHAKE_DATA:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "PartialEndOfEarlyDataWithClientHello",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		resumeConfig: &Config{
+			Bugs: ProtocolBugs{
+				PartialEndOfEarlyDataWithClientHello: true,
+				SendEarlyData:                        [][]byte{{1, 2, 3, 4}},
+				ExpectEarlyDataAccepted:              true,
+			},
+		},
+		resumeSession: true,
+		flags:         []string{"-enable-early-data"},
+		shouldFail:    true,
+		expectedError: ":EXCESS_HANDSHAKE_DATA:",
 	})
 
 	// Test that early ChangeCipherSpecs are handled correctly.
@@ -11660,6 +11739,129 @@ func addChangeCipherSpecTests() {
 		shouldFail:    true,
 		expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
 	})
+}
+
+// addEndOfFlightTests adds tests where the runner adds extra data in the final
+// record of each handshake flight. Depending on the implementation strategy,
+// this data may be carried over to the next flight (assuming no key change) or
+// may be rejected. To avoid differences with split handshakes and generally
+// reject misbehavior, BoringSSL treats this as an error. When possible, these
+// tests pull the extra data from the subsequent flight to distinguish the data
+// being carried over from a general syntax error.
+//
+// These tests are similar to tests in |addChangeCipherSpecTests| that send
+// extra data at key changes. Not all key changes are at the end of a flight and
+// not all flights end at a key change.
+func addEndOfFlightTests() {
+	// TLS 1.3 client handshakes.
+	//
+	// Data following the second TLS 1.3 ClientHello is covered by
+	// PartialClientFinishedWithClientHello,
+	// PartialClientFinishedWithSecondClientHello, and
+	// PartialEndOfEarlyDataWithClientHello in |addChangeCipherSpecTests|.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "PartialSecondClientHelloAfterFirst",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// Trigger a curve-based HelloRetryRequest.
+			DefaultCurves: []CurveID{},
+			Bugs: ProtocolBugs{
+				PartialSecondClientHelloAfterFirst: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
+	// TLS 1.3 server handshakes.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "PartialServerHelloWithHelloRetryRequest",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// P-384 requires HelloRetryRequest in BoringSSL.
+			CurvePreferences: []CurveID{CurveP384},
+			Bugs: ProtocolBugs{
+				PartialServerHelloWithHelloRetryRequest: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
+	// TLS 1.2 client handshakes.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "PartialClientKeyExchangeWithClientHello",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				PartialClientKeyExchangeWithClientHello: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
+	// TLS 1.2 server handshakes.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "PartialNewSessionTicketWithServerHelloDone",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				PartialNewSessionTicketWithServerHelloDone: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
+	for _, vers := range tlsVersions {
+		for _, testType := range []testType{clientTest, serverTest} {
+			suffix := "-Client"
+			if testType == serverTest {
+				suffix = "-Server"
+			}
+			suffix += "-" + vers.name
+
+			testCases = append(testCases, testCase{
+				testType: testType,
+				name:     "TrailingDataWithFinished" + suffix,
+				config: Config{
+					MaxVersion: vers.version,
+					Bugs: ProtocolBugs{
+						TrailingDataWithFinished: true,
+					},
+				},
+				shouldFail:         true,
+				expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+				expectedLocalError: "remote error: unexpected message",
+			})
+			testCases = append(testCases, testCase{
+				testType: testType,
+				name:     "TrailingDataWithFinished-Resume" + suffix,
+				config: Config{
+					MaxVersion: vers.version,
+				},
+				resumeConfig: &Config{
+					MaxVersion: vers.version,
+					Bugs: ProtocolBugs{
+						TrailingDataWithFinished: true,
+					},
+				},
+				resumeSession:      true,
+				shouldFail:         true,
+				expectedError:      ":EXCESS_HANDSHAKE_DATA:",
+				expectedLocalError: "remote error: unexpected message",
+			})
+		}
+	}
 }
 
 type perMessageTest struct {
@@ -15290,6 +15492,7 @@ func main() {
 	addTLS13RecordTests()
 	addAllStateMachineCoverageTests()
 	addChangeCipherSpecTests()
+	addEndOfFlightTests()
 	addWrongMessageTypeTests()
 	addTrailingMessageDataTests()
 	addTLS13HandshakeTests()

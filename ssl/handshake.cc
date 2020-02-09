@@ -471,6 +471,13 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
     ssl->s3->previous_server_finished_len = finished_len;
   }
 
+  // The Finished message should be the end of a flight.
+  if (ssl->method->has_unprocessed_handshake_data(ssl)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESS_HANDSHAKE_DATA);
+    return ssl_hs_error;
+  }
+
   ssl->method->next_message(ssl);
   return ssl_hs_ok;
 }

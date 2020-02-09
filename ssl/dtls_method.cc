@@ -80,7 +80,7 @@ static void dtls1_on_handshake_complete(SSL *ssl) {
 static bool dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   // Cipher changes are forbidden if the current epoch has leftover data.
   if (dtls_has_unprocessed_handshake_data(ssl)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESS_HANDSHAKE_DATA);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return false;
   }
@@ -112,6 +112,7 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_free,
     dtls1_get_message,
     dtls1_next_message,
+    dtls_has_unprocessed_handshake_data,
     dtls1_open_handshake,
     dtls1_open_change_cipher_spec,
     dtls1_open_app_data,

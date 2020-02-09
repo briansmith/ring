@@ -5536,7 +5536,7 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
   ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_SSL);
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_SSL);
-  EXPECT_EQ(ERR_GET_REASON(err), SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
+  EXPECT_EQ(ERR_GET_REASON(err), SSL_R_EXCESS_HANDSHAKE_DATA);
 
   // The client sends an alert in response to this.
   ASSERT_TRUE(transport_->client()->has_alert());
