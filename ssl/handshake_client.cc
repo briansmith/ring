@@ -461,11 +461,6 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
       !tls13_derive_early_secret(hs)) {
     return ssl_hs_error;
   }
-  if (ssl->quic_method == nullptr &&
-      !tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_seal,
-                             ssl->session.get(), hs->early_traffic_secret())) {
-    return ssl_hs_error;
-  }
 
   // Stash the early data session, so connection properties may be queried out
   // of it.
@@ -496,7 +491,9 @@ static enum ssl_hs_wait_t do_early_reverify_server_certificate(SSL_HANDSHAKE *hs
 
   // Defer releasing the 0-RTT key to after certificate reverification, so the
   // QUIC implementation does not accidentally write data too early.
-  if (!tls13_set_early_secret_for_quic(hs)) {
+  if (!tls13_set_traffic_key(hs->ssl, ssl_encryption_early_data, evp_aead_seal,
+                             hs->early_session.get(),
+                             hs->early_traffic_secret())) {
     return ssl_hs_error;
   }
 

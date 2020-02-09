@@ -3133,10 +3133,11 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // When configured for QUIC, |SSL_do_handshake| will drive the handshake as
 // before, but it will not use the configured |BIO|. It will call functions on
 // |SSL_QUIC_METHOD| to configure secrets and send data. If data is needed from
-// the peer, it will return |SSL_ERROR_WANT_READ|. When received, the caller
-// should call |SSL_provide_quic_data| and then |SSL_do_handshake| to continue
-// the handshake. After the handshake is complete, the caller should call
-// |SSL_provide_quic_data| for any post-handshake data, followed by
+// the peer, it will return |SSL_ERROR_WANT_READ|. As the caller receives data
+// it can decrypt, it calls |SSL_provide_quic_data|. Subsequent
+// |SSL_do_handshake| calls will then consume that data and progress the
+// handshake. After the handshake is complete, the caller should continue to
+// call |SSL_provide_quic_data| for any post-handshake data, followed by
 // |SSL_process_quic_post_handshake| to process it. It is an error to call
 // |SSL_read| and |SSL_write| in QUIC.
 //
@@ -3146,13 +3147,6 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // |SSL_do_handshake| again to consume the remaining handshake messages and
 // confirm the handshake. As a client, |SSL_ERROR_EARLY_DATA_REJECTED| and
 // |SSL_reset_early_data_reject| behave as usual.
-//
-// Note that secrets for an encryption level may be available to QUIC before the
-// level is active in TLS. Callers should use |SSL_quic_read_level| to determine
-// the active read level for |SSL_provide_quic_data|. |SSL_do_handshake| will
-// pass the active write level to |SSL_QUIC_METHOD| when writing data. Callers
-// can use |SSL_quic_write_level| to query the active write level when
-// generating their own errors.
 //
 // See https://tools.ietf.org/html/draft-ietf-quic-tls-15#section-4.1 for more
 // details.
@@ -3176,31 +3170,51 @@ enum ssl_encryption_level_t BORINGSSL_ENUM_INT {
 
 // ssl_quic_method_st (aka |SSL_QUIC_METHOD|) describes custom QUIC hooks.
 struct ssl_quic_method_st {
-  // set_encryption_secrets configures the read and write secrets for the given
-  // encryption level. This function will always be called before an encryption
-  // level other than |ssl_encryption_initial| is used. Note, however, that
-  // secrets for a level may be configured before TLS is ready to send or accept
-  // data at that level.
+  // set_read_secret configures the read secret and cipher suite for the given
+  // encryption level. It returns one on success and zero to terminate the
+  // handshake with an error. It will be called at most once per encryption
+  // level.
   //
-  // When reading packets at a given level, the QUIC implementation must send
-  // ACKs at the same level, so this function provides read and write secrets
-  // together. The exception is |ssl_encryption_early_data|, where secrets are
-  // only available in the client to server direction. The other secret will be
-  // NULL. The server acknowledges such data at |ssl_encryption_application|,
-  // which will be configured in the same |SSL_do_handshake| call.
+  // BoringSSL will not release read keys before QUIC may use them. Once a level
+  // has been initialized, QUIC may begin processing data from it. Handshake
+  // data should be passed to |SSL_provide_quic_data| and application data (if
+  // |level| is |ssl_encryption_early_data| or |ssl_encryption_application|) may
+  // be processed according to the rules of the QUIC protocol.
   //
-  // This function should use |SSL_get_current_cipher| to determine the TLS
-  // cipher suite.
+  // QUIC ACKs packets at the same encryption level they were received at,
+  // except that client |ssl_encryption_early_data| (0-RTT) packets trigger
+  // server |ssl_encryption_application| (1-RTT) ACKs. BoringSSL will always
+  // install ACK-writing keys with |set_write_secret| before the packet-reading
+  // keys with |set_read_secret|. This ensures the caller can always ACK any
+  // packet it decrypts. Note this means the server installs 1-RTT write keys
+  // before 0-RTT read keys.
   //
-  // TODO(davidben): The advice to use |SSL_get_current_cipher| does not work
-  // for 0-RTT rejects on the client. As part of the fix to
-  // https://crbug.com/boringssl/303, we will add an explicit cipher suite
-  // parameter.
+  // The converse is not true. An encryption level may be configured with write
+  // secrets a roundtrip before the corresponding secrets for reading ACKs is
+  // available.
+  int (*set_read_secret)(SSL *ssl, enum ssl_encryption_level_t level,
+                         const SSL_CIPHER *cipher, const uint8_t *secret,
+                         size_t secret_len);
+  // set_write_secret behaves like |set_read_secret| but configures the write
+  // secret and cipher suite for the given encryption level. It will be called
+  // at most once per encryption level.
   //
-  // It returns one on success and zero on error.
-  int (*set_encryption_secrets)(SSL *ssl, enum ssl_encryption_level_t level,
-                                const uint8_t *read_secret,
-                                const uint8_t *write_secret, size_t secret_len);
+  // BoringSSL will not release write keys before QUIC may use them. If |level|
+  // is |ssl_encryption_early_data| or |ssl_encryption_application|, QUIC may
+  // begin sending application data at |level|. However, note that BoringSSL
+  // configures server |ssl_encryption_application| write keys before the client
+  // Finished. This allows QUIC to send half-RTT data, but the handshake is not
+  // confirmed at this point and, if requesting client certificates, the client
+  // is not yet authenticated.
+  //
+  // See |set_read_secret| for additional invariants between packets and their
+  // ACKs.
+  //
+  // Note that, on 0-RTT reject, the |ssl_encryption_early_data| write secret
+  // may use a different cipher suite from the other keys.
+  int (*set_write_secret)(SSL *ssl, enum ssl_encryption_level_t level,
+                          const SSL_CIPHER *cipher, const uint8_t *secret,
+                          size_t secret_len);
   // add_handshake_data adds handshake data to the current flight at the given
   // encryption level. It returns one on success and zero on error.
   //
@@ -3208,6 +3222,9 @@ struct ssl_quic_method_st {
   // single handshake flight may include multiple encryption levels. Callers
   // should defer writing data to the network until |flush_flight| to better
   // pack QUIC packets into transport datagrams.
+  //
+  // If |level| is not |ssl_encryption_initial|, this function will not be
+  // called before |level| is initialized with |set_write_secret|.
   int (*add_handshake_data)(SSL *ssl, enum ssl_encryption_level_t level,
                             const uint8_t *data, size_t len);
   // flush_flight is called when the current flight is complete and should be
@@ -3216,6 +3233,9 @@ struct ssl_quic_method_st {
   int (*flush_flight)(SSL *ssl);
   // send_alert sends a fatal alert at the specified encryption level. It
   // returns one on success and zero on error.
+  //
+  // If |level| is not |ssl_encryption_initial|, this function will not be
+  // called before |level| is initialized with |set_write_secret|.
   int (*send_alert)(SSL *ssl, enum ssl_encryption_level_t level, uint8_t alert);
 };
 
@@ -3228,15 +3248,22 @@ OPENSSL_EXPORT size_t SSL_quic_max_handshake_flight_len(
     const SSL *ssl, enum ssl_encryption_level_t level);
 
 // SSL_quic_read_level returns the current read encryption level.
+//
+// TODO(davidben): Is it still necessary to expose this function to callers?
+// QUICHE does not use it.
 OPENSSL_EXPORT enum ssl_encryption_level_t SSL_quic_read_level(const SSL *ssl);
 
 // SSL_quic_write_level returns the current write encryption level.
+//
+// TODO(davidben): Is it still necessary to expose this function to callers?
+// QUICHE does not use it.
 OPENSSL_EXPORT enum ssl_encryption_level_t SSL_quic_write_level(const SSL *ssl);
 
 // SSL_provide_quic_data provides data from QUIC at a particular encryption
-// level |level|. It is an error to call this function outside of the handshake
-// or with an encryption level other than the current read level. It returns one
-// on success and zero on error.
+// level |level|. It returns one on success and zero on error. Note this
+// function will return zero if the handshake is not expecting data from |level|
+// at this time. The QUIC implementation should then close the connection with
+// an error.
 OPENSSL_EXPORT int SSL_provide_quic_data(SSL *ssl,
                                          enum ssl_encryption_level_t level,
                                          const uint8_t *data, size_t len);

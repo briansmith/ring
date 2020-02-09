@@ -42,18 +42,21 @@ MockQuicTransport::MockQuicTransport(bssl::UniquePtr<BIO> bio, SSL *ssl)
       write_secrets_(ssl_encryption_application + 1),
       ssl_(ssl) {}
 
-bool MockQuicTransport::SetSecrets(enum ssl_encryption_level_t level,
-                                   const uint8_t *read_secret,
-                                   const uint8_t *write_secret,
-                                   size_t secret_len) {
-  if (read_secret) {
-    read_secrets_[level].resize(secret_len);
-    memcpy(read_secrets_[level].data(), read_secret, secret_len);
-  }
-  if (write_secret) {
-    write_secrets_[level].resize(secret_len);
-    memcpy(write_secrets_[level].data(), write_secret, secret_len);
-  }
+bool MockQuicTransport::SetReadSecret(enum ssl_encryption_level_t level,
+                                      const SSL_CIPHER *cipher,
+                                      const uint8_t *secret,
+                                      size_t secret_len) {
+  // TODO(davidben): Assert the various encryption secret invariants.
+  read_secrets_[level].assign(secret, secret + secret_len);
+  return true;
+}
+
+bool MockQuicTransport::SetWriteSecret(enum ssl_encryption_level_t level,
+                                       const SSL_CIPHER *cipher,
+                                       const uint8_t *secret,
+                                       size_t secret_len) {
+  // TODO(davidben): Assert the various encryption secret invariants.
+  write_secrets_[level].assign(secret, secret + secret_len);
   return true;
 }
 

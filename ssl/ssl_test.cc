@@ -4806,6 +4806,20 @@ static_assert(ssl_encryption_handshake < kNumQUICLevels,
 static_assert(ssl_encryption_application < kNumQUICLevels,
               "kNumQUICLevels is wrong");
 
+const char *LevelToString(ssl_encryption_level_t level) {
+  switch (level) {
+    case ssl_encryption_initial:
+      return "initial";
+    case ssl_encryption_early_data:
+      return "early data";
+    case ssl_encryption_handshake:
+      return "handshake";
+    case ssl_encryption_application:
+      return "application";
+  }
+  return "<unknown>";
+}
+
 class MockQUICTransport {
  public:
   enum class Role { kClient, kServer };
@@ -4828,61 +4842,68 @@ class MockQUICTransport {
            levels_[level].cipher == peer_->levels_[level].cipher;
   }
 
-  bool HasSecrets(ssl_encryption_level_t level) const {
-    return !levels_[level].write_secret.empty() ||
-           !levels_[level].read_secret.empty();
+  bool HasReadSecret(ssl_encryption_level_t level) const {
+    return !levels_[level].read_secret.empty();
   }
 
-  bool SetEncryptionSecrets(ssl_encryption_level_t level,
-                            const uint8_t *read_secret,
-                            const uint8_t *write_secret, size_t secret_len,
-                            const SSL_CIPHER *cipher) {
-    if (HasSecrets(level)) {
-      ADD_FAILURE() << "duplicate keys configured";
+  bool HasWriteSecret(ssl_encryption_level_t level) const {
+    return !levels_[level].write_secret.empty();
+  }
+
+  bool SetReadSecret(ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+                     Span<const uint8_t> secret) {
+    if (HasReadSecret(level)) {
+      ADD_FAILURE() << LevelToString(level) << " read secret configured twice";
+      return false;
+    }
+
+    if (role_ == Role::kClient && level == ssl_encryption_early_data) {
+      ADD_FAILURE() << "Unexpected early data read secret";
+      return false;
+    }
+
+    ssl_encryption_level_t ack_level =
+        level == ssl_encryption_early_data ? ssl_encryption_application : level;
+    if (!HasWriteSecret(ack_level)) {
+      ADD_FAILURE() << LevelToString(level)
+                    << " read secret configured before ACK write secret";
       return false;
     }
 
     if (cipher == nullptr) {
-      ADD_FAILURE() << "current cipher unavailable";
+      ADD_FAILURE() << "Unexpected null cipher";
       return false;
     }
 
-    bool expect_read_secret = true, expect_write_secret = true;
-    if (level == ssl_encryption_early_data) {
-      if (role_ == Role::kClient) {
-        expect_read_secret = false;
-      } else {
-        expect_write_secret = false;
-        if (!HasSecrets(ssl_encryption_application)) {
-          ADD_FAILURE() << "early secrets installed without keys to ACK them";
-          return false;
-        }
-      }
-    }
-
-    if (expect_read_secret) {
-      if (read_secret == nullptr) {
-        ADD_FAILURE() << "read secret was unexpectedly null";
-        return false;
-      }
-      levels_[level].read_secret.assign(read_secret, read_secret + secret_len);
-    } else if (read_secret != nullptr) {
-      ADD_FAILURE() << "unexpected read secret";
+    if (level != ssl_encryption_early_data &&
+        SSL_CIPHER_get_id(cipher) != levels_[level].cipher) {
+      ADD_FAILURE() << "Cipher suite inconsistent";
       return false;
     }
 
-    if (expect_write_secret) {
-      if (write_secret == nullptr) {
-        ADD_FAILURE() << "write secret was unexpectedly null";
-        return false;
-      }
-      levels_[level].write_secret.assign(write_secret,
-                                         write_secret + secret_len);
-    } else if (write_secret != nullptr) {
-      ADD_FAILURE() << "unexpected write secret";
+    levels_[level].read_secret.assign(secret.begin(), secret.end());
+    levels_[level].cipher = SSL_CIPHER_get_id(cipher);
+    return true;
+  }
+
+  bool SetWriteSecret(ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+                      Span<const uint8_t> secret) {
+    if (HasWriteSecret(level)) {
+      ADD_FAILURE() << LevelToString(level) << " write secret configured twice";
       return false;
     }
 
+    if (role_ == Role::kServer && level == ssl_encryption_early_data) {
+      ADD_FAILURE() << "Unexpected early data write secret";
+      return false;
+    }
+
+    if (cipher == nullptr) {
+      ADD_FAILURE() << "Unexpected null cipher";
+      return false;
+    }
+
+    levels_[level].write_secret.assign(secret.begin(), secret.end());
     levels_[level].cipher = SSL_CIPHER_get_id(cipher);
     return true;
   }
@@ -4890,7 +4911,8 @@ class MockQUICTransport {
   bool WriteHandshakeData(ssl_encryption_level_t level,
                           Span<const uint8_t> data) {
     if (levels_[level].write_secret.empty()) {
-      ADD_FAILURE() << "data written before keys configured";
+      ADD_FAILURE() << LevelToString(level)
+                    << " write secret not yet configured";
       return false;
     }
     levels_[level].write_data.insert(levels_[level].write_data.end(),
@@ -4905,7 +4927,8 @@ class MockQUICTransport {
     }
 
     if (levels_[level].write_secret.empty()) {
-      ADD_FAILURE() << "alert sent before keys configured";
+      ADD_FAILURE() << LevelToString(level)
+                    << " write secret not yet configured";
       return false;
     }
 
@@ -4979,8 +5002,11 @@ class MockQUICTransportPair {
   MockQUICTransport *server() { return &server_; }
 
   bool SecretsMatch(ssl_encryption_level_t level) const {
-    return client_.HasSecrets(level) && server_.HasSecrets(level) &&
-           client_.PeerSecretsMatch(level);
+    // We only need to check |HasReadSecret| and |HasWriteSecret| on |client_|.
+    // |PeerSecretsMatch| checks that |server_| is analogously configured.
+    return client_.PeerSecretsMatch(level) &&
+           client_.HasWriteSecret(level) &&
+           (level == ssl_encryption_early_data || client_.HasReadSecret(level));
   }
 
  private:
@@ -5110,16 +5136,27 @@ class QUICMethodTest : public testing::Test {
     EXPECT_EQ(SSL_do_handshake(server_.get()), 1);
   }
 
-  // The following functions may be configured on an |SSL_QUIC_METHOD| as
-  // default implementations.
+  // Returns a default SSL_QUIC_METHOD. Individual methods may be overwritten by
+  // the test.
+  SSL_QUIC_METHOD DefaultQUICMethod() {
+    return SSL_QUIC_METHOD{
+        SetReadSecretCallback, SetWriteSecretCallback, AddHandshakeDataCallback,
+        FlushFlightCallback,   SendAlertCallback,
+    };
+  }
 
-  static int SetEncryptionSecretsCallback(SSL *ssl,
-                                          ssl_encryption_level_t level,
-                                          const uint8_t *read_key,
-                                          const uint8_t *write_key,
-                                          size_t key_len) {
-    return TransportFromSSL(ssl)->SetEncryptionSecrets(
-        level, read_key, write_key, key_len, SSL_get_current_cipher(ssl));
+  static int SetReadSecretCallback(SSL *ssl, ssl_encryption_level_t level,
+                                   const SSL_CIPHER *cipher,
+                                   const uint8_t *secret, size_t secret_len) {
+    return TransportFromSSL(ssl)->SetReadSecret(
+        level, cipher, MakeConstSpan(secret, secret_len));
+  }
+
+  static int SetWriteSecretCallback(SSL *ssl, ssl_encryption_level_t level,
+                                    const SSL_CIPHER *cipher,
+                                    const uint8_t *secret, size_t secret_len) {
+    return TransportFromSSL(ssl)->SetWriteSecret(
+        level, cipher, MakeConstSpan(secret, secret_len));
   }
 
   static int AddHandshakeDataCallback(SSL *ssl,
@@ -5152,12 +5189,7 @@ UnownedSSLExData<MockQUICTransport> QUICMethodTest::ex_data_;
 
 // Test a full handshake and resumption work.
 TEST_F(QUICMethodTest, Basic) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   g_last_session = nullptr;
 
@@ -5193,12 +5225,7 @@ TEST_F(QUICMethodTest, Basic) {
 
 // Test that HelloRetryRequest in QUIC works.
 TEST_F(QUICMethodTest, HelloRetryRequest) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
   ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
@@ -5217,13 +5244,38 @@ TEST_F(QUICMethodTest, HelloRetryRequest) {
   ExpectHandshakeSuccess();
 }
 
+// Test that, even in a 1-RTT handshake, the server installs keys at the right
+// time. Half-RTT keys are available early, but 1-RTT read keys are deferred.
+TEST_F(QUICMethodTest, HalfRTTKeys) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+  ASSERT_TRUE(CreateClientAndServer());
+
+  // The client sends ClientHello.
+  ASSERT_EQ(SSL_do_handshake(client_.get()), -1);
+  ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client_.get(), -1));
+
+  // The server reads ClientHello and sends ServerHello..Finished.
+  ASSERT_TRUE(ProvideHandshakeData(server_.get()));
+  ASSERT_EQ(SSL_do_handshake(server_.get()), -1);
+  ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server_.get(), -1));
+
+  // At this point, the server has half-RTT write keys, but it cannot access
+  // 1-RTT read keys until client Finished.
+  EXPECT_TRUE(transport_->server()->HasWriteSecret(ssl_encryption_application));
+  EXPECT_FALSE(transport_->server()->HasReadSecret(ssl_encryption_application));
+
+  // Finish up the client and server handshakes.
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+
+  // Both sides can now exchange 1-RTT data.
+  ExpectHandshakeSuccess();
+}
+
 TEST_F(QUICMethodTest, ZeroRTTAccept) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_early_data_enabled(client_ctx_.get(), 1);
@@ -5241,8 +5293,7 @@ TEST_F(QUICMethodTest, ZeroRTTAccept) {
   ASSERT_EQ(SSL_do_handshake(client_.get()), 1);
   EXPECT_TRUE(SSL_in_early_data(client_.get()));
   // The transport should have keys for sending 0-RTT data.
-  EXPECT_TRUE(
-      transport_->client()->HasSecrets(ssl_encryption_early_data));
+  EXPECT_TRUE(transport_->client()->HasWriteSecret(ssl_encryption_early_data));
 
   // The server will consume the ClientHello and also enter the early data
   // state.
@@ -5250,9 +5301,10 @@ TEST_F(QUICMethodTest, ZeroRTTAccept) {
   ASSERT_EQ(SSL_do_handshake(server_.get()), 1);
   EXPECT_TRUE(SSL_in_early_data(server_.get()));
   EXPECT_TRUE(transport_->SecretsMatch(ssl_encryption_early_data));
-  // The transport should have keys for sending half-RTT data.
-  EXPECT_TRUE(
-      transport_->server()->HasSecrets(ssl_encryption_application));
+  // At this point, the server has half-RTT write keys, but it cannot access
+  // 1-RTT read keys until client Finished.
+  EXPECT_TRUE(transport_->server()->HasWriteSecret(ssl_encryption_application));
+  EXPECT_FALSE(transport_->server()->HasReadSecret(ssl_encryption_application));
 
   // Finish up the client and server handshakes.
   ASSERT_TRUE(CompleteHandshakesForQUIC());
@@ -5268,12 +5320,7 @@ TEST_F(QUICMethodTest, ZeroRTTAccept) {
 }
 
 TEST_F(QUICMethodTest, ZeroRTTReject) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_early_data_enabled(client_ctx_.get(), 1);
@@ -5303,14 +5350,16 @@ TEST_F(QUICMethodTest, ZeroRTTReject) {
     ASSERT_EQ(SSL_do_handshake(client_.get()), 1);
     EXPECT_TRUE(SSL_in_early_data(client_.get()));
     // The transport should have keys for sending 0-RTT data.
-    EXPECT_TRUE(transport_->client()->HasSecrets(ssl_encryption_early_data));
+    EXPECT_TRUE(
+        transport_->client()->HasWriteSecret(ssl_encryption_early_data));
 
     // The server will consume the ClientHello, but it will not accept 0-RTT.
     ASSERT_TRUE(ProvideHandshakeData(server_.get()));
     ASSERT_EQ(SSL_do_handshake(server_.get()), -1);
     EXPECT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server_.get(), -1));
     EXPECT_FALSE(SSL_in_early_data(server_.get()));
-    EXPECT_FALSE(transport_->server()->HasSecrets(ssl_encryption_early_data));
+    EXPECT_FALSE(
+        transport_->server()->HasReadSecret(ssl_encryption_early_data));
 
     // The client consumes the server response and signals 0-RTT rejection.
     for (;;) {
@@ -5343,12 +5392,7 @@ TEST_F(QUICMethodTest, ZeroRTTReject) {
 }
 
 TEST_F(QUICMethodTest, NoZeroRTTKeysBeforeReverify) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_early_data_enabled(client_ctx_.get(), 1);
@@ -5375,7 +5419,7 @@ TEST_F(QUICMethodTest, NoZeroRTTKeysBeforeReverify) {
             SSL_ERROR_WANT_CERTIFICATE_VERIFY);
 
   // The early data keys have not yet been released.
-  EXPECT_FALSE(transport_->client()->HasSecrets(ssl_encryption_early_data));
+  EXPECT_FALSE(transport_->client()->HasWriteSecret(ssl_encryption_early_data));
 
   // After the verification completes, the handshake progresses to the 0-RTT
   // point and releases keys.
@@ -5386,19 +5430,14 @@ TEST_F(QUICMethodTest, NoZeroRTTKeysBeforeReverify) {
       });
   ASSERT_EQ(SSL_do_handshake(client_.get()), 1);
   EXPECT_TRUE(SSL_in_early_data(client_.get()));
-  EXPECT_TRUE(transport_->client()->HasSecrets(ssl_encryption_early_data));
+  EXPECT_TRUE(transport_->client()->HasWriteSecret(ssl_encryption_early_data));
 }
 
 // Test only releasing data to QUIC one byte at a time on request, to maximize
 // state machine pauses. Additionally, test that existing asynchronous callbacks
 // still work.
 TEST_F(QUICMethodTest, Async) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
   ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
@@ -5474,12 +5513,9 @@ TEST_F(QUICMethodTest, Buffered) {
     return 1;
   };
 
-  const SSL_QUIC_METHOD quic_method = {
-    SetEncryptionSecretsCallback,
-    add_handshake_data,
-    flush_flight,
-    SendAlertCallback,
-  };
+  SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  quic_method.add_handshake_data = add_handshake_data;
+  quic_method.flush_flight = flush_flight;
 
   ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
   ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
@@ -5506,12 +5542,8 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
                                                      MakeConstSpan(data, len));
   };
 
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      add_handshake_data,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  quic_method.add_handshake_data = add_handshake_data;
 
   ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
   ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
@@ -5540,24 +5572,23 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
   EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_SSL);
   EXPECT_EQ(ERR_GET_REASON(err), SSL_R_EXCESS_HANDSHAKE_DATA);
 
-  // The client sends an alert in response to this.
+  // The client sends an alert in response to this. The alert is sent at
+  // handshake level because we install write secrets before read secrets and
+  // the error is discovered when installing the read secret. (How to send
+  // alerts on protocol syntax errors near key changes is ambiguous in general.)
   ASSERT_TRUE(transport_->client()->has_alert());
-  EXPECT_EQ(transport_->client()->alert_level(), ssl_encryption_initial);
+  EXPECT_EQ(transport_->client()->alert_level(), ssl_encryption_handshake);
   EXPECT_EQ(transport_->client()->alert(), SSL_AD_UNEXPECTED_MESSAGE);
 
   // Sanity-check client did get far enough to process the ServerHello and
   // install keys.
-  EXPECT_TRUE(transport_->client()->HasSecrets(ssl_encryption_handshake));
+  EXPECT_TRUE(transport_->client()->HasReadSecret(ssl_encryption_handshake));
+  EXPECT_TRUE(transport_->client()->HasWriteSecret(ssl_encryption_handshake));
 }
 
 // Test that |SSL_provide_quic_data| will reject data at the wrong level.
 TEST_F(QUICMethodTest, ProvideWrongLevel) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
   ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
@@ -5597,12 +5628,7 @@ TEST_F(QUICMethodTest, ProvideWrongLevel) {
 }
 
 TEST_F(QUICMethodTest, TooMuchData) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
   ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
@@ -5622,12 +5648,7 @@ TEST_F(QUICMethodTest, TooMuchData) {
 
 // Provide invalid post-handshake data.
 TEST_F(QUICMethodTest, BadPostHandshake) {
-  const SSL_QUIC_METHOD quic_method = {
-      SetEncryptionSecretsCallback,
-      AddHandshakeDataCallback,
-      FlushFlightCallback,
-      SendAlertCallback,
-  };
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
 
   g_last_session = nullptr;
 

@@ -25,8 +25,12 @@ class MockQuicTransport {
  public:
   explicit MockQuicTransport(bssl::UniquePtr<BIO> bio, SSL *ssl);
 
-  bool SetSecrets(enum ssl_encryption_level_t level, const uint8_t *read_secret,
-                  const uint8_t *write_secret, size_t secret_len);
+  bool SetReadSecret(enum ssl_encryption_level_t level,
+                     const SSL_CIPHER *cipher, const uint8_t *secret,
+                     size_t secret_len);
+  bool SetWriteSecret(enum ssl_encryption_level_t level,
+                      const SSL_CIPHER *cipher, const uint8_t *secret,
+                      size_t secret_len);
 
   bool ReadHandshake();
   bool WriteHandshakeData(enum ssl_encryption_level_t level,

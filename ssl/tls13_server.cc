@@ -718,19 +718,6 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (ssl->s3->early_data_accepted) {
-    // We defer releasing the early traffic secret to QUIC to this point. First,
-    // the early traffic secret is derived before ECDHE, but ECDHE may later
-    // reject 0-RTT. We only release the secret after 0-RTT is fully resolved.
-    //
-    // Second, 0-RTT data is acknowledged with 1-RTT keys. Both are derived as
-    // part of the ServerHello flight, but future TLS extensions may insert an
-    // asynchronous point in the middle of this flight. We defer releasing the
-    // 0-RTT keys to ensure the QUIC implementation never installs read keys
-    // without the write keys to send the corresponding ACKs.
-    if (!tls13_set_early_secret_for_quic(hs)) {
-      return ssl_hs_error;
-    }
-
     // If accepting 0-RTT, we send tickets half-RTT. This gets the tickets on
     // the wire sooner and also avoids triggering a write on |SSL_read| when
     // processing the client Finished. This requires computing the client
@@ -779,9 +766,7 @@ static enum ssl_hs_wait_t do_send_half_rtt_ticket(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (ssl->s3->early_data_accepted) {
-    // QUIC never receives handshake messages under 0-RTT keys.
-    if (ssl->quic_method == nullptr &&
-        !tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_open,
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_open,
                                hs->new_session.get(),
                                hs->early_traffic_secret())) {
       return ssl_hs_error;

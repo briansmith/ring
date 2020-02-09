@@ -1136,12 +1136,18 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
   return ssl_select_cert_success;
 }
 
-static int SetQuicEncryptionSecrets(SSL *ssl, enum ssl_encryption_level_t level,
-                                    const uint8_t *read_secret,
-                                    const uint8_t *write_secret,
-                                    size_t secret_len) {
-  return GetTestState(ssl)->quic_transport->SetSecrets(
-      level, read_secret, write_secret, secret_len);
+static int SetQuicReadSecret(SSL *ssl, enum ssl_encryption_level_t level,
+                             const SSL_CIPHER *cipher, const uint8_t *secret,
+                             size_t secret_len) {
+  return GetTestState(ssl)->quic_transport->SetReadSecret(level, cipher, secret,
+                                                          secret_len);
+}
+
+static int SetQuicWriteSecret(SSL *ssl, enum ssl_encryption_level_t level,
+                              const SSL_CIPHER *cipher, const uint8_t *secret,
+                              size_t secret_len) {
+  return GetTestState(ssl)->quic_transport->SetWriteSecret(level, cipher,
+                                                           secret, secret_len);
 }
 
 static int AddQuicHandshakeData(SSL *ssl, enum ssl_encryption_level_t level,
@@ -1161,7 +1167,8 @@ static int SendQuicAlert(SSL *ssl, enum ssl_encryption_level_t level,
 }
 
 static const SSL_QUIC_METHOD g_quic_method = {
-    SetQuicEncryptionSecrets,
+    SetQuicReadSecret,
+    SetQuicWriteSecret,
     AddQuicHandshakeData,
     FlushQuicFlight,
     SendQuicAlert,

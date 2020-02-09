@@ -75,20 +75,22 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
   // We do not currently implement DTLS 1.3 and, in QUIC, the caller handles
   // 0-RTT data, so we can skip installing 0-RTT keys and act as if there is one
   // write level. If we implement DTLS 1.3, we'll need to model this better.
-  if (level == ssl_encryption_initial) {
-    bssl::UniquePtr<SSLAEADContext> null_ctx =
-        SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
-    if (!null_ctx || !ssl->method->set_write_state(ssl, ssl_encryption_initial,
-                                                   std::move(null_ctx))) {
-      return false;
-    }
-    ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
-  } else {
-    assert(level == ssl_encryption_handshake);
-    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
-                               hs->new_session.get(),
-                               hs->client_handshake_secret())) {
-      return false;
+  if (ssl->quic_method == nullptr) {
+    if (level == ssl_encryption_initial) {
+      bssl::UniquePtr<SSLAEADContext> null_ctx =
+          SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
+      if (!null_ctx || !ssl->method->set_write_state(ssl, ssl_encryption_initial,
+                                                     std::move(null_ctx))) {
+        return false;
+      }
+      ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
+    } else {
+      assert(level == ssl_encryption_handshake);
+      if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
+                                 hs->new_session.get(),
+                                 hs->client_handshake_secret())) {
+        return false;
+      }
     }
   }
 
@@ -437,23 +439,26 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   if (!tls13_advance_key_schedule(hs, dhe_secret) ||
       !ssl_hash_message(hs, msg) ||
-      !tls13_derive_handshake_secrets(hs) ||
-      !tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
-                             hs->new_session.get(),
-                             hs->server_handshake_secret())) {
+      !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }
 
-  // If currently sending early data, we defer installing client traffic keys to
-  // when the early data stream is closed. See |close_early_data|. Note if the
-  // server has already rejected 0-RTT via HelloRetryRequest, |in_early_data| is
-  // already false.
-  if (!hs->in_early_data) {
+  // If currently sending early data over TCP, we defer installing client
+  // traffic keys to when the early data stream is closed. See
+  // |close_early_data|. Note if the server has already rejected 0-RTT via
+  // HelloRetryRequest, |in_early_data| is already false.
+  if (!hs->in_early_data || ssl->quic_method != nullptr) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
                                hs->new_session.get(),
                                hs->client_handshake_secret())) {
       return ssl_hs_error;
     }
+  }
+
+  if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                             hs->new_session.get(),
+                             hs->server_handshake_secret())) {
+    return ssl_hs_error;
   }
 
   ssl->method->next_message(ssl);
@@ -803,12 +808,12 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   }
 
   // Derive the final keys and enable them.
-  if (!tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
-                             hs->new_session.get(),
-                             hs->server_traffic_secret_0()) ||
-      !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
+  if (!tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
                              hs->new_session.get(),
                              hs->client_traffic_secret_0()) ||
+      !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
+                             hs->new_session.get(),
+                             hs->server_traffic_secret_0()) ||
       !tls13_derive_resumption_secret(hs)) {
     return ssl_hs_error;
   }
