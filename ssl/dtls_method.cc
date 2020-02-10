@@ -90,6 +90,7 @@ static bool dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   OPENSSL_memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
 
   ssl->s3->aead_read_ctx = std::move(aead_ctx);
+  ssl->d1->has_change_cipher_spec = 0;
   return true;
 }
 
