@@ -671,8 +671,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       (hs->key_shares[0] = SSLKeyShare::Create(&key_share)) == nullptr) {
     return false;
   }
-
-  return CBS_len(&seq) == 0;
+  return true;  // Trailing data allowed for extensibility.
 }
 
 BSSL_NAMESPACE_END
