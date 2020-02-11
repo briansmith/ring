@@ -229,10 +229,6 @@ pub struct PSS {
 
 impl crate::sealed::Sealed for PSS {}
 
-// Maximum supported length of the salt in bytes.
-// In practice, this is constrained by the maximum digest length.
-const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
-
 impl Padding for PSS {
     fn digest_alg(&self) -> &'static digest::Algorithm {
         self.digest_alg
@@ -269,42 +265,34 @@ impl RsaEncoding for PSS {
 
         // Step 3 is done by `PSSMetrics::new()` above.
 
+        let (db, digest_terminator) = em.split_at_mut(metrics.db_len);
+
+        let separator_pos = db.len() - 1 - metrics.s_len;
+
         // Step 4.
-        let mut salt = [0u8; MAX_SALT_LEN];
-        let salt = &mut salt[..metrics.s_len];
-        rng.fill(salt)?;
+        let salt: &[u8] = {
+            let salt = &mut db[(separator_pos + 1)..];
+            rng.fill(salt)?; // salt
+            salt
+        };
 
-        // Step 5 and 6.
-        let h_hash = pss_digest(self.digest_alg, m_hash, salt);
+        // Steps 5 and 6.
+        let h = pss_digest(self.digest_alg, m_hash, salt);
 
-        // Re-order steps 7, 8, 9 and 10 so that we first output the db mask
-        // into `em`, and then XOR the value of db.
+        // Step 7.
+        db[..separator_pos].fill(0); // ps
 
-        // Step 9. First output the mask into the out buffer.
-        let (mut masked_db, digest_terminator) = em.split_at_mut(metrics.db_len);
-        mgf1(self.digest_alg, h_hash.as_ref(), &mut masked_db);
+        // Step 8.
+        db[separator_pos] = 0x01;
 
-        {
-            // Steps 7.
-            let masked_db = masked_db.iter_mut();
-            // `PS` is all zero bytes, so skipping `ps_len` bytes is equivalent
-            // to XORing `PS` onto `db`.
-            let mut masked_db = masked_db.skip(metrics.ps_len);
-
-            // Step 8.
-            *(masked_db.next().ok_or(error::Unspecified)?) ^= 0x01;
-
-            // Step 10.
-            for (masked_db_b, salt_b) in masked_db.zip(salt) {
-                *masked_db_b ^= *salt_b;
-            }
-        }
+        // Steps 9 and 10.
+        mgf1(self.digest_alg, h.as_ref(), db);
 
         // Step 11.
-        masked_db[0] &= metrics.top_byte_mask;
+        db[0] &= metrics.top_byte_mask;
 
         // Step 12.
-        digest_terminator[..metrics.h_len].copy_from_slice(h_hash.as_ref());
+        digest_terminator[..metrics.h_len].copy_from_slice(h.as_ref());
         digest_terminator[metrics.h_len] = 0xbc;
 
         Ok(())
@@ -451,21 +439,24 @@ impl PSSMetrics {
     }
 }
 
-// Mask-generating function MGF1 as described in
-// https://tools.ietf.org/html/rfc3447#appendix-B.2.1.
-fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], mask: &mut [u8]) {
+// Masks `out` with the output of the mask-generating function MGF1 as
+// described in https://tools.ietf.org/html/rfc3447#appendix-B.2.1.
+fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], out: &mut [u8]) {
     let digest_len = digest_alg.output_len;
 
     // Maximum counter value is the value of (mask_len / digest_len) rounded up.
-    for (i, mask_chunk) in mask.chunks_mut(digest_len).enumerate() {
+    for (i, out) in out.chunks_mut(digest_len).enumerate() {
         let mut ctx = digest::Context::new(digest_alg);
         ctx.update(seed);
         // The counter will always fit in a `u32` because we reject absurdly
         // long inputs very early.
         ctx.update(&u32::to_be_bytes(i.try_into().unwrap()));
         let digest = ctx.finish();
-        let mask_chunk_len = mask_chunk.len();
-        mask_chunk.copy_from_slice(&digest.as_ref()[..mask_chunk_len]);
+        // `zip` does the right thing as the the last chunk may legitimately be
+        // shorter than `digest`, and `digest` will never be shorter than `out`.
+        for (m, &d) in out.iter_mut().zip(digest.as_ref().iter()) {
+            *m ^= d;
+        }
     }
 }
 
