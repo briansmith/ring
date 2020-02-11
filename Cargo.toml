@@ -229,6 +229,7 @@ include = [
     "src/rsa/padding.rs",
     "src/rsa/public.rs",
     "src/rsa/public/components.rs",
+    "src/rsa/public/key.rs",
     "src/rsa/random.rs",
     "src/rsa/rsa_pss_padding_tests.txt",
     "src/rsa/signature_rsa_example_private_key.der",
