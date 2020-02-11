@@ -709,7 +709,10 @@ ResendHelloRetryRequest:
 	// Decide whether or not to accept early data.
 	if !sendHelloRetryRequest && hs.clientHello.hasEarlyData {
 		if !config.Bugs.AlwaysRejectEarlyData && hs.sessionState != nil {
-			if c.clientProtocol == string(hs.sessionState.earlyALPN) || config.Bugs.AlwaysAcceptEarlyData {
+			if hs.sessionState.cipherSuite == hs.suite.id && c.clientProtocol == string(hs.sessionState.earlyALPN) {
+				encryptedExtensions.extensions.hasEarlyData = true
+			}
+			if config.Bugs.AlwaysAcceptEarlyData {
 				encryptedExtensions.extensions.hasEarlyData = true
 			}
 		}
@@ -717,11 +720,11 @@ ResendHelloRetryRequest:
 			earlyTrafficSecret := hs.finishedHash.deriveSecret(earlyTrafficLabel)
 			c.earlyExporterSecret = hs.finishedHash.deriveSecret(earlyExporterLabel)
 
-			if err := c.useInTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret); err != nil {
+			sessionCipher := cipherSuiteFromID(hs.sessionState.cipherSuite)
+			if err := c.useInTrafficSecret(c.wireVersion, sessionCipher, earlyTrafficSecret); err != nil {
 				return err
 			}
 
-			c.earlyCipherSuite = hs.suite
 			for _, expectedMsg := range config.Bugs.ExpectEarlyData {
 				if err := c.readRecord(recordTypeApplicationData); err != nil {
 					return err

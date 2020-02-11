@@ -43,7 +43,6 @@ type Conn struct {
 	didResume            bool // whether this connection was a session resumption
 	extendedMasterSecret bool // whether this session used an extended master secret
 	cipherSuite          *cipherSuite
-	earlyCipherSuite     *cipherSuite
 	ocspResponse         []byte // stapled OCSP response
 	sctList              []byte // signed certificate timestamp list
 	peerCertificates     []*x509.Certificate
@@ -1893,17 +1892,13 @@ func (c *Conn) VerifyHostname(host string) error {
 }
 
 func (c *Conn) exportKeyingMaterialTLS13(length int, secret, label, context []byte) []byte {
-	cipherSuite := c.cipherSuite
-	if cipherSuite == nil {
-		cipherSuite = c.earlyCipherSuite
-	}
-	hash := cipherSuite.hash()
+	hash := c.cipherSuite.hash()
 	exporterKeyingLabel := []byte("exporter")
 	contextHash := hash.New()
 	contextHash.Write(context)
 	exporterContext := hash.New().Sum(nil)
-	derivedSecret := hkdfExpandLabel(cipherSuite.hash(), secret, label, exporterContext, hash.Size())
-	return hkdfExpandLabel(cipherSuite.hash(), derivedSecret, exporterKeyingLabel, contextHash.Sum(nil), length)
+	derivedSecret := hkdfExpandLabel(c.cipherSuite.hash(), secret, label, exporterContext, hash.Size())
+	return hkdfExpandLabel(c.cipherSuite.hash(), derivedSecret, exporterKeyingLabel, contextHash.Sum(nil), length)
 }
 
 // ExportKeyingMaterial exports keying material from the current connection
