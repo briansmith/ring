@@ -463,7 +463,7 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
   }
   if (ssl->quic_method == nullptr &&
       !tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_seal,
-                             hs->early_traffic_secret())) {
+                             ssl->session.get(), hs->early_traffic_secret())) {
     return ssl_hs_error;
   }
 

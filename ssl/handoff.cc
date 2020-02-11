@@ -654,6 +654,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       // none of the read keys. The read keys are installed in the state machine
       // immediately after processing handback.
       if (!tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
+                                 hs->new_session.get(),
                                  hs->server_traffic_secret_0())) {
         return false;
       }

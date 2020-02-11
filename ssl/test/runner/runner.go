@@ -13565,8 +13565,9 @@ func addTLS13HandshakeTests() {
 			"-on-resume-expect-alpn", "foo",
 			"-on-retry-expect-alpn", "bar",
 		},
-		shouldFail:    true,
-		expectedError: ":ALPN_MISMATCH_ON_EARLY_DATA:",
+		shouldFail:         true,
+		expectedError:      ":ALPN_MISMATCH_ON_EARLY_DATA:",
+		expectedLocalError: "remote error: illegal parameter",
 	})
 
 	// Test that the client does not offer early data if it is incompatible
@@ -13723,10 +13724,11 @@ func addTLS13HandshakeTests() {
 			MaxEarlyDataSize: 16384,
 			RequestChannelID: true,
 		},
-		resumeSession:   true,
-		expectChannelID: true,
-		shouldFail:      true,
-		expectedError:   ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
+		resumeSession:      true,
+		expectChannelID:    true,
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
+		expectedLocalError: "remote error: illegal parameter",
 		flags: []string{
 			"-enable-early-data",
 			"-expect-ticket-supports-early-data",
@@ -14041,6 +14043,86 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 			"-expect-early-data-reason", "protocol_version",
 		},
+	})
+
+	// On 0-RTT reject, the server may end up negotiating a cipher suite with a
+	// different PRF hash. Test that the client handles this correctly.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "EarlyData-Reject0RTT-DifferentPRF-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			CipherSuites:     []uint16{TLS_AES_128_GCM_SHA256},
+			MaxEarlyDataSize: 16384,
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			CipherSuites:     []uint16{TLS_AES_256_GCM_SHA384},
+		},
+		resumeSession:        true,
+		expectResumeRejected: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-reject-early-data",
+			"-expect-ticket-supports-early-data",
+			"-on-resume-shim-writes-first",
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "EarlyData-Reject0RTT-DifferentPRF-HRR-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			CipherSuites:     []uint16{TLS_AES_128_GCM_SHA256},
+			MaxEarlyDataSize: 16384,
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			CipherSuites:     []uint16{TLS_AES_256_GCM_SHA384},
+			// P-384 requires a HelloRetryRequest against BoringSSL's default
+			// configuration. Assert this with ExpectMissingKeyShare.
+			CurvePreferences: []CurveID{CurveP384},
+			Bugs: ProtocolBugs{
+				ExpectMissingKeyShare: true,
+			},
+		},
+		resumeSession:        true,
+		expectResumeRejected: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-reject-early-data",
+			"-expect-ticket-supports-early-data",
+			"-on-resume-shim-writes-first",
+		},
+	})
+
+	// Test that the client enforces cipher suite match on 0-RTT accept.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "EarlyData-CipherMismatch-Client-TLS13",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			CipherSuites:     []uint16{TLS_AES_128_GCM_SHA256},
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			CipherSuites:     []uint16{TLS_CHACHA20_POLY1305_SHA256},
+			Bugs: ProtocolBugs{
+				AlwaysAcceptEarlyData: true,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-ticket-supports-early-data",
+		},
+		shouldFail:         true,
+		expectedError:      ":CIPHER_MISMATCH_ON_EARLY_DATA:",
+		expectedLocalError: "remote error: illegal parameter",
 	})
 }
 

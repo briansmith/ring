@@ -352,6 +352,10 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
         return ssl_hs_error;
       }
 
+      // |ssl_session_is_resumable| forbids cross-cipher resumptions even if the
+      // PRF hashes match.
+      assert(hs->new_cipher == session->cipher);
+
       if (!ssl->enable_early_data) {
         ssl->s3->early_data_reason = ssl_early_data_disabled;
       } else if (session->ticket_max_early_data == 0) {
@@ -600,6 +604,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   // Derive and enable the handshake traffic secrets.
   if (!tls13_derive_handshake_secrets(hs) ||
       !tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
+                             hs->new_session.get(),
                              hs->server_handshake_secret())) {
     return ssl_hs_error;
   }
@@ -700,6 +705,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
           hs, MakeConstSpan(kZeroes, hs->transcript.DigestLen())) ||
       !tls13_derive_application_secrets(hs) ||
       !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
+                             hs->new_session.get(),
                              hs->server_traffic_secret_0())) {
     return ssl_hs_error;
   }
@@ -776,6 +782,7 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
     // QUIC never receives handshake messages under 0-RTT keys.
     if (ssl->quic_method == nullptr &&
         !tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_open,
+                               hs->new_session.get(),
                                hs->early_traffic_secret())) {
       return ssl_hs_error;
     }
@@ -789,6 +796,7 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   // return.
   if (ssl->quic_method != nullptr) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                               hs->new_session.get(),
                                hs->client_handshake_secret())) {
       return ssl_hs_error;
     }
@@ -821,6 +829,7 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
     ssl->method->next_message(ssl);
   }
   if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                             hs->new_session.get(),
                              hs->client_handshake_secret())) {
     return ssl_hs_error;
   }
@@ -931,6 +940,7 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
       !tls13_process_finished(hs, msg, ssl->s3->early_data_accepted) ||
       // evp_aead_seal keys have already been switched.
       !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
+                             hs->new_session.get(),
                              hs->client_traffic_secret_0())) {
     return ssl_hs_error;
   }

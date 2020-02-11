@@ -139,8 +139,8 @@ static bool derive_secret(SSL_HANDSHAKE *hs, Span<uint8_t> out,
 
 bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
                            enum evp_aead_direction_t direction,
+                           const SSL_SESSION *session,
                            Span<const uint8_t> traffic_secret) {
-  const SSL_SESSION *session = SSL_get_session(ssl);
   uint16_t version = ssl_session_protocol_version(session);
 
   UniquePtr<SSLAEADContext> traffic_aead;
@@ -341,11 +341,12 @@ bool tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
                       ssl->s3->write_traffic_secret_len);
   }
 
-  const EVP_MD *digest = ssl_session_get_digest(SSL_get_session(ssl));
+  const SSL_SESSION *session = SSL_get_session(ssl);
+  const EVP_MD *digest = ssl_session_get_digest(session);
   return hkdf_expand_label(secret, digest, secret,
                            label_to_span(kTLS13LabelApplicationTraffic), {}) &&
          tls13_set_traffic_key(ssl, ssl_encryption_application, direction,
-                               secret);
+                               session, secret);
 }
 
 static const char kTLS13LabelResumption[] = "res master";

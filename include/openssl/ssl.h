@@ -3192,6 +3192,11 @@ struct ssl_quic_method_st {
   // This function should use |SSL_get_current_cipher| to determine the TLS
   // cipher suite.
   //
+  // TODO(davidben): The advice to use |SSL_get_current_cipher| does not work
+  // for 0-RTT rejects on the client. As part of the fix to
+  // https://crbug.com/boringssl/303, we will add an explicit cipher suite
+  // parameter.
+  //
   // It returns one on success and zero on error.
   int (*set_encryption_secrets)(SSL *ssl, enum ssl_encryption_level_t level,
                                 const uint8_t *read_secret,
@@ -5070,6 +5075,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_DELEGATED_CREDENTIAL 301
 #define SSL_R_KEY_USAGE_BIT_INCORRECT 302
 #define SSL_R_INCONSISTENT_CLIENT_HELLO 303
+#define SSL_R_CIPHER_MISMATCH_ON_EARLY_DATA 304
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
