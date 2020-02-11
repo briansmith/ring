@@ -14,6 +14,7 @@
 
 //! Low-level RSA public key API.
 
-pub(crate) mod components;
+mod components;
+mod key;
 
-pub use components::Components;
+pub use {components::Components, key::Key};
