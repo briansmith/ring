@@ -165,7 +165,13 @@ fn test_signature_rsa_pkcs1_verify() {
         (&signature::RSA_PKCS1_2048_8192_SHA384, 2048),
         (&signature::RSA_PKCS1_3072_8192_SHA384, 3072),
     ];
-    let sha512_params = &[(&signature::RSA_PKCS1_2048_8192_SHA512, 2048)];
+    let sha512_params = &[
+        (
+            &signature::RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY,
+            1024,
+        ),
+        (&signature::RSA_PKCS1_2048_8192_SHA512, 2048),
+    ];
     test::run(
         test_file!("rsa_pkcs1_verify_tests.txt"),
         |section, test_case| {
