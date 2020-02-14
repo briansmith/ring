@@ -46,6 +46,7 @@ pub(super) extern "C" fn block_data_order(
 }
 
 #[inline]
+#[rustfmt::skip]
 fn block_data_order_(mut H: State, M: &[[<W32 as Word>::InputBytes; 16]]) -> State {
     for M in M {
         // FIPS 180-4 6.1.2 Step 1
@@ -91,7 +92,7 @@ fn step3(
     mut e: W32,
     W: [W32; 20],
     k: W32,
-    f: impl Fn(W32, W32, W32) -> W32
+    f: impl Fn(W32, W32, W32) -> W32,
 ) -> (W32, W32, W32, W32, W32) {
     for W_t in W.iter() {
         let T = rotl(a, 5) + f(b, c, d) + e + k + W_t;
