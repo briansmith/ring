@@ -307,6 +307,12 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
     return true;
   }
 
+  if (strcmp(flag, "-enable-ed25519") == 0) {
+    // Old argument; ignored for split-handshake compat testing.
+    // Remove after 2020-06-01.
+    return true;
+  }
+
   fprintf(stderr, "Unknown argument: %s.\n", flag);
   return false;
 }
