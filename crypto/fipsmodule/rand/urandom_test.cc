@@ -18,11 +18,10 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
+#include "getrandom_fillin.h"
 
-
-#if defined(OPENSSL_X86_64) && defined(OPENSSL_LINUX) && \
-    !defined(BORINGSSL_SHARED_LIBRARY) &&                \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+#if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
 
 #include <linux/random.h>
 #include <sys/ptrace.h>
@@ -476,4 +475,5 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-#endif  // X86_64 && LINUX && !SHARED_LIBRARY && !UNSAFE_DETERMINISTIC_MODE
+#endif  // X86_64 && !SHARED_LIBRARY && !UNSAFE_DETERMINISTIC_MODE &&
+        // USE_NR_getrandom
