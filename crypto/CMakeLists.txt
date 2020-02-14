@@ -184,6 +184,7 @@ add_custom_command(
   err/pkcs8.errordata
   err/rsa.errordata
   err/ssl.errordata
+  err/trust_token.errordata
   err/x509.errordata
   err/x509v3.errordata
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
@@ -334,6 +335,7 @@ add_library(
   thread_none.c
   thread_pthread.c
   thread_win.c
+  trust_token/privacy_pass.c
   x509/a_digest.c
   x509/a_sign.c
   x509/a_strex.c
@@ -533,6 +535,7 @@ add_executable(
   siphash/siphash_test.cc
   test/file_test_gtest.cc
   thread_test.cc
+  trust_token/trust_token_test.cc
   x509/x509_test.cc
   x509/x509_time_test.cc
   x509v3/tab_test.cc
