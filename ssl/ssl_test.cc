@@ -4244,7 +4244,7 @@ TEST(SSLTest, Handoff) {
       ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
 
       // Double-check that additional calls to |SSL_do_handshake| continue
-      // to get |SSL_ERRROR_HANDBACK|.
+      // to get |SSL_ERROR_HANDBACK|.
       handshake_ret = SSL_do_handshake(handshaker.get());
       handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
       ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);

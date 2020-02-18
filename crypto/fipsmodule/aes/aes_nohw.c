@@ -472,7 +472,7 @@ static void aes_nohw_transpose(AES_NOHW_BATCH *batch) {
 // |num_blocks| must be at most |AES_NOHW_BATCH|.
 static void aes_nohw_to_batch(AES_NOHW_BATCH *out, const uint8_t *in,
                               size_t num_blocks) {
-  // Don't leave unused blocks unitialized.
+  // Don't leave unused blocks uninitialized.
   memset(out, 0, sizeof(AES_NOHW_BATCH));
   assert(num_blocks <= AES_NOHW_BATCH_SIZE);
   for (size_t i = 0; i < num_blocks; i++) {
