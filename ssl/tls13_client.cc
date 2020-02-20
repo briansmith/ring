@@ -52,6 +52,50 @@ enum client_hs_state_t {
 
 static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
 
+// end_of_early_data closes the early data stream for |hs| and switches the
+// encryption level to |level|. It returns true on success and false on error.
+static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
+  SSL *const ssl = hs->ssl;
+  assert(hs->in_early_data);
+
+  // Note |can_early_write| may already be false if |SSL_write| exceeded the
+  // early data write limit.
+  hs->can_early_write = false;
+
+  // 0-RTT write states on the client differ between TLS 1.3, DTLS 1.3, and
+  // QUIC. TLS 1.3 has one write encryption level at a time. 0-RTT write keys
+  // overwrite the null cipher and defer handshake write keys. While a
+  // HelloRetryRequest can cause us to rewind back to the null cipher, sequence
+  // numbers have no effect, so we can install a "new" null cipher.
+  //
+  // In QUIC and DTLS 1.3, 0-RTT write state cannot override or defer the normal
+  // write state. The two ClientHello sequence numbers must align, and handshake
+  // write keys must be installed early to ACK the EncryptedExtensions.
+  //
+  // We do not currently implement DTLS 1.3 and, in QUIC, the caller handles
+  // 0-RTT data, so we can skip installing 0-RTT keys and act as if there is one
+  // write level. If we implement DTLS 1.3, we'll need to model this better.
+  if (level == ssl_encryption_initial) {
+    bssl::UniquePtr<SSLAEADContext> null_ctx =
+        SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
+    if (!null_ctx || !ssl->method->set_write_state(ssl, ssl_encryption_initial,
+                                                   std::move(null_ctx))) {
+      return false;
+    }
+    ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
+  } else {
+    assert(level == ssl_encryption_handshake);
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
+                               hs->new_session.get(),
+                               hs->client_handshake_secret())) {
+      return false;
+    }
+  }
+
+  assert(ssl->s3->write_level == level);
+  return true;
+}
+
 static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   assert(ssl->s3->have_version);
@@ -196,23 +240,17 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   // 0-RTT is rejected if we receive a HelloRetryRequest.
   if (hs->in_early_data) {
     ssl->s3->early_data_reason = ssl_early_data_hello_retry_request;
+    if (!close_early_data(hs, ssl_encryption_initial)) {
+      return ssl_hs_error;
+    }
     return ssl_hs_early_data_rejected;
   }
   return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  // Restore the null cipher. We may have switched due to 0-RTT.
-  bssl::UniquePtr<SSLAEADContext> null_ctx =
-      SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
-  if (!null_ctx ||
-      !ssl->method->set_write_state(ssl, ssl_encryption_initial,
-                                    std::move(null_ctx))) {
-    return ssl_hs_error;
-  }
-
-  ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
+  // Any 0-RTT keys must have been discarded.
+  assert(hs->ssl->s3->write_level == ssl_encryption_initial);
 
   if (!ssl_write_client_hello(hs)) {
     return ssl_hs_error;
@@ -406,9 +444,11 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!hs->early_data_offered) {
-    // If not sending early data, set client traffic keys now so that alerts are
-    // encrypted.
+  // If currently sending early data, we defer installing client traffic keys to
+  // when the early data stream is closed. See |close_early_data|. Note if the
+  // server has already rejected 0-RTT via HelloRetryRequest, |in_early_data| is
+  // already false.
+  if (!hs->in_early_data) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
                                hs->new_session.get(),
                                hs->client_handshake_secret())) {
@@ -474,6 +514,9 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
   ssl->method->next_message(ssl);
   hs->tls13_state = state_read_certificate_request;
   if (hs->in_early_data && !ssl->s3->early_data_accepted) {
+    if (!close_early_data(hs, ssl_encryption_handshake)) {
+      return ssl_hs_error;
+    }
     return ssl_hs_early_data_rejected;
   }
   return ssl_hs_ok;
@@ -654,7 +697,6 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (ssl->s3->early_data_accepted) {
-    hs->can_early_write = false;
     // QUIC omits the EndOfEarlyData message. See draft-ietf-quic-tls-22,
     // section 8.3.
     if (ssl->quic_method == nullptr) {
@@ -666,12 +708,8 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
         return ssl_hs_error;
       }
     }
-  }
 
-  if (hs->early_data_offered) {
-    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
-                               hs->new_session.get(),
-                               hs->client_handshake_secret())) {
+    if (!close_early_data(hs, ssl_encryption_handshake)) {
       return ssl_hs_error;
     }
   }

@@ -670,9 +670,8 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
 
       case ssl_hs_early_data_rejected:
         assert(ssl->s3->early_data_reason != ssl_early_data_unknown);
+        assert(!hs->can_early_write);
         ssl->s3->rwstate = SSL_ERROR_EARLY_DATA_REJECTED;
-        // Cause |SSL_write| to start failing immediately.
-        hs->can_early_write = false;
         return -1;
 
       case ssl_hs_early_return:

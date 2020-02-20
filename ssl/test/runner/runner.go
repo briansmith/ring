@@ -5084,6 +5084,19 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					suffix += "-CustomCallback"
 				}
 
+				// The custom callback and legacy callback have different default
+				// alerts.
+				verifyFailLocalError := "remote error: handshake failure"
+				if useCustomCallback {
+					verifyFailLocalError = "remote error: unknown certificate"
+				}
+
+				// We do not reliably send asynchronous fatal alerts. See
+				// https://crbug.com/boringssl/130.
+				if config.async {
+					verifyFailLocalError = ""
+				}
+
 				flags := []string{"-verify-peer"}
 				if testType == serverTest {
 					flags = append(flags, "-require-any-client-certificate")
@@ -5109,9 +5122,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 						MaxVersion:   vers.version,
 						Certificates: []Certificate{rsaCertificate},
 					},
-					flags:         append([]string{"-verify-fail"}, flags...),
-					shouldFail:    true,
-					expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+					flags:              append([]string{"-verify-fail"}, flags...),
+					shouldFail:         true,
+					expectedError:      ":CERTIFICATE_VERIFY_FAILED:",
+					expectedLocalError: verifyFailLocalError,
 				})
 				// Tests that although the verify callback fails on resumption, by default we don't call it.
 				tests = append(tests, testCase{
@@ -5136,9 +5150,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 							"-on-resume-verify-fail",
 							"-reverify-on-resume",
 						}, flags...),
-						resumeSession: true,
-						shouldFail:    true,
-						expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+						resumeSession:      true,
+						shouldFail:         true,
+						expectedError:      ":CERTIFICATE_VERIFY_FAILED:",
+						expectedLocalError: verifyFailLocalError,
 					})
 					tests = append(tests, testCase{
 						testType: testType,
@@ -5246,6 +5261,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 							expectResumeRejected: false,
 							shouldFail:           true,
 							expectedError:        ":CERTIFICATE_VERIFY_FAILED:",
+							expectedLocalError:   verifyFailLocalError,
 							flags: append([]string{
 								"-enable-early-data",
 								"-expect-reject-early-data",
@@ -5296,6 +5312,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 							resumeSession: true,
 							shouldFail:    true,
 							expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+							// We do not set expectedLocalError here because the shim rejects
+							// the connection without an alert.
 							flags: append([]string{
 								"-enable-early-data",
 								"-expect-ticket-supports-early-data",
