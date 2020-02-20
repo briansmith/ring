@@ -207,7 +207,8 @@ static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
   bssl::UniquePtr<SSLAEADContext> null_ctx =
       SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
   if (!null_ctx ||
-      !ssl->method->set_write_state(ssl, std::move(null_ctx))) {
+      !ssl->method->set_write_state(ssl, ssl_encryption_initial,
+                                    std::move(null_ctx))) {
     return ssl_hs_error;
   }
 

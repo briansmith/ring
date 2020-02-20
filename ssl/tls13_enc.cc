@@ -190,17 +190,6 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     return false;
   }
 
-  if (direction == evp_aead_open) {
-    if (!ssl->method->set_read_state(ssl, std::move(traffic_aead))) {
-      return false;
-    }
-  } else {
-    if (!ssl->method->set_write_state(ssl, std::move(traffic_aead))) {
-      return false;
-    }
-  }
-
-  // Save the traffic secret.
   if (traffic_secret.size() >
           OPENSSL_ARRAY_SIZE(ssl->s3->read_traffic_secret) ||
       traffic_secret.size() >
@@ -208,16 +197,21 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }
+
   if (direction == evp_aead_open) {
+    if (!ssl->method->set_read_state(ssl, level, std::move(traffic_aead))) {
+      return false;
+    }
     OPENSSL_memmove(ssl->s3->read_traffic_secret, traffic_secret.data(),
                     traffic_secret.size());
     ssl->s3->read_traffic_secret_len = traffic_secret.size();
-    ssl->s3->read_level = level;
   } else {
+    if (!ssl->method->set_write_state(ssl, level, std::move(traffic_aead))) {
+      return false;
+    }
     OPENSSL_memmove(ssl->s3->write_traffic_secret, traffic_secret.data(),
                     traffic_secret.size());
     ssl->s3->write_traffic_secret_len = traffic_secret.size();
-    ssl->s3->write_level = level;
   }
 
   return true;

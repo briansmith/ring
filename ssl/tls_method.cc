@@ -82,7 +82,8 @@ static void tls_on_handshake_complete(SSL *ssl) {
   }
 }
 
-static bool tls_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
+static bool tls_set_read_state(SSL *ssl, ssl_encryption_level_t level,
+                               UniquePtr<SSLAEADContext> aead_ctx) {
   // Cipher changes are forbidden if the current epoch has leftover data.
   if (tls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESS_HANDSHAKE_DATA);
@@ -92,16 +93,19 @@ static bool tls_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
 
   OPENSSL_memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
   ssl->s3->aead_read_ctx = std::move(aead_ctx);
+  ssl->s3->read_level = level;
   return true;
 }
 
-static bool tls_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
+static bool tls_set_write_state(SSL *ssl, ssl_encryption_level_t level,
+                                UniquePtr<SSLAEADContext> aead_ctx) {
   if (!tls_flush_pending_hs_data(ssl)) {
     return false;
   }
 
   OPENSSL_memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
   ssl->s3->aead_write_ctx = std::move(aead_ctx);
+  ssl->s3->write_level = level;
   return true;
 }
 
