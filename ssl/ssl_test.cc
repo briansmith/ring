@@ -5050,12 +5050,13 @@ class QUICMethodTest : public testing::Test {
           return false;
         }
         int client_ret = SSL_do_handshake(client_.get());
+        int client_err = SSL_get_error(client_.get(), client_ret);
         if (client_ret == 1) {
           client_done = true;
-        } else {
-          EXPECT_EQ(client_ret, -1);
-          EXPECT_EQ(SSL_get_error(client_.get(), client_ret),
-                    SSL_ERROR_WANT_READ);
+        } else if (client_ret != -1 || client_err != SSL_ERROR_WANT_READ) {
+          ADD_FAILURE() << "Unexpected client output: " << client_ret << " "
+                        << client_err;
+          return false;
         }
       }
 
@@ -5065,12 +5066,13 @@ class QUICMethodTest : public testing::Test {
           return false;
         }
         int server_ret = SSL_do_handshake(server_.get());
+        int server_err = SSL_get_error(server_.get(), server_ret);
         if (server_ret == 1) {
           server_done = true;
-        } else {
-          EXPECT_EQ(server_ret, -1);
-          EXPECT_EQ(SSL_get_error(server_.get(), server_ret),
-                    SSL_ERROR_WANT_READ);
+        } else if (server_ret != -1 || server_err != SSL_ERROR_WANT_READ) {
+          ADD_FAILURE() << "Unexpected server output: " << server_ret << " "
+                        << server_err;
+          return false;
         }
       }
     }
