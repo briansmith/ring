@@ -722,6 +722,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
 SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
     : ssl(ssl_arg),
+      ech_grease_enabled(false),
       signed_cert_timestamps_enabled(false),
       ocsp_stapling_enabled(false),
       channel_id_enabled(false),
@@ -1464,6 +1465,13 @@ const char *SSL_error_description(int err) {
     default:
       return nullptr;
   }
+}
+
+void SSL_set_enable_ech_grease(SSL *ssl, int enable) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->ech_grease_enabled = !!enable;
 }
 
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {

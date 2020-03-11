@@ -403,6 +403,14 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 		return err
 	}
 
+	if config.Bugs.ExpectClientECH && hs.clientHello.clientECH == nil {
+		return errors.New("tls: expected client to send ClientECH")
+	}
+
+	if hs.clientHello.clientECH != nil && len(config.Bugs.SendECHRetryConfigs) > 0 {
+		encryptedExtensions.extensions.echRetryConfigs = config.Bugs.SendECHRetryConfigs
+	}
+
 	// Select the cipher suite.
 	var preferenceList, supportedList []uint16
 	if config.PreferServerCipherSuites {

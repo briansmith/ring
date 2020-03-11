@@ -18,6 +18,7 @@
 #include <openssl/aead.h>
 #include <openssl/base.h>
 #include <openssl/curve25519.h>
+#include <openssl/digest.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -77,8 +78,8 @@ OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
 // In each of the following functions, |hpke| must have been initialized with
 // |EVP_HPKE_CTX_init|. |kdf_id| selects the KDF for non-KEM HPKE operations and
 // must be one of the |EVP_HPKE_HKDF_*| constants. |aead_id| selects the AEAD
-// for the "open" and "seal" operations and must be one of the |EVP_HPKE_AEAD_*"
-// constants."
+// for the "open" and "seal" operations and must be one of the |EVP_HPKE_AEAD_*|
+// constants.
 
 // EVP_HPKE_CTX_setup_base_s_x25519 sets up |hpke| as a sender context that can
 // encrypt for the private key corresponding to |peer_public_value| (the
@@ -214,6 +215,14 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *hpke, uint8_t *out,
 // added by sealing data with |EVP_HPKE_CTX_seal|. The |hpke| context must be
 // set up as a sender.
 OPENSSL_EXPORT size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *hpke);
+
+// EVP_HPKE_get_aead returns the AEAD corresponding to |aead_id|, or NULL if
+// |aead_id| is not a known AEAD identifier.
+OPENSSL_EXPORT const EVP_AEAD *EVP_HPKE_get_aead(uint16_t aead_id);
+
+// EVP_HPKE_get_hkdf_md returns the hash function associated with |kdf_id|, or
+// NULL if |kdf_id| is not a known KDF identifier that uses HKDF.
+OPENSSL_EXPORT const EVP_MD *EVP_HPKE_get_hkdf_md(uint16_t kdf_id);
 
 
 #if defined(__cplusplus)

@@ -39,6 +39,7 @@ struct TestConfig {
   std::string key_file;
   std::string cert_file;
   std::string expect_server_name;
+  bool enable_ech_grease = false;
   std::string expect_certificate_types;
   bool require_any_client_certificate = false;
   std::string advertise_npn;

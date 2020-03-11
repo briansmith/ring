@@ -55,6 +55,7 @@ const Flag<bool> kBoolFlags[] = {
     {"-dtls", &TestConfig::is_dtls},
     {"-quic", &TestConfig::is_quic},
     {"-fallback-scsv", &TestConfig::fallback_scsv},
+    {"-enable-ech-grease", &TestConfig::enable_ech_grease},
     {"-require-any-client-certificate",
      &TestConfig::require_any_client_certificate},
     {"-false-start", &TestConfig::false_start},
@@ -1575,6 +1576,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (!expect_channel_id.empty() || enable_channel_id) {
     SSL_set_tls_channel_id_enabled(ssl.get(), 1);
+  }
+  if (enable_ech_grease) {
+    SSL_set_enable_ech_grease(ssl.get(), 1);
   }
   if (!send_channel_id.empty()) {
     SSL_set_tls_channel_id_enabled(ssl.get(), 1);

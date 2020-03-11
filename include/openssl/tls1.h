@@ -238,6 +238,10 @@ extern "C" {
 // extension number.
 #define TLSEXT_TYPE_application_settings 17513
 
+// ExtensionType value from draft-ietf-tls-esni-08. This is not an IANA defined
+// extension number.
+#define TLSEXT_TYPE_encrypted_client_hello 0xfe08
+
 // ExtensionType value from RFC6962
 #define TLSEXT_TYPE_certificate_timestamp 18
 

@@ -127,6 +127,7 @@ const (
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
 	extensionDelegatedCredentials       uint16 = 0x22   // draft-ietf-tls-subcerts-06
 	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
+	extensionEncryptedClientHello       uint16 = 0xfe08 // not IANA assigned
 )
 
 // TLS signaling cipher suite values
@@ -793,6 +794,14 @@ type ProtocolBugs struct {
 	// ExpectServerName, if not empty, is the hostname the client
 	// must specify in the server_name extension.
 	ExpectServerName string
+
+	// ExpectClientECH causes the server to expect the peer to send an
+	// encrypted_client_hello extension containing a ClientECH structure.
+	ExpectClientECH bool
+
+	// SendECHRetryConfigs, if not empty, contains the ECH server's serialized
+	// retry configs.
+	SendECHRetryConfigs []byte
 
 	// SwapNPNAndALPN switches the relative order between NPN and ALPN in
 	// both ClientHello and ServerHello.

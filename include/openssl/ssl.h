@@ -3553,6 +3553,21 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
     enum ssl_early_data_reason_t reason);
 
 
+// Encrypted Client Hello.
+//
+// ECH is a mechanism for encrypting the entire ClientHello message in TLS 1.3.
+// This can prevent observers from seeing cleartext information about the
+// connection, such as the server_name extension.
+//
+// ECH support in BoringSSL is still experimental and under development.
+//
+// See https://tools.ietf.org/html/draft-ietf-tls-esni-08.
+
+// SSL_set_enable_ech_grease configures whether the client may send ECH GREASE
+// as part of this connection.
+OPENSSL_EXPORT void SSL_set_enable_ech_grease(SSL *ssl, int enable);
+
+
 // Alerts.
 //
 // TLS uses alerts to signal error conditions. Alerts have a type (warning or
