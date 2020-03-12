@@ -5672,6 +5672,55 @@ TEST_F(QUICMethodTest, BadPostHandshake) {
   EXPECT_EQ(SSL_process_quic_post_handshake(client_.get()), 0);
 }
 
+static void ExpectReceivedTransportParamsEqual(const SSL *ssl,
+                                               Span<const uint8_t> expected) {
+  const uint8_t *received;
+  size_t received_len;
+  SSL_get_peer_quic_transport_params(ssl, &received, &received_len);
+  ASSERT_EQ(received_len, expected.size());
+  EXPECT_EQ(Bytes(received, received_len), Bytes(expected));
+}
+
+TEST_F(QUICMethodTest, SetTransportParameters) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+  ExpectReceivedTransportParamsEqual(client_.get(), kServerParams);
+  ExpectReceivedTransportParamsEqual(server_.get(), kClientParams);
+}
+
+TEST_F(QUICMethodTest, SetTransportParamsInCallback) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  static uint8_t kServerParams[] = {5, 6, 7};
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  SSL_CTX_set_tlsext_servername_callback(
+      server_ctx_.get(), [](SSL *ssl, int *out_alert, void *arg) -> int {
+        EXPECT_TRUE(SSL_set_quic_transport_params(ssl, kServerParams,
+                                                  sizeof(kServerParams)));
+        return SSL_TLSEXT_ERR_OK;
+      });
+
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+  ExpectReceivedTransportParamsEqual(client_.get(), kServerParams);
+  ExpectReceivedTransportParamsEqual(server_.get(), kClientParams);
+}
+
 extern "C" {
 int BORINGSSL_enum_c_type_test(void);
 }

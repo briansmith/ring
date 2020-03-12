@@ -7146,6 +7146,7 @@ func addExtensionTests() {
 			// Client sends params
 			testCases = append(testCases, testCase{
 				testType: clientTest,
+				protocol: quic,
 				name:     "QUICTransportParams-Client-" + ver.name,
 				config: Config{
 					MinVersion:          ver.version,
@@ -7163,6 +7164,7 @@ func addExtensionTests() {
 			// Server sends params
 			testCases = append(testCases, testCase{
 				testType: serverTest,
+				protocol: quic,
 				name:     "QUICTransportParams-Server-" + ver.name,
 				config: Config{
 					MinVersion:          ver.version,

@@ -2583,14 +2583,10 @@ static bool ext_quic_transport_params_parse_clienthello(SSL_HANDSHAKE *hs,
                                                         uint8_t *out_alert,
                                                         CBS *contents) {
   SSL *const ssl = hs->ssl;
-  if (!contents || hs->config->quic_transport_params.empty()) {
+  if (!contents || !ssl->quic_method) {
     return true;
   }
-  // Ignore the extension before TLS 1.3.
-  if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
-    return true;
-  }
-
+  assert(ssl_protocol_version(ssl) == TLS1_3_VERSION);
   return ssl->s3->peer_quic_transport_params.CopyFrom(*contents);
 }
 
