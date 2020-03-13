@@ -79,8 +79,10 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
     if (level == ssl_encryption_initial) {
       bssl::UniquePtr<SSLAEADContext> null_ctx =
           SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
-      if (!null_ctx || !ssl->method->set_write_state(ssl, ssl_encryption_initial,
-                                                     std::move(null_ctx))) {
+      if (!null_ctx ||
+          !ssl->method->set_write_state(ssl, ssl_encryption_initial,
+                                        std::move(null_ctx),
+                                        /*secret_for_quic=*/{})) {
         return false;
       }
       ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);

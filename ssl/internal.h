@@ -2140,15 +2140,19 @@ struct SSL_PROTOCOL_METHOD {
   // on_handshake_complete is called when the handshake is complete.
   void (*on_handshake_complete)(SSL *ssl);
   // set_read_state sets |ssl|'s read cipher state and level to |aead_ctx| and
-  // |level|. It returns true on success and false if changing the read state is
-  // forbidden at this point.
+  // |level|. In QUIC, |aead_ctx| is a placeholder object and |secret_for_quic|
+  // is the original secret. This function returns true on success and false on
+  // error.
   bool (*set_read_state)(SSL *ssl, ssl_encryption_level_t level,
-                         UniquePtr<SSLAEADContext> aead_ctx);
+                         UniquePtr<SSLAEADContext> aead_ctx,
+                         Span<const uint8_t> secret_for_quic);
   // set_write_state sets |ssl|'s write cipher state and level to |aead_ctx| and
-  // |level|. It returns true on success and false if changing the write state
-  // is forbidden at this point.
+  // |level|. In QUIC, |aead_ctx| is a placeholder object and |secret_for_quic|
+  // is the original secret. This function returns true on success and false on
+  // error.
   bool (*set_write_state)(SSL *ssl, ssl_encryption_level_t level,
-                          UniquePtr<SSLAEADContext> aead_ctx);
+                          UniquePtr<SSLAEADContext> aead_ctx,
+                          Span<const uint8_t> secret_for_quic);
 };
 
 // The following wrappers call |open_*| but handle |read_shutdown| correctly.
