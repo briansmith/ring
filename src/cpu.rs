@@ -38,7 +38,7 @@ pub(crate) fn features() -> Features {
     {
         static INIT: spin::Once<()> = spin::Once::new();
         let () = INIT.call_once(|| {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "s390x"))]
             {
                 extern "C" {
                     fn GFp_cpuid_setup();
@@ -219,7 +219,8 @@ pub(crate) mod arm {
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86",
-        target_arch = "x86_64"
+        target_arch = "x86_64",
+        target_arch = "s390x"
     ))]
     pub(crate) const AES: Feature = Feature {
         mask: 1 << 2,
