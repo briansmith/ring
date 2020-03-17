@@ -1162,8 +1162,7 @@ static int FlushQuicFlight(SSL *ssl) {
 
 static int SendQuicAlert(SSL *ssl, enum ssl_encryption_level_t level,
                          uint8_t alert) {
-  // TODO(nharper): Support processing alerts.
-  return 0;
+  return GetTestState(ssl)->quic_transport->SendAlert(level, alert);
 }
 
 static const SSL_QUIC_METHOD g_quic_method = {

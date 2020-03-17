@@ -534,7 +534,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     }
   }
 
-  if (!config->expect_quic_transport_params.empty()) {
+  if (!config->expect_quic_transport_params.empty() && expect_handshake_done) {
     const uint8_t *peer_params;
     size_t peer_params_len;
     SSL_get_peer_quic_transport_params(ssl, &peer_params, &peer_params_len);

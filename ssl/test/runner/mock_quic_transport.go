@@ -24,10 +24,28 @@ import (
 
 const tagHandshake = byte('H')
 const tagApplication = byte('A')
+const tagAlert = byte('L')
 
+// mockQUICTransport provides a record layer for sending/receiving messages
+// when testing TLS over QUIC. It is only intended for testing, as it runs over
+// an in-order reliable transport, looks nothing like the QUIC wire image, and
+// provides no confidentiality guarantees. (In fact, it leaks keys in the
+// clear.)
+//
+// Messages from TLS that are sent over a mockQUICTransport are wrapped in a
+// TLV-like format. The first byte of a mockQUICTransport message is a tag
+// indicating the TLS record type. This is followed by the 2 byte cipher suite
+// ID of the cipher suite that would have been used to encrypt the record. Next
+// is a 4-byte big-endian length indicating the length of the remaining payload.
+// The payload starts with the key that would be used to encrypt the record, and
+// the remainder of the payload is the plaintext of the TLS record. Note that
+// the 4-byte length covers the length of the key and plaintext, but not the
+// cipher suite ID or tag.
 type mockQUICTransport struct {
 	net.Conn
-	readSecret, writeSecret []byte
+	readSecret, writeSecret           []byte
+	readCipherSuite, writeCipherSuite uint16
+	skipEarlyData                     bool
 }
 
 func newMockQUICTransport(conn net.Conn) *mockQUICTransport {
@@ -35,24 +53,39 @@ func newMockQUICTransport(conn net.Conn) *mockQUICTransport {
 }
 
 func (m *mockQUICTransport) read() (byte, []byte, error) {
-	header := make([]byte, 5)
-	if _, err := io.ReadFull(m.Conn, header); err != nil {
-		return 0, nil, err
+	for {
+		header := make([]byte, 7)
+		if _, err := io.ReadFull(m.Conn, header); err != nil {
+			return 0, nil, err
+		}
+		cipherSuite := binary.BigEndian.Uint16(header[1:3])
+		length := binary.BigEndian.Uint32(header[3:])
+		value := make([]byte, length)
+		if _, err := io.ReadFull(m.Conn, value); err != nil {
+			return 0, nil, fmt.Errorf("Error reading record")
+		}
+		if cipherSuite != m.readCipherSuite {
+			if m.skipEarlyData {
+				continue
+			}
+			return 0, nil, fmt.Errorf("Received cipher suite %d does not match expected %d", cipherSuite, m.readCipherSuite)
+		}
+		if len(m.readSecret) > len(value) {
+			return 0, nil, fmt.Errorf("Input length too short")
+		}
+		secret := value[:len(m.readSecret)]
+		out := value[len(m.readSecret):]
+		if !bytes.Equal(secret, m.readSecret) {
+			if m.skipEarlyData {
+				continue
+			}
+			return 0, nil, fmt.Errorf("secrets don't match: got %x but expected %x", secret, m.readSecret)
+		}
+		if m.skipEarlyData && header[0] == tagHandshake {
+			m.skipEarlyData = false
+		}
+		return header[0], out, nil
 	}
-	var length uint32
-	binary.Read(bytes.NewBuffer(header[1:]), binary.BigEndian, &length)
-	secret := make([]byte, len(m.readSecret))
-	if _, err := io.ReadFull(m.Conn, secret); err != nil {
-		return 0, nil, err
-	}
-	if !bytes.Equal(secret, m.readSecret) {
-		return 0, nil, fmt.Errorf("secrets don't match")
-	}
-	out := make([]byte, int(length))
-	if _, err := io.ReadFull(m.Conn, out); err != nil {
-		return 0, nil, err
-	}
-	return header[0], out, nil
 }
 
 func (m *mockQUICTransport) readRecord(want recordType) (recordType, *block, error) {
@@ -65,6 +98,8 @@ func (m *mockQUICTransport) readRecord(want recordType) (recordType, *block, err
 		returnType = recordTypeHandshake
 	} else if typ == tagApplication {
 		returnType = recordTypeApplicationData
+	} else if typ == tagAlert {
+		returnType = recordTypeAlert
 	} else {
 		return 0, nil, fmt.Errorf("unknown type %d\n", typ)
 	}
@@ -78,11 +113,13 @@ func (m *mockQUICTransport) writeRecord(typ recordType, data []byte) (int, error
 	} else if typ != recordTypeHandshake {
 		return 0, fmt.Errorf("unsupported record type %d\n", typ)
 	}
-	payload := make([]byte, 1+4+len(m.writeSecret)+len(data))
+	length := len(m.writeSecret) + len(data)
+	payload := make([]byte, 1+2+4+length)
 	payload[0] = tag
-	binary.BigEndian.PutUint32(payload[1:5], uint32(len(data)))
-	copy(payload[5:], m.writeSecret)
-	copy(payload[5+len(m.writeSecret):], data)
+	binary.BigEndian.PutUint16(payload[1:3], m.writeCipherSuite)
+	binary.BigEndian.PutUint32(payload[3:7], uint32(length))
+	copy(payload[7:], m.writeSecret)
+	copy(payload[7+len(m.writeSecret):], data)
 	if _, err := m.Conn.Write(payload); err != nil {
 		return 0, err
 	}
