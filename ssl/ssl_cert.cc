@@ -896,6 +896,10 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
                                 privkey_method);
 }
 
+const STACK_OF(CRYPTO_BUFFER)* SSL_CTX_get0_chain(const SSL_CTX *ctx) {
+  return ctx->cert->chain.get();
+}
+
 int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
                                  const uint8_t *der) {
   UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new(der, der_len, NULL));

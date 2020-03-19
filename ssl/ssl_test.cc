@@ -3284,6 +3284,8 @@ TEST(SSLTest, SetChainAndKey) {
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_with_buffers_method()));
   ASSERT_TRUE(server_ctx);
 
+  ASSERT_EQ(nullptr, SSL_CTX_get0_chain(server_ctx.get()));
+
   bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
   ASSERT_TRUE(key);
   bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
@@ -3296,6 +3298,9 @@ TEST(SSLTest, SetChainAndKey) {
   };
   ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
                                         chain.size(), key.get(), nullptr));
+
+  ASSERT_EQ(chain.size(),
+            sk_CRYPTO_BUFFER_num(SSL_CTX_get0_chain(server_ctx.get())));
 
   SSL_CTX_set_custom_verify(
       client_ctx.get(), SSL_VERIFY_PEER,
