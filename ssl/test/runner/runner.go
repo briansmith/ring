@@ -469,6 +469,18 @@ const (
 	quic
 )
 
+func (p protocol) String() string {
+	switch p {
+	case tls:
+		return "TLS"
+	case dtls:
+		return "DTLS"
+	case quic:
+		return "QUIC"
+	}
+	return "unknown protocol"
+}
+
 const (
 	alpn = 1
 	npn  = 2
@@ -3357,19 +3369,10 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 	const psk = "12345"
 	const pskIdentity = "luggage combo"
 
-	var prefix string
-	if protocol == dtls {
-		if !ver.hasDTLS {
-			return
-		}
-		prefix = "D"
+	if !ver.supportsProtocol(protocol) {
+		return
 	}
-	if protocol == quic {
-		if !ver.hasQUIC {
-			return
-		}
-		prefix = "QUIC-"
-	}
+	prefix := protocol.String() + "-"
 
 	var cert Certificate
 	var certFile string
@@ -5839,12 +5842,7 @@ read alert 1 0
 
 	for _, test := range tests {
 		test.protocol = config.protocol
-		if config.protocol == dtls {
-			test.name += "-DTLS"
-		}
-		if config.protocol == quic {
-			test.name += "-QUIC"
-		}
+		test.name += "-" + config.protocol.String()
 		if config.async {
 			test.name += "-Async"
 			test.flags = append(test.flags, "-async")
@@ -5957,12 +5955,7 @@ func addVersionNegotiationTests() {
 				}
 
 				suffix := shimVers.name + "-" + runnerVers.name
-				if protocol == dtls {
-					suffix += "-DTLS"
-				}
-				if protocol == quic {
-					suffix += "-QUIC"
-				}
+				suffix += "-" + protocol.String()
 
 				// Determine the expected initial record-layer versions.
 				clientVers := shimVers.version
@@ -6035,21 +6028,11 @@ func addVersionNegotiationTests() {
 
 	// Test the version extension at all versions.
 	for _, vers := range tlsVersions {
-		protocols := []protocol{tls}
-		if vers.hasDTLS {
-			protocols = append(protocols, dtls)
-		}
-		if vers.hasQUIC {
-			protocols = append(protocols, quic)
-		}
-		for _, protocol := range protocols {
-			suffix := vers.name
-			if protocol == dtls {
-				suffix += "-DTLS"
+		for _, protocol := range []protocol{tls, dtls, quic} {
+			if !vers.supportsProtocol(protocol) {
+				continue
 			}
-			if protocol == quic {
-				suffix += "-QUIC"
-			}
+			suffix := vers.name + "-" + protocol.String()
 
 			testCases = append(testCases, testCase{
 				protocol: protocol,
@@ -6401,12 +6384,7 @@ func addMinimumVersionTests() {
 
 			for _, runnerVers := range allVersions(protocol) {
 				suffix := shimVers.name + "-" + runnerVers.name
-				if protocol == dtls {
-					suffix += "-DTLS"
-				}
-				if protocol == quic {
-					suffix += "-QUIC"
-				}
+				suffix += "-" + protocol.String()
 
 				var expectedVersion uint16
 				var shouldFail bool
@@ -7871,12 +7849,7 @@ func addResumptionVersionTests() {
 			}
 			for _, protocol := range protocols {
 				suffix := "-" + sessionVers.name + "-" + resumeVers.name
-				if protocol == dtls {
-					suffix += "-DTLS"
-				}
-				if protocol == quic {
-					suffix += "-QUIC"
-				}
+				suffix += "-" + protocol.String()
 
 				if sessionVers.version == resumeVers.version {
 					testCases = append(testCases, testCase{
@@ -11963,14 +11936,9 @@ type perMessageTest struct {
 // WrongMessageType to fully test a per-message bug.
 func makePerMessageTests() []perMessageTest {
 	var ret []perMessageTest
-	// TODO(nharper): Consider supporting QUIC?
+	// The following tests are limited to TLS 1.2, so QUIC is not tested.
 	for _, protocol := range []protocol{tls, dtls} {
-		var suffix string
-		if protocol == dtls {
-			suffix = "-DTLS"
-		} else if protocol == quic {
-			suffix = "-QUIC"
-		}
+		suffix := "-" + protocol.String()
 
 		ret = append(ret, perMessageTest{
 			messageType: typeClientHello,
@@ -12175,134 +12143,137 @@ func makePerMessageTests() []perMessageTest {
 
 	}
 
-	ret = append(ret, perMessageTest{
-		messageType: typeClientHello,
-		test: testCase{
-			testType: serverTest,
-			name:     "TLS13-ClientHello",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeServerHello,
-		test: testCase{
-			name: "TLS13-ServerHello",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeEncryptedExtensions,
-		test: testCase{
-			name: "TLS13-EncryptedExtensions",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeCertificateRequest,
-		test: testCase{
-			name: "TLS13-CertificateRequest",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				ClientAuth: RequireAnyClientCert,
-			},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeCertificate,
-		test: testCase{
-			name: "TLS13-ServerCertificate",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeCertificateVerify,
-		test: testCase{
-			name: "TLS13-ServerCertificateVerify",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeFinished,
-		test: testCase{
-			name: "TLS13-ServerFinished",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeCertificate,
-		test: testCase{
-			testType: serverTest,
-			name:     "TLS13-ClientCertificate",
-			config: Config{
-				Certificates: []Certificate{rsaCertificate},
-				MaxVersion:   VersionTLS13,
-			},
-			flags: []string{"-require-any-client-certificate"},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeCertificateVerify,
-		test: testCase{
-			testType: serverTest,
-			name:     "TLS13-ClientCertificateVerify",
-			config: Config{
-				Certificates: []Certificate{rsaCertificate},
-				MaxVersion:   VersionTLS13,
-			},
-			flags: []string{"-require-any-client-certificate"},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeFinished,
-		test: testCase{
-			testType: serverTest,
-			name:     "TLS13-ClientFinished",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-		},
-	})
-
-	ret = append(ret, perMessageTest{
-		messageType: typeEndOfEarlyData,
-		test: testCase{
-			testType: serverTest,
-			name:     "TLS13-EndOfEarlyData",
-			config: Config{
-				MaxVersion: VersionTLS13,
-			},
-			resumeConfig: &Config{
-				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					SendEarlyData:           [][]byte{{1, 2, 3, 4}},
-					ExpectEarlyDataAccepted: true,
+	for _, protocol := range []protocol{tls, quic} {
+		suffix := "-" + protocol.String()
+		ret = append(ret, perMessageTest{
+			messageType: typeClientHello,
+			test: testCase{
+				testType: serverTest,
+				name:     "TLS13-ClientHello" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
 				},
 			},
-			resumeSession: true,
-			flags:         []string{"-enable-early-data"},
-		},
-	})
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeServerHello,
+			test: testCase{
+				name: "TLS13-ServerHello" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
+				},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeEncryptedExtensions,
+			test: testCase{
+				name: "TLS13-EncryptedExtensions" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
+				},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeCertificateRequest,
+			test: testCase{
+				name: "TLS13-CertificateRequest" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
+					ClientAuth: RequireAnyClientCert,
+				},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeCertificate,
+			test: testCase{
+				name: "TLS13-ServerCertificate" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
+				},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeCertificateVerify,
+			test: testCase{
+				name: "TLS13-ServerCertificateVerify" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
+				},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeFinished,
+			test: testCase{
+				name: "TLS13-ServerFinished" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
+				},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeCertificate,
+			test: testCase{
+				testType: serverTest,
+				name:     "TLS13-ClientCertificate" + suffix,
+				config: Config{
+					Certificates: []Certificate{rsaCertificate},
+					MaxVersion:   VersionTLS13,
+				},
+				flags: []string{"-require-any-client-certificate"},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeCertificateVerify,
+			test: testCase{
+				testType: serverTest,
+				name:     "TLS13-ClientCertificateVerify" + suffix,
+				config: Config{
+					Certificates: []Certificate{rsaCertificate},
+					MaxVersion:   VersionTLS13,
+				},
+				flags: []string{"-require-any-client-certificate"},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeFinished,
+			test: testCase{
+				testType: serverTest,
+				name:     "TLS13-ClientFinished" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
+				},
+			},
+		})
+
+		ret = append(ret, perMessageTest{
+			messageType: typeEndOfEarlyData,
+			test: testCase{
+				testType: serverTest,
+				name:     "TLS13-EndOfEarlyData" + suffix,
+				config: Config{
+					MaxVersion: VersionTLS13,
+				},
+				resumeConfig: &Config{
+					MaxVersion: VersionTLS13,
+					Bugs: ProtocolBugs{
+						SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+						ExpectEarlyDataAccepted: true,
+					},
+				},
+				resumeSession: true,
+				flags:         []string{"-enable-early-data"},
+			},
+		})
+	}
 
 	return ret
 }
