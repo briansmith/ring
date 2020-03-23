@@ -1060,6 +1060,24 @@ int SSL_SESSION_early_data_capable(const SSL_SESSION *session) {
          session->ticket_max_early_data != 0;
 }
 
+SSL_SESSION *SSL_SESSION_copy_without_early_data(SSL_SESSION *session) {
+  if (!SSL_SESSION_early_data_capable(session)) {
+    return UpRef(session).release();
+  }
+
+  bssl::UniquePtr<SSL_SESSION> copy =
+      SSL_SESSION_dup(session, SSL_SESSION_DUP_ALL);
+  if (!copy) {
+    return nullptr;
+  }
+
+  copy->ticket_max_early_data = 0;
+  // Copied sessions are non-resumable until they're completely filled in.
+  copy->not_resumable = session->not_resumable;
+  assert(!SSL_SESSION_early_data_capable(copy.get()));
+  return copy.release();
+}
+
 SSL_SESSION *SSL_magic_pending_session_ptr(void) {
   return (SSL_SESSION *)&g_pending_session_magic;
 }
