@@ -174,6 +174,11 @@ int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
   return 1;
 }
 
+int DH_set_length(DH *dh, unsigned priv_length) {
+  dh->priv_length = priv_length;
+  return 1;
+}
+
 int DH_generate_parameters_ex(DH *dh, int prime_bits, int generator, BN_GENCB *cb) {
   // We generate DH parameters as follows
   // find a prime q which is prime_bits/2 bits long.

@@ -108,6 +108,11 @@ OPENSSL_EXPORT void DH_get0_pqg(const DH *dh, const BIGNUM **out_p,
 // |p| and |g| must either be specified or already configured on |dh|.
 OPENSSL_EXPORT int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);
 
+// DH_set_length sets the number of bits to use for the secret exponent when
+// calling |DH_generate_key| on |dh| and returns one. If unset,
+// |DH_generate_key| will use the bit length of p.
+OPENSSL_EXPORT int DH_set_length(DH *dh, unsigned priv_length);
+
 
 // Standard parameters.
 
