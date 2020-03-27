@@ -5106,13 +5106,34 @@ class QUICMethodTest : public testing::Test {
       transport_->client()->AllowOutOfOrderWrites();
       transport_->server()->AllowOutOfOrderWrites();
     }
+    static const uint8_t transport_params[] = {0};
+    if (!SSL_set_quic_transport_params(client_.get(), transport_params,
+                                       sizeof(transport_params)) ||
+        !SSL_set_quic_transport_params(server_.get(), transport_params,
+                                       sizeof(transport_params))) {
+      return false;
+    }
     return true;
   }
+
+  enum class ExpectedError {
+    kNoError,
+    kClientError,
+    kServerError,
+  };
 
   // CompleteHandshakesForQUIC runs |SSL_do_handshake| on |client_| and
   // |server_| until each completes once. It returns true on success and false
   // on failure.
   bool CompleteHandshakesForQUIC() {
+    return RunQUICHandshakesAndExpectError(ExpectedError::kNoError);
+  }
+
+  // Runs |SSL_do_handshake| on |client_| and |server_| until each completes
+  // once. If |expect_client_error| is true, it will return true only if the
+  // client handshake failed. Otherwise, it returns true if both handshakes
+  // succeed and false otherwise.
+  bool RunQUICHandshakesAndExpectError(ExpectedError expected_error) {
     bool client_done = false, server_done = false;
     while (!client_done || !server_done) {
       if (!client_done) {
@@ -5125,6 +5146,9 @@ class QUICMethodTest : public testing::Test {
         if (client_ret == 1) {
           client_done = true;
         } else if (client_ret != -1 || client_err != SSL_ERROR_WANT_READ) {
+          if (expected_error == ExpectedError::kClientError) {
+            return true;
+          }
           ADD_FAILURE() << "Unexpected client output: " << client_ret << " "
                         << client_err;
           return false;
@@ -5141,13 +5165,16 @@ class QUICMethodTest : public testing::Test {
         if (server_ret == 1) {
           server_done = true;
         } else if (server_ret != -1 || server_err != SSL_ERROR_WANT_READ) {
+          if (expected_error == ExpectedError::kServerError) {
+            return true;
+          }
           ADD_FAILURE() << "Unexpected server output: " << server_ret << " "
                         << server_err;
           return false;
         }
       }
     }
-    return true;
+    return expected_error == ExpectedError::kNoError;
   }
 
   bssl::UniquePtr<SSL_SESSION> CreateClientSessionForQUIC() {
@@ -5864,6 +5891,26 @@ TEST_F(QUICMethodTest, ForbidCrossProtocolResumptionServer) {
 
   EXPECT_FALSE(SSL_session_reused(client.get()));
   EXPECT_FALSE(SSL_session_reused(server.get()));
+}
+
+TEST_F(QUICMethodTest, ClientRejectsMissingTransportParams) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), nullptr, 0));
+  ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kServerError));
+}
+
+TEST_F(QUICMethodTest, ServerRejectsMissingTransportParams) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), nullptr, 0));
+  ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kClientError));
 }
 
 extern "C" {

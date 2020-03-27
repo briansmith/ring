@@ -3067,38 +3067,6 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 
 
-// QUIC transport parameters.
-//
-// draft-ietf-quic-tls defines a new TLS extension quic_transport_parameters
-// used by QUIC for each endpoint to unilaterally declare its supported
-// transport parameters. draft-ietf-quic-transport (section 7.4) defines the
-// contents of that extension (a TransportParameters struct) and describes how
-// to handle it and its semantic meaning.
-//
-// BoringSSL handles this extension as an opaque byte string. The caller is
-// responsible for serializing and parsing it.
-
-// SSL_set_quic_transport_params configures |ssl| to send |params| (of length
-// |params_len|) in the quic_transport_parameters extension in either the
-// ClientHello or EncryptedExtensions handshake message. This extension will
-// only be sent if the TLS version is at least 1.3, and for a server, only if
-// the client sent the extension. The buffer pointed to by |params| only need be
-// valid for the duration of the call to this function. This function returns 1
-// on success and 0 on failure.
-OPENSSL_EXPORT int SSL_set_quic_transport_params(SSL *ssl,
-                                                 const uint8_t *params,
-                                                 size_t params_len);
-
-// SSL_get_peer_quic_transport_params provides the caller with the value of the
-// quic_transport_parameters extension sent by the peer. A pointer to the buffer
-// containing the TransportParameters will be put in |*out_params|, and its
-// length in |*params_len|. This buffer will be valid for the lifetime of the
-// |SSL|. If no params were received from the peer, |*out_params_len| will be 0.
-OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(const SSL *ssl,
-                                                       const uint8_t **out_params,
-                                                       size_t *out_params_len);
-
-
 // Delegated credentials.
 //
 // *** EXPERIMENTAL — PRONE TO CHANGE ***
@@ -3172,6 +3140,12 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 //
 // Note: 0-RTT support is incomplete and does not currently handle QUIC
 // transport parameters and server SETTINGS frame.
+//
+// QUIC implementations must additionally configure transport parameters with
+// |SSL_set_quic_transport_params|. |SSL_get_peer_quic_transport_params| may be
+// used to query the value received from the peer. BoringSSL handles this
+// extension as an opaque byte string. The caller is responsible for serializing
+// and parsing them. See draft-ietf-quic-transport (section 7.3) for details.
 
 // ssl_encryption_level_t represents a specific QUIC encryption level used to
 // transmit handshake messages.
@@ -3299,6 +3273,24 @@ OPENSSL_EXPORT int SSL_CTX_set_quic_method(SSL_CTX *ctx,
 // for the lifetime of |ssl|. It returns one on success and zero on error.
 OPENSSL_EXPORT int SSL_set_quic_method(SSL *ssl,
                                        const SSL_QUIC_METHOD *quic_method);
+
+// SSL_set_quic_transport_params configures |ssl| to send |params| (of length
+// |params_len|) in the quic_transport_parameters extension in either the
+// ClientHello or EncryptedExtensions handshake message. It is an error to set
+// transport parameters if |ssl| is not configured for QUIC. The buffer pointed
+// to by |params| only need be valid for the duration of the call to this
+// function. This function returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int SSL_set_quic_transport_params(SSL *ssl,
+                                                 const uint8_t *params,
+                                                 size_t params_len);
+
+// SSL_get_peer_quic_transport_params provides the caller with the value of the
+// quic_transport_parameters extension sent by the peer. A pointer to the buffer
+// containing the TransportParameters will be put in |*out_params|, and its
+// length in |*params_len|. This buffer will be valid for the lifetime of the
+// |SSL|. If no params were received from the peer, |*out_params_len| will be 0.
+OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(
+    const SSL *ssl, const uint8_t **out_params, size_t *out_params_len);
 
 
 // Early data.
@@ -5117,6 +5109,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_KEY_USAGE_BIT_INCORRECT 302
 #define SSL_R_INCONSISTENT_CLIENT_HELLO 303
 #define SSL_R_CIPHER_MISMATCH_ON_EARLY_DATA 304
+#define SSL_R_QUIC_TRANSPORT_PARAMETERS_MISCONFIGURED 305
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
