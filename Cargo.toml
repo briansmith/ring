@@ -10,7 +10,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.16.11"
+version = "0.16.12"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
