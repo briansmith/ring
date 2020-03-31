@@ -129,6 +129,7 @@ BSSL_NAMESPACE_BEGIN
 //     ticketMaxEarlyData      [24] INTEGER OPTIONAL,
 //     authTimeout             [25] INTEGER OPTIONAL, -- defaults to timeout
 //     earlyALPN               [26] OCTET STRING OPTIONAL,
+//     isQuic                  [27] BOOLEAN OPTIONAL,
 // }
 //
 // Note: historically this serialization has included other optional
@@ -188,6 +189,8 @@ static const unsigned kAuthTimeoutTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 25;
 static const unsigned kEarlyALPNTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 26;
+static const unsigned kIsQuicTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 27;
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
                                      int for_ticket) {
@@ -387,6 +390,15 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
       return 0;
     }
   }
+
+  if (in->is_quic) {
+    if (!CBB_add_asn1(&session, &child, kIsQuicTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
 
   return CBB_flush(cbb);
 }
@@ -718,6 +730,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
 
   ret->is_server = is_server;
 
+  int is_quic;
   if (!SSL_SESSION_parse_u16(&session, &ret->peer_signature_algorithm,
                              kPeerSignatureAlgorithmTag, 0) ||
       !SSL_SESSION_parse_u32(&session, &ret->ticket_max_early_data,
@@ -726,10 +739,13 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
                              ret->timeout) ||
       !SSL_SESSION_parse_octet_string(&session, &ret->early_alpn,
                                       kEarlyALPNTag) ||
+      !CBS_get_optional_asn1_bool(&session, &is_quic, kIsQuicTag,
+                                  /*default_value=*/false) ||
       CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;
   }
+  ret->is_quic = is_quic;
 
   if (!x509_method->session_cache_objects(ret.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);

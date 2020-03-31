@@ -3548,6 +3548,9 @@ struct ssl_session_st {
   // is_server is whether this session was created by a server.
   bool is_server : 1;
 
+  // is_quic indicates whether this session was created using QUIC.
+  bool is_quic : 1;
+
  private:
   ~ssl_session_st();
   friend void SSL_SESSION_free(SSL_SESSION *);

@@ -406,7 +406,8 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
         (ssl->session->session_id_length == 0 &&
          ssl->session->ticket.empty()) ||
         ssl->session->not_resumable ||
-        !ssl_session_is_time_valid(ssl, ssl->session.get())) {
+        !ssl_session_is_time_valid(ssl, ssl->session.get()) ||
+        (ssl->quic_method != nullptr) != ssl->session->is_quic) {
       ssl_set_session(ssl, NULL);
     }
   }
