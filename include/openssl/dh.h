@@ -86,6 +86,21 @@ OPENSSL_EXPORT int DH_up_ref(DH *dh);
 
 // Properties.
 
+// DH_get0_pub_key returns |dh|'s public key.
+OPENSSL_EXPORT const BIGNUM *DH_get0_pub_key(const DH *dh);
+
+// DH_get0_priv_key returns |dh|'s private key, or NULL if |dh| is a public key.
+OPENSSL_EXPORT const BIGNUM *DH_get0_priv_key(const DH *dh);
+
+// DH_get0_p returns |dh|'s group modulus.
+OPENSSL_EXPORT const BIGNUM *DH_get0_p(const DH *dh);
+
+// DH_get0_q returns the size of |dh|'s subgroup, or NULL if it is unset.
+OPENSSL_EXPORT const BIGNUM *DH_get0_q(const DH *dh);
+
+// DH_get0_g returns |dh|'s group generator.
+OPENSSL_EXPORT const BIGNUM *DH_get0_g(const DH *dh);
+
 // DH_get0_key sets |*out_pub_key| and |*out_priv_key|, if non-NULL, to |dh|'s
 // public and private key, respectively. If |dh| is a public key, the private
 // key will be set to NULL.

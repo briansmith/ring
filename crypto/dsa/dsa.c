@@ -131,6 +131,16 @@ int DSA_up_ref(DSA *dsa) {
   return 1;
 }
 
+const BIGNUM *DSA_get0_pub_key(const DSA *dsa) { return dsa->pub_key; }
+
+const BIGNUM *DSA_get0_priv_key(const DSA *dsa) { return dsa->priv_key; }
+
+const BIGNUM *DSA_get0_p(const DSA *dsa) { return dsa->p; }
+
+const BIGNUM *DSA_get0_q(const DSA *dsa) { return dsa->q; }
+
+const BIGNUM *DSA_get0_g(const DSA *dsa) { return dsa->g; }
+
 void DSA_get0_key(const DSA *dsa, const BIGNUM **out_pub_key,
                   const BIGNUM **out_priv_key) {
   if (out_pub_key != NULL) {
