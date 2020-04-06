@@ -811,6 +811,42 @@ int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
   return 1;
 }
 
+int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_RAW_POINT *out,
+                                    const EC_FELEM *x, const EC_FELEM *y) {
+  void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
+                          const EC_FELEM *b) = group->meth->felem_mul;
+  void (*const felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a) =
+      group->meth->felem_sqr;
+
+  // Check if the point is on the curve.
+  EC_FELEM lhs, rhs;
+  felem_sqr(group, &lhs, y);                   // lhs = y^2
+  felem_sqr(group, &rhs, x);                   // rhs = x^2
+  ec_felem_add(group, &rhs, &rhs, &group->a);  // rhs = x^2 + a
+  felem_mul(group, &rhs, &rhs, x);             // rhs = x^3 + ax
+  ec_felem_add(group, &rhs, &rhs, &group->b);  // rhs = x^3 + ax + b
+  if (!ec_felem_equal(group, &lhs, &rhs)) {
+    // In the event of an error, defend against the caller not checking the
+    // return value by setting a known safe value: the base point.
+    const EC_POINT *generator = EC_GROUP_get0_generator(group);
+    if (generator) {
+      ec_GFp_simple_point_copy(out, &generator->raw);
+    } else {
+      // The generator can be missing if the caller is in the process of
+      // constructing an arbitrary group. In this case, we give up and use the
+      // point at infinity.
+      ec_GFp_simple_point_set_to_infinity(group, out);
+    }
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
+    return 0;
+  }
+
+  out->X = *x;
+  out->Y = *y;
+  out->Z = group->one;
+  return 1;
+}
+
 int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
                                         const BIGNUM *x, const BIGNUM *y,
                                         BN_CTX *ctx) {
@@ -818,21 +854,17 @@ int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  if (!ec_GFp_simple_point_set_affine_coordinates(group, &point->raw, x, y)) {
+
+  if (x == NULL || y == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  if (!EC_POINT_is_on_curve(group, point, ctx)) {
-    // In the event of an error, defend against the caller not checking the
-    // return value by setting a known safe value: the base point.
-    const EC_POINT *generator = EC_GROUP_get0_generator(group);
-    // The generator can be missing if the caller is in the process of
-    // constructing an arbitrary group. In this, we give up and hope they're
-    // checking the return value.
-    if (generator) {
-      ec_GFp_simple_point_copy(&point->raw, &generator->raw);
-    }
-    OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
+  EC_FELEM x_felem, y_felem;
+  if (!ec_bignum_to_felem(group, &x_felem, x) ||
+      !ec_bignum_to_felem(group, &y_felem, y) ||
+      !ec_point_set_affine_coordinates(group, &point->raw, &x_felem,
+                                       &y_felem)) {
     return 0;
   }
 

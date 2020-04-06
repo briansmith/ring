@@ -234,6 +234,13 @@ typedef struct {
   // (X/Z^2, Y/Z^3) if Z != 0 and the point at infinity otherwise.
 } EC_RAW_POINT;
 
+// ec_point_set_affine_coordinates sets |out|'s to a point with affine
+// coordinates |x| and |y|. It returns one if the point is on the curve and
+// zero otherwise. If the point is not on the curve, the value of |out| is
+// undefined.
+int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_RAW_POINT *out,
+                                    const EC_FELEM *x, const EC_FELEM *y);
+
 // ec_point_mul_scalar sets |r| to |p| * |scalar|. Both inputs are considered
 // secret.
 int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
@@ -281,6 +288,12 @@ int ec_point_get_affine_coordinate_bytes(const EC_GROUP *group, uint8_t *out_x,
 size_t ec_point_to_bytes(const EC_GROUP *group, const EC_RAW_POINT *point,
                          point_conversion_form_t form, uint8_t *buf,
                          size_t len);
+
+// ec_point_from_uncompressed parses |in| as a point in uncompressed form and
+// sets the result to |out|. It returns one on success and zero if the input was
+// invalid.
+int ec_point_from_uncompressed(const EC_GROUP *group, EC_RAW_POINT *out,
+                               const uint8_t *in, size_t len);
 
 
 // Implementation details.
@@ -441,9 +454,6 @@ int ec_GFp_simple_group_get_curve(const EC_GROUP *, BIGNUM *p, BIGNUM *a,
 void ec_GFp_simple_point_init(EC_RAW_POINT *);
 void ec_GFp_simple_point_copy(EC_RAW_POINT *, const EC_RAW_POINT *);
 void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_RAW_POINT *);
-int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_RAW_POINT *,
-                                               const BIGNUM *x,
-                                               const BIGNUM *y);
 void ec_GFp_mont_add(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a,
                      const EC_RAW_POINT *b);
 void ec_GFp_mont_dbl(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a);

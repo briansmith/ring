@@ -171,24 +171,6 @@ void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *group,
   ec_GFp_simple_point_init(point);
 }
 
-int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
-                                               EC_RAW_POINT *point,
-                                               const BIGNUM *x,
-                                               const BIGNUM *y) {
-  if (x == NULL || y == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  if (!ec_bignum_to_felem(group, &point->X, x) ||
-      !ec_bignum_to_felem(group, &point->Y, y)) {
-    return 0;
-  }
-  OPENSSL_memcpy(&point->Z, &group->one, sizeof(EC_FELEM));
-
-  return 1;
-}
-
 void ec_GFp_simple_invert(const EC_GROUP *group, EC_RAW_POINT *point) {
   ec_felem_neg(group, &point->Y, &point->Y);
 }
