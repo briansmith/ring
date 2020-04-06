@@ -275,6 +275,7 @@ add_library(
   ecdsa_extra/ecdsa_asn1.c
   ec_extra/ec_asn1.c
   ec_extra/ec_derive.c
+  ec_extra/hash_to_curve.c
   err/err.c
   err_data.c
   engine/engine.c

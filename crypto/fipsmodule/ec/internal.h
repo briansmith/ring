@@ -352,6 +352,23 @@ struct ec_method_st {
   int (*felem_from_bytes)(const EC_GROUP *group, EC_FELEM *out,
                           const uint8_t *in, size_t len);
 
+  // felem_reduce sets |out| to |words|, reduced modulo the field size, p.
+  // |words| must be less than p^2. |num| must be at most twice the width of p.
+  // This function treats |words| as secret.
+  //
+  // This function is only used in hash-to-curve and may be omitted in curves
+  // that do not support it.
+  void (*felem_reduce)(const EC_GROUP *group, EC_FELEM *out,
+                       const BN_ULONG *words, size_t num);
+
+  // felem_exp sets |out| to |a|^|exp|. It treats |a| is secret but |exp| as
+  // public.
+  //
+  // This function is used in hash-to-curve and may be NULL in curves not used
+  // with hash-to-curve.
+  void (*felem_exp)(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a,
+                    const BN_ULONG *exp, size_t num_exp);
+
   // scalar_inv0_montgomery implements |ec_scalar_inv0_montgomery|.
   void (*scalar_inv0_montgomery)(const EC_GROUP *group, EC_SCALAR *out,
                                  const EC_SCALAR *in);

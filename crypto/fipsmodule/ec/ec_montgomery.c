@@ -156,6 +156,24 @@ int ec_GFp_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
   return 1;
 }
 
+static void ec_GFp_mont_felem_reduce(const EC_GROUP *group, EC_FELEM *out,
+                                     const BN_ULONG *words, size_t num) {
+  // Convert "from" Montgomery form so the value is reduced mod p.
+  bn_from_montgomery_small(out->words, group->field.width, words, num,
+                           group->mont);
+  // Convert "to" Montgomery form to remove the R^-1 factor added.
+  ec_GFp_mont_felem_to_montgomery(group, out, out);
+  // Convert to Montgomery form to match this implementation's representation.
+  ec_GFp_mont_felem_to_montgomery(group, out, out);
+}
+
+static void ec_GFp_mont_felem_exp(const EC_GROUP *group, EC_FELEM *out,
+                                  const EC_FELEM *a, const BN_ULONG *exp,
+                                  size_t num_exp) {
+  bn_mod_exp_mont_small(out->words, a->words, group->field.width, exp, num_exp,
+                        group->mont);
+}
+
 static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
                                                     const EC_RAW_POINT *point,
                                                     EC_FELEM *x, EC_FELEM *y) {
@@ -453,6 +471,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->felem_sqr = ec_GFp_mont_felem_sqr;
   out->felem_to_bytes = ec_GFp_mont_felem_to_bytes;
   out->felem_from_bytes = ec_GFp_mont_felem_from_bytes;
+  out->felem_reduce = ec_GFp_mont_felem_reduce;
+  out->felem_exp = ec_GFp_mont_felem_exp;
   out->scalar_inv0_montgomery = ec_simple_scalar_inv0_montgomery;
   out->scalar_to_montgomery_inv_vartime =
       ec_simple_scalar_to_montgomery_inv_vartime;

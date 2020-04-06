@@ -28,7 +28,9 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/obj.h>
+#include <openssl/span.h>
 
+#include "../../ec_extra/internal.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
@@ -129,6 +131,22 @@ static bool EncodeECPrivateKey(std::vector<uint8_t> *out, const EC_KEY *key) {
   }
   out->assign(der, der + der_len);
   OPENSSL_free(der);
+  return true;
+}
+
+static bool EncodeECPoint(std::vector<uint8_t> *out, const EC_GROUP *group,
+                          const EC_POINT *p, point_conversion_form_t form) {
+  size_t len = EC_POINT_point2oct(group, p, form, nullptr, 0, nullptr);
+  if (len == 0) {
+    return false;
+  }
+
+  out->resize(len);
+  len = EC_POINT_point2oct(group, p, form, out->data(), out->size(), nullptr);
+  if (len != out->size()) {
+    return false;
+  }
+
   return true;
 }
 
@@ -721,18 +739,12 @@ TEST_P(ECCurveTest, IgnoreOct2PointReturnValue) {
                            nullptr, nullptr));
 
   // Serialize the point.
-  size_t serialized_len = EC_POINT_point2oct(
-      group(), point.get(), POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, nullptr);
-  ASSERT_NE(0u, serialized_len);
-
-  std::vector<uint8_t> serialized(serialized_len);
-  ASSERT_EQ(
-      serialized_len,
-      EC_POINT_point2oct(group(), point.get(), POINT_CONVERSION_UNCOMPRESSED,
-                         serialized.data(), serialized_len, nullptr));
+  std::vector<uint8_t> serialized;
+  ASSERT_TRUE(EncodeECPoint(&serialized, group(), point.get(),
+                            POINT_CONVERSION_UNCOMPRESSED));
 
   // Create a serialized point that is not on the curve.
-  serialized[serialized_len - 1]++;
+  serialized[serialized.size() - 1]++;
 
   ASSERT_FALSE(EC_POINT_oct2point(group(), point.get(), serialized.data(),
                                   serialized.size(), nullptr));
@@ -1033,5 +1045,140 @@ TEST(ECTest, DeriveFromSecret) {
     bssl::UniquePtr<uint8_t> free_pub(pub);
     EXPECT_NE(pub_len, 0u);
     EXPECT_EQ(Bytes(pub, pub_len), Bytes(test.expected_pub));
+  }
+}
+
+TEST(ECTest, HashToCurve) {
+  struct HashToCurveTest {
+    int (*hash_to_curve)(const EC_GROUP *group, EC_RAW_POINT *out,
+                         const uint8_t *dst, size_t dst_len, const uint8_t *msg,
+                         size_t msg_len);
+    int curve_nid;
+    const char *dst;
+    const char *msg;
+    const char *x_hex;
+    const char *y_hex;
+  };
+  static const HashToCurveTest kTests[] = {
+      // See draft-irtf-cfrg-hash-to-curve-06, appendix G.3.1. Note these test
+      // |ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing| due to a spec
+      // issue. See
+      // https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/237. We
+      // expose and test this function to check our consistency with the rest of
+      // the reference implementation.
+      {&ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing, NID_secp521r1,
+       "P521_XMD:SHA-512_SSWU_RO_TESTGEN", "",
+       "00ad6cb736cb0565a2b6c52dd9e53f76a9a40a44c73bfaacef03c3"
+       "ef62a9a23920b7df4de1b92754de7bb3013d9d36049da001136e7f"
+       "4b1b0ba10beac862a2b3d3c5",
+       "01c2ecab1b6f7bb6797a4b5bd416b385e891926fc17f230f2406f3"
+       "d47076526c5d90bfb4d0170fd8a339de1a66e6304d280d0404fb68"
+       "5b2ca07e2742a770b681bf56"},
+      {&ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing, NID_secp521r1,
+       "P521_XMD:SHA-512_SSWU_RO_TESTGEN", "abcdef0123456789",
+       "019f0195e514da4243a4d2de4b7ed2415d5205c6da11eb7deae70b"
+       "e78a61bb89ebf17f7c9970ee20b4152ae50c95e55f626bc7350d5a"
+       "0f530a91f48047bd90eeeaa7",
+       "016eaa02cd5511a96eed4ffc965bdc3f1fdbb7f4c9895eabdf168b"
+       "44250278ebca55474bc89a2f246b8fb959010502aab8a9385319bc"
+       "f69f74dd8f518bea1c7fafde"},
+      {&ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing, NID_secp521r1,
+       "P521_XMD:SHA-512_SSWU_RO_TESTGEN",
+       "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "00de3dd7780cfcd538f7b3067d8da52c522a031244dc0d327e6e99"
+       "ef331be475354a0b481a22e0d4d35b232da260baac5b693a827a20"
+       "b1f328a416ffc47ad945a4dc",
+       "016bb6c5c965c6a80a4a5e0c2c7bbd841766eac695f88a730076b3"
+       "2d4399da01609a4a17b59a21f4f58a174d6110081b96e5aaedead3"
+       "cfd4252e74de969680ba74ab"},
+
+      // The above test vectors with the expectations updated to compute
+      // hash_to_field correctly.
+      {&ec_hash_to_curve_p521_xmd_sha512_sswu, NID_secp521r1,
+       "P521_XMD:SHA-512_SSWU_RO_TESTGEN", "",
+       "00758617b5e40aa8b30fcfd3c7453ad1abeff158de5697d6f1ccb8"
+       "4690aaa8bb6692986200d16206e85e4f39f1d2829fee1a5904a089"
+       "b4fab3b76873429877c58f99",
+       "016edf324d95fcbe4a30f06751f16cdd5d0b49921dd653cefb3ea2"
+       "dc2b5b903e36d9924a65407283588cc6c224ab6d6324c73cdc166c"
+       "e1530b46984b459e966349b3"},
+      {&ec_hash_to_curve_p521_xmd_sha512_sswu, NID_secp521r1,
+       "P521_XMD:SHA-512_SSWU_RO_TESTGEN", "abcdef0123456789",
+       "01f58bfb34825d028c392976a09cebee829734f7714c84b8a13580"
+       "afcc2eb4726e18e307476c1fccdc857a3d6767fd2882875ab132b7"
+       "fa7f3f6bae8954384001b1a1",
+       "00ee0d2d0bfb0bdc6215814fe7096a3dfbf020dce4f0645e8e21a9"
+       "0d6a6113a5ca61ae7d8f3b485b04f2eb2b85e34fc7f9f1bf367386"
+       "2e03932b0acc3655e84d480f"},
+      {&ec_hash_to_curve_p521_xmd_sha512_sswu, NID_secp521r1,
+       "P521_XMD:SHA-512_SSWU_RO_TESTGEN",
+       "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "016d9a90619bb20c49a2a73cc8c6218cd9b3fb13c720fff2e1f8db"
+       "ac92862c7da4faf404faeff6b64f0d9b1c5824cec99b0d0ed02b3f"
+       "acb6275ce553404ea361503e",
+       "007e301e3357fb1d53961c56e53ce2763e44b297062a3eb14b9f8d"
+       "6aadc92162a74f7e254a606275e76ea0ac343b3bc746f99804bacd"
+       "7351a76fce44347c72a6fe9a"},
+
+      // Custom test vector which triggers long DST path.
+      {&ec_hash_to_curve_p521_xmd_sha512_sswu, NID_secp521r1,
+       "P521_XMD:SHA-512_SSWU_RO_TESTGEN_aaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "abcdef0123456789",
+       "0036b0c8bbec60335ff8b0397c2cb80283b97051cc949c5c190c28"
+       "92b279fafd6c372dcec3e71eab85c48ed440c14498332548ee46d0"
+       "c85442cbdc5b4032e86c3884",
+       "0081e32ca4378ae89b03142361d9c7fbe66acf0351aca3a71eca50"
+       "7a37fb8673b69cb108d079a248aedd74f06949d6623e7f7605ea10"
+       "f6f751ab574c005db7377d7f"},
+  };
+
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(test.dst);
+    SCOPED_TRACE(test.msg);
+
+    bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.curve_nid));
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<EC_POINT> p(EC_POINT_new(group.get()));
+    ASSERT_TRUE(p);
+    ASSERT_TRUE(test.hash_to_curve(
+        group.get(), &p->raw, reinterpret_cast<const uint8_t *>(test.dst),
+        strlen(test.dst), reinterpret_cast<const uint8_t *>(test.msg),
+        strlen(test.msg)));
+
+    std::vector<uint8_t> buf;
+    ASSERT_TRUE(EncodeECPoint(&buf, group.get(), p.get(),
+                              POINT_CONVERSION_UNCOMPRESSED));
+    size_t field_len = (buf.size() - 1) / 2;
+    EXPECT_EQ(test.x_hex,
+              EncodeHex(bssl::MakeConstSpan(buf).subspan(1, field_len)));
+    EXPECT_EQ(test.y_hex, EncodeHex(bssl::MakeConstSpan(buf).subspan(
+                              1 + field_len, field_len)));
   }
 }
