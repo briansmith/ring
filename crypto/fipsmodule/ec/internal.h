@@ -152,15 +152,19 @@ void ec_scalar_from_montgomery(const EC_GROUP *group, EC_SCALAR *r,
 void ec_scalar_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                               const EC_SCALAR *a, const EC_SCALAR *b);
 
-// ec_scalar_mul_montgomery sets |r| to |a|^-1 where inputs and outputs are in
-// Montgomery form.
-void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
-                              const EC_SCALAR *a);
+// ec_scalar_inv0_montgomery sets |r| to |a|^-1 where inputs and outputs are in
+// Montgomery form. If |a| is zero, |r| is set to zero.
+void ec_scalar_inv0_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                               const EC_SCALAR *a);
 
-// ec_scalar_inv_montgomery_vartime performs the same actions as
-// |ec_scalar_inv_montgomery|, but in variable time.
-int ec_scalar_inv_montgomery_vartime(const EC_GROUP *group, EC_SCALAR *r,
-                                     const EC_SCALAR *a);
+// ec_scalar_to_montgomery_inv_vartime sets |r| to |a|^-1 R. That is, it takes
+// in |a| not in Montgomery form and computes the inverse in Montgomery form. It
+// returns one on success and zero if |a| has no inverse. This function assumes
+// |a| is public and may leak information about it via timing.
+//
+// Note this is not the same operation as |ec_scalar_inv0_montgomery|.
+int ec_scalar_to_montgomery_inv_vartime(const EC_GROUP *group, EC_SCALAR *r,
+                                        const EC_SCALAR *a);
 
 
 // Field elements.
@@ -318,16 +322,14 @@ struct ec_method_st {
   int (*felem_to_bignum)(const EC_GROUP *group, BIGNUM *out,
                          const EC_FELEM *in);
 
-  // scalar_inv_montgomery sets |out| to |in|^-1, where both input and output
-  // are in Montgomery form.
-  void (*scalar_inv_montgomery)(const EC_GROUP *group, EC_SCALAR *out,
-                                const EC_SCALAR *in);
+  // scalar_inv0_montgomery implements |ec_scalar_inv0_montgomery|.
+  void (*scalar_inv0_montgomery)(const EC_GROUP *group, EC_SCALAR *out,
+                                 const EC_SCALAR *in);
 
-  // scalar_inv_montgomery_vartime performs the same computation as
-  // |scalar_inv_montgomery|. It further assumes that the inputs are public so
-  // there is no concern about leaking their values through timing.
-  int (*scalar_inv_montgomery_vartime)(const EC_GROUP *group, EC_SCALAR *out,
-                                       const EC_SCALAR *in);
+  // scalar_to_montgomery_inv_vartime implements
+  // |ec_scalar_to_montgomery_inv_vartime|.
+  int (*scalar_to_montgomery_inv_vartime)(const EC_GROUP *group, EC_SCALAR *out,
+                                          const EC_SCALAR *in);
 
   // cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
   // order, with |r|. It returns one if the values match and zero if |p| is the
@@ -433,11 +435,12 @@ int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_RAW_POINT *);
 int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_RAW_POINT *);
 int ec_GFp_simple_cmp(const EC_GROUP *, const EC_RAW_POINT *a,
                       const EC_RAW_POINT *b);
-void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
-                                     const EC_SCALAR *a);
+void ec_simple_scalar_inv0_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                                      const EC_SCALAR *a);
 
-int ec_GFp_simple_mont_inv_mod_ord_vartime(const EC_GROUP *group, EC_SCALAR *r,
-                                           const EC_SCALAR *a);
+int ec_simple_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
+                                               EC_SCALAR *r,
+                                               const EC_SCALAR *a);
 
 int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
                                    const EC_SCALAR *r);

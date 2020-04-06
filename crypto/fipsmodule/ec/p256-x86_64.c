@@ -490,8 +490,8 @@ static void ecp_nistz256_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
   OPENSSL_memcpy(r->Z.words, a.Z, P256_LIMBS * sizeof(BN_ULONG));
 }
 
-static void ecp_nistz256_inv_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
-                                     const EC_SCALAR *in) {
+static void ecp_nistz256_inv0_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
+                                      const EC_SCALAR *in) {
   // table[i] stores a power of |in| corresponding to the matching enum value.
   enum {
     // The following indices specify the power in binary.
@@ -571,12 +571,12 @@ static void ecp_nistz256_inv_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
   }
 }
 
-static int ecp_nistz256_mont_inv_mod_ord_vartime(const EC_GROUP *group,
+static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
                                                  EC_SCALAR *out,
                                                  const EC_SCALAR *in) {
   if ((OPENSSL_ia32cap_get()[1] & (1 << 28)) == 0) {
     // No AVX support; fallback to generic code.
-    return ec_GFp_simple_mont_inv_mod_ord_vartime(group, out, in);
+    return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
   }
 
   assert(group->order.width == P256_LIMBS);
@@ -642,8 +642,9 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->felem_sqr = ec_GFp_mont_felem_sqr;
   out->bignum_to_felem = ec_GFp_mont_bignum_to_felem;
   out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
-  out->scalar_inv_montgomery = ecp_nistz256_inv_mod_ord;
-  out->scalar_inv_montgomery_vartime = ecp_nistz256_mont_inv_mod_ord_vartime;
+  out->scalar_inv0_montgomery = ecp_nistz256_inv0_mod_ord;
+  out->scalar_to_montgomery_inv_vartime =
+      ecp_nistz256_scalar_to_montgomery_inv_vartime;
   out->cmp_x_coordinate = ecp_nistz256_cmp_x_coordinate;
 }
 

@@ -351,21 +351,6 @@ int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_RAW_POINT *a,
   return 0;
 }
 
-int ec_GFp_simple_mont_inv_mod_ord_vartime(const EC_GROUP *group,
-                                           EC_SCALAR *out,
-                                           const EC_SCALAR *in) {
-  // This implementation (in fact) runs in constant time,
-  // even though for this interface it is not mandatory.
-
-  // out = in^-1 in the Montgomery domain. This is
-  // |ec_scalar_to_montgomery| followed by |ec_scalar_inv_montgomery|, but
-  // |ec_scalar_inv_montgomery| followed by |ec_scalar_from_montgomery| is
-  // equivalent and slightly more efficient.
-  ec_scalar_inv_montgomery(group, out, in);
-  ec_scalar_from_montgomery(group, out, out);
-  return 1;
-}
-
 int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
                                    const EC_SCALAR *r) {
   if (ec_GFp_simple_is_at_infinity(group, p)) {

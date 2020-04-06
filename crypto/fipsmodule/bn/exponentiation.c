@@ -809,8 +809,8 @@ void bn_mod_exp_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
   OPENSSL_cleanse(val, sizeof(val));
 }
 
-void bn_mod_inverse_prime_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
-                                     const BN_MONT_CTX *mont) {
+void bn_mod_inverse0_prime_mont_small(BN_ULONG *r, const BN_ULONG *a,
+                                      size_t num, const BN_MONT_CTX *mont) {
   if (num != (size_t)mont->N.width || num > BN_SMALL_MAX_WORDS) {
     abort();
   }

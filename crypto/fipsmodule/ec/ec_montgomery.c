@@ -136,10 +136,10 @@ static void ec_GFp_mont_felem_from_montgomery(const EC_GROUP *group,
                            group->mont);
 }
 
-static void ec_GFp_mont_felem_inv(const EC_GROUP *group, EC_FELEM *out,
-                                  const EC_FELEM *a) {
-  bn_mod_inverse_prime_mont_small(out->words, a->words, group->field.width,
-                                  group->mont);
+static void ec_GFp_mont_felem_inv0(const EC_GROUP *group, EC_FELEM *out,
+                                   const EC_FELEM *a) {
+  bn_mod_inverse0_prime_mont_small(out->words, a->words, group->field.width,
+                                   group->mont);
 }
 
 void ec_GFp_mont_felem_mul(const EC_GROUP *group, EC_FELEM *r,
@@ -188,10 +188,10 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
     return 0;
   }
 
-  // Transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3).
-
+  // Transform (X, Y, Z  into (x, y) := (X/Z^2, Y/Z^3). Note the check above
+  // ensures |point->Z| is non-zero, so the inverse always exists.
   EC_FELEM z1, z2;
-  ec_GFp_mont_felem_inv(group, &z2, &point->Z);
+  ec_GFp_mont_felem_inv0(group, &z2, &point->Z);
   ec_GFp_mont_felem_sqr(group, &z1, &z2);
 
   // Instead of using |ec_GFp_mont_felem_from_montgomery| to convert the |x|
@@ -477,7 +477,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->felem_sqr = ec_GFp_mont_felem_sqr;
   out->bignum_to_felem = ec_GFp_mont_bignum_to_felem;
   out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
-  out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
-  out->scalar_inv_montgomery_vartime = ec_GFp_simple_mont_inv_mod_ord_vartime;
+  out->scalar_inv0_montgomery = ec_simple_scalar_inv0_montgomery;
+  out->scalar_to_montgomery_inv_vartime =
+      ec_simple_scalar_to_montgomery_inv_vartime;
   out->cmp_x_coordinate = ec_GFp_mont_cmp_x_coordinate;
 }

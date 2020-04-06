@@ -108,19 +108,38 @@ void ec_scalar_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                               group->order_mont);
 }
 
-void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
-                                     const EC_SCALAR *a) {
+void ec_simple_scalar_inv0_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                                      const EC_SCALAR *a) {
   const BIGNUM *order = &group->order;
-  bn_mod_inverse_prime_mont_small(r->words, a->words, order->width,
-                                  group->order_mont);
+  bn_mod_inverse0_prime_mont_small(r->words, a->words, order->width,
+                                   group->order_mont);
 }
 
-void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
-                              const EC_SCALAR *a) {
-  group->meth->scalar_inv_montgomery(group, r, a);
+int ec_simple_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
+                                               EC_SCALAR *out,
+                                               const EC_SCALAR *in) {
+  if (ec_scalar_is_zero(group, in)) {
+    return 0;
+  }
+
+  // This implementation (in fact) runs in constant time,
+  // even though for this interface it is not mandatory.
+
+  // out = in^-1 in the Montgomery domain. This is
+  // |ec_scalar_to_montgomery| followed by |ec_scalar_inv0_montgomery|, but
+  // |ec_scalar_inv0_montgomery| followed by |ec_scalar_from_montgomery| is
+  // equivalent and slightly more efficient.
+  ec_scalar_inv0_montgomery(group, out, in);
+  ec_scalar_from_montgomery(group, out, out);
+  return 1;
 }
 
-int ec_scalar_inv_montgomery_vartime(const EC_GROUP *group, EC_SCALAR *r,
-                                     const EC_SCALAR *a) {
-  return group->meth->scalar_inv_montgomery_vartime(group, r, a);
+void ec_scalar_inv0_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                               const EC_SCALAR *a) {
+  group->meth->scalar_inv0_montgomery(group, r, a);
+}
+
+int ec_scalar_to_montgomery_inv_vartime(const EC_GROUP *group, EC_SCALAR *r,
+                                        const EC_SCALAR *a) {
+  return group->meth->scalar_to_montgomery_inv_vartime(group, r, a);
 }

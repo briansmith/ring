@@ -675,13 +675,13 @@ void bn_mod_exp_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
                            const BN_ULONG *p, size_t num_p,
                            const BN_MONT_CTX *mont);
 
-// bn_mod_inverse_prime_mont_small sets |r| to |a|^-1 mod |mont->N|. |mont->N|
-// must be a prime. |r| and |a| are |num| words long, which must be
-// |mont->N.width| and at most |BN_SMALL_MAX_WORDS|. |a| must be fully-reduced
-// and may alias |r|. This function runs in time independent of |a|, but
-// |mont->N| is a public value.
-void bn_mod_inverse_prime_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
-                                     const BN_MONT_CTX *mont);
+// bn_mod_inverse0_prime_mont_small sets |r| to |a|^-1 mod |mont->N|. If |a| is
+// zero, |r| is set to zero. |mont->N| must be a prime. |r| and |a| are |num|
+// words long, which must be |mont->N.width| and at most |BN_SMALL_MAX_WORDS|.
+// |a| must be fully-reduced and may alias |r|. This function runs in time
+// independent of |a|, but |mont->N| is a public value.
+void bn_mod_inverse0_prime_mont_small(BN_ULONG *r, const BN_ULONG *a,
+                                      size_t num, const BN_MONT_CTX *mont);
 
 
 #if defined(__cplusplus)
