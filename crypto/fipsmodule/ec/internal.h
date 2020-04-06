@@ -378,10 +378,6 @@ int ec_point_get_affine_coordinate_bytes(const EC_GROUP *group, uint8_t *out_x,
                                          uint8_t *out_y, size_t *out_len,
                                          size_t max_out, const EC_RAW_POINT *p);
 
-// ec_field_element_to_scalar reduces |r| modulo |group->order|. |r| must
-// previously have been reduced modulo |group->field|.
-int ec_field_element_to_scalar(const EC_GROUP *group, BIGNUM *r);
-
 void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                      const EC_RAW_POINT *p, const EC_SCALAR *scalar);
 void ec_GFp_mont_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
