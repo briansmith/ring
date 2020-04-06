@@ -101,22 +101,13 @@ void ec_GFp_simple_group_finish(EC_GROUP *group) {
 int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
                                   const BIGNUM *a, const BIGNUM *b,
                                   BN_CTX *ctx) {
-  int ret = 0;
-  BN_CTX *new_ctx = NULL;
-
   // p must be a prime > 3
   if (BN_num_bits(p) <= 2 || !BN_is_odd(p)) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FIELD);
     return 0;
   }
 
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
+  int ret = 0;
   BN_CTX_start(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
   if (tmp == NULL) {
@@ -131,33 +122,23 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   // Store the field in minimal form, so it can be used with |BN_ULONG| arrays.
   bn_set_minimal_width(&group->field);
 
-  // group->a
-  if (!BN_nnmod(tmp, a, &group->field, ctx) ||
-      !ec_bignum_to_felem(group, &group->a, tmp)) {
+  if (!ec_bignum_to_felem(group, &group->a, a) ||
+      !ec_bignum_to_felem(group, &group->b, b) ||
+      !ec_bignum_to_felem(group, &group->one, BN_value_one())) {
     goto err;
   }
 
   // group->a_is_minus3
-  if (!BN_add_word(tmp, 3)) {
+  if (!BN_copy(tmp, a) ||
+      !BN_add_word(tmp, 3)) {
     goto err;
   }
   group->a_is_minus3 = (0 == BN_cmp(tmp, &group->field));
-
-  // group->b
-  if (!BN_nnmod(tmp, b, &group->field, ctx) ||
-      !ec_bignum_to_felem(group, &group->b, tmp)) {
-    goto err;
-  }
-
-  if (!ec_bignum_to_felem(group, &group->one, BN_value_one())) {
-    goto err;
-  }
 
   ret = 1;
 
 err:
   BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
   return ret;
 }
 

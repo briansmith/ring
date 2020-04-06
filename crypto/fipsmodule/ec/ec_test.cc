@@ -330,6 +330,23 @@ TEST(ECTest, ArbitraryCurve) {
 
   EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group4.get(), NULL));
 #endif
+
+  // group5 is the same group, but the curve coefficients are passed in
+  // unreduced and the caller does not pass in a |BN_CTX|.
+  ASSERT_TRUE(BN_sub(a.get(), a.get(), p.get()));
+  ASSERT_TRUE(BN_add(b.get(), b.get(), p.get()));
+  bssl::UniquePtr<EC_GROUP> group5(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), NULL));
+  ASSERT_TRUE(group5);
+  bssl::UniquePtr<EC_POINT> generator5(EC_POINT_new(group5.get()));
+  ASSERT_TRUE(generator5);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group5.get(), generator5.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group5.get(), generator5.get(),
+                                     order.get(), BN_value_one()));
+
+  EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), NULL));
+  EXPECT_EQ(0, EC_GROUP_cmp(group5.get(), group.get(), NULL));
 }
 
 TEST(ECTest, SetKeyWithoutGroup) {

@@ -321,20 +321,37 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
     return NULL;
   }
 
-  EC_GROUP *ret = ec_group_new(EC_GFp_mont_method());
-  if (ret == NULL) {
-    return NULL;
+  BN_CTX *new_ctx = NULL;
+  if (ctx == NULL) {
+    ctx = new_ctx = BN_CTX_new();
+    if (ctx == NULL) {
+      return NULL;
+    }
   }
 
-  if (ret->meth->group_set_curve == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    EC_GROUP_free(ret);
-    return NULL;
+  // Historically, |a| and |b| were not required to be fully reduced.
+  // TODO(davidben): Can this be removed?
+  EC_GROUP *ret = NULL;
+  BN_CTX_start(ctx);
+  BIGNUM *a_reduced = BN_CTX_get(ctx);
+  BIGNUM *b_reduced = BN_CTX_get(ctx);
+  if (a_reduced == NULL || b_reduced == NULL ||
+      !BN_nnmod(a_reduced, a, p, ctx) ||
+      !BN_nnmod(b_reduced, b, p, ctx)) {
+    goto err;
   }
-  if (!ret->meth->group_set_curve(ret, p, a, b, ctx)) {
+
+  ret = ec_group_new(EC_GFp_mont_method());
+  if (ret == NULL ||
+      !ret->meth->group_set_curve(ret, p, a_reduced, b_reduced, ctx)) {
     EC_GROUP_free(ret);
-    return NULL;
+    ret = NULL;
+    goto err;
   }
+
+err:
+  BN_CTX_end(ctx);
+  BN_CTX_free(new_ctx);
   return ret;
 }
 

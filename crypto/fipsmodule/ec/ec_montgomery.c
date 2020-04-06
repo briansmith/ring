@@ -92,35 +92,20 @@ void ec_GFp_mont_group_finish(EC_GROUP *group) {
 
 int ec_GFp_mont_group_set_curve(EC_GROUP *group, const BIGNUM *p,
                                 const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
-  int ret = 0;
-
   BN_MONT_CTX_free(group->mont);
-  group->mont = NULL;
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
   group->mont = BN_MONT_CTX_new_for_modulus(p, ctx);
   if (group->mont == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    goto err;
+    return 0;
   }
 
-  ret = ec_GFp_simple_group_set_curve(group, p, a, b, ctx);
-
-  if (!ret) {
+  if (!ec_GFp_simple_group_set_curve(group, p, a, b, ctx)) {
     BN_MONT_CTX_free(group->mont);
     group->mont = NULL;
+    return 0;
   }
 
-err:
-  BN_CTX_free(new_ctx);
-  return ret;
+  return 1;
 }
 
 static void ec_GFp_mont_felem_to_montgomery(const EC_GROUP *group,
