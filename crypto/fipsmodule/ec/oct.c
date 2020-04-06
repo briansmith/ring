@@ -73,10 +73,9 @@
 #include "internal.h"
 
 
-static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
-                                      const EC_RAW_POINT *point,
-                                      point_conversion_form_t form,
-                                      uint8_t *buf, size_t len) {
+size_t ec_point_to_bytes(const EC_GROUP *group, const EC_RAW_POINT *point,
+                         point_conversion_form_t form, uint8_t *buf,
+                         size_t len) {
   if (form != POINT_CONVERSION_COMPRESSED &&
       form != POINT_CONVERSION_UNCOMPRESSED) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FORM);
@@ -226,7 +225,7 @@ size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  return ec_GFp_simple_point2oct(group, &point->raw, form, buf, len);
+  return ec_point_to_bytes(group, &point->raw, form, buf, len);
 }
 
 int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,

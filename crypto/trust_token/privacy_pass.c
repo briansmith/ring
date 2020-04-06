@@ -141,7 +141,7 @@ static EC_POINT *get_h(void) {
 // |*out_pub| is set to the public half of the keypair. It returns one on
 // success and zero on failure.
 static int generate_keypair(EC_SCALAR *out_x, EC_SCALAR *out_y,
-                            EC_POINT **out_pub, const EC_GROUP *group) {
+                            EC_RAW_POINT *out_pub, const EC_GROUP *group) {
   EC_POINT *h = get_h();
   if (h == NULL) {
     return 0;
@@ -149,22 +149,31 @@ static int generate_keypair(EC_SCALAR *out_x, EC_SCALAR *out_y,
 
   static const uint8_t kDefaultAdditionalData[32] = {0};
   EC_RAW_POINT tmp1, tmp2;
-  EC_POINT *pub = EC_POINT_new(group);
-  if (pub == NULL ||
-      !ec_random_nonzero_scalar(group, out_x, kDefaultAdditionalData) ||
+  if (!ec_random_nonzero_scalar(group, out_x, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, out_y, kDefaultAdditionalData) ||
       !ec_point_mul_scalar_base(group, &tmp1, out_x) ||
       !ec_point_mul_scalar(group, &tmp2, &h->raw, out_y)) {
     EC_POINT_free(h);
-    EC_POINT_free(pub);
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  group->meth->add(group, &pub->raw, &tmp1, &tmp2);
-  *out_pub = pub;
+  group->meth->add(group, out_pub, &tmp1, &tmp2);
 
   EC_POINT_free(h);
   return 1;
+}
+
+static int point_to_cbb(CBB *out, const EC_GROUP *group,
+                        const EC_RAW_POINT *point) {
+  size_t len =
+      ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, NULL, 0);
+  if (len == 0) {
+    return 0;
+  }
+  uint8_t *p;
+  return CBB_add_space(out, &p, len) &&
+         ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, p,
+                           len) == len;
 }
 
 int TRUST_TOKEN_generate_key(uint8_t *out_priv_key, size_t *out_priv_key_len,
@@ -172,15 +181,14 @@ int TRUST_TOKEN_generate_key(uint8_t *out_priv_key, size_t *out_priv_key_len,
                              size_t *out_pub_key_len, size_t max_pub_key_len,
                              uint32_t id) {
   int ok = 0;
-  EC_POINT *pub0 = NULL, *pub1 = NULL, *pubs = NULL;
   CBB cbb;
   CBB_zero(&cbb);
-  uint8_t *buf = NULL;
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
     return 0;
   }
 
+  EC_RAW_POINT pub0, pub1, pubs;
   EC_SCALAR x0, y0, x1, y1, xs, ys;
   if (!generate_keypair(&x0, &y0, &pub0, group) ||
       !generate_keypair(&x1, &y1, &pub1, group) ||
@@ -198,6 +206,7 @@ int TRUST_TOKEN_generate_key(uint8_t *out_priv_key, size_t *out_priv_key_len,
 
   const EC_SCALAR *scalars[] = {&x0, &y0, &x1, &y1, &xs, &ys};
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(scalars); i++) {
+    uint8_t *buf;
     if (!CBB_add_space(&cbb, &buf, scalar_len)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
       goto err;
@@ -214,14 +223,11 @@ int TRUST_TOKEN_generate_key(uint8_t *out_priv_key, size_t *out_priv_key_len,
   if (!CBB_init_fixed(&cbb, out_pub_key, max_pub_key_len) ||
       !CBB_add_u32(&cbb, id) ||
       !CBB_add_u16_length_prefixed(&cbb, &pub_cbb) ||
-      !EC_POINT_point2cbb(&pub_cbb, group, pub0, POINT_CONVERSION_UNCOMPRESSED,
-                          NULL) ||
+      !point_to_cbb(&pub_cbb, group, &pub0) ||
       !CBB_add_u16_length_prefixed(&cbb, &pub_cbb) ||
-      !EC_POINT_point2cbb(&pub_cbb, group, pub1, POINT_CONVERSION_UNCOMPRESSED,
-                          NULL) ||
+      !point_to_cbb(&pub_cbb, group, &pub1) ||
       !CBB_add_u16_length_prefixed(&cbb, &pub_cbb) ||
-      !EC_POINT_point2cbb(&pub_cbb, group, pubs, POINT_CONVERSION_UNCOMPRESSED,
-                          NULL) ||
+      !point_to_cbb(&pub_cbb, group, &pubs) ||
       !CBB_finish(&cbb, NULL, out_pub_key_len)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
     goto err;
@@ -231,8 +237,5 @@ int TRUST_TOKEN_generate_key(uint8_t *out_priv_key, size_t *out_priv_key_len,
 
 err:
   CBB_cleanup(&cbb);
-  EC_POINT_free(pub0);
-  EC_POINT_free(pub1);
-  EC_POINT_free(pubs);
   return ok;
 }
