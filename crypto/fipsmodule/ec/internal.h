@@ -187,6 +187,17 @@ int ec_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out, const BIGNUM *in);
 // zero on allocation failure.
 int ec_felem_to_bignum(const EC_GROUP *group, BIGNUM *out, const EC_FELEM *in);
 
+// ec_felem_to_bytes serializes |in| as a big-endian bytestring to |out| and
+// sets |*out_len| to the number of bytes written. The number of bytes written
+// is |BN_num_bytes(&group->order)|, which is at most |EC_MAX_BYTES|.
+void ec_felem_to_bytes(const EC_GROUP *group, uint8_t *out, size_t *out_len,
+                       const EC_FELEM *in);
+
+// ec_felem_from_bytes deserializes |in| and stores the resulting field element
+// to |out|. It returns one on success and zero if |in| is invalid.
+int ec_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out, const uint8_t *in,
+                        size_t len);
+
 // ec_felem_neg sets |out| to -|a|.
 void ec_felem_neg(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a);
 
@@ -317,10 +328,10 @@ struct ec_method_st {
                     const EC_FELEM *b);
   void (*felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a);
 
-  int (*bignum_to_felem)(const EC_GROUP *group, EC_FELEM *out,
-                         const BIGNUM *in);
-  int (*felem_to_bignum)(const EC_GROUP *group, BIGNUM *out,
+  void (*felem_to_bytes)(const EC_GROUP *group, uint8_t *out, size_t *out_len,
                          const EC_FELEM *in);
+  int (*felem_from_bytes)(const EC_GROUP *group, EC_FELEM *out,
+                          const uint8_t *in, size_t len);
 
   // scalar_inv0_montgomery implements |ec_scalar_inv0_montgomery|.
   void (*scalar_inv0_montgomery)(const EC_GROUP *group, EC_SCALAR *out,
@@ -445,6 +456,11 @@ int ec_simple_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
 int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
                                    const EC_SCALAR *r);
 
+void ec_GFp_simple_felem_to_bytes(const EC_GROUP *group, uint8_t *out,
+                                  size_t *out_len, const EC_FELEM *in);
+int ec_GFp_simple_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
+                                   const uint8_t *in, size_t len);
+
 // method functions in montgomery.c
 int ec_GFp_mont_group_init(EC_GROUP *);
 int ec_GFp_mont_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
@@ -454,10 +470,10 @@ void ec_GFp_mont_felem_mul(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
                            const EC_FELEM *b);
 void ec_GFp_mont_felem_sqr(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a);
 
-int ec_GFp_mont_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out,
-                                const BIGNUM *in);
-int ec_GFp_mont_felem_to_bignum(const EC_GROUP *group, BIGNUM *out,
-                                const EC_FELEM *in);
+void ec_GFp_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *out,
+                                size_t *out_len, const EC_FELEM *in);
+int ec_GFp_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
+                                 const uint8_t *in, size_t len);
 
 void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
 

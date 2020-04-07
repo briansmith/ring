@@ -1154,16 +1154,6 @@ static void ec_GFp_nistp224_felem_sqr(const EC_GROUP *group, EC_FELEM *r,
   p224_felem_to_generic(r, felem);
 }
 
-static int ec_GFp_nistp224_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out,
-                                           const BIGNUM *in) {
-  return bn_copy_words(out->words, group->field.width, in);
-}
-
-static int ec_GFp_nistp224_felem_to_bignum(const EC_GROUP *group, BIGNUM *out,
-                                           const EC_FELEM *in) {
-  return bn_set_words(out, in->words, group->field.width);
-}
-
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
   out->group_init = ec_GFp_simple_group_init;
   out->group_finish = ec_GFp_simple_group_finish;
@@ -1177,8 +1167,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
   out->mul_public = ec_GFp_nistp224_point_mul_public;
   out->felem_mul = ec_GFp_nistp224_felem_mul;
   out->felem_sqr = ec_GFp_nistp224_felem_sqr;
-  out->bignum_to_felem = ec_GFp_nistp224_bignum_to_felem;
-  out->felem_to_bignum = ec_GFp_nistp224_felem_to_bignum;
+  out->felem_to_bytes = ec_GFp_simple_felem_to_bytes;
+  out->felem_from_bytes = ec_GFp_simple_felem_from_bytes;
   out->scalar_inv0_montgomery = ec_simple_scalar_inv0_montgomery;
   out->scalar_to_montgomery_inv_vartime =
       ec_simple_scalar_to_montgomery_inv_vartime;

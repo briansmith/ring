@@ -1053,8 +1053,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->mul_public = ec_GFp_nistp256_point_mul_public;
   out->felem_mul = ec_GFp_mont_felem_mul;
   out->felem_sqr = ec_GFp_mont_felem_sqr;
-  out->bignum_to_felem = ec_GFp_mont_bignum_to_felem;
-  out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
+  out->felem_to_bytes = ec_GFp_mont_felem_to_bytes;
+  out->felem_from_bytes = ec_GFp_mont_felem_from_bytes;
   out->scalar_inv0_montgomery = ec_simple_scalar_inv0_montgomery;
   out->scalar_to_montgomery_inv_vartime =
       ec_simple_scalar_to_montgomery_inv_vartime;

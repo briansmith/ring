@@ -139,30 +139,21 @@ void ec_GFp_mont_felem_sqr(const EC_GROUP *group, EC_FELEM *r,
                               group->mont);
 }
 
-int ec_GFp_mont_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out,
-                                const BIGNUM *in) {
-  if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
-    return 0;
-  }
-
-  if (!bn_copy_words(out->words, group->field.width, in)) {
-    return 0;
-  }
-  ec_GFp_mont_felem_to_montgomery(group, out, out);
-  return 1;
-}
-
-int ec_GFp_mont_felem_to_bignum(const EC_GROUP *group, BIGNUM *out,
-                                const EC_FELEM *in) {
-  if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
-    return 0;
-  }
-
+void ec_GFp_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *out,
+                                size_t *out_len, const EC_FELEM *in) {
   EC_FELEM tmp;
   ec_GFp_mont_felem_from_montgomery(group, &tmp, in);
-  return bn_set_words(out, tmp.words, group->field.width);
+  ec_GFp_simple_felem_to_bytes(group, out, out_len, &tmp);
+}
+
+int ec_GFp_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
+                                 const uint8_t *in, size_t len) {
+  if (!ec_GFp_simple_felem_from_bytes(group, out, in, len)) {
+    return 0;
+  }
+
+  ec_GFp_mont_felem_to_montgomery(group, out, out);
+  return 1;
 }
 
 static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
@@ -460,8 +451,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->mul_public = ec_GFp_mont_mul_public;
   out->felem_mul = ec_GFp_mont_felem_mul;
   out->felem_sqr = ec_GFp_mont_felem_sqr;
-  out->bignum_to_felem = ec_GFp_mont_bignum_to_felem;
-  out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
+  out->felem_to_bytes = ec_GFp_mont_felem_to_bytes;
+  out->felem_from_bytes = ec_GFp_mont_felem_from_bytes;
   out->scalar_inv0_montgomery = ec_simple_scalar_inv0_montgomery;
   out->scalar_to_montgomery_inv_vartime =
       ec_simple_scalar_to_montgomery_inv_vartime;
