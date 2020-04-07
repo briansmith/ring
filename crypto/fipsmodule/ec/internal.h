@@ -218,8 +218,7 @@ BN_ULONG ec_felem_non_zero_mask(const EC_GROUP *group, const EC_FELEM *a);
 void ec_felem_select(const EC_GROUP *group, EC_FELEM *out, BN_ULONG mask,
                      const EC_FELEM *a, const EC_FELEM *b);
 
-// ec_felem_equal returns one if |a| and |b| are equal and zero otherwise. It
-// treats |a| and |b| as public and does *not* run in constant time.
+// ec_felem_equal returns one if |a| and |b| are equal and zero otherwise.
 int ec_felem_equal(const EC_GROUP *group, const EC_FELEM *a, const EC_FELEM *b);
 
 

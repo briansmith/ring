@@ -94,8 +94,6 @@ void ec_felem_select(const EC_GROUP *group, EC_FELEM *out, BN_ULONG mask,
 
 int ec_felem_equal(const EC_GROUP *group, const EC_FELEM *a,
                    const EC_FELEM *b) {
-  // Note this function is variable-time. Constant-time operations should use
-  // |ec_felem_non_zero_mask|.
-  return OPENSSL_memcmp(a->words, b->words,
-                        group->field.width * sizeof(BN_ULONG)) == 0;
+  return CRYPTO_memcmp(a->words, b->words,
+                       group->field.width * sizeof(BN_ULONG)) == 0;
 }
