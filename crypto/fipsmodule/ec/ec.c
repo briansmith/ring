@@ -1010,6 +1010,14 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
   }
 
   group->meth->mul(group, r, p, scalar);
+
+  // Check the result is on the curve to defend against fault attacks or bugs.
+  // This has negligible cost compared to the multiplication.
+  if (!ec_GFp_simple_is_on_curve(group, r)) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
   return 1;
 }
 
@@ -1021,6 +1029,14 @@ int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
   }
 
   group->meth->mul_base(group, r, scalar);
+
+  // Check the result is on the curve to defend against fault attacks or bugs.
+  // This has negligible cost compared to the multiplication.
+  if (!ec_GFp_simple_is_on_curve(group, r)) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
   return 1;
 }
 
