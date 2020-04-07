@@ -117,8 +117,8 @@ static void ec_GFp_mont_felem_to_montgomery(const EC_GROUP *group,
 static void ec_GFp_mont_felem_from_montgomery(const EC_GROUP *group,
                                               EC_FELEM *out,
                                               const EC_FELEM *in) {
-  bn_from_montgomery_small(out->words, in->words, group->field.width,
-                           group->mont);
+  bn_from_montgomery_small(out->words, group->field.width, in->words,
+                           group->field.width, group->mont);
 }
 
 static void ec_GFp_mont_felem_inv0(const EC_GROUP *group, EC_FELEM *out,

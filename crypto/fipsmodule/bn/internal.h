@@ -647,10 +647,13 @@ void bn_to_montgomery_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
                             const BN_MONT_CTX *mont);
 
 // bn_from_montgomery_small sets |r| to |a| translated out of the Montgomery
-// domain. |r| and |a| are |num| words long, which must be |mont->N.width|. |a|
-// must be fully-reduced and may alias |r|.
-void bn_from_montgomery_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
-                              const BN_MONT_CTX *mont);
+// domain. |r| and |a| are |num_r| and |num_a| words long, respectively. |num_r|
+// must be |mont->N.width|. |a| must be at most |mont->N|^2 and may alias |r|.
+//
+// Unlike most of these functions, only |num_r| is bounded by
+// |BN_SMALL_MAX_WORDS|. |num_a| may exceed it, but must be at most 2 * |num_r|.
+void bn_from_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                              size_t num_a, const BN_MONT_CTX *mont);
 
 // bn_mod_mul_montgomery_small sets |r| to |a| * |b| mod |mont->N|. Both inputs
 // and outputs are in the Montgomery domain. Each array is |num| words long,

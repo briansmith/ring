@@ -98,7 +98,8 @@ void ec_scalar_to_montgomery(const EC_GROUP *group, EC_SCALAR *r,
 void ec_scalar_from_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                                const EC_SCALAR *a) {
   const BIGNUM *order = &group->order;
-  bn_from_montgomery_small(r->words, a->words, order->width, group->order_mont);
+  bn_from_montgomery_small(r->words, order->width, a->words, order->width,
+                           group->order_mont);
 }
 
 void ec_scalar_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,

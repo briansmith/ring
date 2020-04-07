@@ -732,7 +732,7 @@ void bn_mod_exp_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
     num_p--;
   }
   if (num_p == 0) {
-    bn_from_montgomery_small(r, mont->RR.d, num, mont);
+    bn_from_montgomery_small(r, num, mont->RR.d, num, mont);
     return;
   }
   unsigned bits = BN_num_bits_word(p[num_p - 1]) + (num_p - 1) * BN_BITS2;
