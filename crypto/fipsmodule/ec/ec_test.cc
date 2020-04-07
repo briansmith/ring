@@ -493,9 +493,6 @@ TEST_P(ECCurveTest, SetAffine) {
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
-  EXPECT_TRUE(EC_POINT_is_on_curve(group(), EC_KEY_get0_public_key(key.get()),
-                                   nullptr));
-
   // Get the public key's coordinates.
   bssl::UniquePtr<BIGNUM> x(BN_new());
   ASSERT_TRUE(x);
@@ -531,6 +528,30 @@ TEST_P(ECCurveTest, SetAffine) {
                                                    x.get(), y.get(), nullptr));
   EXPECT_FALSE(
       EC_KEY_set_public_key_affine_coordinates(key.get(), x.get(), y.get()));
+}
+
+TEST_P(ECCurveTest, IsOnCurve) {
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  // The generated point is on the curve.
+  EXPECT_TRUE(EC_POINT_is_on_curve(group(), EC_KEY_get0_public_key(key.get()),
+                                   nullptr));
+
+  bssl::UniquePtr<EC_POINT> p(EC_POINT_new(group()));
+  ASSERT_TRUE(p);
+  ASSERT_TRUE(EC_POINT_copy(p.get(), EC_KEY_get0_public_key(key.get())));
+
+  // This should never happen outside of a bug, but |EC_POINT_is_on_curve|
+  // rejects points not on the curve.
+  OPENSSL_memset(&p->raw.X, 0, sizeof(p->raw.X));
+  EXPECT_FALSE(EC_POINT_is_on_curve(group(), p.get(), nullptr));
+
+  // The point at infinity is always on the curve.
+  ASSERT_TRUE(EC_POINT_copy(p.get(), EC_KEY_get0_public_key(key.get())));
+  OPENSSL_memset(&p->raw.Z, 0, sizeof(p->raw.Z));
+  EXPECT_TRUE(EC_POINT_is_on_curve(group(), p.get(), nullptr));
 }
 
 TEST_P(ECCurveTest, GenerateFIPS) {

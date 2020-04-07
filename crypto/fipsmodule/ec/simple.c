@@ -182,10 +182,6 @@ int ec_GFp_simple_is_at_infinity(const EC_GROUP *group,
 
 int ec_GFp_simple_is_on_curve(const EC_GROUP *group,
                               const EC_RAW_POINT *point) {
-  if (ec_GFp_simple_is_at_infinity(group, point)) {
-    return 1;
-  }
-
   // We have a curve defined by a Weierstrass equation
   //      y^2 = x^3 + a*x + b.
   // The point to consider is given in Jacobian projective coordinates
@@ -194,6 +190,9 @@ int ec_GFp_simple_is_on_curve(const EC_GROUP *group,
   // into
   //      Y^2 = X^3 + a*X*Z^4 + b*Z^6.
   // To test this, we add up the right-hand side in 'rh'.
+  //
+  // This function may be used when double-checking the secret result of a point
+  // multiplication, so we proceed in constant-time.
 
   void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
                           const EC_FELEM *b) = group->meth->felem_mul;
@@ -205,37 +204,37 @@ int ec_GFp_simple_is_on_curve(const EC_GROUP *group,
   felem_sqr(group, &rh, &point->X);
 
   EC_FELEM tmp, Z4, Z6;
-  if (!ec_felem_equal(group, &point->Z, &group->one)) {
-    felem_sqr(group, &tmp, &point->Z);
-    felem_sqr(group, &Z4, &tmp);
-    felem_mul(group, &Z6, &Z4, &tmp);
+  felem_sqr(group, &tmp, &point->Z);
+  felem_sqr(group, &Z4, &tmp);
+  felem_mul(group, &Z6, &Z4, &tmp);
 
-    // rh := (rh + a*Z^4)*X
-    if (group->a_is_minus3) {
-      ec_felem_add(group, &tmp, &Z4, &Z4);
-      ec_felem_add(group, &tmp, &tmp, &Z4);
-      ec_felem_sub(group, &rh, &rh, &tmp);
-      felem_mul(group, &rh, &rh, &point->X);
-    } else {
-      felem_mul(group, &tmp, &Z4, &group->a);
-      ec_felem_add(group, &rh, &rh, &tmp);
-      felem_mul(group, &rh, &rh, &point->X);
-    }
-
-    // rh := rh + b*Z^6
-    felem_mul(group, &tmp, &group->b, &Z6);
-    ec_felem_add(group, &rh, &rh, &tmp);
+  // rh := rh + a*Z^4
+  if (group->a_is_minus3) {
+    ec_felem_add(group, &tmp, &Z4, &Z4);
+    ec_felem_add(group, &tmp, &tmp, &Z4);
+    ec_felem_sub(group, &rh, &rh, &tmp);
   } else {
-    // rh := (rh + a)*X
-    ec_felem_add(group, &rh, &rh, &group->a);
-    felem_mul(group, &rh, &rh, &point->X);
-    // rh := rh + b
-    ec_felem_add(group, &rh, &rh, &group->b);
+    felem_mul(group, &tmp, &Z4, &group->a);
+    ec_felem_add(group, &rh, &rh, &tmp);
   }
+
+  // rh := (rh + a*Z^4)*X
+  felem_mul(group, &rh, &rh, &point->X);
+
+  // rh := rh + b*Z^6
+  felem_mul(group, &tmp, &group->b, &Z6);
+  ec_felem_add(group, &rh, &rh, &tmp);
 
   // 'lh' := Y^2
   felem_sqr(group, &tmp, &point->Y);
-  return ec_felem_equal(group, &tmp, &rh);
+
+  ec_felem_sub(group, &tmp, &tmp, &rh);
+  BN_ULONG not_equal = ec_felem_non_zero_mask(group, &tmp);
+
+  // If Z = 0, the point is infinity, which is always on the curve.
+  BN_ULONG not_infinity = ec_felem_non_zero_mask(group, &point->Z);
+
+  return 1 & ~(not_infinity & not_equal);
 }
 
 int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_RAW_POINT *a,
