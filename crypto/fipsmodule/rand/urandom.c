@@ -431,16 +431,18 @@ void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
 #endif
 }
 
-void CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
-  // Return all zeros if |fill_with_entropy| fails.
-  OPENSSL_memset(out, 0, requested);
+#endif  // BORINGSSL_FIPS
 
-  if (!fill_with_entropy(out, requested, /*block=*/0, /*seed=*/0) &&
-      errno != EAGAIN) {
+int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
+  if (fill_with_entropy(out, requested, /*block=*/0, /*seed=*/0)) {
+    return 1;
+  } else if (errno == EAGAIN) {
+    OPENSSL_memset(out, 0, requested);
+    return 0;
+  } else {
     perror("opportunistic entropy fill failed");
     abort();
   }
 }
-#endif  // BORINGSSL_FIPS
 
 #endif  // OPENSSL_URANDOM

@@ -32,10 +32,6 @@
 #define PTRACE_O_EXITKILL (1 << 20)
 #endif
 
-#if defined(OPENSSL_NO_ASM)
-static int have_rdrand() { return 0; }
-#endif
-
 // This test can be run with $OPENSSL_ia32cap=~0x4000000000000000 in order to
 // simulate the absence of RDRAND of machines that have it.
 
@@ -423,16 +419,47 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
         !sysrand(true, kAdditionalDataLength)) {
       return ret;
     }
-  } else {
-    // Opportuntistic entropy draw in FIPS mode because RDRAND was used.
-    // In non-FIPS mode it's just drawn from |CRYPTO_sysrand| in a blocking
-    // way.
-    if (!sysrand(!is_fips, CTR_DRBG_ENTROPY_LEN)) {
-      return ret;
-    }
+  } else if (
+      // First additional data. If fast RDRAND isn't available then a
+      // non-blocking OS entropy draw will be tried.
+      (!have_fast_rdrand() && !sysrand(false, kAdditionalDataLength)) ||
+      // Opportuntistic entropy draw in FIPS mode because RDRAND was used.
+      // In non-FIPS mode it's just drawn from |CRYPTO_sysrand| in a blocking
+      // way.
+      !sysrand(!is_fips, CTR_DRBG_ENTROPY_LEN) ||
+      // Second entropy draw's additional data.
+      (!have_fast_rdrand() && !sysrand(false, kAdditionalDataLength))) {
+    return ret;
   }
 
   return ret;
+}
+
+static void CheckInvariants(const std::vector<Event> &events) {
+  // If RDRAND is available then there should be no blocking syscalls in FIPS
+  // mode.
+#if defined(BORINGSSL_FIPS)
+  if (have_rdrand()) {
+    for (const auto &event : events) {
+      switch (event.type) {
+        case Event::Syscall::kGetRandom:
+          if ((event.flags & GRND_NONBLOCK) == 0) {
+            ADD_FAILURE() << "Blocking getrandom found with RDRAND: "
+                          << ToString(events);
+          }
+          break;
+
+        case Event::Syscall::kUrandomIoctl:
+          ADD_FAILURE() << "Urandom polling found with RDRAND: "
+                        << ToString(events);
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+#endif
 }
 
 // Tests that |TestFunctionPRNGModel| is a correct model for the code in
@@ -453,6 +480,7 @@ TEST(URandomTest, Test) {
     TRACE_FLAG(URANDOM_ERROR);
 
     const std::vector<Event> expected_trace = TestFunctionPRNGModel(flags);
+    CheckInvariants(expected_trace);
     std::vector<Event> actual_trace;
     GetTrace(&actual_trace, flags, TestFunction);
 
