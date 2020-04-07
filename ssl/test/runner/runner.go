@@ -4978,10 +4978,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 	}
 
 	// OCSP stapling tests.
-	for _, vers := range tlsVersions {
-		if !vers.supportsProtocol(config.protocol) {
-			continue
-		}
+	for _, vers := range allVersions(config.protocol) {
 		tests = append(tests, testCase{
 			testType: clientTest,
 			name:     "OCSPStapling-Client-" + vers.name,
@@ -5123,10 +5120,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 	}
 
 	// Certificate verification tests.
-	for _, vers := range tlsVersions {
-		if !vers.supportsProtocol(config.protocol) {
-			continue
-		}
+	for _, vers := range allVersions(config.protocol) {
 		for _, useCustomCallback := range []bool{false, true} {
 			for _, testType := range []testType{clientTest, serverTest} {
 				suffix := "-Client"
@@ -6027,11 +6021,8 @@ func addVersionNegotiationTests() {
 	}
 
 	// Test the version extension at all versions.
-	for _, vers := range tlsVersions {
-		for _, protocol := range []protocol{tls, dtls, quic} {
-			if !vers.supportsProtocol(protocol) {
-				continue
-			}
+	for _, protocol := range []protocol{tls, dtls, quic} {
+		for _, vers := range allVersions(protocol) {
 			suffix := vers.name + "-" + protocol.String()
 
 			testCases = append(testCases, testCase{
