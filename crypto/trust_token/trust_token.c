@@ -228,17 +228,19 @@ STACK_OF(TRUST_TOKEN) *
   for (size_t i = 0; i < count; i++) {
     uint8_t s[PMBTOKEN_NONCE_SIZE];
     EC_RAW_POINT Wp, Wsp;
+    CBS proof;
     if (!CBS_copy_bytes(&in, s, PMBTOKEN_NONCE_SIZE) ||
         !cbs_get_raw_point(&in, group, &Wp) ||
-        !cbs_get_raw_point(&in, group, &Wsp)) {
+        !cbs_get_raw_point(&in, group, &Wsp) ||
+        !CBS_get_u16_length_prefixed(&in, &proof)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
       goto err;
     }
 
     PMBTOKEN_PRETOKEN *pretoken = sk_PMBTOKEN_PRETOKEN_value(ctx->pretokens, i);
     PMBTOKEN_TOKEN pmbtoken;
-    if (!pmbtoken_unblind(&pmbtoken, s, &Wp, &Wsp, pretoken)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+    if (!pmbtoken_unblind(&pmbtoken, key, s, &Wp, &Wsp, CBS_data(&proof),
+                          CBS_len(&proof), pretoken)) {
       goto err;
     }
 
@@ -408,6 +410,11 @@ int TRUST_TOKEN_ISSUER_add_key(TRUST_TOKEN_ISSUER *ctx, const uint8_t *key,
      return 0;
     }
   }
+
+  if (!pmbtoken_compute_public(key_s)) {
+    return 0;
+  }
+
   key_s->id = key_id;
   ctx->num_keys += 1;
   return 1;
@@ -498,16 +505,22 @@ int TRUST_TOKEN_ISSUER_issue(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
 
     uint8_t s[PMBTOKEN_NONCE_SIZE];
     EC_RAW_POINT Wp, Wsp;
-    if (!pmbtoken_sign(ctx, s, &Wp, &Wsp, &Tp, public_metadata,
-                       private_metadata)) {
+    uint8_t *proof = NULL;
+    size_t proof_len;
+    if (!pmbtoken_sign(ctx, s, &Wp, &Wsp, &proof, &proof_len, &Tp,
+                       public_metadata, private_metadata)) {
       goto err;
     }
 
     if (!CBB_add_bytes(&response, s, PMBTOKEN_NONCE_SIZE) ||
         !cbb_add_raw_point(&response, group, &Wp) ||
-        !cbb_add_raw_point(&response, group, &Wsp)) {
+        !cbb_add_raw_point(&response, group, &Wsp) ||
+        !CBB_add_u16(&response, proof_len) ||
+        !CBB_add_bytes(&response, proof, proof_len)) {
+      OPENSSL_free(proof);
       goto err;
     }
+    OPENSSL_free(proof);
   }
 
   *out_tokens_issued = count;

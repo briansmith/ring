@@ -436,12 +436,171 @@ TEST_P(TrustTokenMetadataTest, TooManyRequests) {
   ASSERT_EQ(sk_TRUST_TOKEN_num(tokens.get()), 1UL);
 }
 
+
+TEST_P(TrustTokenMetadataTest, TruncatedProof) {
+  ASSERT_NO_FATAL_FAILURE(SetupContexts());
+
+  uint8_t *issue_msg = NULL, *issue_resp = NULL;
+  size_t msg_len, resp_len;
+  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                &msg_len, 10));
+  bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
+  uint8_t tokens_issued;
+  ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
+      issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
+      std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
+  bssl::UniquePtr<uint8_t> free_msg(issue_resp);
+
+  CBS real_response;
+  CBS_init(&real_response, issue_resp, resp_len);
+  uint16_t count;
+  uint32_t public_metadata;
+  bssl::ScopedCBB bad_response;
+  ASSERT_TRUE(CBB_init(bad_response.get(), 0));
+  ASSERT_TRUE(CBS_get_u16(&real_response, &count));
+  ASSERT_TRUE(CBB_add_u16(bad_response.get(), count));
+  ASSERT_TRUE(CBS_get_u32(&real_response, &public_metadata));
+  ASSERT_TRUE(CBB_add_u32(bad_response.get(), public_metadata));
+
+  for (size_t i = 0; i < count; i++) {
+    uint8_t s[PMBTOKEN_NONCE_SIZE];
+    CBS tmp;
+    ASSERT_TRUE(CBS_copy_bytes(&real_response, s, PMBTOKEN_NONCE_SIZE));
+    ASSERT_TRUE(CBB_add_bytes(bad_response.get(), s, PMBTOKEN_NONCE_SIZE));
+    ASSERT_TRUE(CBS_get_u16_length_prefixed(&real_response, &tmp));
+    ASSERT_TRUE(CBB_add_u16(bad_response.get(), CBS_len(&tmp)));
+    ASSERT_TRUE(
+        CBB_add_bytes(bad_response.get(), CBS_data(&tmp), CBS_len(&tmp)));
+    ASSERT_TRUE(CBS_get_u16_length_prefixed(&real_response, &tmp));
+    ASSERT_TRUE(CBB_add_u16(bad_response.get(), CBS_len(&tmp)));
+    ASSERT_TRUE(
+        CBB_add_bytes(bad_response.get(), CBS_data(&tmp), CBS_len(&tmp)));
+    ASSERT_TRUE(CBS_get_u16_length_prefixed(&real_response, &tmp));
+    ASSERT_TRUE(CBB_add_u16(bad_response.get(), CBS_len(&tmp) - 2));
+    ASSERT_TRUE(
+        CBB_add_bytes(bad_response.get(), CBS_data(&tmp), CBS_len(&tmp) - 2));
+  }
+
+  uint8_t *bad_buf;
+  size_t bad_len;
+  ASSERT_TRUE(CBB_finish(bad_response.get(), &bad_buf, &bad_len));
+  bssl::UniquePtr<uint8_t> free_bad(bad_buf);
+
+  size_t key_index;
+  bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
+      TRUST_TOKEN_CLIENT_finish_issuance(client.get(), &key_index, bad_buf, bad_len));
+  ASSERT_FALSE(tokens);
+}
+
+TEST_P(TrustTokenMetadataTest, ExcessDataProof) {
+  ASSERT_NO_FATAL_FAILURE(SetupContexts());
+
+  uint8_t *issue_msg = NULL, *issue_resp = NULL;
+  size_t msg_len, resp_len;
+  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                &msg_len, 10));
+  bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
+  uint8_t tokens_issued;
+  ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
+      issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
+      std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
+  bssl::UniquePtr<uint8_t> free_msg(issue_resp);
+
+  CBS real_response;
+  CBS_init(&real_response, issue_resp, resp_len);
+  uint16_t count;
+  uint32_t public_metadata;
+  bssl::ScopedCBB bad_response;
+  ASSERT_TRUE(CBB_init(bad_response.get(), 0));
+  ASSERT_TRUE(CBS_get_u16(&real_response, &count));
+  ASSERT_TRUE(CBB_add_u16(bad_response.get(), count));
+  ASSERT_TRUE(CBS_get_u32(&real_response, &public_metadata));
+  ASSERT_TRUE(CBB_add_u32(bad_response.get(), public_metadata));
+
+  for (size_t i = 0; i < count; i++) {
+    uint8_t s[PMBTOKEN_NONCE_SIZE];
+    CBS tmp;
+    ASSERT_TRUE(CBS_copy_bytes(&real_response, s, PMBTOKEN_NONCE_SIZE));
+    ASSERT_TRUE(CBB_add_bytes(bad_response.get(), s, PMBTOKEN_NONCE_SIZE));
+    ASSERT_TRUE(CBS_get_u16_length_prefixed(&real_response, &tmp));
+    ASSERT_TRUE(CBB_add_u16(bad_response.get(), CBS_len(&tmp)));
+    ASSERT_TRUE(
+        CBB_add_bytes(bad_response.get(), CBS_data(&tmp), CBS_len(&tmp)));
+    ASSERT_TRUE(CBS_get_u16_length_prefixed(&real_response, &tmp));
+    ASSERT_TRUE(CBB_add_u16(bad_response.get(), CBS_len(&tmp)));
+    ASSERT_TRUE(
+        CBB_add_bytes(bad_response.get(), CBS_data(&tmp), CBS_len(&tmp)));
+    ASSERT_TRUE(CBS_get_u16_length_prefixed(&real_response, &tmp));
+    ASSERT_TRUE(CBB_add_u16(bad_response.get(), CBS_len(&tmp) + 2));
+    ASSERT_TRUE(
+        CBB_add_bytes(bad_response.get(), CBS_data(&tmp), CBS_len(&tmp)));
+    ASSERT_TRUE(CBB_add_u16(bad_response.get(), 42));
+  }
+
+  uint8_t *bad_buf;
+  size_t bad_len;
+  ASSERT_TRUE(CBB_finish(bad_response.get(), &bad_buf, &bad_len));
+  bssl::UniquePtr<uint8_t> free_bad(bad_buf);
+
+  size_t key_index;
+  bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
+      TRUST_TOKEN_CLIENT_finish_issuance(client.get(), &key_index, bad_buf,
+                                         bad_len));
+  ASSERT_FALSE(tokens);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     TrustTokenAllMetadataTest, TrustTokenMetadataTest,
     testing::Combine(testing::Values(TrustTokenProtocolTest::KeyID(0),
                                      TrustTokenProtocolTest::KeyID(1),
                                      TrustTokenProtocolTest::KeyID(2)),
                      testing::Bool()));
+
+
+class TrustTokenBadKeyTest
+    : public TrustTokenProtocolTest,
+      public testing::WithParamInterface<std::tuple<bool, int>> {};
+
+TEST_P(TrustTokenBadKeyTest, BadKey) {
+  ASSERT_NO_FATAL_FAILURE(SetupContexts());
+
+  uint8_t *issue_msg = NULL, *issue_resp = NULL;
+  size_t msg_len, resp_len;
+  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                &msg_len, 10));
+  bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
+
+  struct trust_token_issuer_key_st *key = &issuer->keys[0];
+  EC_SCALAR *scalars[] = {&key->x0, &key->y0, &key->x1,
+                          &key->y1, &key->xs, &key->ys};
+  int corrupted_key = std::get<1>(GetParam());
+
+  // Corrupt private key scalar.
+  scalars[corrupted_key]->bytes[0] ^= 42;
+
+  uint8_t tokens_issued;
+  ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
+      issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
+      /*public_metadata=*/7, std::get<0>(GetParam()), /*max_issuance=*/1));
+  bssl::UniquePtr<uint8_t> free_msg(issue_resp);
+  size_t key_index;
+  bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
+      TRUST_TOKEN_CLIENT_finish_issuance(client.get(), &key_index, issue_resp,
+                                         resp_len));
+
+  // If the unused private key is corrupted, then the DLEQ proof should succeed.
+  if ((corrupted_key / 2 == 0 && std::get<0>(GetParam()) == true) ||
+      (corrupted_key / 2 == 1 && std::get<0>(GetParam()) == false)) {
+    ASSERT_TRUE(tokens);
+  } else {
+    ASSERT_FALSE(tokens);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    TrustTokenAllBadKeyTest, TrustTokenBadKeyTest,
+    testing::Combine(testing::Bool(),
+                     testing::Values(0, 1, 2, 3, 4, 5)));
 
 }  // namespace
 BSSL_NAMESPACE_END

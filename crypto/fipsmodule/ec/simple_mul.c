@@ -60,9 +60,7 @@ void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
       OPENSSL_memset(&tmp, 0, sizeof(EC_RAW_POINT));
       for (size_t j = 0; j < OPENSSL_ARRAY_SIZE(precomp); j++) {
         BN_ULONG mask = constant_time_eq_w(j, window);
-        ec_felem_select(group, &tmp.X, mask, &precomp[j].X, &tmp.X);
-        ec_felem_select(group, &tmp.Y, mask, &precomp[j].Y, &tmp.Y);
-        ec_felem_select(group, &tmp.Z, mask, &precomp[j].Z, &tmp.Z);
+        ec_point_select(group, &tmp, mask, &precomp[j], &tmp);
       }
 
       if (r_is_at_infinity) {

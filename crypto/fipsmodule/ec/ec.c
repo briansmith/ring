@@ -1042,6 +1042,13 @@ int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
   return 1;
 }
 
+void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
+                      const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
+  ec_felem_select(group, &out->X, mask, &a->X, &b->X);
+  ec_felem_select(group, &out->Y, mask, &a->Y, &b->Y);
+  ec_felem_select(group, &out->Z, mask, &a->Z, &b->Z);
+}
+
 int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
                         const EC_SCALAR *r) {
   return group->meth->cmp_x_coordinate(group, p, r);

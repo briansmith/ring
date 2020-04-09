@@ -145,6 +145,10 @@ int ec_scalar_is_zero(const EC_GROUP *group, const EC_SCALAR *a);
 void ec_scalar_add(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
                    const EC_SCALAR *b);
 
+// ec_scalar_sub sets |r| to |a| - |b|.
+void ec_scalar_sub(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
+                   const EC_SCALAR *b);
+
 // ec_scalar_to_montgomery sets |r| to |a| in Montgomery form.
 void ec_scalar_to_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                              const EC_SCALAR *a);
@@ -269,6 +273,11 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(const EC_GROUP *group,
                                               const EC_SCALAR *g_scalar,
                                               const EC_RAW_POINT *p,
                                               const EC_SCALAR *p_scalar);
+
+// ec_point_select, in constant time, sets |out| to |a| if |mask| is all ones
+// and |b| if |mask| is all zeros.
+void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
+                     const EC_RAW_POINT *a, const EC_RAW_POINT *b);
 
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
 // order, with |r|. It returns one if the values match and zero if |p| is the

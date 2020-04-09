@@ -98,6 +98,14 @@ void ec_scalar_add(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
   OPENSSL_cleanse(tmp, sizeof(tmp));
 }
 
+void ec_scalar_sub(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
+                   const EC_SCALAR *b) {
+  const BIGNUM *order = &group->order;
+  BN_ULONG tmp[EC_MAX_WORDS];
+  bn_mod_sub_words(r->words, a->words, b->words, order->d, tmp, order->width);
+  OPENSSL_cleanse(tmp, sizeof(tmp));
+}
+
 void ec_scalar_select(const EC_GROUP *group, EC_SCALAR *out, BN_ULONG mask,
                       const EC_SCALAR *a, const EC_SCALAR *b) {
   const BIGNUM *order = &group->order;
