@@ -300,8 +300,8 @@ static int hash_to_curve_p521_xmd_sswu(const EC_GROUP *group, EC_RAW_POINT *out,
   // specializing it to the curve:
   //
   // - c1 = (p-3)/4 = 2^519-1. |felem_exp| costs 515S + 119M for this exponent.
-  //   A more efficient addition chain for c1 would cost 511S + 3M, but it would
-  //   require specializing the particular exponent.
+  //   A more efficient addition chain for c1 would cost 518S + 12M, but it
+  //   would require specializing the particular exponent.
   //
   // - P-521, while large, is a Mersenne prime, so we can likely do better than
   //   the generic Montgomery implementation if we specialize the field
