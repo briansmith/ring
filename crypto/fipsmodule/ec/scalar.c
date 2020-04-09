@@ -81,6 +81,15 @@ int ec_scalar_from_bytes(const EC_GROUP *group, EC_SCALAR *out,
   return 1;
 }
 
+void ec_scalar_reduce(const EC_GROUP *group, EC_SCALAR *out,
+                      const BN_ULONG *words, size_t num) {
+  // Convert "from" Montgomery form so the value is reduced modulo the order.
+  bn_from_montgomery_small(out->words, group->order.width, words, num,
+                           group->order_mont);
+  // Convert "to" Montgomery form to remove the R^-1 factor added.
+  ec_scalar_to_montgomery(group, out, out);
+}
+
 void ec_scalar_add(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
                    const EC_SCALAR *b) {
   const BIGNUM *order = &group->order;

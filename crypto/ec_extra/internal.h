@@ -48,6 +48,21 @@ OPENSSL_EXPORT int ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing(
     const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
     size_t dst_len, const uint8_t *msg, size_t msg_len);
 
+// ec_hash_to_scalar_p521_xmd_sha512 hashes |msg| to a scalar on |group| and
+// writes the result to |out|, using the hash_to_field operation from the
+// P521_XMD:SHA-512_SSWU_RO_ suite, but generating a value modulo the group
+// order rather than a field element. |dst| is the domain separation
+// tag and must be unique for each protocol. See section 3.1 of
+// draft-irtf-cfrg-hash-to-curve-06 for additional guidance on this parameter.
+//
+// Note the requirement to use a different tag for each encoding used in a
+// protocol extends to this function. Protocols which use both this function and
+// |ec_hash_to_scalar_p521_xmd_sha512| must use distinct values of |dst| for
+// each use.
+OPENSSL_EXPORT int ec_hash_to_scalar_p521_xmd_sha512(
+    const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len);
+
 
 #if defined(__cplusplus)
 }  // extern C

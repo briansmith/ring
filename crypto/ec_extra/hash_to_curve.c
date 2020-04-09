@@ -133,30 +133,56 @@ static void reduce_to_felem(const EC_GROUP *group, EC_FELEM *out,
   group->meth->felem_reduce(group, out, buf.words, num_words * 2);
 }
 
+// num_bytes_to_derive determines the number of bytes to derive when hashing to
+// a number modulo |modulus|. See the hash_to_field operation defined in
+// section 5.2 of draft-irtf-cfrg-hash-to-curve-06.
+static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
+  size_t bits = BN_num_bits(modulus);
+  size_t L = (bits + k + 7) / 8;
+  // We require 2^(8*L) < 2^(2*bits - 2) <= n^2 so to fit in bounds for
+  // |felem_reduce| and |ec_scalar_refuce|. All defined hash-to-curve suites
+  // define |k| to be well under this bound. (|k| is usually around half of
+  // |p_bits|.)
+  if (L * 8 >= 2 * bits - 2 ||
+      L > 2 * EC_MAX_BYTES) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  *out = L;
+  return 1;
+}
+
 // hash_to_field implements the operation described in section 5.2
 // of draft-irtf-cfrg-hash-to-curve-06, with count = 2.
 static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
                           EC_FELEM *out1, EC_FELEM *out2, const uint8_t *dst,
                           size_t dst_len, unsigned k, const uint8_t *msg,
                           size_t msg_len) {
-  // Determine L, the number of bytes to derive per output element.
-  size_t p_bits = BN_num_bits(&group->field);
-  size_t L = (p_bits + k + 7) / 8;
-
-  // We require 2^(8*L) < 2^(2*p_bits - 2) <= p^2 so to fit in bounds for
-  // |felem_reduce|. All defined hash-to-curve suites define |k| to be well
-  // under this bound. (|k| is usually around half of |p_bits|.)
-  if (L * 8 >= 2 * p_bits - 2) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
+  size_t L;
   uint8_t buf[4 * EC_MAX_BYTES];
-  if (!expand_message_xmd(md, buf, 2 * L, msg, msg_len, dst, dst_len)) {
+  if (!num_bytes_to_derive(&L, &group->field, k) ||
+      !expand_message_xmd(md, buf, 2 * L, msg, msg_len, dst, dst_len)) {
     return 0;
   }
   reduce_to_felem(group, out1, buf, L);
   reduce_to_felem(group, out2, buf + L, L);
+  return 1;
+}
+
+// hash_to_scalar behaves like |hash_to_field2| but returns a value modulo the
+// group order rather than a field element.
+static int hash_to_scalar(const EC_GROUP *group, const EVP_MD *md,
+                          EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
+                          unsigned k, const uint8_t *msg, size_t msg_len) {
+  size_t L;
+  BN_ULONG words[EC_MAX_WORDS * 2] = {0};
+  if (!num_bytes_to_derive(&L, &group->order, k) ||
+      !expand_message_xmd(md, (uint8_t *)words, L, msg, msg_len, dst,
+                          dst_len)) {
+    return 0;
+  }
+  ec_scalar_reduce(group, out, words, 2 * group->order.width);
   return 1;
 }
 
@@ -353,4 +379,11 @@ int ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing(
   // original test vectors, which were computed with the smaller L.
   return hash_to_curve_p521_xmd_sswu(group, out, dst, dst_len, EVP_sha512(),
                                      /*k=*/240, msg, msg_len);
+}
+
+int ec_hash_to_scalar_p521_xmd_sha512(const EC_GROUP *group, EC_SCALAR *out,
+                                      const uint8_t *dst, size_t dst_len,
+                                      const uint8_t *msg, size_t msg_len) {
+  return hash_to_scalar(group, EVP_sha512(), out, dst, dst_len, /*k=*/256, msg,
+                        msg_len);
 }

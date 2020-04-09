@@ -1203,3 +1203,53 @@ TEST(ECTest, HashToCurve) {
                               1 + field_len, field_len)));
   }
 }
+
+TEST(ECTest, HashToScalar) {
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp521r1));
+  ASSERT_TRUE(group);
+
+  struct HashToScalarTest {
+    const char *dst;
+    const char *msg;
+    const char *result_hex;
+  };
+  static const HashToScalarTest kTests[] = {
+      {"P521_XMD:SHA-512_SCALAR_TEST", "",
+       "01407998b20d948d6ef4e68c981d24f44ed3e65a49849a16296770"
+       "14b48d4664e150074ccf9afcdf791c6afc648e69b94989881f1f0b"
+       "4e2b86ce40b1dc2ce4bb20f0"},
+      {"P521_XMD:SHA-512_SCALAR_TEST", "abcdef0123456789",
+       "019fab7021eeae5476d7ae7352793025a9aed0193831a42cbcd183"
+       "e377a83d33ee178e11f34f9b6cffeffdee40c9260e5aff50ebf276"
+       "c992b78d086dd4475d7b098e"},
+      {"P521_XMD:SHA-512_SCALAR_TEST",
+       "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "00ab2c0feabe9bbd93d4570fe627fa88667bb8f2f117e76b77d41a"
+       "15bb5dd995f61c64cd70a96dc9cda1f70b426dfd7a1c11a2865272"
+       "f4698f501e57f8c4c2ed0008"},
+  };
+
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(test.dst);
+    SCOPED_TRACE(test.msg);
+
+    EC_SCALAR scalar;
+    ASSERT_TRUE(ec_hash_to_scalar_p521_xmd_sha512(
+        group.get(), &scalar, reinterpret_cast<const uint8_t *>(test.dst),
+        strlen(test.dst), reinterpret_cast<const uint8_t *>(test.msg),
+        strlen(test.msg)));
+    uint8_t buf[EC_MAX_BYTES];
+    size_t len;
+    ec_scalar_to_bytes(group.get(), buf, &len, &scalar);
+    EXPECT_EQ(test.result_hex, EncodeHex(bssl::MakeConstSpan(buf, len)));
+  }
+}

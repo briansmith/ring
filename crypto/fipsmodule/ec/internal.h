@@ -113,14 +113,20 @@ OPENSSL_EXPORT int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
 // ec_scalar_to_bytes serializes |in| as a big-endian bytestring to |out| and
 // sets |*out_len| to the number of bytes written. The number of bytes written
 // is |BN_num_bytes(&group->order)|, which is at most |EC_MAX_BYTES|.
-void ec_scalar_to_bytes(const EC_GROUP *group, uint8_t *out, size_t *out_len,
-                        const EC_SCALAR *in);
+OPENSSL_EXPORT void ec_scalar_to_bytes(const EC_GROUP *group, uint8_t *out,
+                                       size_t *out_len, const EC_SCALAR *in);
 
 // ec_scalar_from_bytes deserializes |in| and stores the resulting scalar over
 // group |group| to |out|. It returns one on success and zero if |in| is
 // invalid.
 int ec_scalar_from_bytes(const EC_GROUP *group, EC_SCALAR *out,
                          const uint8_t *in, size_t len);
+
+// ec_scalar_reduce sets |out| to |words|, reduced modulo the group order.
+// |words| must be less than order^2. |num| must be at most twice the width of
+// group order. This function treats |words| as secret.
+void ec_scalar_reduce(const EC_GROUP *group, EC_SCALAR *out,
+                      const BN_ULONG *words, size_t num);
 
 // ec_random_nonzero_scalar sets |out| to a uniformly selected random value from
 // 1 to |group->order| - 1. It returns one on success and zero on error.
