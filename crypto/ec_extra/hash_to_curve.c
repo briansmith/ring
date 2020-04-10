@@ -113,26 +113,6 @@ err:
   return ret;
 }
 
-// reduce_to_felem implements step 7 of hash_to_field, described in section 5.2
-// of draft-irtf-cfrg-hash-to-curve-06.
-static void reduce_to_felem(const EC_GROUP *group, EC_FELEM *out,
-                            const uint8_t *in, size_t len) {
-  union {
-    BN_ULONG words[2 * EC_MAX_WORDS];
-    uint8_t bytes[2 * EC_MAX_BYTES];
-  } buf;
-  OPENSSL_memset(&buf, 0, sizeof(buf));
-
-  // |in| is encoded in big-endian.
-  assert(len <= sizeof(buf.bytes));
-  for (size_t i = 0; i < len; i++) {
-    buf.bytes[len - i - 1] = in[i];
-  }
-
-  size_t num_words = group->field.width;
-  group->meth->felem_reduce(group, out, buf.words, num_words * 2);
-}
-
 // num_bytes_to_derive determines the number of bytes to derive when hashing to
 // a number modulo |modulus|. See the hash_to_field operation defined in
 // section 5.2 of draft-irtf-cfrg-hash-to-curve-06.
@@ -153,8 +133,22 @@ static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
   return 1;
 }
 
+// big_endian_to_words decodes |in| as a big-endian integer and writes the
+// result to |out|. |num_words| must be large enough to contain the output.
+static void big_endian_to_words(BN_ULONG *out, size_t num_words,
+                                const uint8_t *in, size_t len) {
+  assert(len <= num_words * sizeof(BN_ULONG));
+  // Ensure any excess bytes are zeroed.
+  OPENSSL_memset(out, 0, num_words * sizeof(BN_ULONG));
+  uint8_t *out_u8 = (uint8_t *)out;
+  for (size_t i = 0; i < len; i++) {
+    out_u8[len - 1 - i] = in[i];
+  }
+}
+
 // hash_to_field implements the operation described in section 5.2
-// of draft-irtf-cfrg-hash-to-curve-06, with count = 2.
+// of draft-irtf-cfrg-hash-to-curve-06, with count = 2. |k| is the security
+// factor.
 static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
                           EC_FELEM *out1, EC_FELEM *out2, const uint8_t *dst,
                           size_t dst_len, unsigned k, const uint8_t *msg,
@@ -165,24 +159,31 @@ static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
       !expand_message_xmd(md, buf, 2 * L, msg, msg_len, dst, dst_len)) {
     return 0;
   }
-  reduce_to_felem(group, out1, buf, L);
-  reduce_to_felem(group, out2, buf + L, L);
+  BN_ULONG words[2 * EC_MAX_WORDS];
+  size_t num_words = 2 * group->field.width;
+  big_endian_to_words(words, num_words, buf, L);
+  group->meth->felem_reduce(group, out1, words, num_words);
+  big_endian_to_words(words, num_words, buf + L, L);
+  group->meth->felem_reduce(group, out2, words, num_words);
   return 1;
 }
 
 // hash_to_scalar behaves like |hash_to_field2| but returns a value modulo the
-// group order rather than a field element.
+// group order rather than a field element. |k| is the security factor.
 static int hash_to_scalar(const EC_GROUP *group, const EVP_MD *md,
                           EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
                           unsigned k, const uint8_t *msg, size_t msg_len) {
   size_t L;
-  BN_ULONG words[EC_MAX_WORDS * 2] = {0};
+  uint8_t buf[EC_MAX_BYTES * 2];
   if (!num_bytes_to_derive(&L, &group->order, k) ||
-      !expand_message_xmd(md, (uint8_t *)words, L, msg, msg_len, dst,
-                          dst_len)) {
+      !expand_message_xmd(md, buf, L, msg, msg_len, dst, dst_len)) {
     return 0;
   }
-  ec_scalar_reduce(group, out, words, 2 * group->order.width);
+
+  BN_ULONG words[2 * EC_MAX_WORDS];
+  size_t num_words = 2 * group->order.width;
+  big_endian_to_words(words, num_words, buf, L);
+  ec_scalar_reduce(group, out, words, num_words);
   return 1;
 }
 

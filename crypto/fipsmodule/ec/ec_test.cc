@@ -1215,13 +1215,13 @@ TEST(ECTest, HashToScalar) {
   };
   static const HashToScalarTest kTests[] = {
       {"P521_XMD:SHA-512_SCALAR_TEST", "",
-       "01407998b20d948d6ef4e68c981d24f44ed3e65a49849a16296770"
-       "14b48d4664e150074ccf9afcdf791c6afc648e69b94989881f1f0b"
-       "4e2b86ce40b1dc2ce4bb20f0"},
+       "01a6206c2fc677c11d51807bf46d64a17f92396673074c5cee9299"
+       "4d28eec5445d5ed89799b30b39c964ecf62f39d59e7d43de15d910"
+       "c2c1d69f3ebc01eab241e5dc"},
       {"P521_XMD:SHA-512_SCALAR_TEST", "abcdef0123456789",
-       "019fab7021eeae5476d7ae7352793025a9aed0193831a42cbcd183"
-       "e377a83d33ee178e11f34f9b6cffeffdee40c9260e5aff50ebf276"
-       "c992b78d086dd4475d7b098e"},
+       "00af484a5d9389a9912f555234c578d4b1b7c4a6f5009018d133a4"
+       "069172c9f5ce2d853b8643fe7bb50a83427ed3520a7a793c41a455"
+       "a02aa99431434fb6b5b0b26e"},
       {"P521_XMD:SHA-512_SCALAR_TEST",
        "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -1233,9 +1233,9 @@ TEST(ECTest, HashToScalar) {
        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-       "00ab2c0feabe9bbd93d4570fe627fa88667bb8f2f117e76b77d41a"
-       "15bb5dd995f61c64cd70a96dc9cda1f70b426dfd7a1c11a2865272"
-       "f4698f501e57f8c4c2ed0008"},
+       "00b2db2ceb64ad055cafc5a0fc92560525d6dcc4975b86bbb79013"
+       "a1c3ab5d412320cb55df8088a658039a70c5657d5aefaaaa81cc5d"
+       "eecdd40c03eb0517fe2e158c"},
   };
 
   for (const auto &test : kTests) {
