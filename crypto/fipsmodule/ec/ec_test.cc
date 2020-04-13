@@ -554,6 +554,60 @@ TEST_P(ECCurveTest, IsOnCurve) {
   EXPECT_TRUE(EC_POINT_is_on_curve(group(), p.get(), nullptr));
 }
 
+TEST_P(ECCurveTest, Compare) {
+  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(key1);
+  ASSERT_TRUE(EC_KEY_generate_key(key1.get()));
+  const EC_POINT *pub1 = EC_KEY_get0_public_key(key1.get());
+
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(EC_KEY_generate_key(key2.get()));
+  const EC_POINT *pub2 = EC_KEY_get0_public_key(key2.get());
+
+  // Two different points should not compare as equal.
+  EXPECT_EQ(1, EC_POINT_cmp(group(), pub1, pub2, nullptr));
+
+  // Serialize |pub1| and parse it back out. This gives a point in affine
+  // coordinates.
+  std::vector<uint8_t> serialized;
+  ASSERT_TRUE(
+      EncodeECPoint(&serialized, group(), pub1, POINT_CONVERSION_UNCOMPRESSED));
+  bssl::UniquePtr<EC_POINT> p(EC_POINT_new(group()));
+  ASSERT_TRUE(p);
+  ASSERT_TRUE(EC_POINT_oct2point(group(), p.get(), serialized.data(),
+                                 serialized.size(), nullptr));
+
+  // The points should be equal.
+  EXPECT_EQ(0, EC_POINT_cmp(group(), p.get(), pub1, nullptr));
+
+  // Add something to the point. It no longer compares as equal.
+  ASSERT_TRUE(EC_POINT_add(group(), p.get(), p.get(), pub2, nullptr));
+  EXPECT_EQ(1, EC_POINT_cmp(group(), p.get(), pub1, nullptr));
+
+  // Negate |pub2|. It should no longer compare as equal. This tests that we
+  // check both x and y coordinate.
+  bssl::UniquePtr<EC_POINT> q(EC_POINT_new(group()));
+  ASSERT_TRUE(q);
+  ASSERT_TRUE(EC_POINT_copy(q.get(), pub2));
+  ASSERT_TRUE(EC_POINT_invert(group(), q.get(), nullptr));
+  EXPECT_EQ(1, EC_POINT_cmp(group(), q.get(), pub2, nullptr));
+
+  // Return |p| to the original value. It should be equal to |pub1| again.
+  ASSERT_TRUE(EC_POINT_add(group(), p.get(), p.get(), q.get(), nullptr));
+  EXPECT_EQ(0, EC_POINT_cmp(group(), p.get(), pub1, nullptr));
+
+  // Infinity compares as equal to itself, but not other points.
+  bssl::UniquePtr<EC_POINT> inf1(EC_POINT_new(group())),
+      inf2(EC_POINT_new(group()));
+  ASSERT_TRUE(inf1);
+  ASSERT_TRUE(EC_POINT_set_to_infinity(group(), inf1.get()));
+  // |q| is currently -|pub2|.
+  ASSERT_TRUE(EC_POINT_add(group(), inf2.get(), pub2, q.get(), nullptr));
+  EXPECT_EQ(0, EC_POINT_cmp(group(), inf1.get(), inf2.get(), nullptr));
+  EXPECT_EQ(1, EC_POINT_cmp(group(), inf1.get(), p.get(), nullptr));
+}
+
 TEST_P(ECCurveTest, GenerateFIPS) {
   // Generate an EC_KEY.
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
