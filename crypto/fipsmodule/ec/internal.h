@@ -482,8 +482,8 @@ void ec_GFp_mont_dbl(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a);
 void ec_GFp_simple_invert(const EC_GROUP *, EC_RAW_POINT *);
 int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_RAW_POINT *);
 int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_RAW_POINT *);
-int ec_GFp_simple_cmp(const EC_GROUP *, const EC_RAW_POINT *a,
-                      const EC_RAW_POINT *b);
+int ec_GFp_simple_points_equal(const EC_GROUP *, const EC_RAW_POINT *a,
+                               const EC_RAW_POINT *b);
 void ec_simple_scalar_inv0_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                                       const EC_SCALAR *a);
 

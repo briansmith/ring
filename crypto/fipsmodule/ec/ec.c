@@ -623,7 +623,7 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
          BN_cmp(&a->field, &b->field) != 0 ||
          !ec_felem_equal(a, &a->a, &b->a) ||
          !ec_felem_equal(a, &a->b, &b->b) ||
-         ec_GFp_simple_cmp(a, &a->generator->raw, &b->generator->raw) != 0;
+         !ec_GFp_simple_points_equal(a, &a->generator->raw, &b->generator->raw);
 }
 
 const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group) {
@@ -786,7 +786,9 @@ int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a, const EC_POINT *b,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return -1;
   }
-  return ec_GFp_simple_cmp(group, &a->raw, &b->raw);
+
+  // Note |EC_POINT_cmp| returns zero for equality and non-zero for inequality.
+  return ec_GFp_simple_points_equal(group, &a->raw, &b->raw) ? 0 : 1;
 }
 
 int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,

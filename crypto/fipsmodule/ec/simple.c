@@ -237,80 +237,51 @@ int ec_GFp_simple_is_on_curve(const EC_GROUP *group,
   return 1 & ~(not_infinity & not_equal);
 }
 
-int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_RAW_POINT *a,
-                      const EC_RAW_POINT *b) {
-  // Note this function returns zero if |a| and |b| are equal and 1 if they are
-  // not equal.
-  if (ec_GFp_simple_is_at_infinity(group, a)) {
-    return ec_GFp_simple_is_at_infinity(group, b) ? 0 : 1;
-  }
+int ec_GFp_simple_points_equal(const EC_GROUP *group, const EC_RAW_POINT *a,
+                               const EC_RAW_POINT *b) {
+  // This function is implemented in constant-time for two reasons. First,
+  // although EC points are usually public, their Jacobian Z coordinates may be
+  // secret, or at least are not obviously public. Second, more complex
+  // protocols will sometimes manipulate secret points.
+  //
+  // This does mean that we pay a 6M+2S Jacobian comparison when comparing two
+  // publicly affine points costs no field operations at all. If needed, we can
+  // restore this optimization by keeping better track of affine vs. Jacobian
+  // forms. See https://crbug.com/boringssl/326.
 
-  if (ec_GFp_simple_is_at_infinity(group, b)) {
-    return 1;
-  }
-
-  int a_Z_is_one = ec_felem_equal(group, &a->Z, &group->one);
-  int b_Z_is_one = ec_felem_equal(group, &b->Z, &group->one);
-
-  if (a_Z_is_one && b_Z_is_one) {
-    return !ec_felem_equal(group, &a->X, &b->X) ||
-           !ec_felem_equal(group, &a->Y, &b->Y);
-  }
+  // If neither |a| or |b| is infinity, we have to decide whether
+  //     (X_a/Z_a^2, Y_a/Z_a^3) = (X_b/Z_b^2, Y_b/Z_b^3),
+  // or equivalently, whether
+  //     (X_a*Z_b^2, Y_a*Z_b^3) = (X_b*Z_a^2, Y_b*Z_a^3).
 
   void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
                           const EC_FELEM *b) = group->meth->felem_mul;
   void (*const felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a) =
       group->meth->felem_sqr;
 
-  // We have to decide whether
-  //     (X_a/Z_a^2, Y_a/Z_a^3) = (X_b/Z_b^2, Y_b/Z_b^3),
-  // or equivalently, whether
-  //     (X_a*Z_b^2, Y_a*Z_b^3) = (X_b*Z_a^2, Y_b*Z_a^3).
-
   EC_FELEM tmp1, tmp2, Za23, Zb23;
-  const EC_FELEM *tmp1_, *tmp2_;
-  if (!b_Z_is_one) {
-    felem_sqr(group, &Zb23, &b->Z);
-    felem_mul(group, &tmp1, &a->X, &Zb23);
-    tmp1_ = &tmp1;
-  } else {
-    tmp1_ = &a->X;
-  }
-  if (!a_Z_is_one) {
-    felem_sqr(group, &Za23, &a->Z);
-    felem_mul(group, &tmp2, &b->X, &Za23);
-    tmp2_ = &tmp2;
-  } else {
-    tmp2_ = &b->X;
-  }
+  felem_sqr(group, &Zb23, &b->Z);         // Zb23 = Z_b^2
+  felem_mul(group, &tmp1, &a->X, &Zb23);  // tmp1 = X_a * Z_b^2
+  felem_sqr(group, &Za23, &a->Z);         // Za23 = Z_a^2
+  felem_mul(group, &tmp2, &b->X, &Za23);  // tmp2 = X_b * Z_a^2
+  ec_felem_sub(group, &tmp1, &tmp1, &tmp2);
+  const BN_ULONG x_not_equal = ec_felem_non_zero_mask(group, &tmp1);
 
-  // Compare  X_a*Z_b^2  with  X_b*Z_a^2.
-  if (!ec_felem_equal(group, tmp1_, tmp2_)) {
-    return 1;  // The points differ.
-  }
+  felem_mul(group, &Zb23, &Zb23, &b->Z);  // Zb23 = Z_b^3
+  felem_mul(group, &tmp1, &a->Y, &Zb23);  // tmp1 = Y_a * Z_b^3
+  felem_mul(group, &Za23, &Za23, &a->Z);  // Za23 = Z_a^3
+  felem_mul(group, &tmp2, &b->Y, &Za23);  // tmp2 = Y_b * Z_a^3
+  ec_felem_sub(group, &tmp1, &tmp1, &tmp2);
+  const BN_ULONG y_not_equal = ec_felem_non_zero_mask(group, &tmp1);
+  const BN_ULONG x_and_y_equal = ~(x_not_equal | y_not_equal);
 
-  if (!b_Z_is_one) {
-    felem_mul(group, &Zb23, &Zb23, &b->Z);
-    felem_mul(group, &tmp1, &a->Y, &Zb23);
-    // tmp1_ = &tmp1
-  } else {
-    tmp1_ = &a->Y;
-  }
-  if (!a_Z_is_one) {
-    felem_mul(group, &Za23, &Za23, &a->Z);
-    felem_mul(group, &tmp2, &b->Y, &Za23);
-    // tmp2_ = &tmp2
-  } else {
-    tmp2_ = &b->Y;
-  }
+  const BN_ULONG a_not_infinity = ec_felem_non_zero_mask(group, &a->Z);
+  const BN_ULONG b_not_infinity = ec_felem_non_zero_mask(group, &b->Z);
+  const BN_ULONG a_and_b_infinity = ~(a_not_infinity | b_not_infinity);
 
-  // Compare  Y_a*Z_b^3  with  Y_b*Z_a^3.
-  if (!ec_felem_equal(group, tmp1_, tmp2_)) {
-    return 1;  // The points differ.
-  }
-
-  // The points are equal.
-  return 0;
+  const BN_ULONG equal =
+      a_and_b_infinity | (a_not_infinity & b_not_infinity & x_and_y_equal);
+  return equal & 1;
 }
 
 int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
