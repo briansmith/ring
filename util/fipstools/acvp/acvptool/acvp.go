@@ -432,6 +432,7 @@ FetchResults:
 		}
 
 		if results.Passed {
+			log.Print("Test passed")
 			break
 		}
 

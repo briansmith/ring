@@ -58,16 +58,15 @@ type hmacPrimitive struct {
 	// given to the subprocess to HMAC with this hash function.
 	algo  string
 	mdLen int // mdLen is the number of bytes of output that the underlying hash produces.
-	m     *Subprocess
 }
 
 // hmac uses the subprocess to compute HMAC and returns the result.
-func (h *hmacPrimitive) hmac(msg []byte, key []byte, outBits int) []byte {
+func (h *hmacPrimitive) hmac(msg []byte, key []byte, outBits int, m Transactable) []byte {
 	if outBits%8 != 0 {
 		panic("fractional-byte output length requested: " + strconv.Itoa(outBits))
 	}
 	outBytes := outBits / 8
-	result, err := h.m.transact(h.algo, 1, msg, key)
+	result, err := m.Transact(h.algo, 1, msg, key)
 	if err != nil {
 		panic("HMAC operation failed: " + err.Error())
 	}
@@ -77,7 +76,7 @@ func (h *hmacPrimitive) hmac(msg []byte, key []byte, outBits int) []byte {
 	return result[0][:outBytes]
 }
 
-func (h *hmacPrimitive) Process(vectorSet []byte) (interface{}, error) {
+func (h *hmacPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed hmacTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -115,7 +114,7 @@ func (h *hmacPrimitive) Process(vectorSet []byte) (interface{}, error) {
 			// https://usnistgov.github.io/ACVP/artifacts/acvp_sub_mac.html#hmac_vector_responses
 			response.Tests = append(response.Tests, hmacTestResponse{
 				ID:     test.ID,
-				MACHex: hex.EncodeToString(h.hmac(msg, key, group.MACBits)),
+				MACHex: hex.EncodeToString(h.hmac(msg, key, group.MACBits, m)),
 			})
 		}
 

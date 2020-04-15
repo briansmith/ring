@@ -69,10 +69,9 @@ type drbg struct {
 	// given to the subprocess to generate random bytes.
 	algo  string
 	modes map[string]bool // the supported underlying primitives for the DRBG
-	m     *Subprocess
 }
 
-func (d *drbg) Process(vectorSet []byte) (interface{}, error) {
+func (d *drbg) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed drbgTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -138,13 +137,13 @@ func (d *drbg) Process(vectorSet []byte) (interface{}, error) {
 			outLen := group.RetBits / 8
 			var outLenBytes [4]byte
 			binary.LittleEndian.PutUint32(outLenBytes[:], uint32(outLen))
-			result, err := d.m.transact(d.algo+"/"+group.Mode, 1, outLenBytes[:], ent, perso, additionalInputs[0], additionalInputs[1], nonce)
+			result, err := m.Transact(d.algo+"/"+group.Mode, 1, outLenBytes[:], ent, perso, additionalInputs[0], additionalInputs[1], nonce)
 			if err != nil {
 				return nil, fmt.Errorf("DRBG operation failed: %s", err)
 			}
 
 			if l := uint64(len(result[0])); l != outLen {
-				return nil, fmt.Errorf("wrong length DRBG result: %d bytes but wanted %d", l, outLenBytes)
+				return nil, fmt.Errorf("wrong length DRBG result: %d bytes but wanted %d", l, outLen)
 			}
 
 			// https://usnistgov.github.io/ACVP/artifacts/acvp_sub_drbg.html#rfc.section.4

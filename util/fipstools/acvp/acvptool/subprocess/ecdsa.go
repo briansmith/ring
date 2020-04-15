@@ -67,12 +67,12 @@ type ecdsaTestResponse struct {
 type ecdsa struct {
 	// algo is the ACVP name for this algorithm and also the command name
 	// given to the subprocess to hash with this hash function.
-	algo   string
-	curves map[string]bool // supported curve names
-	m      *Subprocess
+	algo       string
+	curves     map[string]bool // supported curve names
+	primitives map[string]primitive
 }
 
-func (e *ecdsa) Process(vectorSet []byte) (interface{}, error) {
+func (e *ecdsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed ecdsaTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func (e *ecdsa) Process(vectorSet []byte) (interface{}, error) {
 				if group.SecretGenerationMode != "testing candidates" {
 					return nil, fmt.Errorf("invalid secret generation mode in test group %d: %q", group.ID, group.SecretGenerationMode)
 				}
-				result, err := e.m.transact(e.algo+"/"+"keyGen", 3, []byte(group.Curve))
+				result, err := m.Transact(e.algo+"/"+"keyGen", 3, []byte(group.Curve))
 				if err != nil {
 					return nil, fmt.Errorf("key generation failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}
@@ -117,7 +117,7 @@ func (e *ecdsa) Process(vectorSet []byte) (interface{}, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed to decode qy in test case %d/%d: %s", group.ID, test.ID, err)
 				}
-				result, err := e.m.transact(e.algo+"/"+"keyVer", 1, []byte(group.Curve), qx, qy)
+				result, err := m.Transact(e.algo+"/"+"keyVer", 1, []byte(group.Curve), qx, qy)
 				if err != nil {
 					return nil, fmt.Errorf("key verification failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}
@@ -134,7 +134,7 @@ func (e *ecdsa) Process(vectorSet []byte) (interface{}, error) {
 				}
 
 			case "sigGen":
-				p := e.m.primitives[group.HashAlgo]
+				p := e.primitives[group.HashAlgo]
 				h, ok := p.(*hashPrimitive)
 				if !ok {
 					return nil, fmt.Errorf("unsupported hash algorithm %q in test group %d", group.HashAlgo, group.ID)
@@ -142,7 +142,7 @@ func (e *ecdsa) Process(vectorSet []byte) (interface{}, error) {
 
 				if len(sigGenPrivateKey) == 0 {
 					// Ask the subprocess to generate a key for this test group.
-					result, err := e.m.transact(e.algo+"/"+"keyGen", 3, []byte(group.Curve))
+					result, err := m.Transact(e.algo+"/"+"keyGen", 3, []byte(group.Curve))
 					if err != nil {
 						return nil, fmt.Errorf("key generation failed for test case %d/%d: %s", group.ID, test.ID, err)
 					}
@@ -163,7 +163,7 @@ func (e *ecdsa) Process(vectorSet []byte) (interface{}, error) {
 					}
 					op += "/componentTest"
 				}
-				result, err := e.m.transact(op, 2, []byte(group.Curve), sigGenPrivateKey, []byte(group.HashAlgo), msg)
+				result, err := m.Transact(op, 2, []byte(group.Curve), sigGenPrivateKey, []byte(group.HashAlgo), msg)
 				if err != nil {
 					return nil, fmt.Errorf("signature generation failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}
@@ -171,7 +171,7 @@ func (e *ecdsa) Process(vectorSet []byte) (interface{}, error) {
 				testResp.SHex = hex.EncodeToString(result[1])
 
 			case "sigVer":
-				p := e.m.primitives[group.HashAlgo]
+				p := e.primitives[group.HashAlgo]
 				_, ok := p.(*hashPrimitive)
 				if !ok {
 					return nil, fmt.Errorf("unsupported hash algorithm %q in test group %d", group.HashAlgo, group.ID)
@@ -197,7 +197,7 @@ func (e *ecdsa) Process(vectorSet []byte) (interface{}, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed to decode S in test case %d/%d: %s", group.ID, test.ID, err)
 				}
-				result, err := e.m.transact(e.algo+"/"+"sigVer", 1, []byte(group.Curve), []byte(group.HashAlgo), msg, qx, qy, r, s)
+				result, err := m.Transact(e.algo+"/"+"sigVer", 1, []byte(group.Curve), []byte(group.HashAlgo), msg, qx, qy, r, s)
 				if err != nil {
 					return nil, fmt.Errorf("signature verification failed for test case %d/%d: %s", group.ID, test.ID, err)
 				}
