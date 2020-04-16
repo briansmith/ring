@@ -14,6 +14,7 @@
 
 #include <openssl/ec.h>
 #include <openssl/err.h>
+#include <openssl/mem.h>
 
 #include <assert.h>
 
