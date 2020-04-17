@@ -203,7 +203,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedRedemptionRequest) {
   ASSERT_TRUE(tokens);
 
   for (TRUST_TOKEN *token : tokens.get()) {
-    const uint8_t kClientData[] = "TEST CLIENT DATA";
+    const uint8_t kClientData[] = "\x70TEST CLIENT DATA";
     uint64_t kRedemptionTime = 13374242;
 
     uint8_t *redeem_msg = NULL, *redeem_resp = NULL;
@@ -244,7 +244,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedRedemptionResponse) {
   ASSERT_TRUE(tokens);
 
   for (TRUST_TOKEN *token : tokens.get()) {
-    const uint8_t kClientData[] = "TEST CLIENT DATA";
+    const uint8_t kClientData[] = "\x70TEST CLIENT DATA";
     uint64_t kRedemptionTime = 13374242;
 
     uint8_t *redeem_msg = NULL, *redeem_resp = NULL;
@@ -360,15 +360,15 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
   ASSERT_TRUE(tokens);
 
   for (TRUST_TOKEN *token : tokens.get()) {
-    const uint8_t kClientData[] = "TEST CLIENT DATA";
+    const uint8_t kClientData[] = "\x70TEST CLIENT DATA";
     uint64_t kRedemptionTime = 13374242;
 
     const uint8_t kExpectedSRR[] =
-        "\xa3\x6b\x63\x6c\x69\x65\x6e\x74\x2d\x64\x61\x74\x61\x54\x45\x53\x54"
-        "\x20\x43\x4c\x49\x45\x4e\x54\x20\x44\x41\x54\x41\x70\x65\x78\x70\x69"
-        "\x72\x79\x2d\x74\x69\x6d\x65\x73\x74\x61\x6d\x70\x1a\x00\xcc\x15\x7a"
-        "\x68\x6d\x65\x74\x61\x64\x61\x74\x61\xa2\x67\x70\x72\x69\x76\x61\x74"
-        "\x65\x00\x66\x70\x75\x62\x6c\x69\x63\x00";
+        "\xa3\x68\x6d\x65\x74\x61\x64\x61\x74\x61\xa2\x66\x70\x75\x62\x6c\x69"
+        "\x63\x00\x67\x70\x72\x69\x76\x61\x74\x65\x00\x6b\x63\x6c\x69\x65\x6e"
+        "\x74\x2d\x64\x61\x74\x61\x70\x54\x45\x53\x54\x20\x43\x4c\x49\x45\x4e"
+        "\x54\x20\x44\x41\x54\x41\x70\x65\x78\x70\x69\x72\x79\x2d\x74\x69\x6d"
+        "\x65\x73\x74\x61\x6d\x70\x1a\x00\xcc\x15\x7a";
 
     uint8_t *redeem_msg = NULL, *redeem_resp = NULL;
     ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_redemption(
@@ -400,13 +400,13 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
     uint8_t private_metadata;
     ASSERT_TRUE(TRUST_TOKEN_decode_private_metadata(
         &private_metadata, metadata_key, sizeof(metadata_key), kClientData,
-        sizeof(kClientData) - 1, srr[srr_len - 9]));
-    ASSERT_EQ(srr[srr_len - 1], std::get<0>(GetParam()));
+        sizeof(kClientData) - 1, srr[27]));
+    ASSERT_EQ(srr[18], std::get<0>(GetParam()));
     ASSERT_EQ(private_metadata, std::get<1>(GetParam()));
 
     // Clear out the metadata bits.
-    srr[srr_len - 9] = 0;
-    srr[srr_len - 1] = 0;
+    srr[18] = 0;
+    srr[27] = 0;
 
     ASSERT_TRUE(sizeof(kExpectedSRR) - 1 == srr_len);
     ASSERT_EQ(OPENSSL_memcmp(kExpectedSRR, srr, srr_len), 0);

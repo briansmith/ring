@@ -642,19 +642,25 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
   static const char kPrivateLabel[] = "private";
   static const char kPublicLabel[] = "public";
 
+  // CBOR requires map keys to be sorted by length then sorted lexically.
+  // https://tools.ietf.org/html/rfc7049#section-3.9
+  assert(strlen(kMetadataLabel) < strlen(kClientDataLabel));
+  assert(strlen(kClientDataLabel) < strlen(kExpiryTimestampLabel));
+  assert(strlen(kPublicLabel) < strlen(kPrivateLabel));
+
   if (!CBB_init(&srr, 0) ||
       !add_cbor_map(&srr, 3) ||  // SRR map
+      !add_cbor_text(&srr, kMetadataLabel, strlen(kMetadataLabel)) ||
+      !add_cbor_map(&srr, 2) ||  // Metadata map
+      !add_cbor_text(&srr, kPublicLabel, strlen(kPublicLabel)) ||
+      !add_cbor_int(&srr, public_metadata) ||
+      !add_cbor_text(&srr, kPrivateLabel, strlen(kPrivateLabel)) ||
+      !add_cbor_int(&srr, private_metadata ^ metadata_obfuscator) ||
       !add_cbor_text(&srr, kClientDataLabel, strlen(kClientDataLabel)) ||
       !CBB_add_bytes(&srr, CBS_data(&client_data), CBS_len(&client_data)) ||
       !add_cbor_text(&srr, kExpiryTimestampLabel,
                      strlen(kExpiryTimestampLabel)) ||
       !add_cbor_int(&srr, redemption_time + lifetime) ||
-      !add_cbor_text(&srr, kMetadataLabel, strlen(kMetadataLabel)) ||
-      !add_cbor_map(&srr, 2) ||  // Metadata map
-      !add_cbor_text(&srr, kPrivateLabel, strlen(kPrivateLabel)) ||
-      !add_cbor_int(&srr, private_metadata ^ metadata_obfuscator) ||
-      !add_cbor_text(&srr, kPublicLabel, strlen(kPublicLabel)) ||
-      !add_cbor_int(&srr, public_metadata) ||
       !CBB_finish(&srr, &srr_buf, &srr_len)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
