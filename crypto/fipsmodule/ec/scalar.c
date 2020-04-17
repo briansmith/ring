@@ -132,21 +132,21 @@ void ec_simple_scalar_inv0_montgomery(const EC_GROUP *group, EC_SCALAR *r,
 }
 
 int ec_simple_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
-                                               EC_SCALAR *out,
-                                               const EC_SCALAR *in) {
-  if (ec_scalar_is_zero(group, in)) {
+                                               EC_SCALAR *r,
+                                               const EC_SCALAR *a) {
+  if (ec_scalar_is_zero(group, a)) {
     return 0;
   }
 
   // This implementation (in fact) runs in constant time,
   // even though for this interface it is not mandatory.
 
-  // out = in^-1 in the Montgomery domain. This is
+  // r = a^-1 in the Montgomery domain. This is
   // |ec_scalar_to_montgomery| followed by |ec_scalar_inv0_montgomery|, but
   // |ec_scalar_inv0_montgomery| followed by |ec_scalar_from_montgomery| is
   // equivalent and slightly more efficient.
-  ec_scalar_inv0_montgomery(group, out, in);
-  ec_scalar_from_montgomery(group, out, out);
+  ec_scalar_inv0_montgomery(group, r, a);
+  ec_scalar_from_montgomery(group, r, r);
   return 1;
 }
 
