@@ -25,6 +25,11 @@
 #include <openssl/trust_token.h>
 
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
 // PMBTokens is described in https://eprint.iacr.org/2020/072/20200324:214215
 // and provides anonymous tokens with private metadata. We implement the
 // construction with validity verification, described in appendix H,
@@ -67,7 +72,7 @@ typedef struct pmb_pretoken_st {
 } PMBTOKEN_PRETOKEN;
 
 // PMBTOKEN_PRETOKEN_free releases the memory associated with |token|.
-void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *token);
+OPENSSL_EXPORT void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *token);
 
 DEFINE_STACK_OF(PMBTOKEN_PRETOKEN)
 
@@ -161,5 +166,20 @@ struct trust_token_issuer_st {
   uint8_t *metadata_key;
   size_t metadata_key_len;
 };
+
+
+#if defined(__cplusplus)
+}  // extern C
+
+extern "C++" {
+
+BSSL_NAMESPACE_BEGIN
+
+BORINGSSL_MAKE_DELETER(PMBTOKEN_PRETOKEN, PMBTOKEN_PRETOKEN_free)
+
+BSSL_NAMESPACE_END
+
+}  // extern C++
+#endif
 
 #endif  // OPENSSL_HEADER_TRUST_TOKEN_INTERNAL_H
