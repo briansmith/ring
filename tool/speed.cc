@@ -662,17 +662,14 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
         bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group));
         bssl::UniquePtr<EC_POINT> peer_point(EC_POINT_new(group));
         bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
-
         bssl::UniquePtr<BIGNUM> x(BN_new());
-        bssl::UniquePtr<BIGNUM> y(BN_new());
-
-        if (!point || !peer_point || !ctx || !x || !y ||
+        if (!point || !peer_point || !ctx || !x ||
             !EC_POINT_oct2point(group, peer_point.get(), peer_value.get(),
                                 peer_value_len, ctx.get()) ||
-            !EC_POINT_mul(group, point.get(), NULL, peer_point.get(),
+            !EC_POINT_mul(group, point.get(), nullptr, peer_point.get(),
                           EC_KEY_get0_private_key(key.get()), ctx.get()) ||
             !EC_POINT_get_affine_coordinates_GFp(group, point.get(), x.get(),
-                                                 y.get(), ctx.get())) {
+                                                 nullptr, ctx.get())) {
           return false;
         }
 
