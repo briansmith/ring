@@ -91,70 +91,75 @@ static void fiat_p256_to_generic(EC_FELEM *out, const fiat_p256_felem in) {
   fiat_p256_to_bytes(out->bytes, in);
 }
 
-// fiat_p256_inv calculates |out| = |in|^{-1}
+// fiat_p256_inv_square calculates |out| = |in|^{-2}
 //
 // Based on Fermat's Little Theorem:
 //   a^p = a (mod p)
 //   a^{p-1} = 1 (mod p)
-//   a^{p-2} = a^{-1} (mod p)
-static void fiat_p256_inv(fiat_p256_felem out, const fiat_p256_felem in) {
-  fiat_p256_felem ftmp, ftmp2;
-  // each e_I will hold |in|^{2^I - 1}
-  fiat_p256_felem e2, e4, e8, e16, e32, e64;
+//   a^{p-3} = a^{-2} (mod p)
+static void fiat_p256_inv_square(fiat_p256_felem out,
+                                 const fiat_p256_felem in) {
+  // This implements the addition chain described in
+  // https://briansmith.org/ecc-inversion-addition-chains-01#p256_field_inversion
+  fiat_p256_felem x2, x3, x6, x12, x15, x30, x32;
+  fiat_p256_square(x2, in);   // 2^2 - 2^1
+  fiat_p256_mul(x2, x2, in);  // 2^2 - 2^0
 
-  fiat_p256_square(ftmp, in);     // 2^1
-  fiat_p256_mul(ftmp, in, ftmp);  // 2^2 - 2^0
-  fiat_p256_copy(e2, ftmp);
-  fiat_p256_square(ftmp, ftmp);   // 2^3 - 2^1
-  fiat_p256_square(ftmp, ftmp);   // 2^4 - 2^2
-  fiat_p256_mul(ftmp, ftmp, e2);  // 2^4 - 2^0
-  fiat_p256_copy(e4, ftmp);
-  fiat_p256_square(ftmp, ftmp);   // 2^5 - 2^1
-  fiat_p256_square(ftmp, ftmp);   // 2^6 - 2^2
-  fiat_p256_square(ftmp, ftmp);   // 2^7 - 2^3
-  fiat_p256_square(ftmp, ftmp);   // 2^8 - 2^4
-  fiat_p256_mul(ftmp, ftmp, e4);  // 2^8 - 2^0
-  fiat_p256_copy(e8, ftmp);
-  for (size_t i = 0; i < 8; i++) {
-    fiat_p256_square(ftmp, ftmp);
-  }                               // 2^16 - 2^8
-  fiat_p256_mul(ftmp, ftmp, e8);  // 2^16 - 2^0
-  fiat_p256_copy(e16, ftmp);
-  for (size_t i = 0; i < 16; i++) {
-    fiat_p256_square(ftmp, ftmp);
-  }                                // 2^32 - 2^16
-  fiat_p256_mul(ftmp, ftmp, e16);  // 2^32 - 2^0
-  fiat_p256_copy(e32, ftmp);
-  for (size_t i = 0; i < 32; i++) {
-    fiat_p256_square(ftmp, ftmp);
-  }  // 2^64 - 2^32
-  fiat_p256_copy(e64, ftmp);
-  fiat_p256_mul(ftmp, ftmp, in);  // 2^64 - 2^32 + 2^0
-  for (size_t i = 0; i < 192; i++) {
-    fiat_p256_square(ftmp, ftmp);
-  }  // 2^256 - 2^224 + 2^192
+  fiat_p256_square(x3, x2);   // 2^3 - 2^1
+  fiat_p256_mul(x3, x3, in);  // 2^3 - 2^0
 
-  fiat_p256_mul(ftmp2, e64, e32);  // 2^64 - 2^0
-  for (size_t i = 0; i < 16; i++) {
-    fiat_p256_square(ftmp2, ftmp2);
-  }                                  // 2^80 - 2^16
-  fiat_p256_mul(ftmp2, ftmp2, e16);  // 2^80 - 2^0
-  for (size_t i = 0; i < 8; i++) {
-    fiat_p256_square(ftmp2, ftmp2);
-  }                                 // 2^88 - 2^8
-  fiat_p256_mul(ftmp2, ftmp2, e8);  // 2^88 - 2^0
-  for (size_t i = 0; i < 4; i++) {
-    fiat_p256_square(ftmp2, ftmp2);
-  }                                 // 2^92 - 2^4
-  fiat_p256_mul(ftmp2, ftmp2, e4);  // 2^92 - 2^0
-  fiat_p256_square(ftmp2, ftmp2);   // 2^93 - 2^1
-  fiat_p256_square(ftmp2, ftmp2);   // 2^94 - 2^2
-  fiat_p256_mul(ftmp2, ftmp2, e2);  // 2^94 - 2^0
-  fiat_p256_square(ftmp2, ftmp2);   // 2^95 - 2^1
-  fiat_p256_square(ftmp2, ftmp2);   // 2^96 - 2^2
-  fiat_p256_mul(ftmp2, ftmp2, in);  // 2^96 - 3
+  fiat_p256_square(x6, x3);
+  for (int i = 1; i < 3; i++) {
+    fiat_p256_square(x6, x6);
+  }                           // 2^6 - 2^3
+  fiat_p256_mul(x6, x6, x3);  // 2^6 - 2^0
 
-  fiat_p256_mul(out, ftmp2, ftmp);  // 2^256 - 2^224 + 2^192 + 2^96 - 3
+  fiat_p256_square(x12, x6);
+  for (int i = 1; i < 6; i++) {
+    fiat_p256_square(x12, x12);
+  }                             // 2^12 - 2^6
+  fiat_p256_mul(x12, x12, x6);  // 2^12 - 2^0
+
+  fiat_p256_square(x15, x12);
+  for (int i = 1; i < 3; i++) {
+    fiat_p256_square(x15, x15);
+  }                             // 2^15 - 2^3
+  fiat_p256_mul(x15, x15, x3);  // 2^15 - 2^0
+
+  fiat_p256_square(x30, x15);
+  for (int i = 1; i < 15; i++) {
+    fiat_p256_square(x30, x30);
+  }                              // 2^30 - 2^15
+  fiat_p256_mul(x30, x30, x15);  // 2^30 - 2^0
+
+  fiat_p256_square(x32, x30);
+  fiat_p256_square(x32, x32);   // 2^32 - 2^2
+  fiat_p256_mul(x32, x32, x2);  // 2^32 - 2^0
+
+  fiat_p256_felem ret;
+  fiat_p256_square(ret, x32);
+  for (int i = 1; i < 31 + 1; i++) {
+    fiat_p256_square(ret, ret);
+  }                             // 2^64 - 2^32
+  fiat_p256_mul(ret, ret, in);  // 2^64 - 2^32 + 2^0
+
+  for (int i = 0; i < 96 + 32; i++) {
+    fiat_p256_square(ret, ret);
+  }                              // 2^192 - 2^160 + 2^128
+  fiat_p256_mul(ret, ret, x32);  // 2^192 - 2^160 + 2^128 + 2^32 - 2^0
+
+  for (int i = 0; i < 32; i++) {
+    fiat_p256_square(ret, ret);
+  }                              // 2^224 - 2^192 + 2^160 + 2^64 - 2^32
+  fiat_p256_mul(ret, ret, x32);  // 2^224 - 2^192 + 2^160 + 2^64 - 2^0
+
+  for (int i = 0; i < 30; i++) {
+    fiat_p256_square(ret, ret);
+  }                              // 2^254 - 2^222 + 2^190 + 2^94 - 2^30
+  fiat_p256_mul(ret, ret, x30);  // 2^254 - 2^222 + 2^190 + 2^94 - 2^0
+
+  fiat_p256_square(ret, ret);
+  fiat_p256_square(out, ret);  // 2^256 - 2^224 + 2^192 + 2^96 - 2^2
 }
 
 // Group operations
@@ -741,27 +746,23 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(
 
   fiat_p256_felem z1, z2;
   fiat_p256_from_generic(z1, &point->Z);
-  fiat_p256_inv(z2, z1);
-  fiat_p256_square(z1, z2);
-
-  // Instead of using |fiat_p256_from_montgomery| to convert the |x| coordinate
-  // and then calling |fiat_p256_from_montgomery| again to convert the |y|
-  // coordinate below, convert the common factor |z1| once now, saving one
-  // reduction.
-  fiat_p256_from_montgomery(z1, z1);
+  fiat_p256_inv_square(z2, z1);
 
   if (x_out != NULL) {
     fiat_p256_felem x;
     fiat_p256_from_generic(x, &point->X);
-    fiat_p256_mul(x, x, z1);
+    fiat_p256_mul(x, x, z2);
+    fiat_p256_from_montgomery(x, x);
     fiat_p256_to_generic(x_out, x);
   }
 
   if (y_out != NULL) {
     fiat_p256_felem y;
     fiat_p256_from_generic(y, &point->Y);
-    fiat_p256_mul(z1, z1, z2);
-    fiat_p256_mul(y, y, z1);
+    fiat_p256_square(z2, z2);  // z^-4
+    fiat_p256_mul(y, y, z1);   // y * z
+    fiat_p256_mul(y, y, z2);   // y * z^-3
+    fiat_p256_from_montgomery(y, y);
     fiat_p256_to_generic(y_out, y);
   }
 
