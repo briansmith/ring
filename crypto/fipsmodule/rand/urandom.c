@@ -332,7 +332,7 @@ void RAND_set_urandom_fd(int fd) {
   *urandom_fd_requested_bss_get() = fd;
   CRYPTO_STATIC_MUTEX_unlock_write(rand_lock_bss_get());
 
-  CRYPTO_once(rand_once_bss_get(), init_once);
+  CRYPTO_init_sysrand();
   if (*urandom_fd_bss_get() == kHaveGetrandom) {
     close(fd);
   } else if (*urandom_fd_bss_get() != fd) {
@@ -362,7 +362,7 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   }
 #endif
 
-  CRYPTO_once(rand_once_bss_get(), init_once);
+  CRYPTO_init_sysrand();
   if (block) {
     CRYPTO_once(wait_for_entropy_once_bss_get(), wait_for_entropy);
   }
@@ -415,6 +415,10 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
     perror("entropy fill failed");
     abort();
   }
+}
+
+void CRYPTO_init_sysrand(void) {
+  CRYPTO_once(rand_once_bss_get(), init_once);
 }
 
 #if defined(BORINGSSL_FIPS)
