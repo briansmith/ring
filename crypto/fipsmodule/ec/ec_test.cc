@@ -1256,6 +1256,15 @@ TEST(ECTest, HashToCurve) {
     EXPECT_EQ(test.y_hex, EncodeHex(bssl::MakeConstSpan(buf).subspan(
                               1 + field_len, field_len)));
   }
+
+  // hash-to-curve functions should check for the wrong group.
+  bssl::UniquePtr<EC_GROUP> p224(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(p224);
+  EC_RAW_POINT p;
+  static const uint8_t kDST[] = {0, 1, 2, 3};
+  static const uint8_t kMessage[] = {4, 5, 6, 7};
+  EXPECT_FALSE(ec_hash_to_curve_p521_xmd_sha512_sswu(
+      p224.get(), &p, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
 }
 
 TEST(ECTest, HashToScalar) {
@@ -1306,4 +1315,13 @@ TEST(ECTest, HashToScalar) {
     ec_scalar_to_bytes(group.get(), buf, &len, &scalar);
     EXPECT_EQ(test.result_hex, EncodeHex(bssl::MakeConstSpan(buf, len)));
   }
+
+  // hash-to-scalar functions should check for the wrong group.
+  bssl::UniquePtr<EC_GROUP> p224(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  ASSERT_TRUE(p224);
+  EC_SCALAR scalar;
+  static const uint8_t kDST[] = {0, 1, 2, 3};
+  static const uint8_t kMessage[] = {4, 5, 6, 7};
+  EXPECT_FALSE(ec_hash_to_scalar_p521_xmd_sha512(
+      p224.get(), &scalar, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
 }

@@ -125,6 +125,7 @@ static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
   // |p_bits|.)
   if (L * 8 >= 2 * bits - 2 ||
       L > 2 * EC_MAX_BYTES) {
+    assert(0);
     OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
     return 0;
   }
@@ -385,6 +386,11 @@ int ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing(
 int ec_hash_to_scalar_p521_xmd_sha512(const EC_GROUP *group, EC_SCALAR *out,
                                       const uint8_t *dst, size_t dst_len,
                                       const uint8_t *msg, size_t msg_len) {
+  if (EC_GROUP_get_curve_name(group) != NID_secp521r1) {
+    OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
+    return 0;
+  }
+
   return hash_to_scalar(group, EVP_sha512(), out, dst, dst_len, /*k=*/256, msg,
                         msg_len);
 }
