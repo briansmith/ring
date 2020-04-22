@@ -75,13 +75,14 @@ TEST(TrustTokenTest, HExp1) {
   const uint8_t kHGen[] = "generator";
   const uint8_t kHLabel[] = "PMBTokens Experiment V1 HashH";
 
-  EC_RAW_POINT expected_h;
+  bssl::UniquePtr<EC_POINT> expected_h(EC_POINT_new(group));
+  ASSERT_TRUE(expected_h);
   ASSERT_TRUE(ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
-      group, &expected_h, kHLabel, sizeof(kHLabel), kHGen, sizeof(kHGen)));
+      group, &expected_h->raw, kHLabel, sizeof(kHLabel), kHGen, sizeof(kHGen)));
   uint8_t expected_bytes[1 + 2 * EC_MAX_BYTES];
   size_t expected_len =
-      ec_point_to_bytes(group, &expected_h, POINT_CONVERSION_UNCOMPRESSED,
-                        expected_bytes, sizeof(expected_bytes));
+      EC_POINT_point2oct(group, expected_h.get(), POINT_CONVERSION_UNCOMPRESSED,
+                         expected_bytes, sizeof(expected_bytes), nullptr);
 
   uint8_t h[97];
   ASSERT_TRUE(pmbtoken_exp1_get_h_for_testing(h));

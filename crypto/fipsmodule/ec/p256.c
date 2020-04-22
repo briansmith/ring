@@ -752,7 +752,6 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(
     fiat_p256_felem x;
     fiat_p256_from_generic(x, &point->X);
     fiat_p256_mul(x, x, z2);
-    fiat_p256_from_montgomery(x, x);
     fiat_p256_to_generic(x_out, x);
   }
 
@@ -762,7 +761,6 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(
     fiat_p256_square(z2, z2);  // z^-4
     fiat_p256_mul(y, y, z1);   // y * z
     fiat_p256_mul(y, y, z2);   // y * z^-3
-    fiat_p256_from_montgomery(y, y);
     fiat_p256_to_generic(y_out, y);
   }
 

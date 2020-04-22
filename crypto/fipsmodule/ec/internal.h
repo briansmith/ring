@@ -239,21 +239,54 @@ int ec_felem_equal(const EC_GROUP *group, const EC_FELEM *a, const EC_FELEM *b);
 
 
 // Points.
+//
+// Points may represented in affine coordinates as |EC_AFFINE| or Jacobian
+// coordinates as |EC_RAW_POINT|. Affine coordinates directly represent a
+// point on the curve, but point addition over affine coordinates requires
+// costly field inversions, so arithmetic is done in Jacobian coordinates.
+// Converting from affine to Jacobian is cheap, while converting from Jacobian
+// to affine costs a field inversion. (Jacobian coordinates amortize the field
+// inversions needed in a sequence of point operations.)
+//
+// TODO(davidben): Rename |EC_RAW_POINT| to |EC_JACOBIAN|.
 
-// An EC_RAW_POINT represents an elliptic curve point. Unlike |EC_POINT|, it is
-// a plain struct which can be stack-allocated and needs no cleanup. It is
-// specific to an |EC_GROUP| and must not be mixed between groups.
+// An EC_RAW_POINT represents an elliptic curve point in Jacobian coordinates.
+// Unlike |EC_POINT|, it is a plain struct which can be stack-allocated and
+// needs no cleanup. It is specific to an |EC_GROUP| and must not be mixed
+// between groups.
 typedef struct {
-  EC_FELEM X, Y, Z;
   // X, Y, and Z are Jacobian projective coordinates. They represent
   // (X/Z^2, Y/Z^3) if Z != 0 and the point at infinity otherwise.
+  EC_FELEM X, Y, Z;
 } EC_RAW_POINT;
+
+// An EC_AFFINE represents an elliptic curve point in affine coordinates.
+// coordinates. Note the point at infinity cannot be represented in affine
+// coordinates.
+typedef struct {
+  EC_FELEM X, Y;
+} EC_AFFINE;
+
+// ec_affine_to_jacobian converts |p| to Jacobian form and writes the result to
+// |*out|. This operation is very cheap and only costs a few copies.
+void ec_affine_to_jacobian(const EC_GROUP *group, EC_RAW_POINT *out,
+                           const EC_AFFINE *p);
+
+// ec_jacobian_to_affine converts |p| to affine form and writes the result to
+// |*out|. It returns one on success and zero if |p| was the point at infinity.
+// This operation performs a field inversion and should only be done once per
+// point.
+//
+// If only extracting the x-coordinate, use |ec_get_x_coordinate_*| which is
+// slightly faster.
+int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
+                          const EC_RAW_POINT *p);
 
 // ec_point_set_affine_coordinates sets |out|'s to a point with affine
 // coordinates |x| and |y|. It returns one if the point is on the curve and
 // zero otherwise. If the point is not on the curve, the value of |out| is
 // undefined.
-int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_RAW_POINT *out,
+int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_AFFINE *out,
                                     const EC_FELEM *x, const EC_FELEM *y);
 
 // ec_point_mul_scalar sets |r| to |p| * |scalar|. Both inputs are considered
@@ -292,29 +325,30 @@ int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
 int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
                                   const EC_RAW_POINT *p);
 
-// ec_point_get_affine_coordinate_bytes writes |p|'s affine coordinates to
-// |out_x| and |out_y|, each of which must have at must |max_out| bytes. It sets
-// |*out_len| to the number of bytes written in each buffer. Coordinates are
-// written big-endian and zero-padded to the size of the field.
-//
-// Either of |out_x| or |out_y| may be NULL to omit that coordinate. This
-// function returns one on success and zero on failure.
-int ec_point_get_affine_coordinate_bytes(const EC_GROUP *group, uint8_t *out_x,
-                                         uint8_t *out_y, size_t *out_len,
-                                         size_t max_out, const EC_RAW_POINT *p);
+// ec_get_x_coordinate_as_bytes writes |p|'s affine x-coordinate to |out|, which
+// must have at must |max_out| bytes. It sets |*out_len| to the number of bytes
+// written. The value is written big-endian and zero-padded to the size of the
+// field. This function returns one on success and zero on failure.
+int ec_get_x_coordinate_as_bytes(const EC_GROUP *group, uint8_t *out,
+                                 size_t *out_len, size_t max_out,
+                                 const EC_RAW_POINT *p);
 
 // ec_point_to_bytes behaves like |EC_POINT_point2oct| but takes an
-// |EC_RAW_POINT|.
-OPENSSL_EXPORT size_t ec_point_to_bytes(const EC_GROUP *group,
-                                        const EC_RAW_POINT *point,
-                                        point_conversion_form_t form,
-                                        uint8_t *buf, size_t len);
+// |EC_AFFINE|.
+size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
+                         point_conversion_form_t form, uint8_t *buf,
+                         size_t len);
 
 // ec_point_from_uncompressed parses |in| as a point in uncompressed form and
 // sets the result to |out|. It returns one on success and zero if the input was
 // invalid.
-int ec_point_from_uncompressed(const EC_GROUP *group, EC_RAW_POINT *out,
+int ec_point_from_uncompressed(const EC_GROUP *group, EC_AFFINE *out,
                                const uint8_t *in, size_t len);
+
+// ec_set_to_safe_point sets |out| to an arbitrary point on |group|, either the
+// generator or the point at infinity. This is used to guard against callers of
+// external APIs not checking the return value.
+void ec_set_to_safe_point(const EC_GROUP *group, EC_RAW_POINT *out);
 
 
 // Implementation details.
@@ -328,9 +362,6 @@ struct ec_method_st {
   // point_get_affine_coordinates sets |*x| and |*y| to the affine coordinates
   // of |p|. Either |x| or |y| may be NULL to omit it. It returns one on success
   // and zero if |p| is the point at infinity.
-  //
-  // Note: unlike |EC_FELEM|s used as intermediate values internal to the
-  // |EC_METHOD|, |*x| and |*y| are not encoded in Montgomery form.
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_RAW_POINT *p,
                                       EC_FELEM *x, EC_FELEM *y);
 
@@ -412,7 +443,8 @@ struct ec_group_st {
   const EC_METHOD *meth;
 
   // Unlike all other |EC_POINT|s, |generator| does not own |generator->group|
-  // to avoid a reference cycle.
+  // to avoid a reference cycle. Additionally, Z is guaranteed to be one, so X
+  // and Y are suitable for use as an |EC_AFFINE|.
   EC_POINT *generator;
   BIGNUM order;
 
@@ -548,6 +580,9 @@ typedef struct {
 struct ec_key_st {
   EC_GROUP *group;
 
+  // Ideally |pub_key| would be an |EC_AFFINE| so serializing it does not pay an
+  // inversion each time, but the |EC_KEY_get0_public_key| API implies public
+  // keys are stored in an |EC_POINT|-compatible form.
   EC_POINT *pub_key;
   EC_WRAPPED_SCALAR *priv_key;
 

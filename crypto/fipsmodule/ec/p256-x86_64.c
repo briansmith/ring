@@ -432,14 +432,12 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group,
 
   if (x != NULL) {
     ecp_nistz256_mul_mont(x->words, z_inv2, point->X.words);
-    ecp_nistz256_from_mont(x->words, x->words);
   }
 
   if (y != NULL) {
     ecp_nistz256_sqr_mont(z_inv2, z_inv2);                            // z^-4
     ecp_nistz256_mul_mont(y->words, point->Y.words, point->Z.words);  // y * z
     ecp_nistz256_mul_mont(y->words, y->words, z_inv2);  // y * z^-3
-    ecp_nistz256_from_mont(y->words, y->words);
   }
 
   return 1;

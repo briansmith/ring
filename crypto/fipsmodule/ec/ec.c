@@ -301,17 +301,49 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   return ret;
 }
 
-static void ec_group_set0_generator(EC_GROUP *group, EC_POINT *generator) {
+static int ec_group_set_generator(EC_GROUP *group, const EC_AFFINE *generator,
+                                  const BIGNUM *order) {
   assert(group->generator == NULL);
-  assert(group == generator->group);
+
+  if (!BN_copy(&group->order, order)) {
+    return 0;
+  }
+  // Store the order in minimal form, so it can be used with |BN_ULONG| arrays.
+  bn_set_minimal_width(&group->order);
+
+  BN_MONT_CTX_free(group->order_mont);
+  group->order_mont = BN_MONT_CTX_new_for_modulus(&group->order, NULL);
+  if (group->order_mont == NULL) {
+    return 0;
+  }
+
+  group->field_greater_than_order = BN_cmp(&group->field, order) > 0;
+  if (group->field_greater_than_order) {
+    BIGNUM tmp;
+    BN_init(&tmp);
+    int ok =
+        BN_sub(&tmp, &group->field, order) &&
+        bn_copy_words(group->field_minus_order.words, group->field.width, &tmp);
+    BN_free(&tmp);
+    if (!ok) {
+      return 0;
+    }
+  }
+
+  group->generator = EC_POINT_new(group);
+  if (group->generator == NULL) {
+    return 0;
+  }
+  ec_affine_to_jacobian(group, &group->generator->raw, generator);
+  assert(ec_felem_equal(group, &group->one, &group->generator->raw.Z));
 
   // Avoid a reference cycle. |group->generator| does not maintain an owning
   // pointer to |group|.
-  group->generator = generator;
   int is_zero = CRYPTO_refcount_dec_and_test_zero(&group->references);
 
   assert(!is_zero);
   (void)is_zero;
+  return 1;
 }
 
 EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
@@ -384,7 +416,6 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   // tiny prime (less than 17). See the proof in |field_element_to_scalar| in
   // the ECDSA implementation.
   int ret = 0;
-  EC_POINT *copy = NULL;
   BIGNUM *tmp = BN_new();
   if (tmp == NULL ||
       !BN_lshift1(tmp, order)) {
@@ -395,44 +426,22 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
     goto err;
   }
 
-  copy = EC_POINT_new(group);
-  if (copy == NULL ||
-      !EC_POINT_copy(copy, generator) ||
-      !BN_copy(&group->order, order)) {
-    goto err;
-  }
-  // Store the order in minimal form, so it can be used with |BN_ULONG| arrays.
-  bn_set_minimal_width(&group->order);
-
-  BN_MONT_CTX_free(group->order_mont);
-  group->order_mont = BN_MONT_CTX_new_for_modulus(&group->order, NULL);
-  if (group->order_mont == NULL) {
+  EC_AFFINE affine;
+  if (!ec_jacobian_to_affine(group, &affine, &generator->raw) ||
+      !ec_group_set_generator(group, &affine, order)) {
     goto err;
   }
 
-  group->field_greater_than_order = BN_cmp(&group->field, &group->order) > 0;
-  if (group->field_greater_than_order) {
-    if (!BN_sub(tmp, &group->field, &group->order) ||
-        !bn_copy_words(group->field_minus_order.words, group->field.width,
-                       tmp)) {
-      goto err;
-    }
-  }
-
-  ec_group_set0_generator(group, copy);
-  copy = NULL;
   ret = 1;
 
 err:
-  EC_POINT_free(copy);
   BN_free(tmp);
   return ret;
 }
 
 static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
   EC_GROUP *group = NULL;
-  EC_POINT *P = NULL;
-  BIGNUM *p = NULL, *a = NULL, *b = NULL, *x = NULL, *y = NULL;
+  BIGNUM *p = NULL, *a = NULL, *b = NULL, *order = NULL;
   int ok = 0;
 
   BN_CTX *ctx = BN_CTX_new();
@@ -446,7 +455,8 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
 
   if (!(p = BN_bin2bn(params + 0 * param_len, param_len, NULL)) ||
       !(a = BN_bin2bn(params + 1 * param_len, param_len, NULL)) ||
-      !(b = BN_bin2bn(params + 2 * param_len, param_len, NULL))) {
+      !(b = BN_bin2bn(params + 2 * param_len, param_len, NULL)) ||
+      !(order = BN_bin2bn(params + 5 * param_len, param_len, NULL))) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
@@ -458,42 +468,18 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
     goto err;
   }
 
-  if ((P = EC_POINT_new(group)) == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
+  EC_AFFINE G;
+  EC_FELEM x, y;
+  if (!ec_felem_from_bytes(group, &x, params + 3 * param_len, param_len) ||
+      !ec_felem_from_bytes(group, &y, params + 4 * param_len, param_len) ||
+      !ec_point_set_affine_coordinates(group, &G, &x, &y)) {
     goto err;
   }
 
-  if (!(x = BN_bin2bn(params + 3 * param_len, param_len, NULL)) ||
-      !(y = BN_bin2bn(params + 4 * param_len, param_len, NULL))) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+  if (!ec_group_set_generator(group, &G, order)) {
     goto err;
   }
 
-  if (!EC_POINT_set_affine_coordinates_GFp(group, P, x, y, ctx)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
-    goto err;
-  }
-  if (!BN_bin2bn(params + 5 * param_len, param_len, &group->order)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    goto err;
-  }
-
-  group->field_greater_than_order = BN_cmp(&group->field, &group->order) > 0;
-  if (group->field_greater_than_order) {
-    if (!BN_sub(p, &group->field, &group->order) ||
-        !bn_copy_words(group->field_minus_order.words, group->field.width, p)) {
-      goto err;
-    }
-  }
-
-  group->order_mont = BN_MONT_CTX_new_for_modulus(&group->order, ctx);
-  if (group->order_mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    goto err;
-  }
-
-  ec_group_set0_generator(group, P);
-  P = NULL;
   ok = 1;
 
 err:
@@ -501,13 +487,11 @@ err:
     EC_GROUP_free(group);
     group = NULL;
   }
-  EC_POINT_free(P);
   BN_CTX_free(ctx);
   BN_free(p);
   BN_free(a);
   BN_free(b);
-  BN_free(x);
-  BN_free(y);
+  BN_free(order);
   return group;
 }
 
@@ -806,14 +790,26 @@ int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
   if (!group->meth->point_get_affine_coordinates(group, &point->raw,
                                                  x == NULL ? NULL : &x_felem,
                                                  y == NULL ? NULL : &y_felem) ||
-      (x != NULL && !bn_set_words(x, x_felem.words, group->field.width)) ||
-      (y != NULL && !bn_set_words(y, y_felem.words, group->field.width))) {
+      (x != NULL && !ec_felem_to_bignum(group, x, &x_felem)) ||
+      (y != NULL && !ec_felem_to_bignum(group, y, &y_felem))) {
     return 0;
   }
   return 1;
 }
 
-int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_RAW_POINT *out,
+void ec_affine_to_jacobian(const EC_GROUP *group, EC_RAW_POINT *out,
+                           const EC_AFFINE *p) {
+  out->X = p->X;
+  out->Y = p->Y;
+  out->Z = group->one;
+}
+
+int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
+                          const EC_RAW_POINT *p) {
+  return group->meth->point_get_affine_coordinates(group, p, &out->X, &out->Y);
+}
+
+int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_AFFINE *out,
                                     const EC_FELEM *x, const EC_FELEM *y) {
   void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
                           const EC_FELEM *b) = group->meth->felem_mul;
@@ -828,24 +824,21 @@ int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_RAW_POINT *out,
   felem_mul(group, &rhs, &rhs, x);             // rhs = x^3 + ax
   ec_felem_add(group, &rhs, &rhs, &group->b);  // rhs = x^3 + ax + b
   if (!ec_felem_equal(group, &lhs, &rhs)) {
-    // In the event of an error, defend against the caller not checking the
-    // return value by setting a known safe value: the base point.
-    const EC_POINT *generator = EC_GROUP_get0_generator(group);
-    if (generator) {
-      ec_GFp_simple_point_copy(out, &generator->raw);
-    } else {
-      // The generator can be missing if the caller is in the process of
-      // constructing an arbitrary group. In this case, we give up and use the
-      // point at infinity.
-      ec_GFp_simple_point_set_to_infinity(group, out);
-    }
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
+    // In the event of an error, defend against the caller not checking the
+    // return value by setting a known safe value. Note this may not be possible
+    // if the caller is in the process of constructing an arbitrary group and
+    // the generator is missing.
+    if (group->generator != NULL) {
+      assert(ec_felem_equal(group, &group->one, &group->generator->raw.Z));
+      out->X = group->generator->raw.X;
+      out->Y = group->generator->raw.Y;
+    }
     return 0;
   }
 
   out->X = *x;
   out->Y = *y;
-  out->Z = group->one;
   return 1;
 }
 
@@ -863,13 +856,17 @@ int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
   }
 
   EC_FELEM x_felem, y_felem;
+  EC_AFFINE affine;
   if (!ec_bignum_to_felem(group, &x_felem, x) ||
       !ec_bignum_to_felem(group, &y_felem, y) ||
-      !ec_point_set_affine_coordinates(group, &point->raw, &x_felem,
-                                       &y_felem)) {
+      !ec_point_set_affine_coordinates(group, &affine, &x_felem, &y_felem)) {
+    // In the event of an error, defend against the caller not checking the
+    // return value by setting a known safe value.
+    ec_set_to_safe_point(group, &point->raw);
     return 0;
   }
 
+  ec_affine_to_jacobian(group, &point->raw, &affine);
   return 1;
 }
 
@@ -1056,12 +1053,17 @@ int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
 
 int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
                                   const EC_RAW_POINT *p) {
-  EC_FELEM x;
-  // For simplicity, in case of width mismatches between |group->field| and
-  // |group->order|, zero any untouched words in |x|.
-  OPENSSL_memset(&x, 0, sizeof(x));
-  if (!group->meth->point_get_affine_coordinates(group, p, &x, NULL)) {
+  uint8_t bytes[EC_MAX_BYTES];
+  size_t len;
+  if (!ec_get_x_coordinate_as_bytes(group, bytes, &len, sizeof(bytes), p)) {
     return 0;
+  }
+
+  // For simplicity, in case of width mismatches between |group->field| and
+  // |group->order|, zero any untouched words in |out|.
+  OPENSSL_memset(out, 0, sizeof(EC_SCALAR));
+  for (size_t i = 0; i < len; i++) {
+    out->bytes[len - i - 1] = bytes[i];
   }
 
   // We must have p < 2×order, assuming p is not tiny (p >= 17). Thus rather we
@@ -1082,17 +1084,17 @@ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
 
   // The above does not guarantee |group->field| is not one word larger than
   // |group->order|, so read one extra carry word.
+  BN_ULONG tmp[EC_MAX_WORDS];
   BN_ULONG carry =
-      group->order.width < EC_MAX_WORDS ? x.words[group->order.width] : 0;
-  bn_reduce_once(out->words, x.words, carry, group->order.d,
-                 group->order.width);
+      group->order.width < EC_MAX_WORDS ? out->words[group->order.width] : 0;
+  bn_reduce_once_in_place(out->words, carry, group->order.d, tmp,
+                          group->order.width);
   return 1;
 }
 
-int ec_point_get_affine_coordinate_bytes(const EC_GROUP *group, uint8_t *out_x,
-                                         uint8_t *out_y, size_t *out_len,
-                                         size_t max_out,
-                                         const EC_RAW_POINT *p) {
+int ec_get_x_coordinate_as_bytes(const EC_GROUP *group, uint8_t *out,
+                                 size_t *out_len, size_t max_out,
+                                 const EC_RAW_POINT *p) {
   size_t len = BN_num_bytes(&group->field);
   assert(len <= EC_MAX_BYTES);
   if (max_out < len) {
@@ -1100,24 +1102,25 @@ int ec_point_get_affine_coordinate_bytes(const EC_GROUP *group, uint8_t *out_x,
     return 0;
   }
 
-  EC_FELEM x, y;
-  if (!group->meth->point_get_affine_coordinates(
-          group, p, out_x == NULL ? NULL : &x, out_y == NULL ? NULL : &y)) {
+  EC_FELEM x;
+  if (!group->meth->point_get_affine_coordinates(group, p, &x, NULL)) {
     return 0;
   }
 
-  if (out_x != NULL) {
-    for (size_t i = 0; i < len; i++) {
-      out_x[i] = x.bytes[len - i - 1];
-    }
-  }
-  if (out_y != NULL) {
-    for (size_t i = 0; i < len; i++) {
-      out_y[i] = y.bytes[len - i - 1];
-    }
-  }
+  ec_felem_to_bytes(group, out, out_len, &x);
   *out_len = len;
   return 1;
+}
+
+void ec_set_to_safe_point(const EC_GROUP *group, EC_RAW_POINT *out) {
+  if (group->generator != NULL) {
+    ec_GFp_simple_point_copy(out, &group->generator->raw);
+  } else {
+    // The generator can be missing if the caller is in the process of
+    // constructing an arbitrary group. In this case, we give up and use the
+    // point at infinity.
+    ec_GFp_simple_point_set_to_infinity(group, out);
+  }
 }
 
 void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag) {}

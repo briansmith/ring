@@ -188,12 +188,6 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
   ec_GFp_mont_felem_inv0(group, &z2, &point->Z);
   ec_GFp_mont_felem_sqr(group, &z1, &z2);
 
-  // Instead of using |ec_GFp_mont_felem_from_montgomery| to convert the |x|
-  // coordinate and then calling |ec_GFp_mont_felem_from_montgomery| again to
-  // convert the |y| coordinate below, convert the common factor |z1| once now,
-  // saving one reduction.
-  ec_GFp_mont_felem_from_montgomery(group, &z1, &z1);
-
   if (x != NULL) {
     ec_GFp_mont_felem_mul(group, x, &point->X, &z1);
   }

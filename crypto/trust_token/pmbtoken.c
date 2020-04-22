@@ -113,23 +113,32 @@ static int generate_keypair(const PMBTOKEN_METHOD *method, EC_SCALAR *out_x,
 
 static int point_to_cbb(CBB *out, const EC_GROUP *group,
                         const EC_RAW_POINT *point) {
+  EC_AFFINE affine;
+  if (!ec_jacobian_to_affine(group, &affine, point)) {
+    return 0;
+  }
   size_t len =
-      ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, NULL, 0);
+      ec_point_to_bytes(group, &affine, POINT_CONVERSION_UNCOMPRESSED, NULL, 0);
   if (len == 0) {
     return 0;
   }
   uint8_t *p;
   return CBB_add_space(out, &p, len) &&
-         ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, p,
+         ec_point_to_bytes(group, &affine, POINT_CONVERSION_UNCOMPRESSED, p,
                            len) == len;
 }
 
 static int cbs_get_prefixed_point(CBS *cbs, const EC_GROUP *group,
                                   EC_RAW_POINT *out) {
   CBS child;
-  return CBS_get_u16_length_prefixed(cbs, &child) &&
-         ec_point_from_uncompressed(group, out, CBS_data(&child),
-                                    CBS_len(&child));
+  EC_AFFINE affine;
+  if (!CBS_get_u16_length_prefixed(cbs, &child) ||
+      !ec_point_from_uncompressed(group, &affine, CBS_data(&child),
+                                  CBS_len(&child))) {
+    return 0;
+  }
+  ec_affine_to_jacobian(group, out, &affine);
+  return 1;
 }
 
 void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *pretoken) {
@@ -918,7 +927,12 @@ static int pmbtoken_exp0_init_method(PMBTOKEN_METHOD *method) {
       0xcd,
   };
 
-  return ec_point_from_uncompressed(method->group, &method->h, kH, sizeof(kH));
+  EC_AFFINE h;
+  if (!ec_point_from_uncompressed(method->group, &h, kH, sizeof(kH))) {
+    return 0;
+  }
+  ec_affine_to_jacobian(method->group, &method->h, &h);
+  return 1;
 }
 
 int pmbtoken_exp0_generate_key(CBB *out_private, CBB *out_public) {
@@ -1057,7 +1071,12 @@ static int pmbtoken_exp1_init_method(PMBTOKEN_METHOD *method) {
       0x87, 0xc3, 0x95, 0xd0, 0x13, 0xb7, 0x0b, 0x5c, 0xc7,
   };
 
-  return ec_point_from_uncompressed(method->group, &method->h, kH, sizeof(kH));
+  EC_AFFINE h;
+  if (!ec_point_from_uncompressed(method->group, &h, kH, sizeof(kH))) {
+    return 0;
+  }
+  ec_affine_to_jacobian(method->group, &method->h, &h);
+  return 1;
 }
 
 int pmbtoken_exp1_generate_key(CBB *out_private, CBB *out_public) {
@@ -1134,6 +1153,8 @@ int pmbtoken_exp1_get_h_for_testing(uint8_t out[97]) {
   if (!pmbtoken_exp1_init_method(&method)) {
     return 0;
   }
-  return ec_point_to_bytes(method.group, &method.h,
-                           POINT_CONVERSION_UNCOMPRESSED, out, 97) == 97;
+  EC_AFFINE h;
+  return ec_jacobian_to_affine(method.group, &h, &method.h) &&
+         ec_point_to_bytes(method.group, &h, POINT_CONVERSION_UNCOMPRESSED, out,
+                           97) == 97;
 }
