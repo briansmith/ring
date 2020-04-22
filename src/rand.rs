@@ -193,6 +193,9 @@ use self::darwin::fill as fill_impl;
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
 
+#[cfg(target_os = "vxworks")]
+use self::vxworks::fill as fill_impl;
+
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand_chunk {
     use crate::{c, error};
@@ -430,5 +433,34 @@ mod fuchsia {
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
+    }
+}
+
+#[cfg(target_os = "vxworks")]
+mod vxworks {
+    use crate::error;
+    use core::sync::atomic::{AtomicBool, Ordering::Relaxed};
+    
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        static RNG_INIT: AtomicBool = AtomicBool::new(false);
+        while !RNG_INIT.load(Relaxed) {
+            let ret = unsafe { libc::randSecure() };
+            if ret < 0 {
+                return Err(error::Unspecified);
+            } else if ret > 0 {
+                RNG_INIT.store(true, Relaxed);
+                break;
+            }
+            let _ = unsafe { libc::usleep(10) };
+        }
+
+        // Prevent overflow of i32
+        for chunk in dest.chunks_mut(i32::max_value() as usize) {
+            let ret = unsafe { libc::randABytes(chunk.as_mut_ptr(), chunk.len() as i32) };
+            if ret != 0 {
+                return Err(error::Unspecified);
+            }
+        }
+        Ok(())
     }
 }
