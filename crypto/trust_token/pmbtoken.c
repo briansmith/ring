@@ -351,8 +351,9 @@ PMBTOKEN_PRETOKEN *pmbtoken_blind(void) {
   ec_scalar_from_montgomery(group, &pretoken->r, &pretoken->r);
   ec_scalar_from_montgomery(group, &rinv, &rinv);
 
-  if (!hash_t(group, &pretoken->T, pretoken->t) ||
-      !ec_point_mul_scalar(group, &pretoken->Tp, &pretoken->T, &rinv)) {
+  EC_RAW_POINT T;
+  if (!hash_t(group, &T, pretoken->t) ||
+      !ec_point_mul_scalar(group, &pretoken->Tp, &T, &rinv)) {
     goto err;
   }
 

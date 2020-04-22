@@ -67,7 +67,6 @@ struct trust_token_issuer_key_st {
 typedef struct pmb_pretoken_st {
   uint8_t t[PMBTOKEN_NONCE_SIZE];
   EC_SCALAR r;
-  EC_RAW_POINT T;
   EC_RAW_POINT Tp;
 } PMBTOKEN_PRETOKEN;
 
