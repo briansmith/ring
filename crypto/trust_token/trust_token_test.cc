@@ -182,6 +182,30 @@ TEST_F(TrustTokenProtocolTest, TruncatedIssuanceResponse) {
   ASSERT_FALSE(tokens);
 }
 
+TEST_F(TrustTokenProtocolTest, ExtraDataIssuanceResponse) {
+  ASSERT_NO_FATAL_FAILURE(SetupContexts());
+
+  uint8_t *request = NULL, *response = NULL;
+  size_t request_len, response_len;
+  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &request,
+                                                &request_len, 10));
+  bssl::UniquePtr<uint8_t> free_request(request);
+  uint8_t tokens_issued;
+  ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(issuer.get(), &response, &response_len,
+                                       &tokens_issued, request, request_len,
+                                       /*public_metadata=*/KeyID(0),
+                                       /*private_metadata=*/0,
+                                       /*max_issuance=*/10));
+  bssl::UniquePtr<uint8_t> free_response(response);
+  std::vector<uint8_t> response2(response, response + response_len);
+  response2.push_back(0);
+  size_t key_index;
+  bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
+      TRUST_TOKEN_CLIENT_finish_issuance(client.get(), &key_index,
+                                         response2.data(), response2.size()));
+  ASSERT_FALSE(tokens);
+}
+
 TEST_F(TrustTokenProtocolTest, TruncatedRedemptionRequest) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 

@@ -276,6 +276,11 @@ STACK_OF(TRUST_TOKEN) *
     }
   }
 
+  if (CBS_len(&in) != 0) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+    goto err;
+  }
+
   sk_PMBTOKEN_PRETOKEN_pop_free(ctx->pretokens, PMBTOKEN_PRETOKEN_free);
   ctx->pretokens = NULL;
 
