@@ -120,7 +120,7 @@ static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
   size_t bits = BN_num_bits(modulus);
   size_t L = (bits + k + 7) / 8;
   // We require 2^(8*L) < 2^(2*bits - 2) <= n^2 so to fit in bounds for
-  // |felem_reduce| and |ec_scalar_refuce|. All defined hash-to-curve suites
+  // |felem_reduce| and |ec_scalar_reduce|. All defined hash-to-curve suites
   // define |k| to be well under this bound. (|k| is usually around half of
   // |p_bits|.)
   if (L * 8 >= 2 * bits - 2 ||
@@ -316,6 +316,55 @@ static int felem_from_u8(const EC_GROUP *group, EC_FELEM *out, uint8_t a) {
   size_t len = BN_num_bytes(&group->field);
   bytes[len - 1] = a;
   return ec_felem_from_bytes(group, out, bytes, len);
+}
+
+int ec_hash_to_curve_p384_xmd_sha512_sswu(const EC_GROUP *group,
+                                          EC_RAW_POINT *out, const uint8_t *dst,
+                                          size_t dst_len, const uint8_t *msg,
+                                          size_t msg_len) {
+  // See section 8.3 of draft-irtf-cfrg-hash-to-curve-06.
+  if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
+    OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
+    return 0;
+  }
+
+  // kSqrt1728 was computed as follows in python3:
+  //
+  // p = 2**384 - 2**128 - 2**96 + 2**32 - 1
+  // z3 = 12**3
+  // c2 = pow(z3, (p+1)//4, p)
+  // assert z3 == pow(c2, 2, p)
+  // ", ".join("0x%02x" % b for b in c2.to_bytes(384//8, 'big')
+
+  static const uint8_t kSqrt1728[] = {
+      0x01, 0x98, 0x77, 0xcc, 0x10, 0x41, 0xb7, 0x55, 0x57, 0x43, 0xc0, 0xae,
+      0x2e, 0x3a, 0x3e, 0x61, 0xfb, 0x2a, 0xaa, 0x2e, 0x0e, 0x87, 0xea, 0x55,
+      0x7a, 0x56, 0x3d, 0x8b, 0x59, 0x8a, 0x09, 0x40, 0xd0, 0xa6, 0x97, 0xa9,
+      0xe0, 0xb9, 0xe9, 0x2c, 0xfa, 0xa3, 0x14, 0xf5, 0x83, 0xc9, 0xd0, 0x66
+  };
+
+  // Z = -12, c2 = sqrt(1728)
+  EC_FELEM Z, c2;
+  if (!felem_from_u8(group, &Z, 12) ||
+      !ec_felem_from_bytes(group, &c2, kSqrt1728, sizeof(kSqrt1728))) {
+    return 0;
+  }
+  ec_felem_neg(group, &Z, &Z);
+
+  return hash_to_curve(group, EVP_sha512(), &Z, &c2, /*k=*/192, out, dst,
+                       dst_len, msg, msg_len);
+}
+
+int ec_hash_to_scalar_p384_xmd_sha512(const EC_GROUP *group, EC_SCALAR *out,
+                                      const uint8_t *dst, size_t dst_len,
+                                      const uint8_t *msg, size_t msg_len) {
+  if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
+    OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
+    return 0;
+  }
+
+  return hash_to_scalar(group, EVP_sha512(), out, dst, dst_len, /*k=*/192, msg,
+                        msg_len);
 }
 
 static int hash_to_curve_p521_xmd_sswu(const EC_GROUP *group, EC_RAW_POINT *out,

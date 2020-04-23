@@ -1135,9 +1135,45 @@ TEST(ECTest, HashToCurve) {
     const char *y_hex;
   };
   static const HashToCurveTest kTests[] = {
-      // See draft-irtf-cfrg-hash-to-curve-06, appendix G.3.1. Note these test
-      // |ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing| due to a spec
-      // issue. See
+      // See draft-irtf-cfrg-hash-to-curve-06, appendix G.2.1.
+      {&ec_hash_to_curve_p384_xmd_sha512_sswu, NID_secp384r1,
+       "P384_XMD:SHA-512_SSWU_RO_TESTGEN", "",
+       "619d4168877421106aecb16ec35d84b7fdfa215cdb446d82bac49f"
+       "6eab51a34b4d5314823f7639293cf6471c6c981a99",
+       "e5035c694665ca25b2c57542673af6b91288110b0b0689657cd031"
+       "96976d82dec104fd9f91296c85d1ed94bc9309840e"},
+      {&ec_hash_to_curve_p384_xmd_sha512_sswu, NID_secp384r1,
+       "P384_XMD:SHA-512_SSWU_RO_TESTGEN", "abc",
+       "d7c33555606b86c3ffaa1a645f806bac9d553a769f5a735d75a395"
+       "d58a70956b6d3bdbd6a6a8c83121678a036005208a",
+       "e1c55f372a905040576f61fbc07e9664359e76f3e7b5be8dfe7224"
+       "720f85753a823e94a3f886ced2ec5ce13b1248147a"},
+      {&ec_hash_to_curve_p384_xmd_sha512_sswu, NID_secp384r1,
+       "P384_XMD:SHA-512_SSWU_RO_TESTGEN", "abcdef0123456789",
+       "d1f4bdd7ef9ee1c2d57ccd2b3b80123ccf3eb64b2f0a3ad26b8cd1"
+       "a8a8e411aadb9922d0e66a89ef0e78dba1489e23ea",
+       "9f376abd97ab8838c604a05ad17be1dfe0d924ddf0184341ec8e5a"
+       "ef9efb0f6559ab3048b4e1e0e42ac19ccb6d1dd892"},
+      {&ec_hash_to_curve_p384_xmd_sha512_sswu, NID_secp384r1,
+       "P384_XMD:SHA-512_SSWU_RO_TESTGEN",
+       "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "1b669293d6edfd55ca7f9725d72fc62b55a8829738404a1239f2ca"
+       "783ad8f8a3ebe2ce54a28fcb6e9eca85d1ce29a929",
+       "25556bc2c6382c261feb362519f1e5d616518810262c358fb80e45"
+       "803ebcd0ce830b594da7a0e9de9eb13ad2d9191d34"},
+
+      // See draft-irtf-cfrg-hash-to-curve-06, appendix G.3.1. Note these tests
+      // use |ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing| due to a
+      // spec issue. See
       // https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/237. We
       // expose and test this function to check our consistency with the rest of
       // the reference implementation.
@@ -1265,27 +1301,55 @@ TEST(ECTest, HashToCurve) {
   static const uint8_t kMessage[] = {4, 5, 6, 7};
   EXPECT_FALSE(ec_hash_to_curve_p521_xmd_sha512_sswu(
       p224.get(), &p, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
+  EXPECT_FALSE(ec_hash_to_curve_p384_xmd_sha512_sswu(
+      p224.get(), &p, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
 }
 
 TEST(ECTest, HashToScalar) {
-  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(NID_secp521r1));
-  ASSERT_TRUE(group);
-
   struct HashToScalarTest {
+    int (*hash_to_scalar)(const EC_GROUP *group, EC_SCALAR *out,
+                          const uint8_t *dst, size_t dst_len,
+                          const uint8_t *msg, size_t msg_len);
+    int curve_nid;
     const char *dst;
     const char *msg;
     const char *result_hex;
   };
   static const HashToScalarTest kTests[] = {
-      {"P521_XMD:SHA-512_SCALAR_TEST", "",
+      {&ec_hash_to_scalar_p384_xmd_sha512, NID_secp384r1,
+       "P384_XMD:SHA-512_SCALAR_TEST", "",
+       "55f24775dd8ec265d9d1bf2f25b83806daf119db8646b3d263b156"
+       "8dbae4ee54aeafc757e4aa197da85504ad124d8ac8"},
+      {&ec_hash_to_scalar_p384_xmd_sha512, NID_secp384r1,
+       "P384_XMD:SHA-512_SCALAR_TEST", "abcdef0123456789",
+       "3af11c58bf0a3ee3560207c6bed9b5ecca5dc330426a6e1a601d36"
+       "c15d3818aeb48afb182036750bc5b46e6c20e8e2ff"},
+      {&ec_hash_to_scalar_p384_xmd_sha512, NID_secp384r1,
+       "P384_XMD:SHA-512_SCALAR_TEST",
+       "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "2d5f927d15283f89d9d4932f93b77ab837e90bdf26b5f8beb2c794"
+       "bbd83032b6f1a445ef9f343a2b9311657e86e6ad43"},
+      {&ec_hash_to_scalar_p521_xmd_sha512, NID_secp521r1,
+       "P521_XMD:SHA-512_SCALAR_TEST", "",
        "01a6206c2fc677c11d51807bf46d64a17f92396673074c5cee9299"
        "4d28eec5445d5ed89799b30b39c964ecf62f39d59e7d43de15d910"
        "c2c1d69f3ebc01eab241e5dc"},
-      {"P521_XMD:SHA-512_SCALAR_TEST", "abcdef0123456789",
+      {&ec_hash_to_scalar_p521_xmd_sha512, NID_secp521r1,
+       "P521_XMD:SHA-512_SCALAR_TEST", "abcdef0123456789",
        "00af484a5d9389a9912f555234c578d4b1b7c4a6f5009018d133a4"
        "069172c9f5ce2d853b8643fe7bb50a83427ed3520a7a793c41a455"
        "a02aa99431434fb6b5b0b26e"},
-      {"P521_XMD:SHA-512_SCALAR_TEST",
+      {&ec_hash_to_scalar_p521_xmd_sha512, NID_secp521r1,
+       "P521_XMD:SHA-512_SCALAR_TEST",
        "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -1305,8 +1369,10 @@ TEST(ECTest, HashToScalar) {
     SCOPED_TRACE(test.dst);
     SCOPED_TRACE(test.msg);
 
+    bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.curve_nid));
+    ASSERT_TRUE(group);
     EC_SCALAR scalar;
-    ASSERT_TRUE(ec_hash_to_scalar_p521_xmd_sha512(
+    ASSERT_TRUE(test.hash_to_scalar(
         group.get(), &scalar, reinterpret_cast<const uint8_t *>(test.dst),
         strlen(test.dst), reinterpret_cast<const uint8_t *>(test.msg),
         strlen(test.msg)));
@@ -1323,5 +1389,7 @@ TEST(ECTest, HashToScalar) {
   static const uint8_t kDST[] = {0, 1, 2, 3};
   static const uint8_t kMessage[] = {4, 5, 6, 7};
   EXPECT_FALSE(ec_hash_to_scalar_p521_xmd_sha512(
+      p224.get(), &scalar, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
+  EXPECT_FALSE(ec_hash_to_scalar_p384_xmd_sha512(
       p224.get(), &scalar, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
 }

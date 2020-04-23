@@ -949,35 +949,63 @@ static bool SpeedHashToCurve(const std::string &selected) {
     return true;
   }
 
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
-  if (group == NULL) {
-    return false;
-  }
   uint8_t input[64];
   RAND_bytes(input, sizeof(input));
 
   static const uint8_t kLabel[] = "label";
 
   TimeResults results;
-  if (!TimeFunction(&results, [&]() -> bool {
-        EC_RAW_POINT out;
-        return ec_hash_to_curve_p521_xmd_sha512_sswu(
-            group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
-      })) {
-    fprintf(stderr, "hash-to-curve failed.\n");
-    return false;
-  }
-  results.Print("hash-to-curve P521_XMD:SHA-512_SSWU_RO_");
+  {
+    EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
+    if (group == NULL) {
+      return false;
+    }
+    if (!TimeFunction(&results, [&]() -> bool {
+          EC_RAW_POINT out;
+          return ec_hash_to_curve_p521_xmd_sha512_sswu(
+              group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+        })) {
+      fprintf(stderr, "hash-to-curve failed.\n");
+      return false;
+    }
+    results.Print("hash-to-curve P521_XMD:SHA-512_SSWU_RO_");
 
-  if (!TimeFunction(&results, [&]() -> bool {
-        EC_SCALAR out;
-        return ec_hash_to_scalar_p521_xmd_sha512(
-            group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
-      })) {
-    fprintf(stderr, "hash-to-scalar failed.\n");
-    return false;
+    if (!TimeFunction(&results, [&]() -> bool {
+          EC_SCALAR out;
+          return ec_hash_to_scalar_p521_xmd_sha512(
+              group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+        })) {
+      fprintf(stderr, "hash-to-scalar failed.\n");
+      return false;
+    }
+    results.Print("hash-to-scalar P521_XMD:SHA-512");
   }
-  results.Print("hash-to-scalar P521_XMD:SHA-512");
+
+  {
+    EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp384r1);
+    if (group == NULL) {
+      return false;
+    }
+    if (!TimeFunction(&results, [&]() -> bool {
+          EC_RAW_POINT out;
+          return ec_hash_to_curve_p384_xmd_sha512_sswu(
+              group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+        })) {
+      fprintf(stderr, "hash-to-curve failed.\n");
+      return false;
+    }
+    results.Print("hash-to-curve P384_XMD:SHA-512_SSWU_RO_");
+
+    if (!TimeFunction(&results, [&]() -> bool {
+          EC_SCALAR out;
+          return ec_hash_to_scalar_p384_xmd_sha512(
+              group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+        })) {
+      fprintf(stderr, "hash-to-scalar failed.\n");
+      return false;
+    }
+    results.Print("hash-to-scalar P384_XMD:SHA-512");
+  }
 
   return true;
 }
