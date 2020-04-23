@@ -182,7 +182,7 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
     return 0;
   }
 
-  // Transform (X, Y, Z  into (x, y) := (X/Z^2, Y/Z^3). Note the check above
+  // Transform (X, Y, Z) into (x, y) := (X/Z^2, Y/Z^3). Note the check above
   // ensures |point->Z| is non-zero, so the inverse always exists.
   EC_FELEM z1, z2;
   ec_GFp_mont_felem_inv0(group, &z2, &point->Z);
