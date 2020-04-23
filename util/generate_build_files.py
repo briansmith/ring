@@ -846,12 +846,6 @@ def main(platforms):
   tool_c_files = FindCFiles(os.path.join('src', 'tool'), NoTests)
   tool_h_files = FindHeaderFiles(os.path.join('src', 'tool'), AllFiles)
 
-  # third_party/fiat/p256.c lives in third_party/fiat, but it is a FIPS
-  # fragment, not a normal source file.
-  p256 = os.path.join('src', 'third_party', 'fiat', 'p256.c')
-  fips_fragments.append(p256)
-  crypto_c_files.remove(p256)
-
   # BCM shared library C files
   bcm_crypto_c_files = [
       os.path.join('src', 'crypto', 'fipsmodule', 'bcm.c')

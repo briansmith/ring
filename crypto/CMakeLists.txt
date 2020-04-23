@@ -263,6 +263,7 @@ add_library(
   cpu-intel.c
   cpu-ppc64le.c
   crypto.c
+  curve25519/curve25519.c
   curve25519/spake25519.c
   dh/dh.c
   dh/params.c
@@ -420,7 +421,6 @@ add_library(
   x509v3/v3_skey.c
   x509v3/v3_sxnet.c
   x509v3/v3_utl.c
-  ../third_party/fiat/curve25519.c
 
   $<TARGET_OBJECTS:fipsmodule>
 

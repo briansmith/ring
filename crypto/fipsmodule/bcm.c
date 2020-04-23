@@ -70,7 +70,7 @@
 #include "ec/felem.c"
 #include "ec/oct.c"
 #include "ec/p224-64.c"
-#include "../../third_party/fiat/p256.c"
+#include "ec/p256.c"
 #include "ec/p256-x86_64.c"
 #include "ec/scalar.c"
 #include "ec/simple.c"
