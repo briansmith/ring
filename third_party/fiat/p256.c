@@ -401,9 +401,9 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
 //
 // Tables for other points have table[i] = iG for i in 0 .. 16.
 
-// g_pre_comp is the table of precomputed base points
+// fiat_p256_g_pre_comp is the table of precomputed base points
 #if defined(BORINGSSL_NISTP256_64BIT)
-static const fiat_p256_felem g_pre_comp[2][16][3] = {
+static const fiat_p256_felem fiat_p256_g_pre_comp[2][16][3] = {
     {{{0x0, 0x0, 0x0, 0x0}, {0x0, 0x0, 0x0, 0x0}, {0x0, 0x0, 0x0, 0x0}},
      {{0x79e730d418a9143c, 0x75ba95fc5fedb601, 0x79fb732b77622510,
        0x18905f76a53755c6},
@@ -557,7 +557,7 @@ static const fiat_p256_felem g_pre_comp[2][16][3] = {
        0x8e24d3c46860bbd0},
       {0x1, 0xffffffff00000000, 0xffffffffffffffff, 0xfffffffe}}}};
 #else
-static const fiat_p256_felem g_pre_comp[2][16][3] = {
+static const fiat_p256_felem fiat_p256_g_pre_comp[2][16][3] = {
     {{{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
       {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
       {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}},
@@ -892,7 +892,7 @@ static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
     bits |= fiat_p256_get_bit(scalar->bytes, i + 96) << 1;
     bits |= fiat_p256_get_bit(scalar->bytes, i + 32);
     // Select the point to add, in constant time.
-    fiat_p256_select_point(bits, 16, g_pre_comp[1], tmp);
+    fiat_p256_select_point(bits, 16, fiat_p256_g_pre_comp[1], tmp);
 
     if (!skip) {
       fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2],
@@ -910,7 +910,7 @@ static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
     bits |= fiat_p256_get_bit(scalar->bytes, i + 64) << 1;
     bits |= fiat_p256_get_bit(scalar->bytes, i);
     // Select the point to add, in constant time.
-    fiat_p256_select_point(bits, 16, g_pre_comp[0], tmp);
+    fiat_p256_select_point(bits, 16, fiat_p256_g_pre_comp[0], tmp);
     fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
                         tmp[0], tmp[1], tmp[2]);
   }
@@ -962,8 +962,9 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
       bits |= fiat_p256_get_bit(g_scalar->bytes, i + 96) << 1;
       bits |= fiat_p256_get_bit(g_scalar->bytes, i + 32);
       fiat_p256_point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2],
-                          1 /* mixed */, g_pre_comp[1][bits][0],
-                          g_pre_comp[1][bits][1], g_pre_comp[1][bits][2]);
+                          1 /* mixed */, fiat_p256_g_pre_comp[1][bits][0],
+                          fiat_p256_g_pre_comp[1][bits][1],
+                          fiat_p256_g_pre_comp[1][bits][2]);
       skip = 0;
 
       // Second, look at the current position.
@@ -972,8 +973,9 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
       bits |= fiat_p256_get_bit(g_scalar->bytes, i + 64) << 1;
       bits |= fiat_p256_get_bit(g_scalar->bytes, i);
       fiat_p256_point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2],
-                          1 /* mixed */, g_pre_comp[0][bits][0],
-                          g_pre_comp[0][bits][1], g_pre_comp[0][bits][2]);
+                          1 /* mixed */, fiat_p256_g_pre_comp[0][bits][0],
+                          fiat_p256_g_pre_comp[0][bits][1],
+                          fiat_p256_g_pre_comp[0][bits][2]);
     }
 
     int digit = p_wNAF[i];
