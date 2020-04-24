@@ -15,12 +15,6 @@ version = "0.16.12"
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
 
-exclude = [
-    # The presence of .gitignore is used to differentiate non-packaged builds
-    # from packaged builds in build.rs.
-    ".gitignore",
-    "pregenerated/tmp",
-]
 include = [
     "LICENSE",
     "Cargo.toml",
