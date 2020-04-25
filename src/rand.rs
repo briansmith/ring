@@ -181,6 +181,7 @@ use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(
     target_os = "freebsd",
+    target_os = "dragonfly",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris"
@@ -355,6 +356,7 @@ mod sysrand_or_urandom {
         feature = "dev_urandom_fallback"
     ),
     target_os = "freebsd",
+    target_os = "dragonfly",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris"
