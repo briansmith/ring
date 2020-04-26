@@ -27,8 +27,8 @@
 
 #include <openssl/type_check.h>
 
-#include "delocate.h"
-#include "../internal.h"
+#include "../delocate.h"
+#include "../../internal.h"
 
 
 #if defined(MADV_WIPEONFORK)

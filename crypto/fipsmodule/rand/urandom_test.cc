@@ -28,7 +28,7 @@
 #include <sys/syscall.h>
 #include <sys/user.h>
 
-#include "../fork_detect.h"
+#include "fork_detect.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)

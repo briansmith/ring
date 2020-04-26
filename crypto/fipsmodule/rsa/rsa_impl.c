@@ -70,7 +70,7 @@
 #include "../bn/internal.h"
 #include "../../internal.h"
 #include "../delocate.h"
-#include "../fork_detect.h"
+#include "../rand/fork_detect.h"
 
 
 static int check_modulus_and_exponent_sizes(const RSA *rsa) {

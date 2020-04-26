@@ -27,9 +27,9 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "fork_detect.h"
 #include "../../internal.h"
 #include "../delocate.h"
-#include "../fork_detect.h"
 
 
 // It's assumed that the operating system always has an unfailing source of
