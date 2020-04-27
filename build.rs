@@ -14,6 +14,11 @@
 
 //! Build the non-Rust components.
 
+// It seems like it would be a good idea to use `log!` for logging, but it
+// isn't worth having the external dependencies (one for the `log` crate, and
+// another for the concrete logging implementation). Instead we use `eprintln!`
+// to log everything to stderr.
+
 #![forbid(
     anonymous_parameters,
     box_pointers,
@@ -261,7 +266,7 @@ fn ring_build_rs_main() {
     use std::env;
 
     for (key, value) in env::vars() {
-        println!("{}: {}", key, value);
+        eprintln!("ENV {}={}", key, value);
     }
 
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -633,7 +638,7 @@ where
 }
 
 fn run_command(mut cmd: Command) {
-    println!("running {:?}", cmd);
+    eprintln!("running {:?}", cmd);
     let status = cmd.status().unwrap_or_else(|e| {
         panic!("failed to execute [{:?}]: {}", cmd, e);
     });
