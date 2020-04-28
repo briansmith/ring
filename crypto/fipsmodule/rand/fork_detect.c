@@ -59,7 +59,13 @@ static void init_fork_detect(void) {
     return;
   }
 
-  if (madvise(addr, (size_t)page_size, MADV_WIPEONFORK) != 0) {
+  // Some versions of qemu (up to at least 5.0.0-rc4, see linux-user/syscall.c)
+  // ignore |madvise| calls and just return zero (i.e. success). But we need to
+  // know whether MADV_WIPEONFORK actually took effect. Therefore try an invalid
+  // call to check that the implementation of |madvise| is actually rejecting
+  // unknown |advice| values.
+  if (madvise(addr, (size_t)page_size, -1) == 0 ||
+      madvise(addr, (size_t)page_size, MADV_WIPEONFORK) != 0) {
     munmap(addr, (size_t)page_size);
     return;
   }
