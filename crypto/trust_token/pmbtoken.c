@@ -212,10 +212,6 @@ void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *pretoken) {
   OPENSSL_free(pretoken);
 }
 
-void PMBTOKEN_TOKEN_free(PMBTOKEN_TOKEN *token) {
-  OPENSSL_free(token);
-}
-
 int pmbtoken_generate_key(CBB *out_private, CBB *out_public) {
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
@@ -350,43 +346,63 @@ err:
   return ret;
 }
 
-PMBTOKEN_PRETOKEN *pmbtoken_blind(void) {
+STACK_OF(PMBTOKEN_PRETOKEN) *pmbtoken_blind(CBB *cbb, size_t count) {
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
     return NULL;
   }
 
-  PMBTOKEN_PRETOKEN *pretoken = OPENSSL_malloc(sizeof(PMBTOKEN_PRETOKEN));
-  if (pretoken == NULL) {
+  STACK_OF(PMBTOKEN_PRETOKEN) *pretokens = sk_PMBTOKEN_PRETOKEN_new_null();
+  if (pretokens == NULL) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  RAND_bytes(pretoken->t, sizeof(pretoken->t));
+  for (size_t i = 0; i < count; i++) {
+    // Insert |pretoken| into |pretokens| early to simplify error-handling.
+    PMBTOKEN_PRETOKEN *pretoken = OPENSSL_malloc(sizeof(PMBTOKEN_PRETOKEN));
+    if (pretoken == NULL ||
+        !sk_PMBTOKEN_PRETOKEN_push(pretokens, pretoken)) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+      PMBTOKEN_PRETOKEN_free(pretoken);
+      goto err;
+    }
 
-  // We sample |pretoken->r| in Montgomery form to simplify inverting.
-  if (!ec_random_nonzero_scalar(group, &pretoken->r,
-                                kDefaultAdditionalData)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-    goto err;
+    RAND_bytes(pretoken->t, sizeof(pretoken->t));
+
+    // We sample |pretoken->r| in Montgomery form to simplify inverting.
+    if (!ec_random_nonzero_scalar(group, &pretoken->r,
+                                  kDefaultAdditionalData)) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+
+    EC_SCALAR rinv;
+    ec_scalar_inv0_montgomery(group, &rinv, &pretoken->r);
+    // Convert both out of Montgomery form.
+    ec_scalar_from_montgomery(group, &pretoken->r, &pretoken->r);
+    ec_scalar_from_montgomery(group, &rinv, &rinv);
+
+    EC_RAW_POINT T;
+    if (!hash_t(group, &T, pretoken->t) ||
+        !ec_point_mul_scalar(group, &pretoken->Tp, &T, &rinv)) {
+      goto err;
+    }
+
+    // TODO(https://crbug.com/boringssl/331): When updating the key format,
+    // remove the redundant length prefixes.
+    CBB child;
+    if (!CBB_add_u16_length_prefixed(cbb, &child) ||
+        !point_to_cbb(&child, group, &pretoken->Tp) ||
+        !CBB_flush(cbb)) {
+      goto err;
+    }
   }
 
-  EC_SCALAR rinv;
-  ec_scalar_inv0_montgomery(group, &rinv, &pretoken->r);
-  // Convert both out of Montgomery form.
-  ec_scalar_from_montgomery(group, &pretoken->r, &pretoken->r);
-  ec_scalar_from_montgomery(group, &rinv, &rinv);
-
-  EC_RAW_POINT T;
-  if (!hash_t(group, &T, pretoken->t) ||
-      !ec_point_mul_scalar(group, &pretoken->Tp, &T, &rinv)) {
-    goto err;
-  }
-
-  return pretoken;
+  return pretokens;
 
 err:
-  OPENSSL_free(pretoken);
+  sk_PMBTOKEN_PRETOKEN_pop_free(pretokens, PMBTOKEN_PRETOKEN_free);
   return NULL;
 }
 
@@ -496,21 +512,13 @@ err:
 // https://eprint.iacr.org/2020/072/20200324:214215. DLEQ2 is an instance of
 // DLEQOR2 with only one value (n=1).
 
-static int dleq_generate(const EC_GROUP *group, uint8_t **out_proof,
-                         size_t *out_proof_len, const PMBTOKEN_ISSUER_KEY *priv,
-                         const EC_RAW_POINT *T, const EC_RAW_POINT *S,
-                         const EC_RAW_POINT *W, const EC_RAW_POINT *Ws,
-                         uint8_t private_metadata) {
-  int ok = 0;
-  CBB proof;
-  if (!CBB_init(&proof, 0)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
+static int dleq_generate(const EC_GROUP *group, CBB *cbb,
+                         const PMBTOKEN_ISSUER_KEY *priv, const EC_RAW_POINT *T,
+                         const EC_RAW_POINT *S, const EC_RAW_POINT *W,
+                         const EC_RAW_POINT *Ws, uint8_t private_metadata) {
   EC_RAW_POINT h;
   if (!get_h(&h)) {
-    goto err;
+    return 0;
   }
 
   // Generate DLEQ2 proof for the validity token.
@@ -519,20 +527,20 @@ static int dleq_generate(const EC_GROUP *group, uint8_t **out_proof,
   EC_SCALAR ks0, ks1;
   if (!ec_random_nonzero_scalar(group, &ks0, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &ks1, kDefaultAdditionalData)) {
-    goto err;
+    return 0;
   }
 
   // Ks = ks0*(G;T) + ks1*(H;S)
   EC_RAW_POINT Ks0, Ks1;
   if (!mul_twice_base(group, &Ks0, &ks0, &h, &ks1) ||
       !mul_twice(group, &Ks1, T, &ks0, S, &ks1)) {
-    goto err;
+    return 0;
   }
 
   // cs = Hc(...)
   EC_SCALAR cs;
   if (!hash_c_dleq(group, &cs, &priv->pubs, T, S, Ws, &Ks0, &Ks1)) {
-    goto err;
+    return 0;
   }
 
   EC_SCALAR cs_mont;
@@ -552,11 +560,11 @@ static int dleq_generate(const EC_GROUP *group, uint8_t **out_proof,
   ec_scalar_add(group, &vs, &ks1, &vs);
 
   // Store DLEQ2 proof in transcript.
-  if (!scalar_to_cbb(&proof, group, &cs) ||
-      !scalar_to_cbb(&proof, group, &us) ||
-      !scalar_to_cbb(&proof, group, &vs)) {
+  if (!scalar_to_cbb(cbb, group, &cs) ||
+      !scalar_to_cbb(cbb, group, &us) ||
+      !scalar_to_cbb(cbb, group, &vs)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-    goto err;
+    return 0;
   }
 
   // Generate DLEQOR2 proof for the private metadata token.
@@ -574,14 +582,14 @@ static int dleq_generate(const EC_GROUP *group, uint8_t **out_proof,
   EC_SCALAR k0, k1;
   if (!ec_random_nonzero_scalar(group, &k0, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &k1, kDefaultAdditionalData)) {
-    goto err;
+    return 0;
   }
 
   // Kb = k0*(G;T) + k1*(H;S)
   EC_RAW_POINT Kb0, Kb1;
   if (!mul_twice_base(group, &Kb0, &k0, &h, &k1) ||
       !mul_twice(group, &Kb1, T, &k0, S, &k1)) {
-    goto err;
+    return 0;
   }
 
   // co, uo, vo <- Zp
@@ -589,13 +597,13 @@ static int dleq_generate(const EC_GROUP *group, uint8_t **out_proof,
   if (!ec_random_nonzero_scalar(group, &co, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &uo, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &vo, kDefaultAdditionalData)) {
-    goto err;
+    return 0;
   }
 
   // Ko = uo*(G;T) + vo*(H;S) - co*(pubo;W)
   EC_RAW_POINT Ko0, Ko1;
   if (!mul_add_and_sub(group, &Ko0, &Ko1, T, &uo, &h, S, &vo, &pubo, W, &co)) {
-    goto err;
+    return 0;
   }
 
   // Select the K corresponding to K0 and K1 in constant-time.
@@ -609,7 +617,7 @@ static int dleq_generate(const EC_GROUP *group, uint8_t **out_proof,
   EC_SCALAR c;
   if (!hash_c_dleqor(group, &c, &priv->pub0, &priv->pub1, T, S, W, &K00, &K01,
                      &K10, &K11)) {
-    goto err;
+    return 0;
   }
 
   // cb = c - co
@@ -640,41 +648,33 @@ static int dleq_generate(const EC_GROUP *group, uint8_t **out_proof,
   ec_scalar_select(group, &v1, mask, &vb, &vo);
 
   // Store DLEQOR2 proof in transcript.
-  if (!scalar_to_cbb(&proof, group, &c0) ||
-      !scalar_to_cbb(&proof, group, &c1) ||
-      !scalar_to_cbb(&proof, group, &u0) ||
-      !scalar_to_cbb(&proof, group, &u1) ||
-      !scalar_to_cbb(&proof, group, &v0) ||
-      !scalar_to_cbb(&proof, group, &v1) ||
-      !CBB_finish(&proof, out_proof, out_proof_len)) {
+  if (!scalar_to_cbb(cbb, group, &c0) ||
+      !scalar_to_cbb(cbb, group, &c1) ||
+      !scalar_to_cbb(cbb, group, &u0) ||
+      !scalar_to_cbb(cbb, group, &u1) ||
+      !scalar_to_cbb(cbb, group, &v0) ||
+      !scalar_to_cbb(cbb, group, &v1)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-    goto err;
+    return 0;
   }
 
-  ok = 1;
-
-err:
-  CBB_cleanup(&proof);
-  return ok;
+  return 1;
 }
 
-static int dleq_verify(const EC_GROUP *group, const uint8_t *proof,
-                       size_t proof_len, const PMBTOKEN_CLIENT_KEY *pub,
-                       const EC_RAW_POINT *T, const EC_RAW_POINT *S,
-                       const EC_RAW_POINT *W, const EC_RAW_POINT *Ws) {
+static int dleq_verify(const EC_GROUP *group, CBS *cbs,
+                       const PMBTOKEN_CLIENT_KEY *pub, const EC_RAW_POINT *T,
+                       const EC_RAW_POINT *S, const EC_RAW_POINT *W,
+                       const EC_RAW_POINT *Ws) {
   EC_RAW_POINT h;
   if (!get_h(&h)) {
     return 0;
   }
 
   // Verify the DLEQ2 proof over the validity token.
-
-  CBS cbs;
-  CBS_init(&cbs, proof, proof_len);
   EC_SCALAR cs, us, vs;
-  if (!scalar_from_cbs(&cbs, group, &cs) ||
-      !scalar_from_cbs(&cbs, group, &us) ||
-      !scalar_from_cbs(&cbs, group, &vs)) {
+  if (!scalar_from_cbs(cbs, group, &cs) ||
+      !scalar_from_cbs(cbs, group, &us) ||
+      !scalar_from_cbs(cbs, group, &vs)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     return 0;
   }
@@ -701,13 +701,12 @@ static int dleq_verify(const EC_GROUP *group, const uint8_t *proof,
   // Verify the DLEQOR2 proof over the private metadata token.
 
   EC_SCALAR c0, c1, u0, u1, v0, v1;
-  if (!scalar_from_cbs(&cbs, group, &c0) ||
-      !scalar_from_cbs(&cbs, group, &c1) ||
-      !scalar_from_cbs(&cbs, group, &u0) ||
-      !scalar_from_cbs(&cbs, group, &u1) ||
-      !scalar_from_cbs(&cbs, group, &v0) ||
-      !scalar_from_cbs(&cbs, group, &v1) ||
-      CBS_len(&cbs) != 0) {
+  if (!scalar_from_cbs(cbs, group, &c0) ||
+      !scalar_from_cbs(cbs, group, &c1) ||
+      !scalar_from_cbs(cbs, group, &u0) ||
+      !scalar_from_cbs(cbs, group, &u1) ||
+      !scalar_from_cbs(cbs, group, &v0) ||
+      !scalar_from_cbs(cbs, group, &v1)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     return 0;
   }
@@ -745,94 +744,197 @@ static int dleq_verify(const EC_GROUP *group, const uint8_t *proof,
   return 1;
 }
 
-int pmbtoken_sign(const PMBTOKEN_ISSUER_KEY *key,
-                  uint8_t out_s[PMBTOKEN_NONCE_SIZE], EC_RAW_POINT *out_Wp,
-                  EC_RAW_POINT *out_Wsp, uint8_t **out_proof,
-                  size_t *out_proof_len, const EC_RAW_POINT *Tp,
+int pmbtoken_sign(const PMBTOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
+                  size_t num_requested, size_t num_to_issue,
                   uint8_t private_metadata) {
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
     return 0;
   }
 
-  EC_SCALAR xb, yb;
-  BN_ULONG mask = ((BN_ULONG)0) - (private_metadata & 1);
-  ec_scalar_select(group, &xb, mask, &key->x1, &key->x0);
-  ec_scalar_select(group, &yb, mask, &key->y1, &key->y0);
-
-  RAND_bytes(out_s, PMBTOKEN_NONCE_SIZE);
-
-  EC_RAW_POINT Sp;
-  if (!hash_s(group, &Sp, Tp, out_s)) {
+  if (num_requested < num_to_issue) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  if (!mul_twice(group, out_Wp, Tp, &xb, &Sp, &yb) ||
-      !mul_twice(group, out_Wsp, Tp, &key->xs, &Sp, &key->ys)) {
-    return 0;
+  for (size_t i = 0; i < num_to_issue; i++) {
+    EC_RAW_POINT Tp;
+    if (!cbs_get_prefixed_point(cbs, group, &Tp)) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+      return 0;
+    }
+
+    EC_SCALAR xb, yb;
+    BN_ULONG mask = ((BN_ULONG)0) - (private_metadata & 1);
+    ec_scalar_select(group, &xb, mask, &key->x1, &key->x0);
+    ec_scalar_select(group, &yb, mask, &key->y1, &key->y0);
+
+    uint8_t s[PMBTOKEN_NONCE_SIZE];
+    RAND_bytes(s, PMBTOKEN_NONCE_SIZE);
+    EC_RAW_POINT Sp, Wp, Wsp;
+    CBB child;
+    if (!hash_s(group, &Sp, &Tp, s) ||
+        !mul_twice(group, &Wp, &Tp, &xb, &Sp, &yb) ||
+        !mul_twice(group, &Wsp, &Tp, &key->xs, &Sp, &key->ys) ||
+        !CBB_add_bytes(cbb, s, PMBTOKEN_NONCE_SIZE) ||
+        // TODO(https://crbug.com/boringssl/331): When updating the key format,
+        // remove the redundant length prefixes.
+        !CBB_add_u16_length_prefixed(cbb, &child) ||
+        !point_to_cbb(&child, group, &Wp) ||
+        !CBB_add_u16_length_prefixed(cbb, &child) ||
+        !point_to_cbb(&child, group, &Wsp) ||
+        !CBB_add_u16_length_prefixed(cbb, &child) ||
+        !dleq_generate(group, &child, key, &Tp, &Sp, &Wp, &Wsp,
+                       private_metadata) ||
+        !CBB_flush(cbb)) {
+      return 0;
+    }
   }
 
-  return dleq_generate(group, out_proof, out_proof_len, key, Tp, &Sp, out_Wp,
-                       out_Wsp, private_metadata);
-}
-
-int pmbtoken_unblind(const PMBTOKEN_CLIENT_KEY *key, PMBTOKEN_TOKEN *out_token,
-                     const uint8_t s[PMBTOKEN_NONCE_SIZE],
-                     const EC_RAW_POINT *Wp, const EC_RAW_POINT *Wsp,
-                     const uint8_t *proof, size_t proof_len,
-                     const PMBTOKEN_PRETOKEN *pretoken) {
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
-  if (group == NULL) {
-    return 0;
-  }
-
-  EC_RAW_POINT Sp;
-  if (!hash_s(group, &Sp, &pretoken->Tp, s)) {
-    return 0;
-  }
-
-  if (!dleq_verify(group, proof, proof_len, key, &pretoken->Tp, &Sp, Wp, Wsp)) {
-    return 0;
-  }
-
-  OPENSSL_memcpy(out_token->t, pretoken->t, PMBTOKEN_NONCE_SIZE);
-  if (!ec_point_mul_scalar(group, &out_token->S, &Sp, &pretoken->r) ||
-      !ec_point_mul_scalar(group, &out_token->W, Wp, &pretoken->r) ||
-      !ec_point_mul_scalar(group, &out_token->Ws, Wsp, &pretoken->r)) {
+  // Skip over any unused requests.
+  size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
+  if (!CBS_skip(cbs, (2 + point_len) * (num_requested - num_to_issue))) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     return 0;
   }
 
   return 1;
 }
 
-int pmbtoken_read(const PMBTOKEN_ISSUER_KEY *key, uint8_t *out_private_metadata,
-                  const PMBTOKEN_TOKEN *token) {
+STACK_OF(TRUST_TOKEN) *
+    pmbtoken_unblind(const PMBTOKEN_CLIENT_KEY *key,
+                     const STACK_OF(PMBTOKEN_PRETOKEN) *pretokens, CBS *cbs,
+                     size_t count, uint32_t key_id) {
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
+  if (group == NULL) {
+    return NULL;
+  }
+
+  if (count > sk_PMBTOKEN_PRETOKEN_num(pretokens)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+    return NULL;
+  }
+
+  STACK_OF(TRUST_TOKEN) *ret = sk_TRUST_TOKEN_new_null();
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  for (size_t i = 0; i < count; i++) {
+    const PMBTOKEN_PRETOKEN *pretoken =
+        sk_PMBTOKEN_PRETOKEN_value(pretokens, i);
+
+    uint8_t s[PMBTOKEN_NONCE_SIZE];
+    EC_RAW_POINT Wp, Wsp;
+    CBS proof;
+    if (!CBS_copy_bytes(cbs, s, PMBTOKEN_NONCE_SIZE) ||
+        !cbs_get_prefixed_point(cbs, group, &Wp) ||
+        !cbs_get_prefixed_point(cbs, group, &Wsp) ||
+        !CBS_get_u16_length_prefixed(cbs, &proof)) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+      goto err;
+    }
+
+    EC_RAW_POINT Sp;
+    if (!hash_s(group, &Sp, &pretoken->Tp, s) ||
+        !dleq_verify(group, &proof, key, &pretoken->Tp, &Sp, &Wp, &Wsp)) {
+      goto err;
+    }
+
+    if (CBS_len(&proof) != 0) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+      goto err;
+    }
+
+    EC_RAW_POINT S, W, Ws;
+    if (!ec_point_mul_scalar(group, &S, &Sp, &pretoken->r) ||
+        !ec_point_mul_scalar(group, &W, &Wp, &pretoken->r) ||
+        !ec_point_mul_scalar(group, &Ws, &Wsp, &pretoken->r)) {
+      goto err;
+    }
+
+    // Serialize the token. Include |key_id| to avoid an extra copy in the layer
+    // above.
+    CBB token_cbb, child;
+    size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
+    if (!CBB_init(&token_cbb, 4 + PMBTOKEN_NONCE_SIZE + 3 * (2 + point_len)) ||
+        !CBB_add_u32(&token_cbb, key_id) ||
+        !CBB_add_bytes(&token_cbb, pretoken->t, PMBTOKEN_NONCE_SIZE) ||
+        // TODO(https://crbug.com/boringssl/331): When updating the key format,
+        // remove the redundant length prefixes.
+        !CBB_add_u16_length_prefixed(&token_cbb, &child) ||
+        !point_to_cbb(&child, group, &S) ||
+        !CBB_add_u16_length_prefixed(&token_cbb, &child) ||
+        !point_to_cbb(&child, group, &W) ||
+        !CBB_add_u16_length_prefixed(&token_cbb, &child) ||
+        !point_to_cbb(&child, group, &Ws) ||
+        !CBB_flush(&token_cbb)) {
+      CBB_cleanup(&token_cbb);
+      goto err;
+    }
+
+    TRUST_TOKEN *token =
+        TRUST_TOKEN_new(CBB_data(&token_cbb), CBB_len(&token_cbb));
+    CBB_cleanup(&token_cbb);
+    if (token == NULL ||
+        !sk_TRUST_TOKEN_push(ret, token)) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+      TRUST_TOKEN_free(token);
+      goto err;
+    }
+  }
+
+  return ret;
+
+err:
+  sk_TRUST_TOKEN_pop_free(ret, TRUST_TOKEN_free);
+  return NULL;
+}
+
+int pmbtoken_read(const PMBTOKEN_ISSUER_KEY *key,
+                  uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
+                  uint8_t *out_private_metadata, const uint8_t *token,
+                  size_t token_len) {
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
     return 0;
   }
 
+  CBS cbs;
+  CBS_init(&cbs, token, token_len);
+  EC_RAW_POINT S, W, Ws;
+  if (!CBS_copy_bytes(&cbs, out_nonce, PMBTOKEN_NONCE_SIZE) ||
+      !cbs_get_prefixed_point(&cbs, group, &S) ||
+      !cbs_get_prefixed_point(&cbs, group, &W) ||
+      !cbs_get_prefixed_point(&cbs, group, &Ws) ||
+      CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_TOKEN);
+    return 0;
+  }
+
+
   EC_RAW_POINT T;
-  if (!hash_t(group, &T, token->t)) {
+  if (!hash_t(group, &T, out_nonce)) {
     return 0;
   }
 
   EC_RAW_POINT calculated;
   // Check the validity of the token.
-  if (!mul_twice(group, &calculated, &T, &key->xs, &token->S, &key->ys) ||
-      !ec_GFp_simple_points_equal(group, &calculated, &token->Ws)) {
+  if (!mul_twice(group, &calculated, &T, &key->xs, &S, &key->ys) ||
+      !ec_GFp_simple_points_equal(group, &calculated, &Ws)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BAD_VALIDITY_CHECK);
     return 0;
   }
 
   EC_RAW_POINT W0, W1;
-  if (!mul_twice(group, &W0, &T, &key->x0, &token->S, &key->y0) ||
-      !mul_twice(group, &W1, &T, &key->x1, &token->S, &key->y1)) {
+  if (!mul_twice(group, &W0, &T, &key->x0, &S, &key->y0) ||
+      !mul_twice(group, &W1, &T, &key->x1, &S, &key->y1)) {
     return 0;
   }
 
-  const int is_W0 = ec_GFp_simple_points_equal(group, &W0, &token->W);
-  const int is_W1 = ec_GFp_simple_points_equal(group, &W1, &token->W);
+  const int is_W0 = ec_GFp_simple_points_equal(group, &W0, &W);
+  const int is_W1 = ec_GFp_simple_points_equal(group, &W1, &W);
   const int is_valid = is_W0 ^ is_W1;
   if (!is_valid) {
     // Invalid tokens will fail the validity check above.

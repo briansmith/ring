@@ -27,27 +27,6 @@
 // protocol for issuing and redeeming tokens built on top of the PMBTokens
 // construction.
 
-static int cbb_add_raw_point(CBB *cbb, const EC_GROUP *group,
-                             const EC_RAW_POINT *point) {
-  size_t len =
-      ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, NULL, 0);
-  if (len == 0) {
-    return 0;
-  }
-  uint8_t *p;
-  return CBB_add_u16(cbb, len) && CBB_add_space(cbb, &p, len) &&
-         ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, p,
-                           len) == len;
-}
-
-static int cbs_get_raw_point(CBS *cbs, const EC_GROUP *group,
-                             EC_RAW_POINT *out) {
-  CBS child;
-  return CBS_get_u16_length_prefixed(cbs, &child) &&
-         ec_point_from_uncompressed(group, out, CBS_data(&child),
-                                    CBS_len(&child));
-}
-
 TRUST_TOKEN *TRUST_TOKEN_new(const uint8_t *data, size_t len) {
   TRUST_TOKEN *ret = OPENSSL_malloc(sizeof(TRUST_TOKEN));
   if (ret == NULL) {
@@ -122,12 +101,6 @@ TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(size_t max_batchsize) {
   }
   OPENSSL_memset(ret, 0, sizeof(TRUST_TOKEN_CLIENT));
   ret->max_batchsize = (uint16_t)max_batchsize;
-  ret->pretokens = sk_PMBTOKEN_PRETOKEN_new_null();
-  if (ret->pretokens == NULL) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-    OPENSSL_free(ret);
-    return NULL;
-  }
   return ret;
 }
 
@@ -172,31 +145,22 @@ int TRUST_TOKEN_CLIENT_set_srr_key(TRUST_TOKEN_CLIENT *ctx, EVP_PKEY *key) {
 
 int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
                                       size_t *out_len, size_t count) {
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
-  if (group == NULL) {
-    return 0;
-  }
-
   if (count > ctx->max_batchsize) {
     count = ctx->max_batchsize;
   }
 
   int ret = 0;
   CBB request;
+  STACK_OF(PMBTOKEN_PRETOKEN) *pretokens = NULL;
   if (!CBB_init(&request, 0) ||
       !CBB_add_u16(&request, count)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  for (size_t i = 0; i < count; i++) {
-    PMBTOKEN_PRETOKEN *pretoken = pmbtoken_blind();
-    if (pretoken == NULL ||
-        !cbb_add_raw_point(&request, group, &pretoken->Tp) ||
-        !sk_PMBTOKEN_PRETOKEN_push(ctx->pretokens, pretoken)) {
-      PMBTOKEN_PRETOKEN_free(pretoken);
-      goto err;
-    }
+  pretokens = pmbtoken_blind(&request, count);
+  if (pretokens == NULL) {
+    goto err;
   }
 
   if (!CBB_finish(&request, out, out_len)) {
@@ -204,10 +168,14 @@ int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
     goto err;
   }
 
+  sk_PMBTOKEN_PRETOKEN_pop_free(ctx->pretokens, PMBTOKEN_PRETOKEN_free);
+  ctx->pretokens = pretokens;
+  pretokens = NULL;
   ret = 1;
 
 err:
   CBB_cleanup(&request);
+  sk_PMBTOKEN_PRETOKEN_pop_free(pretokens, PMBTOKEN_PRETOKEN_free);
   return ret;
 }
 
@@ -216,11 +184,6 @@ STACK_OF(TRUST_TOKEN) *
                                        size_t *out_key_index,
                                        const uint8_t *response,
                                        size_t response_len) {
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
-  if (group == NULL) {
-    return 0;
-  }
-
   CBS in;
   CBS_init(&in, response, response_len);
   uint16_t count;
@@ -251,82 +214,23 @@ STACK_OF(TRUST_TOKEN) *
     return NULL;
   }
 
-  int ok = 0;
-  STACK_OF(TRUST_TOKEN) *tokens = sk_TRUST_TOKEN_new_null();
+  STACK_OF(TRUST_TOKEN) *tokens =
+      pmbtoken_unblind(&key->key, ctx->pretokens, &in, count, key_id);
   if (tokens == NULL) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return NULL;
-  }
-
-  for (size_t i = 0; i < count; i++) {
-    uint8_t s[PMBTOKEN_NONCE_SIZE];
-    EC_RAW_POINT Wp, Wsp;
-    CBS proof;
-    if (!CBS_copy_bytes(&in, s, PMBTOKEN_NONCE_SIZE) ||
-        !cbs_get_raw_point(&in, group, &Wp) ||
-        !cbs_get_raw_point(&in, group, &Wsp) ||
-        !CBS_get_u16_length_prefixed(&in, &proof)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
-      goto err;
-    }
-
-    PMBTOKEN_PRETOKEN *pretoken = sk_PMBTOKEN_PRETOKEN_value(ctx->pretokens, i);
-    PMBTOKEN_TOKEN pmbtoken;
-    if (!pmbtoken_unblind(&key->key, &pmbtoken, s, &Wp, &Wsp, CBS_data(&proof),
-                          CBS_len(&proof), pretoken)) {
-      goto err;
-    }
-
-    int token_ok = 0;
-    TRUST_TOKEN *token = NULL;
-    CBB token_cbb;
-    if (!CBB_init(&token_cbb, 0) ||
-        !CBB_add_u32(&token_cbb, key_id) ||
-        !CBB_add_bytes(&token_cbb, pmbtoken.t, PMBTOKEN_NONCE_SIZE) ||
-        !cbb_add_raw_point(&token_cbb, group, &pmbtoken.S) ||
-        !cbb_add_raw_point(&token_cbb, group, &pmbtoken.W) ||
-        !cbb_add_raw_point(&token_cbb, group, &pmbtoken.Ws)) {
-      goto token_err;
-    }
-
-    token = TRUST_TOKEN_new(CBB_data(&token_cbb), CBB_len(&token_cbb));
-    if (token == NULL) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-      goto token_err;
-    }
-
-    if (!sk_TRUST_TOKEN_push(tokens, token)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-      goto token_err;
-    }
-    token_ok = 1;
-
-  token_err:
-    CBB_cleanup(&token_cbb);
-    if (!token_ok) {
-      TRUST_TOKEN_free(token);
-      goto err;
-    }
   }
 
   if (CBS_len(&in) != 0) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
-    goto err;
+    sk_TRUST_TOKEN_pop_free(tokens, TRUST_TOKEN_free);
+    return NULL;
   }
 
   sk_PMBTOKEN_PRETOKEN_pop_free(ctx->pretokens, PMBTOKEN_PRETOKEN_free);
   ctx->pretokens = NULL;
 
   *out_key_index = key_index;
-  ok = 1;
-
-err:
-  if (!ok) {
-    sk_TRUST_TOKEN_pop_free(tokens, TRUST_TOKEN_free);
-    return NULL;
-  } else {
-    return tokens;
-  }
+  return tokens;
 }
 
 int TRUST_TOKEN_CLIENT_begin_redemption(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
@@ -483,11 +387,6 @@ int TRUST_TOKEN_ISSUER_issue(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
                              const uint8_t *request, size_t request_len,
                              uint32_t public_metadata, uint8_t private_metadata,
                              size_t max_issuance) {
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
-  if (group == NULL) {
-    return 0;
-  }
-
   if (max_issuance > ctx->max_batchsize) {
     max_issuance = ctx->max_batchsize;
   }
@@ -500,65 +399,43 @@ int TRUST_TOKEN_ISSUER_issue(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
   }
 
   CBS in;
+  uint16_t num_requested;
   CBS_init(&in, request, request_len);
-
-  CBB response;
-  if (!CBB_init(&response, 0)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+  if (!CBS_get_u16(&in, &num_requested)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     return 0;
   }
 
+  size_t num_to_issue = num_requested;
+  if (num_to_issue > max_issuance) {
+    num_to_issue = max_issuance;
+  }
+
   int ret = 0;
-  uint16_t count;
-  if (!CBS_get_u16(&in, &count)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
-    goto err;
-  }
-
-  if (count > max_issuance) {
-    count = max_issuance;
-  }
-
-  if (!CBB_add_u16(&response, count) ||
+  CBB response;
+  if (!CBB_init(&response, 0) ||
+      !CBB_add_u16(&response, num_to_issue) ||
       !CBB_add_u32(&response, public_metadata)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  for (size_t i = 0; i < count; i++) {
-    EC_RAW_POINT Tp;
-    if (!cbs_get_raw_point(&in, group, &Tp)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
-      goto err;
-    }
-
-    uint8_t s[PMBTOKEN_NONCE_SIZE];
-    EC_RAW_POINT Wp, Wsp;
-    uint8_t *proof = NULL;
-    size_t proof_len;
-    if (!pmbtoken_sign(&key->key, s, &Wp, &Wsp, &proof, &proof_len, &Tp,
-                       private_metadata)) {
-      goto err;
-    }
-
-    if (!CBB_add_bytes(&response, s, PMBTOKEN_NONCE_SIZE) ||
-        !cbb_add_raw_point(&response, group, &Wp) ||
-        !cbb_add_raw_point(&response, group, &Wsp) ||
-        !CBB_add_u16(&response, proof_len) ||
-        !CBB_add_bytes(&response, proof, proof_len)) {
-      OPENSSL_free(proof);
-      goto err;
-    }
-    OPENSSL_free(proof);
+  if (!pmbtoken_sign(&key->key, &response, &in, num_requested, num_to_issue,
+                     private_metadata)) {
+    goto err;
   }
 
-  *out_tokens_issued = count;
+  if (CBS_len(&in) != 0) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+    goto err;
+  }
 
   if (!CBB_finish(&response, out, out_len)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
+  *out_tokens_issued = num_to_issue;
   ret = 1;
 
 err:
@@ -623,11 +500,6 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
                               uint64_t *out_redemption_time,
                               const uint8_t *request, size_t request_len,
                               uint64_t lifetime) {
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
-  if (group == NULL) {
-    return 0;
-  }
-
   CBS request_cbs, token_cbs;
   CBS_init(&request_cbs, request, request_len);
   if (!CBS_get_u16_length_prefixed(&request_cbs, &token_cbs)) {
@@ -639,7 +511,6 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
   uint8_t private_metadata = 0;
 
   // Parse the token. If there is an error, treat it as an invalid token.
-  PMBTOKEN_TOKEN pmbtoken;
   if (!CBS_get_u32(&token_cbs, &public_metadata)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_TOKEN);
     return 0;
@@ -647,13 +518,10 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
 
   const struct trust_token_issuer_key_st *key =
       trust_token_issuer_get_key(ctx, public_metadata);
+  uint8_t nonce[PMBTOKEN_NONCE_SIZE];
   if (key == NULL ||
-      !CBS_copy_bytes(&token_cbs, pmbtoken.t, PMBTOKEN_NONCE_SIZE) ||
-      !cbs_get_raw_point(&token_cbs, group, &pmbtoken.S) ||
-      !cbs_get_raw_point(&token_cbs, group, &pmbtoken.W) ||
-      !cbs_get_raw_point(&token_cbs, group, &pmbtoken.Ws) ||
-      CBS_len(&token_cbs) != 0 ||
-      !pmbtoken_read(&key->key, &private_metadata, &pmbtoken)) {
+      !pmbtoken_read(&key->key, nonce, &private_metadata, CBS_data(&token_cbs),
+                     CBS_len(&token_cbs))) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_TOKEN);
     return 0;
   }
@@ -739,7 +607,7 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
     goto err;
   }
 
-  TRUST_TOKEN *token = TRUST_TOKEN_new(pmbtoken.t, PMBTOKEN_NONCE_SIZE);
+  TRUST_TOKEN *token = TRUST_TOKEN_new(nonce, PMBTOKEN_NONCE_SIZE);
   if (token == NULL) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
