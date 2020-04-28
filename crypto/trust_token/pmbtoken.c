@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <openssl/trust_token.h>
+
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/ec.h>
@@ -20,7 +22,6 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <openssl/trust_token.h>
 
 #include "../ec_extra/internal.h"
 #include "../fipsmodule/bn/internal.h"
@@ -199,10 +200,23 @@ static int point_to_cbb(CBB *out, const EC_GROUP *group,
                            len) == len;
 }
 
-int TRUST_TOKEN_generate_key(uint8_t *out_priv_key, size_t *out_priv_key_len,
-                             size_t max_priv_key_len, uint8_t *out_pub_key,
-                             size_t *out_pub_key_len, size_t max_pub_key_len,
-                             uint32_t id) {
+static int cbs_get_prefixed_point(CBS *cbs, const EC_GROUP *group,
+                                  EC_RAW_POINT *out) {
+  CBS child;
+  return CBS_get_u16_length_prefixed(cbs, &child) &&
+         ec_point_from_uncompressed(group, out, CBS_data(&child),
+                                    CBS_len(&child));
+}
+
+void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *pretoken) {
+  OPENSSL_free(pretoken);
+}
+
+void PMBTOKEN_TOKEN_free(PMBTOKEN_TOKEN *token) {
+  OPENSSL_free(token);
+}
+
+int pmbtoken_generate_key(CBB *out_private, CBB *out_public) {
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
     return 0;
@@ -217,66 +231,78 @@ int TRUST_TOKEN_generate_key(uint8_t *out_priv_key, size_t *out_priv_key_len,
     return 0;
   }
 
-  int ret = 0;
-  CBB cbb;
-  CBB_zero(&cbb);
-  size_t scalar_len = BN_num_bytes(&group->order);
-  if (!CBB_init_fixed(&cbb, out_priv_key, max_priv_key_len) ||
-      !CBB_add_u32(&cbb, id)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
-    goto err;
-  }
-
   const EC_SCALAR *scalars[] = {&x0, &y0, &x1, &y1, &xs, &ys};
+  size_t scalar_len = BN_num_bytes(&group->order);
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(scalars); i++) {
     uint8_t *buf;
-    if (!CBB_add_space(&cbb, &buf, scalar_len)) {
+    if (!CBB_add_space(out_private, &buf, scalar_len)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
-      goto err;
+      return 0;
     }
     ec_scalar_to_bytes(group, buf, &scalar_len, scalars[i]);
   }
 
-  if (!CBB_finish(&cbb, NULL, out_priv_key_len)) {
+  // TODO(https://crbug.com/boringssl/331): When updating the key format, remove
+  // the redundant length prefixes.
+  CBB child;
+  if (!CBB_add_u16_length_prefixed(out_public, &child) ||
+      !point_to_cbb(&child, group, &pub0) ||
+      !CBB_add_u16_length_prefixed(out_public, &child) ||
+      !point_to_cbb(&child, group, &pub1) ||
+      !CBB_add_u16_length_prefixed(out_public, &child) ||
+      !point_to_cbb(&child, group, &pubs) ||
+      !CBB_flush(out_public)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
-    goto err;
+    return 0;
   }
 
-  CBB pub_cbb;
-  if (!CBB_init_fixed(&cbb, out_pub_key, max_pub_key_len) ||
-      !CBB_add_u32(&cbb, id) ||
-      !CBB_add_u16_length_prefixed(&cbb, &pub_cbb) ||
-      !point_to_cbb(&pub_cbb, group, &pub0) ||
-      !CBB_add_u16_length_prefixed(&cbb, &pub_cbb) ||
-      !point_to_cbb(&pub_cbb, group, &pub1) ||
-      !CBB_add_u16_length_prefixed(&cbb, &pub_cbb) ||
-      !point_to_cbb(&pub_cbb, group, &pubs) ||
-      !CBB_finish(&cbb, NULL, out_pub_key_len)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  CBB_cleanup(&cbb);
-  return ret;
+  return 1;
 }
 
-void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *pretoken) {
-  OPENSSL_free(pretoken);
-}
-
-void PMBTOKEN_TOKEN_free(PMBTOKEN_TOKEN *token) {
-  OPENSSL_free(token);
-}
-
-int pmbtoken_compute_public(struct trust_token_issuer_key_st *key) {
+int pmbtoken_client_key_from_bytes(PMBTOKEN_CLIENT_KEY *key, const uint8_t *in,
+                                   size_t len) {
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
     return 0;
   }
 
+  // TODO(https://crbug.com/boringssl/331): When updating the key format, remove
+  // the redundant length prefixes.
+  CBS cbs;
+  CBS_init(&cbs, in, len);
+  if (!cbs_get_prefixed_point(&cbs, group, &key->pub0) ||
+      !cbs_get_prefixed_point(&cbs, group, &key->pub1) ||
+      !cbs_get_prefixed_point(&cbs, group, &key->pubs) ||
+      CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+    return 0;
+  }
+
+  return 1;
+}
+
+int pmbtoken_issuer_key_from_bytes(PMBTOKEN_ISSUER_KEY *key, const uint8_t *in,
+                                   size_t len) {
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
+  if (group == NULL) {
+    return 0;
+  }
+
+  CBS cbs, tmp;
+  CBS_init(&cbs, in, len);
+  size_t scalar_len = BN_num_bytes(&group->order);
+  EC_SCALAR *scalars[] = {&key->x0, &key->y0, &key->x1,
+                          &key->y1, &key->xs, &key->ys};
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(scalars); i++) {
+    if (!CBS_get_bytes(&cbs, &tmp, scalar_len) ||
+        !ec_scalar_from_bytes(group, scalars[i], CBS_data(&tmp),
+                              CBS_len(&tmp))) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
+     return 0;
+    }
+  }
+
+  // Recompute the public key.
   EC_RAW_POINT h;
   if (!get_h(&h) ||
       !mul_twice_base(group, &key->pubs, &key->xs, &h, &key->ys) ||
@@ -471,8 +497,7 @@ err:
 // DLEQOR2 with only one value (n=1).
 
 static int dleq_generate(const EC_GROUP *group, uint8_t **out_proof,
-                         size_t *out_proof_len,
-                         const struct trust_token_issuer_key_st *priv,
+                         size_t *out_proof_len, const PMBTOKEN_ISSUER_KEY *priv,
                          const EC_RAW_POINT *T, const EC_RAW_POINT *S,
                          const EC_RAW_POINT *W, const EC_RAW_POINT *Ws,
                          uint8_t private_metadata) {
@@ -634,8 +659,7 @@ err:
 }
 
 static int dleq_verify(const EC_GROUP *group, const uint8_t *proof,
-                       size_t proof_len,
-                       const struct trust_token_client_key_st *pub,
+                       size_t proof_len, const PMBTOKEN_CLIENT_KEY *pub,
                        const EC_RAW_POINT *T, const EC_RAW_POINT *S,
                        const EC_RAW_POINT *W, const EC_RAW_POINT *Ws) {
   EC_RAW_POINT h;
@@ -721,30 +745,13 @@ static int dleq_verify(const EC_GROUP *group, const uint8_t *proof,
   return 1;
 }
 
-int pmbtoken_sign(const TRUST_TOKEN_ISSUER *ctx,
+int pmbtoken_sign(const PMBTOKEN_ISSUER_KEY *key,
                   uint8_t out_s[PMBTOKEN_NONCE_SIZE], EC_RAW_POINT *out_Wp,
                   EC_RAW_POINT *out_Wsp, uint8_t **out_proof,
                   size_t *out_proof_len, const EC_RAW_POINT *Tp,
-                  uint32_t key_id, uint8_t private_metadata) {
+                  uint8_t private_metadata) {
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
-    return 0;
-  }
-
-  if (ctx->num_keys == 0) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_NO_KEYS_CONFIGURED);
-    return 0;
-  }
-  const struct trust_token_issuer_key_st *key = NULL;
-  for (size_t i = 0; i < ctx->num_keys; i++) {
-    if (ctx->keys[i].id == key_id) {
-      key = &ctx->keys[i];
-      break;
-    }
-  }
-
-  if (key == NULL) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_KEY_ID);
     return 0;
   }
 
@@ -769,8 +776,7 @@ int pmbtoken_sign(const TRUST_TOKEN_ISSUER *ctx,
                        out_Wsp, private_metadata);
 }
 
-int pmbtoken_unblind(PMBTOKEN_TOKEN *out_token,
-                     const struct trust_token_client_key_st *key,
+int pmbtoken_unblind(const PMBTOKEN_CLIENT_KEY *key, PMBTOKEN_TOKEN *out_token,
                      const uint8_t s[PMBTOKEN_NONCE_SIZE],
                      const EC_RAW_POINT *Wp, const EC_RAW_POINT *Wsp,
                      const uint8_t *proof, size_t proof_len,
@@ -799,27 +805,10 @@ int pmbtoken_unblind(PMBTOKEN_TOKEN *out_token,
   return 1;
 }
 
-int pmbtoken_read(const TRUST_TOKEN_ISSUER *ctx, uint8_t *out_private_metadata,
-                  const PMBTOKEN_TOKEN *token, uint32_t key_id) {
+int pmbtoken_read(const PMBTOKEN_ISSUER_KEY *key, uint8_t *out_private_metadata,
+                  const PMBTOKEN_TOKEN *token) {
   EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
   if (group == NULL) {
-    return 0;
-  }
-
-  if (ctx->num_keys == 0) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_NO_KEYS_CONFIGURED);
-    return 0;
-  }
-  const struct trust_token_issuer_key_st *key = NULL;
-  for (size_t i = 0; i < ctx->num_keys; i++) {
-    if (ctx->keys[i].id == key_id) {
-      key = &ctx->keys[i];
-      break;
-    }
-  }
-
-  if (key == NULL) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_KEY_ID);
     return 0;
   }
 

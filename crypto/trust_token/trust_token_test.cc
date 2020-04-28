@@ -595,8 +595,8 @@ TEST_P(TrustTokenBadKeyTest, BadKey) {
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
 
   struct trust_token_issuer_key_st *key = &issuer->keys[0];
-  EC_SCALAR *scalars[] = {&key->x0, &key->y0, &key->x1,
-                          &key->y1, &key->xs, &key->ys};
+  EC_SCALAR *scalars[] = {&key->key.x0, &key->key.y0, &key->key.x1,
+                          &key->key.y1, &key->key.xs, &key->key.ys};
   int corrupted_key = std::get<1>(GetParam());
 
   // Corrupt private key scalar.
