@@ -83,9 +83,10 @@ OPENSSL_EXPORT int TRUST_TOKEN_generate_key(
 
 // TRUST_TOKEN_CLIENT_new returns a newly-allocated |TRUST_TOKEN_CLIENT|
 // configured to use a max batchsize of |max_batchsize| or NULL on error.
-// Issuance requests must be made in batches smaller than |max_batchsize|.
-OPENSSL_EXPORT TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(
-    uint16_t max_batchsize);
+// Issuance requests must be made in batches smaller than |max_batchsize|. This
+// function will return an error if |max_batchsize| is too large for Trust
+// Tokens.
+OPENSSL_EXPORT TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(size_t max_batchsize);
 
 // TRUST_TOKEN_CLIENT_free releases memory associated with |ctx|.
 OPENSSL_EXPORT void TRUST_TOKEN_CLIENT_free(TRUST_TOKEN_CLIENT *ctx);
@@ -162,9 +163,10 @@ OPENSSL_EXPORT int TRUST_TOKEN_CLIENT_finish_redemption(
 
 // TRUST_TOKEN_ISSUER_new returns a newly-allocated |TRUST_TOKEN_ISSUER|
 // configured to use a max batchsize of |max_batchsize| or NULL on error.
-// Issuance requests must be made in batches smaller than |max_batchsize|.
-OPENSSL_EXPORT TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(
-    uint16_t max_batchsize);
+// Issuance requests must be made in batches smaller than |max_batchsize|. This
+// function will return an error if |max_batchsize| is too large for Trust
+// Tokens.
+OPENSSL_EXPORT TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(size_t max_batchsize);
 
 // TRUST_TOKEN_ISSUER_free releases memory associated with |ctx|.
 OPENSSL_EXPORT void TRUST_TOKEN_ISSUER_free(TRUST_TOKEN_ISSUER *ctx);
@@ -202,7 +204,7 @@ OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_set_metadata_key(TRUST_TOKEN_ISSUER *ctx,
 // error.
 OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_issue(
     const TRUST_TOKEN_ISSUER *ctx, uint8_t **out, size_t *out_len,
-    uint8_t *out_tokens_issued, const uint8_t *request, size_t request_len,
+    size_t *out_tokens_issued, const uint8_t *request, size_t request_len,
     uint32_t public_metadata, uint8_t private_metadata, size_t max_issuance);
 
 // TRUST_TOKEN_ISSUER_redeem ingests a |request| for token redemption and

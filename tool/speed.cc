@@ -1109,8 +1109,7 @@ static bool SpeedTrustToken(std::string name, size_t batchsize,
 
   if (!TimeFunction(&results, [&]() -> bool {
         uint8_t *issue_resp = NULL;
-        size_t resp_len;
-        uint8_t tokens_issued;
+        size_t resp_len, tokens_issued;
         int ok = TRUST_TOKEN_ISSUER_issue(issuer.get(), &issue_resp, &resp_len,
                                           &tokens_issued, issue_msg, msg_len,
                                           /*public_metadata=*/0,
@@ -1125,8 +1124,7 @@ static bool SpeedTrustToken(std::string name, size_t batchsize,
   results.Print(name + " issue");
 
   uint8_t *issue_resp = NULL;
-  size_t resp_len;
-  uint8_t tokens_issued;
+  size_t resp_len, tokens_issued;
   if (!TRUST_TOKEN_ISSUER_issue(issuer.get(), &issue_resp, &resp_len,
                                 &tokens_issued, issue_msg, msg_len,
                                 /*public_metadata=*/0, /*private_metadata=*/0,

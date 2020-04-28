@@ -110,7 +110,7 @@ TEST_F(TrustTokenProtocolTest, InvalidToken) {
   size_t msg_len, resp_len;
 
   size_t key_index;
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(
       TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg, &msg_len, 1));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
@@ -152,7 +152,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedIssuanceRequest) {
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   msg_len = 10;
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_FALSE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       /*public_metadata=*/KeyID(0), /*private_metadata=*/0,
@@ -168,7 +168,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedIssuanceResponse) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       /*public_metadata=*/KeyID(0), /*private_metadata=*/0,
@@ -190,7 +190,7 @@ TEST_F(TrustTokenProtocolTest, ExtraDataIssuanceResponse) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &request,
                                                 &request_len, 10));
   bssl::UniquePtr<uint8_t> free_request(request);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(issuer.get(), &response, &response_len,
                                        &tokens_issued, request, request_len,
                                        /*public_metadata=*/KeyID(0),
@@ -214,7 +214,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedRedemptionRequest) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       /*public_metadata=*/KeyID(0), /*private_metadata=*/0,
@@ -255,7 +255,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedRedemptionResponse) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       /*public_metadata=*/KeyID(0), /*private_metadata=*/0,
@@ -349,7 +349,7 @@ TEST_F(TrustTokenProtocolTest, IssuedWithBadKeyID) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       /*public_metadata=*/42, /*private_metadata=*/0, /*max_issuance=*/10));
@@ -372,7 +372,7 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
@@ -446,7 +446,7 @@ TEST_P(TrustTokenMetadataTest, TooManyRequests) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
@@ -469,7 +469,7 @@ TEST_P(TrustTokenMetadataTest, TruncatedProof) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
@@ -524,7 +524,7 @@ TEST_P(TrustTokenMetadataTest, ExcessDataProof) {
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
                                                 &msg_len, 10));
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
@@ -602,7 +602,7 @@ TEST_P(TrustTokenBadKeyTest, BadKey) {
   // Corrupt private key scalar.
   scalars[corrupted_key]->bytes[0] ^= 42;
 
-  uint8_t tokens_issued;
+  size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
       /*public_metadata=*/7, std::get<0>(GetParam()), /*max_issuance=*/1));

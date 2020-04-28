@@ -73,14 +73,20 @@ void TRUST_TOKEN_free(TRUST_TOKEN *token) {
   OPENSSL_free(token);
 }
 
-TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(uint16_t max_batchsize) {
+TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(size_t max_batchsize) {
+  if (max_batchsize > 0xffff) {
+    // The protocol supports only two-byte token counts.
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
+    return NULL;
+  }
+
   TRUST_TOKEN_CLIENT *ret = OPENSSL_malloc(sizeof(TRUST_TOKEN_CLIENT));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(ret, 0, sizeof(TRUST_TOKEN_CLIENT));
-  ret->max_batchsize = max_batchsize;
+  ret->max_batchsize = (uint16_t)max_batchsize;
   ret->pretokens = sk_PMBTOKEN_PRETOKEN_new_null();
   if (ret->pretokens == NULL) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
@@ -363,14 +369,20 @@ int TRUST_TOKEN_CLIENT_finish_redemption(TRUST_TOKEN_CLIENT *ctx,
   return 1;
 }
 
-TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(uint16_t max_batchsize) {
+TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(size_t max_batchsize) {
+  if (max_batchsize > 0xffff) {
+    // The protocol supports only two-byte token counts.
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
+    return NULL;
+  }
+
   TRUST_TOKEN_ISSUER *ret = OPENSSL_malloc(sizeof(TRUST_TOKEN_ISSUER));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(ret, 0, sizeof(TRUST_TOKEN_ISSUER));
-  ret->max_batchsize = max_batchsize;
+  ret->max_batchsize = (uint16_t)max_batchsize;
   return ret;
 }
 
@@ -449,7 +461,7 @@ int TRUST_TOKEN_ISSUER_set_metadata_key(TRUST_TOKEN_ISSUER *ctx,
 }
 
 int TRUST_TOKEN_ISSUER_issue(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
-                             size_t *out_len, uint8_t *out_tokens_issued,
+                             size_t *out_len, size_t *out_tokens_issued,
                              const uint8_t *request, size_t request_len,
                              uint32_t public_metadata, uint8_t private_metadata,
                              size_t max_issuance) {
