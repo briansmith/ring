@@ -284,6 +284,36 @@ int ec_GFp_simple_points_equal(const EC_GROUP *group, const EC_RAW_POINT *a,
   return equal & 1;
 }
 
+int ec_affine_jacobian_equal(const EC_GROUP *group, const EC_AFFINE *a,
+                             const EC_RAW_POINT *b) {
+  // If |b| is not infinity, we have to decide whether
+  //     (X_a, Y_a) = (X_b/Z_b^2, Y_b/Z_b^3),
+  // or equivalently, whether
+  //     (X_a*Z_b^2, Y_a*Z_b^3) = (X_b, Y_b).
+
+  void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
+                          const EC_FELEM *b) = group->meth->felem_mul;
+  void (*const felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a) =
+      group->meth->felem_sqr;
+
+  EC_FELEM tmp, Zb2;
+  felem_sqr(group, &Zb2, &b->Z);        // Zb2 = Z_b^2
+  felem_mul(group, &tmp, &a->X, &Zb2);  // tmp = X_a * Z_b^2
+  ec_felem_sub(group, &tmp, &tmp, &b->X);
+  const BN_ULONG x_not_equal = ec_felem_non_zero_mask(group, &tmp);
+
+  felem_mul(group, &tmp, &a->Y, &Zb2);  // tmp = Y_a * Z_b^2
+  felem_mul(group, &tmp, &tmp, &b->Z);  // tmp = Y_a * Z_b^3
+  ec_felem_sub(group, &tmp, &tmp, &b->Y);
+  const BN_ULONG y_not_equal = ec_felem_non_zero_mask(group, &tmp);
+  const BN_ULONG x_and_y_equal = ~(x_not_equal | y_not_equal);
+
+  const BN_ULONG b_not_infinity = ec_felem_non_zero_mask(group, &b->Z);
+
+  const BN_ULONG equal = b_not_infinity & x_and_y_equal;
+  return equal & 1;
+}
+
 int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
                                    const EC_SCALAR *r) {
   if (ec_GFp_simple_is_at_infinity(group, p)) {

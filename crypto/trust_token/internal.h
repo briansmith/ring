@@ -42,9 +42,9 @@ extern "C" {
 #define PMBTOKEN_NONCE_SIZE 64
 
 typedef struct {
-  EC_RAW_POINT pub0;
-  EC_RAW_POINT pub1;
-  EC_RAW_POINT pubs;
+  EC_AFFINE pub0;
+  EC_AFFINE pub1;
+  EC_AFFINE pubs;
 } PMBTOKEN_CLIENT_KEY;
 
 typedef struct {
@@ -54,9 +54,9 @@ typedef struct {
   EC_SCALAR y1;
   EC_SCALAR xs;
   EC_SCALAR ys;
-  EC_RAW_POINT pub0;
-  EC_RAW_POINT pub1;
-  EC_RAW_POINT pubs;
+  EC_AFFINE pub0;
+  EC_AFFINE pub1;
+  EC_AFFINE pubs;
 } PMBTOKEN_ISSUER_KEY;
 
 // PMBTOKEN_PRETOKEN represents the intermediate state a client keeps during a
@@ -64,7 +64,7 @@ typedef struct {
 typedef struct pmb_pretoken_st {
   uint8_t t[PMBTOKEN_NONCE_SIZE];
   EC_SCALAR r;
-  EC_RAW_POINT Tp;
+  EC_AFFINE Tp;
 } PMBTOKEN_PRETOKEN;
 
 // PMBTOKEN_PRETOKEN_free releases the memory associated with |token|.

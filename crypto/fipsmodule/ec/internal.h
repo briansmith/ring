@@ -282,6 +282,15 @@ void ec_affine_to_jacobian(const EC_GROUP *group, EC_RAW_POINT *out,
 int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
                           const EC_RAW_POINT *p);
 
+// ec_jacobian_to_affine_batch converts |num| points in |in| from Jacobian
+// coordinates to affine coordinates and writes the results to |out|. It returns
+// one on success and zero if any of the input points were infinity.
+//
+// This function is not implemented for all curves. Add implementations as
+// needed.
+int ec_jacobian_to_affine_batch(const EC_GROUP *group, EC_AFFINE *out,
+                                const EC_RAW_POINT *in, size_t num);
+
 // ec_point_set_affine_coordinates sets |out|'s to a point with affine
 // coordinates |x| and |y|. It returns one if the point is on the curve and
 // zero otherwise. If the point is not on the curve, the value of |out| is
@@ -312,6 +321,10 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(const EC_GROUP *group,
 // and |b| if |mask| is all zeros.
 void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
                      const EC_RAW_POINT *a, const EC_RAW_POINT *b);
+
+// ec_affine_select behaves like |ec_point_select| but acts on affine points.
+void ec_affine_select(const EC_GROUP *group, EC_AFFINE *out, BN_ULONG mask,
+                      const EC_AFFINE *a, const EC_AFFINE *b);
 
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
 // order, with |r|. It returns one if the values match and zero if |p| is the
@@ -350,6 +363,11 @@ int ec_point_from_uncompressed(const EC_GROUP *group, EC_AFFINE *out,
 // external APIs not checking the return value.
 void ec_set_to_safe_point(const EC_GROUP *group, EC_RAW_POINT *out);
 
+// ec_affine_jacobian_equal returns one if |a| and |b| represent the same point
+// and zero otherwise. It treats both inputs as secret.
+int ec_affine_jacobian_equal(const EC_GROUP *group, const EC_AFFINE *a,
+                             const EC_RAW_POINT *b);
+
 
 // Implementation details.
 
@@ -364,6 +382,10 @@ struct ec_method_st {
   // and zero if |p| is the point at infinity.
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_RAW_POINT *p,
                                       EC_FELEM *x, EC_FELEM *y);
+
+  // jacobian_to_affine_batch implements |ec_jacobian_to_affine_batch|.
+  int (*jacobian_to_affine_batch)(const EC_GROUP *group, EC_AFFINE *out,
+                                  const EC_RAW_POINT *in, size_t num);
 
   // add sets |r| to |a| + |b|.
   void (*add)(const EC_GROUP *group, EC_RAW_POINT *r, const EC_RAW_POINT *a,

@@ -39,7 +39,7 @@ typedef struct {
                 const uint8_t t[PMBTOKEN_NONCE_SIZE]);
   // hash_s implements the H_s operation in PMBTokens. It returns on on success
   // and zero on error.
-  int (*hash_s)(const EC_GROUP *group, EC_RAW_POINT *out, const EC_RAW_POINT *t,
+  int (*hash_s)(const EC_GROUP *group, EC_RAW_POINT *out, const EC_AFFINE *t,
                 const uint8_t s[PMBTOKEN_NONCE_SIZE]);
   // hash_c implements the H_c operation in PMBTokens. It returns on on success
   // and zero on error.
@@ -112,32 +112,26 @@ static int generate_keypair(const PMBTOKEN_METHOD *method, EC_SCALAR *out_x,
 }
 
 static int point_to_cbb(CBB *out, const EC_GROUP *group,
-                        const EC_RAW_POINT *point) {
-  EC_AFFINE affine;
-  if (!ec_jacobian_to_affine(group, &affine, point)) {
-    return 0;
-  }
+                        const EC_AFFINE *point) {
   size_t len =
-      ec_point_to_bytes(group, &affine, POINT_CONVERSION_UNCOMPRESSED, NULL, 0);
+      ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, NULL, 0);
   if (len == 0) {
     return 0;
   }
   uint8_t *p;
   return CBB_add_space(out, &p, len) &&
-         ec_point_to_bytes(group, &affine, POINT_CONVERSION_UNCOMPRESSED, p,
+         ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, p,
                            len) == len;
 }
 
 static int cbs_get_prefixed_point(CBS *cbs, const EC_GROUP *group,
-                                  EC_RAW_POINT *out) {
+                                  EC_AFFINE *out) {
   CBS child;
-  EC_AFFINE affine;
   if (!CBS_get_u16_length_prefixed(cbs, &child) ||
-      !ec_point_from_uncompressed(group, &affine, CBS_data(&child),
+      !ec_point_from_uncompressed(group, out, CBS_data(&child),
                                   CBS_len(&child))) {
     return 0;
   }
-  ec_affine_to_jacobian(group, out, &affine);
   return 1;
 }
 
@@ -148,11 +142,11 @@ void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *pretoken) {
 static int pmbtoken_generate_key(const PMBTOKEN_METHOD *method,
                                  CBB *out_private, CBB *out_public) {
   const EC_GROUP *group = method->group;
-  EC_RAW_POINT pub0, pub1, pubs;
+  EC_RAW_POINT pub[3];
   EC_SCALAR x0, y0, x1, y1, xs, ys;
-  if (!generate_keypair(method, &x0, &y0, &pub0) ||
-      !generate_keypair(method, &x1, &y1, &pub1) ||
-      !generate_keypair(method, &xs, &ys, &pubs)) {
+  if (!generate_keypair(method, &x0, &y0, &pub[0]) ||
+      !generate_keypair(method, &x1, &y1, &pub[1]) ||
+      !generate_keypair(method, &xs, &ys, &pub[2])) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_KEYGEN_FAILURE);
     return 0;
   }
@@ -168,15 +162,20 @@ static int pmbtoken_generate_key(const PMBTOKEN_METHOD *method,
     ec_scalar_to_bytes(group, buf, &scalar_len, scalars[i]);
   }
 
+  EC_AFFINE pub_affine[3];
+  if (!ec_jacobian_to_affine_batch(group, pub_affine, pub, 3)) {
+    return 0;
+  }
+
   // TODO(https://crbug.com/boringssl/331): When updating the key format, remove
   // the redundant length prefixes.
   CBB child;
   if (!CBB_add_u16_length_prefixed(out_public, &child) ||
-      !point_to_cbb(&child, group, &pub0) ||
+      !point_to_cbb(&child, group, &pub_affine[0]) ||
       !CBB_add_u16_length_prefixed(out_public, &child) ||
-      !point_to_cbb(&child, group, &pub1) ||
+      !point_to_cbb(&child, group, &pub_affine[1]) ||
       !CBB_add_u16_length_prefixed(out_public, &child) ||
-      !point_to_cbb(&child, group, &pubs) ||
+      !point_to_cbb(&child, group, &pub_affine[2]) ||
       !CBB_flush(out_public)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
     return 0;
@@ -222,12 +221,18 @@ static int pmbtoken_issuer_key_from_bytes(const PMBTOKEN_METHOD *method,
   }
 
   // Recompute the public key.
-  if (!mul_twice_base(group, &key->pubs, &key->xs, &method->h, &key->ys) ||
-      !mul_twice_base(group, &key->pub0, &key->x0, &method->h, &key->y0) ||
-      !mul_twice_base(group, &key->pub1, &key->x1, &method->h, &key->y1)) {
+  EC_RAW_POINT pub[3];
+  EC_AFFINE pub_affine[3];
+  if (!mul_twice_base(group, &pub[0], &key->x0, &method->h, &key->y0) ||
+      !mul_twice_base(group, &pub[1], &key->x1, &method->h, &key->y1) ||
+      !mul_twice_base(group, &pub[2], &key->xs, &method->h, &key->ys) ||
+      !ec_jacobian_to_affine_batch(group, pub_affine, pub, 3)) {
     return 0;
   }
 
+  key->pub0 = pub_affine[0];
+  key->pub1 = pub_affine[1];
+  key->pubs = pub_affine[2];
   return 1;
 }
 
@@ -265,9 +270,10 @@ static STACK_OF(PMBTOKEN_PRETOKEN) *
     ec_scalar_from_montgomery(group, &pretoken->r, &pretoken->r);
     ec_scalar_from_montgomery(group, &rinv, &rinv);
 
-    EC_RAW_POINT T;
+    EC_RAW_POINT T, Tp;
     if (!method->hash_t(group, &T, pretoken->t) ||
-        !ec_point_mul_scalar(group, &pretoken->Tp, &T, &rinv)) {
+        !ec_point_mul_scalar(group, &Tp, &T, &rinv) ||
+        !ec_jacobian_to_affine(group, &pretoken->Tp, &Tp)) {
       goto err;
     }
 
@@ -313,9 +319,9 @@ static int scalar_from_cbs(CBS *cbs, const EC_GROUP *group, EC_SCALAR *out) {
 }
 
 static int hash_c_dleq(const PMBTOKEN_METHOD *method, EC_SCALAR *out,
-                       const EC_RAW_POINT *X, const EC_RAW_POINT *T,
-                       const EC_RAW_POINT *S, const EC_RAW_POINT *W,
-                       const EC_RAW_POINT *K0, const EC_RAW_POINT *K1) {
+                       const EC_AFFINE *X, const EC_AFFINE *T,
+                       const EC_AFFINE *S, const EC_AFFINE *W,
+                       const EC_AFFINE *K0, const EC_AFFINE *K1) {
   static const uint8_t kDLEQ2Label[] = "DLEQ2";
 
   int ok = 0;
@@ -346,11 +352,11 @@ err:
 }
 
 static int hash_c_dleqor(const PMBTOKEN_METHOD *method, EC_SCALAR *out,
-                         const EC_RAW_POINT *X0, const EC_RAW_POINT *X1,
-                         const EC_RAW_POINT *T, const EC_RAW_POINT *S,
-                         const EC_RAW_POINT *W, const EC_RAW_POINT *K00,
-                         const EC_RAW_POINT *K01, const EC_RAW_POINT *K10,
-                         const EC_RAW_POINT *K11) {
+                         const EC_AFFINE *X0, const EC_AFFINE *X1,
+                         const EC_AFFINE *T, const EC_AFFINE *S,
+                         const EC_AFFINE *W, const EC_AFFINE *K00,
+                         const EC_AFFINE *K01, const EC_AFFINE *K10,
+                         const EC_AFFINE *K11) {
   static const uint8_t kDLEQOR2Label[] = "DLEQOR2";
 
   int ok = 0;
@@ -396,16 +402,29 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
   // We generate a DLEQ proof for the validity token and a DLEQOR2 proof for the
   // private metadata token. To allow amortizing Jacobian-to-affine conversions,
   // we compute Ki for both proofs first.
+  enum {
+    idx_T,
+    idx_S,
+    idx_W,
+    idx_Ws,
+    idx_Ks0,
+    idx_Ks1,
+    idx_Kb0,
+    idx_Kb1,
+    idx_Ko0,
+    idx_Ko1,
+    num_idx,
+  };
+  EC_RAW_POINT jacobians[num_idx];
 
   // Setup the DLEQ proof.
   EC_SCALAR ks0, ks1;
-  EC_RAW_POINT Ks0, Ks1;
   if (// ks0, ks1 <- Zp
       !ec_random_nonzero_scalar(group, &ks0, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &ks1, kDefaultAdditionalData) ||
       // Ks = ks0*(G;T) + ks1*(H;S)
-      !mul_twice_base(group, &Ks0, &ks0, &method->h, &ks1) ||
-      !mul_twice(group, &Ks1, T, &ks0, S, &ks1)) {
+      !mul_twice_base(group, &jacobians[idx_Ks0], &ks0, &method->h, &ks1) ||
+      !mul_twice(group, &jacobians[idx_Ks1], T, &ks0, S, &ks1)) {
     return 0;
   }
 
@@ -413,42 +432,54 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
   // to the private metadata value) and pubo (public key corresponding to the
   // other value) in constant time.
   BN_ULONG mask = ((BN_ULONG)0) - (private_metadata & 1);
+  EC_AFFINE pubo_affine;
   EC_RAW_POINT pubo;
   EC_SCALAR xb, yb;
   ec_scalar_select(group, &xb, mask, &priv->x1, &priv->x0);
   ec_scalar_select(group, &yb, mask, &priv->y1, &priv->y0);
-  ec_point_select(group, &pubo, mask, &priv->pub0, &priv->pub1);
+  ec_affine_select(group, &pubo_affine, mask, &priv->pub0, &priv->pub1);
+  ec_affine_to_jacobian(group, &pubo, &pubo_affine);
 
   EC_SCALAR k0, k1, co, uo, vo;
-  EC_RAW_POINT Kb0, Kb1, Ko0, Ko1;
   if (// k0, k1 <- Zp
       !ec_random_nonzero_scalar(group, &k0, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &k1, kDefaultAdditionalData) ||
       // Kb = k0*(G;T) + k1*(H;S)
-      !mul_twice_base(group, &Kb0, &k0, &method->h, &k1) ||
-      !mul_twice(group, &Kb1, T, &k0, S, &k1) ||
+      !mul_twice_base(group, &jacobians[idx_Kb0], &k0, &method->h, &k1) ||
+      !mul_twice(group, &jacobians[idx_Kb1], T, &k0, S, &k1) ||
       // co, uo, vo <- Zp
       !ec_random_nonzero_scalar(group, &co, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &uo, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &vo, kDefaultAdditionalData) ||
       // Ko = uo*(G;T) + vo*(H;S) - co*(pubo;W)
-      !mul_add_and_sub(group, &Ko0, &Ko1, T, &uo, &method->h, S, &vo, &pubo, W,
-                       &co)) {
+      !mul_add_and_sub(group, &jacobians[idx_Ko0], &jacobians[idx_Ko1], T, &uo,
+                       &method->h, S, &vo, &pubo, W, &co)) {
+    return 0;
+  }
+
+  EC_AFFINE affines[num_idx];
+  jacobians[idx_T] = *T;
+  jacobians[idx_S] = *S;
+  jacobians[idx_W] = *W;
+  jacobians[idx_Ws] = *Ws;
+  if (!ec_jacobian_to_affine_batch(group, affines, jacobians, num_idx)) {
     return 0;
   }
 
   // Select the K corresponding to K0 and K1 in constant-time.
-  EC_RAW_POINT K00, K01, K10, K11;
-  ec_point_select(group, &K00, mask, &Ko0, &Kb0);
-  ec_point_select(group, &K01, mask, &Ko1, &Kb1);
-  ec_point_select(group, &K10, mask, &Kb0, &Ko0);
-  ec_point_select(group, &K11, mask, &Kb1, &Ko1);
+  EC_AFFINE K00, K01, K10, K11;
+  ec_affine_select(group, &K00, mask, &affines[idx_Ko0], &affines[idx_Kb0]);
+  ec_affine_select(group, &K01, mask, &affines[idx_Ko1], &affines[idx_Kb1]);
+  ec_affine_select(group, &K10, mask, &affines[idx_Kb0], &affines[idx_Ko0]);
+  ec_affine_select(group, &K11, mask, &affines[idx_Kb1], &affines[idx_Ko1]);
 
   // Compute c = Hc(...) for the two proofs.
   EC_SCALAR cs, c;
-  if (!hash_c_dleq(method, &cs, &priv->pubs, T, S, Ws, &Ks0, &Ks1) ||
-      !hash_c_dleqor(method, &c, &priv->pub0, &priv->pub1, T, S, W, &K00, &K01,
-                     &K10, &K11)) {
+  if (!hash_c_dleq(method, &cs, &priv->pubs, &affines[idx_T], &affines[idx_S],
+                   &affines[idx_Ws], &affines[idx_Ks0], &affines[idx_Ks1]) ||
+      !hash_c_dleqor(method, &c, &priv->pub0, &priv->pub1, &affines[idx_T],
+                     &affines[idx_S], &affines[idx_W], &K00, &K01, &K10,
+                     &K11)) {
     return 0;
   }
 
@@ -523,6 +554,20 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
   // We verify a DLEQ proof for the validity token and a DLEQOR2 proof for the
   // private metadata token. To allow amortizing Jacobian-to-affine conversions,
   // we compute Ki for both proofs first.
+  enum {
+    idx_T,
+    idx_S,
+    idx_W,
+    idx_Ws,
+    idx_Ks0,
+    idx_Ks1,
+    idx_K00,
+    idx_K01,
+    idx_K10,
+    idx_K11,
+    num_idx,
+  };
+  EC_RAW_POINT jacobians[num_idx];
 
   // Decode the DLEQ proof.
   EC_SCALAR cs, us, vs;
@@ -534,9 +579,10 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
   }
 
   // Ks = us*(G;T) + vs*(H;S) - cs*(pubs;Ws)
-  EC_RAW_POINT Ks0, Ks1;
-  if (!mul_add_and_sub(group, &Ks0, &Ks1, T, &us, &method->h, S, &vs,
-                       &pub->pubs, Ws, &cs)) {
+  EC_RAW_POINT pubs;
+  ec_affine_to_jacobian(group, &pubs, &pub->pubs);
+  if (!mul_add_and_sub(group, &jacobians[idx_Ks0], &jacobians[idx_Ks1], T, &us,
+                       &method->h, S, &vs, &pubs, Ws, &cs)) {
     return 0;
   }
 
@@ -552,19 +598,32 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
     return 0;
   }
 
-  EC_RAW_POINT K00, K01, K10, K11;
+  EC_RAW_POINT pub0, pub1;
+  ec_affine_to_jacobian(group, &pub0, &pub->pub0);
+  ec_affine_to_jacobian(group, &pub1, &pub->pub1);
   if (// K0 = u0*(G;T) + v0*(H;S) - c0*(pub0;W)
-      !mul_add_and_sub(group, &K00, &K01, T, &u0, &method->h, S, &v0,
-                       &pub->pub0, W, &c0) ||
+      !mul_add_and_sub(group, &jacobians[idx_K00], &jacobians[idx_K01], T, &u0,
+                       &method->h, S, &v0, &pub0, W, &c0) ||
       // K1 = u1*(G;T) + v1*(H;S) - c1*(pub1;Ws)
-      !mul_add_and_sub(group, &K10, &K11, T, &u1, &method->h, S, &v1,
-                       &pub->pub1, W, &c1)) {
+      !mul_add_and_sub(group, &jacobians[idx_K10], &jacobians[idx_K11], T, &u1,
+                       &method->h, S, &v1, &pub1, W, &c1)) {
+    return 0;
+  }
+
+  EC_AFFINE affines[num_idx];
+  jacobians[idx_T] = *T;
+  jacobians[idx_S] = *S;
+  jacobians[idx_W] = *W;
+  jacobians[idx_Ws] = *Ws;
+  if (!ec_jacobian_to_affine_batch(group, affines, jacobians, num_idx)) {
     return 0;
   }
 
   // Check the DLEQ proof.
   EC_SCALAR calculated;
-  if (!hash_c_dleq(method, &calculated, &pub->pubs, T, S, Ws, &Ks0, &Ks1)) {
+  if (!hash_c_dleq(method, &calculated, &pub->pubs, &affines[idx_T],
+                   &affines[idx_S], &affines[idx_Ws], &affines[idx_Ks0],
+                   &affines[idx_Ks1])) {
     return 0;
   }
 
@@ -575,8 +634,10 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
   }
 
   // Check the DLEQOR proof.
-  if (!hash_c_dleqor(method, &calculated, &pub->pub0, &pub->pub1, T, S, W, &K00,
-                     &K01, &K10, &K11)) {
+  if (!hash_c_dleqor(method, &calculated, &pub->pub0, &pub->pub1,
+                     &affines[idx_T], &affines[idx_S], &affines[idx_W],
+                     &affines[idx_K00], &affines[idx_K01], &affines[idx_K10],
+                     &affines[idx_K11])) {
     return 0;
   }
 
@@ -602,11 +663,13 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
   }
 
   for (size_t i = 0; i < num_to_issue; i++) {
+    EC_AFFINE Tp_affine;
     EC_RAW_POINT Tp;
-    if (!cbs_get_prefixed_point(cbs, group, &Tp)) {
+    if (!cbs_get_prefixed_point(cbs, group, &Tp_affine)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
       return 0;
     }
+    ec_affine_to_jacobian(group, &Tp, &Tp_affine);
 
     EC_SCALAR xb, yb;
     BN_ULONG mask = ((BN_ULONG)0) - (private_metadata & 1);
@@ -615,20 +678,30 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
 
     uint8_t s[PMBTOKEN_NONCE_SIZE];
     RAND_bytes(s, PMBTOKEN_NONCE_SIZE);
-    EC_RAW_POINT Sp, Wp, Wsp;
+    EC_RAW_POINT Sp, W[2];
+    EC_AFFINE W_affine[2];
     CBB child;
-    if (!method->hash_s(group, &Sp, &Tp, s) ||
-        !mul_twice(group, &Wp, &Tp, &xb, &Sp, &yb) ||
-        !mul_twice(group, &Wsp, &Tp, &key->xs, &Sp, &key->ys) ||
+    if (!method->hash_s(group, &Sp, &Tp_affine, s) ||
+        !mul_twice(group, &W[0], &Tp, &xb, &Sp, &yb) ||
+        !mul_twice(group, &W[1], &Tp, &key->xs, &Sp, &key->ys) ||
+        // This call to |ec_jacobian_to_affine_batch| could be merged with the
+        // one in |dleq_generate|, but we expect to implement the batched DLEQOR
+        // proofs (see figure 15 of the PMBTokens paper), which would require a
+        // different interface.
+        //
+        // We similarly pass inputs to |dleq_generate| in Jacobian form, even
+        // though the affine values have already been computed. In the batched
+        // version, these inputs are the result of a multiplication.
+        !ec_jacobian_to_affine_batch(group, W_affine, W, 2) ||
         !CBB_add_bytes(cbb, s, PMBTOKEN_NONCE_SIZE) ||
         // TODO(https://crbug.com/boringssl/331): When updating the key format,
         // remove the redundant length prefixes.
         !CBB_add_u16_length_prefixed(cbb, &child) ||
-        !point_to_cbb(&child, group, &Wp) ||
+        !point_to_cbb(&child, group, &W_affine[0]) ||
         !CBB_add_u16_length_prefixed(cbb, &child) ||
-        !point_to_cbb(&child, group, &Wsp) ||
+        !point_to_cbb(&child, group, &W_affine[1]) ||
         !CBB_add_u16_length_prefixed(cbb, &child) ||
-        !dleq_generate(method, &child, key, &Tp, &Sp, &Wp, &Wsp,
+        !dleq_generate(method, &child, key, &Tp, &Sp, &W[0], &W[1],
                        private_metadata) ||
         !CBB_flush(cbb)) {
       return 0;
@@ -667,19 +740,25 @@ static STACK_OF(TRUST_TOKEN) *
         sk_PMBTOKEN_PRETOKEN_value(pretokens, i);
 
     uint8_t s[PMBTOKEN_NONCE_SIZE];
-    EC_RAW_POINT Wp, Wsp;
+    EC_AFFINE Wp_affine, Wsp_affine;
     CBS proof;
     if (!CBS_copy_bytes(cbs, s, PMBTOKEN_NONCE_SIZE) ||
-        !cbs_get_prefixed_point(cbs, group, &Wp) ||
-        !cbs_get_prefixed_point(cbs, group, &Wsp) ||
+        !cbs_get_prefixed_point(cbs, group, &Wp_affine) ||
+        !cbs_get_prefixed_point(cbs, group, &Wsp_affine) ||
         !CBS_get_u16_length_prefixed(cbs, &proof)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
       goto err;
     }
 
-    EC_RAW_POINT Sp;
+    // We pass |Tp| in Jacobian form to |dleq_verify| although the affine form
+    // is already available. This is in anticipation of supporting batched DLEQ
+    // proofs, where the input would be the result of a multiplication.
+    EC_RAW_POINT Tp, Wp, Wsp, Sp;
+    ec_affine_to_jacobian(group, &Tp, &pretoken->Tp);
+    ec_affine_to_jacobian(group, &Wp, &Wp_affine);
+    ec_affine_to_jacobian(group, &Wsp, &Wsp_affine);
     if (!method->hash_s(group, &Sp, &pretoken->Tp, s) ||
-        !dleq_verify(method, &proof, key, &pretoken->Tp, &Sp, &Wp, &Wsp)) {
+        !dleq_verify(method, &proof, key, &Tp, &Sp, &Wp, &Wsp)) {
       goto err;
     }
 
@@ -688,10 +767,13 @@ static STACK_OF(TRUST_TOKEN) *
       goto err;
     }
 
-    EC_RAW_POINT S, W, Ws;
-    if (!ec_point_mul_scalar(group, &S, &Sp, &pretoken->r) ||
-        !ec_point_mul_scalar(group, &W, &Wp, &pretoken->r) ||
-        !ec_point_mul_scalar(group, &Ws, &Wsp, &pretoken->r)) {
+    // Unblind the token.
+    EC_RAW_POINT jacobians[3];
+    EC_AFFINE affines[3];
+    if (!ec_point_mul_scalar(group, &jacobians[0], &Sp, &pretoken->r) ||
+        !ec_point_mul_scalar(group, &jacobians[1], &Wp, &pretoken->r) ||
+        !ec_point_mul_scalar(group, &jacobians[2], &Wsp, &pretoken->r) ||
+        !ec_jacobian_to_affine_batch(group, affines, jacobians, 3)) {
       goto err;
     }
 
@@ -705,11 +787,11 @@ static STACK_OF(TRUST_TOKEN) *
         // TODO(https://crbug.com/boringssl/331): When updating the key format,
         // remove the redundant length prefixes.
         !CBB_add_u16_length_prefixed(&token_cbb, &child) ||
-        !point_to_cbb(&child, group, &S) ||
+        !point_to_cbb(&child, group, &affines[0]) ||
         !CBB_add_u16_length_prefixed(&token_cbb, &child) ||
-        !point_to_cbb(&child, group, &W) ||
+        !point_to_cbb(&child, group, &affines[1]) ||
         !CBB_add_u16_length_prefixed(&token_cbb, &child) ||
-        !point_to_cbb(&child, group, &Ws) ||
+        !point_to_cbb(&child, group, &affines[2]) ||
         !CBB_flush(&token_cbb)) {
       CBB_cleanup(&token_cbb);
       goto err;
@@ -741,7 +823,7 @@ static int pmbtoken_read(const PMBTOKEN_METHOD *method,
   const EC_GROUP *group = method->group;
   CBS cbs;
   CBS_init(&cbs, token, token_len);
-  EC_RAW_POINT S, W, Ws;
+  EC_AFFINE S, W, Ws;
   if (!CBS_copy_bytes(&cbs, out_nonce, PMBTOKEN_NONCE_SIZE) ||
       !cbs_get_prefixed_point(&cbs, group, &S) ||
       !cbs_get_prefixed_point(&cbs, group, &W) ||
@@ -757,22 +839,23 @@ static int pmbtoken_read(const PMBTOKEN_METHOD *method,
     return 0;
   }
 
-  EC_RAW_POINT calculated;
+  EC_RAW_POINT S_jacobian, calculated;
   // Check the validity of the token.
-  if (!mul_twice(group, &calculated, &T, &key->xs, &S, &key->ys) ||
-      !ec_GFp_simple_points_equal(group, &calculated, &Ws)) {
+  ec_affine_to_jacobian(group, &S_jacobian, &S);
+  if (!mul_twice(group, &calculated, &T, &key->xs, &S_jacobian, &key->ys) ||
+      !ec_affine_jacobian_equal(group, &Ws, &calculated)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BAD_VALIDITY_CHECK);
     return 0;
   }
 
   EC_RAW_POINT W0, W1;
-  if (!mul_twice(group, &W0, &T, &key->x0, &S, &key->y0) ||
-      !mul_twice(group, &W1, &T, &key->x1, &S, &key->y1)) {
+  if (!mul_twice(group, &W0, &T, &key->x0, &S_jacobian, &key->y0) ||
+      !mul_twice(group, &W1, &T, &key->x1, &S_jacobian, &key->y1)) {
     return 0;
   }
 
-  const int is_W0 = ec_GFp_simple_points_equal(group, &W0, &W);
-  const int is_W1 = ec_GFp_simple_points_equal(group, &W1, &W);
+  const int is_W0 = ec_affine_jacobian_equal(group, &W, &W0);
+  const int is_W1 = ec_affine_jacobian_equal(group, &W, &W1);
   const int is_valid = is_W0 ^ is_W1;
   if (!is_valid) {
     // Invalid tokens will fail the validity check above.
@@ -795,14 +878,15 @@ static int pmbtoken_exp0_hash_t(const EC_GROUP *group, EC_RAW_POINT *out,
 }
 
 static int pmbtoken_exp0_hash_s(const EC_GROUP *group, EC_RAW_POINT *out,
-                                const EC_RAW_POINT *t,
+                                const EC_AFFINE *t,
                                 const uint8_t s[PMBTOKEN_NONCE_SIZE]) {
   const uint8_t kHashSLabel[] = "PMBTokensV0 HashS";
   int ret = 0;
   CBB cbb;
   uint8_t *buf = NULL;
   size_t len;
-  if (!CBB_init(&cbb, 0) || !point_to_cbb(&cbb, group, t) ||
+  if (!CBB_init(&cbb, 0) ||
+      !point_to_cbb(&cbb, group, t) ||
       !CBB_add_bytes(&cbb, s, PMBTOKEN_NONCE_SIZE) ||
       !CBB_finish(&cbb, &buf, &len) ||
       !ec_hash_to_curve_p521_xmd_sha512_sswu_draft06(
@@ -994,7 +1078,7 @@ static int pmbtoken_exp1_hash_t(const EC_GROUP *group, EC_RAW_POINT *out,
 }
 
 static int pmbtoken_exp1_hash_s(const EC_GROUP *group, EC_RAW_POINT *out,
-                                const EC_RAW_POINT *t,
+                                const EC_AFFINE *t,
                                 const uint8_t s[PMBTOKEN_NONCE_SIZE]) {
   const uint8_t kHashSLabel[] = "PMBTokens Experiment V1 HashS";
   int ret = 0;

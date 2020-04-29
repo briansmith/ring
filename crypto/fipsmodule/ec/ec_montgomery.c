@@ -200,6 +200,52 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
   return 1;
 }
 
+static int ec_GFp_mont_jacobian_to_affine_batch(const EC_GROUP *group,
+                                                EC_AFFINE *out,
+                                                const EC_RAW_POINT *in,
+                                                size_t num) {
+  if (num == 0) {
+    return 1;
+  }
+
+  // Compute prefix products of all Zs. Use |out[i].X| as scratch space
+  // to store these values.
+  out[0].X = in[0].Z;
+  for (size_t i = 1; i < num; i++) {
+    ec_GFp_mont_felem_mul(group, &out[i].X, &out[i - 1].X, &in[i].Z);
+  }
+
+  // Some input was infinity iff the product of all Zs is zero.
+  if (ec_felem_non_zero_mask(group, &out[num - 1].X) == 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
+    return 0;
+  }
+
+  // Invert the product of all Zs.
+  EC_FELEM zinvprod;
+  ec_GFp_mont_felem_inv0(group, &zinvprod, &out[num - 1].X);
+  for (size_t i = num - 1; i < num; i--) {
+    // Our loop invariant is that |zinvprod| is Z0^-1 * Z1^-1 * ... * Zi^-1.
+    // Recover Zi^-1 by multiplying by the previous product.
+    EC_FELEM zinv, zinv2;
+    if (i == 0) {
+      zinv = zinvprod;
+    } else {
+      ec_GFp_mont_felem_mul(group, &zinv, &zinvprod, &out[i - 1].X);
+      // Maintain the loop invariant for the next iteration.
+      ec_GFp_mont_felem_mul(group, &zinvprod, &zinvprod, &in[i].Z);
+    }
+
+    // Compute affine coordinates: x = X * Z^-2 and y = Y * Z^-3.
+    ec_GFp_mont_felem_sqr(group, &zinv2, &zinv);
+    ec_GFp_mont_felem_mul(group, &out[i].X, &in[i].X, &zinv2);
+    ec_GFp_mont_felem_mul(group, &out[i].Y, &in[i].Y, &zinv2);
+    ec_GFp_mont_felem_mul(group, &out[i].Y, &out[i].Y, &zinv);
+  }
+
+  return 1;
+}
+
 void ec_GFp_mont_add(const EC_GROUP *group, EC_RAW_POINT *out,
                      const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
   if (a == b) {
@@ -456,6 +502,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->group_finish = ec_GFp_mont_group_finish;
   out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates = ec_GFp_mont_point_get_affine_coordinates;
+  out->jacobian_to_affine_batch = ec_GFp_mont_jacobian_to_affine_batch;
   out->add = ec_GFp_mont_add;
   out->dbl = ec_GFp_mont_dbl;
   out->mul = ec_GFp_mont_mul;

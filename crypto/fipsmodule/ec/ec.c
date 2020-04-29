@@ -809,6 +809,15 @@ int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
   return group->meth->point_get_affine_coordinates(group, p, &out->X, &out->Y);
 }
 
+int ec_jacobian_to_affine_batch(const EC_GROUP *group, EC_AFFINE *out,
+                                const EC_RAW_POINT *in, size_t num) {
+  if (group->meth->jacobian_to_affine_batch == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  return group->meth->jacobian_to_affine_batch(group, out, in, num);
+}
+
 int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_AFFINE *out,
                                     const EC_FELEM *x, const EC_FELEM *y) {
   void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
@@ -1044,6 +1053,12 @@ void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
   ec_felem_select(group, &out->X, mask, &a->X, &b->X);
   ec_felem_select(group, &out->Y, mask, &a->Y, &b->Y);
   ec_felem_select(group, &out->Z, mask, &a->Z, &b->Z);
+}
+
+void ec_affine_select(const EC_GROUP *group, EC_AFFINE *out, BN_ULONG mask,
+                      const EC_AFFINE *a, const EC_AFFINE *b) {
+  ec_felem_select(group, &out->X, mask, &a->X, &b->X);
+  ec_felem_select(group, &out->Y, mask, &a->Y, &b->Y);
 }
 
 int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
