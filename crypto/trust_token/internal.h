@@ -30,6 +30,8 @@ extern "C" {
 #endif
 
 
+// PMBTokens.
+//
 // PMBTokens is described in https://eprint.iacr.org/2020/072/20200324:214215
 // and provides anonymous tokens with private metadata. We implement the
 // construction with validity verification, described in appendix H,
@@ -130,6 +132,14 @@ int pmbtoken_read(const PMBTOKEN_ISSUER_KEY *key,
                   size_t token_len);
 
 
+
+// Trust Tokens internals.
+
+struct trust_token_method_st {
+  // TODO(davidben): Add functions here to swap out the PMBTokens mechanism.
+  char empty;
+};
+
 // Structure representing a single Trust Token public key with the specified ID.
 struct trust_token_client_key_st {
   uint32_t id;
@@ -144,6 +154,8 @@ struct trust_token_issuer_key_st {
 };
 
 struct trust_token_client_st {
+  const TRUST_TOKEN_METHOD *method;
+
   // max_batchsize is the maximum supported batchsize.
   uint16_t max_batchsize;
 
@@ -163,6 +175,8 @@ struct trust_token_client_st {
 
 
 struct trust_token_issuer_st {
+  const TRUST_TOKEN_METHOD *method;
+
   // max_batchsize is the maximum supported batchsize.
   uint16_t max_batchsize;
 

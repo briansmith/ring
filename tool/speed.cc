@@ -1019,8 +1019,8 @@ static PMBTOKEN_PRETOKEN *pmbtoken_pretoken_dup(PMBTOKEN_PRETOKEN *in) {
   return out;
 }
 
-static bool SpeedTrustToken(std::string name, size_t batchsize,
-                            const std::string &selected) {
+static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
+                            size_t batchsize, const std::string &selected) {
   if (!selected.empty() && selected.find("trusttoken") == std::string::npos) {
     return true;
   }
@@ -1031,24 +1031,25 @@ static bool SpeedTrustToken(std::string name, size_t batchsize,
         uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
         size_t priv_key_len, pub_key_len;
         return TRUST_TOKEN_generate_key(
-            priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE, pub_key,
-            &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, 0);
+            method, priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE,
+            pub_key, &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, 0);
       })) {
     fprintf(stderr, "TRUST_TOKEN_generate_key failed.\n");
     return false;
   }
   results.Print(name + " generate_key");
 
-  bssl::UniquePtr<TRUST_TOKEN_CLIENT> client(TRUST_TOKEN_CLIENT_new(batchsize));
-  bssl::UniquePtr<TRUST_TOKEN_ISSUER> issuer(TRUST_TOKEN_ISSUER_new(batchsize));
+  bssl::UniquePtr<TRUST_TOKEN_CLIENT> client(
+      TRUST_TOKEN_CLIENT_new(method, batchsize));
+  bssl::UniquePtr<TRUST_TOKEN_ISSUER> issuer(
+      TRUST_TOKEN_ISSUER_new(method, batchsize));
   uint8_t priv_key[TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE];
   uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
   size_t priv_key_len, pub_key_len, key_index;
-  if (!client ||
-      !issuer ||
+  if (!client || !issuer ||
       !TRUST_TOKEN_generate_key(
-          priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE, pub_key,
-          &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, 0) ||
+          method, priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE,
+          pub_key, &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, 0) ||
       !TRUST_TOKEN_CLIENT_add_key(client.get(), &key_index, pub_key,
                                   pub_key_len) ||
       !TRUST_TOKEN_ISSUER_add_key(issuer.get(), priv_key, priv_key_len)) {
@@ -1374,8 +1375,10 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedRSAKeyGen(selected) ||
       !SpeedHRSS(selected) ||
       !SpeedHashToCurve(selected) ||
-      !SpeedTrustToken("TrustToken-Batch1", 1, selected) ||
-      !SpeedTrustToken("TrustToken-Batch10", 10, selected)) {
+      !SpeedTrustToken("TrustToken-Exp0-Batch1", TRUST_TOKEN_experiment_v0(), 1,
+                       selected) ||
+      !SpeedTrustToken("TrustToken-Exp0-Batch10", TRUST_TOKEN_experiment_v0(),
+                       10, selected)) {
     return false;
   }
   if (g_print_json) {

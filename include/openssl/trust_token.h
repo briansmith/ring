@@ -36,6 +36,10 @@ extern "C" {
 //
 // WARNING: This API is unstable and subject to change.
 
+// TRUST_TOKEN_experiment_v0 is an experimental Trust Tokens protocol using
+// PMBTokens and P-521.
+OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v0(void);
+
 // trust_token_st represents a single-use token for the Trust Token protocol.
 // For the client, this is the token and its corresponding signature. For the
 // issuer, this is the token itself.
@@ -71,9 +75,9 @@ OPENSSL_EXPORT void TRUST_TOKEN_free(TRUST_TOKEN *token);
 //
 // This function returns one on success or zero on error.
 OPENSSL_EXPORT int TRUST_TOKEN_generate_key(
-    uint8_t *out_priv_key, size_t *out_priv_key_len, size_t max_priv_key_len,
-    uint8_t *out_pub_key, size_t *out_pub_key_len, size_t max_pub_key_len,
-    uint32_t id);
+    const TRUST_TOKEN_METHOD *method, uint8_t *out_priv_key,
+    size_t *out_priv_key_len, size_t max_priv_key_len, uint8_t *out_pub_key,
+    size_t *out_pub_key_len, size_t max_pub_key_len, uint32_t id);
 
 
 // Trust Token client implementation.
@@ -86,7 +90,8 @@ OPENSSL_EXPORT int TRUST_TOKEN_generate_key(
 // Issuance requests must be made in batches smaller than |max_batchsize|. This
 // function will return an error if |max_batchsize| is too large for Trust
 // Tokens.
-OPENSSL_EXPORT TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(size_t max_batchsize);
+OPENSSL_EXPORT TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(
+    const TRUST_TOKEN_METHOD *method, size_t max_batchsize);
 
 // TRUST_TOKEN_CLIENT_free releases memory associated with |ctx|.
 OPENSSL_EXPORT void TRUST_TOKEN_CLIENT_free(TRUST_TOKEN_CLIENT *ctx);
@@ -166,7 +171,8 @@ OPENSSL_EXPORT int TRUST_TOKEN_CLIENT_finish_redemption(
 // Issuance requests must be made in batches smaller than |max_batchsize|. This
 // function will return an error if |max_batchsize| is too large for Trust
 // Tokens.
-OPENSSL_EXPORT TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(size_t max_batchsize);
+OPENSSL_EXPORT TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(
+    const TRUST_TOKEN_METHOD *method, size_t max_batchsize);
 
 // TRUST_TOKEN_ISSUER_free releases memory associated with |ctx|.
 OPENSSL_EXPORT void TRUST_TOKEN_ISSUER_free(TRUST_TOKEN_ISSUER *ctx);
@@ -240,8 +246,9 @@ OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem(
 // |*out_value is set to the decrypted value, either zero or one. It returns one
 // on success and zero on error.
 OPENSSL_EXPORT int TRUST_TOKEN_decode_private_metadata(
-    uint8_t *out_value, const uint8_t *key, size_t key_len,
-    const uint8_t *client_data, size_t client_data_len, uint8_t encrypted_bit);
+    const TRUST_TOKEN_METHOD *method, uint8_t *out_value, const uint8_t *key,
+    size_t key_len, const uint8_t *client_data, size_t client_data_len,
+    uint8_t encrypted_bit);
 
 
 #if defined(__cplusplus)
@@ -254,7 +261,6 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(TRUST_TOKEN, TRUST_TOKEN_free)
 BORINGSSL_MAKE_DELETER(TRUST_TOKEN_CLIENT, TRUST_TOKEN_CLIENT_free)
 BORINGSSL_MAKE_DELETER(TRUST_TOKEN_ISSUER, TRUST_TOKEN_ISSUER_free)
-
 
 BSSL_NAMESPACE_END
 

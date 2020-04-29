@@ -27,6 +27,11 @@
 // protocol for issuing and redeeming tokens built on top of the PMBTokens
 // construction.
 
+const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v0(void) {
+  static const TRUST_TOKEN_METHOD kMethod = {0};
+  return &kMethod;
+}
+
 TRUST_TOKEN *TRUST_TOKEN_new(const uint8_t *data, size_t len) {
   TRUST_TOKEN *ret = OPENSSL_malloc(sizeof(TRUST_TOKEN));
   if (ret == NULL) {
@@ -52,7 +57,8 @@ void TRUST_TOKEN_free(TRUST_TOKEN *token) {
   OPENSSL_free(token);
 }
 
-int TRUST_TOKEN_generate_key(uint8_t *out_priv_key, size_t *out_priv_key_len,
+int TRUST_TOKEN_generate_key(const TRUST_TOKEN_METHOD *method,
+                             uint8_t *out_priv_key, size_t *out_priv_key_len,
                              size_t max_priv_key_len, uint8_t *out_pub_key,
                              size_t *out_pub_key_len, size_t max_pub_key_len,
                              uint32_t id) {
@@ -87,7 +93,8 @@ err:
   return ret;
 }
 
-TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(size_t max_batchsize) {
+TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(const TRUST_TOKEN_METHOD *method,
+                                           size_t max_batchsize) {
   if (max_batchsize > 0xffff) {
     // The protocol supports only two-byte token counts.
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
@@ -100,6 +107,7 @@ TRUST_TOKEN_CLIENT *TRUST_TOKEN_CLIENT_new(size_t max_batchsize) {
     return NULL;
   }
   OPENSSL_memset(ret, 0, sizeof(TRUST_TOKEN_CLIENT));
+  ret->method = method;
   ret->max_batchsize = (uint16_t)max_batchsize;
   return ret;
 }
@@ -300,7 +308,8 @@ int TRUST_TOKEN_CLIENT_finish_redemption(TRUST_TOKEN_CLIENT *ctx,
   return 1;
 }
 
-TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(size_t max_batchsize) {
+TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(const TRUST_TOKEN_METHOD *method,
+                                           size_t max_batchsize) {
   if (max_batchsize > 0xffff) {
     // The protocol supports only two-byte token counts.
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
@@ -313,6 +322,7 @@ TRUST_TOKEN_ISSUER *TRUST_TOKEN_ISSUER_new(size_t max_batchsize) {
     return NULL;
   }
   OPENSSL_memset(ret, 0, sizeof(TRUST_TOKEN_ISSUER));
+  ret->method = method;
   ret->max_batchsize = (uint16_t)max_batchsize;
   return ret;
 }
@@ -631,7 +641,8 @@ err:
   return ok;
 }
 
-int TRUST_TOKEN_decode_private_metadata(uint8_t *out_value, const uint8_t *key,
+int TRUST_TOKEN_decode_private_metadata(const TRUST_TOKEN_METHOD *method,
+                                        uint8_t *out_value, const uint8_t *key,
                                         size_t key_len,
                                         const uint8_t *client_data,
                                         size_t client_data_len,

@@ -45,8 +45,9 @@ TEST(TrustTokenTest, KeyGen) {
   uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
   size_t priv_key_len, pub_key_len;
   ASSERT_TRUE(TRUST_TOKEN_generate_key(
-      priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE, pub_key,
-      &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, 0x0001));
+      TRUST_TOKEN_experiment_v0(), priv_key, &priv_key_len,
+      TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE, pub_key, &pub_key_len,
+      TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, 0x0001));
   ASSERT_EQ(400u, priv_key_len);
   ASSERT_EQ(409u, pub_key_len);
 }
@@ -59,11 +60,16 @@ class TrustTokenProtocolTest : public ::testing::Test {
     return 7 + i;
   }
 
+  // TODO(davidben): Parameterize this on the Trust Tokens method.
+  static const TRUST_TOKEN_METHOD *method() {
+    return TRUST_TOKEN_experiment_v0();
+  }
+
  protected:
   void SetupContexts() {
-    client.reset(TRUST_TOKEN_CLIENT_new(client_max_batchsize));
+    client.reset(TRUST_TOKEN_CLIENT_new(method(), client_max_batchsize));
     ASSERT_TRUE(client);
-    issuer.reset(TRUST_TOKEN_ISSUER_new(issuer_max_batchsize));
+    issuer.reset(TRUST_TOKEN_ISSUER_new(method(), issuer_max_batchsize));
     ASSERT_TRUE(issuer);
 
     for (size_t i = 0; i < 3; i++) {
@@ -71,8 +77,8 @@ class TrustTokenProtocolTest : public ::testing::Test {
       uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
       size_t priv_key_len, pub_key_len, key_index;
       ASSERT_TRUE(TRUST_TOKEN_generate_key(
-          priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE, pub_key,
-          &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, KeyID(i)));
+          method(), priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE,
+          pub_key, &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, KeyID(i)));
       ASSERT_TRUE(TRUST_TOKEN_CLIENT_add_key(client.get(), &key_index, pub_key,
                                              pub_key_len));
       ASSERT_EQ(i, key_index);
@@ -302,9 +308,9 @@ TEST_F(TrustTokenProtocolTest, TruncatedRedemptionResponse) {
 }
 
 TEST_F(TrustTokenProtocolTest, IssuedWithBadKeyID) {
-  client.reset(TRUST_TOKEN_CLIENT_new(client_max_batchsize));
+  client.reset(TRUST_TOKEN_CLIENT_new(method(), client_max_batchsize));
   ASSERT_TRUE(client);
-  issuer.reset(TRUST_TOKEN_ISSUER_new(issuer_max_batchsize));
+  issuer.reset(TRUST_TOKEN_ISSUER_new(method(), issuer_max_batchsize));
   ASSERT_TRUE(issuer);
 
   // We configure the client and the issuer with different key IDs and test
@@ -316,15 +322,15 @@ TEST_F(TrustTokenProtocolTest, IssuedWithBadKeyID) {
   uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
   size_t priv_key_len, pub_key_len, key_index;
   ASSERT_TRUE(TRUST_TOKEN_generate_key(
-      priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE, pub_key,
-      &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, kClientKeyID));
+      method(), priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE,
+      pub_key, &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, kClientKeyID));
   ASSERT_TRUE(TRUST_TOKEN_CLIENT_add_key(client.get(), &key_index, pub_key,
                                          pub_key_len));
   ASSERT_EQ(0UL, key_index);
 
   ASSERT_TRUE(TRUST_TOKEN_generate_key(
-      priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE, pub_key,
-      &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, kIssuerKeyID));
+      method(), priv_key, &priv_key_len, TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE,
+      pub_key, &pub_key_len, TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, kIssuerKeyID));
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_add_key(issuer.get(), priv_key, priv_key_len));
 
 
@@ -423,8 +429,8 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
 
     uint8_t private_metadata;
     ASSERT_TRUE(TRUST_TOKEN_decode_private_metadata(
-        &private_metadata, metadata_key, sizeof(metadata_key), kClientData,
-        sizeof(kClientData) - 1, srr[27]));
+        method(), &private_metadata, metadata_key, sizeof(metadata_key),
+        kClientData, sizeof(kClientData) - 1, srr[27]));
     ASSERT_EQ(srr[18], std::get<0>(GetParam()));
     ASSERT_EQ(private_metadata, std::get<1>(GetParam()));
 
