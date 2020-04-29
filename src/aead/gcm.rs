@@ -15,7 +15,6 @@
 use super::{Aad, Block, BLOCK_LEN};
 use crate::{c, cpu};
 
-#[repr(transparent)]
 pub struct Key(HTable);
 
 impl Key {
@@ -25,44 +24,45 @@ impl Key {
         let mut key = Self(HTable {
             Htable: [u128 { hi: 0, lo: 0 }; GCM128_HTABLE_LEN],
         });
+        let h_table = &mut key.0;
 
         match detect_implementation(cpu_features) {
             #[cfg(target_arch = "x86_64")]
             Implementation::CLMUL if has_avx_movbe(cpu_features) => {
                 extern "C" {
-                    fn GFp_gcm_init_avx(key: &mut Key, h: &[u64; 2]);
+                    fn GFp_gcm_init_avx(HTable: &mut HTable, h: &[u64; 2]);
                 }
                 unsafe {
-                    GFp_gcm_init_avx(&mut key, &h);
+                    GFp_gcm_init_avx(h_table, &h);
                 }
             }
 
             Implementation::CLMUL => {
                 extern "C" {
-                    fn GFp_gcm_init_clmul(key: &mut Key, h: &[u64; 2]);
+                    fn GFp_gcm_init_clmul(Htable: &mut HTable, h: &[u64; 2]);
                 }
                 unsafe {
-                    GFp_gcm_init_clmul(&mut key, &h);
+                    GFp_gcm_init_clmul(h_table, &h);
                 }
             }
 
             #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             Implementation::NEON => {
                 extern "C" {
-                    fn GFp_gcm_init_neon(key: &mut Key, h: &[u64; 2]);
+                    fn GFp_gcm_init_neon(Htable: &mut HTable, h: &[u64; 2]);
                 }
                 unsafe {
-                    GFp_gcm_init_neon(&mut key, &h);
+                    GFp_gcm_init_neon(h_table, &h);
                 }
             }
 
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 extern "C" {
-                    fn GFp_gcm_init_4bit(key: &mut Key, h: &[u64; 2]);
+                    fn GFp_gcm_init_4bit(Htable: &mut HTable, h: &[u64; 2]);
                 }
                 unsafe {
-                    GFp_gcm_init_4bit(&mut key, &h);
+                    GFp_gcm_init_4bit(h_table, &h);
                 }
             }
         }
