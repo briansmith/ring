@@ -54,17 +54,4 @@
 // GCM definitions
 typedef struct { uint64_t hi,lo; } u128;
 
-#define GCM128_HTABLE_LEN 16
-
-// Keep in sync with GCK_CONTEXT in gcm.rs.
-typedef struct {
-    // Relative position of Xi, H_unused and pre-computed Htable is used in
-    // some assembler modules, i.e. don't change the order!
-    alignas(16) uint8_t Xi[16];
-    struct {
-        uint64_t u[2];
-    } H_unused;
-    alignas(16) u128 Htable[GCM128_HTABLE_LEN];
-} GCM128_CONTEXT;
-
 #endif  // OPENSSL_HEADER_MODES_INTERNAL_H
