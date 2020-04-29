@@ -962,7 +962,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
     }
     if (!TimeFunction(&results, [&]() -> bool {
           EC_RAW_POINT out;
-          return ec_hash_to_curve_p521_xmd_sha512_sswu(
+          return ec_hash_to_curve_p521_xmd_sha512_sswu_draft06(
               group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-curve failed.\n");
@@ -972,7 +972,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
 
     if (!TimeFunction(&results, [&]() -> bool {
           EC_SCALAR out;
-          return ec_hash_to_scalar_p521_xmd_sha512(
+          return ec_hash_to_scalar_p521_xmd_sha512_draft06(
               group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-scalar failed.\n");
@@ -988,7 +988,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
     }
     if (!TimeFunction(&results, [&]() -> bool {
           EC_RAW_POINT out;
-          return ec_hash_to_curve_p384_xmd_sha512_sswu(
+          return ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
               group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-curve failed.\n");
@@ -998,7 +998,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
 
     if (!TimeFunction(&results, [&]() -> bool {
           EC_SCALAR out;
-          return ec_hash_to_scalar_p384_xmd_sha512(
+          return ec_hash_to_scalar_p384_xmd_sha512_draft07(
               group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-scalar failed.\n");

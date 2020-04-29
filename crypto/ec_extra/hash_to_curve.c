@@ -28,21 +28,41 @@
 
 
 // This file implements hash-to-curve, as described in
-// draft-irtf-cfrg-hash-to-curve-06.
+// draft-irtf-cfrg-hash-to-curve-07.
+//
+// This hash-to-curve implementation is written generically with the
+// expectation that we will eventually wish to support other curves. If it
+// becomes a performance bottleneck, some possible optimizations by
+// specializing it to the curve:
+//
+// - Rather than using a generic |felem_exp|, specialize the exponentation to
+//   c2 with a faster addition chain.
+//
+// - |felem_mul| and |felem_sqr| are indirect calls to generic Montgomery
+//   code. Given the few curves, we could specialize
+//   |map_to_curve_simple_swu|. But doing this reasonably without duplicating
+//   code in C is difficult. (C++ templates would be useful here.)
+//
+// - P-521's Z and c2 have small power-of-two absolute values. We could save
+//   two multiplications in SSWU. (Other curves have reasonable values of Z
+//   and inconvenient c2.) This is unlikely to be worthwhile without C++
+//   templates to make specializing more convenient.
 
 // expand_message_xmd implements the operation described in section 5.3.1 of
-// draft-irtf-cfrg-hash-to-curve-06. It returns one on success and zero on
-// allocation failure or if |out_len| was too large.
+// draft-irtf-cfrg-hash-to-curve-07. It returns one on success and zero on
+// allocation failure or if |out_len| was too large. If |is_draft06| is one, it
+// implements the operation from draft-irtf-cfrg-hash-to-curve-06 instead.
 static int expand_message_xmd(const EVP_MD *md, uint8_t *out, size_t out_len,
                               const uint8_t *msg, size_t msg_len,
-                              const uint8_t *dst, size_t dst_len) {
+                              const uint8_t *dst, size_t dst_len,
+                              int is_draft06) {
   int ret = 0;
   const size_t block_size = EVP_MD_block_size(md);
   const size_t md_size = EVP_MD_size(md);
   EVP_MD_CTX ctx;
   EVP_MD_CTX_init(&ctx);
 
-  // Long DSTs are hashed down to size.
+  // Long DSTs are hashed down to size. See section 5.3.3.
   OPENSSL_STATIC_ASSERT(EVP_MAX_MD_SIZE < 256, "hashed DST still too large");
   uint8_t dst_buf[EVP_MAX_MD_SIZE];
   if (dst_len >= 256) {
@@ -68,8 +88,9 @@ static int expand_message_xmd(const EVP_MD *md, uint8_t *out, size_t out_len,
       !EVP_DigestUpdate(&ctx, kZeros, block_size) ||
       !EVP_DigestUpdate(&ctx, msg, msg_len) ||
       !EVP_DigestUpdate(&ctx, l_i_b_str_zero, sizeof(l_i_b_str_zero)) ||
-      !EVP_DigestUpdate(&ctx, &dst_len_u8, 1) ||
+      (is_draft06 && !EVP_DigestUpdate(&ctx, &dst_len_u8, 1)) ||
       !EVP_DigestUpdate(&ctx, dst, dst_len) ||
+      (!is_draft06 && !EVP_DigestUpdate(&ctx, &dst_len_u8, 1)) ||
       !EVP_DigestFinal_ex(&ctx, b_0, NULL)) {
     goto err;
   }
@@ -93,8 +114,9 @@ static int expand_message_xmd(const EVP_MD *md, uint8_t *out, size_t out_len,
     if (!EVP_DigestInit_ex(&ctx, md, NULL) ||
         !EVP_DigestUpdate(&ctx, b_i, md_size) ||
         !EVP_DigestUpdate(&ctx, &i, 1) ||
-        !EVP_DigestUpdate(&ctx, &dst_len_u8, 1) ||
+        (is_draft06 && !EVP_DigestUpdate(&ctx, &dst_len_u8, 1)) ||
         !EVP_DigestUpdate(&ctx, dst, dst_len) ||
+        (!is_draft06 && !EVP_DigestUpdate(&ctx, &dst_len_u8, 1)) ||
         !EVP_DigestFinal_ex(&ctx, b_i, NULL)) {
       goto err;
     }
@@ -115,7 +137,7 @@ err:
 
 // num_bytes_to_derive determines the number of bytes to derive when hashing to
 // a number modulo |modulus|. See the hash_to_field operation defined in
-// section 5.2 of draft-irtf-cfrg-hash-to-curve-06.
+// section 5.2 of draft-irtf-cfrg-hash-to-curve-07.
 static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
   size_t bits = BN_num_bits(modulus);
   size_t L = (bits + k + 7) / 8;
@@ -148,16 +170,17 @@ static void big_endian_to_words(BN_ULONG *out, size_t num_words,
 }
 
 // hash_to_field implements the operation described in section 5.2
-// of draft-irtf-cfrg-hash-to-curve-06, with count = 2. |k| is the security
+// of draft-irtf-cfrg-hash-to-curve-07, with count = 2. |k| is the security
 // factor.
 static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
                           EC_FELEM *out1, EC_FELEM *out2, const uint8_t *dst,
                           size_t dst_len, unsigned k, const uint8_t *msg,
-                          size_t msg_len) {
+                          size_t msg_len, int is_draft06) {
   size_t L;
   uint8_t buf[4 * EC_MAX_BYTES];
   if (!num_bytes_to_derive(&L, &group->field, k) ||
-      !expand_message_xmd(md, buf, 2 * L, msg, msg_len, dst, dst_len)) {
+      !expand_message_xmd(md, buf, 2 * L, msg, msg_len, dst, dst_len,
+                          is_draft06)) {
     return 0;
   }
   BN_ULONG words[2 * EC_MAX_WORDS];
@@ -173,11 +196,12 @@ static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
 // group order rather than a field element. |k| is the security factor.
 static int hash_to_scalar(const EC_GROUP *group, const EVP_MD *md,
                           EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
-                          unsigned k, const uint8_t *msg, size_t msg_len) {
+                          unsigned k, const uint8_t *msg, size_t msg_len,
+                          int is_draft06) {
   size_t L;
   uint8_t buf[EC_MAX_BYTES * 2];
   if (!num_bytes_to_derive(&L, &group->order, k) ||
-      !expand_message_xmd(md, buf, L, msg, msg_len, dst, dst_len)) {
+      !expand_message_xmd(md, buf, L, msg, msg_len, dst, dst_len, is_draft06)) {
     return 0;
   }
 
@@ -206,7 +230,7 @@ static inline void mul_minus_A(const EC_GROUP *group, EC_FELEM *out,
 }
 
 // sgn0_le implements the operation described in section 4.1.2 of
-// draft-irtf-cfrg-hash-to-curve-06.
+// draft-irtf-cfrg-hash-to-curve-07.
 static BN_ULONG sgn0_le(const EC_GROUP *group, const EC_FELEM *a) {
   uint8_t buf[EC_MAX_BYTES];
   size_t len;
@@ -215,8 +239,8 @@ static BN_ULONG sgn0_le(const EC_GROUP *group, const EC_FELEM *a) {
 }
 
 // map_to_curve_simple_swu implements the operation described in section 6.6.2
-// of draft-irtf-cfrg-hash-to-curve-06, using the optimization in appendix D.2.
-// It returns one on success and zero on error.
+// of draft-irtf-cfrg-hash-to-curve-07, using the optimization in appendix
+// D.2.1. It returns one on success and zero on error.
 static int map_to_curve_simple_swu(const EC_GROUP *group, const EC_FELEM *Z,
                                    const BN_ULONG *c1, size_t num_c1,
                                    const EC_FELEM *c2, EC_RAW_POINT *out,
@@ -286,9 +310,10 @@ static int map_to_curve_simple_swu(const EC_GROUP *group, const EC_FELEM *Z,
 static int hash_to_curve(const EC_GROUP *group, const EVP_MD *md,
                          const EC_FELEM *Z, const EC_FELEM *c2, unsigned k,
                          EC_RAW_POINT *out, const uint8_t *dst, size_t dst_len,
-                         const uint8_t *msg, size_t msg_len) {
+                         const uint8_t *msg, size_t msg_len, int is_draft06) {
   EC_FELEM u0, u1;
-  if (!hash_to_field2(group, md, &u0, &u1, dst, dst_len, k, msg, msg_len)) {
+  if (!hash_to_field2(group, md, &u0, &u1, dst, dst_len, k, msg, msg_len,
+                      is_draft06)) {
     return 0;
   }
 
@@ -318,11 +343,10 @@ static int felem_from_u8(const EC_GROUP *group, EC_FELEM *out, uint8_t a) {
   return ec_felem_from_bytes(group, out, bytes, len);
 }
 
-int ec_hash_to_curve_p384_xmd_sha512_sswu(const EC_GROUP *group,
-                                          EC_RAW_POINT *out, const uint8_t *dst,
-                                          size_t dst_len, const uint8_t *msg,
-                                          size_t msg_len) {
-  // See section 8.3 of draft-irtf-cfrg-hash-to-curve-06.
+int ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
+    const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
+    size_t dst_len, const uint8_t *msg, size_t msg_len) {
+  // See section 8.3 of draft-irtf-cfrg-hash-to-curve-07.
   if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
     return 0;
@@ -352,48 +376,24 @@ int ec_hash_to_curve_p384_xmd_sha512_sswu(const EC_GROUP *group,
   ec_felem_neg(group, &Z, &Z);
 
   return hash_to_curve(group, EVP_sha512(), &Z, &c2, /*k=*/192, out, dst,
-                       dst_len, msg, msg_len);
+                       dst_len, msg, msg_len, /*is_draft06=*/0);
 }
 
-int ec_hash_to_scalar_p384_xmd_sha512(const EC_GROUP *group, EC_SCALAR *out,
-                                      const uint8_t *dst, size_t dst_len,
-                                      const uint8_t *msg, size_t msg_len) {
+int ec_hash_to_scalar_p384_xmd_sha512_draft07(
+    const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len) {
   if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
     return 0;
   }
 
   return hash_to_scalar(group, EVP_sha512(), out, dst, dst_len, /*k=*/192, msg,
-                        msg_len);
+                        msg_len, /*is_draft06=*/0);
 }
 
-static int hash_to_curve_p521_xmd_sswu(const EC_GROUP *group, EC_RAW_POINT *out,
-                                       const uint8_t *dst, size_t dst_len,
-                                       const EVP_MD *md, unsigned k,
-                                       const uint8_t *msg, size_t msg_len) {
-  // This hash-to-curve implementation is written generically with the
-  // expectation that we will eventually wish to support P-256 or P-384. If it
-  // becomes a performance bottleneck, some possible optimizations by
-  // specializing it to the curve:
-  //
-  // - c1 = (p-3)/4 = 2^519-1. |felem_exp| costs 515S + 119M for this exponent.
-  //   A more efficient addition chain for c1 would cost 518S + 12M, but it
-  //   would require specializing the particular exponent.
-  //
-  // - P-521, while large, is a Mersenne prime, so we can likely do better than
-  //   the generic Montgomery implementation if we specialize the field
-  //   operations (below).
-  //
-  // - |felem_mul| and |felem_sqr| are indirect calls to generic Montgomery
-  //   code. Given the few curves, we could specialize
-  //   |map_to_curve_simple_swu|. But doing this reasonably without duplicating
-  //   code in C is difficult. (C++ templates would be useful here.)
-  //
-  // - P-521's Z and c2 have small power-of-two absolute values. We could save
-  //   two multiplications in SSWU. (Other curves have reasonable values of Z
-  //   and inconvenient c2.) This is unlikely to be worthwhile without C++
-  //   templates to make specializing more convenient.
-
+int ec_hash_to_curve_p521_xmd_sha512_sswu_draft06(
+    const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
+    size_t dst_len, const uint8_t *msg, size_t msg_len) {
   // See section 8.3 of draft-irtf-cfrg-hash-to-curve-06.
   if (EC_GROUP_get_curve_name(group) != NID_secp521r1) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
@@ -408,38 +408,18 @@ static int hash_to_curve_p521_xmd_sswu(const EC_GROUP *group, EC_RAW_POINT *out,
   }
   ec_felem_neg(group, &Z, &Z);
 
-  return hash_to_curve(group, md, &Z, &c2, k, out, dst, dst_len, msg, msg_len);
+  return hash_to_curve(group, EVP_sha512(), &Z, &c2, /*k=*/256, out, dst,
+                       dst_len, msg, msg_len, /*is_draft06=*/1);
 }
 
-int ec_hash_to_curve_p521_xmd_sha512_sswu(const EC_GROUP *group,
-                                          EC_RAW_POINT *out, const uint8_t *dst,
-                                          size_t dst_len, const uint8_t *msg,
-                                          size_t msg_len) {
-  return hash_to_curve_p521_xmd_sswu(group, out, dst, dst_len, EVP_sha512(),
-                                     /*k=*/256, msg, msg_len);
-}
-
-int ec_hash_to_curve_p521_xmd_sha512_sswu_ref_for_testing(
-    const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
-    size_t dst_len, const uint8_t *msg, size_t msg_len) {
-  // The specification defines the P-521 suites inconsistently. It specifies
-  // L = 96 for hash_to_field, but computing L from k as specified gives L = 98.
-  // See https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/237.
-  //
-  // Setting k to 240 gives L = 96. We implement this variation to test with the
-  // original test vectors, which were computed with the smaller L.
-  return hash_to_curve_p521_xmd_sswu(group, out, dst, dst_len, EVP_sha512(),
-                                     /*k=*/240, msg, msg_len);
-}
-
-int ec_hash_to_scalar_p521_xmd_sha512(const EC_GROUP *group, EC_SCALAR *out,
-                                      const uint8_t *dst, size_t dst_len,
-                                      const uint8_t *msg, size_t msg_len) {
+int ec_hash_to_scalar_p521_xmd_sha512_draft06(
+    const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len) {
   if (EC_GROUP_get_curve_name(group) != NID_secp521r1) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
     return 0;
   }
 
   return hash_to_scalar(group, EVP_sha512(), out, dst, dst_len, /*k=*/256, msg,
-                        msg_len);
+                        msg_len, /*is_draft06=*/1);
 }
