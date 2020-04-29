@@ -28,7 +28,15 @@
 // construction.
 
 const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v0(void) {
-  static const TRUST_TOKEN_METHOD kMethod = {0};
+  static const TRUST_TOKEN_METHOD kMethod = {
+      pmbtoken_generate_key,
+      pmbtoken_client_key_from_bytes,
+      pmbtoken_issuer_key_from_bytes,
+      pmbtoken_blind,
+      pmbtoken_sign,
+      pmbtoken_unblind,
+      pmbtoken_read,
+  };
   return &kMethod;
 }
 
@@ -75,7 +83,7 @@ int TRUST_TOKEN_generate_key(const TRUST_TOKEN_METHOD *method,
     goto err;
   }
 
-  if (!pmbtoken_generate_key(&priv_cbb, &pub_cbb)) {
+  if (!method->generate_key(&priv_cbb, &pub_cbb)) {
     goto err;
   }
 
@@ -133,8 +141,8 @@ int TRUST_TOKEN_CLIENT_add_key(TRUST_TOKEN_CLIENT *ctx, size_t *out_key_index,
   CBS_init(&cbs, key, key_len);
   uint32_t key_id;
   if (!CBS_get_u32(&cbs, &key_id) ||
-      !pmbtoken_client_key_from_bytes(&key_s->key, CBS_data(&cbs),
-                                      CBS_len(&cbs))) {
+      !ctx->method->client_key_from_bytes(&key_s->key, CBS_data(&cbs),
+                                          CBS_len(&cbs))) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     return 0;
   }
@@ -166,7 +174,7 @@ int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
     goto err;
   }
 
-  pretokens = pmbtoken_blind(&request, count);
+  pretokens = ctx->method->blind(&request, count);
   if (pretokens == NULL) {
     goto err;
   }
@@ -223,7 +231,7 @@ STACK_OF(TRUST_TOKEN) *
   }
 
   STACK_OF(TRUST_TOKEN) *tokens =
-      pmbtoken_unblind(&key->key, ctx->pretokens, &in, count, key_id);
+      ctx->method->unblind(&key->key, ctx->pretokens, &in, count, key_id);
   if (tokens == NULL) {
     return NULL;
   }
@@ -348,8 +356,8 @@ int TRUST_TOKEN_ISSUER_add_key(TRUST_TOKEN_ISSUER *ctx, const uint8_t *key,
   CBS_init(&cbs, key, key_len);
   uint32_t key_id;
   if (!CBS_get_u32(&cbs, &key_id) ||
-      !pmbtoken_issuer_key_from_bytes(&key_s->key, CBS_data(&cbs),
-                                      CBS_len(&cbs))) {
+      !ctx->method->issuer_key_from_bytes(&key_s->key, CBS_data(&cbs),
+                                          CBS_len(&cbs))) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     return 0;
   }
@@ -430,8 +438,8 @@ int TRUST_TOKEN_ISSUER_issue(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
     goto err;
   }
 
-  if (!pmbtoken_sign(&key->key, &response, &in, num_requested, num_to_issue,
-                     private_metadata)) {
+  if (!ctx->method->sign(&key->key, &response, &in, num_requested, num_to_issue,
+                         private_metadata)) {
     goto err;
   }
 
@@ -530,8 +538,8 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
       trust_token_issuer_get_key(ctx, public_metadata);
   uint8_t nonce[PMBTOKEN_NONCE_SIZE];
   if (key == NULL ||
-      !pmbtoken_read(&key->key, nonce, &private_metadata, CBS_data(&token_cbs),
-                     CBS_len(&token_cbs))) {
+      !ctx->method->read(&key->key, nonce, &private_metadata,
+                         CBS_data(&token_cbs), CBS_len(&token_cbs))) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_TOKEN);
     return 0;
   }
