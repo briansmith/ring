@@ -189,7 +189,7 @@ fn aead(
     gcm_ctx.pre_finish(|pre_tag| {
         let block = tag_iv.into_block_less_safe();
         let mut tag = aes_key.encrypt_block(block);
-        tag.bitxor_assign(pre_tag);
+        tag.bitxor_assign(pre_tag.into());
         Tag(tag)
     })
 }
