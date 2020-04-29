@@ -220,7 +220,7 @@ fn integrated_aes_gcm<'a>(
                     len: c::size_t,
                     key: &aes::AES_KEY,
                     ivec: &mut Counter,
-                    gcm: &mut gcm::Context,
+                    gcm: &mut gcm::ContextInner,
                 ) -> c::size_t;
             }
             unsafe {
@@ -230,7 +230,7 @@ fn integrated_aes_gcm<'a>(
                     in_out.len() - in_prefix_len,
                     aes_key.inner_less_safe(),
                     ctr,
-                    gcm_ctx,
+                    gcm_ctx.inner(),
                 )
             }
         }
@@ -242,7 +242,7 @@ fn integrated_aes_gcm<'a>(
                     len: c::size_t,
                     key: &aes::AES_KEY,
                     ivec: &mut Counter,
-                    gcm: &mut gcm::Context,
+                    gcm: &mut gcm::ContextInner,
                 ) -> c::size_t;
             }
             unsafe {
@@ -252,7 +252,7 @@ fn integrated_aes_gcm<'a>(
                     in_out.len(),
                     aes_key.inner_less_safe(),
                     ctr,
-                    gcm_ctx,
+                    gcm_ctx.inner(),
                 )
             }
         }

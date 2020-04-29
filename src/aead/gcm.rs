@@ -71,7 +71,6 @@ impl Key {
     }
 }
 
-#[repr(transparent)]
 pub struct Context {
     inner: ContextInner,
     cpu_features: cpu::Features,
@@ -95,6 +94,13 @@ impl Context {
         }
 
         ctx
+    }
+
+    /// Access to `inner` for the integrated AES-GCM implementations only.
+    #[cfg(target_arch = "x86_64")]
+    #[inline]
+    pub(super) fn inner(&mut self) -> &mut ContextInner {
+        &mut self.inner
     }
 
     pub fn update_blocks(&mut self, input: &[u8]) {
@@ -263,7 +269,7 @@ impl From<Xi> for Block {
 // Some assembly language code, in particular the MOVEBE+AVX2 X86-64
 // implementation, requires this exact layout.
 #[repr(C, align(16))]
-struct ContextInner {
+pub(super) struct ContextInner {
     Xi: Xi,
     _unused: Block,
     Htable: HTable,
