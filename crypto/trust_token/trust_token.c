@@ -29,13 +29,26 @@
 
 const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v0(void) {
   static const TRUST_TOKEN_METHOD kMethod = {
-      pmbtoken_generate_key,
-      pmbtoken_client_key_from_bytes,
-      pmbtoken_issuer_key_from_bytes,
-      pmbtoken_blind,
-      pmbtoken_sign,
-      pmbtoken_unblind,
-      pmbtoken_read,
+      pmbtoken_exp0_generate_key,
+      pmbtoken_exp0_client_key_from_bytes,
+      pmbtoken_exp0_issuer_key_from_bytes,
+      pmbtoken_exp0_blind,
+      pmbtoken_exp0_sign,
+      pmbtoken_exp0_unblind,
+      pmbtoken_exp0_read,
+  };
+  return &kMethod;
+}
+
+const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void) {
+  static const TRUST_TOKEN_METHOD kMethod = {
+      pmbtoken_exp1_generate_key,
+      pmbtoken_exp1_client_key_from_bytes,
+      pmbtoken_exp1_issuer_key_from_bytes,
+      pmbtoken_exp1_blind,
+      pmbtoken_exp1_sign,
+      pmbtoken_exp1_unblind,
+      pmbtoken_exp1_read,
   };
   return &kMethod;
 }

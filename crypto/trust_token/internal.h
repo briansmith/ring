@@ -35,7 +35,7 @@ extern "C" {
 // PMBTokens is described in https://eprint.iacr.org/2020/072/20200324:214215
 // and provides anonymous tokens with private metadata. We implement the
 // construction with validity verification, described in appendix H,
-// construction 6, using P-521 as the group.
+// construction 6.
 
 // PMBTOKEN_NONCE_SIZE is the size of nonces used as part of the PMBToken
 // protocol.
@@ -73,24 +73,58 @@ OPENSSL_EXPORT void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *token);
 DEFINE_STACK_OF(PMBTOKEN_PRETOKEN)
 
 // The following functions implement the corresponding |TRUST_TOKENS_METHOD|
-// functions for |TRUST_TOKENS_experiment_v0|'s PMBTokens construction.
-int pmbtoken_generate_key(CBB *out_private, CBB *out_public);
-int pmbtoken_client_key_from_bytes(PMBTOKEN_CLIENT_KEY *key, const uint8_t *in,
-                                   size_t len);
-int pmbtoken_issuer_key_from_bytes(PMBTOKEN_ISSUER_KEY *key, const uint8_t *in,
-                                   size_t len);
-STACK_OF(PMBTOKEN_PRETOKEN) * pmbtoken_blind(CBB *cbb, size_t count);
-int pmbtoken_sign(const PMBTOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
-                  size_t num_requested, size_t num_to_issue,
-                  uint8_t private_metadata);
+// functions for |TRUST_TOKENS_experiment_v0|'s PMBTokens construction which
+// uses P-521.
+int pmbtoken_exp0_generate_key(CBB *out_private, CBB *out_public);
+int pmbtoken_exp0_client_key_from_bytes(PMBTOKEN_CLIENT_KEY *key,
+                                        const uint8_t *in, size_t len);
+int pmbtoken_exp0_issuer_key_from_bytes(PMBTOKEN_ISSUER_KEY *key,
+                                        const uint8_t *in, size_t len);
+STACK_OF(PMBTOKEN_PRETOKEN) * pmbtoken_exp0_blind(CBB *cbb, size_t count);
+int pmbtoken_exp0_sign(const PMBTOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
+                       size_t num_requested, size_t num_to_issue,
+                       uint8_t private_metadata);
 STACK_OF(TRUST_TOKEN) *
-    pmbtoken_unblind(const PMBTOKEN_CLIENT_KEY *key,
-                     const STACK_OF(PMBTOKEN_PRETOKEN) * pretokens, CBS *cbs,
-                     size_t count, uint32_t key_id);
-int pmbtoken_read(const PMBTOKEN_ISSUER_KEY *key,
-                  uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
-                  uint8_t *out_private_metadata, const uint8_t *token,
-                  size_t token_len);
+    pmbtoken_exp0_unblind(const PMBTOKEN_CLIENT_KEY *key,
+                          const STACK_OF(PMBTOKEN_PRETOKEN) * pretokens,
+                          CBS *cbs, size_t count, uint32_t key_id);
+int pmbtoken_exp0_read(const PMBTOKEN_ISSUER_KEY *key,
+                       uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
+                       uint8_t *out_private_metadata, const uint8_t *token,
+                       size_t token_len);
+
+// The following functions implement the corresponding |TRUST_TOKENS_METHOD|
+// functions for |TRUST_TOKENS_experiment_v1|'s PMBTokens construction which
+// uses P-384.
+//
+// We use P-384 instead of our usual choice of P-256. See Appendix I which
+// describes two attacks which may affect smaller curves. In particular, p-1 for
+// P-256 is smooth, giving a low complexity for the p-1 attack. P-384's p-1 has
+// a 281-bit prime factor,
+// 3055465788140352002733946906144561090641249606160407884365391979704929268480326390471.
+// This lower-bounds the p-1 attack at O(2^140). The p+1 attack is lower-bounded
+// by O(p^(1/3)) or O(2^128), so we do not need to check the smoothness of p+1.
+int pmbtoken_exp1_generate_key(CBB *out_private, CBB *out_public);
+int pmbtoken_exp1_client_key_from_bytes(PMBTOKEN_CLIENT_KEY *key,
+                                        const uint8_t *in, size_t len);
+int pmbtoken_exp1_issuer_key_from_bytes(PMBTOKEN_ISSUER_KEY *key,
+                                        const uint8_t *in, size_t len);
+STACK_OF(PMBTOKEN_PRETOKEN) * pmbtoken_exp1_blind(CBB *cbb, size_t count);
+int pmbtoken_exp1_sign(const PMBTOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
+                       size_t num_requested, size_t num_to_issue,
+                       uint8_t private_metadata);
+STACK_OF(TRUST_TOKEN) *
+    pmbtoken_exp1_unblind(const PMBTOKEN_CLIENT_KEY *key,
+                          const STACK_OF(PMBTOKEN_PRETOKEN) * pretokens,
+                          CBS *cbs, size_t count, uint32_t key_id);
+int pmbtoken_exp1_read(const PMBTOKEN_ISSUER_KEY *key,
+                       uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
+                       uint8_t *out_private_metadata, const uint8_t *token,
+                       size_t token_len);
+
+// pmbtoken_exp1_get_h_for_testing returns H in uncompressed coordinates. This
+// function is used to confirm H was computed as expected.
+OPENSSL_EXPORT int pmbtoken_exp1_get_h_for_testing(uint8_t out[97]);
 
 
 // Trust Tokens internals.

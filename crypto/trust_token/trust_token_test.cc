@@ -32,7 +32,10 @@
 #include <openssl/rand.h>
 #include <openssl/trust_token.h>
 
+#include "../ec_extra/internal.h"
+#include "../fipsmodule/ec/internal.h"
 #include "../internal.h"
+#include "../test/test_util.h"
 #include "internal.h"
 
 
@@ -40,7 +43,7 @@ BSSL_NAMESPACE_BEGIN
 
 namespace {
 
-TEST(TrustTokenTest, KeyGen) {
+TEST(TrustTokenTest, KeyGenExp0) {
   uint8_t priv_key[TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE];
   uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
   size_t priv_key_len, pub_key_len;
@@ -52,18 +55,55 @@ TEST(TrustTokenTest, KeyGen) {
   ASSERT_EQ(409u, pub_key_len);
 }
 
-class TrustTokenProtocolTest : public ::testing::Test {
+TEST(TrustTokenTest, KeyGenExp1) {
+  uint8_t priv_key[TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE];
+  uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
+  size_t priv_key_len, pub_key_len;
+  ASSERT_TRUE(TRUST_TOKEN_generate_key(
+      TRUST_TOKEN_experiment_v1(), priv_key, &priv_key_len,
+      TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE, pub_key, &pub_key_len,
+      TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE, 0x0001));
+  ASSERT_EQ(292u, priv_key_len);
+  ASSERT_EQ(301u, pub_key_len);
+}
+
+// Test that H in |TRUST_TOKEN_experiment_v1| was computed correctly.
+TEST(TrustTokenTest, HExp1) {
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp384r1);
+  ASSERT_TRUE(group);
+
+  const uint8_t kHGen[] = "generator";
+  const uint8_t kHLabel[] = "PMBTokens Experiment V1 HashH";
+
+  EC_RAW_POINT expected_h;
+  ASSERT_TRUE(ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
+      group, &expected_h, kHLabel, sizeof(kHLabel), kHGen, sizeof(kHGen)));
+  uint8_t expected_bytes[1 + 2 * EC_MAX_BYTES];
+  size_t expected_len =
+      ec_point_to_bytes(group, &expected_h, POINT_CONVERSION_UNCOMPRESSED,
+                        expected_bytes, sizeof(expected_bytes));
+
+  uint8_t h[97];
+  ASSERT_TRUE(pmbtoken_exp1_get_h_for_testing(h));
+  EXPECT_EQ(Bytes(h), Bytes(expected_bytes, expected_len));
+}
+
+static std::vector<const TRUST_TOKEN_METHOD *> AllMethods() {
+  return {TRUST_TOKEN_experiment_v0(), TRUST_TOKEN_experiment_v1()};
+}
+
+class TrustTokenProtocolTestBase : public ::testing::Test {
  public:
+  explicit TrustTokenProtocolTestBase(const TRUST_TOKEN_METHOD *method)
+      : method_(method) {}
+
   // KeyID returns the key ID associated with key index |i|.
   static uint32_t KeyID(size_t i) {
     // Use a different value from the indices to that we do not mix them up.
     return 7 + i;
   }
 
-  // TODO(davidben): Parameterize this on the Trust Tokens method.
-  static const TRUST_TOKEN_METHOD *method() {
-    return TRUST_TOKEN_experiment_v0();
-  }
+  const TRUST_TOKEN_METHOD *method() { return method_; }
 
  protected:
   void SetupContexts() {
@@ -102,6 +142,7 @@ class TrustTokenProtocolTest : public ::testing::Test {
                                                     sizeof(metadata_key)));
   }
 
+  const TRUST_TOKEN_METHOD *method_;
   uint16_t client_max_batchsize = 10;
   uint16_t issuer_max_batchsize = 10;
   bssl::UniquePtr<TRUST_TOKEN_CLIENT> client;
@@ -109,7 +150,17 @@ class TrustTokenProtocolTest : public ::testing::Test {
   uint8_t metadata_key[32];
 };
 
-TEST_F(TrustTokenProtocolTest, InvalidToken) {
+class TrustTokenProtocolTest
+    : public TrustTokenProtocolTestBase,
+      public testing::WithParamInterface<const TRUST_TOKEN_METHOD *> {
+ public:
+  TrustTokenProtocolTest() : TrustTokenProtocolTestBase(GetParam()) {}
+};
+
+INSTANTIATE_TEST_SUITE_P(TrustTokenAllProtocolTest, TrustTokenProtocolTest,
+                         testing::ValuesIn(AllMethods()));
+
+TEST_P(TrustTokenProtocolTest, InvalidToken) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
@@ -149,7 +200,7 @@ TEST_F(TrustTokenProtocolTest, InvalidToken) {
   }
 }
 
-TEST_F(TrustTokenProtocolTest, TruncatedIssuanceRequest) {
+TEST_P(TrustTokenProtocolTest, TruncatedIssuanceRequest) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
@@ -166,7 +217,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedIssuanceRequest) {
   bssl::UniquePtr<uint8_t> free_msg(issue_resp);
 }
 
-TEST_F(TrustTokenProtocolTest, TruncatedIssuanceResponse) {
+TEST_P(TrustTokenProtocolTest, TruncatedIssuanceResponse) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
@@ -188,7 +239,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedIssuanceResponse) {
   ASSERT_FALSE(tokens);
 }
 
-TEST_F(TrustTokenProtocolTest, ExtraDataIssuanceResponse) {
+TEST_P(TrustTokenProtocolTest, ExtraDataIssuanceResponse) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 
   uint8_t *request = NULL, *response = NULL;
@@ -212,7 +263,7 @@ TEST_F(TrustTokenProtocolTest, ExtraDataIssuanceResponse) {
   ASSERT_FALSE(tokens);
 }
 
-TEST_F(TrustTokenProtocolTest, TruncatedRedemptionRequest) {
+TEST_P(TrustTokenProtocolTest, TruncatedRedemptionRequest) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
@@ -253,7 +304,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedRedemptionRequest) {
   }
 }
 
-TEST_F(TrustTokenProtocolTest, TruncatedRedemptionResponse) {
+TEST_P(TrustTokenProtocolTest, TruncatedRedemptionResponse) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
@@ -307,7 +358,7 @@ TEST_F(TrustTokenProtocolTest, TruncatedRedemptionResponse) {
   }
 }
 
-TEST_F(TrustTokenProtocolTest, IssuedWithBadKeyID) {
+TEST_P(TrustTokenProtocolTest, IssuedWithBadKeyID) {
   client.reset(TRUST_TOKEN_CLIENT_new(method(), client_max_batchsize));
   ASSERT_TRUE(client);
   issuer.reset(TRUST_TOKEN_ISSUER_new(method(), issuer_max_batchsize));
@@ -367,8 +418,16 @@ TEST_F(TrustTokenProtocolTest, IssuedWithBadKeyID) {
 }
 
 class TrustTokenMetadataTest
-    : public TrustTokenProtocolTest,
-      public testing::WithParamInterface<std::tuple<int, bool>> {};
+    : public TrustTokenProtocolTestBase,
+      public testing::WithParamInterface<
+          std::tuple<const TRUST_TOKEN_METHOD *, int, bool>> {
+ public:
+  TrustTokenMetadataTest()
+      : TrustTokenProtocolTestBase(std::get<0>(GetParam())) {}
+
+  int public_metadata() { return std::get<1>(GetParam()); }
+  bool private_metadata() { return std::get<2>(GetParam()); }
+};
 
 TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
@@ -381,7 +440,7 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
-      std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
+      public_metadata(), private_metadata(), /*max_issuance=*/1));
   bssl::UniquePtr<uint8_t> free_msg(issue_resp);
   size_t key_index;
   bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
@@ -427,12 +486,12 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
     bssl::UniquePtr<uint8_t> free_srr(srr);
     bssl::UniquePtr<uint8_t> free_sig(sig);
 
-    uint8_t private_metadata;
+    uint8_t decode_private_metadata;
     ASSERT_TRUE(TRUST_TOKEN_decode_private_metadata(
-        method(), &private_metadata, metadata_key, sizeof(metadata_key),
+        method(), &decode_private_metadata, metadata_key, sizeof(metadata_key),
         kClientData, sizeof(kClientData) - 1, srr[27]));
-    ASSERT_EQ(srr[18], std::get<0>(GetParam()));
-    ASSERT_EQ(private_metadata, std::get<1>(GetParam()));
+    ASSERT_EQ(srr[18], public_metadata());
+    ASSERT_EQ(decode_private_metadata, private_metadata());
 
     // Clear out the metadata bits.
     srr[18] = 0;
@@ -455,7 +514,7 @@ TEST_P(TrustTokenMetadataTest, TooManyRequests) {
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
-      std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
+      public_metadata(), private_metadata(), /*max_issuance=*/1));
   bssl::UniquePtr<uint8_t> free_msg(issue_resp);
   ASSERT_EQ(tokens_issued, issuer_max_batchsize);
   size_t key_index;
@@ -478,7 +537,7 @@ TEST_P(TrustTokenMetadataTest, TruncatedProof) {
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
-      std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
+      public_metadata(), private_metadata(), /*max_issuance=*/1));
   bssl::UniquePtr<uint8_t> free_msg(issue_resp);
 
   CBS real_response;
@@ -518,7 +577,8 @@ TEST_P(TrustTokenMetadataTest, TruncatedProof) {
 
   size_t key_index;
   bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
-      TRUST_TOKEN_CLIENT_finish_issuance(client.get(), &key_index, bad_buf, bad_len));
+      TRUST_TOKEN_CLIENT_finish_issuance(client.get(), &key_index, bad_buf,
+                                         bad_len));
   ASSERT_FALSE(tokens);
 }
 
@@ -533,7 +593,7 @@ TEST_P(TrustTokenMetadataTest, ExcessDataProof) {
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
-      std::get<0>(GetParam()), std::get<1>(GetParam()), /*max_issuance=*/1));
+      public_metadata(), private_metadata(), /*max_issuance=*/1));
   bssl::UniquePtr<uint8_t> free_msg(issue_resp);
 
   CBS real_response;
@@ -581,15 +641,23 @@ TEST_P(TrustTokenMetadataTest, ExcessDataProof) {
 
 INSTANTIATE_TEST_SUITE_P(
     TrustTokenAllMetadataTest, TrustTokenMetadataTest,
-    testing::Combine(testing::Values(TrustTokenProtocolTest::KeyID(0),
+    testing::Combine(testing::ValuesIn(AllMethods()),
+                     testing::Values(TrustTokenProtocolTest::KeyID(0),
                                      TrustTokenProtocolTest::KeyID(1),
                                      TrustTokenProtocolTest::KeyID(2)),
                      testing::Bool()));
 
-
 class TrustTokenBadKeyTest
-    : public TrustTokenProtocolTest,
-      public testing::WithParamInterface<std::tuple<bool, int>> {};
+    : public TrustTokenProtocolTestBase,
+      public testing::WithParamInterface<
+          std::tuple<const TRUST_TOKEN_METHOD *, bool, int>> {
+ public:
+  TrustTokenBadKeyTest()
+      : TrustTokenProtocolTestBase(std::get<0>(GetParam())) {}
+
+  bool private_metadata() { return std::get<1>(GetParam()); }
+  int corrupted_key() { return std::get<2>(GetParam()); }
+};
 
 TEST_P(TrustTokenBadKeyTest, BadKey) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
@@ -603,15 +671,14 @@ TEST_P(TrustTokenBadKeyTest, BadKey) {
   struct trust_token_issuer_key_st *key = &issuer->keys[0];
   EC_SCALAR *scalars[] = {&key->key.x0, &key->key.y0, &key->key.x1,
                           &key->key.y1, &key->key.xs, &key->key.ys};
-  int corrupted_key = std::get<1>(GetParam());
 
   // Corrupt private key scalar.
-  scalars[corrupted_key]->bytes[0] ^= 42;
+  scalars[corrupted_key()]->bytes[0] ^= 42;
 
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
-      /*public_metadata=*/7, std::get<0>(GetParam()), /*max_issuance=*/1));
+      /*public_metadata=*/7, private_metadata(), /*max_issuance=*/1));
   bssl::UniquePtr<uint8_t> free_msg(issue_resp);
   size_t key_index;
   bssl::UniquePtr<STACK_OF(TRUST_TOKEN)> tokens(
@@ -619,18 +686,18 @@ TEST_P(TrustTokenBadKeyTest, BadKey) {
                                          resp_len));
 
   // If the unused private key is corrupted, then the DLEQ proof should succeed.
-  if ((corrupted_key / 2 == 0 && std::get<0>(GetParam()) == true) ||
-      (corrupted_key / 2 == 1 && std::get<0>(GetParam()) == false)) {
+  if ((corrupted_key() / 2 == 0 && private_metadata() == true) ||
+      (corrupted_key() / 2 == 1 && private_metadata() == false)) {
     ASSERT_TRUE(tokens);
   } else {
     ASSERT_FALSE(tokens);
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    TrustTokenAllBadKeyTest, TrustTokenBadKeyTest,
-    testing::Combine(testing::Bool(),
-                     testing::Values(0, 1, 2, 3, 4, 5)));
+INSTANTIATE_TEST_SUITE_P(TrustTokenAllBadKeyTest, TrustTokenBadKeyTest,
+                         testing::Combine(testing::ValuesIn(AllMethods()),
+                                          testing::Bool(),
+                                          testing::Values(0, 1, 2, 3, 4, 5)));
 
 }  // namespace
 BSSL_NAMESPACE_END

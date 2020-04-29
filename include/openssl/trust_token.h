@@ -40,6 +40,11 @@ extern "C" {
 // PMBTokens and P-521.
 OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v0(void);
 
+// TRUST_TOKEN_experiment_v1 is an experimental Trust Tokens protocol using
+// PMBTokens and P-384. This version is still under developement and should not
+// be used yet.
+OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void);
+
 // trust_token_st represents a single-use token for the Trust Token protocol.
 // For the client, this is the token and its corresponding signature. For the
 // issuer, this is the token itself.

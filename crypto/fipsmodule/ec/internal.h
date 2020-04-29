@@ -71,6 +71,7 @@
 #include <openssl/base.h>
 
 #include <openssl/bn.h>
+#include <openssl/ec.h>
 #include <openssl/ex_data.h>
 #include <openssl/type_check.h>
 
@@ -304,9 +305,10 @@ int ec_point_get_affine_coordinate_bytes(const EC_GROUP *group, uint8_t *out_x,
 
 // ec_point_to_bytes behaves like |EC_POINT_point2oct| but takes an
 // |EC_RAW_POINT|.
-size_t ec_point_to_bytes(const EC_GROUP *group, const EC_RAW_POINT *point,
-                         point_conversion_form_t form, uint8_t *buf,
-                         size_t len);
+OPENSSL_EXPORT size_t ec_point_to_bytes(const EC_GROUP *group,
+                                        const EC_RAW_POINT *point,
+                                        point_conversion_form_t form,
+                                        uint8_t *buf, size_t len);
 
 // ec_point_from_uncompressed parses |in| as a point in uncompressed form and
 // sets the result to |out|. It returns one on success and zero if the input was
