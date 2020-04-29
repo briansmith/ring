@@ -73,16 +73,16 @@ impl Key {
 
 #[repr(transparent)]
 pub struct Context {
-    inner: GCM128_CONTEXT,
+    inner: ContextInner,
     cpu_features: cpu::Features,
 }
 
 impl Context {
     pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
         let mut ctx = Context {
-            inner: GCM128_CONTEXT {
+            inner: ContextInner {
                 Xi: Xi(Block::zero()),
-                H_unused: Block::zero(),
+                _unused: Block::zero(),
                 Htable: key.0.clone(),
             },
             cpu_features,
@@ -103,7 +103,7 @@ impl Context {
 
         // Although these functions take `Xi` and `h_table` as separate
         // parameters, one or more of them might assume that they are part of
-        // the same `GCM128_CONTEXT`.
+        // the same `ContextInner` structure.
         let xi = &mut self.inner.Xi;
         let h_table = &self.inner.Htable;
 
@@ -174,7 +174,7 @@ impl Context {
 
         // Although these functions take `Xi` and `h_table` as separate
         // parameters, one or more of them might assume that they are part of
-        // the same `GCM128_CONTEXT`.
+        // the same `ContextInner` structure.
         let xi = &mut self.inner.Xi;
         let h_table = &self.inner.Htable;
 
@@ -259,11 +259,13 @@ impl From<Xi> for Block {
     }
 }
 
-// Keep in sync with `GCM128_CONTEXT` in modes/internal.h.
+// This corresponds roughly to the `GCM128_CONTEXT` structure in BoringSSL.
+// Some assembly language code, in particular the MOVEBE+AVX2 X86-64
+// implementation, requires this exact layout.
 #[repr(C, align(16))]
-struct GCM128_CONTEXT {
+struct ContextInner {
     Xi: Xi,
-    H_unused: Block,
+    _unused: Block,
     Htable: HTable,
 }
 
