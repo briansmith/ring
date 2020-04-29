@@ -16,13 +16,13 @@ use super::{Aad, Block, BLOCK_LEN};
 use crate::{c, cpu};
 
 #[repr(transparent)]
-pub struct Key(GCM128_KEY);
+pub struct Key(HTable);
 
 impl Key {
     pub(super) fn new(mut h_be: Block, cpu_features: cpu::Features) -> Self {
         let h = h_be.u64s_be_to_native();
 
-        let mut key = Self(GCM128_KEY {
+        let mut key = Self(HTable {
             Htable: [u128 { hi: 0, lo: 0 }; GCM128_HTABLE_LEN],
         });
 
@@ -83,7 +83,7 @@ impl Context {
             inner: GCM128_CONTEXT {
                 Xi: Xi(Block::zero()),
                 H_unused: Block::zero(),
-                key: key.0.clone(),
+                Htable: key.0.clone(),
             },
             cpu_features,
         };
@@ -105,7 +105,7 @@ impl Context {
         // parameters, one or more of them might assume that they are part of
         // the same `GCM128_CONTEXT`.
         let xi = &mut self.inner.Xi;
-        let h_table = &self.inner.key;
+        let h_table = &self.inner.Htable;
 
         match detect_implementation(self.cpu_features) {
             #[cfg(target_arch = "x86_64")]
@@ -113,7 +113,7 @@ impl Context {
                 extern "C" {
                     fn GFp_gcm_ghash_avx(
                         xi: &mut Xi,
-                        h_table: &GCM128_KEY,
+                        Htable: &HTable,
                         inp: *const u8,
                         len: c::size_t,
                     );
@@ -127,7 +127,7 @@ impl Context {
                 extern "C" {
                     fn GFp_gcm_ghash_clmul(
                         xi: &mut Xi,
-                        h_table: &GCM128_KEY,
+                        Htable: &HTable,
                         inp: *const u8,
                         len: c::size_t,
                     );
@@ -142,7 +142,7 @@ impl Context {
                 extern "C" {
                     fn GFp_gcm_ghash_neon(
                         xi: &mut Xi,
-                        h_table: &GCM128_KEY,
+                        Htable: &HTable,
                         inp: *const u8,
                         len: c::size_t,
                     );
@@ -157,7 +157,7 @@ impl Context {
                 extern "C" {
                     fn GFp_gcm_ghash_4bit(
                         xi: &mut Xi,
-                        h_table: &GCM128_KEY,
+                        Htable: &HTable,
                         inp: *const u8,
                         len: c::size_t,
                     );
@@ -176,12 +176,12 @@ impl Context {
         // parameters, one or more of them might assume that they are part of
         // the same `GCM128_CONTEXT`.
         let xi = &mut self.inner.Xi;
-        let h_table = &self.inner.key;
+        let h_table = &self.inner.Htable;
 
         match detect_implementation(self.cpu_features) {
             Implementation::CLMUL => {
                 extern "C" {
-                    fn GFp_gcm_gmult_clmul(Xi: &mut Xi, Htable: &GCM128_KEY);
+                    fn GFp_gcm_gmult_clmul(xi: &mut Xi, Htable: &HTable);
                 }
                 unsafe {
                     GFp_gcm_gmult_clmul(xi, h_table);
@@ -191,7 +191,7 @@ impl Context {
             #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             Implementation::NEON => {
                 extern "C" {
-                    fn GFp_gcm_gmult_neon(Xi: &mut Xi, Htable: &GCM128_KEY);
+                    fn GFp_gcm_gmult_neon(xi: &mut Xi, Htable: &HTable);
                 }
                 unsafe {
                     GFp_gcm_gmult_neon(xi, h_table);
@@ -201,7 +201,7 @@ impl Context {
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 extern "C" {
-                    fn GFp_gcm_gmult_4bit(Xi: &mut Xi, Htable: &GCM128_KEY);
+                    fn GFp_gcm_gmult_4bit(xi: &mut Xi, Htable: &HTable);
                 }
                 unsafe {
                     GFp_gcm_gmult_4bit(xi, h_table);
@@ -226,10 +226,10 @@ impl Context {
     }
 }
 
-// Keep in sync with `GCM128_KEY` in modes/internal.h.
+// The alignment is required by non-Rust code that uses `GCM128_CONTEXT`.
 #[derive(Clone)]
 #[repr(C, align(16))]
-struct GCM128_KEY {
+struct HTable {
     Htable: [u128; GCM128_HTABLE_LEN],
 }
 
@@ -264,7 +264,7 @@ impl From<Xi> for Block {
 struct GCM128_CONTEXT {
     Xi: Xi,
     H_unused: Block,
-    key: GCM128_KEY,
+    Htable: HTable,
 }
 
 enum Implementation {
