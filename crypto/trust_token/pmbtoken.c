@@ -392,88 +392,47 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
                          const EC_RAW_POINT *S, const EC_RAW_POINT *W,
                          const EC_RAW_POINT *Ws, uint8_t private_metadata) {
   const EC_GROUP *group = method->group;
-  // Generate DLEQ2 proof for the validity token.
 
-  // ks0, ks1 <- Zp
+  // We generate a DLEQ proof for the validity token and a DLEQOR2 proof for the
+  // private metadata token. To allow amortizing Jacobian-to-affine conversions,
+  // we compute Ki for both proofs first.
+
+  // Setup the DLEQ proof.
   EC_SCALAR ks0, ks1;
-  if (!ec_random_nonzero_scalar(group, &ks0, kDefaultAdditionalData) ||
-      !ec_random_nonzero_scalar(group, &ks1, kDefaultAdditionalData)) {
-    return 0;
-  }
-
-  // Ks = ks0*(G;T) + ks1*(H;S)
   EC_RAW_POINT Ks0, Ks1;
-  if (!mul_twice_base(group, &Ks0, &ks0, &method->h, &ks1) ||
+  if (// ks0, ks1 <- Zp
+      !ec_random_nonzero_scalar(group, &ks0, kDefaultAdditionalData) ||
+      !ec_random_nonzero_scalar(group, &ks1, kDefaultAdditionalData) ||
+      // Ks = ks0*(G;T) + ks1*(H;S)
+      !mul_twice_base(group, &Ks0, &ks0, &method->h, &ks1) ||
       !mul_twice(group, &Ks1, T, &ks0, S, &ks1)) {
     return 0;
   }
 
-  // cs = Hc(...)
-  EC_SCALAR cs;
-  if (!hash_c_dleq(method, &cs, &priv->pubs, T, S, Ws, &Ks0, &Ks1)) {
-    return 0;
-  }
-
-  EC_SCALAR cs_mont;
-  ec_scalar_to_montgomery(group, &cs_mont, &cs);
-
-  // In each of these products, only one operand is in Montgomery form, so the
-  // product does not need to be converted.
-
-  // us = ks0 + cs*xs
-  EC_SCALAR us;
-  ec_scalar_mul_montgomery(group, &us, &priv->xs, &cs_mont);
-  ec_scalar_add(group, &us, &ks0, &us);
-
-  // vs = ks1 + cs*ys
-  EC_SCALAR vs;
-  ec_scalar_mul_montgomery(group, &vs, &priv->ys, &cs_mont);
-  ec_scalar_add(group, &vs, &ks1, &vs);
-
-  // Store DLEQ2 proof in transcript.
-  if (!scalar_to_cbb(cbb, group, &cs) ||
-      !scalar_to_cbb(cbb, group, &us) ||
-      !scalar_to_cbb(cbb, group, &vs)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  // Generate DLEQOR2 proof for the private metadata token.
-  BN_ULONG mask = ((BN_ULONG)0) - (private_metadata&1);
-
-  // Select values of xb, yb (keys corresponding to the private metadata value)
-  // and pubo (public key corresponding to the other value) in constant time.
+  // Setup the DLEQOR proof. First, select values of xb, yb (keys corresponding
+  // to the private metadata value) and pubo (public key corresponding to the
+  // other value) in constant time.
+  BN_ULONG mask = ((BN_ULONG)0) - (private_metadata & 1);
   EC_RAW_POINT pubo;
   EC_SCALAR xb, yb;
   ec_scalar_select(group, &xb, mask, &priv->x1, &priv->x0);
   ec_scalar_select(group, &yb, mask, &priv->y1, &priv->y0);
   ec_point_select(group, &pubo, mask, &priv->pub0, &priv->pub1);
 
-  // k0, k1 <- Zp
-  EC_SCALAR k0, k1;
-  if (!ec_random_nonzero_scalar(group, &k0, kDefaultAdditionalData) ||
-      !ec_random_nonzero_scalar(group, &k1, kDefaultAdditionalData)) {
-    return 0;
-  }
-
-  // Kb = k0*(G;T) + k1*(H;S)
-  EC_RAW_POINT Kb0, Kb1;
-  if (!mul_twice_base(group, &Kb0, &k0, &method->h, &k1) ||
-      !mul_twice(group, &Kb1, T, &k0, S, &k1)) {
-    return 0;
-  }
-
-  // co, uo, vo <- Zp
-  EC_SCALAR co, uo, vo;
-  if (!ec_random_nonzero_scalar(group, &co, kDefaultAdditionalData) ||
+  EC_SCALAR k0, k1, co, uo, vo;
+  EC_RAW_POINT Kb0, Kb1, Ko0, Ko1;
+  if (// k0, k1 <- Zp
+      !ec_random_nonzero_scalar(group, &k0, kDefaultAdditionalData) ||
+      !ec_random_nonzero_scalar(group, &k1, kDefaultAdditionalData) ||
+      // Kb = k0*(G;T) + k1*(H;S)
+      !mul_twice_base(group, &Kb0, &k0, &method->h, &k1) ||
+      !mul_twice(group, &Kb1, T, &k0, S, &k1) ||
+      // co, uo, vo <- Zp
+      !ec_random_nonzero_scalar(group, &co, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &uo, kDefaultAdditionalData) ||
-      !ec_random_nonzero_scalar(group, &vo, kDefaultAdditionalData)) {
-    return 0;
-  }
-
-  // Ko = uo*(G;T) + vo*(H;S) - co*(pubo;W)
-  EC_RAW_POINT Ko0, Ko1;
-  if (!mul_add_and_sub(group, &Ko0, &Ko1, T, &uo, &method->h, S, &vo, &pubo, W,
+      !ec_random_nonzero_scalar(group, &vo, kDefaultAdditionalData) ||
+      // Ko = uo*(G;T) + vo*(H;S) - co*(pubo;W)
+      !mul_add_and_sub(group, &Ko0, &Ko1, T, &uo, &method->h, S, &vo, &pubo, W,
                        &co)) {
     return 0;
   }
@@ -485,10 +444,35 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
   ec_point_select(group, &K10, mask, &Kb0, &Ko0);
   ec_point_select(group, &K11, mask, &Kb1, &Ko1);
 
-  // c = Hc(...)
-  EC_SCALAR c;
-  if (!hash_c_dleqor(method, &c, &priv->pub0, &priv->pub1, T, S, W, &K00, &K01,
+  // Compute c = Hc(...) for the two proofs.
+  EC_SCALAR cs, c;
+  if (!hash_c_dleq(method, &cs, &priv->pubs, T, S, Ws, &Ks0, &Ks1) ||
+      !hash_c_dleqor(method, &c, &priv->pub0, &priv->pub1, T, S, W, &K00, &K01,
                      &K10, &K11)) {
+    return 0;
+  }
+
+  // Compute cb, ub, and ub for the two proofs. In each of these products, only
+  // one operand is in Montgomery form, so the product does not need to be
+  // converted.
+
+  EC_SCALAR cs_mont;
+  ec_scalar_to_montgomery(group, &cs_mont, &cs);
+
+  // us = ks0 + cs*xs
+  EC_SCALAR us, vs;
+  ec_scalar_mul_montgomery(group, &us, &priv->xs, &cs_mont);
+  ec_scalar_add(group, &us, &ks0, &us);
+
+  // vs = ks1 + cs*ys
+  ec_scalar_mul_montgomery(group, &vs, &priv->ys, &cs_mont);
+  ec_scalar_add(group, &vs, &ks1, &vs);
+
+  // Store DLEQ2 proof in transcript.
+  if (!scalar_to_cbb(cbb, group, &cs) ||
+      !scalar_to_cbb(cbb, group, &us) ||
+      !scalar_to_cbb(cbb, group, &vs)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -498,9 +482,6 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
 
   EC_SCALAR cb_mont;
   ec_scalar_to_montgomery(group, &cb_mont, &cb);
-
-  // In each of these products, only one operand is in Montgomery form, so the
-  // product does not need to be converted.
 
   // ub = k0 + cb*xb
   ec_scalar_mul_montgomery(group, &ub, &xb, &cb_mont);
@@ -538,7 +519,12 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
                        const EC_RAW_POINT *S, const EC_RAW_POINT *W,
                        const EC_RAW_POINT *Ws) {
   const EC_GROUP *group = method->group;
-  // Verify the DLEQ2 proof over the validity token.
+
+  // We verify a DLEQ proof for the validity token and a DLEQOR2 proof for the
+  // private metadata token. To allow amortizing Jacobian-to-affine conversions,
+  // we compute Ki for both proofs first.
+
+  // Decode the DLEQ proof.
   EC_SCALAR cs, us, vs;
   if (!scalar_from_cbs(cbs, group, &cs) ||
       !scalar_from_cbs(cbs, group, &us) ||
@@ -554,20 +540,7 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
     return 0;
   }
 
-  // calculated = Hc(...)
-  EC_SCALAR calculated;
-  if (!hash_c_dleq(method, &calculated, &pub->pubs, T, S, Ws, &Ks0, &Ks1)) {
-    return 0;
-  }
-
-  // cs == calculated
-  if (!ec_scalar_equal_vartime(group, &cs, &calculated)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_PROOF);
-    return 0;
-  }
-
-  // Verify the DLEQOR2 proof over the private metadata token.
-
+  // Decode the DLEQOR proof.
   EC_SCALAR c0, c1, u0, u1, v0, v1;
   if (!scalar_from_cbs(cbs, group, &c0) ||
       !scalar_from_cbs(cbs, group, &c1) ||
@@ -579,31 +552,37 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
     return 0;
   }
 
-  // K0 = u0*(G;T) + v0*(H;S) - c0*(pub0;W)
-  EC_RAW_POINT K00, K01;
-  if (!mul_add_and_sub(group, &K00, &K01, T, &u0, &method->h, S, &v0,
-                       &pub->pub0, W, &c0)) {
-    return 0;
-  }
-
-  // K1 = u1*(G;T) + v1*(H;S) - c1*(pub1;Ws)
-  EC_RAW_POINT K10, K11;
-  if (!mul_add_and_sub(group, &K10, &K11, T, &u1, &method->h, S, &v1,
+  EC_RAW_POINT K00, K01, K10, K11;
+  if (// K0 = u0*(G;T) + v0*(H;S) - c0*(pub0;W)
+      !mul_add_and_sub(group, &K00, &K01, T, &u0, &method->h, S, &v0,
+                       &pub->pub0, W, &c0) ||
+      // K1 = u1*(G;T) + v1*(H;S) - c1*(pub1;Ws)
+      !mul_add_and_sub(group, &K10, &K11, T, &u1, &method->h, S, &v1,
                        &pub->pub1, W, &c1)) {
     return 0;
   }
 
-  // calculated = Hc(...)
+  // Check the DLEQ proof.
+  EC_SCALAR calculated;
+  if (!hash_c_dleq(method, &calculated, &pub->pubs, T, S, Ws, &Ks0, &Ks1)) {
+    return 0;
+  }
+
+  // cs == calculated
+  if (!ec_scalar_equal_vartime(group, &cs, &calculated)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_PROOF);
+    return 0;
+  }
+
+  // Check the DLEQOR proof.
   if (!hash_c_dleqor(method, &calculated, &pub->pub0, &pub->pub1, T, S, W, &K00,
                      &K01, &K10, &K11)) {
     return 0;
   }
 
-  // c = c0 + c1
+  // c0 + c1 == calculated
   EC_SCALAR c;
   ec_scalar_add(group, &c, &c0, &c1);
-
-  // c == calculated
   if (!ec_scalar_equal_vartime(group, &c, &calculated)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_PROOF);
     return 0;
