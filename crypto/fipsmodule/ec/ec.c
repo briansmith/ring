@@ -1048,6 +1048,28 @@ int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
   return 1;
 }
 
+int ec_point_mul_scalar_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+                              const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
+                              const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
+                              const EC_RAW_POINT *p2,
+                              const EC_SCALAR *scalar2) {
+  if (group->meth->mul_batch == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  group->meth->mul_batch(group, r, p0, scalar0, p1, scalar1, p2, scalar2);
+
+  // Check the result is on the curve to defend against fault attacks or bugs.
+  // This has negligible cost compared to the multiplication.
+  if (!ec_GFp_simple_is_on_curve(group, r)) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  return 1;
+}
+
 void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
                       const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
   ec_felem_select(group, &out->X, mask, &a->X, &b->X);

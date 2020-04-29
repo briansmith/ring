@@ -80,3 +80,90 @@ void ec_GFp_mont_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
                           const EC_SCALAR *scalar) {
   ec_GFp_mont_mul(group, r, &group->generator->raw, scalar);
 }
+
+static void ec_GFp_mont_batch_precomp(const EC_GROUP *group, EC_RAW_POINT *out,
+                                      size_t num, const EC_RAW_POINT *p) {
+  assert(num > 1);
+  ec_GFp_simple_point_set_to_infinity(group, &out[0]);
+  ec_GFp_simple_point_copy(&out[1], p);
+  for (size_t j = 2; j < num; j++) {
+    if (j & 1) {
+      ec_GFp_mont_add(group, &out[j], &out[1], &out[j - 1]);
+    } else {
+      ec_GFp_mont_dbl(group, &out[j], &out[j / 2]);
+    }
+  }
+}
+
+static void ec_GFp_mont_batch_get_window(const EC_GROUP *group,
+                                         EC_RAW_POINT *out,
+                                         const EC_RAW_POINT precomp[17],
+                                         const EC_SCALAR *scalar, unsigned i) {
+  const size_t width = group->order.width;
+  uint8_t window = bn_is_bit_set_words(scalar->words, width, i + 4) << 5;
+  window |= bn_is_bit_set_words(scalar->words, width, i + 3) << 4;
+  window |= bn_is_bit_set_words(scalar->words, width, i + 2) << 3;
+  window |= bn_is_bit_set_words(scalar->words, width, i + 1) << 2;
+  window |= bn_is_bit_set_words(scalar->words, width, i) << 1;
+  if (i > 0) {
+    window |= bn_is_bit_set_words(scalar->words, width, i - 1);
+  }
+  uint8_t sign, digit;
+  ec_GFp_nistp_recode_scalar_bits(&sign, &digit, window);
+
+  // Select the entry in constant-time.
+  OPENSSL_memset(out, 0, sizeof(EC_RAW_POINT));
+  for (size_t j = 0; j < 17; j++) {
+    BN_ULONG mask = constant_time_eq_w(j, digit);
+    ec_point_select(group, out, mask, &precomp[j], out);
+  }
+
+  // Negate if necessary.
+  EC_FELEM neg_Y;
+  ec_felem_neg(group, &neg_Y, &out->Y);
+  BN_ULONG sign_mask = sign;
+  sign_mask = 0u - sign_mask;
+  ec_felem_select(group, &out->Y, sign_mask, &neg_Y, &out->Y);
+}
+
+void ec_GFp_mont_mul_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+                           const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
+                           const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
+                           const EC_RAW_POINT *p2, const EC_SCALAR *scalar2) {
+  EC_RAW_POINT precomp[3][17];
+  ec_GFp_mont_batch_precomp(group, precomp[0], 17, p0);
+  ec_GFp_mont_batch_precomp(group, precomp[1], 17, p1);
+  if (p2 != NULL) {
+    ec_GFp_mont_batch_precomp(group, precomp[2], 17, p2);
+  }
+
+  // Divide bits in |scalar| into windows.
+  unsigned bits = BN_num_bits(&group->order);
+  int r_is_at_infinity = 1;
+  for (unsigned i = bits; i <= bits; i--) {
+    if (!r_is_at_infinity) {
+      ec_GFp_mont_dbl(group, r, r);
+    }
+    if (i % 5 == 0) {
+      EC_RAW_POINT tmp;
+      ec_GFp_mont_batch_get_window(group, &tmp, precomp[0], scalar0, i);
+      if (r_is_at_infinity) {
+        ec_GFp_simple_point_copy(r, &tmp);
+        r_is_at_infinity = 0;
+      } else {
+        ec_GFp_mont_add(group, r, r, &tmp);
+      }
+
+      ec_GFp_mont_batch_get_window(group, &tmp, precomp[1], scalar1, i);
+      ec_GFp_mont_add(group, r, r, &tmp);
+
+      if (p2 != NULL) {
+        ec_GFp_mont_batch_get_window(group, &tmp, precomp[2], scalar2, i);
+        ec_GFp_mont_add(group, r, r, &tmp);
+      }
+    }
+  }
+  if (r_is_at_infinity) {
+    ec_GFp_simple_point_set_to_infinity(group, r);
+  }
+}

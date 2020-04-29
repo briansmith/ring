@@ -49,62 +49,17 @@ typedef struct {
 
 static const uint8_t kDefaultAdditionalData[32] = {0};
 
-static int mul_twice(const EC_GROUP *group, EC_RAW_POINT *out,
-                     const EC_RAW_POINT *g, const EC_SCALAR *g_scalar,
-                     const EC_RAW_POINT *p, const EC_SCALAR *p_scalar) {
-  EC_RAW_POINT tmp1, tmp2;
-  if (!ec_point_mul_scalar(group, &tmp1, g, g_scalar) ||
-      !ec_point_mul_scalar(group, &tmp2, p, p_scalar)) {
-    return 0;
-  }
-
-  group->meth->add(group, out, &tmp1, &tmp2);
-  return 1;
-}
-
-static int mul_twice_base(const EC_GROUP *group, EC_RAW_POINT *out,
-                          const EC_SCALAR *base_scalar, const EC_RAW_POINT *p,
-                          const EC_SCALAR *p_scalar) {
-  EC_RAW_POINT tmp1, tmp2;
-  if (!ec_point_mul_scalar_base(group, &tmp1, base_scalar) ||
-      !ec_point_mul_scalar(group, &tmp2, p, p_scalar)) {
-    return 0;
-  }
-
-  group->meth->add(group, out, &tmp1, &tmp2);
-  return 1;
-}
-
-// (v0;v1) = p_scalar*(G;p1) + q_scalar*(q0;q1) - r_scalar*(r0;r1)
-static int mul_add_and_sub(const EC_GROUP *group, EC_RAW_POINT *out_v0,
-                           EC_RAW_POINT *out_v1, const EC_RAW_POINT *p1,
-                           const EC_SCALAR *p_scalar, const EC_RAW_POINT *q0,
-                           const EC_RAW_POINT *q1, const EC_SCALAR *q_scalar,
-                           const EC_RAW_POINT *r0, const EC_RAW_POINT *r1,
-                           const EC_SCALAR *r_scalar) {
-  EC_RAW_POINT tmp0, tmp1, v0, v1;
-  if (!mul_twice_base(group, &v0, p_scalar, q0, q_scalar) ||
-      !mul_twice(group, &v1, p1, p_scalar, q1, q_scalar) ||
-      !ec_point_mul_scalar(group, &tmp0, r0, r_scalar) ||
-      !ec_point_mul_scalar(group, &tmp1, r1, r_scalar)) {
-    return 0;
-  }
-  ec_GFp_simple_invert(group, &tmp0);
-  ec_GFp_simple_invert(group, &tmp1);
-  group->meth->add(group, out_v0, &v0, &tmp0);
-  group->meth->add(group, out_v1, &v1, &tmp1);
-  return 1;
-}
-
 // generate_keypair generates a keypair for the PMBTokens construction.
 // |out_x| and |out_y| are set to the secret half of the keypair, while
 // |*out_pub| is set to the public half of the keypair. It returns one on
 // success and zero on failure.
 static int generate_keypair(const PMBTOKEN_METHOD *method, EC_SCALAR *out_x,
                             EC_SCALAR *out_y, EC_RAW_POINT *out_pub) {
+  const EC_RAW_POINT *g = &method->group->generator->raw;
   if (!ec_random_nonzero_scalar(method->group, out_x, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(method->group, out_y, kDefaultAdditionalData) ||
-      !mul_twice_base(method->group, out_pub, out_x, &method->h, out_y)) {
+      !ec_point_mul_scalar_batch(method->group, out_pub, g, out_x, &method->h,
+                                 out_y, NULL, NULL)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -223,9 +178,13 @@ static int pmbtoken_issuer_key_from_bytes(const PMBTOKEN_METHOD *method,
   // Recompute the public key.
   EC_RAW_POINT pub[3];
   EC_AFFINE pub_affine[3];
-  if (!mul_twice_base(group, &pub[0], &key->x0, &method->h, &key->y0) ||
-      !mul_twice_base(group, &pub[1], &key->x1, &method->h, &key->y1) ||
-      !mul_twice_base(group, &pub[2], &key->xs, &method->h, &key->ys) ||
+  const EC_RAW_POINT *g = &group->generator->raw;
+  if (!ec_point_mul_scalar_batch(group, &pub[0], g, &key->x0, &method->h,
+                                 &key->y0, NULL, NULL) ||
+      !ec_point_mul_scalar_batch(group, &pub[1], g, &key->x1, &method->h,
+                                 &key->y1, NULL, NULL) ||
+      !ec_point_mul_scalar_batch(group, &pub[2], g, &key->xs, &method->h,
+                                 &key->ys, NULL, NULL) ||
       !ec_jacobian_to_affine_batch(group, pub_affine, pub, 3)) {
     return 0;
   }
@@ -398,6 +357,7 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
                          const EC_RAW_POINT *S, const EC_RAW_POINT *W,
                          const EC_RAW_POINT *Ws, uint8_t private_metadata) {
   const EC_GROUP *group = method->group;
+  const EC_RAW_POINT *g = &group->generator->raw;
 
   // We generate a DLEQ proof for the validity token and a DLEQOR2 proof for the
   // private metadata token. To allow amortizing Jacobian-to-affine conversions,
@@ -423,8 +383,10 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
       !ec_random_nonzero_scalar(group, &ks0, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &ks1, kDefaultAdditionalData) ||
       // Ks = ks0*(G;T) + ks1*(H;S)
-      !mul_twice_base(group, &jacobians[idx_Ks0], &ks0, &method->h, &ks1) ||
-      !mul_twice(group, &jacobians[idx_Ks1], T, &ks0, S, &ks1)) {
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_Ks0], g, &ks0,
+                                 &method->h, &ks1, NULL, NULL) ||
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_Ks1], T, &ks0, S, &ks1,
+                                 NULL, NULL)) {
     return 0;
   }
 
@@ -440,20 +402,24 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
   ec_affine_select(group, &pubo_affine, mask, &priv->pub0, &priv->pub1);
   ec_affine_to_jacobian(group, &pubo, &pubo_affine);
 
-  EC_SCALAR k0, k1, co, uo, vo;
+  EC_SCALAR k0, k1, minus_co, uo, vo;
   if (// k0, k1 <- Zp
       !ec_random_nonzero_scalar(group, &k0, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &k1, kDefaultAdditionalData) ||
       // Kb = k0*(G;T) + k1*(H;S)
-      !mul_twice_base(group, &jacobians[idx_Kb0], &k0, &method->h, &k1) ||
-      !mul_twice(group, &jacobians[idx_Kb1], T, &k0, S, &k1) ||
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_Kb0], g, &k0, &method->h,
+                                 &k1, NULL, NULL) ||
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_Kb1], T, &k0, S, &k1,
+                                 NULL, NULL) ||
       // co, uo, vo <- Zp
-      !ec_random_nonzero_scalar(group, &co, kDefaultAdditionalData) ||
+      !ec_random_nonzero_scalar(group, &minus_co, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &uo, kDefaultAdditionalData) ||
       !ec_random_nonzero_scalar(group, &vo, kDefaultAdditionalData) ||
       // Ko = uo*(G;T) + vo*(H;S) - co*(pubo;W)
-      !mul_add_and_sub(group, &jacobians[idx_Ko0], &jacobians[idx_Ko1], T, &uo,
-                       &method->h, S, &vo, &pubo, W, &co)) {
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_Ko0], g, &uo, &method->h,
+                                 &vo, &pubo, &minus_co) ||
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_Ko1], T, &uo, S, &vo, W,
+                                 &minus_co)) {
     return 0;
   }
 
@@ -509,7 +475,7 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
 
   // cb = c - co
   EC_SCALAR cb, ub, vb;
-  ec_scalar_sub(group, &cb, &c, &co);
+  ec_scalar_add(group, &cb, &c, &minus_co);
 
   EC_SCALAR cb_mont;
   ec_scalar_to_montgomery(group, &cb_mont, &cb);
@@ -523,7 +489,8 @@ static int dleq_generate(const PMBTOKEN_METHOD *method, CBB *cbb,
   ec_scalar_add(group, &vb, &k1, &vb);
 
   // Select c, u, v in constant-time.
-  EC_SCALAR c0, c1, u0, u1, v0, v1;
+  EC_SCALAR co, c0, c1, u0, u1, v0, v1;
+  ec_scalar_neg(group, &co, &minus_co);
   ec_scalar_select(group, &c0, mask, &co, &cb);
   ec_scalar_select(group, &u0, mask, &uo, &ub);
   ec_scalar_select(group, &v0, mask, &vo, &vb);
@@ -550,6 +517,7 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
                        const EC_RAW_POINT *S, const EC_RAW_POINT *W,
                        const EC_RAW_POINT *Ws) {
   const EC_GROUP *group = method->group;
+  const EC_RAW_POINT *g = &group->generator->raw;
 
   // We verify a DLEQ proof for the validity token and a DLEQOR2 proof for the
   // private metadata token. To allow amortizing Jacobian-to-affine conversions,
@@ -579,10 +547,17 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
   }
 
   // Ks = us*(G;T) + vs*(H;S) - cs*(pubs;Ws)
+  //
+  // TODO(davidben): The multiplications in this function are public and can be
+  // switched to a public batch multiplication function if we add one.
   EC_RAW_POINT pubs;
   ec_affine_to_jacobian(group, &pubs, &pub->pubs);
-  if (!mul_add_and_sub(group, &jacobians[idx_Ks0], &jacobians[idx_Ks1], T, &us,
-                       &method->h, S, &vs, &pubs, Ws, &cs)) {
+  EC_SCALAR minus_cs;
+  ec_scalar_neg(group, &minus_cs, &cs);
+  if (!ec_point_mul_scalar_batch(group, &jacobians[idx_Ks0], g, &us, &method->h,
+                                 &vs, &pubs, &minus_cs) ||
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_Ks1], T, &us, S, &vs, Ws,
+                                 &minus_cs)) {
     return 0;
   }
 
@@ -601,12 +576,19 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
   EC_RAW_POINT pub0, pub1;
   ec_affine_to_jacobian(group, &pub0, &pub->pub0);
   ec_affine_to_jacobian(group, &pub1, &pub->pub1);
+  EC_SCALAR minus_c0, minus_c1;
+  ec_scalar_neg(group, &minus_c0, &c0);
+  ec_scalar_neg(group, &minus_c1, &c1);
   if (// K0 = u0*(G;T) + v0*(H;S) - c0*(pub0;W)
-      !mul_add_and_sub(group, &jacobians[idx_K00], &jacobians[idx_K01], T, &u0,
-                       &method->h, S, &v0, &pub0, W, &c0) ||
-      // K1 = u1*(G;T) + v1*(H;S) - c1*(pub1;Ws)
-      !mul_add_and_sub(group, &jacobians[idx_K10], &jacobians[idx_K11], T, &u1,
-                       &method->h, S, &v1, &pub1, W, &c1)) {
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_K00], g, &u0, &method->h,
+                                 &v0, &pub0, &minus_c0) ||
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_K01], T, &u0, S, &v0, W,
+                                 &minus_c0) ||
+      // K1 = u1*(G;T) + v1*(H;S) - c1*(pub1;W)
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_K10], g, &u1, &method->h,
+                                 &v1, &pub1, &minus_c1) ||
+      !ec_point_mul_scalar_batch(group, &jacobians[idx_K11], T, &u1, S, &v1, W,
+                                 &minus_c1)) {
     return 0;
   }
 
@@ -682,8 +664,10 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
     EC_AFFINE W_affine[2];
     CBB child;
     if (!method->hash_s(group, &Sp, &Tp_affine, s) ||
-        !mul_twice(group, &W[0], &Tp, &xb, &Sp, &yb) ||
-        !mul_twice(group, &W[1], &Tp, &key->xs, &Sp, &key->ys) ||
+        !ec_point_mul_scalar_batch(group, &W[0], &Tp, &xb, &Sp, &yb, NULL,
+                                   NULL) ||
+        !ec_point_mul_scalar_batch(group, &W[1], &Tp, &key->xs, &Sp, &key->ys,
+                                   NULL, NULL) ||
         // This call to |ec_jacobian_to_affine_batch| could be merged with the
         // one in |dleq_generate|, but we expect to implement the batched DLEQOR
         // proofs (see figure 15 of the PMBTokens paper), which would require a
@@ -842,15 +826,18 @@ static int pmbtoken_read(const PMBTOKEN_METHOD *method,
   EC_RAW_POINT S_jacobian, calculated;
   // Check the validity of the token.
   ec_affine_to_jacobian(group, &S_jacobian, &S);
-  if (!mul_twice(group, &calculated, &T, &key->xs, &S_jacobian, &key->ys) ||
+  if (!ec_point_mul_scalar_batch(group, &calculated, &T, &key->xs, &S_jacobian,
+                                 &key->ys, NULL, NULL) ||
       !ec_affine_jacobian_equal(group, &Ws, &calculated)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BAD_VALIDITY_CHECK);
     return 0;
   }
 
   EC_RAW_POINT W0, W1;
-  if (!mul_twice(group, &W0, &T, &key->x0, &S_jacobian, &key->y0) ||
-      !mul_twice(group, &W1, &T, &key->x1, &S_jacobian, &key->y1)) {
+  if (!ec_point_mul_scalar_batch(group, &W0, &T, &key->x0, &S_jacobian,
+                                 &key->y0, NULL, NULL) ||
+      !ec_point_mul_scalar_batch(group, &W1, &T, &key->x1, &S_jacobian,
+                                 &key->y1, NULL, NULL)) {
     return 0;
   }
 

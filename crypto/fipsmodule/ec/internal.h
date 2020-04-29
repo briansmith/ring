@@ -150,6 +150,9 @@ void ec_scalar_add(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
 void ec_scalar_sub(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
                    const EC_SCALAR *b);
 
+// ec_scalar_neg sets |r| to -|a|.
+void ec_scalar_neg(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a);
+
 // ec_scalar_to_montgomery sets |r| to |a| in Montgomery form.
 void ec_scalar_to_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                              const EC_SCALAR *a);
@@ -308,6 +311,29 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
 int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
                              const EC_SCALAR *scalar);
 
+// ec_point_mul_scalar_batch sets |r| to |p0| * |scalar0| + |p1| * |scalar1| +
+// |p2| * |scalar2|. |p2| may be NULL to skip that term.
+//
+// The inputs are treated as secret, however, this function leaks information
+// about whether intermediate computations add a point to itself. Callers must
+// ensure that discrete logs between |p0|, |p1|, and |p2| are uniformly
+// distributed and independent of the scalars, which should be uniformly
+// selected and not under the attackers control. This ensures the doubling case
+// will occur with negligible probability.
+//
+// This function is not implemented for all curves. Add implementations as
+// needed.
+//
+// TODO(davidben): This function does not use base point tables. For now, it is
+// only used with the generic |EC_GFp_mont_method| implementation which has
+// none. If generalizing to tuned curves, this may be useful. However, we still
+// must double up to the least efficient input, so precomputed tables can only
+// save table setup and allow a wider window size.
+int ec_point_mul_scalar_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+                              const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
+                              const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
+                              const EC_RAW_POINT *p2, const EC_SCALAR *scalar2);
+
 // ec_point_mul_scalar_public sets |r| to
 // generator * |g_scalar| + |p| * |p_scalar|. It assumes that the inputs are
 // public so there is no concern about leaking their values through timing.
@@ -399,6 +425,11 @@ struct ec_method_st {
   // mul_base sets |r| to |scalar|*generator.
   void (*mul_base)(const EC_GROUP *group, EC_RAW_POINT *r,
                    const EC_SCALAR *scalar);
+  // mul_batch implements |ec_mul_scalar_batch|.
+  void (*mul_batch)(const EC_GROUP *group, EC_RAW_POINT *r,
+                    const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
+                    const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
+                    const EC_RAW_POINT *p2, const EC_SCALAR *scalar2);
   // mul_public sets |r| to |g_scalar|*generator + |p_scalar|*|p|. It assumes
   // that the inputs are public so there is no concern about leaking their
   // values through timing.
@@ -520,6 +551,10 @@ void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                      const EC_RAW_POINT *p, const EC_SCALAR *scalar);
 void ec_GFp_mont_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
                           const EC_SCALAR *scalar);
+void ec_GFp_mont_mul_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+                           const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
+                           const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
+                           const EC_RAW_POINT *p2, const EC_SCALAR *scalar2);
 
 // ec_compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
 // |scalar| to |out|. |out| must have room for |bits| + 1 elements, each of

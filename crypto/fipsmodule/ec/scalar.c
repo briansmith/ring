@@ -106,6 +106,12 @@ void ec_scalar_sub(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
   OPENSSL_cleanse(tmp, sizeof(tmp));
 }
 
+void ec_scalar_neg(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a) {
+  EC_SCALAR zero;
+  OPENSSL_memset(&zero, 0, sizeof(EC_SCALAR));
+  ec_scalar_sub(group, r, &zero, a);
+}
+
 void ec_scalar_select(const EC_GROUP *group, EC_SCALAR *out, BN_ULONG mask,
                       const EC_SCALAR *a, const EC_SCALAR *b) {
   const BIGNUM *order = &group->order;
