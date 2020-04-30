@@ -165,13 +165,13 @@ fn aead(
     let remainder = &mut in_out[whole_len..];
     shift::shift_partial((in_prefix_len, remainder), |remainder| {
         let mut input = Block::zero();
-        input.partial_copy_from(remainder);
+        input.overwrite_part_at(0, remainder);
         if let Direction::Opening { .. } = direction {
             gcm_ctx.update_block(input);
         }
         let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
         if let Direction::Sealing = direction {
-            polyfill::slice::fill(&mut output.as_mut()[remainder.len()..], 0);
+            output.zero_from(remainder.len());
             gcm_ctx.update_block(output);
         }
         output

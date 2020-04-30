@@ -132,7 +132,7 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
     }
     if remainder_len > 0 {
         let mut block = Block::zero();
-        block.partial_copy_from(&input[whole_len..]);
+        block.overwrite_part_at(0, &input[whole_len..]);
         ctx.update_block(block, poly1305::Pad::Pad)
     }
 }

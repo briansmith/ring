@@ -102,7 +102,7 @@ where
             block: Block::zero(),
         };
         let block = unsafe { &mut r.block };
-        block.as_mut()[U32::NONCE_BYTE_INDEX..][..NONCE_LEN].copy_from_slice(nonce.as_ref());
+        block.overwrite_part_at(U32::NONCE_BYTE_INDEX, nonce.as_ref());
         r.increment_by_less_safe(initial_counter);
 
         r
