@@ -3138,14 +3138,40 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // |SSL_quic_max_handshake_flight_len| to get the maximum buffer length at each
 // encryption level.
 //
-// Note: 0-RTT support is incomplete and does not currently handle QUIC
-// transport parameters and server SETTINGS frame.
-//
 // QUIC implementations must additionally configure transport parameters with
 // |SSL_set_quic_transport_params|. |SSL_get_peer_quic_transport_params| may be
 // used to query the value received from the peer. BoringSSL handles this
 // extension as an opaque byte string. The caller is responsible for serializing
 // and parsing them. See draft-ietf-quic-transport (section 7.3) for details.
+//
+// QUIC additionally imposes restrictions on 0-RTT. In particular, the QUIC
+// transport layer requires that if a server accepts 0-RTT data, then the
+// transport parameters sent on the resumed connection must not lower any limits
+// compared to the transport parameters that the server sent on the connection
+// where the ticket for 0-RTT was issued. In effect, the server must remember
+// the transport parameters with the ticket. Application protocols running on
+// QUIC may impose similar restrictions, for example HTTP/3's restrictions on
+// SETTINGS frames.
+//
+// BoringSSL imposes a stricter check on the server to enforce these
+// restrictions. BoringSSL requires that the transport parameters and
+// application protocol state be a byte-for-byte match between the connection
+// where the ticket was issued and the connection where it is used for 0-RTT. If
+// there is a mismatch, BoringSSL will reject early data (but not reject the
+// resumption attempt).
+//
+// BoringSSL does not perform any client-side checks on the transport
+// parameters received from a server that also accepted early data. It is up to
+// the caller to verify that the received transport parameters do not lower any
+// limits, and to close the QUIC connection if that is not the case. The same
+// holds for any application protocol state remembered for 0-RTT, e.g. HTTP/3
+// SETTINGS.
+//
+// The transport parameter check happens automatically with
+// |SSL_set_quic_transport_params|. QUIC servers must set application state via
+// |SSL_set_quic_early_data_context| to configure the application protocol
+// check. No other mechanisms are provided to have BoringSSL reject early data
+// because of QUIC transport or application protocol restrictions.
 
 // ssl_encryption_level_t represents a specific QUIC encryption level used to
 // transmit handshake messages.
@@ -3292,6 +3318,18 @@ OPENSSL_EXPORT int SSL_set_quic_transport_params(SSL *ssl,
 OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(
     const SSL *ssl, const uint8_t **out_params, size_t *out_params_len);
 
+// SSL_set_quic_early_data_context configures a context string in QUIC servers
+// for accepting early data. If a resumption connection offers early data, the
+// server will check if the value matches that of the connection which minted
+// the ticket. If not, resumption still succeeds but early data is rejected. For
+// HTTP/3, this should be the serialized server SETTINGS frame.
+//
+// This function may be called before |SSL_do_handshake| or during server
+// certificate selection. It returns 1 on success and 0 on failure.
+OPENSSL_EXPORT int SSL_set_quic_early_data_context(SSL *ssl,
+                                                   const uint8_t *context,
+                                                   size_t context_len);
+
 
 // Early data.
 //
@@ -3426,8 +3464,10 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   ssl_early_data_token_binding = 11,
   // The client and server ticket age were too far apart.
   ssl_early_data_ticket_age_skew = 12,
+  // QUIC parameters differ between this connection and the original.
+  ssl_early_data_quic_parameter_mismatch = 13,
   // The value of the largest entry.
-  ssl_early_data_reason_max_value = ssl_early_data_ticket_age_skew,
+  ssl_early_data_reason_max_value = ssl_early_data_quic_parameter_mismatch,
 };
 
 // SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected

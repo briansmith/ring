@@ -1248,6 +1248,12 @@ void SSL_get_peer_quic_transport_params(const SSL *ssl,
   *out_params_len = ssl->s3->peer_quic_transport_params.size();
 }
 
+int SSL_set_quic_early_data_context(SSL *ssl, const uint8_t *context,
+                                    size_t context_len) {
+  return ssl->config && ssl->config->quic_early_data_context.CopyFrom(
+                            MakeConstSpan(context, context_len));
+}
+
 void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled) {
   ctx->enable_early_data = !!enabled;
 }

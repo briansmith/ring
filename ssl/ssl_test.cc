@@ -5106,11 +5106,15 @@ class QUICMethodTest : public testing::Test {
       transport_->client()->AllowOutOfOrderWrites();
       transport_->server()->AllowOutOfOrderWrites();
     }
-    static const uint8_t transport_params[] = {0};
-    if (!SSL_set_quic_transport_params(client_.get(), transport_params,
-                                       sizeof(transport_params)) ||
-        !SSL_set_quic_transport_params(server_.get(), transport_params,
-                                       sizeof(transport_params))) {
+    static const uint8_t client_transport_params[] = {0};
+    if (!SSL_set_quic_transport_params(client_.get(), client_transport_params,
+                                       sizeof(client_transport_params)) ||
+        !SSL_set_quic_transport_params(server_.get(),
+                                       server_transport_params_.data(),
+                                       server_transport_params_.size()) ||
+        !SSL_set_quic_early_data_context(
+            server_.get(), server_quic_early_data_context_.data(),
+            server_quic_early_data_context_.size())) {
       return false;
     }
     return true;
@@ -5255,6 +5259,9 @@ class QUICMethodTest : public testing::Test {
 
   bssl::UniquePtr<SSL> client_;
   bssl::UniquePtr<SSL> server_;
+
+  std::vector<uint8_t> server_transport_params_ = {1};
+  std::vector<uint8_t> server_quic_early_data_context_ = {2};
 
   bool allow_out_of_order_writes_ = false;
 };
@@ -5411,6 +5418,88 @@ TEST_F(QUICMethodTest, ZeroRTTAccept) {
   EXPECT_FALSE(SSL_in_early_data(server_.get()));
   EXPECT_TRUE(SSL_early_data_accepted(client_.get()));
   EXPECT_TRUE(SSL_early_data_accepted(server_.get()));
+}
+
+TEST_F(QUICMethodTest, ZeroRTTRejectMismatchedParameters) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_early_data_enabled(client_ctx_.get(), 1);
+  SSL_CTX_set_early_data_enabled(server_ctx_.get(), 1);
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+
+  bssl::UniquePtr<SSL_SESSION> session = CreateClientSessionForQUIC();
+  ASSERT_TRUE(session);
+
+  for (bool change_transport_params : {false, true}) {
+    SCOPED_TRACE(change_transport_params);
+    for (bool change_context : {false, true}) {
+      if (!change_transport_params && !change_context) {
+        continue;
+      }
+      SCOPED_TRACE(change_context);
+
+      ASSERT_TRUE(CreateClientAndServer());
+      static const uint8_t new_transport_params[] = {3};
+      static const uint8_t new_context[] = {4};
+      if (change_transport_params) {
+        ASSERT_TRUE(SSL_set_quic_transport_params(
+            server_.get(), new_transport_params, sizeof(new_transport_params)));
+      }
+      if (change_context) {
+        ASSERT_TRUE(SSL_set_quic_early_data_context(server_.get(), new_context,
+                                                    sizeof(new_context)));
+      }
+      SSL_set_session(client_.get(), session.get());
+
+      // The client handshake should return immediately into the early data
+      // state.
+      ASSERT_EQ(SSL_do_handshake(client_.get()), 1);
+      EXPECT_TRUE(SSL_in_early_data(client_.get()));
+      // The transport should have keys for sending 0-RTT data.
+      EXPECT_TRUE(
+          transport_->client()->HasWriteSecret(ssl_encryption_early_data));
+
+      // The server will consume the ClientHello, but it will not accept 0-RTT.
+      ASSERT_TRUE(ProvideHandshakeData(server_.get()));
+      ASSERT_EQ(SSL_do_handshake(server_.get()), -1);
+      EXPECT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server_.get(), -1));
+      EXPECT_FALSE(SSL_in_early_data(server_.get()));
+      EXPECT_FALSE(
+          transport_->server()->HasReadSecret(ssl_encryption_early_data));
+
+      // The client consumes the server response and signals 0-RTT rejection.
+      for (;;) {
+        ASSERT_TRUE(ProvideHandshakeData(client_.get()));
+        ASSERT_EQ(-1, SSL_do_handshake(client_.get()));
+        int err = SSL_get_error(client_.get(), -1);
+        if (err == SSL_ERROR_EARLY_DATA_REJECTED) {
+          break;
+        }
+        ASSERT_EQ(SSL_ERROR_WANT_READ, err);
+      }
+
+      // As in TLS over TCP, 0-RTT rejection is sticky.
+      ASSERT_EQ(-1, SSL_do_handshake(client_.get()));
+      ASSERT_EQ(SSL_ERROR_EARLY_DATA_REJECTED,
+                SSL_get_error(client_.get(), -1));
+
+      // Finish up the client and server handshakes.
+      SSL_reset_early_data_reject(client_.get());
+      ASSERT_TRUE(CompleteHandshakesForQUIC());
+
+      // Both sides can now exchange 1-RTT data.
+      ExpectHandshakeSuccess();
+      EXPECT_TRUE(SSL_session_reused(client_.get()));
+      EXPECT_TRUE(SSL_session_reused(server_.get()));
+      EXPECT_FALSE(SSL_in_early_data(client_.get()));
+      EXPECT_FALSE(SSL_in_early_data(server_.get()));
+      EXPECT_FALSE(SSL_early_data_accepted(client_.get()));
+      EXPECT_FALSE(SSL_early_data_accepted(server_.get()));
+    }
+  }
 }
 
 TEST_F(QUICMethodTest, ZeroRTTReject) {

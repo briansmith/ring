@@ -2685,6 +2685,9 @@ struct SSL_CONFIG {
   // Contains the QUIC transport params that this endpoint will send.
   Array<uint8_t> quic_transport_params;
 
+  // Contains the context used to decide whether to accept early data in QUIC.
+  Array<uint8_t> quic_early_data_context;
+
   // verify_sigalgs, if not empty, is the set of signature algorithms
   // accepted from the peer in decreasing order of preference.
   Array<uint16_t> verify_sigalgs;
@@ -2736,6 +2739,11 @@ struct SSL_CONFIG {
   // workaround for https://bugs.openjdk.java.net/browse/JDK-8211806.
   bool jdk11_workaround : 1;
 };
+
+// Computes a SHA-256 hash of the transport parameters and early data context
+// for QUIC, putting the hash in |SHA256_DIGEST_LENGTH| bytes at |hash_out|.
+bool compute_quic_early_data_hash(const SSL_CONFIG *config,
+                                  uint8_t hash_out[SHA256_DIGEST_LENGTH]);
 
 // From RFC 8446, used in determining PSK modes.
 #define SSL_PSK_DHE_KE 0x1
@@ -3550,6 +3558,10 @@ struct ssl_session_st {
 
   // is_quic indicates whether this session was created using QUIC.
   bool is_quic : 1;
+
+  // quic_early_data_hash is used to determine whether early data must be
+  // rejected when performing a QUIC handshake.
+  bssl::Array<uint8_t> quic_early_data_hash;
 
  private:
   ~ssl_session_st();

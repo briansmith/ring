@@ -309,6 +309,23 @@ static enum ssl_ticket_aead_result_t select_session(
   return ssl_ticket_aead_success;
 }
 
+static bool quic_ticket_compatible(const SSL_SESSION *session,
+                                   const SSL_CONFIG *config) {
+  if (!session->is_quic) {
+    return true;
+  }
+  if (session->quic_early_data_hash.size() != SHA256_DIGEST_LENGTH) {
+    return false;
+  }
+  uint8_t early_data_hash[SHA256_DIGEST_LENGTH];
+  if (!compute_quic_early_data_hash(config, early_data_hash) ||
+      CRYPTO_memcmp(session->quic_early_data_hash.data(), early_data_hash,
+                    SHA256_DIGEST_LENGTH) != 0) {
+    return false;
+  }
+  return true;
+}
+
 static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   SSLMessage msg;
@@ -374,6 +391,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       } else if (ssl->s3->ticket_age_skew < -kMaxTicketAgeSkewSeconds ||
                  kMaxTicketAgeSkewSeconds < ssl->s3->ticket_age_skew) {
         ssl->s3->early_data_reason = ssl_early_data_ticket_age_skew;
+      } else if (!quic_ticket_compatible(session.get(), hs->config)) {
+        ssl->s3->early_data_reason = ssl_early_data_quic_parameter_mismatch;
       } else {
         ssl->s3->early_data_reason = ssl_early_data_accepted;
         ssl->s3->early_data_accepted = true;

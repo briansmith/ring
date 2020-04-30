@@ -268,6 +268,11 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     if (!new_session->early_alpn.CopyFrom(session->early_alpn)) {
       return nullptr;
     }
+
+    if (!new_session->quic_early_data_hash.CopyFrom(
+            session->quic_early_data_hash)) {
+      return nullptr;
+    }
   }
 
   // Copy the ticket.
@@ -344,6 +349,25 @@ const EVP_MD *ssl_session_get_digest(const SSL_SESSION *session) {
                                   session->cipher);
 }
 
+bool compute_quic_early_data_hash(const SSL_CONFIG *config,
+                                  uint8_t hash_out[SHA256_DIGEST_LENGTH]) {
+  ScopedEVP_MD_CTX hash_ctx;
+  uint32_t transport_param_len = config->quic_transport_params.size();
+  uint32_t context_len = config->quic_early_data_context.size();
+  if (!EVP_DigestInit(hash_ctx.get(), EVP_sha256()) ||
+      !EVP_DigestUpdate(hash_ctx.get(), &transport_param_len,
+                        sizeof(transport_param_len)) ||
+      !EVP_DigestUpdate(hash_ctx.get(), config->quic_transport_params.data(),
+                        config->quic_transport_params.size()) ||
+      !EVP_DigestUpdate(hash_ctx.get(), &context_len, sizeof(context_len)) ||
+      !EVP_DigestUpdate(hash_ctx.get(), config->quic_early_data_context.data(),
+                        config->quic_early_data_context.size()) ||
+      !EVP_DigestFinal(hash_ctx.get(), hash_out, nullptr)) {
+    return false;
+  }
+  return true;
+}
+
 int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   SSL *const ssl = hs->ssl;
   if (ssl->mode & SSL_MODE_NO_SESSION_CREATION) {
@@ -359,6 +383,13 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   session->is_server = is_server;
   session->ssl_version = ssl->version;
   session->is_quic = ssl->quic_method != nullptr;
+  if (is_server && ssl->enable_early_data && session->is_quic) {
+    if (!session->quic_early_data_hash.Init(SHA256_DIGEST_LENGTH) ||
+        !compute_quic_early_data_hash(hs->config,
+                                      session->quic_early_data_hash.data())) {
+      return 0;
+    }
+  }
 
   // Fill in the time from the |SSL_CTX|'s clock.
   struct OPENSSL_timeval now;
