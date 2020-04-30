@@ -42,6 +42,8 @@ extern "C" {
 #define PMBTOKEN_NONCE_SIZE 64
 
 typedef struct {
+  // TODO(https://crbug.com/boringssl/334): These should store |EC_PRECOMP| so
+  // that |TRUST_TOKEN_finish_issuance| can use |ec_point_mul_scalar_precomp|.
   EC_AFFINE pub0;
   EC_AFFINE pub1;
   EC_AFFINE pubs;
@@ -55,8 +57,11 @@ typedef struct {
   EC_SCALAR xs;
   EC_SCALAR ys;
   EC_AFFINE pub0;
+  EC_PRECOMP pub0_precomp;
   EC_AFFINE pub1;
+  EC_PRECOMP pub1_precomp;
   EC_AFFINE pubs;
+  EC_PRECOMP pubs_precomp;
 } PMBTOKEN_ISSUER_KEY;
 
 // PMBTOKEN_PRETOKEN represents the intermediate state a client keeps during a

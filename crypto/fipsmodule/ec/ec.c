@@ -1070,6 +1070,38 @@ int ec_point_mul_scalar_batch(const EC_GROUP *group, EC_RAW_POINT *r,
   return 1;
 }
 
+int ec_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
+                    const EC_RAW_POINT *p) {
+  if (group->meth->init_precomp == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  return group->meth->init_precomp(group, out, p);
+}
+
+int ec_point_mul_scalar_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
+                                const EC_PRECOMP *p0, const EC_SCALAR *scalar0,
+                                const EC_PRECOMP *p1, const EC_SCALAR *scalar1,
+                                const EC_PRECOMP *p2,
+                                const EC_SCALAR *scalar2) {
+  if (group->meth->mul_precomp == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  group->meth->mul_precomp(group, r, p0, scalar0, p1, scalar1, p2, scalar2);
+
+  // Check the result is on the curve to defend against fault attacks or bugs.
+  // This has negligible cost compared to the multiplication.
+  if (!ec_GFp_simple_is_on_curve(group, r)) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  return 1;
+}
+
 void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
                       const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
   ec_felem_select(group, &out->X, mask, &a->X, &b->X);
@@ -1081,6 +1113,15 @@ void ec_affine_select(const EC_GROUP *group, EC_AFFINE *out, BN_ULONG mask,
                       const EC_AFFINE *a, const EC_AFFINE *b) {
   ec_felem_select(group, &out->X, mask, &a->X, &b->X);
   ec_felem_select(group, &out->Y, mask, &a->Y, &b->Y);
+}
+
+void ec_precomp_select(const EC_GROUP *group, EC_PRECOMP *out, BN_ULONG mask,
+                       const EC_PRECOMP *a, const EC_PRECOMP *b) {
+  OPENSSL_STATIC_ASSERT(sizeof(out->comb) == sizeof(*out),
+                        "out->comb does not span the entire structure");
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(out->comb); i++) {
+    ec_affine_select(group, &out->comb[i], mask, &a->comb[i], &b->comb[i]);
+  }
 }
 
 int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,

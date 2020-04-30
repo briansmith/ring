@@ -334,6 +334,52 @@ int ec_point_mul_scalar_batch(const EC_GROUP *group, EC_RAW_POINT *r,
                               const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
                               const EC_RAW_POINT *p2, const EC_SCALAR *scalar2);
 
+#define EC_MONT_PRECOMP_COMB_SIZE 5
+
+// An |EC_PRECOMP| stores precomputed information about a point, to optimize
+// repeated multiplications involving it. It is a union so different
+// |EC_METHOD|s can store different information in it.
+typedef union {
+  EC_AFFINE comb[(1 << EC_MONT_PRECOMP_COMB_SIZE) - 1];
+} EC_PRECOMP;
+
+// ec_init_precomp precomputes multiples of |p| and writes the result to |out|.
+// It returns one on success and zero on error. The resulting table may be used
+// with |ec_point_mul_scalar_precomp|. This function will fail if |p| is the
+// point at infinity.
+//
+// This function is not implemented for all curves. Add implementations as
+// needed.
+int ec_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
+                    const EC_RAW_POINT *p);
+
+// ec_point_mul_scalar_precomp sets |r| to |p0| * |scalar0| + |p1| * |scalar1| +
+// |p2| * |scalar2|. |p1| or |p2| may be NULL to skip the corresponding term.
+// The points are represented as |EC_PRECOMP| and must be initialized with
+// |ec_init_precomp|. This function runs faster than |ec_point_mul_scalar_batch|
+// but requires setup work per input point, so it is only appropriate for points
+// which are used frequently.
+//
+// The inputs are treated as secret, however, this function leaks information
+// about whether intermediate computations add a point to itself. Callers must
+// ensure that discrete logs between |p0|, |p1|, and |p2| are uniformly
+// distributed and independent of the scalars, which should be uniformly
+// selected and not under the attackers control. This ensures the doubling case
+// will occur with negligible probability.
+//
+// This function is not implemented for all curves. Add implementations as
+// needed.
+//
+// TODO(davidben): This function does not use base point tables. For now, it is
+// only used with the generic |EC_GFp_mont_method| implementation which has
+// none. If generalizing to tuned curves, we should add a parameter for the base
+// point and arrange for the generic implementation to have base point tables
+// available.
+int ec_point_mul_scalar_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
+                                const EC_PRECOMP *p0, const EC_SCALAR *scalar0,
+                                const EC_PRECOMP *p1, const EC_SCALAR *scalar1,
+                                const EC_PRECOMP *p2, const EC_SCALAR *scalar2);
+
 // ec_point_mul_scalar_public sets |r| to
 // generator * |g_scalar| + |p| * |p_scalar|. It assumes that the inputs are
 // public so there is no concern about leaking their values through timing.
@@ -351,6 +397,10 @@ void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
 // ec_affine_select behaves like |ec_point_select| but acts on affine points.
 void ec_affine_select(const EC_GROUP *group, EC_AFFINE *out, BN_ULONG mask,
                       const EC_AFFINE *a, const EC_AFFINE *b);
+
+// ec_precomp_select behaves like |ec_point_select| but acts on |EC_PRECOMP|.
+void ec_precomp_select(const EC_GROUP *group, EC_PRECOMP *out, BN_ULONG mask,
+                       const EC_PRECOMP *a, const EC_PRECOMP *b);
 
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
 // order, with |r|. It returns one if the values match and zero if |p| is the
@@ -436,6 +486,15 @@ struct ec_method_st {
   void (*mul_public)(const EC_GROUP *group, EC_RAW_POINT *r,
                      const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
                      const EC_SCALAR *p_scalar);
+
+  // init_precomp implements |ec_init_precomp|.
+  int (*init_precomp)(const EC_GROUP *group, EC_PRECOMP *out,
+                      const EC_RAW_POINT *p);
+  // mul_precomp implements |ec_point_mul_scalar_precomp|.
+  void (*mul_precomp)(const EC_GROUP *group, EC_RAW_POINT *r,
+                      const EC_PRECOMP *p0, const EC_SCALAR *scalar0,
+                      const EC_PRECOMP *p1, const EC_SCALAR *scalar1,
+                      const EC_PRECOMP *p2, const EC_SCALAR *scalar2);
 
   // felem_mul and felem_sqr implement multiplication and squaring,
   // respectively, so that the generic |EC_POINT_add| and |EC_POINT_dbl|
@@ -555,6 +614,12 @@ void ec_GFp_mont_mul_batch(const EC_GROUP *group, EC_RAW_POINT *r,
                            const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
                            const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
                            const EC_RAW_POINT *p2, const EC_SCALAR *scalar2);
+int ec_GFp_mont_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
+                             const EC_RAW_POINT *p);
+void ec_GFp_mont_mul_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
+                             const EC_PRECOMP *p0, const EC_SCALAR *scalar0,
+                             const EC_PRECOMP *p1, const EC_SCALAR *scalar1,
+                             const EC_PRECOMP *p2, const EC_SCALAR *scalar2);
 
 // ec_compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
 // |scalar| to |out|. |out| must have room for |bits| + 1 elements, each of
