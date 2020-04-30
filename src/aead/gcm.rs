@@ -59,10 +59,10 @@ impl Key {
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 extern "C" {
-                    fn GFp_gcm_init_4bit(Htable: &mut HTable, h: &[u64; 2]);
+                    fn GFp_gcm_init_nohw(Htable: &mut HTable, h: &[u64; 2]);
                 }
                 unsafe {
-                    GFp_gcm_init_4bit(h_table, &h);
+                    GFp_gcm_init_nohw(h_table, &h);
                 }
             }
         }
@@ -161,7 +161,7 @@ impl Context {
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 extern "C" {
-                    fn GFp_gcm_ghash_4bit(
+                    fn GFp_gcm_ghash_nohw(
                         xi: &mut Xi,
                         Htable: &HTable,
                         inp: *const u8,
@@ -169,7 +169,7 @@ impl Context {
                     );
                 }
                 unsafe {
-                    GFp_gcm_ghash_4bit(xi, h_table, input.as_ptr(), input.len());
+                    GFp_gcm_ghash_nohw(xi, h_table, input.as_ptr(), input.len());
                 }
             }
         }
@@ -207,10 +207,10 @@ impl Context {
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 extern "C" {
-                    fn GFp_gcm_gmult_4bit(xi: &mut Xi, Htable: &HTable);
+                    fn GFp_gcm_gmult_nohw(xi: &mut Xi, Htable: &HTable);
                 }
                 unsafe {
-                    GFp_gcm_gmult_4bit(xi, h_table);
+                    GFp_gcm_gmult_nohw(xi, h_table);
                 }
             }
         }
