@@ -248,35 +248,28 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
   return (value_barrier_w(mask) & a) | (value_barrier_w(~mask) & b);
 }
 
-// from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|.
-static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
-  return ((uint32_t)data[0] << 24) |
-         ((uint32_t)data[1] << 16) |
-         ((uint32_t)data[2] << 8) |
-         ((uint32_t)data[3]);
+// Endianness conversions.
+
+#if defined(__GNUC__) && __GNUC__ >= 2
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return __builtin_bswap64(x);
 }
-
-
-// to_be_u32_ptr writes the value |x| to the location |out| in big-endian
-// order.
-static inline void to_be_u32_ptr(uint8_t *out, uint32_t value) {
-  out[0] = (uint8_t)(value >> 24);
-  out[1] = (uint8_t)(value >> 16);
-  out[2] = (uint8_t)(value >> 8);
-  out[3] = (uint8_t)value;
+#elif defined(_MSC_VER)
+#pragma warning(push, 3)
+#include <stdlib.h>
+#pragma warning(pop)
+#pragma intrinsic(_byteswap_uint64)
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return _byteswap_uint64(x);
 }
+#endif
 
-// to_be_u64_ptr writes the value |value| to the location |out| in big-endian
-// order.
-static inline void to_be_u64_ptr(uint8_t *out, uint64_t value) {
-  out[0] = (uint8_t)(value >> 56);
-  out[1] = (uint8_t)(value >> 48);
-  out[2] = (uint8_t)(value >> 40);
-  out[3] = (uint8_t)(value >> 32);
-  out[4] = (uint8_t)(value >> 24);
-  out[5] = (uint8_t)(value >> 16);
-  out[6] = (uint8_t)(value >> 8);
-  out[7] = (uint8_t)value;
+static inline uint64_t u64_from_be_bytes(const uint8_t big_endian_bytes[8]) {
+  uint64_t result = 0;
+  for (size_t i = 0; i < 8; ++i) {
+    result = (result << 8) | big_endian_bytes[i];
+  }
+  return result;
 }
 
 static inline void bytes_copy(uint8_t out[], const uint8_t in[], size_t len) {

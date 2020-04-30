@@ -78,6 +78,9 @@
 # *native* byte order on current platform. See gcm128.c for working
 # example...
 
+# This file was patched in BoringSSL to remove the variable-time 4-bit
+# implementation.
+
 $flavour = shift;
 if ($flavour=~/\w[\w\-]*\.\w+$/) { $output=$flavour; undef $flavour; }
 else { while (($output=shift) && ($output!~/\w[\w\-]*\.\w+$/)) {} }
@@ -119,7 +122,6 @@ $code=<<___;
 #else
 .code	32
 #endif
-
 ___
 {
 my ($Xl,$Xm,$Xh,$IN)=map("q$_",(0..3));

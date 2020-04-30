@@ -73,7 +73,7 @@ include = [
     "crypto/fipsmodule/modes/asm/ghash-x86.pl",
     "crypto/fipsmodule/modes/asm/ghash-x86_64.pl",
     "crypto/fipsmodule/modes/asm/ghashv8-armx.pl",
-    "crypto/fipsmodule/modes/gcm.c",
+    "crypto/fipsmodule/modes/gcm_nohw.c",
     "crypto/fipsmodule/modes/internal.h",
     "crypto/fipsmodule/sha/asm/sha256-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv4.pl",
