@@ -19,18 +19,16 @@ use super::{
     block::{Block, BLOCK_LEN},
     Tag,
 };
-use crate::{bssl, c, error};
+use crate::{bssl, c, error, polyfill::convert::From_ as _};
 
 /// A Poly1305 key.
-pub struct Key([Block; KEY_BLOCKS]);
+pub struct Key([Block; 2]);
 
-impl From<[Block; KEY_BLOCKS]> for Key {
-    fn from(value: [Block; KEY_BLOCKS]) -> Self {
-        Self(value)
+impl From<[u8; 2 * BLOCK_LEN]> for Key {
+    fn from(value: [u8; 2 * BLOCK_LEN]) -> Self {
+        Self(<[Block; 2]>::from_(&value))
     }
 }
-
-pub const KEY_BLOCKS: usize = 2;
 
 pub struct Context {
     opaque: Opaque,
@@ -184,7 +182,7 @@ pub(super) fn sign(key: Key, input: &[u8]) -> Tag {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{polyfill::convert::Into_, test};
+    use crate::test;
     use core::convert::TryInto;
 
     #[test]
@@ -199,10 +197,9 @@ mod tests {
             assert_eq!(section, "");
             let key = test_case.consume_bytes("Key");
             let key: &[u8; BLOCK_LEN * 2] = key.as_slice().try_into().unwrap();
-            let key: [Block; 2] = key.into_();
             let input = test_case.consume_bytes("Input");
             let expected_mac = test_case.consume_bytes("MAC");
-            let key = Key::from(key);
+            let key = Key::from(*key);
             let Tag(actual_mac) = sign(key, &input);
             assert_eq!(expected_mac, actual_mac.as_ref());
 

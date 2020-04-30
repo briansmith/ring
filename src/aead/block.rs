@@ -96,14 +96,6 @@ impl AsRef<[u8; BLOCK_LEN]> for Block {
     }
 }
 
-/// Like `AsMut`.
-impl<'a> From_<&'a mut [Block; 2]> for &'a mut [u8; 2 * BLOCK_LEN] {
-    #[inline]
-    fn from_(bytes: &'a mut [Block; 2]) -> &'a mut [u8; 2 * BLOCK_LEN] {
-        unsafe { core::mem::transmute(bytes) }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

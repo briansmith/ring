@@ -17,12 +17,7 @@ use super::{
     nonce::Iv,
     poly1305, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
 };
-use crate::{
-    aead, cpu,
-    endian::*,
-    error,
-    polyfill::{self, convert::*},
-};
+use crate::{aead, cpu, endian::*, error, polyfill};
 use core::convert::TryInto;
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
@@ -139,12 +134,9 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
 
 // Also used by chacha20_poly1305_openssh.
 pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305::Key {
-    let mut blocks = [Block::zero(); poly1305::KEY_BLOCKS];
-    chacha_key.encrypt_iv_xor_blocks_in_place(
-        iv,
-        <&mut [u8; poly1305::KEY_BLOCKS * BLOCK_LEN]>::from_(&mut blocks),
-    );
-    poly1305::Key::from(blocks)
+    let mut key_bytes = [0u8; 2 * BLOCK_LEN];
+    chacha_key.encrypt_iv_xor_blocks_in_place(iv, &mut key_bytes);
+    poly1305::Key::from(key_bytes)
 }
 
 #[cfg(test)]
