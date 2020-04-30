@@ -89,7 +89,7 @@ impl Context {
 
         for ad in aad.0.chunks(BLOCK_LEN) {
             let mut block = Block::zero();
-            block.partial_copy_from(ad);
+            block.overwrite_part_at(0, ad);
             ctx.update_block(block);
         }
 
