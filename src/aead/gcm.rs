@@ -15,6 +15,9 @@
 use super::{Aad, Block, BLOCK_LEN};
 use crate::{c, cpu};
 
+#[cfg(not(target_arch = "aarch64"))]
+mod gcm_nohw;
+
 pub struct Key(HTable);
 
 impl Key {
@@ -58,12 +61,7 @@ impl Key {
 
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
-                extern "C" {
-                    fn GFp_gcm_init_nohw(Htable: &mut HTable, h: &[u64; 2]);
-                }
-                unsafe {
-                    GFp_gcm_init_nohw(h_table, &h);
-                }
+                h_table.Htable[0] = gcm_nohw::init(h);
             }
         }
 
@@ -160,17 +158,7 @@ impl Context {
 
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
-                extern "C" {
-                    fn GFp_gcm_ghash_nohw(
-                        xi: &mut Xi,
-                        Htable: &HTable,
-                        inp: *const u8,
-                        len: c::size_t,
-                    );
-                }
-                unsafe {
-                    GFp_gcm_ghash_nohw(xi, h_table, input.as_ptr(), input.len());
-                }
+                gcm_nohw::ghash(xi, h_table.Htable[0], input);
             }
         }
     }
@@ -206,12 +194,7 @@ impl Context {
 
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
-                extern "C" {
-                    fn GFp_gcm_gmult_nohw(xi: &mut Xi, Htable: &HTable);
-                }
-                unsafe {
-                    GFp_gcm_gmult_nohw(xi, h_table);
-                }
+                gcm_nohw::gmult(xi, h_table.Htable[0]);
             }
         }
     }
