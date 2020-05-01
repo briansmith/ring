@@ -76,9 +76,7 @@ static const alignas(4096) PRECOMP256_ROW ecp_nistz256_precomputed[37] = `
 	if _, err := f.WriteString(fileHeader); err != nil {
 		return err
 	}
-	// TODO(davidben): An indent of 4 would match our style better. For now the
-	// indent is 8 so it generates the same table as before.
-	if err := writeTables(f, curve, tables, true, 8, writeBNMont); err != nil {
+	if err := writeTables(f, curve, tables, true, 4, writeBNMont); err != nil {
 		return err
 	}
 	if _, err := f.WriteString(";\n"); err != nil {
