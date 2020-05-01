@@ -250,28 +250,6 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
 
 // Endianness conversions.
 
-#if defined(__GNUC__) && __GNUC__ >= 2
-static inline uint64_t CRYPTO_bswap8(uint64_t x) {
-  return __builtin_bswap64(x);
-}
-#elif defined(_MSC_VER)
-#pragma warning(push, 3)
-#include <stdlib.h>
-#pragma warning(pop)
-#pragma intrinsic(_byteswap_uint64)
-static inline uint64_t CRYPTO_bswap8(uint64_t x) {
-  return _byteswap_uint64(x);
-}
-#endif
-
-static inline uint64_t u64_from_be_bytes(const uint8_t big_endian_bytes[8]) {
-  uint64_t result = 0;
-  for (size_t i = 0; i < 8; ++i) {
-    result = (result << 8) | big_endian_bytes[i];
-  }
-  return result;
-}
-
 static inline void bytes_copy(uint8_t out[], const uint8_t in[], size_t len) {
   for (size_t i = 0; i < len; ++i) {
     out[i] = in[i];
