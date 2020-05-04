@@ -188,6 +188,10 @@ struct trust_token_method_st {
               uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
               uint8_t *out_private_metadata, const uint8_t *token,
               size_t token_len);
+
+  // use_token_hash determines whether to include the token hash in the SRR and
+  // private metadata encryption.
+  int use_token_hash : 1;
 };
 
 // Structure representing a single Trust Token public key with the specified ID.

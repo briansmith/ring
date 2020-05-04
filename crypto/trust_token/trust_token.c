@@ -36,6 +36,7 @@ const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v0(void) {
       pmbtoken_exp0_sign,
       pmbtoken_exp0_unblind,
       pmbtoken_exp0_read,
+      0 /* don't use token hash */,
   };
   return &kMethod;
 }
@@ -49,6 +50,7 @@ const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void) {
       pmbtoken_exp1_sign,
       pmbtoken_exp1_unblind,
       pmbtoken_exp1_read,
+      1 /* use token hash */,
   };
   return &kMethod;
 }
@@ -502,6 +504,12 @@ static int add_cbor_int(CBB *cbb, uint64_t value) {
 }
 
 // https://tools.ietf.org/html/rfc7049#section-2.1
+static int add_cbor_bytes(CBB *cbb, const uint8_t *data, size_t len) {
+  return add_cbor_int_with_type(cbb, 0x40, len) &&
+         CBB_add_bytes(cbb, data, len);
+}
+
+// https://tools.ietf.org/html/rfc7049#section-2.1
 static int add_cbor_text(CBB *cbb, const char *data, size_t len) {
   return add_cbor_int_with_type(cbb, 0x60, len) &&
          CBB_add_bytes(cbb, (const uint8_t *)data, len);
@@ -541,6 +549,8 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
   uint32_t public_metadata = 0;
   uint8_t private_metadata = 0;
 
+  CBS token_copy = token_cbs;
+
   // Parse the token. If there is an error, treat it as an invalid token.
   if (!CBS_get_u32(&token_cbs, &public_metadata)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_TOKEN);
@@ -577,9 +587,24 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
     goto err;
   }
 
-  uint8_t metadata_obfuscator =
-      get_metadata_obfuscator(ctx->metadata_key, ctx->metadata_key_len,
-                              CBS_data(&client_data), CBS_len(&client_data));
+  const uint8_t kTokenHashDSTLabel[] = "TrustTokenV0 TokenHash";
+  uint8_t token_hash[SHA256_DIGEST_LENGTH];
+  SHA256_CTX sha_ctx;
+  SHA256_Init(&sha_ctx);
+  SHA256_Update(&sha_ctx, kTokenHashDSTLabel, sizeof(kTokenHashDSTLabel));
+  SHA256_Update(&sha_ctx, CBS_data(&token_copy), CBS_len(&token_copy));
+  SHA256_Final(token_hash, &sha_ctx);
+
+  uint8_t metadata_obfuscator;
+  if (ctx->method->use_token_hash) {
+    metadata_obfuscator =
+        get_metadata_obfuscator(ctx->metadata_key, ctx->metadata_key_len,
+                                token_hash, sizeof(token_hash));
+  } else {
+    metadata_obfuscator =
+        get_metadata_obfuscator(ctx->metadata_key, ctx->metadata_key_len,
+                                CBS_data(&client_data), CBS_len(&client_data));
+  }
 
   // The SRR is constructed as per the format described in
   // https://docs.google.com/document/d/1TNnya6B8pyomDK2F1R9CL3dY10OAmqWlnCxsWyOBDVQ/edit#heading=h.7mkzvhpqb8l5
@@ -589,10 +614,12 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
   static const char kMetadataLabel[] = "metadata";
   static const char kPrivateLabel[] = "private";
   static const char kPublicLabel[] = "public";
+  static const char kTokenHashLabel[] = "token-hash";
 
   // CBOR requires map keys to be sorted by length then sorted lexically.
   // https://tools.ietf.org/html/rfc7049#section-3.9
-  assert(strlen(kMetadataLabel) < strlen(kClientDataLabel));
+  assert(strlen(kMetadataLabel) < strlen(kTokenHashLabel));
+  assert(strlen(kTokenHashLabel) < strlen(kClientDataLabel));
   assert(strlen(kClientDataLabel) < strlen(kExpiryTimestampLabel));
   assert(strlen(kPublicLabel) < strlen(kPrivateLabel));
 
@@ -603,8 +630,20 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
       !add_cbor_text(&srr, kPublicLabel, strlen(kPublicLabel)) ||
       !add_cbor_int(&srr, public_metadata) ||
       !add_cbor_text(&srr, kPrivateLabel, strlen(kPrivateLabel)) ||
-      !add_cbor_int(&srr, private_metadata ^ metadata_obfuscator) ||
-      !add_cbor_text(&srr, kClientDataLabel, strlen(kClientDataLabel)) ||
+      !add_cbor_int(&srr, private_metadata ^ metadata_obfuscator)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  if (ctx->method->use_token_hash) {
+    if (!add_cbor_text(&srr, kTokenHashLabel, strlen(kTokenHashLabel)) ||
+        !add_cbor_bytes(&srr, token_hash, sizeof(token_hash))) {
+      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+
+  if (!add_cbor_text(&srr, kClientDataLabel, strlen(kClientDataLabel)) ||
       !CBB_add_bytes(&srr, CBS_data(&client_data), CBS_len(&client_data)) ||
       !add_cbor_text(&srr, kExpiryTimestampLabel,
                      strlen(kExpiryTimestampLabel)) ||
@@ -664,12 +703,11 @@ err:
 
 int TRUST_TOKEN_decode_private_metadata(const TRUST_TOKEN_METHOD *method,
                                         uint8_t *out_value, const uint8_t *key,
-                                        size_t key_len,
-                                        const uint8_t *client_data,
-                                        size_t client_data_len,
+                                        size_t key_len, const uint8_t *nonce,
+                                        size_t nonce_len,
                                         uint8_t encrypted_bit) {
   uint8_t metadata_obfuscator =
-      get_metadata_obfuscator(key, key_len, client_data, client_data_len);
+      get_metadata_obfuscator(key, key_len, nonce, nonce_len);
   *out_value = encrypted_bit ^ metadata_obfuscator;
   return 1;
 }

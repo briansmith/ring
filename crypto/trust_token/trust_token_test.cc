@@ -30,6 +30,7 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 #include <openssl/trust_token.h>
 
 #include "../ec_extra/internal.h"
@@ -346,8 +347,8 @@ TEST_P(TrustTokenProtocolTest, TruncatedRedemptionResponse) {
     bssl::UniquePtr<TRUST_TOKEN> free_rtoken(rtoken);
 
     ASSERT_EQ(redemption_time, kRedemptionTime);
-    ASSERT_TRUE(sizeof(kClientData) - 1 == client_data_len);
-    ASSERT_EQ(OPENSSL_memcmp(kClientData, client_data, client_data_len), 0);
+    ASSERT_EQ(Bytes(kClientData, sizeof(kClientData) - 1),
+              Bytes(client_data, client_data_len));
     resp_len = 10;
 
     uint8_t *srr = NULL, *sig = NULL;
@@ -453,12 +454,22 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
     const uint8_t kClientData[] = "\x70TEST CLIENT DATA";
     uint64_t kRedemptionTime = 13374242;
 
-    const uint8_t kExpectedSRR[] =
+    const uint8_t kExpectedSRRNoTokenHash[] =
         "\xa3\x68\x6d\x65\x74\x61\x64\x61\x74\x61\xa2\x66\x70\x75\x62\x6c\x69"
         "\x63\x00\x67\x70\x72\x69\x76\x61\x74\x65\x00\x6b\x63\x6c\x69\x65\x6e"
         "\x74\x2d\x64\x61\x74\x61\x70\x54\x45\x53\x54\x20\x43\x4c\x49\x45\x4e"
         "\x54\x20\x44\x41\x54\x41\x70\x65\x78\x70\x69\x72\x79\x2d\x74\x69\x6d"
         "\x65\x73\x74\x61\x6d\x70\x1a\x00\xcc\x15\x7a";
+
+    const uint8_t kExpectedSRRTokenHash[] =
+        "\xa3\x68\x6d\x65\x74\x61\x64\x61\x74\x61\xa2\x66\x70\x75\x62\x6c\x69"
+        "\x63\x00\x67\x70\x72\x69\x76\x61\x74\x65\x00\x6a\x74\x6f\x6b\x65\x6e"
+        "\x2d\x68\x61\x73\x68\x58\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        "\x00\x00\x00\x00\x00\x6b\x63\x6c\x69\x65\x6e\x74\x2d\x64\x61\x74\x61"
+        "\x70\x54\x45\x53\x54\x20\x43\x4c\x49\x45\x4e\x54\x20\x44\x41\x54\x41"
+        "\x70\x65\x78\x70\x69\x72\x79\x2d\x74\x69\x6d\x65\x73\x74\x61\x6d\x70"
+        "\x1a\x00\xcc\x15\x7a";
 
     uint8_t *redeem_msg = NULL, *redeem_resp = NULL;
     ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_redemption(
@@ -477,8 +488,8 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
     bssl::UniquePtr<TRUST_TOKEN> free_rtoken(rtoken);
 
     ASSERT_EQ(redemption_time, kRedemptionTime);
-    ASSERT_TRUE(sizeof(kClientData) - 1 == client_data_len);
-    ASSERT_EQ(OPENSSL_memcmp(kClientData, client_data, client_data_len), 0);
+    ASSERT_EQ(Bytes(kClientData, sizeof(kClientData) - 1),
+              Bytes(client_data, client_data_len));
 
     uint8_t *srr = NULL, *sig = NULL;
     size_t srr_len, sig_len;
@@ -487,19 +498,50 @@ TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
     bssl::UniquePtr<uint8_t> free_srr(srr);
     bssl::UniquePtr<uint8_t> free_sig(sig);
 
-    uint8_t decode_private_metadata;
-    ASSERT_TRUE(TRUST_TOKEN_decode_private_metadata(
-        method(), &decode_private_metadata, metadata_key, sizeof(metadata_key),
-        kClientData, sizeof(kClientData) - 1, srr[27]));
-    ASSERT_EQ(srr[18], public_metadata());
-    ASSERT_EQ(decode_private_metadata, private_metadata());
+    if (method()->use_token_hash) {
+      const uint8_t kTokenHashDSTLabel[] = "TrustTokenV0 TokenHash";
+      uint8_t token_hash[SHA256_DIGEST_LENGTH];
+      SHA256_CTX sha_ctx;
+      SHA256_Init(&sha_ctx);
+      SHA256_Update(&sha_ctx, kTokenHashDSTLabel, sizeof(kTokenHashDSTLabel));
+      SHA256_Update(&sha_ctx, token->data, token->len);
+      SHA256_Final(token_hash, &sha_ctx);
 
-    // Clear out the metadata bits.
-    srr[18] = 0;
-    srr[27] = 0;
+      // Check the token hash is in the SRR.
+      ASSERT_EQ(Bytes(token_hash), Bytes(srr + 41, sizeof(token_hash)));
 
-    ASSERT_TRUE(sizeof(kExpectedSRR) - 1 == srr_len);
-    ASSERT_EQ(OPENSSL_memcmp(kExpectedSRR, srr, srr_len), 0);
+      uint8_t decode_private_metadata;
+      ASSERT_TRUE(TRUST_TOKEN_decode_private_metadata(
+          method(), &decode_private_metadata, metadata_key,
+          sizeof(metadata_key), token_hash, sizeof(token_hash), srr[27]));
+      ASSERT_EQ(srr[18], public_metadata());
+      ASSERT_EQ(decode_private_metadata, private_metadata());
+
+      // Clear out the metadata bits.
+      srr[18] = 0;
+      srr[27] = 0;
+
+      // Clear out the token hash.
+      OPENSSL_memset(srr + 41, 0, sizeof(token_hash));
+
+      ASSERT_EQ(Bytes(kExpectedSRRTokenHash, sizeof(kExpectedSRRTokenHash) - 1),
+                Bytes(srr, srr_len));
+    } else {
+      uint8_t decode_private_metadata;
+      ASSERT_TRUE(TRUST_TOKEN_decode_private_metadata(
+          method(), &decode_private_metadata, metadata_key,
+          sizeof(metadata_key), kClientData, sizeof(kClientData) - 1, srr[27]));
+      ASSERT_EQ(srr[18], public_metadata());
+      ASSERT_EQ(decode_private_metadata, private_metadata());
+
+      // Clear out the metadata bits.
+      srr[18] = 0;
+      srr[27] = 0;
+
+      ASSERT_EQ(
+          Bytes(kExpectedSRRNoTokenHash, sizeof(kExpectedSRRNoTokenHash) - 1),
+          Bytes(srr, srr_len));
+    }
   }
 }
 
