@@ -109,42 +109,43 @@ impl Key {
     }
 
     #[inline]
-    pub fn encrypt_block(&self, mut a: Block) -> Block {
-        let aliasing_const: *const Block = &a;
-        let aliasing_mut: *mut Block = &mut a;
-
+    pub fn encrypt_block(&self, a: Block) -> Block {
         match detect_implementation(self.cpu_features) {
             Implementation::HWAES => {
                 extern "C" {
-                    fn GFp_aes_hw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
+                    fn GFp_aes_hw_encrypt(a: &Block, r: *mut Block, key: &AES_KEY);
                 }
+                let mut result = core::mem::MaybeUninit::uninit();
                 unsafe {
-                    GFp_aes_hw_encrypt(aliasing_const, aliasing_mut, &self.inner);
+                    GFp_aes_hw_encrypt(&a, result.as_mut_ptr(), &self.inner);
+                    result.assume_init()
                 }
             }
 
             #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
             Implementation::VPAES => {
                 extern "C" {
-                    fn GFp_vpaes_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
+                    fn GFp_vpaes_encrypt(a: &Block, r: *mut Block, key: &AES_KEY);
                 }
+                let mut result = core::mem::MaybeUninit::uninit();
                 unsafe {
-                    GFp_vpaes_encrypt(aliasing_const, aliasing_mut, &self.inner);
+                    GFp_vpaes_encrypt(&a, result.as_mut_ptr(), &self.inner);
+                    result.assume_init()
                 }
             }
 
             #[cfg(not(target_arch = "aarch64"))]
             _ => {
                 extern "C" {
-                    fn GFp_aes_nohw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
+                    fn GFp_aes_nohw_encrypt(a: &Block, r: *mut Block, key: &AES_KEY);
                 }
+                let mut result = core::mem::MaybeUninit::uninit();
                 unsafe {
-                    GFp_aes_nohw_encrypt(aliasing_const, aliasing_mut, &self.inner);
+                    GFp_aes_nohw_encrypt(&a, result.as_mut_ptr(), &self.inner);
+                    result.assume_init()
                 }
             }
         }
-
-        a
     }
 
     #[inline]
