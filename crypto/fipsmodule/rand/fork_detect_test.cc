@@ -14,7 +14,9 @@
 
 #include <openssl/base.h>
 
-#if defined(OPENSSL_LINUX)
+// TSAN cannot cope with this test and complains that "starting new threads
+// after multi-threaded fork is not supported".
+#if defined(OPENSSL_LINUX) && !defined(OPENSSL_TSAN)
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -155,4 +157,4 @@ TEST(ForkDetect, Test) {
   EXPECT_EQ(start, CRYPTO_get_fork_generation());
 }
 
-#endif  // OPENSSL_LINUX
+#endif  // OPENSSL_LINUX && !OPENSSL_TSAN
