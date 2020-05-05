@@ -22,7 +22,7 @@ impl Key {
         let h = h_be.u64s_be_to_native();
 
         let mut key = Self(HTable {
-            Htable: [u128 { hi: 0, lo: 0 }; GCM128_HTABLE_LEN],
+            Htable: [u128 { hi: 0, lo: 0 }; HTABLE_LEN],
         });
         let h_table = &mut key.0;
 
@@ -236,7 +236,7 @@ impl Context {
 #[derive(Clone)]
 #[repr(C, align(16))]
 struct HTable {
-    Htable: [u128; GCM128_HTABLE_LEN],
+    Htable: [u128; HTABLE_LEN],
 }
 
 #[derive(Clone, Copy)]
@@ -246,7 +246,7 @@ struct u128 {
     lo: u64,
 }
 
-const GCM128_HTABLE_LEN: usize = 16;
+const HTABLE_LEN: usize = 16;
 
 #[repr(transparent)]
 pub struct Xi(Block);
