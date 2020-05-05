@@ -46,7 +46,7 @@ impl Block {
         }
     }
 
-    pub fn u64s_be_to_native(&mut self) -> [u64; 2] {
+    pub fn u64s_be_to_native(&self) -> [u64; 2] {
         [
             u64::from_be(self.subblocks[0]),
             u64::from_be(self.subblocks[1]),
