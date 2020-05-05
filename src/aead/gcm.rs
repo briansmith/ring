@@ -18,7 +18,7 @@ use crate::{c, cpu};
 pub struct Key(HTable);
 
 impl Key {
-    pub(super) fn new(mut h_be: Block, cpu_features: cpu::Features) -> Self {
+    pub(super) fn new(h_be: Block, cpu_features: cpu::Features) -> Self {
         let h = h_be.u64s_be_to_native();
 
         let mut key = Self(HTable {
