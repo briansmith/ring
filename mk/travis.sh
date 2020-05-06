@@ -145,9 +145,15 @@ if [[ "$KCOV" == "1" ]]; then
   # Alternatively, we could link pass "-C link-dead-code" in the "cargo test"
   # step above, but then "cargo test" we wouldn't be testing the configuration
   # we expect people to use in production.
+  #
+  # panic=abort is used to get accurate coverage. See
+  # https://github.com/rust-lang/rust/issues/43410 and
+  # https://github.com/mozilla/grcov/issues/427#issuecomment-623995594 and
+  # https://github.com/rust-lang/rust/issues/55352.
   cargo clean
   CARGO_INCREMENTAL=0 \
-  RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Zno-landing-pads" \
+  RUSTDOCFLAGS="-Cpanic=abort" \
+  RUSTFLAGS="-Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Cpanic=abort -Zpanic_abort_tests -Zprofile" \
     cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X
   mk/travis-install-kcov.sh
   for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
