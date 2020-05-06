@@ -5318,6 +5318,26 @@ TEST_F(QUICMethodTest, HelloRetryRequest) {
   ExpectHandshakeSuccess();
 }
 
+// Test that the client does not send a legacy_session_id in the ClientHello.
+TEST_F(QUICMethodTest, NoLegacySessionId) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+  // Check that the session ID length is 0 in an early callback.
+  SSL_CTX_set_select_certificate_cb(
+      server_ctx_.get(),
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        EXPECT_EQ(client_hello->session_id_len, 0u);
+        return ssl_select_cert_success;
+      });
+
+  ASSERT_TRUE(CreateClientAndServer());
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+
+  ExpectHandshakeSuccess();
+}
+
 // Test that, even in a 1-RTT handshake, the server installs keys at the right
 // time. Half-RTT keys are available early, but 1-RTT read keys are deferred.
 TEST_F(QUICMethodTest, HalfRTTKeys) {

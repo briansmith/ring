@@ -299,6 +299,9 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
+	if config.Bugs.MockQUICTransport != nil && len(hs.clientHello.sessionId) > 0 {
+		return fmt.Errorf("tls: QUIC client did not disable compatibility mode")
+	}
 	if config.Bugs.ExpectNoTLS12Session {
 		if len(hs.clientHello.sessionId) > 0 && c.vers >= VersionTLS13 {
 			return fmt.Errorf("tls: client offered an unexpected session ID")
