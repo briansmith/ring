@@ -3375,6 +3375,22 @@ read alert 1 0
 		expectedError:      ":SERVER_ECHOED_INVALID_SESSION_ID:",
 		expectedLocalError: "remote error: illegal parameter",
 	})
+
+	// Servers should reject QUIC client hellos that have a legacy
+	// session ID.
+	testCases = append(testCases, testCase{
+		name: "QUICCompatibilityMode",
+		testType: serverTest,
+		protocol: quic,
+		config: Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				CompatModeWithQUIC: true,
+			},
+		},
+		shouldFail: true,
+		expectedError: ":UNEXPECTED_COMPATIBILITY_MODE:",
+	})
 }
 
 func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol protocol) {
