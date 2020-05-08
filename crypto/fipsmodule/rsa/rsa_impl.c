@@ -346,7 +346,7 @@ err:
 // MAX_BLINDINGS_PER_RSA defines the maximum number of cached BN_BLINDINGs per
 // RSA*. Then this limit is exceeded, BN_BLINDING objects will be created and
 // destroyed as needed.
-#if defined(OPNESSL_TSAN)
+#if defined(OPENSSL_TSAN)
 // Smaller under TSAN so that the edge case can be hit with fewer threads.
 #define MAX_BLINDINGS_PER_RSA 2
 #else
