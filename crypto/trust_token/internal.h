@@ -197,6 +197,10 @@ struct trust_token_method_st {
   // use_token_hash determines whether to include the token hash in the SRR and
   // private metadata encryption.
   int use_token_hash : 1;
+
+  // batched_proof determines whether PMBToken uses a batched DLEQOR proof when
+  // signing tokens.
+  int batched_proof : 1;
 };
 
 // Structure representing a single Trust Token public key with the specified ID.
