@@ -389,6 +389,19 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(const EC_GROUP *group,
                                               const EC_RAW_POINT *p,
                                               const EC_SCALAR *p_scalar);
 
+// ec_point_mul_scalar_public_batch sets |r| to the sum of generator *
+// |g_scalar| and |points[i]| * |scalars[i]| where |points| and |scalars| have
+// |num| elements. It assumes that the inputs are public so there is no concern
+// about leaking their values through timing. |g_scalar| may be NULL to skip
+// that term.
+//
+// This function is not implemented for all curves. Add implementations as
+// needed.
+int ec_point_mul_scalar_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+                                     const EC_SCALAR *g_scalar,
+                                     const EC_RAW_POINT *points,
+                                     const EC_SCALAR *scalars, size_t num);
+
 // ec_point_select, in constant time, sets |out| to |a| if |mask| is all ones
 // and |b| if |mask| is all zeros.
 void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
@@ -483,9 +496,15 @@ struct ec_method_st {
   // mul_public sets |r| to |g_scalar|*generator + |p_scalar|*|p|. It assumes
   // that the inputs are public so there is no concern about leaking their
   // values through timing.
+  //
+  // This function may be omitted if |mul_public_batch| is provided.
   void (*mul_public)(const EC_GROUP *group, EC_RAW_POINT *r,
                      const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
                      const EC_SCALAR *p_scalar);
+  // mul_public_batch implements |ec_point_mul_scalar_public_batch|.
+  int (*mul_public_batch)(const EC_GROUP *group, EC_RAW_POINT *r,
+                          const EC_SCALAR *g_scalar, const EC_RAW_POINT *points,
+                          const EC_SCALAR *scalars, size_t num);
 
   // init_precomp implements |ec_init_precomp|.
   int (*init_precomp)(const EC_GROUP *group, EC_PRECOMP *out,
@@ -632,9 +651,10 @@ void ec_GFp_mont_mul_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
 void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
                      const EC_SCALAR *scalar, size_t bits, int w);
 
-void ec_GFp_mont_mul_public(const EC_GROUP *group, EC_RAW_POINT *r,
-                            const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
-                            const EC_SCALAR *p_scalar);
+int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+                                 const EC_SCALAR *g_scalar,
+                                 const EC_RAW_POINT *points,
+                                 const EC_SCALAR *scalars, size_t num);
 
 // method functions in simple.c
 int ec_GFp_simple_group_init(EC_GROUP *);

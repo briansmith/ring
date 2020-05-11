@@ -508,7 +508,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->mul = ec_GFp_mont_mul;
   out->mul_base = ec_GFp_mont_mul_base;
   out->mul_batch = ec_GFp_mont_mul_batch;
-  out->mul_public = ec_GFp_mont_mul_public;
+  out->mul_public_batch = ec_GFp_mont_mul_public_batch;
   out->init_precomp = ec_GFp_mont_init_precomp;
   out->mul_precomp = ec_GFp_mont_mul_precomp;
   out->felem_mul = ec_GFp_mont_felem_mul;

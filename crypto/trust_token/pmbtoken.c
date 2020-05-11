@@ -128,6 +128,16 @@ static int cbs_get_prefixed_point(CBS *cbs, const EC_GROUP *group,
   return 1;
 }
 
+static int mul_public_3(const EC_GROUP *group, EC_RAW_POINT *out,
+                        const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
+                        const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
+                        const EC_RAW_POINT *p2, const EC_SCALAR *scalar2) {
+  EC_RAW_POINT points[3] = {*p0, *p1, *p2};
+  EC_SCALAR scalars[3] = {*scalar0, *scalar1, *scalar2};
+  return ec_point_mul_scalar_public_batch(group, out, /*g_scalar=*/NULL, points,
+                                          scalars, 3);
+}
+
 void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *pretoken) {
   OPENSSL_free(pretoken);
 }
@@ -594,7 +604,9 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
 
   // We verify a DLEQ proof for the validity token and a DLEQOR2 proof for the
   // private metadata token. To allow amortizing Jacobian-to-affine conversions,
-  // we compute Ki for both proofs first.
+  // we compute Ki for both proofs first. Additionally, all inputs to this
+  // function are public, so we can use the faster variable-time
+  // multiplications.
   enum {
     idx_T,
     idx_S,
@@ -620,17 +632,14 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
   }
 
   // Ks = us*(G;T) + vs*(H;S) - cs*(pubs;Ws)
-  //
-  // TODO(davidben): The multiplications in this function are public and can be
-  // switched to a public batch multiplication function if we add one.
   EC_RAW_POINT pubs;
   ec_affine_to_jacobian(group, &pubs, &pub->pubs);
   EC_SCALAR minus_cs;
   ec_scalar_neg(group, &minus_cs, &cs);
-  if (!ec_point_mul_scalar_batch(group, &jacobians[idx_Ks0], g, &us, &method->h,
-                                 &vs, &pubs, &minus_cs) ||
-      !ec_point_mul_scalar_batch(group, &jacobians[idx_Ks1], T, &us, S, &vs, Ws,
-                                 &minus_cs)) {
+  if (!mul_public_3(group, &jacobians[idx_Ks0], g, &us, &method->h, &vs, &pubs,
+                    &minus_cs) ||
+      !mul_public_3(group, &jacobians[idx_Ks1], T, &us, S, &vs, Ws,
+                    &minus_cs)) {
     return 0;
   }
 
@@ -653,15 +662,13 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
   ec_scalar_neg(group, &minus_c0, &c0);
   ec_scalar_neg(group, &minus_c1, &c1);
   if (// K0 = u0*(G;T) + v0*(H;S) - c0*(pub0;W)
-      !ec_point_mul_scalar_batch(group, &jacobians[idx_K00], g, &u0, &method->h,
-                                 &v0, &pub0, &minus_c0) ||
-      !ec_point_mul_scalar_batch(group, &jacobians[idx_K01], T, &u0, S, &v0, W,
-                                 &minus_c0) ||
+      !mul_public_3(group, &jacobians[idx_K00], g, &u0, &method->h, &v0, &pub0,
+                    &minus_c0) ||
+      !mul_public_3(group, &jacobians[idx_K01], T, &u0, S, &v0, W, &minus_c0) ||
       // K1 = u1*(G;T) + v1*(H;S) - c1*(pub1;W)
-      !ec_point_mul_scalar_batch(group, &jacobians[idx_K10], g, &u1, &method->h,
-                                 &v1, &pub1, &minus_c1) ||
-      !ec_point_mul_scalar_batch(group, &jacobians[idx_K11], T, &u1, S, &v1, W,
-                                 &minus_c1)) {
+      !mul_public_3(group, &jacobians[idx_K10], g, &u1, &method->h, &v1, &pub1,
+                    &minus_c1) ||
+      !mul_public_3(group, &jacobians[idx_K11], T, &u1, S, &v1, W, &minus_c1)) {
     return 0;
   }
 
@@ -722,10 +729,12 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
   EC_RAW_POINT *Sps = NULL;
   EC_RAW_POINT *Wps = NULL;
   EC_RAW_POINT *Wsps = NULL;
+  EC_SCALAR *es = NULL;
   CBB batch_cbb;
   CBB_zero(&batch_cbb);
   if (method->batched_proof) {
-    if (num_to_issue > ((size_t)-1) / sizeof(EC_RAW_POINT)) {
+    if (num_to_issue > ((size_t)-1) / sizeof(EC_RAW_POINT) ||
+        num_to_issue > ((size_t)-1) / sizeof(EC_SCALAR)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
       goto err;
     }
@@ -733,10 +742,12 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
     Sps = OPENSSL_malloc(num_to_issue * sizeof(EC_RAW_POINT));
     Wps = OPENSSL_malloc(num_to_issue * sizeof(EC_RAW_POINT));
     Wsps = OPENSSL_malloc(num_to_issue * sizeof(EC_RAW_POINT));
+    es = OPENSSL_malloc(num_to_issue * sizeof(EC_SCALAR));
     if (!Tps ||
         !Sps ||
         !Wps ||
         !Wsps ||
+        !es ||
         !CBB_init(&batch_cbb, 0) ||
         !point_to_cbb(&batch_cbb, method->group, &key->pubs) ||
         !point_to_cbb(&batch_cbb, method->group, &key->pub0) ||
@@ -808,35 +819,29 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
   }
 
   // The DLEQ batching construction is described in appendix B of
-  // https://eprint.iacr.org/2020/072/20200324:214215.
+  // https://eprint.iacr.org/2020/072/20200324:214215. Note the additional
+  // computations all act on public inputs.
   if (method->batched_proof) {
-    EC_RAW_POINT Tp_batch, Sp_batch, Wp_batch, Wsp_batch;
     for (size_t i = 0; i < num_to_issue; i++) {
-      EC_SCALAR e;
-      if (!hash_c_batch(method, &e, &batch_cbb, i)) {
+      if (!hash_c_batch(method, &es[i], &batch_cbb, i)) {
         goto err;
       }
+    }
 
-      EC_RAW_POINT Tp_e, Sp_e, Wp_e, Wsp_e;
-      if (!ec_point_mul_scalar(group, &Tp_e, &Tps[i], &e) ||
-          !ec_point_mul_scalar(group, &Sp_e, &Sps[i], &e) ||
-          !ec_point_mul_scalar(group, &Wp_e, &Wps[i], &e) ||
-          !ec_point_mul_scalar(group, &Wsp_e, &Wsps[i], &e)) {
-        goto err;
-      }
-
-      // TODO: Switch this to a multi-scalar multiplication.
-      if (i == 0) {
-        Tp_batch = Tp_e;
-        Sp_batch = Sp_e;
-        Wp_batch = Wp_e;
-        Wsp_batch = Wsp_e;
-      } else {
-        group->meth->add(group, &Tp_batch, &Tp_batch, &Tp_e);
-        group->meth->add(group, &Sp_batch, &Sp_batch, &Sp_e);
-        group->meth->add(group, &Wp_batch, &Wp_batch, &Wp_e);
-        group->meth->add(group, &Wsp_batch, &Wsp_batch, &Wsp_e);
-      }
+    EC_RAW_POINT Tp_batch, Sp_batch, Wp_batch, Wsp_batch;
+    if (!ec_point_mul_scalar_public_batch(group, &Tp_batch,
+                                          /*g_scalar=*/NULL, Tps, es,
+                                          num_to_issue) ||
+        !ec_point_mul_scalar_public_batch(group, &Sp_batch,
+                                          /*g_scalar=*/NULL, Sps, es,
+                                          num_to_issue) ||
+        !ec_point_mul_scalar_public_batch(group, &Wp_batch,
+                                          /*g_scalar=*/NULL, Wps, es,
+                                          num_to_issue) ||
+        !ec_point_mul_scalar_public_batch(group, &Wsp_batch,
+                                          /*g_scalar=*/NULL, Wsps, es,
+                                          num_to_issue)) {
+      goto err;
     }
 
     CBB proof;
@@ -862,6 +867,7 @@ err:
   OPENSSL_free(Sps);
   OPENSSL_free(Wps);
   OPENSSL_free(Wsps);
+  OPENSSL_free(es);
   CBB_cleanup(&batch_cbb);
   return ret;
 }
@@ -888,10 +894,12 @@ static STACK_OF(TRUST_TOKEN) *
   EC_RAW_POINT *Sps = NULL;
   EC_RAW_POINT *Wps = NULL;
   EC_RAW_POINT *Wsps = NULL;
+  EC_SCALAR *es = NULL;
   CBB batch_cbb;
   CBB_zero(&batch_cbb);
   if (method->batched_proof) {
-    if (count > ((size_t)-1) / sizeof(EC_RAW_POINT)) {
+    if (count > ((size_t)-1) / sizeof(EC_RAW_POINT) ||
+        count > ((size_t)-1) / sizeof(EC_SCALAR)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
       goto err;
     }
@@ -899,10 +907,12 @@ static STACK_OF(TRUST_TOKEN) *
     Sps = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
     Wps = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
     Wsps = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
+    es = OPENSSL_malloc(count * sizeof(EC_SCALAR));
     if (!Tps ||
         !Sps ||
         !Wps ||
         !Wsps ||
+        !es ||
         !CBB_init(&batch_cbb, 0) ||
         !point_to_cbb(&batch_cbb, method->group, &key->pubs) ||
         !point_to_cbb(&batch_cbb, method->group, &key->pub0) ||
@@ -1006,35 +1016,25 @@ static STACK_OF(TRUST_TOKEN) *
   }
 
   // The DLEQ batching construction is described in appendix B of
-  // https://eprint.iacr.org/2020/072/20200324:214215.
+  // https://eprint.iacr.org/2020/072/20200324:214215. Note the additional
+  // computations all act on public inputs.
   if (method->batched_proof) {
-    EC_RAW_POINT Tp_batch, Sp_batch, Wp_batch, Wsp_batch;
     for (size_t i = 0; i < count; i++) {
-      EC_SCALAR e;
-      if (!hash_c_batch(method, &e, &batch_cbb, i)) {
+      if (!hash_c_batch(method, &es[i], &batch_cbb, i)) {
         goto err;
       }
+    }
 
-      EC_RAW_POINT Tp_e, Sp_e, Wp_e, Wsp_e;
-      if (!ec_point_mul_scalar(group, &Tp_e, &Tps[i], &e) ||
-          !ec_point_mul_scalar(group, &Sp_e, &Sps[i], &e) ||
-          !ec_point_mul_scalar(group, &Wp_e, &Wps[i], &e) ||
-          !ec_point_mul_scalar(group, &Wsp_e, &Wsps[i], &e)) {
-        goto err;
-      }
-
-      // TODO: Switch this to a multi-scalar multiplication.
-      if (i == 0) {
-        Tp_batch = Tp_e;
-        Sp_batch = Sp_e;
-        Wp_batch = Wp_e;
-        Wsp_batch = Wsp_e;
-      } else {
-        group->meth->add(group, &Tp_batch, &Tp_batch, &Tp_e);
-        group->meth->add(group, &Sp_batch, &Sp_batch, &Sp_e);
-        group->meth->add(group, &Wp_batch, &Wp_batch, &Wp_e);
-        group->meth->add(group, &Wsp_batch, &Wsp_batch, &Wsp_e);
-      }
+    EC_RAW_POINT Tp_batch, Sp_batch, Wp_batch, Wsp_batch;
+    if (!ec_point_mul_scalar_public_batch(group, &Tp_batch,
+                                          /*g_scalar=*/NULL, Tps, es, count) ||
+        !ec_point_mul_scalar_public_batch(group, &Sp_batch,
+                                          /*g_scalar=*/NULL, Sps, es, count) ||
+        !ec_point_mul_scalar_public_batch(group, &Wp_batch,
+                                          /*g_scalar=*/NULL, Wps, es, count) ||
+        !ec_point_mul_scalar_public_batch(group, &Wsp_batch,
+                                          /*g_scalar=*/NULL, Wsps, es, count)) {
+      goto err;
     }
 
     CBS proof;
@@ -1053,6 +1053,7 @@ err:
   OPENSSL_free(Sps);
   OPENSSL_free(Wps);
   OPENSSL_free(Wsps);
+  OPENSSL_free(es);
   CBB_cleanup(&batch_cbb);
   if (!ok) {
     sk_TRUST_TOKEN_pop_free(ret, TRUST_TOKEN_free);

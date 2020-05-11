@@ -1006,8 +1006,25 @@ int ec_point_mul_scalar_public(const EC_GROUP *group, EC_RAW_POINT *r,
     return 0;
   }
 
+  if (group->meth->mul_public == NULL) {
+    return group->meth->mul_public_batch(group, r, g_scalar, p, p_scalar, 1);
+  }
+
   group->meth->mul_public(group, r, g_scalar, p, p_scalar);
   return 1;
+}
+
+int ec_point_mul_scalar_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+                                     const EC_SCALAR *g_scalar,
+                                     const EC_RAW_POINT *points,
+                                     const EC_SCALAR *scalars, size_t num) {
+  if (group->meth->mul_public_batch == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  return group->meth->mul_public_batch(group, r, g_scalar, points, scalars,
+                                       num);
 }
 
 int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
