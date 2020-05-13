@@ -99,7 +99,7 @@ fn ctr32_encrypt_blocks_(
     ),
     in_out: &mut [u8],
     in_prefix_len: usize,
-    key: &Key,
+    key: &AES_KEY,
     ctr: &mut Counter,
 ) {
     let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
@@ -113,7 +113,7 @@ fn ctr32_encrypt_blocks_(
     let output = in_out.as_mut_ptr();
 
     unsafe {
-        f(input, output, blocks, &key.inner, ctr);
+        f(input, output, blocks, &key, ctr);
     }
     ctr.increment_by_less_safe(blocks_u32);
 }
@@ -143,13 +143,20 @@ impl Key {
                 set_encrypt_key!(GFp_aes_hw_set_encrypt_key, bytes, key_bits, &mut key)?
             }
 
-            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
-            Implementation::VPAES => {
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            ))]
+            Implementation::VPAES_BSAES => {
                 set_encrypt_key!(GFp_vpaes_set_encrypt_key, bytes, key_bits, &mut key)?
             }
 
             #[cfg(not(target_arch = "aarch64"))]
-            _ => set_encrypt_key!(GFp_aes_nohw_set_encrypt_key, bytes, key_bits, &mut key)?,
+            Implementation::NOHW => {
+                set_encrypt_key!(GFp_aes_nohw_set_encrypt_key, bytes, key_bits, &mut key)?
+            }
         };
 
         Ok(Self {
@@ -163,11 +170,16 @@ impl Key {
         match detect_implementation(self.cpu_features) {
             Implementation::HWAES => encrypt_block!(GFp_aes_hw_encrypt, a, self),
 
-            #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
-            Implementation::VPAES => encrypt_block!(GFp_vpaes_encrypt, a, self),
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            ))]
+            Implementation::VPAES_BSAES => encrypt_block!(GFp_vpaes_encrypt, a, self),
 
             #[cfg(not(target_arch = "aarch64"))]
-            _ => encrypt_block!(GFp_aes_nohw_encrypt, a, self),
+            Implementation::NOHW => encrypt_block!(GFp_aes_nohw_encrypt, a, self),
         }
     }
 
@@ -199,27 +211,60 @@ impl Key {
                 GFp_aes_hw_ctr32_encrypt_blocks,
                 in_out,
                 in_prefix_len,
-                self,
+                &self.inner,
                 ctr
             ),
 
             #[cfg(target_arch = "aarch64")]
-            Implementation::VPAES => ctr32_encrypt_blocks!(
+            Implementation::VPAES_BSAES => ctr32_encrypt_blocks!(
                 GFp_vpaes_ctr32_encrypt_blocks,
                 in_out,
                 in_prefix_len,
-                self,
+                &self.inner,
                 ctr
             ),
 
-            #[cfg(target_arch = "arm")]
-            Implementation::BSAES => ctr32_encrypt_blocks!(
-                GFp_bsaes_ctr32_encrypt_blocks,
-                in_out,
-                in_prefix_len,
-                self,
-                ctr
-            ),
+            #[cfg(any(target_arch = "arm"))]
+            Implementation::VPAES_BSAES => {
+                // 8 blocks is the cut-off point where it's faster to use BSAES.
+                let in_out = if in_out_len >= 8 * BLOCK_LEN {
+                    let remainder = in_out_len % (8 * BLOCK_LEN);
+                    let bsaes_in_out_len = if remainder < (4 * BLOCK_LEN) {
+                        in_out_len - remainder
+                    } else {
+                        in_out_len
+                    };
+
+                    let mut bsaes_key = AES_KEY {
+                        rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
+                        rounds: 0,
+                    };
+                    extern "C" {
+                        fn GFp_vpaes_encrypt_key_to_bsaes(
+                            bsaes_key: &mut AES_KEY,
+                            vpaes_key: &AES_KEY,
+                        );
+                    }
+                    unsafe {
+                        GFp_vpaes_encrypt_key_to_bsaes(&mut bsaes_key, &self.inner);
+                    }
+                    ctr32_encrypt_blocks!(
+                        GFp_bsaes_ctr32_encrypt_blocks,
+                        &mut in_out[..(bsaes_in_out_len + in_prefix_len)],
+                        in_prefix_len,
+                        &bsaes_key,
+                        ctr
+                    );
+
+                    &mut in_out[bsaes_in_out_len..]
+                } else {
+                    in_out
+                };
+
+                shift::shift_full_blocks(in_out, in_prefix_len, |input| {
+                    self.encrypt_iv_xor_block(ctr.increment(), Block::from(input))
+                });
+            }
 
             #[cfg(not(target_arch = "aarch64"))]
             _ => {
@@ -277,14 +322,17 @@ pub type Counter = nonce::Counter<BigEndian<u32>>;
 pub enum Implementation {
     HWAES = 1,
 
-    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))]
-    VPAES = 2,
-
-    #[cfg(target_arch = "arm")]
-    BSAES = 3,
+    // On "arm" only, this indicates that the bsaes implementation may be used.
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
+    VPAES_BSAES = 2,
 
     #[cfg(not(target_arch = "aarch64"))]
-    Fallback = 4,
+    NOHW = 3,
 }
 
 fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
@@ -295,25 +343,25 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     {
         if cpu::intel::SSSE3.available(cpu_features) {
-            return Implementation::VPAES;
+            return Implementation::VPAES_BSAES;
         }
     }
 
     #[cfg(target_arch = "arm")]
     {
         if cpu::arm::NEON.available(cpu_features) {
-            return Implementation::BSAES;
+            return Implementation::VPAES_BSAES;
         }
     }
 
     #[cfg(target_arch = "aarch64")]
     {
-        Implementation::VPAES
+        Implementation::VPAES_BSAES
     }
 
     #[cfg(not(target_arch = "aarch64"))]
     {
-        Implementation::Fallback
+        Implementation::NOHW
     }
 }
 
