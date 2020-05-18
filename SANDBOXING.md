@@ -64,7 +64,12 @@ should ensure this regardless.
 Any BoringSSL function may draw entropy from the OS. On Windows, this uses
 `RtlGenRandom` and, on POSIX systems, this uses `getrandom`, `getentropy`, or a
 `read` from a file descriptor to `/dev/urandom`. These operations must succeed
-or BoringSSL will abort the process.
+or BoringSSL will abort the process. BoringSSL only probes for `getrandom`
+support once and assumes support is consistent for the lifetime of the address
+space (and any copies made via `fork`). If a syscall-filtering sandbox is
+enabled partway through this lifetime and changes whether `getrandom` works,
+BoringSSL may abort the process. Sandboxes are recommended to allow
+`getrandom`.
 
 Note even deterministic algorithms may require OS entropy. For example,
 RSASSA-PKCS1-v1_5 is deterministic, but BoringSSL draws entropy to implement
