@@ -3153,12 +3153,15 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // QUIC may impose similar restrictions, for example HTTP/3's restrictions on
 // SETTINGS frames.
 //
-// BoringSSL imposes a stricter check on the server to enforce these
-// restrictions. BoringSSL requires that the transport parameters and
-// application protocol state be a byte-for-byte match between the connection
-// where the ticket was issued and the connection where it is used for 0-RTT. If
-// there is a mismatch, BoringSSL will reject early data (but not reject the
-// resumption attempt).
+// BoringSSL implements this check by doing a byte-for-byte comparison of an
+// opaque context passed in by the server. This context must be the same on the
+// connection where the ticket was issued and the connection where that ticket
+// is used for 0-RTT. If there is a mismatch, or the context was not set,
+// BoringSSL will reject early data (but not reject the resumption attempt).
+// This context is set via |SSL_set_quic_early_data_context| and should cover
+// both transport parameters and any application state.
+// |SSL_set_quic_early_data_context| must be called on the server with a
+// non-empty context if the server is to support 0-RTT in QUIC.
 //
 // BoringSSL does not perform any client-side checks on the transport
 // parameters received from a server that also accepted early data. It is up to
@@ -3166,12 +3169,6 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // limits, and to close the QUIC connection if that is not the case. The same
 // holds for any application protocol state remembered for 0-RTT, e.g. HTTP/3
 // SETTINGS.
-//
-// The transport parameter check happens automatically with
-// |SSL_set_quic_transport_params|. QUIC servers must set application state via
-// |SSL_set_quic_early_data_context| to configure the application protocol
-// check. No other mechanisms are provided to have BoringSSL reject early data
-// because of QUIC transport or application protocol restrictions.
 
 // ssl_encryption_level_t represents a specific QUIC encryption level used to
 // transmit handshake messages.
@@ -3321,8 +3318,12 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(
 // SSL_set_quic_early_data_context configures a context string in QUIC servers
 // for accepting early data. If a resumption connection offers early data, the
 // server will check if the value matches that of the connection which minted
-// the ticket. If not, resumption still succeeds but early data is rejected. For
-// HTTP/3, this should be the serialized server SETTINGS frame.
+// the ticket. If not, resumption still succeeds but early data is rejected.
+// This should include all QUIC Transport Parameters except ones specified that
+// the client MUST NOT remember. This should also include any application
+// protocol-specific state. For HTTP/3, this should be the serialized server
+// SETTINGS frame and the QUIC Transport Parameters (except the stateless reset
+// token).
 //
 // This function may be called before |SSL_do_handshake| or during server
 // certificate selection. It returns 1 on success and 0 on failure.

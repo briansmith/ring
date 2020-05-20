@@ -127,7 +127,10 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
       return false;
     }
     session->ticket_age_add_valid = true;
-    if (ssl->enable_early_data) {
+    bool enable_early_data =
+        ssl->enable_early_data &&
+        (!ssl->quic_method || !ssl->config->quic_early_data_context.empty());
+    if (enable_early_data) {
       // QUIC does not use the max_early_data_size parameter and always sets it
       // to a fixed value. See draft-ietf-quic-tls-22, section 4.5.
       session->ticket_max_early_data =
@@ -152,7 +155,7 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
       return false;
     }
 
-    if (ssl->enable_early_data) {
+    if (enable_early_data) {
       CBB early_data;
       if (!CBB_add_u16(&extensions, TLSEXT_TYPE_early_data) ||
           !CBB_add_u16_length_prefixed(&extensions, &early_data) ||
@@ -314,13 +317,13 @@ static bool quic_ticket_compatible(const SSL_SESSION *session,
   if (!session->is_quic) {
     return true;
   }
-  if (session->quic_early_data_hash.size() != SHA256_DIGEST_LENGTH) {
-    return false;
-  }
-  uint8_t early_data_hash[SHA256_DIGEST_LENGTH];
-  if (!compute_quic_early_data_hash(config, early_data_hash) ||
-      CRYPTO_memcmp(session->quic_early_data_hash.data(), early_data_hash,
-                    SHA256_DIGEST_LENGTH) != 0) {
+
+  if (session->quic_early_data_context.empty() ||
+      config->quic_early_data_context.size() !=
+          session->quic_early_data_context.size() ||
+      CRYPTO_memcmp(config->quic_early_data_context.data(),
+                    session->quic_early_data_context.data(),
+                    session->quic_early_data_context.size()) != 0) {
     return false;
   }
   return true;

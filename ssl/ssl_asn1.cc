@@ -192,7 +192,7 @@ static const unsigned kEarlyALPNTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 26;
 static const unsigned kIsQuicTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 27;
-static const unsigned kQuicEarlyDataHashTag =
+static const unsigned kQuicEarlyDataContextTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 28;
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
@@ -402,10 +402,10 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     }
   }
 
-  if (!in->quic_early_data_hash.empty()) {
-    if (!CBB_add_asn1(&session, &child, kQuicEarlyDataHashTag) ||
-        !CBB_add_asn1_octet_string(&child, in->quic_early_data_hash.data(),
-                                   in->quic_early_data_hash.size())) {
+  if (!in->quic_early_data_context.empty()) {
+    if (!CBB_add_asn1(&session, &child, kQuicEarlyDataContextTag) ||
+        !CBB_add_asn1_octet_string(&child, in->quic_early_data_context.data(),
+                                   in->quic_early_data_context.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -752,8 +752,8 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
                                       kEarlyALPNTag) ||
       !CBS_get_optional_asn1_bool(&session, &is_quic, kIsQuicTag,
                                   /*default_value=*/false) ||
-      !SSL_SESSION_parse_octet_string(&session, &ret->quic_early_data_hash,
-                                      kQuicEarlyDataHashTag) ||
+      !SSL_SESSION_parse_octet_string(&session, &ret->quic_early_data_context,
+                                      kQuicEarlyDataContextTag) ||
       CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;
