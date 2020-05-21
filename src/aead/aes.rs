@@ -215,18 +215,10 @@ impl Key {
                 ctr
             ),
 
-            #[cfg(target_arch = "aarch64")]
-            Implementation::VPAES_BSAES => ctr32_encrypt_blocks!(
-                GFp_vpaes_ctr32_encrypt_blocks,
-                in_out,
-                in_prefix_len,
-                &self.inner,
-                ctr
-            ),
-
-            #[cfg(any(target_arch = "arm"))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
             Implementation::VPAES_BSAES => {
                 // 8 blocks is the cut-off point where it's faster to use BSAES.
+                #[cfg(target_arch = "arm")]
                 let in_out = if in_out_len >= 8 * BLOCK_LEN {
                     let remainder = in_out_len % (8 * BLOCK_LEN);
                     let bsaes_in_out_len = if remainder < (4 * BLOCK_LEN) {
@@ -261,9 +253,13 @@ impl Key {
                     in_out
                 };
 
-                shift::shift_full_blocks(in_out, in_prefix_len, |input| {
-                    self.encrypt_iv_xor_block(ctr.increment(), Block::from(input))
-                });
+                ctr32_encrypt_blocks!(
+                    GFp_vpaes_ctr32_encrypt_blocks,
+                    &mut in_out[..],
+                    in_prefix_len,
+                    &self.inner,
+                    ctr
+                )
             }
 
             #[cfg(not(target_arch = "aarch64"))]
