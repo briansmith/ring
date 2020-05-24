@@ -407,7 +407,7 @@ enum KeyInner {
 impl UnboundKey {
     /// Constructs an `UnboundKey`.
     ///
-    /// Fails if `key_bytes.len() != ` algorithm.key_len()`.
+    /// Fails if `key_bytes.len() != algorithm.key_len()`.
     pub fn new(
         algorithm: &'static Algorithm,
         key_bytes: &[u8],
