@@ -2968,6 +2968,34 @@ void SSL_CTX_set_ticket_aead_method(SSL_CTX *ctx,
   ctx->ticket_aead_method = aead_method;
 }
 
+SSL_SESSION *SSL_process_tls13_new_session_ticket(SSL *ssl, const uint8_t *buf,
+                                                  size_t buf_len) {
+  if (SSL_in_init(ssl) ||
+      ssl_protocol_version(ssl) != TLS1_3_VERSION ||
+      ssl->server) {
+    // Only TLS 1.3 clients are supported.
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return nullptr;
+  }
+
+  CBS cbs, body;
+  CBS_init(&cbs, buf, buf_len);
+  uint8_t type;
+  if (!CBS_get_u8(&cbs, &type) ||
+      !CBS_get_u24_length_prefixed(&cbs, &body) ||
+      CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return nullptr;
+  }
+
+  UniquePtr<SSL_SESSION> session = tls13_create_session_with_ticket(ssl, &body);
+  if (!session) {
+    // |tls13_create_session_with_ticket| puts the correct error.
+    return nullptr;
+  }
+  return session.release();
+}
+
 int SSL_set_tlsext_status_type(SSL *ssl, int type) {
   if (!ssl->config) {
     return 0;

@@ -1863,6 +1863,8 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs);
 
 bool tls13_add_finished(SSL_HANDSHAKE *hs);
 bool tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg);
+bssl::UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl,
+                                                              CBS *body);
 
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,

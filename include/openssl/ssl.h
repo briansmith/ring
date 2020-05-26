@@ -2197,6 +2197,20 @@ struct ssl_ticket_aead_method_st {
 OPENSSL_EXPORT void SSL_CTX_set_ticket_aead_method(
     SSL_CTX *ctx, const SSL_TICKET_AEAD_METHOD *aead_method);
 
+// SSL_process_tls13_new_session_ticket processes an unencrypted TLS 1.3
+// NewSessionTicket message from |buf| and returns a resumable |SSL_SESSION|,
+// or NULL on error. The caller takes ownership of the returned session and
+// must call |SSL_SESSION_free| to free it.
+//
+// |buf| contains |buf_len| bytes that represents a complete NewSessionTicket
+// message including its header, i.e., one byte for the type (0x04) and three
+// bytes for the length. |buf| must contain only one such message.
+//
+// This function may be used to process NewSessionTicket messages in TLS 1.3
+// clients that are handling the record layer externally.
+OPENSSL_EXPORT SSL_SESSION *SSL_process_tls13_new_session_ticket(
+    SSL *ssl, const uint8_t *buf, size_t buf_len);
+
 
 // Elliptic curve Diffie-Hellman.
 //
