@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.3)
 
 # Defer enabling C and CXX languages.
 project(BoringSSL NONE)
@@ -602,11 +602,6 @@ if(FUZZ)
   add_subdirectory(fuzz)
 endif()
 
-if(NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
-  # USES_TERMINAL is only available in CMake 3.2 or later.
-  set(MAYBE_USES_TERMINAL USES_TERMINAL)
-endif()
-
 if(UNIX AND NOT APPLE AND NOT ANDROID)
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
 endif()
@@ -620,4 +615,4 @@ add_custom_target(
               ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS all_tests bssl_shim handshaker
-    ${MAYBE_USES_TERMINAL})
+    USES_TERMINAL)
