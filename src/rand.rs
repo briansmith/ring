@@ -97,7 +97,7 @@ pub(crate) mod sealed {
         }
     }
 
-    impl_random_arrays![4 8 16 32 48 64];
+    impl_random_arrays![4 8 16 32 48 64 128 256];
 }
 
 /// A type that can be returned by `ring::rand::generate()`.
