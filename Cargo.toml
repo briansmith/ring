@@ -225,6 +225,7 @@ include = [
     "tests/aead_tests.rs",
     "tests/agreement_tests.rs",
     "tests/agreement_tests.txt",
+    "tests/constant_time_tests.rs",
     "tests/digest_tests.rs",
     "tests/digest_tests.txt",
     "tests/ecdsa_from_pkcs8_tests.txt",
