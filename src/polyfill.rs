@@ -23,6 +23,12 @@ pub const fn u64_from_usize(x: usize) -> u64 {
     x as u64
 }
 
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86_64",
+    target_arch = "x86"
+))]
 #[inline(always)]
 pub fn usize_from_u32(x: u32) -> usize {
     x as usize
