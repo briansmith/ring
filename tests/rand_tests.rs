@@ -26,7 +26,7 @@ use wasm_bindgen_test::wasm_bindgen_test_configure;
 #[cfg(target_arch = "wasm32")]
 wasm_bindgen_test_configure!(run_in_browser);
 
-#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_system_random_lengths() {
     const LINUX_LIMIT: usize = 256;
@@ -70,7 +70,7 @@ fn test_system_random_lengths() {
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_system_random_traits() {
     test::compile_time_assert_clone::<rand::SystemRandom>();
