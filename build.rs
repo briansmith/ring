@@ -54,17 +54,18 @@ const ARM: &str = "arm";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_SRCS: &[(&[&str], &str)] = &[
-    (&[], "crypto/fipsmodule/bn/generic.c"),
-    (&[], "crypto/fipsmodule/bn/montgomery.c"),
-    (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
-    (&[], "crypto/crypto.c"),
-    (&[], "crypto/fipsmodule/ec/ecp_nistz.c"),
-    (&[], "crypto/fipsmodule/ec/ecp_nistz256.c"),
-    (&[], "crypto/fipsmodule/ec/gfp_p256.c"),
-    (&[], "crypto/fipsmodule/ec/gfp_p384.c"),
-    (&[], "crypto/limbs/limbs.c"),
     (&[], "crypto/mem.c"),
-    (&[], "third_party/fiat/curve25519.c"),
+
+    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/bn/generic.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/bn/montgomery.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/bn/montgomery_inv.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz256.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/limbs/limbs.c"),
+    (&[AARCH64, ARM, X86_64, X86], "third_party/fiat/curve25519.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -229,18 +230,19 @@ const LD_FLAGS: &[&str] = &[];
 
 // None means "any OS" or "any target". The first match in sequence order is
 // taken.
-const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
-    ("x86_64", Some("ios"), "macosx"),
-    ("x86_64", Some("macos"), "macosx"),
-    ("x86_64", Some(WINDOWS), "nasm"),
-    ("x86_64", None, "elf"),
-    ("aarch64", Some("ios"), "ios64"),
-    ("aarch64", None, "linux64"),
-    ("x86", Some(WINDOWS), "win32n"),
-    ("x86", Some("ios"), "macosx"),
-    ("x86", None, "elf"),
-    ("arm", Some("ios"), "ios32"),
-    ("arm", None, "linux32"),
+const ASM_TARGETS: &[(&str, Option<&str>, Option<&str>)] = &[
+    ("x86_64", Some("ios"), Some("macosx")),
+    ("x86_64", Some("macos"), Some("macosx")),
+    ("x86_64", Some(WINDOWS), Some("nasm")),
+    ("x86_64", None, Some("elf")),
+    ("aarch64", Some("ios"), Some("ios64")),
+    ("aarch64", None, Some("linux64")),
+    ("x86", Some(WINDOWS), Some("win32n")),
+    ("x86", Some("ios"), Some("macosx")),
+    ("x86", None, Some("elf")),
+    ("arm", Some("ios"), Some("ios32")),
+    ("arm", None, Some("linux32")),
+    ("wasm32", None, None),
 ];
 
 const WINDOWS: &str = "windows";
@@ -314,15 +316,18 @@ fn pregenerate_asm_main() {
             &pregenerated
         };
 
-        let perlasm_src_dsts = perlasm_src_dsts(&asm_dir, target_arch, target_os, perlasm_format);
-        perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
+        if let Some(perlasm_format) = perlasm_format {
+            let perlasm_src_dsts =
+                perlasm_src_dsts(&asm_dir, target_arch, target_os, perlasm_format);
+            perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
 
-        if target_os == Some(WINDOWS) {
-            let srcs = asm_srcs(perlasm_src_dsts);
-            for src in srcs {
-                let src_path = PathBuf::from(src);
-                let obj_path = obj_path(&pregenerated, &src_path, MSVC_OBJ_EXT);
-                run_command(yasm(&src_path, target_arch, &obj_path));
+            if target_os == Some(WINDOWS) {
+                let srcs = asm_srcs(perlasm_src_dsts);
+                for src in srcs {
+                    let src_path = PathBuf::from(src);
+                    let obj_path = obj_path(&pregenerated, &src_path, MSVC_OBJ_EXT);
+                    run_command(yasm(&src_path, target_arch, &obj_path));
+                }
             }
         }
     }
@@ -339,8 +344,11 @@ struct Target {
 }
 
 fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
-    if &target.arch == "wasm32" {
-        return;
+    #[cfg(not(feature = "wasm32_c"))]
+    {
+        if &target.arch == "wasm32" {
+            return;
+        }
     }
 
     let includes_modified = RING_INCLUDES
@@ -379,31 +387,37 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         out_dir
     };
 
-    let perlasm_src_dsts =
-        perlasm_src_dsts(asm_dir, &target.arch, Some(&target.os), perlasm_format);
+    let asm_srcs = if let Some(perlasm_format) = perlasm_format {
+        let perlasm_src_dsts =
+            perlasm_src_dsts(asm_dir, &target.arch, Some(&target.os), perlasm_format);
 
-    if !use_pregenerated {
-        perlasm(
-            &perlasm_src_dsts[..],
-            &target.arch,
-            perlasm_format,
-            Some(includes_modified),
-        );
-    }
+        if !use_pregenerated {
+            perlasm(
+                &perlasm_src_dsts[..],
+                &target.arch,
+                perlasm_format,
+                Some(includes_modified),
+            );
+        }
 
-    let mut asm_srcs = asm_srcs(perlasm_src_dsts);
+        let mut asm_srcs = asm_srcs(perlasm_src_dsts);
 
-    // For Windows we also pregenerate the object files for non-Git builds so
-    // the user doesn't need to install the assembler. On other platforms we
-    // assume the C compiler also assembles.
-    if use_pregenerated && &target.os == WINDOWS {
-        // The pregenerated object files always use ".obj" as the extension,
-        // even when the C/C++ compiler outputs files with the ".o" extension.
-        asm_srcs = asm_srcs
-            .iter()
-            .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
-            .collect::<Vec<_>>();
-    }
+        // For Windows we also pregenerate the object files for non-Git builds so
+        // the user doesn't need to install the assembler. On other platforms we
+        // assume the C compiler also assembles.
+        if use_pregenerated && &target.os == WINDOWS {
+            // The pregenerated object files always use ".obj" as the extension,
+            // even when the C/C++ compiler outputs files with the ".o" extension.
+            asm_srcs = asm_srcs
+                .iter()
+                .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
+                .collect::<Vec<_>>();
+        }
+
+        asm_srcs
+    } else {
+        Vec::new()
+    };
 
     let core_srcs = sources_for_arch(&target.arch)
         .into_iter()
@@ -549,7 +563,11 @@ fn cc(
     for f in cpp_flags(target) {
         let _ = c.flag(&f);
     }
-    if &target.os != "none" && &target.os != "redox" && &target.os != "windows" {
+    if &target.os != "none"
+        && &target.os != "redox"
+        && &target.os != "windows"
+        && target.arch != "wasm32"
+    {
         let _ = c.flag("-fstack-protector");
     }
 
@@ -563,7 +581,8 @@ fn cc(
             let _ = c.flag("-g3");
         }
     };
-    if !target.is_debug {
+    // We don't have assert.h for wasm32 targets.
+    if !target.is_debug || target.arch == "wasm32" {
         let _ = c.define("NDEBUG", None);
     }
 

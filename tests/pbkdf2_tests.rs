@@ -33,7 +33,18 @@
 use core::num::NonZeroU32;
 use ring::{digest, error, pbkdf2, test, test_file};
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test_configure;
+
+#[cfg(target_arch = "wasm32")]
+wasm_bindgen_test_configure!(run_in_browser);
+
+/// Test vectors from BoringSSL, Go, and other sources.
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 pub fn pbkdf2_tests() {
     test::run(test_file!("pbkdf2_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
@@ -69,6 +80,7 @@ pub fn pbkdf2_tests() {
             assert_eq!(dk == out, verify_expected_result.is_ok() || dk.is_empty());
         }
 
+        #[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
         assert_eq!(
             pbkdf2::verify(algorithm, iterations, &salt, &secret, &dk),
             verify_expected_result

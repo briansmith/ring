@@ -14,8 +14,18 @@
 
 use ring::{constant_time, error, rand};
 
+#[cfg(all(target_arch = "wasm32", feature = "wasm32_c"))]
+use wasm_bindgen_test::wasm_bindgen_test;
+
+#[cfg(all(target_arch = "wasm32", feature = "wasm32_c"))]
+use wasm_bindgen_test::wasm_bindgen_test_configure;
+
+#[cfg(all(target_arch = "wasm32", feature = "wasm32_c"))]
+wasm_bindgen_test_configure!(run_in_browser);
+
 // This logic is loosly based on BoringSSL's `TEST(ConstantTimeTest, MemCmp)`.
 #[test]
+#[cfg_attr(all(target_arch = "wasm32", feature = "wasm32_c"), wasm_bindgen_test)]
 fn test_verify_slices_are_equal() {
     let initial: [u8; 256] = rand::generate(&rand::SystemRandom::new()).unwrap().expose();
 
