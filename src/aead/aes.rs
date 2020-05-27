@@ -255,7 +255,7 @@ impl Key {
 
                 ctr32_encrypt_blocks!(
                     GFp_vpaes_ctr32_encrypt_blocks,
-                    &mut in_out[..],
+                    in_out,
                     in_prefix_len,
                     &self.inner,
                     ctr
