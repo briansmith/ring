@@ -254,6 +254,20 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
 
 // Endianness conversions.
 
+#if defined(__GNUC__) && __GNUC__ >= 2
+static inline uint32_t CRYPTO_bswap4(uint32_t x) {
+  return __builtin_bswap32(x);
+}
+#elif defined(_MSC_VER)
+#pragma warning(push, 3)
+#include <stdlib.h>
+#pragma warning(pop)
+#pragma intrinsic(_byteswap_uint64, _byteswap_ulong)
+static inline uint32_t CRYPTO_bswap4(uint32_t x) {
+  return _byteswap_ulong(x);
+}
+#endif
+
 static inline void bytes_copy(uint8_t out[], const uint8_t in[], size_t len) {
   for (size_t i = 0; i < len; ++i) {
     out[i] = in[i];

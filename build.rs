@@ -54,6 +54,7 @@ const ARM: &str = "arm";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_SRCS: &[(&[&str], &str)] = &[
+    (&[], "crypto/fipsmodule/aes/aes_nohw.c"),
     (&[], "crypto/mem.c"),
 
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/bn/generic.c"),
@@ -69,7 +70,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
-    (&[X86], "crypto/fipsmodule/aes/asm/aes-586.pl"),
     (&[X86], "crypto/fipsmodule/aes/asm/aesni-x86.pl"),
     (&[X86], "crypto/fipsmodule/aes/asm/vpaes-x86.pl"),
     (&[X86], "crypto/fipsmodule/bn/asm/x86-mont.pl"),
@@ -78,7 +78,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86], "crypto/fipsmodule/modes/asm/ghash-x86.pl"),
     (&[X86], "crypto/poly1305/asm/poly1305-x86.pl"),
 
-    (&[X86_64], "crypto/fipsmodule/aes/asm/aes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont.pl"),
@@ -93,7 +92,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64, ARM], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
     (&[AARCH64, ARM], "crypto/fipsmodule/modes/asm/ghashv8-armx.pl"),
 
-    (&[ARM], "crypto/fipsmodule/aes/asm/aes-armv4.pl"),
     (&[ARM], "crypto/fipsmodule/aes/asm/bsaes-armv7.pl"),
     (&[ARM], "crypto/fipsmodule/aes/asm/vpaes-armv7.pl"),
     (&[ARM], "crypto/fipsmodule/bn/asm/armv4-mont.pl"),

@@ -17,7 +17,7 @@ use super::{
     Block, Direction, BLOCK_LEN,
 };
 
-use crate::{bits::BitLength, c, cpu, endian::*, error};
+use crate::{bits::BitLength, c, cpu, endian::*, error, polyfill};
 
 pub(crate) struct Key {
     inner: AES_KEY,
@@ -70,12 +70,6 @@ fn encrypt_block_(
     }
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86_64",
-    target_arch = "x86"
-))]
 macro_rules! ctr32_encrypt_blocks {
     ($name:ident, $in_out:expr, $in_prefix_len:expr, $key:expr, $ivec:expr ) => {{
         extern "C" {
@@ -91,12 +85,6 @@ macro_rules! ctr32_encrypt_blocks {
     }};
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86_64",
-    target_arch = "x86"
-))]
 #[inline]
 fn ctr32_encrypt_blocks_(
     f: unsafe extern "C" fn(
@@ -116,7 +104,7 @@ fn ctr32_encrypt_blocks_(
 
     let blocks = in_out_len / BLOCK_LEN;
     let blocks_u32 = blocks as u32;
-    assert_eq!(blocks, crate::polyfill::usize_from_u32(blocks_u32));
+    assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
 
     let input = in_out[in_prefix_len..].as_ptr();
     let output = in_out.as_mut_ptr();
@@ -289,12 +277,21 @@ impl Key {
                 )
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
-            _ => {
+            #[cfg(any(target_arch = "x86"))]
+            Implementation::VPAES_BSAES => {
                 super::shift::shift_full_blocks(in_out, in_prefix_len, |input| {
                     self.encrypt_iv_xor_block(ctr.increment(), Block::from(input))
                 });
             }
+
+            #[cfg(not(target_arch = "aarch64"))]
+            Implementation::NOHW => ctr32_encrypt_blocks!(
+                GFp_aes_nohw_ctr32_encrypt_blocks,
+                in_out,
+                in_prefix_len,
+                &self.inner,
+                ctr
+            ),
         }
     }
 

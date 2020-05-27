@@ -215,14 +215,24 @@ pub(crate) mod arm {
     };
 
     // Keep in sync with `ARMV8_AES`.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
     pub(crate) const AES: Feature = Feature {
         mask: 1 << 2,
         ios: true,
     };
 
     // Keep in sync with `ARMV8_PMULL`.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))]
     pub(crate) const PMULL: Feature = Feature {
         mask: 1 << 5,
         ios: true,
