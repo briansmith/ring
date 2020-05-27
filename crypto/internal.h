@@ -112,10 +112,14 @@
 #include <GFp/base.h> // Must be first.
 
 #if !defined(NDEBUG)
-#include <assert.h>
-#define ASSERT(x) assert(x)
+# if !defined(__wasm__)
+#  include <assert.h>
+#  define ASSERT(x) assert(x)
+# else
+#  define ASSERT(x) ((x) ? ((void)0) : __builtin_trap())
+# endif
 #else
-#define ASSERT(x) ((void)0)
+# define ASSERT(x) ((void)0)
 #endif
 
 #if defined(__GNUC__) && \

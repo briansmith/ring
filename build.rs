@@ -581,8 +581,7 @@ fn cc(
             let _ = c.flag("-g3");
         }
     };
-    // We don't have assert.h for wasm32 targets.
-    if !target.is_debug || target.arch == "wasm32" {
+    if !target.is_debug {
         let _ = c.define("NDEBUG", None);
     }
 
@@ -594,6 +593,10 @@ fn cc(
         } else {
             let _ = c.flag("/Ox"); // Enable full optimization.
         }
+    }
+
+    if (target.arch.as_str(), target.os.as_str()) == ("wasm32", "unknown") {
+        let _ = c.flag("--no-standard-libraries");
     }
 
     if warnings_are_errors {
