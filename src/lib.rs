@@ -35,6 +35,16 @@
 //! <tr><td><code>std</code>
 //!     <td>Enable features that use libstd, in particular `std::error::Error`
 //!         integration.
+//! <tr><td><code>wasm32_c</code>
+//!     <td>Enables features that require a C compiler on wasm32 targets, such as
+//!        the <code>constant_time</code> module, HMAC verification, and PBKDF2
+//!        verification. Without this feature, only a subset of functionality
+//!        is provided to wasm32 targets so that a C compiler isn't needed. A
+//!        typical invocation would be:
+//!        <code>TARGET_AR=llvm-ar cargo test --target=wasm32-unknown-unknown --features=wasm32_c</code>
+//!        with <code>llvm-ar</code> and <code>clang</code> in <code>$PATH</code>.
+//!        (Going forward more functionality should be enabled by default, without
+//!        requiring these hacks, and without requiring a C compiler.)
 //! </table>
 
 #![doc(html_root_url = "https://briansmith.org/rustdoc/")]

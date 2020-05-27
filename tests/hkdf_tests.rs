@@ -77,6 +77,7 @@ fn hkdf_tests() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn hkdf_output_len_tests() {
     for &alg in &[hkdf::HKDF_SHA256, hkdf::HKDF_SHA384, hkdf::HKDF_SHA512] {
         const MAX_BLOCKS: usize = 255;

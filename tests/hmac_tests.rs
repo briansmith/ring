@@ -32,7 +32,17 @@
 
 use ring::{digest, error, hmac, test, test_file};
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test_configure;
+
+#[cfg(target_arch = "wasm32")]
+wasm_bindgen_test_configure!(run_in_browser);
+
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn hmac_tests() {
     test::run(test_file!("hmac_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
@@ -87,6 +97,8 @@ fn hmac_test_case_inner(
     {
         let signature = hmac::sign(&key, input);
         assert_eq!(is_ok, signature.as_ref() == output);
+
+        #[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
         assert_eq!(is_ok, hmac::verify(&key, input, output).is_ok());
     }
 
@@ -112,6 +124,7 @@ fn hmac_test_case_inner(
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn hmac_debug() {
     let key = hmac::Key::new(hmac::HMAC_SHA256, &[0; 32]);
     assert_eq!("Key { algorithm: SHA256 }", format!("{:?}", &key));
