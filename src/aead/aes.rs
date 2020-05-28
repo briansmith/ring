@@ -17,9 +17,6 @@ use super::{
     Block, Direction, BLOCK_LEN,
 };
 
-#[cfg(not(target_arch = "aarch64"))]
-use super::shift;
-
 use crate::{bits::BitLength, c, cpu, endian::*, error, polyfill};
 
 pub(crate) struct Key {
@@ -139,6 +136,12 @@ impl Key {
         };
 
         match detect_implementation(cpu_features) {
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            ))]
             Implementation::HWAES => {
                 set_encrypt_key!(GFp_aes_hw_set_encrypt_key, bytes, key_bits, &mut key)?
             }
@@ -168,6 +171,12 @@ impl Key {
     #[inline]
     pub fn encrypt_block(&self, a: Block) -> Block {
         match detect_implementation(self.cpu_features) {
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            ))]
             Implementation::HWAES => encrypt_block!(GFp_aes_hw_encrypt, a, self),
 
             #[cfg(any(
@@ -207,6 +216,12 @@ impl Key {
         assert_eq!(in_out_len % BLOCK_LEN, 0);
 
         match detect_implementation(self.cpu_features) {
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            ))]
             Implementation::HWAES => ctr32_encrypt_blocks!(
                 GFp_aes_hw_ctr32_encrypt_blocks,
                 in_out,
@@ -255,19 +270,28 @@ impl Key {
 
                 ctr32_encrypt_blocks!(
                     GFp_vpaes_ctr32_encrypt_blocks,
-                    &mut in_out[..],
+                    in_out,
                     in_prefix_len,
                     &self.inner,
                     ctr
                 )
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
-            _ => {
-                shift::shift_full_blocks(in_out, in_prefix_len, |input| {
+            #[cfg(any(target_arch = "x86"))]
+            Implementation::VPAES_BSAES => {
+                super::shift::shift_full_blocks(in_out, in_prefix_len, |input| {
                     self.encrypt_iv_xor_block(ctr.increment(), Block::from(input))
                 });
             }
+
+            #[cfg(not(target_arch = "aarch64"))]
+            Implementation::NOHW => ctr32_encrypt_blocks!(
+                GFp_aes_nohw_ctr32_encrypt_blocks,
+                in_out,
+                in_prefix_len,
+                &self.inner,
+                ctr
+            ),
         }
     }
 
@@ -316,6 +340,12 @@ pub type Counter = nonce::Counter<BigEndian<u32>>;
 #[repr(C)] // Only so `Key` can be `#[repr(C)]`
 #[derive(Clone, Copy)]
 pub enum Implementation {
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
     HWAES = 1,
 
     // On "arm" only, this indicates that the bsaes implementation may be used.
@@ -331,9 +361,17 @@ pub enum Implementation {
     NOHW = 3,
 }
 
-fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
-    if cpu::intel::AES.available(cpu_features) || cpu::arm::AES.available(cpu_features) {
-        return Implementation::HWAES;
+fn detect_implementation(#[allow(unused_variables)] cpu_features: cpu::Features) -> Implementation {
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
+    {
+        if cpu::intel::AES.available(cpu_features) || cpu::arm::AES.available(cpu_features) {
+            return Implementation::HWAES;
+        }
     }
 
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]

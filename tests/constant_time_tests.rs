@@ -12,15 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#![cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 use ring::{constant_time, error, rand};
 
-#[cfg(all(target_arch = "wasm32", feature = "wasm32_c"))]
-use wasm_bindgen_test::wasm_bindgen_test;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
-#[cfg(all(target_arch = "wasm32", feature = "wasm32_c"))]
-use wasm_bindgen_test::wasm_bindgen_test_configure;
-
-#[cfg(all(target_arch = "wasm32", feature = "wasm32_c"))]
+#[cfg(target_arch = "wasm32")]
 wasm_bindgen_test_configure!(run_in_browser);
 
 // This logic is loosly based on BoringSSL's `TEST(ConstantTimeTest, MemCmp)`.

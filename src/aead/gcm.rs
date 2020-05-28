@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aad, Block, BLOCK_LEN};
-use crate::{c, cpu};
+use crate::cpu;
 
 #[cfg(not(target_arch = "aarch64"))]
 mod gcm_nohw;
@@ -40,6 +40,12 @@ impl Key {
                 }
             }
 
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            ))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_init_clmul(Htable: &mut HTable, h: &[u64; 2]);
@@ -119,7 +125,7 @@ impl Context {
                         xi: &mut Xi,
                         Htable: &HTable,
                         inp: *const u8,
-                        len: c::size_t,
+                        len: crate::c::size_t,
                     );
                 }
                 unsafe {
@@ -127,13 +133,19 @@ impl Context {
                 }
             }
 
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            ))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_ghash_clmul(
                         xi: &mut Xi,
                         Htable: &HTable,
                         inp: *const u8,
-                        len: c::size_t,
+                        len: crate::c::size_t,
                     );
                 }
                 unsafe {
@@ -148,7 +160,7 @@ impl Context {
                         xi: &mut Xi,
                         Htable: &HTable,
                         inp: *const u8,
-                        len: c::size_t,
+                        len: crate::c::size_t,
                     );
                 }
                 unsafe {
@@ -173,6 +185,12 @@ impl Context {
         let h_table = &self.inner.Htable;
 
         match detect_implementation(self.cpu_features) {
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "x86_64",
+                target_arch = "x86"
+            ))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_gmult_clmul(xi: &mut Xi, Htable: &HTable);
@@ -259,6 +277,12 @@ pub(super) struct ContextInner {
 }
 
 enum Implementation {
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
     CLMUL,
 
     #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
@@ -269,11 +293,19 @@ enum Implementation {
 }
 
 #[inline]
-fn detect_implementation(cpu: cpu::Features) -> Implementation {
-    if (cpu::intel::FXSR.available(cpu) && cpu::intel::PCLMULQDQ.available(cpu))
-        || cpu::arm::PMULL.available(cpu)
+fn detect_implementation(#[allow(unused_variables)] cpu: cpu::Features) -> Implementation {
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
     {
-        return Implementation::CLMUL;
+        if (cpu::intel::FXSR.available(cpu) && cpu::intel::PCLMULQDQ.available(cpu))
+            || cpu::arm::PMULL.available(cpu)
+        {
+            return Implementation::CLMUL;
+        }
     }
 
     #[cfg(target_arch = "arm")]

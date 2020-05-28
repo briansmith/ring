@@ -23,7 +23,6 @@ pub const fn u64_from_usize(x: usize) -> u64 {
     x as u64
 }
 
-#[inline(always)]
 pub fn usize_from_u32(x: u32) -> usize {
     x as usize
 }
