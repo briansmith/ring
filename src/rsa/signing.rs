@@ -474,7 +474,7 @@ where
     M: bigint::NotMuchSmallerModulus<MM>,
     M: Prime,
 {
-    let c_mod_m = bigint::elem_reduced(c, &p.modulus)?;
+    let c_mod_m = bigint::elem_reduced(c, &p.modulus);
     // We could precompute `oneRRR = elem_squared(&p.oneRR`) as mentioned
     // in the Smooth CRT-RSA paper.
     let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, &p.modulus);

@@ -31,7 +31,10 @@ pub mod slice {
     // https://github.com/rust-lang/rust/issues/27750
     // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868
     #[inline(always)]
-    pub fn fill(dest: &mut [u8], value: u8) {
+    pub fn fill<T>(dest: &mut [T], value: T)
+    where
+        T: Copy,
+    {
         for d in dest {
             *d = value;
         }
