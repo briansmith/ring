@@ -111,16 +111,7 @@
 
 #include <GFp/base.h> // Must be first.
 
-#if !defined(NDEBUG)
-# if !defined(__wasm__)
-#  include <assert.h>
-#  define ASSERT(x) assert(x)
-# else
-#  define ASSERT(x) ((x) ? ((void)0) : __builtin_trap())
-# endif
-#else
-# define ASSERT(x) ((void)0)
-#endif
+#include "GFp/check.h"
 
 #if defined(__GNUC__) && \
     (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40800

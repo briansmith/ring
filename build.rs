@@ -135,6 +135,7 @@ const RING_INCLUDES: &[&str] =
       "include/GFp/aes.h",
       "include/GFp/arm_arch.h",
       "include/GFp/base.h",
+      "include/GFp/check.h",
       "include/GFp/cpu.h",
       "include/GFp/mem.h",
       "include/GFp/type_check.h",
