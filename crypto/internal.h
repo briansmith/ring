@@ -111,24 +111,7 @@
 
 #include <GFp/base.h> // Must be first.
 
-// Assertions may only be enabled by editing `#if 0` to `#if 1` here. This is
-// not controlled only through `NDEBUG` for safety reasons. `ASSERT` may alter
-// the control flow, and it may do so based on inspection of secret values.
-#if defined(ASSERT)
-# undef ASSERT
-#endif
-#define ASSERT(x) ((void)0)
-#if 0
-# if !defined(__wasm__)
-#  include <assert.h>
-#  undef ASSERT
-#  define ASSERT(x) assert(x)
-# elif !defined(NDEBUG)
-   // Emulate assert.h for WebAssembly so we don't require a sysroot for it.
-#  undef ASSERT
-#  define ASSERT(x) ((x) ? ((void)0) : __builtin_trap())
-# endif
-#endif
+#include "GFp/check.h"
 
 #if defined(__GNUC__) && \
     (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40800

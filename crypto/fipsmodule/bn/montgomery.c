@@ -121,8 +121,7 @@ int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
                                     size_t num_a, const BN_ULONG n[],
                                     size_t num_n,
                                     const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]) {
-  ASSERT(num_n != 0);
-  if (num_r != num_n || num_a != 2 * num_n) {
+  if (num_n == 0 || num_r != num_n || num_a != 2 * num_n) {
     return 0;
   }
 

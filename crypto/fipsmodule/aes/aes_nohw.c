@@ -239,7 +239,7 @@ static inline void aes_nohw_batch_set(AES_NOHW_BATCH *batch,
   // w[4] so that bits 0 and 4 are in the correct position. (In general, bits
   // along diagonals of |AES_NOHW_BATCH_SIZE| by |AES_NOHW_BATCH_SIZE| squares
   // will be correctly placed.)
-  ASSERT(i < AES_NOHW_BATCH_SIZE);
+  dev_assert_secret(i < AES_NOHW_BATCH_SIZE);
 #if defined(OPENSSL_SSE2)
   batch->w[i] = in[0];
 #elif defined(OPENSSL_64_BIT)
@@ -258,7 +258,7 @@ static inline void aes_nohw_batch_set(AES_NOHW_BATCH *batch,
 static inline void aes_nohw_batch_get(const AES_NOHW_BATCH *batch,
                                       aes_word_t out[AES_NOHW_BLOCK_WORDS],
                                       size_t i) {
-  ASSERT(i < AES_NOHW_BATCH_SIZE);
+  dev_assert_secret(i < AES_NOHW_BATCH_SIZE);
 #if defined(OPENSSL_SSE2)
   out[0] = batch->w[i];
 #elif defined(OPENSSL_64_BIT)
@@ -483,7 +483,7 @@ static void aes_nohw_to_batch(AES_NOHW_BATCH *out, const uint8_t *in,
                               size_t num_blocks) {
   // Don't leave unused blocks unitialized.
   memset(out, 0, sizeof(AES_NOHW_BATCH));
-  ASSERT(num_blocks <= AES_NOHW_BATCH_SIZE);
+  debug_assert_nonsecret(num_blocks <= AES_NOHW_BATCH_SIZE);
   for (size_t i = 0; i < num_blocks; i++) {
     aes_word_t block[AES_NOHW_BLOCK_WORDS];
     aes_nohw_compact_block(block, in + 16 * i);
@@ -500,7 +500,7 @@ static void aes_nohw_from_batch(uint8_t *out, size_t num_blocks,
   AES_NOHW_BATCH copy = *batch;
   aes_nohw_transpose(&copy);
 
-  ASSERT(num_blocks <= AES_NOHW_BATCH_SIZE);
+  debug_assert_nonsecret(num_blocks <= AES_NOHW_BATCH_SIZE);
   for (size_t i = 0; i < num_blocks; i++) {
     aes_word_t block[AES_NOHW_BLOCK_WORDS];
     aes_nohw_batch_get(&copy, block, i);

@@ -149,7 +149,7 @@ static void elem_div_by_2(Elem r, const Elem a) {
 
   Elem adjusted;
   BN_ULONG carry2 = limbs_add(adjusted, r, Q_PLUS_1_SHR_1, P384_LIMBS);
-  ASSERT(carry2 == 0);
+  dev_assert_secret(carry2 == 0);
   (void)carry2;
   copy_conditional(r, adjusted, is_odd);
 }
@@ -197,7 +197,7 @@ void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
 void GFp_p384_elem_neg(Elem r, const Elem a) {
   Limb is_zero = LIMBS_are_zero(a, P384_LIMBS);
   Carry borrow = limbs_sub(r, Q, a, P384_LIMBS);
-  ASSERT(borrow == 0);
+  dev_assert_secret(borrow == 0);
   (void)borrow;
   for (size_t i = 0; i < P384_LIMBS; ++i) {
     r[i] = constant_time_select_w(is_zero, 0, r[i]);
