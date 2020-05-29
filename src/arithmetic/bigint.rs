@@ -1322,7 +1322,6 @@ mod tests {
         )
     }
 
-    #[test]
     // TODO: fn test_elem_exp_vartime() using
     // "src/rsa/bigint_elem_exp_vartime_tests.txt". See that file for details.
     // In the meantime, the function is tested indirectly via the RSA
