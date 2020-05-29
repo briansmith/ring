@@ -47,7 +47,6 @@ include = [
     "crypto/fipsmodule/bn/asm/x86-mont.pl",
     "crypto/fipsmodule/bn/asm/x86_64-mont.pl",
     "crypto/fipsmodule/bn/asm/x86_64-mont5.pl",
-    "crypto/fipsmodule/bn/generic.c",
     "crypto/fipsmodule/bn/internal.h",
     "crypto/fipsmodule/bn/montgomery.c",
     "crypto/fipsmodule/bn/montgomery_inv.c",

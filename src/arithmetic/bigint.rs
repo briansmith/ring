@@ -1229,6 +1229,13 @@ impl From<u64> for N0 {
 fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
     debug_assert_eq!(r.len(), m.len());
     debug_assert_eq!(a.len(), m.len());
+
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
     unsafe {
         GFp_bn_mul_mont(
             r.as_mut_ptr(),
@@ -1284,6 +1291,11 @@ extern "C" {
         n0: &N0,
         num_limbs: c::size_t,
     );
+
+    // `r` must not alias `a`
+    #[cfg(test)]
+    #[must_use]
+    fn GFp_limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
 }
 
 #[cfg(test)]
@@ -1479,10 +1491,44 @@ mod tests {
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
-        elem_verify_equal_consttime(&a, b).unwrap()
+        if elem_verify_equal_consttime(&a, b).is_err() {
+            panic!("{:x?} != {:x?}", &*a.limbs, &*b.limbs);
+        }
     }
 
     fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
         elem_mul(m.oneRR().as_ref(), a, m)
+    }
+
+    #[test]
+    // TODO: wasm
+    fn test_mul_add_words() {
+        const ZERO: Limb = 0;
+        const MAX: Limb = ZERO.wrapping_sub(1);
+        static TEST_CASES: &[(&[Limb], &[Limb], Limb, Limb, &[Limb])] = &[
+            (&[0], &[0], 0, 0, &[0]),
+            (&[MAX], &[0], MAX, 0, &[MAX]),
+            (&[0], &[MAX], MAX, MAX - 1, &[1]),
+            (&[MAX], &[MAX], MAX, MAX, &[0]),
+            (&[0, 0], &[MAX, MAX], MAX, MAX - 1, &[1, MAX]),
+            (&[1, 0], &[MAX, MAX], MAX, MAX - 1, &[2, MAX]),
+            (&[MAX, 0], &[MAX, MAX], MAX, MAX, &[0, 0]),
+            (&[0, 1], &[MAX, MAX], MAX, MAX, &[1, 0]),
+            (&[MAX, MAX], &[MAX, MAX], MAX, MAX, &[0, MAX]),
+        ];
+
+        for (i, (r_input, a, w, expected_retval, expected_r)) in TEST_CASES.iter().enumerate() {
+            extern crate std;
+            let mut r = std::vec::Vec::from(*r_input);
+            assert_eq!(r.len(), a.len()); // Sanity check
+            let actual_retval =
+                unsafe { GFp_limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
+            assert_eq!(&r, expected_r, "{}: {:x?} != {:x?}", i, &r[..], expected_r);
+            assert_eq!(
+                actual_retval, *expected_retval,
+                "{}: {:x?} != {:x?}",
+                i, actual_retval, *expected_retval
+            );
+        }
     }
 }
