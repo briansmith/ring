@@ -120,7 +120,7 @@ impl EcdsaKeyPair {
     /// private key and public key bytes.
     ///
     /// This is intended for use by code that deserializes key pairs. It is
-    /// recommended to use `RsaPubeyPair::from_pkcs8()` (with a PKCS#8-encoded
+    /// recommended to use `EcdsaKeyPair::from_pkcs8()` (with a PKCS#8-encoded
     /// key) instead.
     pub fn from_private_key_and_public_key(
         alg: &'static EcdsaSigningAlgorithm,
