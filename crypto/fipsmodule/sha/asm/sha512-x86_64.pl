@@ -125,9 +125,17 @@ die "can't locate x86_64-xlate.pl";
 # In upstream, this is controlled by shelling out to the compiler to check
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
-$avx = 2;
+#
+# TODO(briansmith): Address davidben's concerns about the CFI annotations and
+# Win64 ABI issues at https://github.com/openssl/openssl/issues/8853.
+# TODO(davidben): Enable AVX2 code after testing by setting $avx to 2. Is it
+# necessary to disable AVX2 code when SHA Extensions code is disabled? Upstream
+# did not tie them together until after $shaext was added.
+$avx = 1;
 
-$shaext=0;
+# TODO(davidben): Consider enabling the Intel SHA Extensions code once it's
+# been tested.
+$shaext=0;	### set to zero if compiling for 1.0.1
 $avx=1		if (!$shaext && $avx);
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
@@ -1445,398 +1453,6 @@ $code.=<<___;
 .size	${func}_avx,.-${func}_avx
 ___
 
-if ($avx>1) {{
-######################################################################
-# AVX2+BMI code path
-#
-my $a5=$SZ==4?"%esi":"%rsi";	# zap $inp
-my $PUSH8=8*2*$SZ;
-use integer;
-
-sub bodyx_00_15 () {
-	# at start $a1 should be zero, $a3 - $b^$c and $a4 copy of $f
-	(
-	'($a,$b,$c,$d,$e,$f,$g,$h)=@ROT;'.
-
-	'&add	($h,(32*($i/(16/$SZ))+$SZ*($i%(16/$SZ)))%$PUSH8.$base)',    # h+=X[i]+K[i]
-	'&and	($a4,$e)',		# f&e
-	'&rorx	($a0,$e,$Sigma1[2])',
-	'&rorx	($a2,$e,$Sigma1[1])',
-
-	'&lea	($a,"($a,$a1)")',	# h+=Sigma0(a) from the past
-	'&lea	($h,"($h,$a4)")',
-	'&andn	($a4,$e,$g)',		# ~e&g
-	'&xor	($a0,$a2)',
-
-	'&rorx	($a1,$e,$Sigma1[0])',
-	'&lea	($h,"($h,$a4)")',	# h+=Ch(e,f,g)=(e&f)+(~e&g)
-	'&xor	($a0,$a1)',		# Sigma1(e)
-	'&mov	($a2,$a)',
-
-	'&rorx	($a4,$a,$Sigma0[2])',
-	'&lea	($h,"($h,$a0)")',	# h+=Sigma1(e)
-	'&xor	($a2,$b)',		# a^b, b^c in next round
-	'&rorx	($a1,$a,$Sigma0[1])',
-
-	'&rorx	($a0,$a,$Sigma0[0])',
-	'&lea	($d,"($d,$h)")',	# d+=h
-	'&and	($a3,$a2)',		# (b^c)&(a^b)
-	'&xor	($a1,$a4)',
-
-	'&xor	($a3,$b)',		# Maj(a,b,c)=Ch(a^b,c,b)
-	'&xor	($a1,$a0)',		# Sigma0(a)
-	'&lea	($h,"($h,$a3)");'.	# h+=Maj(a,b,c)
-	'&mov	($a4,$e)',		# copy of f in future
-
-	'($a2,$a3) = ($a3,$a2); unshift(@ROT,pop(@ROT)); $i++;'
-	);
-	# and at the finish one has to $a+=$a1
-}
-
-$code.=<<___;
-.type	${func}_avx2,\@function,3
-.align	64
-${func}_avx2:
-.cfi_startproc
-.Lavx2_shortcut:
-	mov	%rsp,%rax		# copy %rsp
-.cfi_def_cfa_register	%rax
-	push	%rbx
-.cfi_push	%rbx
-	push	%rbp
-.cfi_push	%rbp
-	push	%r12
-.cfi_push	%r12
-	push	%r13
-.cfi_push	%r13
-	push	%r14
-.cfi_push	%r14
-	push	%r15
-.cfi_push	%r15
-	sub	\$`2*$SZ*$rounds+4*8+$win64*16*($SZ==4?4:6)`,%rsp
-	shl	\$4,%rdx		# num*16
-	and	\$-256*$SZ,%rsp		# align stack frame
-	lea	($inp,%rdx,$SZ),%rdx	# inp+num*16*$SZ
-	add	\$`2*$SZ*($rounds-8)`,%rsp
-	mov	$ctx,$_ctx		# save ctx, 1st arg
-	mov	$inp,$_inp		# save inp, 2nd arh
-	mov	%rdx,$_end		# save end pointer, "3rd" arg
-	mov	%rax,$_rsp		# save copy of %rsp
-.cfi_cfa_expression	$_rsp,deref,+8
-___
-$code.=<<___ if ($win64);
-	movaps	%xmm6,16*$SZ+32(%rsp)
-	movaps	%xmm7,16*$SZ+48(%rsp)
-	movaps	%xmm8,16*$SZ+64(%rsp)
-	movaps	%xmm9,16*$SZ+80(%rsp)
-___
-$code.=<<___ if ($win64 && $SZ>4);
-	movaps	%xmm10,16*$SZ+96(%rsp)
-	movaps	%xmm11,16*$SZ+112(%rsp)
-___
-$code.=<<___;
-.Lprologue_avx2:
-
-	vzeroupper
-	sub	\$-16*$SZ,$inp		# inp++, size optimization
-	mov	$SZ*0($ctx),$A
-	mov	$inp,%r12		# borrow $T1
-	mov	$SZ*1($ctx),$B
-	cmp	%rdx,$inp		# $_end
-	mov	$SZ*2($ctx),$C
-	cmove	%rsp,%r12		# next block or random data
-	mov	$SZ*3($ctx),$D
-	mov	$SZ*4($ctx),$E
-	mov	$SZ*5($ctx),$F
-	mov	$SZ*6($ctx),$G
-	mov	$SZ*7($ctx),$H
-___
-					if ($SZ==4) {	# SHA256
-    my @X = map("%ymm$_",(0..3));
-    my ($t0,$t1,$t2,$t3, $t4,$t5) = map("%ymm$_",(4..9));
-
-$code.=<<___;
-	vmovdqa	$TABLE+`$SZ*2*$rounds`+32(%rip),$t4
-	vmovdqa	$TABLE+`$SZ*2*$rounds`+64(%rip),$t5
-	jmp	.Loop_avx2
-.align	16
-.Loop_avx2:
-	vmovdqa	$TABLE+`$SZ*2*$rounds`(%rip),$t3
-	vmovdqu	-16*$SZ+0($inp),%xmm0
-	vmovdqu	-16*$SZ+16($inp),%xmm1
-	vmovdqu	-16*$SZ+32($inp),%xmm2
-	vmovdqu	-16*$SZ+48($inp),%xmm3
-	#mov		$inp,$_inp	# offload $inp
-	vinserti128	\$1,(%r12),@X[0],@X[0]
-	vinserti128	\$1,16(%r12),@X[1],@X[1]
-	vpshufb		$t3,@X[0],@X[0]
-	vinserti128	\$1,32(%r12),@X[2],@X[2]
-	vpshufb		$t3,@X[1],@X[1]
-	vinserti128	\$1,48(%r12),@X[3],@X[3]
-
-	lea	$TABLE(%rip),$Tbl
-	vpshufb	$t3,@X[2],@X[2]
-	vpaddd	0x00($Tbl),@X[0],$t0
-	vpshufb	$t3,@X[3],@X[3]
-	vpaddd	0x20($Tbl),@X[1],$t1
-	vpaddd	0x40($Tbl),@X[2],$t2
-	vpaddd	0x60($Tbl),@X[3],$t3
-	vmovdqa	$t0,0x00(%rsp)
-	xor	$a1,$a1
-	vmovdqa	$t1,0x20(%rsp)
-	lea	-$PUSH8(%rsp),%rsp
-	mov	$B,$a3
-	vmovdqa	$t2,0x00(%rsp)
-	xor	$C,$a3			# magic
-	vmovdqa	$t3,0x20(%rsp)
-	mov	$F,$a4
-	sub	\$-16*2*$SZ,$Tbl	# size optimization
-	jmp	.Lavx2_00_47
-
-.align	16
-.Lavx2_00_47:
-___
-
-sub AVX2_256_00_47 () {
-my $j = shift;
-my $body = shift;
-my @X = @_;
-my @insns = (&$body,&$body,&$body,&$body);	# 96 instructions
-my $base = "+2*$PUSH8(%rsp)";
-
-	&lea	("%rsp","-$PUSH8(%rsp)")	if (($j%2)==0);
-	foreach (Xupdate_256_AVX()) {		# 29 instructions
-	    eval;
-	    eval(shift(@insns));
-	    eval(shift(@insns));
-	    eval(shift(@insns));
-	}
-	&vpaddd		($t2,@X[0],16*2*$j."($Tbl)");
-	  foreach (@insns) { eval; }		# remaining instructions
-	&vmovdqa	((32*$j)%$PUSH8."(%rsp)",$t2);
-}
-
-    for ($i=0,$j=0; $j<4; $j++) {
-	&AVX2_256_00_47($j,\&bodyx_00_15,@X);
-	push(@X,shift(@X));			# rotate(@X)
-    }
-	&lea	($Tbl,16*2*$SZ."($Tbl)");
-	&cmpb	(($SZ-1)."($Tbl)",0);
-	&jne	(".Lavx2_00_47");
-
-    for ($i=0; $i<16; ) {
-	my $base=$i<8?"+$PUSH8(%rsp)":"(%rsp)";
-	foreach(bodyx_00_15()) { eval; }
-    }
-					} else {	# SHA512
-    my @X = map("%ymm$_",(0..7));
-    my ($t0,$t1,$t2,$t3) = map("%ymm$_",(8..11));
-
-$code.=<<___;
-	jmp	.Loop_avx2
-.align	16
-.Loop_avx2:
-	vmovdqu	-16*$SZ($inp),%xmm0
-	vmovdqu	-16*$SZ+16($inp),%xmm1
-	vmovdqu	-16*$SZ+32($inp),%xmm2
-	lea	$TABLE+0x80(%rip),$Tbl	# size optimization
-	vmovdqu	-16*$SZ+48($inp),%xmm3
-	vmovdqu	-16*$SZ+64($inp),%xmm4
-	vmovdqu	-16*$SZ+80($inp),%xmm5
-	vmovdqu	-16*$SZ+96($inp),%xmm6
-	vmovdqu	-16*$SZ+112($inp),%xmm7
-	#mov	$inp,$_inp	# offload $inp
-	vmovdqa	`$SZ*2*$rounds-0x80`($Tbl),$t2
-	vinserti128	\$1,(%r12),@X[0],@X[0]
-	vinserti128	\$1,16(%r12),@X[1],@X[1]
-	 vpshufb	$t2,@X[0],@X[0]
-	vinserti128	\$1,32(%r12),@X[2],@X[2]
-	 vpshufb	$t2,@X[1],@X[1]
-	vinserti128	\$1,48(%r12),@X[3],@X[3]
-	 vpshufb	$t2,@X[2],@X[2]
-	vinserti128	\$1,64(%r12),@X[4],@X[4]
-	 vpshufb	$t2,@X[3],@X[3]
-	vinserti128	\$1,80(%r12),@X[5],@X[5]
-	 vpshufb	$t2,@X[4],@X[4]
-	vinserti128	\$1,96(%r12),@X[6],@X[6]
-	 vpshufb	$t2,@X[5],@X[5]
-	vinserti128	\$1,112(%r12),@X[7],@X[7]
-
-	vpaddq	-0x80($Tbl),@X[0],$t0
-	vpshufb	$t2,@X[6],@X[6]
-	vpaddq	-0x60($Tbl),@X[1],$t1
-	vpshufb	$t2,@X[7],@X[7]
-	vpaddq	-0x40($Tbl),@X[2],$t2
-	vpaddq	-0x20($Tbl),@X[3],$t3
-	vmovdqa	$t0,0x00(%rsp)
-	vpaddq	0x00($Tbl),@X[4],$t0
-	vmovdqa	$t1,0x20(%rsp)
-	vpaddq	0x20($Tbl),@X[5],$t1
-	vmovdqa	$t2,0x40(%rsp)
-	vpaddq	0x40($Tbl),@X[6],$t2
-	vmovdqa	$t3,0x60(%rsp)
-	lea	-$PUSH8(%rsp),%rsp
-	vpaddq	0x60($Tbl),@X[7],$t3
-	vmovdqa	$t0,0x00(%rsp)
-	xor	$a1,$a1
-	vmovdqa	$t1,0x20(%rsp)
-	mov	$B,$a3
-	vmovdqa	$t2,0x40(%rsp)
-	xor	$C,$a3			# magic
-	vmovdqa	$t3,0x60(%rsp)
-	mov	$F,$a4
-	add	\$16*2*$SZ,$Tbl
-	jmp	.Lavx2_00_47
-
-.align	16
-.Lavx2_00_47:
-___
-
-sub AVX2_512_00_47 () {
-my $j = shift;
-my $body = shift;
-my @X = @_;
-my @insns = (&$body,&$body);			# 48 instructions
-my $base = "+2*$PUSH8(%rsp)";
-
-	&lea	("%rsp","-$PUSH8(%rsp)")	if (($j%4)==0);
-	foreach (Xupdate_512_AVX()) {		# 23 instructions
-	    eval;
-	    if ($_ !~ /\;$/) {
-		eval(shift(@insns));
-		eval(shift(@insns));
-		eval(shift(@insns));
-	    }
-	}
-	&vpaddq		($t2,@X[0],16*2*$j-0x80."($Tbl)");
-	  foreach (@insns) { eval; }		# remaining instructions
-	&vmovdqa	((32*$j)%$PUSH8."(%rsp)",$t2);
-}
-
-    for ($i=0,$j=0; $j<8; $j++) {
-	&AVX2_512_00_47($j,\&bodyx_00_15,@X);
-	push(@X,shift(@X));			# rotate(@X)
-    }
-	&lea	($Tbl,16*2*$SZ."($Tbl)");
-	&cmpb	(($SZ-1-0x80)."($Tbl)",0);
-	&jne	(".Lavx2_00_47");
-
-    for ($i=0; $i<16; ) {
-	my $base=$i<8?"+$PUSH8(%rsp)":"(%rsp)";
-	foreach(bodyx_00_15()) { eval; }
-    }
-}
-$code.=<<___;
-	mov	`2*$SZ*$rounds`(%rsp),$ctx	# $_ctx
-	add	$a1,$A
-	#mov	`2*$SZ*$rounds+8`(%rsp),$inp	# $_inp
-	lea	`2*$SZ*($rounds-8)`(%rsp),$Tbl
-
-	add	$SZ*0($ctx),$A
-	add	$SZ*1($ctx),$B
-	add	$SZ*2($ctx),$C
-	add	$SZ*3($ctx),$D
-	add	$SZ*4($ctx),$E
-	add	$SZ*5($ctx),$F
-	add	$SZ*6($ctx),$G
-	add	$SZ*7($ctx),$H
-
-	mov	$A,$SZ*0($ctx)
-	mov	$B,$SZ*1($ctx)
-	mov	$C,$SZ*2($ctx)
-	mov	$D,$SZ*3($ctx)
-	mov	$E,$SZ*4($ctx)
-	mov	$F,$SZ*5($ctx)
-	mov	$G,$SZ*6($ctx)
-	mov	$H,$SZ*7($ctx)
-
-	cmp	`$PUSH8+2*8`($Tbl),$inp	# $_end
-	je	.Ldone_avx2
-
-	xor	$a1,$a1
-	mov	$B,$a3
-	xor	$C,$a3			# magic
-	mov	$F,$a4
-	jmp	.Lower_avx2
-.align	16
-.Lower_avx2:
-___
-    for ($i=0; $i<8; ) {
-	my $base="+16($Tbl)";
-	foreach(bodyx_00_15()) { eval; }
-    }
-$code.=<<___;
-	lea	-$PUSH8($Tbl),$Tbl
-	cmp	%rsp,$Tbl
-	jae	.Lower_avx2
-
-	mov	`2*$SZ*$rounds`(%rsp),$ctx	# $_ctx
-	add	$a1,$A
-	#mov	`2*$SZ*$rounds+8`(%rsp),$inp	# $_inp
-	lea	`2*$SZ*($rounds-8)`(%rsp),%rsp
-
-	add	$SZ*0($ctx),$A
-	add	$SZ*1($ctx),$B
-	add	$SZ*2($ctx),$C
-	add	$SZ*3($ctx),$D
-	add	$SZ*4($ctx),$E
-	add	$SZ*5($ctx),$F
-	lea	`2*16*$SZ`($inp),$inp	# inp+=2
-	add	$SZ*6($ctx),$G
-	mov	$inp,%r12
-	add	$SZ*7($ctx),$H
-	cmp	$_end,$inp
-
-	mov	$A,$SZ*0($ctx)
-	cmove	%rsp,%r12		# next block or stale data
-	mov	$B,$SZ*1($ctx)
-	mov	$C,$SZ*2($ctx)
-	mov	$D,$SZ*3($ctx)
-	mov	$E,$SZ*4($ctx)
-	mov	$F,$SZ*5($ctx)
-	mov	$G,$SZ*6($ctx)
-	mov	$H,$SZ*7($ctx)
-
-	jbe	.Loop_avx2
-	lea	(%rsp),$Tbl
-
-.Ldone_avx2:
-	lea	($Tbl),%rsp
-	mov	$_rsp,%rsi
-.cfi_def_cfa	%rsi,8
-	vzeroupper
-___
-$code.=<<___ if ($win64);
-	movaps	16*$SZ+32(%rsp),%xmm6
-	movaps	16*$SZ+48(%rsp),%xmm7
-	movaps	16*$SZ+64(%rsp),%xmm8
-	movaps	16*$SZ+80(%rsp),%xmm9
-___
-$code.=<<___ if ($win64 && $SZ>4);
-	movaps	16*$SZ+96(%rsp),%xmm10
-	movaps	16*$SZ+112(%rsp),%xmm11
-___
-$code.=<<___;
-	mov	-48(%rsi),%r15
-.cfi_restore	%r15
-	mov	-40(%rsi),%r14
-.cfi_restore	%r14
-	mov	-32(%rsi),%r13
-.cfi_restore	%r13
-	mov	-24(%rsi),%r12
-.cfi_restore	%r12
-	mov	-16(%rsi),%rbp
-.cfi_restore	%rbp
-	mov	-8(%rsi),%rbx
-.cfi_restore	%rbx
-	lea	(%rsi),%rsp
-.cfi_def_cfa_register	%rsp
-.Lepilogue_avx2:
-	ret
-.cfi_endproc
-.size	${func}_avx2,.-${func}_avx2
-___
-}}
 }}}}}
 
 # EXCEPTION_DISPOSITION handler (EXCEPTION_RECORD *rec,ULONG64 frame,
@@ -1880,15 +1496,6 @@ se_handler:
 	lea	(%rsi,%r10),%r10	# epilogue label
 	cmp	%r10,%rbx		# context->Rip>=epilogue label
 	jae	.Lin_prologue
-___
-$code.=<<___ if ($avx>1);
-	lea	.Lavx2_shortcut(%rip),%r10
-	cmp	%r10,%rbx		# context->Rip<avx2_shortcut
-	jb	.Lnot_in_avx2
-
-	and	\$-256*$SZ,%rax
-	add	\$`2*$SZ*($rounds-8)`,%rax
-.Lnot_in_avx2:
 ___
 $code.=<<___;
 	mov	%rax,%rsi		# put aside Rsp
@@ -2014,11 +1621,6 @@ $code.=<<___ if ($avx);
 	.rva	.LSEH_end_${func}_avx
 	.rva	.LSEH_info_${func}_avx
 ___
-$code.=<<___ if ($avx>1);
-	.rva	.LSEH_begin_${func}_avx2
-	.rva	.LSEH_end_${func}_avx2
-	.rva	.LSEH_info_${func}_avx2
-___
 $code.=<<___;
 .section	.xdata
 .align	8
@@ -2043,12 +1645,6 @@ $code.=<<___ if ($avx);
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lprologue_avx,.Lepilogue_avx		# HandlerData[]
-___
-$code.=<<___ if ($avx>1);
-.LSEH_info_${func}_avx2:
-	.byte	9,0,0,0
-	.rva	se_handler
-	.rva	.Lprologue_avx2,.Lepilogue_avx2		# HandlerData[]
 ___
 }
 
