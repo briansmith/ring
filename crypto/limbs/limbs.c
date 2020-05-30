@@ -89,10 +89,6 @@ Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs) {
   return constant_time_select_w(lo, hi, lo);
 }
 
-void LIMBS_copy(Limb r[], const Limb a[], size_t num_limbs) {
-  limbs_copy(r, a, num_limbs);
-}
-
 /* if (r >= m) { r -= m; } */
 void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
   debug_assert_nonsecret(num_limbs >= 1);
