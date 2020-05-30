@@ -10,7 +10,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.16.13"
+version = "0.16.14"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
@@ -106,6 +106,7 @@ include = [
     "src/aead/chacha20_poly1305.rs",
     "src/aead/chacha20_poly1305_openssh.rs",
     "src/aead/gcm.rs",
+    "src/aead/gcm/gcm_nohw.rs",
     "src/aead/nonce.rs",
     "src/aead/poly1305.rs",
     "src/aead/poly1305_test.txt",
