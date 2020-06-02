@@ -61,11 +61,11 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
 
     (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
+    (&[AARCH64, ARM, X86_64, X86], "crypto/curve25519/curve25519.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz256.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
-    (&[AARCH64, ARM, X86_64, X86], "third_party/fiat/curve25519.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -121,7 +121,10 @@ const RING_TEST_SRCS: &[&str] = &[("crypto/constant_time_test.c")];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_INCLUDES: &[&str] =
-    &["crypto/fipsmodule/bn/internal.h",
+    &[
+      "crypto/curve25519/curve25519_tables.h",
+      "crypto/curve25519/internal.h",
+      "crypto/fipsmodule/bn/internal.h",
       "crypto/fipsmodule/ec/ecp_nistz256_table.inl",
       "crypto/fipsmodule/ec/ecp_nistz384.inl",
       "crypto/fipsmodule/ec/ecp_nistz.h",
@@ -140,8 +143,6 @@ const RING_INCLUDES: &[&str] =
       "include/GFp/type_check.h",
       "third_party/fiat/curve25519_32.h",
       "third_party/fiat/curve25519_64.h",
-      "third_party/fiat/curve25519_tables.h",
-      "third_party/fiat/internal.h",
     ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
