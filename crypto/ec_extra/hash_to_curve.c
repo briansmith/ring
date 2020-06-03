@@ -50,12 +50,10 @@
 
 // expand_message_xmd implements the operation described in section 5.3.1 of
 // draft-irtf-cfrg-hash-to-curve-07. It returns one on success and zero on
-// allocation failure or if |out_len| was too large. If |is_draft06| is one, it
-// implements the operation from draft-irtf-cfrg-hash-to-curve-06 instead.
+// allocation failure or if |out_len| was too large.
 static int expand_message_xmd(const EVP_MD *md, uint8_t *out, size_t out_len,
                               const uint8_t *msg, size_t msg_len,
-                              const uint8_t *dst, size_t dst_len,
-                              int is_draft06) {
+                              const uint8_t *dst, size_t dst_len) {
   int ret = 0;
   const size_t block_size = EVP_MD_block_size(md);
   const size_t md_size = EVP_MD_size(md);
@@ -88,9 +86,8 @@ static int expand_message_xmd(const EVP_MD *md, uint8_t *out, size_t out_len,
       !EVP_DigestUpdate(&ctx, kZeros, block_size) ||
       !EVP_DigestUpdate(&ctx, msg, msg_len) ||
       !EVP_DigestUpdate(&ctx, l_i_b_str_zero, sizeof(l_i_b_str_zero)) ||
-      (is_draft06 && !EVP_DigestUpdate(&ctx, &dst_len_u8, 1)) ||
       !EVP_DigestUpdate(&ctx, dst, dst_len) ||
-      (!is_draft06 && !EVP_DigestUpdate(&ctx, &dst_len_u8, 1)) ||
+      !EVP_DigestUpdate(&ctx, &dst_len_u8, 1) ||
       !EVP_DigestFinal_ex(&ctx, b_0, NULL)) {
     goto err;
   }
@@ -114,9 +111,8 @@ static int expand_message_xmd(const EVP_MD *md, uint8_t *out, size_t out_len,
     if (!EVP_DigestInit_ex(&ctx, md, NULL) ||
         !EVP_DigestUpdate(&ctx, b_i, md_size) ||
         !EVP_DigestUpdate(&ctx, &i, 1) ||
-        (is_draft06 && !EVP_DigestUpdate(&ctx, &dst_len_u8, 1)) ||
         !EVP_DigestUpdate(&ctx, dst, dst_len) ||
-        (!is_draft06 && !EVP_DigestUpdate(&ctx, &dst_len_u8, 1)) ||
+        !EVP_DigestUpdate(&ctx, &dst_len_u8, 1) ||
         !EVP_DigestFinal_ex(&ctx, b_i, NULL)) {
       goto err;
     }
@@ -175,12 +171,11 @@ static void big_endian_to_words(BN_ULONG *out, size_t num_words,
 static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
                           EC_FELEM *out1, EC_FELEM *out2, const uint8_t *dst,
                           size_t dst_len, unsigned k, const uint8_t *msg,
-                          size_t msg_len, int is_draft06) {
+                          size_t msg_len) {
   size_t L;
   uint8_t buf[4 * EC_MAX_BYTES];
   if (!num_bytes_to_derive(&L, &group->field, k) ||
-      !expand_message_xmd(md, buf, 2 * L, msg, msg_len, dst, dst_len,
-                          is_draft06)) {
+      !expand_message_xmd(md, buf, 2 * L, msg, msg_len, dst, dst_len)) {
     return 0;
   }
   BN_ULONG words[2 * EC_MAX_WORDS];
@@ -196,12 +191,11 @@ static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
 // group order rather than a field element. |k| is the security factor.
 static int hash_to_scalar(const EC_GROUP *group, const EVP_MD *md,
                           EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
-                          unsigned k, const uint8_t *msg, size_t msg_len,
-                          int is_draft06) {
+                          unsigned k, const uint8_t *msg, size_t msg_len) {
   size_t L;
   uint8_t buf[EC_MAX_BYTES * 2];
   if (!num_bytes_to_derive(&L, &group->order, k) ||
-      !expand_message_xmd(md, buf, L, msg, msg_len, dst, dst_len, is_draft06)) {
+      !expand_message_xmd(md, buf, L, msg, msg_len, dst, dst_len)) {
     return 0;
   }
 
@@ -310,10 +304,9 @@ static int map_to_curve_simple_swu(const EC_GROUP *group, const EC_FELEM *Z,
 static int hash_to_curve(const EC_GROUP *group, const EVP_MD *md,
                          const EC_FELEM *Z, const EC_FELEM *c2, unsigned k,
                          EC_RAW_POINT *out, const uint8_t *dst, size_t dst_len,
-                         const uint8_t *msg, size_t msg_len, int is_draft06) {
+                         const uint8_t *msg, size_t msg_len) {
   EC_FELEM u0, u1;
-  if (!hash_to_field2(group, md, &u0, &u1, dst, dst_len, k, msg, msg_len,
-                      is_draft06)) {
+  if (!hash_to_field2(group, md, &u0, &u1, dst, dst_len, k, msg, msg_len)) {
     return 0;
   }
 
@@ -376,7 +369,7 @@ int ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
   ec_felem_neg(group, &Z, &Z);
 
   return hash_to_curve(group, EVP_sha512(), &Z, &c2, /*k=*/192, out, dst,
-                       dst_len, msg, msg_len, /*is_draft06=*/0);
+                       dst_len, msg, msg_len);
 }
 
 int ec_hash_to_scalar_p384_xmd_sha512_draft07(
@@ -388,38 +381,5 @@ int ec_hash_to_scalar_p384_xmd_sha512_draft07(
   }
 
   return hash_to_scalar(group, EVP_sha512(), out, dst, dst_len, /*k=*/192, msg,
-                        msg_len, /*is_draft06=*/0);
-}
-
-int ec_hash_to_curve_p521_xmd_sha512_sswu_draft06(
-    const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
-    size_t dst_len, const uint8_t *msg, size_t msg_len) {
-  // See section 8.3 of draft-irtf-cfrg-hash-to-curve-06.
-  if (EC_GROUP_get_curve_name(group) != NID_secp521r1) {
-    OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
-    return 0;
-  }
-
-  // Z = -4, c2 = 8.
-  EC_FELEM Z, c2;
-  if (!felem_from_u8(group, &Z, 4) ||
-      !felem_from_u8(group, &c2, 8)) {
-    return 0;
-  }
-  ec_felem_neg(group, &Z, &Z);
-
-  return hash_to_curve(group, EVP_sha512(), &Z, &c2, /*k=*/256, out, dst,
-                       dst_len, msg, msg_len, /*is_draft06=*/1);
-}
-
-int ec_hash_to_scalar_p521_xmd_sha512_draft06(
-    const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
-    const uint8_t *msg, size_t msg_len) {
-  if (EC_GROUP_get_curve_name(group) != NID_secp521r1) {
-    OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
-    return 0;
-  }
-
-  return hash_to_scalar(group, EVP_sha512(), out, dst, dst_len, /*k=*/256, msg,
-                        msg_len, /*is_draft06=*/1);
+                        msg_len);
 }

@@ -78,27 +78,6 @@ OPENSSL_EXPORT void PMBTOKEN_PRETOKEN_free(PMBTOKEN_PRETOKEN *token);
 DEFINE_STACK_OF(PMBTOKEN_PRETOKEN)
 
 // The following functions implement the corresponding |TRUST_TOKENS_METHOD|
-// functions for |TRUST_TOKENS_experiment_v0|'s PMBTokens construction which
-// uses P-521.
-int pmbtoken_exp0_generate_key(CBB *out_private, CBB *out_public);
-int pmbtoken_exp0_client_key_from_bytes(PMBTOKEN_CLIENT_KEY *key,
-                                        const uint8_t *in, size_t len);
-int pmbtoken_exp0_issuer_key_from_bytes(PMBTOKEN_ISSUER_KEY *key,
-                                        const uint8_t *in, size_t len);
-STACK_OF(PMBTOKEN_PRETOKEN) * pmbtoken_exp0_blind(CBB *cbb, size_t count);
-int pmbtoken_exp0_sign(const PMBTOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
-                       size_t num_requested, size_t num_to_issue,
-                       uint8_t private_metadata);
-STACK_OF(TRUST_TOKEN) *
-    pmbtoken_exp0_unblind(const PMBTOKEN_CLIENT_KEY *key,
-                          const STACK_OF(PMBTOKEN_PRETOKEN) * pretokens,
-                          CBS *cbs, size_t count, uint32_t key_id);
-int pmbtoken_exp0_read(const PMBTOKEN_ISSUER_KEY *key,
-                       uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
-                       uint8_t *out_private_metadata, const uint8_t *token,
-                       size_t token_len);
-
-// The following functions implement the corresponding |TRUST_TOKENS_METHOD|
 // functions for |TRUST_TOKENS_experiment_v1|'s PMBTokens construction which
 // uses P-384.
 //
@@ -193,14 +172,6 @@ struct trust_token_method_st {
               uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
               uint8_t *out_private_metadata, const uint8_t *token,
               size_t token_len);
-
-  // use_token_hash determines whether to include the token hash in the SRR and
-  // private metadata encryption.
-  int use_token_hash : 1;
-
-  // batched_proof determines whether PMBToken uses a batched DLEQOR proof when
-  // signing tokens.
-  int batched_proof : 1;
 };
 
 // Structure representing a single Trust Token public key with the specified ID.

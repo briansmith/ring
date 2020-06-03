@@ -1170,74 +1170,6 @@ TEST(ECTest, HashToCurve) {
        "37f2913224287b9dfb64742851f760eb14ca115ff9",
        "1510e764f1be968d661b7aaecb26a6d38c98e5205ca150f0ae426d"
        "2c3983c68e3a9ffb283c6ae4891d891b5705500475"},
-
-      // Note these tests do not match the tests vectors
-      // draft-irtf-cfrg-hash-to-curve-06 due to a
-      // spec issue. See
-      // https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/pull/238 for
-      // corrected test vectors.
-      {&ec_hash_to_curve_p521_xmd_sha512_sswu_draft06, NID_secp521r1,
-       "P521_XMD:SHA-512_SSWU_RO_TESTGEN", "",
-       "00758617b5e40aa8b30fcfd3c7453ad1abeff158de5697d6f1ccb8"
-       "4690aaa8bb6692986200d16206e85e4f39f1d2829fee1a5904a089"
-       "b4fab3b76873429877c58f99",
-       "016edf324d95fcbe4a30f06751f16cdd5d0b49921dd653cefb3ea2"
-       "dc2b5b903e36d9924a65407283588cc6c224ab6d6324c73cdc166c"
-       "e1530b46984b459e966349b3"},
-      {&ec_hash_to_curve_p521_xmd_sha512_sswu_draft06, NID_secp521r1,
-       "P521_XMD:SHA-512_SSWU_RO_TESTGEN", "abc",
-       "00dcec1a83b676247293e96b1672f67aa5d041a4ded49f542a971a"
-       "60603dd39194f4d8e587f640563a9ab57dcc69af638129b220683f"
-       "f03ed9ad8cfdff3833a01452",
-       "01edc4b497be85361a0afc508058792dc7fc6499a4c51fa3475093"
-       "fd9951ea46fe055e1b007a12caf9be1ce3028bd0b4ca4ffa5200f9"
-       "d11e7fc96e068276ad1319c2"},
-      {&ec_hash_to_curve_p521_xmd_sha512_sswu_draft06, NID_secp521r1,
-       "P521_XMD:SHA-512_SSWU_RO_TESTGEN", "abcdef0123456789",
-       "01f58bfb34825d028c392976a09cebee829734f7714c84b8a13580"
-       "afcc2eb4726e18e307476c1fccdc857a3d6767fd2882875ab132b7"
-       "fa7f3f6bae8954384001b1a1",
-       "00ee0d2d0bfb0bdc6215814fe7096a3dfbf020dce4f0645e8e21a9"
-       "0d6a6113a5ca61ae7d8f3b485b04f2eb2b85e34fc7f9f1bf367386"
-       "2e03932b0acc3655e84d480f"},
-      {&ec_hash_to_curve_p521_xmd_sha512_sswu_draft06, NID_secp521r1,
-       "P521_XMD:SHA-512_SSWU_RO_TESTGEN",
-       "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-       "016d9a90619bb20c49a2a73cc8c6218cd9b3fb13c720fff2e1f8db"
-       "ac92862c7da4faf404faeff6b64f0d9b1c5824cec99b0d0ed02b3f"
-       "acb6275ce553404ea361503e",
-       "007e301e3357fb1d53961c56e53ce2763e44b297062a3eb14b9f8d"
-       "6aadc92162a74f7e254a606275e76ea0ac343b3bc746f99804bacd"
-       "7351a76fce44347c72a6fe9a"},
-
-      // Custom test vector which triggers long DST path.
-      {&ec_hash_to_curve_p521_xmd_sha512_sswu_draft06, NID_secp521r1,
-       "P521_XMD:SHA-512_SSWU_RO_TESTGEN_aaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-       "abcdef0123456789",
-       "0036b0c8bbec60335ff8b0397c2cb80283b97051cc949c5c190c28"
-       "92b279fafd6c372dcec3e71eab85c48ed440c14498332548ee46d0"
-       "c85442cbdc5b4032e86c3884",
-       "0081e32ca4378ae89b03142361d9c7fbe66acf0351aca3a71eca50"
-       "7a37fb8673b69cb108d079a248aedd74f06949d6623e7f7605ea10"
-       "f6f751ab574c005db7377d7f"},
   };
 
   for (const auto &test : kTests) {
@@ -1269,8 +1201,6 @@ TEST(ECTest, HashToCurve) {
   EC_RAW_POINT p;
   static const uint8_t kDST[] = {0, 1, 2, 3};
   static const uint8_t kMessage[] = {4, 5, 6, 7};
-  EXPECT_FALSE(ec_hash_to_curve_p521_xmd_sha512_sswu_draft06(
-      p224.get(), &p, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
   EXPECT_FALSE(ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
       p224.get(), &p, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
 }
@@ -1308,31 +1238,6 @@ TEST(ECTest, HashToScalar) {
        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
        "750f2fae7d2b2f41ac737d180c1d4363d85a1504798b4976d40921"
        "1ddb3651c13a5b4daba9975cdfce18336791131915"},
-      {&ec_hash_to_scalar_p521_xmd_sha512_draft06, NID_secp521r1,
-       "P521_XMD:SHA-512_SCALAR_TEST", "",
-       "01a6206c2fc677c11d51807bf46d64a17f92396673074c5cee9299"
-       "4d28eec5445d5ed89799b30b39c964ecf62f39d59e7d43de15d910"
-       "c2c1d69f3ebc01eab241e5dc"},
-      {&ec_hash_to_scalar_p521_xmd_sha512_draft06, NID_secp521r1,
-       "P521_XMD:SHA-512_SCALAR_TEST", "abcdef0123456789",
-       "00af484a5d9389a9912f555234c578d4b1b7c4a6f5009018d133a4"
-       "069172c9f5ce2d853b8643fe7bb50a83427ed3520a7a793c41a455"
-       "a02aa99431434fb6b5b0b26e"},
-      {&ec_hash_to_scalar_p521_xmd_sha512_draft06, NID_secp521r1,
-       "P521_XMD:SHA-512_SCALAR_TEST",
-       "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-       "00b2db2ceb64ad055cafc5a0fc92560525d6dcc4975b86bbb79013"
-       "a1c3ab5d412320cb55df8088a658039a70c5657d5aefaaaa81cc5d"
-       "eecdd40c03eb0517fe2e158c"},
   };
 
   for (const auto &test : kTests) {
@@ -1358,8 +1263,6 @@ TEST(ECTest, HashToScalar) {
   EC_SCALAR scalar;
   static const uint8_t kDST[] = {0, 1, 2, 3};
   static const uint8_t kMessage[] = {4, 5, 6, 7};
-  EXPECT_FALSE(ec_hash_to_scalar_p521_xmd_sha512_draft06(
-      p224.get(), &scalar, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
   EXPECT_FALSE(ec_hash_to_scalar_p384_xmd_sha512_draft07(
       p224.get(), &scalar, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
 }

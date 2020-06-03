@@ -27,21 +27,6 @@
 // protocol for issuing and redeeming tokens built on top of the PMBTokens
 // construction.
 
-const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v0(void) {
-  static const TRUST_TOKEN_METHOD kMethod = {
-      pmbtoken_exp0_generate_key,
-      pmbtoken_exp0_client_key_from_bytes,
-      pmbtoken_exp0_issuer_key_from_bytes,
-      pmbtoken_exp0_blind,
-      pmbtoken_exp0_sign,
-      pmbtoken_exp0_unblind,
-      pmbtoken_exp0_read,
-      0 /* don't use token hash */,
-      0 /* don't use batched proof */,
-  };
-  return &kMethod;
-}
-
 const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void) {
   static const TRUST_TOKEN_METHOD kMethod = {
       pmbtoken_exp1_generate_key,
@@ -51,8 +36,6 @@ const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void) {
       pmbtoken_exp1_sign,
       pmbtoken_exp1_unblind,
       pmbtoken_exp1_read,
-      1 /* use token hash */,
-      1 /* use batched proof */,
   };
   return &kMethod;
 }
@@ -597,16 +580,8 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
   SHA256_Update(&sha_ctx, CBS_data(&token_copy), CBS_len(&token_copy));
   SHA256_Final(token_hash, &sha_ctx);
 
-  uint8_t metadata_obfuscator;
-  if (ctx->method->use_token_hash) {
-    metadata_obfuscator =
-        get_metadata_obfuscator(ctx->metadata_key, ctx->metadata_key_len,
-                                token_hash, sizeof(token_hash));
-  } else {
-    metadata_obfuscator =
-        get_metadata_obfuscator(ctx->metadata_key, ctx->metadata_key_len,
-                                CBS_data(&client_data), CBS_len(&client_data));
-  }
+  uint8_t metadata_obfuscator = get_metadata_obfuscator(
+      ctx->metadata_key, ctx->metadata_key_len, token_hash, sizeof(token_hash));
 
   // The SRR is constructed as per the format described in
   // https://docs.google.com/document/d/1TNnya6B8pyomDK2F1R9CL3dY10OAmqWlnCxsWyOBDVQ/edit#heading=h.7mkzvhpqb8l5
@@ -625,10 +600,7 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
   assert(strlen(kClientDataLabel) < strlen(kExpiryTimestampLabel));
   assert(strlen(kPublicLabel) < strlen(kPrivateLabel));
 
-  size_t map_entries = 3;
-  if (ctx->method->use_token_hash) {
-    map_entries = 4;
-  }
+  size_t map_entries = 4;
 
   if (!CBB_init(&srr, 0) ||
       !add_cbor_map(&srr, map_entries) ||  // SRR map
@@ -637,20 +609,10 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
       !add_cbor_text(&srr, kPublicLabel, strlen(kPublicLabel)) ||
       !add_cbor_int(&srr, public_metadata) ||
       !add_cbor_text(&srr, kPrivateLabel, strlen(kPrivateLabel)) ||
-      !add_cbor_int(&srr, private_metadata ^ metadata_obfuscator)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (ctx->method->use_token_hash) {
-    if (!add_cbor_text(&srr, kTokenHashLabel, strlen(kTokenHashLabel)) ||
-        !add_cbor_bytes(&srr, token_hash, sizeof(token_hash))) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  }
-
-  if (!add_cbor_text(&srr, kClientDataLabel, strlen(kClientDataLabel)) ||
+      !add_cbor_int(&srr, private_metadata ^ metadata_obfuscator) ||
+      !add_cbor_text(&srr, kTokenHashLabel, strlen(kTokenHashLabel)) ||
+      !add_cbor_bytes(&srr, token_hash, sizeof(token_hash)) ||
+      !add_cbor_text(&srr, kClientDataLabel, strlen(kClientDataLabel)) ||
       !CBB_add_bytes(&srr, CBS_data(&client_data), CBS_len(&client_data)) ||
       !add_cbor_text(&srr, kExpiryTimestampLabel,
                      strlen(kExpiryTimestampLabel)) ||

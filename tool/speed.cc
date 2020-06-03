@@ -956,32 +956,6 @@ static bool SpeedHashToCurve(const std::string &selected) {
 
   TimeResults results;
   {
-    EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp521r1);
-    if (group == NULL) {
-      return false;
-    }
-    if (!TimeFunction(&results, [&]() -> bool {
-          EC_RAW_POINT out;
-          return ec_hash_to_curve_p521_xmd_sha512_sswu_draft06(
-              group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
-        })) {
-      fprintf(stderr, "hash-to-curve failed.\n");
-      return false;
-    }
-    results.Print("hash-to-curve P521_XMD:SHA-512_SSWU_RO_");
-
-    if (!TimeFunction(&results, [&]() -> bool {
-          EC_SCALAR out;
-          return ec_hash_to_scalar_p521_xmd_sha512_draft06(
-              group, &out, kLabel, sizeof(kLabel), input, sizeof(input));
-        })) {
-      fprintf(stderr, "hash-to-scalar failed.\n");
-      return false;
-    }
-    results.Print("hash-to-scalar P521_XMD:SHA-512");
-  }
-
-  {
     EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp384r1);
     if (group == NULL) {
       return false;
@@ -1375,10 +1349,6 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedRSAKeyGen(selected) ||
       !SpeedHRSS(selected) ||
       !SpeedHashToCurve(selected) ||
-      !SpeedTrustToken("TrustToken-Exp0-Batch1", TRUST_TOKEN_experiment_v0(), 1,
-                       selected) ||
-      !SpeedTrustToken("TrustToken-Exp0-Batch10", TRUST_TOKEN_experiment_v0(),
-                       10, selected) ||
       !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1,
                        selected) ||
       !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(),

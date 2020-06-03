@@ -36,13 +36,8 @@ extern "C" {
 //
 // WARNING: This API is unstable and subject to change.
 
-// TRUST_TOKEN_experiment_v0 is an experimental Trust Tokens protocol using
-// PMBTokens and P-521.
-OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v0(void);
-
 // TRUST_TOKEN_experiment_v1 is an experimental Trust Tokens protocol using
-// PMBTokens and P-384. This version is still under developement and should not
-// be used yet.
+// PMBTokens and P-384.
 OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void);
 
 // trust_token_st represents a single-use token for the Trust Token protocol.
@@ -234,9 +229,6 @@ OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_issue(
 // returning the SRR to the client. If the value has been reused, the caller
 // must discard the SRR and report an error to the caller. Returning an SRR with
 // replayed values allows an attacker to double-spend tokens.
-//
-// The private metadata construction in |TRUST_TOKEN_experiment_v0| does not
-// keep the value secret and should not be used when secrecy is required.
 OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem(
     const TRUST_TOKEN_ISSUER *ctx, uint8_t **out, size_t *out_len,
     TRUST_TOKEN **out_token, uint8_t **out_client_data,
@@ -246,7 +238,6 @@ OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem(
 // TRUST_TOKEN_decode_private_metadata decodes |encrypted_bit| using the
 // private metadata key specified by a |key| buffer of length |key_len| and the
 // nonce by a |nonce| buffer of length |nonce_len|. The nonce in
-// |TRUST_TOKEN_experiment_v0| is the client-data field of the SRR. The nonce in
 // |TRUST_TOKEN_experiment_v1| is the token-hash field of the SRR. |*out_value|
 // is set to the decrypted value, either zero or one. It returns one on success
 // and zero on error.
