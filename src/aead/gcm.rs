@@ -293,7 +293,16 @@ enum Implementation {
 }
 
 #[inline]
-fn detect_implementation(#[allow(unused_variables)] cpu: cpu::Features) -> Implementation {
+fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
+    // `cpu_features` is only used for specific platforms.
+    #[cfg(not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    )))]
+    let _cpu_features = cpu_features;
+
     #[cfg(any(
         target_arch = "aarch64",
         target_arch = "arm",
@@ -301,8 +310,9 @@ fn detect_implementation(#[allow(unused_variables)] cpu: cpu::Features) -> Imple
         target_arch = "x86"
     ))]
     {
-        if (cpu::intel::FXSR.available(cpu) && cpu::intel::PCLMULQDQ.available(cpu))
-            || cpu::arm::PMULL.available(cpu)
+        if (cpu::intel::FXSR.available(cpu_features)
+            && cpu::intel::PCLMULQDQ.available(cpu_features))
+            || cpu::arm::PMULL.available(cpu_features)
         {
             return Implementation::CLMUL;
         }
@@ -310,7 +320,7 @@ fn detect_implementation(#[allow(unused_variables)] cpu: cpu::Features) -> Imple
 
     #[cfg(target_arch = "arm")]
     {
-        if cpu::arm::NEON.available(cpu) {
+        if cpu::arm::NEON.available(cpu_features) {
             return Implementation::NEON;
         }
     }
