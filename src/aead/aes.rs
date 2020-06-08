@@ -361,7 +361,16 @@ pub enum Implementation {
     NOHW = 3,
 }
 
-fn detect_implementation(#[allow(unused_variables)] cpu_features: cpu::Features) -> Implementation {
+fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
+    // `cpu_features` is only used for specific platforms.
+    #[cfg(not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    )))]
+    let _cpu_features = cpu_features;
+
     #[cfg(any(
         target_arch = "aarch64",
         target_arch = "arm",
