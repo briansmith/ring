@@ -125,9 +125,55 @@ fn p256_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
 
 fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
     let mut r = Point::new_at_infinity();
-    unsafe {
-        GFp_nistz256_point_mul_base(r.xyz.as_mut_ptr(), g_scalar.limbs.as_ptr());
+
+    // Keep this in sync with the logic for defining `GFp_USE_LARGE_TABLE` and
+    // with the logic for deciding whether to test `GFp_nistz256_point_add_affine`
+    // in suite_b/ops.rs.
+
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
+    {
+        extern "C" {
+            fn GFp_nistz256_point_mul_base(
+                r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
+                g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
+            );
+        }
+        unsafe {
+            GFp_nistz256_point_mul_base(r.xyz.as_mut_ptr(), g_scalar.limbs.as_ptr());
+        }
     }
+
+    #[cfg(not(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64")))]
+    {
+        static GENERATOR: (Elem<R>, Elem<R>) = (
+            Elem {
+                limbs: p256_limbs![
+                    0x18a9143c, 0x79e730d4, 0x5fedb601, 0x75ba95fc, 0x77622510, 0x79fb732b,
+                    0xa53755c6, 0x18905f76
+                ],
+                m: PhantomData,
+                encoding: PhantomData,
+            },
+            Elem {
+                limbs: p256_limbs![
+                    0xce95560a, 0xddf25357, 0xba19e45c, 0x8b4ab8e4, 0xdd21f325, 0xd2e88688,
+                    0x25885d85, 0x8571ff18
+                ],
+                m: PhantomData,
+                encoding: PhantomData,
+            },
+        );
+
+        unsafe {
+            GFp_nistz256_point_mul(
+                r.xyz.as_mut_ptr(),
+                g_scalar.limbs.as_ptr(),
+                GENERATOR.0.limbs.as_ptr(),
+                GENERATOR.1.limbs.as_ptr(),
+            );
+        }
+    }
+
     r
 }
 
@@ -317,10 +363,6 @@ extern "C" {
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
-    );
-    fn GFp_nistz256_point_mul_base(
-        r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
-        g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
     );
 
     fn GFp_p256_scalar_mul_mont(

@@ -95,6 +95,7 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
   limbs_copy(out->Z, z, P256_LIMBS);
 }
 
+#if defined GFp_USE_LARGE_TABLE
 void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
                             const PRECOMP256_ROW table, int index) {
   dev_assert_secret(index >= 0);
@@ -105,5 +106,6 @@ void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
   limbs_copy(out->X, &xy[0], P256_LIMBS);
   limbs_copy(out->Y, &xy[P256_LIMBS], P256_LIMBS);
 }
+#endif
 
 #endif
