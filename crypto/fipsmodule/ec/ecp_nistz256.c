@@ -42,20 +42,6 @@ static const Limb ONE[P256_LIMBS] = {
     TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
 };
 
-/* Precomputed tables for the default generator */
-#include "ecp_nistz256_table.inl"
-
-/* This assumes that |x| and |y| have been each been reduced to their minimal
- * unique representations. */
-static Limb is_infinity(const Limb x[P256_LIMBS],
-                            const Limb y[P256_LIMBS]) {
-  Limb acc = 0;
-  for (size_t i = 0; i < P256_LIMBS; ++i) {
-    acc |= x[i] | y[i];
-  }
-  return constant_time_is_zero_w(acc);
-}
-
 static void copy_conditional(Limb dst[P256_LIMBS],
                              const Limb src[P256_LIMBS], Limb move) {
   Limb mask1 = move;
@@ -74,12 +60,17 @@ static void copy_conditional(Limb dst[P256_LIMBS],
 }
 
 void GFp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
+
+#if defined(GFp_USE_LARGE_TABLE)
 void GFp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                    const P256_POINT_AFFINE *b);
-#if defined(OPENSSL_X86_64)
+#endif
+
 void GFp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
                             const P256_POINT *b);
-#else
+
+// |GFp_nistz256_point_add| is defined in assembly language in X86-64 only.
+#if !defined(OPENSSL_X86_64)
 
 static const BN_ULONG Q[P256_LIMBS] = {
   TOBN(0xffffffff, 0xffffffff),
@@ -290,6 +281,11 @@ void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
   GFp_nistz256_point_add(r, r, &h);
 }
 
+#if defined(GFp_USE_LARGE_TABLE)
+
+/* Precomputed tables for the default generator */
+#include "ecp_nistz256_table.inl"
+
 static const unsigned kWindowSize = 7;
 
 static inline void select_precomputed(P256_POINT_AFFINE *p, size_t i,
@@ -301,6 +297,17 @@ static inline void select_precomputed(P256_POINT_AFFINE *p, size_t i,
   Limb neg_y[P256_LIMBS];
   GFp_nistz256_neg(neg_y, p->Y);
   copy_conditional(p->Y, neg_y, recoded_is_negative);
+}
+
+/* This assumes that |x| and |y| have been each been reduced to their minimal
+ * unique representations. */
+static Limb is_infinity(const Limb x[P256_LIMBS],
+                            const Limb y[P256_LIMBS]) {
+  Limb acc = 0;
+  for (size_t i = 0; i < P256_LIMBS; ++i) {
+    acc |= x[i] | y[i];
+  }
+  return constant_time_is_zero_w(acc);
 }
 
 void GFp_nistz256_point_mul_base(P256_POINT *r,
@@ -339,3 +346,5 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
   limbs_copy(r->Y, p.Y, P256_LIMBS);
   limbs_copy(r->Z, p.Z, P256_LIMBS);
 }
+
+#endif
