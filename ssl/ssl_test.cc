@@ -6115,6 +6115,111 @@ TEST_P(SSLVersionTest, DoubleSSLError) {
   }
 }
 
+TEST_P(SSLVersionTest, SameKeyResume) {
+  uint8_t key[48];
+  RAND_bytes(key, sizeof(key));
+
+  bssl::UniquePtr<SSL_CTX> server_ctx2 = CreateContext();
+  ASSERT_TRUE(server_ctx2);
+  ASSERT_TRUE(UseCertAndKey(server_ctx2.get()));
+  ASSERT_TRUE(
+      SSL_CTX_set_tlsext_ticket_keys(server_ctx_.get(), key, sizeof(key)));
+  ASSERT_TRUE(
+      SSL_CTX_set_tlsext_ticket_keys(server_ctx2.get(), key, sizeof(key)));
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx2.get(), SSL_SESS_CACHE_BOTH);
+
+  // Establish a session for |server_ctx_|.
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(session);
+  ClientConfig config;
+  config.session = session.get();
+
+  // Resuming with |server_ctx_| again works.
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                     server_ctx_.get(), config));
+  EXPECT_TRUE(SSL_session_reused(client.get()));
+  EXPECT_TRUE(SSL_session_reused(server.get()));
+
+  // Resuming with |server_ctx2| also works.
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                     server_ctx2.get(), config));
+  EXPECT_TRUE(SSL_session_reused(client.get()));
+  EXPECT_TRUE(SSL_session_reused(server.get()));
+}
+
+TEST_P(SSLVersionTest, DifferentKeyNoResume) {
+  uint8_t key1[48], key2[48];
+  RAND_bytes(key1, sizeof(key1));
+  RAND_bytes(key2, sizeof(key2));
+
+  bssl::UniquePtr<SSL_CTX> server_ctx2 = CreateContext();
+  ASSERT_TRUE(server_ctx2);
+  ASSERT_TRUE(UseCertAndKey(server_ctx2.get()));
+  ASSERT_TRUE(
+      SSL_CTX_set_tlsext_ticket_keys(server_ctx_.get(), key1, sizeof(key1)));
+  ASSERT_TRUE(
+      SSL_CTX_set_tlsext_ticket_keys(server_ctx2.get(), key2, sizeof(key2)));
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx2.get(), SSL_SESS_CACHE_BOTH);
+
+  // Establish a session for |server_ctx_|.
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(session);
+  ClientConfig config;
+  config.session = session.get();
+
+  // Resuming with |server_ctx_| again works.
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                     server_ctx_.get(), config));
+  EXPECT_TRUE(SSL_session_reused(client.get()));
+  EXPECT_TRUE(SSL_session_reused(server.get()));
+
+  // Resuming with |server_ctx2| does not work.
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                     server_ctx2.get(), config));
+  EXPECT_FALSE(SSL_session_reused(client.get()));
+  EXPECT_FALSE(SSL_session_reused(server.get()));
+}
+
+TEST_P(SSLVersionTest, UnrelatedServerNoResume) {
+  bssl::UniquePtr<SSL_CTX> server_ctx2 = CreateContext();
+  ASSERT_TRUE(server_ctx2);
+  ASSERT_TRUE(UseCertAndKey(server_ctx2.get()));
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx2.get(), SSL_SESS_CACHE_BOTH);
+
+  // Establish a session for |server_ctx_|.
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(session);
+  ClientConfig config;
+  config.session = session.get();
+
+  // Resuming with |server_ctx_| again works.
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                     server_ctx_.get(), config));
+  EXPECT_TRUE(SSL_session_reused(client.get()));
+  EXPECT_TRUE(SSL_session_reused(server.get()));
+
+  // Resuming with |server_ctx2| does not work.
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                     server_ctx2.get(), config));
+  EXPECT_FALSE(SSL_session_reused(client.get()));
+  EXPECT_FALSE(SSL_session_reused(server.get()));
+}
+
 TEST(SSLTest, WriteWhileExplicitRenegotiate) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
