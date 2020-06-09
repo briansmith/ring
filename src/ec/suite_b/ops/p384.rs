@@ -132,7 +132,7 @@ fn p384_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
 
 fn p384_point_mul_base_impl(a: &Scalar) -> Point {
     // XXX: Not efficient. TODO: Precompute multiples of the generator.
-    static P384_GENERATOR: (Elem<R>, Elem<R>) = (
+    static GENERATOR: (Elem<R>, Elem<R>) = (
         Elem {
             limbs: p384_limbs![
                 0x49c0b528, 0x3dd07566, 0xa0d6ce38, 0x20e378e2, 0x541b4d6e, 0x879c3afc, 0x59a30eff,
@@ -151,7 +151,7 @@ fn p384_point_mul_base_impl(a: &Scalar) -> Point {
         },
     );
 
-    PRIVATE_KEY_OPS.point_mul(a, &P384_GENERATOR)
+    PRIVATE_KEY_OPS.point_mul(a, &GENERATOR)
 }
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
