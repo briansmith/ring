@@ -81,12 +81,13 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
   alignas(32) Elem y; limbs_zero(y, P256_LIMBS);
   alignas(32) Elem z; limbs_zero(z, P256_LIMBS);
 
+  // TODO: Rewrite in terms of |limbs_select|.
   for (size_t i = 0; i < 16; ++i) {
-    Limb mask = constant_time_eq_w(index_s, i + 1);
+    Limb equal = constant_time_eq_w(index_s, i + 1);
     for (size_t j = 0; j < P256_LIMBS; ++j) {
-      x[j] |= table[i].X[j] & mask;
-      y[j] |= table[i].Y[j] & mask;
-      z[j] |= table[i].Z[j] & mask;
+      x[j] = constant_time_select_w(equal, table[i].X[j], x[j]);
+      y[j] = constant_time_select_w(equal, table[i].Y[j], y[j]);
+      z[j] = constant_time_select_w(equal, table[i].Z[j], z[j]);
     }
   }
 
