@@ -64,7 +64,6 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         encoding: PhantomData, // R
     },
 
-    elem_add_impl: GFp_nistz256_add,
     elem_mul_mont: GFp_nistz256_mul_mont,
     elem_sqr_mont: GFp_nistz256_sqr_mont,
 
@@ -338,11 +337,6 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
 }
 
 extern "C" {
-    fn GFp_nistz256_add(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
-    );
     fn GFp_nistz256_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
