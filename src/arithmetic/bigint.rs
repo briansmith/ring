@@ -550,25 +550,7 @@ pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
 
 // TODO: Document why this works for all Montgomery factors.
 pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
-    extern "C" {
-        // `r` and `a` may alias.
-        fn LIMBS_add_mod(
-            r: *mut Limb,
-            a: *const Limb,
-            b: *const Limb,
-            m: *const Limb,
-            num_limbs: c::size_t,
-        );
-    }
-    unsafe {
-        LIMBS_add_mod(
-            a.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
-            b.limbs.as_ptr(),
-            m.limbs.as_ptr(),
-            m.limbs.len(),
-        )
-    }
+    limb::limbs_add_assign_mod(&mut a.limbs, &b.limbs, &m.limbs);
     a
 }
 
