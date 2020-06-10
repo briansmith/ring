@@ -178,10 +178,6 @@ static inline void elem_sqr_mont(Elem r, const Elem a) {
   elem_mul_mont(r, a, a);
 }
 
-void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
-  elem_add(r, a, b);
-}
-
 void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b) {
   elem_sub(r, a, b);
 }

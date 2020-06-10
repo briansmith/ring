@@ -66,7 +66,6 @@ pub struct CommonOps {
     pub b: Elem<R>,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
-    elem_add_impl: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
     elem_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
     elem_sqr_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
 
@@ -76,7 +75,12 @@ pub struct CommonOps {
 impl CommonOps {
     #[inline]
     pub fn elem_add<E: Encoding>(&self, a: &mut Elem<E>, b: &Elem<E>) {
-        binary_op_assign(self.elem_add_impl, a, b)
+        let num_limbs = self.num_limbs;
+        limbs_add_assign_mod(
+            &mut a.limbs[..num_limbs],
+            &b.limbs[..num_limbs],
+            &self.q.p[..num_limbs],
+        );
     }
 
     #[inline]
@@ -299,11 +303,6 @@ impl PublicScalarOps {
     pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
         let num_limbs = self.public_key_ops.common.num_limbs;
         limbs_less_than_limbs_vartime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
-    }
-
-    #[inline]
-    pub fn elem_sum(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> Elem<Unencoded> {
-        binary_op(self.public_key_ops.common.elem_add_impl, a, b)
     }
 }
 
