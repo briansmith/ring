@@ -117,10 +117,12 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 
 $do4xaggr=1;
 
+
 $code=<<___;
 .text
 .extern	GFp_ia32cap_P
 ___
+
 
 ######################################################################
 # PCLMULQDQ version.
