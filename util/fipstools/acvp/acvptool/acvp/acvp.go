@@ -45,9 +45,9 @@ type Server struct {
 	// AccessToken is the top-level access token for the current session.
 	AccessToken string
 
-	client      *http.Client
-	prefix      string
-	totpFunc    func() string
+	client   *http.Client
+	prefix   string
+	totpFunc func() string
 }
 
 // NewServer returns a fresh Server instance representing the ACVP server at
@@ -363,18 +363,18 @@ func (query Query) toURLParams() string {
 var NotFound = errors.New("acvp: HTTP code 404")
 
 func (server *Server) newRequestWithToken(method, endpoint string, body io.Reader) (*http.Request, error) {
-    token, err := server.getToken(endpoint)
-    if err != nil {
-        return nil, err
-    }
-    req, err := http.NewRequest(method, server.prefix+endpoint, body)
-    if err != nil {
-        return nil, err
-    }
-    if len(token) != 0 {
-       req.Header.Add("Authorization", "Bearer "+token)
-    }
-    return req, nil
+	token, err := server.getToken(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest(method, server.prefix+endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	if len(token) != 0 {
+		req.Header.Add("Authorization", "Bearer "+token)
+	}
+	return req, nil
 }
 
 func (server *Server) Get(out interface{}, endPoint string) error {
