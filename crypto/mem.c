@@ -72,6 +72,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 
 #define OPENSSL_MALLOC_PREFIX 8
+OPENSSL_STATIC_ASSERT(OPENSSL_MALLOC_PREFIX >= sizeof(size_t),
+                      "size_t too large");
 
 #if defined(OPENSSL_ASAN)
 void __asan_poison_memory_region(const volatile void *addr, size_t size);
@@ -101,13 +103,21 @@ static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 // linked. This isn't an ideal result, but its helps in some cases.
 WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags));
 
-// The following two functions are for memory tracking. They are no-ops by
-// default but can be overridden at link time if the application needs to
-// observe heap operations.
-WEAK_SYMBOL_FUNC(void, OPENSSL_track_memory_alloc, (void *ptr, size_t size));
-WEAK_SYMBOL_FUNC(void, OPENSSL_track_memory_free, (void *ptr, size_t size));
+// The following three functions can be defined to override default heap
+// allocation and freeing. If defined, it is the responsibility of
+// |OPENSSL_memory_free| to zero out the memory before returning it to the
+// system. |OPENSSL_memory_free| will not be passed NULL pointers.
+WEAK_SYMBOL_FUNC(void*, OPENSSL_memory_alloc, (size_t size));
+WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr));
+WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr));
 
 void *OPENSSL_malloc(size_t size) {
+  if (OPENSSL_memory_alloc != NULL) {
+    assert(OPENSSL_memory_free != NULL);
+    assert(OPENSSL_memory_get_size != NULL);
+    return OPENSSL_memory_alloc(size);
+  }
+
   if (size + OPENSSL_MALLOC_PREFIX < size) {
     return NULL;
   }
@@ -120,9 +130,6 @@ void *OPENSSL_malloc(size_t size) {
   *(size_t *)ptr = size;
 
   __asan_poison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
-  if (OPENSSL_track_memory_alloc) {
-    OPENSSL_track_memory_alloc(ptr, size + OPENSSL_MALLOC_PREFIX);
-  }
   return ((uint8_t *)ptr) + OPENSSL_MALLOC_PREFIX;
 }
 
@@ -131,13 +138,15 @@ void OPENSSL_free(void *orig_ptr) {
     return;
   }
 
+  if (OPENSSL_memory_free != NULL) {
+    OPENSSL_memory_free(orig_ptr);
+    return;
+  }
+
   void *ptr = ((uint8_t *)orig_ptr) - OPENSSL_MALLOC_PREFIX;
   __asan_unpoison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
 
   size_t size = *(size_t *)ptr;
-  if (OPENSSL_track_memory_free) {
-    OPENSSL_track_memory_free(ptr, size + OPENSSL_MALLOC_PREFIX);
-  }
   OPENSSL_cleanse(ptr, size + OPENSSL_MALLOC_PREFIX);
   if (sdallocx) {
     sdallocx(ptr, size + OPENSSL_MALLOC_PREFIX, 0 /* flags */);
@@ -151,10 +160,15 @@ void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
     return OPENSSL_malloc(new_size);
   }
 
-  void *ptr = ((uint8_t *)orig_ptr) - OPENSSL_MALLOC_PREFIX;
-  __asan_unpoison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
-  size_t old_size = *(size_t *)ptr;
-  __asan_poison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
+  size_t old_size;
+  if (OPENSSL_memory_get_size != NULL) {
+    old_size = OPENSSL_memory_get_size(orig_ptr);
+  } else {
+    void *ptr = ((uint8_t *)orig_ptr) - OPENSSL_MALLOC_PREFIX;
+    __asan_unpoison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
+    old_size = *(size_t *)ptr;
+    __asan_poison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
+  }
 
   void *ret = OPENSSL_malloc(new_size);
   if (ret == NULL) {
