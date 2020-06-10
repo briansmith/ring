@@ -125,6 +125,15 @@
 #include <stdalign.h>
 #endif
 
+// Some C compilers require a useless cast when dealing with arrays for the
+// reason explained in
+// https://gustedt.wordpress.com/2011/02/12/const-and-arrays/
+#if defined(__clang__) || defined(_MSC_VER)
+#define GFp_POINTLESS_ARRAY_CONST_CAST(cast)
+#else
+#define GFp_POINTLESS_ARRAY_CONST_CAST(cast) cast
+#endif
+
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
