@@ -703,7 +703,8 @@ void ec_GFp_mont_felem_to_bytes(const EC_GROUP *group, uint8_t *out,
 int ec_GFp_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
                                  const uint8_t *in, size_t len);
 
-void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
+void ec_GFp_nistp_recode_scalar_bits(crypto_word_t *sign, crypto_word_t *digit,
+                                     crypto_word_t in);
 
 const EC_METHOD *EC_GFp_nistp224_method(void);
 const EC_METHOD *EC_GFp_nistp256_method(void);

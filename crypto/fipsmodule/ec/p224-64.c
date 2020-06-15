@@ -866,7 +866,7 @@ static void p224_select_point(const uint64_t idx, size_t size,
 }
 
 // p224_get_bit returns the |i|th bit in |in|
-static char p224_get_bit(const p224_felem_bytearray in, size_t i) {
+static crypto_word_t p224_get_bit(const p224_felem_bytearray in, size_t i) {
   if (i >= 224) {
     return 0;
   }
@@ -977,13 +977,13 @@ static void ec_GFp_nistp224_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 
     // Add every 5 doublings.
     if (i % 5 == 0) {
-      uint64_t bits = p224_get_bit(scalar->bytes, i + 4) << 5;
+      crypto_word_t bits = p224_get_bit(scalar->bytes, i + 4) << 5;
       bits |= p224_get_bit(scalar->bytes, i + 3) << 4;
       bits |= p224_get_bit(scalar->bytes, i + 2) << 3;
       bits |= p224_get_bit(scalar->bytes, i + 1) << 2;
       bits |= p224_get_bit(scalar->bytes, i) << 1;
       bits |= p224_get_bit(scalar->bytes, i - 1);
-      uint8_t sign, digit;
+      crypto_word_t sign, digit;
       ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
 
       // Select the point to add or subtract.
@@ -1022,7 +1022,7 @@ static void ec_GFp_nistp224_point_mul_base(const EC_GROUP *group,
     }
 
     // First, look 28 bits upwards.
-    uint64_t bits = p224_get_bit(scalar->bytes, i + 196) << 3;
+    crypto_word_t bits = p224_get_bit(scalar->bytes, i + 196) << 3;
     bits |= p224_get_bit(scalar->bytes, i + 140) << 2;
     bits |= p224_get_bit(scalar->bytes, i + 84) << 1;
     bits |= p224_get_bit(scalar->bytes, i + 28);
@@ -1080,14 +1080,15 @@ static void ec_GFp_nistp224_point_mul_public(const EC_GROUP *group,
     // Add multiples of the generator.
     if (i <= 27) {
       // First, look 28 bits upwards.
-      uint64_t bits = p224_get_bit(g_scalar->bytes, i + 196) << 3;
+      crypto_word_t bits = p224_get_bit(g_scalar->bytes, i + 196) << 3;
       bits |= p224_get_bit(g_scalar->bytes, i + 140) << 2;
       bits |= p224_get_bit(g_scalar->bytes, i + 84) << 1;
       bits |= p224_get_bit(g_scalar->bytes, i + 28);
 
+      size_t index = (size_t)bits;
       p224_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
-                     g_p224_pre_comp[1][bits][0], g_p224_pre_comp[1][bits][1],
-                     g_p224_pre_comp[1][bits][2]);
+                     g_p224_pre_comp[1][index][0], g_p224_pre_comp[1][index][1],
+                     g_p224_pre_comp[1][index][2]);
       assert(!skip);
 
       // Second, look at the current position.
@@ -1095,20 +1096,21 @@ static void ec_GFp_nistp224_point_mul_public(const EC_GROUP *group,
       bits |= p224_get_bit(g_scalar->bytes, i + 112) << 2;
       bits |= p224_get_bit(g_scalar->bytes, i + 56) << 1;
       bits |= p224_get_bit(g_scalar->bytes, i);
+      index = (size_t)bits;
       p224_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
-                     g_p224_pre_comp[0][bits][0], g_p224_pre_comp[0][bits][1],
-                     g_p224_pre_comp[0][bits][2]);
+                     g_p224_pre_comp[0][index][0], g_p224_pre_comp[0][index][1],
+                     g_p224_pre_comp[0][index][2]);
     }
 
     // Incorporate |p_scalar| every 5 doublings.
     if (i % 5 == 0) {
-      uint64_t bits = p224_get_bit(p_scalar->bytes, i + 4) << 5;
+      crypto_word_t bits = p224_get_bit(p_scalar->bytes, i + 4) << 5;
       bits |= p224_get_bit(p_scalar->bytes, i + 3) << 4;
       bits |= p224_get_bit(p_scalar->bytes, i + 2) << 3;
       bits |= p224_get_bit(p_scalar->bytes, i + 1) << 2;
       bits |= p224_get_bit(p_scalar->bytes, i) << 1;
       bits |= p224_get_bit(p_scalar->bytes, i - 1);
-      uint8_t sign, digit;
+      crypto_word_t sign, digit;
       ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
 
       // Select the point to add or subtract.

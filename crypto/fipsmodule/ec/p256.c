@@ -67,7 +67,7 @@ static fiat_p256_limb_t fiat_p256_nz(
 
 static void fiat_p256_copy(fiat_p256_limb_t out[FIAT_P256_NLIMBS],
                            const fiat_p256_limb_t in1[FIAT_P256_NLIMBS]) {
-  for (int i = 0; i < FIAT_P256_NLIMBS; i++) {
+  for (size_t i = 0; i < FIAT_P256_NLIMBS; i++) {
     out[i] = in1[i];
   }
 }
@@ -393,7 +393,7 @@ static void fiat_p256_select_point(const fiat_p256_limb_t idx, size_t size,
 }
 
 // fiat_p256_get_bit returns the |i|th bit in |in|
-static char fiat_p256_get_bit(const uint8_t *in, int i) {
+static crypto_word_t fiat_p256_get_bit(const uint8_t *in, int i) {
   if (i < 0 || i >= 256) {
     return 0;
   }
@@ -498,20 +498,20 @@ static void ec_GFp_nistp256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 
     // do other additions every 5 doublings
     if (i % 5 == 0) {
-      uint64_t bits = fiat_p256_get_bit(scalar->bytes, i + 4) << 5;
+      crypto_word_t bits = fiat_p256_get_bit(scalar->bytes, i + 4) << 5;
       bits |= fiat_p256_get_bit(scalar->bytes, i + 3) << 4;
       bits |= fiat_p256_get_bit(scalar->bytes, i + 2) << 3;
       bits |= fiat_p256_get_bit(scalar->bytes, i + 1) << 2;
       bits |= fiat_p256_get_bit(scalar->bytes, i) << 1;
       bits |= fiat_p256_get_bit(scalar->bytes, i - 1);
-      uint8_t sign, digit;
+      crypto_word_t sign, digit;
       ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
 
       // select the point to add or subtract, in constant time.
-      fiat_p256_select_point(digit, 17, (const fiat_p256_felem(*)[3])p_pre_comp,
-                             tmp);
+      fiat_p256_select_point((fiat_p256_limb_t)digit, 17,
+                             (const fiat_p256_felem(*)[3])p_pre_comp, tmp);
       fiat_p256_opp(ftmp, tmp[1]);  // (X, -Y, Z) is the negative point.
-      fiat_p256_cmovznz(tmp[1], sign, tmp[1], ftmp);
+      fiat_p256_cmovznz(tmp[1], (fiat_p256_limb_t)sign, tmp[1], ftmp);
 
       if (!skip) {
         fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2],
@@ -543,12 +543,13 @@ static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
     }
 
     // First, look 32 bits upwards.
-    uint64_t bits = fiat_p256_get_bit(scalar->bytes, i + 224) << 3;
+    crypto_word_t bits = fiat_p256_get_bit(scalar->bytes, i + 224) << 3;
     bits |= fiat_p256_get_bit(scalar->bytes, i + 160) << 2;
     bits |= fiat_p256_get_bit(scalar->bytes, i + 96) << 1;
     bits |= fiat_p256_get_bit(scalar->bytes, i + 32);
     // Select the point to add, in constant time.
-    fiat_p256_select_point_affine(bits, 15, fiat_p256_g_pre_comp[1], tmp);
+    fiat_p256_select_point_affine((fiat_p256_limb_t)bits, 15,
+                                  fiat_p256_g_pre_comp[1], tmp);
 
     if (!skip) {
       fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2],
@@ -566,7 +567,8 @@ static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
     bits |= fiat_p256_get_bit(scalar->bytes, i + 64) << 1;
     bits |= fiat_p256_get_bit(scalar->bytes, i);
     // Select the point to add, in constant time.
-    fiat_p256_select_point_affine(bits, 15, fiat_p256_g_pre_comp[0], tmp);
+    fiat_p256_select_point_affine((fiat_p256_limb_t)bits, 15,
+                                  fiat_p256_g_pre_comp[0], tmp);
     fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
                         tmp[0], tmp[1], tmp[2]);
   }
@@ -613,14 +615,15 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
     // constant-time lookup.
     if (i <= 31) {
       // First, look 32 bits upwards.
-      uint64_t bits = fiat_p256_get_bit(g_scalar->bytes, i + 224) << 3;
+      crypto_word_t bits = fiat_p256_get_bit(g_scalar->bytes, i + 224) << 3;
       bits |= fiat_p256_get_bit(g_scalar->bytes, i + 160) << 2;
       bits |= fiat_p256_get_bit(g_scalar->bytes, i + 96) << 1;
       bits |= fiat_p256_get_bit(g_scalar->bytes, i + 32);
       if (bits != 0) {
+        size_t index = (size_t)(bits - 1);
         fiat_p256_point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2],
-                            1 /* mixed */, fiat_p256_g_pre_comp[1][bits - 1][0],
-                            fiat_p256_g_pre_comp[1][bits - 1][1],
+                            1 /* mixed */, fiat_p256_g_pre_comp[1][index][0],
+                            fiat_p256_g_pre_comp[1][index][1],
                             fiat_p256_one);
         skip = 0;
       }
@@ -631,9 +634,10 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
       bits |= fiat_p256_get_bit(g_scalar->bytes, i + 64) << 1;
       bits |= fiat_p256_get_bit(g_scalar->bytes, i);
       if (bits != 0) {
+        size_t index = (size_t)(bits - 1);
         fiat_p256_point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2],
-                            1 /* mixed */, fiat_p256_g_pre_comp[0][bits - 1][0],
-                            fiat_p256_g_pre_comp[0][bits - 1][1],
+                            1 /* mixed */, fiat_p256_g_pre_comp[0][index][0],
+                            fiat_p256_g_pre_comp[0][index][1],
                             fiat_p256_one);
         skip = 0;
       }
@@ -642,7 +646,7 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
     int digit = p_wNAF[i];
     if (digit != 0) {
       assert(digit & 1);
-      int idx = digit < 0 ? (-digit) >> 1 : digit >> 1;
+      size_t idx = (size_t)(digit < 0 ? (-digit) >> 1 : digit >> 1);
       fiat_p256_felem *y = &p_pre_comp[idx][1], tmp;
       if (digit < 0) {
         fiat_p256_opp(tmp, p_pre_comp[idx][1]);

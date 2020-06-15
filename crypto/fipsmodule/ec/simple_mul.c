@@ -108,7 +108,7 @@ static void ec_GFp_mont_batch_get_window(const EC_GROUP *group,
   if (i > 0) {
     window |= bn_is_bit_set_words(scalar->words, width, i - 1);
   }
-  uint8_t sign, digit;
+  crypto_word_t sign, digit;
   ec_GFp_nistp_recode_scalar_bits(&sign, &digit, window);
 
   // Select the entry in constant-time.
@@ -121,7 +121,7 @@ static void ec_GFp_mont_batch_get_window(const EC_GROUP *group,
   // Negate if necessary.
   EC_FELEM neg_Y;
   ec_felem_neg(group, &neg_Y, &out->Y);
-  BN_ULONG sign_mask = sign;
+  crypto_word_t sign_mask = sign;
   sign_mask = 0u - sign_mask;
   ec_felem_select(group, &out->Y, sign_mask, &neg_Y, &out->Y);
 }

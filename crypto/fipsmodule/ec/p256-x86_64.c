@@ -50,8 +50,8 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 
 // Recode window to a signed digit, see |ec_GFp_nistp_recode_scalar_bits| in
 // util.c for details
-static unsigned booth_recode_w5(unsigned in) {
-  unsigned s, d;
+static crypto_word_t booth_recode_w5(crypto_word_t in) {
+  crypto_word_t s, d;
 
   s = ~((in >> 5) - 1);
   d = (1 << 6) - in - 1;
@@ -61,8 +61,8 @@ static unsigned booth_recode_w5(unsigned in) {
   return (d << 1) + (s & 1);
 }
 
-static unsigned booth_recode_w7(unsigned in) {
-  unsigned s, d;
+static crypto_word_t booth_recode_w7(crypto_word_t in) {
+  crypto_word_t s, d;
 
   s = ~((in >> 7) - 1);
   d = (1 << 8) - in - 1;
@@ -194,8 +194,8 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   assert(p_scalar != NULL);
   assert(group->field.width == P256_LIMBS);
 
-  static const unsigned kWindowSize = 5;
-  static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
+  static const size_t kWindowSize = 5;
+  static const crypto_word_t kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
   // A |P256_POINT| is (3 * 32) = 96 bytes, and the 64-byte alignment should
   // add no more than 63 bytes of overhead. Thus, |table| should require
@@ -232,17 +232,17 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 
   BN_ULONG tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
-  unsigned index = 255;
-  unsigned wvalue = p_str[(index - 1) / 8];
+  size_t index = 255;
+  crypto_word_t wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
   ecp_nistz256_select_w5(r, table, booth_recode_w5(wvalue) >> 1);
 
   while (index >= 5) {
     if (index != 255) {
-      unsigned off = (index - 1) / 8;
+      size_t off = (index - 1) / 8;
 
-      wvalue = p_str[off] | p_str[off + 1] << 8;
+      wvalue = (crypto_word_t)p_str[off] | (crypto_word_t)p_str[off + 1] << 8;
       wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
       wvalue = booth_recode_w5(wvalue);
@@ -283,21 +283,22 @@ typedef union {
   P256_POINT_AFFINE a;
 } p256_point_union_t;
 
-static unsigned calc_first_wvalue(unsigned *index, const uint8_t p_str[33]) {
-  static const unsigned kWindowSize = 7;
-  static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
+static crypto_word_t calc_first_wvalue(size_t *index, const uint8_t p_str[33]) {
+  static const size_t kWindowSize = 7;
+  static const crypto_word_t kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
   *index = kWindowSize;
 
-  unsigned wvalue = (p_str[0] << 1) & kMask;
+  crypto_word_t wvalue = (p_str[0] << 1) & kMask;
   return booth_recode_w7(wvalue);
 }
 
-static unsigned calc_wvalue(unsigned *index, const uint8_t p_str[33]) {
-  static const unsigned kWindowSize = 7;
-  static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
+static crypto_word_t calc_wvalue(size_t *index, const uint8_t p_str[33]) {
+  static const size_t kWindowSize = 7;
+  static const crypto_word_t kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
-  const unsigned off = (*index - 1) / 8;
-  unsigned wvalue = p_str[off] | p_str[off + 1] << 8;
+  const size_t off = (*index - 1) / 8;
+  crypto_word_t wvalue =
+      (crypto_word_t)p_str[off] | (crypto_word_t)p_str[off + 1] << 8;
   wvalue = (wvalue >> ((*index - 1) % 8)) & kMask;
   *index += kWindowSize;
 
@@ -325,8 +326,8 @@ static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
   p_str[32] = 0;
 
   // First window
-  unsigned index = 0;
-  unsigned wvalue = calc_first_wvalue(&index, p_str);
+  size_t index = 0;
+  crypto_word_t wvalue = calc_first_wvalue(&index, p_str);
 
   ecp_nistz256_select_w7(&p.a, ecp_nistz256_precomputed[0], wvalue >> 1);
   ecp_nistz256_neg(p.p.Z, p.p.Y);
@@ -370,8 +371,8 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   p_str[32] = 0;
 
   // First window
-  unsigned index = 0;
-  unsigned wvalue = calc_first_wvalue(&index, p_str);
+  size_t index = 0;
+  size_t wvalue = calc_first_wvalue(&index, p_str);
 
   // Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
   // is infinity and |ONE| otherwise. |p| was computed from the table, so it
