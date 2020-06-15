@@ -1436,6 +1436,15 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // The peer certificate must be valid for signing.
+  const CRYPTO_BUFFER *leaf =
+      sk_CRYPTO_BUFFER_value(hs->new_session->certs.get(), 0);
+  CBS leaf_cbs;
+  CRYPTO_BUFFER_init_CBS(leaf, &leaf_cbs);
+  if (!ssl_cert_check_key_usage(&leaf_cbs, key_usage_digital_signature)) {
+    return ssl_hs_error;
+  }
+
   CBS certificate_verify = msg.body, signature;
 
   // Determine the signature algorithm.

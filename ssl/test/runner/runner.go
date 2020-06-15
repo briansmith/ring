@@ -14627,12 +14627,25 @@ func addECDSAKeyUsageTests() {
 
 		testCases = append(testCases, testCase{
 			testType: clientTest,
-			name:     "ECDSAKeyUsage-" + ver.name,
+			name:     "ECDSAKeyUsage-Client-" + ver.name,
 			config: Config{
 				MinVersion:   ver.version,
 				MaxVersion:   ver.version,
 				Certificates: []Certificate{cert},
 			},
+			shouldFail:    true,
+			expectedError: ":KEY_USAGE_BIT_INCORRECT:",
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "ECDSAKeyUsage-Server-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{cert},
+			},
+			flags:         []string{"-require-any-client-certificate"},
 			shouldFail:    true,
 			expectedError: ":KEY_USAGE_BIT_INCORRECT:",
 		})
@@ -14705,7 +14718,7 @@ func addRSAKeyUsageTests() {
 	for _, ver := range tlsVersions {
 		testCases = append(testCases, testCase{
 			testType: clientTest,
-			name:     "RSAKeyUsage-WantSignature-GotEncipherment-" + ver.name,
+			name:     "RSAKeyUsage-Client-WantSignature-GotEncipherment-" + ver.name,
 			config: Config{
 				MinVersion:   ver.version,
 				MaxVersion:   ver.version,
@@ -14721,7 +14734,7 @@ func addRSAKeyUsageTests() {
 
 		testCases = append(testCases, testCase{
 			testType: clientTest,
-			name:     "RSAKeyUsage-WantSignature-GotSignature-" + ver.name,
+			name:     "RSAKeyUsage-Client-WantSignature-GotSignature-" + ver.name,
 			config: Config{
 				MinVersion:   ver.version,
 				MaxVersion:   ver.version,
@@ -14737,7 +14750,7 @@ func addRSAKeyUsageTests() {
 		if ver.version < VersionTLS13 {
 			testCases = append(testCases, testCase{
 				testType: clientTest,
-				name:     "RSAKeyUsage-WantEncipherment-GotEncipherment" + ver.name,
+				name:     "RSAKeyUsage-Client-WantEncipherment-GotEncipherment" + ver.name,
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
@@ -14751,7 +14764,7 @@ func addRSAKeyUsageTests() {
 
 			testCases = append(testCases, testCase{
 				testType: clientTest,
-				name:     "RSAKeyUsage-WantEncipherment-GotSignature-" + ver.name,
+				name:     "RSAKeyUsage-Client-WantEncipherment-GotSignature-" + ver.name,
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
@@ -14768,7 +14781,7 @@ func addRSAKeyUsageTests() {
 			// In 1.2 and below, we should not enforce without the enforce-rsa-key-usage flag.
 			testCases = append(testCases, testCase{
 				testType: clientTest,
-				name:     "RSAKeyUsage-WantSignature-GotEncipherment-Unenforced" + ver.name,
+				name:     "RSAKeyUsage-Client-WantSignature-GotEncipherment-Unenforced" + ver.name,
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
@@ -14779,7 +14792,7 @@ func addRSAKeyUsageTests() {
 
 			testCases = append(testCases, testCase{
 				testType: clientTest,
-				name:     "RSAKeyUsage-WantEncipherment-GotSignature-Unenforced" + ver.name,
+				name:     "RSAKeyUsage-Client-WantEncipherment-GotSignature-Unenforced" + ver.name,
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
@@ -14787,14 +14800,13 @@ func addRSAKeyUsageTests() {
 					CipherSuites: dsSuites,
 				},
 			})
-
 		}
 
 		if ver.version >= VersionTLS13 {
 			// In 1.3 and above, we enforce keyUsage even without the flag.
 			testCases = append(testCases, testCase{
 				testType: clientTest,
-				name:     "RSAKeyUsage-WantSignature-GotEncipherment-Enforced" + ver.name,
+				name:     "RSAKeyUsage-Client-WantSignature-GotEncipherment-Enforced" + ver.name,
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
@@ -14804,8 +14816,33 @@ func addRSAKeyUsageTests() {
 				shouldFail:    true,
 				expectedError: ":KEY_USAGE_BIT_INCORRECT:",
 			})
-
 		}
+
+		// The server only uses signatures and always enforces it.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "RSAKeyUsage-Server-WantSignature-GotEncipherment-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{encCert},
+			},
+			shouldFail:    true,
+			expectedError: ":KEY_USAGE_BIT_INCORRECT:",
+			flags:         []string{"-require-any-client-certificate"},
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "RSAKeyUsage-Server-WantSignature-GotSignature-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{dsCert},
+			},
+			flags: []string{"-require-any-client-certificate"},
+		})
+
 	}
 }
 
