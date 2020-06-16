@@ -8,6 +8,7 @@ add_executable(
   client.cc
   const.cc
   digest.cc
+  fd.cc
   file.cc
   generate_ed25519.cc
   genrsa.cc
