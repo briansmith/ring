@@ -1317,26 +1317,26 @@ TEST(X509Test, TestCRL) {
 }
 
 TEST(X509Test, ManyNamesAndConstraints) {
-  bssl::UniquePtr<X509> many_constraints(
-      CertFromPEM(GetTestData("crypto/x509/many_constraints.pem").c_str()));
+  bssl::UniquePtr<X509> many_constraints(CertFromPEM(
+      GetTestData("crypto/x509/test/many_constraints.pem").c_str()));
   ASSERT_TRUE(many_constraints);
   bssl::UniquePtr<X509> many_names1(
-      CertFromPEM(GetTestData("crypto/x509/many_names1.pem").c_str()));
+      CertFromPEM(GetTestData("crypto/x509/test/many_names1.pem").c_str()));
   ASSERT_TRUE(many_names1);
   bssl::UniquePtr<X509> many_names2(
-      CertFromPEM(GetTestData("crypto/x509/many_names2.pem").c_str()));
+      CertFromPEM(GetTestData("crypto/x509/test/many_names2.pem").c_str()));
   ASSERT_TRUE(many_names2);
   bssl::UniquePtr<X509> many_names3(
-      CertFromPEM(GetTestData("crypto/x509/many_names3.pem").c_str()));
+      CertFromPEM(GetTestData("crypto/x509/test/many_names3.pem").c_str()));
   ASSERT_TRUE(many_names3);
   bssl::UniquePtr<X509> some_names1(
-      CertFromPEM(GetTestData("crypto/x509/some_names1.pem").c_str()));
+      CertFromPEM(GetTestData("crypto/x509/test/some_names1.pem").c_str()));
   ASSERT_TRUE(some_names1);
   bssl::UniquePtr<X509> some_names2(
-      CertFromPEM(GetTestData("crypto/x509/some_names2.pem").c_str()));
+      CertFromPEM(GetTestData("crypto/x509/test/some_names2.pem").c_str()));
   ASSERT_TRUE(some_names2);
   bssl::UniquePtr<X509> some_names3(
-      CertFromPEM(GetTestData("crypto/x509/some_names3.pem").c_str()));
+      CertFromPEM(GetTestData("crypto/x509/test/some_names3.pem").c_str()));
   ASSERT_TRUE(some_names3);
 
   EXPECT_EQ(X509_V_ERR_UNSPECIFIED,

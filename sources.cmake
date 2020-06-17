@@ -57,13 +57,13 @@ set(
   crypto/hmac_extra/hmac_tests.txt
   crypto/poly1305/poly1305_tests.txt
   crypto/siphash/siphash_tests.txt
-  crypto/x509/many_constraints.pem
-  crypto/x509/many_names1.pem
-  crypto/x509/many_names2.pem
-  crypto/x509/many_names3.pem
-  crypto/x509/some_names1.pem
-  crypto/x509/some_names2.pem
-  crypto/x509/some_names3.pem
+  crypto/x509/test/many_constraints.pem
+  crypto/x509/test/many_names1.pem
+  crypto/x509/test/many_names2.pem
+  crypto/x509/test/many_names3.pem
+  crypto/x509/test/some_names1.pem
+  crypto/x509/test/some_names2.pem
+  crypto/x509/test/some_names3.pem
   third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt
   third_party/wycheproof_testvectors/aes_cmac_test.txt
   third_party/wycheproof_testvectors/aes_gcm_siv_test.txt
