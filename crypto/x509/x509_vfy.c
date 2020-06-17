@@ -146,14 +146,16 @@ static int null_callback(int ok, X509_STORE_CTX *e)
     return ok;
 }
 
-/* Return 1 is a certificate is self signed */
-static int cert_self_signed(X509 *x)
+/* cert_self_signed checks if |x| is self-signed. If |x| is valid, it returns
+ * one and sets |*out_is_self_signed| to the result. If |x| is invalid, it
+ * returns zero. */
+static int cert_self_signed(X509 *x, int *out_is_self_signed)
 {
-    X509_check_purpose(x, -1, 0);
-    if (x->ex_flags & EXFLAG_SS)
-        return 1;
-    else
+    if (!x509v3_cache_extensions(x)) {
         return 0;
+    }
+    *out_is_self_signed = (x->ex_flags & EXFLAG_SS) != 0;
+    return 1;
 }
 
 /* Given a certificate try and find an exact match in the store */
@@ -263,8 +265,14 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
                                  * X509_V_ERR_CERT_CHAIN_TOO_LONG error code
                                  * later. */
 
+        int is_self_signed;
+        if (!cert_self_signed(x, &is_self_signed)) {
+            ctx->error = X509_V_ERR_INVALID_EXTENSION;
+            goto end;
+        }
+
         /* If we are self signed, we break */
-        if (cert_self_signed(x))
+        if (is_self_signed)
             break;
         /*
          * If asked see if we can find issuer in trusted store first
@@ -323,7 +331,14 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
          */
         i = sk_X509_num(ctx->chain);
         x = sk_X509_value(ctx->chain, i - 1);
-        if (cert_self_signed(x)) {
+
+        int is_self_signed;
+        if (!cert_self_signed(x, &is_self_signed)) {
+            ctx->error = X509_V_ERR_INVALID_EXTENSION;
+            goto end;
+        }
+
+        if (is_self_signed) {
             /* we have a self signed certificate */
             if (sk_X509_num(ctx->chain) == 1) {
                 /*
@@ -368,8 +383,12 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
             /* If we have enough, we break */
             if (depth < num)
                 break;
+            if (!cert_self_signed(x, &is_self_signed)) {
+                ctx->error = X509_V_ERR_INVALID_EXTENSION;
+                goto end;
+            }
             /* If we are self signed, we break */
-            if (cert_self_signed(x))
+            if (is_self_signed)
                 break;
             ok = ctx->get_issuer(&xtmp, ctx, x);
 

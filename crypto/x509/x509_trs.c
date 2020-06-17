@@ -59,6 +59,8 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
+#include "../x509v3/internal.h"
+
 static int tr_cmp(const X509_TRUST **a, const X509_TRUST **b);
 static void trtable_free(X509_TRUST *p);
 
@@ -293,7 +295,8 @@ static int trust_1oid(X509_TRUST *trust, X509 *x, int flags)
 
 static int trust_compat(X509_TRUST *trust, X509 *x, int flags)
 {
-    X509_check_purpose(x, -1, 0);
+    if (!x509v3_cache_extensions(x))
+        return X509_TRUST_UNTRUSTED;
     if (x->ex_flags & EXFLAG_SS)
         return X509_TRUST_TRUSTED;
     else

@@ -67,6 +67,7 @@
 #include <openssl/x509v3.h>
 
 #include "../internal.h"
+#include "../x509v3/internal.h"
 
 
 int X509_issuer_and_serial_cmp(const X509 *a, const X509 *b)
@@ -175,12 +176,18 @@ unsigned long X509_subject_name_hash_old(X509 *x)
  */
 int X509_cmp(const X509 *a, const X509 *b)
 {
-    int rv;
-    /* ensure hash is valid */
-    X509_check_purpose((X509 *)a, -1, 0);
-    X509_check_purpose((X509 *)b, -1, 0);
+    /* Fill in the |sha1_hash| fields.
+     *
+     * TODO(davidben): This may fail, in which case the the hash will be all
+     * zeros. This produces a consistent comparison (failures are sticky), but
+     * not a good one. OpenSSL now returns -2, but this is not a consistent
+     * comparison and may cause misbehaving sorts by transitivity. For now, we
+     * retain the old OpenSSL behavior, which was to ignore the error. See
+     * https://crbug.com/boringssl/355. */
+    x509v3_cache_extensions((X509 *)a);
+    x509v3_cache_extensions((X509 *)b);
 
-    rv = OPENSSL_memcmp(a->sha1_hash, b->sha1_hash, SHA_DIGEST_LENGTH);
+    int rv = OPENSSL_memcmp(a->sha1_hash, b->sha1_hash, SHA_DIGEST_LENGTH);
     if (rv)
         return rv;
     /* Check for match against stored encoding too */
