@@ -118,12 +118,22 @@ impl EcdsaKeyPair {
         Self::new(alg, key_pair, &rng)
     }
 
-    /// Constructs an ECDSA key pair directly from the big-endian-encoded
-    /// private key and public key bytes.
+    /// Constructs an ECDSA key pair from the private key and public key bytes
+    ///
+    /// The private key must encoded as a big-endian fixed-length integer. For
+    /// example, a P-256 private key must be 32 bytes prefixed with leading
+    /// zeros as needed.
+    ///
+    /// The public key is encoding in uncompressed form using the
+    /// Octet-String-to-Elliptic-Curve-Point algorithm in
+    /// [SEC 1: Elliptic Curve Cryptography, Version 2.0].
     ///
     /// This is intended for use by code that deserializes key pairs. It is
     /// recommended to use `EcdsaKeyPair::from_pkcs8()` (with a PKCS#8-encoded
     /// key) instead.
+    ///
+    /// [SEC 1: Elliptic Curve Cryptography, Version 2.0]:
+    ///     http://www.secg.org/sec1-v2.pdf
     pub fn from_private_key_and_public_key(
         alg: &'static EcdsaSigningAlgorithm,
         private_key: &[u8],
