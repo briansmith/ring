@@ -573,10 +573,21 @@ include_directories(third_party/googletest/include)
 # themselves as dependencies next to the target definition.
 add_custom_target(all_tests)
 
+# On Windows, CRYPTO_TEST_DATA is too long to fit in command-line limits.
+# TODO(davidben): CMake 3.12 has a list(JOIN) command. Use that when we've
+# updated the minimum version.
+set(EMBED_TEST_DATA_ARGS "")
+foreach(arg ${CRYPTO_TEST_DATA})
+  set(EMBED_TEST_DATA_ARGS "${EMBED_TEST_DATA_ARGS}${arg}\n")
+endforeach()
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt"
+     "${EMBED_TEST_DATA_ARGS}")
+
 add_custom_command(
   OUTPUT crypto_test_data.cc
-  COMMAND ${GO_EXECUTABLE} run util/embed_test_data.go ${CRYPTO_TEST_DATA} >
-  ${CMAKE_CURRENT_BINARY_DIR}/crypto_test_data.cc
+  COMMAND ${GO_EXECUTABLE} run util/embed_test_data.go -file-list
+          "${CMAKE_CURRENT_BINARY_DIR}/embed_test_data_args.txt" >
+          "${CMAKE_CURRENT_BINARY_DIR}/crypto_test_data.cc"
   DEPENDS util/embed_test_data.go ${CRYPTO_TEST_DATA}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
