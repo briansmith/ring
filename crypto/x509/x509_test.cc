@@ -2312,3 +2312,133 @@ TEST(X509Test, InvalidExtensions) {
         Verify(leaf.get(), {invalid_root.get()}, {intermediate.get()}, {}));
   }
 }
+
+// kExplicitDefaultVersionPEM is an X.509v1 certificate with the version number
+// encoded explicitly, rather than omitted as required by DER.
+static const char kExplicitDefaultVersionPEM[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBfTCCASSgAwIBAAIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC\n"
+    "QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp\n"
+    "dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ\n"
+    "BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l\n"
+    "dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni\n"
+    "v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa\n"
+    "HPUdfvGULUvPciLBMAkGByqGSM49BAEDSAAwRQIhAPKgNV5ROjbDgnmb7idQhY5w\n"
+    "BnSVV9IpdAD0vhWHXcQHAiB8HnkUaiGD8Hp0aHlfFJmaaLTxy54VXuYfMlJhXnXJ\n"
+    "FA==\n"
+    "-----END CERTIFICATE-----\n";
+
+// kNegativeVersionPEM is an X.509 certificate with a negative version number.
+static const char kNegativeVersionPEM[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBfTCCASSgAwIB/wIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC\n"
+    "QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp\n"
+    "dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ\n"
+    "BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l\n"
+    "dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni\n"
+    "v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa\n"
+    "HPUdfvGULUvPciLBMAkGByqGSM49BAEDSAAwRQIhAPKgNV5ROjbDgnmb7idQhY5w\n"
+    "BnSVV9IpdAD0vhWHXcQHAiB8HnkUaiGD8Hp0aHlfFJmaaLTxy54VXuYfMlJhXnXJ\n"
+    "FA==\n"
+    "-----END CERTIFICATE-----\n";
+
+// kFutureVersionPEM is an X.509 certificate with a version number value of
+// three, which is not defined. (v3 has value two).
+static const char kFutureVersionPEM[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBfTCCASSgAwIBAwIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC\n"
+    "QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp\n"
+    "dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ\n"
+    "BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l\n"
+    "dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni\n"
+    "v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa\n"
+    "HPUdfvGULUvPciLBMAkGByqGSM49BAEDSAAwRQIhAPKgNV5ROjbDgnmb7idQhY5w\n"
+    "BnSVV9IpdAD0vhWHXcQHAiB8HnkUaiGD8Hp0aHlfFJmaaLTxy54VXuYfMlJhXnXJ\n"
+    "FA==\n"
+    "-----END CERTIFICATE-----\n";
+
+// kOverflowVersionPEM is an X.509 certificate with a version field which
+// overflows |uint64_t|.
+static const char kOverflowVersionPEM[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBoDCCAUegJgIkAP//////////////////////////////////////////////\n"
+    "AgkA2UwE2kl9v+swCQYHKoZIzj0EATBFMQswCQYDVQQGEwJBVTETMBEGA1UECAwK\n"
+    "U29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMB4X\n"
+    "DTE0MDQyMzIzMjE1N1oXDTE0MDUyMzIzMjE1N1owRTELMAkGA1UEBhMCQVUxEzAR\n"
+    "BgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdpdHMgUHR5\n"
+    "IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8eDZSKTNWX\n"
+    "a7epHg1G+92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQtS89yIsEw\n"
+    "CQYHKoZIzj0EAQNIADBFAiEA8qA1XlE6NsOCeZvuJ1CFjnAGdJVX0il0APS+FYdd\n"
+    "xAcCIHweeRRqIYPwenRoeV8UmZpotPHLnhVe5h8yUmFedckU\n"
+    "-----END CERTIFICATE-----\n";
+
+// kV1WithExtensionsPEM is an X.509v1 certificate with extensions.
+static const char kV1WithExtensionsPEM[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIByjCCAXECCQDZTATaSX2/6zAJBgcqhkjOPQQBMEUxCzAJBgNVBAYTAkFVMRMw\n"
+    "EQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0\n"
+    "eSBMdGQwHhcNMTQwNDIzMjMyMTU3WhcNMTQwNTIzMjMyMTU3WjBFMQswCQYDVQQG\n"
+    "EwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJuZXQgV2lk\n"
+    "Z2l0cyBQdHkgTHRkMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+\n"
+    "Lx4NlIpM1Zdrt6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7x\n"
+    "lC1Lz3IiwaNQME4wHQYDVR0OBBYEFKuE0qyrlfCCThZ4B1VXX+QmjYLRMB8GA1Ud\n"
+    "IwQYMBaAFKuE0qyrlfCCThZ4B1VXX+QmjYLRMAwGA1UdEwQFMAMBAf8wCQYHKoZI\n"
+    "zj0EAQNIADBFAiEA8qA1XlE6NsOCeZvuJ1CFjnAGdJVX0il0APS+FYddxAcCIHwe\n"
+    "eRRqIYPwenRoeV8UmZpotPHLnhVe5h8yUmFedckU\n"
+    "-----END CERTIFICATE-----\n";
+
+// kV2WithExtensionsPEM is an X.509v2 certificate with extensions.
+static const char kV2WithExtensionsPEM[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBzzCCAXagAwIBAQIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC\n"
+    "QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp\n"
+    "dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ\n"
+    "BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l\n"
+    "dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni\n"
+    "v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa\n"
+    "HPUdfvGULUvPciLBo1AwTjAdBgNVHQ4EFgQUq4TSrKuV8IJOFngHVVdf5CaNgtEw\n"
+    "HwYDVR0jBBgwFoAUq4TSrKuV8IJOFngHVVdf5CaNgtEwDAYDVR0TBAUwAwEB/zAJ\n"
+    "BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E\n"
+    "BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=\n"
+    "-----END CERTIFICATE-----\n";
+
+// kV1WithIssuerUniqueIDPEM is an X.509v1 certificate with an issuerUniqueID.
+static const char kV1WithIssuerUniqueIDPEM[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBgzCCASoCCQDZTATaSX2/6zAJBgcqhkjOPQQBMEUxCzAJBgNVBAYTAkFVMRMw\n"
+    "EQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0\n"
+    "eSBMdGQwHhcNMTQwNDIzMjMyMTU3WhcNMTQwNTIzMjMyMTU3WjBFMQswCQYDVQQG\n"
+    "EwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJuZXQgV2lk\n"
+    "Z2l0cyBQdHkgTHRkMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+\n"
+    "Lx4NlIpM1Zdrt6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7x\n"
+    "lC1Lz3IiwYEJAAEjRWeJq83vMAkGByqGSM49BAEDSAAwRQIhAPKgNV5ROjbDgnmb\n"
+    "7idQhY5wBnSVV9IpdAD0vhWHXcQHAiB8HnkUaiGD8Hp0aHlfFJmaaLTxy54VXuYf\n"
+    "MlJhXnXJFA==\n"
+    "-----END CERTIFICATE-----\n";
+
+// kV1WithSubjectUniqueIDPEM is an X.509v1 certificate with an issuerUniqueID.
+static const char kV1WithSubjectUniqueIDPEM[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBgzCCASoCCQDZTATaSX2/6zAJBgcqhkjOPQQBMEUxCzAJBgNVBAYTAkFVMRMw\n"
+    "EQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0\n"
+    "eSBMdGQwHhcNMTQwNDIzMjMyMTU3WhcNMTQwNTIzMjMyMTU3WjBFMQswCQYDVQQG\n"
+    "EwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJuZXQgV2lk\n"
+    "Z2l0cyBQdHkgTHRkMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+\n"
+    "Lx4NlIpM1Zdrt6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7x\n"
+    "lC1Lz3IiwYIJAAEjRWeJq83vMAkGByqGSM49BAEDSAAwRQIhAPKgNV5ROjbDgnmb\n"
+    "7idQhY5wBnSVV9IpdAD0vhWHXcQHAiB8HnkUaiGD8Hp0aHlfFJmaaLTxy54VXuYf\n"
+    "MlJhXnXJFA==\n"
+    "-----END CERTIFICATE-----\n";
+
+// Test that the X.509 parser enforces versions are valid and match the fields
+// present.
+TEST(X509Test, InvalidVersion) {
+  EXPECT_FALSE(CertFromPEM(kExplicitDefaultVersionPEM));
+  EXPECT_FALSE(CertFromPEM(kNegativeVersionPEM));
+  EXPECT_FALSE(CertFromPEM(kFutureVersionPEM));
+  EXPECT_FALSE(CertFromPEM(kOverflowVersionPEM));
+  EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
+  EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
+  EXPECT_FALSE(CertFromPEM(kV1WithIssuerUniqueIDPEM));
+  EXPECT_FALSE(CertFromPEM(kV1WithSubjectUniqueIDPEM));
+}
