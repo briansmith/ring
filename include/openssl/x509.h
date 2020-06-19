@@ -486,27 +486,94 @@ struct pkcs8_priv_key_info_st {
 extern "C" {
 #endif
 
-#define X509_get_version(x) ASN1_INTEGER_get((x)->cert_info->version)
-// #define	X509_get_serialNumber(x) ((x)->cert_info->serialNumber)
-#define X509_get_notBefore(x) ((x)->cert_info->validity->notBefore)
-#define X509_get_notAfter(x) ((x)->cert_info->validity->notAfter)
-#define X509_get_cert_info(x) ((x)->cert_info)
-#define X509_extract_key(x) X509_get_pubkey(x)  //***
-#define X509_REQ_get_version(x) ASN1_INTEGER_get((x)->req_info->version)
-#define X509_REQ_get_subject_name(x) ((x)->req_info->subject)
+// X509_get_version returns the numerical value of |x509|'s version. That is,
+// it returns zero for X.509v1, one for X.509v2, and two for X.509v3. Unknown
+// versions are rejected by the parser, but a manually-created |X509| object may
+// encode invalid versions. In that case, the function will return the invalid
+// version, or -1 on overflow.
+OPENSSL_EXPORT long X509_get_version(const X509 *x509);
+
+// X509_get_notBefore returns |x509|'s notBefore value. Note this function is
+// not const-correct for legacy reasons. Use |X509_get0_notBefore| or
+// |X509_getm_notBefore| instead.
+OPENSSL_EXPORT ASN1_TIME *X509_get_notBefore(const X509 *x509);
+
+// X509_get_notAfter returns |x509|'s notAfter value. Note this function is not
+// const-correct for legacy reasons. Use |X509_get0_notAfter| or
+// |X509_getm_notAfter| instead.
+OPENSSL_EXPORT ASN1_TIME *X509_get_notAfter(const X509 *x509);
+
+// X509_get_cert_info returns |x509|'s TBSCertificate structure. Note this
+// function is not const-correct for legacy reasons.
+//
+// This function is deprecated and may be removed in the future. It is not
+// present in OpenSSL and constrains some improvements to the library.
+OPENSSL_EXPORT X509_CINF *X509_get_cert_info(const X509 *x509);
+
+// X509_extract_key is a legacy alias to |X509_get_pubkey|. Use
+// |X509_get_pubkey| instead.
+#define X509_extract_key(x) X509_get_pubkey(x)
+
+// X509_REQ_get_version returns the numerical value of |req|'s version. That is,
+// it returns zero for a v1 request. If |req| is invalid, it may return another
+// value, or -1 on overflow.
+OPENSSL_EXPORT long X509_REQ_get_version(const X509_REQ *req);
+
+// X509_REQ_get_subject_name returns |req|'s subject name. Note this function is
+// not const-correct for legacy reasons.
+OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
+
+// X509_REQ_extract_key is a legacy alias for |X509_REQ_get_pubkey|.
 #define X509_REQ_extract_key(a) X509_REQ_get_pubkey(a)
+
+// X509_name_cmp is a legacy alias for |X509_NAME_cmp|.
 #define X509_name_cmp(a, b) X509_NAME_cmp((a), (b))
 
-#define X509_CRL_get_version(x) ASN1_INTEGER_get((x)->crl->version)
-const ASN1_TIME *X509_CRL_get0_lastUpdate(const X509_CRL *crl);
-const ASN1_TIME *X509_CRL_get0_nextUpdate(const X509_CRL *crl);
-#define X509_CRL_get_lastUpdate(x) ((x)->crl->lastUpdate)
-#define X509_CRL_get_nextUpdate(x) ((x)->crl->nextUpdate)
-#define X509_CRL_get_issuer(x) ((x)->crl->issuer)
-#define X509_CRL_get_REVOKED(x) ((x)->crl->revoked)
+// X509_REQ_get_version returns the numerical value of |crl|'s version. That is,
+// it returns zero for a v1 CRL and one for a v2 CRL. If |crl| is invalid, it
+// may return another value, or -1 on overflow.
+OPENSSL_EXPORT long X509_CRL_get_version(const X509_CRL *crl);
 
-#define X509_CINF_set_modified(c) ((c)->enc.modified = 1)
-#define X509_CINF_get_signature(c) ((c)->signature)
+// X509_CRL_get0_lastUpdate returns |crl|'s lastUpdate time.
+OPENSSL_EXPORT const ASN1_TIME *X509_CRL_get0_lastUpdate(const X509_CRL *crl);
+
+// X509_CRL_get0_lastUpdate returns |crl|'s nextUpdate time.
+OPENSSL_EXPORT const ASN1_TIME *X509_CRL_get0_nextUpdate(const X509_CRL *crl);
+
+// X509_CRL_get_lastUpdate returns a mutable pointer to |crl|'s lastUpdate time.
+// Use |X509_CRL_get0_lastUpdate| or |X509_CRL_set_lastUpdate| instead.
+OPENSSL_EXPORT ASN1_TIME *X509_CRL_get_lastUpdate(X509_CRL *crl);
+
+// X509_CRL_get_nextUpdate returns a mutable pointer to |crl|'s nextUpdate time.
+// Use |X509_CRL_get0_nextUpdate| or |X509_CRL_set_nextUpdate| instead.
+OPENSSL_EXPORT ASN1_TIME *X509_CRL_get_nextUpdate(X509_CRL *crl);
+
+// X509_CRL_get_issuer returns |crl|'s issuer name. Note this function is not
+// const-correct for legacy reasons.
+OPENSSL_EXPORT X509_NAME *X509_CRL_get_issuer(const X509_CRL *crl);
+
+// X509_CRL_get_REVOKED returns the list of revoked certificates in |crl|.
+//
+// TOOD(davidben): This function was originally a macro, without clear const
+// semantics. It should take a const input and give const output, but the latter
+// would break existing callers. For now, we match upstream.
+OPENSSL_EXPORT STACK_OF(X509_REVOKED) *X509_CRL_get_REVOKED(X509_CRL *crl);
+
+// X509_CINF_set_modified marks |cinf| as modified so that changes will be
+// reflected in serializing the structure.
+//
+// This function is deprecated and may be removed in the future. It is not
+// present in OpenSSL and constrains some improvements to the library.
+OPENSSL_EXPORT void X509_CINF_set_modified(X509_CINF *cinf);
+
+// X509_CINF_get_signature returns the signature algorithm in |cinf|. Note this
+// isn't the signature itself, but the extra copy of the signature algorithm
+// in the TBSCertificate.
+//
+// This function is deprecated and may be removed in the future. It is not
+// present in OpenSSL and constrains some improvements to the library. Use
+// |X509_get0_tbs_sigalg| instead.
+OPENSSL_EXPORT const X509_ALGOR *X509_CINF_get_signature(const X509_CINF *cinf);
 
 OPENSSL_EXPORT void X509_CRL_set_default_method(const X509_CRL_METHOD *meth);
 OPENSSL_EXPORT X509_CRL_METHOD *X509_CRL_METHOD_new(
@@ -519,10 +586,10 @@ OPENSSL_EXPORT void X509_CRL_METHOD_free(X509_CRL_METHOD *m);
 OPENSSL_EXPORT void X509_CRL_set_meth_data(X509_CRL *crl, void *dat);
 OPENSSL_EXPORT void *X509_CRL_get_meth_data(X509_CRL *crl);
 
-// This one is only used so that a binary form can output, as in
-// i2d_X509_NAME(X509_get_X509_PUBKEY(x),&buf)
-#define X509_get_X509_PUBKEY(x) ((x)->cert_info->key)
-
+// X509_get_X509_PUBKEY returns the public key of |x509|. Note this function is
+// not const-correct for legacy reasons. Callers should not modify the returned
+// object.
+X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 
 OPENSSL_EXPORT const char *X509_verify_cert_error_string(long n);
 
