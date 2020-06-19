@@ -108,10 +108,7 @@ die "can't locate x86_64-xlate.pl";
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 $avx = 2;
-
-# TODO(davidben): Consider enabling the Intel SHA Extensions code once it's
-# been tested.
-$shaext=0;	### set to zero if compiling for 1.0.1
+$shaext=1;	### set to zero if compiling for 1.0.1
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
