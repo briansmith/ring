@@ -142,6 +142,14 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
     return 0;
   }
 
+  /* RSA signature algorithms include an explicit NULL parameter but we also
+   * accept omitted values for compatibility. Other algorithms must omit it. */
+  if (sigalg->parameter != NULL && (pkey_nid != EVP_PKEY_RSA ||
+                                    sigalg->parameter->type != V_ASN1_NULL)) {
+    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PARAMETER);
+    return 0;
+  }
+
   /* Otherwise, initialize with the digest from the OID. */
   const EVP_MD *digest = EVP_get_digestbynid(digest_nid);
   if (digest == NULL) {
