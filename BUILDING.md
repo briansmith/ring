@@ -31,9 +31,13 @@ assembly language modules inherited from BoringSSL (inherited from OpenSSL)
 use Perl as a macro assembly language.
 
 When building from Git for Windows, directories containing nasm.exe and
-perl.exe must be in `%PATH%`, where nasm.exe is [Nasm](https://www.nasm.us/)
-2.14 or later and where perl.exe is recommended to be
+perl.exe must be in `%PATH%`. perl.exe is recommended to be
 [Strawberry Perl](http://strawberryperl.com).
+
+nasm.exe is [Nasm](https://www.nasm.us/) version
+[2.13.03](https://www.nasm.us/pub/nasm/releasebuilds/2.13.03/win64/), which is
+the same used by both
+[BoringSSL and Chromium](https://boringssl.googlesource.com/boringssl/+/HEAD/util/bot/UPDATING#56).
 
 
 Cross Compiling
