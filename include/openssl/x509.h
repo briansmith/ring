@@ -506,8 +506,6 @@ const ASN1_TIME *X509_CRL_get0_nextUpdate(const X509_CRL *crl);
 #define X509_CRL_get_REVOKED(x) ((x)->crl->revoked)
 
 #define X509_CINF_set_modified(c) ((c)->enc.modified = 1)
-#define X509_CINF_get_issuer(c) (&(c)->issuer)
-#define X509_CINF_get_extensions(c) ((c)->extensions)
 #define X509_CINF_get_signature(c) ((c)->signature)
 
 OPENSSL_EXPORT void X509_CRL_set_default_method(const X509_CRL_METHOD *meth);
