@@ -496,8 +496,6 @@ extern "C" {
 #define X509_REQ_get_subject_name(x) ((x)->req_info->subject)
 #define X509_REQ_extract_key(a) X509_REQ_get_pubkey(a)
 #define X509_name_cmp(a, b) X509_NAME_cmp((a), (b))
-#define X509_get_signature_type(x) \
-  EVP_PKEY_type(OBJ_obj2nid((x)->sig_alg->algorithm))
 
 #define X509_CRL_get_version(x) ASN1_INTEGER_get((x)->crl->version)
 const ASN1_TIME *X509_CRL_get0_lastUpdate(const X509_CRL *crl);
