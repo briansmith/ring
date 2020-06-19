@@ -296,7 +296,7 @@ static int do_hex_dump(char_io *io_ch, void *arg, unsigned char *buf,
  */
 
 static int do_dump(unsigned long lflags, char_io *io_ch, void *arg,
-                   ASN1_STRING *str)
+                   const ASN1_STRING *str)
 {
     /*
      * Placing the ASN1_STRING in a temp ASN1_TYPE allows the DER encoding to
@@ -354,7 +354,7 @@ static const signed char tag2nbyte[] = {
  */
 
 static int do_print_ex(char_io *io_ch, void *arg, unsigned long lflags,
-                       ASN1_STRING *str)
+                       const ASN1_STRING *str)
 {
     int outlen, len;
     int type;
@@ -610,13 +610,13 @@ int X509_NAME_print_ex_fp(FILE *fp, X509_NAME *nm, int indent,
 }
 #endif
 
-int ASN1_STRING_print_ex(BIO *out, ASN1_STRING *str, unsigned long flags)
+int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long flags)
 {
     return do_print_ex(send_bio_chars, out, flags, str);
 }
 
 #ifndef OPENSSL_NO_FP_API
-int ASN1_STRING_print_ex_fp(FILE *fp, ASN1_STRING *str, unsigned long flags)
+int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str, unsigned long flags)
 {
     return do_print_ex(send_fp_chars, fp, flags, str);
 }
