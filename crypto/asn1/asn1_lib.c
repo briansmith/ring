@@ -251,6 +251,8 @@ void ASN1_put_object(unsigned char **pp, int constructed, int length, int tag,
 
 int ASN1_put_eoc(unsigned char **pp)
 {
+    /* This function is no longer used in the library, but some external code
+     * uses it. */
     unsigned char *p = *pp;
     *p++ = 0;
     *p++ = 0;

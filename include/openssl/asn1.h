@@ -280,9 +280,6 @@ typedef struct ASN1_VALUE_st ASN1_VALUE;
 	OPENSSL_EXPORT int i2d_##name(const type *a, unsigned char **out); \
 	DECLARE_ASN1_ITEM(name)
 
-#define	DECLARE_ASN1_NDEF_FUNCTION(name) \
-	OPENSSL_EXPORT int i2d_##name##_NDEF(name *a, unsigned char **out);
-
 #define DECLARE_ASN1_FUNCTIONS_const(name) \
 	DECLARE_ASN1_ALLOC_FUNCTIONS(name) \
 	DECLARE_ASN1_ENCODE_FUNCTIONS_const(name, name)
@@ -707,8 +704,6 @@ DECLARE_ASN1_FUNCTIONS(ASN1_UTCTIME)
 DECLARE_ASN1_FUNCTIONS(ASN1_GENERALIZEDTIME)
 DECLARE_ASN1_FUNCTIONS(ASN1_TIME)
 
-DECLARE_ASN1_ITEM(ASN1_OCTET_STRING_NDEF)
-
 OPENSSL_EXPORT ASN1_TIME *ASN1_TIME_set(ASN1_TIME *s,time_t t);
 OPENSSL_EXPORT ASN1_TIME *ASN1_TIME_adj(ASN1_TIME *s,time_t t, int offset_day, long offset_sec);
 OPENSSL_EXPORT int ASN1_TIME_check(const ASN1_TIME *t);
@@ -789,7 +784,6 @@ OPENSSL_EXPORT ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it);
 OPENSSL_EXPORT void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it);
 OPENSSL_EXPORT ASN1_VALUE * ASN1_item_d2i(ASN1_VALUE **val, const unsigned char **in, long len, const ASN1_ITEM *it);
 OPENSSL_EXPORT int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it);
-OPENSSL_EXPORT int ASN1_item_ndef_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it);
 
 OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_nconf(const char *str, CONF *nconf);
 OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);

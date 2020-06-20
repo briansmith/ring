@@ -307,7 +307,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         *in = p;
         return 1;
 
-    case ASN1_ITYPE_NDEF_SEQUENCE:
     case ASN1_ITYPE_SEQUENCE:
         p = *in;
 
