@@ -606,23 +606,6 @@ typedef struct ASN1_AUX_st {
 	int enc_offset;		/* Offset of ASN1_ENCODING structure */
 } ASN1_AUX;
 
-/* For print related callbacks exarg points to this structure */
-typedef struct ASN1_PRINT_ARG_st {
-	BIO *out;
-	int indent;
-	const ASN1_PCTX *pctx;
-} ASN1_PRINT_ARG;
-
-/* For streaming related callbacks exarg points to this structure */
-typedef struct ASN1_STREAM_ARG_st {
-	/* BIO to stream through */
-	BIO *out;
-	/* BIO with filters appended */
-	BIO *ndef_bio;
-	/* Streaming I/O boundary */
-	unsigned char **boundary;
-} ASN1_STREAM_ARG;
-
 /* Flags in ASN1_AUX */
 
 /* Use a reference count */
