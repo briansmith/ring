@@ -174,7 +174,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
     unsigned char *wp = NULL;   /* BIG FAT WARNING! BREAKS CONST WHERE USED */
     unsigned char imphack = 0, oclass;
     char seq_eoc, seq_nolen, cst, isopt;
-    long tmplen;
     int i;
     int otag;
     int ret = 0;
@@ -373,7 +372,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
     case ASN1_ITYPE_NDEF_SEQUENCE:
     case ASN1_ITYPE_SEQUENCE:
         p = *in;
-        tmplen = len;
 
         /* If no IMPLICIT tagging set to SEQUENCE, UNIVERSAL */
         if (tag == -1) {
@@ -388,13 +386,8 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
             goto err;
         } else if (ret == -1)
             return -1;
-        if (aux && (aux->flags & ASN1_AFLG_BROKEN)) {
-            len = tmplen - (p - *in);
-            seq_nolen = 1;
-        }
         /* If indefinite we don't do a length check */
-        else
-            seq_nolen = seq_eoc;
+        seq_nolen = seq_eoc;
         if (!cst) {
             OPENSSL_PUT_ERROR(ASN1, ASN1_R_SEQUENCE_NOT_CONSTRUCTED);
             goto err;
