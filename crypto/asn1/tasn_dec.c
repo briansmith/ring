@@ -797,12 +797,12 @@ int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
     ASN1_STRING *stmp;
     ASN1_TYPE *typ = NULL;
     int ret = 0;
-    const ASN1_PRIMITIVE_FUNCS *pf;
     ASN1_INTEGER **tint;
-    pf = it->funcs;
 
-    if (pf && pf->prim_c2i)
-        return pf->prim_c2i(pval, cont, len, utype, free_cont, it);
+    /* Historically, |it->funcs| for primitive types contained an
+     * |ASN1_PRIMITIVE_FUNCS| table of callbacks. */
+    assert(it->funcs == NULL);
+
     /* If ANY type clear type and set pointer to internal value */
     if (it->utype == V_ASN1_ANY) {
         if (!*pval) {

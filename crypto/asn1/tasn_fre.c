@@ -56,6 +56,8 @@
 
 #include <openssl/asn1.h>
 
+#include <assert.h>
+
 #include <openssl/asn1t.h>
 #include <openssl/mem.h>
 
@@ -182,14 +184,9 @@ void ASN1_template_free(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt)
 void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it)
 {
     int utype;
-    if (it) {
-        const ASN1_PRIMITIVE_FUNCS *pf;
-        pf = it->funcs;
-        if (pf && pf->prim_free) {
-            pf->prim_free(pval, it);
-            return;
-        }
-    }
+    /* Historically, |it->funcs| for primitive types contained an
+     * |ASN1_PRIMITIVE_FUNCS| table of calbacks. */
+    assert(it == NULL || it->funcs == NULL);
     /* Special case: if 'it' is NULL free contents of ASN1_TYPE */
     if (!it) {
         ASN1_TYPE *typ = (ASN1_TYPE *)*pval;

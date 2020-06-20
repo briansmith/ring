@@ -496,10 +496,10 @@ int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
     const unsigned char *cont;
     unsigned char c;
     int len;
-    const ASN1_PRIMITIVE_FUNCS *pf;
-    pf = it->funcs;
-    if (pf && pf->prim_i2c)
-        return pf->prim_i2c(pval, cout, putype, it);
+
+    /* Historically, |it->funcs| for primitive types contained an
+     * |ASN1_PRIMITIVE_FUNCS| table of callbacks. */
+    assert(it->funcs == NULL);
 
     /* Should type be omitted? */
     if ((it->itype != ASN1_ITYPE_PRIMITIVE)

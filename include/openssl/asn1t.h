@@ -552,10 +552,6 @@ typedef int ASN1_ex_print_func(BIO *out, ASN1_VALUE **pval,
 						int indent, const char *fname, 
 						const ASN1_PCTX *pctx);
 
-typedef int ASN1_primitive_i2c(ASN1_VALUE **pval, unsigned char *cont, int *putype, const ASN1_ITEM *it);
-typedef int ASN1_primitive_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len, int utype, char *free_cont, const ASN1_ITEM *it);
-typedef int ASN1_primitive_print(BIO *out, ASN1_VALUE **pval, const ASN1_ITEM *it, int indent, const ASN1_PCTX *pctx);
-
 typedef struct ASN1_EXTERN_FUNCS_st {
 	void *app_data;
 	ASN1_ex_new_func *asn1_ex_new;
@@ -566,17 +562,6 @@ typedef struct ASN1_EXTERN_FUNCS_st {
 	/* asn1_ex_print is unused. */
 	ASN1_ex_print_func *asn1_ex_print;
 } ASN1_EXTERN_FUNCS;
-
-typedef struct ASN1_PRIMITIVE_FUNCS_st {
-	void *app_data;
-	unsigned long flags;
-	ASN1_ex_new_func *prim_new;
-	ASN1_ex_free_func *prim_free;
-	ASN1_ex_free_func *prim_clear;
-	ASN1_primitive_c2i *prim_c2i;
-	ASN1_primitive_i2c *prim_i2c;
-	ASN1_primitive_print *prim_print;
-} ASN1_PRIMITIVE_FUNCS;
 
 /* This is the ASN1_AUX structure: it handles various
  * miscellaneous requirements. For example the use of
