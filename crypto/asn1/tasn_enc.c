@@ -63,10 +63,13 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "asn1_locl.h"
 
 
 static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
                                  const ASN1_ITEM *it, int tag, int aclass);
+static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cont, int *putype,
+                       const ASN1_ITEM *it);
 static int asn1_set_seq_out(STACK_OF(ASN1_VALUE) *sk, unsigned char **out,
                             int skcontlen, const ASN1_ITEM *item,
                             int do_sort, int iclass);
@@ -486,8 +489,8 @@ static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
 
 /* Produce content octets from a structure */
 
-int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
-                const ASN1_ITEM *it)
+static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
+                       const ASN1_ITEM *it)
 {
     ASN1_BOOLEAN *tbool = NULL;
     ASN1_STRING *strtmp;

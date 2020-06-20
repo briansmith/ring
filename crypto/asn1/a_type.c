@@ -61,6 +61,9 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
+#include "asn1_locl.h"
+
+
 int ASN1_TYPE_get(const ASN1_TYPE *a)
 {
     if ((a->value.ptr != NULL) || (a->type == V_ASN1_NULL))

@@ -65,6 +65,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "asn1_locl.h"
 
 /*
  * Constructed types with a recursive definition (such as can be found in PKCS7)
@@ -95,6 +96,8 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val,
                                    const unsigned char **in, long len,
                                    const ASN1_TEMPLATE *tt, char opt,
                                    ASN1_TLC *ctx, int depth);
+static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
+                       int utype, char *free_cont, const ASN1_ITEM *it);
 static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
                                  const unsigned char **in, long len,
                                  const ASN1_ITEM *it,
@@ -790,8 +793,8 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
 
 /* Translate ASN1 content octets into a structure */
 
-int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
-                int utype, char *free_cont, const ASN1_ITEM *it)
+static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
+                       int utype, char *free_cont, const ASN1_ITEM *it)
 {
     ASN1_VALUE **opval = NULL;
     ASN1_STRING *stmp;

@@ -719,38 +719,6 @@ DECLARE_ASN1_ITEM(ASN1_SEQUENCE)
 
 DEFINE_STACK_OF(ASN1_VALUE)
 
-/* Functions used internally by the ASN1 code */
-
-int ASN1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it);
-void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
-int ASN1_template_new(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
-int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it);
-
-void ASN1_template_free(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
-int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len, const ASN1_ITEM *it,
-				int tag, int aclass, char opt, ASN1_TLC *ctx);
-
-int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out, const ASN1_ITEM *it, int tag, int aclass);
-void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
-
-int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cont, int *putype, const ASN1_ITEM *it);
-int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len, int utype, char *free_cont, const ASN1_ITEM *it);
-
-int asn1_get_choice_selector(ASN1_VALUE **pval, const ASN1_ITEM *it);
-int asn1_set_choice_selector(ASN1_VALUE **pval, int value, const ASN1_ITEM *it);
-
-ASN1_VALUE ** asn1_get_field_ptr(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
-
-const ASN1_TEMPLATE *asn1_do_adb(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt, int nullerr);
-
-void asn1_refcount_set_one(ASN1_VALUE **pval, const ASN1_ITEM *it);
-int asn1_refcount_dec_and_test_zero(ASN1_VALUE **pval, const ASN1_ITEM *it);
-
-void asn1_enc_init(ASN1_VALUE **pval, const ASN1_ITEM *it);
-void asn1_enc_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
-int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval, const ASN1_ITEM *it);
-int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen, const ASN1_ITEM *it);
-
 #ifdef  __cplusplus
 }
 #endif

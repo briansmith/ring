@@ -66,6 +66,7 @@
 #include <openssl/thread.h>
 
 #include "../internal.h"
+#include "asn1_locl.h"
 
 
 /* Utility functions for manipulating fields and offsets */
