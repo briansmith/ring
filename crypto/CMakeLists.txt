@@ -415,12 +415,10 @@ add_library(
   x509v3/v3_pci.c
   x509v3/v3_pcia.c
   x509v3/v3_pcons.c
-  x509v3/v3_pku.c
   x509v3/v3_pmaps.c
   x509v3/v3_prn.c
   x509v3/v3_purp.c
   x509v3/v3_skey.c
-  x509v3/v3_sxnet.c
   x509v3/v3_utl.c
 
   $<TARGET_OBJECTS:fipsmodule>

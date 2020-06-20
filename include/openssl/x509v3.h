@@ -162,11 +162,6 @@ ASN1_INTEGER *pathlen;
 };
 
 
-typedef struct PKEY_USAGE_PERIOD_st {
-ASN1_GENERALIZEDTIME *notBefore;
-ASN1_GENERALIZEDTIME *notAfter;
-} PKEY_USAGE_PERIOD;
-
 typedef struct otherName_st {
 ASN1_OBJECT *type_id;
 ASN1_TYPE *value;
@@ -271,21 +266,6 @@ ASN1_OCTET_STRING *keyid;
 GENERAL_NAMES *issuer;
 ASN1_INTEGER *serial;
 };
-
-/* Strong extranet structures */
-
-typedef struct SXNET_ID_st {
-	ASN1_INTEGER *zone;
-	ASN1_OCTET_STRING *user;
-} SXNETID;
-
-DEFINE_STACK_OF(SXNETID)
-DECLARE_ASN1_SET_OF(SXNETID)
-
-typedef struct SXNET_st {
-	ASN1_INTEGER *version;
-	STACK_OF(SXNETID) *ids;
-} SXNET;
 
 typedef struct NOTICEREF_st {
 	ASN1_STRING *organization;
@@ -517,20 +497,7 @@ DEFINE_STACK_OF(X509_PURPOSE)
 
 DECLARE_ASN1_FUNCTIONS(BASIC_CONSTRAINTS)
 
-DECLARE_ASN1_FUNCTIONS(SXNET)
-DECLARE_ASN1_FUNCTIONS(SXNETID)
-
-int SXNET_add_id_asc(SXNET **psx, char *zone, char *user, int userlen); 
-int SXNET_add_id_ulong(SXNET **psx, unsigned long lzone, char *user, int userlen); 
-int SXNET_add_id_INTEGER(SXNET **psx, ASN1_INTEGER *izone, char *user, int userlen); 
-
-ASN1_OCTET_STRING *SXNET_get_id_asc(SXNET *sx, char *zone);
-ASN1_OCTET_STRING *SXNET_get_id_ulong(SXNET *sx, unsigned long lzone);
-ASN1_OCTET_STRING *SXNET_get_id_INTEGER(SXNET *sx, ASN1_INTEGER *zone);
-
 DECLARE_ASN1_FUNCTIONS(AUTHORITY_KEYID)
-
-DECLARE_ASN1_FUNCTIONS(PKEY_USAGE_PERIOD)
 
 DECLARE_ASN1_FUNCTIONS(GENERAL_NAME)
 OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *a);
