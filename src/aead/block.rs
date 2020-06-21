@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::{endian::*, polyfill, polyfill::convert::*};
+use core::convert::TryInto;
 
 /// An array of 16 bytes that can (in the x86_64 and AAarch64 ABIs, at least)
 /// be efficiently passed by value and returned by value (i.e. in registers),
@@ -78,14 +79,36 @@ impl Block {
 impl From<&'_ [u8; BLOCK_LEN]> for Block {
     #[inline]
     fn from(bytes: &[u8; BLOCK_LEN]) -> Self {
-        unsafe { core::mem::transmute_copy(bytes) }
+        Self {
+            subblocks: [
+                // unwrap use is safe, only errors on length mismatch
+                // lengths are guaranteed to match here, see array::TryFrom docs
+                u64::from_be_bytes(bytes[..8].try_into().unwrap()),
+                u64::from_be_bytes(bytes[8..].try_into().unwrap()),
+            ],
+        }
     }
 }
 
 impl From_<&'_ [u8; 2 * BLOCK_LEN]> for [Block; 2] {
     #[inline]
     fn from_(bytes: &[u8; 2 * BLOCK_LEN]) -> Self {
-        unsafe { core::mem::transmute_copy(bytes) }
+        [
+            Block {
+                subblocks: [
+                    // unwrap use is safe, only errors on length mismatch
+                    // lengths are guaranteed to match here, see array::TryFrom docs
+                    u64::from_le_bytes(bytes[..8].try_into().unwrap()),
+                    u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+                ],
+            },
+            Block {
+                subblocks: [
+                    u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
+                    u64::from_le_bytes(bytes[24..].try_into().unwrap()),
+                ],
+            },
+        ]
     }
 }
 
