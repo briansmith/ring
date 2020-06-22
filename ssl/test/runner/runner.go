@@ -53,13 +53,14 @@ var (
 	useValgrind              = flag.Bool("valgrind", false, "If true, run code under valgrind")
 	useGDB                   = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useLLDB                  = flag.Bool("lldb", false, "If true, run BoringSSL code under lldb")
+	waitForDebugger          = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
 	flagDebug                = flag.Bool("debug", false, "Hexdump the contents of the connection")
 	mallocTest               = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
 	mallocTestDebug          = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 	jsonOutput               = flag.String("json-output", "", "The file to output JSON results to.")
 	pipe                     = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
 	testToRun                = flag.String("test", "", "The pattern to filter tests to run, or empty to run all tests")
-	numWorkers               = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
+	numWorkersFlag           = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
 	shimPath                 = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
 	handshakerPath           = flag.String("handshaker-path", "../../../build/ssl/test/handshaker", "The location of the handshaker binary.")
 	resourceDir              = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
@@ -247,6 +248,10 @@ func initCertificates() {
 
 	garbageCertificate.Certificate = [][]byte{[]byte("GARBAGE")}
 	garbageCertificate.PrivateKey = rsaCertificate.PrivateKey
+}
+
+func useDebugger() bool {
+	return *useGDB || *useLLDB || *waitForDebugger
 }
 
 // delegatedCredentialConfig specifies the shape of a delegated credential, not
@@ -725,7 +730,9 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		config.Time = func() time.Time { return time.Unix(1234, 1234) }
 	}
 
-	conn = &timeoutConn{conn, *idleTimeout}
+	if !useDebugger() {
+		conn = &timeoutConn{conn, *idleTimeout}
+	}
 
 	if test.protocol == dtls {
 		config.Bugs.PacketAdaptor = newPacketAdaptor(conn)
@@ -1168,7 +1175,7 @@ func acceptOrWait(listener *net.TCPListener, waitChan chan error) (net.Conn, err
 	}
 	connChan := make(chan connOrError, 1)
 	go func() {
-		if !*useGDB {
+		if !useDebugger() {
 			listener.SetDeadline(time.Now().Add(*idleTimeout))
 		}
 		conn, err := listener.Accept()
@@ -1196,7 +1203,7 @@ func translateExpectedError(errorStr string) string {
 	return errorStr
 }
 
-func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
+func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocNumToFail int64) error {
 	// Help debugging panics on the Go side.
 	defer func() {
 		if r := recover(); r != nil {
@@ -1324,6 +1331,10 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	flags = append(flags, "-handshaker-path", *handshakerPath)
 
+	if *waitForDebugger {
+		flags = append(flags, "-wait-for-debugger")
+	}
+
 	var transcriptPrefix string
 	var transcripts [][]byte
 	if len(*transcriptDir) != 0 {
@@ -1375,6 +1386,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	if err := shim.Start(); err != nil {
 		panic(err)
 	}
+	statusChan <- statusMsg{test: test, statusType: statusShimStarted, pid: shim.Process.Pid}
 	waitChan := make(chan error, 1)
 	go func() { waitChan <- shim.Wait() }()
 
@@ -1417,7 +1429,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	listener = nil
 
 	var childErr error
-	if *useGDB {
+	if !useDebugger() {
 		childErr = <-waitChan
 	} else {
 		waitTimeout := time.AfterFunc(*idleTimeout, func() {
@@ -15548,8 +15560,8 @@ func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sy
 
 		if *mallocTest >= 0 {
 			for mallocNumToFail := int64(*mallocTest); ; mallocNumToFail++ {
-				statusChan <- statusMsg{test: test, started: true}
-				if err = runTest(test, shimPath, mallocNumToFail); err != errMoreMallocs {
+				statusChan <- statusMsg{test: test, statusType: statusStarted}
+				if err = runTest(statusChan, test, shimPath, mallocNumToFail); err != errMoreMallocs {
 					if err != nil {
 						fmt.Printf("\n\nmalloc test failed at %d: %s\n", mallocNumToFail, err)
 					}
@@ -15558,21 +15570,30 @@ func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sy
 			}
 		} else if *repeatUntilFailure {
 			for err == nil {
-				statusChan <- statusMsg{test: test, started: true}
-				err = runTest(test, shimPath, -1)
+				statusChan <- statusMsg{test: test, statusType: statusStarted}
+				err = runTest(statusChan, test, shimPath, -1)
 			}
 		} else {
-			statusChan <- statusMsg{test: test, started: true}
-			err = runTest(test, shimPath, -1)
+			statusChan <- statusMsg{test: test, statusType: statusStarted}
+			err = runTest(statusChan, test, shimPath, -1)
 		}
-		statusChan <- statusMsg{test: test, err: err}
+		statusChan <- statusMsg{test: test, statusType: statusDone, err: err}
 	}
 }
 
+type statusType int
+
+const (
+	statusStarted statusType = iota
+	statusShimStarted
+	statusDone
+)
+
 type statusMsg struct {
-	test    *testCase
-	started bool
-	err     error
+	test       *testCase
+	statusType statusType
+	pid        int
+	err        error
 }
 
 func statusPrinter(doneChan chan *testresult.Results, statusChan chan statusMsg, total int) {
@@ -15589,9 +15610,9 @@ func statusPrinter(doneChan chan *testresult.Results, statusChan chan statusMsg,
 			fmt.Print(erase)
 		}
 
-		if msg.started {
+		if msg.statusType == statusStarted {
 			started++
-		} else {
+		} else if msg.statusType == statusDone {
 			done++
 
 			if msg.err != nil {
@@ -15623,6 +15644,11 @@ func statusPrinter(doneChan chan *testresult.Results, statusChan chan statusMsg,
 		if !*pipe {
 			// Print a new status line.
 			line := fmt.Sprintf("%d/%d/%d/%d/%d", failed, unimplemented, done, started, total)
+			if msg.statusType == statusShimStarted && *waitForDebugger {
+				// Note -wait-for-debugger limits the test to one worker,
+				// otherwise some output would be skipped.
+				line += fmt.Sprintf(" (%s: attach to process %d to continue)", msg.test.name, msg.pid)
+			}
 			lineLen = len(line)
 			os.Stdout.WriteString(line)
 		}
@@ -15683,8 +15709,13 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	statusChan := make(chan statusMsg, *numWorkers)
-	testChan := make(chan *testCase, *numWorkers)
+	numWorkers := *numWorkersFlag
+	if useDebugger() {
+		numWorkers = 1
+	}
+
+	statusChan := make(chan statusMsg, numWorkers)
+	testChan := make(chan *testCase, numWorkers)
 	doneChan := make(chan *testresult.Results)
 
 	if len(*shimConfigFile) != 0 {
@@ -15702,7 +15733,7 @@ func main() {
 
 	go statusPrinter(doneChan, statusChan, len(testCases))
 
-	for i := 0; i < *numWorkers; i++ {
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go worker(statusChan, testChan, *shimPath, &wg)
 	}

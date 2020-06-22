@@ -1198,6 +1198,16 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+  if (initial_config.wait_for_debugger) {
+#if defined(OPENSSL_WINDOWS)
+    fprintf(stderr, "-wait-for-debugger is not supported on Windows.\n");
+    return 1;
+#else
+    // The debugger will resume the process.
+    raise(SIGSTOP);
+#endif
+  }
+
   bssl::UniquePtr<SSL_CTX> ssl_ctx;
 
   bssl::UniquePtr<SSL_SESSION> session;

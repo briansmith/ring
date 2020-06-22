@@ -152,6 +152,7 @@ const Flag<bool> kBoolFlags[] = {
      &TestConfig::expect_delegated_credential_used},
     {"-expect-hrr", &TestConfig::expect_hrr},
     {"-expect-no-hrr", &TestConfig::expect_no_hrr},
+    {"-wait-for-debugger", &TestConfig::wait_for_debugger},
 };
 
 const Flag<std::string> kStringFlags[] = {
