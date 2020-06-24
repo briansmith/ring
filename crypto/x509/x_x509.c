@@ -98,7 +98,6 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
     switch (operation) {
 
     case ASN1_OP_NEW_POST:
-        ret->name = NULL;
         ret->ex_flags = 0;
         ret->ex_pathlen = -1;
         ret->skid = NULL;
@@ -140,10 +139,6 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
             return 0;
         }
 
-        /* TODO(davidben): Remove this field once the few external accesses are
-         * removed. */
-        OPENSSL_free(ret->name);
-        ret->name = X509_NAME_oneline(ret->cert_info->subject, NULL, 0);
         break;
     }
 
@@ -158,7 +153,6 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
         GENERAL_NAMES_free(ret->altname);
         NAME_CONSTRAINTS_free(ret->nc);
         CRYPTO_BUFFER_free(ret->buf);
-        OPENSSL_free(ret->name);
         break;
 
     }
