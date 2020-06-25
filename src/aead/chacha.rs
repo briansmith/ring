@@ -17,17 +17,19 @@ use super::{
     nonce::{self, Iv},
     Block, BLOCK_LEN,
 };
-use crate::{c, endian::*, polyfill::convert::*};
+use crate::{c, endian::*};
 
 #[repr(C)]
-pub struct Key([Block; KEY_BLOCKS]);
+pub struct Key([u8; KEY_LEN]);
+
+impl From<[u8; KEY_LEN]> for Key {
+    #[inline]
+    fn from(value: [u8; KEY_LEN]) -> Self {
+        Self(value)
+    }
+}
 
 impl Key {
-    #[inline]
-    pub fn from(value: &[u8; KEY_LEN]) -> Self {
-        Self(<[Block; KEY_BLOCKS]>::from_(value))
-    }
-
     #[inline] // Optimize away match on `counter`.
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
         unsafe {
@@ -158,7 +160,7 @@ mod tests {
 
             let key = test_case.consume_bytes("Key");
             let key: &[u8; KEY_LEN] = key.as_slice().try_into()?;
-            let key = Key::from(key);
+            let key = Key::from(*key);
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce = test_case.consume_bytes("Nonce");

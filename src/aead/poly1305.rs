@@ -19,14 +19,18 @@ use super::{
     block::{Block, BLOCK_LEN},
     Tag,
 };
-use crate::{bssl, c, error, polyfill::convert::From_ as _};
+use core::convert::TryInto;
+use crate::{bssl, c, error};
 
 /// A Poly1305 key.
-pub struct Key([Block; 2]);
+pub struct Key([u8; KEY_LEN]);
 
-impl From<[u8; 2 * BLOCK_LEN]> for Key {
-    fn from(value: [u8; 2 * BLOCK_LEN]) -> Self {
-        Self(<[Block; 2]>::from_(&value))
+const KEY_LEN: usize = 2 * BLOCK_LEN;
+
+impl From<[u8; KEY_LEN]> for Key {
+    #[inline]
+    fn from(value: [u8; KEY_LEN]) -> Self {
+        Self(value)
     }
 }
 
@@ -54,8 +58,12 @@ impl Context {
             fn GFp_poly1305_emit(state: &mut Opaque, tag: &mut Tag, nonce: &Nonce);
         }
 
-        let key = DerivedKey(key_and_nonce[0].clone());
-        let nonce = Nonce(key_and_nonce[1].clone());
+        let (key, nonce) = key_and_nonce.split_at(BLOCK_LEN);
+        let key: [u8; BLOCK_LEN] = key.try_into().unwrap();
+        let nonce: [u8; BLOCK_LEN] = nonce.try_into().unwrap();
+
+        let key = DerivedKey(key);
+        let nonce = Nonce(nonce);
 
         let mut ctx = Self {
             opaque: Opaque([0u8; OPAQUE_LEN]),
@@ -111,11 +119,11 @@ pub fn check_state_layout() {
 }
 
 #[repr(C)]
-struct DerivedKey(Block);
+struct DerivedKey([u8; BLOCK_LEN]);
 
 /// This is *not* an "AEAD nonce"; it's a Poly1305-specific nonce.
 #[repr(C)]
-struct Nonce(Block);
+struct Nonce([u8; BLOCK_LEN]);
 
 #[repr(C)]
 struct Funcs {

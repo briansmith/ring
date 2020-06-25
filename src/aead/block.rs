@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{endian::*, polyfill, polyfill::convert::*};
+use crate::{endian::*, polyfill};
 
 /// An array of 16 bytes that can (in the x86_64 and AAarch64 ABIs, at least)
 /// be efficiently passed by value and returned by value (i.e. in registers),
@@ -78,13 +78,6 @@ impl Block {
 impl From<&'_ [u8; BLOCK_LEN]> for Block {
     #[inline]
     fn from(bytes: &[u8; BLOCK_LEN]) -> Self {
-        unsafe { core::mem::transmute_copy(bytes) }
-    }
-}
-
-impl From_<&'_ [u8; 2 * BLOCK_LEN]> for [Block; 2] {
-    #[inline]
-    fn from_(bytes: &[u8; 2 * BLOCK_LEN]) -> Self {
         unsafe { core::mem::transmute_copy(bytes) }
     }
 }
