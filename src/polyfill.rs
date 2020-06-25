@@ -15,9 +15,6 @@
 //! Polyfills for functionality that will (hopefully) be added to Rust's
 //! standard library soon.
 
-#[macro_use]
-pub mod convert;
-
 #[inline(always)]
 pub const fn u64_from_usize(x: usize) -> u64 {
     x as u64

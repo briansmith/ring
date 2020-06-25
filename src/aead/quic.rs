@@ -170,7 +170,7 @@ pub static CHACHA20: Algorithm = Algorithm {
 };
 
 fn chacha20_init(key: &[u8], _todo: cpu::Features) -> Result<KeyInner, error::Unspecified> {
-    let chacha20_key: &[u8; chacha::KEY_LEN] = key.try_into()?;
+    let chacha20_key: [u8; chacha::KEY_LEN] = key.try_into()?;
     Ok(KeyInner::ChaCha20(chacha::Key::from(chacha20_key)))
 }
 

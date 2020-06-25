@@ -39,7 +39,7 @@ fn chacha20_poly1305_init(
     key: &[u8],
     _todo: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
-    let key: &[u8; chacha::KEY_LEN] = key.try_into()?;
+    let key: [u8; chacha::KEY_LEN] = key.try_into()?;
     Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::from(key)))
 }
 

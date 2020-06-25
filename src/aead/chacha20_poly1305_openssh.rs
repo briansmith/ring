@@ -149,12 +149,14 @@ struct Key {
 }
 
 impl Key {
-    pub fn new(key_material: &[u8; KEY_LEN]) -> Key {
+    fn new(key_material: &[u8; KEY_LEN]) -> Key {
         // The first half becomes K_2 and the second half becomes K_1.
         let (k_2, k_1) = key_material.split_at(chacha::KEY_LEN);
+        let k_1: [u8; chacha::KEY_LEN] = k_1.try_into().unwrap();
+        let k_2: [u8; chacha::KEY_LEN] = k_2.try_into().unwrap();
         Key {
-            k_1: chacha::Key::from(k_1.try_into().unwrap()),
-            k_2: chacha::Key::from(k_2.try_into().unwrap()),
+            k_1: chacha::Key::from(k_1),
+            k_2: chacha::Key::from(k_2),
         }
     }
 }
