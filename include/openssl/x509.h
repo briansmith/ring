@@ -589,7 +589,7 @@ OPENSSL_EXPORT void *X509_CRL_get_meth_data(X509_CRL *crl);
 // X509_get_X509_PUBKEY returns the public key of |x509|. Note this function is
 // not const-correct for legacy reasons. Callers should not modify the returned
 // object.
-X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
+OPENSSL_EXPORT X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 
 OPENSSL_EXPORT const char *X509_verify_cert_error_string(long n);
 
