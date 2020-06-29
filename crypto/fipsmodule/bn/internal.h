@@ -404,9 +404,19 @@ uint64_t bn_mont_n0(const BIGNUM *n);
 int bn_mod_exp_base_2_consttime(BIGNUM *r, unsigned p, const BIGNUM *n,
                                 BN_CTX *ctx);
 
-#if defined(OPENSSL_X86_64) && defined(_MSC_VER)
+#if defined(_MSC_VER)
+#if defined(OPENSSL_X86_64)
 #define BN_UMULT_LOHI(low, high, a, b) ((low) = _umul128((a), (b), &(high)))
+#elif defined(OPENSSL_AARCH64)
+#define BN_UMULT_LOHI(low, high, a, b) \
+  do {                                 \
+    const BN_ULONG _a = (a);           \
+    const BN_ULONG _b = (b);           \
+    (low) = _a * _b;                   \
+    (high) = __umulh(_a, _b);          \
+  } while (0)
 #endif
+#endif  // _MSC_VER
 
 #if !defined(BN_ULLONG) && !defined(BN_UMULT_LOHI)
 #error "Either BN_ULLONG or BN_UMULT_LOHI must be defined on every platform."
