@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::block::{Block, BLOCK_LEN};
+use super::block::BLOCK_LEN;
 
 #[cfg(target_arch = "x86")]
 pub fn shift_full_blocks<F>(in_out: &mut [u8], in_prefix_len: usize, mut transform: F)
@@ -36,7 +36,7 @@ where
 
 pub fn shift_partial<F>((in_prefix_len, in_out): (usize, &mut [u8]), transform: F)
 where
-    F: FnOnce(&[u8]) -> Block,
+    F: FnOnce(&[u8]) -> [u8; BLOCK_LEN],
 {
     let (block, in_out_len) = {
         let input = &in_out[in_prefix_len..];

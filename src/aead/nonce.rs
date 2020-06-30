@@ -23,8 +23,11 @@
 //! 3. For each block encrypted, increment the counter. Each time the counter
 //!    is incremented, the current value is returned.
 
-use super::Block;
-use crate::{endian::*, error};
+use crate::{
+    aead::{Overwrite, BLOCK_LEN},
+    endian::*,
+    error,
+};
 use core::convert::TryInto;
 use core::marker::PhantomData;
 
@@ -72,7 +75,7 @@ pub union Counter<U32: Layout<u32>>
 where
     u32: From<U32>,
 {
-    block: Block,
+    block: [u8; BLOCK_LEN],
     u32s: [U32; 4],
     encoding: PhantomData<U32>,
 }
@@ -99,7 +102,7 @@ where
 
     fn new(Nonce(nonce): Nonce, initial_counter: u32) -> Self {
         let mut r = Self {
-            block: Block::zero(),
+            block: [0u8; BLOCK_LEN],
         };
         let block = unsafe { &mut r.block };
         block.overwrite_part_at(U32::NONCE_BYTE_INDEX, nonce.as_ref());
@@ -130,7 +133,7 @@ where
 ///
 /// Intentionally not `Clone` to ensure each is used only once.
 #[repr(C)]
-pub struct Iv(Block);
+pub struct Iv([u8; BLOCK_LEN]);
 
 impl<U32: Layout<u32>> From<Counter<U32>> for Iv
 where
@@ -143,12 +146,17 @@ where
 
 impl Iv {
     #[inline]
-    pub fn assume_unique_for_key(a: Block) -> Self {
+    pub fn assume_unique_for_key(a: [u8; BLOCK_LEN]) -> Self {
         Self(a)
     }
 
     #[inline]
-    pub fn into_block_less_safe(self) -> Block {
+    pub fn into_block_less_safe(self) -> [u8; BLOCK_LEN] {
+        self.0
+    }
+
+    #[inline]
+    pub fn into_bytes(self) -> [u8; BLOCK_LEN] {
         self.0
     }
 }

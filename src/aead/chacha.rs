@@ -15,7 +15,7 @@
 
 use super::{
     nonce::{self, Iv},
-    Block, BLOCK_LEN,
+    BLOCK_LEN,
 };
 use crate::{c, endian::*};
 
@@ -55,7 +55,7 @@ impl Key {
     }
 
     #[inline]
-    pub fn new_mask(&self, sample: Block) -> [u8; 5] {
+    pub fn new_mask(&self, sample: [u8; BLOCK_LEN]) -> [u8; 5] {
         let mut out: [u8; 5] = [0; 5];
         let iv = Iv::assume_unique_for_key(sample);
 

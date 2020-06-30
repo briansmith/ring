@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aad, Block, BLOCK_LEN};
+use super::{Aad, BitXor, ConvertEndian, BLOCK_LEN};
 use crate::cpu;
 
 #[cfg(not(target_arch = "aarch64"))]
@@ -21,7 +21,7 @@ mod gcm_nohw;
 pub struct Key(HTable);
 
 impl Key {
-    pub(super) fn new(h_be: Block, cpu_features: cpu::Features) -> Self {
+    pub(super) fn new(h_be: [u8; BLOCK_LEN], cpu_features: cpu::Features) -> Self {
         let h = h_be.u64s_be_to_native();
 
         let mut key = Self(HTable {
@@ -84,16 +84,19 @@ impl Context {
     pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
         let mut ctx = Context {
             inner: ContextInner {
-                Xi: Xi(Block::zero()),
-                _unused: Block::zero(),
+                Xi: Xi([0u8; BLOCK_LEN]),
+                _unused: [0u8; BLOCK_LEN],
                 Htable: key.0.clone(),
             },
             cpu_features,
         };
 
         for ad in aad.0.chunks(BLOCK_LEN) {
-            let mut block = Block::zero();
-            block.overwrite_part_at(0, ad);
+            let mut block = [0u8; BLOCK_LEN];
+            // for block-length ad, copies full chunk
+            // for ad < block, copies ad to first ad-length bytes of block
+            let (fb, _) = block.split_at_mut(ad.len());
+            fb.copy_from_slice(ad);
             ctx.update_block(block);
         }
 
@@ -175,7 +178,7 @@ impl Context {
         }
     }
 
-    pub fn update_block(&mut self, a: Block) {
+    pub fn update_block(&mut self, a: [u8; BLOCK_LEN]) {
         self.inner.Xi.bitxor_assign(a);
 
         // Although these functions take `Xi` and `h_table` as separate
@@ -250,16 +253,16 @@ struct u128 {
 const HTABLE_LEN: usize = 16;
 
 #[repr(transparent)]
-pub struct Xi(Block);
+pub struct Xi([u8; BLOCK_LEN]);
 
 impl Xi {
     #[inline]
-    fn bitxor_assign(&mut self, a: Block) {
+    fn bitxor_assign(&mut self, a: [u8; BLOCK_LEN]) {
         self.0.bitxor_assign(a)
     }
 }
 
-impl From<Xi> for Block {
+impl From<Xi> for [u8; BLOCK_LEN] {
     #[inline]
     fn from(Xi(block): Xi) -> Self {
         block
@@ -272,7 +275,7 @@ impl From<Xi> for Block {
 #[repr(C, align(16))]
 pub(super) struct ContextInner {
     Xi: Xi,
-    _unused: Block,
+    _unused: [u8; BLOCK_LEN],
     Htable: HTable,
 }
 

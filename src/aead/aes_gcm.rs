@@ -14,9 +14,9 @@
 
 use super::{
     aes::{self, Counter},
-    gcm, shift, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
+    gcm, shift, Aad, BitXor, ConvertEndian, Direction, Nonce, Tag, ZeroFrom, BLOCK_LEN,
 };
-use crate::{aead, cpu, endian::*, error, polyfill};
+use crate::{aead, cpu, error, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
@@ -57,7 +57,7 @@ fn init(
     cpu_features: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
     let aes_key = aes::Key::new(key, variant, cpu_features)?;
-    let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()), cpu_features);
+    let gcm_key = gcm::Key::new(aes_key.encrypt_block([0u8; BLOCK_LEN]), cpu_features);
     Ok(aead::KeyInner::AesGcm(Key { aes_key, gcm_key }))
 }
 
@@ -164,8 +164,9 @@ fn aead(
     // Process any remaining partial block.
     let remainder = &mut in_out[whole_len..];
     shift::shift_partial((in_prefix_len, remainder), |remainder| {
-        let mut input = Block::zero();
-        input.overwrite_part_at(0, remainder);
+        let mut input = [0u8; BLOCK_LEN];
+        let (fb, _) = input.split_at_mut(remainder.len());
+        fb.copy_from_slice(remainder);
         if let Direction::Opening { .. } = direction {
             gcm_ctx.update_block(input);
         }
@@ -180,10 +181,7 @@ fn aead(
     // Authenticate the final block containing the input lengths.
     let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
     let ciphertext_bits = polyfill::u64_from_usize(total_in_out_len) << 3;
-    gcm_ctx.update_block(Block::from_u64_be(
-        BigEndian::from(aad_bits),
-        BigEndian::from(ciphertext_bits),
-    ));
+    gcm_ctx.update_block(<[u8; BLOCK_LEN]>::from_be_u64s([aad_bits, ciphertext_bits]));
 
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag| {

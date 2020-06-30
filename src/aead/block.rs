@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{endian::*, polyfill};
+use crate::endian::*;
 
 /// An array of 16 bytes that can (in the x86_64 and AAarch64 ABIs, at least)
 /// be efficiently passed by value and returned by value (i.e. in registers),
@@ -40,38 +40,10 @@ impl Block {
     }
 
     #[inline]
-    pub fn from_u64_be(first: BigEndian<u64>, second: BigEndian<u64>) -> Self {
-        Self {
-            subblocks: [first.into_raw_value(), second.into_raw_value()],
-        }
-    }
-
-    pub fn u64s_be_to_native(&self) -> [u64; 2] {
-        [
-            u64::from_be(self.subblocks[0]),
-            u64::from_be(self.subblocks[1]),
-        ]
-    }
-
-    #[inline]
     pub fn overwrite_part_at(&mut self, index: usize, a: &[u8]) {
         let mut tmp: [u8; BLOCK_LEN] = *self.as_ref();
         tmp[index..][..a.len()].copy_from_slice(a);
         *self = Self::from(&tmp)
-    }
-
-    #[inline]
-    pub fn zero_from(&mut self, index: usize) {
-        let mut tmp: [u8; BLOCK_LEN] = *self.as_ref();
-        polyfill::slice::fill(&mut tmp[index..], 0);
-        *self = Self::from(&tmp)
-    }
-
-    #[inline]
-    pub fn bitxor_assign(&mut self, a: Block) {
-        for (r, a) in self.subblocks.iter_mut().zip(a.subblocks.iter()) {
-            *r ^= *a;
-        }
     }
 }
 
@@ -86,32 +58,5 @@ impl AsRef<[u8; BLOCK_LEN]> for Block {
     #[inline]
     fn as_ref(&self) -> &[u8; BLOCK_LEN] {
         unsafe { core::mem::transmute(self) }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_bitxor_assign() {
-        const ONES: u64 = -1i64 as u64;
-        const TEST_CASES: &[([u64; 2], [u64; 2], [u64; 2])] = &[
-            ([0, 0], [0, 0], [0, 0]),
-            ([0, 0], [ONES, ONES], [ONES, ONES]),
-            ([0, ONES], [ONES, 0], [ONES, ONES]),
-            ([ONES, 0], [0, ONES], [ONES, ONES]),
-            ([ONES, ONES], [ONES, ONES], [0, 0]),
-        ];
-        for (expected_result, a, b) in TEST_CASES {
-            let mut r = Block::from_u64_le(a[0].into(), a[1].into());
-            r.bitxor_assign(Block::from_u64_le(b[0].into(), b[1].into()));
-            assert_eq!(*expected_result, r.subblocks);
-
-            // XOR is symmetric.
-            let mut r = Block::from_u64_le(b[0].into(), b[1].into());
-            r.bitxor_assign(Block::from_u64_le(a[0].into(), a[1].into()));
-            assert_eq!(*expected_result, r.subblocks);
-        }
     }
 }

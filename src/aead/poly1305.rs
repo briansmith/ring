@@ -19,8 +19,8 @@ use super::{
     block::{Block, BLOCK_LEN},
     Tag,
 };
-use core::convert::TryInto;
 use crate::{bssl, c, error};
+use core::convert::TryInto;
 
 /// A Poly1305 key.
 pub struct Key([u8; KEY_LEN]);
@@ -160,7 +160,7 @@ impl Funcs {
 
     #[inline]
     fn emit(&self, state: &mut Opaque, nonce: &Nonce) -> Tag {
-        let mut tag = Tag(Block::zero());
+        let mut tag = Tag([0u8; BLOCK_LEN]);
         unsafe {
             (self.emit_fn)(state, &mut tag, nonce);
         }

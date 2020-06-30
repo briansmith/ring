@@ -23,7 +23,7 @@
 
 use self::block::{Block, BLOCK_LEN};
 use crate::{constant_time, cpu, error, hkdf, polyfill};
-use core::ops::RangeFrom;
+use core::{convert::TryInto, ops::RangeFrom};
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -635,7 +635,7 @@ impl Eq for Algorithm {}
 /// An authentication tag.
 #[must_use]
 #[repr(C)]
-pub struct Tag(Block);
+pub struct Tag([u8; BLOCK_LEN]);
 
 impl AsRef<[u8]> for Tag {
     fn as_ref(&self) -> &[u8] {
@@ -664,6 +664,76 @@ enum Direction {
     Sealing,
 }
 
+trait BitXor {
+    fn bitxor_assign(&mut self, input: [u8; BLOCK_LEN]);
+}
+
+impl BitXor for [u8; BLOCK_LEN] {
+    fn bitxor_assign(&mut self, input: [u8; BLOCK_LEN]) {
+        for (r, a) in self.iter_mut().zip(input.iter()) {
+            *r ^= *a;
+        }
+    }
+}
+
+trait ConvertEndian {
+    fn u64s_be_to_native(&self) -> [u64; 2];
+    fn from_be_u64s(u64s: [u64; 2]) -> Self;
+}
+
+impl ConvertEndian for [u8; BLOCK_LEN] {
+    fn u64s_be_to_native(&self) -> [u64; 2] {
+        [
+            // unwrap safe to use, only errors on length mismatch
+            // lengths guaranteed to match, see [u8]::TryFrom docs
+            u64::from_be_bytes(self[..8].try_into().unwrap()),
+            u64::from_be_bytes(self[8..].try_into().unwrap()),
+        ]
+    }
+
+    fn from_be_u64s(u64s: [u64; 2]) -> Self {
+        let mut out = u64s[0].to_be_bytes().to_vec();
+        out.extend_from_slice(&u64s[1].to_be_bytes());
+
+        // unwrap safe to use, only errors on length mismatch
+        // lengths guaranteed to match, see [u8]::TryFrom docs
+        out.as_slice().try_into().unwrap()
+    }
+}
+
+trait ZeroFrom {
+    fn zero_from(&mut self, index: usize);
+}
+
+impl ZeroFrom for [u8; BLOCK_LEN] {
+    fn zero_from(&mut self, index: usize) {
+        // panics when index > self.len()
+        // TODO: change the API to return Result<(), Error>, and bubble up?
+        let (_, zero) = self.split_at_mut(index);
+        for elem in zero.iter_mut() {
+            *elem = 0u8;
+        }
+    }
+}
+
+trait Overwrite {
+    /// Overwrite part of a slice
+    ///
+    /// Panics:
+    ///
+    /// Panics if index > self.len()
+    // TODO: change API to return Result<(), Error>, and bubble up?
+    fn overwrite_part_at(&mut self, index: usize, a: &[u8]);
+}
+
+impl Overwrite for [u8; BLOCK_LEN] {
+    fn overwrite_part_at(&mut self, index: usize, a: &[u8]) {
+        let (_, part) = self.split_at_mut(index);
+        let (fb, _) = part.split_at_mut(a.len());
+        fb.copy_from_slice(a);
+    }
+}
+
 mod aes;
 mod aes_gcm;
 mod block;
@@ -675,3 +745,38 @@ mod nonce;
 mod poly1305;
 pub mod quic;
 mod shift;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bitxor_assign() {
+        const ONES: u64 = u64::from_le_bytes([1, 1, 1, 1, 1, 1, 1, 1]);
+        let TEST_CASES: &[([u8; BLOCK_LEN], [u8; BLOCK_LEN], [u8; BLOCK_LEN])] = &[
+            ([0; BLOCK_LEN], [0; BLOCK_LEN], [0; BLOCK_LEN]),
+            ([0; BLOCK_LEN], [1; BLOCK_LEN], [1; BLOCK_LEN]),
+            (
+                <[u8; BLOCK_LEN]>::from_be_u64s([0, ONES]),
+                <[u8; BLOCK_LEN]>::from_be_u64s([ONES, 0]),
+                [1; BLOCK_LEN],
+            ),
+            (
+                <[u8; BLOCK_LEN]>::from_be_u64s([ONES, 0]),
+                <[u8; BLOCK_LEN]>::from_be_u64s([0, ONES]),
+                [1; BLOCK_LEN],
+            ),
+            ([1; BLOCK_LEN], [1; BLOCK_LEN], [0; BLOCK_LEN]),
+        ];
+        for (expected_result, a, b) in TEST_CASES {
+            let mut r = a.clone();
+            r.bitxor_assign(b.clone());
+            assert_eq!(*expected_result, r);
+
+            // XOR is symmetric.
+            r = *b;
+            r.bitxor_assign(*a);
+            assert_eq!(*expected_result, r);
+        }
+    }
+}

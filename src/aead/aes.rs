@@ -14,7 +14,7 @@
 
 use super::{
     nonce::{self, Iv},
-    Block, Direction, BLOCK_LEN,
+    BitXor, Direction, BLOCK_LEN,
 };
 
 use crate::{bits::BitLength, c, cpu, endian::*, error, polyfill};
@@ -51,7 +51,7 @@ fn set_encrypt_key(
 macro_rules! encrypt_block {
     ($name:ident, $block:expr, $key:expr) => {{
         extern "C" {
-            fn $name(a: &Block, r: *mut Block, key: &AES_KEY);
+            fn $name(a: &[u8; BLOCK_LEN], r: *mut [u8; BLOCK_LEN], key: &AES_KEY);
         }
         encrypt_block_($name, $block, $key)
     }};
@@ -59,10 +59,10 @@ macro_rules! encrypt_block {
 
 #[inline]
 fn encrypt_block_(
-    f: unsafe extern "C" fn(&Block, *mut Block, &AES_KEY),
-    a: Block,
+    f: unsafe extern "C" fn(&[u8; BLOCK_LEN], *mut [u8; BLOCK_LEN], &AES_KEY),
+    a: [u8; BLOCK_LEN],
     key: &Key,
-) -> Block {
+) -> [u8; BLOCK_LEN] {
     let mut result = core::mem::MaybeUninit::uninit();
     unsafe {
         f(&a, result.as_mut_ptr(), &key.inner);
@@ -169,7 +169,7 @@ impl Key {
     }
 
     #[inline]
-    pub fn encrypt_block(&self, a: Block) -> Block {
+    pub fn encrypt_block(&self, a: [u8; BLOCK_LEN]) -> [u8; BLOCK_LEN] {
         match detect_implementation(self.cpu_features) {
             #[cfg(any(
                 target_arch = "aarch64",
@@ -193,8 +193,8 @@ impl Key {
     }
 
     #[inline]
-    pub fn encrypt_iv_xor_block(&self, iv: Iv, input: Block) -> Block {
-        let mut output = self.encrypt_block(iv.into_block_less_safe());
+    pub fn encrypt_iv_xor_block(&self, iv: Iv, input: [u8; BLOCK_LEN]) -> [u8; BLOCK_LEN] {
+        let mut output = self.encrypt_block(iv.into_bytes());
         output.bitxor_assign(input);
         output
     }
@@ -280,7 +280,7 @@ impl Key {
             #[cfg(any(target_arch = "x86"))]
             Implementation::VPAES_BSAES => {
                 super::shift::shift_full_blocks(in_out, in_prefix_len, |input| {
-                    self.encrypt_iv_xor_block(ctr.increment(), Block::from(input))
+                    self.encrypt_iv_xor_block(ctr.increment(), input)
                 });
             }
 
@@ -295,7 +295,7 @@ impl Key {
         }
     }
 
-    pub fn new_mask(&self, sample: Block) -> [u8; 5] {
+    pub fn new_mask(&self, sample: [u8; BLOCK_LEN]) -> [u8; 5] {
         let block = self.encrypt_block(sample);
 
         let mut out: [u8; 5] = [0; 5];
@@ -420,11 +420,10 @@ mod tests {
             assert_eq!(section, "");
             let key = consume_key(test_case, "Key");
             let input = test_case.consume_bytes("Input");
-            let input: &[u8; BLOCK_LEN] = input.as_slice().try_into()?;
+            let input: [u8; BLOCK_LEN] = input.as_slice().try_into()?;
             let expected_output = test_case.consume_bytes("Output");
 
-            let block = Block::from(input);
-            let output = key.encrypt_block(block);
+            let output = key.encrypt_block(input);
             assert_eq!(output.as_ref(), &expected_output[..]);
 
             Ok(())
