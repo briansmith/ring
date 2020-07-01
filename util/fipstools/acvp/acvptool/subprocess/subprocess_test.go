@@ -96,6 +96,73 @@ var invalidSHA2_256 = []byte(`{
   }]
 }`)
 
+var validKDFJSON = []byte(`{
+  "vsId": 1564,
+  "algorithm": "counterMode",
+  "revision": "1.0",
+  "testGroups": [{
+    "tgId": 1,
+    "kdfMode": "counter",
+    "macMode": "CMAC-AES128",
+    "counterLocation": "after fixed data",
+    "keyOutLength": 1024,
+    "counterLength": 8,
+    "tests": [{
+        "tcId": 1,
+        "keyIn": "5DA38931E8D9174BC3279C8942D2DB82",
+        "deferred": false
+      },
+      {
+        "tcId": 2,
+        "keyIn": "58F5426A40E3D5D2C94F0F97EB30C739",
+        "deferred": false
+      }
+    ]
+  }]
+}`)
+
+var callsKDF = []fakeTransactCall{
+	fakeTransactCall{cmd: "KDF-counter", expectedNumResults: 3, args: [][]byte{
+		uint32le(128),                               // outputBytes
+		[]byte("CMAC-AES128"),                       // macMode
+		[]byte("after fixed data"),                  // counterLocation
+		fromHex("5DA38931E8D9174BC3279C8942D2DB82"), // keyIn
+		uint32le(8),                                 // counterLength
+	}},
+	fakeTransactCall{cmd: "KDF-counter", expectedNumResults: 3, args: [][]byte{
+		uint32le(128),                               // outputBytes
+		[]byte("CMAC-AES128"),                       // macMode
+		[]byte("after fixed data"),                  // counterLocation
+		fromHex("58F5426A40E3D5D2C94F0F97EB30C739"), // keyIn
+		uint32le(8),                                 // counterLength
+	}},
+}
+
+var invalidKDFJSON = []byte(`{
+  "vsId": 1564,
+  "algorithm": "counterMode",
+  "revision": "1.0",
+  "testGroups": [{
+    "tgId": 1,
+    "kdfMode": "counter",
+    "macMode": "CMAC-AES128",
+    "counterLocation": "after fixed data",
+    "keyOutLength": 1024,
+    "counterLength": 8,
+    "tests": [{
+        "tcId": 1,
+        "keyIn": "5DA38931E8D9174BC3279C8942D2DB82",
+        "deferred": false
+      },
+      {
+        "tcId": abc,
+        "keyIn": "58F5426A40E3D5D2C94F0F97EB30C739",
+        "deferred": false
+      }
+    ]
+  }]
+}`)
+
 var validACVPAESECB = []byte(`{
   "vsId" : 181726,
   "algorithm" : "ACVP-AES-ECB",
@@ -291,6 +358,25 @@ func TestPrimitives(t *testing.T) {
 			validJSON:     validSHA2_256,
 			invalidJSON:   invalidSHA2_256,
 			expectedCalls: callsSHA2_256,
+		},
+		{
+			algo:          "kdf",
+			p:             &kdfPrimitive{},
+			validJSON:     validKDFJSON,
+			invalidJSON:   invalidKDFJSON,
+			expectedCalls: callsKDF,
+			results: []fakeTransactResult{
+				{bytes: [][]byte{
+					fromHex("5DA38931E8D9174BC3279C8942D2DB82"),
+					[]byte("data1"),
+					[]byte("keyOut1"),
+				}},
+				{bytes: [][]byte{
+					fromHex("58F5426A40E3D5D2C94F0F97EB30C739"),
+					[]byte("data2"),
+					[]byte("keyOut2"),
+				}},
+			},
 		},
 		{
 			algo:          "ACVP-AES-ECB",

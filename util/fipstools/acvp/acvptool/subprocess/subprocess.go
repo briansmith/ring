@@ -85,6 +85,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"HMAC-SHA2-512": &hmacPrimitive{"HMAC-SHA2-512", 64},
 		"ctrDRBG":       &drbg{"ctrDRBG", map[string]bool{"AES-128": true, "AES-192": true, "AES-256": true}},
 		"hmacDRBG":      &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}},
+		"KDF":           &kdfPrimitive{},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
 
@@ -197,4 +198,10 @@ func (m *Subprocess) Process(algorithm string, vectorSet []byte) ([]byte, error)
 
 type primitive interface {
 	Process(vectorSet []byte, t Transactable) (interface{}, error)
+}
+
+func uint32le(n uint32) []byte {
+	var ret [4]byte
+	binary.LittleEndian.PutUint32(ret[:], n)
+	return ret[:]
 }
