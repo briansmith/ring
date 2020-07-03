@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{iv::Iv, Block, Nonce};
+use super::{iv::Iv, Nonce, NONCE_LEN};
 use crate::endian::*;
 use core::marker::PhantomData;
 
@@ -21,10 +21,12 @@ use core::marker::PhantomData;
 /// Intentionally not `Clone` to ensure counters aren't forked.
 #[repr(C)]
 pub union Counter<U32: Layout> {
-    block: Block,
-    u32s: [U32; 4],
+    bytes: [u8; 4 * COUNTER_LEN],
+    u32s: [U32; COUNTER_LEN],
     encoding: PhantomData<U32>,
 }
+
+const COUNTER_LEN: usize = 4;
 
 impl<U32: Layout> Counter<U32> {
     pub fn zero(nonce: Nonce) -> Self {
@@ -45,10 +47,10 @@ impl<U32: Layout> Counter<U32> {
 
     fn new(nonce: Nonce, initial_counter: u32) -> Self {
         let mut r = Self {
-            block: Block::zero(),
+            u32s: [U32::ZERO; COUNTER_LEN],
         };
-        let block = unsafe { &mut r.block };
-        block.overwrite_part_at(U32::NONCE_BYTE_INDEX, nonce.as_ref());
+        let bytes = unsafe { &mut r.bytes };
+        bytes[U32::NONCE_BYTE_INDEX..][..NONCE_LEN].copy_from_slice(nonce.as_ref());
         r.increment_by_less_safe(initial_counter);
 
         r
@@ -56,8 +58,8 @@ impl<U32: Layout> Counter<U32> {
 
     #[inline]
     pub fn increment(&mut self) -> Iv {
-        let block = unsafe { &self.block };
-        let r = Iv::assume_unique_for_key(block.clone());
+        let bytes = unsafe { &self.bytes };
+        let r = Iv::assume_unique_for_key(*bytes);
 
         self.increment_by_less_safe(1);
 
@@ -90,7 +92,7 @@ impl Layout for LittleEndian<u32> {
 
 impl<U32: Layout> Into<Iv> for Counter<U32> {
     fn into(self) -> Iv {
-        let block = unsafe { self.block };
-        Iv::assume_unique_for_key(block)
+        let bytes = unsafe { self.bytes };
+        Iv::assume_unique_for_key(bytes)
     }
 }
