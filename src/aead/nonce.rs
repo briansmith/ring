@@ -23,7 +23,6 @@
 //! 3. For each block encrypted, increment the counter. Each time the counter
 //!    is incremented, the current value is returned.
 
-use super::Block;
 use crate::{endian::*, error};
 use core::convert::TryInto;
 use core::marker::PhantomData;
@@ -69,8 +68,8 @@ pub const NONCE_LEN: usize = 96 / 8;
 /// Intentionally not `Clone` to ensure counters aren't forked.
 #[repr(C)]
 pub union Counter<U32: Layout> {
-    block: Block,
-    u32s: [U32; 4],
+    bytes: [u8; IV_LEN],
+    u32s: [U32; IV_LEN / core::mem::size_of::<u32>()],
     encoding: PhantomData<U32>,
 }
 
@@ -93,10 +92,10 @@ impl<U32: Layout> Counter<U32> {
 
     fn new(Nonce(nonce): Nonce, initial_counter: u32) -> Self {
         let mut r = Self {
-            block: Block::zero(),
+            u32s: [U32::ZERO; 4],
         };
-        let block = unsafe { &mut r.block };
-        block.overwrite_part_at(U32::NONCE_BYTE_INDEX, nonce.as_ref());
+        let bytes = unsafe { &mut r.bytes };
+        bytes[U32::NONCE_BYTE_INDEX..][..NONCE_LEN].copy_from_slice(nonce.as_ref());
         r.increment_by_less_safe(initial_counter);
 
         r
@@ -104,8 +103,8 @@ impl<U32: Layout> Counter<U32> {
 
     #[inline]
     pub fn increment(&mut self) -> Iv {
-        let block = unsafe { &self.block };
-        let r = Iv(block.clone());
+        let bytes = unsafe { &self.bytes };
+        let r = Iv(*bytes);
 
         self.increment_by_less_safe(1);
 
@@ -124,22 +123,24 @@ impl<U32: Layout> Counter<U32> {
 ///
 /// Intentionally not `Clone` to ensure each is used only once.
 #[repr(C)]
-pub struct Iv(Block);
+pub struct Iv([u8; IV_LEN]);
+
+const IV_LEN: usize = 16;
 
 impl<U32: Layout> From<Counter<U32>> for Iv {
     fn from(counter: Counter<U32>) -> Self {
-        Self(unsafe { counter.block })
+        Self(unsafe { counter.bytes })
     }
 }
 
 impl Iv {
     #[inline]
-    pub fn assume_unique_for_key(a: Block) -> Self {
+    pub fn assume_unique_for_key(a: [u8; IV_LEN]) -> Self {
         Self(a)
     }
 
     #[inline]
-    pub fn into_block_less_safe(self) -> Block {
+    pub fn into_bytes_less_safe(self) -> [u8; IV_LEN] {
         self.0
     }
 }

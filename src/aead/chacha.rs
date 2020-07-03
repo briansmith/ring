@@ -57,7 +57,7 @@ impl Key {
     #[inline]
     pub fn new_mask(&self, sample: Block) -> [u8; 5] {
         let mut out: [u8; 5] = [0; 5];
-        let iv = Iv::assume_unique_for_key(sample);
+        let iv = Iv::assume_unique_for_key(*sample.as_ref());
 
         unsafe {
             self.encrypt(
