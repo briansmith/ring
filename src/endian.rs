@@ -1,15 +1,12 @@
-use crate::sealed;
 use core::num::Wrapping;
 
-pub trait Encoding<T>: Copy + From<T> + Sized + sealed::Sealed
-where
-    T: From<Self>,
-{
+/// An `Encoding` of a type `T` can be converted to/from its byte
+/// representation without any byte swapping or other computation.
+pub trait Encoding<T>: From<T> + Into<T> {
     const ZERO: Self;
-
-    fn into_raw_value(self) -> T;
 }
 
+/// Allow access to a slice of  of `Encoding<T>` as a slice of bytes.
 pub fn as_bytes<E: Encoding<T>, T>(x: &[E]) -> &[u8]
 where
     T: From<E>,
@@ -22,12 +19,25 @@ where
 macro_rules! define_endian {
     ($endian:ident) => {
         #[repr(transparent)]
-        #[derive(Copy, Clone)]
-        pub struct $endian<T>(T)
-        where
-            T: Copy + Clone + Sized;
+        pub struct $endian<T>(T);
 
-        impl<T> sealed::Sealed for $endian<T> where T: Copy + Clone + Sized {}
+        impl<T> $endian<T> {
+            #[deprecated]
+            pub fn into_raw_value(self) -> T {
+                self.0
+            }
+        }
+
+        impl<T> Copy for $endian<T> where T: Copy {}
+
+        impl<T> Clone for $endian<T>
+        where
+            T: Clone,
+        {
+            fn clone(&self) -> Self {
+                Self(self.0.clone())
+            }
+        }
     };
 }
 
@@ -35,11 +45,6 @@ macro_rules! impl_endian {
     ($endian:ident, $base:ident, $to_endian:ident, $from_endian:ident) => {
         impl Encoding<$base> for $endian<$base> {
             const ZERO: Self = Self(0);
-
-            #[inline]
-            fn into_raw_value(self) -> $base {
-                self.0
-            }
         }
 
         impl From<$base> for $endian<$base> {
