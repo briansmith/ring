@@ -32,15 +32,19 @@ impl Block {
         Self { subblocks: [0, 0] }
     }
 
+    // TODO: Remove this.
     #[inline]
     pub fn from_u64_le(first: LittleEndian<u64>, second: LittleEndian<u64>) -> Self {
+        #[allow(deprecated)]
         Self {
             subblocks: [first.into_raw_value(), second.into_raw_value()],
         }
     }
 
+    // TODO: Remove this.
     #[inline]
     pub fn from_u64_be(first: BigEndian<u64>, second: BigEndian<u64>) -> Self {
+        #[allow(deprecated)]
         Self {
             subblocks: [first.into_raw_value(), second.into_raw_value()],
         }
