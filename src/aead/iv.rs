@@ -12,22 +12,22 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::Block;
-
 /// The IV for a single block encryption.
 ///
 /// Intentionally not `Clone` to ensure each is used only once.
 #[repr(C)]
-pub struct Iv(Block);
+pub struct Iv([u8; IV_LEN]);
+
+const IV_LEN: usize = 16;
 
 impl Iv {
     #[inline]
-    pub fn assume_unique_for_key(a: Block) -> Self {
+    pub fn assume_unique_for_key(a: [u8; IV_LEN]) -> Self {
         Self(a)
     }
 
     #[inline]
-    pub fn into_block_less_safe(self) -> Block {
+    pub fn into_bytes_less_safe(self) -> [u8; IV_LEN] {
         self.0
     }
 }
