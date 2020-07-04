@@ -167,7 +167,7 @@ fn make_counter(sequence_number: u32) -> Counter {
         BigEndian::ZERO,
         BigEndian::from(sequence_number),
     ];
-    Counter::zero(Nonce::try_assume_unique_for_key(as_bytes(&nonce)).unwrap())
+    Counter::zero(Nonce::assume_unique_for_key(*(nonce.as_byte_array())))
 }
 
 /// The length of key.
