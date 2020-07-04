@@ -4,10 +4,7 @@ pub trait Encoding<T>: From<T> + Into<T> {
     const ZERO: Self;
 }
 
-pub fn as_bytes<E: Encoding<T>, T>(x: &[E]) -> &[u8]
-where
-    T: From<E>,
-{
+pub fn as_bytes<E: Encoding<T>, T>(x: &[E]) -> &[u8] {
     unsafe {
         core::slice::from_raw_parts(x.as_ptr() as *const u8, x.len() * core::mem::size_of::<E>())
     }
@@ -38,9 +35,21 @@ macro_rules! define_endian {
 }
 
 macro_rules! impl_endian {
-    ($endian:ident, $base:ident, $to_endian:ident, $from_endian:ident) => {
+    ($endian:ident, $base:ident, $to_endian:ident, $from_endian:ident, $size:expr) => {
         impl Encoding<$base> for $endian<$base> {
             const ZERO: Self = Self(0);
+        }
+
+        impl From<[u8; $size]> for $endian<$base> {
+            fn from(bytes: [u8; $size]) -> Self {
+                Self($base::from_ne_bytes(bytes))
+            }
+        }
+
+        impl From<$endian<$base>> for [u8; $size] {
+            fn from(encoded: $endian<$base>) -> Self {
+                $base::to_ne_bytes(encoded.0)
+            }
         }
 
         impl From<$base> for $endian<$base> {
@@ -68,10 +77,10 @@ macro_rules! impl_endian {
 
 define_endian!(BigEndian);
 define_endian!(LittleEndian);
-impl_endian!(BigEndian, u32, to_be, from_be);
-impl_endian!(BigEndian, u64, to_be, from_be);
-impl_endian!(LittleEndian, u32, to_le, from_le);
-impl_endian!(LittleEndian, u64, to_le, from_le);
+impl_endian!(BigEndian, u32, to_be, from_be, 4);
+impl_endian!(BigEndian, u64, to_be, from_be, 8);
+impl_endian!(LittleEndian, u32, to_le, from_le, 4);
+impl_endian!(LittleEndian, u64, to_le, from_le, 8);
 
 #[cfg(test)]
 mod tests {
