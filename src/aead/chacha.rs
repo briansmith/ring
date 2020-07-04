@@ -103,7 +103,7 @@ impl Key {
         output: *mut u8,
     ) {
         let iv = match counter {
-            CounterOrIv::Counter(counter) => counter.into(),
+            CounterOrIv::Counter(counter) => Iv::from_counter_less_safe(counter),
             CounterOrIv::Iv(iv) => {
                 assert!(in_out_len <= 32);
                 iv

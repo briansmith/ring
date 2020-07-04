@@ -127,13 +127,17 @@ pub struct Iv([u8; IV_LEN]);
 
 const IV_LEN: usize = 16;
 
-impl<U32: Layout> From<Counter<U32>> for Iv {
-    fn from(counter: Counter<U32>) -> Self {
-        Self(unsafe { counter.bytes })
-    }
-}
-
 impl Iv {
+    #[inline]
+    pub(super) fn from_counter_less_safe<U32>(counter: Counter<U32>) -> Self
+    where
+        U32: Layout,
+        u32: From<U32>,
+    {
+        let bytes: &[u8; 16] = as_bytes(unsafe { &counter.u32s }).try_into().unwrap();
+        Self(*bytes)
+    }
+
     #[inline]
     pub fn assume_unique_for_key(a: [u8; IV_LEN]) -> Self {
         Self(a)

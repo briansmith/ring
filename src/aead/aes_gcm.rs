@@ -14,7 +14,9 @@
 
 use super::{
     aes::{self, Counter},
-    gcm, shift, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
+    gcm,
+    nonce::{Iv, Nonce},
+    shift, Aad, Block, Direction, Tag, BLOCK_LEN,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
 
@@ -169,7 +171,7 @@ fn aead(
         if let Direction::Opening { .. } = direction {
             gcm_ctx.update_block(input);
         }
-        let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
+        let mut output = aes_key.encrypt_iv_xor_block(Iv::from_counter_less_safe(ctr), input);
         if let Direction::Sealing = direction {
             output.zero_from(remainder.len());
             gcm_ctx.update_block(output);
