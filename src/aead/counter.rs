@@ -12,23 +12,31 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{iv::Iv, Nonce, NONCE_LEN};
+use super::{
+    iv::{Iv, IV_LEN},
+    Nonce,
+};
 use crate::endian::*;
-use core::marker::PhantomData;
+use core::convert::TryInto;
 
 /// A generator of a monotonically increasing series of `Iv`s.
 ///
 /// Intentionally not `Clone` to ensure counters aren't forked.
 #[repr(C)]
-pub union Counter<U32: Layout> {
-    bytes: [u8; 4 * COUNTER_LEN],
+pub struct Counter<U32> {
     u32s: [U32; COUNTER_LEN],
-    encoding: PhantomData<U32>,
 }
 
 const COUNTER_LEN: usize = 4;
 
-impl<U32: Layout> Counter<U32> {
+impl<U32> Counter<U32>
+where
+    U32: Copy,
+    U32: Encoding<u32>,
+    U32: From<[u8; 4]>,
+    U32: Layout,
+    [U32; 4]: ArrayEncoding<[u8; IV_LEN]>,
+{
     pub fn zero(nonce: Nonce) -> Self {
         Self::new(nonce, 0)
     }
@@ -36,7 +44,6 @@ impl<U32: Layout> Counter<U32> {
         Self::new(nonce, 1)
     }
 
-    // Used by `zero()` and by the tests.
     #[cfg(test)]
     pub fn from_test_vector(nonce: &[u8], initial_counter: u32) -> Self {
         Self::new(
@@ -49,50 +56,52 @@ impl<U32: Layout> Counter<U32> {
         let mut r = Self {
             u32s: [U32::ZERO; COUNTER_LEN],
         };
-        let bytes = unsafe { &mut r.bytes };
-        bytes[U32::NONCE_BYTE_INDEX..][..NONCE_LEN].copy_from_slice(nonce.as_ref());
-        r.increment_by_less_safe(initial_counter);
-
+        (&mut r.u32s[U32::NONCE_INDEX..][..3])
+            .iter_mut()
+            .zip(nonce.as_ref().chunks_exact(4))
+            .for_each(|(initial, nonce)| {
+                let nonce: &[u8; 4] = nonce.try_into().unwrap();
+                *initial = U32::from(*nonce);
+            });
+        r.u32s[U32::COUNTER_INDEX] = U32::from(initial_counter);
         r
     }
 
     #[inline]
     pub fn increment(&mut self) -> Iv {
-        let bytes = unsafe { &self.bytes };
-        let r = Iv::assume_unique_for_key(*bytes);
-
+        let current = Self { u32s: self.u32s };
         self.increment_by_less_safe(1);
-
-        r
+        current.into()
     }
 
     #[inline]
     pub fn increment_by_less_safe(&mut self, increment_by: u32) {
-        let u32s = unsafe { &mut self.u32s };
-        let value = &mut u32s[U32::COUNTER_U32_INDEX];
-        *value = ((*value).into() + increment_by).into();
+        let counter = &mut self.u32s[U32::COUNTER_INDEX];
+        let old_value: u32 = (*counter).into();
+        *counter = U32::from(old_value + increment_by);
     }
 }
 
-// TODO: Remove the `Copy` constraint when we remove the use of `union`.
-pub trait Layout: Encoding<u32> + Copy {
-    const COUNTER_U32_INDEX: usize;
-    const NONCE_BYTE_INDEX: usize;
+pub trait Layout {
+    const COUNTER_INDEX: usize;
+    const NONCE_INDEX: usize;
 }
 
 impl Layout for BigEndian<u32> {
-    const COUNTER_U32_INDEX: usize = 3;
-    const NONCE_BYTE_INDEX: usize = 0;
+    const COUNTER_INDEX: usize = 3;
+    const NONCE_INDEX: usize = 0;
 }
 
 impl Layout for LittleEndian<u32> {
-    const COUNTER_U32_INDEX: usize = 0;
-    const NONCE_BYTE_INDEX: usize = 4;
+    const COUNTER_INDEX: usize = 0;
+    const NONCE_INDEX: usize = 1;
 }
 
-impl<U32: Layout> Into<Iv> for Counter<U32> {
+impl<U32> Into<Iv> for Counter<U32>
+where
+    [U32; 4]: ArrayEncoding<[u8; IV_LEN]>,
+{
     fn into(self) -> Iv {
-        let bytes = unsafe { self.bytes };
-        Iv::assume_unique_for_key(bytes)
+        Iv::assume_unique_for_key(*self.u32s.as_byte_array())
     }
 }
