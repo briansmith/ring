@@ -96,7 +96,8 @@ where
         let mut r = Self {
             u32s: [U32::ZERO; 4],
         };
-        (&mut r.u32s[U32::NONCE_INDEX..][..3])
+        let nonce_index = (U32::COUNTER_INDEX + 1) % r.u32s.len();
+        (&mut r.u32s[nonce_index..][..3])
             .iter_mut()
             .zip(nonce.chunks_exact(4))
             .for_each(|(initial, nonce)| {
@@ -154,15 +155,12 @@ impl Iv {
 
 pub trait Layout {
     const COUNTER_INDEX: usize;
-    const NONCE_INDEX: usize;
 }
 
 impl Layout for BigEndian<u32> {
     const COUNTER_INDEX: usize = 3;
-    const NONCE_INDEX: usize = 0;
 }
 
 impl Layout for LittleEndian<u32> {
     const COUNTER_INDEX: usize = 0;
-    const NONCE_INDEX: usize = 1;
 }
