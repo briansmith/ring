@@ -96,7 +96,7 @@ where
         let mut r = Self {
             u32s: [U32::ZERO; 4],
         };
-        let nonce_index = (U32::COUNTER_INDEX + 1) % r.u32s.len();
+        let nonce_index = (U32::COUNTER_INDEX + 1) % 4;
         (&mut r.u32s[nonce_index..][..3])
             .iter_mut()
             .zip(nonce.chunks_exact(4))
