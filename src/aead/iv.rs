@@ -18,7 +18,7 @@
 #[repr(C)]
 pub struct Iv([u8; IV_LEN]);
 
-const IV_LEN: usize = 16;
+pub const IV_LEN: usize = 16;
 
 impl Iv {
     #[inline]
