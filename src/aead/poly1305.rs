@@ -19,8 +19,8 @@ use super::{
     block::{Block, BLOCK_LEN},
     Tag,
 };
-use core::convert::TryInto;
 use crate::{bssl, c, error};
+use core::convert::TryInto;
 
 /// A Poly1305 key.
 pub struct Key([u8; KEY_LEN]);
