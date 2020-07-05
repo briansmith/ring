@@ -13,10 +13,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    nonce::{self, Iv},
-    Block, BLOCK_LEN,
-};
+use super::{counter, iv::Iv, Block, BLOCK_LEN};
 use crate::{c, endian::*};
 
 #[repr(C)]
@@ -126,7 +123,7 @@ impl Key {
     }
 }
 
-pub type Counter = nonce::Counter<LittleEndian<u32>>;
+pub type Counter = counter::Counter<LittleEndian<u32>>;
 
 enum CounterOrIv {
     Counter(Counter),

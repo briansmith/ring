@@ -14,7 +14,7 @@
 
 use super::{
     chacha::{self, Counter},
-    nonce::Iv,
+    iv::Iv,
     poly1305, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};

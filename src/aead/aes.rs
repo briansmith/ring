@@ -12,11 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    nonce::{self, Iv},
-    Block, Direction, BLOCK_LEN,
-};
-
+use super::{counter, iv::Iv, Block, Direction, BLOCK_LEN};
 use crate::{bits::BitLength, c, cpu, endian::*, error, polyfill};
 
 pub(crate) struct Key {
@@ -335,7 +331,7 @@ pub enum Variant {
     AES_256,
 }
 
-pub type Counter = nonce::Counter<BigEndian<u32>>;
+pub type Counter = counter::Counter<BigEndian<u32>>;
 
 #[repr(C)] // Only so `Key` can be `#[repr(C)]`
 #[derive(Clone, Copy)]
