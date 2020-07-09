@@ -608,8 +608,12 @@ endif()
       self.PrintExe(cmake, 'bssl', files['tool'], ['ssl', 'crypto'])
 
       cmake.write(
-R'''if(NOT MSVC AND NOT ANDROID)
+R'''if(NOT WIN32 AND NOT ANDROID)
   target_link_libraries(crypto pthread)
+endif()
+
+if(WIN32)
+  target_link_libraries(bssl ws2_32)
 endif()
 
 ''')
