@@ -2440,7 +2440,10 @@ static const char kV1WithSubjectUniqueIDPEM[] =
 // Test that the X.509 parser enforces versions are valid and match the fields
 // present.
 TEST(X509Test, InvalidVersion) {
-  EXPECT_FALSE(CertFromPEM(kExplicitDefaultVersionPEM));
+  // kExplicitDefaultVersionPEM is invalid but, for now, we accept it. See
+  // https://crbug.com/boringssl/364.
+  EXPECT_TRUE(CertFromPEM(kExplicitDefaultVersionPEM));
+
   EXPECT_FALSE(CertFromPEM(kNegativeVersionPEM));
   EXPECT_FALSE(CertFromPEM(kFutureVersionPEM));
   EXPECT_FALSE(CertFromPEM(kOverflowVersionPEM));
