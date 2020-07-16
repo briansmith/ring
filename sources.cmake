@@ -55,6 +55,7 @@ set(
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/hmac_extra/hmac_tests.txt
+  crypto/hpke/hpke_test_vectors.txt
   crypto/poly1305/poly1305_tests.txt
   crypto/siphash/siphash_tests.txt
   crypto/x509/test/invalid_extension_intermediate.pem

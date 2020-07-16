@@ -299,6 +299,7 @@ add_library(
   evp/sign.c
   ex_data.c
   hkdf/hkdf.c
+  hpke/hpke.c
   hrss/hrss.c
   lhash/lhash.c
   mem.c
@@ -519,6 +520,7 @@ add_executable(
   fipsmodule/rand/fork_detect_test.cc
   fipsmodule/sha/sha_test.cc
   hkdf/hkdf_test.cc
+  hpke/hpke_test.cc
   hmac_extra/hmac_test.cc
   hrss/hrss_test.cc
   impl_dispatch_test.cc
