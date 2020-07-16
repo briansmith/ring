@@ -618,6 +618,14 @@ endif()
 
 ''')
 
+class JSON(object):
+  def WriteFiles(self, files, asm_outputs):
+    sources = dict(files)
+    for ((osname, arch), asm_files) in asm_outputs:
+      sources['crypto_%s_%s' % (osname, arch)] = asm_files
+    with open('sources.json', 'w+') as f:
+      json.dump(sources, f, sort_keys=True, indent=2)
+
 def FindCMakeFiles(directory):
   """Returns list of all CMakeLists.txt files recursively in directory."""
   cmakefiles = []
@@ -947,10 +955,20 @@ def main(platforms):
 
   return 0
 
+ALL_PLATFORMS = {
+    'android': Android,
+    'android-cmake': AndroidCMake,
+    'bazel': Bazel,
+    'cmake': CMake,
+    'eureka': Eureka,
+    'gn': GN,
+    'gyp': GYP,
+    'json': JSON,
+}
 
 if __name__ == '__main__':
-  parser = optparse.OptionParser(usage='Usage: %prog [--prefix=<path>]'
-      ' [android|android-cmake|bazel|eureka|gn|gyp]')
+  parser = optparse.OptionParser(usage='Usage: %%prog [--prefix=<path>] [%s]' %
+                                 '|'.join(sorted(ALL_PLATFORMS.keys())))
   parser.add_option('--prefix', dest='prefix',
       help='For Bazel, prepend argument to all source files')
   parser.add_option(
@@ -967,22 +985,10 @@ if __name__ == '__main__':
 
   platforms = []
   for s in args:
-    if s == 'android':
-      platforms.append(Android())
-    elif s == 'android-cmake':
-      platforms.append(AndroidCMake())
-    elif s == 'bazel':
-      platforms.append(Bazel())
-    elif s == 'eureka':
-      platforms.append(Eureka())
-    elif s == 'gn':
-      platforms.append(GN())
-    elif s == 'gyp':
-      platforms.append(GYP())
-    elif s == 'cmake':
-      platforms.append(CMake())
-    else:
+    platform = ALL_PLATFORMS.get(s)
+    if platform is None:
       parser.print_help()
       sys.exit(1)
+    platforms.append(platform())
 
   sys.exit(main(platforms))
