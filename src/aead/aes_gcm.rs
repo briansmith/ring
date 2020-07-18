@@ -190,7 +190,7 @@ fn aead(
         let bytes = tag_iv.into_bytes_less_safe();
         let mut tag = aes_key.encrypt_block(Block::from(&bytes));
         tag.bitxor_assign(pre_tag.into());
-        Tag(tag)
+        Tag(*tag.as_ref())
     })
 }
 
