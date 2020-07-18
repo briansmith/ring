@@ -17,7 +17,7 @@
 
 use super::{
     block::{Block, BLOCK_LEN},
-    Tag,
+    Tag, TAG_LEN,
 };
 use crate::{bssl, c, error};
 use core::convert::TryInto;
@@ -160,7 +160,7 @@ impl Funcs {
 
     #[inline]
     fn emit(&self, state: &mut Opaque, nonce: &Nonce) -> Tag {
-        let mut tag = Tag(Block::zero());
+        let mut tag = Tag([0u8; TAG_LEN]);
         unsafe {
             (self.emit_fn)(state, &mut tag, nonce);
         }

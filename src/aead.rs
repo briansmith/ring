@@ -635,7 +635,7 @@ impl Eq for Algorithm {}
 /// An authentication tag.
 #[must_use]
 #[repr(C)]
-pub struct Tag(Block);
+pub struct Tag([u8; TAG_LEN]);
 
 impl AsRef<[u8]> for Tag {
     fn as_ref(&self) -> &[u8] {
