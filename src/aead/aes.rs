@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{counter, iv::Iv, Block, Direction, BLOCK_LEN};
+use super::{counter, iv::Iv, quic::Sample, Block, Direction, BLOCK_LEN};
 use crate::{bits::BitLength, c, cpu, endian::*, error, polyfill};
 
 pub(crate) struct Key {
@@ -291,8 +291,8 @@ impl Key {
         }
     }
 
-    pub fn new_mask(&self, sample: Block) -> [u8; 5] {
-        let block = self.encrypt_block(sample);
+    pub fn new_mask(&self, sample: Sample) -> [u8; 5] {
+        let block = self.encrypt_block(Block::from(&sample));
 
         let mut out: [u8; 5] = [0; 5];
         out.copy_from_slice(&block.as_ref()[..5]);
