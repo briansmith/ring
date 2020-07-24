@@ -1245,6 +1245,12 @@ static bool ext_sct_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static bool ext_alpn_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
+  if (hs->config->alpn_client_proto_list.empty() && ssl->quic_method) {
+    // ALPN MUST be used with QUIC.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_ALPN);
+    return false;
+  }
+
   if (hs->config->alpn_client_proto_list.empty() ||
       ssl->s3->initial_handshake_complete) {
     return true;
@@ -1267,6 +1273,12 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                        CBS *contents) {
   SSL *const ssl = hs->ssl;
   if (contents == NULL) {
+    if (ssl->quic_method) {
+      // ALPN is required when QUIC is used.
+      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_ALPN);
+      *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
+      return false;
+    }
     return true;
   }
 
@@ -1342,6 +1354,12 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       !ssl_client_hello_get_extension(
           client_hello, &contents,
           TLSEXT_TYPE_application_layer_protocol_negotiation)) {
+    if (ssl->quic_method) {
+      // ALPN is required when QUIC is used.
+      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_ALPN);
+      *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
+      return false;
+    }
     // Ignore ALPN if not configured or no extension was supplied.
     return true;
   }
@@ -1388,6 +1406,11 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return false;
     }
+  } else if (ssl->quic_method) {
+    // ALPN is required when QUIC is used.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_ALPN);
+    *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
+    return false;
   }
 
   return true;

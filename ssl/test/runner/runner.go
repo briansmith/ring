@@ -656,6 +656,9 @@ type testCase struct {
 	// skipTransportParamsConfig, if true, will skip automatic configuration of
 	// sending QUIC transport parameters when protocol == quic.
 	skipTransportParamsConfig bool
+	// skipQUICALPNConfig, if true, will skip automatic configuration of
+	// sending a fake ALPN when protocol == quic.
+	skipQUICALPNConfig bool
 }
 
 var testCases []testCase
@@ -1279,6 +1282,20 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 					"-expect-quic-transport-params",
 					base64.StdEncoding.EncodeToString([]byte{1, 2}),
 				}...)
+		}
+		if !test.skipQUICALPNConfig {
+			flags = append(flags,
+				[]string{
+					"-advertise-alpn", "\x03foo",
+					"-select-alpn", "foo",
+					"-expect-alpn", "foo",
+				}...)
+			test.config.NextProtos = []string{"foo"}
+			if test.resumeConfig != nil {
+				test.resumeConfig.NextProtos = []string{"foo"}
+			}
+			test.expectedNextProto = "foo"
+			test.expectedNextProtoType = alpn
 		}
 	}
 
@@ -6813,6 +6830,68 @@ func addExtensionTests() {
 				},
 				shouldFail:    true,
 				expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
+			})
+		}
+
+		// Test missing ALPN in QUIC
+		if ver.version >= VersionTLS13 {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: quic,
+				name:     "QUIC-Client-ALPNMissingFromConfig-" + ver.name,
+				config: Config{
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+				},
+				skipQUICALPNConfig: true,
+				shouldFail:         true,
+				expectedError:      ":MISSING_ALPN:",
+			})
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: quic,
+				name:     "QUIC-Client-ALPNMissing-" + ver.name,
+				config: Config{
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+				},
+				flags: []string{
+					"-advertise-alpn", "\x03foo",
+				},
+				skipQUICALPNConfig: true,
+				shouldFail:         true,
+				expectedError:      ":MISSING_ALPN:",
+				expectedLocalError: "remote error: no application protocol",
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: quic,
+				name:     "QUIC-Server-ALPNMissing-" + ver.name,
+				config: Config{
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+				},
+				skipQUICALPNConfig: true,
+				shouldFail:         true,
+				expectedError:      ":MISSING_ALPN:",
+				expectedLocalError: "remote error: no application protocol",
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: quic,
+				name:     "QUIC-Server-ALPNMismatch-" + ver.name,
+				config: Config{
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo"},
+				},
+				flags: []string{
+					"-decline-alpn",
+				},
+				skipQUICALPNConfig: true,
+				shouldFail:         true,
+				expectedError:      ":MISSING_ALPN:",
+				expectedLocalError: "remote error: no application protocol",
 			})
 		}
 
