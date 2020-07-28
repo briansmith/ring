@@ -559,6 +559,17 @@ OPENSSL_EXPORT void X509_CINF_set_modified(X509_CINF *cinf);
 // |X509_get0_tbs_sigalg| instead.
 OPENSSL_EXPORT const X509_ALGOR *X509_CINF_get_signature(const X509_CINF *cinf);
 
+// X509_SIG_get0 sets |*out_alg| and |*out_digest| to non-owning pointers to
+// |sig|'s algorithm and digest fields, respectively. Either |out_alg| and
+// |out_digest| may be NULL to skip those fields.
+OPENSSL_EXPORT void X509_SIG_get0(const X509_SIG *sig,
+                                  const X509_ALGOR **out_alg,
+                                  const ASN1_OCTET_STRING **out_digest);
+
+// X509_SIG_getm behaves like |X509_SIG_get0| but returns mutable pointers.
+OPENSSL_EXPORT void X509_SIG_getm(X509_SIG *sig, X509_ALGOR **out_alg,
+                                  ASN1_OCTET_STRING **out_digest);
+
 OPENSSL_EXPORT void X509_CRL_set_default_method(const X509_CRL_METHOD *meth);
 OPENSSL_EXPORT X509_CRL_METHOD *X509_CRL_METHOD_new(
     int (*crl_init)(X509_CRL *crl), int (*crl_free)(X509_CRL *crl),
