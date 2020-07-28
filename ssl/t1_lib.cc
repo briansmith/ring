@@ -3047,7 +3047,7 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
     last_was_empty = false;
   }
 
-  if (!SSL_is_dtls(ssl)) {
+  if (!SSL_is_dtls(ssl) && !ssl->quic_method) {
     size_t psk_extension_len = ext_pre_shared_key_clienthello_length(hs);
     header_len += 2 + CBB_len(&extensions) + psk_extension_len;
     size_t padding_len = 0;
