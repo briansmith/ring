@@ -22,8 +22,7 @@
 //
 // Unlike the BearSSL notes, we use u128 in the 64-bit implementation.
 
-use super::{super::Block, Xi};
-use crate::endian::BigEndian;
+use super::Xi;
 use core::convert::TryInto;
 
 #[cfg(target_pointer_width = "64")]
@@ -235,8 +234,7 @@ pub(super) fn ghash(xi: &mut Xi, h: super::u128, input: &[u8]) {
 
 #[inline]
 fn with_swapped_xi(Xi(xi): &mut Xi, f: impl FnOnce(&mut [u64; 2])) {
-    let unswapped = xi.u64s_be_to_native();
-    let mut swapped: [u64; 2] = [unswapped[1], unswapped[0]];
+    let mut swapped: [u64; 2] = [xi[1].into(), xi[0].into()];
     f(&mut swapped);
-    *xi = Block::from_u64_be(BigEndian::from(swapped[1]), BigEndian::from(swapped[0]))
+    *xi = [swapped[1].into(), swapped[0].into()];
 }

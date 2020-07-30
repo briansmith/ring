@@ -41,22 +41,6 @@ impl Block {
         }
     }
 
-    // TODO: Remove this.
-    #[inline]
-    pub fn from_u64_be(first: BigEndian<u64>, second: BigEndian<u64>) -> Self {
-        #[allow(deprecated)]
-        Self {
-            subblocks: [first.into_raw_value(), second.into_raw_value()],
-        }
-    }
-
-    pub fn u64s_be_to_native(&self) -> [u64; 2] {
-        [
-            u64::from_be(self.subblocks[0]),
-            u64::from_be(self.subblocks[1]),
-        ]
-    }
-
     #[inline]
     pub fn overwrite_part_at(&mut self, index: usize, a: &[u8]) {
         let mut tmp: [u8; BLOCK_LEN] = *self.as_ref();

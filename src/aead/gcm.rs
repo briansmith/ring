@@ -12,8 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aad, Block, BLOCK_LEN};
-use crate::cpu;
+use super::{Aad, TAG_LEN};
+use crate::{
+    cpu,
+    endian::{self, ArrayEncoding, BigEndian},
+};
+use core::convert::TryInto;
 
 #[cfg(not(target_arch = "aarch64"))]
 mod gcm_nohw;
@@ -21,8 +25,9 @@ mod gcm_nohw;
 pub struct Key(HTable);
 
 impl Key {
-    pub(super) fn new(h_be: Block, cpu_features: cpu::Features) -> Self {
-        let h = h_be.u64s_be_to_native();
+    pub(super) fn new(h_be: [u8; 16], cpu_features: cpu::Features) -> Self {
+        let h = bytes_to_u64s(h_be);
+        let h: [u64; 2] = [h[0].into(), h[1].into()];
 
         let mut key = Self(HTable {
             Htable: [u128 { hi: 0, lo: 0 }; HTABLE_LEN],
@@ -84,17 +89,17 @@ impl Context {
     pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
         let mut ctx = Context {
             inner: ContextInner {
-                Xi: Xi(Block::zero()),
-                _unused: Block::zero(),
+                Xi: Xi([endian::Encoding::ZERO; 2]),
+                _unused: u128 { hi: 0, lo: 0 },
                 Htable: key.0.clone(),
             },
             cpu_features,
         };
 
-        for ad in aad.0.chunks(BLOCK_LEN) {
-            let mut block = Block::zero();
-            block.overwrite_part_at(0, ad);
-            ctx.update_block(block);
+        for ad in aad.0.chunks(TAG_LEN) {
+            let mut padded = [0u8; TAG_LEN];
+            padded[..ad.len()].copy_from_slice(ad);
+            ctx.update_block(bytes_to_u64s(padded));
         }
 
         ctx
@@ -109,7 +114,7 @@ impl Context {
 
     pub fn update_blocks(&mut self, input: &[u8]) {
         debug_assert!(input.len() > 0);
-        debug_assert_eq!(input.len() % BLOCK_LEN, 0);
+        debug_assert_eq!(input.len() % TAG_LEN, 0);
 
         // Although these functions take `Xi` and `h_table` as separate
         // parameters, one or more of them might assume that they are part of
@@ -175,8 +180,10 @@ impl Context {
         }
     }
 
-    pub fn update_block(&mut self, a: Block) {
-        self.inner.Xi.bitxor_assign(a);
+    #[inline]
+    pub fn update_block(&mut self, a: [BigEndian<u64>; 2]) {
+        self.inner.Xi.0[0] ^= a[0];
+        self.inner.Xi.0[1] ^= a[1];
 
         // Although these functions take `Xi` and `h_table` as separate
         // parameters, one or more of them might assume that they are part of
@@ -219,9 +226,9 @@ impl Context {
 
     pub(super) fn pre_finish<F>(self, f: F) -> super::Tag
     where
-        F: FnOnce(Xi) -> super::Tag,
+        F: FnOnce([u8; TAG_LEN]) -> super::Tag,
     {
-        f(self.inner.Xi)
+        f(*self.inner.Xi.0.as_byte_array())
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -231,6 +238,13 @@ impl Context {
             _ => false,
         }
     }
+}
+
+#[inline]
+pub fn bytes_to_u64s(a: [u8; TAG_LEN]) -> [BigEndian<u64>; 2] {
+    let a0: &[u8; TAG_LEN / 2] = (&a[..(TAG_LEN / 2)]).try_into().unwrap();
+    let a1: &[u8; TAG_LEN / 2] = (&a[(TAG_LEN / 2)..]).try_into().unwrap();
+    [(*a0).into(), (*a1).into()]
 }
 
 // The alignment is required by non-Rust code that uses `GCM128_CONTEXT`.
@@ -250,21 +264,7 @@ struct u128 {
 const HTABLE_LEN: usize = 16;
 
 #[repr(transparent)]
-pub struct Xi(Block);
-
-impl Xi {
-    #[inline]
-    fn bitxor_assign(&mut self, a: Block) {
-        self.0.bitxor_assign(a)
-    }
-}
-
-impl From<Xi> for Block {
-    #[inline]
-    fn from(Xi(block): Xi) -> Self {
-        block
-    }
-}
+pub struct Xi([BigEndian<u64>; 2]);
 
 // This corresponds roughly to the `GCM128_CONTEXT` structure in BoringSSL.
 // Some assembly language code, in particular the MOVEBE+AVX2 X86-64
@@ -272,7 +272,7 @@ impl From<Xi> for Block {
 #[repr(C, align(16))]
 pub(super) struct ContextInner {
     Xi: Xi,
-    _unused: Block,
+    _unused: u128,
     Htable: HTable,
 }
 

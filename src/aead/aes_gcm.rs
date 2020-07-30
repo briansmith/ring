@@ -16,7 +16,7 @@ use super::{
     aes::{self, Counter},
     gcm, shift, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
 };
-use crate::{aead, cpu, endian::*, error, polyfill};
+use crate::{aead, cpu, error, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
@@ -57,7 +57,7 @@ fn init(
     cpu_features: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
     let aes_key = aes::Key::new(key, variant, cpu_features)?;
-    let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()), cpu_features);
+    let gcm_key = gcm::Key::new(*aes_key.encrypt_block(Block::zero()).as_ref(), cpu_features);
     Ok(aead::KeyInner::AesGcm(Key { aes_key, gcm_key }))
 }
 
@@ -167,12 +167,12 @@ fn aead(
         let mut input = Block::zero();
         input.overwrite_part_at(0, remainder);
         if let Direction::Opening { .. } = direction {
-            gcm_ctx.update_block(input);
+            gcm_ctx.update_block(gcm::bytes_to_u64s(*input.as_ref()));
         }
         let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
         if let Direction::Sealing = direction {
             output.zero_from(remainder.len());
-            gcm_ctx.update_block(output);
+            gcm_ctx.update_block(gcm::bytes_to_u64s(*output.as_ref()));
         }
         output
     });
@@ -180,16 +180,13 @@ fn aead(
     // Authenticate the final block containing the input lengths.
     let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
     let ciphertext_bits = polyfill::u64_from_usize(total_in_out_len) << 3;
-    gcm_ctx.update_block(Block::from_u64_be(
-        BigEndian::from(aad_bits),
-        BigEndian::from(ciphertext_bits),
-    ));
+    gcm_ctx.update_block([aad_bits.into(), ciphertext_bits.into()]);
 
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag| {
         let bytes = tag_iv.into_bytes_less_safe();
         let mut tag = aes_key.encrypt_block(Block::from(&bytes));
-        tag.bitxor_assign(pre_tag.into());
+        tag.bitxor_assign(Block::from(&pre_tag));
         Tag(*tag.as_ref())
     })
 }
