@@ -16,13 +16,13 @@
 use super::{counter, iv::Iv, quic::Sample, BLOCK_LEN};
 use crate::{c, endian::*};
 
-#[repr(C)]
-pub struct Key([u8; KEY_LEN]);
+#[repr(transparent)]
+pub struct Key([LittleEndian<u32>; KEY_LEN / 4]);
 
 impl From<[u8; KEY_LEN]> for Key {
     #[inline]
     fn from(value: [u8; KEY_LEN]) -> Self {
-        Self(value)
+        Self(FromByteArray::from_byte_array(&value))
     }
 }
 
