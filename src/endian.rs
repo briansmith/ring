@@ -24,6 +24,12 @@ pub trait ArrayEncoding<T> {
     fn as_byte_array(&self) -> &T;
 }
 
+/// Work around the inability to implement `from` for arrays of `Encoding`s
+/// due to the coherence rules.
+pub trait FromByteArray<T> {
+    fn from_byte_array(a: &T) -> Self;
+}
+
 macro_rules! define_endian {
     ($endian:ident) => {
         #[repr(transparent)]
@@ -49,7 +55,19 @@ macro_rules! define_endian {
     };
 }
 
-macro_rules! impl_as_ref {
+macro_rules! impl_from_byte_array {
+    ($endian:ident, $base:ident, $elems:expr) => {
+        impl FromByteArray<[u8; $elems * core::mem::size_of::<$base>()]>
+            for [$endian<$base>; $elems]
+        {
+            fn from_byte_array(a: &[u8; $elems * core::mem::size_of::<$base>()]) -> Self {
+                unsafe { core::mem::transmute_copy(a) }
+            }
+        }
+    };
+}
+
+macro_rules! impl_array_encoding {
     ($endian:ident, $base:ident, $elems:expr) => {
         impl ArrayEncoding<[u8; $elems * core::mem::size_of::<$base>()]>
             for [$endian<$base>; $elems]
@@ -58,6 +76,8 @@ macro_rules! impl_as_ref {
                 as_byte_slice(self).try_into().unwrap()
             }
         }
+
+        impl_from_byte_array!($endian, $base, $elems);
     };
 }
 
@@ -102,10 +122,11 @@ macro_rules! impl_endian {
             }
         }
 
-        impl_as_ref!($endian, $base, 1);
-        impl_as_ref!($endian, $base, 2);
-        impl_as_ref!($endian, $base, 3);
-        impl_as_ref!($endian, $base, 4);
+        impl_array_encoding!($endian, $base, 1);
+        impl_array_encoding!($endian, $base, 2);
+        impl_array_encoding!($endian, $base, 3);
+        impl_array_encoding!($endian, $base, 4);
+        impl_from_byte_array!($endian, $base, 8);
     };
 }
 
