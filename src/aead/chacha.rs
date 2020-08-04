@@ -16,7 +16,7 @@
 use super::{counter, iv::Iv, quic::Sample, BLOCK_LEN};
 use crate::{c, endian::*};
 
-#[repr(C)]
+#[repr(C, align(4))]
 pub struct Key([u8; KEY_LEN]);
 
 impl From<[u8; KEY_LEN]> for Key {
