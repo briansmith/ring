@@ -533,6 +533,9 @@ type connectionExpectations struct {
 	// quicTransportParams contains the QUIC transport parameters that are to be
 	// sent by the peer.
 	quicTransportParams []byte
+	// peerApplicationSettings are the expected application settings for the
+	// connection. If nil, no application settings are expected.
+	peerApplicationSettings []byte
 }
 
 type testCase struct {
@@ -892,6 +895,17 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		if (expectations.nextProtoType == alpn) != connState.NegotiatedProtocolFromALPN {
 			return fmt.Errorf("next proto type mismatch")
 		}
+	}
+
+	if expectations.peerApplicationSettings != nil {
+		if !connState.HasApplicationSettings {
+			return errors.New("application settings should have been negotiated")
+		}
+		if !bytes.Equal(connState.PeerApplicationSettings, expectations.peerApplicationSettings) {
+			return fmt.Errorf("peer application settings mismatch: got %q, wanted %q", connState.PeerApplicationSettings, expectations.peerApplicationSettings)
+		}
+	} else if connState.HasApplicationSettings {
+		return errors.New("application settings unexpectedly negotiated")
 	}
 
 	if p := connState.SRTPProtectionProfile; p != expectations.srtpProtectionProfile {
@@ -6970,6 +6984,492 @@ func addExtensionTests() {
 				shouldFail:         true,
 				expectedError:      ":MISSING_ALPN:",
 				expectedLocalError: "remote error: no application protocol",
+			})
+		}
+
+		// Test ALPS.
+		if ver.version >= VersionTLS13 {
+			// Test that client and server can negotiate ALPS, including
+			// different values on resumption.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "ALPS-Basic-Client-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
+				},
+				resumeConfig: &Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
+				},
+				resumeSession: true,
+				expectations: connectionExpectations{
+					peerApplicationSettings: []byte("shim1"),
+				},
+				resumeExpectations: &connectionExpectations{
+					peerApplicationSettings: []byte("shim2"),
+				},
+				flags: []string{
+					"-advertise-alpn", "\x05proto",
+					"-expect-alpn", "proto",
+					"-on-initial-application-settings", "proto,shim1",
+					"-on-initial-expect-peer-application-settings", "runner1",
+					"-on-resume-application-settings", "proto,shim2",
+					"-on-resume-expect-peer-application-settings", "runner2",
+				},
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPS-Basic-Server-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
+				},
+				resumeConfig: &Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
+				},
+				resumeSession: true,
+				expectations: connectionExpectations{
+					peerApplicationSettings: []byte("shim1"),
+				},
+				resumeExpectations: &connectionExpectations{
+					peerApplicationSettings: []byte("shim2"),
+				},
+				flags: []string{
+					"-select-alpn", "proto",
+					"-on-initial-application-settings", "proto,shim1",
+					"-on-initial-expect-peer-application-settings", "runner1",
+					"-on-resume-application-settings", "proto,shim2",
+					"-on-resume-expect-peer-application-settings", "runner2",
+				},
+			})
+
+			// Test the client and server correctly handle empty settings.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "ALPS-Empty-Client-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte{}},
+				},
+				resumeSession: true,
+				expectations: connectionExpectations{
+					peerApplicationSettings: []byte{},
+				},
+				flags: []string{
+					"-advertise-alpn", "\x05proto",
+					"-expect-alpn", "proto",
+					"-application-settings", "proto,",
+					"-expect-peer-application-settings", "",
+				},
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPS-Empty-Server-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte{}},
+				},
+				resumeSession: true,
+				expectations: connectionExpectations{
+					peerApplicationSettings: []byte{},
+				},
+				flags: []string{
+					"-select-alpn", "proto",
+					"-application-settings", "proto,",
+					"-expect-peer-application-settings", "",
+				},
+			})
+
+			// Test the client rejects application settings from the server on
+			// protocols it doesn't have them.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "ALPS-UnsupportedProtocol-Client-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto1"},
+					ApplicationSettings: map[string][]byte{"proto1": []byte("runner")},
+					Bugs: ProtocolBugs{
+						AlwaysNegotiateApplicationSettings: true,
+					},
+				},
+				// The client supports ALPS with "proto2", but not "proto1".
+				flags: []string{
+					"-advertise-alpn", "\x06proto1\x06proto2",
+					"-application-settings", "proto2,shim",
+					"-expect-alpn", "proto1",
+				},
+				// The server sends ALPS with "proto1", which is invalid.
+				shouldFail:         true,
+				expectedError:      ":INVALID_ALPN_PROTOCOL:",
+				expectedLocalError: "remote error: illegal parameter",
+			})
+
+			// Test the server declines ALPS if it doesn't support it for the
+			// specified protocol.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPS-UnsupportedProtocol-Server-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto1"},
+					ApplicationSettings: map[string][]byte{"proto1": []byte("runner")},
+				},
+				// The server supports ALPS with "proto2", but not "proto1".
+				flags: []string{
+					"-select-alpn", "proto1",
+					"-application-settings", "proto2,shim",
+				},
+			})
+
+			// Test that the server rejects a missing application_settings extension.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPS-OmitClientApplicationSettings-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+					Bugs: ProtocolBugs{
+						OmitClientApplicationSettings: true,
+					},
+				},
+				flags: []string{
+					"-select-alpn", "proto",
+					"-application-settings", "proto,shim",
+				},
+				// The runner is a client, so it only processes the shim's alert
+				// after checking connection state.
+				expectations: connectionExpectations{
+					peerApplicationSettings: []byte("shim"),
+				},
+				shouldFail:         true,
+				expectedError:      ":MISSING_EXTENSION:",
+				expectedLocalError: "remote error: missing extension",
+			})
+
+			// Test that the server rejects a missing EncryptedExtensions message.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPS-OmitClientEncryptedExtensions-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+					Bugs: ProtocolBugs{
+						OmitClientEncryptedExtensions: true,
+					},
+				},
+				flags: []string{
+					"-select-alpn", "proto",
+					"-application-settings", "proto,shim",
+				},
+				// The runner is a client, so it only processes the shim's alert
+				// after checking connection state.
+				expectations: connectionExpectations{
+					peerApplicationSettings: []byte("shim"),
+				},
+				shouldFail:         true,
+				expectedError:      ":UNEXPECTED_MESSAGE:",
+				expectedLocalError: "remote error: unexpected message",
+			})
+
+			// Test that the server rejects an unexpected EncryptedExtensions message.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "UnexpectedClientEncryptedExtensions-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+					Bugs: ProtocolBugs{
+						AlwaysSendClientEncryptedExtensions: true,
+					},
+				},
+				shouldFail:         true,
+				expectedError:      ":UNEXPECTED_MESSAGE:",
+				expectedLocalError: "remote error: unexpected message",
+			})
+
+			// Test that the server rejects an unexpected extension in an
+			// expected EncryptedExtensions message.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ExtraClientEncryptedExtension-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+					Bugs: ProtocolBugs{
+						SendExtraClientEncryptedExtension: true,
+					},
+				},
+				flags: []string{
+					"-select-alpn", "proto",
+					"-application-settings", "proto,shim",
+				},
+				// The runner is a client, so it only processes the shim's alert
+				// after checking connection state.
+				expectations: connectionExpectations{
+					peerApplicationSettings: []byte("shim"),
+				},
+				shouldFail:         true,
+				expectedError:      ":UNEXPECTED_EXTENSION:",
+				expectedLocalError: "remote error: unsupported extension",
+			})
+
+			// Test that ALPS is carried over on 0-RTT.
+			for _, empty := range []bool{false, true} {
+				suffix := ver.name
+				runnerSettings := "runner"
+				shimSettings := "shim"
+				if empty {
+					suffix = "Empty-" + ver.name
+					runnerSettings = ""
+					shimSettings = ""
+				}
+
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					name:     "ALPS-EarlyData-Client-" + suffix,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+					},
+					resumeSession: true,
+					earlyData:     true,
+					flags: []string{
+						"-advertise-alpn", "\x05proto",
+						"-expect-alpn", "proto",
+						"-application-settings", "proto," + shimSettings,
+						"-expect-peer-application-settings", runnerSettings,
+					},
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte(shimSettings),
+					},
+				})
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					name:     "ALPS-EarlyData-Server-" + suffix,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+					},
+					resumeSession: true,
+					earlyData:     true,
+					flags: []string{
+						"-select-alpn", "proto",
+						"-application-settings", "proto," + shimSettings,
+						"-expect-peer-application-settings", runnerSettings,
+					},
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte(shimSettings),
+					},
+				})
+
+				// Sending application settings in 0-RTT handshakes is forbidden.
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					name:     "ALPS-EarlyData-SendApplicationSettingsWithEarlyData-Client-" + suffix,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+						Bugs: ProtocolBugs{
+							SendApplicationSettingsWithEarlyData: true,
+						},
+					},
+					resumeSession: true,
+					earlyData:     true,
+					flags: []string{
+						"-advertise-alpn", "\x05proto",
+						"-expect-alpn", "proto",
+						"-application-settings", "proto," + shimSettings,
+						"-expect-peer-application-settings", runnerSettings,
+					},
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte(shimSettings),
+					},
+					shouldFail:         true,
+					expectedError:      ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
+					expectedLocalError: "remote error: illegal parameter",
+				})
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					name:     "ALPS-EarlyData-SendApplicationSettingsWithEarlyData-Server-" + suffix,
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte(runnerSettings)},
+						Bugs: ProtocolBugs{
+							SendApplicationSettingsWithEarlyData: true,
+						},
+					},
+					resumeSession: true,
+					earlyData:     true,
+					flags: []string{
+						"-select-alpn", "proto",
+						"-application-settings", "proto," + shimSettings,
+						"-expect-peer-application-settings", runnerSettings,
+					},
+					expectations: connectionExpectations{
+						peerApplicationSettings: []byte(shimSettings),
+					},
+					shouldFail:         true,
+					expectedError:      ":UNEXPECTED_MESSAGE:",
+					expectedLocalError: "remote error: unexpected message",
+				})
+			}
+
+			// Test that the client and server each decline early data if local
+			// ALPS preferences has changed for the current connection.
+			alpsMismatchTests := []struct {
+				name                            string
+				initialSettings, resumeSettings []byte
+			}{
+				{"DifferentValues", []byte("settings1"), []byte("settings2")},
+				{"OnOff", []byte("settings"), nil},
+				{"OffOn", nil, []byte("settings")},
+				// The empty settings value should not be mistaken for ALPS not
+				// being negotiated.
+				{"OnEmpty", []byte("settings"), []byte{}},
+				{"EmptyOn", []byte{}, []byte("settings")},
+				{"EmptyOff", []byte{}, nil},
+				{"OffEmpty", nil, []byte{}},
+			}
+			for _, test := range alpsMismatchTests {
+				flags := []string{"-on-resume-expect-early-data-reason", "alps_mismatch"}
+				if test.initialSettings != nil {
+					flags = append(flags, "-on-initial-application-settings", "proto,"+string(test.initialSettings))
+					flags = append(flags, "-on-initial-expect-peer-application-settings", "runner")
+				}
+				if test.resumeSettings != nil {
+					flags = append(flags, "-on-resume-application-settings", "proto,"+string(test.resumeSettings))
+					flags = append(flags, "-on-resume-expect-peer-application-settings", "runner")
+				}
+
+				// The client should not offer early data.
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					name:     fmt.Sprintf("ALPS-EarlyData-Mismatch-%s-Client-%s", test.name, ver.name),
+					config: Config{
+						MaxVersion:          ver.version,
+						MaxEarlyDataSize:    16384,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+					},
+					resumeSession: true,
+					flags: append([]string{
+						"-enable-early-data",
+						"-expect-ticket-supports-early-data",
+						"-expect-no-offer-early-data",
+						"-advertise-alpn", "\x05proto",
+						"-expect-alpn", "proto",
+					}, flags...),
+					expectations: connectionExpectations{
+						peerApplicationSettings: test.initialSettings,
+					},
+					resumeExpectations: &connectionExpectations{
+						peerApplicationSettings: test.resumeSettings,
+					},
+				})
+
+				// The server should reject early data.
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					name:     fmt.Sprintf("ALPS-EarlyData-Mismatch-%s-Server-%s", test.name, ver.name),
+					config: Config{
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+					},
+					resumeSession:           true,
+					earlyData:               true,
+					expectEarlyDataRejected: true,
+					flags: append([]string{
+						"-select-alpn", "proto",
+					}, flags...),
+					expectations: connectionExpectations{
+						peerApplicationSettings: test.initialSettings,
+					},
+					resumeExpectations: &connectionExpectations{
+						peerApplicationSettings: test.resumeSettings,
+					},
+				})
+			}
+		} else {
+			// Test the client rejects the ALPS extension if the server
+			// negotiated TLS 1.2 or below.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "ALPS-Reject-Client-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"foo"},
+					ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+					Bugs: ProtocolBugs{
+						AlwaysNegotiateApplicationSettings: true,
+					},
+				},
+				flags: []string{
+					"-advertise-alpn", "\x03foo",
+					"-expect-alpn", "foo",
+					"-application-settings", "foo,shim",
+				},
+				shouldFail:         true,
+				expectedError:      ":UNEXPECTED_EXTENSION:",
+				expectedLocalError: "remote error: unsupported extension",
+			})
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "ALPS-Reject-Client-Resume-" + ver.name,
+				config: Config{
+					MaxVersion: ver.version,
+				},
+				resumeConfig: &Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"foo"},
+					ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+					Bugs: ProtocolBugs{
+						AlwaysNegotiateApplicationSettings: true,
+					},
+				},
+				resumeSession: true,
+				flags: []string{
+					"-on-resume-advertise-alpn", "\x03foo",
+					"-on-resume-expect-alpn", "foo",
+					"-on-resume-application-settings", "foo,shim",
+				},
+				shouldFail:         true,
+				expectedError:      ":UNEXPECTED_EXTENSION:",
+				expectedLocalError: "remote error: unsupported extension",
+			})
+
+			// Test the server declines ALPS if it negotiates TLS 1.2 or below.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPS-Decline-Server-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"foo"},
+					ApplicationSettings: map[string][]byte{"foo": []byte("runner")},
+				},
+				// Test both TLS 1.2 full and resumption handshakes.
+				resumeSession: true,
+				flags: []string{
+					"-select-alpn", "foo",
+					"-application-settings", "foo,shim",
+				},
+				// If not specified, runner and shim both implicitly expect ALPS
+				// is not negotiated.
 			})
 		}
 

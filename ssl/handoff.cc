@@ -24,6 +24,8 @@ BSSL_NAMESPACE_BEGIN
 constexpr int kHandoffVersion = 0;
 constexpr int kHandbackVersion = 0;
 
+static const unsigned kHandoffTagALPS = CBS_ASN1_CONTEXT_SPECIFIC | 0;
+
 // early_data_t represents the state of early data in a more compact way than
 // the 3 bits used by the implementation.
 enum early_data_t {
@@ -56,6 +58,16 @@ static bool serialize_features(CBB *out) {
     if (!CBB_add_u16(&curves, g.group_id)) {
       return false;
     }
+  }
+  // ALPS is a draft protocol and may change over time. The handoff structure
+  // contains a [0] IMPLICIT OCTET STRING OPTIONAL, containing a list of u16
+  // ALPS versions that the binary supports. For now we name them by codepoint.
+  // Once ALPS is finalized and past the support horizon, this field can be
+  // removed.
+  CBB alps;
+  if (!CBB_add_asn1(out, &alps, kHandoffTagALPS) ||
+      !CBB_add_u16(&alps, TLSEXT_TYPE_application_settings)) {
+    return false;
   }
   return CBB_flush(out);
 }
@@ -188,6 +200,29 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
   }
   new_configured_curves.Shrink(idx);
   ssl->config->supported_group_list = std::move(new_configured_curves);
+
+  CBS alps;
+  CBS_init(&alps, nullptr, 0);
+  if (!CBS_get_optional_asn1(in, &alps, /*out_present=*/nullptr,
+                             kHandoffTagALPS)) {
+    return false;
+  }
+  bool supports_alps = false;
+  while (CBS_len(&alps) != 0) {
+    uint16_t id;
+    if (!CBS_get_u16(&alps, &id)) {
+      return false;
+    }
+    // For now, we only support one ALPS code point, so we only need to extract
+    // a boolean signal from the feature list.
+    if (id == TLSEXT_TYPE_application_settings) {
+      supports_alps = true;
+      break;
+    }
+  }
+  if (!supports_alps) {
+    ssl->config->alps_configs.clear();
+  }
 
   return true;
 }

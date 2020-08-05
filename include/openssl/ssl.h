@@ -2776,6 +2776,51 @@ OPENSSL_EXPORT void SSL_CTX_set_allow_unknown_alpn_protos(SSL_CTX *ctx,
                                                           int enabled);
 
 
+// Application-layer protocol settings
+//
+// The ALPS extension (draft-vvv-tls-alps) allows exchanging application-layer
+// settings in the TLS handshake for applications negotiated with ALPN. Note
+// that, when ALPS is negotiated, the client and server each advertise their own
+// settings, so there are functions to both configure setting to send and query
+// received settings.
+
+// SSL_add_application_settings configures |ssl| to enable ALPS with ALPN
+// protocol |proto|, sending an ALPS value of |settings|. It returns one on
+// success and zero on error. If |proto| is negotiated via ALPN and the peer
+// supports ALPS, |settings| will be sent to the peer. The peer's ALPS value can
+// be retrieved with |SSL_get0_peer_application_settings|.
+//
+// On the client, this function should be called before the handshake, once for
+// each supported ALPN protocol which uses ALPS. |proto| must be included in the
+// client's ALPN configuration (see |SSL_CTX_set_alpn_protos| and
+// |SSL_set_alpn_protos|). On the server, ALPS can be preconfigured for each
+// protocol as in the client, or configuration can be deferred to the ALPN
+// callback (see |SSL_CTX_set_alpn_select_cb|), in which case only the selected
+// protocol needs to be configured.
+//
+// ALPS can be independently configured from 0-RTT, however changes in protocol
+// settings will fallback to 1-RTT to negotiate the new value, so it is
+// recommended for |settings| to be relatively stable.
+OPENSSL_EXPORT int SSL_add_application_settings(SSL *ssl, const uint8_t *proto,
+                                                size_t proto_len,
+                                                const uint8_t *settings,
+                                                size_t settings_len);
+
+// SSL_get0_peer_application_settings sets |*out_data| and |*out_len| to a
+// buffer containing the peer's ALPS value, or the empty string if ALPS was not
+// negotiated. Note an empty string could also indicate the peer sent an empty
+// settings value. Use |SSL_has_application_settings| to check if ALPS was
+// negotiated. The output buffer is owned by |ssl| and is valid until the next
+// time |ssl| is modified.
+OPENSSL_EXPORT void SSL_get0_peer_application_settings(const SSL *ssl,
+                                                       const uint8_t **out_data,
+                                                       size_t *out_len);
+
+// SSL_has_application_settings returns one if ALPS was negotiated on this
+// connection and zero otherwise.
+OPENSSL_EXPORT int SSL_has_application_settings(const SSL *ssl);
+
+
 // Certificate compression.
 //
 // Certificates in TLS 1.3 can be compressed[1]. BoringSSL supports this as both
@@ -3493,8 +3538,10 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   ssl_early_data_ticket_age_skew = 12,
   // QUIC parameters differ between this connection and the original.
   ssl_early_data_quic_parameter_mismatch = 13,
+  // The application settings did not match the session.
+  ssl_early_data_alps_mismatch = 14,
   // The value of the largest entry.
-  ssl_early_data_reason_max_value = ssl_early_data_quic_parameter_mismatch,
+  ssl_early_data_reason_max_value = ssl_early_data_alps_mismatch,
 };
 
 // SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected
@@ -5217,6 +5264,8 @@ BSSL_NAMESPACE_END
 #define SSL_R_QUIC_TRANSPORT_PARAMETERS_MISCONFIGURED 305
 #define SSL_R_UNEXPECTED_COMPATIBILITY_MODE 306
 #define SSL_R_MISSING_ALPN 307
+#define SSL_R_NEGOTIATED_ALPS_WITHOUT_ALPN 308
+#define SSL_R_ALPS_MISMATCH_ON_EARLY_DATA 309
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

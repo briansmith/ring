@@ -295,6 +295,7 @@ type clientHelloMsg struct {
 	pad                     int
 	compressedCertAlgs      []uint16
 	delegatedCredentials    bool
+	alpsProtocols           []string
 	prefixExtensions        []uint16
 }
 
@@ -574,6 +575,17 @@ func (m *clientHelloMsg) marshal() []byte {
 			body: body.finish(),
 		})
 	}
+	if len(m.alpsProtocols) > 0 {
+		body := newByteBuilder()
+		protocolNameList := body.addU16LengthPrefixed()
+		for _, s := range m.alpsProtocols {
+			protocolNameList.addU8LengthPrefixed().addBytes([]byte(s))
+		}
+		extensions = append(extensions, extension{
+			id:   extensionApplicationSettings,
+			body: body.finish(),
+		})
+	}
 
 	// The PSK extension must be last. See https://tools.ietf.org/html/rfc8446#section-4.2.11
 	if len(m.pskIdentities) > 0 {
@@ -731,6 +743,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.extendedMasterSecret = false
 	m.customExtension = ""
 	m.delegatedCredentials = false
+	m.alpsProtocols = nil
 
 	if len(reader) == 0 {
 		// ClientHello is optionally followed by extension data
@@ -889,7 +902,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			}
 			for len(protocols) > 0 {
 				var protocol []byte
-				if !protocols.readU8LengthPrefixedBytes(&protocol) {
+				if !protocols.readU8LengthPrefixedBytes(&protocol) || len(protocol) == 0 {
 					return false
 				}
 				m.alpnProtocols = append(m.alpnProtocols, string(protocol))
@@ -966,6 +979,18 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.delegatedCredentials = true
+		case extensionApplicationSettings:
+			var protocols byteReader
+			if !body.readU16LengthPrefixed(&protocols) || len(body) != 0 {
+				return false
+			}
+			for len(protocols) > 0 {
+				var protocol []byte
+				if !protocols.readU8LengthPrefixedBytes(&protocol) || len(protocol) == 0 {
+					return false
+				}
+				m.alpsProtocols = append(m.alpsProtocols, string(protocol))
+			}
 		}
 
 		if isGREASEValue(extension) {
@@ -1233,6 +1258,8 @@ type serverExtensions struct {
 	supportedCurves         []CurveID
 	quicTransportParams     []byte
 	serverNameAck           bool
+	applicationSettings     []byte
+	hasApplicationSettings  bool
 }
 
 func (m *serverExtensions) marshal(extensions *byteBuilder) {
@@ -1367,6 +1394,10 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		extensions.addU16(extensionServerName)
 		extensions.addU16(0) // zero length
 	}
+	if m.hasApplicationSettings {
+		extensions.addU16(extensionApplicationSettings)
+		extensions.addU16LengthPrefixed().addBytes(m.applicationSettings)
+	}
 }
 
 func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
@@ -1475,12 +1506,77 @@ func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
 				return false
 			}
 			m.hasEarlyData = true
+		case extensionApplicationSettings:
+			m.hasApplicationSettings = true
+			m.applicationSettings = body
 		default:
 			// Unknown extensions are illegal from the server.
 			return false
 		}
 	}
 
+	return true
+}
+
+type clientEncryptedExtensionsMsg struct {
+	raw                    []byte
+	applicationSettings    []byte
+	hasApplicationSettings bool
+	customExtension        []byte
+}
+
+func (m *clientEncryptedExtensionsMsg) marshal() (x []byte) {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	builder := newByteBuilder()
+	builder.addU8(typeEncryptedExtensions)
+	body := builder.addU24LengthPrefixed()
+	extensions := body.addU16LengthPrefixed()
+	if m.hasApplicationSettings {
+		extensions.addU16(extensionApplicationSettings)
+		extensions.addU16LengthPrefixed().addBytes(m.applicationSettings)
+	}
+	if len(m.customExtension) > 0 {
+		extensions.addU16(extensionCustom)
+		extensions.addU16LengthPrefixed().addBytes(m.customExtension)
+	}
+
+	m.raw = builder.finish()
+	return m.raw
+}
+
+func (m *clientEncryptedExtensionsMsg) unmarshal(data []byte) bool {
+	m.raw = data
+	reader := byteReader(data[4:])
+
+	var extensions byteReader
+	if !reader.readU16LengthPrefixed(&extensions) ||
+		len(reader) != 0 {
+		return false
+	}
+
+	if !checkDuplicateExtensions(extensions) {
+		return false
+	}
+
+	for len(extensions) > 0 {
+		var extension uint16
+		var body byteReader
+		if !extensions.readU16(&extension) ||
+			!extensions.readU16LengthPrefixed(&body) {
+			return false
+		}
+		switch extension {
+		case extensionApplicationSettings:
+			m.hasApplicationSettings = true
+			m.applicationSettings = body
+		default:
+			// Unknown extensions are illegal in EncryptedExtensions.
+			return false
+		}
+	}
 	return true
 }
 

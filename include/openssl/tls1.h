@@ -235,6 +235,10 @@ extern "C" {
 // ExtensionType value from draft-ietf-tls-subcerts.
 #define TLSEXT_TYPE_delegated_credential 0x22
 
+// ExtensionType value from draft-vvv-tls-alps. This is not an IANA defined
+// extension number.
+#define TLSEXT_TYPE_application_settings 17513
+
 // ExtensionType value from RFC6962
 #define TLSEXT_TYPE_certificate_timestamp 18
 

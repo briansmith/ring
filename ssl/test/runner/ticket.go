@@ -18,17 +18,20 @@ import (
 // sessionState contains the information that is serialized into a session
 // ticket in order to later resume a connection.
 type sessionState struct {
-	vers                 uint16
-	cipherSuite          uint16
-	masterSecret         []byte
-	handshakeHash        []byte
-	certificates         [][]byte
-	extendedMasterSecret bool
-	earlyALPN            []byte
-	ticketCreationTime   time.Time
-	ticketExpiration     time.Time
-	ticketFlags          uint32
-	ticketAgeAdd         uint32
+	vers                     uint16
+	cipherSuite              uint16
+	masterSecret             []byte
+	handshakeHash            []byte
+	certificates             [][]byte
+	extendedMasterSecret     bool
+	earlyALPN                []byte
+	ticketCreationTime       time.Time
+	ticketExpiration         time.Time
+	ticketFlags              uint32
+	ticketAgeAdd             uint32
+	hasApplicationSettings   bool
+	localApplicationSettings []byte
+	peerApplicationSettings  []byte
 }
 
 func (s *sessionState) marshal() []byte {
@@ -61,7 +64,31 @@ func (s *sessionState) marshal() []byte {
 	earlyALPN := msg.addU16LengthPrefixed()
 	earlyALPN.addBytes(s.earlyALPN)
 
+	if s.hasApplicationSettings {
+		msg.addU8(1)
+		msg.addU16LengthPrefixed().addBytes(s.localApplicationSettings)
+		msg.addU16LengthPrefixed().addBytes(s.peerApplicationSettings)
+	} else {
+		msg.addU8(0)
+	}
+
 	return msg.finish()
+}
+
+func readBool(reader *byteReader, out *bool) bool {
+	var value uint8
+	if !reader.readU8(&value) {
+		return false
+	}
+	if value == 0 {
+		*out = false
+		return true
+	}
+	if value == 1 {
+		*out = true
+		return true
+	}
+	return false
 }
 
 func (s *sessionState) unmarshal(data []byte) bool {
@@ -82,15 +109,7 @@ func (s *sessionState) unmarshal(data []byte) bool {
 		}
 	}
 
-	var extendedMasterSecret uint8
-	if !reader.readU8(&extendedMasterSecret) {
-		return false
-	}
-	if extendedMasterSecret == 0 {
-		s.extendedMasterSecret = false
-	} else if extendedMasterSecret == 1 {
-		s.extendedMasterSecret = true
-	} else {
+	if !readBool(&reader, &s.extendedMasterSecret) {
 		return false
 	}
 
@@ -107,7 +126,18 @@ func (s *sessionState) unmarshal(data []byte) bool {
 	}
 
 	if !reader.readU16LengthPrefixedBytes(&s.earlyALPN) ||
-		len(reader) > 0 {
+		!readBool(&reader, &s.hasApplicationSettings) {
+		return false
+	}
+
+	if s.hasApplicationSettings {
+		if !reader.readU16LengthPrefixedBytes(&s.localApplicationSettings) ||
+			!reader.readU16LengthPrefixedBytes(&s.peerApplicationSettings) {
+			return false
+		}
+	}
+
+	if len(reader) > 0 {
 		return false
 	}
 

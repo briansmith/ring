@@ -2241,6 +2241,36 @@ void SSL_CTX_set_allow_unknown_alpn_protos(SSL_CTX *ctx, int enabled) {
   ctx->allow_unknown_alpn_protos = !!enabled;
 }
 
+int SSL_add_application_settings(SSL *ssl, const uint8_t *proto,
+                                 size_t proto_len, const uint8_t *settings,
+                                 size_t settings_len) {
+  if (!ssl->config) {
+    return 0;
+  }
+  ALPSConfig config;
+  if (!config.protocol.CopyFrom(MakeConstSpan(proto, proto_len)) ||
+      !config.settings.CopyFrom(MakeConstSpan(settings, settings_len)) ||
+      !ssl->config->alps_configs.Push(std::move(config))) {
+    return 0;
+  }
+  return 1;
+}
+
+void SSL_get0_peer_application_settings(const SSL *ssl,
+                                        const uint8_t **out_data,
+                                        size_t *out_len) {
+  const SSL_SESSION *session = SSL_get_session(ssl);
+  Span<const uint8_t> settings =
+      session ? session->peer_application_settings : Span<const uint8_t>();
+  *out_data = settings.data();
+  *out_len = settings.size();
+}
+
+int SSL_has_application_settings(const SSL *ssl) {
+  const SSL_SESSION *session = SSL_get_session(ssl);
+  return session && session->has_application_settings;
+}
+
 int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,
                                      ssl_cert_compression_func_t compress,
                                      ssl_cert_decompression_func_t decompress) {

@@ -47,6 +47,7 @@
     "CustomExtensions-Server-EarlyDataOffered": "Trial decryption does not work with the NULL cipher.",
     "*-TicketAgeSkew-*-Reject*": "Trial decryption does not work with the NULL cipher.",
     "*EarlyDataRejected*": "Trial decryption does not work with the NULL cipher.",
+    "ALPS-EarlyData-Mismatch-*": "Trial decryption does not work with the NULL cipher.",
 
     "Renegotiate-Client-BadExt*": "Fuzzer mode does not check renegotiation_info.",
 

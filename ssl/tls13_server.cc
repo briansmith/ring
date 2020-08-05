@@ -354,13 +354,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
                          &offered_ticket, msg, &client_hello)) {
     case ssl_ticket_aead_ignore_ticket:
       assert(!session);
-      if (!ssl->enable_early_data) {
-        ssl->s3->early_data_reason = ssl_early_data_disabled;
-      } else if (!offered_ticket) {
-        ssl->s3->early_data_reason = ssl_early_data_no_session_offered;
-      } else {
-        ssl->s3->early_data_reason = ssl_early_data_session_not_resumed;
-      }
       if (!ssl_get_new_session(hs, 1 /* server */)) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
@@ -375,35 +368,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       if (hs->new_session == nullptr) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
-      }
-
-      // |ssl_session_is_resumable| forbids cross-cipher resumptions even if the
-      // PRF hashes match.
-      assert(hs->new_cipher == session->cipher);
-
-      if (!ssl->enable_early_data) {
-        ssl->s3->early_data_reason = ssl_early_data_disabled;
-      } else if (session->ticket_max_early_data == 0) {
-        ssl->s3->early_data_reason = ssl_early_data_unsupported_for_session;
-      } else if (!hs->early_data_offered) {
-        ssl->s3->early_data_reason = ssl_early_data_peer_declined;
-      } else if (ssl->s3->channel_id_valid) {
-          // Channel ID is incompatible with 0-RTT.
-        ssl->s3->early_data_reason = ssl_early_data_channel_id;
-      } else if (ssl->s3->token_binding_negotiated) {
-          // Token Binding is incompatible with 0-RTT.
-        ssl->s3->early_data_reason = ssl_early_data_token_binding;
-      } else if (MakeConstSpan(ssl->s3->alpn_selected) != session->early_alpn) {
-        // The negotiated ALPN must match the one in the ticket.
-        ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
-      } else if (ssl->s3->ticket_age_skew < -kMaxTicketAgeSkewSeconds ||
-                 kMaxTicketAgeSkewSeconds < ssl->s3->ticket_age_skew) {
-        ssl->s3->early_data_reason = ssl_early_data_ticket_age_skew;
-      } else if (!quic_ticket_compatible(session.get(), hs->config)) {
-        ssl->s3->early_data_reason = ssl_early_data_quic_parameter_mismatch;
-      } else {
-        ssl->s3->early_data_reason = ssl_early_data_accepted;
-        ssl->s3->early_data_accepted = true;
       }
 
       ssl->s3->session_reused = true;
@@ -422,11 +386,70 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       return ssl_hs_pending_ticket;
   }
 
+  // Negotiate ALPS now, after ALPN is negotiated and |hs->new_session| is
+  // initialized.
+  if (!ssl_negotiate_alps(hs, &alert, &client_hello)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return ssl_hs_error;
+  }
+
+  // Determine if we're negotiating 0-RTT.
+  if (!ssl->enable_early_data) {
+    ssl->s3->early_data_reason = ssl_early_data_disabled;
+  } else if (!offered_ticket) {
+    ssl->s3->early_data_reason = ssl_early_data_no_session_offered;
+  } else if (!session) {
+    ssl->s3->early_data_reason = ssl_early_data_session_not_resumed;
+  } else if (session->ticket_max_early_data == 0) {
+    ssl->s3->early_data_reason = ssl_early_data_unsupported_for_session;
+  } else if (!hs->early_data_offered) {
+    ssl->s3->early_data_reason = ssl_early_data_peer_declined;
+  } else if (ssl->s3->channel_id_valid) {
+    // Channel ID is incompatible with 0-RTT.
+    ssl->s3->early_data_reason = ssl_early_data_channel_id;
+  } else if (ssl->s3->token_binding_negotiated) {
+    // Token Binding is incompatible with 0-RTT.
+    ssl->s3->early_data_reason = ssl_early_data_token_binding;
+  } else if (MakeConstSpan(ssl->s3->alpn_selected) != session->early_alpn) {
+    // The negotiated ALPN must match the one in the ticket.
+    ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
+  } else if (hs->new_session->has_application_settings !=
+                 session->has_application_settings ||
+             MakeConstSpan(hs->new_session->local_application_settings) !=
+                 session->local_application_settings) {
+    ssl->s3->early_data_reason = ssl_early_data_alps_mismatch;
+  } else if (ssl->s3->ticket_age_skew < -kMaxTicketAgeSkewSeconds ||
+             kMaxTicketAgeSkewSeconds < ssl->s3->ticket_age_skew) {
+    ssl->s3->early_data_reason = ssl_early_data_ticket_age_skew;
+  } else if (!quic_ticket_compatible(session.get(), hs->config)) {
+    ssl->s3->early_data_reason = ssl_early_data_quic_parameter_mismatch;
+  } else {
+    // |ssl_session_is_resumable| forbids cross-cipher resumptions even if the
+    // PRF hashes match.
+    assert(hs->new_cipher == session->cipher);
+
+    ssl->s3->early_data_reason = ssl_early_data_accepted;
+    ssl->s3->early_data_accepted = true;
+  }
+
   // Record connection properties in the new session.
   hs->new_session->cipher = hs->new_cipher;
 
-  // Store the initial negotiated ALPN in the session.
+  // Store the ALPN and ALPS values in the session for 0-RTT. Note the peer
+  // applications settings are not generally known until client
+  // EncryptedExtensions.
   if (!hs->new_session->early_alpn.CopyFrom(ssl->s3->alpn_selected)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    return ssl_hs_error;
+  }
+
+  // The peer applications settings are usually received later, in
+  // EncryptedExtensions. But, in 0-RTT handshakes, we carry over the
+  // values from |session|. Do this now, before |session| is discarded.
+  if (ssl->s3->early_data_accepted &&
+      hs->new_session->has_application_settings &&
+      !hs->new_session->peer_application_settings.CopyFrom(
+          session->peer_application_settings)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
@@ -854,6 +877,64 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
                              hs->client_handshake_secret())) {
     return ssl_hs_error;
   }
+  hs->tls13_state = state13_read_client_encrypted_extensions;
+  return ssl_hs_ok;
+}
+
+static enum ssl_hs_wait_t do_read_client_encrypted_extensions(
+    SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  // For now, only one extension uses client EncryptedExtensions. This function
+  // may be generalized if others use it in the future.
+  if (hs->new_session->has_application_settings &&
+      !ssl->s3->early_data_accepted) {
+    SSLMessage msg;
+    if (!ssl->method->get_message(ssl, &msg)) {
+      return ssl_hs_read_message;
+    }
+    if (!ssl_check_message_type(ssl, msg, SSL3_MT_ENCRYPTED_EXTENSIONS)) {
+      return ssl_hs_error;
+    }
+
+    CBS body = msg.body, extensions;
+    if (!CBS_get_u16_length_prefixed(&body, &extensions) ||
+        CBS_len(&body) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      return ssl_hs_error;
+    }
+
+    // Parse out the extensions.
+    bool have_application_settings = false;
+    CBS application_settings;
+    SSL_EXTENSION_TYPE ext_types[] = {{TLSEXT_TYPE_application_settings,
+                                       &have_application_settings,
+                                       &application_settings}};
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+                              /*ignore_unknown=*/false)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return ssl_hs_error;
+    }
+
+    if (!have_application_settings) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
+      return ssl_hs_error;
+    }
+
+    // Note that, if 0-RTT was accepted, these values will already have been
+    // initialized earlier.
+    if (!hs->new_session->peer_application_settings.CopyFrom(
+            application_settings) ||
+        !ssl_hash_message(hs, msg)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
+
+    ssl->method->next_message(ssl);
+  }
+
   hs->tls13_state = state13_read_client_certificate;
   return ssl_hs_ok;
 }
@@ -892,8 +973,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_read_client_certificate_verify(
-    SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (sk_CRYPTO_BUFFER_num(hs->new_session->certs.get()) == 0) {
     // Skip this state.
@@ -1037,6 +1117,9 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
       case state13_process_end_of_early_data:
         ret = do_process_end_of_early_data(hs);
         break;
+      case state13_read_client_encrypted_extensions:
+        ret = do_read_client_encrypted_extensions(hs);
+        break;
       case state13_read_client_certificate:
         ret = do_read_client_certificate(hs);
         break;
@@ -1093,6 +1176,8 @@ const char *tls13_server_handshake_state(SSL_HANDSHAKE *hs) {
       return "TLS 1.3 server read_second_client_flight";
     case state13_process_end_of_early_data:
       return "TLS 1.3 server process_end_of_early_data";
+    case state13_read_client_encrypted_extensions:
+      return "TLS 1.3 server read_client_encrypted_extensions";
     case state13_read_client_certificate:
       return "TLS 1.3 server read_client_certificate";
     case state13_read_client_certificate_verify:

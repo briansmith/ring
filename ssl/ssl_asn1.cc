@@ -131,6 +131,10 @@ BSSL_NAMESPACE_BEGIN
 //     earlyALPN               [26] OCTET STRING OPTIONAL,
 //     isQuic                  [27] BOOLEAN OPTIONAL,
 //     quicEarlyDataHash       [28] OCTET STRING OPTIONAL,
+//     localALPS               [29] OCTET STRING OPTIONAL,
+//     peerALPS                [30] OCTET STRING OPTIONAL,
+//     -- Either both or none of localALPS and peerALPS must be present. If both
+//     -- are present, earlyALPN must be present and non-empty.
 // }
 //
 // Note: historically this serialization has included other optional
@@ -194,6 +198,10 @@ static const unsigned kIsQuicTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 27;
 static const unsigned kQuicEarlyDataContextTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 28;
+static const unsigned kLocalALPSTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 29;
+static const unsigned kPeerALPSTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 30;
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
                                      int for_ticket) {
@@ -406,6 +414,19 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     if (!CBB_add_asn1(&session, &child, kQuicEarlyDataContextTag) ||
         !CBB_add_asn1_octet_string(&child, in->quic_early_data_context.data(),
                                    in->quic_early_data_context.size())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
+  if (in->has_application_settings) {
+    if (!CBB_add_asn1(&session, &child, kLocalALPSTag) ||
+        !CBB_add_asn1_octet_string(&child,
+                                   in->local_application_settings.data(),
+                                   in->local_application_settings.size()) ||
+        !CBB_add_asn1(&session, &child, kPeerALPSTag) ||
+        !CBB_add_asn1_octet_string(&child, in->peer_application_settings.data(),
+                                   in->peer_application_settings.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -753,12 +774,32 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
       !CBS_get_optional_asn1_bool(&session, &is_quic, kIsQuicTag,
                                   /*default_value=*/false) ||
       !SSL_SESSION_parse_octet_string(&session, &ret->quic_early_data_context,
-                                      kQuicEarlyDataContextTag) ||
+                                      kQuicEarlyDataContextTag)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    return nullptr;
+  }
+
+  CBS settings;
+  int has_local_alps, has_peer_alps;
+  if (!CBS_get_optional_asn1_octet_string(&session, &settings, &has_local_alps,
+                                          kLocalALPSTag) ||
+      !ret->local_application_settings.CopyFrom(settings) ||
+      !CBS_get_optional_asn1_octet_string(&session, &settings, &has_peer_alps,
+                                          kPeerALPSTag) ||
+      !ret->peer_application_settings.CopyFrom(settings) ||
       CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;
   }
   ret->is_quic = is_quic;
+
+  // The two ALPS values and ALPN must be consistent.
+  if (has_local_alps != has_peer_alps ||
+      (has_local_alps && ret->early_alpn.empty())) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    return nullptr;
+  }
+  ret->has_application_settings = has_local_alps;
 
   if (!x509_method->session_cache_objects(ret.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);

@@ -16,6 +16,7 @@
 #define HEADER_TEST_CONFIG
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <openssl/base.h>
@@ -67,6 +68,8 @@ struct TestConfig {
   std::string select_alpn;
   bool decline_alpn = false;
   bool select_empty_alpn = false;
+  std::vector<std::pair<std::string, std::string>> application_settings;
+  std::unique_ptr<std::string> expect_peer_application_settings;
   std::string quic_transport_params;
   std::string expect_quic_transport_params;
   bool expect_session_miss = false;

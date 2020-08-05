@@ -264,13 +264,15 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     new_session->ticket_age_add = session->ticket_age_add;
     new_session->ticket_max_early_data = session->ticket_max_early_data;
     new_session->extended_master_secret = session->extended_master_secret;
+    new_session->has_application_settings = session->has_application_settings;
 
-    if (!new_session->early_alpn.CopyFrom(session->early_alpn)) {
-      return nullptr;
-    }
-
-    if (!new_session->quic_early_data_context.CopyFrom(
-            session->quic_early_data_context)) {
+    if (!new_session->early_alpn.CopyFrom(session->early_alpn) ||
+        !new_session->quic_early_data_context.CopyFrom(
+            session->quic_early_data_context) ||
+        !new_session->local_application_settings.CopyFrom(
+            session->local_application_settings) ||
+        !new_session->peer_application_settings.CopyFrom(
+            session->peer_application_settings)) {
       return nullptr;
     }
   }
@@ -864,7 +866,8 @@ ssl_session_st::ssl_session_st(const SSL_X509_METHOD *method)
       not_resumable(false),
       ticket_age_add_valid(false),
       is_server(false),
-      is_quic(false) {
+      is_quic(false),
+      has_application_settings(false) {
   CRYPTO_new_ex_data(&ex_data);
   time = ::time(nullptr);
 }

@@ -125,13 +125,14 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 BSSL_NAMESPACE_BEGIN
 
 static bool ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs);
+static bool ssl_check_serverhello_tlsext(SSL_HANDSHAKE *hs);
 
 static int compare_uint16_t(const void *p1, const void *p2) {
   uint16_t u1 = *((const uint16_t *)p1);
@@ -512,7 +513,7 @@ struct tls_extension {
 };
 
 static bool forbid_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                                    CBS *contents) {
+                                     CBS *contents) {
   if (contents != NULL) {
     // Servers MUST NOT send this extension.
     *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
@@ -524,7 +525,7 @@ static bool forbid_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 }
 
 static bool ignore_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                                    CBS *contents) {
+                                     CBS *contents) {
   // This extension from the client is handled elsewhere.
   return true;
 }
@@ -1380,7 +1381,6 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   CBS protocol_name_list_copy = protocol_name_list;
   while (CBS_len(&protocol_name_list_copy) > 0) {
     CBS protocol_name;
-
     if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name) ||
         // Empty protocol names are forbidden.
         CBS_len(&protocol_name) == 0) {
@@ -1946,6 +1946,21 @@ static bool ext_psk_key_exchange_modes_parse_clienthello(SSL_HANDSHAKE *hs,
 //
 // https://tools.ietf.org/html/rfc8446#section-4.2.10
 
+// ssl_get_local_application_settings looks up the configured ALPS value for
+// |protocol|. If found, it sets |*out_settings| to the value and returns true.
+// Otherwise, it returns false.
+static bool ssl_get_local_application_settings(
+    const SSL_HANDSHAKE *hs, Span<const uint8_t> *out_settings,
+    Span<const uint8_t> protocol) {
+  for (const ALPSConfig &config : hs->config->alps_configs) {
+    if (protocol == config.protocol) {
+      *out_settings = config.settings;
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   // The second ClientHello never offers early data, and we must have already
@@ -1978,13 +1993,22 @@ static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
-  // In case ALPN preferences changed since this session was established, avoid
-  // reporting a confusing value in |SSL_get0_alpn_selected| and sending early
-  // data we know will be rejected.
-  if (!ssl->session->early_alpn.empty() &&
-      !ssl_is_alpn_protocol_allowed(hs, ssl->session->early_alpn)) {
-    ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
-    return true;
+  if (!ssl->session->early_alpn.empty()) {
+    if (!ssl_is_alpn_protocol_allowed(hs, ssl->session->early_alpn)) {
+      // Avoid reporting a confusing value in |SSL_get0_alpn_selected|.
+      ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
+      return true;
+    }
+
+    Span<const uint8_t> settings;
+    bool has_alps = ssl_get_local_application_settings(
+        hs, &settings, ssl->session->early_alpn);
+    if (has_alps != ssl->session->has_application_settings ||
+        settings != ssl->session->local_application_settings) {
+      // 0-RTT carries ALPS over, so we only offer it when the value matches.
+      ssl->s3->early_data_reason = ssl_early_data_alps_mismatch;
+      return true;
+    }
   }
 
   // |early_data_reason| will be filled in later when the server responds.
@@ -2797,6 +2821,144 @@ static bool cert_compression_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   return true;
 }
 
+// Application-level Protocol Settings
+//
+// https://tools.ietf.org/html/draft-vvv-tls-alps-01
+
+static bool ext_alps_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
+  SSL *const ssl = hs->ssl;
+  if (// ALPS requires TLS 1.3.
+      hs->max_version < TLS1_3_VERSION ||
+      // Do not offer ALPS without ALPN.
+      hs->config->alpn_client_proto_list.empty() ||
+      // Do not offer ALPS if not configured.
+      hs->config->alps_configs.empty() ||
+      // Do not offer ALPS on renegotiation handshakes.
+      ssl->s3->initial_handshake_complete) {
+    return true;
+  }
+
+  CBB contents, proto_list, proto;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_application_settings) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &proto_list)) {
+    return false;
+  }
+
+  for (const ALPSConfig &config : hs->config->alps_configs) {
+    if (!CBB_add_u8_length_prefixed(&proto_list, &proto) ||
+        !CBB_add_bytes(&proto, config.protocol.data(),
+                       config.protocol.size())) {
+      return false;
+    }
+  }
+
+  return CBB_flush(out);
+}
+
+static bool ext_alps_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                                       CBS *contents) {
+  SSL *const ssl = hs->ssl;
+  if (contents == nullptr) {
+    return true;
+  }
+
+  assert(!ssl->s3->initial_handshake_complete);
+  assert(!hs->config->alpn_client_proto_list.empty());
+  assert(!hs->config->alps_configs.empty());
+
+  // ALPS requires TLS 1.3.
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+    *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+    return false;
+  }
+
+  // Note extension callbacks may run in any order, so we defer checking
+  // consistency with ALPN to |ssl_check_serverhello_tlsext|.
+  if (!hs->new_session->peer_application_settings.CopyFrom(*contents)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return false;
+  }
+
+  hs->new_session->has_application_settings = true;
+  return true;
+}
+
+static bool ext_alps_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
+  SSL *const ssl = hs->ssl;
+  // If early data is accepted, we omit the ALPS extension. It is implicitly
+  // carried over from the previous connection.
+  if (hs->new_session == nullptr ||
+      !hs->new_session->has_application_settings ||
+      ssl->s3->early_data_accepted) {
+    return true;
+  }
+
+  CBB contents;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_application_settings) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_bytes(&contents,
+                     hs->new_session->local_application_settings.data(),
+                     hs->new_session->local_application_settings.size()) ||
+      !CBB_flush(out)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool ssl_negotiate_alps(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                        const SSL_CLIENT_HELLO *client_hello) {
+  SSL *const ssl = hs->ssl;
+  if (ssl->s3->alpn_selected.empty()) {
+    return true;
+  }
+
+  // If we negotiate ALPN over TLS 1.3, try to negotiate ALPS.
+  CBS alps_contents;
+  Span<const uint8_t> settings;
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION &&
+      ssl_get_local_application_settings(hs, &settings,
+                                         ssl->s3->alpn_selected) &&
+      ssl_client_hello_get_extension(client_hello, &alps_contents,
+                                     TLSEXT_TYPE_application_settings)) {
+    // Check if the client supports ALPS with the selected ALPN.
+    bool found = false;
+    CBS alps_list;
+    if (!CBS_get_u16_length_prefixed(&alps_contents, &alps_list) ||
+        CBS_len(&alps_contents) != 0 ||
+        CBS_len(&alps_list) == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+    while (CBS_len(&alps_list) > 0) {
+      CBS protocol_name;
+      if (!CBS_get_u8_length_prefixed(&alps_list, &protocol_name) ||
+          // Empty protocol names are forbidden.
+          CBS_len(&protocol_name) == 0) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+        *out_alert = SSL_AD_DECODE_ERROR;
+        return false;
+      }
+      if (protocol_name == MakeConstSpan(ssl->s3->alpn_selected)) {
+        found = true;
+      }
+    }
+
+    // Negotiate ALPS if both client also supports ALPS for this protocol.
+    if (found) {
+      hs->new_session->has_application_settings = true;
+      if (!hs->new_session->local_application_settings.CopyFrom(settings)) {
+        *out_alert = SSL_AD_INTERNAL_ERROR;
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
 
 // kExtensions contains all the supported extensions.
 static const struct tls_extension kExtensions[] = {
@@ -2977,6 +3139,15 @@ static const struct tls_extension kExtensions[] = {
     forbid_parse_serverhello,
     ext_delegated_credential_parse_clienthello,
     dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_application_settings,
+    NULL,
+    ext_alps_add_clienthello,
+    ext_alps_parse_serverhello,
+    // ALPS is negotiated late in |ssl_negotiate_alpn|.
+    ignore_parse_clienthello,
+    ext_alps_add_serverhello,
   },
 };
 
@@ -3370,11 +3541,45 @@ static bool ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
   }
 }
 
+static bool ssl_check_serverhello_tlsext(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  // ALPS and ALPN have a dependency between each other, so we defer checking
+  // consistency to after the callbacks run.
+  if (hs->new_session != nullptr && hs->new_session->has_application_settings) {
+    // ALPN must be negotiated.
+    if (ssl->s3->alpn_selected.empty()) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_ALPS_WITHOUT_ALPN);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      return false;
+    }
+
+    // The negotiated protocol must be one of the ones we advertised for ALPS.
+    Span<const uint8_t> settings;
+    if (!ssl_get_local_application_settings(hs, &settings,
+                                            ssl->s3->alpn_selected)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      return false;
+    }
+
+    if (!hs->new_session->local_application_settings.CopyFrom(settings)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs) {
   SSL *const ssl = hs->ssl;
   int alert = SSL_AD_DECODE_ERROR;
   if (!ssl_scan_serverhello_tlsext(hs, cbs, &alert)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return false;
+  }
+
+  if (!ssl_check_serverhello_tlsext(hs)) {
     return false;
   }
 

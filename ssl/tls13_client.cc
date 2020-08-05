@@ -44,6 +44,7 @@ enum client_hs_state_t {
   state_server_certificate_reverify,
   state_read_server_finished,
   state_send_end_of_early_data,
+  state_send_client_encrypted_extensions,
   state_send_client_certificate,
   state_send_client_certificate_verify,
   state_complete_second_flight,
@@ -487,12 +488,6 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // Store the negotiated ALPN in the session.
-  if (!hs->new_session->early_alpn.CopyFrom(ssl->s3->alpn_selected)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    return ssl_hs_error;
-  }
-
   if (ssl->s3->early_data_accepted) {
     if (hs->early_session->cipher != hs->new_session->cipher) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_MISMATCH_ON_EARLY_DATA);
@@ -505,11 +500,29 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-    if (ssl->s3->channel_id_valid || ssl->s3->token_binding_negotiated) {
+    // Channel ID and Token Binding are incompatible with 0-RTT. The ALPS
+    // extension should be negotiated implicitly.
+    if (ssl->s3->channel_id_valid || ssl->s3->token_binding_negotiated ||
+        hs->new_session->has_application_settings) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION_ON_EARLY_DATA);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
+    hs->new_session->has_application_settings =
+        hs->early_session->has_application_settings;
+    if (!hs->new_session->local_application_settings.CopyFrom(
+            hs->early_session->local_application_settings) ||
+        !hs->new_session->peer_application_settings.CopyFrom(
+            hs->early_session->peer_application_settings)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
+  }
+
+  // Store the negotiated ALPN in the session.
+  if (!hs->new_session->early_alpn.CopyFrom(ssl->s3->alpn_selected)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    return ssl_hs_error;
   }
 
   if (!ssl_hash_message(hs, msg)) {
@@ -626,8 +639,7 @@ static enum ssl_hs_wait_t do_read_server_certificate(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_read_server_certificate_verify(
-    SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_read_server_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
@@ -654,8 +666,7 @@ static enum ssl_hs_wait_t do_read_server_certificate_verify(
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_server_certificate_reverify(
-    SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_server_certificate_reverify(SSL_HANDSHAKE *hs) {
   switch (ssl_reverify_peer_cert(hs, /*send_alert=*/true)) {
     case ssl_verify_ok:
       break;
@@ -714,6 +725,32 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
     }
 
     if (!close_early_data(hs, ssl_encryption_handshake)) {
+      return ssl_hs_error;
+    }
+  }
+
+  hs->tls13_state = state_send_client_encrypted_extensions;
+  return ssl_hs_ok;
+}
+
+static enum ssl_hs_wait_t do_send_client_encrypted_extensions(
+    SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  // For now, only one extension uses client EncryptedExtensions. This function
+  // may be generalized if others use it in the future.
+  if (hs->new_session->has_application_settings &&
+      !ssl->s3->early_data_accepted) {
+    ScopedCBB cbb;
+    CBB body, extensions, extension;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body,
+                                   SSL3_MT_ENCRYPTED_EXTENSIONS) ||
+        !CBB_add_u16_length_prefixed(&body, &extensions) ||
+        !CBB_add_u16(&extensions, TLSEXT_TYPE_application_settings) ||
+        !CBB_add_u16_length_prefixed(&extensions, &extension) ||
+        !CBB_add_bytes(&extension,
+                       hs->new_session->local_application_settings.data(),
+                       hs->new_session->local_application_settings.size()) ||
+        !ssl_add_message_cbb(ssl, cbb.get())) {
       return ssl_hs_error;
     }
   }
@@ -860,6 +897,9 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
       case state_send_client_certificate:
         ret = do_send_client_certificate(hs);
         break;
+      case state_send_client_encrypted_extensions:
+        ret = do_send_client_encrypted_extensions(hs);
+        break;
       case state_send_client_certificate_verify:
         ret = do_send_client_certificate_verify(hs);
         break;
@@ -907,6 +947,8 @@ const char *tls13_client_handshake_state(SSL_HANDSHAKE *hs) {
       return "TLS 1.3 client read_server_finished";
     case state_send_end_of_early_data:
       return "TLS 1.3 client send_end_of_early_data";
+    case state_send_client_encrypted_extensions:
+      return "TLS 1.3 client send_client_encrypted_extensions";
     case state_send_client_certificate:
       return "TLS 1.3 client send_client_certificate";
     case state_send_client_certificate_verify:

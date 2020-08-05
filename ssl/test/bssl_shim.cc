@@ -397,6 +397,11 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
 }
 
 static const char *EarlyDataReasonToString(ssl_early_data_reason_t reason) {
+  if (reason > ssl_early_data_reason_max_value) {
+    fprintf(stderr, "ssl_early_data_reason_max_value is out of date.\n");
+    abort();
+  }
+
   switch (reason) {
     case ssl_early_data_unknown:
       return "unknown";
@@ -426,8 +431,12 @@ static const char *EarlyDataReasonToString(ssl_early_data_reason_t reason) {
       return "ticket_age_skew";
     case ssl_early_data_quic_parameter_mismatch:
       return "quic_parameter_mismatch";
+    case ssl_early_data_alps_mismatch:
+      return "alps_mismatch";
   }
 
+  fprintf(stderr, "Unknown ssl_early_data_reason_t value %d.\n",
+          static_cast<int>(reason));
   abort();
 }
 
@@ -535,6 +544,26 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   if (alpn_proto_len != expect_alpn.size() ||
       OPENSSL_memcmp(alpn_proto, expect_alpn.data(), alpn_proto_len) != 0) {
     fprintf(stderr, "negotiated alpn proto mismatch\n");
+    return false;
+  }
+
+  if (SSL_has_application_settings(ssl) !=
+      (config->expect_peer_application_settings ? 1 : 0)) {
+    fprintf(stderr,
+            "connection %s application settings, but expected the opposite\n",
+            SSL_has_application_settings(ssl) ? "has" : "does not have");
+    return false;
+  }
+  std::string expect_settings = config->expect_peer_application_settings
+                                    ? *config->expect_peer_application_settings
+                                    : "";
+  const uint8_t *peer_settings;
+  size_t peer_settings_len;
+  SSL_get0_peer_application_settings(ssl, &peer_settings, &peer_settings_len);
+  if (expect_settings !=
+      std::string(reinterpret_cast<const char *>(peer_settings),
+                  peer_settings_len)) {
+    fprintf(stderr, "peer application settings mismatch\n");
     return false;
   }
 

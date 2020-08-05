@@ -185,6 +185,13 @@ const Flag<std::string> kStringFlags[] = {
     {"-expect-early-data-reason", &TestConfig::expect_early_data_reason},
 };
 
+// TODO(davidben): When we can depend on C++17 or Abseil, switch this to
+// std::optional or absl::optional.
+const Flag<std::unique_ptr<std::string>> kOptionalStringFlags[] = {
+    {"-expect-peer-application-settings",
+     &TestConfig::expect_peer_application_settings},
+};
+
 const Flag<std::string> kBase64Flags[] = {
     {"-expect-certificate-types", &TestConfig::expect_certificate_types},
     {"-expect-channel-id", &TestConfig::expect_channel_id},
@@ -231,6 +238,11 @@ const Flag<std::vector<int>> kIntVectorFlags[] = {
     {"-curves", &TestConfig::curves},
 };
 
+const Flag<std::vector<std::pair<std::string, std::string>>>
+    kStringPairVectorFlags[] = {
+        {"-application-settings", &TestConfig::application_settings},
+};
+
 bool ParseFlag(char *flag, int argc, char **argv, int *i,
                bool skip, TestConfig *out_config) {
   bool *bool_field = FindField(out_config, kBoolFlags, flag);
@@ -250,6 +262,20 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
     }
     if (!skip) {
       string_field->assign(argv[*i]);
+    }
+    return true;
+  }
+
+  std::unique_ptr<std::string> *optional_string_field =
+      FindField(out_config, kOptionalStringFlags, flag);
+  if (optional_string_field != NULL) {
+    *i = *i + 1;
+    if (*i >= argc) {
+      fprintf(stderr, "Missing parameter.\n");
+      return false;
+    }
+    if (!skip) {
+      optional_string_field->reset(new std::string(argv[*i]));
     }
     return true;
   }
@@ -305,6 +331,28 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
     // Each instance of the flag adds to the list.
     if (!skip) {
       int_vector_field->push_back(atoi(argv[*i]));
+    }
+    return true;
+  }
+
+  std::vector<std::pair<std::string, std::string>> *string_pair_vector_field =
+      FindField(out_config, kStringPairVectorFlags, flag);
+  if (string_pair_vector_field) {
+    *i = *i + 1;
+    if (*i >= argc) {
+      fprintf(stderr, "Missing parameter.\n");
+      return false;
+    }
+    const char *comma = strchr(argv[*i], ',');
+    if (!comma) {
+      fprintf(stderr,
+              "Parameter should be a pair of comma-separated strings.\n");
+      return false;
+    }
+    // Each instance of the flag adds to the list.
+    if (!skip) {
+      string_pair_vector_field->push_back(std::make_pair(
+          std::string(argv[*i], comma - argv[*i]), std::string(comma + 1)));
     }
     return true;
   }
@@ -1555,9 +1603,19 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     return nullptr;
   }
   if (!advertise_alpn.empty() &&
-      SSL_set_alpn_protos(ssl.get(), (const uint8_t *)advertise_alpn.data(),
-                          advertise_alpn.size()) != 0) {
+      SSL_set_alpn_protos(
+          ssl.get(), reinterpret_cast<const uint8_t *>(advertise_alpn.data()),
+          advertise_alpn.size()) != 0) {
     return nullptr;
+  }
+  for (const auto &pair : application_settings) {
+    if (!SSL_add_application_settings(
+            ssl.get(), reinterpret_cast<const uint8_t *>(pair.first.data()),
+            pair.first.size(),
+            reinterpret_cast<const uint8_t *>(pair.second.data()),
+            pair.second.size())) {
+      return nullptr;
+    }
   }
   if (!psk.empty()) {
     SSL_set_psk_client_callback(ssl.get(), PskClientCallback);

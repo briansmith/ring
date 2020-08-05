@@ -207,6 +207,10 @@ func (c *Conn) clientHandshake() error {
 		hello.secureRenegotiation = nil
 	}
 
+	for protocol, _ := range c.config.ApplicationSettings {
+		hello.alpsProtocols = append(hello.alpsProtocols, protocol)
+	}
+
 	var keyShares map[CurveID]ecdhCurve
 	if maxVersion >= VersionTLS13 {
 		keyShares = make(map[CurveID]ecdhCurve)
@@ -1127,6 +1131,26 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	c.useOutTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret)
 
+	// The client EncryptedExtensions message is sent if some extension uses it.
+	// (Currently only ALPS does.)
+	hasEncryptedExtensions := c.config.Bugs.AlwaysSendClientEncryptedExtensions
+	clientEncryptedExtensions := new(clientEncryptedExtensionsMsg)
+	if encryptedExtensions.extensions.hasApplicationSettings || (c.config.Bugs.SendApplicationSettingsWithEarlyData && c.hasApplicationSettings) {
+		hasEncryptedExtensions = true
+		if !c.config.Bugs.OmitClientApplicationSettings {
+			clientEncryptedExtensions.hasApplicationSettings = true
+			clientEncryptedExtensions.applicationSettings = c.localApplicationSettings
+		}
+	}
+	if c.config.Bugs.SendExtraClientEncryptedExtension {
+		hasEncryptedExtensions = true
+		clientEncryptedExtensions.customExtension = []byte{0}
+	}
+	if hasEncryptedExtensions && !c.config.Bugs.OmitClientEncryptedExtensions {
+		hs.writeClientHash(clientEncryptedExtensions.marshal())
+		c.writeRecord(recordTypeHandshake, clientEncryptedExtensions.marshal())
+	}
+
 	if certReq != nil && !c.config.Bugs.SkipClientCertificate {
 		certMsg := &certificateMsg{
 			hasRequestContext: true,
@@ -1695,6 +1719,8 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 			c.sendAlert(alertHandshakeFailure)
 			return errors.New("tls: server accepted early data when not expected")
 		}
+	} else if serverExtensions.hasEarlyData {
+		return errors.New("tls: server accepted early data when not resuming")
 	}
 
 	if len(serverExtensions.quicTransportParams) > 0 {
@@ -1703,6 +1729,30 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 			return errors.New("tls: server sent QUIC transport params for TLS version less than 1.3")
 		}
 		c.quicTransportParams = serverExtensions.quicTransportParams
+	}
+
+	if serverExtensions.hasApplicationSettings {
+		if c.vers < VersionTLS13 {
+			return errors.New("tls: server sent application settings at invalid version")
+		}
+		if serverExtensions.hasEarlyData {
+			return errors.New("tls: server sent application settings with 0-RTT")
+		}
+		if !serverHasALPN {
+			return errors.New("tls: server sent application settings without ALPN")
+		}
+		settings, ok := c.config.ApplicationSettings[serverExtensions.alpnProtocol]
+		if !ok {
+			return errors.New("tls: server sent application settings for invalid protocol")
+		}
+		c.hasApplicationSettings = true
+		c.localApplicationSettings = settings
+		c.peerApplicationSettings = serverExtensions.applicationSettings
+	} else if serverExtensions.hasEarlyData {
+		// 0-RTT connections inherit application settings from the session.
+		c.hasApplicationSettings = hs.session.hasApplicationSettings
+		c.localApplicationSettings = hs.session.localApplicationSettings
+		c.peerApplicationSettings = hs.session.peerApplicationSettings
 	}
 
 	return nil
