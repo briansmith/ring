@@ -9499,7 +9499,8 @@ func addSignatureAlgorithmTests() {
 				signatureRSAPKCS1WithSHA1,
 			},
 			Bugs: ProtocolBugs{
-				NoSignatureAlgorithms: true,
+				NoSignatureAlgorithms:       true,
+				DisableDelegatedCredentials: true,
 			},
 		},
 		shouldFail:    true,

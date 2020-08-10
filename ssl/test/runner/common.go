@@ -124,7 +124,7 @@ const (
 	extensionRenegotiationInfo          uint16 = 0xff01
 	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
-	extensionDelegatedCredentials       uint16 = 0xff02 // not IANA assigned
+	extensionDelegatedCredentials       uint16 = 0x22   // draft-ietf-tls-subcerts-06
 )
 
 // TLS signaling cipher suite values

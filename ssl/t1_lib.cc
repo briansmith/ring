@@ -2673,18 +2673,20 @@ static bool ext_delegated_credential_add_clienthello(SSL_HANDSHAKE *hs,
 static bool ext_delegated_credential_parse_clienthello(SSL_HANDSHAKE *hs,
                                                        uint8_t *out_alert,
                                                        CBS *contents) {
-  assert(TLSEXT_TYPE_delegated_credential == 0xff02);
-  // TODO: Check that the extension is empty.
-  //
-  // As of draft-03, the client sends an empty extension in order indicate
-  // support for delegated credentials. This could change, however, since the
-  // spec is not yet finalized. This assertion is here to remind us to enforce
-  // this check once the extension ID is assigned.
-
   if (contents == nullptr || ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
     // Don't use delegated credentials unless we're negotiating TLS 1.3 or
     // higher.
     return true;
+  }
+
+  // The contents of the extension are the signature algorithms the client will
+  // accept for a delegated credential.
+  CBS sigalg_list;
+  if (!CBS_get_u16_length_prefixed(contents, &sigalg_list) ||
+      CBS_len(&sigalg_list) == 0 ||
+      CBS_len(contents) != 0 ||
+      !parse_u16_array(&sigalg_list, &hs->peer_delegated_credential_sigalgs)) {
+    return false;
   }
 
   hs->delegated_credential_requested = true;

@@ -1650,6 +1650,10 @@ struct SSL_HANDSHAKE {
   // advertise this extension to the client.
   Array<uint16_t> peer_supported_group_list;
 
+  // peer_delegated_credential_sigalgs are the signature algorithms the peer
+  // supports with delegated credentials.
+  Array<uint16_t> peer_delegated_credential_sigalgs;
+
   // peer_key is the peer's ECDH key for a TLS 1.2 client.
   Array<uint8_t> peer_key;
 

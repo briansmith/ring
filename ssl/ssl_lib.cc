@@ -2360,6 +2360,16 @@ size_t SSL_get0_peer_verify_algorithms(const SSL *ssl,
   return sigalgs.size();
 }
 
+size_t SSL_get0_peer_delegation_algorithms(const SSL *ssl,
+                                           const uint16_t **out_sigalgs){
+  Span<const uint16_t> sigalgs;
+  if (ssl->s3->hs != nullptr) {
+    sigalgs = ssl->s3->hs->peer_delegated_credential_sigalgs;
+  }
+  *out_sigalgs = sigalgs.data();
+  return sigalgs.size();
+}
+
 EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
   if (!ssl->config) {
     assert(ssl->config);
