@@ -407,6 +407,10 @@ EVP_PKEY *d2i_PUBKEY(EVP_PKEY **out, const uint8_t **inp, long len) {
 }
 
 int i2d_PUBKEY(const EVP_PKEY *pkey, uint8_t **outp) {
+  if (pkey == NULL) {
+    return 0;
+  }
+
   CBB cbb;
   if (!CBB_init(&cbb, 128) ||
       !EVP_marshal_public_key(&cbb, pkey)) {
@@ -440,6 +444,10 @@ RSA *d2i_RSA_PUBKEY(RSA **out, const uint8_t **inp, long len) {
 }
 
 int i2d_RSA_PUBKEY(const RSA *rsa, uint8_t **outp) {
+  if (rsa == NULL) {
+    return 0;
+  }
+
   int ret = -1;
   EVP_PKEY *pkey = EVP_PKEY_new();
   if (pkey == NULL ||
@@ -478,6 +486,10 @@ DSA *d2i_DSA_PUBKEY(DSA **out, const uint8_t **inp, long len) {
 }
 
 int i2d_DSA_PUBKEY(const DSA *dsa, uint8_t **outp) {
+  if (dsa == NULL) {
+    return 0;
+  }
+
   int ret = -1;
   EVP_PKEY *pkey = EVP_PKEY_new();
   if (pkey == NULL ||
@@ -516,6 +528,10 @@ EC_KEY *d2i_EC_PUBKEY(EC_KEY **out, const uint8_t **inp, long len) {
 }
 
 int i2d_EC_PUBKEY(const EC_KEY *ec_key, uint8_t **outp) {
+  if (ec_key == NULL) {
+    return 0;
+  }
+
   int ret = -1;
   EVP_PKEY *pkey = EVP_PKEY_new();
   if (pkey == NULL ||
