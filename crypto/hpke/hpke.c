@@ -27,12 +27,7 @@
 #include "internal.h"
 
 
-// As of writing, the editor's draft of HPKE has a number of changes on top of
-// the latest IETF draft (draft-irtf-cfrg-hpke-04). This file implements the
-// editor's draft as of July 15, 2020.
-//
-// TODO(dmcardle): Remove this comment when draft-irtf-cfrg-hpke-05 is
-// published.
+// This file implements draft-irtf-cfrg-hpke-05.
 
 #define KEM_CONTEXT_LEN (2 * X25519_PUBLIC_VALUE_LEN)
 
@@ -44,7 +39,7 @@
 
 #define HPKE_MODE_BASE 0
 
-static const char kHpkeRfcId[] = "RFCXXXX ";
+static const char kHpkeRfcId[] = "HPKE-05 ";
 
 static int add_label_string(CBB *cbb, const char *label) {
   return CBB_add_bytes(cbb, (const uint8_t *)label, strlen(label));
@@ -120,7 +115,7 @@ static int hpke_extract_and_expand(const EVP_MD *hkdf_md, uint8_t *out_key,
                             X25519_PUBLIC_VALUE_LEN)) {
     return 0;
   }
-  const char kPRKExpandLabel[] = "zz";
+  const char kPRKExpandLabel[] = "shared_secret";
   if (!hpke_labeled_expand(hkdf_md, out_key, out_len, prk, prk_len,
                            kX25519SuiteID, sizeof(kX25519SuiteID),
                            kPRKExpandLabel, kem_context, KEM_CONTEXT_LEN)) {
@@ -155,8 +150,8 @@ static const EVP_MD *hpke_get_kdf(uint16_t kdf_id) {
   return NULL;
 }
 
-static int hpke_key_schedule(EVP_HPKE_CTX *hpke, const uint8_t *zz,
-                             size_t zz_len, const uint8_t *info,
+static int hpke_key_schedule(EVP_HPKE_CTX *hpke, const uint8_t *shared_secret,
+                             size_t shared_secret_len, const uint8_t *info,
                              size_t info_len) {
   // Attempt to get an EVP_AEAD*.
   const EVP_AEAD *aead = hpke_get_aead(hpke->aead_id);
@@ -169,8 +164,8 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, const uint8_t *zz,
     return 0;
   }
 
-  // pskID_hash = LabeledExtract(zero(0), "pskID_hash", pskID)
-  static const char kPskIdHashLabel[] = "pskID_hash";
+  // psk_id_hash = LabeledExtract("", "psk_id_hash", psk_id)
+  static const char kPskIdHashLabel[] = "psk_id_hash";
   uint8_t psk_id_hash[EVP_MAX_MD_SIZE];
   size_t psk_id_hash_len;
   if (!hpke_labeled_extract(hpke->hkdf_md, psk_id_hash, &psk_id_hash_len, NULL,
@@ -179,7 +174,7 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, const uint8_t *zz,
     return 0;
   }
 
-  // info_hash = LabeledExtract(zero(0), "info_hash", info)
+  // info_hash = LabeledExtract("", "info_hash", info)
   static const char kInfoHashLabel[] = "info_hash";
   uint8_t info_hash[EVP_MAX_MD_SIZE];
   size_t info_hash_len;
@@ -189,7 +184,7 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, const uint8_t *zz,
     return 0;
   }
 
-  // key_schedule_context = concat(mode, pskID_hash, info_hash)
+  // key_schedule_context = concat(mode, psk_id_hash, info_hash)
   uint8_t context[sizeof(uint8_t) + 2 * EVP_MAX_MD_SIZE];
   size_t context_len;
   CBB context_cbb;
@@ -201,9 +196,7 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, const uint8_t *zz,
     return 0;
   }
 
-  // psk_hash = LabeledExtract(zero(0), "psk_hash", psk)
-  //
-  // For our purposes, the draft's psk parameter is just the default empty PSK.
+  // psk_hash = LabeledExtract("", "psk_hash", psk)
   static const char kPskHashLabel[] = "psk_hash";
   uint8_t psk_hash[EVP_MAX_MD_SIZE];
   size_t psk_hash_len;
@@ -213,13 +206,14 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, const uint8_t *zz,
     return 0;
   }
 
-  // secret = LabeledExtract(psk_hash, "secret", zz)
+  // secret = LabeledExtract(psk_hash, "secret", shared_secret)
   static const char kSecretExtractLabel[] = "secret";
   uint8_t secret[EVP_MAX_MD_SIZE];
   size_t secret_len;
   if (!hpke_labeled_extract(hpke->hkdf_md, secret, &secret_len, psk_hash,
                             psk_hash_len, suite_id, sizeof(suite_id),
-                            kSecretExtractLabel, zz, zz_len)) {
+                            kSecretExtractLabel, shared_secret,
+                            shared_secret_len)) {
     return 0;
   }
 
@@ -259,9 +253,10 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, const uint8_t *zz,
   return 1;
 }
 
-// The number of bytes written to |out_zz| is the size of the KEM's KDF
-// (currently we only support SHA256).
-static int hpke_encap(EVP_HPKE_CTX *hpke, uint8_t out_zz[SHA256_DIGEST_LENGTH],
+// The number of bytes written to |out_shared_secret| is the size of the KEM's
+// KDF (currently we only support SHA256).
+static int hpke_encap(EVP_HPKE_CTX *hpke,
+                      uint8_t out_shared_secret[SHA256_DIGEST_LENGTH],
                       const uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN],
                       const uint8_t ephemeral_private[X25519_PRIVATE_KEY_LEN],
                       const uint8_t ephemeral_public[X25519_PUBLIC_VALUE_LEN]) {
@@ -275,15 +270,15 @@ static int hpke_encap(EVP_HPKE_CTX *hpke, uint8_t out_zz[SHA256_DIGEST_LENGTH],
   OPENSSL_memcpy(kem_context, ephemeral_public, X25519_PUBLIC_VALUE_LEN);
   OPENSSL_memcpy(kem_context + X25519_PUBLIC_VALUE_LEN, public_key_r,
                  X25519_PUBLIC_VALUE_LEN);
-  if (!hpke_extract_and_expand(EVP_sha256(), out_zz, SHA256_DIGEST_LENGTH, dh,
-                               kem_context)) {
+  if (!hpke_extract_and_expand(EVP_sha256(), out_shared_secret,
+                               SHA256_DIGEST_LENGTH, dh, kem_context)) {
     return 0;
   }
   return 1;
 }
 
 static int hpke_decap(const EVP_HPKE_CTX *hpke,
-                      uint8_t out_zz[SHA256_DIGEST_LENGTH],
+                      uint8_t out_shared_secret[SHA256_DIGEST_LENGTH],
                       const uint8_t enc[X25519_PUBLIC_VALUE_LEN],
                       const uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN],
                       const uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN]) {
@@ -296,8 +291,8 @@ static int hpke_decap(const EVP_HPKE_CTX *hpke,
   OPENSSL_memcpy(kem_context, enc, X25519_PUBLIC_VALUE_LEN);
   OPENSSL_memcpy(kem_context + X25519_PUBLIC_VALUE_LEN, public_key_r,
                  X25519_PUBLIC_VALUE_LEN);
-  if (!hpke_extract_and_expand(EVP_sha256(), out_zz, SHA256_DIGEST_LENGTH, dh,
-                               kem_context)) {
+  if (!hpke_extract_and_expand(EVP_sha256(), out_shared_secret,
+                               SHA256_DIGEST_LENGTH, dh, kem_context)) {
     return 0;
   }
   return 1;
@@ -340,10 +335,11 @@ int EVP_HPKE_CTX_setup_base_s_x25519_for_test(
   if (hpke->hkdf_md == NULL) {
     return 0;
   }
-  uint8_t zz[SHA256_DIGEST_LENGTH];
-  if (!hpke_encap(hpke, zz, peer_public_value, ephemeral_private,
+  uint8_t shared_secret[SHA256_DIGEST_LENGTH];
+  if (!hpke_encap(hpke, shared_secret, peer_public_value, ephemeral_private,
                   ephemeral_public) ||
-      !hpke_key_schedule(hpke, zz, sizeof(zz), info, info_len)) {
+      !hpke_key_schedule(hpke, shared_secret, sizeof(shared_secret), info,
+                         info_len)) {
     return 0;
   }
   return 1;
@@ -362,9 +358,10 @@ int EVP_HPKE_CTX_setup_base_r_x25519(
   if (hpke->hkdf_md == NULL) {
     return 0;
   }
-  uint8_t zz[SHA256_DIGEST_LENGTH];
-  if (!hpke_decap(hpke, zz, enc, public_key, private_key) ||
-      !hpke_key_schedule(hpke, zz, sizeof(zz), info, info_len)) {
+  uint8_t shared_secret[SHA256_DIGEST_LENGTH];
+  if (!hpke_decap(hpke, shared_secret, enc, public_key, private_key) ||
+      !hpke_key_schedule(hpke, shared_secret, sizeof(shared_secret), info,
+                         info_len)) {
     return 0;
   }
   return 1;

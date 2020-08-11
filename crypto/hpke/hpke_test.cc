@@ -157,8 +157,8 @@ bool FileTestReadInt(FileTest *file_test, T *out, const std::string &key) {
 
 
 bool HpkeTestVector::ReadFromFileTest(FileTest *t) {
-  if (!FileTestReadInt(t, &kdf_id_, "kdfID") ||
-      !FileTestReadInt(t, &aead_id_, "aeadID") ||
+  if (!FileTestReadInt(t, &kdf_id_, "kdf_id") ||
+      !FileTestReadInt(t, &aead_id_, "aead_id") ||
       !t->GetBytes(&info_, "info") ||
       !t->GetBytes(&secret_key_r_, "skRm") ||
       !t->GetBytes(&public_key_r_, "pkRm") ||

@@ -47,10 +47,10 @@ def read_test_vectors_and_generate_code(json_file_in_path, test_file_out_path):
   for test in test_vecs:
     # Filter out test cases that we don't use.
     if (test["mode"] != HPKE_MODE_BASE or
-        test["kemID"] != HPKE_DHKEM_X25519_SHA256):
+        test["kem_id"] != HPKE_DHKEM_X25519_SHA256):
       continue
 
-    for key in ("kdfID", "aeadID", "info", "skRm", "skEm", "pkRm", "pkEm"):
+    for key in ("kdf_id", "aead_id", "info", "skRm", "skEm", "pkRm", "pkEm"):
       lines.append("{} = {}".format(key, str(test[key])))
 
     for i, enc in enumerate(test["encryptions"]):
