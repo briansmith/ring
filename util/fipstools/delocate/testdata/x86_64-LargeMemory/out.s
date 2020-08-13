@@ -13,7 +13,7 @@ BORINGSSL_bcm_text_start:
 	addq $.Lboringssl_got_delta-.L0, %rcx
         addq    %rax, %rcx
 # WAS movabsq $_Z1gv@GOTOFF, %rax
-	movsl .Lboringssl_gotoff__Z1gv(%rip), %rax
+	movq .Lboringssl_gotoff__Z1gv(%rip), %rax
         addq    %rcx, %rax
         jmpq    *%rax
 
@@ -27,7 +27,7 @@ BORINGSSL_bcm_text_start:
 	addq $.Lboringssl_got_delta-.L0$pb, %rcx
         addq    %rax, %rcx
 # WAS movabsq $h@GOT, %rax
-	movsl .Lboringssl_got_h(%rip), %rax
+	movq .Lboringssl_got_h(%rip), %rax
         movq    (%rcx,%rax), %rax
         movl    (%rax), %eax
         retq
@@ -55,9 +55,9 @@ OPENSSL_ia32cap_addr_delta:
 .Lboringssl_got_delta:
 	.quad _GLOBAL_OFFSET_TABLE_-.Lboringssl_got_delta
 .Lboringssl_got_h:
-	.long h@GOT
+	.quad h@GOT
 .Lboringssl_gotoff__Z1gv:
-	.long _Z1gv@GOTOFF
+	.quad _Z1gv@GOTOFF
 .type BORINGSSL_bcm_text_hash, @object
 .size BORINGSSL_bcm_text_hash, 64
 BORINGSSL_bcm_text_hash:

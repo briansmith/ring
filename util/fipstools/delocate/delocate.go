@@ -1271,12 +1271,10 @@ Args:
 			changed = true
 
 			wrappers = append(wrappers, func(k func()) {
-				// While the compiler output supports 64-bit offsets in the GOT,
-				// https://refspecs.linuxbase.org/elf/x86_64-abi-0.98.pdf page 70, footnote
-				// 3 says that the GOT is limited to 32 bits. It's not clear about
-				// signed/unsigned but a GOT with more than 2^31 entries seems implausible
-				// so we save the extra space.
-				d.output.WriteString(fmt.Sprintf("\tmovsl .Lboringssl_%s_%s(%%rip), %s\n", prefix, symbol, targetReg))
+				// Even if one tries to use 32-bit GOT offsets, Clang's linker (at the time
+				// of writing) emits 64-bit relocations anyway, so the following four bytes
+				// get stomped. Thus we use 64-bit offsets.
+				d.output.WriteString(fmt.Sprintf("\tmovq .Lboringssl_%s_%s(%%rip), %s\n", prefix, symbol, targetReg))
 			})
 
 		default:
@@ -1573,11 +1571,11 @@ func transform(w stringWriter, inputs []inputFile) error {
 
 		for _, name := range sortedSet(d.gotOffsetsNeeded) {
 			w.WriteString(".Lboringssl_got_" + name + ":\n")
-			w.WriteString("\t.long " + name + "@GOT\n")
+			w.WriteString("\t.quad " + name + "@GOT\n")
 		}
 		for _, name := range sortedSet(d.gotOffOffsetsNeeded) {
 			w.WriteString(".Lboringssl_gotoff_" + name + ":\n")
-			w.WriteString("\t.long " + name + "@GOTOFF\n")
+			w.WriteString("\t.quad " + name + "@GOTOFF\n")
 		}
 	}
 
