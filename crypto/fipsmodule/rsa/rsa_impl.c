@@ -73,7 +73,12 @@
 #include "../rand/fork_detect.h"
 
 
-static int check_modulus_and_exponent_sizes(const RSA *rsa) {
+int rsa_check_public_key(const RSA *rsa) {
+  if (rsa->n == NULL || rsa->e == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+    return 0;
+  }
+
   unsigned rsa_bits = BN_num_bits(rsa->n);
 
   if (rsa_bits > 16 * 1024) {
@@ -253,8 +258,7 @@ size_t rsa_default_size(const RSA *rsa) {
 
 int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                 const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->n == NULL || rsa->e == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+  if (!rsa_check_public_key(rsa)) {
     return 0;
   }
 
@@ -266,10 +270,6 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   if (max_out < rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  if (!check_modulus_and_exponent_sizes(rsa)) {
     return 0;
   }
 
@@ -592,8 +592,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 
 int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                    const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->n == NULL || rsa->e == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+  if (!rsa_check_public_key(rsa)) {
     return 0;
   }
 
@@ -607,10 +606,6 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   if (in_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
-    return 0;
-  }
-
-  if (!check_modulus_and_exponent_sizes(rsa)) {
     return 0;
   }
 
@@ -1121,8 +1116,8 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
 
   // Reject excessively large public exponents. Windows CryptoAPI and Go don't
   // support values larger than 32 bits, so match their limits for generating
-  // keys. (|check_modulus_and_exponent_sizes| uses a slightly more conservative
-  // value, but we don't need to support generating such keys.)
+  // keys. (|rsa_check_public_key| uses a slightly more conservative value, but
+  // we don't need to support generating such keys.)
   // https://github.com/golang/go/issues/3161
   // https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
   if (BN_num_bits(e_value) > 32) {

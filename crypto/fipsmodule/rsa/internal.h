@@ -108,6 +108,10 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
 int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
                          size_t from_len);
 
+// rsa_check_public_key checks that |rsa|'s public modulus and exponent are
+// within DoS bounds.
+int rsa_check_public_key(const RSA *rsa);
+
 // RSA_private_transform calls either the method-specific |private_transform|
 // function (if given) or the generic one. See the comment for
 // |private_transform| in |rsa_meth_st|.

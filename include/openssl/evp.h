@@ -219,7 +219,9 @@ OPENSSL_EXPORT int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key);
 //
 // The caller must check the type of the parsed private key to ensure it is
 // suitable and validate other desired key properties such as RSA modulus size
-// or EC curve.
+// or EC curve. In particular, RSA private key operations scale cubicly, so
+// applications accepting RSA private keys from external sources may need to
+// bound key sizes (use |EVP_PKEY_bits| or |RSA_bits|) to avoid a DoS vector.
 //
 // A PrivateKeyInfo ends with an optional set of attributes. These are not
 // processed and so this function will silently ignore any trailing data in the
