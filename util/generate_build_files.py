@@ -701,6 +701,7 @@ def FindCFiles(directory, filter_func):
       if not filter_func(path, dirname, True):
         del dirnames[i]
 
+  cfiles.sort()
   return cfiles
 
 
@@ -720,6 +721,7 @@ def FindHeaderFiles(directory, filter_func):
         if not filter_func(path, dirname, True):
           del dirnames[i]
 
+  hfiles.sort()
   return hfiles
 
 
@@ -817,6 +819,9 @@ def WriteAsmFiles(perlasms):
   for (key, non_perl_asm_files) in NON_PERL_FILES.iteritems():
     asmfiles.setdefault(key, []).extend(non_perl_asm_files)
 
+  for files in asmfiles.itervalues():
+    files.sort()
+
   return asmfiles
 
 
@@ -869,6 +874,7 @@ def main(platforms):
                           cwd=os.path.join('src', 'crypto', 'err'),
                           stdout=err_data)
   crypto_c_files.append('err_data.c')
+  crypto_c_files.sort()
 
   test_support_c_files = FindCFiles(os.path.join('src', 'crypto', 'test'),
                                     NotGTestSupport)
@@ -898,12 +904,14 @@ def main(platforms):
       file for file in crypto_test_files
       if not file.endswith('/urandom_test.cc')
   ]
+  crypto_test_files.sort()
 
   ssl_test_files = FindCFiles(os.path.join('src', 'ssl'), OnlyTests)
   ssl_test_files += [
       'src/crypto/test/abi_test.cc',
       'src/crypto/test/gtest_main.cc',
   ]
+  ssl_test_files.sort()
 
   urandom_test_files = [
       'src/crypto/fipsmodule/rand/urandom_test.cc',
@@ -911,17 +919,13 @@ def main(platforms):
 
   fuzz_c_files = FindCFiles(os.path.join('src', 'fuzz'), NoTests)
 
-  ssl_h_files = (
-      FindHeaderFiles(
-          os.path.join('src', 'include', 'openssl'),
-          SSLHeaderFiles))
+  ssl_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
+                                SSLHeaderFiles)
 
   def NotSSLHeaderFiles(path, filename, is_dir):
     return not SSLHeaderFiles(path, filename, is_dir)
-  crypto_h_files = (
-      FindHeaderFiles(
-          os.path.join('src', 'include', 'openssl'),
-          NotSSLHeaderFiles))
+  crypto_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
+                                   NotSSLHeaderFiles)
 
   ssl_internal_h_files = FindHeaderFiles(os.path.join('src', 'ssl'), NoTests)
   crypto_internal_h_files = (
@@ -933,19 +937,19 @@ def main(platforms):
       'crypto': crypto_c_files,
       'crypto_headers': crypto_h_files,
       'crypto_internal_headers': crypto_internal_h_files,
-      'crypto_test': sorted(crypto_test_files),
+      'crypto_test': crypto_test_files,
       'crypto_test_data': sorted('src/' + x for x in cmake['CRYPTO_TEST_DATA']),
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
       'ssl': ssl_source_files,
       'ssl_headers': ssl_h_files,
       'ssl_internal_headers': ssl_internal_h_files,
-      'ssl_test': sorted(ssl_test_files),
+      'ssl_test': ssl_test_files,
       'tool': tool_c_files,
       'tool_headers': tool_h_files,
       'test_support': test_support_c_files,
       'test_support_headers': test_support_h_files,
-      'urandom_test': sorted(urandom_test_files),
+      'urandom_test': urandom_test_files,
   }
 
   asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).iteritems())
