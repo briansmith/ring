@@ -146,7 +146,7 @@ struct X509_name_st {
   STACK_OF(X509_NAME_ENTRY) * entries;
   int modified;  // true if 'bytes' needs to be built
   BUF_MEM *bytes;
-  //	unsigned long hash; Keep the hash around for lookups
+  // unsigned long hash; Keep the hash around for lookups
   unsigned char *canon_enc;
   int canon_enclen;
 } /* X509_NAME */;
@@ -470,6 +470,11 @@ struct Netscape_spki_st {
 extern "C" {
 #endif
 
+// TODO(davidben): Document remaining functions, reorganize them, and define
+// supported patterns for using |X509| objects in general. In particular, when
+// it is safe to call mutating functions is a little tricky due to various
+// internal caches.
+
 // X509_get_version returns the numerical value of |x509|'s version. That is,
 // it returns zero for X.509v1, one for X.509v2, and two for X.509v3. Unknown
 // versions are rejected by the parser, but a manually-created |X509| object may
@@ -477,15 +482,39 @@ extern "C" {
 // version, or -1 on overflow.
 OPENSSL_EXPORT long X509_get_version(const X509 *x509);
 
-// X509_get_notBefore returns |x509|'s notBefore value. Note this function is
-// not const-correct for legacy reasons. Use |X509_get0_notBefore| or
+// X509_get0_notBefore returns |x509|'s notBefore time.
+OPENSSL_EXPORT const ASN1_TIME *X509_get0_notBefore(const X509 *x509);
+
+// X509_get0_notAfter returns |x509|'s notAfter time.
+OPENSSL_EXPORT const ASN1_TIME *X509_get0_notAfter(const X509 *x509);
+
+// X509_set1_notBefore sets |x509|'s notBefore time to |tm|. It returns one on
+// success and zero on error.
+OPENSSL_EXPORT int X509_set1_notBefore(X509 *x509, const ASN1_TIME *tm);
+
+// X509_set1_notAfter sets |x509|'s notAfter time to |tm|. it returns one on
+// success and zero on error.
+OPENSSL_EXPORT int X509_set1_notAfter(X509 *x509, const ASN1_TIME *tm);
+
+// X509_getm_notBefore returns a mutable pointer to |x509|'s notBefore time.
+OPENSSL_EXPORT ASN1_TIME *X509_getm_notBefore(X509 *x509);
+
+// X509_getm_notAfter returns a mutable pointer to |x509|'s notAfter time.
+OPENSSL_EXPORT ASN1_TIME *X509_getm_notAfter(X509 *x);
+
+// X509_get_notBefore returns |x509|'s notBefore time. Note this function is not
+// const-correct for legacy reasons. Use |X509_get0_notBefore| or
 // |X509_getm_notBefore| instead.
 OPENSSL_EXPORT ASN1_TIME *X509_get_notBefore(const X509 *x509);
 
-// X509_get_notAfter returns |x509|'s notAfter value. Note this function is not
+// X509_get_notAfter returns |x509|'s notAfter time. Note this function is not
 // const-correct for legacy reasons. Use |X509_get0_notAfter| or
 // |X509_getm_notAfter| instead.
 OPENSSL_EXPORT ASN1_TIME *X509_get_notAfter(const X509 *x509);
+
+// The following symbols are deprecated aliases to |X509_set1_*|.
+#define X509_set_notBefore X509_set1_notBefore
+#define X509_set_notAfter X509_set1_notAfter
 
 // X509_get_cert_info returns |x509|'s TBSCertificate structure. Note this
 // function is not const-correct for legacy reasons.
@@ -521,15 +550,29 @@ OPENSSL_EXPORT long X509_CRL_get_version(const X509_CRL *crl);
 // X509_CRL_get0_lastUpdate returns |crl|'s lastUpdate time.
 OPENSSL_EXPORT const ASN1_TIME *X509_CRL_get0_lastUpdate(const X509_CRL *crl);
 
-// X509_CRL_get0_lastUpdate returns |crl|'s nextUpdate time.
+// X509_CRL_get0_nextUpdate returns |crl|'s nextUpdate time, or NULL if |crl|
+// has none.
 OPENSSL_EXPORT const ASN1_TIME *X509_CRL_get0_nextUpdate(const X509_CRL *crl);
 
+// X509_CRL_set1_lastUpdate sets |crl|'s lastUpdate time to |tm|. It returns one
+// on success and zero on error.
+OPENSSL_EXPORT int X509_CRL_set1_lastUpdate(X509_CRL *crl, const ASN1_TIME *tm);
+
+// X509_CRL_set1_nextUpdate sets |crl|'s nextUpdate time to |tm|. It returns one
+// on success and zero on error.
+OPENSSL_EXPORT int X509_CRL_set1_nextUpdate(X509_CRL *crl, const ASN1_TIME *tm);
+
+// The following symbols are deprecated aliases to |X509_CRL_set1_*|.
+#define X509_CRL_set_lastUpdate X509_CRL_set1_lastUpdate
+#define X509_CRL_set_nextUpdate X509_CRL_set1_nextUpdate
+
 // X509_CRL_get_lastUpdate returns a mutable pointer to |crl|'s lastUpdate time.
-// Use |X509_CRL_get0_lastUpdate| or |X509_CRL_set_lastUpdate| instead.
+// Use |X509_CRL_get0_lastUpdate| or |X509_CRL_set1_lastUpdate| instead.
 OPENSSL_EXPORT ASN1_TIME *X509_CRL_get_lastUpdate(X509_CRL *crl);
 
-// X509_CRL_get_nextUpdate returns a mutable pointer to |crl|'s nextUpdate time.
-// Use |X509_CRL_get0_nextUpdate| or |X509_CRL_set_nextUpdate| instead.
+// X509_CRL_get_nextUpdate returns a mutable pointer to |crl|'s nextUpdate time,
+// or NULL if |crl| has none. Use |X509_CRL_get0_nextUpdate| or
+// |X509_CRL_set1_nextUpdate| instead.
 OPENSSL_EXPORT ASN1_TIME *X509_CRL_get_nextUpdate(X509_CRL *crl);
 
 // X509_CRL_get_issuer returns |crl|'s issuer name. Note this function is not
@@ -858,12 +901,6 @@ OPENSSL_EXPORT int X509_set_issuer_name(X509 *x, X509_NAME *name);
 OPENSSL_EXPORT X509_NAME *X509_get_issuer_name(X509 *a);
 OPENSSL_EXPORT int X509_set_subject_name(X509 *x, X509_NAME *name);
 OPENSSL_EXPORT X509_NAME *X509_get_subject_name(X509 *a);
-OPENSSL_EXPORT int X509_set_notBefore(X509 *x, const ASN1_TIME *tm);
-OPENSSL_EXPORT const ASN1_TIME *X509_get0_notBefore(const X509 *x);
-OPENSSL_EXPORT ASN1_TIME *X509_getm_notBefore(X509 *x);
-OPENSSL_EXPORT int X509_set_notAfter(X509 *x, const ASN1_TIME *tm);
-OPENSSL_EXPORT const ASN1_TIME *X509_get0_notAfter(const X509 *x);
-OPENSSL_EXPORT ASN1_TIME *X509_getm_notAfter(X509 *x);
 OPENSSL_EXPORT int X509_set_pubkey(X509 *x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x);
 OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x);
@@ -911,8 +948,6 @@ OPENSSL_EXPORT int X509_REQ_add1_attr_by_txt(X509_REQ *req,
 
 OPENSSL_EXPORT int X509_CRL_set_version(X509_CRL *x, long version);
 OPENSSL_EXPORT int X509_CRL_set_issuer_name(X509_CRL *x, X509_NAME *name);
-OPENSSL_EXPORT int X509_CRL_set_lastUpdate(X509_CRL *x, const ASN1_TIME *tm);
-OPENSSL_EXPORT int X509_CRL_set_nextUpdate(X509_CRL *x, const ASN1_TIME *tm);
 OPENSSL_EXPORT int X509_CRL_sort(X509_CRL *crl);
 OPENSSL_EXPORT int X509_CRL_up_ref(X509_CRL *crl);
 

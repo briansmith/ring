@@ -1037,7 +1037,7 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify)
     else
         ptime = NULL;
 
-    i = X509_cmp_time(X509_CRL_get_lastUpdate(crl), ptime);
+    i = X509_cmp_time(X509_CRL_get0_lastUpdate(crl), ptime);
     if (i == 0) {
         if (!notify)
             return 0;
@@ -1054,8 +1054,8 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify)
             return 0;
     }
 
-    if (X509_CRL_get_nextUpdate(crl)) {
-        i = X509_cmp_time(X509_CRL_get_nextUpdate(crl), ptime);
+    if (X509_CRL_get0_nextUpdate(crl)) {
+        i = X509_cmp_time(X509_CRL_get0_nextUpdate(crl), ptime);
 
         if (i == 0) {
             if (!notify)
@@ -1100,8 +1100,8 @@ static int get_crl_sk(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509_CRL **pdcrl,
         /* If current CRL is equivalent use it if it is newer */
         if (crl_score == best_score && best_crl != NULL) {
             int day, sec;
-            if (ASN1_TIME_diff(&day, &sec, X509_CRL_get_lastUpdate(best_crl),
-                               X509_CRL_get_lastUpdate(crl)) == 0)
+            if (ASN1_TIME_diff(&day, &sec, X509_CRL_get0_lastUpdate(best_crl),
+                               X509_CRL_get0_lastUpdate(crl)) == 0)
                 continue;
             /*
              * ASN1_TIME_diff never returns inconsistent signs for |day|
@@ -2058,9 +2058,9 @@ X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer,
     if (!X509_CRL_set_issuer_name(crl, X509_CRL_get_issuer(newer)))
         goto memerr;
 
-    if (!X509_CRL_set_lastUpdate(crl, X509_CRL_get_lastUpdate(newer)))
+    if (!X509_CRL_set1_lastUpdate(crl, X509_CRL_get0_lastUpdate(newer)))
         goto memerr;
-    if (!X509_CRL_set_nextUpdate(crl, X509_CRL_get_nextUpdate(newer)))
+    if (!X509_CRL_set1_nextUpdate(crl, X509_CRL_get0_nextUpdate(newer)))
         goto memerr;
 
     /* Set base CRL number: must be critical */

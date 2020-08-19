@@ -117,7 +117,7 @@ int X509_set_subject_name(X509 *x, X509_NAME *name)
     return (X509_NAME_set(&x->cert_info->subject, name));
 }
 
-int X509_set_notBefore(X509 *x, const ASN1_TIME *tm)
+int X509_set1_notBefore(X509 *x, const ASN1_TIME *tm)
 {
     ASN1_TIME *in;
 
@@ -155,7 +155,7 @@ ASN1_TIME *X509_get_notBefore(const X509 *x509)
     return x509->cert_info->validity->notBefore;
 }
 
-int X509_set_notAfter(X509 *x, const ASN1_TIME *tm)
+int X509_set1_notAfter(X509 *x, const ASN1_TIME *tm)
 {
     ASN1_TIME *in;
 
