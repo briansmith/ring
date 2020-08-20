@@ -260,17 +260,17 @@ void X509_TRUST_cleanup(void)
     trtable = NULL;
 }
 
-int X509_TRUST_get_flags(X509_TRUST *xp)
+int X509_TRUST_get_flags(const X509_TRUST *xp)
 {
     return xp->flags;
 }
 
-char *X509_TRUST_get0_name(X509_TRUST *xp)
+char *X509_TRUST_get0_name(const X509_TRUST *xp)
 {
     return xp->name;
 }
 
-int X509_TRUST_get_trust(X509_TRUST *xp)
+int X509_TRUST_get_trust(const X509_TRUST *xp)
 {
     return xp->trust;
 }

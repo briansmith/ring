@@ -307,22 +307,22 @@ void X509_PURPOSE_cleanup(void)
     xptable = NULL;
 }
 
-int X509_PURPOSE_get_id(X509_PURPOSE *xp)
+int X509_PURPOSE_get_id(const X509_PURPOSE *xp)
 {
     return xp->purpose;
 }
 
-char *X509_PURPOSE_get0_name(X509_PURPOSE *xp)
+char *X509_PURPOSE_get0_name(const X509_PURPOSE *xp)
 {
     return xp->name;
 }
 
-char *X509_PURPOSE_get0_sname(X509_PURPOSE *xp)
+char *X509_PURPOSE_get0_sname(const X509_PURPOSE *xp)
 {
     return xp->sname;
 }
 
-int X509_PURPOSE_get_trust(X509_PURPOSE *xp)
+int X509_PURPOSE_get_trust(const X509_PURPOSE *xp)
 {
     return xp->trust;
 }

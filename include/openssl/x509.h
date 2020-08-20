@@ -482,6 +482,9 @@ extern "C" {
 // version, or -1 on overflow.
 OPENSSL_EXPORT long X509_get_version(const X509 *x509);
 
+// X509_get0_serialNumber returns |x509|'s serial number.
+OPENSSL_EXPORT const ASN1_INTEGER *X509_get0_serialNumber(const X509 *x509);
+
 // X509_get0_notBefore returns |x509|'s notBefore time.
 OPENSSL_EXPORT const ASN1_TIME *X509_get0_notBefore(const X509 *x509);
 
@@ -882,7 +885,7 @@ DECLARE_ASN1_FUNCTIONS(NETSCAPE_SPKAC)
 #ifndef OPENSSL_NO_EVP
 OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
-OPENSSL_EXPORT char *X509_NAME_oneline(X509_NAME *a, char *buf, int size);
+OPENSSL_EXPORT char *X509_NAME_oneline(const X509_NAME *a, char *buf, int size);
 
 OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
                                unsigned char *md, unsigned int *len);
@@ -909,9 +912,9 @@ OPENSSL_EXPORT int X509_set_version(X509 *x, long version);
 OPENSSL_EXPORT int X509_set_serialNumber(X509 *x, ASN1_INTEGER *serial);
 OPENSSL_EXPORT ASN1_INTEGER *X509_get_serialNumber(X509 *x);
 OPENSSL_EXPORT int X509_set_issuer_name(X509 *x, X509_NAME *name);
-OPENSSL_EXPORT X509_NAME *X509_get_issuer_name(X509 *a);
+OPENSSL_EXPORT X509_NAME *X509_get_issuer_name(const X509 *a);
 OPENSSL_EXPORT int X509_set_subject_name(X509 *x, X509_NAME *name);
-OPENSSL_EXPORT X509_NAME *X509_get_subject_name(X509 *a);
+OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *a);
 OPENSSL_EXPORT int X509_set_pubkey(X509 *x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x);
 OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x);
@@ -1016,12 +1019,12 @@ OPENSSL_EXPORT int X509_print_ex_fp(FILE *bp, X509 *x, unsigned long nmflag,
 OPENSSL_EXPORT int X509_print_fp(FILE *bp, X509 *x);
 OPENSSL_EXPORT int X509_CRL_print_fp(FILE *bp, X509_CRL *x);
 OPENSSL_EXPORT int X509_REQ_print_fp(FILE *bp, X509_REQ *req);
-OPENSSL_EXPORT int X509_NAME_print_ex_fp(FILE *fp, X509_NAME *nm, int indent,
-                                         unsigned long flags);
+OPENSSL_EXPORT int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm,
+                                         int indent, unsigned long flags);
 #endif
 
-OPENSSL_EXPORT int X509_NAME_print(BIO *bp, X509_NAME *name, int obase);
-OPENSSL_EXPORT int X509_NAME_print_ex(BIO *out, X509_NAME *nm, int indent,
+OPENSSL_EXPORT int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase);
+OPENSSL_EXPORT int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
                                       unsigned long flags);
 OPENSSL_EXPORT int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflag,
                                  unsigned long cflag);
@@ -1033,21 +1036,22 @@ OPENSSL_EXPORT int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflag,
                                      unsigned long cflag);
 OPENSSL_EXPORT int X509_REQ_print(BIO *bp, X509_REQ *req);
 
-OPENSSL_EXPORT int X509_NAME_entry_count(X509_NAME *name);
-OPENSSL_EXPORT int X509_NAME_get_text_by_NID(X509_NAME *name, int nid,
+OPENSSL_EXPORT int X509_NAME_entry_count(const X509_NAME *name);
+OPENSSL_EXPORT int X509_NAME_get_text_by_NID(const X509_NAME *name, int nid,
                                              char *buf, int len);
-OPENSSL_EXPORT int X509_NAME_get_text_by_OBJ(X509_NAME *name,
+OPENSSL_EXPORT int X509_NAME_get_text_by_OBJ(const X509_NAME *name,
                                              const ASN1_OBJECT *obj, char *buf,
                                              int len);
 
 // NOTE: you should be passsing -1, not 0 as lastpos.  The functions that use
 // lastpos, search after that position on.
-OPENSSL_EXPORT int X509_NAME_get_index_by_NID(X509_NAME *name, int nid,
+OPENSSL_EXPORT int X509_NAME_get_index_by_NID(const X509_NAME *name, int nid,
                                               int lastpos);
-OPENSSL_EXPORT int X509_NAME_get_index_by_OBJ(X509_NAME *name,
+OPENSSL_EXPORT int X509_NAME_get_index_by_OBJ(const X509_NAME *name,
                                               const ASN1_OBJECT *obj,
                                               int lastpos);
-OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_get_entry(X509_NAME *name, int loc);
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_get_entry(const X509_NAME *name,
+                                                    int loc);
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *name,
                                                        int loc);
 OPENSSL_EXPORT int X509_NAME_add_entry(X509_NAME *name, X509_NAME_ENTRY *ne,
@@ -1078,8 +1082,9 @@ OPENSSL_EXPORT int X509_NAME_ENTRY_set_object(X509_NAME_ENTRY *ne,
 OPENSSL_EXPORT int X509_NAME_ENTRY_set_data(X509_NAME_ENTRY *ne, int type,
                                             const unsigned char *bytes,
                                             int len);
-OPENSSL_EXPORT ASN1_OBJECT *X509_NAME_ENTRY_get_object(X509_NAME_ENTRY *ne);
-OPENSSL_EXPORT ASN1_STRING *X509_NAME_ENTRY_get_data(X509_NAME_ENTRY *ne);
+OPENSSL_EXPORT ASN1_OBJECT *X509_NAME_ENTRY_get_object(
+    const X509_NAME_ENTRY *ne);
+OPENSSL_EXPORT ASN1_STRING *X509_NAME_ENTRY_get_data(const X509_NAME_ENTRY *ne);
 
 OPENSSL_EXPORT int X509v3_get_ext_count(const STACK_OF(X509_EXTENSION) * x);
 OPENSSL_EXPORT int X509v3_get_ext_by_NID(const STACK_OF(X509_EXTENSION) * x,
@@ -1097,59 +1102,63 @@ OPENSSL_EXPORT X509_EXTENSION *X509v3_delete_ext(STACK_OF(X509_EXTENSION) * x,
 OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *
     X509v3_add_ext(STACK_OF(X509_EXTENSION) * *x, X509_EXTENSION *ex, int loc);
 
-OPENSSL_EXPORT int X509_get_ext_count(X509 *x);
-OPENSSL_EXPORT int X509_get_ext_by_NID(X509 *x, int nid, int lastpos);
-OPENSSL_EXPORT int X509_get_ext_by_OBJ(X509 *x, ASN1_OBJECT *obj, int lastpos);
-OPENSSL_EXPORT int X509_get_ext_by_critical(X509 *x, int crit, int lastpos);
-OPENSSL_EXPORT X509_EXTENSION *X509_get_ext(X509 *x, int loc);
+OPENSSL_EXPORT int X509_get_ext_count(const X509 *x);
+OPENSSL_EXPORT int X509_get_ext_by_NID(const X509 *x, int nid, int lastpos);
+OPENSSL_EXPORT int X509_get_ext_by_OBJ(const X509 *x, const ASN1_OBJECT *obj,
+                                       int lastpos);
+OPENSSL_EXPORT int X509_get_ext_by_critical(const X509 *x, int crit,
+                                            int lastpos);
+OPENSSL_EXPORT X509_EXTENSION *X509_get_ext(const X509 *x, int loc);
 OPENSSL_EXPORT X509_EXTENSION *X509_delete_ext(X509 *x, int loc);
 OPENSSL_EXPORT int X509_add_ext(X509 *x, X509_EXTENSION *ex, int loc);
-OPENSSL_EXPORT void *X509_get_ext_d2i(X509 *x, int nid, int *crit, int *idx);
+OPENSSL_EXPORT void *X509_get_ext_d2i(const X509 *x, int nid, int *crit, int *idx);
 OPENSSL_EXPORT int X509_add1_ext_i2d(X509 *x, int nid, void *value, int crit,
                                      unsigned long flags);
 
-OPENSSL_EXPORT int X509_CRL_get_ext_count(X509_CRL *x);
-OPENSSL_EXPORT int X509_CRL_get_ext_by_NID(X509_CRL *x, int nid, int lastpos);
-OPENSSL_EXPORT int X509_CRL_get_ext_by_OBJ(X509_CRL *x, ASN1_OBJECT *obj,
-                                           int lastpos);
-OPENSSL_EXPORT int X509_CRL_get_ext_by_critical(X509_CRL *x, int crit,
+OPENSSL_EXPORT int X509_CRL_get_ext_count(const X509_CRL *x);
+OPENSSL_EXPORT int X509_CRL_get_ext_by_NID(const X509_CRL *x, int nid, int lastpos);
+OPENSSL_EXPORT int X509_CRL_get_ext_by_OBJ(const X509_CRL *x,
+                                           const ASN1_OBJECT *obj, int lastpos);
+OPENSSL_EXPORT int X509_CRL_get_ext_by_critical(const X509_CRL *x, int crit,
                                                 int lastpos);
-OPENSSL_EXPORT X509_EXTENSION *X509_CRL_get_ext(X509_CRL *x, int loc);
+OPENSSL_EXPORT X509_EXTENSION *X509_CRL_get_ext(const X509_CRL *x, int loc);
 OPENSSL_EXPORT X509_EXTENSION *X509_CRL_delete_ext(X509_CRL *x, int loc);
 OPENSSL_EXPORT int X509_CRL_add_ext(X509_CRL *x, X509_EXTENSION *ex, int loc);
-OPENSSL_EXPORT void *X509_CRL_get_ext_d2i(X509_CRL *x, int nid, int *crit,
+OPENSSL_EXPORT void *X509_CRL_get_ext_d2i(const X509_CRL *x, int nid, int *crit,
                                           int *idx);
 OPENSSL_EXPORT int X509_CRL_add1_ext_i2d(X509_CRL *x, int nid, void *value,
                                          int crit, unsigned long flags);
 
-OPENSSL_EXPORT int X509_REVOKED_get_ext_count(X509_REVOKED *x);
-OPENSSL_EXPORT int X509_REVOKED_get_ext_by_NID(X509_REVOKED *x, int nid,
+OPENSSL_EXPORT int X509_REVOKED_get_ext_count(const X509_REVOKED *x);
+OPENSSL_EXPORT int X509_REVOKED_get_ext_by_NID(const X509_REVOKED *x, int nid,
                                                int lastpos);
-OPENSSL_EXPORT int X509_REVOKED_get_ext_by_OBJ(X509_REVOKED *x,
-                                               ASN1_OBJECT *obj, int lastpos);
-OPENSSL_EXPORT int X509_REVOKED_get_ext_by_critical(X509_REVOKED *x, int crit,
-                                                    int lastpos);
-OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_get_ext(X509_REVOKED *x, int loc);
+OPENSSL_EXPORT int X509_REVOKED_get_ext_by_OBJ(const X509_REVOKED *x,
+                                               const ASN1_OBJECT *obj,
+                                               int lastpos);
+OPENSSL_EXPORT int X509_REVOKED_get_ext_by_critical(const X509_REVOKED *x,
+                                                    int crit, int lastpos);
+OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_get_ext(const X509_REVOKED *x,
+                                                    int loc);
 OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_delete_ext(X509_REVOKED *x,
                                                        int loc);
 OPENSSL_EXPORT int X509_REVOKED_add_ext(X509_REVOKED *x, X509_EXTENSION *ex,
                                         int loc);
-OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(X509_REVOKED *x, int nid,
+OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *x, int nid,
                                               int *crit, int *idx);
 OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
                                              void *value, int crit,
                                              unsigned long flags);
 
 OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_create_by_NID(
-    X509_EXTENSION **ex, int nid, int crit, ASN1_OCTET_STRING *data);
+    X509_EXTENSION **ex, int nid, int crit, const ASN1_OCTET_STRING *data);
 OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_create_by_OBJ(
     X509_EXTENSION **ex, const ASN1_OBJECT *obj, int crit,
-    ASN1_OCTET_STRING *data);
+    const ASN1_OCTET_STRING *data);
 OPENSSL_EXPORT int X509_EXTENSION_set_object(X509_EXTENSION *ex,
                                              const ASN1_OBJECT *obj);
 OPENSSL_EXPORT int X509_EXTENSION_set_critical(X509_EXTENSION *ex, int crit);
 OPENSSL_EXPORT int X509_EXTENSION_set_data(X509_EXTENSION *ex,
-                                           ASN1_OCTET_STRING *data);
+                                           const ASN1_OCTET_STRING *data);
 OPENSSL_EXPORT ASN1_OBJECT *X509_EXTENSION_get_object(X509_EXTENSION *ex);
 OPENSSL_EXPORT ASN1_OCTET_STRING *X509_EXTENSION_get_data(X509_EXTENSION *ne);
 OPENSSL_EXPORT int X509_EXTENSION_get_critical(X509_EXTENSION *ex);
@@ -1236,9 +1245,9 @@ OPENSSL_EXPORT int X509_TRUST_add(int id, int flags,
                                   int (*ck)(X509_TRUST *, X509 *, int),
                                   char *name, int arg1, void *arg2);
 OPENSSL_EXPORT void X509_TRUST_cleanup(void);
-OPENSSL_EXPORT int X509_TRUST_get_flags(X509_TRUST *xp);
-OPENSSL_EXPORT char *X509_TRUST_get0_name(X509_TRUST *xp);
-OPENSSL_EXPORT int X509_TRUST_get_trust(X509_TRUST *xp);
+OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
+OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
+OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
 
 
 typedef struct rsa_pss_params_st {
