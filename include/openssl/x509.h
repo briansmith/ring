@@ -516,6 +516,13 @@ OPENSSL_EXPORT ASN1_TIME *X509_get_notAfter(const X509 *x509);
 #define X509_set_notBefore X509_set1_notBefore
 #define X509_set_notAfter X509_set1_notAfter
 
+// X509_get0_uids sets |*out_issuer_uid| and |*out_subject_uid| to non-owning
+// pointers to the issuerUID and subjectUID fields, respectively, of |x509|.
+// Either output pointer may be NULL to skip the field.
+OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
+                                   const ASN1_BIT_STRING **out_issuer_uid,
+                                   const ASN1_BIT_STRING **out_subject_uid);
+
 // X509_get_cert_info returns |x509|'s TBSCertificate structure. Note this
 // function is not const-correct for legacy reasons.
 //

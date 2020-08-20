@@ -193,6 +193,17 @@ ASN1_TIME *X509_get_notAfter(const X509 *x509)
     return x509->cert_info->validity->notAfter;
 }
 
+void X509_get0_uids(const X509 *x509, const ASN1_BIT_STRING **out_issuer_uid,
+                    const ASN1_BIT_STRING **out_subject_uid)
+{
+    if (out_issuer_uid != NULL) {
+        *out_issuer_uid = x509->cert_info->issuerUID;
+    }
+    if (out_subject_uid != NULL) {
+        *out_subject_uid = x509->cert_info->subjectUID;
+    }
+}
+
 int X509_set_pubkey(X509 *x, EVP_PKEY *pkey)
 {
     if ((x == NULL) || (x->cert_info == NULL))
