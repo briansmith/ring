@@ -185,7 +185,7 @@ func (m *Subprocess) Config() ([]byte, error) {
 }
 
 // Process runs a set of test vectors and returns the result.
-func (m *Subprocess) Process(algorithm string, vectorSet []byte) ([]byte, error) {
+func (m *Subprocess) Process(algorithm string, vectorSet []byte) (interface{}, error) {
 	prim, ok := m.primitives[algorithm]
 	if !ok {
 		return nil, fmt.Errorf("unknown algorithm %q", algorithm)
@@ -194,7 +194,7 @@ func (m *Subprocess) Process(algorithm string, vectorSet []byte) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(ret)
+	return ret, nil
 }
 
 type primitive interface {
