@@ -134,6 +134,11 @@ int X509_set1_notBefore(X509 *x, const ASN1_TIME *tm)
     return (in != NULL);
 }
 
+int X509_set_notBefore(X509 *x, const ASN1_TIME *tm)
+{
+    return X509_set1_notBefore(x, tm);
+}
+
 const ASN1_TIME *X509_get0_notBefore(const X509 *x)
 {
     return x->cert_info->validity->notBefore;
@@ -170,6 +175,11 @@ int X509_set1_notAfter(X509 *x, const ASN1_TIME *tm)
         }
     }
     return (in != NULL);
+}
+
+int X509_set_notAfter(X509 *x, const ASN1_TIME *tm)
+{
+    return X509_set1_notAfter(x, tm);
 }
 
 const ASN1_TIME *X509_get0_notAfter(const X509 *x)

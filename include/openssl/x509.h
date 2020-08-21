@@ -512,9 +512,13 @@ OPENSSL_EXPORT ASN1_TIME *X509_get_notBefore(const X509 *x509);
 // |X509_getm_notAfter| instead.
 OPENSSL_EXPORT ASN1_TIME *X509_get_notAfter(const X509 *x509);
 
-// The following symbols are deprecated aliases to |X509_set1_*|.
-#define X509_set_notBefore X509_set1_notBefore
-#define X509_set_notAfter X509_set1_notAfter
+// X509_set_notBefore calls |X509_set1_notBefore|. Use |X509_set1_notBefore|
+// instead.
+OPENSSL_EXPORT int X509_set_notBefore(X509 *x509, const ASN1_TIME *tm);
+
+// X509_set_notAfter calls |X509_set1_notAfter|. Use |X509_set1_notAfter|
+// instead.
+OPENSSL_EXPORT int X509_set_notAfter(X509 *x509, const ASN1_TIME *tm);
 
 // X509_get0_uids sets |*out_issuer_uid| and |*out_subject_uid| to non-owning
 // pointers to the issuerUID and subjectUID fields, respectively, of |x509|.
