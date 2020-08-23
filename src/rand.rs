@@ -183,6 +183,7 @@ use self::sysrand_or_urandom::fill as fill_impl;
     target_os = "freebsd",
     target_os = "netbsd",
     target_os = "openbsd",
+    target_os = "illumos",
     target_os = "solaris"
 ))]
 use self::urandom::fill as fill_impl;
@@ -354,6 +355,7 @@ mod sysrand_or_urandom {
     target_os = "freebsd",
     target_os = "netbsd",
     target_os = "openbsd",
+    target_os = "illumos",
     target_os = "solaris"
 ))]
 mod urandom {

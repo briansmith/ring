@@ -23,7 +23,7 @@
 // instead of a custom macro. This avoids the need for a custom macro, but also
 // ensures that our renaming won't conflict with symbols defined and used by our
 // consumers (the "HMAC" problem). An example of this approach can be seen in
-// IllumOS' fork of OpenSSL:
+// the SmartOS fork of OpenSSL:
 // https://github.com/joyent/illumos-extra/blob/master/openssl1x/sunw_prefix.h
 
 package main
