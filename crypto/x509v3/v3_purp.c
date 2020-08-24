@@ -880,3 +880,35 @@ uint32_t X509_get_extended_key_usage(X509 *x)
         return x->ex_xkusage;
     return UINT32_MAX;
 }
+
+const ASN1_OCTET_STRING *X509_get0_subject_key_id(X509 *x509)
+{
+    if (!x509v3_cache_extensions(x509)) {
+        return NULL;
+    }
+    return x509->skid;
+}
+
+const ASN1_OCTET_STRING *X509_get0_authority_key_id(X509 *x509)
+{
+    if (!x509v3_cache_extensions(x509)) {
+        return NULL;
+    }
+    return x509->akid != NULL ? x509->akid->keyid : NULL;
+}
+
+const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x509)
+{
+    if (!x509v3_cache_extensions(x509)) {
+        return NULL;
+    }
+    return x509->akid != NULL ? x509->akid->issuer : NULL;
+}
+
+const ASN1_INTEGER *X509_get0_authority_serial(X509 *x509)
+{
+    if (!x509v3_cache_extensions(x509)) {
+        return NULL;
+    }
+    return x509->akid != NULL ? x509->akid->serial : NULL;
+}

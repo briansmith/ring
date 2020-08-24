@@ -651,6 +651,48 @@ OPENSSL_EXPORT uint32_t X509_get_extension_flags(X509 *x);
 OPENSSL_EXPORT uint32_t X509_get_key_usage(X509 *x);
 OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x);
 
+// X509_get0_subject_key_id returns |x509|'s subject key identifier, if present.
+// (See RFC5280, section 4.2.1.2.) It returns NULL if the extension is not
+// present or if some extension in |x509| was invalid.
+//
+// Note that decoding an |X509| object will not check for invalid extensions. To
+// detect the error case, call |X509_get_extensions_flags| and check the
+// |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_subject_key_id(X509 *x509);
+
+// X509_get0_authority_key_id returns keyIdentifier of |x509|'s authority key
+// identifier, if the extension and field are present. (See RFC5280,
+// section 4.2.1.1.) It returns NULL if the extension is not present, if it is
+// present but lacks a keyIdentifier field, or if some extension in |x509| was
+// invalid.
+//
+// Note that decoding an |X509| object will not check for invalid extensions. To
+// detect the error case, call |X509_get_extensions_flags| and check the
+// |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_authority_key_id(X509 *x509);
+
+// X509_get0_authority_issuer returns the authorityCertIssuer of |x509|'s
+// authority key identifier, if the extension and field are present. (See
+// RFC5280, section 4.2.1.1.) It returns NULL if the extension is not present,
+// if it is present but lacks a authorityCertIssuer field, or if some extension
+// in |x509| was invalid.
+//
+// Note that decoding an |X509| object will not check for invalid extensions. To
+// detect the error case, call |X509_get_extensions_flags| and check the
+// |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x509);
+
+// X509_get0_authority_serial returns the authorityCertSerialNumber of |x509|'s
+// authority key identifier, if the extension and field are present. (See
+// RFC5280, section 4.2.1.1.) It returns NULL if the extension is not present,
+// if it is present but lacks a authorityCertSerialNumber field, or if some
+// extension in |x509| was invalid.
+//
+// Note that decoding an |X509| object will not check for invalid extensions. To
+// detect the error case, call |X509_get_extensions_flags| and check the
+// |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT const ASN1_INTEGER *X509_get0_authority_serial(X509 *x509);
+
 OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
 OPENSSL_EXPORT X509_PURPOSE * X509_PURPOSE_get0(int idx);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(char *sname);
