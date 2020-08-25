@@ -28,6 +28,7 @@ import json
 import sys
 
 HPKE_MODE_BASE = 0
+HPKE_MODE_PSK = 1
 HPKE_DHKEM_X25519_SHA256 = 0x0020
 
 
@@ -46,11 +47,17 @@ def read_test_vectors_and_generate_code(json_file_in_path, test_file_out_path):
   lines = []
   for test in test_vecs:
     # Filter out test cases that we don't use.
-    if (test["mode"] != HPKE_MODE_BASE or
+    if (test["mode"] not in [HPKE_MODE_BASE, HPKE_MODE_PSK] or
         test["kem_id"] != HPKE_DHKEM_X25519_SHA256):
       continue
 
-    for key in ("kdf_id", "aead_id", "info", "skRm", "skEm", "pkRm", "pkEm"):
+    keys = ["mode", "kdf_id", "aead_id", "info", "skRm", "skEm", "pkRm", "pkEm"]
+
+    if test["mode"] == HPKE_MODE_PSK:
+      keys.append("psk")
+      keys.append("psk_id")
+
+    for key in keys:
       lines.append("{} = {}".format(key, str(test[key])))
 
     for i, enc in enumerate(test["encryptions"]):
