@@ -411,10 +411,10 @@ int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev)
     return 1;
 }
 
-int X509_CRL_verify(X509_CRL *crl, EVP_PKEY *r)
+int X509_CRL_verify(X509_CRL *crl, EVP_PKEY *pkey)
 {
     if (crl->meth->crl_verify)
-        return crl->meth->crl_verify(crl, r);
+        return crl->meth->crl_verify(crl, pkey);
     return 0;
 }
 

@@ -643,14 +643,31 @@ OPENSSL_EXPORT void *X509_CRL_get_meth_data(X509_CRL *crl);
 // object.
 OPENSSL_EXPORT X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 
-OPENSSL_EXPORT const char *X509_verify_cert_error_string(long n);
+// X509_verify_cert_error_string returns |err| as a human-readable string, where
+// |err| should be one of the |X509_V_*| values. If |err| is unknown, it returns
+// a default description.
+//
+// TODO(davidben): Move this function to x509_vfy.h, with the |X509_V_*|
+// definitions, or fold x509_vfy.h into this function.
+OPENSSL_EXPORT const char *X509_verify_cert_error_string(long err);
 
-#ifndef OPENSSL_NO_EVP
-OPENSSL_EXPORT int X509_verify(X509 *a, EVP_PKEY *r);
+// X509_verify checks that |x509| has a valid signature by |pkey|. It returns
+// one if the signature is valid and zero otherwise. Note this function only
+// checks the signature itself and does not perform a full certificate
+// validation.
+OPENSSL_EXPORT int X509_verify(X509 *x509, EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int X509_REQ_verify(X509_REQ *a, EVP_PKEY *r);
-OPENSSL_EXPORT int X509_CRL_verify(X509_CRL *a, EVP_PKEY *r);
-OPENSSL_EXPORT int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *a, EVP_PKEY *r);
+// X509_REQ_verify checks that |req| has a valid signature by |pkey|. It returns
+// one if the signature is valid and zero otherwise.
+OPENSSL_EXPORT int X509_REQ_verify(X509_REQ *req, EVP_PKEY *pkey);
+
+// X509_CRL_verify checks that |crl| has a valid signature by |pkey|. It returns
+// one if the signature is valid and zero otherwise.
+OPENSSL_EXPORT int X509_CRL_verify(X509_CRL *crl, EVP_PKEY *pkey);
+
+// NETSCAPE_SPKI_verify checks that |spki| has a valid signature by |pkey|. It
+// returns one if the signature is valid and zero otherwise.
+OPENSSL_EXPORT int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *spki, EVP_PKEY *pkey);
 
 OPENSSL_EXPORT NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str,
                                                        int len);
@@ -684,7 +701,6 @@ OPENSSL_EXPORT int X509_REQ_digest(const X509_REQ *data, const EVP_MD *type,
                                    unsigned char *md, unsigned int *len);
 OPENSSL_EXPORT int X509_NAME_digest(const X509_NAME *data, const EVP_MD *type,
                                     unsigned char *md, unsigned int *len);
-#endif
 
 // X509_parse_from_buffer parses an X.509 structure from |buf| and returns a
 // fresh X509 or NULL on error. There must not be any trailing data in |buf|.
@@ -882,7 +898,6 @@ OPENSSL_EXPORT void X509_PKEY_free(X509_PKEY *a);
 DECLARE_ASN1_FUNCTIONS(NETSCAPE_SPKI)
 DECLARE_ASN1_FUNCTIONS(NETSCAPE_SPKAC)
 
-#ifndef OPENSSL_NO_EVP
 OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
 OPENSSL_EXPORT char *X509_NAME_oneline(const X509_NAME *a, char *buf, int size);
@@ -906,7 +921,6 @@ OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                       X509_ALGOR *algor2,
                                       ASN1_BIT_STRING *signature, void *asn,
                                       EVP_MD_CTX *ctx);
-#endif
 
 OPENSSL_EXPORT int X509_set_version(X509 *x, long version);
 OPENSSL_EXPORT int X509_set_serialNumber(X509 *x, ASN1_INTEGER *serial);
