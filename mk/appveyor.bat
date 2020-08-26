@@ -12,7 +12,6 @@ set TARGET_ARCH=i686
 goto download
 
 :download
-REM vcvarsall turns echo off
 echo on
 
 mkdir windows_build_tools
@@ -47,7 +46,13 @@ set
 rustc --version
 cargo --version
 
-cargo test -vv %CARGO_MODE%
+REM Don't build doc tests in release mode, to work around
+REM https://github.com/rust-lang/cargo/issues/8654.
+if "%CARGO_MODE%"=="--release" (
+  cargo test -vv %CARGO_MODE% --lib --tests --bins --examples
+) else (
+  cargo test -vv %CARGO_MODE%
+)
 if %ERRORLEVEL% NEQ 0 exit 1
 
 REM Verify that `cargo build`, independent from `cargo test`, works; i.e.

@@ -96,7 +96,9 @@ cargo version
 rustc --version
 
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then
-  mode=--release
+  # Don't build doc tests in release mode, to work around
+  # https://github.com/rust-lang/cargo/issues/8654.
+  mode="--release --lib --tests --bins --examples"
   target_dir=target/$TARGET_X/release
 else
   target_dir=target/$TARGET_X/debug
