@@ -71,6 +71,8 @@ type HpkeTestVector struct {
 	KDF         uint16                 `json:"kdf_id"`
 	AEAD        uint16                 `json:"aead_id"`
 	Info        HexString              `json:"info"`
+	PSK         HexString              `json:"psk"`
+	PSKID       HexString              `json:"psk_id"`
 	SecretKeyR  HexString              `json:"skRm"`
 	SecretKeyE  HexString              `json:"skEm"`
 	PublicKeyR  HexString              `json:"pkRm"`
@@ -110,27 +112,53 @@ func TestVectors(t *testing.T) {
 	for testNum, testVec := range testVectors {
 		// Skip this vector if it specifies an unsupported KEM or Mode.
 		if testVec.KEM != X25519WithHKDFSHA256 ||
-			testVec.Mode != hpkeModeBase {
+			(testVec.Mode != hpkeModeBase && testVec.Mode != hpkeModePSK) {
 			numSkippedTests++
 			continue
 		}
 
 		testVec := testVec // capture the range variable
 		t.Run(fmt.Sprintf("test%d,KDF=%d,AEAD=%d", testNum, testVec.KDF, testVec.AEAD), func(t *testing.T) {
-			senderContext, enc, err := SetupBaseSenderX25519(testVec.KDF, testVec.AEAD, testVec.PublicKeyR, testVec.Info,
-				func() ([]byte, []byte, error) {
-					return testVec.PublicKeyE, testVec.SecretKeyE, nil
-				})
-			if err != nil {
-				t.Errorf("failed to set up sender: %s", err)
-				return
-			}
-			checkBytesEqual(t, "sender enc", enc, testVec.Enc)
+			var senderContext *Context
+			var receiverContext *Context
+			var enc []byte
+			var err error
 
-			receiverContext, err := SetupBaseReceiverX25519(testVec.KDF, testVec.AEAD, enc, testVec.SecretKeyR, testVec.Info)
-			if err != nil {
-				t.Errorf("failed to set up receiver: %s", err)
-				return
+			switch testVec.Mode {
+			case hpkeModeBase:
+				senderContext, enc, err = SetupBaseSenderX25519(testVec.KDF, testVec.AEAD, testVec.PublicKeyR, testVec.Info,
+					func() ([]byte, []byte, error) {
+						return testVec.PublicKeyE, testVec.SecretKeyE, nil
+					})
+				if err != nil {
+					t.Errorf("failed to set up sender: %s", err)
+					return
+				}
+				checkBytesEqual(t, "sender enc", enc, testVec.Enc)
+
+				receiverContext, err = SetupBaseReceiverX25519(testVec.KDF, testVec.AEAD, enc, testVec.SecretKeyR, testVec.Info)
+				if err != nil {
+					t.Errorf("failed to set up receiver: %s", err)
+					return
+				}
+			case hpkeModePSK:
+				senderContext, enc, err = SetupPSKSenderX25519(testVec.KDF, testVec.AEAD, testVec.PublicKeyR, testVec.Info, testVec.PSK, testVec.PSKID,
+					func() ([]byte, []byte, error) {
+						return testVec.PublicKeyE, testVec.SecretKeyE, nil
+					})
+				if err != nil {
+					t.Errorf("failed to set up sender: %s", err)
+					return
+				}
+				checkBytesEqual(t, "sender enc", enc, testVec.Enc)
+
+				receiverContext, err = SetupPSKReceiverX25519(testVec.KDF, testVec.AEAD, enc, testVec.SecretKeyR, testVec.Info, testVec.PSK, testVec.PSKID)
+				if err != nil {
+					t.Errorf("failed to set up receiver: %s", err)
+					return
+				}
+			default:
+				panic("unsupported mode")
 			}
 
 			for encryptionNum, e := range testVec.Encryptions {

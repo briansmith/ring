@@ -48,6 +48,7 @@ const (
 // Internal constants.
 const (
 	hpkeModeBase uint8 = 0
+	hpkeModePSK  uint8 = 1
 )
 
 type GenerateKeyPairFunc func() (public []byte, secret []byte, e error)
@@ -73,7 +74,7 @@ func SetupBaseSenderX25519(kdfID, aeadID uint16, publicKeyR, info []byte, ephemK
 	if err != nil {
 		return nil, nil, err
 	}
-	context, err = keySchedule(X25519WithHKDFSHA256, kdfID, aeadID, sharedSecret, info)
+	context, err = keySchedule(hpkeModeBase, X25519WithHKDFSHA256, kdfID, aeadID, sharedSecret, info, nil, nil)
 	return
 }
 
@@ -84,7 +85,32 @@ func SetupBaseReceiverX25519(kdfID, aeadID uint16, enc, secretKeyR, info []byte)
 	if err != nil {
 		return nil, err
 	}
-	return keySchedule(X25519WithHKDFSHA256, kdfID, aeadID, sharedSecret, info)
+	return keySchedule(hpkeModeBase, X25519WithHKDFSHA256, kdfID, aeadID, sharedSecret, info, nil, nil)
+}
+
+// SetupPSKSenderX25519 corresponds to the spec's SetupPSKS(), but only supports
+// X25519.
+func SetupPSKSenderX25519(kdfID, aeadID uint16, publicKeyR, info, psk, pskID []byte, ephemKeygen GenerateKeyPairFunc) (context *Context, enc []byte, err error) {
+	sharedSecret, enc, err := x25519Encap(publicKeyR, ephemKeygen)
+	if err != nil {
+		return nil, nil, err
+	}
+	context, err = keySchedule(hpkeModePSK, X25519WithHKDFSHA256, kdfID, aeadID, sharedSecret, info, psk, pskID)
+	return
+}
+
+// SetupPSKReceiverX25519 corresponds to the spec's SetupPSKR(), but only
+// supports X25519.
+func SetupPSKReceiverX25519(kdfID, aeadID uint16, enc, secretKeyR, info, psk, pskID []byte) (context *Context, err error) {
+	sharedSecret, err := x25519Decap(enc, secretKeyR)
+	if err != nil {
+		return nil, err
+	}
+	context, err = keySchedule(hpkeModePSK, X25519WithHKDFSHA256, kdfID, aeadID, sharedSecret, info, psk, pskID)
+	if err != nil {
+		return nil, err
+	}
+	return context, nil
 }
 
 func (c *Context) Seal(additionalData, plaintext []byte) []byte {
@@ -142,18 +168,32 @@ func newAEAD(aeadID uint16, key []byte) (cipher.AEAD, error) {
 	return nil, errors.New("unsupported AEAD")
 }
 
-func keySchedule(kemID, kdfID, aeadID uint16, sharedSecret, info []byte) (*Context, error) {
+func keySchedule(mode uint8, kemID, kdfID, aeadID uint16, sharedSecret, info, psk, pskID []byte) (*Context, error) {
+	// Verify the PSK inputs.
+	switch mode {
+	case hpkeModeBase:
+		if len(psk) > 0 || len(pskID) > 0 {
+			panic("unnecessary psk inputs were provided")
+		}
+	case hpkeModePSK:
+		if len(psk) == 0 || len(pskID) == 0 {
+			panic("missing psk inputs")
+		}
+	default:
+		panic("unknown mode")
+	}
+
 	kdfHash := getKDFHash(kdfID)
 	suiteID := buildSuiteID(kemID, kdfID, aeadID)
-	pskIDHash := labeledExtract(kdfHash, nil, suiteID, []byte("psk_id_hash"), nil)
+	pskIDHash := labeledExtract(kdfHash, nil, suiteID, []byte("psk_id_hash"), pskID)
 	infoHash := labeledExtract(kdfHash, nil, suiteID, []byte("info_hash"), info)
 
 	keyScheduleContext := make([]byte, 0)
-	keyScheduleContext = append(keyScheduleContext, hpkeModeBase)
+	keyScheduleContext = append(keyScheduleContext, mode)
 	keyScheduleContext = append(keyScheduleContext, pskIDHash...)
 	keyScheduleContext = append(keyScheduleContext, infoHash...)
 
-	pskHash := labeledExtract(kdfHash, nil, suiteID, []byte("psk_hash"), nil)
+	pskHash := labeledExtract(kdfHash, nil, suiteID, []byte("psk_hash"), psk)
 	secret := labeledExtract(kdfHash, pskHash, suiteID, []byte("secret"), sharedSecret)
 	key := labeledExpand(kdfHash, secret, suiteID, []byte("key"), keyScheduleContext, expectedKeyLength(aeadID))
 
