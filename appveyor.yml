@@ -10,11 +10,8 @@ platform:
   - x64
 environment:
   matrix:
-    - TOOLCHAIN_VERSION: 14.0
-      RUST: stable
-    - TOOLCHAIN_VERSION: 14.0
-      RUST: beta
-    - TOOLCHAIN_VERSION: 14.0
-      RUST: nightly
+    - RUST: stable
+    - RUST: beta
+    - RUST: nightly
 
 build_script: mk/appveyor.bat

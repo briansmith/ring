@@ -1,8 +1,6 @@
 echo on
 SetLocal EnableDelayedExpansion
 
-set VCVARSALL="C:\Program Files (x86)\Microsoft Visual Studio %TOOLCHAIN_VERSION%\VC\vcvarsall.bat"
-
 if [%Platform%] NEQ [x64] goto win32
 set TARGET_ARCH=x86_64
 goto download
@@ -46,8 +44,6 @@ if [%Configuration%] == [Release] set CARGO_MODE=--release
 
 set
 
-link /?
-cl /?
 rustc --version
 cargo --version
 
