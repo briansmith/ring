@@ -669,17 +669,40 @@ OPENSSL_EXPORT int X509_CRL_verify(X509_CRL *crl, EVP_PKEY *pkey);
 // returns one if the signature is valid and zero otherwise.
 OPENSSL_EXPORT int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *spki, EVP_PKEY *pkey);
 
+// NETSCAPE_SPKI_b64_decode decodes |len| bytes from |str| as a base64-encoded
+// Netscape signed public key and challenge (SPKAC) structure. It returns a
+// newly-allocated |NETSCAPE_SPKI| structure with the result, or NULL on error.
+// If |len| is 0 or negative, the length is calculated with |strlen| and |str|
+// must be a NUL-terminated C string.
 OPENSSL_EXPORT NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str,
                                                        int len);
-OPENSSL_EXPORT char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *x);
-OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *x);
-OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *x, EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki);
+// NETSCAPE_SPKI_b64_encode encodes |spki| as a base64-encoded Netscape signed
+// public key and challenge (SPKAC) structure. It returns a newly-allocated
+// NUL-terminated C string with the result, or NULL on error. The caller must
+// release the memory with |OPENSSL_free| when done.
+OPENSSL_EXPORT char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki);
 
-OPENSSL_EXPORT int X509_signature_dump(BIO *bp, const ASN1_STRING *sig,
+// NETSCAPE_SPKI_get_pubkey decodes and returns the public key in |spki| as an
+// |EVP_PKEY|, or NULL on error. The resulting pointer is non-owning and valid
+// until |spki| is released or mutated. The caller should take a reference with
+// |EVP_PKEY_up_ref| to extend the lifetime.
+OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *spki);
+
+// NETSCAPE_SPKI_set_pubkey sets |spki|'s public key to |pkey|. It returns one
+// on success or zero on error. This function does not take ownership of |pkey|,
+// so the caller may continue to manage its lifetime independently of |spki|.
+OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *spki,
+                                            EVP_PKEY *pkey);
+
+// X509_signature_dump writes a human-readable representation of |sig| to |bio|,
+// indented with |indent| spaces. It returns one on success and zero on error.
+OPENSSL_EXPORT int X509_signature_dump(BIO *bio, const ASN1_STRING *sig,
                                        int indent);
-OPENSSL_EXPORT int X509_signature_print(BIO *bp, const X509_ALGOR *alg,
+
+// X509_signature_print writes a human-readable representation of |alg| and
+// |sig| to |bio|. It returns one on success and zero on error.
+OPENSSL_EXPORT int X509_signature_print(BIO *bio, const X509_ALGOR *alg,
                                         const ASN1_STRING *sig);
 
 OPENSSL_EXPORT int X509_sign(X509 *x, EVP_PKEY *pkey, const EVP_MD *md);
