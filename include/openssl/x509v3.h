@@ -126,8 +126,8 @@ void *usr_data;	/* Any extension specific data */
 };
 
 typedef struct X509V3_CONF_METHOD_st {
-char * (*get_string)(void *db, char *section, char *value);
-STACK_OF(CONF_VALUE) * (*get_section)(void *db, char *section);
+char * (*get_string)(void *db, const char *section, const char *value);
+STACK_OF(CONF_VALUE) * (*get_section)(void *db, const char *section);
 void (*free_string)(void *db, char * string);
 void (*free_section)(void *db, STACK_OF(CONF_VALUE) *section);
 } X509V3_CONF_METHOD;
