@@ -2445,3 +2445,13 @@ TEST(X509Test, InvalidVersion) {
   EXPECT_FALSE(CertFromPEM(kV1WithIssuerUniqueIDPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithSubjectUniqueIDPEM));
 }
+
+// Unlike upstream OpenSSL, we require a non-null store in
+// |X509_STORE_CTX_init|.
+TEST(X509Test, NullStore) {
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  ASSERT_TRUE(ctx);
+  EXPECT_FALSE(X509_STORE_CTX_init(ctx.get(), nullptr, leaf.get(), nullptr));
+}
