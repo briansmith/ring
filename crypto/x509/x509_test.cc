@@ -2455,3 +2455,33 @@ TEST(X509Test, NullStore) {
   ASSERT_TRUE(ctx);
   EXPECT_FALSE(X509_STORE_CTX_init(ctx.get(), nullptr, leaf.get(), nullptr));
 }
+
+TEST(X509Test, BasicConstraints) {
+  const uint32_t kFlagMask = EXFLAG_CA | EXFLAG_BCONS | EXFLAG_INVALID;
+
+  static const struct {
+    const char *file;
+    uint32_t flags;
+    int path_len;
+  } kTests[] = {
+      {"basic_constraints_none.pem", 0, -1},
+      {"basic_constraints_ca.pem", EXFLAG_CA | EXFLAG_BCONS, -1},
+      {"basic_constraints_ca_pathlen_0.pem", EXFLAG_CA | EXFLAG_BCONS, 0},
+      {"basic_constraints_ca_pathlen_1.pem", EXFLAG_CA | EXFLAG_BCONS, 1},
+      {"basic_constraints_ca_pathlen_10.pem", EXFLAG_CA | EXFLAG_BCONS, 10},
+      {"basic_constraints_leaf.pem", EXFLAG_BCONS, -1},
+      {"invalid_extension_leaf_basic_constraints.pem", EXFLAG_INVALID, -1},
+  };
+
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(test.file);
+
+    std::string path = "crypto/x509/test/";
+    path += test.file;
+
+    bssl::UniquePtr<X509> cert = CertFromPEM(GetTestData(path.c_str()).c_str());
+    ASSERT_TRUE(cert);
+    EXPECT_EQ(test.flags, X509_get_extension_flags(cert.get()) & kFlagMask);
+    EXPECT_EQ(test.path_len, X509_get_pathlen(cert.get()));
+  }
+}

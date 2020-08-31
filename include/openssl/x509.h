@@ -541,6 +541,15 @@ OPENSSL_EXPORT X509_CINF *X509_get_cert_info(const X509 *x509);
 // |X509_get_pubkey| instead.
 #define X509_extract_key(x) X509_get_pubkey(x)
 
+// X509_get_pathlen returns path length constraint from the basic constraints
+// extension in |x509|. (See RFC5280, section 4.2.1.9.) It returns -1 if the
+// constraint is not present, or if some extension in |x509| was invalid.
+//
+// Note that decoding an |X509| object will not check for invalid extensions. To
+// detect the error case, call |X509_get_extensions_flags| and check the
+// |EXFLAG_INVALID| bit.
+OPENSSL_EXPORT long X509_get_pathlen(X509 *x509);
+
 // X509_REQ_get_version returns the numerical value of |req|'s version. That is,
 // it returns zero for a v1 request. If |req| is invalid, it may return another
 // value, or -1 on overflow.
@@ -599,6 +608,10 @@ OPENSSL_EXPORT X509_NAME *X509_CRL_get_issuer(const X509_CRL *crl);
 // semantics. It should take a const input and give const output, but the latter
 // would break existing callers. For now, we match upstream.
 OPENSSL_EXPORT STACK_OF(X509_REVOKED) *X509_CRL_get_REVOKED(X509_CRL *crl);
+
+// X509_CRL_get0_extensions returns |crl|'s extension list.
+OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *
+    X509_CRL_get0_extensions(const X509_CRL *crl);
 
 // X509_CINF_set_modified marks |cinf| as modified so that changes will be
 // reflected in serializing the structure.
@@ -955,7 +968,9 @@ OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *a);
 OPENSSL_EXPORT int X509_set_pubkey(X509 *x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x);
 OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x);
-OPENSSL_EXPORT STACK_OF(X509_EXTENSION) * X509_get0_extensions(const X509 *x);
+// TODO(davidben): |X509_get0_extensions| should return a const pointer to
+// match upstream.
+OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_get0_extensions(const X509 *x);
 OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x);
 
 OPENSSL_EXPORT int X509_REQ_set_version(X509_REQ *x, long version);
@@ -1016,6 +1031,10 @@ OPENSSL_EXPORT const ASN1_TIME *X509_REVOKED_get0_revocationDate(
     const X509_REVOKED *x);
 OPENSSL_EXPORT int X509_REVOKED_set_revocationDate(X509_REVOKED *r,
                                                    ASN1_TIME *tm);
+
+// X509_REVOKED_get0_extensions returns |r|'s extensions.
+OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *
+    X509_REVOKED_get0_extensions(const X509_REVOKED *r);
 
 OPENSSL_EXPORT X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer,
                                        EVP_PKEY *skey, const EVP_MD *md,

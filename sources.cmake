@@ -58,6 +58,12 @@ set(
   crypto/hpke/hpke_test_vectors.txt
   crypto/poly1305/poly1305_tests.txt
   crypto/siphash/siphash_tests.txt
+  crypto/x509/test/basic_constraints_ca.pem
+  crypto/x509/test/basic_constraints_ca_pathlen_0.pem
+  crypto/x509/test/basic_constraints_ca_pathlen_1.pem
+  crypto/x509/test/basic_constraints_ca_pathlen_10.pem
+  crypto/x509/test/basic_constraints_leaf.pem
+  crypto/x509/test/basic_constraints_none.pem
   crypto/x509/test/invalid_extension_intermediate.pem
   crypto/x509/test/invalid_extension_intermediate_authority_key_identifier.pem
   crypto/x509/test/invalid_extension_intermediate_basic_constraints.pem

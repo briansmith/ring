@@ -451,8 +451,14 @@ int x509v3_cache_extensions(X509 *x)
                 || !bs->ca) {
                 x->ex_flags |= EXFLAG_INVALID;
                 x->ex_pathlen = 0;
-            } else
+            } else {
+                /* TODO(davidben): |ASN1_INTEGER_get| returns -1 on overflow,
+                 * which currently acts as if the constraint isn't present. This
+                 * works (an overflowing path length constraint may as well be
+                 * infinity), but Chromium's verifier simply treats values above
+                 * 255 as an error. */
                 x->ex_pathlen = ASN1_INTEGER_get(bs->pathlen);
+            }
         } else
             x->ex_pathlen = -1;
         BASIC_CONSTRAINTS_free(bs);
@@ -855,9 +861,9 @@ int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid)
 
 uint32_t X509_get_extension_flags(X509 *x)
 {
-    if (!x509v3_cache_extensions(x)) {
-        return 0;
-    }
+    /* Ignore the return value. On failure, |x->ex_flags| will include
+     * |EXFLAG_INVALID|. */
+    x509v3_cache_extensions(x);
     return x->ex_flags;
 }
 
@@ -911,4 +917,13 @@ const ASN1_INTEGER *X509_get0_authority_serial(X509 *x509)
         return NULL;
     }
     return x509->akid != NULL ? x509->akid->serial : NULL;
+}
+
+long X509_get_pathlen(X509 *x509)
+{
+    if (!x509v3_cache_extensions(x509) ||
+        (x509->ex_flags & EXFLAG_BCONS) == 0) {
+        return -1;
+    }
+    return x509->ex_pathlen;
 }
