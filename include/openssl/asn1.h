@@ -487,7 +487,6 @@ typedef struct BIT_STRING_BITNAME_st {
 
 
 #define M_ASN1_STRING_length(x)	((x)->length)
-#define M_ASN1_STRING_length_set(x, n)	((x)->length = (n))
 #define M_ASN1_STRING_type(x)	((x)->type)
 #define M_ASN1_STRING_data(x)	((x)->data)
 
