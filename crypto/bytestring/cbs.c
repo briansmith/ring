@@ -426,29 +426,14 @@ int CBS_peek_asn1_tag(const CBS *cbs, unsigned tag_value) {
 
 int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
   CBS bytes;
-  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER)) {
+  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER) ||
+      !CBS_is_unsigned_asn1_integer(&bytes)) {
     return 0;
   }
 
   *out = 0;
   const uint8_t *data = CBS_data(&bytes);
   size_t len = CBS_len(&bytes);
-
-  if (len == 0) {
-    // An INTEGER is encoded with at least one octet.
-    return 0;
-  }
-
-  if ((data[0] & 0x80) != 0) {
-    // Negative number.
-    return 0;
-  }
-
-  if (data[0] == 0 && len > 1 && (data[1] & 0x80) == 0) {
-    // Extra leading zeros.
-    return 0;
-  }
-
   for (size_t i = 0; i < len; i++) {
     if ((*out >> 56) != 0) {
       // Too large to represent as a uint64_t.
@@ -462,31 +447,21 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
 }
 
 int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
+  int is_negative;
   CBS bytes;
-  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER)) {
+  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER) ||
+      !CBS_is_valid_asn1_integer(&bytes, &is_negative)) {
     return 0;
   }
   const uint8_t *data = CBS_data(&bytes);
   const size_t len = CBS_len(&bytes);
-
-  if (len == 0 || len > sizeof(int64_t)) {
-    // An INTEGER is encoded with at least one octet.
+  if (len > sizeof(int64_t)) {
     return 0;
   }
-  if (len > 1) {
-    if (data[0] == 0 && (data[1] & 0x80) == 0) {
-      return 0;  // Extra leading zeros.
-    }
-    if (data[0] == 0xff && (data[1] & 0x80) != 0) {
-      return 0;  // Extra leading 0xff.
-    }
-  }
-
   union {
     int64_t i;
     uint8_t bytes[sizeof(int64_t)];
   } u;
-  const int is_negative = (data[0] & 0x80);
   memset(u.bytes, is_negative ? 0xff : 0, sizeof(u.bytes));  // Sign-extend.
   for (size_t i = 0; i < len; i++) {
     u.bytes[i] = data[len - i - 1];
@@ -633,6 +608,30 @@ int CBS_asn1_bitstring_has_bit(const CBS *cbs, unsigned bit) {
   // check.
   return byte_num < CBS_len(cbs) &&
          (CBS_data(cbs)[byte_num] & (1 << bit_num)) != 0;
+}
+
+int CBS_is_valid_asn1_integer(const CBS *cbs, int *out_is_negative) {
+  CBS copy = *cbs;
+  uint8_t first_byte, second_byte;
+  if (!CBS_get_u8(&copy, &first_byte)) {
+    return 0;  // INTEGERs may not be empty.
+  }
+  if (out_is_negative != NULL) {
+    *out_is_negative = (first_byte & 0x80) != 0;
+  }
+  if (!CBS_get_u8(&copy, &second_byte)) {
+    return 1;  // One byte INTEGERs are always minimal.
+  }
+  if ((first_byte == 0x00 && (second_byte & 0x80) == 0) ||
+      (first_byte == 0xff && (second_byte & 0x80) != 0)) {
+    return 0;  // The value is minimal iff the first 9 bits are not all equal.
+  }
+  return 1;
+}
+
+int CBS_is_unsigned_asn1_integer(const CBS *cbs) {
+  int is_negative;
+  return CBS_is_valid_asn1_integer(cbs, &is_negative) && !is_negative;
 }
 
 static int add_decimal(CBB *out, uint64_t v) {
