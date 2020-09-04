@@ -718,25 +718,95 @@ OPENSSL_EXPORT int X509_signature_dump(BIO *bio, const ASN1_STRING *sig,
 OPENSSL_EXPORT int X509_signature_print(BIO *bio, const X509_ALGOR *alg,
                                         const ASN1_STRING *sig);
 
-OPENSSL_EXPORT int X509_sign(X509 *x, EVP_PKEY *pkey, const EVP_MD *md);
-OPENSSL_EXPORT int X509_sign_ctx(X509 *x, EVP_MD_CTX *ctx);
-OPENSSL_EXPORT int X509_REQ_sign(X509_REQ *x, EVP_PKEY *pkey, const EVP_MD *md);
-OPENSSL_EXPORT int X509_REQ_sign_ctx(X509_REQ *x, EVP_MD_CTX *ctx);
-OPENSSL_EXPORT int X509_CRL_sign(X509_CRL *x, EVP_PKEY *pkey, const EVP_MD *md);
-OPENSSL_EXPORT int X509_CRL_sign_ctx(X509_CRL *x, EVP_MD_CTX *ctx);
-OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *x, EVP_PKEY *pkey,
+// X509_sign signs |x509| with |pkey| and replaces the signature algorithm and
+// signature fields. It returns one on success and zero on error. This function
+// uses digest algorithm |md|, or |pkey|'s default if NULL. Other signing
+// parameters use |pkey|'s defaults. To customize them, use |X509_sign_ctx|.
+OPENSSL_EXPORT int X509_sign(X509 *x509, EVP_PKEY *pkey, const EVP_MD *md);
+
+// X509_sign_ctx signs |x509| with |ctx| and replaces the signature algorithm
+// and signature fields. It returns one on success and zero on error. The
+// signature algorithm and parameters come from |ctx|, which must have been
+// initialized with |EVP_DigestSignInit|. The caller should configure the
+// corresponding |EVP_PKEY_CTX| before calling this function.
+OPENSSL_EXPORT int X509_sign_ctx(X509 *x509, EVP_MD_CTX *ctx);
+
+// X509_REQ_sign signs |req| with |pkey| and replaces the signature algorithm
+// and signature fields. It returns one on success and zero on error. This
+// function uses digest algorithm |md|, or |pkey|'s default if NULL. Other
+// signing parameters use |pkey|'s defaults. To customize them, use
+// |X509_REQ_sign_ctx|.
+OPENSSL_EXPORT int X509_REQ_sign(X509_REQ *req, EVP_PKEY *pkey,
+                                 const EVP_MD *md);
+
+// X509_REQ_sign_ctx signs |req| with |ctx| and replaces the signature algorithm
+// and signature fields. It returns one on success and zero on error. The
+// signature algorithm and parameters come from |ctx|, which must have been
+// initialized with |EVP_DigestSignInit|. The caller should configure the
+// corresponding |EVP_PKEY_CTX| before calling this function.
+OPENSSL_EXPORT int X509_REQ_sign_ctx(X509_REQ *req, EVP_MD_CTX *ctx);
+
+// X509_CRL_sign signs |crl| with |pkey| and replaces the signature algorithm
+// and signature fields. It returns one on success and zero on error. This
+// function uses digest algorithm |md|, or |pkey|'s default if NULL. Other
+// signing parameters use |pkey|'s defaults. To customize them, use
+// |X509_CRL_sign_ctx|.
+OPENSSL_EXPORT int X509_CRL_sign(X509_CRL *crl, EVP_PKEY *pkey,
+                                 const EVP_MD *md);
+
+// X509_CRL_sign_ctx signs |crl| with |ctx| and replaces the signature algorithm
+// and signature fields. It returns one on success and zero on error. The
+// signature algorithm and parameters come from |ctx|, which must have been
+// initialized with |EVP_DigestSignInit|. The caller should configure the
+// corresponding |EVP_PKEY_CTX| before calling this function.
+OPENSSL_EXPORT int X509_CRL_sign_ctx(X509_CRL *crl, EVP_MD_CTX *ctx);
+
+// NETSCAPE_SPKI_sign signs |spki| with |pkey| and replaces the signature
+// algorithm and signature fields. It returns one on success and zero on error.
+// This function uses digest algorithm |md|, or |pkey|'s default if NULL. Other
+// signing parameters use |pkey|'s defaults.
+OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
                                       const EVP_MD *md);
 
-OPENSSL_EXPORT int X509_pubkey_digest(const X509 *data, const EVP_MD *type,
-                                      unsigned char *md, unsigned int *len);
-OPENSSL_EXPORT int X509_digest(const X509 *data, const EVP_MD *type,
-                               unsigned char *md, unsigned int *len);
-OPENSSL_EXPORT int X509_CRL_digest(const X509_CRL *data, const EVP_MD *type,
-                                   unsigned char *md, unsigned int *len);
-OPENSSL_EXPORT int X509_REQ_digest(const X509_REQ *data, const EVP_MD *type,
-                                   unsigned char *md, unsigned int *len);
-OPENSSL_EXPORT int X509_NAME_digest(const X509_NAME *data, const EVP_MD *type,
-                                    unsigned char *md, unsigned int *len);
+// X509_pubkey_digest hashes the DER encoding of |x509|'s subjectPublicKeyInfo
+// field with |md| and writes the result to |out|. |EVP_MD_CTX_size| bytes are
+// written, which is at most |EVP_MAX_MD_SIZE|. If |out_len| is not NULL,
+// |*out_len| is set to the number of bytes written. This function returns one
+// on success and zero on error.
+OPENSSL_EXPORT int X509_pubkey_digest(const X509 *x509, const EVP_MD *md,
+                                      uint8_t *out, unsigned *out_len);
+
+// X509_digest hashes |x509|'s DER encoding with |md| and writes the result to
+// |out|. |EVP_MD_CTX_size| bytes are written, which is at most
+// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
+// of bytes written. This function returns one on success and zero on error.
+// Note this digest covers the entire certificate, not just the signed portion.
+OPENSSL_EXPORT int X509_digest(const X509 *x509, const EVP_MD *md, uint8_t *out,
+                               unsigned *out_len);
+
+// X509_CRL_digest hashes |crl|'s DER encoding with |md| and writes the result
+// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
+// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
+// of bytes written. This function returns one on success and zero on error.
+// Note this digest covers the entire CRL, not just the signed portion.
+OPENSSL_EXPORT int X509_CRL_digest(const X509_CRL *crl, const EVP_MD *md,
+                                   uint8_t *out, unsigned *out_len);
+
+// X509_REQ_digest hashes |req|'s DER encoding with |md| and writes the result
+// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
+// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
+// of bytes written. This function returns one on success and zero on error.
+// Note this digest covers the entire certificate request, not just the signed
+// portion.
+OPENSSL_EXPORT int X509_REQ_digest(const X509_REQ *req, const EVP_MD *md,
+                                   uint8_t *out, unsigned *out_len);
+
+// X509_NAME_digest hashes |name|'s DER encoding with |md| and writes the result
+// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
+// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
+// of bytes written. This function returns one on success and zero on error.
+OPENSSL_EXPORT int X509_NAME_digest(const X509_NAME *name, const EVP_MD *md,
+                                    uint8_t *out, unsigned *out_len);
 
 // X509_parse_from_buffer parses an X.509 structure from |buf| and returns a
 // fresh X509 or NULL on error. There must not be any trailing data in |buf|.
