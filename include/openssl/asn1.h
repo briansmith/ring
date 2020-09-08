@@ -179,11 +179,6 @@ struct asn1_object_st
 DEFINE_STACK_OF(ASN1_OBJECT)
 
 #define ASN1_STRING_FLAG_BITS_LEFT 0x08 /* Set if 0x07 has bits left value */
-/* This indicates that the ASN1_STRING is not a real value but just a place
- * holder for the location where indefinite length constructed data should
- * be inserted in the memory buffer 
- */
-#define ASN1_STRING_FLAG_NDEF 0x010 
 
 /* This flag is used by ASN1 code to indicate an ASN1_STRING is an MSTRING
  * type.

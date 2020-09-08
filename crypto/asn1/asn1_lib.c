@@ -401,8 +401,7 @@ void ASN1_STRING_free(ASN1_STRING *a)
 {
     if (a == NULL)
         return;
-    if (a->data && !(a->flags & ASN1_STRING_FLAG_NDEF))
-        OPENSSL_free(a->data);
+    OPENSSL_free(a->data);
     OPENSSL_free(a);
 }
 
