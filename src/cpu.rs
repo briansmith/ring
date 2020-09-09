@@ -36,8 +36,8 @@ pub(crate) fn features() -> Features {
         not(target_os = "ios")
     ))]
     {
-        static INIT: spin::Once<()> = spin::Once::new();
-        let () = INIT.call_once(|| {
+        static INIT: conquer_once::spin::Once = conquer_once::spin::Once::uninit();
+        let () = INIT.init_once(|| {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             {
                 extern "C" {
