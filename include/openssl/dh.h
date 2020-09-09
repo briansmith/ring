@@ -69,6 +69,10 @@ extern "C" {
 
 // DH contains functions for performing Diffie-Hellman key agreement in
 // multiplicative groups.
+//
+// This module is deprecated and retained for legacy reasons only. It is not
+// considered a priority for performance or hardening work. Do not use it in
+// new code. Use X25519 or ECDH with P-256 instead.
 
 
 // Allocation and destruction.
@@ -164,6 +168,14 @@ OPENSSL_EXPORT int DH_generate_key(DH *dh);
 // writes it as a big-endian integer into |out|, which must have |DH_size|
 // bytes of space. It returns the number of bytes written, or a negative number
 // on error.
+//
+// Note the output may be shorter than |DH_size| bytes. Contrary to PKCS #3,
+// this function returns a variable-length shared key with leading zeros
+// removed. This may result in sporadic key mismatch and, if |dh| is reused,
+// side channel attacks such as https://raccoon-attack.com/.
+//
+// This is a legacy algorithm, so we do not provide a fixed-width variant. Use
+// X25519 or ECDH with P-256 instead.
 OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
                                   DH *dh);
 
