@@ -110,6 +110,39 @@ int pmbtoken_exp1_read(const PMBTOKEN_ISSUER_KEY *key,
 // function is used to confirm H was computed as expected.
 OPENSSL_EXPORT int pmbtoken_exp1_get_h_for_testing(uint8_t out[97]);
 
+// The following functions implement the corresponding |TRUST_TOKENS_METHOD|
+// functions for |TRUST_TOKENS_experiment_v2|'s PMBTokens construction which
+// uses P-384.
+//
+// We use P-384 instead of our usual choice of P-256. See Appendix I which
+// describes two attacks which may affect smaller curves. In particular, p-1 for
+// P-256 is smooth, giving a low complexity for the p-1 attack. P-384's p-1 has
+// a 281-bit prime factor,
+// 3055465788140352002733946906144561090641249606160407884365391979704929268480326390471.
+// This lower-bounds the p-1 attack at O(2^140). The p+1 attack is lower-bounded
+// by O(p^(1/3)) or O(2^128), so we do not need to check the smoothness of p+1.
+int pmbtoken_exp2_generate_key(CBB *out_private, CBB *out_public);
+int pmbtoken_exp2_client_key_from_bytes(PMBTOKEN_CLIENT_KEY *key,
+                                        const uint8_t *in, size_t len);
+int pmbtoken_exp2_issuer_key_from_bytes(PMBTOKEN_ISSUER_KEY *key,
+                                        const uint8_t *in, size_t len);
+STACK_OF(PMBTOKEN_PRETOKEN) * pmbtoken_exp2_blind(CBB *cbb, size_t count);
+int pmbtoken_exp2_sign(const PMBTOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
+                       size_t num_requested, size_t num_to_issue,
+                       uint8_t private_metadata);
+STACK_OF(TRUST_TOKEN) *
+    pmbtoken_exp2_unblind(const PMBTOKEN_CLIENT_KEY *key,
+                          const STACK_OF(PMBTOKEN_PRETOKEN) * pretokens,
+                          CBS *cbs, size_t count, uint32_t key_id);
+int pmbtoken_exp2_read(const PMBTOKEN_ISSUER_KEY *key,
+                       uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
+                       uint8_t *out_private_metadata, const uint8_t *token,
+                       size_t token_len);
+
+// pmbtoken_exp2_get_h_for_testing returns H in uncompressed coordinates. This
+// function is used to confirm H was computed as expected.
+OPENSSL_EXPORT int pmbtoken_exp2_get_h_for_testing(uint8_t out[97]);
+
 
 // Trust Tokens internals.
 
@@ -172,6 +205,15 @@ struct trust_token_method_st {
               uint8_t out_nonce[PMBTOKEN_NONCE_SIZE],
               uint8_t *out_private_metadata, const uint8_t *token,
               size_t token_len);
+
+  // whether the construction supports private metadata.
+  int has_private_metadata;
+
+  // max keys that can be configured.
+  size_t max_keys;
+
+  // whether the SRR is part of the protocol.
+  int has_srr;
 };
 
 // Structure representing a single Trust Token public key with the specified ID.
@@ -195,7 +237,7 @@ struct trust_token_client_st {
 
   // keys is the set of public keys that are supported by the client for
   // issuance/redemptions.
-  struct trust_token_client_key_st keys[3];
+  struct trust_token_client_key_st keys[6];
 
   // num_keys is the number of keys currently configured.
   size_t num_keys;
@@ -217,7 +259,7 @@ struct trust_token_issuer_st {
   // keys is the set of private keys that are supported by the issuer for
   // issuance/redemptions. The public metadata is an index into this list of
   // keys.
-  struct trust_token_issuer_key_st keys[3];
+  struct trust_token_issuer_key_st keys[6];
 
   // num_keys is the number of keys currently configured.
   size_t num_keys;
