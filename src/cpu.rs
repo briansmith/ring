@@ -33,7 +33,9 @@ pub(crate) fn features() -> Features {
             target_arch = "x86",
             target_arch = "x86_64"
         ),
-        not(target_os = "ios")
+        not(
+            any(target_os = "ios",
+                target_os = "macos"))
     ))]
     {
         static INIT: spin::Once<()> = spin::Once::new();
@@ -173,13 +175,14 @@ pub(crate) mod arm {
         #[cfg_attr(
             any(
                 target_os = "ios",
+                target_os = "macos",
                 not(any(target_arch = "arm", target_arch = "aarch64"))
             ),
             allow(dead_code)
         )]
         mask: u32,
 
-        #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+        #[cfg_attr(not(any(target_os = "ios", target_os = "macos")), allow(dead_code))]
         ios: bool,
     }
 
@@ -187,7 +190,7 @@ pub(crate) mod arm {
     impl Feature {
         #[inline(always)]
         pub fn available(&self, _: super::Features) -> bool {
-            #[cfg(all(target_os = "ios", any(target_arch = "arm", target_arch = "aarch64")))]
+            #[cfg(all(any(target_os = "ios", target_os = "macos"), any(target_arch = "arm", target_arch = "aarch64")))]
             {
                 return self.ios;
             }
