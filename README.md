@@ -131,7 +131,7 @@ Users of *ring* should always use the latest released version, and users
 should upgrade to the latest released version as soon as it is released.
 *ring* has a linear release model that favors users of the latest released
 version. We have never backported fixes to earlier releases and we don't
-maintain branches other than the master branch. Further, for some obscure
+maintain branches other than the main branch. Further, for some obscure
 technical reasons it's currently not possible to link two different versions
 of *ring* into the same program; for policy reasons we don't bother to try
 to work around that. Thus it is important that libraries using *ring* update
@@ -169,8 +169,8 @@ source libraries use. The idea behind *our* model is to encourage all users to
 work together to ensure that the latest version is good *as it is being
 developed*. In particular, because users know that correctness/security fixes
 (if any) aren't going to get backported, they have a strong incentive to help
-review pull requests before they are merged and/or review commits on the master
-branch after they've landed to ensure that code quality on the master branch
+review pull requests before they are merged and/or review commits on the main
+branch after they've landed to ensure that code quality on the main branch
 stays high.
 
 The more common model, where there are stable versions that have important
@@ -228,7 +228,7 @@ the table below. The C compilers listed are used for compiling the C portions.
 <tr><td>Windows</td>
     <td>x86, x86_64</td>
     <td>MSVC 2015 Update 3 (14.0)</td>
-    <td><a href=https://ci.appveyor.com/project/briansmith/ring/branch/master>Build Status</a></td>
+    <td><a href=https://ci.appveyor.com/project/briansmith/ring/branch/main>Build Status</a></td>
 </tr>
 </table>
 
