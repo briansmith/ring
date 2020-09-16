@@ -76,7 +76,7 @@ OPENSSL_EXPORT void CRYPTO_pre_sandbox_init(void);
 
 // OPENSSL_VERSION_TEXT contains a string the identifies the version of
 // “OpenSSL”. node.js requires a version number in this text.
-#define OPENSSL_VERSION_TEXT "OpenSSL 1.1.0 (compatible; BoringSSL)"
+#define OPENSSL_VERSION_TEXT "OpenSSL 1.1.1 (compatible; BoringSSL)"
 
 #define OPENSSL_VERSION 0
 #define OPENSSL_CFLAGS 1

@@ -173,7 +173,7 @@ extern "C" {
 #endif
 
 #define OPENSSL_IS_BORINGSSL
-#define OPENSSL_VERSION_NUMBER 0x1010007f
+#define OPENSSL_VERSION_NUMBER 0x1010107f
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
 
 // BORINGSSL_API_VERSION is a positive integer that increments as BoringSSL

@@ -495,6 +495,7 @@ add_executable(
   compiler_test.cc
   constant_time_test.cc
   cpu-arm-linux_test.cc
+  crypto_test.cc
   curve25519/ed25519_test.cc
   curve25519/spake25519_test.cc
   curve25519/x25519_test.cc
