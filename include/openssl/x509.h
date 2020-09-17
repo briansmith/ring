@@ -968,9 +968,8 @@ OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *a);
 OPENSSL_EXPORT int X509_set_pubkey(X509 *x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x);
 OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x);
-// TODO(davidben): |X509_get0_extensions| should return a const pointer to
-// match upstream.
-OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_get0_extensions(const X509 *x);
+OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *
+    X509_get0_extensions(const X509 *x);
 OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x);
 
 OPENSSL_EXPORT int X509_REQ_set_version(X509_REQ *x, long version);
