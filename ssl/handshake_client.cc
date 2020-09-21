@@ -358,8 +358,7 @@ static bool parse_supported_versions(SSL_HANDSHAKE *hs, uint16_t *version,
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_parse_extensions(&extensions, &alert, ext_types,
-                            OPENSSL_ARRAY_SIZE(ext_types),
-                            1 /* ignore unknown */)) {
+                            /*ignore_unknown=*/true)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return false;
   }

@@ -244,8 +244,7 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
 
     uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!ssl_parse_extensions(&extensions, &alert, ext_types,
-                              OPENSSL_ARRAY_SIZE(ext_types),
-                              0 /* reject unknown */)) {
+                              /*ignore_unknown=*/false)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return false;
     }

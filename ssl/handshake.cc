@@ -235,13 +235,13 @@ bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   return hs->transcript.Update(msg.raw);
 }
 
-int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
-                         const SSL_EXTENSION_TYPE *ext_types,
-                         size_t num_ext_types, int ignore_unknown) {
+bool ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
+                          Span<const SSL_EXTENSION_TYPE> ext_types,
+                          bool ignore_unknown) {
   // Reset everything.
-  for (size_t i = 0; i < num_ext_types; i++) {
-    *ext_types[i].out_present = 0;
-    CBS_init(ext_types[i].out_data, NULL, 0);
+  for (const SSL_EXTENSION_TYPE &ext_type : ext_types) {
+    *ext_type.out_present = false;
+    CBS_init(ext_type.out_data, nullptr, 0);
   }
 
   CBS copy = *cbs;
@@ -252,38 +252,38 @@ int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
         !CBS_get_u16_length_prefixed(&copy, &data)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
       *out_alert = SSL_AD_DECODE_ERROR;
-      return 0;
+      return false;
     }
 
-    const SSL_EXTENSION_TYPE *ext_type = NULL;
-    for (size_t i = 0; i < num_ext_types; i++) {
-      if (type == ext_types[i].type) {
-        ext_type = &ext_types[i];
+    const SSL_EXTENSION_TYPE *found = nullptr;
+    for (const SSL_EXTENSION_TYPE &ext_type : ext_types) {
+      if (type == ext_type.type) {
+        found = &ext_type;
         break;
       }
     }
 
-    if (ext_type == NULL) {
+    if (found == nullptr) {
       if (ignore_unknown) {
         continue;
       }
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
       *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-      return 0;
+      return false;
     }
 
     // Duplicate ext_types are forbidden.
-    if (*ext_type->out_present) {
+    if (*found->out_present) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-      return 0;
+      return false;
     }
 
-    *ext_type->out_present = 1;
-    *ext_type->out_data = data;
+    *found->out_present = 1;
+    *found->out_data = data;
   }
 
-  return 1;
+  return true;
 }
 
 enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
