@@ -908,7 +908,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u8_length_prefixed(&body, &session_id) ||
       !CBB_add_bytes(&session_id, session->session_id,
                      session->session_id_length) ||
-      !CBB_add_u16(&body, ssl_cipher_get_value(hs->new_cipher)) ||
+      !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
       !CBB_add_u8(&body, 0 /* no compression */) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||
       !ssl_add_message_cbb(ssl, cbb.get())) {

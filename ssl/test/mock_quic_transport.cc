@@ -38,7 +38,7 @@ bool MockQuicTransport::SetReadSecret(enum ssl_encryption_level_t level,
                                       const uint8_t *secret,
                                       size_t secret_len) {
   // TODO(davidben): Assert the various encryption secret invariants.
-  read_levels_[level].cipher = SSL_CIPHER_get_value(cipher);
+  read_levels_[level].cipher = SSL_CIPHER_get_protocol_id(cipher);
   read_levels_[level].secret.assign(secret, secret + secret_len);
   return true;
 }
@@ -48,7 +48,7 @@ bool MockQuicTransport::SetWriteSecret(enum ssl_encryption_level_t level,
                                        const uint8_t *secret,
                                        size_t secret_len) {
   // TODO(davidben): Assert the various encryption secret invariants.
-  write_levels_[level].cipher = SSL_CIPHER_get_value(cipher);
+  write_levels_[level].cipher = SSL_CIPHER_get_protocol_id(cipher);
   write_levels_[level].secret.assign(secret, secret + secret_len);
   return true;
 }

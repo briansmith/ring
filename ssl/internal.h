@@ -634,9 +634,6 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const char *rule_str, bool strict);
 
-// ssl_cipher_get_value returns the cipher suite id of |cipher|.
-uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
-
 // ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
 // values suitable for use with |key| in TLS 1.2 and below.
 uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key);
