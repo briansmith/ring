@@ -3396,7 +3396,7 @@ read alert 1 0
 	// Servers should reject QUIC client hellos that have a legacy
 	// session ID.
 	testCases = append(testCases, testCase{
-		name: "QUICCompatibilityMode",
+		name:     "QUICCompatibilityMode",
 		testType: serverTest,
 		protocol: quic,
 		config: Config{
@@ -3405,7 +3405,7 @@ read alert 1 0
 				CompatModeWithQUIC: true,
 			},
 		},
-		shouldFail: true,
+		shouldFail:    true,
 		expectedError: ":UNEXPECTED_COMPATIBILITY_MODE:",
 	})
 }

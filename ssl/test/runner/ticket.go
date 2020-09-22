@@ -10,7 +10,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
-	"encoding/binary"
 	"errors"
 	"io"
 	"time"
@@ -66,91 +65,49 @@ func (s *sessionState) marshal() []byte {
 }
 
 func (s *sessionState) unmarshal(data []byte) bool {
-	if len(data) < 8 {
+	reader := byteReader(data)
+	var numCerts uint16
+	if !reader.readU16(&s.vers) ||
+		!reader.readU16(&s.cipherSuite) ||
+		!reader.readU16LengthPrefixedBytes(&s.masterSecret) ||
+		!reader.readU16LengthPrefixedBytes(&s.handshakeHash) ||
+		!reader.readU16(&numCerts) {
 		return false
 	}
 
-	s.vers = uint16(data[0])<<8 | uint16(data[1])
-	s.cipherSuite = uint16(data[2])<<8 | uint16(data[3])
-	masterSecretLen := int(data[4])<<8 | int(data[5])
-	data = data[6:]
-	if len(data) < masterSecretLen {
-		return false
-	}
-
-	s.masterSecret = data[:masterSecretLen]
-	data = data[masterSecretLen:]
-
-	if len(data) < 2 {
-		return false
-	}
-
-	handshakeHashLen := int(data[0])<<8 | int(data[1])
-	data = data[2:]
-	if len(data) < handshakeHashLen {
-		return false
-	}
-
-	s.handshakeHash = data[:handshakeHashLen]
-	data = data[handshakeHashLen:]
-
-	if len(data) < 2 {
-		return false
-	}
-
-	numCerts := int(data[0])<<8 | int(data[1])
-	data = data[2:]
-
-	s.certificates = make([][]byte, numCerts)
+	s.certificates = make([][]byte, int(numCerts))
 	for i := range s.certificates {
-		if len(data) < 4 {
+		if !reader.readU32LengthPrefixedBytes(&s.certificates[i]) {
 			return false
 		}
-		certLen := int(data[0])<<24 | int(data[1])<<16 | int(data[2])<<8 | int(data[3])
-		data = data[4:]
-		if certLen < 0 {
-			return false
-		}
-		if len(data) < certLen {
-			return false
-		}
-		s.certificates[i] = data[:certLen]
-		data = data[certLen:]
 	}
 
-	if len(data) < 1 {
+	var extendedMasterSecret uint8
+	if !reader.readU8(&extendedMasterSecret) {
 		return false
 	}
-
-	s.extendedMasterSecret = false
-	if data[0] == 1 {
+	if extendedMasterSecret == 0 {
+		s.extendedMasterSecret = false
+	} else if extendedMasterSecret == 1 {
 		s.extendedMasterSecret = true
+	} else {
+		return false
 	}
-	data = data[1:]
 
 	if s.vers >= VersionTLS13 {
-		if len(data) < 24 {
+		var ticketCreationTime, ticketExpiration uint64
+		if !reader.readU64(&ticketCreationTime) ||
+			!reader.readU64(&ticketExpiration) ||
+			!reader.readU32(&s.ticketFlags) ||
+			!reader.readU32(&s.ticketAgeAdd) {
 			return false
 		}
-		s.ticketCreationTime = time.Unix(0, int64(binary.BigEndian.Uint64(data)))
-		data = data[8:]
-		s.ticketExpiration = time.Unix(0, int64(binary.BigEndian.Uint64(data)))
-		data = data[8:]
-		s.ticketFlags = binary.BigEndian.Uint32(data)
-		data = data[4:]
-		s.ticketAgeAdd = binary.BigEndian.Uint32(data)
-		data = data[4:]
+		s.ticketCreationTime = time.Unix(0, int64(ticketCreationTime))
+		s.ticketExpiration = time.Unix(0, int64(ticketExpiration))
 	}
 
-	earlyALPNLen := int(data[0])<<8 | int(data[1])
-	data = data[2:]
-	if len(data) < earlyALPNLen {
-		return false
-	}
-	s.earlyALPN = data[:earlyALPNLen]
-	data = data[earlyALPNLen:]
-
-	if len(data) > 0 {
+	if !reader.readU16LengthPrefixedBytes(&s.earlyALPN) ||
+		len(reader) > 0 {
 		return false
 	}
 
