@@ -2372,6 +2372,11 @@ static const char kOverflowVersionPEM[] =
     "xAcCIHweeRRqIYPwenRoeV8UmZpotPHLnhVe5h8yUmFedckU\n"
     "-----END CERTIFICATE-----\n";
 
+/*
+
+Test cases disabled. TODO re-enable in Jan 2021.
+https://crbug.com/boringssl/375
+
 // kV1WithExtensionsPEM is an X.509v1 certificate with extensions.
 static const char kV1WithExtensionsPEM[] =
     "-----BEGIN CERTIFICATE-----\n"
@@ -2401,6 +2406,7 @@ static const char kV2WithExtensionsPEM[] =
     "BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E\n"
     "BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=\n"
     "-----END CERTIFICATE-----\n";
+*/
 
 // kV1WithIssuerUniqueIDPEM is an X.509v1 certificate with an issuerUniqueID.
 static const char kV1WithIssuerUniqueIDPEM[] =
@@ -2440,8 +2446,10 @@ TEST(X509Test, InvalidVersion) {
   EXPECT_FALSE(CertFromPEM(kNegativeVersionPEM));
   EXPECT_FALSE(CertFromPEM(kFutureVersionPEM));
   EXPECT_FALSE(CertFromPEM(kOverflowVersionPEM));
-  EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
-  EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
+  // Test cases disabled. TODO re-enable in Jan 2021.
+  // https://crbug.com/boringssl/375
+  //EXPECT_FALSE(CertFromPEM(kV1WithExtensionsPEM));
+  //EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithIssuerUniqueIDPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithSubjectUniqueIDPEM));
 }

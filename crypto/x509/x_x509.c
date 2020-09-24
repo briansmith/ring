@@ -136,10 +136,12 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
         }
 
         /* Per RFC5280, section 4.1.2.9, extensions require v3. */
+        /* Check disabled. TODO re-enable in Jan 2021.
+           https://crbug.com/boringssl/375
         if (version != 2 && ret->cert_info->extensions != NULL) {
             OPENSSL_PUT_ERROR(X509, X509_R_INVALID_FIELD_FOR_VERSION);
             return 0;
-        }
+        }*/
 
         break;
     }
