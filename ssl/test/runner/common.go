@@ -249,6 +249,7 @@ type ConnectionState struct {
 	ServerName                 string                // server name requested by client, if any (server side only)
 	PeerCertificates           []*x509.Certificate   // certificate chain presented by remote peer
 	VerifiedChains             [][]*x509.Certificate // verified chains built from PeerCertificates
+	OCSPResponse               []byte                // stapled OCSP response from the peer, if any
 	ChannelID                  *ecdsa.PublicKey      // the channel ID for this connection
 	TokenBindingNegotiated     bool                  // whether Token Binding was negotiated
 	TokenBindingParam          uint8                 // the negotiated Token Binding key parameter

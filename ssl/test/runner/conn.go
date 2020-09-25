@@ -1872,6 +1872,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.CipherSuite = c.cipherSuite.id
 		state.PeerCertificates = c.peerCertificates
 		state.VerifiedChains = c.verifiedChains
+		state.OCSPResponse = c.ocspResponse
 		state.ServerName = c.serverName
 		state.ChannelID = c.channelID
 		state.TokenBindingNegotiated = c.tokenBindingNegotiated
@@ -1885,15 +1886,6 @@ func (c *Conn) ConnectionState() ConnectionState {
 	}
 
 	return state
-}
-
-// OCSPResponse returns the stapled OCSP response from the TLS server, if
-// any. (Only valid for client connections.)
-func (c *Conn) OCSPResponse() []byte {
-	c.handshakeMutex.Lock()
-	defer c.handshakeMutex.Unlock()
-
-	return c.ocspResponse
 }
 
 // VerifyHostname checks that the peer certificate chain is valid for
