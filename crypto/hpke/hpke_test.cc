@@ -413,11 +413,8 @@ TEST(HPKETest, SenderInvalidOpen) {
 // are empty.
 TEST(HPKETest, EmptyPSK) {
   const uint8_t kMockEnc[X25519_PUBLIC_VALUE_LEN] = {0xff};
-  const uint8_t kMockPSK[100] = {0xff};
-  const bssl::Span<const uint8_t> kPSKValues[] = {
-      {kMockPSK, sizeof(kMockPSK)},
-      {nullptr, 0},
-  };
+  const std::vector<uint8_t> kPSKValues[] = {std::vector<uint8_t>(100, 0xff),
+                                             {}};
 
   // Generate the receiver's keypair.
   uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
@@ -427,8 +424,8 @@ TEST(HPKETest, EmptyPSK) {
   // Vary the PSK and PSKID inputs for the sender and receiver, trying all four
   // permutations of empty and nonempty inputs.
 
-  for (const auto psk : kPSKValues) {
-    for (const auto psk_id : kPSKValues) {
+  for (const auto &psk : kPSKValues) {
+    for (const auto &psk_id : kPSKValues) {
       const bool kExpectSuccess = psk.size() > 0 && psk_id.size() > 0;
 
       ASSERT_EQ(ERR_get_error(), 0u);
