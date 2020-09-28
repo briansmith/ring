@@ -217,6 +217,7 @@ const Flag<int> kIntFlags[] = {
     {"-max-cert-list", &TestConfig::max_cert_list},
     {"-expect-cipher-aes", &TestConfig::expect_cipher_aes},
     {"-expect-cipher-no-aes", &TestConfig::expect_cipher_no_aes},
+    {"-expect-cipher", &TestConfig::expect_cipher},
     {"-resumption-delay", &TestConfig::resumption_delay},
     {"-max-send-fragment", &TestConfig::max_send_fragment},
     {"-read-size", &TestConfig::read_size},

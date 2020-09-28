@@ -613,8 +613,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     }
   }
 
-  uint16_t cipher_id =
-      static_cast<uint16_t>(SSL_CIPHER_get_id(SSL_get_current_cipher(ssl)));
+  uint16_t cipher_id = SSL_CIPHER_get_protocol_id(SSL_get_current_cipher(ssl));
   if (config->expect_cipher_aes != 0 &&
       EVP_has_aes_hardware() &&
       static_cast<uint16_t>(config->expect_cipher_aes) != cipher_id) {
@@ -628,6 +627,13 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
       static_cast<uint16_t>(config->expect_cipher_no_aes) != cipher_id) {
     fprintf(stderr, "Cipher ID was %04x, wanted %04x (no AES hardware)\n",
             cipher_id, static_cast<uint16_t>(config->expect_cipher_no_aes));
+    return false;
+  }
+
+  if (config->expect_cipher != 0 &&
+      static_cast<uint16_t>(config->expect_cipher) != cipher_id) {
+    fprintf(stderr, "Cipher ID was %04x, wanted %04x\n", cipher_id,
+            static_cast<uint16_t>(config->expect_cipher));
     return false;
   }
 
