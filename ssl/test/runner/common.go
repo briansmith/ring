@@ -125,6 +125,7 @@ const (
 	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
 	extensionDelegatedCredentials       uint16 = 0x22   // draft-ietf-tls-subcerts-06
+	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
 )
 
 // TLS signaling cipher suite values
