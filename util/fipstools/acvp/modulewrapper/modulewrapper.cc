@@ -78,14 +78,19 @@ static bool WriteReply(int fd, Args... args) {
   iovs[0].iov_base = nums;
   iovs[0].iov_len = sizeof(uint32_t) * (1 + spans.size());
 
+  size_t num_iov = 1;
   for (size_t i = 0; i < spans.size(); i++) {
     const auto &span = spans[i];
     nums[i + 1] = span.size();
-    iovs[i + 1].iov_base = const_cast<uint8_t *>(span.data());
-    iovs[i + 1].iov_len = span.size();
+    if (span.size() == 0) {
+      continue;
+    }
+
+    iovs[num_iov].iov_base = const_cast<uint8_t *>(span.data());
+    iovs[num_iov].iov_len = span.size();
+    num_iov++;
   }
 
-  const size_t num_iov = spans.size() + 1;
   size_t iov_done = 0;
   while (iov_done < num_iov) {
     ssize_t r;
@@ -98,7 +103,7 @@ static bool WriteReply(int fd, Args... args) {
     }
 
     size_t written = r;
-    for (size_t i = iov_done; written > 0 && i < num_iov; i++) {
+    for (size_t i = iov_done; i < num_iov && written > 0; i++) {
       iovec &iov = iovs[i];
 
       size_t done = written;
