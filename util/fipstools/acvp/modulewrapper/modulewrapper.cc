@@ -221,6 +221,21 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "payloadLen": [{"min": 128, "max": 1024, "increment": 64}]
       },
       {
+        "algorithm": "ACVP-AES-KWP",
+        "revision": "1.0",
+        "direction": [
+            "encrypt",
+            "decrypt"
+        ],
+        "kwCipher": [
+            "cipher"
+        ],
+        "keyLen": [
+            128, 192, 256
+        ],
+        "payloadLen": [{"min": 8, "max": 1024, "increment": 8}]
+      },
+      {
         "algorithm": "HMAC-SHA-1",
         "revision": "1.0",
         "keyLen": [{
@@ -537,14 +552,23 @@ static bool AESGCMOpen(const Span<const uint8_t> args[]) {
                     Span<const uint8_t>(out));
 }
 
-static bool AESKeyWrapSetup(AES_KEY *out, bool decrypt, Span<const uint8_t> key,
-                            Span<const uint8_t> input) {
+static bool AESPaddedKeyWrapSetup(AES_KEY *out, bool decrypt,
+                                  Span<const uint8_t> key) {
   if ((decrypt ? AES_set_decrypt_key : AES_set_encrypt_key)(
           key.data(), key.size() * 8, out) != 0) {
-    fprintf(stderr, "Invalid AES key length for AES-KW: %u\n",
+    fprintf(stderr, "Invalid AES key length for AES-KW(P): %u\n",
             static_cast<unsigned>(key.size()));
     return false;
   }
+  return true;
+}
+
+static bool AESKeyWrapSetup(AES_KEY *out, bool decrypt, Span<const uint8_t> key,
+                            Span<const uint8_t> input) {
+  if (!AESPaddedKeyWrapSetup(out, decrypt, key)) {
+    return false;
+  }
+
   if (input.size() % 8) {
     fprintf(stderr, "Invalid AES-KW input length: %u\n",
             static_cast<unsigned>(input.size()));
@@ -594,6 +618,53 @@ static bool AESKeyWrapOpen(const Span<const uint8_t> args[]) {
   }
 
   success_flag[0] = 1;
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(success_flag),
+                    Span<const uint8_t>(out));
+}
+
+static bool AESPaddedKeyWrapSeal(const Span<const uint8_t> args[]) {
+  Span<const uint8_t> key = args[1];
+  Span<const uint8_t> plaintext = args[2];
+
+  AES_KEY aes;
+  if (!AESPaddedKeyWrapSetup(&aes, /*decrypt=*/false, key) ||
+      plaintext.size() + 15 < 15) {
+    return false;
+  }
+
+  std::vector<uint8_t> out(plaintext.size() + 15);
+  size_t out_len;
+  if (!AES_wrap_key_padded(&aes, out.data(), &out_len, out.size(),
+                           plaintext.data(), plaintext.size())) {
+    fprintf(stderr, "AES-KWP failed\n");
+    return false;
+  }
+
+  out.resize(out_len);
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+}
+
+static bool AESPaddedKeyWrapOpen(const Span<const uint8_t> args[]) {
+  Span<const uint8_t> key = args[1];
+  Span<const uint8_t> ciphertext = args[2];
+
+  AES_KEY aes;
+  if (!AESPaddedKeyWrapSetup(&aes, /*decrypt=*/true, key) ||
+      ciphertext.size() % 8) {
+    return false;
+  }
+
+  std::vector<uint8_t> out(ciphertext.size());
+  size_t out_len;
+  uint8_t success_flag[1] = {0};
+  if (!AES_unwrap_key_padded(&aes, out.data(), &out_len, out.size(),
+                             ciphertext.data(), ciphertext.size())) {
+    return WriteReply(STDOUT_FILENO, Span<const uint8_t>(success_flag),
+                      Span<const uint8_t>());
+  }
+
+  success_flag[0] = 1;
+  out.resize(out_len);
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(success_flag),
                     Span<const uint8_t>(out));
 }
@@ -849,6 +920,8 @@ static constexpr struct {
     {"AES-GCM/open", 5, AESGCMOpen},
     {"AES-KW/seal", 5, AESKeyWrapSeal},
     {"AES-KW/open", 5, AESKeyWrapOpen},
+    {"AES-KWP/seal", 5, AESPaddedKeyWrapSeal},
+    {"AES-KWP/open", 5, AESPaddedKeyWrapOpen},
     {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
     {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
