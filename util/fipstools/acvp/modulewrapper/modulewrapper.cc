@@ -703,7 +703,7 @@ int main() {
       offset += nums[i + 1];
     }
 
-    bool found = true;
+    bool found = false;
     for (const auto &func : kFunctions) {
       if (args[0].size() == strlen(func.name) &&
           memcmp(args[0].data(), func.name, args[0].size()) == 0) {
@@ -715,6 +715,7 @@ int main() {
         }
 
         if (!func.handler(&args[1])) {
+          fprintf(stderr, "\'%s\' operation failed.\n", func.name);
           return 4;
         }
 
