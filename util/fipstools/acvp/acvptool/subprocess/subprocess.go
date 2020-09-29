@@ -80,6 +80,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"ACVP-AES-CBC":  &blockCipher{"AES-CBC", 16, true, true},
 		"ACVP-AES-CTR":  &blockCipher{"AES-CTR", 16, false, true},
 		"ACVP-AES-GCM":  &aead{"AES-GCM"},
+		"ACVP-AES-KW":   &aead{"AES-KW"},
 		"HMAC-SHA-1":    &hmacPrimitive{"HMAC-SHA-1", 20},
 		"HMAC-SHA2-224": &hmacPrimitive{"HMAC-SHA2-224", 28},
 		"HMAC-SHA2-256": &hmacPrimitive{"HMAC-SHA2-256", 32},
