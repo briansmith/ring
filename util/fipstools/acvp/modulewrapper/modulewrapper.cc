@@ -171,6 +171,18 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "keyLen": [128, 192, 256]
       },
       {
+        "algorithm": "ACVP-AES-CTR",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [128, 192, 256],
+        "payloadLen": [{
+          "min": 8, "max": 128, "increment": 8
+        }],
+        "incrementalCounter": true,
+        "overflowCounter": true,
+        "performCounterTests": true
+      },
+      {
         "algorithm": "ACVP-AES-CBC",
         "revision": "1.0",
         "direction": ["encrypt", "decrypt"],
@@ -376,6 +388,26 @@ static bool AES_CBC(const Span<const uint8_t> args[]) {
   out.resize(args[1].size());
   AES_cbc_encrypt(args[1].data(), out.data(), args[1].size(), &key, iv,
                   Direction);
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+}
+
+static bool AES_CTR(const Span<const uint8_t> args[]) {
+  AES_KEY key;
+  if (AES_set_encrypt_key(args[0].data(), args[0].size() * 8, &key) != 0) {
+    return false;
+  }
+  if (args[2].size() != AES_BLOCK_SIZE) {
+    return false;
+  }
+  uint8_t iv[AES_BLOCK_SIZE];
+  memcpy(iv, args[2].data(), AES_BLOCK_SIZE);
+
+  std::vector<uint8_t> out;
+  out.resize(args[1].size());
+  unsigned num = 0;
+  uint8_t ecount_buf[AES_BLOCK_SIZE];
+  AES_ctr128_encrypt(args[1].data(), out.data(), args[1].size(), &key, iv,
+                     ecount_buf, &num);
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
 }
 
@@ -624,6 +656,8 @@ static constexpr struct {
     {"AES/decrypt", 2, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-CBC/encrypt", 3, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 3, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
+    {"AES-CTR/encrypt", 3, AES_CTR},
+    {"AES-CTR/decrypt", 3, AES_CTR},
     {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
     {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},

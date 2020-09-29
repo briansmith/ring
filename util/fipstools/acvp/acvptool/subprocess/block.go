@@ -23,9 +23,10 @@ import (
 // blockCipher implements an ACVP algorithm by making requests to the subprocess
 // to encrypt and decrypt with a block cipher.
 type blockCipher struct {
-	algo      string
-	blockSize int
-	hasIV     bool
+	algo                    string
+	blockSize               int
+	inputsAreBlockMultiples bool
+	hasIV                   bool
 }
 
 type blockCipherVectorSet struct {
@@ -97,7 +98,7 @@ func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, er
 
 		var mct bool
 		switch group.Type {
-		case "AFT":
+		case "AFT", "CTR":
 			mct = false
 		case "MCT":
 			mct = true
@@ -132,7 +133,7 @@ func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, er
 				return nil, fmt.Errorf("failed to decode hex in test case %d/%d: %s", group.ID, test.ID, err)
 			}
 
-			if len(input)%b.blockSize != 0 {
+			if b.inputsAreBlockMultiples && len(input)%b.blockSize != 0 {
 				return nil, fmt.Errorf("test case %d/%d has input of length %d, but expected multiple of %d", group.ID, test.ID, len(input), b.blockSize)
 			}
 
