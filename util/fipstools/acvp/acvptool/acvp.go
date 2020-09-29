@@ -45,6 +45,7 @@ var (
 	configFilename = flag.String("config", "config.json", "Location of the configuration JSON file")
 	jsonInputFile  = flag.String("json", "", "Location of a vector-set input file")
 	runFlag        = flag.String("run", "", "Name of primitive to run tests for")
+	fetchFlag      = flag.String("fetch", "", "Name of primitive to fetch vectors for")
 	wrapperPath    = flag.String("wrapper", "../../../../build/util/fipstools/acvp/modulewrapper/modulewrapper", "Path to the wrapper binary")
 )
 
@@ -331,9 +332,19 @@ func main() {
 		os.Exit(0)
 	}
 
-	runAlgos := make(map[string]bool)
+	var requestedAlgosFlag string
+	if len(*runFlag) > 0 && len(*fetchFlag) > 0 {
+		log.Fatalf("cannot specify both -run and -fetch")
+	}
 	if len(*runFlag) > 0 {
-		for _, substr := range strings.Split(*runFlag, ",") {
+		requestedAlgosFlag = *runFlag
+	} else {
+		requestedAlgosFlag = *fetchFlag
+	}
+
+	runAlgos := make(map[string]bool)
+	if len(requestedAlgosFlag) > 0 {
+		for _, substr := range strings.Split(requestedAlgosFlag, ",") {
 			runAlgos[substr] = false
 		}
 	}
@@ -389,7 +400,7 @@ func main() {
 		log.Fatalf("failed to login: %s", err)
 	}
 
-	if len(*runFlag) == 0 {
+	if len(requestedAlgosFlag) == 0 {
 		if interactiveModeSupported {
 			runInteractive(server, config)
 		} else {
@@ -423,6 +434,15 @@ func main() {
 
 	log.Printf("Have vector sets %v", result.VectorSetURLs)
 
+	if len(*fetchFlag) > 0 {
+		os.Stdout.WriteString("[\n")
+		json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			"url":           url,
+			"vectorSetUrls": result.VectorSetURLs,
+			"time":          time.Now().Format(time.RFC3339),
+		})
+	}
+
 	for _, setURL := range result.VectorSetURLs {
 		firstTime := true
 		for {
@@ -448,6 +468,12 @@ func main() {
 				}
 				time.Sleep(time.Duration(retry) * time.Second)
 				continue
+			}
+
+			if len(*fetchFlag) > 0 {
+				os.Stdout.WriteString(",\n")
+				os.Stdout.Write(vectorsBytes)
+				break
 			}
 
 			replyGroups, err := middle.Process(vectors.Algo, vectorsBytes)
@@ -533,6 +559,11 @@ func main() {
 
 			break
 		}
+	}
+
+	if len(*fetchFlag) > 0 {
+		os.Stdout.WriteString("]\n")
+		os.Exit(0)
 	}
 
 FetchResults:
