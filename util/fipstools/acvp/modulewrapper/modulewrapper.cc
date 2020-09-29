@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <cstdarg>
 
+#include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/bn.h>
 #include <openssl/cmac.h>
@@ -187,6 +188,21 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "revision": "1.0",
         "direction": ["encrypt", "decrypt"],
         "keyLen": [128, 192, 256]
+      },
+      {
+        "algorithm": "ACVP-AES-GCM",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [128, 192, 256],
+        "payloadLen": [{
+          "min": 0, "max": 256, "increment": 8
+        }],
+        "aadLen": [{
+          "min": 0, "max": 256, "increment": 8
+        }],
+        "tagLen": [128],
+        "ivLen": [96],
+        "ivGen": "external"
       },
       {
         "algorithm": "HMAC-SHA-1",
@@ -409,6 +425,100 @@ static bool AES_CTR(const Span<const uint8_t> args[]) {
   AES_ctr128_encrypt(args[1].data(), out.data(), args[1].size(), &key, iv,
                      ecount_buf, &num);
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+}
+
+static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
+                        Span<const uint8_t> key) {
+  uint32_t tag_len_32;
+  if (tag_len_span.size() != sizeof(tag_len_32)) {
+    fprintf(stderr, "Tag size value is %u bytes, not an uint32_t\n",
+            static_cast<unsigned>(tag_len_span.size()));
+    return false;
+  }
+  memcpy(&tag_len_32, tag_len_span.data(), sizeof(tag_len_32));
+
+  const EVP_AEAD *aead;
+  switch (key.size()) {
+    case 16:
+      aead = EVP_aead_aes_128_gcm();
+      break;
+    case 24:
+      aead = EVP_aead_aes_192_gcm();
+      break;
+    case 32:
+      aead = EVP_aead_aes_256_gcm();
+      break;
+    default:
+      fprintf(stderr, "Bad AES-GCM key length %u\n",
+              static_cast<unsigned>(key.size()));
+      return false;
+  }
+
+  if (!EVP_AEAD_CTX_init(ctx, aead, key.data(), key.size(), tag_len_32,
+                         nullptr)) {
+    fprintf(stderr, "Failed to setup AES-GCM with tag length %u\n",
+            static_cast<unsigned>(tag_len_32));
+    return false;
+  }
+
+  return true;
+}
+
+static bool AESGCMSeal(const Span<const uint8_t> args[]) {
+  Span<const uint8_t> tag_len_span = args[0];
+  Span<const uint8_t> key = args[1];
+  Span<const uint8_t> plaintext = args[2];
+  Span<const uint8_t> nonce = args[3];
+  Span<const uint8_t> ad = args[4];
+
+  bssl::ScopedEVP_AEAD_CTX ctx;
+  if (!AESGCMSetup(ctx.get(), tag_len_span, key)) {
+    return false;
+  }
+
+  if (EVP_AEAD_MAX_OVERHEAD + plaintext.size() < EVP_AEAD_MAX_OVERHEAD) {
+    return false;
+  }
+  std::vector<uint8_t> out(EVP_AEAD_MAX_OVERHEAD + plaintext.size());
+
+  size_t out_len;
+  if (!EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(),
+                         nonce.data(), nonce.size(), plaintext.data(),
+                         plaintext.size(), ad.data(), ad.size())) {
+    return false;
+  }
+
+  out.resize(out_len);
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+}
+
+static bool AESGCMOpen(const Span<const uint8_t> args[]) {
+  Span<const uint8_t> tag_len_span = args[0];
+  Span<const uint8_t> key = args[1];
+  Span<const uint8_t> ciphertext = args[2];
+  Span<const uint8_t> nonce = args[3];
+  Span<const uint8_t> ad = args[4];
+
+  bssl::ScopedEVP_AEAD_CTX ctx;
+  if (!AESGCMSetup(ctx.get(), tag_len_span, key)) {
+    return false;
+  }
+
+  std::vector<uint8_t> out(ciphertext.size());
+  size_t out_len;
+  uint8_t success[1] = {0};
+
+  if (!EVP_AEAD_CTX_open(ctx.get(), out.data(), &out_len, out.size(),
+                         nonce.data(), nonce.size(), ciphertext.data(),
+                         ciphertext.size(), ad.data(), ad.size())) {
+    return WriteReply(STDOUT_FILENO, Span<const uint8_t>(success),
+                      Span<const uint8_t>());
+  }
+
+  out.resize(out_len);
+  success[0] = 1;
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(success),
+                    Span<const uint8_t>(out));
 }
 
 template <const EVP_MD *HashFunc()>
@@ -658,6 +768,8 @@ static constexpr struct {
     {"AES-CBC/decrypt", 3, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
     {"AES-CTR/encrypt", 3, AES_CTR},
     {"AES-CTR/decrypt", 3, AES_CTR},
+    {"AES-GCM/seal", 5, AESGCMSeal},
+    {"AES-GCM/open", 5, AESGCMOpen},
     {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
     {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
