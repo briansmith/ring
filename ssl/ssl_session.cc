@@ -364,12 +364,6 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   session->is_server = is_server;
   session->ssl_version = ssl->version;
   session->is_quic = ssl->quic_method != nullptr;
-  if (is_server && ssl->enable_early_data && session->is_quic) {
-    if (!session->quic_early_data_context.CopyFrom(
-            hs->config->quic_early_data_context)) {
-      return 0;
-    }
-  }
 
   // Fill in the time from the |SSL_CTX|'s clock.
   struct OPENSSL_timeval now;

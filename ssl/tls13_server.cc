@@ -431,6 +431,15 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // Copy the QUIC early data context to the session.
+  if (ssl->enable_early_data && ssl->quic_method) {
+    if (!hs->new_session->quic_early_data_context.CopyFrom(
+            hs->config->quic_early_data_context)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
+  }
+
   if (ssl->ctx->dos_protection_cb != NULL &&
       ssl->ctx->dos_protection_cb(&client_hello) == 0) {
     // Connection rejected for DOS reasons.

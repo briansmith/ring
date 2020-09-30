@@ -5434,6 +5434,46 @@ TEST_F(QUICMethodTest, ZeroRTTAccept) {
   EXPECT_FALSE(SSL_in_early_data(server_.get()));
   EXPECT_TRUE(SSL_early_data_accepted(client_.get()));
   EXPECT_TRUE(SSL_early_data_accepted(server_.get()));
+
+  // Finish handling post-handshake messages after the first 0-RTT resumption.
+  EXPECT_TRUE(ProvideHandshakeData(client_.get()));
+  EXPECT_TRUE(SSL_process_quic_post_handshake(client_.get()));
+
+  // Perform a second 0-RTT resumption attempt, and confirm that 0-RTT is
+  // accepted again.
+  ASSERT_TRUE(CreateClientAndServer());
+  SSL_set_session(client_.get(), g_last_session.get());
+
+  // The client handshake should return immediately into the early data state.
+  ASSERT_EQ(SSL_do_handshake(client_.get()), 1);
+  EXPECT_TRUE(SSL_in_early_data(client_.get()));
+  // The transport should have keys for sending 0-RTT data.
+  EXPECT_TRUE(transport_->client()->HasWriteSecret(ssl_encryption_early_data));
+
+  // The server will consume the ClientHello and also enter the early data
+  // state.
+  ASSERT_TRUE(ProvideHandshakeData(server_.get()));
+  ASSERT_EQ(SSL_do_handshake(server_.get()), 1);
+  EXPECT_TRUE(SSL_in_early_data(server_.get()));
+  EXPECT_TRUE(transport_->SecretsMatch(ssl_encryption_early_data));
+  // At this point, the server has half-RTT write keys, but it cannot access
+  // 1-RTT read keys until client Finished.
+  EXPECT_TRUE(transport_->server()->HasWriteSecret(ssl_encryption_application));
+  EXPECT_FALSE(transport_->server()->HasReadSecret(ssl_encryption_application));
+
+  // Finish up the client and server handshakes.
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+
+  // Both sides can now exchange 1-RTT data.
+  ExpectHandshakeSuccess();
+  EXPECT_TRUE(SSL_session_reused(client_.get()));
+  EXPECT_TRUE(SSL_session_reused(server_.get()));
+  EXPECT_FALSE(SSL_in_early_data(client_.get()));
+  EXPECT_FALSE(SSL_in_early_data(server_.get()));
+  EXPECT_TRUE(SSL_early_data_accepted(client_.get()));
+  EXPECT_TRUE(SSL_early_data_accepted(server_.get()));
+  EXPECT_EQ(SSL_get_early_data_reason(client_.get()), ssl_early_data_accepted);
+  EXPECT_EQ(SSL_get_early_data_reason(server_.get()), ssl_early_data_accepted);
 }
 
 TEST_F(QUICMethodTest, ZeroRTTRejectMismatchedParameters) {
