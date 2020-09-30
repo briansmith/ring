@@ -20,7 +20,7 @@
 
 #include "fork_detect.h"
 
-#if defined(OPENSSL_LINUX)
+#if defined(OPENSSL_LINUX) && !defined(OPENSSL_TRUSTY)
 #include <sys/mman.h>
 #include <unistd.h>
 #include <stdlib.h>
