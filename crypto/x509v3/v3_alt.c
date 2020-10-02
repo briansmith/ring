@@ -288,40 +288,40 @@ static GENERAL_NAMES *v2i_issuer_alt(X509V3_EXT_METHOD *method,
 
 static int copy_issuer(X509V3_CTX *ctx, GENERAL_NAMES *gens)
 {
-    GENERAL_NAMES *ialt;
-    GENERAL_NAME *gen;
-    X509_EXTENSION *ext;
-    int i;
-    size_t j;
     if (ctx && (ctx->flags == CTX_TEST))
         return 1;
     if (!ctx || !ctx->issuer_cert) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_ISSUER_DETAILS);
-        goto err;
+        return 0;
     }
-    i = X509_get_ext_by_NID(ctx->issuer_cert, NID_subject_alt_name, -1);
+    int i = X509_get_ext_by_NID(ctx->issuer_cert, NID_subject_alt_name, -1);
     if (i < 0)
         return 1;
+
+    int ret = 0;
+    GENERAL_NAMES *ialt = NULL;
+    X509_EXTENSION *ext;
     if (!(ext = X509_get_ext(ctx->issuer_cert, i)) ||
         !(ialt = X509V3_EXT_d2i(ext))) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_ISSUER_DECODE_ERROR);
         goto err;
     }
 
-    for (j = 0; j < sk_GENERAL_NAME_num(ialt); j++) {
-        gen = sk_GENERAL_NAME_value(ialt, j);
+    for (size_t j = 0; j < sk_GENERAL_NAME_num(ialt); j++) {
+        GENERAL_NAME *gen = sk_GENERAL_NAME_value(ialt, j);
         if (!sk_GENERAL_NAME_push(gens, gen)) {
             OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
             goto err;
         }
+        /* Ownership of |gen| has moved from |ialt| to |gens|. */
+        sk_GENERAL_NAME_set(ialt, j, NULL);
     }
-    sk_GENERAL_NAME_free(ialt);
 
-    return 1;
+    ret = 1;
 
- err:
-    return 0;
-
+err:
+    GENERAL_NAMES_free(ialt);
+    return ret;
 }
 
 static GENERAL_NAMES *v2i_subject_alt(X509V3_EXT_METHOD *method,
