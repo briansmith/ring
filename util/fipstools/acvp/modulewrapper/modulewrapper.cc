@@ -236,6 +236,21 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "payloadLen": [{"min": 8, "max": 1024, "increment": 8}]
       },
       {
+        "algorithm": "ACVP-AES-CCM",
+        "revision": "1.0",
+        "direction": [
+            "encrypt",
+            "decrypt"
+        ],
+        "keyLen": [
+            128
+        ],
+        "payloadLen": [{"min": 0, "max": 256, "increment": 8}],
+        "ivLen": [104],
+        "tagLen": [32],
+        "aadLen": [{"min": 0, "max": 1024, "increment": 8}]
+      },
+      {
         "algorithm": "HMAC-SHA-1",
         "revision": "1.0",
         "keyLen": [{
@@ -495,7 +510,41 @@ static bool AESGCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
   return true;
 }
 
-static bool AESGCMSeal(const Span<const uint8_t> args[]) {
+static bool AESCCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
+                        Span<const uint8_t> key) {
+  uint32_t tag_len_32;
+  if (tag_len_span.size() != sizeof(tag_len_32)) {
+    fprintf(stderr, "Tag size value is %u bytes, not an uint32_t\n",
+            static_cast<unsigned>(tag_len_span.size()));
+    return false;
+  }
+  memcpy(&tag_len_32, tag_len_span.data(), sizeof(tag_len_32));
+  if (tag_len_32 != 4) {
+    fprintf(stderr, "AES-CCM only supports 4-byte tags, but %u was requested\n",
+            static_cast<unsigned>(tag_len_32));
+    return false;
+  }
+
+  if (key.size() != 16) {
+    fprintf(stderr,
+            "AES-CCM only supports 128-bit keys, but %u bits were given\n",
+            static_cast<unsigned>(key.size() * 8));
+    return false;
+  }
+
+  if (!EVP_AEAD_CTX_init(ctx, EVP_aead_aes_128_ccm_bluetooth(), key.data(),
+                         key.size(), tag_len_32, nullptr)) {
+    fprintf(stderr, "Failed to setup AES-CCM with tag length %u\n",
+            static_cast<unsigned>(tag_len_32));
+    return false;
+  }
+
+  return true;
+}
+
+template <bool (*SetupFunc)(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
+                            Span<const uint8_t> key)>
+static bool AEADSeal(const Span<const uint8_t> args[]) {
   Span<const uint8_t> tag_len_span = args[0];
   Span<const uint8_t> key = args[1];
   Span<const uint8_t> plaintext = args[2];
@@ -503,7 +552,7 @@ static bool AESGCMSeal(const Span<const uint8_t> args[]) {
   Span<const uint8_t> ad = args[4];
 
   bssl::ScopedEVP_AEAD_CTX ctx;
-  if (!AESGCMSetup(ctx.get(), tag_len_span, key)) {
+  if (!SetupFunc(ctx.get(), tag_len_span, key)) {
     return false;
   }
 
@@ -523,7 +572,9 @@ static bool AESGCMSeal(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
 }
 
-static bool AESGCMOpen(const Span<const uint8_t> args[]) {
+template <bool (*SetupFunc)(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
+                            Span<const uint8_t> key)>
+static bool AEADOpen(const Span<const uint8_t> args[]) {
   Span<const uint8_t> tag_len_span = args[0];
   Span<const uint8_t> key = args[1];
   Span<const uint8_t> ciphertext = args[2];
@@ -531,7 +582,7 @@ static bool AESGCMOpen(const Span<const uint8_t> args[]) {
   Span<const uint8_t> ad = args[4];
 
   bssl::ScopedEVP_AEAD_CTX ctx;
-  if (!AESGCMSetup(ctx.get(), tag_len_span, key)) {
+  if (!SetupFunc(ctx.get(), tag_len_span, key)) {
     return false;
   }
 
@@ -916,12 +967,14 @@ static constexpr struct {
     {"AES-CBC/decrypt", 3, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
     {"AES-CTR/encrypt", 3, AES_CTR},
     {"AES-CTR/decrypt", 3, AES_CTR},
-    {"AES-GCM/seal", 5, AESGCMSeal},
-    {"AES-GCM/open", 5, AESGCMOpen},
+    {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
+    {"AES-GCM/open", 5, AEADOpen<AESGCMSetup>},
     {"AES-KW/seal", 5, AESKeyWrapSeal},
     {"AES-KW/open", 5, AESKeyWrapOpen},
     {"AES-KWP/seal", 5, AESPaddedKeyWrapSeal},
     {"AES-KWP/open", 5, AESPaddedKeyWrapOpen},
+    {"AES-CCM/seal", 5, AEADSeal<AESCCMSetup>},
+    {"AES-CCM/open", 5, AEADOpen<AESCCMSetup>},
     {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
     {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},

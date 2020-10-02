@@ -23,7 +23,8 @@ import (
 // aead implements an ACVP algorithm by making requests to the subprocess
 // to encrypt and decrypt with an AEAD.
 type aead struct {
-	algo string
+	algo                    string
+	tagMergedWithCiphertext bool
 }
 
 type aeadVectorSet struct {
@@ -120,18 +121,6 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, fmt.Errorf("failed to decode aad in test case %d/%d: %s", group.ID, test.ID, err)
 			}
 
-			var tag []byte
-			if !encrypt {
-				if tag, err = hex.DecodeString(test.TagHex); err != nil {
-					return nil, fmt.Errorf("failed to decode tag in test case %d/%d: %s", group.ID, test.ID, err)
-				}
-				if len(tag) != tagBytes {
-					return nil, fmt.Errorf("tag in test case %d/%d is %d bytes long, but should be %d", group.ID, test.ID, len(tag), tagBytes)
-				}
-			} else if len(test.TagHex) != 0 {
-				return nil, fmt.Errorf("test case %d/%d has unexpected tag input", group.ID, test.ID)
-			}
-
 			var inputHex, otherHex string
 			if encrypt {
 				inputHex, otherHex = test.PlaintextHex, test.CiphertextHex
@@ -148,6 +137,27 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, fmt.Errorf("failed to decode hex in test case %d/%d: %s", group.ID, test.ID, err)
 			}
 
+			var tag []byte
+			if a.tagMergedWithCiphertext {
+				if len(test.TagHex) != 0 {
+					return nil, fmt.Errorf("test case %d/%d has unexpected tag input (should be merged into ciphertext)", group.ID, test.ID)
+				}
+				if !encrypt && len(input) < tagBytes {
+					return nil, fmt.Errorf("test case %d/%d has ciphertext shorter than the tag, but the tag should be included in it", group.ID, test.ID)
+				}
+			} else {
+				if !encrypt {
+					if tag, err = hex.DecodeString(test.TagHex); err != nil {
+						return nil, fmt.Errorf("failed to decode tag in test case %d/%d: %s", group.ID, test.ID, err)
+					}
+					if len(tag) != tagBytes {
+						return nil, fmt.Errorf("tag in test case %d/%d is %d bytes long, but should be %d", group.ID, test.ID, len(tag), tagBytes)
+					}
+				} else if len(test.TagHex) != 0 {
+					return nil, fmt.Errorf("test case %d/%d has unexpected tag input", group.ID, test.ID)
+				}
+			}
+
 			testResp := aeadTestResponse{ID: test.ID}
 
 			if encrypt {
@@ -160,12 +170,16 @@ func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 					return nil, fmt.Errorf("ciphertext from subprocess for test case %d/%d is shorter than the tag (%d vs %d)", group.ID, test.ID, len(result[0]), tagBytes)
 				}
 
-				ciphertext := result[0][:len(result[0])-tagBytes]
-				ciphertextHex := hex.EncodeToString(ciphertext)
-				tag := result[0][len(result[0])-tagBytes:]
-
-				testResp.CiphertextHex = &ciphertextHex
-				testResp.TagHex = hex.EncodeToString(tag)
+				if a.tagMergedWithCiphertext {
+					ciphertextHex := hex.EncodeToString(result[0])
+					testResp.CiphertextHex = &ciphertextHex
+				} else {
+					ciphertext := result[0][:len(result[0])-tagBytes]
+					ciphertextHex := hex.EncodeToString(ciphertext)
+					testResp.CiphertextHex = &ciphertextHex
+					tag := result[0][len(result[0])-tagBytes:]
+					testResp.TagHex = hex.EncodeToString(tag)
+				}
 			} else {
 				result, err := m.Transact(op, 2, uint32le(uint32(tagBytes)), key, append(input, tag...), nonce, aad)
 				if err != nil {
