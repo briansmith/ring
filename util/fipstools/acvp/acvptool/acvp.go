@@ -270,7 +270,7 @@ func main() {
 	}
 	totpSecret, err := base64.StdEncoding.DecodeString(config.TOTPSecret)
 	if err != nil {
-		log.Fatalf("Failed to decode TOTP secret from config file: %s", err)
+		log.Fatalf("Failed to base64-decode TOTP secret from config file: %s. (Note that the secret _itself_ should be in the config, not the name of a file that contains it.)", err)
 	}
 
 	if len(config.CertPEMFile) == 0 {
