@@ -17,6 +17,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/x509"
@@ -51,6 +52,7 @@ var (
 
 type Config struct {
 	CertPEMFile        string
+	PrivateKeyFile     string
 	PrivateKeyDERFile  string
 	TOTPSecret         string
 	ACVPServer         string
@@ -281,17 +283,35 @@ func main() {
 	block, _ := pem.Decode(certPEM)
 	certDER := block.Bytes
 
-	if len(config.PrivateKeyDERFile) == 0 {
-		log.Fatal("Config file missing PrivateKeyDERFile")
+	if len(config.PrivateKeyDERFile) == 0 && len(config.PrivateKeyFile) == 0 {
+		log.Fatal("Config file missing PrivateKeyDERFile and PrivateKeyFile")
 	}
-	keyDER, err := ioutil.ReadFile(config.PrivateKeyDERFile)
-	if err != nil {
-		log.Fatalf("failed to read private key from %q: %s", config.PrivateKeyDERFile, err)
+	if len(config.PrivateKeyDERFile) != 0 && len(config.PrivateKeyFile) != 0 {
+		log.Fatal("Config file has both PrivateKeyDERFile and PrivateKeyFile. Can only have one.")
+	}
+	privateKeyFile := config.PrivateKeyDERFile
+	if len(config.PrivateKeyFile) > 0 {
+		privateKeyFile = config.PrivateKeyFile
 	}
 
-	certKey, err := x509.ParsePKCS1PrivateKey(keyDER)
+	keyBytes, err := ioutil.ReadFile(privateKeyFile)
 	if err != nil {
-		log.Fatalf("failed to parse private key from %q: %s", config.PrivateKeyDERFile, err)
+		log.Fatalf("failed to read private key from %q: %s", privateKeyFile, err)
+	}
+
+	var keyDER []byte
+	pemBlock, _ := pem.Decode(keyBytes)
+	if pemBlock != nil {
+		keyDER = pemBlock.Bytes
+	} else {
+		keyDER = keyBytes
+	}
+
+	var certKey crypto.PrivateKey
+	if certKey, err = x509.ParsePKCS1PrivateKey(keyDER); err != nil {
+		if certKey, err = x509.ParsePKCS8PrivateKey(keyDER); err != nil {
+			log.Fatalf("failed to parse private key from %q: %s", privateKeyFile, err)
+		}
 	}
 
 	var middle Middle

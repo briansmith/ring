@@ -13,14 +13,14 @@ Configuration is done via a `config.json` file in the current working directory.
 {
         "ACVPServer": "https://demo.acvts.nist.gov/",
         "CertPEMFile": "certificate_from_nist.pem",
-        "PrivateKeyDERFile": "your_private_key.key",
+        "PrivateKeyFile": "your_private_key.key",
         "TOTPSecret": "<base64 from NIST goes here>",
         "SessionTokensCache": "~/.cache/acvp-session-tokens",
         "LogFile": "log"
 }
 ```
 
-NIST's ACVP servers use both TLS client certificates and TOTP for authentication. When registering with NIST, they'll sign a CSR and return a certificate in PEM format, which is pointed to be `CertPEMFile`. The corresponding PKCS#1, DER-encoded private key is expected in `PrivateKeyDERFile`. Lastly, NIST will provide a file that contains the base64-encoded TOTP seed, which must be pasted in as the value of `TOTPSecret`.
+NIST's ACVP servers use both TLS client certificates and TOTP for authentication. When registering with NIST, they'll sign a CSR and return a certificate in PEM format, which is pointed to be `CertPEMFile`. The corresponding private key is expected in `PrivateKeyFile`. Lastly, NIST will provide a file that contains the base64-encoded TOTP seed, which must be pasted in as the value of `TOTPSecret`.
 
 NIST's ACVP server provides special access tokens for each test session and test sessions can _only_ be accessed via those tokens. The reasoning behind this is unclear but this client can, optionally, keep records of these access tokens in the directory named by `SessionTokensCache`. If that directory name begins with `~/` then that prefix will be replaced with the value of `$HOME`.
 
