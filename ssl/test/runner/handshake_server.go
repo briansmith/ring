@@ -185,18 +185,8 @@ func (hs *serverHandshakeState) readClientHello() error {
 		if !bytes.Equal(newClientHello.cookie, helloVerifyRequest.cookie) {
 			return errors.New("dtls: invalid cookie")
 		}
-
-		// Apart from the cookie, the two ClientHellos must
-		// match. Note that clientHello.equal compares the
-		// serialization, so we make a copy.
-		oldClientHelloCopy := *hs.clientHello
-		oldClientHelloCopy.raw = nil
-		oldClientHelloCopy.cookie = nil
-		newClientHelloCopy := *newClientHello
-		newClientHelloCopy.raw = nil
-		newClientHelloCopy.cookie = nil
-		if !oldClientHelloCopy.equal(&newClientHelloCopy) {
-			return errors.New("dtls: retransmitted ClientHello does not match")
+		if err := checkClientHellosEqual(hs.clientHello.raw, newClientHello.raw, c.isDTLS, nil); err != nil {
+			return err
 		}
 		hs.clientHello = newClientHello
 	}
@@ -465,12 +455,16 @@ Curves:
 	pskIdentities := hs.clientHello.pskIdentities
 	pskKEModes := hs.clientHello.pskKEModes
 
+	var replacedPSKIdentities bool
 	if len(pskIdentities) == 0 && len(hs.clientHello.sessionTicket) > 0 && c.config.Bugs.AcceptAnySession {
+		// Pick up the ticket from the TLS 1.2 extension, to test the
+		// client does not get in a mixed up state.
 		psk := pskIdentity{
 			ticket: hs.clientHello.sessionTicket,
 		}
 		pskIdentities = []pskIdentity{psk}
 		pskKEModes = []byte{pskDHEKEMode}
+		replacedPSKIdentities = true
 	}
 
 	var pskIndex int
@@ -502,6 +496,13 @@ Curves:
 				return errors.New("tls: invalid ticket age")
 			}
 
+			if !replacedPSKIdentities {
+				binderToVerify := hs.clientHello.pskBinders[i]
+				if err := verifyPSKBinder(c.wireVersion, hs.clientHello, sessionState, binderToVerify, []byte{}, []byte{}); err != nil {
+					return err
+				}
+			}
+
 			hs.sessionState = sessionState
 			hs.hello.hasPSKIdentity = true
 			hs.hello.pskIdentity = uint16(i)
@@ -517,15 +518,6 @@ Curves:
 	if config.Bugs.AlwaysSelectPSKIdentity {
 		hs.hello.hasPSKIdentity = true
 		hs.hello.pskIdentity = 0
-	}
-
-	// Verify the PSK binder. Note there may not be a PSK binder if
-	// AcceptAnyBinder is set. See https://crbug.com/boringssl/115.
-	if hs.sessionState != nil && !config.Bugs.AcceptAnySession {
-		binderToVerify := hs.clientHello.pskBinders[pskIndex]
-		if err := verifyPSKBinder(c.wireVersion, hs.clientHello, hs.sessionState, binderToVerify, []byte{}, []byte{}); err != nil {
-			return err
-		}
 	}
 
 	// Resolve PSK and compute the early secret.
@@ -643,69 +635,83 @@ ResendHelloRetryRequest:
 			return fmt.Errorf("tls: client offered unexpected PSK identities after HelloRetryRequest")
 		}
 
-		if newClientHello.hasEarlyData {
-			return errors.New("tls: EarlyData sent in new ClientHello")
-		}
-
 		applyBugsToClientHello(newClientHello, config)
 
 		// Check that the new ClientHello matches the old ClientHello,
-		// except for relevant modifications.
-		//
-		// TODO(davidben): Make this check more precise.
-		oldClientHelloCopy := *hs.clientHello
-		oldClientHelloCopy.raw = nil
-		oldClientHelloCopy.hasEarlyData = false
-		newClientHelloCopy := *newClientHello
-		newClientHelloCopy.raw = nil
+		// except for relevant modifications. See RFC 8446, section 4.1.2.
+		ignoreExtensions := []uint16{extensionPadding}
 
 		if helloRetryRequest.hasSelectedGroup {
-			newKeyShares := newClientHelloCopy.keyShares
+			newKeyShares := newClientHello.keyShares
 			if len(newKeyShares) != 1 || newKeyShares[0].group != helloRetryRequest.selectedGroup {
 				return errors.New("tls: KeyShare from HelloRetryRequest not in new ClientHello")
 			}
 			selectedKeyShare = &newKeyShares[0]
-			newClientHelloCopy.keyShares = oldClientHelloCopy.keyShares
+			ignoreExtensions = append(ignoreExtensions, extensionKeyShare)
 		}
 
 		if len(helloRetryRequest.cookie) > 0 {
-			if !bytes.Equal(newClientHelloCopy.tls13Cookie, helloRetryRequest.cookie) {
+			if !bytes.Equal(newClientHello.tls13Cookie, helloRetryRequest.cookie) {
 				return errors.New("tls: cookie from HelloRetryRequest not present in new ClientHello")
 			}
-			newClientHelloCopy.tls13Cookie = nil
+			ignoreExtensions = append(ignoreExtensions, extensionCookie)
 		}
 
-		// PSK binders and obfuscated ticket age are both updated in the
-		// second ClientHello.
-		if len(oldClientHelloCopy.pskIdentities) != len(newClientHelloCopy.pskIdentities) {
-			newClientHelloCopy.pskIdentities = oldClientHelloCopy.pskIdentities
-		} else {
-			if len(oldClientHelloCopy.pskIdentities) != len(newClientHelloCopy.pskIdentities) {
-				return errors.New("tls: PSK identity count from old and new ClientHello do not match")
+		// The second ClientHello refreshes binders, and may drop PSK identities
+		// that are no longer consistent with the cipher suite.
+		oldPSKIdentities := hs.clientHello.pskIdentities
+		for _, identity := range newClientHello.pskIdentities {
+			// Skip to the matching PSK identity in oldPSKIdentities.
+			for len(oldPSKIdentities) > 0 && !bytes.Equal(oldPSKIdentities[0].ticket, identity.ticket) {
+				oldPSKIdentities = oldPSKIdentities[1:]
 			}
-			for i, identity := range oldClientHelloCopy.pskIdentities {
-				newClientHelloCopy.pskIdentities[i].obfuscatedTicketAge = identity.obfuscatedTicketAge
+			// The identity now either matches, or oldPSKIdentities is empty.
+			if len(oldPSKIdentities) == 0 {
+				return errors.New("tls: unexpected PSK identity in second ClientHello")
+			}
+			oldPSKIdentities = oldPSKIdentities[1:]
+		}
+		ignoreExtensions = append(ignoreExtensions, extensionPreSharedKey)
+
+		// Update the index for the identity we resumed. The client may have
+		// dropped some entries.
+		if hs.sessionState != nil {
+			var found bool
+			ticket := hs.clientHello.pskIdentities[pskIndex].ticket
+			for i, identity := range newClientHello.pskIdentities {
+				if bytes.Equal(identity.ticket, ticket) {
+					found = true
+					pskIndex = i
+					break
+				}
+			}
+			if found {
+				binderToVerify := newClientHello.pskBinders[pskIndex]
+				if err := verifyPSKBinder(c.wireVersion, newClientHello, hs.sessionState, binderToVerify, oldClientHelloBytes, helloRetryRequest.marshal()); err != nil {
+					return err
+				}
+			} else if !config.Bugs.AcceptAnySession {
+				// If AcceptAnySession is set, the client may have already noticed
+				// the selected session is incompatible with the HelloRetryRequest
+				// and correctly dropped the PSK identity. We may also have
+				// attempted to resume a session from the TLS 1.2 extension.
+				return errors.New("tls: second ClientHello is missing selected session")
 			}
 		}
-		newClientHelloCopy.pskBinders = oldClientHelloCopy.pskBinders
-		newClientHelloCopy.hasEarlyData = oldClientHelloCopy.hasEarlyData
 
-		if !oldClientHelloCopy.equal(&newClientHelloCopy) {
-			return errors.New("tls: new ClientHello does not match")
+		// The second ClientHello must stop offering early data.
+		if newClientHello.hasEarlyData {
+			return errors.New("tls: EarlyData sent in new ClientHello")
+		}
+		ignoreExtensions = append(ignoreExtensions, extensionEarlyData)
+
+		if err := checkClientHellosEqual(hs.clientHello.raw, newClientHello.raw, c.isDTLS, ignoreExtensions); err != nil {
+			return err
 		}
 
 		if firstHelloRetryRequest && config.Bugs.SecondHelloRetryRequest {
 			firstHelloRetryRequest = false
 			goto ResendHelloRetryRequest
-		}
-
-		// Verify the PSK binder. Note there may not be a PSK binder if
-		// AcceptAnyBinder is set. See https://crbug.com/115.
-		if hs.sessionState != nil && !config.Bugs.AcceptAnySession {
-			binderToVerify := newClientHello.pskBinders[pskIndex]
-			if err := verifyPSKBinder(c.wireVersion, newClientHello, hs.sessionState, binderToVerify, oldClientHelloBytes, helloRetryRequest.marshal()); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -2207,6 +2213,132 @@ func verifyPSKBinder(version uint16, clientHello *clientHelloMsg, sessionState *
 	binder := computePSKBinder(sessionState.masterSecret, version, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
 	if !bytes.Equal(binder, binderToVerify) {
 		return errors.New("tls: PSK binder does not verify")
+	}
+
+	return nil
+}
+
+// checkClientHellosEqual checks whether a and b are equal ClientHello
+// messages. If isDTLS is true, the ClientHellos are parsed as DTLS and any
+// differences in the cookie field are ignored. Extensions listed in
+// ignoreExtensions may change or be removed between the two ClientHellos.
+func checkClientHellosEqual(a, b []byte, isDTLS bool, ignoreExtensions []uint16) error {
+	ignoreExtensionsSet := make(map[uint16]struct{})
+	for _, ext := range ignoreExtensions {
+		ignoreExtensionsSet[ext] = struct{}{}
+	}
+
+	// Skip the handshake message header.
+	aReader := byteReader(a[4:])
+	bReader := byteReader(b[4:])
+
+	var aVers, bVers uint16
+	var aRandom, bRandom []byte
+	var aSessionID, bSessionID []byte
+	if !aReader.readU16(&aVers) ||
+		!bReader.readU16(&bVers) ||
+		!aReader.readBytes(&aRandom, 32) ||
+		!bReader.readBytes(&bRandom, 32) ||
+		!aReader.readU8LengthPrefixedBytes(&aSessionID) ||
+		!bReader.readU8LengthPrefixedBytes(&bSessionID) {
+		return errors.New("tls: could not parse ClientHello")
+	}
+
+	if aVers != bVers {
+		return errors.New("tls: second ClientHello version did not match")
+	}
+	if !bytes.Equal(aRandom, bRandom) {
+		return errors.New("tls: second ClientHello random did not match")
+	}
+	if !bytes.Equal(aSessionID, bSessionID) {
+		return errors.New("tls: second ClientHello session ID did not match")
+	}
+
+	if isDTLS {
+		// DTLS 1.2 checks two ClientHellos match after a HelloVerifyRequest,
+		// where we expect the cookies to change. DTLS 1.3 forbids the legacy
+		// cookie altogether. If we implement DTLS 1.3, we'll need to ensure
+		// that parsing logic above this function rejects this cookie.
+		var aCookie, bCookie []byte
+		if !aReader.readU8LengthPrefixedBytes(&aCookie) ||
+			!bReader.readU8LengthPrefixedBytes(&bCookie) {
+			return errors.New("tls: could not parse ClientHello")
+		}
+	}
+
+	var aCipherSuites, bCipherSuites, aCompressionMethods, bCompressionMethods []byte
+	if !aReader.readU16LengthPrefixedBytes(&aCipherSuites) ||
+		!bReader.readU16LengthPrefixedBytes(&bCipherSuites) ||
+		!aReader.readU8LengthPrefixedBytes(&aCompressionMethods) ||
+		!bReader.readU8LengthPrefixedBytes(&bCompressionMethods) {
+		return errors.New("tls: could not parse ClientHello")
+	}
+	if !bytes.Equal(aCipherSuites, bCipherSuites) {
+		return errors.New("tls: second ClientHello cipher suites did not match")
+	}
+	if !bytes.Equal(aCompressionMethods, bCompressionMethods) {
+		return errors.New("tls: second ClientHello compression methods did not match")
+	}
+
+	if len(aReader) == 0 && len(bReader) == 0 {
+		// Both ClientHellos omit the extensions block.
+		return nil
+	}
+
+	var aExtensions, bExtensions byteReader
+	if !aReader.readU16LengthPrefixed(&aExtensions) ||
+		!bReader.readU16LengthPrefixed(&bExtensions) ||
+		len(aReader) != 0 ||
+		len(bReader) != 0 {
+		return errors.New("tls: could not parse ClientHello")
+	}
+
+	for len(aExtensions) != 0 {
+		var aID uint16
+		var aBody []byte
+		if !aExtensions.readU16(&aID) ||
+			!aExtensions.readU16LengthPrefixedBytes(&aBody) {
+			return errors.New("tls: could not parse ClientHello")
+		}
+		if _, ok := ignoreExtensionsSet[aID]; ok {
+			continue
+		}
+
+		for {
+			if len(bExtensions) == 0 {
+				return fmt.Errorf("tls: second ClientHello missing extension %d", aID)
+			}
+			var bID uint16
+			var bBody []byte
+			if !bExtensions.readU16(&bID) ||
+				!bExtensions.readU16LengthPrefixedBytes(&bBody) {
+				return errors.New("tls: could not parse ClientHello")
+			}
+			if _, ok := ignoreExtensionsSet[bID]; ok {
+				continue
+			}
+			if aID != bID {
+				return fmt.Errorf("tls: unexpected extension %d in second ClientHello (wanted %d)", bID, aID)
+			}
+			if !bytes.Equal(aBody, bBody) {
+				return fmt.Errorf("tls: extension %d in second ClientHello unexpectedly changed", aID)
+			}
+			break
+		}
+	}
+
+	// Any remaining extensions in the second ClientHello must be in the
+	// ignored set.
+	for len(bExtensions) != 0 {
+		var id uint16
+		var body []byte
+		if !bExtensions.readU16(&id) ||
+			!bExtensions.readU16LengthPrefixedBytes(&body) {
+			return errors.New("tls: could not parse ClientHello")
+		}
+		if _, ok := ignoreExtensionsSet[id]; !ok {
+			return fmt.Errorf("tls: unexpected extension %d in second ClientHello", id)
+		}
 	}
 
 	return nil

@@ -5,7 +5,6 @@
 package runner
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -297,60 +296,6 @@ type clientHelloMsg struct {
 	compressedCertAlgs      []uint16
 	delegatedCredentials    bool
 	prefixExtensions        []uint16
-}
-
-func (m *clientHelloMsg) equal(i interface{}) bool {
-	m1, ok := i.(*clientHelloMsg)
-	if !ok {
-		return false
-	}
-
-	return bytes.Equal(m.raw, m1.raw) &&
-		m.isDTLS == m1.isDTLS &&
-		m.vers == m1.vers &&
-		bytes.Equal(m.random, m1.random) &&
-		bytes.Equal(m.sessionId, m1.sessionId) &&
-		bytes.Equal(m.cookie, m1.cookie) &&
-		eqUint16s(m.cipherSuites, m1.cipherSuites) &&
-		bytes.Equal(m.compressionMethods, m1.compressionMethods) &&
-		m.nextProtoNeg == m1.nextProtoNeg &&
-		m.serverName == m1.serverName &&
-		m.ocspStapling == m1.ocspStapling &&
-		eqCurveIDs(m.supportedCurves, m1.supportedCurves) &&
-		bytes.Equal(m.supportedPoints, m1.supportedPoints) &&
-		m.hasKeyShares == m1.hasKeyShares &&
-		eqKeyShareEntryLists(m.keyShares, m1.keyShares) &&
-		m.trailingKeyShareData == m1.trailingKeyShareData &&
-		eqPSKIdentityLists(m.pskIdentities, m1.pskIdentities) &&
-		bytes.Equal(m.pskKEModes, m1.pskKEModes) &&
-		eqByteSlices(m.pskBinders, m1.pskBinders) &&
-		m.hasEarlyData == m1.hasEarlyData &&
-		bytes.Equal(m.tls13Cookie, m1.tls13Cookie) &&
-		m.ticketSupported == m1.ticketSupported &&
-		bytes.Equal(m.sessionTicket, m1.sessionTicket) &&
-		eqSignatureAlgorithms(m.signatureAlgorithms, m1.signatureAlgorithms) &&
-		eqSignatureAlgorithms(m.signatureAlgorithmsCert, m1.signatureAlgorithmsCert) &&
-		eqUint16s(m.supportedVersions, m1.supportedVersions) &&
-		bytes.Equal(m.secureRenegotiation, m1.secureRenegotiation) &&
-		(m.secureRenegotiation == nil) == (m1.secureRenegotiation == nil) &&
-		eqStrings(m.alpnProtocols, m1.alpnProtocols) &&
-		bytes.Equal(m.quicTransportParams, m1.quicTransportParams) &&
-		m.duplicateExtension == m1.duplicateExtension &&
-		m.channelIDSupported == m1.channelIDSupported &&
-		bytes.Equal(m.tokenBindingParams, m1.tokenBindingParams) &&
-		m.tokenBindingVersion == m1.tokenBindingVersion &&
-		m.extendedMasterSecret == m1.extendedMasterSecret &&
-		eqUint16s(m.srtpProtectionProfiles, m1.srtpProtectionProfiles) &&
-		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier &&
-		m.sctListSupported == m1.sctListSupported &&
-		m.customExtension == m1.customExtension &&
-		m.hasGREASEExtension == m1.hasGREASEExtension &&
-		m.omitExtensions == m1.omitExtensions &&
-		m.emptyExtensions == m1.emptyExtensions &&
-		m.pad == m1.pad &&
-		eqUint16s(m.compressedCertAlgs, m1.compressedCertAlgs) &&
-		m.delegatedCredentials == m1.delegatedCredentials &&
-		eqUint16s(m.prefixExtensions, m1.prefixExtensions)
 }
 
 func (m *clientHelloMsg) marshalKeyShares(bb *byteBuilder) {
@@ -2591,90 +2536,3 @@ func (*endOfEarlyDataMsg) unmarshal(data []byte) bool {
 // ssl3NoCertificateMsg is a dummy message to handle SSL 3.0 using a warning
 // alert in the handshake.
 type ssl3NoCertificateMsg struct{}
-
-func eqUint16s(x, y []uint16) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	for i, v := range x {
-		if y[i] != v {
-			return false
-		}
-	}
-	return true
-}
-
-func eqCurveIDs(x, y []CurveID) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	for i, v := range x {
-		if y[i] != v {
-			return false
-		}
-	}
-	return true
-}
-
-func eqStrings(x, y []string) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	for i, v := range x {
-		if y[i] != v {
-			return false
-		}
-	}
-	return true
-}
-
-func eqByteSlices(x, y [][]byte) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	for i, v := range x {
-		if !bytes.Equal(v, y[i]) {
-			return false
-		}
-	}
-	return true
-}
-
-func eqSignatureAlgorithms(x, y []signatureAlgorithm) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	for i, v := range x {
-		v2 := y[i]
-		if v != v2 {
-			return false
-		}
-	}
-	return true
-}
-
-func eqKeyShareEntryLists(x, y []keyShareEntry) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	for i, v := range x {
-		if y[i].group != v.group || !bytes.Equal(y[i].keyExchange, v.keyExchange) {
-			return false
-		}
-	}
-	return true
-
-}
-
-func eqPSKIdentityLists(x, y []pskIdentity) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	for i, v := range x {
-		if !bytes.Equal(y[i].ticket, v.ticket) || y[i].obfuscatedTicketAge != v.obfuscatedTicketAge {
-			return false
-		}
-	}
-	return true
-
-}
