@@ -203,6 +203,65 @@ func iterate3DES(transact func(n int, args ...[]byte) ([][]byte, error), encrypt
 	return mctResults
 }
 
+// iterate3DESCBC implements "TDES Monte Carlo Test - CBC mode" from the ACVP
+// specification.
+func iterate3DESCBC(transact func(n int, args ...[]byte) ([][]byte, error), encrypt bool, key, input, iv []byte) (mctResults []blockCipherMCTResult) {
+	for i := 0; i < 400; i++ {
+		var iteration blockCipherMCTResult
+		keyHex := hex.EncodeToString(key)
+		iteration.Key1Hex = keyHex[:16]
+		iteration.Key2Hex = keyHex[16:32]
+		iteration.Key3Hex = keyHex[32:]
+
+		if encrypt {
+			iteration.PlaintextHex = hex.EncodeToString(input)
+		} else {
+			iteration.CiphertextHex = hex.EncodeToString(input)
+		}
+		iteration.IVHex = hex.EncodeToString(iv)
+
+		var result, prevResult, prevPrevResult []byte
+		for j := 0; j < 10000; j++ {
+			prevPrevResult = prevResult
+			prevResult = result
+			results, err := transact(1, key, input, iv)
+			if err != nil {
+				panic("block operation failed")
+			}
+			result = results[0]
+
+			if encrypt {
+				if j == 0 {
+					input = iv
+				} else {
+					input = prevResult
+				}
+				iv = result
+			} else {
+				iv = input
+				input = result
+			}
+		}
+
+		if encrypt {
+			iteration.CiphertextHex = hex.EncodeToString(result)
+		} else {
+			iteration.PlaintextHex = hex.EncodeToString(result)
+		}
+
+		keyShuffle3DES(key, result, prevResult, prevPrevResult)
+
+		if encrypt {
+			input = prevResult
+			iv = result
+		}
+
+		mctResults = append(mctResults, iteration)
+	}
+
+	return mctResults
+}
+
 // blockCipher implements an ACVP algorithm by making requests to the subprocess
 // to encrypt and decrypt with a block cipher.
 type blockCipher struct {

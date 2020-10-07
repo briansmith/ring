@@ -259,6 +259,13 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "keyingOption": [1]
       },
       {
+        "algorithm": "ACVP-TDES-CBC",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [192],
+        "keyingOption": [1]
+      },
+      {
         "algorithm": "HMAC-SHA-1",
         "revision": "1.0",
         "keyLen": [{
@@ -728,9 +735,9 @@ static bool AESPaddedKeyWrapOpen(const Span<const uint8_t> args[]) {
                     Span<const uint8_t>(out));
 }
 
-template<bool Encrypt>
+template<bool Encrypt, bool HasIV, const EVP_CIPHER* (*cipher_func)()>
 static bool TDES(const Span<const uint8_t> args[]) {
-  const EVP_CIPHER *cipher = EVP_des_ede3();
+  const EVP_CIPHER *cipher = cipher_func();
 
   if (args[0].size() != 24) {
     fprintf(stderr, "Bad key length %u for 3DES.\n",
@@ -742,14 +749,19 @@ static bool TDES(const Span<const uint8_t> args[]) {
             static_cast<unsigned>(args[1].size()));
     return false;
   }
+  if (HasIV && args[2].size() != EVP_CIPHER_iv_length(cipher)) {
+    fprintf(stderr, "Bad IV length %u for 3DES.\n",
+            static_cast<unsigned>(args[2].size()));
+    return false;
+  }
 
   std::vector<uint8_t> out;
   out.resize(args[1].size());
 
   bssl::ScopedEVP_CIPHER_CTX ctx;
   int out_len, out_len2;
-  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, args[0].data(), nullptr,
-                         Encrypt ? 1 : 0) ||
+  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, args[0].data(),
+                         HasIV ? args[2].data() : nullptr, Encrypt ? 1 : 0) ||
       !EVP_CIPHER_CTX_set_padding(ctx.get(), 0) ||
       !EVP_CipherUpdate(ctx.get(), out.data(), &out_len, args[1].data(),
                         args[1].size()) ||
@@ -1016,8 +1028,10 @@ static constexpr struct {
     {"AES-KWP/open", 5, AESPaddedKeyWrapOpen},
     {"AES-CCM/seal", 5, AEADSeal<AESCCMSetup>},
     {"AES-CCM/open", 5, AEADOpen<AESCCMSetup>},
-    {"3DES-ECB/encrypt", 2, TDES<true>},
-    {"3DES-ECB/decrypt", 2, TDES<false>},
+    {"3DES-ECB/encrypt", 2, TDES<true, false, EVP_des_ede3>},
+    {"3DES-ECB/decrypt", 2, TDES<false, false, EVP_des_ede3>},
+    {"3DES-CBC/encrypt", 3, TDES<true, true, EVP_des_ede3_cbc>},
+    {"3DES-CBC/decrypt", 3, TDES<false, true, EVP_des_ede3_cbc>},
     {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
     {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
