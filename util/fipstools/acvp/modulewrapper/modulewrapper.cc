@@ -26,6 +26,7 @@
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/bn.h>
+#include <openssl/cipher.h>
 #include <openssl/cmac.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
@@ -249,6 +250,13 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "ivLen": [104],
         "tagLen": [32],
         "aadLen": [{"min": 0, "max": 1024, "increment": 8}]
+      },
+      {
+        "algorithm": "ACVP-TDES-ECB",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [192],
+        "keyingOption": [1]
       },
       {
         "algorithm": "HMAC-SHA-1",
@@ -720,6 +728,39 @@ static bool AESPaddedKeyWrapOpen(const Span<const uint8_t> args[]) {
                     Span<const uint8_t>(out));
 }
 
+template<bool Encrypt>
+static bool TDES(const Span<const uint8_t> args[]) {
+  const EVP_CIPHER *cipher = EVP_des_ede3();
+
+  if (args[0].size() != 24) {
+    fprintf(stderr, "Bad key length %u for 3DES.\n",
+            static_cast<unsigned>(args[0].size()));
+    return false;
+  }
+  if (args[1].size() % 8) {
+    fprintf(stderr, "Bad input length %u for 3DES.\n",
+            static_cast<unsigned>(args[1].size()));
+    return false;
+  }
+
+  std::vector<uint8_t> out;
+  out.resize(args[1].size());
+
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  int out_len, out_len2;
+  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, args[0].data(), nullptr,
+                         Encrypt ? 1 : 0) ||
+      !EVP_CIPHER_CTX_set_padding(ctx.get(), 0) ||
+      !EVP_CipherUpdate(ctx.get(), out.data(), &out_len, args[1].data(),
+                        args[1].size()) ||
+      !EVP_CipherFinal_ex(ctx.get(), out.data() + out_len, &out_len2) ||
+      (out_len + out_len2) != static_cast<int>(out.size())) {
+    return false;
+  }
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+}
+
 template <const EVP_MD *HashFunc()>
 static bool HMAC(const Span<const uint8_t> args[]) {
   const EVP_MD *const md = HashFunc();
@@ -975,6 +1016,8 @@ static constexpr struct {
     {"AES-KWP/open", 5, AESPaddedKeyWrapOpen},
     {"AES-CCM/seal", 5, AEADSeal<AESCCMSetup>},
     {"AES-CCM/open", 5, AEADOpen<AESCCMSetup>},
+    {"3DES-ECB/encrypt", 2, TDES<true>},
+    {"3DES-ECB/decrypt", 2, TDES<false>},
     {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
     {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
