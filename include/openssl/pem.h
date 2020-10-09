@@ -337,10 +337,25 @@ OPENSSL_EXPORT int PEM_get_EVP_CIPHER_INFO(char *header,
 OPENSSL_EXPORT int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data,
                                  long *len, pem_password_cb *callback, void *u);
 
+// PEM_read_bio reads from |bp|, until the next PEM block. If one is found, it
+// returns one and sets |*name|, |*header|, and |*data| to newly-allocated
+// buffers containing the PEM type, the header block, and the decoded data,
+// respectively. |*name| and |*header| are NUL-terminated C strings, while
+// |*data| has |*len| bytes. The caller must release each of |*name|, |*header|,
+// and |*data| with |OPENSSL_free| when done. If no PEM block is found, this
+// function returns zero and pushes |PEM_R_NO_START_LINE| to the error queue. If
+// one is found, but there is an error decoding it, it returns zero and pushes
+// some other error to the error queue.
 OPENSSL_EXPORT int PEM_read_bio(BIO *bp, char **name, char **header,
                                 unsigned char **data, long *len);
+
+// PEM_write_bio writes a PEM block to |bp|, containing |len| bytes from |data|
+// as data. |name| and |hdr| are NUL-terminated C strings containing the PEM
+// type and header block, respectively. This function returns zero on error and
+// the number of bytes written on success.
 OPENSSL_EXPORT int PEM_write_bio(BIO *bp, const char *name, const char *hdr,
                                  const unsigned char *data, long len);
+
 OPENSSL_EXPORT int PEM_bytes_read_bio(unsigned char **pdata, long *plen,
                                       char **pnm, const char *name, BIO *bp,
                                       pem_password_cb *cb, void *u);
