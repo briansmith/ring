@@ -6529,5 +6529,64 @@ TEST(SSLTest, ProcessTLS13NewSessionTicket) {
                                                     sizeof(kTicket)));
 }
 
+TEST(SSLTest, BIO) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  for (bool take_ownership : {true, false}) {
+    // For simplicity, get the handshake out of the way first.
+    bssl::UniquePtr<SSL> client, server;
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                       server_ctx.get()));
+
+    // Wrap |client| in an SSL BIO.
+    bssl::UniquePtr<BIO> client_bio(BIO_new(BIO_f_ssl()));
+    ASSERT_TRUE(client_bio);
+    ASSERT_EQ(1, BIO_set_ssl(client_bio.get(), client.get(), take_ownership));
+    if (take_ownership) {
+      client.release();
+    }
+
+    // Flushing the BIO should not crash.
+    EXPECT_EQ(1, BIO_flush(client_bio.get()));
+
+    // Exchange some data.
+    EXPECT_EQ(5, BIO_write(client_bio.get(), "hello", 5));
+    uint8_t buf[5];
+    ASSERT_EQ(5, SSL_read(server.get(), buf, sizeof(buf)));
+    EXPECT_EQ(Bytes("hello"), Bytes(buf));
+
+    EXPECT_EQ(5, SSL_write(server.get(), "world", 5));
+    ASSERT_EQ(5, BIO_read(client_bio.get(), buf, sizeof(buf)));
+    EXPECT_EQ(Bytes("world"), Bytes(buf));
+
+    // |BIO_should_read| should work.
+    EXPECT_EQ(-1, BIO_read(client_bio.get(), buf, sizeof(buf)));
+    EXPECT_TRUE(BIO_should_read(client_bio.get()));
+
+    // Writing data should eventually exceed the buffer size and fail, reporting
+    // |BIO_should_write|.
+    int ret;
+    for (int i = 0; i < 1024; i++) {
+      std::vector<uint8_t> buffer(1024);
+      ret = BIO_write(client_bio.get(), buffer.data(), buffer.size());
+      if (ret <= 0) {
+        break;
+      }
+    }
+    EXPECT_EQ(-1, ret);
+    EXPECT_TRUE(BIO_should_write(client_bio.get()));
+  }
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
