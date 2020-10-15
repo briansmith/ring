@@ -19,12 +19,10 @@ import urllib2
 # CLANG_REVISION and CLANG_SUB_REVISION determine the build of clang
 # to use. These should be synced with tools/clang/scripts/update.py in
 # Chromium.
-CLANG_REVISION = '4e0d9925d6a3561449bdd8def27fd3f3f1b3fb9f'
-CLANG_SVN_REVISION = 'n346557'
-CLANG_SUB_REVISION = 1
+CLANG_REVISION = 'llvmorg-12-init-5627-gf086e85e'
+CLANG_SUB_REVISION = 2
 
-PACKAGE_VERSION = '%s-%s-%s' % (CLANG_SVN_REVISION, CLANG_REVISION[:8],
-                                CLANG_SUB_REVISION)
+PACKAGE_VERSION = '%s-%s' % (CLANG_REVISION, CLANG_SUB_REVISION)
 
 # Path constants. (All of these should be absolute paths.)
 THIS_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -34,13 +32,6 @@ STAMP_FILE = os.path.join(LLVM_BUILD_DIR, 'cr_build_revision')
 # URL for pre-built binaries.
 CDS_URL = os.environ.get('CDS_CLANG_BUCKET_OVERRIDE',
     'https://commondatastorage.googleapis.com/chromium-browser-clang')
-
-# Bump after VC updates.
-DIA_DLL = {
-  '2013': 'msdia120.dll',
-  '2015': 'msdia140.dll',
-  '2017': 'msdia140.dll',
-}
 
 
 def DownloadUrl(url, output_file):
@@ -133,34 +124,6 @@ def CopyFile(src, dst):
   shutil.copy(src, dst)
 
 
-vs_version = None
-def GetVSVersion():
-  global vs_version
-  if vs_version:
-    return vs_version
-
-  # Try using the toolchain in depot_tools.
-  # This sets environment variables used by SelectVisualStudioVersion below.
-  sys.path.append(THIS_DIR)
-  import vs_toolchain
-  vs_toolchain.SetEnvironmentAndGetRuntimeDllDirs()
-
-  # Use gyp to find the MSVS installation, either in depot_tools as per above,
-  # or a system-wide installation otherwise.
-  sys.path.append(os.path.join(THIS_DIR, 'gyp', 'pylib'))
-  import gyp.MSVSVersion
-  vs_version = gyp.MSVSVersion.SelectVisualStudioVersion(
-      vs_toolchain.GetVisualStudioVersion())
-  return vs_version
-
-
-def CopyDiaDllTo(target_dir):
-  # This script always wants to use the 64-bit msdia*.dll.
-  dia_path = os.path.join(GetVSVersion().Path(), 'DIA SDK', 'bin', 'amd64')
-  dia_dll = os.path.join(dia_path, DIA_DLL[GetVSVersion().ShortName()])
-  CopyFile(dia_dll, target_dir)
-
-
 def UpdateClang():
   cds_file = "clang-%s.tgz" %  PACKAGE_VERSION
   if sys.platform == 'win32' or sys.platform == 'cygwin':
@@ -185,8 +148,6 @@ def UpdateClang():
   try:
     DownloadAndUnpack(cds_full_url, LLVM_BUILD_DIR)
     print 'clang %s unpacked' % PACKAGE_VERSION
-    if sys.platform == 'win32':
-      CopyDiaDllTo(os.path.join(LLVM_BUILD_DIR, 'bin'))
     WriteStampFile(PACKAGE_VERSION)
     return 0
   except urllib2.URLError:
