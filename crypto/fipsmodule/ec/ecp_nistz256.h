@@ -45,10 +45,10 @@ void GFp_nistz256_sqr_mont(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
 
 /* Functions that perform constant time access to the precomputed tables */
 void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
-                            int index);
+                            crypto_word index);
 
 #if defined(GFp_USE_LARGE_TABLE)
-void GFp_nistz256_select_w7(P256_POINT_AFFINE *out, const PRECOMP256_ROW table, int index);
+void GFp_nistz256_select_w7(P256_POINT_AFFINE *out, const PRECOMP256_ROW table, crypto_word index);
 #endif
 
 #endif /* OPENSSL_HEADER_EC_ECP_NISTZ256_H */
