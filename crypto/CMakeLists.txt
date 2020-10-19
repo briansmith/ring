@@ -47,17 +47,23 @@ if(NOT OPENSSL_NO_ASM)
       endforeach()
     endif()
   else()
-    if(${ARCH} STREQUAL "x86_64")
-      set(PERLASM_STYLE nasm)
+    if(${ARCH} STREQUAL "aarch64")
+      set(PERLASM_STYLE win64)
+      set(ASM_EXT S)
+      enable_language(ASM)
     else()
-      set(PERLASM_STYLE win32n)
-      set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
-    endif()
-    set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
+      if(${ARCH} STREQUAL "x86_64")
+        set(PERLASM_STYLE nasm)
+      else()
+        set(PERLASM_STYLE win32n)
+        set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
+      endif()
+      set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
 
-    # On Windows, we use the NASM output.
-    set(ASM_EXT asm)
-    enable_language(ASM_NASM)
+      # On Windows, we use the NASM output.
+      set(ASM_EXT asm)
+      enable_language(ASM_NASM)
+    endif()
   endif()
 endif()
 
@@ -258,6 +264,7 @@ add_library(
   conf/conf.c
   cpu-aarch64-fuchsia.c
   cpu-aarch64-linux.c
+  cpu-aarch64-win.c
   cpu-arm-linux.c
   cpu-arm.c
   cpu-intel.c
