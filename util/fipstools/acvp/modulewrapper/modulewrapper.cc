@@ -84,7 +84,7 @@ static bool WriteReply(int fd, Args... args) {
   for (size_t i = 0; i < spans.size(); i++) {
     const auto &span = spans[i];
     nums[i + 1] = span.size();
-    if (span.size() == 0) {
+    if (span.empty()) {
       continue;
     }
 

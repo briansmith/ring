@@ -47,9 +47,9 @@ func aesKeyShuffle(key, result, prevResult []byte) {
 	}
 }
 
-// IterateAES implements the "AES Monte Carlo Test - ECB mode" from the ACVP
+// iterateAES implements the "AES Monte Carlo Test - ECB mode" from the ACVP
 // specification.
-func IterateAES(transact func(n int, args ...[]byte) ([][]byte, error), encrypt bool, key, input, iv []byte) (mctResults []blockCipherMCTResult) {
+func iterateAES(transact func(n int, args ...[]byte) ([][]byte, error), encrypt bool, key, input, iv []byte) (mctResults []blockCipherMCTResult) {
 	for i := 0; i < 100; i++ {
 		var iteration blockCipherMCTResult
 		iteration.KeyHex = hex.EncodeToString(key)
@@ -83,9 +83,9 @@ func IterateAES(transact func(n int, args ...[]byte) ([][]byte, error), encrypt 
 	return mctResults
 }
 
-// IterateAESCBC implements the "AES Monte Carlo Test - CBC mode" from the ACVP
+// iterateAESCBC implements the "AES Monte Carlo Test - CBC mode" from the ACVP
 // specification.
-func IterateAESCBC(transact func(n int, args ...[]byte) ([][]byte, error), encrypt bool, key, input, iv []byte) (mctResults []blockCipherMCTResult) {
+func iterateAESCBC(transact func(n int, args ...[]byte) ([][]byte, error), encrypt bool, key, input, iv []byte) (mctResults []blockCipherMCTResult) {
 	for i := 0; i < 100; i++ {
 		var iteration blockCipherMCTResult
 		iteration.KeyHex = hex.EncodeToString(key)

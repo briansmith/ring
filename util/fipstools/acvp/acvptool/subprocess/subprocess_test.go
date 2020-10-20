@@ -438,7 +438,7 @@ func TestPrimitives(t *testing.T) {
 		},
 		{
 			algo:          "ACVP-AES-ECB",
-			p:             &blockCipher{"AES", 16, true, false, IterateAES},
+			p:             &blockCipher{"AES", 16, true, false, iterateAES},
 			validJSON:     validACVPAESECB,
 			invalidJSON:   invalidACVPAESECB,
 			expectedCalls: callsACVPAESECB,
