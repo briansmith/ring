@@ -40,9 +40,6 @@ deps = {
       'dep_type': 'cipd',
   },
 
-  'boringssl/util/bot/gyp':
-    Var('chromium_git') + '/external/gyp.git' + '@' + 'd61a9397e668fa9843c4aa7da9e79460fe590bfb',
-
   'boringssl/util/bot/libFuzzer': {
     'url': Var('chromium_git') + '/chromium/llvm-project/compiler-rt/lib/fuzzer.git' +'@' + 'debe7d2d1982e540fbd6bd78604bf001753f9e74',
     'condition': 'checkout_fuzzer',

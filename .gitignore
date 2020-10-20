@@ -17,7 +17,6 @@ util/bot/cmake-mac.tar.gz
 util/bot/cmake-win32
 util/bot/cmake-win32.zip
 util/bot/golang
-util/bot/gyp
 util/bot/libcxx
 util/bot/libcxxabi
 util/bot/llvm-build
