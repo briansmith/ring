@@ -466,18 +466,6 @@ typedef struct x509_purpose_st {
 #define X509_PURPOSE_MIN 1
 #define X509_PURPOSE_MAX 9
 
-// Flags for X509V3_EXT_print()
-
-#define X509V3_EXT_UNKNOWN_MASK (0xfL << 16)
-// Return error for unknown extensions
-#define X509V3_EXT_DEFAULT 0
-// Print error for unknown extensions
-#define X509V3_EXT_ERROR_UNKNOWN (1L << 16)
-// ASN1 parse unknown extensions
-#define X509V3_EXT_PARSE_UNKNOWN (2L << 16)
-// BIO_dump unknown extensions
-#define X509V3_EXT_DUMP_UNKNOWN (3L << 16)
-
 // Flags for X509V3_add1_i2d
 
 #define X509V3_ADD_OP_MASK 0xfL
@@ -660,6 +648,21 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
 OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
                                    void *value, int crit, unsigned long flags);
 
+#define X509V3_EXT_UNKNOWN_MASK (0xfL << 16)
+
+// X509V3_EXT_DEFAULT causes unknown extensions or syntax errors to return
+// failure.
+#define X509V3_EXT_DEFAULT 0
+// X509V3_EXT_ERROR_UNKNOWN causes unknown extensions or syntax errors to print
+// as "<Not Supported>" or "<Parse Error>", respectively.
+#define X509V3_EXT_ERROR_UNKNOWN (1L << 16)
+// X509V3_EXT_PARSE_UNKNOWN is deprecated and behaves like
+// |X509V3_EXT_DUMP_UNKNOWN|.
+#define X509V3_EXT_PARSE_UNKNOWN (2L << 16)
+// X509V3_EXT_DUMP_UNKNOWN causes unknown extensions to be displayed as a
+// hexdump.
+#define X509V3_EXT_DUMP_UNKNOWN (3L << 16)
+
 OPENSSL_EXPORT void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val,
                                        int indent, int ml);
 OPENSSL_EXPORT int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext,
@@ -667,8 +670,13 @@ OPENSSL_EXPORT int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext,
 OPENSSL_EXPORT int X509V3_EXT_print_fp(FILE *out, X509_EXTENSION *ext, int flag,
                                        int indent);
 
+// X509V3_extensions_print prints |title|, followed by a human-readable
+// representation of |exts| to |out|. It returns one on success and zero on
+// error. The output is indented by |indent| spaces. |flag| is one of the
+// |X509V3_EXT_*| constants and controls printing of unknown extensions and
+// syntax errors.
 OPENSSL_EXPORT int X509V3_extensions_print(BIO *out, const char *title,
-                                           STACK_OF(X509_EXTENSION) *exts,
+                                           const STACK_OF(X509_EXTENSION) *exts,
                                            unsigned long flag, int indent);
 
 OPENSSL_EXPORT int X509_check_ca(X509 *x);
