@@ -33,6 +33,7 @@
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
+#include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/obj.h>
 #include <openssl/rsa.h>
@@ -430,6 +431,141 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "mode": "sigGen",
         "revision": "FIPS186-4",
         "capabilities": [{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 2048,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA-1"
+            }]
+          }]
+        },{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 3072,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA-1"
+            }]
+          }]
+        },{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 4096,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA-1"
+            }]
+          }]
+        },{
+          "sigType": "pss",
+          "properties": [{
+            "modulo": 2048,
+            "hashPair": [{
+              "hashAlg": "SHA2-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA2-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA2-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA2-512",
+              "saltLen": 64
+            }, {
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }]
+        },{
+          "sigType": "pss",
+          "properties": [{
+            "modulo": 3072,
+            "hashPair": [{
+              "hashAlg": "SHA2-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA2-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA2-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA2-512",
+              "saltLen": 64
+            }, {
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }]
+        },{
+          "sigType": "pss",
+          "properties": [{
+            "modulo": 4096,
+            "hashPair": [{
+              "hashAlg": "SHA2-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA2-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA2-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA2-512",
+              "saltLen": 64
+            }, {
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }]
+        }]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "sigVer",
+        "revision": "FIPS186-4",
+        "pubExpMode": "fixed",
+        "fixedPubExp": "010001",
+        "capabilities": [{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 1024,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA-1"
+            }]
+          }]
+        },{
           "sigType": "pkcs1v1.5",
           "properties": [{
             "modulo": 2048,
@@ -1238,6 +1374,42 @@ static bool RSASigGen(const Span<const uint8_t> args[]) {
                     BIGNUMBytes(RSA_get0_e(key)), sig);
 }
 
+template<const EVP_MD *(MDFunc)(), bool UsePSS>
+static bool RSASigVer(const Span<const uint8_t> args[]) {
+  const Span<const uint8_t> n_bytes = args[0];
+  const Span<const uint8_t> e_bytes = args[1];
+  const Span<const uint8_t> msg = args[2];
+  const Span<const uint8_t> sig = args[3];
+
+  BIGNUM *n = BN_new();
+  BIGNUM *e = BN_new();
+  bssl::UniquePtr<RSA> key(RSA_new());
+  if (!BN_bin2bn(n_bytes.data(), n_bytes.size(), n) ||
+      !BN_bin2bn(e_bytes.data(), e_bytes.size(), e) ||
+      !RSA_set0_key(key.get(), n, e, /*d=*/nullptr)) {
+    return false;
+  }
+
+  const EVP_MD *const md = MDFunc();
+  uint8_t digest_buf[EVP_MAX_MD_SIZE];
+  unsigned digest_len;
+  if (!EVP_Digest(msg.data(), msg.size(), digest_buf, &digest_len, md, NULL)) {
+    return false;
+  }
+
+  uint8_t ok;
+  if (UsePSS) {
+    ok = RSA_verify_pss_mgf1(key.get(), digest_buf, digest_len, md, md, -1,
+                             sig.data(), sig.size());
+  } else {
+    ok = RSA_verify(EVP_MD_type(md), digest_buf, digest_len, sig.data(),
+                    sig.size(), key.get());
+  }
+  ERR_clear_error();
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(&ok, 1));
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -1289,6 +1461,16 @@ static constexpr struct {
     {"RSA/sigGen/SHA2-384/pss", 2, RSASigGen<EVP_sha384, true>},
     {"RSA/sigGen/SHA2-512/pss", 2, RSASigGen<EVP_sha512, true>},
     {"RSA/sigGen/SHA-1/pss", 2, RSASigGen<EVP_sha1, true>},
+    {"RSA/sigVer/SHA2-224/pkcs1v1.5", 4, RSASigVer<EVP_sha224, false>},
+    {"RSA/sigVer/SHA2-256/pkcs1v1.5", 4, RSASigVer<EVP_sha256, false>},
+    {"RSA/sigVer/SHA2-384/pkcs1v1.5", 4, RSASigVer<EVP_sha384, false>},
+    {"RSA/sigVer/SHA2-512/pkcs1v1.5", 4, RSASigVer<EVP_sha512, false>},
+    {"RSA/sigVer/SHA-1/pkcs1v1.5", 4, RSASigVer<EVP_sha1, false>},
+    {"RSA/sigVer/SHA2-224/pss", 4, RSASigVer<EVP_sha224, true>},
+    {"RSA/sigVer/SHA2-256/pss", 4, RSASigVer<EVP_sha256, true>},
+    {"RSA/sigVer/SHA2-384/pss", 4, RSASigVer<EVP_sha384, true>},
+    {"RSA/sigVer/SHA2-512/pss", 4, RSASigVer<EVP_sha512, true>},
+    {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
 };
 
 int main() {
