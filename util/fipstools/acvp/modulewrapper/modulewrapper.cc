@@ -34,6 +34,7 @@
 #include <openssl/ecdsa.h>
 #include <openssl/hmac.h>
 #include <openssl/obj.h>
+#include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
@@ -393,6 +394,34 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             "SHA2-384",
             "SHA2-512"
           ]
+        }]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "keyGen",
+        "revision": "FIPS186-4",
+        "infoGeneratedByServer": true,
+        "pubExpMode": "fixed",
+        "fixedPubExp": "010001",
+        "keyFormat": "standard",
+        "capabilities": [{
+          "randPQ": "B.3.3",
+          "properties": [{
+            "modulo": 2048,
+            "primeTest": [
+              "tblC2"
+            ]
+          },{
+            "modulo": 3072,
+            "primeTest": [
+              "tblC2"
+            ]
+          },{
+            "modulo": 4096,
+            "primeTest": [
+              "tblC2"
+            ]
+          }]
         }]
       },
       {
@@ -1003,6 +1032,28 @@ static bool CMAC_AES(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(mac, mac_len));
 }
 
+static bool RSAKeyGen(const Span<const uint8_t> args[]) {
+  uint32_t bits;
+  if (args[0].size() != sizeof(bits)) {
+    return false;
+  }
+  memcpy(&bits, args[0].data(), sizeof(bits));
+
+  bssl::UniquePtr<RSA> key(RSA_new());
+  if (!RSA_generate_key_fips(key.get(), bits, nullptr)) {
+    fprintf(stderr, "RSA_generate_key_fips failed for modulus length %u.\n",
+            bits);
+    return false;
+  }
+
+  const BIGNUM *n, *e, *d, *p, *q;
+  RSA_get0_key(key.get(), &n, &e, &d);
+  RSA_get0_factors(key.get(), &p, &q);
+
+  return WriteReply(STDOUT_FILENO, BIGNUMBytes(e), BIGNUMBytes(p),
+                    BIGNUMBytes(q), BIGNUMBytes(n), BIGNUMBytes(d));
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -1043,6 +1094,7 @@ static constexpr struct {
     {"ECDSA/sigGen", 4, ECDSASigGen},
     {"ECDSA/sigVer", 7, ECDSASigVer},
     {"CMAC-AES", 3, CMAC_AES},
+    {"RSA/keyGen", 1, RSAKeyGen},
 };
 
 int main() {
