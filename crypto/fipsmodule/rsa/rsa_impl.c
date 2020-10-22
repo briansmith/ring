@@ -933,20 +933,57 @@ static int ensure_bignum(BIGNUM **out) {
   return *out != NULL;
 }
 
-// kBoringSSLRSASqrtTwo is the BIGNUM representation of ⌊2¹⁵³⁵×√2⌋. This is
-// chosen to give enough precision for 3072-bit RSA, the largest key size FIPS
+// kBoringSSLRSASqrtTwo is the BIGNUM representation of ⌊2²⁰⁴⁷×√2⌋. This is
+// chosen to give enough precision for 4096-bit RSA, the largest key size FIPS
 // specifies. Key sizes beyond this will round up.
 //
-// To verify this number, check that n² < 2³⁰⁷¹ < (n+1)², where n is value
+// To calculate, use the following Haskell code:
+//
+// import Text.Printf (printf)
+// import Data.List (intercalate)
+//
+// pow2 = 4095
+// target = 2^pow2
+//
+// f x = x*x - (toRational target)
+//
+// fprime x = 2*x
+//
+// newtonIteration x = x - (f x) / (fprime x)
+//
+// converge x =
+//   let n = floor x in
+//   if n*n - target < 0 && (n+1)*(n+1) - target > 0
+//     then n
+//     else converge (newtonIteration x)
+//
+// divrem bits x = (x `div` (2^bits), x `rem` (2^bits))
+//
+// bnWords :: Integer -> [Integer]
+// bnWords x =
+//   if x == 0
+//     then []
+//     else let (high, low) = divrem 64 x in low : bnWords high
+//
+// showWord x = let (high, low) = divrem 32 x in printf "TOBN(0x%08x, 0x%08x)" high low
+//
+// output :: String
+// output = intercalate ", " $ map showWord $ bnWords $ converge (2 ^ (pow2 `div` 2))
+//
+// To verify this number, check that n² < 2⁴⁰⁹⁵ < (n+1)², where n is value
 // represented here. Note the components are listed in little-endian order. Here
 // is some sample Python code to check:
 //
 //   >>> TOBN = lambda a, b: a << 32 | b
 //   >>> l = [ <paste the contents of kSqrtTwo> ]
 //   >>> n = sum(a * 2**(64*i) for i, a in enumerate(l))
-//   >>> n**2 < 2**3071 < (n+1)**2
+//   >>> n**2 < 2**4095 < (n+1)**2
 //   True
 const BN_ULONG kBoringSSLRSASqrtTwo[] = {
+    TOBN(0x4d7c60a5, 0xe633e3e1), TOBN(0x5fcf8f7b, 0xca3ea33b),
+    TOBN(0xc246785e, 0x92957023), TOBN(0xf9acce41, 0x797f2805),
+    TOBN(0xfdfe170f, 0xd3b1f780), TOBN(0xd24f4a76, 0x3facb882),
+    TOBN(0x18838a2e, 0xaff5f3b2), TOBN(0xc1fcbdde, 0xa2f7dc33),
     TOBN(0xdea06241, 0xf7aa81c2), TOBN(0xf6a1be3f, 0xca221307),
     TOBN(0x332a5e9f, 0x7bda1ebf), TOBN(0x0104dc01, 0xfe32352f),
     TOBN(0xb8cf341b, 0x6f8236c7), TOBN(0x4264dabc, 0xd528b651),
@@ -1167,13 +1204,13 @@ static int rsa_generate_key_impl(RSA *rsa, int bits, const BIGNUM *e_value,
   int sqrt2_bits = kBoringSSLRSASqrtTwoLen * BN_BITS2;
   assert(sqrt2_bits == (int)BN_num_bits(sqrt2));
   if (sqrt2_bits > prime_bits) {
-    // For key sizes up to 3072 (prime_bits = 1536), this is exactly
+    // For key sizes up to 4096 (prime_bits = 2048), this is exactly
     // ⌊2^(prime_bits-1)×√2⌋.
     if (!BN_rshift(sqrt2, sqrt2, sqrt2_bits - prime_bits)) {
       goto bn_err;
     }
   } else if (prime_bits > sqrt2_bits) {
-    // For key sizes beyond 3072, this is approximate. We err towards retrying
+    // For key sizes beyond 4096, this is approximate. We err towards retrying
     // to ensure our key is the right size and round up.
     if (!BN_add_word(sqrt2, 1) ||
         !BN_lshift(sqrt2, sqrt2, prime_bits - sqrt2_bits)) {
@@ -1330,7 +1367,9 @@ int RSA_generate_key_ex(RSA *rsa, int bits, const BIGNUM *e_value,
 int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
   // FIPS 186-4 allows 2048-bit and 3072-bit RSA keys (1024-bit and 1536-bit
   // primes, respectively) with the prime generation method we use.
-  if (bits != 2048 && bits != 3072) {
+  // Subsequently, IG A.14 stated that larger modulus sizes can be used and ACVP
+  // testing supports 4096 bits.
+  if (bits != 2048 && bits != 3072 && bits != 4096) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }
