@@ -57,6 +57,36 @@ type rsaKeyGenTestResponse struct {
 	D  string `json:"d"`
 }
 
+type rsaSigGenTestVectorSet struct {
+	Groups []rsaSigGenGroup `json:"testGroups"`
+}
+
+type rsaSigGenGroup struct {
+	ID          uint64          `json:"tgId"`
+	Type        string          `json:"testType"`
+	SigType     string          `json:"sigType"`
+	ModulusBits uint32          `json:"modulo"`
+	Hash        string          `json:"hashAlg"`
+	Tests       []rsaSigGenTest `json:"tests"`
+}
+
+type rsaSigGenTest struct {
+	ID         uint64 `json:"tcId"`
+	MessageHex string `json:"message"`
+}
+
+type rsaSigGenTestGroupResponse struct {
+	ID    uint64                  `json:"tgId"`
+	N     string                  `json:"n"`
+	E     string                  `json:"e"`
+	Tests []rsaSigGenTestResponse `json:"tests"`
+}
+
+type rsaSigGenTestResponse struct {
+	ID  uint64 `json:"tcId"`
+	Sig string `json:"signature"`
+}
+
 func processKeyGen(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed rsaKeyGenTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
@@ -98,6 +128,57 @@ func processKeyGen(vectorSet []byte, m Transactable) (interface{}, error) {
 	return ret, nil
 }
 
+func processSigGen(vectorSet []byte, m Transactable) (interface{}, error) {
+	var parsed rsaSigGenTestVectorSet
+	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
+		return nil, err
+	}
+
+	var ret []rsaSigGenTestGroupResponse
+
+	for _, group := range parsed.Groups {
+		// GDT means "Generated data test", i.e. "please generate an RSA signature".
+		const expectedType = "GDT"
+		if group.Type != expectedType {
+			return nil, fmt.Errorf("RSA SigGen test group has type %q, but only generation tests (%q) are supported", group.Type, expectedType)
+		}
+
+		response := rsaSigGenTestGroupResponse{
+			ID: group.ID,
+		}
+
+		operation := "RSA/sigGen/" + group.Hash + "/" + group.SigType
+
+		for _, test := range group.Tests {
+			msg, err := hex.DecodeString(test.MessageHex)
+			if err != nil {
+				return nil, fmt.Errorf("test case %d/%d contains invalid hex: %s", group.ID, test.ID, err)
+			}
+
+			results, err := m.Transact(operation, 3, uint32le(group.ModulusBits), msg)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(response.N) == 0 {
+				response.N = hex.EncodeToString(results[0])
+				response.E = hex.EncodeToString(results[1])
+			} else if response.N != hex.EncodeToString(results[0]) {
+				return nil, fmt.Errorf("module wrapper returned different RSA keys for the same SigGen configuration")
+			}
+
+			response.Tests = append(response.Tests, rsaSigGenTestResponse{
+				ID:  test.ID,
+				Sig: hex.EncodeToString(results[2]),
+			})
+		}
+
+		ret = append(ret, response)
+	}
+
+	return ret, nil
+}
+
 type rsa struct{}
 
 func (*rsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
@@ -109,6 +190,8 @@ func (*rsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	switch parsed.Mode {
 	case "keyGen":
 		return processKeyGen(vectorSet, m)
+	case "sigGen":
+		return processSigGen(vectorSet, m)
 	default:
 		return nil, fmt.Errorf("Unknown RSA mode %q", parsed.Mode)
 	}

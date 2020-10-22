@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -421,6 +422,123 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             "primeTest": [
               "tblC2"
             ]
+          }]
+        }]
+      },
+      {
+        "algorithm": "RSA",
+        "mode": "sigGen",
+        "revision": "FIPS186-4",
+        "capabilities": [{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 2048,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA-1"
+            }]
+          }]
+        },{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 3072,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA-1"
+            }]
+          }]
+        },{
+          "sigType": "pkcs1v1.5",
+          "properties": [{
+            "modulo": 4096,
+            "hashPair": [{
+              "hashAlg": "SHA2-224"
+            }, {
+              "hashAlg": "SHA2-256"
+            }, {
+              "hashAlg": "SHA2-384"
+            }, {
+              "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA-1"
+            }]
+          }]
+        },{
+          "sigType": "pss",
+          "properties": [{
+            "modulo": 2048,
+            "hashPair": [{
+              "hashAlg": "SHA2-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA2-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA2-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA2-512",
+              "saltLen": 64
+            }, {
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }]
+        },{
+          "sigType": "pss",
+          "properties": [{
+            "modulo": 3072,
+            "hashPair": [{
+              "hashAlg": "SHA2-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA2-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA2-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA2-512",
+              "saltLen": 64
+            }, {
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }]
+        },{
+          "sigType": "pss",
+          "properties": [{
+            "modulo": 4096,
+            "hashPair": [{
+              "hashAlg": "SHA2-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA2-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA2-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA2-512",
+              "saltLen": 64
+            }, {
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
           }]
         }]
       },
@@ -1032,6 +1150,28 @@ static bool CMAC_AES(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(mac, mac_len));
 }
 
+static std::map<unsigned, bssl::UniquePtr<RSA>>& CachedRSAKeys() {
+  static std::map<unsigned, bssl::UniquePtr<RSA>> keys;
+  return keys;
+}
+
+static RSA* GetRSAKey(unsigned bits) {
+  auto it = CachedRSAKeys().find(bits);
+  if (it != CachedRSAKeys().end()) {
+    return it->second.get();
+  }
+
+  bssl::UniquePtr<RSA> key(RSA_new());
+  if (!RSA_generate_key_fips(key.get(), bits, nullptr)) {
+    abort();
+  }
+
+  RSA *const ret = key.get();
+  CachedRSAKeys().emplace(static_cast<unsigned>(bits), std::move(key));
+
+  return ret;
+}
+
 static bool RSAKeyGen(const Span<const uint8_t> args[]) {
   uint32_t bits;
   if (args[0].size() != sizeof(bits)) {
@@ -1050,8 +1190,52 @@ static bool RSAKeyGen(const Span<const uint8_t> args[]) {
   RSA_get0_key(key.get(), &n, &e, &d);
   RSA_get0_factors(key.get(), &p, &q);
 
-  return WriteReply(STDOUT_FILENO, BIGNUMBytes(e), BIGNUMBytes(p),
-                    BIGNUMBytes(q), BIGNUMBytes(n), BIGNUMBytes(d));
+  if (!WriteReply(STDOUT_FILENO, BIGNUMBytes(e), BIGNUMBytes(p), BIGNUMBytes(q),
+                  BIGNUMBytes(n), BIGNUMBytes(d))) {
+    return false;
+  }
+
+  CachedRSAKeys().emplace(static_cast<unsigned>(bits), std::move(key));
+  return true;
+}
+
+template<const EVP_MD *(MDFunc)(), bool UsePSS>
+static bool RSASigGen(const Span<const uint8_t> args[]) {
+  uint32_t bits;
+  if (args[0].size() != sizeof(bits)) {
+    return false;
+  }
+  memcpy(&bits, args[0].data(), sizeof(bits));
+  const Span<const uint8_t> msg = args[1];
+
+  RSA *const key = GetRSAKey(bits);
+  const EVP_MD *const md = MDFunc();
+  uint8_t digest_buf[EVP_MAX_MD_SIZE];
+  unsigned digest_len;
+  if (!EVP_Digest(msg.data(), msg.size(), digest_buf, &digest_len, md, NULL)) {
+    return false;
+  }
+
+  std::vector<uint8_t> sig(RSA_size(key));
+  size_t sig_len;
+  if (UsePSS) {
+    if (!RSA_sign_pss_mgf1(key, &sig_len, sig.data(), sig.size(), digest_buf,
+                           digest_len, md, md, -1)) {
+      return false;
+    }
+  } else {
+    unsigned sig_len_u;
+    if (!RSA_sign(EVP_MD_type(md), digest_buf, digest_len, sig.data(),
+                  &sig_len_u, key)) {
+      return false;
+    }
+    sig_len = sig_len_u;
+  }
+
+  sig.resize(sig_len);
+
+  return WriteReply(STDOUT_FILENO, BIGNUMBytes(RSA_get0_n(key)),
+                    BIGNUMBytes(RSA_get0_e(key)), sig);
 }
 
 static constexpr struct {
@@ -1095,6 +1279,16 @@ static constexpr struct {
     {"ECDSA/sigVer", 7, ECDSASigVer},
     {"CMAC-AES", 3, CMAC_AES},
     {"RSA/keyGen", 1, RSAKeyGen},
+    {"RSA/sigGen/SHA2-224/pkcs1v1.5", 2, RSASigGen<EVP_sha224, false>},
+    {"RSA/sigGen/SHA2-256/pkcs1v1.5", 2, RSASigGen<EVP_sha256, false>},
+    {"RSA/sigGen/SHA2-384/pkcs1v1.5", 2, RSASigGen<EVP_sha384, false>},
+    {"RSA/sigGen/SHA2-512/pkcs1v1.5", 2, RSASigGen<EVP_sha512, false>},
+    {"RSA/sigGen/SHA-1/pkcs1v1.5", 2, RSASigGen<EVP_sha1, false>},
+    {"RSA/sigGen/SHA2-224/pss", 2, RSASigGen<EVP_sha224, true>},
+    {"RSA/sigGen/SHA2-256/pss", 2, RSASigGen<EVP_sha256, true>},
+    {"RSA/sigGen/SHA2-384/pss", 2, RSASigGen<EVP_sha384, true>},
+    {"RSA/sigGen/SHA2-512/pss", 2, RSASigGen<EVP_sha512, true>},
+    {"RSA/sigGen/SHA-1/pss", 2, RSASigGen<EVP_sha1, true>},
 };
 
 int main() {
