@@ -146,6 +146,30 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_siv(void);
 // https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-02
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void);
 
+// EVP_aead_aes_128_gcm_randnonce is AES-128 in Galois Counter Mode with
+// internal nonce generation. The 12-byte nonce is appended to the tag
+// and is generated internally. The "tag", for the purpurses of the API, is thus
+// 12 bytes larger. The nonce parameter when using this AEAD must be
+// zero-length. Since the nonce is random, a single key should not be used for
+// more than 2^32 seal operations.
+//
+// Warning: this is for use for FIPS compliance only. It is probably not
+// suitable for other uses. Using standard AES-GCM AEADs allows one to achieve
+// the same effect, but gives more control over nonce storage.
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_randnonce(void);
+
+// EVP_aead_aes_256_gcm_randnonce is AES-256 in Galois Counter Mode with
+// internal nonce generation. The 12-byte nonce is appended to the tag
+// and is generated internally. The "tag", for the purpurses of the API, is thus
+// 12 bytes larger. The nonce parameter when using this AEAD must be
+// zero-length. Since the nonce is random, a single key should not be used for
+// more than 2^32 seal operations.
+//
+// Warning: this is for use for FIPS compliance only. It is probably not
+// suitable for other uses. Using standard AES-GCM AEADs allows one to achieve
+// the same effect, but gives more control over nonce storage.
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_randnonce(void);
+
 // EVP_aead_aes_128_ccm_bluetooth is AES-128-CCM with M=4 and L=2 (4-byte tags
 // and 13-byte nonces), as decribed in the Bluetooth Core Specification v5.0,
 // Volume 6, Part E, Section 1.
