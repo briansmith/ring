@@ -244,6 +244,14 @@ moZWgjHvB2W9Ckn7sDqsPB+U2tyX0joDdQEyuiMECDY8oQ==
 -----END RSA PRIVATE KEY-----
 )";
 
+static const char kP256Key[] = R"(
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgBw8IcnrUoEqc3VnJ
+TYlodwi1b8ldMHcO6NHJzgqLtGqhRANCAATmK2niv2Wfl74vHg2UikzVl2u3qR4N
+Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB
+-----END PRIVATE KEY-----
+)";
+
 // kCRLTestRoot is a test root certificate. It has private key:
 //
 //     -----BEGIN RSA PRIVATE KEY-----
@@ -2544,4 +2552,116 @@ TEST(X509Test, BasicConstraints) {
     EXPECT_EQ(test.flags, X509_get_extension_flags(cert.get()) & kFlagMask);
     EXPECT_EQ(test.path_len, X509_get_pathlen(cert.get()));
   }
+}
+
+// The following strings are test certificates signed by kP256Key and kRSAKey,
+// with missing, NULL, or invalid algorithm parameters.
+static const char kP256NoParam[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBIDCBxqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
+DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
+DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMQMA4w
+DAYDVR0TBAUwAwEB/zAKBggqhkjOPQQDAgNJADBGAiEAqdIiF+bN9Cl44oUeICpy
+aXd7HqhpVUaglYKw9ChmNUACIQCpMdL0fNkFNDbRww9dSl/y7kBdk/tp16HiqeSy
+gGzFYg==
+-----END CERTIFICATE-----
+)";
+static const char kP256NullParam[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBJDCByKADAgECAgIE0jAMBggqhkjOPQQDAgUAMA8xDTALBgNVBAMTBFRlc3Qw
+IBcNMDAwMTAxMDAwMDAwWhgPMjEwMDAxMDEwMDAwMDBaMA8xDTALBgNVBAMTBFRl
+c3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2niv2Wfl74vHg2UikzVl2u3
+qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLBoxAw
+DjAMBgNVHRMEBTADAQH/MAwGCCqGSM49BAMCBQADSQAwRgIhAKILHmyo+F3Cn/VX
+UUeSXOQQKX5aLzsQitwwmNF3ZgH3AiEAsYHcrVj/ftmoQIORARkQ/+PrqntXev8r
+t6uPxHrmpUY=
+-----END CERTIFICATE-----
+)";
+static const char kP256InvalidParam[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBMTCBz6ADAgECAgIE0jATBggqhkjOPQQDAgQHZ2FyYmFnZTAPMQ0wCwYDVQQD
+EwRUZXN0MCAXDTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYD
+VQQDEwRUZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4N
+lIpM1Zdrt6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1L
+z3IiwaMQMA4wDAYDVR0TBAUwAwEB/zATBggqhkjOPQQDAgQHZ2FyYmFnZQNIADBF
+AiAglpDf/YhN89LeJ2WAs/F0SJIrsuhS4uoInIz6WXUiuQIhAIu5Pwhp5E3Pbo8y
+fLULTZnynuQUULQkRcF7S7T2WpIL
+-----END CERTIFICATE-----
+)";
+static const char kRSANoParam[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBWzCBx6ADAgECAgIE0jALBgkqhkiG9w0BAQswDzENMAsGA1UEAxMEVGVzdDAg
+Fw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowDzENMAsGA1UEAxMEVGVz
+dDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8eDZSKTNWXa7ep
+Hg1G+92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQtS89yIsGjEDAO
+MAwGA1UdEwQFMAMBAf8wCwYJKoZIhvcNAQELA4GBAC1f8W3W0Ao7CPfIBQYDSbPh
+brZpbxdBU5x27JOS7iSa+Lc9pEH5VCX9vIypHVHXLPEfZ38yIt11eiyrmZB6w62N
+l9kIeZ6FVPmC30d3sXx70Jjs+ZX9yt7kD1gLyNAQQfeYfa4rORAZT1n2YitD74NY
+TWUH2ieFP3l+ecj1SeQR
+-----END CERTIFICATE-----
+)";
+static const char kRSANullParam[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBXzCByaADAgECAgIE0jANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwRUZXN0
+MCAXDTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRU
+ZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdr
+t6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMQ
+MA4wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOBgQAzVcfIv+Rq1KrMXqIL
+fPq/cWZjgqFZA1RGaGElNaqp+rkJfamq5tDGzckWpebrK+jjRN7yIlcWDtPpy3Gy
+seZfvtBDR0TwJm0S/pQl8prKB4wgALcwe3bmi56Rq85nzY5ZLNcP16LQxL+jAAua
+SwmQUz4bRpckRBj+sIyp1We+pg==
+-----END CERTIFICATE-----
+)";
+static const char kRSAInvalidParam[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBbTCB0KADAgECAgIE0jAUBgkqhkiG9w0BAQsEB2dhcmJhZ2UwDzENMAsGA1UE
+AxMEVGVzdDAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowDzENMAsG
+A1UEAxMEVGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8e
+DZSKTNWXa7epHg1G+92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQt
+S89yIsGjEDAOMAwGA1UdEwQFMAMBAf8wFAYJKoZIhvcNAQELBAdnYXJiYWdlA4GB
+AHTJ6cWWjCNrZhqiWWVI3jdK+h5xpRG8jGMXxR4JnjtoYRRusJLOXhmapwCB6fA0
+4vc+66O27v36yDmQX+tIc/hDrTpKNJptU8q3n2VagREvoHhkOTYkcCeS8vmnMtn8
+5OMNZ/ajVwOssw61GcAlScRqEHkZFBoGp7e+QpgB2tf9
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, AlgorithmParameters) {
+  // P-256 parameters should be omitted, but we accept NULL ones.
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<X509> cert = CertFromPEM(kP256NoParam);
+  ASSERT_TRUE(cert);
+  EXPECT_TRUE(X509_verify(cert.get(), key.get()));
+
+  cert = CertFromPEM(kP256NullParam);
+  ASSERT_TRUE(cert);
+  EXPECT_TRUE(X509_verify(cert.get(), key.get()));
+
+  cert = CertFromPEM(kP256InvalidParam);
+  ASSERT_TRUE(cert);
+  EXPECT_FALSE(X509_verify(cert.get(), key.get()));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
+  EXPECT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
+
+  // RSA parameters should be NULL, but we accept omitted ones.
+  key = PrivateKeyFromPEM(kRSAKey);
+  ASSERT_TRUE(key);
+
+  cert = CertFromPEM(kRSANoParam);
+  ASSERT_TRUE(cert);
+  EXPECT_TRUE(X509_verify(cert.get(), key.get()));
+
+  cert = CertFromPEM(kRSANullParam);
+  ASSERT_TRUE(cert);
+  EXPECT_TRUE(X509_verify(cert.get(), key.get()));
+
+  cert = CertFromPEM(kRSAInvalidParam);
+  ASSERT_TRUE(cert);
+  EXPECT_FALSE(X509_verify(cert.get(), key.get()));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
+  EXPECT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
 }
