@@ -611,7 +611,7 @@ int boringssl_fips_self_test(
     goto err;
   }
 
-  // ECDSA Sign/Verify PWCT
+  // ECDSA Sign/Verify KAT
 
   // The 'k' value for ECDSA is fixed to avoid an entropy draw.
   ec_key->fixed_k = BN_new();
@@ -632,7 +632,13 @@ int boringssl_fips_self_test(
       !BN_bn2bin(sig->s, ecdsa_s_bytes) ||
       !check_test(kECDSASigR, ecdsa_r_bytes, sizeof(kECDSASigR), "ECDSA R") ||
       !check_test(kECDSASigS, ecdsa_s_bytes, sizeof(kECDSASigS), "ECDSA S")) {
-    fprintf(stderr, "ECDSA KAT failed.\n");
+    fprintf(stderr, "ECDSA signature KAT failed.\n");
+    goto err;
+  }
+
+  if (!ECDSA_do_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), sig,
+                       ec_key)) {
+    fprintf(stderr, "ECDSA verification KAT failed.\n");
     goto err;
   }
 
