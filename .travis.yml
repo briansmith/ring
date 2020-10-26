@@ -109,6 +109,16 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
+      rust: stable
+      os: linux
+      dist: trusty
+
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
+      rust: stable
+      os: linux
+      dist: trusty
+
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
@@ -204,6 +214,30 @@ matrix:
             - gcc-7
             - gcc-7-multilib
             - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
+      rust: stable
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
+      rust: stable
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - libc6-dev-i386
           sources:
             - ubuntu-toolchain-r-test
 
@@ -331,6 +365,16 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+      dist: trusty
+
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+      dist: trusty
+
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
@@ -435,6 +479,30 @@ matrix:
             - gcc-7
             - gcc-7-multilib
             - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - libc6-dev-i386
           sources:
             - ubuntu-toolchain-r-test
 
@@ -556,6 +624,16 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
+      rust: beta
+      os: linux
+      dist: trusty
+
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
+      rust: beta
+      os: linux
+      dist: trusty
+
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
@@ -651,6 +729,30 @@ matrix:
             - gcc-7
             - gcc-7-multilib
             - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
+      rust: beta
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - libc6-dev-i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
+      rust: beta
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - libc6-dev-i386
           sources:
             - ubuntu-toolchain-r-test
 

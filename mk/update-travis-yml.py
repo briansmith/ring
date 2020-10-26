@@ -47,7 +47,9 @@ compilers = {
     "armv7-linux-androideabi" : [ "armv7a-linux-androideabi18-clang" ],
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
+    "i686-unknown-linux-musl" : [clang],
     "x86_64-unknown-linux-gnu" : linux_compilers,
+    "x86_64-unknown-linux-musl" : [clang],
     "x86_64-apple-darwin" : osx_compilers,
 }
 
@@ -75,8 +77,10 @@ targets = {
         "aarch64-linux-android",
         "armv7-linux-androideabi",
         "x86_64-unknown-linux-gnu",
+        "x86_64-unknown-linux-musl",
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
+        "i686-unknown-linux-musl",
         "arm-unknown-linux-gnueabihf",
     ],
 }
