@@ -37,11 +37,12 @@ linux_compilers = [
     gcc,
 ]
 
-osx_compilers = [
+apple_compilers = [
      "", # Don't set CC.'
 ]
 
 compilers = {
+    "aarch64-apple-ios" : apple_compilers,
     "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
     "aarch64-linux-android" : [ "aarch64-linux-android21-clang" ],
     "armv7-linux-androideabi" : [ "armv7a-linux-androideabi18-clang" ],
@@ -50,7 +51,7 @@ compilers = {
     "i686-unknown-linux-musl" : [clang],
     "x86_64-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-musl" : [clang],
-    "x86_64-apple-darwin" : osx_compilers,
+    "x86_64-apple-darwin" : apple_compilers,
 }
 
 feature_sets = [
@@ -71,6 +72,7 @@ oss = [
 
 targets = {
     "osx" : [
+        "aarch64-apple-ios",
         "x86_64-apple-darwin",
     ],
     "linux" : [
@@ -136,6 +138,9 @@ def format_entry(os, target, compiler, rust, mode, features):
     if sys == "darwin":
         abi = sys
         sys = "macos"
+    elif sys == "ios":
+        abi = sys
+        sys = "ios"
     elif sys == "androideabi":
         linux_dist = android_linux_dist
         abi = sys

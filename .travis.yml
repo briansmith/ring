@@ -11,6 +11,16 @@ matrix:
     #
     # BEGIN GENERATED
 
+    - env: TARGET_X=aarch64-apple-ios  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
+      rust: stable
+      os: osx
+      osx_image: xcode12
+
+    - env: TARGET_X=aarch64-apple-ios  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
+      rust: stable
+      os: osx
+      osx_image: xcode12
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: osx
@@ -240,6 +250,16 @@ matrix:
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
+
+    - env: TARGET_X=aarch64-apple-ios  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: osx
+      osx_image: xcode12
+
+    - env: TARGET_X=aarch64-apple-ios  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: osx
+      osx_image: xcode12
 
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
@@ -472,6 +492,16 @@ matrix:
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
+
+    - env: TARGET_X=aarch64-apple-ios  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
+      rust: beta
+      os: osx
+      osx_image: xcode12
+
+    - env: TARGET_X=aarch64-apple-ios  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
+      rust: beta
+      os: osx
+      osx_image: xcode12
 
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta

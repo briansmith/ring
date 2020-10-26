@@ -22,6 +22,9 @@ source $HOME/.cargo/env
 run_tests_on_host=1
 
 case $TARGET_X in
+aarch64-apple-ios)
+  run_tests_on_host=
+  ;;
 aarch64-unknown-linux-gnu)
   export QEMU_LD_PREFIX=/usr/aarch64-linux-gnu
   ;;
