@@ -177,7 +177,7 @@ def format_entry(os, target, compiler, rust, mode, features):
     cc = compiler
 
     if os == "osx":
-        os += "\n" + entry_indent + "osx_image: xcode10.1"
+        os += "\n" + entry_indent + "osx_image: xcode12"
 
     compilers = []
     if cc != "":
