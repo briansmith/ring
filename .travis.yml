@@ -14,12 +14,12 @@ matrix:
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode12
 
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode12
 
     - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android21-clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
@@ -244,12 +244,12 @@ matrix:
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode12
 
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode12
 
     - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android21-clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
@@ -476,12 +476,12 @@ matrix:
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode12
 
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode12
 
     - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android21-clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
