@@ -255,7 +255,7 @@ static inline void booth_recode(crypto_word *is_negative, crypto_word *digit,
   // but 'in' seen as (`w+1`)-bit value.
   crypto_word s = ~((in >> w) - 1);
   crypto_word d;
-  d = (1 << (w + 1)) - in - 1;
+  d = ((crypto_word)1u << (w + 1)) - in - 1;
   d = (d & s) | (in & ~s);
   d = (d >> 1) + (d & 1);
 
