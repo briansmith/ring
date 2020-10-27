@@ -112,10 +112,6 @@ entry_packages_template = """
           packages:
             %(packages)s"""
 
-entry_sources_template = """
-          sources:
-            %(sources)s"""
-
 def format_entry(os, target, compiler, rust, mode, features):
     target_words = target.split("-")
     arch = target_words[0]
@@ -134,10 +130,14 @@ def format_entry(os, target, compiler, rust, mode, features):
 
     template = entry_template
 
+    linux_dist = "focal"
+    android_linux_dist = "trusty"
+
     if sys == "darwin":
         abi = sys
         sys = "macos"
     elif sys == "androideabi":
+        linux_dist = android_linux_dist
         abi = sys
         sys = "linux"
         template += """
@@ -148,6 +148,7 @@ def format_entry(os, target, compiler, rust, mode, features):
         - build-tools-26.0.2
         - sys-img-armeabi-v7a-android-18"""
     elif sys == "android":
+        linux_dist = android_linux_dist
         abi = sys
         sys = "linux"
         template += """
@@ -164,19 +165,14 @@ def format_entry(os, target, compiler, rust, mode, features):
 
     if sys == "linux":
         packages = sorted(get_linux_packages_to_install(target, compiler, arch, kcov))
-        sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
-        sources = sorted(list(set(sources_with_dups)))
         template += """
-      dist: trusty"""
+      dist: %s""" % linux_dist
 
     if sys == "linux":
         if packages:
             template += entry_packages_template
-        if sources:
-            template += entry_sources_template
     else:
         packages = []
-        sources = []
 
     cc = compiler
 
@@ -195,7 +191,6 @@ def format_entry(os, target, compiler, rust, mode, features):
             "kcov": "1" if kcov == True else "0",
             "packages" : "\n            ".join(prefix_all("- ", packages)),
             "rust" : rust,
-            "sources" : "\n            ".join(prefix_all("- ", sources)),
             "target" : target,
             "os" : os,
             }
@@ -207,26 +202,24 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
         packages = []
 
     if kcov:
-        packages += [replace_cc_with_cxx(compiler)]
+        packages += ["kcov"]
+
+    qemu = False
 
     if target == "aarch64-unknown-linux-gnu":
+        qemu = True
         packages += ["gcc-aarch64-linux-gnu",
                      "libc6-dev-arm64-cross"]
     if target == "arm-unknown-linux-gnueabihf":
+        qemu = True
         packages += ["gcc-arm-linux-gnueabihf",
                      "libc6-dev-armhf-cross"]
 
-    if arch == "i686":
-        if kcov == True:
-            packages += [replace_cc_with_cxx(compiler) + "-multilib",
-                         "libcurl3:i386",
-                         "libcurl4-openssl-dev:i386",
-                         "libdw-dev:i386",
-                         "libelf-dev:i386",
-                         "libiberty-dev:i386",
-                         "libkrb5-dev:i386",
-                         "libssl-dev:i386"]
+    if qemu:
+        packages += ["binfmt-support",
+                     "qemu-user-binfmt"]
 
+    if arch == "i686":
         if compiler.startswith("clang") or compiler == "":
             packages += ["libc6-dev-i386",
                          "gcc-multilib"]
@@ -235,36 +228,8 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "linux-libc-dev:i386"]
         else:
             raise ValueError("unexpected compiler: %s" % compiler)
-    elif arch == "x86_64":
-        if kcov == True:
-            packages += ["libcurl4-openssl-dev",
-                         "libelf-dev",
-                         "libdw-dev",
-                         "binutils-dev",
-                         "libiberty-dev"]
-    elif arch not in ["aarch64", "arm", "armv7"]:
-        raise ValueError("unexpected arch: %s" % arch)
 
     return packages
-
-def get_sources_for_package(package):
-    ubuntu_toolchain = "ubuntu-toolchain-r-test"
-    if package.startswith("clang-"):
-        _, version = package.split("-")
-        llvm_toolchain = "llvm-toolchain-trusty-%s" % version
-
-        # Stuff in llvm-toolchain-trusty depends on stuff in the toolchain
-        # packages.
-        return [llvm_toolchain, ubuntu_toolchain]
-    elif package.startswith("gcc-"):
-        return [ubuntu_toolchain]
-    else:
-        return []
-
-def replace_cc_with_cxx(compiler):
-    return compiler \
-               .replace("gcc", "g++") \
-               .replace("clang", "clang++")
 
 def main():
     # Make a backup of the file we are about to update.
