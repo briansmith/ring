@@ -59,8 +59,6 @@ if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
 fi
 
 if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
-  rustup target add "$TARGET_X"
-
   # By default cargo/rustc seems to use cc for linking, We installed the
   # multilib support that corresponds to $CC_X but unless cc happens to match
   # $CC_X, that's not the right version. The symptom is a linker error
@@ -73,9 +71,7 @@ if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   fi
 fi
 
-# This stanza is separate from the above because MUSL requires a target install,
-# but does *not* require special linking / multilib.
-if [[ "$TARGET_X" =~ .*"-unknown-linux-musl" ]]; then
+if [[ "$TARGET_X" =~ .*"-unknown-linux-musl" || ! "$TARGET_X" =~ "x86_64" ]]; then
   rustup target add "$TARGET_X"
 fi
 
