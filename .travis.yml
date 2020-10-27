@@ -1,8 +1,4 @@
 language: rust
-cache:
-  directories:
-    - $HOME/kcov-i686-unknown-linux-gnu
-    - $HOME/kcov-x86_64-unknown-linux-gnu
 matrix:
   fast_finish: true
   allow_failures:
@@ -70,200 +66,180 @@ matrix:
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=i686-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
             - gcc-7-multilib
             - linux-libc-dev:i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
             - gcc-7-multilib
             - linux-libc-dev:i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
@@ -320,215 +296,182 @@ matrix:
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
-            - binutils-dev
-            - g++-7
             - gcc-7
-            - libcurl4-openssl-dev
-            - libdw-dev
-            - libelf-dev
-            - libiberty-dev
-          sources:
-            - ubuntu-toolchain-r-test
+            - kcov
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=i686-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
-            - g++-7
-            - g++-7-multilib
             - gcc-7
             - gcc-7-multilib
-            - libcurl3:i386
-            - libcurl4-openssl-dev:i386
-            - libdw-dev:i386
-            - libelf-dev:i386
-            - libiberty-dev:i386
-            - libkrb5-dev:i386
-            - libssl-dev:i386
+            - kcov
             - linux-libc-dev:i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
             - gcc-7-multilib
             - linux-libc-dev:i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
@@ -585,200 +528,180 @@ matrix:
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=i686-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
             - gcc-7-multilib
             - linux-libc-dev:i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-7
             - gcc-7-multilib
             - linux-libc-dev:i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
             - gcc-multilib
             - libc6-dev-i386
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
-      dist: trusty
+      dist: focal
       addons:
         apt:
           packages:
+            - binfmt-support
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
-          sources:
-            - ubuntu-toolchain-r-test
+            - qemu-user-binfmt
 
     # END GENERATED
 

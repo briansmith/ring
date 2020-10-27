@@ -49,15 +49,6 @@ if [[ ! -z "${ANDROID_ABI-}" ]]; then
   rustup default
 fi
 
-if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
-  # We need a newer QEMU than Travis has.
-  # sudo is needed until the PPA and its packages are whitelisted.
-  # See https://github.com/travis-ci/apt-source-whitelist/issues/271
-  sudo add-apt-repository ppa:pietro-monteiro/qemu-backport -y
-  sudo apt-get update -qq
-  sudo apt-get install --no-install-recommends binfmt-support qemu-user-binfmt -y
-fi
-
 if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   # By default cargo/rustc seems to use cc for linking, We installed the
   # multilib support that corresponds to $CC_X but unless cc happens to match
@@ -80,18 +71,6 @@ if [[ ! -z "${CC_X-}" ]]; then
   $CC --version
 else
   cc --version
-fi
-
-# KCOV needs a C++ compiler.
-if [[ "$KCOV" == "1" ]]; then
-  if [[ ! -z "${CC_X-}" ]]; then
-    CXX="${CC_X/clang/clang++}"
-    CXX="${CC_X/gcc/g++}"
-    export CXX=$CXX
-    $CXX --version
-  else
-    c++ --version
-  fi
 fi
 
 cargo version
@@ -157,7 +136,6 @@ if [[ "$KCOV" == "1" ]]; then
   RUSTDOCFLAGS="-Cpanic=abort" \
   RUSTFLAGS="-Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Cpanic=abort -Zpanic_abort_tests -Zprofile" \
     cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X
-  mk/travis-install-kcov.sh
   for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
     ${HOME}/kcov-${TARGET_X}/bin/kcov \
       --verify \
