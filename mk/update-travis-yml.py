@@ -24,8 +24,7 @@ rusts = [
 ]
 
 gcc = "gcc-7"
-#Clang 5.0 is the default compiler on Travis CI for Ubuntu 14.04.
-clang = "clang"
+clang = "clang-10"
 
 linux_compilers = [
     # Assume the default compiler is GCC.

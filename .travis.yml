@@ -83,15 +83,23 @@ matrix:
       os: linux
       dist: focal
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
@@ -111,15 +119,23 @@ matrix:
           packages:
             - gcc-7
 
-    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
@@ -165,23 +181,25 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
@@ -207,23 +225,25 @@ matrix:
             - gcc-7-multilib
             - linux-libc-dev:i386
 
-    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
@@ -323,15 +343,23 @@ matrix:
       os: linux
       dist: focal
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
       rust: nightly
@@ -352,15 +380,23 @@ matrix:
           packages:
             - gcc-7
 
-    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
@@ -406,23 +442,25 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
@@ -449,23 +487,25 @@ matrix:
             - gcc-7-multilib
             - linux-libc-dev:i386
 
-    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
@@ -565,15 +605,23 @@ matrix:
       os: linux
       dist: focal
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
@@ -593,15 +641,23 @@ matrix:
           packages:
             - gcc-7
 
-    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
       dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
@@ -647,23 +703,25 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
@@ -689,23 +747,25 @@ matrix:
             - gcc-7-multilib
             - linux-libc-dev:i386
 
-    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
       os: linux
       dist: focal
       addons:
         apt:
           packages:
+            - clang-10
             - gcc-multilib
             - libc6-dev-i386
 
