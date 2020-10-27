@@ -2136,7 +2136,7 @@ my ($M1,$T2a,$T2b,$TMP2,$M2,$T2a,$T2b,$TMP2)=map("%xmm$_",(8..15));
 
 $code.=<<___;
 ################################################################################
-# void GFp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, int index);
+# void GFp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, crypto_word index);
 .globl	GFp_nistz256_select_w5
 .type	GFp_nistz256_select_w5,\@abi-omnipotent
 .align	32
@@ -2236,7 +2236,7 @@ $code.=<<___;
 .size	GFp_nistz256_select_w5,.-GFp_nistz256_select_w5
 
 ################################################################################
-# void GFp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
+# void GFp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, crypto_word index);
 .globl	GFp_nistz256_select_w7
 .type	GFp_nistz256_select_w7,\@abi-omnipotent
 .align	32
@@ -2333,7 +2333,7 @@ my ($M1,$T1a,$T1b,$T1c,$TMP1)=map("%ymm$_",(10..14));
 
 $code.=<<___;
 ################################################################################
-# void GFp_nistz256_avx2_select_w5(uint64_t *val, uint64_t *in_t, int index);
+# void GFp_nistz256_avx2_select_w5(uint64_t *val, uint64_t *in_t, crypto_word index);
 .type	GFp_nistz256_avx2_select_w5,\@abi-omnipotent
 .align	32
 GFp_nistz256_avx2_select_w5:
@@ -2440,7 +2440,7 @@ my ($M2,$T2a,$T2b,$TMP2)=map("%ymm$_",(12..15));
 $code.=<<___;
 
 ################################################################################
-# void GFp_nistz256_avx2_select_w7(uint64_t *val, uint64_t *in_t, int index);
+# void GFp_nistz256_avx2_select_w7(uint64_t *val, uint64_t *in_t, crypto_word index);
 .globl	GFp_nistz256_avx2_select_w7
 .type	GFp_nistz256_avx2_select_w7,\@abi-omnipotent
 .align	32
