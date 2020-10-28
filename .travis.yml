@@ -205,7 +205,6 @@ matrix:
         apt:
           packages:
             - gcc-multilib
-            - libc6-dev-i386
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=stable
       rust: stable
@@ -215,7 +214,6 @@ matrix:
         apt:
           packages:
             - gcc-multilib
-            - libc6-dev-i386
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=stable
       rust: stable
@@ -437,7 +435,6 @@ matrix:
         apt:
           packages:
             - gcc-multilib
-            - libc6-dev-i386
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
@@ -447,7 +444,6 @@ matrix:
         apt:
           packages:
             - gcc-multilib
-            - libc6-dev-i386
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
@@ -667,7 +663,6 @@ matrix:
         apt:
           packages:
             - gcc-multilib
-            - libc6-dev-i386
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=beta
       rust: beta
@@ -677,7 +672,6 @@ matrix:
         apt:
           packages:
             - gcc-multilib
-            - libc6-dev-i386
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=beta
       rust: beta
