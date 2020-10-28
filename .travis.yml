@@ -705,4 +705,5 @@ matrix:
 
     # END GENERATED
 
+install: mk/install-build-tools.sh
 script: if [[ "$TARGET_X" =~ ^a*.*linux-.* && "$MODE_X" == "RELWITHDEBINFO" ]]; then travis_wait 60 mk/travis.sh; else mk/travis.sh; fi
