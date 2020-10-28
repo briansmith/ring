@@ -17,7 +17,9 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
-printenv
+source $HOME/.cargo/env
+
+run_tests_on_host=1
 
 case $TARGET_X in
 aarch64-unknown-linux-gnu)
@@ -26,28 +28,13 @@ aarch64-unknown-linux-gnu)
 arm-unknown-linux-gnueabihf)
   export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
   ;;
-aarch64-linux-android)
-  # XXX: Tests are built but not run because we couldn't get the emulator to work; see
-  # https://github.com/briansmith/ring/issues/838
-  export ANDROID_ABI=aarch64
-  ;;
-armv7-linux-androideabi)
-  # XXX: Tests are built but not run because we couldn't get the emulator to work; see
-  # https://github.com/briansmith/ring/issues/838
-  # export ANDROID_SYSTEM_IMAGE="system-images;android-18;default;armeabi-v7a"
-  export ANDROID_ABI=armeabi-v7a
+aarch64-linux-android|armv7-linux-androideabi)
+  run_tests_on_host=
+  PATH=$HOME/.cargo/bin:$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
   ;;
 esac
 
-if [[ ! -z "${ANDROID_ABI-}" ]]; then
-  # install the android sdk/ndk
-  mkdir "$ANDROID_HOME/licenses" || true
-  echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
-  sdkmanager ndk-bundle
-  curl -sSf https://build.travis-ci.org/files/rustup-init.sh | sh -s -- --default-toolchain=$RUST_X -y
-  export PATH=$HOME/.cargo/bin:$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
-  rustup default
-fi
+printenv
 
 if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   # By default cargo/rustc seems to use cc for linking, We installed the
@@ -83,38 +70,37 @@ else
   target_dir=target/$TARGET_X/debug
 fi
 
-if [[ -z "${ANDROID_ABI-}" ]]; then
-  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
-else
-  cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
+no_run=
+if [[ -z $run_tests_on_host ]]; then
+  no_run=--no-run
+fi
 
-  if [[ ! -z "${ANDROID_SYSTEM_IMAGE-}" ]]; then
-    # Building the AVD is slow. Do it here, after we build the code so that any
-    # build breakage is reported sooner, instead of being delayed by this.
-    sdkmanager tools
-    echo no | avdmanager create avd --force --name $ANDROID_ABI -k $ANDROID_SYSTEM_IMAGE --abi $ANDROID_ABI
-    avdmanager list avd
+cargo test -vv -j2 ${mode-} ${no_run-} ${FEATURES_X-} --target=$TARGET_X
 
-    $ANDROID_HOME/emulator/emulator @$ANDROID_ABI -memory 2048 -no-skin -no-boot-anim -no-window &
-    adb wait-for-device
+# Android tests in emulator
+#
+# XXX: Tests are built but not run because we couldn't get the emulator to work; see
+# https://github.com/briansmith/ring/issues/838
+if false; then
+  $ANDROID_HOME/emulator/emulator @$TARGET_X -memory 2048 -no-skin -no-boot-anim -no-window &
+  adb wait-for-device
 
-    # Run the unit tests first. The file named ring-<something> in $target_dir is
-    # the test executable.
+  # Run the unit tests first. The file named ring-<something> in $target_dir is
+  # the test executable.
 
-    find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
-      -exec adb push {} /data/ring-test \;
-    adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
-    grep "test result: ok" /tmp/ring-test-log
+  find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
+    -exec adb push {} /data/ring-test \;
+  adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
+  grep "test result: ok" /tmp/ring-test-log
 
-    for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f ! -name "*.*" `; do
-        adb push $test_exe /data/`basename $test_exe`
-        adb shell "cd /data && ./`basename $test_exe`" 2>&1 | \
-            tee /tmp/`basename $test_exe`-log
-        grep "test result: ok" /tmp/`basename $test_exe`-log
-    done
+  for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f ! -name "*.*" `; do
+      adb push $test_exe /data/`basename $test_exe`
+      adb shell "cd /data && ./`basename $test_exe`" 2>&1 | \
+          tee /tmp/`basename $test_exe`-log
+      grep "test result: ok" /tmp/`basename $test_exe`-log
+  done
 
-     adb emu kill
-  fi
+   adb emu kill
 fi
 
 if [[ "$KCOV" == "1" ]]; then
