@@ -35,19 +35,6 @@ apple_compilers = [
      "", # Don't set CC.'
 ]
 
-compilers = {
-    "aarch64-apple-ios" : apple_compilers,
-    "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
-    "aarch64-linux-android" : [ "aarch64-linux-android21-clang" ],
-    "armv7-linux-androideabi" : [ "armv7a-linux-androideabi18-clang" ],
-    "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
-    "i686-unknown-linux-gnu" : linux_compilers,
-    "i686-unknown-linux-musl" : [clang],
-    "x86_64-unknown-linux-gnu" : linux_compilers,
-    "x86_64-unknown-linux-musl" : [clang],
-    "x86_64-apple-darwin" : apple_compilers,
-}
-
 feature_sets = [
     "",
 ]
@@ -59,34 +46,29 @@ modes = [
 
 # Mac OS X is first because we don't want to have to wait until all the Linux
 # configurations have been built to find out that there is a failure on Mac.
-oss = [
-    "osx",
-    "linux",
-]
-
 targets = {
     "osx" : [
-        "aarch64-apple-ios",
-        "x86_64-apple-darwin",
+        ("aarch64-apple-ios", apple_compilers),
+        ("x86_64-apple-darwin", apple_compilers),
     ],
     "linux" : [
-        "aarch64-linux-android",
-        "armv7-linux-androideabi",
-        "x86_64-unknown-linux-gnu",
-        "x86_64-unknown-linux-musl",
-        "aarch64-unknown-linux-gnu",
-        "i686-unknown-linux-gnu",
-        "i686-unknown-linux-musl",
-        "arm-unknown-linux-gnueabihf",
+        ("aarch64-linux-android", [ "aarch64-linux-android21-clang" ]),
+        ("armv7-linux-androideabi", [ "armv7a-linux-androideabi18-clang" ]),
+        ("x86_64-unknown-linux-gnu", linux_compilers),
+        ("x86_64-unknown-linux-musl", [clang]),
+        ("aarch64-unknown-linux-gnu", [ "aarch64-linux-gnu-gcc" ]),
+        ("i686-unknown-linux-gnu", linux_compilers),
+        ("i686-unknown-linux-musl", [clang]),
+        ("arm-unknown-linux-gnueabihf", [ "arm-linux-gnueabihf-gcc" ]),
     ],
 }
 
 def format_entries():
     return "\n".join([format_entry(os, target, compiler, rust, mode, features)
                       for rust in rusts
-                      for os in oss
-                      for target in targets[os]
-                      for compiler in compilers[target]
+                      for os in targets.keys()
+                      for (target, compilers) in targets[os]
+                      for compiler in compilers
                       for mode in modes
                       for features in feature_sets])
 
