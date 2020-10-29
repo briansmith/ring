@@ -23,17 +23,14 @@ rusts = [
     "beta",
 ]
 
-gcc = "gcc-7"
 clang = "clang-10"
 
 linux_compilers = [
     # Assume the default compiler is GCC.
-    # GCC 4.8 is the default compiler on Travis CI for Ubuntu 14.04.
+    # GCC 9 is the default compiler on Travis CI for Ubuntu Focal.
     "",
 
     clang,
-
-    gcc,
 ]
 
 apple_compilers = [
@@ -126,7 +123,7 @@ def format_entry(os, target, compiler, rust, mode, features):
     #
     # DEBUG mode is needed because debug symbols are needed for coverage
     # tracking.
-    kcov = (os == "linux" and compiler == gcc and rust == "nightly" and
+    kcov = (os == "linux" and compiler == clang and rust == "nightly" and
             mode == "DEBUG")
 
     template = entry_template
