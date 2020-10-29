@@ -474,6 +474,12 @@ DECLARE_ASN1_FUNCTIONS(AUTHORITY_KEYID)
 
 DECLARE_ASN1_FUNCTIONS(GENERAL_NAME)
 OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *a);
+
+// GENERAL_NAME_cmp returns zero if |a| and |b| are equal and a non-zero
+// value otherwise. Note this function does not provide a comparison suitable
+// for sorting.
+//
+// TODO(davidben): Const-correct this function.
 OPENSSL_EXPORT int GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b);
 
 

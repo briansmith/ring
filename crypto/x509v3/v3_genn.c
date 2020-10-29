@@ -72,8 +72,9 @@ ASN1_SEQUENCE(OTHERNAME) = {
 IMPLEMENT_ASN1_FUNCTIONS(OTHERNAME)
 
 ASN1_SEQUENCE(EDIPARTYNAME) = {
-        ASN1_IMP_OPT(EDIPARTYNAME, nameAssigner, DIRECTORYSTRING, 0),
-        ASN1_IMP_OPT(EDIPARTYNAME, partyName, DIRECTORYSTRING, 1)
+        /* DirectoryString is a CHOICE type, so use explicit tagging. */
+        ASN1_EXP_OPT(EDIPARTYNAME, nameAssigner, DIRECTORYSTRING, 0),
+        ASN1_EXP(EDIPARTYNAME, partyName, DIRECTORYSTRING, 1)
 } ASN1_SEQUENCE_END(EDIPARTYNAME)
 
 IMPLEMENT_ASN1_FUNCTIONS(EDIPARTYNAME)
@@ -102,6 +103,24 @@ IMPLEMENT_ASN1_FUNCTIONS(GENERAL_NAMES)
 
 IMPLEMENT_ASN1_DUP_FUNCTION(GENERAL_NAME)
 
+static int edipartyname_cmp(const EDIPARTYNAME *a, const EDIPARTYNAME *b)
+{
+    /* nameAssigner is optional and may be NULL. */
+    if (a->nameAssigner == NULL) {
+        if (b->nameAssigner != NULL) {
+            return -1;
+        }
+    } else {
+        if (b->nameAssigner == NULL ||
+            ASN1_STRING_cmp(a->nameAssigner, b->nameAssigner) != 0) {
+            return -1;
+        }
+    }
+
+    /* partyName may not be NULL. */
+    return ASN1_STRING_cmp(a->partyName, b->partyName);
+}
+
 /* Returns 0 if they are equal, != 0 otherwise. */
 int GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b)
 {
@@ -111,8 +130,11 @@ int GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b)
         return -1;
     switch (a->type) {
     case GEN_X400:
+        result = ASN1_TYPE_cmp(a->d.x400Address, b->d.x400Address);
+        break;
+
     case GEN_EDIPARTY:
-        result = ASN1_TYPE_cmp(a->d.other, b->d.other);
+        result = edipartyname_cmp(a->d.ediPartyName, b->d.ediPartyName);
         break;
 
     case GEN_OTHERNAME:
@@ -159,8 +181,11 @@ void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value)
 {
     switch (type) {
     case GEN_X400:
+        a->d.x400Address = value;
+        break;
+
     case GEN_EDIPARTY:
-        a->d.other = value;
+        a->d.ediPartyName = value;
         break;
 
     case GEN_OTHERNAME:
@@ -194,8 +219,10 @@ void *GENERAL_NAME_get0_value(const GENERAL_NAME *a, int *ptype)
         *ptype = a->type;
     switch (a->type) {
     case GEN_X400:
+        return a->d.x400Address;
+
     case GEN_EDIPARTY:
-        return a->d.other;
+        return a->d.ediPartyName;
 
     case GEN_OTHERNAME:
         return a->d.otherName;
