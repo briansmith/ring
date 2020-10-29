@@ -739,6 +739,33 @@ static bool ext_ech_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
+static bool ext_ech_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                                      CBS *contents) {
+  if (contents != nullptr) {
+    hs->ech_present = true;
+    return true;
+  }
+  return true;
+}
+
+static bool ext_ech_is_inner_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
+  return true;
+}
+
+static bool ext_ech_is_inner_parse_clienthello(SSL_HANDSHAKE *hs,
+                                               uint8_t *out_alert,
+                                               CBS *contents) {
+  if (contents == nullptr) {
+    return true;
+  }
+  if (CBS_len(contents) > 0) {
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return false;
+  }
+  hs->ech_is_inner_present = true;
+  return true;
+}
+
 
 // Renegotiation indication.
 //
@@ -2435,7 +2462,8 @@ bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
   return true;
 }
 
-bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
+bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out,
+                                       bool dry_run) {
   uint16_t group_id;
   CBB kse_bytes, public_key;
   if (!tls1_get_shared_group(hs, &group_id) ||
@@ -2448,10 +2476,10 @@ bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_flush(out)) {
     return false;
   }
-
-  hs->ecdh_public_key.Reset();
-
-  hs->new_session->group_id = group_id;
+  if (!dry_run) {
+    hs->ecdh_public_key.Reset();
+    hs->new_session->group_id = group_id;
+  }
   return true;
 }
 
@@ -3128,7 +3156,15 @@ static const struct tls_extension kExtensions[] = {
     NULL,
     ext_ech_add_clienthello,
     ext_ech_parse_serverhello,
-    ignore_parse_clienthello,
+    ext_ech_parse_clienthello,
+    dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_ech_is_inner,
+    NULL,
+    ext_ech_is_inner_add_clienthello,
+    forbid_parse_serverhello,
+    ext_ech_is_inner_parse_clienthello,
     dont_add_serverhello,
   },
   {

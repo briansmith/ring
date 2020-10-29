@@ -16246,6 +16246,95 @@ func addEncryptedClientHelloTests() {
 		expectedLocalError: "remote error: error decoding message",
 		expectedError:      ":ERROR_PARSING_EXTENSION:",
 	})
+
+	// Test that the server responds to an empty ECH extension with the acceptance
+	// confirmation.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ECH-Server-ECHIsInner",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendECHIsInner:        []byte{},
+				ExpectServerAcceptECH: true,
+			},
+		},
+	})
+
+	// Test that server fails the handshake when it sees a nonempty ech_is_inner
+	// extension.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ECH-Server-ECHIsInner-NotEmpty",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendECHIsInner: []byte{42, 42, 42},
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "remote error: illegal parameter",
+		expectedError:      ":ERROR_PARSING_EXTENSION:",
+	})
+
+	// When ech_is_inner extension is absent, the server should not accept ECH.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ECH-Server-ECHIsInner-Absent",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExpectServerAcceptECH: false,
+			},
+		},
+	})
+
+	// Test that a TLS 1.3 server that receives an ech_is_inner extension can
+	// negotiate TLS 1.2 without clobbering the downgrade signal.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ECH-Server-ECHIsInner-Absent-TLS12",
+		config: Config{
+			MinVersion: VersionTLS12,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				// Omit supported_versions extension so the server negotiates
+				// TLS 1.2.
+				OmitSupportedVersions: true,
+				SendECHIsInner:        []byte{},
+			},
+		},
+		// Check that the client sees the TLS 1.3 downgrade signal in
+		// ServerHello.random.
+		shouldFail:         true,
+		expectedLocalError: "tls: downgrade from TLS 1.3 detected",
+	})
+
+	// Test that the handshake fails when the client sends both
+	// encrypted_client_hello and ech_is_inner extensions.
+	//
+	// TODO(dmcardle) Replace this test once runner is capable of sending real
+	// ECH extensions. The equivalent test will send ech_is_inner and a real
+	// encrypted_client_hello extension derived from a key unknown to the
+	// server.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ECH-Server-EncryptedClientHello-ECHIsInner",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendECHIsInner:                      []byte{},
+				SendPlaceholderEncryptedClientHello: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "remote error: illegal parameter",
+		expectedError:      ":UNEXPECTED_EXTENSION:",
+	})
 }
 
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {

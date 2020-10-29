@@ -19,6 +19,8 @@ import (
 	"math/big"
 	"net"
 	"time"
+
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
 )
 
 type clientHandshakeState struct {
@@ -122,6 +124,7 @@ func (c *Conn) clientHandshake() error {
 		ocspStapling:            !c.config.Bugs.NoOCSPStapling,
 		sctListSupported:        !c.config.Bugs.NoSignedCertificateTimestamps,
 		serverName:              c.config.ServerName,
+		echIsInner:              c.config.Bugs.SendECHIsInner,
 		supportedCurves:         c.config.curvePreferences(),
 		supportedPoints:         []uint8{pointFormatUncompressed},
 		nextProtoNeg:            len(c.config.NextProtos) > 0,
@@ -209,6 +212,16 @@ func (c *Conn) clientHandshake() error {
 
 	for protocol, _ := range c.config.ApplicationSettings {
 		hello.alpsProtocols = append(hello.alpsProtocols, protocol)
+	}
+
+	if c.config.Bugs.SendPlaceholderEncryptedClientHello {
+		hello.clientECH = &clientECH{
+			hpkeKDF:  hpke.HKDFSHA256,
+			hpkeAEAD: hpke.AES128GCM,
+			configID: []byte{0x02, 0x0d, 0xe8, 0xae, 0xf5, 0x8b, 0x59, 0xb5},
+			enc:      []byte{0xe2, 0xf0, 0x96, 0x64, 0x18, 0x35, 0x10, 0xb3},
+			payload:  []byte{0xa8, 0x53, 0x3a, 0x8d, 0xe8, 0x5f, 0x7c, 0xd7},
+		}
 	}
 
 	var keyShares map[CurveID]ecdhCurve
@@ -740,13 +753,13 @@ NextCipherSuite:
 		hs.writeServerHash(helloRetryRequest.marshal())
 		hs.writeClientHash(secondHelloBytes)
 	}
-	hs.writeServerHash(hs.serverHello.marshal())
 
 	if c.vers >= VersionTLS13 {
 		if err := hs.doTLS13Handshake(); err != nil {
 			return err
 		}
 	} else {
+		hs.writeServerHash(hs.serverHello.marshal())
 		if c.config.Bugs.EarlyChangeCipherSpec > 0 {
 			hs.establishKeys()
 			c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
@@ -839,10 +852,6 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		return errors.New("tls: session IDs did not match.")
 	}
 
-	// Once the PRF hash is known, TLS 1.3 does not require a handshake
-	// buffer.
-	hs.finishedHash.discardHandshakeBuffer()
-
 	zeroSecret := hs.finishedHash.zeroSecret()
 
 	// Resolve PSK and compute the early secret.
@@ -890,6 +899,25 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		hs.finishedHash.nextSecret()
 		hs.finishedHash.addEntropy(zeroSecret)
 	}
+
+	// Determine whether the server indicated ECH acceptance.
+
+	// Generate ServerHelloECHConf, which is identical to the ServerHello except
+	// that the last 8 bytes of the random value are zeroes.
+	echAcceptConfirmation := hs.finishedHash.deriveSecretPeek([]byte("ech accept confirmation"), hs.serverHello.marshalForECHConf())
+	serverAcceptedECH := bytes.Equal(echAcceptConfirmation[:8], hs.serverHello.random[24:])
+	if c.config.Bugs.ExpectServerAcceptECH && !serverAcceptedECH {
+		return errors.New("tls: server did not indicate ECH acceptance")
+	}
+	if !c.config.Bugs.ExpectServerAcceptECH && serverAcceptedECH {
+		return errors.New("tls: server indicated ECH acceptance")
+	}
+
+	// Once the PRF hash is known, TLS 1.3 does not require a handshake
+	// buffer.
+	hs.finishedHash.discardHandshakeBuffer()
+
+	hs.writeServerHash(hs.serverHello.marshal())
 
 	// Derive handshake traffic keys and switch read key to handshake
 	// traffic key.

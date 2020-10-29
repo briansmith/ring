@@ -303,6 +303,7 @@ type clientHelloMsg struct {
 	nextProtoNeg            bool
 	serverName              string
 	clientECH               *clientECH
+	echIsInner              []byte
 	ocspStapling            bool
 	supportedCurves         []CurveID
 	supportedPoints         []uint8
@@ -422,7 +423,6 @@ func (m *clientHelloMsg) marshal() []byte {
 		})
 	}
 	if m.clientECH != nil {
-		// https://tools.ietf.org/html/draft-ietf-tls-esni-09
 		body := newByteBuilder()
 		body.addU16(m.clientECH.hpkeKDF)
 		body.addU16(m.clientECH.hpkeAEAD)
@@ -433,6 +433,12 @@ func (m *clientHelloMsg) marshal() []byte {
 		extensions = append(extensions, extension{
 			id:   extensionEncryptedClientHello,
 			body: body.finish(),
+		})
+	}
+	if m.echIsInner != nil {
+		extensions = append(extensions, extension{
+			id:   extensionECHIsInner,
+			body: m.echIsInner,
 		})
 	}
 	if m.ocspStapling {
@@ -1267,6 +1273,16 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 
 	return true
+}
+
+// marshalForECHConf marshals |m|, but zeroes out the last 8 bytes of the
+// ServerHello.random.
+func (m *serverHelloMsg) marshalForECHConf() []byte {
+	serverHelloECHConf := *m
+	serverHelloECHConf.raw = nil
+	serverHelloECHConf.random = make([]byte, 32)
+	copy(serverHelloECHConf.random[:24], m.random)
+	return serverHelloECHConf.marshal()
 }
 
 type encryptedExtensionsMsg struct {

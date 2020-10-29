@@ -457,6 +457,16 @@ func (h *finishedHash) deriveSecret(label []byte) []byte {
 	return hkdfExpandLabel(h.hash, h.secret, label, h.appendContextHashes(nil), h.hash.Size())
 }
 
+// deriveSecretPeek is the same as deriveSecret, but it enables the caller to
+// tentatively append messages to the transcript. The |extraMessages| parameter
+// contains the bytes of these tentative messages.
+func (h *finishedHash) deriveSecretPeek(label []byte, extraMessages []byte) []byte {
+	hashPeek := h.hash.New()
+	hashPeek.Write(h.buffer)
+	hashPeek.Write(extraMessages)
+	return hkdfExpandLabel(h.hash, h.secret, label, hashPeek.Sum(nil), h.hash.Size())
+}
+
 // The following are context strings for CertificateVerify in TLS 1.3.
 var (
 	clientCertificateVerifyContextTLS13 = []byte("TLS 1.3, client CertificateVerify")

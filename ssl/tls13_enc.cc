@@ -507,4 +507,40 @@ bool tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
   return true;
 }
 
+bool tls13_ech_accept_confirmation(
+    SSL_HANDSHAKE *hs, bssl::Span<uint8_t> out,
+    bssl::Span<const uint8_t> server_hello_ech_conf) {
+  // Compute the hash of the transcript concatenated with
+  // |server_hello_ech_conf| without modifying |hs->transcript|.
+  uint8_t context_hash[EVP_MAX_MD_SIZE];
+  unsigned context_hash_len;
+  ScopedEVP_MD_CTX ctx;
+  if (!hs->transcript.CopyToHashContext(ctx.get(), hs->transcript.Digest()) ||
+      !EVP_DigestUpdate(ctx.get(), server_hello_ech_conf.data(),
+                        server_hello_ech_conf.size()) ||
+      !EVP_DigestFinal_ex(ctx.get(), context_hash, &context_hash_len)) {
+    return false;
+  }
+
+  // Per draft-ietf-tls-esni-09, accept_confirmation is computed with
+  // Derive-Secret, which derives a secret of size Hash.length. That value is
+  // then truncated to the first 8 bytes. Note this differs from deriving an
+  // 8-byte secret because the target length is included in the derivation.
+  uint8_t accept_confirmation_buf[EVP_MAX_MD_SIZE];
+  bssl::Span<uint8_t> accept_confirmation =
+      MakeSpan(accept_confirmation_buf, hs->transcript.DigestLen());
+  if (!hkdf_expand_label(accept_confirmation, hs->transcript.Digest(),
+                         hs->secret(), label_to_span("ech accept confirmation"),
+                         MakeConstSpan(context_hash, context_hash_len))) {
+    return false;
+  }
+
+  if (out.size() > accept_confirmation.size()) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+  OPENSSL_memcpy(out.data(), accept_confirmation.data(), out.size());
+  return true;
+}
+
 BSSL_NAMESPACE_END

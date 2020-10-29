@@ -1419,6 +1419,15 @@ bool tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
                              const SSLMessage &msg, CBS *binders);
 
 
+// Encrypted Client Hello.
+
+// tls13_ech_accept_confirmation computes the server's ECH acceptance signal,
+// writing it to |out|. It returns true on success, and false on failure.
+bool tls13_ech_accept_confirmation(
+    SSL_HANDSHAKE *hs, bssl::Span<uint8_t> out,
+    bssl::Span<const uint8_t> server_hello_ech_conf);
+
+
 // Handshake functions.
 
 enum ssl_hs_wait_t {
@@ -1720,6 +1729,14 @@ struct SSL_HANDSHAKE {
   // key_block is the record-layer key block for TLS 1.2 and earlier.
   Array<uint8_t> key_block;
 
+  // ech_present, on the server, indicates whether the ClientHello contained an
+  // encrypted_client_hello extension.
+  bool ech_present : 1;
+
+  // ech_is_inner_present, on the server, indicates whether the ClientHello
+  // contained an ech_is_inner extension.
+  bool ech_is_inner_present : 1;
+
   // scts_requested is true if the SCT extension is in the ClientHello.
   bool scts_requested : 1;
 
@@ -1886,7 +1903,8 @@ bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
 bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
                                          Array<uint8_t> *out_secret,
                                          uint8_t *out_alert, CBS *contents);
-bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
+bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out,
+                                       bool dry_run);
 
 bool ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
                                               uint8_t *out_alert,
