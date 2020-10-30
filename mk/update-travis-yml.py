@@ -25,11 +25,9 @@ rusts = [
 
 clang = "clang-10"
 
+# GCC 4.8 and GCC 9 are tested in less thoroughly in configurations hard-coded
+# in .travis.yml.
 linux_compilers = [
-    # Assume the default compiler is GCC.
-    # GCC 9 is the default compiler on Travis CI for Ubuntu Focal.
-    "",
-
     clang,
 ]
 
