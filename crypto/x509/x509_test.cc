@@ -472,6 +472,20 @@ recgVPpVS7B+d9g4EwtZXIh4lodTBDHBBw==
 -----END CERTIFICATE-----
 )";
 
+// kX25519 is the example X25519 certificate from
+// https://tools.ietf.org/html/rfc8410#section-10.2
+static const char kX25519Cert[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBLDCB36ADAgECAghWAUdKKo3DMDAFBgMrZXAwGTEXMBUGA1UEAwwOSUVURiBUZX
+N0IERlbW8wHhcNMTYwODAxMTIxOTI0WhcNNDAxMjMxMjM1OTU5WjAZMRcwFQYDVQQD
+DA5JRVRGIFRlc3QgRGVtbzAqMAUGAytlbgMhAIUg8AmJMKdUdIt93LQ+91oNvzoNJj
+ga9OukqY6qm05qo0UwQzAPBgNVHRMBAf8EBTADAQEAMA4GA1UdDwEBAAQEAwIDCDAg
+BgNVHQ4BAQAEFgQUmx9e7e0EM4Xk97xiPFl1uQvIuzswBQYDK2VwA0EAryMB/t3J5v
+/BzKc9dNZIpDmAgs3babFOTQbs+BolzlDUwsPrdGxO3YNGhW7Ibz3OGhhlxXrCe1Cg
+w1AH9efZBw==
+-----END CERTIFICATE-----
+)";
+
 // kSANTypesLeaf is a leaf certificate (signed by |kSANTypesRoot|) which
 // contains SANS for example.com, test@example.com, 127.0.0.1, and
 // https://example.com/. (The latter is useless for now since crypto/x509
@@ -1472,6 +1486,28 @@ TEST(X509Test, TestEd25519BadParameters) {
   ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
   ASSERT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
   ERR_clear_error();
+}
+
+TEST(X509Test, TestX25519) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kX25519Cert));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  EXPECT_EQ(EVP_PKEY_id(pkey.get()), EVP_PKEY_X25519);
+
+  constexpr uint8_t kExpectedPublicValue[] = {
+      0x85, 0x20, 0xf0, 0x09, 0x89, 0x30, 0xa7, 0x54, 0x74, 0x8b, 0x7d,
+      0xdc, 0xb4, 0x3e, 0xf7, 0x5a, 0x0d, 0xbf, 0x3a, 0x0d, 0x26, 0x38,
+      0x1a, 0xf4, 0xeb, 0xa4, 0xa9, 0x8e, 0xaa, 0x9b, 0x4e, 0x6a,
+  };
+  uint8_t public_value[sizeof(kExpectedPublicValue)];
+  size_t public_value_size = sizeof(public_value);
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), public_value,
+                                          &public_value_size));
+  EXPECT_EQ(Bytes(kExpectedPublicValue),
+            Bytes(public_value, public_value_size));
 }
 
 static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
