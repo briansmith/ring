@@ -646,7 +646,6 @@ OPENSSL_EXPORT int 		ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b)
 OPENSSL_EXPORT int 		ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
 OPENSSL_EXPORT void		ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
 OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *x);
-OPENSSL_EXPORT void ASN1_STRING_length_set(ASN1_STRING *x, int n);
 OPENSSL_EXPORT int ASN1_STRING_type(const ASN1_STRING *x);
 OPENSSL_EXPORT unsigned char * ASN1_STRING_data(ASN1_STRING *x);
 OPENSSL_EXPORT const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *x);
