@@ -1510,6 +1510,18 @@ TEST(X509Test, TestX25519) {
             Bytes(public_value, public_value_size));
 }
 
+static bssl::UniquePtr<X509> ReencodeCertificate(X509 *cert) {
+  uint8_t *der = nullptr;
+  int len = i2d_X509(cert, &der);
+  bssl::UniquePtr<uint8_t> free_der(der);
+  if (len <= 0) {
+    return nullptr;
+  }
+
+  const uint8_t *inp = der;
+  return bssl::UniquePtr<X509>(d2i_X509(nullptr, &inp, len));
+}
+
 static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   // Make a certificate like signed with |md_ctx|'s settings.'
   bssl::UniquePtr<X509> cert(CertFromPEM(kLeafPEM));
@@ -1519,7 +1531,14 @@ static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
 
   // Ensure that |pkey| may still be used to verify the resulting signature. All
   // settings in |md_ctx| must have been serialized appropriately.
-  return !!X509_verify(cert.get(), pkey);
+  if (!X509_verify(cert.get(), pkey)) {
+    return false;
+  }
+
+  // Re-encode the certificate. X509 objects contain a cached TBSCertificate
+  // encoding and |X509_sign_ctx| should have refreshed that cache.
+  bssl::UniquePtr<X509> copy = ReencodeCertificate(cert.get());
+  return copy && X509_verify(copy.get(), pkey);
 }
 
 TEST(X509Test, RSASign) {
@@ -1539,6 +1558,83 @@ TEST(X509Test, RSASign) {
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()));
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pkey.get()));
+}
+
+// Test the APIs for manually signing a certificate.
+TEST(X509Test, RSASignManual) {
+  const int kSignatureNID = NID_sha384WithRSAEncryption;
+  const EVP_MD *kSignatureHash = EVP_sha384();
+
+  bssl::UniquePtr<EVP_PKEY> pkey(PrivateKeyFromPEM(kRSAKey));
+  ASSERT_TRUE(pkey);
+  bssl::UniquePtr<X509_ALGOR> algor(X509_ALGOR_new());
+  ASSERT_TRUE(algor);
+  ASSERT_TRUE(X509_ALGOR_set0(algor.get(), OBJ_nid2obj(kSignatureNID),
+                              V_ASN1_NULL, nullptr));
+
+  // Test certificates made both from other certificates and |X509_new|, in case
+  // there are bugs in filling in fields from different states. (Parsed
+  // certificate contain a TBSCertificate cache, and |X509_new| initializes
+  // fields based on complex ASN.1 template logic.)
+  for (bool new_cert : {true, false}) {
+    SCOPED_TRACE(new_cert);
+
+    bssl::UniquePtr<X509> cert;
+    if (new_cert) {
+      cert.reset(X509_new());
+      // Fill in some fields for the certificate arbitrarily.
+      EXPECT_TRUE(X509_set_version(cert.get(), 2 /* X.509v3 */));
+      EXPECT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1));
+      EXPECT_TRUE(X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0));
+      EXPECT_TRUE(
+          X509_gmtime_adj(X509_getm_notAfter(cert.get()), 60 * 60 * 24));
+      X509_NAME *subject = X509_get_subject_name(cert.get());
+      X509_NAME_add_entry_by_txt(subject, "CN", MBSTRING_ASC,
+                                 reinterpret_cast<const uint8_t *>("Test"), -1,
+                                 -1, 0);
+      EXPECT_TRUE(X509_set_issuer_name(cert.get(), subject));
+      EXPECT_TRUE(X509_set_pubkey(cert.get(), pkey.get()));
+    } else {
+      // Extract fields from a parsed certificate.
+      cert = CertFromPEM(kLeafPEM);
+      ASSERT_TRUE(cert);
+
+      // We should test with a different algorithm from what is already in the
+      // certificate.
+      EXPECT_NE(kSignatureNID, X509_get_signature_nid(cert.get()));
+    }
+
+    // Fill in the signature algorithm.
+    ASSERT_TRUE(X509_set1_signature_algo(cert.get(), algor.get()));
+
+    // Extract the TBSCertificiate.
+    uint8_t *tbs_cert = nullptr;
+    int tbs_cert_len = i2d_re_X509_tbs(cert.get(), &tbs_cert);
+    bssl::UniquePtr<uint8_t> free_tbs_cert(tbs_cert);
+    ASSERT_GT(tbs_cert_len, 0);
+
+    // Generate a signature externally and fill it in.
+    bssl::ScopedEVP_MD_CTX md_ctx;
+    ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, kSignatureHash,
+                                   nullptr, pkey.get()));
+    size_t sig_len;
+    ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, tbs_cert,
+                               tbs_cert_len));
+    std::vector<uint8_t> sig(sig_len);
+    ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, tbs_cert,
+                               tbs_cert_len));
+    sig.resize(sig_len);
+    ASSERT_TRUE(X509_set1_signature_value(cert.get(), sig.data(), sig.size()));
+
+    // Check the signature.
+    EXPECT_TRUE(X509_verify(cert.get(), pkey.get()));
+
+    // Re-encode the certificate. X509 objects contain a cached TBSCertificate
+    // encoding and |i2d_re_X509_tbs| should have refreshed that cache.
+    bssl::UniquePtr<X509> copy = ReencodeCertificate(cert.get());
+    ASSERT_TRUE(copy);
+    EXPECT_TRUE(X509_verify(copy.get(), pkey.get()));
+  }
 }
 
 TEST(X509Test, Ed25519Sign) {
