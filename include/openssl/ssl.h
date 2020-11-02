@@ -3549,6 +3549,11 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
 OPENSSL_EXPORT enum ssl_early_data_reason_t SSL_get_early_data_reason(
     const SSL *ssl);
 
+// SSL_early_data_reason_string returns a string representation for |reason|, or
+// NULL if |reason| is unknown. This function may be used for logging.
+OPENSSL_EXPORT const char *SSL_early_data_reason_string(
+    enum ssl_early_data_reason_t reason);
+
 
 // Alerts.
 //

@@ -396,50 +396,6 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
   return true;
 }
 
-static const char *EarlyDataReasonToString(ssl_early_data_reason_t reason) {
-  if (reason > ssl_early_data_reason_max_value) {
-    fprintf(stderr, "ssl_early_data_reason_max_value is out of date.\n");
-    abort();
-  }
-
-  switch (reason) {
-    case ssl_early_data_unknown:
-      return "unknown";
-    case ssl_early_data_disabled:
-      return "disabled";
-    case ssl_early_data_accepted:
-      return "accepted";
-    case ssl_early_data_protocol_version:
-      return "protocol_version";
-    case ssl_early_data_peer_declined:
-      return "peer_declined";
-    case ssl_early_data_no_session_offered:
-      return "no_session_offered";
-    case ssl_early_data_session_not_resumed:
-      return "session_not_resumed";
-    case ssl_early_data_unsupported_for_session:
-      return "unsupported_for_session";
-    case ssl_early_data_hello_retry_request:
-      return "hello_retry_request";
-    case ssl_early_data_alpn_mismatch:
-      return "alpn_mismatch";
-    case ssl_early_data_channel_id:
-      return "channel_id";
-    case ssl_early_data_token_binding:
-      return "token_binding";
-    case ssl_early_data_ticket_age_skew:
-      return "ticket_age_skew";
-    case ssl_early_data_quic_parameter_mismatch:
-      return "quic_parameter_mismatch";
-    case ssl_early_data_alps_mismatch:
-      return "alps_mismatch";
-  }
-
-  fprintf(stderr, "Unknown ssl_early_data_reason_t value %d.\n",
-          static_cast<int>(reason));
-  abort();
-}
-
 // CheckHandshakeProperties checks, immediately after |ssl| completes its
 // initial handshake (or False Starts), whether all the properties are
 // consistent with the test configuration and invariants.
@@ -677,7 +633,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     }
 
     const char *early_data_reason =
-        EarlyDataReasonToString(SSL_get_early_data_reason(ssl));
+        SSL_early_data_reason_string(SSL_get_early_data_reason(ssl));
     if (!config->expect_early_data_reason.empty() &&
         config->expect_early_data_reason != early_data_reason) {
       fprintf(stderr, "Early data reason was \"%s\", expected \"%s\"\n",
