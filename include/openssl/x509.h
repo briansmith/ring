@@ -1238,7 +1238,15 @@ OPENSSL_EXPORT int X509_get_ext_by_critical(const X509 *x, int crit,
 OPENSSL_EXPORT X509_EXTENSION *X509_get_ext(const X509 *x, int loc);
 OPENSSL_EXPORT X509_EXTENSION *X509_delete_ext(X509 *x, int loc);
 OPENSSL_EXPORT int X509_add_ext(X509 *x, X509_EXTENSION *ex, int loc);
-OPENSSL_EXPORT void *X509_get_ext_d2i(const X509 *x, int nid, int *crit, int *idx);
+
+// X509_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the extension in
+// |x509|'s extension list.
+//
+// WARNING: This function is difficult to use correctly. See the documentation
+// for |X509V3_get_d2i| for details.
+OPENSSL_EXPORT void *X509_get_ext_d2i(const X509 *x509, int nid,
+                                      int *out_critical, int *out_idx);
+
 OPENSSL_EXPORT int X509_add1_ext_i2d(X509 *x, int nid, void *value, int crit,
                                      unsigned long flags);
 
@@ -1251,8 +1259,15 @@ OPENSSL_EXPORT int X509_CRL_get_ext_by_critical(const X509_CRL *x, int crit,
 OPENSSL_EXPORT X509_EXTENSION *X509_CRL_get_ext(const X509_CRL *x, int loc);
 OPENSSL_EXPORT X509_EXTENSION *X509_CRL_delete_ext(X509_CRL *x, int loc);
 OPENSSL_EXPORT int X509_CRL_add_ext(X509_CRL *x, X509_EXTENSION *ex, int loc);
-OPENSSL_EXPORT void *X509_CRL_get_ext_d2i(const X509_CRL *x, int nid, int *crit,
-                                          int *idx);
+
+// X509_CRL_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the
+// extension in |crl|'s extension list.
+//
+// WARNING: This function is difficult to use correctly. See the documentation
+// for |X509V3_get_d2i| for details.
+OPENSSL_EXPORT void *X509_CRL_get_ext_d2i(const X509_CRL *crl, int nid,
+                                          int *out_critical, int *out_idx);
+
 OPENSSL_EXPORT int X509_CRL_add1_ext_i2d(X509_CRL *x, int nid, void *value,
                                          int crit, unsigned long flags);
 
@@ -1270,8 +1285,16 @@ OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_delete_ext(X509_REVOKED *x,
                                                        int loc);
 OPENSSL_EXPORT int X509_REVOKED_add_ext(X509_REVOKED *x, X509_EXTENSION *ex,
                                         int loc);
-OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *x, int nid,
-                                              int *crit, int *idx);
+
+// X509_REVOKED_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the
+// extension in |revoked|'s extension list.
+//
+// WARNING: This function is difficult to use correctly. See the documentation
+// for |X509V3_get_d2i| for details.
+OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *revoked,
+                                              int nid, int *out_critical,
+                                              int *out_idx);
+
 OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
                                              void *value, int crit,
                                              unsigned long flags);

@@ -633,13 +633,53 @@ OPENSSL_EXPORT int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist);
 OPENSSL_EXPORT int X509V3_EXT_add_alias(int nid_to, int nid_from);
 OPENSSL_EXPORT void X509V3_EXT_cleanup(void);
 
-OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(X509_EXTENSION *ext);
+OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(
+    const X509_EXTENSION *ext);
 OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid);
 OPENSSL_EXPORT int X509V3_add_standard_extensions(void);
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
-OPENSSL_EXPORT void *X509V3_EXT_d2i(X509_EXTENSION *ext);
-OPENSSL_EXPORT void *X509V3_get_d2i(STACK_OF(X509_EXTENSION) *x, int nid,
-                                    int *crit, int *idx);
+
+// X509V3_EXT_d2i decodes |ext| and returns a pointer to a newly-allocated
+// structure, with type dependent on the type of the extension. It returns NULL
+// if |ext| is an unsupported extension or if there was a syntax error in the
+// extension. The caller should cast the return value to the expected type and
+// free the structure when done.
+//
+// WARNING: Casting the return value to the wrong type is a potentially
+// exploitable memory error, so callers must not use this function before
+// checking |ext| is of a known type.
+OPENSSL_EXPORT void *X509V3_EXT_d2i(const X509_EXTENSION *ext);
+
+// X509V3_get_d2i finds and decodes the extension in |extensions| of type |nid|.
+// If found, it decodes it and returns a newly-allocated structure, with type
+// dependent on |nid|. If the extension is not found or on error, it returns
+// NULL. The caller may distinguish these cases using the |out_critical| value.
+//
+// If |out_critical| is not NULL, this function sets |*out_critical| to one if
+// the extension is found and critical, zero if it is found and not critical, -1
+// if it is not found, and -2 if there is an invalid duplicate extension. Note
+// this function may set |*out_critical| to one or zero and still return NULL if
+// the extension is found but has a syntax error.
+//
+// If |out_idx| is not NULL, this function looks for the first occurrence of the
+// extension after |*out_idx|. It then sets |*out_idx| to the index of the
+// extension, or -1 if not found. If |out_idx| is non-NULL, duplicate extensions
+// are not treated as an error. Callers, however, should not rely on this
+// behavior as it may be removed in the future. Duplicate extensions are
+// forbidden in RFC5280.
+//
+// WARNING: This function is difficult to use correctly. Callers should pass a
+// non-NULL |out_critical| and check both the return value and |*out_critical|
+// to handle errors. If the return value is NULL and |*out_critical| is not -1,
+// there was an error. Otherwise, the function succeeded and but may return NULL
+// for a missing extension. Callers should pass NULL to |out_idx| so that
+// duplicate extensions are handled correctly.
+//
+// Additionally, casting the return value to the wrong type is a potentially
+// exploitable memory error, so callers must ensure the cast and |nid| match.
+OPENSSL_EXPORT void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions,
+                                    int nid, int *out_critical, int *out_idx);
+
 OPENSSL_EXPORT int X509V3_EXT_free(int nid, void *ext_data);
 
 
