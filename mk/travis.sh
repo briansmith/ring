@@ -73,6 +73,23 @@ else
   target_dir=target/$TARGET_X/debug
 fi
 
+if [[ "$KCOV" == "1" ]]; then
+  # kcov reports coverage as a percentage of code *linked into the executable*
+  # (more accurately, code that has debug info linked into the executable), not
+  # as a percentage of source code. Any code that gets discarded by the linker
+  # due to lack of usage isn't counted at all. Thus, we have to link with
+  # "-C link-dead-code" to get accurate code coverage reports.
+  #
+  # panic=abort is used to get accurate coverage. See
+  # https://github.com/rust-lang/rust/issues/43410 and
+  # https://github.com/mozilla/grcov/issues/427#issuecomment-623995594 and
+  # https://github.com/rust-lang/rust/issues/55352.
+  CARGO_INCREMENTAL=0
+  RUSTDOCFLAGS="-Cpanic=abort"
+  RUSTFLAGS="-Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Cpanic=abort -Zpanic_abort_tests -Zprofile"
+  run_tests_on_host=
+fi
+
 no_run=
 if [[ -z $run_tests_on_host ]]; then
   no_run=--no-run
@@ -107,24 +124,6 @@ if false; then
 fi
 
 if [[ "$KCOV" == "1" ]]; then
-  # kcov reports coverage as a percentage of code *linked into the executable*
-  # (more accurately, code that has debug info linked into the executable), not
-  # as a percentage of source code. Thus, any code that gets discarded by the
-  # linker due to lack of usage isn't counted at all. Thus, we have to re-link
-  # with "-C link-dead-code" to get accurate code coverage reports.
-  # Alternatively, we could link pass "-C link-dead-code" in the "cargo test"
-  # step above, but then "cargo test" we wouldn't be testing the configuration
-  # we expect people to use in production.
-  #
-  # panic=abort is used to get accurate coverage. See
-  # https://github.com/rust-lang/rust/issues/43410 and
-  # https://github.com/mozilla/grcov/issues/427#issuecomment-623995594 and
-  # https://github.com/rust-lang/rust/issues/55352.
-  cargo clean
-  CARGO_INCREMENTAL=0 \
-  RUSTDOCFLAGS="-Cpanic=abort" \
-  RUSTFLAGS="-Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Cpanic=abort -Zpanic_abort_tests -Zprofile" \
-    cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X
   for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
     ${HOME}/kcov-${TARGET_X}/bin/kcov \
       --verify \

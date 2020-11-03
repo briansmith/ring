@@ -63,14 +63,21 @@ targets = {
     ],
 }
 
+def kcovs(target, rust, mode):
+    # DEBUG mode is needed because debug symbols are needed for coverage tracking.
+    # Nightly Rust is needed for `-Zpanic_abort_tests -Zprofile`.
+    kcov_targets = ["x86_64-unknown-linux-gnu", "i686-unknown-linux-gnu"]
+    return [False, True] if target in kcov_targets and rust == "nightly" and mode == "DEBUG" else [False]
+
 def format_entries():
-    return "\n".join([format_entry(os, target, compiler, rust, mode, features)
+    return "\n".join([format_entry(os, target, compiler, rust, mode, features, kcov)
                       for rust in rusts
                       for os in targets.keys()
                       for (target, compilers) in targets[os]
                       for compiler in compilers
                       for mode in modes
-                      for features in feature_sets])
+                      for features in feature_sets
+                      for kcov in kcovs(target, rust, mode)])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # ensure that we set the specific variables we want and that no relevant
@@ -90,21 +97,11 @@ entry_packages_template = """
           packages:
             %(packages)s"""
 
-def format_entry(os, target, compiler, rust, mode, features):
+def format_entry(os, target, compiler, rust, mode, features, kcov):
     target_words = target.split("-")
     arch = target_words[0]
     vendor = target_words[1]
     sys = target_words[2]
-
-    # Currently kcov only runs on Linux.
-    #
-    # GCC 7 was picked arbitrarily to restrict coverage report to one build for
-    # efficiency reasons.
-    #
-    # DEBUG mode is needed because debug symbols are needed for coverage
-    # tracking.
-    kcov = (os == "linux" and compiler == clang and rust == "nightly" and
-            mode == "DEBUG")
 
     template = entry_template
 
@@ -169,7 +166,7 @@ def format_entry(os, target, compiler, rust, mode, features):
             "compilers": " ".join(compilers),
             "features" : features,
             "mode" : mode,
-            "kcov": "1" if kcov == True else "0",
+            "kcov": "1" if kcov else "0",
             "packages" : "\n            ".join(prefix_all("- ", packages)),
             "rust" : rust,
             "target" : target,
