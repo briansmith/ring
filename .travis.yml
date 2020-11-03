@@ -312,6 +312,15 @@ matrix:
         - sys-img-armeabi-v7a-android-18
       dist: trusty
 
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
+
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
       rust: nightly
       os: linux
@@ -331,7 +340,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
+    - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
@@ -339,7 +348,6 @@ matrix:
         apt:
           packages:
             - clang-10
-            - kcov
 
     - env: TARGET_X=x86_64-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
       rust: nightly
@@ -374,6 +382,17 @@ matrix:
             - libc6-dev-arm64-cross
             - qemu-user-binfmt
 
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
+      rust: nightly
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
+            - gcc-multilib
+            - libc6-dev-i386
+
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
       rust: nightly
       os: linux
@@ -397,7 +416,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=1 RUST_X=nightly
+    - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=DEBUG KCOV=0 RUST_X=nightly
       rust: nightly
       os: linux
       dist: focal
@@ -406,7 +425,6 @@ matrix:
           packages:
             - clang-10
             - gcc-multilib
-            - kcov
             - libc6-dev-i386
 
     - env: TARGET_X=i686-unknown-linux-musl CC_X=clang-10 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0 RUST_X=nightly
