@@ -711,6 +711,27 @@ static bool Hash(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(digest));
 }
 
+static uint32_t GetIterations(const Span<const uint8_t> iterations_bytes) {
+  uint32_t iterations;
+  if (iterations_bytes.size() != sizeof(iterations)) {
+    fprintf(stderr,
+            "Expected %u-byte input for number of iterations, but found %u "
+            "bytes.\n",
+            static_cast<unsigned>(sizeof(iterations)),
+            static_cast<unsigned>(iterations_bytes.size()));
+    abort();
+  }
+
+  memcpy(&iterations, iterations_bytes.data(), sizeof(iterations));
+  if (iterations == 0 || iterations == UINT32_MAX) {
+    fprintf(stderr, "Invalid number of iterations: %x.\n",
+            static_cast<unsigned>(iterations));
+    abort();
+  }
+
+  return iterations;
+}
+
 template <int (*SetKey)(const uint8_t *key, unsigned bits, AES_KEY *out),
           void (*Block)(const uint8_t *in, uint8_t *out, const AES_KEY *key)>
 static bool AES(const Span<const uint8_t> args[]) {
@@ -721,13 +742,22 @@ static bool AES(const Span<const uint8_t> args[]) {
   if (args[1].size() % AES_BLOCK_SIZE != 0) {
     return false;
   }
+  std::vector<uint8_t> result(args[1].begin(), args[1].end());
+  const uint32_t iterations = GetIterations(args[2]);
 
-  std::vector<uint8_t> out;
-  out.resize(args[1].size());
-  for (size_t i = 0; i < args[1].size(); i += AES_BLOCK_SIZE) {
-    Block(args[1].data() + i, &out[i], &key);
+  std::vector<uint8_t> prev_result;
+  for (uint32_t j = 0; j < iterations; j++) {
+    if (j == iterations - 1) {
+      prev_result = result;
+    }
+
+    for (size_t i = 0; i < args[1].size(); i += AES_BLOCK_SIZE) {
+      Block(result.data() + i, result.data() + i, &key);
+    }
   }
-  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(result),
+                    Span<const uint8_t>(prev_result));
 }
 
 template <int (*SetKey)(const uint8_t *key, unsigned bits, AES_KEY *out),
@@ -737,18 +767,46 @@ static bool AES_CBC(const Span<const uint8_t> args[]) {
   if (SetKey(args[0].data(), args[0].size() * 8, &key) != 0) {
     return false;
   }
-  if (args[1].size() % AES_BLOCK_SIZE != 0 ||
+  if (args[1].size() % AES_BLOCK_SIZE != 0 || args[1].empty() ||
       args[2].size() != AES_BLOCK_SIZE) {
     return false;
   }
-  uint8_t iv[AES_BLOCK_SIZE];
-  memcpy(iv, args[2].data(), AES_BLOCK_SIZE);
+  std::vector<uint8_t> input(args[1].begin(), args[1].end());
+  std::vector<uint8_t> iv(args[2].begin(), args[2].end());
+  const uint32_t iterations = GetIterations(args[3]);
 
-  std::vector<uint8_t> out;
-  out.resize(args[1].size());
-  AES_cbc_encrypt(args[1].data(), out.data(), args[1].size(), &key, iv,
-                  Direction);
-  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+  std::vector<uint8_t> result(input.size());
+  std::vector<uint8_t> prev_result, prev_input;
+
+  for (uint32_t j = 0; j < iterations; j++) {
+    prev_result = result;
+    if (j > 0) {
+      if (Direction == AES_ENCRYPT) {
+        iv = result;
+      } else {
+        iv = prev_input;
+      }
+    }
+
+    // AES_cbc_encrypt will mutate the given IV, but we need it later.
+    uint8_t iv_copy[AES_BLOCK_SIZE];
+    memcpy(iv_copy, iv.data(), sizeof(iv_copy));
+    AES_cbc_encrypt(input.data(), result.data(), input.size(), &key, iv_copy,
+                    Direction);
+
+    if (Direction == AES_DECRYPT) {
+      prev_input = input;
+    }
+
+    if (j == 0) {
+      input = iv;
+    } else {
+      input = prev_result;
+    }
+  }
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(result),
+                    Span<const uint8_t>(prev_result));
 }
 
 static bool AES_CTR(const Span<const uint8_t> args[]) {
@@ -761,6 +819,10 @@ static bool AES_CTR(const Span<const uint8_t> args[]) {
   }
   uint8_t iv[AES_BLOCK_SIZE];
   memcpy(iv, args[2].data(), AES_BLOCK_SIZE);
+  if (GetIterations(args[3]) != 1) {
+    fprintf(stderr, "Multiple iterations of AES-CTR is not supported.\n");
+    return false;
+  }
 
   std::vector<uint8_t> out;
   out.resize(args[1].size());
@@ -1018,42 +1080,116 @@ static bool AESPaddedKeyWrapOpen(const Span<const uint8_t> args[]) {
                     Span<const uint8_t>(out));
 }
 
-template<bool Encrypt, bool HasIV, const EVP_CIPHER* (*cipher_func)()>
+template <bool Encrypt>
 static bool TDES(const Span<const uint8_t> args[]) {
-  const EVP_CIPHER *cipher = cipher_func();
+  const EVP_CIPHER *cipher = EVP_des_ede3();
 
   if (args[0].size() != 24) {
     fprintf(stderr, "Bad key length %u for 3DES.\n",
             static_cast<unsigned>(args[0].size()));
     return false;
   }
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, args[0].data(), nullptr,
+                         Encrypt ? 1 : 0) ||
+      !EVP_CIPHER_CTX_set_padding(ctx.get(), 0)) {
+    return false;
+  }
+
   if (args[1].size() % 8) {
     fprintf(stderr, "Bad input length %u for 3DES.\n",
             static_cast<unsigned>(args[1].size()));
     return false;
   }
-  if (HasIV && args[2].size() != EVP_CIPHER_iv_length(cipher)) {
+  std::vector<uint8_t> result(args[1].begin(), args[1].end());
+
+  const uint32_t iterations = GetIterations(args[2]);
+  std::vector<uint8_t> prev_result, prev_prev_result;
+
+  for (uint32_t j = 0; j < iterations; j++) {
+    if (j == iterations - 1) {
+      prev_result = result;
+    } else if (iterations >= 2 && j == iterations - 2) {
+      prev_prev_result = result;
+    }
+
+    int out_len;
+    if (!EVP_CipherUpdate(ctx.get(), result.data(), &out_len, result.data(),
+                          result.size()) ||
+        out_len != static_cast<int>(result.size())) {
+      return false;
+    }
+  }
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(result),
+                    Span<const uint8_t>(prev_result),
+                    Span<const uint8_t>(prev_prev_result));
+}
+
+template <bool Encrypt>
+static bool TDES_CBC(const Span<const uint8_t> args[]) {
+  const EVP_CIPHER *cipher = EVP_des_ede3_cbc();
+
+  if (args[0].size() != 24) {
+    fprintf(stderr, "Bad key length %u for 3DES.\n",
+            static_cast<unsigned>(args[0].size()));
+    return false;
+  }
+
+  if (args[1].size() % 8 || args[1].size() == 0) {
+    fprintf(stderr, "Bad input length %u for 3DES.\n",
+            static_cast<unsigned>(args[1].size()));
+    return false;
+  }
+  std::vector<uint8_t> input(args[1].begin(), args[1].end());
+
+  if (args[2].size() != EVP_CIPHER_iv_length(cipher)) {
     fprintf(stderr, "Bad IV length %u for 3DES.\n",
             static_cast<unsigned>(args[2].size()));
     return false;
   }
+  std::vector<uint8_t> iv(args[2].begin(), args[2].end());
+  const uint32_t iterations = GetIterations(args[3]);
 
-  std::vector<uint8_t> out;
-  out.resize(args[1].size());
-
+  std::vector<uint8_t> result(input.size());
+  std::vector<uint8_t> prev_result, prev_prev_result;
   bssl::ScopedEVP_CIPHER_CTX ctx;
-  int out_len, out_len2;
-  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, args[0].data(),
-                         HasIV ? args[2].data() : nullptr, Encrypt ? 1 : 0) ||
-      !EVP_CIPHER_CTX_set_padding(ctx.get(), 0) ||
-      !EVP_CipherUpdate(ctx.get(), out.data(), &out_len, args[1].data(),
-                        args[1].size()) ||
-      !EVP_CipherFinal_ex(ctx.get(), out.data() + out_len, &out_len2) ||
-      (out_len + out_len2) != static_cast<int>(out.size())) {
+  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, args[0].data(), iv.data(),
+                         Encrypt ? 1 : 0) ||
+      !EVP_CIPHER_CTX_set_padding(ctx.get(), 0)) {
     return false;
   }
 
-  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+  for (uint32_t j = 0; j < iterations; j++) {
+    prev_prev_result = prev_result;
+    prev_result = result;
+
+    int out_len, out_len2;
+    if (!EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, nullptr, iv.data(),
+                           -1) ||
+        !EVP_CipherUpdate(ctx.get(), result.data(), &out_len, input.data(),
+                          input.size()) ||
+        !EVP_CipherFinal_ex(ctx.get(), result.data() + out_len, &out_len2) ||
+        (out_len + out_len2) != static_cast<int>(result.size())) {
+      return false;
+    }
+
+    if (Encrypt) {
+      if (j == 0) {
+        input = iv;
+      } else {
+        input = prev_result;
+      }
+      iv = result;
+    } else {
+      iv = input;
+      input = result;
+    }
+  }
+
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(result),
+                    Span<const uint8_t>(prev_result),
+                    Span<const uint8_t>(prev_prev_result));
 }
 
 template <const EVP_MD *HashFunc()>
@@ -1421,10 +1557,10 @@ static constexpr struct {
     {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
     {"SHA2-384", 1, Hash<SHA384, SHA256_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
-    {"AES/encrypt", 2, AES<AES_set_encrypt_key, AES_encrypt>},
-    {"AES/decrypt", 2, AES<AES_set_decrypt_key, AES_decrypt>},
-    {"AES-CBC/encrypt", 3, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
-    {"AES-CBC/decrypt", 3, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
+    {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
+    {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
+    {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
+    {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
     {"AES-CTR/encrypt", 3, AES_CTR},
     {"AES-CTR/decrypt", 3, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
@@ -1435,10 +1571,10 @@ static constexpr struct {
     {"AES-KWP/open", 5, AESPaddedKeyWrapOpen},
     {"AES-CCM/seal", 5, AEADSeal<AESCCMSetup>},
     {"AES-CCM/open", 5, AEADOpen<AESCCMSetup>},
-    {"3DES-ECB/encrypt", 2, TDES<true, false, EVP_des_ede3>},
-    {"3DES-ECB/decrypt", 2, TDES<false, false, EVP_des_ede3>},
-    {"3DES-CBC/encrypt", 3, TDES<true, true, EVP_des_ede3_cbc>},
-    {"3DES-CBC/decrypt", 3, TDES<false, true, EVP_des_ede3_cbc>},
+    {"3DES-ECB/encrypt", 3, TDES<true>},
+    {"3DES-ECB/decrypt", 3, TDES<false>},
+    {"3DES-CBC/encrypt", 4, TDES_CBC<true>},
+    {"3DES-CBC/decrypt", 4, TDES_CBC<false>},
     {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
     {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
