@@ -59,7 +59,8 @@ var (
 	mallocTestDebug          = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 	jsonOutput               = flag.String("json-output", "", "The file to output JSON results to.")
 	pipe                     = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
-	testToRun                = flag.String("test", "", "The pattern to filter tests to run, or empty to run all tests")
+	testToRun                = flag.String("test", "", "Semicolon-separated patterns of tests to run, or empty to run all tests")
+	skipTest                 = flag.String("skip", "", "Semicolon-separated patterns of tests to skip")
 	numWorkersFlag           = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
 	shimPath                 = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
 	handshakerPath           = flag.String("handshaker-path", "../../../build/ssl/test/handshaker", "The location of the handshaker binary.")
@@ -16286,6 +16287,31 @@ func statusPrinter(doneChan chan *testresult.Results, statusChan chan statusMsg,
 	doneChan <- testOutput
 }
 
+func match(oneOfPatternIfAny []string, noneOfPattern []string, candidate string) (matched bool, err error) {
+	matched = len(oneOfPatternIfAny) == 0
+
+	var didMatch bool
+	for _, pattern := range oneOfPatternIfAny {
+		didMatch, err = filepath.Match(pattern, candidate)
+		if err != nil {
+			return false, err
+		}
+
+		matched = didMatch || matched
+	}
+
+	for _, pattern := range noneOfPattern {
+		didMatch, err = filepath.Match(pattern, candidate)
+		if err != nil {
+			return false, err
+		}
+
+		matched = !didMatch && matched
+	}
+
+	return matched, nil
+}
+
 func main() {
 	flag.Parse()
 	*resourceDir = path.Clean(*resourceDir)
@@ -16367,16 +16393,20 @@ func main() {
 		go worker(statusChan, testChan, *shimPath, &wg)
 	}
 
+	var oneOfPatternIfAny, noneOfPattern []string
+	if len(*testToRun) > 0 {
+		oneOfPatternIfAny = strings.Split(*testToRun, ";")
+	}
+	if len(*skipTest) > 0 {
+		noneOfPattern = strings.Split(*skipTest, ";")
+	}
+
 	var foundTest bool
 	for i := range testCases {
-		matched := true
-		if len(*testToRun) != 0 {
-			var err error
-			matched, err = filepath.Match(*testToRun, testCases[i].name)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error matching pattern: %s\n", err)
-				os.Exit(1)
-			}
+		matched, err := match(oneOfPatternIfAny, noneOfPattern, testCases[i].name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error matching pattern: %s\n", err)
+			os.Exit(1)
 		}
 
 		if !*includeDisabled {
