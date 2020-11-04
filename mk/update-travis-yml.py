@@ -98,7 +98,7 @@ def format_entries():
 # value *after* processing the |env:| directive here.
 
 entry_template = """
-    - env: TARGET_X=%(target)s RUST_X=%(rust)s MODE_X=%(mode)s FEATURES_X=%(features)s KCOV=%(kcov)s%(compilers)s
+    - env: %(env)s
       rust: %(rust)s
       os: %(os)s"""
 
@@ -111,6 +111,13 @@ entry_packages_template = """
             %(packages)s"""
 
 def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
+    env = []
+
+    env.append(("TARGET_X", target))
+    env.append(("RUST_X", rust))
+    env.append(("MODE_X", mode))
+    env.append(("FEATURES_X", features))
+    env.append(("KCOV", "1" if kcov else "0"))
     target_words = target.split("-")
     arch = target_words[0]
     vendor = target_words[1]
@@ -169,21 +176,13 @@ def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
     if os == "osx":
         os += "\n" + entry_indent + "osx_image: xcode12"
 
-    compilers = []
     if cc != "":
-        compilers += ["CC_X=" + cc]
-    compilers = " ".join(compilers)
-    if compilers != "":
-        compilers = " " + compilers
+        env.append(("CC_X", cc))
 
     return template % {
-            "compilers": compilers,
-            "features" : features,
-            "mode" : mode,
-            "kcov": "1" if kcov else "0",
-            "packages" : "\n            ".join(prefix_all("- ", packages)),
+            "env" : " ".join(["%s=%s" % (name, value) for (name, value) in env]),
             "rust" : rust,
-            "target" : target,
+            "packages" : "\n            ".join(prefix_all("- ", packages)),
             "os" : os,
             }
 
