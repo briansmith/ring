@@ -73,7 +73,7 @@ else
   target_dir=target/$TARGET_X/debug
 fi
 
-if [[ "$KCOV" == "1" ]]; then
+if [ -n "$KCOV" ]; then
   # kcov reports coverage as a percentage of code *linked into the executable*
   # (more accurately, code that has debug info linked into the executable), not
   # as a percentage of source code. Any code that gets discarded by the linker
@@ -123,7 +123,7 @@ if false; then
    adb emu kill
 fi
 
-if [[ "$KCOV" == "1" ]]; then
+if [ -n "$KCOV" ]; then
   for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
     ${HOME}/kcov-${TARGET_X}/bin/kcov \
       --verify \

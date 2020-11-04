@@ -117,7 +117,9 @@ def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
     env.append(("RUST_X", rust))
     env.append(("MODE_X", mode))
     env.append(("FEATURES_X", features))
-    env.append(("KCOV", "1" if kcov else "0"))
+    if kcov:
+        env.append(("KCOV", "1"))
+
     target_words = target.split("-")
     arch = target_words[0]
     vendor = target_words[1]
