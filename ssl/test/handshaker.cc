@@ -127,13 +127,21 @@ ssize_t write_eintr(int fd, const void *in, size_t len) {
   return ret;
 }
 
+int SignalError() {
+  const char msg = kControlMsgError;
+  if (write_eintr(kFdControl, &msg, 1) != 1) {
+    return 2;
+  }
+  return 1;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
   TestConfig initial_config, resume_config, retry_config;
   if (!ParseConfig(argc - 1, argv + 1, &initial_config, &resume_config,
                    &retry_config)) {
-    return 2;
+    return SignalError();
   }
   const TestConfig *config = initial_config.handshaker_resume
       ? &resume_config : &initial_config;
@@ -160,11 +168,7 @@ int main(int argc, char **argv) {
   Span<uint8_t> handoff(buf.get(), len);
   if (!Handshaker(config, kFdProxyToHandshaker, kFdHandshakerToProxy, handoff,
                   kFdControl)) {
-    char msg = kControlMsgError;
-    if (write_eintr(kFdControl, &msg, 1) != 1) {
-      return 3;
-    }
-    return 1;
+    return SignalError();
   }
   return 0;
 }
