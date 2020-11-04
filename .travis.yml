@@ -76,6 +76,16 @@ matrix:
         - sys-img-armeabi-v7a-android-18
       dist: trusty
 
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=stable MODE_X=DEBUG
+      rust: stable
+      os: linux
+      dist: focal
+
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=stable MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      dist: focal
+
     - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG CC_x86_64_unknown_linux_gnu=clang-10
       rust: stable
       os: linux
@@ -265,6 +275,16 @@ matrix:
         - build-tools-26.0.2
         - sys-img-armeabi-v7a-android-18
       dist: trusty
+
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=nightly MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      dist: focal
+
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=nightly MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG CC_x86_64_unknown_linux_gnu=clang-10
       rust: nightly
@@ -477,6 +497,16 @@ matrix:
         - build-tools-26.0.2
         - sys-img-armeabi-v7a-android-18
       dist: trusty
+
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=beta MODE_X=DEBUG
+      rust: beta
+      os: linux
+      dist: focal
+
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=beta MODE_X=RELWITHDEBINFO
+      rust: beta
+      os: linux
+      dist: focal
 
     - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG CC_x86_64_unknown_linux_gnu=clang-10
       rust: beta

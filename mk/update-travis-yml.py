@@ -54,6 +54,7 @@ targets = {
     "linux" : [
         ("aarch64-linux-android", [ "aarch64-linux-android21-clang" ]),
         ("armv7-linux-androideabi", [ "armv7a-linux-androideabi18-clang" ]),
+        ("wasm32-unknown-unknown", [""]),
         ("x86_64-unknown-linux-gnu", linux_compilers),
         ("x86_64-unknown-linux-musl", [clang]),
         ("aarch64-unknown-linux-gnu", [ "aarch64-linux-gnu-gcc" ]),
@@ -144,7 +145,9 @@ def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
 
     android_linux_dist = "trusty"
 
-    if sys == "darwin":
+    if target == "wasm32-unknown-unknown":
+        sys = "linux"
+    elif sys == "darwin":
         abi = sys
         sys = "macos"
     elif sys == "ios":
@@ -196,7 +199,7 @@ def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
     target_with_underscores = target.replace("-", "_")
     if cc != "":
         env.append(("CC_" + target_with_underscores, cc))
-        if arch != "x86_64":
+        if arch not in ["x86_64", "wasm32"]:
             env.append(("CARGO_TARGET_%s_LINKER" % target_with_underscores.upper(), cc))
         if runner:
             env.append(("CARGO_TARGET_%s_RUNNER" % target_with_underscores.upper(), runner))

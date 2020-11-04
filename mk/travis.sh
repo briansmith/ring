@@ -35,6 +35,9 @@ aarch64-linux-android|armv7-linux-androideabi)
   run_tests_on_host=
   PATH=$HOME/.cargo/bin:$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
   ;;
+wasm32-unknown-unknown)
+  run_tests_on_host=
+  ;;
 esac
 
 printenv
