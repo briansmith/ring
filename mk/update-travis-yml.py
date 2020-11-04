@@ -93,7 +93,7 @@ def format_entries():
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # ensure that we set the specific variables we want and that no relevant
-# variables are unintentially inherited into the build process. Also, we have
+# variables are unintentionally inherited into the build process. Also, we have
 # to set |CC_X| instead of |CC| since Travis sets |CC| to its Travis CI default
 # value *after* processing the |env:| directive here.
 
