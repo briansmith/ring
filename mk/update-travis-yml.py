@@ -70,14 +70,26 @@ def kcovs(target, rust, mode):
     return [False, True] if target in kcov_targets and rust == "nightly" and mode == "DEBUG" else [False]
 
 def format_entries():
-    return "\n".join([format_entry(os, target, compiler, rust, mode, features, kcov)
-                      for rust in rusts
-                      for os in targets.keys()
-                      for (target, compilers) in targets[os]
-                      for compiler in compilers
-                      for mode in modes
-                      for features in feature_sets
-                      for kcov in kcovs(target, rust, mode)])
+    entries = [format_entry(os, "focal", target, compiler, rust, mode, features, kcov)
+         for rust in rusts
+         for os in targets.keys()
+         for (target, compilers) in targets[os]
+         for compiler in compilers
+         for mode in modes
+         for features in feature_sets
+         for kcov in kcovs(target, rust, mode)]
+
+    # Verify that we build on Trusty, which has GCC 4.8 as the default GCC
+    # version. GCC 4.8 is the minimum version of GCC we support. Verify that we
+    # build with GCC 9, the default compiler on Focal.
+    special_dists = ["focal", "trusty"]
+    entries += [ format_entry("linux", dist, "x86_64-unknown-linux-gnu", "", "stable", mode, "", False)
+                 for mode in modes
+                 for dist in special_dists]
+    entries += [ format_entry("linux", dist, "i686-unknown-linux-gnu", "", "stable", "DEBUG", "", False)
+                 for dist in special_dists]
+
+    return "\n".join(entries)
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # ensure that we set the specific variables we want and that no relevant
@@ -97,7 +109,7 @@ entry_packages_template = """
           packages:
             %(packages)s"""
 
-def format_entry(os, target, compiler, rust, mode, features, kcov):
+def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
     target_words = target.split("-")
     arch = target_words[0]
     vendor = target_words[1]
@@ -105,7 +117,6 @@ def format_entry(os, target, compiler, rust, mode, features, kcov):
 
     template = entry_template
 
-    linux_dist = "focal"
     android_linux_dist = "trusty"
 
     if sys == "darwin":
