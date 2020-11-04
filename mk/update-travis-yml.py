@@ -93,9 +93,7 @@ def format_entries():
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # ensure that we set the specific variables we want and that no relevant
-# variables are unintentionally inherited into the build process. Also, we have
-# to set |CC_X| instead of |CC| since Travis sets |CC| to its Travis CI default
-# value *after* processing the |env:| directive here.
+# variables are unintentionally inherited into the build process.
 
 entry_template = """
     - env: %(env)s
@@ -179,8 +177,11 @@ def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
     if os == "osx":
         os += "\n" + entry_indent + "osx_image: xcode12"
 
+    target_with_underscores = target.replace("-", "_")
     if cc != "":
-        env.append(("CC_X", cc))
+        env.append(("CC_" + target_with_underscores, cc))
+        if arch != "x86_64":
+            env.append(("CARGO_TARGET_%s_LINKER" % target_with_underscores.upper(), cc))
 
     return template % {
             "env" : " ".join(["%s=%s" % (name, value) for (name, value) in env]),
