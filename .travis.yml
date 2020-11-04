@@ -17,27 +17,27 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: TARGET_X=aarch64-apple-ios RUST_X=stable MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=aarch64-apple-ios RUST_X=stable MODE_X=DEBUG
       rust: stable
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=aarch64-apple-ios RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X=
+    - env: TARGET_X=aarch64-apple-ios RUST_X=stable MODE_X=RELWITHDEBINFO
       rust: stable
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=x86_64-apple-darwin RUST_X=stable MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=x86_64-apple-darwin RUST_X=stable MODE_X=DEBUG
       rust: stable
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=x86_64-apple-darwin RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X=
+    - env: TARGET_X=x86_64-apple-darwin RUST_X=stable MODE_X=RELWITHDEBINFO
       rust: stable
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=aarch64-linux-android RUST_X=stable MODE_X=DEBUG FEATURES_X= CC_X=aarch64-linux-android21-clang
+    - env: TARGET_X=aarch64-linux-android RUST_X=stable MODE_X=DEBUG CC_X=aarch64-linux-android21-clang
       rust: stable
       os: linux
       language: android
@@ -47,7 +47,7 @@ matrix:
         - build-tools-26.0.2
       dist: trusty
 
-    - env: TARGET_X=aarch64-linux-android RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=aarch64-linux-android21-clang
+    - env: TARGET_X=aarch64-linux-android RUST_X=stable MODE_X=RELWITHDEBINFO CC_X=aarch64-linux-android21-clang
       rust: stable
       os: linux
       language: android
@@ -57,7 +57,7 @@ matrix:
         - build-tools-26.0.2
       dist: trusty
 
-    - env: TARGET_X=armv7-linux-androideabi RUST_X=stable MODE_X=DEBUG FEATURES_X= CC_X=armv7a-linux-androideabi18-clang
+    - env: TARGET_X=armv7-linux-androideabi RUST_X=stable MODE_X=DEBUG CC_X=armv7a-linux-androideabi18-clang
       rust: stable
       os: linux
       language: android
@@ -68,7 +68,7 @@ matrix:
         - sys-img-armeabi-v7a-android-18
       dist: trusty
 
-    - env: TARGET_X=armv7-linux-androideabi RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=armv7a-linux-androideabi18-clang
+    - env: TARGET_X=armv7-linux-androideabi RUST_X=stable MODE_X=RELWITHDEBINFO CC_X=armv7a-linux-androideabi18-clang
       rust: stable
       os: linux
       language: android
@@ -79,7 +79,7 @@ matrix:
         - sys-img-armeabi-v7a-android-18
       dist: trusty
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG CC_X=clang-10
       rust: stable
       os: linux
       dist: focal
@@ -88,7 +88,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: stable
       os: linux
       dist: focal
@@ -97,7 +97,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=stable MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=stable MODE_X=DEBUG CC_X=clang-10
       rust: stable
       os: linux
       dist: focal
@@ -106,7 +106,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=stable MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: stable
       os: linux
       dist: focal
@@ -115,7 +115,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG FEATURES_X= CC_X=aarch64-linux-gnu-gcc
+    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG CC_X=aarch64-linux-gnu-gcc
       rust: stable
       os: linux
       dist: focal
@@ -127,7 +127,7 @@ matrix:
             - libc6-dev-arm64-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=aarch64-linux-gnu-gcc
+    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO CC_X=aarch64-linux-gnu-gcc
       rust: stable
       os: linux
       dist: focal
@@ -139,7 +139,7 @@ matrix:
             - libc6-dev-arm64-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG CC_X=clang-10
       rust: stable
       os: linux
       dist: focal
@@ -150,7 +150,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: stable
       os: linux
       dist: focal
@@ -161,7 +161,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl RUST_X=stable MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-musl RUST_X=stable MODE_X=DEBUG CC_X=clang-10
       rust: stable
       os: linux
       dist: focal
@@ -172,7 +172,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-musl RUST_X=stable MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: stable
       os: linux
       dist: focal
@@ -183,7 +183,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=stable MODE_X=DEBUG FEATURES_X= CC_X=arm-linux-gnueabihf-gcc
+    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=stable MODE_X=DEBUG CC_X=arm-linux-gnueabihf-gcc
       rust: stable
       os: linux
       dist: focal
@@ -195,7 +195,7 @@ matrix:
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=arm-linux-gnueabihf-gcc
+    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=stable MODE_X=RELWITHDEBINFO CC_X=arm-linux-gnueabihf-gcc
       rust: stable
       os: linux
       dist: focal
@@ -207,27 +207,27 @@ matrix:
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=aarch64-apple-ios RUST_X=nightly MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=aarch64-apple-ios RUST_X=nightly MODE_X=DEBUG
       rust: nightly
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=aarch64-apple-ios RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X=
+    - env: TARGET_X=aarch64-apple-ios RUST_X=nightly MODE_X=RELWITHDEBINFO
       rust: nightly
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=x86_64-apple-darwin RUST_X=nightly MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=x86_64-apple-darwin RUST_X=nightly MODE_X=DEBUG
       rust: nightly
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=x86_64-apple-darwin RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X=
+    - env: TARGET_X=x86_64-apple-darwin RUST_X=nightly MODE_X=RELWITHDEBINFO
       rust: nightly
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=aarch64-linux-android RUST_X=nightly MODE_X=DEBUG FEATURES_X= CC_X=aarch64-linux-android21-clang
+    - env: TARGET_X=aarch64-linux-android RUST_X=nightly MODE_X=DEBUG CC_X=aarch64-linux-android21-clang
       rust: nightly
       os: linux
       language: android
@@ -237,7 +237,7 @@ matrix:
         - build-tools-26.0.2
       dist: trusty
 
-    - env: TARGET_X=aarch64-linux-android RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=aarch64-linux-android21-clang
+    - env: TARGET_X=aarch64-linux-android RUST_X=nightly MODE_X=RELWITHDEBINFO CC_X=aarch64-linux-android21-clang
       rust: nightly
       os: linux
       language: android
@@ -247,7 +247,7 @@ matrix:
         - build-tools-26.0.2
       dist: trusty
 
-    - env: TARGET_X=armv7-linux-androideabi RUST_X=nightly MODE_X=DEBUG FEATURES_X= CC_X=armv7a-linux-androideabi18-clang
+    - env: TARGET_X=armv7-linux-androideabi RUST_X=nightly MODE_X=DEBUG CC_X=armv7a-linux-androideabi18-clang
       rust: nightly
       os: linux
       language: android
@@ -258,7 +258,7 @@ matrix:
         - sys-img-armeabi-v7a-android-18
       dist: trusty
 
-    - env: TARGET_X=armv7-linux-androideabi RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=armv7a-linux-androideabi18-clang
+    - env: TARGET_X=armv7-linux-androideabi RUST_X=nightly MODE_X=RELWITHDEBINFO CC_X=armv7a-linux-androideabi18-clang
       rust: nightly
       os: linux
       language: android
@@ -269,7 +269,7 @@ matrix:
         - sys-img-armeabi-v7a-android-18
       dist: trusty
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -278,7 +278,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG FEATURES_X= KCOV=1 CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG KCOV=1 CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -288,7 +288,7 @@ matrix:
             - clang-10
             - kcov
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -297,7 +297,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=nightly MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=nightly MODE_X=DEBUG CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -306,7 +306,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=nightly MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -315,7 +315,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG FEATURES_X= CC_X=aarch64-linux-gnu-gcc
+    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG CC_X=aarch64-linux-gnu-gcc
       rust: nightly
       os: linux
       dist: focal
@@ -327,7 +327,7 @@ matrix:
             - libc6-dev-arm64-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=aarch64-linux-gnu-gcc
+    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=nightly MODE_X=RELWITHDEBINFO CC_X=aarch64-linux-gnu-gcc
       rust: nightly
       os: linux
       dist: focal
@@ -339,7 +339,7 @@ matrix:
             - libc6-dev-arm64-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -350,7 +350,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG FEATURES_X= KCOV=1 CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG KCOV=1 CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -362,7 +362,7 @@ matrix:
             - kcov
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=nightly MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -373,7 +373,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl RUST_X=nightly MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-musl RUST_X=nightly MODE_X=DEBUG CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -384,7 +384,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-musl RUST_X=nightly MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: nightly
       os: linux
       dist: focal
@@ -395,7 +395,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=nightly MODE_X=DEBUG FEATURES_X= CC_X=arm-linux-gnueabihf-gcc
+    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=nightly MODE_X=DEBUG CC_X=arm-linux-gnueabihf-gcc
       rust: nightly
       os: linux
       dist: focal
@@ -407,7 +407,7 @@ matrix:
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=arm-linux-gnueabihf-gcc
+    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=nightly MODE_X=RELWITHDEBINFO CC_X=arm-linux-gnueabihf-gcc
       rust: nightly
       os: linux
       dist: focal
@@ -419,27 +419,27 @@ matrix:
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=aarch64-apple-ios RUST_X=beta MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=aarch64-apple-ios RUST_X=beta MODE_X=DEBUG
       rust: beta
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=aarch64-apple-ios RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X=
+    - env: TARGET_X=aarch64-apple-ios RUST_X=beta MODE_X=RELWITHDEBINFO
       rust: beta
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=x86_64-apple-darwin RUST_X=beta MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=x86_64-apple-darwin RUST_X=beta MODE_X=DEBUG
       rust: beta
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=x86_64-apple-darwin RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X=
+    - env: TARGET_X=x86_64-apple-darwin RUST_X=beta MODE_X=RELWITHDEBINFO
       rust: beta
       os: osx
       osx_image: xcode12
 
-    - env: TARGET_X=aarch64-linux-android RUST_X=beta MODE_X=DEBUG FEATURES_X= CC_X=aarch64-linux-android21-clang
+    - env: TARGET_X=aarch64-linux-android RUST_X=beta MODE_X=DEBUG CC_X=aarch64-linux-android21-clang
       rust: beta
       os: linux
       language: android
@@ -449,7 +449,7 @@ matrix:
         - build-tools-26.0.2
       dist: trusty
 
-    - env: TARGET_X=aarch64-linux-android RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=aarch64-linux-android21-clang
+    - env: TARGET_X=aarch64-linux-android RUST_X=beta MODE_X=RELWITHDEBINFO CC_X=aarch64-linux-android21-clang
       rust: beta
       os: linux
       language: android
@@ -459,7 +459,7 @@ matrix:
         - build-tools-26.0.2
       dist: trusty
 
-    - env: TARGET_X=armv7-linux-androideabi RUST_X=beta MODE_X=DEBUG FEATURES_X= CC_X=armv7a-linux-androideabi18-clang
+    - env: TARGET_X=armv7-linux-androideabi RUST_X=beta MODE_X=DEBUG CC_X=armv7a-linux-androideabi18-clang
       rust: beta
       os: linux
       language: android
@@ -470,7 +470,7 @@ matrix:
         - sys-img-armeabi-v7a-android-18
       dist: trusty
 
-    - env: TARGET_X=armv7-linux-androideabi RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=armv7a-linux-androideabi18-clang
+    - env: TARGET_X=armv7-linux-androideabi RUST_X=beta MODE_X=RELWITHDEBINFO CC_X=armv7a-linux-androideabi18-clang
       rust: beta
       os: linux
       language: android
@@ -481,7 +481,7 @@ matrix:
         - sys-img-armeabi-v7a-android-18
       dist: trusty
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG CC_X=clang-10
       rust: beta
       os: linux
       dist: focal
@@ -490,7 +490,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=beta MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: beta
       os: linux
       dist: focal
@@ -499,7 +499,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=beta MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=beta MODE_X=DEBUG CC_X=clang-10
       rust: beta
       os: linux
       dist: focal
@@ -508,7 +508,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-musl RUST_X=beta MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: beta
       os: linux
       dist: focal
@@ -517,7 +517,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG FEATURES_X= CC_X=aarch64-linux-gnu-gcc
+    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG CC_X=aarch64-linux-gnu-gcc
       rust: beta
       os: linux
       dist: focal
@@ -529,7 +529,7 @@ matrix:
             - libc6-dev-arm64-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=aarch64-linux-gnu-gcc
+    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=beta MODE_X=RELWITHDEBINFO CC_X=aarch64-linux-gnu-gcc
       rust: beta
       os: linux
       dist: focal
@@ -541,7 +541,7 @@ matrix:
             - libc6-dev-arm64-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG CC_X=clang-10
       rust: beta
       os: linux
       dist: focal
@@ -552,7 +552,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=beta MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: beta
       os: linux
       dist: focal
@@ -563,7 +563,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl RUST_X=beta MODE_X=DEBUG FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-musl RUST_X=beta MODE_X=DEBUG CC_X=clang-10
       rust: beta
       os: linux
       dist: focal
@@ -574,7 +574,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-musl RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=clang-10
+    - env: TARGET_X=i686-unknown-linux-musl RUST_X=beta MODE_X=RELWITHDEBINFO CC_X=clang-10
       rust: beta
       os: linux
       dist: focal
@@ -585,7 +585,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=beta MODE_X=DEBUG FEATURES_X= CC_X=arm-linux-gnueabihf-gcc
+    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=beta MODE_X=DEBUG CC_X=arm-linux-gnueabihf-gcc
       rust: beta
       os: linux
       dist: focal
@@ -597,7 +597,7 @@ matrix:
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X= CC_X=arm-linux-gnueabihf-gcc
+    - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=beta MODE_X=RELWITHDEBINFO CC_X=arm-linux-gnueabihf-gcc
       rust: beta
       os: linux
       dist: focal
@@ -609,27 +609,27 @@ matrix:
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG
       rust: stable
       os: linux
       dist: focal
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG
       rust: stable
       os: linux
       dist: trusty
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X=
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
       dist: focal
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X=
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
       dist: trusty
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG
       rust: stable
       os: linux
       dist: focal
@@ -639,7 +639,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG FEATURES_X=
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG
       rust: stable
       os: linux
       dist: trusty
