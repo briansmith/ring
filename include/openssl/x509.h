@@ -1019,8 +1019,8 @@ OPENSSL_EXPORT void X509_get0_signature(const ASN1_BIT_STRING **psig,
                                         const X509_ALGOR **palg, const X509 *x);
 OPENSSL_EXPORT int X509_get_signature_nid(const X509 *x);
 
-OPENSSL_EXPORT int X509_alias_set1(X509 *x, unsigned char *name, int len);
-OPENSSL_EXPORT int X509_keyid_set1(X509 *x, unsigned char *id, int len);
+OPENSSL_EXPORT int X509_alias_set1(X509 *x, const unsigned char *name, int len);
+OPENSSL_EXPORT int X509_keyid_set1(X509 *x, const unsigned char *id, int len);
 OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x, int *len);
 OPENSSL_EXPORT unsigned char *X509_keyid_get0(X509 *x, int *len);
 OPENSSL_EXPORT int (*X509_TRUST_set_default(int (*trust)(int, X509 *,

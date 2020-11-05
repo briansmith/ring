@@ -525,7 +525,7 @@ OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
 OPENSSL_EXPORT char *i2s_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method,
                                            const ASN1_OCTET_STRING *ia5);
 OPENSSL_EXPORT ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(
-    X509V3_EXT_METHOD *method, X509V3_CTX *ctx, char *str);
+    X509V3_EXT_METHOD *method, X509V3_CTX *ctx, const char *str);
 
 DECLARE_ASN1_FUNCTIONS(EXTENDED_KEY_USAGE)
 OPENSSL_EXPORT int i2a_ACCESS_DESCRIPTION(BIO *bp, const ACCESS_DESCRIPTION *a);
@@ -565,7 +565,7 @@ DECLARE_ASN1_ITEM(POLICY_CONSTRAINTS)
 OPENSSL_EXPORT GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
                                               const X509V3_EXT_METHOD *method,
                                               X509V3_CTX *ctx, int gen_type,
-                                              char *value, int is_nc);
+                                              const char *value, int is_nc);
 
 OPENSSL_EXPORT GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method,
                                               X509V3_CTX *ctx, CONF_VALUE *cnf);
@@ -579,32 +579,36 @@ OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
 // this function so we cannot, yet, replace the type with a dummy struct.
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_conf_nid(LHASH_OF(CONF_VALUE) *conf,
                                                    X509V3_CTX *ctx, int ext_nid,
-                                                   char *value);
+                                                   const char *value);
 
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf_nid(CONF *conf, X509V3_CTX *ctx,
-                                                    int ext_nid, char *value);
+                                                    int ext_nid,
+                                                    const char *value);
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf(CONF *conf, X509V3_CTX *ctx,
-                                                char *name, char *value);
+                                                const char *name,
+                                                const char *value);
 OPENSSL_EXPORT int X509V3_EXT_add_nconf_sk(CONF *conf, X509V3_CTX *ctx,
-                                           char *section,
+                                           const char *section,
                                            STACK_OF(X509_EXTENSION) **sk);
 OPENSSL_EXPORT int X509V3_EXT_add_nconf(CONF *conf, X509V3_CTX *ctx,
-                                        char *section, X509 *cert);
+                                        const char *section, X509 *cert);
 OPENSSL_EXPORT int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx,
-                                            char *section, X509_REQ *req);
+                                            const char *section, X509_REQ *req);
 OPENSSL_EXPORT int X509V3_EXT_CRL_add_nconf(CONF *conf, X509V3_CTX *ctx,
-                                            char *section, X509_CRL *crl);
+                                            const char *section, X509_CRL *crl);
 
-OPENSSL_EXPORT int X509V3_add_value_bool_nf(char *name, int asn1_bool,
+OPENSSL_EXPORT int X509V3_add_value_bool_nf(const char *name, int asn1_bool,
                                             STACK_OF(CONF_VALUE) **extlist);
-OPENSSL_EXPORT int X509V3_get_value_bool(CONF_VALUE *value, int *asn1_bool);
-OPENSSL_EXPORT int X509V3_get_value_int(CONF_VALUE *value, ASN1_INTEGER **aint);
+OPENSSL_EXPORT int X509V3_get_value_bool(const CONF_VALUE *value,
+                                         int *asn1_bool);
+OPENSSL_EXPORT int X509V3_get_value_int(const CONF_VALUE *value,
+                                        ASN1_INTEGER **aint);
 OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, CONF *conf);
 
-OPENSSL_EXPORT char *X509V3_get_string(X509V3_CTX *ctx, char *name,
-                                       char *section);
+OPENSSL_EXPORT char *X509V3_get_string(X509V3_CTX *ctx, const char *name,
+                                       const char *section);
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx,
-                                                        char *section);
+                                                        const char *section);
 OPENSSL_EXPORT void X509V3_string_free(X509V3_CTX *ctx, char *str);
 OPENSSL_EXPORT void X509V3_section_free(X509V3_CTX *ctx,
                                         STACK_OF(CONF_VALUE) *section);
@@ -621,13 +625,13 @@ OPENSSL_EXPORT int X509V3_add_value_bool(const char *name, int asn1_bool,
 OPENSSL_EXPORT int X509V3_add_value_int(const char *name, ASN1_INTEGER *aint,
                                         STACK_OF(CONF_VALUE) **extlist);
 OPENSSL_EXPORT char *i2s_ASN1_INTEGER(X509V3_EXT_METHOD *meth,
-                                      ASN1_INTEGER *aint);
+                                      const ASN1_INTEGER *aint);
 OPENSSL_EXPORT ASN1_INTEGER *s2i_ASN1_INTEGER(X509V3_EXT_METHOD *meth,
-                                              char *value);
+                                              const char *value);
 OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED(X509V3_EXT_METHOD *meth,
-                                         ASN1_ENUMERATED *aint);
+                                         const ASN1_ENUMERATED *aint);
 OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED_TABLE(X509V3_EXT_METHOD *meth,
-                                               ASN1_ENUMERATED *aint);
+                                               const ASN1_ENUMERATED *aint);
 OPENSSL_EXPORT int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
 OPENSSL_EXPORT int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist);
 OPENSSL_EXPORT int X509V3_EXT_add_alias(int nid_to, int nid_from);

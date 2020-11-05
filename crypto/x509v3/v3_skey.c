@@ -83,7 +83,7 @@ char *i2s_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method, const ASN1_OCTET_STRING *
 }
 
 ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method,
-                                         X509V3_CTX *ctx, char *str)
+                                         X509V3_CTX *ctx, const char *str)
 {
     ASN1_OCTET_STRING *oct;
     long length;
