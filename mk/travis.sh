@@ -56,16 +56,6 @@ if [[ "$TARGET_X" =~ .*"-unknown-linux-musl" || ! "$TARGET_X" =~ "x86_64" ]]; th
   rustup target add "$TARGET_X"
 fi
 
-if [[ ! -z "${CC_X-}" ]]; then
-  export CC=$CC_X
-  $CC --version
-else
-  cc --version
-fi
-
-cargo version
-rustc --version
-
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then
   mode=--release
   target_dir=target/$TARGET_X/release
