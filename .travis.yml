@@ -1,8 +1,5 @@
 language: rust
 matrix:
-  fast_finish: true
-  allow_failures:
-    - rust: nightly
   include:
     - rust: stable
       os: linux
@@ -278,7 +275,7 @@ matrix:
           packages:
             - clang-10
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG KCOV=1 CC_x86_64_unknown_linux_gnu=clang-10
+    - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG CARGO_INCREMENTAL=0 RUSTDOCFLAGS="-Cpanic=abort" RUSTFLAGS="-Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Cpanic=abort -Zpanic_abort_tests -Zprofile" KCOV=1 CC_x86_64_unknown_linux_gnu=clang-10 CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER=mk/kcov.sh
       rust: nightly
       os: linux
       dist: focal
@@ -350,7 +347,7 @@ matrix:
             - gcc-multilib
             - libc6-dev-i386
 
-    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG KCOV=1 CC_i686_unknown_linux_gnu=clang-10 CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang-10
+    - env: TARGET_X=i686-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG CARGO_INCREMENTAL=0 RUSTDOCFLAGS="-Cpanic=abort" RUSTFLAGS="-Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Cpanic=abort -Zpanic_abort_tests -Zprofile" KCOV=1 CC_i686_unknown_linux_gnu=clang-10 CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang-10 CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_RUNNER=mk/kcov.sh
       rust: nightly
       os: linux
       dist: focal

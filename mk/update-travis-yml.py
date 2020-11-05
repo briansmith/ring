@@ -110,14 +110,30 @@ entry_packages_template = """
 
 def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
     env = []
+    runner = None
 
     env.append(("TARGET_X", target))
     env.append(("RUST_X", rust))
     env.append(("MODE_X", mode))
     if features != "":
         env.append(("FEATURES_X", features))
+
     if kcov:
+        # kcov reports coverage as a percentage of code *linked into the executable*
+        # (more accurately, code that has debug info linked into the executable), not
+        # as a percentage of source code. Any code that gets discarded by the linker
+        # due to lack of usage isn't counted at all. Thus, we have to link with
+        # "-C link-dead-code" to get accurate code coverage reports.
+        #
+        # panic=abort is used to get accurate coverage. See
+        # https://github.com/rust-lang/rust/issues/43410 and
+        # https://github.com/mozilla/grcov/issues/427#issuecomment-623995594 and
+        # https://github.com/rust-lang/rust/issues/55352.
+        env.append(("CARGO_INCREMENTAL", 0))
+        env.append(("RUSTDOCFLAGS", '"-Cpanic=abort"'))
+        env.append(("RUSTFLAGS", '"-Ccodegen-units=1 -Clink-dead-code -Coverflow-checks=on -Cpanic=abort -Zpanic_abort_tests -Zprofile"'))
         env.append(("KCOV", "1"))
+        runner = 'mk/kcov.sh'
 
     target_words = target.split("-")
     arch = target_words[0]
@@ -182,6 +198,8 @@ def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
         env.append(("CC_" + target_with_underscores, cc))
         if arch != "x86_64":
             env.append(("CARGO_TARGET_%s_LINKER" % target_with_underscores.upper(), cc))
+        if runner:
+            env.append(("CARGO_TARGET_%s_RUNNER" % target_with_underscores.upper(), runner))
 
     return template % {
             "env" : " ".join(["%s=%s" % (name, value) for (name, value) in env]),
