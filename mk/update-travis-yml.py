@@ -39,6 +39,8 @@ feature_sets = [
     "",
 ]
 
+wasm32_c = "--features=wasm32_c"
+
 modes = [
     "DEBUG",
     "RELWITHDEBINFO"
@@ -54,7 +56,7 @@ targets = {
     "linux" : [
         ("aarch64-linux-android", [ "aarch64-linux-android21-clang" ]),
         ("armv7-linux-androideabi", [ "armv7a-linux-androideabi18-clang" ]),
-        ("wasm32-unknown-unknown", [""]),
+        ("wasm32-unknown-unknown", [clang]),
         ("x86_64-unknown-linux-gnu", linux_compilers),
         ("x86_64-unknown-linux-musl", [clang]),
         ("aarch64-unknown-linux-gnu", [ "aarch64-linux-gnu-gcc" ]),
@@ -71,13 +73,14 @@ def kcovs(target, rust, mode):
     return [False, True] if target in kcov_targets and rust == "nightly" and mode == "DEBUG" else [False]
 
 def format_entries():
+    wasm32_feature_sets = ["", wasm32_c]
     entries = [format_entry(os, "focal", target, compiler, rust, mode, features, kcov)
          for rust in rusts
          for os in targets.keys()
          for (target, compilers) in targets[os]
          for compiler in compilers
          for mode in modes
-         for features in feature_sets
+         for features in (feature_sets if target != "wasm32-unknown-unknown" else wasm32_feature_sets)
          for kcov in kcovs(target, rust, mode)]
 
     # Verify that we build on Trusty, which has GCC 4.8 as the default GCC
@@ -111,6 +114,7 @@ entry_packages_template = """
 
 def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
     env = []
+    target_ar = None
     runner = None
 
     env.append(("TARGET_X", target))
@@ -147,6 +151,10 @@ def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
 
     if target == "wasm32-unknown-unknown":
         sys = "linux"
+        if features != wasm32_c:
+            compiler = ""
+        else:
+            target_ar = compiler.replace("clang", "llvm-ar")
     elif sys == "darwin":
         abi = sys
         sys = "macos"
@@ -199,6 +207,8 @@ def format_entry(os, linux_dist, target, compiler, rust, mode, features, kcov):
     target_with_underscores = target.replace("-", "_")
     if cc != "":
         env.append(("CC_" + target_with_underscores, cc))
+        if target_ar:
+            env.append(("AR_" + target_with_underscores, target_ar))
         if arch not in ["x86_64", "wasm32"]:
             env.append(("CARGO_TARGET_%s_LINKER" % target_with_underscores.upper(), cc))
         if runner:

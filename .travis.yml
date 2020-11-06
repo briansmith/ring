@@ -81,10 +81,28 @@ matrix:
       os: linux
       dist: focal
 
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=stable MODE_X=DEBUG FEATURES_X=--features=wasm32_c CC_wasm32_unknown_unknown=clang-10 AR_wasm32_unknown_unknown=llvm-ar-10
+      rust: stable
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
+
     - env: TARGET_X=wasm32-unknown-unknown RUST_X=stable MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
       dist: focal
+
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=stable MODE_X=RELWITHDEBINFO FEATURES_X=--features=wasm32_c CC_wasm32_unknown_unknown=clang-10 AR_wasm32_unknown_unknown=llvm-ar-10
+      rust: stable
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG CC_x86_64_unknown_linux_gnu=clang-10
       rust: stable
@@ -281,10 +299,28 @@ matrix:
       os: linux
       dist: focal
 
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=nightly MODE_X=DEBUG FEATURES_X=--features=wasm32_c CC_wasm32_unknown_unknown=clang-10 AR_wasm32_unknown_unknown=llvm-ar-10
+      rust: nightly
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
+
     - env: TARGET_X=wasm32-unknown-unknown RUST_X=nightly MODE_X=RELWITHDEBINFO
       rust: nightly
       os: linux
       dist: focal
+
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=nightly MODE_X=RELWITHDEBINFO FEATURES_X=--features=wasm32_c CC_wasm32_unknown_unknown=clang-10 AR_wasm32_unknown_unknown=llvm-ar-10
+      rust: nightly
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG CC_x86_64_unknown_linux_gnu=clang-10
       rust: nightly
@@ -503,10 +539,28 @@ matrix:
       os: linux
       dist: focal
 
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=beta MODE_X=DEBUG FEATURES_X=--features=wasm32_c CC_wasm32_unknown_unknown=clang-10 AR_wasm32_unknown_unknown=llvm-ar-10
+      rust: beta
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
+
     - env: TARGET_X=wasm32-unknown-unknown RUST_X=beta MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
       dist: focal
+
+    - env: TARGET_X=wasm32-unknown-unknown RUST_X=beta MODE_X=RELWITHDEBINFO FEATURES_X=--features=wasm32_c CC_wasm32_unknown_unknown=clang-10 AR_wasm32_unknown_unknown=llvm-ar-10
+      rust: beta
+      os: linux
+      dist: focal
+      addons:
+        apt:
+          packages:
+            - clang-10
 
     - env: TARGET_X=x86_64-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG CC_x86_64_unknown_linux_gnu=clang-10
       rust: beta
