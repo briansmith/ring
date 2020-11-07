@@ -8,16 +8,6 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: TARGET_X=aarch64-apple-ios RUST_X=stable MODE_X=DEBUG
-      rust: stable
-      os: osx
-      osx_image: xcode12
-
-    - env: TARGET_X=aarch64-apple-ios RUST_X=stable MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: osx
-      osx_image: xcode12
-
     - env: TARGET_X=aarch64-linux-android RUST_X=stable MODE_X=DEBUG CC_aarch64_linux_android=aarch64-linux-android21-clang CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang
       rust: stable
       os: linux
@@ -169,16 +159,6 @@ matrix:
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
-
-    - env: TARGET_X=aarch64-apple-ios RUST_X=nightly MODE_X=DEBUG
-      rust: nightly
-      os: osx
-      osx_image: xcode12
-
-    - env: TARGET_X=aarch64-apple-ios RUST_X=nightly MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: osx
-      osx_image: xcode12
 
     - env: TARGET_X=aarch64-linux-android RUST_X=nightly MODE_X=DEBUG CC_aarch64_linux_android=aarch64-linux-android21-clang CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang
       rust: nightly
@@ -343,16 +323,6 @@ matrix:
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
-
-    - env: TARGET_X=aarch64-apple-ios RUST_X=beta MODE_X=DEBUG
-      rust: beta
-      os: osx
-      osx_image: xcode12
-
-    - env: TARGET_X=aarch64-apple-ios RUST_X=beta MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: osx
-      osx_image: xcode12
 
     - env: TARGET_X=aarch64-linux-android RUST_X=beta MODE_X=DEBUG CC_aarch64_linux_android=aarch64-linux-android21-clang CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang
       rust: beta

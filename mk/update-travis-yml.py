@@ -47,9 +47,6 @@ modes = [
 # Mac OS X is first because we don't want to have to wait until all the Linux
 # configurations have been built to find out that there is a failure on Mac.
 targets = {
-    "osx" : [
-        ("aarch64-apple-ios", apple_compilers),
-    ],
     "linux" : [
         ("aarch64-linux-android", [ "aarch64-linux-android21-clang" ]),
         ("armv7-linux-androideabi", [ "armv7a-linux-androideabi18-clang" ]),

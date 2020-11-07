@@ -74,3 +74,29 @@ jobs:
         # TODO: Collect the resultant artifacts and/or run the tests.
         run: |
           cargo test --no-run -vv ${{ matrix.features }} ${{ matrix.mode }} --target=${{ matrix.target }}
+
+  build-cross-apple:
+    runs-on: ${{ matrix.host_os }}
+    strategy:
+      matrix:
+        host_os:
+          - macos-latest
+        mode:
+          - # debug
+          - --release
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+        target:
+          - aarch64-apple-ios
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+      # TODO: Collect the resultant artifacts and/or run the tests.
+      - run: |
+          cargo test --no-run -vv ${{ matrix.features }} ${{ matrix.mode }} --target=${{ matrix.target }}
