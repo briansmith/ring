@@ -78,9 +78,44 @@ fn agreement_traits<'a>() {
 }
 
 #[test]
-fn agreement_agree_ephemeral() {
+fn agreement_public_key() {
     let rng = rand::SystemRandom::new();
 
+    test::run(
+        test_file!("agreement_tests_pubkey.txt"),
+        |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let alg = alg_from_curve_name(&curve_name);
+            let peer_public =
+                agreement::UnparsedPublicKey::new(alg, test_case.consume_bytes("PeerQ"));
+            let _error = test_case.consume_string("Error");
+
+            // In the no-heap mode, some algorithms aren't supported so
+            // we have to skip those algorithms' test cases.
+            let dummy_private_key = agreement::EphemeralPrivateKey::generate(alg, &rng)?;
+            fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
+                panic!(
+                    "The KDF was called during ECDH when the peer's \
+                         public key is invalid."
+                );
+            }
+            assert!(agreement::agree_ephemeral(
+                dummy_private_key,
+                &peer_public,
+                (),
+                kdf_not_called
+            )
+            .is_err());
+
+            return Ok(());
+        },
+    );
+}
+
+#[test]
+fn agreement_agree_ephemeral() {
     test::run(test_file!("agreement_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
 
@@ -88,51 +123,28 @@ fn agreement_agree_ephemeral() {
         let alg = alg_from_curve_name(&curve_name);
         let peer_public = agreement::UnparsedPublicKey::new(alg, test_case.consume_bytes("PeerQ"));
 
-        match test_case.consume_optional_string("Error") {
-            None => {
-                let my_private = test_case.consume_bytes("D");
-                let my_private = {
-                    let rng = test::rand::FixedSliceRandom { bytes: &my_private };
-                    agreement::EphemeralPrivateKey::generate(alg, &rng)?
-                };
-                let my_public = test_case.consume_bytes("MyQ");
-                let output = test_case.consume_bytes("Output");
+        let my_private = test_case.consume_bytes("D");
+        let my_private = {
+            let rng = test::rand::FixedSliceRandom { bytes: &my_private };
+            agreement::EphemeralPrivateKey::generate(alg, &rng)?
+        };
+        let my_public = test_case.consume_bytes("MyQ");
+        let output = test_case.consume_bytes("Output");
 
-                assert_eq!(my_private.algorithm(), alg);
+        assert_eq!(my_private.algorithm(), alg);
 
-                let computed_public = my_private.compute_public_key().unwrap();
-                assert_eq!(computed_public.as_ref(), &my_public[..]);
+        let computed_public = my_private.compute_public_key().unwrap();
+        assert_eq!(computed_public.as_ref(), &my_public[..]);
 
-                assert_eq!(my_private.algorithm(), alg);
+        assert_eq!(my_private.algorithm(), alg);
 
-                assert!(
-                    agreement::agree_ephemeral(my_private, &peer_public, (), |key_material| {
-                        assert_eq!(key_material, &output[..]);
-                        Ok(())
-                    })
-                    .is_ok()
-                );
-            }
-
-            Some(_) => {
-                // In the no-heap mode, some algorithms aren't supported so
-                // we have to skip those algorithms' test cases.
-                let dummy_private_key = agreement::EphemeralPrivateKey::generate(alg, &rng)?;
-                fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
-                    panic!(
-                        "The KDF was called during ECDH when the peer's \
-                         public key is invalid."
-                    );
-                }
-                assert!(agreement::agree_ephemeral(
-                    dummy_private_key,
-                    &peer_public,
-                    (),
-                    kdf_not_called
-                )
-                .is_err());
-            }
-        }
+        assert!(
+            agreement::agree_ephemeral(my_private, &peer_public, (), |key_material| {
+                assert_eq!(key_material, &output[..]);
+                Ok(())
+            })
+            .is_ok()
+        );
 
         return Ok(());
     });
