@@ -115,6 +115,55 @@ fn agreement_public_key() {
 }
 
 #[test]
+fn agreement_private_key() {
+    test::run(
+        test_file!("agreement_tests_privkey.txt"),
+        |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let alg = alg_from_curve_name(&curve_name);
+            let private_key = test_case.consume_bytes("D");
+            let _error = test_case.consume_string("Error");
+
+            let pair = agreement::StaticKeyPair::from_private_key_unchecked(&alg, &private_key[..]);
+            assert!(pair.is_err());
+
+            return Ok(());
+        },
+    );
+}
+
+#[test]
+fn agreement_static_key_pair() {
+    static ALGORITHMS: [&'static agreement::Algorithm; 3] = [
+        &agreement::ECDH_P256,
+        &agreement::ECDH_P384,
+        &agreement::X25519,
+    ];
+
+    let rng = rand::SystemRandom::new();
+
+    for alg in ALGORITHMS.iter() {
+        let pair1 = agreement::StaticKeyPair::generate(alg, &rng).unwrap();
+        let pk1: &[u8] = pair1.public_key().as_ref();
+        let sk1: &[u8] = pair1.private_key();
+
+        let pair2 = agreement::StaticKeyPair::from_private_key_unchecked(alg, sk1).unwrap();
+        let pk2: &[u8] = pair2.public_key().as_ref();
+        let sk2: &[u8] = pair2.private_key();
+        assert_eq!(pk2, pk1);
+        assert_eq!(sk2, sk1);
+
+        let pair3 = agreement::StaticKeyPair::from_private_and_public_key(alg, sk1, pk1).unwrap();
+        let pk3: &[u8] = pair3.public_key().as_ref();
+        let sk3: &[u8] = pair3.private_key();
+        assert_eq!(pk3, pk1);
+        assert_eq!(sk3, sk1);
+    }
+}
+
+#[test]
 fn agreement_agree_ephemeral() {
     test::run(test_file!("agreement_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
@@ -140,6 +189,38 @@ fn agreement_agree_ephemeral() {
 
         assert!(
             agreement::agree_ephemeral(my_private, &peer_public, (), |key_material| {
+                assert_eq!(key_material, &output[..]);
+                Ok(())
+            })
+            .is_ok()
+        );
+
+        return Ok(());
+    });
+}
+
+#[test]
+fn agreement_agree_static() {
+    test::run(test_file!("agreement_tests.txt"), |section, test_case| {
+        assert_eq!(section, "");
+
+        let curve_name = test_case.consume_string("Curve");
+        let alg = alg_from_curve_name(&curve_name);
+        let peer_public = agreement::UnparsedPublicKey::new(alg, test_case.consume_bytes("PeerQ"));
+
+        let my_private = test_case.consume_bytes("D");
+        let my_pair =
+            agreement::StaticKeyPair::from_private_key_unchecked(&alg, &my_private).unwrap();
+        let my_public = test_case.consume_bytes("MyQ");
+        let output = test_case.consume_bytes("Output");
+
+        assert_eq!(my_pair.algorithm(), alg);
+
+        let computed_public = my_pair.public_key();
+        assert_eq!(computed_public.as_ref(), &my_public[..]);
+
+        assert!(
+            agreement::agree_static(&my_pair, &peer_public, (), |key_material| {
                 assert_eq!(key_material, &output[..]);
                 Ok(())
             })

@@ -150,6 +150,106 @@ impl EphemeralPrivateKey {
     }
 }
 
+/// A static key pair that can be used for multiple exchanges
+pub struct StaticKeyPair {
+    private_key: ec::Seed,
+    public_key: PublicKey,
+    algorithm: &'static Algorithm,
+}
+
+derive_debug_via_field!(StaticKeyPair, stringify!(StaticKeyPair), algorithm);
+
+impl StaticKeyPair {
+    /// Generate a new static key pair for the given algorithm.
+    pub fn generate(
+        alg: &'static Algorithm,
+        rng: &dyn rand::SecureRandom,
+    ) -> Result<Self, error::Unspecified> {
+        let cpu_features = cpu::features();
+
+        // Generate the private key
+        let private_key = ec::Seed::generate(&alg.curve, rng, cpu_features)?;
+
+        // Return the keypair
+        Self::from_private_key(alg, private_key)
+    }
+
+    /// Constructs a static key pair from the private key `private_key` and its
+    /// public key `public_key`.
+    ///
+    /// The private and public keys will be verified to be consistent with each
+    /// other. This helps avoid misuse of the key (e.g. accidentally swapping
+    /// the private key and public key, or using the wrong private key for the
+    /// public key). This also detects any corruption of the public or private
+    /// key.
+    pub fn from_private_and_public_key(
+        alg: &'static Algorithm,
+        private_key: &[u8],
+        public_key: &[u8],
+    ) -> Result<Self, error::Unspecified> {
+        let pair = Self::from_private_key_unchecked(alg, private_key)?;
+
+        let pair_public_key: &[u8] = pair.public_key().as_ref();
+        if public_key == pair_public_key {
+            Ok(pair)
+        } else {
+            Err(error::Unspecified)
+        }
+    }
+
+    /// Constructs a key pair from the private key `private_key`.
+    ///
+    /// Since the public key is not given, the public key will be computed from
+    /// the private key. It is not possible to detect misuse or corruption of
+    /// the private key since the public key isn't given as input.
+    pub fn from_private_key_unchecked(
+        alg: &'static Algorithm,
+        private_key: &[u8],
+    ) -> Result<Self, error::Unspecified> {
+        let cpu_features = cpu::features();
+
+        // Wrap the byte sequence
+        let private_key = ec::Seed::from_bytes(&alg.curve, private_key.into(), cpu_features)?;
+
+        // Return the keypair
+        Self::from_private_key(alg, private_key)
+    }
+
+    pub(crate) fn from_private_key(
+        alg: &'static Algorithm,
+        private_key: ec::Seed,
+    ) -> Result<Self, error::Unspecified> {
+        // Derive the public key
+        let public_key = private_key
+            .compute_public_key()
+            .map(|public_key| PublicKey {
+                algorithm: alg,
+                bytes: public_key,
+            })?;
+
+        Ok(Self {
+            private_key,
+            public_key,
+            algorithm: alg,
+        })
+    }
+
+    /// The algorithm for this key pair.
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
+    }
+
+    /// Get the public key
+    pub fn public_key(&self) -> &PublicKey {
+        &self.public_key
+    }
+
+    /// Get the private key
+    pub fn private_key(&self) -> &[u8] {
+        self.private_key.bytes_less_safe()
+    }
+}
+
 /// A public key for key agreement.
 #[derive(Clone)]
 pub struct PublicKey {
@@ -266,11 +366,61 @@ where
         algorithm: peer_public_key.algorithm,
         bytes: peer_public_key.bytes.as_ref(),
     };
-    agree_ephemeral_(my_private_key, peer_public_key, error_value, kdf)
+    agree_(
+        &my_private_key.private_key,
+        &my_private_key.algorithm,
+        peer_public_key,
+        error_value,
+        kdf,
+    )
 }
 
-fn agree_ephemeral_<F, R, E>(
-    my_private_key: EphemeralPrivateKey,
+/// Performs a key agreement with a static key pair and a peer's public key
+///
+/// `my_key_pair` is the static key pair containing the private key to use. In
+/// constrast to `EphemeralPrivateKey` a `StaticKeyPair` can be used multiple
+/// times.
+///
+/// `peer_public_key` is the peer's public key. `agree_static` will return
+/// `Err(error_value)` if it does not match `my_key_pair's` algorithm/curve.
+/// `agree_static` verifies that it is encoded in the standard form for the
+/// algorithm and that the key is *valid*; see the algorithm's documentation for
+/// details on how keys are to be encoded and what constitutes a valid key for
+/// that algorithm.
+///
+/// `error_value` is the value to return if an error occurs before `kdf` is
+/// called, e.g. when decoding of the peer's public key fails or when the public
+/// key is otherwise invalid.
+///
+/// After the key agreement is done, `agree_ephemeral` calls `kdf` with the raw
+/// key material from the key agreement operation and then returns what `kdf`
+/// returns.
+#[inline]
+pub fn agree_static<B: AsRef<[u8]>, F, R, E>(
+    my_key_pair: &StaticKeyPair,
+    peer_public_key: &UnparsedPublicKey<B>,
+    error_value: E,
+    kdf: F,
+) -> Result<R, E>
+where
+    F: FnOnce(&[u8]) -> Result<R, E>,
+{
+    let peer_public_key = UnparsedPublicKey {
+        algorithm: peer_public_key.algorithm,
+        bytes: peer_public_key.bytes.as_ref(),
+    };
+    agree_(
+        &my_key_pair.private_key,
+        &my_key_pair.algorithm,
+        peer_public_key,
+        error_value,
+        kdf,
+    )
+}
+
+fn agree_<F, R, E>(
+    my_private_key: &ec::Seed,
+    alg: &Algorithm,
     peer_public_key: UnparsedPublicKey<&[u8]>,
     error_value: E,
     kdf: F,
@@ -283,11 +433,9 @@ where
     // The domain parameters are hard-coded. This check verifies that the
     // peer's public key's domain parameters match the domain parameters of
     // this private key.
-    if peer_public_key.algorithm != my_private_key.algorithm {
+    if peer_public_key.algorithm != alg {
         return Err(error_value);
     }
-
-    let alg = &my_private_key.algorithm;
 
     // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
     // to the caller.
@@ -308,7 +456,7 @@ where
     // that doesn't meet the NSA requirement to "zeroize."
     (alg.ecdh)(
         shared_key,
-        &my_private_key.private_key,
+        &my_private_key,
         untrusted::Input::from(peer_public_key.bytes),
     )
     .map_err(|_| error_value)?;
