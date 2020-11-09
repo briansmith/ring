@@ -37,14 +37,13 @@ jobs:
           toolchain: ${{ matrix.rust_channel }}
       - run: cargo test -vv ${{ matrix.mode }}
 
-  # Verify that the default configuration and the "wasm32_c" configuration build.
-  build-cross-wasm:
+  # Verify cross-compiling with the default feature set works.
+  build-cross-linux:
     runs-on: ${{ matrix.host_os }}
     strategy:
       matrix:
         features:
           - # Default
-          - --features=wasm32_c
         host_os:
           - ubuntu-18.04
         mode:
@@ -56,6 +55,8 @@ jobs:
           - nightly
         target:
           - wasm32-unknown-unknown
+          - aarch64-linux-android
+          - armv7-linux-androideabi
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -63,12 +64,56 @@ jobs:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
+
+      - if: ${{ contains(matrix.target, 'android') }}
+        run: |
+          mkdir -p "${ANDROID_SDK_ROOT}/licenses" && \
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "${ANDROID_SDK_ROOT}/licenses/android-sdk-license" && \
+          sudo "${ANDROID_SDK_ROOT}/tools/bin/sdkmanager" ndk-bundle
+
+        # wasm32-*: When the "wasm32_c" feature isn't enabled, we don't need to set anything.
+        # TODO: Collect the resultant artifacts and/or run the tests.
+      - run: |
+          PATH=${ANDROID_SDK_ROOT}/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH \
+          CC_aarch64_linux_android=aarch64-linux-android21-clang \
+          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang \
+          CC_armv7_linux_androideabi=armv7a-linux-androideabi18-clang \
+          CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=armv7a-linux-androideabi18-clang \
+          cargo test --no-run -vv ${{ matrix.features }} ${{ matrix.mode }} --target=${{ matrix.target }}
+
+  # Verify that the the "wasm32_c" configuration builds.
+  build-cross-wasm32-c:
+    runs-on: ${{ matrix.host_os }}
+    strategy:
+      matrix:
+        features:
+          - --features="wasm32_c"
+        host_os:
+          - ubuntu-18.04
+        mode:
+          - # debug
+          - --release
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+        target:
+          - wasm32-unknown-unknown
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
       # "wasm_c" has only been tested with clang-10 and llvm-ar-10. The build
       # will fail when using some older versions.
-      - if: ${{ matrix.features == '--features=wasm32_c' }}
-        run: sudo apt-get -yq --no-install-suggests --no-install-recommends install clang-10 llvm-10
+      - run: sudo apt-get -yq --no-install-suggests --no-install-recommends install clang-10 llvm-10
       - env:
-          # These are only needed for the "wasm_c" feature currently.
+          # These are only needed for for wasm32 targets only, only when the "wasm_c"
+          # feature is enabled.
           CC_wasm32_unknown_unknown: clang-10
           AR_wasm32_unknown_unknown: llvm-ar-10
         # TODO: Collect the resultant artifacts and/or run the tests.

@@ -48,8 +48,6 @@ modes = [
 # configurations have been built to find out that there is a failure on Mac.
 targets = {
     "linux" : [
-        ("aarch64-linux-android", [ "aarch64-linux-android21-clang" ]),
-        ("armv7-linux-androideabi", [ "armv7a-linux-androideabi18-clang" ]),
         ("x86_64-unknown-linux-musl", [clang]),
         ("aarch64-unknown-linux-gnu", [ "aarch64-linux-gnu-gcc" ]),
         ("i686-unknown-linux-gnu", linux_compilers),
