@@ -37,6 +37,46 @@ jobs:
           toolchain: ${{ matrix.rust_channel }}
       - run: cargo test -vv ${{ matrix.mode }}
 
+  test-cross-linux-linux:
+    runs-on: ${{ matrix.host_os }}
+    strategy:
+      matrix:
+        host_os:
+          - ubuntu-18.04
+        mode:
+          - # debug
+          - --release
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+        target:
+          - i686-unknown-linux-gnu
+          - i686-unknown-linux-musl
+          - x86_64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          toolchain: ${{ matrix.rust_channel }}
+
+      # TODO: musl i686 shouldn't be using gcc-multilib or libc6-dev-i386.
+      - if: ${{ contains(matrix.target, 'i686') }}
+        run: |
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install \
+            gcc-multilib \
+            libc6-dev-i386
+
+      - run: |
+          CC_i686_unknown_linux_gnu=clang \
+          CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang \
+          CC_i686_unknown_linux_musl=clang \
+          CARGO_TARGET_i686_UNKNOWN_LINUX_MUSL_LINKER=clang \
+          CC_x86_64_unknown_linux_musl=clang \
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang \
+          cargo test -vv ${{ matrix.mode }}
+
   # Verify cross-compiling with the default feature set works.
   build-cross-linux:
     runs-on: ${{ matrix.host_os }}
