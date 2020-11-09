@@ -18,6 +18,8 @@ jobs:
     runs-on: ${{ matrix.host_os }}
     strategy:
       matrix:
+        features:
+          - # Default
         host_os:
           - ubuntu-18.04
           - macos-latest
@@ -34,13 +36,18 @@ jobs:
         with:
           override: true
           toolchain: ${{ matrix.rust_channel }}
+
       - uses: actions/checkout@v2
-      - run: cargo test -vv ${{ matrix.mode }}
+
+      - run: |
+          cargo test -vv ${{ matrix.features }} ${{ matrix.mode }}
 
   test-cross-linux-linux:
     runs-on: ${{ matrix.host_os }}
     strategy:
       matrix:
+        features:
+          - # Default
         host_os:
           - ubuntu-18.04
         mode:
@@ -57,37 +64,15 @@ jobs:
           - i686-unknown-linux-musl
           - x86_64-unknown-linux-musl
     steps:
-      # qemu-user is needed only to run the tests, not for `cargo build` or
-      # `cargo test --no-run`.
-      - if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
-        run: |
-          sudo apt-get -yq --no-install-suggests --no-install-recommends install \
-            gcc-aarch64-linux-gnu \
-            libc6-dev-arm64-cross \
-            qemu-user
+      - uses: actions/checkout@v2
 
-      # qemu-user is needed only to run the tests, not for `cargo build` or
-      # `cargo test --no-run`.
-      - if: ${{ matrix.target == 'arm-unknown-linux-gnueabihf' }}
-        run: |
-          sudo apt-get -yq --no-install-suggests --no-install-recommends install \
-            gcc-arm-linux-gnueabihf \
-            libc6-dev-armhf-cross \
-            qemu-user
-
-      # TODO: musl i686 shouldn't be using gcc-multilib or libc6-dev-i386.
-      - if: ${{ contains(matrix.target, 'i686') }}
-        run: |
-          sudo apt-get -yq --no-install-suggests --no-install-recommends install \
-            gcc-multilib \
-            libc6-dev-i386
+      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
       - uses: actions-rs/toolchain@v1
         with:
           override: true
+          target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
-
-      - uses: actions/checkout@v2
 
       - run: |
           CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
@@ -102,7 +87,7 @@ jobs:
           CARGO_TARGET_i686_UNKNOWN_LINUX_MUSL_LINKER=clang \
           CC_x86_64_unknown_linux_musl=clang \
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang \
-          cargo test -vv ${{ matrix.mode }}
+          cargo test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
   # Verify cross-compiling with the default feature set works.
   build-cross-linux:
@@ -125,19 +110,15 @@ jobs:
           - aarch64-linux-android
           - armv7-linux-androideabi
     steps:
-      - if: ${{ contains(matrix.target, 'android') }}
-        run: |
-          mkdir -p "${ANDROID_SDK_ROOT}/licenses" && \
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "${ANDROID_SDK_ROOT}/licenses/android-sdk-license" && \
-          sudo "${ANDROID_SDK_ROOT}/tools/bin/sdkmanager" ndk-bundle
+      - uses: actions/checkout@v2
+
+      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
       - uses: actions-rs/toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
-
-      - uses: actions/checkout@v2
 
       # wasm32-*: When the "wasm32_c" feature isn't enabled, we don't need to set anything.
       # TODO: Collect the resultant artifacts and/or run the tests.
@@ -147,7 +128,7 @@ jobs:
           CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang \
           CC_armv7_linux_androideabi=armv7a-linux-androideabi18-clang \
           CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=armv7a-linux-androideabi18-clang \
-          cargo test --no-run -vv ${{ matrix.features }} ${{ matrix.mode }} --target=${{ matrix.target }}
+          cargo test -vv --no-run --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
   # Verify that the the "wasm32_c" configuration builds.
   build-cross-wasm32-c:
@@ -155,7 +136,7 @@ jobs:
     strategy:
       matrix:
         features:
-          - --features="wasm32_c"
+          - --features=wasm32_c
         host_os:
           - ubuntu-18.04
         mode:
@@ -169,17 +150,15 @@ jobs:
           - wasm32-unknown-unknown
 
     steps:
-      # "wasm_c" has only been tested with clang-10 and llvm-ar-10. The build
-      # will fail when using some older versions.
-      - run: sudo apt-get -yq --no-install-suggests --no-install-recommends install clang-10 llvm-10
+      - uses: actions/checkout@v2
+
+      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
       - uses: actions-rs/toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
-
-      - uses: actions/checkout@v2
 
       - env:
           # These are only needed for for wasm32 targets only, only when the "wasm_c"
@@ -188,7 +167,7 @@ jobs:
           AR_wasm32_unknown_unknown: llvm-ar-10
         # TODO: Collect the resultant artifacts and/or run the tests.
         run: |
-          cargo test --no-run -vv ${{ matrix.features }} ${{ matrix.mode }} --target=${{ matrix.target }}
+          cargo test -vv --no-run --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
   build-cross-apple:
     runs-on: ${{ matrix.host_os }}
@@ -206,13 +185,15 @@ jobs:
         target:
           - aarch64-apple-ios
     steps:
+      - uses: actions/checkout@v2
+
+      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
       - uses: actions-rs/toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
-
-      - uses: actions/checkout@v2
 
       # TODO: Collect the resultant artifacts and/or run the tests.
       - run: |
