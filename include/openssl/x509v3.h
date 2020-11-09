@@ -466,17 +466,6 @@ typedef struct x509_purpose_st {
 #define X509_PURPOSE_MIN 1
 #define X509_PURPOSE_MAX 9
 
-// Flags for X509V3_add1_i2d
-
-#define X509V3_ADD_OP_MASK 0xfL
-#define X509V3_ADD_DEFAULT 0L
-#define X509V3_ADD_APPEND 1L
-#define X509V3_ADD_REPLACE 2L
-#define X509V3_ADD_REPLACE_EXISTING 3L
-#define X509V3_ADD_KEEP_EXISTING 4L
-#define X509V3_ADD_DELETE 5L
-#define X509V3_ADD_SILENT 0x10
-
 DEFINE_STACK_OF(X509_PURPOSE)
 
 DECLARE_ASN1_FUNCTIONS(BASIC_CONSTRAINTS)
@@ -684,11 +673,76 @@ OPENSSL_EXPORT void *X509V3_EXT_d2i(const X509_EXTENSION *ext);
 OPENSSL_EXPORT void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions,
                                     int nid, int *out_critical, int *out_idx);
 
+// X509V3_EXT_free casts |ext_data| into the type that corresponds to |nid| and
+// releases memory associated with it. It returns one on success and zero if
+// |nid| is not a known extension.
+//
+// WARNING: Casting |ext_data| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |ext_data|'s type matches |nid|.
+//
+// TODO(davidben): OpenSSL upstream no longer exposes this function. Remove it?
 OPENSSL_EXPORT int X509V3_EXT_free(int nid, void *ext_data);
 
-
+// X509V3_EXT_i2d casts |ext_struc| into the type that corresponds to
+// |ext_nid|, serializes it, and returns a newly-allocated |X509_EXTENSION|
+// object containing the serialization, or NULL on error. The |X509_EXTENSION|
+// has OID |ext_nid| and is critical if |crit| is one.
+//
+// WARNING: Casting |ext_struc| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |ext_struct|'s type matches |ext_nid|.
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit,
                                               void *ext_struc);
+
+// The following constants control the behavior of |X509V3_add1_i2d| and related
+// functions.
+
+// X509V3_ADD_OP_MASK can be ANDed with the flags to determine how duplicate
+// extensions are processed.
+#define X509V3_ADD_OP_MASK 0xfL
+
+// X509V3_ADD_DEFAULT causes the function to fail if the extension was already
+// present.
+#define X509V3_ADD_DEFAULT 0L
+
+// X509V3_ADD_APPEND causes the function to unconditionally appended the new
+// extension to to the extensions list, even if there is a duplicate.
+#define X509V3_ADD_APPEND 1L
+
+// X509V3_ADD_REPLACE causes the function to replace the existing extension, or
+// append if it is not present.
+#define X509V3_ADD_REPLACE 2L
+
+// X509V3_ADD_REPLACE causes the function to replace the existing extension and
+// fail if it is not present.
+#define X509V3_ADD_REPLACE_EXISTING 3L
+
+// X509V3_ADD_KEEP_EXISTING causes the function to succeed without replacing the
+// extension if already present.
+#define X509V3_ADD_KEEP_EXISTING 4L
+
+// X509V3_ADD_DELETE causes the function to remove the matching extension. No
+// new extension is added. If there is no matching extension, the function
+// fails. The |value| parameter is ignored in this mode.
+#define X509V3_ADD_DELETE 5L
+
+// X509V3_ADD_SILENT may be ORed into one of the values above to indicate the
+// function should not add to the error queue on duplicate or missing extension.
+// The function will continue to return zero in those cases, and it will
+// continue to return -1 and add to the error queue on other errors.
+#define X509V3_ADD_SILENT 0x10
+
+// X509V3_add1_i2d casts |value| to the type that corresponds to |nid|,
+// serializes it, and appends it to the extension list in |*x|. If |*x| is NULL,
+// it will set |*x| to a newly-allocated |STACK_OF(X509_EXTENSION)| as needed.
+// The |crit| parameter determines whether the new extension is critical.
+// |flags| may be some combination of the |X509V3_ADD_*| constants to control
+// the function's behavior on duplicate extension.
+//
+// This function returns one on success, zero if the operation failed due to a
+// missing or duplicate extension, and -1 on other errors.
+//
+// WARNING: Casting |value| to the wrong type is a potentially exploitable
+// memory error, so callers must ensure |value|'s type matches |nid|.
 OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
                                    void *value, int crit, unsigned long flags);
 

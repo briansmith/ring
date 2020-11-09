@@ -1317,6 +1317,12 @@ OPENSSL_EXPORT int X509_add_ext(X509 *x, X509_EXTENSION *ex, int loc);
 OPENSSL_EXPORT void *X509_get_ext_d2i(const X509 *x509, int nid,
                                       int *out_critical, int *out_idx);
 
+// X509_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the extension to
+// |x|'s extension list.
+//
+// WARNING: This function may return zero or -1 on error. The caller must also
+// ensure |value|'s type matches |nid|. See the documentation for
+// |X509V3_add1_i2d| for details.
 OPENSSL_EXPORT int X509_add1_ext_i2d(X509 *x, int nid, void *value, int crit,
                                      unsigned long flags);
 
@@ -1338,6 +1344,12 @@ OPENSSL_EXPORT int X509_CRL_add_ext(X509_CRL *x, X509_EXTENSION *ex, int loc);
 OPENSSL_EXPORT void *X509_CRL_get_ext_d2i(const X509_CRL *crl, int nid,
                                           int *out_critical, int *out_idx);
 
+// X509_CRL_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the extension
+// to |x|'s extension list.
+//
+// WARNING: This function may return zero or -1 on error. The caller must also
+// ensure |value|'s type matches |nid|. See the documentation for
+// |X509V3_add1_i2d| for details.
 OPENSSL_EXPORT int X509_CRL_add1_ext_i2d(X509_CRL *x, int nid, void *value,
                                          int crit, unsigned long flags);
 
@@ -1365,6 +1377,12 @@ OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *revoked,
                                               int nid, int *out_critical,
                                               int *out_idx);
 
+// X509_REVOKED_add1_ext_i2d behaves like |X509V3_add1_i2d| but adds the
+// extension to |x|'s extension list.
+//
+// WARNING: This function may return zero or -1 on error. The caller must also
+// ensure |value|'s type matches |nid|. See the documentation for
+// |X509V3_add1_i2d| for details.
 OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
                                              void *value, int crit,
                                              unsigned long flags);
