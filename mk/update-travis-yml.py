@@ -48,7 +48,6 @@ modes = [
 # configurations have been built to find out that there is a failure on Mac.
 targets = {
     "linux" : [
-        ("aarch64-unknown-linux-gnu", [ "aarch64-linux-gnu-gcc" ]),
         ("arm-unknown-linux-gnueabihf", [ "arm-linux-gnueabihf-gcc" ]),
     ],
 }

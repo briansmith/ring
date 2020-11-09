@@ -8,30 +8,6 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=stable MODE_X=DEBUG CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-      rust: stable
-      os: linux
-      dist: focal
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - gcc-aarch64-linux-gnu
-            - libc6-dev-arm64-cross
-            - qemu-user-binfmt
-
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=stable MODE_X=RELWITHDEBINFO CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-      rust: stable
-      os: linux
-      dist: focal
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - gcc-aarch64-linux-gnu
-            - libc6-dev-arm64-cross
-            - qemu-user-binfmt
-
     - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=stable MODE_X=DEBUG CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
       rust: stable
       os: linux
@@ -56,30 +32,6 @@ matrix:
             - libc6-dev-armhf-cross
             - qemu-user-binfmt
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=nightly MODE_X=DEBUG CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-      rust: nightly
-      os: linux
-      dist: focal
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - gcc-aarch64-linux-gnu
-            - libc6-dev-arm64-cross
-            - qemu-user-binfmt
-
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=nightly MODE_X=RELWITHDEBINFO CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-      rust: nightly
-      os: linux
-      dist: focal
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - gcc-aarch64-linux-gnu
-            - libc6-dev-arm64-cross
-            - qemu-user-binfmt
-
     - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=nightly MODE_X=DEBUG CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
       rust: nightly
       os: linux
@@ -102,30 +54,6 @@ matrix:
             - binfmt-support
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
-            - qemu-user-binfmt
-
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=beta MODE_X=DEBUG CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-      rust: beta
-      os: linux
-      dist: focal
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - gcc-aarch64-linux-gnu
-            - libc6-dev-arm64-cross
-            - qemu-user-binfmt
-
-    - env: TARGET_X=aarch64-unknown-linux-gnu RUST_X=beta MODE_X=RELWITHDEBINFO CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-      rust: beta
-      os: linux
-      dist: focal
-      addons:
-        apt:
-          packages:
-            - binfmt-support
-            - gcc-aarch64-linux-gnu
-            - libc6-dev-arm64-cross
             - qemu-user-binfmt
 
     - env: TARGET_X=arm-unknown-linux-gnueabihf RUST_X=beta MODE_X=DEBUG CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
