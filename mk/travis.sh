@@ -65,30 +65,4 @@ if [ -n "${KCOV-}" ]; then
   kcov --merge --coveralls-id=$TRAVIS_JOB_ID target/kcov/merged target/kcov/unmerged/*
 fi
 
-# Android tests in emulator
-#
-# XXX: Tests are built but not run because we couldn't get the emulator to work; see
-# https://github.com/briansmith/ring/issues/838
-if false; then
-  $ANDROID_HOME/emulator/emulator @$TARGET_X -memory 2048 -no-skin -no-boot-anim -no-window &
-  adb wait-for-device
-
-  # Run the unit tests first. The file named ring-<something> in $target_dir is
-  # the test executable.
-
-  find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
-    -exec adb push {} /data/ring-test \;
-  adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
-  grep "test result: ok" /tmp/ring-test-log
-
-  for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f ! -name "*.*" `; do
-      adb push $test_exe /data/`basename $test_exe`
-      adb shell "cd /data && ./`basename $test_exe`" 2>&1 | \
-          tee /tmp/`basename $test_exe`-log
-      grep "test result: ok" /tmp/`basename $test_exe`-log
-  done
-
-   adb emu kill
-fi
-
 echo end of mk/travis.sh
