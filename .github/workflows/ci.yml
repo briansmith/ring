@@ -6,12 +6,12 @@ jobs:
   rustfmt:
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           profile: minimal
           components: rustfmt
+      - uses: actions/checkout@v2
       - run: cargo fmt --all -- --check
 
   test-target-is-host:
@@ -30,11 +30,11 @@ jobs:
           - nightly
 
     steps:
-      - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           override: true
           toolchain: ${{ matrix.rust_channel }}
+      - uses: actions/checkout@v2
       - run: cargo test -vv ${{ matrix.mode }}
 
   test-cross-linux-linux:
@@ -55,18 +55,19 @@ jobs:
           - i686-unknown-linux-musl
           - x86_64-unknown-linux-musl
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          toolchain: ${{ matrix.rust_channel }}
-
       # TODO: musl i686 shouldn't be using gcc-multilib or libc6-dev-i386.
       - if: ${{ contains(matrix.target, 'i686') }}
         run: |
           sudo apt-get -yq --no-install-suggests --no-install-recommends install \
             gcc-multilib \
             libc6-dev-i386
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          toolchain: ${{ matrix.rust_channel }}
+
+      - uses: actions/checkout@v2
 
       - run: |
           CC_i686_unknown_linux_gnu=clang \
@@ -98,21 +99,22 @@ jobs:
           - aarch64-linux-android
           - armv7-linux-androideabi
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
-
       - if: ${{ contains(matrix.target, 'android') }}
         run: |
           mkdir -p "${ANDROID_SDK_ROOT}/licenses" && \
           echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "${ANDROID_SDK_ROOT}/licenses/android-sdk-license" && \
           sudo "${ANDROID_SDK_ROOT}/tools/bin/sdkmanager" ndk-bundle
 
-        # wasm32-*: When the "wasm32_c" feature isn't enabled, we don't need to set anything.
-        # TODO: Collect the resultant artifacts and/or run the tests.
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - uses: actions/checkout@v2
+
+      # wasm32-*: When the "wasm32_c" feature isn't enabled, we don't need to set anything.
+      # TODO: Collect the resultant artifacts and/or run the tests.
       - run: |
           PATH=${ANDROID_SDK_ROOT}/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH \
           CC_aarch64_linux_android=aarch64-linux-android21-clang \
@@ -141,16 +143,18 @@ jobs:
           - wasm32-unknown-unknown
 
     steps:
-      - uses: actions/checkout@v2
+      # "wasm_c" has only been tested with clang-10 and llvm-ar-10. The build
+      # will fail when using some older versions.
+      - run: sudo apt-get -yq --no-install-suggests --no-install-recommends install clang-10 llvm-10
+
       - uses: actions-rs/toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
 
-      # "wasm_c" has only been tested with clang-10 and llvm-ar-10. The build
-      # will fail when using some older versions.
-      - run: sudo apt-get -yq --no-install-suggests --no-install-recommends install clang-10 llvm-10
+      - uses: actions/checkout@v2
+
       - env:
           # These are only needed for for wasm32 targets only, only when the "wasm_c"
           # feature is enabled.
@@ -176,12 +180,14 @@ jobs:
         target:
           - aarch64-apple-ios
     steps:
-      - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
+
+      - uses: actions/checkout@v2
+
       # TODO: Collect the resultant artifacts and/or run the tests.
       - run: |
           cargo test --no-run -vv ${{ matrix.features }} ${{ matrix.mode }} --target=${{ matrix.target }}
