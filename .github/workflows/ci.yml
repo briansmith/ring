@@ -51,10 +51,20 @@ jobs:
           - beta
           - nightly
         target:
+          - aarch64-unknown-linux-gnu
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
           - x86_64-unknown-linux-musl
     steps:
+      # qemu-user is needed only to run the tests, not for `cargo build` or
+      # `cargo test --no-run`.
+      - if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+        run: |
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install \
+            gcc-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+            qemu-user
+
       # TODO: musl i686 shouldn't be using gcc-multilib or libc6-dev-i386.
       - if: ${{ contains(matrix.target, 'i686') }}
         run: |
@@ -70,6 +80,9 @@ jobs:
       - uses: actions/checkout@v2
 
       - run: |
+          CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu" \
           CC_i686_unknown_linux_gnu=clang \
           CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang \
           CC_i686_unknown_linux_musl=clang \
