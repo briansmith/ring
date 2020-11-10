@@ -55,6 +55,7 @@ case $target in
     libc6-dev-i386
   ;;
 --target=wasm32-unknown-unknown)
+  cargo install wasm-bindgen-cli --vers "0.2.68" --bin wasm-bindgen-test-runner
   case ${features-} in
     *wasm32_c*)
       # "wasm_c" has only been tested with clang-10 and llvm-ar-10. The build

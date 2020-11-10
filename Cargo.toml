@@ -314,7 +314,7 @@ web-sys = { version = "0.3.37", default-features = false, features = ["Crypto", 
 winapi = { version = "0.3.8", default-features = false, features = ["ntsecapi", "wtypesbase"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = { version = "0.3.10", default-features = false }
+wasm-bindgen-test = { version = "0.3.18", default-features = false }
 
 [target.'cfg(any(unix, windows))'.dev-dependencies]
 libc = { version = "0.2.69", default-features = false }

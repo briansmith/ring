@@ -63,6 +63,7 @@ jobs:
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
           - x86_64-unknown-linux-musl
+
     steps:
       - uses: actions/checkout@v2
 
@@ -106,7 +107,6 @@ jobs:
           - beta
           - nightly
         target:
-          - wasm32-unknown-unknown
           - aarch64-linux-android
           - armv7-linux-androideabi
     steps:
@@ -130,12 +130,12 @@ jobs:
           CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=armv7a-linux-androideabi18-clang \
           cargo test -vv --no-run --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
-  # Verify that the the "wasm32_c" configuration builds.
-  build-cross-wasm32-c:
+  test-cross-wasm32-c:
     runs-on: ${{ matrix.host_os }}
     strategy:
       matrix:
         features:
+          - # Default
           - --features=wasm32_c
         host_os:
           - ubuntu-18.04
@@ -148,7 +148,9 @@ jobs:
           - nightly
         target:
           - wasm32-unknown-unknown
-
+        webdriver:
+          - GECKODRIVER=geckodriver
+          - CHROMEDRIVER=chromedriver
     steps:
       - uses: actions/checkout@v2
 
@@ -165,9 +167,10 @@ jobs:
           # feature is enabled.
           CC_wasm32_unknown_unknown: clang-10
           AR_wasm32_unknown_unknown: llvm-ar-10
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
         # TODO: Collect the resultant artifacts and/or run the tests.
         run: |
-          cargo test -vv --no-run --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+          ${{ matrix.webdriver }} cargo test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
   build-cross-apple:
     runs-on: ${{ matrix.host_os }}
