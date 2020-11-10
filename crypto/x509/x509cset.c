@@ -87,9 +87,9 @@ int X509_CRL_set1_lastUpdate(X509_CRL *x, const ASN1_TIME *tm)
         return (0);
     in = x->crl->lastUpdate;
     if (in != tm) {
-        in = M_ASN1_TIME_dup(tm);
+        in = ASN1_STRING_dup(tm);
         if (in != NULL) {
-            M_ASN1_TIME_free(x->crl->lastUpdate);
+            ASN1_TIME_free(x->crl->lastUpdate);
             x->crl->lastUpdate = in;
         }
     }
@@ -104,9 +104,9 @@ int X509_CRL_set1_nextUpdate(X509_CRL *x, const ASN1_TIME *tm)
         return (0);
     in = x->crl->nextUpdate;
     if (in != tm) {
-        in = M_ASN1_TIME_dup(tm);
+        in = ASN1_STRING_dup(tm);
         if (in != NULL) {
-            M_ASN1_TIME_free(x->crl->nextUpdate);
+            ASN1_TIME_free(x->crl->nextUpdate);
             x->crl->nextUpdate = in;
         }
     }
@@ -202,9 +202,9 @@ int X509_REVOKED_set_revocationDate(X509_REVOKED *x, ASN1_TIME *tm)
         return (0);
     in = x->revocationDate;
     if (in != tm) {
-        in = M_ASN1_TIME_dup(tm);
+        in = ASN1_STRING_dup(tm);
         if (in != NULL) {
-            M_ASN1_TIME_free(x->revocationDate);
+            ASN1_TIME_free(x->revocationDate);
             x->revocationDate = in;
         }
     }
