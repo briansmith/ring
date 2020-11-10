@@ -716,7 +716,8 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx,
 // RSA specific control functions.
 
 // EVP_PKEY_CTX_set_rsa_padding sets the padding type to use. It should be one
-// of the |RSA_*_PADDING| values. Returns one on success or zero on error.
+// of the |RSA_*_PADDING| values. Returns one on success or zero on error. By
+// default, the padding is |RSA_PKCS1_PADDING|.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int padding);
 
 // EVP_PKEY_CTX_get_rsa_padding sets |*out_padding| to the current padding
@@ -734,6 +735,8 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx,
 // If unsure, use -1.
 //
 // Returns one on success or zero on error.
+//
+// TODO(davidben): The default is currently -2. Switch it to -1.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx,
                                                     int salt_len);
 
@@ -758,7 +761,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx,
                                                       BIGNUM *e);
 
 // EVP_PKEY_CTX_set_rsa_oaep_md sets |md| as the digest used in OAEP padding.
-// Returns one on success or zero on error.
+// Returns one on success or zero on error. If unset, the default is SHA-1.
+// Callers are recommended to overwrite this default.
+//
+// TODO(davidben): Remove the default and require callers specify this.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_oaep_md(EVP_PKEY_CTX *ctx,
                                                 const EVP_MD *md);
 
@@ -769,6 +775,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_oaep_md(EVP_PKEY_CTX *ctx,
 
 // EVP_PKEY_CTX_set_rsa_mgf1_md sets |md| as the digest used in MGF1. Returns
 // one on success or zero on error.
+//
+// If unset, the default is the signing hash for |RSA_PKCS1_PSS_PADDING| and the
+// OAEP hash for |RSA_PKCS1_OAEP_PADDING|. Callers are recommended to use this
+// default and not call this function.
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_mgf1_md(EVP_PKEY_CTX *ctx,
                                                 const EVP_MD *md);
 
