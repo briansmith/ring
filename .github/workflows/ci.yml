@@ -42,6 +42,38 @@ jobs:
       - run: |
           cargo test -vv ${{ matrix.features }} ${{ matrix.mode }}
 
+  test-windows-msvc:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        features:
+          - # Default
+        mode:
+          - # debug
+          - --release
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+        target:
+          - x86_64-pc-windows-msvc
+          - i686-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: >
+          (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
+          ("$pwd\target\tools" >> $env:GITHUB_PATH)
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - run: |
+          cargo test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+
   test-cross-linux-linux:
     runs-on: ${{ matrix.host_os }}
     strategy:
