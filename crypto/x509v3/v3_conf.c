@@ -199,7 +199,7 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method,
         p = ext_der;
         method->i2d(ext_struc, &p);
     }
-    if (!(ext_oct = M_ASN1_OCTET_STRING_new()))
+    if (!(ext_oct = ASN1_OCTET_STRING_new()))
         goto merr;
     ext_oct->data = ext_der;
     ext_oct->length = ext_len;
@@ -207,7 +207,7 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method,
     ext = X509_EXTENSION_create_by_NID(NULL, ext_nid, crit, ext_oct);
     if (!ext)
         goto merr;
-    M_ASN1_OCTET_STRING_free(ext_oct);
+    ASN1_OCTET_STRING_free(ext_oct);
 
     return ext;
 
@@ -289,7 +289,7 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
         goto err;
     }
 
-    if (!(oct = M_ASN1_OCTET_STRING_new())) {
+    if (!(oct = ASN1_OCTET_STRING_new())) {
         OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
         goto err;
     }
@@ -302,7 +302,7 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
 
  err:
     ASN1_OBJECT_free(obj);
-    M_ASN1_OCTET_STRING_free(oct);
+    ASN1_OCTET_STRING_free(oct);
     if (ext_der)
         OPENSSL_free(ext_der);
     return extension;

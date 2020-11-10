@@ -460,46 +460,53 @@ typedef struct BIT_STRING_BITNAME_st {
   const char *sname;
 } BIT_STRING_BITNAME;
 
-
-#define M_ASN1_STRING_length(x) ((x)->length)
-#define M_ASN1_STRING_type(x) ((x)->type)
-#define M_ASN1_STRING_data(x) ((x)->data)
-
-// Macros for string operations
-#define M_ASN1_BIT_STRING_new() \
-  (ASN1_BIT_STRING *)ASN1_STRING_type_new(V_ASN1_BIT_STRING)
-#define M_ASN1_BIT_STRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-#define M_ASN1_BIT_STRING_dup(a) \
-  (ASN1_BIT_STRING *)ASN1_STRING_dup((const ASN1_STRING *)a)
-#define M_ASN1_BIT_STRING_cmp(a, b) \
-  ASN1_STRING_cmp((const ASN1_STRING *)a, (const ASN1_STRING *)b)
-#define M_ASN1_BIT_STRING_set(a, b, c) ASN1_STRING_set((ASN1_STRING *)a, b, c)
-
-#define M_ASN1_INTEGER_new() \
-  (ASN1_INTEGER *)ASN1_STRING_type_new(V_ASN1_INTEGER)
-#define M_ASN1_INTEGER_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-#define M_ASN1_INTEGER_dup(a) \
-  (ASN1_INTEGER *)ASN1_STRING_dup((const ASN1_STRING *)a)
-#define M_ASN1_INTEGER_cmp(a, b) \
-  ASN1_STRING_cmp((const ASN1_STRING *)a, (const ASN1_STRING *)b)
-
-#define M_ASN1_ENUMERATED_new() \
-  (ASN1_ENUMERATED *)ASN1_STRING_type_new(V_ASN1_ENUMERATED)
-#define M_ASN1_ENUMERATED_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-#define M_ASN1_ENUMERATED_dup(a) \
-  (ASN1_ENUMERATED *)ASN1_STRING_dup((const ASN1_STRING *)a)
-#define M_ASN1_ENUMERATED_cmp(a, b) \
-  ASN1_STRING_cmp((const ASN1_STRING *)a, (const ASN1_STRING *)b)
-
-#define M_ASN1_OCTET_STRING_new() \
-  (ASN1_OCTET_STRING *)ASN1_STRING_type_new(V_ASN1_OCTET_STRING)
-#define M_ASN1_OCTET_STRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-#define M_ASN1_OCTET_STRING_dup(a) \
-  (ASN1_OCTET_STRING *)ASN1_STRING_dup((const ASN1_STRING *)a)
-#define M_ASN1_OCTET_STRING_cmp(a, b) \
-  ASN1_STRING_cmp((const ASN1_STRING *)a, (const ASN1_STRING *)b)
-#define M_ASN1_OCTET_STRING_set(a, b, c) ASN1_STRING_set((ASN1_STRING *)a, b, c)
-#define M_ASN1_OCTET_STRING_print(a, b) ASN1_STRING_print(a, (ASN1_STRING *)b)
+// M_ASN1_* are legacy aliases for various |ASN1_STRING| functions. Use the
+// functions themselves.
+#define M_ASN1_STRING_length(x) ASN1_STRING_length(x)
+#define M_ASN1_STRING_type(x) ASN1_STRING_type(x)
+#define M_ASN1_STRING_data(x) ASN1_STRING_data(x)
+#define M_ASN1_BIT_STRING_new() ASN1_BIT_STRING_new()
+#define M_ASN1_BIT_STRING_free(a) ASN1_BIT_STRING_free(a)
+#define M_ASN1_BIT_STRING_dup(a) ASN1_STRING_dup(a)
+#define M_ASN1_BIT_STRING_cmp(a, b) ASN1_STRING_cmp(a, b)
+#define M_ASN1_BIT_STRING_set(a, b, c) ASN1_BIT_STRING_set(a, b, c)
+#define M_ASN1_INTEGER_new() ASN1_INTEGER_new()
+#define M_ASN1_INTEGER_free(a) ASN1_INTEGER_free(a)
+#define M_ASN1_INTEGER_dup(a) ASN1_INTEGER_dup(a)
+#define M_ASN1_INTEGER_cmp(a, b) ASN1_INTEGER_cmp(a, b)
+#define M_ASN1_ENUMERATED_new() ASN1_ENUMERATED_new()
+#define M_ASN1_ENUMERATED_free(a) ASN1_ENUMERATED_free(a)
+#define M_ASN1_ENUMERATED_dup(a) ASN1_STRING_dup(a)
+#define M_ASN1_ENUMERATED_cmp(a, b) ASN1_STRING_cmp(a, b)
+#define M_ASN1_OCTET_STRING_new() ASN1_OCTET_STRING_new()
+#define M_ASN1_OCTET_STRING_free(a) ASN1_OCTET_STRING_free()
+#define M_ASN1_OCTET_STRING_dup(a) ASN1_OCTET_STRING_dup(a)
+#define M_ASN1_OCTET_STRING_cmp(a, b) ASN1_OCTET_STRING_cmp(a, b)
+#define M_ASN1_OCTET_STRING_set(a, b, c) ASN1_OCTET_STRING_set(a, b, c)
+#define M_ASN1_OCTET_STRING_print(a, b) ASN1_STRING_print(a, b)
+#define M_ASN1_PRINTABLESTRING_new() ASN1_PRINTABLESTRING_new()
+#define M_ASN1_PRINTABLESTRING_free(a) ASN1_PRINTABLESTRING_free(a)
+#define M_ASN1_IA5STRING_new() ASN1_IA5STRING_new()
+#define M_ASN1_IA5STRING_free(a) ASN1_IA5STRING_free(a)
+#define M_ASN1_IA5STRING_dup(a) ASN1_STRING_dup(a)
+#define M_ASN1_UTCTIME_new() ASN1_UTCTIME_new()
+#define M_ASN1_UTCTIME_free(a) ASN1_UTCTIME_free(a)
+#define M_ASN1_UTCTIME_dup(a) ASN1_STRING_dup(a)
+#define M_ASN1_T61STRING_new() ASN1_T61STRING_new()
+#define M_ASN1_T61STRING_free(a) ASN1_T61STRING_free(a)
+#define M_ASN1_GENERALIZEDTIME_new() ASN1_GENERALIZEDTIME_new()
+#define M_ASN1_GENERALIZEDTIME_free(a) ASN1_GENERALIZEDTIME_free(a)
+#define M_ASN1_GENERALIZEDTIME_dup(a) ASN1_STRING_dup(a)
+#define M_ASN1_GENERALSTRING_new() ASN1_GENERALSTRING_new()
+#define M_ASN1_GENERALSTRING_free(a) ASN1_GENERALSTRING_free(a)
+#define M_ASN1_UNIVERSALSTRING_new() ASN1_UNIVERSALSTRING_new()
+#define M_ASN1_UNIVERSALSTRING_free(a) ASN1_UNIVERSALSTRING_free(a)
+#define M_ASN1_BMPSTRING_new() ASN1_BMPSTRING_new()
+#define M_ASN1_BMPSTRING_free(a) ASN1_BMPSTRING_free(a)
+#define M_ASN1_VISIBLESTRING_new() ASN1_VISIBLESTRING_new()
+#define M_ASN1_VISIBLESTRING_free(a) ASN1_VISIBLESTRING_free(a)
+#define M_ASN1_UTF8STRING_new() ASN1_UTF8STRING_new()
+#define M_ASN1_UTF8STRING_free(a) ASN1_UTF8STRING_free(a)
 
 #define B_ASN1_TIME B_ASN1_UTCTIME | B_ASN1_GENERALIZEDTIME
 
@@ -524,55 +531,9 @@ typedef struct BIT_STRING_BITNAME_st {
 #define M_DISPLAYTEXT_new() ASN1_STRING_type_new(V_ASN1_VISIBLESTRING)
 #define M_DISPLAYTEXT_free(a) ASN1_STRING_free((ASN1_STRING *)a)
 
-#define M_ASN1_PRINTABLESTRING_new() \
-  (ASN1_PRINTABLESTRING *)ASN1_STRING_type_new(V_ASN1_PRINTABLESTRING)
-#define M_ASN1_PRINTABLESTRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-
-#define M_ASN1_T61STRING_new() \
-  (ASN1_T61STRING *)ASN1_STRING_type_new(V_ASN1_T61STRING)
-#define M_ASN1_T61STRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-
-#define M_ASN1_IA5STRING_new() \
-  (ASN1_IA5STRING *)ASN1_STRING_type_new(V_ASN1_IA5STRING)
-#define M_ASN1_IA5STRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-#define M_ASN1_IA5STRING_dup(a) \
-  (ASN1_IA5STRING *)ASN1_STRING_dup((const ASN1_STRING *)a)
-
-#define M_ASN1_UTCTIME_new() \
-  (ASN1_UTCTIME *)ASN1_STRING_type_new(V_ASN1_UTCTIME)
-#define M_ASN1_UTCTIME_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-#define M_ASN1_UTCTIME_dup(a) \
-  (ASN1_UTCTIME *)ASN1_STRING_dup((const ASN1_STRING *)a)
-
-#define M_ASN1_GENERALIZEDTIME_new() \
-  (ASN1_GENERALIZEDTIME *)ASN1_STRING_type_new(V_ASN1_GENERALIZEDTIME)
-#define M_ASN1_GENERALIZEDTIME_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-#define M_ASN1_GENERALIZEDTIME_dup(a) \
-  (ASN1_GENERALIZEDTIME *)ASN1_STRING_dup((const ASN1_STRING *)a)
-
 #define M_ASN1_TIME_new() (ASN1_TIME *)ASN1_STRING_type_new(V_ASN1_UTCTIME)
 #define M_ASN1_TIME_free(a) ASN1_STRING_free((ASN1_STRING *)a)
 #define M_ASN1_TIME_dup(a) (ASN1_TIME *)ASN1_STRING_dup((const ASN1_STRING *)a)
-
-#define M_ASN1_GENERALSTRING_new() \
-  (ASN1_GENERALSTRING *)ASN1_STRING_type_new(V_ASN1_GENERALSTRING)
-#define M_ASN1_GENERALSTRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-
-#define M_ASN1_UNIVERSALSTRING_new() \
-  (ASN1_UNIVERSALSTRING *)ASN1_STRING_type_new(V_ASN1_UNIVERSALSTRING)
-#define M_ASN1_UNIVERSALSTRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-
-#define M_ASN1_BMPSTRING_new() \
-  (ASN1_BMPSTRING *)ASN1_STRING_type_new(V_ASN1_BMPSTRING)
-#define M_ASN1_BMPSTRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-
-#define M_ASN1_VISIBLESTRING_new() \
-  (ASN1_VISIBLESTRING *)ASN1_STRING_type_new(V_ASN1_VISIBLESTRING)
-#define M_ASN1_VISIBLESTRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
-
-#define M_ASN1_UTF8STRING_new() \
-  (ASN1_UTF8STRING *)ASN1_STRING_type_new(V_ASN1_UTF8STRING)
-#define M_ASN1_UTF8STRING_free(a) ASN1_STRING_free((ASN1_STRING *)a)
 
 DECLARE_ASN1_FUNCTIONS_fname(ASN1_TYPE, ASN1_ANY, ASN1_TYPE)
 

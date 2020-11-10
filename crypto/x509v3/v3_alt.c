@@ -386,7 +386,7 @@ static int copy_email(X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p)
     while ((i = X509_NAME_get_index_by_NID(nm,
                                            NID_pkcs9_emailAddress, i)) >= 0) {
         ne = X509_NAME_get_entry(nm, i);
-        email = M_ASN1_IA5STRING_dup(X509_NAME_ENTRY_get_data(ne));
+        email = ASN1_STRING_dup(X509_NAME_ENTRY_get_data(ne));
         if (move_p) {
             X509_NAME_delete_entry(nm, i);
             X509_NAME_ENTRY_free(ne);
@@ -410,7 +410,7 @@ static int copy_email(X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p)
 
  err:
     GENERAL_NAME_free(gen);
-    M_ASN1_IA5STRING_free(email);
+    ASN1_IA5STRING_free(email);
     return 0;
 
 }
@@ -517,7 +517,7 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
     }
 
     if (is_string) {
-        if (!(gen->d.ia5 = M_ASN1_IA5STRING_new()) ||
+        if (!(gen->d.ia5 = ASN1_IA5STRING_new()) ||
             !ASN1_STRING_set(gen->d.ia5, (unsigned char *)value,
                              strlen(value))) {
             OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);

@@ -70,9 +70,9 @@ TEST(ASN1Test, LargeTags) {
 }
 
 TEST(ASN1Test, IntegerSetting) {
-  bssl::UniquePtr<ASN1_INTEGER> by_bn(M_ASN1_INTEGER_new());
-  bssl::UniquePtr<ASN1_INTEGER> by_long(M_ASN1_INTEGER_new());
-  bssl::UniquePtr<ASN1_INTEGER> by_uint64(M_ASN1_INTEGER_new());
+  bssl::UniquePtr<ASN1_INTEGER> by_bn(ASN1_INTEGER_new());
+  bssl::UniquePtr<ASN1_INTEGER> by_long(ASN1_INTEGER_new());
+  bssl::UniquePtr<ASN1_INTEGER> by_uint64(ASN1_INTEGER_new());
   bssl::UniquePtr<BIGNUM> bn(BN_new());
 
   const std::vector<int64_t> kValues = {

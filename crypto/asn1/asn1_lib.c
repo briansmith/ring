@@ -422,17 +422,17 @@ int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b)
 
 int ASN1_STRING_length(const ASN1_STRING *x)
 {
-    return M_ASN1_STRING_length(x);
+    return x->length;
 }
 
 int ASN1_STRING_type(const ASN1_STRING *x)
 {
-    return M_ASN1_STRING_type(x);
+    return x->type;
 }
 
 unsigned char *ASN1_STRING_data(ASN1_STRING *x)
 {
-    return M_ASN1_STRING_data(x);
+    return x->data;
 }
 
 const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *x)
