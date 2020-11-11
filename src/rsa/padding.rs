@@ -99,7 +99,7 @@ impl Verification for PKCS1 {
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let calculated = &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
         pkcs1_encode(&self, m_hash, calculated);
-        if m.read_bytes_to_end() != *calculated.as_ref() {
+        if m.read_bytes_to_end() != *calculated {
             return Err(error::Unspecified);
         }
         Ok(())
