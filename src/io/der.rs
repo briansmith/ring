@@ -18,7 +18,6 @@
 
 use super::Positive;
 use crate::error;
-use untrusted;
 
 pub const CONSTRUCTED: u8 = 1 << 5;
 pub const CONTEXT_SPECIFIC: u8 = 2 << 6;
@@ -212,7 +211,6 @@ pub fn positive_integer<'a>(
 mod tests {
     use super::*;
     use crate::error;
-    use untrusted;
 
     fn with_good_i<F, R>(value: &[u8], f: F)
     where

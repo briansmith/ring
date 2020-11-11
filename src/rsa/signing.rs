@@ -25,7 +25,6 @@ use crate::{
     pkcs8, rand, signature,
 };
 use alloc::boxed::Box;
-use untrusted;
 
 /// An RSA key pair, used for signing.
 pub struct RsaKeyPair {

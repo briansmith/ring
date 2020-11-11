@@ -46,7 +46,6 @@ use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-use untrusted;
 
 pub unsafe trait Prime {}
 
@@ -1397,7 +1396,6 @@ mod tests {
     use super::*;
     use crate::test;
     use alloc::format;
-    use untrusted;
 
     // Type-level representation of an arbitrary modulus.
     struct M {}

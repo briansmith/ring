@@ -16,7 +16,6 @@
 
 use super::{ops::*, private_key::*, public_key::*};
 use crate::{agreement, ec, error};
-use untrusted;
 
 /// A key agreement algorithm.
 macro_rules! ecdh {
