@@ -28,7 +28,7 @@ fn test_verify_slices_are_equal() {
     let initial: [u8; 256] = rand::generate(&rand::SystemRandom::new()).unwrap().expose();
 
     {
-        let copy = initial.clone();
+        let copy = initial;
         for len in 0..copy.len() {
             // Not equal because the lengths do not match.
             assert_eq!(
