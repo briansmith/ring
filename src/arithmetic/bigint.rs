@@ -136,7 +136,7 @@ impl<M> BoxedLimbs<M> {
 
     fn zero(width: Width<M>) -> Self {
         Self {
-            limbs: vec![0; width.num_limbs].to_owned().into_boxed_slice(),
+            limbs: vec![0; width.num_limbs].into_boxed_slice(),
             m: PhantomData,
         }
     }
