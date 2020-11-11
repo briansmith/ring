@@ -397,12 +397,12 @@ ASN1_STRING *ASN1_STRING_type_new(int type)
     return (ret);
 }
 
-void ASN1_STRING_free(ASN1_STRING *a)
+void ASN1_STRING_free(ASN1_STRING *str)
 {
-    if (a == NULL)
+    if (str == NULL)
         return;
-    OPENSSL_free(a->data);
-    OPENSSL_free(a);
+    OPENSSL_free(str->data);
+    OPENSSL_free(str);
 }
 
 int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b)
@@ -420,22 +420,22 @@ int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b)
         return (i);
 }
 
-int ASN1_STRING_length(const ASN1_STRING *x)
+int ASN1_STRING_length(const ASN1_STRING *str)
 {
-    return x->length;
+    return str->length;
 }
 
-int ASN1_STRING_type(const ASN1_STRING *x)
+int ASN1_STRING_type(const ASN1_STRING *str)
 {
-    return x->type;
+    return str->type;
 }
 
-unsigned char *ASN1_STRING_data(ASN1_STRING *x)
+unsigned char *ASN1_STRING_data(ASN1_STRING *str)
 {
-    return x->data;
+    return str->data;
 }
 
-const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *x)
+const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *str)
 {
-    return x->data;
+    return str->data;
 }

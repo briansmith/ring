@@ -543,20 +543,59 @@ DECLARE_ASN1_ITEM(ASN1_OBJECT)
 
 DECLARE_ASN1_SET_OF(ASN1_OBJECT)
 
+// ASN1_STRING_new returns a newly-allocated empty |ASN1_STRING| object with an
+// arbitrary type. Prefer one of the type-specific constructors, such as
+// |ASN1_OCTET_STRING_new|.
 OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_new(void);
-OPENSSL_EXPORT void ASN1_STRING_free(ASN1_STRING *a);
+
+// ASN1_STRING_free releases memory associated with |str|.
+OPENSSL_EXPORT void ASN1_STRING_free(ASN1_STRING *str);
+
+// ASN1_STRING_copy sets |dst| to a copy of |str|. It returns one on success and
+// zero on error.
 OPENSSL_EXPORT int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str);
-OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_dup(const ASN1_STRING *a);
+
+// ASN1_STRING_dup returns a newly-allocated copy of |str|, or NULL on error.
+OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_dup(const ASN1_STRING *str);
+
+// ASN1_STRING_type_new returns a newly-allocated empty |ASN1_STRING| object of
+// type |type|, or NULL on error.
 OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_type_new(int type);
+
+// ASN1_STRING_cmp compares |a| and |b|'s type and contents. It returns an
+// integer equal to, less than, or greater than zero if |a| is equal to, less
+// than, or greater than |b|, respectively. The comparison is suitable for
+// sorting, but callers should not rely on the particular comparison.
+//
+// Note if |a| or |b| are BIT STRINGs, this function does not compare the
+// |ASN1_STRING_FLAG_BITS_LEFT| flags.
+//
+// TODO(davidben): The BIT STRING comparison seems like a bug. Fix it?
 OPENSSL_EXPORT int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b);
-/* Since this is used to store all sorts of things, via macros, for now, make
-   its data void * */
+
+// ASN1_STRING_set sets the contents of |str| to a copy of |len| bytes from
+// |data|. It returns one on success and zero on error.
 OPENSSL_EXPORT int ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
+
+// ASN1_STRING_set0 sets the contents of |str| to |len| bytes from |data|. It
+// takes ownership of |data|, which must have been allocated with
+// |OPENSSL_malloc|.
 OPENSSL_EXPORT void ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
-OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *x);
-OPENSSL_EXPORT int ASN1_STRING_type(const ASN1_STRING *x);
-OPENSSL_EXPORT unsigned char *ASN1_STRING_data(ASN1_STRING *x);
-OPENSSL_EXPORT const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *x);
+
+// ASN1_STRING_length returns the length of |str|, in bytes.
+OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *str);
+
+// ASN1_STRING_type returns the type of |str|. This value will be one of the
+// |V_ASN1_*| constants.
+OPENSSL_EXPORT int ASN1_STRING_type(const ASN1_STRING *str);
+
+// ASN1_STRING_data returns a mutable pointer to |str|'s contents. Prefer
+// |ASN1_STRING_get0_data|.
+OPENSSL_EXPORT unsigned char *ASN1_STRING_data(ASN1_STRING *str);
+
+// ASN1_STRING_get0_data returns a pointer to |str|'s contents.
+OPENSSL_EXPORT const unsigned char *ASN1_STRING_get0_data(
+    const ASN1_STRING *str);
 
 DECLARE_ASN1_FUNCTIONS(ASN1_BIT_STRING)
 OPENSSL_EXPORT int i2c_ASN1_BIT_STRING(const ASN1_BIT_STRING *a,
