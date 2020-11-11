@@ -460,8 +460,8 @@ fn build_library(
 ) {
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs
-        .into_iter()
-        .chain(srcs.into_iter())
+        .iter()
+        .chain(srcs.iter())
         .filter(|f| &target.env != "msvc" || f.extension().unwrap().to_str().unwrap() != "S")
         .map(|f| compile(f, target, warnings_are_errors, out_dir, includes_modified))
         .collect::<Vec<_>>();
