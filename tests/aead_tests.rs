@@ -384,7 +384,7 @@ fn aead_chacha20_poly1305_openssh() {
             let mut tag = [0u8; aead::chacha20_poly1305_openssh::TAG_LEN];
             let mut s_in_out = plaintext.clone();
             let s_key = aead::chacha20_poly1305_openssh::SealingKey::new(&key_bytes);
-            let () = s_key.seal_in_place(sequence_num, &mut s_in_out[..], &mut tag);
+            s_key.seal_in_place(sequence_num, &mut s_in_out[..], &mut tag);
             assert_eq!(&ct, &s_in_out);
             assert_eq!(&expected_tag, &tag);
             let o_key = aead::chacha20_poly1305_openssh::OpeningKey::new(&key_bytes);
