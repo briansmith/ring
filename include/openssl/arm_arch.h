@@ -157,7 +157,7 @@
 #endif
 
 #if GNU_PROPERTY_AARCH64_POINTER_AUTH != 0 || GNU_PROPERTY_AARCH64_BTI != 0
-.pushsection note.gnu.property, "a";
+.pushsection .note.gnu.property, "a";
 .balign 8;
 .long 4;
 .long 0x10;
@@ -166,8 +166,8 @@
 .long 0xc0000000; /* GNU_PROPERTY_AARCH64_FEATURE_1_AND */
 .long 4;
 .long (GNU_PROPERTY_AARCH64_POINTER_AUTH | GNU_PROPERTY_AARCH64_BTI);
-.long 0
-.popsection
+.long 0;
+.popsection;
 #endif
 
 #endif  /* defined __ASSEMBLER__ */
