@@ -132,7 +132,7 @@
 //!     signature::{self, KeyPair},
 //! };
 //!
-//! # fn sign_and_verify_ed25519() -> Result<(), ring::error::Unspecified> {
+//! # fn main() -> Result<(), ring::error::Unspecified> {
 //! // Generate a key pair in PKCS#8 (v2) format.
 //! let rng = rand::SystemRandom::new();
 //! let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)?;
@@ -160,8 +160,6 @@
 //!
 //! # Ok(())
 //! # }
-//!
-//! # fn main() { sign_and_verify_ed25519().unwrap() }
 //! ```
 //!
 //! ## Signing and verifying with RSA (PKCS#1 1.5 padding)
