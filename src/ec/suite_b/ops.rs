@@ -489,11 +489,11 @@ mod tests {
             let b = consume_elem(cops, test_case, "b");
             let expected_sum = consume_elem(cops, test_case, "r");
 
-            let mut actual_sum = a.clone();
+            let mut actual_sum = a;
             ops.public_key_ops.common.elem_add(&mut actual_sum, &b);
             assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
-            let mut actual_sum = b.clone();
+            let mut actual_sum = b;
             ops.public_key_ops.common.elem_add(&mut actual_sum, &a);
             assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
