@@ -67,7 +67,7 @@ fn test_verify_slices_are_equal() {
                     // The flipped bit is outside of `b` so `a` and `b` are equal.
                     Ok(())
                 };
-                assert_eq!((&a == &b), expected_result.is_ok()); // Sanity check.
+                assert_eq!(a == b, expected_result.is_ok()); // Sanity check.
                 assert_eq!(
                     constant_time::verify_slices_are_equal(&a, &b),
                     expected_result
