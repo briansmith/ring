@@ -52,7 +52,7 @@ const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/fipsmodule/aes/aes_nohw.c"),
     (&[], "crypto/fipsmodule/bn/montgomery.c"),
@@ -119,7 +119,7 @@ const SHA512_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha512-armv8.pl";
 
 const RING_TEST_SRCS: &[&str] = &[("crypto/constant_time_test.c")];
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const RING_INCLUDES: &[&str] =
     &[
       "crypto/curve25519/curve25519_tables.h",
@@ -145,7 +145,7 @@ const RING_INCLUDES: &[&str] =
       "third_party/fiat/curve25519_64.h",
     ];
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const RING_PERL_INCLUDES: &[&str] =
     &["crypto/perlasm/arm-xlate.pl",
       "crypto/perlasm/x86gas.pl",
