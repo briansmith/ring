@@ -35,7 +35,7 @@ extern crate alloc;
 use ring::{agreement, error, rand, test, test_file};
 
 #[test]
-fn agreement_traits<'a>() {
+fn agreement_traits() {
     use alloc::vec::Vec;
 
     let rng = rand::SystemRandom::new();
@@ -61,9 +61,9 @@ fn agreement_traits<'a>() {
     // TODO: Test the actual output.
     let _: &dyn core::fmt::Debug = &public_key;
 
-    test::compile_time_assert_clone::<agreement::UnparsedPublicKey<&'a [u8]>>();
-    test::compile_time_assert_copy::<agreement::UnparsedPublicKey<&'a [u8]>>();
-    test::compile_time_assert_sync::<agreement::UnparsedPublicKey<&'a [u8]>>();
+    test::compile_time_assert_clone::<agreement::UnparsedPublicKey<&[u8]>>();
+    test::compile_time_assert_copy::<agreement::UnparsedPublicKey<&[u8]>>();
+    test::compile_time_assert_sync::<agreement::UnparsedPublicKey<&[u8]>>();
 
     test::compile_time_assert_clone::<agreement::UnparsedPublicKey<Vec<u8>>>();
     test::compile_time_assert_sync::<agreement::UnparsedPublicKey<Vec<u8>>>();
