@@ -14,54 +14,87 @@ jobs:
       - uses: actions/checkout@v2
       - run: cargo fmt --all -- --check
 
-  test-target-is-host:
+  test:
     runs-on: ${{ matrix.host_os }}
     strategy:
       matrix:
         features:
           - # Default
-        host_os:
-          - ubuntu-18.04
-          - macos-latest
-        mode:
-          - # debug
-          - --release
-        rust_channel:
-          - stable
-          - beta
-          - nightly
 
-    steps:
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          toolchain: ${{ matrix.rust_channel }}
-
-      - uses: actions/checkout@v2
-
-      - run: |
-          cargo test -vv ${{ matrix.features }} ${{ matrix.mode }}
-
-  test-windows-msvc:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        features:
-          - # Default
-        mode:
-          - # debug
-          - --release
-        rust_channel:
-          - stable
-          - beta
-          - nightly
         target:
-          - x86_64-pc-windows-msvc
+          - aarch64-apple-ios
+          - aarch64-linux-android
+          - aarch64-unknown-linux-gnu
+          - arm-unknown-linux-gnueabihf
+          - armv7-linux-androideabi
           - i686-pc-windows-msvc
+          - i686-unknown-linux-gnu
+          - i686-unknown-linux-musl
+          - x86_64-pc-windows-msvc
+          - x86_64-apple-darwin
+          - x86_64-unknown-linux-musl
+          - x86_64-unknown-linux-gnu
+
+        mode:
+          - # debug
+          - --release
+
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+
+        include:
+          - target: aarch64-apple-ios
+            host_os: macos-latest
+            # GitHub Actions doesn't have a way to run aarch64-apple-ios.
+            cargo_options: --no-run
+
+          - target: aarch64-linux-android
+            host_os: ubuntu-18.04
+            # TODO: https://github.com/briansmith/ring/issues/486
+            cargo_options: --no-run
+
+          - target: aarch64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: arm-unknown-linux-gnueabihf
+            host_os: ubuntu-18.04
+
+          - target: armv7-linux-androideabi
+            host_os: ubuntu-18.04
+            # TODO: https://github.com/briansmith/ring/issues/838
+            cargo_options: --no-run
+
+          - target: i686-pc-windows-msvc
+            host_os: windows-latest
+
+          - target: i686-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: i686-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: x86_64-pc-windows-msvc
+            host_os: windows-latest
+
+          - target: x86_64-apple-darwin
+            host_os: macos-latest
+
+          - target: x86_64-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: x86_64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
     steps:
       - uses: actions/checkout@v2
 
-      - run: >
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: >
           (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
           ("$pwd\target\tools" >> $env:GITHUB_PATH)
 
@@ -71,96 +104,30 @@ jobs:
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
 
-      - run: |
-          cargo test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
-
-  test-cross-linux-linux:
-    runs-on: ${{ matrix.host_os }}
-    strategy:
-      matrix:
-        features:
-          - # Default
-        host_os:
-          - ubuntu-18.04
-        mode:
-          - # debug
-          - --release
-        rust_channel:
-          - stable
-          - beta
-          - nightly
-        target:
-          - aarch64-unknown-linux-gnu
-          - arm-unknown-linux-gnueabihf
-          - i686-unknown-linux-gnu
-          - i686-unknown-linux-musl
-          - x86_64-unknown-linux-musl
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
-
-      - run: |
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: |
+          PATH=${ANDROID_SDK_ROOT}/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH \
+          CC_aarch64_linux_android=aarch64-linux-android21-clang \
+          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang \
           CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu" \
           CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
           CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
           CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="qemu-arm -L /usr/arm-linux-gnueabihf" \
+          CC_armv7_linux_androideabi=armv7a-linux-androideabi18-clang \
+          CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=armv7a-linux-androideabi18-clang \
           CC_i686_unknown_linux_gnu=clang \
           CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang \
           CC_i686_unknown_linux_musl=clang \
           CARGO_TARGET_i686_UNKNOWN_LINUX_MUSL_LINKER=clang \
           CC_x86_64_unknown_linux_musl=clang \
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang \
-          cargo test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+          cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
-  # Verify cross-compiling with the default feature set works.
-  build-cross-linux:
-    runs-on: ${{ matrix.host_os }}
-    strategy:
-      matrix:
-        features:
-          - # Default
-        host_os:
-          - ubuntu-18.04
-        mode:
-          - # debug
-          - --release
-        rust_channel:
-          - stable
-          - beta
-          - nightly
-        target:
-          - aarch64-linux-android
-          - armv7-linux-androideabi
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
-
-      # wasm32-*: When the "wasm32_c" feature isn't enabled, we don't need to set anything.
-      # TODO: Collect the resultant artifacts and/or run the tests.
-      - run: |
-          PATH=${ANDROID_SDK_ROOT}/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH \
-          CC_aarch64_linux_android=aarch64-linux-android21-clang \
-          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang \
-          CC_armv7_linux_androideabi=armv7a-linux-androideabi18-clang \
-          CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=armv7a-linux-androideabi18-clang \
-          cargo test -vv --no-run --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: |
+          cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
   test-cross-wasm32-c:
     runs-on: ${{ matrix.host_os }}
@@ -203,33 +170,3 @@ jobs:
         # TODO: Collect the resultant artifacts and/or run the tests.
         run: |
           ${{ matrix.webdriver }} cargo test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
-
-  build-cross-apple:
-    runs-on: ${{ matrix.host_os }}
-    strategy:
-      matrix:
-        host_os:
-          - macos-latest
-        mode:
-          - # debug
-          - --release
-        rust_channel:
-          - stable
-          - beta
-          - nightly
-        target:
-          - aarch64-apple-ios
-    steps:
-      - uses: actions/checkout@v2
-
-      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
-
-      # TODO: Collect the resultant artifacts and/or run the tests.
-      - run: |
-          cargo test --no-run -vv ${{ matrix.features }} ${{ matrix.mode }} --target=${{ matrix.target }}
