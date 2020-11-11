@@ -323,9 +323,8 @@ fn pregenerate_asm_main() {
             if target_os == Some(WINDOWS) {
                 let srcs = asm_srcs(perlasm_src_dsts);
                 for src in srcs {
-                    let src_path = PathBuf::from(src);
-                    let obj_path = obj_path(&pregenerated, &src_path, MSVC_OBJ_EXT);
-                    run_command(yasm(&src_path, target_arch, &obj_path));
+                    let obj_path = obj_path(&pregenerated, &src, MSVC_OBJ_EXT);
+                    run_command(yasm(&src, target_arch, &obj_path));
                 }
             }
         }
@@ -486,7 +485,7 @@ fn build_library(
                 let _ = c.flag("-Wl,-dead_strip");
             }
             _ => {
-                let _ = c.flag("-Wl,--gc-sections".into());
+                let _ = c.flag("-Wl,--gc-sections");
             }
         }
         for o in objs {
