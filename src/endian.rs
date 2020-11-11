@@ -54,7 +54,7 @@ macro_rules! impl_as_ref {
         impl ArrayEncoding<[u8; $elems * core::mem::size_of::<$base>()]>
             for [$endian<$base>; $elems]
         {
-            fn as_byte_array<'a>(&'a self) -> &'a [u8; $elems * core::mem::size_of::<$base>()] {
+            fn as_byte_array(&self) -> &[u8; $elems * core::mem::size_of::<$base>()] {
                 as_byte_slice(self).try_into().unwrap()
             }
         }
