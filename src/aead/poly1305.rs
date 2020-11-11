@@ -101,6 +101,7 @@ impl Context {
 
 #[cfg(test)]
 pub fn check_state_layout() {
+    #[allow(clippy::if_same_then_else)]
     let required_state_size = if cfg!(target_arch = "x86") {
         // See comment above `_poly1305_init_sse2` in poly1305-x86.pl.
         Some(4 * (5 + 1 + 4 + 2 + 4 * 9))

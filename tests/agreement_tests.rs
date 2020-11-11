@@ -77,6 +77,7 @@ fn agreement_traits<'a>() {
     );
 }
 
+#[allow(clippy::block_in_if_condition_stmt)]
 #[test]
 fn agreement_agree_ephemeral() {
     let rng = rand::SystemRandom::new();

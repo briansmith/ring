@@ -212,6 +212,7 @@ fn test_aead<Seal, Open>(
         if cfg!(debug_assertions) {
             in_prefix_lengths = &MINIMAL_IN_PREFIX_LENS[..];
         } else {
+            #[allow(clippy::needless_range_loop)]
             for b in 0..more_comprehensive_in_prefix_lengths.len() {
                 more_comprehensive_in_prefix_lengths[b] = b;
             }
@@ -300,6 +301,7 @@ fn open_with_less_safe_key<'a>(
     key.open_within(nonce, aad, in_out, ciphertext_and_tag)
 }
 
+#[allow(clippy::range_plus_one)]
 fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
     let key_len = aead_alg.key_len();
     let key_data = vec![0u8; key_len * 2];
@@ -327,6 +329,7 @@ fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
 }
 
 // Test that we reject non-standard nonce sizes.
+#[allow(clippy::range_plus_one)]
 #[test]
 fn test_aead_nonce_sizes() -> Result<(), error::Unspecified> {
     let nonce_len = aead::NONCE_LEN;
@@ -350,6 +353,7 @@ fn test_aead_nonce_sizes() -> Result<(), error::Unspecified> {
     target_arch = "x86_64",
     target_arch = "x86"
 ))]
+#[allow(clippy::range_plus_one)]
 #[test]
 fn aead_chacha20_poly1305_openssh() {
     // TODO: test_aead_key_sizes(...);
