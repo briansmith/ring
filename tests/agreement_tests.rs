@@ -134,7 +134,7 @@ fn agreement_agree_ephemeral() {
             }
         }
 
-        return Ok(());
+        Ok(())
     });
 }
 
