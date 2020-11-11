@@ -1163,14 +1163,25 @@ OPENSSL_EXPORT int i2d_re_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp);
 // instead.
 OPENSSL_EXPORT int i2d_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp);
 
+// X509_REVOKED_get0_serialNumber returns the serial number of the certificate
+// revoked by |revoked|.
 OPENSSL_EXPORT const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(
-    const X509_REVOKED *x);
-OPENSSL_EXPORT int X509_REVOKED_set_serialNumber(X509_REVOKED *x,
-                                                 ASN1_INTEGER *serial);
+    const X509_REVOKED *revoked);
+
+// X509_REVOKED_set_serialNumber sets |revoked|'s serial number to |serial|. It
+// returns one on success or zero on error.
+OPENSSL_EXPORT int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
+                                                 const ASN1_INTEGER *serial);
+
+// X509_REVOKED_get0_revocationDate returns the revocation time of the
+// certificate revoked by |revoked|.
 OPENSSL_EXPORT const ASN1_TIME *X509_REVOKED_get0_revocationDate(
-    const X509_REVOKED *x);
-OPENSSL_EXPORT int X509_REVOKED_set_revocationDate(X509_REVOKED *r,
-                                                   ASN1_TIME *tm);
+    const X509_REVOKED *revoked);
+
+// X509_REVOKED_set_revocationDate sets |revoked|'s revocation time to |tm|. It
+// returns one on success or zero on error.
+OPENSSL_EXPORT int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
+                                                   const ASN1_TIME *tm);
 
 // X509_REVOKED_get0_extensions returns |r|'s extensions.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(

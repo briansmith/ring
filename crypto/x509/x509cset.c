@@ -189,45 +189,46 @@ int X509_CRL_get_signature_nid(const X509_CRL *crl)
     return OBJ_obj2nid(crl->sig_alg->algorithm);
 }
 
-const ASN1_TIME *X509_REVOKED_get0_revocationDate(const X509_REVOKED *x)
+const ASN1_TIME *X509_REVOKED_get0_revocationDate(const X509_REVOKED *revoked)
 {
-    return x->revocationDate;
+    return revoked->revocationDate;
 }
 
-int X509_REVOKED_set_revocationDate(X509_REVOKED *x, ASN1_TIME *tm)
+int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked, const ASN1_TIME *tm)
 {
     ASN1_TIME *in;
 
-    if (x == NULL)
+    if (revoked == NULL)
         return (0);
-    in = x->revocationDate;
+    in = revoked->revocationDate;
     if (in != tm) {
         in = ASN1_STRING_dup(tm);
         if (in != NULL) {
-            ASN1_TIME_free(x->revocationDate);
-            x->revocationDate = in;
+            ASN1_TIME_free(revoked->revocationDate);
+            revoked->revocationDate = in;
         }
     }
     return (in != NULL);
 }
 
-const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(const X509_REVOKED *x)
+const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(const X509_REVOKED *revoked)
 {
-    return x->serialNumber;
+    return revoked->serialNumber;
 }
 
-int X509_REVOKED_set_serialNumber(X509_REVOKED *x, ASN1_INTEGER *serial)
+int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
+                                  const ASN1_INTEGER *serial)
 {
     ASN1_INTEGER *in;
 
-    if (x == NULL)
+    if (revoked == NULL)
         return (0);
-    in = x->serialNumber;
+    in = revoked->serialNumber;
     if (in != serial) {
         in = ASN1_INTEGER_dup(serial);
         if (in != NULL) {
-            ASN1_INTEGER_free(x->serialNumber);
-            x->serialNumber = in;
+            ASN1_INTEGER_free(revoked->serialNumber);
+            revoked->serialNumber = in;
         }
     }
     return (in != NULL);
