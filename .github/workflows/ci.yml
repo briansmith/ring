@@ -129,7 +129,9 @@ jobs:
         run: |
           cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
-  test-cross-wasm32-c:
+  # The wasm32-unknown-unknown targets have a different set of feature sets and
+  # an additional `webdriver` dimension.
+  test-wasm32:
     runs-on: ${{ matrix.host_os }}
     strategy:
       matrix:
@@ -162,8 +164,8 @@ jobs:
           toolchain: ${{ matrix.rust_channel }}
 
       - env:
-          # These are only needed for for wasm32 targets only, only when the "wasm_c"
-          # feature is enabled.
+          # The first two are only needed for for wasm32 targets only, only
+          # when the "wasm_c" feature is enabled.
           CC_wasm32_unknown_unknown: clang-10
           AR_wasm32_unknown_unknown: llvm-ar-10
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
