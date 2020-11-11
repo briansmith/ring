@@ -313,9 +313,9 @@ int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str)
 {
     if (str == NULL)
         return 0;
-    dst->type = str->type;
     if (!ASN1_STRING_set(dst, str->data, str->length))
         return 0;
+    dst->type = str->type;
     dst->flags = str->flags;
     return 1;
 }
