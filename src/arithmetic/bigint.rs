@@ -1528,7 +1528,7 @@ mod tests {
     #[test]
     fn test_modulus_debug() {
         let (modulus, _) = Modulus::<M>::from_be_bytes_with_bit_length(untrusted::Input::from(
-            &vec![0xff; LIMB_BYTES * MODULUS_MIN_LIMBS],
+            &[0xff; LIMB_BYTES * MODULUS_MIN_LIMBS],
         ))
         .unwrap();
         assert_eq!("Modulus", format!("{:?}", modulus));
