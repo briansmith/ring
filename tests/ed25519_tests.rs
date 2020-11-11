@@ -164,7 +164,11 @@ fn ed25519_test_public_key_coverage() {
     assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
 
     // Test `Clone`.
-    let _ = key_pair.public_key().clone();
+    #[allow(clippy::clone_on_copy)]
+    let _: <Ed25519KeyPair as KeyPair>::PublicKey = key_pair.public_key().clone();
+
+    // Test `Copy`.
+    let _: <Ed25519KeyPair as KeyPair>::PublicKey = *key_pair.public_key();
 
     // Test `Debug`.
     assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));
