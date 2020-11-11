@@ -185,6 +185,7 @@ pub(crate) mod arm {
 
     #[cfg(not(target_arch = "wasm32"))]
     impl Feature {
+        #[allow(clippy::needless_return)]
         #[inline(always)]
         pub fn available(&self, _: super::Features) -> bool {
             #[cfg(all(target_os = "ios", any(target_arch = "arm", target_arch = "aarch64")))]
@@ -261,6 +262,7 @@ pub(crate) mod intel {
     }
 
     impl Feature {
+        #[allow(clippy::needless_return)]
         #[inline(always)]
         pub fn available(&self, _: super::Features) -> bool {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
