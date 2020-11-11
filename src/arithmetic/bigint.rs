@@ -1168,7 +1168,7 @@ impl Nonnegative {
                 return Err(error::Unspecified);
             }
         }
-        return Ok(());
+        Ok(())
     }
 }
 
