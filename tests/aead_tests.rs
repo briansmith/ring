@@ -208,16 +208,15 @@ fn test_aead<Seal, Open>(
         ];
 
         let mut more_comprehensive_in_prefix_lengths = [0; 4096];
-        let in_prefix_lengths;
-        if cfg!(debug_assertions) {
-            in_prefix_lengths = &MINIMAL_IN_PREFIX_LENS[..];
+        let in_prefix_lengths = if cfg!(debug_assertions) {
+            &MINIMAL_IN_PREFIX_LENS[..]
         } else {
             #[allow(clippy::needless_range_loop)]
             for b in 0..more_comprehensive_in_prefix_lengths.len() {
                 more_comprehensive_in_prefix_lengths[b] = b;
             }
-            in_prefix_lengths = &more_comprehensive_in_prefix_lengths[..];
-        }
+            &more_comprehensive_in_prefix_lengths[..]
+        };
         let mut o_in_out = vec![123u8; 4096];
 
         for in_prefix_len in in_prefix_lengths.iter() {
