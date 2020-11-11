@@ -85,7 +85,7 @@ impl<M> Clone for BoxedLimbs<M> {
     fn clone(&self) -> Self {
         Self {
             limbs: self.limbs.clone(),
-            m: self.m.clone(),
+            m: self.m,
         }
     }
 }
@@ -388,7 +388,7 @@ impl<M, E> Clone for Elem<M, E> {
     fn clone(&self) -> Self {
         Self {
             limbs: self.limbs.clone(),
-            encoding: self.encoding.clone(),
+            encoding: self.encoding,
         }
     }
 }
