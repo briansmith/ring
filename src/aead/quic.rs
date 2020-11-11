@@ -28,7 +28,7 @@ pub struct HeaderProtectionKey {
     algorithm: &'static Algorithm,
 }
 
-#[allow(variant_size_differences)]
+#[allow(clippy::large_enum_variant, variant_size_differences)]
 enum KeyInner {
     Aes(aes::Key),
     ChaCha20(chacha::Key),
