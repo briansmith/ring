@@ -393,8 +393,7 @@ IMPLEMENT_ASN1_DUP_FUNCTION(X509_CRL)
 
 static int X509_REVOKED_cmp(const X509_REVOKED **a, const X509_REVOKED **b)
 {
-    return (ASN1_STRING_cmp((ASN1_STRING *)(*a)->serialNumber,
-                            (ASN1_STRING *)(*b)->serialNumber));
+    return ASN1_STRING_cmp((*a)->serialNumber, (*b)->serialNumber);
 }
 
 int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev)
