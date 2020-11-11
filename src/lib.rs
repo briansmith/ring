@@ -49,6 +49,21 @@
 
 #![doc(html_root_url = "https://briansmith.org/rustdoc/")]
 #![allow(
+    clippy::collapsible_if,
+    clippy::identity_conversion,
+    clippy::identity_op,
+    clippy::len_without_is_empty,
+    clippy::len_zero,
+    clippy::let_unit_value,
+    clippy::many_single_char_names,
+    clippy::needless_range_loop,
+    clippy::new_without_default,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::range_plus_one,
+    clippy::too_many_arguments,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::type_complexity,
+    clippy::unreadable_literal,
     missing_copy_implementations,
     missing_debug_implementations,
     non_camel_case_types,
