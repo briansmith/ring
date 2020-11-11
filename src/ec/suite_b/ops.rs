@@ -690,10 +690,10 @@ mod tests {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let cops = ops.common;
-            let mut a = consume_scalar(cops, test_case, "a");
+            let a = consume_scalar(cops, test_case, "a");
             let b = consume_scalar_mont(cops, test_case, "b");
             let expected_result = consume_scalar(cops, test_case, "r");
-            let actual_result = ops.scalar_product(&mut a, &b);
+            let actual_result = ops.scalar_product(&a, &b);
             assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
 
             Ok(())
