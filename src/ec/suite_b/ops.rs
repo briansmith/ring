@@ -1070,7 +1070,7 @@ mod tests {
         p
     }
 
-    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb], elems: &Vec<&str>, i: usize) {
+    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb], elems: &[&str], i: usize) {
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
         let r: Elem<Unencoded> = elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
@@ -1085,7 +1085,7 @@ mod tests {
     }
 
     fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str) -> TestPoint {
-        fn consume_point_elem(ops: &CommonOps, elems: &Vec<&str>, i: usize) -> Elem<R> {
+        fn consume_point_elem(ops: &CommonOps, elems: &[&str], i: usize) -> Elem<R> {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             let unencoded: Elem<Unencoded> =
