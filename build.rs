@@ -779,7 +779,7 @@ fn file_modified(path: &Path) -> SystemTime {
 }
 
 fn get_command(var: &str, default: &str) -> String {
-    std::env::var(var).unwrap_or(default.into())
+    std::env::var(var).unwrap_or_else(|_| default.into())
 }
 
 fn check_all_files_tracked() {
