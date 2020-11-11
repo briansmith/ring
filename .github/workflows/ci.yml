@@ -4,7 +4,11 @@ on:
   push:
 jobs:
   rustfmt:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
     runs-on: ubuntu-18.04
+
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -15,7 +19,11 @@ jobs:
       - run: cargo fmt --all -- --check
 
   test:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
     runs-on: ${{ matrix.host_os }}
+
     strategy:
       matrix:
         features:
@@ -132,7 +140,11 @@ jobs:
   # The wasm32-unknown-unknown targets have a different set of feature sets and
   # an additional `webdriver` dimension.
   test-wasm32:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
     runs-on: ${{ matrix.host_os }}
+
     strategy:
       matrix:
         features:
@@ -152,6 +164,7 @@ jobs:
         webdriver:
           - GECKODRIVER=geckodriver
           - CHROMEDRIVER=chromedriver
+
     steps:
       - uses: actions/checkout@v2
 
