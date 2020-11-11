@@ -198,11 +198,11 @@ any security vulnerability in this code privately to anybody.**
 Online Automated Testing
 ------------------------
 
-Appveyor is currently used for testing Windows hosts and targets. All other
-platforms are tested in GitHub Actions. The tests are run in debug and release
-configurations, for the current release of each Rust channel (Stable, Beta,
-Nightly). A C compiler is currently required to compile some parts of *ring*;
-*ring* should be compatible with GCC 4.8+, Clang 10+, and MSVC 2019+, at least.
+The following targets are tested in GitHub Actions. The tests are run in debug
+and release configurations, for the current release of each Rust channel
+(Stable, Beta, Nightly). A C compiler is currently required to compile some
+parts of *ring*; *ring* should be compatible with GCC 4.8+, Clang 10+, and MSVC
+2019+, at least.
 
 | Target                       | Notes |
 | -----------------------------| ----- |
@@ -211,12 +211,14 @@ Nightly). A C compiler is currently required to compile some parts of *ring*;
 | aarch64-linux-android        | API level 21 (Android 5.0+); [Build-only; issue 486](https://github.com/briansmith/ring/issues/486)
 | arm-unknown-linux-gnueabihf  | Tested on 64-bit Linux using QEMU user emulation
 | armv7-linux-androideabi      | API level 18 (Android 4.3+); [Build-only; issue 838](https://github.com/briansmith/ring/issues/838)
+| i686-pc-windows-msvc         | Tested on 64-bit Windows Server 2019 Datacenter
 | i686-unknown-linux-gnu       | Tested on 64-bit Linux using multilib support
 | i686-unknown-linux-musl      | [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| x86_64-pc-windows-msvc       | Tested on 64-bit Windows Server 2019 Datacenter
 | x86_64-unknown-linux-gnu     |
 | x86_64-unknown-linux-musl    | [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
 | x86_64-apple-darwin          |
-| wasm32-unknown-unknown       | [Build-only; issue 1082](https://github.com/briansmith/ring/issues/1082)
+| wasm32-unknown-unknown       | Tested using wasm-bindgen-test-runner on Linux in Chrome and Firefox.
 
 
 License
