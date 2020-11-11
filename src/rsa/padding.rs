@@ -14,7 +14,6 @@
 
 use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
 use crate::{bits, digest, error, io::der};
-use untrusted;
 
 #[cfg(feature = "alloc")]
 use crate::rand;
@@ -522,7 +521,6 @@ mod test {
     use super::*;
     use crate::{digest, error, test};
     use alloc::vec;
-    use untrusted;
 
     #[test]
     fn test_pss_padding_verify() {

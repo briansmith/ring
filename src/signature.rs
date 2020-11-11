@@ -257,7 +257,6 @@
 //! ```
 
 use crate::{cpu, ec, error, sealed};
-use untrusted;
 
 pub use crate::ec::{
     curve25519::ed25519::{

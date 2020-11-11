@@ -17,7 +17,6 @@
 
 use super::{ops::*, verify_affine_point_is_on_the_curve};
 use crate::{arithmetic::montgomery::*, error};
-use untrusted;
 
 /// Parses a public key encoded in uncompressed form. The key is validated
 /// using the ECC Partial Public-Key Validation Routine from
@@ -69,7 +68,6 @@ pub fn parse_uncompressed_point(
 mod tests {
     use super::{super::ops, *};
     use crate::test;
-    use untrusted;
 
     #[test]
     fn parse_uncompressed_point_test() {

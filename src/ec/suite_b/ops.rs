@@ -14,7 +14,6 @@
 
 use crate::{arithmetic::montgomery::*, c, error, limb::*};
 use core::marker::PhantomData;
-use untrusted;
 
 pub use self::elem::*;
 
@@ -441,7 +440,6 @@ mod tests {
     use super::*;
     use crate::test;
     use alloc::{format, vec, vec::Vec};
-    use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {
         limbs: [0; MAX_LIMBS],

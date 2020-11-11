@@ -63,7 +63,6 @@
 // Model."
 
 use crate::{cpu, debug, ec, error, rand};
-use untrusted;
 
 pub use crate::ec::{
     curve25519::x25519::X25519,

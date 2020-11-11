@@ -24,7 +24,6 @@ use crate::{
     io::{self, der},
     limb,
 };
-use untrusted;
 
 mod padding;
 

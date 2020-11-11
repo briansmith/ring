@@ -14,8 +14,6 @@
 
 //! Error reporting.
 
-use untrusted;
-
 #[cfg(feature = "std")]
 extern crate std;
 

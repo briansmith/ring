@@ -19,7 +19,6 @@
 //! limbs use the native endianness.
 
 use crate::{c, error};
-use untrusted;
 
 #[cfg(feature = "alloc")]
 use crate::bits;
@@ -350,7 +349,6 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use untrusted;
 
     const MAX: Limb = LimbMask::True as Limb;
 
