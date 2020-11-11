@@ -50,7 +50,7 @@ fn test_verify_slices_are_equal() {
 
     for i in 0..initial.len() {
         for bit in 0..8 {
-            let mut copy = initial.clone();
+            let mut copy = initial;
             copy[i] ^= 1u8 << bit;
 
             for len in 0..=initial.len() {
