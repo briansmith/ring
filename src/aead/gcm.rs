@@ -336,5 +336,5 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
 
 #[cfg(target_arch = "x86_64")]
 fn has_avx_movbe(cpu_features: cpu::Features) -> bool {
-    return cpu::intel::AVX.available(cpu_features) && cpu::intel::MOVBE.available(cpu_features);
+    cpu::intel::AVX.available(cpu_features) && cpu::intel::MOVBE.available(cpu_features)
 }
