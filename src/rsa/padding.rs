@@ -278,7 +278,7 @@ impl RsaEncoding for PSS {
 
         {
             // Steps 7.
-            let masked_db = masked_db.into_iter();
+            let masked_db = masked_db.iter_mut();
             // `PS` is all zero bytes, so skipping `ps_len` bytes is equivalent
             // to XORing `PS` onto `db`.
             let mut masked_db = masked_db.skip(metrics.ps_len);
