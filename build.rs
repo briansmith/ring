@@ -373,7 +373,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         .iter()
         .find(|entry| {
             let &(entry_arch, entry_os, _) = *entry;
-            entry_arch == &target.arch && is_none_or_equals(entry_os, &target.os)
+            entry_arch == target.arch && is_none_or_equals(entry_os, &target.os)
         })
         .unwrap();
 
@@ -404,7 +404,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         // For Windows we also pregenerate the object files for non-Git builds so
         // the user doesn't need to install the assembler. On other platforms we
         // assume the C compiler also assembles.
-        if use_pregenerated && &target.os == WINDOWS {
+        if use_pregenerated && target.os == WINDOWS {
             // The pregenerated object files always use ".obj" as the extension,
             // even when the C/C++ compiler outputs files with the ".o" extension.
             asm_srcs = asm_srcs
@@ -520,10 +520,10 @@ fn compile(
     if ext == "obj" {
         p.to_str().expect("Invalid path").into()
     } else {
-        let mut out_path = out_dir.clone().join(p.file_name().unwrap());
+        let mut out_path = out_dir.join(p.file_name().unwrap());
         assert!(out_path.set_extension(target.obj_ext));
         if need_run(&p, &out_path, includes_modified) {
-            let cmd = if &target.os != WINDOWS || ext != "asm" {
+            let cmd = if target.os != WINDOWS || ext != "asm" {
                 cc(p, ext, target, warnings_are_errors, &out_path)
             } else {
                 yasm(p, &target.arch, &out_path)
@@ -536,7 +536,7 @@ fn compile(
 }
 
 fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
-    let mut out_path = out_dir.clone().join(src.file_name().unwrap());
+    let mut out_path = out_dir.join(src.file_name().unwrap());
     assert!(out_path.set_extension(obj_ext));
     out_path
 }
@@ -562,9 +562,9 @@ fn cc(
     for f in cpp_flags(target) {
         let _ = c.flag(&f);
     }
-    if &target.os != "none"
-        && &target.os != "redox"
-        && &target.os != "windows"
+    if target.os != "none"
+        && target.os != "redox"
+        && target.os != "windows"
         && target.arch != "wasm32"
     {
         let _ = c.flag("-fstack-protector");
