@@ -36,6 +36,24 @@ jobs:
       # TODO: Add `--all-features`:
       - run: cargo +1.37.0 clippy ---all-targets -- --deny warnings
 
+  deny:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - run: cargo install cargo-deny
+
+      - uses: actions/checkout@v2
+
+      - run: cargo deny check
+
   test:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
