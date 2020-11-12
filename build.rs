@@ -263,10 +263,6 @@ fn main() {
 fn ring_build_rs_main() {
     use std::env;
 
-    for (key, value) in env::vars() {
-        eprintln!("ENV {}={}", key, value);
-    }
-
     let out_dir = env::var("OUT_DIR").unwrap();
     let out_dir = PathBuf::from(out_dir);
 
