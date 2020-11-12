@@ -1151,7 +1151,6 @@ $code.=<<___;
 	add		sp,sp,#4*(16+3)
 	ldmia		sp!,{r4-r11,pc}
 .size	ChaCha20_neon,.-ChaCha20_neon
-.comm	GFp_armcap_P,4,4
 #endif
 ___
 }}}
