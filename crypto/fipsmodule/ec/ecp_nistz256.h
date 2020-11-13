@@ -18,7 +18,7 @@
 #include "../../limbs/limbs.h"
 
 // Keep this in sync with p256.rs.
-#if defined(OPENSSL_AARCH64) || defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#if defined(OPENSSL_AARCH64) || defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_S390X)
 #define GFp_USE_LARGE_TABLE
 #endif
 

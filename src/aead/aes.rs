@@ -136,7 +136,8 @@ impl Key {
                 target_arch = "aarch64",
                 target_arch = "arm",
                 target_arch = "x86_64",
-                target_arch = "x86"
+                target_arch = "x86",
+                target_arch = "s390x"
             ))]
             Implementation::HWAES => {
                 set_encrypt_key!(GFp_aes_hw_set_encrypt_key, bytes, key_bits, &mut key)?
@@ -152,7 +153,7 @@ impl Key {
                 set_encrypt_key!(GFp_vpaes_set_encrypt_key, bytes, key_bits, &mut key)?
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
+            #[cfg(not(any(target_arch = "aarch64", target_arch = "s390x")))]
             Implementation::NOHW => {
                 set_encrypt_key!(GFp_aes_nohw_set_encrypt_key, bytes, key_bits, &mut key)?
             }
@@ -171,7 +172,8 @@ impl Key {
                 target_arch = "aarch64",
                 target_arch = "arm",
                 target_arch = "x86_64",
-                target_arch = "x86"
+                target_arch = "x86",
+                target_arch = "s390x"
             ))]
             Implementation::HWAES => encrypt_block!(GFp_aes_hw_encrypt, a, self),
 
@@ -183,7 +185,7 @@ impl Key {
             ))]
             Implementation::VPAES_BSAES => encrypt_block!(GFp_vpaes_encrypt, a, self),
 
-            #[cfg(not(target_arch = "aarch64"))]
+            #[cfg(not(any(target_arch = "aarch64", target_arch = "s390x")))]
             Implementation::NOHW => encrypt_block!(GFp_aes_nohw_encrypt, a, self),
         }
     }
@@ -216,7 +218,8 @@ impl Key {
                 target_arch = "aarch64",
                 target_arch = "arm",
                 target_arch = "x86_64",
-                target_arch = "x86"
+                target_arch = "x86",
+                target_arch = "s390x"
             ))]
             Implementation::HWAES => ctr32_encrypt_blocks!(
                 GFp_aes_hw_ctr32_encrypt_blocks,
@@ -280,7 +283,7 @@ impl Key {
                 });
             }
 
-            #[cfg(not(target_arch = "aarch64"))]
+            #[cfg(not(any(target_arch = "aarch64", target_arch = "s390x")))]
             Implementation::NOHW => ctr32_encrypt_blocks!(
                 GFp_aes_nohw_ctr32_encrypt_blocks,
                 in_out,
@@ -340,7 +343,8 @@ pub enum Implementation {
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "s390x"
     ))]
     HWAES = 1,
 
@@ -353,7 +357,7 @@ pub enum Implementation {
     ))]
     VPAES_BSAES = 2,
 
-    #[cfg(not(target_arch = "aarch64"))]
+    #[cfg(not(any(target_arch = "aarch64", target_arch = "s390x")))]
     NOHW = 3,
 }
 
@@ -363,7 +367,8 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "s390x"
     )))]
     let _cpu_features = cpu_features;
 
@@ -371,7 +376,8 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "s390x"
     ))]
     {
         if cpu::intel::AES.available(cpu_features) || cpu::arm::AES.available(cpu_features) {
@@ -398,7 +404,12 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
         Implementation::VPAES_BSAES
     }
 
-    #[cfg(not(target_arch = "aarch64"))]
+    #[cfg(target_arch = "s390x")]
+    {
+        Implementation::HWAES
+    }
+
+    #[cfg(not(any(target_arch = "aarch64", target_arch = "s390x")))]
     {
         Implementation::NOHW
     }

@@ -89,6 +89,9 @@
 #define OPENSSL_MIPS64
 #elif defined(__wasm__)
 #define OPENSSL_32_BIT
+#elif defined(__s390x__)
+#define OPENSSL_64_BIT
+#define OPENSSL_S390X
 #else
 // Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
 // little-endian architectures. Functions will not produce the correct answer
