@@ -697,9 +697,8 @@ OPENSSL_EXPORT NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str,
 OPENSSL_EXPORT char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki);
 
 // NETSCAPE_SPKI_get_pubkey decodes and returns the public key in |spki| as an
-// |EVP_PKEY|, or NULL on error. The resulting pointer is non-owning and valid
-// until |spki| is released or mutated. The caller should take a reference with
-// |EVP_PKEY_up_ref| to extend the lifetime.
+// |EVP_PKEY|, or NULL on error. The caller takes ownership of the resulting
+// pointer and must call |EVP_PKEY_free| when done.
 OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *spki);
 
 // NETSCAPE_SPKI_set_pubkey sets |spki|'s public key to |pkey|. It returns one
