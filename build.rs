@@ -59,6 +59,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
     (&[], "crypto/limbs/limbs.c"),
     (&[], "crypto/mem.c"),
+    (&[], "crypto/poly1305/poly1305.c"),
 
     (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/curve25519/curve25519.c"),
@@ -75,7 +76,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86], "crypto/chacha/asm/chacha-x86.pl"),
     (&[X86], "crypto/fipsmodule/ec/asm/ecp_nistz256-x86.pl"),
     (&[X86], "crypto/fipsmodule/modes/asm/ghash-x86.pl"),
-    (&[X86], "crypto/poly1305/asm/poly1305-x86.pl"),
 
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"),
@@ -85,7 +85,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"),
-    (&[X86_64], "crypto/poly1305/asm/poly1305-x86_64.pl"),
+    (&[X86_64], "crypto/poly1305/poly1305_vec.c"),
     (&[X86_64], SHA512_X86_64),
 
     (&[AARCH64, ARM], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
@@ -98,7 +98,8 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[ARM], "crypto/curve25519/asm/x25519-asm-arm.S"),
     (&[ARM], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv4.pl"),
     (&[ARM], "crypto/fipsmodule/modes/asm/ghash-armv4.pl"),
-    (&[ARM], "crypto/poly1305/asm/poly1305-armv4.pl"),
+    (&[ARM], "crypto/poly1305/poly1305_arm.c"),
+    (&[ARM], "crypto/poly1305/poly1305_arm_asm.S"),
     (&[ARM], "crypto/fipsmodule/sha/asm/sha256-armv4.pl"),
     (&[ARM], "crypto/fipsmodule/sha/asm/sha512-armv4.pl"),
 
@@ -107,7 +108,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
-    (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
 ];
 
@@ -134,12 +134,14 @@ const RING_INCLUDES: &[&str] =
       "crypto/internal.h",
       "crypto/limbs/limbs.h",
       "crypto/limbs/limbs.inl",
+      "crypto/poly1305/internal.h",
       "include/GFp/aes.h",
       "include/GFp/arm_arch.h",
       "include/GFp/base.h",
       "include/GFp/check.h",
       "include/GFp/cpu.h",
       "include/GFp/mem.h",
+      "include/GFp/poly1305.h",
       "include/GFp/type_check.h",
       "third_party/fiat/curve25519_32.h",
       "third_party/fiat/curve25519_64.h",

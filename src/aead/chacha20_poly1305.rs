@@ -80,7 +80,7 @@ fn aead(
     Aad(aad): Aad<&[u8]>,
     in_out: &mut [u8],
     direction: Direction,
-    _todo: cpu::Features,
+    cpu_features: cpu::Features,
 ) -> Tag {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
@@ -89,7 +89,7 @@ fn aead(
 
     let mut counter = Counter::zero(nonce);
     let mut ctx = {
-        let key = derive_poly1305_key(chacha20_key, counter.increment());
+        let key = derive_poly1305_key(chacha20_key, counter.increment(), cpu_features);
         poly1305::Context::from_key(key)
     };
 
@@ -108,12 +108,12 @@ fn aead(
         }
     };
 
-    ctx.update_block(
+    ctx.update(
         Block::from_u64_le(
             LittleEndian::from(polyfill::u64_from_usize(aad.len())),
             LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
-        ),
-        poly1305::Pad::Pad,
+        )
+        .as_ref(),
     );
     ctx.finish()
 }
@@ -123,20 +123,24 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
     let remainder_len = input.len() % BLOCK_LEN;
     let whole_len = input.len() - remainder_len;
     if whole_len > 0 {
-        ctx.update_blocks(&input[..whole_len]);
+        ctx.update(&input[..whole_len]);
     }
     if remainder_len > 0 {
         let mut block = Block::zero();
         block.overwrite_part_at(0, &input[whole_len..]);
-        ctx.update_block(block, poly1305::Pad::Pad)
+        ctx.update(block.as_ref())
     }
 }
 
 // Also used by chacha20_poly1305_openssh.
-pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305::Key {
+pub(super) fn derive_poly1305_key(
+    chacha_key: &chacha::Key,
+    iv: Iv,
+    cpu_features: cpu::Features,
+) -> poly1305::Key {
     let mut key_bytes = [0u8; 2 * BLOCK_LEN];
     chacha_key.encrypt_iv_xor_blocks_in_place(iv, &mut key_bytes);
-    poly1305::Key::from(key_bytes)
+    poly1305::Key::new(key_bytes, cpu_features)
 }
 
 #[cfg(test)]
