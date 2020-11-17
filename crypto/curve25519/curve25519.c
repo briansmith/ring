@@ -159,7 +159,7 @@ static void fe_frombytes_strict(fe *h, const uint8_t s[32]) {
 
 static void fe_frombytes(fe *h, const uint8_t s[32]) {
   uint8_t s_copy[32];
-  bytes_copy(s_copy, s, 32);
+  GFp_memcpy(s_copy, s, 32);
   s_copy[31] &= 0x7f;
   fe_frombytes_strict(h, s_copy);
 }
@@ -171,21 +171,21 @@ static void fe_tobytes(uint8_t s[32], const fe *f) {
 
 // h = 0
 static void fe_0(fe *h) {
-  fe_limbs_zero(h->v);
+  GFp_memset(h, 0, sizeof(fe));
 }
 
 static void fe_loose_0(fe_loose *h) {
-  fe_limbs_zero(h->v);
+  GFp_memset(h, 0, sizeof(fe_loose));
 }
 
 // h = 1
 static void fe_1(fe *h) {
-  fe_0(h);
+  GFp_memset(h, 0, sizeof(fe));
   h->v[0] = 1;
 }
 
 static void fe_loose_1(fe_loose *h) {
-  fe_loose_0(h);
+  GFp_memset(h, 0, sizeof(fe_loose));
   h->v[0] = 1;
 }
 
@@ -1782,7 +1782,7 @@ void GFp_x25519_scalar_mult_generic_masked(uint8_t out[32],
   fe_loose x2l, z2l, x3l, tmp0l, tmp1l;
 
   uint8_t e[32];
-  bytes_copy(e, scalar_masked, 32);
+  GFp_memcpy(e, scalar_masked, 32);
   // The following implementation was transcribed to Coq and proven to
   // correspond to unary scalar multiplication in affine coordinates given that
   // x1 != 0 is the x coordinate of some point on the curve. It was also checked
@@ -1856,7 +1856,7 @@ void GFp_x25519_scalar_mult_generic_masked(uint8_t out[32],
 void GFp_x25519_public_from_private_generic_masked(uint8_t out_public_value[32],
                                                    const uint8_t private_key_masked[32]) {
   uint8_t e[32];
-  bytes_copy(e, private_key_masked, 32);
+  GFp_memcpy(e, private_key_masked, 32);
 
   ge_p3 A;
   GFp_x25519_ge_scalarmult_base(&A, e);
