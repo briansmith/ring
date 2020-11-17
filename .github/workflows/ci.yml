@@ -199,12 +199,5 @@ jobs:
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
 
-      - env:
-          # The first two are only needed for for wasm32 targets only, only
-          # when the "wasm_c" feature is enabled.
-          CC_wasm32_unknown_unknown: clang-10
-          AR_wasm32_unknown_unknown: llvm-ar-10
-          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
-        # TODO: Collect the resultant artifacts and/or run the tests.
-        run: |
-          ${{ matrix.webdriver }} cargo test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+      - run: |
+          ${{ matrix.webdriver }} mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
