@@ -259,10 +259,49 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 }
 #endif
 
-static inline void bytes_copy(uint8_t out[], const uint8_t in[], size_t len) {
-  for (size_t i = 0; i < len; ++i) {
-    out[i] = in[i];
+// Assume we have <string.h> unless we can detect otherwise. The
+// targets that don't have string.h do have `__has_include`.
+#define GFp_HAS_STRING_H
+
+#if defined(__has_include)
+# if !__has_include(<string.h>)
+#  undef GFp_HAS_STRING_H
+# endif
+#endif
+
+#if defined(GFp_HAS_STRING_H)
+#include <string.h>
+#endif
+
+static inline void *GFp_memcpy(void *dst, const void *src, size_t n) {
+#if defined(GFp_HAS_STRING_H)
+  if (n == 0) {
+    return dst;
   }
+  return memcpy(dst, src, n);
+#else
+  unsigned char *d = dst;
+  const unsigned char *s = src;
+  for (size_t i = 0; i < n; ++i) {
+    d[i] = s[i];
+  }
+  return dst;
+#endif
+}
+
+static inline void *GFp_memset(void *dst, int c, size_t n) {
+#if defined(GFp_HAS_STRING_H)
+  if (n == 0) {
+    return dst;
+  }
+  return memset(dst, c, n);
+#else
+  unsigned char *d = dst;
+  for (size_t i = 0; i < n; ++i) {
+    d[i] = (unsigned char)c;
+  }
+  return dst;
+#endif
 }
 
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H
