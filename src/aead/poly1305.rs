@@ -60,13 +60,13 @@ macro_rules! dispatch {
         match () {
             // Apple's 32-bit ARM ABI is incompatible with the assembly code.
             #[cfg(all(target_arch = "arm", not(target_vendor = "apple")))]
-            () if cpu::arm::NEON.available($features) => {
+            _ if cpu::arm::NEON.available($features) => {
                 extern "C" {
                     fn $neon_f( $( $p : $t ),+ );
                 }
                 unsafe { $neon_f( $( $a ),+ ) }
             }
-            () => {
+            _ => {
                 extern "C" {
                     fn $f( $( $p : $t ),+ );
                 }
