@@ -47,7 +47,7 @@ struct poly1305_state_st {
   uint32_t s1, s2, s3, s4;
   uint32_t h0, h1, h2, h3, h4;
   uint8_t buf[16];
-  unsigned int buf_used;
+  size_t buf_used;
   uint8_t key[16];
 };
 
@@ -198,15 +198,14 @@ void GFp_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
 
 void GFp_poly1305_update(poly1305_state *statep, const uint8_t *in,
                          size_t in_len) {
-  unsigned int i;
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
 
   if (state->buf_used) {
-    unsigned todo = 16 - state->buf_used;
+    size_t todo = 16 - state->buf_used;
     if (todo > in_len) {
-      todo = (unsigned)in_len;
+      todo = in_len;
     }
-    for (i = 0; i < todo; i++) {
+    for (size_t i = 0; i < todo; i++) {
       state->buf[state->buf_used + i] = in[i];
     }
     state->buf_used += todo;
@@ -227,10 +226,10 @@ void GFp_poly1305_update(poly1305_state *statep, const uint8_t *in,
   }
 
   if (in_len) {
-    for (i = 0; i < in_len; i++) {
+    for (size_t i = 0; i < in_len; i++) {
       state->buf[i] = in[i];
     }
-    state->buf_used = (unsigned)in_len;
+    state->buf_used = in_len;
   }
 }
 
