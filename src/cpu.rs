@@ -24,9 +24,8 @@ pub(crate) struct Features(());
 
 #[inline(always)]
 pub(crate) fn features() -> Features {
-    // We don't do runtime feature detection on aarch64-apple-ios as all
-    // AAarch64 features we use are available on every device since the first
-    // device.
+    // We don't do runtime feature detection on aarch64-apple-* as all AAarch64
+    // features we use are available on every device since the first devices.
     #[cfg(any(
         target_arch = "x86",
         target_arch = "x86_64",
@@ -170,13 +169,13 @@ pub(crate) mod arm {
                     mask: $mask:expr,
 
                     /// Should we assume that the feature is always available
-                    /// for aarch64-apple-ios targets? The first AArch64 iOS
+                    /// for aarch64-apple-* targets? The first AArch64 iOS
                     /// device used the Apple A7 chip.
                     // TODO: When we can use `if` in const expressions:
                     // ```
-                    // aarch64_ios: $aarch64_ios,
+                    // aarch64_apple: $aarch64_apple,
                     // ```
-                    aarch64_ios: true,
+                    aarch64_apple: true,
                 }
             ),+
             , // trailing comma is required.
@@ -192,9 +191,9 @@ pub(crate) mod arm {
             // ```
             // const ARMCAP_STATIC: u32 = 0
             //    $(
-            //        | ( if $aarch64_ios &&
+            //        | ( if $aarch64_apple &&
             //               cfg!(all(target_arch = "aarch64",
-            //                        target_os = "ios")) {
+            //                        target_vendor = "apple")) {
             //                $name.mask
             //            } else {
             //                0
@@ -206,14 +205,14 @@ pub(crate) mod arm {
             // TODO: Add static feature detection to other targets.
             // TODO: Combine static feature detection with runtime feature
             //       detection.
-            #[cfg(all(target_arch = "aarch64", target_os = "ios"))]
+            #[cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
             const ARMCAP_STATIC: u32 = 0
                 $(  | $name.mask
                 )+;
-            #[cfg(not(all(target_arch = "aarch64", target_os = "ios")))]
+            #[cfg(not(all(target_arch = "aarch64", target_vendor = "apple")))]
             const ARMCAP_STATIC: u32 = 0;
 
-            #[cfg(all(target_arch = "aarch64", target_os = "ios"))]
+            #[cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
             #[test]
             fn test_armcap_static_available() {
                 let features = crate::cpu::features();
@@ -255,25 +254,25 @@ pub(crate) mod arm {
         // Keep in sync with `ARMV7_NEON`.
         NEON {
             mask: 1 << 0,
-            aarch64_ios: true,
+            aarch64_apple: true,
         },
 
         // Keep in sync with `ARMV8_AES`.
         AES {
             mask: 1 << 2,
-            aarch64_ios: true,
+            aarch64_apple: true,
         },
 
         // Keep in sync with `ARMV8_SHA256`.
         SHA256 {
             mask: 1 << 4,
-            aarch64_ios: true,
+            aarch64_apple: true,
         },
 
         // Keep in sync with `ARMV8_PMULL`.
         PMULL {
             mask: 1 << 5,
-            aarch64_ios: true,
+            aarch64_apple: true,
         },
     }
 
@@ -288,7 +287,10 @@ pub(crate) mod arm {
     #[no_mangle]
     static mut GFp_armcap_P: u32 = ARMCAP_STATIC;
 
-    #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"), target_os = "ios"))]
+    #[cfg(all(
+        any(target_arch = "arm", target_arch = "aarch64"),
+        target_vendor = "apple"
+    ))]
     #[test]
     fn test_armcap_static_matches_armcap_dynamic() {
         assert_eq!(ARMCAP_STATIC, 1 | 4 | 16 | 32);
