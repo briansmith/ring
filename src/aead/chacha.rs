@@ -14,19 +14,27 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{counter, iv::Iv, quic::Sample, BLOCK_LEN};
-use crate::{c, endian::*};
+use crate::{c, cpu, endian::*};
 
-#[repr(transparent)]
-pub struct Key([LittleEndian<u32>; KEY_LEN / 4]);
+pub(super) struct Key {
+    inner: KeyInner,
 
-impl From<[u8; KEY_LEN]> for Key {
-    #[inline]
-    fn from(value: [u8; KEY_LEN]) -> Self {
-        Self(FromByteArray::from_byte_array(&value))
-    }
+    #[allow(dead_code)]
+    cpu_features: cpu::Features,
 }
 
+#[repr(transparent)]
+pub struct KeyInner([LittleEndian<u32>; KEY_LEN / 4]);
+
 impl Key {
+    #[inline]
+    pub(super) fn new(value: [u8; KEY_LEN], cpu_features: cpu::Features) -> Self {
+        Self {
+            inner: KeyInner(FromByteArray::from_byte_array(&value)),
+            cpu_features,
+        }
+    }
+
     #[inline] // Optimize away match on `counter`.
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
         unsafe {
@@ -107,19 +115,35 @@ impl Key {
             }
         };
 
-        /// XXX: Although this takes an `Iv`, this actually uses it like a
-        /// `Counter`.
-        extern "C" {
-            fn GFp_ChaCha20_ctr32(
-                out: *mut u8,
-                in_: *const u8,
-                in_len: c::size_t,
-                key: &Key,
-                first_iv: &Iv,
-            );
+        // XXX: Although these functions take an `Iv`, they actually use it like a
+        // `Counter`.
+        match () {
+            #[cfg(target_arch = "aarch64")]
+            _ if in_out_len >= 192 && cpu::arm::NEON.available(self.cpu_features) => {
+                extern "C" {
+                    fn GFp_ChaCha20_ctr32_neon(
+                        out: *mut u8,
+                        in_: *const u8,
+                        in_len: c::size_t,
+                        key: &KeyInner,
+                        first_iv: &Iv,
+                    );
+                }
+                GFp_ChaCha20_ctr32_neon(output, input, in_out_len, &self.inner, &iv)
+            }
+            _ => {
+                extern "C" {
+                    fn GFp_ChaCha20_ctr32(
+                        out: *mut u8,
+                        in_: *const u8,
+                        in_len: c::size_t,
+                        key: &KeyInner,
+                        first_iv: &Iv,
+                    );
+                }
+                GFp_ChaCha20_ctr32(output, input, in_out_len, &self.inner, &iv)
+            }
         }
-
-        GFp_ChaCha20_ctr32(output, input, in_out_len, self, &iv);
     }
 }
 
@@ -152,12 +176,13 @@ mod tests {
     // problem spreads to other platforms.
     #[test]
     pub fn chacha20_tests() {
+        let cpu_features = cpu::features();
         test::run(test_file!("chacha_tests.txt"), |section, test_case| {
             assert_eq!(section, "");
 
             let key = test_case.consume_bytes("Key");
             let key: &[u8; KEY_LEN] = key.as_slice().try_into()?;
-            let key = Key::from(*key);
+            let key = Key::new(*key, cpu_features);
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce = test_case.consume_bytes("Nonce");

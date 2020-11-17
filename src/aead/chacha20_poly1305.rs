@@ -37,10 +37,13 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
 /// Copies |key| into |ctx_buf|.
 fn chacha20_poly1305_init(
     key: &[u8],
-    _todo: cpu::Features,
+    cpu_features: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
     let key: [u8; chacha::KEY_LEN] = key.try_into()?;
-    Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::from(key)))
+    Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::new(
+        key,
+        cpu_features,
+    )))
 }
 
 fn chacha20_poly1305_seal(
@@ -71,7 +74,7 @@ fn chacha20_poly1305_open(
     )
 }
 
-pub type Key = chacha::Key;
+pub(super) type Key = chacha::Key;
 
 #[inline(always)] // Statically eliminate branches on `direction`.
 fn aead(

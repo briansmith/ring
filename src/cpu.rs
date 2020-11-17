@@ -209,9 +209,9 @@ pub(crate) mod arm {
     }
 
     // Keep in sync with `ARMV7_NEON`.
-    #[cfg(all(
-        any(target_arch = "aarch64", target_arch = "arm"),
-        not(target_os = "ios")
+    #[cfg(any(
+        target_arch = "aarch64",
+        all(target_arch = "arm", not(target_vendor = "apple"))
     ))]
     pub(crate) const NEON: Feature = Feature {
         mask: 1 << 0,

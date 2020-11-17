@@ -158,8 +158,8 @@ impl Key {
         let k_1: [u8; chacha::KEY_LEN] = k_1.try_into().unwrap();
         let k_2: [u8; chacha::KEY_LEN] = k_2.try_into().unwrap();
         Key {
-            k_1: chacha::Key::from(k_1),
-            k_2: chacha::Key::from(k_2),
+            k_1: chacha::Key::new(k_1, cpu_features),
+            k_2: chacha::Key::new(k_2, cpu_features),
             cpu_features,
         }
     }
