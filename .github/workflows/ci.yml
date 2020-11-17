@@ -54,6 +54,27 @@ jobs:
 
       - run: cargo deny check
 
+  package:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: >
+          (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
+          ("$pwd\target\tools" >> $env:GITHUB_PATH)
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - run: sh mk/package.sh
+        shell: bash
+
   test:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
