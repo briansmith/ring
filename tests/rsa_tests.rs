@@ -82,7 +82,7 @@ fn test_signature_rsa_pkcs1_sign() {
 
             // XXX: This test is too slow on Android ARM Travis CI builds.
             // TODO: re-enable these tests on Android ARM.
-            let mut actual = vec![0u8; key_pair.public_modulus_len()];
+            let mut actual = vec![0u8; key_pair.public().n().len()];
             key_pair
                 .sign(alg, &rng, &msg, actual.as_mut_slice())
                 .unwrap();
@@ -121,7 +121,7 @@ fn test_signature_rsa_pss_sign() {
 
             let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
-            let mut actual = vec![0u8; key_pair.public_modulus_len()];
+            let mut actual = vec![0u8; key_pair.public().n().len()];
             key_pair.sign(alg, &rng, &msg, actual.as_mut_slice())?;
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
@@ -284,29 +284,50 @@ fn test_signature_rsa_primitive_verification() {
 fn rsa_test_public_key_coverage() {
     const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
     const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
+    //TODO:
+    //const SUBJECT_PUBLIC_KEY_DEBUG: &str =
+    //    include_str!("rsa_test_subject_public_key_2048_debug.txt");
     const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
 
     let key_pair = signature::RsaKeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
-    // Test `AsRef<[u8]>`
-    assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
+    {
+        // Test `RsaSubjectPublicKey`.
+        let spk = key_pair.public_key();
 
-    // Test `Clone`.
-    let _ = key_pair.public_key().clone();
+        // Test `AsRef<[u8]>`
+        assert_eq!(spk.as_ref(), PUBLIC_KEY);
 
-    // Test `exponent()`.
-    assert_eq!(
-        &[0x01, 0x00, 0x01],
-        key_pair
-            .public_key()
-            .exponent()
-            .big_endian_without_leading_zero()
-    );
+        // Test `Clone`.
+        let _ = spk.clone();
+
+        // Test `exponent()`.
+        assert_eq!(
+            &[0x01, 0x00, 0x01],
+            spk.exponent().big_endian_without_leading_zero()
+        );
+
+        // Test `Debug`
+        // TODO: assert_eq!(SUBJECT_PUBLIC_KEY_DEBUG, format!("{:?}", spk));
+    }
+
+    {
+        // Test `public::Key`
+        let public_key = key_pair.public();
+
+        // Test `Clone`.
+        let _ = public_key.clone();
+
+        // Test `exponent()`.
+        assert_eq!(&[0x01, 0x00, 0x01], public_key.e().to_be_bytes().as_ref());
+
+        // Test `Debug`
+        assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", public_key));
+    }
 
     // Test `Debug`
-    assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));
     assert_eq!(
-        format!("RsaKeyPair {{ public_key: {:?} }}", key_pair.public_key()),
+        format!("RsaKeyPair {{ public: {:?} }}", key_pair.public()),
         format!("{:?}", key_pair)
     );
 }

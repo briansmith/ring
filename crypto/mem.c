@@ -56,7 +56,7 @@
 
 #include <ring-core/mem.h>
 
-int OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len) {
+size_t OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len) {
   uint8_t x = 0;
   for (size_t i = 0; i < len; i++) {
     x |= a[i] ^ b[i];

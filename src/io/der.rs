@@ -128,7 +128,7 @@ where
     inner.read_all(error, decoder)
 }
 
-fn nonnegative_integer<'a>(
+pub(crate) fn nonnegative_integer<'a>(
     input: &mut untrusted::Reader<'a>,
     min_value: u8,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
@@ -140,7 +140,7 @@ fn nonnegative_integer<'a>(
             if input.at_end() && first_byte < min_value {
                 return Err(error::Unspecified);
             }
-            let _ = input.read_bytes_to_end();
+            input.skip_to_end();
             Ok(())
         })
     }
@@ -168,7 +168,7 @@ fn nonnegative_integer<'a>(
                     // is set.
                     return Err(error::Unspecified);
                 }
-                let _ = input.read_bytes_to_end();
+                input.skip_to_end();
                 Ok(())
             })?;
             check_minimum(r, min_value)?;
@@ -180,7 +180,7 @@ fn nonnegative_integer<'a>(
             return Err(error::Unspecified);
         }
 
-        let _ = input.read_bytes_to_end();
+        input.skip_to_end();
         check_minimum(value, min_value)?;
         Ok(value)
     })
@@ -202,9 +202,7 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, er
 pub fn positive_integer<'a>(
     input: &mut untrusted::Reader<'a>,
 ) -> Result<Positive<'a>, error::Unspecified> {
-    Ok(Positive::new_non_empty_without_leading_zeros(
-        nonnegative_integer(input, 1)?,
-    ))
+    Positive::new_non_empty_without_leading_zeros(nonnegative_integer(input, 1)?)
 }
 
 #[cfg(test)]

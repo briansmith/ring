@@ -38,7 +38,7 @@
 
 use crate::{
     arithmetic::montgomery::*,
-    bits, bssl, c, error,
+    bits, bssl, c, debug, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
 };
 use alloc::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
@@ -221,11 +221,36 @@ pub struct Modulus<M> {
     oneRR: One<M, RR>,
 }
 
+impl<M: PublicModulus> Modulus<M> {
+    pub fn to_be_bytes(&self) -> Box<[u8]> {
+        let mut padded = vec![0u8; self.limbs.len() * LIMB_BYTES];
+        // See Falko Strenzke, "Manger's Attack revisited", ICICS 2010.
+        limb::big_endian_from_limbs(&self.limbs, &mut padded);
+        strip_leading_zeros(&padded)
+    }
+}
+
+impl<M: PublicModulus> Clone for Modulus<M> {
+    fn clone(&self) -> Self {
+        Self {
+            limbs: self.limbs.clone(),
+            n0: self.n0.clone(),
+            oneRR: self.oneRR.clone(),
+        }
+    }
+}
+
 impl<M: PublicModulus> core::fmt::Debug for Modulus<M> {
     fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
-        fmt.debug_struct("Modulus")
-            // TODO: Print modulus value.
-            .finish()
+        let mut state = fmt.debug_tuple("Modulus");
+
+        #[cfg(feature = "alloc")]
+        let state = {
+            let value = self.to_be_bytes(); // XXX: Allocates
+            state.field(&debug::HexStr(&value))
+        };
+
+        state.finish()
     }
 }
 
@@ -628,6 +653,12 @@ impl<M> One<M, RR> {
     }
 }
 
+impl<M: PublicModulus, E> Clone for One<M, E> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
 impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     fn as_ref(&self) -> &Elem<M, E> {
         &self.0
@@ -636,8 +667,14 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
 
 /// A non-secret odd positive value in the range
 /// [3, PUBLIC_EXPONENT_MAX_VALUE].
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct PublicExponent(u64);
+
+impl core::fmt::Debug for PublicExponent {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl PublicExponent {
     pub fn from_be_bytes(
@@ -685,6 +722,11 @@ impl PublicExponent {
         }
 
         Ok(Self(value))
+    }
+
+    #[inline]
+    pub fn to_be_bytes(&self) -> Box<[u8]> {
+        strip_leading_zeros(&u64::to_be_bytes(self.0))
     }
 }
 
@@ -1376,6 +1418,18 @@ prefixed_extern! {
     fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
 }
 
+fn strip_leading_zeros(value: &[u8]) -> Box<[u8]> {
+    fn index_after_zeros(bytes: &[u8]) -> usize {
+        for (i, &value) in bytes.iter().enumerate() {
+            if value != 0 {
+                return i;
+            }
+        }
+        bytes.len()
+    }
+    (&value[index_after_zeros(value)..]).into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1512,11 +1566,13 @@ mod tests {
 
     #[test]
     fn test_modulus_debug() {
-        let (modulus, _) = Modulus::<M>::from_be_bytes_with_bit_length(untrusted::Input::from(
-            &[0xff; LIMB_BYTES * MODULUS_MIN_LIMBS],
-        ))
-        .unwrap();
-        assert_eq!("Modulus", format!("{:?}", modulus));
+        let (modulus, _) =
+            Modulus::<M>::from_be_bytes_with_bit_length(untrusted::Input::from(&[0xff; 1024 / 8]))
+                .unwrap();
+        assert_eq!(
+            "Modulus(\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\")",
+            format!("{:?}", modulus)
+        );
     }
 
     #[test]
@@ -1524,7 +1580,7 @@ mod tests {
         let exponent =
             PublicExponent::from_be_bytes(untrusted::Input::from(&[0x1, 0x00, 0x01]), 65537)
                 .unwrap();
-        assert_eq!("PublicExponent(65537)", format!("{:?}", exponent));
+        assert_eq!("65537", format!("{:?}", exponent));
     }
 
     fn consume_elem<M>(

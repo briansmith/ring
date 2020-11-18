@@ -12,7 +12,7 @@ readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
 
 # Keep in sync with `links` below.
-version = "0.17.0-alpha.9"
+version = "0.17.0-alpha.10"
 
 # Keep in sync with `version` above.
 #
@@ -21,7 +21,7 @@ version = "0.17.0-alpha.9"
 # build.rs uses this to derive the prefix for FFI symbols and the file names
 # of the FFI libraries, so it must be a valid identifier prefix and a valid
 # filename prefix.
-links = "ring_core_0_17_0_alpha_9"
+links = "ring_core_0_17_0_alpha_10"
 
 include = [
     "LICENSE",
@@ -81,6 +81,7 @@ include = [
     "crypto/fipsmodule/modes/asm/ghash-x86.pl",
     "crypto/fipsmodule/modes/asm/ghash-x86_64.pl",
     "crypto/fipsmodule/modes/asm/ghashv8-armx.pl",
+    "crypto/fipsmodule/rsa/padding.c",
     "crypto/fipsmodule/sha/asm/sha256-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv8.pl",
@@ -226,12 +227,22 @@ include = [
     "src/rand.rs",
     "src/rsa/convert_nist_rsa_test_vectors.py",
     "src/rsa.rs",
+    "src/rsa/bounds.rs",
+    "src/rsa/keypair.rs",
+    "src/rsa/keypair/asn1.rs",
+    "src/rsa/keypair/components.rs",
+    "src/rsa/keypair/core.rs",
+    "src/rsa/keypair/oaep.rs",
+    "src/rsa/keypair/signature_rsa_example_private_key.der",
+    "src/rsa/keypair/signature_rsa_example_public_key.der",
+    "src/rsa/keypair/signing.rs",
     "src/rsa/padding.rs",
+    "src/rsa/public.rs",
+    "src/rsa/public/components.rs",
+    "src/rsa/public/key.rs",
+    "src/rsa/public/oaep.rs",
     "src/rsa/random.rs",
     "src/rsa/rsa_pss_padding_tests.txt",
-    "src/rsa/signature_rsa_example_private_key.der",
-    "src/rsa/signature_rsa_example_public_key.der",
-    "src/rsa/signing.rs",
     "src/rsa/verification.rs",
     "src/signature.rs",
     "src/test.rs",

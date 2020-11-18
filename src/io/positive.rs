@@ -14,16 +14,24 @@
 
 //! Serialization and deserialization.
 
+use crate::error;
+
 /// A serialized positive integer.
 #[derive(Copy, Clone)]
 pub struct Positive<'a>(untrusted::Input<'a>);
 
 impl<'a> Positive<'a> {
     #[inline]
-    pub(crate) fn new_non_empty_without_leading_zeros(input: untrusted::Input<'a>) -> Self {
-        debug_assert!(!input.is_empty());
-        debug_assert!(input.len() == 1 || input.as_slice_less_safe()[0] != 0);
-        Self(input)
+    pub(crate) fn new_non_empty_without_leading_zeros(
+        input: untrusted::Input<'a>,
+    ) -> Result<Self, error::Unspecified> {
+        if input.is_empty() {
+            return Err(error::Unspecified);
+        }
+        if input.len() > 1 && input.as_slice_less_safe()[0] == 0 {
+            return Err(error::Unspecified);
+        }
+        Ok(Self(input))
     }
 
     /// Returns the value, ordered from significant byte to least significant

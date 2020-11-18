@@ -64,6 +64,8 @@
 // of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
 // defined order as the return value when a != b is undefined, other than to be
 // non-zero.
-OPENSSL_EXPORT int OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
+//
+// NOTE: This returns `size_t` unlike BoringSSL/OpenSSL's.
+OPENSSL_EXPORT size_t OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
 
 #endif  // OPENSSL_HEADER_MEM_H

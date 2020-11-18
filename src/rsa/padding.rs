@@ -13,11 +13,14 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
-use crate::{bits, digest, error, io::der};
+use crate::{bits, digest, error, io::der, polyfill};
 
-#[cfg(feature = "alloc")]
-use crate::rand;
 use core::convert::TryInto;
+#[cfg(feature = "alloc")]
+use {
+    crate::rand,
+    alloc::{boxed::Box, vec},
+};
 
 /// Common features of both RSA padding encoding and RSA padding verification.
 pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
@@ -34,7 +37,7 @@ pub trait RsaEncoding: Padding {
     #[doc(hidden)]
     fn encode(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m_out: &mut [u8],
         mod_bits: bits::BitLength,
         rng: &dyn rand::SecureRandom,
@@ -48,7 +51,7 @@ pub trait RsaEncoding: Padding {
 pub trait Verification: Padding {
     fn verify(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m: &mut untrusted::Reader,
         mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified>;
@@ -78,7 +81,7 @@ impl Padding for PKCS1 {
 impl RsaEncoding for PKCS1 {
     fn encode(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m_out: &mut [u8],
         _mod_bits: bits::BitLength,
         _rng: &dyn rand::SecureRandom,
@@ -91,7 +94,7 @@ impl RsaEncoding for PKCS1 {
 impl Verification for PKCS1 {
     fn verify(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m: &mut untrusted::Reader,
         mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
@@ -111,7 +114,7 @@ impl Verification for PKCS1 {
 // https://tools.ietf.org/html/rfc3447#section-9.2. This is used by both
 // verification and signing so it needs to be able to handle moduli of the
 // minimum and maximum sizes for both operations.
-fn pkcs1_encode(pkcs1: &PKCS1, m_hash: &digest::Digest, m_out: &mut [u8]) {
+fn pkcs1_encode(pkcs1: &PKCS1, m_hash: digest::Digest, m_out: &mut [u8]) {
     let em = m_out;
 
     let digest_len = pkcs1.digestinfo_prefix.len() + pkcs1.digest_alg.output_len;
@@ -222,10 +225,6 @@ pub struct PSS {
 
 impl crate::sealed::Sealed for PSS {}
 
-// Maximum supported length of the salt in bytes.
-// In practice, this is constrained by the maximum digest length.
-const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
-
 impl Padding for PSS {
     fn digest_alg(&self) -> &'static digest::Algorithm {
         self.digest_alg
@@ -237,7 +236,7 @@ impl RsaEncoding for PSS {
     // https://tools.ietf.org/html/rfc3447#section-9.1.
     fn encode(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m_out: &mut [u8],
         mod_bits: bits::BitLength,
         rng: &dyn rand::SecureRandom,
@@ -262,43 +261,41 @@ impl RsaEncoding for PSS {
 
         // Step 3 is done by `PSSMetrics::new()` above.
 
-        // Step 4.
-        let mut salt = [0u8; MAX_SALT_LEN];
-        let salt = &mut salt[..metrics.s_len];
-        rng.fill(salt)?;
-
-        // Step 5 and 6.
-        let h_hash = pss_digest(self.digest_alg, m_hash, salt);
-
-        // Re-order steps 7, 8, 9 and 10 so that we first output the db mask
-        // into `em`, and then XOR the value of db.
-
-        // Step 9. First output the mask into the out buffer.
-        let (mut masked_db, digest_terminator) = em.split_at_mut(metrics.db_len);
-        mgf1(self.digest_alg, h_hash.as_ref(), &mut masked_db);
-
         {
-            // Steps 7.
-            let masked_db = masked_db.iter_mut();
-            // `PS` is all zero bytes, so skipping `ps_len` bytes is equivalent
-            // to XORing `PS` onto `db`.
-            let mut masked_db = masked_db.skip(metrics.ps_len);
+            let (db, digest_terminator) = em.split_at_mut(metrics.db_len);
+            let h;
+            {
+                let separator_pos = db.len() - 1 - metrics.s_len;
 
-            // Step 8.
-            *(masked_db.next().ok_or(error::Unspecified)?) ^= 0x01;
+                // Step 4.
+                let salt: &[u8] = {
+                    let salt = &mut db[(separator_pos + 1)..];
+                    rng.fill(salt)?; // salt
+                    salt
+                };
 
-            // Step 10.
-            for (masked_db_b, salt_b) in masked_db.zip(salt) {
-                *masked_db_b ^= *salt_b;
-            }
+                // Step 5 and 6.
+                h = pss_digest(self.digest_alg, m_hash, salt);
+
+                // Step 7.
+                polyfill::slice::fill(&mut db[..separator_pos], 0); // ps
+
+                // Step 8.
+                db[separator_pos] = 0x01;
+            };
+
+            // Steps 9 and 10.
+            mgf1(self.digest_alg, h.as_ref(), db);
+
+            // Step 11.
+            db[0] &= metrics.top_byte_mask;
+
+            // Step 12.
+            digest_terminator[..metrics.h_len].copy_from_slice(h.as_ref());
+            digest_terminator[metrics.h_len] = 0xbc;
         }
 
-        // Step 11.
-        masked_db[0] &= metrics.top_byte_mask;
-
         // Step 12.
-        digest_terminator[..metrics.h_len].copy_from_slice(h_hash.as_ref());
-        digest_terminator[metrics.h_len] = 0xbc;
 
         Ok(())
     }
@@ -309,7 +306,7 @@ impl Verification for PSS {
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(
         &self,
-        m_hash: &digest::Digest,
+        m_hash: digest::Digest,
         m: &mut untrusted::Reader,
         mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
@@ -459,14 +456,15 @@ fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], mask: &mut [u8]) {
         // long inputs very early.
         ctx.update(&u32::to_be_bytes(i.try_into().unwrap()));
         let digest = ctx.finish();
-        let mask_chunk_len = mask_chunk.len();
-        mask_chunk.copy_from_slice(&digest.as_ref()[..mask_chunk_len]);
+        for (m, &d) in mask_chunk.iter_mut().zip(digest.as_ref().iter()) {
+            *m ^= d;
+        }
     }
 }
 
 fn pss_digest(
     digest_alg: &'static digest::Algorithm,
-    m_hash: &digest::Digest,
+    m_hash: digest::Digest,
     salt: &[u8],
 ) -> digest::Digest {
     // Fixed prefix.
@@ -511,6 +509,48 @@ rsa_pss_padding!(
                  documentation for more details."
 );
 
+/// RSA OAEP encoding parameters.
+#[derive(Debug, PartialEq, Eq)]
+pub struct OaepEncoding {
+    digest_alg: &'static digest::Algorithm,
+}
+
+impl crate::sealed::Sealed for OaepEncoding {}
+impl super::Bounds for OaepEncoding {
+    fn n_min_bits(&self) -> bits::BitLength {
+        bits::BitLength::from_usize_bits(2048)
+    }
+
+    fn n_max_bits(&self) -> bits::BitLength {
+        bits::BitLength::from_usize_bits(8192)
+    }
+
+    fn e_min_value(&self) -> u64 {
+        65537
+    }
+}
+
+macro_rules! rsa_oaep_padding {
+    ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $doc_str:expr ) => {
+        #[doc=$doc_str]
+        pub static $PADDING_ALGORITHM: OaepEncoding = OaepEncoding {
+            digest_alg: $digest_alg,
+        };
+    };
+}
+
+// TODO: improve doc comments.
+rsa_oaep_padding!(
+    RSA_OAEP_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
+    &digest::SHA1_FOR_LEGACY_USE_ONLY,
+    "RSA OAEP using SHA-1."
+);
+rsa_oaep_padding!(
+    RSA_OAEP_2048_8192_SHA256,
+    &digest::SHA256,
+    "RSA OAEP using SHA-256."
+);
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -546,7 +586,7 @@ mod test {
                 let is_valid = test_case.consume_string("Result") == "P";
 
                 let actual_result =
-                    encoded.read_all(error::Unspecified, |m| alg.verify(&m_hash, m, bit_len));
+                    encoded.read_all(error::Unspecified, |m| alg.verify(m_hash, m, bit_len));
                 assert_eq!(actual_result.is_ok(), is_valid);
 
                 Ok(())
@@ -586,11 +626,118 @@ mod test {
 
                 let mut m_out = vec![0u8; bit_len.as_usize_bytes_rounded_up()];
                 let digest = digest::digest(alg.digest_alg(), &msg);
-                alg.encode(&digest, &mut m_out, bit_len, &rng).unwrap();
+                alg.encode(digest, &mut m_out, bit_len, &rng).unwrap();
                 assert_eq!(m_out, encoded);
 
                 Ok(())
             },
         );
     }
+}
+
+pub(in crate::rsa) fn oaep_decode<'in_out>(
+    encoding: &'static OaepEncoding,
+    in_out: &'in_out mut [u8],
+    mod_bits: bits::BitLength,
+) -> Result<&'in_out [u8], error::Unspecified> {
+    const L: &[u8] = &[];
+    let h_len = encoding.digest_alg.output_len;
+    let k = mod_bits.as_usize_bytes_rounded_up();
+
+    // 1.a. is implicit given we don't support a non-empty `L`.
+
+    // 1.b
+    if in_out.len() != k {
+        return Err(error::Unspecified);
+    }
+
+    // 1.c
+    if k < (2 * h_len) + 2 {
+        return Err(error::Unspecified);
+    }
+
+    // 3.a.
+    let l_hash = digest::digest(&encoding.digest_alg, L); // TODO: precompute
+
+    // 3.b.
+    let (y, rest) = in_out.split_at_mut(1);
+    let y = y[0];
+    let (seed, db) = rest.split_at_mut(h_len);
+
+    // 3.c and 3.d
+    mgf1(&encoding.digest_alg, db, seed);
+
+    // 3.e. and 3.f.
+    mgf1(&encoding.digest_alg, seed, db);
+
+    prefixed_extern! {
+        fn RSA_padding_check_oaep(
+            out_len: &mut crate::c::size_t,
+            y: u8,
+            db: *const u8,
+            db_len: crate::c::size_t,
+            phash: *const u8,
+            mdlen: crate::c::size_t,
+        ) -> crate::bssl::Result;
+    }
+
+    let mut plaintext_len: crate::c::size_t = 0;
+    Result::from(unsafe {
+        RSA_padding_check_oaep(
+            &mut plaintext_len,
+            y,
+            db.as_ptr(),
+            db.len(),
+            l_hash.as_ref().as_ptr(),
+            l_hash.as_ref().len(),
+        )
+    })?;
+    let plaintext_start = db.len() - plaintext_len;
+
+    Ok(&db[plaintext_start..]) // TODo
+}
+
+#[cfg(feature = "alloc")]
+pub fn oaep_encode(
+    encoding: &'static OaepEncoding,
+    plaintext: &[u8],
+    mod_bits: bits::BitLength,
+    rng: &dyn rand::SecureRandom,
+) -> Result<Box<[u8]>, error::Unspecified> {
+    const L: &[u8] = &[];
+    let k = mod_bits.as_usize_bytes_rounded_up();
+    let h_len = encoding.digest_alg.output_len;
+
+    // 1.a is implicitly done since `L` is fixed.
+
+    // 1.b
+    if plaintext.len() > k - (2 * h_len) - 2 {
+        return Err(error::Unspecified);
+    }
+
+    let mut em = vec![0u8; k].into_boxed_slice();
+    {
+        let (zero, rest) = em.split_at_mut(1);
+        debug_assert_eq!(zero, &[0]);
+        let (seed, db) = rest.split_at_mut(h_len);
+        let (l_hash, rest) = db.split_at_mut(h_len);
+        l_hash.copy_from_slice(digest::digest(&encoding.digest_alg, L).as_ref());
+        let m_index = rest.len() - plaintext.len();
+        let (ps, rest) = rest.split_at_mut(m_index - 1);
+        debug_assert!(ps.iter().all(|&b| b == 0));
+
+        rest[0] = 0x01;
+        rest[1..].copy_from_slice(plaintext);
+
+        // 2.d
+        rng.fill(seed)?;
+
+        // 2.e and 2.f
+        mgf1(&encoding.digest_alg, seed, db);
+
+        // 2.g and 2.h
+        mgf1(&encoding.digest_alg, db, seed);
+    }
+
+    Ok(em)
 }
