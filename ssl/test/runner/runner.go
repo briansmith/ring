@@ -6377,24 +6377,6 @@ func addVersionNegotiationTests() {
 			expectedLocalError: "remote error: illegal parameter",
 		})
 
-		// The client should ignore the downgrade sentinel if
-		// configured.
-		testCases = append(testCases, testCase{
-			name: "Downgrade-" + test.name + "-Client-Ignore",
-			config: Config{
-				Bugs: ProtocolBugs{
-					NegotiateVersion: test.version,
-				},
-			},
-			expectations: connectionExpectations{
-				version: test.version,
-			},
-			flags: []string{
-				"-ignore-tls13-downgrade",
-				"-expect-tls13-downgrade",
-			},
-		})
-
 		// The server should emit the downgrade signal.
 		testCases = append(testCases, testCase{
 			testType: serverTest,
@@ -6411,31 +6393,6 @@ func addVersionNegotiationTests() {
 			expectedLocalError: test.clientShimError,
 		})
 	}
-
-	// Test that False Start is disabled when the downgrade logic triggers.
-	testCases = append(testCases, testCase{
-		name: "Downgrade-FalseStart",
-		config: Config{
-			NextProtos: []string{"foo"},
-			Bugs: ProtocolBugs{
-				NegotiateVersion:          VersionTLS12,
-				ExpectFalseStart:          true,
-				AlertBeforeFalseStartTest: alertAccessDenied,
-			},
-		},
-		expectations: connectionExpectations{
-			version: VersionTLS12,
-		},
-		flags: []string{
-			"-false-start",
-			"-advertise-alpn", "\x03foo",
-			"-ignore-tls13-downgrade",
-		},
-		shimWritesFirst:    true,
-		shouldFail:         true,
-		expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
-		expectedLocalError: "tls: peer did not false start: EOF",
-	})
 
 	// SSL 3.0 support has been removed. Test that the shim does not
 	// support it.

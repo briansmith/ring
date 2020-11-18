@@ -4087,19 +4087,6 @@ OPENSSL_EXPORT size_t SSL_max_seal_overhead(const SSL *ssl);
 OPENSSL_EXPORT void SSL_CTX_set_false_start_allowed_without_alpn(SSL_CTX *ctx,
                                                                  int allowed);
 
-// SSL_CTX_set_ignore_tls13_downgrade configures whether connections on |ctx|
-// ignore the downgrade signal in the server's random value.
-OPENSSL_EXPORT void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx,
-                                                       int ignore);
-
-// SSL_set_ignore_tls13_downgrade configures whether |ssl| ignores the downgrade
-// signal in the server's random value.
-OPENSSL_EXPORT void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore);
-
-// SSL_is_tls13_downgrade returns one if the TLS 1.3 anti-downgrade
-// mechanism would have aborted |ssl|'s handshake and zero otherwise.
-OPENSSL_EXPORT int SSL_is_tls13_downgrade(const SSL *ssl);
-
 // SSL_used_hello_retry_request returns one if the TLS 1.3 HelloRetryRequest
 // message has been either sent by the server or received by the client. It
 // returns zero otherwise.
@@ -4775,6 +4762,18 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 // upstream added it as |SSL_CIPHER_get_protocol_id|. Switch callers to the new
 // name and remove this one.
 OPENSSL_EXPORT uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher);
+
+// SSL_CTX_set_ignore_tls13_downgrade does nothing.
+OPENSSL_EXPORT void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx,
+                                                       int ignore);
+
+// SSL_set_ignore_tls13_downgrade does nothing.
+OPENSSL_EXPORT void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore);
+
+// SSL_is_tls13_downgrade returns zero. Historically, this function returned
+// whether the TLS 1.3 downgrade signal would have been enforced if not
+// disabled. The TLS 1.3 downgrade signal is now always enforced.
+OPENSSL_EXPORT int SSL_is_tls13_downgrade(const SSL *ssl);
 
 
 // Nodejs compatibility section (hidden).

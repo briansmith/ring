@@ -661,12 +661,6 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
-  if (config->expect_tls13_downgrade != !!SSL_is_tls13_downgrade(ssl)) {
-    fprintf(stderr, "Got %s downgrade signal, but wanted the opposite.\n",
-            SSL_is_tls13_downgrade(ssl) ? "" : "no ");
-    return false;
-  }
-
   if (config->expect_delegated_credential_used !=
       !!SSL_delegated_credential_used(ssl)) {
     fprintf(stderr,

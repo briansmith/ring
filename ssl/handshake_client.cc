@@ -636,12 +636,9 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
             .subspan(SSL3_RANDOM_SIZE - sizeof(kTLS13DowngradeRandom));
     if (suffix == kTLS12DowngradeRandom || suffix == kTLS13DowngradeRandom ||
         suffix == kJDK11DowngradeRandom) {
-      ssl->s3->tls13_downgrade = true;
-      if (!hs->config->ignore_tls13_downgrade) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_TLS13_DOWNGRADE);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-        return ssl_hs_error;
-      }
+      OPENSSL_PUT_ERROR(SSL, SSL_R_TLS13_DOWNGRADE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      return ssl_hs_error;
     }
   }
 
@@ -1550,18 +1547,12 @@ static bool can_false_start(const SSL_HANDSHAKE *hs) {
   //
   // Now that TLS 1.3 exists, we would like to avoid similar attacks between
   // TLS 1.2 and TLS 1.3, but there are too many TLS 1.2 deployments to
-  // sacrifice False Start on them. TLS 1.3's downgrade signal fixes this, but
-  // |SSL_CTX_set_ignore_tls13_downgrade| can disable it due to compatibility
-  // issues.
-  //
-  // |SSL_CTX_set_ignore_tls13_downgrade| normally still retains Finished-based
-  // downgrade protection, but False Start bypasses that. Thus, we disable False
-  // Start based on the TLS 1.3 downgrade signal, even if otherwise unenforced.
+  // sacrifice False Start on them. Instead, we rely on the ServerHello.random
+  // downgrade signal, which we unconditionally enforce.
   if (SSL_is_dtls(ssl) ||
       SSL_version(ssl) != TLS1_2_VERSION ||
       hs->new_cipher->algorithm_mkey != SSL_kECDHE ||
-      hs->new_cipher->algorithm_mac != SSL_AEAD ||
-      ssl->s3->tls13_downgrade) {
+      hs->new_cipher->algorithm_mac != SSL_AEAD) {
     return false;
   }
 
