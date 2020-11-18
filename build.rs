@@ -130,7 +130,6 @@ const RING_INCLUDES: &[&str] =
       "crypto/fipsmodule/ec/ecp_nistz.h",
       "crypto/fipsmodule/ec/ecp_nistz384.h",
       "crypto/fipsmodule/ec/ecp_nistz256.h",
-      "crypto/fipsmodule/modes/internal.h",
       "crypto/internal.h",
       "crypto/limbs/limbs.h",
       "crypto/limbs/limbs.inl",
