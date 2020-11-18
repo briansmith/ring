@@ -24,16 +24,16 @@ pub(crate) struct Features(());
 
 #[inline(always)]
 pub(crate) fn features() -> Features {
-    // We don't do runtime feature detection on iOS. instead some features are
-    // assumed to be present; see `arm::Feature`.
-    #[cfg(all(
-        any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86",
-            target_arch = "x86_64"
-        ),
-        not(target_os = "ios")
+    // We don't do runtime feature detection on aarch64-apple-ios as all
+    // AAarch64 features we use are available on every device since the first
+    // device.
+    #[cfg(any(
+        target_arch = "x86",
+        target_arch = "x86_64",
+        all(
+            any(target_arch = "aarch64", target_arch = "arm"),
+            any(target_os = "android", target_os = "fuchsia", target_os = "linux")
+        )
     ))]
     {
         static INIT: spin::Once<()> = spin::Once::new();
@@ -49,16 +49,11 @@ pub(crate) fn features() -> Features {
             }
 
             #[cfg(all(
-                any(target_os = "android", target_os = "linux"),
-                any(target_arch = "aarch64", target_arch = "arm")
+                any(target_arch = "aarch64", target_arch = "arm"),
+                any(target_os = "android", target_os = "fuchsia", target_os = "linux")
             ))]
             {
-                arm::linux_setup();
-            }
-
-            #[cfg(all(target_os = "fuchsia", any(target_arch = "aarch64")))]
-            {
-                arm::fuchsia_setup();
+                arm::setup();
             }
         });
     }
@@ -71,7 +66,7 @@ pub(crate) mod arm {
         any(target_os = "android", target_os = "linux"),
         any(target_arch = "aarch64", target_arch = "arm")
     ))]
-    pub fn linux_setup() {
+    pub fn setup() {
         use libc::c_ulong;
 
         // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
@@ -130,8 +125,8 @@ pub(crate) mod arm {
         }
     }
 
-    #[cfg(all(target_os = "fuchsia", any(target_arch = "aarch64")))]
-    pub fn fuchsia_setup() {
+    #[cfg(all(target_os = "fuchsia", target_arch = "aarch64"))]
+    pub fn setup() {
         type zx_status_t = i32;
 
         #[link(name = "zircon")]
@@ -194,7 +189,7 @@ pub(crate) mod arm {
             }
 
             #[cfg(all(
-                any(target_os = "android", target_os = "linux", target_os = "fuchsia"),
+                any(target_os = "android", target_os = "fuchsia", target_os = "linux"),
                 any(target_arch = "arm", target_arch = "aarch64")
             ))]
             {
@@ -243,7 +238,7 @@ pub(crate) mod arm {
     };
 
     #[cfg(all(
-        any(target_os = "android", target_os = "linux", target_os = "fuchsia"),
+        any(target_os = "android", target_os = "fuchsia", target_os = "linux"),
         any(target_arch = "arm", target_arch = "aarch64")
     ))]
     extern "C" {
