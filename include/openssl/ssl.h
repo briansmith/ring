@@ -1738,9 +1738,9 @@ OPENSSL_EXPORT void SSL_SESSION_get0_ocsp_response(const SSL_SESSION *session,
 // SSL_MAX_MASTER_KEY_LENGTH is the maximum length of a master secret.
 #define SSL_MAX_MASTER_KEY_LENGTH 48
 
-// SSL_SESSION_get_master_key writes up to |max_out| bytes of |session|'s master
-// secret to |out| and returns the number of bytes written. If |max_out| is
-// zero, it returns the size of the master secret.
+// SSL_SESSION_get_master_key writes up to |max_out| bytes of |session|'s secret
+// to |out| and returns the number of bytes written. If |max_out| is zero, it
+// returns the size of the secret.
 OPENSSL_EXPORT size_t SSL_SESSION_get_master_key(const SSL_SESSION *session,
                                                  uint8_t *out, size_t max_out);
 

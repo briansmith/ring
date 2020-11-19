@@ -105,7 +105,7 @@ BSSL_NAMESPACE_BEGIN
 //     sslVersion                  INTEGER,      -- protocol version number
 //     cipher                      OCTET STRING, -- two bytes long
 //     sessionID                   OCTET STRING,
-//     masterKey                   OCTET STRING,
+//     secret                      OCTET STRING,
 //     time                    [1] INTEGER, -- seconds since UNIX epoch
 //     timeout                 [2] INTEGER, -- in seconds
 //     peer                    [3] Certificate OPTIONAL,
@@ -218,8 +218,7 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
       // The session ID is irrelevant for a session ticket.
       !CBB_add_asn1_octet_string(&session, in->session_id,
                                  for_ticket ? 0 : in->session_id_length) ||
-      !CBB_add_asn1_octet_string(&session, in->master_key,
-                                 in->master_key_length) ||
+      !CBB_add_asn1_octet_string(&session, in->secret, in->secret_length) ||
       !CBB_add_asn1(&session, &child, kTimeTag) ||
       !CBB_add_asn1_uint64(&child, in->time) ||
       !CBB_add_asn1(&session, &child, kTimeoutTag) ||
@@ -593,18 +592,18 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
     return nullptr;
   }
 
-  CBS session_id, master_key;
+  CBS session_id, secret;
   if (!CBS_get_asn1(&session, &session_id, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&session_id) > SSL3_MAX_SSL_SESSION_ID_LENGTH ||
-      !CBS_get_asn1(&session, &master_key, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&master_key) > SSL_MAX_MASTER_KEY_LENGTH) {
+      !CBS_get_asn1(&session, &secret, CBS_ASN1_OCTETSTRING) ||
+      CBS_len(&secret) > SSL_MAX_MASTER_KEY_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;
   }
   OPENSSL_memcpy(ret->session_id, CBS_data(&session_id), CBS_len(&session_id));
   ret->session_id_length = CBS_len(&session_id);
-  OPENSSL_memcpy(ret->master_key, CBS_data(&master_key), CBS_len(&master_key));
-  ret->master_key_length = CBS_len(&master_key);
+  OPENSSL_memcpy(ret->secret, CBS_data(&secret), CBS_len(&secret));
+  ret->secret_length = CBS_len(&secret);
 
   CBS child;
   uint64_t timeout;

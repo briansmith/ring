@@ -3466,10 +3466,12 @@ struct ssl_session_st {
   // the peer, or zero if not applicable or unknown.
   uint16_t peer_signature_algorithm = 0;
 
-  // master_key, in TLS 1.2 and below, is the master secret associated with the
-  // session. In TLS 1.3 and up, it is the resumption secret.
-  int master_key_length = 0;
-  uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH] = {0};
+  // secret, in TLS 1.2 and below, is the master secret associated with the
+  // session. In TLS 1.3 and up, it is the resumption PSK for sessions handed to
+  // the caller, but it stores the resumption secret when stored on |SSL|
+  // objects.
+  int secret_length = 0;
+  uint8_t secret[SSL_MAX_MASTER_KEY_LENGTH] = {0};
 
   // session_id - valid?
   unsigned session_id_length = 0;

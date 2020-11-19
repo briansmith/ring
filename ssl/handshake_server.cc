@@ -1402,14 +1402,13 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   }
 
   // Compute the master secret.
-  hs->new_session->master_key_length = tls1_generate_master_secret(
-      hs, hs->new_session->master_key, premaster_secret);
-  if (hs->new_session->master_key_length == 0) {
+  hs->new_session->secret_length = tls1_generate_master_secret(
+      hs, hs->new_session->secret, premaster_secret);
+  if (hs->new_session->secret_length == 0) {
     return ssl_hs_error;
   }
   hs->new_session->extended_master_secret = hs->extended_master_secret;
-  CONSTTIME_DECLASSIFY(hs->new_session->master_key,
-                       hs->new_session->master_key_length);
+  CONSTTIME_DECLASSIFY(hs->new_session->secret, hs->new_session->secret_length);
 
   ssl->method->next_message(ssl);
   hs->state = state12_read_client_certificate_verify;

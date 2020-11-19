@@ -202,9 +202,8 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   OPENSSL_memcpy(new_session->sid_ctx, session->sid_ctx, session->sid_ctx_length);
 
   // Copy the key material.
-  new_session->master_key_length = session->master_key_length;
-  OPENSSL_memcpy(new_session->master_key, session->master_key,
-         session->master_key_length);
+  new_session->secret_length = session->secret_length;
+  OPENSSL_memcpy(new_session->secret, session->secret, session->secret_length);
   new_session->cipher = session->cipher;
 
   // Copy authentication state.
@@ -963,14 +962,14 @@ void SSL_SESSION_get0_ocsp_response(const SSL_SESSION *session,
 
 size_t SSL_SESSION_get_master_key(const SSL_SESSION *session, uint8_t *out,
                                   size_t max_out) {
-  // TODO(davidben): Fix master_key_length's type and remove these casts.
+  // TODO(davidben): Fix secret_length's type and remove these casts.
   if (max_out == 0) {
-    return (size_t)session->master_key_length;
+    return (size_t)session->secret_length;
   }
-  if (max_out > (size_t)session->master_key_length) {
-    max_out = (size_t)session->master_key_length;
+  if (max_out > (size_t)session->secret_length) {
+    max_out = (size_t)session->secret_length;
   }
-  OPENSSL_memcpy(out, session->master_key, max_out);
+  OPENSSL_memcpy(out, session->secret, max_out);
   return max_out;
 }
 

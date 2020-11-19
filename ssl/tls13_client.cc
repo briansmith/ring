@@ -414,8 +414,8 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   // Set up the key schedule and incorporate the PSK into the running secret.
   if (ssl->s3->session_reused) {
     if (!tls13_init_key_schedule(
-            hs, MakeConstSpan(hs->new_session->master_key,
-                              hs->new_session->master_key_length))) {
+            hs, MakeConstSpan(hs->new_session->secret,
+                              hs->new_session->secret_length))) {
       return ssl_hs_error;
     }
   } else if (!tls13_init_key_schedule(hs, MakeConstSpan(kZeroes, hash_len))) {

@@ -459,8 +459,8 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
   }
 
   if (!tls13_init_early_key_schedule(
-          hs, MakeConstSpan(ssl->session->master_key,
-                            ssl->session->master_key_length)) ||
+          hs,
+          MakeConstSpan(ssl->session->secret, ssl->session->secret_length)) ||
       !tls13_derive_early_secret(hs)) {
     return ssl_hs_error;
   }
@@ -1407,9 +1407,9 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->new_session->master_key_length =
-      tls1_generate_master_secret(hs, hs->new_session->master_key, pms);
-  if (hs->new_session->master_key_length == 0) {
+  hs->new_session->secret_length =
+      tls1_generate_master_secret(hs, hs->new_session->secret, pms);
+  if (hs->new_session->secret_length == 0) {
     return ssl_hs_error;
   }
   hs->new_session->extended_master_secret = hs->extended_master_secret;
