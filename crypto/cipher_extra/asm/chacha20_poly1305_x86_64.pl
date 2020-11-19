@@ -38,8 +38,6 @@ $avx = 2;
 
 $code.=<<___;
 .text
-.extern OPENSSL_ia32cap_P
-
 chacha20_poly1305_constants:
 
 .align 64
@@ -426,14 +424,16 @@ hash_ad_tail_loop:
 
 {
 ################################################################################
-# void chacha20_poly1305_open(uint8_t *pt, uint8_t *ct, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t *keyp);
+# {u64, u64} chacha20_poly1305_open_asm(uint8_t *in_out, size_t out_offset, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t keyp[48], uint64 avx2_and_bmi2_capable);
 $code.="
-.globl chacha20_poly1305_open
-.type chacha20_poly1305_open,\@function,2
+
+.globl chacha20_poly1305_open_asm
+.type chacha20_poly1305_open_asm,\@function,2
 .align 64
-chacha20_poly1305_open:
+chacha20_poly1305_open_asm:
 .cfi_startproc
     push %rbp
+    mov 16(%rsp), $acc0 # 7th parameter passed on stack
 .cfi_adjust_cfa_offset 8
     push %rbx
 .cfi_adjust_cfa_offset 8
@@ -444,10 +444,6 @@ chacha20_poly1305_open:
     push %r14
 .cfi_adjust_cfa_offset 8
     push %r15
-.cfi_adjust_cfa_offset 8
-    # We write the calculated authenticator back to keyp at the end, so save
-    # the pointer on the stack too.
-    push $keyp
 .cfi_adjust_cfa_offset 8
     sub \$288 + 32, %rsp
 .cfi_adjust_cfa_offset 288 + 32
@@ -462,10 +458,9 @@ chacha20_poly1305_open:
     mov %rdx, 8+$len_store
     mov %r8, 0+$len_store
     mov %rdx, $inl\n"; $code.="
-    mov OPENSSL_ia32cap_P+8(%rip), %eax
-    and \$`(1<<5) + (1<<8)`, %eax # Check both BMI2 and AVX2 are present
-    xor \$`(1<<5) + (1<<8)`, %eax
-    jz  chacha20_poly1305_open_avx2\n" if ($avx>1);
+    add $oup, $inp
+    test $acc0, $acc0
+    jnz chacha20_poly1305_open_avx2\n" if ($avx>1);
 $code.="
 1:
     cmp \$128, $inl
@@ -744,10 +739,9 @@ open_sse_finalize:\n";
 
     add \$288 + 32, %rsp
 .cfi_adjust_cfa_offset -(288 + 32)
-    pop $keyp
-.cfi_adjust_cfa_offset -8
-    movq $acc0, ($keyp)
-    movq $acc1, 8($keyp)
+    # Return the tag as two uint64 values
+    mov $acc0, %rax
+    mov $acc1, %rdx
 
     pop %r15
 .cfi_adjust_cfa_offset -8
@@ -820,16 +814,16 @@ open_sse_128:
         movdqa $D2, $C2
     jmp 1b
     jmp open_sse_tail_16
-.size chacha20_poly1305_open, .-chacha20_poly1305_open
+.size chacha20_poly1305_open_asm, .-chacha20_poly1305_open_asm
 .cfi_endproc
 
 ################################################################################
 ################################################################################
-# void chacha20_poly1305_seal(uint8_t *pt, uint8_t *ct, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t *keyp);
-.globl  chacha20_poly1305_seal
-.type chacha20_poly1305_seal,\@function,2
+# {uint64, uint64} chacha20_poly1305_seal_asm(uint8_t *in_out, int64_t avx2_and_bmi2_capable, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t keyp[48]);
+.globl  chacha20_poly1305_seal_asm
+.type chacha20_poly1305_seal_asm,\@function,2
 .align 64
-chacha20_poly1305_seal:
+chacha20_poly1305_seal_asm:
 .cfi_startproc
     push %rbp
 .cfi_adjust_cfa_offset 8
@@ -843,10 +837,6 @@ chacha20_poly1305_seal:
 .cfi_adjust_cfa_offset 8
     push %r15
 .cfi_adjust_cfa_offset 8
-    # We write the calculated authenticator back to keyp at the end, so save
-    # the pointer on the stack too.
-    push $keyp
-.cfi_adjust_cfa_offset 8
     sub \$288 + 32, %rsp
 .cfi_adjust_cfa_offset 288 + 32
 .cfi_offset rbp, -16
@@ -857,15 +847,12 @@ chacha20_poly1305_seal:
 .cfi_offset r15, -56
     lea 32(%rsp), %rbp
     and \$-32, %rbp
-    mov 56($keyp), $inl  # extra_in_len
-    addq %rdx, $inl
-    mov $inl, 8+$len_store
     mov %r8, 0+$len_store
     mov %rdx, $inl\n"; $code.="
-    mov OPENSSL_ia32cap_P+8(%rip), %eax
-    and \$`(1<<5) + (1<<8)`, %eax # Check both BMI2 and AVX2 are present
-    xor \$`(1<<5) + (1<<8)`, %eax
-    jz  chacha20_poly1305_seal_avx2\n" if ($avx>1);
+    mov $inl, 8+$len_store
+    test $inp, $inp
+    mov $oup, $inp
+    jnz chacha20_poly1305_seal_avx2\n" if ($avx>1);
 $code.="
     cmp \$128, $inl
     jbe seal_sse_128
@@ -1096,7 +1083,7 @@ seal_sse_128_seal:
 
 seal_sse_tail_16:
     test $inl, $inl
-    jz process_blocks_of_extra_in
+    jz do_length_block
     # We can only load the PT one byte at a time to avoid buffer overread
     mov $inl, $itr2
     mov $inl, $itr1
@@ -1121,108 +1108,6 @@ seal_sse_tail_16:
         add \$1, $oup
         sub \$1, $itr1
         jnz 2b
-
-    # $T3 contains the final (partial, non-empty) block of ciphertext which
-    # needs to be fed into the Poly1305 state. The right-most $inl bytes of it
-    # are valid. We need to fill it with extra_in bytes until full, or until we
-    # run out of bytes.
-    #
-    # $keyp points to the tag output, which is actually a struct with the
-    # extra_in pointer and length at offset 48.
-    movq 288+32(%rsp), $keyp
-    movq 56($keyp), $t1  # extra_in_len
-    movq 48($keyp), $t0  # extra_in
-    test $t1, $t1
-    jz process_partial_block  # Common case: no bytes of extra_in
-
-    movq \$16, $t2
-    subq $inl, $t2  # 16-$inl is the number of bytes that fit into $T3.
-    cmpq $t2, $t1   # if extra_in_len < 16-$inl, only copy extra_in_len
-                    # (note that AT&T syntax reverses the arguments)
-    jge load_extra_in
-    movq $t1, $t2
-
-load_extra_in:
-    # $t2 contains the number of bytes of extra_in (pointed to by $t0) to load
-    # into $T3. They are loaded in reverse order.
-    leaq -1($t0, $t2), $inp
-    # Update extra_in and extra_in_len to reflect the bytes that are about to
-    # be read.
-    addq $t2, $t0
-    subq $t2, $t1
-    movq $t0, 48($keyp)
-    movq $t1, 56($keyp)
-
-    # Update $itr2, which is used to select the mask later on, to reflect the
-    # extra bytes about to be added.
-    addq $t2, $itr2
-
-    # Load $t2 bytes of extra_in into $T2.
-    pxor $T2, $T2
-3:
-        pslldq \$1, $T2
-        pinsrb \$0, ($inp), $T2
-        lea -1($inp), $inp
-        sub \$1, $t2
-        jnz 3b
-
-    # Shift $T2 up the length of the remainder from the main encryption. Sadly,
-    # the shift for an XMM register has to be a constant, thus we loop to do
-    # this.
-    movq $inl, $t2
-
-4:
-        pslldq \$1, $T2
-        sub \$1, $t2
-        jnz 4b
-
-    # Mask $T3 (the remainder from the main encryption) so that superfluous
-    # bytes are zero. This means that the non-zero bytes in $T2 and $T3 are
-    # disjoint and so we can merge them with an OR.
-    lea .and_masks(%rip), $t2
-    shl \$4, $inl
-    pand -16($t2, $inl), $T3
-
-    # Merge $T2 into $T3, forming the remainder block.
-    por $T2, $T3
-
-    # The block of ciphertext + extra_in is ready to be included in the
-    # Poly1305 state.
-    movq $T3, $t0
-    pextrq \$1, $T3, $t1
-    add $t0, $acc0
-    adc $t1, $acc1
-    adc \$1, $acc2\n";
-    &poly_mul(); $code.="
-
-process_blocks_of_extra_in:
-    # There may be additional bytes of extra_in to process.
-    movq 288+32(%rsp), $keyp
-    movq 48($keyp), $inp   # extra_in
-    movq 56($keyp), $itr2  # extra_in_len
-    movq $itr2, $itr1
-    shr \$4, $itr2         # number of blocks
-
-5:
-        jz process_extra_in_trailer\n";
-        &poly_add("0($inp)");
-        &poly_mul(); $code.="
-        leaq 16($inp), $inp
-        subq \$1, $itr2
-        jmp 5b
-
-process_extra_in_trailer:
-    andq \$15, $itr1       # remaining num bytes (<16) of extra_in
-    movq $itr1, $inl
-    jz do_length_block
-    leaq -1($inp, $itr1), $inp
-
-6:
-        pslldq \$1, $T3
-        pinsrb \$0, ($inp), $T3
-        lea -1($inp), $inp
-        sub \$1, $itr1
-        jnz 6b
 
 process_partial_block:
     # $T3 contains $inl bytes of data to be fed into Poly1305. $inl != 0
@@ -1255,10 +1140,9 @@ do_length_block:\n";
 
     add \$288 + 32, %rsp
 .cfi_adjust_cfa_offset -(288 + 32)
-    pop $keyp
-.cfi_adjust_cfa_offset -8
-    mov $acc0, 0*8($keyp)
-    mov $acc1, 1*8($keyp)
+    # Return the tag as two uint64 values
+    mov $acc0, %rax
+    mov $acc1, %rdx
 
     pop %r15
 .cfi_adjust_cfa_offset -8
@@ -1309,7 +1193,7 @@ seal_sse_128:
     mov %r8, $itr2
     call poly_hash_ad_internal
     jmp seal_sse_128_seal
-.size chacha20_poly1305_seal, .-chacha20_poly1305_seal\n";
+.size chacha20_poly1305_seal_asm, .-chacha20_poly1305_seal_asm\n";
 }
 
 # There should have been a cfi_endproc at the end of that function, but the two
