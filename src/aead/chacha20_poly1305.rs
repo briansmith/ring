@@ -50,6 +50,38 @@ fn chacha20_poly1305_seal(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
+    #[cfg(target_arch = "x86_64")]
+    {
+        if has_sse41(cpu_features) {
+            let mut key_block = combine_key_and_nonce(key, nonce);
+
+            extern "C" {
+                // This function stores the calculated Tag in keyp[8..12] and returns a reference to it
+                fn GFp_chacha20_poly1305_seal<'ctx>(
+                    in_out: *mut u8,
+                    len_in: usize,
+                    ad: *const u8,
+                    len_ad: usize,
+                    keyp: &'ctx mut [u32; 12],
+                ) -> &'ctx [u8; 16];
+            }
+
+            let tag = unsafe {
+                GFp_chacha20_poly1305_seal(
+                    in_out.as_mut_ptr(),
+                    in_out.len(),
+                    aad.as_ref().as_ptr(),
+                    aad.as_ref().len(),
+                    &mut key_block,
+                )
+            };
+
+            let mut tag_array = [0u8; 16];
+            tag_array.copy_from_slice(tag);
+            return Tag(tag_array);
+        }
+    }
+
     aead(key, nonce, aad, in_out, Direction::Sealing, cpu_features)
 }
 
@@ -61,6 +93,40 @@ fn chacha20_poly1305_open(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
+    #[cfg(target_arch = "x86_64")]
+    {
+        if has_sse41(cpu_features) {
+            let mut key_block = combine_key_and_nonce(key, nonce);
+
+            extern "C" {
+                // This function stores the calculated Tag in keyp[8..12] and returns a reference to it
+                fn GFp_chacha20_poly1305_open<'ctx>(
+                    in_out: *mut u8,
+                    len_in: usize,
+                    ad: *const u8,
+                    len_ad: usize,
+                    keyp: &'ctx mut [u32; 12],
+                    offset: usize,
+                ) -> &'ctx [u8; 16];
+            }
+
+            let tag = unsafe {
+                GFp_chacha20_poly1305_open(
+                    in_out.as_mut_ptr(),
+                    in_out.len() - in_prefix_len,
+                    aad.as_ref().as_ptr(),
+                    aad.as_ref().len(),
+                    &mut key_block,
+                    in_prefix_len,
+                )
+            };
+
+            let mut tag_array = [0u8; 16];
+            tag_array.copy_from_slice(tag);
+            return Tag(tag_array);
+        }
+    }
+
     aead(
         key,
         nonce,
@@ -72,6 +138,28 @@ fn chacha20_poly1305_open(
 }
 
 pub type Key = chacha::Key;
+
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+fn combine_key_and_nonce(key: &aead::KeyInner, nonce: Nonce) -> [u32; 12] {
+    let chacha20_key = match key {
+        aead::KeyInner::ChaCha20Poly1305(key) => key,
+        _ => unreachable!(),
+    };
+
+    // Internally the asm version expects the key and nonce values as a consecutive array
+    let mut key_block = [0u32; 12];
+
+    for (i, k) in chacha20_key.as_ref().iter().enumerate() {
+        key_block[i] = (*k).into();
+    }
+    let nonce = nonce.as_ref();
+    key_block[9] = u32::from_le_bytes([nonce[0], nonce[1], nonce[2], nonce[3]]);
+    key_block[10] = u32::from_le_bytes([nonce[4], nonce[5], nonce[6], nonce[7]]);
+    key_block[11] = u32::from_le_bytes([nonce[8], nonce[9], nonce[10], nonce[11]]);
+
+    key_block
+}
 
 #[inline(always)] // Statically eliminate branches on `direction`.
 fn aead(
@@ -141,6 +229,11 @@ pub(super) fn derive_poly1305_key(
     let mut key_bytes = [0u8; 2 * BLOCK_LEN];
     chacha_key.encrypt_iv_xor_blocks_in_place(iv, &mut key_bytes);
     poly1305::Key::new(key_bytes, cpu_features)
+}
+
+#[cfg(target_arch = "x86_64")]
+fn has_sse41(cpu_features: cpu::Features) -> bool {
+    cpu::intel::SSE41.available(cpu_features)
 }
 
 #[cfg(test)]
