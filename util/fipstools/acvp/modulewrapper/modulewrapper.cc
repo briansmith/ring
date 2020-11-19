@@ -164,6 +164,13 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         }]
       },
       {
+        "algorithm": "SHA2-512/256",
+        "revision": "1.0",
+        "messageLength": [{
+          "min": 0, "max": 65528, "increment": 8
+        }]
+      },
+      {
         "algorithm": "SHA-1",
         "revision": "1.0",
         "messageLength": [{
@@ -1557,6 +1564,7 @@ static constexpr struct {
     {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
     {"SHA2-384", 1, Hash<SHA384, SHA256_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
+    {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
