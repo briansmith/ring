@@ -31,6 +31,7 @@
 #include "../../internal.h"
 #include "../ec/internal.h"
 #include "../rand/internal.h"
+#include "../tls/internal.h"
 
 
 // MSVC wants to put a NUL byte at the end of non-char arrays and so cannot
@@ -460,6 +461,30 @@ int boringssl_fips_self_test(
       0x00,
 #endif
   };
+  const uint8_t kTLSOutput[32] = {
+      0x67, 0x85, 0xde, 0x60, 0xfc, 0x0a, 0x83, 0xe9, 0xa2, 0x2a, 0xb3,
+      0xf0, 0x27, 0x0c, 0xba, 0xf7, 0xfa, 0x82, 0x3d, 0x14, 0x77, 0x1d,
+      0x86, 0x29, 0x79, 0x39, 0x77, 0x8a, 0xd5, 0x0e, 0x9d,
+#if !defined(BORINGSSL_FIPS_BREAK_TLS_KDF)
+      0x32,
+#else
+      0x00,
+#endif
+  };
+  const uint8_t kTLSSecret[32] = {
+      0xbf, 0xe4, 0xb7, 0xe0, 0x26, 0x55, 0x5f, 0x6a, 0xdf, 0x5d, 0x27,
+      0xd6, 0x89, 0x99, 0x2a, 0xd6, 0xf7, 0x65, 0x66, 0x07, 0x4b, 0x55,
+      0x5f, 0x64, 0x55, 0xcd, 0xd5, 0x77, 0xa4, 0xc7, 0x09, 0x61,
+  };
+  const char kTLSLabel[] = "FIPS self test";
+  const uint8_t kTLSSeed1[16] = {
+      0x8f, 0x0d, 0xe8, 0xb6, 0x90, 0x8f, 0xb1, 0xd2,
+      0x6d, 0x51, 0xf4, 0x79, 0x18, 0x63, 0x51, 0x65,
+  };
+  const uint8_t kTLSSeed2[16] = {
+      0x7d, 0x24, 0x1a, 0x9d, 0x3c, 0x59, 0xbf, 0x3c,
+      0x31, 0x1e, 0x2b, 0x21, 0x41, 0x8d, 0x32, 0x81,
+  };
 
   EVP_AEAD_CTX aead_ctx;
   EVP_AEAD_CTX_zero(&aead_ctx);
@@ -687,6 +712,17 @@ int boringssl_fips_self_test(
   CTR_DRBG_STATE kZeroDRBG;
   memset(&kZeroDRBG, 0, sizeof(kZeroDRBG));
   if (!check_test(&kZeroDRBG, &drbg, sizeof(drbg), "DRBG Clear KAT")) {
+    goto err;
+  }
+
+  // TLS KDF KAT
+  uint8_t tls_output[sizeof(kTLSOutput)];
+  if (!CRYPTO_tls1_prf(EVP_sha256(), tls_output, sizeof(tls_output), kTLSSecret,
+                       sizeof(kTLSSecret), kTLSLabel, sizeof(kTLSLabel),
+                       kTLSSeed1, sizeof(kTLSSeed1), kTLSSeed2,
+                       sizeof(kTLSSeed2)) ||
+      !check_test(kTLSOutput, tls_output, sizeof(kTLSOutput), "TLS KDF KAT")) {
+    fprintf(stderr, "TLS KDF failed.\n");
     goto err;
   }
 
