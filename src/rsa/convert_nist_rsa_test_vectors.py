@@ -26,6 +26,7 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 import hashlib
 import sys, copy
+import codecs
 
 DIGEST_OUTPUT_LENGTHS = {
     'SHA1': 80,
@@ -42,13 +43,17 @@ def debug(str, flag):
         sys.stderr.write(str + "\n")
         sys.stderr.flush()
 
+def decode_hex(s):
+    decoder = codecs.getdecoder("hex_codec")
+    return decoder(s)[0]
+
 # Some fields in the input files are encoded without a leading "0", but
-# `x.decode('hex')` requires every byte to be encoded with two hex digits.
+# `decode_hex` requires every byte to be encoded with two hex digits.
 def from_hex(hex):
-    return (hex if len(hex) % 2 == 0 else "0" + hex).decode('hex')
+    return decode_hex(hex if len(hex) % 2 == 0 else "0" + hex)
 
 def to_hex(bytes):
-    return ''.join('{:02x}'.format(ord(b)) for b in bytes)
+    return ''.join('{:02x}'.format(b) for b in bytes)
 
 # Some fields in the input files are encoded without a leading "0", but the
 # *ring* test framework requires every byte to be encoded with two hex digits.
@@ -90,7 +95,7 @@ def print_sign_test(case, n, e, d, padding_alg):
     priv = rsa.RSAPrivateNumbers(p, q, d, dmp1, dmq1, iqmp, pub)
     key = priv.private_key(default_backend())
 
-    msg = case['Msg'].decode('hex')
+    msg = decode_hex(case['Msg'])
 
     # Recalculate and compare the signature to validate our processing.
     if padding_alg == 'PKCS#1 1.5':
@@ -102,7 +107,7 @@ def print_sign_test(case, n, e, d, padding_alg):
         # PSS is randomised, can't recompute this way
         pass
     else:
-        print "Invalid padding algorithm"
+        print("Invalid padding algorithm")
         quit()
 
     # Serialize the private key in DER format.
@@ -111,16 +116,16 @@ def print_sign_test(case, n, e, d, padding_alg):
                             serialization.NoEncryption())
 
     # Print the test case data in the format used by *ring* test files.
-    print 'Digest = %s' % case['SHAAlg']
-    print 'Key = %s' % to_hex(der)
-    print 'Msg = %s' % reformat_hex(case['Msg'])
+    print('Digest = %s' % case['SHAAlg'])
+    print('Key = %s' % to_hex(der))
+    print('Msg = %s' % reformat_hex(case['Msg']))
 
     if padding_alg == "PSS":
-        print 'Salt = %s' % reformat_hex(case['SaltVal'])
+        print('Salt = %s' % reformat_hex(case['SaltVal']))
 
-    print 'Sig = %s' % reformat_hex(case['S'])
-    print 'Result = Pass'
-    print ''
+    print('Sig = %s' % reformat_hex(case['S']))
+    print('Result = Pass')
+    print('')
 
 def print_verify_test(case, n, e):
     # Create a private key instance.
@@ -131,35 +136,35 @@ def print_verify_test(case, n, e):
                            serialization.PublicFormat.PKCS1)
 
     # Print the test case data in the format used by *ring* test files.
-    print 'Digest = %s' % case['SHAAlg']
-    print 'Key = %s' % to_hex(der)
-    print 'Msg = %s' % reformat_hex(case['Msg'])
-    print 'Sig = %s' % reformat_hex(case['S'])
-    print 'Result = %s' % case['Result']
-    print ''
+    print('Digest = %s' % case['SHAAlg'])
+    print('Key = %s' % to_hex(der))
+    print('Msg = %s' % reformat_hex(case['Msg']))
+    print('Sig = %s' % reformat_hex(case['S']))
+    print('Result = %s' % case['Result'])
+    print('')
 
 def main(fn, test_type, padding_alg):
     input_file_digest = hashlib.sha384(open(fn, 'rb').read()).hexdigest()
     # File header
-    print "# RSA %(padding_alg)s Test Vectors for FIPS 186-4 from %(fn)s in" % \
-            { "fn": fn, "padding_alg": padding_alg }
-    print "# http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-3rsatestvectors.zip"
-    print "# accessible from"
-    print "# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors"
-    print "# with SHA-384 digest %s" % (input_file_digest)
-    print "# filtered and reformatted using util/generate-rsa-signing-tests.py."
-    print "#"
-    print "# Digest = SHAAlg."
+    print("# RSA %(padding_alg)s Test Vectors for FIPS 186-4 from %(fn)s in" % \
+            { "fn": fn, "padding_alg": padding_alg })
+    print("# http://csrc.nist.gov/groups/STM/cavp/documents/dss/186-3rsatestvectors.zip")
+    print("# accessible from")
+    print("# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors")
+    print("# with SHA-384 digest %s" % (input_file_digest))
+    print("# filtered and reformatted using %s." % __file__)
+    print("#")
+    print("# Digest = SHAAlg.")
     if test_type == "verify":
-        print "# Key is (n, e) encoded in an ASN.1 (DER) sequence."
+        print("# Key is (n, e) encoded in an ASN.1 (DER) sequence.")
     elif test_type == "sign":
-        print "# Key is an ASN.1 (DER) RSAPrivateKey."
+        print("# Key is an ASN.1 (DER) RSAPrivateKey.")
     else:
-        print "Invalid test_type: %s" % test_type
+        print("Invalid test_type: %s" % test_type)
         quit()
 
-    print "# Sig = S."
-    print
+    print("# Sig = S.")
+    print()
 
     num_cases = 0
 
@@ -197,17 +202,20 @@ def main(fn, test_type, padding_alg):
         e = int(case['e'], 16)
         d = int(case['d'], 16)
 
-        if n.bit_length() // 8 < 2048 // 8:
-            debug("Skipping due to modulus length (too small).", DEBUG)
-            continue
-
         if test_type == 'sign':
+            if n.bit_length() // 8 < 2048 // 8:
+                debug("Skipping due to modulus length (too small).", DEBUG)
+                continue
             if n.bit_length() > 4096:
                 debug("Skipping due to modulus length (too large).", DEBUG)
                 continue
 
             print_sign_test(case, n, e, d, padding_alg)
         else:
+            legacy = case['SHAAlg'] in ["SHA1", "SHA256", "SHA512"]
+            if (n.bit_length() // 8 < 2048 // 8 and not legacy) or n.bit_length() // 8 < 1024 // 8:
+                debug("Skipping due to modulus length (too small).", DEBUG)
+                continue
             print_verify_test(case, n, e)
 
         num_cases += 1
@@ -216,7 +224,7 @@ def main(fn, test_type, padding_alg):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print "Usage:\n python %s <filename>" % sys.argv[0]
+        print("Usage:\n python %s <filename>" % sys.argv[0])
     else:
         fn = sys.argv[1]
         if 'PSS' in fn:
@@ -224,7 +232,7 @@ if __name__ == '__main__':
         elif '15' in fn:
             pad_alg = 'PKCS#1 1.5'
         else:
-            print "Could not determine padding algorithm,"
+            print("Could not determine padding algorithm,")
             quit()
 
         if 'Gen' in fn:
@@ -232,7 +240,7 @@ if __name__ == '__main__':
         elif 'Ver' in fn:
             test_type = 'verify'
         else:
-            print "Could not determine test type."
+            print("Could not determine test type.")
             quit()
 
         main(sys.argv[1], test_type, pad_alg)

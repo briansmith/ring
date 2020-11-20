@@ -24,7 +24,11 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use crate::{c, cpu, debug, endian::*, polyfill};
+use crate::{
+    c, cpu, debug,
+    endian::{self, BigEndian},
+    polyfill,
+};
 use core::num::Wrapping;
 
 mod sha1;
@@ -243,7 +247,8 @@ impl Digest {
 impl AsRef<[u8]> for Digest {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
-        &as_bytes(unsafe { &self.value.as64 })[..self.algorithm.output_len]
+        let as64 = unsafe { &self.value.as64 };
+        &endian::as_byte_slice(as64)[..self.algorithm.output_len]
     }
 }
 

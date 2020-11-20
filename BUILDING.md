@@ -33,7 +33,19 @@ use Perl as a macro assembly language.
 When building from Git for Windows, directories containing yasm.exe and
 perl.exe must be in `%PATH%`, where yasm.exe is
 [Yasm](http://yasm.tortall.net/Download.html) 1.3 or later and where perl.exe
-is recommended to be [Strawberry Perl](http://strawberryperl.com). 
+is recommended to be [Strawberry Perl](http://strawberryperl.com).
+
+
+Cross Compiling
+---------------
+
+When you build *ring* for a target that is different than the one you are using
+for the build process you need to install the rust tool chain and a C/C++
+compiler that can produce binaries for the intended target.
+
+Besides the required dependencies you need to set the environment variables
+`TARGET_CC` and `TARGET_AR` to the full path of the cross-compiler and the
+cross-archiver respectively.
 
 
 Supported Toolchains

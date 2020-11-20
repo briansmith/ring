@@ -15,7 +15,6 @@
 #![forbid(
     anonymous_parameters,
     box_pointers,
-    legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
     missing_docs,
@@ -65,6 +64,7 @@ fn test_quic(alg: &'static quic::Algorithm, test_file: test::File) {
     });
 }
 
+#[allow(clippy::range_plus_one)]
 fn test_sample_len(alg: &'static quic::Algorithm) {
     let key_len = alg.key_len();
     let key_data = vec![0u8; key_len];

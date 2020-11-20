@@ -14,10 +14,13 @@
 
 //! Verification of RSA signatures.
 
-use super::{bigint, parse_public_key, RsaParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
-use crate::{bits, cpu, digest, error, sealed, signature};
-
-use untrusted;
+use super::{parse_public_key, RsaParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
+use crate::{
+    arithmetic::{bigint, montgomery::Unencoded},
+    bits, cpu, digest, error,
+    limb::LIMB_BYTES,
+    sealed, signature,
+};
 
 #[derive(Debug)]
 pub struct Key {
@@ -49,7 +52,7 @@ impl Key {
         // `pkcs1_encode` depends on this not being small. Otherwise,
         // `pkcs1_encode` would generate padding that is invalid (too few 0xFF
         // bytes) for very small keys.
-        const N_MIN_BITS: bits::BitLength = bits::BitLength::from_usize_bits(2048);
+        const N_MIN_BITS: bits::BitLength = bits::BitLength::from_usize_bits(1024);
 
         // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
         // the public modulus to be exactly 2048 or 3072 bits, but we are more
@@ -116,11 +119,27 @@ macro_rules! rsa_params {
 }
 
 rsa_params!(
+    RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
+    1024,
+    &super::padding::RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
+    "Verification of signatures using RSA keys of 1024-8192 bits,
+             PKCS#1.5 padding, and SHA-1.\n\nSee \"`RSA_PKCS1_*` Details\" in
+             `ring::signature`'s module-level documentation for more details."
+);
+rsa_params!(
     RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
     2048,
     &super::padding::RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
     "Verification of signatures using RSA keys of 2048-8192 bits,
              PKCS#1.5 padding, and SHA-1.\n\nSee \"`RSA_PKCS1_*` Details\" in
+             `ring::signature`'s module-level documentation for more details."
+);
+rsa_params!(
+    RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
+    1024,
+    &super::RSA_PKCS1_SHA256,
+    "Verification of signatures using RSA keys of 1024-8192 bits,
+             PKCS#1.5 padding, and SHA-256.\n\nSee \"`RSA_PKCS1_*` Details\" in
              `ring::signature`'s module-level documentation for more details."
 );
 rsa_params!(
@@ -144,6 +163,14 @@ rsa_params!(
     2048,
     &super::RSA_PKCS1_SHA512,
     "Verification of signatures using RSA keys of 2048-8192 bits,
+             PKCS#1.5 padding, and SHA-512.\n\nSee \"`RSA_PKCS1_*` Details\" in
+             `ring::signature`'s module-level documentation for more details."
+);
+rsa_params!(
+    RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY,
+    1024,
+    &super::RSA_PKCS1_SHA512,
+    "Verification of signatures using RSA keys of 1024-8192 bits,
              PKCS#1.5 padding, and SHA-512.\n\nSee \"`RSA_PKCS1_*` Details\" in
              `ring::signature`'s module-level documentation for more details."
 );
@@ -204,7 +231,6 @@ pub struct RsaPublicKeyComponents<B: AsRef<[u8]> + core::fmt::Debug> {
     pub n: B,
 
     /// The public exponent, encoded in big-endian bytes without leading zeros.
-    /// without leading zeros.
     pub e: B,
 }
 
@@ -282,12 +308,30 @@ pub(crate) fn verify_rsa_(
 
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
-    let decoded = &mut decoded[..n_bits.as_usize_bytes_rounded_up()];
-    m.fill_be_bytes(decoded);
+    let decoded = fill_be_bytes_n(m, n_bits, &mut decoded);
 
     // Verify the padded message is correct.
     let m_hash = digest::digest(params.padding_alg.digest_alg(), msg.as_slice_less_safe());
     untrusted::Input::from(decoded).read_all(error::Unspecified, |m| {
         params.padding_alg.verify(&m_hash, m, n_bits)
     })
+}
+
+/// Returns the big-endian representation of `elem` that is
+/// the same length as the minimal-length big-endian representation of
+/// the modulus `n`.
+///
+/// `n_bits` must be the bit length of the public modulus `n`.
+fn fill_be_bytes_n(
+    elem: bigint::Elem<N, Unencoded>,
+    n_bits: bits::BitLength,
+    out: &mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
+) -> &[u8] {
+    let n_bytes = n_bits.as_usize_bytes_rounded_up();
+    let n_bytes_padded = ((n_bytes + (LIMB_BYTES - 1)) / LIMB_BYTES) * LIMB_BYTES;
+    let out = &mut out[..n_bytes_padded];
+    elem.fill_be_bytes(out);
+    let (padding, out) = out.split_at(n_bytes_padded - n_bytes);
+    assert!(padding.iter().all(|&b| b == 0));
+    out
 }

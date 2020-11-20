@@ -57,7 +57,6 @@ pub trait BoundKey<N: NonceSequence>: core::fmt::Debug {
     fn new(key: UnboundKey, nonce_sequence: N) -> Self;
 
     /// The key's AEAD algorithm.
-    #[inline]
     fn algorithm(&self) -> &'static Algorithm;
 }
 
@@ -269,7 +268,7 @@ impl<N: NonceSequence> core::fmt::Debug for SealingKey<N> {
 }
 
 impl<N: NonceSequence> SealingKey<N> {
-    /// Deprecated. Renamed to [`seal_in_place_append_tag()`].
+    /// Deprecated. Renamed to `seal_in_place_append_tag()`.
     #[deprecated(note = "Renamed to `seal_in_place_append_tag`.")]
     #[inline]
     pub fn seal_in_place<A, InOut>(
@@ -399,7 +398,7 @@ impl core::fmt::Debug for UnboundKey {
     }
 }
 
-#[allow(variant_size_differences)]
+#[allow(clippy::large_enum_variant, variant_size_differences)]
 enum KeyInner {
     AesGcm(aes_gcm::Key),
     ChaCha20Poly1305(chacha20_poly1305::Key),
@@ -408,7 +407,7 @@ enum KeyInner {
 impl UnboundKey {
     /// Constructs an `UnboundKey`.
     ///
-    /// Fails if `key_bytes.len() != ` algorithm.key_len()`.
+    /// Fails if `key_bytes.len() != algorithm.key_len()`.
     pub fn new(
         algorithm: &'static Algorithm,
         key_bytes: &[u8],
@@ -492,7 +491,7 @@ impl LessSafeKey {
         open_within_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
     }
 
-    /// Deprecated. Renamed to [`seal_in_place_append_tag()`].
+    /// Deprecated. Renamed to `seal_in_place_append_tag()`.
     #[deprecated(note = "Renamed to `seal_in_place_append_tag`.")]
     #[inline]
     pub fn seal_in_place<A, InOut>(
@@ -636,7 +635,7 @@ impl Eq for Algorithm {}
 /// An authentication tag.
 #[must_use]
 #[repr(C)]
-pub struct Tag(Block);
+pub struct Tag([u8; TAG_LEN]);
 
 impl AsRef<[u8]> for Tag {
     fn as_ref(&self) -> &[u8] {
@@ -671,7 +670,9 @@ mod block;
 mod chacha;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
+mod counter;
 mod gcm;
+mod iv;
 mod nonce;
 mod poly1305;
 pub mod quic;

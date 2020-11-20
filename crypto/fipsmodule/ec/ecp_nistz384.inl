@@ -157,10 +157,10 @@ void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
   limbs_copy(r->Z, res_z, P384_LIMBS);
 }
 
-static void add_precomputed_w5(P384_POINT *r, unsigned wvalue,
+static void add_precomputed_w5(P384_POINT *r, crypto_word wvalue,
                                const P384_POINT table[16]) {
-  BN_ULONG recoded_is_negative;
-  unsigned int recoded;
+  crypto_word recoded_is_negative;
+  crypto_word recoded;
   booth_recode(&recoded_is_negative, &recoded, wvalue, 5);
 
   alignas(64) P384_POINT h;
@@ -177,8 +177,8 @@ static void add_precomputed_w5(P384_POINT *r, unsigned wvalue,
 void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
                             const BN_ULONG p_x[P384_LIMBS],
                             const BN_ULONG p_y[P384_LIMBS]) {
-  static const unsigned kWindowSize = 5;
-  static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
+  static const size_t kWindowSize = 5;
+  static const crypto_word kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
   uint8_t p_str[(P384_LIMBS * sizeof(Limb)) + 1];
   gfp_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
@@ -214,23 +214,23 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   GFp_nistz384_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
   GFp_nistz384_point_double(&row[16 - 1], &row[8 - 1]);
 
-  static const unsigned START_INDEX = 384 - 4;
-  unsigned index = START_INDEX;
+  static const size_t START_INDEX = 384 - 4;
+  size_t index = START_INDEX;
 
   BN_ULONG recoded_is_negative;
-  unsigned recoded;
+  crypto_word recoded;
 
-  unsigned wvalue = p_str[(index - 1) / 8];
+  crypto_word wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
   booth_recode(&recoded_is_negative, &recoded, wvalue, 5);
-  ASSERT(!recoded_is_negative);
+  dev_assert_secret(!recoded_is_negative);
 
   gfp_p384_point_select_w5(r, table, recoded);
 
   while (index >= kWindowSize) {
     if (index != START_INDEX) {
-      unsigned off = (index - 1) / 8;
+      size_t off = (index - 1) / 8;
 
       wvalue = p_str[off] | p_str[off + 1] << 8;
       wvalue = (wvalue >> ((index - 1) % 8)) & kMask;

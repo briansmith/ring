@@ -15,7 +15,6 @@
 #![forbid(
     anonymous_parameters,
     box_pointers,
-    legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
     missing_docs,
@@ -33,15 +32,12 @@
 use ring::{digest, error, hkdf, test, test_file};
 
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen_test::wasm_bindgen_test;
-
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen_test::wasm_bindgen_test_configure;
+use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
 #[cfg(target_arch = "wasm32")]
 wasm_bindgen_test_configure!(run_in_browser);
 
-#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn hkdf_tests() {
     test::run(test_file!("hkdf_tests.txt"), |section, test_case| {
@@ -78,6 +74,7 @@ fn hkdf_tests() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn hkdf_output_len_tests() {
     for &alg in &[hkdf::HKDF_SHA256, hkdf::HKDF_SHA384, hkdf::HKDF_SHA512] {
         const MAX_BLOCKS: usize = 255;

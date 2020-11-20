@@ -35,10 +35,35 @@
 //! <tr><td><code>std</code>
 //!     <td>Enable features that use libstd, in particular `std::error::Error`
 //!         integration.
+//! <tr><td><code>wasm32_c</code>
+//!     <td>Enables features that require a C compiler on wasm32 targets, such as
+//!        the <code>constant_time</code> module, HMAC verification, and PBKDF2
+//!        verification. Without this feature, only a subset of functionality
+//!        is provided to wasm32 targets so that a C compiler isn't needed. A
+//!        typical invocation would be:
+//!        <code>TARGET_AR=llvm-ar cargo test --target=wasm32-unknown-unknown --features=wasm32_c</code>
+//!        with <code>llvm-ar</code> and <code>clang</code> in <code>$PATH</code>.
+//!        (Going forward more functionality should be enabled by default, without
+//!        requiring these hacks, and without requiring a C compiler.)
 //! </table>
 
 #![doc(html_root_url = "https://briansmith.org/rustdoc/")]
 #![allow(
+    clippy::collapsible_if,
+    clippy::identity_conversion,
+    clippy::identity_op,
+    clippy::len_without_is_empty,
+    clippy::len_zero,
+    clippy::let_unit_value,
+    clippy::many_single_char_names,
+    clippy::needless_range_loop,
+    clippy::new_without_default,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::range_plus_one,
+    clippy::too_many_arguments,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::type_complexity,
+    clippy::unreadable_literal,
     missing_copy_implementations,
     missing_debug_implementations,
     non_camel_case_types,

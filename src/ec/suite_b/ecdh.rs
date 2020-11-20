@@ -16,7 +16,6 @@
 
 use super::{ops::*, private_key::*, public_key::*};
 use crate::{agreement, ec, error};
-use untrusted;
 
 /// A key agreement algorithm.
 macro_rules! ecdh {
@@ -38,7 +37,7 @@ macro_rules! ecdh {
         /// [NIST Special Publication 800-56A, revision 2]:
         ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
         /// [Suite B Implementer's Guide to NIST SP 800-56A]:
-        ///     https://github.com/briansmith/ring/blob/master/doc/ecdh.pdf
+        ///     https://github.com/briansmith/ring/blob/main/doc/ecdh.pdf
         pub static $NAME: agreement::Algorithm = agreement::Algorithm {
             curve: $curve,
             ecdh: $ecdh,

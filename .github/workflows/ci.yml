@@ -1,0 +1,243 @@
+name: ci
+on:
+  pull_request:
+  push:
+jobs:
+  rustfmt:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustfmt
+      - uses: actions/checkout@v2
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.37.0
+          profile: minimal
+          components: clippy
+
+      - uses: actions/checkout@v2
+
+      # TODO: Add `--all-features`:
+      - run: cargo +1.37.0 clippy ---all-targets -- --deny warnings
+
+  deny:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - run: cargo install cargo-deny
+
+      - uses: actions/checkout@v2
+
+      - run: cargo deny check
+
+  package:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: >
+          (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
+          ("$pwd\target\tools" >> $env:GITHUB_PATH)
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - run: sh mk/package.sh
+        shell: bash
+
+  test:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ${{ matrix.host_os }}
+
+    strategy:
+      matrix:
+        features:
+          - # Default
+
+        target:
+          - aarch64-apple-ios
+          - aarch64-apple-darwin
+          - aarch64-linux-android
+          - aarch64-unknown-linux-gnu
+          - arm-unknown-linux-gnueabihf
+          - armv7-linux-androideabi
+          - i686-pc-windows-msvc
+          - i686-unknown-linux-gnu
+          - i686-unknown-linux-musl
+          - x86_64-pc-windows-gnu
+          - x86_64-pc-windows-msvc
+          - x86_64-apple-darwin
+          - x86_64-unknown-linux-musl
+          - x86_64-unknown-linux-gnu
+
+        mode:
+          - # debug
+          - --release
+
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+
+        exclude:
+          # The stable channel doesn't have aarch64-apple-darwin support yet.
+          - target: aarch64-apple-darwin
+            rust_channel: stable
+
+          # The beta channel doesn't have aarch64-apple-darwin support yet.
+          - target: aarch64-apple-darwin
+            rust_channel: beta
+
+        include:
+          - target: aarch64-apple-darwin
+            # macos-latest didn't work.
+            host_os: macos-11.0
+            # GitHub Actions doesn't have a way to run this target yet.
+            cargo_options: --no-run
+
+          - target: aarch64-apple-ios
+            host_os: macos-latest
+            # GitHub Actions doesn't have a way to run this target yet.
+            cargo_options: --no-run
+
+          - target: aarch64-linux-android
+            host_os: ubuntu-18.04
+            # TODO: https://github.com/briansmith/ring/issues/486
+            cargo_options: --no-run
+
+          - target: aarch64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: arm-unknown-linux-gnueabihf
+            host_os: ubuntu-18.04
+
+          - target: armv7-linux-androideabi
+            host_os: ubuntu-18.04
+            # TODO: https://github.com/briansmith/ring/issues/838
+            cargo_options: --no-run
+
+          - target: i686-pc-windows-msvc
+            host_os: windows-latest
+
+          - target: i686-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: i686-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: x86_64-pc-windows-gnu
+            host_os: windows-latest
+
+          - target: x86_64-pc-windows-msvc
+            host_os: windows-latest
+
+          - target: x86_64-apple-darwin
+            host_os: macos-latest
+
+          - target: x86_64-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: x86_64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: >
+          (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
+          ("$pwd\target\tools" >> $env:GITHUB_PATH)
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
+        run: echo "DEVELOPER_DIR=/Applications/Xcode_12.2.app/Contents/Developer" >> $GITHUB_ENV
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: |
+          mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: |
+          cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+  # The wasm32-unknown-unknown targets have a different set of feature sets and
+  # an additional `webdriver` dimension.
+  test-wasm32:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ${{ matrix.host_os }}
+
+    strategy:
+      matrix:
+        features:
+          - # Default
+          - --features=wasm32_c
+        host_os:
+          - ubuntu-18.04
+        mode:
+          - # debug
+          - --release
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+        target:
+          - wasm32-unknown-unknown
+        webdriver:
+          - GECKODRIVER=geckodriver
+          - CHROMEDRIVER=chromedriver
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - run: |
+          ${{ matrix.webdriver }} mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}

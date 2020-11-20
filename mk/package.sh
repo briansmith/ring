@@ -1,4 +1,3 @@
-
 # This only works on Windows, using MinGW.
 set -eux -o pipefail
 IFS=$'\n\t'

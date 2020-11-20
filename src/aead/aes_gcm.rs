@@ -165,13 +165,13 @@ fn aead(
     let remainder = &mut in_out[whole_len..];
     shift::shift_partial((in_prefix_len, remainder), |remainder| {
         let mut input = Block::zero();
-        input.partial_copy_from(remainder);
+        input.overwrite_part_at(0, remainder);
         if let Direction::Opening { .. } = direction {
             gcm_ctx.update_block(input);
         }
         let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
         if let Direction::Sealing = direction {
-            polyfill::slice::fill(&mut output.as_mut()[remainder.len()..], 0);
+            output.zero_from(remainder.len());
             gcm_ctx.update_block(output);
         }
         output
@@ -187,10 +187,10 @@ fn aead(
 
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag| {
-        let block = tag_iv.into_block_less_safe();
-        let mut tag = aes_key.encrypt_block(block);
-        tag.bitxor_assign(pre_tag);
-        Tag(tag)
+        let bytes = tag_iv.into_bytes_less_safe();
+        let mut tag = aes_key.encrypt_block(Block::from(&bytes));
+        tag.bitxor_assign(pre_tag.into());
+        Tag(*tag.as_ref())
     })
 }
 
@@ -220,7 +220,7 @@ fn integrated_aes_gcm<'a>(
                     len: c::size_t,
                     key: &aes::AES_KEY,
                     ivec: &mut Counter,
-                    gcm: &mut gcm::Context,
+                    gcm: &mut gcm::ContextInner,
                 ) -> c::size_t;
             }
             unsafe {
@@ -230,7 +230,7 @@ fn integrated_aes_gcm<'a>(
                     in_out.len() - in_prefix_len,
                     aes_key.inner_less_safe(),
                     ctr,
-                    gcm_ctx,
+                    gcm_ctx.inner(),
                 )
             }
         }
@@ -242,7 +242,7 @@ fn integrated_aes_gcm<'a>(
                     len: c::size_t,
                     key: &aes::AES_KEY,
                     ivec: &mut Counter,
-                    gcm: &mut gcm::Context,
+                    gcm: &mut gcm::ContextInner,
                 ) -> c::size_t;
             }
             unsafe {
@@ -252,7 +252,7 @@ fn integrated_aes_gcm<'a>(
                     in_out.len(),
                     aes_key.inner_less_safe(),
                     ctr,
-                    gcm_ctx,
+                    gcm_ctx.inner(),
                 )
             }
         }

@@ -50,8 +50,9 @@ See the documentation at
 https://briansmith.org/rustdoc/ring/.
 
 See [BUILDING.md](BUILDING.md) for instructions on how to build it. These
-instructions are especially important on Windows when not building from
-crates.io, as there are build prerequisites that need to be installed.
+instructions are especially important for cross-compiling and for building on
+Windows when not building from crates.io, as there are build prerequisites that
+need to be installed.
 
 
 
@@ -130,7 +131,7 @@ Users of *ring* should always use the latest released version, and users
 should upgrade to the latest released version as soon as it is released.
 *ring* has a linear release model that favors users of the latest released
 version. We have never backported fixes to earlier releases and we don't
-maintain branches other than the master branch. Further, for some obscure
+maintain branches other than the main branch. Further, for some obscure
 technical reasons it's currently not possible to link two different versions
 of *ring* into the same program; for policy reasons we don't bother to try
 to work around that. Thus it is important that libraries using *ring* update
@@ -168,8 +169,8 @@ source libraries use. The idea behind *our* model is to encourage all users to
 work together to ensure that the latest version is good *as it is being
 developed*. In particular, because users know that correctness/security fixes
 (if any) aren't going to get backported, they have a strong incentive to help
-review pull requests before they are merged and/or review commits on the master
-branch after they've landed to ensure that code quality on the master branch
+review pull requests before they are merged and/or review commits on the main
+branch after they've landed to ensure that code quality on the main branch
 stays high.
 
 The more common model, where there are stable versions that have important
@@ -197,40 +198,29 @@ any security vulnerability in this code privately to anybody.**
 Online Automated Testing
 ------------------------
 
-Travis CI is used for Android, Linux, and macOS. Appveyor is used for Windows.
-The tests are run in debug and release configurations, for the current release
-of each Rust channel (Stable, Beta, Nightly), for each configuration listed in
-the table below. The C compilers listed are used for compiling the C portions.
+The following targets are tested in GitHub Actions. The tests are run in debug
+and release configurations, for the current release of each Rust channel
+(Stable, Beta, Nightly). A C compiler is currently required to compile some
+parts of *ring*; *ring* should be compatible with GCC 4.8+, Clang 10+, and MSVC
+2019+, at least.
 
-<table>
-<tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
-<tr><td rowspan=2>Linux</td>
-    <td>x86, x86_64</td>
-    <td>GCC 4.8, GCC 7, Clang 5</td>
-    <td rowspan=4><a href=https://travis-ci.org/briansmith/ring/branches>Build Status</a></td>
-</tr>
-<tr><td>32&#8209;bit&nbsp;ARM, AAarch64</td>
-    <td>GCC (Ubuntu/Linaro 4.8.4-2ubuntu1~14.04.1), tested using
-        <code>qemu-user-arm</code>.</td>
-</tr>
-<tr><td>Android</td>
-    <td>ARMv7, Aarch64</td>
-    <td>*ring* for ARMv7 Android is built in CI using SDK version 26 targeting
-        API level 18 (Android 4.3+); it is tested in the emulator using the
-        corresponding system image. *ring* for AArch64 Android is built in CI
-        using SDK version 26 targeting API level 21 (Android 5.0).</td>
-</tr>
-<tr><td>Mac&nbsp;OS&nbsp;X</td>
-    <td>x64</td>
-    <td>Apple LLVM version 9.0.0 (clang-900.0.39.2) from Xcode 9.3</td>
-</tr>
-<tr><td>Windows</td>
-    <td>x86, x86_64</td>
-    <td>MSVC 2015 Update 3 (14.0)</td>
-    <td><a href=https://ci.appveyor.com/project/briansmith/ring/branch/master>Build Status</a></td>
-</tr>
-</table>
-
+| Target                       | Notes |
+| -----------------------------| ----- |
+| aarch64-apple-darwin         | Build-only (GitHub Actions doesn't have a way to run the tests)
+| aarch64-apple-ios            | Build-only (GitHub Actions doesn't have a way to run the tests)
+| aarch64-unknown-linux-gnu    | Tested on 64-bit Linux using QEMU user emulation
+| aarch64-linux-android        | API level 21 (Android 5.0+); [Build-only; issue 486](https://github.com/briansmith/ring/issues/486)
+| arm-unknown-linux-gnueabihf  | Tested on 64-bit Linux using QEMU user emulation
+| armv7-linux-androideabi      | API level 18 (Android 4.3+); [Build-only; issue 838](https://github.com/briansmith/ring/issues/838)
+| i686-pc-windows-msvc         | Tested on 64-bit Windows Server 2019 Datacenter
+| i686-unknown-linux-gnu       | Tested on 64-bit Linux using multilib support
+| i686-unknown-linux-musl      | [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| x86_64-apple-darwin          |
+| x86_64-pc-windows-gnu        |
+| x86_64-pc-windows-msvc       | Tested on 64-bit Windows Server 2019 Datacenter
+| x86_64-unknown-linux-gnu     |
+| x86_64-unknown-linux-musl    | [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| wasm32-unknown-unknown       | Tested using wasm-bindgen-test-runner on Linux in Chrome and Firefox.
 
 
 License

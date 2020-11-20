@@ -122,7 +122,7 @@ pub struct Algorithm(hmac::Algorithm);
 /// PBKDF2 using HMAC-SHA1.
 pub static PBKDF2_HMAC_SHA1: Algorithm = Algorithm(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY);
 
-/// PBKDF2 using HMAC-h.
+/// PBKDF2 using HMAC-SHA256.
 pub static PBKDF2_HMAC_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
 
 /// PBKDF2 using HMAC-SHA384.

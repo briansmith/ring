@@ -1,0 +1,28 @@
+[advisories]
+unmaintained = "deny"
+yanked = "deny"
+notice = "deny"
+
+[licenses]
+allow = [
+    "Apache-2.0",
+    "ISC",
+    "LicenseRef-ring",
+    "MIT",
+]
+confidence-threshold = 1.0
+
+[[licenses.clarify]]
+name = "ring"
+expression = "LicenseRef-ring"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 },
+]
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

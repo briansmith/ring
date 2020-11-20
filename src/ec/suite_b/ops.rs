@@ -14,7 +14,6 @@
 
 use crate::{arithmetic::montgomery::*, c, error, limb::*};
 use core::marker::PhantomData;
-use untrusted;
 
 pub use self::elem::*;
 
@@ -441,7 +440,6 @@ mod tests {
     use super::*;
     use crate::test;
     use alloc::{format, vec, vec::Vec};
-    use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {
         limbs: [0; MAX_LIMBS],
@@ -491,11 +489,11 @@ mod tests {
             let b = consume_elem(cops, test_case, "b");
             let expected_sum = consume_elem(cops, test_case, "r");
 
-            let mut actual_sum = a.clone();
+            let mut actual_sum = a;
             ops.public_key_ops.common.elem_add(&mut actual_sum, &b);
             assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
-            let mut actual_sum = b.clone();
+            let mut actual_sum = b;
             ops.public_key_ops.common.elem_add(&mut actual_sum, &a);
             assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
@@ -692,10 +690,10 @@ mod tests {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let cops = ops.common;
-            let mut a = consume_scalar(cops, test_case, "a");
+            let a = consume_scalar(cops, test_case, "a");
             let b = consume_scalar_mont(cops, test_case, "b");
             let expected_result = consume_scalar(cops, test_case, "r");
-            let actual_result = ops.scalar_product(&mut a, &b);
+            let actual_result = ops.scalar_product(&a, &b);
             assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
 
             Ok(())
@@ -792,6 +790,10 @@ mod tests {
         });
     }
 
+    // Keep this in sync with the logic for defining `GFp_USE_LARGE_TABLE` and
+    // with the corresponding code in p256.rs that decides which base point
+    // multiplication to use.
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
     #[test]
     fn p256_point_sum_mixed_test() {
         extern "C" {
@@ -810,6 +812,7 @@ mod tests {
 
     // XXX: There is no `GFp_nistz384_point_add_affine()`.
 
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
     fn point_sum_mixed_test(
         ops: &PrivateKeyOps,
         point_add_affine: unsafe extern "C" fn(
@@ -1045,10 +1048,12 @@ mod tests {
         p
     }
 
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
     struct AffinePoint {
         xy: [Limb; 2 * MAX_LIMBS],
     }
 
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
     fn consume_affine_point(
         ops: &PrivateKeyOps,
         test_case: &mut test::TestCase,
@@ -1065,7 +1070,7 @@ mod tests {
         p
     }
 
-    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb], elems: &Vec<&str>, i: usize) {
+    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb], elems: &[&str], i: usize) {
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
         let r: Elem<Unencoded> = elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
@@ -1080,7 +1085,7 @@ mod tests {
     }
 
     fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str) -> TestPoint {
-        fn consume_point_elem(ops: &CommonOps, elems: &Vec<&str>, i: usize) -> Elem<R> {
+        fn consume_point_elem(ops: &CommonOps, elems: &[&str], i: usize) -> Elem<R> {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             let unencoded: Elem<Unencoded> =

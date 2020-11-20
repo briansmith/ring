@@ -13,21 +13,20 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    nonce::{self, Iv},
-    Block, BLOCK_LEN,
-};
-use crate::{c, endian::*, polyfill::convert::*};
+use super::{counter, iv::Iv, quic::Sample, BLOCK_LEN};
+use crate::{c, endian::*};
 
-#[repr(C)]
-pub struct Key([Block; KEY_BLOCKS]);
+#[repr(transparent)]
+pub struct Key([LittleEndian<u32>; KEY_LEN / 4]);
+
+impl From<[u8; KEY_LEN]> for Key {
+    #[inline]
+    fn from(value: [u8; KEY_LEN]) -> Self {
+        Self(FromByteArray::from_byte_array(&value))
+    }
+}
 
 impl Key {
-    #[inline]
-    pub fn from(value: &[u8; KEY_LEN]) -> Self {
-        Self(<[Block; KEY_BLOCKS]>::from_(value))
-    }
-
     #[inline] // Optimize away match on `counter`.
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
         unsafe {
@@ -53,7 +52,7 @@ impl Key {
     }
 
     #[inline]
-    pub fn new_mask(&self, sample: Block) -> [u8; 5] {
+    pub fn new_mask(&self, sample: Sample) -> [u8; 5] {
         let mut out: [u8; 5] = [0; 5];
         let iv = Iv::assume_unique_for_key(sample);
 
@@ -78,11 +77,7 @@ impl Key {
         // https://rt.openssl.org/Ticket/Display.html?id=4362
         let len = in_out.len() - in_prefix_len;
         if cfg!(any(target_arch = "arm", target_arch = "x86")) && in_prefix_len != 0 {
-            // TODO: replace with `in_out.copy_within(in_prefix_len.., 0)`
-            // See https://github.com/rust-lang/rust/issues/54236.
-            unsafe {
-                core::ptr::copy(in_out[in_prefix_len..].as_ptr(), in_out.as_mut_ptr(), len);
-            }
+            in_out.copy_within(in_prefix_len.., 0);
             self.encrypt_in_place(counter, &mut in_out[..len]);
         } else {
             unsafe {
@@ -128,7 +123,7 @@ impl Key {
     }
 }
 
-pub type Counter = nonce::Counter<LittleEndian<u32>>;
+pub type Counter = counter::Counter<LittleEndian<u32>>;
 
 enum CounterOrIv {
     Counter(Counter),
@@ -162,7 +157,7 @@ mod tests {
 
             let key = test_case.consume_bytes("Key");
             let key: &[u8; KEY_LEN] = key.as_slice().try_into()?;
-            let key = Key::from(key);
+            let key = Key::from(*key);
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce = test_case.consume_bytes("Nonce");

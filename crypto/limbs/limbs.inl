@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "limbs.h"
+#include "GFp/check.h"
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)
@@ -55,7 +56,7 @@ typedef uint64_t DoubleLimb;
 /* |*r = a + b + carry_in|, returning carry out bit. |carry_in| must be 0 or 1.
  */
 static inline Carry limb_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
-  ASSERT(carry_in == 0 || carry_in == 1);
+  dev_assert_secret(carry_in == 0 || carry_in == 1);
   Carry ret;
 #if defined(GFp_ADDCARRY_INTRINSIC)
   ret = GFp_ADDCARRY_INTRINSIC(carry_in, a, b, r);
@@ -64,7 +65,7 @@ static inline Carry limb_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
   *r = (Limb)x;
   ret = (Carry)(x >> LIMB_BITS);
 #endif
-  ASSERT(ret == 0 || ret == 1);
+  dev_assert_secret(ret == 0 || ret == 1);
   return ret;
 }
 
@@ -78,14 +79,14 @@ static inline Carry limb_add(Limb *r, Limb a, Limb b) {
   *r = (Limb)x;
   ret = (Carry)(x >> LIMB_BITS);
 #endif
-  ASSERT(ret == 0 || ret == 1);
+  dev_assert_secret(ret == 0 || ret == 1);
   return ret;
 }
 
 /* |*r = a - b - borrow_in|, returning the borrow out bit. |borrow_in| must be
  * 0 or 1. */
 static inline Carry limb_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
-  ASSERT(borrow_in == 0 || borrow_in == 1);
+  dev_assert_secret(borrow_in == 0 || borrow_in == 1);
   Carry ret;
 #if defined(GFp_SUBBORROW_INTRINSIC)
   ret = GFp_SUBBORROW_INTRINSIC(borrow_in, a, b, r);
@@ -94,7 +95,7 @@ static inline Carry limb_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
   *r = (Limb)x;
   ret = (Carry)((x >> LIMB_BITS) & 1);
 #endif
-  ASSERT(ret == 0 || ret == 1);
+  dev_assert_secret(ret == 0 || ret == 1);
   return ret;
 }
 
@@ -108,13 +109,13 @@ static inline Carry limb_sub(Limb *r, Limb a, Limb b) {
   *r = (Limb)x;
   ret = (Carry)((x >> LIMB_BITS) & 1);
 #endif
-  ASSERT(ret == 0 || ret == 1);
+  dev_assert_secret(ret == 0 || ret == 1);
   return ret;
 }
 
 static inline Carry limbs_add(Limb r[], const Limb a[], const Limb b[],
                               size_t num_limbs) {
-  ASSERT(num_limbs >= 1);
+  debug_assert_nonsecret(num_limbs >= 1);
   Carry carry = limb_add(&r[0], a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
     carry = limb_adc(&r[i], a[i], b[i], carry);
@@ -125,7 +126,7 @@ static inline Carry limbs_add(Limb r[], const Limb a[], const Limb b[],
 /* |r -= s|, returning the borrow. */
 static inline Carry limbs_sub(Limb r[], const Limb a[], const Limb b[],
                               size_t num_limbs) {
-  ASSERT(num_limbs >= 1);
+  debug_assert_nonsecret(num_limbs >= 1);
   Carry borrow = limb_sub(&r[0], a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
     borrow = limb_sbb(&r[i], a[i], b[i], borrow);

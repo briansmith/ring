@@ -166,13 +166,6 @@ typedef crypto_word BN_ULONG;
 #endif
 
 
-// bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
-// the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
-// the carry word of the operation. |ap| and |rp| may be equal but otherwise may
-// not alias.
-BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
-                              BN_ULONG w);
-
 // |num| must be at least 4, at least on x86.
 //
 // In other forks, |bn_mul_mont| returns an |int| indicating whether it

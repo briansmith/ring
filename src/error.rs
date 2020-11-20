@@ -14,8 +14,6 @@
 
 //! Error reporting.
 
-use untrusted;
-
 #[cfg(feature = "std")]
 extern crate std;
 
@@ -165,6 +163,11 @@ impl KeyRejected {
     #[inline]
     pub(crate) fn invalid_encoding() -> Self {
         KeyRejected("InvalidEncoding")
+    }
+
+    // XXX: See the comment at the call site.
+    pub(crate) fn rng_failed() -> Self {
+        KeyRejected("RNG failed")
     }
 
     pub(crate) fn public_key_is_missing() -> Self {

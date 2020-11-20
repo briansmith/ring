@@ -111,7 +111,7 @@
 //! [NIST Special Publication 800-56A, revision 2]:
 //!     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
 //! [Suite B implementer's guide to FIPS 186-3]:
-//!     https://github.com/briansmith/ring/blob/master/doc/ecdsa.pdf
+//!     https://github.com/briansmith/ring/blob/main/doc/ecdsa.pdf
 //! [RFC 3279 Section 2.2.3]:
 //!     https://tools.ietf.org/html/rfc3279#section-2.2.3
 //! [RFC 3447 Section 8.2]:
@@ -132,7 +132,7 @@
 //!     signature::{self, KeyPair},
 //! };
 //!
-//! # fn sign_and_verify_ed25519() -> Result<(), ring::error::Unspecified> {
+//! # fn main() -> Result<(), ring::error::Unspecified> {
 //! // Generate a key pair in PKCS#8 (v2) format.
 //! let rng = rand::SystemRandom::new();
 //! let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)?;
@@ -160,8 +160,6 @@
 //!
 //! # Ok(())
 //! # }
-//!
-//! # fn main() { sign_and_verify_ed25519().unwrap() }
 //! ```
 //!
 //! ## Signing and verifying with RSA (PKCS#1 1.5 padding)
@@ -257,7 +255,6 @@
 //! ```
 
 use crate::{cpu, ec, error, sealed};
-use untrusted;
 
 pub use crate::ec::{
     curve25519::ed25519::{
@@ -285,10 +282,12 @@ pub use crate::rsa::{
     signing::RsaSubjectPublicKey,
 
     verification::{
-        RsaPublicKeyComponents, RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
-        RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512,
-        RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384,
-        RSA_PSS_2048_8192_SHA512,
+        RsaPublicKeyComponents, RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
+        RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
+        RSA_PKCS1_1024_8192_SHA512_FOR_LEGACY_USE_ONLY,
+        RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY, RSA_PKCS1_2048_8192_SHA256,
+        RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384,
+        RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
     },
 
     RsaEncoding,

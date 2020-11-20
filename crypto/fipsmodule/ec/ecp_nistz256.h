@@ -17,6 +17,11 @@
 
 #include "../../limbs/limbs.h"
 
+// Keep this in sync with p256.rs.
+#if defined(OPENSSL_AARCH64) || defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#define GFp_USE_LARGE_TABLE
+#endif
+
 #define P256_LIMBS (256u / LIMB_BITS)
 
 typedef struct {
@@ -25,10 +30,12 @@ typedef struct {
   Limb Z[P256_LIMBS];
 } P256_POINT;
 
+#if defined(GFp_USE_LARGE_TABLE)
 typedef struct {
   Limb X[P256_LIMBS];
   Limb Y[P256_LIMBS];
 } P256_POINT_AFFINE;
+#endif
 
 typedef Limb PRECOMP256_ROW[64 * 2 * P256_LIMBS]; // 64 (x, y) entries.
 
@@ -38,7 +45,10 @@ void GFp_nistz256_sqr_mont(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
 
 /* Functions that perform constant time access to the precomputed tables */
 void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
-                            int index);
-void GFp_nistz256_select_w7(P256_POINT_AFFINE *out, const PRECOMP256_ROW table, int index);
+                            crypto_word index);
+
+#if defined(GFp_USE_LARGE_TABLE)
+void GFp_nistz256_select_w7(P256_POINT_AFFINE *out, const PRECOMP256_ROW table, crypto_word index);
+#endif
 
 #endif /* OPENSSL_HEADER_EC_ECP_NISTZ256_H */

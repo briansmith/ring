@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{endian::*, polyfill::convert::*};
+use crate::{endian::*, polyfill};
 
 /// An array of 16 bytes that can (in the x86_64 and AAarch64 ABIs, at least)
 /// be efficiently passed by value and returned by value (i.e. in registers),
@@ -32,33 +32,43 @@ impl Block {
         Self { subblocks: [0, 0] }
     }
 
+    // TODO: Remove this.
     #[inline]
     pub fn from_u64_le(first: LittleEndian<u64>, second: LittleEndian<u64>) -> Self {
+        #[allow(deprecated)]
         Self {
             subblocks: [first.into_raw_value(), second.into_raw_value()],
         }
     }
 
+    // TODO: Remove this.
     #[inline]
     pub fn from_u64_be(first: BigEndian<u64>, second: BigEndian<u64>) -> Self {
+        #[allow(deprecated)]
         Self {
             subblocks: [first.into_raw_value(), second.into_raw_value()],
         }
     }
 
-    pub fn u64s_be_to_native(&mut self) -> [u64; 2] {
+    pub fn u64s_be_to_native(&self) -> [u64; 2] {
         [
             u64::from_be(self.subblocks[0]),
             u64::from_be(self.subblocks[1]),
         ]
     }
 
-    /// Replaces the first `a.len()` bytes of the block's value with `a`,
-    /// leaving the rest of the block unchanged. Panics if `a` is larger
-    /// than a block.
     #[inline]
-    pub fn partial_copy_from(&mut self, a: &[u8]) {
-        self.as_mut()[..a.len()].copy_from_slice(a);
+    pub fn overwrite_part_at(&mut self, index: usize, a: &[u8]) {
+        let mut tmp: [u8; BLOCK_LEN] = *self.as_ref();
+        tmp[index..][..a.len()].copy_from_slice(a);
+        *self = Self::from(&tmp)
+    }
+
+    #[inline]
+    pub fn zero_from(&mut self, index: usize) {
+        let mut tmp: [u8; BLOCK_LEN] = *self.as_ref();
+        polyfill::slice::fill(&mut tmp[index..], 0);
+        *self = Self::from(&tmp)
     }
 
     #[inline]
@@ -76,32 +86,11 @@ impl From<&'_ [u8; BLOCK_LEN]> for Block {
     }
 }
 
-impl From_<&'_ [u8; 2 * BLOCK_LEN]> for [Block; 2] {
-    #[inline]
-    fn from_(bytes: &[u8; 2 * BLOCK_LEN]) -> Self {
-        unsafe { core::mem::transmute_copy(bytes) }
-    }
-}
-
 impl AsRef<[u8; BLOCK_LEN]> for Block {
+    #[allow(clippy::transmute_ptr_to_ptr)]
     #[inline]
     fn as_ref(&self) -> &[u8; BLOCK_LEN] {
         unsafe { core::mem::transmute(self) }
-    }
-}
-
-impl AsMut<[u8; BLOCK_LEN]> for Block {
-    #[inline]
-    fn as_mut(&mut self) -> &mut [u8; BLOCK_LEN] {
-        unsafe { core::mem::transmute(self) }
-    }
-}
-
-/// Like `AsMut`.
-impl<'a> From_<&'a mut [Block; 2]> for &'a mut [u8; 2 * BLOCK_LEN] {
-    #[inline]
-    fn from_(bytes: &'a mut [Block; 2]) -> &'a mut [u8; 2 * BLOCK_LEN] {
-        unsafe { core::mem::transmute(bytes) }
     }
 }
 

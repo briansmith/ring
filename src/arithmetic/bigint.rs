@@ -46,7 +46,6 @@ use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-use untrusted;
 
 pub unsafe trait Prime {}
 
@@ -86,7 +85,7 @@ impl<M> Clone for BoxedLimbs<M> {
     fn clone(&self) -> Self {
         Self {
             limbs: self.limbs.clone(),
-            m: self.m.clone(),
+            m: self.m,
         }
     }
 }
@@ -137,7 +136,7 @@ impl<M> BoxedLimbs<M> {
 
     fn zero(width: Width<M>) -> Self {
         Self {
-            limbs: vec![0; width.num_limbs].to_owned().into_boxed_slice(),
+            limbs: vec![0; width.num_limbs].into_boxed_slice(),
             m: PhantomData,
         }
     }
@@ -389,7 +388,7 @@ impl<M, E> Clone for Elem<M, E> {
     fn clone(&self) -> Self {
         Self {
             limbs: self.limbs.clone(),
-            encoding: self.encoding.clone(),
+            encoding: self.encoding,
         }
     }
 }
@@ -515,36 +514,14 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     a: &Elem<Larger, Unencoded>,
     m: &Modulus<Smaller>,
-) -> Result<Elem<Smaller, RInverse>, error::Unspecified> {
-    extern "C" {
-        fn GFp_bn_from_montgomery_in_place(
-            r: *mut Limb,
-            num_r: c::size_t,
-            a: *mut Limb,
-            num_a: c::size_t,
-            n: *const Limb,
-            num_n: c::size_t,
-            n0: &N0,
-        ) -> bssl::Result;
-    }
-
+) -> Elem<Smaller, RInverse> {
     let mut tmp = [0; MODULUS_MAX_LIMBS];
     let tmp = &mut tmp[..a.limbs.len()];
     tmp.copy_from_slice(&a.limbs);
 
     let mut r = m.zero();
-    Result::from(unsafe {
-        GFp_bn_from_montgomery_in_place(
-            r.limbs.as_mut_ptr(),
-            r.limbs.len(),
-            tmp.as_mut_ptr(),
-            tmp.len(),
-            m.limbs.as_ptr(),
-            m.limbs.len(),
-            &m.n0,
-        )
-    })?;
-    Ok(r)
+    limbs_from_mont_in_place(&mut r.limbs, tmp, &m.limbs, &m.n0);
+    r
 }
 
 fn elem_squared<M, E>(
@@ -1191,7 +1168,7 @@ impl Nonnegative {
                 return Err(error::Unspecified);
             }
         }
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -1229,6 +1206,13 @@ impl From<u64> for N0 {
 fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
     debug_assert_eq!(r.len(), m.len());
     debug_assert_eq!(a.len(), m.len());
+
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
     unsafe {
         GFp_bn_mul_mont(
             r.as_mut_ptr(),
@@ -1239,6 +1223,69 @@ fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
             r.len(),
         )
     }
+
+    #[cfg(not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    )))]
+    {
+        let mut tmp = [0; 2 * MODULUS_MAX_LIMBS];
+        let tmp = &mut tmp[..(2 * a.len())];
+        limbs_mul(tmp, r, a);
+        limbs_from_mont_in_place(r, tmp, m, n0);
+    }
+}
+
+fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N0) {
+    extern "C" {
+        fn GFp_bn_from_montgomery_in_place(
+            r: *mut Limb,
+            num_r: c::size_t,
+            a: *mut Limb,
+            num_a: c::size_t,
+            n: *const Limb,
+            num_n: c::size_t,
+            n0: &N0,
+        ) -> bssl::Result;
+    }
+    Result::from(unsafe {
+        GFp_bn_from_montgomery_in_place(
+            r.as_mut_ptr(),
+            r.len(),
+            tmp.as_mut_ptr(),
+            tmp.len(),
+            m.as_ptr(),
+            m.len(),
+            &n0,
+        )
+    })
+    .unwrap()
+}
+
+#[cfg(not(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86_64",
+    target_arch = "x86"
+)))]
+fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
+    debug_assert_eq!(r.len(), 2 * a.len());
+    debug_assert_eq!(a.len(), b.len());
+    let ab_len = a.len();
+
+    crate::polyfill::slice::fill(&mut r[..ab_len], 0);
+    for (i, &b_limb) in b.iter().enumerate() {
+        r[ab_len + i] = unsafe {
+            GFp_limbs_mul_add_limb(
+                (&mut r[i..][..ab_len]).as_mut_ptr(),
+                a.as_ptr(),
+                b_limb,
+                ab_len,
+            )
+        };
+    }
 }
 
 /// r = a * b
@@ -1247,6 +1294,13 @@ fn limbs_mont_product(r: &mut [Limb], a: &[Limb], b: &[Limb], m: &[Limb], n0: &N
     debug_assert_eq!(r.len(), m.len());
     debug_assert_eq!(a.len(), m.len());
     debug_assert_eq!(b.len(), m.len());
+
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
     unsafe {
         GFp_bn_mul_mont(
             r.as_mut_ptr(),
@@ -1257,11 +1311,30 @@ fn limbs_mont_product(r: &mut [Limb], a: &[Limb], b: &[Limb], m: &[Limb], n0: &N
             r.len(),
         )
     }
+
+    #[cfg(not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    )))]
+    {
+        let mut tmp = [0; 2 * MODULUS_MAX_LIMBS];
+        let tmp = &mut tmp[..(2 * a.len())];
+        limbs_mul(tmp, a, b);
+        limbs_from_mont_in_place(r, tmp, m, n0)
+    }
 }
 
 /// r = r**2
 fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0) {
     debug_assert_eq!(r.len(), m.len());
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
     unsafe {
         GFp_bn_mul_mont(
             r.as_mut_ptr(),
@@ -1272,9 +1345,28 @@ fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0) {
             r.len(),
         )
     }
+
+    #[cfg(not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    )))]
+    {
+        let mut tmp = [0; 2 * MODULUS_MAX_LIMBS];
+        let tmp = &mut tmp[..(2 * r.len())];
+        limbs_mul(tmp, r, r);
+        limbs_from_mont_in_place(r, tmp, m, n0)
+    }
 }
 
 extern "C" {
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_bn_mul_mont(
         r: *mut Limb,
@@ -1284,6 +1376,19 @@ extern "C" {
         n0: &N0,
         num_limbs: c::size_t,
     );
+
+    // `r` must not alias `a`
+    #[cfg(any(
+        test,
+        not(any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86_64",
+            target_arch = "x86"
+        ))
+    ))]
+    #[must_use]
+    fn GFp_limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
 }
 
 #[cfg(test)]
@@ -1291,7 +1396,6 @@ mod tests {
     use super::*;
     use crate::test;
     use alloc::format;
-    use untrusted;
 
     // Type-level representation of an arbitrary modulus.
     struct M {}
@@ -1322,7 +1426,6 @@ mod tests {
         )
     }
 
-    #[test]
     // TODO: fn test_elem_exp_vartime() using
     // "src/rsa/bigint_elem_exp_vartime_tests.txt". See that file for details.
     // In the meantime, the function is tested indirectly via the RSA
@@ -1387,7 +1490,7 @@ mod tests {
                 let a =
                     consume_elem_unchecked::<MM>(test_case, "A", expected_result.limbs.len() * 2);
 
-                let actual_result = elem_reduced(&a, &m).unwrap();
+                let actual_result = elem_reduced(&a, &m);
                 let oneRR = m.oneRR();
                 let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -1425,7 +1528,7 @@ mod tests {
     #[test]
     fn test_modulus_debug() {
         let (modulus, _) = Modulus::<M>::from_be_bytes_with_bit_length(untrusted::Input::from(
-            &vec![0xff; LIMB_BYTES * MODULUS_MIN_LIMBS],
+            &[0xff; LIMB_BYTES * MODULUS_MIN_LIMBS],
         ))
         .unwrap();
         assert_eq!("Modulus", format!("{:?}", modulus));
@@ -1480,10 +1583,44 @@ mod tests {
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
-        elem_verify_equal_consttime(&a, b).unwrap()
+        if elem_verify_equal_consttime(&a, b).is_err() {
+            panic!("{:x?} != {:x?}", &*a.limbs, &*b.limbs);
+        }
     }
 
     fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
         elem_mul(m.oneRR().as_ref(), a, m)
+    }
+
+    #[test]
+    // TODO: wasm
+    fn test_mul_add_words() {
+        const ZERO: Limb = 0;
+        const MAX: Limb = ZERO.wrapping_sub(1);
+        static TEST_CASES: &[(&[Limb], &[Limb], Limb, Limb, &[Limb])] = &[
+            (&[0], &[0], 0, 0, &[0]),
+            (&[MAX], &[0], MAX, 0, &[MAX]),
+            (&[0], &[MAX], MAX, MAX - 1, &[1]),
+            (&[MAX], &[MAX], MAX, MAX, &[0]),
+            (&[0, 0], &[MAX, MAX], MAX, MAX - 1, &[1, MAX]),
+            (&[1, 0], &[MAX, MAX], MAX, MAX - 1, &[2, MAX]),
+            (&[MAX, 0], &[MAX, MAX], MAX, MAX, &[0, 0]),
+            (&[0, 1], &[MAX, MAX], MAX, MAX, &[1, 0]),
+            (&[MAX, MAX], &[MAX, MAX], MAX, MAX, &[0, MAX]),
+        ];
+
+        for (i, (r_input, a, w, expected_retval, expected_r)) in TEST_CASES.iter().enumerate() {
+            extern crate std;
+            let mut r = std::vec::Vec::from(*r_input);
+            assert_eq!(r.len(), a.len()); // Sanity check
+            let actual_retval =
+                unsafe { GFp_limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
+            assert_eq!(&r, expected_r, "{}: {:x?} != {:x?}", i, &r[..], expected_r);
+            assert_eq!(
+                actual_retval, *expected_retval,
+                "{}: {:x?} != {:x?}",
+                i, actual_retval, *expected_retval
+            );
+        }
     }
 }

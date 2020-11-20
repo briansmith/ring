@@ -10,17 +10,11 @@ license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.16.7"
+version = "0.16.16"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
 
-exclude = [
-    # The presence of .gitignore is used to differentiate non-packaged builds
-    # from packaged builds in build.rs.
-    ".gitignore",
-    "pregenerated/tmp",
-]
 include = [
     "LICENSE",
     "Cargo.toml",
@@ -33,22 +27,22 @@ include = [
     "crypto/chacha/asm/chacha-armv8.pl",
     "crypto/chacha/asm/chacha-x86.pl",
     "crypto/chacha/asm/chacha-x86_64.pl",
-    "crypto/cipher_extra/asm/aes128gcmsiv-x86_64.pl",
     "crypto/cipher_extra/test/aes_128_gcm_siv_tests.txt",
     "crypto/cipher_extra/test/aes_256_gcm_siv_tests.txt",
     "crypto/constant_time_test.c",
     "crypto/cpu-intel.c",
     "crypto/crypto.c",
     "crypto/curve25519/asm/x25519-asm-arm.S",
-    "crypto/fipsmodule/aes/aes.c",
-    "crypto/fipsmodule/aes/asm/aes-586.pl",
-    "crypto/fipsmodule/aes/asm/aes-armv4.pl",
-    "crypto/fipsmodule/aes/asm/aes-x86_64.pl",
+    "crypto/curve25519/curve25519.c",
+    "crypto/curve25519/curve25519_tables.h",
+    "crypto/curve25519/internal.h",
+    "crypto/fipsmodule/aes/aes_nohw.c",
     "crypto/fipsmodule/aes/asm/aesni-x86.pl",
     "crypto/fipsmodule/aes/asm/aesni-x86_64.pl",
     "crypto/fipsmodule/aes/asm/aesv8-armx.pl",
     "crypto/fipsmodule/aes/asm/bsaes-armv7.pl",
     "crypto/fipsmodule/aes/asm/bsaes-x86_64.pl",
+    "crypto/fipsmodule/aes/asm/vsaes-armv7.pl",
     "crypto/fipsmodule/aes/asm/vpaes-x86.pl",
     "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl",
     "crypto/fipsmodule/bn/asm/armv4-mont.pl",
@@ -56,7 +50,6 @@ include = [
     "crypto/fipsmodule/bn/asm/x86-mont.pl",
     "crypto/fipsmodule/bn/asm/x86_64-mont.pl",
     "crypto/fipsmodule/bn/asm/x86_64-mont5.pl",
-    "crypto/fipsmodule/bn/generic.c",
     "crypto/fipsmodule/bn/internal.h",
     "crypto/fipsmodule/bn/montgomery.c",
     "crypto/fipsmodule/bn/montgomery_inv.c",
@@ -79,8 +72,6 @@ include = [
     "crypto/fipsmodule/modes/asm/ghash-x86.pl",
     "crypto/fipsmodule/modes/asm/ghash-x86_64.pl",
     "crypto/fipsmodule/modes/asm/ghashv8-armx.pl",
-    "crypto/fipsmodule/modes/gcm.c",
-    "crypto/fipsmodule/modes/internal.h",
     "crypto/fipsmodule/sha/asm/sha256-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv8.pl",
@@ -95,16 +86,20 @@ include = [
     "crypto/perlasm/x86gas.pl",
     "crypto/perlasm/x86nasm.pl",
     "crypto/perlasm/x86_64-xlate.pl",
-    "crypto/poly1305/asm/poly1305-armv4.pl",
-    "crypto/poly1305/asm/poly1305-armv8.pl",
-    "crypto/poly1305/asm/poly1305-x86.pl",
-    "crypto/poly1305/asm/poly1305-x86_64.pl",
+    "crypto/poly1305/internal.h",
+    "crypto/poly1305/poly1305.c",
+    "crypto/poly1305/poly1305_arm.c",
+    "crypto/poly1305/poly1305_arm_asm.S",
+    "crypto/poly1305/poly1305_vec.c",
+    "doc/link-to-readme.md",
     "examples/checkdigest.rs",
     "include/GFp/aes.h",
     "include/GFp/arm_arch.h",
     "include/GFp/base.h",
+    "include/GFp/check.h",
     "include/GFp/cpu.h",
     "include/GFp/mem.h",
+    "include/GFp/poly1305.h",
     "include/GFp/type_check.h",
     "src/aead.rs",
     "src/aead/aes.rs",
@@ -115,7 +110,10 @@ include = [
     "src/aead/chacha_tests.txt",
     "src/aead/chacha20_poly1305.rs",
     "src/aead/chacha20_poly1305_openssh.rs",
+    "src/aead/counter.rs",
     "src/aead/gcm.rs",
+    "src/aead/gcm/gcm_nohw.rs",
+    "src/aead/iv.rs",
     "src/aead/nonce.rs",
     "src/aead/poly1305.rs",
     "src/aead/poly1305_test.txt",
@@ -232,6 +230,7 @@ include = [
     "tests/aead_tests.rs",
     "tests/agreement_tests.rs",
     "tests/agreement_tests.txt",
+    "tests/constant_time_tests.rs",
     "tests/digest_tests.rs",
     "tests/digest_tests.txt",
     "tests/ecdsa_from_pkcs8_tests.txt",
@@ -273,11 +272,8 @@ include = [
     "tests/rsa_test_public_key_2048.der",
     "tests/rsa_test_public_key_2048_debug.txt",
     "tests/signature_tests.rs",
-    "third_party/fiat/curve25519.c",
     "third_party/fiat/curve25519_32.h",
     "third_party/fiat/curve25519_64.h",
-    "third_party/fiat/curve25519_tables.h",
-    "third_party/fiat/internal.h",
     "third_party/fiat/LICENSE",
     "third_party/fiat/make_curve25519_tables.py",
     "third_party/NIST/SHAVS/SHA1LongMsg.rsp",
@@ -301,43 +297,43 @@ include = [
 name = "ring"
 
 [dependencies]
-untrusted = { version = "0.7.0" }
+untrusted = { version = "0.7.1" }
 
-[target.'cfg(all(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86", target_arch = "x86_64"), not(target_os = "ios")))'.dependencies]
-spin = { version = "0.5.0", default-features = false }
-
+[target.'cfg(any(target_arch = "x86",target_arch = "x86_64", all(any(target_arch = "aarch64", target_arch = "arm"), any(target_os = "android", target_os = "fuchsia", target_os = "linux"))))'.dependencies]
+spin = { version = "0.5.2", default-features = false }
 
 [target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
-libc = { version = "0.2.48", default-features = false }
+libc = { version = "0.2.69", default-features = false }
 
-[target.'cfg(any(target_os = "android", target_os = "freebsd", target_os = "linux", target_os = "netbsd", target_os = "openbsd", target_os = "solaris"))'.dependencies]
-lazy_static = { version = "1.3", default-features = false, optional = true }
+[target.'cfg(any(target_os = "android", target_os = "freebsd", target_os = "linux", target_os = "netbsd", target_os = "openbsd", target_os = "solaris", target_os = "illumos"))'.dependencies]
+once_cell = { version = "1.5.2", default-features = false, features=["std"], optional = true }
 
 [target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown", target_env = ""))'.dependencies]
-web-sys = { version = "0.3.25", default-features = false, features = ["Crypto", "Window"] }
+web-sys = { version = "0.3.37", default-features = false, features = ["Crypto", "Window"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winapi = { version = "0.3.7", default-features = false, features = ["ntsecapi", "wtypesbase"] }
+winapi = { version = "0.3.8", default-features = false, features = ["ntsecapi", "wtypesbase"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = { version = "0.2.48", default-features = false }
+wasm-bindgen-test = { version = "0.3.18", default-features = false }
 
 [target.'cfg(any(unix, windows))'.dev-dependencies]
-libc = { version = "0.2.48", default-features = false }
+libc = { version = "0.2.80", default-features = false }
 
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
-cc = { version = "1.0.37", default-features = false }
+cc = { version = "1.0.62", default-features = false }
 
 [features]
 # These features are documented in the top-level module's documentation.
 default = ["alloc", "dev_urandom_fallback"]
 alloc = []
-dev_urandom_fallback = ["lazy_static"]
+dev_urandom_fallback = ["once_cell"]
 internal_benches = []
 slow_tests = []
 std = ["alloc"]
 test_logging = []
+wasm32_c = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

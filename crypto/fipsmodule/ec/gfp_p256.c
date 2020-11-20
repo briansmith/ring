@@ -59,7 +59,7 @@ void GFp_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
 }
 
 void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep) {
-  ASSERT(rep >= 1);
+  dev_assert_secret(rep >= 1);
   GFp_p256_scalar_sqr_mont(r, a);
   for (Limb i = 1; i < rep; ++i) {
     GFp_p256_scalar_sqr_mont(r, r);
@@ -73,20 +73,20 @@ void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep) {
 /* TODO(perf): Optimize these. */
 
 void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
-                            int index) {
-  ASSERT(index >= 0);
-  size_t index_s = (size_t)index; /* XXX: constant time? */
+                            crypto_word index) {
+  dev_assert_secret(index >= 0);
 
   alignas(32) Elem x; limbs_zero(x, P256_LIMBS);
   alignas(32) Elem y; limbs_zero(y, P256_LIMBS);
   alignas(32) Elem z; limbs_zero(z, P256_LIMBS);
 
+  // TODO: Rewrite in terms of |limbs_select|.
   for (size_t i = 0; i < 16; ++i) {
-    Limb mask = constant_time_eq_w(index_s, i + 1);
+    crypto_word equal = constant_time_eq_w(index, (crypto_word)i + 1);
     for (size_t j = 0; j < P256_LIMBS; ++j) {
-      x[j] |= table[i].X[j] & mask;
-      y[j] |= table[i].Y[j] & mask;
-      z[j] |= table[i].Z[j] & mask;
+      x[j] = constant_time_select_w(equal, table[i].X[j], x[j]);
+      y[j] = constant_time_select_w(equal, table[i].Y[j], y[j]);
+      z[j] = constant_time_select_w(equal, table[i].Z[j], z[j]);
     }
   }
 
@@ -95,15 +95,14 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
   limbs_copy(out->Z, z, P256_LIMBS);
 }
 
+#if defined GFp_USE_LARGE_TABLE
 void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
-                            const PRECOMP256_ROW table, int index) {
-  ASSERT(index >= 0);
-  size_t index_as_s = (size_t)index; /* XXX: constant time? */
-
+                            const PRECOMP256_ROW table, crypto_word index) {
   alignas(32) Limb xy[P256_LIMBS * 2];
-  limbs_select(xy, table, P256_LIMBS * 2, 64, index_as_s - 1);
+  limbs_select(xy, table, P256_LIMBS * 2, 64, index - 1);
   limbs_copy(out->X, &xy[0], P256_LIMBS);
   limbs_copy(out->Y, &xy[P256_LIMBS], P256_LIMBS);
 }
+#endif
 
 #endif

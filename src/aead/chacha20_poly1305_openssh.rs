@@ -32,7 +32,7 @@
 use super::{
     chacha::{self, *},
     chacha20_poly1305::derive_poly1305_key,
-    poly1305, Nonce, Tag,
+    cpu, poly1305, Nonce, Tag,
 };
 use crate::{constant_time, endian::*, error};
 use core::convert::TryInto;
@@ -46,7 +46,7 @@ impl SealingKey {
     /// Constructs a new `SealingKey`.
     pub fn new(key_material: &[u8; KEY_LEN]) -> SealingKey {
         SealingKey {
-            key: Key::new(key_material),
+            key: Key::new(key_material, cpu::features()),
         }
     }
 
@@ -64,7 +64,8 @@ impl SealingKey {
         tag_out: &mut [u8; TAG_LEN],
     ) {
         let mut counter = make_counter(sequence_number);
-        let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
+        let poly_key =
+            derive_poly1305_key(&self.key.k_2, counter.increment(), self.key.cpu_features);
 
         {
             let (len_in_out, data_and_padding_in_out) =
@@ -92,7 +93,7 @@ impl OpeningKey {
     /// Constructs a new `OpeningKey`.
     pub fn new(key_material: &[u8; KEY_LEN]) -> OpeningKey {
         OpeningKey {
-            key: Key::new(key_material),
+            key: Key::new(key_material, cpu::features()),
         }
     }
 
@@ -131,7 +132,8 @@ impl OpeningKey {
         // We must verify the tag before decrypting so that
         // `ciphertext_in_plaintext_out` is unmodified if verification fails.
         // This is beyond what we guarantee.
-        let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
+        let poly_key =
+            derive_poly1305_key(&self.key.k_2, counter.increment(), self.key.cpu_features);
         verify(poly_key, ciphertext_in_plaintext_out, tag)?;
 
         let plaintext_in_ciphertext_out = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
@@ -146,15 +148,19 @@ impl OpeningKey {
 struct Key {
     k_1: chacha::Key,
     k_2: chacha::Key,
+    cpu_features: cpu::Features,
 }
 
 impl Key {
-    pub fn new(key_material: &[u8; KEY_LEN]) -> Key {
+    fn new(key_material: &[u8; KEY_LEN], cpu_features: cpu::Features) -> Key {
         // The first half becomes K_2 and the second half becomes K_1.
         let (k_2, k_1) = key_material.split_at(chacha::KEY_LEN);
+        let k_1: [u8; chacha::KEY_LEN] = k_1.try_into().unwrap();
+        let k_2: [u8; chacha::KEY_LEN] = k_2.try_into().unwrap();
         Key {
-            k_1: chacha::Key::from(k_1.try_into().unwrap()),
-            k_2: chacha::Key::from(k_2.try_into().unwrap()),
+            k_1: chacha::Key::from(k_1),
+            k_2: chacha::Key::from(k_2),
+            cpu_features,
         }
     }
 }
@@ -165,7 +171,7 @@ fn make_counter(sequence_number: u32) -> Counter {
         BigEndian::ZERO,
         BigEndian::from(sequence_number),
     ];
-    Counter::zero(Nonce::try_assume_unique_for_key(as_bytes(&nonce)).unwrap())
+    Counter::zero(Nonce::assume_unique_for_key(*(nonce.as_byte_array())))
 }
 
 /// The length of key.

@@ -46,6 +46,7 @@ pub(super) extern "C" fn block_data_order(
 }
 
 #[inline]
+#[rustfmt::skip]
 fn block_data_order_(mut H: State, M: &[[<W32 as Word>::InputBytes; 16]]) -> State {
     for M in M {
         // FIPS 180-4 6.1.2 Step 1
@@ -59,40 +60,49 @@ fn block_data_order_(mut H: State, M: &[[<W32 as Word>::InputBytes; 16]]) -> Sta
         }
 
         // FIPS 180-4 6.1.2 Step 2
-        let mut a = H[0];
-        let mut b = H[1];
-        let mut c = H[2];
-        let mut d = H[3];
-        let mut e = H[4];
+        let a = H[0];
+        let b = H[1];
+        let c = H[2];
+        let d = H[3];
+        let e = H[4];
 
-        // FIPS 180-4 6.1.2 Step 3
-        for t in 0..ROUNDS {
-            // FIPS 180-4 {4.1.1, 4.2.1}
-            let (k, f) = match t {
-                0..=19 => (Wrapping(0x5a827999), ch(b, c, d)),
-                20..=39 => (Wrapping(0x6ed9eba1), parity(b, c, d)),
-                40..=59 => (Wrapping(0x8f1bbcdc), maj(b, c, d)),
-                60..=79 => (Wrapping(0xca62c1d6), parity(b, c, d)),
-                _ => unreachable!(),
-            };
-
-            let T = rotl(a, 5) + f + e + k + W[t];
-            e = d;
-            d = c;
-            c = rotl(b, 30);
-            b = a;
-            a = T;
-        }
+        // FIPS 180-4 6.1.2 Step 3 with constants and functions from FIPS 180-4 {4.1.1, 4.2.1}
+        let (a, b, c, d, e) = step3(a, b, c, d, e, W[ 0..20].try_into().unwrap(), Wrapping(0x5a827999), ch);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, W[20..40].try_into().unwrap(), Wrapping(0x6ed9eba1), parity);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, W[40..60].try_into().unwrap(), Wrapping(0x8f1bbcdc), maj);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, W[60..80].try_into().unwrap(), Wrapping(0xca62c1d6), parity);
 
         // FIPS 180-4 6.1.2 Step 4
+        H[0] += a;
         H[1] += b;
         H[2] += c;
         H[3] += d;
-        H[0] += a;
         H[4] += e;
     }
 
     H
+}
+
+#[inline(always)]
+fn step3(
+    mut a: W32,
+    mut b: W32,
+    mut c: W32,
+    mut d: W32,
+    mut e: W32,
+    W: [W32; 20],
+    k: W32,
+    f: impl Fn(W32, W32, W32) -> W32,
+) -> (W32, W32, W32, W32, W32) {
+    for W_t in W.iter() {
+        let T = rotl(a, 5) + f(b, c, d) + e + k + W_t;
+        e = d;
+        d = c;
+        c = rotl(b, 30);
+        b = a;
+        a = T;
+    }
+    (a, b, c, d, e)
 }
 
 #[inline(always)]
