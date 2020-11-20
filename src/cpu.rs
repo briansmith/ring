@@ -365,18 +365,6 @@ pub(crate) mod intel {
         mask: 1 << 19,
     };
 
-    #[cfg(target_arch = "x86_64")]
-    pub(crate) const AVX2: Feature = Feature {
-        word: 2,
-        mask: 1 << 5,
-    };
-
-    #[cfg(target_arch = "x86_64")]
-    pub(crate) const BMI2: Feature = Feature {
-        word: 2,
-        mask: 1 << 8,
-    };
-
     #[cfg(all(target_arch = "x86_64", test))]
     mod x86_64_tests {
         use super::*;

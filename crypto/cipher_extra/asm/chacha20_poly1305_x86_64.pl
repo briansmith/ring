@@ -31,7 +31,7 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
+open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
 $avx = 2;
@@ -40,27 +40,29 @@ $code.=<<___;
 .text
 chacha20_poly1305_constants:
 
+.extern GFp_ia32cap_P
+
 .align 64
-.chacha20_consts:
+.Lchacha20_consts:
 .byte 'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
 .byte 'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
-.rol8:
+.Lrol8:
 .byte 3,0,1,2, 7,4,5,6, 11,8,9,10, 15,12,13,14
 .byte 3,0,1,2, 7,4,5,6, 11,8,9,10, 15,12,13,14
-.rol16:
+.Lrol16:
 .byte 2,3,0,1, 6,7,4,5, 10,11,8,9, 14,15,12,13
 .byte 2,3,0,1, 6,7,4,5, 10,11,8,9, 14,15,12,13
-.avx2_init:
+.Lavx2_init:
 .long 0,0,0,0
-.sse_inc:
+.Lsse_inc:
 .long 1,0,0,0
-.avx2_inc:
+.Lavx2_inc:
 .long 2,0,0,0,2,0,0,0
-.clamp:
+.Lclamp:
 .quad 0x0FFFFFFC0FFFFFFF, 0x0FFFFFFC0FFFFFFC
 .quad 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF
 .align 16
-.and_masks:
+.Land_masks:
 .byte 0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 .byte 0xff,0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 .byte 0xff,0xff,0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
@@ -79,28 +81,33 @@ chacha20_poly1305_constants:
 .byte 0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 ___
 
-my ($oup,$inp,$inl,$adp,$keyp,$itr1,$itr2)=("%rdi","%rsi","%rbx","%rcx","%r9","%rcx","%r8");
+my ($oup,$inl,$adp,$adl,$keyp,$itr1,$itr2,$inp)=("%rdi","%rsi","%rcx","%rcx","%r8","%rcx","%rbx","%r8");
 my ($acc0,$acc1,$acc2)=map("%r$_",(10..12));
 my ($t0,$t1,$t2,$t3)=("%r13","%r14","%r15","%r9");
 my ($A0,$A1,$A2,$A3,$B0,$B1,$B2,$B3,$C0,$C1,$C2,$C3,$D0,$D1,$D2,$D3)=map("%xmm$_",(0..15));
 my ($T0,$T1,$T2,$T3)=($A3,$B3,$C3,$D3);
-my $r_store="0*16(%rbp)";
-my $s_store="1*16(%rbp)";
-my $len_store="2*16(%rbp)";
-my $state1_store="3*16(%rbp)";
-my $state2_store="4*16(%rbp)";
-my $tmp_store="5*16(%rbp)";
-my $ctr0_store="6*16(%rbp)";
-my $ctr1_store="7*16(%rbp)";
-my $ctr2_store="8*16(%rbp)";
-my $ctr3_store="9*16(%rbp)";
+my $xmm_storage = 0;
+if ($win64) {
+    $xmm_storage = 10*16;
+}
+my $xmm_store="0*16(%rbp)";
+my $r_store="$xmm_storage+0*16(%rbp)";
+my $s_store="$xmm_storage+1*16(%rbp)";
+my $len_store="$xmm_storage+2*16(%rbp)";
+my $state1_store="$xmm_storage+3*16(%rbp)";
+my $state2_store="$xmm_storage+4*16(%rbp)";
+my $tmp_store="$xmm_storage+5*16(%rbp)";
+my $ctr0_store="$xmm_storage+6*16(%rbp)";
+my $ctr1_store="$xmm_storage+7*16(%rbp)";
+my $ctr2_store="$xmm_storage+8*16(%rbp)";
+my $ctr3_store="$xmm_storage+9*16(%rbp)";
 
 sub chacha_qr {
 my ($a,$b,$c,$d,$t,$dir)=@_;
 $code.="movdqa $t, $tmp_store\n" if ($dir =~ /store/);
 $code.="paddd $b, $a
         pxor $a, $d
-        pshufb .rol16(%rip), $d
+        pshufb .Lrol16(%rip), $d
         paddd $d, $c
         pxor $c, $b
         movdqa $b, $t
@@ -109,7 +116,7 @@ $code.="paddd $b, $a
         pxor $t, $b
         paddd $b, $a
         pxor $a, $d
-        pshufb .rol8(%rip), $d
+        pshufb .Lrol8(%rip), $d
         paddd $d, $c
         pxor $c, $b
         movdqa $b, $t
@@ -127,7 +134,7 @@ $code.="movdqa $tmp_store, $t\n" if ($dir =~ /load/);
 
 sub poly_add {
 my ($src)=@_;
-$code.="add $src, $acc0
+$code.="add 0+$src, $acc0
         adc 8+$src, $acc1
         adc \$1, $acc2\n";
 }
@@ -174,9 +181,8 @@ $code.="mov $t0, $acc0
         mov $t3, $t1
         shrd \$2, $t3, $t2
         shr \$2, $t3
-        add $t0, $acc0
-        adc $t1, $acc1
-        adc \$0, $acc2
+        add $t0, $t2
+        adc $t1, $t3
         add $t2, $acc0
         adc $t3, $acc1
         adc \$0, $acc2\n";
@@ -191,7 +197,7 @@ sub poly_mul {
 
 sub prep_state {
 my ($n)=@_;
-$code.="movdqa .chacha20_consts(%rip), $A0
+$code.="movdqa .Lchacha20_consts(%rip), $A0
         movdqa $state1_store, $B0
         movdqa $state2_store, $C0\n";
 $code.="movdqa $A0, $A1
@@ -204,31 +210,31 @@ $code.="movdqa $A0, $A3
         movdqa $B0, $B3
         movdqa $C0, $C3\n" if ($n ge 4);
 $code.="movdqa $ctr0_store, $D0
-        paddd .sse_inc(%rip), $D0
+        paddd .Lsse_inc(%rip), $D0
         movdqa $D0, $ctr0_store\n" if ($n eq 1);
 $code.="movdqa $ctr0_store, $D1
-        paddd .sse_inc(%rip), $D1
+        paddd .Lsse_inc(%rip), $D1
         movdqa $D1, $D0
-        paddd .sse_inc(%rip), $D0
+        paddd .Lsse_inc(%rip), $D0
         movdqa $D0, $ctr0_store
         movdqa $D1, $ctr1_store\n" if ($n eq 2);
 $code.="movdqa $ctr0_store, $D2
-        paddd .sse_inc(%rip), $D2
+        paddd .Lsse_inc(%rip), $D2
         movdqa $D2, $D1
-        paddd .sse_inc(%rip), $D1
+        paddd .Lsse_inc(%rip), $D1
         movdqa $D1, $D0
-        paddd .sse_inc(%rip), $D0
+        paddd .Lsse_inc(%rip), $D0
         movdqa $D0, $ctr0_store
         movdqa $D1, $ctr1_store
         movdqa $D2, $ctr2_store\n" if ($n eq 3);
 $code.="movdqa $ctr0_store, $D3
-        paddd .sse_inc(%rip), $D3
+        paddd .Lsse_inc(%rip), $D3
         movdqa $D3, $D2
-        paddd .sse_inc(%rip), $D2
+        paddd .Lsse_inc(%rip), $D2
         movdqa $D2, $D1
-        paddd .sse_inc(%rip), $D1
+        paddd .Lsse_inc(%rip), $D1
         movdqa $D1, $D0
-        paddd .sse_inc(%rip), $D0
+        paddd .Lsse_inc(%rip), $D0
         movdqa $D0, $ctr0_store
         movdqa $D1, $ctr1_store
         movdqa $D2, $ctr2_store
@@ -237,19 +243,19 @@ $code.="movdqa $ctr0_store, $D3
 
 sub finalize_state {
 my ($n)=@_;
-$code.="paddd .chacha20_consts(%rip), $A3
+$code.="paddd .Lchacha20_consts(%rip), $A3
         paddd $state1_store, $B3
         paddd $state2_store, $C3
         paddd $ctr3_store, $D3\n" if ($n eq 4);
-$code.="paddd .chacha20_consts(%rip), $A2
+$code.="paddd .Lchacha20_consts(%rip), $A2
         paddd $state1_store, $B2
         paddd $state2_store, $C2
         paddd $ctr2_store, $D2\n" if ($n ge 3);
-$code.="paddd .chacha20_consts(%rip), $A1
+$code.="paddd .Lchacha20_consts(%rip), $A1
         paddd $state1_store, $B1
         paddd $state2_store, $C1
         paddd $ctr1_store, $D1\n" if ($n ge 2);
-$code.="paddd .chacha20_consts(%rip), $A0
+$code.="paddd .Lchacha20_consts(%rip), $A0
         paddd $state1_store, $B0
         paddd $state2_store, $C0
         paddd $ctr0_store, $D0\n";
@@ -350,10 +356,10 @@ if (($shift =~ /left/) || ($shift =~ /right/));
 return $round;
 };
 
-$chacha_body = &gen_chacha_round(20, ".rol16(%rip)") .
-               &gen_chacha_round(25, ".rol8(%rip)", "left") .
-               &gen_chacha_round(20, ".rol16(%rip)") .
-               &gen_chacha_round(25, ".rol8(%rip)", "right");
+$chacha_body = &gen_chacha_round(20, ".Lrol16(%rip)") .
+               &gen_chacha_round(25, ".Lrol8(%rip)", "left") .
+               &gen_chacha_round(20, ".Lrol16(%rip)") .
+               &gen_chacha_round(25, ".Lrol8(%rip)", "right");
 
 my @loop_body = split /\n/, $chacha_body;
 
@@ -368,16 +374,17 @@ my ($n)=@_;
 ################################################################################
 # void poly_hash_ad_internal();
 $code.="
-.type poly_hash_ad_internal,\@function,2
+.type poly_hash_ad_internal,\@abi-omnipotent
 .align 64
 poly_hash_ad_internal:
 .cfi_startproc
+.cfi_def_cfa rsp, 8
     xor $acc0, $acc0
     xor $acc1, $acc1
     xor $acc2, $acc2
     cmp \$13,  $itr2
-    jne hash_ad_loop
-poly_fast_tls_ad:
+    jne .Lhash_ad_loop
+.Lpoly_fast_tls_ad:
     # Special treatment for the TLS case of 13 bytes
     mov ($adp), $acc0
     mov 5($adp), $acc1
@@ -385,38 +392,38 @@ poly_fast_tls_ad:
     mov \$1, $acc2\n";
     &poly_mul(); $code.="
     ret
-hash_ad_loop:
+.Lhash_ad_loop:
         # Hash in 16 byte chunk
         cmp \$16, $itr2
-        jb hash_ad_tail\n";
+        jb .Lhash_ad_tail\n";
         &poly_add("0($adp)");
         &poly_mul(); $code.="
         lea 1*16($adp), $adp
         sub \$16, $itr2
-    jmp hash_ad_loop
-hash_ad_tail:
+    jmp .Lhash_ad_loop
+.Lhash_ad_tail:
     cmp \$0, $itr2
-    je 1f
+    je .Lhash_ad_done
     # Hash last < 16 byte tail
     xor $t0, $t0
     xor $t1, $t1
     xor $t2, $t2
     add $itr2, $adp
-hash_ad_tail_loop:
+.Lhash_ad_tail_loop:
         shld \$8, $t0, $t1
         shl \$8, $t0
         movzxb -1($adp), $t2
         xor $t2, $t0
         dec $adp
         dec $itr2
-    jne hash_ad_tail_loop
+    jne .Lhash_ad_tail_loop
 
     add $t0, $acc0
     adc $t1, $acc1
     adc \$1, $acc2\n";
     &poly_mul(); $code.="
     # Finished AD
-1:
+.Lhash_ad_done:
     ret
 .cfi_endproc
 .size poly_hash_ad_internal, .-poly_hash_ad_internal\n";
@@ -424,16 +431,14 @@ hash_ad_tail_loop:
 
 {
 ################################################################################
-# {u64, u64} chacha20_poly1305_open_asm(uint8_t *in_out, size_t out_offset, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t keyp[48], uint64 avx2_and_bmi2_capable);
+# void GFp_chacha20_poly1305_open(uint8_t *in_out, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t keyp[48], size_t out_offset);
 $code.="
-
-.globl chacha20_poly1305_open_asm
-.type chacha20_poly1305_open_asm,\@function,2
+.globl GFp_chacha20_poly1305_open
+.type GFp_chacha20_poly1305_open,\@function,6
 .align 64
-chacha20_poly1305_open_asm:
+GFp_chacha20_poly1305_open:
 .cfi_startproc
     push %rbp
-    mov 16(%rsp), $acc0 # 7th parameter passed on stack
 .cfi_adjust_cfa_offset 8
     push %rbx
 .cfi_adjust_cfa_offset 8
@@ -445,7 +450,9 @@ chacha20_poly1305_open_asm:
 .cfi_adjust_cfa_offset 8
     push %r15
 .cfi_adjust_cfa_offset 8
-    sub \$288 + 32, %rsp
+    push $keyp
+.cfi_adjust_cfa_offset 8
+    sub \$288 + $xmm_storage + 32, %rsp
 .cfi_adjust_cfa_offset 288 + 32
 .cfi_offset rbp, -16
 .cfi_offset rbx, -24
@@ -454,53 +461,69 @@ chacha20_poly1305_open_asm:
 .cfi_offset r14, -48
 .cfi_offset r15, -56
     lea 32(%rsp), %rbp
-    and \$-32, %rbp
-    mov %rdx, 8+$len_store
-    mov %r8, 0+$len_store
-    mov %rdx, $inl\n"; $code.="
-    add $oup, $inp
-    test $acc0, $acc0
-    jnz chacha20_poly1305_open_avx2\n" if ($avx>1);
+    and \$-32, %rbp\n";
 $code.="
-1:
+    movaps %xmm6,16*0+$xmm_store
+    movaps %xmm7,16*1+$xmm_store
+    movaps %xmm8,16*2+$xmm_store
+    movaps %xmm9,16*3+$xmm_store
+    movaps %xmm10,16*4+$xmm_store
+    movaps %xmm11,16*5+$xmm_store
+    movaps %xmm12,16*6+$xmm_store
+    movaps %xmm13,16*7+$xmm_store
+    movaps %xmm14,16*8+$xmm_store
+    movaps %xmm15,16*9+$xmm_store\n" if ($win64);
+$code.="
+    mov $adl, 0+$len_store
+    mov $inl, 8+$len_store\n";
+$code.="
+    mov GFp_ia32cap_P+8(%rip), %eax
+    and \$`(1<<5) + (1<<8)`, %eax # Check both BMI2 and AVX2 are present
+    xor \$`(1<<5) + (1<<8)`, %eax
+    jz chacha20_poly1305_open_avx2\n" if ($avx>1);
+$code.="
     cmp \$128, $inl
-    jbe open_sse_128
+    jbe .Lopen_sse_128
     # For long buffers, prepare the poly key first
-    movdqa .chacha20_consts(%rip), $A0
+    movdqa .Lchacha20_consts(%rip), $A0
     movdqu 0*16($keyp), $B0
     movdqu 1*16($keyp), $C0
     movdqu 2*16($keyp), $D0
+
     movdqa $D0, $T1
     # Store on stack, to free keyp
     movdqa $B0, $state1_store
     movdqa $C0, $state2_store
     movdqa $D0, $ctr0_store
     mov \$10, $acc0
-1:  \n";
+.Lopen_sse_init_rounds:\n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"right"); $code.="
         dec $acc0
-    jne 1b
+    jne .Lopen_sse_init_rounds
     # A0|B0 hold the Poly1305 32-byte key, C0,D0 can be discarded
-    paddd .chacha20_consts(%rip), $A0
+    paddd .Lchacha20_consts(%rip), $A0
     paddd $state1_store, $B0
     # Clamp and store the key
-    pand .clamp(%rip), $A0
+    pand .Lclamp(%rip), $A0
     movdqa $A0, $r_store
     movdqa $B0, $s_store
     # Hash
-    mov %r8, $itr2
+    mov $adl, $itr2
+    mov $oup, $inp
+    add %r9, $inp
+    mov %rdx, $adp
     call poly_hash_ad_internal
-open_sse_main_loop:
+.Lopen_sse_main_loop:
         cmp \$16*16, $inl
-        jb 2f
+        jb .Lopen_sse_tail
         # Load state, increment counter blocks\n";
         &prep_state(4); $code.="
         # There are 10 ChaCha20 iterations of 2QR each, so for 6 iterations we
         # hash 2 blocks, and for the remaining 4 only 1 block - for a total of 16
         mov \$4, $itr1
         mov $inp, $itr2
-1:  \n";
+.Lopen_sse_main_loop_rounds:\n";
             &emit_body(20);
             &poly_add("0($itr2)"); $code.="
             lea 2*8($itr2), $itr2\n";
@@ -515,12 +538,12 @@ open_sse_main_loop:
             foreach $l (@loop_body) {$code.=$l."\n";}
             @loop_body = split /\n/, $chacha_body; $code.="
             dec $itr1
-        jge 1b\n";
+        jge .Lopen_sse_main_loop_rounds\n";
             &poly_add("0($itr2)");
             &poly_mul(); $code.="
             lea 2*8($itr2), $itr2
             cmp \$-6, $itr1
-        jg 1b\n";
+        jg .Lopen_sse_main_loop_rounds\n";
         &finalize_state(4);
         &xor_stream_using_temp($A3, $B3, $C3, $D3, "0*16", $D0);
         &xor_stream($A2, $B2, $C2, $D2, "4*16");
@@ -529,66 +552,71 @@ open_sse_main_loop:
         lea 16*16($inp), $inp
         lea 16*16($oup), $oup
         sub \$16*16, $inl
-    jmp open_sse_main_loop
-2:
+    jmp .Lopen_sse_main_loop
+.Lopen_sse_tail:
     # Handle the various tail sizes efficiently
     test $inl, $inl
-    jz open_sse_finalize
+    jz .Lopen_sse_finalize
+    cmp \$12*16, $inl
+    ja .Lopen_sse_tail_256
+    cmp \$8*16, $inl
+    ja .Lopen_sse_tail_192
     cmp \$4*16, $inl
-    ja 3f\n";
+    ja .Lopen_sse_tail_128\n";
 ###############################################################################
     # At most 64 bytes are left
     &prep_state(1); $code.="
-    xor $itr2, $itr2
+    mov $inp, $itr2
     mov $inl, $itr1
+    add \$10*16, $inp
     cmp \$16, $itr1
-    jb 2f
-1:  \n";
-        &poly_add("0($inp, $itr2)");
+    jb .Lopen_sse_tail_64_rounds
+.Lopen_sse_tail_64_rounds_and_x1hash: \n";
+        &poly_add("0($itr2)");
         &poly_mul(); $code.="
         sub \$16, $itr1
-2:
+.Lopen_sse_tail_64_rounds:
         add \$16, $itr2\n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"right"); $code.="
         cmp \$16, $itr1
-    jae 1b
-        cmp \$10*16, $itr2
-    jne 2b\n";
+    jae .Lopen_sse_tail_64_rounds_and_x1hash
+        cmp $inp, $itr2
+    jne .Lopen_sse_tail_64_rounds
+    sub \$10*16, $inp\n";
     &finalize_state(1); $code.="
-    jmp open_sse_tail_64_dec_loop
-3:
-    cmp \$8*16, $inl
-    ja 3f\n";
+    jmp .Lopen_sse_tail_64_dec_loop
 ###############################################################################
+.Lopen_sse_tail_128:\n";
     # 65 - 128 bytes are left
     &prep_state(2); $code.="
     mov $inl, $itr1
     and \$-16, $itr1
-    xor $itr2, $itr2
-1:  \n";
-        &poly_add("0($inp, $itr2)");
+    mov $inp, $itr2
+    add $inp, $itr1
+    add \$10*16, $inp
+.Lopen_sse_tail_128_rounds_and_x1hash: \n";
+        &poly_add("0($itr2)");
         &poly_mul(); $code.="
-2:
+.Lopen_sse_tail_128_rounds:
         add \$16, $itr2\n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"right");
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"right");$code.="
         cmp $itr1, $itr2
-    jb 1b
-        cmp \$10*16, $itr2
-    jne 2b\n";
+    jb .Lopen_sse_tail_128_rounds_and_x1hash
+        cmp $inp, $itr2
+    jne .Lopen_sse_tail_128_rounds
+    sub \$10*16, $inp\n";
     &finalize_state(2);
     &xor_stream($A1, $B1, $C1, $D1, "0*16"); $code.="
     sub \$4*16, $inl
     lea 4*16($inp), $inp
     lea 4*16($oup), $oup
-    jmp open_sse_tail_64_dec_loop
-3:
-    cmp \$12*16, $inl
-    ja 3f\n";
+    jmp .Lopen_sse_tail_64_dec_loop
 ###############################################################################
+.Lopen_sse_tail_192:\n";
     # 129 - 192 bytes are left
     &prep_state(3); $code.="
     mov $inl, $itr1
@@ -596,11 +624,13 @@ open_sse_main_loop:
     cmp \$10*16, $itr1
     cmovg $itr2, $itr1
     and \$-16, $itr1
-    xor $itr2, $itr2
-1:  \n";
-        &poly_add("0($inp, $itr2)");
+    mov $inp, $itr2
+    add $inp, $itr1
+    add \$10*16, $inp
+.Lopen_sse_tail_192_rounds_and_x1hash: \n";
+        &poly_add("0($itr2)");
         &poly_mul(); $code.="
-2:
+.Lopen_sse_tail_192_rounds:
         add \$16, $itr2\n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"left");
@@ -609,32 +639,34 @@ open_sse_main_loop:
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"right");
         &chacha_qr($A2,$B2,$C2,$D2,$T0,"right"); $code.="
         cmp $itr1, $itr2
-    jb 1b
-        cmp \$10*16, $itr2
-    jne 2b
+    jb .Lopen_sse_tail_192_rounds_and_x1hash
+        cmp $inp, $itr2
+    jne .Lopen_sse_tail_192_rounds
+    sub \$10*16, $inp
     cmp \$11*16, $inl
-    jb 1f\n";
+    jb .Lopen_sse_tail_192_finish\n";
     &poly_add("10*16($inp)");
     &poly_mul(); $code.="
     cmp \$12*16, $inl
-    jb 1f\n";
+    jb .Lopen_sse_tail_192_finish\n";
     &poly_add("11*16($inp)");
     &poly_mul(); $code.="
-1:  \n";
+.Lopen_sse_tail_192_finish: \n";
     &finalize_state(3);
     &xor_stream($A2, $B2, $C2, $D2, "0*16");
     &xor_stream($A1, $B1, $C1, $D1, "4*16"); $code.="
     sub \$8*16, $inl
     lea 8*16($inp), $inp
     lea 8*16($oup), $oup
-    jmp open_sse_tail_64_dec_loop
-3:
-###############################################################################\n";
+    jmp .Lopen_sse_tail_64_dec_loop
+###############################################################################
+.Lopen_sse_tail_256:\n";
     # 193 - 255 bytes are left
     &prep_state(4); $code.="
-    xor $itr2, $itr2
-1:  \n";
-        &poly_add("0($inp, $itr2)");
+    mov $inp, $itr2
+    lea 10*16($inp), $itr1
+.Lopen_sse_tail_256_rounds_and_x1hash: \n";
+        &poly_add("0($itr2)");
         &chacha_qr($A0,$B0,$C0,$D0,$C3,"store_left");
         &chacha_qr($A1,$B1,$C1,$D1,$C3,"left");
         &chacha_qr($A2,$B2,$C2,$D2,$C3,"left_load");
@@ -648,16 +680,18 @@ open_sse_main_loop:
         &poly_reduce_stage();
         &chacha_qr($A3,$B3,$C3,$D3,$C1,"store_right_load"); $code.="
         add \$16, $itr2
-        cmp \$10*16, $itr2
-    jb 1b
+        cmp $itr1, $itr2
+    jb .Lopen_sse_tail_256_rounds_and_x1hash
+
     mov $inl, $itr1
     and \$-16, $itr1
-1:  \n";
-        &poly_add("0($inp, $itr2)");
+    add $inp, $itr1
+.Lopen_sse_tail_256_hash: \n";
+        &poly_add("0($itr2)");
         &poly_mul(); $code.="
         add \$16, $itr2
         cmp $itr1, $itr2
-    jb 1b\n";
+    jb .Lopen_sse_tail_256_hash\n";
     &finalize_state(4);
     &xor_stream_using_temp($A3, $B3, $C3, $D3, "0*16", $D0);
     &xor_stream($A2, $B2, $C2, $D2, "4*16");
@@ -668,9 +702,9 @@ open_sse_main_loop:
     lea 12*16($oup), $oup
 ###############################################################################
     # Decrypt the remaining data, 16B at a time, using existing stream
-open_sse_tail_64_dec_loop:
+.Lopen_sse_tail_64_dec_loop:
     cmp \$16, $inl
-    jb 1f
+    jb .Lopen_sse_tail_16_init
         sub \$16, $inl
         movdqu ($inp), $T0
         pxor $T0, $A0
@@ -680,47 +714,46 @@ open_sse_tail_64_dec_loop:
         movdqa $B0, $A0
         movdqa $C0, $B0
         movdqa $D0, $C0
-    jmp open_sse_tail_64_dec_loop
-1:
+    jmp .Lopen_sse_tail_64_dec_loop
+.Lopen_sse_tail_16_init:
     movdqa $A0, $A1
 
     # Decrypt up to 16 bytes at the end.
-open_sse_tail_16:
+.Lopen_sse_tail_16:
     test $inl, $inl
-    jz open_sse_finalize
+    jz .Lopen_sse_finalize
 
     # Read the final bytes into $T0. They need to be read in reverse order so
     # that they end up in the correct order in $T0.
     pxor $T0, $T0
-    lea -1($inp, $inl), $inp
+    add $inl, $inp
     movq $inl, $itr2
-2:
+.Lopen_sse_tail_16_compose:
         pslldq \$1, $T0
-        pinsrb \$0, ($inp), $T0
+        pinsrb \$0, -1($inp), $T0
         sub \$1, $inp
         sub \$1, $itr2
-        jnz 2b
+        jnz .Lopen_sse_tail_16_compose
 
-3:
     movq $T0, $t0
     pextrq \$1, $T0, $t1
     # The final bytes of keystream are in $A1.
     pxor $A1, $T0
 
     # Copy the plaintext bytes out.
-2:
+.Lopen_sse_tail_16_extract:
         pextrb \$0, $T0, ($oup)
         psrldq \$1, $T0
         add \$1, $oup
         sub \$1, $inl
-    jne 2b
+    jne .Lopen_sse_tail_16_extract
 
     add $t0, $acc0
     adc $t1, $acc1
     adc \$1, $acc2\n";
     &poly_mul(); $code.="
 
-open_sse_finalize:\n";
+.Lopen_sse_finalize:\n";
     &poly_add($len_store);
     &poly_mul(); $code.="
     # Final reduce
@@ -735,13 +768,29 @@ open_sse_finalize:\n";
     cmovc $t2, $acc2
     # Add in s part of the key
     add 0+$s_store, $acc0
-    adc 8+$s_store, $acc1
+    adc 8+$s_store, $acc1\n";
 
-    add \$288 + 32, %rsp
+$code.="
+    movaps	16*0+$xmm_store, %xmm6
+	movaps	16*1+$xmm_store, %xmm7
+	movaps	16*2+$xmm_store, %xmm8
+	movaps	16*3+$xmm_store, %xmm9
+	movaps	16*4+$xmm_store, %xmm10
+	movaps	16*5+$xmm_store, %xmm11
+	movaps	16*6+$xmm_store, %xmm12
+	movaps	16*7+$xmm_store, %xmm13
+	movaps	16*8+$xmm_store, %xmm14
+    movaps	16*9+$xmm_store, %xmm15\n" if ($win64);
+$code.="
+
+    add \$288 + $xmm_storage + 32, %rsp
 .cfi_adjust_cfa_offset -(288 + 32)
-    # Return the tag as two uint64 values
-    mov $acc0, %rax
-    mov $acc1, %rdx
+    # The TAG replaces the nonce on return
+    pop $keyp
+.cfi_adjust_cfa_offset -8
+    mov $acc0, 32($keyp)
+    mov $acc1, 40($keyp)
+    lea 32($keyp), %rax
 
     pop %r15
 .cfi_adjust_cfa_offset -8
@@ -756,18 +805,17 @@ open_sse_finalize:\n";
     pop %rbp
 .cfi_adjust_cfa_offset -8
     ret
-.cfi_adjust_cfa_offset (8 * 6) + 288 + 32
 ###############################################################################
-open_sse_128:
-    movdqu .chacha20_consts(%rip), $A0\nmovdqa $A0, $A1\nmovdqa $A0, $A2
+.Lopen_sse_128:
+    movdqu .Lchacha20_consts(%rip), $A0\nmovdqa $A0, $A1\nmovdqa $A0, $A2
     movdqu 0*16($keyp), $B0\nmovdqa $B0, $B1\nmovdqa $B0, $B2
     movdqu 1*16($keyp), $C0\nmovdqa $C0, $C1\nmovdqa $C0, $C2
     movdqu 2*16($keyp), $D0
-    movdqa $D0, $D1\npaddd .sse_inc(%rip), $D1
-    movdqa $D1, $D2\npaddd .sse_inc(%rip), $D2
+    movdqa $D0, $D1\npaddd .Lsse_inc(%rip), $D1
+    movdqa $D1, $D2\npaddd .Lsse_inc(%rip), $D2
     movdqa $B0, $T1\nmovdqa $C0, $T2\nmovdqa $D1, $T3
     mov \$10, $acc0
-1:  \n";
+.Lopen_sse_128_rounds:  \n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr($A2,$B2,$C2,$D2,$T0,"left");
@@ -775,25 +823,28 @@ open_sse_128:
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"right");
         &chacha_qr($A2,$B2,$C2,$D2,$T0,"right"); $code.="
     dec $acc0
-    jnz 1b
-    paddd .chacha20_consts(%rip), $A0
-    paddd .chacha20_consts(%rip), $A1
-    paddd .chacha20_consts(%rip), $A2
+    jnz .Lopen_sse_128_rounds
+    paddd .Lchacha20_consts(%rip), $A0
+    paddd .Lchacha20_consts(%rip), $A1
+    paddd .Lchacha20_consts(%rip), $A2
     paddd $T1, $B0\npaddd $T1, $B1\npaddd $T1, $B2
     paddd $T2, $C1\npaddd $T2, $C2
     paddd $T3, $D1
-    paddd .sse_inc(%rip), $T3
+    paddd .Lsse_inc(%rip), $T3
     paddd $T3, $D2
     # Clamp and store the key
-    pand .clamp(%rip), $A0
+    pand .Lclamp(%rip), $A0
     movdqa $A0, $r_store
     movdqa $B0, $s_store
     # Hash
-    mov %r8, $itr2
+    mov $adl, $itr2
+    mov $oup, $inp
+    add %r9, $inp
+    mov %rdx, $adp
     call poly_hash_ad_internal
-1:
+.Lopen_sse_128_xor_hash:
         cmp \$16, $inl
-        jb open_sse_tail_16
+        jb .Lopen_sse_tail_16
         sub \$16, $inl\n";
         # Load for hashing
         &poly_add("0*8($inp)"); $code.="
@@ -812,18 +863,17 @@ open_sse_128:
         movdqa $B2, $A2
         movdqa $C2, $B2
         movdqa $D2, $C2
-    jmp 1b
-    jmp open_sse_tail_16
-.size chacha20_poly1305_open_asm, .-chacha20_poly1305_open_asm
+    jmp .Lopen_sse_128_xor_hash
+.size GFp_chacha20_poly1305_open, .-GFp_chacha20_poly1305_open
 .cfi_endproc
 
 ################################################################################
 ################################################################################
-# {uint64, uint64} chacha20_poly1305_seal_asm(uint8_t *in_out, int64_t avx2_and_bmi2_capable, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t keyp[48]);
-.globl  chacha20_poly1305_seal_asm
-.type chacha20_poly1305_seal_asm,\@function,2
+# void GFp_chacha20_poly1305_seal(uint8_t *in_out, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t keyp[48]);
+.globl  GFp_chacha20_poly1305_seal
+.type GFp_chacha20_poly1305_seal,\@function,5
 .align 64
-chacha20_poly1305_seal_asm:
+GFp_chacha20_poly1305_seal:
 .cfi_startproc
     push %rbp
 .cfi_adjust_cfa_offset 8
@@ -837,7 +887,9 @@ chacha20_poly1305_seal_asm:
 .cfi_adjust_cfa_offset 8
     push %r15
 .cfi_adjust_cfa_offset 8
-    sub \$288 + 32, %rsp
+    push $keyp
+.cfi_adjust_cfa_offset 8
+    sub \$288 + $xmm_storage + 32, %rsp
 .cfi_adjust_cfa_offset 288 + 32
 .cfi_offset rbp, -16
 .cfi_offset rbx, -24
@@ -846,21 +898,35 @@ chacha20_poly1305_seal_asm:
 .cfi_offset r14, -48
 .cfi_offset r15, -56
     lea 32(%rsp), %rbp
-    and \$-32, %rbp
-    mov %r8, 0+$len_store
-    mov %rdx, $inl\n"; $code.="
-    mov $inl, 8+$len_store
-    test $inp, $inp
-    mov $oup, $inp
-    jnz chacha20_poly1305_seal_avx2\n" if ($avx>1);
+    and \$-32, %rbp\n";
+$code.="
+    movaps %xmm6,16*0+$xmm_store
+    movaps %xmm7,16*1+$xmm_store
+    movaps %xmm8,16*2+$xmm_store
+    movaps %xmm9,16*3+$xmm_store
+    movaps %xmm10,16*4+$xmm_store
+    movaps %xmm11,16*5+$xmm_store
+    movaps %xmm12,16*6+$xmm_store
+    movaps %xmm13,16*7+$xmm_store
+    movaps %xmm14,16*8+$xmm_store
+    movaps %xmm15,16*9+$xmm_store\n" if ($win64);
+$code.="
+    mov $adl, 0+$len_store
+    mov $inl, 8+$len_store\n";
+$code.="
+    mov GFp_ia32cap_P+8(%rip), %eax
+    and \$`(1<<5) + (1<<8)`, %eax # Check both BMI2 and AVX2 are present
+    xor \$`(1<<5) + (1<<8)`, %eax
+    jz chacha20_poly1305_seal_avx2\n" if ($avx>1);
 $code.="
     cmp \$128, $inl
-    jbe seal_sse_128
+    jbe .Lseal_sse_128
     # For longer buffers, prepare the poly key + some stream
-    movdqa .chacha20_consts(%rip), $A0
+    movdqa .Lchacha20_consts(%rip), $A0
     movdqu 0*16($keyp), $B0
     movdqu 1*16($keyp), $C0
     movdqu 2*16($keyp), $D0
+
     movdqa $A0, $A1
     movdqa $A0, $A2
     movdqa $A0, $A3
@@ -871,11 +937,11 @@ $code.="
     movdqa $C0, $C2
     movdqa $C0, $C3
     movdqa $D0, $D3
-    paddd .sse_inc(%rip), $D0
+    paddd .Lsse_inc(%rip), $D0
     movdqa $D0, $D2
-    paddd .sse_inc(%rip), $D0
+    paddd .Lsse_inc(%rip), $D0
     movdqa $D0, $D1
-    paddd .sse_inc(%rip), $D0
+    paddd .Lsse_inc(%rip), $D0
     # Store on stack
     movdqa $B0, $state1_store
     movdqa $C0, $state2_store
@@ -884,28 +950,30 @@ $code.="
     movdqa $D2, $ctr2_store
     movdqa $D3, $ctr3_store
     mov \$10, $acc0
-1:  \n";
+.Lseal_sse_init_rounds:  \n";
         foreach $l (@loop_body) {$code.=$l."\n";}
         @loop_body = split /\n/, $chacha_body; $code.="
         dec $acc0
-    jnz 1b\n";
+    jnz .Lseal_sse_init_rounds\n";
     &finalize_state(4); $code.="
     # Clamp and store the key
-    pand .clamp(%rip), $A3
+    pand .Lclamp(%rip), $A3
     movdqa $A3, $r_store
     movdqa $B3, $s_store
     # Hash
-    mov %r8, $itr2
+    mov $adl, $itr2
+    mov $oup, $inp
+    mov %rdx, $adp
     call poly_hash_ad_internal\n";
     &xor_stream($A2,$B2,$C2,$D2,"0*16");
     &xor_stream($A1,$B1,$C1,$D1,"4*16"); $code.="
     cmp \$12*16, $inl
-    ja 1f
+    ja .Lseal_sse_main_init
     mov \$8*16, $itr1
     sub \$8*16, $inl
     lea 8*16($inp), $inp
-    jmp seal_sse_128_seal_hash
-1:  \n";
+    jmp .Lseal_sse_128_tail_hash
+.Lseal_sse_main_init:\n";
     &xor_stream($A0, $B0, $C0, $D0, "8*16"); $code.="
     mov \$12*16, $itr1
     sub \$12*16, $inl
@@ -913,16 +981,17 @@ $code.="
     mov \$2, $itr1
     mov \$8, $itr2
     cmp \$4*16, $inl
-    jbe seal_sse_tail_64
+    jbe .Lseal_sse_tail_64
     cmp \$8*16, $inl
-    jbe seal_sse_tail_128
+    jbe .Lseal_sse_tail_128
     cmp \$12*16, $inl
-    jbe seal_sse_tail_192
+    jbe .Lseal_sse_tail_192
 
-1:  \n";
+.Lseal_sse_main_loop: \n";
     # The main loop
         &prep_state(4); $code.="
-2:  \n";
+.align 32
+.Lseal_sse_main_rounds: \n";
             &emit_body(20);
             &poly_add("0($oup)");
             &emit_body(20);
@@ -937,12 +1006,12 @@ $code.="
             @loop_body = split /\n/, $chacha_body; $code.="
             lea 16($oup), $oup
             dec $itr2
-        jge 2b\n";
+        jge .Lseal_sse_main_rounds\n";
             &poly_add("0*8($oup)");
             &poly_mul(); $code.="
             lea 16($oup), $oup
             dec $itr1
-        jg 2b\n";
+        jg .Lseal_sse_main_rounds\n";
 
         &finalize_state(4);$code.="
         movdqa $D2, $tmp_store\n";
@@ -951,56 +1020,55 @@ $code.="
         &xor_stream($A2,$B2,$C2,$D2, 4*16);
         &xor_stream($A1,$B1,$C1,$D1, 8*16); $code.="
         cmp \$16*16, $inl
-        ja 3f
+        ja .Lseal_sse_main_loop_xor
 
         mov \$12*16, $itr1
         sub \$12*16, $inl
         lea 12*16($inp), $inp
-        jmp seal_sse_128_seal_hash
-3:  \n";
+        jmp .Lseal_sse_128_tail_hash
+.Lseal_sse_main_loop_xor: \n";
         &xor_stream($A0,$B0,$C0,$D0,"12*16"); $code.="
         lea 16*16($inp), $inp
         sub \$16*16, $inl
         mov \$6, $itr1
         mov \$4, $itr2
         cmp \$12*16, $inl
-    jg 1b
+    jg .Lseal_sse_main_loop
     mov $inl, $itr1
     test $inl, $inl
-    je seal_sse_128_seal_hash
+    je .Lseal_sse_128_tail_hash
     mov \$6, $itr1
+    cmp \$8*16, $inl
+    ja .Lseal_sse_tail_192
     cmp \$4*16, $inl
-    jg 3f
+    ja .Lseal_sse_tail_128
 ###############################################################################
-seal_sse_tail_64:\n";
+.Lseal_sse_tail_64: \n";
     &prep_state(1); $code.="
-1:  \n";
+.Lseal_sse_tail_64_rounds_and_x2hash: \n";
         &poly_add("0($oup)");
         &poly_mul(); $code.="
         lea 16($oup), $oup
-2:  \n";
+.Lseal_sse_tail_64_rounds_and_x1hash: \n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"right");
         &poly_add("0($oup)");
         &poly_mul(); $code.="
         lea 16($oup), $oup
     dec $itr1
-    jg 1b
+    jg .Lseal_sse_tail_64_rounds_and_x2hash
     dec $itr2
-    jge 2b\n";
+    jge .Lseal_sse_tail_64_rounds_and_x1hash\n";
     &finalize_state(1); $code.="
-    jmp seal_sse_128_seal
-3:
-    cmp \$8*16, $inl
-    jg 3f
+    jmp .Lseal_sse_128_tail_xor
 ###############################################################################
-seal_sse_tail_128:\n";
+.Lseal_sse_tail_128:\n";
     &prep_state(2); $code.="
-1:  \n";
+.Lseal_sse_tail_128_rounds_and_x2hash: \n";
         &poly_add("0($oup)");
         &poly_mul(); $code.="
         lea 16($oup), $oup
-2:  \n";
+.Lseal_sse_tail_128_rounds_and_x1hash: \n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"left");
         &poly_add("0($oup)");
@@ -1009,24 +1077,23 @@ seal_sse_tail_128:\n";
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"right"); $code.="
         lea 16($oup), $oup
     dec $itr1
-    jg 1b
+    jg .Lseal_sse_tail_128_rounds_and_x2hash
     dec $itr2
-    jge 2b\n";
+    jge .Lseal_sse_tail_128_rounds_and_x1hash\n";
     &finalize_state(2);
     &xor_stream($A1,$B1,$C1,$D1,0*16); $code.="
     mov \$4*16, $itr1
     sub \$4*16, $inl
     lea 4*16($inp), $inp
-    jmp seal_sse_128_seal_hash
-3:
+    jmp .Lseal_sse_128_tail_hash
 ###############################################################################
-seal_sse_tail_192:\n";
+.Lseal_sse_tail_192:\n";
     &prep_state(3); $code.="
-1:  \n";
+.Lseal_sse_tail_192_rounds_and_x2hash: \n";
         &poly_add("0($oup)");
         &poly_mul(); $code.="
         lea 16($oup), $oup
-2:  \n";
+.Lseal_sse_tail_192_rounds_and_x1hash: \n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr($A2,$B2,$C2,$D2,$T0,"left");
@@ -1037,9 +1104,9 @@ seal_sse_tail_192:\n";
         &chacha_qr($A2,$B2,$C2,$D2,$T0,"right"); $code.="
         lea 16($oup), $oup
     dec $itr1
-    jg 1b
+    jg .Lseal_sse_tail_192_rounds_and_x2hash
     dec $itr2
-    jge 2b\n";
+    jge .Lseal_sse_tail_192_rounds_and_x1hash\n";
     &finalize_state(3);
     &xor_stream($A2,$B2,$C2,$D2,0*16);
     &xor_stream($A1,$B1,$C1,$D1,4*16); $code.="
@@ -1047,18 +1114,18 @@ seal_sse_tail_192:\n";
     sub \$8*16, $inl
     lea 8*16($inp), $inp
 ###############################################################################
-seal_sse_128_seal_hash:
+.Lseal_sse_128_tail_hash:
         cmp \$16, $itr1
-        jb seal_sse_128_seal\n";
+        jb .Lseal_sse_128_tail_xor\n";
         &poly_add("0($oup)");
         &poly_mul(); $code.="
         sub \$16, $itr1
         lea 16($oup), $oup
-    jmp seal_sse_128_seal_hash
+    jmp .Lseal_sse_128_tail_hash
 
-seal_sse_128_seal:
+.Lseal_sse_128_tail_xor:
         cmp \$16, $inl
-        jb seal_sse_tail_16
+        jb .Lseal_sse_tail_16
         sub \$16, $inl
         # Load for decryption
         movdqu 0*16($inp), $T0
@@ -1079,22 +1146,22 @@ seal_sse_128_seal:
         movdqa $B1, $A1
         movdqa $C1, $B1
         movdqa $D1, $C1
-    jmp seal_sse_128_seal
+    jmp .Lseal_sse_128_tail_xor
 
-seal_sse_tail_16:
+.Lseal_sse_tail_16:
     test $inl, $inl
-    jz do_length_block
+    jz .Ldo_length_block
     # We can only load the PT one byte at a time to avoid buffer overread
     mov $inl, $itr2
     mov $inl, $itr1
-    lea -1($inp, $inl), $inp
+    add $inl, $inp
     pxor $T3, $T3
-1:
+.Lseal_sse_tail_16_compose:
         pslldq \$1, $T3
-        pinsrb \$0, ($inp), $T3
-        lea -1($inp), $inp
+        pinsrb \$0, -1($inp), $T3
+        dec $inp
         dec $itr1
-        jne 1b
+        jne .Lseal_sse_tail_16_compose
 
     # XOR the keystream with the plaintext.
     pxor $A0, $T3
@@ -1102,18 +1169,20 @@ seal_sse_tail_16:
     # Write ciphertext out, byte-by-byte.
     movq $inl, $itr1
     movdqu $T3, $A0
-2:
+.Lseal_sse_tail_16_extract:
         pextrb \$0, $A0, ($oup)
         psrldq \$1, $A0
         add \$1, $oup
         sub \$1, $itr1
-        jnz 2b
+        jnz .Lseal_sse_tail_16_extract
 
-process_partial_block:
+.Lprocess_partial_block:
     # $T3 contains $inl bytes of data to be fed into Poly1305. $inl != 0
-    lea .and_masks(%rip), $t2
+    lea .Land_masks(%rip), $t2
     shl \$4, $inl
-    pand -16($t2, $inl), $T3
+    sub \$16, $t2
+    add $inl, $t2
+    pand ($t2), $T3
     movq $T3, $t0
     pextrq \$1, $T3, $t1
     add $t0, $acc0
@@ -1121,7 +1190,7 @@ process_partial_block:
     adc \$1, $acc2\n";
     &poly_mul(); $code.="
 
-do_length_block:\n";
+.Ldo_length_block:\n";
     &poly_add($len_store);
     &poly_mul(); $code.="
     # Final reduce
@@ -1136,13 +1205,28 @@ do_length_block:\n";
     cmovc $t2, $acc2
     # Add in s part of the key
     add 0+$s_store, $acc0
-    adc 8+$s_store, $acc1
+    adc 8+$s_store, $acc1\n";
 
-    add \$288 + 32, %rsp
+$code.="
+    movaps	16*0+$xmm_store, %xmm6
+	movaps	16*1+$xmm_store, %xmm7
+	movaps	16*2+$xmm_store, %xmm8
+	movaps	16*3+$xmm_store, %xmm9
+	movaps	16*4+$xmm_store, %xmm10
+	movaps	16*5+$xmm_store, %xmm11
+	movaps	16*6+$xmm_store, %xmm12
+	movaps	16*7+$xmm_store, %xmm13
+	movaps	16*8+$xmm_store, %xmm14
+    movaps	16*9+$xmm_store, %xmm15\n" if ($win64);
+$code.="
+
+    add \$288 + $xmm_storage + 32, %rsp
 .cfi_adjust_cfa_offset -(288 + 32)
-    # Return the tag as two uint64 values
-    mov $acc0, %rax
-    mov $acc1, %rdx
+    # The TAG replaces the nonce on return
+    pop $keyp
+    mov $acc0, 32($keyp)
+    mov $acc1, 40($keyp)
+    lea 32($keyp), %rax
 
     pop %r15
 .cfi_adjust_cfa_offset -8
@@ -1157,18 +1241,20 @@ do_length_block:\n";
     pop %rbp
 .cfi_adjust_cfa_offset -8
     ret
-.cfi_adjust_cfa_offset (8 * 7) + 288 + 32
 ################################################################################
-seal_sse_128:
-    movdqu .chacha20_consts(%rip), $A0\nmovdqa $A0, $A1\nmovdqa $A0, $A2
+.Lseal_sse_128:
+    movdqu .Lchacha20_consts(%rip), $A0\nmovdqa $A0, $A1\nmovdqa $A0, $A2
     movdqu 0*16($keyp), $B0\nmovdqa $B0, $B1\nmovdqa $B0, $B2
     movdqu 1*16($keyp), $C0\nmovdqa $C0, $C1\nmovdqa $C0, $C2
     movdqu 2*16($keyp), $D2
-    movdqa $D2, $D0\npaddd .sse_inc(%rip), $D0
-    movdqa $D0, $D1\npaddd .sse_inc(%rip), $D1
+    movdqa $D2, $D0\npaddd .Lsse_inc(%rip), $D0
+    movdqa $D0, $D1\npaddd .Lsse_inc(%rip), $D1
     movdqa $B0, $T1\nmovdqa $C0, $T2\nmovdqa $D0, $T3
     mov \$10, $acc0
-1:\n";
+    mov $oup, $inp
+    mov %rdx, $adp
+
+.Lseal_sse_128_rounds:\n";
         &chacha_qr($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr($A2,$B2,$C2,$D2,$T0,"left");
@@ -1176,43 +1262,39 @@ seal_sse_128:
         &chacha_qr($A1,$B1,$C1,$D1,$T0,"right");
         &chacha_qr($A2,$B2,$C2,$D2,$T0,"right"); $code.="
         dec $acc0
-    jnz 1b
-    paddd .chacha20_consts(%rip), $A0
-    paddd .chacha20_consts(%rip), $A1
-    paddd .chacha20_consts(%rip), $A2
+    jnz .Lseal_sse_128_rounds
+    paddd .Lchacha20_consts(%rip), $A0
+    paddd .Lchacha20_consts(%rip), $A1
+    paddd .Lchacha20_consts(%rip), $A2
     paddd $T1, $B0\npaddd $T1, $B1\npaddd $T1, $B2
     paddd $T2, $C0\npaddd $T2, $C1
     paddd $T3, $D0
-    paddd .sse_inc(%rip), $T3
+    paddd .Lsse_inc(%rip), $T3
     paddd $T3, $D1
     # Clamp and store the key
-    pand .clamp(%rip), $A2
+    pand .Lclamp(%rip), $A2
     movdqa $A2, $r_store
-    movdqa $B2, $s_store
+    movdqa $B2, $s_store   
     # Hash
-    mov %r8, $itr2
+    mov 0+$len_store, $itr2
     call poly_hash_ad_internal
-    jmp seal_sse_128_seal
-.size chacha20_poly1305_seal_asm, .-chacha20_poly1305_seal_asm\n";
+    jmp .Lseal_sse_128_tail_xor
+.size GFp_chacha20_poly1305_seal, .-GFp_chacha20_poly1305_seal
+.cfi_endproc\n";
 }
-
-# There should have been a cfi_endproc at the end of that function, but the two
-# following blocks of code are jumped to without a stack frame and the CFI
-# context which they are used in happens to match the CFI context at the end of
-# the previous function. So the CFI table is just extended to the end of them.
 
 if ($avx>1) {
 
 ($A0,$A1,$A2,$A3,$B0,$B1,$B2,$B3,$C0,$C1,$C2,$C3,$D0,$D1,$D2,$D3)=map("%ymm$_",(0..15));
 my ($A0x,$A1x,$A2x,$A3x,$B0x,$B1x,$B2x,$B3x,$C0x,$C1x,$C2x,$C3x,$D0x,$D1x,$D2x,$D3x)=map("%xmm$_",(0..15));
 ($T0,$T1,$T2,$T3)=($A3,$B3,$C3,$D3);
-$state1_store="2*32(%rbp)";
-$state2_store="3*32(%rbp)";
-$tmp_store="4*32(%rbp)";
-$ctr0_store="5*32(%rbp)";
-$ctr1_store="6*32(%rbp)";
-$ctr2_store="7*32(%rbp)";
-$ctr3_store="8*32(%rbp)";
+$state1_store="$xmm_storage+2*32(%rbp)";
+$state2_store="$xmm_storage+3*32(%rbp)";
+$tmp_store="$xmm_storage+4*32(%rbp)";
+$ctr0_store="$xmm_storage+5*32(%rbp)";
+$ctr1_store="$xmm_storage+6*32(%rbp)";
+$ctr2_store="$xmm_storage+7*32(%rbp)";
+$ctr3_store="$xmm_storage+8*32(%rbp)";
 
 sub chacha_qr_avx2 {
 my ($a,$b,$c,$d,$t,$dir)=@_;
@@ -1222,7 +1304,7 @@ ___
 $code.=<<___;
     vpaddd $b, $a, $a
     vpxor $a, $d, $d
-    vpshufb .rol16(%rip), $d, $d
+    vpshufb .Lrol16(%rip), $d, $d
     vpaddd $d, $c, $c
     vpxor $c, $b, $b
     vpsrld \$20, $b, $t
@@ -1230,7 +1312,7 @@ $code.=<<___;
     vpxor $t, $b, $b
     vpaddd $b, $a, $a
     vpxor $a, $d, $d
-    vpshufb .rol8(%rip), $d, $d
+    vpshufb .Lrol8(%rip), $d, $d
     vpaddd $d, $c, $c
     vpxor $c, $b, $b
     vpslld \$7, $b, $t
@@ -1255,7 +1337,7 @@ ___
 sub prep_state_avx2 {
 my ($n)=@_;
 $code.=<<___;
-    vmovdqa .chacha20_consts(%rip), $A0
+    vmovdqa .Lchacha20_consts(%rip), $A0
     vmovdqa $state1_store, $B0
     vmovdqa $state2_store, $C0
 ___
@@ -1275,19 +1357,19 @@ $code.=<<___ if ($n ge 4);
     vmovdqa $C0, $C3
 ___
 $code.=<<___ if ($n eq 1);
-    vmovdqa .avx2_inc(%rip), $D0
+    vmovdqa .Lavx2_inc(%rip), $D0
     vpaddd $ctr0_store, $D0, $D0
     vmovdqa $D0, $ctr0_store
 ___
 $code.=<<___ if ($n eq 2);
-    vmovdqa .avx2_inc(%rip), $D0
+    vmovdqa .Lavx2_inc(%rip), $D0
     vpaddd $ctr0_store, $D0, $D1
     vpaddd $D1, $D0, $D0
     vmovdqa $D0, $ctr0_store
     vmovdqa $D1, $ctr1_store
 ___
 $code.=<<___ if ($n eq 3);
-    vmovdqa .avx2_inc(%rip), $D0
+    vmovdqa .Lavx2_inc(%rip), $D0
     vpaddd $ctr0_store, $D0, $D2
     vpaddd $D2, $D0, $D1
     vpaddd $D1, $D0, $D0
@@ -1296,7 +1378,7 @@ $code.=<<___ if ($n eq 3);
     vmovdqa $D2, $ctr2_store
 ___
 $code.=<<___ if ($n eq 4);
-    vmovdqa .avx2_inc(%rip), $D0
+    vmovdqa .Lavx2_inc(%rip), $D0
     vpaddd $ctr0_store, $D0, $D3
     vpaddd $D3, $D0, $D2
     vpaddd $D2, $D0, $D1
@@ -1311,25 +1393,25 @@ ___
 sub finalize_state_avx2 {
 my ($n)=@_;
 $code.=<<___ if ($n eq 4);
-    vpaddd .chacha20_consts(%rip), $A3, $A3
+    vpaddd .Lchacha20_consts(%rip), $A3, $A3
     vpaddd $state1_store, $B3, $B3
     vpaddd $state2_store, $C3, $C3
     vpaddd $ctr3_store, $D3, $D3
 ___
 $code.=<<___ if ($n ge 3);
-    vpaddd .chacha20_consts(%rip), $A2, $A2
+    vpaddd .Lchacha20_consts(%rip), $A2, $A2
     vpaddd $state1_store, $B2, $B2
     vpaddd $state2_store, $C2, $C2
     vpaddd $ctr2_store, $D2, $D2
 ___
 $code.=<<___ if ($n ge 2);
-    vpaddd .chacha20_consts(%rip), $A1, $A1
+    vpaddd .Lchacha20_consts(%rip), $A1, $A1
     vpaddd $state1_store, $B1, $B1
     vpaddd $state2_store, $C1, $C1
     vpaddd $ctr1_store, $D1, $D1
 ___
 $code.=<<___;
-    vpaddd .chacha20_consts(%rip), $A0, $A0
+    vpaddd .Lchacha20_consts(%rip), $A0, $A0
     vpaddd $state1_store, $B0, $B0
     vpaddd $state2_store, $C0, $C0
     vpaddd $ctr0_store, $D0, $D0
@@ -1420,11 +1502,10 @@ $round=$round ."vmovdqa $rot2, $C0
                 vpshufb $C0, $D2, $D2
                 vpshufb $C0, $D1, $D1
                 vpshufb $C0, $D0, $D0
-                vmovdqa $tmp_store, $C0
                 vpaddd $D3, $C3, $C3
                 vpaddd $D2, $C2, $C2
                 vpaddd $D1, $C1, $C1
-                vpaddd $D0, $C0, $C0
+                vpaddd $tmp_store, $D0, $C0
                 vpxor $C3, $B3, $B3
                 vpxor $C2, $B2, $B2
                 vpxor $C1, $B1, $B1
@@ -1461,77 +1542,83 @@ if (($shift =~ /left/) || ($shift =~ /right/));
 return $round;
 };
 
-$chacha_body = &gen_chacha_round_avx2(20, ".rol16(%rip)") .
-               &gen_chacha_round_avx2(25, ".rol8(%rip)", "left") .
-               &gen_chacha_round_avx2(20, ".rol16(%rip)") .
-               &gen_chacha_round_avx2(25, ".rol8(%rip)", "right");
+$chacha_body = &gen_chacha_round_avx2(20, ".Lrol16(%rip)") .
+               &gen_chacha_round_avx2(25, ".Lrol8(%rip)", "left") .
+               &gen_chacha_round_avx2(20, ".Lrol16(%rip)") .
+               &gen_chacha_round_avx2(25, ".Lrol8(%rip)", "right");
 
 @loop_body = split /\n/, $chacha_body;
 
 $code.="
 ###############################################################################
-.type chacha20_poly1305_open_avx2,\@function,2
+.type chacha20_poly1305_open_avx2,\@abi-omnipotent
 .align 64
 chacha20_poly1305_open_avx2:
+.cfi_startproc
+    .cfi_def_cfa rsp, 288 + 32 + (7*8) + 8
     vzeroupper
-    vmovdqa .chacha20_consts(%rip), $A0
+    vmovdqa .Lchacha20_consts(%rip), $A0
     vbroadcasti128 0*16($keyp), $B0
     vbroadcasti128 1*16($keyp), $C0
     vbroadcasti128 2*16($keyp), $D0
-    vpaddd .avx2_init(%rip), $D0, $D0
+    vpaddd .Lavx2_init(%rip), $D0, $D0
     cmp \$6*32, $inl
-    jbe open_avx2_192
+    jbe .Lopen_avx2_192
     cmp \$10*32, $inl
-    jbe open_avx2_320
+    jbe .Lopen_avx2_320
 
     vmovdqa $B0, $state1_store
     vmovdqa $C0, $state2_store
     vmovdqa $D0, $ctr0_store
     mov \$10, $acc0
-1:  \n";
+.Lopen_avx2_init_rounds:  \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"right"); $code.="
         dec $acc0
-    jne 1b
-    vpaddd .chacha20_consts(%rip), $A0, $A0
+    jne .Lopen_avx2_init_rounds
+    vpaddd .Lchacha20_consts(%rip), $A0, $A0
     vpaddd $state1_store, $B0, $B0
     vpaddd $state2_store, $C0, $C0
     vpaddd $ctr0_store, $D0, $D0
 
     vperm2i128 \$0x02, $A0, $B0, $T0
     # Clamp and store key
-    vpand .clamp(%rip), $T0, $T0
+    vpand .Lclamp(%rip), $T0, $T0
     vmovdqa $T0, $r_store
     # Stream for the first 64 bytes
     vperm2i128 \$0x13, $A0, $B0, $A0
     vperm2i128 \$0x13, $C0, $D0, $B0
     # Hash AD + first 64 bytes
-    mov %r8, $itr2
+    mov $adl, $itr2
+    mov $oup, $inp
+    add %r9, $inp
+    mov %rdx, $adp
     call poly_hash_ad_internal
-    xor $itr1, $itr1
-    # Hash first 64 bytes
-1:  \n";
-       &poly_add("0($inp, $itr1)");
-       &poly_mul(); $code.="
-       add \$16, $itr1
-       cmp \$2*32, $itr1
-    jne 1b
     # Decrypt first 64 bytes
     vpxor 0*32($inp), $A0, $A0
     vpxor 1*32($inp), $B0, $B0
+    # Hash first 64 bytes
+    lea 64($inp), $itr1
+.Lopen_avx2_init_hash: \n";
+       &poly_add("0($inp)");
+       &poly_mul(); $code.="
+       lea 16($inp), $inp
+       cmp $itr1, $inp
+    jne .Lopen_avx2_init_hash
+    # Store first 64 bytes of decrypted data
     vmovdqu $A0, 0*32($oup)
     vmovdqu $B0, 1*32($oup)
-    lea 2*32($inp), $inp
     lea 2*32($oup), $oup
     sub \$2*32, $inl
-1:
+.Lopen_avx2_main_loop:
         # Hash and decrypt 512 bytes each iteration
         cmp \$16*32, $inl
-        jb 3f\n";
-        &prep_state_avx2(4); $code.="
-        xor $itr1, $itr1
-2:  \n";
-            &poly_add("0*8($inp, $itr1)");
+        jb .Lopen_avx2_main_loop_done\n";
+        &prep_state_avx2(4); $code.=" 
+        lea 480($inp), $itr1
+        mov $inp, $itr2
+.Lopen_avx2_main_loop_rounds: \n";
+            &poly_add("0*8($itr2)");
             &emit_body(10);
             &poly_stage1_mulx();
             &emit_body(9);
@@ -1541,7 +1628,7 @@ chacha20_poly1305_open_avx2:
             &emit_body(10);
             &poly_reduce_stage();
             &emit_body(9);
-            &poly_add("2*8($inp, $itr1)");
+            &poly_add("2*8($itr2)");
             &emit_body(8);
             &poly_stage1_mulx();
             &emit_body(18);
@@ -1551,8 +1638,8 @@ chacha20_poly1305_open_avx2:
             &emit_body(9);
             &poly_reduce_stage();
             &emit_body(8);
-            &poly_add("4*8($inp, $itr1)"); $code.="
-            lea 6*8($itr1), $itr1\n";
+            &poly_add("4*8($itr2)"); $code.="
+            lea 6*8($itr2), $itr2\n";
             &emit_body(18);
             &poly_stage1_mulx();
             &emit_body(8);
@@ -1563,8 +1650,8 @@ chacha20_poly1305_open_avx2:
             &poly_reduce_stage();
             foreach $l (@loop_body) {$code.=$l."\n";}
             @loop_body = split /\n/, $chacha_body; $code.="
-            cmp \$10*6*8, $itr1
-        jne 2b\n";
+            cmp $itr2, $itr1
+        jne .Lopen_avx2_main_loop_rounds\n";
         &finalize_state_avx2(4); $code.="
         vmovdqa $A0, $tmp_store\n";
         &poly_add("10*6*8($inp)");
@@ -1579,40 +1666,45 @@ chacha20_poly1305_open_avx2:
         lea 16*32($inp), $inp
         lea 16*32($oup), $oup
         sub \$16*32, $inl
-    jmp 1b
-3:
+    jmp .Lopen_avx2_main_loop
+.Lopen_avx2_main_loop_done:
     test $inl, $inl
     vzeroupper
-    je open_sse_finalize
-3:
+    je .Lopen_sse_finalize
+
+    cmp \$12*32, $inl
+    ja .Lopen_avx2_tail_512
+    cmp \$8*32, $inl
+    ja .Lopen_avx2_tail_384
     cmp \$4*32, $inl
-    ja 3f\n";
+    ja .Lopen_avx2_tail_256\n";
 ###############################################################################
     # 1-128 bytes left
     &prep_state_avx2(1); $code.="
-    xor $itr2, $itr2
+    mov $inp, $itr2
     mov $inl, $itr1
     and \$-16, $itr1
-    test $itr1, $itr1
-    je 2f
-1:  \n";
-        &poly_add("0*8($inp, $itr2)");
+    add $inp, $itr1
+    cmp $inp, $itr1
+    lea 160($inp), $inp
+    je .Lopen_avx2_tail_128_rounds # Have nothing to hash
+.Lopen_avx2_tail_128_rounds_and_x1hash: \n";
+        &poly_add("0*8($itr2)");
         &poly_mul(); $code.="
-2:
-        add \$16, $itr2\n";
+.Lopen_avx2_tail_128_rounds:
+        lea 16($itr2), $itr2\n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"right"); $code.="
         cmp $itr1, $itr2
-    jb 1b
-        cmp \$160, $itr2
-    jne 2b\n";
+    jb .Lopen_avx2_tail_128_rounds_and_x1hash
+        cmp $inp, $itr2
+    jne .Lopen_avx2_tail_128_rounds
+    sub \$160, $inp\n";
     &finalize_state_avx2(1);
     &finish_stream_avx2($A0,$B0,$C0,$D0,$T0); $code.="
-    jmp open_avx2_tail_loop
-3:
-    cmp \$8*32, $inl
-    ja 3f\n";
+    jmp .Lopen_avx2_tail_128_xor
 ###############################################################################
+.Lopen_avx2_tail_256: \n";
     # 129-256 bytes left
     &prep_state_avx2(2); $code.="
     mov $inl, $tmp_store
@@ -1624,11 +1716,11 @@ chacha20_poly1305_open_avx2:
     cmovg $itr2, $itr1
     mov $inp, $inl
     xor $itr2, $itr2
-1:  \n";
+.Lopen_avx2_tail_256_rounds_and_x1hash: \n";
         &poly_add("0*8($inl)");
         &poly_mul_mulx(); $code.="
         lea 16($inl), $inl
-2:  \n";
+.Lopen_avx2_tail_256_rounds: \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"left"); $code.="
         inc $itr2\n";
@@ -1636,33 +1728,31 @@ chacha20_poly1305_open_avx2:
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"right");
         &chacha_qr_avx2($A2,$B2,$C2,$D2,$T0,"right"); $code.="
         cmp $itr1, $itr2
-    jb 1b
+    jb .Lopen_avx2_tail_256_rounds_and_x1hash
         cmp \$10, $itr2
-    jne 2b
+    jne .Lopen_avx2_tail_256_rounds
     mov $inl, $itr2
     sub $inp, $inl
     mov $inl, $itr1
     mov $tmp_store, $inl
-1:
+.Lopen_avx2_tail_256_hash:
         add \$16, $itr1
         cmp $inl, $itr1
-        jg 1f\n";
+        jg .Lopen_avx2_tail_256_done\n";
         &poly_add("0*8($itr2)");
         &poly_mul_mulx(); $code.="
         lea 16($itr2), $itr2
-    jmp 1b
-1:  \n";
+    jmp .Lopen_avx2_tail_256_hash
+.Lopen_avx2_tail_256_done: \n";
     &finalize_state_avx2(2);
     &xor_stream_avx2($A1, $B1, $C1, $D1, 0*32, $T0);
     &finish_stream_avx2($A0, $B0, $C0, $D0, $T0); $code.="
     lea 4*32($inp), $inp
     lea 4*32($oup), $oup
     sub \$4*32, $inl
-    jmp open_avx2_tail_loop
-3:
-    cmp \$12*32, $inl
-    ja 3f\n";
+    jmp .Lopen_avx2_tail_128_xor
 ###############################################################################
+.Lopen_avx2_tail_384: \n";
     # 257-383 bytes left
     &prep_state_avx2(3); $code.="
     mov $inl, $tmp_store
@@ -1675,11 +1765,11 @@ chacha20_poly1305_open_avx2:
     cmovg $itr2, $itr1
     mov $inp, $inl
     xor $itr2, $itr2
-1:  \n";
+.Lopen_avx2_tail_384_rounds_and_x2hash: \n";
         &poly_add("0*8($inl)");
         &poly_mul_mulx(); $code.="
         lea 16($inl), $inl
-2:  \n";
+.Lopen_avx2_tail_384_rounds_and_x1hash: \n";
         &chacha_qr_avx2($A2,$B2,$C2,$D2,$T0,"left");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
@@ -1691,22 +1781,22 @@ chacha20_poly1305_open_avx2:
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"right");
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"right"); $code.="
         cmp $itr1, $itr2
-    jb 1b
+    jb  .Lopen_avx2_tail_384_rounds_and_x2hash
         cmp \$10, $itr2
-    jne 2b
+    jne .Lopen_avx2_tail_384_rounds_and_x1hash
     mov $inl, $itr2
     sub $inp, $inl
     mov $inl, $itr1
     mov $tmp_store, $inl
-1:
+.Lopen_avx2_384_tail_hash:
         add \$16, $itr1
         cmp $inl, $itr1
-        jg 1f\n";
+        jg .Lopen_avx2_384_tail_done\n";
         &poly_add("0*8($itr2)");
         &poly_mul_mulx(); $code.="
         lea 16($itr2), $itr2
-    jmp 1b
-1:  \n";
+    jmp .Lopen_avx2_384_tail_hash
+.Lopen_avx2_384_tail_done: \n";
     &finalize_state_avx2(3);
     &xor_stream_avx2($A2, $B2, $C2, $D2, 0*32, $T0);
     &xor_stream_avx2($A1, $B1, $C1, $D1, 4*32, $T0);
@@ -1714,18 +1804,18 @@ chacha20_poly1305_open_avx2:
     lea 8*32($inp), $inp
     lea 8*32($oup), $oup
     sub \$8*32, $inl
-    jmp open_avx2_tail_loop
-3:  \n";
+    jmp .Lopen_avx2_tail_128_xor
 ###############################################################################
+.Lopen_avx2_tail_512: \n";
     # 384-512 bytes left
     &prep_state_avx2(4); $code.="
     xor $itr1, $itr1
     mov $inp, $itr2
-1:  \n";
+.Lopen_avx2_tail_512_rounds_and_x2hash: \n";
         &poly_add("0*8($itr2)");
         &poly_mul(); $code.="
         lea 2*8($itr2), $itr2
-2:  \n";
+.Lopen_avx2_tail_512_rounds_and_x1hash: \n";
         &emit_body(37);
         &poly_add("0*8($itr2)");
         &poly_mul_mulx();
@@ -1737,21 +1827,21 @@ chacha20_poly1305_open_avx2:
         @loop_body = split /\n/, $chacha_body; $code.="
         inc $itr1
         cmp \$4, $itr1
-    jl  1b
+    jl  .Lopen_avx2_tail_512_rounds_and_x2hash
         cmp \$10, $itr1
-    jne 2b
+    jne .Lopen_avx2_tail_512_rounds_and_x1hash
     mov $inl, $itr1
     sub \$12*32, $itr1
     and \$-16, $itr1
-1:
+.Lopen_avx2_tail_512_hash:
         test $itr1, $itr1
-        je 1f\n";
+        je .Lopen_avx2_tail_512_done\n";
         &poly_add("0*8($itr2)");
         &poly_mul_mulx(); $code.="
         lea 2*8($itr2), $itr2
         sub \$2*8, $itr1
-    jmp 1b
-1:  \n";
+    jmp .Lopen_avx2_tail_512_hash
+.Lopen_avx2_tail_512_done: \n";
     &finalize_state_avx2(4); $code.="
     vmovdqa $A0, $tmp_store\n";
     &xor_stream_avx2($A3, $B3, $C3, $D3, 0*32, $A0); $code.="
@@ -1762,9 +1852,9 @@ chacha20_poly1305_open_avx2:
     lea 12*32($inp), $inp
     lea 12*32($oup), $oup
     sub \$12*32, $inl
-open_avx2_tail_loop:
+.Lopen_avx2_tail_128_xor:
     cmp \$32, $inl
-    jb open_avx2_tail
+    jb .Lopen_avx2_tail_32_xor
         sub \$32, $inl
         vpxor ($inp), $A0, $A0
         vmovdqu $A0, ($oup)
@@ -1773,11 +1863,11 @@ open_avx2_tail_loop:
         vmovdqa $B0, $A0
         vmovdqa $C0, $B0
         vmovdqa $D0, $C0
-    jmp open_avx2_tail_loop
-open_avx2_tail:
+    jmp .Lopen_avx2_tail_128_xor
+.Lopen_avx2_tail_32_xor:
     cmp \$16, $inl
     vmovdqa $A0x, $A1x
-    jb 1f
+    jb .Lopen_avx2_exit
     sub \$16, $inl
     #load for decryption
     vpxor ($inp), $A0x, $A1x
@@ -1786,28 +1876,28 @@ open_avx2_tail:
     lea 1*16($oup), $oup
     vperm2i128 \$0x11, $A0, $A0, $A0
     vmovdqa $A0x, $A1x
-1:
+.Lopen_avx2_exit:
     vzeroupper
-    jmp open_sse_tail_16
+    jmp .Lopen_sse_tail_16
 ###############################################################################
-open_avx2_192:
+.Lopen_avx2_192:
     vmovdqa $A0, $A1
     vmovdqa $A0, $A2
     vmovdqa $B0, $B1
     vmovdqa $B0, $B2
     vmovdqa $C0, $C1
     vmovdqa $C0, $C2
-    vpaddd .avx2_inc(%rip), $D0, $D1
+    vpaddd .Lavx2_inc(%rip), $D0, $D1
     vmovdqa $D0, $T2
     vmovdqa $D1, $T3
     mov \$10, $acc0
-1:  \n";
+.Lopen_avx2_192_rounds: \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"right");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"right"); $code.="
         dec $acc0
-    jne 1b
+    jne .Lopen_avx2_192_rounds
     vpaddd $A2, $A0, $A0
     vpaddd $A2, $A1, $A1
     vpaddd $B2, $B0, $B0
@@ -1818,7 +1908,7 @@ open_avx2_192:
     vpaddd $T3, $D1, $D1
     vperm2i128 \$0x02, $A0, $B0, $T0
     # Clamp and store the key
-    vpand .clamp(%rip), $T0, $T0
+    vpand .Lclamp(%rip), $T0, $T0
     vmovdqa $T0, $r_store
     # Stream for up to 192 bytes
     vperm2i128 \$0x13, $A0, $B0, $A0
@@ -1827,12 +1917,15 @@ open_avx2_192:
     vperm2i128 \$0x02, $C1, $D1, $D0
     vperm2i128 \$0x13, $A1, $B1, $A1
     vperm2i128 \$0x13, $C1, $D1, $B1
-open_avx2_short:
-    mov %r8, $itr2
+.Lopen_avx2_short:
+    mov $adl, $itr2
+    mov $oup, $inp
+    add %r9, $inp
+    mov %rdx, $adp
     call poly_hash_ad_internal
-open_avx2_hash_and_xor_loop:
+.Lopen_avx2_short_hash_and_xor_loop:
         cmp \$32, $inl
-        jb open_avx2_short_tail_32
+        jb .Lopen_avx2_short_tail_32
         sub \$32, $inl\n";
         # Load + hash
         &poly_add("0*8($inp)");
@@ -1854,11 +1947,11 @@ open_avx2_hash_and_xor_loop:
         vmovdqa $D1, $C1
         vmovdqa $A2, $D1
         vmovdqa $B2, $A2
-    jmp open_avx2_hash_and_xor_loop
-open_avx2_short_tail_32:
+    jmp .Lopen_avx2_short_hash_and_xor_loop
+.Lopen_avx2_short_tail_32:
     cmp \$16, $inl
     vmovdqa $A0x, $A1x
-    jb 1f
+    jb .Lopen_avx2_short_tail_32_exit
     sub \$16, $inl\n";
     &poly_add("0*8($inp)");
     &poly_mul(); $code.="
@@ -1867,26 +1960,26 @@ open_avx2_short_tail_32:
     lea 1*16($inp), $inp
     lea 1*16($oup), $oup
     vextracti128 \$1, $A0, $A1x
-1:
+.Lopen_avx2_short_tail_32_exit:
     vzeroupper
-    jmp open_sse_tail_16
+    jmp .Lopen_sse_tail_16
 ###############################################################################
-open_avx2_320:
+.Lopen_avx2_320:
     vmovdqa $A0, $A1
     vmovdqa $A0, $A2
     vmovdqa $B0, $B1
     vmovdqa $B0, $B2
     vmovdqa $C0, $C1
     vmovdqa $C0, $C2
-    vpaddd .avx2_inc(%rip), $D0, $D1
-    vpaddd .avx2_inc(%rip), $D1, $D2
+    vpaddd .Lavx2_inc(%rip), $D0, $D1
+    vpaddd .Lavx2_inc(%rip), $D1, $D2
     vmovdqa $B0, $T1
     vmovdqa $C0, $T2
     vmovdqa $D0, $ctr0_store
     vmovdqa $D1, $ctr1_store
     vmovdqa $D2, $ctr2_store
     mov \$10, $acc0
-1:  \n";
+.Lopen_avx2_320_rounds:  \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr_avx2($A2,$B2,$C2,$D2,$T0,"left");
@@ -1894,10 +1987,10 @@ open_avx2_320:
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"right");
         &chacha_qr_avx2($A2,$B2,$C2,$D2,$T0,"right"); $code.="
         dec $acc0
-    jne 1b
-    vpaddd .chacha20_consts(%rip), $A0, $A0
-    vpaddd .chacha20_consts(%rip), $A1, $A1
-    vpaddd .chacha20_consts(%rip), $A2, $A2
+    jne .Lopen_avx2_320_rounds
+    vpaddd .Lchacha20_consts(%rip), $A0, $A0
+    vpaddd .Lchacha20_consts(%rip), $A1, $A1
+    vpaddd .Lchacha20_consts(%rip), $A2, $A2
     vpaddd $T1, $B0, $B0
     vpaddd $T1, $B1, $B1
     vpaddd $T1, $B2, $B2
@@ -1909,7 +2002,7 @@ open_avx2_320:
     vpaddd $ctr2_store, $D2, $D2
     vperm2i128 \$0x02, $A0, $B0, $T0
     # Clamp and store the key
-    vpand .clamp(%rip), $T0, $T0
+    vpand .Lclamp(%rip), $T0, $T0
     vmovdqa $T0, $r_store
     # Stream for up to 320 bytes
     vperm2i128 \$0x13, $A0, $B0, $A0
@@ -1922,23 +2015,26 @@ open_avx2_320:
     vperm2i128 \$0x02, $C2, $D2, $D1
     vperm2i128 \$0x13, $A2, $B2, $A2
     vperm2i128 \$0x13, $C2, $D2, $B2
-    jmp open_avx2_short
+    jmp .Lopen_avx2_short
 .size chacha20_poly1305_open_avx2, .-chacha20_poly1305_open_avx2
+.cfi_endproc
 ###############################################################################
 ###############################################################################
-.type chacha20_poly1305_seal_avx2,\@function,2
+.type chacha20_poly1305_seal_avx2,\@abi-omnipotent
 .align 64
 chacha20_poly1305_seal_avx2:
+.cfi_startproc
+    .cfi_def_cfa rsp, 288 + 32 + (7*8) + 8
     vzeroupper
-    vmovdqa .chacha20_consts(%rip), $A0
+    vmovdqa .Lchacha20_consts(%rip), $A0
     vbroadcasti128 0*16($keyp), $B0
     vbroadcasti128 1*16($keyp), $C0
     vbroadcasti128 2*16($keyp), $D0
-    vpaddd .avx2_init(%rip), $D0, $D0
+    vpaddd .Lavx2_init(%rip), $D0, $D0
     cmp \$6*32, $inl
-    jbe seal_avx2_192
+    jbe .Lseal_avx2_192
     cmp \$10*32, $inl
-    jbe seal_avx2_320
+    jbe .Lseal_avx2_320
     vmovdqa $A0, $A1
     vmovdqa $A0, $A2
     vmovdqa $A0, $A3
@@ -1951,26 +2047,28 @@ chacha20_poly1305_seal_avx2:
     vmovdqa $C0, $C3
     vmovdqa $C0, $state2_store
     vmovdqa $D0, $D3
-    vpaddd .avx2_inc(%rip), $D3, $D2
-    vpaddd .avx2_inc(%rip), $D2, $D1
-    vpaddd .avx2_inc(%rip), $D1, $D0
+    vpaddd .Lavx2_inc(%rip), $D3, $D2
+    vpaddd .Lavx2_inc(%rip), $D2, $D1
+    vpaddd .Lavx2_inc(%rip), $D1, $D0
     vmovdqa $D0, $ctr0_store
     vmovdqa $D1, $ctr1_store
     vmovdqa $D2, $ctr2_store
     vmovdqa $D3, $ctr3_store
     mov \$10, $acc0
-1:  \n";
+.Lseal_avx2_init_rounds: \n";
         foreach $l (@loop_body) {$code.=$l."\n";}
         @loop_body = split /\n/, $chacha_body; $code.="
         dec $acc0
-        jnz 1b\n";
+        jnz .Lseal_avx2_init_rounds\n";
     &finalize_state_avx2(4); $code.="
     vperm2i128 \$0x13, $C3, $D3, $C3
     vperm2i128 \$0x02, $A3, $B3, $D3
     vperm2i128 \$0x13, $A3, $B3, $A3
-    vpand .clamp(%rip), $D3, $D3
+    vpand .Lclamp(%rip), $D3, $D3
     vmovdqa $D3, $r_store
-    mov %r8, $itr2
+    mov $adl, $itr2
+    mov $oup, $inp
+    mov %rdx, $adp
     call poly_hash_ad_internal
     # Safely store 320 bytes (otherwise would handle with optimized call)
     vpxor 0*32($inp), $A3, $A3
@@ -1984,7 +2082,7 @@ chacha20_poly1305_seal_avx2:
     sub \$10*32, $inl
     mov \$10*32, $itr1
     cmp \$4*32, $inl
-    jbe seal_avx2_hash
+    jbe .Lseal_avx2_short_hash_remainder
     vpxor 0*32($inp), $A0, $A0
     vpxor 1*32($inp), $B0, $B0
     vpxor 2*32($inp), $C0, $C0
@@ -1998,13 +2096,13 @@ chacha20_poly1305_seal_avx2:
     mov \$8, $itr1
     mov \$2, $itr2
     cmp \$4*32, $inl
-    jbe seal_avx2_tail_128
+    jbe .Lseal_avx2_tail_128
     cmp \$8*32, $inl
-    jbe seal_avx2_tail_256
+    jbe .Lseal_avx2_tail_256
     cmp \$12*32, $inl
-    jbe seal_avx2_tail_384
+    jbe .Lseal_avx2_tail_384
     cmp \$16*32, $inl
-    jbe seal_avx2_tail_512\n";
+    jbe .Lseal_avx2_tail_512\n";
     # We have 448 bytes to hash, but main loop hashes 512 bytes at a time - perform some rounds, before the main loop
     &prep_state_avx2(4);
     foreach $l (@loop_body) {$code.=$l."\n";}
@@ -2013,11 +2111,14 @@ chacha20_poly1305_seal_avx2:
     @loop_body = split /\n/, $chacha_body; $code.="
     sub \$16, $oup
     mov \$9, $itr1
-    jmp 4f
-1:  \n";
+    jmp .Lseal_avx2_main_loop_rounds_entry
+.align 32
+seal_avx2_main_loop:
+.Lseal_avx2_main_loop: \n";
         &prep_state_avx2(4); $code.="
         mov \$10, $itr1
-2:  \n";
+.align 32
+.Lseal_avx2_main_loop_rounds: \n";
             &poly_add("0*8($oup)");
             &emit_body(10);
             &poly_stage1_mulx();
@@ -2027,7 +2128,7 @@ chacha20_poly1305_seal_avx2:
             &poly_stage3_mulx();
             &emit_body(10);
             &poly_reduce_stage(); $code.="
-4:  \n";
+.Lseal_avx2_main_loop_rounds_entry: \n";
             &emit_body(9);
             &poly_add("2*8($oup)");
             &emit_body(8);
@@ -2052,65 +2153,68 @@ chacha20_poly1305_seal_avx2:
             foreach $l (@loop_body) {$code.=$l."\n";}
             @loop_body = split /\n/, $chacha_body; $code.="
             dec $itr1
-        jne 2b\n";
+        jne .Lseal_avx2_main_loop_rounds\n";
         &finalize_state_avx2(4); $code.="
-        lea 4*8($oup), $oup
         vmovdqa $A0, $tmp_store\n";
-        &poly_add("-4*8($oup)");
+        &poly_add("0*8($oup)");
+        &poly_mul_mulx();
+        &poly_add("2*8($oup)");
+        &poly_mul_mulx(); $code.="
+        lea 4*8($oup), $oup\n";
         &xor_stream_avx2($A3, $B3, $C3, $D3, 0*32, $A0); $code.="
         vmovdqa $tmp_store, $A0\n";
-        &poly_mul();
         &xor_stream_avx2($A2, $B2, $C2, $D2, 4*32, $A3);
-        &poly_add("-2*8($oup)");
         &xor_stream_avx2($A1, $B1, $C1, $D1, 8*32, $A3);
-        &poly_mul();
         &xor_stream_avx2($A0, $B0, $C0, $D0, 12*32, $A3); $code.="
         lea 16*32($inp), $inp
         sub \$16*32, $inl
         cmp \$16*32, $inl
-    jg 1b\n";
+    jg .Lseal_avx2_main_loop
+\n";
     &poly_add("0*8($oup)");
-    &poly_mul();
+    &poly_mul_mulx();
     &poly_add("2*8($oup)");
-    &poly_mul(); $code.="
+    &poly_mul_mulx(); $code.="
     lea 4*8($oup), $oup
     mov \$10, $itr1
     xor $itr2, $itr2
+
+    cmp \$12*32, $inl
+    ja  .Lseal_avx2_tail_512
+    cmp \$8*32, $inl
+    ja  .Lseal_avx2_tail_384
     cmp \$4*32, $inl
-    ja 3f
+    ja  .Lseal_avx2_tail_256
 ###############################################################################
-seal_avx2_tail_128:\n";
+.Lseal_avx2_tail_128:\n";
     &prep_state_avx2(1); $code.="
-1:  \n";
+.Lseal_avx2_tail_128_rounds_and_3xhash: \n";
         &poly_add("0($oup)");
-        &poly_mul(); $code.="
+        &poly_mul_mulx(); $code.="
         lea 2*8($oup), $oup
-2:  \n";
+.Lseal_avx2_tail_128_rounds_and_2xhash: \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &poly_add("0*8($oup)");
-        &poly_mul();
+        &poly_mul_mulx();
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"right");
         &poly_add("2*8($oup)");
-        &poly_mul(); $code.="
+        &poly_mul_mulx(); $code.="
         lea 4*8($oup), $oup
         dec $itr1
-    jg 1b
+    jg  .Lseal_avx2_tail_128_rounds_and_3xhash
         dec $itr2
-    jge 2b\n";
+    jge .Lseal_avx2_tail_128_rounds_and_2xhash\n";
     &finalize_state_avx2(1);
     &finish_stream_avx2($A0,$B0,$C0,$D0,$T0); $code.="
-    jmp seal_avx2_short_loop
-3:
-    cmp \$8*32, $inl
-    ja 3f
+    jmp .Lseal_avx2_short_loop
 ###############################################################################
-seal_avx2_tail_256:\n";
+.Lseal_avx2_tail_256:\n";
     &prep_state_avx2(2); $code.="
-1:  \n";
+.Lseal_avx2_tail_256_rounds_and_3xhash: \n";
         &poly_add("0($oup)");
         &poly_mul(); $code.="
         lea 2*8($oup), $oup
-2:  \n";
+.Lseal_avx2_tail_256_rounds_and_2xhash: \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"left");
         &poly_add("0*8($oup)");
@@ -2121,27 +2225,24 @@ seal_avx2_tail_256:\n";
         &poly_mul(); $code.="
         lea 4*8($oup), $oup
         dec $itr1
-    jg 1b
+    jg  .Lseal_avx2_tail_256_rounds_and_3xhash
         dec $itr2
-    jge 2b\n";
+    jge .Lseal_avx2_tail_256_rounds_and_2xhash\n";
     &finalize_state_avx2(2);
     &xor_stream_avx2($A1,$B1,$C1,$D1,0*32,$T0);
     &finish_stream_avx2($A0,$B0,$C0,$D0,$T0); $code.="
     mov \$4*32, $itr1
     lea 4*32($inp), $inp
     sub \$4*32, $inl
-    jmp seal_avx2_hash
-3:
-    cmp \$12*32, $inl
-    ja seal_avx2_tail_512
+    jmp .Lseal_avx2_short_hash_remainder
 ###############################################################################
-seal_avx2_tail_384:\n";
+.Lseal_avx2_tail_384:\n";
     &prep_state_avx2(3); $code.="
-1:  \n";
+.Lseal_avx2_tail_384_rounds_and_3xhash: \n";
         &poly_add("0($oup)");
         &poly_mul(); $code.="
         lea 2*8($oup), $oup
-2:  \n";
+.Lseal_avx2_tail_384_rounds_and_2xhash: \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"left");
         &poly_add("0*8($oup)");
@@ -2154,9 +2255,9 @@ seal_avx2_tail_384:\n";
         &chacha_qr_avx2($A2,$B2,$C2,$D2,$T0,"right"); $code.="
         lea 4*8($oup), $oup
         dec $itr1
-    jg 1b
+    jg  .Lseal_avx2_tail_384_rounds_and_3xhash
         dec $itr2
-    jge 2b\n";
+    jge .Lseal_avx2_tail_384_rounds_and_2xhash\n";
     &finalize_state_avx2(3);
     &xor_stream_avx2($A2,$B2,$C2,$D2,0*32,$T0);
     &xor_stream_avx2($A1,$B1,$C1,$D1,4*32,$T0);
@@ -2164,15 +2265,15 @@ seal_avx2_tail_384:\n";
     mov \$8*32, $itr1
     lea 8*32($inp), $inp
     sub \$8*32, $inl
-    jmp seal_avx2_hash
+    jmp .Lseal_avx2_short_hash_remainder
 ###############################################################################
-seal_avx2_tail_512:\n";
+.Lseal_avx2_tail_512:\n";
     &prep_state_avx2(4); $code.="
-1:  \n";
+.Lseal_avx2_tail_512_rounds_and_3xhash: \n";
         &poly_add("0($oup)");
         &poly_mul_mulx(); $code.="
         lea 2*8($oup), $oup
-2:  \n";
+.Lseal_avx2_tail_512_rounds_and_2xhash: \n";
         &emit_body(20);
         &poly_add("0*8($oup)");
         &emit_body(20);
@@ -2197,9 +2298,9 @@ seal_avx2_tail_512:\n";
         @loop_body = split /\n/, $chacha_body; $code.="
         lea 4*8($oup), $oup
         dec $itr1
-    jg 1b
+    jg .Lseal_avx2_tail_512_rounds_and_3xhash
         dec $itr2
-    jge 2b\n";
+    jge .Lseal_avx2_tail_512_rounds_and_2xhash\n";
     &finalize_state_avx2(4); $code.="
     vmovdqa $A0, $tmp_store\n";
     &xor_stream_avx2($A3, $B3, $C3, $D3, 0*32, $A0); $code.="
@@ -2210,24 +2311,24 @@ seal_avx2_tail_512:\n";
     mov \$12*32, $itr1
     lea 12*32($inp), $inp
     sub \$12*32, $inl
-    jmp seal_avx2_hash
+    jmp .Lseal_avx2_short_hash_remainder
 ################################################################################
-seal_avx2_320:
+.Lseal_avx2_320:
     vmovdqa $A0, $A1
     vmovdqa $A0, $A2
     vmovdqa $B0, $B1
     vmovdqa $B0, $B2
     vmovdqa $C0, $C1
     vmovdqa $C0, $C2
-    vpaddd .avx2_inc(%rip), $D0, $D1
-    vpaddd .avx2_inc(%rip), $D1, $D2
+    vpaddd .Lavx2_inc(%rip), $D0, $D1
+    vpaddd .Lavx2_inc(%rip), $D1, $D2
     vmovdqa $B0, $T1
     vmovdqa $C0, $T2
     vmovdqa $D0, $ctr0_store
     vmovdqa $D1, $ctr1_store
     vmovdqa $D2, $ctr2_store
     mov \$10, $acc0
-1:  \n";
+.Lseal_avx2_320_rounds: \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr_avx2($A2,$B2,$C2,$D2,$T0,"left");
@@ -2235,10 +2336,10 @@ seal_avx2_320:
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"right");
         &chacha_qr_avx2($A2,$B2,$C2,$D2,$T0,"right"); $code.="
         dec $acc0
-    jne 1b
-    vpaddd .chacha20_consts(%rip), $A0, $A0
-    vpaddd .chacha20_consts(%rip), $A1, $A1
-    vpaddd .chacha20_consts(%rip), $A2, $A2
+    jne .Lseal_avx2_320_rounds
+    vpaddd .Lchacha20_consts(%rip), $A0, $A0
+    vpaddd .Lchacha20_consts(%rip), $A1, $A1
+    vpaddd .Lchacha20_consts(%rip), $A2, $A2
     vpaddd $T1, $B0, $B0
     vpaddd $T1, $B1, $B1
     vpaddd $T1, $B2, $B2
@@ -2250,7 +2351,7 @@ seal_avx2_320:
     vpaddd $ctr2_store, $D2, $D2
     vperm2i128 \$0x02, $A0, $B0, $T0
     # Clamp and store the key
-    vpand .clamp(%rip), $T0, $T0
+    vpand .Lclamp(%rip), $T0, $T0
     vmovdqa $T0, $r_store
     # Stream for up to 320 bytes
     vperm2i128 \$0x13, $A0, $B0, $A0
@@ -2263,26 +2364,26 @@ seal_avx2_320:
     vperm2i128 \$0x02, $C2, $D2, $D1
     vperm2i128 \$0x13, $A2, $B2, $A2
     vperm2i128 \$0x13, $C2, $D2, $B2
-    jmp seal_avx2_short
+    jmp .Lseal_avx2_short
 ################################################################################
-seal_avx2_192:
+.Lseal_avx2_192:
     vmovdqa $A0, $A1
     vmovdqa $A0, $A2
     vmovdqa $B0, $B1
     vmovdqa $B0, $B2
     vmovdqa $C0, $C1
     vmovdqa $C0, $C2
-    vpaddd .avx2_inc(%rip), $D0, $D1
+    vpaddd .Lavx2_inc(%rip), $D0, $D1
     vmovdqa $D0, $T2
     vmovdqa $D1, $T3
     mov \$10, $acc0
-1:  \n";
+.Lseal_avx2_192_rounds: \n";
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"left");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"left");
         &chacha_qr_avx2($A0,$B0,$C0,$D0,$T0,"right");
         &chacha_qr_avx2($A1,$B1,$C1,$D1,$T0,"right"); $code.="
         dec $acc0
-    jne 1b
+    jne .Lseal_avx2_192_rounds
     vpaddd $A2, $A0, $A0
     vpaddd $A2, $A1, $A1
     vpaddd $B2, $B0, $B0
@@ -2293,7 +2394,7 @@ seal_avx2_192:
     vpaddd $T3, $D1, $D1
     vperm2i128 \$0x02, $A0, $B0, $T0
     # Clamp and store the key
-    vpand .clamp(%rip), $T0, $T0
+    vpand .Lclamp(%rip), $T0, $T0
     vmovdqa $T0, $r_store
     # Stream for up to 192 bytes
     vperm2i128 \$0x13, $A0, $B0, $A0
@@ -2302,21 +2403,23 @@ seal_avx2_192:
     vperm2i128 \$0x02, $C1, $D1, $D0
     vperm2i128 \$0x13, $A1, $B1, $A1
     vperm2i128 \$0x13, $C1, $D1, $B1
-seal_avx2_short:
-    mov %r8, $itr2
+.Lseal_avx2_short:
+    mov $adl, $itr2
+    mov $oup, $inp
+    mov %rdx, $adp
     call poly_hash_ad_internal
     xor $itr1, $itr1
-seal_avx2_hash:
+.Lseal_avx2_short_hash_remainder:
         cmp \$16, $itr1
-        jb seal_avx2_short_loop\n";
+        jb .Lseal_avx2_short_loop\n";
         &poly_add("0($oup)");
         &poly_mul(); $code.="
         sub \$16, $itr1
         add \$16, $oup
-    jmp seal_avx2_hash
-seal_avx2_short_loop:
+    jmp .Lseal_avx2_short_hash_remainder
+.Lseal_avx2_short_loop:
         cmp \$32, $inl
-        jb seal_avx2_short_tail
+        jb .Lseal_avx2_short_tail
         sub \$32, $inl
         # Encrypt
         vpxor ($inp), $A0, $A0
@@ -2338,10 +2441,10 @@ seal_avx2_short_loop:
         vmovdqa $D1, $C1
         vmovdqa $A2, $D1
         vmovdqa $B2, $A2
-    jmp seal_avx2_short_loop
-seal_avx2_short_tail:
+    jmp .Lseal_avx2_short_loop
+.Lseal_avx2_short_tail:
     cmp \$16, $inl
-    jb 1f
+    jb .Lseal_avx2_exit
     sub \$16, $inl
     vpxor ($inp), $A0x, $A3x
     vmovdqu $A3x, ($oup)
@@ -2350,24 +2453,16 @@ seal_avx2_short_tail:
     &poly_mul(); $code.="
     lea 1*16($oup), $oup
     vextracti128 \$1, $A0, $A0x
-1:
+.Lseal_avx2_exit:
     vzeroupper
-    jmp seal_sse_tail_16
+    jmp .Lseal_sse_tail_16
 .cfi_endproc
+.size chacha20_poly1305_seal_avx2, .-chacha20_poly1305_seal_avx2
 ";
 }
 
-if (!$win64) {
-  $code =~ s/\`([^\`]*)\`/eval $1/gem;
-  print $code;
-} else {
-  print <<___;
-.text
-.globl dummy_chacha20_poly1305_asm
-.type dummy_chacha20_poly1305_asm,\@abi-omnipotent
-dummy_chacha20_poly1305_asm:
-    ret
-___
-}
+$code =~ s/\`([^\`]*)\`/eval $1/gem;
+
+print $code;
 
 close STDOUT or die "error closing STDOUT";

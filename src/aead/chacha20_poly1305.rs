@@ -51,31 +51,35 @@ fn chacha20_poly1305_seal(
     cpu_features: cpu::Features,
 ) -> Tag {
     #[cfg(target_arch = "x86_64")]
-    if has_sse41(cpu_features) {
-        let key_block = combine_key_and_nonce(key, nonce);
+    {
+        if has_sse41(cpu_features) {
+            let mut key_block = combine_key_and_nonce(key, nonce);
 
-        extern "C" {
-            fn chacha20_poly1305_seal_asm(
-                in_out: *mut u8,
-                avx2_and_bmi2_capable: u64,
-                len_in: usize,
-                ad: *const u8,
-                len_ad: usize,
-                keyp: &[u32; 12],
-            ) -> TagReturn;
-        }
+            extern "C" {
+                // This function stores the calculated Tag in keyp[8..12] and returns a reference to it
+                fn GFp_chacha20_poly1305_seal<'ctx>(
+                    in_out: *mut u8,
+                    len_in: usize,
+                    ad: *const u8,
+                    len_ad: usize,
+                    keyp: &'ctx mut [u32; 12],
+                ) -> &'ctx [u8; 16];
+            }
 
-        return unsafe {
-            chacha20_poly1305_seal_asm(
-                in_out.as_mut_ptr(),
-                if has_avx2_bmi2(cpu_features) { 1 } else { 0 },
-                in_out.len(),
-                aad.as_ref().as_ptr(),
-                aad.as_ref().len(),
-                &key_block,
-            )
+            let tag = unsafe {
+                GFp_chacha20_poly1305_seal(
+                    in_out.as_mut_ptr(),
+                    in_out.len(),
+                    aad.as_ref().as_ptr(),
+                    aad.as_ref().len(),
+                    &mut key_block,
+                )
+            };
+
+            let mut tag_array = [0u8; 16];
+            tag_array.copy_from_slice(tag);
+            return Tag(tag_array);
         }
-        .into();
     }
 
     aead(key, nonce, aad, in_out, Direction::Sealing, cpu_features)
@@ -90,33 +94,37 @@ fn chacha20_poly1305_open(
     cpu_features: cpu::Features,
 ) -> Tag {
     #[cfg(target_arch = "x86_64")]
-    if has_sse41(cpu_features) {
-        let key_block = combine_key_and_nonce(key, nonce);
+    {
+        if has_sse41(cpu_features) {
+            let mut key_block = combine_key_and_nonce(key, nonce);
 
-        extern "C" {
-            fn chacha20_poly1305_open_asm(
-                in_out: *mut u8,
-                offset: usize,
-                len_in: usize,
-                ad: *const u8,
-                len_ad: usize,
-                keyp: &[u32; 12],
-                avx2_and_bmi2_capable: u64,
-            ) -> TagReturn;
-        }
+            extern "C" {
+                // This function stores the calculated Tag in keyp[8..12] and returns a reference to it
+                fn GFp_chacha20_poly1305_open<'ctx>(
+                    in_out: *mut u8,
+                    len_in: usize,
+                    ad: *const u8,
+                    len_ad: usize,
+                    keyp: &'ctx mut [u32; 12],
+                    offset: usize,
+                ) -> &'ctx [u8; 16];
+            }
 
-        return unsafe {
-            chacha20_poly1305_open_asm(
-                in_out.as_mut_ptr(),
-                in_prefix_len,
-                in_out.len() - in_prefix_len,
-                aad.as_ref().as_ptr(),
-                aad.as_ref().len(),
-                &key_block,
-                if has_avx2_bmi2(cpu_features) { 1 } else { 0 },
-            )
+            let tag = unsafe {
+                GFp_chacha20_poly1305_open(
+                    in_out.as_mut_ptr(),
+                    in_out.len() - in_prefix_len,
+                    aad.as_ref().as_ptr(),
+                    aad.as_ref().len(),
+                    &mut key_block,
+                    in_prefix_len,
+                )
+            };
+
+            let mut tag_array = [0u8; 16];
+            tag_array.copy_from_slice(tag);
+            return Tag(tag_array);
         }
-        .into();
     }
 
     aead(
@@ -130,24 +138,6 @@ fn chacha20_poly1305_open(
 }
 
 pub type Key = chacha::Key;
-
-#[cfg(target_arch = "x86_64")]
-#[repr(C)]
-struct TagReturn {
-    lo: u64,
-    hi: u64,
-}
-
-#[cfg(target_arch = "x86_64")]
-impl Into<Tag> for TagReturn {
-    #[inline(always)]
-    fn into(self) -> Tag {
-        let mut tag_vec = [0u8; 16];
-        tag_vec[0..8].copy_from_slice(&self.lo.to_le_bytes());
-        tag_vec[8..16].copy_from_slice(&self.hi.to_le_bytes());
-        Tag(tag_vec)
-    }
-}
 
 #[cfg(target_arch = "x86_64")]
 #[inline(always)]
@@ -243,12 +233,7 @@ pub(super) fn derive_poly1305_key(
 
 #[cfg(target_arch = "x86_64")]
 fn has_sse41(cpu_features: cpu::Features) -> bool {
-    cpu::intel::SSE41.available(cpu_features) && cpu::intel::BMI2.available(cpu_features)
-}
-
-#[cfg(target_arch = "x86_64")]
-fn has_avx2_bmi2(cpu_features: cpu::Features) -> bool {
-    cpu::intel::AVX2.available(cpu_features) && cpu::intel::BMI2.available(cpu_features)
+    cpu::intel::SSE41.available(cpu_features)
 }
 
 #[cfg(test)]
