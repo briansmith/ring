@@ -167,8 +167,9 @@ impl EcdsaKeyPair {
         let private_key = ec::Seed::from_bytes(
             alg.curve,
             untrusted::Input::from(private_key),
-            cpu::features()
-        ).map_err(|_| error::KeyRejected::invalid_encoding())?;
+            cpu::features(),
+        )
+        .map_err(|_| error::KeyRejected::invalid_encoding())?;
         ec::KeyPair::derive(private_key)
             .map_err(|_| error::KeyRejected::invalid_encoding())
             .and_then(|key_pair| Self::new(alg, key_pair, &rng))

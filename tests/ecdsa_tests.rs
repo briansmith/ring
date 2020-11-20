@@ -152,11 +152,13 @@ fn ecdsa_from_private_key_and_public_key_test() {
 
             match (
                 signature::EcdsaKeyPair::from_private_key_and_public_key(
-                    this_fixed, &private_key, &public_key
+                    this_fixed,
+                    &private_key,
+                    &public_key,
                 ),
                 error.clone(),
             ) {
-                (Ok(_), None) => { }
+                (Ok(_), None) => {}
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
                 (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
@@ -164,11 +166,13 @@ fn ecdsa_from_private_key_and_public_key_test() {
 
             match (
                 signature::EcdsaKeyPair::from_private_key_and_public_key(
-                    this_asn1, &private_key, &public_key
+                    this_asn1,
+                    &private_key,
+                    &public_key,
                 ),
                 error.clone(),
             ) {
-                (Ok(_), None) => { }
+                (Ok(_), None) => {}
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
                 (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
@@ -204,9 +208,7 @@ fn ecdsa_from_private_key_unchecked_test() {
             let error = test_case.consume_optional_string("Error");
 
             match (
-                signature::EcdsaKeyPair::from_private_key_unchecked(
-                    this_fixed, &private_key
-                ),
+                signature::EcdsaKeyPair::from_private_key_unchecked(this_fixed, &private_key),
                 error.clone(),
             ) {
                 (Ok(key_pair), None) => {
@@ -218,9 +220,7 @@ fn ecdsa_from_private_key_unchecked_test() {
             };
 
             match (
-                signature::EcdsaKeyPair::from_private_key_unchecked(
-                    this_asn1, &private_key
-                ),
+                signature::EcdsaKeyPair::from_private_key_unchecked(this_asn1, &private_key),
                 error.clone(),
             ) {
                 (Ok(key_pair), None) => {
@@ -235,8 +235,6 @@ fn ecdsa_from_private_key_unchecked_test() {
         },
     );
 }
-                
-
 
 #[test]
 fn signature_ecdsa_verify_asn1_test() {
