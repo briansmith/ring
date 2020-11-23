@@ -204,24 +204,25 @@ and release configurations, for the current release of each Rust channel
 parts of *ring*; *ring* should be compatible with GCC 4.8+, Clang 10+, and MSVC
 2019+, at least.
 
-| Target                       | Notes |
-| -----------------------------| ----- |
-| aarch64-apple-darwin         | Build-only (GitHub Actions doesn't have a way to run the tests)
-| aarch64-apple-ios            | Build-only (GitHub Actions doesn't have a way to run the tests)
-| aarch64-unknown-linux-gnu    | Tested on 64-bit Linux using QEMU user emulation
-| aarch64-linux-android        | API level 21 (Android 5.0+); [Build-only; issue 486](https://github.com/briansmith/ring/issues/486)
-| arm-unknown-linux-gnueabihf  | Tested on 64-bit Linux using QEMU user emulation
-| armv7-linux-androideabi      | API level 18 (Android 4.3+); [Build-only; issue 838](https://github.com/briansmith/ring/issues/838)
-| i686-pc-windows-msvc         | Tested on 64-bit Windows Server 2019 Datacenter
-| i686-unknown-linux-gnu       | Tested on 64-bit Linux using multilib support
-| i686-unknown-linux-musl      | [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
-| x86_64-apple-darwin          |
-| x86_64-pc-windows-gnu        |
-| x86_64-pc-windows-msvc       | Tested on 64-bit Windows Server 2019 Datacenter
-| x86_64-unknown-linux-gnu     |
-| x86_64-unknown-linux-musl    | [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
-| wasm32-unknown-unknown       | Tested using wasm-bindgen-test-runner on Linux in Chrome and Firefox.
-
+| Target                         | Notes |
+| -------------------------------| ----- |
+| aarch64-apple-darwin           | Build-only (GitHub Actions doesn't have a way to run the tests)
+| aarch64-apple-ios              | Build-only (GitHub Actions doesn't have a way to run the tests)
+| aarch64-unknown-linux-gnu      | Tested on 64-bit Linux using QEMU user emulation
+| aarch64-unknown-linux-musl     | Tested on 64-bit Linux using QEMU user emulation. [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| aarch64-linux-android          | API level 21 (Android 5.0+); [Build-only; issue 486](https://github.com/briansmith/ring/issues/486)
+| arm-unknown-linux-gnueabihf    | Tested on 64-bit Linux using QEMU user emulation
+| armv7-linux-androideabi        | API level 18 (Android 4.3+); [Build-only; issue 838](https://github.com/briansmith/ring/issues/838)
+| armv7-unknown-linux-musleabihf | Tested on 64-bit Linux using QEMU user emulation. [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| i686-pc-windows-msvc           | Tested on 64-bit Windows Server 2019 Datacenter
+| i686-unknown-linux-gnu         | Tested on 64-bit Linux using multilib support
+| i686-unknown-linux-musl        | Tested on 64-bit Linux using multilib support. [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| x86_64-apple-darwin            |
+| x86_64-pc-windows-gnu          |
+| x86_64-pc-windows-msvc         | Tested on 64-bit Windows Server 2019 Datacenter
+| x86_64-unknown-linux-gnu       |
+| x86_64-unknown-linux-musl      | [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| wasm32-unknown-unknown         | Tested using wasm-bindgen-test-runner on Linux in Chrome and Firefox.
 
 License
 -------
