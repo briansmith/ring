@@ -197,6 +197,8 @@ $code.=<<___;
 .Lone:
 .long	1,0,0,0
 #if __ARM_MAX_ARCH__>=7
+.extern GFp_armcap_P
+.hidden GFp_armcap_P
 .LOPENSSL_armcap:
 .word   GFp_armcap_P-.LChaCha20_ctr32
 #else

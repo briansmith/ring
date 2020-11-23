@@ -112,6 +112,8 @@ $code=<<___;
 #endif
 
 #if __ARM_MAX_ARCH__>=7
+.extern GFp_armcap_P
+.hidden GFp_armcap_P
 .align	5
 .LOPENSSL_armcap:
 .word	GFp_armcap_P-.Lbn_mul_mont

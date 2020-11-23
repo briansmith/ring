@@ -218,6 +218,8 @@ K256:
 .size	K256,.-K256
 .word	0				@ terminator
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
+.extern GFp_armcap_P
+.hidden GFp_armcap_P
 .LOPENSSL_armcap:
 .word	GFp_armcap_P-.Lsha256_block_data_order
 #endif
