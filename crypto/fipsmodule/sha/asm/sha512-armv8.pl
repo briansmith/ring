@@ -179,6 +179,7 @@ $code.=<<___;
 .text
 
 .extern	GFp_armcap_P
+.hidden GFp_armcap_P
 .globl	$func
 .type	$func,%function
 .align	6
