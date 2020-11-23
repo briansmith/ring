@@ -23,17 +23,18 @@ fi
 
 export CC_aarch64_linux_android=aarch64-linux-android21-clang
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang
-export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
 
+export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu"
-export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
 
+export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
 export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="qemu-arm -L /usr/arm-linux-gnueabihf"
-export CC_armv7_linux_androideabi=armv7a-linux-androideabi18-clang
 
+export CC_armv7_linux_androideabi=armv7a-linux-androideabi18-clang
 export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=armv7a-linux-androideabi18-clang
+
 export CC_i686_unknown_linux_gnu=clang
 export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 
