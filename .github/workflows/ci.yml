@@ -91,8 +91,10 @@ jobs:
           - aarch64-apple-darwin
           - aarch64-linux-android
           - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
           - arm-unknown-linux-gnueabihf
           - armv7-linux-androideabi
+          - armv7-unknown-linux-musleabihf
           - i686-pc-windows-msvc
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
@@ -140,12 +142,20 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-18.04
 
+          - target: aarch64-unknown-linux-musl
+            host_os: ubuntu-18.04
+
           - target: arm-unknown-linux-gnueabihf
             host_os: ubuntu-18.04
 
           - target: armv7-linux-androideabi
             host_os: ubuntu-18.04
             # TODO: https://github.com/briansmith/ring/issues/838
+            cargo_options: --no-run
+
+          - target: armv7-unknown-linux-musleabihf
+            host_os: ubuntu-18.04
+            # TODO: https://github.com/briansmith/ring/issues/1115
             cargo_options: --no-run
 
           - target: i686-pc-windows-msvc

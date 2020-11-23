@@ -43,20 +43,24 @@ case $target in
     gcc-aarch64-linux-gnu \
     libc6-dev-arm64-cross
   ;;
+--target=aarch64-unknown-linux-musl|--target=armv7-unknown-linux-musleabihf)
+  use_clang=1
+  install_packages \
+    qemu-user
+  ;;
 --target=arm-unknown-linux-gnueabihf)
   install_packages \
     qemu-user \
     gcc-arm-linux-gnueabihf \
     libc6-dev-armhf-cross
   ;;
---target=i686-unknown-linux-gnu|--target=i686-unknown-linux-musl)
-  # TODO: musl i686 shouldn't be using gcc-multilib or libc6-dev-i386.
+--target=i686-unknown-linux-gnu)
   use_clang=1
   install_packages \
     gcc-multilib \
     libc6-dev-i386
   ;;
---target=x86_64-unknown-linux-musl)
+--target=i686-unknown-linux-musl|--target=x86_64-unknown-linux-musl)
   use_clang=1
   ;;
 --target=wasm32-unknown-unknown)

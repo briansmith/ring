@@ -545,6 +545,8 @@ fn cc(
     warnings_are_errors: bool,
     out_dir: &Path,
 ) -> Command {
+    let is_musl = target.env.starts_with("musl");
+
     let mut c = cc::Build::new();
     let _ = c.include("include");
     match ext {
@@ -591,8 +593,18 @@ fn cc(
         }
     }
 
-    if (target.arch.as_str(), target.os.as_str()) == ("wasm32", "unknown") {
-        let _ = c.flag("--no-standard-libraries");
+    // Allow cross-compiling without a target sysroot for these targets.
+    //
+    // poly1305_vec.c requires <emmintrin.h> which requires <stdlib.h>.
+    if (target.arch == "wasm32" && target.os == "unknown")
+        || (target.os == "linux" && is_musl && target.arch != "x86_64")
+    {
+        if let Ok(compiler) = c.try_get_compiler() {
+            // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
+            if compiler.is_like_clang() {
+                let _ = c.flag("-nostdlibinc");
+            }
+        }
     }
 
     if warnings_are_errors {
@@ -603,7 +615,7 @@ fn cc(
         };
         let _ = c.flag(flag);
     }
-    if &target.env == "musl" {
+    if is_musl {
         // Some platforms enable _FORTIFY_SOURCE by default, but musl
         // libc doesn't support it yet. See
         // http://wiki.musl-libc.org/wiki/Future_Ideas#Fortify

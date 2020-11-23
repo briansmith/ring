@@ -17,6 +17,10 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
+rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
+qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
+qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
+
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
 # be needed to compile the build script, or to compile for other targets.
@@ -37,6 +41,12 @@ for arg in $*; do
       export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
       export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu"
       ;;
+    --target=aarch64-unknown-linux-musl)
+      export CC_aarch64_unknown_linux_musl=clang-10
+      export AR_aarch64_unknown_linux_musl=llvm-ar-10
+      export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
+      export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUNNER="$qemu_aarch64"
+      ;;
     --target=arm-unknown-linux-gnueabihf)
       export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
       export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc-ar
@@ -47,6 +57,12 @@ for arg in $*; do
       export CC_armv7_linux_androideabi=$android_tools/armv7a-linux-androideabi18-clang
       export AR_armv7_linux_androideabi=$android_tools/arm-linux-androideabi-ar
       export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$android_tools/armv7a-linux-androideabi18-clang
+      ;;
+    --target=armv7-unknown-linux-musleabihf)
+      export CC_armv7_unknown_linux_musleabihf=clang-10
+      export AR_armv7_unknown_linux_musleabihf=llvm-ar-10
+      export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUSTFLAGS="$rustflags_self_contained"
+      export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUNNER="$qemu_arm"
       ;;
     --target=i686-unknown-linux-gnu)
       export CC_i686_unknown_linux_gnu=clang-10
