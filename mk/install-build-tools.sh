@@ -72,6 +72,12 @@ case $target in
 --target=i686-unknown-linux-musl|--target=x86_64-unknown-linux-musl)
   use_clang=1
   ;;
+--target=mipsel-unknown-linux-gnu)
+  install_packages \
+    qemu-user \
+    gcc-mipsel-linux-gnu \
+    libc6-dev-mipsel-cross
+  ;;
 --target=wasm32-unknown-unknown)
   cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
   use_clang=1
