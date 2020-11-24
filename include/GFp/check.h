@@ -22,15 +22,8 @@
 //
 // When reviewing uses of |debug_assert_nonsecret|, verify that the check
 // really does not have potential to leak a secret.
-#define GFp_HAS_ASSERT_H
 
-#if defined(__has_include)
-# if !__has_include(<assert.h>)
-#  undef GFp_HAS_ASSERT_H
-# endif
-#endif
-
-#if defined(GFp_HAS_ASSERT_H)
+#if !defined(GFp_NOSTDLIBINC)
 # include <assert.h>
 # define debug_assert_nonsecret(x) assert(x)
 #else

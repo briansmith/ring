@@ -259,22 +259,12 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 }
 #endif
 
-// Assume we have <string.h> unless we can detect otherwise. The
-// targets that don't have string.h do have `__has_include`.
-#define GFp_HAS_STRING_H
-
-#if defined(__has_include)
-# if !__has_include(<string.h>)
-#  undef GFp_HAS_STRING_H
-# endif
-#endif
-
-#if defined(GFp_HAS_STRING_H)
+#if !defined(GFp_NOSTDLIBINC)
 #include <string.h>
 #endif
 
 static inline void *GFp_memcpy(void *dst, const void *src, size_t n) {
-#if defined(GFp_HAS_STRING_H)
+#if !defined(GFp_NOSTDLIBINC)
   if (n == 0) {
     return dst;
   }
@@ -290,7 +280,7 @@ static inline void *GFp_memcpy(void *dst, const void *src, size_t n) {
 }
 
 static inline void *GFp_memset(void *dst, int c, size_t n) {
-#if defined(GFp_HAS_STRING_H)
+#if !defined(GFp_NOSTDLIBINC)
   if (n == 0) {
     return dst;
   }
