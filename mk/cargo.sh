@@ -39,7 +39,7 @@ for arg in $*; do
       export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
       export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc-ar
       export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-      export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu"
+      export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_aarch64"
       ;;
     --target=aarch64-unknown-linux-musl)
       export CC_aarch64_unknown_linux_musl=clang-10
@@ -51,7 +51,7 @@ for arg in $*; do
       export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
       export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc-ar
       export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
-      export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="qemu-arm -L /usr/arm-linux-gnueabihf"
+      export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="$qemu_arm"
       ;;
     --target=armv7-linux-androideabi)
       export CC_armv7_linux_androideabi=$android_tools/armv7a-linux-androideabi18-clang
