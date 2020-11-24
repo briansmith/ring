@@ -20,6 +20,7 @@ IFS=$'\n\t'
 rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
+qemu_mipsel="qemu-system-mipsel -L /usr/mipsel-linux-gnu"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
@@ -73,6 +74,12 @@ for arg in $*; do
       export CC_i686_unknown_linux_musl=clang-10
       export AR_i686_unknown_linux_musl=llvm-ar-10
       export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang-10
+      ;;
+    --target=mipsel-unknown-linux-gnu)
+      export CC_mipsel_unknown_linux_gnu=mipsel-linux-gnu-gcc
+      export AR_mipsel_unknown_linux_gnu=mipsel-linux-gnu-gcc-ar
+      export CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_LINKER=mipsel-linux-gnu-gcc
+      export CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_RUNNER="$qemu_mipsel"
       ;;
     --target=x86_64-unknown-linux-musl)
       export CC_x86_64_unknown_linux_musl=clang-10
