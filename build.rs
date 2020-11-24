@@ -230,20 +230,19 @@ const LD_FLAGS: &[&str] = &[];
 
 // None means "any OS" or "any target". The first match in sequence order is
 // taken.
-const ASM_TARGETS: &[(&str, Option<&str>, Option<&str>)] = &[
-    ("x86_64", Some("ios"), Some("macosx")),
-    ("x86_64", Some("macos"), Some("macosx")),
-    ("x86_64", Some(WINDOWS), Some("nasm")),
-    ("x86_64", None, Some("elf")),
-    ("aarch64", Some("ios"), Some("ios64")),
-    ("aarch64", Some("macos"), Some("ios64")),
-    ("aarch64", None, Some("linux64")),
-    ("x86", Some(WINDOWS), Some("win32n")),
-    ("x86", Some("ios"), Some("macosx")),
-    ("x86", None, Some("elf")),
-    ("arm", Some("ios"), Some("ios32")),
-    ("arm", None, Some("linux32")),
-    ("wasm32", None, None),
+const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
+    ("x86_64", Some("ios"), "macosx"),
+    ("x86_64", Some("macos"), "macosx"),
+    ("x86_64", Some(WINDOWS), "nasm"),
+    ("x86_64", None, "elf"),
+    ("aarch64", Some("ios"), "ios64"),
+    ("aarch64", Some("macos"), "ios64"),
+    ("aarch64", None, "linux64"),
+    ("x86", Some(WINDOWS), "win32n"),
+    ("x86", Some("ios"), "macosx"),
+    ("x86", None, "elf"),
+    ("arm", Some("ios"), "ios32"),
+    ("arm", None, "linux32"),
 ];
 
 const WINDOWS: &str = "windows";
@@ -313,17 +312,14 @@ fn pregenerate_asm_main() {
             &pregenerated
         };
 
-        if let Some(perlasm_format) = perlasm_format {
-            let perlasm_src_dsts =
-                perlasm_src_dsts(&asm_dir, target_arch, target_os, perlasm_format);
-            perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
+        let perlasm_src_dsts = perlasm_src_dsts(&asm_dir, target_arch, target_os, perlasm_format);
+        perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
 
-            if target_os == Some(WINDOWS) {
-                let srcs = asm_srcs(perlasm_src_dsts);
-                for src in srcs {
-                    let obj_path = obj_path(&pregenerated, &src, MSVC_OBJ_EXT);
-                    run_command(yasm(&src, target_arch, &obj_path));
-                }
+        if target_os == Some(WINDOWS) {
+            let srcs = asm_srcs(perlasm_src_dsts);
+            for src in srcs {
+                let obj_path = obj_path(&pregenerated, &src, MSVC_OBJ_EXT);
+                run_command(yasm(&src, target_arch, &obj_path));
             }
         }
     }
@@ -366,24 +362,23 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         }
     }
 
-    let (_, _, perlasm_format) = ASM_TARGETS
+    let perlasm_format = ASM_TARGETS
         .iter()
         .find(|entry| {
             let &(entry_arch, entry_os, _) = *entry;
             entry_arch == target.arch && is_none_or_equals(entry_os, &target.os)
         })
-        .unwrap();
-
-    let use_pregenerated = !target.is_git;
-    let warnings_are_errors = target.is_git;
-
-    let asm_dir = if use_pregenerated {
-        &pregenerated
-    } else {
-        out_dir
-    };
+        .map(|(_, _, perlasm_format)| *perlasm_format);
 
     let asm_srcs = if let Some(perlasm_format) = perlasm_format {
+        let use_pregenerated = !target.is_git;
+
+        let asm_dir = if use_pregenerated {
+            &pregenerated
+        } else {
+            out_dir
+        };
+
         let perlasm_src_dsts =
             perlasm_src_dsts(asm_dir, &target.arch, Some(&target.os), perlasm_format);
 
@@ -429,6 +424,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
+    let warnings_are_errors = target.is_git;
     libs.iter().for_each(|&(lib_name, srcs, additional_srcs)| {
         build_library(
             &target,
