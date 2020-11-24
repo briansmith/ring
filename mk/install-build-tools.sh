@@ -55,6 +55,7 @@ case $target in
     libc6-dev-i386
   ;;
 --target=wasm32-unknown-unknown)
+  # The "wasm_c" feature requires clang and llvm packages.
   cargo install wasm-bindgen-cli --vers "0.2.68" --bin wasm-bindgen-test-runner
   case ${features-} in
     *wasm32_c*)
