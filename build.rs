@@ -603,6 +603,7 @@ fn cc(
             // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
             if compiler.is_like_clang() {
                 let _ = c.flag("-nostdlibinc");
+                let _ = c.define("GFp_NOSTDLIBINC", "1");
             }
         }
     }
