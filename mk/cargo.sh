@@ -22,26 +22,33 @@ if [ -n "${ANDROID_SDK_ROOT-}" ]; then
 fi
 
 export CC_aarch64_linux_android=aarch64-linux-android21-clang
+export AR_aarch64_linux_android=aarch64-linux-android-ar
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang
 
 export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc-ar
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 
 export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
+export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc-ar
 export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="qemu-arm -L /usr/arm-linux-gnueabihf"
 
 export CC_armv7_linux_androideabi=armv7a-linux-androideabi18-clang
+export AR_armv7_linux_androideabi=arm-linux-androideabi-ar
 export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=armv7a-linux-androideabi18-clang
 
 export CC_i686_unknown_linux_gnu=clang
+export AR_i686_unknown_linux_gnu=llvm-ar
 export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 
 export CC_i686_unknown_linux_musl=clang
+export AR_i686_unknown_linux_musl=llvm-ar
 export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang
 
 export CC_x86_64_unknown_linux_musl=clang
+export AR_x86_64_unknown_linux_musl=llvm-ar
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang
 
 # The first two are only needed for when the "wasm_c" feature is enabled.
