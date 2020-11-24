@@ -17,43 +17,61 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
+# Avoid putting the Android tools in `$PATH` because there are tools in this
+# directory like `clang` that would conflict with the same-named tools that may
+# be needed to compile the build script, or to compile for other targets.
 if [ -n "${ANDROID_SDK_ROOT-}" ]; then
-  export PATH=${ANDROID_SDK_ROOT}/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+  android_tools=$ANDROID_SDK_ROOT/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin
 fi
 
-export CC_aarch64_linux_android=aarch64-linux-android21-clang
-export AR_aarch64_linux_android=aarch64-linux-android-ar
-export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang
-
-export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc-ar
-export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu"
-
-export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
-export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc-ar
-export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
-export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="qemu-arm -L /usr/arm-linux-gnueabihf"
-
-export CC_armv7_linux_androideabi=armv7a-linux-androideabi18-clang
-export AR_armv7_linux_androideabi=arm-linux-androideabi-ar
-export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=armv7a-linux-androideabi18-clang
-
-export CC_i686_unknown_linux_gnu=clang
-export AR_i686_unknown_linux_gnu=llvm-ar
-export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
-
-export CC_i686_unknown_linux_musl=clang
-export AR_i686_unknown_linux_musl=llvm-ar
-export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang
-
-export CC_x86_64_unknown_linux_musl=clang
-export AR_x86_64_unknown_linux_musl=llvm-ar
-export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang
-
-# The first two are only needed for when the "wasm_c" feature is enabled.
-export CC_wasm32_unknown_unknown=clang-10
-export AR_wasm32_unknown_unknown=llvm-ar-10
-export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
+for arg in $*; do
+  case $arg in
+    --target=aarch64-linux-android)
+      export CC_aarch64_linux_android=$android_tools/aarch64-linux-android21-clang
+      export AR_aarch64_linux_android=$android_tools/aarch64-linux-android-ar
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$android_tools/aarch64-linux-android21-clang
+      ;;
+    --target=aarch64-unknown-linux-gnu)
+      export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+      export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc-ar
+      export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+      export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -L /usr/aarch64-linux-gnu"
+      ;;
+    --target=arm-unknown-linux-gnueabihf)
+      export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
+      export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc-ar
+      export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+      export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="qemu-arm -L /usr/arm-linux-gnueabihf"
+      ;;
+    --target=armv7-linux-androideabi)
+      export CC_armv7_linux_androideabi=$android_tools/armv7a-linux-androideabi18-clang
+      export AR_armv7_linux_androideabi=$android_tools/arm-linux-androideabi-ar
+      export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$android_tools/armv7a-linux-androideabi18-clang
+      ;;
+    --target=i686-unknown-linux-gnu)
+      export CC_i686_unknown_linux_gnu=clang
+      export AR_i686_unknown_linux_gnu=llvm-ar
+      export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
+      ;;
+    --target=i686-unknown-linux-musl)
+      export CC_i686_unknown_linux_musl=clang
+      export AR_i686_unknown_linux_musl=llvm-ar
+      export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang
+      ;;
+    --target=x86_64-unknown-linux-musl)
+      export CC_x86_64_unknown_linux_musl=clang
+      export AR_x86_64_unknown_linux_musl=llvm-ar
+      export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang
+      ;;
+    --target=wasm32-unknown-unknown)
+      # The first two are only needed for when the "wasm_c" feature is enabled.
+      export CC_wasm32_unknown_unknown=clang
+      export AR_wasm32_unknown_unknown=llvm-ar
+      export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
+      ;;
+    *)
+      ;;
+  esac
+done
 
 cargo "$@"
