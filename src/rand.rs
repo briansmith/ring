@@ -181,10 +181,10 @@ use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(
     target_os = "freebsd",
+    target_os = "illumos",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris",
-    target_os = "illumos"
 ))]
 use self::urandom::fill as fill_impl;
 
