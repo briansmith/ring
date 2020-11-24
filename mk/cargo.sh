@@ -39,7 +39,7 @@ export CC_i686_unknown_linux_gnu=clang
 export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 
 export CC_i686_unknown_linux_musl=clang
-export CARGO_TARGET_i686_UNKNOWN_LINUX_MUSL_LINKER=clang
+export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang
 
 export CC_x86_64_unknown_linux_musl=clang
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang
