@@ -49,24 +49,24 @@ for arg in $*; do
       export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$android_tools/armv7a-linux-androideabi18-clang
       ;;
     --target=i686-unknown-linux-gnu)
-      export CC_i686_unknown_linux_gnu=clang
-      export AR_i686_unknown_linux_gnu=llvm-ar
-      export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
+      export CC_i686_unknown_linux_gnu=clang-10
+      export AR_i686_unknown_linux_gnu=llvm-ar-10
+      export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang-10
       ;;
     --target=i686-unknown-linux-musl)
-      export CC_i686_unknown_linux_musl=clang
-      export AR_i686_unknown_linux_musl=llvm-ar
-      export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang
+      export CC_i686_unknown_linux_musl=clang-10
+      export AR_i686_unknown_linux_musl=llvm-ar-10
+      export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang-10
       ;;
     --target=x86_64-unknown-linux-musl)
-      export CC_x86_64_unknown_linux_musl=clang
-      export AR_x86_64_unknown_linux_musl=llvm-ar
-      export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang
+      export CC_x86_64_unknown_linux_musl=clang-10
+      export AR_x86_64_unknown_linux_musl=llvm-ar-10
+      export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang-10
       ;;
     --target=wasm32-unknown-unknown)
       # The first two are only needed for when the "wasm_c" feature is enabled.
-      export CC_wasm32_unknown_unknown=clang
-      export AR_wasm32_unknown_unknown=llvm-ar
+      export CC_wasm32_unknown_unknown=clang-10
+      export AR_wasm32_unknown_unknown=llvm-ar-10
       export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
       ;;
     *)
