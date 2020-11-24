@@ -24,6 +24,7 @@ function install_packages {
   sudo apt-get -yq --no-install-suggests --no-install-recommends install "$@"
 }
 
+use_clang=
 case $target in
 --target*android*)
   mkdir -p "${ANDROID_SDK_ROOT}/licenses"
@@ -50,20 +51,19 @@ case $target in
   ;;
 --target=i686-unknown-linux-gnu|--target=i686-unknown-linux-musl)
   # TODO: musl i686 shouldn't be using gcc-multilib or libc6-dev-i386.
+  use_clang=1
   install_packages \
     gcc-multilib \
     libc6-dev-i386
   ;;
+--target=x86_64-unknown-linux-musl)
+  use_clang=1
+  ;;
 --target=wasm32-unknown-unknown)
-  # The "wasm_c" feature requires clang and llvm packages.
   cargo install wasm-bindgen-cli --vers "0.2.68" --bin wasm-bindgen-test-runner
   case ${features-} in
     *wasm32_c*)
-      # "wasm_c" has only been tested with clang-10 and llvm-ar-10. The build
-      # will fail when using some older versions.
-      install_packages \
-        clang-10 \
-        llvm-10
+      use_clang=1
       ;;
     *)
       ;;
@@ -72,3 +72,7 @@ case $target in
 --target=*)
   ;;
 esac
+
+if [ -n "$use_clang" ]; then
+  install_packages clang-10 llvm-10
+fi
