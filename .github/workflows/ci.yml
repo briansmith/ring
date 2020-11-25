@@ -251,3 +251,61 @@ jobs:
 
       - run: |
           ${{ matrix.webdriver }} mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+
+  coverage:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ${{ matrix.host_os }}
+
+    strategy:
+      matrix:
+        features:
+          - # Default
+
+        # TODO: targets
+        target:
+          - i686-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+
+        mode:
+          - # debug
+
+        # Coverage collection is Nightly-only
+        rust_channel:
+          - nightly
+
+        # TODO: targets
+        include:
+          - target: i686-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: x86_64-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
+        run: echo "DEVELOPER_DIR=/Applications/Xcode_12.2.app/Contents/Developer" >> $GITHUB_ENV
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        env:
+          RING_COVERAGE: 1
+        run: |
+          mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./target/${{ matrix.target }}/debug/coverage/coverage.txt
+          fail_ci_if_error: true
+          verbose: true
