@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eux -o pipefail
+IFS=$'\n\t'
+
+if [ -n "$RING_BUILD_EXECUTABLE_LIST" ]; then
+  echo $1 >> "$RING_BUILD_EXECUTABLE_LIST"
+fi
+
+$*
