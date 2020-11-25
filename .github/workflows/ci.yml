@@ -63,9 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - run: >
-          (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
-          ("$pwd\target\tools" >> $env:GITHUB_PATH)
+      - run: powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1
 
       - uses: actions-rs/toolchain@v1
         with:

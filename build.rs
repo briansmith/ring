@@ -322,7 +322,7 @@ fn pregenerate_asm_main() {
                 let srcs = asm_srcs(perlasm_src_dsts);
                 for src in srcs {
                     let obj_path = obj_path(&pregenerated, &src, MSVC_OBJ_EXT);
-                    run_command(yasm(&src, target_arch, &obj_path));
+                    run_command(nasm(&src, target_arch, &obj_path));
                 }
             }
         }
@@ -523,7 +523,7 @@ fn compile(
             let cmd = if target.os != WINDOWS || ext != "asm" {
                 cc(p, ext, target, warnings_are_errors, &out_path)
             } else {
-                yasm(p, &target.arch, &out_path)
+                nasm(p, &target.arch, &out_path)
             };
 
             run_command(cmd);
@@ -637,21 +637,20 @@ fn cc(
     c
 }
 
-fn yasm(file: &Path, arch: &str, out_file: &Path) -> Command {
-    let (oformat, machine) = match arch {
-        "x86_64" => ("--oformat=win64", "--machine=amd64"),
-        "x86" => ("--oformat=win32", "--machine=x86"),
+fn nasm(file: &Path, arch: &str, out_file: &Path) -> Command {
+    let oformat = match arch {
+        "x86_64" => ("win64"),
+        "x86" => ("win32"),
         _ => panic!("unsupported arch: {}", arch),
     };
-    let mut c = Command::new("yasm.exe");
+    let mut c = Command::new("./target/tools/nasm");
     let _ = c
-        .arg("-X")
-        .arg("vc")
-        .arg("--dformat=cv8")
-        .arg(oformat)
-        .arg(machine)
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
+        .arg("-f")
+        .arg(oformat)
+        .arg("-Xgnu")
+        .arg("-gcv8")
         .arg(file);
     c
 }
