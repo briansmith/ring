@@ -265,6 +265,7 @@ jobs:
 
         # TODO: targets
         target:
+          - aarch64-unknown-linux-gnu
           - i686-unknown-linux-gnu
           - x86_64-unknown-linux-musl
 
@@ -277,6 +278,9 @@ jobs:
 
         # TODO: targets
         include:
+          - target: aarch64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-18.04
 
