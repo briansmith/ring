@@ -45,8 +45,9 @@ case $target in
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$android_tools/aarch64-linux-android21-clang
     ;;
   aarch64-unknown-linux-gnu)
-    export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-    export AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc-ar
+    export CC_aarch64_unknown_linux_gnu=clang-10
+    export AR_aarch64_unknown_linux_gnu=llvm-ar-10
+    export CFLAGS_aarch64_unknown_linux_gnu="--sysroot=/usr/aarch64-linux-gnu"
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_aarch64"
     ;;
@@ -107,7 +108,9 @@ if [ -n "${RING_COVERAGE-}" ]; then
   export RING_BUILD_EXECUTABLE_LIST="$coverage_dir/executables"
   truncate --size=0 "$RING_BUILD_EXECUTABLE_LIST"
 
-  export LLVM_PROFILE_FILE="$coverage_dir/%m.profraw"
+  # This doesn't work when profiling under QEMU. Instead mk/runner does
+  # something similar but different.
+  # export LLVM_PROFILE_FILE="$coverage_dir/%m.profraw"
 
   # ${target} with hyphens replaced by underscores, lowercase and uppercase.
   target_lower=${target//-/_}
