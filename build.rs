@@ -109,6 +109,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
+    (&[AARCH64], "crypto/cipher_extra/asm/chacha20_poly1305_armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
 ];
 

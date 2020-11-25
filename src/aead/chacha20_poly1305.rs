@@ -50,9 +50,9 @@ fn chacha20_poly1305_seal(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     {
-        if has_sse41(cpu_features) {
+        if has_vector_instructions(cpu_features) {
             let mut key_block = combine_key_and_nonce(key, nonce);
 
             extern "C" {
@@ -93,9 +93,9 @@ fn chacha20_poly1305_open(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     {
-        if has_sse41(cpu_features) {
+        if has_vector_instructions(cpu_features) {
             let mut key_block = combine_key_and_nonce(key, nonce);
 
             extern "C" {
@@ -139,7 +139,7 @@ fn chacha20_poly1305_open(
 
 pub type Key = chacha::Key;
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 #[inline(always)]
 fn combine_key_and_nonce(key: &aead::KeyInner, nonce: Nonce) -> [u32; 12] {
     let chacha20_key = match key {
@@ -232,8 +232,13 @@ pub(super) fn derive_poly1305_key(
 }
 
 #[cfg(target_arch = "x86_64")]
-fn has_sse41(cpu_features: cpu::Features) -> bool {
+fn has_vector_instructions(cpu_features: cpu::Features) -> bool {
     cpu::intel::SSE41.available(cpu_features)
+}
+
+#[cfg(target_arch = "aarch64")]
+fn has_vector_instructions(cpu_features: cpu::Features) -> bool {
+    cpu::arm::NEON.available(cpu_features)
 }
 
 #[cfg(test)]
