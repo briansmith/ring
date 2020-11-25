@@ -310,6 +310,6 @@ jobs:
 
       - uses: codecov/codecov-action@v1
         with:
-          file: ./target/${{ matrix.target }}/debug/coverage/coverage.txt
+          directory: ./target/${{ matrix.target }}/debug/coverage/reports
           fail_ci_if_error: true
           verbose: true

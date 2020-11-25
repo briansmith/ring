@@ -129,10 +129,14 @@ fi
 cargo "$@"
 
 if [ -n "${RING_COVERAGE-}" ]; then
-  llvm-profdata-10 merge -sparse "$coverage_dir"/*.profraw -o "$coverage_dir"/merged.profdata
-  xargs --arg-file="$RING_BUILD_EXECUTABLE_LIST" \
+  while read executable; do
+    basename=$(basename "$executable")
+    llvm-profdata-10 merge -sparse ""$coverage_dir"/$basename.profraw" -o "$coverage_dir"/$basename.profdata
+    mkdir -p "$coverage_dir"/reports
     llvm-cov-10 export \
-      --instr-profile "$coverage_dir"/merged.profdata \
+      --instr-profile "$coverage_dir"/$basename.profdata \
       --format lcov \
-    > "$coverage_dir"/coverage.txt
+      "$executable" \
+    > "$coverage_dir"/reports/coverage-$basename.txt
+  done < "$RING_BUILD_EXECUTABLE_LIST"
 fi
