@@ -182,7 +182,9 @@ impl Key {
     /// random value generated from `rng`.
     ///
     /// The key will be `digest_alg.output_len` bytes long, based on the
-    /// recommendation in https://tools.ietf.org/html/rfc2104#section-3.
+    /// recommendation in [RFC 2104 Section 3].
+    ///
+    /// [RFC 2104 Section 3]: https://tools.ietf.org/html/rfc2104#section-3
     pub fn generate(
         algorithm: Algorithm,
         rng: &dyn rand::SecureRandom,
