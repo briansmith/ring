@@ -123,6 +123,7 @@ $code.=<<___;
 #include <GFp/arm_arch.h>
 
 .extern	GFp_armcap_P
+.hidden	GFp_armcap_P
 
 .section .rodata
 
