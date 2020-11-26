@@ -80,11 +80,6 @@ e.g. export `CFLAGS=-D__ANDROID_API__=21`.
 
 Additional Features that are Useful for Development
 ---------------------------------------------------
-The `internal_benches` feature enable benchmarks of internal functions. These
-benchmarks are only useful for people hacking on the implementation of *ring*.
-(The benchmarks for the *ring* API are in the
-[crypto-bench](https://github.com/briansmith/crypto-bench) project.)
-
 The `slow_tests` feature runs additional tests that are too slow to run during
 a normal edit-compile-test cycle.
 
