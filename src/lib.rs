@@ -39,8 +39,8 @@
 //!        verification. Without this feature, only a subset of functionality
 //!        is provided to wasm32 targets so that a C compiler isn't needed. A
 //!        typical invocation would be:
-//!        <code>TARGET_AR=llvm-ar cargo test --target=wasm32-unknown-unknown --features=wasm32_c</code>
-//!        with <code>llvm-ar</code> and <code>clang</code> in <code>$PATH</code>.
+//!        <code>TARGET_CC=clang-10 TARGET_AR=llvm-ar-10 cargo test --target=wasm32-unknown-unknown --features=wasm32_c</code>
+//!        with <code>llvm-ar-10</code> and <code>clang-10</code> in <code>$PATH</code>.
 //!        (Going forward more functionality should be enabled by default, without
 //!        requiring these hacks, and without requiring a C compiler.)
 //! </table>
