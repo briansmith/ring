@@ -33,8 +33,7 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      # TODO: Add `--all-features`:
-      - run: cargo +1.37.0 clippy ---all-targets -- --deny warnings
+      - run: cargo +1.37.0 clippy --all-features ---all-targets -- --deny warnings
 
   deny:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
@@ -81,8 +80,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - run: |
-          # TODO: We should use `--all-features` but we need to fix `internal-benches` first.
-          cargo doc --features=std
+          cargo doc --all-features
 
   package:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
@@ -289,7 +287,7 @@ jobs:
     strategy:
       matrix:
         features:
-          - # Default
+          - --all-features
 
         # TODO: targets
         target:
