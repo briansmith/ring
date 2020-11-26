@@ -31,8 +31,8 @@
 //!         fallbacks will not occur. See the documentation for
 //!         <code>rand::SystemRandom</code> for more details.
 //! <tr><td><code>std</code>
-//!     <td>Enable features that use libstd, in particular `std::error::Error`
-//!         integration.
+//!     <td>Enable features that use libstd, in particular
+//!         <code>std::error::Error</code> integration.
 //! <tr><td><code>wasm32_c</code>
 //!     <td>Enables features that require a C compiler on wasm32 targets, such as
 //!        the <code>constant_time</code> module, HMAC verification, and PBKDF2
