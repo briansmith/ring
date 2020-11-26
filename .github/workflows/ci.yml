@@ -54,6 +54,36 @@ jobs:
 
       - run: cargo deny check
 
+  # Verify that documentation builds.
+  rustdoc:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    strategy:
+      matrix:
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+
+        include:
+          - target: x86_64-unknown-linux-gnu
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - uses: actions/checkout@v2
+
+      - run: |
+          # TODO: We should use `--all-features` but we need to fix `internal-benches` first.
+          cargo doc --features=std
+
   package:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
