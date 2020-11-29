@@ -144,10 +144,6 @@ jobs:
           - target: aarch64-apple-darwin
             rust_channel: stable
 
-          # The beta channel doesn't have aarch64-apple-darwin support yet.
-          - target: aarch64-apple-darwin
-            rust_channel: beta
-
         include:
           - target: aarch64-apple-darwin
             # macos-latest didn't work.
