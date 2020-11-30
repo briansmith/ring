@@ -38,6 +38,12 @@ for arg in $*; do
   esac
 done
 
+# See comments in install-build-tools.sh.
+llvm_version=10
+if [ -n "${RING_COVERAGE-}" ]; then
+  llvm_version=11
+fi
+
 case $target in
    aarch64-linux-android)
     export CC_aarch64_linux_android=$android_tools/aarch64-linux-android21-clang
@@ -45,15 +51,15 @@ case $target in
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$android_tools/aarch64-linux-android21-clang
     ;;
   aarch64-unknown-linux-gnu)
-    export CC_aarch64_unknown_linux_gnu=clang-10
-    export AR_aarch64_unknown_linux_gnu=llvm-ar-10
+    export CC_aarch64_unknown_linux_gnu=clang-$llvm_version
+    export AR_aarch64_unknown_linux_gnu=llvm-ar-$llvm_version
     export CFLAGS_aarch64_unknown_linux_gnu="--sysroot=/usr/aarch64-linux-gnu"
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_aarch64"
     ;;
   aarch64-unknown-linux-musl)
-    export CC_aarch64_unknown_linux_musl=clang-10
-    export AR_aarch64_unknown_linux_musl=llvm-ar-10
+    export CC_aarch64_unknown_linux_musl=clang-$llvm_version
+    export AR_aarch64_unknown_linux_musl=llvm-ar-$llvm_version
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUNNER="$qemu_aarch64"
     ;;
@@ -69,30 +75,30 @@ case $target in
     export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$android_tools/armv7a-linux-androideabi18-clang
     ;;
   armv7-unknown-linux-musleabihf)
-    export CC_armv7_unknown_linux_musleabihf=clang-10
-    export AR_armv7_unknown_linux_musleabihf=llvm-ar-10
+    export CC_armv7_unknown_linux_musleabihf=clang-$llvm_version
+    export AR_armv7_unknown_linux_musleabihf=llvm-ar-$llvm_version
     export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUSTFLAGS="$rustflags_self_contained"
     export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUNNER="$qemu_arm"
     ;;
   i686-unknown-linux-gnu)
-    export CC_i686_unknown_linux_gnu=clang-10
-    export AR_i686_unknown_linux_gnu=llvm-ar-10
-    export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang-10
+    export CC_i686_unknown_linux_gnu=clang-$llvm_version
+    export AR_i686_unknown_linux_gnu=llvm-ar-$llvm_version
+    export CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang-$llvm_version
     ;;
   i686-unknown-linux-musl)
-    export CC_i686_unknown_linux_musl=clang-10
-    export AR_i686_unknown_linux_musl=llvm-ar-10
-    export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang-10
+    export CC_i686_unknown_linux_musl=clang-$llvm_version
+    export AR_i686_unknown_linux_musl=llvm-ar-$llvm_version
+    export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang-$llvm_version
     ;;
   x86_64-unknown-linux-musl)
-    export CC_x86_64_unknown_linux_musl=clang-10
-    export AR_x86_64_unknown_linux_musl=llvm-ar-10
-    export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang-10
+    export CC_x86_64_unknown_linux_musl=clang-$llvm_version
+    export AR_x86_64_unknown_linux_musl=llvm-ar-$llvm_version
+    export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang-$llvm_version
     ;;
   wasm32-unknown-unknown)
     # The first two are only needed for when the "wasm_c" feature is enabled.
-    export CC_wasm32_unknown_unknown=clang-10
-    export AR_wasm32_unknown_unknown=llvm-ar-10
+    export CC_wasm32_unknown_unknown=clang-$llvm_version
+    export AR_wasm32_unknown_unknown=llvm-ar-$llvm_version
     export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
     ;;
   *)
@@ -131,9 +137,9 @@ cargo "$@"
 if [ -n "${RING_COVERAGE-}" ]; then
   while read executable; do
     basename=$(basename "$executable")
-    llvm-profdata-10 merge -sparse ""$coverage_dir"/$basename.profraw" -o "$coverage_dir"/$basename.profdata
+    llvm-profdata-$llvm_version merge -sparse ""$coverage_dir"/$basename.profraw" -o "$coverage_dir"/$basename.profdata
     mkdir -p "$coverage_dir"/reports
-    llvm-cov-10 export \
+    llvm-cov-$llvm_version export \
       --instr-profile "$coverage_dir"/$basename.profdata \
       --format lcov \
       "$executable" \

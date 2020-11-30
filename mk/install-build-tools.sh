@@ -80,5 +80,14 @@ case $target in
 esac
 
 if [ -n "$use_clang" ]; then
-  install_packages clang-10 llvm-10
+  llvm_version=10
+  if [ -n "${RING_COVERAGE-}" ]; then
+    # https://github.com/rust-lang/rust/pull/79365 upgraded the coverage file
+    # format to one that only LLVM 11+ can use
+    llvm_version=11
+    sudo apt-key add mk/llvm-snapshot.gpg.key
+    sudo add-apt-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-$llvm_version main"
+    sudo apt-get update
+  fi
+  install_packages clang-$llvm_version llvm-$llvm_version
 fi
