@@ -88,12 +88,12 @@ case $target in
   i686-unknown-linux-musl)
     export CC_i686_unknown_linux_musl=clang-$llvm_version
     export AR_i686_unknown_linux_musl=llvm-ar-$llvm_version
-    export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_LINKER=clang-$llvm_version
+    export CARGO_TARGET_I686_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
     ;;
   x86_64-unknown-linux-musl)
     export CC_x86_64_unknown_linux_musl=clang-$llvm_version
     export AR_x86_64_unknown_linux_musl=llvm-ar-$llvm_version
-    export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang-$llvm_version
+    export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
     ;;
   wasm32-unknown-unknown)
     # The first two are only needed for when the "wasm_c" feature is enabled.
