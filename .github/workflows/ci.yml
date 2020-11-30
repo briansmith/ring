@@ -304,14 +304,25 @@ jobs:
 
         # TODO: targets
         include:
+          # TODO: Use the -musl target after
+          # https://github.com/rust-lang/rust/issues/79556 and
+          # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-18.04
 
+          # TODO: Use the -musl target after
+          # https://github.com/rust-lang/rust/issues/79556 and
+          # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-18.04
 
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-18.04
+
+          # TODO: Add an ARM target after
+          # https://github.com/rust-lang/rust/issues/79555 is fixed. This may
+          # require https://github.com/rust-lang/rust/issues/79555 to be fixed
+          # too.
 
     steps:
       - uses: actions/checkout@v2
