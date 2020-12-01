@@ -563,7 +563,7 @@ func runInteractive(server *acvp.Server, config Config) {
 	defer terminal.Restore(0, oldState)
 	term := terminal.NewTerminal(os.Stdin, "> ")
 
-	resizeChan := make(chan os.Signal)
+	resizeChan := make(chan os.Signal, 1)
 	go func() {
 		for _ = range resizeChan {
 			updateTerminalSize(term)
