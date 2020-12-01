@@ -251,11 +251,7 @@ $code.=<<___;
 .type	GFp_${prefix}_${dir}crypt,%function
 .align	5
 GFp_${prefix}_${dir}crypt:
-___
-$code.=<<___	if ($flavour =~ /64/);
 	AARCH64_VALID_CALL_TARGET
-___
-$code.=<<___;
 	ldr	$rounds,[$key,#240]
 	vld1.32	{$rndkey0},[$key],#16
 	vld1.8	{$inout},[$inp]
