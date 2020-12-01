@@ -263,6 +263,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - run: cargo generate-lockfile
       - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
       - uses: actions-rs/toolchain@v1
