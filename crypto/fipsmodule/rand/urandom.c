@@ -366,14 +366,7 @@ void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
     perror("entropy fill failed");
     abort();
   }
-
-#if defined(BORINGSSL_FIPS_BREAK_CRNG)
-  // This breaks the "continuous random number generator test" defined in FIPS
-  // 140-2, section 4.9.2, and implemented in rand_get_seed().
-  OPENSSL_memset(out, 0, requested);
-#endif
 }
-
 #endif  // BORINGSSL_FIPS
 
 int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
