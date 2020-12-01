@@ -241,6 +241,9 @@ jobs:
             host_os: ubuntu-18.04
 
     steps:
+      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
+        run: sudo apt-get update -y
+
       - uses: actions/checkout@v2
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
@@ -297,9 +300,13 @@ jobs:
           - CHROMEDRIVER=chromedriver
 
     steps:
+      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
+        run: sudo apt-get update -y
+
       - uses: actions/checkout@v2
 
       - run: cargo generate-lockfile
+
       - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
       - uses: actions-rs/toolchain@v1
@@ -358,6 +365,9 @@ jobs:
           # too.
 
     steps:
+      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
+        run: sudo apt-get update -y
+
       - uses: actions/checkout@v2
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
