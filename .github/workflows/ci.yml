@@ -35,6 +35,34 @@ jobs:
 
       - run: cargo +1.37.0 clippy --all-features ---all-targets -- --deny warnings
 
+  audit:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/cargo-audit
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: ${{ runner.os }}-v2-cargo-audit-0.13.1
+
+      - run: cargo install cargo-audit --vers "0.13.1"
+
+      - uses: actions/checkout@v2
+
+      - run: cargo generate-lockfile
+
+      - run: cargo audit --deny warnings
+
   deny:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
