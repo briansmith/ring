@@ -49,8 +49,11 @@ jobs:
 
       - uses: actions/cache@v2
         with:
-          path: ~/.cargo/bin/cargo-deny
-          key: ${{ runner.os }}-cargo-deny-0.8.4
+          path: |
+            ~/.cargo/bin/cargo-deny
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: ${{ runner.os }}-v2-cargo-deny-0.8.4
 
       - run: cargo install cargo-deny --vers "0.8.4"
 
