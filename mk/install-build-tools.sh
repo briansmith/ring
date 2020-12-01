@@ -66,7 +66,9 @@ case $target in
   use_clang=1
   ;;
 --target=wasm32-unknown-unknown)
-  cargo install wasm-bindgen-cli --vers "0.2.68" --bin wasm-bindgen-test-runner
+  # The version of wasm-bindgen-cli must match the wasm-bindgen version.
+  wasm_bindgen_version=$(cargo metadata --format-version 1 | jq -r '.packages | map(select( .name == "wasm-bindgen")) | map(.version) | .[0]')
+  cargo install wasm-bindgen-cli --vers "$wasm_bindgen_version" --bin wasm-bindgen-test-runner
   case ${features-} in
     *wasm32_c*)
       use_clang=1
