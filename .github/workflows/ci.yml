@@ -47,7 +47,12 @@ jobs:
           toolchain: stable
           profile: minimal
 
-      - run: cargo install cargo-deny
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cargo/bin/cargo-deny
+          key: ${{ runner.os }}-cargo-deny-0.8.4
+
+      - run: cargo install cargo-deny --vers "0.8.4"
 
       - uses: actions/checkout@v2
 
