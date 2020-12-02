@@ -211,8 +211,7 @@ extern "C" {
 // shouldn't be a problem in practice.
 #define TLSEXT_TYPE_quic_transport_parameters 0xffa5
 
-// ExtensionType value assigned to
-// https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-03
+// ExtensionType value from RFC8879
 #define TLSEXT_TYPE_cert_compression 27
 
 // ExtensionType value from RFC4507
@@ -271,7 +270,7 @@ extern "C" {
 #define TLSEXT_hash_sha384 5
 #define TLSEXT_hash_sha512 6
 
-// From https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-03#section-3
+// From https://www.rfc-editor.org/rfc/rfc8879.html#section-3
 #define TLSEXT_cert_compression_zlib 1
 #define TLSEXT_cert_compression_brotli 2
 
