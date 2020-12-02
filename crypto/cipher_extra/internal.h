@@ -57,7 +57,11 @@
 #ifndef OPENSSL_HEADER_CIPHER_EXTRA_INTERNAL_H
 #define OPENSSL_HEADER_CIPHER_EXTRA_INTERNAL_H
 
+#include <stdlib.h>
+
 #include <openssl/base.h>
+#include <openssl/cpu.h>
+#include <openssl/type_check.h>
 
 #include "../internal.h"
 
@@ -119,6 +123,89 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
                               size_t data_plus_mac_plus_padding_size,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length);
+
+#define POLY1305_TAG_LEN 16
+
+// For convenience (the x86_64 calling convention allows only six parameters in
+// registers), the final parameter for the assembly functions is both an input
+// and output parameter.
+union chacha20_poly1305_open_data {
+  struct {
+    alignas(16) uint8_t key[32];
+    uint32_t counter;
+    uint8_t nonce[12];
+  } in;
+  struct {
+    uint8_t tag[POLY1305_TAG_LEN];
+  } out;
+};
+
+union chacha20_poly1305_seal_data {
+  struct {
+    alignas(16) uint8_t key[32];
+    uint32_t counter;
+    uint8_t nonce[12];
+    const uint8_t *extra_ciphertext;
+    size_t extra_ciphertext_len;
+  } in;
+  struct {
+    uint8_t tag[POLY1305_TAG_LEN];
+  } out;
+};
+
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
+
+OPENSSL_STATIC_ASSERT(sizeof(union chacha20_poly1305_open_data) == 48,
+                      "wrong chacha20_poly1305_open_data size");
+OPENSSL_STATIC_ASSERT(sizeof(union chacha20_poly1305_seal_data) == 48 + 8 + 8,
+                      "wrong chacha20_poly1305_seal_data size");
+
+OPENSSL_INLINE int chacha20_poly1305_asm_capable(void) {
+  const int sse41_capable = (OPENSSL_ia32cap_P[1] & (1 << 19)) != 0;
+  return sse41_capable;
+}
+
+// chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It decrypts
+// |plaintext_len| bytes from |ciphertext| and writes them to |out_plaintext|.
+// Additional input parameters are passed in |aead_data->in|. On exit, it will
+// write calculated tag value to |aead_data->out.tag|, which the caller must
+// check.
+extern void chacha20_poly1305_open(uint8_t *out_plaintext,
+                                   const uint8_t *ciphertext,
+                                   size_t plaintext_len, const uint8_t *ad,
+                                   size_t ad_len,
+                                   union chacha20_poly1305_open_data *data);
+
+// chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It encrypts
+// |plaintext_len| bytes from |plaintext| and writes them to |out_ciphertext|.
+// Additional input parameters are passed in |aead_data->in|. The calculated tag
+// value is over the computed ciphertext concatenated with |extra_ciphertext|
+// and written to |aead_data->out.tag|.
+extern void chacha20_poly1305_seal(uint8_t *out_ciphertext,
+                                   const uint8_t *plaintext,
+                                   size_t plaintext_len, const uint8_t *ad,
+                                   size_t ad_len,
+                                   union chacha20_poly1305_seal_data *data);
+#else
+
+OPENSSL_INLINE int chacha20_poly1305_asm_capable(void) { return 0; }
+
+OPENSSL_INLINE void chacha20_poly1305_open(uint8_t *out_plaintext,
+                                   const uint8_t *ciphertext,
+                                   size_t plaintext_len, const uint8_t *ad,
+                                   size_t ad_len,
+                                   union chacha20_poly1305_open_data *data) {
+  abort();
+}
+
+OPENSSL_INLINE void chacha20_poly1305_seal(uint8_t *out_ciphertext,
+                                   const uint8_t *plaintext,
+                                   size_t plaintext_len, const uint8_t *ad,
+                                   size_t ad_len,
+                                   union chacha20_poly1305_seal_data *data) {
+  abort();
+}
+#endif
 
 
 #if defined(__cplusplus)

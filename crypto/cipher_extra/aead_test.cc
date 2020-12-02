@@ -24,6 +24,7 @@
 #include <openssl/err.h>
 
 #include "../fipsmodule/cipher/internal.h"
+#include "internal.h"
 #include "../internal.h"
 #include "../test/abi_test.h"
 #include "../test/file_test.h"
@@ -826,6 +827,27 @@ TEST_P(PerAEADTest, ABI) {
 
   EXPECT_EQ(Bytes(plaintext + 1, sizeof(plaintext) - 1),
             Bytes(plaintext2 + 1, plaintext2_len));
+}
+
+TEST(ChaChaPoly1305Test, ABI) {
+  if (!chacha20_poly1305_asm_capable()) {
+    return;
+  }
+
+  std::unique_ptr<uint8_t[]> buf(new uint8_t[1024]);
+  for (size_t len = 0; len <= 1024; len += 5) {
+    SCOPED_TRACE(len);
+    union chacha20_poly1305_open_data open_ctx = {};
+    CHECK_ABI(chacha20_poly1305_open, buf.get(), buf.get(), len, buf.get(),
+              len % 128, &open_ctx);
+  }
+
+  for (size_t len = 0; len <= 1024; len += 5) {
+    SCOPED_TRACE(len);
+    union chacha20_poly1305_seal_data seal_ctx = {};
+    CHECK_ABI(chacha20_poly1305_seal, buf.get(), buf.get(), len, buf.get(),
+              len % 128, &seal_ctx);
+  }
 }
 #endif  // SUPPORTS_ABI_TEST
 
