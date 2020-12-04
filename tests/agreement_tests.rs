@@ -77,7 +77,6 @@ fn agreement_traits() {
     );
 }
 
-#[allow(clippy::block_in_if_condition_stmt)]
 #[test]
 fn agreement_agree_ephemeral() {
     let rng = rand::SystemRandom::new();
@@ -106,13 +105,12 @@ fn agreement_agree_ephemeral() {
 
                 assert_eq!(my_private.algorithm(), alg);
 
-                assert!(
+                let result =
                     agreement::agree_ephemeral(my_private, &peer_public, (), |key_material| {
                         assert_eq!(key_material, &output[..]);
                         Ok(())
-                    })
-                    .is_ok()
-                );
+                    });
+                assert_eq!(result, Ok(()));
             }
 
             Some(_) => {
