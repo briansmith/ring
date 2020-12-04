@@ -24,16 +24,23 @@ jobs:
 
     runs-on: ubuntu-18.04
 
+    strategy:
+      matrix:
+        rust_channel:
+          # MSRV
+          - 1.37.0
+          - stable
+
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.37.0
+          toolchain: ${{ matrix.rust_channel }}
           profile: minimal
           components: clippy
 
       - uses: actions/checkout@v2
 
-      - run: cargo +1.37.0 clippy --all-features ---all-targets -- --deny warnings
+      - run: cargo +${{ matrix.rust_channel }} clippy --all-features ---all-targets -- --deny warnings
 
   audit:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
