@@ -15,7 +15,7 @@
 
 // TODO: enforce maximum input length.
 
-use super::{block::BLOCK_LEN, Tag, TAG_LEN};
+use super::{Tag, TAG_LEN};
 use crate::{c, cpu};
 
 /// A Poly1305 key.
@@ -24,7 +24,7 @@ pub(super) struct Key {
     cpu_features: cpu::Features,
 }
 
-const KEY_LEN: usize = 2 * BLOCK_LEN;
+const KEY_LEN: usize = 2 * TAG_LEN;
 
 impl Key {
     #[inline]
@@ -141,7 +141,7 @@ mod tests {
         test::run(test_file!("poly1305_test.txt"), |section, test_case| {
             assert_eq!(section, "");
             let key = test_case.consume_bytes("Key");
-            let key: &[u8; BLOCK_LEN * 2] = key.as_slice().try_into().unwrap();
+            let key: &[u8; KEY_LEN] = key.as_slice().try_into().unwrap();
             let input = test_case.consume_bytes("Input");
             let expected_mac = test_case.consume_bytes("MAC");
             let key = Key::new(*key, cpu_features);
