@@ -181,7 +181,7 @@ pub const KEY_LEN: usize = chacha::KEY_LEN * 2;
 pub const PACKET_LENGTH_LEN: usize = 4; // 32 bits
 
 /// The length in bytes of an authentication tag.
-pub const TAG_LEN: usize = super::BLOCK_LEN;
+pub const TAG_LEN: usize = super::TAG_LEN;
 
 fn verify(key: poly1305::Key, msg: &[u8], tag: &[u8; TAG_LEN]) -> Result<(), error::Unspecified> {
     let Tag(calculated_tag) = poly1305::sign(key, msg);
