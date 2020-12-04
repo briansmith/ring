@@ -70,16 +70,7 @@
 // `#[derive(...)]` uses `trivial_numeric_casts` and `unused_qualifications`
 // internally.
 #![deny(missing_docs, unused_qualifications, variant_size_differences)]
-#![forbid(
-    anonymous_parameters,
-    trivial_casts,
-    trivial_numeric_casts,
-    unstable_features,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_results,
-    warnings
-)]
+#![forbid(unused_results)]
 #![no_std]
 
 #[cfg(feature = "alloc")]
