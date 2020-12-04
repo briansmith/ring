@@ -15,7 +15,7 @@
 use super::{
     chacha::{self, Counter},
     iv::Iv,
-    poly1305, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
+    poly1305, Aad, Block, Direction, Nonce, Tag, TAG_LEN,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
 use core::convert::TryInto;
@@ -120,7 +120,7 @@ fn aead(
 
 #[inline]
 fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
-    let remainder_len = input.len() % BLOCK_LEN;
+    let remainder_len = input.len() % TAG_LEN;
     let whole_len = input.len() - remainder_len;
     if whole_len > 0 {
         ctx.update(&input[..whole_len]);
@@ -138,8 +138,8 @@ pub(super) fn derive_poly1305_key(
     iv: Iv,
     cpu_features: cpu::Features,
 ) -> poly1305::Key {
-    let mut key_bytes = [0u8; 2 * BLOCK_LEN];
-    chacha_key.encrypt_iv_xor_blocks_in_place(iv, &mut key_bytes);
+    let mut key_bytes = [0u8; poly1305::KEY_LEN];
+    chacha_key.encrypt_iv_xor_in_place(iv, &mut key_bytes);
     poly1305::Key::new(key_bytes, cpu_features)
 }
 

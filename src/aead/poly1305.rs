@@ -24,7 +24,7 @@ pub(super) struct Key {
     cpu_features: cpu::Features,
 }
 
-const KEY_LEN: usize = 2 * TAG_LEN;
+pub(super) const KEY_LEN: usize = 2 * TAG_LEN;
 
 impl Key {
     #[inline]

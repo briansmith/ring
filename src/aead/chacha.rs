@@ -13,7 +13,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{counter, iv::Iv, quic::Sample, BLOCK_LEN};
+use super::{counter, iv::Iv, quic::Sample};
 use crate::{c, endian::*};
 
 #[repr(transparent)]
@@ -40,7 +40,7 @@ impl Key {
     }
 
     #[inline] // Optimize away match on `iv` and length check.
-    pub fn encrypt_iv_xor_blocks_in_place(&self, iv: Iv, in_out: &mut [u8; 2 * BLOCK_LEN]) {
+    pub fn encrypt_iv_xor_in_place(&self, iv: Iv, in_out: &mut [u8; 32]) {
         unsafe {
             self.encrypt(
                 CounterOrIv::Iv(iv),
@@ -130,8 +130,7 @@ enum CounterOrIv {
     Iv(Iv),
 }
 
-const KEY_BLOCKS: usize = 2;
-pub const KEY_LEN: usize = KEY_BLOCKS * BLOCK_LEN;
+pub const KEY_LEN: usize = 32;
 
 #[cfg(test)]
 mod tests {
