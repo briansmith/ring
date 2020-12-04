@@ -86,7 +86,7 @@ fn ecdsa_from_pkcs8_test() {
 
             match (
                 signature::EcdsaKeyPair::from_pkcs8(this_asn1, &input),
-                error.clone(),
+                error,
             ) {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
