@@ -219,11 +219,9 @@ fn test_aead<Seal, Open>(
         };
         let mut o_in_out = vec![123u8; 4096];
 
-        for in_prefix_len in in_prefix_lengths.iter() {
+        for &in_prefix_len in in_prefix_lengths.iter() {
             o_in_out.truncate(0);
-            for _ in 0..*in_prefix_len {
-                o_in_out.push(123);
-            }
+            o_in_out.resize(in_prefix_len, 123);
             o_in_out.extend_from_slice(&ct[..]);
 
             let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
@@ -233,7 +231,7 @@ fn test_aead<Seal, Open>(
                 nonce,
                 aead::Aad::from(&aad[..]),
                 &mut o_in_out,
-                *in_prefix_len..,
+                in_prefix_len..,
             );
             match error {
                 None => {
