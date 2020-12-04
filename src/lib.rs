@@ -48,7 +48,6 @@
 #![doc(html_root_url = "https://briansmith.org/rustdoc/")]
 #![allow(
     clippy::collapsible_if,
-    clippy::identity_conversion,
     clippy::identity_op,
     clippy::len_without_is_empty,
     clippy::len_zero,
