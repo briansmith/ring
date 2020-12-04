@@ -114,10 +114,7 @@ fn test_ed25519_from_pkcs8_unchecked() {
             let input = test_case.consume_bytes("Input");
             let error = test_case.consume_optional_string("Error");
 
-            match (
-                Ed25519KeyPair::from_pkcs8_maybe_unchecked(&input),
-                error.clone(),
-            ) {
+            match (Ed25519KeyPair::from_pkcs8_maybe_unchecked(&input), error) {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
@@ -139,7 +136,7 @@ fn test_ed25519_from_pkcs8() {
             let input = test_case.consume_bytes("Input");
             let error = test_case.consume_optional_string("Error");
 
-            match (Ed25519KeyPair::from_pkcs8(&input), error.clone()) {
+            match (Ed25519KeyPair::from_pkcs8(&input), error) {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
