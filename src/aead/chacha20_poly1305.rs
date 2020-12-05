@@ -15,7 +15,7 @@
 use super::{
     chacha::{self, Counter},
     iv::Iv,
-    poly1305, Aad, Block, Direction, Nonce, Tag, TAG_LEN,
+    poly1305, Aad, Direction, Nonce, Tag, TAG_LEN,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
 use core::convert::TryInto;
@@ -109,11 +109,11 @@ fn aead(
     };
 
     ctx.update(
-        Block::from_u64_le(
+        [
             LittleEndian::from(polyfill::u64_from_usize(aad.len())),
             LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
-        )
-        .as_ref(),
+        ]
+        .as_byte_array(),
     );
     ctx.finish()
 }
