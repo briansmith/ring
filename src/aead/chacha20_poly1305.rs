@@ -247,11 +247,11 @@ fn aead(
     };
 
     ctx.update(
-        Block::from_u64_le(
+        [
             LittleEndian::from(polyfill::u64_from_usize(aad.len())),
             LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
-        )
-        .as_ref(),
+        ]
+        .as_byte_array(),
     );
     ctx.finish()
 }
