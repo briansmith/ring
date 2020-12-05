@@ -196,9 +196,8 @@ impl Key {
 
     #[inline]
     pub fn encrypt_iv_xor_block(&self, iv: Iv, input: Block) -> Block {
-        let mut output = self.encrypt_block(Block::from(&iv.into_bytes_less_safe()));
-        output.bitxor_assign(input);
-        output
+        let encrypted_iv = self.encrypt_block(Block::from(&iv.into_bytes_less_safe()));
+        encrypted_iv ^ input
     }
 
     #[inline]

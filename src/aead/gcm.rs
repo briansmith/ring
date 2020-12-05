@@ -17,6 +17,7 @@ use super::{
     Aad,
 };
 use crate::cpu;
+use core::ops::BitXorAssign;
 
 #[cfg(not(target_arch = "aarch64"))]
 mod gcm_nohw;
@@ -25,7 +26,7 @@ pub struct Key(HTable);
 
 impl Key {
     pub(super) fn new(h_be: Block, cpu_features: cpu::Features) -> Self {
-        let h = h_be.u64s_be_to_native();
+        let h: [u64; 2] = h_be.into();
 
         let mut key = Self(HTable {
             Htable: [u128 { hi: 0, lo: 0 }; HTABLE_LEN],
@@ -222,9 +223,9 @@ impl Context {
 
     pub(super) fn pre_finish<F>(self, f: F) -> super::Tag
     where
-        F: FnOnce(Xi) -> super::Tag,
+        F: FnOnce(Block) -> super::Tag,
     {
-        f(self.inner.Xi)
+        f(self.inner.Xi.0)
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -255,10 +256,10 @@ const HTABLE_LEN: usize = 16;
 #[repr(transparent)]
 pub struct Xi(Block);
 
-impl Xi {
+impl BitXorAssign<Block> for Xi {
     #[inline]
     fn bitxor_assign(&mut self, a: Block) {
-        self.0.bitxor_assign(a)
+        self.0 ^= a;
     }
 }
 
