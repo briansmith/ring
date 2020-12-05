@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
+    block::Block,
     chacha::{self, Counter},
     iv::Iv,
     poly1305, Aad, Direction, Nonce, Tag, TAG_LEN,
