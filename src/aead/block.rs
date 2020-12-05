@@ -32,16 +32,6 @@ impl Block {
         Self { subblocks: [0, 0] }
     }
 
-    // TODO: Remove this.
-    #[inline]
-    pub fn from_u64_le(first: LittleEndian<u64>, second: LittleEndian<u64>) -> Self {
-        #[allow(deprecated)]
-        Self {
-            subblocks: [first.into_raw_value(), second.into_raw_value()],
-        }
-    }
-
-    // TODO: Remove this.
     #[inline]
     pub fn from_u64_be(first: BigEndian<u64>, second: BigEndian<u64>) -> Self {
         #[allow(deprecated)]
@@ -109,13 +99,13 @@ mod tests {
             ([ONES, ONES], [ONES, ONES], [0, 0]),
         ];
         for (expected_result, a, b) in TEST_CASES {
-            let mut r = Block::from_u64_le(a[0].into(), a[1].into());
-            r.bitxor_assign(Block::from_u64_le(b[0].into(), b[1].into()));
+            let mut r = Block::from_u64_be(a[0].into(), a[1].into());
+            r.bitxor_assign(Block::from_u64_be(b[0].into(), b[1].into()));
             assert_eq!(*expected_result, r.subblocks);
 
             // XOR is symmetric.
-            let mut r = Block::from_u64_le(b[0].into(), b[1].into());
-            r.bitxor_assign(Block::from_u64_le(a[0].into(), a[1].into()));
+            let mut r = Block::from_u64_be(b[0].into(), b[1].into());
+            r.bitxor_assign(Block::from_u64_be(a[0].into(), a[1].into()));
             assert_eq!(*expected_result, r.subblocks);
         }
     }
