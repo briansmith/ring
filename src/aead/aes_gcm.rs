@@ -17,7 +17,7 @@ use super::{
     block::{Block, BLOCK_LEN},
     gcm, shift, Aad, Direction, Nonce, Tag,
 };
-use crate::{aead, cpu, endian::*, error, polyfill};
+use crate::{aead, cpu, error, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
@@ -181,16 +181,13 @@ fn aead(
     // Authenticate the final block containing the input lengths.
     let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
     let ciphertext_bits = polyfill::u64_from_usize(total_in_out_len) << 3;
-    gcm_ctx.update_block(Block::from_u64_be(
-        BigEndian::from(aad_bits),
-        BigEndian::from(ciphertext_bits),
-    ));
+    gcm_ctx.update_block(Block::from([aad_bits, ciphertext_bits]));
 
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag| {
         let bytes = tag_iv.into_bytes_less_safe();
-        let mut tag = aes_key.encrypt_block(Block::from(&bytes));
-        tag.bitxor_assign(pre_tag.into());
+        let encrypted_iv = aes_key.encrypt_block(Block::from(&bytes));
+        let tag = pre_tag ^ encrypted_iv;
         Tag(*tag.as_ref())
     })
 }
