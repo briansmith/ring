@@ -41,6 +41,7 @@
 #include <openssl/span.h>
 
 #include "../../../../crypto/fipsmodule/rand/internal.h"
+#include "../../../../crypto/fipsmodule/tls/internal.h"
 
 static constexpr size_t kMaxArgs = 8;
 static constexpr size_t kMaxArgLength = (1 << 20);
@@ -702,6 +703,20 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             "increment": 8
           }]
         }]
+      },
+      {
+        "algorithm": "kdf-components",
+        "revision": "1.0",
+        "mode": "tls",
+        "tlsVersion": [
+          "v1.0/1.1",
+          "v1.2"
+        ],
+        "hashAlg": [
+          "SHA2-256",
+          "SHA2-384",
+          "SHA2-512"
+        ]
       }
     ])";
   return WriteReply(
@@ -1553,6 +1568,32 @@ static bool RSASigVer(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(&ok, 1));
 }
 
+template<const EVP_MD *(MDFunc)()>
+static bool TLSKDF(const Span<const uint8_t> args[]) {
+  const Span<const uint8_t> out_len_bytes = args[0];
+  const Span<const uint8_t> secret = args[1];
+  const Span<const uint8_t> label = args[2];
+  const Span<const uint8_t> seed1 = args[3];
+  const Span<const uint8_t> seed2 = args[4];
+  const EVP_MD *md = MDFunc();
+
+  uint32_t out_len;
+  if (out_len_bytes.size() != sizeof(out_len)) {
+    return 0;
+  }
+  memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
+
+  std::vector<uint8_t> out(static_cast<size_t>(out_len));
+  if (!CRYPTO_tls1_prf(md, out.data(), out.size(), secret.data(), secret.size(),
+                       reinterpret_cast<const char *>(label.data()),
+                       label.size(), seed1.data(), seed1.size(), seed2.data(),
+                       seed2.size())) {
+    return 0;
+  }
+
+  return WriteReply(STDOUT_FILENO, out);
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -1615,6 +1656,10 @@ static constexpr struct {
     {"RSA/sigVer/SHA2-384/pss", 4, RSASigVer<EVP_sha384, true>},
     {"RSA/sigVer/SHA2-512/pss", 4, RSASigVer<EVP_sha512, true>},
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
+    {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
+    {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
+    {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
+    {"TLSKDF/1.2/SHA2-512", 5, TLSKDF<EVP_sha512>},
 };
 
 int main() {
