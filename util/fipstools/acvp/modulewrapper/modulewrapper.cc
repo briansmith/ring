@@ -210,9 +210,9 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
           "min": 0, "max": 256, "increment": 8
         }],
         "aadLen": [{
-          "min": 0, "max": 256, "increment": 8
+          "min": 0, "max": 320, "increment": 8
         }],
-        "tagLen": [128],
+        "tagLen": [32, 64, 96, 104, 112, 120, 128],
         "ivLen": [96],
         "ivGen": "external"
       },
@@ -244,7 +244,7 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "keyLen": [
             128, 192, 256
         ],
-        "payloadLen": [{"min": 8, "max": 1024, "increment": 8}]
+        "payloadLen": [{"min": 8, "max": 4096, "increment": 8}]
       },
       {
         "algorithm": "ACVP-AES-CCM",
