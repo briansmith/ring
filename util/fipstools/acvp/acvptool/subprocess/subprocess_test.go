@@ -208,13 +208,15 @@ var invalidACVPAESECB = []byte(`{
 }`)
 
 var callsACVPAESECB = []fakeTransactCall{
-	fakeTransactCall{cmd: "AES/encrypt", expectedNumResults: 1, args: [][]byte{
+	fakeTransactCall{cmd: "AES/encrypt", expectedNumResults: 2, args: [][]byte{
 		fromHex("00000000000000000000000000000000"),
 		fromHex("F34481EC3CC627BACD5DC3FB08F273E6"),
+		fromHex("01000000"),
 	}},
-	fakeTransactCall{cmd: "AES/encrypt", expectedNumResults: 1, args: [][]byte{
+	fakeTransactCall{cmd: "AES/encrypt", expectedNumResults: 2, args: [][]byte{
 		fromHex("00000000000000000000000000000000"),
 		fromHex("9798C4640BAD75C7C3227DB910174E72"),
+		fromHex("01000000"),
 	}},
 }
 
@@ -438,7 +440,7 @@ func TestPrimitives(t *testing.T) {
 		},
 		{
 			algo:          "ACVP-AES-ECB",
-			p:             &blockCipher{"AES", 16, true, false, iterateAES},
+			p:             &blockCipher{"AES", 16, 2, true, false, iterateAES},
 			validJSON:     validACVPAESECB,
 			invalidJSON:   invalidACVPAESECB,
 			expectedCalls: callsACVPAESECB,
