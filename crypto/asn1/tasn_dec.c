@@ -223,6 +223,15 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         break;
 
     case ASN1_ITYPE_MSTRING:
+        /*
+         * It never makes sense for multi-strings to have implicit tagging, so
+         * if tag != -1, then this looks like an error in the template.
+         */
+        if (tag != -1) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
+            goto err;
+        }
+
         p = *in;
         /* Just read in tag and class */
         ret = asn1_check_tlen(NULL, &otag, &oclass, NULL, NULL,
@@ -256,6 +265,15 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         return ef->asn1_ex_d2i(pval, in, len, it, tag, aclass, opt, ctx);
 
     case ASN1_ITYPE_CHOICE:
+        /*
+         * It never makes sense for CHOICE types to have implicit tagging, so if
+         * tag != -1, then this looks like an error in the template.
+         */
+        if (tag != -1) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
+            goto err;
+        }
+
         if (asn1_cb && !asn1_cb(ASN1_OP_D2I_PRE, pval, it, NULL))
             goto auxerr;
 

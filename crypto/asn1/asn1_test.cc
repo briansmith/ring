@@ -184,3 +184,40 @@ TEST(ASN1Test, SerializeBoolean) {
   static const uint8_t kFalse[] = {0x01, 0x01, 0x00};
   TestSerialize(0x00, i2d_ASN1_BOOLEAN, kFalse);
 }
+
+struct IMPLICIT_CHOICE {
+  ASN1_STRING *string;
+};
+
+// clang-format off
+DECLARE_ASN1_FUNCTIONS(IMPLICIT_CHOICE)
+
+ASN1_SEQUENCE(IMPLICIT_CHOICE) = {
+  ASN1_IMP(IMPLICIT_CHOICE, string, DIRECTORYSTRING, 0)
+} ASN1_SEQUENCE_END(IMPLICIT_CHOICE)
+
+IMPLEMENT_ASN1_FUNCTIONS(IMPLICIT_CHOICE)
+// clang-format on
+
+// Test that the ASN.1 templates reject types with implicitly-tagged CHOICE
+// types.
+TEST(ASN1Test, ImplicitChoice) {
+  // Serializing a type with an implicitly tagged CHOICE should fail.
+  std::unique_ptr<IMPLICIT_CHOICE, decltype(&IMPLICIT_CHOICE_free)> obj(
+      IMPLICIT_CHOICE_new(), IMPLICIT_CHOICE_free);
+  EXPECT_EQ(-1, i2d_IMPLICIT_CHOICE(obj.get(), nullptr));
+
+  // An implicitly-tagged CHOICE is an error. Depending on the implementation,
+  // it may be misinterpreted as without the tag, or as clobbering the CHOICE
+  // tag. Test both inputs and ensure they fail.
+
+  // SEQUENCE { UTF8String {} }
+  static const uint8_t kInput1[] = {0x30, 0x02, 0x0c, 0x00};
+  const uint8_t *ptr = kInput1;
+  EXPECT_EQ(nullptr, d2i_IMPLICIT_CHOICE(nullptr, &ptr, sizeof(kInput1)));
+
+  // SEQUENCE { [0 PRIMITIVE] {} }
+  static const uint8_t kInput2[] = {0x30, 0x02, 0x80, 0x00};
+  ptr = kInput2;
+  EXPECT_EQ(nullptr, d2i_IMPLICIT_CHOICE(nullptr, &ptr, sizeof(kInput2)));
+}
