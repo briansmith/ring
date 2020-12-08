@@ -122,44 +122,37 @@ static int edipartyname_cmp(const EDIPARTYNAME *a, const EDIPARTYNAME *b)
 }
 
 /* Returns 0 if they are equal, != 0 otherwise. */
-int GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b)
+int GENERAL_NAME_cmp(const GENERAL_NAME *a, const GENERAL_NAME *b)
 {
-    int result = -1;
-
     if (!a || !b || a->type != b->type)
         return -1;
+
     switch (a->type) {
     case GEN_X400:
-        result = ASN1_TYPE_cmp(a->d.x400Address, b->d.x400Address);
-        break;
+        return ASN1_TYPE_cmp(a->d.x400Address, b->d.x400Address);
 
     case GEN_EDIPARTY:
-        result = edipartyname_cmp(a->d.ediPartyName, b->d.ediPartyName);
-        break;
+        return edipartyname_cmp(a->d.ediPartyName, b->d.ediPartyName);
 
     case GEN_OTHERNAME:
-        result = OTHERNAME_cmp(a->d.otherName, b->d.otherName);
-        break;
+        return OTHERNAME_cmp(a->d.otherName, b->d.otherName);
 
     case GEN_EMAIL:
     case GEN_DNS:
     case GEN_URI:
-        result = ASN1_STRING_cmp(a->d.ia5, b->d.ia5);
-        break;
+        return ASN1_STRING_cmp(a->d.ia5, b->d.ia5);
 
     case GEN_DIRNAME:
-        result = X509_NAME_cmp(a->d.dirn, b->d.dirn);
-        break;
+        return X509_NAME_cmp(a->d.dirn, b->d.dirn);
 
     case GEN_IPADD:
-        result = ASN1_OCTET_STRING_cmp(a->d.ip, b->d.ip);
-        break;
+        return ASN1_OCTET_STRING_cmp(a->d.ip, b->d.ip);
 
     case GEN_RID:
-        result = OBJ_cmp(a->d.rid, b->d.rid);
-        break;
+        return OBJ_cmp(a->d.rid, b->d.rid);
     }
-    return result;
+
+    return -1;
 }
 
 /* Returns 0 if they are equal, != 0 otherwise. */
