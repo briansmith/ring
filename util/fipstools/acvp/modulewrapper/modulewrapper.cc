@@ -32,6 +32,7 @@
 #include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdh.h>
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
@@ -40,6 +41,7 @@
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
+#include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
 #include "../../../../crypto/fipsmodule/tls/internal.h"
 
@@ -716,6 +718,24 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
           "SHA2-256",
           "SHA2-384",
           "SHA2-512"
+        ]
+      },
+      {
+        "algorithm": "KAS-ECC-SSC",
+        "revision": "Sp800-56Ar3",
+        "scheme": {
+          "ephemeralUnified": {
+            "kasRole": [
+              "initiator",
+              "responder"
+            ]
+          }
+        },
+        "domainParameterGenerationMethods": [
+          "P-224",
+          "P-256",
+          "P-384",
+          "P-521"
         ]
       }
     ])";
@@ -1594,6 +1614,70 @@ static bool TLSKDF(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, out);
 }
 
+template <int Nid>
+static bool ECDH(const Span<const uint8_t> args[]) {
+  bssl::UniquePtr<BIGNUM> their_x(BytesToBIGNUM(args[0]));
+  bssl::UniquePtr<BIGNUM> their_y(BytesToBIGNUM(args[1]));
+  const Span<const uint8_t> private_key = args[2];
+
+  bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new_by_curve_name(Nid));
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+
+  const EC_GROUP *const group = EC_KEY_get0_group(ec_key.get());
+  bssl::UniquePtr<EC_POINT> their_point(EC_POINT_new(group));
+  if (!EC_POINT_set_affine_coordinates_GFp(
+          group, their_point.get(), their_x.get(), their_y.get(), ctx.get())) {
+    fprintf(stderr, "Invalid peer point for ECDH.\n");
+    return false;
+  }
+
+  if (!private_key.empty()) {
+    bssl::UniquePtr<BIGNUM> our_k(BytesToBIGNUM(private_key));
+    if (!EC_KEY_set_private_key(ec_key.get(), our_k.get())) {
+      fprintf(stderr, "EC_KEY_set_private_key failed.\n");
+      return false;
+    }
+
+    bssl::UniquePtr<EC_POINT> our_pub(EC_POINT_new(group));
+    if (!EC_POINT_mul(group, our_pub.get(), our_k.get(), nullptr, nullptr,
+                      ctx.get()) ||
+        !EC_KEY_set_public_key(ec_key.get(), our_pub.get())) {
+      fprintf(stderr, "Calculating public key failed.\n");
+      return false;
+    }
+  } else if (!EC_KEY_generate_key_fips(ec_key.get())) {
+    fprintf(stderr, "EC_KEY_generate_key_fips failed.\n");
+    return false;
+  }
+
+  // The output buffer is one larger than |EC_MAX_BYTES| so that truncation
+  // can be detected.
+  std::vector<uint8_t> output(EC_MAX_BYTES + 1);
+  const int out_len =
+      ECDH_compute_key(output.data(), output.size(), their_point.get(),
+                       ec_key.get(), /*kdf=*/nullptr);
+  if (out_len < 0) {
+    fprintf(stderr, "ECDH_compute_key failed.\n");
+    return false;
+  } else if (static_cast<size_t>(out_len) == output.size()) {
+    fprintf(stderr, "ECDH_compute_key output may have been truncated.\n");
+    return false;
+  }
+  output.resize(static_cast<size_t>(out_len));
+
+  const EC_POINT *pub = EC_KEY_get0_public_key(ec_key.get());
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  bssl::UniquePtr<BIGNUM> y(BN_new());
+  if (!EC_POINT_get_affine_coordinates_GFp(group, pub, x.get(), y.get(),
+                                           ctx.get())) {
+    fprintf(stderr, "EC_POINT_get_affine_coordinates_GFp failed.\n");
+    return false;
+  }
+
+  return WriteReply(STDOUT_FILENO, BIGNUMBytes(x.get()), BIGNUMBytes(y.get()),
+                    output);
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -1660,6 +1744,10 @@ static constexpr struct {
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
     {"TLSKDF/1.2/SHA2-512", 5, TLSKDF<EVP_sha512>},
+    {"ECDH/P-224", 3, ECDH<NID_secp224r1>},
+    {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
+    {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
+    {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
 };
 
 int main() {
