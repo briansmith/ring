@@ -263,11 +263,7 @@ impl<M> Modulus<M> {
 
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
         // done by taking the lowest `N0_LIMBS_USED` limbs of `n`.
-        //
-        // TODO: When we stop requiring clippy 1.37.0 to accept the code, clean
-        // up these `#[allow(...)]`s.
-        #[allow(renamed_and_removed_lints, clippy::unknown_clippy_lints)]
-        #[allow(clippy::identity_conversion, clippy::useless_conversion)]
+        #[allow(clippy::useless_conversion)]
         let n0 = {
             extern "C" {
                 fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
