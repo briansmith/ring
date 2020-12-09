@@ -96,6 +96,44 @@ TEST(ASN1Test, IntegerSetting) {
   }
 }
 
+template <typename T>
+void TestSerialize(T obj, int (*i2d_func)(T a, uint8_t **pp),
+                   bssl::Span<const uint8_t> expected) {
+  int len = static_cast<int>(expected.size());
+  ASSERT_EQ(i2d_func(obj, nullptr), len);
+
+  std::vector<uint8_t> buf(expected.size());
+  uint8_t *ptr = buf.data();
+  ASSERT_EQ(i2d_func(obj, &ptr), len);
+  EXPECT_EQ(ptr, buf.data() + buf.size());
+  EXPECT_EQ(Bytes(expected), Bytes(buf));
+
+  // Test the allocating version.
+  ptr = nullptr;
+  ASSERT_EQ(i2d_func(obj, &ptr), len);
+  EXPECT_EQ(Bytes(expected), Bytes(ptr, expected.size()));
+  OPENSSL_free(ptr);
+}
+
+TEST(ASN1Test, SerializeObject) {
+  static const uint8_t kDER[] = {0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
+                                 0xf7, 0x0d, 0x01, 0x01, 0x01};
+  const ASN1_OBJECT *obj = OBJ_nid2obj(NID_rsaEncryption);
+  TestSerialize(obj, i2d_ASN1_OBJECT, kDER);
+}
+
+TEST(ASN1Test, SerializeBoolean) {
+  static const uint8_t kTrue[] = {0x01, 0x01, 0xff};
+  TestSerialize(0xff, i2d_ASN1_BOOLEAN, kTrue);
+
+  static const uint8_t kFalse[] = {0x01, 0x01, 0x00};
+  TestSerialize(0x00, i2d_ASN1_BOOLEAN, kFalse);
+}
+
+// The ASN.1 macros do not work on Windows shared library builds, where usage of
+// |OPENSSL_EXPORT| is a bit stricter.
+#if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
+
 typedef struct asn1_linked_list_st {
   struct asn1_linked_list_st *next;
 } ASN1_LINKED_LIST;
@@ -151,40 +189,6 @@ TEST(ASN1Test, Recursive) {
   ASN1_LINKED_LIST_free(list);
 }
 
-template <typename T>
-void TestSerialize(T obj, int (*i2d_func)(T a, uint8_t **pp),
-                   bssl::Span<const uint8_t> expected) {
-  int len = static_cast<int>(expected.size());
-  ASSERT_EQ(i2d_func(obj, nullptr), len);
-
-  std::vector<uint8_t> buf(expected.size());
-  uint8_t *ptr = buf.data();
-  ASSERT_EQ(i2d_func(obj, &ptr), len);
-  EXPECT_EQ(ptr, buf.data() + buf.size());
-  EXPECT_EQ(Bytes(expected), Bytes(buf));
-
-  // Test the allocating version.
-  ptr = nullptr;
-  ASSERT_EQ(i2d_func(obj, &ptr), len);
-  EXPECT_EQ(Bytes(expected), Bytes(ptr, expected.size()));
-  OPENSSL_free(ptr);
-}
-
-TEST(ASN1Test, SerializeObject) {
-  static const uint8_t kDER[] = {0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
-                                 0xf7, 0x0d, 0x01, 0x01, 0x01};
-  const ASN1_OBJECT *obj = OBJ_nid2obj(NID_rsaEncryption);
-  TestSerialize(obj, i2d_ASN1_OBJECT, kDER);
-}
-
-TEST(ASN1Test, SerializeBoolean) {
-  static const uint8_t kTrue[] = {0x01, 0x01, 0xff};
-  TestSerialize(0xff, i2d_ASN1_BOOLEAN, kTrue);
-
-  static const uint8_t kFalse[] = {0x01, 0x01, 0x00};
-  TestSerialize(0x00, i2d_ASN1_BOOLEAN, kFalse);
-}
-
 struct IMPLICIT_CHOICE {
   ASN1_STRING *string;
 };
@@ -221,3 +225,5 @@ TEST(ASN1Test, ImplicitChoice) {
   ptr = kInput2;
   EXPECT_EQ(nullptr, d2i_IMPLICIT_CHOICE(nullptr, &ptr, sizeof(kInput2)));
 }
+
+#endif  // !WINDOWS || !SHARED_LIBRARY
