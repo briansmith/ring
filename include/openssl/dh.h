@@ -178,6 +178,19 @@ OPENSSL_EXPORT int DH_generate_key(DH *dh);
 OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
                                   DH *dh);
 
+// DH_compute_key_hashed calculates the shared key between |dh| and |peers_key|
+// and hashes it with the given |digest|. If the hash output is less than
+// |max_out_len| bytes then it writes the hash output to |out| and sets
+// |*out_len| to the number of bytes written. Otherwise it signals an error. It
+// returns one on success or zero on error.
+//
+// NOTE: this follows the usual BoringSSL return-value convention, but that's
+// different from |DH_compute_key|, above.
+OPENSSL_EXPORT int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
+                                         size_t max_out_len,
+                                         const BIGNUM *peers_key,
+                                         const EVP_MD *digest);
+
 
 // Utility functions.
 

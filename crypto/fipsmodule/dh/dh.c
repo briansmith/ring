@@ -60,6 +60,7 @@
 
 #include <openssl/bn.h>
 #include <openssl/err.h>
+#include <openssl/digest.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
@@ -384,56 +385,118 @@ err:
   return ok;
 }
 
-int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
-  BN_CTX *ctx = NULL;
-  BIGNUM *shared_key;
-  int ret = -1;
-  int check_result;
-
+static int dh_compute_key(DH *dh, BIGNUM *out_shared_key,
+                          const BIGNUM *peers_key, BN_CTX *ctx) {
   if (BN_num_bits(dh->p) > OPENSSL_DH_MAX_MODULUS_BITS) {
     OPENSSL_PUT_ERROR(DH, DH_R_MODULUS_TOO_LARGE);
-    goto err;
-  }
-
-  ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    goto err;
-  }
-  BN_CTX_start(ctx);
-  shared_key = BN_CTX_get(ctx);
-  if (shared_key == NULL) {
-    goto err;
+    return 0;
   }
 
   if (dh->priv_key == NULL) {
     OPENSSL_PUT_ERROR(DH, DH_R_NO_PRIVATE_VALUE);
-    goto err;
+    return 0;
   }
 
-  if (!BN_MONT_CTX_set_locked(&dh->method_mont_p, &dh->method_mont_p_lock,
+  int check_result;
+  if (!DH_check_pub_key(dh, peers_key, &check_result) || check_result) {
+    OPENSSL_PUT_ERROR(DH, DH_R_INVALID_PUBKEY);
+    return 0;
+  }
+
+  int ret = 0;
+  BN_CTX_start(ctx);
+  BIGNUM *p_minus_1 = BN_CTX_get(ctx);
+
+  if (!p_minus_1 ||
+      !BN_MONT_CTX_set_locked(&dh->method_mont_p, &dh->method_mont_p_lock,
                               dh->p, ctx)) {
     goto err;
   }
 
-  if (!DH_check_pub_key(dh, peers_key, &check_result) || check_result) {
-    OPENSSL_PUT_ERROR(DH, DH_R_INVALID_PUBKEY);
-    goto err;
-  }
-
-  if (!BN_mod_exp_mont_consttime(shared_key, peers_key, dh->priv_key, dh->p,
-                                 ctx, dh->method_mont_p)) {
+  if (!BN_mod_exp_mont_consttime(out_shared_key, peers_key, dh->priv_key, dh->p,
+                                 ctx, dh->method_mont_p) ||
+      !BN_copy(p_minus_1, dh->p) ||
+      !BN_sub_word(p_minus_1, 1)) {
     OPENSSL_PUT_ERROR(DH, ERR_R_BN_LIB);
     goto err;
   }
 
-  ret = BN_bn2bin(shared_key, out);
-
-err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    BN_CTX_free(ctx);
+  // This performs the check required by SP 800-56Ar3 section 5.7.1.1 step two.
+  if (BN_cmp_word(out_shared_key, 1) <= 0 ||
+      BN_cmp(out_shared_key, p_minus_1) == 0) {
+    OPENSSL_PUT_ERROR(DH, DH_R_INVALID_PUBKEY);
+    goto err;
   }
 
+  ret = 1;
+
+ err:
+  BN_CTX_end(ctx);
+  return ret;
+}
+
+int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    return -1;
+  }
+  BN_CTX_start(ctx);
+
+  int ret = -1;
+  BIGNUM *shared_key = BN_CTX_get(ctx);
+  if (shared_key && dh_compute_key(dh, shared_key, peers_key, ctx)) {
+    ret = BN_bn2bin(shared_key, out);
+  }
+
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
+  return ret;
+}
+
+int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
+                          size_t max_out_len, const BIGNUM *peers_key,
+                          const EVP_MD *digest) {
+  *out_len = (size_t)-1;
+
+  const size_t digest_len = EVP_MD_size(digest);
+  if (digest_len > max_out_len) {
+    return 0;
+  }
+
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    return 0;
+  }
+  BN_CTX_start(ctx);
+
+  int ret = 0;
+  BIGNUM *shared_key = BN_CTX_get(ctx);
+  const size_t p_len = BN_num_bytes(dh->p);
+  uint8_t *shared_bytes = OPENSSL_malloc(p_len);
+  unsigned out_len_unsigned;
+  if (!shared_key ||
+      !shared_bytes ||
+      !dh_compute_key(dh, shared_key, peers_key, ctx) ||
+      // |DH_compute_key| doesn't pad the output. SP 800-56A is ambiguous about
+      // whether the output should be padded prior to revision three. But
+      // revision three, section C.1, awkwardly specifies padding to the length
+      // of p.
+      //
+      // Also, padded output avoids side-channels, so is always strongly
+      // advisable.
+      !BN_bn2bin_padded(shared_bytes, p_len, shared_key) ||
+      !EVP_Digest(shared_bytes, p_len, out, &out_len_unsigned, digest, NULL) ||
+      out_len_unsigned != digest_len) {
+    goto err;
+  }
+
+  *out_len = digest_len;
+  ret = 1;
+
+ err:
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
+  OPENSSL_free(shared_bytes);
   return ret;
 }
 

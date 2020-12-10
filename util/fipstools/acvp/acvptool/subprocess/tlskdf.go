@@ -35,8 +35,8 @@ type tlsKDFTestGroup struct {
 }
 
 type tlsKDFTest struct {
-	ID                   uint64 `json:"tcId"`
-	PMSHex               string `json:"preMasterSecret"`
+	ID     uint64 `json:"tcId"`
+	PMSHex string `json:"preMasterSecret"`
 	// ClientHelloRandomHex and ServerHelloRandomHex are used for deriving the
 	// master secret. ClientRandomHex and ServerRandomHex are used for deriving the
 	// key block. Having different values for these is not possible in a TLS

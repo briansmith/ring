@@ -29,6 +29,7 @@
 #include <openssl/bn.h>
 #include <openssl/cipher.h>
 #include <openssl/cmac.h>
+#include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
@@ -737,6 +738,35 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
           "P-384",
           "P-521"
         ]
+      },
+      {
+        "algorithm": "KAS-FFC",
+        "revision": "1.0",
+        "mode": "Component",
+        "function": [
+          "keyPairGen"
+        ],
+        "scheme": {
+          "dhEphem": {
+            "kasRole": [
+              "initiator"
+            ],
+            "noKdfNoKc": {
+              "parameterSet": {
+                "fb": {
+                  "hashAlg": [
+                    "SHA2-256"
+                  ]
+                },
+                "fc": {
+                  "hashAlg": [
+                    "SHA2-256"
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     ])";
   return WriteReply(
@@ -1678,6 +1708,55 @@ static bool ECDH(const Span<const uint8_t> args[]) {
                     output);
 }
 
+template<const EVP_MD* (*HashFunc)()>
+static bool FFDH(const Span<const uint8_t> args[]) {
+  bssl::UniquePtr<BIGNUM> p(BytesToBIGNUM(args[0]));
+  bssl::UniquePtr<BIGNUM> q(BytesToBIGNUM(args[1]));
+  bssl::UniquePtr<BIGNUM> g(BytesToBIGNUM(args[2]));
+  bssl::UniquePtr<BIGNUM> their_pub(BytesToBIGNUM(args[3]));
+  const Span<const uint8_t> private_key_span = args[4];
+  const Span<const uint8_t> public_key_span = args[5];
+
+  bssl::UniquePtr<DH> dh(DH_new());
+  if (!DH_set0_pqg(dh.get(), p.get(), q.get(), g.get())) {
+    fprintf(stderr, "DH_set0_pqg failed.\n");
+    return 0;
+  }
+
+  // DH_set0_pqg took ownership of these values.
+  p.release();
+  q.release();
+  g.release();
+
+  if (!private_key_span.empty()) {
+    bssl::UniquePtr<BIGNUM> private_key(BytesToBIGNUM(private_key_span));
+    bssl::UniquePtr<BIGNUM> public_key(BytesToBIGNUM(public_key_span));
+
+    if (!DH_set0_key(dh.get(), public_key.get(), private_key.get())) {
+      fprintf(stderr, "DH_set0_key failed.\n");
+      return 0;
+    }
+
+    // DH_set0_key took ownership of these values.
+    public_key.release();
+    private_key.release();
+  } else if (!DH_generate_key(dh.get())) {
+    fprintf(stderr, "DH_generate_key failed.\n");
+    return false;
+  }
+
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  size_t digest_len;
+  if (!DH_compute_key_hashed(dh.get(), digest, &digest_len, sizeof(digest),
+                             their_pub.get(), HashFunc())) {
+    fprintf(stderr, "DH_compute_key_hashed failed.\n");
+    return false;
+  }
+
+  return WriteReply(STDOUT_FILENO, BIGNUMBytes(DH_get0_pub_key(dh.get())),
+                    Span<const uint8_t>(digest, digest_len));
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -1748,6 +1827,7 @@ static constexpr struct {
     {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
+    {"FFDH/SHA2-256", 6, FFDH<EVP_sha256>},
 };
 
 int main() {
