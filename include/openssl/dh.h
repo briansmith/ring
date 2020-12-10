@@ -59,7 +59,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/ex_data.h>
 #include <openssl/thread.h>
 
 #if defined(__cplusplus)
@@ -237,18 +236,6 @@ OPENSSL_EXPORT DH *DH_parse_parameters(CBS *cbs);
 OPENSSL_EXPORT int DH_marshal_parameters(CBB *cbb, const DH *dh);
 
 
-// ex_data functions.
-//
-// See |ex_data.h| for details.
-
-OPENSSL_EXPORT int DH_get_ex_new_index(long argl, void *argp,
-                                       CRYPTO_EX_unused *unused,
-                                       CRYPTO_EX_dup *dup_unused,
-                                       CRYPTO_EX_free *free_func);
-OPENSSL_EXPORT int DH_set_ex_data(DH *d, int idx, void *arg);
-OPENSSL_EXPORT void *DH_get_ex_data(DH *d, int idx);
-
-
 // Deprecated functions.
 
 // DH_generate_parameters behaves like |DH_generate_parameters_ex|, which is
@@ -301,7 +288,6 @@ struct dh_st {
 
   int flags;
   CRYPTO_refcount_t references;
-  CRYPTO_EX_DATA ex_data;
 };
 
 

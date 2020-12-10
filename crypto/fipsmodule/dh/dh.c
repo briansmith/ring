@@ -60,16 +60,13 @@
 
 #include <openssl/bn.h>
 #include <openssl/err.h>
-#include <openssl/ex_data.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 
 #define OPENSSL_DH_MAX_MODULUS_BITS 10000
-
-static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 DH *DH_new(void) {
   DH *dh = OPENSSL_malloc(sizeof(DH));
@@ -83,7 +80,6 @@ DH *DH_new(void) {
   CRYPTO_MUTEX_init(&dh->method_mont_p_lock);
 
   dh->references = 1;
-  CRYPTO_new_ex_data(&dh->ex_data);
 
   return dh;
 }
@@ -96,8 +92,6 @@ void DH_free(DH *dh) {
   if (!CRYPTO_refcount_dec_and_test_zero(&dh->references)) {
     return;
   }
-
-  CRYPTO_free_ex_data(&g_ex_data_class, dh, &dh->ex_data);
 
   BN_MONT_CTX_free(dh->method_mont_p);
   BN_clear_free(dh->p);
@@ -512,22 +506,4 @@ DH *DHparams_dup(const DH *dh) {
   }
 
   return ret;
-}
-
-int DH_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
-                        CRYPTO_EX_dup *dup_unused, CRYPTO_EX_free *free_func) {
-  int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
-                               free_func)) {
-    return -1;
-  }
-  return index;
-}
-
-int DH_set_ex_data(DH *d, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&d->ex_data, idx, arg);
-}
-
-void *DH_get_ex_data(DH *d, int idx) {
-  return CRYPTO_get_ex_data(&d->ex_data, idx);
 }

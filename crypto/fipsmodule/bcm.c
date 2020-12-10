@@ -60,6 +60,8 @@
 #include "cipher/e_aes.c"
 #include "cipher/e_des.c"
 #include "des/des.c"
+#include "dh/check.c"
+#include "dh/dh.c"
 #include "digest/digest.c"
 #include "digest/digests.c"
 #include "ecdh/ecdh.c"

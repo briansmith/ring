@@ -265,10 +265,8 @@ add_library(
   crypto.c
   curve25519/curve25519.c
   curve25519/spake25519.c
-  dh/dh.c
-  dh/params.c
-  dh/check.c
-  dh/dh_asn1.c
+  dh_extra/params.c
+  dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
   dsa/dsa.c
   dsa/dsa_asn1.c
@@ -502,7 +500,7 @@ add_executable(
   curve25519/spake25519_test.cc
   curve25519/x25519_test.cc
   ecdh_extra/ecdh_test.cc
-  dh/dh_test.cc
+  dh_extra/dh_test.cc
   digest_extra/digest_test.cc
   dsa/dsa_test.cc
   err/err_test.cc
