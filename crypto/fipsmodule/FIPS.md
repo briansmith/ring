@@ -35,6 +35,7 @@ In order to demonstrate failures of the various FIPS 140 tests, BoringSSL can be
 1. DRBG
 1. RSA\_PWCT
 1. ECDSA\_PWCT
+1. TLS\_KDF
 
 ## Breaking the integrity test
 
