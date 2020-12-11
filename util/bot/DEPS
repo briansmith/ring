@@ -153,18 +153,6 @@ hooks = [
     ],
   },
   {
-    'name': 'yasm_win32',
-    'pattern': '.',
-    'condition': 'host_os == "win" and not checkout_nasm',
-    'action': [ 'download_from_google_storage',
-                '--no_resume',
-                '--platform=win32',
-                '--no_auth',
-                '--bucket', 'chromium-tools',
-                '-s', 'boringssl/util/bot/yasm-win32.exe.sha1',
-    ],
-  },
-  {
     'name': 'nasm_win32',
     'pattern': '.',
     'condition': 'host_os == "win" and checkout_nasm',

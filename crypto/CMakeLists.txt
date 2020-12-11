@@ -55,7 +55,7 @@ if(NOT OPENSSL_NO_ASM)
     endif()
     set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
 
-    # On Windows, we use the NASM output, specifically built with Yasm.
+    # On Windows, we use the NASM output.
     set(ASM_EXT asm)
     enable_language(ASM_NASM)
   endif()

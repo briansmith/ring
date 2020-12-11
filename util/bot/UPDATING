@@ -64,14 +64,6 @@ perl-win32.zip: Update to the latest 64-bit prebuilt "Portable" edition of
 
     The current revision is strawberry-perl-5.26.2.1-64bit-portable.zip.
 
-yasm-win32.exe: Update to the appropriate release of Yasm. Use the same version
-    as Chromium, found at
-    https://chromium.googlesource.com/chromium/src/+/master/third_party/yasm/README.chromium
-    Use the release at http://yasm.tortall.net/Download.html labeled
-    "Win32 .exe". The download will be named yasm-VERSION-win32.exe.
-
-    The current revision is yasm-1.3.0-win32.exe.
-
 Finally, update sde-linux64.tar.bz2 and sde-win32.tar.bz2 by downloading the
 latet release from Intel at
 https://software.intel.com/en-us/articles/intel-software-development-emulator,
