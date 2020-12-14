@@ -2750,8 +2750,8 @@ static bool ext_token_binding_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 // QUIC Transport Parameters
 
-static bool ext_quic_transport_params_add_clienthello(SSL_HANDSHAKE *hs,
-                                                      CBB *out) {
+static bool ext_quic_transport_params_add_clienthello_impl(
+    SSL_HANDSHAKE *hs, CBB *out, bool use_legacy_codepoint) {
   if (hs->config->quic_transport_params.empty() && !hs->ssl->quic_method) {
     return true;
   }
@@ -2763,9 +2763,18 @@ static bool ext_quic_transport_params_add_clienthello(SSL_HANDSHAKE *hs,
     return false;
   }
   assert(hs->min_version > TLS1_2_VERSION);
+  if (use_legacy_codepoint != hs->config->quic_use_legacy_codepoint) {
+    // Do nothing, we'll send the other codepoint.
+    return true;
+  }
+
+  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters;
+  if (hs->config->quic_use_legacy_codepoint) {
+    extension_type = TLSEXT_TYPE_quic_transport_parameters_legacy;
+  }
 
   CBB contents;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_quic_transport_parameters) ||
+  if (!CBB_add_u16(out, extension_type) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_bytes(&contents, hs->config->quic_transport_params.data(),
                      hs->config->quic_transport_params.size()) ||
@@ -2775,31 +2784,61 @@ static bool ext_quic_transport_params_add_clienthello(SSL_HANDSHAKE *hs,
   return true;
 }
 
-static bool ext_quic_transport_params_parse_serverhello(SSL_HANDSHAKE *hs,
-                                                        uint8_t *out_alert,
-                                                        CBS *contents) {
+static bool ext_quic_transport_params_add_clienthello(SSL_HANDSHAKE *hs,
+                                                      CBB *out) {
+  return ext_quic_transport_params_add_clienthello_impl(
+      hs, out, /*use_legacy_codepoint=*/false);
+}
+
+static bool ext_quic_transport_params_add_clienthello_legacy(SSL_HANDSHAKE *hs,
+                                                             CBB *out) {
+  return ext_quic_transport_params_add_clienthello_impl(
+      hs, out, /*use_legacy_codepoint=*/true);
+}
+
+static bool ext_quic_transport_params_parse_serverhello_impl(
+    SSL_HANDSHAKE *hs, uint8_t *out_alert, CBS *contents,
+    bool used_legacy_codepoint) {
   SSL *const ssl = hs->ssl;
   if (contents == nullptr) {
+    if (used_legacy_codepoint != hs->config->quic_use_legacy_codepoint) {
+      // Silently ignore because we expect the other QUIC codepoint.
+      return true;
+    }
     if (!ssl->quic_method) {
       return true;
     }
-    assert(ssl->quic_method);
     *out_alert = SSL_AD_MISSING_EXTENSION;
     return false;
   }
-  if (!ssl->quic_method) {
-    *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-    return false;
-  }
-  // QUIC requires TLS 1.3.
+  // The extensions parser will check for unsolicited extensions before
+  // calling the callback.
+  assert(ssl->quic_method != nullptr);
   assert(ssl_protocol_version(ssl) == TLS1_3_VERSION);
-
+  assert(used_legacy_codepoint == hs->config->quic_use_legacy_codepoint);
   return ssl->s3->peer_quic_transport_params.CopyFrom(*contents);
 }
 
-static bool ext_quic_transport_params_parse_clienthello(SSL_HANDSHAKE *hs,
+static bool ext_quic_transport_params_parse_serverhello(SSL_HANDSHAKE *hs,
                                                         uint8_t *out_alert,
                                                         CBS *contents) {
+  return ext_quic_transport_params_parse_serverhello_impl(
+      hs, out_alert, contents, /*used_legacy_codepoint=*/false);
+}
+
+static bool ext_quic_transport_params_parse_serverhello_legacy(
+    SSL_HANDSHAKE *hs, uint8_t *out_alert, CBS *contents) {
+  return ext_quic_transport_params_parse_serverhello_impl(
+      hs, out_alert, contents, /*used_legacy_codepoint=*/true);
+}
+
+static bool ext_quic_transport_params_parse_clienthello_impl(
+    SSL_HANDSHAKE *hs, uint8_t *out_alert, CBS *contents,
+    bool used_legacy_codepoint) {
+  if (used_legacy_codepoint != hs->config->quic_use_legacy_codepoint) {
+    // Silently ignore because we expect the other QUIC codepoint.
+    return true;
+  }
   SSL *const ssl = hs->ssl;
   if (!contents) {
     if (!ssl->quic_method) {
@@ -2822,17 +2861,39 @@ static bool ext_quic_transport_params_parse_clienthello(SSL_HANDSHAKE *hs,
   return ssl->s3->peer_quic_transport_params.CopyFrom(*contents);
 }
 
-static bool ext_quic_transport_params_add_serverhello(SSL_HANDSHAKE *hs,
-                                                      CBB *out) {
+static bool ext_quic_transport_params_parse_clienthello(SSL_HANDSHAKE *hs,
+                                                        uint8_t *out_alert,
+                                                        CBS *contents) {
+  return ext_quic_transport_params_parse_clienthello_impl(
+      hs, out_alert, contents, /*used_legacy_codepoint=*/false);
+}
+
+static bool ext_quic_transport_params_parse_clienthello_legacy(
+    SSL_HANDSHAKE *hs, uint8_t *out_alert, CBS *contents) {
+  return ext_quic_transport_params_parse_clienthello_impl(
+      hs, out_alert, contents, /*used_legacy_codepoint=*/true);
+}
+
+static bool ext_quic_transport_params_add_serverhello_impl(
+    SSL_HANDSHAKE *hs, CBB *out, bool use_legacy_codepoint) {
   assert(hs->ssl->quic_method != nullptr);
   if (hs->config->quic_transport_params.empty()) {
     // Transport parameters must be set when using QUIC.
     OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_TRANSPORT_PARAMETERS_MISCONFIGURED);
     return false;
   }
+  if (use_legacy_codepoint != hs->config->quic_use_legacy_codepoint) {
+    // Do nothing, we'll send the other codepoint.
+    return true;
+  }
+
+  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters;
+  if (hs->config->quic_use_legacy_codepoint) {
+    extension_type = TLSEXT_TYPE_quic_transport_parameters_legacy;
+  }
 
   CBB contents;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_quic_transport_parameters) ||
+  if (!CBB_add_u16(out, extension_type) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_bytes(&contents, hs->config->quic_transport_params.data(),
                      hs->config->quic_transport_params.size()) ||
@@ -2841,6 +2902,18 @@ static bool ext_quic_transport_params_add_serverhello(SSL_HANDSHAKE *hs,
   }
 
   return true;
+}
+
+static bool ext_quic_transport_params_add_serverhello(SSL_HANDSHAKE *hs,
+                                                      CBB *out) {
+  return ext_quic_transport_params_add_serverhello_impl(
+      hs, out, /*use_legacy_codepoint=*/false);
+}
+
+static bool ext_quic_transport_params_add_serverhello_legacy(SSL_HANDSHAKE *hs,
+                                                             CBB *out) {
+  return ext_quic_transport_params_add_serverhello_impl(
+      hs, out, /*use_legacy_codepoint=*/true);
 }
 
 // Delegated credentials.
@@ -3281,6 +3354,14 @@ static const struct tls_extension kExtensions[] = {
     ext_quic_transport_params_parse_serverhello,
     ext_quic_transport_params_parse_clienthello,
     ext_quic_transport_params_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_quic_transport_parameters_legacy,
+    NULL,
+    ext_quic_transport_params_add_clienthello_legacy,
+    ext_quic_transport_params_parse_serverhello_legacy,
+    ext_quic_transport_params_parse_clienthello_legacy,
+    ext_quic_transport_params_add_serverhello_legacy,
   },
   {
     TLSEXT_TYPE_token_binding,

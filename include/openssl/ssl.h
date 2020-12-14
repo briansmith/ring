@@ -3384,6 +3384,12 @@ OPENSSL_EXPORT int SSL_set_quic_transport_params(SSL *ssl,
 OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(
     const SSL *ssl, const uint8_t **out_params, size_t *out_params_len);
 
+// SSL_set_quic_use_legacy_codepoint configures whether to use the legacy QUIC
+// extension codepoint 0xffa5 as opposed to the official value 57. Call with
+// |use_legacy| set to 1 to use 0xffa5 and call with 0 to use 57. The default
+// value for this is currently 1 but it will change to 0 at a later date.
+OPENSSL_EXPORT void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy);
+
 // SSL_set_quic_early_data_context configures a context string in QUIC servers
 // for accepting early data. If a resumption connection offers early data, the
 // server will check if the value matches that of the connection which minted
