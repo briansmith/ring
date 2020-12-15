@@ -2975,6 +2975,7 @@ TEST(X509Test, GeneralName)  {
     bssl::UniquePtr<GENERAL_NAME> a(
         d2i_GENERAL_NAME(nullptr, &ptr, kNames[i].size()));
     ASSERT_TRUE(a);
+    ASSERT_EQ(ptr, kNames[i].data() + kNames[i].size());
 
     for (size_t j = 0; j < OPENSSL_ARRAY_SIZE(kNames); j++) {
       SCOPED_TRACE(Bytes(kNames[j]));
@@ -2983,6 +2984,7 @@ TEST(X509Test, GeneralName)  {
       bssl::UniquePtr<GENERAL_NAME> b(
           d2i_GENERAL_NAME(nullptr, &ptr, kNames[j].size()));
       ASSERT_TRUE(b);
+      ASSERT_EQ(ptr, kNames[j].data() + kNames[j].size());
 
       if (i == j) {
         EXPECT_EQ(GENERAL_NAME_cmp(a.get(), b.get()), 0);
