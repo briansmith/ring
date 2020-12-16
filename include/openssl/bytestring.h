@@ -252,12 +252,16 @@ OPENSSL_EXPORT int CBS_get_any_asn1_element(CBS *cbs, CBS *out,
                                             size_t *out_header_len);
 
 // CBS_get_any_ber_asn1_element acts the same as |CBS_get_any_asn1_element| but
-// also allows indefinite-length elements to be returned. In that case,
-// |*out_header_len| and |CBS_len(out)| will both be two as only the header is
-// returned, otherwise it behaves the same as the previous function.
+// also allows indefinite-length elements to be returned and does not enforce
+// that lengths are minimal. For indefinite-lengths, |*out_header_len| and
+// |CBS_len(out)| will be equal as only the header is returned (although this is
+// also true for empty elements so the length must be checked too). If any case
+// of invalid DER but valid BER is found then |*out_ber_found| is set to one, if
+// not |NULL|. Otherwise it is set to zero, if not |NULL|.
 OPENSSL_EXPORT int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out,
                                                 unsigned *out_tag,
-                                                size_t *out_header_len);
+                                                size_t *out_header_len,
+                                                int *out_ber_found);
 
 // CBS_get_asn1_uint64 gets an ASN.1 INTEGER from |cbs| using |CBS_get_asn1|
 // and sets |*out| to its value. It returns one on success and zero on error,

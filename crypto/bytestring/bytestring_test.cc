@@ -592,6 +592,10 @@ static void ExpectBerConvert(const char *name, const uint8_t *der_expected,
 TEST(CBSTest, BerConvert) {
   static const uint8_t kSimpleBER[] = {0x01, 0x01, 0x00};
 
+  // kNonMinimalLengthBER has a non-minimally encoded length.
+  static const uint8_t kNonMinimalLengthBER[] = {0x02, 0x82, 0x00, 0x01, 0x01};
+  static const uint8_t kNonMinimalLengthDER[] = {0x02, 0x01, 0x01};
+
   // kIndefBER contains a SEQUENCE with an indefinite length.
   static const uint8_t kIndefBER[] = {0x30, 0x80, 0x01, 0x01, 0x02, 0x00, 0x00};
   static const uint8_t kIndefDER[] = {0x30, 0x03, 0x01, 0x01, 0x02};
@@ -644,6 +648,9 @@ TEST(CBSTest, BerConvert) {
 
   ExpectBerConvert("kSimpleBER", kSimpleBER, sizeof(kSimpleBER), kSimpleBER,
                    sizeof(kSimpleBER));
+  ExpectBerConvert("kNonMinimalLengthBER", kNonMinimalLengthDER,
+                   sizeof(kNonMinimalLengthDER), kNonMinimalLengthBER,
+                   sizeof(kNonMinimalLengthBER));
   ExpectBerConvert("kIndefBER", kIndefDER, sizeof(kIndefDER), kIndefBER,
                    sizeof(kIndefBER));
   ExpectBerConvert("kIndefBER2", kIndefDER2, sizeof(kIndefDER2), kIndefBER2,
@@ -655,6 +662,62 @@ TEST(CBSTest, BerConvert) {
   ExpectBerConvert("kConstructedStringBER", kConstructedStringDER,
                    sizeof(kConstructedStringDER), kConstructedStringBER,
                    sizeof(kConstructedStringBER));
+}
+
+struct BERTest {
+  const char *in_hex;
+  bool ok;
+  bool ber_found;
+  unsigned tag;
+};
+
+static const BERTest kBERTests[] = {
+  // Trivial cases, also valid DER.
+  {"0000", true, false, 0},
+  {"0100", true, false, 1},
+  {"020101", true, false, 2},
+
+  // Non-minimally encoded lengths.
+  {"02810101", true, true, 2},
+  {"0282000101", true, true, 2},
+  {"028300000101", true, true, 2},
+  {"02840000000101", true, true, 2},
+  // Technically valid BER, but not handled.
+  {"02850000000101", false, false, 0},
+
+  {"0280", false, false, 0},  // Indefinite length, but not constructed.
+  {"2280", true, true, CBS_ASN1_CONSTRUCTED | 2},  // Indefinite length.
+  {"3f0000", false, false, 0},  // Invalid extended tag zero (X.690 8.1.2.4.2.c)
+  {"1f0100", false, false, 0},  // Should be a low-number tag form, even in BER.
+  {"1f4000", true, false, 0x40},
+  {"1f804000", false, false, 0},  // Non-minimal tags are invalid, even in BER.
+};
+
+TEST(CBSTest, BERElementTest) {
+  for (const auto &test : kBERTests) {
+    SCOPED_TRACE(test.in_hex);
+
+    std::vector<uint8_t> in_bytes;
+    ASSERT_TRUE(DecodeHex(&in_bytes, test.in_hex));
+    CBS in(in_bytes);
+    CBS out;
+    unsigned tag;
+    size_t header_len;
+    int ber_found;
+    int ok =
+        CBS_get_any_ber_asn1_element(&in, &out, &tag, &header_len, &ber_found);
+    ASSERT_TRUE((ok == 1) == test.ok);
+    if (!test.ok) {
+      continue;
+    }
+
+    EXPECT_TRUE((ber_found == 1) == test.ber_found);
+    EXPECT_LE(header_len, in_bytes.size());
+    EXPECT_EQ(CBS_len(&out), in_bytes.size());
+    EXPECT_EQ(CBS_len(&in), 0u);
+    EXPECT_EQ(Bytes(out), Bytes(in_bytes));
+    EXPECT_EQ(tag, test.tag);
+  }
 }
 
 struct ImplicitStringTest {
