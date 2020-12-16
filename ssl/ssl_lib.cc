@@ -730,8 +730,7 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       retain_only_sha256_of_client_certs(false),
       handoff(false),
       shed_handshake_config(false),
-      jdk11_workaround(false),
-      quic_use_legacy_codepoint(true) {
+      jdk11_workaround(false) {
   assert(ssl);
 }
 
@@ -2957,13 +2956,6 @@ void SSL_set_jdk11_workaround(SSL *ssl, int enable) {
     return;
   }
   ssl->config->jdk11_workaround = !!enable;
-}
-
-void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl->config->quic_use_legacy_codepoint = !!use_legacy;
 }
 
 int SSL_clear(SSL *ssl) {
