@@ -40,6 +40,10 @@ impl Nonce {
     pub fn assume_unique_for_key(value: [u8; NONCE_LEN]) -> Self {
         Self(value)
     }
+
+    pub(crate) fn inner_bytes_mut(&mut self) -> &mut [u8; NONCE_LEN] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8; NONCE_LEN]> for Nonce {

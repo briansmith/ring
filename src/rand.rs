@@ -71,6 +71,7 @@ where
 }
 
 pub(crate) mod sealed {
+    use crate::aead;
     use crate::error;
 
     pub trait SecureRandom: core::fmt::Debug {
@@ -97,7 +98,17 @@ pub(crate) mod sealed {
         }
     }
 
-    impl_random_arrays![4 8 16 32 48 64 128 256];
+    impl_random_arrays![4 8 12 16 32 48 64 128 256];
+
+    impl RandomlyConstructable for aead::Nonce {
+        fn zero() -> Self {
+            aead::Nonce::assume_unique_for_key([0u8; aead::NONCE_LEN])
+        }
+
+        fn as_mut_bytes(&mut self) -> &mut [u8] {
+            self.inner_bytes_mut()
+        }
+    }
 }
 
 /// A type that can be returned by `ring::rand::generate()`.
