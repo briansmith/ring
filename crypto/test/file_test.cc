@@ -179,7 +179,7 @@ FileTest::ReadResult FileTest::ReadNext() {
       kv = std::string(kv.begin() + 1, kv.end() - 1);
 
       for (;;) {
-        size_t idx = kv.find(",");
+        size_t idx = kv.find(',');
         if (idx == std::string::npos) {
           idx = kv.size();
         }
