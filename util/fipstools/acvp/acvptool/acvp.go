@@ -260,6 +260,45 @@ func processFile(filename string, supportedAlgos []map[string]interface{}, middl
 func main() {
 	flag.Parse()
 
+	var err error
+	var middle Middle
+	middle, err = subprocess.New(*wrapperPath)
+	if err != nil {
+		log.Fatalf("failed to initialise middle: %s", err)
+	}
+	defer middle.Close()
+
+	configBytes, err := middle.Config()
+	if err != nil {
+		log.Fatalf("failed to get config from middle: %s", err)
+	}
+
+	var supportedAlgos []map[string]interface{}
+	if err := json.Unmarshal(configBytes, &supportedAlgos); err != nil {
+		log.Fatalf("failed to parse configuration from Middle: %s", err)
+	}
+
+	if *dumpRegcap {
+		regcap := []map[string]interface{}{
+			map[string]interface{}{"acvVersion": "1.0"},
+			map[string]interface{}{"algorithms": supportedAlgos},
+		}
+		regcapBytes, err := json.MarshalIndent(regcap, "", "    ")
+		if err != nil {
+			log.Fatalf("failed to marshal regcap: %s", err)
+		}
+		os.Stdout.Write(regcapBytes)
+		os.Stdout.WriteString("\n")
+		os.Exit(0)
+	}
+
+	if len(*jsonInputFile) > 0 {
+		if err := processFile(*jsonInputFile, supportedAlgos, middle); err != nil {
+			log.Fatalf("failed to process input file: %s", err)
+		}
+		os.Exit(0)
+	}
+
 	var config Config
 	if err := jsonFromFile(&config, *configFilename); err != nil {
 		log.Fatalf("Failed to load config file: %s", err)
@@ -312,44 +351,6 @@ func main() {
 		if certKey, err = x509.ParsePKCS8PrivateKey(keyDER); err != nil {
 			log.Fatalf("failed to parse private key from %q: %s", privateKeyFile, err)
 		}
-	}
-
-	var middle Middle
-	middle, err = subprocess.New(*wrapperPath)
-	if err != nil {
-		log.Fatalf("failed to initialise middle: %s", err)
-	}
-	defer middle.Close()
-
-	configBytes, err := middle.Config()
-	if err != nil {
-		log.Fatalf("failed to get config from middle: %s", err)
-	}
-
-	var supportedAlgos []map[string]interface{}
-	if err := json.Unmarshal(configBytes, &supportedAlgos); err != nil {
-		log.Fatalf("failed to parse configuration from Middle: %s", err)
-	}
-
-	if *dumpRegcap {
-		regcap := []map[string]interface{}{
-			map[string]interface{}{"acvVersion": "1.0"},
-			map[string]interface{}{"algorithms": supportedAlgos},
-		}
-		regcapBytes, err := json.MarshalIndent(regcap, "", "    ")
-		if err != nil {
-			log.Fatalf("failed to marshal regcap: %s", err)
-		}
-		os.Stdout.Write(regcapBytes)
-		os.Stdout.WriteString("\n")
-		os.Exit(0)
-	}
-
-	if len(*jsonInputFile) > 0 {
-		if err := processFile(*jsonInputFile, supportedAlgos, middle); err != nil {
-			log.Fatalf("failed to process input file: %s", err)
-		}
-		os.Exit(0)
 	}
 
 	var requestedAlgosFlag string
