@@ -882,6 +882,13 @@ static bool AES_CBC(const Span<const uint8_t> args[]) {
 }
 
 static bool AES_CTR(const Span<const uint8_t> args[]) {
+  static const uint32_t kOneIteration = 1;
+  if (args[3].size() != sizeof(kOneIteration) ||
+      memcmp(args[3].data(), &kOneIteration, sizeof(kOneIteration))) {
+    fprintf(stderr, "Only a single iteration supported with AES-CTR\n");
+    return false;
+  }
+
   AES_KEY key;
   if (AES_set_encrypt_key(args[0].data(), args[0].size() * 8, &key) != 0) {
     return false;
@@ -1766,15 +1773,15 @@ static constexpr struct {
     {"SHA-1", 1, Hash<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224", 1, Hash<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
-    {"SHA2-384", 1, Hash<SHA384, SHA256_DIGEST_LENGTH>},
+    {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
     {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
-    {"AES-CTR/encrypt", 3, AES_CTR},
-    {"AES-CTR/decrypt", 3, AES_CTR},
+    {"AES-CTR/encrypt", 4, AES_CTR},
+    {"AES-CTR/decrypt", 4, AES_CTR},
     {"AES-GCM/seal", 5, AEADSeal<AESGCMSetup>},
     {"AES-GCM/open", 5, AEADOpen<AESGCMSetup>},
     {"AES-KW/seal", 5, AESKeyWrapSeal},
