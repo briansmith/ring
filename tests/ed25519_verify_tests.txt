@@ -1,5 +1,12 @@
 # BoringSSL TEST(Ed25519Test Malleability) commit 472ba2c2dd52d06a657a63b7fbf02732a6649d21
 
+# Control; S is in range.
+MESSAGE = 54657374
+SIG = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab07a9155711ecfaf7f99f277bad0c6ae7e39d4eef676573336a5c51eb6f946b30d
+PUB = 7d4d0e7f6153a69b6242b522abbee685fda4420f8834b108c3bdae369ef549fa
+Result = P
+
+# Same as above, but with the order L added to S so it is out of range.
 MESSAGE = 54657374
 SIG = 7c38e026f29e14aabd059a0f2db8b0cd783040609a8be684db12f82a27774ab067654bce3832c2d76f8f6f5dafc08d9339d4eef676573336a5c51eb6f946b31d
 PUB = 7d4d0e7f6153a69b6242b522abbee685fda4420f8834b108c3bdae369ef549fa
