@@ -1,0 +1,422 @@
+name: ci
+on:
+  pull_request:
+  push:
+jobs:
+  rustfmt:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustfmt
+      - uses: actions/checkout@v2
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: clippy
+
+      - uses: actions/checkout@v2
+
+      - run: cargo clippy --all-features ---all-targets -- --deny warnings
+
+  audit:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/cargo-audit
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: ${{ runner.os }}-v2-cargo-audit-0.13.1
+
+      - run: cargo install cargo-audit --vers "0.13.1"
+
+      - uses: actions/checkout@v2
+
+      - run: cargo generate-lockfile
+
+      - run: cargo audit --deny warnings
+
+  deny:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/cargo-deny
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: ${{ runner.os }}-v2-cargo-deny-0.8.4
+
+      - run: cargo install cargo-deny --vers "0.8.4"
+
+      - uses: actions/checkout@v2
+
+      - run: cargo deny check
+
+  # Verify that documentation builds.
+  rustdoc:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-18.04
+
+    strategy:
+      matrix:
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+
+        include:
+          - target: x86_64-unknown-linux-gnu
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - uses: actions/checkout@v2
+
+      - run: |
+          cargo doc --all-features
+
+  package:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - run: sh mk/package.sh
+        shell: bash
+
+  test:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ${{ matrix.host_os }}
+
+    strategy:
+      matrix:
+        features:
+          - # Default
+
+        target:
+          - aarch64-apple-ios
+          - aarch64-apple-darwin
+          - aarch64-linux-android
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - arm-unknown-linux-gnueabihf
+          - armv7-linux-androideabi
+          - armv7-unknown-linux-musleabihf
+          - i686-pc-windows-msvc
+          - i686-unknown-linux-gnu
+          - i686-unknown-linux-musl
+          - x86_64-pc-windows-gnu
+          - x86_64-pc-windows-msvc
+          - x86_64-apple-darwin
+          - x86_64-unknown-linux-musl
+          - x86_64-unknown-linux-gnu
+
+        mode:
+          - # debug
+          - --release
+
+        rust_channel:
+          - stable
+          - nightly
+          - 1.37.0 # MSRV
+          - beta
+
+        exclude:
+          # The stable channel doesn't have aarch64-apple-darwin support yet.
+          - target: aarch64-apple-darwin
+            rust_channel: stable
+
+          # The MSRV channel doesn't have aarch64-apple-darwin support yet.
+          - target: aarch64-apple-darwin
+            rust_channel: 1.37.0
+
+          # Only do MSRV testing on release builds.
+          - mode: # debug
+            rust_channel: 1.37.0
+
+          # 1.37.0 doesn't support `-Clink-self-contained`.
+          - target: aarch64-unknown-linux-musl
+            rust_channel: 1.37.0
+
+          # 1.37.0 doesn't support `-Clink-self-contained`.
+          - target: armv7-unknown-linux-musleabihf
+            rust_channel: 1.37.0
+
+          # 1.37.0 doesn't support `-Clink-self-contained`.
+          - target: i686-unknown-linux-musl
+            rust_channel: 1.37.0
+
+          # 1.37.0 doesn't support `-Clink-self-contained`.
+          - target: x86_64-unknown-linux-musl
+            rust_channel: 1.37.0
+
+          # https://github.com/rust-lang/rust/pull/67429
+          - target: x86_64-pc-windows-gnu
+            rust_channel: 1.37.0
+
+        include:
+          - target: aarch64-apple-darwin
+            # macos-latest didn't work.
+            host_os: macos-11.0
+            # GitHub Actions doesn't have a way to run this target yet.
+            cargo_options: --no-run
+
+          - target: aarch64-apple-ios
+            host_os: macos-latest
+            # GitHub Actions doesn't have a way to run this target yet.
+            cargo_options: --no-run
+
+          - target: aarch64-linux-android
+            host_os: ubuntu-18.04
+            # TODO: https://github.com/briansmith/ring/issues/486
+            cargo_options: --no-run
+
+          - target: aarch64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: aarch64-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: arm-unknown-linux-gnueabihf
+            host_os: ubuntu-18.04
+
+          - target: armv7-linux-androideabi
+            host_os: ubuntu-18.04
+            # TODO: https://github.com/briansmith/ring/issues/838
+            cargo_options: --no-run
+
+          - target: armv7-unknown-linux-musleabihf
+            host_os: ubuntu-18.04
+            # TODO: https://github.com/briansmith/ring/issues/1115
+            cargo_options: --no-run
+
+          - target: i686-pc-windows-msvc
+            host_os: windows-latest
+
+          - target: i686-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: i686-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: x86_64-pc-windows-gnu
+            host_os: windows-latest
+
+          - target: x86_64-pc-windows-msvc
+            host_os: windows-latest
+
+          - target: x86_64-apple-darwin
+            host_os: macos-latest
+
+          - target: x86_64-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: x86_64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+    steps:
+      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
+        run: sudo apt-get update -y
+
+      - uses: actions/checkout@v2
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: >
+          (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
+          ("$pwd\target\tools" >> $env:GITHUB_PATH)
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
+        run: echo "DEVELOPER_DIR=/Applications/Xcode_12.2.app/Contents/Developer" >> $GITHUB_ENV
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: |
+          mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: |
+          cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+  # The wasm32-unknown-unknown targets have a different set of feature sets and
+  # an additional `webdriver` dimension.
+  test-wasm32:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ${{ matrix.host_os }}
+
+    strategy:
+      matrix:
+        features:
+          - # Default
+          - --features=wasm32_c
+        host_os:
+          - ubuntu-18.04
+        mode:
+          - # debug
+          - --release
+        rust_channel:
+          - stable
+          - beta
+          - nightly
+        target:
+          - wasm32-unknown-unknown
+        webdriver:
+          - GECKODRIVER=geckodriver
+          - CHROMEDRIVER=chromedriver
+
+    steps:
+      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
+        run: sudo apt-get update -y
+
+      - uses: actions/checkout@v2
+
+      - run: cargo generate-lockfile
+
+      - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - run: |
+          ${{ matrix.webdriver }} mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+
+  coverage:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ${{ matrix.host_os }}
+
+    strategy:
+      matrix:
+        features:
+          - --all-features
+
+        # TODO: targets
+        target:
+          - aarch64-unknown-linux-gnu
+          - i686-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+
+        mode:
+          - # debug
+
+        # Coverage collection is Nightly-only
+        rust_channel:
+          - nightly
+
+        # TODO: targets
+        include:
+          # TODO: Use the -musl target after
+          # https://github.com/rust-lang/rust/issues/79556 and
+          # https://github.com/rust-lang/rust/issues/79555 are fixed.
+          - target: aarch64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          # TODO: Use the -musl target after
+          # https://github.com/rust-lang/rust/issues/79556 and
+          # https://github.com/rust-lang/rust/issues/79555 are fixed.
+          - target: i686-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: x86_64-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          # TODO: Add an ARM target after
+          # https://github.com/rust-lang/rust/issues/79555 is fixed. This may
+          # require https://github.com/rust-lang/rust/issues/79555 to be fixed
+          # too.
+
+    steps:
+      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
+        run: sudo apt-get update -y
+
+      - uses: actions/checkout@v2
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: RING_COVERAGE=1 mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
+        run: echo "DEVELOPER_DIR=/Applications/Xcode_12.2.app/Contents/Developer" >> $GITHUB_ENV
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: |
+          RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+      - uses: codecov/codecov-action@v1
+        with:
+          directory: ./target/${{ matrix.target }}/debug/coverage/reports
+          fail_ci_if_error: true
+          verbose: true

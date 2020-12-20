@@ -197,6 +197,8 @@ $code.=<<___;
 .Lone:
 .long	1,0,0,0
 #if __ARM_MAX_ARCH__>=7
+.extern GFp_armcap_P
+.hidden GFp_armcap_P
 .LOPENSSL_armcap:
 .word   GFp_armcap_P-.LChaCha20_ctr32
 #else
@@ -1151,7 +1153,6 @@ $code.=<<___;
 	add		sp,sp,#4*(16+3)
 	ldmia		sp!,{r4-r11,pc}
 .size	ChaCha20_neon,.-ChaCha20_neon
-.comm	GFp_armcap_P,4,4
 #endif
 ___
 }}}

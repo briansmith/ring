@@ -14,7 +14,6 @@
 
 use crate::{arithmetic::montgomery::*, c, error, limb::*};
 use core::marker::PhantomData;
-use untrusted;
 
 pub use self::elem::*;
 
@@ -441,7 +440,6 @@ mod tests {
     use super::*;
     use crate::test;
     use alloc::{format, vec, vec::Vec};
-    use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {
         limbs: [0; MAX_LIMBS],
@@ -491,11 +489,11 @@ mod tests {
             let b = consume_elem(cops, test_case, "b");
             let expected_sum = consume_elem(cops, test_case, "r");
 
-            let mut actual_sum = a.clone();
+            let mut actual_sum = a;
             ops.public_key_ops.common.elem_add(&mut actual_sum, &b);
             assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
-            let mut actual_sum = b.clone();
+            let mut actual_sum = b;
             ops.public_key_ops.common.elem_add(&mut actual_sum, &a);
             assert_limbs_are_equal(cops, &actual_sum.limbs, &expected_sum.limbs);
 
@@ -692,10 +690,10 @@ mod tests {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let cops = ops.common;
-            let mut a = consume_scalar(cops, test_case, "a");
+            let a = consume_scalar(cops, test_case, "a");
             let b = consume_scalar_mont(cops, test_case, "b");
             let expected_result = consume_scalar(cops, test_case, "r");
-            let actual_result = ops.scalar_product(&mut a, &b);
+            let actual_result = ops.scalar_product(&a, &b);
             assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
 
             Ok(())
@@ -1072,7 +1070,7 @@ mod tests {
         p
     }
 
-    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb], elems: &Vec<&str>, i: usize) {
+    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb], elems: &[&str], i: usize) {
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
         let r: Elem<Unencoded> = elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
@@ -1087,7 +1085,7 @@ mod tests {
     }
 
     fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str) -> TestPoint {
-        fn consume_point_elem(ops: &CommonOps, elems: &Vec<&str>, i: usize) -> Elem<R> {
+        fn consume_point_elem(ops: &CommonOps, elems: &[&str], i: usize) -> Elem<R> {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             let unencoded: Elem<Unencoded> =
@@ -1176,84 +1174,6 @@ mod tests {
         bytes.extend(&unpadded_bytes);
         bytes
     }
-}
-
-#[cfg(feature = "internal_benches")]
-mod internal_benches {
-    use super::{Limb, MAX_LIMBS};
-
-    pub const LIMBS_1: [Limb; MAX_LIMBS] = limbs![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
-    pub const LIMBS_ALTERNATING_10: [Limb; MAX_LIMBS] = limbs![
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010,
-        0b10101010_10101010_10101010_10101010
-    ];
-}
-
-#[cfg(feature = "internal_benches")]
-macro_rules! bench_curve {
-    ( $vectors:expr ) => {
-        use super::super::{Elem, Scalar};
-        extern crate test;
-
-        #[bench]
-        fn elem_inverse_squared_bench(bench: &mut test::Bencher) {
-            // This benchmark assumes that `elem_inverse_squared()` is
-            // constant-time so inverting 1 mod q is as good of a choice as
-            // anything.
-            let mut a = Elem::zero();
-            a.limbs[0] = 1;
-            bench.iter(|| {
-                let _ = PRIVATE_KEY_OPS.elem_inverse_squared(&a);
-            });
-        }
-
-        #[bench]
-        fn elem_product_bench(bench: &mut test::Bencher) {
-            // This benchmark assumes that the multiplication is constant-time
-            // so 0 * 0 is as good of a choice as anything.
-            let a: Elem<R> = Elem::zero();
-            let b: Elem<R> = Elem::zero();
-            bench.iter(|| {
-                let _ = COMMON_OPS.elem_product(&a, &b);
-            });
-        }
-
-        #[bench]
-        fn elem_squared_bench(bench: &mut test::Bencher) {
-            // This benchmark assumes that the squaring is constant-time so
-            // 0**2 * 0 is as good of a choice as anything.
-            let a = Elem::zero();
-            bench.iter(|| {
-                let _ = COMMON_OPS.elem_squared(&a);
-            });
-        }
-
-        #[bench]
-        fn scalar_inv_to_mont_bench(bench: &mut test::Bencher) {
-            const VECTORS: &[Scalar] = $vectors;
-            let vectors_len = VECTORS.len();
-            let mut i = 0;
-            bench.iter(|| {
-                let _ = SCALAR_OPS.scalar_inv_to_mont(&VECTORS[i]);
-
-                i += 1;
-                if i == vectors_len {
-                    i = 0;
-                }
-            });
-        }
-    };
 }
 
 mod elem;

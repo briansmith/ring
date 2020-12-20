@@ -380,36 +380,3 @@ extern "C" {
         rep: Limb,
     );
 }
-
-#[cfg(feature = "internal_benches")]
-mod internal_benches {
-    use super::{super::internal_benches::*, *};
-
-    bench_curve!(&[
-        Scalar {
-            limbs: LIMBS_1,
-            m: PhantomData,
-            encoding: PhantomData,
-        },
-        Scalar {
-            limbs: LIMBS_ALTERNATING_10,
-            m: PhantomData,
-            encoding: PhantomData,
-        },
-        Scalar {
-            // n - 1
-            limbs: p256_limbs![
-                0xfc632551 - 1,
-                0xf3b9cac2,
-                0xa7179e84,
-                0xbce6faad,
-                0xffffffff,
-                0xffffffff,
-                0x00000000,
-                0xffffffff
-            ],
-            m: PhantomData,
-            encoding: PhantomData,
-        },
-    ]);
-}

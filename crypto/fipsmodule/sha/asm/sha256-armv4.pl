@@ -218,6 +218,8 @@ K256:
 .size	K256,.-K256
 .word	0				@ terminator
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
+.extern GFp_armcap_P
+.hidden GFp_armcap_P
 .LOPENSSL_armcap:
 .word	GFp_armcap_P-.Lsha256_block_data_order
 #endif
@@ -687,11 +689,6 @@ ___
 }}}
 $code.=<<___;
 .asciz  "SHA256 block transform for ARMv4/NEON/ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
-.align	2
-#if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.comm   GFp_armcap_P,4,4
-.hidden GFp_armcap_P
-#endif
 ___
 
 open SELF,$0;

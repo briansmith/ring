@@ -14,7 +14,6 @@
 
 use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
 use crate::{bits, digest, error, io::der};
-use untrusted;
 
 #[cfg(feature = "alloc")]
 use crate::rand;
@@ -100,7 +99,7 @@ impl Verification for PKCS1 {
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let calculated = &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
         pkcs1_encode(&self, m_hash, calculated);
-        if m.read_bytes_to_end() != *calculated.as_ref() {
+        if m.read_bytes_to_end() != *calculated {
             return Err(error::Unspecified);
         }
         Ok(())
@@ -279,7 +278,7 @@ impl RsaEncoding for PSS {
 
         {
             // Steps 7.
-            let masked_db = masked_db.into_iter();
+            let masked_db = masked_db.iter_mut();
             // `PS` is all zero bytes, so skipping `ps_len` bytes is equivalent
             // to XORing `PS` onto `db`.
             let mut masked_db = masked_db.skip(metrics.ps_len);
@@ -522,7 +521,6 @@ mod test {
     use super::*;
     use crate::{digest, error, test};
     use alloc::vec;
-    use untrusted;
 
     #[test]
     fn test_pss_padding_verify() {

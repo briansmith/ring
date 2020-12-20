@@ -26,15 +26,16 @@ Builds directly from Git
 ------------------------
 
 If you want to hack on *ring* then you need to build it directly from its Git
-repository. In this case, you must also have Perl installed, because the
-assembly language modules inherited from BoringSSL (inherited from OpenSSL)
-use Perl as a macro assembly language.
+repository. There are some additional requirements for doing this that do not
+apply when building from crates.io:
 
-When building from Git for Windows, directories containing yasm.exe and
-perl.exe must be in `%PATH%`, where yasm.exe is
-[Yasm](http://yasm.tortall.net/Download.html) 1.3 or later and where perl.exe
-is recommended to be [Strawberry Perl](http://strawberryperl.com).
+* For any target for which *ring* has assembly language implementations of
+  primitives (32- and 64- bit Intel, and 32- and 64-bit ARM), Perl must be
+  installed and in `$PATH`.
 
+* For Windows targets, `target/tools/nasm[.exe]` is used as the assembler;
+  [mk/install-build-tools.ps1](mk/install-build-tools.ps1) downloads it for
+  Windows hosts.
 
 Cross Compiling
 ---------------
@@ -79,11 +80,6 @@ e.g. export `CFLAGS=-D__ANDROID_API__=21`.
 
 Additional Features that are Useful for Development
 ---------------------------------------------------
-The `internal_benches` feature enable benchmarks of internal functions. These
-benchmarks are only useful for people hacking on the implementation of *ring*.
-(The benchmarks for the *ring* API are in the
-[crypto-bench](https://github.com/briansmith/crypto-bench) project.)
-
 The `slow_tests` feature runs additional tests that are too slow to run during
 a normal edit-compile-test cycle.
 

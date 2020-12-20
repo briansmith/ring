@@ -12,30 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![forbid(
-    anonymous_parameters,
-    box_pointers,
-    missing_copy_implementations,
-    missing_debug_implementations,
-    missing_docs,
-    trivial_casts,
-    trivial_numeric_casts,
-    unsafe_code,
-    unstable_features,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_qualifications,
-    unused_results,
-    variant_size_differences,
-    warnings
-)]
-
 extern crate alloc;
 
 use ring::{agreement, error, rand, test, test_file};
 
 #[test]
-fn agreement_traits<'a>() {
+fn agreement_traits() {
     use alloc::vec::Vec;
 
     let rng = rand::SystemRandom::new();
@@ -61,9 +43,9 @@ fn agreement_traits<'a>() {
     // TODO: Test the actual output.
     let _: &dyn core::fmt::Debug = &public_key;
 
-    test::compile_time_assert_clone::<agreement::UnparsedPublicKey<&'a [u8]>>();
-    test::compile_time_assert_copy::<agreement::UnparsedPublicKey<&'a [u8]>>();
-    test::compile_time_assert_sync::<agreement::UnparsedPublicKey<&'a [u8]>>();
+    test::compile_time_assert_clone::<agreement::UnparsedPublicKey<&[u8]>>();
+    test::compile_time_assert_copy::<agreement::UnparsedPublicKey<&[u8]>>();
+    test::compile_time_assert_sync::<agreement::UnparsedPublicKey<&[u8]>>();
 
     test::compile_time_assert_clone::<agreement::UnparsedPublicKey<Vec<u8>>>();
     test::compile_time_assert_sync::<agreement::UnparsedPublicKey<Vec<u8>>>();
@@ -109,7 +91,7 @@ fn agreement_public_key() {
             )
             .is_err());
 
-            return Ok(());
+            Ok(())
         },
     );
 }
@@ -129,14 +111,14 @@ fn agreement_private_key() {
             let pair = agreement::StaticKeyPair::from_private_key_unchecked(&alg, &private_key[..]);
             assert!(pair.is_err());
 
-            return Ok(());
+            Ok(())
         },
     );
 }
 
 #[test]
 fn agreement_static_key_pair() {
-    static ALGORITHMS: [&'static agreement::Algorithm; 3] = [
+    static ALGORITHMS: [&agreement::Algorithm; 3] = [
         &agreement::ECDH_P256,
         &agreement::ECDH_P384,
         &agreement::X25519,
@@ -187,15 +169,13 @@ fn agreement_agree_ephemeral() {
 
         assert_eq!(my_private.algorithm(), alg);
 
-        assert!(
-            agreement::agree_ephemeral(my_private, &peer_public, (), |key_material| {
-                assert_eq!(key_material, &output[..]);
-                Ok(())
-            })
-            .is_ok()
-        );
+        let result = agreement::agree_ephemeral(my_private, &peer_public, (), |key_material| {
+            assert_eq!(key_material, &output[..]);
+            Ok(())
+        });
+        assert_eq!(result, Ok(()));
 
-        return Ok(());
+        Ok(())
     });
 }
 
@@ -219,15 +199,13 @@ fn agreement_agree_static() {
         let computed_public = my_pair.public_key();
         assert_eq!(computed_public.as_ref(), &my_public[..]);
 
-        assert!(
-            agreement::agree_static(&my_pair, &peer_public, (), |key_material| {
-                assert_eq!(key_material, &output[..]);
-                Ok(())
-            })
-            .is_ok()
-        );
+        let result = agreement::agree_static(&my_pair, &peer_public, (), |key_material| {
+            assert_eq!(key_material, &output[..]);
+            Ok(())
+        });
+        assert_eq!(result, Ok(()));
 
-        return Ok(());
+        Ok(())
     });
 }
 

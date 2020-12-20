@@ -12,24 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![forbid(
-    anonymous_parameters,
-    box_pointers,
-    missing_copy_implementations,
-    missing_debug_implementations,
-    missing_docs,
-    trivial_casts,
-    trivial_numeric_casts,
-    unsafe_code,
-    unstable_features,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_qualifications,
-    unused_results,
-    variant_size_differences,
-    warnings
-)]
-
 use ring::{aead::quic, test, test_file};
 
 #[test]
@@ -64,6 +46,7 @@ fn test_quic(alg: &'static quic::Algorithm, test_file: test::File) {
     });
 }
 
+#[allow(clippy::range_plus_one)]
 fn test_sample_len(alg: &'static quic::Algorithm) {
     let key_len = alg.key_len();
     let key_data = vec![0u8; key_len];

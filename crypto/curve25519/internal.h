@@ -65,12 +65,6 @@ static inline void fe_limbs_copy(fe_limb_t r[], const fe_limb_t a[]) {
   }
 }
 
-static inline void fe_limbs_zero(fe_limb_t r[]) {
-  for (size_t i = 0; i < FE_NUM_LIMBS; ++i) {
-    r[i] = 0;
-  }
-}
-
 // ge means group element.
 //
 // Here the group is the set of pairs (x,y) of field elements (see fe.h)

@@ -12,24 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![forbid(
-    anonymous_parameters,
-    box_pointers,
-    missing_copy_implementations,
-    missing_debug_implementations,
-    missing_docs,
-    trivial_casts,
-    trivial_numeric_casts,
-    unsafe_code,
-    unstable_features,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_qualifications,
-    unused_results,
-    variant_size_differences,
-    warnings
-)]
-
 use ring::{
     rand,
     signature::{self, KeyPair},
@@ -86,7 +68,7 @@ fn ecdsa_from_pkcs8_test() {
 
             match (
                 signature::EcdsaKeyPair::from_pkcs8(this_asn1, &input),
-                error.clone(),
+                error,
             ) {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
@@ -209,9 +191,11 @@ fn ecdsa_test_public_key_coverage() {
     assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
 
     // Test `Clone`.
-    {
-        let _ = key_pair.public_key().clone();
-    }
+    #[allow(clippy::clone_on_copy, clippy::redundant_clone)]
+    let _: <signature::EcdsaKeyPair as KeyPair>::PublicKey = key_pair.public_key().clone();
+
+    // Test `Copy`.
+    let _: <signature::EcdsaKeyPair as KeyPair>::PublicKey = *key_pair.public_key();
 
     // Test `Debug`.
     assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));

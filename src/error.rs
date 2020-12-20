@@ -14,8 +14,6 @@
 
 //! Error reporting.
 
-use untrusted;
-
 #[cfg(feature = "std")]
 extern crate std;
 
@@ -78,15 +76,30 @@ extern crate std;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Unspecified;
 
+impl Unspecified {
+    fn description_() -> &'static str {
+        "ring::error::Unspecified"
+    }
+}
+
 // This is required for the implementation of `std::error::Error`.
 impl core::fmt::Display for Unspecified {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.write_str("ring::error::Unspecified")
+        f.write_str(Self::description_())
     }
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for Unspecified {}
+impl std::error::Error for Unspecified {
+    #[inline]
+    fn cause(&self) -> Option<&dyn std::error::Error> {
+        None
+    }
+
+    fn description(&self) -> &str {
+        Self::description_()
+    }
+}
 
 impl From<untrusted::EndOfInput> for Unspecified {
     fn from(_: untrusted::EndOfInput) -> Self {
@@ -102,10 +115,10 @@ impl From<core::array::TryFromSliceError> for Unspecified {
 
 /// An error parsing or validating a key.
 ///
-/// The `Display` implementation will return a string that will help you better
-/// understand why a key was rejected change which errors are reported in which
-/// situations while minimizing the likelihood that any applications will be
-/// broken.
+/// The `Display` implementation and `<KeyRejected as Error>::description()`
+/// will return a string that will help you better understand why a key was
+/// rejected change which errors are reported in which situations while
+/// minimizing the likelihood that any applications will be broken.
 ///
 /// Here is an incomplete list of reasons a key may be unsupported:
 ///
@@ -134,6 +147,11 @@ impl From<core::array::TryFromSliceError> for Unspecified {
 pub struct KeyRejected(&'static str);
 
 impl KeyRejected {
+    /// The value returned from <Self as std::error::Error>::description()
+    pub fn description_(&self) -> &'static str {
+        self.0
+    }
+
     pub(crate) fn inconsistent_components() -> Self {
         KeyRejected("InconsistentComponents")
     }
@@ -185,11 +203,19 @@ impl KeyRejected {
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for KeyRejected {}
+impl std::error::Error for KeyRejected {
+    fn cause(&self) -> Option<&dyn std::error::Error> {
+        None
+    }
+
+    fn description(&self) -> &str {
+        self.description_()
+    }
+}
 
 impl core::fmt::Display for KeyRejected {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.write_str(self.0)
+        f.write_str(self.description_())
     }
 }
 

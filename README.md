@@ -198,41 +198,31 @@ any security vulnerability in this code privately to anybody.**
 Online Automated Testing
 ------------------------
 
-Travis CI is used for Android, Linux, and macOS. Appveyor is used for Windows.
-The tests are run in debug and release configurations, for the current release
-of each Rust channel (Stable, Beta, Nightly), for each configuration listed in
-the table below. The C compilers listed are used for compiling the C portions.
+The following targets are tested in GitHub Actions. The tests are run in debug
+and release configurations, for the current release of each Rust channel
+(Stable, Beta, Nightly). A C compiler is currently required to compile some
+parts of *ring*; *ring* should be compatible with GCC 4.8+, Clang 10+, and MSVC
+2019+, at least.
 
-<table>
-<tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
-<tr><td rowspan=2>Linux</td>
-    <td>x86, x86_64</td>
-    <td>GCC 9, Clang 10</td>
-    <td rowspan=4><a href=https://travis-ci.org/briansmith/ring/branches>Build Status</a></td>
-</tr>
-<tr><td>32&#8209;bit&nbsp;ARM, AAarch64</td>
-    <td>GCC (Ubuntu/Linaro 4.8.4-2ubuntu1~14.04.1), tested using
-        <code>qemu-user-arm</code>.</td>
-</tr>
-<tr><td>Android</td>
-    <td>ARMv7, Aarch64</td>
-    <td>*ring* for ARMv7 Android is built in CI using SDK version 26 targeting
-        API level 18 (Android 4.3+); it is tested in the emulator using the
-        corresponding system image. *ring* for AArch64 Android is built in CI
-        using SDK version 26 targeting API level 21 (Android 5.0).</td>
-</tr>
-<tr><td>Mac&nbsp;OS&nbsp;X</td>
-    <td>x64</td>
-    <td>Xcode 12 with its associated version of Apple Clang</td>
-</tr>
-<tr><td>Windows</td>
-    <td>x86, x86_64</td>
-    <td>MSVC 2015 Update 3 (14.0)</td>
-    <td><a href=https://ci.appveyor.com/project/briansmith/ring/branch/main>Build Status</a></td>
-</tr>
-</table>
-
-
+| Target                         | Notes |
+| -------------------------------| ----- |
+| aarch64-apple-darwin           | Build-only (GitHub Actions doesn't have a way to run the tests)
+| aarch64-apple-ios              | Build-only (GitHub Actions doesn't have a way to run the tests)
+| aarch64-unknown-linux-gnu      | Tested on 64-bit Linux using QEMU user emulation
+| aarch64-unknown-linux-musl     | Tested on 64-bit Linux using QEMU user emulation. [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| aarch64-linux-android          | API level 21 (Android 5.0+); [Build-only; issue 486](https://github.com/briansmith/ring/issues/486)
+| arm-unknown-linux-gnueabihf    | Tested on 64-bit Linux using QEMU user emulation
+| armv7-linux-androideabi        | API level 18 (Android 4.3+); [Build-only; issue 838](https://github.com/briansmith/ring/issues/838)
+| armv7-unknown-linux-musleabihf | Tested on 64-bit Linux using QEMU user emulation. [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| i686-pc-windows-msvc           | Tested on 64-bit Windows Server 2019 Datacenter
+| i686-unknown-linux-gnu         | Tested on 64-bit Linux using multilib support
+| i686-unknown-linux-musl        | Tested on 64-bit Linux using multilib support. [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| x86_64-apple-darwin            |
+| x86_64-pc-windows-gnu          |
+| x86_64-pc-windows-msvc         | Tested on 64-bit Windows Server 2019 Datacenter
+| x86_64-unknown-linux-gnu       |
+| x86_64-unknown-linux-musl      | [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
+| wasm32-unknown-unknown         | Tested using wasm-bindgen-test-runner on Linux in Chrome and Firefox.
 
 License
 -------

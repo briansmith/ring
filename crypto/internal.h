@@ -259,10 +259,39 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 }
 #endif
 
-static inline void bytes_copy(uint8_t out[], const uint8_t in[], size_t len) {
-  for (size_t i = 0; i < len; ++i) {
-    out[i] = in[i];
+#if !defined(GFp_NOSTDLIBINC)
+#include <string.h>
+#endif
+
+static inline void *GFp_memcpy(void *dst, const void *src, size_t n) {
+#if !defined(GFp_NOSTDLIBINC)
+  if (n == 0) {
+    return dst;
   }
+  return memcpy(dst, src, n);
+#else
+  unsigned char *d = dst;
+  const unsigned char *s = src;
+  for (size_t i = 0; i < n; ++i) {
+    d[i] = s[i];
+  }
+  return dst;
+#endif
+}
+
+static inline void *GFp_memset(void *dst, int c, size_t n) {
+#if !defined(GFp_NOSTDLIBINC)
+  if (n == 0) {
+    return dst;
+  }
+  return memset(dst, c, n);
+#else
+  unsigned char *d = dst;
+  for (size_t i = 0; i < n; ++i) {
+    d[i] = (unsigned char)c;
+  }
+  return dst;
+#endif
 }
 
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H

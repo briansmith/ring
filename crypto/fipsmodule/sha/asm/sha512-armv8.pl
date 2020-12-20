@@ -179,6 +179,7 @@ $code.=<<___;
 .text
 
 .extern	GFp_armcap_P
+.hidden GFp_armcap_P
 .globl	$func
 .type	$func,%function
 .align	6
@@ -422,13 +423,6 @@ $code.=<<___;
 #endif
 ___
 }
-
-$code.=<<___;
-#ifndef	__KERNEL__
-.comm	GFp_armcap_P,4,4
-.hidden	GFp_armcap_P
-#endif
-___
 
 {   my  %opcode = (
 	"sha256h"	=> 0x5e004000,	"sha256h2"	=> 0x5e005000,

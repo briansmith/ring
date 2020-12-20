@@ -28,7 +28,7 @@ fn test_verify_slices_are_equal() {
     let initial: [u8; 256] = rand::generate(&rand::SystemRandom::new()).unwrap().expose();
 
     {
-        let copy = initial.clone();
+        let copy = initial;
         for len in 0..copy.len() {
             // Not equal because the lengths do not match.
             assert_eq!(
@@ -50,7 +50,7 @@ fn test_verify_slices_are_equal() {
 
     for i in 0..initial.len() {
         for bit in 0..8 {
-            let mut copy = initial.clone();
+            let mut copy = initial;
             copy[i] ^= 1u8 << bit;
 
             for len in 0..=initial.len() {
@@ -67,7 +67,7 @@ fn test_verify_slices_are_equal() {
                     // The flipped bit is outside of `b` so `a` and `b` are equal.
                     Ok(())
                 };
-                assert_eq!((&a == &b), expected_result.is_ok()); // Sanity check.
+                assert_eq!(a == b, expected_result.is_ok()); // Sanity check.
                 assert_eq!(
                     constant_time::verify_slices_are_equal(&a, &b),
                     expected_result

@@ -87,6 +87,7 @@ impl From<&'_ [u8; BLOCK_LEN]> for Block {
 }
 
 impl AsRef<[u8; BLOCK_LEN]> for Block {
+    #[allow(clippy::transmute_ptr_to_ptr)]
     #[inline]
     fn as_ref(&self) -> &[u8; BLOCK_LEN] {
         unsafe { core::mem::transmute(self) }
