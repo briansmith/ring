@@ -608,7 +608,7 @@ impl RsaKeyPair {
 mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
-    use crate::{rand, signature};
+    use crate::{rand, signature, test};
     use alloc::vec;
 
     // `KeyPair::sign` requires that the output buffer is the same length as
@@ -624,7 +624,7 @@ mod tests {
         let key_pair = signature::RsaKeyPair::from_der(PRIVATE_KEY_DER).unwrap();
 
         // The output buffer is one byte too short.
-        let mut signature = vec![0; key_pair.public_modulus_len() - 1];
+        let mut signature = vec![test::UNINITIALIZED_U8; key_pair.public_modulus_len() - 1];
 
         assert!(key_pair
             .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)

@@ -187,7 +187,7 @@ macro_rules! test_i_u_f {
         // TODO: #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
         #[test]
         fn $test_name() {
-            let mut input = [0; (digest::MAX_BLOCK_LEN + 1) * 3];
+            let mut input = [test::UNINITIALIZED_U8; (digest::MAX_BLOCK_LEN + 1) * 3];
             let max = $alg.block_len + 1;
             for i in 0..(max * 3) {
                 input[i] = (i & 0xff) as u8;

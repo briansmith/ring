@@ -365,7 +365,7 @@ fn less_safe_key_open_within(
 #[allow(clippy::range_plus_one)]
 fn key_sizes(aead_alg: &'static aead::Algorithm) {
     let key_len = aead_alg.key_len();
-    let key_data = vec![0u8; key_len * 2];
+    let key_data = vec![test::UNINITIALIZED_U8; key_len * 2];
 
     // Key is the right size.
     assert!(aead::UnboundKey::new(aead_alg, &key_data[..key_len]).is_ok());
@@ -394,7 +394,7 @@ fn key_sizes(aead_alg: &'static aead::Algorithm) {
 #[test]
 fn test_aead_nonce_sizes() {
     let nonce_len = aead::NONCE_LEN;
-    let nonce = vec![0u8; nonce_len * 2];
+    let nonce = vec![test::UNINITIALIZED_U8; nonce_len * 2];
 
     assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..nonce_len]).is_ok());
     assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..(nonce_len - 1)]).is_err());
@@ -420,7 +420,8 @@ fn aead_chacha20_poly1305_openssh() {
             // XXX: `polyfill::convert` isn't available here.
             let key_bytes = {
                 let as_vec = test_case.consume_bytes("KEY");
-                let mut as_array = [0u8; aead::chacha20_poly1305_openssh::KEY_LEN];
+                let mut as_array =
+                    [test::UNINITIALIZED_U8; aead::chacha20_poly1305_openssh::KEY_LEN];
                 as_array.copy_from_slice(&as_vec);
                 as_array
             };
@@ -435,7 +436,7 @@ fn aead_chacha20_poly1305_openssh() {
             // TODO: Add some tests for when things fail.
             //let error = test_case.consume_optional_string("FAILS");
 
-            let mut tag = [0u8; aead::chacha20_poly1305_openssh::TAG_LEN];
+            let mut tag = [test::UNINITIALIZED_U8; aead::chacha20_poly1305_openssh::TAG_LEN];
             let mut s_in_out = plaintext.clone();
             let s_key = aead::chacha20_poly1305_openssh::SealingKey::new(&key_bytes);
             s_key.seal_in_place(sequence_num, &mut s_in_out[..], &mut tag);
@@ -479,8 +480,8 @@ fn test_tag_traits() {
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_aead_key_debug() {
-    let key_bytes = [0; 32];
-    let nonce = [0; aead::NONCE_LEN];
+    let key_bytes = [test::UNINITIALIZED_U8; 32];
+    let nonce = [test::UNINITIALIZED_U8; aead::NONCE_LEN];
 
     let key = aead::UnboundKey::new(&aead::AES_256_GCM, &key_bytes).unwrap();
     assert_eq!(

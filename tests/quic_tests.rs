@@ -49,12 +49,12 @@ fn test_quic(alg: &'static quic::Algorithm, test_file: test::File) {
 #[allow(clippy::range_plus_one)]
 fn test_sample_len(alg: &'static quic::Algorithm) {
     let key_len = alg.key_len();
-    let key_data = vec![0u8; key_len];
+    let key_data = vec![test::UNINITIALIZED_U8; key_len];
 
     let key = quic::HeaderProtectionKey::new(alg, &key_data).unwrap();
 
     let sample_len = 16;
-    let sample_data = vec![0u8; sample_len + 2];
+    let sample_data = vec![test::UNINITIALIZED_U8; sample_len + 2];
 
     // Sample is the right size.
     assert!(key.new_mask(&sample_data[..sample_len]).is_ok());

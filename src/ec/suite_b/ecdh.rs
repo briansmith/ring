@@ -181,7 +181,7 @@ mod tests {
             // Test that a private key value exactly equal to the group order
             // is rejected and that `generate` gives up after a while of only
             // getting that value from the PRNG.
-            let mut n_bytes = [0u8; ec::SCALAR_MAX_BYTES];
+            let mut n_bytes = [test::UNINITIALIZED_U8; ec::SCALAR_MAX_BYTES];
             let num_bytes = curve.elem_scalar_seed_len;
             limb::big_endian_from_limbs(&ops.n.limbs[..ops.num_limbs], &mut n_bytes[..num_bytes]);
             {

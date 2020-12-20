@@ -54,7 +54,7 @@ pub fn pbkdf2_tests() {
         };
 
         {
-            let mut out = vec![0u8; dk.len()];
+            let mut out = vec![test::UNINITIALIZED_U8; dk.len()];
             pbkdf2::derive(algorithm, iterations, &salt, &secret, &mut out);
             assert_eq!(dk == out, verify_expected_result.is_ok() || dk.is_empty());
         }

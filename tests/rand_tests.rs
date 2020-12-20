@@ -53,7 +53,7 @@ fn test_system_random_lengths() {
     ];
 
     for len in lengths.iter() {
-        let mut buf = vec![0; *len];
+        let mut buf = vec![test::UNINITIALIZED_U8; *len];
 
         let rng = rand::SystemRandom::new();
         assert!(rng.fill(&mut buf).is_ok());

@@ -105,7 +105,7 @@ fn hmac_test_case_inner(
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn hmac_debug() {
-    let key = hmac::Key::new(hmac::HMAC_SHA256, &[0; 32]);
+    let key = hmac::Key::new(hmac::HMAC_SHA256, &[test::UNINITIALIZED_U8; 32]);
     assert_eq!("Key { algorithm: SHA256 }", format!("{:?}", &key));
 
     let ctx = hmac::Context::with_key(&key);

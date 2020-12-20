@@ -126,6 +126,10 @@ use crate::{bits, digest, error};
 #[cfg(any(feature = "std", feature = "test_logging"))]
 extern crate std;
 
+/// `UNINITIALIZED_U8` is a non-zero value used to initialize test buffers
+/// as a way to differentiate from zeroed-but-otherwise-unwritten memory.
+pub const UNINITIALIZED_U8: u8 = 0xDE;
+
 /// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
 /// implement `Clone`.
 pub fn compile_time_assert_clone<T: Clone>() {}

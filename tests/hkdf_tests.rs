@@ -122,7 +122,7 @@ impl hkdf::KeyType for My<usize> {
 
 impl From<hkdf::Okm<'_, My<usize>>> for My<Vec<u8>> {
     fn from(okm: hkdf::Okm<My<usize>>) -> Self {
-        let mut r = vec![0u8; okm.len().0];
+        let mut r = vec![test::UNINITIALIZED_U8; okm.len().0];
         okm.fill(&mut r).unwrap();
         My(r)
     }
