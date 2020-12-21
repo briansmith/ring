@@ -593,7 +593,7 @@ static bool ext_sni_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 // Encrypted Client Hello (ECH)
 //
-// https://tools.ietf.org/html/draft-ietf-tls-esni-08
+// https://tools.ietf.org/html/draft-ietf-tls-esni-09
 
 // random_size returns a random value between |min| and |max|, inclusive.
 static size_t random_size(size_t min, size_t max) {
@@ -619,18 +619,14 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
   }
 
   constexpr uint16_t kdf_id = EVP_HPKE_HKDF_SHA256;
-  const EVP_MD *kdf = EVP_HPKE_get_hkdf_md(kdf_id);
-  assert(kdf != nullptr);
-
   const uint16_t aead_id = EVP_has_aes_hardware()
                                ? EVP_HPKE_AEAD_AES_GCM_128
                                : EVP_HPKE_AEAD_CHACHA20POLY1305;
   const EVP_AEAD *aead = EVP_HPKE_get_aead(aead_id);
   assert(aead != nullptr);
 
-  uint8_t ech_config_id_buf[EVP_MAX_MD_SIZE];
-  Span<uint8_t> ech_config_id(ech_config_id_buf, EVP_MD_size(kdf));
-  RAND_bytes(ech_config_id.data(), ech_config_id.size());
+  uint8_t ech_config_id[8];
+  RAND_bytes(ech_config_id, sizeof(ech_config_id));
 
   uint8_t ech_enc[X25519_PUBLIC_VALUE_LEN];
   uint8_t private_key_unused[X25519_PRIVATE_KEY_LEN];
@@ -688,8 +684,7 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16(&ech_body, kdf_id) ||  //
       !CBB_add_u16(&ech_body, aead_id) ||
       !CBB_add_u8_length_prefixed(&ech_body, &config_id_cbb) ||
-      !CBB_add_bytes(&config_id_cbb, ech_config_id.data(),
-                     ech_config_id.size()) ||
+      !CBB_add_bytes(&config_id_cbb, ech_config_id, sizeof(ech_config_id)) ||
       !CBB_add_u16_length_prefixed(&ech_body, &enc_cbb) ||
       !CBB_add_bytes(&enc_cbb, ech_enc, OPENSSL_ARRAY_SIZE(ech_enc)) ||
       !CBB_add_u16_length_prefixed(&ech_body, &payload_cbb) ||

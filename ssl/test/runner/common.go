@@ -127,7 +127,7 @@ const (
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
 	extensionDelegatedCredentials       uint16 = 0x22   // draft-ietf-tls-subcerts-06
 	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
-	extensionEncryptedClientHello       uint16 = 0xfe08 // not IANA assigned
+	extensionEncryptedClientHello       uint16 = 0xfe09 // not IANA assigned
 )
 
 // TLS signaling cipher suite values

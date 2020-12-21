@@ -282,7 +282,7 @@ func MarshalECHConfig(e *ECHConfig) []byte {
 }
 
 // The contents of a CH "encrypted_client_hello" extension.
-// https://tools.ietf.org/html/draft-ietf-tls-esni-08
+// https://tools.ietf.org/html/draft-ietf-tls-esni-09
 type clientECH struct {
 	hpkeKDF  uint16
 	hpkeAEAD uint16
@@ -422,7 +422,7 @@ func (m *clientHelloMsg) marshal() []byte {
 		})
 	}
 	if m.clientECH != nil {
-		// https://tools.ietf.org/html/draft-ietf-tls-esni-08
+		// https://tools.ietf.org/html/draft-ietf-tls-esni-09
 		body := newByteBuilder()
 		body.addU16(m.clientECH.hpkeKDF)
 		body.addU16(m.clientECH.hpkeAEAD)
