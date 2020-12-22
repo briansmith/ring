@@ -877,7 +877,7 @@ chacha20_poly1305_seal:
     push %r14
 .cfi_push %r14
     push %r15
-.cfi_push %r15   
+.cfi_push %r15
 # We write the calculated authenticator back to keyp at the end, so save
 # the pointer on the stack too.
     push $keyp
@@ -1707,7 +1707,7 @@ chacha20_poly1305_open_avx2:
         # Hash and decrypt 512 bytes each iteration
         cmp \$16*32, $inl
         jb .Lopen_avx2_main_loop_done\n";
-        &prep_state_avx2(4); $code.=" 
+        &prep_state_avx2(4); $code.="
         xor $itr1, $itr1
 .Lopen_avx2_main_loop_rounds: \n";
             &poly_add("0*8($inp,$itr1)");
