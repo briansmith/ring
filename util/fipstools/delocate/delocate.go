@@ -54,12 +54,15 @@ type processorType int
 const (
 	ppc64le processorType = iota + 1
 	x86_64
+	aarch64
 )
 
 // delocation holds the state needed during a delocation operation.
 type delocation struct {
 	processor processorType
 	output    stringWriter
+	// commentIndicator starts a comment, e.g. "//" or "#"
+	commentIndicator string
 
 	// symbols is the set of symbols defined in the module.
 	symbols map[string]struct{}
@@ -104,7 +107,7 @@ func (d *delocation) writeNode(node *node32) {
 
 func (d *delocation) writeCommentedNode(node *node32) {
 	line := d.contents(node)
-	if _, err := d.output.WriteString("# WAS " + strings.TrimSpace(line) + "\n"); err != nil {
+	if _, err := d.output.WriteString(d.commentIndicator + " WAS " + strings.TrimSpace(line) + "\n"); err != nil {
 		panic(err)
 	}
 }
@@ -1431,10 +1434,16 @@ func transform(w stringWriter, inputs []inputFile) error {
 		processor = detectProcessor(inputs[0])
 	}
 
+	commentIndicator := "#"
+	if processor == aarch64 {
+		commentIndicator = "//"
+	}
+
 	d := &delocation{
 		symbols:             symbols,
 		localEntrySymbols:   localEntrySymbols,
 		processor:           processor,
+		commentIndicator:    commentIndicator,
 		output:              w,
 		redirectors:         make(map[string]string),
 		bssAccessorsNeeded:  make(map[string]string),
