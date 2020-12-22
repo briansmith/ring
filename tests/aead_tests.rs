@@ -427,6 +427,50 @@ fn test_aead_key_debug() {
     );
 }
 
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn test_aead_unboundkey_copy_clone() {
+    let key_bytes = [0; 32];
+    let nonce = [0; aead::NONCE_LEN];
+
+    let key1 = aead::UnboundKey::new(&aead::AES_256_GCM, &key_bytes).unwrap();
+    // Copy and clone key1.
+    let key2 = key1;
+    #[allow(clippy::clone_on_copy)]
+    let key3 = key1.clone();
+
+    // UnboundKey doesn't support AsRef or PartialEq, so instead just check that all three keys
+    // produce the same encrypted output.
+    let mut buf1 = [0; 32];
+    let tag1 = aead::LessSafeKey::new(key1)
+        .seal_in_place_separate_tag(
+            aead::Nonce::try_assume_unique_for_key(&nonce).unwrap(),
+            aead::Aad::empty(),
+            &mut buf1,
+        )
+        .unwrap();
+    let mut buf2 = [0; 32];
+    let tag2 = aead::LessSafeKey::new(key2)
+        .seal_in_place_separate_tag(
+            aead::Nonce::try_assume_unique_for_key(&nonce).unwrap(),
+            aead::Aad::empty(),
+            &mut buf2,
+        )
+        .unwrap();
+    let mut buf3 = [0; 32];
+    let tag3 = aead::LessSafeKey::new(key3)
+        .seal_in_place_separate_tag(
+            aead::Nonce::try_assume_unique_for_key(&nonce).unwrap(),
+            aead::Aad::empty(),
+            &mut buf3,
+        )
+        .unwrap();
+    assert_eq!(tag1.as_ref(), tag2.as_ref());
+    assert_eq!(tag1.as_ref(), tag3.as_ref());
+    assert_eq!(buf1, buf2);
+    assert_eq!(buf1, buf3);
+}
+
 fn make_key<K: aead::BoundKey<OneNonceSequence>>(
     algorithm: &'static aead::Algorithm,
     key: &[u8],

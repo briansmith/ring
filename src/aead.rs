@@ -384,6 +384,7 @@ impl Aad<[u8; 0]> {
 }
 
 /// An AEAD key without a designated role or nonce sequence.
+#[derive(Copy, Clone)]
 pub struct UnboundKey {
     inner: KeyInner,
     algorithm: &'static Algorithm,
@@ -399,6 +400,7 @@ impl core::fmt::Debug for UnboundKey {
 }
 
 #[allow(clippy::large_enum_variant, variant_size_differences)]
+#[derive(Copy, Clone)]
 enum KeyInner {
     AesGcm(aes_gcm::Key),
     ChaCha20Poly1305(chacha20_poly1305::Key),

@@ -17,6 +17,7 @@ use super::{counter, iv::Iv, quic::Sample, BLOCK_LEN};
 use crate::{c, endian::*};
 
 #[repr(transparent)]
+#[derive(Copy, Clone)]
 pub struct Key([LittleEndian<u32>; KEY_LEN / 4]);
 
 impl From<[u8; KEY_LEN]> for Key {

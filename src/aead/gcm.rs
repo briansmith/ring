@@ -18,6 +18,7 @@ use crate::cpu;
 #[cfg(not(target_arch = "aarch64"))]
 mod gcm_nohw;
 
+#[derive(Copy, Clone)]
 pub struct Key(HTable);
 
 impl Key {
@@ -86,7 +87,7 @@ impl Context {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),
                 _unused: Block::zero(),
-                Htable: key.0.clone(),
+                Htable: key.0,
             },
             cpu_features,
         };
@@ -234,7 +235,7 @@ impl Context {
 }
 
 // The alignment is required by non-Rust code that uses `GCM128_CONTEXT`.
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 #[repr(C, align(16))]
 struct HTable {
     Htable: [u128; HTABLE_LEN],
