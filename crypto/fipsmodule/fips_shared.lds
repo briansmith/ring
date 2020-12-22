@@ -3,6 +3,7 @@ SECTIONS
   .text : {
     BORINGSSL_bcm_text_start = .;
     *(.text)
+    *(.text.unlikely.*)
     BORINGSSL_bcm_text_end = .;
   }
   .rodata : {
