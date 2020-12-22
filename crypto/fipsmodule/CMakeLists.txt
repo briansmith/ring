@@ -124,6 +124,17 @@ perlasm(x86_64-mont5.${ASM_EXT} bn/asm/x86_64-mont5.pl)
 perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
 perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 
+function(cpreprocess dest src)
+  add_custom_command(
+    OUTPUT ${dest}
+    COMMAND cpp ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
+    DEPENDS
+    ${src}
+    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    WORKING_DIRECTORY .
+  )
+endfunction()
+
 if(FIPS_DELOCATE)
   if(FIPS_SHARED)
     error("Can't set both delocate and shared mode for FIPS build")
@@ -144,6 +155,18 @@ if(FIPS_DELOCATE)
     bcm.c
   )
 
+  if(${ARCH} STREQUAL "aarch64")
+    # Perlasm output on Aarch64 needs to pass through the C preprocessor before
+    # it can be parsed by delocate.
+    foreach(asm ${BCM_ASM_SOURCES})
+      cpreprocess(${asm}.s ${asm})
+      list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.s")
+    endforeach()
+  else()
+    # No preprocessing is required on other platforms.
+    set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
+  endif()
+
   add_dependencies(bcm_c_generated_asm global_target)
 
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
@@ -152,8 +175,8 @@ if(FIPS_DELOCATE)
   go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
-    COMMAND ./delocate -a $<TARGET_FILE:bcm_c_generated_asm> -o bcm-delocated.S ${BCM_ASM_SOURCES}
-    DEPENDS bcm_c_generated_asm delocate ${BCM_ASM_SOURCES}
+    COMMAND ./delocate -a $<TARGET_FILE:bcm_c_generated_asm> -o bcm-delocated.S ${BCM_ASM_PROCESSED_SOURCES}
+    DEPENDS bcm_c_generated_asm delocate ${BCM_ASM_PROCESSED_SOURCES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
