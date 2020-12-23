@@ -26,6 +26,12 @@ impl From<[u8; KEY_LEN]> for Key {
     }
 }
 
+impl AsRef<[LittleEndian<u32>; KEY_LEN / 4]> for Key {
+    fn as_ref(&self) -> &[LittleEndian<u32>; KEY_LEN / 4] {
+        &self.0
+    }
+}
+
 impl Key {
     #[inline] // Optimize away match on `counter`.
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
