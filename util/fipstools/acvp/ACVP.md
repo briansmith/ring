@@ -43,12 +43,12 @@ The other commands are as follows. (Note that you only need to implement the com
 
 | Command              | Arguments                 | Outputs |
 |----------------------|---------------------------|---------|
-| 3DES-CBC/decrypt     | Key, ciphertext, IV, num iterations<sup>1</sup> | Result, Previous result |
-| 3DES-CBC/encrypt     | Key, plaintext, IV, num iterations<sup>1</sup> | Result, Previous result |
-| 3DES/decrypt         | Key, input block, num iterations<sup>1</sup> | Result, Previous result |
-| 3DES/encrypt         | Key, input block, num iterations<sup>1</sup> | Result, Previous result |
-| AES-CBC/decrypt      | Key, ciphertext, IV, num iterations<sup>1</sup> | Result, Previous result |
-| AES-CBC/encrypt      | Key, plaintext, IV, num iterations<sup>1</sup> | Result, Previous result |
+| 3DES-CBC/decrypt     | Key, ciphertext, IV, num iterations¹ | Result, Previous result |
+| 3DES-CBC/encrypt     | Key, plaintext, IV, num iterations¹ | Result, Previous result |
+| 3DES/decrypt         | Key, input block, num iterations¹ | Result, Previous result |
+| 3DES/encrypt         | Key, input block, num iterations¹ | Result, Previous result |
+| AES-CBC/decrypt      | Key, ciphertext, IV, num iterations¹ | Result, Previous result |
+| AES-CBC/encrypt      | Key, plaintext, IV, num iterations¹ | Result, Previous result |
 | AES-CCM/open         | Tag length, key, ciphertext, nonce, ad | One-byte success flag, plaintext or empty |
 | AES-CCM/seal         | Tag length, key, plaintext, nonce, ad | Ciphertext |
 | AES-CTR/decrypt      | Key, ciphertext, initial counter, constant 1 | Plaintext |
@@ -59,8 +59,8 @@ The other commands are as follows. (Note that you only need to implement the com
 | AES-KW/seal          | (dummy), key, plaintext, (dummy), (dummy) | Ciphertext |
 | AES-KWP/open         | (dummy), key, ciphertext, (dummy), (dummy) | One-byte success flag, plaintext or empty |
 | AES-KWP/seal         | (dummy), key, plaintext, (dummy), (dummy) | Ciphertext |
-| AES/decrypt          | Key, input block, num iterations<sup>1</sup> | Result, Previous result |
-| AES/encrypt          | Key, input block, num iterations<sup>1</sup> | Result, Previous result |
+| AES/decrypt          | Key, input block, num iterations¹ | Result, Previous result |
+| AES/encrypt          | Key, input block, num iterations¹ | Result, Previous result |
 | CMAC-AES             | Number output bytes, key, message | MAC |
 | ctrDRBG/AES-256      | Output length, entropy, personalisation, ad1, ad2, nonce | Output |
 | ECDH/&lt;CURVE&gt;   | X, Y, private key | X, Y, shared key |
@@ -89,7 +89,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | SHA2-512/256         | Value to hash             | Digest  |
 | TLSKDF/&lt;1.0\|1.2&gt;/&lt;HASH&gt; | Number output bytes, secret, label, seed1, seed2 | Output |
 
-<sup>1</sup> The iterated block-cipher tests would result in excessive numbers of round trips if the module wrapper handled only basic operations. Thus some ACVP logic is pushed down for these tests so that the inner loop can be handled locally. Either read the [NIST documentation](https://usnistgov.github.io/ACVP/draft-celi-acvp-symmetric.html#name-monte-carlo-tests-for-block) to understand the iteration count and return values or, probably more fruitfully, see how these functions are handled in the `modulewrapper` directory.
+¹ The iterated block-cipher tests would result in excessive numbers of round trips if the module wrapper handled only basic operations. Thus some ACVP logic is pushed down for these tests so that the inner loop can be handled locally. Either read the [NIST documentation](https://usnistgov.github.io/ACVP/draft-celi-acvp-symmetric.html#name-monte-carlo-tests-for-block) to understand the iteration count and return values or, probably more fruitfully, see how these functions are handled in the `modulewrapper` directory.
 
 ## Online operation
 
