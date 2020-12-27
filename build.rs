@@ -253,6 +253,7 @@ fn ring_build_rs_main() {
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+    let triple = env::var("TARGET").unwrap();
     let (obj_ext, obj_opt) = if env == MSVC {
         (MSVC_OBJ_EXT, MSVC_OBJ_OPT)
     } else {
@@ -268,6 +269,7 @@ fn ring_build_rs_main() {
         arch,
         os,
         env,
+        triple,
         obj_ext,
         obj_opt,
         is_git,
@@ -315,6 +317,7 @@ struct Target {
     arch: String,
     os: String,
     env: String,
+    triple: String,
     obj_ext: &'static str,
     obj_opt: &'static str,
     is_git: bool,
@@ -376,7 +379,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
                 perlasm_format,
                 Some(includes_modified),
             );
-        }
+       }
 
         let mut asm_srcs = asm_srcs(perlasm_src_dsts);
 
@@ -412,7 +415,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     libs.iter().for_each(|&(lib_name, srcs, additional_srcs)| {
-        build_library(
+       build_library(
             &target,
             &out_dir,
             lib_name,
@@ -421,7 +424,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
             warnings_are_errors,
             includes_modified,
         )
-    });
+   });
 
     println!(
         "cargo:rustc-link-search=native={}",
@@ -467,6 +470,11 @@ fn build_library(
             _ => {
                 let _ = c.flag("-Wl,--gc-sections");
             }
+        }
+        if target.triple.contains("macabi") {
+            // Build::target does not correctly format the -target option
+            c.flag("-target");
+            c.flag(&target.triple);
         }
         for o in objs {
             let _ = c.object(o);
@@ -573,6 +581,13 @@ fn cc(
         } else {
             let _ = c.flag("/Ox"); // Enable full optimization.
         }
+    }
+
+    // When building for Mac Catalyst, ensure the -target option is passed to
+    // the compiler.
+    if target.triple.contains("macabi") {
+        c.flag("-target");
+        c.flag(&target.triple);
     }
 
     // Allow cross-compiling without a target sysroot for these targets.
