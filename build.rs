@@ -379,7 +379,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
                 perlasm_format,
                 Some(includes_modified),
             );
-       }
+        }
 
         let mut asm_srcs = asm_srcs(perlasm_src_dsts);
 
@@ -415,7 +415,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     libs.iter().for_each(|&(lib_name, srcs, additional_srcs)| {
-       build_library(
+        build_library(
             &target,
             &out_dir,
             lib_name,
@@ -424,7 +424,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
             warnings_are_errors,
             includes_modified,
         )
-   });
+    });
 
     println!(
         "cargo:rustc-link-search=native={}",
