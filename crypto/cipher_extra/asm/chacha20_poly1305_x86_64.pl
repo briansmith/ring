@@ -436,10 +436,10 @@ poly_hash_ad_internal:
 
 {
 ################################################################################
-# extern void chacha20_poly1305_open(uint8_t *out_plaintext,
-#                                    const uint8_t *ciphertext,
-#                                    size_t plaintext_len, const uint8_t *ad,
-#                                    size_t ad_len, union open_data *aead_data)
+# void chacha20_poly1305_open(uint8_t *out_plaintext, const uint8_t *ciphertext,
+#                             size_t plaintext_len, const uint8_t *ad,
+#                             size_t ad_len,
+#                             union chacha20_poly1305_open_data *aead_data)
 #
 $code.="
 .globl chacha20_poly1305_open
@@ -860,7 +860,10 @@ $code.="
 
 ################################################################################
 ################################################################################
-# void chacha20_poly1305_seal(uint8_t *in_out, size_t len_in, uint8_t *ad, size_t len_ad, uint8_t keyp[48]);
+# void chacha20_poly1305_seal(uint8_t *out_ciphertext, const uint8_t *plaintext,
+#                             size_t plaintext_len, const uint8_t *ad,
+#                             size_t ad_len,
+#                             union chacha20_poly1305_seal_data *data);
 .globl  chacha20_poly1305_seal
 .type chacha20_poly1305_seal,\@function,6
 .align 64
