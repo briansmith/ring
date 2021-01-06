@@ -128,12 +128,12 @@ class HPKETestVector {
 
   void VerifyExports(EVP_HPKE_CTX *ctx) const {
     for (const Export &task : exports_) {
-      std::vector<uint8_t> exported_secret(task.exportLength);
+      std::vector<uint8_t> exported_secret(task.export_length);
 
       ASSERT_TRUE(EVP_HPKE_CTX_export(
           ctx, exported_secret.data(), exported_secret.size(),
-          task.exportContext.data(), task.exportContext.size()));
-      ASSERT_EQ(Bytes(exported_secret), Bytes(task.exportValue));
+          task.exporter_context.data(), task.exporter_context.size()));
+      ASSERT_EQ(Bytes(exported_secret), Bytes(task.exported_value));
     }
   }
 
@@ -144,9 +144,9 @@ class HPKETestVector {
   };
 
   struct Export {
-    std::vector<uint8_t> exportContext;
-    size_t exportLength;
-    std::vector<uint8_t> exportValue;
+    std::vector<uint8_t> exporter_context;
+    size_t export_length;
+    std::vector<uint8_t> exported_value;
   };
 
   HPKEMode mode_;
@@ -230,12 +230,12 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
     encryptions_.push_back(std::move(encryption));
   }
 
-  for (int i = 1; t->HasAttribute(BuildAttrName("exportContext", i)); i++) {
+  for (int i = 1; t->HasAttribute(BuildAttrName("exporter_context", i)); i++) {
     Export exp;
-    if (!t->GetBytes(&exp.exportContext, BuildAttrName("exportContext", i)) ||
-        !FileTestReadInt(t, &exp.exportLength,
-                         BuildAttrName("exportLength", i)) ||
-        !t->GetBytes(&exp.exportValue, BuildAttrName("exportValue", i))) {
+    if (!t->GetBytes(&exp.exporter_context,
+                     BuildAttrName("exporter_context", i)) ||
+        !FileTestReadInt(t, &exp.export_length, BuildAttrName("L", i)) ||
+        !t->GetBytes(&exp.exported_value, BuildAttrName("exported_value", i))) {
       return false;
     }
     exports_.push_back(std::move(exp));

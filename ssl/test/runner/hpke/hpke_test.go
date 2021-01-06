@@ -28,6 +28,10 @@ import (
 	"testing"
 )
 
+const (
+	exportOnlyAEAD uint16 = 0xffff
+)
+
 var (
 	testDataDir = flag.String("testdata", "testdata", "The path to the test vector JSON file.")
 )
@@ -87,9 +91,9 @@ type EncryptionTestVector struct {
 	Ciphertext     HexString `json:"ciphertext"`
 }
 type ExportTestVector struct {
-	ExportContext HexString `json:"exportContext"`
-	ExportLength  int       `json:"exportLength"`
-	ExportValue   HexString `json:"exportValue"`
+	ExportContext HexString `json:"exporter_context"`
+	ExportLength  int       `json:"L"`
+	ExportValue   HexString `json:"exported_value"`
 }
 
 // TestVectors checks all relevant test vectors in test-vectors.json.
@@ -110,15 +114,16 @@ func TestVectors(t *testing.T) {
 	var numSkippedTests = 0
 
 	for testNum, testVec := range testVectors {
-		// Skip this vector if it specifies an unsupported KEM or Mode.
+		// Skip this vector if it specifies an unsupported parameter.
 		if testVec.KEM != X25519WithHKDFSHA256 ||
-			(testVec.Mode != hpkeModeBase && testVec.Mode != hpkeModePSK) {
+			(testVec.Mode != hpkeModeBase && testVec.Mode != hpkeModePSK) ||
+			testVec.AEAD == exportOnlyAEAD {
 			numSkippedTests++
 			continue
 		}
 
 		testVec := testVec // capture the range variable
-		t.Run(fmt.Sprintf("test%d,KDF=%d,AEAD=%d", testNum, testVec.KDF, testVec.AEAD), func(t *testing.T) {
+		t.Run(fmt.Sprintf("test%d,Mode=%d,KDF=%d,AEAD=%d", testNum, testVec.Mode, testVec.KDF, testVec.AEAD), func(t *testing.T) {
 			var senderContext *Context
 			var receiverContext *Context
 			var enc []byte

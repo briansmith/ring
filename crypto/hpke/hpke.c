@@ -40,7 +40,7 @@
 #define HPKE_MODE_BASE 0
 #define HPKE_MODE_PSK 1
 
-static const char kHpkeRfcId[] = "HPKE-05 ";
+static const char kHpkeRfcId[] = "HPKE-07";
 
 static int add_label_string(CBB *cbb, const char *label) {
   return CBB_add_bytes(cbb, (const uint8_t *)label, strlen(label));
@@ -216,24 +216,13 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, uint8_t mode,
     return 0;
   }
 
-  // psk_hash = LabeledExtract("", "psk_hash", psk)
-  static const char kPskHashLabel[] = "psk_hash";
-  uint8_t psk_hash[EVP_MAX_MD_SIZE];
-  size_t psk_hash_len;
-  if (!hpke_labeled_extract(hpke->hkdf_md, psk_hash, &psk_hash_len, NULL, 0,
-                            suite_id, sizeof(suite_id), kPskHashLabel, psk,
-                            psk_len)) {
-    return 0;
-  }
-
-  // secret = LabeledExtract(psk_hash, "secret", shared_secret)
+  // secret = LabeledExtract(shared_secret, "secret", psk)
   static const char kSecretExtractLabel[] = "secret";
   uint8_t secret[EVP_MAX_MD_SIZE];
   size_t secret_len;
-  if (!hpke_labeled_extract(hpke->hkdf_md, secret, &secret_len, psk_hash,
-                            psk_hash_len, suite_id, sizeof(suite_id),
-                            kSecretExtractLabel, shared_secret,
-                            shared_secret_len)) {
+  if (!hpke_labeled_extract(hpke->hkdf_md, secret, &secret_len, shared_secret,
+                            shared_secret_len, suite_id, sizeof(suite_id),
+                            kSecretExtractLabel, psk, psk_len)) {
     return 0;
   }
 
@@ -252,9 +241,9 @@ static int hpke_key_schedule(EVP_HPKE_CTX *hpke, uint8_t mode,
     return 0;
   }
 
-  // nonce = LabeledExpand(secret, "nonce", key_schedule_context, Nn)
-  static const char kNonceExpandLabel[] = "nonce";
-  if (!hpke_labeled_expand(hpke->hkdf_md, hpke->nonce,
+  // base_nonce = LabeledExpand(secret, "base_nonce", key_schedule_context, Nn)
+  static const char kNonceExpandLabel[] = "base_nonce";
+  if (!hpke_labeled_expand(hpke->hkdf_md, hpke->base_nonce,
                            EVP_AEAD_nonce_length(aead), secret, secret_len,
                            suite_id, sizeof(suite_id), kNonceExpandLabel,
                            context, context_len)) {
@@ -466,9 +455,9 @@ static void hpke_nonce(const EVP_HPKE_CTX *hpke, uint8_t *out_nonce,
     seq_copy >>= 8;
   }
 
-  // XOR the encoded sequence with the |hpke->nonce|.
+  // XOR the encoded sequence with the |hpke->base_nonce|.
   for (size_t i = 0; i < nonce_len; i++) {
-    out_nonce[i] ^= hpke->nonce[i];
+    out_nonce[i] ^= hpke->base_nonce[i];
   }
 }
 

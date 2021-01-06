@@ -56,7 +56,7 @@ typedef struct evp_hpke_ctx_st {
   EVP_AEAD_CTX aead_ctx;
   uint16_t kdf_id;
   uint16_t aead_id;
-  uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
+  uint8_t base_nonce[EVP_AEAD_MAX_NONCE_LENGTH];
   uint8_t exporter_secret[EVP_MAX_MD_SIZE];
   uint64_t seq;
   int is_sender;
