@@ -68,6 +68,7 @@
 # define GTEST_OS_OS2 1
 #elif defined __APPLE__
 # define GTEST_OS_MAC 1
+# include <TargetConditionals.h>
 # if TARGET_OS_IPHONE
 #  define GTEST_OS_IOS 1
 # endif
@@ -100,6 +101,12 @@
 # define GTEST_OS_OPENBSD 1
 #elif defined __QNX__
 # define GTEST_OS_QNX 1
+#elif defined(__HAIKU__)
+#define GTEST_OS_HAIKU 1
+#elif defined ESP8266
+#define GTEST_OS_ESP8266 1
+#elif defined ESP32
+#define GTEST_OS_ESP32 1
 #endif  // __CYGWIN__
 
 #endif  // GTEST_INCLUDE_GTEST_INTERNAL_GTEST_PORT_ARCH_H_

@@ -90,10 +90,10 @@ TEST(IsXDigitTest, ReturnsFalseForWideNonAscii) {
 
 class Base {
  public:
-  // Copy constructor and assignment operator do exactly what we need, so we
-  // use them.
   Base() : member_(0) {}
   explicit Base(int n) : member_(n) {}
+  Base(const Base&) = default;
+  Base& operator=(const Base&) = default;
   virtual ~Base() {}
   int member() { return member_; }
 
@@ -201,24 +201,13 @@ TEST(ImplicitCastTest, CanUseImplicitConstructor) {
   EXPECT_TRUE(converted);
 }
 
-TEST(IteratorTraitsTest, WorksForSTLContainerIterators) {
-  StaticAssertTypeEq<int,
-      IteratorTraits< ::std::vector<int>::const_iterator>::value_type>();
-  StaticAssertTypeEq<bool,
-      IteratorTraits< ::std::list<bool>::iterator>::value_type>();
-}
-
-TEST(IteratorTraitsTest, WorksForPointerToNonConst) {
-  StaticAssertTypeEq<char, IteratorTraits<char*>::value_type>();
-  StaticAssertTypeEq<const void*, IteratorTraits<const void**>::value_type>();
-}
-
-TEST(IteratorTraitsTest, WorksForPointerToConst) {
-  StaticAssertTypeEq<char, IteratorTraits<const char*>::value_type>();
-  StaticAssertTypeEq<const void*,
-      IteratorTraits<const void* const*>::value_type>();
-}
-
+// The following code intentionally tests a suboptimal syntax.
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-else"
+#pragma GCC diagnostic ignored "-Wempty-body"
+#pragma GCC diagnostic ignored "-Wpragmas"
+#endif
 TEST(GtestCheckSyntaxTest, BehavesLikeASingleStatement) {
   if (AlwaysFalse())
     GTEST_CHECK_(false) << "This should never be executed; "
@@ -234,6 +223,9 @@ TEST(GtestCheckSyntaxTest, BehavesLikeASingleStatement) {
   else
     GTEST_CHECK_(true) << "";
 }
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 TEST(GtestCheckSyntaxTest, WorksWithSwitch) {
   switch (0) {
@@ -1048,7 +1040,7 @@ class AtomicCounterWithMutex {
           pthread_mutex_init(&memory_barrier_mutex, nullptr));
       GTEST_CHECK_POSIX_SUCCESS_(pthread_mutex_lock(&memory_barrier_mutex));
 
-      SleepMilliseconds(random_.Generate(30));
+      SleepMilliseconds(static_cast<int>(random_.Generate(30)));
 
       GTEST_CHECK_POSIX_SUCCESS_(pthread_mutex_unlock(&memory_barrier_mutex));
       GTEST_CHECK_POSIX_SUCCESS_(pthread_mutex_destroy(&memory_barrier_mutex));
@@ -1056,7 +1048,7 @@ class AtomicCounterWithMutex {
       // On Windows, performing an interlocked access puts up a memory barrier.
       volatile LONG dummy = 0;
       ::InterlockedIncrement(&dummy);
-      SleepMilliseconds(random_.Generate(30));
+      SleepMilliseconds(static_cast<int>(random_.Generate(30)));
       ::InterlockedIncrement(&dummy);
 #else
 # error "Memory barrier not implemented on this platform."
@@ -1198,8 +1190,6 @@ class DestructorTracker {
     return DestructorCall::List().size() - 1;
   }
   const size_t index_;
-
-  GTEST_DISALLOW_ASSIGN_(DestructorTracker);
 };
 
 typedef ThreadLocal<DestructorTracker>* ThreadParam;

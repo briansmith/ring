@@ -33,11 +33,12 @@
 // This file tests the universal value printer.
 
 #include <ctype.h>
-#include <limits.h>
 #include <string.h>
 #include <algorithm>
+#include <cstdint>
 #include <deque>
 #include <forward_list>
+#include <limits>
 #include <list>
 #include <map>
 #include <set>
@@ -88,6 +89,18 @@ class BiggestIntConvertible {
  public:
   operator ::testing::internal::BiggestInt() const { return 42; }
 };
+
+// A parent class with two child classes. The parent and one of the kids have
+// stream operators.
+class ParentClass {};
+class ChildClassWithStreamOperator : public ParentClass {};
+class ChildClassWithoutStreamOperator : public ParentClass {};
+static void operator<<(std::ostream& os, const ParentClass&) {
+  os << "ParentClass";
+}
+static void operator<<(std::ostream& os, const ChildClassWithStreamOperator&) {
+  os << "ChildClassWithStreamOperator";
+}
 
 // A user-defined unprintable class template in the global namespace.
 template <typename T>
@@ -176,6 +189,17 @@ inline ::std::ostream& operator<<(::std::ostream& os,
   return os << "StreamableTemplateInFoo: " << x.value();
 }
 
+// A user-defined streamable type in a user namespace whose operator<< is
+// templated on the type of the output stream.
+struct TemplatedStreamableInFoo {};
+
+template <typename OutputStream>
+OutputStream& operator<<(OutputStream& os,
+                         const TemplatedStreamableInFoo& /*ts*/) {
+  os << "TemplatedStreamableInFoo";
+  return os;
+}
+
 // A user-defined streamable but recursivly-defined container type in
 // a user namespace, it mimics therefore std::filesystem::path or
 // boost::filesystem::path.
@@ -219,7 +243,6 @@ using ::testing::PrintToString;
 using ::testing::internal::FormatForComparisonFailureMessage;
 using ::testing::internal::ImplicitCast_;
 using ::testing::internal::NativeArray;
-using ::testing::internal::RE;
 using ::testing::internal::RelationToSourceReference;
 using ::testing::internal::Strings;
 using ::testing::internal::UniversalPrint;
@@ -310,6 +333,20 @@ TEST(PrintCharTest, UnsignedChar) {
             Print(static_cast<unsigned char>('b')));
 }
 
+TEST(PrintCharTest, Char16) {
+  EXPECT_EQ("U+0041", Print(u'A'));
+}
+
+TEST(PrintCharTest, Char32) {
+  EXPECT_EQ("U+0041", Print(U'A'));
+}
+
+#ifdef __cpp_char8_t
+TEST(PrintCharTest, Char8) {
+  EXPECT_EQ("U+0041", Print(u8'A'));
+}
+#endif
+
 // Tests printing other simple, built-in types.
 
 // bool.
@@ -340,23 +377,39 @@ TEST(PrintBuiltInTypeTest, Wchar_t) {
   EXPECT_EQ("L'\\xC74D' (51021)", Print(static_cast<wchar_t>(0xC74D)));
 }
 
-// Test that Int64 provides more storage than wchar_t.
+// Test that int64_t provides more storage than wchar_t.
 TEST(PrintTypeSizeTest, Wchar_t) {
-  EXPECT_LT(sizeof(wchar_t), sizeof(testing::internal::Int64));
+  EXPECT_LT(sizeof(wchar_t), sizeof(int64_t));
 }
 
 // Various integer types.
 TEST(PrintBuiltInTypeTest, Integer) {
   EXPECT_EQ("'\\xFF' (255)", Print(static_cast<unsigned char>(255)));  // uint8
   EXPECT_EQ("'\\x80' (-128)", Print(static_cast<signed char>(-128)));  // int8
-  EXPECT_EQ("65535", Print(USHRT_MAX));  // uint16
-  EXPECT_EQ("-32768", Print(SHRT_MIN));  // int16
-  EXPECT_EQ("4294967295", Print(UINT_MAX));  // uint32
-  EXPECT_EQ("-2147483648", Print(INT_MIN));  // int32
+  EXPECT_EQ("65535", Print(std::numeric_limits<uint16_t>::max()));  // uint16
+  EXPECT_EQ("-32768", Print(std::numeric_limits<int16_t>::min()));  // int16
+  EXPECT_EQ("4294967295",
+            Print(std::numeric_limits<uint32_t>::max()));  // uint32
+  EXPECT_EQ("-2147483648",
+            Print(std::numeric_limits<int32_t>::min()));  // int32
   EXPECT_EQ("18446744073709551615",
-            Print(static_cast<testing::internal::UInt64>(-1)));  // uint64
+            Print(std::numeric_limits<uint64_t>::max()));  // uint64
   EXPECT_EQ("-9223372036854775808",
-            Print(static_cast<testing::internal::Int64>(1) << 63));  // int64
+            Print(std::numeric_limits<int64_t>::min()));  // int64
+#ifdef __cpp_char8_t
+  EXPECT_EQ("U+0000",
+            Print(std::numeric_limits<char8_t>::min()));  // char8_t
+  EXPECT_EQ("U+00FF",
+            Print(std::numeric_limits<char8_t>::max()));  // char8_t
+#endif
+  EXPECT_EQ("U+0000",
+            Print(std::numeric_limits<char16_t>::min()));  // char16_t
+  EXPECT_EQ("U+FFFF",
+            Print(std::numeric_limits<char16_t>::max()));  // char16_t
+  EXPECT_EQ("U+0000",
+            Print(std::numeric_limits<char32_t>::min()));  // char32_t
+  EXPECT_EQ("U+FFFFFFFF",
+            Print(std::numeric_limits<char32_t>::max()));  // char32_t
 }
 
 // Size types.
@@ -478,6 +531,56 @@ TEST(PrintCharPointerTest, UnsignedChar) {
 // const unsigned char*.
 TEST(PrintCharPointerTest, ConstUnsignedChar) {
   const unsigned char* p = reinterpret_cast<const unsigned char*>(0x1234);
+  EXPECT_EQ(PrintPointer(p), Print(p));
+  p = nullptr;
+  EXPECT_EQ("NULL", Print(p));
+}
+
+#ifdef __cpp_char8_t
+// char8_t*
+TEST(PrintCharPointerTest, Char8) {
+  char8_t* p = reinterpret_cast<char8_t*>(0x1234);
+  EXPECT_EQ(PrintPointer(p), Print(p));
+  p = nullptr;
+  EXPECT_EQ("NULL", Print(p));
+}
+
+// const char8_t*
+TEST(PrintCharPointerTest, ConstChar8) {
+  const char8_t* p = reinterpret_cast<const char8_t*>(0x1234);
+  EXPECT_EQ(PrintPointer(p), Print(p));
+  p = nullptr;
+  EXPECT_EQ("NULL", Print(p));
+}
+#endif
+
+// char16_t*
+TEST(PrintCharPointerTest, Char16) {
+  char16_t* p = reinterpret_cast<char16_t*>(0x1234);
+  EXPECT_EQ(PrintPointer(p), Print(p));
+  p = nullptr;
+  EXPECT_EQ("NULL", Print(p));
+}
+
+// const char16_t*
+TEST(PrintCharPointerTest, ConstChar16) {
+  const char16_t* p = reinterpret_cast<const char16_t*>(0x1234);
+  EXPECT_EQ(PrintPointer(p), Print(p));
+  p = nullptr;
+  EXPECT_EQ("NULL", Print(p));
+}
+
+// char32_t*
+TEST(PrintCharPointerTest, Char32) {
+  char32_t* p = reinterpret_cast<char32_t*>(0x1234);
+  EXPECT_EQ(PrintPointer(p), Print(p));
+  p = nullptr;
+  EXPECT_EQ("NULL", Print(p));
+}
+
+// const char32_t*
+TEST(PrintCharPointerTest, ConstChar32) {
+  const char32_t* p = reinterpret_cast<const char32_t*>(0x1234);
   EXPECT_EQ(PrintPointer(p), Print(p));
   p = nullptr;
   EXPECT_EQ("NULL", Print(p));
@@ -641,6 +744,45 @@ TEST(PrintArrayTest, WConstCharArrayWithTerminatingNul) {
   EXPECT_EQ("L\"\\0Hi\"", PrintArrayHelper(a));
 }
 
+#ifdef __cpp_char8_t
+// char8_t array.
+TEST(PrintArrayTest, Char8Array) {
+  const char8_t a[] = u8"Hello, world!";
+  EXPECT_EQ(
+      "{ U+0048, U+0065, U+006C, U+006C, U+006F, U+002C, U+0020, U+0077, "
+      "U+006F, U+0072, U+006C, U+0064, U+0021, U+0000 }",
+      PrintArrayHelper(a));
+}
+#endif
+
+// char16_t array.
+#ifdef _MSC_VER
+// TODO(b/173029407): Figure out why this doesn't work under MSVC.
+TEST(PrintArrayTest, DISABLED_Char16Array) {
+#else
+TEST(PrintArrayTest, Char16Array) {
+#endif
+  const char16_t a[] = u"Hello, 世界";
+  EXPECT_EQ(
+      "{ U+0048, U+0065, U+006C, U+006C, U+006F, U+002C, U+0020, U+4E16, "
+      "U+754C, U+0000 }",
+      PrintArrayHelper(a));
+}
+
+// char32_t array.
+#ifdef _MSC_VER
+// TODO(b/173029407): Figure out why this doesn't work under MSVC.
+TEST(PrintArrayTest, DISABLED_Char32Array) {
+#else
+TEST(PrintArrayTest, Char32Array) {
+#endif
+  const char32_t a[] = U"Hello, 世界";
+  EXPECT_EQ(
+      "{ U+0048, U+0065, U+006C, U+006C, U+006F, U+002C, U+0020, U+4E16, "
+      "U+754C, U+0000 }",
+      PrintArrayHelper(a));
+}
+
 // Array of objects.
 TEST(PrintArrayTest, ObjectArray) {
   std::string a[3] = {"Hi", "Hello", "Ni hao"};
@@ -700,6 +842,45 @@ TEST(PrintWideStringTest, StringAmbiguousHex) {
 }
 #endif  // GTEST_HAS_STD_WSTRING
 
+#ifdef __cpp_char8_t
+TEST(PrintStringTest, U8String) {
+  std::u8string str = u8"Hello, world!";
+  EXPECT_EQ(str, str);  // Verify EXPECT_EQ compiles with this type.
+  EXPECT_EQ(
+      "{ U+0048, U+0065, U+006C, U+006C, U+006F, U+002C, U+0020, U+0077, "
+      "U+006F, U+0072, U+006C, U+0064, U+0021 }",
+      Print(str));
+}
+#endif
+
+#ifdef _MSC_VER
+// TODO(b/173029407): Figure out why this doesn't work under MSVC.
+TEST(PrintStringTest, DISABLED_U16String) {
+#else
+TEST(PrintStringTest, U16String) {
+#endif
+  std::u16string str = u"Hello, 世界";
+  EXPECT_EQ(str, str);  // Verify EXPECT_EQ compiles with this type.
+  EXPECT_EQ(
+      "{ U+0048, U+0065, U+006C, U+006C, U+006F, U+002C, U+0020, U+4E16, "
+      "U+754C }",
+      Print(str));
+}
+
+#ifdef _MSC_VER
+// TODO(b/173029407): Figure out why this doesn't work under MSVC.
+TEST(PrintStringTest, DISABLED_U32String) {
+#else
+TEST(PrintStringTest, U32String) {
+#endif
+  std::u32string str = U"Hello, 世界";
+  EXPECT_EQ(str, str);  // Verify EXPECT_EQ compiles with this type.
+  EXPECT_EQ(
+      "{ U+0048, U+0065, U+006C, U+006C, U+006F, U+002C, U+0020, U+4E16, "
+      "U+754C }",
+      Print(str));
+}
+
 // Tests printing types that support generic streaming (i.e. streaming
 // to std::basic_ostream<Char, CharTraits> for any valid Char and
 // CharTraits types).
@@ -758,22 +939,22 @@ TEST(PrintTypeWithGenericStreamingTest, TypeImplicitlyConvertible) {
   EXPECT_EQ("AllowsGenericStreamingAndImplicitConversionTemplate", Print(a));
 }
 
-#if GTEST_HAS_ABSL
+#if GTEST_INTERNAL_HAS_STRING_VIEW
 
-// Tests printing ::absl::string_view.
+// Tests printing internal::StringView.
 
 TEST(PrintStringViewTest, SimpleStringView) {
-  const ::absl::string_view sp = "Hello";
+  const internal::StringView sp = "Hello";
   EXPECT_EQ("\"Hello\"", Print(sp));
 }
 
 TEST(PrintStringViewTest, UnprintableCharacters) {
   const char str[] = "NUL (\0) and \r\t";
-  const ::absl::string_view sp(str, sizeof(str) - 1);
+  const internal::StringView sp(str, sizeof(str) - 1);
   EXPECT_EQ("\"NUL (\\0) and \\r\\t\"", Print(sp));
 }
 
-#endif  // GTEST_HAS_ABSL
+#endif  // GTEST_INTERNAL_HAS_STRING_VIEW
 
 // Tests printing STL containers.
 
@@ -978,9 +1159,8 @@ TEST(PrintStdTupleTest, VariousSizes) {
   EXPECT_EQ("(false, 2, 3, 4)", Print(t4));
 
   const char* const str = "8";
-  ::std::tuple<bool, char, short, testing::internal::Int32,  // NOLINT
-               testing::internal::Int64, float, double, const char*, void*,
-               std::string>
+  ::std::tuple<bool, char, short, int32_t, int64_t, float, double,  // NOLINT
+               const char*, void*, std::string>
       t10(false, 'a', static_cast<short>(3), 4, 5, 1.5F, -2.5, str,  // NOLINT
           nullptr, "10");
   EXPECT_EQ("(false, 'a' (97, 0x61), 3, 4, 5, 1.5, -2.5, " + PrintPointer(str) +
@@ -1062,6 +1242,20 @@ TEST(PrintStreamableTypeTest, InGlobalNamespace) {
 TEST(PrintStreamableTypeTest, TemplateTypeInUserNamespace) {
   EXPECT_EQ("StreamableTemplateInFoo: 0",
             Print(::foo::StreamableTemplateInFoo<int>()));
+}
+
+TEST(PrintStreamableTypeTest, TypeInUserNamespaceWithTemplatedStreamOperator) {
+  EXPECT_EQ("TemplatedStreamableInFoo",
+            Print(::foo::TemplatedStreamableInFoo()));
+}
+
+TEST(PrintStreamableTypeTest, SubclassUsesSuperclassStreamOperator) {
+  ParentClass parent;
+  ChildClassWithStreamOperator child_stream;
+  ChildClassWithoutStreamOperator child_no_stream;
+  EXPECT_EQ("ParentClass", Print(parent));
+  EXPECT_EQ("ChildClassWithStreamOperator", Print(child_stream));
+  EXPECT_EQ("ParentClass", Print(child_no_stream));
 }
 
 // Tests printing a user-defined recursive container type that has a <<
@@ -1530,32 +1724,124 @@ TEST(UniversalTersePrintTupleFieldsToStringsTestWithStd, PrintsTersely) {
   EXPECT_EQ("\"a\"", result[1]);
 }
 
-#if GTEST_HAS_ABSL
+#if GTEST_INTERNAL_HAS_ANY
+class PrintAnyTest : public ::testing::Test {
+ protected:
+  template <typename T>
+  static std::string ExpectedTypeName() {
+#if GTEST_HAS_RTTI
+    return internal::GetTypeName<T>();
+#else
+    return "<unknown_type>";
+#endif  // GTEST_HAS_RTTI
+  }
+};
 
+TEST_F(PrintAnyTest, Empty) {
+  internal::Any any;
+  EXPECT_EQ("no value", PrintToString(any));
+}
+
+TEST_F(PrintAnyTest, NonEmpty) {
+  internal::Any any;
+  constexpr int val1 = 10;
+  const std::string val2 = "content";
+
+  any = val1;
+  EXPECT_EQ("value of type " + ExpectedTypeName<int>(), PrintToString(any));
+
+  any = val2;
+  EXPECT_EQ("value of type " + ExpectedTypeName<std::string>(),
+            PrintToString(any));
+}
+#endif  // GTEST_INTERNAL_HAS_ANY
+
+#if GTEST_INTERNAL_HAS_OPTIONAL
 TEST(PrintOptionalTest, Basic) {
-  absl::optional<int> value;
+  internal::Optional<int> value;
   EXPECT_EQ("(nullopt)", PrintToString(value));
   value = {7};
   EXPECT_EQ("(7)", PrintToString(value));
-  EXPECT_EQ("(1.1)", PrintToString(absl::optional<double>{1.1}));
-  EXPECT_EQ("(\"A\")", PrintToString(absl::optional<std::string>{"A"}));
+  EXPECT_EQ("(1.1)", PrintToString(internal::Optional<double>{1.1}));
+  EXPECT_EQ("(\"A\")", PrintToString(internal::Optional<std::string>{"A"}));
 }
+#endif  // GTEST_INTERNAL_HAS_OPTIONAL
 
+#if GTEST_INTERNAL_HAS_VARIANT
 struct NonPrintable {
   unsigned char contents = 17;
 };
 
 TEST(PrintOneofTest, Basic) {
-  using Type = absl::variant<int, StreamableInGlobal, NonPrintable>;
-  EXPECT_EQ("('int' with value 7)", PrintToString(Type(7)));
-  EXPECT_EQ("('StreamableInGlobal' with value StreamableInGlobal)",
+  using Type = internal::Variant<int, StreamableInGlobal, NonPrintable>;
+  EXPECT_EQ("('int(index = 0)' with value 7)", PrintToString(Type(7)));
+  EXPECT_EQ("('StreamableInGlobal(index = 1)' with value StreamableInGlobal)",
             PrintToString(Type(StreamableInGlobal{})));
   EXPECT_EQ(
-      "('testing::gtest_printers_test::NonPrintable' with value 1-byte object "
-      "<11>)",
+      "('testing::gtest_printers_test::NonPrintable(index = 2)' with value "
+      "1-byte object <11>)",
       PrintToString(Type(NonPrintable{})));
 }
-#endif  // GTEST_HAS_ABSL
+#endif  // GTEST_INTERNAL_HAS_VARIANT
+namespace {
+class string_ref;
+
+/**
+ * This is a synthetic pointer to a fixed size string.
+ */
+class string_ptr {
+ public:
+  string_ptr(const char* data, size_t size) : data_(data), size_(size) {}
+
+  string_ptr& operator++() noexcept {
+    data_ += size_;
+    return *this;
+  }
+
+  string_ref operator*() const noexcept;
+
+ private:
+  const char* data_;
+  size_t size_;
+};
+
+/**
+ * This is a synthetic reference of a fixed size string.
+ */
+class string_ref {
+ public:
+  string_ref(const char* data, size_t size) : data_(data), size_(size) {}
+
+  string_ptr operator&() const noexcept { return {data_, size_}; }  // NOLINT
+
+  bool operator==(const char* s) const noexcept {
+    if (size_ > 0 && data_[size_ - 1] != 0) {
+      return std::string(data_, size_) == std::string(s);
+    } else {
+      return std::string(data_) == std::string(s);
+    }
+  }
+
+ private:
+  const char* data_;
+  size_t size_;
+};
+
+string_ref string_ptr::operator*() const noexcept { return {data_, size_}; }
+
+TEST(string_ref, compare) {
+  const char* s = "alex\0davidjohn\0";
+  string_ptr ptr(s, 5);
+  EXPECT_EQ(*ptr, "alex");
+  EXPECT_TRUE(*ptr == "alex");
+  ++ptr;
+  EXPECT_EQ(*ptr, "david");
+  EXPECT_TRUE(*ptr == "david");
+  ++ptr;
+  EXPECT_EQ(*ptr, "john");
+}
+
+}  // namespace
 
 }  // namespace gtest_printers_test
 }  // namespace testing

@@ -96,6 +96,14 @@ INSTANTIATE_TEST_SUITE_P(PrintingFailingParams,
                          FailingParamTest,
                          testing::Values(2));
 
+// Tests that an empty value for the test suite basename yields just
+// the test name without any prior /
+class EmptyBasenameParamInst : public testing::TestWithParam<int> {};
+
+TEST_P(EmptyBasenameParamInst, Passes) { EXPECT_EQ(1, GetParam()); }
+
+INSTANTIATE_TEST_SUITE_P(, EmptyBasenameParamInst, testing::Values(1));
+
 static const char kGoldenString[] = "\"Line\0 1\"\nLine 2";
 
 TEST(NonfatalFailureTest, EscapesStringOperands) {
@@ -461,65 +469,12 @@ TEST_F(FatalFailureInSetUpTest, FailureInSetUp) {
 }
 
 TEST(AddFailureAtTest, MessageContainsSpecifiedFileAndLineNumber) {
-  ADD_FAILURE_AT("foo.cc", 42) << "Expected failure in foo.cc";
+  ADD_FAILURE_AT("foo.cc", 42) << "Expected nonfatal failure in foo.cc";
 }
 
-#if GTEST_IS_THREADSAFE
-
-// A unary function that may die.
-void DieIf(bool should_die) {
-  GTEST_CHECK_(!should_die) << " - death inside DieIf().";
+TEST(GtestFailAtTest, MessageContainsSpecifiedFileAndLineNumber) {
+  GTEST_FAIL_AT("foo.cc", 42) << "Expected fatal failure in foo.cc";
 }
-
-// Tests running death tests in a multi-threaded context.
-
-// Used for coordination between the main and the spawn thread.
-struct SpawnThreadNotifications {
-  SpawnThreadNotifications() {}
-
-  Notification spawn_thread_started;
-  Notification spawn_thread_ok_to_terminate;
-
- private:
-  GTEST_DISALLOW_COPY_AND_ASSIGN_(SpawnThreadNotifications);
-};
-
-// The function to be executed in the thread spawn by the
-// MultipleThreads test (below).
-static void ThreadRoutine(SpawnThreadNotifications* notifications) {
-  // Signals the main thread that this thread has started.
-  notifications->spawn_thread_started.Notify();
-
-  // Waits for permission to finish from the main thread.
-  notifications->spawn_thread_ok_to_terminate.WaitForNotification();
-}
-
-// This is a death-test test, but it's not named with a DeathTest
-// suffix.  It starts threads which might interfere with later
-// death tests, so it must run after all other death tests.
-class DeathTestAndMultiThreadsTest : public testing::Test {
- protected:
-  // Starts a thread and waits for it to begin.
-  void SetUp() override {
-    thread_.reset(new ThreadWithParam<SpawnThreadNotifications*>(
-        &ThreadRoutine, &notifications_, nullptr));
-    notifications_.spawn_thread_started.WaitForNotification();
-  }
-  // Tells the thread to finish, and reaps it.
-  // Depending on the version of the thread library in use,
-  // a manager thread might still be left running that will interfere
-  // with later death tests.  This is unfortunate, but this class
-  // cleans up after itself as best it can.
-  void TearDown() override {
-    notifications_.spawn_thread_ok_to_terminate.Notify();
-  }
-
- private:
-  SpawnThreadNotifications notifications_;
-  std::unique_ptr<ThreadWithParam<SpawnThreadNotifications*> > thread_;
-};
-
-#endif  // GTEST_IS_THREADSAFE
 
 // The MixedUpTestSuiteTest test case verifies that Google Test will fail a
 // test if it uses a different fixture class than what other tests in
@@ -778,6 +733,17 @@ INSTANTIATE_TEST_SUITE_P(PrintingStrings,
                          testing::Values(std::string("a")),
                          ParamNameFunc);
 
+// The case where a suite has INSTANTIATE_TEST_SUITE_P but not TEST_P.
+using NoTests = ParamTest;
+INSTANTIATE_TEST_SUITE_P(ThisIsOdd, NoTests, ::testing::Values("Hello"));
+
+// fails under kErrorOnUninstantiatedParameterizedTest=true
+class DetectNotInstantiatedTest : public testing::TestWithParam<int> {};
+TEST_P(DetectNotInstantiatedTest, Used) { }
+
+// This would make the test failure from the above go away.
+// INSTANTIATE_TEST_SUITE_P(Fix, DetectNotInstantiatedTest, testing::Values(1));
+
 // This #ifdef block tests the output of typed tests.
 #if GTEST_HAS_TYPED_TEST
 
@@ -804,9 +770,9 @@ class TypedTestNames {
  public:
   template <typename T>
   static std::string GetName(int i) {
-    if (testing::internal::IsSame<T, char>::value)
+    if (std::is_same<T, char>::value)
       return std::string("char") + ::testing::PrintToString(i);
-    if (testing::internal::IsSame<T, int>::value)
+    if (std::is_same<T, int>::value)
       return std::string("int") + ::testing::PrintToString(i);
   }
 };
@@ -845,10 +811,10 @@ class TypedTestPNames {
  public:
   template <typename T>
   static std::string GetName(int i) {
-    if (testing::internal::IsSame<T, unsigned char>::value) {
+    if (std::is_same<T, unsigned char>::value) {
       return std::string("unsignedChar") + ::testing::PrintToString(i);
     }
-    if (testing::internal::IsSame<T, unsigned int>::value) {
+    if (std::is_same<T, unsigned int>::value) {
       return std::string("unsignedInt") + ::testing::PrintToString(i);
     }
   }
@@ -856,6 +822,21 @@ class TypedTestPNames {
 
 INSTANTIATE_TYPED_TEST_SUITE_P(UnsignedCustomName, TypedTestP, UnsignedTypes,
                               TypedTestPNames);
+
+template <typename T>
+class DetectNotInstantiatedTypesTest : public testing::Test {};
+TYPED_TEST_SUITE_P(DetectNotInstantiatedTypesTest);
+TYPED_TEST_P(DetectNotInstantiatedTypesTest, Used) {
+  TypeParam instantiate;
+  (void)instantiate;
+}
+REGISTER_TYPED_TEST_SUITE_P(DetectNotInstantiatedTypesTest, Used);
+
+// kErrorOnUninstantiatedTypeParameterizedTest=true would make the above fail.
+// Adding the following would make that test failure go away.
+//
+// typedef ::testing::Types<char, int, unsigned int> MyTypes;
+// INSTANTIATE_TYPED_TEST_SUITE_P(All, DetectNotInstantiatedTypesTest, MyTypes);
 
 #endif  // GTEST_HAS_TYPED_TEST_P
 

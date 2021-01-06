@@ -41,7 +41,9 @@ using testing::internal::AlwaysTrue;
 #if GTEST_HAS_DEATH_TEST
 
 # if GTEST_OS_WINDOWS
+#  include <fcntl.h>           // For O_BINARY
 #  include <direct.h>          // For chdir().
+#  include <io.h>
 # else
 #  include <unistd.h>
 #  include <sys/wait.h>        // For waitpid.
@@ -139,7 +141,7 @@ class TestForDeathTest : public testing::Test {
       DieInside("MemberFunction");
   }
 
-  // True iff MemberFunction() should die.
+  // True if and only if MemberFunction() should die.
   bool should_die_;
   const FilePath original_dir_;
 };
@@ -156,7 +158,7 @@ class MayDie {
   }
 
  private:
-  // True iff MemberFunction() should die.
+  // True if and only if MemberFunction() should die.
   bool should_die_;
 };
 
@@ -201,6 +203,26 @@ int DieInDebugElse12(int* sideeffect) {
 
   return 12;
 }
+
+# if GTEST_OS_WINDOWS
+
+// Death in dbg due to Windows CRT assertion failure, not opt.
+int DieInCRTDebugElse12(int* sideeffect) {
+  if (sideeffect) *sideeffect = 12;
+
+  // Create an invalid fd by closing a valid one
+  int fdpipe[2];
+  EXPECT_EQ(_pipe(fdpipe, 256, O_BINARY), 0);
+  EXPECT_EQ(_close(fdpipe[0]), 0);
+  EXPECT_EQ(_close(fdpipe[1]), 0);
+
+  // _dup() should crash in debug mode
+  EXPECT_EQ(_dup(fdpipe[0]), -1);
+
+  return 12;
+}
+
+#endif  // GTEST_OS_WINDOWS
 
 # if GTEST_OS_WINDOWS || GTEST_OS_FUCHSIA
 
@@ -276,6 +298,13 @@ TEST(ExitStatusPredicateTest, KilledBySignal) {
 
 # endif  // GTEST_OS_WINDOWS || GTEST_OS_FUCHSIA
 
+// The following code intentionally tests a suboptimal syntax.
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-else"
+#pragma GCC diagnostic ignored "-Wempty-body"
+#pragma GCC diagnostic ignored "-Wpragmas"
+#endif
 // Tests that the death test macros expand to code which may or may not
 // be followed by operator<<, and that in either case the complete text
 // comprises only a single C++ statement.
@@ -299,6 +328,9 @@ TEST_F(TestForDeathTest, SingleStatement) {
   else
     EXPECT_DEATH(_exit(1), "") << 1 << 2 << 3;
 }
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 # if GTEST_USES_PCRE
 
@@ -369,17 +401,19 @@ void SigprofAction(int, siginfo_t*, void*) { /* no op */ }
 
 // Sets SIGPROF action and ITIMER_PROF timer (interval: 1ms).
 void SetSigprofActionAndTimer() {
-  struct itimerval timer;
-  timer.it_interval.tv_sec = 0;
-  timer.it_interval.tv_usec = 1;
-  timer.it_value = timer.it_interval;
-  ASSERT_EQ(0, setitimer(ITIMER_PROF, &timer, nullptr));
   struct sigaction signal_action;
   memset(&signal_action, 0, sizeof(signal_action));
   sigemptyset(&signal_action.sa_mask);
   signal_action.sa_sigaction = SigprofAction;
   signal_action.sa_flags = SA_RESTART | SA_SIGINFO;
   ASSERT_EQ(0, sigaction(SIGPROF, &signal_action, nullptr));
+  // timer comes second, to avoid SIGPROF premature delivery, as suggested at
+  // https://www.gnu.org/software/libc/manual/html_node/Setting-an-Alarm.html
+  struct itimerval timer;
+  timer.it_interval.tv_sec = 0;
+  timer.it_interval.tv_usec = 1;
+  timer.it_value = timer.it_interval;
+  ASSERT_EQ(0, setitimer(ITIMER_PROF, &timer, nullptr));
 }
 
 // Disables ITIMER_PROF timer and ignores SIGPROF signal.
@@ -551,8 +585,8 @@ TEST_F(TestForDeathTest, ErrorMessageMismatch) {
   }, "died but not with expected error");
 }
 
-// On exit, *aborted will be true iff the EXPECT_DEATH() statement
-// aborted the function.
+// On exit, *aborted will be true if and only if the EXPECT_DEATH()
+// statement aborted the function.
 void ExpectDeathTestHelper(bool* aborted) {
   *aborted = true;
   EXPECT_DEATH(DieIf(false), "DieIf");  // This assertion should fail.
@@ -631,6 +665,40 @@ TEST_F(TestForDeathTest, TestExpectDebugDeath) {
 
 # endif
 }
+
+# if GTEST_OS_WINDOWS
+
+// Tests that EXPECT_DEBUG_DEATH works as expected when in debug mode
+// the Windows CRT crashes the process with an assertion failure.
+// 1. Asserts on death.
+// 2. Has no side effect (doesn't pop up a window or wait for user input).
+//
+// And in opt mode, it:
+// 1.  Has side effects but does not assert.
+TEST_F(TestForDeathTest, CRTDebugDeath) {
+  int sideeffect = 0;
+
+  // Put the regex in a local variable to make sure we don't get an "unused"
+  // warning in opt mode.
+  const char* regex = "dup.* : Assertion failed";
+
+  EXPECT_DEBUG_DEATH(DieInCRTDebugElse12(&sideeffect), regex)
+      << "Must accept a streamed message";
+
+# ifdef NDEBUG
+
+  // Checks that the assignment occurs in opt mode (sideeffect).
+  EXPECT_EQ(12, sideeffect);
+
+# else
+
+  // Checks that the assignment does not occur in dbg mode (no sideeffect).
+  EXPECT_EQ(0, sideeffect);
+
+# endif
+}
+
+# endif  // GTEST_OS_WINDOWS
 
 // Tests that ASSERT_DEBUG_DEATH works as expected, that is, you can stream a
 // message to it, and in debug mode it:
@@ -884,10 +952,12 @@ class MockDeathTestFactory : public DeathTestFactory {
   int AssumeRoleCalls() const { return assume_role_calls_; }
   int WaitCalls() const { return wait_calls_; }
   size_t PassedCalls() const { return passed_args_.size(); }
-  bool PassedArgument(int n) const { return passed_args_[n]; }
+  bool PassedArgument(int n) const {
+    return passed_args_[static_cast<size_t>(n)];
+  }
   size_t AbortCalls() const { return abort_args_.size(); }
   DeathTest::AbortReason AbortArgument(int n) const {
-    return abort_args_[n];
+    return abort_args_[static_cast<size_t>(n)];
   }
   bool TestDeleted() const { return test_deleted_; }
 
@@ -1316,7 +1386,11 @@ void DieWithMessage(const char* message) {
 TEST(MatcherDeathTest, DoesNotBreakBareRegexMatching) {
   // googletest tests this, of course; here we ensure that including googlemock
   // has not broken it.
+#if GTEST_USES_POSIX_RE
   EXPECT_DEATH(DieWithMessage("O, I die, Horatio."), "I d[aeiou]e");
+#else
+  EXPECT_DEATH(DieWithMessage("O, I die, Horatio."), "I di?e");
+#endif
 }
 
 TEST(MatcherDeathTest, MonomorphicMatcherMatches) {
@@ -1404,6 +1478,13 @@ TEST(ConditionalDeathMacrosTest, AssertDeatDoesNotReturnhIfUnsupported) {
 
 namespace {
 
+// The following code intentionally tests a suboptimal syntax.
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-else"
+#pragma GCC diagnostic ignored "-Wempty-body"
+#pragma GCC diagnostic ignored "-Wpragmas"
+#endif
 // Tests that the death test macros expand to code which may or may not
 // be followed by operator<<, and that in either case the complete text
 // comprises only a single C++ statement.
@@ -1429,6 +1510,9 @@ TEST(ConditionalDeathMacrosSyntaxDeathTest, SingleStatement) {
   else
     EXPECT_DEATH_IF_SUPPORTED(_exit(1), "") << 1 << 2 << 3;
 }
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 // Tests that conditional death test macros expand to code which interacts
 // well with switch statements.

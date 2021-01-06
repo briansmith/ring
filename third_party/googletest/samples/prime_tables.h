@@ -43,7 +43,7 @@ class PrimeTable {
  public:
   virtual ~PrimeTable() {}
 
-  // Returns true iff n is a prime number.
+  // Returns true if and only if n is a prime number.
   virtual bool IsPrime(int n) const = 0;
 
   // Returns the smallest prime number greater than p; or returns -1
@@ -66,11 +66,11 @@ class OnTheFlyPrimeTable : public PrimeTable {
   }
 
   int GetNextPrime(int p) const override {
-    for (int n = p + 1; n > 0; n++) {
+    if (p < 0) return -1;
+
+    for (int n = p + 1;; n++) {
       if (IsPrime(n)) return n;
     }
-
-    return -1;
   }
 };
 

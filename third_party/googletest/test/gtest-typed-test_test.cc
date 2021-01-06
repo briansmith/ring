@@ -31,6 +31,7 @@
 #include "test/gtest-typed-test_test.h"
 
 #include <set>
+#include <type_traits>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -177,10 +178,10 @@ class TypedTestNames {
  public:
   template <typename T>
   static std::string GetName(int i) {
-    if (testing::internal::IsSame<T, char>::value) {
+    if (std::is_same<T, char>::value) {
       return std::string("char") + ::testing::PrintToString(i);
     }
-    if (testing::internal::IsSame<T, int>::value) {
+    if (std::is_same<T, int>::value) {
       return std::string("int") + ::testing::PrintToString(i);
     }
   }
@@ -189,16 +190,16 @@ class TypedTestNames {
 TYPED_TEST_SUITE(TypedTestWithNames, TwoTypes, TypedTestNames);
 
 TYPED_TEST(TypedTestWithNames, TestSuiteName) {
-  if (testing::internal::IsSame<TypeParam, char>::value) {
+  if (std::is_same<TypeParam, char>::value) {
     EXPECT_STREQ(::testing::UnitTest::GetInstance()
                      ->current_test_info()
-                     ->test_case_name(),
+                     ->test_suite_name(),
                  "TypedTestWithNames/char0");
   }
-  if (testing::internal::IsSame<TypeParam, int>::value) {
+  if (std::is_same<TypeParam, int>::value) {
     EXPECT_STREQ(::testing::UnitTest::GetInstance()
                      ->current_test_info()
-                     ->test_case_name(),
+                     ->test_suite_name(),
                  "TypedTestWithNames/int1");
   }
 }
@@ -227,7 +228,7 @@ class TypedTestSuitePStateTest : public Test {
 TEST_F(TypedTestSuitePStateTest, SucceedsForMatchingList) {
   const char* tests = "A, B, C";
   EXPECT_EQ(tests,
-            state_.VerifyRegisteredTestNames("foo.cc", 1, tests));
+            state_.VerifyRegisteredTestNames("Suite", "foo.cc", 1, tests));
 }
 
 // Makes sure that the order of the tests and spaces around the names
@@ -235,33 +236,33 @@ TEST_F(TypedTestSuitePStateTest, SucceedsForMatchingList) {
 TEST_F(TypedTestSuitePStateTest, IgnoresOrderAndSpaces) {
   const char* tests = "A,C,   B";
   EXPECT_EQ(tests,
-            state_.VerifyRegisteredTestNames("foo.cc", 1, tests));
+            state_.VerifyRegisteredTestNames("Suite", "foo.cc", 1, tests));
 }
 
 using TypedTestSuitePStateDeathTest = TypedTestSuitePStateTest;
 
 TEST_F(TypedTestSuitePStateDeathTest, DetectsDuplicates) {
   EXPECT_DEATH_IF_SUPPORTED(
-      state_.VerifyRegisteredTestNames("foo.cc", 1, "A, B, A, C"),
+      state_.VerifyRegisteredTestNames("Suite", "foo.cc", 1, "A, B, A, C"),
       "foo\\.cc.1.?: Test A is listed more than once\\.");
 }
 
 TEST_F(TypedTestSuitePStateDeathTest, DetectsExtraTest) {
   EXPECT_DEATH_IF_SUPPORTED(
-      state_.VerifyRegisteredTestNames("foo.cc", 1, "A, B, C, D"),
+      state_.VerifyRegisteredTestNames("Suite", "foo.cc", 1, "A, B, C, D"),
       "foo\\.cc.1.?: No test named D can be found in this test suite\\.");
 }
 
 TEST_F(TypedTestSuitePStateDeathTest, DetectsMissedTest) {
   EXPECT_DEATH_IF_SUPPORTED(
-      state_.VerifyRegisteredTestNames("foo.cc", 1, "A, C"),
+      state_.VerifyRegisteredTestNames("Suite", "foo.cc", 1, "A, C"),
       "foo\\.cc.1.?: You forgot to list test B\\.");
 }
 
 // Tests that defining a test for a parameterized test case generates
 // a run-time error if the test case has been registered.
 TEST_F(TypedTestSuitePStateDeathTest, DetectsTestAfterRegistration) {
-  state_.VerifyRegisteredTestNames("foo.cc", 1, "A, B, C");
+  state_.VerifyRegisteredTestNames("Suite", "foo.cc", 1, "A, B, C");
   EXPECT_DEATH_IF_SUPPORTED(
       state_.AddTestName("foo.cc", 2, "FooTest", "D"),
       "foo\\.cc.2.?: Test D must be defined before REGISTER_TYPED_TEST_SUITE_P"
@@ -311,16 +312,16 @@ class TypeParametrizedTestWithNames : public Test {};
 TYPED_TEST_SUITE_P(TypeParametrizedTestWithNames);
 
 TYPED_TEST_P(TypeParametrizedTestWithNames, TestSuiteName) {
-  if (testing::internal::IsSame<TypeParam, char>::value) {
+  if (std::is_same<TypeParam, char>::value) {
     EXPECT_STREQ(::testing::UnitTest::GetInstance()
                      ->current_test_info()
-                     ->test_case_name(),
+                     ->test_suite_name(),
                  "CustomName/TypeParametrizedTestWithNames/parChar0");
   }
-  if (testing::internal::IsSame<TypeParam, int>::value) {
+  if (std::is_same<TypeParam, int>::value) {
     EXPECT_STREQ(::testing::UnitTest::GetInstance()
                      ->current_test_info()
-                     ->test_case_name(),
+                     ->test_suite_name(),
                  "CustomName/TypeParametrizedTestWithNames/parInt1");
   }
 }
@@ -331,10 +332,10 @@ class TypeParametrizedTestNames {
  public:
   template <typename T>
   static std::string GetName(int i) {
-    if (testing::internal::IsSame<T, char>::value) {
+    if (std::is_same<T, char>::value) {
       return std::string("parChar") + ::testing::PrintToString(i);
     }
-    if (testing::internal::IsSame<T, int>::value) {
+    if (std::is_same<T, int>::value) {
       return std::string("parInt") + ::testing::PrintToString(i);
     }
   }

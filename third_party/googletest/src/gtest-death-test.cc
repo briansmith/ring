@@ -32,6 +32,7 @@
 
 #include "gtest/gtest-death-test.h"
 
+#include <functional>
 #include <utility>
 
 #include "gtest/internal/gtest-port.h"
@@ -68,6 +69,7 @@
 #  include <lib/fdio/fd.h>
 #  include <lib/fdio/io.h>
 #  include <lib/fdio/spawn.h>
+#  include <lib/zx/channel.h>
 #  include <lib/zx/port.h>
 #  include <lib/zx/process.h>
 #  include <lib/zx/socket.h>
@@ -121,8 +123,8 @@ GTEST_DEFINE_string_(
     "Indicates the file, line number, temporal index of "
     "the single death test to run, and a file descriptor to "
     "which a success code may be sent, all separated by "
-    "the '|' characters.  This flag is specified if and only if the current "
-    "process is a sub-process launched for running a thread-safe "
+    "the '|' characters.  This flag is specified if and only if the "
+    "current process is a sub-process launched for running a thread-safe "
     "death test.  FOR INTERNAL USE ONLY.");
 }  // namespace internal
 
@@ -562,8 +564,8 @@ static ::std::string FormatDeathTestOutput(const ::std::string& output) {
 //   status_ok: true if exit_status is acceptable in the context of
 //              this particular death test, which fails if it is false
 //
-// Returns true iff all of the above conditions are met.  Otherwise, the
-// first failing condition, in the order given above, is the one that is
+// Returns true if and only if all of the above conditions are met.  Otherwise,
+// the first failing condition, in the order given above, is the one that is
 // reported. Also sets the last death test message string.
 bool DeathTestImpl::Passed(bool status_ok) {
   if (!spawned())
@@ -831,7 +833,7 @@ class FuchsiaDeathTest : public DeathTestImpl {
   std::string captured_stderr_;
 
   zx::process child_process_;
-  zx::port port_;
+  zx::channel exception_channel_;
   zx::socket stderr_socket_;
 };
 
@@ -876,43 +878,52 @@ class Arguments {
 int FuchsiaDeathTest::Wait() {
   const int kProcessKey = 0;
   const int kSocketKey = 1;
+  const int kExceptionKey = 2;
 
   if (!spawned())
     return 0;
 
-  // Register to wait for the child process to terminate.
+  // Create a port to wait for socket/task/exception events.
   zx_status_t status_zx;
-  status_zx = child_process_.wait_async(
-      port_, kProcessKey, ZX_PROCESS_TERMINATED, ZX_WAIT_ASYNC_ONCE);
+  zx::port port;
+  status_zx = zx::port::create(0, &port);
   GTEST_DEATH_TEST_CHECK_(status_zx == ZX_OK);
+
+  // Register to wait for the child process to terminate.
+  status_zx = child_process_.wait_async(
+      port, kProcessKey, ZX_PROCESS_TERMINATED, 0);
+  GTEST_DEATH_TEST_CHECK_(status_zx == ZX_OK);
+
   // Register to wait for the socket to be readable or closed.
   status_zx = stderr_socket_.wait_async(
-      port_, kSocketKey, ZX_SOCKET_READABLE | ZX_SOCKET_PEER_CLOSED,
-      ZX_WAIT_ASYNC_REPEATING);
+      port, kSocketKey, ZX_SOCKET_READABLE | ZX_SOCKET_PEER_CLOSED, 0);
+  GTEST_DEATH_TEST_CHECK_(status_zx == ZX_OK);
+
+  // Register to wait for an exception.
+  status_zx = exception_channel_.wait_async(
+      port, kExceptionKey, ZX_CHANNEL_READABLE, 0);
   GTEST_DEATH_TEST_CHECK_(status_zx == ZX_OK);
 
   bool process_terminated = false;
   bool socket_closed = false;
   do {
     zx_port_packet_t packet = {};
-    status_zx = port_.wait(zx::time::infinite(), &packet);
+    status_zx = port.wait(zx::time::infinite(), &packet);
     GTEST_DEATH_TEST_CHECK_(status_zx == ZX_OK);
 
-    if (packet.key == kProcessKey) {
-      if (ZX_PKT_IS_EXCEPTION(packet.type)) {
-        // Process encountered an exception. Kill it directly rather than
-        // letting other handlers process the event. We will get a second
-        // kProcessKey event when the process actually terminates.
-        status_zx = child_process_.kill();
-        GTEST_DEATH_TEST_CHECK_(status_zx == ZX_OK);
-      } else {
-        // Process terminated.
-        GTEST_DEATH_TEST_CHECK_(ZX_PKT_IS_SIGNAL_ONE(packet.type));
-        GTEST_DEATH_TEST_CHECK_(packet.signal.observed & ZX_PROCESS_TERMINATED);
-        process_terminated = true;
-      }
+    if (packet.key == kExceptionKey) {
+      // Process encountered an exception. Kill it directly rather than
+      // letting other handlers process the event. We will get a kProcessKey
+      // event when the process actually terminates.
+      status_zx = child_process_.kill();
+      GTEST_DEATH_TEST_CHECK_(status_zx == ZX_OK);
+    } else if (packet.key == kProcessKey) {
+      // Process terminated.
+      GTEST_DEATH_TEST_CHECK_(ZX_PKT_IS_SIGNAL_ONE(packet.type));
+      GTEST_DEATH_TEST_CHECK_(packet.signal.observed & ZX_PROCESS_TERMINATED);
+      process_terminated = true;
     } else if (packet.key == kSocketKey) {
-      GTEST_DEATH_TEST_CHECK_(ZX_PKT_IS_SIGNAL_REP(packet.type));
+      GTEST_DEATH_TEST_CHECK_(ZX_PKT_IS_SIGNAL_ONE(packet.type));
       if (packet.signal.observed & ZX_SOCKET_READABLE) {
         // Read data from the socket.
         constexpr size_t kBufferSize = 1024;
@@ -929,6 +940,9 @@ int FuchsiaDeathTest::Wait() {
           socket_closed = true;
         } else {
           GTEST_DEATH_TEST_CHECK_(status_zx == ZX_ERR_SHOULD_WAIT);
+          status_zx = stderr_socket_.wait_async(
+              port, kSocketKey, ZX_SOCKET_READABLE | ZX_SOCKET_PEER_CLOSED, 0);
+          GTEST_DEATH_TEST_CHECK_(status_zx == ZX_OK);
         }
       } else {
         GTEST_DEATH_TEST_CHECK_(packet.signal.observed & ZX_SOCKET_PEER_CLOSED);
@@ -989,8 +1003,8 @@ DeathTest::TestRole FuchsiaDeathTest::AssumeRole() {
   zx_status_t status;
   zx_handle_t child_pipe_handle;
   int child_pipe_fd;
-  status = fdio_pipe_half2(&child_pipe_fd, &child_pipe_handle);
-  GTEST_DEATH_TEST_CHECK_(status != ZX_OK);
+  status = fdio_pipe_half(&child_pipe_fd, &child_pipe_handle);
+  GTEST_DEATH_TEST_CHECK_(status == ZX_OK);
   set_read_fd(child_pipe_fd);
 
   // Set the pipe handle for the child.
@@ -1029,12 +1043,11 @@ DeathTest::TestRole FuchsiaDeathTest::AssumeRole() {
       child_job, ZX_JOB_POL_RELATIVE, ZX_JOB_POL_BASIC, &policy, 1);
   GTEST_DEATH_TEST_CHECK_(status == ZX_OK);
 
-  // Create an exception port and attach it to the |child_job|, to allow
+  // Create an exception channel attached to the |child_job|, to allow
   // us to suppress the system default exception handler from firing.
-  status = zx::port::create(0, &port_);
-  GTEST_DEATH_TEST_CHECK_(status == ZX_OK);
-  status = zx_task_bind_exception_port(
-      child_job, port_.get(), 0 /* key */, 0 /*options */);
+  status =
+      zx_task_create_exception_channel(
+          child_job, 0, exception_channel_.reset_and_get_address());
   GTEST_DEATH_TEST_CHECK_(status == ZX_OK);
 
   // Spawn the child process.
@@ -1211,21 +1224,9 @@ struct ExecDeathTestArgs {
   int close_fd;       // File descriptor to close; the read end of a pipe
 };
 
-#  if GTEST_OS_MAC
-inline char** GetEnviron() {
-  // When Google Test is built as a framework on MacOS X, the environ variable
-  // is unavailable. Apple's documentation (man environ) recommends using
-  // _NSGetEnviron() instead.
-  return *_NSGetEnviron();
-}
-#  else
-// Some POSIX platforms expect you to declare environ. extern "C" makes
-// it reside in the global namespace.
+#  if GTEST_OS_QNX
 extern "C" char** environ;
-inline char** GetEnviron() { return environ; }
-#  endif  // GTEST_OS_MAC
-
-#  if !GTEST_OS_QNX
+#  else  // GTEST_OS_QNX
 // The main function for a threadsafe-style death test child process.
 // This function is called in a clone()-ed process and thus must avoid
 // any potentially unsafe operations like malloc or libc functions.
@@ -1245,18 +1246,18 @@ static int ExecDeathTestChildMain(void* child_arg) {
     return EXIT_FAILURE;
   }
 
-  // We can safely call execve() as it's a direct system call.  We
+  // We can safely call execv() as it's almost a direct system call. We
   // cannot use execvp() as it's a libc function and thus potentially
-  // unsafe.  Since execve() doesn't search the PATH, the user must
+  // unsafe.  Since execv() doesn't search the PATH, the user must
   // invoke the test program via a valid path that contains at least
   // one path separator.
-  execve(args->argv[0], args->argv, GetEnviron());
-  DeathTestAbort(std::string("execve(") + args->argv[0] + ", ...) in " +
+  execv(args->argv[0], args->argv);
+  DeathTestAbort(std::string("execv(") + args->argv[0] + ", ...) in " +
                  original_dir + " failed: " +
                  GetLastErrnoDescription());
   return EXIT_FAILURE;
 }
-#  endif  // !GTEST_OS_QNX
+#  endif  // GTEST_OS_QNX
 
 #  if GTEST_HAS_CLONE
 // Two utility routines that together determine the direction the stack
@@ -1270,19 +1271,24 @@ static int ExecDeathTestChildMain(void* child_arg) {
 // correct answer.
 static void StackLowerThanAddress(const void* ptr,
                                   bool* result) GTEST_NO_INLINE_;
+// Make sure sanitizers do not tamper with the stack here.
+// Ideally, we want to use `__builtin_frame_address` instead of a local variable
+// address with sanitizer disabled, but it does not work when the
+// compiler optimizes the stack frame out, which happens on PowerPC targets.
 // HWAddressSanitizer add a random tag to the MSB of the local variable address,
 // making comparison result unpredictable.
+GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
 GTEST_ATTRIBUTE_NO_SANITIZE_HWADDRESS_
 static void StackLowerThanAddress(const void* ptr, bool* result) {
-  int dummy;
-  *result = (&dummy < ptr);
+  int dummy = 0;
+  *result = std::less<const void*>()(&dummy, ptr);
 }
 
 // Make sure AddressSanitizer does not tamper with the stack here.
 GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
 GTEST_ATTRIBUTE_NO_SANITIZE_HWADDRESS_
 static bool StackGrowsDown() {
-  int dummy;
+  int dummy = 0;
   bool result;
   StackLowerThanAddress(&dummy, &result);
   return result;
@@ -1325,8 +1331,7 @@ static pid_t ExecDeathTestSpawnChild(char* const* argv, int close_fd) {
                                         fd_flags | FD_CLOEXEC));
   struct inheritance inherit = {0};
   // spawn is a system call.
-  child_pid =
-      spawn(args.argv[0], 0, nullptr, &inherit, args.argv, GetEnviron());
+  child_pid = spawn(args.argv[0], 0, nullptr, &inherit, args.argv, environ);
   // Restores the current working directory.
   GTEST_DEATH_TEST_CHECK_(fchdir(cwd_fd) != -1);
   GTEST_DEATH_TEST_CHECK_SYSCALL_(close(cwd_fd));
@@ -1350,7 +1355,7 @@ static pid_t ExecDeathTestSpawnChild(char* const* argv, int close_fd) {
 
   if (!use_fork) {
     static const bool stack_grows_down = StackGrowsDown();
-    const size_t stack_size = getpagesize();
+    const auto stack_size = static_cast<size_t>(getpagesize() * 2);
     // MMAP_ANONYMOUS is not defined on Mac, so we use MAP_ANON instead.
     void* const stack = mmap(nullptr, stack_size, PROT_READ | PROT_WRITE,
                              MAP_ANON | MAP_PRIVATE, -1, 0);
@@ -1366,8 +1371,9 @@ static pid_t ExecDeathTestSpawnChild(char* const* argv, int close_fd) {
     void* const stack_top =
         static_cast<char*>(stack) +
             (stack_grows_down ? stack_size - kMaxStackAlignment : 0);
-    GTEST_DEATH_TEST_CHECK_(stack_size > kMaxStackAlignment &&
-        reinterpret_cast<intptr_t>(stack_top) % kMaxStackAlignment == 0);
+    GTEST_DEATH_TEST_CHECK_(
+        static_cast<size_t>(stack_size) > kMaxStackAlignment &&
+        reinterpret_cast<uintptr_t>(stack_top) % kMaxStackAlignment == 0);
 
     child_pid = clone(&ExecDeathTestChildMain, stack_top, SIGCHLD, &args);
 

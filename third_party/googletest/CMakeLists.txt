@@ -1,4 +1,7 @@
 ########################################################################
+# Note: CMake support is community-based. The maintainers do not use CMake
+# internally.
+#
 # CMake build script for Google Test.
 #
 # To run the tests for Google Test itself on Linux, use 'make test' or
@@ -50,7 +53,7 @@ else()
   cmake_policy(SET CMP0048 NEW)
   project(gtest VERSION ${GOOGLETEST_VERSION} LANGUAGES CXX C)
 endif()
-cmake_minimum_required(VERSION 2.6.4)
+cmake_minimum_required(VERSION 2.8.12)
 
 if (POLICY CMP0063) # Visibility
   cmake_policy(SET CMP0063 NEW)
@@ -97,7 +100,7 @@ if (INSTALL_GTEST)
   set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated" CACHE INTERNAL "")
   set(cmake_files_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/${cmake_package_name}")
   set(version_file "${generated_dir}/${cmake_package_name}ConfigVersion.cmake")
-  write_basic_package_version_file(${version_file} COMPATIBILITY AnyNewerVersion)
+  write_basic_package_version_file(${version_file} VERSION ${GOOGLETEST_VERSION} COMPATIBILITY AnyNewerVersion)
   install(EXPORT ${targets_export_name}
     NAMESPACE ${cmake_package_name}::
     DESTINATION ${cmake_files_install_dir})
@@ -123,7 +126,9 @@ include_directories(${gtest_build_include_dirs})
 # are used for other targets, to ensure that gtest can be compiled by a user
 # aggressive about warnings.
 cxx_library(gtest "${cxx_strict}" src/gtest-all.cc)
+set_target_properties(gtest PROPERTIES VERSION ${GOOGLETEST_VERSION})
 cxx_library(gtest_main "${cxx_strict}" src/gtest_main.cc)
+set_target_properties(gtest_main PROPERTIES VERSION ${GOOGLETEST_VERSION})
 # If the CMake version supports it, attach header directory information
 # to the targets for when we are part of a parent build (ie being pulled
 # in via add_subdirectory() rather than being a standalone build).
@@ -178,20 +183,6 @@ if (gtest_build_tests)
   # This must be set in the root directory for the tests to be run by
   # 'make test' or ctest.
   enable_testing()
-
-  if (WIN32)
-    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/RunTest.ps1"
-         CONTENT
-"$project_bin = \"${CMAKE_BINARY_DIR}/bin/$<CONFIG>\"
-$env:Path = \"$project_bin;$env:Path\"
-& $args")
-  elseif (MINGW)
-    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/RunTest.ps1"
-         CONTENT
-"$project_bin = (cygpath --windows ${CMAKE_BINARY_DIR}/bin)
-$env:Path = \"$project_bin;$env:Path\"
-& $args")
-  endif()
 
   ############################################################
   # C++ tests built with standard compiler flags.
@@ -263,6 +254,7 @@ $env:Path = \"$project_bin;$env:Path\"
   cxx_executable(googletest-break-on-failure-unittest_ test gtest)
   py_test(googletest-break-on-failure-unittest)
 
+  py_test(gtest_skip_check_output_test)
   py_test(gtest_skip_environment_check_output_test)
 
   # Visual Studio .NET 2003 does not support STL with exceptions disabled.
@@ -313,6 +305,9 @@ $env:Path = \"$project_bin;$env:Path\"
 
   cxx_executable(googletest-uninitialized-test_ test gtest)
   py_test(googletest-uninitialized-test)
+
+  cxx_executable(gtest_list_output_unittest_ test gtest)
+  py_test(gtest_list_output_unittest)
 
   cxx_executable(gtest_xml_outfile1_test_ test gtest_main)
   cxx_executable(gtest_xml_outfile2_test_ test gtest_main)
