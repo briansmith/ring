@@ -65,4 +65,6 @@ static const EVP_CIPHER aes_256_cfb128 = {
 };
 
 const EVP_CIPHER *EVP_aes_128_cfb128(void) { return &aes_128_cfb128; }
+const EVP_CIPHER *EVP_aes_128_cfb(void) { return &aes_128_cfb128; }
 const EVP_CIPHER *EVP_aes_256_cfb128(void) { return &aes_256_cfb128; }
+const EVP_CIPHER *EVP_aes_256_cfb(void) { return &aes_256_cfb128; }

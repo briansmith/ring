@@ -879,6 +879,12 @@ int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
   return 1;
 }
 
+int EC_POINT_set_affine_coordinates(const EC_GROUP *group, EC_POINT *point,
+                                    const BIGNUM *x, const BIGNUM *y,
+                                    BN_CTX *ctx) {
+  return EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx);
+}
+
 int EC_POINT_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
                  const EC_POINT *b, BN_CTX *ctx) {
   if (EC_GROUP_cmp(group, r->group, NULL) != 0 ||
