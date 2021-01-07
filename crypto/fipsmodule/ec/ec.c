@@ -797,6 +797,12 @@ int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
   return 1;
 }
 
+int EC_POINT_get_affine_coordinates(const EC_GROUP *group,
+                                    const EC_POINT *point, BIGNUM *x, BIGNUM *y,
+                                    BN_CTX *ctx) {
+  return EC_POINT_get_affine_coordinates_GFp(group, point, x, y, ctx);
+}
+
 void ec_affine_to_jacobian(const EC_GROUP *group, EC_RAW_POINT *out,
                            const EC_AFFINE *p) {
   out->X = p->X;
