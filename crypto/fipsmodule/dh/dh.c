@@ -321,6 +321,27 @@ static int dh_compute_key(DH *dh, BIGNUM *out_shared_key,
   return ret;
 }
 
+int DH_compute_key_padded(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    return -1;
+  }
+  BN_CTX_start(ctx);
+
+  int dh_size = DH_size(dh);
+  int ret = -1;
+  BIGNUM *shared_key = BN_CTX_get(ctx);
+  if (shared_key &&
+      dh_compute_key(dh, shared_key, peers_key, ctx) &&
+      BN_bn2bin_padded(out, dh_size, shared_key)) {
+    ret = dh_size;
+  }
+
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
+  return ret;
+}
+
 int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -349,29 +370,19 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
     return 0;
   }
 
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    return 0;
-  }
-  BN_CTX_start(ctx);
-
   int ret = 0;
-  BIGNUM *shared_key = BN_CTX_get(ctx);
-  const size_t p_len = BN_num_bytes(dh->p);
-  uint8_t *shared_bytes = OPENSSL_malloc(p_len);
+  const size_t dh_len = DH_size(dh);
+  uint8_t *shared_bytes = OPENSSL_malloc(dh_len);
   unsigned out_len_unsigned;
-  if (!shared_key ||
-      !shared_bytes ||
-      !dh_compute_key(dh, shared_key, peers_key, ctx) ||
-      // |DH_compute_key| doesn't pad the output. SP 800-56A is ambiguous about
-      // whether the output should be padded prior to revision three. But
-      // revision three, section C.1, awkwardly specifies padding to the length
-      // of p.
+  if (!shared_bytes ||
+      // SP 800-56A is ambiguous about whether the output should be padded prior
+      // to revision three. But revision three, section C.1, awkwardly specifies
+      // padding to the length of p.
       //
       // Also, padded output avoids side-channels, so is always strongly
       // advisable.
-      !BN_bn2bin_padded(shared_bytes, p_len, shared_key) ||
-      !EVP_Digest(shared_bytes, p_len, out, &out_len_unsigned, digest, NULL) ||
+      DH_compute_key_padded(shared_bytes, peers_key, dh) != (int)dh_len ||
+      !EVP_Digest(shared_bytes, dh_len, out, &out_len_unsigned, digest, NULL) ||
       out_len_unsigned != digest_len) {
     goto err;
   }
@@ -380,8 +391,6 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
   ret = 1;
 
  err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(ctx);
   OPENSSL_free(shared_bytes);
   return ret;
 }

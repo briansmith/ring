@@ -71,6 +71,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "../test/test_util.h"
 
 
 static bool RunBasicTests();
@@ -442,4 +443,42 @@ static bool TestRFC3526() {
   }
 
   return true;
+}
+
+TEST(DHTest, LeadingZeros) {
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_1536(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  bssl::UniquePtr<DH> dh(DH_new());
+  ASSERT_TRUE(dh);
+  ASSERT_TRUE(DH_set0_pqg(dh.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+
+  // These values are far too small to be reasonable Diffie-Hellman keys, but
+  // they are an easy way to get a shared secret with leading zeros.
+  bssl::UniquePtr<BIGNUM> priv_key(BN_new()), peer_key(BN_new());
+  ASSERT_TRUE(priv_key);
+  ASSERT_TRUE(BN_set_word(priv_key.get(), 2));
+  ASSERT_TRUE(peer_key);
+  ASSERT_TRUE(BN_set_word(peer_key.get(), 3));
+  ASSERT_TRUE(DH_set0_key(dh.get(), /*pub_key=*/nullptr, priv_key.get()));
+  priv_key.release();
+
+  uint8_t padded[192] = {0};
+  padded[191] = 9;
+  static const uint8_t kTruncated[] = {9};
+  EXPECT_EQ(int(sizeof(padded)), DH_size(dh.get()));
+
+  std::vector<uint8_t> buf(DH_size(dh.get()));
+  int len = DH_compute_key(buf.data(), peer_key.get(), dh.get());
+  ASSERT_GT(len, 0);
+  EXPECT_EQ(Bytes(buf.data(), len), Bytes(kTruncated));
+
+  len = DH_compute_key_padded(buf.data(), peer_key.get(), dh.get());
+  ASSERT_GT(len, 0);
+  EXPECT_EQ(Bytes(buf.data(), len), Bytes(padded));
 }
