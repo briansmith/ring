@@ -7008,6 +7008,38 @@ func addExtensionTests() {
 				},
 			})
 
+			// Test that the server can defer its ALPS configuration to the ALPN
+			// selection callback.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ALPS-Basic-Server-Defer-" + ver.name,
+				config: Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
+				},
+				resumeConfig: &Config{
+					MaxVersion:          ver.version,
+					NextProtos:          []string{"proto"},
+					ApplicationSettings: map[string][]byte{"proto": []byte("runner2")},
+				},
+				resumeSession: true,
+				expectations: connectionExpectations{
+					peerApplicationSettings: []byte("shim1"),
+				},
+				resumeExpectations: &connectionExpectations{
+					peerApplicationSettings: []byte("shim2"),
+				},
+				flags: []string{
+					"-select-alpn", "proto",
+					"-defer-alps",
+					"-on-initial-application-settings", "proto,shim1",
+					"-on-initial-expect-peer-application-settings", "runner1",
+					"-on-resume-application-settings", "proto,shim2",
+					"-on-resume-expect-peer-application-settings", "runner2",
+				},
+			})
+
 			// Test the client and server correctly handle empty settings.
 			testCases = append(testCases, testCase{
 				testType: clientTest,

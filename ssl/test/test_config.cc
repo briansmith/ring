@@ -74,6 +74,7 @@ const Flag<bool> kBoolFlags[] = {
     {"-expect-session-miss", &TestConfig::expect_session_miss},
     {"-decline-alpn", &TestConfig::decline_alpn},
     {"-select-empty-alpn", &TestConfig::select_empty_alpn},
+    {"-defer-alps", &TestConfig::defer_alps},
     {"-expect-extended-master-secret",
      &TestConfig::expect_extended_master_secret},
     {"-enable-ocsp-stapling", &TestConfig::enable_ocsp_stapling},
@@ -673,6 +674,19 @@ static int AlpnSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *outlen,
            0)) {
     fprintf(stderr, "bad ALPN select callback inputs.\n");
     exit(1);
+  }
+
+  if (config->defer_alps) {
+    for (const auto &pair : config->application_settings) {
+      if (!SSL_add_application_settings(
+              ssl, reinterpret_cast<const uint8_t *>(pair.first.data()),
+              pair.first.size(),
+              reinterpret_cast<const uint8_t *>(pair.second.data()),
+              pair.second.size())) {
+        fprintf(stderr, "error configuring ALPS.\n");
+        exit(1);
+      }
+    }
   }
 
   assert(config->select_alpn.empty() || !config->select_empty_alpn);
@@ -1606,13 +1620,15 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
           advertise_alpn.size()) != 0) {
     return nullptr;
   }
-  for (const auto &pair : application_settings) {
-    if (!SSL_add_application_settings(
-            ssl.get(), reinterpret_cast<const uint8_t *>(pair.first.data()),
-            pair.first.size(),
-            reinterpret_cast<const uint8_t *>(pair.second.data()),
-            pair.second.size())) {
-      return nullptr;
+  if (!defer_alps) {
+    for (const auto &pair : application_settings) {
+      if (!SSL_add_application_settings(
+              ssl.get(), reinterpret_cast<const uint8_t *>(pair.first.data()),
+              pair.first.size(),
+              reinterpret_cast<const uint8_t *>(pair.second.data()),
+              pair.second.size())) {
+        return nullptr;
+      }
     }
   }
   if (!psk.empty()) {

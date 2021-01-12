@@ -69,6 +69,7 @@ struct TestConfig {
   std::string select_alpn;
   bool decline_alpn = false;
   bool select_empty_alpn = false;
+  bool defer_alps = false;
   std::vector<std::pair<std::string, std::string>> application_settings;
   std::unique_ptr<std::string> expect_peer_application_settings;
   std::string quic_transport_params;
