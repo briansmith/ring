@@ -19,14 +19,6 @@
 #include <cstring>
 #include <limits>
 
-namespace {
-
-const uint8_t kTagHandshake = 'H';
-const uint8_t kTagApplication = 'A';
-const uint8_t kTagAlert = 'L';
-
-}  // namespace
-
 MockQuicTransport::MockQuicTransport(bssl::UniquePtr<BIO> bio, SSL *ssl)
     : bio_(std::move(bio)),
       read_levels_(ssl_encryption_application + 1),
@@ -89,7 +81,7 @@ const char *LevelToString(ssl_encryption_level_t level) {
 
 }  // namespace
 
-bool MockQuicTransport::ReadHeader(uint8_t *out_tag,
+bool MockQuicTransport::ReadHeader(uint8_t *out_type,
                                    enum ssl_encryption_level_t *out_level,
                                    size_t *out_len) {
   for (;;) {
@@ -105,7 +97,7 @@ bool MockQuicTransport::ReadHeader(uint8_t *out_tag,
     uint16_t cipher_suite;
     uint32_t remaining_bytes;
     CBS_init(&cbs, header, sizeof(header));
-    if (!CBS_get_u8(&cbs, out_tag) ||
+    if (!CBS_get_u8(&cbs, out_type) ||
         !CBS_get_u8(&cbs, &level_id) ||
         !CBS_get_u16(&cbs, &cipher_suite) ||
         !CBS_get_u32(&cbs, &remaining_bytes) ||
@@ -160,13 +152,13 @@ bool MockQuicTransport::ReadHeader(uint8_t *out_tag,
 }
 
 bool MockQuicTransport::ReadHandshake() {
-  uint8_t tag;
+  uint8_t type;
   ssl_encryption_level_t level;
   size_t len;
-  if (!ReadHeader(&tag, &level, &len)) {
+  if (!ReadHeader(&type, &level, &len)) {
     return false;
   }
-  if (tag != kTagHandshake) {
+  if (type != SSL3_RT_HANDSHAKE) {
     return false;
   }
 
@@ -192,19 +184,19 @@ int MockQuicTransport::ReadApplicationData(uint8_t *out, size_t max_out) {
     return len;
   }
 
-  uint8_t tag = 0;
+  uint8_t type = 0;
   ssl_encryption_level_t level;
   size_t len;
   while (true) {
-    if (!ReadHeader(&tag, &level, &len)) {
+    if (!ReadHeader(&type, &level, &len)) {
       // Assume that a failure to read the header means there's no more to read,
       // not an error reading.
       return 0;
     }
-    if (tag == kTagApplication) {
+    if (type == SSL3_RT_APPLICATION_DATA) {
       break;
     }
-    if (tag != kTagHandshake) {
+    if (type != SSL3_RT_HANDSHAKE) {
       return -1;
     }
 
@@ -247,13 +239,13 @@ int MockQuicTransport::ReadApplicationData(uint8_t *out, size_t max_out) {
 }
 
 bool MockQuicTransport::WriteRecord(enum ssl_encryption_level_t level,
-                                    uint8_t tag, const uint8_t *data,
+                                    uint8_t type, const uint8_t *data,
                                     size_t len) {
   uint16_t cipher_suite = write_levels_[level].cipher;
   const std::vector<uint8_t> &secret = write_levels_[level].secret;
   size_t tlv_len = secret.size() + len;
   uint8_t header[8];
-  header[0] = tag;
+  header[0] = type;
   header[1] = level;
   header[2] = (cipher_suite >> 8) & 0xff;
   header[3] = cipher_suite & 0xff;
@@ -268,7 +260,7 @@ bool MockQuicTransport::WriteRecord(enum ssl_encryption_level_t level,
 
 bool MockQuicTransport::WriteHandshakeData(enum ssl_encryption_level_t level,
                                            const uint8_t *data, size_t len) {
-  return WriteRecord(level, kTagHandshake, data, len);
+  return WriteRecord(level, SSL3_RT_HANDSHAKE, data, len);
 }
 
 bool MockQuicTransport::WriteApplicationData(const uint8_t *in, size_t len) {
@@ -276,7 +268,7 @@ bool MockQuicTransport::WriteApplicationData(const uint8_t *in, size_t len) {
   if (SSL_in_early_data(ssl_) && !SSL_is_server(ssl_)) {
     level = ssl_encryption_early_data;
   }
-  return WriteRecord(level, kTagApplication, in, len);
+  return WriteRecord(level, SSL3_RT_APPLICATION_DATA, in, len);
 }
 
 bool MockQuicTransport::Flush() { return BIO_flush(bio_.get()); }
@@ -284,5 +276,5 @@ bool MockQuicTransport::Flush() { return BIO_flush(bio_.get()); }
 bool MockQuicTransport::SendAlert(enum ssl_encryption_level_t level,
                                   uint8_t alert) {
   uint8_t alert_msg[] = {2, alert};
-  return WriteRecord(level, kTagAlert, alert_msg, sizeof(alert_msg));
+  return WriteRecord(level, SSL3_RT_ALERT, alert_msg, sizeof(alert_msg));
 }

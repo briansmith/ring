@@ -22,10 +22,6 @@ import (
 	"net"
 )
 
-const tagHandshake = byte('H')
-const tagApplication = byte('A')
-const tagAlert = byte('L')
-
 type encryptionLevel byte
 
 const (
@@ -41,15 +37,24 @@ const (
 // provides no confidentiality guarantees. (In fact, it leaks keys in the
 // clear.)
 //
-// Messages from TLS that are sent over a mockQUICTransport are wrapped in a
-// TLV-like format. The first byte of a mockQUICTransport message is a tag
-// indicating the TLS record type. This is followed by the 2 byte cipher suite
-// ID of the cipher suite that would have been used to encrypt the record. Next
-// is a 4-byte big-endian length indicating the length of the remaining payload.
-// The payload starts with the key that would be used to encrypt the record, and
-// the remainder of the payload is the plaintext of the TLS record. Note that
-// the 4-byte length covers the length of the key and plaintext, but not the
-// cipher suite ID or tag.
+// Messages from TLS that are sent over a mockQUICTransport are a series of
+// records in the following format:
+//
+//   enum {
+//       initial(0), early_data(1), handshake(2), application(3), (255)
+//   } EncryptionLevel;
+//
+//   struct {
+//       ContentType record_type;
+//       EncryptionLevel level;
+//       CipherSuite cipher_suite;
+//       opaque encrypted_record<0..2^32-1>;
+//   } MockQUICRecord;
+//
+// The "encrypted" record is the concatenation of the encryption key and
+// plaintext. It and the cipher suite exist only to check both sides agree on
+// encryption parameters. The key is included in the length prefix so records
+// may be skipped without knowing the key length.
 type mockQUICTransport struct {
 	net.Conn
 	readLevel, writeLevel             encryptionLevel
@@ -62,13 +67,13 @@ func newMockQUICTransport(conn net.Conn) *mockQUICTransport {
 	return &mockQUICTransport{Conn: conn}
 }
 
-func (m *mockQUICTransport) read() (byte, []byte, error) {
+func (m *mockQUICTransport) read() (recordType, []byte, error) {
 	for {
 		header := make([]byte, 8)
 		if _, err := io.ReadFull(m.Conn, header); err != nil {
 			return 0, nil, err
 		}
-		tag := header[0]
+		typ := recordType(header[0])
 		level := header[1]
 		cipherSuite := binary.BigEndian.Uint16(header[2:4])
 		length := binary.BigEndian.Uint32(header[4:])
@@ -96,7 +101,7 @@ func (m *mockQUICTransport) read() (byte, []byte, error) {
 		// Although not true for QUIC in general, our transport is ordered, so
 		// we expect to stop skipping early data after a valid record.
 		m.skipEarlyData = false
-		return tag, out, nil
+		return typ, out, nil
 	}
 }
 
@@ -105,29 +110,16 @@ func (m *mockQUICTransport) readRecord(want recordType) (recordType, *block, err
 	if err != nil {
 		return 0, nil, err
 	}
-	var returnType recordType
-	if typ == tagHandshake {
-		returnType = recordTypeHandshake
-	} else if typ == tagApplication {
-		returnType = recordTypeApplicationData
-	} else if typ == tagAlert {
-		returnType = recordTypeAlert
-	} else {
-		return 0, nil, fmt.Errorf("unknown type %d\n", typ)
-	}
-	return returnType, &block{contents, 0, nil}, nil
+	return typ, &block{contents, 0, nil}, nil
 }
 
 func (m *mockQUICTransport) writeRecord(typ recordType, data []byte) (int, error) {
-	tag := tagHandshake
-	if typ == recordTypeApplicationData {
-		tag = tagApplication
-	} else if typ != recordTypeHandshake {
+	if typ != recordTypeApplicationData && typ != recordTypeHandshake {
 		return 0, fmt.Errorf("unsupported record type %d\n", typ)
 	}
 	length := len(m.writeSecret) + len(data)
 	payload := make([]byte, 1+1+2+4+length)
-	payload[0] = tag
+	payload[0] = byte(typ)
 	payload[1] = byte(m.writeLevel)
 	binary.BigEndian.PutUint16(payload[2:4], m.writeCipherSuite)
 	binary.BigEndian.PutUint32(payload[4:8], uint32(length))
