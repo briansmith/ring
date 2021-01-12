@@ -182,6 +182,7 @@ struct TestConfig {
   bool expect_hrr = false;
   bool expect_no_hrr = false;
   bool wait_for_debugger = false;
+  std::string quic_early_data_context;
 
   int argc;
   char **argv;

@@ -747,7 +747,7 @@ ResendHelloRetryRequest:
 			}
 
 			sessionCipher := cipherSuiteFromID(hs.sessionState.cipherSuite)
-			if err := c.useInTrafficSecret(c.wireVersion, sessionCipher, earlyTrafficSecret); err != nil {
+			if err := c.useInTrafficSecret(encryptionEarlyData, c.wireVersion, sessionCipher, earlyTrafficSecret); err != nil {
 				return err
 			}
 
@@ -854,7 +854,7 @@ ResendHelloRetryRequest:
 
 	// Switch to handshake traffic keys.
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	c.useOutTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret)
+	c.useOutTrafficSecret(encryptionHandshake, c.wireVersion, hs.suite, serverHandshakeTrafficSecret)
 	// Derive handshake traffic read key, but don't switch yet.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 
@@ -1038,7 +1038,7 @@ ResendHelloRetryRequest:
 
 	// Switch to application data keys on write. In particular, any alerts
 	// from the client certificate are sent over these keys.
-	c.useOutTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret)
+	c.useOutTrafficSecret(encryptionApplication, c.wireVersion, hs.suite, serverTrafficSecret)
 
 	// Send 0.5-RTT messages.
 	for _, halfRTTMsg := range config.Bugs.SendHalfRTTData {
@@ -1063,7 +1063,7 @@ ResendHelloRetryRequest:
 	}
 
 	// Switch input stream to handshake traffic keys.
-	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret); err != nil {
+	if err := c.useInTrafficSecret(encryptionHandshake, c.wireVersion, hs.suite, clientHandshakeTrafficSecret); err != nil {
 		return err
 	}
 
@@ -1192,7 +1192,7 @@ ResendHelloRetryRequest:
 	hs.writeClientHash(clientFinished.marshal())
 
 	// Switch to application data keys on read.
-	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret); err != nil {
+	if err := c.useInTrafficSecret(encryptionApplication, c.wireVersion, hs.suite, clientTrafficSecret); err != nil {
 		return err
 	}
 

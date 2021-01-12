@@ -518,7 +518,7 @@ NextCipherSuite:
 		earlyTrafficSecret := finishedHash.deriveSecret(earlyTrafficLabel)
 		c.earlyExporterSecret = finishedHash.deriveSecret(earlyExporterLabel)
 
-		c.useOutTrafficSecret(session.wireVersion, pskCipherSuite, earlyTrafficSecret)
+		c.useOutTrafficSecret(encryptionEarlyData, session.wireVersion, pskCipherSuite, earlyTrafficSecret)
 		for _, earlyData := range c.config.Bugs.SendEarlyData {
 			if _, err := c.writeRecord(recordTypeApplicationData, earlyData); err != nil {
 				return err
@@ -923,7 +923,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	// traffic key.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret); err != nil {
+	if err := c.useInTrafficSecret(encryptionHandshake, c.wireVersion, hs.suite, serverHandshakeTrafficSecret); err != nil {
 		return err
 	}
 
@@ -1098,7 +1098,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Switch to application data keys on read. In particular, any alerts
 	// from the client certificate are read over these keys.
-	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret); err != nil {
+	if err := c.useInTrafficSecret(encryptionApplication, c.wireVersion, hs.suite, serverTrafficSecret); err != nil {
 		return err
 	}
 
@@ -1133,7 +1133,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Send EndOfEarlyData and then switch write key to handshake
 	// traffic key.
-	if encryptedExtensions.extensions.hasEarlyData && c.out.cipher != nil && !c.config.Bugs.SkipEndOfEarlyData {
+	if encryptedExtensions.extensions.hasEarlyData && !c.config.Bugs.SkipEndOfEarlyData && c.config.Bugs.MockQUICTransport == nil {
 		if c.config.Bugs.SendStrayEarlyHandshake {
 			helloRequest := new(helloRequestMsg)
 			c.writeRecord(recordTypeHandshake, helloRequest.marshal())
@@ -1157,7 +1157,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
-	c.useOutTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret)
+	c.useOutTrafficSecret(encryptionHandshake, c.wireVersion, hs.suite, clientHandshakeTrafficSecret)
 
 	// The client EncryptedExtensions message is sent if some extension uses it.
 	// (Currently only ALPS does.)
@@ -1263,7 +1263,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.flushHandshake()
 
 	// Switch to application data keys.
-	c.useOutTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret)
+	c.useOutTrafficSecret(encryptionApplication, c.wireVersion, hs.suite, clientTrafficSecret)
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
 	for _, ticket := range deferredTickets {
 		if err := c.processTLS13NewSessionTicket(ticket, hs.suite); err != nil {

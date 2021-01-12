@@ -26,6 +26,15 @@ const tagHandshake = byte('H')
 const tagApplication = byte('A')
 const tagAlert = byte('L')
 
+type encryptionLevel byte
+
+const (
+	encryptionInitial     encryptionLevel = 0
+	encryptionEarlyData   encryptionLevel = 1
+	encryptionHandshake   encryptionLevel = 2
+	encryptionApplication encryptionLevel = 3
+)
+
 // mockQUICTransport provides a record layer for sending/receiving messages
 // when testing TLS over QUIC. It is only intended for testing, as it runs over
 // an in-order reliable transport, looks nothing like the QUIC wire image, and
@@ -43,6 +52,7 @@ const tagAlert = byte('L')
 // cipher suite ID or tag.
 type mockQUICTransport struct {
 	net.Conn
+	readLevel, writeLevel             encryptionLevel
 	readSecret, writeSecret           []byte
 	readCipherSuite, writeCipherSuite uint16
 	skipEarlyData                     bool
@@ -54,37 +64,39 @@ func newMockQUICTransport(conn net.Conn) *mockQUICTransport {
 
 func (m *mockQUICTransport) read() (byte, []byte, error) {
 	for {
-		header := make([]byte, 7)
+		header := make([]byte, 8)
 		if _, err := io.ReadFull(m.Conn, header); err != nil {
 			return 0, nil, err
 		}
-		cipherSuite := binary.BigEndian.Uint16(header[1:3])
-		length := binary.BigEndian.Uint32(header[3:])
+		tag := header[0]
+		level := header[1]
+		cipherSuite := binary.BigEndian.Uint16(header[2:4])
+		length := binary.BigEndian.Uint32(header[4:])
 		value := make([]byte, length)
 		if _, err := io.ReadFull(m.Conn, value); err != nil {
-			return 0, nil, fmt.Errorf("Error reading record")
+			return 0, nil, fmt.Errorf("error reading record")
 		}
-		if cipherSuite != m.readCipherSuite {
-			if m.skipEarlyData {
+		if level != byte(m.readLevel) {
+			if m.skipEarlyData && level == byte(encryptionEarlyData) {
 				continue
 			}
-			return 0, nil, fmt.Errorf("Received cipher suite %d does not match expected %d", cipherSuite, m.readCipherSuite)
+			return 0, nil, fmt.Errorf("received level %d does not match expected %d", level, m.readLevel)
+		}
+		if cipherSuite != m.readCipherSuite {
+			return 0, nil, fmt.Errorf("received cipher suite %d does not match expected %d", cipherSuite, m.readCipherSuite)
 		}
 		if len(m.readSecret) > len(value) {
-			return 0, nil, fmt.Errorf("Input length too short")
+			return 0, nil, fmt.Errorf("input length too short")
 		}
 		secret := value[:len(m.readSecret)]
 		out := value[len(m.readSecret):]
 		if !bytes.Equal(secret, m.readSecret) {
-			if m.skipEarlyData {
-				continue
-			}
 			return 0, nil, fmt.Errorf("secrets don't match: got %x but expected %x", secret, m.readSecret)
 		}
-		if m.skipEarlyData && header[0] == tagHandshake {
-			m.skipEarlyData = false
-		}
-		return header[0], out, nil
+		// Although not true for QUIC in general, our transport is ordered, so
+		// we expect to stop skipping early data after a valid record.
+		m.skipEarlyData = false
+		return tag, out, nil
 	}
 }
 
@@ -114,12 +126,13 @@ func (m *mockQUICTransport) writeRecord(typ recordType, data []byte) (int, error
 		return 0, fmt.Errorf("unsupported record type %d\n", typ)
 	}
 	length := len(m.writeSecret) + len(data)
-	payload := make([]byte, 1+2+4+length)
+	payload := make([]byte, 1+1+2+4+length)
 	payload[0] = tag
-	binary.BigEndian.PutUint16(payload[1:3], m.writeCipherSuite)
-	binary.BigEndian.PutUint32(payload[3:7], uint32(length))
-	copy(payload[7:], m.writeSecret)
-	copy(payload[7+len(m.writeSecret):], data)
+	payload[1] = byte(m.writeLevel)
+	binary.BigEndian.PutUint16(payload[2:4], m.writeCipherSuite)
+	binary.BigEndian.PutUint32(payload[4:8], uint32(length))
+	copy(payload[8:], m.writeSecret)
+	copy(payload[8+len(m.writeSecret):], data)
 	if _, err := m.Conn.Write(payload); err != nil {
 		return 0, err
 	}

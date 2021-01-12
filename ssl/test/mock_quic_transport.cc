@@ -73,47 +73,97 @@ bool ReadAll(BIO *bio, bssl::Span<uint8_t> out) {
   return true;
 }
 
+const char *LevelToString(ssl_encryption_level_t level) {
+  switch (level) {
+    case ssl_encryption_initial:
+      return "initial";
+    case ssl_encryption_early_data:
+      return "early_data";
+    case ssl_encryption_handshake:
+      return "handshake";
+    case ssl_encryption_application:
+      return "application";
+  }
+  return "";
+}
+
 }  // namespace
 
-bool MockQuicTransport::ReadHeader(uint8_t *out_tag, size_t *out_len) {
-  uint8_t header[7];
-  if (!ReadAll(bio_.get(), header)) {
-    return false;
-  }
-  *out_tag = header[0];
-  uint16_t cipher_suite = header[1] << 8 | header[2];
-  size_t remaining_bytes =
-      header[3] << 24 | header[4] << 16 | header[5] << 8 | header[6];
-
-  enum ssl_encryption_level_t level = SSL_quic_read_level(ssl_);
-  if (*out_tag == kTagApplication) {
-    if (SSL_in_early_data(ssl_)) {
-      level = ssl_encryption_early_data;
-    } else {
-      level = ssl_encryption_application;
+bool MockQuicTransport::ReadHeader(uint8_t *out_tag,
+                                   enum ssl_encryption_level_t *out_level,
+                                   size_t *out_len) {
+  for (;;) {
+    uint8_t header[8];
+    if (!ReadAll(bio_.get(), header)) {
+      // TODO(davidben): Distinguish between errors and EOF. See
+      // ReadApplicationData.
+      return false;
     }
+
+    CBS cbs;
+    uint8_t level_id;
+    uint16_t cipher_suite;
+    uint32_t remaining_bytes;
+    CBS_init(&cbs, header, sizeof(header));
+    if (!CBS_get_u8(&cbs, out_tag) ||
+        !CBS_get_u8(&cbs, &level_id) ||
+        !CBS_get_u16(&cbs, &cipher_suite) ||
+        !CBS_get_u32(&cbs, &remaining_bytes) ||
+        level_id >= read_levels_.size()) {
+      fprintf(stderr, "Error parsing record header.\n");
+      return false;
+    }
+
+    auto level = static_cast<ssl_encryption_level_t>(level_id);
+    // Non-initial levels must be configured before use.
+    uint16_t expect_cipher = read_levels_[level].cipher;
+    if (expect_cipher == 0 && level != ssl_encryption_initial) {
+      if (level == ssl_encryption_early_data) {
+        // If we receive early data records without any early data keys, skip
+        // the record. This means early data was rejected.
+        std::vector<uint8_t> discard(remaining_bytes);
+        if (!ReadAll(bio_.get(), bssl::MakeSpan(discard))) {
+          return false;
+        }
+        continue;
+      }
+      fprintf(stderr,
+              "Got record at level %s, but keys were not configured.\n",
+              LevelToString(level));
+      return false;
+    }
+    if (cipher_suite != expect_cipher) {
+      fprintf(stderr, "Got cipher suite 0x%04x at level %s, wanted 0x%04x.\n",
+              cipher_suite, LevelToString(level), expect_cipher);
+      return false;
+    }
+    const std::vector<uint8_t> &secret = read_levels_[level].secret;
+    std::vector<uint8_t> read_secret(secret.size());
+    if (remaining_bytes < secret.size()) {
+      fprintf(stderr, "Record at level %s too small.\n", LevelToString(level));
+      return false;
+    }
+    remaining_bytes -= secret.size();
+    if (!ReadAll(bio_.get(), bssl::MakeSpan(read_secret))) {
+      fprintf(stderr, "Error reading record secret.\n");
+      return false;
+    }
+    if (read_secret != secret) {
+      fprintf(stderr, "Encryption secret at level %s did not match.\n",
+              LevelToString(level));
+      return false;
+    }
+    *out_level = level;
+    *out_len = remaining_bytes;
+    return true;
   }
-  if (cipher_suite != read_levels_[level].cipher) {
-    return false;
-  }
-  const std::vector<uint8_t> &secret = read_levels_[level].secret;
-  std::vector<uint8_t> read_secret(secret.size());
-  if (remaining_bytes < secret.size()) {
-    return false;
-  }
-  remaining_bytes -= secret.size();
-  if (!ReadAll(bio_.get(), bssl::MakeSpan(read_secret)) ||
-      read_secret != secret) {
-    return false;
-  }
-  *out_len = remaining_bytes;
-  return true;
 }
 
 bool MockQuicTransport::ReadHandshake() {
   uint8_t tag;
+  ssl_encryption_level_t level;
   size_t len;
-  if (!ReadHeader(&tag, &len)) {
+  if (!ReadHeader(&tag, &level, &len)) {
     return false;
   }
   if (tag != kTagHandshake) {
@@ -124,8 +174,7 @@ bool MockQuicTransport::ReadHandshake() {
   if (!ReadAll(bio_.get(), bssl::MakeSpan(buf))) {
     return false;
   }
-  return SSL_provide_quic_data(ssl_, SSL_quic_read_level(ssl_), buf.data(),
-                               buf.size());
+  return SSL_provide_quic_data(ssl_, level, buf.data(), buf.size());
 }
 
 int MockQuicTransport::ReadApplicationData(uint8_t *out, size_t max_out) {
@@ -144,9 +193,10 @@ int MockQuicTransport::ReadApplicationData(uint8_t *out, size_t max_out) {
   }
 
   uint8_t tag = 0;
+  ssl_encryption_level_t level;
   size_t len;
   while (true) {
-    if (!ReadHeader(&tag, &len)) {
+    if (!ReadHeader(&tag, &level, &len)) {
       // Assume that a failure to read the header means there's no more to read,
       // not an error reading.
       return 0;
@@ -162,8 +212,7 @@ int MockQuicTransport::ReadApplicationData(uint8_t *out, size_t max_out) {
     if (!ReadAll(bio_.get(), bssl::MakeSpan(buf))) {
       return -1;
     }
-    if (SSL_provide_quic_data(ssl_, SSL_quic_read_level(ssl_), buf.data(),
-                              buf.size()) != 1) {
+    if (SSL_provide_quic_data(ssl_, level, buf.data(), buf.size()) != 1) {
       return -1;
     }
     if (SSL_in_init(ssl_)) {
@@ -203,14 +252,15 @@ bool MockQuicTransport::WriteRecord(enum ssl_encryption_level_t level,
   uint16_t cipher_suite = write_levels_[level].cipher;
   const std::vector<uint8_t> &secret = write_levels_[level].secret;
   size_t tlv_len = secret.size() + len;
-  uint8_t header[7];
+  uint8_t header[8];
   header[0] = tag;
-  header[1] = (cipher_suite >> 8) & 0xff;
-  header[2] = cipher_suite & 0xff;
-  header[3] = (tlv_len >> 24) & 0xff;
-  header[4] = (tlv_len >> 16) & 0xff;
-  header[5] = (tlv_len >> 8) & 0xff;
-  header[6] = tlv_len & 0xff;
+  header[1] = level;
+  header[2] = (cipher_suite >> 8) & 0xff;
+  header[3] = cipher_suite & 0xff;
+  header[4] = (tlv_len >> 24) & 0xff;
+  header[5] = (tlv_len >> 16) & 0xff;
+  header[6] = (tlv_len >> 8) & 0xff;
+  header[7] = tlv_len & 0xff;
   return BIO_write_all(bio_.get(), header, sizeof(header)) &&
          BIO_write_all(bio_.get(), secret.data(), secret.size()) &&
          BIO_write_all(bio_.get(), data, len);

@@ -183,6 +183,7 @@ const Flag<std::string> kStringFlags[] = {
     {"-handshaker-path", &TestConfig::handshaker_path},
     {"-delegated-credential", &TestConfig::delegated_credential},
     {"-expect-early-data-reason", &TestConfig::expect_early_data_reason},
+    {"-quic-early-data-context", &TestConfig::quic_early_data_context},
 };
 
 // TODO(davidben): When we can depend on C++17 or Abseil, switch this to
@@ -1795,6 +1796,14 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       fprintf(stderr, "SSL_set1_delegated_credential failed.\n");
       return nullptr;
     }
+  }
+
+  if (!quic_early_data_context.empty() &&
+      !SSL_set_quic_early_data_context(
+          ssl.get(),
+          reinterpret_cast<const uint8_t *>(quic_early_data_context.data()),
+          quic_early_data_context.size())) {
+    return nullptr;
   }
 
   return ssl;

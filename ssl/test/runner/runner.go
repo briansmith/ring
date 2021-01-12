@@ -1350,6 +1350,11 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 			flags = append(flags, "-on-resume-expect-accept-early-data")
 		}
 
+		if test.protocol == quic {
+			// QUIC requires an early data context string.
+			flags = append(flags, "-quic-early-data-context", "context")
+		}
+
 		flags = append(flags, "-enable-early-data")
 		if test.testType == clientTest {
 			// Configure the runner with default maximum early data.
