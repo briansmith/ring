@@ -4574,32 +4574,29 @@ type stateMachineTestConfig struct {
 func addAllStateMachineCoverageTests() {
 	for _, async := range []bool{false, true} {
 		for _, protocol := range []protocol{tls, dtls, quic} {
-			if protocol == quic && async == true {
-				// QUIC doesn't work with async mode.
-				continue
-			}
 			addStateMachineCoverageTests(stateMachineTestConfig{
 				protocol: protocol,
 				async:    async,
 			})
-			// QUIC doesn't work with implicit handshakes.
+			// QUIC doesn't work with the implicit handshake API. Additionally,
+			// splitting or packing handshake records is meaningless in QUIC.
 			if protocol != quic {
 				addStateMachineCoverageTests(stateMachineTestConfig{
 					protocol:          protocol,
 					async:             async,
 					implicitHandshake: true,
 				})
+				addStateMachineCoverageTests(stateMachineTestConfig{
+					protocol:       protocol,
+					async:          async,
+					splitHandshake: true,
+				})
+				addStateMachineCoverageTests(stateMachineTestConfig{
+					protocol:      protocol,
+					async:         async,
+					packHandshake: true,
+				})
 			}
-			addStateMachineCoverageTests(stateMachineTestConfig{
-				protocol:       protocol,
-				async:          async,
-				splitHandshake: true,
-			})
-			addStateMachineCoverageTests(stateMachineTestConfig{
-				protocol:      protocol,
-				async:         async,
-				packHandshake: true,
-			})
 		}
 	}
 }
@@ -4768,7 +4765,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		// Unfinished writes can only be tested when operations are async. EarlyData
 		// can't be tested as part of an ImplicitHandshake in this case since
 		// otherwise the early data will be sent as normal data.
-		if config.async && !config.implicitHandshake {
+		//
+		// Note application data is external in QUIC, so unfinished writes do not
+		// apply.
+		if config.async && !config.implicitHandshake && config.protocol != quic {
 			tests = append(tests, testCase{
 				testType: clientTest,
 				name:     "TLS13-EarlyData-UnfinishedWrite-Client",
