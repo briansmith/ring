@@ -882,7 +882,7 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
                                hs->client_handshake_secret())) {
       return ssl_hs_error;
     }
-    hs->tls13_state = state13_read_client_certificate;
+    hs->tls13_state = state13_process_end_of_early_data;
     return ssl->s3->early_data_accepted ? ssl_hs_early_return : ssl_hs_ok;
   }
 
@@ -893,27 +893,31 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  // If early data was not accepted, the EndOfEarlyData will be in the discarded
-  // early data.
-  if (hs->ssl->s3->early_data_accepted) {
-    SSLMessage msg;
-    if (!ssl->method->get_message(ssl, &msg)) {
-      return ssl_hs_read_message;
+  // In protocols that use EndOfEarlyData, we must consume the extra message and
+  // switch to client_handshake_secret after the early return.
+  if (ssl->quic_method == nullptr) {
+    // If early data was not accepted, the EndOfEarlyData will be in the
+    // discarded early data.
+    if (hs->ssl->s3->early_data_accepted) {
+      SSLMessage msg;
+      if (!ssl->method->get_message(ssl, &msg)) {
+        return ssl_hs_read_message;
+      }
+      if (!ssl_check_message_type(ssl, msg, SSL3_MT_END_OF_EARLY_DATA)) {
+        return ssl_hs_error;
+      }
+      if (CBS_len(&msg.body) != 0) {
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+        return ssl_hs_error;
+      }
+      ssl->method->next_message(ssl);
     }
-    if (!ssl_check_message_type(ssl, msg, SSL3_MT_END_OF_EARLY_DATA)) {
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                               hs->new_session.get(),
+                               hs->client_handshake_secret())) {
       return ssl_hs_error;
     }
-    if (CBS_len(&msg.body) != 0) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return ssl_hs_error;
-    }
-    ssl->method->next_message(ssl);
-  }
-  if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
-                             hs->new_session.get(),
-                             hs->client_handshake_secret())) {
-    return ssl_hs_error;
   }
   hs->tls13_state = state13_read_client_encrypted_extensions;
   return ssl_hs_ok;
