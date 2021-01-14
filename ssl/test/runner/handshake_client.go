@@ -115,34 +115,44 @@ func (c *Conn) clientHandshake() error {
 		prefixExtensions = append(prefixExtensions, extensionNextProtoNeg)
 	}
 
+	quicTransportParams := c.config.QUICTransportParams
+	quicTransportParamsLegacy := c.config.QUICTransportParams
+	if !c.config.QUICTransportParamsUseLegacyCodepoint.IncludeStandard() {
+		quicTransportParams = nil
+	}
+	if !c.config.QUICTransportParamsUseLegacyCodepoint.IncludeLegacy() {
+		quicTransportParamsLegacy = nil
+	}
+
 	minVersion := c.config.minVersion(c.isDTLS)
 	maxVersion := c.config.maxVersion(c.isDTLS)
 	hello := &clientHelloMsg{
-		isDTLS:                  c.isDTLS,
-		compressionMethods:      []uint8{compressionNone},
-		random:                  make([]byte, 32),
-		ocspStapling:            !c.config.Bugs.NoOCSPStapling,
-		sctListSupported:        !c.config.Bugs.NoSignedCertificateTimestamps,
-		serverName:              c.config.ServerName,
-		echIsInner:              c.config.Bugs.SendECHIsInner,
-		supportedCurves:         c.config.curvePreferences(),
-		supportedPoints:         []uint8{pointFormatUncompressed},
-		nextProtoNeg:            len(c.config.NextProtos) > 0,
-		secureRenegotiation:     []byte{},
-		alpnProtocols:           c.config.NextProtos,
-		quicTransportParams:     c.config.QUICTransportParams,
-		duplicateExtension:      c.config.Bugs.DuplicateExtension,
-		channelIDSupported:      c.config.ChannelID != nil,
-		tokenBindingParams:      c.config.TokenBindingParams,
-		tokenBindingVersion:     c.config.TokenBindingVersion,
-		extendedMasterSecret:    maxVersion >= VersionTLS10,
-		srtpProtectionProfiles:  c.config.SRTPProtectionProfiles,
-		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
-		customExtension:         c.config.Bugs.CustomExtension,
-		omitExtensions:          c.config.Bugs.OmitExtensions,
-		emptyExtensions:         c.config.Bugs.EmptyExtensions,
-		delegatedCredentials:    !c.config.Bugs.DisableDelegatedCredentials,
-		prefixExtensions:        prefixExtensions,
+		isDTLS:                    c.isDTLS,
+		compressionMethods:        []uint8{compressionNone},
+		random:                    make([]byte, 32),
+		ocspStapling:              !c.config.Bugs.NoOCSPStapling,
+		sctListSupported:          !c.config.Bugs.NoSignedCertificateTimestamps,
+		serverName:                c.config.ServerName,
+		echIsInner:                c.config.Bugs.SendECHIsInner,
+		supportedCurves:           c.config.curvePreferences(),
+		supportedPoints:           []uint8{pointFormatUncompressed},
+		nextProtoNeg:              len(c.config.NextProtos) > 0,
+		secureRenegotiation:       []byte{},
+		alpnProtocols:             c.config.NextProtos,
+		quicTransportParams:       quicTransportParams,
+		quicTransportParamsLegacy: quicTransportParamsLegacy,
+		duplicateExtension:        c.config.Bugs.DuplicateExtension,
+		channelIDSupported:        c.config.ChannelID != nil,
+		tokenBindingParams:        c.config.TokenBindingParams,
+		tokenBindingVersion:       c.config.TokenBindingVersion,
+		extendedMasterSecret:      maxVersion >= VersionTLS10,
+		srtpProtectionProfiles:    c.config.SRTPProtectionProfiles,
+		srtpMasterKeyIdentifier:   c.config.Bugs.SRTPMasterKeyIdentifer,
+		customExtension:           c.config.Bugs.CustomExtension,
+		omitExtensions:            c.config.Bugs.OmitExtensions,
+		emptyExtensions:           c.config.Bugs.EmptyExtensions,
+		delegatedCredentials:      !c.config.Bugs.DisableDelegatedCredentials,
+		prefixExtensions:          prefixExtensions,
 	}
 
 	if maxVersion >= VersionTLS13 {
@@ -1757,6 +1767,14 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 			return errors.New("tls: server sent QUIC transport params for TLS version less than 1.3")
 		}
 		c.quicTransportParams = serverExtensions.quicTransportParams
+	}
+
+	if len(serverExtensions.quicTransportParamsLegacy) > 0 {
+		if c.vers < VersionTLS13 {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: server sent QUIC transport params for TLS version less than 1.3")
+		}
+		c.quicTransportParamsLegacy = serverExtensions.quicTransportParamsLegacy
 	}
 
 	if serverExtensions.hasApplicationSettings {

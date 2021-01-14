@@ -6073,6 +6073,82 @@ TEST_F(QUICMethodTest, ServerRejectsMissingTransportParams) {
   ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kClientError));
 }
 
+TEST_F(QUICMethodTest, QuicLegacyCodepointEnabled) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  SSL_set_quic_use_legacy_codepoint(client_.get(), 1);
+  SSL_set_quic_use_legacy_codepoint(server_.get(), 1);
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+  ExpectReceivedTransportParamsEqual(client_.get(), kServerParams);
+  ExpectReceivedTransportParamsEqual(server_.get(), kClientParams);
+}
+
+TEST_F(QUICMethodTest, QuicLegacyCodepointDisabled) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  SSL_set_quic_use_legacy_codepoint(client_.get(), 0);
+  SSL_set_quic_use_legacy_codepoint(server_.get(), 0);
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+  ExpectReceivedTransportParamsEqual(client_.get(), kServerParams);
+  ExpectReceivedTransportParamsEqual(server_.get(), kClientParams);
+}
+
+TEST_F(QUICMethodTest, QuicLegacyCodepointClientOnly) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  SSL_set_quic_use_legacy_codepoint(client_.get(), 1);
+  SSL_set_quic_use_legacy_codepoint(server_.get(), 0);
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kServerError));
+}
+
+TEST_F(QUICMethodTest, QuicLegacyCodepointServerOnly) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  ASSERT_TRUE(CreateClientAndServer());
+  uint8_t kClientParams[] = {1, 2, 3, 4};
+  uint8_t kServerParams[] = {5, 6, 7};
+  SSL_set_quic_use_legacy_codepoint(client_.get(), 0);
+  SSL_set_quic_use_legacy_codepoint(server_.get(), 1);
+  ASSERT_TRUE(SSL_set_quic_transport_params(client_.get(), kClientParams,
+                                            sizeof(kClientParams)));
+  ASSERT_TRUE(SSL_set_quic_transport_params(server_.get(), kServerParams,
+                                            sizeof(kServerParams)));
+
+  ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kServerError));
+}
+
 extern "C" {
 int BORINGSSL_enum_c_type_test(void);
 }

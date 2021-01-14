@@ -61,8 +61,11 @@ type Conn struct {
 	// not applicable.
 	curveID CurveID
 	// quicTransportParams contains the QUIC transport params received
-	// by the peer.
+	// by the peer using codepoint 57.
 	quicTransportParams []byte
+	// quicTransportParams contains the QUIC transport params received
+	// by the peer using legacy codepoint 0xffa5.
+	quicTransportParamsLegacy []byte
 
 	clientRandom, serverRandom [32]byte
 	earlyExporterSecret        []byte
@@ -1895,6 +1898,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.PeerSignatureAlgorithm = c.peerSignatureAlgorithm
 		state.CurveID = c.curveID
 		state.QUICTransportParams = c.quicTransportParams
+		state.QUICTransportParamsLegacy = c.quicTransportParamsLegacy
 		state.HasApplicationSettings = c.hasApplicationSettings
 		state.PeerApplicationSettings = c.peerApplicationSettings
 	}

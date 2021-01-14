@@ -119,11 +119,12 @@ const (
 	extensionCertificateAuthorities     uint16 = 47
 	extensionSignatureAlgorithmsCert    uint16 = 50
 	extensionKeyShare                   uint16 = 51
+	extensionQUICTransportParams        uint16 = 57    // draft-ietf-quic-tls-33 and later
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionApplicationSettings        uint16 = 17513 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
-	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
+	extensionQUICTransportParamsLegacy  uint16 = 0xffa5 // draft-ietf-quic-tls-32 and earlier
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
 	extensionDelegatedCredentials       uint16 = 0x22   // draft-ietf-tls-subcerts-06
 	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
@@ -263,6 +264,7 @@ type ConnectionState struct {
 	PeerSignatureAlgorithm     signatureAlgorithm    // algorithm used by the peer in the handshake
 	CurveID                    CurveID               // the curve used in ECDHE
 	QUICTransportParams        []byte                // the QUIC transport params received from the peer
+	QUICTransportParamsLegacy  []byte                // the legacy QUIC transport params received from the peer
 	HasApplicationSettings     bool                  // whether ALPS was negotiated
 	PeerApplicationSettings    []byte                // application settings received from the peer
 }
@@ -337,6 +339,43 @@ type CertCompressionAlg struct {
 	// Decompress depresses the contents of in and writes the result to out, which
 	// will be the correct size. It returns true on success and false otherwise.
 	Decompress func(out, in []byte) bool
+}
+
+// QUICUseCodepoint controls which TLS extension codepoint is used to convey the
+// QUIC transport parameters. QUICUseCodepointStandard means use 57,
+// QUICUseCodepointLegacy means use legacy value 0xff5a, QUICUseCodepointBoth
+// means use both. QUICUseCodepointNeither means do not send transport
+// parameters.
+type QUICUseCodepoint int
+
+const (
+	QUICUseCodepointStandard QUICUseCodepoint = iota
+	QUICUseCodepointLegacy
+	QUICUseCodepointBoth
+	QUICUseCodepointNeither
+	NumQUICUseCodepoints
+)
+
+func (c QUICUseCodepoint) IncludeStandard() bool {
+	return c == QUICUseCodepointStandard || c == QUICUseCodepointBoth
+}
+
+func (c QUICUseCodepoint) IncludeLegacy() bool {
+	return c == QUICUseCodepointLegacy || c == QUICUseCodepointBoth
+}
+
+func (c QUICUseCodepoint) String() string {
+	switch c {
+	case QUICUseCodepointStandard:
+		return "Standard"
+	case QUICUseCodepointLegacy:
+		return "Legacy"
+	case QUICUseCodepointBoth:
+		return "Both"
+	case QUICUseCodepointNeither:
+		return "Neither"
+	}
+	panic("unknown value")
 }
 
 // A Config structure is used to configure a TLS client or server.
@@ -509,6 +548,10 @@ type Config struct {
 	// QUICTransportParams, if not empty, will be sent in the QUIC
 	// transport parameters extension.
 	QUICTransportParams []byte
+
+	// QUICTransportParamsUseLegacyCodepoint controls which TLS extension
+	// codepoint is used to convey the QUIC transport parameters.
+	QUICTransportParamsUseLegacyCodepoint QUICUseCodepoint
 
 	CertCompressionAlgs map[uint16]CertCompressionAlg
 

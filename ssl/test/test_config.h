@@ -74,6 +74,8 @@ struct TestConfig {
   std::unique_ptr<std::string> expect_peer_application_settings;
   std::string quic_transport_params;
   std::string expect_quic_transport_params;
+  // Set quic_use_legacy_codepoint to 0 or 1 to configure, -1 uses default.
+  int quic_use_legacy_codepoint = -1;
   bool expect_session_miss = false;
   bool expect_extended_master_secret = false;
   std::string psk;

@@ -292,55 +292,56 @@ type clientECH struct {
 }
 
 type clientHelloMsg struct {
-	raw                     []byte
-	isDTLS                  bool
-	vers                    uint16
-	random                  []byte
-	sessionId               []byte
-	cookie                  []byte
-	cipherSuites            []uint16
-	compressionMethods      []uint8
-	nextProtoNeg            bool
-	serverName              string
-	clientECH               *clientECH
-	echIsInner              []byte
-	ocspStapling            bool
-	supportedCurves         []CurveID
-	supportedPoints         []uint8
-	hasKeyShares            bool
-	keyShares               []keyShareEntry
-	keySharesRaw            []byte
-	trailingKeyShareData    bool
-	pskIdentities           []pskIdentity
-	pskKEModes              []byte
-	pskBinders              [][]uint8
-	hasEarlyData            bool
-	tls13Cookie             []byte
-	ticketSupported         bool
-	sessionTicket           []uint8
-	signatureAlgorithms     []signatureAlgorithm
-	signatureAlgorithmsCert []signatureAlgorithm
-	supportedVersions       []uint16
-	secureRenegotiation     []byte
-	alpnProtocols           []string
-	quicTransportParams     []byte
-	duplicateExtension      bool
-	channelIDSupported      bool
-	tokenBindingParams      []byte
-	tokenBindingVersion     uint16
-	extendedMasterSecret    bool
-	srtpProtectionProfiles  []uint16
-	srtpMasterKeyIdentifier string
-	sctListSupported        bool
-	customExtension         string
-	hasGREASEExtension      bool
-	omitExtensions          bool
-	emptyExtensions         bool
-	pad                     int
-	compressedCertAlgs      []uint16
-	delegatedCredentials    bool
-	alpsProtocols           []string
-	prefixExtensions        []uint16
+	raw                       []byte
+	isDTLS                    bool
+	vers                      uint16
+	random                    []byte
+	sessionId                 []byte
+	cookie                    []byte
+	cipherSuites              []uint16
+	compressionMethods        []uint8
+	nextProtoNeg              bool
+	serverName                string
+	clientECH                 *clientECH
+	echIsInner                []byte
+	ocspStapling              bool
+	supportedCurves           []CurveID
+	supportedPoints           []uint8
+	hasKeyShares              bool
+	keyShares                 []keyShareEntry
+	keySharesRaw              []byte
+	trailingKeyShareData      bool
+	pskIdentities             []pskIdentity
+	pskKEModes                []byte
+	pskBinders                [][]uint8
+	hasEarlyData              bool
+	tls13Cookie               []byte
+	ticketSupported           bool
+	sessionTicket             []uint8
+	signatureAlgorithms       []signatureAlgorithm
+	signatureAlgorithmsCert   []signatureAlgorithm
+	supportedVersions         []uint16
+	secureRenegotiation       []byte
+	alpnProtocols             []string
+	quicTransportParams       []byte
+	quicTransportParamsLegacy []byte
+	duplicateExtension        bool
+	channelIDSupported        bool
+	tokenBindingParams        []byte
+	tokenBindingVersion       uint16
+	extendedMasterSecret      bool
+	srtpProtectionProfiles    []uint16
+	srtpMasterKeyIdentifier   string
+	sctListSupported          bool
+	customExtension           string
+	hasGREASEExtension        bool
+	omitExtensions            bool
+	emptyExtensions           bool
+	pad                       int
+	compressedCertAlgs        []uint16
+	delegatedCredentials      bool
+	alpsProtocols             []string
+	prefixExtensions          []uint16
 }
 
 func (m *clientHelloMsg) marshalKeyShares(bb *byteBuilder) {
@@ -568,6 +569,12 @@ func (m *clientHelloMsg) marshal() []byte {
 		extensions = append(extensions, extension{
 			id:   extensionQUICTransportParams,
 			body: m.quicTransportParams,
+		})
+	}
+	if len(m.quicTransportParamsLegacy) > 0 {
+		extensions = append(extensions, extension{
+			id:   extensionQUICTransportParamsLegacy,
+			body: m.quicTransportParamsLegacy,
 		})
 	}
 	if m.channelIDSupported {
@@ -985,6 +992,8 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			}
 		case extensionQUICTransportParams:
 			m.quicTransportParams = body
+		case extensionQUICTransportParamsLegacy:
+			m.quicTransportParamsLegacy = body
 		case extensionChannelID:
 			if len(body) != 0 {
 				return false
@@ -1319,34 +1328,35 @@ func (m *encryptedExtensionsMsg) unmarshal(data []byte) bool {
 }
 
 type serverExtensions struct {
-	nextProtoNeg            bool
-	nextProtos              []string
-	ocspStapling            bool
-	ticketSupported         bool
-	secureRenegotiation     []byte
-	alpnProtocol            string
-	alpnProtocolEmpty       bool
-	duplicateExtension      bool
-	channelIDRequested      bool
-	tokenBindingParams      []byte
-	tokenBindingVersion     uint16
-	extendedMasterSecret    bool
-	srtpProtectionProfile   uint16
-	srtpMasterKeyIdentifier string
-	sctList                 []byte
-	customExtension         string
-	npnAfterAlpn            bool
-	hasKeyShare             bool
-	hasEarlyData            bool
-	keyShare                keyShareEntry
-	supportedVersion        uint16
-	supportedPoints         []uint8
-	supportedCurves         []CurveID
-	quicTransportParams     []byte
-	serverNameAck           bool
-	applicationSettings     []byte
-	hasApplicationSettings  bool
-	echRetryConfigs         []byte
+	nextProtoNeg              bool
+	nextProtos                []string
+	ocspStapling              bool
+	ticketSupported           bool
+	secureRenegotiation       []byte
+	alpnProtocol              string
+	alpnProtocolEmpty         bool
+	duplicateExtension        bool
+	channelIDRequested        bool
+	tokenBindingParams        []byte
+	tokenBindingVersion       uint16
+	extendedMasterSecret      bool
+	srtpProtectionProfile     uint16
+	srtpMasterKeyIdentifier   string
+	sctList                   []byte
+	customExtension           string
+	npnAfterAlpn              bool
+	hasKeyShare               bool
+	hasEarlyData              bool
+	keyShare                  keyShareEntry
+	supportedVersion          uint16
+	supportedPoints           []uint8
+	supportedCurves           []CurveID
+	quicTransportParams       []byte
+	quicTransportParamsLegacy []byte
+	serverNameAck             bool
+	applicationSettings       []byte
+	hasApplicationSettings    bool
+	echRetryConfigs           []byte
 }
 
 func (m *serverExtensions) marshal(extensions *byteBuilder) {
@@ -1473,6 +1483,11 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		params := extensions.addU16LengthPrefixed()
 		params.addBytes(m.quicTransportParams)
 	}
+	if len(m.quicTransportParamsLegacy) > 0 {
+		extensions.addU16(extensionQUICTransportParamsLegacy)
+		params := extensions.addU16LengthPrefixed()
+		params.addBytes(m.quicTransportParamsLegacy)
+	}
 	if m.hasEarlyData {
 		extensions.addU16(extensionEarlyData)
 		extensions.addBytes([]byte{0, 0})
@@ -1594,6 +1609,8 @@ func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
 			}
 		case extensionQUICTransportParams:
 			m.quicTransportParams = body
+		case extensionQUICTransportParamsLegacy:
+			m.quicTransportParamsLegacy = body
 		case extensionEarlyData:
 			if version < VersionTLS13 || len(body) != 0 {
 				return false

@@ -2790,6 +2790,10 @@ struct SSL_CONFIG {
   // jdk11_workaround is whether to disable TLS 1.3 for JDK 11 clients, as a
   // workaround for https://bugs.openjdk.java.net/browse/JDK-8211806.
   bool jdk11_workaround : 1;
+
+  // QUIC drafts up to and including 32 used a different TLS extension
+  // codepoint to convey QUIC's transport parameters.
+  bool quic_use_legacy_codepoint : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.

@@ -230,6 +230,7 @@ const Flag<int> kIntFlags[] = {
     {"-max-send-fragment", &TestConfig::max_send_fragment},
     {"-read-size", &TestConfig::read_size},
     {"-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew},
+    {"-quic-use-legacy-codepoint", &TestConfig::quic_use_legacy_codepoint},
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {
@@ -1736,6 +1737,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (max_send_fragment > 0) {
     SSL_set_max_send_fragment(ssl.get(), max_send_fragment);
+  }
+  if (quic_use_legacy_codepoint != -1) {
+    SSL_set_quic_use_legacy_codepoint(ssl.get(), quic_use_legacy_codepoint);
   }
   if (!quic_transport_params.empty()) {
     if (!SSL_set_quic_transport_params(

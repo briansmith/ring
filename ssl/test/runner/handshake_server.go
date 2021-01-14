@@ -1449,7 +1449,16 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 
 	if len(hs.clientHello.quicTransportParams) > 0 {
 		c.quicTransportParams = hs.clientHello.quicTransportParams
+	}
+	if c.config.QUICTransportParamsUseLegacyCodepoint.IncludeStandard() {
 		serverExtensions.quicTransportParams = c.config.QUICTransportParams
+	}
+
+	if len(hs.clientHello.quicTransportParamsLegacy) > 0 {
+		c.quicTransportParamsLegacy = hs.clientHello.quicTransportParamsLegacy
+	}
+	if c.config.QUICTransportParamsUseLegacyCodepoint.IncludeLegacy() {
+		serverExtensions.quicTransportParamsLegacy = c.config.QUICTransportParams
 	}
 
 	if c.vers < VersionTLS13 || config.Bugs.NegotiateEMSAtAllVersions {
