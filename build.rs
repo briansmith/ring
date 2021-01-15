@@ -546,6 +546,7 @@ fn cc(
     if target.os != "none"
         && target.os != "redox"
         && target.os != "windows"
+        && target.os != "freebsd"
         && target.arch != "wasm32"
     {
         let _ = c.flag("-fstack-protector");
