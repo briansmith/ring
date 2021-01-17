@@ -125,9 +125,14 @@ perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
 perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 
 function(cpreprocess dest src)
+  set(TARGET "")
+  if(CMAKE_ASM_COMPILER_TARGET)
+    set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
+  endif()
+
   add_custom_command(
     OUTPUT ${dest}
-    COMMAND cpp ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
+    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} $CMAKE_ASM_FLAGS -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
@@ -193,11 +198,16 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
+  set(MAYBE_INJECT_HASH_SHA256_FLAG "")
+  if (ARCH STREQUAL "aarch64")
+    set(MAYBE_INJECT_HASH_SHA256_FLAG "-sha256")
+  endif()
+
   go_executable(inject_hash
 	        boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
+    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> ${MAYBE_INJECT_HASH_SHA256_FLAG}
     DEPENDS bcm_hashunset inject_hash
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
