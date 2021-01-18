@@ -59,6 +59,8 @@ The other commands are as follows. (Note that you only need to implement the com
 | AES-KW/seal          | (dummy), key, plaintext, (dummy), (dummy) | Ciphertext |
 | AES-KWP/open         | (dummy), key, ciphertext, (dummy), (dummy) | One-byte success flag, plaintext or empty |
 | AES-KWP/seal         | (dummy), key, plaintext, (dummy), (dummy) | Ciphertext |
+| AES-XTS/decrypt      | Key, ciphertext, tweak | Plaintext |
+| AES-XTS/encrypt      | Key, plaintext, tweak | Ciphertext |
 | AES/decrypt          | Key, input block, num iterations¹ | Result, Previous result |
 | AES/encrypt          | Key, input block, num iterations¹ | Result, Previous result |
 | CMAC-AES             | Number output bytes, key, message | MAC |
