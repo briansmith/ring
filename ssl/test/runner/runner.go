@@ -7437,35 +7437,41 @@ func addExtensionTests() {
 						flags = append(flags, "-on-resume-expect-peer-application-settings", "runner")
 					}
 
-					// The client should not offer early data.
-					testCases = append(testCases, testCase{
-						protocol:           protocol,
-						testType:           clientTest,
-						name:               fmt.Sprintf("ALPS-EarlyData-Mismatch-%s-Client-%s", test.name, suffix),
-						skipQUICALPNConfig: true,
-						config: Config{
-							MaxVersion:          ver.version,
-							MaxEarlyDataSize:    16384,
-							NextProtos:          []string{"proto"},
-							ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
-						},
-						resumeSession: true,
-						flags: append([]string{
-							"-enable-early-data",
-							"-expect-ticket-supports-early-data",
-							"-expect-no-offer-early-data",
-							"-advertise-alpn", "\x05proto",
-							"-expect-alpn", "proto",
-						}, flags...),
-						expectations: connectionExpectations{
-							peerApplicationSettings: test.initialSettings,
-						},
-						resumeExpectations: &connectionExpectations{
-							peerApplicationSettings: test.resumeSettings,
-						},
-					})
+					// The client should not offer early data if the session is
+					// inconsistent with the new configuration. Note that if
+					// the session did not negotiate ALPS (test.initialSettings
+					// is nil), the client always offers early data.
+					if test.initialSettings != nil {
+						testCases = append(testCases, testCase{
+							protocol:           protocol,
+							testType:           clientTest,
+							name:               fmt.Sprintf("ALPS-EarlyData-Mismatch-%s-Client-%s", test.name, suffix),
+							skipQUICALPNConfig: true,
+							config: Config{
+								MaxVersion:          ver.version,
+								MaxEarlyDataSize:    16384,
+								NextProtos:          []string{"proto"},
+								ApplicationSettings: map[string][]byte{"proto": []byte("runner")},
+							},
+							resumeSession: true,
+							flags: append([]string{
+								"-enable-early-data",
+								"-expect-ticket-supports-early-data",
+								"-expect-no-offer-early-data",
+								"-advertise-alpn", "\x05proto",
+								"-expect-alpn", "proto",
+							}, flags...),
+							expectations: connectionExpectations{
+								peerApplicationSettings: test.initialSettings,
+							},
+							resumeExpectations: &connectionExpectations{
+								peerApplicationSettings: test.resumeSettings,
+							},
+						})
+					}
 
-					// The server should reject early data.
+					// The server should reject early data if the session is
+					// inconsistent with the new selection.
 					testCases = append(testCases, testCase{
 						protocol:           protocol,
 						testType:           serverTest,
@@ -7490,6 +7496,42 @@ func addExtensionTests() {
 						},
 					})
 				}
+
+				// Test that 0-RTT continues working when the shim configures
+				// ALPS but the peer does not.
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           clientTest,
+					name:               "ALPS-EarlyData-Client-ServerDecline-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion: ver.version,
+						NextProtos: []string{"proto"},
+					},
+					resumeSession: true,
+					earlyData:     true,
+					flags: []string{
+						"-advertise-alpn", "\x05proto",
+						"-expect-alpn", "proto",
+						"-application-settings", "proto,shim",
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol:           protocol,
+					testType:           serverTest,
+					name:               "ALPS-EarlyData-Server-ClientNoOffer-" + suffix,
+					skipQUICALPNConfig: true,
+					config: Config{
+						MaxVersion: ver.version,
+						NextProtos: []string{"proto"},
+					},
+					resumeSession: true,
+					earlyData:     true,
+					flags: []string{
+						"-select-alpn", "proto",
+						"-application-settings", "proto,shim",
+					},
+				})
 			} else {
 				// Test the client rejects the ALPS extension if the server
 				// negotiated TLS 1.2 or below.

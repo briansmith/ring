@@ -2180,14 +2180,17 @@ static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       return true;
     }
 
-    Span<const uint8_t> settings;
-    bool has_alps = ssl_get_local_application_settings(
-        hs, &settings, ssl->session->early_alpn);
-    if (has_alps != ssl->session->has_application_settings ||
-        settings != ssl->session->local_application_settings) {
-      // 0-RTT carries ALPS over, so we only offer it when the value matches.
-      ssl->s3->early_data_reason = ssl_early_data_alps_mismatch;
-      return true;
+    // If the previous connection negotiated ALPS, only offer 0-RTT when the
+    // local are settings are consistent with what we'd offer for this
+    // connection.
+    if (ssl->session->has_application_settings) {
+      Span<const uint8_t> settings;
+      if (!ssl_get_local_application_settings(hs, &settings,
+                                              ssl->session->early_alpn) ||
+          settings != ssl->session->local_application_settings) {
+        ssl->s3->early_data_reason = ssl_early_data_alps_mismatch;
+        return true;
+      }
     }
   }
 
