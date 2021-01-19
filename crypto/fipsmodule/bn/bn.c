@@ -283,6 +283,18 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   return 1;
 }
 
+void bn_set_static_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
+  if ((bn->flags & BN_FLG_STATIC_DATA) == 0) {
+    OPENSSL_free(bn->d);
+  }
+  bn->d = (BN_ULONG *)words;
+
+  bn->width = num;
+  bn->dmax = num;
+  bn->neg = 0;
+  bn->flags |= BN_FLG_STATIC_DATA;
+}
+
 int bn_fits_in_words(const BIGNUM *bn, size_t num) {
   // All words beyond |num| must be zero.
   BN_ULONG mask = 0;
