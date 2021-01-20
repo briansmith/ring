@@ -6149,6 +6149,31 @@ TEST_F(QUICMethodTest, QuicLegacyCodepointServerOnly) {
   ASSERT_TRUE(RunQUICHandshakesAndExpectError(ExpectedError::kServerError));
 }
 
+// Test that the default QUIC code point is consistent with
+// |TLSEXT_TYPE_quic_transport_parameters|. This test ensures we remember to
+// update the two values together.
+TEST_F(QUICMethodTest, QuicCodePointDefault) {
+  const SSL_QUIC_METHOD quic_method = DefaultQUICMethod();
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+  SSL_CTX_set_select_certificate_cb(
+      server_ctx_.get(),
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_quic_transport_parameters, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find quic_transport_parameters extension";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
+
+  ASSERT_TRUE(CreateClientAndServer());
+  ASSERT_TRUE(CompleteHandshakesForQUIC());
+}
+
 extern "C" {
 int BORINGSSL_enum_c_type_test(void);
 }
