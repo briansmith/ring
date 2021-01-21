@@ -354,7 +354,12 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
             let &(entry_arch, entry_os, _) = *entry;
             entry_arch == target.arch && is_none_or_equals(entry_os, &target.os)
         })
-        .unwrap();
+        .unwrap_or_else(|| {
+            panic!(
+                "Operating system '{}' and/or architecture '{}' is not supported",
+                target.os, target.arch
+            )
+        });
 
     let use_pregenerated = !target.is_git;
     let warnings_are_errors = target.is_git;
