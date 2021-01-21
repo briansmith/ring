@@ -14,7 +14,7 @@
 
 // Package hpke implements Hybrid Public Key Encryption (HPKE).
 //
-// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-05.
+// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-07.
 package hpke
 
 import (

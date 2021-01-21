@@ -27,7 +27,7 @@
 #include "internal.h"
 
 
-// This file implements draft-irtf-cfrg-hpke-05.
+// This file implements draft-irtf-cfrg-hpke-07.
 
 #define KEM_CONTEXT_LEN (2 * X25519_PUBLIC_VALUE_LEN)
 

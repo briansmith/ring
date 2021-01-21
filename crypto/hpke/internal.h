@@ -31,7 +31,7 @@ extern "C" {
 // receiver with a public key. Optionally, the sender may authenticate its
 // possession of a pre-shared key to the recipient.
 //
-// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-05.
+// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-07.
 
 // EVP_HPKE_AEAD_* are AEAD identifiers.
 #define EVP_HPKE_AEAD_AES_GCM_128 0x0001
