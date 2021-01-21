@@ -240,6 +240,7 @@ add_library(
   bio/printf.c
   bio/socket.c
   bio/socket_helper.c
+  blake2/blake2.c
   bn_extra/bn_asn1.c
   bn_extra/convert.c
   buf/buf.c
@@ -492,8 +493,9 @@ add_executable(
   abi_self_test.cc
   asn1/asn1_test.cc
   base64/base64_test.cc
-  buf/buf_test.cc
   bio/bio_test.cc
+  blake2/blake2_test.cc
+  buf/buf_test.cc
   bytestring/bytestring_test.cc
   chacha/chacha_test.cc
   cipher_extra/aead_test.cc
