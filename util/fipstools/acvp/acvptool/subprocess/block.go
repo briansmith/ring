@@ -282,9 +282,9 @@ type blockCipherMCTResult struct {
 	IVHex         string `json:"iv,omitempty"`
 
 	// 3DES tests serialise the key differently.
-	Key1Hex string `json:"key1"`
-	Key2Hex string `json:"key2"`
-	Key3Hex string `json:"key3"`
+	Key1Hex string `json:"key1,omitempty"`
+	Key2Hex string `json:"key2,omitempty"`
+	Key3Hex string `json:"key3,omitempty"`
 }
 
 func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, error) {
