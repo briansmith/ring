@@ -18,8 +18,16 @@ use ring::{
     test, test_file,
 };
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
+
+#[cfg(target_arch = "wasm32")]
+wasm_bindgen_test_configure!(run_in_browser);
+
 /// Test vectors from BoringSSL.
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 fn test_signature_ed25519() {
     test::run(test_file!("ed25519_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
@@ -63,6 +71,8 @@ fn test_signature_ed25519() {
 
 /// Test vectors from BoringSSL.
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 fn test_signature_ed25519_verify() {
     test::run(
         test_file!("ed25519_verify_tests.txt"),
@@ -96,6 +106,8 @@ fn test_signature_verification(
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 fn test_ed25519_from_seed_and_public_key_misuse() {
     const PRIVATE_KEY: &[u8] = include_bytes!("ed25519_test_private_key.bin");
     const PUBLIC_KEY: &[u8] = include_bytes!("ed25519_test_public_key.bin");
@@ -113,6 +125,8 @@ fn test_ed25519_from_seed_and_public_key_misuse() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 fn test_ed25519_from_pkcs8_unchecked() {
     // Just test that we can parse the input.
     test::run(
@@ -135,6 +149,8 @@ fn test_ed25519_from_pkcs8_unchecked() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 fn test_ed25519_from_pkcs8() {
     // Just test that we can parse the input.
     test::run(
@@ -157,6 +173,8 @@ fn test_ed25519_from_pkcs8() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 fn ed25519_test_public_key_coverage() {
     const PRIVATE_KEY: &[u8] = include_bytes!("ed25519_test_private_key.p8");
     const PUBLIC_KEY: &[u8] = include_bytes!("ed25519_test_public_key.der");
