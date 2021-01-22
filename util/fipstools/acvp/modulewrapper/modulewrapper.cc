@@ -453,8 +453,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
             }]
           }]
         },{
@@ -469,8 +467,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
             }]
           }]
         },{
@@ -485,8 +481,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
-            }, {
-              "hashAlg": "SHA-1"
             }]
           }]
         },{
@@ -505,9 +499,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         },{
@@ -526,9 +517,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         },{
@@ -547,9 +535,6 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
-            }, {
-              "hashAlg": "SHA-1",
-              "saltLen": 20
             }]
           }]
         }]
