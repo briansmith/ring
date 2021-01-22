@@ -212,23 +212,106 @@ const LD_FLAGS: &[&str] = &[];
 
 // None means "any OS" or "any target". The first match in sequence order is
 // taken.
-const ASM_TARGETS: &[(&str, Option<&str>, Option<&str>)] = &[
-    ("x86_64", Some("ios"), Some("macosx")),
-    ("x86_64", Some("macos"), Some("macosx")),
-    ("x86_64", Some(WINDOWS), Some("nasm")),
-    ("x86_64", None, Some("elf")),
-    ("aarch64", Some("ios"), Some("ios64")),
-    ("aarch64", Some("macos"), Some("ios64")),
-    ("aarch64", None, Some("linux64")),
-    ("x86", Some(WINDOWS), Some("win32n")),
-    ("x86", Some("ios"), Some("macosx")),
-    ("x86", None, Some("elf")),
-    ("arm", Some("ios"), Some("ios32")),
-    ("arm", None, Some("linux32")),
-    ("wasm32", None, None),
+const ASM_TARGETS: &[AsmTarget] = &[
+    AsmTarget {
+        oss: LINUX_ABI,
+        arch: "aarch64",
+        perlasm_format: "linux64",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: LINUX_ABI,
+        arch: "arm",
+        perlasm_format: "linux32",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: LINUX_ABI,
+        arch: "x86",
+        perlasm_format: "elf",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: LINUX_ABI,
+        arch: "x86_64",
+        perlasm_format: "elf",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: MACOS_ABI,
+        arch: "aarch64",
+        perlasm_format: "ios64",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: MACOS_ABI,
+        arch: "x86_64",
+        perlasm_format: "macosx",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: &[WINDOWS],
+        arch: "x86",
+        perlasm_format: "win32n",
+        asm_extension: "asm",
+        preassemble: true,
+    },
+    AsmTarget {
+        oss: &[WINDOWS],
+        arch: "x86_64",
+        perlasm_format: "nasm",
+        asm_extension: "asm",
+        preassemble: true,
+    },
 ];
 
+struct AsmTarget {
+    /// Operating systems.
+    oss: &'static [&'static str],
+
+    /// Architectures.
+    arch: &'static str,
+
+    /// The PerlAsm format name.
+    perlasm_format: &'static str,
+
+    /// The filename extension for assembly files.
+    asm_extension: &'static str,
+
+    /// Whether pre-assembled object files should be included in the Cargo
+    /// package instead of the asm sources. This way, the user doesn't need
+    /// to install an assembler for the target. This is particularly important
+    /// for x86/x86_64 Windows since an assembler doesn't come with the C
+    /// compiler.
+    preassemble: bool,
+}
+
+/// Operating systems that have the same ABI as Linux on every architecture
+/// mentioned in `ASM_TARGETS`.
+const LINUX_ABI: &[&str] = &[
+    "android",
+    "dragonfly",
+    "freebsd",
+    "fuchsia",
+    "illumos",
+    "netbsd",
+    "openbsd",
+    "linux",
+    "solaris",
+];
+
+/// Operating systems that have the same ABI as macOS on every architecture
+/// mentioned in `ASM_TARGETS`.
+const MACOS_ABI: &[&str] = &["ios", "macos"];
+
 const WINDOWS: &str = "windows";
+
 const MSVC: &str = "msvc";
 const MSVC_OBJ_OPT: &str = "/Fo";
 const MSVC_OBJ_EXT: &str = "obj";
@@ -285,27 +368,24 @@ fn pregenerate_asm_main() {
     let pregenerated_tmp = pregenerated.join("tmp");
     std::fs::create_dir(&pregenerated_tmp).unwrap();
 
-    for &(target_arch, target_os, perlasm_format) in ASM_TARGETS {
+    for asm_target in ASM_TARGETS {
         // For Windows, package pregenerated object files instead of
         // pregenerated assembly language source files, so that the user
         // doesn't need to install the assembler.
-        let asm_dir = if target_os == Some(WINDOWS) {
+        let asm_dir = if asm_target.preassemble {
             &pregenerated_tmp
         } else {
             &pregenerated
         };
 
-        if let Some(perlasm_format) = perlasm_format {
-            let perlasm_src_dsts =
-                perlasm_src_dsts(&asm_dir, target_arch, target_os, perlasm_format);
-            perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
+        let perlasm_src_dsts = perlasm_src_dsts(&asm_dir, asm_target);
+        perlasm(&perlasm_src_dsts, asm_target, None);
 
-            if target_os == Some(WINDOWS) {
-                let srcs = asm_srcs(perlasm_src_dsts);
-                for src in srcs {
-                    let obj_path = obj_path(&pregenerated, &src, MSVC_OBJ_EXT);
-                    run_command(nasm(&src, target_arch, &obj_path));
-                }
+        if asm_target.preassemble {
+            let srcs = asm_srcs(perlasm_src_dsts);
+            for src in srcs {
+                let obj_path = obj_path(&pregenerated, &src, MSVC_OBJ_EXT);
+                run_command(nasm(&src, asm_target.arch, &obj_path));
             }
         }
     }
@@ -337,24 +417,9 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         .max()
         .unwrap();
 
-    fn is_none_or_equals<T>(opt: Option<T>, other: T) -> bool
-    where
-        T: PartialEq,
-    {
-        if let Some(value) = opt {
-            value == other
-        } else {
-            true
-        }
-    }
-
-    let (_, _, perlasm_format) = ASM_TARGETS
-        .iter()
-        .find(|entry| {
-            let &(entry_arch, entry_os, _) = *entry;
-            entry_arch == target.arch && is_none_or_equals(entry_os, &target.os)
-        })
-        .unwrap();
+    let asm_target = ASM_TARGETS.iter().find(|asm_target| {
+        asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
+    });
 
     let use_pregenerated = !target.is_git;
     let warnings_are_errors = target.is_git;
@@ -365,17 +430,11 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         out_dir
     };
 
-    let asm_srcs = if let Some(perlasm_format) = perlasm_format {
-        let perlasm_src_dsts =
-            perlasm_src_dsts(asm_dir, &target.arch, Some(&target.os), perlasm_format);
+    let asm_srcs = if let Some(asm_target) = asm_target {
+        let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
 
         if !use_pregenerated {
-            perlasm(
-                &perlasm_src_dsts[..],
-                &target.arch,
-                perlasm_format,
-                Some(includes_modified),
-            );
+            perlasm(&perlasm_src_dsts[..], asm_target, Some(includes_modified));
         }
 
         let mut asm_srcs = asm_srcs(perlasm_src_dsts);
@@ -664,17 +723,12 @@ fn sources_for_arch(arch: &str) -> Vec<PathBuf> {
         .collect::<Vec<_>>()
 }
 
-fn perlasm_src_dsts(
-    out_dir: &Path,
-    arch: &str,
-    os: Option<&str>,
-    perlasm_format: &str,
-) -> Vec<(PathBuf, PathBuf)> {
-    let srcs = sources_for_arch(arch);
+fn perlasm_src_dsts(out_dir: &Path, asm_target: &AsmTarget) -> Vec<(PathBuf, PathBuf)> {
+    let srcs = sources_for_arch(asm_target.arch);
     let mut src_dsts = srcs
         .iter()
         .filter(|p| is_perlasm(p))
-        .map(|src| (src.clone(), asm_path(out_dir, src, os, perlasm_format)))
+        .map(|src| (src.clone(), asm_path(out_dir, src, asm_target)))
         .collect::<Vec<_>>();
 
     // Some PerlAsm source files need to be run multiple times with different
@@ -687,7 +741,7 @@ fn perlasm_src_dsts(
                 let synthesized_path = PathBuf::from(synthesized);
                 src_dsts.push((
                     concrete_path,
-                    asm_path(out_dir, &synthesized_path, os, perlasm_format),
+                    asm_path(out_dir, &synthesized_path, asm_target),
                 ))
             }
         };
@@ -709,19 +763,20 @@ fn is_perlasm(path: &PathBuf) -> bool {
     path.extension().unwrap().to_str().unwrap() == "pl"
 }
 
-fn asm_path(out_dir: &Path, src: &Path, os: Option<&str>, perlasm_format: &str) -> PathBuf {
+fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
     let src_stem = src.file_stem().expect("source file without basename");
 
     let dst_stem = src_stem.to_str().unwrap();
-    let dst_extension = if os == Some("windows") { "asm" } else { "S" };
-    let dst_filename = format!("{}-{}.{}", dst_stem, perlasm_format, dst_extension);
+    let dst_filename = format!(
+        "{}-{}.{}",
+        dst_stem, asm_target.perlasm_format, asm_target.asm_extension
+    );
     out_dir.join(dst_filename)
 }
 
 fn perlasm(
     src_dst: &[(PathBuf, PathBuf)],
-    arch: &str,
-    perlasm_format: &str,
+    asm_target: &AsmTarget,
     includes_modified: Option<SystemTime>,
 ) {
     for (src, dst) in src_dst {
@@ -733,8 +788,8 @@ fn perlasm(
 
         let mut args = Vec::<String>::new();
         args.push(src.to_string_lossy().into_owned());
-        args.push(perlasm_format.to_owned());
-        if arch == "x86" {
+        args.push(asm_target.perlasm_format.to_owned());
+        if asm_target.arch == "x86" {
             args.push("-fPIC".into());
             args.push("-DOPENSSL_IA32_SSE2".into());
         }
