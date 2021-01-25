@@ -86,13 +86,13 @@ fn chacha20_poly1305_seal(
 
             // Encrypts `plaintext_len` bytes from `plaintext` and writes them to `out_ciphertext`.
             extern "C" {
-                fn GFp_chacha20_poly1305_seal<'ctx>(
+                fn GFp_chacha20_poly1305_seal(
                     out_ciphertext: *mut u8,
                     plaintext: *const u8,
                     plaintext_len: usize,
                     ad: *const u8,
                     ad_len: usize,
-                    data: &'ctx mut InOut<seal_data_in>,
+                    data: &mut InOut<seal_data_in>,
                 );
             }
 
@@ -154,13 +154,13 @@ fn chacha20_poly1305_open(
 
             // Decrypts `plaintext_len` bytes from `ciphertext` and writes them to `out_plaintext`.
             extern "C" {
-                fn GFp_chacha20_poly1305_open<'ctx>(
+                fn GFp_chacha20_poly1305_open(
                     out_plaintext: *mut u8,
                     ciphertext: *const u8,
                     plaintext_len: usize,
                     ad: *const u8,
                     ad_len: usize,
-                    data: &'ctx mut InOut<open_data_in>,
+                    data: &mut InOut<open_data_in>,
                 );
             }
 
