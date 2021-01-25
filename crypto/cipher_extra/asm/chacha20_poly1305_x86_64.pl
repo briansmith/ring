@@ -40,6 +40,8 @@ $code.=<<___;
 .text
 .extern GFp_ia32cap_P
 
+chacha20_poly1305_constants:
+
 .align 64
 .Lchacha20_consts:
 .byte 'e','x','p','a','n','d',' ','3','2','-','b','y','t','e',' ','k'
@@ -434,10 +436,10 @@ poly_hash_ad_internal:
 
 {
 ################################################################################
-# extern void GFp_chacha20_poly1305_open(uint8_t *out_plaintext,
-#                                        const uint8_t *ciphertext,
-#                                        size_t plaintext_len, const uint8_t *ad,
-#                                        size_t ad_len, union open_data *data)
+# void GFp_chacha20_poly1305_open(uint8_t *out_plaintext, const uint8_t *ciphertext,
+#                                 size_t plaintext_len, const uint8_t *ad,
+#                                 size_t ad_len,
+#                                 union chacha20_poly1305_open_data *aead_data)
 #
 $code.="
 .globl GFp_chacha20_poly1305_open
@@ -857,11 +859,10 @@ $code.="
 .cfi_endproc
 
 ################################################################################
-# extern void GFp_chacha20_poly1305_seal(uint8_t *out_ciphertext,
-#                                        const uint8_t *plaintext,
-#                                        size_t plaintext_len, const uint8_t *ad,
-#                                        size_t ad_len, union seal_data *data)
-#
+# void GFp_chacha20_poly1305_seal(uint8_t *out_ciphertext, const uint8_t *plaintext,
+#                                 size_t plaintext_len, const uint8_t *ad,
+#                                 size_t ad_len,
+#                                 union chacha20_poly1305_seal_data *data);
 .globl  GFp_chacha20_poly1305_seal
 .type GFp_chacha20_poly1305_seal,\@function,6
 .align 64
