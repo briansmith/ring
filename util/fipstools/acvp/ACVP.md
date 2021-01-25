@@ -70,7 +70,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | ECDSA/keyVer         | Curve name, X, Y | Single-byte valid flag |
 | ECDSA/sigGen         | Curve name, private key, hash name, message | R, S |
 | ECDSA/sigVer         | Curve name, hash name, message, X, Y, R, S | Single-byte validity flag |
-| FFDH/&lt;HASH&gt;    | p, q, g, peer public key, local private key (or empty),  local public key (or empty) | Local public key, shared key |
+| FFDH                 | p, q, g, peer public key, local private key (or empty),  local public key (or empty) | Local public key, shared key |
 | HMAC-SHA-1           | Value to hash, key        | Digest  |
 | HMAC-SHA2-224        | Value to hash, key        | Digest  |
 | HMAC-SHA2-256        | Value to hash, key        | Digest  |

@@ -99,7 +99,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"RSA":            &rsa{},
 		"kdf-components": &tlsKDF{},
 		"KAS-ECC-SSC":    &kas{},
-		"KAS-FFC":        &kasDH{},
+		"KAS-FFC-SSC":    &kasDH{},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
 

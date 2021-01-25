@@ -725,33 +725,19 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         ]
       },
       {
-        "algorithm": "KAS-FFC",
-        "revision": "1.0",
-        "mode": "Component",
-        "function": [
-          "keyPairGen"
-        ],
+        "algorithm": "KAS-FFC-SSC",
+        "revision": "Sp800-56Ar3",
         "scheme": {
           "dhEphem": {
             "kasRole": [
               "initiator"
-            ],
-            "noKdfNoKc": {
-              "parameterSet": {
-                "fb": {
-                  "hashAlg": [
-                    "SHA2-256"
-                  ]
-                },
-                "fc": {
-                  "hashAlg": [
-                    "SHA2-256"
-                  ]
-                }
-              }
-            }
+            ]
           }
-        }
+        },
+        "domainParameterGenerationMethods": [
+          "FB",
+          "FC"
+        ]
       }
     ])";
   return WriteReply(
@@ -1700,7 +1686,6 @@ static bool ECDH(const Span<const uint8_t> args[]) {
                     output);
 }
 
-template<const EVP_MD* (*HashFunc)()>
 static bool FFDH(const Span<const uint8_t> args[]) {
   bssl::UniquePtr<BIGNUM> p(BytesToBIGNUM(args[0]));
   bssl::UniquePtr<BIGNUM> q(BytesToBIGNUM(args[1]));
@@ -1737,16 +1722,14 @@ static bool FFDH(const Span<const uint8_t> args[]) {
     return false;
   }
 
-  uint8_t digest[EVP_MAX_MD_SIZE];
-  size_t digest_len;
-  if (!DH_compute_key_hashed(dh.get(), digest, &digest_len, sizeof(digest),
-                             their_pub.get(), HashFunc())) {
+  std::vector<uint8_t> z(DH_size(dh.get()));
+  if (DH_compute_key_padded(z.data(), their_pub.get(), dh.get()) !=
+      static_cast<int>(z.size())) {
     fprintf(stderr, "DH_compute_key_hashed failed.\n");
     return false;
   }
 
-  return WriteReply(STDOUT_FILENO, BIGNUMBytes(DH_get0_pub_key(dh.get())),
-                    Span<const uint8_t>(digest, digest_len));
+  return WriteReply(STDOUT_FILENO, BIGNUMBytes(DH_get0_pub_key(dh.get())), z);
 }
 
 static constexpr struct {
@@ -1819,7 +1802,7 @@ static constexpr struct {
     {"ECDH/P-256", 3, ECDH<NID_X9_62_prime256v1>},
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
-    {"FFDH/SHA2-256", 6, FFDH<EVP_sha256>},
+    {"FFDH", 6, FFDH},
 };
 
 int main() {

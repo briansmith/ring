@@ -30,7 +30,6 @@ type kasDHTestGroup struct {
 	Type   string      `json:"testType"`
 	Role   string      `json:"kasRole"`
 	Mode   string      `json:"kasMode"`
-	Hash   string      `json:"hashAlg"`
 	Scheme string      `json:"scheme"`
 	PHex   string      `json:"p"`
 	QHex   string      `json:"q"`
@@ -43,7 +42,7 @@ type kasDHTest struct {
 	PeerPublicHex string `json:"ephemeralPublicServer"`
 	PrivateKeyHex string `json:"ephemeralPrivateIut"`
 	PublicKeyHex  string `json:"ephemeralPublicIut"`
-	ResultHex     string `json:"hashZIut"`
+	ResultHex     string `json:"z"`
 }
 
 type kasDHTestGroupResponse struct {
@@ -54,7 +53,7 @@ type kasDHTestGroupResponse struct {
 type kasDHTestResponse struct {
 	ID             uint64 `json:"tcId"`
 	LocalPublicHex string `json:"ephemeralPublicIut,omitempty"`
-	ResultHex      string `json:"hashZIut,omitempty"`
+	ResultHex      string `json:"z,omitempty"`
 	Passed         *bool  `json:"testPassed,omitempty"`
 }
 
@@ -66,7 +65,7 @@ func (k *kasDH) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 		return nil, err
 	}
 
-	// See https://usnistgov.github.io/ACVP/draft-fussell-acvp-kas-ffc.html
+	// See https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-ffc-sp800-56ar3.html
 	var ret []kasDHTestGroupResponse
 	for _, group := range parsed.Groups {
 		response := kasDHTestGroupResponse{
@@ -81,13 +80,6 @@ func (k *kasDH) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			privateKeyGiven = true
 		default:
 			return nil, fmt.Errorf("unknown test type %q", group.Type)
-		}
-
-		switch group.Hash {
-		case "SHA2-224", "SHA2-256", "SHA2-384", "SHA2-512":
-			break
-		default:
-			return nil, fmt.Errorf("unknown hash function %q", group.Hash)
 		}
 
 		switch group.Role {
@@ -116,8 +108,7 @@ func (k *kasDH) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			return nil, err
 		}
 
-		method := "FFDH/" + group.Hash
-
+		const method = "FFDH"
 		for _, test := range group.Tests {
 			if len(test.PeerPublicHex) == 0 {
 				return nil, fmt.Errorf("%d/%d is missing peer's key", group.ID, test.ID)

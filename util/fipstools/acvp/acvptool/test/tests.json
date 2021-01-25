@@ -18,7 +18,7 @@
 {"Wrapper": "modulewrapper", "In": "vectors/HMAC-SHA2-384.bz2", "Out": "expected/HMAC-SHA2-384.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/HMAC-SHA2-512.bz2", "Out": "expected/HMAC-SHA2-512.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/KAS-ECC-SSC.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/KAS-FFC.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/KAS-FFC-SSC.bz2"},
 {"Wrapper": "testmodulewrapper", "In": "vectors/KDF.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/kdf-components.bz2", "Out": "expected/kdf-components.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/RSA.bz2", "Out": "expected/RSA.bz2"},
