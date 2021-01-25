@@ -26,12 +26,6 @@ impl From<[u8; KEY_LEN]> for Key {
     }
 }
 
-impl AsRef<[LittleEndian<u32>; KEY_LEN / 4]> for Key {
-    fn as_ref(&self) -> &[LittleEndian<u32>; KEY_LEN / 4] {
-        &self.0
-    }
-}
-
 impl Key {
     #[inline] // Optimize away match on `counter`.
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
@@ -126,6 +120,12 @@ impl Key {
         }
 
         GFp_ChaCha20_ctr32(output, input, in_out_len, self, &iv);
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[inline]
+    pub(super) fn words_less_safe(&self) -> &[LittleEndian<u32>; KEY_LEN / 4] {
+        &self.0
     }
 }
 

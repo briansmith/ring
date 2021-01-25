@@ -187,7 +187,7 @@ fn combine_key_and_nonce(key: &aead::KeyInner, nonce: Nonce) -> [u32; 12] {
     // Internally the asm version expects the key and nonce values as a consecutive array
     let mut key_block = [0u32; 12];
 
-    for (i, k) in chacha20_key.as_ref().iter().enumerate() {
+    for (i, k) in chacha20_key.words_less_safe().iter().enumerate() {
         key_block[i] = (*k).into();
     }
     let nonce = nonce.as_ref();
