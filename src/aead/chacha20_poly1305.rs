@@ -50,6 +50,11 @@ fn chacha20_poly1305_seal(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
+    let key = match key {
+        aead::KeyInner::ChaCha20Poly1305(key) => key,
+        _ => unreachable!(),
+    };
+
     #[cfg(target_arch = "x86_64")]
     {
         if has_sse41(cpu_features) {
@@ -121,6 +126,11 @@ fn chacha20_poly1305_open(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
+    let key = match key {
+        aead::KeyInner::ChaCha20Poly1305(key) => key,
+        _ => unreachable!(),
+    };
+
     #[cfg(target_arch = "x86_64")]
     {
         if has_sse41(cpu_features) {
@@ -178,16 +188,11 @@ pub type Key = chacha::Key;
 
 #[cfg(target_arch = "x86_64")]
 #[inline(always)]
-fn combine_key_and_nonce(key: &aead::KeyInner, nonce: Nonce) -> [u32; 12] {
-    let chacha20_key = match key {
-        aead::KeyInner::ChaCha20Poly1305(key) => key,
-        _ => unreachable!(),
-    };
-
+fn combine_key_and_nonce(key: &Key, nonce: Nonce) -> [u32; 12] {
     // Internally the asm version expects the key and nonce values as a consecutive array
     let mut key_block = [0u32; 12];
 
-    for (i, k) in chacha20_key.words_less_safe().iter().enumerate() {
+    for (i, k) in key.words_less_safe().iter().enumerate() {
         key_block[i] = (*k).into();
     }
     let nonce = nonce.as_ref();
@@ -200,18 +205,13 @@ fn combine_key_and_nonce(key: &aead::KeyInner, nonce: Nonce) -> [u32; 12] {
 
 #[inline(always)] // Statically eliminate branches on `direction`.
 fn aead(
-    key: &aead::KeyInner,
+    chacha20_key: &Key,
     nonce: Nonce,
     Aad(aad): Aad<&[u8]>,
     in_out: &mut [u8],
     direction: Direction,
     cpu_features: cpu::Features,
 ) -> Tag {
-    let chacha20_key = match key {
-        aead::KeyInner::ChaCha20Poly1305(key) => key,
-        _ => unreachable!(),
-    };
-
     let mut counter = Counter::zero(nonce);
     let mut ctx = {
         let key = derive_poly1305_key(chacha20_key, counter.increment(), cpu_features);
