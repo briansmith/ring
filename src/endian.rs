@@ -1,4 +1,4 @@
-use core::{convert::TryInto, num::Wrapping};
+use core::num::Wrapping;
 
 /// An `Encoding` of a type `T` can be converted to/from its byte
 /// representation without any byte swapping or other computation.
@@ -73,7 +73,12 @@ macro_rules! impl_array_encoding {
             for [$endian<$base>; $elems]
         {
             fn as_byte_array(&self) -> &[u8; $elems * core::mem::size_of::<$base>()] {
-                as_byte_slice(self).try_into().unwrap()
+                // TODO: When we can require Rust 1.47.0 or later we could avoid
+                // `as` and `unsafe` here using
+                // `as_byte_slice(self).try_into().unwrap()`.
+                let as_bytes_ptr =
+                    self.as_ptr() as *const [u8; $elems * core::mem::size_of::<$base>()];
+                unsafe { &*as_bytes_ptr }
             }
         }
 
@@ -126,7 +131,7 @@ macro_rules! impl_endian {
         impl_array_encoding!($endian, $base, 2);
         impl_array_encoding!($endian, $base, 3);
         impl_array_encoding!($endian, $base, 4);
-        impl_from_byte_array!($endian, $base, 8);
+        impl_array_encoding!($endian, $base, 8);
     };
 }
 
