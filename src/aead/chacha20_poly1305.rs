@@ -96,7 +96,7 @@ fn chacha20_poly1305_seal(
                 );
             }
 
-            unsafe {
+            let out = unsafe {
                 GFp_chacha20_poly1305_seal(
                     in_out.as_mut_ptr(),
                     in_out.as_ptr(),
@@ -104,10 +104,11 @@ fn chacha20_poly1305_seal(
                     aad.as_ref().as_ptr(),
                     aad.as_ref().len(),
                     &mut data,
-                )
+                );
+                &data.out
             };
 
-            return Tag(unsafe { data.out.tag });
+            return Tag(out.tag);
         }
     }
 
@@ -164,7 +165,7 @@ fn chacha20_poly1305_open(
                 );
             }
 
-            unsafe {
+            let out = unsafe {
                 GFp_chacha20_poly1305_open(
                     in_out.as_mut_ptr(),
                     in_out.as_ptr().add(in_prefix_len),
@@ -172,10 +173,11 @@ fn chacha20_poly1305_open(
                     aad.as_ref().as_ptr(),
                     aad.as_ref().len(),
                     &mut data,
-                )
+                );
+                &data.out
             };
 
-            return Tag(unsafe { data.out.tag });
+            return Tag(out.tag);
         }
     }
 
