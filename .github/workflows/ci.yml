@@ -160,6 +160,8 @@ jobs:
           - i686-pc-windows-msvc
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
+          - mipsel-unknown-linux-gnu
+          - mips64el-unknown-linux-gnuabi64
           - x86_64-pc-windows-gnu
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
@@ -252,6 +254,12 @@ jobs:
             host_os: ubuntu-18.04
 
           - target: i686-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: mipsel-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+          - target: mips64el-unknown-linux-gnuabi64
             host_os: ubuntu-18.04
 
           - target: x86_64-pc-windows-gnu
