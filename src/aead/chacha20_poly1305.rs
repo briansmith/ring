@@ -205,9 +205,13 @@ where
     out: Out,
 }
 
+// It isn't obvious whether the assembly code works for tags that aren't
+// 16-byte aligned. In practice it will always be 16-byte aligned because it
+// is embedded in a union where the other member of the union is 16-byte
+// aligned.
 #[cfg(target_arch = "x86_64")]
 #[derive(Clone, Copy)]
-#[repr(C)]
+#[repr(align(16), C)]
 struct Out {
     tag: [u8; super::TAG_LEN],
 }
