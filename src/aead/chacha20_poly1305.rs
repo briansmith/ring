@@ -57,7 +57,7 @@ fn chacha20_poly1305_seal(
 
     #[cfg(target_arch = "x86_64")]
     {
-        if has_sse41(cpu_features) {
+        if cpu::intel::SSE41.available(cpu_features) {
             // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
             // structure, but Rust can't do that yet; see
             // https://github.com/rust-lang/rust/issues/73557.
@@ -130,7 +130,7 @@ fn chacha20_poly1305_open(
 
     #[cfg(target_arch = "x86_64")]
     {
-        if has_sse41(cpu_features) {
+        if cpu::intel::SSE41.available(cpu_features) {
             // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
             // structure, but Rust can't do that yet; see
             // https://github.com/rust-lang/rust/issues/73557.
@@ -275,11 +275,6 @@ pub(super) fn derive_poly1305_key(
     let mut key_bytes = [0u8; 2 * BLOCK_LEN];
     chacha_key.encrypt_iv_xor_blocks_in_place(iv, &mut key_bytes);
     poly1305::Key::new(key_bytes, cpu_features)
-}
-
-#[cfg(target_arch = "x86_64")]
-fn has_sse41(cpu_features: cpu::Features) -> bool {
-    cpu::intel::SSE41.available(cpu_features)
 }
 
 #[cfg(test)]
