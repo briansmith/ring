@@ -60,7 +60,6 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         encoding: PhantomData, // Unreduced
     },
 
-    elem_add_impl: GFp_p384_elem_add,
     elem_mul_mont: GFp_p384_elem_mul_mont,
     elem_sqr_mont: GFp_p384_elem_sqr_mont,
 
@@ -339,11 +338,6 @@ const N_RR_LIMBS: [Limb; MAX_LIMBS] = p384_limbs![
 ];
 
 extern "C" {
-    fn GFp_p384_elem_add(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
-    );
     fn GFp_p384_elem_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
