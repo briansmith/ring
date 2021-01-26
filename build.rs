@@ -33,6 +33,7 @@ const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
+const MIPS: &str = "mips";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
@@ -43,12 +44,12 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/poly1305/poly1305.c"),
 
-    (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/curve25519/curve25519.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz256.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
+    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/crypto.c"),
+    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/curve25519/curve25519.c"),
+    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
+    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz256.c"),
+    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
+    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -91,6 +92,8 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+
+    (&[MIPS], "crypto/chacha/chacha_enc.c"),
 ];
 
 const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
@@ -112,6 +115,8 @@ const RING_INCLUDES: &[&str] =
       "crypto/fipsmodule/ec/ecp_nistz.h",
       "crypto/fipsmodule/ec/ecp_nistz384.h",
       "crypto/fipsmodule/ec/ecp_nistz256.h",
+      "crypto/chacha.h",
+      "crypto/ctype.h",
       "crypto/internal.h",
       "crypto/limbs/limbs.h",
       "crypto/limbs/limbs.inl",
@@ -121,6 +126,7 @@ const RING_INCLUDES: &[&str] =
       "include/GFp/base.h",
       "include/GFp/check.h",
       "include/GFp/cpu.h",
+      "include/GFp/endian.h",
       "include/GFp/mem.h",
       "include/GFp/poly1305.h",
       "include/GFp/type_check.h",
@@ -237,6 +243,13 @@ const ASM_TARGETS: &[AsmTarget] = &[
     AsmTarget {
         oss: LINUX_ABI,
         arch: "x86_64",
+        perlasm_format: "elf",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: LINUX_ABI,
+        arch: "mips",
         perlasm_format: "elf",
         asm_extension: "S",
         preassemble: false,
@@ -413,8 +426,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     }
 
     if target.arch == "mips" && target.endian == "big" {
-        eprint!("MIPS Big-Endian detected. Skipping BoringSSL libs");
-        return;
+        panic!("MIPS Big-Endian detected. Stoping compilation as BoringSSL code are not available for this platform");
     }
 
     let includes_modified = RING_INCLUDES
