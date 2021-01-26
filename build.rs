@@ -34,6 +34,7 @@ const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
 const MIPS: &str = "mips";
+const MIPS64: &str = "mips64";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
@@ -44,12 +45,12 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/poly1305/poly1305.c"),
 
-    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/crypto.c"),
-    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/curve25519/curve25519.c"),
-    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
-    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
-    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
-    (&[AARCH64, ARM, MIPS, X86_64, X86], "crypto/fipsmodule/ec/p256.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/crypto.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/curve25519/curve25519.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/fipsmodule/ec/p256.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -91,7 +92,10 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
 
-    (&[MIPS], "crypto/chacha/chacha_enc.c"),
+    (&[MIPS, MIPS64], "crypto/fipsmodule/bn/asm/mips-mont.pl"),
+    (&[MIPS, MIPS64], "crypto/chacha/chacha_enc.c"),
+
+    (&[MIPS64], "crypto/poly1305/asm/poly1305-mips.pl"),
 ];
 
 const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
@@ -130,6 +134,7 @@ const RING_INCLUDES: &[&str] =
       "include/GFp/endian.h",
       "include/GFp/mem.h",
       "include/GFp/poly1305.h",
+      "include/GFp/mips_arch.h",
       "include/GFp/type_check.h",
       "third_party/fiat/curve25519_32.h",
       "third_party/fiat/curve25519_64.h",
@@ -253,6 +258,13 @@ const ASM_TARGETS: &[AsmTarget] = &[
     AsmTarget {
         oss: LINUX_ABI,
         arch: "mips",
+        perlasm_format: "elf",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: LINUX_ABI,
+        arch: "mips64",
         perlasm_format: "elf",
         asm_extension: "S",
         preassemble: false,

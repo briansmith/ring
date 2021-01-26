@@ -211,6 +211,9 @@ mod sysrand_chunk {
         #[cfg(target_arch = "arm")]
         const SYS_GETRANDOM: c_long = 384;
 
+        #[cfg(target_arch = "mips64")]
+        const SYS_GETRANDOM: c_long = 5313;
+
         #[cfg(target_arch = "x86")]
         const SYS_GETRANDOM: c_long = 355;
 

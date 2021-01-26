@@ -122,6 +122,12 @@ fn p256_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
     acc
 }
 
+  #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
 fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
     extern "C" {
         fn GFp_p256_point_mul_base(
@@ -135,6 +141,31 @@ fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {
         GFp_p256_point_mul_base(r.xyz.as_mut_ptr(), g_scalar.limbs.as_ptr());
     }
     r
+}
+
+#[cfg(any(target_arch = "mips64", target_arch = "mips"))]
+fn p256_point_mul_base_impl(a: &Scalar) -> Point {
+    // XXX: Not efficient. TODO: Precompute multiples of the generator.
+    static P256_GENERATOR: (Elem<R>, Elem<R>) = (
+        Elem {
+            limbs: p256_limbs![
+                0x18a9143c, 0x79e730d4, 0x5fedb601, 0x75ba95fc,
+                0x77622510, 0x79fb732b, 0xa53755c6, 0x18905f76
+            ],
+            m: PhantomData,
+            encoding: PhantomData,
+        },
+        Elem {
+            limbs: p256_limbs![
+                0xce95560a, 0xddf25357, 0xba19e45c, 0x8b4ab8e4,
+                0xdd21f325, 0xd2e88688, 0x25885d85, 0x8571ff18
+            ],
+            m: PhantomData,
+            encoding: PhantomData,
+        },
+    );
+
+    PRIVATE_KEY_OPS.point_mul(a, &P256_GENERATOR)
 }
 
 pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {

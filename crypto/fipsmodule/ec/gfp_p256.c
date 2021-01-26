@@ -23,6 +23,50 @@ typedef Limb Scalar[P256_LIMBS];
 
 #include "../bn/internal.h"
 
+void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep);
+
+#if defined(OPENSSL_ARM) || defined(OPENSSL_X86) || defined(OPENSSL_MIPS64)
+void GFp_nistz256_sqr_mont(Elem r, const Elem a) {
+  /* XXX: Inefficient. TODO: optimize with dedicated squaring routine. */
+  GFp_nistz256_mul_mont(r, a, a);
+}
+#endif
+
+#if defined(OPENSSL_MIPS64)
+
+static const BN_ULONG Q[P256_LIMBS] = {
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0x00000000, 0xffffffff),
+  TOBN(0x00000000, 0x00000000),
+  TOBN(0xffffffff, 0x00000001),
+};
+
+void GFp_nistz256_neg(Elem r, const Elem a) {
+  Limb is_zero = LIMBS_are_zero(a, P256_LIMBS);
+  Carry borrow = limbs_sub(r, Q, a, P256_LIMBS);
+#if defined(NDEBUG)
+  (void)borrow;
+#endif
+  ASSERT(borrow == 0);
+  for (size_t i = 0; i < P256_LIMBS; ++i) {
+    r[i] = constant_time_select_w(is_zero, 0, r[i]);
+  }
+}
+
+static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
+  static const BN_ULONG Q_N0[] = {
+    BN_MONT_CTX_N0(0x0, 0x1)
+  };
+  /* XXX: Not (clearly) constant-time; inefficient.*/
+  GFp_bn_mul_mont(r, a, b, Q, Q_N0, P256_LIMBS);
+}
+
+void GFp_nistz256_mul_mont(Elem r, const Elem a, const Elem b) {
+  elem_mul_mont(r, a, b);
+}
+#endif
+
+#if !defined(OPENSSL_X86_64)
 void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   static const BN_ULONG N[] = {
@@ -46,5 +90,6 @@ void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep) {
     GFp_p256_scalar_mul_mont(r, r, r);
   }
 }
+#endif
 
 #endif

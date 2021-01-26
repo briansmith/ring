@@ -202,10 +202,24 @@ impl Key {
         direction: Direction,
         ctr: &mut Counter,
     ) {
+        #[cfg(any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86_64",
+            target_arch = "x86"
+        ))]
+        let output: *mut u8 = in_out.as_mut_ptr();
         let in_prefix_len = match direction {
             Direction::Opening { in_prefix_len } => in_prefix_len,
             Direction::Sealing => 0,
         };
+        #[cfg(any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86_64",
+            target_arch = "x86"
+        ))]
+        let input: *const u8 = in_out[in_prefix_len..].as_ptr();
 
         let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
 

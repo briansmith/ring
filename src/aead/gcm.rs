@@ -227,6 +227,12 @@ impl Context {
     #[cfg(target_arch = "x86_64")]
     pub(super) fn is_avx2(&self, cpu_features: cpu::Features) -> bool {
         match detect_implementation(cpu_features) {
+              #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
             Implementation::CLMUL => has_avx_movbe(self.cpu_features),
             _ => false,
         }
@@ -292,6 +298,18 @@ enum Implementation {
     Fallback,
 }
 
+#[cfg(any(target_arch = "mips64", target_arch = "mips"))]
+#[inline]
+fn detect_implementation(_cpu: cpu::Features) -> Implementation {
+    Implementation::Fallback
+}
+
+  #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))]
 #[inline]
 fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
     // `cpu_features` is only used for specific platforms.
