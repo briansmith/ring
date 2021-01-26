@@ -62,7 +62,8 @@ $output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
 # supported flavours are o32,n32,64,nubi32,nubi64, default is o32
 $flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : "o32";
 
-die "MIPS64 only" unless ($flavour =~ /64|n32/i);
+# Skip this error as `mk/package.sh` is failing to run pregenerated files
+# die "MIPS64 only" unless ($flavour =~ /64|n32/i);
 
 $v0 = ($flavour =~ /nubi/i) ? $a0 : $t0;
 $SAVED_REGS_MASK = ($flavour =~ /nubi/i) ? "0x0003f000" : "0x00030000";
