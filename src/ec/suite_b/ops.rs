@@ -791,7 +791,7 @@ mod tests {
     }
 
     #[test]
-      #[cfg(any(
+    #[cfg(any(
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
@@ -814,7 +814,7 @@ mod tests {
 
     // XXX: There is no `GFp_nistz384_point_add_affine()`.
 
-      #[cfg(any(
+    #[cfg(any(
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
@@ -1055,7 +1055,7 @@ mod tests {
         p
     }
 
-      #[cfg(any(
+    #[cfg(any(
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
@@ -1065,7 +1065,7 @@ mod tests {
         xy: [Limb; 2 * MAX_LIMBS],
     }
 
-      #[cfg(any(
+    #[cfg(any(
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
