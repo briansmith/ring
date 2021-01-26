@@ -380,15 +380,16 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
 
 #[cfg(feature = "alloc")]
 fn from_hex_digit(d: u8) -> Result<u8, String> {
-    if d >= b'0' && d <= b'9' {
-        Ok(d - b'0')
-    } else if d >= b'a' && d <= b'f' {
-        Ok(d - b'a' + 10u8)
-    } else if d >= b'A' && d <= b'F' {
-        Ok(d - b'A' + 10u8)
-    } else {
-        Err(format!("Invalid hex digit '{}'", d as char))
+    use core::ops::RangeInclusive;
+    const DECIMAL: (u8, RangeInclusive<u8>) = (0, b'0'..=b'9');
+    const HEX_LOWER: (u8, RangeInclusive<u8>) = (10, b'a'..=b'f');
+    const HEX_UPPER: (u8, RangeInclusive<u8>) = (10, b'A'..=b'F');
+    for (offset, range) in &[DECIMAL, HEX_LOWER, HEX_UPPER] {
+        if range.contains(&d) {
+            return Ok(d - range.start() + offset);
+        }
     }
+    Err(format!("Invalid hex digit '{}'", d as char))
 }
 
 #[cfg(feature = "alloc")]

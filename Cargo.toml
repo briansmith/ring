@@ -294,6 +294,9 @@ include = [
     "third_party/NIST/SHAVS/SHA512ShortMsg.rsp",
 ]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [lib]
 name = "ring"
 
