@@ -336,6 +336,7 @@ fn ring_build_rs_main() {
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+    let endian = env::var("CARGO_CFG_TARGET_ENDIAN").unwrap();
     let (obj_ext, obj_opt) = if env == MSVC {
         (MSVC_OBJ_EXT, MSVC_OBJ_OPT)
     } else {
@@ -349,6 +350,7 @@ fn ring_build_rs_main() {
 
     let target = Target {
         arch,
+        endian,
         os,
         env,
         obj_ext,
@@ -393,6 +395,7 @@ fn pregenerate_asm_main() {
 
 struct Target {
     arch: String,
+    endian: String,
     os: String,
     env: String,
     obj_ext: &'static str,
@@ -407,6 +410,11 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         if &target.arch == "wasm32" {
             return;
         }
+    }
+
+    if target.arch == "mips" && target.endian == "big" {
+        eprint!("MIPS Big-Endian detected. Skipping BoringSSL libs");
+        return;
     }
 
     let includes_modified = RING_INCLUDES
