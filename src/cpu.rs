@@ -343,6 +343,12 @@ pub(crate) mod intel {
     };
 
     #[cfg(target_arch = "x86_64")]
+    pub(crate) const SSE41: Feature = Feature {
+        word: 1,
+        mask: 1 << 19,
+    };
+
+    #[cfg(target_arch = "x86_64")]
     pub(crate) const MOVBE: Feature = Feature {
         word: 1,
         mask: 1 << 22,

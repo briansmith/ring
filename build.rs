@@ -69,6 +69,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"),
     (&[X86_64], "crypto/poly1305/poly1305_vec.c"),
     (&[X86_64], SHA512_X86_64),
+    (&[X86_64], "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"),
 
     (&[AARCH64, ARM], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
     (&[AARCH64, ARM], "crypto/fipsmodule/modes/asm/ghashv8-armx.pl"),
