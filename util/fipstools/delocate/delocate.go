@@ -1083,6 +1083,10 @@ const (
 	// instrCombine merges the source and destination in some fashion, for example
 	// a 2-operand bitwise operation.
 	instrCombine
+	// instrMemoryVectorCombine is similer to instrCombine, but the source
+	// register must be a memory reference and the destination register
+	// must be a vector register.
+	instrMemoryVectorCombine
 	// instrThreeArg merges two sources into a destination in some fashion.
 	instrThreeArg
 	// instrCompare takes two arguments and writes outputs to the flags register.
@@ -1130,6 +1134,11 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 	case "vpbroadcastq":
 		if len(args) == 2 {
 			return instrTransformingMove
+		}
+
+	case "movlps", "movhps":
+		if len(args) == 2 {
+			return instrMemoryVectorCombine
 		}
 	}
 
@@ -1239,6 +1248,18 @@ func threeArgCombineOp(w stringWriter, instructionName, source1, source2, dest s
 	return func(k func()) {
 		k()
 		w.WriteString("\t" + instructionName + " " + source1 + ", " + source2 + ", " + dest + "\n")
+	}
+}
+
+func memoryVectorCombineOp(w stringWriter, instructionName, source, dest string) wrapperFunc {
+	return func(k func()) {
+		k()
+		// These instructions can only read from memory, so push
+		// tempReg and read from the stack. Note we assume the red zone
+		// was previously cleared by saveRegister().
+		w.WriteString("\tpushq " + source + "\n")
+		w.WriteString("\t" + instructionName + " (%rsp), " + dest + "\n")
+		w.WriteString("\tleaq 8(%rsp), %rsp\n")
 	}
 }
 
@@ -1415,6 +1436,17 @@ Args:
 					wrappers = append(wrappers, saveRegWrapper)
 
 					wrappers = append(wrappers, combineOp(d.output, instructionName, tempReg, targetReg))
+					targetReg = tempReg
+				case instrMemoryVectorCombine:
+					assertNodeType(argNodes[1], ruleRegisterOrConstant)
+					targetReg = d.contents(argNodes[1])
+					if isValidLEATarget(targetReg) {
+						return nil, errors.New("target register must be an XMM register")
+					}
+					saveRegWrapper, tempReg := saveRegister(d.output, nil)
+					wrappers = append(wrappers, saveRegWrapper)
+					redzoneCleared = true
+					wrappers = append(wrappers, memoryVectorCombineOp(d.output, instructionName, tempReg, targetReg))
 					targetReg = tempReg
 				case instrThreeArg:
 					if n := len(argNodes); n != 3 {
