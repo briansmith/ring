@@ -28,6 +28,7 @@
 #include <openssl/aes.h>
 #include <openssl/bn.h>
 #include <openssl/curve25519.h>
+#include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/ec.h>
@@ -1221,6 +1222,24 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   return true;
 }
 
+#if defined(BORINGSSL_FIPS)
+static bool SpeedSelfTest(const std::string &selected) {
+  if (!selected.empty() && selected.find("self-test") == std::string::npos) {
+    return true;
+  }
+
+  TimeResults results;
+  if (!TimeFunction(&results, []() -> bool { return BORINGSSL_self_test(); })) {
+    fprintf(stderr, "BORINGSSL_self_test faileid.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.Print("self-test");
+  return true;
+}
+#endif
+
 static const struct argument kArguments[] = {
     {
         "-filter",
@@ -1367,6 +1386,11 @@ bool Speed(const std::vector<std::string> &args) {
                        TRUST_TOKEN_experiment_v2_pmb(), 10, selected)) {
     return false;
   }
+#if defined(BORINGSSL_FIPS)
+  if (!SpeedSelfTest(selected)) {
+    return false;
+  }
+#endif
   if (g_print_json) {
     puts("\n]");
   }
