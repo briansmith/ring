@@ -64,6 +64,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | AES/decrypt          | Key, input block, num iterations¹ | Result, Previous result |
 | AES/encrypt          | Key, input block, num iterations¹ | Result, Previous result |
 | CMAC-AES             | Number output bytes, key, message | MAC |
+| CMAC-AES/verify      | Key, message, claimed MAC | One-byte success flag |
 | ctrDRBG/AES-256      | Output length, entropy, personalisation, ad1, ad2, nonce | Output |
 | ECDH/&lt;CURVE&gt;   | X, Y, private key | X, Y, shared key |
 | ECDSA/keyGen         | Curve name | Private key, X, Y |

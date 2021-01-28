@@ -678,7 +678,7 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "algorithm": "CMAC-AES",
         "revision": "1.0",
         "capabilities": [{
-          "direction": ["gen", "ver"],
+          "direction": ["gen"],
           "msgLen": [{
             "min": 0,
             "max": 65536,
@@ -1472,6 +1472,20 @@ static bool CMAC_AES(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(mac, mac_len));
 }
 
+static bool CMAC_AESVerify(const Span<const uint8_t> args[]) {
+  // This function is just for testing since libcrypto doesn't do the
+  // verification itself. The regcap doesn't advertise "ver" support.
+  uint8_t mac[16];
+  if (!AES_CMAC(mac, args[0].data(), args[0].size(), args[1].data(),
+                args[1].size()) ||
+      args[2].size() > sizeof(mac)) {
+    return false;
+  }
+
+  const uint8_t ok = OPENSSL_memcmp(mac, args[2].data(), args[2].size());
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(&ok, sizeof(ok)));
+}
+
 static std::map<unsigned, bssl::UniquePtr<RSA>>& CachedRSAKeys() {
   static std::map<unsigned, bssl::UniquePtr<RSA>> keys;
   return keys;
@@ -1773,6 +1787,7 @@ static constexpr struct {
     {"ECDSA/sigGen", 4, ECDSASigGen},
     {"ECDSA/sigVer", 7, ECDSASigVer},
     {"CMAC-AES", 3, CMAC_AES},
+    {"CMAC-AES/verify", 3, CMAC_AESVerify},
     {"RSA/keyGen", 1, RSAKeyGen},
     {"RSA/sigGen/SHA2-224/pkcs1v1.5", 2, RSASigGen<EVP_sha224, false>},
     {"RSA/sigGen/SHA2-256/pkcs1v1.5", 2, RSASigGen<EVP_sha256, false>},
