@@ -296,7 +296,7 @@ type clientHelloMsg struct {
 	isDTLS                    bool
 	vers                      uint16
 	random                    []byte
-	sessionId                 []byte
+	sessionID                 []byte
 	cookie                    []byte
 	cipherSuites              []uint16
 	compressionMethods        []uint8
@@ -366,8 +366,8 @@ func (m *clientHelloMsg) marshal() []byte {
 	hello := handshakeMsg.addU24LengthPrefixed()
 	hello.addU16(m.vers)
 	hello.addBytes(m.random)
-	sessionId := hello.addU8LengthPrefixed()
-	sessionId.addBytes(m.sessionId)
+	sessionID := hello.addU8LengthPrefixed()
+	sessionID.addBytes(m.sessionID)
 	if m.isDTLS {
 		cookie := hello.addU8LengthPrefixed()
 		cookie.addBytes(m.cookie)
@@ -770,8 +770,8 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	reader := byteReader(data[4:])
 	if !reader.readU16(&m.vers) ||
 		!reader.readBytes(&m.random, 32) ||
-		!reader.readU8LengthPrefixedBytes(&m.sessionId) ||
-		len(m.sessionId) > 32 {
+		!reader.readU8LengthPrefixedBytes(&m.sessionID) ||
+		len(m.sessionID) > 32 {
 		return false
 	}
 	if m.isDTLS {
@@ -1094,7 +1094,7 @@ type serverHelloMsg struct {
 	supportedVersOverride uint16
 	omitSupportedVers     bool
 	random                []byte
-	sessionId             []byte
+	sessionID             []byte
 	cipherSuite           uint16
 	hasKeyShare           bool
 	keyShare              keyShareEntry
@@ -1133,8 +1133,8 @@ func (m *serverHelloMsg) marshal() []byte {
 	}
 
 	hello.addBytes(m.random)
-	sessionId := hello.addU8LengthPrefixed()
-	sessionId.addBytes(m.sessionId)
+	sessionID := hello.addU8LengthPrefixed()
+	sessionID.addBytes(m.sessionID)
 	hello.addU16(m.cipherSuite)
 	hello.addU8(m.compressionMethod)
 
@@ -1206,7 +1206,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	if !ok {
 		return false
 	}
-	if !reader.readU8LengthPrefixedBytes(&m.sessionId) ||
+	if !reader.readU8LengthPrefixedBytes(&m.sessionID) ||
 		!reader.readU16(&m.cipherSuite) ||
 		!reader.readU8(&m.compressionMethod) {
 		return false
@@ -1714,7 +1714,7 @@ type helloRetryRequestMsg struct {
 	raw                 []byte
 	vers                uint16
 	isServerHello       bool
-	sessionId           []byte
+	sessionID           []byte
 	cipherSuite         uint16
 	compressionMethod   uint8
 	hasSelectedGroup    bool
@@ -1734,8 +1734,8 @@ func (m *helloRetryRequestMsg) marshal() []byte {
 	retryRequest := retryRequestMsg.addU24LengthPrefixed()
 	retryRequest.addU16(VersionTLS12)
 	retryRequest.addBytes(tls13HelloRetryRequest)
-	sessionId := retryRequest.addU8LengthPrefixed()
-	sessionId.addBytes(m.sessionId)
+	sessionID := retryRequest.addU8LengthPrefixed()
+	sessionID.addBytes(m.sessionID)
 	retryRequest.addU16(m.cipherSuite)
 	retryRequest.addU8(m.compressionMethod)
 
@@ -1781,7 +1781,7 @@ func (m *helloRetryRequestMsg) unmarshal(data []byte) bool {
 		var random []byte
 		var compressionMethod byte
 		if !reader.readBytes(&random, 32) ||
-			!reader.readU8LengthPrefixedBytes(&m.sessionId) ||
+			!reader.readU8LengthPrefixedBytes(&m.sessionID) ||
 			!reader.readU16(&m.cipherSuite) ||
 			!reader.readU8(&compressionMethod) ||
 			compressionMethod != 0 {
@@ -2583,7 +2583,7 @@ type v2ClientHelloMsg struct {
 	raw          []byte
 	vers         uint16
 	cipherSuites []uint16
-	sessionId    []byte
+	sessionID    []byte
 	challenge    []byte
 }
 
@@ -2592,7 +2592,7 @@ func (m *v2ClientHelloMsg) marshal() []byte {
 		return m.raw
 	}
 
-	length := 1 + 2 + 2 + 2 + 2 + len(m.cipherSuites)*3 + len(m.sessionId) + len(m.challenge)
+	length := 1 + 2 + 2 + 2 + 2 + len(m.cipherSuites)*3 + len(m.sessionID) + len(m.challenge)
 
 	x := make([]byte, length)
 	x[0] = 1
@@ -2600,8 +2600,8 @@ func (m *v2ClientHelloMsg) marshal() []byte {
 	x[2] = uint8(m.vers)
 	x[3] = uint8((len(m.cipherSuites) * 3) >> 8)
 	x[4] = uint8(len(m.cipherSuites) * 3)
-	x[5] = uint8(len(m.sessionId) >> 8)
-	x[6] = uint8(len(m.sessionId))
+	x[5] = uint8(len(m.sessionID) >> 8)
+	x[6] = uint8(len(m.sessionID))
 	x[7] = uint8(len(m.challenge) >> 8)
 	x[8] = uint8(len(m.challenge))
 	y := x[9:]
@@ -2611,8 +2611,8 @@ func (m *v2ClientHelloMsg) marshal() []byte {
 		y[i*3+2] = uint8(spec)
 	}
 	y = y[len(m.cipherSuites)*3:]
-	copy(y, m.sessionId)
-	y = y[len(m.sessionId):]
+	copy(y, m.sessionID)
+	y = y[len(m.sessionID):]
 	copy(y, m.challenge)
 
 	m.raw = x

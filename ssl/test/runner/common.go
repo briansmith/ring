@@ -284,7 +284,7 @@ const (
 // ClientSessionState contains the state needed by clients to resume TLS
 // sessions.
 type ClientSessionState struct {
-	sessionId                []uint8             // Session ID supplied by the server. nil if the session has a ticket.
+	sessionID                []uint8             // Session ID supplied by the server. nil if the session has a ticket.
 	sessionTicket            []uint8             // Encrypted ticket used for session resumption with server
 	vers                     uint16              // SSL/TLS version negotiated for the session
 	wireVersion              uint16              // Wire SSL/TLS version negotiated for the session
@@ -325,10 +325,10 @@ type ClientSessionCache interface {
 type ServerSessionCache interface {
 	// Get searches for a sessionState associated with the given session
 	// ID. On return, ok is true if one was found.
-	Get(sessionId string) (session *sessionState, ok bool)
+	Get(sessionID string) (session *sessionState, ok bool)
 
 	// Put adds the sessionState to the cache with the given session ID.
-	Put(sessionId string, session *sessionState)
+	Put(sessionID string, session *sessionState)
 }
 
 // CertCompressionAlg is a certificate compression algorithm, specified as a
@@ -1726,9 +1726,9 @@ type ProtocolBugs struct {
 	// used on this connection, or zero if there are no special requirements.
 	ExpectedCompressedCert uint16
 
-	// SendCertCompressionAlgId, if not zero, sets the algorithm ID that will be
+	// SendCertCompressionAlgID, if not zero, sets the algorithm ID that will be
 	// sent in the compressed certificate message.
-	SendCertCompressionAlgId uint16
+	SendCertCompressionAlgID uint16
 
 	// SendCertUncompressedLength, if not zero, sets the uncompressed length that
 	// will be sent in the compressed certificate message.
@@ -2099,12 +2099,12 @@ type lruServerSessionCache struct {
 	lruSessionCache
 }
 
-func (c *lruServerSessionCache) Put(sessionId string, session *sessionState) {
-	c.lruSessionCache.Put(sessionId, session)
+func (c *lruServerSessionCache) Put(sessionID string, session *sessionState) {
+	c.lruSessionCache.Put(sessionID, session)
 }
 
-func (c *lruServerSessionCache) Get(sessionId string) (*sessionState, bool) {
-	cs, ok := c.lruSessionCache.Get(sessionId)
+func (c *lruServerSessionCache) Get(sessionID string) (*sessionState, bool) {
+	cs, ok := c.lruSessionCache.Get(sessionID)
 	if !ok {
 		return nil, false
 	}

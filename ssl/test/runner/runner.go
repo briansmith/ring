@@ -15940,8 +15940,8 @@ func addCertCompressionTests() {
 	}
 
 	const (
-		shrinkingAlgId = 0xff01
-		expandingAlgId = 0xff02
+		shrinkingAlgID = 0xff01
+		expandingAlgID = 0xff02
 	)
 
 	for _, ver := range tlsVersions {
@@ -15990,7 +15990,7 @@ func addCertCompressionTests() {
 				config: Config{
 					MinVersion:          ver.version,
 					MaxVersion:          ver.version,
-					CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgId: expanding},
+					CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgID: expanding},
 				},
 			})
 
@@ -16004,9 +16004,9 @@ func addCertCompressionTests() {
 			config: Config{
 				MinVersion:          ver.version,
 				MaxVersion:          ver.version,
-				CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgId: expanding},
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgID: expanding},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgId,
+					ExpectedCompressedCert: expandingAlgID,
 				},
 			},
 		})
@@ -16018,15 +16018,15 @@ func addCertCompressionTests() {
 			config: Config{
 				MinVersion:          ver.version,
 				MaxVersion:          ver.version,
-				CertCompressionAlgs: map[uint16]CertCompressionAlg{shrinkingAlgId: shrinking},
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{shrinkingAlgID: shrinking},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: shrinkingAlgId,
+					ExpectedCompressedCert: shrinkingAlgID,
 				},
 			},
 		})
 
 		// With both algorithms configured, the server should pick its most
-		// preferable. (Which is expandingAlgId.)
+		// preferable. (Which is expandingAlgID.)
 		testCases = append(testCases, testCase{
 			testType: serverTest,
 			name:     "CertCompressionPriority-" + ver.name,
@@ -16035,11 +16035,11 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
-					expandingAlgId: expanding,
+					shrinkingAlgID: shrinking,
+					expandingAlgID: expanding,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgId,
+					ExpectedCompressedCert: expandingAlgID,
 				},
 			},
 		})
@@ -16052,10 +16052,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					expandingAlgId: expanding,
+					expandingAlgID: expanding,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgId,
+					ExpectedCompressedCert: expandingAlgID,
 				},
 			},
 		})
@@ -16068,27 +16068,27 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
+					shrinkingAlgID: shrinking,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: shrinkingAlgId,
+					ExpectedCompressedCert: shrinkingAlgID,
 				},
 			},
 		})
 
 		testCases = append(testCases, testCase{
 			testType: clientTest,
-			name:     "CertCompressionBadAlgIdClient-" + ver.name,
+			name:     "CertCompressionBadAlgIDClient-" + ver.name,
 			flags:    []string{"-install-cert-compression-algs"},
 			config: Config{
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
+					shrinkingAlgID: shrinking,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:   shrinkingAlgId,
-					SendCertCompressionAlgId: 1234,
+					ExpectedCompressedCert:   shrinkingAlgID,
+					SendCertCompressionAlgID: 1234,
 				},
 			},
 			shouldFail:    true,
@@ -16103,10 +16103,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
+					shrinkingAlgID: shrinking,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:     shrinkingAlgId,
+					ExpectedCompressedCert:     shrinkingAlgID,
 					SendCertUncompressedLength: 12,
 				},
 			},
@@ -16122,10 +16122,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shrinking,
+					shrinkingAlgID: shrinking,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:     shrinkingAlgId,
+					ExpectedCompressedCert:     shrinkingAlgID,
 					SendCertUncompressedLength: 1 << 20,
 				},
 			},
