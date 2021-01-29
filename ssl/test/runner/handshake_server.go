@@ -349,6 +349,10 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
+	if len(hs.clientHello.sessionID) == 0 && c.config.Bugs.ExpectClientHelloSessionID {
+		return errors.New("tls: expected non-empty session ID from client")
+	}
+
 	applyBugsToClientHello(hs.clientHello, config)
 
 	return nil
@@ -1248,10 +1252,6 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 	}
 	if config.Bugs.SendJDK11DowngradeRandom {
 		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeJDK11)
-	}
-
-	if len(hs.clientHello.sessionID) == 0 && c.config.Bugs.ExpectClientHelloSessionID {
-		return false, errors.New("tls: expected non-empty session ID from client")
 	}
 
 	foundCompression := false

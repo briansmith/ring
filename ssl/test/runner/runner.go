@@ -13419,7 +13419,9 @@ func addTLS13HandshakeTests() {
 		},
 	})
 
-	// Test that the client sends a fake session ID in TLS 1.3.
+	// Test that the client sends a fake session ID in TLS 1.3. We cover both
+	// normal and resumption handshakes to capture interactions with the
+	// session resumption path.
 	testCases = append(testCases, testCase{
 		testType: clientTest,
 		name:     "TLS13SessionID-TLS13",
@@ -13429,6 +13431,7 @@ func addTLS13HandshakeTests() {
 				ExpectClientHelloSessionID: true,
 			},
 		},
+		resumeSession: true,
 	})
 
 	// Test that the client omits the fake session ID when the max version is TLS 1.2 and below.
