@@ -66,6 +66,7 @@
 
 #include "../ec/internal.h"
 #include "../../test/file_test.h"
+#include "../../test/test_util.h"
 
 
 static bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
@@ -227,6 +228,15 @@ TEST(ECDSATest, BuiltinCurves) {
     ASSERT_TRUE(
         ECDSA_sign(0, digest, 20, signature.data(), &sig_len, eckey.get()));
     signature.resize(sig_len);
+
+    // ECDSA signing should be non-deterministic. This does not verify k is
+    // generated securely but at least checks it was randomized at all.
+    sig_len = ECDSA_size(eckey.get());
+    std::vector<uint8_t> signature2(sig_len);
+    ASSERT_TRUE(
+        ECDSA_sign(0, digest, 20, signature2.data(), &sig_len, eckey.get()));
+    signature2.resize(sig_len);
+    EXPECT_NE(Bytes(signature), Bytes(signature2));
 
     // Verify the signature.
     EXPECT_TRUE(ECDSA_verify(0, digest, 20, signature.data(), signature.size(),
