@@ -434,8 +434,8 @@ TEST(ECDSATest, SignTestVectors) {
       ASSERT_TRUE(x);
       bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
       ASSERT_TRUE(y);
-      bssl::UniquePtr<BIGNUM> k = GetBIGNUM(t, "K");
-      ASSERT_TRUE(k);
+      std::vector<uint8_t> k;
+      ASSERT_TRUE(t->GetBytes(&k, "K"));
       bssl::UniquePtr<BIGNUM> r = GetBIGNUM(t, "R");
       ASSERT_TRUE(r);
       bssl::UniquePtr<BIGNUM> s = GetBIGNUM(t, "S");
@@ -454,10 +454,9 @@ TEST(ECDSATest, SignTestVectors) {
       ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
       ASSERT_TRUE(EC_KEY_check_key(key.get()));
 
-      // Set the fixed k for testing purposes.
-      key->fixed_k = k.release();
       bssl::UniquePtr<ECDSA_SIG> sig(
-          ECDSA_do_sign(digest.data(), digest.size(), key.get()));
+          ECDSA_sign_with_nonce_and_leak_private_key_for_testing(
+              digest.data(), digest.size(), key.get(), k.data(), k.size()));
       ASSERT_TRUE(sig);
 
       EXPECT_EQ(0, BN_cmp(r.get(), sig->r));

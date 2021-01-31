@@ -32,6 +32,7 @@
 
 #include "../../internal.h"
 #include "../ec/internal.h"
+#include "../ecdsa/internal.h"
 #include "../rand/internal.h"
 #include "../tls/internal.h"
 
@@ -727,14 +728,12 @@ int boringssl_fips_self_test(
   // ECDSA Sign/Verify KAT
 
   // The 'k' value for ECDSA is fixed to avoid an entropy draw.
-  ec_key->fixed_k = BN_new();
-  if (ec_key->fixed_k == NULL ||
-      !BN_set_word(ec_key->fixed_k, 42)) {
-    fprintf(stderr, "Out of memory\n");
-    goto err;
-  }
+  uint8_t ecdsa_k[32] = {0};
+  ecdsa_k[31] = 42;
 
-  sig = ECDSA_do_sign(kPlaintextSHA256, sizeof(kPlaintextSHA256), ec_key);
+  sig = ecdsa_sign_with_nonce_for_known_answer_test(
+      kPlaintextSHA256, sizeof(kPlaintextSHA256), ec_key, ecdsa_k,
+      sizeof(ecdsa_k));
 
   uint8_t ecdsa_r_bytes[sizeof(kECDSASigR)];
   uint8_t ecdsa_s_bytes[sizeof(kECDSASigS)];

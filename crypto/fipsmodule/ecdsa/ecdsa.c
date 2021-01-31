@@ -61,9 +61,10 @@
 #include <openssl/sha.h>
 #include <openssl/type_check.h>
 
+#include "../../internal.h"
 #include "../bn/internal.h"
 #include "../ec/internal.h"
-#include "../../internal.h"
+#include "internal.h"
 
 
 // digest_to_scalar interprets |digest_len| bytes from |digest| as a scalar for
@@ -261,6 +262,41 @@ static ECDSA_SIG *ecdsa_sign_impl(const EC_GROUP *group, int *out_retry,
   return ret;
 }
 
+ECDSA_SIG *ecdsa_sign_with_nonce_for_known_answer_test(const uint8_t *digest,
+                                                       size_t digest_len,
+                                                       const EC_KEY *eckey,
+                                                       const uint8_t *nonce,
+                                                       size_t nonce_len) {
+  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
+    return NULL;
+  }
+
+  const EC_GROUP *group = EC_KEY_get0_group(eckey);
+  if (group == NULL || eckey->priv_key == NULL) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+  const EC_SCALAR *priv_key = &eckey->priv_key->scalar;
+
+  EC_SCALAR k;
+  if (!ec_scalar_from_bytes(group, &k, nonce, nonce_len)) {
+    return NULL;
+  }
+  int retry_ignored;
+  return ecdsa_sign_impl(group, &retry_ignored, priv_key, &k, digest,
+                         digest_len);
+}
+
+// This function is only exported for testing and is not called in production
+// code.
+ECDSA_SIG *ECDSA_sign_with_nonce_and_leak_private_key_for_testing(
+    const uint8_t *digest, size_t digest_len, const EC_KEY *eckey,
+    const uint8_t *nonce, size_t nonce_len) {
+  return ecdsa_sign_with_nonce_for_known_answer_test(digest, digest_len, eckey,
+                                                     nonce, nonce_len);
+}
+
 ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
                          const EC_KEY *eckey) {
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
@@ -276,30 +312,21 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   const BIGNUM *order = EC_GROUP_get0_order(group);
   const EC_SCALAR *priv_key = &eckey->priv_key->scalar;
 
+  // Pass a SHA512 hash of the private key and digest as additional data
+  // into the RBG. This is a hardening measure against entropy failure.
+  OPENSSL_STATIC_ASSERT(SHA512_DIGEST_LENGTH >= 32,
+                        "additional_data is too large for SHA-512");
+  SHA512_CTX sha;
+  uint8_t additional_data[SHA512_DIGEST_LENGTH];
+  SHA512_Init(&sha);
+  SHA512_Update(&sha, priv_key->words, order->width * sizeof(BN_ULONG));
+  SHA512_Update(&sha, digest, digest_len);
+  SHA512_Final(additional_data, &sha);
+
   for (;;) {
     EC_SCALAR k;
-    if (eckey->fixed_k != NULL) {
-      if (!ec_bignum_to_scalar(group, &k, eckey->fixed_k)) {
-        return NULL;
-      }
-      if (ec_scalar_is_zero(group, &k)) {
-        OPENSSL_PUT_ERROR(ECDSA, ERR_R_INTERNAL_ERROR);
-        return NULL;
-      }
-    } else {
-      // Pass a SHA512 hash of the private key and digest as additional data
-      // into the RBG. This is a hardening measure against entropy failure.
-      OPENSSL_STATIC_ASSERT(SHA512_DIGEST_LENGTH >= 32,
-                            "additional_data is too large for SHA-512");
-      SHA512_CTX sha;
-      uint8_t additional_data[SHA512_DIGEST_LENGTH];
-      SHA512_Init(&sha);
-      SHA512_Update(&sha, priv_key->words, order->width * sizeof(BN_ULONG));
-      SHA512_Update(&sha, digest, digest_len);
-      SHA512_Final(additional_data, &sha);
-      if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
-        return NULL;
-      }
+    if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
+      return NULL;
     }
 
     int retry;

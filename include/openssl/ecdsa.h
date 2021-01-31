@@ -162,6 +162,25 @@ OPENSSL_EXPORT int ECDSA_SIG_to_bytes(uint8_t **out_bytes, size_t *out_len,
 OPENSSL_EXPORT size_t ECDSA_SIG_max_len(size_t order_len);
 
 
+// Testing-only functions.
+
+// ECDSA_sign_with_nonce_and_leak_private_key_for_testing behaves like
+// |ECDSA_do_sign| but uses |nonce| for the ECDSA nonce 'k', instead of a random
+// value. |nonce| is interpreted as a big-endian integer. It must be reduced
+// modulo the group order and padded with zeros up to |BN_num_bytes(order)|
+// bytes.
+//
+// WARNING: This function is only exported for testing purposes, when using test
+// vectors or fuzzing strategies. It must not be used outside tests and may leak
+// any private keys it is used with.
+OPENSSL_EXPORT ECDSA_SIG *
+ECDSA_sign_with_nonce_and_leak_private_key_for_testing(const uint8_t *digest,
+                                                       size_t digest_len,
+                                                       const EC_KEY *eckey,
+                                                       const uint8_t *nonce,
+                                                       size_t nonce_len);
+
+
 // Deprecated functions.
 
 // d2i_ECDSA_SIG parses an ASN.1, DER-encoded, signature from |len| bytes at
