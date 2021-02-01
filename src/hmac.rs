@@ -135,10 +135,6 @@ pub static HMAC_SHA384: Algorithm = Algorithm(&digest::SHA384);
 /// HMAC using SHA-512.
 pub static HMAC_SHA512: Algorithm = Algorithm(&digest::SHA512);
 
-/// A deprecated alias for `Tag`.
-#[deprecated(note = "`Signature` was renamed to `Tag`. This alias will be removed soon.")]
-pub type Signature = Tag;
-
 /// An HMAC tag.
 ///
 /// For a given tag `t`, use `t.as_ref()` to get the tag value as a byte slice.
@@ -158,16 +154,6 @@ pub struct Key {
     inner: digest::BlockContext,
     outer: digest::BlockContext,
 }
-
-/// `hmac::SigningKey` was renamed to `hmac::Key`.
-#[deprecated(note = "Renamed to `hmac::Key`.")]
-pub type SigningKey = Key;
-
-/// `hmac::VerificationKey` was merged into `hmac::Key`.
-#[deprecated(
-    note = "The distinction between verification & signing keys was removed. Use `hmac::Key`."
-)]
-pub type VerificationKey = Key;
 
 impl core::fmt::Debug for Key {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
@@ -288,10 +274,6 @@ pub struct Context {
     inner: digest::Context,
     outer: digest::BlockContext,
 }
-
-/// `hmac::SigningContext` was renamed to `hmac::Context`.
-#[deprecated(note = "Renamed to `hmac::Context`.")]
-pub type SigningContext = Context;
 
 impl core::fmt::Debug for Context {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
