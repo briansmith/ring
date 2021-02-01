@@ -125,6 +125,16 @@ impl LessSafeKey {
     pub fn algorithm(&self) -> &'static Algorithm {
         &self.algorithm
     }
+
+    pub(super) fn fmt_debug(
+        &self,
+        type_name: &'static str,
+        f: &mut core::fmt::Formatter,
+    ) -> Result<(), core::fmt::Error> {
+        f.debug_struct(type_name)
+            .field("algorithm", &self.algorithm())
+            .finish()
+    }
 }
 
 fn open_within_<'in_out>(
@@ -192,8 +202,6 @@ fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), e
 
 impl core::fmt::Debug for LessSafeKey {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("LessSafeKey")
-            .field("algorithm", self.algorithm())
-            .finish()
+        self.fmt_debug("LessSafeKey", f)
     }
 }

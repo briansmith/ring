@@ -86,9 +86,7 @@ impl<N: NonceSequence> BoundKey<N> for OpeningKey<N> {
 
 impl<N: NonceSequence> core::fmt::Debug for OpeningKey<N> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("OpeningKey")
-            .field("algorithm", &self.algorithm())
-            .finish()
+        self.key.fmt_debug("OpeningKey", f)
     }
 }
 
@@ -205,9 +203,7 @@ impl<N: NonceSequence> BoundKey<N> for SealingKey<N> {
 
 impl<N: NonceSequence> core::fmt::Debug for SealingKey<N> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("SealingKey")
-            .field("algorithm", &self.algorithm())
-            .finish()
+        self.key.fmt_debug("SealingKey", f)
     }
 }
 
@@ -331,9 +327,7 @@ pub struct UnboundKey {
 
 impl core::fmt::Debug for UnboundKey {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("UnboundKey")
-            .field("algorithm", &self.algorithm())
-            .finish()
+        self.inner.fmt_debug("UnboundKey", f)
     }
 }
 
