@@ -307,7 +307,7 @@ untrusted = { version = "0.7.1" }
 spin = { version = "0.5.2", default-features = false }
 
 [target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
-libc = { version = "0.2.69", default-features = false }
+libc = { version = "0.2.84", default-features = false }
 once_cell = { version = "1.5.2", default-features = false, features=["std"], optional = true }
 
 [target.'cfg(any(target_os = "dragonfly", target_os = "freebsd", target_os = "illumos", target_os = "netbsd", target_os = "openbsd", target_os = "solaris"))'.dependencies]
@@ -323,7 +323,7 @@ winapi = { version = "0.3.8", default-features = false, features = ["ntsecapi", 
 wasm-bindgen-test = { version = "0.3.18", default-features = false }
 
 [target.'cfg(any(unix, windows))'.dev-dependencies]
-libc = { version = "0.2.80", default-features = false }
+libc = { version = "0.2.84", default-features = false }
 
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
