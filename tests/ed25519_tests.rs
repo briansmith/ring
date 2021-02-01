@@ -126,7 +126,7 @@ fn test_ed25519_from_pkcs8_unchecked() {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(actual.description_(), expected),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
             };
 
             Ok(())
@@ -148,7 +148,7 @@ fn test_ed25519_from_pkcs8() {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(actual.description_(), expected),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
             };
 
             Ok(())
