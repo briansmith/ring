@@ -327,7 +327,7 @@ libc = { version = "0.2.80", default-features = false }
 
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
-cc = { version = "1.0.62", default-features = false }
+cc = { version = "1.0.66", default-features = false }
 
 [features]
 # These features are documented in the top-level module's documentation.
