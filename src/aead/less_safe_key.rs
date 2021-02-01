@@ -75,7 +75,13 @@ impl LessSafeKey {
     where
         A: AsRef<[u8]>,
     {
-        open_within_(&self, nonce, aad, in_out, ciphertext_and_tag)
+        open_within_(
+            self,
+            nonce,
+            Aad::from(aad.as_ref()),
+            in_out,
+            ciphertext_and_tag,
+        )
     }
 
     /// Like [`SealingKey::seal_in_place_append_tag()`], except it accepts an
@@ -121,60 +127,43 @@ impl LessSafeKey {
     }
 }
 
-#[inline]
-pub(super) fn open_within_<'in_out, A: AsRef<[u8]>>(
+fn open_within_<'in_out>(
     key: &LessSafeKey,
     nonce: Nonce,
-    Aad(aad): Aad<A>,
+    aad: Aad<&[u8]>,
     in_out: &'in_out mut [u8],
     ciphertext_and_tag: RangeFrom<usize>,
 ) -> Result<&'in_out mut [u8], error::Unspecified> {
-    fn open_within<'in_out>(
-        key: &LessSafeKey,
-        nonce: Nonce,
-        aad: Aad<&[u8]>,
-        in_out: &'in_out mut [u8],
-        ciphertext_and_tag: RangeFrom<usize>,
-    ) -> Result<&'in_out mut [u8], error::Unspecified> {
-        let in_prefix_len = ciphertext_and_tag.start;
-        let ciphertext_and_tag_len = in_out
-            .len()
-            .checked_sub(in_prefix_len)
-            .ok_or(error::Unspecified)?;
-        let ciphertext_len = ciphertext_and_tag_len
-            .checked_sub(TAG_LEN)
-            .ok_or(error::Unspecified)?;
-        check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
-        let (in_out, received_tag) = in_out.split_at_mut(in_prefix_len + ciphertext_len);
-        let Tag(calculated_tag) = (key.algorithm.open)(
-            &key.inner,
-            nonce,
-            aad,
-            in_prefix_len,
-            in_out,
-            key.cpu_features,
-        );
-        if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
-            // Zero out the plaintext so that it isn't accidentally leaked or used
-            // after verification fails. It would be safest if we could check the
-            // tag before decrypting, but some `open` implementations interleave
-            // authentication with decryption for performance.
-            for b in &mut in_out[..ciphertext_len] {
-                *b = 0;
-            }
-            return Err(error::Unspecified);
-        }
-        // `ciphertext_len` is also the plaintext length.
-        Ok(&mut in_out[..ciphertext_len])
-    }
-
-    open_within(
-        key,
+    let in_prefix_len = ciphertext_and_tag.start;
+    let ciphertext_and_tag_len = in_out
+        .len()
+        .checked_sub(in_prefix_len)
+        .ok_or(error::Unspecified)?;
+    let ciphertext_len = ciphertext_and_tag_len
+        .checked_sub(TAG_LEN)
+        .ok_or(error::Unspecified)?;
+    check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
+    let (in_out, received_tag) = in_out.split_at_mut(in_prefix_len + ciphertext_len);
+    let Tag(calculated_tag) = (key.algorithm.open)(
+        &key.inner,
         nonce,
-        Aad::from(aad.as_ref()),
+        aad,
+        in_prefix_len,
         in_out,
-        ciphertext_and_tag,
-    )
+        key.cpu_features,
+    );
+    if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
+        // Zero out the plaintext so that it isn't accidentally leaked or used
+        // after verification fails. It would be safest if we could check the
+        // tag before decrypting, but some `open` implementations interleave
+        // authentication with decryption for performance.
+        for b in &mut in_out[..ciphertext_len] {
+            *b = 0;
+        }
+        return Err(error::Unspecified);
+    }
+    // `ciphertext_len` is also the plaintext length.
+    Ok(&mut in_out[..ciphertext_len])
 }
 
 #[inline]
