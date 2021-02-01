@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2015-2021 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -21,12 +21,13 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use crate::{constant_time, cpu, error, hkdf, polyfill};
+use crate::{cpu, error, hkdf, polyfill};
 use core::ops::RangeFrom;
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
     chacha20_poly1305::CHACHA20_POLY1305,
+    less_safe_key::LessSafeKey,
     nonce::{Nonce, NONCE_LEN},
 };
 
@@ -178,62 +179,6 @@ impl<N: NonceSequence> OpeningKey<N> {
     }
 }
 
-#[inline]
-fn open_within_<'in_out, A: AsRef<[u8]>>(
-    key: &LessSafeKey,
-    nonce: Nonce,
-    Aad(aad): Aad<A>,
-    in_out: &'in_out mut [u8],
-    ciphertext_and_tag: RangeFrom<usize>,
-) -> Result<&'in_out mut [u8], error::Unspecified> {
-    fn open_within<'in_out>(
-        key: &LessSafeKey,
-        nonce: Nonce,
-        aad: Aad<&[u8]>,
-        in_out: &'in_out mut [u8],
-        ciphertext_and_tag: RangeFrom<usize>,
-    ) -> Result<&'in_out mut [u8], error::Unspecified> {
-        let in_prefix_len = ciphertext_and_tag.start;
-        let ciphertext_and_tag_len = in_out
-            .len()
-            .checked_sub(in_prefix_len)
-            .ok_or(error::Unspecified)?;
-        let ciphertext_len = ciphertext_and_tag_len
-            .checked_sub(TAG_LEN)
-            .ok_or(error::Unspecified)?;
-        check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
-        let (in_out, received_tag) = in_out.split_at_mut(in_prefix_len + ciphertext_len);
-        let Tag(calculated_tag) = (key.algorithm.open)(
-            &key.inner,
-            nonce,
-            aad,
-            in_prefix_len,
-            in_out,
-            key.cpu_features,
-        );
-        if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
-            // Zero out the plaintext so that it isn't accidentally leaked or used
-            // after verification fails. It would be safest if we could check the
-            // tag before decrypting, but some `open` implementations interleave
-            // authentication with decryption for performance.
-            for b in &mut in_out[..ciphertext_len] {
-                *b = 0;
-            }
-            return Err(error::Unspecified);
-        }
-        // `ciphertext_len` is also the plaintext length.
-        Ok(&mut in_out[..ciphertext_len])
-    }
-
-    open_within(
-        key,
-        nonce,
-        Aad::from(aad.as_ref()),
-        in_out,
-        ciphertext_and_tag,
-    )
-}
-
 /// An AEAD key for encrypting and signing ("sealing"), bound to a nonce
 /// sequence.
 ///
@@ -313,23 +258,6 @@ impl<N: NonceSequence> SealingKey<N> {
         self.key
             .seal_in_place_separate_tag(self.nonce_sequence.advance()?, aad, in_out)
     }
-}
-
-#[inline]
-fn seal_in_place_separate_tag_(
-    key: &LessSafeKey,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
-    check_per_nonce_max_bytes(key.algorithm(), in_out.len())?;
-    Ok((key.algorithm.seal)(
-        &key.inner,
-        nonce,
-        aad,
-        in_out,
-        key.cpu_features,
-    ))
 }
 
 /// The additionally authenticated data (AAD) for an opening or sealing
@@ -455,119 +383,6 @@ impl hkdf::KeyType for &'static Algorithm {
     }
 }
 
-/// Immutable keys for use in situations where `OpeningKey`/`SealingKey` and
-/// `NonceSequence` cannot reasonably be used.
-///
-/// Prefer to use `OpeningKey`/`SealingKey` and `NonceSequence` when practical.
-pub struct LessSafeKey {
-    inner: KeyInner,
-    algorithm: &'static Algorithm,
-    cpu_features: cpu::Features,
-}
-
-impl LessSafeKey {
-    /// Constructs an `LessSafeKey`.
-    #[inline]
-    pub fn new(key: UnboundKey) -> Self {
-        key.inner
-    }
-
-    /// Constructs an `LessSafeKey`.
-    ///
-    /// Fails if `key_bytes.len() != algorithm.key_len()`.
-    fn new_(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
-        let cpu_features = cpu::features();
-        Ok(Self {
-            inner: (algorithm.init)(key_bytes, cpu_features)?,
-            algorithm,
-            cpu_features,
-        })
-    }
-
-    /// Like [`OpeningKey::open_in_place()`], except it accepts an arbitrary nonce.
-    ///
-    /// `nonce` must be unique for every use of the key to open data.
-    #[inline]
-    pub fn open_in_place<'in_out, A>(
-        &self,
-        nonce: Nonce,
-        aad: Aad<A>,
-        in_out: &'in_out mut [u8],
-    ) -> Result<&'in_out mut [u8], error::Unspecified>
-    where
-        A: AsRef<[u8]>,
-    {
-        self.open_within(nonce, aad, in_out, 0..)
-    }
-
-    /// Like [`OpeningKey::open_within()`], except it accepts an arbitrary nonce.
-    ///
-    /// `nonce` must be unique for every use of the key to open data.
-    #[inline]
-    pub fn open_within<'in_out, A>(
-        &self,
-        nonce: Nonce,
-        aad: Aad<A>,
-        in_out: &'in_out mut [u8],
-        ciphertext_and_tag: RangeFrom<usize>,
-    ) -> Result<&'in_out mut [u8], error::Unspecified>
-    where
-        A: AsRef<[u8]>,
-    {
-        open_within_(&self, nonce, aad, in_out, ciphertext_and_tag)
-    }
-
-    /// Like [`SealingKey::seal_in_place_append_tag()`], except it accepts an
-    /// arbitrary nonce.
-    ///
-    /// `nonce` must be unique for every use of the key to seal data.
-    #[inline]
-    pub fn seal_in_place_append_tag<A, InOut>(
-        &self,
-        nonce: Nonce,
-        aad: Aad<A>,
-        in_out: &mut InOut,
-    ) -> Result<(), error::Unspecified>
-    where
-        A: AsRef<[u8]>,
-        InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
-    {
-        self.seal_in_place_separate_tag(nonce, aad, in_out.as_mut())
-            .map(|tag| in_out.extend(tag.as_ref()))
-    }
-
-    /// Like `SealingKey::seal_in_place_separate_tag()`, except it accepts an
-    /// arbitrary nonce.
-    ///
-    /// `nonce` must be unique for every use of the key to seal data.
-    #[inline]
-    pub fn seal_in_place_separate_tag<A>(
-        &self,
-        nonce: Nonce,
-        aad: Aad<A>,
-        in_out: &mut [u8],
-    ) -> Result<Tag, error::Unspecified>
-    where
-        A: AsRef<[u8]>,
-    {
-        seal_in_place_separate_tag_(&self, nonce, Aad::from(aad.as_ref()), in_out)
-    }
-
-    /// The key's AEAD algorithm.
-    #[inline]
-    pub fn algorithm(&self) -> &'static Algorithm {
-        &self.algorithm
-    }
-}
-
-impl core::fmt::Debug for LessSafeKey {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("LessSafeKey")
-            .field("algorithm", self.algorithm())
-            .finish()
-    }
-}
-
 /// An AEAD Algorithm.
 pub struct Algorithm {
     init: fn(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified>,
@@ -661,13 +476,6 @@ const TAG_LEN: usize = 16;
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;
 
-fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), error::Unspecified> {
-    if polyfill::u64_from_usize(in_out_len) > alg.max_input_len {
-        return Err(error::Unspecified);
-    }
-    Ok(())
-}
-
 #[derive(Clone, Copy)]
 enum Direction {
     Opening { in_prefix_len: usize },
@@ -681,6 +489,7 @@ mod chacha;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
 mod gcm;
+mod less_safe_key;
 mod nonce;
 mod poly1305;
 pub mod quic;

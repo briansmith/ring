@@ -115,6 +115,7 @@ include = [
     "src/aead/chacha20_poly1305_openssh.rs",
     "src/aead/gcm.rs",
     "src/aead/gcm/gcm_nohw.rs",
+    "src/aead/less_safe_key.rs",
     "src/aead/nonce.rs",
     "src/aead/poly1305.rs",
     "src/aead/poly1305_test.txt",
