@@ -1,0 +1,65 @@
+# X25519 Private Key Test Vectors (derived from RFC 7748 test vectors)
+
+Curve = X25519
+D = ""
+Error = Private key is empty.
+
+Curve = X25519
+D = 00
+Error = Private key is too short.
+
+Curve = X25519
+D = a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449a
+Error = Private key is too short.
+
+Curve = X25519
+D = a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac400
+Error = Private key is too long (zero appendend).
+
+Curve = X25519
+D = 00a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4
+Error = Private key is too long (zero prepended).
+
+
+# Tweaks of the RFC 5903 vectors for testing malformed (syntactically) private
+# keys
+
+Curve = P-256
+D = ""
+Error = Private key is empty.
+
+Curve = P-256
+D = 00
+Error = Private key is too short.
+
+Curve = P-256
+D = C88F01F510D9AC3F70A292DAA2316DE544E9AAB8AFE84049C62A9C57862D14
+Error = Private key is too short.
+
+Curve = P-256
+D = C88F01F510D9AC3F70A292DAA2316DE544E9AAB8AFE84049C62A9C57862D143300
+Error = Private key is too long (zero appendend).
+
+Curve = P-256
+D = 00C88F01F510D9AC3F70A292DAA2316DE544E9AAB8AFE84049C62A9C57862D1433
+Error = Private key is too long (zero prepended).
+
+Curve = P-384
+D = ""
+Error = Private key is empty.
+
+Curve = P-384
+D = 00
+Error = Private key is too short.
+
+Curve = P-384
+D = 099F3C7034D4A2C699884D73A375A67F7624EF7C6B3C0F160647B67414DCE655E35B538041E649EE3FAEF896783AB1
+Error = Private key is too short.
+
+Curve = P-384
+D = 099F3C7034D4A2C699884D73A375A67F7624EF7C6B3C0F160647B67414DCE655E35B538041E649EE3FAEF896783AB19400
+Error = Private key is too long (zero appendend).
+
+Curve = P-384
+D = 00099F3C7034D4A2C699884D73A375A67F7624EF7C6B3C0F160647B67414DCE655E35B538041E649EE3FAEF896783AB194
+Error = Private key is too long (zero prepended).
