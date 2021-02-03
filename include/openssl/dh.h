@@ -139,6 +139,11 @@ OPENSSL_EXPORT int DH_set_length(DH *dh, unsigned priv_length);
 // and returned. It returns NULL on allocation failure.
 OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_1536(BIGNUM *ret);
 
+// DH_get_rfc7919_2048 returns the group `ffdhe2048` from
+// https://tools.ietf.org/html/rfc7919#appendix-A.1. It returns NULL if out
+// of memory.
+OPENSSL_EXPORT DH *DH_get_rfc7919_2048(void);
+
 
 // Parameter generation.
 

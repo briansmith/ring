@@ -248,26 +248,15 @@ static EC_KEY *self_test_ecdsa_key(void) {
 }
 
 static DH *self_test_dh(void) {
-  // This is the prime from https://tools.ietf.org/html/rfc7919#appendix-A.1,
-  // which is specifically approved for FIPS in appendix D of SP 800-56Ar3.
-  static const BN_ULONG kFFDHE2048Data[] = {
-      TOBN(0xffffffff, 0xffffffff), TOBN(0x886b4238, 0x61285c97),
-      TOBN(0xc6f34a26, 0xc1b2effa), TOBN(0xc58ef183, 0x7d1683b2),
-      TOBN(0x3bb5fcbc, 0x2ec22005), TOBN(0xc3fe3b1b, 0x4c6fad73),
-      TOBN(0x8e4f1232, 0xeef28183), TOBN(0x9172fe9c, 0xe98583ff),
-      TOBN(0xc03404cd, 0x28342f61), TOBN(0x9e02fce1, 0xcdf7e2ec),
-      TOBN(0x0b07a7c8, 0xee0a6d70), TOBN(0xae56ede7, 0x6372bb19),
-      TOBN(0x1d4f42a3, 0xde394df4), TOBN(0xb96adab7, 0x60d7f468),
-      TOBN(0xd108a94b, 0xb2c8e3fb), TOBN(0xbc0ab182, 0xb324fb61),
-      TOBN(0x30acca4f, 0x483a797a), TOBN(0x1df158a1, 0x36ade735),
-      TOBN(0xe2a689da, 0xf3efe872), TOBN(0x984f0c70, 0xe0e68b77),
-      TOBN(0xb557135e, 0x7f57c935), TOBN(0x85636555, 0x3ded1af3),
-      TOBN(0x2433f51f, 0x5f066ed0), TOBN(0xd3df1ed5, 0xd5fd6561),
-      TOBN(0xf681b202, 0xaec4617a), TOBN(0x7d2fe363, 0x630c75d8),
-      TOBN(0xcc939dce, 0x249b3ef9), TOBN(0xa9e13641, 0x146433fb),
-      TOBN(0xd8b9c583, 0xce2d3695), TOBN(0xafdc5620, 0x273d3cf1),
-      TOBN(0xadf85458, 0xa2bb4a9a), TOBN(0xffffffff, 0xffffffff),
-  };
+  DH *dh = DH_get_rfc7919_2048();
+  if (!dh) {
+    return NULL;
+  }
+
+  BIGNUM *priv = BN_new();
+  if (!priv) {
+    goto err;
+  }
 
   // kFFDHE2048PrivateKeyData is a 225-bit value. (225 because that's the
   // minimum private key size in
@@ -279,41 +268,16 @@ static DH *self_test_dh(void) {
       TOBN(0x00000001, 0x91173f2a),
   };
 
-  BIGNUM *const ffdhe2048_p = BN_new();
-  BIGNUM *const ffdhe2048_q = BN_new();
-  BIGNUM *const ffdhe2048_g = BN_new();
-  BIGNUM *ffdhe2048_priv = BN_new();
-  DH *const dh = DH_new();
-
-  if (!ffdhe2048_p || !ffdhe2048_q || !ffdhe2048_g || !ffdhe2048_priv || !dh) {
-    goto err;
-  }
-
-  bn_set_static_words(ffdhe2048_p, kFFDHE2048Data,
-                      OPENSSL_ARRAY_SIZE(kFFDHE2048Data));
-  bn_set_static_words(ffdhe2048_priv, kFFDHE2048PrivateKeyData,
+  bn_set_static_words(priv, kFFDHE2048PrivateKeyData,
                       OPENSSL_ARRAY_SIZE(kFFDHE2048PrivateKeyData));
 
-  if (!BN_copy(ffdhe2048_q, ffdhe2048_p) ||
-      !BN_sub_word(ffdhe2048_q, 1) ||
-      BN_div_word(ffdhe2048_q, 2) != 0 ||
-      !BN_set_word(ffdhe2048_g, 2) ||
-      !DH_set0_key(dh, NULL, ffdhe2048_priv)) {
+  if (!DH_set0_key(dh, NULL, priv)) {
     goto err;
   }
-
-  ffdhe2048_priv = NULL;
-  if (!DH_set0_pqg(dh, ffdhe2048_p, ffdhe2048_q, ffdhe2048_g)) {
-    goto err;
-  }
-
   return dh;
 
 err:
-  BN_free(ffdhe2048_p);
-  BN_free(ffdhe2048_q);
-  BN_free(ffdhe2048_g);
-  BN_free(ffdhe2048_priv);
+  BN_free(priv);
   DH_free(dh);
   return NULL;
 }
