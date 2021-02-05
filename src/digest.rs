@@ -26,7 +26,7 @@
 
 use crate::{
     c, cpu, debug,
-    endian::{self, BigEndian},
+    endian::{ArrayEncoding, BigEndian},
     polyfill,
 };
 use core::num::Wrapping;
@@ -248,7 +248,7 @@ impl AsRef<[u8]> for Digest {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
         let as64 = unsafe { &self.value.as64 };
-        &endian::as_byte_slice(as64)[..self.algorithm.output_len]
+        &as64.as_byte_array()[..self.algorithm.output_len]
     }
 }
 
