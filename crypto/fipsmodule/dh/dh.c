@@ -65,6 +65,7 @@
 #include <openssl/thread.h>
 
 #include "../../internal.h"
+#include "../bn/internal.h"
 
 
 #define OPENSSL_DH_MAX_MODULUS_BITS 10000
