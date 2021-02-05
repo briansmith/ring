@@ -15,7 +15,7 @@
 
 // TODO: enforce maximum input length.
 
-use super::{block::BLOCK_LEN, Tag, TAG_LEN};
+use super::{Tag, TAG_LEN};
 use crate::{c, cpu};
 
 /// A Poly1305 key.
@@ -24,6 +24,7 @@ pub(super) struct Key {
     cpu_features: cpu::Features,
 }
 
+pub(super) const BLOCK_LEN: usize = 16;
 pub(super) const KEY_LEN: usize = 2 * BLOCK_LEN;
 
 impl Key {
