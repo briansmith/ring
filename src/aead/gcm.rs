@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aad, Block, BLOCK_LEN};
+use super::{
+    block::{Block, BLOCK_LEN},
+    Aad,
+};
 use crate::cpu;
 
 #[cfg(not(target_arch = "aarch64"))]

@@ -22,7 +22,7 @@
 //
 // Unlike the BearSSL notes, we use u128 in the 64-bit implementation.
 
-use super::{super::Block, Xi};
+use super::{Block, Xi};
 use crate::endian::BigEndian;
 use core::convert::TryInto;
 

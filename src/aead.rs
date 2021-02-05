@@ -21,7 +21,6 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use self::block::{Block, BLOCK_LEN};
 use crate::{constant_time, cpu, error, hkdf, polyfill};
 use core::ops::RangeFrom;
 
@@ -615,7 +614,7 @@ impl AsRef<[u8]> for Tag {
 const MAX_KEY_LEN: usize = 32;
 
 // All the AEADs we support use 128-bit tags.
-const TAG_LEN: usize = BLOCK_LEN;
+const TAG_LEN: usize = 16;
 
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;
