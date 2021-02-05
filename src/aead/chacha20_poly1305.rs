@@ -15,7 +15,7 @@
 use super::{
     chacha::{self, Counter},
     iv::Iv,
-    poly1305, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
+    poly1305, Aad, Direction, Nonce, Tag,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
 use core::convert::TryInto;
@@ -258,15 +258,13 @@ fn aead(
 
 #[inline]
 fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
-    let remainder_len = input.len() % BLOCK_LEN;
-    let whole_len = input.len() - remainder_len;
-    if whole_len > 0 {
-        ctx.update(&input[..whole_len]);
-    }
-    if remainder_len > 0 {
-        let mut block = Block::zero();
-        block.overwrite_part_at(0, &input[whole_len..]);
-        ctx.update(block.as_ref())
+    if input.len() > 0 {
+        ctx.update(input);
+        let remainder_len = input.len() % poly1305::BLOCK_LEN;
+        if remainder_len != 0 {
+            const ZEROES: [u8; poly1305::BLOCK_LEN] = [0; poly1305::BLOCK_LEN];
+            ctx.update(&ZEROES[..(poly1305::BLOCK_LEN - remainder_len)])
+        }
     }
 }
 
