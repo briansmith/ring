@@ -277,7 +277,7 @@ pub(super) fn derive_poly1305_key(
     cpu_features: cpu::Features,
 ) -> poly1305::Key {
     let mut key_bytes = [0u8; 2 * BLOCK_LEN];
-    chacha_key.encrypt_iv_xor_blocks_in_place(iv, &mut key_bytes);
+    chacha_key.encrypt_iv_xor_in_place(iv, &mut key_bytes);
     poly1305::Key::new(key_bytes, cpu_features)
 }
 
