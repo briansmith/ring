@@ -12,7 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{counter, iv::Iv, quic::Sample, Block, Direction, BLOCK_LEN};
+use super::{
+    block::{Block, BLOCK_LEN},
+    counter,
+    iv::Iv,
+    quic::Sample,
+    Direction,
+};
 use crate::{bits::BitLength, c, cpu, endian::*, error, polyfill};
 
 pub(crate) struct Key {
@@ -410,7 +416,7 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
 
 #[cfg(test)]
 mod tests {
-    use super::{super::BLOCK_LEN, *};
+    use super::*;
     use crate::test;
     use core::convert::TryInto;
 

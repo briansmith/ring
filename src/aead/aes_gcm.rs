@@ -14,7 +14,8 @@
 
 use super::{
     aes::{self, Counter},
-    gcm, shift, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
+    block::{Block, BLOCK_LEN},
+    gcm, shift, Aad, Direction, Nonce, Tag,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
 
