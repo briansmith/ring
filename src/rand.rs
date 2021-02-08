@@ -195,6 +195,9 @@ use self::darwin::fill as fill_impl;
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
 
+#[cfg(any(target_os = "hermit"))]
+use self::hermit::fill as fill_impl;
+
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand_chunk {
     use crate::{c, error};
@@ -429,5 +432,25 @@ mod fuchsia {
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
+    }
+}
+
+#[cfg(any(target_os = "hermit"))]
+mod hermit {
+    use crate::error;
+    use hermit_abi::secure_rand64;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        let mut chunks = dest.chunks_exact_mut(8);
+        for chunk in &mut chunks {
+            let bytes = unsafe { secure_rand64().ok_or(error::Unspecified)?.to_ne_bytes() };
+            chunk.copy_from_slice(&bytes);
+        }
+        let rem = chunks.into_remainder();
+        if !rem.is_empty() {
+            let bytes = unsafe { secure_rand64().ok_or(error::Unspecified)?.to_ne_bytes() };
+            rem.copy_from_slice(&bytes[..rem.len()]);
+        }
+        Ok(())
     }
 }
