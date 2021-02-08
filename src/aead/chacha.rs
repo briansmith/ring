@@ -13,16 +13,26 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{counter, iv::Iv, quic::Sample};
-use crate::{c, endian::*};
+use super::quic::Sample;
+use crate::{aead::Nonce, c, polyfill::ChunksFixed};
 
 #[repr(transparent)]
-pub struct Key([LittleEndian<u32>; KEY_LEN / 4]);
+pub struct Key([u32; KEY_LEN / 4]);
 
 impl From<[u8; KEY_LEN]> for Key {
     #[inline]
     fn from(value: [u8; KEY_LEN]) -> Self {
-        Self(FromByteArray::from_byte_array(&value))
+        let value = value.chunks_fixed();
+        Self([
+            u32::from_le_bytes(value[0]),
+            u32::from_le_bytes(value[1]),
+            u32::from_le_bytes(value[2]),
+            u32::from_le_bytes(value[3]),
+            u32::from_le_bytes(value[4]),
+            u32::from_le_bytes(value[5]),
+            u32::from_le_bytes(value[6]),
+            u32::from_le_bytes(value[7]),
+        ])
     }
 }
 
@@ -124,12 +134,59 @@ impl Key {
 
     #[cfg(target_arch = "x86_64")]
     #[inline]
-    pub(super) fn words_less_safe(&self) -> &[LittleEndian<u32>; KEY_LEN / 4] {
+    pub(super) fn words_less_safe(&self) -> &[u32; KEY_LEN / 4] {
         &self.0
     }
 }
 
-pub type Counter = counter::Counter<LittleEndian<u32>>;
+/// Counter || Nonce, all native endian.
+pub struct Counter([u32; 4]);
+
+impl Counter {
+    pub fn zero(nonce: Nonce) -> Self {
+        Self::from_nonce_and_ctr(nonce, 0)
+    }
+
+    fn from_nonce_and_ctr(nonce: Nonce, ctr: u32) -> Self {
+        let nonce = nonce.as_ref().chunks_fixed();
+        Self([
+            ctr,
+            u32::from_le_bytes(nonce[0]),
+            u32::from_le_bytes(nonce[1]),
+            u32::from_le_bytes(nonce[2]),
+        ])
+    }
+
+    pub fn increment(&mut self) -> Iv {
+        let iv = Iv(self.0);
+        self.0[0] += 1;
+        iv
+    }
+}
+
+/// The IV for a single block encryption.
+///
+/// Intentionally not `Clone` to ensure each is used only once.
+#[repr(transparent)]
+pub struct Iv([u32; 4]);
+
+impl Iv {
+    fn assume_unique_for_key(value: [u8; 16]) -> Self {
+        let value = value.chunks_fixed();
+        Self([
+            u32::from_le_bytes(value[0]),
+            u32::from_le_bytes(value[1]),
+            u32::from_le_bytes(value[2]),
+            u32::from_le_bytes(value[3]),
+        ])
+    }
+}
+
+impl From<Counter> for Iv {
+    fn from(counter: Counter) -> Self {
+        Self(counter.0)
+    }
+}
 
 enum CounterOrIv {
     Counter(Counter),
@@ -200,11 +257,14 @@ mod tests {
         len: usize,
         in_out_buf: &mut [u8],
     ) {
+        let counter =
+            Counter::from_nonce_and_ctr(Nonce::try_assume_unique_for_key(nonce).unwrap(), ctr);
+
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
             key.encrypt(
-                CounterOrIv::Counter(Counter::from_test_vector(nonce, ctr)),
+                CounterOrIv::Counter(counter),
                 input[..len].as_ptr(),
                 len,
                 in_out_buf.as_mut_ptr(),
@@ -225,7 +285,11 @@ mod tests {
         for alignment in 0..16 {
             for offset in 0..(max_offset + 1) {
                 in_out_buf[alignment + offset..][..len].copy_from_slice(input);
-                let ctr = Counter::from_test_vector(nonce, ctr);
+
+                let ctr = Counter::from_nonce_and_ctr(
+                    Nonce::try_assume_unique_for_key(nonce).unwrap(),
+                    ctr,
+                );
                 key.encrypt_overlapping(ctr, &mut in_out_buf[alignment..], offset);
                 assert_eq!(&in_out_buf[alignment..][..len], expected);
             }

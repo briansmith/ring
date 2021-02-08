@@ -13,8 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    chacha::{self, Counter},
-    iv::Iv,
+    chacha::{self, Counter, Iv},
     poly1305, Aad, Direction, Nonce, Tag,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
@@ -67,7 +66,7 @@ fn chacha20_poly1305_seal(
             #[repr(align(16), C)]
             #[derive(Clone, Copy)]
             struct seal_data_in {
-                key: [u8; chacha::KEY_LEN],
+                key: [u32; chacha::KEY_LEN / 4],
                 counter: u32,
                 nonce: [u8; super::NONCE_LEN],
                 extra_ciphertext: *const u8,
@@ -76,7 +75,7 @@ fn chacha20_poly1305_seal(
 
             let mut data = InOut {
                 input: seal_data_in {
-                    key: *key.words_less_safe().as_byte_array(),
+                    key: *key.words_less_safe(),
                     counter: 0,
                     nonce: *nonce.as_ref(),
                     extra_ciphertext: core::ptr::null(),
@@ -140,14 +139,14 @@ fn chacha20_poly1305_open(
             #[derive(Copy, Clone)]
             #[repr(align(16), C)]
             struct open_data_in {
-                key: [u8; chacha::KEY_LEN],
+                key: [u32; chacha::KEY_LEN / 4],
                 counter: u32,
                 nonce: [u8; super::NONCE_LEN],
             }
 
             let mut data = InOut {
                 input: open_data_in {
-                    key: *key.words_less_safe().as_byte_array(),
+                    key: *key.words_less_safe(),
                     counter: 0,
                     nonce: *nonce.as_ref(),
                 },
