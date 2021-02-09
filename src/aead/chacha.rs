@@ -15,6 +15,7 @@
 
 use super::quic::Sample;
 use crate::{aead::Nonce, c, polyfill::ChunksFixed};
+use core::ops::RangeFrom;
 
 #[repr(transparent)]
 pub struct Key([u32; KEY_LEN / 4]);
@@ -39,9 +40,7 @@ impl From<[u8; KEY_LEN]> for Key {
 impl Key {
     #[inline]
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
-        unsafe {
-            self.encrypt(counter, in_out.as_ptr(), in_out.len(), in_out.as_mut_ptr());
-        }
+        self.encrypt_less_safe(counter, in_out, 0..);
     }
 
     #[inline]
@@ -49,14 +48,7 @@ impl Key {
         // It is safe to use `into_counter_for_single_block_less_safe()`
         // because `in_out` is exactly one block long.
         debug_assert!(in_out.len() <= BLOCK_LEN);
-        unsafe {
-            self.encrypt(
-                iv.into_counter_for_single_block_less_safe(),
-                in_out.as_ptr(),
-                in_out.len(),
-                in_out.as_mut_ptr(),
-            );
-        }
+        self.encrypt_less_safe(iv.into_counter_for_single_block_less_safe(), in_out, 0..);
     }
 
     #[inline]
@@ -65,49 +57,34 @@ impl Key {
         let iv = Iv::assume_unique_for_key(sample);
 
         debug_assert!(out.len() <= BLOCK_LEN);
-        unsafe {
-            self.encrypt(
-                iv.into_counter_for_single_block_less_safe(),
-                out.as_ptr(),
-                out.len(),
-                out.as_mut_ptr(),
-            );
-        }
+        self.encrypt_less_safe(iv.into_counter_for_single_block_less_safe(), &mut out, 0..);
 
         out
     }
 
-    pub fn encrypt_overlapping(&self, counter: Counter, in_out: &mut [u8], in_prefix_len: usize) {
+    /// Analogous to `slice::copy_within()`.
+    pub fn encrypt_within(&self, counter: Counter, in_out: &mut [u8], src: RangeFrom<usize>) {
         // XXX: The x86 and at least one branch of the ARM assembly language
         // code doesn't allow overlapping input and output unless they are
         // exactly overlapping. TODO: Figure out which branch of the ARM code
         // has this limitation and come up with a better solution.
         //
         // https://rt.openssl.org/Ticket/Display.html?id=4362
-        let len = in_out.len() - in_prefix_len;
-        if cfg!(any(target_arch = "arm", target_arch = "x86")) && in_prefix_len != 0 {
-            in_out.copy_within(in_prefix_len.., 0);
+        if cfg!(any(target_arch = "arm", target_arch = "x86")) && src.start != 0 {
+            let len = in_out.len() - src.start;
+            in_out.copy_within(src, 0);
             self.encrypt_in_place(counter, &mut in_out[..len]);
         } else {
-            unsafe {
-                self.encrypt(
-                    counter,
-                    in_out[in_prefix_len..].as_ptr(),
-                    len,
-                    in_out.as_mut_ptr(),
-                );
-            }
+            self.encrypt_less_safe(counter, in_out, src);
         }
     }
 
+    /// This is "less safe" because it skips the important check that `encrypt_within` does.
+    /// Only call this with `src` equal to `0..` or from `encrypt_within`.
     #[inline]
-    unsafe fn encrypt(
-        &self,
-        counter: Counter,
-        input: *const u8,
-        in_out_len: usize,
-        output: *mut u8,
-    ) {
+    fn encrypt_less_safe(&self, counter: Counter, in_out: &mut [u8], src: RangeFrom<usize>) {
+        let in_out_len = in_out.len().checked_sub(src.start).unwrap();
+
         // There's no need to worry if `counter` is incremented because it is
         // owned here and we drop immediately after the call.
         extern "C" {
@@ -119,8 +96,15 @@ impl Key {
                 counter: &Counter,
             );
         }
-
-        GFp_ChaCha20_ctr32(output, input, in_out_len, self, &counter);
+        unsafe {
+            GFp_ChaCha20_ctr32(
+                in_out.as_mut_ptr(),
+                in_out[src].as_ptr(),
+                in_out_len,
+                self,
+                &counter,
+            );
+        }
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -188,14 +172,13 @@ mod tests {
     use alloc::vec;
     use core::convert::TryInto;
 
-    // Verifies the encryption is successful when either computed on disjoint
-    // input/output buffers, or on overlapping input/output buffers.
+    // Verifies the encryption is successful when done on overlapping buffers.
     //
     // On some branches of the 32-bit x86 and ARM assembly code the in-place
     // operation fails in some situations where the input/output buffers are
     // not exactly overlapping. Such failures are dependent not only on the
-    // degree of overlapping but also the length of the data.
-    // `encrypt_overlapping` works around that.
+    // degree of overlapping but also the length of the data. `encrypt_within`
+    // works around that.
     #[test]
     pub fn chacha20_tests() {
         // Reuse a buffer to avoid slowing down the tests with allocations.
@@ -239,38 +222,23 @@ mod tests {
         expected: &[u8],
         buf: &mut [u8],
     ) {
-        let counter =
-            Counter::from_nonce_and_ctr(Nonce::try_assume_unique_for_key(nonce).unwrap(), ctr);
-
         const ARBITRARY: u8 = 123;
 
-        // Straightforward encryption into disjoint buffers is computed
-        // correctly.
-        {
-            let buf = &mut buf[..input.len()];
-            polyfill::slice::fill(buf, ARBITRARY);
-            unsafe {
-                key.encrypt(counter, input.as_ptr(), input.len(), buf.as_mut_ptr());
-            }
-            assert_eq!(buf, expected);
-        }
-
-        // Check that in-place encryption works successfully when the pointers
-        // to the input/output buffers are (partially) overlapping.
         for alignment in 0..16 {
             polyfill::slice::fill(&mut buf[..alignment], ARBITRARY);
             let buf = &mut buf[alignment..];
             for offset in 0..=259 {
                 let buf = &mut buf[..(offset + input.len())];
                 polyfill::slice::fill(&mut buf[..offset], ARBITRARY);
-                buf[offset..].copy_from_slice(input);
+                let src = offset..;
+                buf[src.clone()].copy_from_slice(input);
 
                 let ctr = Counter::from_nonce_and_ctr(
                     Nonce::try_assume_unique_for_key(nonce).unwrap(),
                     ctr,
                 );
-                key.encrypt_overlapping(ctr, buf, offset);
-                assert_eq!(&buf[..input.len()], expected);
+                key.encrypt_within(ctr, buf, src);
+                assert_eq!(&buf[..input.len()], expected)
             }
         }
     }
