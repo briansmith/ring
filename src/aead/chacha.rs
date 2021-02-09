@@ -188,16 +188,14 @@ mod tests {
     use alloc::vec;
     use core::convert::TryInto;
 
-    // This verifies the encryption functionality provided by ChaCha20_ctr32
-    // is successful when either computed on disjoint input/output buffers,
-    // or on overlapping input/output buffers. On some branches of the 32-bit
-    // x86 and ARM code the in-place operation fails in some situations where
-    // the input/output buffers are not exactly overlapping. Such failures are
-    // dependent not only on the degree of overlapping but also the length of
-    // the data. `open()` works around that by moving the input data to the
-    // output location so that the buffers exactly overlap, for those targets.
-    // This test exists largely as a canary for detecting if/when that type of
-    // problem spreads to other platforms.
+    // Verifies the encryption is successful when either computed on disjoint
+    // input/output buffers, or on overlapping input/output buffers.
+    //
+    // On some branches of the 32-bit x86 and ARM assembly code the in-place
+    // operation fails in some situations where the input/output buffers are
+    // not exactly overlapping. Such failures are dependent not only on the
+    // degree of overlapping but also the length of the data.
+    // `encrypt_overlapping` works around that.
     #[test]
     pub fn chacha20_tests() {
         // Reuse a buffer to avoid slowing down the tests with allocations.
@@ -252,30 +250,17 @@ mod tests {
             let buf = &mut buf[..input.len()];
             polyfill::slice::fill(buf, ARBITRARY);
             unsafe {
-                key.encrypt(
-                    counter,
-                    input.as_ptr(),
-                    input.len(),
-                    buf.as_mut_ptr(),
-                );
+                key.encrypt(counter, input.as_ptr(), input.len(), buf.as_mut_ptr());
             }
             assert_eq!(buf, expected);
         }
-
-        // Do not test offset buffers for x86 and ARM architectures (see above
-        // for rationale).
-        let max_offset = if cfg!(any(target_arch = "x86", target_arch = "arm")) {
-            0
-        } else {
-            259
-        };
 
         // Check that in-place encryption works successfully when the pointers
         // to the input/output buffers are (partially) overlapping.
         for alignment in 0..16 {
             polyfill::slice::fill(&mut buf[..alignment], ARBITRARY);
             let buf = &mut buf[alignment..];
-            for offset in 0..(max_offset + 1) {
+            for offset in 0..=259 {
                 let buf = &mut buf[..(offset + input.len())];
                 polyfill::slice::fill(&mut buf[..offset], ARBITRARY);
                 buf[offset..].copy_from_slice(input);
