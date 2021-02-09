@@ -16,8 +16,7 @@ use super::{
     iv::{Iv, IV_LEN},
     Nonce,
 };
-use crate::endian::*;
-use core::convert::TryInto;
+use crate::{endian::*, polyfill::ChunksFixed};
 
 /// A generator of a monotonically increasing series of `Iv`s.
 ///
@@ -57,11 +56,11 @@ where
             u32s: [U32::ZERO; COUNTER_LEN],
         };
         let nonce_index = (U32::COUNTER_INDEX + 1) % COUNTER_LEN;
+        let nonce: &[[u8; 4]; 3] = nonce.as_ref().chunks_fixed();
         (&mut r.u32s[nonce_index..][..3])
             .iter_mut()
-            .zip(nonce.as_ref().chunks_exact(4))
+            .zip(nonce.iter())
             .for_each(|(initial, nonce)| {
-                let nonce: &[u8; 4] = nonce.try_into().unwrap();
                 *initial = U32::from(*nonce);
             });
         r.u32s[U32::COUNTER_INDEX] = U32::from(initial_counter);

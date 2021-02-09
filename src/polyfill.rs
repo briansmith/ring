@@ -37,3 +37,7 @@ pub mod slice {
         }
     }
 }
+
+mod chunks_fixed;
+
+pub use chunks_fixed::*;
