@@ -184,7 +184,7 @@ const BLOCK_LEN: usize = 32;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test;
+    use crate::{polyfill, test};
     use alloc::vec;
     use core::convert::TryInto;
 
@@ -200,7 +200,10 @@ mod tests {
     // problem spreads to other platforms.
     #[test]
     pub fn chacha20_tests() {
-        test::run(test_file!("chacha_tests.txt"), |section, test_case| {
+        // Reuse a buffer to avoid slowing down the tests with allocations.
+        let mut buf = vec![0u8; 1300];
+
+        test::run(test_file!("chacha_tests.txt"), move |section, test_case| {
             assert_eq!(section, "");
 
             let key = test_case.consume_bytes("Key");
@@ -212,21 +215,17 @@ mod tests {
             let input = test_case.consume_bytes("Input");
             let output = test_case.consume_bytes("Output");
 
-            // Pre-allocate buffer for use in test_cases.
-            let mut in_out_buf = vec![0u8; input.len() + 276];
-
             // Run the test case over all prefixes of the input because the
             // behavior of ChaCha20 implementation changes dependent on the
             // length of the input.
-            for len in 0..(input.len() + 1) {
+            for len in 0..=input.len() {
                 chacha20_test_case_inner(
                     &key,
                     &nonce,
                     ctr as u32,
                     &input[..len],
                     &output[..len],
-                    len,
-                    &mut in_out_buf,
+                    &mut buf,
                 );
             }
 
@@ -240,18 +239,28 @@ mod tests {
         ctr: u32,
         input: &[u8],
         expected: &[u8],
-        len: usize,
-        in_out_buf: &mut [u8],
+        buf: &mut [u8],
     ) {
         let counter =
             Counter::from_nonce_and_ctr(Nonce::try_assume_unique_for_key(nonce).unwrap(), ctr);
 
+        const ARBITRARY: u8 = 123;
+
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
-        unsafe {
-            key.encrypt(counter, input[..len].as_ptr(), len, in_out_buf.as_mut_ptr());
+        {
+            let buf = &mut buf[..input.len()];
+            polyfill::slice::fill(buf, ARBITRARY);
+            unsafe {
+                key.encrypt(
+                    counter,
+                    input.as_ptr(),
+                    input.len(),
+                    buf.as_mut_ptr(),
+                );
+            }
+            assert_eq!(buf, expected);
         }
-        assert_eq!(&in_out_buf[..len], expected);
 
         // Do not test offset buffers for x86 and ARM architectures (see above
         // for rationale).
@@ -264,15 +273,19 @@ mod tests {
         // Check that in-place encryption works successfully when the pointers
         // to the input/output buffers are (partially) overlapping.
         for alignment in 0..16 {
+            polyfill::slice::fill(&mut buf[..alignment], ARBITRARY);
+            let buf = &mut buf[alignment..];
             for offset in 0..(max_offset + 1) {
-                in_out_buf[alignment + offset..][..len].copy_from_slice(input);
+                let buf = &mut buf[..(offset + input.len())];
+                polyfill::slice::fill(&mut buf[..offset], ARBITRARY);
+                buf[offset..].copy_from_slice(input);
 
                 let ctr = Counter::from_nonce_and_ctr(
                     Nonce::try_assume_unique_for_key(nonce).unwrap(),
                     ctr,
                 );
-                key.encrypt_overlapping(ctr, &mut in_out_buf[alignment..], offset);
-                assert_eq!(&in_out_buf[alignment..][..len], expected);
+                key.encrypt_overlapping(ctr, buf, offset);
+                assert_eq!(&buf[..input.len()], expected);
             }
         }
     }
