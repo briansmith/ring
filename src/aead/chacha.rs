@@ -45,7 +45,7 @@ impl Key {
     }
 
     #[inline]
-    pub fn encrypt_iv_xor_in_place(&self, iv: Iv, in_out: &mut [u8; BLOCK_LEN]) {
+    pub fn encrypt_iv_xor_in_place(&self, iv: Iv, in_out: &mut [u8; 32]) {
         // It is safe to use `into_counter_for_single_block_less_safe()`
         // because `in_out` is exactly one block long.
         debug_assert!(in_out.len() <= BLOCK_LEN);
@@ -64,7 +64,7 @@ impl Key {
         let mut out: [u8; 5] = [0; 5];
         let iv = Iv::assume_unique_for_key(sample);
 
-        debug_assert!(out.len() < BLOCK_LEN);
+        debug_assert!(out.len() <= BLOCK_LEN);
         unsafe {
             self.encrypt(
                 iv.into_counter_for_single_block_less_safe(),
@@ -177,9 +177,9 @@ impl Iv {
     }
 }
 
-pub const KEY_LEN: usize = BLOCK_LEN;
+pub const KEY_LEN: usize = 32;
 
-const BLOCK_LEN: usize = 32;
+const BLOCK_LEN: usize = 64;
 
 #[cfg(test)]
 mod tests {
