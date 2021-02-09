@@ -235,7 +235,7 @@ fn aead(
     let in_out_len = match direction {
         Direction::Opening { in_prefix_len } => {
             poly1305_update_padded_16(&mut ctx, &in_out[in_prefix_len..]);
-            chacha20_key.encrypt_overlapping(counter, in_out, in_prefix_len);
+            chacha20_key.encrypt_within(counter, in_out, in_prefix_len..);
             in_out.len() - in_prefix_len
         }
         Direction::Sealing => {
