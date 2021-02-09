@@ -112,8 +112,14 @@ impl Context {
     }
 
     pub fn update_blocks(&mut self, input: &[u8]) {
-        debug_assert!(input.len() > 0);
-        debug_assert_eq!(input.len() % BLOCK_LEN, 0);
+        // Th assembly functions take the input length in bytes, not blocks.
+        let input_bytes = input.len();
+
+        debug_assert_eq!(input_bytes % BLOCK_LEN, 0);
+        debug_assert!(input_bytes > 0);
+
+        let input = input.as_ptr() as *const [u8; BLOCK_LEN];
+        let input = unsafe { core::slice::from_raw_parts(input, input_bytes / BLOCK_LEN) };
 
         // Although these functions take `Xi` and `h_table` as separate
         // parameters, one or more of them might assume that they are part of
@@ -128,12 +134,12 @@ impl Context {
                     fn GFp_gcm_ghash_avx(
                         xi: &mut Xi,
                         Htable: &HTable,
-                        inp: *const u8,
+                        inp: *const [u8; BLOCK_LEN],
                         len: crate::c::size_t,
                     );
                 }
                 unsafe {
-                    GFp_gcm_ghash_avx(xi, h_table, input.as_ptr(), input.len());
+                    GFp_gcm_ghash_avx(xi, h_table, input.as_ptr(), input_bytes);
                 }
             }
 
@@ -148,12 +154,12 @@ impl Context {
                     fn GFp_gcm_ghash_clmul(
                         xi: &mut Xi,
                         Htable: &HTable,
-                        inp: *const u8,
+                        inp: *const [u8; BLOCK_LEN],
                         len: crate::c::size_t,
                     );
                 }
                 unsafe {
-                    GFp_gcm_ghash_clmul(xi, h_table, input.as_ptr(), input.len());
+                    GFp_gcm_ghash_clmul(xi, h_table, input.as_ptr(), input_bytes);
                 }
             }
 
@@ -163,12 +169,12 @@ impl Context {
                     fn GFp_gcm_ghash_neon(
                         xi: &mut Xi,
                         Htable: &HTable,
-                        inp: *const u8,
+                        inp: *const [u8; BLOCK_LEN],
                         len: crate::c::size_t,
                     );
                 }
                 unsafe {
-                    GFp_gcm_ghash_neon(xi, h_table, input.as_ptr(), input.len());
+                    GFp_gcm_ghash_neon(xi, h_table, input.as_ptr(), input_bytes);
                 }
             }
 

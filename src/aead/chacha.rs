@@ -163,7 +163,7 @@ pub struct Iv([u32; 4]);
 
 impl Iv {
     fn assume_unique_for_key(value: [u8; 16]) -> Self {
-        let value = value.chunks_fixed();
+        let value: &[[u8; 4]; 4] = value.chunks_fixed();
         Self([
             u32::from_le_bytes(value[0]),
             u32::from_le_bytes(value[1]),
