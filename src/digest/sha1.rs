@@ -14,7 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::sha2::{ch, maj, Word};
-use crate::c;
+use crate::{c, polyfill::ChunksFixed};
 use core::{convert::TryInto, num::Wrapping};
 
 pub const BLOCK_LEN: usize = 512 / 8;
@@ -67,10 +67,11 @@ fn block_data_order_(mut H: State, M: &[[<W32 as Word>::InputBytes; 16]]) -> Sta
         let e = H[4];
 
         // FIPS 180-4 6.1.2 Step 3 with constants and functions from FIPS 180-4 {4.1.1, 4.2.1}
-        let (a, b, c, d, e) = step3(a, b, c, d, e, W[ 0..20].try_into().unwrap(), Wrapping(0x5a827999), ch);
-        let (a, b, c, d, e) = step3(a, b, c, d, e, W[20..40].try_into().unwrap(), Wrapping(0x6ed9eba1), parity);
-        let (a, b, c, d, e) = step3(a, b, c, d, e, W[40..60].try_into().unwrap(), Wrapping(0x8f1bbcdc), maj);
-        let (a, b, c, d, e) = step3(a, b, c, d, e, W[60..80].try_into().unwrap(), Wrapping(0xca62c1d6), parity);
+        let W: &[[W32; 20]; 4] = W.chunks_fixed();
+        let (a, b, c, d, e) = step3(a, b, c, d, e, W[0], Wrapping(0x5a827999), ch);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, W[1], Wrapping(0x6ed9eba1), parity);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, W[2], Wrapping(0x8f1bbcdc), maj);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, W[3], Wrapping(0xca62c1d6), parity);
 
         // FIPS 180-4 6.1.2 Step 4
         H[0] += a;
