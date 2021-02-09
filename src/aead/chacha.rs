@@ -37,23 +37,21 @@ impl From<[u8; KEY_LEN]> for Key {
 }
 
 impl Key {
-    #[inline] // Optimize away match on `counter`.
+    #[inline]
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
         unsafe {
-            self.encrypt(
-                CounterOrIv::Counter(counter),
-                in_out.as_ptr(),
-                in_out.len(),
-                in_out.as_mut_ptr(),
-            );
+            self.encrypt(counter, in_out.as_ptr(), in_out.len(), in_out.as_mut_ptr());
         }
     }
 
-    #[inline] // Optimize away match on `iv` and length check.
-    pub fn encrypt_iv_xor_in_place(&self, iv: Iv, in_out: &mut [u8; 32]) {
+    #[inline]
+    pub fn encrypt_iv_xor_in_place(&self, iv: Iv, in_out: &mut [u8; BLOCK_LEN]) {
+        // It is safe to use `into_counter_for_single_block_less_safe()`
+        // because `in_out` is exactly one block long.
+        debug_assert!(in_out.len() <= BLOCK_LEN);
         unsafe {
             self.encrypt(
-                CounterOrIv::Iv(iv),
+                iv.into_counter_for_single_block_less_safe(),
                 in_out.as_ptr(),
                 in_out.len(),
                 in_out.as_mut_ptr(),
@@ -66,9 +64,10 @@ impl Key {
         let mut out: [u8; 5] = [0; 5];
         let iv = Iv::assume_unique_for_key(sample);
 
+        debug_assert!(out.len() < BLOCK_LEN);
         unsafe {
             self.encrypt(
-                CounterOrIv::Iv(iv),
+                iv.into_counter_for_single_block_less_safe(),
                 out.as_ptr(),
                 out.len(),
                 out.as_mut_ptr(),
@@ -92,7 +91,7 @@ impl Key {
         } else {
             unsafe {
                 self.encrypt(
-                    CounterOrIv::Counter(counter),
+                    counter,
                     in_out[in_prefix_len..].as_ptr(),
                     len,
                     in_out.as_mut_ptr(),
@@ -101,35 +100,27 @@ impl Key {
         }
     }
 
-    #[inline] // Optimize away match on `counter.`
+    #[inline]
     unsafe fn encrypt(
         &self,
-        counter: CounterOrIv,
+        counter: Counter,
         input: *const u8,
         in_out_len: usize,
         output: *mut u8,
     ) {
-        let iv = match counter {
-            CounterOrIv::Counter(counter) => counter.into(),
-            CounterOrIv::Iv(iv) => {
-                assert!(in_out_len <= 32);
-                iv
-            }
-        };
-
-        /// XXX: Although this takes an `Iv`, this actually uses it like a
-        /// `Counter`.
+        // There's no need to worry if `counter` is incremented because it is
+        // owned here and we drop immediately after the call.
         extern "C" {
             fn GFp_ChaCha20_ctr32(
                 out: *mut u8,
                 in_: *const u8,
                 in_len: c::size_t,
                 key: &Key,
-                first_iv: &Iv,
+                counter: &Counter,
             );
         }
 
-        GFp_ChaCha20_ctr32(output, input, in_out_len, self, &iv);
+        GFp_ChaCha20_ctr32(output, input, in_out_len, self, &counter);
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -140,6 +131,7 @@ impl Key {
 }
 
 /// Counter || Nonce, all native endian.
+#[repr(transparent)]
 pub struct Counter([u32; 4]);
 
 impl Counter {
@@ -167,7 +159,6 @@ impl Counter {
 /// The IV for a single block encryption.
 ///
 /// Intentionally not `Clone` to ensure each is used only once.
-#[repr(transparent)]
 pub struct Iv([u32; 4]);
 
 impl Iv {
@@ -180,20 +171,15 @@ impl Iv {
             u32::from_le_bytes(value[3]),
         ])
     }
-}
 
-impl From<Counter> for Iv {
-    fn from(counter: Counter) -> Self {
-        Self(counter.0)
+    fn into_counter_for_single_block_less_safe(self) -> Counter {
+        Counter(self.0)
     }
 }
 
-enum CounterOrIv {
-    Counter(Counter),
-    Iv(Iv),
-}
+pub const KEY_LEN: usize = BLOCK_LEN;
 
-pub const KEY_LEN: usize = 32;
+const BLOCK_LEN: usize = 32;
 
 #[cfg(test)]
 mod tests {
@@ -263,12 +249,7 @@ mod tests {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-            key.encrypt(
-                CounterOrIv::Counter(counter),
-                input[..len].as_ptr(),
-                len,
-                in_out_buf.as_mut_ptr(),
-            );
+            key.encrypt(counter, input[..len].as_ptr(), len, in_out_buf.as_mut_ptr());
         }
         assert_eq!(&in_out_buf[..len], expected);
 
