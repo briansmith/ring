@@ -678,7 +678,7 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
         "algorithm": "CMAC-AES",
         "revision": "1.0",
         "capabilities": [{
-          "direction": ["gen"],
+          "direction": ["gen", "ver"],
           "msgLen": [{
             "min": 0,
             "max": 65536,
@@ -1482,7 +1482,7 @@ static bool CMAC_AESVerify(const Span<const uint8_t> args[]) {
     return false;
   }
 
-  const uint8_t ok = OPENSSL_memcmp(mac, args[2].data(), args[2].size());
+  const uint8_t ok = (OPENSSL_memcmp(mac, args[2].data(), args[2].size()) == 0);
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(&ok, sizeof(ok)));
 }
 
