@@ -676,6 +676,7 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
       },
       {
         "algorithm": "CMAC-AES",
+        "acvptoolTestOnly": true,
         "revision": "1.0",
         "capabilities": [{
           "direction": ["gen", "ver"],

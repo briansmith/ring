@@ -279,9 +279,23 @@ func main() {
 	}
 
 	if *dumpRegcap {
+		nonTestAlgos := make([]map[string]interface{}, 0, len(supportedAlgos))
+		for _, algo := range supportedAlgos {
+			if value, ok := algo["acvptoolTestOnly"]; ok {
+				testOnly, ok := value.(bool)
+				if !ok {
+					log.Fatalf("modulewrapper config contains acvptoolTestOnly field with non-boolean value %#v", value)
+				}
+				if testOnly {
+					continue
+				}
+			}
+			nonTestAlgos = append(nonTestAlgos, algo)
+		}
+
 		regcap := []map[string]interface{}{
 			map[string]interface{}{"acvVersion": "1.0"},
-			map[string]interface{}{"algorithms": supportedAlgos},
+			map[string]interface{}{"algorithms": nonTestAlgos},
 		}
 		regcapBytes, err := json.MarshalIndent(regcap, "", "    ")
 		if err != nil {
