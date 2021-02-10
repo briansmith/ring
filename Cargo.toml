@@ -109,6 +109,7 @@ include = [
     "src/aead/aes_tests.txt",
     "src/aead/block.rs",
     "src/aead/chacha.rs",
+    "src/aead/chacha/fallback.rs",
     "src/aead/chacha_tests.txt",
     "src/aead/chacha20_poly1305.rs",
     "src/aead/chacha20_poly1305_openssh.rs",

@@ -38,6 +38,7 @@ pub mod slice {
     }
 }
 
+#[macro_use]
 mod chunks_fixed;
 
 pub use chunks_fixed::*;

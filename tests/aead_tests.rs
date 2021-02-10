@@ -57,13 +57,8 @@ fn aead_aes_gcm_256() {
     );
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86_64",
-    target_arch = "x86"
-))]
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn aead_chacha20_poly1305() {
     test_aead(
         &aead::CHACHA20_POLY1305,
@@ -325,14 +320,9 @@ fn test_aead_nonce_sizes() {
     assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..16]).is_err()); // 128 bits.
 }
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86_64",
-    target_arch = "x86"
-))]
 #[allow(clippy::range_plus_one)]
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn aead_chacha20_poly1305_openssh() {
     // TODO: test_aead_key_sizes(...);
 
