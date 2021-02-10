@@ -6756,7 +6756,7 @@ func addExtensionTests() {
 			if protocol == quic {
 				// ALPN is mandatory in QUIC.
 				shouldDeclineALPNFail = true
-				declineALPNError = ":MISSING_ALPN:"
+				declineALPNError = ":NO_APPLICATION_PROTOCOL:"
 				declineALPNLocalError = "remote error: no application protocol"
 			}
 			testCases = append(testCases, testCase{
@@ -6776,6 +6776,21 @@ func addExtensionTests() {
 				shouldFail:         shouldDeclineALPNFail,
 				expectedError:      declineALPNError,
 				expectedLocalError: declineALPNLocalError,
+			})
+
+			testCases = append(testCases, testCase{
+				protocol:           protocol,
+				testType:           serverTest,
+				skipQUICALPNConfig: true,
+				name:               "ALPNServer-Reject-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					NextProtos: []string{"foo", "bar", "baz"},
+				},
+				flags:              []string{"-reject-alpn"},
+				shouldFail:         true,
+				expectedError:      ":NO_APPLICATION_PROTOCOL:",
+				expectedLocalError: "remote error: no application protocol",
 			})
 
 			// Test that the server implementation catches itself if the
@@ -6957,7 +6972,7 @@ func addExtensionTests() {
 					},
 					skipQUICALPNConfig: true,
 					shouldFail:         true,
-					expectedError:      ":MISSING_ALPN:",
+					expectedError:      ":NO_APPLICATION_PROTOCOL:",
 				})
 				testCases = append(testCases, testCase{
 					testType: clientTest,
@@ -6972,7 +6987,7 @@ func addExtensionTests() {
 					},
 					skipQUICALPNConfig: true,
 					shouldFail:         true,
-					expectedError:      ":MISSING_ALPN:",
+					expectedError:      ":NO_APPLICATION_PROTOCOL:",
 					expectedLocalError: "remote error: no application protocol",
 				})
 				testCases = append(testCases, testCase{
@@ -6985,7 +7000,7 @@ func addExtensionTests() {
 					},
 					skipQUICALPNConfig: true,
 					shouldFail:         true,
-					expectedError:      ":MISSING_ALPN:",
+					expectedError:      ":NO_APPLICATION_PROTOCOL:",
 					expectedLocalError: "remote error: no application protocol",
 				})
 				testCases = append(testCases, testCase{
@@ -7002,7 +7017,7 @@ func addExtensionTests() {
 					},
 					skipQUICALPNConfig: true,
 					shouldFail:         true,
-					expectedError:      ":MISSING_ALPN:",
+					expectedError:      ":NO_APPLICATION_PROTOCOL:",
 					expectedLocalError: "remote error: no application protocol",
 				})
 			}

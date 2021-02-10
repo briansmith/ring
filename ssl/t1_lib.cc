@@ -1428,7 +1428,7 @@ static bool ext_alpn_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (hs->config->alpn_client_proto_list.empty() && ssl->quic_method) {
     // ALPN MUST be used with QUIC.
-    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_ALPN);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_APPLICATION_PROTOCOL);
     return false;
   }
 
@@ -1456,7 +1456,7 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   if (contents == NULL) {
     if (ssl->quic_method) {
       // ALPN is required when QUIC is used.
-      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_ALPN);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_APPLICATION_PROTOCOL);
       *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
       return false;
     }
@@ -1537,7 +1537,7 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
           TLSEXT_TYPE_application_layer_protocol_negotiation)) {
     if (ssl->quic_method) {
       // ALPN is required when QUIC is used.
-      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_ALPN);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_APPLICATION_PROTOCOL);
       *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
       return false;
     }
@@ -1572,25 +1572,39 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
   const uint8_t *selected;
   uint8_t selected_len;
-  if (ssl->ctx->alpn_select_cb(
-          ssl, &selected, &selected_len, CBS_data(&protocol_name_list),
-          CBS_len(&protocol_name_list),
-          ssl->ctx->alpn_select_cb_arg) == SSL_TLSEXT_ERR_OK) {
-    if (selected_len == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL);
-      *out_alert = SSL_AD_INTERNAL_ERROR;
+  int ret = ssl->ctx->alpn_select_cb(
+      ssl, &selected, &selected_len, CBS_data(&protocol_name_list),
+      CBS_len(&protocol_name_list), ssl->ctx->alpn_select_cb_arg);
+  // ALPN is required when QUIC is used.
+  if (ssl->quic_method &&
+      (ret == SSL_TLSEXT_ERR_NOACK || ret == SSL_TLSEXT_ERR_ALERT_WARNING)) {
+    ret = SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+  switch (ret) {
+    case SSL_TLSEXT_ERR_OK:
+      if (selected_len == 0) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL);
+        *out_alert = SSL_AD_INTERNAL_ERROR;
+        return false;
+      }
+      if (!ssl->s3->alpn_selected.CopyFrom(
+              MakeConstSpan(selected, selected_len))) {
+        *out_alert = SSL_AD_INTERNAL_ERROR;
+        return false;
+      }
+      break;
+    case SSL_TLSEXT_ERR_NOACK:
+    case SSL_TLSEXT_ERR_ALERT_WARNING:
+      break;
+    case SSL_TLSEXT_ERR_ALERT_FATAL:
+      *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_APPLICATION_PROTOCOL);
       return false;
-    }
-    if (!ssl->s3->alpn_selected.CopyFrom(
-            MakeConstSpan(selected, selected_len))) {
+    default:
+      // Invalid return value.
       *out_alert = SSL_AD_INTERNAL_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
-    }
-  } else if (ssl->quic_method) {
-    // ALPN is required when QUIC is used.
-    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_ALPN);
-    *out_alert = SSL_AD_NO_APPLICATION_PROTOCOL;
-    return false;
   }
 
   return true;

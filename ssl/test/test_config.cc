@@ -73,6 +73,7 @@ const Flag<bool> kBoolFlags[] = {
     {"-shim-writes-first", &TestConfig::shim_writes_first},
     {"-expect-session-miss", &TestConfig::expect_session_miss},
     {"-decline-alpn", &TestConfig::decline_alpn},
+    {"-reject-alpn", &TestConfig::reject_alpn},
     {"-select-empty-alpn", &TestConfig::select_empty_alpn},
     {"-defer-alps", &TestConfig::defer_alps},
     {"-expect-extended-master-secret",
@@ -668,6 +669,9 @@ static int AlpnSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *outlen,
   const TestConfig *config = GetTestConfig(ssl);
   if (config->decline_alpn) {
     return SSL_TLSEXT_ERR_NOACK;
+  }
+  if (config->reject_alpn) {
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
   }
 
   if (!config->expect_advertised_alpn.empty() &&
@@ -1274,7 +1278,8 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
                                      NULL);
   }
 
-  if (!select_alpn.empty() || decline_alpn || select_empty_alpn) {
+  if (!select_alpn.empty() || decline_alpn || reject_alpn ||
+      select_empty_alpn) {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 

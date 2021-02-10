@@ -2743,18 +2743,34 @@ OPENSSL_EXPORT int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos,
 
 // SSL_CTX_set_alpn_select_cb sets a callback function on |ctx| that is called
 // during ClientHello processing in order to select an ALPN protocol from the
-// client's list of offered protocols. Configuring this callback enables ALPN on
-// a server.
+// client's list of offered protocols.
 //
 // The callback is passed a wire-format (i.e. a series of non-empty, 8-bit
-// length-prefixed strings) ALPN protocol list in |in|. It should set |*out| and
-// |*out_len| to the selected protocol and return |SSL_TLSEXT_ERR_OK| on
-// success. It does not pass ownership of the buffer. Otherwise, it should
-// return |SSL_TLSEXT_ERR_NOACK|. Other |SSL_TLSEXT_ERR_*| values are
-// unimplemented and will be treated as |SSL_TLSEXT_ERR_NOACK|.
+// length-prefixed strings) ALPN protocol list in |in|. To select a protocol,
+// the callback should set |*out| and |*out_len| to the selected protocol and
+// return |SSL_TLSEXT_ERR_OK| on success. It does not pass ownership of the
+// buffer, so |*out| should point to a static string, a buffer that outlives the
+// callback call, or the corresponding entry in |in|.
+//
+// If the server supports ALPN, but there are no protocols in common, the
+// callback should return |SSL_TLSEXT_ERR_ALERT_FATAL| to abort the connection
+// with a no_application_protocol alert.
+//
+// If the server does not support ALPN, it can return |SSL_TLSEXT_ERR_NOACK| to
+// continue the handshake without negotiating a protocol. This may be useful if
+// multiple server configurations share an |SSL_CTX|, only some of which have
+// ALPN protocols configured.
+//
+// |SSL_TLSEXT_ERR_ALERT_WARNING| is ignored and will be treated as
+// |SSL_TLSEXT_ERR_NOACK|.
+//
+// The callback will only be called if the client supports ALPN. Callers that
+// wish to require ALPN for all clients must check |SSL_get0_alpn_selected|
+// after the handshake. In QUIC connections, this is done automatically.
 //
 // The cipher suite is selected before negotiating ALPN. The callback may use
-// |SSL_get_pending_cipher| to query the cipher suite.
+// |SSL_get_pending_cipher| to query the cipher suite. This may be used to
+// implement HTTP/2's cipher suite constraints.
 OPENSSL_EXPORT void SSL_CTX_set_alpn_select_cb(
     SSL_CTX *ctx, int (*cb)(SSL *ssl, const uint8_t **out, uint8_t *out_len,
                             const uint8_t *in, unsigned in_len, void *arg),
@@ -5286,7 +5302,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_CIPHER_MISMATCH_ON_EARLY_DATA 304
 #define SSL_R_QUIC_TRANSPORT_PARAMETERS_MISCONFIGURED 305
 #define SSL_R_UNEXPECTED_COMPATIBILITY_MODE 306
-#define SSL_R_MISSING_ALPN 307
+#define SSL_R_NO_APPLICATION_PROTOCOL 307
 #define SSL_R_NEGOTIATED_ALPS_WITHOUT_ALPN 308
 #define SSL_R_ALPS_MISMATCH_ON_EARLY_DATA 309
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000

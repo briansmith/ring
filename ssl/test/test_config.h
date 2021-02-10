@@ -68,6 +68,7 @@ struct TestConfig {
   std::string expect_advertised_alpn;
   std::string select_alpn;
   bool decline_alpn = false;
+  bool reject_alpn = false;
   bool select_empty_alpn = false;
   bool defer_alps = false;
   std::vector<std::pair<std::string, std::string>> application_settings;
