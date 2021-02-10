@@ -30,4 +30,5 @@ macro_rules! define_chunks_fixed {
 define_chunks_fixed!(12, 4);
 define_chunks_fixed!(16, 4);
 define_chunks_fixed!(32, 4);
+define_chunks_fixed!(64, 32);
 define_chunks_fixed!(80, 20);
