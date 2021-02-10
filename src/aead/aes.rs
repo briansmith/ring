@@ -310,17 +310,13 @@ impl Key {
         out
     }
 
-    // TODO: use `matches!` when MSRV increases to 1.42.0 and remove this
-    // `#[allow(...)]`
-    #[allow(clippy::unknown_clippy_lints)]
-    #[allow(clippy::match_like_matches_macro)]
     #[cfg(target_arch = "x86_64")]
     #[must_use]
     pub fn is_aes_hw(&self) -> bool {
-        match detect_implementation(self.cpu_features) {
-            Implementation::HWAES => true,
-            _ => false,
-        }
+        matches!(
+            detect_implementation(self.cpu_features),
+            Implementation::HWAES
+        )
     }
 
     #[cfg(target_arch = "x86_64")]
