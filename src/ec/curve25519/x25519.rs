@@ -40,6 +40,7 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
     ecdh: x25519_ecdh,
 };
 
+#[allow(clippy::unnecessary_wraps)]
 fn x25519_check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified> {
     debug_assert_eq!(bytes.len(), PRIVATE_KEY_LEN);
     Ok(())
