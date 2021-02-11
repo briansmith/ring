@@ -17,6 +17,7 @@ use crate::{bits, digest, error, io::der};
 
 #[cfg(feature = "alloc")]
 use crate::rand;
+use core::convert::TryInto;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
 pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
@@ -274,7 +275,7 @@ impl RsaEncoding for PSS {
 
         // Step 9. First output the mask into the out buffer.
         let (mut masked_db, digest_terminator) = em.split_at_mut(metrics.db_len);
-        mgf1(self.digest_alg, h_hash.as_ref(), &mut masked_db)?;
+        mgf1(self.digest_alg, h_hash.as_ref(), &mut masked_db);
 
         {
             // Steps 7.
@@ -350,7 +351,7 @@ impl Verification for PSS {
         let mut db = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let db = &mut db[..metrics.db_len];
 
-        mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db)?;
+        mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db);
 
         masked_db.read_all(error::Unspecified, |masked_bytes| {
             // Step 6. Check the top bits of first byte are zero.
@@ -447,26 +448,20 @@ impl PSSMetrics {
 
 // Mask-generating function MGF1 as described in
 // https://tools.ietf.org/html/rfc3447#appendix-B.2.1.
-fn mgf1(
-    digest_alg: &'static digest::Algorithm,
-    seed: &[u8],
-    mask: &mut [u8],
-) -> Result<(), error::Unspecified> {
+fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], mask: &mut [u8]) {
     let digest_len = digest_alg.output_len;
 
     // Maximum counter value is the value of (mask_len / digest_len) rounded up.
-    let ctr_max = (mask.len() - 1) / digest_len;
-    assert!(ctr_max <= u32::max_value() as usize);
     for (i, mask_chunk) in mask.chunks_mut(digest_len).enumerate() {
         let mut ctx = digest::Context::new(digest_alg);
         ctx.update(seed);
-        ctx.update(&u32::to_be_bytes(i as u32));
+        // The counter will always fit in a `u32` because we reject absurdly
+        // long inputs very early.
+        ctx.update(&u32::to_be_bytes(i.try_into().unwrap()));
         let digest = ctx.finish();
         let mask_chunk_len = mask_chunk.len();
         mask_chunk.copy_from_slice(&digest.as_ref()[..mask_chunk_len]);
     }
-
-    Ok(())
 }
 
 fn pss_digest(
