@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use ring::{digest, error, hmac, test, test_file};
+use ring::{digest, hmac, test, test_file};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
@@ -50,7 +50,7 @@ fn hmac_tests() {
             }
         };
 
-        hmac_test_case_inner(algorithm, &key_value[..], &input[..], &output[..], true)?;
+        hmac_test_case_inner(algorithm, &key_value[..], &input[..], &output[..], true);
 
         // Tamper with the input and check that verification fails.
         if input.is_empty() {
@@ -59,7 +59,9 @@ fn hmac_tests() {
             input[0] ^= 1;
         }
 
-        hmac_test_case_inner(algorithm, &key_value[..], &input[..], &output[..], false)
+        hmac_test_case_inner(algorithm, &key_value[..], &input[..], &output[..], false);
+
+        Ok(())
     });
 }
 
@@ -69,7 +71,7 @@ fn hmac_test_case_inner(
     input: &[u8],
     output: &[u8],
     is_ok: bool,
-) -> Result<(), error::Unspecified> {
+) {
     let key = hmac::Key::new(algorithm, key_value);
 
     // One-shot API.
@@ -98,8 +100,6 @@ fn hmac_test_case_inner(
         let signature = ctx.sign();
         assert_eq!(is_ok, signature.as_ref() == output);
     }
-
-    Ok(())
 }
 
 #[test]

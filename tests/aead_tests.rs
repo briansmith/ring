@@ -311,7 +311,7 @@ fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
 // Test that we reject non-standard nonce sizes.
 #[allow(clippy::range_plus_one)]
 #[test]
-fn test_aead_nonce_sizes() -> Result<(), error::Unspecified> {
+fn test_aead_nonce_sizes() {
     let nonce_len = aead::NONCE_LEN;
     let nonce = vec![0u8; nonce_len * 2];
 
@@ -323,8 +323,6 @@ fn test_aead_nonce_sizes() -> Result<(), error::Unspecified> {
     assert!(aead::Nonce::try_assume_unique_for_key(&[]).is_err());
     assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..1]).is_err());
     assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..16]).is_err()); // 128 bits.
-
-    Ok(())
 }
 
 #[cfg(any(
