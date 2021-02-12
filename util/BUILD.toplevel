@@ -54,8 +54,28 @@ config_setting(
 )
 
 config_setting(
-    name = "android",
+    name = "android_legacy",
     values = {"crosstool_top": "//external:android/crosstool"},
+)
+
+config_setting(
+    name = "android_stlport",
+    values = {"crosstool_top": "@androidndk//:toolchain-stlport"},
+)
+
+config_setting(
+    name = "android_libcpp",
+    values = {"crosstool_top": "@androidndk//:toolchain-libcpp"},
+)
+
+config_setting(
+    name = "android_gnu_libstdcpp",
+    values = {"crosstool_top": "@androidndk//:toolchain-gnu-libstdcpp"},
+)
+
+config_setting(
+    name = "android_default",
+    values = {"crosstool_top": "@androidndk//:default_crosstool"},
 )
 
 posix_copts = [
@@ -137,7 +157,11 @@ cc_library(
     linkopts = select({
         # Android supports pthreads, but does not provide a libpthread
         # to link against.
-        ":android": [],
+        ":android_legacy": [],
+        ":android_stlport": [],
+        ":android_libcpp": [],
+        ":android_gnu_libcpp": [],
+        ":android_default": [],
         ":mac_x86_64": [],
         ":windows_x86_64": ["-defaultlib:advapi32.lib"],
         "//conditions:default": ["-lpthread"],
