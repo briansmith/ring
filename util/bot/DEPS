@@ -25,6 +25,10 @@ vars = {
 }
 
 deps = {
+  # TODO(davidben): Before updating this, update the builders to specify
+  # ANDROID_ARM_NEON=0. The NDK now defaults armeabi-v7a to assuming NEON, but
+  # we wish to retain test coverage for non-NEON code. (Perhaps worth having
+  # both configurations.)
   'boringssl/util/bot/android_ndk': {
     'url': Var('chromium_git') + '/android_ndk.git' + '@' + '27c0a8d090c666a50e40fceb4ee5b40b1a2d3f87',
     'condition': 'checkout_android',
