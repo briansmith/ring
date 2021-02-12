@@ -19,6 +19,7 @@ vars = {
   'checkout_sde': False,
   'checkout_nasm': False,
   'checkout_libcxx': False,
+  'vs_version': 'env',
 
   'android_sdk_platform-tools_version': 'Jxtur3_L9RzY4q79K-AwIahwFW4oi5uYVD5URx9h62wC',
 }
@@ -171,6 +172,7 @@ hooks = [
     'action': [ 'python',
                 'boringssl/util/bot/vs_toolchain.py',
                 'update',
+                Var('vs_version'),
     ],
   },
   {
