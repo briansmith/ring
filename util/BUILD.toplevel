@@ -160,7 +160,7 @@ cc_library(
         ":android_legacy": [],
         ":android_stlport": [],
         ":android_libcpp": [],
-        ":android_gnu_libcpp": [],
+        ":android_gnu_libstdcpp": [],
         ":android_default": [],
         ":mac_x86_64": [],
         ":windows_x86_64": ["-defaultlib:advapi32.lib"],
