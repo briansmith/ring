@@ -1201,7 +1201,6 @@ OPENSSL_EXPORT int X509_CRL_check_suiteb(X509_CRL *crl, EVP_PKEY *pk,
 OPENSSL_EXPORT STACK_OF(X509) *X509_chain_up_ref(STACK_OF(X509) *chain);
 
 OPENSSL_EXPORT int X509_issuer_and_serial_cmp(const X509 *a, const X509 *b);
-OPENSSL_EXPORT unsigned long X509_issuer_and_serial_hash(X509 *a);
 
 OPENSSL_EXPORT int X509_issuer_name_cmp(const X509 *a, const X509 *b);
 OPENSSL_EXPORT unsigned long X509_issuer_name_hash(X509 *a);
