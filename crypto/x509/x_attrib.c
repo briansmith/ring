@@ -85,27 +85,32 @@ IMPLEMENT_ASN1_DUP_FUNCTION(X509_ATTRIBUTE)
 
 X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int atrtype, void *value)
 {
-    X509_ATTRIBUTE *ret = NULL;
-    ASN1_TYPE *val = NULL;
+    const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
+    if (obj == NULL) {
+        return NULL;
+    }
 
-    if ((ret = X509_ATTRIBUTE_new()) == NULL)
-        return (NULL);
-    /* TODO(fork): const correctness. */
-    ret->object = (ASN1_OBJECT *)OBJ_nid2obj(nid);
+    X509_ATTRIBUTE *ret = X509_ATTRIBUTE_new();
+    ASN1_TYPE *val = ASN1_TYPE_new();
+    if (ret == NULL || val == NULL) {
+        goto err;
+    }
+
+    /* TODO(fork): const correctness. |ASN1_OBJECT| is messy because static
+     * objects are const but freeable with a no-op |ASN1_OBJECT_free|. */
+    ret->object = (ASN1_OBJECT *)obj;
     ret->single = 0;
-    if ((ret->value.set = sk_ASN1_TYPE_new_null()) == NULL)
+    ret->value.set = sk_ASN1_TYPE_new_null();
+    if (ret->value.set == NULL ||
+        !sk_ASN1_TYPE_push(ret->value.set, val)) {
         goto err;
-    if ((val = ASN1_TYPE_new()) == NULL)
-        goto err;
-    if (!sk_ASN1_TYPE_push(ret->value.set, val))
-        goto err;
+    }
 
     ASN1_TYPE_set(val, atrtype, value);
-    return (ret);
+    return ret;
+
  err:
-    if (ret != NULL)
-        X509_ATTRIBUTE_free(ret);
-    if (val != NULL)
-        ASN1_TYPE_free(val);
-    return (NULL);
+    X509_ATTRIBUTE_free(ret);
+    ASN1_TYPE_free(val);
+    return NULL;
 }
