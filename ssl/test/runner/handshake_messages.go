@@ -5,8 +5,11 @@
 package runner
 
 import (
+	"crypto"
 	"encoding/binary"
 	"fmt"
+
+	"golang.org/x/crypto/hkdf"
 )
 
 func writeLen(buf []byte, v, size int) {
@@ -262,8 +265,7 @@ type ECHConfig struct {
 	MaxNameLen   uint16
 }
 
-func MarshalECHConfig(e *ECHConfig) []byte {
-	bb := newByteBuilder()
+func (e *ECHConfig) marshal(bb *byteBuilder) {
 	// ECHConfig's wire format reuses the encrypted_client_hello extension
 	// codepoint as a version identifier.
 	bb.addU16(extensionEncryptedClientHello)
@@ -278,7 +280,31 @@ func MarshalECHConfig(e *ECHConfig) []byte {
 	}
 	contents.addU16(e.MaxNameLen)
 	contents.addU16(0) // Empty extensions field
+}
+
+func MarshalECHConfig(e *ECHConfig) []byte {
+	bb := newByteBuilder()
+	e.marshal(bb)
 	return bb.finish()
+}
+
+func MarshalECHConfigList(configs ...*ECHConfig) []byte {
+	bb := newByteBuilder()
+	list := bb.addU16LengthPrefixed()
+	for _, config := range configs {
+		config.marshal(list)
+	}
+	return bb.finish()
+}
+
+func (e *ECHConfig) configID(h crypto.Hash) []byte {
+	configIDLength := 8
+	idReader := hkdf.Expand(h.New, hkdf.Extract(h.New, MarshalECHConfig(e), nil), []byte("tls ech config id"))
+	idBytes := make([]byte, configIDLength)
+	if n, err := idReader.Read(idBytes); err != nil || n != configIDLength {
+		panic("failed to compute configID for ECHConfig")
+	}
+	return idBytes
 }
 
 // The contents of a CH "encrypted_client_hello" extension.
@@ -343,6 +369,7 @@ type clientHelloMsg struct {
 	compressedCertAlgs        []uint16
 	delegatedCredentials      bool
 	alpsProtocols             []string
+	outerExtensions           []uint16
 	prefixExtensions          []uint16
 }
 
@@ -358,34 +385,21 @@ func (m *clientHelloMsg) marshalKeyShares(bb *byteBuilder) {
 	}
 }
 
-func (m *clientHelloMsg) marshal() []byte {
-	if m.raw != nil {
-		return m.raw
-	}
+type clientHelloType int
 
-	if m.isV2ClientHello {
-		v2Msg := newByteBuilder()
-		v2Msg.addU8(1)
-		v2Msg.addU16(m.vers)
-		v2Msg.addU16(uint16(len(m.cipherSuites) * 3))
-		v2Msg.addU16(uint16(len(m.sessionID)))
-		v2Msg.addU16(uint16(len(m.v2Challenge)))
-		for _, spec := range m.cipherSuites {
-			v2Msg.addU24(int(spec))
-		}
-		v2Msg.addBytes(m.sessionID)
-		v2Msg.addBytes(m.v2Challenge)
-		m.raw = v2Msg.finish()
-		return m.raw
-	}
+const (
+	clientHelloNormal clientHelloType = iota
+	clientHelloOuterAAD
+	clientHelloEncodedInner
+)
 
-	handshakeMsg := newByteBuilder()
-	handshakeMsg.addU8(typeClientHello)
-	hello := handshakeMsg.addU24LengthPrefixed()
+func (m *clientHelloMsg) marshalBody(hello *byteBuilder, typ clientHelloType) {
 	hello.addU16(m.vers)
 	hello.addBytes(m.random)
 	sessionID := hello.addU8LengthPrefixed()
-	sessionID.addBytes(m.sessionID)
+	if typ != clientHelloEncodedInner {
+		sessionID.addBytes(m.sessionID)
+	}
 	if m.isDTLS {
 		cookie := hello.addU8LengthPrefixed()
 		cookie.addBytes(m.cookie)
@@ -441,7 +455,7 @@ func (m *clientHelloMsg) marshal() []byte {
 			body: serverNameList.finish(),
 		})
 	}
-	if m.clientECH != nil {
+	if m.clientECH != nil && typ != clientHelloOuterAAD {
 		body := newByteBuilder()
 		body.addU16(m.clientECH.hpkeKDF)
 		body.addU16(m.clientECH.hpkeAEAD)
@@ -458,6 +472,17 @@ func (m *clientHelloMsg) marshal() []byte {
 		extensions = append(extensions, extension{
 			id:   extensionECHIsInner,
 			body: m.echIsInner,
+		})
+	}
+	if m.outerExtensions != nil && typ == clientHelloEncodedInner {
+		body := newByteBuilder()
+		extensionsList := body.addU8LengthPrefixed()
+		for _, extID := range m.outerExtensions {
+			extensionsList.addU16(extID)
+		}
+		extensions = append(extensions, extension{
+			id:   extensionECHOuterExtensions,
+			body: body.finish(),
 		})
 	}
 	if m.ocspStapling {
@@ -700,6 +725,12 @@ func (m *clientHelloMsg) marshal() []byte {
 	for _, ext := range extensions {
 		extMap[ext.id] = ext.body
 	}
+	// Elide each of the extensions named by |m.outerExtensions|.
+	if m.outerExtensions != nil && typ == clientHelloEncodedInner {
+		for _, extID := range m.outerExtensions {
+			delete(extMap, extID)
+		}
+	}
 	// Write each of the prefix extensions, if we have it.
 	for _, extID := range m.prefixExtensions {
 		if body, ok := extMap[extID]; ok {
@@ -738,7 +769,43 @@ func (m *clientHelloMsg) marshal() []byte {
 			hello.addU16(0)
 		}
 	}
+}
 
+func (m *clientHelloMsg) marshalForOuterAAD(bb *byteBuilder) {
+	m.marshalBody(bb, clientHelloOuterAAD)
+}
+
+func (m *clientHelloMsg) marshalForEncodedInner() []byte {
+	hello := newByteBuilder()
+	m.marshalBody(hello, clientHelloEncodedInner)
+	return hello.finish()
+}
+
+func (m *clientHelloMsg) marshal() []byte {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	if m.isV2ClientHello {
+		v2Msg := newByteBuilder()
+		v2Msg.addU8(1)
+		v2Msg.addU16(m.vers)
+		v2Msg.addU16(uint16(len(m.cipherSuites) * 3))
+		v2Msg.addU16(uint16(len(m.sessionID)))
+		v2Msg.addU16(uint16(len(m.v2Challenge)))
+		for _, spec := range m.cipherSuites {
+			v2Msg.addU24(int(spec))
+		}
+		v2Msg.addBytes(m.sessionID)
+		v2Msg.addBytes(m.v2Challenge)
+		m.raw = v2Msg.finish()
+		return m.raw
+	}
+
+	handshakeMsg := newByteBuilder()
+	handshakeMsg.addU8(typeClientHello)
+	hello := handshakeMsg.addU24LengthPrefixed()
+	m.marshalBody(hello, clientHelloNormal)
 	m.raw = handshakeMsg.finish()
 	// Sanity-check padding.
 	if m.pad != 0 && (len(m.raw)-4)%m.pad != 0 {
@@ -1529,9 +1596,7 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 	}
 	if len(m.echRetryConfigs) > 0 {
 		extensions.addU16(extensionEncryptedClientHello)
-		body := extensions.addU16LengthPrefixed()
-		echConfigs := body.addU16LengthPrefixed()
-		echConfigs.addBytes(m.echRetryConfigs)
+		extensions.addU16LengthPrefixed().addBytes(m.echRetryConfigs)
 	}
 }
 
@@ -1647,21 +1712,23 @@ func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
 			m.hasApplicationSettings = true
 			m.applicationSettings = body
 		case extensionEncryptedClientHello:
+			if version < VersionTLS13 {
+				return false
+			}
+			m.echRetryConfigs = body
+
+			// Validate the ECHConfig with a top-level parse.
 			var echConfigs byteReader
 			if !body.readU16LengthPrefixed(&echConfigs) {
 				return false
 			}
 			for len(echConfigs) > 0 {
-				// Validate the ECHConfig with a top-level parse.
-				echConfigReader := echConfigs
 				var version uint16
 				var contents byteReader
-				if !echConfigReader.readU16(&version) ||
-					!echConfigReader.readU16LengthPrefixed(&contents) {
+				if !echConfigs.readU16(&version) ||
+					!echConfigs.readU16LengthPrefixed(&contents) {
 					return false
 				}
-
-				m.echRetryConfigs = contents
 			}
 			if len(body) > 0 {
 				return false

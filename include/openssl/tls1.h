@@ -257,6 +257,7 @@ extern "C" {
 // extension number.
 #define TLSEXT_TYPE_encrypted_client_hello 0xfe09
 #define TLSEXT_TYPE_ech_is_inner 0xda09
+#define TLSEXT_TYPE_ech_outer_extensions 0xfd00
 
 // ExtensionType value from RFC6962
 #define TLSEXT_TYPE_certificate_timestamp 18

@@ -209,11 +209,11 @@ static bool is_post_quantum_group(uint16_t id) {
 }
 
 bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
-                           const SSLMessage &msg) {
+                           Span<const uint8_t> body) {
   OPENSSL_memset(out, 0, sizeof(*out));
   out->ssl = const_cast<SSL *>(ssl);
-  out->client_hello = CBS_data(&msg.body);
-  out->client_hello_len = CBS_len(&msg.body);
+  out->client_hello = body.data();
+  out->client_hello_len = body.size();
 
   CBS client_hello, random, session_id;
   CBS_init(&client_hello, out->client_hello, out->client_hello_len);
@@ -591,7 +591,7 @@ static bool ext_sni_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 
-// Encrypted Client Hello (ECH)
+// Encrypted ClientHello (ECH)
 //
 // https://tools.ietf.org/html/draft-ietf-tls-esni-09
 
@@ -746,6 +746,35 @@ static bool ext_ech_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return true;
   }
   return true;
+}
+
+static bool ext_ech_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
+  SSL *const ssl = hs->ssl;
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION ||  //
+      hs->ech_accept ||                              //
+      hs->ech_server_config_list == nullptr) {
+    return true;
+  }
+
+  // Write the list of retry configs to |out|. Note
+  // |SSL_CTX_set1_ech_server_config_list| ensures |ech_server_config_list|
+  // contains at least one retry config.
+  CBB body, retry_configs;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_encrypted_client_hello) ||
+      !CBB_add_u16_length_prefixed(out, &body) ||
+      !CBB_add_u16_length_prefixed(&body, &retry_configs)) {
+    return false;
+  }
+  for (const ECHServerConfig &config : hs->ech_server_config_list->configs) {
+    if (!config.is_retry_config()) {
+      continue;
+    }
+    if (!CBB_add_bytes(&retry_configs, config.raw().data(),
+                       config.raw().size())) {
+      return false;
+    }
+  }
+  return CBB_flush(out);
 }
 
 static bool ext_ech_is_inner_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
@@ -3264,7 +3293,7 @@ static const struct tls_extension kExtensions[] = {
     ext_ech_add_clienthello,
     ext_ech_parse_serverhello,
     ext_ech_parse_clienthello,
-    dont_add_serverhello,
+    ext_ech_add_serverhello,
   },
   {
     TLSEXT_TYPE_ech_is_inner,

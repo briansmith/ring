@@ -33,6 +33,9 @@ extern "C" {
 //
 // See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-07.
 
+// EVP_HPKE_DHKEM_* are KEM identifiers.
+#define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
+
 // EVP_HPKE_AEAD_* are AEAD identifiers.
 #define EVP_HPKE_AEAD_AES_128_GCM 0x0001
 #define EVP_HPKE_AEAD_AES_256_GCM 0x0002
@@ -223,6 +226,16 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *hpke, uint8_t *out,
 // added by sealing data with |EVP_HPKE_CTX_seal|. The |hpke| context must be
 // set up as a sender.
 OPENSSL_EXPORT size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *hpke);
+
+// EVP_HPKE_CTX_get_aead_id returns |hpke|'s configured AEAD. The returned value
+// is one of the |EVP_HPKE_AEAD_*| constants, or zero if the context has not
+// been set up.
+OPENSSL_EXPORT uint16_t EVP_HPKE_CTX_get_aead_id(const EVP_HPKE_CTX *hpke);
+
+// EVP_HPKE_CTX_get_aead_id returns |hpke|'s configured KDF. The returned value
+// is one of the |EVP_HPKE_HKDF_*| constants, or zero if the context has not
+// been set up.
+OPENSSL_EXPORT uint16_t EVP_HPKE_CTX_get_kdf_id(const EVP_HPKE_CTX *hpke);
 
 // EVP_HPKE_get_aead returns the AEAD corresponding to |aead_id|, or NULL if
 // |aead_id| is not a known AEAD identifier.

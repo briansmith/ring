@@ -238,12 +238,35 @@ const Flag<std::vector<int>> kIntVectorFlags[] = {
     {"-verify-prefs", &TestConfig::verify_prefs},
     {"-expect-peer-verify-pref", &TestConfig::expect_peer_verify_prefs},
     {"-curves", &TestConfig::curves},
+    {"-ech-is-retry-config", &TestConfig::ech_is_retry_config},
+};
+
+const Flag<std::vector<std::string>> kBase64VectorFlags[] = {
+    {"-ech-server-config", &TestConfig::ech_server_configs},
+    {"-ech-server-key", &TestConfig::ech_server_keys},
 };
 
 const Flag<std::vector<std::pair<std::string, std::string>>>
     kStringPairVectorFlags[] = {
         {"-application-settings", &TestConfig::application_settings},
 };
+
+bool DecodeBase64(std::string *out, const std::string &in) {
+  size_t len;
+  if (!EVP_DecodedLength(&len, in.size())) {
+    fprintf(stderr, "Invalid base64: %s.\n", in.c_str());
+    return false;
+  }
+  std::vector<uint8_t> buf(len);
+  if (!EVP_DecodeBase64(buf.data(), &len, buf.size(),
+                        reinterpret_cast<const uint8_t *>(in.data()),
+                        in.size())) {
+    fprintf(stderr, "Invalid base64: %s.\n", in.c_str());
+    return false;
+  }
+  out->assign(reinterpret_cast<const char *>(buf.data()), len);
+  return true;
+}
 
 bool ParseFlag(char *flag, int argc, char **argv, int *i,
                bool skip, TestConfig *out_config) {
@@ -289,21 +312,12 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
       fprintf(stderr, "Missing parameter.\n");
       return false;
     }
-    size_t len;
-    if (!EVP_DecodedLength(&len, strlen(argv[*i]))) {
-      fprintf(stderr, "Invalid base64: %s.\n", argv[*i]);
-      return false;
-    }
-    std::unique_ptr<uint8_t[]> decoded(new uint8_t[len]);
-    if (!EVP_DecodeBase64(decoded.get(), &len, len,
-                          reinterpret_cast<const uint8_t *>(argv[*i]),
-                          strlen(argv[*i]))) {
-      fprintf(stderr, "Invalid base64: %s.\n", argv[*i]);
+    std::string value;
+    if (!DecodeBase64(&value, argv[*i])) {
       return false;
     }
     if (!skip) {
-      base64_field->assign(reinterpret_cast<const char *>(decoded.get()),
-                           len);
+      *base64_field = std::move(value);
     }
     return true;
   }
@@ -337,6 +351,25 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
     return true;
   }
 
+  std::vector<std::string> *base64_vector_field =
+      FindField(out_config, kBase64VectorFlags, flag);
+  if (base64_vector_field) {
+    *i = *i + 1;
+    if (*i >= argc) {
+      fprintf(stderr, "Missing parameter.\n");
+      return false;
+    }
+    std::string value;
+    if (!DecodeBase64(&value, argv[*i])) {
+      return false;
+    }
+    // Each instance of the flag adds to the list.
+    if (!skip) {
+      base64_vector_field->push_back(std::move(value));
+    }
+    return true;
+  }
+
   std::vector<std::pair<std::string, std::string>> *string_pair_vector_field =
       FindField(out_config, kStringPairVectorFlags, flag);
   if (string_pair_vector_field) {
@@ -347,8 +380,10 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
     }
     const char *comma = strchr(argv[*i], ',');
     if (!comma) {
-      fprintf(stderr,
-              "Parameter should be a pair of comma-separated strings.\n");
+      fprintf(
+          stderr,
+          "Parameter should be a comma-separated triple composed of two base64 "
+          "strings followed by \"true\" or \"false\".\n");
       return false;
     }
     // Each instance of the flag adds to the list.
@@ -1594,6 +1629,36 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (enable_ech_grease) {
     SSL_set_enable_ech_grease(ssl.get(), 1);
+  }
+  if (ech_server_configs.size() != ech_server_keys.size() ||
+      ech_server_configs.size() != ech_is_retry_config.size()) {
+    fprintf(stderr,
+            "-ech-server-config, -ech-server-key, and -ech-is-retry-config "
+            "flags must match.\n");
+    return nullptr;
+  }
+  if (!ech_server_configs.empty()) {
+    bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+        SSL_ECH_SERVER_CONFIG_LIST_new());
+    if (!config_list) {
+      return nullptr;
+    }
+    for (size_t i = 0; i < ech_server_configs.size(); i++) {
+      const std::string &ech_config = ech_server_configs[i];
+      const std::string &ech_private_key = ech_server_keys[i];
+      const int is_retry_config = ech_is_retry_config[i];
+      if (!SSL_ECH_SERVER_CONFIG_LIST_add(
+              config_list.get(), is_retry_config,
+              reinterpret_cast<const uint8_t *>(ech_config.data()),
+              ech_config.size(),
+              reinterpret_cast<const uint8_t *>(ech_private_key.data()),
+              ech_private_key.size())) {
+        return nullptr;
+      }
+    }
+    if (!SSL_CTX_set1_ech_server_config_list(ssl_ctx, config_list.get())) {
+      return nullptr;
+    }
   }
   if (!send_channel_id.empty()) {
     SSL_set_tls_channel_id_enabled(ssl.get(), 1);

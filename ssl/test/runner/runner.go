@@ -554,6 +554,8 @@ type connectionExpectations struct {
 	// peerApplicationSettings are the expected application settings for the
 	// connection. If nil, no application settings are expected.
 	peerApplicationSettings []byte
+	// echAccepted is whether ECH should have been accepted on this connection.
+	echAccepted bool
 }
 
 type testCase struct {
@@ -966,6 +968,16 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 	if len(expectations.quicTransportParamsLegacy) > 0 {
 		if !bytes.Equal(expectations.quicTransportParamsLegacy, connState.QUICTransportParamsLegacy) {
 			return errors.New("Peer did not send expected legacy QUIC transport params")
+		}
+	}
+
+	if expectations.echAccepted {
+		if !connState.ECHAccepted {
+			return errors.New("tls: server did not accept ECH")
+		}
+	} else {
+		if connState.ECHAccepted {
+			return errors.New("tls: server unexpectedly accepted ECH")
 		}
 	}
 
@@ -16440,203 +16452,795 @@ func addDelegatedCredentialTests() {
 	})
 }
 
+type echCipher struct {
+	name   string
+	cipher HPKECipherSuite
+}
+
+var echCiphers = []echCipher{
+	{
+		name:   "HKDF-SHA256-AES-128-GCM",
+		cipher: HPKECipherSuite{KDF: hpke.HKDFSHA256, AEAD: hpke.AES128GCM},
+	},
+	{
+		name:   "HKDF-SHA256-AES-256-GCM",
+		cipher: HPKECipherSuite{KDF: hpke.HKDFSHA256, AEAD: hpke.AES256GCM},
+	}, {
+		name:   "HKDF-SHA256-ChaCha20-Poly1305",
+		cipher: HPKECipherSuite{KDF: hpke.HKDFSHA256, AEAD: hpke.ChaCha20Poly1305},
+	},
+}
+
+// generateECHConfigWithSecretKey constructs a valid ECHConfig and corresponding
+// private key for the server. If the cipher list is empty, all ciphers are
+// included.
+func generateECHConfigWithSecretKey(publicName string, ciphers []HPKECipherSuite) (*ECHConfig, []byte, error) {
+	publicKeyR, secretKeyR, err := hpke.GenerateKeyPair()
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(ciphers) == 0 {
+		ciphers = make([]HPKECipherSuite, 0, len(echCiphers))
+		for _, cipher := range echCiphers {
+			ciphers = append(ciphers, cipher.cipher)
+		}
+	}
+	result := ECHConfig{
+		PublicName:   publicName,
+		PublicKey:    publicKeyR,
+		KEM:          hpke.X25519WithHKDFSHA256,
+		CipherSuites: ciphers,
+		// For real-life purposes, the maxNameLen should be
+		// based on the set of domain names that the server
+		// represents.
+		MaxNameLen: 16,
+	}
+	return &result, secretKeyR, nil
+}
+
 func addEncryptedClientHelloTests() {
-	// Test ECH GREASE.
-
-	// Test the client's behavior when the server ignores ECH GREASE.
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ECH-GREASE-Client-TLS13",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectClientECH: true,
-			},
-		},
-		flags: []string{"-enable-ech-grease"},
-	})
-
-	// Test the client's ECH GREASE behavior when responding to server's
-	// HelloRetryRequest. This test implicitly checks that the first and second
-	// ClientHello messages have identical ECH extensions.
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ECH-GREASE-Client-TLS13-HelloRetryRequest",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			MinVersion: VersionTLS13,
-			// P-384 requires a HelloRetryRequest against BoringSSL's default
-			// configuration. Assert this with ExpectMissingKeyShare.
-			CurvePreferences: []CurveID{CurveP384},
-			Bugs: ProtocolBugs{
-				ExpectMissingKeyShare: true,
-				ExpectClientECH:       true,
-			},
-		},
-		flags: []string{"-enable-ech-grease", "-expect-hrr"},
-	})
-
-	retryConfigValid := ECHConfig{
-		PublicName: "example.com",
-		// A real X25519 public key obtained from hpke.GenerateKeyPair().
-		PublicKey: []byte{
-			0x23, 0x1a, 0x96, 0x53, 0x52, 0x81, 0x1d, 0x7a,
-			0x36, 0x76, 0xaa, 0x5e, 0xad, 0xdb, 0x66, 0x1c,
-			0x92, 0x45, 0x8a, 0x60, 0xc7, 0x81, 0x93, 0xb0,
-			0x47, 0x7b, 0x54, 0x18, 0x6b, 0x9a, 0x1d, 0x6d},
-		KEM: hpke.X25519WithHKDFSHA256,
-		CipherSuites: []HPKECipherSuite{
-			{
-				KDF:  hpke.HKDFSHA256,
-				AEAD: hpke.AES256GCM,
-			},
-		},
-		MaxNameLen: 42,
+	publicECHConfig, secretKey, err := generateECHConfigWithSecretKey("public.example", nil)
+	if err != nil {
+		panic(err)
+	}
+	publicECHConfig1, secretKey1, err := generateECHConfigWithSecretKey("public.example", nil)
+	if err != nil {
+		panic(err)
+	}
+	publicECHConfig2, secretKey2, err := generateECHConfigWithSecretKey("public.example", nil)
+	if err != nil {
+		panic(err)
+	}
+	publicECHConfig3, secretKey3, err := generateECHConfigWithSecretKey("public.example", nil)
+	if err != nil {
+		panic(err)
 	}
 
-	retryConfigUnsupportedVersion := []byte{
-		// version
-		0xba, 0xdd,
-		// length
-		0x00, 0x05,
-		// contents
-		0x05, 0x04, 0x03, 0x02, 0x01,
+	for _, protocol := range []protocol{tls, quic} {
+		prefix := protocol.String() + "-"
+
+		// There are two ClientHellos, so many of our tests have
+		// HelloRetryRequest variations.
+		for _, hrr := range []bool{false, true} {
+			var suffix string
+			var defaultCurves []CurveID
+			if hrr {
+				suffix = "-HelloRetryRequest"
+				// Require a HelloRetryRequest for every curve.
+				defaultCurves = []CurveID{}
+			}
+
+			// Test the server can accept ECH.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: publicECHConfig,
+					DefaultCurves:   defaultCurves,
+				},
+				resumeSession: true,
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
+			// Test the server can accept ECH with a minimal ClientHelloOuter.
+			// This confirms that the server does not unexpectedly pick up
+			// fields from the wrong ClientHello.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-MinimalClientHelloOuter" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: publicECHConfig,
+					DefaultCurves:   defaultCurves,
+					Bugs: ProtocolBugs{
+						MinimalClientHelloOuter: true,
+					},
+				},
+				resumeSession: true,
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
+			// Test that the server can decline ECH. In particular, it must send
+			// retry configs.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-Decline" + suffix,
+				config: Config{
+					ServerName:    "secret.example",
+					DefaultCurves: defaultCurves,
+					// The client uses an ECHConfig that the server does not understand
+					// so we can observe which retry configs the server sends back.
+					ClientECHConfig: publicECHConfig,
+					Bugs: ProtocolBugs{
+						OfferSessionInClientHelloOuter: true,
+						ExpectECHRetryConfigs:          MarshalECHConfigList(publicECHConfig2, publicECHConfig3),
+					},
+				},
+				resumeSession: true,
+				flags: []string{
+					// Configure three ECHConfigs on the shim, only two of which
+					// should be sent in retry configs.
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig1)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey1),
+					"-ech-is-retry-config", "0",
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig2)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey2),
+					"-ech-is-retry-config", "1",
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig3)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey3),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "public.example",
+				},
+			})
+
+			// Test that the server considers a ClientHelloInner indicating TLS
+			// 1.2 to be a fatal error.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-TLS12InInner" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					Bugs: ProtocolBugs{
+						AllowTLS12InClientHelloInner: true,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1"},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":INVALID_CLIENT_HELLO_INNER:",
+			})
+
+			// When ech_is_inner extension is absent from the ClientHelloInner, the
+			// server should fail the connection.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-MissingECHIsInner" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					Bugs: ProtocolBugs{
+						OmitECHIsInner:       !hrr,
+						OmitSecondECHIsInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":INVALID_CLIENT_HELLO_INNER:",
+			})
+
+			// Test that the server can decode ech_outer_extensions.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-OuterExtensions" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					ECHOuterExtensions: []uint16{
+						extensionKeyShare,
+						extensionSupportedCurves,
+						// Include a custom extension, to test that unrecognized
+						// extensions are also decoded.
+						extensionCustom,
+					},
+					Bugs: ProtocolBugs{
+						CustomExtension: "test",
+						// Ensure ClientHelloOuter's extension order is different
+						// from ClientHelloInner. This tests that the server
+						// correctly reconstructs the extension order.
+						FirstExtensionInClientHelloOuter:   extensionSupportedCurves,
+						OnlyCompressSecondClientHelloInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
+			// Test that the server rejects duplicated values in ech_outer_extensions.
+			// Besides causing the server to reconstruct an invalid ClientHelloInner
+			// with duplicated extensions, this behavior would be vulnerable to DoS
+			// attacks.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-OuterExtensions-Duplicate" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					ECHOuterExtensions: []uint16{
+						extensionSupportedCurves,
+						extensionSupportedCurves,
+					},
+					Bugs: ProtocolBugs{
+						OnlyCompressSecondClientHelloInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":DUPLICATE_EXTENSION:",
+			})
+
+			// Test that the server rejects references to missing extensions in
+			// ech_outer_extensions.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-OuterExtensions-Missing" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					ECHOuterExtensions: []uint16{
+						extensionCustom,
+					},
+					Bugs: ProtocolBugs{
+						OnlyCompressSecondClientHelloInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":DECODE_ERROR:",
+			})
+
+			// Test that the server rejects a references to the ECH extension in
+			// ech_outer_extensions. The ECH extension is not authenticated in the
+			// AAD and would result in an invalid ClientHelloInner.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-OuterExtensions-SelfReference" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					DefaultCurves:   defaultCurves,
+					ClientECHConfig: publicECHConfig,
+					ECHOuterExtensions: []uint16{
+						extensionEncryptedClientHello,
+					},
+					Bugs: ProtocolBugs{
+						OnlyCompressSecondClientHelloInner: hrr,
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: illegal parameter",
+				expectedError:      ":DECODE_ERROR:",
+			})
+		}
+
+		// Test that ECH, which runs before an async early callback, interacts
+		// correctly in the state machine.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-AsyncEarlyCallback",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+			},
+			flags: []string{
+				"-async",
+				"-use-early-callback",
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+				"-expect-server-name", "secret.example",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+
+		// Test ECH-enabled server with two ECHConfigs can decrypt client's ECH when
+		// it uses the second ECHConfig.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-SecondECHConfig",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig1,
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig1)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey1),
+				"-ech-is-retry-config", "1",
+				"-expect-server-name", "secret.example",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+
+		// Test all supported ECH cipher suites.
+		for i, cipher := range echCiphers {
+			otherCipher := echCiphers[0]
+			if i == 0 {
+				otherCipher = echCiphers[1]
+			}
+
+			// Test the ECH server can handle the specified cipher.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-Cipher-" + cipher.name,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: publicECHConfig,
+					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "secret.example",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
+			// Test that the ECH server rejects the specified cipher if not
+			// listed in its ECHConfig.
+			config, key, err := generateECHConfigWithSecretKey("public.example", []HPKECipherSuite{otherCipher.cipher})
+			if err != nil {
+				panic(err)
+			}
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-DisabledCipher-" + cipher.name,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: publicECHConfig,
+					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
+					Bugs: ProtocolBugs{
+						ExpectECHRetryConfigs: MarshalECHConfigList(config),
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(config)),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-is-retry-config", "1",
+					"-expect-server-name", "public.example",
+				},
+			})
+		}
+
+		// Test that the ECH server handles a short ClientECH.enc value by
+		// falling back to ClientHelloOuter.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ShortClientECHEnc",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				Bugs: ProtocolBugs{
+					ExpectECHRetryConfigs: MarshalECHConfigList(publicECHConfig),
+					TruncateClientECHEnc:  true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+				"-expect-server-name", "public.example",
+			},
+		})
+
+		// Test that the server handles decryption failure by falling back to
+		// ClientHelloOuter.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-CorruptEncryptedClientHello",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				Bugs: ProtocolBugs{
+					ExpectECHRetryConfigs:       MarshalECHConfigList(publicECHConfig),
+					CorruptEncryptedClientHello: true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+		})
+
+		// Test that the server treats decryption failure in the second
+		// ClientHello as fatal.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-CorruptSecondEncryptedClientHello",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				// Force a HelloRetryRequest.
+				DefaultCurves: []CurveID{},
+				Bugs: ProtocolBugs{
+					CorruptSecondEncryptedClientHello: true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			shouldFail:         true,
+			expectedError:      ":DECRYPTION_FAILED:",
+			expectedLocalError: "remote error: error decrypting message",
+		})
+
+		// Test that the server treats a missing second ECH extension as fatal.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-OmitSecondEncryptedClientHello",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				// Force a HelloRetryRequest.
+				DefaultCurves: []CurveID{},
+				Bugs: ProtocolBugs{
+					OmitSecondEncryptedClientHello: true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			shouldFail:         true,
+			expectedError:      ":MISSING_EXTENSION:",
+			expectedLocalError: "remote error: missing extension",
+		})
+
+		// Test early data works with ECH, in both accept and reject cases.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-EarlyData",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+			},
+			resumeSession: true,
+			earlyData:     true,
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-EarlyDataRejected",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				Bugs: ProtocolBugs{
+					// Cause the server to reject 0-RTT with a bad ticket age.
+					SendTicketAge: 1 * time.Hour,
+				},
+			},
+			resumeSession:           true,
+			earlyData:               true,
+			expectEarlyDataRejected: true,
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+
+		// Test servers with ECH disabled correctly ignore the extension and
+		// handshake with the ClientHelloOuter.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-Disabled",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+			},
+			flags: []string{
+				"-expect-server-name", "public.example",
+			},
+		})
+
+		// Test the client's behavior when the server ignores ECH GREASE.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-GREASE-Client-TLS13",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectClientECH: true,
+				},
+			},
+			flags: []string{"-enable-ech-grease"},
+		})
+
+		// Test the client's ECH GREASE behavior when responding to server's
+		// HelloRetryRequest. This test implicitly checks that the first and second
+		// ClientHello messages have identical ECH extensions.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-GREASE-Client-TLS13-HelloRetryRequest",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				// P-384 requires a HelloRetryRequest against BoringSSL's default
+				// configuration. Assert this with ExpectMissingKeyShare.
+				CurvePreferences: []CurveID{CurveP384},
+				Bugs: ProtocolBugs{
+					ExpectMissingKeyShare: true,
+					ExpectClientECH:       true,
+				},
+			},
+			flags: []string{"-enable-ech-grease", "-expect-hrr"},
+		})
+
+		retryConfigValid := ECHConfig{
+			PublicName: "example.com",
+			// A real X25519 public key obtained from hpke.GenerateKeyPair().
+			PublicKey: []byte{
+				0x23, 0x1a, 0x96, 0x53, 0x52, 0x81, 0x1d, 0x7a,
+				0x36, 0x76, 0xaa, 0x5e, 0xad, 0xdb, 0x66, 0x1c,
+				0x92, 0x45, 0x8a, 0x60, 0xc7, 0x81, 0x93, 0xb0,
+				0x47, 0x7b, 0x54, 0x18, 0x6b, 0x9a, 0x1d, 0x6d},
+			KEM: hpke.X25519WithHKDFSHA256,
+			CipherSuites: []HPKECipherSuite{
+				{
+					KDF:  hpke.HKDFSHA256,
+					AEAD: hpke.AES256GCM,
+				},
+			},
+			MaxNameLen: 42,
+		}
+
+		retryConfigUnsupportedVersion := []byte{
+			// version
+			0xba, 0xdd,
+			// length
+			0x00, 0x05,
+			// contents
+			0x05, 0x04, 0x03, 0x02, 0x01,
+		}
+
+		validAndInvalidConfigsBuilder := newByteBuilder()
+		validAndInvalidConfigsBody := validAndInvalidConfigsBuilder.addU16LengthPrefixed()
+		validAndInvalidConfigsBody.addBytes(MarshalECHConfig(&retryConfigValid))
+		validAndInvalidConfigsBody.addBytes(retryConfigUnsupportedVersion)
+		validAndInvalidConfigs := validAndInvalidConfigsBuilder.finish()
+
+		// Test that the client accepts a well-formed encrypted_client_hello
+		// extension in response to ECH GREASE. The response includes one ECHConfig
+		// with a supported version and one with an unsupported version.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-GREASE-Client-TLS13-Retry-Configs",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectClientECH: true,
+					// Include an additional well-formed ECHConfig with an invalid
+					// version. This ensures the client can iterate over the retry
+					// configs.
+					SendECHRetryConfigs: validAndInvalidConfigs,
+				},
+			},
+			flags: []string{"-enable-ech-grease"},
+		})
+
+		// Test that the client aborts with a decode_error alert when it receives a
+		// syntactically-invalid encrypted_client_hello extension from the server.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-GREASE-Client-TLS13-Invalid-Retry-Configs",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectClientECH:     true,
+					SendECHRetryConfigs: []byte{0xba, 0xdd, 0xec, 0xcc},
+				},
+			},
+			flags:              []string{"-enable-ech-grease"},
+			shouldFail:         true,
+			expectedLocalError: "remote error: error decoding message",
+			expectedError:      ":ERROR_PARSING_EXTENSION:",
+		})
+
+		// Test that the server responds to an empty ech_is_inner extension with the
+		// acceptance confirmation.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ECHIsInner",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					AlwaysSendECHIsInner: true,
+				},
+			},
+			resumeSession: true,
+		})
+
+		// Test that server fails the handshake when it sees a non-empty
+		// ech_is_inner extension.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ECHIsInner-NotEmpty",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					AlwaysSendECHIsInner:  true,
+					SendInvalidECHIsInner: []byte{42, 42, 42},
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: illegal parameter",
+			expectedError:      ":ERROR_PARSING_EXTENSION:",
+		})
+
+		// When ech_is_inner extension is absent, the server should not accept ECH.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ECHIsInner-Absent",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+			},
+			resumeSession: true,
+		})
+
+		// Test that a TLS 1.3 server that receives an ech_is_inner extension can
+		// negotiate TLS 1.2 without clobbering the downgrade signal.
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-ECHIsInner-Absent-TLS12",
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS13,
+					Bugs: ProtocolBugs{
+						// Omit supported_versions extension so the server negotiates
+						// TLS 1.2.
+						OmitSupportedVersions: true,
+						AlwaysSendECHIsInner:  true,
+					},
+				},
+				// Check that the client sees the TLS 1.3 downgrade signal in
+				// ServerHello.random.
+				shouldFail:         true,
+				expectedLocalError: "tls: downgrade from TLS 1.3 detected",
+			})
+		}
+
+		// Test that the handshake fails when the server has no ECHConfigs and the
+		// ClientHello contains both encrypted_client_hello and ech_is_inner
+		// extensions.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-Disabled-EncryptedClientHello-ECHIsInner",
+			config: Config{
+				MinVersion:      VersionTLS13,
+				MaxVersion:      VersionTLS13,
+				ClientECHConfig: publicECHConfig,
+				Bugs: ProtocolBugs{
+					AlwaysSendECHIsInner: true,
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: illegal parameter",
+			expectedError:      ":UNEXPECTED_EXTENSION:",
+		})
 	}
-
-	var validAndInvalidConfigs []byte
-	validAndInvalidConfigs = append(validAndInvalidConfigs, MarshalECHConfig(&retryConfigValid)...)
-	validAndInvalidConfigs = append(validAndInvalidConfigs, retryConfigUnsupportedVersion...)
-
-	// Test that the client accepts a well-formed encrypted_client_hello
-	// extension in response to ECH GREASE. The response includes one ECHConfig
-	// with a supported version and one with an unsupported version.
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ECH-GREASE-Client-TLS13-Retry-Configs",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectClientECH: true,
-				// Include an additional well-formed ECHConfig with an invalid
-				// version. This ensures the client can iterate over the retry
-				// configs.
-				SendECHRetryConfigs: validAndInvalidConfigs,
-			},
-		},
-		flags: []string{"-enable-ech-grease"},
-	})
-
-	// Test that the client aborts with a decode_error alert when it receives a
-	// syntactically-invalid encrypted_client_hello extension from the server.
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "ECH-GREASE-Client-TLS13-Invalid-Retry-Configs",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectClientECH:     true,
-				SendECHRetryConfigs: []byte{0xba, 0xdd, 0xec, 0xcc},
-			},
-		},
-		flags:              []string{"-enable-ech-grease"},
-		shouldFail:         true,
-		expectedLocalError: "remote error: error decoding message",
-		expectedError:      ":ERROR_PARSING_EXTENSION:",
-	})
-
-	// Test that the server responds to an empty ECH extension with the acceptance
-	// confirmation.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ECH-Server-ECHIsInner",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SendECHIsInner:        []byte{},
-				ExpectServerAcceptECH: true,
-			},
-		},
-		resumeSession: true,
-	})
-
-	// Test that server fails the handshake when it sees a nonempty ech_is_inner
-	// extension.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ECH-Server-ECHIsInner-NotEmpty",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SendECHIsInner: []byte{42, 42, 42},
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: illegal parameter",
-		expectedError:      ":ERROR_PARSING_EXTENSION:",
-	})
-
-	// When ech_is_inner extension is absent, the server should not accept ECH.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ECH-Server-ECHIsInner-Absent",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectServerAcceptECH: false,
-			},
-		},
-		resumeSession: true,
-	})
-
-	// Test that a TLS 1.3 server that receives an ech_is_inner extension can
-	// negotiate TLS 1.2 without clobbering the downgrade signal.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ECH-Server-ECHIsInner-Absent-TLS12",
-		config: Config{
-			MinVersion: VersionTLS12,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				// Omit supported_versions extension so the server negotiates
-				// TLS 1.2.
-				OmitSupportedVersions: true,
-				SendECHIsInner:        []byte{},
-			},
-		},
-		// Check that the client sees the TLS 1.3 downgrade signal in
-		// ServerHello.random.
-		shouldFail:         true,
-		expectedLocalError: "tls: downgrade from TLS 1.3 detected",
-	})
-
-	// Test that the handshake fails when the client sends both
-	// encrypted_client_hello and ech_is_inner extensions.
-	//
-	// TODO(dmcardle) Replace this test once runner is capable of sending real
-	// ECH extensions. The equivalent test will send ech_is_inner and a real
-	// encrypted_client_hello extension derived from a key unknown to the
-	// server.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ECH-Server-EncryptedClientHello-ECHIsInner",
-		config: Config{
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SendECHIsInner:                      []byte{},
-				SendPlaceholderEncryptedClientHello: true,
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: illegal parameter",
-		expectedError:      ":UNEXPECTED_EXTENSION:",
-	})
 }
 
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {

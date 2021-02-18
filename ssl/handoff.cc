@@ -93,7 +93,7 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
       !serialize_features(&seq) ||
       !CBB_flush(out) ||
       !ssl->method->get_message(ssl, &msg) ||
-      !ssl_client_hello_init(ssl, out_hello, msg)) {
+      !ssl_client_hello_init(ssl, out_hello, msg.body)) {
     return false;
   }
 

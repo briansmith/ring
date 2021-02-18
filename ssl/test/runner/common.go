@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
 )
 
 const (
@@ -129,6 +131,7 @@ const (
 	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
 	extensionEncryptedClientHello       uint16 = 0xfe09 // not IANA assigned
 	extensionECHIsInner                 uint16 = 0xda09 // not IANA assigned
+	extensionECHOuterExtensions         uint16 = 0xfd00 // not IANA assigned
 )
 
 // TLS signaling cipher suite values
@@ -266,6 +269,7 @@ type ConnectionState struct {
 	QUICTransportParamsLegacy  []byte                // the legacy QUIC transport params received from the peer
 	HasApplicationSettings     bool                  // whether ALPS was negotiated
 	PeerApplicationSettings    []byte                // application settings received from the peer
+	ECHAccepted                bool                  // whether ECH was accepted on this connection
 }
 
 // ClientAuthType declares the policy the server will follow for
@@ -421,6 +425,19 @@ type Config struct {
 	// certificates unless InsecureSkipVerify is given. It is also included
 	// in the client's handshake to support virtual hosting.
 	ServerName string
+
+	// ClientECHConfig, when non-nil, is the ECHConfig the client will use to
+	// attempt ECH.
+	ClientECHConfig *ECHConfig
+
+	// ECHCipherSuites, for the client, is the list of HPKE cipher suites in
+	// decreasing order of preference. If empty, the default will be used.
+	ECHCipherSuites []HPKECipherSuite
+
+	// ECHOuterExtensions is the list of extensions that the client will
+	// compress with the ech_outer_extensions extension. If empty, no extensions
+	// will be compressed.
+	ECHOuterExtensions []uint16
 
 	// ClientAuth determines the server's policy for
 	// TLS Client Authentication. The default is NoClientCert.
@@ -846,23 +863,74 @@ type ProtocolBugs struct {
 	// encrypted_client_hello extension containing a ClientECH structure.
 	ExpectClientECH bool
 
-	// ExpectServerAcceptECH causes the client to expect that the server will
-	// indicate ECH acceptance in the ServerHello.
-	ExpectServerAcceptECH bool
+	// IgnoreECHConfigCipherPreferences, when true, causes the client to ignore
+	// the cipher preferences in the ECHConfig and select the most preferred ECH
+	// cipher suite unconditionally.
+	IgnoreECHConfigCipherPreferences bool
+
+	// ExpectECHRetryConfigs, when non-nil, contains the expected bytes of the
+	// server's retry configs.
+	ExpectECHRetryConfigs []byte
 
 	// SendECHRetryConfigs, if not empty, contains the ECH server's serialized
 	// retry configs.
 	SendECHRetryConfigs []byte
 
-	// SendEncryptedClientHello, when true, causes the client to send a
-	// placeholder encrypted_client_hello extension on the ClientHelloOuter
-	// message.
-	SendPlaceholderEncryptedClientHello bool
+	// SendInvalidECHIsInner, if not empty, causes the client to send the
+	// specified byte string in the ech_is_inner extension.
+	SendInvalidECHIsInner []byte
 
-	// SendECHIsInner, when non-nil, causes the client to send an ech_is_inner
-	// extension on the ClientHelloOuter message. When nil, the extension will
-	// be omitted.
-	SendECHIsInner []byte
+	// OmitECHIsInner, if true, causes the client to omit the ech_is_inner
+	// extension on the ClientHelloInner message.
+	OmitECHIsInner bool
+
+	// OmitSecondECHIsInner, if true, causes the client to omit the ech_is_inner
+	// extension on the second ClientHelloInner message.
+	OmitSecondECHIsInner bool
+
+	// AlwaysSendECHIsInner, if true, causes the client to send the
+	// ech_is_inner extension on all ClientHello messages. The server is then
+	// expected to unconditionally confirm the extension when negotiating
+	// TLS 1.3 or later.
+	AlwaysSendECHIsInner bool
+
+	// TruncateClientECHEnc, if true, causes the client to send a shortened
+	// ClientECH.enc value in its encrypted_client_hello extension.
+	TruncateClientECHEnc bool
+
+	// OfferSessionInClientHelloOuter, if true, causes the client to offer
+	// sessions in ClientHelloOuter.
+	OfferSessionInClientHelloOuter bool
+
+	// FirstExtensionInClientHelloOuter, if non-zero, causes the client to place
+	// the specified extension first in ClientHelloOuter.
+	FirstExtensionInClientHelloOuter uint16
+
+	// OnlyCompressSecondClientHelloInner, if true, causes the client to
+	// only apply outer_extensions to the second ClientHello.
+	OnlyCompressSecondClientHelloInner bool
+
+	// OmitSecondEncryptedClientHello, if true, causes the client to omit the
+	// second encrypted_client_hello extension.
+	OmitSecondEncryptedClientHello bool
+
+	// CorruptEncryptedClientHello, if true, causes the client to incorrectly
+	// encrypt the encrypted_client_hello extension.
+	CorruptEncryptedClientHello bool
+
+	// CorruptSecondEncryptedClientHello, if true, causes the client to
+	// incorrectly encrypt the second encrypted_client_hello extension.
+	CorruptSecondEncryptedClientHello bool
+
+	// AllowTLS12InClientHelloInner, if true, causes the client to include
+	// TLS 1.2 and earlier in ClientHelloInner.
+	AllowTLS12InClientHelloInner bool
+
+	// MinimalClientHelloOuter, if true, causes the client to omit most fields
+	// in ClientHelloOuter. Note this will make handshake attempts with the
+	// ClientHelloOuter fail and should only be used in tests that expect
+	// success.
+	MinimalClientHelloOuter bool
 
 	// SwapNPNAndALPN switches the relative order between NPN and ALPN in
 	// both ClientHello and ServerHello.
@@ -1875,6 +1943,19 @@ func (c *Config) defaultCurves() map[CurveID]bool {
 	return defaultCurves
 }
 
+var defaultECHCipherSuitePreferences = []HPKECipherSuite{
+	{KDF: hpke.HKDFSHA256, AEAD: hpke.AES128GCM},
+	{KDF: hpke.HKDFSHA256, AEAD: hpke.AES256GCM},
+	{KDF: hpke.HKDFSHA256, AEAD: hpke.ChaCha20Poly1305},
+}
+
+func (c *Config) echCipherSuitePreferences() []HPKECipherSuite {
+	if c == nil || len(c.ECHCipherSuites) == 0 {
+		return defaultECHCipherSuitePreferences
+	}
+	return c.ECHCipherSuites
+}
+
 func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 	if isDTLS {
 		switch vers {
@@ -1904,16 +1985,21 @@ func (c *Config) isSupportedVersion(wireVers uint16, isDTLS bool) (uint16, bool)
 	return vers, true
 }
 
-func (c *Config) supportedVersions(isDTLS bool) []uint16 {
+func (c *Config) supportedVersions(isDTLS, requireTLS13 bool) []uint16 {
 	versions := allTLSWireVersions
 	if isDTLS {
 		versions = allDTLSWireVersions
 	}
 	var ret []uint16
-	for _, vers := range versions {
-		if _, ok := c.isSupportedVersion(vers, isDTLS); ok {
-			ret = append(ret, vers)
+	for _, wireVers := range versions {
+		vers, ok := c.isSupportedVersion(wireVers, isDTLS)
+		if !ok {
+			continue
 		}
+		if requireTLS13 && vers < VersionTLS13 {
+			continue
+		}
+		ret = append(ret, wireVers)
 	}
 	return ret
 }

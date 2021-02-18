@@ -18,10 +18,12 @@
 package hpke
 
 import (
+	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -50,6 +52,20 @@ const (
 	hpkeModeBase uint8 = 0
 	hpkeModePSK  uint8 = 1
 )
+
+// GetHKDFHash returns the crypto.Hash that corresponds to kdf. If kdf is not
+// one the supported KDF IDs, returns an error.
+func GetHKDFHash(kdf uint16) (crypto.Hash, error) {
+	switch kdf {
+	case HKDFSHA256:
+		return crypto.SHA256, nil
+	case HKDFSHA384:
+		return crypto.SHA384, nil
+	case HKDFSHA512:
+		return crypto.SHA512, nil
+	}
+	return 0, fmt.Errorf("unknown KDF: %d", kdf)
+}
 
 type GenerateKeyPairFunc func() (public []byte, secret []byte, e error)
 
@@ -112,6 +128,12 @@ func SetupPSKReceiverX25519(kdfID, aeadID uint16, enc, secretKeyR, info, psk, ps
 	}
 	return context, nil
 }
+
+func (c *Context) KEM() uint16 { return c.kemID }
+
+func (c *Context) KDF() uint16 { return c.kdfID }
+
+func (c *Context) AEAD() uint16 { return c.aeadID }
 
 func (c *Context) Seal(plaintext, additionalData []byte) []byte {
 	ciphertext := c.aead.Seal(nil, c.computeNonce(), plaintext, additionalData)

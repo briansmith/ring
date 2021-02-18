@@ -126,6 +126,7 @@ BSSL_NAMESPACE_BEGIN
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
+      ech_accept(false),
       ech_present(false),
       ech_is_inner_present(false),
       scts_requested(false),
@@ -162,6 +163,28 @@ void SSL_HANDSHAKE::ResizeSecrets(size_t hash_len) {
     abort();
   }
   hash_len_ = hash_len;
+}
+
+bool SSL_HANDSHAKE::GetClientHello(SSLMessage *out_msg,
+                                   SSL_CLIENT_HELLO *out_client_hello) {
+  if (!ech_client_hello_buf.empty()) {
+    // If the backing buffer is non-empty, the ClientHelloInner has been set.
+    out_msg->is_v2_hello = false;
+    out_msg->type = SSL3_MT_CLIENT_HELLO;
+    out_msg->raw = CBS(ech_client_hello_buf);
+    out_msg->body = MakeConstSpan(ech_client_hello_buf).subspan(4);
+  } else if (!ssl->method->get_message(ssl, out_msg)) {
+    // The message has already been read, so this cannot fail.
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+
+  if (!ssl_client_hello_init(ssl, out_client_hello, out_msg->body)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return false;
+  }
+  return true;
 }
 
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl) {

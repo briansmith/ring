@@ -119,6 +119,9 @@ type Conn struct {
 	// handshake data may be received until the next flight or epoch change.
 	seenHandshakePackEnd bool
 
+	// echAccepted indicates whether ECH was accepted for this connection.
+	echAccepted bool
+
 	tmp [16]byte
 }
 
@@ -1860,6 +1863,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.QUICTransportParamsLegacy = c.quicTransportParamsLegacy
 		state.HasApplicationSettings = c.hasApplicationSettings
 		state.PeerApplicationSettings = c.peerApplicationSettings
+		state.ECHAccepted = c.echAccepted
 	}
 
 	return state

@@ -29,6 +29,7 @@
 #include <openssl/bio.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
+#include <openssl/curve25519.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/pem.h>
@@ -1438,6 +1439,230 @@ TEST(SSLTest, AddClientCA) {
   EXPECT_EQ(0, X509_NAME_cmp(sk_X509_NAME_value(list, 0), name1));
   EXPECT_EQ(0, X509_NAME_cmp(sk_X509_NAME_value(list, 1), name2));
   EXPECT_EQ(0, X509_NAME_cmp(sk_X509_NAME_value(list, 2), name1));
+}
+
+// kECHConfig contains a serialized ECHConfig value.
+static const uint8_t kECHConfig[] = {
+    // version
+    0xfe, 0x09,
+    // length
+    0x00, 0x42,
+    // contents.public_name
+    0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
+    0x6d, 0x70, 0x6c, 0x65,
+    // contents.public_key
+    0x00, 0x20, 0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3,
+    0x6a, 0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
+    0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c,
+    // contents.kem_id
+    0x00, 0x20,
+    // contents.cipher_suites
+    0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03,
+    // contents.maximum_name_length
+    0x00, 0x10,
+    // contents.extensions
+    0x00, 0x00};
+
+// kECHConfigPublicKey is the public key encoded in |kECHConfig|.
+static const uint8_t kECHConfigPublicKey[X25519_PUBLIC_VALUE_LEN] = {
+    0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3, 0x6a,
+    0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
+    0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c};
+
+// kECHConfigPrivateKey is the X25519 private key corresponding to
+// |kECHConfigPublicKey|.
+static const uint8_t kECHConfigPrivateKey[X25519_PRIVATE_KEY_LEN] = {
+    0xbc, 0xb5, 0x51, 0x29, 0x31, 0x10, 0x30, 0xc9, 0xed, 0x26, 0xde,
+    0xd4, 0xb3, 0xdf, 0x3a, 0xce, 0x06, 0x8a, 0xee, 0x17, 0xab, 0xce,
+    0xd7, 0xdb, 0xf3, 0x11, 0xe5, 0xa8, 0xf3, 0xb1, 0x8e, 0x24};
+
+// MakeECHConfig serializes an ECHConfig and writes it to |*out| with the
+// specified parameters. |cipher_suites| is a list of code points which should
+// contain pairs of KDF and AEAD IDs.
+bool MakeECHConfig(std::vector<uint8_t> *out, uint16_t kem_id,
+                   Span<const uint8_t> public_key,
+                   Span<const uint16_t> cipher_suites,
+                   Span<const uint8_t> extensions) {
+  bssl::ScopedCBB cbb;
+  CBB contents, child;
+  static const char kPublicName[] = "example.com";
+  if (!CBB_init(cbb.get(), 64) ||
+      !CBB_add_u16(cbb.get(), TLSEXT_TYPE_encrypted_client_hello) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(kPublicName),
+                     strlen(kPublicName)) ||
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, public_key.data(), public_key.size()) ||
+      !CBB_add_u16(&contents, kem_id) ||
+      !CBB_add_u16_length_prefixed(&contents, &child)) {
+    return false;
+  }
+  for (uint16_t cipher_suite : cipher_suites) {
+    if (!CBB_add_u16(&child, cipher_suite)) {
+      return false;
+    }
+  }
+  if (!CBB_add_u16(&contents, strlen(kPublicName)) ||  // maximum_name_length
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, extensions.data(), extensions.size()) ||
+      !CBB_flush(cbb.get())) {
+    return false;
+  }
+
+  out->assign(CBB_data(cbb.get()), CBB_data(cbb.get()) + CBB_len(cbb.get()));
+  return true;
+}
+
+TEST(SSLTest, ECHServerConfigList) {
+  // kWrongPrivateKey is an unrelated, but valid X25519 private key.
+  const uint8_t kWrongPrivateKey[X25519_PRIVATE_KEY_LEN] = {
+      0xbb, 0xfe, 0x08, 0xf7, 0x31, 0xde, 0x9c, 0x8a, 0xf2, 0x06, 0x4a,
+      0x18, 0xd7, 0x8b, 0x79, 0x31, 0xe2, 0x53, 0xdd, 0x63, 0x8f, 0x58,
+      0x42, 0xda, 0x21, 0x0e, 0x61, 0x97, 0x29, 0xcc, 0x17, 0x71};
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(config_list);
+
+  // Adding an ECHConfig with the wrong private key is an error.
+  ASSERT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, kECHConfig, sizeof(kECHConfig),
+      kWrongPrivateKey, sizeof(kWrongPrivateKey)));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH,
+            ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  // Adding an ECHConfig with the matching private key succeeds.
+  ASSERT_TRUE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, kECHConfig, sizeof(kECHConfig),
+      kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+
+  ASSERT_TRUE(
+      SSL_CTX_set1_ech_server_config_list(ctx.get(), config_list.get()));
+
+  // Build a new config list and replace the old one on |ctx|.
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> next_config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      next_config_list.get(), /*is_retry_config=*/1, kECHConfig,
+      sizeof(kECHConfig), kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+  ASSERT_TRUE(
+      SSL_CTX_set1_ech_server_config_list(ctx.get(), next_config_list.get()));
+}
+
+TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
+  std::vector<uint8_t> ech_config;
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
+      MakeConstSpan(kECHConfigPublicKey, sizeof(kECHConfigPublicKey) - 1),
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      /*extensions=*/{}));
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(config_list);
+  ASSERT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, ech_config.data(),
+      ech_config.size(), kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+
+  uint32_t err = ERR_peek_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG, ERR_GET_REASON(err));
+  ERR_clear_error();
+}
+
+// Test that |SSL_CTX_set1_ech_server_config_list| fails when the config list
+// has no retry configs.
+TEST(SSLTest, ECHServerConfigsWithoutRetryConfigs) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(config_list);
+
+  // Adding an ECHConfig with the matching private key succeeds.
+  ASSERT_TRUE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/0, kECHConfig, sizeof(kECHConfig),
+      kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+
+  ASSERT_FALSE(
+      SSL_CTX_set1_ech_server_config_list(ctx.get(), config_list.get()));
+  uint32_t err = ERR_peek_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_ECH_SERVER_WOULD_HAVE_NO_RETRY_CONFIGS, ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  // Add the same ECHConfig to the list, but this time mark it as a retry
+  // config.
+  ASSERT_TRUE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, kECHConfig, sizeof(kECHConfig),
+      kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+  ASSERT_TRUE(
+      SSL_CTX_set1_ech_server_config_list(ctx.get(), config_list.get()));
+}
+
+// Test that the server APIs reject ECHConfigs with unsupported features.
+TEST(SSLTest, UnsupportedECHConfig) {
+  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
+      SSL_ECH_SERVER_CONFIG_LIST_new());
+  ASSERT_TRUE(config_list);
+
+  // Unsupported versions are rejected.
+  static const uint8_t kUnsupportedVersion[] = {0xff, 0xff, 0x00, 0x00};
+  EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, kUnsupportedVersion,
+      sizeof(kUnsupportedVersion), kECHConfigPrivateKey,
+      sizeof(kECHConfigPrivateKey)));
+
+  // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
+  std::vector<uint8_t> ech_config;
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA384, EVP_HPKE_AEAD_AES_128_GCM},
+      /*extensions=*/{}));
+  EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, ech_config.data(),
+      ech_config.size(), kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
+
+  // Unsupported KEMs are rejected.
+  static const uint8_t kP256PublicKey[] = {
+      0x04, 0xe6, 0x2b, 0x69, 0xe2, 0xbf, 0x65, 0x9f, 0x97, 0xbe, 0x2f,
+      0x1e, 0x0d, 0x94, 0x8a, 0x4c, 0xd5, 0x97, 0x6b, 0xb7, 0xa9, 0x1e,
+      0x0d, 0x46, 0xfb, 0xdd, 0xa9, 0xa9, 0x1e, 0x9d, 0xdc, 0xba, 0x5a,
+      0x01, 0xe7, 0xd6, 0x97, 0xa8, 0x0a, 0x18, 0xf9, 0xc3, 0xc4, 0xa3,
+      0x1e, 0x56, 0xe2, 0x7c, 0x83, 0x48, 0xdb, 0x16, 0x1a, 0x1c, 0xf5,
+      0x1d, 0x7e, 0xf1, 0x94, 0x2d, 0x4b, 0xcf, 0x72, 0x22, 0xc1};
+  static const uint8_t kP256PrivateKey[] = {
+      0x07, 0x0f, 0x08, 0x72, 0x7a, 0xd4, 0xa0, 0x4a, 0x9c, 0xdd, 0x59,
+      0xc9, 0x4d, 0x89, 0x68, 0x77, 0x08, 0xb5, 0x6f, 0xc9, 0x5d, 0x30,
+      0x77, 0x0e, 0xe8, 0xd1, 0xc9, 0xce, 0x0a, 0x8b, 0xb4, 0x6a};
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kP256PublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      /*extensions=*/{}));
+  EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, ech_config.data(),
+      ech_config.size(), kP256PrivateKey, sizeof(kP256PrivateKey)));
+
+  // Unsupported extensions are rejected.
+  static const uint8_t kExtensions[] = {0x00, 0x01, 0x00, 0x00};
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      kExtensions));
+  EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
+      config_list.get(), /*is_retry_config=*/1, ech_config.data(),
+      ech_config.size(), kECHConfigPrivateKey, sizeof(kECHConfigPrivateKey)));
 }
 
 static void AppendSession(SSL_SESSION *session, void *arg) {
