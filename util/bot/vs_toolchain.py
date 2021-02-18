@@ -34,9 +34,8 @@ def SetEnvironmentForCPU(cpu):
     # Old-style paths were relative to the win_sdk\bin directory.
     json_relative_dir = os.path.join(sdk_dir, 'bin')
   else:
-    # New-style paths are relative to the toolchain directory, which is the
-    # parent of the SDK directory.
-    json_relative_dir = os.path.split(sdk_dir)[0]
+    # New-style paths are relative to the toolchain directory.
+    json_relative_dir = toolchain_data['path']
   for k in env:
     entries = [os.path.join(*([json_relative_dir] + e)) for e in env[k]]
     # clang-cl wants INCLUDE to be ;-separated even on non-Windows,
