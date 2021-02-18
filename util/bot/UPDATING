@@ -8,9 +8,7 @@ bots. For a similarly-configured local checkout for testing, run:
 
 To update to newer revisions, follow these instructions:
 
-DEPS: Set all revisions to those used in Chromium, found at
-   https://chromium.googlesource.com/chromium/src/+/master/DEPS (Search for the
-   corresponding repository name.)
+DEPS: Update the variables as described in the comments.
 
 go/bootstrap.py: Set TOOLSET_VERSION to the latest release of Go, found at
     https://golang.org/dl/.
@@ -29,24 +27,11 @@ update, place the updated files in their intended location and run:
 
     upload_to_google_storage.py -b chromium-tools FILE
 
-cmake-linux64.tar.gz: Download the latest CMake source tarball, found at
-    https://cmake.org/download/. Build it with:
-
-        ./bootstrap --prefix=$PWD/cmake-linux64 && make && make install
-        tar -czf cmake-linux64.tar.gz cmake-linux64/
-
-    The current revision was built against cmake-3.10.0.tar.gz.
-
-cmake-mac.tar.gz: Follow the same instructions as above on a Mac, but replace
-    cmake-linux64 with cmake-mac.
-
-    The current revision was built against cmake-3.10.0.tar.gz.
-
 cmake-win32.zip: Update to the latest prebuilt release of CMake, found at
     https://cmake.org/download/. Use the file labeled "Windows win64-x64
     ZIP". The download will be named cmake-VERSION-win64-x64.zip.
 
-    The current revision is cmake-3.11.4-win64-x64.zip
+    The current revision is cmake-3.19.5-win64-x64.zip
 
 nasm-win32.exe: Update to the appropriate release of NASM, found at
     https://www.nasm.us/. Use the same version as Chromium, found at

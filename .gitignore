@@ -11,9 +11,7 @@ doc/doc.css
 util/bot/android_ndk
 util/bot/android_sdk/public
 util/bot/cmake-linux64
-util/bot/cmake-linux64.tar.gz
 util/bot/cmake-mac
-util/bot/cmake-mac.tar.gz
 util/bot/cmake-win32
 util/bot/cmake-win32.zip
 util/bot/golang
