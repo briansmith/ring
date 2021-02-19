@@ -77,10 +77,6 @@ def Update(version):
   information required to pass to vs_env.py which we use in
   |SetEnvironmentForCPU()|.
   """
-  # TODO(davidben): Once the builders specify the toolchain version directly,
-  # remove this and replace the default in DEPS from 'env' to '2015'.
-  if version == 'env':
-    version = os.environ.get('GYP_MSVS_VERSION', '2015')
   depot_tools_path = FindDepotTools()
   get_toolchain_args = [
       sys.executable,

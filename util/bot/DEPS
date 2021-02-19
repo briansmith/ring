@@ -19,7 +19,7 @@ vars = {
   'checkout_sde': False,
   'checkout_nasm': False,
   'checkout_libcxx': False,
-  'vs_version': 'env',
+  'vs_version': '2015',
 
   # Run the following command to see the latest builds in CIPD:
   #  cipd describe PACKAGE_NAME -version latest
