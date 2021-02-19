@@ -534,7 +534,7 @@ Curves:
 
 	// Resolve PSK and compute the early secret.
 	if hs.sessionState != nil {
-		hs.finishedHash.addEntropy(hs.sessionState.masterSecret)
+		hs.finishedHash.addEntropy(hs.sessionState.secret)
 	} else {
 		hs.finishedHash.addEntropy(hs.finishedHash.zeroSecret())
 	}
@@ -1639,7 +1639,7 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 		}
 	}
 
-	hs.masterSecret = hs.sessionState.masterSecret
+	hs.masterSecret = hs.sessionState.secret
 	c.extendedMasterSecret = hs.sessionState.extendedMasterSecret
 
 	return nil
@@ -2007,7 +2007,7 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 	state := sessionState{
 		vers:          c.vers,
 		cipherSuite:   hs.suite.id,
-		masterSecret:  hs.masterSecret,
+		secret:        hs.masterSecret,
 		certificates:  hs.certsFromClient,
 		handshakeHash: hs.finishedHash.Sum(),
 	}
@@ -2279,7 +2279,7 @@ func verifyPSKBinder(version uint16, clientHello *clientHelloMsg, sessionState *
 		return errors.New("tls: Unknown cipher suite for PSK in session")
 	}
 
-	binder := computePSKBinder(sessionState.masterSecret, version, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
+	binder := computePSKBinder(sessionState.secret, version, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
 	if !bytes.Equal(binder, binderToVerify) {
 		return errors.New("tls: PSK binder does not verify")
 	}

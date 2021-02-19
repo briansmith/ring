@@ -1624,7 +1624,7 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 		vers:                     c.vers,
 		wireVersion:              c.wireVersion,
 		cipherSuite:              cipherSuite.id,
-		masterSecret:             c.resumptionSecret,
+		secret:                   deriveSessionPSK(cipherSuite, c.wireVersion, c.resumptionSecret, newSessionTicket.ticketNonce),
 		serverCertificates:       c.peerCertificates,
 		sctList:                  c.sctList,
 		ocspResponse:             c.ocspResponse,
@@ -1637,8 +1637,6 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 		localApplicationSettings: c.localApplicationSettings,
 		peerApplicationSettings:  c.peerApplicationSettings,
 	}
-
-	session.masterSecret = deriveSessionPSK(cipherSuite, c.wireVersion, c.resumptionSecret, newSessionTicket.ticketNonce)
 
 	cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
 	_, ok := c.config.ClientSessionCache.Get(cacheKey)
@@ -2027,7 +2025,7 @@ func (c *Conn) SendNewSessionTicket(nonce []byte) error {
 	state := sessionState{
 		vers:                     c.vers,
 		cipherSuite:              c.cipherSuite.id,
-		masterSecret:             deriveSessionPSK(c.cipherSuite, c.wireVersion, c.resumptionSecret, nonce),
+		secret:                   deriveSessionPSK(c.cipherSuite, c.wireVersion, c.resumptionSecret, nonce),
 		certificates:             peerCertificatesRaw,
 		ticketCreationTime:       c.config.time(),
 		ticketExpiration:         c.config.time().Add(time.Duration(m.ticketLifetime) * time.Second),

@@ -20,7 +20,7 @@ import (
 type sessionState struct {
 	vers                     uint16
 	cipherSuite              uint16
-	masterSecret             []byte
+	secret                   []byte
 	handshakeHash            []byte
 	certificates             [][]byte
 	extendedMasterSecret     bool
@@ -38,8 +38,8 @@ func (s *sessionState) marshal() []byte {
 	msg := newByteBuilder()
 	msg.addU16(s.vers)
 	msg.addU16(s.cipherSuite)
-	masterSecret := msg.addU16LengthPrefixed()
-	masterSecret.addBytes(s.masterSecret)
+	secret := msg.addU16LengthPrefixed()
+	secret.addBytes(s.secret)
 	handshakeHash := msg.addU16LengthPrefixed()
 	handshakeHash.addBytes(s.handshakeHash)
 	msg.addU16(uint16(len(s.certificates)))
@@ -96,7 +96,7 @@ func (s *sessionState) unmarshal(data []byte) bool {
 	var numCerts uint16
 	if !reader.readU16(&s.vers) ||
 		!reader.readU16(&s.cipherSuite) ||
-		!reader.readU16LengthPrefixedBytes(&s.masterSecret) ||
+		!reader.readU16LengthPrefixedBytes(&s.secret) ||
 		!reader.readU16LengthPrefixedBytes(&s.handshakeHash) ||
 		!reader.readU16(&numCerts) {
 		return false

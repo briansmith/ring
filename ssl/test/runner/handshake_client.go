@@ -472,7 +472,7 @@ NextCipherSuite:
 			if session.vers < VersionTLS13 {
 				version = VersionTLS13
 			}
-			generatePSKBinders(version, hello, pskCipherSuite, session.masterSecret, []byte{}, []byte{}, c.config)
+			generatePSKBinders(version, hello, pskCipherSuite, session.secret, []byte{}, []byte{}, c.config)
 		}
 		if c.config.Bugs.SendClientHelloWithFixes != nil {
 			helloBytes, err = fixClientHellos(hello, c.config.Bugs.SendClientHelloWithFixes)
@@ -514,7 +514,7 @@ NextCipherSuite:
 	// Derive early write keys and set Conn state to allow early writes.
 	if sendEarlyData {
 		finishedHash := newFinishedHash(session.wireVersion, c.isDTLS, pskCipherSuite)
-		finishedHash.addEntropy(session.masterSecret)
+		finishedHash.addEntropy(session.secret)
 		finishedHash.Write(helloBytes)
 
 		if !c.config.Bugs.SkipChangeCipherSpec {
@@ -657,7 +657,7 @@ NextCipherSuite:
 		hello.raw = nil
 
 		if len(hello.pskIdentities) > 0 {
-			generatePSKBinders(c.wireVersion, hello, pskCipherSuite, session.masterSecret, helloBytes, helloRetryRequest.marshal(), c.config)
+			generatePSKBinders(c.wireVersion, hello, pskCipherSuite, session.secret, helloBytes, helloRetryRequest.marshal(), c.config)
 		}
 		secondHelloBytes = hello.marshal()
 		secondHelloBytesToWrite := secondHelloBytes
@@ -879,7 +879,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			c.sendAlert(alertHandshakeFailure)
 			return errors.New("tls: server resumed an invalid session for the cipher suite")
 		}
-		hs.finishedHash.addEntropy(hs.session.masterSecret)
+		hs.finishedHash.addEntropy(hs.session.secret)
 		c.didResume = true
 	} else {
 		hs.finishedHash.addEntropy(zeroSecret)
@@ -1834,7 +1834,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 		}
 
 		// Restore masterSecret and peerCerts from previous state
-		hs.masterSecret = hs.session.masterSecret
+		hs.masterSecret = hs.session.secret
 		c.peerCertificates = hs.session.serverCertificates
 		c.extendedMasterSecret = hs.session.extendedMasterSecret
 		c.sctList = hs.session.sctList
@@ -1891,7 +1891,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		vers:               c.vers,
 		wireVersion:        c.wireVersion,
 		cipherSuite:        hs.suite.id,
-		masterSecret:       hs.masterSecret,
+		secret:             hs.masterSecret,
 		handshakeHash:      hs.finishedHash.Sum(),
 		serverCertificates: c.peerCertificates,
 		sctList:            c.sctList,
