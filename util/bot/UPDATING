@@ -10,9 +10,6 @@ To update to newer revisions, follow these instructions:
 
 DEPS: Update the variables as described in the comments.
 
-go/bootstrap.py: Set TOOLSET_VERSION to the latest release of Go, found at
-    https://golang.org/dl/.
-
 update_clang.py: Set CLANG_REVISION and CLANG_SUB_REVISION to the values used in
     Chromium, found at
     https://chromium.googlesource.com/chromium/src/+/master/tools/clang/scripts/update.py

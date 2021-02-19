@@ -21,14 +21,16 @@ vars = {
   'checkout_libcxx': False,
   'vs_version': 'env',
 
-  # Run the following commands to see the latest builds in CIPD:
-  #
-  #  cipd describe infra/3pp/tools/cmake/linux-amd64 -version latest
-  #  cipd describe infra/3pp/tools/cmake/mac-amd64 -version latest
+  # Run the following command to see the latest builds in CIPD:
+  #  cipd describe PACKAGE_NAME -version latest
+
+  # infra/3pp/tools/cmake/linux-amd64
   #
   # TODO(https://crbug.com/1176531): Update to a newer CMake when available
   # from CIPD. This is currently blocked on the linked bug.
   'cmake_version': 'version:3.13.5',
+  # infra/3pp/tools/go/linux-amd64
+  'go_version': 'version:1.16',
 
   # Update the following from
   # https://chromium.googlesource.com/chromium/src/+/master/DEPS
@@ -76,6 +78,14 @@ deps = {
       'version': Var('cmake_version'),
     }],
     'condition': 'host_os == "mac"',
+    'dep_type': 'cipd',
+  },
+
+  'boringssl/util/bot/golang': {
+    'packages': [{
+      'package': 'infra/3pp/tools/go/${{platform}}',
+      'version': Var('go_version'),
+    }],
     'dep_type': 'cipd',
   },
 
