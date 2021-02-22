@@ -83,16 +83,18 @@ struct rand_thread_state {
 // called when the whole process is exiting.
 DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list);
 DEFINE_STATIC_MUTEX(thread_states_list_lock);
+DEFINE_STATIC_MUTEX(state_clear_all_lock);
 
 static void rand_thread_state_clear_all(void) __attribute__((destructor));
 static void rand_thread_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+  CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
     CTR_DRBG_clear(&cur->drbg);
   }
-  // |thread_states_list_lock is deliberately left locked so that any threads
-  // that are still running will hang if they try to call |RAND_bytes|.
+  // The locks are deliberately left locked so that any threads that are still
+  // running will hang if they try to call |RAND_bytes|.
 }
 #endif
 
@@ -415,7 +417,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // bug on ppc64le. glibc may implement pthread locks by wrapping user code
     // in a hardware transaction, but, on some older versions of glibc and the
     // kernel, syscalls made with |syscall| did not abort the transaction.
-    CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());
+    CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
 #endif
     if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
       abort();
@@ -424,7 +426,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     state->fork_generation = fork_generation;
   } else {
 #if defined(BORINGSSL_FIPS)
-    CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());
+    CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
 #endif
   }
 
@@ -453,7 +455,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
 #if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_unlock_read(thread_states_list_lock_bss_get());
+  CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
 #endif
 }
 
