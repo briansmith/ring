@@ -371,6 +371,20 @@ fn aead_chacha20_poly1305_openssh() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn aead_test_aad_traits() {
+    test::compile_time_assert_copy::<aead::Aad<&'_ [u8]>>();
+    test::compile_time_assert_eq::<aead::Aad<Vec<u8>>>(); // `!Copy`
+
+    let aad_123 = aead::Aad::from(vec![1, 2, 3]); // `!Copy`
+    assert_eq!(aad_123, aad_123.clone()); // Cover `Clone` and `PartialEq`
+    assert_eq!(
+        format!("{:?}", aead::Aad::from(&[1, 2, 3])),
+        "Aad([1, 2, 3])"
+    );
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_tag_traits() {
     test::compile_time_assert_send::<aead::Tag>();
     test::compile_time_assert_sync::<aead::Tag>();

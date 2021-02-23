@@ -341,7 +341,7 @@ fn seal_in_place_separate_tag_(
 ///
 /// The type `A` could be a byte slice `&[u8]`, a byte array `[u8; N]`
 /// for some constant `N`, `Vec<u8>`, etc.
-pub struct Aad<A: AsRef<[u8]>>(A);
+pub struct Aad<A>(A);
 
 impl<A: AsRef<[u8]>> Aad<A> {
     /// Construct the `Aad` from the given bytes.
@@ -366,6 +366,39 @@ impl Aad<[u8; 0]> {
         Self::from([])
     }
 }
+
+impl<A> Clone for Aad<A>
+where
+    A: Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<A> Copy for Aad<A> where A: Copy {}
+
+impl<A> core::fmt::Debug for Aad<A>
+where
+    A: core::fmt::Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple("Aad").field(&self.0).finish()
+    }
+}
+
+impl<A> PartialEq for Aad<A>
+where
+    A: PartialEq,
+{
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}
+
+impl<A> Eq for Aad<A> where A: Eq {}
 
 /// An AEAD key without a designated role or nonce sequence.
 pub struct UnboundKey {
