@@ -23,55 +23,43 @@ wasm_bindgen_test_configure!(run_in_browser);
 use core::ops::RangeFrom;
 use ring::{aead, error, test, test_file};
 
-#[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-fn aead_aes_gcm_128() {
-    test_aead(
-        &aead::AES_128_GCM,
-        seal_with_key,
-        open_with_key,
-        test_file!("aead_aes_128_gcm_tests.txt"),
-    );
-    test_aead(
-        &aead::AES_128_GCM,
-        seal_with_less_safe_key,
-        open_with_less_safe_key,
-        test_file!("aead_aes_128_gcm_tests.txt"),
-    );
+/// Generate the tests for a given algorithm.
+///
+/// All of these tests can be run in parallel.
+macro_rules! test_aead {
+    { $( { $alg:ident, $test_file:expr } ),+, } => {
+        mod aead_test { // Make `cargo test aead` include these files.
+            $(
+                #[allow(non_snake_case)]
+                mod $alg { // Provide a separate namespace for each algorithm's test.
+                    use super::super::*;
+
+                    #[test]
+                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                    fn aead_known_answer() {
+                        test_aead(
+                            &aead::$alg,
+                            seal_with_key,
+                            open_with_key,
+                            test_file!($test_file),
+                        );
+                        test_aead(
+                            &aead::$alg,
+                            seal_with_less_safe_key,
+                            open_with_less_safe_key,
+                            test_file!($test_file),
+                        );
+                    }
+                }
+            )+
+        }
+    }
 }
 
-#[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-fn aead_aes_gcm_256() {
-    test_aead(
-        &aead::AES_256_GCM,
-        seal_with_key,
-        open_with_key,
-        test_file!("aead_aes_256_gcm_tests.txt"),
-    );
-    test_aead(
-        &aead::AES_256_GCM,
-        seal_with_less_safe_key,
-        open_with_less_safe_key,
-        test_file!("aead_aes_256_gcm_tests.txt"),
-    );
-}
-
-#[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-fn aead_chacha20_poly1305() {
-    test_aead(
-        &aead::CHACHA20_POLY1305,
-        seal_with_key,
-        open_with_key,
-        test_file!("aead_chacha20_poly1305_tests.txt"),
-    );
-    test_aead(
-        &aead::CHACHA20_POLY1305,
-        seal_with_less_safe_key,
-        open_with_less_safe_key,
-        test_file!("aead_chacha20_poly1305_tests.txt"),
-    );
+test_aead! {
+    { AES_128_GCM, "aead_aes_128_gcm_tests.txt" },
+    { AES_256_GCM, "aead_aes_256_gcm_tests.txt" },
+    { CHACHA20_POLY1305, "aead_chacha20_poly1305_tests.txt" },
 }
 
 fn test_aead<Seal, Open>(
