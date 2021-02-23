@@ -60,9 +60,11 @@ macro_rules! test_aead {
                             less_safe_key_open_in_place,
                             less_safe_key_open_within,
                             less_safe_key_seal_in_place_append_tag,
+                            less_safe_key_seal_in_place_separate_tag,
                             opening_key_open_in_place,
                             opening_key_open_within,
                             sealing_key_seal_in_place_append_tag,
+                            sealing_key_seal_in_place_separate_tag,
                         ]);
 
                     #[test]
@@ -133,7 +135,10 @@ fn test_aead(
     })
 }
 
-fn test_seal<Seal>(tc: &KnownAnswerTestCase, seal: Seal) -> Result<(), error::Unspecified>
+fn test_seal_append_tag<Seal>(
+    tc: &KnownAnswerTestCase,
+    seal: Seal,
+) -> Result<(), error::Unspecified>
 where
     Seal: FnOnce(aead::Nonce, &mut Vec<u8>) -> Result<(), error::Unspecified>,
 {
@@ -144,6 +149,21 @@ where
     expected_ciphertext_and_tag.extend_from_slice(tc.tag);
 
     assert_eq!(in_out, expected_ciphertext_and_tag);
+
+    Ok(())
+}
+
+fn test_seal_separate_tag<Seal>(
+    tc: &KnownAnswerTestCase,
+    seal: Seal,
+) -> Result<(), error::Unspecified>
+where
+    Seal: Fn(aead::Nonce, &mut [u8]) -> Result<aead::Tag, error::Unspecified>,
+{
+    let mut in_out = Vec::from(tc.plaintext);
+    let actual_tag = seal(aead::Nonce::assume_unique_for_key(tc.nonce), &mut in_out)?;
+    assert_eq!(actual_tag.as_ref(), tc.tag);
+    assert_eq!(in_out, tc.ciphertext);
 
     Ok(())
 }
@@ -266,9 +286,19 @@ fn sealing_key_seal_in_place_append_tag(
     alg: &'static aead::Algorithm,
     tc: KnownAnswerTestCase,
 ) -> Result<(), error::Unspecified> {
-    test_seal(&tc, |nonce, in_out| {
+    test_seal_append_tag(&tc, |nonce, in_out| {
         let mut key: aead::SealingKey<OneNonceSequence> = make_key(alg, tc.key, nonce);
         key.seal_in_place_append_tag(tc.aad, in_out)
+    })
+}
+
+fn sealing_key_seal_in_place_separate_tag(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
+) -> Result<(), error::Unspecified> {
+    test_seal_separate_tag(&tc, |nonce, in_out| {
+        let mut key: aead::SealingKey<_> = make_key(alg, tc.key, nonce);
+        key.seal_in_place_separate_tag(tc.aad, in_out)
     })
 }
 
@@ -296,7 +326,7 @@ fn less_safe_key_seal_in_place_append_tag(
     alg: &'static aead::Algorithm,
     tc: KnownAnswerTestCase,
 ) -> Result<(), error::Unspecified> {
-    test_seal(&tc, |nonce, in_out| {
+    test_seal_append_tag(&tc, |nonce, in_out| {
         let key = make_less_safe_key(alg, tc.key);
         key.seal_in_place_append_tag(nonce, tc.aad, in_out)
     })
@@ -309,6 +339,16 @@ fn less_safe_key_open_in_place(
     test_open_in_place(&tc, |nonce, in_out| {
         let key = make_less_safe_key(alg, tc.key);
         key.open_in_place(nonce, tc.aad, in_out)
+    })
+}
+
+fn less_safe_key_seal_in_place_separate_tag(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
+) -> Result<(), error::Unspecified> {
+    test_seal_separate_tag(&tc, |nonce, in_out| {
+        let key = make_less_safe_key(alg, tc.key);
+        key.seal_in_place_separate_tag(nonce, tc.aad, in_out)
     })
 }
 
