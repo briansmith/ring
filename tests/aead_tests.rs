@@ -20,7 +20,7 @@ use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 #[cfg(target_arch = "wasm32")]
 wasm_bindgen_test_configure!(run_in_browser);
 
-use core::ops::RangeFrom;
+use core::{convert::TryInto, ops::RangeFrom};
 use ring::{aead, error, test, test_file};
 
 /// Generate the tests for a given algorithm.
@@ -36,19 +36,44 @@ macro_rules! test_aead {
 
                     #[test]
                     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-                    fn aead_known_answer() {
+                    fn aead_known_answer_sealing_key_seal() {
                         test_aead(
                             &aead::$alg,
-                            seal_with_key,
-                            open_with_key,
-                            test_file!($test_file),
-                        );
+                            |alg, tc| test_seal(alg, tc, seal_with_key),
+                            test_file!($test_file));
+                    }
+
+                    #[test]
+                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                    fn aead_known_answer_opening_key_open_within() {
                         test_aead(
                             &aead::$alg,
-                            seal_with_less_safe_key,
-                            open_with_less_safe_key,
-                            test_file!($test_file),
-                        );
+                            |alg, tc| test_open_within(alg, tc, open_with_key),
+                            test_file!($test_file));
+                    }
+
+                    #[test]
+                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                    fn aead_known_answer_less_safe_key_seal() {
+                        test_aead(
+                            &aead::$alg,
+                            |alg, tc| test_seal(alg, tc, seal_with_less_safe_key),
+                            test_file!($test_file));
+                    }
+
+                    #[test]
+                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                    fn aead_known_answer_less_safe_key_open_within() {
+                        test_aead(
+                            &aead::$alg,
+                            |alg, tc| test_open_within(alg, tc, open_with_less_safe_key),
+                            test_file!($test_file));
+                    }
+
+                    #[test]
+                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+                    fn key_sizes() {
+                        super::super::key_sizes(&aead::$alg);
                     }
                 }
             )+
@@ -62,20 +87,95 @@ test_aead! {
     { CHACHA20_POLY1305, "aead_chacha20_poly1305_tests.txt" },
 }
 
-fn test_aead<Seal, Open>(
+struct KnownAnswerTestCase<'a> {
+    key: &'a [u8],
+    nonce: [u8; aead::NONCE_LEN],
+    plaintext: &'a [u8],
+    aad: aead::Aad<&'a [u8]>,
+    ciphertext: &'a [u8],
+    tag: &'a [u8],
+}
+
+fn test_aead(
     aead_alg: &'static aead::Algorithm,
-    seal: Seal,
-    open: Open,
+    f: impl Fn(&'static aead::Algorithm, KnownAnswerTestCase) -> Result<(), error::Unspecified>,
     test_file: test::File,
-) where
-    Seal: Fn(
+) {
+    test::run(test_file, |section, test_case| {
+        assert_eq!(section, "");
+        let key = test_case.consume_bytes("KEY");
+        let nonce = test_case.consume_bytes("NONCE");
+        let plaintext = test_case.consume_bytes("IN");
+        let aad = test_case.consume_bytes("AD");
+        let ct = test_case.consume_bytes("CT");
+        let tag = test_case.consume_bytes("TAG");
+        let error = test_case.consume_optional_string("FAILS");
+
+        match error.as_deref() {
+            Some("WRONG_NONCE_LENGTH") => {
+                assert!(matches!(
+                    aead::Nonce::try_assume_unique_for_key(&nonce),
+                    Err(error::Unspecified)
+                ));
+                return Ok(());
+            }
+            Some(unexpected) => {
+                unreachable!("unexpected error in test data: {}", unexpected);
+            }
+            None => {}
+        };
+
+        let test_case = KnownAnswerTestCase {
+            key: &key,
+            nonce: nonce.as_slice().try_into().unwrap(),
+            plaintext: &plaintext,
+            aad: aead::Aad::from(&aad),
+            ciphertext: &ct,
+            tag: &tag,
+        };
+
+        f(aead_alg, test_case)
+    })
+}
+
+fn test_seal<Seal>(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
+    seal: Seal,
+) -> Result<(), error::Unspecified>
+where
+    Seal: FnOnce(
         &'static aead::Algorithm,
         &[u8],
         aead::Nonce,
         aead::Aad<&[u8]>,
         &mut Vec<u8>,
     ) -> Result<(), error::Unspecified>,
-    Open: for<'a> Fn(
+{
+    let mut in_out = Vec::from(tc.plaintext);
+    seal(
+        alg,
+        &tc.key,
+        aead::Nonce::assume_unique_for_key(tc.nonce),
+        tc.aad,
+        &mut in_out,
+    )?;
+
+    let mut expected_ciphertext_and_tag = Vec::from(tc.ciphertext);
+    expected_ciphertext_and_tag.extend_from_slice(tc.tag);
+
+    assert_eq!(in_out, expected_ciphertext_and_tag);
+
+    Ok(())
+}
+
+fn test_open_within<OpenWithin>(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase<'_>,
+    open_within: OpenWithin,
+) -> Result<(), error::Unspecified>
+where
+    OpenWithin: for<'a> Fn(
         &'static aead::Algorithm,
         &[u8],
         aead::Nonce,
@@ -84,138 +184,90 @@ fn test_aead<Seal, Open>(
         RangeFrom<usize>,
     ) -> Result<&'a mut [u8], error::Unspecified>,
 {
-    test_aead_key_sizes(aead_alg);
+    // In release builds, test all prefix lengths from 0 to 4096 bytes.
+    // Debug builds are too slow for this, so for those builds, only
+    // test a smaller subset.
 
-    test::run(test_file, |section, test_case| {
-        assert_eq!(section, "");
-        let key_bytes = test_case.consume_bytes("KEY");
-        let nonce_bytes = test_case.consume_bytes("NONCE");
-        let plaintext = test_case.consume_bytes("IN");
-        let aad = test_case.consume_bytes("AD");
-        let mut ct = test_case.consume_bytes("CT");
-        let tag = test_case.consume_bytes("TAG");
-        let error = test_case.consume_optional_string("FAILS");
+    // TLS record headers are 5 bytes long.
+    // TLS explicit nonces for AES-GCM are 8 bytes long.
+    static MINIMAL_IN_PREFIX_LENS: [usize; 36] = [
+        // No input prefix to overwrite; i.e. the opening is exactly
+        // "in place."
+        0,
+        1,
+        2,
+        // Proposed TLS 1.3 header (no explicit nonce).
+        5,
+        8,
+        // Probably the most common use of a non-zero `in_prefix_len`
+        // would be to write a decrypted TLS record over the top of the
+        // TLS header and nonce.
+        5 /* record header */ + 8, /* explicit nonce */
+        // The stitched AES-GCM x86-64 code works on 6-block (96 byte)
+        // units. Some of the ChaCha20 code is even weirder.
+        15,  // The maximum partial AES block.
+        16,  // One AES block.
+        17,  // One byte more than a full AES block.
+        31,  // 2 AES blocks or 1 ChaCha20 block, minus 1.
+        32,  // Two AES blocks, one ChaCha20 block.
+        33,  // 2 AES blocks or 1 ChaCha20 block, plus 1.
+        47,  // Three AES blocks - 1.
+        48,  // Three AES blocks.
+        49,  // Three AES blocks + 1.
+        63,  // Four AES blocks or two ChaCha20 blocks, minus 1.
+        64,  // Four AES blocks or two ChaCha20 blocks.
+        65,  // Four AES blocks or two ChaCha20 blocks, plus 1.
+        79,  // Five AES blocks, minus 1.
+        80,  // Five AES blocks.
+        81,  // Five AES blocks, plus 1.
+        95,  // Six AES blocks or three ChaCha20 blocks, minus 1.
+        96,  // Six AES blocks or three ChaCha20 blocks.
+        97,  // Six AES blocks or three ChaCha20 blocks, plus 1.
+        111, // Seven AES blocks, minus 1.
+        112, // Seven AES blocks.
+        113, // Seven AES blocks, plus 1.
+        127, // Eight AES blocks or four ChaCha20 blocks, minus 1.
+        128, // Eight AES blocks or four ChaCha20 blocks.
+        129, // Eight AES blocks or four ChaCha20 blocks, plus 1.
+        143, // Nine AES blocks, minus 1.
+        144, // Nine AES blocks.
+        145, // Nine AES blocks, plus 1.
+        255, // 16 AES blocks or 8 ChaCha20 blocks, minus 1.
+        256, // 16 AES blocks or 8 ChaCha20 blocks.
+        257, // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
+    ];
 
-        match &error {
-            Some(err) if err == "WRONG_NONCE_LENGTH" => {
-                assert!(aead::Nonce::try_assume_unique_for_key(&nonce_bytes).is_err());
-                return Ok(());
-            }
-            _ => (),
-        };
-
-        let mut s_in_out = plaintext.clone();
-        let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
-        let s_result = seal(
-            aead_alg,
-            &key_bytes[..],
-            nonce,
-            aead::Aad::from(&aad[..]),
-            &mut s_in_out,
-        );
-
-        ct.extend(tag);
-
-        if s_result.is_ok() {
-            assert_eq!(&ct, &s_in_out);
+    let mut more_comprehensive_in_prefix_lengths = [0; 4096];
+    let in_prefix_lengths = if cfg!(debug_assertions) {
+        &MINIMAL_IN_PREFIX_LENS[..]
+    } else {
+        #[allow(clippy::needless_range_loop)]
+        for b in 0..more_comprehensive_in_prefix_lengths.len() {
+            more_comprehensive_in_prefix_lengths[b] = b;
         }
+        &more_comprehensive_in_prefix_lengths[..]
+    };
+    let mut in_out = vec![123u8; 4096];
 
-        // In release builds, test all prefix lengths from 0 to 4096 bytes.
-        // Debug builds are too slow for this, so for those builds, only
-        // test a smaller subset.
+    for &in_prefix_len in in_prefix_lengths.iter() {
+        in_out.truncate(0);
+        in_out.resize(in_prefix_len, 123);
+        in_out.extend_from_slice(tc.ciphertext);
+        in_out.extend_from_slice(tc.tag);
 
-        // TLS record headers are 5 bytes long.
-        // TLS explicit nonces for AES-GCM are 8 bytes long.
-        static MINIMAL_IN_PREFIX_LENS: [usize; 36] = [
-            // No input prefix to overwrite; i.e. the opening is exactly
-            // "in place."
-            0,
-            1,
-            2,
-            // Proposed TLS 1.3 header (no explicit nonce).
-            5,
-            8,
-            // Probably the most common use of a non-zero `in_prefix_len`
-            // would be to write a decrypted TLS record over the top of the
-            // TLS header and nonce.
-            5 /* record header */ + 8, /* explicit nonce */
-            // The stitched AES-GCM x86-64 code works on 6-block (96 byte)
-            // units. Some of the ChaCha20 code is even weirder.
-            15,  // The maximum partial AES block.
-            16,  // One AES block.
-            17,  // One byte more than a full AES block.
-            31,  // 2 AES blocks or 1 ChaCha20 block, minus 1.
-            32,  // Two AES blocks, one ChaCha20 block.
-            33,  // 2 AES blocks or 1 ChaCha20 block, plus 1.
-            47,  // Three AES blocks - 1.
-            48,  // Three AES blocks.
-            49,  // Three AES blocks + 1.
-            63,  // Four AES blocks or two ChaCha20 blocks, minus 1.
-            64,  // Four AES blocks or two ChaCha20 blocks.
-            65,  // Four AES blocks or two ChaCha20 blocks, plus 1.
-            79,  // Five AES blocks, minus 1.
-            80,  // Five AES blocks.
-            81,  // Five AES blocks, plus 1.
-            95,  // Six AES blocks or three ChaCha20 blocks, minus 1.
-            96,  // Six AES blocks or three ChaCha20 blocks.
-            97,  // Six AES blocks or three ChaCha20 blocks, plus 1.
-            111, // Seven AES blocks, minus 1.
-            112, // Seven AES blocks.
-            113, // Seven AES blocks, plus 1.
-            127, // Eight AES blocks or four ChaCha20 blocks, minus 1.
-            128, // Eight AES blocks or four ChaCha20 blocks.
-            129, // Eight AES blocks or four ChaCha20 blocks, plus 1.
-            143, // Nine AES blocks, minus 1.
-            144, // Nine AES blocks.
-            145, // Nine AES blocks, plus 1.
-            255, // 16 AES blocks or 8 ChaCha20 blocks, minus 1.
-            256, // 16 AES blocks or 8 ChaCha20 blocks.
-            257, // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
-        ];
+        let actual_plaintext = open_within(
+            alg,
+            tc.key,
+            aead::Nonce::assume_unique_for_key(tc.nonce),
+            tc.aad,
+            &mut in_out,
+            in_prefix_len..,
+        )?;
+        assert_eq!(actual_plaintext, tc.plaintext);
+        assert_eq!(&in_out[..tc.plaintext.len()], tc.plaintext);
+    }
 
-        let mut more_comprehensive_in_prefix_lengths = [0; 4096];
-        let in_prefix_lengths = if cfg!(debug_assertions) {
-            &MINIMAL_IN_PREFIX_LENS[..]
-        } else {
-            #[allow(clippy::needless_range_loop)]
-            for b in 0..more_comprehensive_in_prefix_lengths.len() {
-                more_comprehensive_in_prefix_lengths[b] = b;
-            }
-            &more_comprehensive_in_prefix_lengths[..]
-        };
-        let mut o_in_out = vec![123u8; 4096];
-
-        for &in_prefix_len in in_prefix_lengths.iter() {
-            o_in_out.truncate(0);
-            o_in_out.resize(in_prefix_len, 123);
-            o_in_out.extend_from_slice(&ct[..]);
-
-            let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
-            let o_result = open(
-                aead_alg,
-                &key_bytes,
-                nonce,
-                aead::Aad::from(&aad[..]),
-                &mut o_in_out,
-                in_prefix_len..,
-            );
-            match error {
-                None => {
-                    assert!(s_result.is_ok());
-                    assert_eq!(&plaintext[..], o_result.unwrap());
-                }
-                Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
-                    assert_eq!(Err(error::Unspecified), s_result);
-                    assert_eq!(Err(error::Unspecified), o_result);
-                }
-                Some(error) => {
-                    unreachable!("Unexpected error test case: {}", error);
-                }
-            };
-        }
-
-        Ok(())
-    });
+    Ok(())
 }
 
 fn seal_with_key(
@@ -265,7 +317,7 @@ fn open_with_less_safe_key<'a>(
 }
 
 #[allow(clippy::range_plus_one)]
-fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
+fn key_sizes(aead_alg: &'static aead::Algorithm) {
     let key_len = aead_alg.key_len();
     let key_data = vec![0u8; key_len * 2];
 
