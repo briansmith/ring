@@ -23,6 +23,25 @@ wasm_bindgen_test_configure!(run_in_browser);
 use core::{convert::TryInto, ops::RangeFrom};
 use ring::{aead, error, test, test_file};
 
+/// Generate the known answer test functions for the given algorithm and test
+/// case input file, where each test is implemented by a test in `$test`.
+///
+/// All of these tests can be run in parallel.
+macro_rules! test_known_answer {
+    ( $alg:ident, $test_file:expr, [ $( $test:ident ),+, ] ) => {
+        $(
+            #[test]
+            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+            fn $test() {
+                test_aead(
+                    &aead::$alg,
+                    super::super::$test,
+                    test_file!($test_file));
+            }
+        )+
+    }
+}
+
 /// Generate the tests for a given algorithm.
 ///
 /// All of these tests can be run in parallel.
@@ -34,41 +53,15 @@ macro_rules! test_aead {
                 mod $alg { // Provide a separate namespace for each algorithm's test.
                     use super::super::*;
 
-                    #[test]
-                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-                    fn aead_known_answer_sealing_key_seal() {
-                        test_aead(
-                            &aead::$alg,
-                            |alg, tc| test_seal(alg, tc, seal_with_key),
-                            test_file!($test_file));
-                    }
-
-                    #[test]
-                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-                    fn aead_known_answer_opening_key_open_within() {
-                        test_aead(
-                            &aead::$alg,
-                            |alg, tc| test_open_within(alg, tc, open_with_key),
-                            test_file!($test_file));
-                    }
-
-                    #[test]
-                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-                    fn aead_known_answer_less_safe_key_seal() {
-                        test_aead(
-                            &aead::$alg,
-                            |alg, tc| test_seal(alg, tc, seal_with_less_safe_key),
-                            test_file!($test_file));
-                    }
-
-                    #[test]
-                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-                    fn aead_known_answer_less_safe_key_open_within() {
-                        test_aead(
-                            &aead::$alg,
-                            |alg, tc| test_open_within(alg, tc, open_with_less_safe_key),
-                            test_file!($test_file));
-                    }
+                    test_known_answer!(
+                        $alg,
+                        $test_file,
+                        [
+                            less_safe_key_open_within,
+                            less_safe_key_seal_in_place_append_tag,
+                            opening_key_open_within,
+                            sealing_key_seal_in_place_append_tag,
+                        ]);
 
                     #[test]
                     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
@@ -138,28 +131,12 @@ fn test_aead(
     })
 }
 
-fn test_seal<Seal>(
-    alg: &'static aead::Algorithm,
-    tc: KnownAnswerTestCase,
-    seal: Seal,
-) -> Result<(), error::Unspecified>
+fn test_seal<Seal>(tc: &KnownAnswerTestCase, seal: Seal) -> Result<(), error::Unspecified>
 where
-    Seal: FnOnce(
-        &'static aead::Algorithm,
-        &[u8],
-        aead::Nonce,
-        aead::Aad<&[u8]>,
-        &mut Vec<u8>,
-    ) -> Result<(), error::Unspecified>,
+    Seal: FnOnce(aead::Nonce, &mut Vec<u8>) -> Result<(), error::Unspecified>,
 {
     let mut in_out = Vec::from(tc.plaintext);
-    seal(
-        alg,
-        &tc.key,
-        aead::Nonce::assume_unique_for_key(tc.nonce),
-        tc.aad,
-        &mut in_out,
-    )?;
+    seal(aead::Nonce::assume_unique_for_key(tc.nonce), &mut in_out)?;
 
     let mut expected_ciphertext_and_tag = Vec::from(tc.ciphertext);
     expected_ciphertext_and_tag.extend_from_slice(tc.tag);
@@ -170,16 +147,12 @@ where
 }
 
 fn test_open_within<OpenWithin>(
-    alg: &'static aead::Algorithm,
-    tc: KnownAnswerTestCase<'_>,
+    tc: &KnownAnswerTestCase<'_>,
     open_within: OpenWithin,
 ) -> Result<(), error::Unspecified>
 where
     OpenWithin: for<'a> Fn(
-        &'static aead::Algorithm,
-        &[u8],
         aead::Nonce,
-        aead::Aad<&[u8]>,
         &'a mut [u8],
         RangeFrom<usize>,
     ) -> Result<&'a mut [u8], error::Unspecified>,
@@ -256,10 +229,7 @@ where
         in_out.extend_from_slice(tc.tag);
 
         let actual_plaintext = open_within(
-            alg,
-            tc.key,
             aead::Nonce::assume_unique_for_key(tc.nonce),
-            tc.aad,
             &mut in_out,
             in_prefix_len..,
         )?;
@@ -270,50 +240,44 @@ where
     Ok(())
 }
 
-fn seal_with_key(
-    algorithm: &'static aead::Algorithm,
-    key: &[u8],
-    nonce: aead::Nonce,
-    aad: aead::Aad<&[u8]>,
-    in_out: &mut Vec<u8>,
+fn sealing_key_seal_in_place_append_tag(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
 ) -> Result<(), error::Unspecified> {
-    let mut key: aead::SealingKey<OneNonceSequence> = make_key(algorithm, key, nonce);
-    key.seal_in_place_append_tag(aad, in_out)
+    test_seal(&tc, |nonce, in_out| {
+        let mut key: aead::SealingKey<OneNonceSequence> = make_key(alg, tc.key, nonce);
+        key.seal_in_place_append_tag(tc.aad, in_out)
+    })
 }
 
-fn open_with_key<'a>(
-    algorithm: &'static aead::Algorithm,
-    key: &[u8],
-    nonce: aead::Nonce,
-    aad: aead::Aad<&[u8]>,
-    in_out: &'a mut [u8],
-    ciphertext_and_tag: RangeFrom<usize>,
-) -> Result<&'a mut [u8], error::Unspecified> {
-    let mut key: aead::OpeningKey<OneNonceSequence> = make_key(algorithm, key, nonce);
-    key.open_within(aad, in_out, ciphertext_and_tag)
-}
-
-fn seal_with_less_safe_key(
-    algorithm: &'static aead::Algorithm,
-    key: &[u8],
-    nonce: aead::Nonce,
-    aad: aead::Aad<&[u8]>,
-    in_out: &mut Vec<u8>,
+fn opening_key_open_within(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
 ) -> Result<(), error::Unspecified> {
-    let key = make_less_safe_key(algorithm, key);
-    key.seal_in_place_append_tag(nonce, aad, in_out)
+    test_open_within(&tc, |nonce, in_out, ciphertext_and_tag| {
+        let mut key: aead::OpeningKey<OneNonceSequence> = make_key(alg, tc.key, nonce);
+        key.open_within(tc.aad, in_out, ciphertext_and_tag)
+    })
 }
 
-fn open_with_less_safe_key<'a>(
-    algorithm: &'static aead::Algorithm,
-    key: &[u8],
-    nonce: aead::Nonce,
-    aad: aead::Aad<&[u8]>,
-    in_out: &'a mut [u8],
-    ciphertext_and_tag: RangeFrom<usize>,
-) -> Result<&'a mut [u8], error::Unspecified> {
-    let key = make_less_safe_key(algorithm, key);
-    key.open_within(nonce, aad, in_out, ciphertext_and_tag)
+fn less_safe_key_seal_in_place_append_tag(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
+) -> Result<(), error::Unspecified> {
+    test_seal(&tc, |nonce, in_out| {
+        let key = make_less_safe_key(alg, tc.key);
+        key.seal_in_place_append_tag(nonce, tc.aad, in_out)
+    })
+}
+
+fn less_safe_key_open_within(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
+) -> Result<(), error::Unspecified> {
+    test_open_within(&tc, |nonce, in_out, ciphertext_and_tag| {
+        let key = make_less_safe_key(alg, tc.key);
+        key.open_within(nonce, tc.aad, in_out, ciphertext_and_tag)
+    })
 }
 
 #[allow(clippy::range_plus_one)]
