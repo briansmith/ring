@@ -134,6 +134,10 @@ pub fn compile_time_assert_clone<T: Clone>() {}
 /// implement `Copy`.
 pub fn compile_time_assert_copy<T: Copy>() {}
 
+/// `compile_time_assert_eq::<T>();` fails to compile if `T` doesn't
+/// implement `Eq`.
+pub fn compile_time_assert_eq<T: Eq>() {}
+
 /// `compile_time_assert_send::<T>();` fails to compile if `T` doesn't
 /// implement `Send`.
 pub fn compile_time_assert_send<T: Send>() {}
