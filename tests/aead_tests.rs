@@ -57,8 +57,10 @@ macro_rules! test_aead {
                         $alg,
                         $test_file,
                         [
+                            less_safe_key_open_in_place,
                             less_safe_key_open_within,
                             less_safe_key_seal_in_place_append_tag,
+                            opening_key_open_in_place,
                             opening_key_open_within,
                             sealing_key_seal_in_place_append_tag,
                         ]);
@@ -143,6 +145,26 @@ where
 
     assert_eq!(in_out, expected_ciphertext_and_tag);
 
+    Ok(())
+}
+
+fn test_open_in_place<OpenInPlace>(
+    tc: &KnownAnswerTestCase<'_>,
+    open_in_place: OpenInPlace,
+) -> Result<(), error::Unspecified>
+where
+    OpenInPlace:
+        for<'a> FnOnce(aead::Nonce, &'a mut [u8]) -> Result<&'a mut [u8], error::Unspecified>,
+{
+    let nonce = aead::Nonce::assume_unique_for_key(tc.nonce);
+
+    let mut in_out = Vec::from(tc.ciphertext);
+    in_out.extend_from_slice(tc.tag);
+
+    let actual_plaintext = open_in_place(nonce, &mut in_out)?;
+
+    assert_eq!(actual_plaintext, tc.plaintext);
+    assert_eq!(&in_out[..tc.plaintext.len()], tc.plaintext);
     Ok(())
 }
 
@@ -250,6 +272,16 @@ fn sealing_key_seal_in_place_append_tag(
     })
 }
 
+fn opening_key_open_in_place(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
+) -> Result<(), error::Unspecified> {
+    test_open_in_place(&tc, |nonce, in_out| {
+        let mut key: aead::OpeningKey<_> = make_key(alg, tc.key, nonce);
+        key.open_in_place(tc.aad, in_out)
+    })
+}
+
 fn opening_key_open_within(
     alg: &'static aead::Algorithm,
     tc: KnownAnswerTestCase,
@@ -267,6 +299,16 @@ fn less_safe_key_seal_in_place_append_tag(
     test_seal(&tc, |nonce, in_out| {
         let key = make_less_safe_key(alg, tc.key);
         key.seal_in_place_append_tag(nonce, tc.aad, in_out)
+    })
+}
+
+fn less_safe_key_open_in_place(
+    alg: &'static aead::Algorithm,
+    tc: KnownAnswerTestCase,
+) -> Result<(), error::Unspecified> {
+    test_open_in_place(&tc, |nonce, in_out| {
+        let key = make_less_safe_key(alg, tc.key);
+        key.open_in_place(nonce, tc.aad, in_out)
     })
 }
 
