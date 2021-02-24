@@ -16,7 +16,6 @@ use super::{
     block::{Block, BLOCK_LEN},
     nonce::Nonce,
     quic::Sample,
-    Direction,
 };
 use crate::{
     bits::BitLength,
@@ -25,6 +24,7 @@ use crate::{
     error,
     polyfill::{self, ChunksFixed},
 };
+use core::ops::RangeFrom;
 
 pub(crate) struct Key {
     inner: AES_KEY,
@@ -206,16 +206,13 @@ impl Key {
     }
 
     #[inline]
-    pub(super) fn ctr32_encrypt_blocks(
+    pub(super) fn ctr32_encrypt_within(
         &self,
         in_out: &mut [u8],
-        direction: Direction,
+        src: RangeFrom<usize>,
         ctr: &mut Counter,
     ) {
-        let in_prefix_len = match direction {
-            Direction::Opening { in_prefix_len } => in_prefix_len,
-            Direction::Sealing => 0,
-        };
+        let in_prefix_len = src.start;
 
         let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
 
