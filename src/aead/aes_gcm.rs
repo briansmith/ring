@@ -147,9 +147,9 @@ fn aead(
                 gcm_ctx.update_blocks(&in_out[input..][..chunk_len]);
             }
 
-            aes_key.ctr32_encrypt_blocks(
+            aes_key.ctr32_encrypt_within(
                 &mut in_out[output..][..(chunk_len + in_prefix_len)],
-                direction,
+                in_prefix_len..,
                 &mut ctr,
             );
 
