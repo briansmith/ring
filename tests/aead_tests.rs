@@ -237,8 +237,8 @@ fn seal_with_key(
     aad: aead::Aad<&[u8]>,
     in_out: &mut Vec<u8>,
 ) -> Result<(), error::Unspecified> {
-    let mut s_key: aead::SealingKey<OneNonceSequence> = make_key(algorithm, key, nonce);
-    s_key.seal_in_place_append_tag(aad, in_out)
+    let mut key: aead::SealingKey<OneNonceSequence> = make_key(algorithm, key, nonce);
+    key.seal_in_place_append_tag(aad, in_out)
 }
 
 fn open_with_key<'a>(
@@ -249,8 +249,8 @@ fn open_with_key<'a>(
     in_out: &'a mut [u8],
     ciphertext_and_tag: RangeFrom<usize>,
 ) -> Result<&'a mut [u8], error::Unspecified> {
-    let mut o_key: aead::OpeningKey<OneNonceSequence> = make_key(algorithm, key, nonce);
-    o_key.open_within(aad, in_out, ciphertext_and_tag)
+    let mut key: aead::OpeningKey<OneNonceSequence> = make_key(algorithm, key, nonce);
+    key.open_within(aad, in_out, ciphertext_and_tag)
 }
 
 fn seal_with_less_safe_key(
