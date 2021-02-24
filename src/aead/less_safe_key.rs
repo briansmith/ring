@@ -30,7 +30,7 @@ impl LessSafeKey {
     /// Constructs a `LessSafeKey`.
     #[inline]
     pub fn new(key: UnboundKey) -> Self {
-        key.inner
+        key.into_inner()
     }
 
     pub(super) fn new_(
