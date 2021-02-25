@@ -215,6 +215,9 @@ const (
 	signatureEd25519 signatureAlgorithm = 0x0807
 	signatureEd448   signatureAlgorithm = 0x0808
 
+	// draft-ietf-tls-tls13-pkcs1-00
+	signatureRSAPKCS1WithSHA256Legacy signatureAlgorithm = 0x0420
+
 	// signatureRSAPKCS1WithMD5AndSHA1 is the internal value BoringSSL uses to
 	// represent the TLS 1.0/1.1 RSA MD5/SHA1 concatenation. We define the
 	// constant here to test that this doesn't leak into the protocol.

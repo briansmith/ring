@@ -374,7 +374,7 @@ func createDelegatedCredential(parent *Credential, config delegatedCredentialCon
 	addUint24LengthPrefixedBytes(dc, pubBytes)
 
 	var dummyConfig Config
-	parentSignature, err := signMessage(VersionTLS13, parent.PrivateKey, &dummyConfig, config.algo, delegatedCredentialSignedMessage(dc.BytesOrPanic(), config.algo, parent.Leaf.Raw))
+	parentSignature, err := signMessage(false /* server */, VersionTLS13, parent.PrivateKey, &dummyConfig, config.algo, delegatedCredentialSignedMessage(dc.BytesOrPanic(), config.algo, parent.Leaf.Raw))
 	if err != nil {
 		panic(err)
 	}
@@ -1738,16 +1738,16 @@ func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCa
 		case failed && !test.shouldFail:
 			msg = "unexpected failure"
 		case !failed && test.shouldFail:
-			msg = "unexpected success"
+			msg = fmt.Sprintf("unexpected success (wanted failure with %q / %q)", expectedError, test.expectedLocalError)
 		case failed && !correctFailure:
-			msg = "bad error (wanted '" + expectedError + "' / '" + test.expectedLocalError + "')"
+			msg = fmt.Sprintf("bad error (wanted %q / %q)", expectedError, test.expectedLocalError)
 		case mustFail:
 			msg = "test failure"
 		default:
 			panic("internal error")
 		}
 
-		return fmt.Errorf("%s: local error '%s', child error '%s', stdout:\n%s\nstderr:\n%s\n%s", msg, localErrString, childErrString, stdout, stderr, extraStderr)
+		return fmt.Errorf("%s: local error %q, child error %q, stdout:\n%s\nstderr:\n%s\n%s", msg, localErrString, childErrString, stdout, stderr, extraStderr)
 	}
 
 	if len(extraStderr) > 0 || (!failed && len(stderr) > 0) {
@@ -10016,6 +10016,7 @@ var testSignatureAlgorithms = []struct {
 }{
 	{"RSA_PKCS1_SHA1", signatureRSAPKCS1WithSHA1, &rsaCertificate, 0},
 	{"RSA_PKCS1_SHA256", signatureRSAPKCS1WithSHA256, &rsaCertificate, 0},
+	{"RSA_PKCS1_SHA256_LEGACY", signatureRSAPKCS1WithSHA256Legacy, &rsaCertificate, 0},
 	{"RSA_PKCS1_SHA384", signatureRSAPKCS1WithSHA384, &rsaCertificate, 0},
 	{"RSA_PKCS1_SHA512", signatureRSAPKCS1WithSHA512, &rsaCertificate, 0},
 	{"ECDSA_SHA1", signatureECDSAWithSHA1, &ecdsaP256Certificate, CurveP256},
@@ -10070,61 +10071,95 @@ func addSignatureAlgorithmTests() {
 				continue
 			}
 
-			var shouldFail, rejectByDefault bool
-			// ecdsa_sha1 does not exist in TLS 1.3.
-			if ver.version >= VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
-				shouldFail = true
-			}
-			// RSA-PKCS1 does not exist in TLS 1.3.
-			if ver.version >= VersionTLS13 && hasComponent(alg.name, "PKCS1") {
-				shouldFail = true
-			}
-			// SHA-224 has been removed from TLS 1.3 and, in 1.3,
-			// the curve has to match the hash size.
-			if ver.version >= VersionTLS13 && alg.curve == CurveP224 {
-				shouldFail = true
-			}
-
-			// By default, BoringSSL does not enable ecdsa_sha1, ecdsa_secp521_sha512, and ed25519.
-			if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 || alg.id == signatureEd25519 {
-				rejectByDefault = true
-			}
-
-			var curveFlags []string
-			var runnerCurves []CurveID
-			if alg.curve != 0 && ver.version <= VersionTLS12 {
-				// In TLS 1.2, the ECDH curve list also constrains ECDSA keys. Ensure the
-				// corresponding curve is enabled. Also include X25519 to ensure the shim
-				// and runner have something in common for ECDH.
-				curveFlags = flagInts("-curves", []int{int(CurveX25519), int(alg.curve)})
-				runnerCurves = []CurveID{CurveX25519, alg.curve}
-			}
-
-			var signError, signLocalError, verifyError, verifyLocalError, defaultError, defaultLocalError string
-			if shouldFail {
-				signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
-				signLocalError = "remote error: handshake failure"
-				verifyError = ":WRONG_SIGNATURE_TYPE:"
-				verifyLocalError = "remote error: illegal parameter"
-				rejectByDefault = true
-			}
-			if rejectByDefault {
-				defaultError = ":WRONG_SIGNATURE_TYPE:"
-				defaultLocalError = "remote error: illegal parameter"
-			}
-
 			suffix := "-" + alg.name + "-" + ver.name
+			for _, signTestType := range []testType{clientTest, serverTest} {
+				signPrefix := "Client-"
+				verifyPrefix := "Server-"
+				verifyTestType := serverTest
+				if signTestType == serverTest {
+					verifyTestType = clientTest
+					signPrefix, verifyPrefix = verifyPrefix, signPrefix
+				}
 
-			for _, testType := range []testType{clientTest, serverTest} {
-				prefix := "Client-"
-				if testType == serverTest {
-					prefix = "Server-"
+				var shouldFail bool
+				isTLS12PKCS1 := hasComponent(alg.name, "PKCS1") && !hasComponent(alg.name, "LEGACY")
+				isTLS13PKCS1 := hasComponent(alg.name, "PKCS1") && hasComponent(alg.name, "LEGACY")
+
+				// TLS 1.3 removes a number of signature algorithms.
+				if ver.version >= VersionTLS13 && (alg.curve == CurveP224 || alg.id == signatureECDSAWithSHA1 || isTLS12PKCS1) {
+					shouldFail = true
+				}
+
+				// The backported RSA-PKCS1 code points only exist for TLS 1.3
+				// client certificates.
+				if (ver.version < VersionTLS13 || signTestType == serverTest) && isTLS13PKCS1 {
+					shouldFail = true
+				}
+
+				// By default, BoringSSL does not sign with these algorithms.
+				signDefault := !shouldFail
+				if isTLS13PKCS1 {
+					signDefault = false
+				}
+
+				// By default, BoringSSL does not accept these algorithms.
+				verifyDefault := !shouldFail
+				if alg.id == signatureECDSAWithSHA1 || alg.id == signatureECDSAWithP521AndSHA512 || alg.id == signatureEd25519 || isTLS13PKCS1 {
+					verifyDefault = false
+				}
+
+				var curveFlags []string
+				var runnerCurves []CurveID
+				if alg.curve != 0 && ver.version <= VersionTLS12 {
+					// In TLS 1.2, the ECDH curve list also constrains ECDSA keys. Ensure the
+					// corresponding curve is enabled. Also include X25519 to ensure the shim
+					// and runner have something in common for ECDH.
+					curveFlags = flagInts("-curves", []int{int(CurveX25519), int(alg.curve)})
+					runnerCurves = []CurveID{CurveX25519, alg.curve}
+				}
+
+				signError := func(shouldFail bool) string {
+					if !shouldFail {
+						return ""
+					}
+					// In TLS 1.3, the shim should report no common signature algorithms if
+					// it cannot generate a signature. In TLS 1.2 servers, signature
+					// algorithm and cipher selection are integrated, so it is reported as
+					// no shared cipher.
+					if ver.version <= VersionTLS12 && signTestType == serverTest {
+						return ":NO_SHARED_CIPHER:"
+					}
+					return ":NO_COMMON_SIGNATURE_ALGORITHMS:"
+				}
+				signLocalError := func(shouldFail bool) string {
+					if !shouldFail {
+						return ""
+					}
+					// The shim should send handshake_failure when it cannot
+					// negotiate parameters.
+					return "remote error: handshake failure"
+				}
+				verifyError := func(shouldFail bool) string {
+					if !shouldFail {
+						return ""
+					}
+					// If the shim rejects the signature algorithm, but the
+					// runner forcibly selects it anyway, the shim should notice.
+					return ":WRONG_SIGNATURE_TYPE:"
+				}
+				verifyLocalError := func(shouldFail bool) string {
+					if !shouldFail {
+						return ""
+					}
+					// The shim should send an illegal_parameter alert if the runner
+					// uses a signature algorithm it isn't allowed to use.
+					return "remote error: illegal parameter"
 				}
 
 				// Test the shim using the algorithm for signing.
 				signTest := testCase{
-					testType: testType,
-					name:     prefix + "Sign" + suffix,
+					testType: signTestType,
+					name:     signPrefix + "Sign" + suffix,
 					config: Config{
 						MaxVersion:       ver.version,
 						CurvePreferences: runnerCurves,
@@ -10137,8 +10172,33 @@ func addSignatureAlgorithmTests() {
 					shimCertificate:    cert,
 					flags:              curveFlags,
 					shouldFail:         shouldFail,
-					expectedError:      signError,
-					expectedLocalError: signLocalError,
+					expectedError:      signError(shouldFail),
+					expectedLocalError: signLocalError(shouldFail),
+					expectations: connectionExpectations{
+						peerSignatureAlgorithm: alg.id,
+					},
+				}
+
+				// Test whether the shim enables the algorithm by default.
+				signDefaultTest := testCase{
+					testType: signTestType,
+					name:     signPrefix + "SignDefault" + suffix,
+					config: Config{
+						MaxVersion:       ver.version,
+						CurvePreferences: runnerCurves,
+						VerifySignatureAlgorithms: []signatureAlgorithm{
+							fakeSigAlg1,
+							alg.id,
+							fakeSigAlg2,
+						},
+					},
+					// cert has been configured with the specified algorithm,
+					// while alg.baseCert uses the defaults.
+					shimCertificate:    alg.baseCert,
+					flags:              curveFlags,
+					shouldFail:         !signDefault,
+					expectedError:      signError(!signDefault),
+					expectedLocalError: signLocalError(!signDefault),
 					expectations: connectionExpectations{
 						peerSignatureAlgorithm: alg.id,
 					},
@@ -10147,8 +10207,8 @@ func addSignatureAlgorithmTests() {
 				// Test that the shim will select the algorithm when configured to only
 				// support it.
 				negotiateTest := testCase{
-					testType: testType,
-					name:     prefix + "Sign-Negotiate" + suffix,
+					testType: signTestType,
+					name:     signPrefix + "Sign-Negotiate" + suffix,
 					config: Config{
 						MaxVersion:                ver.version,
 						CurvePreferences:          runnerCurves,
@@ -10161,24 +10221,26 @@ func addSignatureAlgorithmTests() {
 					},
 				}
 
-				if testType == serverTest {
+				if signTestType == serverTest {
 					// TLS 1.2 servers only sign on some cipher suites.
 					signTest.config.CipherSuites = signingCiphers
+					signDefaultTest.config.CipherSuites = signingCiphers
 					negotiateTest.config.CipherSuites = signingCiphers
 				} else {
 					// TLS 1.2 clients only sign when the server requests certificates.
 					signTest.config.ClientAuth = RequireAnyClientCert
+					signDefaultTest.config.ClientAuth = RequireAnyClientCert
 					negotiateTest.config.ClientAuth = RequireAnyClientCert
 				}
-				testCases = append(testCases, signTest)
+				testCases = append(testCases, signTest, signDefaultTest)
 				if ver.version >= VersionTLS12 && !shouldFail {
 					testCases = append(testCases, negotiateTest)
 				}
 
 				// Test the shim using the algorithm for verifying.
 				verifyTest := testCase{
-					testType: testType,
-					name:     prefix + "Verify" + suffix,
+					testType: verifyTestType,
+					name:     verifyPrefix + "Verify" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
 						Credential: cert,
@@ -10194,8 +10256,8 @@ func addSignatureAlgorithmTests() {
 					// algorithm is reported on both handshakes.
 					resumeSession:      !shouldFail,
 					shouldFail:         shouldFail,
-					expectedError:      verifyError,
-					expectedLocalError: verifyLocalError,
+					expectedError:      verifyError(shouldFail),
+					expectedLocalError: verifyLocalError(shouldFail),
 				}
 				if alg.id != 0 {
 					verifyTest.flags = append(verifyTest.flags, "-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)))
@@ -10205,16 +10267,16 @@ func addSignatureAlgorithmTests() {
 
 				// Test whether the shim expects the algorithm enabled by default.
 				defaultTest := testCase{
-					testType: testType,
-					name:     prefix + "VerifyDefault" + suffix,
+					testType: verifyTestType,
+					name:     verifyPrefix + "VerifyDefault" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
 						Credential: cert,
 						Bugs: ProtocolBugs{
-							SkipECDSACurveCheck:          rejectByDefault,
-							IgnoreSignatureVersionChecks: rejectByDefault,
+							SkipECDSACurveCheck:          !verifyDefault,
+							IgnoreSignatureVersionChecks: !verifyDefault,
 							// Some signature algorithms may not be advertised.
-							IgnorePeerSignatureAlgorithmPreferences: rejectByDefault,
+							IgnorePeerSignatureAlgorithmPreferences: !verifyDefault,
 						},
 					},
 					flags: append(
@@ -10223,16 +10285,16 @@ func addSignatureAlgorithmTests() {
 					),
 					// Resume the session to assert the peer signature
 					// algorithm is reported on both handshakes.
-					resumeSession:      !rejectByDefault,
-					shouldFail:         rejectByDefault,
-					expectedError:      defaultError,
-					expectedLocalError: defaultLocalError,
+					resumeSession:      verifyDefault,
+					shouldFail:         !verifyDefault,
+					expectedError:      verifyError(!verifyDefault),
+					expectedLocalError: verifyLocalError(!verifyDefault),
 				}
 
 				// Test whether the shim handles invalid signatures for this algorithm.
 				invalidTest := testCase{
-					testType: testType,
-					name:     prefix + "InvalidSignature" + suffix,
+					testType: verifyTestType,
+					name:     verifyPrefix + "InvalidSignature" + suffix,
 					config: Config{
 						MaxVersion: ver.version,
 						Credential: cert,
@@ -10249,7 +10311,7 @@ func addSignatureAlgorithmTests() {
 					invalidTest.flags = append(invalidTest.flags, "-verify-prefs", strconv.Itoa(int(alg.id)))
 				}
 
-				if testType == serverTest {
+				if verifyTestType == serverTest {
 					// TLS 1.2 servers only verify when they request client certificates.
 					verifyTest.flags = append(verifyTest.flags, "-require-any-client-certificate")
 					defaultTest.flags = append(defaultTest.flags, "-require-any-client-certificate")

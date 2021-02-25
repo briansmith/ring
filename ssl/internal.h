@@ -1094,7 +1094,7 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
 // ssl_pkey_supports_algorithm returns whether |pkey| may be used to sign
 // |sigalg|.
 bool ssl_pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
-                                 uint16_t sigalg);
+                                 uint16_t sigalg, bool is_verify);
 
 // ssl_public_key_verify verifies that the |signature| is valid for the public
 // key |pkey| and input |in|, using the signature algorithm |sigalg|.

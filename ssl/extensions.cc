@@ -446,7 +446,7 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // key, the TLS version, and what we advertised.
   Span<const uint16_t> sigalgs = tls12_get_verify_sigalgs(hs);
   if (std::find(sigalgs.begin(), sigalgs.end(), sigalg) == sigalgs.end() ||
-      !ssl_pkey_supports_algorithm(hs->ssl, pkey, sigalg)) {
+      !ssl_pkey_supports_algorithm(hs->ssl, pkey, sigalg, /*is_verify=*/true)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return false;
@@ -4149,7 +4149,8 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs,
                                      ? MakeConstSpan(kSignSignatureAlgorithms)
                                      : cred->sigalgs;
   for (uint16_t sigalg : sigalgs) {
-    if (!ssl_pkey_supports_algorithm(ssl, cred->pubkey.get(), sigalg)) {
+    if (!ssl_pkey_supports_algorithm(ssl, cred->pubkey.get(), sigalg,
+                                     /*is_verify=*/false)) {
       continue;
     }
 
