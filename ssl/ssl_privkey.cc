@@ -99,29 +99,46 @@ typedef struct {
   int curve;
   const EVP_MD *(*digest_func)(void);
   bool is_rsa_pss;
+  bool tls12_ok;
+  bool tls13_ok;
 } SSL_SIGNATURE_ALGORITHM;
 
 static const SSL_SIGNATURE_ALGORITHM kSignatureAlgorithms[] = {
+    // PKCS#1 v1.5 code points are only allowed in TLS 1.2.
     {SSL_SIGN_RSA_PKCS1_MD5_SHA1, EVP_PKEY_RSA, NID_undef, &EVP_md5_sha1,
-     false},
-    {SSL_SIGN_RSA_PKCS1_SHA1, EVP_PKEY_RSA, NID_undef, &EVP_sha1, false},
-    {SSL_SIGN_RSA_PKCS1_SHA256, EVP_PKEY_RSA, NID_undef, &EVP_sha256, false},
-    {SSL_SIGN_RSA_PKCS1_SHA384, EVP_PKEY_RSA, NID_undef, &EVP_sha384, false},
-    {SSL_SIGN_RSA_PKCS1_SHA512, EVP_PKEY_RSA, NID_undef, &EVP_sha512, false},
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/false},
+    {SSL_SIGN_RSA_PKCS1_SHA1, EVP_PKEY_RSA, NID_undef, &EVP_sha1,
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/false},
+    {SSL_SIGN_RSA_PKCS1_SHA256, EVP_PKEY_RSA, NID_undef, &EVP_sha256,
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/false},
+    {SSL_SIGN_RSA_PKCS1_SHA384, EVP_PKEY_RSA, NID_undef, &EVP_sha384,
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/false},
+    {SSL_SIGN_RSA_PKCS1_SHA512, EVP_PKEY_RSA, NID_undef, &EVP_sha512,
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/false},
 
-    {SSL_SIGN_RSA_PSS_RSAE_SHA256, EVP_PKEY_RSA, NID_undef, &EVP_sha256, true},
-    {SSL_SIGN_RSA_PSS_RSAE_SHA384, EVP_PKEY_RSA, NID_undef, &EVP_sha384, true},
-    {SSL_SIGN_RSA_PSS_RSAE_SHA512, EVP_PKEY_RSA, NID_undef, &EVP_sha512, true},
+    // Legacy PKCS#1 v1.5 code points are only allowed in TLS 1.3. See
+    // draft-davidben-tls13-pkcs1-00.
+    {SSL_SIGN_RSA_PKCS1_SHA256_LEGACY, EVP_PKEY_RSA, NID_undef, &EVP_sha256,
+     /*is_rsa_pss=*/false, /*tls12_ok=*/false, /*tls13_ok=*/true},
 
-    {SSL_SIGN_ECDSA_SHA1, EVP_PKEY_EC, NID_undef, &EVP_sha1, false},
+    {SSL_SIGN_RSA_PSS_RSAE_SHA256, EVP_PKEY_RSA, NID_undef, &EVP_sha256,
+     /*is_rsa_pss=*/true, /*tls12_ok=*/true, /*tls13_ok=*/true},
+    {SSL_SIGN_RSA_PSS_RSAE_SHA384, EVP_PKEY_RSA, NID_undef, &EVP_sha384,
+     /*is_rsa_pss=*/true, /*tls12_ok=*/true, /*tls13_ok=*/true},
+    {SSL_SIGN_RSA_PSS_RSAE_SHA512, EVP_PKEY_RSA, NID_undef, &EVP_sha512,
+     /*is_rsa_pss=*/true, /*tls12_ok=*/true, /*tls13_ok=*/true},
+
+    {SSL_SIGN_ECDSA_SHA1, EVP_PKEY_EC, NID_undef, &EVP_sha1,
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/false},
     {SSL_SIGN_ECDSA_SECP256R1_SHA256, EVP_PKEY_EC, NID_X9_62_prime256v1,
-     &EVP_sha256, false},
+     &EVP_sha256, /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/true},
     {SSL_SIGN_ECDSA_SECP384R1_SHA384, EVP_PKEY_EC, NID_secp384r1, &EVP_sha384,
-     false},
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/true},
     {SSL_SIGN_ECDSA_SECP521R1_SHA512, EVP_PKEY_EC, NID_secp521r1, &EVP_sha512,
-     false},
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/true},
 
-    {SSL_SIGN_ED25519, EVP_PKEY_ED25519, NID_undef, nullptr, false},
+    {SSL_SIGN_ED25519, EVP_PKEY_ED25519, NID_undef, nullptr,
+     /*is_rsa_pss=*/false, /*tls12_ok=*/true, /*tls13_ok=*/true},
 };
 
 static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
@@ -144,7 +161,7 @@ bool ssl_has_private_key(const SSL_HANDSHAKE *hs) {
 }
 
 static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
-                                    uint16_t sigalg) {
+                                    uint16_t sigalg, bool is_verify) {
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
   if (alg == NULL ||
       EVP_PKEY_id(pkey) != alg->pkey_type) {
@@ -152,8 +169,14 @@ static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
   }
 
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
-    // RSA keys may only be used with RSA-PSS.
-    if (alg->pkey_type == EVP_PKEY_RSA && !alg->is_rsa_pss) {
+    if (!alg->tls13_ok) {
+      return false;
+    }
+
+    // Legacy PKCS#1 v1.5 code points for TLS 1.3 are client-only. See
+    // draft-davidben-tls13-pkcs1-00.
+    bool is_client_sign = ssl->server == is_verify;
+    if (alg->pkey_type == EVP_PKEY_RSA && !alg->is_rsa_pss && !is_client_sign) {
       return false;
     }
 
@@ -164,6 +187,8 @@ static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
              EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(pkey))) != alg->curve)) {
       return false;
     }
+  } else if (!alg->tls12_ok) {
+    return false;
   }
 
   return true;
@@ -171,7 +196,7 @@ static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
 
 static bool setup_ctx(SSL *ssl, EVP_MD_CTX *ctx, EVP_PKEY *pkey,
                       uint16_t sigalg, bool is_verify) {
-  if (!pkey_supports_algorithm(ssl, pkey, sigalg)) {
+  if (!pkey_supports_algorithm(ssl, pkey, sigalg, is_verify)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
     return false;
   }
@@ -288,7 +313,8 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
 bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                   uint16_t sigalg) {
   SSL *const ssl = hs->ssl;
-  if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
+  if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg,
+                               /*is_verify=*/false)) {
     return false;
   }
 

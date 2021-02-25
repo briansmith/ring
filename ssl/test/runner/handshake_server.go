@@ -976,14 +976,14 @@ ResendHelloRetryRequest:
 		privKey := hs.cert.PrivateKey
 
 		var err error
-		certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, config, hs.clientHello.signatureAlgorithms)
+		certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.isClient, c.vers, privKey, config, hs.clientHello.signatureAlgorithms)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return err
 		}
 
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
+		certVerify.signature, err = signMessage(c.isClient, c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return err
@@ -1147,7 +1147,7 @@ ResendHelloRetryRequest:
 
 			c.peerSignatureAlgorithm = certVerify.signatureAlgorithm
 			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
-			if err := verifyMessage(c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
+			if err := verifyMessage(c.isClient, c.vers, pub, config, certVerify.signatureAlgorithm, input, certVerify.signature); err != nil {
 				c.sendAlert(alertBadCertificate)
 				return err
 			}
@@ -1884,7 +1884,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		}
 
 		if c.vers > VersionSSL30 {
-			err = verifyMessage(c.vers, pub, c.config, sigAlg, hs.finishedHash.buffer, certVerify.signature)
+			err = verifyMessage(c.isClient, c.vers, pub, c.config, sigAlg, hs.finishedHash.buffer, certVerify.signature)
 		} else {
 			// SSL 3.0's client certificate construction is
 			// incompatible with signatureAlgorithm.

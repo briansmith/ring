@@ -211,6 +211,9 @@ const (
 	// EdDSA algorithms
 	signatureEd25519 signatureAlgorithm = 0x0807
 	signatureEd448   signatureAlgorithm = 0x0808
+
+	// draft-davidben-tls13-pkcs1-00
+	signatureRSAPKCS1WithSHA256Legacy signatureAlgorithm = 0x0420
 )
 
 // supportedSignatureAlgorithms contains the default supported signature
