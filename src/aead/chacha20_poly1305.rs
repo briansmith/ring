@@ -17,7 +17,7 @@ use super::{
     poly1305, Aad, Direction, Nonce, Tag,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
-use core::convert::TryInto;
+use core::{convert::TryInto, ops::RangeFrom};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
@@ -118,8 +118,8 @@ fn chacha20_poly1305_open(
     key: &aead::KeyInner,
     nonce: Nonce,
     aad: Aad<&[u8]>,
-    in_prefix_len: usize,
     in_out: &mut [u8],
+    src: RangeFrom<usize>,
     cpu_features: cpu::Features,
 ) -> Tag {
     let key = match key {
@@ -167,8 +167,8 @@ fn chacha20_poly1305_open(
             let out = unsafe {
                 GFp_chacha20_poly1305_open(
                     in_out.as_mut_ptr(),
-                    in_out.as_ptr().add(in_prefix_len),
-                    in_out.len() - in_prefix_len,
+                    in_out.as_ptr().add(src.start),
+                    in_out.len() - src.start,
                     aad.as_ref().as_ptr(),
                     aad.as_ref().len(),
                     &mut data,
@@ -185,7 +185,7 @@ fn chacha20_poly1305_open(
         nonce,
         aad,
         in_out,
-        Direction::Opening { in_prefix_len },
+        Direction::Opening { src },
         cpu_features,
     )
 }
@@ -233,10 +233,10 @@ fn aead(
     poly1305_update_padded_16(&mut ctx, aad);
 
     let in_out_len = match direction {
-        Direction::Opening { in_prefix_len } => {
-            poly1305_update_padded_16(&mut ctx, &in_out[in_prefix_len..]);
-            chacha20_key.encrypt_within(counter, in_out, in_prefix_len..);
-            in_out.len() - in_prefix_len
+        Direction::Opening { src } => {
+            poly1305_update_padded_16(&mut ctx, &in_out[src.clone()]);
+            chacha20_key.encrypt_within(counter, in_out, src.clone());
+            in_out.len() - src.start
         }
         Direction::Sealing => {
             chacha20_key.encrypt_in_place(counter, in_out);

@@ -78,7 +78,7 @@ fn encrypt_block_(
 }
 
 macro_rules! ctr32_encrypt_blocks {
-    ($name:ident, $in_out:expr, $in_prefix_len:expr, $key:expr, $ivec:expr ) => {{
+    ($name:ident, $in_out:expr, $src:expr, $key:expr, $ivec:expr ) => {{
         extern "C" {
             fn $name(
                 input: *const u8,
@@ -88,7 +88,7 @@ macro_rules! ctr32_encrypt_blocks {
                 ivec: &Counter,
             );
         }
-        ctr32_encrypt_blocks_($name, $in_out, $in_prefix_len, $key, $ivec)
+        ctr32_encrypt_blocks_($name, $in_out, $src, $key, $ivec)
     }};
 }
 
@@ -102,18 +102,18 @@ fn ctr32_encrypt_blocks_(
         ivec: &Counter,
     ),
     in_out: &mut [u8],
-    in_prefix_len: usize,
+    src: RangeFrom<usize>,
     key: &AES_KEY,
     ctr: &mut Counter,
 ) {
-    let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
+    let in_out_len = in_out[src.clone()].len();
     assert_eq!(in_out_len % BLOCK_LEN, 0);
 
     let blocks = in_out_len / BLOCK_LEN;
     let blocks_u32 = blocks as u32;
     assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
 
-    let input = in_out[in_prefix_len..].as_ptr();
+    let input = in_out[src].as_ptr();
     let output = in_out.as_mut_ptr();
 
     unsafe {
@@ -212,9 +212,7 @@ impl Key {
         src: RangeFrom<usize>,
         ctr: &mut Counter,
     ) {
-        let in_prefix_len = src.start;
-
-        let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
+        let in_out_len = in_out[src.clone()].len();
 
         assert_eq!(in_out_len % BLOCK_LEN, 0);
 
@@ -228,7 +226,7 @@ impl Key {
             Implementation::HWAES => ctr32_encrypt_blocks!(
                 GFp_aes_hw_ctr32_encrypt_blocks,
                 in_out,
-                in_prefix_len,
+                src,
                 &self.inner,
                 ctr
             ),
@@ -260,13 +258,13 @@ impl Key {
                     }
                     ctr32_encrypt_blocks!(
                         GFp_bsaes_ctr32_encrypt_blocks,
-                        &mut in_out[..(bsaes_in_out_len + in_prefix_len)],
-                        in_prefix_len,
+                        &mut in_out[src.clone()][bsaes_in_out_len..],
+                        src.clone(),
                         &bsaes_key,
                         ctr
                     );
 
-                    &mut in_out[bsaes_in_out_len..]
+                    &mut in_out[src.clone()][bsaes_in_out_len..]
                 } else {
                     in_out
                 };
@@ -274,7 +272,7 @@ impl Key {
                 ctr32_encrypt_blocks!(
                     GFp_vpaes_ctr32_encrypt_blocks,
                     in_out,
-                    in_prefix_len,
+                    src,
                     &self.inner,
                     ctr
                 )
@@ -282,7 +280,7 @@ impl Key {
 
             #[cfg(any(target_arch = "x86"))]
             Implementation::VPAES_BSAES => {
-                super::shift::shift_full_blocks(in_out, in_prefix_len, |input| {
+                super::shift::shift_full_blocks(in_out, src, |input| {
                     self.encrypt_iv_xor_block(ctr.increment(), Block::from(input))
                 });
             }
@@ -291,7 +289,7 @@ impl Key {
             Implementation::NOHW => ctr32_encrypt_blocks!(
                 GFp_aes_nohw_ctr32_encrypt_blocks,
                 in_out,
-                in_prefix_len,
+                src,
                 &self.inner,
                 ctr
             ),

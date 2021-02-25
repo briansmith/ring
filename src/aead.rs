@@ -22,6 +22,7 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use crate::{cpu, error, hkdf, polyfill};
+use core::ops::RangeFrom;
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -154,8 +155,8 @@ pub struct Algorithm {
         key: &KeyInner,
         nonce: Nonce,
         aad: Aad<&[u8]>,
-        in_prefix_len: usize,
         in_out: &mut [u8],
+        src: RangeFrom<usize>,
         cpu_features: cpu::Features,
     ) -> Tag,
 
@@ -232,9 +233,9 @@ const TAG_LEN: usize = 16;
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum Direction {
-    Opening { in_prefix_len: usize },
+    Opening { src: RangeFrom<usize> },
     Sealing,
 }
 

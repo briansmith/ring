@@ -142,26 +142,19 @@ fn open_within_<'in_out>(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &'in_out mut [u8],
-    ciphertext_and_tag: RangeFrom<usize>,
+    src: RangeFrom<usize>,
 ) -> Result<&'in_out mut [u8], error::Unspecified> {
-    let in_prefix_len = ciphertext_and_tag.start;
     let ciphertext_and_tag_len = in_out
         .len()
-        .checked_sub(in_prefix_len)
+        .checked_sub(src.start)
         .ok_or(error::Unspecified)?;
     let ciphertext_len = ciphertext_and_tag_len
         .checked_sub(TAG_LEN)
         .ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
-    let (in_out, received_tag) = in_out.split_at_mut(in_prefix_len + ciphertext_len);
-    let Tag(calculated_tag) = (key.algorithm.open)(
-        &key.inner,
-        nonce,
-        aad,
-        in_prefix_len,
-        in_out,
-        key.cpu_features,
-    );
+    let (in_out, received_tag) = in_out.split_at_mut(src.start + ciphertext_len);
+    let Tag(calculated_tag) =
+        (key.algorithm.open)(&key.inner, nonce, aad, in_out, src, key.cpu_features);
     if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the

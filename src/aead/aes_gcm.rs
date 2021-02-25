@@ -18,6 +18,7 @@ use super::{
     gcm, shift, Aad, Direction, Nonce, Tag,
 };
 use crate::{aead, cpu, error, polyfill};
+use core::ops::RangeFrom;
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
@@ -78,8 +79,8 @@ fn aes_gcm_open(
     key: &aead::KeyInner,
     nonce: Nonce,
     aad: Aad<&[u8]>,
-    in_prefix_len: usize,
     in_out: &mut [u8],
+    src: RangeFrom<usize>,
     cpu_features: cpu::Features,
 ) -> Tag {
     aead(
@@ -87,7 +88,7 @@ fn aes_gcm_open(
         nonce,
         aad,
         in_out,
-        Direction::Opening { in_prefix_len },
+        Direction::Opening { src },
         cpu_features,
     )
 }
@@ -112,8 +113,8 @@ fn aead(
     let aad_len = aad.0.len();
     let mut gcm_ctx = gcm::Context::new(gcm_key, aad, cpu_features);
 
-    let in_prefix_len = match direction {
-        Direction::Opening { in_prefix_len } => in_prefix_len,
+    let in_prefix_len = match &direction {
+        Direction::Opening { src } => src.start,
         Direction::Sealing => 0,
     };
 
@@ -124,7 +125,7 @@ fn aead(
         &mut gcm_ctx,
         in_out,
         &mut ctr,
-        direction,
+        direction.clone(),
         cpu_features,
     );
     let in_out_len = in_out.len() - in_prefix_len;
@@ -209,7 +210,7 @@ fn integrated_aes_gcm<'a>(
     }
 
     let processed = match direction {
-        Direction::Opening { in_prefix_len } => {
+        Direction::Opening { src } => {
             extern "C" {
                 fn GFp_aesni_gcm_decrypt(
                     input: *const u8,
@@ -222,9 +223,9 @@ fn integrated_aes_gcm<'a>(
             }
             unsafe {
                 GFp_aesni_gcm_decrypt(
-                    in_out[in_prefix_len..].as_ptr(),
+                    in_out[src.clone()].as_ptr(),
                     in_out.as_mut_ptr(),
-                    in_out.len() - in_prefix_len,
+                    in_out.len() - src.start,
                     aes_key.inner_less_safe(),
                     ctr,
                     gcm_ctx.inner(),
