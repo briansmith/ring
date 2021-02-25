@@ -233,12 +233,6 @@ const TAG_LEN: usize = 16;
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;
 
-#[derive(Clone)]
-enum Direction {
-    Opening { src: RangeFrom<usize> },
-    Sealing,
-}
-
 mod aes;
 mod aes_gcm;
 mod block;
