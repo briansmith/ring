@@ -122,7 +122,7 @@ impl<N: NonceSequence> OpeningKey<N> {
     ///        “Split stream reassembled in place”
     /// ```
     ///
-    /// This reassembly be accomplished with three calls to `open_within()`.
+    /// This reassembly can be accomplished with three calls to `open_within()`.
     #[inline]
     pub fn open_within<'in_out, A>(
         &mut self,
