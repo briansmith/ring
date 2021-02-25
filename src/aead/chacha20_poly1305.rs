@@ -14,7 +14,7 @@
 
 use super::{
     chacha::{self, Counter, Iv},
-    poly1305, Aad, Direction, Nonce, Tag,
+    poly1305, Aad, Nonce, Tag,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
 use core::{convert::TryInto, ops::RangeFrom};
@@ -49,7 +49,7 @@ fn chacha20_poly1305_seal(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
-    let key = match key {
+    let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
@@ -75,7 +75,7 @@ fn chacha20_poly1305_seal(
 
             let mut data = InOut {
                 input: seal_data_in {
-                    key: *key.words_less_safe(),
+                    key: *chacha20_key.words_less_safe(),
                     counter: 0,
                     nonce: *nonce.as_ref(),
                     extra_ciphertext: core::ptr::null(),
@@ -111,7 +111,16 @@ fn chacha20_poly1305_seal(
         }
     }
 
-    aead(key, nonce, aad, in_out, Direction::Sealing, cpu_features)
+    let mut counter = Counter::zero(nonce);
+    let mut auth = {
+        let key = derive_poly1305_key(chacha20_key, counter.increment(), cpu_features);
+        poly1305::Context::from_key(key)
+    };
+
+    poly1305_update_padded_16(&mut auth, aad.as_ref());
+    chacha20_key.encrypt_in_place(counter, in_out);
+    poly1305_update_padded_16(&mut auth, in_out);
+    finish(auth, aad.as_ref().len(), in_out.len())
 }
 
 fn chacha20_poly1305_open(
@@ -122,7 +131,7 @@ fn chacha20_poly1305_open(
     src: RangeFrom<usize>,
     cpu_features: cpu::Features,
 ) -> Tag {
-    let key = match key {
+    let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
@@ -146,7 +155,7 @@ fn chacha20_poly1305_open(
 
             let mut data = InOut {
                 input: open_data_in {
-                    key: *key.words_less_safe(),
+                    key: *chacha20_key.words_less_safe(),
                     counter: 0,
                     nonce: *nonce.as_ref(),
                 },
@@ -180,14 +189,27 @@ fn chacha20_poly1305_open(
         }
     }
 
-    aead(
-        key,
-        nonce,
-        aad,
-        in_out,
-        Direction::Opening { src },
-        cpu_features,
-    )
+    let mut counter = Counter::zero(nonce);
+    let mut auth = {
+        let key = derive_poly1305_key(chacha20_key, counter.increment(), cpu_features);
+        poly1305::Context::from_key(key)
+    };
+
+    poly1305_update_padded_16(&mut auth, aad.as_ref());
+    poly1305_update_padded_16(&mut auth, &in_out[src.clone()]);
+    chacha20_key.encrypt_within(counter, in_out, src.clone());
+    finish(auth, aad.as_ref().len(), in_out[src].len())
+}
+
+fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
+    auth.update(
+        [
+            LittleEndian::from(polyfill::u64_from_usize(aad_len)),
+            LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
+        ]
+        .as_byte_array(),
+    );
+    auth.finish()
 }
 
 pub type Key = chacha::Key;
@@ -213,46 +235,6 @@ where
 #[repr(align(16), C)]
 struct Out {
     tag: [u8; super::TAG_LEN],
-}
-
-#[inline(always)] // Statically eliminate branches on `direction`.
-fn aead(
-    chacha20_key: &Key,
-    nonce: Nonce,
-    Aad(aad): Aad<&[u8]>,
-    in_out: &mut [u8],
-    direction: Direction,
-    cpu_features: cpu::Features,
-) -> Tag {
-    let mut counter = Counter::zero(nonce);
-    let mut ctx = {
-        let key = derive_poly1305_key(chacha20_key, counter.increment(), cpu_features);
-        poly1305::Context::from_key(key)
-    };
-
-    poly1305_update_padded_16(&mut ctx, aad);
-
-    let in_out_len = match direction {
-        Direction::Opening { src } => {
-            poly1305_update_padded_16(&mut ctx, &in_out[src.clone()]);
-            chacha20_key.encrypt_within(counter, in_out, src.clone());
-            in_out.len() - src.start
-        }
-        Direction::Sealing => {
-            chacha20_key.encrypt_in_place(counter, in_out);
-            poly1305_update_padded_16(&mut ctx, in_out);
-            in_out.len()
-        }
-    };
-
-    ctx.update(
-        [
-            LittleEndian::from(polyfill::u64_from_usize(aad.len())),
-            LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
-        ]
-        .as_byte_array(),
-    );
-    ctx.finish()
 }
 
 #[inline]
