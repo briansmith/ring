@@ -556,14 +556,6 @@ struct evp_cipher_ctx_st {
   // final_used is non-zero if the |final| buffer contains plaintext.
   int final_used;
 
-  // block_mask contains |cipher->block_size| minus one. (The block size
-  // assumed to be a power of two.)
-  //
-  // TODO(davidben): This is redundant with |cipher->block_size| and constant
-  // for the whole |EVP_CIPHER|. Move it there, or possibly even remove it and
-  // do the subtraction on demand.
-  int block_mask;
-
   uint8_t final[EVP_MAX_BLOCK_LENGTH];  // possible final block
 } /* EVP_CIPHER_CTX */;
 
