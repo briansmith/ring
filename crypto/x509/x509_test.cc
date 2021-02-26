@@ -441,6 +441,40 @@ o/1TpfOMSGhMyMoyPrk=
 -----END X509 CRL-----
 )";
 
+// kAlgorithmMismatchCRL is kBasicCRL but with mismatched AlgorithmIdentifiers
+// in the outer structure and signed portion. The signature reflects the signed
+// portion.
+static const char kAlgorithmMismatchCRL[] = R"(
+-----BEGIN X509 CRL-----
+MIIBpzCBkAIBATANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE
+CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ
+Qm9yaW5nU1NMFw0xNjA5MjYxNTEwNTVaFw0xNjEwMjYxNTEwNTVaoA4wDDAKBgNV
+HRQEAwIBATANBgkqhkiG9w0BAQwFAAOCAQEAnrBKKgvd9x9zwK9rtUvVeFeJ7+LN
+ZEAc+a5oxpPNEsJx6hXoApYEbzXMxuWBQoCs5iEBycSGudct21L+MVf27M38KrWo
+eOkq0a2siqViQZO2Fb/SUFR0k9zb8xl86Zf65lgPplALun0bV/HT7MJcl04Tc4os
+dsAReBs5nqTGNEd5AlC1iKHvQZkM//MD51DspKnDpsDiUVi54h9C1SpfZmX8H2Vv
+diyu0fZ/bPAM3VAGawatf/SyWfBMyKpoPXEG39oAzmjjOj8en82psn7m474IGaho
+/vBbhl1ms5qQiLYPjm4YELtnXQoFyC72tBjbdFd/ZE9k4CNKDbxFUXFbkw==
+-----END X509 CRL-----
+)";
+
+// kAlgorithmMismatchCRL2 is kBasicCRL but with mismatched AlgorithmIdentifiers
+// in the outer structure and signed portion. The signature reflects the outer
+// structure.
+static const char kAlgorithmMismatchCRL2[] = R"(
+-----BEGIN X509 CRL-----
+MIIBpzCBkAIBATANBgkqhkiG9w0BAQwFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE
+CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ
+Qm9yaW5nU1NMFw0xNjA5MjYxNTEwNTVaFw0xNjEwMjYxNTEwNTVaoA4wDDAKBgNV
+HRQEAwIBATANBgkqhkiG9w0BAQsFAAOCAQEAjCWtU7AK8nQ5TCFfzvbU04MWNuLp
+iZfqapRSRyMta4pyRomK773rEmJmYOc/ZNeIphVOlupMgGC2wyv5Z/SD1mxccJbv
+SlUWciwjskjgvyyU9KnJ5xPgf3e3Fl3G0u9yJEFd4mg6fRavs5pEDX56b0f+SkG+
+Vl1FZU94Uylm2kCqk9fRpTxualPGP6dksj3Aitt4x2Vdni4sUfg9vIEEOx2jnisq
+iLqpT94IdETCWAciE0dgbogdOOsNzMqSASfHM/XPigYLXpYgfaR8fca6OKDwFsVH
+SrkFz8Se3F6mCHnbDzYElbmA46iKU2J12LTrso3Ewq/qHq0mebfp2z0y6g==
+-----END X509 CRL-----
+)";
+
 // kEd25519Cert is a self-signed Ed25519 certificate.
 static const char kEd25519Cert[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -1363,6 +1397,10 @@ TEST(X509Test, TestCRL) {
       CRLFromPEM(kUnknownCriticalCRL));
   bssl::UniquePtr<X509_CRL> unknown_critical_crl2(
       CRLFromPEM(kUnknownCriticalCRL2));
+  bssl::UniquePtr<X509_CRL> algorithm_mismatch_crl(
+      CRLFromPEM(kAlgorithmMismatchCRL));
+  bssl::UniquePtr<X509_CRL> algorithm_mismatch_crl2(
+      CRLFromPEM(kAlgorithmMismatchCRL2));
 
   ASSERT_TRUE(root);
   ASSERT_TRUE(leaf);
@@ -1372,30 +1410,38 @@ TEST(X509Test, TestCRL) {
   ASSERT_TRUE(known_critical_crl);
   ASSERT_TRUE(unknown_critical_crl);
   ASSERT_TRUE(unknown_critical_crl2);
+  ASSERT_TRUE(algorithm_mismatch_crl);
+  ASSERT_TRUE(algorithm_mismatch_crl2);
 
-  ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
                               {basic_crl.get()}, X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(
+  EXPECT_EQ(
       X509_V_ERR_CERT_REVOKED,
       Verify(leaf.get(), {root.get()}, {root.get()},
              {basic_crl.get(), revoked_crl.get()}, X509_V_FLAG_CRL_CHECK));
 
   std::vector<X509_CRL *> empty_crls;
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
             Verify(leaf.get(), {root.get()}, {root.get()}, empty_crls,
                    X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+  EXPECT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {bad_issuer_crl.get()}, X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(X509_V_OK,
+  EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {known_critical_crl.get()}, X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {unknown_critical_crl.get()}, X509_V_FLAG_CRL_CHECK));
-  ASSERT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
+  EXPECT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {unknown_critical_crl2.get()}, X509_V_FLAG_CRL_CHECK));
+  EXPECT_EQ(X509_V_ERR_CRL_SIGNATURE_FAILURE,
+            Verify(leaf.get(), {root.get()}, {root.get()},
+                   {algorithm_mismatch_crl.get()}, X509_V_FLAG_CRL_CHECK));
+  EXPECT_EQ(X509_V_ERR_CRL_SIGNATURE_FAILURE,
+            Verify(leaf.get(), {root.get()}, {root.get()},
+                   {algorithm_mismatch_crl2.get()}, X509_V_FLAG_CRL_CHECK));
 
   // Parsing kBadExtensionCRL should fail.
   EXPECT_FALSE(CRLFromPEM(kBadExtensionCRL));

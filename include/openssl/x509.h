@@ -1189,7 +1189,8 @@ OPENSSL_EXPORT int X509_CRL_up_ref(X509_CRL *crl);
 // to ignore the value.
 //
 // This function outputs the outer signature algorithm, not the one in the
-// TBSCertList.
+// TBSCertList. CRLs with mismatched signature algorithms will successfully
+// parse, but they will be rejected when verifying.
 OPENSSL_EXPORT void X509_CRL_get0_signature(const X509_CRL *crl,
                                             const ASN1_BIT_STRING **out_sig,
                                             const X509_ALGOR **out_alg);
