@@ -62,6 +62,10 @@
 
 long X509_get_version(const X509 *x509)
 {
+    // The default version is v1(0).
+    if (x509->cert_info->version == NULL) {
+        return 0;
+    }
     return ASN1_INTEGER_get(x509->cert_info->version);
 }
 
