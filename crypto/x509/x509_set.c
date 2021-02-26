@@ -60,6 +60,9 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
+
+
 long X509_get_version(const X509 *x509)
 {
     // The default version is v1(0).

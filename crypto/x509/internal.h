@@ -24,6 +24,14 @@ extern "C" {
 #endif
 
 
+/* Internal structures. */
+
+struct X509_val_st {
+  ASN1_TIME *notBefore;
+  ASN1_TIME *notAfter;
+} /* X509_VAL */;
+
+
 /* RSA-PSS functions. */
 
 /* x509_rsa_pss_to_ctx configures |ctx| for an RSA-PSS operation based on
