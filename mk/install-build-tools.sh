@@ -32,7 +32,7 @@ case $target in
   accept_android_license=24333f8a63b6825ea9c5514f83c2829b004d1fee
   grep --quiet --no-messages "$accept_android_license" "$android_license_file" \
     || echo $accept_android_license  >> "$android_license_file"
-  sudo "${ANDROID_SDK_ROOT}/tools/bin/sdkmanager" ndk-bundle
+  "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ndk-bundle
   ;;
 esac
 
