@@ -105,6 +105,7 @@ case $target in
     export CC_wasm32_unknown_unknown=clang-$llvm_version
     export AR_wasm32_unknown_unknown=llvm-ar-$llvm_version
     export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
+    export WASM_BINDGEN_TEST_TIMEOUT=60
     ;;
   *)
     ;;
