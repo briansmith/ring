@@ -973,8 +973,8 @@ DECLARE_ASN1_FUNCTIONS(X509_CINF)
 DECLARE_ASN1_FUNCTIONS(X509)
 DECLARE_ASN1_FUNCTIONS(X509_CERT_AUX)
 
-// X509_up_ref adds one to the reference count of |x| and returns one.
-OPENSSL_EXPORT int X509_up_ref(X509 *x);
+// X509_up_ref adds one to the reference count of |x509| and returns one.
+OPENSSL_EXPORT int X509_up_ref(X509 *x509);
 
 OPENSSL_EXPORT int X509_get_ex_new_index(long argl, void *argp,
                                          CRYPTO_EX_unused *unused,
@@ -1032,9 +1032,22 @@ OPENSSL_EXPORT int X509_set1_signature_algo(X509 *x509, const X509_ALGOR *algo);
 OPENSSL_EXPORT int X509_set1_signature_value(X509 *x509, const uint8_t *sig,
                                              size_t sig_len);
 
-OPENSSL_EXPORT void X509_get0_signature(const ASN1_BIT_STRING **psig,
-                                        const X509_ALGOR **palg, const X509 *x);
-OPENSSL_EXPORT int X509_get_signature_nid(const X509 *x);
+// X509_get0_signature sets |*out_sig| and |*out_alg| to the signature and
+// signature algorithm of |x509|, respectively. Either output pointer may be
+// NULL to ignore the value.
+//
+// This function outputs the outer signature algorithm. For the one in the
+// TBSCertificate, see |X509_get0_tbs_sigalg|. Certificates with mismatched
+// signature algorithms will successfully parse, but they will be rejected when
+// verifying.
+OPENSSL_EXPORT void X509_get0_signature(const ASN1_BIT_STRING **out_sig,
+                                        const X509_ALGOR **out_alg,
+                                        const X509 *x509);
+
+// X509_get_signature_nid returns the NID corresponding to |x509|'s signature
+// algorithm, or |NID_undef| if the signature algorithm does not correspond to
+// a known NID.
+OPENSSL_EXPORT int X509_get_signature_nid(const X509 *x509);
 
 OPENSSL_EXPORT int X509_alias_set1(X509 *x, const unsigned char *name, int len);
 OPENSSL_EXPORT int X509_keyid_set1(X509 *x, const unsigned char *id, int len);
@@ -1099,7 +1112,13 @@ OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x);
 OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x);
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_get0_extensions(
     const X509 *x);
-OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x);
+
+// X509_get0_tbs_sigalg returns the signature algorithm in |x509|'s
+// TBSCertificate. For the outer signature algorithm, see |X509_get0_signature|.
+//
+// Certificates with mismatched signature algorithms will successfully parse,
+// but they will be rejected when verifying.
+OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x509);
 
 // X509_REQ_set_version sets |req|'s version to |version|, which should be
 // |X509V1_VERSION|. It returns one on success and zero on error.
@@ -1107,10 +1126,19 @@ OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x);
 // Note no versions other than |X509V1_VERSION| are defined for CSRs.
 OPENSSL_EXPORT int X509_REQ_set_version(X509_REQ *req, long version);
 OPENSSL_EXPORT int X509_REQ_set_subject_name(X509_REQ *req, X509_NAME *name);
+
+// X509_REQ_get0_signature sets |*out_sig| and |*out_alg| to the signature and
+// signature algorithm of |req|, respectively. Either output pointer may be NULL
+// to ignore the value.
 OPENSSL_EXPORT void X509_REQ_get0_signature(const X509_REQ *req,
-                                            const ASN1_BIT_STRING **psig,
-                                            const X509_ALGOR **palg);
+                                            const ASN1_BIT_STRING **out_sig,
+                                            const X509_ALGOR **out_alg);
+
+// X509_REQ_get_signature_nid returns the NID corresponding to |req|'s signature
+// algorithm, or |NID_undef| if the signature algorithm does not correspond to
+// a known NID.
 OPENSSL_EXPORT int X509_REQ_get_signature_nid(const X509_REQ *req);
+
 OPENSSL_EXPORT int i2d_re_X509_REQ_tbs(X509_REQ *req, unsigned char **pp);
 OPENSSL_EXPORT int X509_REQ_set_pubkey(X509_REQ *x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
@@ -1152,11 +1180,23 @@ OPENSSL_EXPORT int X509_REQ_add1_attr_by_txt(X509_REQ *req,
 OPENSSL_EXPORT int X509_CRL_set_version(X509_CRL *crl, long version);
 OPENSSL_EXPORT int X509_CRL_set_issuer_name(X509_CRL *x, X509_NAME *name);
 OPENSSL_EXPORT int X509_CRL_sort(X509_CRL *crl);
+
+// X509_CRL_up_ref adds one to the reference count of |crl| and returns one.
 OPENSSL_EXPORT int X509_CRL_up_ref(X509_CRL *crl);
 
+// X509_CRL_get0_signature sets |*out_sig| and |*out_alg| to the signature and
+// signature algorithm of |crl|, respectively. Either output pointer may be NULL
+// to ignore the value.
+//
+// This function outputs the outer signature algorithm, not the one in the
+// TBSCertList.
 OPENSSL_EXPORT void X509_CRL_get0_signature(const X509_CRL *crl,
-                                            const ASN1_BIT_STRING **psig,
-                                            const X509_ALGOR **palg);
+                                            const ASN1_BIT_STRING **out_sig,
+                                            const X509_ALGOR **out_alg);
+
+// X509_CRL_get_signature_nid returns the NID corresponding to |crl|'s signature
+// algorithm, or |NID_undef| if the signature algorithm does not correspond to
+// a known NID.
 OPENSSL_EXPORT int X509_CRL_get_signature_nid(const X509_CRL *crl);
 
 // i2d_re_X509_CRL_tbs serializes the TBSCertList portion of |crl|. If |outp| is
@@ -1224,6 +1264,11 @@ OPENSSL_EXPORT int X509_chain_check_suiteb(int *perror_depth, X509 *x,
                                            unsigned long flags);
 OPENSSL_EXPORT int X509_CRL_check_suiteb(X509_CRL *crl, EVP_PKEY *pk,
                                          unsigned long flags);
+
+// X509_chain_up_ref returns a newly-allocated |STACK_OF(X509)| containing a
+// shallow copy of |chain|, or NULL on error. That is, the return value has the
+// same contents as |chain|, and each |X509|'s reference count is incremented by
+// one.
 OPENSSL_EXPORT STACK_OF(X509) *X509_chain_up_ref(STACK_OF(X509) *chain);
 
 OPENSSL_EXPORT int X509_issuer_and_serial_cmp(const X509 *a, const X509 *b);
