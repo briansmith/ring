@@ -2935,15 +2935,9 @@ void SSL_CTX_set_false_start_allowed_without_alpn(SSL_CTX *ctx, int allowed) {
   ctx->false_start_allowed_without_alpn = !!allowed;
 }
 
-int SSL_is_tls13_downgrade(const SSL *ssl) { return 0; }
-
 int SSL_used_hello_retry_request(const SSL *ssl) {
   return ssl->s3->used_hello_retry_request;
 }
-
-void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx, int ignore) {}
-
-void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore) {}
 
 void SSL_set_shed_handshake_config(SSL *ssl, int enable) {
   if (!ssl->config) {

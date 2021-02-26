@@ -4798,18 +4798,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 // name and remove this one.
 OPENSSL_EXPORT uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher);
 
-// SSL_CTX_set_ignore_tls13_downgrade does nothing.
-OPENSSL_EXPORT void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx,
-                                                       int ignore);
-
-// SSL_set_ignore_tls13_downgrade does nothing.
-OPENSSL_EXPORT void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore);
-
-// SSL_is_tls13_downgrade returns zero. Historically, this function returned
-// whether the TLS 1.3 downgrade signal would have been enforced if not
-// disabled. The TLS 1.3 downgrade signal is now always enforced.
-OPENSSL_EXPORT int SSL_is_tls13_downgrade(const SSL *ssl);
-
 
 // Nodejs compatibility section (hidden).
 //
