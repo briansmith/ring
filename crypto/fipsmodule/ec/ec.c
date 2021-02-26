@@ -1232,6 +1232,10 @@ void ec_set_to_safe_point(const EC_GROUP *group, EC_RAW_POINT *out) {
 
 void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag) {}
 
+int EC_GROUP_get_asn1_flag(const EC_GROUP *group) {
+  return OPENSSL_EC_NAMED_CURVE;
+}
+
 const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group) {
   // This function exists purely to give callers a way to call
   // |EC_METHOD_get_field_type|. cryptography.io crashes if |EC_GROUP_method_of|

@@ -343,11 +343,14 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
 OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
                                       BN_CTX *ctx);
 
+#define OPENSSL_EC_EXPLICIT_CURVE 0
+#define OPENSSL_EC_NAMED_CURVE 1
+
 // EC_GROUP_set_asn1_flag does nothing.
 OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);
 
-#define OPENSSL_EC_NAMED_CURVE 0
-#define OPENSSL_EC_EXPLICIT_CURVE 1
+// EC_GROUP_get_asn1_flag returns |OPENSSL_EC_NAMED_CURVE|.
+OPENSSL_EXPORT int EC_GROUP_get_asn1_flag(const EC_GROUP *group);
 
 typedef struct ec_method_st EC_METHOD;
 
