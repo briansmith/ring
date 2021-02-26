@@ -69,6 +69,6 @@ RAND_METHOD *RAND_OpenSSL(void) {
 
 const RAND_METHOD *RAND_get_rand_method(void) { return RAND_SSLeay(); }
 
-void RAND_set_rand_method(const RAND_METHOD *method) {}
+int RAND_set_rand_method(const RAND_METHOD *method) { return 1; }
 
 void RAND_cleanup(void) {}

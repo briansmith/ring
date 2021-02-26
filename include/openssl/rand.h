@@ -103,8 +103,8 @@ OPENSSL_EXPORT RAND_METHOD *RAND_OpenSSL(void);
 // RAND_get_rand_method returns |RAND_SSLeay()|.
 OPENSSL_EXPORT const RAND_METHOD *RAND_get_rand_method(void);
 
-// RAND_set_rand_method does nothing.
-OPENSSL_EXPORT void RAND_set_rand_method(const RAND_METHOD *);
+// RAND_set_rand_method returns one.
+OPENSSL_EXPORT int RAND_set_rand_method(const RAND_METHOD *);
 
 
 #if defined(__cplusplus)
