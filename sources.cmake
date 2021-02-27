@@ -59,6 +59,15 @@ set(
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
+  crypto/pkcs8/test/empty_password.p12
+  crypto/pkcs8/test/no_encryption.p12
+  crypto/pkcs8/test/nss.p12
+  crypto/pkcs8/test/null_password.p12
+  crypto/pkcs8/test/openssl.p12
+  crypto/pkcs8/test/pbes2_sha1.p12
+  crypto/pkcs8/test/pbes2_sha256.p12
+  crypto/pkcs8/test/unicode_password.p12
+  crypto/pkcs8/test/windows.p12
   crypto/poly1305/poly1305_tests.txt
   crypto/siphash/siphash_tests.txt
   crypto/x509/test/basic_constraints_ca.pem
