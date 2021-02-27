@@ -428,6 +428,27 @@ TEST(PKCS12Test, RoundTrip) {
                 {bssl::Span<const uint8_t>(kTestCert2)},
                 NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
                 NID_pbe_WithSHA1And3_Key_TripleDES_CBC, 100, 100);
+
+  // Test unencrypted and partially unencrypted PKCS#12 files.
+  TestRoundTrip(kPassword, /*name=*/nullptr,
+                bssl::Span<const uint8_t>(kTestKey),
+                bssl::Span<const uint8_t>(kTestCert),
+                {bssl::Span<const uint8_t>(kTestCert2)},
+                /*key_nid=*/-1,
+                /*cert_nid=*/-1, /*iterations=*/100, /*mac_iterations=*/100);
+  TestRoundTrip(kPassword, /*name=*/nullptr,
+                bssl::Span<const uint8_t>(kTestKey),
+                bssl::Span<const uint8_t>(kTestCert),
+                {bssl::Span<const uint8_t>(kTestCert2)},
+                /*key_nid=*/NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
+                /*cert_nid=*/-1, /*iterations=*/100, /*mac_iterations=*/100);
+  TestRoundTrip(kPassword, /*name=*/nullptr,
+                bssl::Span<const uint8_t>(kTestKey),
+                bssl::Span<const uint8_t>(kTestCert),
+                {bssl::Span<const uint8_t>(kTestCert2)},
+                /*key_nid=*/-1,
+                /*cert_nid=*/NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
+                /*iterations=*/100, /*mac_iterations=*/100);
 }
 
 static bssl::UniquePtr<EVP_PKEY> MakeTestKey() {
