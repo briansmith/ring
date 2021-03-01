@@ -101,6 +101,7 @@ typedef struct {
 typedef void PKCS7_ENVELOPE;
 typedef void PKCS7_DIGEST;
 typedef void PKCS7_ENCRYPT;
+typedef void PKCS7_SIGNER_INFO;
 
 typedef struct {
   uint8_t *ber_bytes;
@@ -183,6 +184,7 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 #define PKCS7_NOATTR 0x100
 #define PKCS7_NOSMIMECAP 0x200
 #define PKCS7_STREAM 0x1000
+#define PKCS7_PARTIAL 0x4000
 
 // PKCS7_sign assembles |certs| into a PKCS#7 signed data ContentInfo with
 // external data and no signatures. It returns a newly-allocated |PKCS7| on
