@@ -175,7 +175,9 @@ OPENSSL_EXPORT int i2d_PKCS12_fp(FILE *fp, const PKCS12 *p12);
 //
 // Note if |p12| does not contain a private key, both |*out_pkey| and
 // |*out_cert| will be set to NULL and all certificates will be returned via
-// |*out_ca_certs|.
+// |*out_ca_certs|. Also note this function differs from OpenSSL in that extra
+// certificates are returned in the order they appear in the file. OpenSSL 1.1.1
+// returns them in reverse order, but this will be fixed in OpenSSL 3.0.
 //
 // It returns one on success and zero on error.
 //
