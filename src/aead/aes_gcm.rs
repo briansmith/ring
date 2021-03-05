@@ -86,7 +86,7 @@ fn aes_gcm_seal(
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
-        if !aes_key.is_aes_hw() || !auth.is_avx2(cpu_features) {
+        if !aes_key.is_aes_hw() || !auth.is_avx2() {
             in_out
         } else {
             use crate::c;
@@ -163,7 +163,7 @@ fn aes_gcm_open(
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
-        if !aes_key.is_aes_hw() || !auth.is_avx2(cpu_features) {
+        if !aes_key.is_aes_hw() || !auth.is_avx2() {
             in_out
         } else {
             use crate::c;
