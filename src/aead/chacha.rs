@@ -14,7 +14,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{quic::Sample, Nonce};
-use crate::polyfill::{array_map::Map, ChunksFixed};
+use crate::{
+    cpu,
+    polyfill::{array_map::Map, ChunksFixed},
+};
 
 #[cfg(any(
     test,
@@ -30,13 +33,22 @@ mod fallback;
 use core::ops::RangeFrom;
 
 #[repr(transparent)]
-pub struct Key([u32; KEY_LEN / 4]);
+pub struct Key {
+    words: [u32; KEY_LEN / 4],
+    cpu_features: cpu::Features,
+}
 
-impl From<[u8; KEY_LEN]> for Key {
-    #[inline]
-    fn from(value: [u8; KEY_LEN]) -> Self {
+impl Key {
+    pub(super) fn new(value: [u8; KEY_LEN], cpu_features: cpu::Features) -> Self {
         let value: &[[u8; 4]; KEY_LEN / 4] = value.chunks_fixed();
-        Self(value.array_map(u32::from_le_bytes))
+        Self {
+            words: value.array_map(u32::from_le_bytes),
+            cpu_features,
+        }
+    }
+
+    pub(super) fn cpu_features(&self) -> cpu::Features {
+        self.cpu_features
     }
 }
 
@@ -140,7 +152,7 @@ impl Key {
     ))]
     #[inline]
     pub(super) fn words_less_safe(&self) -> &[u32; KEY_LEN / 4] {
-        &self.0
+        &self.words
     }
 }
 
@@ -261,7 +273,7 @@ mod tests {
 
             let key = test_case.consume_bytes("Key");
             let key: &[u8; KEY_LEN] = key.as_slice().try_into()?;
-            let key = Key::from(*key);
+            let key = Key::new(*key, cpu::features());
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce = test_case.consume_bytes("Nonce");

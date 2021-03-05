@@ -65,13 +65,7 @@ fn init(
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
-fn aes_gcm_seal(
-    key: &aead::KeyInner,
-    nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-    cpu_features: cpu::Features,
-) -> Tag {
+fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8]) -> Tag {
     let Key { aes_key, gcm_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
@@ -82,7 +76,7 @@ fn aes_gcm_seal(
 
     let total_in_out_len = in_out.len();
     let aad_len = aad.0.len();
-    let mut auth = gcm::Context::new(gcm_key, aad, cpu_features);
+    let mut auth = gcm::Context::new(gcm_key, aad);
 
     #[cfg(target_arch = "x86_64")]
     let in_out = {
@@ -144,7 +138,6 @@ fn aes_gcm_open(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     src: RangeFrom<usize>,
-    cpu_features: cpu::Features,
 ) -> Tag {
     let Key { aes_key, gcm_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
@@ -155,7 +148,7 @@ fn aes_gcm_open(
     let tag_iv = ctr.increment();
 
     let aad_len = aad.0.len();
-    let mut auth = gcm::Context::new(gcm_key, aad, cpu_features);
+    let mut auth = gcm::Context::new(gcm_key, aad);
 
     let in_prefix_len = src.start;
 
