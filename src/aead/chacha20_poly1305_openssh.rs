@@ -65,8 +65,7 @@ impl SealingKey {
         tag_out: &mut [u8; TAG_LEN],
     ) {
         let mut counter = make_counter(sequence_number);
-        let poly_key =
-            derive_poly1305_key(&self.key.k_2, counter.increment(), self.key.cpu_features);
+        let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
 
         {
             let (len_in_out, data_and_padding_in_out) =
@@ -133,8 +132,7 @@ impl OpeningKey {
         // We must verify the tag before decrypting so that
         // `ciphertext_in_plaintext_out` is unmodified if verification fails.
         // This is beyond what we guarantee.
-        let poly_key =
-            derive_poly1305_key(&self.key.k_2, counter.increment(), self.key.cpu_features);
+        let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
         verify(poly_key, ciphertext_in_plaintext_out, tag)?;
 
         let plaintext_in_ciphertext_out = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
@@ -149,7 +147,6 @@ impl OpeningKey {
 struct Key {
     k_1: chacha::Key,
     k_2: chacha::Key,
-    cpu_features: cpu::Features,
 }
 
 impl Key {
@@ -157,9 +154,8 @@ impl Key {
         // The first half becomes K_2 and the second half becomes K_1.
         let &[k_2, k_1]: &[[u8; chacha::KEY_LEN]; 2] = key_material.chunks_fixed();
         Self {
-            k_1: k_1.into(),
-            k_2: k_2.into(),
-            cpu_features,
+            k_1: chacha::Key::new(k_1, cpu_features),
+            k_2: chacha::Key::new(k_2, cpu_features),
         }
     }
 }

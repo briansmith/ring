@@ -23,7 +23,6 @@ use core::ops::RangeFrom;
 pub struct LessSafeKey {
     inner: KeyInner,
     algorithm: &'static Algorithm,
-    cpu_features: cpu::Features,
 }
 
 impl LessSafeKey {
@@ -41,7 +40,6 @@ impl LessSafeKey {
         Ok(Self {
             inner: (algorithm.init)(key_bytes, cpu_features)?,
             algorithm,
-            cpu_features,
         })
     }
 
@@ -153,8 +151,7 @@ fn open_within_<'in_out>(
         .ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
     let (in_out, received_tag) = in_out.split_at_mut(src.start + ciphertext_len);
-    let Tag(calculated_tag) =
-        (key.algorithm.open)(&key.inner, nonce, aad, in_out, src, key.cpu_features);
+    let Tag(calculated_tag) = (key.algorithm.open)(&key.inner, nonce, aad, in_out, src);
     if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
@@ -177,13 +174,7 @@ pub(super) fn seal_in_place_separate_tag_(
     in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
     check_per_nonce_max_bytes(key.algorithm(), in_out.len())?;
-    Ok((key.algorithm.seal)(
-        &key.inner,
-        nonce,
-        aad,
-        in_out,
-        key.cpu_features,
-    ))
+    Ok((key.algorithm.seal)(&key.inner, nonce, aad, in_out))
 }
 
 fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), error::Unspecified> {

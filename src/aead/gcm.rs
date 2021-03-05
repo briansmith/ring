@@ -22,16 +22,22 @@ use core::ops::BitXorAssign;
 #[cfg(not(target_arch = "aarch64"))]
 mod gcm_nohw;
 
-pub struct Key(HTable);
+pub struct Key {
+    h_table: HTable,
+    cpu_features: cpu::Features,
+}
 
 impl Key {
     pub(super) fn new(h_be: Block, cpu_features: cpu::Features) -> Self {
         let h: [u64; 2] = h_be.into();
 
-        let mut key = Self(HTable {
-            Htable: [u128 { hi: 0, lo: 0 }; HTABLE_LEN],
-        });
-        let h_table = &mut key.0;
+        let mut key = Self {
+            h_table: HTable {
+                Htable: [u128 { hi: 0, lo: 0 }; HTABLE_LEN],
+            },
+            cpu_features,
+        };
+        let h_table = &mut key.h_table;
 
         match detect_implementation(cpu_features) {
             #[cfg(target_arch = "x86_64")]
@@ -85,14 +91,14 @@ pub struct Context {
 }
 
 impl Context {
-    pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
+    pub(crate) fn new(key: &Key, aad: Aad<&[u8]>) -> Self {
         let mut ctx = Self {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),
                 _unused: Block::zero(),
-                Htable: key.0.clone(),
+                Htable: key.h_table.clone(),
             },
-            cpu_features,
+            cpu_features: key.cpu_features,
         };
 
         for ad in aad.0.chunks(BLOCK_LEN) {

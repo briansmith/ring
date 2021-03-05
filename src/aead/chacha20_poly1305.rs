@@ -36,10 +36,13 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
 /// Copies |key| into |ctx_buf|.
 fn chacha20_poly1305_init(
     key: &[u8],
-    _todo: cpu::Features,
+    cpu_features: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
     let key: [u8; chacha::KEY_LEN] = key.try_into()?;
-    Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::from(key)))
+    Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::new(
+        key,
+        cpu_features,
+    )))
 }
 
 fn chacha20_poly1305_seal(
@@ -47,7 +50,6 @@ fn chacha20_poly1305_seal(
     nonce: Nonce,
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
-    cpu_features: cpu::Features,
 ) -> Tag {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
@@ -56,7 +58,7 @@ fn chacha20_poly1305_seal(
 
     #[cfg(target_arch = "x86_64")]
     {
-        if cpu::intel::SSE41.available(cpu_features) {
+        if cpu::intel::SSE41.available(chacha20_key.cpu_features()) {
             // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
             // structure, but Rust can't do that yet; see
             // https://github.com/rust-lang/rust/issues/73557.
@@ -113,7 +115,7 @@ fn chacha20_poly1305_seal(
 
     let mut counter = Counter::zero(nonce);
     let mut auth = {
-        let key = derive_poly1305_key(chacha20_key, counter.increment(), cpu_features);
+        let key = derive_poly1305_key(chacha20_key, counter.increment());
         poly1305::Context::from_key(key)
     };
 
@@ -129,7 +131,6 @@ fn chacha20_poly1305_open(
     aad: Aad<&[u8]>,
     in_out: &mut [u8],
     src: RangeFrom<usize>,
-    cpu_features: cpu::Features,
 ) -> Tag {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
@@ -138,7 +139,7 @@ fn chacha20_poly1305_open(
 
     #[cfg(target_arch = "x86_64")]
     {
-        if cpu::intel::SSE41.available(cpu_features) {
+        if cpu::intel::SSE41.available(chacha20_key.cpu_features()) {
             // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
             // structure, but Rust can't do that yet; see
             // https://github.com/rust-lang/rust/issues/73557.
@@ -191,7 +192,7 @@ fn chacha20_poly1305_open(
 
     let mut counter = Counter::zero(nonce);
     let mut auth = {
-        let key = derive_poly1305_key(chacha20_key, counter.increment(), cpu_features);
+        let key = derive_poly1305_key(chacha20_key, counter.increment());
         poly1305::Context::from_key(key)
     };
 
@@ -250,14 +251,10 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
 }
 
 // Also used by chacha20_poly1305_openssh.
-pub(super) fn derive_poly1305_key(
-    chacha_key: &chacha::Key,
-    iv: Iv,
-    cpu_features: cpu::Features,
-) -> poly1305::Key {
+pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305::Key {
     let mut key_bytes = [0u8; poly1305::KEY_LEN];
     chacha_key.encrypt_iv_xor_in_place(iv, &mut key_bytes);
-    poly1305::Key::new(key_bytes, cpu_features)
+    poly1305::Key::new(key_bytes, chacha_key.cpu_features())
 }
 
 #[cfg(test)]
