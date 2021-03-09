@@ -109,6 +109,7 @@
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
+#include <openssl/crypto.h>
 #include <openssl/ex_data.h>
 #include <openssl/stack.h>
 #include <openssl/thread.h>
@@ -607,6 +608,7 @@ BSSL_NAMESPACE_END
 typedef enum {
   OPENSSL_THREAD_LOCAL_ERR = 0,
   OPENSSL_THREAD_LOCAL_RAND,
+  OPENSSL_THREAD_LOCAL_FIPS_COUNTERS,
   OPENSSL_THREAD_LOCAL_TEST,
   NUM_OPENSSL_THREAD_LOCALS,
 } thread_local_data_t;
@@ -826,6 +828,11 @@ void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
 int boringssl_fips_self_test(const uint8_t *module_hash,
                              size_t module_hash_len);
 
+#if defined(BORINGSSL_FIPS_COUNTERS)
+void boringssl_fips_inc_counter(enum fips_counter_t counter);
+#else
+OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
+#endif
 
 #if defined(__cplusplus)
 }  // extern C

@@ -79,6 +79,7 @@
 #include "ec/simple_mul.c"
 #include "ec/util.c"
 #include "ec/wnaf.c"
+#include "fips.c"
 #include "hmac/hmac.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
