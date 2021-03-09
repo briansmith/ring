@@ -292,12 +292,8 @@ impl PublicScalarOps {
     }
 
     pub fn elem_equals(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
-        for i in 0..self.public_key_ops.common.num_limbs {
-            if a.limbs[i] != b.limbs[i] {
-                return false;
-            }
-        }
-        true
+        a.limbs[..self.public_key_ops.common.num_limbs]
+            == b.limbs[..self.public_key_ops.common.num_limbs]
     }
 
     pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
@@ -1111,21 +1107,19 @@ mod tests {
         actual: &[Limb; MAX_LIMBS],
         expected: &[Limb; MAX_LIMBS],
     ) {
-        for i in 0..ops.num_limbs {
-            if actual[i] != expected[i] {
-                let mut actual_s = alloc::string::String::new();
-                let mut expected_s = alloc::string::String::new();
-                for j in 0..ops.num_limbs {
-                    let formatted = format!("{:016x}", actual[ops.num_limbs - j - 1]);
-                    actual_s.push_str(&formatted);
-                    let formatted = format!("{:016x}", expected[ops.num_limbs - j - 1]);
-                    expected_s.push_str(&formatted);
-                }
-                panic!(
-                    "Actual != Expected,\nActual = {}, Expected = {}",
-                    actual_s, expected_s
-                );
+        if actual[..ops.num_limbs] != expected[..ops.num_limbs] {
+            let mut actual_s = alloc::string::String::new();
+            let mut expected_s = alloc::string::String::new();
+            for j in 0..ops.num_limbs {
+                let formatted = format!("{:016x}", actual[ops.num_limbs - j - 1]);
+                actual_s.push_str(&formatted);
+                let formatted = format!("{:016x}", expected[ops.num_limbs - j - 1]);
+                expected_s.push_str(&formatted);
             }
+            panic!(
+                "Actual != Expected,\nActual = {}, Expected = {}",
+                actual_s, expected_s
+            );
         }
     }
 
