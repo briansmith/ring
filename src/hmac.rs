@@ -175,15 +175,31 @@ impl Key {
         algorithm: Algorithm,
         rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
-        Self::construct(algorithm, |buf| rng.fill(buf))
+        Self::construct(algorithm, algorithm.0.output_len, |buf| rng.fill(buf))
     }
 
-    fn construct<F>(algorithm: Algorithm, fill: F) -> Result<Self, error::Unspecified>
+    /// Generate an HMAC singing key using a custom length for the given
+    /// digest algorithm.
+    ///
+    /// The key will be `length` bytes long.
+    pub fn generate_with_length(
+        algorithm: Algorithm,
+        length: usize,
+        rng: &dyn rand::SecureRandom,
+    ) -> Result<Self, error::Unspecified> {
+        Self::construct(algorithm, length, |buf| rng.fill(buf))
+    }
+
+    fn construct<F>(
+        algorithm: Algorithm,
+        length: usize,
+        fill: F,
+    ) -> Result<Self, error::Unspecified>
     where
         F: FnOnce(&mut [u8]) -> Result<(), error::Unspecified>,
     {
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
-        let key_bytes = &mut key_bytes[..algorithm.0.output_len];
+        let key_bytes = &mut key_bytes[..length];
         fill(key_bytes)?;
         Ok(Self::new(algorithm, key_bytes))
     }
@@ -262,7 +278,8 @@ impl hkdf::KeyType for Algorithm {
 
 impl From<hkdf::Okm<'_, Algorithm>> for Key {
     fn from(okm: hkdf::Okm<Algorithm>) -> Self {
-        Key::construct(*okm.len(), |buf| okm.fill(buf)).unwrap()
+        let algorithm = *okm.len();
+        Key::construct(algorithm, algorithm.0.output_len, |buf| okm.fill(buf)).unwrap()
     }
 }
 
