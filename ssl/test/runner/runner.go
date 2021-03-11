@@ -54,6 +54,7 @@ var (
 	useValgrind              = flag.Bool("valgrind", false, "If true, run code under valgrind")
 	useGDB                   = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useLLDB                  = flag.Bool("lldb", false, "If true, run BoringSSL code under lldb")
+	useRR                    = flag.Bool("rr-record", false, "If true, run BoringSSL code under `rr record`.")
 	waitForDebugger          = flag.Bool("wait-for-debugger", false, "If true, jobs will run one at a time and pause for a debugger to attach")
 	flagDebug                = flag.Bool("debug", false, "Hexdump the contents of the connection")
 	mallocTest               = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
@@ -253,7 +254,7 @@ func initCertificates() {
 }
 
 func useDebugger() bool {
-	return *useGDB || *useLLDB || *waitForDebugger
+	return *useGDB || *useLLDB || *useRR || *waitForDebugger
 }
 
 // delegatedCredentialConfig specifies the shape of a delegated credential, not
@@ -1191,6 +1192,12 @@ func lldbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
+func rrOf(path string, args ...string) *exec.Cmd {
+	rrArgs := []string{"record", path}
+	rrArgs = append(rrArgs, args...)
+	return exec.Command("rr", rrArgs...)
+}
+
 func removeFirstLineIfSuffix(s, suffix string) string {
 	idx := strings.IndexByte(s, '\n')
 	if idx < 0 {
@@ -1482,6 +1489,8 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 		shim = gdbOf(shimPath, flags...)
 	} else if *useLLDB {
 		shim = lldbOf(shimPath, flags...)
+	} else if *useRR {
+		shim = rrOf(shimPath, flags...)
 	} else {
 		shim = exec.Command(shimPath, flags...)
 	}
@@ -16860,6 +16869,11 @@ func main() {
 		}
 
 		if matched {
+			if foundTest && *useRR {
+				fmt.Fprintf(os.Stderr, "Too many matching tests. Only one test can run when RR is enabled.\n")
+				os.Exit(1)
+			}
+
 			foundTest = true
 			testChan <- &testCases[i]
 
@@ -16886,6 +16900,10 @@ func main() {
 		if err := testOutput.WriteToFile(*jsonOutput); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		}
+	}
+
+	if *useRR {
+		fmt.Println("RR trace recorded. Replay with `rr replay`.")
 	}
 
 	if !testOutput.HasUnexpectedResults() {
