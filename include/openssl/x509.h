@@ -905,7 +905,7 @@ OPENSSL_EXPORT X509_CRL *X509_CRL_dup(X509_CRL *crl);
 OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(X509_REVOKED *rev);
 OPENSSL_EXPORT X509_REQ *X509_REQ_dup(X509_REQ *req);
 OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(X509_ALGOR *xn);
-OPENSSL_EXPORT int X509_ALGOR_set0(X509_ALGOR *alg, const ASN1_OBJECT *aobj,
+OPENSSL_EXPORT int X509_ALGOR_set0(X509_ALGOR *alg, ASN1_OBJECT *aobj,
                                    int ptype, void *pval);
 OPENSSL_EXPORT void X509_ALGOR_get0(const ASN1_OBJECT **paobj, int *pptype,
                                     const void **ppval,
@@ -1538,10 +1538,9 @@ OPENSSL_EXPORT int PKCS8_pkey_get0(ASN1_OBJECT **ppkalg,
                                    const unsigned char **pk, int *ppklen,
                                    X509_ALGOR **pa, PKCS8_PRIV_KEY_INFO *p8);
 
-OPENSSL_EXPORT int X509_PUBKEY_set0_param(X509_PUBKEY *pub,
-                                          const ASN1_OBJECT *aobj, int ptype,
-                                          void *pval, unsigned char *penc,
-                                          int penclen);
+OPENSSL_EXPORT int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *aobj,
+                                          int ptype, void *pval,
+                                          unsigned char *penc, int penclen);
 OPENSSL_EXPORT int X509_PUBKEY_get0_param(ASN1_OBJECT **ppkalg,
                                           const unsigned char **pk, int *ppklen,
                                           X509_ALGOR **pa, X509_PUBKEY *pub);

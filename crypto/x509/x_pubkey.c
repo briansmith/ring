@@ -180,9 +180,8 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
     return NULL;
 }
 
-int X509_PUBKEY_set0_param(X509_PUBKEY *pub, const ASN1_OBJECT *aobj,
-                           int ptype, void *pval,
-                           unsigned char *penc, int penclen)
+int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *aobj, int ptype,
+                           void *pval, unsigned char *penc, int penclen)
 {
     if (!X509_ALGOR_set0(pub->algor, aobj, ptype, pval))
         return 0;

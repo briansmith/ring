@@ -85,7 +85,7 @@ IMPLEMENT_ASN1_DUP_FUNCTION(X509_ATTRIBUTE)
 
 X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int atrtype, void *value)
 {
-    const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
+    ASN1_OBJECT *obj = OBJ_nid2obj(nid);
     if (obj == NULL) {
         return NULL;
     }
@@ -96,9 +96,7 @@ X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int atrtype, void *value)
         goto err;
     }
 
-    /* TODO(fork): const correctness. |ASN1_OBJECT| is messy because static
-     * objects are const but freeable with a no-op |ASN1_OBJECT_free|. */
-    ret->object = (ASN1_OBJECT *)obj;
+    ret->object = obj;
     ret->single = 0;
     ret->value.set = sk_ASN1_TYPE_new_null();
     if (ret->value.set == NULL ||

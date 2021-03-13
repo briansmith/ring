@@ -239,8 +239,7 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
                 goto merr;
             if (!sk_POLICYQUALINFO_push(pol->qualifiers, qual))
                 goto merr;
-            /* TODO(fork): const correctness */
-            qual->pqualid = (ASN1_OBJECT *)OBJ_nid2obj(NID_id_qt_cps);
+            qual->pqualid = OBJ_nid2obj(NID_id_qt_cps);
             if (qual->pqualid == NULL) {
                 OPENSSL_PUT_ERROR(X509V3, ERR_R_INTERNAL_ERROR);
                 goto err;
@@ -307,8 +306,7 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
     POLICYQUALINFO *qual;
     if (!(qual = POLICYQUALINFO_new()))
         goto merr;
-    /* TODO(fork): const correctness */
-    qual->pqualid = (ASN1_OBJECT *)OBJ_nid2obj(NID_id_qt_unotice);
+    qual->pqualid = OBJ_nid2obj(NID_id_qt_unotice);
     if (qual->pqualid == NULL) {
         OPENSSL_PUT_ERROR(X509V3, ERR_R_INTERNAL_ERROR);
         goto err;

@@ -77,8 +77,7 @@ IMPLEMENT_ASN1_DUP_FUNCTION(X509_ALGOR)
 
 IMPLEMENT_ASN1_SET_OF(X509_ALGOR)
 
-int X509_ALGOR_set0(X509_ALGOR *alg, const ASN1_OBJECT *aobj, int ptype,
-                    void *pval)
+int X509_ALGOR_set0(X509_ALGOR *alg, ASN1_OBJECT *aobj, int ptype, void *pval)
 {
     if (!alg)
         return 0;
@@ -89,9 +88,8 @@ int X509_ALGOR_set0(X509_ALGOR *alg, const ASN1_OBJECT *aobj, int ptype,
             return 0;
     }
     if (alg) {
-        if (alg->algorithm)
-            ASN1_OBJECT_free(alg->algorithm);
-        alg->algorithm = (ASN1_OBJECT *)aobj;
+        ASN1_OBJECT_free(alg->algorithm);
+        alg->algorithm = aobj;
     }
     if (ptype == 0)
         return 1;

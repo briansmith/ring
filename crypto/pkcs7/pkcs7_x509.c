@@ -235,7 +235,7 @@ static PKCS7 *pkcs7_new(CBS *cbs) {
     return NULL;
   }
   OPENSSL_memset(ret, 0, sizeof(PKCS7));
-  ret->type = (ASN1_OBJECT *)OBJ_nid2obj(NID_pkcs7_signed);
+  ret->type = OBJ_nid2obj(NID_pkcs7_signed);
   ret->d.sign = OPENSSL_malloc(sizeof(PKCS7_SIGNED));
   if (ret->d.sign == NULL) {
     goto err;
