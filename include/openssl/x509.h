@@ -905,12 +905,54 @@ OPENSSL_EXPORT X509_CRL *X509_CRL_dup(X509_CRL *crl);
 OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(X509_REVOKED *rev);
 OPENSSL_EXPORT X509_REQ *X509_REQ_dup(X509_REQ *req);
 OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(X509_ALGOR *xn);
-OPENSSL_EXPORT int X509_ALGOR_set0(X509_ALGOR *alg, ASN1_OBJECT *aobj,
-                                   int ptype, void *pval);
-OPENSSL_EXPORT void X509_ALGOR_get0(const ASN1_OBJECT **paobj, int *pptype,
-                                    const void **ppval,
-                                    const X509_ALGOR *algor);
+
+// X509_ALGOR_set0 sets |alg| to an AlgorithmIdentifier with algorithm |obj| and
+// parameter determined by |param_type| and |param_value|. It returns one on
+// success and zero on error. This function takes ownership of |obj| and
+// |param_value| on success.
+//
+// If |param_type| is |V_ASN1_UNDEF|, the parameter is omitted. If |param_type|
+// is zero, the parameter is left unchanged. Otherwise, |param_type| and
+// |param_value| are interpreted as in |ASN1_TYPE_set|.
+//
+// Note omitting the parameter (|V_ASN1_UNDEF|) and encoding an explicit NULL
+// value (|V_ASN1_NULL|) are different. Some algorithms require one and some the
+// other. Consult the relevant specification before calling this function. The
+// correct parameter for an RSASSA-PKCS1-v1_5 signature is |V_ASN1_NULL|. The
+// correct one for an ECDSA or Ed25519 signature is |V_ASN1_UNDEF|.
+OPENSSL_EXPORT int X509_ALGOR_set0(X509_ALGOR *alg, ASN1_OBJECT *obj,
+                                   int param_type, void *param_value);
+
+// X509_ALGOR_get0 sets |*out_obj| to the |alg|'s algorithm. If |alg|'s
+// parameter is omitted, it sets |*out_param_type| and |*out_param_value| to
+// |V_ASN1_UNDEF| and NULL. Otherwise, it sets |*out_param_type| and
+// |*out_param_value| to the parameter, using the same representation as
+// |ASN1_TYPE_set0|. See |ASN1_TYPE_set0| and |ASN1_TYPE| for details.
+//
+// Callers that require the parameter in serialized form should, after checking
+// for |V_ASN1_UNDEF|, use |ASN1_TYPE_set1| and |d2i_ASN1_TYPE|, rather than
+// inspecting |*out_param_value|.
+//
+// Each of |out_obj|, |out_param_type|, and |out_param_value| may be NULL to
+// ignore the output. If |out_param_type| is NULL, |out_param_value| is ignored.
+//
+// WARNING: If |*out_param_type| is set to |V_ASN1_UNDEF|, OpenSSL and older
+// revisions of BoringSSL leave |*out_param_value| unset rather than setting it
+// to NULL. Callers that support both OpenSSL and BoringSSL should not assume
+// |*out_param_value| is uniformly initialized.
+OPENSSL_EXPORT void X509_ALGOR_get0(const ASN1_OBJECT **out_obj,
+                                    int *out_param_type,
+                                    const void **out_param_value,
+                                    const X509_ALGOR *alg);
+
+// X509_ALGOR_set_md sets |alg| to the hash function |md|. Note this
+// AlgorithmIdentifier represents the hash function itself, not a signature
+// algorithm that uses |md|.
 OPENSSL_EXPORT void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md);
+
+// X509_ALGOR_cmp returns zero if |a| and |b| are equal, and some non-zero value
+// otherwise. Note this function can only be used for equality checks, not an
+// ordering.
 OPENSSL_EXPORT int X509_ALGOR_cmp(const X509_ALGOR *a, const X509_ALGOR *b);
 
 OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *xn);
@@ -1538,12 +1580,27 @@ OPENSSL_EXPORT int PKCS8_pkey_get0(ASN1_OBJECT **ppkalg,
                                    const unsigned char **pk, int *ppklen,
                                    X509_ALGOR **pa, PKCS8_PRIV_KEY_INFO *p8);
 
-OPENSSL_EXPORT int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *aobj,
-                                          int ptype, void *pval,
-                                          unsigned char *penc, int penclen);
-OPENSSL_EXPORT int X509_PUBKEY_get0_param(ASN1_OBJECT **ppkalg,
-                                          const unsigned char **pk, int *ppklen,
-                                          X509_ALGOR **pa, X509_PUBKEY *pub);
+// X509_PUBKEY_set0_param sets |pub| to a key with AlgorithmIdentifier
+// determined by |obj|, |param_type|, and |param_value|, and an encoded
+// public key of |key|. On success, it takes ownership of all its parameters and
+// returns one. Otherwise, it returns zero. |key| must have been allocated by
+// |OPENSSL_malloc|.
+//
+// |obj|, |param_type|, and |param_value| are interpreted as in
+// |X509_ALGOR_set0|. See |X509_ALGOR_set0| for details.
+OPENSSL_EXPORT int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj,
+                                          int param_type, void *param_value,
+                                          uint8_t *key, int key_len);
+
+// X509_PUBKEY_get0_param outputs fields of |pub| and returns one. If |out_obj|
+// is not NULL, it sets |*out_obj| to AlgorithmIdentifier's OID. If |out_key|
+// is not NULL, it sets |*out_key| and |*out_key_len| to the encoded public key.
+// If |out_alg| is not NULL, it sets |*out_alg| to the AlgorithmIdentifier.
+OPENSSL_EXPORT int X509_PUBKEY_get0_param(ASN1_OBJECT **out_obj,
+                                          const uint8_t **out_key,
+                                          int *out_key_len,
+                                          X509_ALGOR **out_alg,
+                                          X509_PUBKEY *pub);
 
 OPENSSL_EXPORT int X509_check_trust(X509 *x, int id, int flags);
 OPENSSL_EXPORT int X509_TRUST_get_count(void);
