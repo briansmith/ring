@@ -536,9 +536,12 @@ OPENSSL_EXPORT int X509_set_notBefore(X509 *x509, const ASN1_TIME *tm);
 // instead.
 OPENSSL_EXPORT int X509_set_notAfter(X509 *x509, const ASN1_TIME *tm);
 
-// X509_get0_uids sets |*out_issuer_uid| and |*out_subject_uid| to non-owning
-// pointers to the issuerUID and subjectUID fields, respectively, of |x509|.
-// Either output pointer may be NULL to skip the field.
+// X509_get0_uids sets |*out_issuer_uid| to a non-owning pointer to the
+// issuerUID field of |x509|, or NULL if |x509| has no issuerUID. It similarly
+// outputs |x509|'s subjectUID field to |*out_subject_uid|.
+//
+// Callers may pass NULL to either |out_issuer_uid| or |out_subject_uid| to
+// ignore the corresponding field.
 OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
                                    const ASN1_BIT_STRING **out_issuer_uid,
                                    const ASN1_BIT_STRING **out_subject_uid);
@@ -615,14 +618,16 @@ OPENSSL_EXPORT ASN1_TIME *X509_CRL_get_nextUpdate(X509_CRL *crl);
 // const-correct for legacy reasons.
 OPENSSL_EXPORT X509_NAME *X509_CRL_get_issuer(const X509_CRL *crl);
 
-// X509_CRL_get_REVOKED returns the list of revoked certificates in |crl|.
+// X509_CRL_get_REVOKED returns the list of revoked certificates in |crl|, or
+// NULL if |crl| omits it.
 //
 // TOOD(davidben): This function was originally a macro, without clear const
 // semantics. It should take a const input and give const output, but the latter
 // would break existing callers. For now, we match upstream.
 OPENSSL_EXPORT STACK_OF(X509_REVOKED) *X509_CRL_get_REVOKED(X509_CRL *crl);
 
-// X509_CRL_get0_extensions returns |crl|'s extension list.
+// X509_CRL_get0_extensions returns |crl|'s extension list, or NULL if |crl|
+// omits it.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_CRL_get0_extensions(
     const X509_CRL *crl);
 
@@ -1146,6 +1151,8 @@ OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *a);
 OPENSSL_EXPORT int X509_set_pubkey(X509 *x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x);
 OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x);
+
+// X509_get0_extensions returns |x|'s extension list, or NULL if |x| omits it.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_get0_extensions(
     const X509 *x);
 
@@ -1285,7 +1292,8 @@ OPENSSL_EXPORT const ASN1_TIME *X509_REVOKED_get0_revocationDate(
 OPENSSL_EXPORT int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
                                                    const ASN1_TIME *tm);
 
-// X509_REVOKED_get0_extensions returns |r|'s extensions.
+// X509_REVOKED_get0_extensions returns |r|'s extensions list, or NULL if |r|
+// omits it.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(
     const X509_REVOKED *r);
 
