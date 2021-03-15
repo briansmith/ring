@@ -109,7 +109,6 @@ const Flag<bool> kBoolFlags[] = {
     {"-renegotiate-explicit", &TestConfig::renegotiate_explicit},
     {"-forbid-renegotiation-after-handshake",
      &TestConfig::forbid_renegotiation_after_handshake},
-    {"-enable-all-curves", &TestConfig::enable_all_curves},
     {"-use-old-client-cert-callback",
      &TestConfig::use_old_client_cert_callback},
     {"-send-alert", &TestConfig::send_alert},
@@ -1719,16 +1718,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       if (!SSL_set1_curves(ssl.get(), &nids[0], nids.size())) {
         return nullptr;
       }
-    }
-  }
-  if (enable_all_curves) {
-    static const int kAllCurves[] = {
-        NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1,
-        NID_secp521r1, NID_X25519,           NID_CECPQ2,
-    };
-    if (!SSL_set1_curves(ssl.get(), kAllCurves,
-                         OPENSSL_ARRAY_SIZE(kAllCurves))) {
-      return nullptr;
     }
   }
   if (initial_timeout_duration_ms > 0) {
