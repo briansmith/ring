@@ -38,8 +38,14 @@
 
 
 // MSVC wants to put a NUL byte at the end of non-char arrays and so cannot
-// compile this.
-#if !defined(_MSC_VER)
+// compile the real logic.
+#if defined(_MSC_VER)
+
+int BORINGSSL_self_test(void) {
+  return 0;
+}
+
+#else
 
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
 // FIPS builds on Android will test for flag files, named after the module hash,
