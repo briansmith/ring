@@ -14,8 +14,8 @@
 
 #include <openssl/crypto.h>
 
-#include "../internal.h"
-#include "delocate.h"
+#include "../../internal.h"
+#include "../delocate.h"
 
 
 int FIPS_mode(void) {
