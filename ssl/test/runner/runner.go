@@ -1463,8 +1463,6 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 		flags = append(flags, "-tls-unique")
 	}
 
-	flags = append(flags, "-handshaker-path", *handshakerPath)
-
 	if *waitForDebugger {
 		flags = append(flags, "-wait-for-debugger")
 	}
@@ -1857,7 +1855,7 @@ NextTest:
 		shTest.name += "-Split"
 		shTest.flags = make([]string, len(test.flags), len(test.flags)+1)
 		copy(shTest.flags, test.flags)
-		shTest.flags = append(shTest.flags, "-handoff")
+		shTest.flags = append(shTest.flags, "-handoff", "-handshaker-path", *handshakerPath)
 
 		splitHandshakeTests = append(splitHandshakeTests, shTest)
 	}
