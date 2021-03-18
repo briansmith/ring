@@ -19,7 +19,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/evp.h>
+#include <openssl/evp_errors.h>
 #include <openssl/hkdf.h>
 #include <openssl/sha.h>
 
