@@ -26,7 +26,7 @@ type signer interface {
 	verifyMessage(key crypto.PublicKey, msg, sig []byte) error
 }
 
-func selectSignatureAlgorithm(isClient bool, version uint16, key crypto.PrivateKey, config *Config, peerSigAlgs []signatureAlgorithm) (signatureAlgorithm, error) {
+func selectSignatureAlgorithm(version uint16, key crypto.PrivateKey, config *Config, peerSigAlgs []signatureAlgorithm) (signatureAlgorithm, error) {
 	// If the client didn't specify any signature_algorithms extension then
 	// we can assume that it supports SHA1. See
 	// http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
@@ -39,7 +39,7 @@ func selectSignatureAlgorithm(isClient bool, version uint16, key crypto.PrivateK
 			continue
 		}
 
-		signer, err := getSigner(isClient, version, key, config, sigAlg, false)
+		signer, err := getSigner(version, key, config, sigAlg, false)
 		if err != nil {
 			continue
 		}
@@ -51,7 +51,7 @@ func selectSignatureAlgorithm(isClient bool, version uint16, key crypto.PrivateK
 	return 0, errors.New("tls: no common signature algorithms")
 }
 
-func signMessage(isClient bool, version uint16, key crypto.PrivateKey, config *Config, sigAlg signatureAlgorithm, msg []byte) ([]byte, error) {
+func signMessage(version uint16, key crypto.PrivateKey, config *Config, sigAlg signatureAlgorithm, msg []byte) ([]byte, error) {
 	if config.Bugs.InvalidSignature {
 		newMsg := make([]byte, len(msg))
 		copy(newMsg, msg)
@@ -59,7 +59,7 @@ func signMessage(isClient bool, version uint16, key crypto.PrivateKey, config *C
 		msg = newMsg
 	}
 
-	signer, err := getSigner(isClient, version, key, config, sigAlg, false)
+	signer, err := getSigner(version, key, config, sigAlg, false)
 	if err != nil {
 		return nil, err
 	}
@@ -67,12 +67,12 @@ func signMessage(isClient bool, version uint16, key crypto.PrivateKey, config *C
 	return signer.signMessage(key, config, msg)
 }
 
-func verifyMessage(isClient bool, version uint16, key crypto.PublicKey, config *Config, sigAlg signatureAlgorithm, msg, sig []byte) error {
+func verifyMessage(version uint16, key crypto.PublicKey, config *Config, sigAlg signatureAlgorithm, msg, sig []byte) error {
 	if version >= VersionTLS12 && !isSupportedSignatureAlgorithm(sigAlg, config.verifySignatureAlgorithms()) {
 		return errors.New("tls: unsupported signature algorithm")
 	}
 
-	signer, err := getSigner(isClient, version, key, config, sigAlg, true)
+	signer, err := getSigner(version, key, config, sigAlg, true)
 	if err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ func (e *ed25519Signer) verifyMessage(key crypto.PublicKey, msg, sig []byte) err
 	return nil
 }
 
-func getSigner(isClient bool, version uint16, key interface{}, config *Config, sigAlg signatureAlgorithm, isVerify bool) (signer, error) {
+func getSigner(version uint16, key interface{}, config *Config, sigAlg signatureAlgorithm, isVerify bool) (signer, error) {
 	// TLS 1.1 and below use legacy signature algorithms.
 	if version < VersionTLS12 {
 		if config.Bugs.UseLegacySigningAlgorithm == 0 || isVerify {
@@ -290,7 +290,6 @@ func getSigner(isClient bool, version uint16, key interface{}, config *Config, s
 		sigAlg = config.Bugs.UseLegacySigningAlgorithm
 	}
 
-	isClientSign := isClient != isVerify
 	switch sigAlg {
 	case signatureRSAPKCS1WithMD5:
 		if version < VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
@@ -311,10 +310,6 @@ func getSigner(isClient bool, version uint16, key interface{}, config *Config, s
 	case signatureRSAPKCS1WithSHA512:
 		if version < VersionTLS13 || config.Bugs.IgnoreSignatureVersionChecks {
 			return &rsaPKCS1Signer{crypto.SHA512}, nil
-		}
-	case signatureRSAPKCS1WithSHA256Legacy:
-		if (isClientSign && version >= VersionTLS13) || config.Bugs.IgnoreSignatureVersionChecks {
-			return &rsaPKCS1Signer{crypto.SHA256}, nil
 		}
 	case signatureECDSAWithSHA1:
 		return &ecdsaSigner{version, config, nil, crypto.SHA1}, nil

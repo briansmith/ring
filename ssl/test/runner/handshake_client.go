@@ -1070,7 +1070,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 		c.peerSignatureAlgorithm = certVerifyMsg.signatureAlgorithm
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		err = verifyMessage(c.isClient, c.vers, hs.peerPublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
+		err = verifyMessage(c.vers, hs.peerPublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
 		if err != nil {
 			return err
 		}
@@ -1214,14 +1214,14 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			privKey := chainToSend.PrivateKey
 
 			var err error
-			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.isClient, c.vers, privKey, c.config, certReq.signatureAlgorithms)
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
 			}
 
 			input := hs.finishedHash.certificateVerifyInput(clientCertificateVerifyContextTLS13)
-			certVerify.signature, err = signMessage(c.isClient, c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
+			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, input)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
@@ -1437,7 +1437,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		privKey := c.config.Certificates[0].PrivateKey
 
 		if certVerify.hasSignatureAlgorithm {
-			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.isClient, c.vers, privKey, c.config, certReq.signatureAlgorithms)
+			certVerify.signatureAlgorithm, err = selectSignatureAlgorithm(c.vers, privKey, c.config, certReq.signatureAlgorithms)
 			if err != nil {
 				c.sendAlert(alertInternalError)
 				return err
@@ -1445,7 +1445,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 
 		if c.vers > VersionSSL30 {
-			certVerify.signature, err = signMessage(c.isClient, c.vers, privKey, c.config, certVerify.signatureAlgorithm, hs.finishedHash.buffer)
+			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, hs.finishedHash.buffer)
 			if err == nil && c.config.Bugs.SendSignatureAlgorithm != 0 {
 				certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
 			}
@@ -1576,7 +1576,13 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 			return errors.New("tls: failed to parse public key from delegated credential: " + err.Error())
 		}
 
-		if err := verifyMessage(c.isClient, c.vers, leafPublicKey, c.config, dc.algorithm, delegatedCredentialSignedMessage(dc.signedBytes, dc.algorithm, certs[0].Raw), dc.signature); err != nil {
+		verifier, err := getSigner(c.vers, hs.peerPublicKey, c.config, dc.algorithm, true)
+		if err != nil {
+			c.sendAlert(alertBadCertificate)
+			return errors.New("tls: failed to get verifier for delegated credential: " + err.Error())
+		}
+
+		if err := verifier.verifyMessage(leafPublicKey, delegatedCredentialSignedMessage(dc.signedBytes, dc.algorithm, certs[0].Raw), dc.signature); err != nil {
 			c.sendAlert(alertBadCertificate)
 			return errors.New("tls: failed to verify delegated credential: " + err.Error())
 		}
