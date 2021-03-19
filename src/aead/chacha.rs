@@ -14,7 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{quic::Sample, Nonce};
-use crate::polyfill::ChunksFixed;
+use crate::polyfill::{array_map::Map, ChunksFixed};
 
 #[cfg(any(
     test,
@@ -35,17 +35,8 @@ pub struct Key([u32; KEY_LEN / 4]);
 impl From<[u8; KEY_LEN]> for Key {
     #[inline]
     fn from(value: [u8; KEY_LEN]) -> Self {
-        let value = value.chunks_fixed();
-        Self([
-            u32::from_le_bytes(value[0]),
-            u32::from_le_bytes(value[1]),
-            u32::from_le_bytes(value[2]),
-            u32::from_le_bytes(value[3]),
-            u32::from_le_bytes(value[4]),
-            u32::from_le_bytes(value[5]),
-            u32::from_le_bytes(value[6]),
-            u32::from_le_bytes(value[7]),
-        ])
+        let value: &[[u8; 4]; KEY_LEN / 4] = value.chunks_fixed();
+        Self(value.array_map(u32::from_le_bytes))
     }
 }
 
@@ -202,12 +193,7 @@ pub struct Iv([u32; 4]);
 impl Iv {
     fn assume_unique_for_key(value: [u8; 16]) -> Self {
         let value: &[[u8; 4]; 4] = value.chunks_fixed();
-        Self([
-            u32::from_le_bytes(value[0]),
-            u32::from_le_bytes(value[1]),
-            u32::from_le_bytes(value[2]),
-            u32::from_le_bytes(value[3]),
-        ])
+        Self(value.array_map(u32::from_le_bytes))
     }
 
     fn into_counter_for_single_block_less_safe(self) -> Counter {
