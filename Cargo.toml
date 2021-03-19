@@ -212,6 +212,7 @@ include = [
     "src/pbkdf2.rs",
     "src/pkcs8.rs",
     "src/polyfill.rs",
+    "src/polyfill/array_map.rs",
     "src/polyfill/chunks_fixed.rs",
     "src/rand.rs",
     "src/rsa/convert_nist_rsa_test_vectors.py",
