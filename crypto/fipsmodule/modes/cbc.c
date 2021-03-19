@@ -57,12 +57,15 @@
 void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                            const AES_KEY *key, uint8_t ivec[16],
                            block128_f block) {
+  assert(key != NULL && ivec != NULL);
+  if (len == 0) {
+    // Avoid |ivec| == |iv| in the |memcpy| below, which is not legal in C.
+    return;
+  }
+
+  assert(in != NULL && out != NULL);
   size_t n;
   const uint8_t *iv = ivec;
-
-  assert(key != NULL && ivec != NULL);
-  assert(len == 0 || (in != NULL && out != NULL));
-
   while (len >= 16) {
     for (n = 0; n < 16; n += sizeof(size_t)) {
       store_word_le(out + n, load_word_le(in + n) ^ load_word_le(iv + n));
@@ -97,19 +100,24 @@ void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                            const AES_KEY *key, uint8_t ivec[16],
                            block128_f block) {
-  size_t n;
-  union {
-    size_t t[16 / sizeof(size_t)];
-    uint8_t c[16];
-  } tmp;
-
   assert(key != NULL && ivec != NULL);
-  assert(len == 0 || (in != NULL && out != NULL));
+  if (len == 0) {
+    // Avoid |ivec| == |iv| in the |memcpy| below, which is not legal in C.
+    return;
+  }
+
+  assert(in != NULL && out != NULL);
 
   const uintptr_t inptr = (uintptr_t) in;
   const uintptr_t outptr = (uintptr_t) out;
   // If |in| and |out| alias, |in| must be ahead.
   assert(inptr >= outptr || inptr + len <= outptr);
+
+  size_t n;
+  union {
+    size_t t[16 / sizeof(size_t)];
+    uint8_t c[16];
+  } tmp;
 
   if ((inptr >= 32 && outptr <= inptr - 32) || inptr < outptr) {
     // If |out| is at least two blocks behind |in| or completely disjoint, there
