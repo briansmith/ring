@@ -30,6 +30,11 @@
 //!         <code>dev_urandom_fallback</code> feature is disabled, such
 //!         fallbacks will not occur. See the documentation for
 //!         <code>rand::SystemRandom</code> for more details.
+//! <tr><td><code>msan</code>
+//!     <td>Wrap calls to assembly functions that initialize
+//!         previously-unitialized memory so that Memory Sanitizer doesn't
+//!         assume that memory is still uninitialized. Requires Rust Nightly
+//!         with `-Zsanitizer=memory`.
 //! <tr><td><code>std</code>
 //!     <td>Enable features that use libstd, in particular
 //!         <code>std::error::Error</code> integration. Implies `alloc`.

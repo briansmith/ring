@@ -42,5 +42,6 @@ pub mod slice {
 mod chunks_fixed;
 
 pub(crate) mod array_map;
+pub(crate) mod msan;
 
 pub use chunks_fixed::*;

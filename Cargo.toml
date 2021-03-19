@@ -214,6 +214,7 @@ include = [
     "src/polyfill.rs",
     "src/polyfill/array_map.rs",
     "src/polyfill/chunks_fixed.rs",
+    "src/polyfill/msan.rs",
     "src/rand.rs",
     "src/rsa/convert_nist_rsa_test_vectors.py",
     "src/rsa.rs",
@@ -341,6 +342,7 @@ default = ["alloc", "dev_urandom_fallback"]
 alloc = []
 dev_urandom_fallback = ["once_cell"]
 internal_benches = []
+msan = []
 slow_tests = []
 std = ["alloc"]
 test_logging = []

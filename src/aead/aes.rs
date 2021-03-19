@@ -22,7 +22,11 @@ use crate::{
     c, cpu,
     endian::{ArrayEncoding, BigEndian},
     error,
-    polyfill::{self, ChunksFixed},
+    polyfill::{
+        self,
+        msan::{assume_init_asm, assume_init_not_asm},
+        ChunksFixed,
+    },
 };
 use core::ops::RangeFrom;
 
@@ -55,26 +59,12 @@ fn set_encrypt_key(
     }
 }
 
-macro_rules! encrypt_block {
-    ($name:ident, $block:expr, $key:expr) => {{
+macro_rules! declare_encrypt_block {
+    ( $name:ident ) => {
         extern "C" {
-            fn $name(a: &Block, r: *mut Block, key: &AES_KEY);
+            fn $name(a: &Block, r: &mut core::mem::MaybeUninit<Block>, key: &AES_KEY);
         }
-        encrypt_block_($name, $block, $key)
-    }};
-}
-
-#[inline]
-fn encrypt_block_(
-    f: unsafe extern "C" fn(&Block, *mut Block, &AES_KEY),
-    a: Block,
-    key: &Key,
-) -> Block {
-    let mut result = core::mem::MaybeUninit::uninit();
-    unsafe {
-        f(&a, result.as_mut_ptr(), &key.inner);
-        result.assume_init()
-    }
+    };
 }
 
 macro_rules! ctr32_encrypt_blocks {
@@ -184,7 +174,10 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::HWAES => encrypt_block!(GFp_aes_hw_encrypt, a, self),
+            Implementation::HWAES => {
+                declare_encrypt_block!(GFp_aes_hw_encrypt);
+                unsafe { assume_init_asm(|r| GFp_aes_hw_encrypt(&a, r, &self.inner)) }
+            }
 
             #[cfg(any(
                 target_arch = "aarch64",
@@ -192,10 +185,16 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::VPAES_BSAES => encrypt_block!(GFp_vpaes_encrypt, a, self),
+            Implementation::VPAES_BSAES => {
+                declare_encrypt_block!(GFp_vpaes_encrypt);
+                unsafe { assume_init_asm(|r| GFp_vpaes_encrypt(&a, r, &self.inner)) }
+            }
 
             #[cfg(not(target_arch = "aarch64"))]
-            Implementation::NOHW => encrypt_block!(GFp_aes_nohw_encrypt, a, self),
+            Implementation::NOHW => {
+                declare_encrypt_block!(GFp_aes_nohw_encrypt);
+                unsafe { assume_init_not_asm(|r| GFp_aes_nohw_encrypt(&a, r, &self.inner)) }
+            }
         }
     }
 
