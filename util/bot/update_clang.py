@@ -1,9 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 """This script is used to download prebuilt clang binaries."""
+
+from __future__ import division
+from __future__ import print_function
 
 import os
 import shutil
@@ -13,7 +16,13 @@ import sys
 import tarfile
 import tempfile
 import time
-import urllib2
+
+try:
+  # Python 3.0 or later
+  from urllib.error import HTTPError, URLError
+  from urllib.request import urlopen
+except ImportError:
+  from urllib2 import urlopen, HTTPError, URLError
 
 
 # CLANG_REVISION and CLANG_SUB_REVISION determine the build of clang
@@ -45,8 +54,8 @@ def DownloadUrl(url, output_file):
     try:
       sys.stdout.write('Downloading %s ' % url)
       sys.stdout.flush()
-      response = urllib2.urlopen(url)
-      total_size = int(response.info().getheader('Content-Length').strip())
+      response = urlopen(url)
+      total_size = int(response.headers.get('Content-Length').strip())
       bytes_done = 0
       dots_printed = 0
       while True:
@@ -55,29 +64,28 @@ def DownloadUrl(url, output_file):
           break
         output_file.write(chunk)
         bytes_done += len(chunk)
-        num_dots = TOTAL_DOTS * bytes_done / total_size
+        num_dots = TOTAL_DOTS * bytes_done // total_size
         sys.stdout.write('.' * (num_dots - dots_printed))
         sys.stdout.flush()
         dots_printed = num_dots
       if bytes_done != total_size:
-        raise urllib2.URLError("only got %d of %d bytes" %
-                               (bytes_done, total_size))
-      print ' Done.'
+        raise URLError("only got %d of %d bytes" % (bytes_done, total_size))
+      print(' Done.')
       return
-    except urllib2.URLError as e:
+    except URLError as e:
       sys.stdout.write('\n')
-      print e
-      if num_retries == 0 or isinstance(e, urllib2.HTTPError) and e.code == 404:
+      print(e)
+      if num_retries == 0 or isinstance(e, HTTPError) and e.code == 404:
         raise e
       num_retries -= 1
-      print 'Retrying in %d s ...' % retry_wait_s
+      print('Retrying in %d s ...' % retry_wait_s)
       time.sleep(retry_wait_s)
       retry_wait_s *= 2
 
 
 def EnsureDirExists(path):
   if not os.path.exists(path):
-    print "Creating directory %s" % path
+    print("Creating directory %s" % path)
     os.makedirs(path)
 
 
@@ -120,7 +128,7 @@ def RmTree(dir):
 
 def CopyFile(src, dst):
   """Copy a file from src to dst."""
-  print "Copying %s to %s" % (src, dst)
+  print("Copying %s to %s" % (src, dst))
   shutil.copy(src, dst)
 
 
@@ -133,32 +141,30 @@ def UpdateClang():
   else:
     return 0
 
-  print 'Updating Clang to %s...' % PACKAGE_VERSION
+  print('Updating Clang to %s...' % PACKAGE_VERSION)
 
   if ReadStampFile() == PACKAGE_VERSION:
-    print 'Clang is already up to date.'
+    print('Clang is already up to date.')
     return 0
 
   # Reset the stamp file in case the build is unsuccessful.
   WriteStampFile('')
 
-  print 'Downloading prebuilt clang'
+  print('Downloading prebuilt clang')
   if os.path.exists(LLVM_BUILD_DIR):
     RmTree(LLVM_BUILD_DIR)
   try:
     DownloadAndUnpack(cds_full_url, LLVM_BUILD_DIR)
-    print 'clang %s unpacked' % PACKAGE_VERSION
+    print('clang %s unpacked' % PACKAGE_VERSION)
     WriteStampFile(PACKAGE_VERSION)
     return 0
-  except urllib2.URLError:
-    print 'Failed to download prebuilt clang %s' % cds_file
-    print 'Exiting.'
+  except URLError:
+    print('Failed to download prebuilt clang %s' % cds_file)
+    print('Exiting.')
     return 1
 
 
 def main():
-  # Don't buffer stdout, so that print statements are immediately flushed.
-  sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
   return UpdateClang()
 
 

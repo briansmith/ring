@@ -12,13 +12,15 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+from __future__ import print_function
+
 import subprocess
 import sys
 
 import vs_toolchain
 
 if len(sys.argv) < 2:
-  print >>sys.stderr, "Usage: vs_env.py TARGET_ARCH CMD..."
+  print("Usage: vs_env.py TARGET_ARCH CMD...", file=sys.stderr)
   sys.exit(1)
 
 target_arch = sys.argv[1]

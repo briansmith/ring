@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 import json
 import os
 import os.path
@@ -96,7 +98,7 @@ def main():
       'update': Update,
   }
   if len(sys.argv) < 2 or sys.argv[1] not in commands:
-    print >>sys.stderr, 'Expected one of: %s' % ', '.join(commands)
+    print('Expected one of: %s' % ', '.join(commands), file=sys.stderr)
     return 1
   return commands[sys.argv[1]](*sys.argv[2:])
 
