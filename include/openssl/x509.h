@@ -1239,15 +1239,31 @@ OPENSSL_EXPORT int X509_REQ_set_pubkey(X509_REQ *req, EVP_PKEY *pkey);
 // |EVP_PKEY_free| when done.
 OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
 
+// X509_REQ_extension_nid returns one if |nid| is a supported CSR attribute type
+// for carrying extensions and zero otherwise. The supported types are
+// |NID_ext_req| (pkcs-9-at-extensionRequest from RFC2985) and |NID_ms_ext_req|
+// (a Microsoft szOID_CERT_EXTENSIONS variant).
 OPENSSL_EXPORT int X509_REQ_extension_nid(int nid);
-OPENSSL_EXPORT const int *X509_REQ_get_extension_nids(void);
-OPENSSL_EXPORT void X509_REQ_set_extension_nids(const int *nids);
+
+// X509_REQ_get_extensions decodes the list of requested extensions in |req| and
+// returns a newly-allocated |STACK_OF(X509_EXTENSION)| containing the result.
+// It returns NULL on error, or if |req| did not request extensions.
+//
+// This function supports both pkcs-9-at-extensionRequest from RFC2985 and the
+// Microsoft szOID_CERT_EXTENSIONS variant.
 OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req);
-OPENSSL_EXPORT int X509_REQ_add_extensions_nid(X509_REQ *req,
-                                               STACK_OF(X509_EXTENSION) *exts,
-                                               int nid);
-OPENSSL_EXPORT int X509_REQ_add_extensions(X509_REQ *req,
-                                           STACK_OF(X509_EXTENSION) *exts);
+
+// X509_REQ_add_extensions_nid adds an attribute to |req| of type |nid|, to
+// request the certificate extensions in |exts|. It returns one on success and
+// zero on error. |nid| should be |NID_ext_req| or |NID_ms_ext_req|.
+OPENSSL_EXPORT int X509_REQ_add_extensions_nid(
+    X509_REQ *req, const STACK_OF(X509_EXTENSION) *exts, int nid);
+
+// X509_REQ_add_extensions behaves like |X509_REQ_add_extensions_nid|, using the
+// standard |NID_ext_req| for the attribute type.
+OPENSSL_EXPORT int X509_REQ_add_extensions(
+    X509_REQ *req, const STACK_OF(X509_EXTENSION) *exts);
+
 OPENSSL_EXPORT int X509_REQ_get_attr_count(const X509_REQ *req);
 OPENSSL_EXPORT int X509_REQ_get_attr_by_NID(const X509_REQ *req, int nid,
                                             int lastpos);
