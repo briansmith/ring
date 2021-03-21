@@ -61,6 +61,8 @@
 #include <openssl/digest.h>
 #include <openssl/obj.h>
 
+#include "../asn1/asn1_locl.h"
+
 
 ASN1_SEQUENCE(X509_ALGOR) = {
         ASN1_SIMPLE(X509_ALGOR, algorithm, ASN1_OBJECT),
@@ -111,10 +113,10 @@ void X509_ALGOR_get0(const ASN1_OBJECT **out_obj, int *out_param_type,
     }
     if (out_param_type != NULL) {
         int type = V_ASN1_UNDEF;
-        void *value = NULL;
+        const void *value = NULL;
         if (alg->parameter != NULL) {
             type = alg->parameter->type;
-            value = alg->parameter->value.ptr;
+            value = asn1_type_value_as_pointer(alg->parameter);
         }
         *out_param_type = type;
         if (out_param_value != NULL) {

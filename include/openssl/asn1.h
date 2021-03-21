@@ -322,10 +322,11 @@ typedef struct ASN1_VALUE_st ASN1_VALUE;
 // typically used used for ANY types. It contains a |type| field and a |value|
 // union dependent on |type|.
 //
-// WARNING: This struct has a complex representation. Callers performing
-// non-trivial operations on this type are encouraged to use |CBS| and |CBB|
-// from <openssl/bytestring.h>, and convert to or from |ASN1_TYPE| with
-// |d2i_ASN1_TYPE| or |i2d_ASN1_TYPE|.
+// WARNING: This struct has a complex representation. Callers must not construct
+// |ASN1_TYPE| values manually. Use |ASN1_TYPE_set| and |ASN1_TYPE_set1|
+// instead. Additionally, callers performing non-trivial operations on this type
+// are encouraged to use |CBS| and |CBB| from <openssl/bytestring.h>, and
+// convert to or from |ASN1_TYPE| with |d2i_ASN1_TYPE| or |i2d_ASN1_TYPE|.
 //
 // The |type| field corresponds to the tag of the ASN.1 element being
 // represented:
@@ -345,11 +346,7 @@ typedef struct ASN1_VALUE_st ASN1_VALUE;
 // If |type| is |V_ASN1_NULL|, the tag is NULL. |value| contains a NULL pointer.
 //
 // If |type| is |V_ASN1_BOOLEAN|, the tag is BOOLEAN. |value| contains an
-// |ASN1_BOOLEAN|. While |ASN1_BOOLEAN| is an |int|, any unused bits of |value|
-// must also be zero, so callers must not construct these values manually.
-//
-// TODO(davidben): Fix code which relies on this. It's anything which looks at
-// |value.ptr| or |value.asn1_value| unconditionally.
+// |ASN1_BOOLEAN|.
 //
 // If |type| is |V_ASN1_SEQUENCE|, |V_ASN1_SET|, or |V_ASN1_OTHER|, the tag is
 // SEQUENCE, SET, or some non-universal tag, respectively. |value| is an

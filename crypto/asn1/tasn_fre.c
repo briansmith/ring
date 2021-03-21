@@ -192,7 +192,7 @@ void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it)
         ASN1_TYPE *typ = (ASN1_TYPE *)*pval;
         utype = typ->type;
         pval = &typ->value.asn1_value;
-        if (!*pval)
+        if (utype != V_ASN1_BOOLEAN && !*pval)
             return;
     } else if (it->itype == ASN1_ITYPE_MSTRING) {
         utype = -1;

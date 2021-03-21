@@ -62,6 +62,9 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
+#include "../asn1/asn1_locl.h"
+
+
 int X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x)
 {
     return sk_X509_ATTRIBUTE_num(x);
@@ -355,7 +358,7 @@ ASN1_OBJECT *X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr)
 }
 
 void *X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx,
-                               int atrtype, void *data)
+                               int atrtype, void *unused)
 {
     ASN1_TYPE *ttmp;
     ttmp = X509_ATTRIBUTE_get0_type(attr, idx);
@@ -365,7 +368,7 @@ void *X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx,
         OPENSSL_PUT_ERROR(X509, X509_R_WRONG_TYPE);
         return NULL;
     }
-    return ttmp->value.ptr;
+    return (void *)asn1_type_value_as_pointer(ttmp);
 }
 
 ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr, int idx)

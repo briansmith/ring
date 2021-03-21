@@ -126,6 +126,11 @@ int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval,
 int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
                   const ASN1_ITEM *it);
 
+/* asn1_type_value_as_pointer returns |a|'s value in pointer form. This is
+ * usually the value object but, for BOOLEAN values, is 0 or 0xff cast to
+ * a pointer. */
+const void *asn1_type_value_as_pointer(const ASN1_TYPE *a);
+
 
 #if defined(__cplusplus)
 }  /* extern C */
