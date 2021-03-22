@@ -358,7 +358,7 @@ impl NonceRandomKey {
         let mut ctx = digest::Context::new(alg.digest_alg);
         ctx.update(rand);
         ctx.update(seed.bytes_less_safe());
-        Ok(NonceRandomKey(ctx.finish()))
+        Ok(Self(ctx.finish()))
     }
 }
 

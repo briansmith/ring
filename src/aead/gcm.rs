@@ -86,7 +86,7 @@ pub struct Context {
 
 impl Context {
     pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
-        let mut ctx = Context {
+        let mut ctx = Self {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),
                 _unused: Block::zero(),

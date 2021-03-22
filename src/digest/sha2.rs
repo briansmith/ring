@@ -178,17 +178,17 @@ const MAX_ROUNDS: usize = 80;
 pub(super) const CHAINING_WORDS: usize = 8;
 
 impl Word for Wrapping<u32> {
-    const ZERO: Self = Wrapping(0);
+    const ZERO: Self = Self(0);
     type InputBytes = [u8; 4];
 
     #[inline(always)]
     fn from_be_bytes(input: Self::InputBytes) -> Self {
-        Wrapping(u32::from_be_bytes(input))
+        Self(u32::from_be_bytes(input))
     }
 
     #[inline(always)]
     fn rotr(self, count: u32) -> Self {
-        Wrapping(self.0.rotate_right(count))
+        Self(self.0.rotate_right(count))
     }
 }
 
@@ -270,17 +270,17 @@ impl Sha2 for Wrapping<u32> {
 }
 
 impl Word for Wrapping<u64> {
-    const ZERO: Self = Wrapping(0);
+    const ZERO: Self = Self(0);
     type InputBytes = [u8; 8];
 
     #[inline(always)]
     fn from_be_bytes(input: Self::InputBytes) -> Self {
-        Wrapping(u64::from_be_bytes(input))
+        Self(u64::from_be_bytes(input))
     }
 
     #[inline(always)]
     fn rotr(self, count: u32) -> Self {
-        Wrapping(self.0.rotate_right(count))
+        Self(self.0.rotate_right(count))
     }
 }
 

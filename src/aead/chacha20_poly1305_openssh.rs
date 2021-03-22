@@ -45,8 +45,8 @@ pub struct SealingKey {
 
 impl SealingKey {
     /// Constructs a new `SealingKey`.
-    pub fn new(key_material: &[u8; KEY_LEN]) -> SealingKey {
-        SealingKey {
+    pub fn new(key_material: &[u8; KEY_LEN]) -> Self {
+        Self {
             key: Key::new(key_material, cpu::features()),
         }
     }
@@ -92,8 +92,8 @@ pub struct OpeningKey {
 
 impl OpeningKey {
     /// Constructs a new `OpeningKey`.
-    pub fn new(key_material: &[u8; KEY_LEN]) -> OpeningKey {
-        OpeningKey {
+    pub fn new(key_material: &[u8; KEY_LEN]) -> Self {
+        Self {
             key: Key::new(key_material, cpu::features()),
         }
     }
@@ -153,10 +153,10 @@ struct Key {
 }
 
 impl Key {
-    fn new(key_material: &[u8; KEY_LEN], cpu_features: cpu::Features) -> Key {
+    fn new(key_material: &[u8; KEY_LEN], cpu_features: cpu::Features) -> Self {
         // The first half becomes K_2 and the second half becomes K_1.
         let &[k_2, k_1]: &[[u8; chacha::KEY_LEN]; 2] = key_material.chunks_fixed();
-        Key {
+        Self {
             k_1: k_1.into(),
             k_2: k_2.into(),
             cpu_features,

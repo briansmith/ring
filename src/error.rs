@@ -88,13 +88,13 @@ impl std::error::Error for Unspecified {}
 
 impl From<untrusted::EndOfInput> for Unspecified {
     fn from(_: untrusted::EndOfInput) -> Self {
-        Unspecified
+        Self
     }
 }
 
 impl From<core::array::TryFromSliceError> for Unspecified {
     fn from(_: core::array::TryFromSliceError) -> Self {
-        Unspecified
+        Self
     }
 }
 
@@ -133,52 +133,52 @@ pub struct KeyRejected(&'static str);
 
 impl KeyRejected {
     pub(crate) fn inconsistent_components() -> Self {
-        KeyRejected("InconsistentComponents")
+        Self("InconsistentComponents")
     }
 
     pub(crate) fn invalid_component() -> Self {
-        KeyRejected("InvalidComponent")
+        Self("InvalidComponent")
     }
 
     #[inline]
     pub(crate) fn invalid_encoding() -> Self {
-        KeyRejected("InvalidEncoding")
+        Self("InvalidEncoding")
     }
 
     // XXX: See the comment at the call site.
     pub(crate) fn rng_failed() -> Self {
-        KeyRejected("RNG failed")
+        Self("RNG failed")
     }
 
     pub(crate) fn public_key_is_missing() -> Self {
-        KeyRejected("PublicKeyIsMissing")
+        Self("PublicKeyIsMissing")
     }
 
     #[cfg(feature = "alloc")]
     pub(crate) fn too_small() -> Self {
-        KeyRejected("TooSmall")
+        Self("TooSmall")
     }
 
     #[cfg(feature = "alloc")]
     pub(crate) fn too_large() -> Self {
-        KeyRejected("TooLarge")
+        Self("TooLarge")
     }
 
     pub(crate) fn version_not_supported() -> Self {
-        KeyRejected("VersionNotSupported")
+        Self("VersionNotSupported")
     }
 
     pub(crate) fn wrong_algorithm() -> Self {
-        KeyRejected("WrongAlgorithm")
+        Self("WrongAlgorithm")
     }
 
     #[cfg(feature = "alloc")]
     pub(crate) fn private_modulus_len_not_multiple_of_512_bits() -> Self {
-        KeyRejected("PrivateModulusLenNotMultipleOf512Bits")
+        Self("PrivateModulusLenNotMultipleOf512Bits")
     }
 
     pub(crate) fn unexpected_error() -> Self {
-        KeyRejected("UnexpectedError")
+        Self("UnexpectedError")
     }
 }
 
@@ -193,6 +193,6 @@ impl core::fmt::Display for KeyRejected {
 
 impl From<KeyRejected> for Unspecified {
     fn from(_: KeyRejected) -> Self {
-        Unspecified
+        Self
     }
 }
