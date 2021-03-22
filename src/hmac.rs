@@ -262,7 +262,7 @@ impl hkdf::KeyType for Algorithm {
 
 impl From<hkdf::Okm<'_, Algorithm>> for Key {
     fn from(okm: hkdf::Okm<Algorithm>) -> Self {
-        Key::construct(*okm.len(), |buf| okm.fill(buf)).unwrap()
+        Self::construct(*okm.len(), |buf| okm.fill(buf)).unwrap()
     }
 }
 

@@ -62,7 +62,7 @@ impl Salt {
     /// Constructing a `Salt` is relatively expensive so it is good to reuse a
     /// `Salt` object instead of re-constructing `Salt`s with the same value.
     pub fn new(algorithm: Algorithm, value: &[u8]) -> Self {
-        Salt(hmac::Key::new(algorithm.0, value))
+        Self(hmac::Key::new(algorithm.0, value))
     }
 
     /// The [HKDF-Extract] operation.

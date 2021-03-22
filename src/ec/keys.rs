@@ -45,7 +45,7 @@ impl Seed {
         curve: &'static Curve,
         bytes: untrusted::Input,
         cpu_features: cpu::Features,
-    ) -> Result<Seed, error::Unspecified> {
+    ) -> Result<Self, error::Unspecified> {
         let bytes = bytes.as_slice_less_safe();
         if curve.elem_scalar_seed_len != bytes.len() {
             return Err(error::Unspecified);

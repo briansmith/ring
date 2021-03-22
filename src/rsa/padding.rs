@@ -411,7 +411,7 @@ impl PSSMetrics {
     fn new(
         digest_alg: &'static digest::Algorithm,
         mod_bits: bits::BitLength,
-    ) -> Result<PSSMetrics, error::Unspecified> {
+    ) -> Result<Self, error::Unspecified> {
         let em_bits = mod_bits.try_sub_1()?;
         let em_len = em_bits.as_usize_bytes_rounded_up();
         let leading_zero_bits = (8 * em_len) - em_bits.as_usize_bits();
@@ -435,7 +435,7 @@ impl PSSMetrics {
 
         debug_assert!(em_bits.as_usize_bits() >= (8 * h_len) + (8 * s_len) + 9);
 
-        Ok(PSSMetrics {
+        Ok(Self {
             em_len,
             db_len,
             ps_len,
