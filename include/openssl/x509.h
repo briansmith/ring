@@ -1604,11 +1604,20 @@ OPENSSL_EXPORT int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj,
 // is not NULL, it sets |*out_obj| to AlgorithmIdentifier's OID. If |out_key|
 // is not NULL, it sets |*out_key| and |*out_key_len| to the encoded public key.
 // If |out_alg| is not NULL, it sets |*out_alg| to the AlgorithmIdentifier.
+//
+// Note: X.509 SubjectPublicKeyInfo structures store the encoded public key as a
+// BIT STRING. |*out_key| and |*out_key_len| will silently pad the key with zero
+// bits if |pub| did not contain a whole number of bytes. Use
+// |X509_PUBKEY_get0_public_key| to preserve this information.
 OPENSSL_EXPORT int X509_PUBKEY_get0_param(ASN1_OBJECT **out_obj,
                                           const uint8_t **out_key,
                                           int *out_key_len,
                                           X509_ALGOR **out_alg,
                                           X509_PUBKEY *pub);
+
+// X509_PUBKEY_get0_public_key returns |pub|'s encoded public key.
+OPENSSL_EXPORT const ASN1_BIT_STRING *X509_PUBKEY_get0_public_key(
+    const X509_PUBKEY *pub);
 
 OPENSSL_EXPORT int X509_check_trust(X509 *x, int id, int flags);
 OPENSSL_EXPORT int X509_TRUST_get_count(void);
