@@ -261,11 +261,7 @@ if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.9
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-  if((CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.8.99") OR CLANG)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
-  else()
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-  endif()
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
 endif()
 
 # pthread_rwlock_t requires a feature flag.
