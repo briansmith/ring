@@ -428,7 +428,7 @@ R'''# Copyright (c) 2019 The Chromium Authors. All rights reserved.
 
 # This file is created by generate_build_files.py. Do not edit manually.
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 project(BoringSSL LANGUAGES C CXX)
 

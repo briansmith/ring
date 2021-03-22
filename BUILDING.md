@@ -10,7 +10,7 @@ Unless otherwise noted, build tools must at most five years old, matching
 [Abseil guidelines](https://abseil.io/about/compatibility). If in doubt, use the
 most recent stable version of each tool.
 
-  * [CMake](https://cmake.org/download/) 3.0 or later is required.
+  * [CMake](https://cmake.org/download/) 3.5 or later is required.
 
   * A recent version of Perl is required. On Windows,
     [Active State Perl](http://www.activestate.com/activeperl/) has been

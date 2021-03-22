@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.5)
 
 # Defer enabling C and CXX languages.
 project(BoringSSL NONE)
