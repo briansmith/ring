@@ -301,7 +301,7 @@ fn pregenerate_asm_main() {
 
         if let Some(perlasm_format) = perlasm_format {
             let perlasm_src_dsts =
-                perlasm_src_dsts(&asm_dir, target_arch, target_os, perlasm_format);
+                perlasm_src_dsts(asm_dir, target_arch, target_os, perlasm_format);
             perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
 
             if target_os == Some(WINDOWS) {
@@ -403,7 +403,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
 
     let core_srcs = sources_for_arch(&target.arch)
         .into_iter()
-        .filter(|p| !is_perlasm(&p))
+        .filter(|p| !is_perlasm(p))
         .collect::<Vec<_>>();
 
     let test_srcs = RING_TEST_SRCS.iter().map(PathBuf::from).collect::<Vec<_>>();
@@ -417,8 +417,8 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     // can't do that yet.
     libs.iter().for_each(|&(lib_name, srcs, additional_srcs)| {
         build_library(
-            &target,
-            &out_dir,
+            target,
+            out_dir,
             lib_name,
             srcs,
             additional_srcs,
@@ -456,12 +456,12 @@ fn build_library(
     if objs
         .iter()
         .map(Path::new)
-        .any(|p| need_run(&p, &lib_path, includes_modified))
+        .any(|p| need_run(p, &lib_path, includes_modified))
     {
         let mut c = cc::Build::new();
 
         for f in LD_FLAGS {
-            let _ = c.flag(&f);
+            let _ = c.flag(f);
         }
         match target.os.as_str() {
             "macos" => {
@@ -505,7 +505,7 @@ fn compile(
     } else {
         let mut out_path = out_dir.join(p.file_name().unwrap());
         assert!(out_path.set_extension(target.obj_ext));
-        if need_run(&p, &out_path, includes_modified) {
+        if need_run(p, &out_path, includes_modified) {
             let cmd = if target.os != WINDOWS || ext != "asm" {
                 cc(p, ext, target, warnings_are_errors, &out_path)
             } else {
@@ -545,7 +545,7 @@ fn cc(
         e => panic!("Unsupported file extension: {:?}", e),
     };
     for f in cpp_flags(target) {
-        let _ = c.flag(&f);
+        let _ = c.flag(f);
     }
     if target.os != "none"
         && target.os != "redox"
