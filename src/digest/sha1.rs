@@ -60,11 +60,7 @@ fn block_data_order_(mut H: State, M: &[[<W32 as Word>::InputBytes; 16]]) -> Sta
         }
 
         // FIPS 180-4 6.1.2 Step 2
-        let a = H[0];
-        let b = H[1];
-        let c = H[2];
-        let d = H[3];
-        let e = H[4];
+        let [a, b, c, d, e] = H;
 
         // FIPS 180-4 6.1.2 Step 3 with constants and functions from FIPS 180-4 {4.1.1, 4.2.1}
         let W: &[[W32; 20]; 4] = W.chunks_fixed();
