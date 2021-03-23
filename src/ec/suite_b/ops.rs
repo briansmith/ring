@@ -291,7 +291,7 @@ impl PublicScalarOps {
         }
     }
 
-    pub fn elem_equals(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
+    pub fn elem_equals_vartime(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
         a.limbs[..self.public_key_ops.common.num_limbs]
             == b.limbs[..self.public_key_ops.common.num_limbs]
     }
