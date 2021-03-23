@@ -19,18 +19,17 @@ pub(crate) trait Map<A, B, BArray> {
     fn array_map(self, f: impl Fn(A) -> B) -> BArray;
 }
 
-impl<A, B> Map<A, B, [B; 4]> for [A; 4] {
-    #[inline]
-    fn array_map(self, f: impl Fn(A) -> B) -> [B; 4] {
-        let [a0, a1, a2, a3] = self;
-        [f(a0), f(a1), f(a2), f(a3)]
+macro_rules! impl_map {
+    ( $n:expr, [ $( $elem:ident ),+ ] ) => {
+        impl<A, B> Map<A, B, [B; $n]> for [A; $n] {
+            #[inline]
+            fn array_map(self, f: impl Fn(A) -> B) -> [B; $n] {
+                let [ $( $elem ),+ ] = self;
+                [ $( f($elem) ),+ ]
+            }
+        }
     }
 }
 
-impl<A, B> Map<A, B, [B; 8]> for [A; 8] {
-    #[inline]
-    fn array_map(self, f: impl Fn(A) -> B) -> [B; 8] {
-        let [a0, a1, a2, a3, a4, a5, a6, a7] = self;
-        [f(a0), f(a1), f(a2), f(a3), f(a4), f(a5), f(a6), f(a7)]
-    }
-}
+impl_map!(4, [a, b, c, d]);
+impl_map!(8, [a, b, c, d, e, f, g, h]);
