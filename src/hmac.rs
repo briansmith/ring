@@ -176,39 +176,35 @@ impl Key {
         algorithm: Algorithm,
         rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
-        Self::construct(
-            algorithm,
-            NonZeroUsize::new(algorithm.0.output_len).unwrap(),
-            |buf| rng.fill(buf),
-        )
+        Self::construct(algorithm, |buf| rng.fill(buf))
     }
 
     /// Generate an HMAC singing key using a custom length for the given
     /// digest algorithm.
     ///
     /// The key will be `length` bytes long.
+    #[cfg(feature = "alloc")]
     pub fn generate_with_length(
         algorithm: Algorithm,
         length: NonZeroUsize,
         rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
-        Self::construct(algorithm, length, |buf| rng.fill(buf))
-    }
-
-    fn construct<F>(
-        algorithm: Algorithm,
-        length: NonZeroUsize,
-        fill: F,
-    ) -> Result<Self, error::Unspecified>
-    where
-        F: FnOnce(&mut [u8]) -> Result<(), error::Unspecified>,
-    {
         let key_size = length.get();
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN].to_vec();
         if key_size > digest::MAX_OUTPUT_LEN {
             key_bytes.resize(key_size, 0);
         }
         let key_bytes = &mut key_bytes[..key_size];
+        rng.fill(key_bytes)?;
+        Ok(Self::new(algorithm, key_bytes))
+    }
+
+    fn construct<F>(algorithm: Algorithm, fill: F) -> Result<Self, error::Unspecified>
+    where
+        F: FnOnce(&mut [u8]) -> Result<(), error::Unspecified>,
+    {
+        let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
+        let key_bytes = &mut key_bytes[..algorithm.0.output_len];
         fill(key_bytes)?;
         Ok(Self::new(algorithm, key_bytes))
     }
@@ -287,13 +283,7 @@ impl hkdf::KeyType for Algorithm {
 
 impl From<hkdf::Okm<'_, Algorithm>> for Key {
     fn from(okm: hkdf::Okm<Algorithm>) -> Self {
-        let algorithm = *okm.len();
-        Key::construct(
-            algorithm,
-            NonZeroUsize::new(algorithm.0.output_len).unwrap(),
-            |buf| okm.fill(buf),
-        )
-        .unwrap()
+        Self::construct(*okm.len(), |buf| okm.fill(buf)).unwrap()
     }
 }
 
