@@ -74,7 +74,7 @@ impl<A: AsRef<[u8]>> Aad<A> {
     /// Construct the `Aad` from the given bytes.
     #[inline]
     pub fn from(aad: A) -> Self {
-        Aad(aad)
+        Self(aad)
     }
 }
 

@@ -43,8 +43,8 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new_at_infinity() -> Point {
-        Point {
+    pub fn new_at_infinity() -> Self {
+        Self {
             xyz: [0; 3 * MAX_LIMBS],
         }
     }

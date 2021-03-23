@@ -71,14 +71,7 @@ fn block_data_order<S: Sha2>(
         };
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 2
-        let mut a = H[0];
-        let mut b = H[1];
-        let mut c = H[2];
-        let mut d = H[3];
-        let mut e = H[4];
-        let mut f = H[5];
-        let mut g = H[6];
-        let mut h = H[7];
+        let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = H;
 
         // FIPS 180-4 {6.2.2, 6.4.2} Step 3
         for (Kt, Wt) in S::K.iter().zip(W.iter()) {
@@ -178,17 +171,17 @@ const MAX_ROUNDS: usize = 80;
 pub(super) const CHAINING_WORDS: usize = 8;
 
 impl Word for Wrapping<u32> {
-    const ZERO: Self = Wrapping(0);
+    const ZERO: Self = Self(0);
     type InputBytes = [u8; 4];
 
     #[inline(always)]
     fn from_be_bytes(input: Self::InputBytes) -> Self {
-        Wrapping(u32::from_be_bytes(input))
+        Self(u32::from_be_bytes(input))
     }
 
     #[inline(always)]
     fn rotr(self, count: u32) -> Self {
-        Wrapping(self.0.rotate_right(count))
+        Self(self.0.rotate_right(count))
     }
 }
 
@@ -270,17 +263,17 @@ impl Sha2 for Wrapping<u32> {
 }
 
 impl Word for Wrapping<u64> {
-    const ZERO: Self = Wrapping(0);
+    const ZERO: Self = Self(0);
     type InputBytes = [u8; 8];
 
     #[inline(always)]
     fn from_be_bytes(input: Self::InputBytes) -> Self {
-        Wrapping(u64::from_be_bytes(input))
+        Self(u64::from_be_bytes(input))
     }
 
     #[inline(always)]
     fn rotr(self, count: u32) -> Self {
-        Wrapping(self.0.rotate_right(count))
+        Self(self.0.rotate_right(count))
     }
 }
 

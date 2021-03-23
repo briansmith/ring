@@ -411,7 +411,7 @@ impl RsaSubjectPublicKey {
             der_writer::write_positive_integer(output, &n);
             der_writer::write_positive_integer(output, &e);
         });
-        RsaSubjectPublicKey(bytes)
+        Self(bytes)
     }
 
     /// The public modulus (n).
@@ -458,7 +458,7 @@ impl<M: Prime + Clone> PrivatePrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
-        Ok(PrivatePrime {
+        Ok(Self {
             modulus: p,
             exponent: dP,
         })

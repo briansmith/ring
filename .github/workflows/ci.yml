@@ -350,7 +350,12 @@ jobs:
     strategy:
       matrix:
         features:
-          - --all-features
+          # Enable all the library features so we can measure all the coverage.
+          # Don't enable `slow_tests` and other (test suite) features that are
+          # unuseful, or even counterproductive, for coverage testing.
+          # `slow_tests` is slow and it is running code that is already intended
+          # to be covered without it being enabled.
+          - --features=alloc,dev_urandom_fallback,std
 
         # TODO: targets
         target:
