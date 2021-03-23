@@ -819,10 +819,10 @@ def WriteAsmFiles(perlasms):
                 perlasm['extra_args'] + extra_args)
         asmfiles.setdefault(key, []).append(output)
 
-  for (key, non_perl_asm_files) in NON_PERL_FILES.iteritems():
+  for (key, non_perl_asm_files) in NON_PERL_FILES.items():
     asmfiles.setdefault(key, []).extend(non_perl_asm_files)
 
-  for files in asmfiles.itervalues():
+  for files in asmfiles.values():
     files.sort()
 
   return asmfiles
@@ -955,7 +955,7 @@ def main(platforms):
       'urandom_test': urandom_test_files,
   }
 
-  asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).iteritems())
+  asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).items())
 
   for platform in platforms:
     platform.WriteFiles(files, asm_outputs)
