@@ -150,7 +150,7 @@ impl EcdsaVerificationAlgorithm {
             let cops = ops.public_key_ops.common;
             let r_jacobian = cops.elem_product(z2, r);
             let x = cops.elem_unencoded(x);
-            ops.elem_equals(&r_jacobian, &x)
+            ops.elem_equals_vartime(&r_jacobian, &x)
         }
         let mut r = self.ops.scalar_as_elem(&r);
         if sig_r_equals_x(self.ops, &r, &x, &z2) {
