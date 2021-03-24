@@ -32,7 +32,6 @@ mod fallback;
 
 use core::ops::RangeFrom;
 
-#[repr(transparent)]
 pub struct Key {
     words: [u32; KEY_LEN / 4],
     cpu_features: cpu::Features,
@@ -120,7 +119,7 @@ impl Key {
                     out: *mut u8,
                     in_: *const u8,
                     in_len: crate::c::size_t,
-                    key: &Key,
+                    key: &[u32; KEY_LEN / 4],
                     counter: &Counter,
                 );
             }
@@ -129,7 +128,7 @@ impl Key {
                     in_out.as_mut_ptr(),
                     in_out[src].as_ptr(),
                     in_out_len,
-                    key,
+                    key.words_less_safe(),
                     &counter,
                 )
             }
@@ -146,10 +145,6 @@ impl Key {
         chacha20_ctr32(self, counter, in_out, src);
     }
 
-    #[cfg(any(
-        test,
-        not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86"))
-    ))]
     #[inline]
     pub(super) fn words_less_safe(&self) -> &[u32; KEY_LEN / 4] {
         &self.words
