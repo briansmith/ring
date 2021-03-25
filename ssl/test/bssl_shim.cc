@@ -671,6 +671,27 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
             SSL_used_hello_retry_request(ssl) ? "" : "no ");
     return false;
   }
+
+  // Test that handshake hints correctly skipped the expected operations.
+  //
+  // TODO(davidben): Add support for TLS 1.2 hints and remove the version check.
+  // Also add a check for the session cache lookup.
+  if (config->handshake_hints && !config->allow_hint_mismatch &&
+      SSL_version(ssl) == TLS1_3_VERSION) {
+    const TestState *state = GetTestState(ssl);
+    if (!SSL_used_hello_retry_request(ssl) && state->used_private_key) {
+      fprintf(
+          stderr,
+          "Performed private key operation, but hint should have skipped it\n");
+      return false;
+    }
+
+    if (state->ticket_decrypt_done) {
+      fprintf(stderr,
+              "Performed ticket decryption, but hint should have skipped it\n");
+      return false;
+    }
+  }
   return true;
 }
 
@@ -696,6 +717,17 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     SSL_set_accept_state(ssl.get());
   } else {
     SSL_set_connect_state(ssl.get());
+  }
+  if (config->handshake_hints) {
+#if defined(HANDSHAKER_SUPPORTED)
+    GetTestState(ssl.get())->get_handshake_hints_cb =
+        [&](const SSL_CLIENT_HELLO *client_hello) {
+          return GetHandshakeHint(ssl.get(), writer, is_resume, client_hello);
+        };
+#else
+    fprintf(stderr, "The external handshaker can only be used on Linux\n");
+    return false;
+#endif
   }
 
   int sock = Connect(config->port);
@@ -1180,8 +1212,8 @@ int main(int argc, char **argv) {
   CRYPTO_library_init();
 
   TestConfig initial_config, resume_config, retry_config;
-  if (!ParseConfig(argc - 1, argv + 1, &initial_config, &resume_config,
-                   &retry_config)) {
+  if (!ParseConfig(argc - 1, argv + 1, /*is_shim=*/true, &initial_config,
+                   &resume_config, &retry_config)) {
     return Usage(argv[0]);
   }
 

@@ -515,6 +515,15 @@ class TLSFuzzer {
           break;
         }
 
+        case kHintsTag: {
+          CBS hints;
+          if (!CBS_get_u24_length_prefixed(cbs, &hints)) {
+            return nullptr;
+          }
+          SSL_set_handshake_hints(ssl.get(), CBS_data(&hints), CBS_len(&hints));
+          break;
+        }
+
         default:
           return nullptr;
       }

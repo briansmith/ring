@@ -34,6 +34,7 @@
 #include "test_config.h"
 #include "test_state.h"
 
+#include <openssl/bytestring.h>
 #include <openssl/ssl.h>
 
 using namespace bssl;
@@ -232,7 +233,7 @@ static bool Proxy(BIO *socket, bool async, int control, int rfd, int wfd) {
       return false;
     }
     switch (msg) {
-      case kControlMsgHandback:
+      case kControlMsgDone:
         return true;
       case kControlMsgError:
         return false;
@@ -304,20 +305,66 @@ static bool Proxy(BIO *socket, bool async, int control, int rfd, int wfd) {
 
 class ScopedFD {
  public:
-  explicit ScopedFD(int fd): fd_(fd) {}
-  ~ScopedFD() { Close(); }
-  ScopedFD(const ScopedFD &) = delete;
-  ScopedFD &operator=(const ScopedFD &) = delete;
+  ScopedFD() : fd_(-1) {}
+  explicit ScopedFD(int fd) : fd_(fd) {}
+  ~ScopedFD() { Reset(); }
 
-  void Close() {
+  ScopedFD(ScopedFD &&other) { *this = std::move(other); }
+  ScopedFD &operator=(ScopedFD &&other) {
+    Reset(other.fd_);
+    other.fd_ = -1;
+    return *this;
+  }
+
+  int fd() const { return fd_; }
+
+  void Reset(int fd = -1) {
     if (fd_ >= 0) {
       close(fd_);
     }
-    fd_ = -1;
+    fd_ = fd;
   }
 
  private:
   int fd_;
+};
+
+class ScopedProcess {
+ public:
+  ScopedProcess() : pid_(-1) {}
+  ~ScopedProcess() { Reset(); }
+
+  ScopedProcess(ScopedProcess &&other) { *this = std::move(other); }
+  ScopedProcess &operator=(ScopedProcess &&other) {
+    Reset(other.pid_);
+    other.pid_ = -1;
+    return *this;
+  }
+
+  pid_t pid() const { return pid_; }
+
+  void Reset(pid_t pid = -1) {
+    if (pid_ >= 0) {
+      kill(pid_, SIGTERM);
+      int unused;
+      Wait(&unused);
+    }
+    pid_ = pid;
+  }
+
+  bool Wait(int *out_status) {
+    if (pid_ < 0) {
+      return false;
+    }
+    if (waitpid_eintr(pid_, out_status, 0) != pid_) {
+      return false;
+    }
+    pid_ = -1;
+    return true;
+  }
+
+ private:
+  pid_t pid_;
 };
 
 class FileActionsDestroyer {
@@ -332,11 +379,9 @@ class FileActionsDestroyer {
   posix_spawn_file_actions_t *actions_;
 };
 
-// RunHandshaker forks and execs the handshaker binary, handing off |input|,
-// and, after proxying some amount of handshake traffic, handing back |out|.
-static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
-                          Span<const uint8_t> input,
-                          std::vector<uint8_t> *out) {
+static bool StartHandshaker(ScopedProcess *out, ScopedFD *out_control,
+                            const TestConfig *config, bool is_resume,
+                            posix_spawn_file_actions_t *actions) {
   if (config->handshaker_path.empty()) {
     fprintf(stderr, "no -handshaker-path specified\n");
     return false;
@@ -347,13 +392,62 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
     return false;
   }
 
+  std::vector<const char *> args;
+  args.push_back(config->handshaker_path.c_str());
+  static const char kResumeFlag[] = "-handshaker-resume";
+  if (is_resume) {
+    args.push_back(kResumeFlag);
+  }
+  // config->argv omits argv[0].
+  for (int j = 0; j < config->argc; ++j) {
+    args.push_back(config->argv[j]);
+  }
+  args.push_back(nullptr);
+
   // A datagram socket guarantees that writes are all-or-nothing.
   int control[2];
   if (socketpair(AF_LOCAL, SOCK_DGRAM, 0, control) != 0) {
     perror("socketpair");
     return false;
   }
-  ScopedFD control0_closer(control[0]), control1_closer(control[1]);
+  ScopedFD scoped_control0(control[0]), scoped_control1(control[1]);
+
+  assert(control[1] != kFdHandshakerToProxy);
+  assert(control[1] != kFdProxyToHandshaker);
+  if (posix_spawn_file_actions_addclose(actions, control[0]) != 0) {
+    return false;
+  }
+  if (control[1] != kFdControl &&
+      posix_spawn_file_actions_adddup2(actions, control[1], kFdControl) != 0) {
+    return false;
+  }
+
+  fflush(stdout);
+  fflush(stderr);
+
+  // MSan doesn't know that |posix_spawn| initializes its output, so initialize
+  // it to -1.
+  pid_t pid = -1;
+  if (posix_spawn(&pid, args[0], actions, nullptr,
+                  const_cast<char *const *>(args.data()), environ) != 0) {
+    return false;
+  }
+
+  out->Reset(pid);
+  *out_control = std::move(scoped_control0);
+  return true;
+}
+
+// RunHandshaker forks and execs the handshaker binary, handing off |input|,
+// and, after proxying some amount of handshake traffic, handing back |out|.
+static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
+                          Span<const uint8_t> input,
+                          std::vector<uint8_t> *out) {
+  posix_spawn_file_actions_t actions;
+  if (posix_spawn_file_actions_init(&actions) != 0) {
+    return false;
+  }
+  FileActionsDestroyer actions_destroyer(&actions);
 
   int rfd[2], wfd[2];
   // We use pipes, rather than some other mechanism, for their buffers.  During
@@ -378,38 +472,15 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
   }
   ScopedFD wfd0_closer(wfd[0]), wfd1_closer(wfd[1]);
 
-  fflush(stdout);
-  fflush(stderr);
+  assert(kFdControl != rfd[0]);
+  assert(kFdControl != wfd[1]);
+  assert(kFdHandshakerToProxy != rfd[0]);
+  assert(kFdProxyToHandshaker != wfd[1]);
 
-  std::vector<const char *> args;
-  args.push_back(config->handshaker_path.c_str());
-  static const char kResumeFlag[] = "-handshaker-resume";
-  if (is_resume) {
-    args.push_back(kResumeFlag);
-  }
-  // config->argv omits argv[0].
-  for (int j = 0; j < config->argc; ++j) {
-    args.push_back(config->argv[j]);
-  }
-  args.push_back(nullptr);
-
-  posix_spawn_file_actions_t actions;
-  if (posix_spawn_file_actions_init(&actions) != 0) {
-    return false;
-  }
-  FileActionsDestroyer actions_destroyer(&actions);
-  if (posix_spawn_file_actions_addclose(&actions, control[0]) != 0 ||
-      posix_spawn_file_actions_addclose(&actions, rfd[1]) != 0 ||
+  if (posix_spawn_file_actions_addclose(&actions, rfd[1]) != 0 ||
       posix_spawn_file_actions_addclose(&actions, wfd[0]) != 0) {
     return false;
   }
-  assert(kFdControl != rfd[0]);
-  assert(kFdControl != wfd[1]);
-  if (control[1] != kFdControl &&
-      posix_spawn_file_actions_adddup2(&actions, control[1], kFdControl) != 0) {
-    return false;
-  }
-  assert(kFdProxyToHandshaker != wfd[1]);
   if (rfd[0] != kFdProxyToHandshaker &&
       posix_spawn_file_actions_adddup2(&actions, rfd[0],
                                        kFdProxyToHandshaker) != 0) {
@@ -418,28 +489,25 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
   if (wfd[1] != kFdHandshakerToProxy &&
       posix_spawn_file_actions_adddup2(&actions, wfd[1],
                                        kFdHandshakerToProxy) != 0) {
-      return false;
-  }
-
-  // MSan doesn't know that |posix_spawn| initializes its output, so initialize
-  // it to -1.
-  pid_t handshaker_pid = -1;
-  if (posix_spawn(&handshaker_pid, args[0], &actions, nullptr,
-                  const_cast<char *const *>(args.data()), environ) != 0) {
     return false;
   }
 
-  control1_closer.Close();
-  rfd0_closer.Close();
-  wfd1_closer.Close();
+  ScopedProcess handshaker;
+  ScopedFD control;
+  if (!StartHandshaker(&handshaker, &control, config, is_resume, &actions)) {
+    return false;
+  }
 
-  if (write_eintr(control[0], input.data(), input.size()) == -1) {
+  rfd0_closer.Reset();
+  wfd1_closer.Reset();
+
+  if (write_eintr(control.fd(), input.data(), input.size()) == -1) {
     perror("write");
     return false;
   }
-  bool ok = Proxy(bio, config->async, control[0], rfd[1], wfd[0]);
+  bool ok = Proxy(bio, config->async, control.fd(), rfd[1], wfd[0]);
   int wstatus;
-  if (waitpid_eintr(handshaker_pid, &wstatus, 0) != handshaker_pid) {
+  if (!handshaker.Wait(&wstatus)) {
     perror("waitpid");
     return false;
   }
@@ -453,13 +521,73 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
 
   constexpr size_t kBufSize = 1024 * 1024;
   std::vector<uint8_t> buf(kBufSize);
-  ssize_t len = read_eintr(control[0], buf.data(), buf.size());
+  ssize_t len = read_eintr(control.fd(), buf.data(), buf.size());
   if (len == -1) {
     perror("read");
     return false;
   }
   buf.resize(len);
   *out = std::move(buf);
+  return true;
+}
+
+static bool RequestHandshakeHint(const TestConfig *config, bool is_resume,
+                                 Span<const uint8_t> input, bool *out_has_hints,
+                                 std::vector<uint8_t> *out_hints) {
+  posix_spawn_file_actions_t actions;
+  if (posix_spawn_file_actions_init(&actions) != 0) {
+    return false;
+  }
+  FileActionsDestroyer actions_destroyer(&actions);
+  ScopedProcess handshaker;
+  ScopedFD control;
+  if (!StartHandshaker(&handshaker, &control, config, is_resume, &actions)) {
+    return false;
+  }
+
+  if (write_eintr(control.fd(), input.data(), input.size()) == -1) {
+    perror("write");
+    return false;
+  }
+
+  char msg;
+  if (read_eintr(control.fd(), &msg, 1) != 1) {
+    perror("read");
+    return false;
+  }
+
+  switch (msg) {
+    case kControlMsgDone: {
+      constexpr size_t kBufSize = 1024 * 1024;
+      out_hints->resize(kBufSize);
+      ssize_t len =
+          read_eintr(control.fd(), out_hints->data(), out_hints->size());
+      if (len == -1) {
+        perror("read");
+        return false;
+      }
+      out_hints->resize(len);
+      *out_has_hints = true;
+      break;
+    }
+    case kControlMsgError:
+      *out_has_hints = false;
+      break;
+    default:
+      fprintf(stderr, "Unknown control message from handshaker: %c\n", msg);
+      return false;
+  }
+
+  int wstatus;
+  if (!handshaker.Wait(&wstatus)) {
+    perror("waitpid");
+    return false;
+  }
+  if (wstatus) {
+    fprintf(stderr, "handshaker exited irregularly\n");
+    return false;
+  }
+
   return true;
 }
 
@@ -540,6 +668,37 @@ bool DoSplitHandshake(UniquePtr<SSL> *ssl, SettingsWriter *writer,
   GetTestState(ssl->get())->async_bio = nullptr;
 
   *ssl = std::move(ssl_handback);
+  return true;
+}
+
+bool GetHandshakeHint(SSL *ssl, SettingsWriter *writer, bool is_resume,
+                      const SSL_CLIENT_HELLO *client_hello) {
+  ScopedCBB input;
+  CBB child;
+  if (!CBB_init(input.get(), client_hello->client_hello_len + 256) ||
+      !CBB_add_u24_length_prefixed(input.get(), &child) ||
+      !CBB_add_bytes(&child, client_hello->client_hello,
+                     client_hello->client_hello_len) ||
+      !CBB_add_u24_length_prefixed(input.get(), &child) ||
+      !SSL_serialize_capabilities(ssl, &child) ||  //
+      !CBB_flush(input.get())) {
+    return false;
+  }
+
+  bool has_hints;
+  std::vector<uint8_t> hints;
+  if (!RequestHandshakeHint(
+          GetTestConfig(ssl), is_resume,
+          MakeConstSpan(CBB_data(input.get()), CBB_len(input.get())),
+          &has_hints, &hints)) {
+    return false;
+  }
+  if (has_hints &&
+      (!writer->WriteHints(hints) ||
+       !SSL_set_handshake_hints(ssl, hints.data(), hints.size()))) {
+    return false;
+  }
+
   return true;
 }
 

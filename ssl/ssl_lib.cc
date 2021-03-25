@@ -1378,6 +1378,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     case SSL_ERROR_EARLY_DATA_REJECTED:
     case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
     case SSL_ERROR_WANT_RENEGOTIATE:
+    case SSL_ERROR_HANDSHAKE_HINTS_READY:
       return ssl->s3->rwstate;
 
     case SSL_ERROR_WANT_READ: {
@@ -1463,6 +1464,8 @@ const char *SSL_error_description(int err) {
       return "HANDOFF";
     case SSL_ERROR_HANDBACK:
       return "HANDBACK";
+    case SSL_ERROR_HANDSHAKE_HINTS_READY:
+      return "HANDSHAKE_HINTS_READY";
     default:
       return nullptr;
   }

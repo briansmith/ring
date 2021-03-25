@@ -567,6 +567,11 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 // See also |ssl_renegotiate_explicit|.
 #define SSL_ERROR_WANT_RENEGOTIATE 19
 
+// SSL_ERROR_HANDSHAKE_HINTS_READY indicates the handshake has progressed enough
+// for |SSL_serialize_handshake_hints| to be called. See also
+// |SSL_request_handshake_hints|.
+#define SSL_ERROR_HANDSHAKE_HINTS_READY 20
+
 // SSL_error_description returns a string representation of |err|, where |err|
 // is one of the |SSL_ERROR_*| constants returned by |SSL_get_error|, or NULL
 // if the value is unrecognized.
@@ -3793,6 +3798,101 @@ OPENSSL_EXPORT uint64_t SSL_get_read_sequence(const SSL *ssl);
 OPENSSL_EXPORT uint64_t SSL_get_write_sequence(const SSL *ssl);
 
 
+// Handshake hints.
+//
+// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+//
+// Some server deployments make asynchronous RPC calls in both ClientHello
+// dispatch and private key operations. In TLS handshakes where the private key
+// operation occurs in the first round-trip, this results in two consecutive RPC
+// round-trips. Handshake hints allow the RPC service to predicte a signature.
+// If correctly predicted, this can skip the second RPC call.
+//
+// First, the server installs a certificate selection callback (see
+// |SSL_CTX_set_select_certificate_cb|). When that is called, it performs the
+// RPC as before, but includes the ClientHello and a capabilities string from
+// |SSL_serialize_capabilities|.
+//
+// Next, the RPC service creates its own |SSL| object, applies the results of
+// certificate selection, calls |SSL_request_handshake_hints|, and runs the
+// handshake. If this successfully computes handshake hints (see
+// |SSL_serialize_handshake_hints|), the RPC server should send the hints
+// alongside any certificate selection results.
+//
+// Finally, the server calls |SSL_set_handshake_hints| and applies any
+// configuration from the RPC server. It then completes the handshake as before.
+// If the hints apply, BoringSSL will use the predicted signature and skip the
+// private key callbacks. Otherwise, BoringSSL will call private key callbacks
+// to generate a signature as before.
+//
+// Callers should synchronize configuration across the two services.
+// Configuration mismatches and some cases of version skew are not fatal, but
+// may result in the hints not applying. Additionally, some handshake flows use
+// the private key in later round-trips, such as TLS 1.3 HelloRetryRequest. In
+// those cases, BoringSSL will not predict a signature as there is no benefit.
+// Callers must allow for handshakes to complete without a predicted signature.
+//
+// For now, only TLS 1.3 is hinted. TLS 1.2 will work, but the hints will be
+// empty.
+
+// SSL_serialize_capabilities writes an opaque byte string to |out| describing
+// some of |ssl|'s capabilities. It returns one on success and zero on error.
+//
+// This string is used by BoringSSL internally to reduce the impact of version
+// skew.
+OPENSSL_EXPORT int SSL_serialize_capabilities(const SSL *ssl, CBB *out);
+
+// SSL_request_handshake_hints configures |ssl| to generate a handshake hint for
+// |client_hello|. It returns one on success and zero on error. |client_hello|
+// should contain a serialized ClientHello structure, from the |client_hello|
+// and |client_hello_len| fields of the |SSL_CLIENT_HELLO| structure.
+// |capabilities| should contain the output of |SSL_serialize_capabilities|.
+//
+// When configured, |ssl| will perform no I/O (so there is no need to configure
+// |BIO|s). For QUIC, the caller should still configure an |SSL_QUIC_METHOD|,
+// but the callbacks themselves will never be called and may be left NULL or
+// report failure. |SSL_provide_quic_data| also should not be called.
+//
+// If hint generation is successful, |SSL_do_handshake| will stop the handshake
+// early with |SSL_get_error| returning |SSL_ERROR_HANDSHAKE_HINTS_READY|. At
+// this point, the caller should run |SSL_serialize_handshake_hints| to extract
+// the resulting hints.
+//
+// Hint generation may fail if, e.g., |ssl| was unable to process the
+// ClientHello. Callers should then complete the certificate selection RPC and
+// continue the original handshake with no hint. It will likely fail, but this
+// reports the correct alert to the client and is more robust in case of
+// mismatch.
+OPENSSL_EXPORT int SSL_request_handshake_hints(SSL *ssl,
+                                               const uint8_t *client_hello,
+                                               size_t client_hello_len,
+                                               const uint8_t *capabilities,
+                                               size_t capabilities_len);
+
+// SSL_serialize_handshake_hints writes an opaque byte string to |out|
+// containing the handshake hints computed by |out|. It returns one on success
+// and zero on error. This function should only be called if
+// |SSL_request_handshake_hints| was configured and the handshake terminated
+// with |SSL_ERROR_HANDSHAKE_HINTS_READY|.
+//
+// This string may be passed to |SSL_set_handshake_hints| on another |SSL| to
+// avoid an extra signature call.
+OPENSSL_EXPORT int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out);
+
+// SSL_set_handshake_hints configures |ssl| to use |hints| as handshake hints.
+// It returns one on success and zero on error. The handshake will then continue
+// as before, but apply predicted values from |hints| where applicable.
+//
+// Hints may contain connection and session secrets, so they must not leak and
+// must come from a source trusted to terminate the connection. However, they
+// will not change |ssl|'s configuration. The caller is responsible for
+// serializing and applying options from the RPC server as needed. This ensures
+// |ssl|'s behavior is self-consistent and consistent with the caller's local
+// decisions.
+OPENSSL_EXPORT int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints,
+                                           size_t hints_len);
+
+
 // Obscure functions.
 
 // SSL_CTX_set_msg_callback installs |cb| as the message callback for |ctx|.
@@ -5148,6 +5248,7 @@ OPENSSL_EXPORT bool SSL_get_traffic_secrets(
     const SSL *ssl, Span<const uint8_t> *out_read_traffic_secret,
     Span<const uint8_t> *out_write_traffic_secret);
 
+
 BSSL_NAMESPACE_END
 
 }  // extern C++
@@ -5371,6 +5472,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_ECH_SERVER_WOULD_HAVE_NO_RETRY_CONFIGS 313
 #define SSL_R_INVALID_CLIENT_HELLO_INNER 314
 #define SSL_R_INVALID_ALPN_PROTOCOL_LIST 315
+#define SSL_R_COULD_NOT_PARSE_HINTS 316
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

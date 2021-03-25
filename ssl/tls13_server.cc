@@ -63,14 +63,33 @@ static bool resolve_ecdhe_secret(SSL_HANDSHAKE *hs,
   }
 
   Array<uint8_t> secret;
-  ScopedCBB public_key;
-  UniquePtr<SSLKeyShare> key_share = SSLKeyShare::Create(group_id);
-  if (!key_share ||
-      !CBB_init(public_key.get(), 32) ||
-      !key_share->Accept(public_key.get(), &secret, &alert, peer_key) ||
-      !CBBFinishArray(public_key.get(), &hs->ecdh_public_key)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
-    return false;
+  SSL_HANDSHAKE_HINTS *const hints = hs->hints.get();
+  if (hints && !hs->hints_requested && hints->key_share_group_id == group_id &&
+      !hints->key_share_secret.empty()) {
+    // Copy DH secret from hints.
+    if (!hs->ecdh_public_key.CopyFrom(hints->key_share_public_key) ||
+        !secret.CopyFrom(hints->key_share_secret)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return false;
+    }
+  } else {
+    ScopedCBB public_key;
+    UniquePtr<SSLKeyShare> key_share = SSLKeyShare::Create(group_id);
+    if (!key_share ||  //
+        !CBB_init(public_key.get(), 32) ||
+        !key_share->Accept(public_key.get(), &secret, &alert, peer_key) ||
+        !CBBFinishArray(public_key.get(), &hs->ecdh_public_key)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return false;
+    }
+    if (hints && hs->hints_requested) {
+      hints->key_share_group_id = group_id;
+      if (!hints->key_share_public_key.CopyFrom(hs->ecdh_public_key) ||
+          !hints->key_share_secret.CopyFrom(secret)) {
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+        return false;
+      }
+    }
   }
 
   return tls13_advance_key_schedule(hs, secret);
@@ -538,6 +557,9 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  if (hs->hints_requested) {
+    return ssl_hs_hints_ready;
+  }
 
   ScopedCBB cbb;
   CBB body, session_id, extensions;
@@ -734,7 +756,18 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   Span<uint8_t> random(ssl->s3->server_random);
-  RAND_bytes(random.data(), random.size());
+
+  SSL_HANDSHAKE_HINTS *const hints = hs->hints.get();
+  if (hints && !hs->hints_requested &&
+      hints->server_random.size() == random.size()) {
+    OPENSSL_memcpy(random.data(), hints->server_random.data(), random.size());
+  } else {
+    RAND_bytes(random.data(), random.size());
+    if (hints && hs->hints_requested &&
+        !hints->server_random.CopyFrom(random)) {
+      return ssl_hs_error;
+    }
+  }
 
   assert(!hs->ech_accept || hs->ech_is_inner_present);
 
@@ -864,6 +897,10 @@ static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  if (hs->hints_requested) {
+    return ssl_hs_hints_ready;
+  }
+
   if (!tls13_add_finished(hs) ||
       // Update the secret to the master secret and derive traffic keys.
       !tls13_advance_key_schedule(

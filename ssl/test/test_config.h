@@ -167,6 +167,8 @@ struct TestConfig {
   std::string expect_msg_callback;
   bool allow_false_start_without_alpn = false;
   bool handoff = false;
+  bool handshake_hints = false;
+  bool allow_hint_mismatch = false;
   bool use_ocsp_callback = false;
   bool set_ocsp_in_callback = false;
   bool decline_ocsp_callback = false;
@@ -198,7 +200,7 @@ struct TestConfig {
                               std::unique_ptr<TestState> test_state) const;
 };
 
-bool ParseConfig(int argc, char **argv, TestConfig *out_initial,
+bool ParseConfig(int argc, char **argv, bool is_shim, TestConfig *out_initial,
                  TestConfig *out_resume, TestConfig *out_retry);
 
 bool SetTestConfig(SSL *ssl, const TestConfig *config);

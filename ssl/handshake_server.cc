@@ -830,6 +830,12 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
   // or below.
   assert(!hs->ech_accept);
 
+  // TODO(davidben): Also compute hints for TLS 1.2. When doing so, update the
+  // check in bssl_shim.cc to test this.
+  if (hs->hints_requested) {
+    return ssl_hs_hints_ready;
+  }
+
   ssl->s3->early_data_reason = ssl_early_data_protocol_version;
 
   SSLMessage msg_unused;

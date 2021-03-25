@@ -149,6 +149,7 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       pending_private_key_op(false),
       grease_seeded(false),
       handback(false),
+      hints_requested(false),
       cert_compression_negotiated(false),
       apply_jdk11_workaround(false) {
   assert(ssl);
@@ -712,6 +713,10 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         *out_early_return = true;
         hs->wait = ssl_hs_ok;
         return 1;
+
+      case ssl_hs_hints_ready:
+        ssl->s3->rwstate = SSL_ERROR_HANDSHAKE_HINTS_READY;
+        return -1;
 
       case ssl_hs_ok:
         break;

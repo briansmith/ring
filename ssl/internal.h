@@ -1577,6 +1577,7 @@ enum ssl_hs_wait_t {
   ssl_hs_read_end_of_early_data,
   ssl_hs_read_change_cipher_spec,
   ssl_hs_certificate_verify,
+  ssl_hs_hints_ready,
 };
 
 enum ssl_grease_index_t {
@@ -1642,6 +1643,26 @@ enum handback_t {
   handback_after_handshake = 2,
   handback_tls13 = 3,
   handback_max_value = handback_tls13,
+};
+
+// SSL_HANDSHAKE_HINTS contains handshake hints for a connection. See
+// |SSL_request_handshake_hints| and related functions.
+struct SSL_HANDSHAKE_HINTS {
+  static constexpr bool kAllowUniquePtr = true;
+
+  Array<uint8_t> server_random;
+
+  uint16_t key_share_group_id = 0;
+  Array<uint8_t> key_share_public_key;
+  Array<uint8_t> key_share_secret;
+
+  uint16_t signature_algorithm = 0;
+  Array<uint8_t> signature_input;
+  Array<uint8_t> signature_spki;
+  Array<uint8_t> signature;
+
+  Array<uint8_t> decrypted_psk;
+  bool ignore_psk = false;
 };
 
 struct SSL_HANDSHAKE {
@@ -1842,6 +1863,13 @@ struct SSL_HANDSHAKE {
   // key_block is the record-layer key block for TLS 1.2 and earlier.
   Array<uint8_t> key_block;
 
+  // hints contains the handshake hints for this connection. If
+  // |hints_requested| is true, this field is non-null and contains the pending
+  // hints to filled as the predicted handshake progresses. Otherwise, this
+  // field, if non-null, contains hints configured by the caller and will
+  // influence the handshake on match.
+  UniquePtr<SSL_HANDSHAKE_HINTS> hints;
+
   // ech_accept, on the server, indicates whether the server should overwrite
   // part of ServerHello.random with the ECH accept_confirmation value.
   bool ech_accept : 1;
@@ -1930,6 +1958,11 @@ struct SSL_HANDSHAKE {
   // |SSL_get_error| returns |SSL_ERROR_HANDBACK|.  It is set by
   // |SSL_apply_handoff|.
   bool handback : 1;
+
+  // hints_requested indicates the caller has requested handshake hints. Only
+  // the first round-trip of the handshake will complete, after which the
+  // |hints| structure can be serialized.
+  bool hints_requested : 1;
 
   // cert_compression_negotiated is true iff |cert_compression_alg_id| is valid.
   bool cert_compression_negotiated : 1;

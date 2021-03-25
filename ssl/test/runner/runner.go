@@ -63,6 +63,7 @@ var (
 	pipe               = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
 	testToRun          = flag.String("test", "", "Semicolon-separated patterns of tests to run, or empty to run all tests")
 	skipTest           = flag.String("skip", "", "Semicolon-separated patterns of tests to skip")
+	allowHintMismatch  = flag.String("allow-hint-mismatch", "", "Semicolon-separated patterns of tests where hints may mismatch")
 	numWorkersFlag     = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
 	shimPath           = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
 	handshakerPath     = flag.String("handshaker-path", "../../../build/ssl/test/handshaker", "The location of the handshaker binary.")
@@ -698,6 +699,9 @@ type testCase struct {
 	// should retry for early rejection. In a server test, this is whether the
 	// test expects the shim to reject early data.
 	expectEarlyDataRejected bool
+	// skipSplitHandshake, if true, will skip the generation of a split
+	// handshake copy of the test.
+	skipSplitHandshake bool
 }
 
 var testCases []testCase
@@ -1835,12 +1839,12 @@ func bigFromHex(hex string) *big.Int {
 	return ret
 }
 
-func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testCase) {
+func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testCase, err error) {
 	var stdout bytes.Buffer
 	shim := exec.Command(*shimPath, "-is-handshaker-supported")
 	shim.Stdout = &stdout
 	if err := shim.Run(); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	switch strings.TrimSpace(string(stdout.Bytes())) {
@@ -1849,14 +1853,20 @@ func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testC
 	case "Yes":
 		break
 	default:
-		panic("Unknown output from shim: 0x" + hex.EncodeToString(stdout.Bytes()))
+		return nil, fmt.Errorf("unknown output from shim: %q", stdout.Bytes())
+	}
+
+	var allowHintMismatchPattern []string
+	if len(*allowHintMismatch) > 0 {
+		allowHintMismatchPattern = strings.Split(*allowHintMismatch, ";")
 	}
 
 NextTest:
 	for _, test := range tests {
 		if test.protocol != tls ||
 			test.testType != serverTest ||
-			strings.Contains(test.name, "DelegatedCredentials") {
+			strings.Contains(test.name, "DelegatedCredentials") ||
+			test.skipSplitHandshake {
 			continue
 		}
 
@@ -1868,14 +1878,40 @@ NextTest:
 
 		shTest := test
 		shTest.name += "-Split"
-		shTest.flags = make([]string, len(test.flags), len(test.flags)+1)
+		shTest.flags = make([]string, len(test.flags), len(test.flags)+3)
 		copy(shTest.flags, test.flags)
 		shTest.flags = append(shTest.flags, "-handoff", "-handshaker-path", *handshakerPath)
 
 		splitHandshakeTests = append(splitHandshakeTests, shTest)
 	}
 
-	return splitHandshakeTests
+	for _, test := range tests {
+		if test.protocol == dtls ||
+			test.testType != serverTest {
+			continue
+		}
+
+		var matched bool
+		if len(allowHintMismatchPattern) > 0 {
+			matched, err = match(allowHintMismatchPattern, nil, test.name)
+			if err != nil {
+				return nil, fmt.Errorf("error matching pattern: %s", err)
+			}
+		}
+
+		shTest := test
+		shTest.name += "-Hints"
+		shTest.flags = make([]string, len(test.flags), len(test.flags)+3)
+		copy(shTest.flags, test.flags)
+		shTest.flags = append(shTest.flags, "-handshake-hints", "-handshaker-path", *handshakerPath)
+		if matched {
+			shTest.flags = append(shTest.flags, "-allow-hint-mismatch")
+		}
+
+		splitHandshakeTests = append(splitHandshakeTests, shTest)
+	}
+
+	return splitHandshakeTests, nil
 }
 
 func addBasicTests() {
@@ -17275,6 +17311,229 @@ func addEncryptedClientHelloTests() {
 	}
 }
 
+func addHintMismatchTests() {
+	// Each of these tests skips split handshakes because split handshakes does
+	// not handle a mismatch between shim and handshaker. Handshake hints,
+	// however, are designed to tolerate the mismatch.
+	//
+	// Note also these tests do not specify -handshake-hints directly. Instead,
+	// we define normal tests, that run even without a handshaker, and rely on
+	// convertToSplitHandshakeTests to generate a handshaker hints variant. This
+	// avoids repeating the -is-handshaker-supported and -handshaker-path logic.
+	// (While not useful, the tests will still pass without a handshaker.)
+	for _, protocol := range []protocol{tls, quic} {
+		// If the signing payload is different, the handshake still completes
+		// successfully. Different ALPN preferences will trigger a mismatch.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-SignatureInput",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				NextProtos: []string{"foo", "bar"},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-select-alpn", "foo",
+				"-on-handshaker-select-alpn", "bar",
+			},
+			expectations: connectionExpectations{
+				nextProto:     "foo",
+				nextProtoType: alpn,
+			},
+		})
+
+		// The shim and handshaker may have different curve preferences.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-KeyShare",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				// Send both curves in the key share list, to avoid getting
+				// mixed up with HelloRetryRequest.
+				DefaultCurves: []CurveID{CurveX25519, CurveP256},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-curves", strconv.Itoa(int(CurveX25519)),
+				"-on-handshaker-curves", strconv.Itoa(int(CurveP256)),
+			},
+			expectations: connectionExpectations{
+				curveID: CurveX25519,
+			},
+		})
+
+		// If the handshaker does HelloRetryRequest, it will omit most hints.
+		// The shim should still work.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-HandshakerHelloRetryRequest",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion:    VersionTLS13,
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: []CurveID{CurveX25519},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-curves", strconv.Itoa(int(CurveX25519)),
+				"-on-handshaker-curves", strconv.Itoa(int(CurveP256)),
+			},
+			expectations: connectionExpectations{
+				curveID: CurveX25519,
+			},
+		})
+
+		// If the shim does HelloRetryRequest, the hints from the handshaker
+		// will be ignored. This is not reported as a mismatch because hints
+		// would not have helped the shim anyway.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-ShimHelloRetryRequest",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion:    VersionTLS13,
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: []CurveID{CurveX25519},
+			},
+			flags: []string{
+				"-on-shim-curves", strconv.Itoa(int(CurveP256)),
+				"-on-handshaker-curves", strconv.Itoa(int(CurveX25519)),
+			},
+			expectations: connectionExpectations{
+				curveID: CurveP256,
+			},
+		})
+
+		// The shim and handshaker may have different signature algorithm
+		// preferences.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-SignatureAlgorithm",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				VerifySignatureAlgorithms: []signatureAlgorithm{
+					signatureRSAPSSWithSHA256,
+					signatureRSAPSSWithSHA384,
+				},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaKeyFile),
+				"-on-shim-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
+				"-on-handshaker-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA384)),
+			},
+			expectations: connectionExpectations{
+				peerSignatureAlgorithm: signatureRSAPSSWithSHA256,
+			},
+		})
+
+		// The shim and handshaker may disagree on whether resumption is allowed.
+		// We run the first connection with tickets enabled, so the client is
+		// issued a ticket, then disable tickets on the second connection.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-NoTickets1",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+			},
+			flags: []string{
+				"-on-resume-allow-hint-mismatch",
+				"-on-shim-on-resume-no-ticket",
+			},
+			resumeSession:        true,
+			expectResumeRejected: true,
+		})
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-NoTickets2",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+			},
+			flags: []string{
+				"-on-resume-allow-hint-mismatch",
+				"-on-handshaker-on-resume-no-ticket",
+			},
+			resumeSession: true,
+		})
+
+		// The shim and handshaker may disagree on whether to request a client
+		// certificate.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-CertificateRequest",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion:   VersionTLS13,
+				MaxVersion:   VersionTLS13,
+				Certificates: []Certificate{rsaCertificate},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-require-any-client-certificate",
+			},
+		})
+
+		// The shim and handshaker may negotiate different versions altogether.
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-Version1",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS13,
+				},
+				flags: []string{
+					"-allow-hint-mismatch",
+					"-on-shim-max-version", strconv.Itoa(VersionTLS12),
+					"-on-handshaker-max-version", strconv.Itoa(VersionTLS13),
+				},
+				expectations: connectionExpectations{
+					version: VersionTLS12,
+				},
+			})
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-Version2",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS13,
+				},
+				flags: []string{
+					"-allow-hint-mismatch",
+					"-on-shim-max-version", strconv.Itoa(VersionTLS13),
+					"-on-handshaker-max-version", strconv.Itoa(VersionTLS12),
+				},
+				expectations: connectionExpectations{
+					version: VersionTLS13,
+				},
+			})
+		}
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -17472,8 +17731,14 @@ func main() {
 	addJDK11WorkaroundTests()
 	addDelegatedCredentialTests()
 	addEncryptedClientHelloTests()
+	addHintMismatchTests()
 
-	testCases = append(testCases, convertToSplitHandshakeTests(testCases)...)
+	toAppend, err := convertToSplitHandshakeTests(testCases)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error making split handshake tests: %s", err)
+		os.Exit(1)
+	}
+	testCases = append(testCases, toAppend...)
 
 	var wg sync.WaitGroup
 

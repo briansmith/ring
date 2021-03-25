@@ -251,7 +251,8 @@ bool tls_flush_pending_hs_data(SSL *ssl) {
       MakeConstSpan(reinterpret_cast<const uint8_t *>(pending_hs_data->data),
                     pending_hs_data->length);
   if (ssl->quic_method) {
-    if (!ssl->quic_method->add_handshake_data(ssl, ssl->s3->write_level,
+    if ((ssl->s3->hs == nullptr || !ssl->s3->hs->hints_requested) &&
+        !ssl->quic_method->add_handshake_data(ssl, ssl->s3->write_level,
                                               data.data(), data.size())) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
       return false;

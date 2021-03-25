@@ -27,6 +27,8 @@
 
 #include "../../crypto/internal.h"
 #include "../internal.h"
+#include "handshake_util.h"
+#include "mock_quic_transport.h"
 #include "test_state.h"
 
 namespace {
@@ -134,6 +136,8 @@ const Flag<bool> kBoolFlags[] = {
     {"-allow-false-start-without-alpn",
      &TestConfig::allow_false_start_without_alpn},
     {"-handoff", &TestConfig::handoff},
+    {"-handshake-hints", &TestConfig::handshake_hints},
+    {"-allow-hint-mismatch", &TestConfig::allow_hint_mismatch},
     {"-use-ocsp-callback", &TestConfig::use_ocsp_callback},
     {"-set-ocsp-in-callback", &TestConfig::set_ocsp_in_callback},
     {"-decline-ocsp-callback", &TestConfig::decline_ocsp_callback},
@@ -268,7 +272,7 @@ bool DecodeBase64(std::string *out, const std::string &in) {
   return true;
 }
 
-bool ParseFlag(char *flag, int argc, char **argv, int *i,
+bool ParseFlag(const char *flag, int argc, char **argv, int *i,
                bool skip, TestConfig *out_config) {
   bool *bool_field = FindField(out_config, kBoolFlags, flag);
   if (bool_field != NULL) {
@@ -398,13 +402,21 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
   return false;
 }
 
-const char kInit[] = "-on-initial";
-const char kResume[] = "-on-resume";
-const char kRetry[] = "-on-retry";
+// RemovePrefix checks if |*str| begins with |prefix| + "-". If so, it advances
+// |*str| past |prefix| (but not past the "-") and returns true. Otherwise, it
+// returns false and leaves |*str| unmodified.
+bool RemovePrefix(const char **str, const char *prefix) {
+  size_t prefix_len = strlen(prefix);
+  if (strncmp(*str, prefix, strlen(prefix)) == 0 && (*str)[prefix_len] == '-') {
+    *str += strlen(prefix);
+    return true;
+  }
+  return false;
+}
 
 }  // namespace
 
-bool ParseConfig(int argc, char **argv,
+bool ParseConfig(int argc, char **argv, bool is_shim,
                  TestConfig *out_initial,
                  TestConfig *out_resume,
                  TestConfig *out_retry) {
@@ -412,21 +424,36 @@ bool ParseConfig(int argc, char **argv,
   out_initial->argv = out_resume->argv = out_retry->argv = argv;
   for (int i = 0; i < argc; i++) {
     bool skip = false;
-    char *flag = argv[i];
-    if (strncmp(flag, kInit, strlen(kInit)) == 0) {
-      if (!ParseFlag(flag + strlen(kInit), argc, argv, &i, skip, out_initial)) {
+    const char *flag = argv[i];
+
+    // -on-shim and -on-handshaker prefixes enable flags only on the shim or
+    // handshaker.
+    if (RemovePrefix(&flag, "-on-shim")) {
+      if (!is_shim) {
+        skip = true;
+      }
+    } else if (RemovePrefix(&flag, "-on-handshaker")) {
+      if (is_shim) {
+        skip = true;
+      }
+    }
+
+    // The following prefixes allow different configurations for each of the
+    // initial, resumption, and 0-RTT retry handshakes.
+    if (RemovePrefix(&flag, "-on-initial")) {
+      if (!ParseFlag(flag, argc, argv, &i, skip, out_initial)) {
         return false;
       }
-    } else if (strncmp(flag, kResume, strlen(kResume)) == 0) {
-      if (!ParseFlag(flag + strlen(kResume), argc, argv, &i, skip,
-                     out_resume)) {
+    } else if (RemovePrefix(&flag, "-on-resume")) {
+      if (!ParseFlag(flag, argc, argv, &i, skip, out_resume)) {
         return false;
       }
-    } else if (strncmp(flag, kRetry, strlen(kRetry)) == 0) {
-      if (!ParseFlag(flag + strlen(kRetry), argc, argv, &i, skip, out_retry)) {
+    } else if (RemovePrefix(&flag, "-on-retry")) {
+      if (!ParseFlag(flag, argc, argv, &i, skip, out_retry)) {
         return false;
       }
     } else {
+      // Unprefixed flags apply to all three.
       int i_init = i;
       int i_resume = i;
       if (!ParseFlag(flag, argc, argv, &i_init, skip, out_initial) ||
@@ -1052,10 +1079,15 @@ static int ClientCertCallback(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
   return 1;
 }
 
+static ssl_private_key_result_t AsyncPrivateKeyComplete(SSL *ssl, uint8_t *out,
+                                                        size_t *out_len,
+                                                        size_t max_out);
+
 static ssl_private_key_result_t AsyncPrivateKeySign(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t signature_algorithm, const uint8_t *in, size_t in_len) {
   TestState *test_state = GetTestState(ssl);
+  test_state->used_private_key = true;
   if (!test_state->private_key_result.empty()) {
     fprintf(stderr, "AsyncPrivateKeySign called with operation pending.\n");
     abort();
@@ -1096,8 +1128,7 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
   }
   test_state->private_key_result.resize(len);
 
-  // The signature will be released asynchronously in |AsyncPrivateKeyComplete|.
-  return ssl_private_key_retry;
+  return AsyncPrivateKeyComplete(ssl, out, out_len, max_out);
 }
 
 static ssl_private_key_result_t AsyncPrivateKeyDecrypt(SSL *ssl, uint8_t *out,
@@ -1106,6 +1137,7 @@ static ssl_private_key_result_t AsyncPrivateKeyDecrypt(SSL *ssl, uint8_t *out,
                                                        const uint8_t *in,
                                                        size_t in_len) {
   TestState *test_state = GetTestState(ssl);
+  test_state->used_private_key = true;
   if (!test_state->private_key_result.empty()) {
     fprintf(stderr, "AsyncPrivateKeyDecrypt called with operation pending.\n");
     abort();
@@ -1124,8 +1156,7 @@ static ssl_private_key_result_t AsyncPrivateKeyDecrypt(SSL *ssl, uint8_t *out,
 
   test_state->private_key_result.resize(*out_len);
 
-  // The decryption will be released asynchronously in |AsyncPrivateComplete|.
-  return ssl_private_key_retry;
+  return AsyncPrivateKeyComplete(ssl, out, out_len, max_out);
 }
 
 static ssl_private_key_result_t AsyncPrivateKeyComplete(SSL *ssl, uint8_t *out,
@@ -1138,9 +1169,9 @@ static ssl_private_key_result_t AsyncPrivateKeyComplete(SSL *ssl, uint8_t *out,
     abort();
   }
 
-  if (test_state->private_key_retries < 2) {
+  if (GetTestConfig(ssl)->async && test_state->private_key_retries < 2) {
     // Only return the decryption on the second attempt, to test both incomplete
-    // |decrypt| and |decrypt_complete|.
+    // |sign|/|decrypt| and |complete|.
     return ssl_private_key_retry;
   }
 
@@ -1174,7 +1205,10 @@ static bool InstallCertificate(SSL *ssl) {
   if (pkey) {
     TestState *test_state = GetTestState(ssl);
     const TestConfig *config = GetTestConfig(ssl);
-    if (config->async) {
+    if (config->async || config->handshake_hints) {
+      // Install a custom private key if testing asynchronous callbacks, or if
+      // testing handshake hints. In the handshake hints case, we wish to check
+      // that hints only mismatch when allowed.
       test_state->private_key = std::move(pkey);
       SSL_set_private_key_method(ssl, &g_async_private_key_method);
     } else if (!SSL_use_PrivateKey(ssl, pkey.get())) {
@@ -1195,12 +1229,14 @@ static bool InstallCertificate(SSL *ssl) {
 
 static enum ssl_select_cert_result_t SelectCertificateCallback(
     const SSL_CLIENT_HELLO *client_hello) {
-  const TestConfig *config = GetTestConfig(client_hello->ssl);
-  GetTestState(client_hello->ssl)->early_callback_called = true;
+  SSL *ssl = client_hello->ssl;
+  const TestConfig *config = GetTestConfig(ssl);
+  TestState *test_state = GetTestState(ssl);
+  test_state->early_callback_called = true;
 
   if (!config->expect_server_name.empty()) {
     const char *server_name =
-        SSL_get_servername(client_hello->ssl, TLSEXT_NAMETYPE_host_name);
+        SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (server_name == nullptr ||
         std::string(server_name) != config->expect_server_name) {
       fprintf(stderr,
@@ -1214,48 +1250,73 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
     return ssl_select_cert_error;
   }
 
-  // Install the certificate in the early callback.
-  if (config->use_early_callback) {
-    bool early_callback_ready =
-        GetTestState(client_hello->ssl)->early_callback_ready;
-    if (config->async && !early_callback_ready) {
-      // Install the certificate asynchronously.
-      return ssl_select_cert_retry;
-    }
-    if (!InstallCertificate(client_hello->ssl)) {
-      return ssl_select_cert_error;
-    }
+  // Simulate some asynchronous work in the early callback.
+  if ((config->use_early_callback || test_state->get_handshake_hints_cb) &&
+      config->async && !test_state->early_callback_ready) {
+    return ssl_select_cert_retry;
   }
+
+  if (test_state->get_handshake_hints_cb &&
+      !test_state->get_handshake_hints_cb(client_hello)) {
+    return ssl_select_cert_error;
+  }
+
+  if (config->use_early_callback && !InstallCertificate(ssl)) {
+    return ssl_select_cert_error;
+  }
+
   return ssl_select_cert_success;
 }
 
 static int SetQuicReadSecret(SSL *ssl, enum ssl_encryption_level_t level,
                              const SSL_CIPHER *cipher, const uint8_t *secret,
                              size_t secret_len) {
-  return GetTestState(ssl)->quic_transport->SetReadSecret(level, cipher, secret,
-                                                          secret_len);
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->SetReadSecret(level, cipher, secret, secret_len);
 }
 
 static int SetQuicWriteSecret(SSL *ssl, enum ssl_encryption_level_t level,
                               const SSL_CIPHER *cipher, const uint8_t *secret,
                               size_t secret_len) {
-  return GetTestState(ssl)->quic_transport->SetWriteSecret(level, cipher,
-                                                           secret, secret_len);
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->SetWriteSecret(level, cipher, secret, secret_len);
 }
 
 static int AddQuicHandshakeData(SSL *ssl, enum ssl_encryption_level_t level,
                                 const uint8_t *data, size_t len) {
-  return GetTestState(ssl)->quic_transport->WriteHandshakeData(level, data,
-                                                               len);
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->WriteHandshakeData(level, data, len);
 }
 
 static int FlushQuicFlight(SSL *ssl) {
-  return GetTestState(ssl)->quic_transport->Flush();
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->Flush();
 }
 
 static int SendQuicAlert(SSL *ssl, enum ssl_encryption_level_t level,
                          uint8_t alert) {
-  return GetTestState(ssl)->quic_transport->SendAlert(level, alert);
+  MockQuicTransport *quic_transport = GetTestState(ssl)->quic_transport.get();
+  if (quic_transport == nullptr) {
+    fprintf(stderr, "No QUIC transport.\n");
+    return 0;
+  }
+  return quic_transport->SendAlert(level, alert);
 }
 
 static const SSL_QUIC_METHOD g_quic_method = {
@@ -1320,7 +1381,10 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
   SSL_CTX_sess_set_new_cb(ssl_ctx.get(), NewSessionCallback);
 
-  if (use_ticket_callback) {
+  if (use_ticket_callback || handshake_hints) {
+    // If using handshake hints, always enable the ticket callback, so we can
+    // check that hints only mismatch when allowed. The ticket callback also
+    // uses a constant key, which simplifies the test.
     SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx.get(), TicketKeyCallback);
   }
 
