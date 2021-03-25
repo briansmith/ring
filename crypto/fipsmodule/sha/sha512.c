@@ -70,6 +70,8 @@
 // this writing, so there is no need for a common collector/padding
 // implementation yet.
 
+static int sha512_final_impl(uint8_t *out, SHA512_CTX *sha);
+
 int SHA384_Init(SHA512_CTX *sha) {
   sha->h[0] = UINT64_C(0xcbbb9d5dc1059ed8);
   sha->h[1] = UINT64_C(0x629a292a367cd507);
@@ -146,8 +148,8 @@ uint8_t *SHA512_256(const uint8_t *data, size_t len,
                     uint8_t out[SHA512_256_DIGEST_LENGTH]) {
   SHA512_CTX ctx;
   SHA512_256_Init(&ctx);
-  SHA512_Update(&ctx, data, len);
-  SHA512_Final(out, &ctx);
+  SHA512_256_Update(&ctx, data, len);
+  SHA512_256_Final(out, &ctx);
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   return out;
 }
@@ -161,7 +163,8 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 int SHA384_Final(uint8_t out[SHA384_DIGEST_LENGTH], SHA512_CTX *sha) {
   // |SHA384_Init| sets |sha->md_len| to |SHA384_DIGEST_LENGTH|, so this has a
   // |smaller output.
-  return SHA512_Final(out, sha);
+  assert(sha->md_len == SHA384_DIGEST_LENGTH);
+  return sha512_final_impl(out, sha);
 }
 
 int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len) {
@@ -172,11 +175,11 @@ int SHA512_256_Update(SHA512_CTX *sha, const void *data, size_t len) {
   return SHA512_Update(sha, data, len);
 }
 
-int SHA512_256_Final(uint8_t out[SHA512_256_DIGEST_LENGTH],
-                                    SHA512_CTX *sha) {
+int SHA512_256_Final(uint8_t out[SHA512_256_DIGEST_LENGTH], SHA512_CTX *sha) {
   // |SHA512_256_Init| sets |sha->md_len| to |SHA512_256_DIGEST_LENGTH|, so this
   // has a |smaller output.
-  return SHA512_Final(out, sha);
+  assert(sha->md_len == SHA512_256_DIGEST_LENGTH);
+  return sha512_final_impl(out, sha);
 }
 
 void SHA512_Transform(SHA512_CTX *c, const uint8_t block[SHA512_CBLOCK]) {
@@ -232,6 +235,15 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
 }
 
 int SHA512_Final(uint8_t out[SHA512_DIGEST_LENGTH], SHA512_CTX *sha) {
+  // Ideally we would assert |sha->md_len| is |SHA512_DIGEST_LENGTH| to match
+  // the size hint, but calling code often pairs |SHA384_Init| with
+  // |SHA512_Final| and expects |sha->md_len| to carry the over.
+  //
+  // TODO(davidben): Add an assert and fix code to match them up.
+  return sha512_final_impl(out, sha);
+}
+
+static int sha512_final_impl(uint8_t *out, SHA512_CTX *sha) {
   uint8_t *p = sha->p;
   size_t n = sha->num;
 
