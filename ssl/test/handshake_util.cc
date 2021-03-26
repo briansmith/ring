@@ -15,7 +15,7 @@
 #include "handshake_util.h"
 
 #include <assert.h>
-#if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
+#if defined(HANDSHAKER_SUPPORTED)
 #include <errno.h>
 #include <fcntl.h>
 #include <spawn.h>
@@ -136,7 +136,7 @@ int CheckIdempotentError(const char *name, SSL *ssl,
   return ret;
 }
 
-#if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
+#if defined(HANDSHAKER_SUPPORTED)
 
 // MoveBIOs moves the |BIO|s of |src| to |dst|.  It is used for handoff.
 static void MoveBIOs(SSL *dest, SSL *src) {
@@ -543,4 +543,4 @@ bool DoSplitHandshake(UniquePtr<SSL> *ssl, SettingsWriter *writer,
   return true;
 }
 
-#endif  // defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
+#endif  // defined(HANDSHAKER_SUPPORTED)

@@ -66,10 +66,6 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include "test_config.h"
 #include "test_state.h"
 
-#if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
-#define HANDSHAKER_SUPPORTED
-#endif
-
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {

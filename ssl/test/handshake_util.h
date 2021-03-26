@@ -21,6 +21,11 @@
 
 #include "settings_writer.h"
 
+
+#if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
+#define HANDSHAKER_SUPPORTED
+#endif
+
 // RetryAsync is called after a failed operation on |ssl| with return code
 // |ret|. If the operation should be retried, it simulates one asynchronous
 // event and returns true. Otherwise it returns false.
@@ -30,6 +35,7 @@ bool RetryAsync(SSL *ssl, int ret);
 // errors are idempotent.
 int CheckIdempotentError(const char *name, SSL *ssl, std::function<int()> func);
 
+#if defined(HANDSHAKER_SUPPORTED)
 // DoSplitHandshake delegates the SSL handshake to a separate process, called
 // the handshaker.  This process proxies I/O between the handshaker and the
 // client, using the |BIO| from |ssl|.  After a successful handshake, |ssl| is
@@ -49,5 +55,6 @@ constexpr char kControlMsgError = 'E';           // Handshaker hit an error
 constexpr int kFdControl = 3;                    // Bi-directional dgram socket.
 constexpr int kFdProxyToHandshaker = 4;          // Uni-directional pipe.
 constexpr int kFdHandshakerToProxy = 5;          // Uni-directional pipe.
+#endif  // HANDSHAKER_SUPPORTED
 
 #endif  // HEADER_TEST_HANDSHAKE
