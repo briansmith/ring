@@ -21,7 +21,6 @@
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
-#include "../internal.h"
 #include "handshake_util.h"
 #include "test_config.h"
 #include "test_state.h"
@@ -91,20 +90,18 @@ bool Handshaker(const TestConfig *config, int rfd, int wfd,
 
   ScopedCBB output;
   CBB handback;
-  Array<uint8_t> bytes;
   if (!CBB_init(output.get(), 1024) ||
       !CBB_add_u24_length_prefixed(output.get(), &handback) ||
       !SSL_serialize_handback(ssl.get(), &handback) ||
-      !SerializeContextState(ssl->ctx.get(), output.get()) ||
-      !GetTestState(ssl.get())->Serialize(output.get()) ||
-      !CBBFinishArray(output.get(), &bytes)) {
+      !SerializeContextState(ctx.get(), output.get()) ||
+      !GetTestState(ssl.get())->Serialize(output.get())) {
     fprintf(stderr, "Handback serialisation failed.\n");
     return false;
   }
 
   char msg = kControlMsgHandback;
   if (write(control, &msg, 1) == -1 ||
-      write(control, bytes.data(), bytes.size()) == -1) {
+      write(control, CBB_data(output.get()), CBB_len(output.get())) == -1) {
     perror("write");
     return false;
   }
@@ -159,13 +156,12 @@ int main(int argc, char **argv) {
   // read() will return the entire message in one go, because it's a datagram
   // socket.
   constexpr size_t kBufSize = 1024 * 1024;
-  bssl::UniquePtr<uint8_t> buf((uint8_t *) OPENSSL_malloc(kBufSize));
-  ssize_t len = read_eintr(kFdControl, buf.get(), kBufSize);
+  std::vector<uint8_t> handoff(kBufSize);
+  ssize_t len = read_eintr(kFdControl, handoff.data(), handoff.size());
   if (len == -1) {
     perror("read");
     return 2;
   }
-  Span<uint8_t> handoff(buf.get(), len);
   if (!Handshaker(config, kFdProxyToHandshaker, kFdHandshakerToProxy, handoff,
                   kFdControl)) {
     return SignalError();

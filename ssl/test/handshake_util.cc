@@ -27,6 +27,7 @@
 #endif
 
 #include <functional>
+#include <vector>
 
 #include "async_bio.h"
 #include "packeted_bio.h"
@@ -304,16 +305,38 @@ static bool Proxy(BIO *socket, bool async, int control, int rfd, int wfd) {
 class ScopedFD {
  public:
   explicit ScopedFD(int fd): fd_(fd) {}
-  ~ScopedFD() { close(fd_); }
+  ~ScopedFD() { Close(); }
+  ScopedFD(const ScopedFD &) = delete;
+  ScopedFD &operator=(const ScopedFD &) = delete;
+
+  void Close() {
+    if (fd_ >= 0) {
+      close(fd_);
+    }
+    fd_ = -1;
+  }
+
  private:
-  const int fd_;
+  int fd_;
+};
+
+class FileActionsDestroyer {
+ public:
+  explicit FileActionsDestroyer(posix_spawn_file_actions_t *actions)
+      : actions_(actions) {}
+  ~FileActionsDestroyer() { posix_spawn_file_actions_destroy(actions_); }
+  FileActionsDestroyer(const FileActionsDestroyer &) = delete;
+  FileActionsDestroyer &operator=(const FileActionsDestroyer &) = delete;
+
+ private:
+  posix_spawn_file_actions_t *actions_;
 };
 
 // RunHandshaker forks and execs the handshaker binary, handing off |input|,
 // and, after proxying some amount of handshake traffic, handing back |out|.
 static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
-                          const Array<uint8_t> &input,
-                          Array<uint8_t> *out) {
+                          Span<const uint8_t> input,
+                          std::vector<uint8_t> *out) {
   if (config->handshaker_path.empty()) {
     fprintf(stderr, "no -handshaker-path specified\n");
     return false;
@@ -330,6 +353,8 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
     perror("socketpair");
     return false;
   }
+  ScopedFD control0_closer(control[0]), control1_closer(control[1]);
+
   int rfd[2], wfd[2];
   // We use pipes, rather than some other mechanism, for their buffers.  During
   // the handshake, this process acts as a dumb proxy until receiving the
@@ -341,21 +366,26 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
   // handshaker has not explicitly requested as a result of hitting
   // |SSL_ERROR_WANT_READ|.  Pipes allow the data to sit in a buffer while the
   // two processes synchronize over the |control| channel.
-  if (pipe(rfd) != 0 || pipe(wfd) != 0) {
-    perror("pipe2");
+  if (pipe(rfd) != 0) {
+    perror("pipe");
     return false;
   }
+  ScopedFD rfd0_closer(rfd[0]), rfd1_closer(rfd[1]);
+
+  if (pipe(wfd) != 0) {
+    perror("pipe");
+    return false;
+  }
+  ScopedFD wfd0_closer(wfd[0]), wfd1_closer(wfd[1]);
 
   fflush(stdout);
   fflush(stderr);
 
-  std::vector<char *> args;
-  bssl::UniquePtr<char> handshaker_path(
-      OPENSSL_strdup(config->handshaker_path.c_str()));
-  args.push_back(handshaker_path.get());
-  char resume[] = "-handshaker-resume";
+  std::vector<const char *> args;
+  args.push_back(config->handshaker_path.c_str());
+  static const char kResumeFlag[] = "-handshaker-resume";
   if (is_resume) {
-    args.push_back(resume);
+    args.push_back(kResumeFlag);
   }
   // config->argv omits argv[0].
   for (int j = 0; j < config->argc; ++j) {
@@ -364,10 +394,13 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
   args.push_back(nullptr);
 
   posix_spawn_file_actions_t actions;
-  if (posix_spawn_file_actions_init(&actions) != 0 ||
-      posix_spawn_file_actions_addclose(&actions, control[0]) ||
-      posix_spawn_file_actions_addclose(&actions, rfd[1]) ||
-      posix_spawn_file_actions_addclose(&actions, wfd[0])) {
+  if (posix_spawn_file_actions_init(&actions) != 0) {
+    return false;
+  }
+  FileActionsDestroyer actions_destroyer(&actions);
+  if (posix_spawn_file_actions_addclose(&actions, control[0]) != 0 ||
+      posix_spawn_file_actions_addclose(&actions, rfd[1]) != 0 ||
+      posix_spawn_file_actions_addclose(&actions, wfd[0]) != 0) {
     return false;
   }
   assert(kFdControl != rfd[0]);
@@ -391,19 +424,14 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
   // MSan doesn't know that |posix_spawn| initializes its output, so initialize
   // it to -1.
   pid_t handshaker_pid = -1;
-  int ret = posix_spawn(&handshaker_pid, args[0], &actions, nullptr,
-                        args.data(), environ);
-  if (posix_spawn_file_actions_destroy(&actions) != 0 ||
-      ret != 0) {
+  if (posix_spawn(&handshaker_pid, args[0], &actions, nullptr,
+                  const_cast<char *const *>(args.data()), environ) != 0) {
     return false;
   }
 
-  close(control[1]);
-  close(rfd[0]);
-  close(wfd[1]);
-  ScopedFD rfd_closer(rfd[1]);
-  ScopedFD wfd_closer(wfd[0]);
-  ScopedFD control_closer(control[0]);
+  control1_closer.Close();
+  rfd0_closer.Close();
+  wfd1_closer.Close();
 
   if (write_eintr(control[0], input.data(), input.size()) == -1) {
     perror("write");
@@ -424,13 +452,14 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
   }
 
   constexpr size_t kBufSize = 1024 * 1024;
-  bssl::UniquePtr<uint8_t> buf((uint8_t *) OPENSSL_malloc(kBufSize));
-  int len = read_eintr(control[0], buf.get(), kBufSize);
+  std::vector<uint8_t> buf(kBufSize);
+  ssize_t len = read_eintr(control[0], buf.data(), buf.size());
   if (len == -1) {
     perror("read");
     return false;
   }
-  out->CopyFrom({buf.get(), (size_t)len});
+  buf.resize(len);
+  *out = std::move(buf);
   return true;
 }
 
@@ -438,7 +467,7 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
 // be passed to the handshaker.  The serialized state includes both the SSL
 // handoff, as well test-related state.
 static bool PrepareHandoff(SSL *ssl, SettingsWriter *writer,
-                           Array<uint8_t> *out_handoff) {
+                           std::vector<uint8_t> *out_handoff) {
   SSL_set_handoff_mode(ssl, 1);
 
   const TestConfig *config = GetTestConfig(ssl);
@@ -460,12 +489,14 @@ static bool PrepareHandoff(SSL *ssl, SettingsWriter *writer,
   if (!CBB_init(cbb.get(), 512) ||
       !SSL_serialize_handoff(ssl, cbb.get(), &hello) ||
       !writer->WriteHandoff({CBB_data(cbb.get()), CBB_len(cbb.get())}) ||
-      !SerializeContextState(ssl->ctx.get(), cbb.get()) ||
+      !SerializeContextState(SSL_get_SSL_CTX(ssl), cbb.get()) ||
       !GetTestState(ssl)->Serialize(cbb.get())) {
     fprintf(stderr, "Handoff serialisation failed.\n");
     return false;
   }
-  return CBBFinishArray(cbb.get(), out_handoff);
+  out_handoff->assign(CBB_data(cbb.get()),
+                      CBB_data(cbb.get()) + CBB_len(cbb.get()));
+  return true;
 }
 
 // DoSplitHandshake delegates the SSL handshake to a separate process, called
@@ -476,11 +507,11 @@ static bool PrepareHandoff(SSL *ssl, SettingsWriter *writer,
 bool DoSplitHandshake(UniquePtr<SSL> *ssl, SettingsWriter *writer,
                       bool is_resume) {
   assert(SSL_get_rbio(ssl->get()) == SSL_get_wbio(ssl->get()));
-  Array<uint8_t> handshaker_input;
+  std::vector<uint8_t> handshaker_input;
   const TestConfig *config = GetTestConfig(ssl->get());
   // out is the response from the handshaker, which includes a serialized
   // handback message, but also serialized updates to the |TestState|.
-  Array<uint8_t> out;
+  std::vector<uint8_t> out;
   if (!PrepareHandoff(ssl->get(), writer, &handshaker_input) ||
       !RunHandshaker(SSL_get_rbio(ssl->get()), config, is_resume,
                      handshaker_input, &out)) {
@@ -488,19 +519,17 @@ bool DoSplitHandshake(UniquePtr<SSL> *ssl, SettingsWriter *writer,
     return false;
   }
 
-  UniquePtr<SSL> ssl_handback =
-      config->NewSSL((*ssl)->ctx.get(), nullptr, nullptr);
+  SSL_CTX *ctx = SSL_get_SSL_CTX(ssl->get());
+  UniquePtr<SSL> ssl_handback = config->NewSSL(ctx, nullptr, nullptr);
   if (!ssl_handback) {
     return false;
   }
   CBS output, handback;
   CBS_init(&output, out.data(), out.size());
   if (!CBS_get_u24_length_prefixed(&output, &handback) ||
-      !DeserializeContextState(&output, ssl_handback->ctx.get()) ||
-      !SetTestState(ssl_handback.get(), TestState::Deserialize(
-          &output, ssl_handback->ctx.get())) ||
-      !GetTestState(ssl_handback.get()) ||
-      !writer->WriteHandback(handback) ||
+      !DeserializeContextState(&output, ctx) ||
+      !SetTestState(ssl_handback.get(), TestState::Deserialize(&output, ctx)) ||
+      !GetTestState(ssl_handback.get()) || !writer->WriteHandback(handback) ||
       !SSL_apply_handback(ssl_handback.get(), handback)) {
     fprintf(stderr, "Handback failed.\n");
     return false;

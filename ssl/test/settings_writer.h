@@ -20,7 +20,6 @@
 #include <openssl/bytestring.h>
 #include <openssl/ssl.h>
 
-#include "../internal.h"
 #include "test_config.h"
 
 struct SettingsWriter {
