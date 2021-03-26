@@ -40,7 +40,7 @@ bool Handshaker(const TestConfig *config, int rfd, int wfd,
   if (!ctx) {
     return false;
   }
-  UniquePtr<SSL> ssl = config->NewSSL(ctx.get(), nullptr, false, nullptr);
+  UniquePtr<SSL> ssl = config->NewSSL(ctx.get(), nullptr, nullptr);
 
   // Set |O_NONBLOCK| in order to break out of the loop when we hit
   // |SSL_ERROR_WANT_READ|, so that we can send |kControlMsgWantRead| to the

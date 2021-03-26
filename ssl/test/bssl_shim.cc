@@ -692,7 +692,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
                          const TestConfig *retry_config, bool is_resume,
                          SSL_SESSION *session, SettingsWriter *writer) {
   bssl::UniquePtr<SSL> ssl = config->NewSSL(
-      ssl_ctx, session, is_resume, std::unique_ptr<TestState>(new TestState));
+      ssl_ctx, session, std::unique_ptr<TestState>(new TestState));
   if (!ssl) {
     return false;
   }

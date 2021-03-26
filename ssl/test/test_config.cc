@@ -1518,7 +1518,7 @@ static int CertCallback(SSL *ssl, void *arg) {
 }
 
 bssl::UniquePtr<SSL> TestConfig::NewSSL(
-    SSL_CTX *ssl_ctx, SSL_SESSION *session, bool is_resume,
+    SSL_CTX *ssl_ctx, SSL_SESSION *session,
     std::unique_ptr<TestState> test_state) const {
   bssl::UniquePtr<SSL> ssl(SSL_new(ssl_ctx));
   if (!ssl) {
@@ -1532,7 +1532,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     if (!SetTestState(ssl.get(), std::move(test_state))) {
       return nullptr;
     }
-    GetTestState(ssl.get())->is_resume = is_resume;
   }
 
   if (fallback_scsv && !SSL_set_mode(ssl.get(), SSL_MODE_SEND_FALLBACK_SCSV)) {

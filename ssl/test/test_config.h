@@ -192,7 +192,6 @@ struct TestConfig {
   bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx) const;
 
   bssl::UniquePtr<SSL> NewSSL(SSL_CTX *ssl_ctx, SSL_SESSION *session,
-                              bool is_resume,
                               std::unique_ptr<TestState> test_state) const;
 };
 

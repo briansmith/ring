@@ -56,7 +56,6 @@ struct TestState {
   bssl::UniquePtr<SSL_SESSION> new_session;
   bool ticket_decrypt_done = false;
   bool alpn_select_done = false;
-  bool is_resume = false;
   bool early_callback_ready = false;
   bool custom_verify_ready = false;
   std::string msg_callback_text;

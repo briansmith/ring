@@ -489,7 +489,7 @@ bool DoSplitHandshake(UniquePtr<SSL> *ssl, SettingsWriter *writer,
   }
 
   UniquePtr<SSL> ssl_handback =
-      config->NewSSL((*ssl)->ctx.get(), nullptr, false, nullptr);
+      config->NewSSL((*ssl)->ctx.get(), nullptr, nullptr);
   if (!ssl_handback) {
     return false;
   }
