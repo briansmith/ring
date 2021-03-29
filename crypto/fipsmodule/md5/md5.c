@@ -89,6 +89,9 @@ static void md5_block_data_order(uint32_t *state, const uint8_t *data,
                                  size_t num);
 #endif
 
+void MD5_Transform(MD5_CTX *c, const uint8_t data[MD5_CBLOCK]) {
+  md5_block_data_order(c->h, data, 1);
+}
 
 #define DATA_ORDER_IS_LITTLE_ENDIAN
 
@@ -96,7 +99,6 @@ static void md5_block_data_order(uint32_t *state, const uint8_t *data,
 #define HASH_CBLOCK 64
 #define HASH_DIGEST_LENGTH 16
 #define HASH_UPDATE MD5_Update
-#define HASH_TRANSFORM MD5_Transform
 #define HASH_FINAL MD5_Final
 #define HASH_MAKE_STRING(c, s)           \
   do {                                   \
@@ -283,7 +285,6 @@ static void md5_block_data_order(uint32_t *state, const uint8_t *data,
 #undef HASH_CBLOCK
 #undef HASH_DIGEST_LENGTH
 #undef HASH_UPDATE
-#undef HASH_TRANSFORM
 #undef HASH_FINAL
 #undef HASH_MAKE_STRING
 #undef HASH_BLOCK_DATA_ORDER

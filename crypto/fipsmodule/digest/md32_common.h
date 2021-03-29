@@ -86,9 +86,6 @@ extern "C" {
 // |HASH_UPDATE| must be defined as the name of the "Update" function to
 // generate.
 //
-// |HASH_TRANSFORM| must be defined as the  the name of the "Transform"
-// function to generate.
-//
 // |HASH_FINAL| must be defined as the name of "Final" function to generate.
 //
 // |HASH_BLOCK_DATA_ORDER| must be defined as the name of the "Block" function.
@@ -120,9 +117,6 @@ extern "C" {
 
 #ifndef HASH_UPDATE
 #error "HASH_UPDATE must be defined!"
-#endif
-#ifndef HASH_TRANSFORM
-#error "HASH_TRANSFORM must be defined!"
 #endif
 #ifndef HASH_FINAL
 #error "HASH_FINAL must be defined!"
@@ -182,11 +176,6 @@ int HASH_UPDATE(HASH_CTX *c, const void *data_, size_t len) {
     OPENSSL_memcpy(c->data, data, len);
   }
   return 1;
-}
-
-
-void HASH_TRANSFORM(HASH_CTX *c, const uint8_t data[HASH_CBLOCK]) {
-  HASH_BLOCK_DATA_ORDER(c->h, data, 1);
 }
 
 

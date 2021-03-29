@@ -122,6 +122,15 @@ int SHA224_Final(uint8_t out[SHA224_DIGEST_LENGTH], SHA256_CTX *ctx) {
   return SHA256_Final(out, ctx);
 }
 
+#ifndef SHA256_ASM
+static void sha256_block_data_order(uint32_t *state, const uint8_t *in,
+                                    size_t num);
+#endif
+
+void SHA256_Transform(SHA256_CTX *c, const uint8_t data[SHA256_CBLOCK]) {
+  sha256_block_data_order(c->h, data, 1);
+}
+
 #define DATA_ORDER_IS_BIG_ENDIAN
 
 #define HASH_CTX SHA256_CTX
@@ -167,13 +176,8 @@ int SHA224_Final(uint8_t out[SHA224_DIGEST_LENGTH], SHA256_CTX *ctx) {
 
 
 #define HASH_UPDATE SHA256_Update
-#define HASH_TRANSFORM SHA256_Transform
 #define HASH_FINAL SHA256_Final
 #define HASH_BLOCK_DATA_ORDER sha256_block_data_order
-#ifndef SHA256_ASM
-static void sha256_block_data_order(uint32_t *state, const uint8_t *in,
-                                    size_t num);
-#endif
 
 #include "../digest/md32_common.h"
 
@@ -324,7 +328,6 @@ void SHA256_TransformBlocks(uint32_t state[8], const uint8_t *data,
 #undef HASH_DIGEST_LENGTH
 #undef HASH_MAKE_STRING
 #undef HASH_UPDATE
-#undef HASH_TRANSFORM
 #undef HASH_FINAL
 #undef HASH_BLOCK_DATA_ORDER
 #undef ROTATE

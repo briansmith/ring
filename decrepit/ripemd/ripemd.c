@@ -80,6 +80,11 @@ int RIPEMD160_Init(RIPEMD160_CTX *ctx) {
 static void ripemd160_block_data_order(uint32_t h[5], const uint8_t *data,
                                        size_t num);
 
+void RIPEMD160_Transform(RIPEMD160_CTX *c,
+                         const uint8_t data[RIPEMD160_CBLOCK]) {
+  ripemd160_block_data_order(c->h, data, 1);
+}
+
 #define DATA_ORDER_IS_LITTLE_ENDIAN
 
 #define HASH_LONG uint32_t
@@ -87,7 +92,6 @@ static void ripemd160_block_data_order(uint32_t h[5], const uint8_t *data,
 #define HASH_CBLOCK RIPEMD160_CBLOCK
 #define HASH_DIGEST_LENGTH RIPEMD160_DIGEST_LENGTH
 #define HASH_UPDATE RIPEMD160_Update
-#define HASH_TRANSFORM RIPEMD160_Transform
 #define HASH_FINAL RIPEMD160_Final
 #define HASH_MAKE_STRING(c, s)           \
   do {                                   \

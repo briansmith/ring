@@ -83,6 +83,15 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   return out;
 }
 
+#if !defined(SHA1_ASM)
+static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+                                  size_t num);
+#endif
+
+void SHA1_Transform(SHA_CTX *c, const uint8_t data[SHA_CBLOCK]) {
+  sha1_block_data_order(c->h, data, 1);
+}
+
 #define DATA_ORDER_IS_BIG_ENDIAN
 
 #define HASH_CTX                SHA_CTX
@@ -103,7 +112,6 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   } while (0)
 
 #define HASH_UPDATE SHA1_Update
-#define HASH_TRANSFORM SHA1_Transform
 #define HASH_FINAL SHA1_Final
 #define HASH_BLOCK_DATA_ORDER sha1_block_data_order
 #define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
@@ -112,11 +120,6 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
     (a) = ((ia) ^ (ib) ^ (ic) ^ (id)); \
     (ix) = (a) = ROTATE((a), 1);       \
   } while (0)
-
-#if !defined(SHA1_ASM)
-static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
-                                  size_t num);
-#endif
 
 #include "../digest/md32_common.h"
 
@@ -346,7 +349,6 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
 #undef HASH_DIGEST_LENGTH
 #undef HASH_MAKE_STRING
 #undef HASH_UPDATE
-#undef HASH_TRANSFORM
 #undef HASH_FINAL
 #undef HASH_BLOCK_DATA_ORDER
 #undef ROTATE
