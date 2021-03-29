@@ -271,9 +271,7 @@ ___
     } else {
         print <<___;
 #if defined(__i386__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include "GFp/prefix_symbols_asm.h"
 ___
     }
     print @out;
