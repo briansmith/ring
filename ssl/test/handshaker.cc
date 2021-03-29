@@ -29,6 +29,22 @@ using namespace bssl;
 
 namespace {
 
+ssize_t read_eintr(int fd, void *out, size_t len) {
+  ssize_t ret;
+  do {
+    ret = read(fd, out, len);
+  } while (ret < 0 && errno == EINTR);
+  return ret;
+}
+
+ssize_t write_eintr(int fd, const void *in, size_t len) {
+  ssize_t ret;
+  do {
+    ret = write(fd, in, len);
+  } while (ret < 0 && errno == EINTR);
+  return ret;
+}
+
 bool HandbackReady(SSL *ssl, int ret) {
   return ret < 0 && SSL_get_error(ssl, ret) == SSL_ERROR_HANDBACK;
 }
@@ -71,8 +87,8 @@ bool Handshaker(const TestConfig *config, int rfd, int wfd,
       // Synchronize with the proxy, i.e. don't let the handshake continue until
       // the proxy has sent more data.
       char msg = kControlMsgWantRead;
-      if (write(control, &msg, 1) != 1 ||
-          read(control, &msg, 1) != 1 ||
+      if (write_eintr(control, &msg, 1) != 1 ||
+          read_eintr(control, &msg, 1) != 1 ||
           msg != kControlMsgWriteCompleted) {
         fprintf(stderr, "read via proxy failed\n");
         return false;
@@ -100,28 +116,13 @@ bool Handshaker(const TestConfig *config, int rfd, int wfd,
   }
 
   char msg = kControlMsgHandback;
-  if (write(control, &msg, 1) == -1 ||
-      write(control, CBB_data(output.get()), CBB_len(output.get())) == -1) {
+  if (write_eintr(control, &msg, 1) == -1 ||
+      write_eintr(control, CBB_data(output.get()), CBB_len(output.get())) ==
+          -1) {
     perror("write");
     return false;
   }
   return true;
-}
-
-ssize_t read_eintr(int fd, void *out, size_t len) {
-  ssize_t ret;
-  do {
-    ret = read(fd, out, len);
-  } while (ret < 0 && errno == EINTR);
-  return ret;
-}
-
-ssize_t write_eintr(int fd, const void *in, size_t len) {
-  ssize_t ret;
-  do {
-    ret = write(fd, in, len);
-  } while (ret < 0 && errno == EINTR);
-  return ret;
 }
 
 int SignalError() {
