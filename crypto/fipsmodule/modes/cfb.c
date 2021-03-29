@@ -72,8 +72,8 @@ void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     }
     while (len >= 16) {
       (*block)(ivec, ivec, key);
-      for (; n < 16; n += sizeof(size_t)) {
-        size_t tmp = load_word_le(ivec + n) ^ load_word_le(in + n);
+      for (; n < 16; n += sizeof(crypto_word_t)) {
+        crypto_word_t tmp = load_word_le(ivec + n) ^ load_word_le(in + n);
         store_word_le(ivec + n, tmp);
         store_word_le(out + n, tmp);
       }
@@ -101,8 +101,8 @@ void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     }
     while (len >= 16) {
       (*block)(ivec, ivec, key);
-      for (; n < 16; n += sizeof(size_t)) {
-        size_t t = load_word_le(in + n);
+      for (; n < 16; n += sizeof(crypto_word_t)) {
+        crypto_word_t t = load_word_le(in + n);
         store_word_le(out + n, load_word_le(ivec + n) ^ t);
         store_word_le(ivec + n, t);
       }
