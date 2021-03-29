@@ -8,9 +8,7 @@
 
 #pragma GCC diagnostic ignored "-Wlanguage-extension-token"
 
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include "GFp/prefix_symbols_asm.h"
 
 # This implementation was taken from the public domain, neon2 version in
 # SUPERCOP by D. J. Bernstein and Peter Schwabe.
