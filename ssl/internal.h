@@ -1066,6 +1066,10 @@ class SSLKeyShare {
   // |Serialize|.
   static UniquePtr<SSLKeyShare> Create(CBS *in);
 
+  // Serializes writes the group ID and private key, in a format that can be
+  // read by |Create|.
+  bool Serialize(CBB *out);
+
   // GroupID returns the group ID.
   virtual uint16_t GroupID() const PURE_VIRTUAL;
 
@@ -1090,13 +1094,13 @@ class SSLKeyShare {
   virtual bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
                       Span<const uint8_t> peer_key) PURE_VIRTUAL;
 
-  // Serialize writes the state of the key exchange to |out|, returning true if
-  // successful and false otherwise.
-  virtual bool Serialize(CBB *out) { return false; }
+  // SerializePrivateKey writes the private key to |out|, returning true if
+  // successful and false otherwise. It should be called after |Offer|.
+  virtual bool SerializePrivateKey(CBB *out) { return false; }
 
-  // Deserialize initializes the state of the key exchange from |in|, returning
-  // true if successful and false otherwise.  It is called by |Create|.
-  virtual bool Deserialize(CBS *in) { return false; }
+  // DeserializePrivateKey initializes the state of the key exchange from |in|,
+  // returning true if successful and false otherwise.
+  virtual bool DeserializePrivateKey(CBS *in) { return false; }
 };
 
 struct NamedGroup {
