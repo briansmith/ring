@@ -264,14 +264,12 @@ $comment source tree. Do not edit by hand.
 ___
     if ($win32) {
         print <<___ unless $masm;
-%ifdef BORINGSSL_PREFIX
-%include "boringssl_prefix_symbols_nasm.inc"
-%endif
+%include "ring_core_generated/prefix_symbols_nasm.inc"
 ___
     } else {
         print <<___;
 #if defined(__i386__)
-#include "GFp/prefix_symbols_asm.h"
+#include "ring_core_generated/prefix_symbols_asm.h"
 ___
     }
     print @out;

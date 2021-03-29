@@ -104,7 +104,7 @@ impl Key {
             target_arch = "x86_64"
         ))]
         #[inline(always)]
-        pub(super) fn chacha20_ctr32(
+        pub(super) fn ChaCha20_ctr32(
             key: &Key,
             counter: Counter,
             in_out: &mut [u8],
@@ -114,8 +114,8 @@ impl Key {
 
             // There's no need to worry if `counter` is incremented because it is
             // owned here and we drop immediately after the call.
-            extern "C" {
-                fn GFp_ChaCha20_ctr32(
+            prefixed_extern! {
+                fn ChaCha20_ctr32(
                     out: *mut u8,
                     in_: *const u8,
                     in_len: crate::c::size_t,
@@ -124,7 +124,7 @@ impl Key {
                 );
             }
             unsafe {
-                GFp_ChaCha20_ctr32(
+                ChaCha20_ctr32(
                     in_out.as_mut_ptr(),
                     in_out[src].as_ptr(),
                     in_out_len,
@@ -140,9 +140,9 @@ impl Key {
             target_arch = "x86",
             target_arch = "x86_64"
         )))]
-        use fallback::chacha20_ctr32;
+        use fallback::ChaCha20_ctr32;
 
-        chacha20_ctr32(self, counter, in_out, src);
+        ChaCha20_ctr32(self, counter, in_out, src);
     }
 
     #[inline]
@@ -246,7 +246,7 @@ mod tests {
     // Smoketest the fallback implementation.
     #[test]
     fn chacha20_test_fallback() {
-        chacha20_test(MAX_ALIGNMENT_AND_OFFSET_SUBSET, fallback::chacha20_ctr32);
+        chacha20_test(MAX_ALIGNMENT_AND_OFFSET_SUBSET, fallback::ChaCha20_ctr32);
     }
 
     // Verifies the encryption is successful when done on overlapping buffers.

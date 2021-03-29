@@ -8,7 +8,7 @@
 
 #pragma GCC diagnostic ignored "-Wlanguage-extension-token"
 
-#include "GFp/prefix_symbols_asm.h"
+#include "ring_core_generated/prefix_symbols_asm.h"
 
 # This implementation was taken from the public domain, neon2 version in
 # SUPERCOP by D. J. Bernstein and Peter Schwabe.
@@ -163,10 +163,10 @@
 
 # qhasm: qpushenter crypto_onetimeauth_poly1305_neon2_blocks
 .align 4
-.global GFp_poly1305_neon2_blocks
-.hidden GFp_poly1305_neon2_blocks
-.type GFp_poly1305_neon2_blocks STT_FUNC
-GFp_poly1305_neon2_blocks:
+.global poly1305_neon2_blocks
+.hidden poly1305_neon2_blocks
+.type poly1305_neon2_blocks STT_FUNC
+poly1305_neon2_blocks:
 vpush {q4,q5,q6,q7}
 mov r12,sp
 sub sp,sp,#192
@@ -459,12 +459,12 @@ add r1,r2,#32
 # qhasm: mainloop2:
 ._mainloop2:
 
-# qhasm:   c01 = mem128[input_2];input_2+=16 
+# qhasm:   c01 = mem128[input_2];input_2+=16
 # asm 1: vld1.8 {>c01=reg128#1%bot->c01=reg128#1%top},[<input_2=int32#2]!
 # asm 2: vld1.8 {>c01=d0->c01=d1},[<input_2=r1]!
 vld1.8 {d0-d1},[r1]!
 
-# qhasm:   c23 = mem128[input_2];input_2+=16 
+# qhasm:   c23 = mem128[input_2];input_2+=16
 # asm 1: vld1.8 {>c23=reg128#2%bot->c23=reg128#2%top},[<input_2=int32#2]!
 # asm 2: vld1.8 {>c23=d2->c23=d3},[<input_2=r1]!
 vld1.8 {d2-d3},[r1]!
@@ -519,7 +519,7 @@ vmlal.u32 q15,d19,d4
 # asm 2: vmlal.u32 <r4=q15,<x4=d20,<z0=d6
 vmlal.u32 q15,d20,d6
 
-# qhasm: r3[0,1] = c23[2]<<18; r3[2,3] = c23[3]<<18 
+# qhasm: r3[0,1] = c23[2]<<18; r3[2,3] = c23[3]<<18
 # asm 1: vshll.u32 >r3=reg128#5,<c23=reg128#2%top,#18
 # asm 2: vshll.u32 >r3=q4,<c23=d3,#18
 vshll.u32 q4,d3,#18
@@ -539,7 +539,7 @@ vmlal.u32 q4,d16,d10
 # asm 2: vmlal.u32 <r3=q4,<x01=d17,<z12=d5
 vmlal.u32 q4,d17,d5
 
-# qhasm:   r0 = r0[1]c01[0]r0[2,3] 
+# qhasm:   r0 = r0[1]c01[0]r0[2,3]
 # asm 1: vext.32 <r0=reg128#8%bot,<r0=reg128#8%bot,<c01=reg128#1%bot,#1
 # asm 2: vext.32 <r0=d14,<r0=d14,<c01=d0,#1
 vext.32 d14,d14,d0,#1
@@ -574,17 +574,17 @@ vld1.8 {d10-d11},[r2,: 128]
 # asm 2: vmlal.u32 <r3=q4,<x4=d20,<5z34=d11
 vmlal.u32 q4,d20,d11
 
-# qhasm:   r0 = r0[1]r0[0]r0[3]r0[2] 
+# qhasm:   r0 = r0[1]r0[0]r0[3]r0[2]
 # asm 1: vrev64.i32 >r0=reg128#8,<r0=reg128#8
 # asm 2: vrev64.i32 >r0=q7,<r0=q7
 vrev64.i32 q7,q7
 
-# qhasm:   r2[0,1] = c01[2]<<12; r2[2,3] = c01[3]<<12 
+# qhasm:   r2[0,1] = c01[2]<<12; r2[2,3] = c01[3]<<12
 # asm 1: vshll.u32 >r2=reg128#14,<c01=reg128#1%top,#12
 # asm 2: vshll.u32 >r2=q13,<c01=d1,#12
 vshll.u32 q13,d1,#12
 
-# qhasm:   		d01 = mem128[input_2];input_2+=16 
+# qhasm:   		d01 = mem128[input_2];input_2+=16
 # asm 1: vld1.8 {>d01=reg128#12%bot->d01=reg128#12%top},[<input_2=int32#2]!
 # asm 2: vld1.8 {>d01=d22->d01=d23},[<input_2=r1]!
 vld1.8 {d22-d23},[r1]!
@@ -614,12 +614,12 @@ vmlal.u32 q13,d19,d11
 # asm 2: vmlal.u32 <r2=q13,<x4=d20,<5z34=d10
 vmlal.u32 q13,d20,d10
 
-# qhasm:   r0 = r0[0,1]c01[1]r0[2] 
+# qhasm:   r0 = r0[0,1]c01[1]r0[2]
 # asm 1: vext.32 <r0=reg128#8%top,<c01=reg128#1%bot,<r0=reg128#8%top,#1
 # asm 2: vext.32 <r0=d15,<c01=d0,<r0=d15,#1
 vext.32 d15,d0,d15,#1
 
-# qhasm:   r1[0,1] = c23[0]<<6; r1[2,3] = c23[1]<<6 
+# qhasm:   r1[0,1] = c23[0]<<6; r1[2,3] = c23[1]<<6
 # asm 1: vshll.u32 >r1=reg128#15,<c23=reg128#2%bot,#6
 # asm 2: vshll.u32 >r1=q14,<c23=d2,#6
 vshll.u32 q14,d2,#6
@@ -659,7 +659,7 @@ vld1.8 {d0-d1},[r2,: 128]
 # asm 2: vmlal.u32 <r1=q14,<x4=d20,<5z12=d1
 vmlal.u32 q14,d20,d1
 
-# qhasm:   		d23 = mem128[input_2];input_2+=16 
+# qhasm:   		d23 = mem128[input_2];input_2+=16
 # asm 1: vld1.8 {>d23=reg128#2%bot->d23=reg128#2%top},[<input_2=int32#2]!
 # asm 2: vld1.8 {>d23=d2->d23=d3},[<input_2=r1]!
 vld1.8 {d2-d3},[r1]!
@@ -679,7 +679,7 @@ vmlal.u32 q7,d20,d0
 # asm 2: vmlal.u32 <r0=q7,<x23=d18,<5z34=d10
 vmlal.u32 q7,d18,d10
 
-# qhasm:   		d01 d23 = d01[0] d23[0] d01[1] d23[1] 
+# qhasm:   		d01 d23 = d01[0] d23[0] d01[1] d23[1]
 # asm 1: vswp <d23=reg128#2%bot,<d01=reg128#12%top
 # asm 2: vswp <d23=d2,<d01=d23
 vswp d2,d23
@@ -696,12 +696,12 @@ vmlal.u32 q7,d16,d6
 
 # qhasm:   		new mid
 
-# qhasm:   		2x v4 = d23 unsigned>> 40  
+# qhasm:   		2x v4 = d23 unsigned>> 40
 # asm 1: vshr.u64 >v4=reg128#4,<d23=reg128#2,#40
 # asm 2: vshr.u64 >v4=q3,<d23=q1,#40
 vshr.u64 q3,q1,#40
 
-# qhasm:   		mid = d01[1]d23[0] mid[2,3] 
+# qhasm:   		mid = d01[1]d23[0] mid[2,3]
 # asm 1: vext.32 <mid=reg128#1%bot,<d01=reg128#12%bot,<d23=reg128#2%bot,#1
 # asm 2: vext.32 <mid=d0,<d01=d22,<d23=d2,#1
 vext.32 d0,d22,d2,#1
@@ -713,7 +713,7 @@ vext.32 d0,d22,d2,#1
 # asm 2: vshrn.u64 <v23=d19,<d23=q1,#14
 vshrn.u64 d19,q1,#14
 
-# qhasm:   		mid = mid[0,1] d01[3]d23[2] 
+# qhasm:   		mid = mid[0,1] d01[3]d23[2]
 # asm 1: vext.32 <mid=reg128#1%top,<d01=reg128#12%top,<d23=reg128#2%top,#1
 # asm 2: vext.32 <mid=d1,<d01=d23,<d23=d3,#1
 vext.32 d1,d23,d3,#1
@@ -725,7 +725,7 @@ vext.32 d1,d23,d3,#1
 # asm 2: vshrn.u64 <v01=d21,<d01=q11,#26
 vshrn.u64 d21,q11,#26
 
-# qhasm:   		v01 = d01[1]d01[0] v01[2,3] 
+# qhasm:   		v01 = d01[1]d01[0] v01[2,3]
 # asm 1: vext.32 <v01=reg128#11%bot,<d01=reg128#12%bot,<d01=reg128#12%bot,#1
 # asm 2: vext.32 <v01=d20,<d01=d22,<d01=d22,#1
 vext.32 d20,d22,d22,#1
@@ -735,7 +735,7 @@ vext.32 d20,d22,d22,#1
 # asm 2: vmlal.u32 <r0=q7,<x01=d17,<5z34=d11
 vmlal.u32 q7,d17,d11
 
-# qhasm:   		v01 = v01[1]d01[2] v01[2,3] 
+# qhasm:   		v01 = v01[1]d01[2] v01[2,3]
 # asm 1: vext.32 <v01=reg128#11%bot,<v01=reg128#11%bot,<d01=reg128#12%top,#1
 # asm 2: vext.32 <v01=d20,<v01=d20,<d01=d23,#1
 vext.32 d20,d20,d23,#1
@@ -745,7 +745,7 @@ vext.32 d20,d20,d23,#1
 # asm 2: vshrn.u64 <v23=d18,<mid=q0,#20
 vshrn.u64 d18,q0,#20
 
-# qhasm:   		v4 = v4[0]v4[2]v4[1]v4[3]  
+# qhasm:   		v4 = v4[0]v4[2]v4[1]v4[3]
 # asm 1: vtrn.32 <v4=reg128#4%bot,<v4=reg128#4%top
 # asm 2: vtrn.32 <v4=d6,<v4=d7
 vtrn.32 d6,d7
@@ -1169,7 +1169,7 @@ vld1.8 {d8-d9},[r1,: 128]
 # asm 2: vld1.8 {>u4=d10->u4=d11},[<ptr=r1,: 128]
 vld1.8 {d10-d11},[r1,: 128]
 
-# qhasm:   c01 = mem128[input_2];input_2+=16 
+# qhasm:   c01 = mem128[input_2];input_2+=16
 # asm 1: vld1.8 {>c01=reg128#8%bot->c01=reg128#8%top},[<input_2=int32#3]!
 # asm 2: vld1.8 {>c01=d14->c01=d15},[<input_2=r2]!
 vld1.8 {d14-d15},[r2]!
@@ -1179,7 +1179,7 @@ vld1.8 {d14-d15},[r2]!
 # asm 2: vmlal.u32 <r4=q4,<x01=d16,<y34=d5
 vmlal.u32 q4,d16,d5
 
-# qhasm:   c23 = mem128[input_2];input_2+=16 
+# qhasm:   c23 = mem128[input_2];input_2+=16
 # asm 1: vld1.8 {>c23=reg128#14%bot->c23=reg128#14%top},[<input_2=int32#3]!
 # asm 2: vld1.8 {>c23=d26->c23=d27},[<input_2=r2]!
 vld1.8 {d26-d27},[r2]!
@@ -1189,7 +1189,7 @@ vld1.8 {d26-d27},[r2]!
 # asm 2: vmlal.u32 <r4=q4,<x01=d17,<y34=d4
 vmlal.u32 q4,d17,d4
 
-# qhasm:   r0 = u4[1]c01[0]r0[2,3] 
+# qhasm:   r0 = u4[1]c01[0]r0[2,3]
 # asm 1: vext.32 <r0=reg128#4%bot,<u4=reg128#6%bot,<c01=reg128#8%bot,#1
 # asm 2: vext.32 <r0=d6,<u4=d10,<c01=d14,#1
 vext.32 d6,d10,d14,#1
@@ -1199,7 +1199,7 @@ vext.32 d6,d10,d14,#1
 # asm 2: vmlal.u32 <r4=q4,<x23=d18,<y12=d3
 vmlal.u32 q4,d18,d3
 
-# qhasm:   r0 = r0[0,1]u4[1]c23[0] 
+# qhasm:   r0 = r0[0,1]u4[1]c23[0]
 # asm 1: vext.32 <r0=reg128#4%top,<u4=reg128#6%bot,<c23=reg128#14%bot,#1
 # asm 2: vext.32 <r0=d7,<u4=d10,<c23=d26,#1
 vext.32 d7,d10,d26,#1
@@ -1209,7 +1209,7 @@ vext.32 d7,d10,d26,#1
 # asm 2: vmlal.u32 <r4=q4,<x23=d19,<y12=d2
 vmlal.u32 q4,d19,d2
 
-# qhasm:   r0 = r0[1]r0[0]r0[3]r0[2] 
+# qhasm:   r0 = r0[1]r0[0]r0[3]r0[2]
 # asm 1: vrev64.i32 >r0=reg128#4,<r0=reg128#4
 # asm 2: vrev64.i32 >r0=q3,<r0=q3
 vrev64.i32 q3,q3
@@ -1234,7 +1234,7 @@ vmlal.u32 q3,d18,d24
 # asm 2: vmlal.u32 <r0=q3,<x23=d19,<5y12=d23
 vmlal.u32 q3,d19,d23
 
-# qhasm:   c01 c23 = c01[0]c23[0]c01[2]c23[2]c01[1]c23[1]c01[3]c23[3] 
+# qhasm:   c01 c23 = c01[0]c23[0]c01[2]c23[2]c01[1]c23[1]c01[3]c23[3]
 # asm 1: vtrn.32 <c01=reg128#8,<c23=reg128#14
 # asm 2: vtrn.32 <c01=q7,<c23=q13
 vtrn.32 q7,q13
@@ -1244,7 +1244,7 @@ vtrn.32 q7,q13
 # asm 2: vmlal.u32 <r0=q3,<x01=d16,<y0=d0
 vmlal.u32 q3,d16,d0
 
-# qhasm:   r3[0,1] = c23[2]<<18; r3[2,3] = c23[3]<<18 
+# qhasm:   r3[0,1] = c23[2]<<18; r3[2,3] = c23[3]<<18
 # asm 1: vshll.u32 >r3=reg128#6,<c23=reg128#14%top,#18
 # asm 2: vshll.u32 >r3=q5,<c23=d27,#18
 vshll.u32 q5,d27,#18
@@ -1274,7 +1274,7 @@ vmlal.u32 q5,d18,d2
 # asm 2: vmlal.u32 <r3=q5,<x23=d19,<y0=d0
 vmlal.u32 q5,d19,d0
 
-# qhasm:   r1[0,1] = c23[0]<<6; r1[2,3] = c23[1]<<6 
+# qhasm:   r1[0,1] = c23[0]<<6; r1[2,3] = c23[1]<<6
 # asm 1: vshll.u32 >r1=reg128#14,<c23=reg128#14%bot,#6
 # asm 2: vshll.u32 >r1=q13,<c23=d26,#6
 vshll.u32 q13,d26,#6
@@ -1304,7 +1304,7 @@ vmlal.u32 q13,d18,d25
 # asm 2: vmlal.u32 <r1=q13,<x23=d19,<5y34=d24
 vmlal.u32 q13,d19,d24
 
-# qhasm:   r2[0,1] = c01[2]<<12; r2[2,3] = c01[3]<<12 
+# qhasm:   r2[0,1] = c01[2]<<12; r2[2,3] = c01[3]<<12
 # asm 1: vshll.u32 >r2=reg128#8,<c01=reg128#8%top,#12
 # asm 2: vshll.u32 >r2=q7,<c01=d15,#12
 vshll.u32 q7,d15,#12
@@ -1622,10 +1622,10 @@ bx lr
 
 # qhasm: enter crypto_onetimeauth_poly1305_neon2_addmulmod
 .align 2
-.global GFp_poly1305_neon2_addmulmod
-.hidden GFp_poly1305_neon2_addmulmod
-.type GFp_poly1305_neon2_addmulmod STT_FUNC
-GFp_poly1305_neon2_addmulmod:
+.global poly1305_neon2_addmulmod
+.hidden poly1305_neon2_addmulmod
+.type poly1305_neon2_addmulmod STT_FUNC
+poly1305_neon2_addmulmod:
 sub sp,sp,#0
 
 # qhasm: 				2x mask = 0xffffffff

@@ -59,7 +59,7 @@ $addx = 1;
 
 $code.=<<___;
 .text
-.extern	GFp_ia32cap_P
+.extern	OPENSSL_ia32cap_P
 
 # The polynomial
 .align 64
@@ -90,11 +90,11 @@ my ($r_ptr,$a_ptr,$b_ptr)=("%rdi","%rsi","%rdx");
 $code.=<<___;
 
 ################################################################################
-# void GFp_nistz256_neg(uint64_t res[4], uint64_t a[4]);
-.globl	GFp_nistz256_neg
-.type	GFp_nistz256_neg,\@function,2
+# void nistz256_neg(uint64_t res[4], uint64_t a[4]);
+.globl	nistz256_neg
+.type	nistz256_neg,\@function,2
 .align	32
-GFp_nistz256_neg:
+nistz256_neg:
 .cfi_startproc
 	push	%r12
 .cfi_push	%r12
@@ -143,7 +143,7 @@ GFp_nistz256_neg:
 .Lneg_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_nistz256_neg,.-GFp_nistz256_neg
+.size	nistz256_neg,.-nistz256_neg
 ___
 }
 {
@@ -154,19 +154,19 @@ my ($poly1,$poly3)=($acc6,$acc7);
 
 $code.=<<___;
 ################################################################################
-# void GFp_p256_scalar_mul_mont(
+# void p256_scalar_mul_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   uint64_t b[4]);
 
-.globl	GFp_p256_scalar_mul_mont
-.type	GFp_p256_scalar_mul_mont,\@function,3
+.globl	p256_scalar_mul_mont
+.type	p256_scalar_mul_mont,\@function,3
 .align	32
-GFp_p256_scalar_mul_mont:
+p256_scalar_mul_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -482,22 +482,22 @@ $code.=<<___;
 .Lord_mul_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_scalar_mul_mont,.-GFp_p256_scalar_mul_mont
+.size	p256_scalar_mul_mont,.-p256_scalar_mul_mont
 
 ################################################################################
-# void GFp_p256_scalar_sqr_rep_mont(
+# void p256_scalar_sqr_rep_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   uint64_t rep);
 
-.globl	GFp_p256_scalar_sqr_rep_mont
-.type	GFp_p256_scalar_sqr_rep_mont,\@function,3
+.globl	p256_scalar_sqr_rep_mont
+.type	p256_scalar_sqr_rep_mont,\@function,3
 .align	32
-GFp_p256_scalar_sqr_rep_mont:
+p256_scalar_sqr_rep_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -783,7 +783,7 @@ $code.=<<___;
 .Lord_sqr_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_scalar_sqr_rep_mont,.-GFp_p256_scalar_sqr_rep_mont
+.size	p256_scalar_sqr_rep_mont,.-p256_scalar_sqr_rep_mont
 ___
 
 $code.=<<___	if ($addx);
@@ -1235,19 +1235,19 @@ ___
 
 $code.=<<___;
 ################################################################################
-# void GFp_p256_mul_mont(
+# void p256_mul_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   uint64_t b[4]);
 
-.globl	GFp_p256_mul_mont
-.type	GFp_p256_mul_mont,\@function,3
+.globl	p256_mul_mont
+.type	p256_mul_mont,\@function,3
 .align	32
-GFp_p256_mul_mont:
+p256_mul_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 ___
@@ -1315,7 +1315,7 @@ $code.=<<___;
 .Lmul_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_mul_mont,.-GFp_p256_mul_mont
+.size	p256_mul_mont,.-p256_mul_mont
 
 .type	__ecp_nistz256_mul_montq,\@abi-omnipotent
 .align	32
@@ -1536,20 +1536,20 @@ __ecp_nistz256_mul_montq:
 .size	__ecp_nistz256_mul_montq,.-__ecp_nistz256_mul_montq
 
 ################################################################################
-# void GFp_p256_sqr_mont(
+# void p256_sqr_mont(
 #   uint64_t res[4],
 #   uint64_t a[4]);
 
 # we optimize the square according to S.Gueron and V.Krasnov,
 # "Speeding up Big-Number Squaring"
-.globl	GFp_p256_sqr_mont
-.type	GFp_p256_sqr_mont,\@function,2
+.globl	p256_sqr_mont
+.type	p256_sqr_mont,\@function,2
 .align	32
-GFp_p256_sqr_mont:
+p256_sqr_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 ___
@@ -1612,7 +1612,7 @@ $code.=<<___;
 .Lsqr_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_sqr_mont,.-GFp_p256_sqr_mont
+.size	p256_sqr_mont,.-p256_sqr_mont
 
 .type	__ecp_nistz256_sqr_montq,\@abi-omnipotent
 .align	32
@@ -2090,22 +2090,22 @@ my ($M1,$T2a,$T2b,$TMP2,$M2,$T2a,$T2b,$TMP2)=map("%xmm$_",(8..15));
 
 $code.=<<___;
 ################################################################################
-# void GFp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, crypto_word index);
-.globl	GFp_nistz256_select_w5
-.type	GFp_nistz256_select_w5,\@abi-omnipotent
+# void nistz256_select_w5(uint64_t *val, uint64_t *in_t, crypto_word index);
+.globl	nistz256_select_w5
+.type	nistz256_select_w5,\@abi-omnipotent
 .align	32
-GFp_nistz256_select_w5:
+nistz256_select_w5:
 .cfi_startproc
 ___
 $code.=<<___	if ($avx>1);
-	leaq	GFp_ia32cap_P(%rip), %rax
+	leaq	OPENSSL_ia32cap_P(%rip), %rax
 	mov	8(%rax), %rax
 	test	\$`1<<5`, %eax
 	jnz	.Lavx2_select_w5
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_GFp_nistz256_select_w5:
+.LSEH_begin_nistz256_select_w5:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0x0f,0x29,0x70,0xe0		#movaps	%xmm6, -0x20(%rax)
 	.byte	0x0f,0x29,0x78,0xf0		#movaps	%xmm7, -0x10(%rax)
@@ -2186,26 +2186,26 @@ ___
 $code.=<<___;
 	ret
 .cfi_endproc
-.LSEH_end_GFp_nistz256_select_w5:
-.size	GFp_nistz256_select_w5,.-GFp_nistz256_select_w5
+.LSEH_end_nistz256_select_w5:
+.size	nistz256_select_w5,.-nistz256_select_w5
 
 ################################################################################
-# void GFp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, crypto_word index);
-.globl	GFp_nistz256_select_w7
-.type	GFp_nistz256_select_w7,\@abi-omnipotent
+# void nistz256_select_w7(uint64_t *val, uint64_t *in_t, crypto_word index);
+.globl	nistz256_select_w7
+.type	nistz256_select_w7,\@abi-omnipotent
 .align	32
-GFp_nistz256_select_w7:
+nistz256_select_w7:
 .cfi_startproc
 ___
 $code.=<<___	if ($avx>1);
-	leaq	GFp_ia32cap_P(%rip), %rax
+	leaq	OPENSSL_ia32cap_P(%rip), %rax
 	mov	8(%rax), %rax
 	test	\$`1<<5`, %eax
 	jnz	.Lavx2_select_w7
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_GFp_nistz256_select_w7:
+.LSEH_begin_nistz256_select_w7:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0x0f,0x29,0x70,0xe0		#movaps	%xmm6, -0x20(%rax)
 	.byte	0x0f,0x29,0x78,0xf0		#movaps	%xmm7, -0x10(%rax)
@@ -2275,8 +2275,8 @@ ___
 $code.=<<___;
 	ret
 .cfi_endproc
-.LSEH_end_GFp_nistz256_select_w7:
-.size	GFp_nistz256_select_w7,.-GFp_nistz256_select_w7
+.LSEH_end_nistz256_select_w7:
+.size	nistz256_select_w7,.-nistz256_select_w7
 ___
 }
 if ($avx>1) {
@@ -2700,14 +2700,14 @@ sub gen_double () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	GFp_p256_point_double
-.type	GFp_p256_point_double,\@function,2
+.globl	p256_point_double
+.type	p256_point_double,\@function,2
 .align	32
-GFp_p256_point_double:
+p256_point_double:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -2719,9 +2719,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	GFp_p256_point_doublex,\@function,2
+.type	p256_point_doublex,\@function,2
 .align	32
-GFp_p256_point_doublex:
+p256_point_doublex:
 .cfi_startproc
 .Lpoint_doublex:
 ___
@@ -2931,7 +2931,7 @@ $code.=<<___;
 .Lpoint_double${x}_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_point_double$sfx,.-GFp_p256_point_double$sfx
+.size	p256_point_double$sfx,.-p256_point_double$sfx
 ___
 }
 &gen_double("q");
@@ -2952,14 +2952,14 @@ sub gen_add () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	GFp_p256_point_add
-.type	GFp_p256_point_add,\@function,3
+.globl	p256_point_add
+.type	p256_point_add,\@function,3
 .align	32
-GFp_p256_point_add:
+p256_point_add:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -2971,9 +2971,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	GFp_p256_point_addx,\@function,3
+.type	p256_point_addx,\@function,3
 .align	32
-GFp_p256_point_addx:
+p256_point_addx:
 .cfi_startproc
 .Lpoint_addx:
 ___
@@ -3330,7 +3330,7 @@ $code.=<<___;
 .Lpoint_add${x}_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_point_add$sfx,.-GFp_p256_point_add$sfx
+.size	p256_point_add$sfx,.-p256_point_add$sfx
 ___
 }
 &gen_add("q");
@@ -3350,14 +3350,14 @@ sub gen_add_affine () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	GFp_p256_point_add_affine
-.type	GFp_p256_point_add_affine,\@function,3
+.globl	p256_point_add_affine
+.type	p256_point_add_affine,\@function,3
 .align	32
-GFp_p256_point_add_affine:
+p256_point_add_affine:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	OPENSSL_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -3369,9 +3369,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	GFp_p256_point_add_affinex,\@function,3
+.type	p256_point_add_affinex,\@function,3
 .align	32
-GFp_p256_point_add_affinex:
+p256_point_add_affinex:
 .cfi_startproc
 .Lpoint_add_affinex:
 ___
@@ -3655,7 +3655,7 @@ $code.=<<___;
 .Ladd_affine${x}_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_point_add_affine$sfx,.-GFp_p256_point_add_affine$sfx
+.size	p256_point_add_affine$sfx,.-p256_point_add_affine$sfx
 ___
 }
 &gen_add_affine("q");
@@ -3956,17 +3956,17 @@ full_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_nistz256_neg
-	.rva	.LSEH_end_GFp_nistz256_neg
-	.rva	.LSEH_info_GFp_nistz256_neg
+	.rva	.LSEH_begin_nistz256_neg
+	.rva	.LSEH_end_nistz256_neg
+	.rva	.LSEH_info_nistz256_neg
 
-	.rva	.LSEH_begin_GFp_p256_scalar_mul_mont
-	.rva	.LSEH_end_GFp_p256_scalar_mul_mont
-	.rva	.LSEH_info_GFp_p256_scalar_mul_mont
+	.rva	.LSEH_begin_p256_scalar_mul_mont
+	.rva	.LSEH_end_p256_scalar_mul_mont
+	.rva	.LSEH_info_p256_scalar_mul_mont
 
-	.rva	.LSEH_begin_GFp_p256_scalar_sqr_rep_mont
-	.rva	.LSEH_end_GFp_p256_scalar_sqr_rep_mont
-	.rva	.LSEH_info_GFp_p256_scalar_sqr_rep_mont
+	.rva	.LSEH_begin_p256_scalar_sqr_rep_mont
+	.rva	.LSEH_end_p256_scalar_sqr_rep_mont
+	.rva	.LSEH_info_p256_scalar_sqr_rep_mont
 ___
 $code.=<<___	if ($addx);
 	.rva	.LSEH_begin_ecp_nistz256_ord_mul_montx
@@ -3978,20 +3978,20 @@ $code.=<<___	if ($addx);
 	.rva	.LSEH_info_ecp_nistz256_ord_sqr_montx
 ___
 $code.=<<___;
-	.rva	.LSEH_begin_GFp_p256_mul_mont
-	.rva	.LSEH_end_GFp_p256_mul_mont
-	.rva	.LSEH_info_GFp_p256_mul_mont
+	.rva	.LSEH_begin_p256_mul_mont
+	.rva	.LSEH_end_p256_mul_mont
+	.rva	.LSEH_info_p256_mul_mont
 
-	.rva	.LSEH_begin_GFp_p256_sqr_mont
-	.rva	.LSEH_end_GFp_p256_sqr_mont
-	.rva	.LSEH_info_GFp_p256_sqr_mont
+	.rva	.LSEH_begin_p256_sqr_mont
+	.rva	.LSEH_end_p256_sqr_mont
+	.rva	.LSEH_info_p256_sqr_mont
 
-	.rva	.LSEH_begin_GFp_nistz256_select_w5
-	.rva	.LSEH_end_GFp_nistz256_select_w5
+	.rva	.LSEH_begin_nistz256_select_w5
+	.rva	.LSEH_end_nistz256_select_w5
 	.rva	.LSEH_info_ecp_nistz256_select_wX
 
-	.rva	.LSEH_begin_GFp_nistz256_select_w7
-	.rva	.LSEH_end_GFp_nistz256_select_w7
+	.rva	.LSEH_begin_nistz256_select_w7
+	.rva	.LSEH_end_nistz256_select_w7
 	.rva	.LSEH_info_ecp_nistz256_select_wX
 ___
 $code.=<<___	if ($avx>1);
@@ -4004,45 +4004,45 @@ $code.=<<___	if ($avx>1);
 	.rva	.LSEH_info_ecp_nistz256_avx2_select_wX
 ___
 $code.=<<___;
-	.rva	.LSEH_begin_GFp_p256_point_double
-	.rva	.LSEH_end_GFp_p256_point_double
-	.rva	.LSEH_info_GFp_p256_point_double
+	.rva	.LSEH_begin_p256_point_double
+	.rva	.LSEH_end_p256_point_double
+	.rva	.LSEH_info_p256_point_double
 
-	.rva	.LSEH_begin_GFp_p256_point_add
-	.rva	.LSEH_end_GFp_p256_point_add
-	.rva	.LSEH_info_GFp_p256_point_add
+	.rva	.LSEH_begin_p256_point_add
+	.rva	.LSEH_end_p256_point_add
+	.rva	.LSEH_info_p256_point_add
 
-	.rva	.LSEH_begin_GFp_p256_point_add_affine
-	.rva	.LSEH_end_GFp_p256_point_add_affine
-	.rva	.LSEH_info_GFp_p256_point_add_affine
+	.rva	.LSEH_begin_p256_point_add_affine
+	.rva	.LSEH_end_p256_point_add_affine
+	.rva	.LSEH_info_p256_point_add_affine
 ___
 $code.=<<___ if ($addx);
-	.rva	.LSEH_begin_GFp_p256_point_doublex
-	.rva	.LSEH_end_GFp_p256_point_doublex
-	.rva	.LSEH_info_GFp_p256_point_doublex
+	.rva	.LSEH_begin_p256_point_doublex
+	.rva	.LSEH_end_p256_point_doublex
+	.rva	.LSEH_info_p256_point_doublex
 
-	.rva	.LSEH_begin_GFp_p256_point_addx
-	.rva	.LSEH_end_GFp_p256_point_addx
-	.rva	.LSEH_info_GFp_p256_point_addx
+	.rva	.LSEH_begin_p256_point_addx
+	.rva	.LSEH_end_p256_point_addx
+	.rva	.LSEH_info_p256_point_addx
 
-	.rva	.LSEH_begin_GFp_p256_point_add_affinex
-	.rva	.LSEH_end_GFp_p256_point_add_affinex
-	.rva	.LSEH_info_GFp_p256_point_add_affinex
+	.rva	.LSEH_begin_p256_point_add_affinex
+	.rva	.LSEH_end_p256_point_add_affinex
+	.rva	.LSEH_info_p256_point_add_affinex
 ___
 $code.=<<___;
 
 .section	.xdata
 .align	8
-.LSEH_info_GFp_nistz256_neg:
+.LSEH_info_nistz256_neg:
 	.byte	9,0,0,0
 	.rva	short_handler
 	.rva	.Lneg_body,.Lneg_epilogue		# HandlerData[]
-.LSEH_info_GFp_p256_scalar_mul_mont:
+.LSEH_info_p256_scalar_mul_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lord_mul_body,.Lord_mul_epilogue	# HandlerData[]
 	.long	48,0
-.LSEH_info_GFp_p256_scalar_sqr_rep_mont:
+.LSEH_info_p256_scalar_sqr_rep_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lord_sqr_body,.Lord_sqr_epilogue	# HandlerData[]
@@ -4061,12 +4061,12 @@ $code.=<<___ if ($addx);
 	.long	48,0
 ___
 $code.=<<___;
-.LSEH_info_GFp_p256_mul_mont:
+.LSEH_info_p256_mul_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lmul_body,.Lmul_epilogue		# HandlerData[]
 	.long	48,0
-.LSEH_info_GFp_p256_sqr_mont:
+.LSEH_info_p256_sqr_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lsqr_body,.Lsqr_epilogue		# HandlerData[]
@@ -4104,17 +4104,17 @@ $code.=<<___	if ($avx>1);
 	.align	8
 ___
 $code.=<<___;
-.LSEH_info_GFp_p256_point_double:
+.LSEH_info_p256_point_double:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_doubleq_body,.Lpoint_doubleq_epilogue	# HandlerData[]
 	.long	32*5+56,0
-.LSEH_info_GFp_p256_point_add:
+.LSEH_info_p256_point_add:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_addq_body,.Lpoint_addq_epilogue		# HandlerData[]
 	.long	32*18+56,0
-.LSEH_info_GFp_p256_point_add_affine:
+.LSEH_info_p256_point_add_affine:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Ladd_affineq_body,.Ladd_affineq_epilogue	# HandlerData[]
@@ -4122,17 +4122,17 @@ $code.=<<___;
 ___
 $code.=<<___ if ($addx);
 .align	8
-.LSEH_info_GFp_p256_point_doublex:
+.LSEH_info_p256_point_doublex:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_doublex_body,.Lpoint_doublex_epilogue	# HandlerData[]
 	.long	32*5+56,0
-.LSEH_info_GFp_p256_point_addx:
+.LSEH_info_p256_point_addx:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_addx_body,.Lpoint_addx_epilogue		# HandlerData[]
 	.long	32*18+56,0
-.LSEH_info_GFp_p256_point_add_affinex:
+.LSEH_info_p256_point_add_affinex:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Ladd_affinex_body,.Ladd_affinex_epilogue	# HandlerData[]

@@ -218,25 +218,25 @@ K256:
 .size	K256,.-K256
 .word	0				@ terminator
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.extern GFp_armcap_P
-.hidden GFp_armcap_P
+.extern OPENSSL_armcap_P
+.hidden OPENSSL_armcap_P
 .LOPENSSL_armcap:
-.word	GFp_armcap_P-.Lsha256_block_data_order
+.word	OPENSSL_armcap_P-.Lsha256_block_data_order
 #endif
 .align	5
 
-.global	GFp_sha256_block_data_order
-.type	GFp_sha256_block_data_order,%function
-GFp_sha256_block_data_order:
+.global	sha256_block_data_order
+.type	sha256_block_data_order,%function
+sha256_block_data_order:
 .Lsha256_block_data_order:
 #if __ARM_ARCH__<7 && !defined(__thumb2__)
-	sub	r3,pc,#8		@ GFp_sha256_block_data_order
+	sub	r3,pc,#8		@ sha256_block_data_order
 #else
 	adr	r3,.Lsha256_block_data_order
 #endif
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
 	ldr	r12,.LOPENSSL_armcap
-	ldr	r12,[r3,r12]		@ GFp_armcap_P
+	ldr	r12,[r3,r12]		@ OPENSSL_armcap_P
 #ifdef	__APPLE__
 	ldr	r12,[r12]
 #endif
@@ -302,7 +302,7 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_sha256_block_data_order,.-GFp_sha256_block_data_order
+.size	sha256_block_data_order,.-sha256_block_data_order
 ___
 ######################################################################
 # NEON stuff

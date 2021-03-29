@@ -25,18 +25,16 @@
 
 #if !defined(OPENSSL_NO_ASM) && defined(__arm__) && !defined(__APPLE__)
 
-#include "GFp/prefix_symbols_asm.h"
+#include "ring_core_generated/prefix_symbols_asm.h"
 
 .fpu neon
 .text
 .align 4
 
-.global GFp_x25519_NEON
-
-.hidden GFp_x25519_NEON
-.type GFp_x25519_NEON, %function
-GFp_x25519_NEON:
-
+.global x25519_NEON
+.hidden x25519_NEON
+.type x25519_NEON, %function
+x25519_NEON:
 vpush {q4,q5,q6,q7}
 mov r12,sp
 sub sp,sp,#736

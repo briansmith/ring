@@ -1152,7 +1152,7 @@ default	rel
 %define YMMWORD
 %define ZMMWORD
 
-%include GFp/prefix_symbols_nasm.inc
+%include "ring_core_generated/prefix_symbols_nasm.inc"
 ___
 } elsif ($masm) {
     print <<___;
@@ -1169,7 +1169,7 @@ if ($gas) {
 #endif
 
 #if defined(__x86_64__) && !defined(OPENSSL_NO_ASM)
-#include "GFp/prefix_symbols_asm.h"
+#include "ring_core_generated/prefix_symbols_asm.h"
 ___
 }
 

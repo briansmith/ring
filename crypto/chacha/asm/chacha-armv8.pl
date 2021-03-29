@@ -122,8 +122,8 @@ my ($a3,$b3,$c3,$d3)=map(($_&~3)+(($_+1)&3),($a2,$b2,$c2,$d2));
 $code.=<<___;
 #include <GFp/arm_arch.h>
 
-.extern	GFp_armcap_P
-.hidden	GFp_armcap_P
+.extern	OPENSSL_armcap_P
+.hidden	OPENSSL_armcap_P
 
 .section .rodata
 
@@ -136,20 +136,20 @@ $code.=<<___;
 
 .text
 
-.globl	GFp_ChaCha20_ctr32
-.type	GFp_ChaCha20_ctr32,%function
+.globl	ChaCha20_ctr32
+.type	ChaCha20_ctr32,%function
 .align	5
-GFp_ChaCha20_ctr32:
+ChaCha20_ctr32:
 	AARCH64_VALID_CALL_TARGET
 	cbz	$len,.Labort
 #if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
-	adrp	@x[0],:pg_hi21_nc:GFp_armcap_P
+	adrp	@x[0],:pg_hi21_nc:OPENSSL_armcap_P
 #else
-	adrp	@x[0],:pg_hi21:GFp_armcap_P
+	adrp	@x[0],:pg_hi21:OPENSSL_armcap_P
 #endif
 	cmp	$len,#192
 	b.lo	.Lshort
-	ldr	w17,[@x[0],:lo12:GFp_armcap_P]
+	ldr	w17,[@x[0],:lo12:OPENSSL_armcap_P]
 	tst	w17,#ARMV7_NEON
 	b.ne	ChaCha20_neon
 
@@ -334,7 +334,7 @@ $code.=<<___;
 	ldp	x29,x30,[sp],#96
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	GFp_ChaCha20_ctr32,.-GFp_ChaCha20_ctr32
+.size	ChaCha20_ctr32,.-ChaCha20_ctr32
 ___
 
 {{{

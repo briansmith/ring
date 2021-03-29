@@ -107,7 +107,7 @@ static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
 //
 // See https://software.intel.com/en-us/articles/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family
 static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER)
   return (uint64_t)_xgetbv(xcr);
 #else
   uint32_t eax, edx;
@@ -116,7 +116,7 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 #endif
 }
 
-void GFp_cpuid_setup(void) {
+void OPENSSL_cpuid_setup(void) {
   // Determine the vendor and maximum input value.
   uint32_t eax, ebx, ecx, edx;
   OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0);
@@ -194,10 +194,10 @@ void GFp_cpuid_setup(void) {
     extended_features[0] &= ~(1u << 19);
   }
 
-  GFp_ia32cap_P[0] = edx;
-  GFp_ia32cap_P[1] = ecx;
-  GFp_ia32cap_P[2] = extended_features[0];
-  GFp_ia32cap_P[3] = extended_features[1];
+  OPENSSL_ia32cap_P[0] = edx;
+  OPENSSL_ia32cap_P[1] = ecx;
+  OPENSSL_ia32cap_P[2] = extended_features[0];
+  OPENSSL_ia32cap_P[3] = extended_features[1];
 }
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64)

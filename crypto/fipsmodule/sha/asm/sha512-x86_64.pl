@@ -142,7 +142,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 if ($output =~ /sha512-x86_64/) {
-	$func="GFp_sha512_block_data_order";
+	$func="sha512_block_data_order";
 	$TABLE="K512";
 	$SZ=8;
 	@ROT=($A,$B,$C,$D,$E,$F,$G,$H)=("%rax","%rbx","%rcx","%rdx",
@@ -154,7 +154,7 @@ if ($output =~ /sha512-x86_64/) {
 	@sigma1=(19,61, 6);
 	$rounds=80;
 } else {
-	$func="GFp_sha256_block_data_order";
+	$func="sha256_block_data_order";
 	$TABLE="K256";
 	$SZ=4;
 	@ROT=($A,$B,$C,$D,$E,$F,$G,$H)=("%eax","%ebx","%ecx","%edx",
@@ -262,7 +262,7 @@ ___
 $code=<<___;
 .text
 
-.extern	GFp_ia32cap_P
+.extern	OPENSSL_ia32cap_P
 .globl	$func
 .type	$func,\@function,3
 .align	16
@@ -270,7 +270,7 @@ $func:
 .cfi_startproc
 ___
 $code.=<<___ if ($SZ==4 || $avx);
-	leaq	GFp_ia32cap_P(%rip),%r11
+	leaq	OPENSSL_ia32cap_P(%rip),%r11
 	mov	0(%r11),%r9d
 	mov	4(%r11),%r10d
 	mov	8(%r11),%r11d
@@ -558,9 +558,9 @@ my ($Wi,$ABEF,$CDGH,$TMP,$BSWAP,$ABEF_SAVE,$CDGH_SAVE)=map("%xmm$_",(0..2,7..10)
 my @MSG=map("%xmm$_",(3..6));
 
 $code.=<<___;
-.type	GFp_sha256_block_data_order_shaext,\@function,3
+.type	sha256_block_data_order_shaext,\@function,3
 .align	64
-GFp_sha256_block_data_order_shaext:
+sha256_block_data_order_shaext:
 _shaext_shortcut:
 ___
 $code.=<<___ if ($win64);
@@ -705,7 +705,7 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	ret
-.size	GFp_sha256_block_data_order_shaext,.-GFp_sha256_block_data_order_shaext
+.size	sha256_block_data_order_shaext,.-sha256_block_data_order_shaext
 ___
 }}}
 {{{

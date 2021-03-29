@@ -32,12 +32,12 @@
 // We can assume little-endian.
 static uint32_t U8TO32_LE(const uint8_t *m) {
   uint32_t r;
-  GFp_memcpy(&r, m, sizeof(r));
+  OPENSSL_memcpy(&r, m, sizeof(r));
   return r;
 }
 
 static void U32TO8_LE(uint8_t *m, uint32_t v) {
-  GFp_memcpy(m, &v, sizeof(v));
+  OPENSSL_memcpy(m, &v, sizeof(v));
 }
 
 static uint64_t mul32x32_64(uint32_t a, uint32_t b) { return (uint64_t)a * b; }
@@ -157,7 +157,7 @@ poly1305_donna_atmost15bytes:
   goto poly1305_donna_mul;
 }
 
-void GFp_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
+void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
   uint32_t t0, t1, t2, t3;
 
@@ -193,11 +193,11 @@ void GFp_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   state->h4 = 0;
 
   state->buf_used = 0;
-  GFp_memcpy(state->key, key + 16, sizeof(state->key));
+  OPENSSL_memcpy(state->key, key + 16, sizeof(state->key));
 }
 
-void GFp_poly1305_update(poly1305_state *statep, const uint8_t *in,
-                         size_t in_len) {
+void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
+                            size_t in_len) {
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
 
   if (state->buf_used) {
@@ -233,7 +233,7 @@ void GFp_poly1305_update(poly1305_state *statep, const uint8_t *in,
   }
 }
 
-void GFp_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
+void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
   uint64_t f0, f1, f2, f3;
   uint32_t g0, g1, g2, g3, g4;

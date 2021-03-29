@@ -38,7 +38,7 @@ $avx = 2;
 
 $code.=<<___;
 .text
-.extern GFp_ia32cap_P
+.extern OPENSSL_ia32cap_P
 
 chacha20_poly1305_constants:
 
@@ -436,16 +436,16 @@ poly_hash_ad_internal:
 
 {
 ################################################################################
-# void GFp_chacha20_poly1305_open(uint8_t *out_plaintext, const uint8_t *ciphertext,
-#                                 size_t plaintext_len, const uint8_t *ad,
-#                                 size_t ad_len,
-#                                 union chacha20_poly1305_open_data *aead_data)
+# void chacha20_poly1305_open(uint8_t *out_plaintext, const uint8_t *ciphertext,
+#                             size_t plaintext_len, const uint8_t *ad,
+#                             size_t ad_len,
+#                             union chacha20_poly1305_open_data *aead_data)
 #
 $code.="
-.globl GFp_chacha20_poly1305_open
-.type GFp_chacha20_poly1305_open,\@function,6
+.globl chacha20_poly1305_open
+.type chacha20_poly1305_open,\@function,6
 .align 64
-GFp_chacha20_poly1305_open:
+chacha20_poly1305_open:
 .cfi_startproc
     push %rbp
 .cfi_push %rbp
@@ -484,7 +484,7 @@ $code.="
     mov $adl, 0+$len_store
     mov $inl, 8+$len_store\n";
 $code.="
-    mov GFp_ia32cap_P+8(%rip), %eax
+    mov OPENSSL_ia32cap_P+8(%rip), %eax
     and \$`(1<<5) + (1<<8)`, %eax # Check both BMI2 and AVX2 are present
     xor \$`(1<<5) + (1<<8)`, %eax
     jz chacha20_poly1305_open_avx2\n" if ($avx>1);
@@ -855,18 +855,19 @@ $code.="
         movdqa $C2, $B2
         movdqa $D2, $C2
     jmp .Lopen_sse_128_xor_hash
-.size GFp_chacha20_poly1305_open, .-GFp_chacha20_poly1305_open
+.size chacha20_poly1305_open, .-chacha20_poly1305_open
 .cfi_endproc
 
 ################################################################################
-# void GFp_chacha20_poly1305_seal(uint8_t *out_ciphertext, const uint8_t *plaintext,
-#                                 size_t plaintext_len, const uint8_t *ad,
-#                                 size_t ad_len,
-#                                 union chacha20_poly1305_seal_data *data);
-.globl  GFp_chacha20_poly1305_seal
-.type GFp_chacha20_poly1305_seal,\@function,6
+################################################################################
+# void chacha20_poly1305_seal(uint8_t *out_ciphertext, const uint8_t *plaintext,
+#                             size_t plaintext_len, const uint8_t *ad,
+#                             size_t ad_len,
+#                             union chacha20_poly1305_seal_data *data);
+.globl  chacha20_poly1305_seal
+.type chacha20_poly1305_seal,\@function,6
 .align 64
-GFp_chacha20_poly1305_seal:
+chacha20_poly1305_seal:
 .cfi_startproc
     push %rbp
 .cfi_push %rbp
@@ -879,7 +880,7 @@ GFp_chacha20_poly1305_seal:
     push %r14
 .cfi_push %r14
     push %r15
-.cfi_push %r15
+.cfi_push %r15   
 # We write the calculated authenticator back to keyp at the end, so save
 # the pointer on the stack too.
     push $keyp
@@ -906,7 +907,7 @@ $code.="
     mov $inl, 8+$len_store
     mov %rdx, $inl\n";
 $code.="
-    mov GFp_ia32cap_P+8(%rip), %eax
+    mov OPENSSL_ia32cap_P+8(%rip), %eax
     and \$`(1<<5) + (1<<8)`, %eax # Check both BMI2 and AVX2 are present
     xor \$`(1<<5) + (1<<8)`, %eax
     jz chacha20_poly1305_seal_avx2\n" if ($avx>1);
@@ -1366,7 +1367,7 @@ $code.="
     mov %r8, $itr2
     call poly_hash_ad_internal
     jmp .Lseal_sse_128_tail_xor
-.size GFp_chacha20_poly1305_seal, .-GFp_chacha20_poly1305_seal
+.size chacha20_poly1305_seal, .-chacha20_poly1305_seal
 .cfi_endproc\n";
 }
 
@@ -1709,7 +1710,7 @@ chacha20_poly1305_open_avx2:
         # Hash and decrypt 512 bytes each iteration
         cmp \$16*32, $inl
         jb .Lopen_avx2_main_loop_done\n";
-        &prep_state_avx2(4); $code.="
+        &prep_state_avx2(4); $code.=" 
         xor $itr1, $itr1
 .Lopen_avx2_main_loop_rounds: \n";
             &poly_add("0*8($inp,$itr1)");

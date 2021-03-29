@@ -34,5 +34,5 @@
 // archive, linking on OS X will fail to resolve common symbols. By
 // initialising it to zero, it becomes a "data symbol", which isn't so
 // affected.
-HIDDEN uint32_t GFp_ia32cap_P[4] = {0};
+HIDDEN uint32_t OPENSSL_ia32cap_P[4] = {0};
 #endif

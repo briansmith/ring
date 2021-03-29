@@ -272,7 +272,7 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 #include <string.h>
 #endif
 
-static inline void *GFp_memcpy(void *dst, const void *src, size_t n) {
+static inline void *OPENSSL_memcpy(void *dst, const void *src, size_t n) {
 #if !defined(GFp_NOSTDLIBINC)
   if (n == 0) {
     return dst;
@@ -288,7 +288,7 @@ static inline void *GFp_memcpy(void *dst, const void *src, size_t n) {
 #endif
 }
 
-static inline void *GFp_memset(void *dst, int c, size_t n) {
+static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
 #if !defined(GFp_NOSTDLIBINC)
   if (n == 0) {
     return dst;

@@ -24,6 +24,7 @@
 
 use std::{
     fs::{self, DirEntry},
+    io::Write,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -329,6 +330,8 @@ fn pregenerate_asm_main() {
     let pregenerated_tmp = pregenerated.join("tmp");
     std::fs::create_dir(&pregenerated_tmp).unwrap();
 
+    let mut generated_prefix_headers = false;
+
     for asm_target in ASM_TARGETS {
         // For Windows, package pregenerated object files instead of
         // pregenerated assembly language source files, so that the user
@@ -343,10 +346,13 @@ fn pregenerate_asm_main() {
         perlasm(&perlasm_src_dsts, asm_target);
 
         if asm_target.preassemble {
+            if !std::mem::replace(&mut generated_prefix_headers, true) {
+                generate_prefix_symbols_nasm(&pregenerated).unwrap();
+            }
             let srcs = asm_srcs(perlasm_src_dsts);
             for src in srcs {
                 let obj_path = obj_path(&pregenerated, &src, MSVC_OBJ_EXT);
-                run_command(nasm(&src, asm_target.arch, &obj_path));
+                run_command(nasm(&src, asm_target.arch, &obj_path, &pregenerated));
             }
         }
     }
@@ -382,6 +388,8 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     } else {
         out_dir
     };
+
+    generate_prefix_symbols(target, out_dir).unwrap();
 
     let asm_srcs = if let Some(asm_target) = asm_target {
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
@@ -500,9 +508,9 @@ fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path)
         let mut out_path = out_dir.join(p.file_name().unwrap());
         assert!(out_path.set_extension(target.obj_ext));
         let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(p, ext, target, warnings_are_errors, &out_path)
+            cc(p, ext, target, warnings_are_errors, &out_path, out_dir)
         } else {
-            nasm(p, &target.arch, &out_path)
+            nasm(p, &target.arch, &out_path, out_dir)
         };
 
         run_command(cmd);
@@ -516,17 +524,23 @@ fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
     out_path
 }
 
+// This is the prefix we've been using for most symbols since we started
+// prefixing.
+const BORINGSSL_PREFIX_VALUE: &str = "GFp_";
+
 fn cc(
     file: &Path,
     ext: &str,
     target: &Target,
     warnings_are_errors: bool,
-    out_dir: &Path,
+    out_path: &Path,
+    include_dir: &Path,
 ) -> Command {
     let is_musl = target.env.starts_with("musl");
 
     let mut c = cc::Build::new();
     let _ = c.include("include");
+    let _ = c.include(include_dir);
     match ext {
         "c" => {
             for f in c_flags(target) {
@@ -609,24 +623,35 @@ fn cc(
         .arg(format!(
             "{}{}",
             target.obj_opt,
-            out_dir.to_str().expect("Invalid path")
+            out_path.to_str().expect("Invalid path")
         ))
         .arg(file);
     c
 }
 
-fn nasm(file: &Path, arch: &str, out_file: &Path) -> Command {
+fn nasm(file: &Path, arch: &str, out_file: &Path, include_dir: &Path) -> Command {
     let oformat = match arch {
         "x86_64" => ("win64"),
         "x86" => ("win32"),
         _ => panic!("unsupported arch: {}", arch),
     };
+
+    // Nasm requires that the path end in a path separator.
+    let mut include_dir = include_dir.as_os_str().to_os_string();
+    include_dir.push(std::ffi::OsString::from(String::from(
+        std::path::MAIN_SEPARATOR,
+    )));
+
     let mut c = Command::new("./target/tools/windows/nasm/nasm");
     let _ = c
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
         .arg("-f")
         .arg(oformat)
+        .arg("-i")
+        .arg("include/")
+        .arg("-i")
+        .arg(include_dir)
         .arg("-Xgnu")
         .arg("-gcv8")
         .arg(file);
@@ -765,4 +790,189 @@ fn walk_dir(dir: &Path, cb: &impl Fn(&DirEntry)) {
             }
         }
     }
+}
+
+/// Creates the necessary header file for symbol renaming and returns the path of the
+/// generated include directory.
+fn generate_prefix_symbols(target: &Target, out_dir: &Path) -> Result<(), std::io::Error> {
+    generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None)?;
+
+    if target.os == "windows" {
+        let _ = generate_prefix_symbols_nasm(out_dir)?;
+    } else {
+        generate_prefix_symbols_header(
+            out_dir,
+            "prefix_symbols_asm.h",
+            '#',
+            Some("#if defined(__APPLE__)"),
+        )?;
+    }
+
+    Ok(())
+}
+
+fn generate_prefix_symbols_nasm(out_dir: &Path) -> Result<(), std::io::Error> {
+    generate_prefix_symbols_header(
+        out_dir,
+        "prefix_symbols_nasm.inc",
+        '%',
+        Some("%ifidn __OUTPUT_FORMAT__,win32"),
+    )
+}
+
+fn generate_prefix_symbols_header(
+    out_dir: &Path,
+    filename: &str,
+    pp: char,
+    prefix_condition: Option<&str>,
+) -> Result<(), std::io::Error> {
+    let dir = out_dir.join("ring_core_generated");
+    std::fs::create_dir_all(&dir)?;
+
+    let path = dir.join(filename);
+    let mut file = std::fs::File::create(&path)?;
+
+    let filename_ident = filename.replace(".", "_").to_uppercase();
+    writeln!(
+        file,
+        r#"
+{pp}ifndef GFp_generated_{filename_ident}
+{pp}define GFp_generated_{filename_ident}
+"#,
+        pp = pp,
+        filename_ident = filename_ident
+    )?;
+
+    if let Some(prefix_condition) = prefix_condition {
+        writeln!(file, "{}", prefix_condition)?;
+        writeln!(file, "{}", prefix_all_symbols(pp, "_"))?;
+        writeln!(file, "{pp}else", pp = pp)?;
+    };
+    writeln!(file, "{}", prefix_all_symbols(pp, ""))?;
+    if prefix_condition.is_some() {
+        writeln!(file, "{pp}endif", pp = pp)?
+    }
+
+    writeln!(file, "{pp}endif", pp = pp)?;
+
+    Ok(())
+}
+
+fn prefix_all_symbols(pp: char, prefix_prefix: &str) -> String {
+    static SYMBOLS_TO_PREFIX: &[&str] = &[
+        "CRYPTO_poly1305_finish",
+        "CRYPTO_poly1305_finish_neon",
+        "CRYPTO_poly1305_init",
+        "CRYPTO_poly1305_init_neon",
+        "CRYPTO_poly1305_update",
+        "CRYPTO_poly1305_update_neon",
+        "ChaCha20_ctr32",
+        "LIMBS_add_mod",
+        "LIMBS_are_even",
+        "LIMBS_are_zero",
+        "LIMBS_equal",
+        "LIMBS_equal_limb",
+        "LIMBS_less_than",
+        "LIMBS_less_than_limb",
+        "LIMBS_reduce_once",
+        "LIMBS_select_512_32",
+        "LIMBS_shl_mod",
+        "LIMBS_sub_mod",
+        "LIMBS_window5_split_window",
+        "LIMBS_window5_unsplit_window",
+        "LIMB_shr",
+        "OPENSSL_armcap_P",
+        "OPENSSL_cpuid_setup",
+        "OPENSSL_ia32cap_P",
+        "OPENSSL_memcmp",
+        "aes_hw_ctr32_encrypt_blocks",
+        "aes_hw_encrypt",
+        "aes_hw_set_encrypt_key",
+        "aes_nohw_ctr32_encrypt_blocks",
+        "aes_nohw_encrypt",
+        "aes_nohw_set_encrypt_key",
+        "aesni_gcm_decrypt",
+        "aesni_gcm_encrypt",
+        "bn_from_montgomery",
+        "bn_from_montgomery_in_place",
+        "bn_gather5",
+        "bn_mul_mont",
+        "bn_mul_mont_gather5",
+        "bn_neg_inv_mod_r_u64",
+        "bn_power5",
+        "bn_scatter5",
+        "bn_sqr8x_internal",
+        "bn_sqrx8x_internal",
+        "bsaes_ctr32_encrypt_blocks",
+        "bssl_constant_time_test_main",
+        "chacha20_poly1305_open",
+        "chacha20_poly1305_seal",
+        "gcm_ghash_avx",
+        "gcm_ghash_clmul",
+        "gcm_ghash_neon",
+        "gcm_gmult_clmul",
+        "gcm_gmult_neon",
+        "gcm_init_avx",
+        "gcm_init_clmul",
+        "gcm_init_neon",
+        "limbs_mul_add_limb",
+        "little_endian_bytes_from_scalar",
+        "nistz256_neg",
+        "nistz256_select_w5",
+        "nistz256_select_w7",
+        "nistz384_point_add",
+        "nistz384_point_double",
+        "nistz384_point_mul",
+        "p256_mul_mont",
+        "p256_point_add",
+        "p256_point_add_affine",
+        "p256_point_double",
+        "p256_point_mul",
+        "p256_point_mul_base",
+        "p256_scalar_mul_mont",
+        "p256_scalar_sqr_rep_mont",
+        "p256_sqr_mont",
+        "p384_elem_div_by_2",
+        "p384_elem_mul_mont",
+        "p384_elem_neg",
+        "p384_elem_sub",
+        "p384_scalar_mul_mont",
+        "poly1305_neon2_addmulmod",
+        "poly1305_neon2_blocks",
+        "sha256_block_data_order",
+        "sha512_block_data_order",
+        "vpaes_ctr32_encrypt_blocks",
+        "vpaes_encrypt",
+        "vpaes_encrypt_key_to_bsaes",
+        "vpaes_set_encrypt_key",
+        "x25519_NEON",
+        "x25519_fe_invert",
+        "x25519_fe_isnegative",
+        "x25519_fe_mul_ttt",
+        "x25519_fe_neg",
+        "x25519_fe_tobytes",
+        "x25519_ge_double_scalarmult_vartime",
+        "x25519_ge_frombytes_vartime",
+        "x25519_ge_scalarmult_base",
+        "x25519_public_from_private_generic_masked",
+        "x25519_sc_mask",
+        "x25519_sc_muladd",
+        "x25519_sc_reduce",
+        "x25519_scalar_mult_generic_masked",
+    ];
+
+    let mut out = String::new();
+
+    for symbol in SYMBOLS_TO_PREFIX {
+        let line = format!(
+            "{pp}define {prefix_prefix}{symbol} {prefix_prefix}{prefix}{symbol}\n",
+            pp = pp,
+            prefix_prefix = prefix_prefix,
+            prefix = BORINGSSL_PREFIX_VALUE,
+            symbol = symbol
+        );
+        out += &line;
+    }
+
+    out
 }

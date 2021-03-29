@@ -311,10 +311,10 @@ _vpaes_encrypt_core:
 	bx	lr
 .size	_vpaes_encrypt_core,.-_vpaes_encrypt_core
 
-.globl	GFp_vpaes_encrypt
-.type	GFp_vpaes_encrypt,%function
+.globl	vpaes_encrypt
+.type	vpaes_encrypt,%function
 .align	4
-GFp_vpaes_encrypt:
+vpaes_encrypt:
 	@ _vpaes_encrypt_core uses r8-r11. Round up to r7-r11 to maintain stack
 	@ alignment.
 	stmdb	sp!, {r7-r11,lr}
@@ -328,7 +328,7 @@ GFp_vpaes_encrypt:
 
 	vldmia	sp!, {d8-d11}
 	ldmia	sp!, {r7-r11, pc}	@ return
-.size	GFp_vpaes_encrypt,.-GFp_vpaes_encrypt
+.size	vpaes_encrypt,.-vpaes_encrypt
 ___
 }
 {
@@ -663,10 +663,10 @@ _vpaes_schedule_mangle:
 	bx	lr
 .size	_vpaes_schedule_mangle,.-_vpaes_schedule_mangle
 
-.globl	GFp_vpaes_set_encrypt_key
-.type	GFp_vpaes_set_encrypt_key,%function
+.globl	vpaes_set_encrypt_key
+.type	vpaes_set_encrypt_key,%function
 .align	4
-GFp_vpaes_set_encrypt_key:
+vpaes_set_encrypt_key:
 	stmdb	sp!, {r7-r11, lr}
 	vstmdb	sp!, {d8-d15}
 
@@ -681,7 +681,7 @@ GFp_vpaes_set_encrypt_key:
 
 	vldmia	sp!, {d8-d15}
 	ldmia	sp!, {r7-r11, pc}	@ return
-.size	GFp_vpaes_set_encrypt_key,.-GFp_vpaes_set_encrypt_key
+.size	vpaes_set_encrypt_key,.-vpaes_set_encrypt_key
 ___
 }
 
@@ -730,11 +730,11 @@ _vpaes_convert_consts:
 	.quad	0x9cb8436798bc4763, 0x6440bb9f6044bf9b
 	.quad	0x1f30062936192f00, 0xb49bad829db284ab
 
-@ void GFp_vpaes_encrypt_key_to_bsaes(AES_KEY *bsaes, const AES_KEY *vpaes);
-.globl	GFp_vpaes_encrypt_key_to_bsaes
-.type	GFp_vpaes_encrypt_key_to_bsaes,%function
+@ void vpaes_encrypt_key_to_bsaes(AES_KEY *bsaes, const AES_KEY *vpaes);
+.globl	vpaes_encrypt_key_to_bsaes
+.type	vpaes_encrypt_key_to_bsaes,%function
 .align	4
-GFp_vpaes_encrypt_key_to_bsaes:
+vpaes_encrypt_key_to_bsaes:
 	stmdb	sp!, {r11, lr}
 
 	@ See _vpaes_schedule_core for the key schedule logic. In particular,
@@ -825,7 +825,7 @@ GFp_vpaes_encrypt_key_to_bsaes:
 	veor	q2, q2, q2
 
 	ldmia	sp!, {r11, pc}	@ return
-.size	GFp_vpaes_encrypt_key_to_bsaes,.-GFp_vpaes_encrypt_key_to_bsaes
+.size	vpaes_encrypt_key_to_bsaes,.-vpaes_encrypt_key_to_bsaes
 ___
 }
 
@@ -839,10 +839,10 @@ my ($ctr, $ivec, $tmp) = map("r$_", 7..9);
 # void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
 #                                 const AES_KEY *key, const uint8_t ivec[16]);
 $code .= <<___;
-.globl	GFp_vpaes_ctr32_encrypt_blocks
-.type	GFp_vpaes_ctr32_encrypt_blocks,%function
+.globl	vpaes_ctr32_encrypt_blocks
+.type	vpaes_ctr32_encrypt_blocks,%function
 .align	4
-GFp_vpaes_ctr32_encrypt_blocks:
+vpaes_ctr32_encrypt_blocks:
 	mov	ip, sp
 	stmdb	sp!, {r7-r11, lr}
 	@ This function uses q4-q7 (d8-d15), which are callee-saved.
@@ -884,7 +884,7 @@ $code .= <<___;
 .Lctr32_done:
 	vldmia	sp!, {d8-d15}
 	ldmia	sp!, {r7-r11, pc}	@ return
-.size	GFp_vpaes_ctr32_encrypt_blocks,.-GFp_vpaes_ctr32_encrypt_blocks
+.size	vpaes_ctr32_encrypt_blocks,.-vpaes_ctr32_encrypt_blocks
 ___
 }
 

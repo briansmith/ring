@@ -185,7 +185,7 @@ my ($Xhi,$Xi,$Hkey,$HK)=@_;
 sub clmul64x64_T3 {
 # Even though this subroutine offers visually better ILP, it
 # was empirically found to be a tad slower than above version.
-# At least in GFp_gcm_ghash_clmul context. But it's just as well,
+# At least in gcm_ghash_clmul context. But it's just as well,
 # because loop modulo-scheduling is possible only thanks to
 # minimized "register" pressure...
 my ($Xhi,$Xi,$Hkey)=@_;
@@ -246,7 +246,7 @@ my ($Xhi,$Xi) = @_;
 	&pxor		($Xi,$Xhi)		#
 }
 
-&function_begin_B("GFp_gcm_init_clmul");
+&function_begin_B("gcm_init_clmul");
 	&mov		($Htbl,&wparam(0));
 	&mov		($Xip,&wparam(1));
 
@@ -287,9 +287,9 @@ my ($Xhi,$Xi) = @_;
 	&movdqu		(&QWP(32,$Htbl),$T2);	# save Karatsuba "salt"
 
 	&ret		();
-&function_end_B("GFp_gcm_init_clmul");
+&function_end_B("gcm_init_clmul");
 
-&function_begin_B("GFp_gcm_gmult_clmul");
+&function_begin_B("gcm_gmult_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 
@@ -311,9 +311,9 @@ my ($Xhi,$Xi) = @_;
 	&movdqu		(&QWP(0,$Xip),$Xi);
 
 	&ret	();
-&function_end_B("GFp_gcm_gmult_clmul");
+&function_end_B("gcm_gmult_clmul");
 
-&function_begin("GFp_gcm_ghash_clmul");
+&function_begin("gcm_ghash_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 	&mov		($inp,&wparam(2));
@@ -462,7 +462,7 @@ my ($Xhi,$Xi) = @_;
 &set_label("done");
 	&pshufb		($Xi,$T3);
 	&movdqu		(&QWP(0,$Xip),$Xi);
-&function_end("GFp_gcm_ghash_clmul");
+&function_end("gcm_ghash_clmul");
 
 } else {		# Algorithm 5. Kept for reference purposes.
 
@@ -511,7 +511,7 @@ my ($Xhi,$Xi)=@_;
 	&pxor		($Xi,$Xhi);		#
 }
 
-&function_begin_B("GFp_gcm_init_clmul");
+&function_begin_B("gcm_init_clmul");
 	&mov		($Htbl,&wparam(0));
 	&mov		($Xip,&wparam(1));
 
@@ -532,9 +532,9 @@ my ($Xhi,$Xi)=@_;
 	&movdqu		(&QWP(16,$Htbl),$Xi);	# save H^2
 
 	&ret		();
-&function_end_B("GFp_gcm_init_clmul");
+&function_end_B("gcm_init_clmul");
 
-&function_begin_B("GFp_gcm_gmult_clmul");
+&function_begin_B("gcm_gmult_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 
@@ -555,9 +555,9 @@ my ($Xhi,$Xi)=@_;
 	&movdqu		(&QWP(0,$Xip),$Xi);
 
 	&ret	();
-&function_end_B("GFp_gcm_gmult_clmul");
+&function_end_B("gcm_gmult_clmul");
 
-&function_begin("GFp_gcm_ghash_clmul");
+&function_begin("gcm_ghash_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 	&mov		($inp,&wparam(2));
@@ -643,7 +643,7 @@ my ($Xhi,$Xi)=@_;
 &set_label("done");
 	&pshufb		($Xi,$T3);
 	&movdqu		(&QWP(0,$Xip),$Xi);
-&function_end("GFp_gcm_ghash_clmul");
+&function_end("gcm_ghash_clmul");
 
 }
 

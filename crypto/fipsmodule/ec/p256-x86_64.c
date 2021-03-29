@@ -37,7 +37,7 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 // Precomputed tables for the default generator
 #include "p256-x86_64-table.h"
 
-// Recode window to a signed digit, see |GFp_nistp_recode_scalar_bits| in
+// Recode window to a signed digit, see |nistp_recode_scalar_bits| in
 // util.c for details
 static crypto_word booth_recode_w5(crypto_word in) {
   crypto_word s, d;
@@ -227,7 +227,7 @@ static crypto_word calc_wvalue(size_t *index, const uint8_t p_str[33]) {
   return booth_recode_w7(wvalue);
 }
 
-void GFp_p256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
+void p256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
                         const Limb p_x[P256_LIMBS],
                         const Limb p_y[P256_LIMBS]) {
   alignas(32) P256_POINT out;
@@ -238,7 +238,7 @@ void GFp_p256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
   limbs_copy(r->Z, out.Z, P256_LIMBS);
 }
 
-void GFp_p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
+void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   alignas(32) p256_point_union_t t, p;
 
   P256_SCALAR_BYTES p_str;
@@ -255,7 +255,7 @@ void GFp_p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   // Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
   // is infinity and |ONE| otherwise. |p| was computed from the table, so it
   // is infinity iff |wvalue >> 1| is zero.
-  GFp_memset(p.p.Z, 0, sizeof(p.p.Z));
+  OPENSSL_memset(p.p.Z, 0, sizeof(p.p.Z));
   copy_conditional(p.p.Z, ONE, is_not_zero(wvalue >> 1));
 
   for (int i = 1; i < 37; i++) {

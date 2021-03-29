@@ -23,7 +23,7 @@ typedef Limb Scalar[P256_LIMBS];
 
 #include "../bn/internal.h"
 
-void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
+void p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   static const BN_ULONG N[] = {
     TOBN(0xf3b9cac2, 0xfc632551),
@@ -35,15 +35,15 @@ void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
     BN_MONT_CTX_N0(0xccd1c8aa, 0xee00bc4f)
   };
   /* XXX: Inefficient. TODO: optimize with dedicated multiplication routine. */
-  GFp_bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
+  bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
 }
 
 /* XXX: Inefficient. TODO: optimize with dedicated squaring routine. */
-void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep) {
+void p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep) {
   dev_assert_secret(rep >= 1);
-  GFp_p256_scalar_mul_mont(r, a, a);
+  p256_scalar_mul_mont(r, a, a);
   for (Limb i = 1; i < rep; ++i) {
-    GFp_p256_scalar_mul_mont(r, r, r);
+    p256_scalar_mul_mont(r, r, r);
   }
 }
 

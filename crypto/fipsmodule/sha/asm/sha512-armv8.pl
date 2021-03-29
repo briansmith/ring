@@ -74,7 +74,7 @@ if ($output =~ /sha512-armv8/) {
 	$reg_t="w";
 }
 
-$func="GFp_sha${BITS}_block_data_order";
+$func="sha${BITS}_block_data_order";
 
 ($ctx,$inp,$num,$Ktbl)=map("x$_",(0..2,30));
 
@@ -178,8 +178,8 @@ $code.=<<___;
 
 .text
 
-.extern	GFp_armcap_P
-.hidden GFp_armcap_P
+.extern	OPENSSL_armcap_P
+.hidden OPENSSL_armcap_P
 .globl	$func
 .type	$func,%function
 .align	6
@@ -189,11 +189,11 @@ $code.=<<___	if ($SZ==4);
 	AARCH64_VALID_CALL_TARGET
 #ifndef	__KERNEL__
 #if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
-	adrp	x16,:pg_hi21_nc:GFp_armcap_P
+	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
 #else
-	adrp	x16,:pg_hi21:GFp_armcap_P
+	adrp	x16,:pg_hi21:OPENSSL_armcap_P
 #endif
-	ldr	w16,[x16,:lo12:GFp_armcap_P]
+	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
 	tst	w16,#ARMV8_SHA256
 	b.ne	.Lv8_entry
 #endif

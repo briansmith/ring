@@ -214,6 +214,7 @@ include = [
     "src/polyfill.rs",
     "src/polyfill/array_map.rs",
     "src/polyfill/chunks_fixed.rs",
+    "src/prefixed.rs",
     "src/rand.rs",
     "src/rsa/convert_nist_rsa_test_vectors.py",
     "src/rsa.rs",

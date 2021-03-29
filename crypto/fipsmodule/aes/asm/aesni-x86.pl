@@ -67,10 +67,10 @@
 # Goldmont	3.84/1.39	1.39	1.63	1.31	1.70
 # Bulldozer	5.80/0.98	1.05	1.24	0.93	1.23
 
-$PREFIX="GFp_aes_hw";	# if $PREFIX is set to "AES", the script
+$PREFIX="aes_hw";	# if $PREFIX is set to "AES", the script
 			# generates drop-in replacement for
 			# crypto/aes/asm/aes-586.pl:-)
-$AESNI_PREFIX="GFp_aes_hw";
+$AESNI_PREFIX="aes_hw";
 $inline=1;		# inline _aesni_[en|de]crypt
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
@@ -83,7 +83,7 @@ open OUT,">$output";
 
 &asm_init($ARGV[0]);
 
-&external_label("GFp_ia32cap_P");
+&external_label("OPENSSL_ia32cap_P");
 &static_label("key_const");
 
 if ($PREFIX eq $AESNI_PREFIX)	{ $movekey=\&movups; }
@@ -688,7 +688,7 @@ if ($PREFIX eq $AESNI_PREFIX) {
 	&blindpop("ebx");
 	&lea	("ebx",&DWP(&label("key_const")."-".&label("pic"),"ebx"));
 
-	&picmeup("ebp","GFp_ia32cap_P","ebx",&label("key_const"));
+	&picmeup("ebp","OPENSSL_ia32cap_P","ebx",&label("key_const"));
 	&movups	("xmm0",&QWP(0,"eax"));	# pull first 128 bits of *userKey
 	&xorps	("xmm4","xmm4");	# low dword of xmm4 is assumed 0
 	&mov	("ebp",&DWP(4,"ebp"));

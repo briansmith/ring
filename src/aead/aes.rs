@@ -33,7 +33,7 @@ pub(crate) struct Key {
 
 macro_rules! set_encrypt_key {
     ( $name:ident, $bytes:expr, $key_bits:expr, $key:expr ) => {{
-        extern "C" {
+        prefixed_extern! {
             fn $name(user_key: *const u8, bits: c::uint, key: &mut AES_KEY) -> c::int;
         }
         set_encrypt_key($name, $bytes, $key_bits, $key)
@@ -57,7 +57,7 @@ fn set_encrypt_key(
 
 macro_rules! encrypt_block {
     ($name:ident, $block:expr, $key:expr) => {{
-        extern "C" {
+        prefixed_extern! {
             fn $name(a: &Block, r: *mut Block, key: &AES_KEY);
         }
         encrypt_block_($name, $block, $key)
@@ -79,7 +79,7 @@ fn encrypt_block_(
 
 macro_rules! ctr32_encrypt_blocks {
     ($name:ident, $in_out:expr, $src:expr, $key:expr, $ivec:expr ) => {{
-        extern "C" {
+        prefixed_extern! {
             fn $name(
                 input: *const u8,
                 output: *mut u8,
@@ -150,7 +150,7 @@ impl Key {
                 target_arch = "x86"
             ))]
             Implementation::HWAES => {
-                set_encrypt_key!(GFp_aes_hw_set_encrypt_key, bytes, key_bits, &mut key)?
+                set_encrypt_key!(aes_hw_set_encrypt_key, bytes, key_bits, &mut key)?
             }
 
             #[cfg(any(
@@ -160,12 +160,12 @@ impl Key {
                 target_arch = "x86"
             ))]
             Implementation::VPAES_BSAES => {
-                set_encrypt_key!(GFp_vpaes_set_encrypt_key, bytes, key_bits, &mut key)?
+                set_encrypt_key!(vpaes_set_encrypt_key, bytes, key_bits, &mut key)?
             }
 
             #[cfg(not(target_arch = "aarch64"))]
             Implementation::NOHW => {
-                set_encrypt_key!(GFp_aes_nohw_set_encrypt_key, bytes, key_bits, &mut key)?
+                set_encrypt_key!(aes_nohw_set_encrypt_key, bytes, key_bits, &mut key)?
             }
         };
 
@@ -184,7 +184,7 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::HWAES => encrypt_block!(GFp_aes_hw_encrypt, a, self),
+            Implementation::HWAES => encrypt_block!(aes_hw_encrypt, a, self),
 
             #[cfg(any(
                 target_arch = "aarch64",
@@ -192,10 +192,10 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::VPAES_BSAES => encrypt_block!(GFp_vpaes_encrypt, a, self),
+            Implementation::VPAES_BSAES => encrypt_block!(vpaes_encrypt, a, self),
 
             #[cfg(not(target_arch = "aarch64"))]
-            Implementation::NOHW => encrypt_block!(GFp_aes_nohw_encrypt, a, self),
+            Implementation::NOHW => encrypt_block!(aes_nohw_encrypt, a, self),
         }
     }
 
@@ -223,13 +223,9 @@ impl Key {
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
-            Implementation::HWAES => ctr32_encrypt_blocks!(
-                GFp_aes_hw_ctr32_encrypt_blocks,
-                in_out,
-                src,
-                &self.inner,
-                ctr
-            ),
+            Implementation::HWAES => {
+                ctr32_encrypt_blocks!(aes_hw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+            }
 
             #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
             Implementation::VPAES_BSAES => {
@@ -247,17 +243,14 @@ impl Key {
                         rd_key: [0u32; 4 * (MAX_ROUNDS + 1)],
                         rounds: 0,
                     };
-                    extern "C" {
-                        fn GFp_vpaes_encrypt_key_to_bsaes(
-                            bsaes_key: &mut AES_KEY,
-                            vpaes_key: &AES_KEY,
-                        );
+                    prefixed_extern! {
+                        fn vpaes_encrypt_key_to_bsaes(bsaes_key: &mut AES_KEY, vpaes_key: &AES_KEY);
                     }
                     unsafe {
-                        GFp_vpaes_encrypt_key_to_bsaes(&mut bsaes_key, &self.inner);
+                        vpaes_encrypt_key_to_bsaes(&mut bsaes_key, &self.inner);
                     }
                     ctr32_encrypt_blocks!(
-                        GFp_bsaes_ctr32_encrypt_blocks,
+                        bsaes_ctr32_encrypt_blocks,
                         &mut in_out[src.clone()][bsaes_in_out_len..],
                         src.clone(),
                         &bsaes_key,
@@ -269,13 +262,7 @@ impl Key {
                     in_out
                 };
 
-                ctr32_encrypt_blocks!(
-                    GFp_vpaes_ctr32_encrypt_blocks,
-                    in_out,
-                    src,
-                    &self.inner,
-                    ctr
-                )
+                ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
             }
 
             #[cfg(any(target_arch = "x86"))]
@@ -286,13 +273,9 @@ impl Key {
             }
 
             #[cfg(not(target_arch = "aarch64"))]
-            Implementation::NOHW => ctr32_encrypt_blocks!(
-                GFp_aes_nohw_ctr32_encrypt_blocks,
-                in_out,
-                src,
-                &self.inner,
-                ctr
-            ),
+            Implementation::NOHW => {
+                ctr32_encrypt_blocks!(aes_nohw_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
+            }
         }
     }
 

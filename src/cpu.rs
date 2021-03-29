@@ -39,11 +39,11 @@ pub(crate) fn features() -> Features {
         let () = INIT.call_once(|| {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             {
-                extern "C" {
-                    fn GFp_cpuid_setup();
+                prefixed_extern! {
+                    fn OPENSSL_cpuid_setup();
                 }
                 unsafe {
-                    GFp_cpuid_setup();
+                    OPENSSL_cpuid_setup();
                 }
             }
 
@@ -120,7 +120,7 @@ pub(crate) mod arm {
                 features |= SHA256.mask;
             }
 
-            unsafe { GFp_armcap_P = features };
+            unsafe { OPENSSL_armcap_P = features };
         }
     }
 
@@ -158,7 +158,7 @@ pub(crate) mod arm {
                 features |= 1 << 4;
             }
 
-            unsafe { GFp_armcap_P = features };
+            unsafe { OPENSSL_armcap_P = features };
         }
     }
 
@@ -241,7 +241,7 @@ pub(crate) mod arm {
                 any(target_arch = "arm", target_arch = "aarch64")
             ))]
             {
-                if self.mask == self.mask & unsafe { GFp_armcap_P } {
+                if self.mask == self.mask & unsafe { OPENSSL_armcap_P } {
                     return true;
                 }
             }
@@ -284,8 +284,10 @@ pub(crate) mod arm {
     // TODO: This should have "hidden" visibility but we don't have a way of
     // controlling that yet: https://github.com/rust-lang/rust/issues/73958.
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    #[no_mangle]
-    static mut GFp_armcap_P: u32 = ARMCAP_STATIC;
+    prefixed_export! {
+        #[allow(non_upper_case_globals)]
+        static mut OPENSSL_armcap_P: u32 = ARMCAP_STATIC;
+    }
 
     #[cfg(all(
         any(target_arch = "arm", target_arch = "aarch64"),
@@ -294,7 +296,7 @@ pub(crate) mod arm {
     #[test]
     fn test_armcap_static_matches_armcap_dynamic() {
         assert_eq!(ARMCAP_STATIC, 1 | 4 | 16 | 32);
-        assert_eq!(ARMCAP_STATIC, unsafe { GFp_armcap_P });
+        assert_eq!(ARMCAP_STATIC, unsafe { OPENSSL_armcap_P });
     }
 }
 
@@ -314,10 +316,10 @@ pub(crate) mod intel {
         pub fn available(&self, _: super::Features) -> bool {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             {
-                extern "C" {
-                    static mut GFp_ia32cap_P: [u32; 4];
+                prefixed_extern! {
+                    static mut OPENSSL_ia32cap_P: [u32; 4];
                 }
-                return self.mask == self.mask & unsafe { GFp_ia32cap_P[self.word] };
+                return self.mask == self.mask & unsafe { OPENSSL_ia32cap_P[self.word] };
             }
 
             #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]

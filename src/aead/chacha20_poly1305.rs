@@ -86,8 +86,8 @@ fn chacha20_poly1305_seal(
             };
 
             // Encrypts `plaintext_len` bytes from `plaintext` and writes them to `out_ciphertext`.
-            extern "C" {
-                fn GFp_chacha20_poly1305_seal(
+            prefixed_extern! {
+                fn chacha20_poly1305_seal(
                     out_ciphertext: *mut u8,
                     plaintext: *const u8,
                     plaintext_len: usize,
@@ -98,7 +98,7 @@ fn chacha20_poly1305_seal(
             }
 
             let out = unsafe {
-                GFp_chacha20_poly1305_seal(
+                chacha20_poly1305_seal(
                     in_out.as_mut_ptr(),
                     in_out.as_ptr(),
                     in_out.len(),
@@ -163,8 +163,8 @@ fn chacha20_poly1305_open(
             };
 
             // Decrypts `plaintext_len` bytes from `ciphertext` and writes them to `out_plaintext`.
-            extern "C" {
-                fn GFp_chacha20_poly1305_open(
+            prefixed_extern! {
+                fn chacha20_poly1305_open(
                     out_plaintext: *mut u8,
                     ciphertext: *const u8,
                     plaintext_len: usize,
@@ -175,7 +175,7 @@ fn chacha20_poly1305_open(
             }
 
             let out = unsafe {
-                GFp_chacha20_poly1305_open(
+                chacha20_poly1305_open(
                     in_out.as_mut_ptr(),
                     in_out.as_ptr().add(src.start),
                     in_out.len() - src.start,

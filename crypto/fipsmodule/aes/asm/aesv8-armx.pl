@@ -89,10 +89,10 @@ $code.=<<___;
 
 .text
 
-.globl	GFp_${prefix}_set_encrypt_key
-.type	GFp_${prefix}_set_encrypt_key,%function
+.globl	${prefix}_set_encrypt_key
+.type	${prefix}_set_encrypt_key,%function
 .align	5
-GFp_${prefix}_set_encrypt_key:
+${prefix}_set_encrypt_key:
 .Lenc_key:
 ___
 $code.=<<___	if ($flavour =~ /64/);
@@ -235,7 +235,7 @@ $code.=<<___;
 	mov	x0,$ptr			// return value
 	`"ldr	x29,[sp],#16"		if ($flavour =~ /64/)`
 	ret
-.size	GFp_${prefix}_set_encrypt_key,.-GFp_${prefix}_set_encrypt_key
+.size	${prefix}_set_encrypt_key,.-${prefix}_set_encrypt_key
 ___
 }}}
 {{{
@@ -247,10 +247,10 @@ my $rounds="w3";
 my ($rndkey0,$rndkey1,$inout)=map("q$_",(0..3));
 
 $code.=<<___;
-.globl	GFp_${prefix}_${dir}crypt
-.type	GFp_${prefix}_${dir}crypt,%function
+.globl	${prefix}_${dir}crypt
+.type	${prefix}_${dir}crypt,%function
 .align	5
-GFp_${prefix}_${dir}crypt:
+${prefix}_${dir}crypt:
 	AARCH64_VALID_CALL_TARGET
 	ldr	$rounds,[$key,#240]
 	vld1.32	{$rndkey0},[$key],#16
@@ -276,7 +276,7 @@ GFp_${prefix}_${dir}crypt:
 
 	vst1.8	{$inout},[$out]
 	ret
-.size	GFp_${prefix}_${dir}crypt,.-GFp_${prefix}_${dir}crypt
+.size	${prefix}_${dir}crypt,.-${prefix}_${dir}crypt
 ___
 }
 &gen_block("en");
@@ -297,10 +297,10 @@ my ($dat,$tmp)=($dat0,$tmp0);
 ### q8-q15	preloaded key schedule
 
 $code.=<<___;
-.globl	GFp_${prefix}_ctr32_encrypt_blocks
-.type	GFp_${prefix}_ctr32_encrypt_blocks,%function
+.globl	${prefix}_ctr32_encrypt_blocks
+.type	${prefix}_ctr32_encrypt_blocks,%function
 .align	5
-GFp_${prefix}_ctr32_encrypt_blocks:
+${prefix}_ctr32_encrypt_blocks:
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
@@ -514,7 +514,7 @@ $code.=<<___	if ($flavour =~ /64/);
 	ret
 ___
 $code.=<<___;
-.size	GFp_${prefix}_ctr32_encrypt_blocks,.-GFp_${prefix}_ctr32_encrypt_blocks
+.size	${prefix}_ctr32_encrypt_blocks,.-${prefix}_ctr32_encrypt_blocks
 ___
 }}}
 $code.=<<___;

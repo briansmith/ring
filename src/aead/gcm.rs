@@ -42,11 +42,11 @@ impl Key {
         match detect_implementation(cpu_features) {
             #[cfg(target_arch = "x86_64")]
             Implementation::CLMUL if has_avx_movbe(cpu_features) => {
-                extern "C" {
-                    fn GFp_gcm_init_avx(HTable: &mut HTable, h: &[u64; 2]);
+                prefixed_extern! {
+                    fn gcm_init_avx(HTable: &mut HTable, h: &[u64; 2]);
                 }
                 unsafe {
-                    GFp_gcm_init_avx(h_table, &h);
+                    gcm_init_avx(h_table, &h);
                 }
             }
 
@@ -57,21 +57,21 @@ impl Key {
                 target_arch = "x86"
             ))]
             Implementation::CLMUL => {
-                extern "C" {
-                    fn GFp_gcm_init_clmul(Htable: &mut HTable, h: &[u64; 2]);
+                prefixed_extern! {
+                    fn gcm_init_clmul(Htable: &mut HTable, h: &[u64; 2]);
                 }
                 unsafe {
-                    GFp_gcm_init_clmul(h_table, &h);
+                    gcm_init_clmul(h_table, &h);
                 }
             }
 
             #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             Implementation::NEON => {
-                extern "C" {
-                    fn GFp_gcm_init_neon(Htable: &mut HTable, h: &[u64; 2]);
+                prefixed_extern! {
+                    fn gcm_init_neon(Htable: &mut HTable, h: &[u64; 2]);
                 }
                 unsafe {
-                    GFp_gcm_init_neon(h_table, &h);
+                    gcm_init_neon(h_table, &h);
                 }
             }
 
@@ -136,8 +136,8 @@ impl Context {
         match detect_implementation(self.cpu_features) {
             #[cfg(target_arch = "x86_64")]
             Implementation::CLMUL if has_avx_movbe(self.cpu_features) => {
-                extern "C" {
-                    fn GFp_gcm_ghash_avx(
+                prefixed_extern! {
+                    fn gcm_ghash_avx(
                         xi: &mut Xi,
                         Htable: &HTable,
                         inp: *const [u8; BLOCK_LEN],
@@ -145,7 +145,7 @@ impl Context {
                     );
                 }
                 unsafe {
-                    GFp_gcm_ghash_avx(xi, h_table, input.as_ptr(), input_bytes);
+                    gcm_ghash_avx(xi, h_table, input.as_ptr(), input_bytes);
                 }
             }
 
@@ -156,8 +156,8 @@ impl Context {
                 target_arch = "x86"
             ))]
             Implementation::CLMUL => {
-                extern "C" {
-                    fn GFp_gcm_ghash_clmul(
+                prefixed_extern! {
+                    fn gcm_ghash_clmul(
                         xi: &mut Xi,
                         Htable: &HTable,
                         inp: *const [u8; BLOCK_LEN],
@@ -165,14 +165,14 @@ impl Context {
                     );
                 }
                 unsafe {
-                    GFp_gcm_ghash_clmul(xi, h_table, input.as_ptr(), input_bytes);
+                    gcm_ghash_clmul(xi, h_table, input.as_ptr(), input_bytes);
                 }
             }
 
             #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             Implementation::NEON => {
-                extern "C" {
-                    fn GFp_gcm_ghash_neon(
+                prefixed_extern! {
+                    fn gcm_ghash_neon(
                         xi: &mut Xi,
                         Htable: &HTable,
                         inp: *const [u8; BLOCK_LEN],
@@ -180,7 +180,7 @@ impl Context {
                     );
                 }
                 unsafe {
-                    GFp_gcm_ghash_neon(xi, h_table, input.as_ptr(), input_bytes);
+                    gcm_ghash_neon(xi, h_table, input.as_ptr(), input_bytes);
                 }
             }
 
@@ -208,21 +208,21 @@ impl Context {
                 target_arch = "x86"
             ))]
             Implementation::CLMUL => {
-                extern "C" {
-                    fn GFp_gcm_gmult_clmul(xi: &mut Xi, Htable: &HTable);
+                prefixed_extern! {
+                    fn gcm_gmult_clmul(xi: &mut Xi, Htable: &HTable);
                 }
                 unsafe {
-                    GFp_gcm_gmult_clmul(xi, h_table);
+                    gcm_gmult_clmul(xi, h_table);
                 }
             }
 
             #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             Implementation::NEON => {
-                extern "C" {
-                    fn GFp_gcm_gmult_neon(xi: &mut Xi, Htable: &HTable);
+                prefixed_extern! {
+                    fn gcm_gmult_neon(xi: &mut Xi, Htable: &HTable);
                 }
                 unsafe {
-                    GFp_gcm_gmult_neon(xi, h_table);
+                    gcm_gmult_neon(xi, h_table);
                 }
             }
 

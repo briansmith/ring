@@ -298,7 +298,7 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
 static void fiat_p256_select_point_affine(
     const fiat_p256_limb_t idx, size_t size,
     const fiat_p256_felem pre_comp[/*size*/][2], fiat_p256_felem out[3]) {
-  GFp_memset(out, 0, sizeof(fiat_p256_felem) * 3);
+  OPENSSL_memset(out, 0, sizeof(fiat_p256_felem) * 3);
   for (size_t i = 0; i < size; i++) {
     fiat_p256_limb_t mismatch = i ^ (idx - 1);
     fiat_p256_cmovznz(out[0], mismatch, pre_comp[i][0], out[0]);
@@ -312,7 +312,7 @@ static void fiat_p256_select_point_affine(
 static void fiat_p256_select_point(const fiat_p256_limb_t idx, size_t size,
                                    const fiat_p256_felem pre_comp[/*size*/][3],
                                    fiat_p256_felem out[3]) {
-  GFp_memset(out, 0, sizeof(fiat_p256_felem) * 3);
+  OPENSSL_memset(out, 0, sizeof(fiat_p256_felem) * 3);
   for (size_t i = 0; i < size; i++) {
     fiat_p256_limb_t mismatch = i ^ idx;
     fiat_p256_cmovznz(out[0], mismatch, pre_comp[i][0], out[0]);
@@ -329,7 +329,7 @@ static crypto_word fiat_p256_get_bit(const uint8_t *in, int i) {
   return (in[i >> 3] >> (i & 7)) & 1;
 }
 
-void GFp_p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
+void p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
                         const Limb p_x[P256_LIMBS], const Limb p_y[P256_LIMBS]) {
   debug_assert_nonsecret(r != NULL);
   debug_assert_nonsecret(scalar != NULL);
@@ -340,7 +340,7 @@ void GFp_p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
   p256_scalar_bytes_from_limbs(scalar_bytes, scalar);
 
   fiat_p256_felem p_pre_comp[17][3];
-  GFp_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
+  OPENSSL_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
 
   // Precompute multiples.
   limbs_copy(&p_pre_comp[1][0][0], p_x, P256_LIMBS);
@@ -406,7 +406,7 @@ void GFp_p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
   limbs_copy(r->Z, nq[2], P256_LIMBS);
 }
 
-void GFp_p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
+void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   P256_SCALAR_BYTES scalar_bytes;
   p256_scalar_bytes_from_limbs(scalar_bytes, scalar);
 
@@ -453,29 +453,29 @@ void GFp_p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   limbs_copy(r->Z, nq[2], P256_LIMBS);
 }
 
-void GFp_p256_mul_mont(Limb r[P256_LIMBS], const Limb a[P256_LIMBS],
+void p256_mul_mont(Limb r[P256_LIMBS], const Limb a[P256_LIMBS],
                        const Limb b[P256_LIMBS]) {
   fiat_p256_mul(r, a, b);
 }
 
-void GFp_p256_sqr_mont(Limb r[P256_LIMBS], const Limb a[P256_LIMBS]) {
+void p256_sqr_mont(Limb r[P256_LIMBS], const Limb a[P256_LIMBS]) {
   fiat_p256_square(r, a);
 }
 
-void GFp_p256_point_add(P256_POINT *r, const P256_POINT *a, const P256_POINT *b) {
+void p256_point_add(P256_POINT *r, const P256_POINT *a, const P256_POINT *b) {
   fiat_p256_point_add(r->X, r->Y, r->Z,
                       a->X, a->Y, a->Z,
                       0,
                       b->X, b->Y, b->Z);
 }
 
-void GFp_p256_point_double(P256_POINT *r, const P256_POINT *a) {
+void p256_point_double(P256_POINT *r, const P256_POINT *a) {
   fiat_p256_point_double(r->X, r->Y, r->Z,
                          a->X, a->Y, a->Z);
 }
 
 // For testing only.
-void GFp_p256_point_add_affine(P256_POINT *r, const P256_POINT *a,
+void p256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                const BN_ULONG b[P256_LIMBS * 2]) {
   const Limb *b_x = &b[0];
   const Limb *b_y = &b[P256_LIMBS];
