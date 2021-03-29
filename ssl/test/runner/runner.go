@@ -1829,9 +1829,7 @@ NextTest:
 	for _, test := range tests {
 		if test.protocol != tls ||
 			test.testType != serverTest ||
-			strings.Contains(test.name, "DelegatedCredentials") ||
-			strings.Contains(test.name, "QUICTransportParams") ||
-			strings.HasPrefix(test.name, "VersionNegotiation-") {
+			strings.Contains(test.name, "DelegatedCredentials") {
 			continue
 		}
 
