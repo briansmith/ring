@@ -60,6 +60,7 @@
 #include <string.h>
 
 #include "../../internal.h"
+#include "../digest/md32_common.h"
 
 
 uint8_t *MD4(const uint8_t *data, size_t len, uint8_t out[MD4_DIGEST_LENGTH]) {
@@ -88,27 +89,22 @@ void MD4_Transform(MD4_CTX *c, const uint8_t data[MD4_CBLOCK]) {
   md4_block_data_order(c->h, data, 1);
 }
 
-#define DATA_ORDER_IS_LITTLE_ENDIAN
+int MD4_Update(MD4_CTX *c, const void *data, size_t len) {
+  crypto_md32_update(&md4_block_data_order, c->h, c->data, MD4_CBLOCK, &c->num,
+                     &c->Nh, &c->Nl, data, len);
+  return 1;
+}
 
-#define HASH_CTX MD4_CTX
-#define HASH_CBLOCK 64
-#define HASH_DIGEST_LENGTH 16
-#define HASH_UPDATE MD4_Update
-#define HASH_FINAL MD4_Final
-#define HASH_MAKE_STRING(c, s)           \
-  do {                                   \
-    CRYPTO_store_u32_le((s), (c)->h[0]); \
-    (s) += 4;                            \
-    CRYPTO_store_u32_le((s), (c)->h[1]); \
-    (s) += 4;                            \
-    CRYPTO_store_u32_le((s), (c)->h[2]); \
-    (s) += 4;                            \
-    CRYPTO_store_u32_le((s), (c)->h[3]); \
-    (s) += 4;                            \
-  } while (0)
-#define HASH_BLOCK_DATA_ORDER md4_block_data_order
+int MD4_Final(uint8_t out[MD4_DIGEST_LENGTH], MD4_CTX *c) {
+  crypto_md32_final(&md4_block_data_order, c->h, c->data, MD4_CBLOCK, &c->num,
+                    c->Nh, c->Nl, /*is_big_endian=*/0);
 
-#include "../digest/md32_common.h"
+  CRYPTO_store_u32_le(out, c->h[0]);
+  CRYPTO_store_u32_le(out + 4, c->h[1]);
+  CRYPTO_store_u32_le(out + 8, c->h[2]);
+  CRYPTO_store_u32_le(out + 12, c->h[3]);
+  return 1;
+}
 
 // As pointed out by Wei Dai <weidai@eskimo.com>, the above can be
 // simplified to the code below.  Wei attributes these optimizations
@@ -238,14 +234,6 @@ void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
   }
 }
 
-#undef DATA_ORDER_IS_LITTLE_ENDIAN
-#undef HASH_CTX
-#undef HASH_CBLOCK
-#undef HASH_DIGEST_LENGTH
-#undef HASH_UPDATE
-#undef HASH_FINAL
-#undef HASH_MAKE_STRING
-#undef HASH_BLOCK_DATA_ORDER
 #undef F
 #undef G
 #undef H

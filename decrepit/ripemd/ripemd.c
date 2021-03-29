@@ -59,6 +59,7 @@
 #include <string.h>
 
 #include "../../crypto/internal.h"
+#include "../../crypto/fipsmodule/digest/md32_common.h"
 
 
 #define RIPEMD160_A 0x67452301L
@@ -85,31 +86,24 @@ void RIPEMD160_Transform(RIPEMD160_CTX *c,
   ripemd160_block_data_order(c->h, data, 1);
 }
 
-#define DATA_ORDER_IS_LITTLE_ENDIAN
+int RIPEMD160_Update(RIPEMD160_CTX *c, const void *data, size_t len) {
+  crypto_md32_update(&ripemd160_block_data_order, c->h, c->data,
+                     RIPEMD160_CBLOCK, &c->num, &c->Nh, &c->Nl, data, len);
+  return 1;
+}
 
-#define HASH_LONG uint32_t
-#define HASH_CTX RIPEMD160_CTX
-#define HASH_CBLOCK RIPEMD160_CBLOCK
-#define HASH_DIGEST_LENGTH RIPEMD160_DIGEST_LENGTH
-#define HASH_UPDATE RIPEMD160_Update
-#define HASH_FINAL RIPEMD160_Final
-#define HASH_MAKE_STRING(c, s)           \
-  do {                                   \
-    CRYPTO_store_u32_le((s), (c)->h[0]); \
-    (s) += 4;                            \
-    CRYPTO_store_u32_le((s), (c)->h[1]); \
-    (s) += 4;                            \
-    CRYPTO_store_u32_le((s), (c)->h[2]); \
-    (s) += 4;                            \
-    CRYPTO_store_u32_le((s), (c)->h[3]); \
-    (s) += 4;                            \
-    CRYPTO_store_u32_le((s), (c)->h[4]); \
-    (s) += 4;                            \
-  } while (0)
+int RIPEMD160_Final(uint8_t out[RIPEMD160_DIGEST_LENGTH], RIPEMD160_CTX *c) {
+  crypto_md32_final(&ripemd160_block_data_order, c->h, c->data,
+                    RIPEMD160_CBLOCK, &c->num, c->Nh, c->Nl,
+                    /*is_big_endian=*/0);
 
-#define HASH_BLOCK_DATA_ORDER ripemd160_block_data_order
-
-#include "../../crypto/fipsmodule/digest/md32_common.h"
+  CRYPTO_store_u32_le(out, c->h[0]);
+  CRYPTO_store_u32_le(out + 4, c->h[1]);
+  CRYPTO_store_u32_le(out + 8, c->h[2]);
+  CRYPTO_store_u32_le(out + 12, c->h[3]);
+  CRYPTO_store_u32_le(out + 16, c->h[4]);
+  return 1;
+}
 
 // Transformed F2 and F4 are courtesy of Wei Dai <weidai@eskimo.com>
 #define F1(x, y, z) ((x) ^ (y) ^ (z))
