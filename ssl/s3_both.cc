@@ -322,6 +322,11 @@ int tls_flush_flight(SSL *ssl) {
     }
   }
 
+  if (ssl->wbio == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BIO_NOT_SET);
+    return -1;
+  }
+
   // Write the pending flight.
   while (ssl->s3->pending_flight_offset < ssl->s3->pending_flight->length) {
     int ret = BIO_write(
