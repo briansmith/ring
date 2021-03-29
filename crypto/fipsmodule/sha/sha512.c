@@ -256,22 +256,8 @@ static int sha512_final_impl(uint8_t *out, SHA512_CTX *sha) {
   }
 
   OPENSSL_memset(p + n, 0, sizeof(sha->p) - 16 - n);
-  p[sizeof(sha->p) - 1] = (uint8_t)(sha->Nl);
-  p[sizeof(sha->p) - 2] = (uint8_t)(sha->Nl >> 8);
-  p[sizeof(sha->p) - 3] = (uint8_t)(sha->Nl >> 16);
-  p[sizeof(sha->p) - 4] = (uint8_t)(sha->Nl >> 24);
-  p[sizeof(sha->p) - 5] = (uint8_t)(sha->Nl >> 32);
-  p[sizeof(sha->p) - 6] = (uint8_t)(sha->Nl >> 40);
-  p[sizeof(sha->p) - 7] = (uint8_t)(sha->Nl >> 48);
-  p[sizeof(sha->p) - 8] = (uint8_t)(sha->Nl >> 56);
-  p[sizeof(sha->p) - 9] = (uint8_t)(sha->Nh);
-  p[sizeof(sha->p) - 10] = (uint8_t)(sha->Nh >> 8);
-  p[sizeof(sha->p) - 11] = (uint8_t)(sha->Nh >> 16);
-  p[sizeof(sha->p) - 12] = (uint8_t)(sha->Nh >> 24);
-  p[sizeof(sha->p) - 13] = (uint8_t)(sha->Nh >> 32);
-  p[sizeof(sha->p) - 14] = (uint8_t)(sha->Nh >> 40);
-  p[sizeof(sha->p) - 15] = (uint8_t)(sha->Nh >> 48);
-  p[sizeof(sha->p) - 16] = (uint8_t)(sha->Nh >> 56);
+  CRYPTO_store_u64_be(p + sizeof(sha->p) - 16, sha->Nh);
+  CRYPTO_store_u64_be(p + sizeof(sha->p) - 8, sha->Nl);
 
   sha512_block_data_order(sha->h, p, 1);
 
@@ -368,12 +354,6 @@ static const uint64_t K512[80] = {
 #define ROTR(x, s) (((x) >> s) | (x) << (64 - s))
 #endif
 
-static inline uint64_t load_u64_be(const void *ptr) {
-  uint64_t ret;
-  OPENSSL_memcpy(&ret, ptr, sizeof(ret));
-  return CRYPTO_bswap8(ret);
-}
-
 #define Sigma0(x) (ROTR((x), 28) ^ ROTR((x), 34) ^ ROTR((x), 39))
 #define Sigma1(x) (ROTR((x), 14) ^ ROTR((x), 18) ^ ROTR((x), 41))
 #define sigma0(x) (ROTR((x), 1) ^ ROTR((x), 8) ^ ((x) >> 7))
@@ -404,7 +384,7 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
     F[7] = state[7];
 
     for (i = 0; i < 16; i++, F--) {
-      T = load_u64_be(in + i * 8);
+      T = CRYPTO_load_u64_be(in + i * 8);
       F[0] = A;
       F[4] = E;
       F[8] = T;
@@ -476,37 +456,37 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
     g = state[6];
     h = state[7];
 
-    T1 = X[0] = load_u64_be(in);
+    T1 = X[0] = CRYPTO_load_u64_be(in);
     ROUND_00_15(0, a, b, c, d, e, f, g, h);
-    T1 = X[1] = load_u64_be(in + 8);
+    T1 = X[1] = CRYPTO_load_u64_be(in + 8);
     ROUND_00_15(1, h, a, b, c, d, e, f, g);
-    T1 = X[2] = load_u64_be(in + 2 * 8);
+    T1 = X[2] = CRYPTO_load_u64_be(in + 2 * 8);
     ROUND_00_15(2, g, h, a, b, c, d, e, f);
-    T1 = X[3] = load_u64_be(in + 3 * 8);
+    T1 = X[3] = CRYPTO_load_u64_be(in + 3 * 8);
     ROUND_00_15(3, f, g, h, a, b, c, d, e);
-    T1 = X[4] = load_u64_be(in + 4 * 8);
+    T1 = X[4] = CRYPTO_load_u64_be(in + 4 * 8);
     ROUND_00_15(4, e, f, g, h, a, b, c, d);
-    T1 = X[5] = load_u64_be(in + 5 * 8);
+    T1 = X[5] = CRYPTO_load_u64_be(in + 5 * 8);
     ROUND_00_15(5, d, e, f, g, h, a, b, c);
-    T1 = X[6] = load_u64_be(in + 6 * 8);
+    T1 = X[6] = CRYPTO_load_u64_be(in + 6 * 8);
     ROUND_00_15(6, c, d, e, f, g, h, a, b);
-    T1 = X[7] = load_u64_be(in + 7 * 8);
+    T1 = X[7] = CRYPTO_load_u64_be(in + 7 * 8);
     ROUND_00_15(7, b, c, d, e, f, g, h, a);
-    T1 = X[8] = load_u64_be(in + 8 * 8);
+    T1 = X[8] = CRYPTO_load_u64_be(in + 8 * 8);
     ROUND_00_15(8, a, b, c, d, e, f, g, h);
-    T1 = X[9] = load_u64_be(in + 9 * 8);
+    T1 = X[9] = CRYPTO_load_u64_be(in + 9 * 8);
     ROUND_00_15(9, h, a, b, c, d, e, f, g);
-    T1 = X[10] = load_u64_be(in + 10 * 8);
+    T1 = X[10] = CRYPTO_load_u64_be(in + 10 * 8);
     ROUND_00_15(10, g, h, a, b, c, d, e, f);
-    T1 = X[11] = load_u64_be(in + 11 * 8);
+    T1 = X[11] = CRYPTO_load_u64_be(in + 11 * 8);
     ROUND_00_15(11, f, g, h, a, b, c, d, e);
-    T1 = X[12] = load_u64_be(in + 12 * 8);
+    T1 = X[12] = CRYPTO_load_u64_be(in + 12 * 8);
     ROUND_00_15(12, e, f, g, h, a, b, c, d);
-    T1 = X[13] = load_u64_be(in + 13 * 8);
+    T1 = X[13] = CRYPTO_load_u64_be(in + 13 * 8);
     ROUND_00_15(13, d, e, f, g, h, a, b, c);
-    T1 = X[14] = load_u64_be(in + 14 * 8);
+    T1 = X[14] = CRYPTO_load_u64_be(in + 14 * 8);
     ROUND_00_15(14, c, d, e, f, g, h, a, b);
-    T1 = X[15] = load_u64_be(in + 15 * 8);
+    T1 = X[15] = CRYPTO_load_u64_be(in + 15 * 8);
     ROUND_00_15(15, b, c, d, e, f, g, h, a);
 
     for (i = 16; i < 80; i += 16) {

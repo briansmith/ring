@@ -378,8 +378,9 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       ++ctr;
       ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
       for (size_t i = 0; i < 16; i += sizeof(crypto_word_t)) {
-        store_word_le(out + i, load_word_le(in + i) ^
-                                   ctx->EKi.t[i / sizeof(crypto_word_t)]);
+        CRYPTO_store_word_le(out + i,
+                             CRYPTO_load_word_le(in + i) ^
+                                 ctx->EKi.t[i / sizeof(crypto_word_t)]);
       }
       out += 16;
       in += 16;
@@ -395,8 +396,9 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       ++ctr;
       ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
       for (size_t i = 0; i < 16; i += sizeof(crypto_word_t)) {
-        store_word_le(out + i, load_word_le(in + i) ^
-                                   ctx->EKi.t[i / sizeof(crypto_word_t)]);
+        CRYPTO_store_word_le(out + i,
+                             CRYPTO_load_word_le(in + i) ^
+                                 ctx->EKi.t[i / sizeof(crypto_word_t)]);
       }
       out += 16;
       in += 16;
@@ -469,8 +471,9 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       ++ctr;
       ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
       for (size_t i = 0; i < 16; i += sizeof(crypto_word_t)) {
-        store_word_le(out + i, load_word_le(in + i) ^
-                                   ctx->EKi.t[i / sizeof(crypto_word_t)]);
+        CRYPTO_store_word_le(out + i,
+                             CRYPTO_load_word_le(in + i) ^
+                                 ctx->EKi.t[i / sizeof(crypto_word_t)]);
       }
       out += 16;
       in += 16;
@@ -486,8 +489,9 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       ++ctr;
       ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
       for (size_t i = 0; i < 16; i += sizeof(crypto_word_t)) {
-        store_word_le(out + i, load_word_le(in + i) ^
-                                   ctx->EKi.t[i / sizeof(crypto_word_t)]);
+        CRYPTO_store_word_le(out + i,
+                             CRYPTO_load_word_le(in + i) ^
+                                 ctx->EKi.t[i / sizeof(crypto_word_t)]);
       }
       out += 16;
       in += 16;

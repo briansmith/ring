@@ -59,6 +59,8 @@
 
 #include <openssl/base.h>
 
+#include "../../crypto/internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -76,20 +78,20 @@ static void ripemd160_block_data_order(uint32_t h[5], const uint8_t *data,
 #define HASH_UPDATE RIPEMD160_Update
 #define HASH_TRANSFORM RIPEMD160_Transform
 #define HASH_FINAL RIPEMD160_Final
-#define HASH_MAKE_STRING(c, s) \
-  do {                         \
-    unsigned long ll;          \
-    ll = (c)->h[0];            \
-    HOST_l2c(ll, (s));         \
-    ll = (c)->h[1];            \
-    HOST_l2c(ll, (s));         \
-    ll = (c)->h[2];            \
-    HOST_l2c(ll, (s));         \
-    ll = (c)->h[3];            \
-    HOST_l2c(ll, (s));         \
-    ll = (c)->h[4];            \
-    HOST_l2c(ll, (s));         \
+#define HASH_MAKE_STRING(c, s)           \
+  do {                                   \
+    CRYPTO_store_u32_le((s), (c)->h[0]); \
+    (s) += 4;                            \
+    CRYPTO_store_u32_le((s), (c)->h[1]); \
+    (s) += 4;                            \
+    CRYPTO_store_u32_le((s), (c)->h[2]); \
+    (s) += 4;                            \
+    CRYPTO_store_u32_le((s), (c)->h[3]); \
+    (s) += 4;                            \
+    CRYPTO_store_u32_le((s), (c)->h[4]); \
+    (s) += 4;                            \
   } while (0)
+
 #define HASH_BLOCK_DATA_ORDER ripemd160_block_data_order
 
 #include "../../crypto/fipsmodule/digest/md32_common.h"

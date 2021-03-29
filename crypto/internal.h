@@ -819,6 +819,58 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
   return memset(dst, c, n);
 }
 
+
+// Loads and stores.
+//
+// The following functions load and store sized integers with the specified
+// endianness. They use |memcpy|, and so avoid alignment or strict aliasing
+// requirements on the input and output pointers.
+
+static inline uint32_t CRYPTO_load_u32_le(const void *in) {
+  uint32_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+  return v;
+}
+
+static inline void CRYPTO_store_u32_le(void *out, uint32_t v) {
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline uint32_t CRYPTO_load_u32_be(const void *in) {
+  uint32_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+  return CRYPTO_bswap4(v);
+}
+
+static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
+  v = CRYPTO_bswap4(v);
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline uint64_t CRYPTO_load_u64_be(const void *ptr) {
+  uint64_t ret;
+  OPENSSL_memcpy(&ret, ptr, sizeof(ret));
+  return CRYPTO_bswap8(ret);
+}
+
+static inline void CRYPTO_store_u64_be(void *out, uint64_t v) {
+  v = CRYPTO_bswap8(v);
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
+  crypto_word_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+  return v;
+}
+
+static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+
+// FIPS functions.
+
 #if defined(BORINGSSL_FIPS)
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current

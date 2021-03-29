@@ -64,27 +64,6 @@ extern "C" {
 #endif
 
 
-static inline uint32_t GETU32(const void *in) {
-  uint32_t v;
-  OPENSSL_memcpy(&v, in, sizeof(v));
-  return CRYPTO_bswap4(v);
-}
-
-static inline void PUTU32(void *out, uint32_t v) {
-  v = CRYPTO_bswap4(v);
-  OPENSSL_memcpy(out, &v, sizeof(v));
-}
-
-static inline crypto_word_t load_word_le(const void *in) {
-  crypto_word_t v;
-  OPENSSL_memcpy(&v, in, sizeof(v));
-  return v;
-}
-
-static inline void store_word_le(void *out, crypto_word_t v) {
-  OPENSSL_memcpy(out, &v, sizeof(v));
-}
-
 // block128_f is the type of an AES block cipher implementation.
 //
 // Unlike upstream OpenSSL, it and the other functions in this file hard-code
