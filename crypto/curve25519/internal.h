@@ -24,7 +24,7 @@
 #define BORINGSSL_X25519_NEON
 
 // x25519_NEON is defined in asm/x25519-arm.S.
-void GFp_x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
+void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                      const uint8_t point[32]);
 #endif
 

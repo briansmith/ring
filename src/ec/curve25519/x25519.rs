@@ -77,14 +77,14 @@ fn x25519_public_from_private(
         }
     }
 
-    extern "C" {
-        fn GFp_x25519_public_from_private_generic_masked(
+    prefixed_extern! {
+        fn x25519_public_from_private_generic_masked(
             public_key_out: &mut PublicKey,
             private_key: &PrivateKey,
         );
     }
     unsafe {
-        GFp_x25519_public_from_private_generic_masked(public_out, &private_key);
+        x25519_public_from_private_generic_masked(public_out, &private_key);
     }
 
     Ok(())
@@ -117,15 +117,15 @@ fn x25519_ecdh(
             }
         }
 
-        extern "C" {
-            fn GFp_x25519_scalar_mult_generic_masked(
+        prefixed_extern! {
+            fn x25519_scalar_mult_generic_masked(
                 out: &mut ops::EncodedPoint,
                 scalar: &ops::MaskedScalar,
                 point: &ops::EncodedPoint,
             );
         }
         unsafe {
-            GFp_x25519_scalar_mult_generic_masked(out, scalar, point);
+            x25519_scalar_mult_generic_masked(out, scalar, point);
         }
     }
 
@@ -147,14 +147,14 @@ fn x25519_ecdh(
 
 #[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
 fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::MaskedScalar, point: &ops::EncodedPoint) {
-    extern "C" {
-        fn GFp_x25519_NEON(
+    prefixed_extern! {
+        fn x25519_NEON(
             out: &mut ops::EncodedPoint,
             scalar: &ops::MaskedScalar,
             point: &ops::EncodedPoint,
         );
     }
-    unsafe { GFp_x25519_NEON(out, scalar, point) }
+    unsafe { x25519_NEON(out, scalar, point) }
 }
 
 const ELEM_AND_SCALAR_LEN: usize = ops::ELEM_LEN;

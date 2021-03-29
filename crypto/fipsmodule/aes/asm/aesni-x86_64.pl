@@ -206,7 +206,7 @@ $movkey = $PREFIX eq "aes_hw" ? "movups" : "movups";
 		("%rdi","%rsi","%rdx","%rcx");	# Unix order
 
 $code=".text\n";
-$code.=".extern	GFp_ia32cap_P\n";
+$code.=".extern	OPENSSL_ia32cap_P\n";
 
 $rounds="%eax";	# input to and changed by aesni_[en|de]cryptN !!!
 # this is natural Unix argument order for public $PREFIX_[ecb|cbc]_encrypt ...
@@ -265,10 +265,10 @@ ___
 { my ($inp,$out,$key) = @_4args;
 
 $code.=<<___;
-.globl	GFp_${PREFIX}_encrypt
-.type	GFp_${PREFIX}_encrypt,\@abi-omnipotent
+.globl	${PREFIX}_encrypt
+.type	${PREFIX}_encrypt,\@abi-omnipotent
 .align	16
-GFp_${PREFIX}_encrypt:
+${PREFIX}_encrypt:
 .cfi_startproc
 	movups	($inp),$inout0		# load input
 	mov	240($key),$rounds	# key->rounds
@@ -281,7 +281,7 @@ $code.=<<___;
 	 pxor	$inout0,$inout0
 	ret
 .cfi_endproc
-.size	GFp_${PREFIX}_encrypt,.-GFp_${PREFIX}_encrypt
+.size	${PREFIX}_encrypt,.-${PREFIX}_encrypt
 ___
 }
 
@@ -577,9 +577,9 @@ ___
 if ($PREFIX eq "aes_hw") {
 {
 ######################################################################
-# void GFp_aes_hw_ctr32_encrypt_blocks (const void *in, void *out,
-#                                       size_t blocks, const AES_KEY *key,
-#                                       const char *ivec);
+# void aesni_ctr32_encrypt_blocks (const void *in, void *out,
+#                         size_t blocks, const AES_KEY *key,
+#                         const char *ivec);
 #
 # Handles only complete blocks, operates on 32-bit counter and
 # does not update *ivec! (see crypto/modes/ctr128.c for details)
@@ -594,10 +594,10 @@ my ($key0,$ctr)=("%ebp","${ivp}d");
 my $frame_size = 0x80 + ($win64?160:0);
 
 $code.=<<___;
-.globl	GFp_${PREFIX}_ctr32_encrypt_blocks
-.type	GFp_${PREFIX}_ctr32_encrypt_blocks,\@function,5
+.globl	${PREFIX}_ctr32_encrypt_blocks
+.type	${PREFIX}_ctr32_encrypt_blocks,\@function,5
 .align	16
-GFp_${PREFIX}_ctr32_encrypt_blocks:
+${PREFIX}_ctr32_encrypt_blocks:
 .cfi_startproc
 	cmp	\$1,$len
 	jne	.Lctr32_bulk
@@ -692,7 +692,7 @@ $code.=<<___;
 	lea	7($ctr),%r9
 	 mov	%r10d,0x60+12(%rsp)
 	bswap	%r9d
-	leaq	GFp_ia32cap_P(%rip),%r10
+	leaq	OPENSSL_ia32cap_P(%rip),%r10
 	 mov	4(%r10),%r10d
 	xor	$key0,%r9d
 	 and	\$`1<<26|1<<22`,%r10d		# isolate XSAVE+MOVBE
@@ -1151,7 +1151,7 @@ $code.=<<___;
 .Lctr32_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_${PREFIX}_ctr32_encrypt_blocks,.-GFp_${PREFIX}_ctr32_encrypt_blocks
+.size	${PREFIX}_ctr32_encrypt_blocks,.-${PREFIX}_ctr32_encrypt_blocks
 ___
 } }}
 
@@ -1167,8 +1167,8 @@ ___
 # Aggressively optimized in respect to aeskeygenassist's critical path
 # and is contained in %xmm0-5 to meet Win64 ABI requirement.
 #
-# int GFp_${PREFIX}_set_encrypt_key(const unsigned char *inp,
-#				                    int bits, AES_KEY * const key);
+# int ${PREFIX}_set_encrypt_key(const unsigned char *inp,
+#				int bits, AES_KEY * const key);
 #
 # input:	$inp	user-supplied key
 #		$bits	$inp length in bits
@@ -1184,10 +1184,10 @@ ___
 # amount of volatile registers is smaller on Windows.
 #
 $code.=<<___;
-.globl	GFp_${PREFIX}_set_encrypt_key
-.type	GFp_${PREFIX}_set_encrypt_key,\@abi-omnipotent
+.globl	${PREFIX}_set_encrypt_key
+.type	${PREFIX}_set_encrypt_key,\@abi-omnipotent
 .align	16
-GFp_${PREFIX}_set_encrypt_key:
+${PREFIX}_set_encrypt_key:
 __aesni_set_encrypt_key:
 .cfi_startproc
 	.byte	0x48,0x83,0xEC,0x08	# sub rsp,8
@@ -1200,7 +1200,7 @@ __aesni_set_encrypt_key:
 
 	movups	($inp),%xmm0		# pull first 128 bits of *userKey
 	xorps	%xmm4,%xmm4		# low dword of xmm4 is assumed 0
-	leaq	GFp_ia32cap_P(%rip),%r10
+	leaq	OPENSSL_ia32cap_P(%rip),%r10
 	movl	4(%r10),%r10d
 	and	\$`1<<28|1<<11`,%r10d	# AVX and XOP bits
 	lea	16($key),%rax		# %rax is used as modifiable copy of $key
@@ -1419,7 +1419,7 @@ __aesni_set_encrypt_key:
 .cfi_adjust_cfa_offset	-8
 	ret
 .cfi_endproc
-.LSEH_end_GFp_set_encrypt_key:
+.LSEH_end_set_encrypt_key:
 
 .align	16
 .Lkey_expansion_128:
@@ -1489,7 +1489,7 @@ __aesni_set_encrypt_key:
 	shufps	\$0b10101010,%xmm1,%xmm1	# critical path
 	xorps	%xmm1,%xmm2
 	ret
-.size	GFp_${PREFIX}_set_encrypt_key,.-GFp_${PREFIX}_set_encrypt_key
+.size	${PREFIX}_set_encrypt_key,.-${PREFIX}_set_encrypt_key
 .size	__aesni_set_encrypt_key,.-__aesni_set_encrypt_key
 ___
 }
@@ -1616,25 +1616,25 @@ ctr_xts_se_handler:
 .align	4
 ___
 $code.=<<___ if ($PREFIX eq "aes_hw");
-	.rva	.LSEH_begin_GFp_${PREFIX}_ctr32_encrypt_blocks
-	.rva	.LSEH_end_GFp_${PREFIX}_ctr32_encrypt_blocks
-	.rva	.LSEH_info_GFp_ctr32
+	.rva	.LSEH_begin_${PREFIX}_ctr32_encrypt_blocks
+	.rva	.LSEH_end_${PREFIX}_ctr32_encrypt_blocks
+	.rva	.LSEH_info_ctr32
 ___
 $code.=<<___;
-	.rva	GFp_${PREFIX}_set_encrypt_key
-	.rva	.LSEH_end_GFp_set_encrypt_key
-	.rva	.LSEH_info_GFp_key
+	.rva	${PREFIX}_set_encrypt_key
+	.rva	.LSEH_end_set_encrypt_key
+	.rva	.LSEH_info_key
 .section	.xdata
 .align	8
 ___
 $code.=<<___ if ($PREFIX eq "aes_hw");
-.LSEH_info_GFp_ctr32:
+.LSEH_info_ctr32:
 	.byte	9,0,0,0
 	.rva	ctr_xts_se_handler
 	.rva	.Lctr32_body,.Lctr32_epilogue		# HandlerData[]
 ___
 $code.=<<___;
-.LSEH_info_GFp_key:
+.LSEH_info_key:
 	.byte	0x01,0x04,0x01,0x00
 	.byte	0x04,0x02,0x00,0x00	# sub rsp,8
 ___

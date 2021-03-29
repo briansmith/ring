@@ -636,10 +636,10 @@ _vpaes_schedule_mangle:
 #
 # Interface to OpenSSL
 #
-.globl	GFp_${PREFIX}_set_encrypt_key
-.type	GFp_${PREFIX}_set_encrypt_key,\@function,3
+.globl	${PREFIX}_set_encrypt_key
+.type	${PREFIX}_set_encrypt_key,\@function,3
 .align	16
-GFp_${PREFIX}_set_encrypt_key:
+${PREFIX}_set_encrypt_key:
 .cfi_startproc
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
@@ -689,12 +689,12 @@ $code.=<<___;
 	xor	%eax,%eax
 	ret
 .cfi_endproc
-.size	GFp_${PREFIX}_set_encrypt_key,.-GFp_${PREFIX}_set_encrypt_key
+.size	${PREFIX}_set_encrypt_key,.-${PREFIX}_set_encrypt_key
 
-.globl	GFp_${PREFIX}_encrypt
-.type	GFp_${PREFIX}_encrypt,\@function,3
+.globl	${PREFIX}_encrypt
+.type	${PREFIX}_encrypt,\@function,3
 .align	16
-GFp_${PREFIX}_encrypt:
+${PREFIX}_encrypt:
 .cfi_startproc
 ___
 $code.=<<___ if ($win64);
@@ -734,18 +734,18 @@ ___
 $code.=<<___;
 	ret
 .cfi_endproc
-.size	GFp_${PREFIX}_encrypt,.-GFp_${PREFIX}_encrypt
+.size	${PREFIX}_encrypt,.-${PREFIX}_encrypt
 ___
 {
 my ($inp,$out,$blocks,$key,$ivp)=("%rdi","%rsi","%rdx","%rcx","%r8");
-# void GFp_vpaes_ctr32_encrypt_blocks(const uint8_t *inp, uint8_t *out,
+# void vpaes_ctr32_encrypt_blocks(const uint8_t *inp, uint8_t *out,
 #                                 size_t blocks, const AES_KEY *key,
 #                                 const uint8_t ivp[16]);
 $code.=<<___;
-.globl	GFp_${PREFIX}_ctr32_encrypt_blocks
-.type	GFp_${PREFIX}_ctr32_encrypt_blocks,\@function,5
+.globl	${PREFIX}_ctr32_encrypt_blocks
+.type	${PREFIX}_ctr32_encrypt_blocks,\@function,5
 .align	16
-GFp_${PREFIX}_ctr32_encrypt_blocks:
+${PREFIX}_ctr32_encrypt_blocks:
 .cfi_startproc
 	# _vpaes_encrypt_core and _vpaes_encrypt_core_2x expect the key in %rdx.
 	xchg	$key, $blocks
@@ -838,7 +838,7 @@ $code.=<<___;
 .Lctr32_abort:
 	ret
 .cfi_endproc
-.size	GFp_${PREFIX}_ctr32_encrypt_blocks,.-GFp_${PREFIX}_ctr32_encrypt_blocks
+.size	${PREFIX}_ctr32_encrypt_blocks,.-${PREFIX}_ctr32_encrypt_blocks
 ___
 }
 $code.=<<___;
@@ -1029,28 +1029,28 @@ se_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_${PREFIX}_set_encrypt_key
-	.rva	.LSEH_end_GFp_${PREFIX}_set_encrypt_key
-	.rva	.LSEH_info_GFp_${PREFIX}_set_encrypt_key
+	.rva	.LSEH_begin_${PREFIX}_set_encrypt_key
+	.rva	.LSEH_end_${PREFIX}_set_encrypt_key
+	.rva	.LSEH_info_${PREFIX}_set_encrypt_key
 
-	.rva	.LSEH_begin_GFp_${PREFIX}_encrypt
-	.rva	.LSEH_end_GFp_${PREFIX}_encrypt
-	.rva	.LSEH_info_GFp_${PREFIX}_encrypt
-	.rva	.LSEH_begin_GFp_${PREFIX}_ctr32_encrypt_blocks
-	.rva	.LSEH_end_GFp_${PREFIX}_ctr32_encrypt_blocks
-	.rva	.LSEH_info_GFp_${PREFIX}_ctr32_encrypt_blocks
+	.rva	.LSEH_begin_${PREFIX}_encrypt
+	.rva	.LSEH_end_${PREFIX}_encrypt
+	.rva	.LSEH_info_${PREFIX}_encrypt
+	.rva	.LSEH_begin_${PREFIX}_ctr32_encrypt_blocks
+	.rva	.LSEH_end_${PREFIX}_ctr32_encrypt_blocks
+	.rva	.LSEH_info_${PREFIX}_ctr32_encrypt_blocks
 
 .section	.xdata
 .align	8
-.LSEH_info_GFp_${PREFIX}_set_encrypt_key:
+.LSEH_info_${PREFIX}_set_encrypt_key:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_key_body,.Lenc_key_epilogue	# HandlerData[]
-.LSEH_info_GFp_${PREFIX}_encrypt:
+.LSEH_info_${PREFIX}_encrypt:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_body,.Lenc_epilogue		# HandlerData[]
-.LSEH_info_GFp_${PREFIX}_ctr32_encrypt_blocks:
+.LSEH_info_${PREFIX}_ctr32_encrypt_blocks:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lctr32_body,.Lctr32_epilogue		# HandlerData[]

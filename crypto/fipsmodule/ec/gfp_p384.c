@@ -159,7 +159,7 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
     BN_MONT_CTX_N0(0x1, 0x1)
   };
   /* XXX: Not (clearly) constant-time; inefficient.*/
-  GFp_bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
+  bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
 }
 
 static inline void elem_mul_by_2(Elem r, const Elem a) {
@@ -178,19 +178,19 @@ static inline void elem_sqr_mont(Elem r, const Elem a) {
   elem_mul_mont(r, a, a);
 }
 
-void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b) {
+void p384_elem_sub(Elem r, const Elem a, const Elem b) {
   elem_sub(r, a, b);
 }
 
-void GFp_p384_elem_div_by_2(Elem r, const Elem a) {
+void p384_elem_div_by_2(Elem r, const Elem a) {
   elem_div_by_2(r, a);
 }
 
-void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
+void p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
   elem_mul_mont(r, a, b);
 }
 
-void GFp_p384_elem_neg(Elem r, const Elem a) {
+void p384_elem_neg(Elem r, const Elem a) {
   Limb is_zero = LIMBS_are_zero(a, P384_LIMBS);
   Carry borrow = limbs_sub(r, Q, a, P384_LIMBS);
   dev_assert_secret(borrow == 0);
@@ -201,19 +201,19 @@ void GFp_p384_elem_neg(Elem r, const Elem a) {
 }
 
 
-void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
+void p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   static const BN_ULONG N_N0[] = {
     BN_MONT_CTX_N0(0x6ed46089, 0xe88fdc45)
   };
   /* XXX: Inefficient. TODO: Add dedicated multiplication routine. */
-  GFp_bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
+  bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
 }
 
 
 /* TODO(perf): Optimize this. */
 
-static void gfp_p384_point_select_w5(P384_POINT *out,
+static void p384_point_select_w5(P384_POINT *out,
                                      const P384_POINT table[16], size_t index) {
   Elem x; limbs_zero(x, P384_LIMBS);
   Elem y; limbs_zero(y, P384_LIMBS);

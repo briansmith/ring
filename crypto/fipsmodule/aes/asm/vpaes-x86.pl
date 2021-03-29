@@ -555,7 +555,7 @@ $k_deskew=0x180;	# deskew tables: inverts the sbox's "skew"
 #
 # Interface to OpenSSL
 #
-&function_begin("GFp_${PREFIX}_set_encrypt_key");
+&function_begin("${PREFIX}_set_encrypt_key");
 	&mov	($inp,&wparam(0));		# inp
 	&lea	($base,&DWP(-56,"esp"));
 	&mov	($round,&wparam(1));		# bits
@@ -577,9 +577,9 @@ $k_deskew=0x180;	# deskew tables: inverts the sbox's "skew"
 
 	&mov	("esp",&DWP(48,"esp"));
 	&xor	("eax","eax");
-&function_end("GFp_${PREFIX}_set_encrypt_key");
+&function_end("${PREFIX}_set_encrypt_key");
 
-&function_begin("GFp_${PREFIX}_encrypt");
+&function_begin("${PREFIX}_encrypt");
 	&lea	($const,&DWP(&label("_vpaes_consts")."+0x30-".&label("pic_point")));
 	&call	("_vpaes_preheat");
 &set_label("pic_point");
@@ -596,7 +596,7 @@ $k_deskew=0x180;	# deskew tables: inverts the sbox's "skew"
 	&movdqu	(&QWP(0,$out),"xmm0");
 
 	&mov	("esp",&DWP(48,"esp"));
-&function_end("GFp_${PREFIX}_encrypt");
+&function_end("${PREFIX}_encrypt");
 
 &asm_finish();
 

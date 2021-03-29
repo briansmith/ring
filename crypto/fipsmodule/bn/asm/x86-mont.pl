@@ -45,9 +45,9 @@ open STDOUT,">$output";
 $sse2=0;
 for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-&external_label("GFp_ia32cap_P") if ($sse2);
+&external_label("OPENSSL_ia32cap_P") if ($sse2);
 
-&function_begin("GFp_bn_mul_mont");
+&function_begin("bn_mul_mont");
 
 $i="edx";
 $j="ecx";
@@ -145,7 +145,7 @@ $mul1="mm5";
 $temp="mm6";
 $mask="mm7";
 
-	&picmeup("eax","GFp_ia32cap_P");
+	&picmeup("eax","OPENSSL_ia32cap_P");
 	&bt	(&DWP(0,"eax"),26);
 	# The non-SSE2 code was removed.
 
@@ -327,7 +327,7 @@ $mask="mm7";
 
 	&mov	("esp",$_sp);		# pull saved stack pointer
 	&mov	("eax",1);
-&function_end("GFp_bn_mul_mont");
+&function_end("bn_mul_mont");
 
 &asciz("Montgomery Multiplication for x86, CRYPTOGAMS by <appro\@openssl.org>");
 

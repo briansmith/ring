@@ -38,7 +38,7 @@ pub struct Point {
     // `ops.num_limbs` elements are the X coordinate, the next
     // `ops.num_limbs` elements are the Y coordinate, and the next
     // `ops.num_limbs` elements are the Z coordinate. This layout is dictated
-    // by the requirements of the GFp_nistz256 code.
+    // by the requirements of the nistz256 code.
     xyz: [Limb; 3 * MAX_LIMBS],
 }
 
@@ -420,7 +420,7 @@ fn parse_big_endian_fixed_consttime<M>(
     Ok(r)
 }
 
-extern "C" {
+prefixed_extern! {
     fn LIMBS_add_mod(
         r: *mut Limb,
         a: *const Limb,
@@ -496,17 +496,17 @@ mod tests {
         })
     }
 
-    // XXX: There's no `GFp_p256_sub` in *ring*; it's logic is inlined into
+    // XXX: There's no `p256_sub` in *ring*; it's logic is inlined into
     // the point arithmetic functions. Thus, we can't test it.
 
     #[test]
     fn p384_elem_sub_test() {
-        extern "C" {
-            fn GFp_p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
+        prefixed_extern! {
+            fn p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
         }
         elem_sub_test(
             &p384::COMMON_OPS,
-            GFp_p384_elem_sub,
+            p384_elem_sub,
             test_file!("ops/p384_elem_sum_tests.txt"),
         );
     }
@@ -547,17 +547,17 @@ mod tests {
         })
     }
 
-    // XXX: There's no `GFp_p256_div_by_2` in *ring*; it's logic is inlined
+    // XXX: There's no `p256_div_by_2` in *ring*; it's logic is inlined
     // into the point arithmetic functions. Thus, we can't test it.
 
     #[test]
     fn p384_elem_div_by_2_test() {
-        extern "C" {
-            fn GFp_p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
+        prefixed_extern! {
+            fn p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
         }
         elem_div_by_2_test(
             &p384::COMMON_OPS,
-            GFp_p384_elem_div_by_2,
+            p384_elem_div_by_2,
             test_file!("ops/p384_elem_div_by_2_tests.txt"),
         );
     }
@@ -583,28 +583,28 @@ mod tests {
         })
     }
 
-    // There is no `GFp_nistz256_neg` on other targets.
+    // There is no `nistz256_neg` on other targets.
     #[cfg(target_arch = "x86_64")]
     #[test]
     fn p256_elem_neg_test() {
-        extern "C" {
-            fn GFp_nistz256_neg(r: *mut Limb, a: *const Limb);
+        prefixed_extern! {
+            fn nistz256_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(
             &p256::COMMON_OPS,
-            GFp_nistz256_neg,
+            nistz256_neg,
             test_file!("ops/p256_elem_neg_tests.txt"),
         );
     }
 
     #[test]
     fn p384_elem_neg_test() {
-        extern "C" {
-            fn GFp_p384_elem_neg(r: *mut Limb, a: *const Limb);
+        prefixed_extern! {
+            fn p384_elem_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(
             &p384::COMMON_OPS,
-            GFp_p384_elem_neg,
+            p384_elem_neg,
             test_file!("ops/p384_elem_neg_tests.txt"),
         );
     }
@@ -698,18 +698,18 @@ mod tests {
 
     #[test]
     fn p256_scalar_square_test() {
-        extern "C" {
-            fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: Limb);
+        prefixed_extern! {
+            fn p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: Limb);
         }
         scalar_square_test(
             &p256::SCALAR_OPS,
-            GFp_p256_scalar_sqr_rep_mont,
+            p256_scalar_sqr_rep_mont,
             test_file!("ops/p256_scalar_square_tests.txt"),
         );
     }
 
     // XXX: There's no `p384_scalar_square_test()` because there's no dedicated
-    // `GFp_p384_scalar_sqr_rep_mont()`.
+    // `p384_scalar_sqr_rep_mont()`.
 
     fn scalar_square_test(
         ops: &ScalarOps,
@@ -788,8 +788,8 @@ mod tests {
 
     #[test]
     fn p256_point_sum_mixed_test() {
-        extern "C" {
-            fn GFp_p256_point_add_affine(
+        prefixed_extern! {
+            fn p256_point_add_affine(
                 r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
                 b: *const Limb, // [p256::COMMON_OPS.num_limbs*2]
@@ -797,12 +797,12 @@ mod tests {
         }
         point_sum_mixed_test(
             &p256::PRIVATE_KEY_OPS,
-            GFp_p256_point_add_affine,
+            p256_point_add_affine,
             test_file!("ops/p256_point_sum_mixed_tests.txt"),
         );
     }
 
-    // XXX: There is no `GFp_nistz384_point_add_affine()`.
+    // XXX: There is no `nistz384_point_add_affine()`.
 
     fn point_sum_mixed_test(
         ops: &PrivateKeyOps,
@@ -833,30 +833,30 @@ mod tests {
 
     #[test]
     fn p256_point_double_test() {
-        extern "C" {
-            fn GFp_p256_point_double(
+        prefixed_extern! {
+            fn p256_point_double(
                 r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
             );
         }
         point_double_test(
             &p256::PRIVATE_KEY_OPS,
-            GFp_p256_point_double,
+            p256_point_double,
             test_file!("ops/p256_point_double_tests.txt"),
         );
     }
 
     #[test]
     fn p384_point_double_test() {
-        extern "C" {
-            fn GFp_nistz384_point_double(
+        prefixed_extern! {
+            fn nistz384_point_double(
                 r: *mut Limb,   // [p384::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p384::COMMON_OPS.num_limbs*3]
             );
         }
         point_double_test(
             &p384::PRIVATE_KEY_OPS,
-            GFp_nistz384_point_double,
+            nistz384_point_double,
             test_file!("ops/p384_point_double_tests.txt"),
         );
     }

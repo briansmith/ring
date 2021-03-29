@@ -118,7 +118,7 @@ my ($ap,$bp,$cp,$dp)=map(($_&~3)+(($_-1)&3),($ai,$bi,$ci,$di));	# previous
 &static_label("ssse3_data");
 &static_label("pic_point");
 
-&function_begin("GFp_ChaCha20_ctr32");
+&function_begin("ChaCha20_ctr32");
 	&xor	("eax","eax");
 	&cmp	("eax",&wparam(2));		# len==0?
 	&je	(&label("no_data"));
@@ -126,7 +126,7 @@ if ($xmm) {
 	&call	(&label("pic_point"));
 &set_label("pic_point");
 	&blindpop("eax");
-	&picmeup("ebp","GFp_ia32cap_P","eax",&label("pic_point"));
+	&picmeup("ebp","OPENSSL_ia32cap_P","eax",&label("pic_point"));
 	&test	(&DWP(0,"ebp"),1<<24);		# test FXSR bit
 	&jz	(&label("x86"));
 	&test	(&DWP(4,"ebp"),1<<9);		# test SSSE3 bit
@@ -356,7 +356,7 @@ if ($xmm) {
 &set_label("done");
 	&stack_pop(33);
 &set_label("no_data");
-&function_end("GFp_ChaCha20_ctr32");
+&function_end("ChaCha20_ctr32");
 
 if ($xmm) {
 my ($xa,$xa_,$xb,$xb_,$xc,$xc_,$xd,$xd_)=map("xmm$_",(0..7));

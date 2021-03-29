@@ -33,18 +33,18 @@
 
 static uint32_t load_u32_le(const uint8_t in[4]) {
   uint32_t ret;
-  GFp_memcpy(&ret, in, 4);
+  OPENSSL_memcpy(&ret, in, 4);
   return ret;
 }
 
 static uint64_t load_u64_le(const uint8_t in[8]) {
   uint64_t ret;
-  GFp_memcpy(&ret, in, 8);
+  OPENSSL_memcpy(&ret, in, 8);
   return ret;
 }
 
 static void store_u64_le(uint8_t out[8], uint64_t v) {
-  GFp_memcpy(out, &v, 8);
+  OPENSSL_memcpy(out, &v, 8);
 }
 
 typedef __m128i xmmi;
@@ -109,7 +109,7 @@ static inline size_t poly1305_min(size_t a, size_t b) {
   return (a < b) ? a : b;
 }
 
-void GFp_poly1305_init(poly1305_state *state, const uint8_t key[32]) {
+void CRYPTO_poly1305_init(poly1305_state *state, const uint8_t key[32]) {
   poly1305_state_internal *st = poly1305_aligned_state(state);
   poly1305_power *p;
   uint64_t r0, r1, r2;
@@ -677,8 +677,8 @@ static size_t poly1305_combine(poly1305_state_internal *st, const uint8_t *m,
   return consumed;
 }
 
-void GFp_poly1305_update(poly1305_state *state, const uint8_t *m,
-                         size_t bytes) {
+void CRYPTO_poly1305_update(poly1305_state *state, const uint8_t *m,
+                            size_t bytes) {
   poly1305_state_internal *st = poly1305_aligned_state(state);
   size_t want;
 
@@ -695,7 +695,7 @@ void GFp_poly1305_update(poly1305_state *state, const uint8_t *m,
       bytes -= 32;
     } else {
       want = poly1305_min(32 - st->leftover, bytes);
-      GFp_memcpy(st->buffer + st->leftover, m, want);
+      OPENSSL_memcpy(st->buffer + st->leftover, m, want);
       bytes -= want;
       m += want;
       st->leftover += want;
@@ -711,7 +711,7 @@ void GFp_poly1305_update(poly1305_state *state, const uint8_t *m,
   // handle leftover
   if (st->leftover) {
     want = poly1305_min(64 - st->leftover, bytes);
-    GFp_memcpy(st->buffer + st->leftover, m, want);
+    OPENSSL_memcpy(st->buffer + st->leftover, m, want);
     bytes -= want;
     m += want;
     st->leftover += want;
@@ -731,12 +731,12 @@ void GFp_poly1305_update(poly1305_state *state, const uint8_t *m,
   }
 
   if (bytes) {
-    GFp_memcpy(st->buffer + st->leftover, m, bytes);
+    OPENSSL_memcpy(st->buffer + st->leftover, m, bytes);
     st->leftover += bytes;
   }
 }
 
-void GFp_poly1305_finish(poly1305_state *state, uint8_t mac[16]) {
+void CRYPTO_poly1305_finish(poly1305_state *state, uint8_t mac[16]) {
   poly1305_state_internal *st = poly1305_aligned_state(state);
   size_t leftover = st->leftover;
   uint8_t *m = st->buffer;
@@ -807,7 +807,7 @@ poly1305_donna_atmost15bytes:
   }
 
   m[leftover++] = 1;
-  GFp_memset(m + leftover, 0, 16 - leftover);
+  OPENSSL_memset(m + leftover, 0, 16 - leftover);
   leftover = 16;
 
   t0 = load_u64_le(m + 0);

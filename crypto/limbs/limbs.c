@@ -179,7 +179,7 @@ Limb LIMB_shr(Limb a, size_t shift) {
   return a >> shift;
 }
 
-Limb GFp_limbs_mul_add_limb(Limb r[], const Limb a[], Limb b, size_t num_limbs) {
+Limb limbs_mul_add_limb(Limb r[], const Limb a[], Limb b, size_t num_limbs) {
   Limb carried = 0;
   for (size_t i = 0; i < num_limbs; ++i) {
     Limb lo;

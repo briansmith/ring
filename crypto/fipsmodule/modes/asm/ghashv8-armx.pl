@@ -72,7 +72,7 @@ $code.=<<___				if ($flavour !~ /64/);
 ___
 
 ################################################################################
-# void GFp_gcm_init_clmul(u128 Htable[16],const u64 H[2]);
+# void gcm_init_clmul(u128 Htable[16],const u64 H[2]);
 #
 # input:	128-bit H - secret parameter E(K,0^128)
 # output:	precomputed table filled with degrees of twisted H;
@@ -82,10 +82,10 @@ ___
 #		optimize the code independently);
 #
 $code.=<<___;
-.global	GFp_gcm_init_clmul
-.type	GFp_gcm_init_clmul,%function
+.global	gcm_init_clmul
+.type	gcm_init_clmul,%function
 .align	4
-GFp_gcm_init_clmul:
+gcm_init_clmul:
 	AARCH64_VALID_CALL_TARGET
 	vld1.64		{$t1},[x1]		@ load input H
 	vmov.i8		$xC2,#0xe1
@@ -132,20 +132,20 @@ GFp_gcm_init_clmul:
 	vst1.64		{$Hhl-$H2},[x0]		@ store Htable[1..2]
 
 	ret
-.size	GFp_gcm_init_clmul,.-GFp_gcm_init_clmul
+.size	gcm_init_clmul,.-gcm_init_clmul
 ___
 ################################################################################
-# void GFp_gcm_gmult_clmul(u64 Xi[2],const u128 Htable[16]);
+# void gcm_gmult_clmul(u64 Xi[2],const u128 Htable[16]);
 #
 # input:	Xi - current hash value;
-#		Htable - table precomputed in GFp_gcm_init_clmul;
+#		Htable - table precomputed in gcm_init_clmul;
 # output:	Xi - next hash value Xi;
 #
 $code.=<<___;
-.global	GFp_gcm_gmult_clmul
-.type	GFp_gcm_gmult_clmul,%function
+.global	gcm_gmult_clmul
+.type	gcm_gmult_clmul,%function
 .align	4
-GFp_gcm_gmult_clmul:
+gcm_gmult_clmul:
 	AARCH64_VALID_CALL_TARGET
 	vld1.64		{$t1},[$Xi]		@ load Xi
 	vmov.i8		$xC2,#0xe1
@@ -183,23 +183,23 @@ GFp_gcm_gmult_clmul:
 	vst1.64		{$Xl},[$Xi]		@ write out Xi
 
 	ret
-.size	GFp_gcm_gmult_clmul,.-GFp_gcm_gmult_clmul
+.size	gcm_gmult_clmul,.-gcm_gmult_clmul
 ___
 ################################################################################
-# void GFp_gcm_ghash_clmul(u64 Xi[2], const u128 Htable[16], const u8 *inp,
+# void gcm_ghash_clmul(u64 Xi[2], const u128 Htable[16], const u8 *inp,
 #                          size_t len);
 #
-# input:	table precomputed in GFp_gcm_init_clmul;
+# input:	table precomputed in gcm_init_clmul;
 #		current hash value Xi;
 #		pointer to input data;
 #		length of input data in bytes, but divisible by block size;
 # output:	next hash value Xi;
 #
 $code.=<<___;
-.global	GFp_gcm_ghash_clmul
-.type	GFp_gcm_ghash_clmul,%function
+.global	gcm_ghash_clmul
+.type	gcm_ghash_clmul,%function
 .align	4
-GFp_gcm_ghash_clmul:
+gcm_ghash_clmul:
 	AARCH64_VALID_CALL_TARGET
 ___
 $code.=<<___		if ($flavour !~ /64/);
@@ -347,7 +347,7 @@ $code.=<<___		if ($flavour !~ /64/);
 ___
 $code.=<<___;
 	ret
-.size	GFp_gcm_ghash_clmul,.-GFp_gcm_ghash_clmul
+.size	gcm_ghash_clmul,.-gcm_ghash_clmul
 ___
 }
 $code.=<<___;

@@ -937,10 +937,10 @@ my $const = "r6";	# shared with _bsaes_encrypt8_alt
 my $keysched = "sp";
 
 $code.=<<___;
-.global	GFp_bsaes_ctr32_encrypt_blocks
-.type	GFp_bsaes_ctr32_encrypt_blocks,%function
+.global	bsaes_ctr32_encrypt_blocks
+.type	bsaes_ctr32_encrypt_blocks,%function
 .align	5
-GFp_bsaes_ctr32_encrypt_blocks:
+bsaes_ctr32_encrypt_blocks:
 	@ In OpenSSL, short inputs fall back to aes_nohw_* here. We patch this
 	@ out to retain a constant-time implementation.
 	mov	ip, sp
@@ -1120,7 +1120,7 @@ GFp_bsaes_ctr32_encrypt_blocks:
 
 	@ OpenSSL contains aes_nohw_* fallback code here. We patch this
 	@ out to retain a constant-time implementation.
-.size	GFp_bsaes_ctr32_encrypt_blocks,.-GFp_bsaes_ctr32_encrypt_blocks
+.size	bsaes_ctr32_encrypt_blocks,.-bsaes_ctr32_encrypt_blocks
 ___
 }
 $code.=<<___;

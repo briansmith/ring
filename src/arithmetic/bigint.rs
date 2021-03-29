@@ -165,7 +165,7 @@ pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
 pub unsafe trait PublicModulus {}
 
-/// The x86 implementation of `GFp_bn_mul_mont`, at least, requires at least 4
+/// The x86 implementation of `bn_mul_mont`, at least, requires at least 4
 /// limbs. For a long time we have required 4 limbs for all targets, though
 /// this may be unnecessary. TODO: Replace this with
 /// `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms behave the
@@ -265,8 +265,8 @@ impl<M> Modulus<M> {
         // done by taking the lowest `N0_LIMBS_USED` limbs of `n`.
         #[allow(clippy::useless_conversion)]
         let n0 = {
-            extern "C" {
-                fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
+            prefixed_extern! {
+                fn bn_neg_inv_mod_r_u64(n: u64) -> u64;
             }
 
             // XXX: u64::from isn't guaranteed to be constant time.
@@ -278,7 +278,7 @@ impl<M> Modulus<M> {
                 debug_assert_eq!(LIMB_BITS, 32);
                 n_mod_r |= u64::from(n[1]) << 32;
             }
-            N0::from(unsafe { GFp_bn_neg_inv_mod_r_u64(n_mod_r) })
+            N0::from(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
         };
 
         let bits = limb::limbs_minimal_bits(&n.limbs);
@@ -482,7 +482,7 @@ where
 }
 
 fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
-    extern "C" {
+    prefixed_extern! {
         fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
     }
     unsafe {
@@ -556,7 +556,7 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<
 
 // TODO: Document why this works for all Montgomery factors.
 pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
-    extern "C" {
+    prefixed_extern! {
         // `r` and `a` may alias.
         fn LIMBS_sub_mod(
             r: *mut Limb,
@@ -805,7 +805,7 @@ pub fn elem_exp_consttime<M>(
     let mut table = vec![0; TABLE_ENTRIES * num_limbs];
 
     fn gather<M>(table: &[Limb], i: Window, r: &mut Elem<M, R>) {
-        extern "C" {
+        prefixed_extern! {
             fn LIMBS_select_512_32(
                 r: *mut Limb,
                 table: *const Limb,
@@ -932,11 +932,11 @@ pub fn elem_exp_consttime<M>(
     entry_mut(state, M, num_limbs).copy_from_slice(&m.limbs);
 
     fn scatter(table: &mut [Limb], state: &[Limb], i: Window, num_limbs: usize) {
-        extern "C" {
-            fn GFp_bn_scatter5(a: *const Limb, a_len: c::size_t, table: *mut Limb, i: Window);
+        prefixed_extern! {
+            fn bn_scatter5(a: *const Limb, a_len: c::size_t, table: *mut Limb, i: Window);
         }
         unsafe {
-            GFp_bn_scatter5(
+            bn_scatter5(
                 entry(state, ACC, num_limbs).as_ptr(),
                 num_limbs,
                 table.as_mut_ptr(),
@@ -946,11 +946,11 @@ pub fn elem_exp_consttime<M>(
     }
 
     fn gather(table: &[Limb], state: &mut [Limb], i: Window, num_limbs: usize) {
-        extern "C" {
-            fn GFp_bn_gather5(r: *mut Limb, a_len: c::size_t, table: *const Limb, i: Window);
+        prefixed_extern! {
+            fn bn_gather5(r: *mut Limb, a_len: c::size_t, table: *const Limb, i: Window);
         }
         unsafe {
-            GFp_bn_gather5(
+            bn_gather5(
                 entry_mut(state, ACC, num_limbs).as_mut_ptr(),
                 num_limbs,
                 table.as_ptr(),
@@ -968,8 +968,8 @@ pub fn elem_exp_consttime<M>(
     }
 
     fn gather_mul_base(table: &[Limb], state: &mut [Limb], n0: &N0, i: Window, num_limbs: usize) {
-        extern "C" {
-            fn GFp_bn_mul_mont_gather5(
+        prefixed_extern! {
+            fn bn_mul_mont_gather5(
                 rp: *mut Limb,
                 ap: *const Limb,
                 table: *const Limb,
@@ -980,7 +980,7 @@ pub fn elem_exp_consttime<M>(
             );
         }
         unsafe {
-            GFp_bn_mul_mont_gather5(
+            bn_mul_mont_gather5(
                 entry_mut(state, ACC, num_limbs).as_mut_ptr(),
                 entry(state, BASE, num_limbs).as_ptr(),
                 table.as_ptr(),
@@ -993,8 +993,8 @@ pub fn elem_exp_consttime<M>(
     }
 
     fn power(table: &[Limb], state: &mut [Limb], n0: &N0, i: Window, num_limbs: usize) {
-        extern "C" {
-            fn GFp_bn_power5(
+        prefixed_extern! {
+            fn bn_power5(
                 r: *mut Limb,
                 a: *const Limb,
                 table: *const Limb,
@@ -1005,7 +1005,7 @@ pub fn elem_exp_consttime<M>(
             );
         }
         unsafe {
-            GFp_bn_power5(
+            bn_power5(
                 entry_mut(state, ACC, num_limbs).as_mut_ptr(),
                 entry_mut(state, ACC, num_limbs).as_mut_ptr(),
                 table.as_ptr(),
@@ -1051,8 +1051,8 @@ pub fn elem_exp_consttime<M>(
         },
     );
 
-    extern "C" {
-        fn GFp_bn_from_montgomery(
+    prefixed_extern! {
+        fn bn_from_montgomery(
             r: *mut Limb,
             a: *const Limb,
             not_used: *const Limb,
@@ -1062,7 +1062,7 @@ pub fn elem_exp_consttime<M>(
         ) -> bssl::Result;
     }
     Result::from(unsafe {
-        GFp_bn_from_montgomery(
+        bn_from_montgomery(
             entry_mut(state, ACC, num_limbs).as_mut_ptr(),
             entry(state, ACC, num_limbs).as_ptr(),
             core::ptr::null(),
@@ -1197,7 +1197,7 @@ fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
         target_arch = "x86"
     ))]
     unsafe {
-        GFp_bn_mul_mont(
+        bn_mul_mont(
             r.as_mut_ptr(),
             r.as_ptr(),
             a.as_ptr(),
@@ -1222,8 +1222,8 @@ fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
 }
 
 fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N0) {
-    extern "C" {
-        fn GFp_bn_from_montgomery_in_place(
+    prefixed_extern! {
+        fn bn_from_montgomery_in_place(
             r: *mut Limb,
             num_r: c::size_t,
             a: *mut Limb,
@@ -1234,7 +1234,7 @@ fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N
         ) -> bssl::Result;
     }
     Result::from(unsafe {
-        GFp_bn_from_montgomery_in_place(
+        bn_from_montgomery_in_place(
             r.as_mut_ptr(),
             r.len(),
             tmp.as_mut_ptr(),
@@ -1261,7 +1261,7 @@ fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
     crate::polyfill::slice::fill(&mut r[..ab_len], 0);
     for (i, &b_limb) in b.iter().enumerate() {
         r[ab_len + i] = unsafe {
-            GFp_limbs_mul_add_limb(
+            limbs_mul_add_limb(
                 (&mut r[i..][..ab_len]).as_mut_ptr(),
                 a.as_ptr(),
                 b_limb,
@@ -1285,7 +1285,7 @@ fn limbs_mont_product(r: &mut [Limb], a: &[Limb], b: &[Limb], m: &[Limb], n0: &N
         target_arch = "x86"
     ))]
     unsafe {
-        GFp_bn_mul_mont(
+        bn_mul_mont(
             r.as_mut_ptr(),
             a.as_ptr(),
             b.as_ptr(),
@@ -1319,7 +1319,7 @@ fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0) {
         target_arch = "x86"
     ))]
     unsafe {
-        GFp_bn_mul_mont(
+        bn_mul_mont(
             r.as_mut_ptr(),
             r.as_ptr(),
             r.as_ptr(),
@@ -1343,15 +1343,15 @@ fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0) {
     }
 }
 
-extern "C" {
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86_64",
-        target_arch = "x86"
-    ))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86_64",
+    target_arch = "x86"
+))]
+prefixed_extern! {
     // `r` and/or 'a' and/or 'b' may alias.
-    fn GFp_bn_mul_mont(
+    fn bn_mul_mont(
         r: *mut Limb,
         a: *const Limb,
         b: *const Limb,
@@ -1359,19 +1359,21 @@ extern "C" {
         n0: &N0,
         num_limbs: c::size_t,
     );
+}
 
+#[cfg(any(
+    test,
+    not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))
+))]
+prefixed_extern! {
     // `r` must not alias `a`
-    #[cfg(any(
-        test,
-        not(any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "x86_64",
-            target_arch = "x86"
-        ))
-    ))]
     #[must_use]
-    fn GFp_limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
+    fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
 }
 
 #[cfg(test)]
@@ -1597,7 +1599,7 @@ mod tests {
             let mut r = std::vec::Vec::from(*r_input);
             assert_eq!(r.len(), a.len()); // Sanity check
             let actual_retval =
-                unsafe { GFp_limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
+                unsafe { limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
             assert_eq!(&r, expected_r, "{}: {:x?} != {:x?}", i, &r[..], expected_r);
             assert_eq!(
                 actual_retval, *expected_retval,

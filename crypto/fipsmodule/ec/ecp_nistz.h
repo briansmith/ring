@@ -114,7 +114,7 @@
 // is a prime that is much larger than 2^w. It also only holds when windows
 // are applied from most significant to least significant, doubling between each
 // window. It does not apply to more complex table strategies such as
-// |EC_GFp_nistz256_method|.
+// |EC_nistz256_method|.
 //
 // PROOF:
 //
@@ -267,8 +267,8 @@ static inline void booth_recode(crypto_word *is_negative, crypto_word *digit,
 #pragma GCC diagnostic pop
 #endif
 
-void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
-                                         const Limb scalar[],
-                                         size_t num_limbs);
+void little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
+                                     const Limb scalar[],
+                                     size_t num_limbs);
 
 #endif // OPENSSL_HEADER_EC_ECP_NISTZ_H

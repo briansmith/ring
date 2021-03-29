@@ -118,7 +118,7 @@ OPENSSL_STATIC_ASSERT(
   sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS == sizeof(uint64_t),
   "uint64_t is insufficient precision for n0");
 
-int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
+int bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
                                     size_t num_a, const BN_ULONG n[],
                                     size_t num_n,
                                     const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]) {
@@ -132,7 +132,7 @@ int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
   BN_ULONG n0 = n0_[0];
   BN_ULONG carry = 0;
   for (size_t i = 0; i < num_n; i++) {
-    BN_ULONG v = GFp_limbs_mul_add_limb(a + i, n, a[i] * n0, num_n);
+    BN_ULONG v = limbs_mul_add_limb(a + i, n, a[i] * n0, num_n);
     v += carry + a[i + num_n];
     carry |= (v != a[i + num_n]);
     carry &= (v <= a[i + num_n]);

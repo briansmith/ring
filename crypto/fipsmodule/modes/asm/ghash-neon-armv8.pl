@@ -161,10 +161,10 @@ $code .= <<___;
 
 .text
 
-.global	GFp_gcm_init_neon
-.type	GFp_gcm_init_neon,%function
+.global	gcm_init_neon
+.type	gcm_init_neon,%function
 .align	4
-GFp_gcm_init_neon:
+gcm_init_neon:
 	AARCH64_VALID_CALL_TARGET
 	// This function is adapted from gcm_init_v8. xC2 is t3.
 	ld1	{$t1.2d}, [x1]			// load H
@@ -184,12 +184,12 @@ GFp_gcm_init_neon:
 	eor	$Hlo.16b, $INlo.16b, $t0.16b	// twisted H
 	st1	{$Hlo.2d}, [x0]			// store Htable[0]
 	ret
-.size	GFp_gcm_init_neon,.-GFp_gcm_init_neon
+.size	gcm_init_neon,.-gcm_init_neon
 
-.global	GFp_gcm_gmult_neon
-.type	GFp_gcm_gmult_neon,%function
+.global	gcm_gmult_neon
+.type	gcm_gmult_neon,%function
 .align	4
-GFp_gcm_gmult_neon:
+gcm_gmult_neon:
 	AARCH64_VALID_CALL_TARGET
 	ld1	{$INlo.16b}, [$Xi]		// load Xi
 	ld1	{$Hlo.1d}, [$Htbl], #8		// load twisted H
@@ -203,12 +203,12 @@ GFp_gcm_gmult_neon:
 
 	mov	$len, #16
 	b	.Lgmult_neon
-.size	GFp_gcm_gmult_neon,.-GFp_gcm_gmult_neon
+.size	gcm_gmult_neon,.-gcm_gmult_neon
 
-.global	GFp_gcm_ghash_neon
-.type	GFp_gcm_ghash_neon,%function
+.global	gcm_ghash_neon
+.type	gcm_ghash_neon,%function
 .align	4
-GFp_gcm_ghash_neon:
+gcm_ghash_neon:
 	AARCH64_VALID_CALL_TARGET
 	ld1	{$Xl.16b}, [$Xi]		// load Xi
 	ld1	{$Hlo.1d}, [$Htbl], #8		// load twisted H
@@ -273,7 +273,7 @@ $code .= <<___;
 	st1	{$Xl.16b}, [$Xi]
 
 	ret
-.size	GFp_gcm_ghash_neon,.-GFp_gcm_ghash_neon
+.size	gcm_ghash_neon,.-gcm_ghash_neon
 
 .section	.rodata
 .align	4

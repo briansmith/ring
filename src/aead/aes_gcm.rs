@@ -84,8 +84,8 @@ fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mu
             in_out
         } else {
             use crate::c;
-            extern "C" {
-                fn GFp_aesni_gcm_encrypt(
+            prefixed_extern! {
+                fn aesni_gcm_encrypt(
                     input: *const u8,
                     output: *mut u8,
                     len: c::size_t,
@@ -95,7 +95,7 @@ fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mu
                 ) -> c::size_t;
             }
             let processed = unsafe {
-                GFp_aesni_gcm_encrypt(
+                aesni_gcm_encrypt(
                     in_out.as_ptr(),
                     in_out.as_mut_ptr(),
                     in_out.len(),
@@ -161,8 +161,8 @@ fn aes_gcm_open(
         } else {
             use crate::c;
 
-            extern "C" {
-                fn GFp_aesni_gcm_decrypt(
+            prefixed_extern! {
+                fn aesni_gcm_decrypt(
                     input: *const u8,
                     output: *mut u8,
                     len: c::size_t,
@@ -173,7 +173,7 @@ fn aes_gcm_open(
             }
 
             let processed = unsafe {
-                GFp_aesni_gcm_decrypt(
+                aesni_gcm_decrypt(
                     in_out[src.clone()].as_ptr(),
                     in_out.as_mut_ptr(),
                     in_out.len() - src.start,

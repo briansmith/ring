@@ -19,7 +19,7 @@ use super::{Counter, Key, BLOCK_LEN};
 use crate::polyfill::ChunksFixedMut;
 use core::ops::RangeFrom;
 
-pub(super) fn chacha20_ctr32(
+pub(super) fn ChaCha20_ctr32(
     key: &Key,
     counter: Counter,
     in_out: &mut [u8],

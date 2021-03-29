@@ -25,7 +25,7 @@
  * the end. The extra byte is useful because the caller will be breaking |str|
  * up into windows of a number of bits (5 or 7) that isn't divisible by 8, and
  * so it is useful for it to be able to read an extra zero byte. */
-void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
+void little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
                                          const Limb scalar[],
                                          size_t num_limbs) {
   debug_assert_nonsecret(str_len == (num_limbs * sizeof(Limb)) + 1);

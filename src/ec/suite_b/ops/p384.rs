@@ -60,17 +60,17 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         encoding: PhantomData, // Unreduced
     },
 
-    elem_mul_mont: GFp_p384_elem_mul_mont,
-    elem_sqr_mont: GFp_p384_elem_sqr_mont,
+    elem_mul_mont: p384_elem_mul_mont,
+    elem_sqr_mont: p384_elem_sqr_mont,
 
-    point_add_jacobian_impl: GFp_nistz384_point_add,
+    point_add_jacobian_impl: nistz384_point_add,
 };
 
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv_squared: p384_elem_inv_squared,
     point_mul_base_impl: p384_point_mul_base_impl,
-    point_mul_impl: GFp_nistz384_point_mul,
+    point_mul_impl: nistz384_point_mul,
 };
 
 fn p384_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
@@ -160,7 +160,7 @@ pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
 pub static SCALAR_OPS: ScalarOps = ScalarOps {
     common: &COMMON_OPS,
     scalar_inv_to_mont_impl: p384_scalar_inv_to_mont,
-    scalar_mul_mont: GFp_p384_scalar_mul_mont,
+    scalar_mul_mont: p384_scalar_mul_mont,
 };
 
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
@@ -201,15 +201,15 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     //       581a0db248b0a77aecec196accc52971.
 
     fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
-        binary_op(GFp_p384_scalar_mul_mont, a, b)
+        binary_op(p384_scalar_mul_mont, a, b)
     }
 
     fn sqr(a: &Scalar<R>) -> Scalar<R> {
-        binary_op(GFp_p384_scalar_mul_mont, a, a)
+        binary_op(p384_scalar_mul_mont, a, a)
     }
 
     fn sqr_mut(a: &mut Scalar<R>) {
-        unary_op_from_binary_op_assign(GFp_p384_scalar_mul_mont, a);
+        unary_op_from_binary_op_assign(p384_scalar_mul_mont, a);
     }
 
     // Returns (`a` squared `squarings` times) * `b`.
@@ -228,7 +228,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
         for _ in 0..squarings {
             sqr_mut(acc);
         }
-        binary_op_assign(GFp_p384_scalar_mul_mont, acc, b)
+        binary_op_assign(p384_scalar_mul_mont, acc, b)
     }
 
     fn to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
@@ -237,7 +237,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
             m: PhantomData,
             encoding: PhantomData,
         };
-        binary_op(GFp_p384_scalar_mul_mont, a, &N_RR)
+        binary_op(p384_scalar_mul_mont, a, &N_RR)
     }
 
     // Indexes into `d`.
@@ -324,12 +324,12 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     acc
 }
 
-unsafe extern "C" fn GFp_p384_elem_sqr_mont(
+unsafe extern "C" fn p384_elem_sqr_mont(
     r: *mut Limb,   // [COMMON_OPS.num_limbs]
     a: *const Limb, // [COMMON_OPS.num_limbs]
 ) {
     // XXX: Inefficient. TODO: Make a dedicated squaring routine.
-    GFp_p384_elem_mul_mont(r, a, a);
+    p384_elem_mul_mont(r, a, a);
 }
 
 const N_RR_LIMBS: [Limb; MAX_LIMBS] = p384_limbs![
@@ -337,26 +337,26 @@ const N_RR_LIMBS: [Limb; MAX_LIMBS] = p384_limbs![
     0x28266895, 0x3fb05b7a, 0x2b39bf21, 0x0c84ee01
 ];
 
-extern "C" {
-    fn GFp_p384_elem_mul_mont(
+prefixed_extern! {
+    fn p384_elem_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
         b: *const Limb, // [COMMON_OPS.num_limbs]
     );
 
-    fn GFp_nistz384_point_add(
+    fn nistz384_point_add(
         r: *mut Limb,   // [3][COMMON_OPS.num_limbs]
         a: *const Limb, // [3][COMMON_OPS.num_limbs]
         b: *const Limb, // [3][COMMON_OPS.num_limbs]
     );
-    fn GFp_nistz384_point_mul(
+    fn nistz384_point_mul(
         r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
     );
 
-    fn GFp_p384_scalar_mul_mont(
+    fn p384_scalar_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
         b: *const Limb, // [COMMON_OPS.num_limbs]
