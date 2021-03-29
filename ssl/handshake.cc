@@ -552,7 +552,11 @@ const SSL_SESSION *ssl_handshake_session(const SSL_HANDSHAKE *hs) {
 int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
   SSL *const ssl = hs->ssl;
   for (;;) {
-    // Resolve the operation the handshake was waiting on.
+    // Resolve the operation the handshake was waiting on. Each condition may
+    // halt the handshake by returning, or continue executing if the handshake
+    // may immediately proceed. Cases which halt the handshake can clear
+    // |hs->wait| to re-enter the state machine on the next iteration, or leave
+    // it set to keep the condition sticky.
     switch (hs->wait) {
       case ssl_hs_error:
         ERR_restore_state(hs->error.get());
@@ -570,13 +574,13 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
       case ssl_hs_read_message:
       case ssl_hs_read_change_cipher_spec: {
         if (ssl->quic_method) {
+          // QUIC has no ChangeCipherSpec messages.
+          assert(hs->wait != ssl_hs_read_change_cipher_spec);
+          // The caller should call |SSL_provide_quic_data|. Clear |hs->wait| so
+          // the handshake can check if there is sufficient data next iteration.
+          ssl->s3->rwstate = SSL_ERROR_WANT_READ;
           hs->wait = ssl_hs_ok;
-          // The change cipher spec is omitted in QUIC.
-          if (hs->wait != ssl_hs_read_change_cipher_spec) {
-            ssl->s3->rwstate = SSL_ERROR_WANT_READ;
-            return -1;
-          }
-          break;
+          return -1;
         }
 
         uint8_t alert = SSL_AD_DECODE_ERROR;
@@ -646,31 +650,30 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         return -1;
       }
 
+        // The following cases are associated with callback APIs which expect to
+        // be called each time the state machine runs. Thus they set |hs->wait|
+        // to |ssl_hs_ok| so that, next time, we re-enter the state machine and
+        // call the callback again.
       case ssl_hs_x509_lookup:
         ssl->s3->rwstate = SSL_ERROR_WANT_X509_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_channel_id_lookup:
         ssl->s3->rwstate = SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_private_key_operation:
         ssl->s3->rwstate = SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_pending_session:
         ssl->s3->rwstate = SSL_ERROR_PENDING_SESSION;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_pending_ticket:
         ssl->s3->rwstate = SSL_ERROR_PENDING_TICKET;
         hs->wait = ssl_hs_ok;
         return -1;
-
       case ssl_hs_certificate_verify:
         ssl->s3->rwstate = SSL_ERROR_WANT_CERTIFICATE_VERIFY;
         hs->wait = ssl_hs_ok;
