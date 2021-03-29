@@ -1428,6 +1428,45 @@ bool tls13_ech_accept_confirmation(
     bssl::Span<const uint8_t> server_hello_ech_conf);
 
 
+// Delegated credentials.
+
+// This structure stores a delegated credential (DC) as defined by
+// draft-ietf-tls-subcerts-03.
+struct DC {
+  static constexpr bool kAllowUniquePtr = true;
+  ~DC();
+
+  // Dup returns a copy of this DC and takes references to |raw| and |pkey|.
+  UniquePtr<DC> Dup();
+
+  // Parse parses the delegated credential stored in |in|. If successful it
+  // returns the parsed structure, otherwise it returns |nullptr| and sets
+  // |*out_alert|.
+  static UniquePtr<DC> Parse(CRYPTO_BUFFER *in, uint8_t *out_alert);
+
+  // raw is the delegated credential encoded as specified in draft-ietf-tls-
+  // subcerts-03.
+  UniquePtr<CRYPTO_BUFFER> raw;
+
+  // expected_cert_verify_algorithm is the signature scheme of the DC public
+  // key.
+  uint16_t expected_cert_verify_algorithm = 0;
+
+  // pkey is the public key parsed from |public_key|.
+  UniquePtr<EVP_PKEY> pkey;
+
+ private:
+  friend DC* New<DC>();
+  DC();
+};
+
+// ssl_signing_with_dc returns true if the peer has indicated support for
+// delegated credentials and this host has sent a delegated credential in
+// response. If this is true then we've committed to using the DC in the
+// handshake.
+bool ssl_signing_with_dc(const SSL_HANDSHAKE *hs);
+
+
 // Handshake functions.
 
 enum ssl_hs_wait_t {
@@ -1514,46 +1553,6 @@ enum handback_t {
   handback_tls13 = 3,
   handback_max_value = handback_tls13,
 };
-
-
-// Delegated credentials.
-
-// This structure stores a delegated credential (DC) as defined by
-// draft-ietf-tls-subcerts-03.
-struct DC {
-  static constexpr bool kAllowUniquePtr = true;
-  ~DC();
-
-  // Dup returns a copy of this DC and takes references to |raw| and |pkey|.
-  UniquePtr<DC> Dup();
-
-  // Parse parses the delegated credential stored in |in|. If successful it
-  // returns the parsed structure, otherwise it returns |nullptr| and sets
-  // |*out_alert|.
-  static UniquePtr<DC> Parse(CRYPTO_BUFFER *in, uint8_t *out_alert);
-
-  // raw is the delegated credential encoded as specified in draft-ietf-tls-
-  // subcerts-03.
-  UniquePtr<CRYPTO_BUFFER> raw;
-
-  // expected_cert_verify_algorithm is the signature scheme of the DC public
-  // key.
-  uint16_t expected_cert_verify_algorithm = 0;
-
-  // pkey is the public key parsed from |public_key|.
-  UniquePtr<EVP_PKEY> pkey;
-
- private:
-  friend DC* New<DC>();
-  DC();
-};
-
-// ssl_signing_with_dc returns true if the peer has indicated support for
-// delegated credentials and this host has sent a delegated credential in
-// response. If this is true then we've committed to using the DC in the
-// handshake.
-bool ssl_signing_with_dc(const SSL_HANDSHAKE *hs);
-
 
 struct SSL_HANDSHAKE {
   explicit SSL_HANDSHAKE(SSL *ssl);
