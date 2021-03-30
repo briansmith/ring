@@ -14,14 +14,40 @@
 
 #include <stdio.h>
 #include <string>
+#include <string.h>
 #include <unistd.h>
 
+#include <openssl/crypto.h>
 #include <openssl/span.h>
 
 #include "modulewrapper.h"
 
 
-int main() {
+int main(int argc, char **argv) {
+  if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+    printf("Built for architecture: ");
+
+#if defined(OPENSSL_X86_64)
+    puts("x86-64 (64-bit)");
+#elif defined(OPENSSL_ARM)
+    puts("ARM (32-bit)");
+#elif defined(OPENSSL_AARCH64)
+    puts("aarch64 (64-bit)");
+#elif defined(PPC64LE)
+    puts("PPC64LE (64-bit)");
+#else
+#error "FIPS build not supported on this architecture"
+#endif
+
+    printf("Hardware acceleration enabled: %s\n",
+           CRYPTO_has_asm() ? "yes" : "no");
+
+    return 0;
+  } else if (argc != 1) {
+    fprintf(stderr, "Usage: %s [--version]\n", argv[0]);
+    return 4;
+  }
+
   std::unique_ptr<bssl::acvp::RequestBuffer> buffer =
       bssl::acvp::RequestBuffer::New();
   const bssl::acvp::ReplyCallback write_reply = std::bind(
