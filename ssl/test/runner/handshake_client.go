@@ -186,7 +186,7 @@ func (c *Conn) clientHandshake() error {
 		hello.supportedCurves = nil
 	}
 
-	if len(c.config.Bugs.SendPSKKeyExchangeModes) != 0 {
+	if c.config.Bugs.SendPSKKeyExchangeModes != nil {
 		hello.pskKEModes = c.config.Bugs.SendPSKKeyExchangeModes
 	}
 

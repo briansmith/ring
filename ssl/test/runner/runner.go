@@ -12169,6 +12169,26 @@ func addSessionTicketTests() {
 		expectResumeRejected: true,
 	})
 
+	// Test that the server rejects ClientHellos with pre_shared_key but without
+	// psk_key_exchange_modes.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-SendNoKEMModesWithPSK-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPSKKeyExchangeModes: []byte{},
+			},
+		},
+		resumeSession:      true,
+		shouldFail:         true,
+		expectedLocalError: "remote error: missing extension",
+		expectedError:      ":MISSING_EXTENSION:",
+	})
+
 	// Test that the client ticket age is sent correctly.
 	testCases = append(testCases, testCase{
 		testType: clientTest,

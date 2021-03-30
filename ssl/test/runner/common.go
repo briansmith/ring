@@ -1240,8 +1240,8 @@ type ProtocolBugs struct {
 	// session ticket.
 	SendEmptySessionTicket bool
 
-	// SendPSKKeyExchangeModes, if present, determines the PSK key exchange modes
-	// to send.
+	// SendPSKKeyExchangeModes, if not nil, determines the PSK key exchange
+	// modes to send. If a non-nil empty slice, no extension will be sent.
 	SendPSKKeyExchangeModes []byte
 
 	// ExpectNoNewSessionTicket, if present, means that the client will fail upon

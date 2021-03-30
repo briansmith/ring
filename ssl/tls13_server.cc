@@ -252,6 +252,16 @@ static enum ssl_ticket_aead_result_t select_session(
     return ssl_ticket_aead_ignore_ticket;
   }
 
+  // Per RFC8446, section 4.2.9, servers MUST abort the handshake if the client
+  // sends pre_shared_key without psk_key_exchange_modes.
+  CBS unused;
+  if (!ssl_client_hello_get_extension(client_hello, &unused,
+                                      TLSEXT_TYPE_psk_key_exchange_modes)) {
+    *out_alert = SSL_AD_MISSING_EXTENSION;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
+    return ssl_ticket_aead_error;
+  }
+
   CBS ticket, binders;
   uint32_t client_ticket_age;
   if (!ssl_ext_pre_shared_key_parse_clienthello(
