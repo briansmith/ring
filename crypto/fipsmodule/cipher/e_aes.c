@@ -141,10 +141,22 @@ typedef struct {
 
 static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                         const uint8_t *iv, int enc) {
-  int ret, mode;
+  int ret;
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
+  const int mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
 
-  mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
+  if (mode == EVP_CIPH_CTR_MODE) {
+    switch (ctx->key_len) {
+      case 16:
+        boringssl_fips_inc_counter(fips_counter_evp_aes_128_ctr);
+        break;
+
+      case 32:
+        boringssl_fips_inc_counter(fips_counter_evp_aes_256_ctr);
+        break;
+    }
+  }
+
   if ((mode == EVP_CIPH_ECB_MODE || mode == EVP_CIPH_CBC_MODE) && !enc) {
     if (hwaes_capable()) {
       ret = aes_hw_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);

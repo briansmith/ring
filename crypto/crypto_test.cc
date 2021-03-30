@@ -49,6 +49,14 @@ TEST(CryptoTest, FIPSCountersEVP) {
         EVP_aes_256_gcm,
         fips_counter_evp_aes_256_gcm,
     },
+    {
+        EVP_aes_128_ctr,
+        fips_counter_evp_aes_128_ctr,
+    },
+    {
+        EVP_aes_256_ctr,
+        fips_counter_evp_aes_256_ctr,
+    },
   };
 
   uint8_t key[EVP_MAX_KEY_LENGTH] = {0};
