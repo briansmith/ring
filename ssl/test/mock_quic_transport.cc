@@ -271,7 +271,7 @@ bool MockQuicTransport::WriteApplicationData(const uint8_t *in, size_t len) {
   return WriteRecord(level, SSL3_RT_APPLICATION_DATA, in, len);
 }
 
-bool MockQuicTransport::Flush() { return BIO_flush(bio_.get()); }
+bool MockQuicTransport::Flush() { return BIO_flush(bio_.get()) > 0; }
 
 bool MockQuicTransport::SendAlert(enum ssl_encryption_level_t level,
                                   uint8_t alert) {
