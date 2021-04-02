@@ -13288,22 +13288,6 @@ func addWrongMessageTypeTests() {
 
 		testCases = append(testCases, t.test)
 	}
-
-	// The processing order for TLS 1.3 version negotiation is such that one
-	// may accidentally accept a HelloRetryRequest in lieu of ServerHello in
-	// TLS 1.2. Test that we do not do this.
-	testCases = append(testCases, testCase{
-		name: "SendServerHelloAsHelloRetryRequest",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				SendServerHelloAsHelloRetryRequest: true,
-			},
-		},
-		shouldFail:         true,
-		expectedError:      ":UNEXPECTED_MESSAGE:",
-		expectedLocalError: "remote error: unexpected message",
-	})
 }
 
 func addTrailingMessageDataTests() {

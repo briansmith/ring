@@ -1713,7 +1713,6 @@ func (m *clientEncryptedExtensionsMsg) unmarshal(data []byte) bool {
 type helloRetryRequestMsg struct {
 	raw                 []byte
 	vers                uint16
-	isServerHello       bool
 	sessionID           []byte
 	cipherSuite         uint16
 	compressionMethod   uint8
@@ -1774,43 +1773,20 @@ func (m *helloRetryRequestMsg) marshal() []byte {
 func (m *helloRetryRequestMsg) unmarshal(data []byte) bool {
 	m.raw = data
 	reader := byteReader(data[4:])
-	if !reader.readU16(&m.vers) {
-		return false
-	}
-	if m.isServerHello {
-		var random []byte
-		var compressionMethod byte
-		if !reader.readBytes(&random, 32) ||
-			!reader.readU8LengthPrefixedBytes(&m.sessionID) ||
-			!reader.readU16(&m.cipherSuite) ||
-			!reader.readU8(&compressionMethod) ||
-			compressionMethod != 0 {
-			return false
-		}
-	} else if !reader.readU16(&m.cipherSuite) {
-		return false
-	}
+	var legacyVers uint16
+	var random []byte
+	var compressionMethod byte
 	var extensions byteReader
-	if !reader.readU16LengthPrefixed(&extensions) || len(reader) != 0 {
+	if !reader.readU16(&legacyVers) ||
+		legacyVers != VersionTLS12 ||
+		!reader.readBytes(&random, 32) ||
+		!reader.readU8LengthPrefixedBytes(&m.sessionID) ||
+		!reader.readU16(&m.cipherSuite) ||
+		!reader.readU8(&compressionMethod) ||
+		compressionMethod != 0 ||
+		!reader.readU16LengthPrefixed(&extensions) ||
+		len(reader) != 0 {
 		return false
-	}
-	extensionsCopy := extensions
-	for len(extensionsCopy) > 0 {
-		var extension uint16
-		var body byteReader
-		if !extensionsCopy.readU16(&extension) ||
-			!extensionsCopy.readU16LengthPrefixed(&body) {
-			return false
-		}
-		switch extension {
-		case extensionSupportedVersions:
-			if !m.isServerHello ||
-				!body.readU16(&m.vers) ||
-				len(body) != 0 {
-				return false
-			}
-		default:
-		}
 	}
 	for len(extensions) > 0 {
 		var extension uint16
@@ -1821,7 +1797,10 @@ func (m *helloRetryRequestMsg) unmarshal(data []byte) bool {
 		}
 		switch extension {
 		case extensionSupportedVersions:
-			// Parsed above.
+			if !body.readU16(&m.vers) ||
+				len(body) != 0 {
+				return false
+			}
 		case extensionKeyShare:
 			var v uint16
 			if !body.readU16(&v) || len(body) != 0 {

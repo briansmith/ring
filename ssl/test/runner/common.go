@@ -74,7 +74,6 @@ const (
 	typeHelloVerifyRequest    uint8 = 3
 	typeNewSessionTicket      uint8 = 4
 	typeEndOfEarlyData        uint8 = 5
-	typeHelloRetryRequest     uint8 = 6
 	typeEncryptedExtensions   uint8 = 8
 	typeCertificate           uint8 = 11
 	typeServerKeyExchange     uint8 = 12
@@ -1669,10 +1668,6 @@ type ProtocolBugs struct {
 	// to use when signing in TLS 1.1 and earlier where algorithms are not
 	// negotiated.
 	UseLegacySigningAlgorithm signatureAlgorithm
-
-	// SendServerHelloAsHelloRetryRequest, if true, causes the server to
-	// send ServerHello messages with a HelloRetryRequest type field.
-	SendServerHelloAsHelloRetryRequest bool
 
 	// RejectUnsolicitedKeyUpdate, if true, causes all unsolicited
 	// KeyUpdates from the peer to be rejected.

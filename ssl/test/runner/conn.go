@@ -1149,8 +1149,6 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 		msgType := data[0]
 		if c.config.Bugs.SendWrongMessageType != 0 && msgType == c.config.Bugs.SendWrongMessageType {
 			msgType += 42
-		} else if msgType == typeServerHello && c.config.Bugs.SendServerHelloAsHelloRetryRequest {
-			msgType = typeHelloRetryRequest
 		}
 		if msgType != data[0] {
 			data = append([]byte{msgType}, data[1:]...)
@@ -1390,8 +1388,6 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = &serverHelloMsg{
 			isDTLS: c.isDTLS,
 		}
-	case typeHelloRetryRequest:
-		m = new(helloRetryRequestMsg)
 	case typeNewSessionTicket:
 		m = &newSessionTicketMsg{
 			vers:   c.wireVersion,
@@ -1452,7 +1448,6 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		vers := uint16(data[4])<<8 | uint16(data[5])
 		if vers == VersionTLS12 && bytes.Equal(data[6:38], tls13HelloRetryRequest) {
 			m = new(helloRetryRequestMsg)
-			m.(*helloRetryRequestMsg).isServerHello = true
 		}
 	}
 
