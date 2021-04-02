@@ -1623,7 +1623,7 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 		sessionTicket:            newSessionTicket.ticket,
 		vers:                     c.vers,
 		wireVersion:              c.wireVersion,
-		cipherSuite:              cipherSuite.id,
+		cipherSuite:              cipherSuite,
 		secret:                   deriveSessionPSK(cipherSuite, c.wireVersion, c.resumptionSecret, newSessionTicket.ticketNonce),
 		serverCertificates:       c.peerCertificates,
 		sctList:                  c.sctList,
