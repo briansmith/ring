@@ -215,6 +215,7 @@ func newFinishedHash(wireVersion uint16, isDTLS bool, cipherSuite *cipherSuite) 
 	ret.buffer = []byte{}
 	ret.version = version
 	ret.wireVersion = wireVersion
+	ret.isDTLS = isDTLS
 	return ret
 }
 
@@ -236,6 +237,7 @@ type finishedHash struct {
 
 	version     uint16
 	wireVersion uint16
+	isDTLS      bool
 	prf         func(result, secret, label, seed []byte)
 
 	// secret, in TLS 1.3, is the running input secret.
@@ -270,6 +272,25 @@ func (h *finishedHash) Write(msg []byte) (n int, err error) {
 	}
 
 	return len(msg), nil
+}
+
+// WriteHandshake appends |msg| to the hash, which must be a serialized
+// handshake message with a TLS header. In DTLS, the header is rewritten to a
+// DTLS header with |seqno| as the sequence number.
+func (h *finishedHash) WriteHandshake(msg []byte, seqno uint16) {
+	if h.isDTLS {
+		// This is somewhat hacky. DTLS hashes a slightly different format.
+		// First, the TLS header.
+		h.Write(msg[:4])
+		// Then the sequence number and reassembled fragment offset (always 0).
+		h.Write([]byte{byte(seqno >> 8), byte(seqno), 0, 0, 0})
+		// Then the reassembled fragment (always equal to the message length).
+		h.Write(msg[1:4])
+		// And then the message body.
+		h.Write(msg[4:])
+	} else {
+		h.Write(msg)
+	}
 }
 
 func (h finishedHash) Sum() []byte {

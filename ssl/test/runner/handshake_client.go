@@ -754,7 +754,7 @@ NextCipherSuite:
 		session:      session,
 	}
 
-	hs.writeHash(helloBytes, hs.c.sendHandshakeSeq-1)
+	hs.finishedHash.WriteHandshake(helloBytes, hs.c.sendHandshakeSeq-1)
 	if haveHelloRetryRequest {
 		err = hs.finishedHash.UpdateForHelloRetryRequest()
 		if err != nil {
@@ -1948,7 +1948,7 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		c.clientProtocolFallback = fallback
 
 		nextProtoBytes := nextProto.marshal()
-		hs.writeHash(nextProtoBytes, seqno)
+		hs.finishedHash.WriteHandshake(nextProtoBytes, seqno)
 		seqno++
 		postCCSMsgs = append(postCCSMsgs, nextProtoBytes)
 	}
@@ -1962,7 +1962,7 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		if err != nil {
 			return err
 		}
-		hs.writeHash(channelIDMsgBytes, seqno)
+		hs.finishedHash.WriteHandshake(channelIDMsgBytes, seqno)
 		seqno++
 		postCCSMsgs = append(postCCSMsgs, channelIDMsgBytes)
 	}
@@ -1979,7 +1979,7 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 	}
 	c.clientVerify = append(c.clientVerify[:0], finished.verifyData...)
 	hs.finishedBytes = finished.marshal()
-	hs.writeHash(hs.finishedBytes, seqno)
+	hs.finishedHash.WriteHandshake(hs.finishedBytes, seqno)
 	if c.config.Bugs.PartialClientFinishedWithClientHello {
 		// The first byte has already been written.
 		postCCSMsgs = append(postCCSMsgs, hs.finishedBytes[1:])
@@ -2055,28 +2055,12 @@ func (hs *clientHandshakeState) writeChannelIDMessage(channelIDHash []byte) ([]b
 
 func (hs *clientHandshakeState) writeClientHash(msg []byte) {
 	// writeClientHash is called before writeRecord.
-	hs.writeHash(msg, hs.c.sendHandshakeSeq)
+	hs.finishedHash.WriteHandshake(msg, hs.c.sendHandshakeSeq)
 }
 
 func (hs *clientHandshakeState) writeServerHash(msg []byte) {
 	// writeServerHash is called after readHandshake.
-	hs.writeHash(msg, hs.c.recvHandshakeSeq-1)
-}
-
-func (hs *clientHandshakeState) writeHash(msg []byte, seqno uint16) {
-	if hs.c.isDTLS {
-		// This is somewhat hacky. DTLS hashes a slightly different format.
-		// First, the TLS header.
-		hs.finishedHash.Write(msg[:4])
-		// Then the sequence number and reassembled fragment offset (always 0).
-		hs.finishedHash.Write([]byte{byte(seqno >> 8), byte(seqno), 0, 0, 0})
-		// Then the reassembled fragment (always equal to the message length).
-		hs.finishedHash.Write(msg[1:4])
-		// And then the message body.
-		hs.finishedHash.Write(msg[4:])
-	} else {
-		hs.finishedHash.Write(msg)
-	}
+	hs.finishedHash.WriteHandshake(msg, hs.c.recvHandshakeSeq-1)
 }
 
 // selectClientCertificate selects a certificate for use with the given

@@ -2186,28 +2186,12 @@ func verifyChannelIDMessage(channelIDMsg *channelIDMsg, channelIDHash []byte) (*
 
 func (hs *serverHandshakeState) writeServerHash(msg []byte) {
 	// writeServerHash is called before writeRecord.
-	hs.writeHash(msg, hs.c.sendHandshakeSeq)
+	hs.finishedHash.WriteHandshake(msg, hs.c.sendHandshakeSeq)
 }
 
 func (hs *serverHandshakeState) writeClientHash(msg []byte) {
 	// writeClientHash is called after readHandshake.
-	hs.writeHash(msg, hs.c.recvHandshakeSeq-1)
-}
-
-func (hs *serverHandshakeState) writeHash(msg []byte, seqno uint16) {
-	if hs.c.isDTLS {
-		// This is somewhat hacky. DTLS hashes a slightly different format.
-		// First, the TLS header.
-		hs.finishedHash.Write(msg[:4])
-		// Then the sequence number and reassembled fragment offset (always 0).
-		hs.finishedHash.Write([]byte{byte(seqno >> 8), byte(seqno), 0, 0, 0})
-		// Then the reassembled fragment (always equal to the message length).
-		hs.finishedHash.Write(msg[1:4])
-		// And then the message body.
-		hs.finishedHash.Write(msg[4:])
-	} else {
-		hs.finishedHash.Write(msg)
-	}
+	hs.finishedHash.WriteHandshake(msg, hs.c.recvHandshakeSeq-1)
 }
 
 // tryCipherSuite returns a cipherSuite with the given id if that cipher suite
