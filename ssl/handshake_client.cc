@@ -1482,6 +1482,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  hs->can_release_private_key = true;
   // Resolve Channel ID first, before any non-idempotent operations.
   if (ssl->s3->channel_id_valid) {
     if (!ssl_do_channel_id_callback(hs)) {

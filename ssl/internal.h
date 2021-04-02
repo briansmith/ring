@@ -1964,6 +1964,10 @@ struct SSL_HANDSHAKE {
   // which implemented TLS 1.3 incorrectly.
   bool apply_jdk11_workaround : 1;
 
+  // can_release_private_key is true if the private key will no longer be used
+  // in this handshake.
+  bool can_release_private_key : 1;
+
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
 

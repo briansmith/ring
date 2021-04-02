@@ -1281,6 +1281,15 @@ OPENSSL_EXPORT void SSL_set_private_key_method(
 OPENSSL_EXPORT void SSL_CTX_set_private_key_method(
     SSL_CTX *ctx, const SSL_PRIVATE_KEY_METHOD *key_method);
 
+// SSL_can_release_private_key returns one if |ssl| will no longer call into the
+// private key and zero otherwise. If the function returns one, the caller can
+// release state associated with the private key.
+//
+// NOTE: This function assumes the caller does not use |SSL_clear| to reuse
+// |ssl| for a second connection. If |SSL_clear| is used, BoringSSL may still
+// use the private key on the second connection.
+OPENSSL_EXPORT int SSL_can_release_private_key(const SSL *ssl);
+
 
 // Cipher suites.
 //

@@ -394,6 +394,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       }
 
       ssl->s3->session_reused = true;
+      hs->can_release_private_key = true;
 
       // Resumption incorporates fresh key material, so refresh the timeout.
       ssl_session_renew_timeout(ssl, hs->new_session.get(),
@@ -903,6 +904,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_hints_ready;
   }
 
+  hs->can_release_private_key = true;
   if (!tls13_add_finished(hs) ||
       // Update the secret to the master secret and derive traffic keys.
       !tls13_advance_key_schedule(

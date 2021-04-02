@@ -891,6 +891,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     hs->ticket_expected = renew_ticket;
     ssl->session = std::move(session);
     ssl->s3->session_reused = true;
+    hs->can_release_private_key = true;
   } else {
     hs->ticket_expected = tickets_supported;
     ssl_set_session(ssl, NULL);
@@ -1196,6 +1197,7 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
     }
   }
 
+  hs->can_release_private_key = true;
   if (!ssl_add_message_cbb(ssl, cbb.get())) {
     return ssl_hs_error;
   }
@@ -1528,6 +1530,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   }
   hs->new_session->extended_master_secret = hs->extended_master_secret;
   CONSTTIME_DECLASSIFY(hs->new_session->secret, hs->new_session->secret_length);
+  hs->can_release_private_key = true;
 
   ssl->method->next_message(ssl);
   hs->state = state12_read_client_certificate_verify;

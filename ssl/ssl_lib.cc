@@ -463,7 +463,8 @@ static bool ssl_can_renegotiate(const SSL *ssl) {
     return false;
   }
 
-  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl->s3->have_version &&
+      ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return false;
   }
 
@@ -1788,6 +1789,9 @@ int SSL_renegotiate(SSL *ssl) {
     return 0;
   }
 
+  // We should not have told the caller to release the private key.
+  assert(!SSL_can_release_private_key(ssl));
+
   // Renegotiation is only supported at quiescent points in the application
   // protocol, namely in HTTPS, just before reading the HTTP response.
   // Require the record-layer be idle and avoid complexities of sending a
@@ -2838,6 +2842,17 @@ void SSL_CTX_set_current_time_cb(SSL_CTX *ctx,
                                  void (*cb)(const SSL *ssl,
                                             struct timeval *out_clock)) {
   ctx->current_time_cb = cb;
+}
+
+int SSL_can_release_private_key(const SSL *ssl) {
+  if (ssl_can_renegotiate(ssl)) {
+    // If the connection can renegotiate (client only), the private key may be
+    // used in a future handshake.
+    return 0;
+  }
+
+  // Otherwise, this is determined by the current handshake.
+  return !ssl->s3->hs || ssl->s3->hs->can_release_private_key;
 }
 
 int SSL_is_init_finished(const SSL *ssl) {

@@ -388,6 +388,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     }
 
     ssl->s3->session_reused = true;
+    hs->can_release_private_key = true;
     // Only authentication information carries over in TLS 1.3.
     hs->new_session =
         SSL_SESSION_dup(ssl->session.get(), SSL_SESSION_DUP_AUTH_ONLY);
@@ -817,6 +818,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  hs->can_release_private_key = true;
 
   // Send a Channel ID assertion if necessary.
   if (ssl->s3->channel_id_valid) {
