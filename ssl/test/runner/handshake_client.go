@@ -471,11 +471,28 @@ NextCipherSuite:
 	var helloBytes []byte
 	if c.config.Bugs.SendV2ClientHello {
 		hello.isV2ClientHello = true
+
 		// The V2ClientHello "challenge" field is variable-length and is
-		// left-padded to become the SSL3/TLS random. Test this behavior by
-		// forcing the left padding.
-		hello.random[0] = 0
-		hello.v2Challenge = hello.random[1:]
+		// left-padded or truncated to become the SSL3/TLS random.
+		challengeLength := c.config.Bugs.V2ClientHelloChallengeLength
+		if challengeLength == 0 {
+			challengeLength = len(hello.random)
+		}
+		if challengeLength <= len(hello.random) {
+			skip := len(hello.random) - challengeLength
+			for i := 0; i < skip; i++ {
+				hello.random[i] = 0
+			}
+			hello.v2Challenge = hello.random[skip:]
+		} else {
+			hello.v2Challenge = make([]byte, challengeLength)
+			copy(hello.v2Challenge, hello.random)
+			if _, err := io.ReadFull(c.config.rand(), hello.v2Challenge[len(hello.random):]); err != nil {
+				c.sendAlert(alertInternalError)
+				return fmt.Errorf("tls: short read from Rand: %s", err)
+			}
+		}
+
 		helloBytes = hello.marshal()
 		c.writeV2Record(helloBytes)
 	} else {

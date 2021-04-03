@@ -760,6 +760,10 @@ type ProtocolBugs struct {
 	// instead of a normal ClientHello.
 	SendV2ClientHello bool
 
+	// V2ClientHelloChallengeLength is the length of the challenge field to send
+	// in V2ClientHello.
+	V2ClientHelloChallengeLength int
+
 	// SendFallbackSCSV causes the client to include
 	// TLS_FALLBACK_SCSV in the ClientHello.
 	SendFallbackSCSV bool

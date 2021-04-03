@@ -5628,23 +5628,26 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			shimWritesFirst: true,
 		})
 
-		// Server parses a V2ClientHello.
-		tests = append(tests, testCase{
-			testType: serverTest,
-			name:     "SendV2ClientHello",
-			config: Config{
-				// Choose a cipher suite that does not involve
-				// elliptic curves, so no extensions are
-				// involved.
-				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
-				Bugs: ProtocolBugs{
-					SendV2ClientHello: true,
+		// Server parses a V2ClientHello. Test different lengths for the
+		// challenge field.
+		for _, challengeLength := range []int{16, 31, 32, 33, 48} {
+			tests = append(tests, testCase{
+				testType: serverTest,
+				name:     fmt.Sprintf("SendV2ClientHello-%d", challengeLength),
+				config: Config{
+					// Choose a cipher suite that does not involve
+					// elliptic curves, so no extensions are
+					// involved.
+					MaxVersion:   VersionTLS12,
+					CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+					Bugs: ProtocolBugs{
+						SendV2ClientHello:            true,
+						V2ClientHelloChallengeLength: challengeLength,
+					},
 				},
-			},
-			flags: []string{
-				"-expect-msg-callback",
-				`read v2clienthello
+				flags: []string{
+					"-expect-msg-callback",
+					`read v2clienthello
 write hs 2
 write hs 11
 write hs 14
@@ -5655,8 +5658,9 @@ write ccs
 write hs 20
 read alert 1 0
 `,
-			},
-		})
+				},
+			})
+		}
 
 		// Channel ID and NPN at the same time, to ensure their relative
 		// ordering is correct.
