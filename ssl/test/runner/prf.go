@@ -148,35 +148,28 @@ func keysFromMasterSecret(version uint16, suite *cipherSuite, masterSecret, clie
 }
 
 func newFinishedHash(wireVersion uint16, isDTLS bool, cipherSuite *cipherSuite) finishedHash {
-	var ret finishedHash
-
 	version, ok := wireToVersion(wireVersion, isDTLS)
 	if !ok {
 		panic("unknown version")
 	}
 
+	var ret finishedHash
 	if version >= VersionTLS12 {
-		ret.hash = cipherSuite.hash()
-
-		ret.client = ret.hash.New()
-		ret.server = ret.hash.New()
+		ret.hash = cipherSuite.hash().New()
 
 		if version == VersionTLS12 {
-			ret.prf = prf12(ret.hash.New)
+			ret.prf = prf12(cipherSuite.hash().New)
 		} else {
 			ret.secret = make([]byte, ret.hash.Size())
 		}
 	} else {
-		ret.hash = crypto.MD5SHA1
-
-		ret.client = sha1.New()
-		ret.server = sha1.New()
-		ret.clientMD5 = md5.New()
-		ret.serverMD5 = md5.New()
+		ret.hash = sha1.New()
+		ret.md5 = md5.New()
 
 		ret.prf = prf10
 	}
 
+	ret.suite = cipherSuite
 	ret.buffer = []byte{}
 	ret.version = version
 	ret.wireVersion = wireVersion
@@ -187,14 +180,15 @@ func newFinishedHash(wireVersion uint16, isDTLS bool, cipherSuite *cipherSuite) 
 // A finishedHash calculates the hash of a set of handshake messages suitable
 // for including in a Finished message.
 type finishedHash struct {
-	hash crypto.Hash
+	suite *cipherSuite
 
-	client hash.Hash
-	server hash.Hash
+	// hash maintains a running hash of handshake messages. In TLS 1.2 and up,
+	// the hash is determined from suite.hash(). In TLS 1.0 and 1.1, this is the
+	// SHA-1 half of the MD5/SHA-1 concatenation.
+	hash hash.Hash
 
-	// Prior to TLS 1.2, an additional MD5 hash is required.
-	clientMD5 hash.Hash
-	serverMD5 hash.Hash
+	// md5 is the MD5 half of the TLS 1.0 and 1.1 MD5/SHA1 concatenation.
+	md5 hash.Hash
 
 	// In TLS 1.2, a full buffer is required.
 	buffer []byte
@@ -213,8 +207,7 @@ func (h *finishedHash) UpdateForHelloRetryRequest() (err error) {
 	data.addU8(typeMessageHash)
 	data.addU24(h.hash.Size())
 	data.addBytes(h.Sum())
-	h.client = h.hash.New()
-	h.server = h.hash.New()
+	h.hash = h.suite.hash().New()
 	if h.buffer != nil {
 		h.buffer = []byte{}
 	}
@@ -223,12 +216,10 @@ func (h *finishedHash) UpdateForHelloRetryRequest() (err error) {
 }
 
 func (h *finishedHash) Write(msg []byte) (n int, err error) {
-	h.client.Write(msg)
-	h.server.Write(msg)
+	h.hash.Write(msg)
 
 	if h.version < VersionTLS12 {
-		h.clientMD5.Write(msg)
-		h.serverMD5.Write(msg)
+		h.md5.Write(msg)
 	}
 
 	if h.buffer != nil {
@@ -259,12 +250,12 @@ func (h *finishedHash) WriteHandshake(msg []byte, seqno uint16) {
 
 func (h finishedHash) Sum() []byte {
 	if h.version >= VersionTLS12 {
-		return h.client.Sum(nil)
+		return h.hash.Sum(nil)
 	}
 
 	out := make([]byte, 0, md5.Size+sha1.Size)
-	out = h.clientMD5.Sum(out)
-	return h.client.Sum(out)
+	out = h.md5.Sum(out)
+	return h.hash.Sum(out)
 }
 
 // clientSum returns the contents of the verify_data member of a client's
@@ -276,8 +267,8 @@ func (h finishedHash) clientSum(baseKey []byte) []byte {
 		return out
 	}
 
-	clientFinishedKey := hkdfExpandLabel(h.hash, baseKey, finishedLabel, nil, h.hash.Size())
-	finishedHMAC := hmac.New(h.hash.New, clientFinishedKey)
+	clientFinishedKey := hkdfExpandLabel(h.suite.hash(), baseKey, finishedLabel, nil, h.hash.Size())
+	finishedHMAC := hmac.New(h.suite.hash().New, clientFinishedKey)
 	finishedHMAC.Write(h.appendContextHashes(nil))
 	return finishedHMAC.Sum(nil)
 }
@@ -291,8 +282,8 @@ func (h finishedHash) serverSum(baseKey []byte) []byte {
 		return out
 	}
 
-	serverFinishedKey := hkdfExpandLabel(h.hash, baseKey, finishedLabel, nil, h.hash.Size())
-	finishedHMAC := hmac.New(h.hash.New, serverFinishedKey)
+	serverFinishedKey := hkdfExpandLabel(h.suite.hash(), baseKey, finishedLabel, nil, h.hash.Size())
+	finishedHMAC := hmac.New(h.suite.hash().New, serverFinishedKey)
 	finishedHMAC.Write(h.appendContextHashes(nil))
 	return finishedHMAC.Sum(nil)
 }
@@ -325,11 +316,11 @@ func (h *finishedHash) zeroSecret() []byte {
 
 // addEntropy incorporates ikm into the running TLS 1.3 secret with HKDF-Expand.
 func (h *finishedHash) addEntropy(ikm []byte) {
-	h.secret = hkdf.Extract(h.hash.New, ikm, h.secret)
+	h.secret = hkdf.Extract(h.suite.hash().New, ikm, h.secret)
 }
 
 func (h *finishedHash) nextSecret() {
-	h.secret = hkdfExpandLabel(h.hash, h.secret, []byte("derived"), h.hash.New().Sum(nil), h.hash.Size())
+	h.secret = hkdfExpandLabel(h.suite.hash(), h.secret, []byte("derived"), h.suite.hash().New().Sum(nil), h.hash.Size())
 }
 
 // hkdfExpandLabel implements TLS 1.3's HKDF-Expand-Label function, as defined
@@ -362,7 +353,7 @@ func hkdfExpandLabel(hash crypto.Hash, secret, label, hashValue []byte, length i
 // appendContextHashes returns the concatenation of the handshake hash and the
 // resumption context hash, as used in TLS 1.3.
 func (h *finishedHash) appendContextHashes(b []byte) []byte {
-	b = h.client.Sum(b)
+	b = h.hash.Sum(b)
 	return b
 }
 
@@ -386,17 +377,17 @@ var (
 // deriveSecret implements TLS 1.3's Derive-Secret function, as defined in
 // section 7.1 of draft ietf-tls-tls13-16.
 func (h *finishedHash) deriveSecret(label []byte) []byte {
-	return hkdfExpandLabel(h.hash, h.secret, label, h.appendContextHashes(nil), h.hash.Size())
+	return hkdfExpandLabel(h.suite.hash(), h.secret, label, h.appendContextHashes(nil), h.hash.Size())
 }
 
 // deriveSecretPeek is the same as deriveSecret, but it enables the caller to
 // tentatively append messages to the transcript. The |extraMessages| parameter
 // contains the bytes of these tentative messages.
 func (h *finishedHash) deriveSecretPeek(label []byte, extraMessages []byte) []byte {
-	hashPeek := h.hash.New()
+	hashPeek := h.suite.hash().New()
 	hashPeek.Write(h.buffer)
 	hashPeek.Write(extraMessages)
-	return hkdfExpandLabel(h.hash, h.secret, label, hashPeek.Sum(nil), h.hash.Size())
+	return hkdfExpandLabel(h.suite.hash(), h.secret, label, hashPeek.Sum(nil), h.hash.Size())
 }
 
 // The following are context strings for CertificateVerify in TLS 1.3.
