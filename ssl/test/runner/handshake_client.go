@@ -52,30 +52,33 @@ func mapClientHelloVersion(vers uint16, isDTLS bool) uint16 {
 	panic("Unknown ClientHello version.")
 }
 
-func fixClientHellos(hello *clientHelloMsg, in []byte) ([]byte, error) {
-	ret := append([]byte{}, in...)
+// replaceClientHello returns a new clientHelloMsg which serializes to |in|, but
+// with key shares copied from |hello|. This allows sending an exact
+// externally-specified ClientHello in tests. However, we use |hello|'s key
+// shares. This ensures we have the private keys to complete the handshake. Note
+// this function does not update internal handshake state, so the test must be
+// configured compatibly with |in|.
+func replaceClientHello(hello *clientHelloMsg, in []byte) (*clientHelloMsg, error) {
+	copied := append([]byte{}, in...)
 	newHello := new(clientHelloMsg)
-	if !newHello.unmarshal(ret) {
+	if !newHello.unmarshal(copied) {
 		return nil, errors.New("tls: invalid ClientHello")
 	}
 
-	hello.random = newHello.random
-	hello.sessionID = newHello.sessionID
-
-	// Replace |ret|'s key shares with those of |hello|. For simplicity, we
-	// require their lengths match, which is satisfied by matching the
-	// DefaultCurves setting to the selection in the replacement
-	// ClientHello.
+	// Replace |newHellos|'s key shares with those of |hello|. For simplicity,
+	// we require their lengths match, which is satisfied by matching the
+	// DefaultCurves setting to the selection in the replacement ClientHello.
 	bb := newByteBuilder()
 	hello.marshalKeyShares(bb)
 	keyShares := bb.finish()
 	if len(keyShares) != len(newHello.keySharesRaw) {
 		return nil, errors.New("tls: ClientHello key share length is inconsistent with DefaultCurves setting")
 	}
-	// |newHello.keySharesRaw| aliases |ret|.
+	// |newHello.keySharesRaw| aliases |copied|.
 	copy(newHello.keySharesRaw, keyShares)
+	newHello.keyShares = hello.keyShares
 
-	return ret, nil
+	return newHello, nil
 }
 
 func (c *Conn) clientHandshake() error {
@@ -446,38 +449,37 @@ NextCipherSuite:
 		hello.sessionID = c.config.Bugs.SendClientHelloSessionID
 	}
 
+	// PSK binders must be computed after the rest of the ClientHello is
+	// constructed.
+	if len(hello.pskIdentities) > 0 {
+		version := session.wireVersion
+		// We may have a pre-1.3 session if SendBothTickets is
+		// set.
+		if session.vers < VersionTLS13 {
+			version = VersionTLS13
+		}
+		generatePSKBinders(version, hello, session, nil, nil, c.config)
+	}
+
+	if c.config.Bugs.SendClientHelloWithFixes != nil {
+		hello, err = replaceClientHello(hello, c.config.Bugs.SendClientHelloWithFixes)
+		if err != nil {
+			return err
+		}
+	}
+
 	var helloBytes []byte
 	if c.config.Bugs.SendV2ClientHello {
-		// Test that the peer left-pads random.
+		hello.isV2ClientHello = true
+		// The V2ClientHello "challenge" field is variable-length and is
+		// left-padded to become the SSL3/TLS random. Test this behavior by
+		// forcing the left padding.
 		hello.random[0] = 0
-		v2Hello := &v2ClientHelloMsg{
-			vers:         hello.vers,
-			cipherSuites: hello.cipherSuites,
-			// No session resumption for V2ClientHello.
-			sessionID: nil,
-			challenge: hello.random[1:],
-		}
-		helloBytes = v2Hello.marshal()
+		hello.v2Challenge = hello.random[1:]
+		helloBytes = hello.marshal()
 		c.writeV2Record(helloBytes)
 	} else {
-		if len(hello.pskIdentities) > 0 {
-			version := session.wireVersion
-			// We may have a pre-1.3 session if SendBothTickets is
-			// set.
-			if session.vers < VersionTLS13 {
-				version = VersionTLS13
-			}
-			generatePSKBinders(version, hello, session, []byte{}, []byte{}, c.config)
-		}
-		if c.config.Bugs.SendClientHelloWithFixes != nil {
-			helloBytes, err = fixClientHellos(hello, c.config.Bugs.SendClientHelloWithFixes)
-			if err != nil {
-				return err
-			}
-		} else {
-			helloBytes = hello.marshal()
-		}
-
+		helloBytes = hello.marshal()
 		var appendToHello byte
 		if c.config.Bugs.PartialClientFinishedWithClientHello {
 			appendToHello = typeFinished

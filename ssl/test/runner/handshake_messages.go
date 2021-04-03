@@ -294,8 +294,10 @@ type clientECH struct {
 type clientHelloMsg struct {
 	raw                       []byte
 	isDTLS                    bool
+	isV2ClientHello           bool
 	vers                      uint16
 	random                    []byte
+	v2Challenge               []byte
 	sessionID                 []byte
 	cookie                    []byte
 	cipherSuites              []uint16
@@ -358,6 +360,22 @@ func (m *clientHelloMsg) marshalKeyShares(bb *byteBuilder) {
 
 func (m *clientHelloMsg) marshal() []byte {
 	if m.raw != nil {
+		return m.raw
+	}
+
+	if m.isV2ClientHello {
+		v2Msg := newByteBuilder()
+		v2Msg.addU8(1)
+		v2Msg.addU16(m.vers)
+		v2Msg.addU16(uint16(len(m.cipherSuites) * 3))
+		v2Msg.addU16(uint16(len(m.sessionID)))
+		v2Msg.addU16(uint16(len(m.v2Challenge)))
+		for _, spec := range m.cipherSuites {
+			v2Msg.addU24(int(spec))
+		}
+		v2Msg.addBytes(m.sessionID)
+		v2Msg.addBytes(m.v2Challenge)
+		m.raw = v2Msg.finish()
 		return m.raw
 	}
 
@@ -2565,47 +2583,6 @@ func (m *newSessionTicketMsg) unmarshal(data []byte) bool {
 	}
 
 	return true
-}
-
-type v2ClientHelloMsg struct {
-	raw          []byte
-	vers         uint16
-	cipherSuites []uint16
-	sessionID    []byte
-	challenge    []byte
-}
-
-func (m *v2ClientHelloMsg) marshal() []byte {
-	if m.raw != nil {
-		return m.raw
-	}
-
-	length := 1 + 2 + 2 + 2 + 2 + len(m.cipherSuites)*3 + len(m.sessionID) + len(m.challenge)
-
-	x := make([]byte, length)
-	x[0] = 1
-	x[1] = uint8(m.vers >> 8)
-	x[2] = uint8(m.vers)
-	x[3] = uint8((len(m.cipherSuites) * 3) >> 8)
-	x[4] = uint8(len(m.cipherSuites) * 3)
-	x[5] = uint8(len(m.sessionID) >> 8)
-	x[6] = uint8(len(m.sessionID))
-	x[7] = uint8(len(m.challenge) >> 8)
-	x[8] = uint8(len(m.challenge))
-	y := x[9:]
-	for i, spec := range m.cipherSuites {
-		y[i*3] = 0
-		y[i*3+1] = uint8(spec >> 8)
-		y[i*3+2] = uint8(spec)
-	}
-	y = y[len(m.cipherSuites)*3:]
-	copy(y, m.sessionID)
-	y = y[len(m.sessionID):]
-	copy(y, m.challenge)
-
-	m.raw = x
-
-	return x
 }
 
 type helloVerifyRequestMsg struct {
