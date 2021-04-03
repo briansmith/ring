@@ -1697,10 +1697,6 @@ type ProtocolBugs struct {
 	// TLS 1.3 anti-downgrade signal.
 	SendTLS13DowngradeRandom bool
 
-	// CheckTLS13DowngradeRandom, if true, causes the client to check the
-	// TLS 1.3 anti-downgrade signal regardless of its variant.
-	CheckTLS13DowngradeRandom bool
-
 	// IgnoreTLS13DowngradeRandom, if true, causes the client to ignore the
 	// TLS 1.3 anti-downgrade signal.
 	IgnoreTLS13DowngradeRandom bool

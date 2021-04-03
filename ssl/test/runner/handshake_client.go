@@ -701,7 +701,7 @@ NextCipherSuite:
 	_, supportsTLS13 := c.config.isSupportedVersion(VersionTLS13, false)
 	// Check for downgrade signals in the server random, per RFC 8446, section 4.1.3.
 	gotDowngrade := serverHello.random[len(serverHello.random)-8:]
-	if (supportsTLS13 || c.config.Bugs.CheckTLS13DowngradeRandom) && !c.config.Bugs.IgnoreTLS13DowngradeRandom {
+	if supportsTLS13 && !c.config.Bugs.IgnoreTLS13DowngradeRandom {
 		if c.vers <= VersionTLS12 && c.config.maxVersion(c.isDTLS) >= VersionTLS13 {
 			if bytes.Equal(gotDowngrade, downgradeTLS13) {
 				c.sendAlert(alertProtocolVersion)
