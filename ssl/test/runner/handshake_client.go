@@ -1144,13 +1144,13 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 		endOfEarlyData := new(endOfEarlyDataMsg)
 		endOfEarlyData.nonEmpty = c.config.Bugs.NonEmptyEndOfEarlyData
+		hs.writeClientHash(endOfEarlyData.marshal())
 		if c.config.Bugs.PartialEndOfEarlyDataWithClientHello {
 			// The first byte has already been sent.
 			c.writeRecord(recordTypeHandshake, endOfEarlyData.marshal()[1:])
 		} else {
 			c.writeRecord(recordTypeHandshake, endOfEarlyData.marshal())
 		}
-		hs.writeClientHash(endOfEarlyData.marshal())
 	}
 
 	if !c.config.Bugs.SkipChangeCipherSpec && !hs.hello.hasEarlyData {
