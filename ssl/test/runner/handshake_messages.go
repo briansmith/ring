@@ -1287,11 +1287,20 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 // marshalForECHConf marshals |m|, but zeroes out the last 8 bytes of the
 // ServerHello.random.
 func (m *serverHelloMsg) marshalForECHConf() []byte {
-	serverHelloECHConf := *m
-	serverHelloECHConf.raw = nil
-	serverHelloECHConf.random = make([]byte, 32)
-	copy(serverHelloECHConf.random[:24], m.random)
-	return serverHelloECHConf.marshal()
+	ret := m.marshal()
+	// Make a copy so we can mutate it.
+	ret = append(make([]byte, 0, len(ret)), ret...)
+
+	reparsed := new(serverHelloMsg)
+	if !reparsed.unmarshal(ret) {
+		panic("could not re-parse ServerHello")
+	}
+	// We rely on |unmarshal| aliasing the |random| into |ret|.
+	for i := 24; i < 32; i++ {
+		reparsed.random[i] = 0
+	}
+
+	return ret
 }
 
 type encryptedExtensionsMsg struct {
