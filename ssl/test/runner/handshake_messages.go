@@ -2737,7 +2737,3 @@ func (m *endOfEarlyDataMsg) marshal() []byte {
 func (*endOfEarlyDataMsg) unmarshal(data []byte) bool {
 	return len(data) == 4
 }
-
-// ssl3NoCertificateMsg is a dummy message to handle SSL 3.0 using a warning
-// alert in the handshake.
-type ssl3NoCertificateMsg struct{}

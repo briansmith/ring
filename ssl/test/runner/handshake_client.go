@@ -582,6 +582,13 @@ NextCipherSuite:
 	c.vers = serverVersion
 	c.haveVers = true
 
+	// We only implement enough of SSL 3.0 to test that the server doesn't:
+	// we can send a ClientHello and attempt to read a ServerHello. The server
+	// should respond with a protocol_version alert and not get this far.
+	if c.vers == VersionSSL30 {
+		return errors.New("tls: server selected SSL 3.0")
+	}
+
 	if c.vers >= VersionTLS13 {
 		// The first server message must be followed by a ChangeCipherSpec.
 		c.expectTLS13ChangeCipherSpec = true
@@ -1376,23 +1383,18 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 	// If the server requested a certificate then we have to send a
 	// Certificate message in TLS, even if it's empty because we don't have
-	// a certificate to send. In SSL 3.0, skip the message and send a
-	// no_certificate warning alert.
-	if certRequested {
-		if c.vers == VersionSSL30 && chainToSend == nil {
-			c.sendAlert(alertNoCertificate)
-		} else if !c.config.Bugs.SkipClientCertificate {
-			certMsg := new(certificateMsg)
-			if chainToSend != nil {
-				for _, certData := range chainToSend.Certificate {
-					certMsg.certificates = append(certMsg.certificates, certificateEntry{
-						data: certData,
-					})
-				}
+	// a certificate to send.
+	if certRequested && !c.config.Bugs.SkipClientCertificate {
+		certMsg := new(certificateMsg)
+		if chainToSend != nil {
+			for _, certData := range chainToSend.Certificate {
+				certMsg.certificates = append(certMsg.certificates, certificateEntry{
+					data: certData,
+				})
 			}
-			hs.writeClientHash(certMsg.marshal())
-			c.writeRecord(recordTypeHandshake, certMsg.marshal())
 		}
+		hs.writeClientHash(certMsg.marshal())
+		c.writeRecord(recordTypeHandshake, certMsg.marshal())
 	}
 
 	preMasterSecret, ckx, err := keyAgreement.generateClientKeyExchange(c.config, hs.hello, leaf)
@@ -1412,7 +1414,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 	}
 
-	if hs.serverHello.extensions.extendedMasterSecret && c.vers >= VersionTLS10 {
+	if hs.serverHello.extensions.extendedMasterSecret {
 		hs.masterSecret = extendedMasterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.finishedHash)
 		c.extendedMasterSecret = true
 	} else {
@@ -1438,24 +1440,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			}
 		}
 
-		if c.vers > VersionSSL30 {
-			certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, hs.finishedHash.buffer)
-			if err == nil && c.config.Bugs.SendSignatureAlgorithm != 0 {
-				certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
-			}
-		} else {
-			// SSL 3.0's client certificate construction is
-			// incompatible with signatureAlgorithm.
-			rsaKey, ok := privKey.(*rsa.PrivateKey)
-			if !ok {
-				err = errors.New("unsupported signature type for client certificate")
-			} else {
-				digest := hs.finishedHash.hashForClientCertificateSSL3(hs.masterSecret)
-				if c.config.Bugs.InvalidSignature {
-					digest[0] ^= 0x80
-				}
-				certVerify.signature, err = rsa.SignPKCS1v15(c.config.rand(), rsaKey, crypto.MD5SHA1, digest)
-			}
+		certVerify.signature, err = signMessage(c.vers, privKey, c.config, certVerify.signatureAlgorithm, hs.finishedHash.buffer)
+		if err == nil && c.config.Bugs.SendSignatureAlgorithm != 0 {
+			certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
 		}
 		if err != nil {
 			c.sendAlert(alertInternalError)
@@ -1904,9 +1891,6 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		return nil
 	}
 
-	if c.vers == VersionSSL30 {
-		return errors.New("tls: negotiated session tickets in SSL 3.0")
-	}
 	if c.config.Bugs.ExpectNoNewSessionTicket {
 		return errors.New("tls: received unexpected NewSessionTicket")
 	}

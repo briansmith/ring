@@ -77,39 +77,6 @@ func prf12(hashFunc func() hash.Hash) func(result, secret, label, seed []byte) {
 	}
 }
 
-// prf30 implements the SSL 3.0 pseudo-random function, as defined in
-// www.mozilla.org/projects/security/pki/nss/ssl/draft302.txt section 6.
-func prf30(result, secret, label, seed []byte) {
-	hashSHA1 := sha1.New()
-	hashMD5 := md5.New()
-
-	done := 0
-	i := 0
-	// RFC5246 section 6.3 says that the largest PRF output needed is 128
-	// bytes. Since no more ciphersuites will be added to SSLv3, this will
-	// remain true. Each iteration gives us 16 bytes so 10 iterations will
-	// be sufficient.
-	var b [11]byte
-	for done < len(result) {
-		for j := 0; j <= i; j++ {
-			b[j] = 'A' + byte(i)
-		}
-
-		hashSHA1.Reset()
-		hashSHA1.Write(b[:i+1])
-		hashSHA1.Write(secret)
-		hashSHA1.Write(seed)
-		digest := hashSHA1.Sum(nil)
-
-		hashMD5.Reset()
-		hashMD5.Write(secret)
-		hashMD5.Write(digest)
-
-		done += copy(result[done:], hashMD5.Sum(nil))
-		i++
-	}
-}
-
 const (
 	tlsRandomLength      = 32 // Length of a random nonce in TLS 1.1.
 	masterSecretLength   = 48 // Length of a master secret in TLS 1.1.
@@ -127,8 +94,6 @@ var channelIDResumeLabel = []byte("Resumption\x00")
 
 func prfForVersion(version uint16, suite *cipherSuite) func(result, secret, label, seed []byte) {
 	switch version {
-	case VersionSSL30:
-		return prf30
 	case VersionTLS10, VersionTLS11:
 		return prf10
 	case VersionTLS12:
@@ -231,8 +196,7 @@ type finishedHash struct {
 	clientMD5 hash.Hash
 	serverMD5 hash.Hash
 
-	// In TLS 1.2 (and SSL 3 for implementation convenience), a
-	// full buffer is required.
+	// In TLS 1.2, a full buffer is required.
 	buffer []byte
 
 	version     uint16
@@ -303,48 +267,9 @@ func (h finishedHash) Sum() []byte {
 	return h.client.Sum(out)
 }
 
-// finishedSum30 calculates the contents of the verify_data member of a SSLv3
-// Finished message given the MD5 and SHA1 hashes of a set of handshake
-// messages.
-func finishedSum30(md5, sha1 hash.Hash, masterSecret []byte, magic []byte) []byte {
-	md5.Write(magic)
-	md5.Write(masterSecret)
-	md5.Write(ssl30Pad1[:])
-	md5Digest := md5.Sum(nil)
-
-	md5.Reset()
-	md5.Write(masterSecret)
-	md5.Write(ssl30Pad2[:])
-	md5.Write(md5Digest)
-	md5Digest = md5.Sum(nil)
-
-	sha1.Write(magic)
-	sha1.Write(masterSecret)
-	sha1.Write(ssl30Pad1[:40])
-	sha1Digest := sha1.Sum(nil)
-
-	sha1.Reset()
-	sha1.Write(masterSecret)
-	sha1.Write(ssl30Pad2[:40])
-	sha1.Write(sha1Digest)
-	sha1Digest = sha1.Sum(nil)
-
-	ret := make([]byte, len(md5Digest)+len(sha1Digest))
-	copy(ret, md5Digest)
-	copy(ret[len(md5Digest):], sha1Digest)
-	return ret
-}
-
-var ssl3ClientFinishedMagic = [4]byte{0x43, 0x4c, 0x4e, 0x54}
-var ssl3ServerFinishedMagic = [4]byte{0x53, 0x52, 0x56, 0x52}
-
 // clientSum returns the contents of the verify_data member of a client's
 // Finished message.
 func (h finishedHash) clientSum(baseKey []byte) []byte {
-	if h.version == VersionSSL30 {
-		return finishedSum30(h.clientMD5, h.client, baseKey, ssl3ClientFinishedMagic[:])
-	}
-
 	if h.version < VersionTLS13 {
 		out := make([]byte, finishedVerifyLength)
 		h.prf(out, baseKey, clientFinishedLabel, h.Sum())
@@ -360,10 +285,6 @@ func (h finishedHash) clientSum(baseKey []byte) []byte {
 // serverSum returns the contents of the verify_data member of a server's
 // Finished message.
 func (h finishedHash) serverSum(baseKey []byte) []byte {
-	if h.version == VersionSSL30 {
-		return finishedSum30(h.serverMD5, h.server, baseKey, ssl3ServerFinishedMagic[:])
-	}
-
 	if h.version < VersionTLS13 {
 		out := make([]byte, finishedVerifyLength)
 		h.prf(out, baseKey, serverFinishedLabel, h.Sum())
@@ -374,16 +295,6 @@ func (h finishedHash) serverSum(baseKey []byte) []byte {
 	finishedHMAC := hmac.New(h.hash.New, serverFinishedKey)
 	finishedHMAC.Write(h.appendContextHashes(nil))
 	return finishedHMAC.Sum(nil)
-}
-
-// hashForClientCertificateSSL3 returns the hash to be signed for client
-// certificates in SSL 3.0.
-func (h finishedHash) hashForClientCertificateSSL3(masterSecret []byte) []byte {
-	md5Hash := md5.New()
-	md5Hash.Write(h.buffer)
-	sha1Hash := sha1.New()
-	sha1Hash.Write(h.buffer)
-	return finishedSum30(md5Hash, sha1Hash, masterSecret, nil)
 }
 
 // hashForChannelID returns the hash to be signed for TLS Channel

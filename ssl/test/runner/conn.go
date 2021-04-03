@@ -21,8 +21,6 @@ import (
 	"time"
 )
 
-var errNoCertificateAlert = errors.New("tls: no certificate alert")
-
 // A Conn represents a secured connection.
 // It implements the net.Conn interface.
 type Conn struct {
@@ -384,22 +382,6 @@ func removePadding(payload []byte) ([]byte, byte) {
 	return payload[:len(payload)-int(toRemove)], good
 }
 
-// removePaddingSSL30 is a replacement for removePadding in the case that the
-// protocol version is SSLv3. In this version, the contents of the padding
-// are random and cannot be checked.
-func removePaddingSSL30(payload []byte) ([]byte, byte) {
-	if len(payload) < 1 {
-		return payload, 0
-	}
-
-	paddingLen := int(payload[len(payload)-1]) + 1
-	if paddingLen > len(payload) {
-		return payload, 0
-	}
-
-	return payload[:len(payload)-paddingLen], 255
-}
-
 func roundUp(a, b int) int {
 	return a + (b-a%b)%b
 }
@@ -482,11 +464,7 @@ func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, contentType recor
 				payload = payload[explicitIVLen:]
 			}
 			c.CryptBlocks(payload, payload)
-			if hc.version == VersionSSL30 {
-				payload, paddingGood = removePaddingSSL30(payload)
-			} else {
-				payload, paddingGood = removePadding(payload)
-			}
+			payload, paddingGood = removePadding(payload)
 			b.resize(recordHeaderLen + explicitIVLen + len(payload))
 
 			// note that we still have a timing side-channel in the
@@ -1040,11 +1018,6 @@ Again:
 		}
 		switch data[0] {
 		case alertLevelWarning:
-			if alert(data[1]) == alertNoCertificate {
-				c.in.freeBlock(b)
-				return errNoCertificateAlert
-			}
-
 			// drop on the floor
 			c.in.freeBlock(b)
 			goto Again
@@ -1119,7 +1092,7 @@ func (c *Conn) sendAlertLocked(level byte, err alert) error {
 // L < c.out.Mutex.
 func (c *Conn) sendAlert(err alert) error {
 	level := byte(alertLevelError)
-	if err == alertNoRenegotiation || err == alertCloseNotify || err == alertNoCertificate {
+	if err == alertNoRenegotiation || err == alertCloseNotify {
 		level = alertLevelWarning
 	}
 	return c.SendAlert(level, err)
@@ -1365,13 +1338,6 @@ func (c *Conn) doReadHandshake() ([]byte, error) {
 // c.in.Mutex < L; c.out.Mutex < L.
 func (c *Conn) readHandshake() (interface{}, error) {
 	data, err := c.doReadHandshake()
-	if err == errNoCertificateAlert {
-		if c.hand.Len() != 0 {
-			// The warning alert may not interleave with a handshake message.
-			return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
-		}
-		return new(ssl3NoCertificateMsg), nil
-	}
 	if err != nil {
 		return nil, err
 	}
