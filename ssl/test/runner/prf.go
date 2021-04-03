@@ -10,10 +10,35 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding"
 	"hash"
 
 	"golang.org/x/crypto/hkdf"
 )
+
+// copyHash returns a copy of |h|, which must be an instance of |hashType|.
+func copyHash(h hash.Hash, hash crypto.Hash) hash.Hash {
+	// While hash.Hash is not copyable, the documentation says all standard
+	// library hash.Hash implementations implement BinaryMarshaler and
+	// BinaryUnmarshaler interfaces.
+	m, ok := h.(encoding.BinaryMarshaler)
+	if !ok {
+		panic("hash did not implement encoding.BinaryMarshaler")
+	}
+	data, err := m.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	ret := hash.New()
+	u, ok := ret.(encoding.BinaryUnmarshaler)
+	if !ok {
+		panic("hash did not implement BinaryUnmarshaler")
+	}
+	if err := u.UnmarshalBinary(data); err != nil {
+		panic(err)
+	}
+	return ret
+}
 
 // Split a premaster secret in two as specified in RFC 4346, section 5.
 func splitPreMasterSecret(secret []byte) (s1, s2 []byte) {
@@ -384,8 +409,7 @@ func (h *finishedHash) deriveSecret(label []byte) []byte {
 // tentatively append messages to the transcript. The |extraMessages| parameter
 // contains the bytes of these tentative messages.
 func (h *finishedHash) deriveSecretPeek(label []byte, extraMessages []byte) []byte {
-	hashPeek := h.suite.hash().New()
-	hashPeek.Write(h.buffer)
+	hashPeek := copyHash(h.hash, h.suite.hash())
 	hashPeek.Write(extraMessages)
 	return hkdfExpandLabel(h.suite.hash(), h.secret, label, hashPeek.Sum(nil), h.hash.Size())
 }
