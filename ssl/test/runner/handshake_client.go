@@ -758,10 +758,7 @@ NextCipherSuite:
 
 	hs.finishedHash.WriteHandshake(helloBytes, hs.c.sendHandshakeSeq-1)
 	if haveHelloRetryRequest {
-		err = hs.finishedHash.UpdateForHelloRetryRequest()
-		if err != nil {
-			return err
-		}
+		hs.finishedHash.UpdateForHelloRetryRequest()
 		hs.writeServerHash(helloRetryRequest.marshal())
 		hs.writeClientHash(secondHelloBytes)
 	}

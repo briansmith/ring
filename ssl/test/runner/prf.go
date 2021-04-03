@@ -227,7 +227,7 @@ type finishedHash struct {
 	secret []byte
 }
 
-func (h *finishedHash) UpdateForHelloRetryRequest() (err error) {
+func (h *finishedHash) UpdateForHelloRetryRequest() {
 	data := newByteBuilder()
 	data.addU8(typeMessageHash)
 	data.addU24(h.hash.Size())
@@ -237,7 +237,6 @@ func (h *finishedHash) UpdateForHelloRetryRequest() (err error) {
 		h.buffer = []byte{}
 	}
 	h.Write(data.finish())
-	return nil
 }
 
 func (h *finishedHash) Write(msg []byte) (n int, err error) {

@@ -621,11 +621,7 @@ ResendHelloRetryRequest:
 	}
 
 	if sendHelloRetryRequest {
-		if err := hs.finishedHash.UpdateForHelloRetryRequest(); err != nil {
-			return err
-		}
-
-		oldClientHelloBytes := hs.clientHello.marshal()
+		hs.finishedHash.UpdateForHelloRetryRequest()
 		hs.writeServerHash(helloRetryRequest.marshal())
 		if c.config.Bugs.PartialServerHelloWithHelloRetryRequest {
 			data := helloRetryRequest.marshal()
@@ -711,7 +707,7 @@ ResendHelloRetryRequest:
 			}
 			if found {
 				binderToVerify := newClientHello.pskBinders[pskIndex]
-				if err := verifyPSKBinder(c.wireVersion, newClientHello, hs.sessionState, binderToVerify, oldClientHelloBytes, helloRetryRequest.marshal()); err != nil {
+				if err := verifyPSKBinder(c.wireVersion, newClientHello, hs.sessionState, binderToVerify, hs.clientHello.marshal(), helloRetryRequest.marshal()); err != nil {
 					return err
 				}
 			} else if !config.Bugs.AcceptAnySession {
