@@ -34,7 +34,6 @@ type clientHandshakeState struct {
 	session       *ClientSessionState
 	finishedBytes []byte
 	peerPublicKey crypto.PublicKey
-	skxAlgo       signatureAlgorithm
 }
 
 func mapClientHelloVersion(vers uint16, isDTLS bool) uint16 {
@@ -1541,8 +1540,6 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 	if dc != nil {
 		// Note that this doesn't check a) the delegated credential temporal
 		// validity nor b) that the certificate has the special OID asserted.
-		hs.skxAlgo = dc.expectedCertVerifyAlgo
-
 		var err error
 		if hs.peerPublicKey, err = x509.ParsePKIXPublicKey(dc.pkixPublicKey); err != nil {
 			c.sendAlert(alertBadCertificate)
