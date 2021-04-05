@@ -34,8 +34,8 @@ extern "C" {
 // See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-07.
 
 // EVP_HPKE_AEAD_* are AEAD identifiers.
-#define EVP_HPKE_AEAD_AES_GCM_128 0x0001
-#define EVP_HPKE_AEAD_AES_GCM_256 0x0002
+#define EVP_HPKE_AEAD_AES_128_GCM 0x0001
+#define EVP_HPKE_AEAD_AES_256_GCM 0x0002
 #define EVP_HPKE_AEAD_CHACHA20POLY1305 0x0003
 
 // EVP_HPKE_HKDF_* are HKDF identifiers.

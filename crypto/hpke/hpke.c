@@ -128,9 +128,9 @@ static int hpke_extract_and_expand(const EVP_MD *hkdf_md, uint8_t *out_key,
 
 const EVP_AEAD *EVP_HPKE_get_aead(uint16_t aead_id) {
   switch (aead_id) {
-    case EVP_HPKE_AEAD_AES_GCM_128:
+    case EVP_HPKE_AEAD_AES_128_GCM:
       return EVP_aead_aes_128_gcm();
-    case EVP_HPKE_AEAD_AES_GCM_256:
+    case EVP_HPKE_AEAD_AES_256_GCM:
       return EVP_aead_aes_256_gcm();
     case EVP_HPKE_AEAD_CHACHA20POLY1305:
       return EVP_aead_chacha20_poly1305();

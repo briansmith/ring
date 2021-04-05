@@ -620,7 +620,7 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
 
   constexpr uint16_t kdf_id = EVP_HPKE_HKDF_SHA256;
   const uint16_t aead_id = EVP_has_aes_hardware()
-                               ? EVP_HPKE_AEAD_AES_GCM_128
+                               ? EVP_HPKE_AEAD_AES_128_GCM
                                : EVP_HPKE_AEAD_CHACHA20POLY1305;
   const EVP_AEAD *aead = EVP_HPKE_get_aead(aead_id);
   assert(aead != nullptr);
