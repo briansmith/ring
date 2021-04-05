@@ -113,13 +113,13 @@ func SetupPSKReceiverX25519(kdfID, aeadID uint16, enc, secretKeyR, info, psk, ps
 	return context, nil
 }
 
-func (c *Context) Seal(additionalData, plaintext []byte) []byte {
+func (c *Context) Seal(plaintext, additionalData []byte) []byte {
 	ciphertext := c.aead.Seal(nil, c.computeNonce(), plaintext, additionalData)
 	c.incrementSeq()
 	return ciphertext
 }
 
-func (c *Context) Open(additionalData, ciphertext []byte) ([]byte, error) {
+func (c *Context) Open(ciphertext, additionalData []byte) ([]byte, error) {
 	plaintext, err := c.aead.Open(nil, c.computeNonce(), ciphertext, additionalData)
 	if err != nil {
 		return nil, err

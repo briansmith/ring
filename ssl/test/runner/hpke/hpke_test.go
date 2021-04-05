@@ -59,8 +59,8 @@ func TestRoundTrip(t *testing.T) {
 	// Seal() our plaintext with the sender context, then Open() the
 	// ciphertext with the receiver context.
 	plaintext := []byte("foobar")
-	ciphertext := senderContext.Seal(nil, plaintext)
-	decrypted, err := receiverContext.Open(nil, ciphertext)
+	ciphertext := senderContext.Seal(plaintext, nil)
+	decrypted, err := receiverContext.Open(ciphertext, nil)
 	if err != nil {
 		t.Errorf("encryption round trip failed: %s", err)
 		return
@@ -167,10 +167,10 @@ func TestVectors(t *testing.T) {
 			}
 
 			for encryptionNum, e := range testVec.Encryptions {
-				ciphertext := senderContext.Seal(e.AdditionalData, e.Plaintext)
+				ciphertext := senderContext.Seal(e.Plaintext, e.AdditionalData)
 				checkBytesEqual(t, "ciphertext", ciphertext, e.Ciphertext)
 
-				decrypted, err := receiverContext.Open(e.AdditionalData, ciphertext)
+				decrypted, err := receiverContext.Open(ciphertext, e.AdditionalData)
 				if err != nil {
 					t.Errorf("decryption %d failed: %s", encryptionNum, err)
 					return
