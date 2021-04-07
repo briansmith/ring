@@ -193,74 +193,19 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, size_t md_size, const uint8_t *in,
     *((p)++) = (uint8_t)((n));       \
   } while (0)
 
-// u64toBE serialises an unsigned, 64-bit number (n) as eight bytes at (p) in
-// big-endian order. The value of p is advanced by eight.
-#define u64toBE(n, p)                \
-  do {                               \
-    *((p)++) = (uint8_t)((n) >> 56); \
-    *((p)++) = (uint8_t)((n) >> 48); \
-    *((p)++) = (uint8_t)((n) >> 40); \
-    *((p)++) = (uint8_t)((n) >> 32); \
-    *((p)++) = (uint8_t)((n) >> 24); \
-    *((p)++) = (uint8_t)((n) >> 16); \
-    *((p)++) = (uint8_t)((n) >> 8);  \
-    *((p)++) = (uint8_t)((n));       \
-  } while (0)
-
-typedef union {
-  SHA_CTX sha1;
-  SHA256_CTX sha256;
-  SHA512_CTX sha512;
-} HASH_CTX;
-
-static void tls1_sha1_transform(HASH_CTX *ctx, const uint8_t *block) {
-  SHA1_Transform(&ctx->sha1, block);
-}
-
-static void tls1_sha256_transform(HASH_CTX *ctx, const uint8_t *block) {
-  SHA256_Transform(&ctx->sha256, block);
-}
-
-static void tls1_sha512_transform(HASH_CTX *ctx, const uint8_t *block) {
-  SHA512_Transform(&ctx->sha512, block);
-}
-
 // These functions serialize the state of a hash and thus perform the standard
 // "final" operation without adding the padding and length that such a function
 // typically does.
-static void tls1_sha1_final_raw(HASH_CTX *ctx, uint8_t *md_out) {
-  SHA_CTX *sha1 = &ctx->sha1;
-  u32toBE(sha1->h[0], md_out);
-  u32toBE(sha1->h[1], md_out);
-  u32toBE(sha1->h[2], md_out);
-  u32toBE(sha1->h[3], md_out);
-  u32toBE(sha1->h[4], md_out);
-}
-
-static void tls1_sha256_final_raw(HASH_CTX *ctx, uint8_t *md_out) {
-  SHA256_CTX *sha256 = &ctx->sha256;
-  for (unsigned i = 0; i < 8; i++) {
-    u32toBE(sha256->h[i], md_out);
-  }
-}
-
-static void tls1_sha512_final_raw(HASH_CTX *ctx, uint8_t *md_out) {
-  SHA512_CTX *sha512 = &ctx->sha512;
-  for (unsigned i = 0; i < 8; i++) {
-    u64toBE(sha512->h[i], md_out);
-  }
+static void tls1_sha1_final_raw(SHA_CTX *ctx, uint8_t *md_out) {
+  u32toBE(ctx->h[0], md_out);
+  u32toBE(ctx->h[1], md_out);
+  u32toBE(ctx->h[2], md_out);
+  u32toBE(ctx->h[3], md_out);
+  u32toBE(ctx->h[4], md_out);
 }
 
 int EVP_tls_cbc_record_digest_supported(const EVP_MD *md) {
-  switch (EVP_MD_type(md)) {
-    case NID_sha1:
-    case NID_sha256:
-    case NID_sha384:
-      return 1;
-
-    default:
-      return 0;
-  }
+  return EVP_MD_type(md) == NID_sha1;
 }
 
 int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
@@ -269,14 +214,6 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
                               size_t data_plus_mac_plus_padding_size,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length) {
-  HASH_CTX md_state;
-  void (*md_final_raw)(HASH_CTX *ctx, uint8_t *md_out);
-  void (*md_transform)(HASH_CTX *ctx, const uint8_t *block);
-  unsigned md_size, md_block_size = 64, md_block_shift = 6;
-  // md_length_size is the number of bytes in the length field that terminates
-  // the hash.
-  unsigned md_length_size = 8;
-
   // Bound the acceptable input so we can forget about many possible overflows
   // later in this function. This is redundant with the record size limits in
   // TLS.
@@ -285,38 +222,23 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
     return 0;
   }
 
-  switch (EVP_MD_type(md)) {
-    case NID_sha1:
-      SHA1_Init(&md_state.sha1);
-      md_final_raw = tls1_sha1_final_raw;
-      md_transform = tls1_sha1_transform;
-      md_size = SHA_DIGEST_LENGTH;
-      break;
-
-    case NID_sha256:
-      SHA256_Init(&md_state.sha256);
-      md_final_raw = tls1_sha256_final_raw;
-      md_transform = tls1_sha256_transform;
-      md_size = SHA256_DIGEST_LENGTH;
-      break;
-
-    case NID_sha384:
-      SHA384_Init(&md_state.sha512);
-      md_final_raw = tls1_sha512_final_raw;
-      md_transform = tls1_sha512_transform;
-      md_size = SHA384_DIGEST_LENGTH;
-      md_block_size = 128;
-      md_block_shift = 7;
-      md_length_size = 16;
-      break;
-
-    default:
+  if (EVP_MD_type(md) != NID_sha1) {
       // EVP_tls_cbc_record_digest_supported should have been called first to
       // check that the hash function is supported.
       assert(0);
       *md_out_size = 0;
       return 0;
   }
+
+  // TODO(davidben): Further simplify this logic, now that we're down to one
+  // hash function.
+
+  SHA_CTX md_state;
+  SHA1_Init(&md_state);
+  unsigned md_size = SHA_DIGEST_LENGTH, md_block_size = 64, md_block_shift = 6;
+  // md_length_size is the number of bytes in the length field that terminates
+  // the hash.
+  unsigned md_length_size = 8;
 
   assert(md_length_size <= MAX_HASH_BIT_COUNT_BYTES);
   assert(md_block_size <= MAX_HASH_BLOCK_SIZE);
@@ -393,7 +315,7 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
     hmac_pad[i] ^= 0x36;
   }
 
-  md_transform(&md_state, hmac_pad);
+  SHA1_Transform(&md_state, hmac_pad);
 
   // The length check means |bits| fits in four bytes.
   uint8_t length_bytes[MAX_HASH_BIT_COUNT_BYTES];
@@ -408,9 +330,9 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
     uint8_t first_block[MAX_HASH_BLOCK_SIZE];
     OPENSSL_memcpy(first_block, header, 13);
     OPENSSL_memcpy(first_block + 13, data, md_block_size - 13);
-    md_transform(&md_state, first_block);
+    SHA1_Transform(&md_state, first_block);
     for (size_t i = 1; i < k / md_block_size; i++) {
-      md_transform(&md_state, data + md_block_size * i - 13);
+      SHA1_Transform(&md_state, data + md_block_size * i - 13);
     }
   }
 
@@ -461,32 +383,25 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
       block[j] = b;
     }
 
-    md_transform(&md_state, block);
-    md_final_raw(&md_state, block);
+    SHA1_Transform(&md_state, block);
+    tls1_sha1_final_raw(&md_state, block);
     // If this is index_b, copy the hash value to |mac_out|.
     for (size_t j = 0; j < md_size; j++) {
       mac_out[j] |= block[j] & is_block_b;
     }
   }
 
-  EVP_MD_CTX md_ctx;
-  EVP_MD_CTX_init(&md_ctx);
-  if (!EVP_DigestInit_ex(&md_ctx, md, NULL /* engine */)) {
-    EVP_MD_CTX_cleanup(&md_ctx);
-    return 0;
-  }
+  SHA_CTX md_ctx;
+  SHA1_Init(&md_ctx);
 
   // Complete the HMAC in the standard manner.
   for (size_t i = 0; i < md_block_size; i++) {
     hmac_pad[i] ^= 0x6a;
   }
 
-  EVP_DigestUpdate(&md_ctx, hmac_pad, md_block_size);
-  EVP_DigestUpdate(&md_ctx, mac_out, md_size);
-  unsigned md_out_size_u;
-  EVP_DigestFinal(&md_ctx, md_out, &md_out_size_u);
-  *md_out_size = md_out_size_u;
-  EVP_MD_CTX_cleanup(&md_ctx);
-
+  SHA1_Update(&md_ctx, hmac_pad, md_block_size);
+  SHA1_Update(&md_ctx, mac_out, md_size);
+  SHA1_Final(md_out, &md_ctx);
+  *md_out_size = md_size;
   return 1;
 }
