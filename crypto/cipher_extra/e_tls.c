@@ -343,7 +343,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
   if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE &&
       EVP_tls_cbc_record_digest_supported(tls_ctx->hmac_ctx.md)) {
     if (!EVP_tls_cbc_digest_record(tls_ctx->hmac_ctx.md, mac, &mac_len,
-                                   ad_fixed, out, data_plus_mac_len, total,
+                                   ad_fixed, out, data_len, total,
                                    tls_ctx->mac_key, tls_ctx->mac_key_len)) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
       return 0;

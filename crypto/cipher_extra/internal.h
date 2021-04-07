@@ -99,6 +99,17 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, size_t md_size, const uint8_t *in,
 // which EVP_tls_cbc_digest_record supports.
 int EVP_tls_cbc_record_digest_supported(const EVP_MD *md);
 
+// EVP_sha1_final_with_secret_suffix computes the result of hashing |len| bytes
+// from |in| to |ctx| and writes the resulting hash to |out|. |len| is treated
+// as secret and must be at most |max_len|, which is treated as public. |in|
+// must point to a buffer of at least |max_len| bytes. It returns one on success
+// and zero if inputs are too long.
+//
+// This function is exported for unit tests.
+OPENSSL_EXPORT int EVP_sha1_final_with_secret_suffix(
+    SHA_CTX *ctx, uint8_t out[SHA_DIGEST_LENGTH], const uint8_t *in, size_t len,
+    size_t max_len);
+
 // EVP_tls_cbc_digest_record computes the MAC of a decrypted, padded TLS
 // record.
 //
@@ -108,8 +119,8 @@ int EVP_tls_cbc_record_digest_supported(const EVP_MD *md);
 //   md_out_size: the number of output bytes is written here.
 //   header: the 13-byte, TLS record header.
 //   data: the record data itself
-//   data_plus_mac_size: the secret, reported length of the data and MAC
-//     once the padding has been removed.
+//   data_size: the secret, reported length of the data once the padding and MAC
+//     have been removed.
 //   data_plus_mac_plus_padding_size: the public length of the whole
 //     record, including padding.
 //
@@ -119,7 +130,7 @@ int EVP_tls_cbc_record_digest_supported(const EVP_MD *md);
 // padding too. )
 int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
                               size_t *md_out_size, const uint8_t header[13],
-                              const uint8_t *data, size_t data_plus_mac_size,
+                              const uint8_t *data, size_t data_size,
                               size_t data_plus_mac_plus_padding_size,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length);
