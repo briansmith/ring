@@ -801,6 +801,12 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "initiator",
               "responder"
             ]
+          },
+          "staticUnified": {
+            "kasRole": [
+              "initiator",
+              "responder"
+            ]
           }
         },
         "domainParameterGenerationMethods": [
