@@ -2018,10 +2018,10 @@ bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,
                                          uint8_t *out_alert, CBS *contents);
 bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
-                                         Array<uint8_t> *out_secret,
-                                         uint8_t *out_alert, CBS *contents);
-bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out,
-                                       bool dry_run);
+                                         Span<const uint8_t> *out_peer_key,
+                                         uint8_t *out_alert,
+                                         const SSL_CLIENT_HELLO *client_hello);
+bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
 bool ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
                                               uint8_t *out_alert,

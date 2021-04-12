@@ -2444,25 +2444,29 @@ bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
 }
 
 bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
-                                         Array<uint8_t> *out_secret,
-                                         uint8_t *out_alert, CBS *contents) {
-  uint16_t group_id;
-  CBS key_shares;
-  if (!tls1_get_shared_group(hs, &group_id)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_GROUP);
-    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+                                         Span<const uint8_t> *out_peer_key,
+                                         uint8_t *out_alert,
+                                         const SSL_CLIENT_HELLO *client_hello) {
+  // We only support connections that include an ECDHE key exchange.
+  CBS contents;
+  if (!ssl_client_hello_get_extension(client_hello, &contents,
+                                      TLSEXT_TYPE_key_share)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
+    *out_alert = SSL_AD_MISSING_EXTENSION;
     return false;
   }
 
-  if (!CBS_get_u16_length_prefixed(contents, &key_shares) ||
-      CBS_len(contents) != 0) {
+  CBS key_shares;
+  if (!CBS_get_u16_length_prefixed(&contents, &key_shares) ||
+      CBS_len(&contents) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
 
   // Find the corresponding key share.
+  const uint16_t group_id = hs->new_session->group_id;
   CBS peer_key;
-  CBS_init(&peer_key, NULL, 0);
+  CBS_init(&peer_key, nullptr, 0);
   while (CBS_len(&key_shares) > 0) {
     uint16_t id;
     CBS peer_key_tmp;
@@ -2485,46 +2489,23 @@ bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
     }
   }
 
-  if (CBS_len(&peer_key) == 0) {
-    *out_found = false;
-    out_secret->Reset();
-    return true;
+  if (out_peer_key != nullptr) {
+    *out_peer_key = peer_key;
   }
-
-  // Compute the DH secret.
-  Array<uint8_t> secret;
-  ScopedCBB public_key;
-  UniquePtr<SSLKeyShare> key_share = SSLKeyShare::Create(group_id);
-  if (!key_share ||
-      !CBB_init(public_key.get(), 32) ||
-      !key_share->Accept(public_key.get(), &secret, out_alert, peer_key) ||
-      !CBBFinishArray(public_key.get(), &hs->ecdh_public_key)) {
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-    return false;
-  }
-
-  *out_secret = std::move(secret);
-  *out_found = true;
+  *out_found = CBS_len(&peer_key) != 0;
   return true;
 }
 
-bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out,
-                                       bool dry_run) {
-  uint16_t group_id;
+bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   CBB kse_bytes, public_key;
-  if (!tls1_get_shared_group(hs, &group_id) ||
-      !CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
+  if (!CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
       !CBB_add_u16_length_prefixed(out, &kse_bytes) ||
-      !CBB_add_u16(&kse_bytes, group_id) ||
+      !CBB_add_u16(&kse_bytes, hs->new_session->group_id) ||
       !CBB_add_u16_length_prefixed(&kse_bytes, &public_key) ||
       !CBB_add_bytes(&public_key, hs->ecdh_public_key.data(),
                      hs->ecdh_public_key.size()) ||
       !CBB_flush(out)) {
     return false;
-  }
-  if (!dry_run) {
-    hs->ecdh_public_key.Reset();
-    hs->new_session->group_id = group_id;
   }
   return true;
 }

@@ -42,35 +42,38 @@ static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
 // See RFC 8446, section 8.3.
 static const int32_t kMaxTicketAgeSkewSeconds = 60;
 
-static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, bool *out_need_retry,
-                                SSL_CLIENT_HELLO *client_hello) {
+static bool resolve_ecdhe_secret(SSL_HANDSHAKE *hs,
+                                 const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
-  *out_need_retry = false;
-
-  // We only support connections that include an ECDHE key exchange.
-  CBS key_share;
-  if (!ssl_client_hello_get_extension(client_hello, &key_share,
-                                      TLSEXT_TYPE_key_share)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
-    return 0;
-  }
+  const uint16_t group_id = hs->new_session->group_id;
 
   bool found_key_share;
-  Array<uint8_t> dhe_secret;
+  Span<const uint8_t> peer_key;
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_ext_key_share_parse_clienthello(hs, &found_key_share, &dhe_secret,
-                                           &alert, &key_share)) {
+  if (!ssl_ext_key_share_parse_clienthello(hs, &found_key_share, &peer_key,
+                                           &alert, client_hello)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
-    return 0;
+    return false;
   }
 
   if (!found_key_share) {
-    *out_need_retry = true;
-    return 0;
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
+    return false;
   }
 
-  return tls13_advance_key_schedule(hs, dhe_secret);
+  Array<uint8_t> secret;
+  ScopedCBB public_key;
+  UniquePtr<SSLKeyShare> key_share = SSLKeyShare::Create(group_id);
+  if (!key_share ||
+      !CBB_init(public_key.get(), 32) ||
+      !key_share->Accept(public_key.get(), &secret, &alert, peer_key) ||
+      !CBBFinishArray(public_key.get(), &hs->ecdh_public_key)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return false;
+  }
+
+  return tls13_advance_key_schedule(hs, secret);
 }
 
 static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
@@ -394,6 +397,23 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // Record connection properties in the new session.
+  hs->new_session->cipher = hs->new_cipher;
+  if (!tls1_get_shared_group(hs, &hs->new_session->group_id)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_GROUP);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return ssl_hs_error;
+  }
+
+  // Determine if we need HelloRetryRequest.
+  bool found_key_share;
+  if (!ssl_ext_key_share_parse_clienthello(hs, &found_key_share,
+                                           /*out_key_share=*/nullptr, &alert,
+                                           &client_hello)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return ssl_hs_error;
+  }
+
   // Determine if we're negotiating 0-RTT.
   if (!ssl->enable_early_data) {
     ssl->s3->early_data_reason = ssl_early_data_disabled;
@@ -424,6 +444,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     ssl->s3->early_data_reason = ssl_early_data_ticket_age_skew;
   } else if (!quic_ticket_compatible(session.get(), hs->config)) {
     ssl->s3->early_data_reason = ssl_early_data_quic_parameter_mismatch;
+  } else if (!found_key_share) {
+    ssl->s3->early_data_reason = ssl_early_data_hello_retry_request;
   } else {
     // |ssl_session_is_resumable| forbids cross-cipher resumptions even if the
     // PRF hashes match.
@@ -432,9 +454,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     ssl->s3->early_data_reason = ssl_early_data_accepted;
     ssl->s3->early_data_accepted = true;
   }
-
-  // Record connection properties in the new session.
-  hs->new_session->cipher = hs->new_cipher;
 
   // Store the ALPN and ALPS values in the session for 0-RTT. Note the peer
   // applications settings are not generally known until client
@@ -498,24 +517,16 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     ssl->s3->skip_early_data = true;
   }
 
-  // Resolve ECDHE and incorporate it into the secret.
-  bool need_retry;
-  if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
-    if (need_retry) {
-      if (ssl->s3->early_data_accepted) {
-        ssl->s3->early_data_reason = ssl_early_data_hello_retry_request;
-        ssl->s3->early_data_accepted = false;
-      }
-      if (hs->early_data_offered) {
-        ssl->s3->skip_early_data = true;
-      }
-      ssl->method->next_message(ssl);
-      if (!hs->transcript.UpdateForHelloRetryRequest()) {
-        return ssl_hs_error;
-      }
-      hs->tls13_state = state13_send_hello_retry_request;
-      return ssl_hs_ok;
+  if (!found_key_share) {
+    ssl->method->next_message(ssl);
+    if (!hs->transcript.UpdateForHelloRetryRequest()) {
+      return ssl_hs_error;
     }
+    hs->tls13_state = state13_send_hello_retry_request;
+    return ssl_hs_ok;
+  }
+
+  if (!resolve_ecdhe_secret(hs, &client_hello)) {
     return ssl_hs_error;
   }
 
@@ -676,13 +687,7 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  bool need_retry;
-  if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
-    if (need_retry) {
-      // Only send one HelloRetryRequest.
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
-    }
+  if (!resolve_ecdhe_secret(hs, &client_hello)) {
     return ssl_hs_error;
   }
 
@@ -729,7 +734,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
         !CBB_add_u8(&body, 0) ||
         !CBB_add_u16_length_prefixed(&body, &extensions) ||
         !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
-        !ssl_ext_key_share_add_serverhello(hs, &extensions, /*dry_run=*/true) ||
+        !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
         !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
         !CBB_flush(cbb.get())) {
       return ssl_hs_error;
@@ -756,12 +761,13 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u8(&body, 0) ||
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
-      !ssl_ext_key_share_add_serverhello(hs, &extensions, /*dry_run=*/false) ||
+      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
       !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
       !ssl_add_message_cbb(ssl, cbb.get())) {
     return ssl_hs_error;
   }
 
+  hs->ecdh_public_key.Reset();  // No longer needed.
   if (!ssl->s3->used_hello_retry_request &&
       !ssl->method->add_change_cipher_spec(ssl)) {
     return ssl_hs_error;
