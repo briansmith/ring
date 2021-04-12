@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
     puts("ARM (32-bit)");
 #elif defined(OPENSSL_AARCH64)
     puts("aarch64 (64-bit)");
-#elif defined(PPC64LE)
+#elif defined(OPENSSL_PPC64LE)
     puts("PPC64LE (64-bit)");
 #else
 #error "FIPS build not supported on this architecture"
