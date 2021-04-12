@@ -708,6 +708,28 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
+static bool make_server_hello(SSL_HANDSHAKE *hs, Array<uint8_t> *out) {
+  SSL *const ssl = hs->ssl;
+  ScopedCBB cbb;
+  CBB body, extensions, session_id;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
+      !CBB_add_u16(&body, TLS1_2_VERSION) ||
+      !CBB_add_bytes(&body, ssl->s3->server_random,
+                     sizeof(ssl->s3->server_random)) ||
+      !CBB_add_u8_length_prefixed(&body, &session_id) ||
+      !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
+      !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
+      !CBB_add_u8(&body, 0) ||
+      !CBB_add_u16_length_prefixed(&body, &extensions) ||
+      !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
+      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
+      !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
+      !ssl->method->finish_message(ssl, cbb.get(), out)) {
+    return false;
+  }
+  return true;
+}
+
 static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
@@ -722,48 +744,17 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     Span<uint8_t> random_suffix = random.subspan(24);
     OPENSSL_memset(random_suffix.data(), 0, random_suffix.size());
 
-    ScopedCBB cbb;
-    CBB body, extensions, session_id;
-    if (!ssl->method->init_message(ssl, cbb.get(), &body,
-                                   SSL3_MT_SERVER_HELLO) ||
-        !CBB_add_u16(&body, TLS1_2_VERSION) ||
-        !CBB_add_bytes(&body, random.data(), random.size()) ||
-        !CBB_add_u8_length_prefixed(&body, &session_id) ||
-        !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
-        !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
-        !CBB_add_u8(&body, 0) ||
-        !CBB_add_u16_length_prefixed(&body, &extensions) ||
-        !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
-        !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
-        !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
-        !CBB_flush(cbb.get())) {
-      return ssl_hs_error;
-    }
-
-    // Note that |cbb| includes the message type and length fields, but not the
-    // record layer header.
-    if (!tls13_ech_accept_confirmation(
-            hs, random_suffix,
-            bssl::MakeConstSpan(CBB_data(cbb.get()), CBB_len(cbb.get())))) {
+    Array<uint8_t> server_hello_ech_conf;
+    if (!make_server_hello(hs, &server_hello_ech_conf) ||
+        !tls13_ech_accept_confirmation(hs, random_suffix,
+                                       server_hello_ech_conf)) {
       return ssl_hs_error;
     }
   }
 
-  // Send a ServerHello.
-  ScopedCBB cbb;
-  CBB body, extensions, session_id;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
-      !CBB_add_u16(&body, TLS1_2_VERSION) ||
-      !CBB_add_bytes(&body, random.data(), random.size()) ||
-      !CBB_add_u8_length_prefixed(&body, &session_id) ||
-      !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
-      !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
-      !CBB_add_u8(&body, 0) ||
-      !CBB_add_u16_length_prefixed(&body, &extensions) ||
-      !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
-      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
-      !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
-      !ssl_add_message_cbb(ssl, cbb.get())) {
+  Array<uint8_t> server_hello;
+  if (!make_server_hello(hs, &server_hello) ||
+      !ssl->method->add_message(ssl, std::move(server_hello))) {
     return ssl_hs_error;
   }
 
@@ -782,6 +773,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   // Send EncryptedExtensions.
+  ScopedCBB cbb;
+  CBB body;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_ENCRYPTED_EXTENSIONS) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||
