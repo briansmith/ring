@@ -506,7 +506,9 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
         ssl->s3->early_data_reason = ssl_early_data_hello_retry_request;
         ssl->s3->early_data_accepted = false;
       }
-      ssl->s3->skip_early_data = true;
+      if (hs->early_data_offered) {
+        ssl->s3->skip_early_data = true;
+      }
       ssl->method->next_message(ssl);
       if (!hs->transcript.UpdateForHelloRetryRequest()) {
         return ssl_hs_error;
