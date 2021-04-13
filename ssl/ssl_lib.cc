@@ -2300,21 +2300,26 @@ void SSL_CTX_set_next_proto_select_cb(
 
 int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
                             unsigned protos_len) {
-  // Note this function's calling convention is backwards.
-  return ctx->alpn_client_proto_list.CopyFrom(MakeConstSpan(protos, protos_len))
-             ? 0
-             : 1;
+  // Note this function's return value is backwards.
+  auto span = MakeConstSpan(protos, protos_len);
+  if (!span.empty() && !ssl_is_valid_alpn_list(span)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL_LIST);
+    return 1;
+  }
+  return ctx->alpn_client_proto_list.CopyFrom(span) ? 0 : 1;
 }
 
 int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, unsigned protos_len) {
-  // Note this function's calling convention is backwards.
+  // Note this function's return value is backwards.
   if (!ssl->config) {
     return 1;
   }
-  return ssl->config->alpn_client_proto_list.CopyFrom(
-             MakeConstSpan(protos, protos_len))
-             ? 0
-             : 1;
+  auto span = MakeConstSpan(protos, protos_len);
+  if (!span.empty() && !ssl_is_valid_alpn_list(span)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL_LIST);
+    return 1;
+  }
+  return ssl->config->alpn_client_proto_list.CopyFrom(span) ? 0 : 1;
 }
 
 void SSL_CTX_set_alpn_select_cb(SSL_CTX *ctx,

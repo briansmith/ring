@@ -6914,5 +6914,53 @@ TEST(SSLTest, BIO) {
   }
 }
 
+TEST(SSLTest, ALPNConfig) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+
+  // Set up some machinery to check the configured ALPN against what is actually
+  // sent over the wire. Note that the ALPN callback is only called when the
+  // client offers ALPN.
+  std::vector<uint8_t> observed_alpn;
+  SSL_CTX_set_alpn_select_cb(
+      ctx.get(),
+      [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+         unsigned in_len, void *arg) -> int {
+        std::vector<uint8_t> *observed_alpn_ptr =
+            static_cast<std::vector<uint8_t> *>(arg);
+        observed_alpn_ptr->assign(in, in + in_len);
+        return SSL_TLSEXT_ERR_NOACK;
+      },
+      &observed_alpn);
+  auto check_alpn_proto = [&](Span<const uint8_t> expected) {
+    observed_alpn.clear();
+    bssl::UniquePtr<SSL> client, server;
+    EXPECT_TRUE(ConnectClientAndServer(&client, &server, ctx.get(), ctx.get()));
+    EXPECT_EQ(Bytes(expected), Bytes(observed_alpn));
+  };
+
+  // Note that |SSL_CTX_set_alpn_protos|'s return value is reversed.
+  static const uint8_t kValidList[] = {0x03, 'f', 'o', 'o',
+                                       0x03, 'b', 'a', 'r'};
+  EXPECT_EQ(0,
+            SSL_CTX_set_alpn_protos(ctx.get(), kValidList, sizeof(kValidList)));
+  check_alpn_proto(kValidList);
+
+  // Invalid lists are rejected.
+  static const uint8_t kInvalidList[] = {0x04, 'f', 'o', 'o'};
+  EXPECT_EQ(1, SSL_CTX_set_alpn_protos(ctx.get(), kInvalidList,
+                                       sizeof(kInvalidList)));
+
+  // Empty lists are valid and are interpreted as disabling ALPN.
+  EXPECT_EQ(0, SSL_CTX_set_alpn_protos(ctx.get(), nullptr, 0));
+  check_alpn_proto({});
+}
+
 }  // namespace
 BSSL_NAMESPACE_END

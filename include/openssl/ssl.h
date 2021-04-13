@@ -2723,8 +2723,9 @@ OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 
 // SSL_CTX_set_alpn_protos sets the client ALPN protocol list on |ctx| to
 // |protos|. |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
-// length-prefixed strings). It returns zero on success and one on failure.
-// Configuring this list enables ALPN on a client.
+// length-prefixed strings), or the empty string to disable ALPN. It returns
+// zero on success and one on failure. Configuring a non-empty string enables
+// ALPN on a client.
 //
 // WARNING: this function is dangerous because it breaks the usual return value
 // convention.
@@ -2733,8 +2734,9 @@ OPENSSL_EXPORT int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
 
 // SSL_set_alpn_protos sets the client ALPN protocol list on |ssl| to |protos|.
 // |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
-// length-prefixed strings). It returns zero on success and one on failure.
-// Configuring this list enables ALPN on a client.
+// length-prefixed strings), or the empty string to disable ALPN. It returns
+// zero on success and one on failure. Configuring a non-empty string enables
+// ALPN on a client.
 //
 // WARNING: this function is dangerous because it breaks the usual return value
 // convention.
@@ -5368,6 +5370,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG 312
 #define SSL_R_ECH_SERVER_WOULD_HAVE_NO_RETRY_CONFIGS 313
 #define SSL_R_INVALID_CLIENT_HELLO_INNER 314
+#define SSL_R_INVALID_ALPN_PROTOCOL_LIST 315
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

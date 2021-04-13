@@ -1528,6 +1528,22 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
+bool ssl_is_valid_alpn_list(Span<const uint8_t> in) {
+  CBS protocol_name_list = in;
+  if (CBS_len(&protocol_name_list) == 0) {
+    return false;
+  }
+  while (CBS_len(&protocol_name_list) > 0) {
+    CBS protocol_name;
+    if (!CBS_get_u8_length_prefixed(&protocol_name_list, &protocol_name) ||
+        // Empty protocol names are forbidden.
+        CBS_len(&protocol_name) == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool ssl_is_alpn_protocol_allowed(const SSL_HANDSHAKE *hs,
                                   Span<const uint8_t> protocol) {
   if (hs->config->alpn_client_proto_list.empty()) {
@@ -1580,23 +1596,10 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   CBS protocol_name_list;
   if (!CBS_get_u16_length_prefixed(&contents, &protocol_name_list) ||
       CBS_len(&contents) != 0 ||
-      CBS_len(&protocol_name_list) < 2) {
+      !ssl_is_valid_alpn_list(protocol_name_list)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
-  }
-
-  // Validate the protocol list.
-  CBS protocol_name_list_copy = protocol_name_list;
-  while (CBS_len(&protocol_name_list_copy) > 0) {
-    CBS protocol_name;
-    if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name) ||
-        // Empty protocol names are forbidden.
-        CBS_len(&protocol_name) == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return false;
-    }
   }
 
   const uint8_t *selected;
