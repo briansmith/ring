@@ -306,6 +306,21 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "ivGen": "external"
       },
       {
+        "algorithm": "ACVP-AES-GMAC",
+        "revision": "1.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [128, 192, 256],
+        "payloadLen": [{
+          "min": 0, "max": 256, "increment": 8
+        }],
+        "aadLen": [{
+          "min": 0, "max": 320, "increment": 8
+        }],
+        "tagLen": [32, 64, 96, 104, 112, 120, 128],
+        "ivLen": [96],
+        "ivGen": "external"
+      },
+      {
         "algorithm": "ACVP-AES-KW",
         "revision": "1.0",
         "direction": [
