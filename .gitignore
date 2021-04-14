@@ -15,6 +15,7 @@ util/bot/cmake-mac
 util/bot/cmake-win32
 util/bot/cmake-win32.zip
 util/bot/golang
+util/bot/libFuzzer
 util/bot/libcxx
 util/bot/libcxxabi
 util/bot/llvm-build
