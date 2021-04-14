@@ -932,6 +932,11 @@ type ProtocolBugs struct {
 	// success.
 	MinimalClientHelloOuter bool
 
+	// RecordClientHelloInner, when non-nil, is called whenever the client
+	// generates an encrypted ClientHello. The byte strings do not include the
+	// ClientHello header.
+	RecordClientHelloInner func(encodedInner, outer []byte) error
+
 	// SwapNPNAndALPN switches the relative order between NPN and ALPN in
 	// both ClientHello and ServerHello.
 	SwapNPNAndALPN bool

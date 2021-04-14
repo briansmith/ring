@@ -882,7 +882,8 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 	aad.addU16LengthPrefixed().addBytes(enc)
 	hello.marshalForOuterAAD(aad.addU24LengthPrefixed())
 
-	payload := hs.echHPKEContext.Seal(innerHello.marshalForEncodedInner(), aad.finish())
+	encodedInner := innerHello.marshalForEncodedInner()
+	payload := hs.echHPKEContext.Seal(encodedInner, aad.finish())
 
 	// Place the ECH extension in the outer CH.
 	hello.clientECH = &clientECH{
@@ -891,6 +892,15 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 		configID: configID,
 		enc:      enc,
 		payload:  payload,
+	}
+
+	if c.config.Bugs.RecordClientHelloInner != nil {
+		if err := c.config.Bugs.RecordClientHelloInner(encodedInner, hello.marshal()[4:]); err != nil {
+			return err
+		}
+		// ECH is normally the last extension added to |hello|, but, when
+		// OfferSessionInClientHelloOuter is enabled, we may modify it again.
+		hello.raw = nil
 	}
 
 	return nil

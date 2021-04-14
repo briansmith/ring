@@ -804,6 +804,21 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 					panic("transcripts are out of sync")
 				}
 			}()
+
+			// Record ClientHellos for the decode_client_hello_inner fuzzer.
+			var clientHelloCount int
+			config.Bugs.RecordClientHelloInner = func(encodedInner, outer []byte) error {
+				name := fmt.Sprintf("%s-%d-%d", test.name, num, clientHelloCount)
+				clientHelloCount++
+				dir := filepath.Join(*transcriptDir, "decode_client_hello_inner")
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					return err
+				}
+				bb := newByteBuilder()
+				bb.addU24LengthPrefixed().addBytes(encodedInner)
+				bb.addBytes(outer)
+				return ioutil.WriteFile(filepath.Join(dir, name), bb.finish(), 0644)
+			}
 		}
 
 		if config.Bugs.PacketAdaptor != nil {
