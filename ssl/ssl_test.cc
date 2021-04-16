@@ -1193,6 +1193,24 @@ TEST(SSLTest, Padding) {
   }
 }
 
+static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!bio) {
+    return nullptr;
+  }
+  return bssl::UniquePtr<X509>(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+}
+
+static bssl::UniquePtr<EVP_PKEY> KeyFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!bio) {
+    return nullptr;
+  }
+  return bssl::UniquePtr<EVP_PKEY>(
+      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+}
+
 static bssl::UniquePtr<X509> GetTestCertificate() {
   static const char kCertPEM[] =
       "-----BEGIN CERTIFICATE-----\n"
@@ -1210,9 +1228,7 @@ static bssl::UniquePtr<X509> GetTestCertificate() {
       "T5oQpHL9z/cCDLAKCKRa4uV0fhEdOWBqyR9p8y5jJtye72t6CuFUV5iqcpF4BH4f\n"
       "j2VNHwsSrJwkD4QUGlUtH7vwnQmyCFxZMmWAJg==\n"
       "-----END CERTIFICATE-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
-  return bssl::UniquePtr<X509>(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  return CertFromPEM(kCertPEM);
 }
 
 static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
@@ -1232,9 +1248,7 @@ static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
       "tfDwbqkta4xcux67//khAkEAvvRXLHTaa6VFzTaiiO8SaFsHV3lQyXOtMrBpB5jd\n"
       "moZWgjHvB2W9Ckn7sDqsPB+U2tyX0joDdQEyuiMECDY8oQ==\n"
       "-----END RSA PRIVATE KEY-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
-  return bssl::UniquePtr<EVP_PKEY>(
-      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  return KeyFromPEM(kKeyPEM);
 }
 
 static bssl::UniquePtr<X509> GetECDSATestCertificate() {
@@ -1251,8 +1265,7 @@ static bssl::UniquePtr<X509> GetECDSATestCertificate() {
       "BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E\n"
       "BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=\n"
       "-----END CERTIFICATE-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
-  return bssl::UniquePtr<X509>(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  return CertFromPEM(kCertPEM);
 }
 
 static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
@@ -1262,9 +1275,7 @@ static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
       "TYlodwi1b8ldMHcO6NHJzgqLtGqhRANCAATmK2niv2Wfl74vHg2UikzVl2u3qR4N\n"
       "Rvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYaHPUdfvGULUvPciLB\n"
       "-----END PRIVATE KEY-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
-  return bssl::UniquePtr<EVP_PKEY>(
-      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  return KeyFromPEM(kKeyPEM);
 }
 
 static bssl::UniquePtr<CRYPTO_BUFFER> BufferFromPEM(const char *pem) {
@@ -1378,9 +1389,7 @@ static bssl::UniquePtr<EVP_PKEY> GetChainTestKey() {
       "buB7ERSdaNbO21zXt9FEA3+z0RfMd/Zv2vlIWOSB5nzl/7UKti3sribK6s9ZVLfi\n"
       "SxpiPQ8d/hmSGwn4ksrWUsJD\n"
       "-----END PRIVATE KEY-----\n";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
-  return bssl::UniquePtr<EVP_PKEY>(
-      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  return KeyFromPEM(kKeyPEM);
 }
 
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
@@ -6960,6 +6969,53 @@ TEST(SSLTest, ALPNConfig) {
   // Empty lists are valid and are interpreted as disabling ALPN.
   EXPECT_EQ(0, SSL_CTX_set_alpn_protos(ctx.get(), nullptr, 0));
   check_alpn_proto({});
+}
+
+// Test that the key usage checker can correctly handle issuerUID and
+// subjectUID. See https://crbug.com/1199744.
+TEST(SSLTest, KeyUsageWithUIDs) {
+  static const char kGoodKeyUsage[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB7DCCAZOgAwIBAgIJANlMBNpJfb/rMAoGCCqGSM49BAMCMEUxCzAJBgNVBAYT
+AkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRn
+aXRzIFB0eSBMdGQwHhcNMTQwNDIzMjMyMTU3WhcNMTQwNTIzMjMyMTU3WjBFMQsw
+CQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJu
+ZXQgV2lkZ2l0cyBQdHkgTHRkMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp
+4r9ln5e+Lx4NlIpM1Zdrt6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsW
+Ghz1HX7xlC1Lz3IiwYEEABI0VoIEABI0VqNgMF4wHQYDVR0OBBYEFKuE0qyrlfCC
+ThZ4B1VXX+QmjYLRMB8GA1UdIwQYMBaAFKuE0qyrlfCCThZ4B1VXX+QmjYLRMA4G
+A1UdDwEB/wQEAwIHgDAMBgNVHRMEBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIEWJ
+34EcqW5MHwLIA1hZ2Tj/jV2QjN02KLxis9mFsqDKAiAMlMTkzsM51vVs9Ohqa+Rc
+4Z7qDhjIhiF4dM0uEDYRVA==
+-----END CERTIFICATE-----
+)";
+  static const char kBadKeyUsage[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB7jCCAZOgAwIBAgIJANlMBNpJfb/rMAoGCCqGSM49BAMCMEUxCzAJBgNVBAYT
+AkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRn
+aXRzIFB0eSBMdGQwHhcNMTQwNDIzMjMyMTU3WhcNMTQwNTIzMjMyMTU3WjBFMQsw
+CQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJu
+ZXQgV2lkZ2l0cyBQdHkgTHRkMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp
+4r9ln5e+Lx4NlIpM1Zdrt6keDUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsW
+Ghz1HX7xlC1Lz3IiwYEEABI0VoIEABI0VqNgMF4wHQYDVR0OBBYEFKuE0qyrlfCC
+ThZ4B1VXX+QmjYLRMB8GA1UdIwQYMBaAFKuE0qyrlfCCThZ4B1VXX+QmjYLRMA4G
+A1UdDwEB/wQEAwIDCDAMBgNVHRMEBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQC6
+taYBUDu2gcZC6EMk79FBHArYI0ucF+kzvETegZCbBAIhANtObFec5gtso/47moPD
+RHrQbWsFUakETXL9QMlegh5t
+-----END CERTIFICATE-----
+)";
+
+  bssl::UniquePtr<X509> good = CertFromPEM(kGoodKeyUsage);
+  ASSERT_TRUE(good);
+  bssl::UniquePtr<X509> bad = CertFromPEM(kBadKeyUsage);
+  ASSERT_TRUE(bad);
+
+  // We check key usage when configuring EC certificates to distinguish ECDSA
+  // and ECDH.
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  EXPECT_TRUE(SSL_CTX_use_certificate(ctx.get(), good.get()));
+  EXPECT_FALSE(SSL_CTX_use_certificate(ctx.get(), bad.get()));
 }
 
 }  // namespace
