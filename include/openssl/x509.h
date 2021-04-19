@@ -115,12 +115,6 @@ DECLARE_ASN1_SET_OF(X509_ALGOR)
 
 typedef STACK_OF(X509_ALGOR) X509_ALGORS;
 
-struct X509_pubkey_st {
-  X509_ALGOR *algor;
-  ASN1_BIT_STRING *public_key;
-  EVP_PKEY *pkey;
-};
-
 struct X509_sig_st {
   X509_ALGOR *algor;
   ASN1_OCTET_STRING *digest;

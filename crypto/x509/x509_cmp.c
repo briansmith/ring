@@ -68,6 +68,7 @@
 
 #include "../internal.h"
 #include "../x509v3/internal.h"
+#include "internal.h"
 
 
 int X509_issuer_and_serial_cmp(const X509 *a, const X509 *b)

@@ -63,6 +63,7 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
+#include "../x509/internal.h"
 #include "internal.h"
 
 

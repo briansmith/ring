@@ -68,6 +68,7 @@
 #include <openssl/thread.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 /* Minor tweak to operation: free up EVP_PKEY */
 static int pubkey_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
