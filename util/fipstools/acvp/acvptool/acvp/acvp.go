@@ -422,7 +422,7 @@ func (server *Server) write(method string, reply interface{}, endPoint string, c
 	buf.Write(contents)
 	buf.WriteString(requestSuffix)
 
-	req, err := server.newRequestWithToken("POST", endPoint, &buf)
+	req, err := server.newRequestWithToken(method, endPoint, &buf)
 	if err != nil {
 		return err
 	}
