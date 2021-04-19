@@ -63,6 +63,7 @@
 #include <openssl/x509.h>
 
 #include "../asn1/asn1_locl.h"
+#include "internal.h"
 
 
 int X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x)

@@ -153,17 +153,6 @@ typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
 DEFINE_STACK_OF(X509_EXTENSION)
 DECLARE_ASN1_SET_OF(X509_EXTENSION)
 
-// a sequence of these are used
-struct x509_attributes_st {
-  ASN1_OBJECT *object;
-  int single;  // 0 for a set, 1 for a single item (which is wrong)
-  union {
-    char *ptr;
-    /* 0 */ STACK_OF(ASN1_TYPE) *set;
-    /* 1 */ ASN1_TYPE *single;
-  } value;
-} /* X509_ATTRIBUTE */;
-
 DEFINE_STACK_OF(X509_ATTRIBUTE)
 DECLARE_ASN1_SET_OF(X509_ATTRIBUTE)
 

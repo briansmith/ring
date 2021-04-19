@@ -59,6 +59,9 @@
 #include <openssl/x509.h>
 #include <openssl/obj.h>
 
+#include "internal.h"
+
+
 /*
  * X509_ATTRIBUTE: this has the following form: typedef struct
  * x509_attributes_st { ASN1_OBJECT *object; int single; union { char *ptr;

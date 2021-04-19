@@ -37,6 +37,16 @@ struct X509_pubkey_st {
   EVP_PKEY *pkey;
 } /* X509_PUBKEY */;
 
+struct x509_attributes_st {
+  ASN1_OBJECT *object;
+  int single;  // 0 for a set, 1 for a single item (which is wrong)
+  union {
+    char *ptr;
+    /* 0 */ STACK_OF(ASN1_TYPE) *set;
+    /* 1 */ ASN1_TYPE *single;
+  } value;
+} /* X509_ATTRIBUTE */;
+
 
 /* RSA-PSS functions. */
 
