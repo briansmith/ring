@@ -1258,14 +1258,42 @@ OPENSSL_EXPORT int X509_REQ_add_extensions_nid(
 OPENSSL_EXPORT int X509_REQ_add_extensions(
     X509_REQ *req, const STACK_OF(X509_EXTENSION) *exts);
 
+// X509_REQ_get_attr_count returns the number of attributes in |req|.
 OPENSSL_EXPORT int X509_REQ_get_attr_count(const X509_REQ *req);
+
+// X509_REQ_get_attr_by_NID returns the index of the attribute in |req| of type
+// |nid|, or a negative number if not found. If found, callers can use
+// |X509_REQ_get_attr| to look up the attribute by index.
+//
+// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
+// can thus loop over all matching attributes by first passing -1 and then
+// passing the previously-returned value until no match is returned.
 OPENSSL_EXPORT int X509_REQ_get_attr_by_NID(const X509_REQ *req, int nid,
                                             int lastpos);
+
+// X509_REQ_get_attr_by_OBJ behaves like |X509_REQ_get_attr_by_NID| but looks
+// for attributes of type |obj|.
 OPENSSL_EXPORT int X509_REQ_get_attr_by_OBJ(const X509_REQ *req,
-                                            ASN1_OBJECT *obj, int lastpos);
+                                            const ASN1_OBJECT *obj,
+                                            int lastpos);
+
+// X509_REQ_get_attr returns the attribute at index |loc| in |req|, or NULL if
+// out of bounds.
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_REQ_get_attr(const X509_REQ *req, int loc);
+
+// X509_REQ_delete_attr removes the attribute at index |loc| in |req|. It
+// returns the removed attribute to the caller, or NULL if |loc| was out of
+// bounds. If non-NULL, the caller must release the result with
+// |X509_ATTRIBUTE_free| when done. It is also safe, but not necessary, to call
+// |X509_ATTRIBUTE_free| if the result is NULL.
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_REQ_delete_attr(X509_REQ *req, int loc);
+
+// X509_REQ_add1_attr appends a copy of |attr| to |req|'s list of attributes. It
+// returns one on success and zero on error.
+//
+// TODO(https://crbug.com/boringssl/407): |attr| should be const.
 OPENSSL_EXPORT int X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr);
+
 OPENSSL_EXPORT int X509_REQ_add1_attr_by_OBJ(X509_REQ *req,
                                              const ASN1_OBJECT *obj, int type,
                                              const unsigned char *bytes,

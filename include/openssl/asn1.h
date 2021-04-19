@@ -103,7 +103,7 @@ extern "C" {
 #define V_ASN1_PRIMITIVE_TAG 0x1f
 
 // V_ASN1_MAX_UNIVERSAL is the highest supported universal tag number. It is
-// necessary to avoid ambiguity with |V_ASN1_NEG|.
+// necessary to avoid ambiguity with |V_ASN1_NEG| and |MBSTRING_FLAG|.
 //
 // TODO(davidben): Make this private.
 #define V_ASN1_MAX_UNIVERSAL 0xff
