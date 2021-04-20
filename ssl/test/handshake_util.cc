@@ -27,6 +27,7 @@
 #endif
 
 #include <functional>
+#include <map>
 #include <vector>
 
 #include "async_bio.h"
@@ -379,9 +380,16 @@ class FileActionsDestroyer {
   posix_spawn_file_actions_t *actions_;
 };
 
+// StartHandshaker starts the handshaker process and, on success, returns a
+// handle to the process in |*out|. It sets |*out_control| to a control pipe to
+// the process. |map_fds| maps from desired fd number in the child process to
+// the source fd in the calling process. |close_fds| is the list of additional
+// fds to close, which may overlap with |map_fds|. Other than stdin, stdout, and
+// stderr, the status of fds not listed in either set is undefined.
 static bool StartHandshaker(ScopedProcess *out, ScopedFD *out_control,
                             const TestConfig *config, bool is_resume,
-                            posix_spawn_file_actions_t *actions) {
+                            std::map<int, int> map_fds,
+                            std::vector<int> close_fds) {
   if (config->handshaker_path.empty()) {
     fprintf(stderr, "no -handshaker-path specified\n");
     return false;
@@ -411,15 +419,55 @@ static bool StartHandshaker(ScopedProcess *out, ScopedFD *out_control,
     return false;
   }
   ScopedFD scoped_control0(control[0]), scoped_control1(control[1]);
+  close_fds.push_back(control[0]);
+  map_fds[kFdControl] = control[1];
 
-  assert(control[1] != kFdHandshakerToProxy);
-  assert(control[1] != kFdProxyToHandshaker);
-  if (posix_spawn_file_actions_addclose(actions, control[0]) != 0) {
+  posix_spawn_file_actions_t actions;
+  if (posix_spawn_file_actions_init(&actions) != 0) {
     return false;
   }
-  if (control[1] != kFdControl &&
-      posix_spawn_file_actions_adddup2(actions, control[1], kFdControl) != 0) {
-    return false;
+  FileActionsDestroyer actions_destroyer(&actions);
+  for (int fd : close_fds) {
+    if (posix_spawn_file_actions_addclose(&actions, fd) != 0) {
+      return false;
+    }
+  }
+  if (!map_fds.empty()) {
+    int max_fd = STDERR_FILENO;
+    for (const auto &pair : map_fds) {
+      max_fd = std::max(max_fd, pair.first);
+      max_fd = std::max(max_fd, pair.second);
+    }
+    // |map_fds| may contain cycles, so make a copy of all the source fds.
+    // |posix_spawn| can only use |dup2|, not |dup|, so we assume |max_fd| is
+    // the last fd we care about inheriting. |temp_fds| maps from fd number in
+    // the parent process to a temporary fd number in the child process.
+    std::map<int, int> temp_fds;
+    int next_fd = max_fd + 1;
+    for (const auto &pair : map_fds) {
+      if (temp_fds.count(pair.second)) {
+        continue;
+      }
+      temp_fds[pair.second] = next_fd;
+      if (posix_spawn_file_actions_adddup2(&actions, pair.second, next_fd) !=
+          0 ||
+          posix_spawn_file_actions_addclose(&actions, pair.second) != 0) {
+        return false;
+      }
+      next_fd++;
+    }
+    for (const auto &pair : map_fds) {
+      if (posix_spawn_file_actions_adddup2(&actions, temp_fds[pair.second],
+                                           pair.first) != 0) {
+        return false;
+      }
+    }
+    // Clean up temporary fds.
+    for (int fd = max_fd + 1; fd < next_fd; fd++) {
+      if (posix_spawn_file_actions_addclose(&actions, fd) != 0) {
+        return false;
+      }
+    }
   }
 
   fflush(stdout);
@@ -428,7 +476,7 @@ static bool StartHandshaker(ScopedProcess *out, ScopedFD *out_control,
   // MSan doesn't know that |posix_spawn| initializes its output, so initialize
   // it to -1.
   pid_t pid = -1;
-  if (posix_spawn(&pid, args[0], actions, nullptr,
+  if (posix_spawn(&pid, args[0], &actions, nullptr,
                   const_cast<char *const *>(args.data()), environ) != 0) {
     return false;
   }
@@ -443,12 +491,6 @@ static bool StartHandshaker(ScopedProcess *out, ScopedFD *out_control,
 static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
                           Span<const uint8_t> input,
                           std::vector<uint8_t> *out) {
-  posix_spawn_file_actions_t actions;
-  if (posix_spawn_file_actions_init(&actions) != 0) {
-    return false;
-  }
-  FileActionsDestroyer actions_destroyer(&actions);
-
   int rfd[2], wfd[2];
   // We use pipes, rather than some other mechanism, for their buffers.  During
   // the handshake, this process acts as a dumb proxy until receiving the
@@ -472,29 +514,12 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
   }
   ScopedFD wfd0_closer(wfd[0]), wfd1_closer(wfd[1]);
 
-  assert(kFdControl != rfd[0]);
-  assert(kFdControl != wfd[1]);
-  assert(kFdHandshakerToProxy != rfd[0]);
-  assert(kFdProxyToHandshaker != wfd[1]);
-
-  if (posix_spawn_file_actions_addclose(&actions, rfd[1]) != 0 ||
-      posix_spawn_file_actions_addclose(&actions, wfd[0]) != 0) {
-    return false;
-  }
-  if (rfd[0] != kFdProxyToHandshaker &&
-      posix_spawn_file_actions_adddup2(&actions, rfd[0],
-                                       kFdProxyToHandshaker) != 0) {
-    return false;
-  }
-  if (wfd[1] != kFdHandshakerToProxy &&
-      posix_spawn_file_actions_adddup2(&actions, wfd[1],
-                                       kFdHandshakerToProxy) != 0) {
-    return false;
-  }
-
   ScopedProcess handshaker;
   ScopedFD control;
-  if (!StartHandshaker(&handshaker, &control, config, is_resume, &actions)) {
+  if (!StartHandshaker(
+          &handshaker, &control, config, is_resume,
+          {{kFdProxyToHandshaker, rfd[0]}, {kFdHandshakerToProxy, wfd[1]}},
+          {rfd[1], wfd[0]})) {
     return false;
   }
 
@@ -534,14 +559,9 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
 static bool RequestHandshakeHint(const TestConfig *config, bool is_resume,
                                  Span<const uint8_t> input, bool *out_has_hints,
                                  std::vector<uint8_t> *out_hints) {
-  posix_spawn_file_actions_t actions;
-  if (posix_spawn_file_actions_init(&actions) != 0) {
-    return false;
-  }
-  FileActionsDestroyer actions_destroyer(&actions);
   ScopedProcess handshaker;
   ScopedFD control;
-  if (!StartHandshaker(&handshaker, &control, config, is_resume, &actions)) {
+  if (!StartHandshaker(&handshaker, &control, config, is_resume, {}, {})) {
     return false;
   }
 

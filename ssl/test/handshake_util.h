@@ -59,9 +59,9 @@ constexpr char kControlMsgDone = 'H';            // Proxy should resume control
 constexpr char kControlMsgError = 'E';           // Handshaker hit an error
 
 // The protocol between the proxy and handshaker uses these file descriptors.
-constexpr int kFdControl = 20;                   // Bi-directional dgram socket.
-constexpr int kFdProxyToHandshaker = 21;         // Uni-directional pipe.
-constexpr int kFdHandshakerToProxy = 22;         // Uni-directional pipe.
+constexpr int kFdControl = 3;            // Bi-directional dgram socket.
+constexpr int kFdProxyToHandshaker = 4;  // Uni-directional pipe.
+constexpr int kFdHandshakerToProxy = 5;  // Uni-directional pipe.
 #endif  // HANDSHAKER_SUPPORTED
 
 #endif  // HEADER_TEST_HANDSHAKE
