@@ -15,7 +15,7 @@
 #![cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
+use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 
 #[cfg(target_arch = "wasm32")]
 wasm_bindgen_test_configure!(run_in_browser);
@@ -31,7 +31,6 @@ macro_rules! test_known_answer {
     ( $alg:ident, $test_file:expr, [ $( $test:ident ),+, ] ) => {
         $(
             #[test]
-            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn $test() {
                 test_aead(
                     &aead::$alg,
@@ -51,7 +50,7 @@ macro_rules! test_aead {
             $(
                 #[allow(non_snake_case)]
                 mod $alg { // Provide a separate namespace for each algorithm's test.
-                    use super::super::*;
+                    use super::super::{*, test};
 
                     test_known_answer!(
                         $alg,
@@ -68,7 +67,6 @@ macro_rules! test_aead {
                         ]);
 
                     #[test]
-                    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
                     fn key_sizes() {
                         super::super::key_sizes(&aead::$alg);
                     }
@@ -408,7 +406,6 @@ fn test_aead_nonce_sizes() {
 
 #[allow(clippy::range_plus_one)]
 #[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn aead_chacha20_poly1305_openssh() {
     // TODO: test_aead_key_sizes(...);
 
@@ -456,7 +453,6 @@ fn aead_chacha20_poly1305_openssh() {
 }
 
 #[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn aead_test_aad_traits() {
     test::compile_time_assert_copy::<aead::Aad<&'_ [u8]>>();
     test::compile_time_assert_eq::<aead::Aad<Vec<u8>>>(); // `!Copy`
@@ -470,14 +466,12 @@ fn aead_test_aad_traits() {
 }
 
 #[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_tag_traits() {
     test::compile_time_assert_send::<aead::Tag>();
     test::compile_time_assert_sync::<aead::Tag>();
 }
 
 #[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_aead_key_debug() {
     let key_bytes = [0; 32];
     let nonce = [0; aead::NONCE_LEN];
