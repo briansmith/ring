@@ -70,7 +70,7 @@ ASN1_SEQUENCE(X509_ATTRIBUTE) = {
 IMPLEMENT_ASN1_FUNCTIONS(X509_ATTRIBUTE)
 IMPLEMENT_ASN1_DUP_FUNCTION(X509_ATTRIBUTE)
 
-X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int atrtype, void *value)
+X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int attrtype, void *value)
 {
     ASN1_OBJECT *obj = OBJ_nid2obj(nid);
     if (obj == NULL) {
@@ -88,7 +88,7 @@ X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int atrtype, void *value)
         goto err;
     }
 
-    ASN1_TYPE_set(val, atrtype, value);
+    ASN1_TYPE_set(val, attrtype, value);
     return ret;
 
  err:

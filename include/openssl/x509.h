@@ -980,7 +980,12 @@ DECLARE_ASN1_FUNCTIONS(X509_REQ_INFO)
 DECLARE_ASN1_FUNCTIONS(X509_REQ)
 
 DECLARE_ASN1_FUNCTIONS(X509_ATTRIBUTE)
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int atrtype,
+
+// X509_ATTRIBUTE_create returns a newly-allocated |X509_ATTRIBUTE|, or NULL on
+// error. The attribute has type |nid| and contains a single value determined by
+// |attrtype| and |value|, which are interpreted as in |ASN1_TYPE_set|. Note
+// this function takes ownership of |value|.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int attrtype,
                                                      void *value);
 
 DECLARE_ASN1_FUNCTIONS(X509_EXTENSION)
@@ -1283,16 +1288,30 @@ OPENSSL_EXPORT X509_ATTRIBUTE *X509_REQ_delete_attr(X509_REQ *req, int loc);
 // TODO(https://crbug.com/boringssl/407): |attr| should be const.
 OPENSSL_EXPORT int X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr);
 
+// X509_REQ_add1_attr_by_OBJ appends a new attribute to |req| with type |obj|.
+// It returns one on success and zero on error. The value is determined by
+// |X509_ATTRIBUTE_set1_data|.
+//
+// WARNING: The interpretation of |attrtype|, |data|, and |len| is complex and
+// error-prone. See |X509_ATTRIBUTE_set1_data| for details.
 OPENSSL_EXPORT int X509_REQ_add1_attr_by_OBJ(X509_REQ *req,
-                                             const ASN1_OBJECT *obj, int type,
-                                             const unsigned char *bytes,
+                                             const ASN1_OBJECT *obj,
+                                             int attrtype,
+                                             const unsigned char *data,
                                              int len);
-OPENSSL_EXPORT int X509_REQ_add1_attr_by_NID(X509_REQ *req, int nid, int type,
-                                             const unsigned char *bytes,
+
+// X509_REQ_add1_attr_by_NID behaves like |X509_REQ_add1_attr_by_OBJ| except the
+// attribute type is determined by |nid|.
+OPENSSL_EXPORT int X509_REQ_add1_attr_by_NID(X509_REQ *req, int nid,
+                                             int attrtype,
+                                             const unsigned char *data,
                                              int len);
+
+// X509_REQ_add1_attr_by_txt behaves like |X509_REQ_add1_attr_by_OBJ| except the
+// attribute type is determined by calling |OBJ_txt2obj| with |attrname|.
 OPENSSL_EXPORT int X509_REQ_add1_attr_by_txt(X509_REQ *req,
-                                             const char *attrname, int type,
-                                             const unsigned char *bytes,
+                                             const char *attrname, int attrtype,
+                                             const unsigned char *data,
                                              int len);
 
 // X509_CRL_set_version sets |crl|'s version to |version|, which should be one
@@ -1632,22 +1651,96 @@ OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_txt(
 OPENSSL_EXPORT void *X509at_get0_data_by_OBJ(STACK_OF(X509_ATTRIBUTE) *x,
                                              ASN1_OBJECT *obj, int lastpos,
                                              int type);
+
+// X509_ATTRIBUTE_create_by_NID returns a newly-allocated |X509_ATTRIBUTE| of
+// type |nid|, or NULL on error. The value is determined as in
+// |X509_ATTRIBUTE_set1_data|.
+//
+// If |attr| is non-NULL, the resulting |X509_ATTRIBUTE| is also written to
+// |*attr|. If |*attr| was non-NULL when the function was called, |*attr| is
+// reused instead of creating a new object.
+//
+// WARNING: The interpretation of |attrtype|, |data|, and |len| is complex and
+// error-prone. See |X509_ATTRIBUTE_set1_data| for details.
+//
+// WARNING: The object reuse form is deprecated and may be removed in the
+// future. It also currently incorrectly appends to the reused object's value
+// set rather than overwriting it.
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_NID(
-    X509_ATTRIBUTE **attr, int nid, int atrtype, const void *data, int len);
+    X509_ATTRIBUTE **attr, int nid, int attrtype, const void *data, int len);
+
+// X509_ATTRIBUTE_create_by_OBJ behaves like |X509_ATTRIBUTE_create_by_NID|
+// except the attribute's type is determined by |obj|.
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_OBJ(
-    X509_ATTRIBUTE **attr, const ASN1_OBJECT *obj, int atrtype,
+    X509_ATTRIBUTE **attr, const ASN1_OBJECT *obj, int attrtype,
     const void *data, int len);
+
+// X509_ATTRIBUTE_create_by_txt behaves like |X509_ATTRIBUTE_create_by_NID|
+// except the attribute's type is determined by calling |OBJ_txt2obj| with
+// |attrname|.
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_txt(
-    X509_ATTRIBUTE **attr, const char *atrname, int type,
+    X509_ATTRIBUTE **attr, const char *attrname, int type,
     const unsigned char *bytes, int len);
+
+// X509_ATTRIBUTE_set1_object sets |attr|'s type to |obj|. It returns one on
+// success and zero on error.
 OPENSSL_EXPORT int X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr,
                                               const ASN1_OBJECT *obj);
+
+// X509_ATTRIBUTE_set1_data appends a value to |attr|'s value set and returns
+// one on success or zero on error. The value is determined as follows:
+//
+// If |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1 string. The
+// string is determined by decoding |len| bytes from |data| in the encoding
+// specified by |attrtype|, and then re-encoding it in a form appropriate for
+// |attr|'s type. If |len| is -1, |strlen(data)| is used instead. See
+// |ASN1_STRING_set_by_NID| for details.
+//
+// TODO(davidben): Document |ASN1_STRING_set_by_NID| so the reference is useful.
+//
+// Otherwise, if |len| is not -1, the value is an ASN.1 string. |attrtype| is an
+// |ASN1_STRING| type value and the |len| bytes from |data| are copied as the
+// type-specific representation of |ASN1_STRING|. See |ASN1_STRING| for details.
+//
+// WARNING: If this form is used to construct a negative INTEGER or ENUMERATED,
+// |attrtype| includes the |V_ASN1_NEG| flag for |ASN1_STRING|, but the function
+// forgets to clear the flag for |ASN1_TYPE|. This matches OpenSSL but is
+// probably a bug. For now, do not use this form with negative values.
+//
+// Otherwise, if |len| is -1, the value is constructed by passing |attrtype| and
+// |data| to |ASN1_TYPE_set1|. That is, |attrtype| is an |ASN1_TYPE| type value,
+// and |data| is cast to the corresponding pointer type.
+//
+// WARNING: Despite the name, this function appends to |attr|'s value set,
+// rather than overwriting it. To overwrite the value set, create a new
+// |X509_ATTRIBUTE| with |X509_ATTRIBUTE_new|.
+//
+// WARNING: If using the |MBSTRING_*| form, pass a length rather than relying on
+// |strlen|. In particular, |strlen| will not behave correctly if the input is
+// |MBSTRING_BMP| or |MBSTRING_UNIV|.
+//
+// WARNING: This function currently misinterprets |V_ASN1_OTHER| as an
+// |MBSTRING_*| constant. This matches OpenSSL but means it is impossible to
+// construct a value with a non-universal tag.
 OPENSSL_EXPORT int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
                                             const void *data, int len);
+
+// X509_ATTRIBUTE_get0_data returns the |idx|th value of |attr| in a
+// type-specific representation to |attrtype|, or NULL if out of bounds or the
+// type does not match. |attrtype| is one of the type values in |ASN1_TYPE|. On
+// match, the return value uses the same representation as |ASN1_TYPE_set0|. See
+// |ASN1_TYPE| for details.
 OPENSSL_EXPORT void *X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx,
-                                              int atrtype, void *unused);
-OPENSSL_EXPORT int X509_ATTRIBUTE_count(X509_ATTRIBUTE *attr);
+                                              int attrtype, void *unused);
+
+// X509_ATTRIBUTE_count returns the number of values in |attr|.
+OPENSSL_EXPORT int X509_ATTRIBUTE_count(const X509_ATTRIBUTE *attr);
+
+// X509_ATTRIBUTE_get0_object returns the type of |attr|.
 OPENSSL_EXPORT ASN1_OBJECT *X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr);
+
+// X509_ATTRIBUTE_get0_type returns the |idx|th value in |attr|, or NULL if out
+// of bounds. Note this function returns one of |attr|'s values, not the type.
 OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
                                                    int idx);
 
@@ -1742,6 +1835,7 @@ BORINGSSL_MAKE_DELETER(RSA_PSS_PARAMS, RSA_PSS_PARAMS_free)
 BORINGSSL_MAKE_DELETER(X509, X509_free)
 BORINGSSL_MAKE_UP_REF(X509, X509_up_ref)
 BORINGSSL_MAKE_DELETER(X509_ALGOR, X509_ALGOR_free)
+BORINGSSL_MAKE_DELETER(X509_ATTRIBUTE, X509_ATTRIBUTE_free)
 BORINGSSL_MAKE_DELETER(X509_CRL, X509_CRL_free)
 BORINGSSL_MAKE_UP_REF(X509_CRL, X509_CRL_up_ref)
 BORINGSSL_MAKE_DELETER(X509_CRL_METHOD, X509_CRL_METHOD_free)
