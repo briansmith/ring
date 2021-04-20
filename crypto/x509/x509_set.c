@@ -72,11 +72,6 @@ long X509_get_version(const X509 *x509)
     return ASN1_INTEGER_get(x509->cert_info->version);
 }
 
-X509_CINF *X509_get_cert_info(const X509 *x509)
-{
-    return x509->cert_info;
-}
-
 int X509_set_version(X509 *x, long version)
 {
     // TODO(davidben): Reject invalid version numbers.
@@ -237,16 +232,6 @@ const STACK_OF(X509_EXTENSION) *X509_get0_extensions(const X509 *x)
 const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x)
 {
     return x->cert_info->signature;
-}
-
-void X509_CINF_set_modified(X509_CINF *cinf)
-{
-    cinf->enc.modified = 1;
-}
-
-const X509_ALGOR *X509_CINF_get_signature(const X509_CINF *cinf)
-{
-    return cinf->signature;
 }
 
 X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509)

@@ -1799,7 +1799,8 @@ TEST(X509Test, TestFromBufferModified) {
 
   ASSERT_EQ(static_cast<long>(data_len), i2d_X509(root.get(), nullptr));
 
-  X509_CINF_set_modified(root->cert_info);
+  // Re-encode the TBSCertificate.
+  i2d_re_X509_tbs(root.get(), nullptr);
 
   ASSERT_NE(static_cast<long>(data_len), i2d_X509(root.get(), nullptr));
 }

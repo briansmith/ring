@@ -529,13 +529,6 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
                                    const ASN1_BIT_STRING **out_issuer_uid,
                                    const ASN1_BIT_STRING **out_subject_uid);
 
-// X509_get_cert_info returns |x509|'s TBSCertificate structure. Note this
-// function is not const-correct for legacy reasons.
-//
-// This function is deprecated and may be removed in the future. It is not
-// present in OpenSSL and constrains some improvements to the library.
-OPENSSL_EXPORT X509_CINF *X509_get_cert_info(const X509 *x509);
-
 // X509_extract_key is a legacy alias to |X509_get_pubkey|. Use
 // |X509_get_pubkey| instead.
 #define X509_extract_key(x) X509_get_pubkey(x)
@@ -613,22 +606,6 @@ OPENSSL_EXPORT STACK_OF(X509_REVOKED) *X509_CRL_get_REVOKED(X509_CRL *crl);
 // omits it.
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_CRL_get0_extensions(
     const X509_CRL *crl);
-
-// X509_CINF_set_modified marks |cinf| as modified so that changes will be
-// reflected in serializing the structure.
-//
-// This function is deprecated and may be removed in the future. It is not
-// present in OpenSSL and constrains some improvements to the library.
-OPENSSL_EXPORT void X509_CINF_set_modified(X509_CINF *cinf);
-
-// X509_CINF_get_signature returns the signature algorithm in |cinf|. Note this
-// isn't the signature itself, but the extra copy of the signature algorithm
-// in the TBSCertificate.
-//
-// This function is deprecated and may be removed in the future. It is not
-// present in OpenSSL and constrains some improvements to the library. Use
-// |X509_get0_tbs_sigalg| instead.
-OPENSSL_EXPORT const X509_ALGOR *X509_CINF_get_signature(const X509_CINF *cinf);
 
 // X509_SIG_get0 sets |*out_alg| and |*out_digest| to non-owning pointers to
 // |sig|'s algorithm and digest fields, respectively. Either |out_alg| and
