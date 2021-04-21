@@ -513,6 +513,52 @@ fn test_aead_key_debug() {
     );
 }
 
+fn test_aead_lesssafekey_clone_for_algorithm(algorithm: &'static aead::Algorithm) {
+    let test_bytes: Vec<u8> = (0..32).collect();
+    let key_bytes = &test_bytes[..algorithm.key_len()];
+    let nonce_bytes = &test_bytes[..algorithm.nonce_len()];
+
+    let key1: aead::LessSafeKey =
+        aead::LessSafeKey::new(aead::UnboundKey::new(algorithm, &key_bytes).unwrap());
+    let key2 = key1.clone();
+
+    // LessSafeKey doesn't support AsRef or PartialEq, so instead just check that both keys produce
+    // the same encrypted output.
+    let mut buf1: Vec<u8> = (0..100).collect();
+    let mut buf2 = buf1.clone();
+    let tag1 = key1
+        .seal_in_place_separate_tag(
+            aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+            aead::Aad::empty(),
+            &mut buf1,
+        )
+        .unwrap();
+    let tag2 = key2
+        .seal_in_place_separate_tag(
+            aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+            aead::Aad::empty(),
+            &mut buf2,
+        )
+        .unwrap();
+    assert_eq!(tag1.as_ref(), tag2.as_ref());
+    assert_eq!(buf1, buf2);
+}
+
+#[test]
+fn test_aead_lesssafekey_clone_aes_128_gcm() {
+    test_aead_lesssafekey_clone_for_algorithm(&aead::AES_128_GCM);
+}
+
+#[test]
+fn test_aead_lesssafekey_clone_aes_256_gcm() {
+    test_aead_lesssafekey_clone_for_algorithm(&aead::AES_256_GCM);
+}
+
+#[test]
+fn test_aead_lesssafekey_clone_chacha20_poly1305() {
+    test_aead_lesssafekey_clone_for_algorithm(&aead::CHACHA20_POLY1305);
+}
+
 fn make_key<K: aead::BoundKey<OneNonceSequence>>(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
