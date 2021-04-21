@@ -18,6 +18,7 @@ load(
     "crypto_headers",
     "crypto_internal_headers",
     "crypto_sources",
+    "crypto_sources_linux_aarch64",
     "crypto_sources_linux_ppc64le",
     "crypto_sources_linux_x86_64",
     "crypto_sources_mac_x86_64",
@@ -32,6 +33,11 @@ load(
 licenses(["notice"])
 
 exports_files(["LICENSE"])
+
+config_setting(
+    name = "linux_aarch64",
+    values = {"cpu": "aarch64"},
+)
 
 config_setting(
     name = "linux_x86_64",
@@ -103,6 +109,7 @@ posix_copts = [
 ]
 
 boringssl_copts = select({
+    ":linux_aarch64": posix_copts,
     ":linux_ppc64le": posix_copts,
     ":linux_x86_64": posix_copts,
     ":mac_x86_64": posix_copts,
@@ -114,6 +121,7 @@ boringssl_copts = select({
 })
 
 crypto_sources_asm = select({
+    ":linux_aarch64": crypto_sources_linux_aarch64,
     ":linux_ppc64le": crypto_sources_linux_ppc64le,
     ":linux_x86_64": crypto_sources_linux_x86_64,
     ":mac_x86_64": crypto_sources_mac_x86_64,
@@ -129,6 +137,7 @@ posix_copts_c11 = [
 ]
 
 boringssl_copts_c11 = boringssl_copts + select({
+    ":linux_aarch64": posix_copts_c11,
     ":linux_ppc64le": posix_copts_c11,
     ":linux_x86_64": posix_copts_c11,
     ":mac_x86_64": posix_copts_c11,
@@ -142,6 +151,7 @@ posix_copts_cxx = [
 ]
 
 boringssl_copts_cxx = boringssl_copts + select({
+    ":linux_aarch64": posix_copts_cxx,
     ":linux_ppc64le": posix_copts_cxx,
     ":linux_x86_64": posix_copts_cxx,
     ":mac_x86_64": posix_copts_cxx,
