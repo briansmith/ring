@@ -22,6 +22,7 @@ use core::ops::BitXorAssign;
 #[cfg(not(target_arch = "aarch64"))]
 mod gcm_nohw;
 
+#[derive(Clone)]
 pub struct Key {
     h_table: HTable,
     cpu_features: cpu::Features,

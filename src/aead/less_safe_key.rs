@@ -20,6 +20,7 @@ use core::ops::RangeFrom;
 /// `NonceSequence` cannot reasonably be used.
 ///
 /// Prefer to use `OpeningKey`/`SealingKey` and `NonceSequence` when practical.
+#[derive(Clone)]
 pub struct LessSafeKey {
     inner: KeyInner,
     algorithm: &'static Algorithm,

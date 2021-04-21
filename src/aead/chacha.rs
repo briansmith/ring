@@ -32,6 +32,7 @@ mod fallback;
 
 use core::ops::RangeFrom;
 
+#[derive(Clone)]
 pub struct Key {
     words: [u32; KEY_LEN / 4],
     cpu_features: cpu::Features,
