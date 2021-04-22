@@ -502,6 +502,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "P-521"
           ],
           "hashAlg": [
+            "SHA-1",
             "SHA2-224",
             "SHA2-256",
             "SHA2-384",
@@ -1481,7 +1482,9 @@ static bool ECDSAKeyVer(const Span<const uint8_t> args[], ReplyCallback write_re
 }
 
 static const EVP_MD *HashFromName(Span<const uint8_t> name) {
-  if (StringEq(name, "SHA2-224")) {
+  if (StringEq(name, "SHA-1")) {
+    return EVP_sha1();
+  } else if (StringEq(name, "SHA2-224")) {
     return EVP_sha224();
   } else if (StringEq(name, "SHA2-256")) {
     return EVP_sha256();
