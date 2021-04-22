@@ -91,10 +91,16 @@ OPENSSL_EXPORT ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *obj);
 // less than, equal to or greater than |b|, respectively.
 OPENSSL_EXPORT int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b);
 
-// OBJ_get0_data returns a pointer to the DER representation of |obj|.
+// OBJ_get0_data returns a pointer to the DER representation of |obj|. This is
+// the contents of the DER-encoded identifier, not including the tag and length.
+// If |obj| does not have an associated object identifier (i.e. it is a nid-only
+// value), this value is the empty string.
 OPENSSL_EXPORT const uint8_t *OBJ_get0_data(const ASN1_OBJECT *obj);
 
-// OBJ_length returns the length of the DER representation of |obj|.
+// OBJ_length returns the length of the DER representation of |obj|. This is the
+// contents of the DER-encoded identifier, not including the tag and length. If
+// |obj| does not have an associated object identifier (i.e. it is a nid-only
+// value), this value is the empty string.
 OPENSSL_EXPORT size_t OBJ_length(const ASN1_OBJECT *obj);
 
 
