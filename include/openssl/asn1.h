@@ -883,7 +883,8 @@ OPENSSL_EXPORT int i2a_ASN1_STRING(BIO *bp, const ASN1_STRING *a, int type);
 OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
                                    const ASN1_OBJECT *a);
 
-OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid, unsigned char *data,
+OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid,
+                                               const unsigned char *data,
                                                int len, const char *sn,
                                                const char *ln);
 

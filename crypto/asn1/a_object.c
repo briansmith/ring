@@ -263,7 +263,7 @@ void ASN1_OBJECT_free(ASN1_OBJECT *a)
         OPENSSL_free(a);
 }
 
-ASN1_OBJECT *ASN1_OBJECT_create(int nid, unsigned char *data, int len,
+ASN1_OBJECT *ASN1_OBJECT_create(int nid, const unsigned char *data, int len,
                                 const char *sn, const char *ln)
 {
     ASN1_OBJECT o;
