@@ -25,3 +25,9 @@ name = "fuzz_bit_string_with_no_unused_bits"
 path = "fuzz_targets/fuzz_bit_string_with_no_unused_bits.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "read_tag_and_get_value"
+path = "fuzz_targets/read_tag_and_get_value.rs"
+test = false
+doc = false
