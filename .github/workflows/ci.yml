@@ -6,9 +6,6 @@ on:
   push:
 jobs:
   rustfmt:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: ubuntu-18.04
 
     steps:
@@ -23,9 +20,6 @@ jobs:
       - run: cargo fmt --all -- --check
 
   clippy:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: ubuntu-18.04
 
     steps:
@@ -42,9 +36,6 @@ jobs:
       - run: mk/clippy.sh
 
   audit:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: ubuntu-18.04
 
     steps:
@@ -72,9 +63,6 @@ jobs:
       - run: cargo audit --deny warnings
 
   deny:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: ubuntu-18.04
 
     steps:
@@ -101,9 +89,6 @@ jobs:
 
   # Verify that documentation builds.
   rustdoc:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: ubuntu-18.04
 
     strategy:
@@ -131,9 +116,6 @@ jobs:
           cargo doc --all-features
 
   package:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: windows-latest
 
     steps:
@@ -152,9 +134,6 @@ jobs:
         shell: bash
 
   test:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: ${{ matrix.host_os }}
 
     strategy:
@@ -313,9 +292,6 @@ jobs:
   # The wasm32-unknown-unknown targets have a different set of feature sets and
   # an additional `webdriver` dimension.
   test-wasm32:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: ${{ matrix.host_os }}
 
     strategy:
@@ -360,9 +336,6 @@ jobs:
           ${{ matrix.webdriver }} mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
 
   coverage:
-    # Don't run duplicate `push` jobs for the repo owner's PRs.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-
     runs-on: ${{ matrix.host_os }}
 
     strategy:
