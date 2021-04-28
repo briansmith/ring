@@ -384,7 +384,7 @@ int X509_chain_check_suiteb(int *perror_depth, X509 *x, STACK_OF(X509) *chain,
     } else
         i = 0;
 
-    if (X509_get_version(x) != X509V3_VERSION) {
+    if (X509_get_version(x) != X509_VERSION_3) {
         rv = X509_V_ERR_SUITE_B_INVALID_VERSION;
         /* Correct error depth */
         i = 0;
@@ -402,7 +402,7 @@ int X509_chain_check_suiteb(int *perror_depth, X509 *x, STACK_OF(X509) *chain,
     for (; i < sk_X509_num(chain); i++) {
         sign_nid = X509_get_signature_nid(x);
         x = sk_X509_value(chain, i);
-        if (X509_get_version(x) != X509V3_VERSION) {
+        if (X509_get_version(x) != X509_VERSION_3) {
             rv = X509_V_ERR_SUITE_B_INVALID_VERSION;
             goto end;
         }

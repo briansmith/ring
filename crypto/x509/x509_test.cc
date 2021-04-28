@@ -1648,7 +1648,7 @@ TEST(X509Test, RSASignManual) {
     if (new_cert) {
       cert.reset(X509_new());
       // Fill in some fields for the certificate arbitrarily.
-      EXPECT_TRUE(X509_set_version(cert.get(), X509V3_VERSION));
+      EXPECT_TRUE(X509_set_version(cert.get(), X509_VERSION_3));
       EXPECT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1));
       EXPECT_TRUE(X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0));
       EXPECT_TRUE(
