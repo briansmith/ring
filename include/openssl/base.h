@@ -160,10 +160,6 @@ extern "C" {
 
 #if defined(__ANDROID_API__)
 #define OPENSSL_ANDROID
-#if defined(BORINGSSL_FIPS)
-// The FIPS module on Android passively receives entropy.
-#define BORINGSSL_FIPS_PASSIVE_ENTROPY
-#endif
 #endif
 
 #if defined(__FreeBSD__)

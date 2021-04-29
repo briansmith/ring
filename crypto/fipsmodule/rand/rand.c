@@ -178,8 +178,6 @@ void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
 #endif
 }
 
-#if defined(BORINGSSL_FIPS_PASSIVE_ENTROPY)
-
 // In passive entropy mode, entropy is supplied from outside of the module via
 // |RAND_load_entropy| and is stored in global instance of the following
 // structure.
@@ -241,17 +239,6 @@ static void get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
 
   CRYPTO_STATIC_MUTEX_unlock_write(entropy_buffer_lock_bss_get());
 }
-
-#else
-
-// In the active case, |get_seed_entropy| simply calls |CRYPTO_get_seed_entropy|
-// in order to obtain entropy from the CPU or OS.
-static void get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
-                            int *out_used_cpu) {
-  CRYPTO_get_seed_entropy(out_entropy, out_entropy_len, out_used_cpu);
-}
-
-#endif  // !BORINGSSL_FIPS_PASSIVE_ENTROPY
 
 // rand_get_seed fills |seed| with entropy and sets |*out_used_cpu| to one if
 // that entropy came directly from the CPU and zero otherwise.
