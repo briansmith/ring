@@ -50,6 +50,10 @@ macro_rules! test_aead {
             $(
                 #[allow(non_snake_case)]
                 mod $alg { // Provide a separate namespace for each algorithm's test.
+                    #[cfg(not(target_arch = "wasm32"))]
+                    use super::super::*;
+
+                    #[cfg(target_arch = "wasm32")]
                     use super::super::{*, test};
 
                     test_known_answer!(
