@@ -122,7 +122,7 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_192_gcm(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm(void);
 
 // EVP_aead_chacha20_poly1305 is the AEAD built from ChaCha20 and
-// Poly1305 as described in RFC 7539.
+// Poly1305 as described in RFC 8439.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305(void);
 
 // EVP_aead_xchacha20_poly1305 is ChaCha20-Poly1305 with an extended nonce that
