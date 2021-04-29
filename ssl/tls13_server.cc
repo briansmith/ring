@@ -621,10 +621,11 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
 
     // Parse a ClientECH out of the extension body.
     uint16_t kdf_id, aead_id;
-    CBS config_id, enc, payload;
+    uint8_t config_id;
+    CBS enc, payload;
     if (!CBS_get_u16(&ech_body, &kdf_id) ||  //
         !CBS_get_u16(&ech_body, &aead_id) ||
-        !CBS_get_u8_length_prefixed(&ech_body, &config_id) ||
+        !CBS_get_u8(&ech_body, &config_id) ||
         !CBS_get_u16_length_prefixed(&ech_body, &enc) ||
         !CBS_get_u16_length_prefixed(&ech_body, &payload) ||
         CBS_len(&ech_body) != 0) {
@@ -634,10 +635,11 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
     }
 
     // Check that ClientECH.cipher_suite is unchanged and that
-    // ClientECH.config_id and ClientECH.enc are empty.
+    // ClientECH.enc is empty.
     if (kdf_id != EVP_HPKE_CTX_get_kdf_id(hs->ech_hpke_ctx.get()) ||
         aead_id != EVP_HPKE_CTX_get_aead_id(hs->ech_hpke_ctx.get()) ||
-        CBS_len(&config_id) > 0 || CBS_len(&enc) > 0) {
+        config_id != hs->ech_config_id ||
+        CBS_len(&enc) > 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;

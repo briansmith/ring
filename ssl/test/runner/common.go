@@ -129,7 +129,7 @@ const (
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
 	extensionDelegatedCredentials       uint16 = 0x22   // draft-ietf-tls-subcerts-06
 	extensionDuplicate                  uint16 = 0xffff // not IANA assigned
-	extensionEncryptedClientHello       uint16 = 0xfe09 // not IANA assigned
+	extensionEncryptedClientHello       uint16 = 0xfe0a // not IANA assigned
 	extensionECHIsInner                 uint16 = 0xda09 // not IANA assigned
 	extensionECHOuterExtensions         uint16 = 0xfd00 // not IANA assigned
 )
@@ -921,6 +921,10 @@ type ProtocolBugs struct {
 	// CorruptSecondEncryptedClientHello, if true, causes the client to
 	// incorrectly encrypt the second encrypted_client_hello extension.
 	CorruptSecondEncryptedClientHello bool
+
+	// CorruptSecondEncryptedClientHelloConfigID, if true, causes the client to
+	// incorrectly set the second ClientHello's ECH config ID.
+	CorruptSecondEncryptedClientHelloConfigID bool
 
 	// AllowTLS12InClientHelloInner, if true, causes the client to include
 	// TLS 1.2 and earlier in ClientHelloInner.

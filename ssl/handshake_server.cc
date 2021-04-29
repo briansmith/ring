@@ -599,11 +599,12 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     }
 
     // Parse a ClientECH out of the extension body.
+    uint8_t config_id;
     uint16_t kdf_id, aead_id;
-    CBS config_id, enc, payload;
+    CBS enc, payload;
     if (!CBS_get_u16(&ech_body, &kdf_id) ||  //
         !CBS_get_u16(&ech_body, &aead_id) ||
-        !CBS_get_u8_length_prefixed(&ech_body, &config_id) ||
+        !CBS_get_u8(&ech_body, &config_id) ||
         !CBS_get_u16_length_prefixed(&ech_body, &enc) ||
         !CBS_get_u16_length_prefixed(&ech_body, &payload) ||
         CBS_len(&ech_body) != 0) {
@@ -622,7 +623,7 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
            hs->ech_server_config_list->configs) {
         // Skip this config if the client-provided config_id does not match or
         // if the client indicated an unsupported HPKE ciphersuite.
-        if (config_id != ech_config.config_id_sha256() ||
+        if (config_id != ech_config.config_id() ||
             !ech_config.SupportsCipherSuite(kdf_id, aead_id)) {
           continue;
         }
@@ -686,6 +687,7 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
           return ssl_hs_error;
         }
 
+        hs->ech_config_id = config_id;
         hs->ech_accept = true;
         break;
       }

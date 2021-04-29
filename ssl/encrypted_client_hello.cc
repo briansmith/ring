@@ -248,19 +248,18 @@ bool ssl_decode_client_hello_inner(
 bool ssl_client_hello_decrypt(
     EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out_encoded_client_hello_inner,
     bool *out_is_decrypt_error, const SSL_CLIENT_HELLO *client_hello_outer,
-    uint16_t kdf_id, uint16_t aead_id, Span<const uint8_t> config_id,
+    uint16_t kdf_id, uint16_t aead_id, const uint8_t config_id,
     Span<const uint8_t> enc, Span<const uint8_t> payload) {
   *out_is_decrypt_error = false;
 
   // Compute the ClientHello portion of the ClientHelloOuterAAD value. See
   // draft-ietf-tls-esni-09, section 5.2.
   ScopedCBB ch_outer_aad_cbb;
-  CBB config_id_cbb, enc_cbb, outer_hello_cbb, extensions_cbb;
+  CBB enc_cbb, outer_hello_cbb, extensions_cbb;
   if (!CBB_init(ch_outer_aad_cbb.get(), 0) ||
       !CBB_add_u16(ch_outer_aad_cbb.get(), kdf_id) ||
       !CBB_add_u16(ch_outer_aad_cbb.get(), aead_id) ||
-      !CBB_add_u8_length_prefixed(ch_outer_aad_cbb.get(), &config_id_cbb) ||
-      !CBB_add_bytes(&config_id_cbb, config_id.data(), config_id.size()) ||
+      !CBB_add_u8(ch_outer_aad_cbb.get(), config_id) ||
       !CBB_add_u16_length_prefixed(ch_outer_aad_cbb.get(), &enc_cbb) ||
       !CBB_add_bytes(&enc_cbb, enc.data(), enc.size()) ||
       !CBB_add_u24_length_prefixed(ch_outer_aad_cbb.get(), &outer_hello_cbb) ||
@@ -346,22 +345,25 @@ bool ECHServerConfig::Init(Span<const uint8_t> raw,
   }
 
   CBS ech_config_contents, public_name, public_key, cipher_suites, extensions;
+  uint8_t config_id;
   uint16_t kem_id, max_name_len;
   if (!CBS_get_u16_length_prefixed(&reader, &ech_config_contents) ||
-      !CBS_get_u16_length_prefixed(&ech_config_contents, &public_name) ||
-      CBS_len(&public_name) == 0 ||
+      !CBS_get_u8(&ech_config_contents, &config_id) ||
+      !CBS_get_u16(&ech_config_contents, &kem_id) ||
       !CBS_get_u16_length_prefixed(&ech_config_contents, &public_key) ||
       CBS_len(&public_key) == 0 ||
-      !CBS_get_u16(&ech_config_contents, &kem_id) ||
       !CBS_get_u16_length_prefixed(&ech_config_contents, &cipher_suites) ||
       CBS_len(&cipher_suites) == 0 ||
       !CBS_get_u16(&ech_config_contents, &max_name_len) ||
+      !CBS_get_u16_length_prefixed(&ech_config_contents, &public_name) ||
+      CBS_len(&public_name) == 0 ||
       !CBS_get_u16_length_prefixed(&ech_config_contents, &extensions) ||
       CBS_len(&ech_config_contents) != 0 ||  //
       CBS_len(&reader) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
+  config_id_ = config_id;
   // We only support one KEM, and the KEM decides the length of |public_key|.
   if (CBS_len(&public_key) != X25519_PUBLIC_VALUE_LEN ||
       kem_id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256) {
@@ -393,18 +395,6 @@ bool ECHServerConfig::Init(Span<const uint8_t> raw,
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
       return false;
     }
-  }
-
-  // Precompute the config_id.
-  uint8_t key[EVP_MAX_KEY_LENGTH];
-  size_t key_len;
-  static const uint8_t kInfo[] = "tls ech config id";
-  if (!HKDF_extract(key, &key_len, EVP_sha256(), raw_.data(), raw_.size(),
-                    nullptr, 0) ||
-      !HKDF_expand(config_id_sha256_, sizeof(config_id_sha256_), EVP_sha256(),
-                   key, key_len, kInfo, OPENSSL_ARRAY_SIZE(kInfo) - 1)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
   }
 
   if (private_key.size() != X25519_PRIVATE_KEY_LEN) {

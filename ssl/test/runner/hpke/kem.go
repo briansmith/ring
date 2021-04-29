@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	rfcLabel string = "HPKE-07"
+	versionLabel string = "HPKE-v1"
 )
 
 func getKDFHash(kdfID uint16) crypto.Hash {
@@ -40,7 +40,7 @@ func getKDFHash(kdfID uint16) crypto.Hash {
 
 func labeledExtract(kdfHash crypto.Hash, salt, suiteID, label, ikm []byte) []byte {
 	var labeledIKM []byte
-	labeledIKM = append(labeledIKM, rfcLabel...)
+	labeledIKM = append(labeledIKM, versionLabel...)
 	labeledIKM = append(labeledIKM, suiteID...)
 	labeledIKM = append(labeledIKM, label...)
 	labeledIKM = append(labeledIKM, ikm...)
@@ -55,7 +55,7 @@ func labeledExpand(kdfHash crypto.Hash, prk, suiteID, label, info []byte, length
 
 	var labeledInfo []byte
 	labeledInfo = appendBigEndianUint16(labeledInfo, lengthU16)
-	labeledInfo = append(labeledInfo, rfcLabel...)
+	labeledInfo = append(labeledInfo, versionLabel...)
 	labeledInfo = append(labeledInfo, suiteID...)
 	labeledInfo = append(labeledInfo, label...)
 	labeledInfo = append(labeledInfo, info...)

@@ -31,7 +31,7 @@ extern "C" {
 // receiver with a public key. Optionally, the sender may authenticate its
 // possession of a pre-shared key to the recipient.
 //
-// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-07.
+// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-08.
 
 // EVP_HPKE_DHKEM_* are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020

@@ -16554,6 +16554,7 @@ func generateECHConfigWithSecretKey(publicName string, ciphers []HPKECipherSuite
 		}
 	}
 	result := ECHConfig{
+		ConfigID:     42,
 		PublicName:   publicName,
 		PublicKey:    publicKeyR,
 		KEM:          hpke.X25519WithHKDFSHA256,
@@ -17048,6 +17049,30 @@ func addEncryptedClientHelloTests() {
 			expectedLocalError: "remote error: missing extension",
 		})
 
+		// Test that the server treats a mismatched config ID in the second ClientHello as fatal.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-DifferentConfigIDSecondClientHello",
+			config: Config{
+				ServerName:      "secret.example",
+				ClientECHConfig: publicECHConfig,
+				// Force a HelloRetryRequest.
+				DefaultCurves: []CurveID{},
+				Bugs: ProtocolBugs{
+					CorruptSecondEncryptedClientHelloConfigID: true,
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(publicECHConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(secretKey),
+				"-ech-is-retry-config", "1",
+			},
+			shouldFail:         true,
+			expectedError:      ":DECODE_ERROR:",
+			expectedLocalError: "remote error: illegal parameter",
+		})
+
 		// Test early data works with ECH, in both accept and reject cases.
 		testCases = append(testCases, testCase{
 			testType: serverTest,
@@ -17145,6 +17170,7 @@ func addEncryptedClientHelloTests() {
 		})
 
 		retryConfigValid := ECHConfig{
+			ConfigID:   42,
 			PublicName: "example.com",
 			// A real X25519 public key obtained from hpke.GenerateKeyPair().
 			PublicKey: []byte{

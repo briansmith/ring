@@ -1453,22 +1453,24 @@ TEST(SSLTest, AddClientCA) {
 // kECHConfig contains a serialized ECHConfig value.
 static const uint8_t kECHConfig[] = {
     // version
-    0xfe, 0x09,
+    0xfe, 0x0a,
     // length
-    0x00, 0x42,
-    // contents.public_name
-    0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
-    0x6d, 0x70, 0x6c, 0x65,
+    0x00, 0x43,
+    // contents.config_id
+    0x42,
+    // contents.kem_id
+    0x00, 0x20,
     // contents.public_key
     0x00, 0x20, 0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3,
     0x6a, 0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
     0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c,
-    // contents.kem_id
-    0x00, 0x20,
     // contents.cipher_suites
     0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03,
     // contents.maximum_name_length
     0x00, 0x10,
+    // contents.public_name
+    0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
+    0x6d, 0x70, 0x6c, 0x65,
     // contents.extensions
     0x00, 0x00};
 
@@ -1488,8 +1490,8 @@ static const uint8_t kECHConfigPrivateKey[X25519_PRIVATE_KEY_LEN] = {
 // MakeECHConfig serializes an ECHConfig and writes it to |*out| with the
 // specified parameters. |cipher_suites| is a list of code points which should
 // contain pairs of KDF and AEAD IDs.
-bool MakeECHConfig(std::vector<uint8_t> *out, uint16_t kem_id,
-                   Span<const uint8_t> public_key,
+bool MakeECHConfig(std::vector<uint8_t> *out, uint8_t config_id,
+                   uint16_t kem_id, Span<const uint8_t> public_key,
                    Span<const uint16_t> cipher_suites,
                    Span<const uint8_t> extensions) {
   bssl::ScopedCBB cbb;
@@ -1498,12 +1500,10 @@ bool MakeECHConfig(std::vector<uint8_t> *out, uint16_t kem_id,
   if (!CBB_init(cbb.get(), 64) ||
       !CBB_add_u16(cbb.get(), TLSEXT_TYPE_encrypted_client_hello) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &contents) ||
-      !CBB_add_u16_length_prefixed(&contents, &child) ||
-      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(kPublicName),
-                     strlen(kPublicName)) ||
+      !CBB_add_u8(&contents, config_id) ||
+      !CBB_add_u16(&contents, kem_id) ||
       !CBB_add_u16_length_prefixed(&contents, &child) ||
       !CBB_add_bytes(&child, public_key.data(), public_key.size()) ||
-      !CBB_add_u16(&contents, kem_id) ||
       !CBB_add_u16_length_prefixed(&contents, &child)) {
     return false;
   }
@@ -1513,6 +1513,9 @@ bool MakeECHConfig(std::vector<uint8_t> *out, uint16_t kem_id,
     }
   }
   if (!CBB_add_u16(&contents, strlen(kPublicName)) ||  // maximum_name_length
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(kPublicName),
+                     strlen(kPublicName)) ||
       !CBB_add_u16_length_prefixed(&contents, &child) ||
       !CBB_add_bytes(&child, extensions.data(), extensions.size()) ||
       !CBB_flush(cbb.get())) {
@@ -1568,7 +1571,7 @@ TEST(SSLTest, ECHServerConfigList) {
 TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
   std::vector<uint8_t> ech_config;
   ASSERT_TRUE(MakeECHConfig(
-      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
+      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
       MakeConstSpan(kECHConfigPublicKey, sizeof(kECHConfigPublicKey) - 1),
       std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
       /*extensions=*/{}));
@@ -1636,7 +1639,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
   // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
   std::vector<uint8_t> ech_config;
   ASSERT_TRUE(MakeECHConfig(
-      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
+      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
       std::vector<uint16_t>{EVP_HPKE_HKDF_SHA384, EVP_HPKE_AEAD_AES_128_GCM},
       /*extensions=*/{}));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
@@ -1656,7 +1659,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
       0xc9, 0x4d, 0x89, 0x68, 0x77, 0x08, 0xb5, 0x6f, 0xc9, 0x5d, 0x30,
       0x77, 0x0e, 0xe8, 0xd1, 0xc9, 0xce, 0x0a, 0x8b, 0xb4, 0x6a};
   ASSERT_TRUE(MakeECHConfig(
-      &ech_config, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kP256PublicKey,
+      &ech_config, 0x42, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kP256PublicKey,
       std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
       /*extensions=*/{}));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
@@ -1666,7 +1669,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
   // Unsupported extensions are rejected.
   static const uint8_t kExtensions[] = {0x00, 0x01, 0x00, 0x00};
   ASSERT_TRUE(MakeECHConfig(
-      &ech_config, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
+      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
       std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
       kExtensions));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(

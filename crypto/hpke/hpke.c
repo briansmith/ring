@@ -28,7 +28,7 @@
 #include "internal.h"
 
 
-// This file implements draft-irtf-cfrg-hpke-07.
+// This file implements draft-irtf-cfrg-hpke-08.
 
 #define KEM_CONTEXT_LEN (2 * X25519_PUBLIC_VALUE_LEN)
 
@@ -38,7 +38,7 @@
 #define HPKE_MODE_BASE 0
 #define HPKE_MODE_PSK 1
 
-static const char kHpkeRfcId[] = "HPKE-07";
+static const char kHpkeVersionId[] = "HPKE-v1";
 
 static int add_label_string(CBB *cbb, const char *label) {
   return CBB_add_bytes(cbb, (const uint8_t *)label, strlen(label));
@@ -70,10 +70,10 @@ static int hpke_labeled_extract(const EVP_MD *hkdf_md, uint8_t *out_key,
                                 size_t salt_len, const uint8_t *suite_id,
                                 size_t suite_id_len, const char *label,
                                 const uint8_t *ikm, size_t ikm_len) {
-  // labeledIKM = concat("RFCXXXX ", suite_id, label, IKM)
+  // labeledIKM = concat("HPKE-v1", suite_id, label, IKM)
   CBB labeled_ikm;
   int ok = CBB_init(&labeled_ikm, 0) &&
-           add_label_string(&labeled_ikm, kHpkeRfcId) &&
+           add_label_string(&labeled_ikm, kHpkeVersionId) &&
            CBB_add_bytes(&labeled_ikm, suite_id, suite_id_len) &&
            add_label_string(&labeled_ikm, label) &&
            CBB_add_bytes(&labeled_ikm, ikm, ikm_len) &&
@@ -88,11 +88,11 @@ static int hpke_labeled_expand(const EVP_MD *hkdf_md, uint8_t *out_key,
                                size_t prk_len, const uint8_t *suite_id,
                                size_t suite_id_len, const char *label,
                                const uint8_t *info, size_t info_len) {
-  // labeledInfo = concat(I2OSP(L, 2), "RFCXXXX ", suite_id, label, info)
+  // labeledInfo = concat(I2OSP(L, 2), "HPKE-v1", suite_id, label, info)
   CBB labeled_info;
   int ok = CBB_init(&labeled_info, 0) &&
            CBB_add_u16(&labeled_info, out_len) &&
-           add_label_string(&labeled_info, kHpkeRfcId) &&
+           add_label_string(&labeled_info, kHpkeVersionId) &&
            CBB_add_bytes(&labeled_info, suite_id, suite_id_len) &&
            add_label_string(&labeled_info, label) &&
            CBB_add_bytes(&labeled_info, info, info_len) &&

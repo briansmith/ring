@@ -819,11 +819,7 @@ NextCipherSuite:
 	}
 
 	if innerHello != nil {
-		hash, err := hpke.GetHKDFHash(hs.echHPKEContext.KDF())
-		if err != nil {
-			return nil, err
-		}
-		if err := hs.encryptClientHello(hello, innerHello, c.config.ClientECHConfig.configID(hash), echEnc); err != nil {
+		if err := hs.encryptClientHello(hello, innerHello, c.config.ClientECHConfig.ConfigID, echEnc); err != nil {
 			return nil, err
 		}
 		if c.config.Bugs.CorruptEncryptedClientHello {
@@ -858,7 +854,7 @@ NextCipherSuite:
 
 // encryptClientHello encrypts |innerHello| using the specified HPKE context and
 // adds the extension to |hello|.
-func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHelloMsg, configID, enc []byte) error {
+func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHelloMsg, configID uint8, enc []byte) error {
 	c := hs.c
 
 	if c.config.Bugs.MinimalClientHelloOuter {
@@ -878,7 +874,7 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 	aad := newByteBuilder()
 	aad.addU16(hs.echHPKEContext.KDF())
 	aad.addU16(hs.echHPKEContext.AEAD())
-	aad.addU8LengthPrefixed().addBytes(configID)
+	aad.addU8(configID)
 	aad.addU16LengthPrefixed().addBytes(enc)
 	hello.marshalForOuterAAD(aad.addU24LengthPrefixed())
 
@@ -1521,7 +1517,11 @@ func (hs *clientHandshakeState) applyHelloRetryRequest(helloRetryRequest *helloR
 		if c.config.Bugs.OmitSecondEncryptedClientHello {
 			hello.clientECH = nil
 		} else {
-			if err := hs.encryptClientHello(hello, innerHello, nil, nil); err != nil {
+			configID := c.config.ClientECHConfig.ConfigID
+			if c.config.Bugs.CorruptSecondEncryptedClientHelloConfigID {
+				configID ^= 1
+			}
+			if err := hs.encryptClientHello(hello, innerHello, configID, nil); err != nil {
 				return err
 			}
 			if c.config.Bugs.CorruptSecondEncryptedClientHello {

@@ -5,11 +5,8 @@
 package runner
 
 import (
-	"crypto"
 	"encoding/binary"
 	"fmt"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 func writeLen(buf []byte, v, size int) {
@@ -258,11 +255,12 @@ type HPKECipherSuite struct {
 }
 
 type ECHConfig struct {
-	PublicName   string
-	PublicKey    []byte
+	ConfigID     uint8
 	KEM          uint16
-	CipherSuites []HPKECipherSuite
+	PublicKey    []byte
 	MaxNameLen   uint16
+	PublicName   string
+	CipherSuites []HPKECipherSuite
 }
 
 func (e *ECHConfig) marshal(bb *byteBuilder) {
@@ -270,15 +268,16 @@ func (e *ECHConfig) marshal(bb *byteBuilder) {
 	// codepoint as a version identifier.
 	bb.addU16(extensionEncryptedClientHello)
 	contents := bb.addU16LengthPrefixed()
-	contents.addU16LengthPrefixed().addBytes([]byte(e.PublicName))
-	contents.addU16LengthPrefixed().addBytes(e.PublicKey)
+	contents.addU8(e.ConfigID)
 	contents.addU16(e.KEM)
+	contents.addU16LengthPrefixed().addBytes(e.PublicKey)
 	cipherSuites := contents.addU16LengthPrefixed()
 	for _, suite := range e.CipherSuites {
 		cipherSuites.addU16(suite.KDF)
 		cipherSuites.addU16(suite.AEAD)
 	}
 	contents.addU16(e.MaxNameLen)
+	contents.addU16LengthPrefixed().addBytes([]byte(e.PublicName))
 	contents.addU16(0) // Empty extensions field
 }
 
@@ -297,22 +296,12 @@ func MarshalECHConfigList(configs ...*ECHConfig) []byte {
 	return bb.finish()
 }
 
-func (e *ECHConfig) configID(h crypto.Hash) []byte {
-	configIDLength := 8
-	idReader := hkdf.Expand(h.New, hkdf.Extract(h.New, MarshalECHConfig(e), nil), []byte("tls ech config id"))
-	idBytes := make([]byte, configIDLength)
-	if n, err := idReader.Read(idBytes); err != nil || n != configIDLength {
-		panic("failed to compute configID for ECHConfig")
-	}
-	return idBytes
-}
-
 // The contents of a CH "encrypted_client_hello" extension.
 // https://tools.ietf.org/html/draft-ietf-tls-esni-09
 type clientECH struct {
 	hpkeKDF  uint16
 	hpkeAEAD uint16
-	configID []byte
+	configID uint8
 	enc      []byte
 	payload  []byte
 }
@@ -459,7 +448,7 @@ func (m *clientHelloMsg) marshalBody(hello *byteBuilder, typ clientHelloType) {
 		body := newByteBuilder()
 		body.addU16(m.clientECH.hpkeKDF)
 		body.addU16(m.clientECH.hpkeAEAD)
-		body.addU8LengthPrefixed().addBytes(m.clientECH.configID)
+		body.addU8(m.clientECH.configID)
 		body.addU16LengthPrefixed().addBytes(m.clientECH.enc)
 		body.addU16LengthPrefixed().addBytes(m.clientECH.payload)
 
@@ -937,7 +926,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			var ech clientECH
 			if !body.readU16(&ech.hpkeKDF) ||
 				!body.readU16(&ech.hpkeAEAD) ||
-				!body.readU8LengthPrefixedBytes(&ech.configID) ||
+				!body.readU8(&ech.configID) ||
 				!body.readU16LengthPrefixedBytes(&ech.enc) ||
 				len(ech.enc) == 0 ||
 				!body.readU16LengthPrefixedBytes(&ech.payload) ||

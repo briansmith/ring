@@ -625,8 +625,8 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
   const EVP_AEAD *aead = EVP_HPKE_get_aead(aead_id);
   assert(aead != nullptr);
 
-  uint8_t ech_config_id[8];
-  RAND_bytes(ech_config_id, sizeof(ech_config_id));
+  uint8_t ech_config_id;
+  RAND_bytes(&ech_config_id, 1);
 
   uint8_t ech_enc[X25519_PUBLIC_VALUE_LEN];
   uint8_t private_key_unused[X25519_PRIVATE_KEY_LEN];
@@ -678,13 +678,12 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
   RAND_bytes(payload, payload_len);
 
   // Inside the TLS extension contents, write a serialized ClientEncryptedCH.
-  CBB ech_body, config_id_cbb, enc_cbb, payload_cbb;
+  CBB ech_body, enc_cbb, payload_cbb;
   if (!CBB_add_u16(out, TLSEXT_TYPE_encrypted_client_hello) ||
       !CBB_add_u16_length_prefixed(out, &ech_body) ||
       !CBB_add_u16(&ech_body, kdf_id) ||  //
       !CBB_add_u16(&ech_body, aead_id) ||
-      !CBB_add_u8_length_prefixed(&ech_body, &config_id_cbb) ||
-      !CBB_add_bytes(&config_id_cbb, ech_config_id, sizeof(ech_config_id)) ||
+      !CBB_add_u8(&ech_body, ech_config_id) ||
       !CBB_add_u16_length_prefixed(&ech_body, &enc_cbb) ||
       !CBB_add_bytes(&enc_cbb, ech_enc, OPENSSL_ARRAY_SIZE(ech_enc)) ||
       !CBB_add_u16_length_prefixed(&ech_body, &payload_cbb) ||
