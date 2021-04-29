@@ -141,7 +141,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1
+      - run: ./mk/install-build-tools.ps1
 
       - uses: briansmith/actions-rs-toolchain@v1
         with:
@@ -286,9 +286,7 @@ jobs:
         run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
-        run: >
-          (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
-          ("$pwd\target\tools" >> $env:GITHUB_PATH)
+        run: ./mk/install-build-tools.ps1
 
       - uses: briansmith/actions-rs-toolchain@v1
         with:

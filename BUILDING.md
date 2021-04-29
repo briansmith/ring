@@ -33,9 +33,9 @@ apply when building from crates.io:
   primitives (32- and 64- bit Intel, and 32- and 64-bit ARM), Perl must be
   installed and in `$PATH`.
 
-* For Windows targets, `target/tools/nasm[.exe]` is used as the assembler;
-  [mk/install-build-tools.ps1](mk/install-build-tools.ps1) downloads it for
-  Windows hosts.
+* For Windows targets, `target/tools/windows/nasm/nasm[.exe]` is used as the
+  assembler. The version to use and how to download it is documented in
+  [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 Cross Compiling
 ---------------

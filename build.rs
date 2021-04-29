@@ -688,7 +688,7 @@ fn nasm(file: &Path, arch: &str, out_file: &Path) -> Command {
         "x86" => ("win32"),
         _ => panic!("unsupported arch: {}", arch),
     };
-    let mut c = Command::new("./target/tools/nasm");
+    let mut c = Command::new("./target/tools/windows/nasm/nasm");
     let _ = c
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
