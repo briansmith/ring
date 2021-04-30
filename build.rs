@@ -26,7 +26,6 @@ use std::{
     fs::{self, DirEntry},
     path::{Path, PathBuf},
     process::Command,
-    time::SystemTime,
 };
 
 const X86: &str = "x86";
@@ -99,48 +98,6 @@ const SHA256_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha256-armv8.pl";
 const SHA512_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha512-armv8.pl";
 
 const RING_TEST_SRCS: &[&str] = &[("crypto/constant_time_test.c")];
-
-#[rustfmt::skip]
-const RING_INCLUDES: &[&str] =
-    &[
-      "crypto/curve25519/curve25519_tables.h",
-      "crypto/curve25519/internal.h",
-      "crypto/fipsmodule/bn/internal.h",
-      "crypto/fipsmodule/ec/ecp_nistz384.inl",
-      "crypto/fipsmodule/ec/ecp_nistz.h",
-      "crypto/fipsmodule/ec/ecp_nistz384.h",
-      "crypto/fipsmodule/ec/util.h",
-      "crypto/fipsmodule/ec/p256_shared.h",
-      "crypto/fipsmodule/ec/p256_table.h",
-      "crypto/fipsmodule/ec/p256-x86_64.h",
-      "crypto/fipsmodule/ec/p256-x86_64-table.h",
-      "crypto/internal.h",
-      "crypto/limbs/limbs.h",
-      "crypto/limbs/limbs.inl",
-      "crypto/poly1305/internal.h",
-      "include/GFp/aes.h",
-      "include/GFp/arm_arch.h",
-      "include/GFp/base.h",
-      "include/GFp/check.h",
-      "include/GFp/cpu.h",
-      "include/GFp/mem.h",
-      "include/GFp/poly1305.h",
-      "include/GFp/type_check.h",
-      "third_party/fiat/curve25519_32.h",
-      "third_party/fiat/curve25519_64.h",
-      "third_party/fiat/p256_32.h",
-      "third_party/fiat/p256_64.h",
-    ];
-
-#[rustfmt::skip]
-const RING_PERL_INCLUDES: &[&str] =
-    &["crypto/perlasm/arm-xlate.pl",
-      "crypto/perlasm/x86gas.pl",
-      "crypto/perlasm/x86nasm.pl",
-      "crypto/perlasm/x86asm.pl",
-      "crypto/perlasm/x86_64-xlate.pl"];
-
-const RING_BUILD_FILE: &[&str] = &["build.rs"];
 
 const PREGENERATED: &str = "pregenerated";
 
@@ -363,7 +320,7 @@ fn ring_build_rs_main() {
     let pregenerated = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
 
     build_c_code(&target, pregenerated, &out_dir);
-    check_all_files_tracked()
+    emit_rerun_if_changed()
 }
 
 fn pregenerate_asm_main() {
@@ -383,7 +340,7 @@ fn pregenerate_asm_main() {
         };
 
         let perlasm_src_dsts = perlasm_src_dsts(&asm_dir, asm_target);
-        perlasm(&perlasm_src_dsts, asm_target, None);
+        perlasm(&perlasm_src_dsts, asm_target);
 
         if asm_target.preassemble {
             let srcs = asm_srcs(perlasm_src_dsts);
@@ -413,14 +370,6 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         }
     }
 
-    let includes_modified = RING_INCLUDES
-        .iter()
-        .chain(RING_BUILD_FILE.iter())
-        .chain(RING_PERL_INCLUDES.iter())
-        .map(|f| file_modified(Path::new(*f)))
-        .max()
-        .unwrap();
-
     let asm_target = ASM_TARGETS.iter().find(|asm_target| {
         asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
     });
@@ -438,7 +387,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
 
         if !use_pregenerated {
-            perlasm(&perlasm_src_dsts[..], asm_target, Some(includes_modified));
+            perlasm(&perlasm_src_dsts[..], asm_target);
         }
 
         let mut asm_srcs = asm_srcs(perlasm_src_dsts);
@@ -482,7 +431,6 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
             srcs,
             additional_srcs,
             warnings_are_errors,
-            includes_modified,
         )
     });
 
@@ -499,80 +447,65 @@ fn build_library(
     srcs: &[PathBuf],
     additional_srcs: &[PathBuf],
     warnings_are_errors: bool,
-    includes_modified: SystemTime,
 ) {
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs
         .iter()
         .chain(srcs.iter())
         .filter(|f| &target.env != "msvc" || f.extension().unwrap().to_str().unwrap() != "S")
-        .map(|f| compile(f, target, warnings_are_errors, out_dir, includes_modified))
+        .map(|f| compile(f, target, warnings_are_errors, out_dir))
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
 
-    if objs
-        .iter()
-        .map(Path::new)
-        .any(|p| need_run(&p, &lib_path, includes_modified))
-    {
-        let mut c = cc::Build::new();
+    let mut c = cc::Build::new();
 
-        for f in LD_FLAGS {
-            let _ = c.flag(&f);
-        }
-        match target.os.as_str() {
-            "macos" => {
-                let _ = c.flag("-fPIC");
-                let _ = c.flag("-Wl,-dead_strip");
-            }
-            _ => {
-                let _ = c.flag("-Wl,--gc-sections");
-            }
-        }
-        for o in objs {
-            let _ = c.object(o);
-        }
-
-        // Handled below.
-        let _ = c.cargo_metadata(false);
-
-        c.compile(
-            lib_path
-                .file_name()
-                .and_then(|f| f.to_str())
-                .expect("No filename"),
-        );
+    for f in LD_FLAGS {
+        let _ = c.flag(&f);
     }
+    match target.os.as_str() {
+        "macos" => {
+            let _ = c.flag("-fPIC");
+            let _ = c.flag("-Wl,-dead_strip");
+        }
+        _ => {
+            let _ = c.flag("-Wl,--gc-sections");
+        }
+    }
+    for o in objs {
+        let _ = c.object(o);
+    }
+
+    // Handled below.
+    let _ = c.cargo_metadata(false);
+
+    c.compile(
+        lib_path
+            .file_name()
+            .and_then(|f| f.to_str())
+            .expect("No filename"),
+    );
 
     // Link the library. This works even when the library doesn't need to be
     // rebuilt.
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(
-    p: &Path,
-    target: &Target,
-    warnings_are_errors: bool,
-    out_dir: &Path,
-    includes_modified: SystemTime,
-) -> String {
+fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "obj" {
         p.to_str().expect("Invalid path").into()
     } else {
         let mut out_path = out_dir.join(p.file_name().unwrap());
         assert!(out_path.set_extension(target.obj_ext));
-        if need_run(&p, &out_path, includes_modified) {
-            let cmd = if target.os != WINDOWS || ext != "asm" {
-                cc(p, ext, target, warnings_are_errors, &out_path)
-            } else {
-                nasm(p, &target.arch, &out_path)
-            };
+        let cmd = if target.os != WINDOWS || ext != "asm" {
+            cc(p, ext, target, warnings_are_errors, &out_path)
+        } else {
+            nasm(p, &target.arch, &out_path)
+        };
 
-            run_command(cmd);
-        }
+        run_command(cmd);
         out_path.to_str().expect("Invalid path").into()
     }
 }
@@ -778,18 +711,8 @@ fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
     out_dir.join(dst_filename)
 }
 
-fn perlasm(
-    src_dst: &[(PathBuf, PathBuf)],
-    asm_target: &AsmTarget,
-    includes_modified: Option<SystemTime>,
-) {
+fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
     for (src, dst) in src_dst {
-        if let Some(includes_modified) = includes_modified {
-            if !need_run(src, dst, includes_modified) {
-                continue;
-            }
-        }
-
         let mut args = Vec::<String>::new();
         args.push(src.to_string_lossy().into_owned());
         args.push(asm_target.perlasm_format.to_owned());
@@ -808,57 +731,29 @@ fn perlasm(
     }
 }
 
-fn need_run(source: &Path, target: &Path, includes_modified: SystemTime) -> bool {
-    let s_modified = file_modified(source);
-    if let Ok(target_metadata) = std::fs::metadata(target) {
-        let target_modified = target_metadata.modified().unwrap();
-        s_modified >= target_modified || includes_modified >= target_modified
-    } else {
-        // On error fetching metadata for the target file, assume the target
-        // doesn't exist.
-        true
-    }
-}
-
-fn file_modified(path: &Path) -> SystemTime {
-    let path = Path::new(path);
-    let path_as_str = format!("{:?}", path);
-    std::fs::metadata(path)
-        .expect(&path_as_str)
-        .modified()
-        .expect("nah")
-}
-
 fn get_command(var: &str, default: &str) -> String {
     std::env::var(var).unwrap_or_else(|_| default.into())
 }
 
-fn check_all_files_tracked() {
+// TODO: We should emit `cargo:rerun-if-changed-env` for the various
+// environment variables that affect the build.
+fn emit_rerun_if_changed() {
     for path in &["crypto", "include", "third_party/fiat"] {
-        walk_dir(&PathBuf::from(path), &is_tracked);
+        walk_dir(&PathBuf::from(path), &|entry| {
+            let path = entry.path();
+            match path.extension().and_then(|ext| ext.to_str()) {
+                Some("c") | Some("S") | Some("h") | Some("inl") | Some("pl") | None => {
+                    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+                }
+                _ => {
+                    // Ignore other types of files.
+                }
+            }
+        })
     }
 }
 
-fn is_tracked(file: &DirEntry) {
-    let p = file.path();
-    let cmp = |f| p == PathBuf::from(f);
-    let tracked = match p.extension().and_then(|p| p.to_str()) {
-        Some("h") | Some("inl") => RING_INCLUDES.iter().any(cmp),
-        Some("c") | Some("S") | Some("asm") => {
-            RING_SRCS.iter().any(|(_, f)| cmp(f)) || RING_TEST_SRCS.iter().any(cmp)
-        }
-        Some("pl") => RING_SRCS.iter().any(|(_, f)| cmp(f)) || RING_PERL_INCLUDES.iter().any(cmp),
-        _ => true,
-    };
-    if !tracked {
-        panic!("{:?} is not tracked in build.rs", p);
-    }
-}
-
-fn walk_dir<F>(dir: &Path, cb: &F)
-where
-    F: Fn(&DirEntry),
-{
+fn walk_dir(dir: &Path, cb: &impl Fn(&DirEntry)) {
     if dir.is_dir() {
         for entry in fs::read_dir(dir).unwrap() {
             let entry = entry.unwrap();
