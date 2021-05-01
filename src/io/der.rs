@@ -31,7 +31,9 @@ pub enum Tag {
     OctetString = 0x04,
     Null = 0x05,
     OID = 0x06,
+    UTF8String = 0x0C,
     Sequence = CONSTRUCTED | 0x10, // 0x30
+    Set = CONSTRUCTED | 0x11,      // 0x31
     UTCTime = 0x17,
     GeneralizedTime = 0x18,
 
