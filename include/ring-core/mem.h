@@ -52,41 +52,18 @@
  * The licence and distribution terms for any publically available version or
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
- * [including the GNU Public Licence.]
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com). */
+ * [including the GNU Public Licence.] */
 
-#ifndef OPENSSL_HEADER_CPU_H
-#define OPENSSL_HEADER_CPU_H
+#ifndef OPENSSL_HEADER_MEM_H
+#define OPENSSL_HEADER_MEM_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
-// Runtime CPU feature support
+// OPENSSL_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
+// takes an amount of time dependent on |len|, but independent of the contents
+// of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
+// defined order as the return value when a != b is undefined, other than to be
+// non-zero.
+OPENSSL_EXPORT int OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
 
-
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-// OPENSSL_ia32cap_P contains the Intel CPUID bits when running on an x86 or
-// x86-64 system.
-//
-//   Index 0:
-//     EDX for CPUID where EAX = 1
-//     Bit 20 is always zero
-//     Bit 28 is adjusted to reflect whether the data cache is shared between
-//       multiple logical cores
-//     Bit 30 is used to indicate an Intel CPU
-//   Index 1:
-//     ECX for CPUID where EAX = 1
-//     Bit 11 is used to indicate AMD XOP support, not SDBG
-//   Index 2:
-//     EBX for CPUID where EAX = 7
-//   Index 3:
-//     ECX for CPUID where EAX = 7
-//
-// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
-// bits in XCR0, so it is not necessary to check those.
-extern uint32_t OPENSSL_ia32cap_P[4];
-#endif
-
-#endif  // OPENSSL_HEADER_CPU_H
+#endif  // OPENSSL_HEADER_MEM_H

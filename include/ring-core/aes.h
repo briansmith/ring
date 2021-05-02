@@ -49,7 +49,7 @@
 #ifndef OPENSSL_HEADER_AES_H
 #define OPENSSL_HEADER_AES_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
 // Raw AES functions.
 

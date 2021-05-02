@@ -13,7 +13,7 @@ repository = "https://github.com/briansmith/ring"
 version = "0.16.20"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
-links = "ring-asm"
+links = "ring_core_dev"
 
 include = [
     "LICENSE",
@@ -95,14 +95,14 @@ include = [
     "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl",
     "doc/link-to-readme.md",
     "examples/checkdigest.rs",
-    "include/GFp/aes.h",
-    "include/GFp/arm_arch.h",
-    "include/GFp/base.h",
-    "include/GFp/check.h",
-    "include/GFp/cpu.h",
-    "include/GFp/mem.h",
-    "include/GFp/poly1305.h",
-    "include/GFp/type_check.h",
+    "include/ring-core/aes.h",
+    "include/ring-core/arm_arch.h",
+    "include/ring-core/base.h",
+    "include/ring-core/check.h",
+    "include/ring-core/cpu.h",
+    "include/ring-core/mem.h",
+    "include/ring-core/poly1305.h",
+    "include/ring-core/type_check.h",
     "src/aead.rs",
     "src/aead/aes.rs",
     "src/aead/aes_gcm.rs",

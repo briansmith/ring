@@ -120,7 +120,7 @@ my ($a3,$b3,$c3,$d3)=map(($_&~3)+(($_+1)&3),($a2,$b2,$c2,$d2));
 }
 
 $code.=<<___;
-#include <GFp/arm_arch.h>
+#include <ring-core/arm_arch.h>
 
 .extern	OPENSSL_armcap_P
 .hidden	OPENSSL_armcap_P

@@ -68,7 +68,7 @@ macro_rules! prefixed_item {
     } => {
         prefixed_item! {
             $attr
-            { concat!("GFp_", stringify!($name)) }
+            { concat!("ring_core_dev_", stringify!($name)) }
             { $( $item )+ }
         }
     };

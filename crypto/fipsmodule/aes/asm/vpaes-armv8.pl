@@ -49,7 +49,7 @@ open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
 $code.=<<___;
-#include <GFp/arm_arch.h>
+#include <ring-core/arm_arch.h>
 
 .section	.rodata
 

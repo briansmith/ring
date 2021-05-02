@@ -15,7 +15,7 @@
 #ifndef RING_LIMBS_H
 #define RING_LIMBS_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
 #include "../internal.h"
 

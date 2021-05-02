@@ -23,7 +23,7 @@
 // When reviewing uses of |debug_assert_nonsecret|, verify that the check
 // really does not have potential to leak a secret.
 
-#if !defined(GFp_NOSTDLIBINC)
+#if !defined(RING_CORE_NOSTDLIBINC)
 # include <assert.h>
 # define debug_assert_nonsecret(x) assert(x)
 #else

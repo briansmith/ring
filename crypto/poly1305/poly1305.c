@@ -16,7 +16,7 @@
 // (https://github.com/floodyberry/poly1305-donna) and released as public
 // domain.
 
-#include <GFp/poly1305.h>
+#include <ring-core/poly1305.h>
 
 #include "internal.h"
 #include "../internal.h"

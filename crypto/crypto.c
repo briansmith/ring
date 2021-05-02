@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <GFp/cpu.h>
+#include <ring-core/cpu.h>
 #include "internal.h"
 
 // Our assembly does not use the GOT to reference symbols, which means

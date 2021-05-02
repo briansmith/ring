@@ -157,7 +157,7 @@ ___
 }
 
 $code .= <<___;
-#include <GFp/arm_arch.h>
+#include <ring-core/arm_arch.h>
 
 .text
 
