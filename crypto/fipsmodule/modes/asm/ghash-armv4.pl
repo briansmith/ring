@@ -104,7 +104,7 @@ $inp="r2";
 $len="r3";
 
 $code=<<___;
-#include <GFp/arm_arch.h>
+#include <ring-core/arm_arch.h>
 
 @ Silence ARMv8 deprecated IT instruction warnings. This file is used by both
 @ ARMv7 and ARMv8 processors and does not use ARMv8 instructions. (ARMv8 PMULL

@@ -123,7 +123,7 @@
 #ifndef OPENSSL_HEADER_BN_INTERNAL_H
 #define OPENSSL_HEADER_BN_INTERNAL_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)

@@ -15,7 +15,7 @@
 #ifndef OPENSSL_HEADER_EC_ECP_NISTZ_H
 #define OPENSSL_HEADER_EC_ECP_NISTZ_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
 #include "../../limbs/limbs.h"
 

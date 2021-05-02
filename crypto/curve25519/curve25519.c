@@ -19,7 +19,7 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
-#include <GFp/mem.h>
+#include <ring-core/mem.h>
 
 #include "internal.h"
 #include "../internal.h"

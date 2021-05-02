@@ -52,24 +52,41 @@
  * The licence and distribution terms for any publically available version or
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+ * [including the GNU Public Licence.]
+ *
+ * This product includes cryptographic software written by Eric Young
+ * (eay@cryptsoft.com).  This product includes software written by Tim
+ * Hudson (tjh@cryptsoft.com). */
 
-#ifndef OPENSSL_HEADER_TYPE_CHECK_H
-#define OPENSSL_HEADER_TYPE_CHECK_H
+#ifndef OPENSSL_HEADER_CPU_H
+#define OPENSSL_HEADER_CPU_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
+
+// Runtime CPU feature support
 
 
-#if defined(__cplusplus) || (defined(_MSC_VER) && !defined(__clang__))
-// In C++ and non-clang MSVC, |static_assert| is a keyword.
-#define OPENSSL_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
-#else
-// C11 defines the |_Static_assert| keyword and the |static_assert| macro in
-// assert.h. While the former is available at all versions in Clang and GCC, the
-// later depends on libc and, in glibc, depends on being built in C11 mode. We
-// do not require this, for now, so use |_Static_assert| directly.
-#define OPENSSL_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+// OPENSSL_ia32cap_P contains the Intel CPUID bits when running on an x86 or
+// x86-64 system.
+//
+//   Index 0:
+//     EDX for CPUID where EAX = 1
+//     Bit 20 is always zero
+//     Bit 28 is adjusted to reflect whether the data cache is shared between
+//       multiple logical cores
+//     Bit 30 is used to indicate an Intel CPU
+//   Index 1:
+//     ECX for CPUID where EAX = 1
+//     Bit 11 is used to indicate AMD XOP support, not SDBG
+//   Index 2:
+//     EBX for CPUID where EAX = 7
+//   Index 3:
+//     ECX for CPUID where EAX = 7
+//
+// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
+// bits in XCR0, so it is not necessary to check those.
+extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
-
-#endif  // OPENSSL_HEADER_TYPE_CHECK_H
+#endif  // OPENSSL_HEADER_CPU_H

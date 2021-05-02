@@ -19,7 +19,7 @@
 #ifndef OPENSSL_HEADER_EC_P256_SHARED_H
 #define OPENSSL_HEADER_EC_P256_SHARED_H
 
-#include "GFp/base.h"
+#include "ring-core/base.h"
 
 #include "../bn/internal.h"
 

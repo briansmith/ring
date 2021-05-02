@@ -16,7 +16,7 @@
  *                          256 Bit Primes"
  */
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
 #include "../../limbs/limbs.inl"
 

@@ -43,7 +43,7 @@ pub struct Context {
     cpu_features: cpu::Features,
 }
 
-// Keep in sync with `poly1305_state` in GFp/poly1305.h.
+// Keep in sync with `poly1305_state` in ring-core/poly1305.h.
 //
 // The C code, in particular the way the `poly1305_aligned_state` functions
 // are used, is only correct when the state buffer is 64-byte aligned.

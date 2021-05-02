@@ -15,7 +15,7 @@
 #ifndef OPENSSL_HEADER_POLY1305_H
 #define OPENSSL_HEADER_POLY1305_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
 // Keep in sync with `poly1305_state` in poly1305.rs.
 typedef uint8_t poly1305_state[512];

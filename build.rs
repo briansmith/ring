@@ -425,22 +425,24 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     let test_srcs = RING_TEST_SRCS.iter().map(PathBuf::from).collect::<Vec<_>>();
 
     let libs = [
-        ("ring-core", &core_srcs[..], &asm_srcs[..]),
-        ("ring-test", &test_srcs[..], &[]),
+        ("", &core_srcs[..], &asm_srcs[..]),
+        ("test", &test_srcs[..], &[]),
     ];
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
-    libs.iter().for_each(|&(lib_name, srcs, additional_srcs)| {
-        build_library(
-            &target,
-            &out_dir,
-            lib_name,
-            srcs,
-            additional_srcs,
-            warnings_are_errors,
-        )
-    });
+    libs.iter()
+        .for_each(|&(lib_name_suffix, srcs, additional_srcs)| {
+            let lib_name = String::from(BORINGSSL_PREFIX_VALUE) + lib_name_suffix;
+            build_library(
+                &target,
+                &out_dir,
+                &lib_name,
+                srcs,
+                additional_srcs,
+                warnings_are_errors,
+            )
+        });
 
     println!(
         "cargo:rustc-link-search=native={}",
@@ -524,9 +526,7 @@ fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
     out_path
 }
 
-// This is the prefix we've been using for most symbols since we started
-// prefixing.
-const BORINGSSL_PREFIX_VALUE: &str = "GFp_";
+const BORINGSSL_PREFIX_VALUE: &str = "ring_core_dev_";
 
 fn cc(
     file: &Path,
@@ -595,7 +595,7 @@ fn cc(
             // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
             if compiler.is_like_clang() {
                 let _ = c.flag("-nostdlibinc");
-                let _ = c.define("GFp_NOSTDLIBINC", "1");
+                let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
             }
         }
     }
@@ -836,8 +836,8 @@ fn generate_prefix_symbols_header(
     writeln!(
         file,
         r#"
-{pp}ifndef GFp_generated_{filename_ident}
-{pp}define GFp_generated_{filename_ident}
+{pp}ifndef ring_core_generated_{filename_ident}
+{pp}define ring_core_generated_{filename_ident}
 "#,
         pp = pp,
         filename_ident = filename_ident

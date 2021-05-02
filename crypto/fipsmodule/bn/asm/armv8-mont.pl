@@ -64,7 +64,7 @@ $n0="x4";	# const BN_ULONG *n0,
 $num="x5";	# size_t num);
 
 $code.=<<___;
-#include <GFp/arm_arch.h>
+#include <ring-core/arm_arch.h>
 
 .text
 

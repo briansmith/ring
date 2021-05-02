@@ -54,16 +54,22 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#ifndef OPENSSL_HEADER_MEM_H
-#define OPENSSL_HEADER_MEM_H
+#ifndef OPENSSL_HEADER_TYPE_CHECK_H
+#define OPENSSL_HEADER_TYPE_CHECK_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
-// OPENSSL_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
-// takes an amount of time dependent on |len|, but independent of the contents
-// of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
-// defined order as the return value when a != b is undefined, other than to be
-// non-zero.
-OPENSSL_EXPORT int OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
 
-#endif  // OPENSSL_HEADER_MEM_H
+#if defined(__cplusplus) || (defined(_MSC_VER) && !defined(__clang__))
+// In C++ and non-clang MSVC, |static_assert| is a keyword.
+#define OPENSSL_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
+#else
+// C11 defines the |_Static_assert| keyword and the |static_assert| macro in
+// assert.h. While the former is available at all versions in Clang and GCC, the
+// later depends on libc and, in glibc, depends on being built in C11 mode. We
+// do not require this, for now, so use |_Static_assert| directly.
+#define OPENSSL_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#endif
+
+
+#endif  // OPENSSL_HEADER_TYPE_CHECK_H

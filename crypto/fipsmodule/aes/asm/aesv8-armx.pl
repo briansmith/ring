@@ -53,7 +53,7 @@ open OUT,"| \"$^X\" $xlate $flavour $output";
 $prefix="aes_hw";
 
 $code=<<___;
-#include <GFp/arm_arch.h>
+#include <ring-core/arm_arch.h>
 
 #if __ARM_MAX_ARCH__>=7
 .text

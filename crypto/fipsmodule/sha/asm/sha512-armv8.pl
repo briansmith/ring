@@ -173,7 +173,7 @@ ___
 
 $code.=<<___;
 #ifndef	__KERNEL__
-# include <GFp/arm_arch.h>
+# include <ring-core/arm_arch.h>
 #endif
 
 .text

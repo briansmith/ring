@@ -54,7 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <GFp/mem.h>
+#include <ring-core/mem.h>
 
 int OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len) {
   uint8_t x = 0;

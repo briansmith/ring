@@ -15,7 +15,7 @@
 #ifndef OPENSSL_HEADER_CURVE25519_INTERNAL_H
 #define OPENSSL_HEADER_CURVE25519_INTERNAL_H
 
-#include <GFp/base.h>
+#include <ring-core/base.h>
 
 #include "../internal.h"
 

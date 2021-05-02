@@ -15,7 +15,7 @@
 // This implementation was taken from the public domain, neon2 version in
 // SUPERCOP by D. J. Bernstein and Peter Schwabe.
 
-#include <GFp/poly1305.h>
+#include <ring-core/poly1305.h>
 
 #include "internal.h"
 #include "../internal.h"

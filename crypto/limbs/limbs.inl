@@ -13,7 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "limbs.h"
-#include "GFp/check.h"
+#include "ring-core/check.h"
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)
@@ -36,12 +36,12 @@
 typedef uint8_t Carry;
 #if LIMB_BITS == 64
 #pragma intrinsic(_addcarry_u64, _subborrow_u64)
-#define GFp_ADDCARRY_INTRINSIC _addcarry_u64
-#define GFp_SUBBORROW_INTRINSIC _subborrow_u64
+#define RING_CORE_ADDCARRY_INTRINSIC _addcarry_u64
+#define RING_CORE_SUBBORROW_INTRINSIC _subborrow_u64
 #elif LIMB_BITS == 32
 #pragma intrinsic(_addcarry_u32, _subborrow_u32)
-#define GFp_ADDCARRY_INTRINSIC _addcarry_u32
-#define GFp_SUBBORROW_INTRINSIC _subborrow_u32
+#define RING_CORE_ADDCARRY_INTRINSIC _addcarry_u32
+#define RING_CORE_SUBBORROW_INTRINSIC _subborrow_u32
 typedef uint64_t DoubleLimb;
 #endif
 #else
@@ -58,8 +58,8 @@ typedef uint64_t DoubleLimb;
 static inline Carry limb_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
   dev_assert_secret(carry_in == 0 || carry_in == 1);
   Carry ret;
-#if defined(GFp_ADDCARRY_INTRINSIC)
-  ret = GFp_ADDCARRY_INTRINSIC(carry_in, a, b, r);
+#if defined(RING_CORE_ADDCARRY_INTRINSIC)
+  ret = RING_CORE_ADDCARRY_INTRINSIC(carry_in, a, b, r);
 #else
   DoubleLimb x = (DoubleLimb)a + b + carry_in;
   *r = (Limb)x;
@@ -72,8 +72,8 @@ static inline Carry limb_adc(Limb *r, Limb a, Limb b, Carry carry_in) {
 /* |*r = a + b|, returning carry bit. */
 static inline Carry limb_add(Limb *r, Limb a, Limb b) {
   Carry ret;
-#if defined(GFp_ADDCARRY_INTRINSIC)
-  ret = GFp_ADDCARRY_INTRINSIC(0, a, b, r);
+#if defined(RING_CORE_ADDCARRY_INTRINSIC)
+  ret = RING_CORE_ADDCARRY_INTRINSIC(0, a, b, r);
 #else
   DoubleLimb x = (DoubleLimb)a + b;
   *r = (Limb)x;
@@ -88,8 +88,8 @@ static inline Carry limb_add(Limb *r, Limb a, Limb b) {
 static inline Carry limb_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
   dev_assert_secret(borrow_in == 0 || borrow_in == 1);
   Carry ret;
-#if defined(GFp_SUBBORROW_INTRINSIC)
-  ret = GFp_SUBBORROW_INTRINSIC(borrow_in, a, b, r);
+#if defined(RING_CORE_SUBBORROW_INTRINSIC)
+  ret = RING_CORE_SUBBORROW_INTRINSIC(borrow_in, a, b, r);
 #else
   DoubleLimb x = (DoubleLimb)a - b - borrow_in;
   *r = (Limb)x;
@@ -102,8 +102,8 @@ static inline Carry limb_sbb(Limb *r, Limb a, Limb b, Carry borrow_in) {
 /* |*r = a - b|, returning borrow bit. */
 static inline Carry limb_sub(Limb *r, Limb a, Limb b) {
   Carry ret;
-#if defined(GFp_SUBBORROW_INTRINSIC)
-  ret = GFp_SUBBORROW_INTRINSIC(0, a, b, r);
+#if defined(RING_CORE_SUBBORROW_INTRINSIC)
+  ret = RING_CORE_SUBBORROW_INTRINSIC(0, a, b, r);
 #else
   DoubleLimb x = (DoubleLimb)a - b;
   *r = (Limb)x;
