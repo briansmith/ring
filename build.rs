@@ -369,6 +369,11 @@ struct Target {
 }
 
 fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
+    println!(
+        "cargo:rustc-env=RING_CORE_PREFIX={}",
+        BORINGSSL_PREFIX_VALUE
+    );
+
     #[cfg(not(feature = "wasm32_c"))]
     {
         if &target.arch == "wasm32" {
