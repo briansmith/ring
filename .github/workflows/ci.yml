@@ -308,6 +308,18 @@ jobs:
         run: |
           cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
+      # Check that all the needed symbol renaming was done.
+      # TODO: Do this check on Windows too.
+      # TODO: Check iOS too.
+      # TODO: Do this on Apple-hosted release builds too; currently these fail with:
+      #       Unknown attribute kind (528)
+      #       (Producer: 'LLVM12.0.0-rust-1.54.0-nightly'
+      #       Reader: 'LLVM APPLE_1_1200.0.32.29_0')
+      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
+                !contains(matrix.host_os, 'windows') &&
+                (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
+        run: mk/check-symbol-prefixes.sh
+
   # The wasm32-unknown-unknown targets have a different set of feature sets and
   # an additional `webdriver` dimension.
   test-wasm32:
@@ -356,6 +368,10 @@ jobs:
 
       - run: |
           ${{ matrix.webdriver }} mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.features }} ${{ matrix.mode }}
+
+      # Check that all the needed symbol renaming was done.
+      # TODO: Do this check on Windows too.
+      - run: mk/check-symbol-prefixes.sh
 
   coverage:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
