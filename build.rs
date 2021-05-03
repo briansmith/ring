@@ -331,7 +331,7 @@ fn ring_build_rs_main() {
     };
     let pregenerated = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
 
-    build_c_code(&target, pregenerated, &out_dir);
+    build_c_code(&target, pregenerated, &out_dir, &ring_core_prefix());
     emit_rerun_if_changed()
 }
 
@@ -360,7 +360,7 @@ fn pregenerate_asm_main() {
 
         if asm_target.preassemble {
             if !std::mem::replace(&mut generated_prefix_headers, true) {
-                generate_prefix_symbols_nasm(&pregenerated).unwrap();
+                generate_prefix_symbols_nasm(&pregenerated, &ring_core_prefix()).unwrap();
             }
             let srcs = asm_srcs(perlasm_src_dsts);
             for src in srcs {
@@ -381,11 +381,8 @@ struct Target {
     is_debug: bool,
 }
 
-fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
-    println!(
-        "cargo:rustc-env=RING_CORE_PREFIX={}",
-        BORINGSSL_PREFIX_VALUE
-    );
+fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path, ring_core_prefix: &str) {
+    println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
 
     #[cfg(not(feature = "wasm32_c"))]
     {
@@ -407,7 +404,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         out_dir
     };
 
-    generate_prefix_symbols(target, out_dir).unwrap();
+    generate_prefix_symbols(target, out_dir, ring_core_prefix).unwrap();
 
     let asm_srcs = if let Some(asm_target) = asm_target {
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
@@ -451,7 +448,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     // can't do that yet.
     libs.iter()
         .for_each(|&(lib_name_suffix, srcs, additional_srcs)| {
-            let lib_name = String::from(BORINGSSL_PREFIX_VALUE) + lib_name_suffix;
+            let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
             build_library(
                 &target,
                 &out_dir,
@@ -543,8 +540,6 @@ fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
     assert!(out_path.set_extension(obj_ext));
     out_path
 }
-
-const BORINGSSL_PREFIX_VALUE: &str = "ring_core_dev_";
 
 fn cc(
     file: &Path,
@@ -810,31 +805,51 @@ fn walk_dir(dir: &Path, cb: &impl Fn(&DirEntry)) {
     }
 }
 
+fn ring_core_prefix() -> String {
+    let links = std::env::var("CARGO_MANIFEST_LINKS").unwrap();
+
+    let computed = {
+        let name = std::env::var("CARGO_PKG_NAME").unwrap();
+        let version = std::env::var("CARGO_PKG_VERSION").unwrap();
+        name + "_core_" + &version.replace(&['-', '.'][..], "_")
+    };
+
+    assert_eq!(links, computed);
+
+    links + "_"
+}
+
 /// Creates the necessary header file for symbol renaming and returns the path of the
 /// generated include directory.
-fn generate_prefix_symbols(target: &Target, out_dir: &Path) -> Result<(), std::io::Error> {
-    generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None)?;
+fn generate_prefix_symbols(
+    target: &Target,
+    out_dir: &Path,
+    prefix: &str,
+) -> Result<(), std::io::Error> {
+    generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
 
     if target.os == "windows" {
-        let _ = generate_prefix_symbols_nasm(out_dir)?;
+        let _ = generate_prefix_symbols_nasm(out_dir, prefix)?;
     } else {
         generate_prefix_symbols_header(
             out_dir,
             "prefix_symbols_asm.h",
             '#',
             Some("#if defined(__APPLE__)"),
+            prefix,
         )?;
     }
 
     Ok(())
 }
 
-fn generate_prefix_symbols_nasm(out_dir: &Path) -> Result<(), std::io::Error> {
+fn generate_prefix_symbols_nasm(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
     generate_prefix_symbols_header(
         out_dir,
         "prefix_symbols_nasm.inc",
         '%',
         Some("%ifidn __OUTPUT_FORMAT__,win32"),
+        prefix,
     )
 }
 
@@ -843,6 +858,7 @@ fn generate_prefix_symbols_header(
     filename: &str,
     pp: char,
     prefix_condition: Option<&str>,
+    prefix: &str,
 ) -> Result<(), std::io::Error> {
     let dir = out_dir.join("ring_core_generated");
     std::fs::create_dir_all(&dir)?;
@@ -863,10 +879,10 @@ fn generate_prefix_symbols_header(
 
     if let Some(prefix_condition) = prefix_condition {
         writeln!(file, "{}", prefix_condition)?;
-        writeln!(file, "{}", prefix_all_symbols(pp, "_"))?;
+        writeln!(file, "{}", prefix_all_symbols(pp, "_", prefix))?;
         writeln!(file, "{pp}else", pp = pp)?;
     };
-    writeln!(file, "{}", prefix_all_symbols(pp, ""))?;
+    writeln!(file, "{}", prefix_all_symbols(pp, "", prefix))?;
     if prefix_condition.is_some() {
         writeln!(file, "{pp}endif", pp = pp)?
     }
@@ -876,7 +892,7 @@ fn generate_prefix_symbols_header(
     Ok(())
 }
 
-fn prefix_all_symbols(pp: char, prefix_prefix: &str) -> String {
+fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     static SYMBOLS_TO_PREFIX: &[&str] = &[
         "CRYPTO_poly1305_finish",
         "CRYPTO_poly1305_finish_neon",
@@ -986,7 +1002,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str) -> String {
             "{pp}define {prefix_prefix}{symbol} {prefix_prefix}{prefix}{symbol}\n",
             pp = pp,
             prefix_prefix = prefix_prefix,
-            prefix = BORINGSSL_PREFIX_VALUE,
+            prefix = prefix,
             symbol = symbol
         );
         out += &line;

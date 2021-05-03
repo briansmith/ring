@@ -10,10 +10,18 @@ license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.16.20"
 
-# Prevent multiple versions of *ring* from being linked into the same program.
-links = "ring_core_dev"
+# Keep in sync with `links` below.
+version = "0.17.0-alpha.9"
+
+# Keep in sync with `version` above.
+#
+# "ring_core_" + version, replacing punctuation with underscores.
+#
+# build.rs uses this to derive the prefix for FFI symbols and the file names
+# of the FFI libraries, so it must be a valid identifier prefix and a valid
+# filename prefix.
+links = "ring_core_0_17_0_alpha_9"
 
 include = [
     "LICENSE",
