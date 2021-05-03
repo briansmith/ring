@@ -28,8 +28,7 @@ extern "C" {
 // Hybrid Public Key Encryption.
 //
 // Hybrid Public Key Encryption (HPKE) enables a sender to encrypt messages to a
-// receiver with a public key. Optionally, the sender may authenticate its
-// possession of a pre-shared key to the recipient.
+// receiver with a public key.
 //
 // See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-08.
 
@@ -117,57 +116,6 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_r_x25519(
     size_t enc_len, const uint8_t *public_key, size_t public_key_len,
     const uint8_t *private_key, size_t private_key_len, const uint8_t *info,
     size_t info_len);
-
-// EVP_HPKE_CTX_setup_psk_s_x25519 sets up |hpke| as a sender context that can
-// encrypt for the private key corresponding to |peer_public_value| (the
-// recipient's public key) and authenticate its possession of a PSK. It returns
-// one on success, and zero otherwise. Note that this function will fail if
-// |peer_public_value| is invalid.
-//
-// The PSK and its ID must be provided in |psk| and |psk_id|, respectively. Both
-// must be nonempty (|psk_len| and |psk_id_len| must be non-zero), or this
-// function will fail.
-//
-// This function writes the encapsulated shared secret, a Diffie-Hellman public
-// key, to |out_enc|. It will fail if the buffer's size in |out_enc_len| is not
-// exactly |X25519_PUBLIC_VALUE_LEN|.
-OPENSSL_EXPORT int EVP_HPKE_CTX_setup_psk_s_x25519(
-    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len, uint16_t kdf_id,
-    uint16_t aead_id, const uint8_t *peer_public_value,
-    size_t peer_public_value_len, const uint8_t *info, size_t info_len,
-    const uint8_t *psk, size_t psk_len, const uint8_t *psk_id,
-    size_t psk_id_len);
-
-// EVP_HPKE_CTX_setup_psk_s_x25519_for_test behaves like
-// |EVP_HPKE_CTX_setup_psk_s_x25519|, but takes a pre-generated ephemeral sender
-// key. The caller ensures that |ephemeral_public| and |ephemeral_private| are a
-// valid keypair.
-OPENSSL_EXPORT int EVP_HPKE_CTX_setup_psk_s_x25519_for_test(
-    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t *peer_public_value, size_t peer_public_value_len,
-    const uint8_t *info, size_t info_len, const uint8_t *psk, size_t psk_len,
-    const uint8_t *psk_id, size_t psk_id_len, const uint8_t *ephemeral_private,
-    size_t ephemeral_private_len, const uint8_t *ephemeral_public,
-    size_t ephemeral_public_len);
-
-// EVP_HPKE_CTX_setup_psk_r_x25519 sets up |hpke| as a recipient context that
-// can decrypt messages. Future open (decrypt) operations will fail if the
-// sender does not possess the PSK indicated by |psk| and |psk_id|. It returns
-// one on success, and zero otherwise.
-//
-// The recipient's keypair is composed of |public_key| and |private_key|, and
-// |enc| is the encapsulated shared secret from the sender. If |enc| is invalid,
-// this function will fail.
-//
-// The PSK and its ID must be provided in |psk| and |psk_id|, respectively. Both
-// must be nonempty (|psk_len| and |psk_id_len| must be non-zero), or this
-// function will fail.
-OPENSSL_EXPORT int EVP_HPKE_CTX_setup_psk_r_x25519(
-    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id, const uint8_t *enc,
-    size_t enc_len, const uint8_t *public_key, size_t public_key_len,
-    const uint8_t *private_key, size_t private_key_len, const uint8_t *info,
-    size_t info_len, const uint8_t *psk, size_t psk_len, const uint8_t *psk_id,
-    size_t psk_id_len);
 
 
 // Using an HPKE context.

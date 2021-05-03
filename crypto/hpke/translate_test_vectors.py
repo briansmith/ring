@@ -49,7 +49,7 @@ def read_test_vectors_and_generate_code(json_file_in_path, test_file_out_path):
   lines = []
   for test in test_vecs:
     # Filter out test cases that we don't use.
-    if (test["mode"] not in [HPKE_MODE_BASE, HPKE_MODE_PSK] or
+    if (test["mode"] != HPKE_MODE_BASE or
         test["kem_id"] != HPKE_DHKEM_X25519_SHA256 or
         test["aead_id"] == HPKE_AEAD_EXPORT_ONLY or
         test["kdf_id"] != HPKE_HKDF_SHA256):
