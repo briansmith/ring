@@ -280,7 +280,8 @@ GFp_${prefix}_${dir}crypt:
 ___
 }
 &gen_block("en");
-&gen_block("de");
+# Decryption removed in *ring*.
+# &gen_block("de");
 }}}
 {{{
 my ($inp,$out,$len,$key,$ivp)=map("x$_",(0..4));
