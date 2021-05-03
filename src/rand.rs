@@ -201,24 +201,8 @@ mod sysrand_chunk {
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        use libc::c_long;
-
-        // See `SYS_getrandom` in #include <sys/syscall.h>.
-
-        #[cfg(target_arch = "aarch64")]
-        const SYS_GETRANDOM: c_long = 278;
-
-        #[cfg(target_arch = "arm")]
-        const SYS_GETRANDOM: c_long = 384;
-
-        #[cfg(target_arch = "x86")]
-        const SYS_GETRANDOM: c_long = 355;
-
-        #[cfg(target_arch = "x86_64")]
-        const SYS_GETRANDOM: c_long = 318;
-
         let chunk_len: c::size_t = dest.len();
-        let r = unsafe { libc::syscall(SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, 0) };
+        let r = unsafe { libc::syscall(libc::SYS_getrandom, dest.as_mut_ptr(), chunk_len, 0) };
         if r < 0 {
             let errno;
 
