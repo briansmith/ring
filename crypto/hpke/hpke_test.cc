@@ -51,17 +51,18 @@ class HPKETestVector {
     ASSERT_GT(secret_key_e_.size(), 0u);
 
     // Set up the sender.
-    ASSERT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519_for_test(
-        sender_ctx.get(), kdf_id_, aead_id_, public_key_r_.data(),
-        public_key_r_.size(), info_.data(), info_.size(), secret_key_e_.data(),
-        secret_key_e_.size(), public_key_e_.data(), public_key_e_.size()));
+    uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+    ASSERT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
+        sender_ctx.get(), enc, sizeof(enc), kdf_id_, aead_id_,
+        public_key_r_.data(), public_key_r_.size(), info_.data(), info_.size(),
+        secret_key_e_.data(), secret_key_e_.size()));
+    EXPECT_EQ(Bytes(enc), Bytes(public_key_e_));
 
     // Set up the receiver.
     ASSERT_TRUE(EVP_HPKE_CTX_setup_base_r_x25519(
-        receiver_ctx.get(), kdf_id_, aead_id_, public_key_e_.data(),
-        public_key_e_.size(), public_key_r_.data(), public_key_r_.size(),
-        secret_key_r_.data(), secret_key_r_.size(), info_.data(),
-        info_.size()));
+        receiver_ctx.get(), kdf_id_, aead_id_, enc, sizeof(enc),
+        public_key_r_.data(), public_key_r_.size(), secret_key_r_.data(),
+        secret_key_r_.size(), info_.data(), info_.size()));
 
     VerifyEncryptions(sender_ctx.get(), receiver_ctx.get());
     VerifyExports(sender_ctx.get());

@@ -22,6 +22,7 @@
 #include <openssl/err.h>
 #include <openssl/evp_errors.h>
 #include <openssl/hkdf.h>
+#include <openssl/rand.h>
 #include <openssl/sha.h>
 
 #include "../internal.h"
@@ -304,34 +305,27 @@ int EVP_HPKE_CTX_setup_base_s_x25519(EVP_HPKE_CTX *hpke, uint8_t *out_enc,
                                      const uint8_t *peer_public_value,
                                      size_t peer_public_value_len,
                                      const uint8_t *info, size_t info_len) {
+  uint8_t seed[X25519_PRIVATE_KEY_LEN];
+  RAND_bytes(seed, sizeof(seed));
+  return EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
+      hpke, out_enc, out_enc_len, kdf_id, aead_id, peer_public_value,
+      peer_public_value_len, info, info_len, seed, sizeof(seed));
+}
+
+int EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
+    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len, uint16_t kdf_id,
+    uint16_t aead_id, const uint8_t *peer_public_value,
+    size_t peer_public_value_len, const uint8_t *info, size_t info_len,
+    const uint8_t *seed, size_t seed_len) {
   if (out_enc_len != X25519_PUBLIC_VALUE_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
   }
-
-  // The GenerateKeyPair() step technically belongs in the KEM's Encap()
-  // function, but we've moved it up a layer to make it easier for tests to
-  // inject an ephemeral keypair.
-  uint8_t ephemeral_private[X25519_PRIVATE_KEY_LEN];
-  X25519_keypair(out_enc, ephemeral_private);
-  return EVP_HPKE_CTX_setup_base_s_x25519_for_test(
-      hpke, kdf_id, aead_id, peer_public_value, peer_public_value_len, info,
-      info_len, ephemeral_private, sizeof(ephemeral_private), out_enc,
-      out_enc_len);
-}
-
-int EVP_HPKE_CTX_setup_base_s_x25519_for_test(
-    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id,
-    const uint8_t *peer_public_value, size_t peer_public_value_len,
-    const uint8_t *info, size_t info_len, const uint8_t *ephemeral_private,
-    size_t ephemeral_private_len, const uint8_t *ephemeral_public,
-    size_t ephemeral_public_len) {
   if (peer_public_value_len != X25519_PUBLIC_VALUE_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PEER_KEY);
     return 0;
   }
-  if (ephemeral_private_len != X25519_PRIVATE_KEY_LEN ||
-      ephemeral_public_len != X25519_PUBLIC_VALUE_LEN) {
+  if (seed_len != X25519_PRIVATE_KEY_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -343,9 +337,9 @@ int EVP_HPKE_CTX_setup_base_s_x25519_for_test(
   if (hpke->hkdf_md == NULL) {
     return 0;
   }
+  X25519_public_from_private(out_enc, seed);
   uint8_t shared_secret[SHA256_DIGEST_LENGTH];
-  if (!hpke_encap(hpke, shared_secret, peer_public_value, ephemeral_private,
-                  ephemeral_public) ||
+  if (!hpke_encap(hpke, shared_secret, peer_public_value, seed, out_enc) ||
       !hpke_key_schedule(hpke, shared_secret, sizeof(shared_secret), info,
                          info_len)) {
     return 0;
