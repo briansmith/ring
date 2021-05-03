@@ -1443,33 +1443,27 @@ class ECHServerConfig {
   bool Init(Span<const uint8_t> ech_config, Span<const uint8_t> private_key,
             bool is_retry_config);
 
-  // SupportsCipherSuite returns true when this ECHConfig supports the HPKE
-  // ciphersuite composed of |kdf_id| and |aead_id|. This function must only be
-  // called on an initialized object.
-  bool SupportsCipherSuite(uint16_t kdf_id, uint16_t aead_id) const;
+  // SetupContext sets up |ctx| for a new connection, given the specified
+  // HPKE ciphersuite and encapsulated KEM key. It returns true on success and
+  // false on error. This function may only be called on an initialized object.
+  bool SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id, uint16_t aead_id,
+                    Span<const uint8_t> enc) const;
 
-  Span<const uint8_t> raw() const {
+  Span<const uint8_t> ech_config() const {
     assert(initialized_);
-    return raw_;
-  }
-  Span<const uint8_t> public_key() const {
-    assert(initialized_);
-    return public_key_;
-  }
-  Span<const uint8_t> private_key() const {
-    assert(initialized_);
-    return MakeConstSpan(private_key_, sizeof(private_key_));
+    return ech_config_;
   }
   bool is_retry_config() const {
     assert(initialized_);
     return is_retry_config_;
   }
   uint8_t config_id() const {
+    assert(initialized_);
     return config_id_;
   }
 
  private:
-  Array<uint8_t> raw_;
+  Array<uint8_t> ech_config_;
   Span<const uint8_t> public_key_;
   Span<const uint8_t> cipher_suites_;
 

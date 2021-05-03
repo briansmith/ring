@@ -12,13 +12,17 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <openssl/ssl.h>
+
+#include <assert.h>
+
 #include <openssl/bytestring.h>
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
 #include <openssl/hkdf.h>
-#include <openssl/ssl.h>
 
 #include "internal.h"
+#include "../crypto/hpke/internal.h"
 
 
 #if defined(OPENSSL_MSAN)
@@ -28,6 +32,22 @@
 #endif
 
 BSSL_NAMESPACE_BEGIN
+
+static const decltype(&EVP_hpke_aes_128_gcm) kSupportedAEADs[] = {
+    &EVP_hpke_aes_128_gcm,
+    &EVP_hpke_aes_256_gcm,
+    &EVP_hpke_chacha20_poly1305,
+};
+
+static const EVP_HPKE_AEAD *get_ech_aead(uint16_t aead_id) {
+  for (const auto aead_func : kSupportedAEADs) {
+    const EVP_HPKE_AEAD *aead = aead_func();
+    if (aead_id == EVP_HPKE_AEAD_id(aead)) {
+      return aead;
+    }
+  }
+  return nullptr;
+}
 
 // ssl_client_hello_write_without_extensions serializes |client_hello| into
 // |out|, omitting the length-prefixed extensions. It serializes individual
@@ -316,18 +336,18 @@ bool ssl_client_hello_decrypt(
 }
 
 
-bool ECHServerConfig::Init(Span<const uint8_t> raw,
+bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
                            Span<const uint8_t> private_key,
                            bool is_retry_config) {
   assert(!initialized_);
   is_retry_config_ = is_retry_config;
 
-  if (!raw_.CopyFrom(raw)) {
+  if (!ech_config_.CopyFrom(ech_config)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
-  // Read from |raw_| so we can save Spans with the same lifetime as |this|.
-  CBS reader(raw_);
+  // Read from |ech_config_| so we can save Spans with the same lifetime as |this|.
+  CBS reader(ech_config_);
 
   uint16_t version;
   if (!CBS_get_u16(&reader, &version)) {
@@ -386,12 +406,9 @@ bool ECHServerConfig::Init(Span<const uint8_t> raw,
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return false;
     }
-    // This parser fails when it encounters any bytes it does not understand. If
-    // the config lists any unsupported cipher suites, that is a parse error.
-    if (kdf_id != EVP_HPKE_HKDF_SHA256 ||
-        (aead_id != EVP_HPKE_AEAD_AES_128_GCM &&
-         aead_id != EVP_HPKE_AEAD_AES_256_GCM &&
-         aead_id != EVP_HPKE_AEAD_CHACHA20POLY1305)) {
+    // The server promises to support every option in the ECHConfig, so reject
+    // any unsupported cipher suites.
+    if (kdf_id != EVP_HPKE_HKDF_SHA256 || get_ech_aead(aead_id) == nullptr) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
       return false;
     }
@@ -414,10 +431,14 @@ bool ECHServerConfig::Init(Span<const uint8_t> raw,
   return true;
 }
 
-bool ECHServerConfig::SupportsCipherSuite(uint16_t kdf_id,
-                                          uint16_t aead_id) const {
+bool ECHServerConfig::SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id,
+                                   uint16_t aead_id,
+                                   Span<const uint8_t> enc) const {
   assert(initialized_);
+
+  // Check the cipher suite is supported by this ECHServerConfig.
   CBS cbs(cipher_suites_);
+  bool cipher_ok = false;
   while (CBS_len(&cbs) != 0) {
     uint16_t supported_kdf_id, supported_aead_id;
     if (!CBS_get_u16(&cbs, &supported_kdf_id) ||
@@ -425,10 +446,30 @@ bool ECHServerConfig::SupportsCipherSuite(uint16_t kdf_id,
       return false;
     }
     if (kdf_id == supported_kdf_id && aead_id == supported_aead_id) {
-      return true;
+      cipher_ok = true;
+      break;
     }
   }
-  return false;
+  if (!cipher_ok) {
+    return false;
+  }
+
+  static const uint8_t kInfoLabel[] = "tls ech";
+  ScopedCBB info_cbb;
+  if (!CBB_init(info_cbb.get(), sizeof(kInfoLabel) + ech_config_.size()) ||
+      !CBB_add_bytes(info_cbb.get(), kInfoLabel,
+                     sizeof(kInfoLabel) /* includes trailing NUL */) ||
+      !CBB_add_bytes(info_cbb.get(), ech_config_.data(), ech_config_.size())) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return false;
+  }
+
+  assert(kdf_id == EVP_HPKE_HKDF_SHA256);
+  assert(get_ech_aead(aead_id) != NULL);
+  return EVP_HPKE_CTX_setup_base_r_x25519(
+      ctx, EVP_hpke_hkdf_sha256(), get_ech_aead(aead_id), enc.data(),
+      enc.size(), public_key_.data(), public_key_.size(), private_key_,
+      sizeof(private_key_), CBB_data(info_cbb.get()), CBB_len(info_cbb.get()));
 }
 
 BSSL_NAMESPACE_END

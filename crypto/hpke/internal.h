@@ -32,35 +32,44 @@ extern "C" {
 //
 // See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-08.
 
-// EVP_HPKE_DHKEM_* are KEM identifiers.
+
+// Parameters.
+//
+// An HPKE context is parameterized by KEM, KDF, and AEAD algorithms.
+
+typedef struct evp_hpke_kdf_st EVP_HPKE_KDF;
+typedef struct evp_hpke_aead_st EVP_HPKE_AEAD;
+
+// The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
 
-// EVP_HPKE_AEAD_* are AEAD identifiers.
-#define EVP_HPKE_AEAD_AES_128_GCM 0x0001
-#define EVP_HPKE_AEAD_AES_256_GCM 0x0002
-#define EVP_HPKE_AEAD_CHACHA20POLY1305 0x0003
-
-// EVP_HPKE_HKDF_* are HKDF identifiers.
+// The following constants are KDF identifiers.
 #define EVP_HPKE_HKDF_SHA256 0x0001
 
-// EVP_HPKE_MAX_OVERHEAD contains the largest value that
-// |EVP_HPKE_CTX_max_overhead| would ever return for any context.
-#define EVP_HPKE_MAX_OVERHEAD EVP_AEAD_MAX_OVERHEAD
+// The following functions are KDF algorithms which may be used with HPKE.
+OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void);
+
+// EVP_HPKE_KDF_id returns the HPKE KDF identifier for |kdf|.
+OPENSSL_EXPORT uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf);
+
+// The following constants are AEAD identifiers.
+#define EVP_HPKE_AES_128_GCM 0x0001
+#define EVP_HPKE_AES_256_GCM 0x0002
+#define EVP_HPKE_CHACHA20_POLY1305 0x0003
+
+// The following functions are AEAD algorithms which may be used with HPKE.
+OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_aes_128_gcm(void);
+OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_aes_256_gcm(void);
+OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_chacha20_poly1305(void);
+
+// EVP_HPKE_AEAD_id returns the HPKE AEAD identifier for |aead|.
+OPENSSL_EXPORT uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead);
 
 
 // Encryption contexts.
 
 // An |EVP_HPKE_CTX| is an HPKE encryption context.
-typedef struct evp_hpke_ctx_st {
-  const EVP_MD *hkdf_md;
-  EVP_AEAD_CTX aead_ctx;
-  uint16_t kdf_id;
-  uint16_t aead_id;
-  uint8_t base_nonce[EVP_AEAD_MAX_NONCE_LENGTH];
-  uint8_t exporter_secret[EVP_MAX_MD_SIZE];
-  uint64_t seq;
-  int is_sender;
-} EVP_HPKE_CTX;
+typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;
 
 // EVP_HPKE_CTX_init initializes an already-allocated |EVP_HPKE_CTX|. The caller
 // should then use one of the |EVP_HPKE_CTX_setup_*| functions.
@@ -74,12 +83,6 @@ OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
 
 
 // Setting up HPKE contexts.
-//
-// In each of the following functions, |hpke| must have been initialized with
-// |EVP_HPKE_CTX_init|. |kdf_id| selects the KDF for non-KEM HPKE operations and
-// must be one of the |EVP_HPKE_HKDF_*| constants. |aead_id| selects the AEAD
-// for the "open" and "seal" operations and must be one of the |EVP_HPKE_AEAD_*|
-// constants.
 
 // EVP_HPKE_CTX_setup_base_s_x25519 sets up |hpke| as a sender context that can
 // encrypt for the private key corresponding to |peer_public_value| (the
@@ -90,18 +93,19 @@ OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
 // key, to |out_enc|. It will fail if the buffer's size in |out_enc_len| is not
 // exactly |X25519_PUBLIC_VALUE_LEN|.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519(
-    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len, uint16_t kdf_id,
-    uint16_t aead_id, const uint8_t *peer_public_value,
-    size_t peer_public_value_len, const uint8_t *info, size_t info_len);
+    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len,
+    const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_value, size_t peer_public_value_len,
+    const uint8_t *info, size_t info_len);
 
 // EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing behaves like
 // |EVP_HPKE_CTX_setup_base_s_x25519|, but takes a seed value to behave
 // deterministically. This seed is the sender's ephemeral X25519 key.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
-    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len, uint16_t kdf_id,
-    uint16_t aead_id, const uint8_t *peer_public_value,
-    size_t peer_public_value_len, const uint8_t *info, size_t info_len,
-    const uint8_t *seed, size_t seed_len);
+    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len,
+    const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_value, size_t peer_public_value_len,
+    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len);
 
 // EVP_HPKE_CTX_setup_base_r_x25519 sets up |hpke| as a recipient context that
 // can decrypt messages. It returns one on success, and zero otherwise.
@@ -110,10 +114,10 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
 // |enc| is the encapsulated shared secret from the sender. If |enc| is invalid,
 // this function will fail.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_r_x25519(
-    EVP_HPKE_CTX *hpke, uint16_t kdf_id, uint16_t aead_id, const uint8_t *enc,
-    size_t enc_len, const uint8_t *public_key, size_t public_key_len,
-    const uint8_t *private_key, size_t private_key_len, const uint8_t *info,
-    size_t info_len);
+    EVP_HPKE_CTX *hpke, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *enc, size_t enc_len, const uint8_t *public_key,
+    size_t public_key_len, const uint8_t *private_key, size_t private_key_len,
+    const uint8_t *info, size_t info_len);
 
 
 // Using an HPKE context.
@@ -166,28 +170,38 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *hpke, uint8_t *out,
                                        const uint8_t *context,
                                        size_t context_len);
 
+// EVP_HPKE_MAX_OVERHEAD contains the largest value that
+// |EVP_HPKE_CTX_max_overhead| would ever return for any context.
+#define EVP_HPKE_MAX_OVERHEAD EVP_AEAD_MAX_OVERHEAD
+
 // EVP_HPKE_CTX_max_overhead returns the maximum number of additional bytes
 // added by sealing data with |EVP_HPKE_CTX_seal|. The |hpke| context must be
 // set up as a sender.
 OPENSSL_EXPORT size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *hpke);
 
-// EVP_HPKE_CTX_get_aead_id returns |hpke|'s configured AEAD. The returned value
-// is one of the |EVP_HPKE_AEAD_*| constants, or zero if the context has not
-// been set up.
-OPENSSL_EXPORT uint16_t EVP_HPKE_CTX_get_aead_id(const EVP_HPKE_CTX *hpke);
+// EVP_HPKE_CTX_aead returns |hpke|'s configured AEAD, or NULL if the context
+// has not been set up.
+OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *hpke);
 
-// EVP_HPKE_CTX_get_aead_id returns |hpke|'s configured KDF. The returned value
-// is one of the |EVP_HPKE_HKDF_*| constants, or zero if the context has not
-// been set up.
-OPENSSL_EXPORT uint16_t EVP_HPKE_CTX_get_kdf_id(const EVP_HPKE_CTX *hpke);
+// EVP_HPKE_CTX_kdf returns |hpke|'s configured KDF, or NULL if the context
+// has not been set up.
+OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *hpke);
 
-// EVP_HPKE_get_aead returns the AEAD corresponding to |aead_id|, or NULL if
-// |aead_id| is not a known AEAD identifier.
-OPENSSL_EXPORT const EVP_AEAD *EVP_HPKE_get_aead(uint16_t aead_id);
 
-// EVP_HPKE_get_hkdf_md returns the hash function associated with |kdf_id|, or
-// NULL if |kdf_id| is not a known KDF identifier that uses HKDF.
-OPENSSL_EXPORT const EVP_MD *EVP_HPKE_get_hkdf_md(uint16_t kdf_id);
+// Private structures.
+//
+// The following structures are exported so their types are stack-allocatable,
+// but accessing or modifying their fields is forbidden.
+
+struct evp_hpke_ctx_st {
+  const EVP_HPKE_AEAD *aead;
+  const EVP_HPKE_KDF *kdf;
+  EVP_AEAD_CTX aead_ctx;
+  uint8_t base_nonce[EVP_AEAD_MAX_NONCE_LENGTH];
+  uint8_t exporter_secret[EVP_MAX_MD_SIZE];
+  uint64_t seq;
+  int is_sender;
+};
 
 
 #if defined(__cplusplus)

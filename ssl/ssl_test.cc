@@ -1573,7 +1573,7 @@ TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
   ASSERT_TRUE(MakeECHConfig(
       &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
       MakeConstSpan(kECHConfigPublicKey, sizeof(kECHConfigPublicKey) - 1),
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
       /*extensions=*/{}));
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -1640,7 +1640,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
   std::vector<uint8_t> ech_config;
   ASSERT_TRUE(MakeECHConfig(
       &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
-      std::vector<uint16_t>{0x002 /* HKDF-SHA384 */, EVP_HPKE_AEAD_AES_128_GCM},
+      std::vector<uint16_t>{0x002 /* HKDF-SHA384 */, EVP_HPKE_AES_128_GCM},
       /*extensions=*/{}));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
       config_list.get(), /*is_retry_config=*/1, ech_config.data(),
@@ -1660,7 +1660,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
       0x77, 0x0e, 0xe8, 0xd1, 0xc9, 0xce, 0x0a, 0x8b, 0xb4, 0x6a};
   ASSERT_TRUE(MakeECHConfig(
       &ech_config, 0x42, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kP256PublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
       /*extensions=*/{}));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
       config_list.get(), /*is_retry_config=*/1, ech_config.data(),
@@ -1670,7 +1670,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
   static const uint8_t kExtensions[] = {0x00, 0x01, 0x00, 0x00};
   ASSERT_TRUE(MakeECHConfig(
       &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AEAD_AES_128_GCM},
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
       kExtensions));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
       config_list.get(), /*is_retry_config=*/1, ech_config.data(),

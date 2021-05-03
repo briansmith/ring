@@ -636,10 +636,10 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
 
     // Check that ClientECH.cipher_suite is unchanged and that
     // ClientECH.enc is empty.
-    if (kdf_id != EVP_HPKE_CTX_get_kdf_id(hs->ech_hpke_ctx.get()) ||
-        aead_id != EVP_HPKE_CTX_get_aead_id(hs->ech_hpke_ctx.get()) ||
-        config_id != hs->ech_config_id ||
-        CBS_len(&enc) > 0) {
+    if (kdf_id != EVP_HPKE_KDF_id(EVP_HPKE_CTX_kdf(hs->ech_hpke_ctx.get())) ||
+        aead_id !=
+            EVP_HPKE_AEAD_id(EVP_HPKE_CTX_aead(hs->ech_hpke_ctx.get())) ||
+        config_id != hs->ech_config_id || CBS_len(&enc) > 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;

@@ -621,35 +621,10 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     if (hs->ech_server_config_list) {
       for (const ECHServerConfig &ech_config :
            hs->ech_server_config_list->configs) {
-        // Skip this config if the client-provided config_id does not match or
-        // if the client indicated an unsupported HPKE ciphersuite.
-        if (config_id != ech_config.config_id() ||
-            !ech_config.SupportsCipherSuite(kdf_id, aead_id)) {
-          continue;
-        }
-
-        static const uint8_t kInfoLabel[] = "tls ech";
-        ScopedCBB info_cbb;
-        if (!CBB_init(info_cbb.get(),
-                      sizeof(kInfoLabel) + ech_config.raw().size()) ||
-            !CBB_add_bytes(info_cbb.get(), kInfoLabel,
-                           sizeof(kInfoLabel) /* includes trailing NUL */) ||
-            !CBB_add_bytes(info_cbb.get(), ech_config.raw().data(),
-                           ech_config.raw().size())) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-          return ssl_hs_error;
-        }
-
-        // Set up a fresh HPKE context for each decryption attempt.
         hs->ech_hpke_ctx.Reset();
-
-        if (CBS_len(&enc) != X25519_PUBLIC_VALUE_LEN ||
-            !EVP_HPKE_CTX_setup_base_r_x25519(
-                hs->ech_hpke_ctx.get(), kdf_id, aead_id, CBS_data(&enc),
-                CBS_len(&enc), ech_config.public_key().data(),
-                ech_config.public_key().size(), ech_config.private_key().data(),
-                ech_config.private_key().size(), CBB_data(info_cbb.get()),
-                CBB_len(info_cbb.get()))) {
+        if (config_id != ech_config.config_id() ||
+            !ech_config.SetupContext(hs->ech_hpke_ctx.get(), kdf_id, aead_id,
+                                     enc)) {
           // Ignore the error and try another ECHConfig.
           ERR_clear_error();
           continue;
