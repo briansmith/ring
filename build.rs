@@ -19,9 +19,6 @@
 // another for the concrete logging implementation). Instead we use `eprintln!`
 // to log everything to stderr.
 
-// In the `pregenerate_asm_main()` case we don't want to access (Cargo)
-// environment variables at all, so avoid `use std::env` here.
-
 use std::{
     fs::{self, DirEntry},
     io::Write,
@@ -277,6 +274,18 @@ const WINDOWS: &str = "windows";
 const MSVC: &str = "msvc";
 const MSVC_OBJ_OPT: &str = "/Fo";
 const MSVC_OBJ_EXT: &str = "obj";
+
+/// Read an environment variable and tell Cargo that we depend on it.
+///
+/// This needs to be used for any environment variable that isn't a standard
+/// Cargo-supplied variable.
+///
+/// The name is static since we intend to only read a static set of environment
+/// variables.
+fn read_env_var(name: &'static str) -> Result<String, std::env::VarError> {
+    println!("cargo:rerun-if-env-changed={}", name);
+    std::env::var(name)
+}
 
 fn main() {
     if let Ok(package_name) = std::env::var("CARGO_PKG_NAME") {
@@ -761,8 +770,8 @@ fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
     }
 }
 
-fn get_command(var: &str, default: &str) -> String {
-    std::env::var(var).unwrap_or_else(|_| default.into())
+fn get_command(var: &'static str, default: &str) -> String {
+    read_env_var(var).unwrap_or_else(|_| default.into())
 }
 
 // TODO: We should emit `cargo:rerun-if-changed-env` for the various
