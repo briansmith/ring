@@ -1640,7 +1640,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
   std::vector<uint8_t> ech_config;
   ASSERT_TRUE(MakeECHConfig(
       &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHConfigPublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA384, EVP_HPKE_AEAD_AES_128_GCM},
+      std::vector<uint16_t>{0x002 /* HKDF-SHA384 */, EVP_HPKE_AEAD_AES_128_GCM},
       /*extensions=*/{}));
   EXPECT_FALSE(SSL_ECH_SERVER_CONFIG_LIST_add(
       config_list.get(), /*is_retry_config=*/1, ech_config.data(),

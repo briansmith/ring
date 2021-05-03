@@ -43,8 +43,6 @@ extern "C" {
 
 // EVP_HPKE_HKDF_* are HKDF identifiers.
 #define EVP_HPKE_HKDF_SHA256 0x0001
-#define EVP_HPKE_HKDF_SHA384 0x0002
-#define EVP_HPKE_HKDF_SHA512 0x0003
 
 // EVP_HPKE_MAX_OVERHEAD contains the largest value that
 // |EVP_HPKE_CTX_max_overhead| would ever return for any context.

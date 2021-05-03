@@ -260,8 +260,7 @@ TEST(HPKETest, VerifyTestVectors) {
 // generates new keys for each context. Test this codepath by checking we can
 // decrypt our own messages.
 TEST(HPKETest, RoundTrip) {
-  uint16_t kdf_ids[] = {EVP_HPKE_HKDF_SHA256, EVP_HPKE_HKDF_SHA384,
-                        EVP_HPKE_HKDF_SHA512};
+  uint16_t kdf_ids[] = {EVP_HPKE_HKDF_SHA256};
   uint16_t aead_ids[] = {EVP_HPKE_AEAD_AES_128_GCM, EVP_HPKE_AEAD_AES_256_GCM,
                          EVP_HPKE_AEAD_CHACHA20POLY1305};
 
@@ -278,9 +277,13 @@ TEST(HPKETest, RoundTrip) {
   X25519_keypair(public_key_r, secret_key_r);
 
   for (uint16_t kdf_id : kdf_ids) {
+    SCOPED_TRACE(kdf_id);
     for (uint16_t aead_id : aead_ids) {
+      SCOPED_TRACE(aead_id);
       for (const Span<const uint8_t> &info : info_values) {
+        SCOPED_TRACE(Bytes(info));
         for (const Span<const uint8_t> &ad : ad_values) {
+          SCOPED_TRACE(Bytes(ad));
           // Set up the sender.
           ScopedEVP_HPKE_CTX sender_ctx;
           uint8_t enc[X25519_PUBLIC_VALUE_LEN];
@@ -340,13 +343,14 @@ TEST(HPKETest, X25519EncapSmallOrderPoint) {
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
   X25519_keypair(public_key_r, secret_key_r);
 
-  uint16_t kdf_ids[] = {EVP_HPKE_HKDF_SHA256, EVP_HPKE_HKDF_SHA384,
-                        EVP_HPKE_HKDF_SHA512};
+  uint16_t kdf_ids[] = {EVP_HPKE_HKDF_SHA256};
   uint16_t aead_ids[] = {EVP_HPKE_AEAD_AES_128_GCM, EVP_HPKE_AEAD_AES_256_GCM,
                          EVP_HPKE_AEAD_CHACHA20POLY1305};
 
   for (uint16_t kdf_id : kdf_ids) {
+    SCOPED_TRACE(kdf_id);
     for (uint16_t aead_id : aead_ids) {
+      SCOPED_TRACE(aead_id);
       // Set up the sender, passing in kSmallOrderPoint as |peer_public_value|.
       ScopedEVP_HPKE_CTX sender_ctx;
       uint8_t enc[X25519_PUBLIC_VALUE_LEN];

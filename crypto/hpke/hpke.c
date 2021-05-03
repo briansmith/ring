@@ -148,10 +148,6 @@ const EVP_MD *EVP_HPKE_get_hkdf_md(uint16_t kdf_id) {
   switch (kdf_id) {
     case EVP_HPKE_HKDF_SHA256:
       return EVP_sha256();
-    case EVP_HPKE_HKDF_SHA384:
-      return EVP_sha384();
-    case EVP_HPKE_HKDF_SHA512:
-      return EVP_sha512();
   }
   OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
   return NULL;
