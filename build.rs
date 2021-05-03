@@ -288,14 +288,16 @@ fn read_env_var(name: &'static str) -> Result<String, std::env::VarError> {
 }
 
 fn main() {
-    if let Ok(package_name) = std::env::var("CARGO_PKG_NAME") {
-        if package_name == "ring" {
-            ring_build_rs_main();
-            return;
+    const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
+    match read_env_var(RING_PREGENERATE_ASM).as_deref() {
+        Ok("1") => {
+            pregenerate_asm_main();
+        }
+        Err(std::env::VarError::NotPresent) => ring_build_rs_main(),
+        _ => {
+            panic!("${} has an invalid value", RING_PREGENERATE_ASM);
         }
     }
-
-    pregenerate_asm_main();
 }
 
 fn ring_build_rs_main() {
@@ -334,6 +336,8 @@ fn ring_build_rs_main() {
 }
 
 fn pregenerate_asm_main() {
+    println!("cargo:rustc-cfg=pregenerate_asm_only");
+
     let pregenerated = PathBuf::from(PREGENERATED);
     std::fs::create_dir(&pregenerated).unwrap();
     let pregenerated_tmp = pregenerated.join("tmp");
