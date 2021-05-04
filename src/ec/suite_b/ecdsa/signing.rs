@@ -105,6 +105,7 @@ impl EcdsaKeyPair {
     pub fn from_pkcs8(
         alg: &'static EcdsaSigningAlgorithm,
         pkcs8: &[u8],
+        rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::KeyRejected> {
         let key_pair = ec::suite_b::key_pair_from_pkcs8(
             alg.curve,
@@ -112,8 +113,7 @@ impl EcdsaKeyPair {
             untrusted::Input::from(pkcs8),
             cpu::features(),
         )?;
-        let rng = rand::SystemRandom::new(); // TODO: make this a parameter.
-        Self::new(alg, key_pair, &rng)
+        Self::new(alg, key_pair, rng)
     }
 
     /// Constructs an ECDSA key pair from the private key and public key bytes
@@ -136,6 +136,7 @@ impl EcdsaKeyPair {
         alg: &'static EcdsaSigningAlgorithm,
         private_key: &[u8],
         public_key: &[u8],
+        rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::KeyRejected> {
         let key_pair = ec::suite_b::key_pair_from_bytes(
             alg.curve,
@@ -143,8 +144,7 @@ impl EcdsaKeyPair {
             untrusted::Input::from(public_key),
             cpu::features(),
         )?;
-        let rng = rand::SystemRandom::new(); // TODO: make this a parameter.
-        Self::new(alg, key_pair, &rng)
+        Self::new(alg, key_pair, rng)
     }
 
     fn new(
@@ -515,10 +515,12 @@ static EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
 
 #[cfg(test)]
 mod tests {
-    use crate::{signature, test};
+    use crate::{rand, signature, test};
 
     #[test]
     fn signature_ecdsa_sign_fixed_test() {
+        let rng = rand::SystemRandom::new();
+
         test::run(
             test_file!("ecdsa_sign_fixed_tests.txt"),
             |section, test_case| {
@@ -542,7 +544,8 @@ mod tests {
                 };
 
                 let private_key =
-                    signature::EcdsaKeyPair::from_private_key_and_public_key(alg, &d, &q).unwrap();
+                    signature::EcdsaKeyPair::from_private_key_and_public_key(alg, &d, &q, &rng)
+                        .unwrap();
                 let rng = test::rand::FixedSliceRandom { bytes: &k };
 
                 let actual_result = private_key
@@ -558,6 +561,8 @@ mod tests {
 
     #[test]
     fn signature_ecdsa_sign_asn1_test() {
+        let rng = rand::SystemRandom::new();
+
         test::run(
             test_file!("ecdsa_sign_asn1_tests.txt"),
             |section, test_case| {
@@ -581,7 +586,8 @@ mod tests {
                 };
 
                 let private_key =
-                    signature::EcdsaKeyPair::from_private_key_and_public_key(alg, &d, &q).unwrap();
+                    signature::EcdsaKeyPair::from_private_key_and_public_key(alg, &d, &q, &rng)
+                        .unwrap();
                 let rng = test::rand::FixedSliceRandom { bytes: &k };
 
                 let actual_result = private_key
