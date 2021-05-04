@@ -109,6 +109,116 @@ fn ecdsa_generate_pkcs8_test() {
 }
 
 #[test]
+fn ecdsa_from_private_key_and_public_key_test() {
+    test::run(
+        test_file!("ecdsa_from_private_key_and_public_key_test.txt"),
+        |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let (this_fixed, this_asn1) = match curve_name.as_str() {
+                "P-256" => (
+                    &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                    &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                ),
+                "P-384" => (
+                    &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+                    &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                ),
+                _ => unreachable!(),
+            };
+
+            let private_key = test_case.consume_bytes("PrivateKey");
+            let public_key = test_case.consume_bytes("PublicKey");
+            let error = test_case.consume_optional_string("Error");
+
+            match (
+                signature::EcdsaKeyPair::from_private_key_and_public_key(
+                    this_fixed,
+                    &private_key,
+                    &public_key,
+                ),
+                error.clone(),
+            ) {
+                (Ok(_), None) => {}
+                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+            };
+
+            match (
+                signature::EcdsaKeyPair::from_private_key_and_public_key(
+                    this_asn1,
+                    &private_key,
+                    &public_key,
+                ),
+                error.clone(),
+            ) {
+                (Ok(_), None) => {}
+                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+            };
+
+            Ok(())
+        },
+    );
+}
+
+#[test]
+fn ecdsa_from_private_key_unchecked_test() {
+    test::run(
+        test_file!("ecdsa_from_private_key_unchecked_tests.txt"),
+        |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let (this_fixed, this_asn1) = match curve_name.as_str() {
+                "P-256" => (
+                    &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                    &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                ),
+                "P-384" => (
+                    &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+                    &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                ),
+                _ => unreachable!(),
+            };
+
+            let private_key = test_case.consume_bytes("PrivateKey");
+            let public_key = test_case.consume_bytes("PublicKey");
+            let error = test_case.consume_optional_string("Error");
+
+            match (
+                signature::EcdsaKeyPair::from_private_key_unchecked(this_fixed, &private_key),
+                error.clone(),
+            ) {
+                (Ok(key_pair), None) => {
+                    assert_eq!(key_pair.public_key().as_ref(), public_key.as_slice());
+                }
+                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+            };
+
+            match (
+                signature::EcdsaKeyPair::from_private_key_unchecked(this_asn1, &private_key),
+                error.clone(),
+            ) {
+                (Ok(key_pair), None) => {
+                    assert_eq!(key_pair.public_key().as_ref(), public_key.as_slice());
+                }
+                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+            };
+
+            Ok(())
+        },
+    );
+}
+
+#[test]
 fn signature_ecdsa_verify_asn1_test() {
     test::run(
         test_file!("ecdsa_verify_asn1_tests.txt"),

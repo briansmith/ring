@@ -1,0 +1,33 @@
+# Correctly encoded P-256 private key
+Curve = P-256
+PrivateKey = 708309a7449e156b0db70e5b52e606c7e094ed676ce8953bf6c14757c826f590
+PublicKey = 0429578c7ab6ce0d11493c95d5ea05d299d536801ca9cbd50e9924e43b733b83ab08c8049879c6278b2273348474158515accaa38344106ef96803c5a05adc4800
+
+# Short P-256 private key.
+Curve = P-256
+PrivateKey = 708309a7449e156b0db70e5b52e606c7e094ed676ce8953bf6c14757c826f5
+PublicKey = 00
+Error = InvalidEncoding
+
+# P-384 private key loaded as P-256 key.
+Curve = P-256
+PrivateKey = 218ee54a71ef2ccf012aca231fee28a2c665fc395ff5cd20bde9b8df598c282664abf9159c5b3923132983f945056d93
+PublicKey = 00
+Error = InvalidEncoding
+
+# Correctly encoded P-384 private key
+Curve = P-384
+PrivateKey = 218ee54a71ef2ccf012aca231fee28a2c665fc395ff5cd20bde9b8df598c282664abf9159c5b3923132983f945056d93
+PublicKey = 0401989ff07a7a452d8084937448be946bfedac4049cea34b3db6f7c91d07d69e926cce0af3d6e88855a28120cf3dba8dfeb064e029d7539d4b301aabafe8de8870162deffe6383bc63cc005add6ee1d5ced4a5761219c60cd58ad5b2a7c74aaa9
+
+# Short P-384 key.
+Curve = P-384
+PrivateKey = 218ee5
+PublicKey = 00
+Error = InvalidEncoding
+
+# P-256 key loaded as P-384 key
+Curve = P-384
+PrivateKey = 708309a7449e156b0db70e5b52e606c7e094ed676ce8953bf6c14757c826f590
+PublicKey = 00
+Error = InvalidEncoding

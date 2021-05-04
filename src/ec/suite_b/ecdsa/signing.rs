@@ -137,14 +137,42 @@ impl EcdsaKeyPair {
         private_key: &[u8],
         public_key: &[u8],
     ) -> Result<Self, error::KeyRejected> {
-        let key_pair = ec::suite_b::key_pair_from_bytes(
+        let pair = Self::from_private_key_unchecked(alg, private_key)?;
+
+        if public_key != pair.public_key.as_ref() {
+            let err = if public_key.len() != pair.public_key.as_ref().len() {
+                error::KeyRejected::invalid_encoding()
+            } else {
+                error::KeyRejected::inconsistent_components()
+            };
+            return Err(err);
+        }
+        Ok(pair)
+    }
+
+    /// Constructs an ECDSA key pair direclty from the private key bytes.
+    ///
+    /// It is recommended to use `EcdsaKeyPair::from_pkcs8()` instead. When
+    /// that is not practical, it is recommended to use
+    /// `EcdsaKeyPair::from_private_key_and_public_key` instead.
+    ///
+    /// Since the public key is not given, the public key will be computed from
+    /// the private key. It is not possible to detect misuse or corruption of
+    /// the private key since the public key isn't given as input.
+    pub fn from_private_key_unchecked(
+        alg: &'static EcdsaSigningAlgorithm,
+        private_key: &[u8],
+    ) -> Result<Self, error::KeyRejected> {
+        let rng = rand::SystemRandom::new(); // TODO: make this a parameter.
+        let private_key = ec::Seed::from_bytes(
             alg.curve,
             untrusted::Input::from(private_key),
-            untrusted::Input::from(public_key),
             cpu::features(),
-        )?;
-        let rng = rand::SystemRandom::new(); // TODO: make this a parameter.
-        Self::new(alg, key_pair, &rng)
+        )
+        .map_err(|_| error::KeyRejected::invalid_encoding())?;
+        ec::KeyPair::derive(private_key)
+            .map_err(|_| error::KeyRejected::invalid_encoding())
+            .and_then(|key_pair| Self::new(alg, key_pair, &rng))
     }
 
     fn new(
