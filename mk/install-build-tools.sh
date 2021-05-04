@@ -71,6 +71,12 @@ case $target in
     gcc-mipsel-linux-gnu \
     libc6-dev-mipsel-cross
   ;;
+--target=mips64el-unknown-linux-gnu)
+  install_packages \
+    qemu-user \
+    gcc-mips64el-linux-gnu \
+    libc6-dev-mips64el-cross
+  ;;
 --target=wasm32-unknown-unknown)
   # The version of wasm-bindgen-cli must match the wasm-bindgen version.
   wasm_bindgen_version=$(cargo metadata --format-version 1 | jq -r '.packages | map(select( .name == "wasm-bindgen")) | map(.version) | .[0]')

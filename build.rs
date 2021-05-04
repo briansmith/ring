@@ -30,6 +30,8 @@ const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
+const MIPS: &str = "mips";
+const MIPS64: &str = "mips64";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
@@ -40,12 +42,12 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/poly1305/poly1305.c"),
 
-    (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/curve25519/curve25519.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/p256.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/crypto.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/curve25519/curve25519.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
+    (&[AARCH64, ARM, MIPS, MIPS64, X86_64, X86], "crypto/fipsmodule/ec/p256.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -87,6 +89,8 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+
+    (&[MIPS, MIPS64], "crypto/fipsmodule/bn/asm/mips-mont.pl"),
 ];
 
 const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
@@ -201,6 +205,20 @@ const ASM_TARGETS: &[AsmTarget] = &[
         preassemble: false,
     },
     AsmTarget {
+        oss: LINUX_ABI,
+        arch: "mips",
+        perlasm_format: "elf",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
+        oss: LINUX_ABI,
+        arch: "mips64",
+        perlasm_format: "elf",
+        asm_extension: "S",
+        preassemble: false,
+    },
+    AsmTarget {
         oss: MACOS_ABI,
         arch: "aarch64",
         perlasm_format: "ios64",
@@ -309,6 +327,7 @@ fn ring_build_rs_main() {
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+    let endian = env::var("CARGO_CFG_TARGET_ENDIAN").unwrap();
     let (obj_ext, obj_opt) = if env == MSVC {
         (MSVC_OBJ_EXT, MSVC_OBJ_OPT)
     } else {
@@ -322,6 +341,7 @@ fn ring_build_rs_main() {
 
     let target = Target {
         arch,
+        endian,
         os,
         env,
         obj_ext,
@@ -373,6 +393,7 @@ fn pregenerate_asm_main() {
 
 struct Target {
     arch: String,
+    endian: String,
     os: String,
     env: String,
     obj_ext: &'static str,
@@ -389,6 +410,10 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path, ring_cor
         if &target.arch == "wasm32" {
             return;
         }
+    }
+
+    if target.arch == "mips" && target.endian == "big" {
+        panic!("MIPS Big-Endian detected. Stoping compilation as BoringSSL code are not available for this platform");
     }
 
     let asm_target = ASM_TARGETS.iter().find(|asm_target| {

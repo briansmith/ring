@@ -21,6 +21,7 @@ rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
 qemu_mipsel="qemu-system-mipsel -L /usr/mipsel-linux-gnu"
+qemu_mips64el="qemu-system-mips64el -L /usr/mips64el-linux-gnu"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
@@ -93,6 +94,12 @@ case $target in
     export AR_mipsel_unknown_linux_gnu=mipsel-linux-gnu-gcc-ar
     export CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_LINKER=mipsel-linux-gnu-gcc
     export CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_RUNNER="$qemu_mipsel"
+    ;;
+  mips64el-unknown-linux-gnuabi64)
+    export CC_mips64el_unknown_linux_gnuabi64=mips64el-linux-gnu-gcc
+    export AR_mips64el_unknown_linux_gnuabi64=mips64el-linux-gnu-gcc-ar
+    export CARGO_TARGET_MIPS64EL_UNKNOWN_LINUX_GNUABI64_LINKER=mips64el-linux-gnu-gcc
+    export CARGO_TARGET_MIPS64EL_UNKNOWN_LINUX_GNUABI64_RUNNER="$qemu_mips64el"
     ;;
   x86_64-unknown-linux-musl)
     export CC_x86_64_unknown_linux_musl=clang-$llvm_version
