@@ -12,7 +12,7 @@ readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
 
 # Keep in sync with `links` below.
-version = "0.17.0-alpha.9"
+version = "0.17.0-not-released-yet"
 
 # Keep in sync with `version` above.
 #
@@ -21,7 +21,7 @@ version = "0.17.0-alpha.9"
 # build.rs uses this to derive the prefix for FFI symbols and the file names
 # of the FFI libraries, so it must be a valid identifier prefix and a valid
 # filename prefix.
-links = "ring_core_0_17_0_alpha_9"
+links = "ring_core_0_17_0_not_released_yet"
 
 include = [
     "LICENSE",
