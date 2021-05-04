@@ -1431,10 +1431,11 @@ bool tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
 
 class ECHServerConfig {
  public:
+  static constexpr bool kAllowUniquePtr = true;
   ECHServerConfig() : is_retry_config_(false), initialized_(false) {}
-  ECHServerConfig(ECHServerConfig &&other) = default;
+  ECHServerConfig(const ECHServerConfig &other) = delete;
   ~ECHServerConfig() = default;
-  ECHServerConfig &operator=(ECHServerConfig &&) = default;
+  ECHServerConfig &operator=(ECHServerConfig &&) = delete;
 
   // Init parses |ech_config| as an ECHConfig and saves a copy of |private_key|.
   // It returns true on success and false on error. It will also error if
@@ -1464,13 +1465,8 @@ class ECHServerConfig {
 
  private:
   Array<uint8_t> ech_config_;
-  Span<const uint8_t> public_key_;
   Span<const uint8_t> cipher_suites_;
-
-  // private_key_ is the key corresponding to |public_key|. For clients, it must
-  // be empty (|private_key_present_ == false|). For servers, it must be a valid
-  // X25519 private key.
-  uint8_t private_key_[X25519_PRIVATE_KEY_LEN];
+  ScopedEVP_HPKE_KEY key_;
 
   uint8_t config_id_;
 
@@ -3798,7 +3794,7 @@ struct ssl_ech_server_config_list_st {
   ssl_ech_server_config_list_st &operator=(
       const ssl_ech_server_config_list_st &) = delete;
 
-  bssl::GrowableArray<bssl::ECHServerConfig> configs;
+  bssl::GrowableArray<bssl::UniquePtr<bssl::ECHServerConfig>> configs;
   CRYPTO_refcount_t references = 1;
 
  private:

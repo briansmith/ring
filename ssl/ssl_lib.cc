@@ -2217,10 +2217,13 @@ int SSL_ECH_SERVER_CONFIG_LIST_add(SSL_ECH_SERVER_CONFIG_LIST *configs,
                                    size_t ech_config_len,
                                    const uint8_t *private_key,
                                    size_t private_key_len) {
-  ECHServerConfig parsed_config;
-  if (!parsed_config.Init(MakeConstSpan(ech_config, ech_config_len),
-                          MakeConstSpan(private_key, private_key_len),
-                          !!is_retry_config)) {
+  UniquePtr<ECHServerConfig> parsed_config = MakeUnique<ECHServerConfig>();
+  if (!parsed_config) {
+    return 0;
+  }
+  if (!parsed_config->Init(MakeConstSpan(ech_config, ech_config_len),
+                           MakeConstSpan(private_key, private_key_len),
+                           !!is_retry_config)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;
   }
@@ -2234,8 +2237,8 @@ int SSL_ECH_SERVER_CONFIG_LIST_add(SSL_ECH_SERVER_CONFIG_LIST *configs,
 int SSL_CTX_set1_ech_server_config_list(SSL_CTX *ctx,
                                         SSL_ECH_SERVER_CONFIG_LIST *list) {
   bool has_retry_config = false;
-  for (const bssl::ECHServerConfig &config : list->configs) {
-    if (config.is_retry_config()) {
+  for (const auto &config : list->configs) {
+    if (config->is_retry_config()) {
       has_retry_config = true;
       break;
     }

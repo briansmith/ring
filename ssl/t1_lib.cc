@@ -761,12 +761,12 @@ static bool ext_ech_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(&body, &retry_configs)) {
     return false;
   }
-  for (const ECHServerConfig &config : hs->ech_server_config_list->configs) {
-    if (!config.is_retry_config()) {
+  for (const auto &config : hs->ech_server_config_list->configs) {
+    if (!config->is_retry_config()) {
       continue;
     }
-    if (!CBB_add_bytes(&retry_configs, config.ech_config().data(),
-                       config.ech_config().size())) {
+    if (!CBB_add_bytes(&retry_configs, config->ech_config().data(),
+                       config->ech_config().size())) {
       return false;
     }
   }

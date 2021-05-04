@@ -1601,7 +1601,8 @@ TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
 
   uint32_t err = ERR_peek_error();
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG, ERR_GET_REASON(err));
+  EXPECT_EQ(SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH,
+            ERR_GET_REASON(err));
   ERR_clear_error();
 }
 

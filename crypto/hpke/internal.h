@@ -37,11 +37,21 @@ extern "C" {
 //
 // An HPKE context is parameterized by KEM, KDF, and AEAD algorithms.
 
+typedef struct evp_hpke_kem_st EVP_HPKE_KEM;
 typedef struct evp_hpke_kdf_st EVP_HPKE_KDF;
 typedef struct evp_hpke_aead_st EVP_HPKE_AEAD;
 
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
+
+// The following functions are KEM algorithms which may be used with HPKE. Note
+// that, while some HPKE KEMs use KDFs internally, this is separate from the
+// |EVP_HPKE_KDF| selection.
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
+
+// EVP_HPKE_KEM_id returns the HPKE KEM identifier for |kem|, which
+// will be one of the |EVP_HPKE_KEM_*| constants.
+OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 
 // The following constants are KDF identifiers.
 #define EVP_HPKE_HKDF_SHA256 0x0001
@@ -66,62 +76,116 @@ OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_chacha20_poly1305(void);
 OPENSSL_EXPORT uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead);
 
 
+// Recipient keys.
+//
+// An HPKE recipient maintains a long-term KEM key. This library represents keys
+// with the |EVP_HPKE_KEY| type.
+
+typedef struct evp_hpke_key_st EVP_HPKE_KEY;
+
+// EVP_HPKE_KEY_zero sets an uninitialized |EVP_HPKE_KEY| to the zero state. The
+// caller should then use |EVP_HPKE_KEY_init| to finish initializing |key|.
+//
+// It is safe, but not necessary to call |EVP_HPKE_KEY_cleanup| in this state.
+// This may be used for more uniform cleanup of |EVP_HPKE_KEY|.
+OPENSSL_EXPORT void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key);
+
+// EVP_HPKE_KEY_cleanup releases memory referenced by |key|.
+OPENSSL_EXPORT void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key);
+
+// EVP_HPKE_KEY_init decodes |priv_key| as a private key for |kem| and
+// initializes |key| with the result. It returns one on success and zero if
+// |priv_key| was invalid. On success, the caller must call
+// |EVP_HPKE_KEY_cleanup| to release the key. On failure, calling
+// |EVP_HPKE_KEY_cleanup| is safe, but not necessary.
+OPENSSL_EXPORT int EVP_HPKE_KEY_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
+                                     const uint8_t *priv_key,
+                                     size_t priv_key_len);
+
+// EVP_HPKE_MAX_PUBLIC_KEY_LENGTH is the maximum length of a public key for all
+// KEMs supported by this library.
+#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 32
+
+// EVP_HPKE_KEY_public_key writes |key|'s public key to |out| and sets
+// |*out_len| to the number of bytes written. On success, it returns one and
+// writes at most |max_out| bytes. If |max_out| is too small, it returns zero.
+// Setting |max_out| to |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH| will ensure the public
+// key fits.
+OPENSSL_EXPORT int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key,
+                                           uint8_t *out, size_t *out_len,
+                                           size_t max_out);
+
+
 // Encryption contexts.
 
 // An |EVP_HPKE_CTX| is an HPKE encryption context.
 typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;
 
-// EVP_HPKE_CTX_init initializes an already-allocated |EVP_HPKE_CTX|. The caller
-// should then use one of the |EVP_HPKE_CTX_setup_*| functions.
+// EVP_HPKE_CTX_zero sets an uninitialized |EVP_HPKE_CTX| to the zero state. The
+// caller should then use one of the |EVP_HPKE_CTX_setup_*| functions to finish
+// setting up |ctx|.
 //
 // It is safe, but not necessary to call |EVP_HPKE_CTX_cleanup| in this state.
-OPENSSL_EXPORT void EVP_HPKE_CTX_init(EVP_HPKE_CTX *ctx);
+// This may be used for more uniform cleanup of |EVP_HPKE_CTX|.
+OPENSSL_EXPORT void EVP_HPKE_CTX_zero(EVP_HPKE_CTX *ctx);
 
 // EVP_HPKE_CTX_cleanup releases memory referenced by |ctx|. |ctx| must have
-// been initialized with |EVP_HPKE_CTX_init|.
+// been initialized with |EVP_HPKE_CTX_zero| or one of the
+// |EVP_HPKE_CTX_setup_*| functions.
 OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
 
+// EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
+// shared secret, for all supported KEMs in this library.
+#define EVP_HPKE_MAX_ENC_LENGTH 32
 
-// Setting up HPKE contexts.
-
-// EVP_HPKE_CTX_setup_base_s_x25519 sets up |hpke| as a sender context that can
-// encrypt for the private key corresponding to |peer_public_value| (the
-// recipient's public key). It returns one on success, and zero otherwise. Note
-// that this function will fail if |peer_public_value| is invalid.
+// EVP_HPKE_CTX_setup_sender implements the SetupBaseS HPKE operation. It
+// encapsulates a shared secret for |peer_public_key| and sets up |hpke| as a
+// sender context. It writes the encapsulated shared secret to |out_enc| and
+// sets |*out_enc_len| to the number of bytes written. It writes at most
+// |max_enc| bytes and fails if the buffer is too small. Setting |max_enc| to at
+// least |EVP_HPKE_MAX_ENC_LENGTH| will ensure the buffer is large enough.
 //
-// This function writes the encapsulated shared secret to |out_enc| and sets
-// |*out_enc_len| to the number of bytes written. It writes at most |max_enc|
-// bytes and fails if the buffer is too small. |max_enc| must be at least
-// |X25519_PUBLIC_VALUE_LEN| to ensure the buffer is large enough.
-OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519(
+// This function returns one on success and zero on error. Note that
+// |peer_public_key| may be invalid, in which case this function will return an
+// error.
+//
+// On success, callers may call |EVP_HPKE_CTX_seal| to encrypt messages for the
+// recipient. Callers must then call |EVP_HPKE_CTX_cleanup| when done. On
+// failure, calling |EVP_HPKE_CTX_cleanup| is safe, but not required.
+OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender(
     EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
-    const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
-    const uint8_t *peer_public_value, size_t peer_public_value_len,
+    const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *info, size_t info_len);
 
-// EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing behaves like
-// |EVP_HPKE_CTX_setup_base_s_x25519|, but takes a seed value to behave
-// deterministically. This seed is the sender's ephemeral X25519 key.
-OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
+// EVP_HPKE_CTX_setup_sender_with_seed_for_testing behaves like
+// |EVP_HPKE_CTX_setup_sender|, but takes a seed to behave deterministically.
+// The seed's format depends on |kem|. For X25519, it is the sender's
+// ephemeral private key.
+OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
     EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
-    const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
-    const uint8_t *peer_public_value, size_t peer_public_value_len,
+    const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len);
 
-// EVP_HPKE_CTX_setup_base_r_x25519 sets up |hpke| as a recipient context that
-// can decrypt messages. It returns one on success, and zero otherwise.
+// EVP_HPKE_CTX_setup_recipient implements the SetupBaseR HPKE operation. It
+// decapsulates the shared secret in |enc| with |key| and sets up |hpke| as a
+// recipient context. It returns one on success and zero on failure. Note that
+// |enc| may be invalid, in which case this function will return an error.
 //
-// The recipient's keypair is composed of |public_key| and |private_key|, and
-// |enc| is the encapsulated shared secret from the sender. If |enc| is invalid,
-// this function will fail.
-OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_r_x25519(
-    EVP_HPKE_CTX *hpke, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
-    const uint8_t *enc, size_t enc_len, const uint8_t *public_key,
-    size_t public_key_len, const uint8_t *private_key, size_t private_key_len,
+// On success, callers may call |EVP_HPKE_CTX_open| to decrypt messages from the
+// sender. Callers must then call |EVP_HPKE_CTX_cleanup| when done. On failure,
+// calling |EVP_HPKE_CTX_cleanup| is safe, but not required.
+OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
+    EVP_HPKE_CTX *hpke, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
+    const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
     const uint8_t *info, size_t info_len);
 
 
 // Using an HPKE context.
+//
+// Once set up, callers may encrypt or decrypt with an |EVP_HPKE_CTX| using the
+// following functions.
 
 // EVP_HPKE_CTX_open uses the HPKE context |hpke| to authenticate |in_len| bytes
 // from |in| and |ad_len| bytes from |ad| and to decrypt at most |in_len| bytes
@@ -204,6 +268,12 @@ struct evp_hpke_ctx_st {
   int is_sender;
 };
 
+struct evp_hpke_key_st {
+  const EVP_HPKE_KEM *kem;
+  uint8_t private_key[X25519_PRIVATE_KEY_LEN];
+  uint8_t public_key[X25519_PUBLIC_VALUE_LEN];
+};
+
 
 #if defined(__cplusplus)
 }  // extern C
@@ -215,8 +285,11 @@ extern "C++" {
 BSSL_NAMESPACE_BEGIN
 
 using ScopedEVP_HPKE_CTX =
-    internal::StackAllocated<EVP_HPKE_CTX, void, EVP_HPKE_CTX_init,
+    internal::StackAllocated<EVP_HPKE_CTX, void, EVP_HPKE_CTX_zero,
                              EVP_HPKE_CTX_cleanup>;
+using ScopedEVP_HPKE_KEY =
+    internal::StackAllocated<EVP_HPKE_KEY, void, EVP_HPKE_KEY_zero,
+                             EVP_HPKE_KEY_cleanup>;
 
 BSSL_NAMESPACE_END
 

@@ -365,10 +365,9 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
   }
 
   CBS ech_config_contents, public_name, public_key, cipher_suites, extensions;
-  uint8_t config_id;
   uint16_t kem_id, max_name_len;
   if (!CBS_get_u16_length_prefixed(&reader, &ech_config_contents) ||
-      !CBS_get_u8(&ech_config_contents, &config_id) ||
+      !CBS_get_u8(&ech_config_contents, &config_id_) ||
       !CBS_get_u16(&ech_config_contents, &kem_id) ||
       !CBS_get_u16_length_prefixed(&ech_config_contents, &public_key) ||
       CBS_len(&public_key) == 0 ||
@@ -383,14 +382,6 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
-  config_id_ = config_id;
-  // We only support one KEM, and the KEM decides the length of |public_key|.
-  if (CBS_len(&public_key) != X25519_PUBLIC_VALUE_LEN ||
-      kem_id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
-    return false;
-  }
-  public_key_ = public_key;
 
   // We do not support any ECHConfig extensions, so |extensions| must be empty.
   if (CBS_len(&extensions) != 0) {
@@ -414,18 +405,29 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
     }
   }
 
-  if (private_key.size() != X25519_PRIVATE_KEY_LEN) {
+  // We only support one KEM.
+  if (kem_id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
+    return false;
+  }
+  if (!EVP_HPKE_KEY_init(key_.get(), EVP_hpke_x25519_hkdf_sha256(),
+                         private_key.data(), private_key.size())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
-  uint8_t expected_public_key[X25519_PUBLIC_VALUE_LEN];
-  X25519_public_from_private(expected_public_key, private_key.data());
-  if (public_key_ != expected_public_key) {
+  // Check the public key in the ECHConfig matches the private key.
+  uint8_t expected_public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t expected_public_key_len;
+  if (!EVP_HPKE_KEY_public_key(key_.get(), expected_public_key,
+                               &expected_public_key_len,
+                               sizeof(expected_public_key))) {
+    return false;
+  }
+  if (MakeConstSpan(expected_public_key, expected_public_key_len) !=
+      public_key) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH);
     return false;
   }
-  assert(sizeof(private_key_) == private_key.size());
-  OPENSSL_memcpy(private_key_, private_key.data(), private_key.size());
 
   initialized_ = true;
   return true;
@@ -466,10 +468,9 @@ bool ECHServerConfig::SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id,
 
   assert(kdf_id == EVP_HPKE_HKDF_SHA256);
   assert(get_ech_aead(aead_id) != NULL);
-  return EVP_HPKE_CTX_setup_base_r_x25519(
-      ctx, EVP_hpke_hkdf_sha256(), get_ech_aead(aead_id), enc.data(),
-      enc.size(), public_key_.data(), public_key_.size(), private_key_,
-      sizeof(private_key_), CBB_data(info_cbb.get()), CBB_len(info_cbb.get()));
+  return EVP_HPKE_CTX_setup_recipient(
+      ctx, key_.get(), EVP_hpke_hkdf_sha256(), get_ech_aead(aead_id), enc.data(),
+      enc.size(), CBB_data(info_cbb.get()), CBB_len(info_cbb.get()));
 }
 
 BSSL_NAMESPACE_END

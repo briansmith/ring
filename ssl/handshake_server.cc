@@ -619,12 +619,11 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     }
 
     if (hs->ech_server_config_list) {
-      for (const ECHServerConfig &ech_config :
-           hs->ech_server_config_list->configs) {
+      for (const auto &ech_config : hs->ech_server_config_list->configs) {
         hs->ech_hpke_ctx.Reset();
-        if (config_id != ech_config.config_id() ||
-            !ech_config.SetupContext(hs->ech_hpke_ctx.get(), kdf_id, aead_id,
-                                     enc)) {
+        if (config_id != ech_config->config_id() ||
+            !ech_config->SetupContext(hs->ech_hpke_ctx.get(), kdf_id, aead_id,
+                                      enc)) {
           // Ignore the error and try another ECHConfig.
           ERR_clear_error();
           continue;
