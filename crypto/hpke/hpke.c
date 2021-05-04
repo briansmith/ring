@@ -292,7 +292,7 @@ void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx) {
 }
 
 int EVP_HPKE_CTX_setup_base_s_x25519(EVP_HPKE_CTX *hpke, uint8_t *out_enc,
-                                     size_t out_enc_len,
+                                     size_t *out_enc_len, size_t max_enc,
                                      const EVP_HPKE_KDF *kdf,
                                      const EVP_HPKE_AEAD *aead,
                                      const uint8_t *peer_public_value,
@@ -301,17 +301,17 @@ int EVP_HPKE_CTX_setup_base_s_x25519(EVP_HPKE_CTX *hpke, uint8_t *out_enc,
   uint8_t seed[X25519_PRIVATE_KEY_LEN];
   RAND_bytes(seed, sizeof(seed));
   return EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
-      hpke, out_enc, out_enc_len, kdf, aead, peer_public_value,
+      hpke, out_enc, out_enc_len, max_enc, kdf, aead, peer_public_value,
       peer_public_value_len, info, info_len, seed, sizeof(seed));
 }
 
 int EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
-    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len,
+    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_value, size_t peer_public_value_len,
     const uint8_t *info, size_t info_len, const uint8_t *seed,
     size_t seed_len) {
-  if (out_enc_len != X25519_PUBLIC_VALUE_LEN) {
+  if (max_enc < X25519_PUBLIC_VALUE_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
     return 0;
   }
@@ -334,6 +334,7 @@ int EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
                          info_len)) {
     return 0;
   }
+  *out_enc_len = X25519_PUBLIC_VALUE_LEN;
   return 1;
 }
 

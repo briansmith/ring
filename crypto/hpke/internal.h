@@ -89,11 +89,12 @@ OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
 // recipient's public key). It returns one on success, and zero otherwise. Note
 // that this function will fail if |peer_public_value| is invalid.
 //
-// This function writes the encapsulated shared secret, a Diffie-Hellman public
-// key, to |out_enc|. It will fail if the buffer's size in |out_enc_len| is not
-// exactly |X25519_PUBLIC_VALUE_LEN|.
+// This function writes the encapsulated shared secret to |out_enc| and sets
+// |*out_enc_len| to the number of bytes written. It writes at most |max_enc|
+// bytes and fails if the buffer is too small. |max_enc| must be at least
+// |X25519_PUBLIC_VALUE_LEN| to ensure the buffer is large enough.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519(
-    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len,
+    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_value, size_t peer_public_value_len,
     const uint8_t *info, size_t info_len);
@@ -102,7 +103,7 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519(
 // |EVP_HPKE_CTX_setup_base_s_x25519|, but takes a seed value to behave
 // deterministically. This seed is the sender's ephemeral X25519 key.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
-    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t out_enc_len,
+    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_value, size_t peer_public_value_len,
     const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len);

@@ -63,16 +63,17 @@ class HPKETestVector {
     // Set up the sender.
     ScopedEVP_HPKE_CTX sender_ctx;
     uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+    size_t enc_len;
     ASSERT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519_with_seed_for_testing(
-        sender_ctx.get(), enc, sizeof(enc), kdf, aead, public_key_r_.data(),
-        public_key_r_.size(), info_.data(), info_.size(), secret_key_e_.data(),
-        secret_key_e_.size()));
-    EXPECT_EQ(Bytes(enc), Bytes(public_key_e_));
+        sender_ctx.get(), enc, &enc_len, sizeof(enc), kdf, aead,
+        public_key_r_.data(), public_key_r_.size(), info_.data(), info_.size(),
+        secret_key_e_.data(), secret_key_e_.size()));
+    EXPECT_EQ(Bytes(enc, enc_len), Bytes(public_key_e_));
 
     // Set up the receiver.
     ScopedEVP_HPKE_CTX receiver_ctx;
     ASSERT_TRUE(EVP_HPKE_CTX_setup_base_r_x25519(
-        receiver_ctx.get(), kdf, aead, enc, sizeof(enc), public_key_r_.data(),
+        receiver_ctx.get(), kdf, aead, enc, enc_len, public_key_r_.data(),
         public_key_r_.size(), secret_key_r_.data(), secret_key_r_.size(),
         info_.data(), info_.size()));
 
@@ -265,14 +266,15 @@ TEST(HPKETest, RoundTrip) {
           // Set up the sender.
           ScopedEVP_HPKE_CTX sender_ctx;
           uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+          size_t enc_len;
           ASSERT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519(
-              sender_ctx.get(), enc, sizeof(enc), kdf(), aead(), public_key_r,
-              sizeof(public_key_r), info.data(), info.size()));
+              sender_ctx.get(), enc, &enc_len, sizeof(enc), kdf(), aead(),
+              public_key_r, sizeof(public_key_r), info.data(), info.size()));
 
           // Set up the receiver.
           ScopedEVP_HPKE_CTX receiver_ctx;
           ASSERT_TRUE(EVP_HPKE_CTX_setup_base_r_x25519(
-              receiver_ctx.get(), kdf(), aead(), enc, sizeof(enc), public_key_r,
+              receiver_ctx.get(), kdf(), aead(), enc, enc_len, public_key_r,
               sizeof(public_key_r), secret_key_r, sizeof(secret_key_r),
               info.data(), info.size()));
 
@@ -328,9 +330,10 @@ TEST(HPKETest, X25519EncapSmallOrderPoint) {
       // Set up the sender, passing in kSmallOrderPoint as |peer_public_value|.
       ScopedEVP_HPKE_CTX sender_ctx;
       uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+      size_t enc_len;
       ASSERT_FALSE(EVP_HPKE_CTX_setup_base_s_x25519(
-          sender_ctx.get(), enc, sizeof(enc), kdf(), aead(), kSmallOrderPoint,
-          sizeof(kSmallOrderPoint), nullptr, 0));
+          sender_ctx.get(), enc, &enc_len, sizeof(enc), kdf(), aead(),
+          kSmallOrderPoint, sizeof(kSmallOrderPoint), nullptr, 0));
 
       // Set up the receiver, passing in kSmallOrderPoint as |enc|.
       ScopedEVP_HPKE_CTX receiver_ctx;
@@ -381,8 +384,9 @@ TEST(HPKETest, SenderInvalidOpen) {
   // Set up the sender.
   ScopedEVP_HPKE_CTX sender_ctx;
   uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+  size_t enc_len;
   ASSERT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519(
-      sender_ctx.get(), enc, sizeof(enc), EVP_hpke_hkdf_sha256(),
+      sender_ctx.get(), enc, &enc_len, sizeof(enc), EVP_hpke_hkdf_sha256(),
       EVP_hpke_aes_128_gcm(), public_key_r, sizeof(public_key_r), nullptr, 0));
 
   // Call Open() on the sender.
@@ -393,20 +397,37 @@ TEST(HPKETest, SenderInvalidOpen) {
                                  kMockCiphertextLen, nullptr, 0));
 }
 
-TEST(HPKETest, SetupSenderWrongLengthEnc) {
+TEST(HPKETest, SetupSenderBufferTooSmall) {
   uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
   uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
   X25519_keypair(public_key_r, secret_key_r);
 
   ScopedEVP_HPKE_CTX sender_ctx;
-  uint8_t bogus_enc[X25519_PUBLIC_VALUE_LEN + 5];
+  uint8_t enc[X25519_PUBLIC_VALUE_LEN - 1];
+  size_t enc_len;
   ASSERT_FALSE(EVP_HPKE_CTX_setup_base_s_x25519(
-      sender_ctx.get(), bogus_enc, sizeof(bogus_enc), EVP_hpke_hkdf_sha256(),
+      sender_ctx.get(), enc, &enc_len, sizeof(enc), EVP_hpke_hkdf_sha256(),
       EVP_hpke_aes_128_gcm(), public_key_r, sizeof(public_key_r), nullptr, 0));
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
   ERR_clear_error();
+}
+
+TEST(HPKETest, SetupSenderBufferTooLarge) {
+  uint8_t secret_key_r[X25519_PRIVATE_KEY_LEN];
+  uint8_t public_key_r[X25519_PUBLIC_VALUE_LEN];
+  X25519_keypair(public_key_r, secret_key_r);
+
+  // Too large of an output buffer is fine because the function reports the
+  // actual length.
+  ScopedEVP_HPKE_CTX sender_ctx;
+  uint8_t enc[X25519_PUBLIC_VALUE_LEN + 1];
+  size_t enc_len;
+  EXPECT_TRUE(EVP_HPKE_CTX_setup_base_s_x25519(
+      sender_ctx.get(), enc, &enc_len, sizeof(enc), EVP_hpke_hkdf_sha256(),
+      EVP_hpke_aes_128_gcm(), public_key_r, sizeof(public_key_r), nullptr, 0));
+  EXPECT_EQ(size_t{X25519_PUBLIC_VALUE_LEN}, enc_len);
 }
 
 TEST(HPKETest, SetupReceiverWrongLengthEnc) {
@@ -431,8 +452,9 @@ TEST(HPKETest, SetupSenderWrongLengthPeerPublicValue) {
   const uint8_t bogus_public_key_r[X25519_PRIVATE_KEY_LEN + 5] = {0xff};
   ScopedEVP_HPKE_CTX sender_ctx;
   uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+  size_t enc_len;
   ASSERT_FALSE(EVP_HPKE_CTX_setup_base_s_x25519(
-      sender_ctx.get(), enc, sizeof(enc), EVP_hpke_hkdf_sha256(),
+      sender_ctx.get(), enc, &enc_len, sizeof(enc), EVP_hpke_hkdf_sha256(),
       EVP_hpke_aes_128_gcm(), bogus_public_key_r, sizeof(bogus_public_key_r),
       nullptr, 0));
   uint32_t err = ERR_get_error();
