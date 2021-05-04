@@ -154,14 +154,6 @@ static void elem_div_by_2(Elem r, const Elem a) {
   copy_conditional(r, adjusted, is_odd);
 }
 
-static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
-  static const BN_ULONG Q_N0[] = {
-    BN_MONT_CTX_N0(0x1, 0x1)
-  };
-  /* XXX: Not (clearly) constant-time; inefficient.*/
-  bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
-}
-
 static inline void elem_mul_by_2(Elem r, const Elem a) {
   LIMBS_shl_mod(r, a, Q, P384_LIMBS);
 }
@@ -198,16 +190,6 @@ void p384_elem_neg(Elem r, const Elem a) {
   for (size_t i = 0; i < P384_LIMBS; ++i) {
     r[i] = constant_time_select_w(is_zero, 0, r[i]);
   }
-}
-
-
-void p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
-                              const ScalarMont b) {
-  static const BN_ULONG N_N0[] = {
-    BN_MONT_CTX_N0(0x6ed46089, 0xe88fdc45)
-  };
-  /* XXX: Inefficient. TODO: Add dedicated multiplication routine. */
-  bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
 }
 
 

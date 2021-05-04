@@ -48,7 +48,7 @@ impl<M, E: Encoding> Elem<M, E> {
 
 #[inline]
 pub fn mul_mont<M, EA: Encoding, EB: Encoding>(
-    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+    f: fn(r: &mut[Limb], a: &[Limb], b: &[Limb]),
     a: &Elem<M, EA>,
     b: &Elem<M, EB>,
 ) -> Elem<M, <(EA, EB) as ProductEncoding>::Output>
@@ -61,7 +61,7 @@ where
 // let r = f(a, b); return r;
 #[inline]
 pub fn binary_op<M, EA: Encoding, EB: Encoding, ER: Encoding>(
-    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+    f: fn(r: &mut[Limb], a: &[Limb], b: &[Limb]),
     a: &Elem<M, EA>,
     b: &Elem<M, EB>,
 ) -> Elem<M, ER> {
@@ -70,18 +70,18 @@ pub fn binary_op<M, EA: Encoding, EB: Encoding, ER: Encoding>(
         m: PhantomData,
         encoding: PhantomData,
     };
-    unsafe { f(r.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
+    f(&mut r.limbs, &a.limbs, &b.limbs);
     r
 }
 
 // a := f(a, b);
 #[inline]
 pub fn binary_op_assign<M, EA: Encoding, EB: Encoding>(
-    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+    f: fn(r: &mut[Limb], a: &[Limb], b: &[Limb]),
     a: &mut Elem<M, EA>,
     b: &Elem<M, EB>,
 ) {
-    unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
+    f(&mut a.limbs, &a.limbs, &b.limbs);
 }
 
 // let r = f(a); return r;

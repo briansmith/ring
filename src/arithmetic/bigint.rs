@@ -1166,7 +1166,7 @@ fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
 
 #[derive(Clone)]
 #[repr(transparent)]
-struct N0([Limb; 2]);
+pub(crate) struct N0(pub(crate) [Limb; 2]);
 
 const N0_LIMBS_USED: usize = 64 / LIMB_BITS;
 
@@ -1186,7 +1186,7 @@ impl From<u64> for N0 {
 }
 
 /// r *= a
-fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
+pub(crate) fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
     debug_assert_eq!(r.len(), m.len());
     debug_assert_eq!(a.len(), m.len());
 

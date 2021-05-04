@@ -16,6 +16,7 @@ use super::{
     elem::{binary_op, binary_op_assign},
     elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
 };
+use crate::arithmetic::bigint::{limbs_mont_mul, N0};
 use core::marker::PhantomData;
 
 macro_rules! p256_limbs {
@@ -64,7 +65,7 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         encoding: PhantomData, // R
     },
 
-    elem_mul_mont: p256_mul_mont,
+    elem_mul_mont: p256_mul_mont_rs,
     elem_sqr_mont: p256_sqr_mont,
 
     point_add_jacobian_impl: p256_point_add,
@@ -190,7 +191,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     #[inline]
     fn sqr(a: &Scalar<R>) -> Scalar<R> {
         let mut tmp = Scalar::zero();
-        unsafe { p256_scalar_sqr_rep_mont(tmp.limbs.as_mut_ptr(), a.limbs.as_ptr(), 1) }
+        p256_scalar_sqr_rep_mont(&mut tmp.limbs, &a.limbs, 1);
         tmp
     }
 
@@ -198,14 +199,14 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     fn sqr_mul(a: &Scalar<R>, squarings: Limb, b: &Scalar<R>) -> Scalar<R> {
         debug_assert!(squarings >= 1);
         let mut tmp = Scalar::zero();
-        unsafe { p256_scalar_sqr_rep_mont(tmp.limbs.as_mut_ptr(), a.limbs.as_ptr(), squarings) }
+        p256_scalar_sqr_rep_mont(&mut tmp.limbs, &a.limbs, squarings);
         mul(&tmp, b)
     }
 
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.
     fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: Limb, b: &Scalar<R>) {
         debug_assert!(squarings >= 1);
-        unsafe { p256_scalar_sqr_rep_mont(acc.limbs.as_mut_ptr(), acc.limbs.as_ptr(), squarings) }
+        p256_scalar_sqr_rep_mont(&mut acc.limbs, &acc.limbs, squarings);
         binary_op_assign(p256_scalar_mul_mont, acc, b);
     }
 
@@ -297,6 +298,23 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     acc
 }
 
+const N_N0: N0 = N0([0xccd1c8aa, 0xee00bc4f]);
+fn p256_scalar_mul_mont(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
+    limbs_mont_mul(r, a, b, &N_N0)
+}
+
+fn p256_scalar_sqr_rep_mont(r: &mut [Limb], a: &[Limb], rep: Limb) {
+    debug_assert!(rep >= 1);
+    p256_scalar_mul_mont(r, a, a);
+    for i in 1..rep {
+        p256_scalar_mul_mont(r, r, r);
+    }
+}
+
+fn p256_mul_mont_rs(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
+    unsafe { p256_mul_mont(r.as_mut_ptr(), a.as_ptr(), b.as_ptr()) }
+}
+
 prefixed_extern! {
     pub(super) fn p256_mul_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
@@ -318,16 +336,5 @@ prefixed_extern! {
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
-    );
-
-    fn p256_scalar_mul_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
-    );
-    fn p256_scalar_sqr_rep_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        rep: Limb,
     );
 }

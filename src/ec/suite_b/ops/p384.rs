@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use crate::arithmetic::bigint::{limbs_mont_mul, N0};
+
 use super::{
     elem::{binary_op, binary_op_assign},
     elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
@@ -337,13 +339,17 @@ const N_RR_LIMBS: [Limb; MAX_LIMBS] = p384_limbs![
     0x28266895, 0x3fb05b7a, 0x2b39bf21, 0x0c84ee01
 ];
 
-prefixed_extern! {
-    fn p384_elem_mul_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
-    );
+const Q_N0: N0 = N0([0x1, 0x1]);
+fn elem_mul_mont(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
+    limbs_mont_mul(r, a, b, Q_N0);
+}
 
+const N_N0: N0 = N0([0x6ed46089, 0xe88fdc45]);
+fn p384_scalar_mul_mont(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
+    limbs_mont_mul(r, a, b, N_N0);
+}
+
+prefixed_extern! {
     fn nistz384_point_add(
         r: *mut Limb,   // [3][COMMON_OPS.num_limbs]
         a: *const Limb, // [3][COMMON_OPS.num_limbs]
@@ -354,11 +360,5 @@ prefixed_extern! {
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]
         p_y: *const Limb,      // [COMMON_OPS.num_limbs]
-    );
-
-    fn p384_scalar_mul_mont(
-        r: *mut Limb,   // [COMMON_OPS.num_limbs]
-        a: *const Limb, // [COMMON_OPS.num_limbs]
-        b: *const Limb, // [COMMON_OPS.num_limbs]
     );
 }

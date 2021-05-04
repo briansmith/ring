@@ -66,7 +66,7 @@ pub struct CommonOps {
     pub b: Elem<R>,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
-    elem_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+    elem_mul_mont: fn(r: &mut [Limb], a: &[Limb], b: &[Limb]),
     elem_sqr_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
 
     point_add_jacobian_impl: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
@@ -225,9 +225,9 @@ impl PublicKeyOps {
         // TODO: do something about this.
         unsafe {
             (self.common.elem_mul_mont)(
-                r.limbs.as_mut_ptr(),
-                parsed.limbs.as_ptr(),
-                self.common.q.rr.as_ptr(),
+                &mut r.limbs,
+                &parsed.limbs,
+                &self.common.q.rr,
             )
         }
         Ok(r)
@@ -240,7 +240,7 @@ pub struct ScalarOps {
     pub common: &'static CommonOps,
 
     scalar_inv_to_mont_impl: fn(a: &Scalar) -> Scalar<R>,
-    scalar_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+    scalar_mul_mont: fn(r: &mut [Limb], a: &[Limb], b: &[Limb]),
 }
 
 impl ScalarOps {
