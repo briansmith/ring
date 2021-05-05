@@ -180,16 +180,13 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
         }
     }
 
-    /*
-     * only the ASN1_OBJECTs from the 'table' will have values for ->sn or
-     * ->ln
-     */
     if ((a == NULL) || ((*a) == NULL) ||
         !((*a)->flags & ASN1_OBJECT_FLAG_DYNAMIC)) {
         if ((ret = ASN1_OBJECT_new()) == NULL)
             return (NULL);
-    } else
+    } else {
         ret = (*a);
+    }
 
     p = *pp;
     /* detach data from object */
@@ -208,12 +205,17 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
         ret->flags |= ASN1_OBJECT_FLAG_DYNAMIC_DATA;
     }
     OPENSSL_memcpy(data, p, length);
+    /* If there are dynamic strings, free them here, and clear the flag */
+    if ((ret->flags & ASN1_OBJECT_FLAG_DYNAMIC_STRINGS) != 0) {
+        OPENSSL_free((char *)ret->sn);
+        OPENSSL_free((char *)ret->ln);
+        ret->flags &= ~ASN1_OBJECT_FLAG_DYNAMIC_STRINGS;
+    }
     /* reattach data to object, after which it remains const */
     ret->data = data;
     ret->length = length;
     ret->sn = NULL;
     ret->ln = NULL;
-    /* ret->flags=ASN1_OBJECT_FLAG_DYNAMIC; we know it is dynamic */
     p += length;
 
     if (a != NULL)

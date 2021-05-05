@@ -215,6 +215,29 @@ TEST(ASN1Test, UnusedBooleanBits) {
   EXPECT_FALSE(val->value.ptr);
 }
 
+TEST(ASN1Test, ASN1ObjectReuse) {
+  // 1.2.840.113554.4.1.72585.2, an arbitrary unknown OID.
+  static const uint8_t kOID[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02};
+  ASN1_OBJECT *obj = ASN1_OBJECT_create(NID_undef, kOID, sizeof(kOID),
+                                        "short name", "long name");
+  ASSERT_TRUE(obj);
+
+  // OBJECT_IDENTIFIER { 1.3.101.112 }
+  static const uint8_t kDER[] = {0x06, 0x03, 0x2b, 0x65, 0x70};
+  const uint8_t *ptr = kDER;
+  EXPECT_TRUE(d2i_ASN1_OBJECT(&obj, &ptr, sizeof(kDER)));
+  EXPECT_EQ(NID_ED25519, OBJ_obj2nid(obj));
+  ASN1_OBJECT_free(obj);
+
+  // Repeat the test, this time overriding a static |ASN1_OBJECT|.
+  obj = OBJ_nid2obj(NID_rsaEncryption);
+  ptr = kDER;
+  EXPECT_TRUE(d2i_ASN1_OBJECT(&obj, &ptr, sizeof(kDER)));
+  EXPECT_EQ(NID_ED25519, OBJ_obj2nid(obj));
+  ASN1_OBJECT_free(obj);
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
