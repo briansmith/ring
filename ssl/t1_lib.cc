@@ -124,11 +124,11 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/hpke.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-#include "../crypto/hpke/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 

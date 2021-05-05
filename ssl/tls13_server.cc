@@ -23,12 +23,12 @@
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/hpke.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/stack.h>
 
 #include "../crypto/internal.h"
-#include "../crypto/hpke/internal.h"
 #include "internal.h"
 
 

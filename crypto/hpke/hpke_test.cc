@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <openssl/hpke.h>
+
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -30,7 +32,6 @@
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"
-#include "internal.h"
 
 
 namespace bssl {

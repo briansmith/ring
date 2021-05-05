@@ -20,9 +20,9 @@
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
 #include <openssl/hkdf.h>
+#include <openssl/hpke.h>
 
 #include "internal.h"
-#include "../crypto/hpke/internal.h"
 
 
 #if defined(OPENSSL_MSAN)

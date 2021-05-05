@@ -35,11 +35,9 @@ extern "C" {
 
 // Parameters.
 //
-// An HPKE context is parameterized by KEM, KDF, and AEAD algorithms.
-
-typedef struct evp_hpke_kem_st EVP_HPKE_KEM;
-typedef struct evp_hpke_kdf_st EVP_HPKE_KDF;
-typedef struct evp_hpke_aead_st EVP_HPKE_AEAD;
+// An HPKE context is parameterized by KEM, KDF, and AEAD algorithms,
+// represented by |EVP_HPKE_KEM|, |EVP_HPKE_KDF|, and |EVP_HPKE_AEAD| types,
+// respectively.
 
 // The following constants are KEM identifiers.
 #define EVP_HPKE_DHKEM_X25519_HKDF_SHA256 0x0020
@@ -81,8 +79,6 @@ OPENSSL_EXPORT uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead);
 // An HPKE recipient maintains a long-term KEM key. This library represents keys
 // with the |EVP_HPKE_KEY| type.
 
-typedef struct evp_hpke_key_st EVP_HPKE_KEY;
-
 // EVP_HPKE_KEY_zero sets an uninitialized |EVP_HPKE_KEY| to the zero state. The
 // caller should then use |EVP_HPKE_KEY_init| to finish initializing |key|.
 //
@@ -117,9 +113,8 @@ OPENSSL_EXPORT int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key,
 
 
 // Encryption contexts.
-
-// An |EVP_HPKE_CTX| is an HPKE encryption context.
-typedef struct evp_hpke_ctx_st EVP_HPKE_CTX;
+//
+// An HPKE encryption context is represented by the |EVP_HPKE_CTX| type.
 
 // EVP_HPKE_CTX_zero sets an uninitialized |EVP_HPKE_CTX| to the zero state. The
 // caller should then use one of the |EVP_HPKE_CTX_setup_*| functions to finish

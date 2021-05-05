@@ -154,6 +154,7 @@
 #include <openssl/aead.h>
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
+#include <openssl/hpke.h>
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
 #include <openssl/span.h>
@@ -162,7 +163,6 @@
 
 #include "../crypto/err/internal.h"
 #include "../crypto/internal.h"
-#include "../crypto/hpke/internal.h"
 
 
 #if defined(OPENSSL_WINDOWS)

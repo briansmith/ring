@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <openssl/hpke.h>
+
 #include <assert.h>
 #include <string.h>
 
@@ -26,7 +28,6 @@
 #include <openssl/sha.h>
 
 #include "../internal.h"
-#include "internal.h"
 
 
 // This file implements draft-irtf-cfrg-hpke-08.
