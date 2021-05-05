@@ -42,6 +42,14 @@ struct x509_attributes_st {
   STACK_OF(ASN1_TYPE) *set;
 } /* X509_ATTRIBUTE */;
 
+struct x509_cert_aux_st {
+  STACK_OF(ASN1_OBJECT) *trust;   // trusted uses
+  STACK_OF(ASN1_OBJECT) *reject;  // rejected uses
+  ASN1_UTF8STRING *alias;         // "friendly name"
+  ASN1_OCTET_STRING *keyid;       // key id of private key
+  STACK_OF(X509_ALGOR) *other;    // other unspecified info
+} /* X509_CERT_AUX */;
+
 
 /* RSA-PSS functions. */
 

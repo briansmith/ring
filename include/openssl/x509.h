@@ -115,11 +115,6 @@ DECLARE_ASN1_SET_OF(X509_ALGOR)
 
 typedef STACK_OF(X509_ALGOR) X509_ALGORS;
 
-struct X509_sig_st {
-  X509_ALGOR *algor;
-  ASN1_OCTET_STRING *digest;
-} /* X509_SIG */;
-
 struct X509_name_entry_st {
   ASN1_OBJECT *object;
   ASN1_STRING *value;
@@ -191,14 +186,6 @@ struct x509_cinf_st {
 // it contains details which are useful in certificate
 // stores and databases. When used this is tagged onto
 // the end of the certificate itself
-
-struct x509_cert_aux_st {
-  STACK_OF(ASN1_OBJECT) *trust;   // trusted uses
-  STACK_OF(ASN1_OBJECT) *reject;  // rejected uses
-  ASN1_UTF8STRING *alias;         // "friendly name"
-  ASN1_OCTET_STRING *keyid;       // key id of private key
-  STACK_OF(X509_ALGOR) *other;    // other unspecified info
-} /* X509_CERT_AUX */;
 
 DECLARE_STACK_OF(DIST_POINT)
 DECLARE_STACK_OF(GENERAL_NAME)
