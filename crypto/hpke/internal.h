@@ -139,7 +139,7 @@ OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
 #define EVP_HPKE_MAX_ENC_LENGTH 32
 
 // EVP_HPKE_CTX_setup_sender implements the SetupBaseS HPKE operation. It
-// encapsulates a shared secret for |peer_public_key| and sets up |hpke| as a
+// encapsulates a shared secret for |peer_public_key| and sets up |ctx| as a
 // sender context. It writes the encapsulated shared secret to |out_enc| and
 // sets |*out_enc_len| to the number of bytes written. It writes at most
 // |max_enc| bytes and fails if the buffer is too small. Setting |max_enc| to at
@@ -153,7 +153,7 @@ OPENSSL_EXPORT void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx);
 // recipient. Callers must then call |EVP_HPKE_CTX_cleanup| when done. On
 // failure, calling |EVP_HPKE_CTX_cleanup| is safe, but not required.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender(
-    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *info, size_t info_len);
@@ -163,13 +163,13 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender(
 // The seed's format depends on |kem|. For X25519, it is the sender's
 // ephemeral private key.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
-    EVP_HPKE_CTX *hpke, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
     const EVP_HPKE_KEM *kem, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
     const uint8_t *peer_public_key, size_t peer_public_key_len,
     const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len);
 
 // EVP_HPKE_CTX_setup_recipient implements the SetupBaseR HPKE operation. It
-// decapsulates the shared secret in |enc| with |key| and sets up |hpke| as a
+// decapsulates the shared secret in |enc| with |key| and sets up |ctx| as a
 // recipient context. It returns one on success and zero on failure. Note that
 // |enc| may be invalid, in which case this function will return an error.
 //
@@ -177,7 +177,7 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
 // sender. Callers must then call |EVP_HPKE_CTX_cleanup| when done. On failure,
 // calling |EVP_HPKE_CTX_cleanup| is safe, but not required.
 OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
-    EVP_HPKE_CTX *hpke, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
+    EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
     const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
     const uint8_t *info, size_t info_len);
 
@@ -187,11 +187,11 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
 // Once set up, callers may encrypt or decrypt with an |EVP_HPKE_CTX| using the
 // following functions.
 
-// EVP_HPKE_CTX_open uses the HPKE context |hpke| to authenticate |in_len| bytes
+// EVP_HPKE_CTX_open uses the HPKE context |ctx| to authenticate |in_len| bytes
 // from |in| and |ad_len| bytes from |ad| and to decrypt at most |in_len| bytes
 // into |out|. It returns one on success, and zero otherwise.
 //
-// This operation will fail if the |hpke| context is not set up as a receiver.
+// This operation will fail if the |ctx| context is not set up as a receiver.
 //
 // Note that HPKE encryption is stateful and ordered. The sender's first call to
 // |EVP_HPKE_CTX_seal| must correspond to the recipient's first call to
@@ -200,16 +200,16 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
 // At most |in_len| bytes are written to |out|. In order to ensure success,
 // |max_out_len| should be at least |in_len|. On successful return, |*out_len|
 // is set to the actual number of bytes written.
-OPENSSL_EXPORT int EVP_HPKE_CTX_open(EVP_HPKE_CTX *hpke, uint8_t *out,
+OPENSSL_EXPORT int EVP_HPKE_CTX_open(EVP_HPKE_CTX *ctx, uint8_t *out,
                                      size_t *out_len, size_t max_out_len,
                                      const uint8_t *in, size_t in_len,
                                      const uint8_t *ad, size_t ad_len);
 
-// EVP_HPKE_CTX_seal uses the HPKE context |hpke| to encrypt and authenticate
+// EVP_HPKE_CTX_seal uses the HPKE context |ctx| to encrypt and authenticate
 // |in_len| bytes of ciphertext |in| and authenticate |ad_len| bytes from |ad|,
 // writing the result to |out|. It returns one on success and zero otherwise.
 //
-// This operation will fail if the |hpke| context is not set up as a sender.
+// This operation will fail if the |ctx| context is not set up as a sender.
 //
 // Note that HPKE encryption is stateful and ordered. The sender's first call to
 // |EVP_HPKE_CTX_seal| must correspond to the recipient's first call to
@@ -220,17 +220,17 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_open(EVP_HPKE_CTX *hpke, uint8_t *out,
 //
 // To ensure success, |max_out_len| should be |in_len| plus the result of
 // |EVP_HPKE_CTX_max_overhead| or |EVP_HPKE_MAX_OVERHEAD|.
-OPENSSL_EXPORT int EVP_HPKE_CTX_seal(EVP_HPKE_CTX *hpke, uint8_t *out,
+OPENSSL_EXPORT int EVP_HPKE_CTX_seal(EVP_HPKE_CTX *ctx, uint8_t *out,
                                      size_t *out_len, size_t max_out_len,
                                      const uint8_t *in, size_t in_len,
                                      const uint8_t *ad, size_t ad_len);
 
-// EVP_HPKE_CTX_export uses the HPKE context |hpke| to export a secret of
+// EVP_HPKE_CTX_export uses the HPKE context |ctx| to export a secret of
 // |secret_len| bytes into |out|. This function uses |context_len| bytes from
 // |context| as a context string for the secret. This is necessary to separate
 // different uses of exported secrets and bind relevant caller-specific context
 // into the output. It returns one on success and zero otherwise.
-OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *hpke, uint8_t *out,
+OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *ctx, uint8_t *out,
                                        size_t secret_len,
                                        const uint8_t *context,
                                        size_t context_len);
@@ -240,17 +240,17 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *hpke, uint8_t *out,
 #define EVP_HPKE_MAX_OVERHEAD EVP_AEAD_MAX_OVERHEAD
 
 // EVP_HPKE_CTX_max_overhead returns the maximum number of additional bytes
-// added by sealing data with |EVP_HPKE_CTX_seal|. The |hpke| context must be
-// set up as a sender.
-OPENSSL_EXPORT size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *hpke);
+// added by sealing data with |EVP_HPKE_CTX_seal|. The |ctx| context must be set
+// up as a sender.
+OPENSSL_EXPORT size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *ctx);
 
-// EVP_HPKE_CTX_aead returns |hpke|'s configured AEAD, or NULL if the context
-// has not been set up.
-OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *hpke);
+// EVP_HPKE_CTX_aead returns |ctx|'s configured AEAD, or NULL if the context has
+// not been set up.
+OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *ctx);
 
-// EVP_HPKE_CTX_kdf returns |hpke|'s configured KDF, or NULL if the context
-// has not been set up.
-OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *hpke);
+// EVP_HPKE_CTX_kdf returns |ctx|'s configured KDF, or NULL if the context has
+// not been set up.
+OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 
 
 // Private structures.
