@@ -397,17 +397,18 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
         hs->max_version >= TLS1_2_VERSION ? TLS1_2_VERSION : hs->max_version;
   }
 
-  // If the configured session has expired or was created at a disabled
-  // version, drop it.
-  if (ssl->session != NULL) {
+  // If the configured session has expired or is not usable, drop it. We also do
+  // not offer sessions on renegotiation.
+  if (ssl->session != nullptr) {
     if (ssl->session->is_server ||
         !ssl_supports_version(hs, ssl->session->ssl_version) ||
         (ssl->session->session_id_length == 0 &&
          ssl->session->ticket.empty()) ||
         ssl->session->not_resumable ||
         !ssl_session_is_time_valid(ssl, ssl->session.get()) ||
-        (ssl->quic_method != nullptr) != ssl->session->is_quic) {
-      ssl_set_session(ssl, NULL);
+        (ssl->quic_method != nullptr) != ssl->session->is_quic ||
+        ssl->s3->initial_handshake_complete) {
+      ssl_set_session(ssl, nullptr);
     }
   }
 
@@ -418,8 +419,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   // Never send a session ID in QUIC. QUIC uses TLS 1.3 at a minimum and
   // disables TLS 1.3 middlebox compatibility mode.
   if (ssl->quic_method == nullptr) {
-    if (ssl->session != nullptr && !ssl->s3->initial_handshake_complete &&
-        ssl->session->session_id_length > 0) {
+    if (ssl->session != nullptr && ssl->session->session_id_length > 0) {
       hs->session_id_len = ssl->session->session_id_length;
       OPENSSL_memcpy(hs->session_id, ssl->session->session_id,
                      hs->session_id_len);
@@ -642,10 +642,11 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl->s3->initial_handshake_complete && ssl->session != nullptr &&
-      ssl->session->session_id_length != 0 &&
+  if (ssl->session != nullptr && ssl->session->session_id_length != 0 &&
       CBS_mem_equal(&session_id, ssl->session->session_id,
                     ssl->session->session_id_length)) {
+    // We never offer sessions on renegotiation.
+    assert(!ssl->s3->initial_handshake_complete);
     ssl->s3->session_reused = true;
   } else {
     // The server may also have echoed back the TLS 1.3 compatibility mode
