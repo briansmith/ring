@@ -67,7 +67,7 @@ func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 		return nil, err
 	}
 
-	// See https://usnistgov.github.io/ACVP/draft-celi-acvp-kdf-tls.html
+	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
 	var ret []tlsKDFTestGroupResponse
 	for _, group := range parsed.Groups {
 		response := tlsKDFTestGroupResponse{

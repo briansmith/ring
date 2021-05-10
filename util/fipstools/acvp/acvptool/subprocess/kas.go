@@ -74,7 +74,7 @@ func (k *kas) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 		return nil, err
 	}
 
-	// See https://usnistgov.github.io/ACVP/draft-hammett-acvp-kas-ssc-ecc.html
+	// See https://pages.nist.gov/ACVP/draft-fussell-acvp-kas-ecc.html#name-test-vectors
 	var ret []kasTestGroupResponse
 	for _, group := range parsed.Groups {
 		response := kasTestGroupResponse{

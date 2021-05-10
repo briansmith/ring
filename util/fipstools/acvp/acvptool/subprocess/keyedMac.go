@@ -21,7 +21,7 @@ import (
 )
 
 // The following structures reflect the JSON of CMAC-AES tests. See
-// https://usnistgov.github.io/ACVP/artifacts/acvp_sub_mac.html#rfc.section.4.2
+// https://pages.nist.gov/ACVP/draft-fussell-acvp-mac.html#name-test-vectors
 
 type keyedMACTestVectorSet struct {
 	Groups []keyedMACTestGroup `json:"testGroups"`

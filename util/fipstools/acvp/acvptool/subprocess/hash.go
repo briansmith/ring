@@ -21,7 +21,7 @@ import (
 )
 
 // The following structures reflect the JSON of ACVP hash tests. See
-// https://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#test_vectors
+// https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-test-vectors
 
 type hashTestVectorSet struct {
 	Groups []hashTestGroup `json:"testGroups"`
@@ -70,7 +70,7 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 
 	var ret []hashTestGroupResponse
 	// See
-	// https://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#rfc.section.3
+	// https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-test-vectors
 	// for details about the tests.
 	for _, group := range parsed.Groups {
 		response := hashTestGroupResponse{
