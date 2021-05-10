@@ -377,7 +377,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
                          &offered_ticket, msg, &client_hello)) {
     case ssl_ticket_aead_ignore_ticket:
       assert(!session);
-      if (!ssl_get_new_session(hs, 1 /* server */)) {
+      if (!ssl_get_new_session(hs)) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
       }

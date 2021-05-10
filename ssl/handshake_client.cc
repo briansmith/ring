@@ -663,7 +663,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     // The session wasn't resumed. Create a fresh SSL_SESSION to
     // fill out.
     ssl_set_session(ssl, NULL);
-    if (!ssl_get_new_session(hs, 0 /* client */)) {
+    if (!ssl_get_new_session(hs)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }

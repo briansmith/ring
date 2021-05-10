@@ -892,14 +892,17 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     hs->can_release_private_key = true;
   } else {
     hs->ticket_expected = tickets_supported;
-    ssl_set_session(ssl, NULL);
-    if (!ssl_get_new_session(hs, 1 /* server */)) {
+    ssl_set_session(ssl, nullptr);
+    if (!ssl_get_new_session(hs)) {
       return ssl_hs_error;
     }
 
-    // Clear the session ID if we want the session to be single-use.
-    if (!(ssl->ctx->session_cache_mode & SSL_SESS_CACHE_SERVER)) {
-      hs->new_session->session_id_length = 0;
+    // Assign a session ID if not using session tickets.
+    if (!hs->ticket_expected &&
+        (ssl->ctx->session_cache_mode & SSL_SESS_CACHE_SERVER)) {
+      hs->new_session->session_id_length = SSL3_SSL_SESSION_ID_LENGTH;
+      RAND_bytes(hs->new_session->session_id,
+                 hs->new_session->session_id_length);
     }
   }
 
