@@ -419,12 +419,18 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   // Never send a session ID in QUIC. QUIC uses TLS 1.3 at a minimum and
   // disables TLS 1.3 middlebox compatibility mode.
   if (ssl->quic_method == nullptr) {
-    if (ssl->session != nullptr && ssl->session->session_id_length > 0) {
+    const bool has_id_session = ssl->session != nullptr &&
+                                ssl->session->session_id_length > 0 &&
+                                ssl->session->ticket.empty();
+    const bool has_ticket_session =
+        ssl->session != nullptr && !ssl->session->ticket.empty();
+    if (has_id_session) {
       hs->session_id_len = ssl->session->session_id_length;
       OPENSSL_memcpy(hs->session_id, ssl->session->session_id,
                      hs->session_id_len);
-    } else if (hs->max_version >= TLS1_3_VERSION) {
-      // Initialize a random session ID.
+    } else if (has_ticket_session || hs->max_version >= TLS1_3_VERSION) {
+      // Send a random session ID. TLS 1.3 always sends one, and TLS 1.2 session
+      // tickets require a placeholder value to signal resumption.
       hs->session_id_len = sizeof(hs->session_id);
       if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
         return ssl_hs_error;
@@ -642,27 +648,27 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (ssl->session != nullptr && ssl->session->session_id_length != 0 &&
-      CBS_mem_equal(&session_id, ssl->session->session_id,
-                    ssl->session->session_id_length)) {
-    // We never offer sessions on renegotiation.
-    assert(!ssl->s3->initial_handshake_complete);
-    ssl->s3->session_reused = true;
-  } else {
-    // The server may also have echoed back the TLS 1.3 compatibility mode
-    // session ID. As we know this is not a session the server knows about, any
-    // server resuming it is in error. Reject the first connection
-    // deterministicly, rather than installing an invalid session into the
-    // session cache. https://crbug.com/796910
-    if (hs->session_id_len != 0 &&
-        CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len)) {
+  if (hs->session_id_len != 0 &&
+      CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len)) {
+    // Echoing the ClientHello session ID in TLS 1.2, whether from the session
+    // or a synthetic one, indicates resumption. If there was no session, this
+    // was the TLS 1.3 compatibility mode session ID. As we know this is not a
+    // session the server knows about, any server resuming it is in error.
+    // Reject the first connection deterministicly, rather than installing an
+    // invalid session into the session cache. https://crbug.com/796910
+    if (ssl->session == nullptr) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_ECHOED_INVALID_SESSION_ID);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-
-    // The session wasn't resumed. Create a fresh SSL_SESSION to
-    // fill out.
+    // We never offer sessions on renegotiation.
+    assert(!ssl->s3->initial_handshake_complete);
+    ssl->s3->session_reused = true;
+    // Note |ssl->session| may be a TLS 1.3 session, offered in a separate
+    // extension altogether. In that case, the version check below will fail the
+    // connection.
+  } else {
+    // The session wasn't resumed. Create a fresh SSL_SESSION to fill out.
     ssl_set_session(ssl, NULL);
     if (!ssl_get_new_session(hs)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
@@ -676,7 +682,6 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
   if (cipher == NULL) {
-    // unknown cipher
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_RETURNED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
@@ -1662,8 +1667,7 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
   session->ticket_lifetime_hint = ticket_lifetime_hint;
 
   // Generate a session ID for this session. Some callers expect all sessions to
-  // have a session ID. Additionally, it acts as the session ID to signal
-  // resumption.
+  // have a session ID.
   SHA256(CBS_data(&ticket), CBS_len(&ticket), session->session_id);
   session->session_id_length = SHA256_DIGEST_LENGTH;
 
