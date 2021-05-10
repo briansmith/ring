@@ -275,9 +275,7 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   SSL *const ssl = hs->ssl;
   SSL_CTX *ctx = ssl->session_ctx.get();
-  // Never cache sessions with empty session IDs.
-  if (ssl->s3->established_session->session_id_length == 0 ||
-      ssl->s3->established_session->not_resumable ||
+  if (!SSL_SESSION_is_resumable(ssl->s3->established_session.get()) ||
       (ctx->session_cache_mode & mode) != mode) {
     return;
   }

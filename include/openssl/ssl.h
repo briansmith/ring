@@ -1793,8 +1793,10 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
 // used without leaking a correlator.
 OPENSSL_EXPORT int SSL_SESSION_should_be_single_use(const SSL_SESSION *session);
 
-// SSL_SESSION_is_resumable returns one if |session| is resumable and zero
-// otherwise.
+// SSL_SESSION_is_resumable returns one if |session| is complete and contains a
+// session ID or ticket. It returns zero otherwise. Note this function does not
+// ensure |session| will be resumed. It may be expired, dropped by the server,
+// or associated with incompatible parameters.
 OPENSSL_EXPORT int SSL_SESSION_is_resumable(const SSL_SESSION *session);
 
 // SSL_SESSION_has_ticket returns one if |session| has a ticket and zero

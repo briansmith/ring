@@ -1053,8 +1053,8 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
     }
   }
 
-  // Generate a session ID for this session. Some callers expect all sessions to
-  // have a session ID.
+  // Historically, OpenSSL filled in fake session IDs for ticket-based sessions.
+  // TODO(davidben): Are external callers relying on this? Try removing this.
   SHA256(CBS_data(&ticket), CBS_len(&ticket), session->session_id);
   session->session_id_length = SHA256_DIGEST_LENGTH;
 

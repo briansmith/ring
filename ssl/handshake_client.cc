@@ -402,9 +402,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   if (ssl->session != nullptr) {
     if (ssl->session->is_server ||
         !ssl_supports_version(hs, ssl->session->ssl_version) ||
-        (ssl->session->session_id_length == 0 &&
-         ssl->session->ticket.empty()) ||
-        ssl->session->not_resumable ||
+        !SSL_SESSION_is_resumable(ssl->session.get()) ||
         !ssl_session_is_time_valid(ssl, ssl->session.get()) ||
         (ssl->quic_method != nullptr) != ssl->session->is_quic ||
         ssl->s3->initial_handshake_complete) {
@@ -1666,8 +1664,8 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
   }
   session->ticket_lifetime_hint = ticket_lifetime_hint;
 
-  // Generate a session ID for this session. Some callers expect all sessions to
-  // have a session ID.
+  // Historically, OpenSSL filled in fake session IDs for ticket-based sessions.
+  // TODO(davidben): Are external callers relying on this? Try removing this.
   SHA256(CBS_data(&ticket), CBS_len(&ticket), session->session_id);
   session->session_id_length = SHA256_DIGEST_LENGTH;
 

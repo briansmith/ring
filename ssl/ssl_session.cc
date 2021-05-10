@@ -1004,7 +1004,8 @@ int SSL_SESSION_should_be_single_use(const SSL_SESSION *session) {
 }
 
 int SSL_SESSION_is_resumable(const SSL_SESSION *session) {
-  return !session->not_resumable;
+  return !session->not_resumable &&
+         (session->session_id_length != 0 || !session->ticket.empty());
 }
 
 int SSL_SESSION_has_ticket(const SSL_SESSION *session) {
