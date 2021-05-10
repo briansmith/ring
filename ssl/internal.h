@@ -1859,8 +1859,8 @@ struct SSL_HANDSHAKE {
   // influence the handshake on match.
   UniquePtr<SSL_HANDSHAKE_HINTS> hints;
 
-  // ech_accept, on the server, indicates whether the server should overwrite
-  // part of ServerHello.random with the ECH accept_confirmation value.
+  // ech_accept, on the server, indicates whether the server negotiated ECH and
+  // is handshaking with the inner ClientHello.
   bool ech_accept : 1;
 
   // ech_present, on the server, indicates whether the ClientHello contained an
