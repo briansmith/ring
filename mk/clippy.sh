@@ -34,8 +34,6 @@ cargo clippy \
   --allow clippy::needless_range_loop \
   --allow clippy::new_without_default \
   --allow clippy::neg_cmp_op_on_partial_ord \
-  --allow clippy::range_plus_one \
-  --allow clippy::redundant_slicing \
   --allow clippy::too_many_arguments \
   --allow clippy::trivially_copy_pass_by_ref \
   --allow clippy::type_complexity \
