@@ -85,7 +85,7 @@ impl BlockContext {
         padding_pos += 1;
 
         if padding_pos > block_len - self.algorithm.len_len {
-            polyfill::slice::fill(&mut pending[padding_pos..block_len], 0);
+            pending[padding_pos..block_len].fill(0);
             unsafe {
                 (self.algorithm.block_data_order)(&mut self.state, pending.as_ptr(), 1);
             }
@@ -94,7 +94,7 @@ impl BlockContext {
             padding_pos = 0;
         }
 
-        polyfill::slice::fill(&mut pending[padding_pos..(block_len - 8)], 0);
+        pending[padding_pos..(block_len - 8)].fill(0);
 
         // Output the length, in bits, in big endian order.
         let completed_data_bits = self
