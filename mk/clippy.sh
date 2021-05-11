@@ -31,7 +31,6 @@ cargo clippy \
   --allow clippy::ptr_arg \
   --allow clippy::let_unit_value \
   --allow clippy::many_single_char_names \
-  --allow clippy::needless_range_loop \
   --allow clippy::new_without_default \
   --allow clippy::neg_cmp_op_on_partial_ord \
   --allow clippy::too_many_arguments \
