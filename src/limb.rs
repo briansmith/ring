@@ -18,7 +18,7 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::{c, error};
+use crate::{c, error, polyfill};
 
 #[cfg(feature = "alloc")]
 use crate::bits;
@@ -218,7 +218,7 @@ pub fn parse_big_endian_and_pad_consttime(
         return Err(error::Unspecified);
     }
 
-    result.fill(0);
+    polyfill::slice::fill(result, 0);
 
     // XXX: Questionable as far as constant-timedness is concerned.
     // TODO: Improve this.
