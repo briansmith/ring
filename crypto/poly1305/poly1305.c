@@ -51,8 +51,9 @@ struct poly1305_state_st {
   uint8_t key[16];
 };
 
-OPENSSL_STATIC_ASSERT(sizeof(struct poly1305_state_st) <= sizeof(poly1305_state),
-  "poly1305_state isn't large enough to hold aligned poly1305_state_st");
+OPENSSL_STATIC_ASSERT(
+    sizeof(struct poly1305_state_st) + 63 <= sizeof(poly1305_state),
+    "poly1305_state isn't large enough to hold aligned poly1305_state_st");
 
 static inline struct poly1305_state_st *poly1305_aligned_state(
     poly1305_state *state) {

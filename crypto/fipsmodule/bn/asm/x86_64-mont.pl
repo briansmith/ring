@@ -101,7 +101,8 @@ bn_mul_mont:
 	jb	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%r11d
+	leaq	OPENSSL_ia32cap_P(%rip),%r11
+	mov	8(%r11),%r11d
 ___
 $code.=<<___;
 	cmp	$ap,$bp
@@ -906,7 +907,8 @@ bn_sqr8x_mont:
 	movq	%r10, %xmm3		# -$num
 ___
 $code.=<<___ if ($addx);
-	mov	OPENSSL_ia32cap_P+8(%rip),%eax
+	leaq	OPENSSL_ia32cap_P(%rip),%rax
+	mov	8(%rax),%eax
 	and	\$0x80100,%eax
 	cmp	\$0x80100,%eax
 	jne	.Lsqr8x_nox

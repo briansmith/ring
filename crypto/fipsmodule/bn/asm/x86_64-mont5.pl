@@ -2903,6 +2903,7 @@ bn_powerx5:
 .size	bn_powerx5,.-bn_powerx5
 
 .globl	bn_sqrx8x_internal
+.hidden	bn_sqrx8x_internal
 .type	bn_sqrx8x_internal,\@abi-omnipotent
 .align	32
 bn_sqrx8x_internal:
