@@ -23,9 +23,9 @@ pub(super) struct LengthMeasurement {
     len: usize,
 }
 
-impl Into<usize> for LengthMeasurement {
-    fn into(self) -> usize {
-        self.len
+impl From<LengthMeasurement> for usize {
+    fn from(len: LengthMeasurement) -> usize {
+        len.len
     }
 }
 
