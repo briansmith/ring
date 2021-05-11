@@ -189,9 +189,7 @@ fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u3
 
     let mut remaining: u32 = iterations.into();
     loop {
-        for i in 0..out.len() {
-            out[i] ^= u.as_ref()[i];
-        }
+        out.iter_mut().zip(u.as_ref()).for_each(|(o, u)| *o ^= *u);
 
         if remaining == 1 {
             break;
