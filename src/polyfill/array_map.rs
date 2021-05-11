@@ -31,5 +31,6 @@ macro_rules! impl_map {
     }
 }
 
+impl_map!(2, [a, b]);
 impl_map!(4, [a, b, c, d]);
 impl_map!(8, [a, b, c, d, e, f, g, h]);
