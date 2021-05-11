@@ -164,7 +164,7 @@ pub(super) fn init(xi: [u64; 2]) -> super::u128 {
     hi ^= carry & 0xc200000000000000;
 
     // This implementation does not use the rest of |Htable|.
-    super::u128 { lo, hi }
+    super::u128 { hi, lo }
 }
 
 fn gcm_polyval_nohw(xi: &mut [u64; 2], h: super::u128) {

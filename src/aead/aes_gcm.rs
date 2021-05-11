@@ -61,13 +61,13 @@ fn init(
 ) -> Result<aead::KeyInner, error::Unspecified> {
     let aes_key = aes::Key::new(key, variant, cpu_features)?;
     let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()), cpu_features);
-    Ok(aead::KeyInner::AesGcm(Key { aes_key, gcm_key }))
+    Ok(aead::KeyInner::AesGcm(Key { gcm_key, aes_key }))
 }
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
 fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8]) -> Tag {
-    let Key { aes_key, gcm_key } = match key {
+    let Key { gcm_key, aes_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
@@ -140,7 +140,7 @@ fn aes_gcm_open(
     in_out: &mut [u8],
     src: RangeFrom<usize>,
 ) -> Tag {
-    let Key { aes_key, gcm_key } = match key {
+    let Key { gcm_key, aes_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
     };
