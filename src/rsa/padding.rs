@@ -373,10 +373,8 @@ impl Verification for PSS {
 
         // Step 10.
         let ps_len = metrics.ps_len;
-        for i in 0..ps_len {
-            if db[i] != 0 {
-                return Err(error::Unspecified);
-            }
+        if db[0..ps_len].iter().any(|&db| db != 0) {
+            return Err(error::Unspecified);
         }
         if db[metrics.ps_len] != 1 {
             return Err(error::Unspecified);
