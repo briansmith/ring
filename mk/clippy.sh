@@ -25,7 +25,6 @@ cargo clippy \
   --deny missing_docs \
   --deny warnings \
   --allow clippy::collapsible_if \
-  --allow clippy::from_over_into \
   --allow clippy::identity_op \
   --allow clippy::len_without_is_empty \
   --allow clippy::len_zero \
