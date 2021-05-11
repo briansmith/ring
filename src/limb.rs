@@ -218,9 +218,7 @@ pub fn parse_big_endian_and_pad_consttime(
         return Err(error::Unspecified);
     }
 
-    for r in &mut result[..] {
-        *r = 0;
-    }
+    result.fill(0);
 
     // XXX: Questionable as far as constant-timedness is concerned.
     // TODO: Improve this.
