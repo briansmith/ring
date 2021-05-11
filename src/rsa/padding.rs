@@ -362,8 +362,8 @@ impl Verification for PSS {
             db[0] ^= b;
 
             // Step 8.
-            for i in 1..db.len() {
-                db[i] ^= masked_bytes.read_byte()?;
+            for db in db[1..].iter_mut() {
+                *db ^= masked_bytes.read_byte()?;
             }
             Ok(())
         })?;
