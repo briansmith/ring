@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright 2020 Brian Smith.
+# Copyright 2021 Brian Smith.
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -22,6 +22,7 @@ cargo clippy \
   --target-dir=target/clippy \
   --all-features ---all-targets \
   -- \
+  --deny missing_docs \
   --deny warnings \
   --allow clippy::collapsible_if \
   --allow clippy::from_over_into \
