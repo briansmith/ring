@@ -30,8 +30,8 @@ typedef struct {
   uint32_t v[12];  // for alignment; only using 10
 } fe1305x2;
 
-#define addmulmod poly1305_neon2_addmulmod
-#define blocks poly1305_neon2_blocks
+#define addmulmod openssl_poly1305_neon2_addmulmod
+#define blocks openssl_poly1305_neon2_blocks
 
 extern void addmulmod(fe1305x2 *r, const fe1305x2 *x, const fe1305x2 *y,
                       const fe1305x2 *c);
@@ -184,8 +184,9 @@ struct poly1305_state_st {
   uint8_t key[16];
 };
 
-OPENSSL_STATIC_ASSERT(sizeof(struct poly1305_state_st) <= sizeof(poly1305_state),
-  "poly1305_state isn't large enough to hold aligned poly1305_state_st");
+OPENSSL_STATIC_ASSERT(
+    sizeof(struct poly1305_state_st) + 63 <= sizeof(poly1305_state),
+    "poly1305_state isn't large enough to hold aligned poly1305_state_st.");
 
 void CRYPTO_poly1305_init_neon(poly1305_state *state, const uint8_t key[32]) {
   struct poly1305_state_st *st = (struct poly1305_state_st *)(state);

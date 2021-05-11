@@ -696,6 +696,10 @@ $code.=<<___;
 .align	16
 ${PREFIX}_encrypt:
 .cfi_startproc
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern        BORINGSSL_function_hit
+       movb \$1, BORINGSSL_function_hit+4(%rip)
+#endif
 ___
 $code.=<<___ if ($win64);
 	lea	-0xb8(%rsp),%rsp

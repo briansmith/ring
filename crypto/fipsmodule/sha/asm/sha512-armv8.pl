@@ -179,7 +179,7 @@ $code.=<<___;
 .text
 
 .extern	OPENSSL_armcap_P
-.hidden OPENSSL_armcap_P
+.hidden	OPENSSL_armcap_P
 .globl	$func
 .type	$func,%function
 .align	6
