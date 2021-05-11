@@ -1258,7 +1258,7 @@ fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
     debug_assert_eq!(a.len(), b.len());
     let ab_len = a.len();
 
-    crate::polyfill::slice::fill(&mut r[..ab_len], 0);
+    r[..ab_len].fill(0);
     for (i, &b_limb) in b.iter().enumerate() {
         r[ab_len + i] = unsafe {
             limbs_mul_add_limb(

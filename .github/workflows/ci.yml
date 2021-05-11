@@ -187,7 +187,7 @@ jobs:
         rust_channel:
           - stable
           - nightly
-          - 1.47.0 # MSRV
+          - 1.52.1 # MSRV
           - beta
 
         exclude:

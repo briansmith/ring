@@ -216,7 +216,7 @@ const BLOCK_LEN: usize = 64;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{polyfill, test};
+    use crate::test;
     use alloc::vec;
     use core::convert::TryInto;
 
@@ -309,11 +309,11 @@ mod tests {
         const ARBITRARY: u8 = 123;
 
         for alignment in 0..=max_alignment {
-            polyfill::slice::fill(&mut buf[..alignment], ARBITRARY);
+            buf[..alignment].fill(ARBITRARY);
             let buf = &mut buf[alignment..];
             for offset in 0..=max_offset {
                 let buf = &mut buf[..(offset + input.len())];
-                polyfill::slice::fill(&mut buf[..offset], ARBITRARY);
+                buf[..offset].fill(ARBITRARY);
                 let src = offset..;
                 buf[src.clone()].copy_from_slice(input);
 

@@ -476,7 +476,7 @@ fn parse_test_case(
 /// useful for some types of fuzzing.
 #[doc(hidden)]
 pub mod rand {
-    use crate::{error, polyfill, rand};
+    use crate::{error, rand};
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
@@ -487,7 +487,7 @@ pub mod rand {
 
     impl rand::sealed::SecureRandom for FixedByteRandom {
         fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
-            polyfill::slice::fill(dest, self.byte);
+            dest.fill(self.byte);
             Ok(())
         }
     }
