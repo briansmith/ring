@@ -38,6 +38,4 @@ cargo clippy \
   --allow clippy::type_complexity \
   --allow clippy::unreadable_literal \
   --allow clippy::upper_case_acronyms \
-  --allow clippy::vec_init_then_push \
-
   $NULL

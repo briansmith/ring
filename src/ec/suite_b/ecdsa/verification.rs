@@ -291,7 +291,7 @@ pub static ECDSA_P384_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificatio
 mod tests {
     use super::*;
     use crate::test;
-    use alloc::vec::Vec;
+    use alloc::{vec, vec::Vec};
 
     #[test]
     fn test_digest_based_test_vectors() {
@@ -303,8 +303,7 @@ mod tests {
                 let curve_name = test_case.consume_string("Curve");
 
                 let public_key = {
-                    let mut public_key = Vec::new();
-                    public_key.push(0x04);
+                    let mut public_key = vec![0x04];
                     public_key.extend(&test_case.consume_bytes("X"));
                     public_key.extend(&test_case.consume_bytes("Y"));
                     public_key
