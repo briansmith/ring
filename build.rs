@@ -115,31 +115,7 @@ fn c_flags(target: &Target) -> &'static [&'static str] {
 
 fn cpp_flags(target: &Target) -> &'static [&'static str] {
     if target.env != MSVC {
-        static NON_MSVC_FLAGS: &[&str] = &[
-            "-pedantic",
-            "-pedantic-errors",
-            "-Wall",
-            "-Wextra",
-            "-Wcast-align",
-            "-Wcast-qual",
-            "-Wconversion",
-            "-Wenum-compare",
-            "-Wfloat-equal",
-            "-Wformat=2",
-            "-Winline",
-            "-Winvalid-pch",
-            "-Wmissing-field-initializers",
-            "-Wmissing-include-dirs",
-            "-Wredundant-decls",
-            "-Wshadow",
-            "-Wsign-compare",
-            "-Wsign-conversion",
-            "-Wundef",
-            "-Wuninitialized",
-            "-Wwrite-strings",
-            "-fno-strict-aliasing",
-            "-fvisibility=hidden",
-        ];
+        static NON_MSVC_FLAGS: &[&str] = &["-fno-strict-aliasing", "-fvisibility=hidden"];
         NON_MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &[&str] = &[
@@ -152,8 +128,6 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             "/Zc:inline",
             "/Zc:rvalueCast",
             // Warnings.
-            "/sdl",
-            "/Wall",
             "/wd4127", // C4127: conditional expression is constant
             "/wd4464", // C4464: relative include path contains '..'
             "/wd4514", // C4514: <name>: unreferenced inline function has be

@@ -24,9 +24,33 @@ NULL=
 # take advantage of this.
 export CFLAGS="\
   -Werror \
+  -pedantic \
+  -pedantic-errors \
+  -Wall \
+  -Wextra \
+  -Wcast-align \
+  -Wcast-qual \
+  -Wconversion \
+  -Wenum-compare \
+  -Werror \
+  -Wfloat-equal \
+  -Wformat=2 \
+  -Winline \
+  -Winvalid-pch \
+  -Wmissing-field-initializers \
+  -Wmissing-include-dirs \
+  -Wredundant-decls \
+  -Wshadow \
+  -Wsign-compare \
+  -Wsign-conversion \
+  -Wundef \
+  -Wuninitialized \
+  -Wwrite-strings \
   $NULL"
 CFLAGS_MSVC="\
+  -sdl \
   -WX \
+  -Wall \
   $NULL"
 
 rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
