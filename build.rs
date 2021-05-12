@@ -751,9 +751,10 @@ fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
 
 fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
     for (src, dst) in src_dst {
-        let mut args = Vec::<String>::new();
-        args.push(src.to_string_lossy().into_owned());
-        args.push(asm_target.perlasm_format.to_owned());
+        let mut args = vec![
+            src.to_string_lossy().into_owned(),
+            asm_target.perlasm_format.to_owned(),
+        ];
         if asm_target.arch == "x86" {
             args.push("-fPIC".into());
             args.push("-DOPENSSL_IA32_SSE2".into());
