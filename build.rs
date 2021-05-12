@@ -119,14 +119,9 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
         NON_MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &[&str] = &[
-            "/GS",   // Buffer security checks.
-            "/Gy",   // Enable function-level linking.
-            "/EHsc", // C++ exceptions only, only in C++.
-            "/GR-",  // Disable RTTI.
-            "/Zc:wchar_t",
-            "/Zc:forScope",
+            "/GS", // Buffer security checks.
+            "/Gy", // Enable function-level linking.
             "/Zc:inline",
-            "/Zc:rvalueCast",
             // Warnings.
             "/wd4127", // C4127: conditional expression is constant
             "/wd4464", // C4464: relative include path contains '..'
