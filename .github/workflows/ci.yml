@@ -300,13 +300,9 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_12.4.app &&
           sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/*
 
-      - if: ${{ !contains(matrix.host_os, 'windows') }}
-        run: |
+      - run: |
           mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
-
-      - if: ${{ contains(matrix.host_os, 'windows') }}
-        run: |
-          cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+        shell: bash
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.

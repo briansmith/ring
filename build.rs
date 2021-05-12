@@ -396,7 +396,6 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path, ring_cor
     });
 
     let use_pregenerated = !target.is_git;
-    let warnings_are_errors = target.is_git;
 
     let asm_dir = if use_pregenerated {
         &pregenerated
@@ -449,14 +448,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path, ring_cor
     libs.iter()
         .for_each(|&(lib_name_suffix, srcs, additional_srcs)| {
             let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
-            build_library(
-                &target,
-                &out_dir,
-                &lib_name,
-                srcs,
-                additional_srcs,
-                warnings_are_errors,
-            )
+            build_library(&target, &out_dir, &lib_name, srcs, additional_srcs)
         });
 
     println!(
@@ -471,14 +463,13 @@ fn build_library(
     lib_name: &str,
     srcs: &[PathBuf],
     additional_srcs: &[PathBuf],
-    warnings_are_errors: bool,
 ) {
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs
         .iter()
         .chain(srcs.iter())
         .filter(|f| &target.env != "msvc" || f.extension().unwrap().to_str().unwrap() != "S")
-        .map(|f| compile(f, target, warnings_are_errors, out_dir))
+        .map(|f| compile(f, target, out_dir))
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
@@ -517,7 +508,7 @@ fn build_library(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path) -> String {
+fn compile(p: &Path, target: &Target, out_dir: &Path) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "obj" {
         p.to_str().expect("Invalid path").into()
@@ -525,7 +516,7 @@ fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path)
         let mut out_path = out_dir.join(p.file_name().unwrap());
         assert!(out_path.set_extension(target.obj_ext));
         let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(p, ext, target, warnings_are_errors, &out_path, out_dir)
+            cc(p, ext, target, &out_path, out_dir)
         } else {
             nasm(p, &target.arch, &out_path, out_dir)
         };
@@ -541,14 +532,7 @@ fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
     out_path
 }
 
-fn cc(
-    file: &Path,
-    ext: &str,
-    target: &Target,
-    warnings_are_errors: bool,
-    out_path: &Path,
-    include_dir: &Path,
-) -> Command {
+fn cc(file: &Path, ext: &str, target: &Target, out_path: &Path, include_dir: &Path) -> Command {
     let is_musl = target.env.starts_with("musl");
 
     let mut c = cc::Build::new();
@@ -613,14 +597,6 @@ fn cc(
         }
     }
 
-    if warnings_are_errors {
-        let flag = if &target.env != "msvc" {
-            "-Werror"
-        } else {
-            "/WX"
-        };
-        let _ = c.flag(flag);
-    }
     if is_musl {
         // Some platforms enable _FORTIFY_SOURCE by default, but musl
         // libc doesn't support it yet. See

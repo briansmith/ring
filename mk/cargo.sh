@@ -17,6 +17,18 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
+NULL=
+
+# cc-rs adds `$CFLAGS` to the MSVC cl.exe command line automatically.
+# For -msvc targets we'll override `$CFLAGS` with `$CFLAGS_MSVC` to
+# take advantage of this.
+export CFLAGS="\
+  -Werror \
+  $NULL"
+CFLAGS_MSVC="\
+  -WX \
+  $NULL"
+
 rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
@@ -103,6 +115,9 @@ case $target in
     export AR_wasm32_unknown_unknown=llvm-ar-$llvm_version
     export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
     export WASM_BINDGEN_TEST_TIMEOUT=60
+    ;;
+  *-msvc)
+    export CFLAGS=$CFLAGS_MSVC
     ;;
   *)
     ;;
