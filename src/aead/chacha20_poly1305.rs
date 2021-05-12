@@ -240,7 +240,7 @@ struct Out {
 
 #[inline]
 fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
-    if input.len() > 0 {
+    if !input.is_empty() {
         ctx.update(input);
         let remainder_len = input.len() % poly1305::BLOCK_LEN;
         if remainder_len != 0 {
