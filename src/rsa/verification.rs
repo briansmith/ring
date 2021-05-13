@@ -212,7 +212,7 @@ pub use super::public::Components as RsaPublicKeyComponents;
 
 impl<B> super::public::Components<B>
 where
-    B: AsRef<[u8]> + core::fmt::Debug,
+    B: AsRef<[u8]>,
 {
     /// Verifies that `signature` is a valid signature of `message` using `self`
     /// as the public key. `params` determine what algorithm parameters

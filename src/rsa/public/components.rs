@@ -12,9 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-/// RSA public key components
-#[derive(Debug)]
-pub struct Components<B: AsRef<[u8]> + core::fmt::Debug> {
+/// RSA public key components.
+///
+/// `B` must implement `AsRef<[u8]>` like `&[u8]` or `Vec<u8>`.
+pub struct Components<B> {
     /// The public modulus, encoded in big-endian bytes without leading zeros.
     pub n: B,
 
@@ -22,16 +23,28 @@ pub struct Components<B: AsRef<[u8]> + core::fmt::Debug> {
     pub e: B,
 }
 
-impl<B: Copy> Copy for Components<B> where B: AsRef<[u8]> + core::fmt::Debug {}
+impl<B> Copy for Components<B> where B: Copy {}
 
-impl<B: Clone> Clone for Components<B>
+impl<B> Clone for Components<B>
 where
-    B: AsRef<[u8]> + core::fmt::Debug,
+    B: Clone,
 {
     fn clone(&self) -> Self {
         Self {
             n: self.n.clone(),
             e: self.e.clone(),
         }
+    }
+}
+
+impl<B> core::fmt::Debug for Components<B>
+where
+    B: core::fmt::Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        f.debug_struct("Components")
+            .field("n", &self.n)
+            .field("e", &self.e)
+            .finish()
     }
 }
