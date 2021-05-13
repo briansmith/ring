@@ -19,12 +19,14 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/curve25519.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/nid.h>
 #include <openssl/pem.h>
 #include <openssl/pool.h>
 #include <openssl/x509.h>
@@ -33,9 +35,6 @@
 #include "../internal.h"
 #include "../test/test_util.h"
 #include "../x509v3/internal.h"
-#include "openssl/asn1.h"
-#include "openssl/base.h"
-#include "openssl/nid.h"
 
 
 std::string GetTestData(const char *path);
