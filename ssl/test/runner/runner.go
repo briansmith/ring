@@ -1060,7 +1060,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		shimPrefix = test.resumeShimPrefix
 	}
 	if test.shimWritesFirst || test.readWithUnfinishedWrite {
-		shimPrefix = "hello"
+		shimPrefix = shimInitialWrite
 	}
 	if test.renegotiate > 0 {
 		// If readWithUnfinishedWrite is set, the shim prefix will be
@@ -1294,6 +1294,10 @@ func translateExpectedError(errorStr string) string {
 	return errorStr
 }
 
+// shimInitialWrite is the data we expect from the shim when the
+// -shim-writes-first flag is used.
+const shimInitialWrite = "hello"
+
 func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocNumToFail int64) error {
 	// Help debugging panics on the Go side.
 	defer func() {
@@ -1433,7 +1437,7 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 			// Configure the shim to send some data in early data.
 			flags = append(flags, "-on-resume-shim-writes-first")
 			if resumeConfig.Bugs.ExpectEarlyData == nil {
-				resumeConfig.Bugs.ExpectEarlyData = [][]byte{[]byte("hello")}
+				resumeConfig.Bugs.ExpectEarlyData = [][]byte{[]byte(shimInitialWrite)}
 			}
 		} else {
 			// By default, send some early data and expect half-RTT data response.
@@ -4842,10 +4846,10 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					MinVersion:       VersionTLS13,
 					MaxEarlyDataSize: 2,
 					Bugs: ProtocolBugs{
-						ExpectEarlyData: [][]byte{{'h', 'e'}},
+						ExpectEarlyData: [][]byte{[]byte(shimInitialWrite[:2])},
 					},
 				},
-				resumeShimPrefix: "llo",
+				resumeShimPrefix: shimInitialWrite[2:],
 				resumeSession:    true,
 				earlyData:        true,
 			})
@@ -4865,8 +4869,9 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					MaxVersion: VersionTLS13,
 					MinVersion: VersionTLS13,
 					Bugs: ProtocolBugs{
+						// Write the server response before expecting early data.
 						ExpectEarlyData:     [][]byte{},
-						ExpectLateEarlyData: [][]byte{{'h', 'e', 'l', 'l', 'o'}},
+						ExpectLateEarlyData: [][]byte{[]byte(shimInitialWrite)},
 					},
 				},
 				resumeSession: true,
@@ -15146,6 +15151,51 @@ func addTLS13HandshakeTests() {
 		shouldFail:         true,
 		expectedError:      ":CIPHER_MISMATCH_ON_EARLY_DATA:",
 		expectedLocalError: "remote error: illegal parameter",
+	})
+
+	// Test that the client can write early data when it has received a partial
+	// ServerHello..Finished flight. See https://crbug.com/1208784. Note the
+	// EncryptedExtensions test assumes EncryptedExtensions and Finished are in
+	// separate records, i.e. that PackHandshakeFlight is disabled.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "EarlyData-WriteAfterServerHello",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				// Write the server response before expecting early data.
+				ExpectEarlyData:     [][]byte{},
+				ExpectLateEarlyData: [][]byte{[]byte(shimInitialWrite)},
+			},
+		},
+		resumeSession: true,
+		earlyData:     true,
+		flags: []string{
+			"-async",
+			"-on-resume-early-write-after-message",
+			strconv.Itoa(int(typeServerHello)),
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "EarlyData-WriteAfterEncryptedExtensions",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				// Write the server response before expecting early data.
+				ExpectEarlyData:     [][]byte{},
+				ExpectLateEarlyData: [][]byte{[]byte(shimInitialWrite)},
+			},
+		},
+		resumeSession: true,
+		earlyData:     true,
+		flags: []string{
+			"-async",
+			"-on-resume-early-write-after-message",
+			strconv.Itoa(int(typeEncryptedExtensions)),
+		},
 	})
 }
 

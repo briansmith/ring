@@ -190,6 +190,7 @@ struct TestConfig {
   bool expect_no_hrr = false;
   bool wait_for_debugger = false;
   std::string quic_early_data_context;
+  int early_write_after_message = 0;
 
   int argc;
   char **argv;

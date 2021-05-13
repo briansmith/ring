@@ -235,6 +235,7 @@ const Flag<int> kIntFlags[] = {
     {"-read-size", &TestConfig::read_size},
     {"-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew},
     {"-quic-use-legacy-codepoint", &TestConfig::quic_use_legacy_codepoint},
+    {"-early-write-after-message", &TestConfig::early_write_after_message},
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {
@@ -599,6 +600,9 @@ static void MessageCallback(int is_write, int version, int content_type,
       char text[16];
       snprintf(text, sizeof(text), "hs %d\n", type);
       state->msg_callback_text += text;
+      if (!is_write) {
+        state->last_message_received = type;
+      }
       return;
     }
 

@@ -851,6 +851,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   int ret;
   SSL *ssl = ssl_uniqueptr->get();
   SSL_CTX *session_ctx = SSL_get_SSL_CTX(ssl);
+  TestState *test_state = GetTestState(ssl);
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
@@ -859,6 +860,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         return false;
       }
       ssl = ssl_uniqueptr->get();
+      test_state = GetTestState(ssl);
 #else
       fprintf(stderr, "The external handshaker can only be used on Linux\n");
       return false;
@@ -903,9 +905,44 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       return false;
     }
 
+    if (config->early_write_after_message != 0) {
+      if (!SSL_in_early_data(ssl) || config->is_server) {
+        fprintf(stderr,
+                "-early-write-after-message only works for 0-RTT connections "
+                "on servers.\n");
+        return false;
+      }
+      if (!config->shim_writes_first || !config->async) {
+        fprintf(stderr,
+                "-early-write-after-message requires -shim-writes-first and "
+                "-async.\n");
+        return false;
+      }
+      // Run the handshake until the specified message. Note that, if a
+      // handshake record contains multiple messages, |SSL_do_handshake| usually
+      // processes both atomically. The test must ensure there is a record
+      // boundary after the desired message. Checking |last_message_received|
+      // confirms this.
+      do {
+        ret = SSL_do_handshake(ssl);
+      } while (test_state->last_message_received !=
+                   config->early_write_after_message &&
+               RetryAsync(ssl, ret));
+      if (ret == 1) {
+        fprintf(stderr, "Handshake unexpectedly succeeded.\n");
+        return false;
+      }
+      if (test_state->last_message_received !=
+          config->early_write_after_message) {
+        // The handshake failed before we saw the target message. The generic
+        // error-handling logic in the caller will print the error.
+        return false;
+      }
+    }
+
     // Reset the state to assert later that the callback isn't called in
     // renegotations.
-    GetTestState(ssl)->got_new_session = false;
+    test_state->got_new_session = false;
   }
 
   if (config->export_keying_material > 0) {
@@ -1005,7 +1042,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       }
 
       // Let only one byte of the record through.
-      AsyncBioAllowWrite(GetTestState(ssl)->async_bio, 1);
+      AsyncBioAllowWrite(test_state->async_bio, 1);
       int write_ret =
           SSL_write(ssl, kInitialWrite, strlen(kInitialWrite));
       if (SSL_get_error(ssl, write_ret) != SSL_ERROR_WANT_WRITE) {
@@ -1060,7 +1097,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
 
         // After a successful read, with or without False Start, the handshake
         // must be complete unless we are doing early data.
-        if (!GetTestState(ssl)->handshake_done &&
+        if (!test_state->handshake_done &&
             !SSL_early_data_accepted(ssl)) {
           fprintf(stderr, "handshake was not completed after SSL_read\n");
           return false;
@@ -1094,7 +1131,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       !config->implicit_handshake &&
       // Session tickets are sent post-handshake in TLS 1.3.
       GetProtocolVersion(ssl) < TLS1_3_VERSION &&
-      GetTestState(ssl)->got_new_session) {
+      test_state->got_new_session) {
     fprintf(stderr, "new session was established after the handshake\n");
     return false;
   }
@@ -1102,16 +1139,16 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (GetProtocolVersion(ssl) >= TLS1_3_VERSION && !config->is_server) {
     bool expect_new_session =
         !config->expect_no_session && !config->shim_shuts_down;
-    if (expect_new_session != GetTestState(ssl)->got_new_session) {
+    if (expect_new_session != test_state->got_new_session) {
       fprintf(stderr,
               "new session was%s cached, but we expected the opposite\n",
-              GetTestState(ssl)->got_new_session ? "" : " not");
+              test_state->got_new_session ? "" : " not");
       return false;
     }
 
     if (expect_new_session) {
       bool got_early_data =
-          GetTestState(ssl)->new_session->ticket_max_early_data != 0;
+          test_state->new_session->ticket_max_early_data != 0;
       if (config->expect_ticket_supports_early_data != got_early_data) {
         fprintf(stderr,
                 "new session did%s support early data, but we expected the "
@@ -1123,7 +1160,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
 
   if (out_session) {
-    *out_session = std::move(GetTestState(ssl)->new_session);
+    *out_session = std::move(test_state->new_session);
   }
 
   ret = DoShutdown(ssl);
@@ -1172,10 +1209,10 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
 
   if (config->renegotiate_explicit &&
       SSL_total_renegotiations(ssl) !=
-          GetTestState(ssl)->explicit_renegotiates) {
+          test_state->explicit_renegotiates) {
     fprintf(stderr, "Performed %d renegotiations, but triggered %d of them\n",
             SSL_total_renegotiations(ssl),
-            GetTestState(ssl)->explicit_renegotiates);
+            test_state->explicit_renegotiates);
     return false;
   }
 
