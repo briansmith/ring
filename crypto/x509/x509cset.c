@@ -250,3 +250,34 @@ int i2d_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp)
 {
     return i2d_X509_CRL_INFO(crl->crl, outp);
 }
+
+int X509_CRL_set1_signature_algo(X509_CRL *crl, const X509_ALGOR *algo)
+{
+    /* TODO(davidben): Const-correct generated ASN.1 dup functions.
+     * Alternatively, when the types are hidden and we can embed required fields
+     * directly in structs, import |X509_ALGOR_copy| from upstream. */
+    X509_ALGOR *copy1 = X509_ALGOR_dup((X509_ALGOR *)algo);
+    X509_ALGOR *copy2 = X509_ALGOR_dup((X509_ALGOR *)algo);
+    if (copy1 == NULL || copy2 == NULL) {
+        X509_ALGOR_free(copy1);
+        X509_ALGOR_free(copy2);
+        return 0;
+    }
+
+    X509_ALGOR_free(crl->sig_alg);
+    crl->sig_alg = copy1;
+    X509_ALGOR_free(crl->crl->sig_alg);
+    crl->crl->sig_alg = copy2;
+    return 1;
+}
+
+int X509_CRL_set1_signature_value(X509_CRL *crl, const uint8_t *sig,
+                                  size_t sig_len)
+{
+    if (!ASN1_STRING_set(crl->signature, sig, sig_len)) {
+      return 0;
+    }
+    crl->signature->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
+    crl->signature->flags |= ASN1_STRING_FLAG_BITS_LEFT;
+    return 1;
+}

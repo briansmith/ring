@@ -1350,6 +1350,25 @@ OPENSSL_EXPORT int i2d_re_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp);
 // instead.
 OPENSSL_EXPORT int i2d_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp);
 
+// X509_CRL_set1_signature_algo sets |crl|'s signature algorithm to |algo| and
+// returns one on success or zero on error. It updates both the signature field
+// of the TBSCertList structure, and the signatureAlgorithm field of the CRL.
+OPENSSL_EXPORT int X509_CRL_set1_signature_algo(X509_CRL *crl,
+                                                const X509_ALGOR *algo);
+
+// X509_CRL_set1_signature_value sets |crl|'s signature to a copy of the
+// |sig_len| bytes pointed by |sig|. It returns one on success and zero on
+// error.
+//
+// Due to a specification error, X.509 CRLs store signatures in ASN.1 BIT
+// STRINGs, but signature algorithms return byte strings rather than bit
+// strings. This function creates a BIT STRING containing a whole number of
+// bytes, with the bit order matching the DER encoding. This matches the
+// encoding used by all X.509 signature algorithms.
+OPENSSL_EXPORT int X509_CRL_set1_signature_value(X509_CRL *crl,
+                                                 const uint8_t *sig,
+                                                 size_t sig_len);
+
 // X509_REVOKED_get0_serialNumber returns the serial number of the certificate
 // revoked by |revoked|.
 OPENSSL_EXPORT const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(
