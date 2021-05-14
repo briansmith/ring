@@ -50,6 +50,24 @@ struct x509_cert_aux_st {
   STACK_OF(X509_ALGOR) *other;    // other unspecified info
 } /* X509_CERT_AUX */;
 
+typedef struct {
+  ASN1_ENCODING enc;
+  ASN1_INTEGER *version;
+  X509_NAME *subject;
+  X509_PUBKEY *pubkey;
+  //  d=2 hl=2 l=  0 cons: cont: 00
+  STACK_OF(X509_ATTRIBUTE) *attributes;  // [ 0 ]
+} X509_REQ_INFO;
+
+DECLARE_ASN1_FUNCTIONS(X509_REQ_INFO)
+
+struct X509_req_st {
+  X509_REQ_INFO *req_info;
+  X509_ALGOR *sig_alg;
+  ASN1_BIT_STRING *signature;
+  CRYPTO_refcount_t references;
+} /* X509_REQ */;
+
 
 /* RSA-PSS functions. */
 

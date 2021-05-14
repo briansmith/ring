@@ -372,7 +372,6 @@ typedef struct X509_info_st X509_INFO;
 typedef struct X509_name_entry_st X509_NAME_ENTRY;
 typedef struct X509_name_st X509_NAME;
 typedef struct X509_pubkey_st X509_PUBKEY;
-typedef struct X509_req_info_st X509_REQ_INFO;
 typedef struct X509_req_st X509_REQ;
 typedef struct X509_sig_st X509_SIG;
 typedef struct X509_val_st X509_VAL;

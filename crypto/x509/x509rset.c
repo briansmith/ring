@@ -59,6 +59,9 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+#include "internal.h"
+
+
 int X509_REQ_set_version(X509_REQ *x, long version)
 {
     if (x == NULL)
