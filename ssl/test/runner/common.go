@@ -2281,3 +2281,12 @@ func containsGREASE(values []uint16) bool {
 	}
 	return false
 }
+
+func isAllZero(v []byte) bool {
+	for _, b := range v {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
+}

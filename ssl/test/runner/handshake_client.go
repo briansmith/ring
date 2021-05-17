@@ -353,6 +353,11 @@ func (c *Conn) clientHandshake() error {
 			c.sendAlert(alertUnexpectedMessage)
 			return unexpectedMessageError(hs.serverHello, msg)
 		}
+		if isAllZero(hs.serverHello.random) {
+			// If the server forgets to fill in the server random, it will
+			// likely be all zero.
+			return errors.New("tls: ServerHello random was all zero")
+		}
 
 		hs.writeServerHash(hs.serverHello.marshal())
 		if c.config.Bugs.EarlyChangeCipherSpec > 0 {
@@ -982,6 +987,12 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(hs.serverHello, msg)
+	}
+
+	if isAllZero(hs.serverHello.random) {
+		// If the server forgets to fill in the server random, it will
+		// likely be all zero.
+		return errors.New("tls: ServerHello random was all zero")
 	}
 
 	if c.wireVersion != hs.serverHello.vers {

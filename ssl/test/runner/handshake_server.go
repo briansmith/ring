@@ -167,6 +167,11 @@ func (hs *serverHandshakeState) readClientHello() error {
 	if size := config.Bugs.RequireClientHelloSize; size != 0 && len(hs.clientHello.raw) != size {
 		return fmt.Errorf("tls: ClientHello record size is %d, but expected %d", len(hs.clientHello.raw), size)
 	}
+	if isAllZero(hs.clientHello.random) {
+		// If the client forgets to fill in the client random, it will likely be
+		// all zero.
+		return errors.New("tls: ClientHello random was all zero")
+	}
 
 	if c.isDTLS && !config.Bugs.SkipHelloVerifyRequest {
 		// Per RFC 6347, the version field in HelloVerifyRequest SHOULD
