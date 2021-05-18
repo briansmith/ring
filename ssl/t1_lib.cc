@@ -2146,21 +2146,6 @@ static bool ext_psk_key_exchange_modes_parse_clienthello(SSL_HANDSHAKE *hs,
 //
 // https://tools.ietf.org/html/rfc8446#section-4.2.10
 
-// ssl_get_local_application_settings looks up the configured ALPS value for
-// |protocol|. If found, it sets |*out_settings| to the value and returns true.
-// Otherwise, it returns false.
-static bool ssl_get_local_application_settings(
-    const SSL_HANDSHAKE *hs, Span<const uint8_t> *out_settings,
-    Span<const uint8_t> protocol) {
-  for (const ALPSConfig &config : hs->config->alps_configs) {
-    if (protocol == config.protocol) {
-      *out_settings = config.settings;
-      return true;
-    }
-  }
-  return false;
-}
-
 static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   // The second ClientHello never offers early data, and we must have already
@@ -2170,52 +2155,9 @@ static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
-  if (!ssl->enable_early_data) {
-    ssl->s3->early_data_reason = ssl_early_data_disabled;
+  if (!hs->early_data_offered) {
     return true;
   }
-
-  if (hs->max_version < TLS1_3_VERSION) {
-    // We discard inapplicable sessions, so this is redundant with the session
-    // checks below, but we check give a more useful reason.
-    ssl->s3->early_data_reason = ssl_early_data_protocol_version;
-    return true;
-  }
-
-  if (ssl->session == nullptr) {
-    ssl->s3->early_data_reason = ssl_early_data_no_session_offered;
-    return true;
-  }
-
-  if (ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION ||
-      ssl->session->ticket_max_early_data == 0) {
-    ssl->s3->early_data_reason = ssl_early_data_unsupported_for_session;
-    return true;
-  }
-
-  if (!ssl->session->early_alpn.empty()) {
-    if (!ssl_is_alpn_protocol_allowed(hs, ssl->session->early_alpn)) {
-      // Avoid reporting a confusing value in |SSL_get0_alpn_selected|.
-      ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
-      return true;
-    }
-
-    // If the previous connection negotiated ALPS, only offer 0-RTT when the
-    // local are settings are consistent with what we'd offer for this
-    // connection.
-    if (ssl->session->has_application_settings) {
-      Span<const uint8_t> settings;
-      if (!ssl_get_local_application_settings(hs, &settings,
-                                              ssl->session->early_alpn) ||
-          settings != ssl->session->local_application_settings) {
-        ssl->s3->early_data_reason = ssl_early_data_alps_mismatch;
-        return true;
-      }
-    }
-  }
-
-  // |early_data_reason| will be filled in later when the server responds.
-  hs->early_data_offered = true;
 
   if (!CBB_add_u16(out, TLSEXT_TYPE_early_data) ||
       !CBB_add_u16(out, 0) ||
@@ -2952,6 +2894,18 @@ static bool cert_compression_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 // Application-level Protocol Settings
 //
 // https://tools.ietf.org/html/draft-vvv-tls-alps-01
+
+bool ssl_get_local_application_settings(const SSL_HANDSHAKE *hs,
+                                        Span<const uint8_t> *out_settings,
+                                        Span<const uint8_t> protocol) {
+  for (const ALPSConfig &config : hs->config->alps_configs) {
+    if (protocol == config.protocol) {
+      *out_settings = config.settings;
+      return true;
+    }
+  }
+  return false;
+}
 
 static bool ext_alps_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;

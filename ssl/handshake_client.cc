@@ -374,6 +374,54 @@ static bool parse_supported_versions(SSL_HANDSHAKE *hs, uint16_t *version,
   return true;
 }
 
+// should_offer_early_data returns |ssl_early_data_accepted| if |hs| should
+// offer early data, and some other reason code otherwise.
+static ssl_early_data_reason_t should_offer_early_data(
+    const SSL_HANDSHAKE *hs) {
+  const SSL *const ssl = hs->ssl;
+  assert(!ssl->server);
+  if (!ssl->enable_early_data) {
+    return ssl_early_data_disabled;
+  }
+
+  if (hs->max_version < TLS1_3_VERSION) {
+    // We discard inapplicable sessions, so this is redundant with the session
+    // checks below, but reporting that TLS 1.3 was disabled is more useful.
+    return ssl_early_data_protocol_version;
+  }
+
+  if (ssl->session == nullptr) {
+    return ssl_early_data_no_session_offered;
+  }
+
+  if (ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION ||
+      ssl->session->ticket_max_early_data == 0) {
+    return ssl_early_data_unsupported_for_session;
+  }
+
+  if (!ssl->session->early_alpn.empty()) {
+    if (!ssl_is_alpn_protocol_allowed(hs, ssl->session->early_alpn)) {
+      // Avoid reporting a confusing value in |SSL_get0_alpn_selected|.
+      return ssl_early_data_alpn_mismatch;
+    }
+
+    // If the previous connection negotiated ALPS, only offer 0-RTT when the
+    // local are settings are consistent with what we'd offer for this
+    // connection.
+    if (ssl->session->has_application_settings) {
+      Span<const uint8_t> settings;
+      if (!ssl_get_local_application_settings(hs, &settings,
+                                              ssl->session->early_alpn) ||
+          settings != ssl->session->local_application_settings) {
+        return ssl_early_data_alps_mismatch;
+      }
+    }
+  }
+
+  // Early data has not yet been accepted, but we use it as a success code.
+  return ssl_early_data_accepted;
+}
+
 static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
@@ -434,6 +482,13 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
         return ssl_hs_error;
       }
     }
+  }
+
+  ssl_early_data_reason_t reason = should_offer_early_data(hs);
+  if (reason != ssl_early_data_accepted) {
+    ssl->s3->early_data_reason = reason;
+  } else {
+    hs->early_data_offered = true;
   }
 
   if (!ssl_write_client_hello(hs)) {
