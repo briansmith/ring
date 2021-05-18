@@ -8061,6 +8061,40 @@ func addExtensionTests() {
 					shouldFail:    true,
 					expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
 				})
+			} else {
+				// DTLS-SRTP is not defined for other protocols. Configuring it
+				// on the client and server should ignore the extension.
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					name:     "SRTP-Client-Ignore-" + suffix,
+					config: Config{
+						MaxVersion:             ver.version,
+						SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+					},
+					expectations: connectionExpectations{
+						srtpProtectionProfile: 0,
+					},
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "SRTP-Server-Ignore-" + suffix,
+					config: Config{
+						MaxVersion:             ver.version,
+						SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+					},
+					flags: []string{
+						"-srtp-profiles",
+						"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+					},
+					expectations: connectionExpectations{
+						srtpProtectionProfile: 0,
+					},
+				})
 			}
 
 			// Test SCT list.

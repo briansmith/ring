@@ -1713,17 +1713,13 @@ static bool ext_channel_id_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 //
 // https://tools.ietf.org/html/rfc5764
 
-
-static void ext_srtp_init(SSL_HANDSHAKE *hs) {
-  hs->ssl->s3->srtp_profile = NULL;
-}
-
 static bool ext_srtp_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   const STACK_OF(SRTP_PROTECTION_PROFILE) *profiles =
       SSL_get_srtp_profiles(ssl);
   if (profiles == NULL ||
-      sk_SRTP_PROTECTION_PROFILE_num(profiles) == 0) {
+      sk_SRTP_PROTECTION_PROFILE_num(profiles) == 0 ||
+      !SSL_is_dtls(ssl)) {
     return true;
   }
 
@@ -1759,6 +1755,7 @@ static bool ext_srtp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // single uint16_t profile ID, then followed by a u8-prefixed srtp_mki field.
   //
   // See https://tools.ietf.org/html/rfc5764#section-4.1.1
+  assert(SSL_is_dtls(ssl));
   CBS profile_ids, srtp_mki;
   uint16_t profile_id;
   if (!CBS_get_u16_length_prefixed(contents, &profile_ids) ||
@@ -1793,7 +1790,8 @@ static bool ext_srtp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static bool ext_srtp_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                        CBS *contents) {
   SSL *const ssl = hs->ssl;
-  if (contents == NULL) {
+  // DTLS-SRTP is only defined for DTLS.
+  if (contents == NULL || !SSL_is_dtls(ssl)) {
     return true;
   }
 
@@ -1837,6 +1835,7 @@ static bool ext_srtp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
+  assert(SSL_is_dtls(ssl));
   CBB contents, profile_ids;
   if (!CBB_add_u16(out, TLSEXT_TYPE_srtp) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
@@ -3204,7 +3203,7 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_srtp,
-    ext_srtp_init,
+    NULL,
     ext_srtp_add_clienthello,
     ext_srtp_parse_serverhello,
     ext_srtp_parse_clienthello,
