@@ -203,9 +203,6 @@ extern "C" {
 // ExtensionType value from RFC7627
 #define TLSEXT_TYPE_extended_master_secret 23
 
-// ExtensionType value from draft-ietf-tokbind-negotiation-10
-#define TLSEXT_TYPE_token_binding 24
-
 // ExtensionType value from draft-ietf-quic-tls. Drafts 00 through 32 use
 // 0xffa5 which is part of the Private Use section of the registry, and it
 // collides with TLS-LTS and, based on scans, something else too (though this

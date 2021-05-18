@@ -109,7 +109,6 @@ const (
 	extensionSignedCertificateTimestamp uint16 = 18
 	extensionPadding                    uint16 = 21
 	extensionExtendedMasterSecret       uint16 = 23
-	extensionTokenBinding               uint16 = 24
 	extensionCompressedCertAlgs         uint16 = 27
 	extensionSessionTicket              uint16 = 35
 	extensionPreSharedKey               uint16 = 41
@@ -258,8 +257,6 @@ type ConnectionState struct {
 	VerifiedChains             [][]*x509.Certificate // verified chains built from PeerCertificates
 	OCSPResponse               []byte                // stapled OCSP response from the peer, if any
 	ChannelID                  *ecdsa.PublicKey      // the channel ID for this connection
-	TokenBindingNegotiated     bool                  // whether Token Binding was negotiated
-	TokenBindingParam          uint8                 // the negotiated Token Binding key parameter
 	SRTPProtectionProfile      uint16                // the negotiated DTLS-SRTP protection profile
 	TLSUnique                  []byte                // the tls-unique channel binding
 	SCTList                    []byte                // signed certificate timestamp list
@@ -520,20 +517,6 @@ type Config struct {
 	// Channel ID. If negotiated, the client's public key is
 	// returned in the ConnectionState.
 	RequestChannelID bool
-
-	// TokenBindingParams contains a list of TokenBindingKeyParameters
-	// (draft-ietf-tokbind-protocol-16) to attempt to negotiate. If
-	// nil, Token Binding will not be negotiated.
-	TokenBindingParams []byte
-
-	// TokenBindingVersion contains the serialized ProtocolVersion to
-	// use when negotiating Token Binding.
-	TokenBindingVersion uint16
-
-	// ExpectTokenBindingParams is checked by a server that the client
-	// sent ExpectTokenBindingParams as its list of Token Binding
-	// paramters.
-	ExpectTokenBindingParams []byte
 
 	// PreSharedKey, if not nil, is the pre-shared key to use with
 	// the PSK cipher suites.

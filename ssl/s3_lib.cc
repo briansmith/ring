@@ -177,7 +177,6 @@ SSL3_STATE::SSL3_STATE()
       key_update_pending(false),
       wpend_pending(false),
       early_data_accepted(false),
-      token_binding_negotiated(false),
       alert_dispatch(false),
       renegotiate_pending(false),
       used_hello_retry_request(false) {}

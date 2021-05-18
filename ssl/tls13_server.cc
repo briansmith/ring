@@ -448,9 +448,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   } else if (ssl->s3->channel_id_valid) {
     // Channel ID is incompatible with 0-RTT.
     ssl->s3->early_data_reason = ssl_early_data_channel_id;
-  } else if (ssl->s3->token_binding_negotiated) {
-    // Token Binding is incompatible with 0-RTT.
-    ssl->s3->early_data_reason = ssl_early_data_token_binding;
   } else if (MakeConstSpan(ssl->s3->alpn_selected) != session->early_alpn) {
     // The negotiated ALPN must match the one in the ticket.
     ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;

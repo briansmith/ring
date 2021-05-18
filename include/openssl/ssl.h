@@ -3019,33 +3019,6 @@ OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(
     SSL *ssl, EVP_PKEY **out_pkey);
 
 
-// Token Binding.
-//
-// See draft-ietf-tokbind-protocol-16.
-
-// SSL_set_token_binding_params sets |params| as the Token Binding Key
-// parameters (section 3 of draft-ietf-tokbind-protocol-16) to negotiate on the
-// connection. If this function is not called, or if |len| is 0, then this
-// endpoint will not attempt to negotiate Token Binding. |params| are provided
-// in preference order, with the more preferred parameters at the beginning of
-// the list. This function returns 1 on success and 0 on failure.
-OPENSSL_EXPORT int SSL_set_token_binding_params(SSL *ssl, const uint8_t *params,
-                                                size_t len);
-
-// SSL_is_token_binding_negotiated returns 1 if Token Binding was negotiated
-// on this connection and 0 otherwise. On a server, it is possible for this
-// function to return 1 when the client's view of the connection is that Token
-// Binding was not negotiated. This occurs when the server indicates a version
-// of Token Binding less than the client's minimum version.
-OPENSSL_EXPORT int SSL_is_token_binding_negotiated(const SSL *ssl);
-
-// SSL_get_negotiated_token_binding_param returns the TokenBindingKeyParameters
-// enum value that was negotiated. It is only valid to call this function if
-// SSL_is_token_binding_negotiated returned 1, otherwise this function returns
-// an undefined value.
-OPENSSL_EXPORT uint8_t SSL_get_negotiated_token_binding_param(const SSL *ssl);
-
-
 // DTLS-SRTP.
 //
 // See RFC 5764.
@@ -3570,8 +3543,7 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   ssl_early_data_alpn_mismatch = 9,
   // The connection negotiated Channel ID, which is incompatible with 0-RTT.
   ssl_early_data_channel_id = 10,
-  // The connection negotiated token binding, which is incompatible with 0-RTT.
-  ssl_early_data_token_binding = 11,
+  // Value 11 is reserved. (It has historically |ssl_early_data_token_binding|.)
   // The client and server ticket age were too far apart.
   ssl_early_data_ticket_age_skew = 12,
   // QUIC parameters differ between this connection and the original.

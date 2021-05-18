@@ -200,7 +200,6 @@ const Flag<std::unique_ptr<std::string>> kOptionalStringFlags[] = {
 const Flag<std::string> kBase64Flags[] = {
     {"-expect-certificate-types", &TestConfig::expect_certificate_types},
     {"-expect-channel-id", &TestConfig::expect_channel_id},
-    {"-token-binding-params", &TestConfig::send_token_binding_params},
     {"-expect-ocsp-response", &TestConfig::expect_ocsp_response},
     {"-expect-signed-cert-timestamps",
      &TestConfig::expect_signed_cert_timestamps},
@@ -215,7 +214,6 @@ const Flag<std::string> kBase64Flags[] = {
 const Flag<int> kIntFlags[] = {
     {"-port", &TestConfig::port},
     {"-resume-count", &TestConfig::resume_count},
-    {"-expect-token-binding-param", &TestConfig::expect_token_binding_param},
     {"-min-version", &TestConfig::min_version},
     {"-max-version", &TestConfig::max_version},
     {"-expect-version", &TestConfig::expect_version},
@@ -1737,12 +1735,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
         return nullptr;
       }
     }
-  }
-  if (!send_token_binding_params.empty()) {
-    SSL_set_token_binding_params(
-        ssl.get(),
-        reinterpret_cast<const uint8_t *>(send_token_binding_params.data()),
-        send_token_binding_params.length());
   }
   if (!host_name.empty() &&
       !SSL_set_tlsext_host_name(ssl.get(), host_name.c_str())) {

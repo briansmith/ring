@@ -501,9 +501,9 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-    // Channel ID and Token Binding are incompatible with 0-RTT. The ALPS
-    // extension should be negotiated implicitly.
-    if (ssl->s3->channel_id_valid || ssl->s3->token_binding_negotiated ||
+    // Channel ID is incompatible with 0-RTT. The ALPS extension should be
+    // negotiated implicitly.
+    if (ssl->s3->channel_id_valid ||
         hs->new_session->has_application_settings) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION_ON_EARLY_DATA);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
