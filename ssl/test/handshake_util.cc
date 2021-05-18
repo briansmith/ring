@@ -86,14 +86,6 @@ bool RetryAsync(SSL *ssl, int ret) {
     case SSL_ERROR_WANT_WRITE:
       AsyncBioAllowWrite(test_state->async_bio, 1);
       return true;
-    case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP: {
-      UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(config->send_channel_id);
-      if (!pkey) {
-        return false;
-      }
-      test_state->channel_id = std::move(pkey);
-      return true;
-    }
     case SSL_ERROR_WANT_X509_LOOKUP:
       test_state->cert_ready = true;
       return true;

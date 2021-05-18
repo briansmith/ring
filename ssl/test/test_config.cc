@@ -695,10 +695,6 @@ static void InfoCallback(const SSL *ssl, int type, int val) {
   }
 }
 
-static void ChannelIdCallback(SSL *ssl, EVP_PKEY **out_pkey) {
-  *out_pkey = GetTestState(ssl)->channel_id.release();
-}
-
 static SSL_SESSION *GetSessionCallback(SSL *ssl, const uint8_t *data, int len,
                                        int *copy) {
   TestState *async_state = GetTestState(ssl);
@@ -1376,8 +1372,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 
-  SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
-
   SSL_CTX_set_current_time_cb(ssl_ctx.get(), CurrentTimeCallback);
 
   SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
@@ -1727,13 +1721,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     }
   }
   if (!send_channel_id.empty()) {
-    SSL_set_tls_channel_id_enabled(ssl.get(), 1);
-    if (!async) {
-      // The async case will be supplied by |ChannelIdCallback|.
-      bssl::UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(send_channel_id);
-      if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
-        return nullptr;
-      }
+    bssl::UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(send_channel_id);
+    if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
+      return nullptr;
     }
   }
   if (!host_name.empty() &&

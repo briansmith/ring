@@ -1369,7 +1369,6 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     case SSL_ERROR_HANDOFF:
     case SSL_ERROR_HANDBACK:
     case SSL_ERROR_WANT_X509_LOOKUP:
-    case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP:
     case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION:
     case SSL_ERROR_PENDING_TICKET:
     case SSL_ERROR_EARLY_DATA_REJECTED:
@@ -1443,8 +1442,6 @@ const char *SSL_error_description(int err) {
       return "WANT_CONNECT";
     case SSL_ERROR_WANT_ACCEPT:
       return "WANT_ACCEPT";
-    case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP:
-      return "WANT_CHANNEL_ID_LOOKUP";
     case SSL_ERROR_PENDING_SESSION:
       return "PENDING_SESSION";
     case SSL_ERROR_PENDING_CERTIFICATE:
@@ -2437,8 +2434,6 @@ int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
   }
 
   ctx->channel_id_private = UpRef(private_key);
-  ctx->channel_id_enabled = true;
-
   return 1;
 }
 
@@ -2452,8 +2447,6 @@ int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
   }
 
   ssl->config->channel_id_private = UpRef(private_key);
-  ssl->config->channel_id_enabled = true;
-
   return 1;
 }
 

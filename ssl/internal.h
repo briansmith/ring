@@ -1557,7 +1557,6 @@ enum ssl_hs_wait_t {
   ssl_hs_handoff,
   ssl_hs_handback,
   ssl_hs_x509_lookup,
-  ssl_hs_channel_id_lookup,
   ssl_hs_private_key_operation,
   ssl_hs_pending_session,
   ssl_hs_pending_ticket,
@@ -2862,7 +2861,8 @@ struct SSL_CONFIG {
 
   Array<uint16_t> supported_group_list;  // our list
 
-  // The client's Channel ID private key.
+  // channel_id_private is the client's Channel ID private key, or null if
+  // Channel ID should not be offered on this connection.
   UniquePtr<EVP_PKEY> channel_id_private;
 
   // For a client, this contains the list of supported protocols in wire
@@ -2901,9 +2901,8 @@ struct SSL_CONFIG {
   // whether OCSP stapling will be requested.
   bool ocsp_stapling_enabled : 1;
 
-  // channel_id_enabled is copied from the |SSL_CTX|. For a server, means that
-  // we'll accept Channel IDs from clients. For a client, means that we'll
-  // advertise support.
+  // channel_id_enabled is copied from the |SSL_CTX|. For a server, it means
+  // that we'll accept Channel IDs from clients. It is ignored on the client.
   bool channel_id_enabled : 1;
 
   // If enforce_rsa_key_usage is true, the handshake will fail if the
@@ -3195,12 +3194,6 @@ bool tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len);
 // data.
 bool tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs);
 
-// ssl_do_channel_id_callback checks runs |hs->ssl->ctx->channel_id_cb| if
-// necessary. It returns true on success and false on fatal error. Note that, on
-// success, |hs->ssl->channel_id_private| may be unset, in which case the
-// operation should be retried later.
-bool ssl_do_channel_id_callback(SSL_HANDSHAKE *hs);
-
 // ssl_can_write returns whether |ssl| is allowed to write.
 bool ssl_can_write(const SSL *ssl);
 
@@ -3323,9 +3316,6 @@ struct ssl_ctx_st {
   // get client cert callback
   int (*client_cert_cb)(SSL *ssl, X509 **out_x509,
                         EVP_PKEY **out_pkey) = nullptr;
-
-  // get channel id callback
-  void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey) = nullptr;
 
   CRYPTO_EX_DATA ex_data;
 
@@ -3454,7 +3444,8 @@ struct ssl_ctx_st {
   // Supported group values inherited by SSL structure
   bssl::Array<uint16_t> supported_group_list;
 
-  // The client's Channel ID private key.
+  // channel_id_private is the client's Channel ID private key, or null if
+  // Channel ID should not be offered on this connection.
   bssl::UniquePtr<EVP_PKEY> channel_id_private;
 
   // ech_server_config_list contains the server's list of ECHConfig values and

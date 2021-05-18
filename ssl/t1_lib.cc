@@ -1643,7 +1643,7 @@ static bool ext_alpn_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static bool ext_channel_id_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (!hs->config->channel_id_enabled || SSL_is_dtls(ssl)) {
+  if (!hs->config->channel_id_private || SSL_is_dtls(ssl)) {
     return true;
   }
 
@@ -1663,7 +1663,7 @@ static bool ext_channel_id_parse_serverhello(SSL_HANDSHAKE *hs,
   }
 
   assert(!SSL_is_dtls(hs->ssl));
-  assert(hs->config->channel_id_enabled);
+  assert(hs->config->channel_id_private);
 
   if (CBS_len(contents) != 0) {
     return false;
@@ -4187,23 +4187,6 @@ bool tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
   hs->new_session->original_handshake_hash_len = (uint8_t)digest_len;
 
   return true;
-}
-
-bool ssl_do_channel_id_callback(SSL_HANDSHAKE *hs) {
-  if (hs->config->channel_id_private != NULL ||
-      hs->ssl->ctx->channel_id_cb == NULL) {
-    return true;
-  }
-
-  EVP_PKEY *key = NULL;
-  hs->ssl->ctx->channel_id_cb(hs->ssl, &key);
-  if (key == NULL) {
-    // The caller should try again later.
-    return true;
-  }
-
-  UniquePtr<EVP_PKEY> free_key(key);
-  return SSL_set1_tls_channel_id(hs->ssl, key);
 }
 
 bool ssl_is_sct_list_valid(const CBS *contents) {

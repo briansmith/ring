@@ -684,10 +684,6 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         ssl->s3->rwstate = SSL_ERROR_WANT_X509_LOOKUP;
         hs->wait = ssl_hs_ok;
         return -1;
-      case ssl_hs_channel_id_lookup:
-        ssl->s3->rwstate = SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
-        hs->wait = ssl_hs_ok;
-        return -1;
       case ssl_hs_private_key_operation:
         ssl->s3->rwstate = SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
         hs->wait = ssl_hs_ok;

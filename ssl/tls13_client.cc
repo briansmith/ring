@@ -821,15 +821,6 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
 
   // Send a Channel ID assertion if necessary.
   if (hs->channel_id_negotiated) {
-    if (!ssl_do_channel_id_callback(hs)) {
-      hs->tls13_state = state_complete_second_flight;
-      return ssl_hs_error;
-    }
-
-    if (hs->config->channel_id_private == NULL) {
-      return ssl_hs_channel_id_lookup;
-    }
-
     ScopedCBB cbb;
     CBB body;
     if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CHANNEL_ID) ||

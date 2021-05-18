@@ -1284,12 +1284,3 @@ void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))(const SSL *ssl, int type,
                                                 int value) {
   return ctx->info_callback;
 }
-
-void SSL_CTX_set_channel_id_cb(SSL_CTX *ctx,
-                               void (*cb)(SSL *ssl, EVP_PKEY **pkey)) {
-  ctx->channel_id_cb = cb;
-}
-
-void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl, EVP_PKEY **pkey) {
-  return ctx->channel_id_cb;
-}

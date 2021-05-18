@@ -508,12 +508,10 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 // TODO(davidben): Remove this. It's used by accept BIOs which are bizarre.
 #define SSL_ERROR_WANT_ACCEPT 8
 
-// SSL_ERROR_WANT_CHANNEL_ID_LOOKUP indicates the operation failed looking up
-// the Channel ID key. The caller may retry the operation when |channel_id_cb|
-// is ready to return a key or one has been configured with
-// |SSL_set1_tls_channel_id|.
+// SSL_ERROR_WANT_CHANNEL_ID_LOOKUP is never used.
 //
-// See also |SSL_CTX_set_channel_id_cb|.
+// TODO(davidben): Remove this. Some callers reference it when stringifying
+// errors. They should use |SSL_error_description| instead.
 #define SSL_ERROR_WANT_CHANNEL_ID_LOOKUP 9
 
 // SSL_ERROR_PENDING_SESSION indicates the operation failed because the session
@@ -2974,15 +2972,16 @@ OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *out_len,
 
 // Channel ID.
 //
-// See draft-balfanz-tls-channelid-01.
+// See draft-balfanz-tls-channelid-01. This is an old, experimental mechanism
+// and should not be used in new code.
 
 // SSL_CTX_set_tls_channel_id_enabled configures whether connections associated
-// with |ctx| should enable Channel ID.
+// with |ctx| should enable Channel ID as a server.
 OPENSSL_EXPORT void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx,
                                                        int enabled);
 
 // SSL_set_tls_channel_id_enabled configures whether |ssl| should enable Channel
-// ID.
+// ID as a server.
 OPENSSL_EXPORT void SSL_set_tls_channel_id_enabled(SSL *ssl, int enabled);
 
 // SSL_CTX_set1_tls_channel_id configures a TLS client to send a TLS Channel ID
@@ -3004,20 +3003,6 @@ OPENSSL_EXPORT int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key);
 // always returns zero if |ssl| is a client.
 OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
                                              size_t max_out);
-
-// SSL_CTX_set_channel_id_cb sets a callback to be called when a TLS Channel ID
-// is requested. The callback may set |*out_pkey| to a key, passing a reference
-// to the caller. If none is returned, the handshake will pause and
-// |SSL_get_error| will return |SSL_ERROR_WANT_CHANNEL_ID_LOOKUP|.
-//
-// See also |SSL_ERROR_WANT_CHANNEL_ID_LOOKUP|.
-OPENSSL_EXPORT void SSL_CTX_set_channel_id_cb(
-    SSL_CTX *ctx, void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey));
-
-// SSL_CTX_get_channel_id_cb returns the callback set by
-// |SSL_CTX_set_channel_id_cb|.
-OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(
-    SSL *ssl, EVP_PKEY **out_pkey);
 
 
 // DTLS-SRTP.
