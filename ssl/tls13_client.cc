@@ -260,6 +260,7 @@ static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  ssl_done_writing_client_hello(hs);
   hs->tls13_state = state_read_server_hello;
   return ssl_hs_flush;
 }

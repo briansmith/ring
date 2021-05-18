@@ -2135,6 +2135,10 @@ bool ssl_output_cert_chain(SSL_HANDSHAKE *hs);
 // handshake. Note, in TLS 1.2 resumptions, this session is immutable.
 const SSL_SESSION *ssl_handshake_session(const SSL_HANDSHAKE *hs);
 
+// ssl_done_writing_client_hello is called after the last ClientHello is written
+// by |hs|. It releases some memory that is no longer needed.
+void ssl_done_writing_client_hello(SSL_HANDSHAKE *hs);
+
 
 // SSLKEYLOGFILE functions.
 

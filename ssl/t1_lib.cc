@@ -2265,7 +2265,6 @@ static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
                        hs->key_share_bytes.size())) {
       return false;
     }
-    hs->key_share_bytes.Reset();
     if (group_id == 0) {
       return CBB_flush(out);
     }
@@ -2480,8 +2479,6 @@ static bool ext_cookie_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return false;
   }
 
-  // The cookie is no longer needed in memory.
-  hs->cookie.Reset();
   return true;
 }
 
