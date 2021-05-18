@@ -405,6 +405,11 @@ bool tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
     return false;
   }
 
+  // We internally assume zero is never allocated as a group ID.
+  if (group_id == 0) {
+    return false;
+  }
+
   for (uint16_t supported : tls1_get_grouplist(hs)) {
     if (supported == group_id) {
       return true;
@@ -2242,42 +2247,33 @@ static bool ext_early_data_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 //
 // https://tools.ietf.org/html/rfc8446#section-4.2.8
 
-static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
+bool ssl_setup_key_shares(SSL_HANDSHAKE *hs, uint16_t override_group_id) {
   SSL *const ssl = hs->ssl;
+  hs->key_shares[0].reset();
+  hs->key_shares[1].reset();
+  hs->key_share_bytes.Reset();
+
   if (hs->max_version < TLS1_3_VERSION) {
     return true;
   }
 
-  CBB contents, kse_bytes;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
-      !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u16_length_prefixed(&contents, &kse_bytes)) {
+  bssl::ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 64)) {
     return false;
   }
 
-  uint16_t group_id = hs->retry_group;
-  uint16_t second_group_id = 0;
-  if (ssl->s3 && ssl->s3->used_hello_retry_request) {
-    // We received a HelloRetryRequest without a new curve, so there is no new
-    // share to append. Leave |hs->key_share| as-is.
-    if (group_id == 0 &&
-        !CBB_add_bytes(&kse_bytes, hs->key_share_bytes.data(),
-                       hs->key_share_bytes.size())) {
-      return false;
-    }
-    if (group_id == 0) {
-      return CBB_flush(out);
-    }
-  } else {
+  if (override_group_id == 0 && ssl->ctx->grease_enabled) {
     // Add a fake group. See RFC 8701.
-    if (ssl->ctx->grease_enabled &&
-        (!CBB_add_u16(&kse_bytes,
-                      ssl_get_grease_value(hs, ssl_grease_group)) ||
-         !CBB_add_u16(&kse_bytes, 1 /* length */) ||
-         !CBB_add_u8(&kse_bytes, 0 /* one byte key share */))) {
+    if (!CBB_add_u16(cbb.get(), ssl_get_grease_value(hs, ssl_grease_group)) ||
+        !CBB_add_u16(cbb.get(), 1 /* length */) ||
+        !CBB_add_u8(cbb.get(), 0 /* one byte key share */)) {
       return false;
     }
+  }
 
+  uint16_t group_id = override_group_id;
+  uint16_t second_group_id = 0;
+  if (override_group_id == 0) {
     // Predict the most preferred group.
     Span<const uint16_t> groups = tls1_get_grouplist(hs);
     if (groups.empty()) {
@@ -2297,34 +2293,43 @@ static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 
   CBB key_exchange;
   hs->key_shares[0] = SSLKeyShare::Create(group_id);
-  if (!hs->key_shares[0] ||
-      !CBB_add_u16(&kse_bytes, group_id) ||
-      !CBB_add_u16_length_prefixed(&kse_bytes, &key_exchange) ||
-      !hs->key_shares[0]->Offer(&key_exchange) ||
-      !CBB_flush(&kse_bytes)) {
+  if (!hs->key_shares[0] ||  //
+      !CBB_add_u16(cbb.get(), group_id) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &key_exchange) ||
+      !hs->key_shares[0]->Offer(&key_exchange)) {
     return false;
   }
 
   if (second_group_id != 0) {
     hs->key_shares[1] = SSLKeyShare::Create(second_group_id);
-    if (!hs->key_shares[1] ||
-        !CBB_add_u16(&kse_bytes, second_group_id) ||
-        !CBB_add_u16_length_prefixed(&kse_bytes, &key_exchange) ||
-        !hs->key_shares[1]->Offer(&key_exchange) ||
-        !CBB_flush(&kse_bytes)) {
+    if (!hs->key_shares[1] ||  //
+        !CBB_add_u16(cbb.get(), second_group_id) ||
+        !CBB_add_u16_length_prefixed(cbb.get(), &key_exchange) ||
+        !hs->key_shares[1]->Offer(&key_exchange)) {
       return false;
     }
   }
 
-  // Save the contents of the extension to repeat it in the second
-  // ClientHello.
-  if (ssl->s3 && !ssl->s3->used_hello_retry_request &&
-      !hs->key_share_bytes.CopyFrom(
-          MakeConstSpan(CBB_data(&kse_bytes), CBB_len(&kse_bytes)))) {
+  return CBBFinishArray(cbb.get(), &hs->key_share_bytes);
+}
+
+static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
+  if (hs->max_version < TLS1_3_VERSION) {
+    return true;
+  }
+
+  assert(!hs->key_share_bytes.empty());
+  CBB contents, kse_bytes;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &kse_bytes) ||
+      !CBB_add_bytes(&kse_bytes, hs->key_share_bytes.data(),
+                     hs->key_share_bytes.size()) ||
+      !CBB_flush(out)) {
     return false;
   }
 
-  return CBB_flush(out);
+  return true;
 }
 
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,

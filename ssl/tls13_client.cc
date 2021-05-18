@@ -222,9 +222,9 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    hs->key_shares[0].reset();
-    hs->key_shares[1].reset();
-    hs->retry_group = group_id;
+    if (!ssl_setup_key_shares(hs, group_id)) {
+      return ssl_hs_error;
+    }
   }
 
   if (!ssl_hash_message(hs, msg)) {
