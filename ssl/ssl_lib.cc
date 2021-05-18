@@ -1461,6 +1461,8 @@ const char *SSL_error_description(int err) {
       return "HANDOFF";
     case SSL_ERROR_HANDBACK:
       return "HANDBACK";
+    case SSL_ERROR_WANT_RENEGOTIATE:
+      return "WANT_RENEGOTIATE";
     case SSL_ERROR_HANDSHAKE_HINTS_READY:
       return "HANDSHAKE_HINTS_READY";
     default:
