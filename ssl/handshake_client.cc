@@ -223,7 +223,7 @@ static bool ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
     return false;
   }
 
-  // Add a fake cipher suite. See draft-davidben-tls-grease-01.
+  // Add a fake cipher suite. See RFC 8701.
   if (ssl->ctx->grease_enabled &&
       !CBB_add_u16(&child, ssl_get_grease_value(hs, ssl_grease_cipher))) {
     return false;

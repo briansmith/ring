@@ -1650,7 +1650,7 @@ type ProtocolBugs struct {
 	InvalidChannelIDSignature bool
 
 	// ExpectGREASE, if true, causes messages without GREASE values to be
-	// rejected. See draft-davidben-tls-grease-01.
+	// rejected. See RFC 8701.
 	ExpectGREASE bool
 
 	// OmitPSKsOnSecondClientHello, if true, causes the client to omit the

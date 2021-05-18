@@ -3506,7 +3506,7 @@ struct ssl_ctx_st {
   // advertise support.
   bool channel_id_enabled : 1;
 
-  // grease_enabled is whether draft-davidben-tls-grease-01 is enabled.
+  // grease_enabled is whether GREASE (RFC 8701) is enabled.
   bool grease_enabled : 1;
 
   // allow_unknown_alpn_protos is whether the client allows unsolicited ALPN

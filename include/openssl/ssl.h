@@ -4260,7 +4260,7 @@ OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
                                                                    int enable);
 
 // SSL_CTX_set_grease_enabled configures whether sockets on |ctx| should enable
-// GREASE. See draft-davidben-tls-grease-01.
+// GREASE. See RFC 8701.
 OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
 
 // SSL_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
