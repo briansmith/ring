@@ -1958,6 +1958,10 @@ struct SSL_HANDSHAKE {
   // in this handshake.
   bool can_release_private_key : 1;
 
+  // channel_id_negotiated is true if Channel ID should be used in this
+  // handshake.
+  bool channel_id_negotiated : 1;
+
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
 
@@ -2562,9 +2566,8 @@ struct SSL3_STATE {
 
   bool send_connection_binding : 1;
 
-  // In a client, this means that the server supported Channel ID and that a
-  // Channel ID was sent. In a server it means that we echoed support for
-  // Channel IDs and that |channel_id| will be valid after the handshake.
+  // channel_id_valid is true if, on the server, the client has negotiated a
+  // Channel ID and the |channel_id| field is filled in.
   bool channel_id_valid : 1;
 
   // key_update_pending is true if we have a KeyUpdate acknowledgment

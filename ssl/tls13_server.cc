@@ -445,7 +445,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     ssl->s3->early_data_reason = ssl_early_data_unsupported_for_session;
   } else if (!hs->early_data_offered) {
     ssl->s3->early_data_reason = ssl_early_data_peer_declined;
-  } else if (ssl->s3->channel_id_valid) {
+  } else if (hs->channel_id_negotiated) {
     // Channel ID is incompatible with 0-RTT.
     ssl->s3->early_data_reason = ssl_early_data_channel_id;
   } else if (MakeConstSpan(ssl->s3->alpn_selected) != session->early_alpn) {
@@ -820,7 +820,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     hs->cert_request = !!(hs->config->verify_mode & SSL_VERIFY_PEER);
     // Only request a certificate if Channel ID isn't negotiated.
     if ((hs->config->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
-        ssl->s3->channel_id_valid) {
+        hs->channel_id_negotiated) {
       hs->cert_request = false;
     }
   }
@@ -1156,7 +1156,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_read_channel_id(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl->s3->channel_id_valid) {
+  if (!hs->channel_id_negotiated) {
     hs->tls13_state = state13_read_client_finished;
     return ssl_hs_ok;
   }

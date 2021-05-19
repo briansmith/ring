@@ -1481,7 +1481,7 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   hs->can_release_private_key = true;
   // Resolve Channel ID first, before any non-idempotent operations.
-  if (ssl->s3->channel_id_valid) {
+  if (hs->channel_id_negotiated) {
     if (!ssl_do_channel_id_callback(hs)) {
       return ssl_hs_error;
     }
@@ -1516,7 +1516,7 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (ssl->s3->channel_id_valid) {
+  if (hs->channel_id_negotiated) {
     ScopedCBB cbb;
     CBB body;
     if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CHANNEL_ID) ||

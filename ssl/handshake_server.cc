@@ -926,7 +926,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     hs->cert_request = !!(hs->config->verify_mode & SSL_VERIFY_PEER);
     // Only request a certificate if Channel ID isn't negotiated.
     if ((hs->config->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
-        ssl->s3->channel_id_valid) {
+        hs->channel_id_negotiated) {
       hs->cert_request = false;
     }
     // CertificateRequest may only be sent in certificate-based ciphers.
@@ -980,9 +980,9 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
 
   // We only accept ChannelIDs on connections with ECDHE in order to avoid a
   // known attack while we fix ChannelID itself.
-  if (ssl->s3->channel_id_valid &&
+  if (hs->channel_id_negotiated &&
       (hs->new_cipher->algorithm_mkey & SSL_kECDHE) == 0) {
-    ssl->s3->channel_id_valid = false;
+    hs->channel_id_negotiated = false;
   }
 
   // If this is a resumption and the original handshake didn't support
@@ -990,7 +990,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   // session and so cannot resume with ChannelIDs.
   if (ssl->session != NULL &&
       ssl->session->original_handshake_hash_len == 0) {
-    ssl->s3->channel_id_valid = false;
+    hs->channel_id_negotiated = false;
   }
 
   struct OPENSSL_timeval now;
@@ -1681,7 +1681,7 @@ static enum ssl_hs_wait_t do_read_next_proto(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_read_channel_id(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  if (!ssl->s3->channel_id_valid) {
+  if (!hs->channel_id_negotiated) {
     hs->state = state12_read_client_finished;
     return ssl_hs_ok;
   }

@@ -152,7 +152,8 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       hints_requested(false),
       cert_compression_negotiated(false),
       apply_jdk11_workaround(false),
-      can_release_private_key(false) {
+      can_release_private_key(false),
+      channel_id_negotiated(false) {
   assert(ssl);
 }
 

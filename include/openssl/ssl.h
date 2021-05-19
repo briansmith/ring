@@ -2996,11 +2996,12 @@ OPENSSL_EXPORT int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx,
 // success and zero on error.
 OPENSSL_EXPORT int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key);
 
-// SSL_get_tls_channel_id gets the client's TLS Channel ID from a server |SSL*|
+// SSL_get_tls_channel_id gets the client's TLS Channel ID from a server |SSL|
 // and copies up to the first |max_out| bytes into |out|. The Channel ID
 // consists of the client's P-256 public key as an (x,y) pair where each is a
 // 32-byte, big-endian field element. It returns 0 if the client didn't offer a
-// Channel ID and the length of the complete Channel ID otherwise.
+// Channel ID and the length of the complete Channel ID otherwise. This function
+// always returns zero if |ssl| is a client.
 OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
                                              size_t max_out);
 

@@ -503,7 +503,7 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
     }
     // Channel ID is incompatible with 0-RTT. The ALPS extension should be
     // negotiated implicitly.
-    if (ssl->s3->channel_id_valid ||
+    if (hs->channel_id_negotiated ||
         hs->new_session->has_application_settings) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION_ON_EARLY_DATA);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
@@ -820,7 +820,7 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   hs->can_release_private_key = true;
 
   // Send a Channel ID assertion if necessary.
-  if (ssl->s3->channel_id_valid) {
+  if (hs->channel_id_negotiated) {
     if (!ssl_do_channel_id_callback(hs)) {
       hs->tls13_state = state_complete_second_flight;
       return ssl_hs_error;
