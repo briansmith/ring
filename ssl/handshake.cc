@@ -146,7 +146,6 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       ticket_expected(false),
       extended_master_secret(false),
       pending_private_key_op(false),
-      grease_seeded(false),
       handback(false),
       hints_requested(false),
       cert_compression_negotiated(false),
@@ -154,6 +153,12 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       can_release_private_key(false),
       channel_id_negotiated(false) {
   assert(ssl);
+
+  // Draw entropy for all GREASE values at once. This avoids calling
+  // |RAND_bytes| repeatedly and makes the values consistent within a
+  // connection. The latter is so the second ClientHello matches after
+  // HelloRetryRequest and so supported_groups and key_shares are consistent.
+  RAND_bytes(grease_seed, sizeof(grease_seed));
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
@@ -435,17 +440,8 @@ enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs,
   return ret;
 }
 
-uint16_t ssl_get_grease_value(SSL_HANDSHAKE *hs,
+uint16_t ssl_get_grease_value(const SSL_HANDSHAKE *hs,
                               enum ssl_grease_index_t index) {
-  // Draw entropy for all GREASE values at once. This avoids calling
-  // |RAND_bytes| repeatedly and makes the values consistent within a
-  // connection. The latter is so the second ClientHello matches after
-  // HelloRetryRequest and so supported_groups and key_shares are consistent.
-  if (!hs->grease_seeded) {
-    RAND_bytes(hs->grease_seed, sizeof(hs->grease_seed));
-    hs->grease_seeded = true;
-  }
-
   // This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16.
   uint16_t ret = hs->grease_seed[index];
   ret = (ret & 0xf0) | 0x0a;
