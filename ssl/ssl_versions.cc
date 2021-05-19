@@ -260,8 +260,8 @@ uint16_t ssl_protocol_version(const SSL *ssl) {
   return version;
 }
 
-bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
-  SSL *const ssl = hs->ssl;
+bool ssl_supports_version(const SSL_HANDSHAKE *hs, uint16_t version) {
+  const SSL *const ssl = hs->ssl;
   uint16_t protocol_version;
   if (!ssl_method_supports_version(ssl->method, version) ||
       !ssl_protocol_version_from_wire(&protocol_version, version) ||
@@ -273,7 +273,7 @@ bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
   return true;
 }
 
-bool ssl_add_supported_versions(SSL_HANDSHAKE *hs, CBB *cbb) {
+bool ssl_add_supported_versions(const SSL_HANDSHAKE *hs, CBB *cbb) {
   for (uint16_t version : get_method_versions(hs->ssl->method)) {
     if (ssl_supports_version(hs, version) &&
         !CBB_add_u16(cbb, version)) {
