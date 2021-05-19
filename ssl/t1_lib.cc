@@ -493,9 +493,7 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return false;
 }
 
-// tls_extension represents a TLS extension that is handled internally. The
-// |init| function is called for each handshake, before any other functions of
-// the extension. Then the add and parse callbacks are called as needed.
+// tls_extension represents a TLS extension that is handled internally.
 //
 // The parse callbacks receive a |CBS| that contains the contents of the
 // extension (i.e. not including the type and length bytes). If an extension is
@@ -510,7 +508,6 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // sent. If |*out_alert| isn't set, then a |decode_error| alert will be sent.
 struct tls_extension {
   uint16_t value;
-  void (*init)(SSL_HANDSHAKE *hs);
 
   bool (*add_clienthello)(SSL_HANDSHAKE *hs, CBB *out);
   bool (*parse_serverhello)(SSL_HANDSHAKE *hs, uint8_t *out_alert,
@@ -3048,7 +3045,6 @@ bool ssl_negotiate_alps(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static const struct tls_extension kExtensions[] = {
   {
     TLSEXT_TYPE_server_name,
-    NULL,
     ext_sni_add_clienthello,
     ext_sni_parse_serverhello,
     ext_sni_parse_clienthello,
@@ -3056,7 +3052,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_encrypted_client_hello,
-    NULL,
     ext_ech_add_clienthello,
     ext_ech_parse_serverhello,
     ext_ech_parse_clienthello,
@@ -3064,7 +3059,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_ech_is_inner,
-    NULL,
     ext_ech_is_inner_add_clienthello,
     forbid_parse_serverhello,
     ext_ech_is_inner_parse_clienthello,
@@ -3072,7 +3066,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_extended_master_secret,
-    NULL,
     ext_ems_add_clienthello,
     ext_ems_parse_serverhello,
     ext_ems_parse_clienthello,
@@ -3080,7 +3073,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_renegotiate,
-    NULL,
     ext_ri_add_clienthello,
     ext_ri_parse_serverhello,
     ext_ri_parse_clienthello,
@@ -3088,7 +3080,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_supported_groups,
-    NULL,
     ext_supported_groups_add_clienthello,
     ext_supported_groups_parse_serverhello,
     ext_supported_groups_parse_clienthello,
@@ -3096,7 +3087,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_ec_point_formats,
-    NULL,
     ext_ec_point_add_clienthello,
     ext_ec_point_parse_serverhello,
     ext_ec_point_parse_clienthello,
@@ -3104,7 +3094,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_session_ticket,
-    NULL,
     ext_ticket_add_clienthello,
     ext_ticket_parse_serverhello,
     // Ticket extension client parsing is handled in ssl_session.c
@@ -3113,7 +3102,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_application_layer_protocol_negotiation,
-    NULL,
     ext_alpn_add_clienthello,
     ext_alpn_parse_serverhello,
     // ALPN is negotiated late in |ssl_negotiate_alpn|.
@@ -3122,7 +3110,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_status_request,
-    NULL,
     ext_ocsp_add_clienthello,
     ext_ocsp_parse_serverhello,
     ext_ocsp_parse_clienthello,
@@ -3130,7 +3117,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_signature_algorithms,
-    NULL,
     ext_sigalgs_add_clienthello,
     forbid_parse_serverhello,
     ext_sigalgs_parse_clienthello,
@@ -3138,7 +3124,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_next_proto_neg,
-    NULL,
     ext_npn_add_clienthello,
     ext_npn_parse_serverhello,
     ext_npn_parse_clienthello,
@@ -3146,7 +3131,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_certificate_timestamp,
-    NULL,
     ext_sct_add_clienthello,
     ext_sct_parse_serverhello,
     ext_sct_parse_clienthello,
@@ -3154,7 +3138,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_channel_id,
-    NULL,
     ext_channel_id_add_clienthello,
     ext_channel_id_parse_serverhello,
     ext_channel_id_parse_clienthello,
@@ -3162,7 +3145,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_srtp,
-    NULL,
     ext_srtp_add_clienthello,
     ext_srtp_parse_serverhello,
     ext_srtp_parse_clienthello,
@@ -3170,7 +3152,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_key_share,
-    NULL,
     ext_key_share_add_clienthello,
     forbid_parse_serverhello,
     ignore_parse_clienthello,
@@ -3178,7 +3159,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_psk_key_exchange_modes,
-    NULL,
     ext_psk_key_exchange_modes_add_clienthello,
     forbid_parse_serverhello,
     ext_psk_key_exchange_modes_parse_clienthello,
@@ -3186,7 +3166,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_early_data,
-    NULL,
     ext_early_data_add_clienthello,
     ext_early_data_parse_serverhello,
     ext_early_data_parse_clienthello,
@@ -3194,7 +3173,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_supported_versions,
-    NULL,
     ext_supported_versions_add_clienthello,
     forbid_parse_serverhello,
     ignore_parse_clienthello,
@@ -3202,7 +3180,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_cookie,
-    NULL,
     ext_cookie_add_clienthello,
     forbid_parse_serverhello,
     ignore_parse_clienthello,
@@ -3210,7 +3187,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_quic_transport_parameters,
-    NULL,
     ext_quic_transport_params_add_clienthello,
     ext_quic_transport_params_parse_serverhello,
     ext_quic_transport_params_parse_clienthello,
@@ -3218,7 +3194,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_quic_transport_parameters_legacy,
-    NULL,
     ext_quic_transport_params_add_clienthello_legacy,
     ext_quic_transport_params_parse_serverhello_legacy,
     ext_quic_transport_params_parse_clienthello_legacy,
@@ -3226,7 +3201,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_cert_compression,
-    NULL,
     cert_compression_add_clienthello,
     cert_compression_parse_serverhello,
     cert_compression_parse_clienthello,
@@ -3234,7 +3208,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_delegated_credential,
-    NULL,
     ext_delegated_credential_add_clienthello,
     forbid_parse_serverhello,
     ext_delegated_credential_parse_clienthello,
@@ -3242,7 +3215,6 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_application_settings,
-    NULL,
     ext_alps_add_clienthello,
     ext_alps_parse_serverhello,
     // ALPS is negotiated late in |ssl_negotiate_alpn|.
@@ -3286,12 +3258,6 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
   // 1.3 HelloRetryRequest. For the latter, the extensions may change, so it is
   // important to reset this value.
   hs->extensions.sent = 0;
-
-  for (size_t i = 0; i < kNumExtensions; i++) {
-    if (kExtensions[i].init != NULL) {
-      kExtensions[i].init(hs);
-    }
-  }
 
   uint16_t grease_ext1 = 0;
   if (ssl->ctx->grease_enabled) {
@@ -3442,12 +3408,6 @@ err:
 static bool ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
                                         const SSL_CLIENT_HELLO *client_hello,
                                         int *out_alert) {
-  for (size_t i = 0; i < kNumExtensions; i++) {
-    if (kExtensions[i].init != NULL) {
-      kExtensions[i].init(hs);
-    }
-  }
-
   hs->extensions.received = 0;
   CBS extensions;
   CBS_init(&extensions, client_hello->extensions, client_hello->extensions_len);
