@@ -605,18 +605,8 @@ static size_t random_size(size_t min, size_t max) {
   return value % (max - min + 1) + min;
 }
 
-static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
-  // If we are responding to the server's HelloRetryRequest, we repeat the bytes
-  // of the first ECH GREASE extension.
-  if (hs->ssl->s3->used_hello_retry_request) {
-    CBB ech_body;
-    if (!CBB_add_u16(out, TLSEXT_TYPE_encrypted_client_hello) ||
-        !CBB_add_u16_length_prefixed(out, &ech_body) ||
-        !CBB_add_bytes(&ech_body, hs->ech_grease.data(),
-                       hs->ech_grease.size()) ||
-        !CBB_flush(out)) {
-      return false;
-    }
+bool ssl_setup_ech_grease(SSL_HANDSHAKE *hs) {
+  if (hs->max_version < TLS1_3_VERSION || !hs->config->ech_grease_enabled) {
     return true;
   }
 
@@ -650,32 +640,23 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
   // TODO(davidben): If the padding scheme changes to also round the entire
   // payload, adjust this to match. See
   // https://github.com/tlswg/draft-ietf-tls-esni/issues/433
-  uint8_t payload[196 + kAEADOverhead];
   const size_t payload_len = random_size(128, 196) + kAEADOverhead;
-  assert(payload_len <= sizeof(payload));
-  RAND_bytes(payload, payload_len);
-
-  // Inside the TLS extension contents, write a serialized ClientEncryptedCH.
-  CBB ech_body, enc_cbb, payload_cbb;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_encrypted_client_hello) ||
-      !CBB_add_u16_length_prefixed(out, &ech_body) ||
-      !CBB_add_u16(&ech_body, kdf_id) ||  //
-      !CBB_add_u16(&ech_body, aead_id) ||
-      !CBB_add_u8(&ech_body, ech_config_id) ||
-      !CBB_add_u16_length_prefixed(&ech_body, &enc_cbb) ||
+  bssl::ScopedCBB cbb;
+  CBB enc_cbb, payload_cbb;
+  uint8_t *payload;
+  if (!CBB_init(cbb.get(), 64 + payload_len) ||
+      !CBB_add_u16(cbb.get(), kdf_id) ||  //
+      !CBB_add_u16(cbb.get(), aead_id) ||
+      !CBB_add_u8(cbb.get(), ech_config_id) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &enc_cbb) ||
       !CBB_add_bytes(&enc_cbb, ech_enc, OPENSSL_ARRAY_SIZE(ech_enc)) ||
-      !CBB_add_u16_length_prefixed(&ech_body, &payload_cbb) ||
-      !CBB_add_bytes(&payload_cbb, payload, payload_len) ||  //
-      !CBB_flush(&ech_body)) {
+      !CBB_add_u16_length_prefixed(cbb.get(), &payload_cbb) ||
+      !CBB_add_space(&payload_cbb, &payload, payload_len) ||
+      !RAND_bytes(payload, payload_len) ||
+      !CBBFinishArray(cbb.get(), &hs->ech_grease)) {
     return false;
   }
-  // Save the bytes of the newly-generated extension in case the server sends
-  // a HelloRetryRequest.
-  if (!hs->ech_grease.CopyFrom(
-          MakeConstSpan(CBB_data(&ech_body), CBB_len(&ech_body)))) {
-    return false;
-  }
-  return CBB_flush(out);
+  return true;
 }
 
 static bool ext_ech_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
@@ -683,7 +664,16 @@ static bool ext_ech_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
   if (hs->config->ech_grease_enabled) {
-    return ext_ech_add_clienthello_grease(hs, out);
+    assert(!hs->ech_grease.empty());
+    CBB ech_body;
+    if (!CBB_add_u16(out, TLSEXT_TYPE_encrypted_client_hello) ||
+        !CBB_add_u16_length_prefixed(out, &ech_body) ||
+        !CBB_add_bytes(&ech_body, hs->ech_grease.data(),
+                       hs->ech_grease.size()) ||
+        !CBB_flush(out)) {
+      return false;
+    }
+    return true;
   }
   // Nothing to do, since we don't yet implement the non-GREASE parts of ECH.
   return true;

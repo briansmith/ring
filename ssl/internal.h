@@ -1505,6 +1505,10 @@ bool tls13_ech_accept_confirmation(
     SSL_HANDSHAKE *hs, bssl::Span<uint8_t> out,
     bssl::Span<const uint8_t> server_hello_ech_conf);
 
+// ssl_setup_ech_grease computes a GREASE ECH extension to offer instead of a
+// real one. It returns true on success and false otherwise.
+bool ssl_setup_ech_grease(SSL_HANDSHAKE *hs);
+
 
 // Delegated credentials.
 
@@ -1757,8 +1761,7 @@ struct SSL_HANDSHAKE {
   // cookie is the value of the cookie received from the server, if any.
   Array<uint8_t> cookie;
 
-  // ech_grease contains the bytes of the GREASE ECH extension that was sent in
-  // the first ClientHello.
+  // ech_grease contains the GREASE ECH extension to send in the ClientHello.
   Array<uint8_t> ech_grease;
 
   // ech_client_hello_buf, on the server, contains the bytes of the
