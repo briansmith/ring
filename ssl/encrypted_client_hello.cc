@@ -316,6 +316,20 @@ bool ssl_client_hello_decrypt(
     return false;
   }
 
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  // In fuzzer mode, disable encryption to improve coverage. We reserve a short
+  // input to signal decryption failure, so the fuzzer can explore fallback to
+  // ClientHelloOuter.
+  const uint8_t kBadPayload[] = {0xff};
+  if (payload == kBadPayload) {
+    *out_is_decrypt_error = true;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
+    return false;
+  }
+  if (!out_encoded_client_hello_inner->CopyFrom(payload)) {
+    return false;
+  }
+#else
   // Attempt to decrypt into |out_encoded_client_hello_inner|.
   if (!out_encoded_client_hello_inner->Init(payload.size())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -332,6 +346,7 @@ bool ssl_client_hello_decrypt(
     return false;
   }
   out_encoded_client_hello_inner->Shrink(encoded_client_hello_inner_len);
+#endif
   return true;
 }
 
