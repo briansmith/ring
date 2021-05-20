@@ -3054,8 +3054,8 @@ OPENSSL_EXPORT int SSL_CTX_set_srtp_profiles(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_set_srtp_profiles(SSL *ssl, const char *profiles);
 
 // SSL_get_srtp_profiles returns the SRTP profiles supported by |ssl|.
-OPENSSL_EXPORT STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(
-    SSL *ssl);
+OPENSSL_EXPORT const STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(
+    const SSL *ssl);
 
 // SSL_get_selected_srtp_profile returns the selected SRTP profile, or NULL if
 // SRTP was not negotiated.

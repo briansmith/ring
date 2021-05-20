@@ -1720,7 +1720,8 @@ static void ext_srtp_init(SSL_HANDSHAKE *hs) {
 
 static bool ext_srtp_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  STACK_OF(SRTP_PROTECTION_PROFILE) *profiles = SSL_get_srtp_profiles(ssl);
+  const STACK_OF(SRTP_PROTECTION_PROFILE) *profiles =
+      SSL_get_srtp_profiles(ssl);
   if (profiles == NULL ||
       sk_SRTP_PROTECTION_PROFILE_num(profiles) == 0) {
     return true;
@@ -1776,11 +1777,8 @@ static bool ext_srtp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return false;
   }
 
-  STACK_OF(SRTP_PROTECTION_PROFILE) *profiles = SSL_get_srtp_profiles(ssl);
-
-  // Check to see if the server gave us something we support (and presumably
-  // offered).
-  for (const SRTP_PROTECTION_PROFILE *profile : profiles) {
+  // Check to see if the server gave us something we support and offered.
+  for (const SRTP_PROTECTION_PROFILE *profile : SSL_get_srtp_profiles(ssl)) {
     if (profile->id == profile_id) {
       ssl->s3->srtp_profile = profile;
       return true;
