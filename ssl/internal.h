@@ -1575,7 +1575,8 @@ enum ssl_grease_index_t {
   ssl_grease_extension2,
   ssl_grease_version,
   ssl_grease_ticket_extension,
-  ssl_grease_last_index = ssl_grease_ticket_extension,
+  ssl_grease_ech_config_id,
+  ssl_grease_last_index = ssl_grease_ech_config_id,
 };
 
 enum tls12_server_hs_state_t {

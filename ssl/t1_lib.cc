@@ -624,8 +624,9 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
   const uint16_t aead_id = EVP_has_aes_hardware() ? EVP_HPKE_AES_128_GCM
                                                   : EVP_HPKE_CHACHA20_POLY1305;
   constexpr size_t kAEADOverhead = 16;  // Both AEADs have a 16-byte tag.
-  uint8_t ech_config_id;
-  RAND_bytes(&ech_config_id, 1);
+  static_assert(ssl_grease_ech_config_id < sizeof(hs->grease_seed),
+                "hs->grease_seed is too small");
+  uint8_t ech_config_id = hs->grease_seed[ssl_grease_ech_config_id];
 
   uint8_t ech_enc[X25519_PUBLIC_VALUE_LEN];
   uint8_t private_key_unused[X25519_PRIVATE_KEY_LEN];
