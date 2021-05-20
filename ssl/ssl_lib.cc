@@ -1467,13 +1467,6 @@ const char *SSL_error_description(int err) {
   }
 }
 
-void SSL_set_enable_ech_grease(SSL *ssl, int enable) {
-  if (!ssl->config) {
-    return;
-  }
-  ssl->config->ech_grease_enabled = !!enable;
-}
-
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
   ctx->options |= options;
   return ctx->options;
@@ -2185,66 +2178,6 @@ int SSL_CTX_set_tlsext_servername_callback(
 
 int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg) {
   ctx->servername_arg = arg;
-  return 1;
-}
-
-SSL_ECH_SERVER_CONFIG_LIST *SSL_ECH_SERVER_CONFIG_LIST_new() {
-  return New<SSL_ECH_SERVER_CONFIG_LIST>();
-}
-
-void SSL_ECH_SERVER_CONFIG_LIST_up_ref(SSL_ECH_SERVER_CONFIG_LIST *configs) {
-  CRYPTO_refcount_inc(&configs->references);
-}
-
-void SSL_ECH_SERVER_CONFIG_LIST_free(SSL_ECH_SERVER_CONFIG_LIST *configs) {
-  if (configs == nullptr ||
-      !CRYPTO_refcount_dec_and_test_zero(&configs->references)) {
-    return;
-  }
-
-  configs->~ssl_ech_server_config_list_st();
-  OPENSSL_free(configs);
-}
-
-int SSL_ECH_SERVER_CONFIG_LIST_add(SSL_ECH_SERVER_CONFIG_LIST *configs,
-                                   int is_retry_config,
-                                   const uint8_t *ech_config,
-                                   size_t ech_config_len,
-                                   const uint8_t *private_key,
-                                   size_t private_key_len) {
-  UniquePtr<ECHServerConfig> parsed_config = MakeUnique<ECHServerConfig>();
-  if (!parsed_config) {
-    return 0;
-  }
-  if (!parsed_config->Init(MakeConstSpan(ech_config, ech_config_len),
-                           MakeConstSpan(private_key, private_key_len),
-                           !!is_retry_config)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return 0;
-  }
-  if (!configs->configs.Push(std::move(parsed_config))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  return 1;
-}
-
-int SSL_CTX_set1_ech_server_config_list(SSL_CTX *ctx,
-                                        SSL_ECH_SERVER_CONFIG_LIST *list) {
-  bool has_retry_config = false;
-  for (const auto &config : list->configs) {
-    if (config->is_retry_config()) {
-      has_retry_config = true;
-      break;
-    }
-  }
-  if (!has_retry_config) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_ECH_SERVER_WOULD_HAVE_NO_RETRY_CONFIGS);
-    return 0;
-  }
-  UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> owned_list = UpRef(list);
-  MutexWriteLock lock(&ctx->lock);
-  ctx->ech_server_config_list.swap(owned_list);
   return 1;
 }
 
