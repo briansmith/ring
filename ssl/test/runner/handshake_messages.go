@@ -263,6 +263,9 @@ type ECHConfig struct {
 	MaxNameLen   uint16
 	PublicName   string
 	CipherSuites []HPKECipherSuite
+	// The following fields are only used by CreateECHConfig().
+	UnsupportedExtension          bool
+	UnsupportedMandatoryExtension bool
 }
 
 func CreateECHConfig(template *ECHConfig) *ECHConfig {
@@ -281,7 +284,16 @@ func CreateECHConfig(template *ECHConfig) *ECHConfig {
 	}
 	contents.addU16(template.MaxNameLen)
 	contents.addU16LengthPrefixed().addBytes([]byte(template.PublicName))
-	contents.addU16(0) // Empty extensions field
+	extensions := contents.addU16LengthPrefixed()
+	// Mandatory extensions have the high bit set.
+	if template.UnsupportedExtension {
+		extensions.addU16(0x1111)
+		extensions.addU16LengthPrefixed().addBytes([]byte("test"))
+	}
+	if template.UnsupportedMandatoryExtension {
+		extensions.addU16(0xaaaa)
+		extensions.addU16LengthPrefixed().addBytes([]byte("test"))
+	}
 
 	// This ought to be a call to a function like ParseECHConfig(bb.finish()),
 	// but this constrains us to constructing ECHConfigs we are willing to
@@ -989,8 +1001,8 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				m.supportedCurves = append(m.supportedCurves, CurveID(v))
 			}
 		case extensionSupportedPoints:
-			// http://tools.ietf.org/html/rfc4492#section-5.5.2
-			if !body.readU8LengthPrefixedBytes(&m.supportedPoints) || len(body) != 0 {
+			// http://tools.ietf.org/html/rfc4492#section-5.1.2
+			if !body.readU8LengthPrefixedBytes(&m.supportedPoints) || len(m.supportedPoints) == 0 || len(body) != 0 {
 				return false
 			}
 		case extensionSessionTicket:
@@ -1193,7 +1205,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	return true
 }
 
-func decodeClientHelloInner(encoded []byte, helloOuter *clientHelloMsg) (*clientHelloMsg, error) {
+func decodeClientHelloInner(config *Config, encoded []byte, helloOuter *clientHelloMsg) (*clientHelloMsg, error) {
 	reader := byteReader(encoded)
 	var versAndRandom, sessionID, cipherSuites, compressionMethods []byte
 	var extensions byteReader
@@ -1251,11 +1263,22 @@ func decodeClientHelloInner(encoded []byte, helloOuter *clientHelloMsg) (*client
 			}
 			newExtBody, ok := helloOuter.rawExtensions[newExtType]
 			if !ok {
-				return nil, fmt.Errorf("tls: extension %04x not found in ClientHelloOuter", newExtType)
+				return nil, fmt.Errorf("tls: extension %d not found in ClientHelloOuter", newExtType)
 			}
 			newExtensions.addU16(newExtType)
 			newExtensions.addU16LengthPrefixed().addBytes(newExtBody)
 			copied[newExtType] = struct{}{}
+		}
+	}
+
+	for _, expected := range config.Bugs.ExpectECHOuterExtensions {
+		if _, ok := copied[expected]; !ok {
+			return nil, fmt.Errorf("tls: extension %d not found in ech_outer_extensions", expected)
+		}
+	}
+	for _, expected := range config.Bugs.ExpectECHUncompressedExtensions {
+		if _, ok := copied[expected]; ok {
+			return nil, fmt.Errorf("tls: extension %d unexpectedly found in ech_outer_extensions", expected)
 		}
 	}
 

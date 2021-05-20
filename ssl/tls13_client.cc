@@ -156,12 +156,6 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
 
   hs->new_cipher = cipher;
 
-  if (!hs->transcript.InitHash(ssl_protocol_version(ssl), hs->new_cipher) ||
-      !hs->transcript.UpdateForHelloRetryRequest()) {
-    return ssl_hs_error;
-  }
-
-
   bool have_cookie, have_key_share, have_supported_versions;
   CBS cookie, key_share, supported_versions;
   SSL_EXTENSION_TYPE ext_types[] = {
@@ -227,8 +221,23 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_hash_message(hs, msg)) {
+  // We do not know whether ECH was chosen until ServerHello and must
+  // concurrently update both transcripts.
+  //
+  // TODO(https://crbug.com/boringssl/275): A later draft will likely add an ECH
+  // signal to HRR and change this.
+  if (!hs->transcript.InitHash(ssl_protocol_version(ssl), hs->new_cipher) ||
+      !hs->transcript.UpdateForHelloRetryRequest() ||
+      !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
+  }
+  if (hs->selected_ech_config) {
+    if (!hs->inner_transcript.InitHash(ssl_protocol_version(ssl),
+                                       hs->new_cipher) ||
+        !hs->inner_transcript.UpdateForHelloRetryRequest() ||
+        !hs->inner_transcript.Update(msg.raw)) {
+      return ssl_hs_error;
+    }
   }
 
   // HelloRetryRequest should be the end of the flight.
@@ -256,7 +265,13 @@ static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
   // Any 0-RTT keys must have been discarded.
   assert(hs->ssl->s3->write_level == ssl_encryption_initial);
 
-  if (!ssl_write_client_hello(hs)) {
+  // Build the second ClientHelloInner, if applicable. The second ClientHello
+  // uses an empty string for |enc|.
+  if (hs->selected_ech_config && !ssl_encrypt_client_hello(hs, {})) {
+    return ssl_hs_error;
+  }
+
+  if (!ssl_add_client_hello(hs)) {
     return ssl_hs_error;
   }
 
@@ -414,13 +429,11 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       EVP_MD_size(ssl_get_handshake_digest(ssl_protocol_version(ssl), cipher));
 
   // Set up the key schedule and incorporate the PSK into the running secret.
-  if (ssl->s3->session_reused) {
-    if (!tls13_init_key_schedule(
-            hs, MakeConstSpan(hs->new_session->secret,
-                              hs->new_session->secret_length))) {
-      return ssl_hs_error;
-    }
-  } else if (!tls13_init_key_schedule(hs, MakeConstSpan(kZeroes, hash_len))) {
+  if (!tls13_init_key_schedule(
+          hs, ssl->s3->session_reused
+                  ? MakeConstSpan(hs->new_session->secret,
+                                  hs->new_session->secret_length)
+                  : MakeConstSpan(kZeroes, hash_len))) {
     return ssl_hs_error;
   }
 
@@ -440,8 +453,54 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!tls13_advance_key_schedule(hs, dhe_secret) ||
-      !ssl_hash_message(hs, msg) ||
+  if (!tls13_advance_key_schedule(hs, dhe_secret)) {
+    return ssl_hs_error;
+  }
+
+  // Determine whether the server accepted ECH.
+  //
+  // TODO(https://crbug.com/boringssl/275): This is a bit late in the process of
+  // parsing ServerHello. |ssl->session| is only valid for ClientHelloInner, so
+  // the decisions made based on PSK need to be double-checked. draft-11 will
+  // fix this, at which point this logic can be moved before any processing.
+  if (hs->selected_ech_config) {
+    uint8_t ech_confirmation[ECH_CONFIRMATION_SIGNAL_LEN];
+    if (!hs->inner_transcript.InitHash(ssl_protocol_version(ssl),
+                                       hs->new_cipher) ||
+        !ssl_ech_accept_confirmation(hs, ech_confirmation, hs->inner_transcript,
+                                     msg.raw)) {
+      return ssl_hs_error;
+    }
+
+    if (CRYPTO_memcmp(ech_confirmation,
+                      ssl->s3->server_random + sizeof(ssl->s3->server_random) -
+                          sizeof(ech_confirmation),
+                      sizeof(ech_confirmation)) == 0) {
+      ssl->s3->ech_accept = true;
+      hs->transcript = std::move(hs->inner_transcript);
+      hs->extensions.sent = hs->inner_extensions_sent;
+      // Report the inner random value through |SSL_get_client_random|.
+      OPENSSL_memcpy(ssl->s3->client_random, hs->inner_client_random,
+                     SSL3_RANDOM_SIZE);
+    } else {
+      // Resuming against the ClientHelloOuter was an unsolicited extension.
+      if (have_pre_shared_key) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+        return ssl_hs_error;
+      }
+
+      // TODO(https://crbug.com/boringssl/275): If the server declines ECH, we
+      // handshake with ClientHelloOuter instead of ClientHelloInner. That path
+      // is not yet implemented. For now, terminate the handshake with a
+      // distiguisable error for testing.
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
+      return ssl_hs_error;
+    }
+  }
+
+
+  if (!ssl_hash_message(hs, msg) ||
       !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }
@@ -491,6 +550,13 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->s3->early_data_accepted) {
+    // The extension parser checks the server resumed the session.
+    assert(ssl->s3->session_reused);
+    // If offering ECH, the server may not accept early data with
+    // ClientHelloOuter. We do not offer sessions with ClientHelloOuter, so this
+    // this should be implied by checking |session_reused|.
+    assert(hs->selected_ech_config == nullptr || ssl->s3->ech_accept);
+
     if (hs->early_session->cipher != hs->new_session->cipher) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_MISMATCH_ON_EARLY_DATA);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);

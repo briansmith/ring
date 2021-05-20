@@ -512,17 +512,12 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       ssl_get_handshake_digest(ssl_protocol_version(ssl), hs->new_cipher));
 
   // Set up the key schedule and incorporate the PSK into the running secret.
-  if (ssl->s3->session_reused) {
-    if (!tls13_init_key_schedule(
-            hs, MakeConstSpan(hs->new_session->secret,
-                              hs->new_session->secret_length))) {
-      return ssl_hs_error;
-    }
-  } else if (!tls13_init_key_schedule(hs, MakeConstSpan(kZeroes, hash_len))) {
-    return ssl_hs_error;
-  }
-
-  if (!ssl_hash_message(hs, msg)) {
+  if (!tls13_init_key_schedule(
+          hs, ssl->s3->session_reused
+                  ? MakeConstSpan(hs->new_session->secret,
+                                  hs->new_session->secret_length)
+                  : MakeConstSpan(kZeroes, hash_len)) ||
+      !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
 
@@ -730,28 +725,6 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
-static bool make_server_hello(SSL_HANDSHAKE *hs, Array<uint8_t> *out) {
-  SSL *const ssl = hs->ssl;
-  ScopedCBB cbb;
-  CBB body, extensions, session_id;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
-      !CBB_add_u16(&body, TLS1_2_VERSION) ||
-      !CBB_add_bytes(&body, ssl->s3->server_random,
-                     sizeof(ssl->s3->server_random)) ||
-      !CBB_add_u8_length_prefixed(&body, &session_id) ||
-      !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
-      !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
-      !CBB_add_u8(&body, 0) ||
-      !CBB_add_u16_length_prefixed(&body, &extensions) ||
-      !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
-      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
-      !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
-      !ssl->method->finish_message(ssl, cbb.get(), out)) {
-    return false;
-  }
-  return true;
-}
-
 static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
@@ -769,24 +742,44 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  assert(!ssl->s3->ech_accept || hs->ech_is_inner_present);
-  if (hs->ech_is_inner_present) {
-    // Construct the ServerHelloECHConf message, which is the same as
-    // ServerHello, except the last 8 bytes of its random field are zeroed out.
-    Span<uint8_t> random_suffix = random.subspan(24);
-    OPENSSL_memset(random_suffix.data(), 0, random_suffix.size());
-
-    Array<uint8_t> server_hello_ech_conf;
-    if (!make_server_hello(hs, &server_hello_ech_conf) ||
-        !tls13_ech_accept_confirmation(hs, random_suffix,
-                                       server_hello_ech_conf)) {
-      return ssl_hs_error;
-    }
+  Array<uint8_t> server_hello;
+  ScopedCBB cbb;
+  CBB body, extensions, session_id;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
+      !CBB_add_u16(&body, TLS1_2_VERSION) ||
+      !CBB_add_bytes(&body, ssl->s3->server_random,
+                     sizeof(ssl->s3->server_random)) ||
+      !CBB_add_u8_length_prefixed(&body, &session_id) ||
+      !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
+      !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
+      !CBB_add_u8(&body, 0) ||
+      !CBB_add_u16_length_prefixed(&body, &extensions) ||
+      !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
+      !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
+      !ssl_ext_supported_versions_add_serverhello(hs, &extensions) ||
+      !ssl->method->finish_message(ssl, cbb.get(), &server_hello)) {
+    return ssl_hs_error;
   }
 
-  Array<uint8_t> server_hello;
-  if (!make_server_hello(hs, &server_hello) ||
-      !ssl->method->add_message(ssl, std::move(server_hello))) {
+  assert(!ssl->s3->ech_accept || hs->ech_is_inner_present);
+  if (hs->ech_is_inner_present) {
+    // Fill in the ECH confirmation signal.
+    Span<uint8_t> random_suffix =
+        random.subspan(SSL3_RANDOM_SIZE - ECH_CONFIRMATION_SIGNAL_LEN);
+    if (!ssl_ech_accept_confirmation(hs, random_suffix, hs->transcript,
+                                     server_hello)) {
+      return ssl_hs_error;
+    }
+
+    // Update |server_hello|.
+    const size_t offset = ssl_ech_confirmation_signal_hello_offset(ssl);
+    Span<uint8_t> server_hello_out =
+        MakeSpan(server_hello).subspan(offset, ECH_CONFIRMATION_SIGNAL_LEN);
+    OPENSSL_memcpy(server_hello_out.data(), random_suffix.data(),
+                   ECH_CONFIRMATION_SIGNAL_LEN);
+  }
+
+  if (!ssl->method->add_message(ssl, std::move(server_hello))) {
     return ssl_hs_error;
   }
 
@@ -805,8 +798,6 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   // Send EncryptedExtensions.
-  ScopedCBB cbb;
-  CBB body;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_ENCRYPTED_EXTENSIONS) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||

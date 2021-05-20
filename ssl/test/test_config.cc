@@ -200,6 +200,7 @@ const Flag<std::unique_ptr<std::string>> kOptionalStringFlags[] = {
 };
 
 const Flag<std::string> kBase64Flags[] = {
+    {"-ech-config-list", &TestConfig::ech_config_list},
     {"-expect-certificate-types", &TestConfig::expect_certificate_types},
     {"-expect-channel-id", &TestConfig::expect_channel_id},
     {"-expect-ocsp-response", &TestConfig::expect_ocsp_response},
@@ -1721,6 +1722,12 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (enable_ech_grease) {
     SSL_set_enable_ech_grease(ssl.get(), 1);
+  }
+  if (!ech_config_list.empty() &&
+      !SSL_set1_ech_config_list(
+          ssl.get(), reinterpret_cast<const uint8_t *>(ech_config_list.data()),
+          ech_config_list.size())) {
+    return nullptr;
   }
   if (ech_server_configs.size() != ech_server_keys.size() ||
       ech_server_configs.size() != ech_is_retry_config.size()) {

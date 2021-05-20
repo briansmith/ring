@@ -162,6 +162,7 @@
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/hpke.h>
 #include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
@@ -201,7 +202,8 @@ enum ssl_client_hs_state_t {
 
 // ssl_get_client_disabled sets |*out_mask_a| and |*out_mask_k| to masks of
 // disabled algorithms.
-static void ssl_get_client_disabled(SSL_HANDSHAKE *hs, uint32_t *out_mask_a,
+static void ssl_get_client_disabled(const SSL_HANDSHAKE *hs,
+                                    uint32_t *out_mask_a,
                                     uint32_t *out_mask_k) {
   *out_mask_a = 0;
   *out_mask_k = 0;
@@ -213,8 +215,9 @@ static void ssl_get_client_disabled(SSL_HANDSHAKE *hs, uint32_t *out_mask_a,
   }
 }
 
-static bool ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
-  SSL *const ssl = hs->ssl;
+static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
+                                         ssl_client_hello_type_t type) {
+  const SSL *const ssl = hs->ssl;
   uint32_t mask_a, mask_k;
   ssl_get_client_disabled(hs, &mask_a, &mask_k);
 
@@ -246,7 +249,7 @@ static bool ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
     }
   }
 
-  if (hs->min_version < TLS1_3_VERSION) {
+  if (hs->min_version < TLS1_3_VERSION && type != ssl_client_hello_inner) {
     bool any_enabled = false;
     for (const SSL_CIPHER *cipher : SSL_get_ciphers(ssl)) {
       // Skip disabled ciphers
@@ -280,53 +283,72 @@ static bool ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
   return CBB_flush(out);
 }
 
-bool ssl_write_client_hello(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  ScopedCBB cbb;
-  CBB body;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO)) {
-    return false;
-  }
-
+bool ssl_write_client_hello_without_extensions(const SSL_HANDSHAKE *hs,
+                                               CBB *cbb,
+                                               ssl_client_hello_type_t type,
+                                               bool empty_session_id) {
+  const SSL *const ssl = hs->ssl;
   CBB child;
-  if (!CBB_add_u16(&body, hs->client_version) ||
-      !CBB_add_bytes(&body, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_u8_length_prefixed(&body, &child)) {
+  if (!CBB_add_u16(cbb, hs->client_version) ||
+      !CBB_add_bytes(cbb,
+                     type == ssl_client_hello_inner ? hs->inner_client_random
+                                                    : ssl->s3->client_random,
+                     SSL3_RANDOM_SIZE) ||
+      !CBB_add_u8_length_prefixed(cbb, &child)) {
     return false;
   }
 
   // Do not send a session ID on renegotiation.
   if (!ssl->s3->initial_handshake_complete &&
+      !empty_session_id &&
       !CBB_add_bytes(&child, hs->session_id, hs->session_id_len)) {
     return false;
   }
 
   if (SSL_is_dtls(ssl)) {
-    if (!CBB_add_u8_length_prefixed(&body, &child) ||
+    if (!CBB_add_u8_length_prefixed(cbb, &child) ||
         !CBB_add_bytes(&child, ssl->d1->cookie, ssl->d1->cookie_len)) {
       return false;
     }
   }
 
-  bool needs_psk_binder;
-  if (!ssl_write_client_cipher_list(hs, &body) ||
-      !CBB_add_u8(&body, 1 /* one compression method */) ||
-      !CBB_add_u8(&body, 0 /* null compression */) ||
-      !ssl_add_clienthello_tlsext(hs, &body, &needs_psk_binder,
-                                  CBB_len(&body))) {
+  if (!ssl_write_client_cipher_list(hs, cbb, type) ||
+      !CBB_add_u8(cbb, 1 /* one compression method */) ||
+      !CBB_add_u8(cbb, 0 /* null compression */)) {
     return false;
   }
+  return true;
+}
 
+bool ssl_add_client_hello(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  ScopedCBB cbb;
+  CBB body;
+  ssl_client_hello_type_t type = hs->selected_ech_config
+                                     ? ssl_client_hello_outer
+                                     : ssl_client_hello_unencrypted;
+  bool needs_psk_binder;
   Array<uint8_t> msg;
-  if (!ssl->method->finish_message(ssl, cbb.get(), &msg)) {
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO) ||
+      !ssl_write_client_hello_without_extensions(hs, &body, type,
+                                                 /*empty_session_id*/ false) ||
+      !ssl_add_clienthello_tlsext(hs, &body, /*out_encoded=*/nullptr,
+                                  &needs_psk_binder, type, CBB_len(&body),
+                                  /*omit_ech_len=*/0) ||
+      !ssl->method->finish_message(ssl, cbb.get(), &msg)) {
     return false;
   }
 
   // Now that the length prefixes have been computed, fill in the placeholder
   // PSK binder.
-  if (needs_psk_binder &&
-      !tls13_write_psk_binder(hs, MakeSpan(msg))) {
-    return false;
+  if (needs_psk_binder) {
+    // ClientHelloOuter cannot have a PSK binder. Otherwise the
+    // ClientHellOuterAAD computation would break.
+    assert(type != ssl_client_hello_outer);
+    if (!tls13_write_psk_binder(hs, hs->transcript, MakeSpan(msg),
+                                /*out_binder_len=*/0)) {
+      return false;
+    }
   }
 
   return ssl->method->add_message(ssl, std::move(msg));
@@ -423,7 +445,7 @@ static ssl_early_data_reason_t should_offer_early_data(
 }
 
 void ssl_done_writing_client_hello(SSL_HANDSHAKE *hs) {
-  hs->ech_grease.Reset();
+  hs->ech_client_bytes.Reset();
   hs->cookie.Reset();
   hs->key_share_bytes.Reset();
 }
@@ -437,6 +459,12 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
 
   // Freeze the version range.
   if (!ssl_get_version_range(hs, &hs->min_version, &hs->max_version)) {
+    return ssl_hs_error;
+  }
+
+  uint8_t ech_enc[EVP_HPKE_MAX_ENC_LENGTH];
+  size_t ech_enc_len;
+  if (!ssl_select_ech_config(hs, ech_enc, &ech_enc_len)) {
     return ssl_hs_error;
   }
 
@@ -456,6 +484,11 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   if (ssl->session != nullptr) {
     if (ssl->session->is_server ||
         !ssl_supports_version(hs, ssl->session->ssl_version) ||
+        // Do not offer TLS 1.2 sessions with ECH. ClientHelloInner does not
+        // offer TLS 1.2, and the cleartext session ID may leak the server
+        // identity.
+        (hs->selected_ech_config &&
+         ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION) ||
         !SSL_SESSION_is_resumable(ssl->session.get()) ||
         !ssl_session_is_time_valid(ssl, ssl->session.get()) ||
         (ssl->quic_method != nullptr) != ssl->session->is_quic ||
@@ -465,6 +498,10 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   }
 
   if (!RAND_bytes(ssl->s3->client_random, sizeof(ssl->s3->client_random))) {
+    return ssl_hs_error;
+  }
+  if (hs->selected_ech_config &&
+      !RAND_bytes(hs->inner_client_random, sizeof(hs->inner_client_random))) {
     return ssl_hs_error;
   }
 
@@ -498,8 +535,8 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_setup_key_shares(hs, /*override_group_id=*/0) ||
-      !ssl_setup_ech_grease(hs) ||
-      !ssl_write_client_hello(hs)) {
+      !ssl_encrypt_client_hello(hs, MakeConstSpan(ech_enc, ech_enc_len)) ||
+      !ssl_add_client_hello(hs)) {
     return ssl_hs_error;
   }
 
@@ -525,9 +562,7 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!tls13_init_early_key_schedule(
-          hs,
-          MakeConstSpan(ssl->session->secret, ssl->session->secret_length)) ||
+  if (!tls13_init_early_key_schedule(hs, ssl->session.get()) ||
       !tls13_derive_early_secret(hs)) {
     return ssl_hs_error;
   }
@@ -578,6 +613,10 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
 
   assert(SSL_is_dtls(ssl));
 
+  // When implementing DTLS 1.3, we need to handle the interactions between
+  // HelloVerifyRequest, DTLS 1.3's HelloVerifyRequest removal, and ECH.
+  assert(hs->max_version < TLS1_3_VERSION);
+
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
@@ -609,7 +648,7 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl_write_client_hello(hs)) {
+  if (!ssl_add_client_hello(hs)) {
     return ssl_hs_error;
   }
 
@@ -682,6 +721,15 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (hs->early_data_offered) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_ON_EARLY_DATA);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
+    return ssl_hs_error;
+  }
+
+  // TODO(https://crbug.com/boringssl/275): If the server negotiates TLS 1.2 and
+  // we offer ECH, we handshake with ClientHelloOuter instead of
+  // ClientHelloInner. That path is not yet implemented. For now, terminate the
+  // handshake with a distinguishable error for testing.
+  if (hs->selected_ech_config) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
     return ssl_hs_error;
   }
 

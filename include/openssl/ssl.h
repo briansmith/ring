@@ -3561,9 +3561,27 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 //
 // See https://tools.ietf.org/html/draft-ietf-tls-esni-10.
 
-// SSL_set_enable_ech_grease configures whether the client may send ECH GREASE
-// as part of this connection.
+// SSL_set_enable_ech_grease configures whether the client will send a GREASE
+// ECH extension when no supported ECHConfig is available.
 OPENSSL_EXPORT void SSL_set_enable_ech_grease(SSL *ssl, int enable);
+
+// SSL_set1_ech_config_list configures |ssl| to, as a client, offer ECH with the
+// specified configuration. |ech_config_list| should contain a serialized
+// ECHConfigList structure. It returns one on success and zero on error.
+//
+// This function returns an error if the input is malformed. If the input is
+// valid but none of the ECHConfigs implement supported parameters, it will
+// return success and proceed without ECH.
+//
+// WARNING: Client ECH support is still incomplete and does not yet implement
+// the recovery flow. It currently treats ECH rejection as a fatal error. Do not
+// use this API yet.
+//
+// TODO(https://crbug.com/boringssl/275): When the recovery flow is implemented,
+// fill in the remaining docs.
+OPENSSL_EXPORT int SSL_set1_ech_config_list(SSL *ssl,
+                                            const uint8_t *ech_config_list,
+                                            size_t ech_config_list_len);
 
 // SSL_marshal_ech_config constructs a new serialized ECHConfig. On success, it
 // sets |*out| to a newly-allocated buffer containing the result and |*out_len|
@@ -5475,6 +5493,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_ALPN_PROTOCOL_LIST 315
 #define SSL_R_COULD_NOT_PARSE_HINTS 316
 #define SSL_R_INVALID_ECH_PUBLIC_NAME 317
+#define SSL_R_INVALID_ECH_CONFIG_LIST 318
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

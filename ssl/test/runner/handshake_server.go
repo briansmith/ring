@@ -177,6 +177,15 @@ func (hs *serverHandshakeState) readClientHello() error {
 		return errors.New("tls: ClientHello random was all zero")
 	}
 
+	if expected := config.Bugs.ExpectOuterServerName; len(expected) != 0 && expected != hs.clientHello.serverName {
+		return fmt.Errorf("tls: unexpected ClientHelloOuter server name: wanted %q, got %q", expected, hs.clientHello.serverName)
+	}
+
+	// We check this both before and after decrypting ECH.
+	if !hs.clientHello.hasGREASEExtension && config.Bugs.ExpectGREASE {
+		return errors.New("tls: no GREASE extension found")
+	}
+
 	if clientECH := hs.clientHello.clientECH; clientECH != nil {
 		for _, candidate := range config.ServerECHConfigs {
 			if candidate.ECHConfig.ConfigID != clientECH.configID {
@@ -206,9 +215,13 @@ func (hs *serverHandshakeState) readClientHello() error {
 				c.sendAlert(alertDecryptError)
 				return fmt.Errorf("tls: error decrypting ClientHello: %s", err)
 			}
-			c.echAccepted = true
-			hs.clientHello = clientHelloInner
-			hs.echConfigID = clientECH.configID
+			if config.Bugs.UseInnerSessionWithClientHelloOuter {
+				hs.clientHello.pskIdentities = clientHelloInner.pskIdentities
+			} else {
+				c.echAccepted = true
+				hs.clientHello = clientHelloInner
+				hs.echConfigID = clientECH.configID
+			}
 		}
 	}
 
@@ -348,9 +361,14 @@ func (hs *serverHandshakeState) readClientHello() error {
 	if config.Bugs.MockQUICTransport != nil && len(hs.clientHello.sessionID) > 0 {
 		return fmt.Errorf("tls: QUIC client did not disable compatibility mode")
 	}
+	if config.Bugs.ExpectNoSessionID && len(hs.clientHello.sessionID) > 0 {
+		return fmt.Errorf("tls: client offered an unexpected session ID")
+	}
 	if config.Bugs.ExpectNoTLS12Session {
-		if len(hs.clientHello.sessionID) > 0 && c.vers >= VersionTLS13 {
-			return fmt.Errorf("tls: client offered an unexpected session ID")
+		if len(hs.clientHello.sessionID) > 0 {
+			if _, ok := config.ServerSessionCache.Get(string(hs.clientHello.sessionID)); ok {
+				return fmt.Errorf("tls: client offered an unexpected TLS 1.2 session")
+			}
 		}
 		if len(hs.clientHello.sessionTicket) > 0 {
 			return fmt.Errorf("tls: client offered an unexpected session ticket")
@@ -449,13 +467,18 @@ func (hs *serverHandshakeState) decryptClientHello(helloOuter *clientHelloMsg) (
 	extensions.addBytes(helloOuter.raw[helloOuter.extensionStart+2 : helloOuter.echExtensionStart])
 	extensions.addBytes(helloOuter.raw[helloOuter.echExtensionEnd:])
 
-	encoded, err := hs.echHPKEContext.Open(helloOuter.clientECH.payload, aad.finish())
-	if err != nil {
-		// Wrap |err| so the caller can implement trial decryption.
-		return nil, &echDecryptError{err}
+	// In fuzzer mode, the payload is cleartext.
+	encoded := helloOuter.clientECH.payload
+	if !hs.c.config.Bugs.NullAllCiphers {
+		var err error
+		encoded, err = hs.echHPKEContext.Open(helloOuter.clientECH.payload, aad.finish())
+		if err != nil {
+			// Wrap |err| so the caller can implement trial decryption.
+			return nil, &echDecryptError{err}
+		}
 	}
 
-	helloInner, err = decodeClientHelloInner(encoded, helloOuter)
+	helloInner, err = decodeClientHelloInner(hs.c.config, encoded, helloOuter)
 	if err != nil {
 		return nil, err
 	}
@@ -468,6 +491,7 @@ func (hs *serverHandshakeState) decryptClientHello(helloOuter *clientHelloMsg) (
 	if bytes.Equal(helloInner.random, helloOuter.random) {
 		return nil, errors.New("tls: ClientHelloOuter and ClientHelloInner have the same random values")
 	}
+	// ClientHelloInner should not offer TLS 1.2 and below.
 	if len(helloInner.supportedVersions) == 0 {
 		return nil, errors.New("tls: ClientHelloInner did not offer supported_versions")
 	}
@@ -476,6 +500,10 @@ func (hs *serverHandshakeState) decryptClientHello(helloOuter *clientHelloMsg) (
 		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12, VersionDTLS10, VersionDTLS12:
 			return nil, fmt.Errorf("tls: ClientHelloInner offered invalid version: %04x", vers)
 		}
+	}
+	// ClientHelloInner should omit TLS-1.2-only extensions.
+	if helloInner.nextProtoNeg || len(helloInner.supportedPoints) != 0 || helloInner.ticketSupported || helloInner.secureRenegotiation != nil || helloInner.extendedMasterSecret {
+		return nil, errors.New("tls: ClientHelloInner included a TLS-1.2-only extension")
 	}
 	if !helloInner.echIsInner {
 		return nil, errors.New("tls: ClientHelloInner missing ech_is_inner extension")
@@ -522,7 +550,10 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	}
 
 	if config.Bugs.ExpectClientECH && hs.clientHello.clientECH == nil {
-		return errors.New("tls: expected client to send ClientECH")
+		return errors.New("tls: expected client to offer ECH")
+	}
+	if config.Bugs.ExpectNoClientECH && hs.clientHello.clientECH != nil {
+		return errors.New("tls: expected client not to offer ECH")
 	}
 
 	// Select the cipher suite.
@@ -586,6 +617,9 @@ Curves:
 		}
 		pskIdentities = []pskIdentity{psk}
 		pskKEModes = []byte{pskDHEKEMode}
+		replacedPSKIdentities = true
+	}
+	if config.Bugs.UseInnerSessionWithClientHelloOuter {
 		replacedPSKIdentities = true
 	}
 
@@ -748,6 +782,10 @@ ResendHelloRetryRequest:
 			return unexpectedMessageError(newClientHello, newMsg)
 		}
 
+		if expected := config.Bugs.ExpectOuterServerName; len(expected) != 0 && expected != newClientHello.serverName {
+			return fmt.Errorf("tls: unexpected ClientHelloOuter server name: wanted %q, got %q", expected, newClientHello.serverName)
+		}
+
 		if c.echAccepted {
 			if newClientHello.clientECH == nil {
 				c.sendAlert(alertMissingExtension)
@@ -781,6 +819,11 @@ ResendHelloRetryRequest:
 		// Check that the new ClientHello matches the old ClientHello,
 		// except for relevant modifications. See RFC 8446, section 4.1.2.
 		ignoreExtensions := []uint16{extensionPadding}
+		// TODO(https://crbug.com/boringssl/275): draft-ietf-tls-esni-10 requires
+		// violating the RFC 8446 rules. See
+		// https://github.com/tlswg/draft-ietf-tls-esni/issues/358
+		// A later draft will likely fix this. Remove this line if it does.
+		ignoreExtensions = append(ignoreExtensions, extensionEncryptedClientHello)
 
 		if helloRetryRequest.hasSelectedGroup {
 			newKeyShares := newClientHello.keyShares
@@ -1449,10 +1492,6 @@ Curves:
 	// renegotiating.
 	if c.cipherSuite != nil && len(hs.clientHello.sessionID) > 0 && c.config.Bugs.FailIfResumeOnRenego {
 		return false, errors.New("tls: offered resumption on renegotiation")
-	}
-
-	if c.config.Bugs.FailIfSessionOffered && (len(hs.clientHello.sessionTicket) > 0 || len(hs.clientHello.sessionID) > 0) {
-		return false, errors.New("tls: client offered a session ticket or ID")
 	}
 
 	if hs.checkForResumption() {

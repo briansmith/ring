@@ -273,9 +273,13 @@ bool ssl_supports_version(const SSL_HANDSHAKE *hs, uint16_t version) {
   return true;
 }
 
-bool ssl_add_supported_versions(const SSL_HANDSHAKE *hs, CBB *cbb) {
+bool ssl_add_supported_versions(const SSL_HANDSHAKE *hs, CBB *cbb,
+                                uint16_t extra_min_version) {
   for (uint16_t version : get_method_versions(hs->ssl->method)) {
+    uint16_t protocol_version;
     if (ssl_supports_version(hs, version) &&
+        ssl_protocol_version_from_wire(&protocol_version, version) &&
+        protocol_version >= extra_min_version &&  //
         !CBB_add_u16(cbb, version)) {
       return false;
     }

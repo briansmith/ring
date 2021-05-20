@@ -64,6 +64,13 @@ static const struct argument kArguments[] = {
         "-server-name", kOptionalArgument, "The server name to advertise",
     },
     {
+        "-ech-grease", kBooleanArgument, "Enable ECH GREASE",
+    },
+    {
+        "-ech-config-list", kOptionalArgument,
+        "Path to file containing serialized ECHConfigs",
+    },
+    {
         "-select-next-proto", kOptionalArgument,
         "An NPN protocol to select if the server supports NPN",
     },
@@ -263,6 +270,24 @@ static bool DoConnection(SSL_CTX *ctx,
 
   if (args_map.count("-server-name") != 0) {
     SSL_set_tlsext_host_name(ssl.get(), args_map["-server-name"].c_str());
+  }
+
+  if (args_map.count("-ech-grease") != 0) {
+    SSL_set_enable_ech_grease(ssl.get(), 1);
+  }
+
+  if (args_map.count("-ech-config-list") != 0) {
+    const char *filename = args_map["-ech-config-list"].c_str();
+    ScopedFILE f(fopen(filename, "rb"));
+    std::vector<uint8_t> data;
+    if (f == nullptr || !ReadAll(&data, f.get())) {
+      fprintf(stderr, "Error reading %s.\n", filename);
+      return false;
+    }
+    if (!SSL_set1_ech_config_list(ssl.get(), data.data(), data.size())) {
+      fprintf(stderr, "Error setting ECHConfigList\n");
+      return false;
+    }
   }
 
   if (args_map.count("-session-in") != 0) {

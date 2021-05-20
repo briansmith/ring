@@ -17,11 +17,15 @@
 #include <assert.h>
 #include <string.h>
 
+#include <utility>
+
+#include <openssl/aead.h>
 #include <openssl/bytestring.h>
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
 #include <openssl/hkdf.h>
 #include <openssl/hpke.h>
+#include <openssl/rand.h>
 
 #include "internal.h"
 
@@ -278,15 +282,15 @@ bool ssl_client_hello_decrypt(
 
   // Compute the ClientHello portion of the ClientHelloOuterAAD value. See
   // draft-ietf-tls-esni-10, section 5.2.
-  ScopedCBB ch_outer_aad_cbb;
+  ScopedCBB aad;
   CBB enc_cbb, outer_hello_cbb, extensions_cbb;
-  if (!CBB_init(ch_outer_aad_cbb.get(), 0) ||
-      !CBB_add_u16(ch_outer_aad_cbb.get(), kdf_id) ||
-      !CBB_add_u16(ch_outer_aad_cbb.get(), aead_id) ||
-      !CBB_add_u8(ch_outer_aad_cbb.get(), config_id) ||
-      !CBB_add_u16_length_prefixed(ch_outer_aad_cbb.get(), &enc_cbb) ||
+  if (!CBB_init(aad.get(), 256) ||
+      !CBB_add_u16(aad.get(), kdf_id) ||
+      !CBB_add_u16(aad.get(), aead_id) ||
+      !CBB_add_u8(aad.get(), config_id) ||
+      !CBB_add_u16_length_prefixed(aad.get(), &enc_cbb) ||
       !CBB_add_bytes(&enc_cbb, enc.data(), enc.size()) ||
-      !CBB_add_u24_length_prefixed(ch_outer_aad_cbb.get(), &outer_hello_cbb) ||
+      !CBB_add_u24_length_prefixed(aad.get(), &outer_hello_cbb) ||
       !ssl_client_hello_write_without_extensions(client_hello_outer,
                                                  &outer_hello_cbb) ||
       !CBB_add_u16_length_prefixed(&outer_hello_cbb, &extensions_cbb)) {
@@ -315,7 +319,7 @@ bool ssl_client_hello_decrypt(
       return false;
     }
   }
-  if (!CBB_flush(ch_outer_aad_cbb.get())) {
+  if (!CBB_flush(aad.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
@@ -343,8 +347,8 @@ bool ssl_client_hello_decrypt(
   if (!EVP_HPKE_CTX_open(hpke_ctx, out_encoded_client_hello_inner->data(),
                          &encoded_client_hello_inner_len,
                          out_encoded_client_hello_inner->size(), payload.data(),
-                         payload.size(), CBB_data(ch_outer_aad_cbb.get()),
-                         CBB_len(ch_outer_aad_cbb.get()))) {
+                         payload.size(), CBB_data(aad.get()),
+                         CBB_len(aad.get()))) {
     *out_is_decrypt_error = true;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
     return false;
@@ -354,60 +358,103 @@ bool ssl_client_hello_decrypt(
   return true;
 }
 
-
-bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
-                           const EVP_HPKE_KEY *key, bool is_retry_config) {
-  assert(!initialized_);
-  is_retry_config_ = is_retry_config;
-
-  if (!ech_config_.CopyFrom(ech_config)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return false;
-  }
-  // Read from |ech_config_| so we can save Spans with the same lifetime as |this|.
-  CBS reader(ech_config_);
-
+static bool parse_ech_config(CBS *cbs, ECHConfig *out, bool *out_supported,
+                             bool all_extensions_mandatory) {
   uint16_t version;
-  if (!CBS_get_u16(&reader, &version)) {
+  CBS orig = *cbs;
+  CBS contents;
+  if (!CBS_get_u16(cbs, &version) ||
+      !CBS_get_u16_length_prefixed(cbs, &contents)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
+
+  if (version != kECHConfigVersion) {
+    *out_supported = false;
+    return true;
+  }
+
+  // Make a copy of the ECHConfig and parse from it, so the results alias into
+  // the saved copy.
+  if (!out->raw.CopyFrom(
+          MakeConstSpan(CBS_data(&orig), CBS_len(&orig) - CBS_len(cbs)))) {
+    return false;
+  }
+
+  CBS ech_config(out->raw);
+  CBS public_name, public_key, cipher_suites, extensions;
+  if (!CBS_skip(&ech_config, 2) || // version
+      !CBS_get_u16_length_prefixed(&ech_config, &contents) ||
+      !CBS_get_u8(&contents, &out->config_id) ||
+      !CBS_get_u16(&contents, &out->kem_id) ||
+      !CBS_get_u16_length_prefixed(&contents, &public_key) ||
+      CBS_len(&public_key) == 0 ||
+      !CBS_get_u16_length_prefixed(&contents, &cipher_suites) ||
+      CBS_len(&cipher_suites) == 0 || CBS_len(&cipher_suites) % 4 != 0 ||
+      !CBS_get_u16(&contents, &out->maximum_name_length) ||
+      !CBS_get_u16_length_prefixed(&contents, &public_name) ||
+      CBS_len(&public_name) == 0 ||
+      !CBS_get_u16_length_prefixed(&contents, &extensions) ||
+      CBS_len(&contents) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return false;
+  }
+
+  // TODO(https://crbug.com/boringssl/275): Check validity of |public_name|.
+
+  out->public_key = public_key;
+  out->public_name = public_name;
+  // This function does not ensure |out->kem_id| and |out->cipher_suites| use
+  // supported algorithms. The caller must do this.
+  out->cipher_suites = cipher_suites;
+
+  bool has_unknown_mandatory_extension = false;
+  while (CBS_len(&extensions) != 0) {
+    uint16_t type;
+    CBS body;
+    if (!CBS_get_u16(&extensions, &type) ||
+        !CBS_get_u16_length_prefixed(&extensions, &body)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return false;
+    }
+    // We currently do not support any extensions.
+    if (type & 0x8000 || all_extensions_mandatory) {
+      // Extension numbers with the high bit set are mandatory. Continue parsing
+      // to enforce syntax, but we will ultimately ignore this ECHConfig as a
+      // client and reject it as a server.
+      has_unknown_mandatory_extension = true;
+    }
+  }
+
+  *out_supported = !has_unknown_mandatory_extension;
+  return true;
+}
+
+bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
+                           const EVP_HPKE_KEY *key, bool is_retry_config) {
+  is_retry_config_ = is_retry_config;
+
   // Parse the ECHConfig, rejecting all unsupported parameters and extensions.
   // Unlike most server options, ECH's server configuration is serialized and
   // configured in both the server and DNS. If the caller configures an
   // unsupported parameter, this is a deployment error. To catch these errors,
   // we fail early.
-  if (version != kECHConfigVersion) {
+  CBS cbs = ech_config;
+  bool supported;
+  if (!parse_ech_config(&cbs, &ech_config_, &supported,
+                        /*all_extensions_mandatory=*/true)) {
+    return false;
+  }
+  if (CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return false;
+  }
+  if (!supported) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
     return false;
   }
 
-  CBS ech_config_contents, public_name, public_key, cipher_suites, extensions;
-  uint16_t kem_id, max_name_len;
-  if (!CBS_get_u16_length_prefixed(&reader, &ech_config_contents) ||
-      !CBS_get_u8(&ech_config_contents, &config_id_) ||
-      !CBS_get_u16(&ech_config_contents, &kem_id) ||
-      !CBS_get_u16_length_prefixed(&ech_config_contents, &public_key) ||
-      CBS_len(&public_key) == 0 ||
-      !CBS_get_u16_length_prefixed(&ech_config_contents, &cipher_suites) ||
-      CBS_len(&cipher_suites) == 0 ||
-      !CBS_get_u16(&ech_config_contents, &max_name_len) ||
-      !CBS_get_u16_length_prefixed(&ech_config_contents, &public_name) ||
-      CBS_len(&public_name) == 0 ||
-      !CBS_get_u16_length_prefixed(&ech_config_contents, &extensions) ||
-      CBS_len(&ech_config_contents) != 0 ||  //
-      CBS_len(&reader) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return false;
-  }
-
-  // We do not support any ECHConfig extensions, so |extensions| must be empty.
-  if (CBS_len(&extensions) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_ECH_SERVER_CONFIG_UNSUPPORTED_EXTENSION);
-    return false;
-  }
-
-  cipher_suites_ = cipher_suites;
+  CBS cipher_suites = ech_config_.cipher_suites;
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t kdf_id, aead_id;
     if (!CBS_get_u16(&cipher_suites, &kdf_id) ||
@@ -431,9 +478,9 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
                                sizeof(expected_public_key))) {
     return false;
   }
-  if (kem_id != EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key)) ||
+  if (ech_config_.kem_id != EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key)) ||
       MakeConstSpan(expected_public_key, expected_public_key_len) !=
-          public_key) {
+          ech_config_.public_key) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH);
     return false;
   }
@@ -442,17 +489,14 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
     return false;
   }
 
-  initialized_ = true;
   return true;
 }
 
 bool ECHServerConfig::SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id,
                                    uint16_t aead_id,
                                    Span<const uint8_t> enc) const {
-  assert(initialized_);
-
   // Check the cipher suite is supported by this ECHServerConfig.
-  CBS cbs(cipher_suites_);
+  CBS cbs(ech_config_.cipher_suites);
   bool cipher_ok = false;
   while (CBS_len(&cbs) != 0) {
     uint16_t supported_kdf_id, supported_aead_id;
@@ -471,10 +515,11 @@ bool ECHServerConfig::SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id,
 
   static const uint8_t kInfoLabel[] = "tls ech";
   ScopedCBB info_cbb;
-  if (!CBB_init(info_cbb.get(), sizeof(kInfoLabel) + ech_config_.size()) ||
+  if (!CBB_init(info_cbb.get(), sizeof(kInfoLabel) + ech_config_.raw.size()) ||
       !CBB_add_bytes(info_cbb.get(), kInfoLabel,
                      sizeof(kInfoLabel) /* includes trailing NUL */) ||
-      !CBB_add_bytes(info_cbb.get(), ech_config_.data(), ech_config_.size())) {
+      !CBB_add_bytes(info_cbb.get(), ech_config_.raw.data(),
+                     ech_config_.raw.size())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
@@ -486,6 +531,321 @@ bool ECHServerConfig::SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id,
       enc.size(), CBB_data(info_cbb.get()), CBB_len(info_cbb.get()));
 }
 
+bool ssl_is_valid_ech_config_list(Span<const uint8_t> ech_config_list) {
+  CBS cbs = ech_config_list, child;
+  if (!CBS_get_u16_length_prefixed(&cbs, &child) ||  //
+      CBS_len(&child) == 0 ||                        //
+      CBS_len(&cbs) > 0) {
+    return false;
+  }
+  while (CBS_len(&child) > 0) {
+    ECHConfig ech_config;
+    bool supported;
+    if (!parse_ech_config(&child, &ech_config, &supported,
+                          /*all_extensions_mandatory=*/false)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool select_ech_cipher_suite(const EVP_HPKE_KDF **out_kdf,
+                                    const EVP_HPKE_AEAD **out_aead,
+                                    Span<const uint8_t> cipher_suites) {
+  const bool has_aes_hardware = EVP_has_aes_hardware();
+  const EVP_HPKE_AEAD *aead = nullptr;
+  CBS cbs = cipher_suites;
+  while (CBS_len(&cbs) != 0) {
+    uint16_t kdf_id, aead_id;
+    if (!CBS_get_u16(&cbs, &kdf_id) ||  //
+        !CBS_get_u16(&cbs, &aead_id)) {
+      return false;
+    }
+    // Pick the first common cipher suite, but prefer ChaCha20-Poly1305 if we
+    // don't have AES hardware.
+    const EVP_HPKE_AEAD *candidate = get_ech_aead(aead_id);
+    if (kdf_id != EVP_HPKE_HKDF_SHA256 || candidate == nullptr) {
+      continue;
+    }
+    if (aead == nullptr ||
+        (!has_aes_hardware && aead_id == EVP_HPKE_CHACHA20_POLY1305)) {
+      aead = candidate;
+    }
+  }
+  if (aead == nullptr) {
+    return false;
+  }
+
+  *out_kdf = EVP_hpke_hkdf_sha256();
+  *out_aead = aead;
+  return true;
+}
+
+bool ssl_select_ech_config(SSL_HANDSHAKE *hs, Span<uint8_t> out_enc,
+                           size_t *out_enc_len) {
+  *out_enc_len = 0;
+  if (hs->max_version < TLS1_3_VERSION) {
+    // ECH requires TLS 1.3.
+    return true;
+  }
+
+  if (!hs->config->client_ech_config_list.empty()) {
+    CBS cbs = MakeConstSpan(hs->config->client_ech_config_list);
+    CBS child;
+    if (!CBS_get_u16_length_prefixed(&cbs, &child) ||  //
+        CBS_len(&child) == 0 ||                        //
+        CBS_len(&cbs) > 0) {
+      return false;
+    }
+    // Look for the first ECHConfig with supported parameters.
+    while (CBS_len(&child) > 0) {
+      ECHConfig ech_config;
+      bool supported;
+      if (!parse_ech_config(&child, &ech_config, &supported,
+                            /*all_extensions_mandatory=*/false)) {
+        return false;
+      }
+      const EVP_HPKE_KEM *kem = EVP_hpke_x25519_hkdf_sha256();
+      const EVP_HPKE_KDF *kdf;
+      const EVP_HPKE_AEAD *aead;
+      if (supported &&  //
+          ech_config.kem_id == EVP_HPKE_DHKEM_X25519_HKDF_SHA256 &&
+          select_ech_cipher_suite(&kdf, &aead, ech_config.cipher_suites)) {
+        ScopedCBB info;
+        static const uint8_t kInfoLabel[] = "tls ech";  // includes trailing NUL
+        if (!CBB_init(info.get(), sizeof(kInfoLabel) + ech_config.raw.size()) ||
+            !CBB_add_bytes(info.get(), kInfoLabel, sizeof(kInfoLabel)) ||
+            !CBB_add_bytes(info.get(), ech_config.raw.data(),
+                           ech_config.raw.size())) {
+          OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+          return false;
+        }
+
+        if (!EVP_HPKE_CTX_setup_sender(
+                hs->ech_hpke_ctx.get(), out_enc.data(), out_enc_len,
+                out_enc.size(), kem, kdf, aead, ech_config.public_key.data(),
+                ech_config.public_key.size(), CBB_data(info.get()),
+                CBB_len(info.get())) ||
+            !hs->inner_transcript.Init()) {
+          return false;
+        }
+
+        hs->selected_ech_config = MakeUnique<ECHConfig>(std::move(ech_config));
+        return hs->selected_ech_config != nullptr;
+      }
+    }
+  }
+
+  return true;
+}
+
+static size_t aead_overhead(const EVP_HPKE_AEAD *aead) {
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  // TODO(https://crbug.com/boringssl/275): Having to adjust the overhead
+  // everywhere is tedious. Change fuzzer mode to append a fake tag but still
+  // otherwise be cleartext, refresh corpora, and then inline this function.
+  return 0;
+#else
+  return EVP_AEAD_max_overhead(EVP_HPKE_AEAD_aead(aead));
+#endif
+}
+
+static size_t compute_extension_length(const EVP_HPKE_AEAD *aead,
+                                       size_t enc_len, size_t in_len) {
+  size_t ret = 4;      // HpkeSymmetricCipherSuite cipher_suite
+  ret++;               // uint8 config_id
+  ret += 2 + enc_len;  // opaque enc<1..2^16-1>
+  ret += 2 + in_len + aead_overhead(aead);  // opaque payload<1..2^16-1>
+  return ret;
+}
+
+// random_size returns a random value between |min| and |max|, inclusive.
+static size_t random_size(size_t min, size_t max) {
+  assert(min < max);
+  size_t value;
+  RAND_bytes(reinterpret_cast<uint8_t *>(&value), sizeof(value));
+  return value % (max - min + 1) + min;
+}
+
+static bool setup_ech_grease(SSL_HANDSHAKE *hs) {
+  assert(!hs->selected_ech_config);
+  if (hs->max_version < TLS1_3_VERSION || !hs->config->ech_grease_enabled) {
+    return true;
+  }
+
+  const uint16_t kdf_id = EVP_HPKE_HKDF_SHA256;
+  const EVP_HPKE_AEAD *aead = EVP_has_aes_hardware()
+                                  ? EVP_hpke_aes_128_gcm()
+                                  : EVP_hpke_chacha20_poly1305();
+  static_assert(ssl_grease_ech_config_id < sizeof(hs->grease_seed),
+                "hs->grease_seed is too small");
+  uint8_t config_id = hs->grease_seed[ssl_grease_ech_config_id];
+
+  uint8_t enc[X25519_PUBLIC_VALUE_LEN];
+  uint8_t private_key_unused[X25519_PRIVATE_KEY_LEN];
+  X25519_keypair(enc, private_key_unused);
+
+  // To determine a plausible length for the payload, we estimate the size of a
+  // typical EncodedClientHelloInner without resumption:
+  //
+  //   2+32+1+2   version, random, legacy_session_id, legacy_compression_methods
+  //   2+4*2      cipher_suites (three TLS 1.3 ciphers, GREASE)
+  //   2          extensions prefix
+  //   4          ech_is_inner
+  //   4+1+2*2    supported_versions (TLS 1.3, GREASE)
+  //   4+1+10*2   outer_extensions (key_share, sigalgs, sct, alpn,
+  //              supported_groups, status_request, psk_key_exchange_modes,
+  //              compress_certificate, GREASE x2)
+  //
+  // The server_name extension has an overhead of 9 bytes. For now, arbitrarily
+  // estimate maximum_name_length to be between 32 and 100 bytes.
+  //
+  // TODO(https://crbug.com/boringssl/275): If the padding scheme changes to
+  // also round the entire payload, adjust this to match. See
+  // https://github.com/tlswg/draft-ietf-tls-esni/issues/433
+  const size_t overhead = aead_overhead(aead);
+  const size_t in_len = random_size(128, 196);
+  const size_t extension_len =
+      compute_extension_length(aead, sizeof(enc), in_len);
+  bssl::ScopedCBB cbb;
+  CBB enc_cbb, payload_cbb;
+  uint8_t *payload;
+  if (!CBB_init(cbb.get(), extension_len) ||
+      !CBB_add_u16(cbb.get(), kdf_id) ||
+      !CBB_add_u16(cbb.get(), EVP_HPKE_AEAD_id(aead)) ||
+      !CBB_add_u8(cbb.get(), config_id) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &enc_cbb) ||
+      !CBB_add_bytes(&enc_cbb, enc, sizeof(enc)) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &payload_cbb) ||
+      !CBB_add_space(&payload_cbb, &payload, in_len + overhead) ||
+      !RAND_bytes(payload, in_len + overhead) ||
+      !CBBFinishArray(cbb.get(), &hs->ech_client_bytes)) {
+    return false;
+  }
+  assert(hs->ech_client_bytes.size() == extension_len);
+  return true;
+}
+
+bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
+  SSL *const ssl = hs->ssl;
+  if (!hs->selected_ech_config) {
+    return setup_ech_grease(hs);
+  }
+
+  // Construct ClientHelloInner and EncodedClientHelloInner. See
+  // draft-ietf-tls-esni-10, sections 5.1 and 6.1.
+  bssl::ScopedCBB cbb, encoded;
+  CBB body;
+  bool needs_psk_binder;
+  bssl::Array<uint8_t> hello_inner;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO) ||
+      !CBB_init(encoded.get(), 256) ||
+      !ssl_write_client_hello_without_extensions(hs, &body,
+                                                 ssl_client_hello_inner,
+                                                 /*empty_session_id=*/false) ||
+      !ssl_write_client_hello_without_extensions(hs, encoded.get(),
+                                                 ssl_client_hello_inner,
+                                                 /*empty_session_id=*/true) ||
+      !ssl_add_clienthello_tlsext(hs, &body, encoded.get(), &needs_psk_binder,
+                                  ssl_client_hello_inner, CBB_len(&body),
+                                  /*omit_ech_len=*/0) ||
+      !ssl->method->finish_message(ssl, cbb.get(), &hello_inner)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+
+  if (needs_psk_binder) {
+    size_t binder_len;
+    if (!tls13_write_psk_binder(hs, hs->inner_transcript, MakeSpan(hello_inner),
+                                &binder_len)) {
+      return false;
+    }
+    // Also update the EncodedClientHelloInner.
+    if (CBB_len(encoded.get()) < binder_len) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+    OPENSSL_memcpy(const_cast<uint8_t *>(CBB_data(encoded.get())) +
+                       CBB_len(encoded.get()) - binder_len,
+                   hello_inner.data() + hello_inner.size() - binder_len,
+                   binder_len);
+  }
+
+  if (!hs->inner_transcript.Update(hello_inner)) {
+    return false;
+  }
+
+  // Construct ClientHelloOuterAAD. See draft-ietf-tls-esni-10, section 5.2.
+  // TODO(https://crbug.com/boringssl/275): This ends up constructing the
+  // ClientHelloOuter twice. Revisit this in the next draft, which uses a more
+  // forgiving construction.
+  const EVP_HPKE_KDF *kdf = EVP_HPKE_CTX_kdf(hs->ech_hpke_ctx.get());
+  const EVP_HPKE_AEAD *aead = EVP_HPKE_CTX_aead(hs->ech_hpke_ctx.get());
+  const size_t extension_len =
+      compute_extension_length(aead, enc.size(), CBB_len(encoded.get()));
+  bssl::ScopedCBB aad;
+  CBB outer_hello;
+  CBB enc_cbb;
+  if (!CBB_init(aad.get(), 256) ||
+      !CBB_add_u16(aad.get(), EVP_HPKE_KDF_id(kdf)) ||
+      !CBB_add_u16(aad.get(), EVP_HPKE_AEAD_id(aead)) ||
+      !CBB_add_u8(aad.get(), hs->selected_ech_config->config_id) ||
+      !CBB_add_u16_length_prefixed(aad.get(), &enc_cbb) ||
+      !CBB_add_bytes(&enc_cbb, enc.data(), enc.size()) ||
+      !CBB_add_u24_length_prefixed(aad.get(), &outer_hello) ||
+      !ssl_write_client_hello_without_extensions(hs, &outer_hello,
+                                                 ssl_client_hello_outer,
+                                                 /*empty_session_id=*/false) ||
+      !ssl_add_clienthello_tlsext(hs, &outer_hello, /*out_encoded=*/nullptr,
+                                  &needs_psk_binder, ssl_client_hello_outer,
+                                  CBB_len(&outer_hello),
+                                  /*omit_ech_len=*/4 + extension_len) ||
+      !CBB_flush(aad.get())) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+  // ClientHelloOuter may not require a PSK binder. Otherwise, we have a
+  // circular dependency.
+  assert(!needs_psk_binder);
+
+  CBB payload_cbb;
+  if (!CBB_init(cbb.get(), extension_len) ||
+      !CBB_add_u16(cbb.get(), EVP_HPKE_KDF_id(kdf)) ||
+      !CBB_add_u16(cbb.get(), EVP_HPKE_AEAD_id(aead)) ||
+      !CBB_add_u8(cbb.get(), hs->selected_ech_config->config_id) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &enc_cbb) ||
+      !CBB_add_bytes(&enc_cbb, enc.data(), enc.size()) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &payload_cbb)) {
+    return false;
+  }
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  // In fuzzer mode, the server expects a cleartext payload.
+  if (!CBB_add_bytes(&payload_cbb, CBB_data(encoded.get()),
+                     CBB_len(encoded.get()))) {
+    return false;
+  }
+#else
+  uint8_t *payload;
+  size_t payload_len =
+      CBB_len(encoded.get()) + EVP_AEAD_max_overhead(EVP_HPKE_AEAD_aead(aead));
+  if (!CBB_reserve(&payload_cbb, &payload, payload_len) ||
+      !EVP_HPKE_CTX_seal(hs->ech_hpke_ctx.get(), payload, &payload_len,
+                         payload_len, CBB_data(encoded.get()),
+                         CBB_len(encoded.get()), CBB_data(aad.get()),
+                         CBB_len(aad.get())) ||
+      !CBB_did_write(&payload_cbb, payload_len)) {
+    return false;
+  }
+#endif // BORINGSSL_UNSAFE_FUZZER_MODE
+  if (!CBBFinishArray(cbb.get(), &hs->ech_client_bytes)) {
+    return false;
+  }
+
+  // The |aad| calculation relies on |extension_length| being correct.
+  assert(hs->ech_client_bytes.size() == extension_len);
+  return true;
+}
+
 BSSL_NAMESPACE_END
 
 using namespace bssl;
@@ -495,6 +855,20 @@ void SSL_set_enable_ech_grease(SSL *ssl, int enable) {
     return;
   }
   ssl->config->ech_grease_enabled = !!enable;
+}
+
+int SSL_set1_ech_config_list(SSL *ssl, const uint8_t *ech_config_list,
+                             size_t ech_config_list_len) {
+  if (!ssl->config) {
+    return 0;
+  }
+
+  auto span = MakeConstSpan(ech_config_list, ech_config_list_len);
+  if (!ssl_is_valid_ech_config_list(span)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ECH_CONFIG_LIST);
+    return 0;
+  }
+  return ssl->config->client_ech_config_list.CopyFrom(span);
 }
 
 int SSL_marshal_ech_config(uint8_t **out, size_t *out_len, uint8_t config_id,
@@ -581,10 +955,10 @@ int SSL_ECH_KEYS_add(SSL_ECH_KEYS *configs, int is_retry_config,
 int SSL_ECH_KEYS_has_duplicate_config_id(const SSL_ECH_KEYS *keys) {
   bool seen[256] = {false};
   for (const auto &config : keys->configs) {
-    if (seen[config->config_id()]) {
+    if (seen[config->ech_config().config_id]) {
       return 1;
     }
-    seen[config->config_id()] = true;
+    seen[config->ech_config().config_id] = true;
   }
   return 0;
 }
@@ -600,8 +974,8 @@ int SSL_ECH_KEYS_marshal_retry_configs(const SSL_ECH_KEYS *keys, uint8_t **out,
   }
   for (const auto &config : keys->configs) {
     if (config->is_retry_config() &&
-        !CBB_add_bytes(&child, config->ech_config().data(),
-                       config->ech_config().size())) {
+        !CBB_add_bytes(&child, config->ech_config().raw.data(),
+                       config->ech_config().raw.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
@@ -628,5 +1002,12 @@ int SSL_CTX_set1_ech_keys(SSL_CTX *ctx, SSL_ECH_KEYS *keys) {
 }
 
 int SSL_ech_accepted(const SSL *ssl) {
+  if (SSL_in_early_data(ssl) && !ssl->server) {
+    // In the client early data state, we report properties as if the server
+    // accepted early data. The server can only accept early data with
+    // ClientHelloInner.
+    return ssl->s3->hs->selected_ech_config != nullptr;
+  }
+
   return ssl->s3->ech_accept;
 }

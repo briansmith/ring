@@ -13156,7 +13156,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				ExpectNoTLS12Session: true,
+				ExpectNoSessionID: true,
 			},
 		},
 		flags: []string{"-max-version", strconv.Itoa(VersionTLS12)},
@@ -16266,33 +16266,42 @@ var echCiphers = []echCipher{
 }
 
 // generateServerECHConfig constructs a ServerECHConfig with a fresh X25519
-// keypair and using |template| as a template for the ECHConfig. If
-// |template.CipherSuites| is empty, all ciphers are included. |template.KEM|
-// and |template.PublicKey| are ignored.
+// keypair and using |template| as a template for the ECHConfig. If fields are
+// omitted, defaults are used.
 func generateServerECHConfig(template *ECHConfig) ServerECHConfig {
 	publicKey, secretKey, err := hpke.GenerateKeyPairX25519()
 	if err != nil {
 		panic(err)
 	}
 	templateCopy := *template
-	templateCopy.KEM = hpke.X25519WithHKDFSHA256
-	templateCopy.PublicKey = publicKey
+	if templateCopy.KEM == 0 {
+		templateCopy.KEM = hpke.X25519WithHKDFSHA256
+	}
+	if len(templateCopy.PublicKey) == 0 {
+		templateCopy.PublicKey = publicKey
+	}
 	if len(templateCopy.CipherSuites) == 0 {
 		templateCopy.CipherSuites = make([]HPKECipherSuite, len(echCiphers))
 		for i, cipher := range echCiphers {
 			templateCopy.CipherSuites[i] = cipher.cipher
 		}
 	}
+	if len(templateCopy.PublicName) == 0 {
+		templateCopy.PublicName = "public.example"
+	}
+	if templateCopy.MaxNameLen == 0 {
+		templateCopy.MaxNameLen = 64
+	}
 	return ServerECHConfig{ECHConfig: CreateECHConfig(&templateCopy), Key: secretKey}
 }
 
 func addEncryptedClientHelloTests() {
 	// echConfig's ConfigID should match the one used in ssl/test/fuzzer.h.
-	echConfig := generateServerECHConfig(&ECHConfig{ConfigID: 42, PublicName: "public.example"})
-	echConfig1 := generateServerECHConfig(&ECHConfig{ConfigID: 43, PublicName: "public.example"})
-	echConfig2 := generateServerECHConfig(&ECHConfig{ConfigID: 44, PublicName: "public.example"})
-	echConfig3 := generateServerECHConfig(&ECHConfig{ConfigID: 45, PublicName: "public.example"})
-	echConfigRepeatID := generateServerECHConfig(&ECHConfig{ConfigID: 42, PublicName: "public.example"})
+	echConfig := generateServerECHConfig(&ECHConfig{ConfigID: 42})
+	echConfig1 := generateServerECHConfig(&ECHConfig{ConfigID: 43})
+	echConfig2 := generateServerECHConfig(&ECHConfig{ConfigID: 44})
+	echConfig3 := generateServerECHConfig(&ECHConfig{ConfigID: 45})
+	echConfigRepeatID := generateServerECHConfig(&ECHConfig{ConfigID: 42})
 
 	for _, protocol := range []protocol{tls, quic} {
 		prefix := protocol.String() + "-"
@@ -16666,11 +16675,38 @@ func addEncryptedClientHelloTests() {
 				},
 			})
 
+			// Test that client can offer the specified cipher and skip over
+			// unrecognized ones.
+			cipherConfig := generateServerECHConfig(&ECHConfig{
+				ConfigID: 42,
+				CipherSuites: []HPKECipherSuite{
+					{KDF: 0x1111, AEAD: 0x2222},
+					{KDF: cipher.cipher.KDF, AEAD: 0x2222},
+					{KDF: 0x1111, AEAD: cipher.cipher.AEAD},
+					cipher.cipher,
+				},
+			})
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Cipher-" + cipher.name,
+				config: Config{
+					ServerECHConfigs: []ServerECHConfig{cipherConfig},
+				},
+				flags: []string{
+					"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(cipherConfig.ECHConfig.Raw)),
+					"-host-name", "secret.example",
+					"-expect-ech-accept",
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
+
 			// Test that the ECH server rejects the specified cipher if not
 			// listed in its ECHConfig.
-			config := generateServerECHConfig(&ECHConfig{
+			otherCipherConfig := generateServerECHConfig(&ECHConfig{
 				ConfigID:     42,
-				PublicName:   "public.name",
 				CipherSuites: []HPKECipherSuite{otherCipher.cipher},
 			})
 			testCases = append(testCases, testCase{
@@ -16682,12 +16718,12 @@ func addEncryptedClientHelloTests() {
 					ClientECHConfig: echConfig.ECHConfig,
 					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
 					Bugs: ProtocolBugs{
-						ExpectECHRetryConfigs: CreateECHConfigList(config.ECHConfig.Raw),
+						ExpectECHRetryConfigs: CreateECHConfigList(otherCipherConfig.ECHConfig.Raw),
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(config.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(config.Key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(otherCipherConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(otherCipherConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "public.example",
 				},
@@ -17070,6 +17106,609 @@ func addEncryptedClientHelloTests() {
 			expectedLocalError: "remote error: illegal parameter",
 			expectedError:      ":UNEXPECTED_EXTENSION:",
 		})
+
+		// Test the client can negotiate ECH, with and without HelloRetryRequest.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client",
+			config: Config{
+				MinVersion:       VersionTLS13,
+				MaxVersion:       VersionTLS13,
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectServerName:      "secret.example",
+					ExpectOuterServerName: "public.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+				"-expect-ech-accept",
+			},
+			resumeSession: true,
+			expectations:  connectionExpectations{echAccepted: true},
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-HelloRetryRequest",
+			config: Config{
+				MinVersion:       VersionTLS13,
+				MaxVersion:       VersionTLS13,
+				CurvePreferences: []CurveID{CurveP384},
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectServerName:      "secret.example",
+					ExpectOuterServerName: "public.example",
+					ExpectMissingKeyShare: true, // Check we triggered HRR.
+				},
+			},
+			resumeSession: true,
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+				"-expect-ech-accept",
+				"-expect-hrr", // Check we triggered HRR.
+			},
+			expectations: connectionExpectations{echAccepted: true},
+		})
+
+		// Test the client can negotiate ECH with early data.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-EarlyData",
+			config: Config{
+				MinVersion:       VersionTLS13,
+				MaxVersion:       VersionTLS13,
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectServerName: "secret.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+				"-expect-ech-accept",
+			},
+			resumeSession: true,
+			earlyData:     true,
+			expectations:  connectionExpectations{echAccepted: true},
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-EarlyDataRejected",
+			config: Config{
+				MinVersion:       VersionTLS13,
+				MaxVersion:       VersionTLS13,
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectServerName:      "secret.example",
+					AlwaysRejectEarlyData: true,
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+				"-expect-ech-accept",
+			},
+			resumeSession:           true,
+			earlyData:               true,
+			expectEarlyDataRejected: true,
+			expectations:            connectionExpectations{echAccepted: true},
+		})
+
+		if protocol != quic {
+			// Test that an ECH client does not offer a TLS 1.2 session.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-TLS12SessionID",
+				config: Config{
+					MaxVersion:             VersionTLS12,
+					SessionTicketsDisabled: true,
+				},
+				resumeConfig: &Config{
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					Bugs: ProtocolBugs{
+						ExpectNoTLS12Session: true,
+					},
+				},
+				flags: []string{
+					"-on-resume-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-on-resume-expect-ech-accept",
+				},
+				resumeSession:        true,
+				expectResumeRejected: true,
+				resumeExpectations:   &connectionExpectations{echAccepted: true},
+			})
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-TLS12SessionTicket",
+				config: Config{
+					MaxVersion: VersionTLS12,
+				},
+				resumeConfig: &Config{
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					Bugs: ProtocolBugs{
+						ExpectNoTLS12Session: true,
+					},
+				},
+				flags: []string{
+					"-on-resume-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-on-resume-expect-ech-accept",
+				},
+				resumeSession:        true,
+				expectResumeRejected: true,
+				resumeExpectations:   &connectionExpectations{echAccepted: true},
+			})
+		}
+
+		// ClientHelloInner should not include NPN, which is a TLS 1.2-only
+		// extensions. The Go server will enforce this, so this test only needs
+		// to configure the feature on the shim. Other application extensions
+		// are sent implicitly.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-NoNPN",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+				// Enable NPN.
+				"-select-next-proto", "foo",
+			},
+			expectations: connectionExpectations{echAccepted: true},
+		})
+
+		// Test that the client iterates over configurations in the
+		// ECHConfigList and selects the first with supported parameters.
+		p256Key := ecdsaP256Certificate.PrivateKey.(*ecdsa.PrivateKey)
+		unsupportedKEM := generateServerECHConfig(&ECHConfig{
+			KEM:       hpke.P256WithHKDFSHA256,
+			PublicKey: elliptic.Marshal(elliptic.P256(), p256Key.X, p256Key.Y),
+		}).ECHConfig
+		unsupportedCipherSuites := generateServerECHConfig(&ECHConfig{
+			CipherSuites: []HPKECipherSuite{{0x1111, 0x2222}},
+		}).ECHConfig
+		unsupportedMandatoryExtension := generateServerECHConfig(&ECHConfig{
+			UnsupportedMandatoryExtension: true,
+		}).ECHConfig
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-SelectECHConfig",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(
+					unsupportedVersion,
+					unsupportedKEM.Raw,
+					unsupportedCipherSuites.Raw,
+					unsupportedMandatoryExtension.Raw,
+					echConfig.ECHConfig.Raw,
+					// |echConfig1| is also supported, but the client should
+					// select the first one.
+					echConfig1.ECHConfig.Raw,
+				)),
+				"-expect-ech-accept",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+
+		// Test that the client skips sending ECH if all ECHConfigs are
+		// unsupported.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-NoSupportedConfigs",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ExpectNoClientECH: true,
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(
+					unsupportedVersion,
+					unsupportedKEM.Raw,
+					unsupportedCipherSuites.Raw,
+					unsupportedMandatoryExtension.Raw,
+				)),
+			},
+		})
+
+		// If ECH GREASE is enabled, the client should send ECH GREASE when no
+		// configured ECHConfig is suitable.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-NoSupportedConfigs-GREASE",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ExpectClientECH: true,
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(
+					unsupportedVersion,
+					unsupportedKEM.Raw,
+					unsupportedCipherSuites.Raw,
+					unsupportedMandatoryExtension.Raw,
+				)),
+				"-enable-ech-grease",
+			},
+		})
+
+		// If both ECH GREASE and suitable ECHConfigs are available, the
+		// client should send normal ECH.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-GREASE",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+			},
+			resumeSession: true,
+			expectations:  connectionExpectations{echAccepted: true},
+		})
+
+		// Test that GREASE extensions correctly interact with ECH. Both the
+		// inner and outer ClientHellos should include GREASE extensions.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-GREASEExtensions",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectGREASE: true,
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+				"-enable-grease",
+			},
+			resumeSession: true,
+			expectations:  connectionExpectations{echAccepted: true},
+		})
+
+		// Test that the client tolerates unsupported extensions if the
+		// mandatory bit is not set.
+		unsupportedExtension := generateServerECHConfig(&ECHConfig{UnsupportedExtension: true})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-UnsupportedExtension",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{unsupportedExtension},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(unsupportedExtension.ECHConfig.Raw)),
+				"-expect-ech-accept",
+			},
+			expectations: connectionExpectations{echAccepted: true},
+		})
+
+		// Syntax errors in the ECHConfigList should be rejected.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-InvalidECHConfigList",
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw[1:])),
+			},
+			shouldFail:    true,
+			expectedError: ":INVALID_ECH_CONFIG_LIST:",
+		})
+
+		// If the ClientHelloInner has no server_name extension, while the
+		// ClientHelloOuter has one, the client must check for unsolicited
+		// extensions based on the selected ClientHello.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-UnsolicitedInnerServerNameAck",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					// ClientHelloOuter should have a server name.
+					ExpectOuterServerName: "public.example",
+					// The server will acknowledge the server_name extension.
+					// This option runs whether or not the client requested the
+					// extension.
+					SendServerNameAck: true,
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				// No -host-name flag.
+				"-expect-ech-accept",
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_EXTENSION:",
+			expectedLocalError: "remote error: unsupported extension",
+			expectations:       connectionExpectations{echAccepted: true},
+		})
+
+		// Most extensions are the same between ClientHelloInner and
+		// ClientHelloOuter and can be compressed.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-ExpectECHOuterExtensions",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				NextProtos:       []string{"proto"},
+				Bugs: ProtocolBugs{
+					ExpectECHOuterExtensions: []uint16{
+						extensionALPN,
+						extensionKeyShare,
+						extensionPSKKeyExchangeModes,
+						extensionSignatureAlgorithms,
+						extensionSupportedCurves,
+					},
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+				"-advertise-alpn", "\x05proto",
+				"-expect-alpn", "proto",
+				"-host-name", "secret.example",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+				nextProto:   "proto",
+			},
+			skipQUICALPNConfig: true,
+		})
+
+		// If the server name happens to match the public name, it still should
+		// not be compressed. It is not publicly known that they match.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-NeverCompressServerName",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				NextProtos:       []string{"proto"},
+				Bugs: ProtocolBugs{
+					ExpectECHUncompressedExtensions: []uint16{extensionServerName},
+					ExpectServerName:                "public.example",
+					ExpectOuterServerName:           "public.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+				"-host-name", "public.example",
+			},
+			expectations: connectionExpectations{echAccepted: true},
+		})
+
+		// If the ClientHelloOuter disables TLS 1.3, e.g. in QUIC, the client
+		// should also compress supported_versions.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-CompressSupportedVersions",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectECHOuterExtensions: []uint16{
+						extensionSupportedVersions,
+					},
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+				"-expect-ech-accept",
+				"-min-version", strconv.Itoa(int(VersionTLS13)),
+			},
+			expectations: connectionExpectations{echAccepted: true},
+		})
+
+		// Test that the client can still offer server names that exceed the
+		// maximum name length. It is only a padding hint.
+		maxNameLen10 := generateServerECHConfig(&ECHConfig{MaxNameLen: 10})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-NameTooLong",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{maxNameLen10},
+				Bugs: ProtocolBugs{
+					ExpectServerName: "test0123456789.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(maxNameLen10.ECHConfig.Raw)),
+				"-host-name", "test0123456789.example",
+				"-expect-ech-accept",
+			},
+			expectations: connectionExpectations{echAccepted: true},
+		})
+
+		// Test the client can recognize when ECH is rejected.
+		// TODO(https://crbug.com/boringssl/275): Once implemented, this
+		// handshake should complete.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ExpectServerName: "public.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+			},
+			shouldFail:    true,
+			expectedError: ":CONNECTION_REJECTED:",
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject-HelloRetryRequest",
+			config: Config{
+				CurvePreferences: []CurveID{CurveP384},
+				Bugs: ProtocolBugs{
+					ExpectServerName:      "public.example",
+					ExpectMissingKeyShare: true, // Check we triggered HRR.
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-hrr", // Check we triggered HRR.
+			},
+			shouldFail:    true,
+			expectedError: ":CONNECTION_REJECTED:",
+		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Reject-TLS12",
+				config: Config{
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						ExpectServerName:      "public.example",
+						ExpectMissingKeyShare: true, // Check we triggered HRR.
+					},
+				},
+				flags: []string{
+					"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-expect-hrr", // Check we triggered HRR.
+				},
+				shouldFail:    true,
+				expectedError: ":CONNECTION_REJECTED:",
+			})
+		}
+
+		// Test that the client rejects ClientHelloOuter handshakes that attempt
+		// to resume the ClientHelloInner's ticket. In draft-ietf-tls-esni-10,
+		// the confirmation signal is computed in an odd order, so this requires
+		// an explicit check on the client.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject-ResumeInnerSession",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectServerName: "secret.example",
+				},
+			},
+			resumeConfig: &Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectServerName:                    "public.example",
+					UseInnerSessionWithClientHelloOuter: true,
+				},
+			},
+			resumeSession: true,
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+				"-on-initial-expect-ech-accept",
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_EXTENSION:",
+			expectations:       connectionExpectations{echAccepted: true},
+			resumeExpectations: &connectionExpectations{echAccepted: false},
+		})
+
+		// Test that the client can process ECH rejects after an early data reject.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject-EarlyDataReject",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectServerName: "secret.example",
+				},
+			},
+			resumeConfig: &Config{
+				Bugs: ProtocolBugs{
+					ExpectServerName: "public.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+				// Although the resumption connection does not accept ECH, the
+				// API will report ECH was accepted at the 0-RTT point.
+				"-expect-ech-accept",
+			},
+			resumeSession:           true,
+			expectResumeRejected:    true,
+			earlyData:               true,
+			expectEarlyDataRejected: true,
+			expectations:            connectionExpectations{echAccepted: true},
+			resumeExpectations:      &connectionExpectations{echAccepted: false},
+			// TODO(https://crbug.com/boringssl/275): Once implemented, this
+			// should complete the handshake.
+			shouldFail:    true,
+			expectedError: ":CONNECTION_REJECTED:",
+		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Reject-EarlyDataReject-TLS12",
+				config: Config{
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					Bugs: ProtocolBugs{
+						ExpectServerName: "secret.example",
+					},
+				},
+				resumeConfig: &Config{
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						ExpectServerName: "public.example",
+					},
+				},
+				flags: []string{
+					"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-host-name", "secret.example",
+					// Although the resumption connection does not accept ECH, the
+					// API will report ECH was accepted at the 0-RTT point.
+					"-expect-ech-accept",
+				},
+				resumeSession:           true,
+				expectResumeRejected:    true,
+				earlyData:               true,
+				expectEarlyDataRejected: true,
+				expectations:            connectionExpectations{echAccepted: true},
+				resumeExpectations:      &connectionExpectations{echAccepted: false},
+				// ClientHellos with early data cannot negotiate TLS 1.2, with
+				// or without ECH. The shim should first report
+				// |SSL_R_WRONG_VERSION_ON_EARLY_DATA|. The caller will then
+				// repair the first error by retrying without early data. That
+				// will look like ECH-Client-Reject-TLS12 and select TLS 1.2
+				// and ClientHelloOuter. The caller will then trigger a third
+				// attempt, which will succeed.
+				shouldFail:    true,
+				expectedError: ":WRONG_VERSION_ON_EARLY_DATA:",
+			})
+		}
 	}
 }
 

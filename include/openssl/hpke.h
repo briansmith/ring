@@ -73,6 +73,9 @@ OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_hpke_chacha20_poly1305(void);
 // EVP_HPKE_AEAD_id returns the HPKE AEAD identifier for |aead|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead);
 
+// EVP_HPKE_AEAD_aead returns the |EVP_AEAD| corresponding to |aead|.
+OPENSSL_EXPORT const EVP_AEAD *EVP_HPKE_AEAD_aead(const EVP_HPKE_AEAD *aead);
+
 
 // Recipient keys.
 //

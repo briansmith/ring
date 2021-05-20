@@ -318,6 +318,10 @@ const EVP_HPKE_AEAD *EVP_hpke_chacha20_poly1305(void) {
 
 uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead) { return aead->id; }
 
+const EVP_AEAD *EVP_HPKE_AEAD_aead(const EVP_HPKE_AEAD *aead) {
+  return aead->aead_func();
+}
+
 
 // HPKE implementation.
 
@@ -390,7 +394,7 @@ static int hpke_key_schedule(EVP_HPKE_CTX *ctx, const uint8_t *shared_secret,
   }
 
   // key = LabeledExpand(secret, "key", key_schedule_context, Nk)
-  const EVP_AEAD *aead = ctx->aead->aead_func();
+  const EVP_AEAD *aead = EVP_HPKE_AEAD_aead(ctx->aead);
   uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
   const size_t kKeyLen = EVP_AEAD_key_length(aead);
   if (!hpke_labeled_expand(hkdf_md, key, kKeyLen, secret, secret_len, suite_id,

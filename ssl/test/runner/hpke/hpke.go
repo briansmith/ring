@@ -30,6 +30,7 @@ import (
 
 // KEM scheme IDs.
 const (
+	P256WithHKDFSHA256   uint16 = 0x0010
 	X25519WithHKDFSHA256 uint16 = 0x0020
 )
 

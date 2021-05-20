@@ -33,24 +33,25 @@
 
 BSSL_NAMESPACE_BEGIN
 
-static bool init_key_schedule(SSL_HANDSHAKE *hs, uint16_t version,
-                              const SSL_CIPHER *cipher) {
-  if (!hs->transcript.InitHash(version, cipher)) {
+static bool init_key_schedule(SSL_HANDSHAKE *hs, SSLTranscript *transcript,
+                              uint16_t version, const SSL_CIPHER *cipher) {
+  if (!transcript->InitHash(version, cipher)) {
     return false;
   }
 
   // Initialize the secret to the zero key.
-  hs->ResizeSecrets(hs->transcript.DigestLen());
+  hs->ResizeSecrets(transcript->DigestLen());
   OPENSSL_memset(hs->secret().data(), 0, hs->secret().size());
 
   return true;
 }
 
-static bool hkdf_extract_to_secret(SSL_HANDSHAKE *hs, Span<const uint8_t> in) {
+static bool hkdf_extract_to_secret(SSL_HANDSHAKE *hs,
+                                   const SSLTranscript &transcript,
+                                   Span<const uint8_t> in) {
   size_t len;
-  if (!HKDF_extract(hs->secret().data(), &len, hs->transcript.Digest(),
-                    in.data(), in.size(), hs->secret().data(),
-                    hs->secret().size())) {
+  if (!HKDF_extract(hs->secret().data(), &len, transcript.Digest(), in.data(),
+                    in.size(), hs->secret().data(), hs->secret().size())) {
     return false;
   }
   assert(len == hs->secret().size());
@@ -58,7 +59,8 @@ static bool hkdf_extract_to_secret(SSL_HANDSHAKE *hs, Span<const uint8_t> in) {
 }
 
 bool tls13_init_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> psk) {
-  if (!init_key_schedule(hs, ssl_protocol_version(hs->ssl), hs->new_cipher)) {
+  if (!init_key_schedule(hs, &hs->transcript, ssl_protocol_version(hs->ssl),
+                         hs->new_cipher)) {
     return false;
   }
 
@@ -67,14 +69,22 @@ bool tls13_init_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> psk) {
   if (!hs->handback) {
     hs->transcript.FreeBuffer();
   }
-  return hkdf_extract_to_secret(hs, psk);
+  return hkdf_extract_to_secret(hs, hs->transcript, psk);
 }
 
-bool tls13_init_early_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> psk) {
-  SSL *const ssl = hs->ssl;
-  return init_key_schedule(hs, ssl_session_protocol_version(ssl->session.get()),
-                           ssl->session->cipher) &&
-         hkdf_extract_to_secret(hs, psk);
+bool tls13_init_early_key_schedule(SSL_HANDSHAKE *hs,
+                                   const SSL_SESSION *session) {
+  assert(!hs->ssl->server);
+  // When offering ECH, early data is associated with ClientHelloInner, not
+  // ClientHelloOuter.
+  SSLTranscript *transcript =
+      hs->selected_ech_config ? &hs->inner_transcript : &hs->transcript;
+  return init_key_schedule(hs, transcript,
+                           ssl_session_protocol_version(session),
+                           session->cipher) &&
+         hkdf_extract_to_secret(
+             hs, *transcript,
+             MakeConstSpan(session->secret, session->secret_length));
 }
 
 static Span<const char> label_to_span(const char *label) {
@@ -118,23 +128,29 @@ bool tls13_advance_key_schedule(SSL_HANDSHAKE *hs, Span<const uint8_t> in) {
          hkdf_expand_label(hs->secret(), hs->transcript.Digest(), hs->secret(),
                            label_to_span(kTLS13LabelDerived),
                            MakeConstSpan(derive_context, derive_context_len)) &&
-         hkdf_extract_to_secret(hs, in);
+         hkdf_extract_to_secret(hs, hs->transcript, in);
 }
 
-// derive_secret derives a secret of length |out.size()| and writes the result
-// in |out| with the given label, the current base secret, and the most
-// recently-saved handshake context. It returns true on success and false on
-// error.
-static bool derive_secret(SSL_HANDSHAKE *hs, Span<uint8_t> out,
-                          Span<const char> label) {
+// derive_secret_with_transcript derives a secret of length |out.size()| and
+// writes the result in |out| with the given label, the current base secret, and
+// the state of |transcript|. It returns true on success and false on error.
+static bool derive_secret_with_transcript(const SSL_HANDSHAKE *hs,
+                                          Span<uint8_t> out,
+                                          const SSLTranscript &transcript,
+                                          Span<const char> label) {
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   size_t context_hash_len;
-  if (!hs->transcript.GetHash(context_hash, &context_hash_len)) {
+  if (!transcript.GetHash(context_hash, &context_hash_len)) {
     return false;
   }
 
-  return hkdf_expand_label(out, hs->transcript.Digest(), hs->secret(), label,
+  return hkdf_expand_label(out, transcript.Digest(), hs->secret(), label,
                            MakeConstSpan(context_hash, context_hash_len));
+}
+
+static bool derive_secret(SSL_HANDSHAKE *hs, Span<uint8_t> out,
+                          Span<const char> label) {
+  return derive_secret_with_transcript(hs, out, hs->transcript, label);
 }
 
 bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
@@ -228,8 +244,14 @@ static const char kTLS13LabelServerApplicationTraffic[] = "s ap traffic";
 
 bool tls13_derive_early_secret(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!derive_secret(hs, hs->early_traffic_secret(),
-                     label_to_span(kTLS13LabelClientEarlyTraffic)) ||
+  // When offering ECH on the client, early data is associated with
+  // ClientHelloInner, not ClientHelloOuter.
+  const SSLTranscript &transcript = (!ssl->server && hs->selected_ech_config)
+                                        ? hs->inner_transcript
+                                        : hs->transcript;
+  if (!derive_secret_with_transcript(
+          hs, hs->early_traffic_secret(), transcript,
+          label_to_span(kTLS13LabelClientEarlyTraffic)) ||
       !ssl_log_secret(ssl, "CLIENT_EARLY_TRAFFIC_SECRET",
                       hs->early_traffic_secret())) {
     return false;
@@ -449,7 +471,8 @@ static bool tls13_psk_binder(uint8_t *out, size_t *out_len,
 }
 
 bool tls13_write_psk_binder(const SSL_HANDSHAKE *hs,
-                            Span<uint8_t> msg) {
+                            const SSLTranscript &transcript, Span<uint8_t> msg,
+                            size_t *out_binder_len) {
   const SSL *const ssl = hs->ssl;
   const EVP_MD *digest = ssl_session_get_digest(ssl->session.get());
   const size_t hash_len = EVP_MD_size(digest);
@@ -460,7 +483,7 @@ bool tls13_write_psk_binder(const SSL_HANDSHAKE *hs,
   uint8_t verify_data[EVP_MAX_MD_SIZE];
   size_t verify_data_len;
   if (!tls13_psk_binder(verify_data, &verify_data_len, ssl->session.get(),
-                        hs->transcript, msg, binders_len) ||
+                        transcript, msg, binders_len) ||
       verify_data_len != hash_len) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
@@ -468,6 +491,9 @@ bool tls13_write_psk_binder(const SSL_HANDSHAKE *hs,
 
   OPENSSL_memcpy(msg.data() + msg.size() - verify_data_len, verify_data,
                  verify_data_len);
+  if (out_binder_len != nullptr) {
+    *out_binder_len = verify_data_len;
+  }
   return true;
 }
 
@@ -502,17 +528,39 @@ bool tls13_verify_psk_binder(const SSL_HANDSHAKE *hs,
   return true;
 }
 
-bool tls13_ech_accept_confirmation(
-    SSL_HANDSHAKE *hs, bssl::Span<uint8_t> out,
-    bssl::Span<const uint8_t> server_hello_ech_conf) {
-  // Compute the hash of the transcript concatenated with
-  // |server_hello_ech_conf| without modifying |hs->transcript|.
+size_t ssl_ech_confirmation_signal_hello_offset(const SSL *ssl) {
+  static_assert(ECH_CONFIRMATION_SIGNAL_LEN < SSL3_RANDOM_SIZE,
+                "the confirmation signal is a suffix of the random");
+  const size_t header_len =
+      SSL_is_dtls(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
+  return header_len + 2 /* version */ + SSL3_RANDOM_SIZE -
+         ECH_CONFIRMATION_SIGNAL_LEN;
+}
+
+bool ssl_ech_accept_confirmation(
+    const SSL_HANDSHAKE *hs, bssl::Span<uint8_t> out,
+    const SSLTranscript &transcript,
+    bssl::Span<const uint8_t> server_hello) {
+  // We hash |server_hello|, with the last |ECH_CONFIRMATION_SIGNAL_LEN| bytes
+  // of the random value zeroed.
+  static const uint8_t kZeroes[ECH_CONFIRMATION_SIGNAL_LEN] = {0};
+  const size_t offset = ssl_ech_confirmation_signal_hello_offset(hs->ssl);
+  if (server_hello.size() < offset + ECH_CONFIRMATION_SIGNAL_LEN) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+
+  auto before_zeroes = server_hello.subspan(0, offset);
+  auto after_zeroes =
+      server_hello.subspan(offset + ECH_CONFIRMATION_SIGNAL_LEN);
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   unsigned context_hash_len;
   ScopedEVP_MD_CTX ctx;
-  if (!hs->transcript.CopyToHashContext(ctx.get(), hs->transcript.Digest()) ||
-      !EVP_DigestUpdate(ctx.get(), server_hello_ech_conf.data(),
-                        server_hello_ech_conf.size()) ||
+  if (!transcript.CopyToHashContext(ctx.get(), transcript.Digest()) ||
+      !EVP_DigestUpdate(ctx.get(), before_zeroes.data(),
+                        before_zeroes.size()) ||
+      !EVP_DigestUpdate(ctx.get(), kZeroes, sizeof(kZeroes)) ||
+      !EVP_DigestUpdate(ctx.get(), after_zeroes.data(), after_zeroes.size()) ||
       !EVP_DigestFinal_ex(ctx.get(), context_hash, &context_hash_len)) {
     return false;
   }
@@ -521,16 +569,20 @@ bool tls13_ech_accept_confirmation(
   // Derive-Secret, which derives a secret of size Hash.length. That value is
   // then truncated to the first 8 bytes. Note this differs from deriving an
   // 8-byte secret because the target length is included in the derivation.
+  //
+  // TODO(https://crbug.com/boringssl/275): draft-11 will avoid this.
   uint8_t accept_confirmation_buf[EVP_MAX_MD_SIZE];
   bssl::Span<uint8_t> accept_confirmation =
-      MakeSpan(accept_confirmation_buf, hs->transcript.DigestLen());
-  if (!hkdf_expand_label(accept_confirmation, hs->transcript.Digest(),
+      MakeSpan(accept_confirmation_buf, transcript.DigestLen());
+  if (!hkdf_expand_label(accept_confirmation, transcript.Digest(),
                          hs->secret(), label_to_span("ech accept confirmation"),
                          MakeConstSpan(context_hash, context_hash_len))) {
     return false;
   }
 
-  if (out.size() > accept_confirmation.size()) {
+  static_assert(ECH_CONFIRMATION_SIGNAL_LEN < EVP_MAX_MD_SIZE,
+                "ECH confirmation signal too big");
+  if (out.size() != ECH_CONFIRMATION_SIGNAL_LEN) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }
