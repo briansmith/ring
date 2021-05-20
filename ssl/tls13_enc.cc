@@ -522,7 +522,7 @@ bool tls13_ech_accept_confirmation(
     return false;
   }
 
-  // Per draft-ietf-tls-esni-09, accept_confirmation is computed with
+  // Per draft-ietf-tls-esni-10, accept_confirmation is computed with
   // Derive-Secret, which derives a secret of size Hash.length. That value is
   // then truncated to the first 8 bytes. Note this differs from deriving an
   // 8-byte secret because the target length is included in the derivation.

@@ -297,7 +297,7 @@ func MarshalECHConfigList(configs ...*ECHConfig) []byte {
 }
 
 // The contents of a CH "encrypted_client_hello" extension.
-// https://tools.ietf.org/html/draft-ietf-tls-esni-09
+// https://tools.ietf.org/html/draft-ietf-tls-esni-10
 type clientECH struct {
 	hpkeKDF  uint16
 	hpkeAEAD uint16

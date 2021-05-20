@@ -593,7 +593,7 @@ static bool ext_sni_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 // Encrypted ClientHello (ECH)
 //
-// https://tools.ietf.org/html/draft-ietf-tls-esni-09
+// https://tools.ietf.org/html/draft-ietf-tls-esni-10
 
 // random_size returns a random value between |min| and |max|, inclusive.
 static size_t random_size(size_t min, size_t max) {
@@ -629,48 +629,26 @@ static bool ext_ech_add_clienthello_grease(SSL_HANDSHAKE *hs, CBB *out) {
   uint8_t private_key_unused[X25519_PRIVATE_KEY_LEN];
   X25519_keypair(ech_enc, private_key_unused);
 
-  // To determine a plausible length for the payload, we first estimate the size
-  // of a typical EncodedClientHelloInner, with an expected use of
-  // outer_extensions. To limit the size, we only consider initial ClientHellos
-  // that do not offer resumption.
+  // To determine a plausible length for the payload, we estimate the size of a
+  // typical EncodedClientHelloInner without resumption:
   //
-  //   Field/Extension                           Size
-  // ---------------------------------------------------------------------
-  //   version                                      2
-  //   random                                      32
-  //   legacy_session_id                            1
-  //      - Has a U8 length prefix, but body is
-  //        always empty string in inner CH.
-  //   cipher_suites                                2  (length prefix)
-  //      - Only includes TLS 1.3 ciphers (3).      6
-  //      - Maybe also include a GREASE suite.      2
-  //   legacy_compression_methods                   2  (length prefix)
-  //      - Always has "null" compression method.   1
-  //   extensions:                                  2  (length prefix)
-  //      - encrypted_client_hello (empty).         4  (id + length prefix)
-  //      - supported_versions.                     4  (id + length prefix)
-  //        - U8 length prefix                      1
-  //        - U16 protocol version (TLS 1.3)        2
-  //      - outer_extensions.                       4  (id + length prefix)
-  //        - U8 length prefix                      1
-  //        - N extension IDs (2 bytes each):
-  //          - key_share                           2
-  //          - sigalgs                             2
-  //          - sct                                 2
-  //          - alpn                                2
-  //          - supported_groups.                   2
-  //          - status_request.                     2
-  //          - psk_key_exchange_modes.             2
-  //          - compress_certificate.               2
+  //   2+32+1+2   version, random, legacy_session_id, legacy_compression_methods
+  //   2+4*2      cipher_suites (three TLS 1.3 ciphers, GREASE)
+  //   2          extensions prefix
+  //   4          ech_is_inner
+  //   4+1+2*2    supported_versions (TLS 1.3, GREASE)
+  //   4+1+10*2   outer_extensions (key_share, sigalgs, sct, alpn,
+  //              supported_groups, status_request, psk_key_exchange_modes,
+  //              compress_certificate, GREASE x2)
   //
-  // The server_name extension has an overhead of 9 bytes, plus up to an
-  // estimated 100 bytes of hostname. Rounding up to a multiple of 32 yields a
-  // range of 96 to 192. Note that this estimate does not fully capture
-  // optional extensions like GREASE, but the rounding gives some leeway.
-
-  uint8_t payload[kAEADOverhead + 192];
-  const size_t payload_len =
-      kAEADOverhead + 32 * random_size(96 / 32, 192 / 32);
+  // The server_name extension has an overhead of 9 bytes. For now, arbitrarily
+  // estimate maximum_name_length to be between 32 and 100 bytes.
+  //
+  // TODO(davidben): If the padding scheme changes to also round the entire
+  // payload, adjust this to match. See
+  // https://github.com/tlswg/draft-ietf-tls-esni/issues/433
+  uint8_t payload[196 + kAEADOverhead];
+  const size_t payload_len = random_size(128, 196) + kAEADOverhead;
   assert(payload_len <= sizeof(payload));
   RAND_bytes(payload, payload_len);
 

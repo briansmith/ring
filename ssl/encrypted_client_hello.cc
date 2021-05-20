@@ -273,7 +273,7 @@ bool ssl_client_hello_decrypt(
   *out_is_decrypt_error = false;
 
   // Compute the ClientHello portion of the ClientHelloOuterAAD value. See
-  // draft-ietf-tls-esni-09, section 5.2.
+  // draft-ietf-tls-esni-10, section 5.2.
   ScopedCBB ch_outer_aad_cbb;
   CBB enc_cbb, outer_hello_cbb, extensions_cbb;
   if (!CBB_init(ch_outer_aad_cbb.get(), 0) ||
