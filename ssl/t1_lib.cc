@@ -1958,7 +1958,7 @@ static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // Per RFC 8446 section 4.1.4, skip offering the session if the selected
   // cipher in HelloRetryRequest does not match. This avoids performing the
   // transcript hash transformation for multiple hashes.
-  if (ssl->s3 && ssl->s3->used_hello_retry_request &&
+  if (ssl->s3->used_hello_retry_request &&
       ssl->session->cipher->algorithm_prf != hs->new_cipher->algorithm_prf) {
     return true;
   }
