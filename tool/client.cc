@@ -313,15 +313,17 @@ static bool DoConnection(SSL_CTX *ctx,
       }
       early_data = std::string(data.begin(), data.end());
     }
-    int ed_size = early_data.size();
-    int ssl_ret = SSL_write(ssl.get(), early_data.data(), ed_size);
-    if (ssl_ret <= 0) {
-      int ssl_err = SSL_get_error(ssl.get(), ssl_ret);
-      PrintSSLError(stderr, "Error while writing", ssl_err, ssl_ret);
-      return false;
-    } else if (ssl_ret != ed_size) {
-      fprintf(stderr, "Short write from SSL_write.\n");
-      return false;
+    if (!early_data.empty()) {
+      int ed_size = early_data.size();
+      int ssl_ret = SSL_write(ssl.get(), early_data.data(), ed_size);
+      if (ssl_ret <= 0) {
+        int ssl_err = SSL_get_error(ssl.get(), ssl_ret);
+        PrintSSLError(stderr, "Error while writing", ssl_err, ssl_ret);
+        return false;
+      } else if (ssl_ret != ed_size) {
+        fprintf(stderr, "Short write from SSL_write.\n");
+        return false;
+      }
     }
   }
 
