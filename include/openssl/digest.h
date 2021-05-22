@@ -124,6 +124,10 @@ OPENSSL_EXPORT void EVP_MD_CTX_free(EVP_MD_CTX *ctx);
 // copy of |in|. It returns one on success and zero on allocation failure.
 OPENSSL_EXPORT int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 
+// EVP_MD_CTX_move sets |out|, which must already be initialised, to the hash
+// state in |in|. |in| is mutated and left in an empty state.
+OPENSSL_EXPORT void EVP_MD_CTX_move(EVP_MD_CTX *out, EVP_MD_CTX *in);
+
 // EVP_MD_CTX_reset calls |EVP_MD_CTX_cleanup| followed by |EVP_MD_CTX_init|. It
 // returns one.
 OPENSSL_EXPORT int EVP_MD_CTX_reset(EVP_MD_CTX *ctx);
@@ -324,8 +328,8 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(EVP_MD_CTX, EVP_MD_CTX_free)
 
 using ScopedEVP_MD_CTX =
-    internal::StackAllocated<EVP_MD_CTX, int, EVP_MD_CTX_init,
-                             EVP_MD_CTX_cleanup>;
+    internal::StackAllocatedMovable<EVP_MD_CTX, int, EVP_MD_CTX_init,
+                                    EVP_MD_CTX_cleanup, EVP_MD_CTX_move>;
 
 BSSL_NAMESPACE_END
 

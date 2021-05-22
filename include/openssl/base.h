@@ -537,8 +537,39 @@ class StackAllocated {
   StackAllocated() { init(&ctx_); }
   ~StackAllocated() { cleanup(&ctx_); }
 
-  StackAllocated(const StackAllocated<T, CleanupRet, init, cleanup> &) = delete;
-  T& operator=(const StackAllocated<T, CleanupRet, init, cleanup> &) = delete;
+  StackAllocated(const StackAllocated &) = delete;
+  StackAllocated& operator=(const StackAllocated &) = delete;
+
+  T *get() { return &ctx_; }
+  const T *get() const { return &ctx_; }
+
+  T *operator->() { return &ctx_; }
+  const T *operator->() const { return &ctx_; }
+
+  void Reset() {
+    cleanup(&ctx_);
+    init(&ctx_);
+  }
+
+ private:
+  T ctx_;
+};
+
+template <typename T, typename CleanupRet, void (*init)(T *),
+          CleanupRet (*cleanup)(T *), void (*move)(T *, T *)>
+class StackAllocatedMovable {
+ public:
+  StackAllocatedMovable() { init(&ctx_); }
+  ~StackAllocatedMovable() { cleanup(&ctx_); }
+
+  StackAllocatedMovable(StackAllocatedMovable &&other) {
+    init(&ctx_);
+    move(&ctx_, &other.ctx_);
+  }
+  StackAllocatedMovable &operator=(StackAllocatedMovable &&other) {
+    move(&ctx_, &other.ctx_);
+    return *this;
+  }
 
   T *get() { return &ctx_; }
   const T *get() const { return &ctx_; }
