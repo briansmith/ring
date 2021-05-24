@@ -1944,9 +1944,11 @@ static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
   return 15 + ssl->session->ticket.size() + binder_len;
 }
 
-static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
+static bool ext_pre_shared_key_add_clienthello(const SSL_HANDSHAKE *hs,
+                                               CBB *out,
+                                               bool *out_needs_binder) {
   const SSL *const ssl = hs->ssl;
-  hs->needs_psk_binder = false;
+  *out_needs_binder = false;
   if (hs->max_version < TLS1_3_VERSION || ssl->session == nullptr ||
       ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION) {
     return true;
@@ -1984,7 +1986,7 @@ static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return false;
   }
 
-  hs->needs_psk_binder = true;
+  *out_needs_binder = true;
   return CBB_flush(out);
 }
 
@@ -3242,9 +3244,10 @@ static const struct tls_extension *tls_extension_find(uint32_t *out_index,
 }
 
 bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
-                                size_t header_len) {
+                                bool *out_needs_psk_binder, size_t header_len) {
   SSL *const ssl = hs->ssl;
   CBB extensions;
+  *out_needs_psk_binder = false;
   if (!CBB_add_u16_length_prefixed(out, &extensions)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
@@ -3355,7 +3358,8 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
   }
 
   // The PSK extension must be last, including after the padding.
-  if (!ext_pre_shared_key_add_clienthello(hs, &extensions)) {
+  if (!ext_pre_shared_key_add_clienthello(hs, &extensions,
+                                          out_needs_psk_binder)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }

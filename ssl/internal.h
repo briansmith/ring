@@ -1866,10 +1866,6 @@ struct SSL_HANDSHAKE {
   // scts_requested is true if the SCT extension is in the ClientHello.
   bool scts_requested : 1;
 
-  // needs_psk_binder is true if the ClientHello has a placeholder PSK binder to
-  // be filled in.
-  bool needs_psk_binder : 1;
-
   // handshake_finalized is true once the handshake has completed, at which
   // point accessors should use the established state.
   bool handshake_finalized : 1;
@@ -3167,8 +3163,11 @@ bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves);
 // ssl_add_clienthello_tlsext writes ClientHello extensions to |out|. It returns
 // true on success and false on failure. The |header_len| argument is the length
 // of the ClientHello written so far and is used to compute the padding length.
-// (It does not include the record header.)
-bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len);
+// (It does not include the record header.) On success, if
+// |*out_needs_psk_binder| is true, the last ClientHello extension was the
+// pre_shared_key extension and needs a PSK binder filled in.
+bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
+                                bool *out_needs_psk_binder, size_t header_len);
 
 bool ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out);
 bool ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,

@@ -310,10 +310,12 @@ bool ssl_write_client_hello(SSL_HANDSHAKE *hs) {
 
   size_t header_len =
       SSL_is_dtls(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
+  bool needs_psk_binder;
   if (!ssl_write_client_cipher_list(hs, &body) ||
       !CBB_add_u8(&body, 1 /* one compression method */) ||
       !CBB_add_u8(&body, 0 /* null compression */) ||
-      !ssl_add_clienthello_tlsext(hs, &body, header_len + CBB_len(&body))) {
+      !ssl_add_clienthello_tlsext(hs, &body, &needs_psk_binder,
+                                  header_len + CBB_len(&body))) {
     return false;
   }
 
@@ -324,7 +326,7 @@ bool ssl_write_client_hello(SSL_HANDSHAKE *hs) {
 
   // Now that the length prefixes have been computed, fill in the placeholder
   // PSK binder.
-  if (hs->needs_psk_binder &&
+  if (needs_psk_binder &&
       !tls13_write_psk_binder(hs, MakeSpan(msg))) {
     return false;
   }
