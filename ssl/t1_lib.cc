@@ -3928,10 +3928,12 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  // Copy the client's session ID into the new session, to denote the ticket has
-  // been accepted.
-  OPENSSL_memcpy(session->session_id, session_id.data(), session_id.size());
-  session->session_id_length = session_id.size();
+  // Envoy's tests expect the session to have a session ID that matches the
+  // placeholder used by the client. It's unclear whether this is a good idea,
+  // but we maintain it for now.
+  SHA256(ticket.data(), ticket.size(), session->session_id);
+  // Other consumers may expect a non-empty session ID to indicate resumption.
+  session->session_id_length = SHA256_DIGEST_LENGTH;
 
   *out_session = std::move(session);
   return ssl_ticket_aead_success;

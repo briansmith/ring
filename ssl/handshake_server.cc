@@ -858,6 +858,11 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  hs->session_id_len = client_hello.session_id_len;
+  // This is checked in |ssl_client_hello_init|.
+  assert(hs->session_id_len <= sizeof(hs->session_id));
+  OPENSSL_memcpy(hs->session_id, client_hello.session_id, hs->session_id_len);
+
   // Determine whether we are doing session resumption.
   UniquePtr<SSL_SESSION> session;
   bool tickets_supported = false, renew_ticket = false;
@@ -1016,19 +1021,22 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  const SSL_SESSION *session = hs->new_session.get();
+  Span<const uint8_t> session_id;
   if (ssl->session != nullptr) {
-    session = ssl->session.get();
+    // Echo the session ID from the ClientHello to indicate resumption.
+    session_id = MakeConstSpan(hs->session_id, hs->session_id_len);
+  } else {
+    session_id = MakeConstSpan(hs->new_session->session_id,
+                               hs->new_session->session_id_length);
   }
 
   ScopedCBB cbb;
-  CBB body, session_id;
+  CBB body, session_id_bytes;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
       !CBB_add_u16(&body, ssl->version) ||
       !CBB_add_bytes(&body, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_u8_length_prefixed(&body, &session_id) ||
-      !CBB_add_bytes(&session_id, session->session_id,
-                     session->session_id_length) ||
+      !CBB_add_u8_length_prefixed(&body, &session_id_bytes) ||
+      !CBB_add_bytes(&session_id_bytes, session_id.data(), session_id.size()) ||
       !CBB_add_u16(&body, SSL_CIPHER_get_protocol_id(hs->new_cipher)) ||
       !CBB_add_u8(&body, 0 /* no compression */) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||

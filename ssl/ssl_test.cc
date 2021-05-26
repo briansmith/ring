@@ -6558,6 +6558,34 @@ TEST_P(SSLVersionTest, UnrelatedServerNoResume) {
   EXPECT_FALSE(SSL_session_reused(server.get()));
 }
 
+Span<const uint8_t> SessionIDOf(const SSL* ssl) {
+  const SSL_SESSION *session = SSL_get_session(ssl);
+  unsigned len;
+  const uint8_t *data = SSL_SESSION_get_id(session, &len);
+  return MakeConstSpan(data, len);
+}
+
+TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
+  // This checks that the session IDs at client and server match after a ticket
+  // resumption. It's unclear whether this should be true, but Envoy depends
+  // on it in their tests so this will give an early signal if we break it.
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+
+  bssl::UniquePtr<SSL> client, server;
+  ClientConfig config;
+  config.session = session.get();
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                     server_ctx_.get(), config));
+  EXPECT_TRUE(SSL_session_reused(client.get()));
+  EXPECT_TRUE(SSL_session_reused(server.get()));
+
+  EXPECT_EQ(Bytes(SessionIDOf(client.get())), Bytes(SessionIDOf(server.get())));
+}
+
 TEST(SSLTest, WriteWhileExplicitRenegotiate) {
   bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(ctx);

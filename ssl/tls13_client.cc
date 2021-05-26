@@ -1054,7 +1054,7 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
   }
 
   // Historically, OpenSSL filled in fake session IDs for ticket-based sessions.
-  // TODO(davidben): Are external callers relying on this? Try removing this.
+  // Envoy's tests depend on this, although perhaps they shouldn't.
   SHA256(CBS_data(&ticket), CBS_len(&ticket), session->session_id);
   session->session_id_length = SHA256_DIGEST_LENGTH;
 
