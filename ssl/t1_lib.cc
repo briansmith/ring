@@ -504,6 +504,10 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // the function is responsible for appending the type and length bytes too.
 // |add_clienthello| may be called multiple times and must not mutate |hs|.
 //
+// Note the |parse_serverhello| and |add_serverhello| callbacks refer to the
+// TLS 1.2 ServerHello. In TLS 1.3, these callbacks act on EncryptedExtensions,
+// with ServerHello extensions handled elsewhere in the handshake.
+//
 // All callbacks return true for success and false for error. If a parse
 // function returns zero then a fatal alert with value |*out_alert| will be
 // sent. If |*out_alert| isn't set, then a |decode_error| alert will be sent.
