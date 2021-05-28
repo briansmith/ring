@@ -820,7 +820,7 @@ static void table_select(ge_precomp *t, int pos, signed char b) {
 //
 // Preconditions:
 //   a[31] <= 127
-void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
+void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
   signed char e[64];
   signed char carry;
   ge_p1p1 r;

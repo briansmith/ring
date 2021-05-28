@@ -106,7 +106,7 @@ typedef struct {
 } ge_cached;
 
 void x25519_ge_tobytes(uint8_t s[32], const ge_p2 *h);
-int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s);
+int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]);
 void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p);
 void x25519_ge_p1p1_to_p2(ge_p2 *r, const ge_p1p1 *p);
 void x25519_ge_p1p1_to_p3(ge_p3 *r, const ge_p1p1 *p);
