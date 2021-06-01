@@ -155,7 +155,7 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
         (!ssl->quic_method || !ssl->config->quic_early_data_context.empty());
     if (enable_early_data) {
       // QUIC does not use the max_early_data_size parameter and always sets it
-      // to a fixed value. See draft-ietf-quic-tls-22, section 4.5.
+      // to a fixed value. See RFC 9001, section 4.6.1.
       session->ticket_max_early_data =
           ssl->quic_method != nullptr ? 0xffffffff : kMaxEarlyDataAccepted;
     }
@@ -979,9 +979,8 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
     hs->in_early_data = true;
   }
 
-  // QUIC doesn't use an EndOfEarlyData message (draft-ietf-quic-tls-22,
-  // section 8.3), so we switch to client_handshake_secret before the early
-  // return.
+  // QUIC doesn't use an EndOfEarlyData message (RFC 9001, section 8.3), so we
+  // switch to client_handshake_secret before the early return.
   if (ssl->quic_method != nullptr) {
     if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
                                hs->new_session.get(),

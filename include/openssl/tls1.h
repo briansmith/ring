@@ -209,19 +209,15 @@ extern "C" {
 // hasn't been a problem in practice since it's QUIC-only). Drafts 33 onward
 // use the value 57 which was officially registered with IANA.
 #define TLSEXT_TYPE_quic_transport_parameters_legacy 0xffa5
-#define TLSEXT_TYPE_quic_transport_parameters_standard 57
 
-// TLSEXT_TYPE_quic_transport_parameters is an alias for
-// |TLSEXT_TYPE_quic_transport_parameters_legacy|. It will switch to
-// |TLSEXT_TYPE_quic_transport_parameters_standard| at a later date.
-//
-// Callers using |SSL_set_quic_use_legacy_codepoint| should use
-// |TLSEXT_TYPE_quic_transport_parameters_legacy| or
-// |TLSEXT_TYPE_quic_transport_parameters_standard| rather than this constant.
-// When the default code point is switched to the standard one, this value will
-// be updated and we will transition callers back to the unsuffixed constant.
-#define TLSEXT_TYPE_quic_transport_parameters \
-  TLSEXT_TYPE_quic_transport_parameters_legacy
+// ExtensionType value from RFC9000
+#define TLSEXT_TYPE_quic_transport_parameters 57
+
+// TLSEXT_TYPE_quic_transport_parameters_standard is an alias for
+// |TLSEXT_TYPE_quic_transport_parameters|. Use
+// |TLSEXT_TYPE_quic_transport_parameters| instead.
+#define TLSEXT_TYPE_quic_transport_parameters_standard \
+  TLSEXT_TYPE_quic_transport_parameters
 
 // ExtensionType value from RFC8879
 #define TLSEXT_TYPE_cert_compression 27

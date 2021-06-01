@@ -713,8 +713,7 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (ssl->s3->early_data_accepted) {
-    // QUIC omits the EndOfEarlyData message. See draft-ietf-quic-tls-22,
-    // section 8.3.
+    // QUIC omits the EndOfEarlyData message. See RFC 9001, section 8.3.
     if (ssl->quic_method == nullptr) {
       ScopedCBB cbb;
       CBB body;
@@ -1044,7 +1043,7 @@ UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl, CBS *body) {
     }
 
     // QUIC does not use the max_early_data_size parameter and always sets it to
-    // a fixed value. See draft-ietf-quic-tls-22, section 4.5.
+    // a fixed value. See RFC 9001, section 4.6.1.
     if (ssl->quic_method != nullptr &&
         session->ticket_max_early_data != 0xffffffff) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);

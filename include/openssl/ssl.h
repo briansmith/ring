@@ -3186,7 +3186,7 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 //
 // QUIC acts as an underlying transport for the TLS 1.3 handshake. The following
 // functions allow a QUIC implementation to serve as the underlying transport as
-// described in draft-ietf-quic-tls.
+// described in RFC 9001.
 //
 // When configured for QUIC, |SSL_do_handshake| will drive the handshake as
 // before, but it will not use the configured |BIO|. It will call functions on
@@ -3206,8 +3206,7 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // confirm the handshake. As a client, |SSL_ERROR_EARLY_DATA_REJECTED| and
 // |SSL_reset_early_data_reject| behave as usual.
 //
-// See https://tools.ietf.org/html/draft-ietf-quic-tls-15#section-4.1 for more
-// details.
+// See https://www.rfc-editor.org/rfc/rfc9001.html#section-4.1 for more details.
 //
 // To avoid DoS attacks, the QUIC implementation must limit the amount of data
 // being queued up. The implementation can call
@@ -3218,7 +3217,8 @@ OPENSSL_EXPORT int SSL_delegated_credential_used(const SSL *ssl);
 // |SSL_set_quic_transport_params|. |SSL_get_peer_quic_transport_params| may be
 // used to query the value received from the peer. BoringSSL handles this
 // extension as an opaque byte string. The caller is responsible for serializing
-// and parsing them. See draft-ietf-quic-transport (section 7.3) for details.
+// and parsing them. See https://www.rfc-editor.org/rfc/rfc9000#section-7.4 for
+// details.
 //
 // QUIC additionally imposes restrictions on 0-RTT. In particular, the QUIC
 // transport layer requires that if a server accepts 0-RTT data, then the
@@ -3330,7 +3330,7 @@ struct ssl_quic_method_st {
 // that may be received at the given encryption level. This function should be
 // used to limit buffering in the QUIC implementation.
 //
-// See https://tools.ietf.org/html/draft-ietf-quic-transport-16#section-4.4.
+// See https://www.rfc-editor.org/rfc/rfc9000#section-7.5
 OPENSSL_EXPORT size_t SSL_quic_max_handshake_flight_len(
     const SSL *ssl, enum ssl_encryption_level_t level);
 
@@ -3393,8 +3393,8 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(
 
 // SSL_set_quic_use_legacy_codepoint configures whether to use the legacy QUIC
 // extension codepoint 0xffa5 as opposed to the official value 57. Call with
-// |use_legacy| set to 1 to use 0xffa5 and call with 0 to use 57. The default
-// value for this is currently 1 but it will change to 0 at a later date.
+// |use_legacy| set to 1 to use 0xffa5 and call with 0 to use 57. By default,
+// the standard code point is used.
 OPENSSL_EXPORT void SSL_set_quic_use_legacy_codepoint(SSL *ssl, int use_legacy);
 
 // SSL_set_quic_early_data_context configures a context string in QUIC servers

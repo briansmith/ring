@@ -730,7 +730,7 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       handoff(false),
       shed_handshake_config(false),
       jdk11_workaround(false),
-      quic_use_legacy_codepoint(true) {
+      quic_use_legacy_codepoint(false) {
   assert(ssl);
 }
 

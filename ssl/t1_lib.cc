@@ -2646,7 +2646,7 @@ static bool ext_quic_transport_params_add_clienthello_impl(
     return true;
   }
 
-  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters_standard;
+  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters;
   if (hs->config->quic_use_legacy_codepoint) {
     extension_type = TLSEXT_TYPE_quic_transport_parameters_legacy;
   }
@@ -2782,7 +2782,7 @@ static bool ext_quic_transport_params_add_serverhello_impl(
     return true;
   }
 
-  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters_standard;
+  uint16_t extension_type = TLSEXT_TYPE_quic_transport_parameters;
   if (hs->config->quic_use_legacy_codepoint) {
     extension_type = TLSEXT_TYPE_quic_transport_parameters_legacy;
   }
@@ -3251,7 +3251,7 @@ static const struct tls_extension kExtensions[] = {
     dont_add_serverhello,
   },
   {
-    TLSEXT_TYPE_quic_transport_parameters_standard,
+    TLSEXT_TYPE_quic_transport_parameters,
     NULL,
     ext_quic_transport_params_add_clienthello,
     ext_quic_transport_params_parse_serverhello,
