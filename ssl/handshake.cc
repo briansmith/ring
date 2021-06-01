@@ -439,12 +439,25 @@ enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs,
   return ret;
 }
 
-uint16_t ssl_get_grease_value(const SSL_HANDSHAKE *hs,
-                              enum ssl_grease_index_t index) {
+static uint16_t grease_index_to_value(const SSL_HANDSHAKE *hs,
+                                      enum ssl_grease_index_t index) {
   // This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16.
   uint16_t ret = hs->grease_seed[index];
   ret = (ret & 0xf0) | 0x0a;
   ret |= ret << 8;
+  return ret;
+}
+
+uint16_t ssl_get_grease_value(const SSL_HANDSHAKE *hs,
+                              enum ssl_grease_index_t index) {
+  uint16_t ret = grease_index_to_value(hs, index);
+  if (index == ssl_grease_extension2 &&
+      ret == grease_index_to_value(hs, ssl_grease_extension1)) {
+    // The two fake extensions must not have the same value. GREASE values are
+    // of the form 0x1a1a, 0x2a2a, 0x3a3a, etc., so XOR to generate a different
+    // one.
+    ret ^= 0x1010;
+  }
   return ret;
 }
 

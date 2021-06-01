@@ -3247,6 +3247,19 @@ static const struct tls_extension *tls_extension_find(uint32_t *out_index,
   return NULL;
 }
 
+static bool add_padding_extension(CBB *cbb, uint16_t ext, size_t len) {
+  CBB child;
+  uint8_t *ptr;
+  if (!CBB_add_u16(cbb, ext) ||  //
+      !CBB_add_u16_length_prefixed(cbb, &child) ||
+      !CBB_add_space(&child, &ptr, len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+  OPENSSL_memset(ptr, 0, len);
+  return CBB_flush(cbb);
+}
+
 bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
                                 bool *out_needs_psk_binder, size_t header_len) {
   SSL *const ssl = hs->ssl;
@@ -3262,15 +3275,11 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
   // important to reset this value.
   hs->extensions.sent = 0;
 
-  uint16_t grease_ext1 = 0;
-  if (ssl->ctx->grease_enabled) {
-    // Add a fake empty extension. See RFC 8701.
-    grease_ext1 = ssl_get_grease_value(hs, ssl_grease_extension1);
-    if (!CBB_add_u16(&extensions, grease_ext1) ||
-        !CBB_add_u16(&extensions, 0 /* zero length */)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return false;
-    }
+  // Add a fake empty extension. See RFC 8701.
+  if (ssl->ctx->grease_enabled &&
+      !add_padding_extension(
+          &extensions, ssl_get_grease_value(hs, ssl_grease_extension1), 0)) {
+    return false;
   }
 
   bool last_was_empty = false;
@@ -3293,22 +3302,10 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
 
   if (ssl->ctx->grease_enabled) {
     // Add a fake non-empty extension. See RFC 8701.
-    uint16_t grease_ext2 = ssl_get_grease_value(hs, ssl_grease_extension2);
-
-    // The two fake extensions must not have the same value. GREASE values are
-    // of the form 0x1a1a, 0x2a2a, 0x3a3a, etc., so XOR to generate a different
-    // one.
-    if (grease_ext1 == grease_ext2) {
-      grease_ext2 ^= 0x1010;
-    }
-
-    if (!CBB_add_u16(&extensions, grease_ext2) ||
-        !CBB_add_u16(&extensions, 1 /* one byte length */) ||
-        !CBB_add_u8(&extensions, 0 /* single zero byte as contents */)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    if (!add_padding_extension(
+            &extensions, ssl_get_grease_value(hs, ssl_grease_extension2), 1)) {
       return false;
     }
-
     last_was_empty = false;
   }
 
@@ -3348,16 +3345,9 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
       }
     }
 
-    if (padding_len != 0) {
-      uint8_t *padding_bytes;
-      if (!CBB_add_u16(&extensions, TLSEXT_TYPE_padding) ||
-          !CBB_add_u16(&extensions, padding_len) ||
-          !CBB_add_space(&extensions, &padding_bytes, padding_len)) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        return false;
-      }
-
-      OPENSSL_memset(padding_bytes, 0, padding_len);
+    if (padding_len != 0 &&
+        !add_padding_extension(&extensions, TLSEXT_TYPE_padding, padding_len)) {
+      return false;
     }
   }
 
