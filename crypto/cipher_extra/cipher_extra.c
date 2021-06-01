@@ -89,6 +89,10 @@ const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
 }
 
 const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
+  if (name == NULL) {
+    return NULL;
+  }
+
   if (OPENSSL_strcasecmp(name, "rc4") == 0) {
     return EVP_rc4();
   } else if (OPENSSL_strcasecmp(name, "des-cbc") == 0) {
