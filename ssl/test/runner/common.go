@@ -859,6 +859,10 @@ type ProtocolBugs struct {
 	// retry configs.
 	SendECHRetryConfigs []byte
 
+	// SendECHRetryConfigsInTLS12ServerHello, if true, causes the ECH server to
+	// send retry configs in the TLS 1.2 ServerHello.
+	SendECHRetryConfigsInTLS12ServerHello bool
+
 	// SendInvalidECHIsInner, if not empty, causes the client to send the
 	// specified byte string in the ech_is_inner extension.
 	SendInvalidECHIsInner []byte
