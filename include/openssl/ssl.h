@@ -3631,6 +3631,9 @@ OPENSSL_EXPORT int SSL_ECH_SERVER_CONFIG_LIST_add(
 OPENSSL_EXPORT int SSL_CTX_set1_ech_server_config_list(
     SSL_CTX *ctx, SSL_ECH_SERVER_CONFIG_LIST *list);
 
+// SSL_ech_accepted returns one if |ssl| negotiated ECH and zero otherwise.
+OPENSSL_EXPORT int SSL_ech_accepted(const SSL *ssl);
+
 
 // Alerts.
 //
@@ -3685,6 +3688,7 @@ OPENSSL_EXPORT int SSL_CTX_set1_ech_server_config_list(
 #define SSL_AD_UNKNOWN_PSK_IDENTITY TLS1_AD_UNKNOWN_PSK_IDENTITY
 #define SSL_AD_CERTIFICATE_REQUIRED TLS1_AD_CERTIFICATE_REQUIRED
 #define SSL_AD_NO_APPLICATION_PROTOCOL TLS1_AD_NO_APPLICATION_PROTOCOL
+#define SSL_AD_ECH_REQUIRED TLS1_AD_ECH_REQUIRED
 
 // SSL_alert_type_string_long returns a string description of |value| as an
 // alert type (warning or fatal).
@@ -5475,5 +5479,6 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_UNKNOWN_PSK_IDENTITY 1115
 #define SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED 1116
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
+#define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
 
 #endif  // OPENSSL_HEADER_SSL_H

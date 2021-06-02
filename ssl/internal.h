@@ -1852,10 +1852,6 @@ struct SSL_HANDSHAKE {
   // influence the handshake on match.
   UniquePtr<SSL_HANDSHAKE_HINTS> hints;
 
-  // ech_accept, on the server, indicates whether the server negotiated ECH and
-  // is handshaking with the inner ClientHello.
-  bool ech_accept : 1;
-
   // ech_present, on the server, indicates whether the ClientHello contained an
   // encrypted_client_hello extension.
   bool ech_present : 1;
@@ -2532,6 +2528,9 @@ struct SSL3_STATE {
 
   // key_update_count is the number of consecutive KeyUpdates received.
   uint8_t key_update_count = 0;
+
+  // ech_accept indicates whether ECH was accepted by the server.
+  bool ech_accept : 1;
 
   // skip_early_data instructs the record layer to skip unexpected early data
   // messages when 0RTT is rejected.

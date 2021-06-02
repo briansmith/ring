@@ -164,7 +164,8 @@
 BSSL_NAMESPACE_BEGIN
 
 SSL3_STATE::SSL3_STATE()
-    : skip_early_data(false),
+    : ech_accept(false),
+      skip_early_data(false),
       have_version(false),
       v2_hello_done(false),
       is_v2_hello(false),

@@ -734,7 +734,7 @@ static bool ext_ech_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static bool ext_ech_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (ssl_protocol_version(ssl) < TLS1_3_VERSION ||  //
-      hs->ech_accept ||                              //
+      ssl->s3->ech_accept ||                         //
       hs->ech_server_config_list == nullptr) {
     return true;
   }

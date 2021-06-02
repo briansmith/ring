@@ -661,14 +661,14 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
         }
 
         hs->ech_config_id = config_id;
-        hs->ech_accept = true;
+        ssl->s3->ech_accept = true;
         break;
       }
     }
 
-    // If we did not set |hs->ech_accept| to true, we will send the current
-    // ECHConfigs as retry_configs in the ServerHello's encrypted extensions.
-    // Proceed with the ClientHelloOuter.
+    // If we did not accept ECH, we will send the current ECHConfigs as
+    // retry_configs in the ServerHello's encrypted extensions. Proceed with the
+    // ClientHelloOuter.
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
@@ -803,7 +803,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
   // It should not be possible to negotiate TLS 1.2 with ECH. The
   // ClientHelloInner decoding function rejects ClientHellos which offer TLS 1.2
   // or below.
-  assert(!hs->ech_accept);
+  assert(!ssl->s3->ech_accept);
 
   // TODO(davidben): Also compute hints for TLS 1.2. When doing so, update the
   // check in bssl_shim.cc to test this.

@@ -232,7 +232,8 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
 // disqualifies it for split handshakes.
 static bool uses_disallowed_feature(const SSL *ssl) {
   return ssl->method->is_dtls || (ssl->config->cert && ssl->config->cert->dc) ||
-         ssl->config->quic_transport_params.size() > 0;
+         ssl->config->quic_transport_params.size() > 0 ||
+         ssl->ctx->ech_server_config_list;
 }
 
 bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff) {

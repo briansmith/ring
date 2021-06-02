@@ -660,6 +660,12 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
+  if (config->expect_ech_accept != !!SSL_ech_accepted(ssl)) {
+    fprintf(stderr, "ECH was %saccepted, but wanted opposite.\n",
+            SSL_ech_accepted(ssl) ? "" : "not ");
+    return false;
+  }
+
   // Test that handshake hints correctly skipped the expected operations.
   //
   // TODO(davidben): Add support for TLS 1.2 hints and remove the version check.

@@ -58,6 +58,7 @@ const Flag<bool> kBoolFlags[] = {
     {"-quic", &TestConfig::is_quic},
     {"-fallback-scsv", &TestConfig::fallback_scsv},
     {"-enable-ech-grease", &TestConfig::enable_ech_grease},
+    {"-expect-ech-accept", &TestConfig::expect_ech_accept},
     {"-require-any-client-certificate",
      &TestConfig::require_any_client_certificate},
     {"-false-start", &TestConfig::false_start},

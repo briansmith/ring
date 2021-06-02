@@ -558,3 +558,7 @@ int SSL_CTX_set1_ech_server_config_list(SSL_CTX *ctx,
   ctx->ech_server_config_list.swap(owned_list);
   return 1;
 }
+
+int SSL_ech_accepted(const SSL *ssl) {
+  return ssl->s3->ech_accept;
+}

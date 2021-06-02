@@ -1853,6 +1853,7 @@ NextTest:
 		if test.protocol != tls ||
 			test.testType != serverTest ||
 			strings.Contains(test.name, "DelegatedCredentials") ||
+			strings.Contains(test.name, "ECH-Server") ||
 			test.skipSplitHandshake {
 			continue
 		}
@@ -16281,6 +16282,7 @@ func addEncryptedClientHelloTests() {
 					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				expectations: connectionExpectations{
 					echAccepted: true,
@@ -16308,6 +16310,7 @@ func addEncryptedClientHelloTests() {
 					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				expectations: connectionExpectations{
 					echAccepted: true,
@@ -16426,6 +16429,7 @@ func addEncryptedClientHelloTests() {
 					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				expectations: connectionExpectations{
 					echAccepted: true,
@@ -16456,7 +16460,6 @@ func addEncryptedClientHelloTests() {
 					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(echConfig)),
 					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 					"-ech-is-retry-config", "1",
-					"-expect-server-name", "secret.example",
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16485,6 +16488,7 @@ func addEncryptedClientHelloTests() {
 					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16513,7 +16517,6 @@ func addEncryptedClientHelloTests() {
 					"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(echConfig)),
 					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 					"-ech-is-retry-config", "1",
-					"-expect-server-name", "secret.example",
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16538,6 +16541,7 @@ func addEncryptedClientHelloTests() {
 				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
@@ -16562,6 +16566,7 @@ func addEncryptedClientHelloTests() {
 				"-ech-server-key", base64.StdEncoding.EncodeToString(key1),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
@@ -16586,6 +16591,7 @@ func addEncryptedClientHelloTests() {
 				"-ech-server-key", base64.StdEncoding.EncodeToString(keyRepeatID),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
@@ -16614,6 +16620,7 @@ func addEncryptedClientHelloTests() {
 					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
+					"-expect-ech-accept",
 				},
 				expectations: connectionExpectations{
 					echAccepted: true,
@@ -16778,6 +16785,7 @@ func addEncryptedClientHelloTests() {
 				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(echConfig)),
 				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 				"-ech-is-retry-config", "1",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
@@ -16802,6 +16810,7 @@ func addEncryptedClientHelloTests() {
 				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(echConfig)),
 				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 				"-ech-is-retry-config", "1",
+				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{
 				echAccepted: true,
