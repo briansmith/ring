@@ -3318,7 +3318,8 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
   }
 
   size_t psk_extension_len = ext_pre_shared_key_clienthello_length(hs);
-  if (!SSL_is_dtls(ssl) && !ssl->quic_method) {
+  if (!SSL_is_dtls(ssl) && !ssl->quic_method &&
+      !ssl->s3->used_hello_retry_request) {
     header_len +=
         SSL3_HM_HEADER_LENGTH + 2 + CBB_len(&extensions) + psk_extension_len;
     size_t padding_len = 0;
