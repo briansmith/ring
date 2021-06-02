@@ -836,6 +836,11 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx,
 // Ed448 and attempts to create keys will fail.
 #define EVP_PKEY_ED448 NID_ED448
 
+// EVP_PKEY_get0 returns NULL. This function is provided for compatibility with
+// OpenSSL but does not return anything. Use the typed |EVP_PKEY_get0_*|
+// functions instead.
+OPENSSL_EXPORT void *EVP_PKEY_get0(const EVP_PKEY *pkey);
+
 // OpenSSL_add_all_algorithms does nothing.
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 

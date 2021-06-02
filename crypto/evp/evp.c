@@ -429,6 +429,15 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
                            0, (void *)out_md);
 }
 
+void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
+  // Node references, but never calls this function, so for now we return NULL.
+  // If other projects require complete support, call |EVP_PKEY_get0_RSA|, etc.,
+  // rather than reading |pkey->pkey.ptr| directly. This avoids problems if our
+  // internal representation does not match the type the caller expects from
+  // OpenSSL.
+  return NULL;
+}
+
 void OpenSSL_add_all_algorithms(void) {}
 
 void OPENSSL_add_all_algorithms_conf(void) {}
