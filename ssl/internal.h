@@ -700,9 +700,9 @@ class SSLTranscript {
   // the transcript. It returns true on success and false on failure. If the
   // handshake buffer is still present, |digest| may be any supported digest.
   // Otherwise, |digest| must match the transcript hash.
-  bool CopyToHashContext(EVP_MD_CTX *ctx, const EVP_MD *digest);
+  bool CopyToHashContext(EVP_MD_CTX *ctx, const EVP_MD *digest) const;
 
-  Span<const uint8_t> buffer() {
+  Span<const uint8_t> buffer() const {
     return MakeConstSpan(reinterpret_cast<const uint8_t *>(buffer_->data),
                          buffer_->length);
   }
@@ -725,14 +725,14 @@ class SSLTranscript {
   // GetHash writes the handshake hash to |out| which must have room for at
   // least |DigestLen| bytes. On success, it returns true and sets |*out_len| to
   // the number of bytes written. Otherwise, it returns false.
-  bool GetHash(uint8_t *out, size_t *out_len);
+  bool GetHash(uint8_t *out, size_t *out_len) const;
 
   // GetFinishedMAC computes the MAC for the Finished message into the bytes
   // pointed by |out| and writes the number of bytes to |*out_len|. |out| must
   // have room for |EVP_MAX_MD_SIZE| bytes. It returns true on success and false
   // on failure.
   bool GetFinishedMAC(uint8_t *out, size_t *out_len, const SSL_SESSION *session,
-                      bool from_server);
+                      bool from_server) const;
 
  private:
   // buffer_, if non-null, contains the handshake transcript.
@@ -1418,13 +1418,14 @@ bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce);
 // tls13_write_psk_binder calculates the PSK binder value and replaces the last
 // bytes of |msg| with the resulting value. It returns true on success, and
 // false on failure.
-bool tls13_write_psk_binder(SSL_HANDSHAKE *hs, Span<uint8_t> msg);
+bool tls13_write_psk_binder(const SSL_HANDSHAKE *hs, Span<uint8_t> msg);
 
 // tls13_verify_psk_binder verifies that the handshake transcript, truncated up
 // to the binders has a valid signature using the value of |session|'s
 // resumption secret. It returns true on success, and false on failure.
-bool tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
-                             const SSLMessage &msg, CBS *binders);
+bool tls13_verify_psk_binder(const SSL_HANDSHAKE *hs,
+                             const SSL_SESSION *session, const SSLMessage &msg,
+                             CBS *binders);
 
 
 // Encrypted ClientHello.

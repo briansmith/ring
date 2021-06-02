@@ -206,7 +206,8 @@ bool SSLTranscript::UpdateForHelloRetryRequest() {
   return true;
 }
 
-bool SSLTranscript::CopyToHashContext(EVP_MD_CTX *ctx, const EVP_MD *digest) {
+bool SSLTranscript::CopyToHashContext(EVP_MD_CTX *ctx,
+                                      const EVP_MD *digest) const {
   const EVP_MD *transcript_digest = Digest();
   if (transcript_digest != nullptr &&
       EVP_MD_type(transcript_digest) == EVP_MD_type(digest)) {
@@ -237,7 +238,7 @@ bool SSLTranscript::Update(Span<const uint8_t> in) {
   return true;
 }
 
-bool SSLTranscript::GetHash(uint8_t *out, size_t *out_len) {
+bool SSLTranscript::GetHash(uint8_t *out, size_t *out_len) const {
   ScopedEVP_MD_CTX ctx;
   unsigned len;
   if (!EVP_MD_CTX_copy_ex(ctx.get(), hash_.get()) ||
@@ -250,7 +251,7 @@ bool SSLTranscript::GetHash(uint8_t *out, size_t *out_len) {
 
 bool SSLTranscript::GetFinishedMAC(uint8_t *out, size_t *out_len,
                                    const SSL_SESSION *session,
-                                   bool from_server) {
+                                   bool from_server) const {
   static const char kClientLabel[] = "client finished";
   static const char kServerLabel[] = "server finished";
   auto label = from_server
