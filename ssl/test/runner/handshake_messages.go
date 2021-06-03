@@ -324,7 +324,8 @@ type clientHelloMsg struct {
 	nextProtoNeg              bool
 	serverName                string
 	clientECH                 *clientECH
-	echIsInner                []byte
+	echIsInner                bool
+	invalidECHIsInner         []byte
 	ocspStapling              bool
 	supportedCurves           []CurveID
 	supportedPoints           []uint8
@@ -459,10 +460,12 @@ func (m *clientHelloMsg) marshalBody(hello *byteBuilder, typ clientHelloType) {
 			body: body.finish(),
 		})
 	}
-	if m.echIsInner != nil {
+	if m.echIsInner {
 		extensions = append(extensions, extension{
-			id:   extensionECHIsInner,
-			body: m.echIsInner,
+			id: extensionECHIsInner,
+			// If unset, invalidECHIsInner is empty, which is the correct
+			// serialization.
+			body: m.invalidECHIsInner,
 		})
 	}
 	if m.outerExtensions != nil && typ == clientHelloEncodedInner {

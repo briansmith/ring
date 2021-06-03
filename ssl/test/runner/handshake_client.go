@@ -817,10 +817,8 @@ NextCipherSuite:
 	}
 
 	if (isInner && !c.config.Bugs.OmitECHIsInner) || c.config.Bugs.AlwaysSendECHIsInner {
-		hello.echIsInner = []byte{}
-		if len(c.config.Bugs.SendInvalidECHIsInner) != 0 {
-			hello.echIsInner = c.config.Bugs.SendInvalidECHIsInner
-		}
+		hello.echIsInner = true
+		hello.invalidECHIsInner = c.config.Bugs.SendInvalidECHIsInner
 	}
 
 	if innerHello != nil {
@@ -1090,7 +1088,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 	} else {
 		// When not offering ECH, we may still expect a confirmation signal to
 		// test the backend server behavior.
-		if hs.hello.echIsInner != nil {
+		if hs.hello.echIsInner {
 			if !echConfirmed {
 				return errors.New("tls: server did not send ECH confirmation when requested")
 			}
@@ -1514,7 +1512,7 @@ func (hs *clientHandshakeState) applyHelloRetryRequest(helloRetryRequest *helloR
 	}
 
 	if isInner && c.config.Bugs.OmitSecondECHIsInner {
-		hello.echIsInner = nil
+		hello.echIsInner = false
 	}
 
 	hello.hasEarlyData = c.config.Bugs.SendEarlyDataOnSecondClientHello
