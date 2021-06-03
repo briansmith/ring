@@ -255,6 +255,7 @@ type HPKECipherSuite struct {
 }
 
 type ECHConfig struct {
+	Raw          []byte
 	ConfigID     uint8
 	KEM          uint16
 	PublicKey    []byte
@@ -263,35 +264,38 @@ type ECHConfig struct {
 	CipherSuites []HPKECipherSuite
 }
 
-func (e *ECHConfig) marshal(bb *byteBuilder) {
-	// ECHConfig's wire format reuses the encrypted_client_hello extension
-	// codepoint as a version identifier.
+func CreateECHConfig(template *ECHConfig) *ECHConfig {
+	bb := newByteBuilder()
+	// ECHConfig reuses the encrypted_client_hello extension codepoint as a
+	// version identifier.
 	bb.addU16(extensionEncryptedClientHello)
 	contents := bb.addU16LengthPrefixed()
-	contents.addU8(e.ConfigID)
-	contents.addU16(e.KEM)
-	contents.addU16LengthPrefixed().addBytes(e.PublicKey)
+	contents.addU8(template.ConfigID)
+	contents.addU16(template.KEM)
+	contents.addU16LengthPrefixed().addBytes(template.PublicKey)
 	cipherSuites := contents.addU16LengthPrefixed()
-	for _, suite := range e.CipherSuites {
+	for _, suite := range template.CipherSuites {
 		cipherSuites.addU16(suite.KDF)
 		cipherSuites.addU16(suite.AEAD)
 	}
-	contents.addU16(e.MaxNameLen)
-	contents.addU16LengthPrefixed().addBytes([]byte(e.PublicName))
+	contents.addU16(template.MaxNameLen)
+	contents.addU16LengthPrefixed().addBytes([]byte(template.PublicName))
 	contents.addU16(0) // Empty extensions field
+
+	// This ought to be a call to a function like ParseECHConfig(bb.finish()),
+	// but this constrains us to constructing ECHConfigs we are willing to
+	// support. We need to test the client's behavior in response to unparsable
+	// or unsupported ECHConfigs, so populate fields from the template directly.
+	ret := *template
+	ret.Raw = bb.finish()
+	return &ret
 }
 
-func MarshalECHConfig(e *ECHConfig) []byte {
-	bb := newByteBuilder()
-	e.marshal(bb)
-	return bb.finish()
-}
-
-func MarshalECHConfigList(configs ...*ECHConfig) []byte {
+func CreateECHConfigList(configs ...[]byte) []byte {
 	bb := newByteBuilder()
 	list := bb.addU16LengthPrefixed()
 	for _, config := range configs {
-		config.marshal(list)
+		list.addBytes(config)
 	}
 	return bb.finish()
 }

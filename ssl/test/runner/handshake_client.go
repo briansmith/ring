@@ -154,7 +154,7 @@ func (c *Conn) clientHandshake() error {
 		}
 
 		info := []byte("tls ech\x00")
-		info = append(info, MarshalECHConfig(c.config.ClientECHConfig)...)
+		info = append(info, c.config.ClientECHConfig.Raw...)
 
 		var echEnc []byte
 		hs.echHPKEContext, echEnc, err = hpke.SetupBaseSenderX25519(echCipherSuite.KDF, echCipherSuite.AEAD, c.config.ClientECHConfig.PublicKey, info, nil)
