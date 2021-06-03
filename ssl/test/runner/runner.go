@@ -16584,8 +16584,8 @@ func addEncryptedClientHelloTests() {
 				ClientECHConfig: echConfigRepeatID,
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(echConfig3)),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key3),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(echConfig)),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
 				"-ech-is-retry-config", "1",
 				"-ech-server-config", base64.StdEncoding.EncodeToString(MarshalECHConfig(echConfigRepeatID)),
 				"-ech-server-key", base64.StdEncoding.EncodeToString(keyRepeatID),
