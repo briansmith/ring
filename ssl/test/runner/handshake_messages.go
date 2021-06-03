@@ -936,7 +936,22 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			}
 			m.nextProtoNeg = true
 		case extensionStatusRequest:
-			m.ocspStapling = len(body) > 0 && body[0] == statusTypeOCSP
+			// This parse is stricter than a production implementation would
+			// use. The status_request extension has many layers of interior
+			// extensibility, but we expect our client to only send empty
+			// requests of type OCSP.
+			var statusType uint8
+			var responderIDList, innerExtensions byteReader
+			if !body.readU8(&statusType) ||
+				statusType != statusTypeOCSP ||
+				!body.readU16LengthPrefixed(&responderIDList) ||
+				!body.readU16LengthPrefixed(&innerExtensions) ||
+				len(responderIDList) != 0 ||
+				len(innerExtensions) != 0 ||
+				len(body) != 0 {
+				return false
+			}
+			m.ocspStapling = true
 		case extensionSupportedCurves:
 			// http://tools.ietf.org/html/rfc4492#section-5.5.1
 			var curves byteReader
