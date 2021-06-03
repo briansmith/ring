@@ -60,7 +60,7 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../../perlasm/ppc-xlate.pl" and -f $xlate) or
 die "can't locate ppc-xlate.pl";
 
-open STDOUT,"| $^X $xlate $flavour $output" || die "can't call $xlate: $!";
+open STDOUT,"| $^X \"$xlate\" $flavour \"$output\"" || die "can't call $xlate: $!";
 
 my ($Xip,$Htbl,$inp,$len)=map("r$_",(3..6));	# argument block
 
