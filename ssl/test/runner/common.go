@@ -431,6 +431,10 @@ type Config struct {
 	// decreasing order of preference. If empty, the default will be used.
 	ECHCipherSuites []HPKECipherSuite
 
+	// ServerECHConfigs is the server's list of ECHConfig values with
+	// corresponding secret keys.
+	ServerECHConfigs []ServerECHConfig
+
 	// ECHOuterExtensions is the list of extensions that the client will
 	// compress with the ech_outer_extensions extension. If empty, no extensions
 	// will be compressed.

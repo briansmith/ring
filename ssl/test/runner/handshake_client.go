@@ -894,8 +894,8 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 
 	// Place the ECH extension in the outer CH.
 	hello.clientECH = &clientECH{
-		hpkeKDF:  hs.echHPKEContext.KDF(),
-		hpkeAEAD: hs.echHPKEContext.AEAD(),
+		kdfID:    hs.echHPKEContext.KDF(),
+		aeadID:   hs.echHPKEContext.AEAD(),
 		configID: configID,
 		enc:      enc,
 		payload:  payload,

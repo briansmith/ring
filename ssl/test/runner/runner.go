@@ -16202,55 +16202,34 @@ var echCiphers = []echCipher{
 	},
 }
 
-// generateECHConfigWithKey constructs a valid ECHConfig and corresponding
-// private key for the server. If the cipher list is empty, all ciphers are
-// included.
-func generateECHConfigWithKey(publicName string, ciphers []HPKECipherSuite, configID uint8) (*ECHConfig, []byte, error) {
-	publicKey, secretKey, err := hpke.GenerateKeyPair()
+// generateServerECHConfig constructs a ServerECHConfig with a fresh X25519
+// keypair and using |template| as a template for the ECHConfig. If
+// |template.CipherSuites| is empty, all ciphers are included. |template.KEM|
+// and |template.PublicKey| are ignored.
+func generateServerECHConfig(template *ECHConfig) ServerECHConfig {
+	publicKey, secretKey, err := hpke.GenerateKeyPairX25519()
 	if err != nil {
-		return nil, nil, err
+		panic(err)
 	}
-	if len(ciphers) == 0 {
-		ciphers = make([]HPKECipherSuite, 0, len(echCiphers))
-		for _, cipher := range echCiphers {
-			ciphers = append(ciphers, cipher.cipher)
+	templateCopy := *template
+	templateCopy.KEM = hpke.X25519WithHKDFSHA256
+	templateCopy.PublicKey = publicKey
+	if len(templateCopy.CipherSuites) == 0 {
+		templateCopy.CipherSuites = make([]HPKECipherSuite, len(echCiphers))
+		for i, cipher := range echCiphers {
+			templateCopy.CipherSuites[i] = cipher.cipher
 		}
 	}
-	template := ECHConfig{
-		ConfigID:     configID,
-		PublicName:   publicName,
-		PublicKey:    publicKey,
-		KEM:          hpke.X25519WithHKDFSHA256,
-		CipherSuites: ciphers,
-		// For real-life purposes, the maxNameLen should be
-		// based on the set of domain names that the server
-		// represents.
-		MaxNameLen: 16,
-	}
-	return CreateECHConfig(&template), secretKey, nil
+	return ServerECHConfig{ECHConfig: CreateECHConfig(&templateCopy), Key: secretKey}
 }
 
 func addEncryptedClientHelloTests() {
-	echConfig, key, err := generateECHConfigWithKey("public.example", nil, 42)
-	if err != nil {
-		panic(err)
-	}
-	echConfig1, key1, err := generateECHConfigWithKey("public.example", nil, 43)
-	if err != nil {
-		panic(err)
-	}
-	echConfig2, key2, err := generateECHConfigWithKey("public.example", nil, 44)
-	if err != nil {
-		panic(err)
-	}
-	echConfig3, key3, err := generateECHConfigWithKey("public.example", nil, 45)
-	if err != nil {
-		panic(err)
-	}
-	echConfigRepeatID, keyRepeatID, err := generateECHConfigWithKey("public.example", nil, 42)
-	if err != nil {
-		panic(err)
-	}
+	// echConfig's ConfigID should match the one used in ssl/test/fuzzer.h.
+	echConfig := generateServerECHConfig(&ECHConfig{ConfigID: 42, PublicName: "public.example"})
+	echConfig1 := generateServerECHConfig(&ECHConfig{ConfigID: 43, PublicName: "public.example"})
+	echConfig2 := generateServerECHConfig(&ECHConfig{ConfigID: 44, PublicName: "public.example"})
+	echConfig3 := generateServerECHConfig(&ECHConfig{ConfigID: 45, PublicName: "public.example"})
+	echConfigRepeatID := generateServerECHConfig(&ECHConfig{ConfigID: 42, PublicName: "public.example"})
 
 	for _, protocol := range []protocol{tls, quic} {
 		prefix := protocol.String() + "-"
@@ -16273,13 +16252,13 @@ func addEncryptedClientHelloTests() {
 				name:     prefix + "ECH-Server" + suffix,
 				config: Config{
 					ServerName:      "secret.example",
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					DefaultCurves:   defaultCurves,
 				},
 				resumeSession: true,
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16298,7 +16277,7 @@ func addEncryptedClientHelloTests() {
 				name:     prefix + "ECH-Server-MinimalClientHelloOuter" + suffix,
 				config: Config{
 					ServerName:      "secret.example",
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					DefaultCurves:   defaultCurves,
 					Bugs: ProtocolBugs{
 						MinimalClientHelloOuter: true,
@@ -16306,8 +16285,8 @@ func addEncryptedClientHelloTests() {
 				},
 				resumeSession: true,
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16328,24 +16307,24 @@ func addEncryptedClientHelloTests() {
 					DefaultCurves: defaultCurves,
 					// The client uses an ECHConfig that the server does not understand
 					// so we can observe which retry configs the server sends back.
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					Bugs: ProtocolBugs{
 						OfferSessionInClientHelloOuter: true,
-						ExpectECHRetryConfigs:          CreateECHConfigList(echConfig2.Raw, echConfig3.Raw),
+						ExpectECHRetryConfigs:          CreateECHConfigList(echConfig2.ECHConfig.Raw, echConfig3.ECHConfig.Raw),
 					},
 				},
 				resumeSession: true,
 				flags: []string{
 					// Configure three ECHConfigs on the shim, only two of which
 					// should be sent in retry configs.
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig1.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key1),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig1.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig1.Key),
 					"-ech-is-retry-config", "0",
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig2.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key2),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig2.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig2.Key),
 					"-ech-is-retry-config", "1",
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig3.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key3),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig3.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig3.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "public.example",
 				},
@@ -16360,14 +16339,14 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					Bugs: ProtocolBugs{
 						AllowTLS12InClientHelloInner: true,
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1"},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16383,15 +16362,15 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					Bugs: ProtocolBugs{
 						OmitECHIsInner:       !hrr,
 						OmitSecondECHIsInner: hrr,
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 				},
 				shouldFail:         true,
@@ -16407,7 +16386,7 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHOuterExtensions: []uint16{
 						extensionKeyShare,
 						extensionSupportedCurves,
@@ -16425,8 +16404,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16447,7 +16426,7 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHOuterExtensions: []uint16{
 						extensionSupportedCurves,
 						extensionSupportedCurves,
@@ -16457,8 +16436,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 				},
 				shouldFail:         true,
@@ -16475,7 +16454,7 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHOuterExtensions: []uint16{
 						extensionCustom,
 					},
@@ -16484,8 +16463,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16505,7 +16484,7 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					ServerName:      "secret.example",
 					DefaultCurves:   defaultCurves,
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHOuterExtensions: []uint16{
 						extensionEncryptedClientHello,
 					},
@@ -16514,8 +16493,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 				},
 				shouldFail:         true,
@@ -16532,13 +16511,13 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-AsyncEarlyCallback",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 			},
 			flags: []string{
 				"-async",
 				"-use-early-callback",
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
 				"-expect-ech-accept",
@@ -16556,14 +16535,14 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-SecondECHConfig",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig1,
+				ClientECHConfig: echConfig1.ECHConfig,
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig1.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key1),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig1.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig1.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
 				"-expect-ech-accept",
@@ -16581,14 +16560,14 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-RepeatedConfigID",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfigRepeatID,
+				ClientECHConfig: echConfigRepeatID.ECHConfig,
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfigRepeatID.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(keyRepeatID),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfigRepeatID.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfigRepeatID.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
 				"-expect-ech-accept",
@@ -16600,10 +16579,7 @@ func addEncryptedClientHelloTests() {
 
 		// Test all supported ECH cipher suites.
 		for i, cipher := range echCiphers {
-			otherCipher := echCiphers[0]
-			if i == 0 {
-				otherCipher = echCiphers[1]
-			}
+			otherCipher := echCiphers[(i+1)%len(echCiphers)]
 
 			// Test the ECH server can handle the specified cipher.
 			testCases = append(testCases, testCase{
@@ -16612,12 +16588,12 @@ func addEncryptedClientHelloTests() {
 				name:     prefix + "ECH-Server-Cipher-" + cipher.name,
 				config: Config{
 					ServerName:      "secret.example",
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16629,25 +16605,26 @@ func addEncryptedClientHelloTests() {
 
 			// Test that the ECH server rejects the specified cipher if not
 			// listed in its ECHConfig.
-			config, key, err := generateECHConfigWithKey("public.example", []HPKECipherSuite{otherCipher.cipher}, 42)
-			if err != nil {
-				panic(err)
-			}
+			config := generateServerECHConfig(&ECHConfig{
+				ConfigID:     42,
+				PublicName:   "public.name",
+				CipherSuites: []HPKECipherSuite{otherCipher.cipher},
+			})
 			testCases = append(testCases, testCase{
 				testType: serverTest,
 				protocol: protocol,
 				name:     prefix + "ECH-Server-DisabledCipher-" + cipher.name,
 				config: Config{
 					ServerName:      "secret.example",
-					ClientECHConfig: echConfig,
+					ClientECHConfig: echConfig.ECHConfig,
 					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
 					Bugs: ProtocolBugs{
-						ExpectECHRetryConfigs: CreateECHConfigList(config.Raw),
+						ExpectECHRetryConfigs: CreateECHConfigList(config.ECHConfig.Raw),
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(config.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+					"-ech-server-config", base64.StdEncoding.EncodeToString(config.ECHConfig.Raw),
+					"-ech-server-key", base64.StdEncoding.EncodeToString(config.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "public.example",
 				},
@@ -16662,15 +16639,15 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-ShortClientECHEnc",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
-					ExpectECHRetryConfigs: CreateECHConfigList(echConfig.Raw),
+					ExpectECHRetryConfigs: CreateECHConfigList(echConfig.ECHConfig.Raw),
 					TruncateClientECHEnc:  true,
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "public.example",
 			},
@@ -16684,15 +16661,15 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-CorruptEncryptedClientHello",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
-					ExpectECHRetryConfigs:       CreateECHConfigList(echConfig.Raw),
+					ExpectECHRetryConfigs:       CreateECHConfigList(echConfig.ECHConfig.Raw),
 					CorruptEncryptedClientHello: true,
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 		})
@@ -16705,7 +16682,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-CorruptSecondEncryptedClientHello",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				// Force a HelloRetryRequest.
 				DefaultCurves: []CurveID{},
 				Bugs: ProtocolBugs{
@@ -16713,8 +16690,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 			shouldFail:         true,
@@ -16729,7 +16706,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-OmitSecondEncryptedClientHello",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				// Force a HelloRetryRequest.
 				DefaultCurves: []CurveID{},
 				Bugs: ProtocolBugs{
@@ -16737,8 +16714,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 			shouldFail:         true,
@@ -16753,7 +16730,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-DifferentConfigIDSecondClientHello",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				// Force a HelloRetryRequest.
 				DefaultCurves: []CurveID{},
 				Bugs: ProtocolBugs{
@@ -16761,8 +16738,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 			shouldFail:         true,
@@ -16777,13 +16754,13 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-EarlyData",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 			},
 			resumeSession: true,
 			earlyData:     true,
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-ech-accept",
 			},
@@ -16797,7 +16774,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-EarlyDataRejected",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
 					// Cause the server to reject 0-RTT with a bad ticket age.
 					SendTicketAge: 1 * time.Hour,
@@ -16807,8 +16784,8 @@ func addEncryptedClientHelloTests() {
 			earlyData:               true,
 			expectEarlyDataRejected: true,
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(key),
+				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-ech-accept",
 			},
@@ -16825,7 +16802,7 @@ func addEncryptedClientHelloTests() {
 			name:     prefix + "ECH-Server-Disabled",
 			config: Config{
 				ServerName:      "secret.example",
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 			},
 			flags: []string{
 				"-expect-server-name", "public.example",
@@ -16892,7 +16869,7 @@ func addEncryptedClientHelloTests() {
 					// Include an additional well-formed ECHConfig with an
 					// unsupported version. This ensures the client can skip
 					// unsupported configs.
-					SendECHRetryConfigs: CreateECHConfigList(echConfig.Raw, unsupportedVersion),
+					SendECHRetryConfigs: CreateECHConfigList(echConfig.ECHConfig.Raw, unsupportedVersion),
 				},
 			},
 			flags: []string{"-enable-ech-grease"},
@@ -16909,7 +16886,7 @@ func addEncryptedClientHelloTests() {
 					MaxVersion: VersionTLS12,
 					Bugs: ProtocolBugs{
 						ExpectClientECH:                       true,
-						SendECHRetryConfigs:                   CreateECHConfigList(echConfig.Raw, unsupportedVersion),
+						SendECHRetryConfigs:                   CreateECHConfigList(echConfig.ECHConfig.Raw, unsupportedVersion),
 						SendECHRetryConfigsInTLS12ServerHello: true,
 					},
 				},
@@ -17021,7 +16998,7 @@ func addEncryptedClientHelloTests() {
 			config: Config{
 				MinVersion:      VersionTLS13,
 				MaxVersion:      VersionTLS13,
-				ClientECHConfig: echConfig,
+				ClientECHConfig: echConfig.ECHConfig,
 				Bugs: ProtocolBugs{
 					AlwaysSendECHIsInner: true,
 				},

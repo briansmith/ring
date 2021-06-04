@@ -6,6 +6,7 @@ package runner
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 )
 
@@ -300,11 +301,16 @@ func CreateECHConfigList(configs ...[]byte) []byte {
 	return bb.finish()
 }
 
+type ServerECHConfig struct {
+	ECHConfig *ECHConfig
+	Key       []byte
+}
+
 // The contents of a CH "encrypted_client_hello" extension.
 // https://tools.ietf.org/html/draft-ietf-tls-esni-10
 type clientECH struct {
-	hpkeKDF  uint16
-	hpkeAEAD uint16
+	kdfID    uint16
+	aeadID   uint16
 	configID uint8
 	enc      []byte
 	payload  []byte
@@ -363,6 +369,12 @@ type clientHelloMsg struct {
 	alpsProtocols             []string
 	outerExtensions           []uint16
 	prefixExtensions          []uint16
+	// The following fields are only filled in by |unmarshal| and ignored when
+	// marshaling a new ClientHello.
+	extensionStart    int
+	echExtensionStart int
+	echExtensionEnd   int
+	rawExtensions     map[uint16][]byte
 }
 
 func (m *clientHelloMsg) marshalKeyShares(bb *byteBuilder) {
@@ -449,8 +461,8 @@ func (m *clientHelloMsg) marshalBody(hello *byteBuilder, typ clientHelloType) {
 	}
 	if m.clientECH != nil && typ != clientHelloOuterAAD {
 		body := newByteBuilder()
-		body.addU16(m.clientECH.hpkeKDF)
-		body.addU16(m.clientECH.hpkeAEAD)
+		body.addU16(m.clientECH.kdfID)
+		body.addU16(m.clientECH.aeadID)
 		body.addU8(m.clientECH.configID)
 		body.addU16LengthPrefixed().addBytes(m.clientECH.enc)
 		body.addU16LengthPrefixed().addBytes(m.clientECH.payload)
@@ -867,6 +879,8 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 		}
 	}
 
+	m.extensionStart = len(data) - len(reader)
+
 	m.nextProtoNeg = false
 	m.serverName = ""
 	m.ocspStapling = false
@@ -883,6 +897,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.customExtension = ""
 	m.delegatedCredentials = false
 	m.alpsProtocols = nil
+	m.rawExtensions = make(map[uint16][]byte)
 
 	if len(reader) == 0 {
 		// ClientHello is optionally followed by extension data
@@ -900,6 +915,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			!extensions.readU16LengthPrefixed(&body) {
 			return false
 		}
+		m.rawExtensions[extension] = body
 		switch extension {
 		case extensionServerName:
 			var names byteReader
@@ -918,18 +934,24 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				}
 			}
 		case extensionEncryptedClientHello:
+			m.echExtensionEnd = len(data) - len(extensions)
+			m.echExtensionStart = m.echExtensionEnd - len(body) - 4
 			var ech clientECH
-			if !body.readU16(&ech.hpkeKDF) ||
-				!body.readU16(&ech.hpkeAEAD) ||
+			if !body.readU16(&ech.kdfID) ||
+				!body.readU16(&ech.aeadID) ||
 				!body.readU8(&ech.configID) ||
 				!body.readU16LengthPrefixedBytes(&ech.enc) ||
-				len(ech.enc) == 0 ||
 				!body.readU16LengthPrefixedBytes(&ech.payload) ||
 				len(ech.payload) == 0 ||
 				len(body) > 0 {
 				return false
 			}
 			m.clientECH = &ech
+		case extensionECHIsInner:
+			if len(body) != 0 {
+				return false
+			}
+			m.echIsInner = true
 		case extensionNextProtoNeg:
 			if len(body) != 0 {
 				return false
@@ -1161,7 +1183,87 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 		}
 	}
 
+	// Clients may not send both extensions.
+	// TODO(davidben): A later draft will likely merge the code points, at which
+	// point this check will be redundant.
+	if m.echIsInner && m.clientECH != nil {
+		return false
+	}
+
 	return true
+}
+
+func decodeClientHelloInner(encoded []byte, helloOuter *clientHelloMsg) (*clientHelloMsg, error) {
+	reader := byteReader(encoded)
+	var versAndRandom, sessionID, cipherSuites, compressionMethods []byte
+	var extensions byteReader
+	if !reader.readBytes(&versAndRandom, 2+32) ||
+		!reader.readU8LengthPrefixedBytes(&sessionID) ||
+		len(sessionID) != 0 || // Copied from |helloOuter|
+		!reader.readU16LengthPrefixedBytes(&cipherSuites) ||
+		!reader.readU8LengthPrefixedBytes(&compressionMethods) ||
+		!reader.readU16LengthPrefixed(&extensions) ||
+		len(reader) != 0 {
+		return nil, errors.New("tls: error parsing EncodedClientHelloInner")
+	}
+
+	builder := newByteBuilder()
+	builder.addU8(typeClientHello)
+	body := builder.addU24LengthPrefixed()
+	body.addBytes(versAndRandom)
+	body.addU8LengthPrefixed().addBytes(helloOuter.sessionID)
+	body.addU16LengthPrefixed().addBytes(cipherSuites)
+	body.addU8LengthPrefixed().addBytes(compressionMethods)
+	newExtensions := body.addU16LengthPrefixed()
+
+	var seenOuterExtensions bool
+	copied := make(map[uint16]struct{})
+	for len(extensions) > 0 {
+		var extType uint16
+		var extBody byteReader
+		if !extensions.readU16(&extType) ||
+			!extensions.readU16LengthPrefixed(&extBody) {
+			return nil, errors.New("tls: error parsing EncodedClientHelloInner")
+		}
+		if extType != extensionECHOuterExtensions {
+			newExtensions.addU16(extType)
+			newExtensions.addU16LengthPrefixed().addBytes(extBody)
+			continue
+		}
+		if seenOuterExtensions {
+			return nil, errors.New("tls: duplicate ech_outer_extensions extension")
+		}
+		seenOuterExtensions = true
+		var outerExtensions byteReader
+		if !extBody.readU8LengthPrefixed(&outerExtensions) || len(outerExtensions) == 0 || len(extBody) != 0 {
+			return nil, errors.New("tls: error parsing ech_outer_extensions")
+		}
+		for len(outerExtensions) != 0 {
+			var newExtType uint16
+			if !outerExtensions.readU16(&newExtType) {
+				return nil, errors.New("tls: error parsing ech_outer_extensions")
+			}
+			if newExtType == extensionEncryptedClientHello {
+				return nil, errors.New("tls: error parsing ech_outer_extensions")
+			}
+			if _, ok := copied[newExtType]; ok {
+				return nil, errors.New("tls: duplicate extension in ech_outer_extensions")
+			}
+			newExtBody, ok := helloOuter.rawExtensions[newExtType]
+			if !ok {
+				return nil, fmt.Errorf("tls: extension %04x not found in ClientHelloOuter", newExtType)
+			}
+			newExtensions.addU16(newExtType)
+			newExtensions.addU16LengthPrefixed().addBytes(newExtBody)
+			copied[newExtType] = struct{}{}
+		}
+	}
+
+	ret := new(clientHelloMsg)
+	if !ret.unmarshal(builder.finish()) {
+		return nil, errors.New("tls: error parsing reconstructed ClientHello")
+	}
+	return ret, nil
 }
 
 type serverHelloMsg struct {
