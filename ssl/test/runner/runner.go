@@ -696,6 +696,9 @@ type testCase struct {
 	// skipSplitHandshake, if true, will skip the generation of a split
 	// handshake copy of the test.
 	skipSplitHandshake bool
+	// skipVersionNameCheck, if true, will skip the consistency check between
+	// test name and the versions.
+	skipVersionNameCheck bool
 }
 
 var testCases []testCase
@@ -1289,24 +1292,6 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 			panic(r)
 		}
 	}()
-
-	if !test.shouldFail && (len(test.expectedError) > 0 || len(test.expectedLocalError) > 0) {
-		panic("Error expected without shouldFail in " + test.name)
-	}
-
-	if test.expectResumeRejected && !test.resumeSession {
-		panic("expectResumeRejected without resumeSession in " + test.name)
-	}
-
-	for _, ver := range tlsVersions {
-		if !strings.Contains("-"+test.name+"-", "-"+ver.name+"-") {
-			continue
-		}
-
-		if test.config.MaxVersion == 0 && test.config.MinVersion == 0 && test.expectations.version == 0 {
-			panic(fmt.Sprintf("The name of test %q suggests that it's version specific, but min/max version in the Config is %x/%x. One of them should probably be %x", test.name, test.config.MinVersion, test.config.MaxVersion, ver.version))
-		}
-	}
 
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv6loopback})
 	if err != nil {
@@ -6142,6 +6127,9 @@ func addVersionNegotiationTests() {
 					expectations: connectionExpectations{
 						version: expectedVersion,
 					},
+					// The version name check does not recognize the
+					// |excludeFlag| construction in |flags|.
+					skipVersionNameCheck: true,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -6173,6 +6161,9 @@ func addVersionNegotiationTests() {
 					expectations: connectionExpectations{
 						version: expectedVersion,
 					},
+					// The version name check does not recognize the
+					// |excludeFlag| construction in |flags|.
+					skipVersionNameCheck: true,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -6567,6 +6558,9 @@ func addMinimumVersionTests() {
 					shouldFail:         shouldFail,
 					expectedError:      expectedError,
 					expectedLocalError: expectedLocalError,
+					// The version name check does not recognize the
+					// |excludeFlag| construction in |flags|.
+					skipVersionNameCheck: true,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -6605,6 +6599,9 @@ func addMinimumVersionTests() {
 					shouldFail:         shouldFail,
 					expectedError:      expectedError,
 					expectedLocalError: expectedLocalError,
+					// The version name check does not recognize the
+					// |excludeFlag| construction in |flags|.
+					skipVersionNameCheck: true,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -13079,6 +13076,7 @@ func addTLS13HandshakeTests() {
 			MaxVersion:             VersionTLS12,
 			SessionTicketsDisabled: true,
 		},
+		flags:         []string{"-max-version", strconv.Itoa(VersionTLS13)},
 		resumeSession: true,
 	})
 
@@ -17523,6 +17521,44 @@ func match(oneOfPatternIfAny []string, noneOfPattern []string, candidate string)
 	return matched, nil
 }
 
+func checkTests() {
+	for _, test := range testCases {
+		if !test.shouldFail && (len(test.expectedError) > 0 || len(test.expectedLocalError) > 0) {
+			panic("Error expected without shouldFail in " + test.name)
+		}
+
+		if test.expectResumeRejected && !test.resumeSession {
+			panic("expectResumeRejected without resumeSession in " + test.name)
+		}
+
+		if !test.skipVersionNameCheck {
+			for _, ver := range tlsVersions {
+				if !strings.Contains("-"+test.name+"-", "-"+ver.name+"-") {
+					continue
+				}
+
+				found := test.config.MaxVersion == ver.version || test.config.MinVersion == ver.version || test.expectations.version == ver.version
+				if test.resumeConfig != nil {
+					found = found || test.resumeConfig.MaxVersion == ver.version || test.resumeConfig.MinVersion == ver.version
+				}
+				if test.resumeExpectations != nil {
+					found = found || test.resumeExpectations.version == ver.version
+				}
+				shimFlag := ver.shimFlag(test.protocol)
+				for _, flag := range test.flags {
+					if flag == shimFlag {
+						found = true
+						break
+					}
+				}
+				if !found {
+					panic(fmt.Sprintf("The name of test %q suggests that it's version specific, but the test does not reference %s", test.name, ver.name))
+				}
+			}
+		}
+	}
+}
+
 func main() {
 	flag.Parse()
 	*resourceDir = path.Clean(*resourceDir)
@@ -17599,7 +17635,7 @@ func main() {
 	}
 	testCases = append(testCases, toAppend...)
 
-	var wg sync.WaitGroup
+	checkTests()
 
 	numWorkers := *numWorkersFlag
 	if useDebugger() {
@@ -17612,6 +17648,7 @@ func main() {
 
 	go statusPrinter(doneChan, statusChan, len(testCases))
 
+	var wg sync.WaitGroup
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go worker(statusChan, testChan, *shimPath, &wg)
