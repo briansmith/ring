@@ -1729,17 +1729,16 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     return nullptr;
   }
   if (!ech_server_configs.empty()) {
-    bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
-        SSL_ECH_SERVER_CONFIG_LIST_new());
-    if (!config_list) {
+    bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
+    if (!keys) {
       return nullptr;
     }
     for (size_t i = 0; i < ech_server_configs.size(); i++) {
       const std::string &ech_config = ech_server_configs[i];
       const std::string &ech_private_key = ech_server_keys[i];
       const int is_retry_config = ech_is_retry_config[i];
-      if (!SSL_ECH_SERVER_CONFIG_LIST_add(
-              config_list.get(), is_retry_config,
+      if (!SSL_ECH_KEYS_add(
+              keys.get(), is_retry_config,
               reinterpret_cast<const uint8_t *>(ech_config.data()),
               ech_config.size(),
               reinterpret_cast<const uint8_t *>(ech_private_key.data()),
@@ -1747,7 +1746,7 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
         return nullptr;
       }
     }
-    if (!SSL_CTX_set1_ech_server_config_list(ssl_ctx, config_list.get())) {
+    if (!SSL_CTX_set1_ech_keys(ssl_ctx, keys.get())) {
       return nullptr;
     }
   }

@@ -299,14 +299,13 @@ bool Server(const std::vector<std::string> &args) {
       return false;
     }
 
-    bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> configs(
-        SSL_ECH_SERVER_CONFIG_LIST_new());
-    if (!configs ||
-        !SSL_ECH_SERVER_CONFIG_LIST_add(configs.get(),
-                                        /*is_retry_config=*/1, echconfig.data(),
-                                        echconfig.size(), echconfig_key.data(),
-                                        echconfig_key.size()) ||
-        !SSL_CTX_set1_ech_server_config_list(ctx.get(), configs.get())) {
+    bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
+    if (!keys ||
+        !SSL_ECH_KEYS_add(keys.get(),
+                          /*is_retry_config=*/1, echconfig.data(),
+                          echconfig.size(), echconfig_key.data(),
+                          echconfig_key.size()) ||
+        !SSL_CTX_set1_ech_keys(ctx.get(), keys.get())) {
       fprintf(stderr, "Error setting server's ECHConfig and private key\n");
       return false;
     }

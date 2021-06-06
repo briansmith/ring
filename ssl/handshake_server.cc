@@ -614,11 +614,11 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
 
     {
       MutexReadLock lock(&ssl->ctx->lock);
-      hs->ech_server_config_list = UpRef(ssl->ctx->ech_server_config_list);
+      hs->ech_keys = UpRef(ssl->ctx->ech_keys);
     }
 
-    if (hs->ech_server_config_list) {
-      for (const auto &ech_config : hs->ech_server_config_list->configs) {
+    if (hs->ech_keys) {
+      for (const auto &ech_config : hs->ech_keys->configs) {
         hs->ech_hpke_ctx.Reset();
         if (config_id != ech_config->config_id() ||
             !ech_config->SetupContext(hs->ech_hpke_ctx.get(), kdf_id, aead_id,

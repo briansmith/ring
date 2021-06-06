@@ -3565,43 +3565,37 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 // as part of this connection.
 OPENSSL_EXPORT void SSL_set_enable_ech_grease(SSL *ssl, int enable);
 
-// SSL_ECH_SERVER_CONFIG_LIST_new returns a newly-allocated
-// |SSL_ECH_SERVER_CONFIG_LIST| or NULL on error.
-OPENSSL_EXPORT SSL_ECH_SERVER_CONFIG_LIST *SSL_ECH_SERVER_CONFIG_LIST_new(void);
+// SSL_ECH_KEYS_new returns a newly-allocated |SSL_ECH_KEYS| or NULL on error.
+OPENSSL_EXPORT SSL_ECH_KEYS *SSL_ECH_KEYS_new(void);
 
-// SSL_ECH_SERVER_CONFIG_LIST_up_ref increments the reference count of |list|.
-OPENSSL_EXPORT void SSL_ECH_SERVER_CONFIG_LIST_up_ref(
-    SSL_ECH_SERVER_CONFIG_LIST *list);
+// SSL_ECH_KEYS_up_ref increments the reference count of |keys|.
+OPENSSL_EXPORT void SSL_ECH_KEYS_up_ref(SSL_ECH_KEYS *keys);
 
-// SSL_ECH_SERVER_CONFIG_LIST_free releases memory associated with |list|.
-OPENSSL_EXPORT void SSL_ECH_SERVER_CONFIG_LIST_free(
-    SSL_ECH_SERVER_CONFIG_LIST *list);
+// SSL_ECH_KEYS_free releases memory associated with |keys|.
+OPENSSL_EXPORT void SSL_ECH_KEYS_free(SSL_ECH_KEYS *keys);
 
-// SSL_ECH_SERVER_CONFIG_LIST_add appends an ECHConfig in |ech_config| and its
-// corresponding private key in |private_key| to |list|. When |is_retry_config|
+// SSL_ECH_KEYS_add appends an ECHConfig in |ech_config| and its
+// corresponding private key in |private_key| to |keys|. When |is_retry_config|
 // is non-zero, this config will be returned to the client on configuration
 // mismatch. It returns one on success and zero on error. See also
-// |SSL_CTX_set1_ech_server_config_list|.
+// |SSL_CTX_set1_ech_keys|.
 //
 // This function should be called successively to register each ECHConfig in
 // decreasing order of preference. This configuration must be completed before
-// setting |list| on an |SSL_CTX| with |SSL_CTX_set1_ech_server_config_list|.
-// After that point, |list| is immutable; no more ECHConfig values may be added.
-OPENSSL_EXPORT int SSL_ECH_SERVER_CONFIG_LIST_add(
-    SSL_ECH_SERVER_CONFIG_LIST *list, int is_retry_config,
-    const uint8_t *ech_config, size_t ech_config_len,
-    const uint8_t *private_key, size_t private_key_len);
+// setting |keys| on an |SSL_CTX| with |SSL_CTX_set1_ech_keys|. After that
+// point, |keys| is immutable; no more ECHConfig values may be added.
+OPENSSL_EXPORT int SSL_ECH_KEYS_add(SSL_ECH_KEYS *keys, int is_retry_config,
+                                    const uint8_t *ech_config,
+                                    size_t ech_config_len,
+                                    const uint8_t *private_key,
+                                    size_t private_key_len);
 
-// SSL_CTX_set1_ech_server_config_list atomically sets the refcounted |list|
-// onto |ctx|, releasing the old list. |SSL| objects associated with |ctx|, as
-// servers, will use |list| to decrypt incoming encrypted ClientHello messages.
-// It returns one on success, and zero on failure.
+// SSL_CTX_set1_ech_keys configures |ctx| to use |keys| to decrypt encrypted
+// ClientHellos. It returns one on success, and zero on failure. If |keys| does
+// not contain any retry configs, this function will fail. Retry configs are
+// marked as such when they are added to |keys| with |SSL_ECH_KEYS_add|.
 //
-// If |list| does not contain any retry configs, this function will fail. Retry
-// configs are marked as such when they are added to |list| with
-// |SSL_ECH_SERVER_CONFIG_LIST_add|.
-//
-// Once |list| has been passed to this function, it is immutable. Unlike most
+// Once |keys| has been passed to this function, it is immutable. Unlike most
 // |SSL_CTX| configuration functions, this function may be called even if |ctx|
 // already has associated connections on multiple threads. This may be used to
 // rotate keys in a long-lived server process.
@@ -3612,7 +3606,7 @@ OPENSSL_EXPORT int SSL_ECH_SERVER_CONFIG_LIST_add(
 // the ECHConfig and corresponding private key.
 //
 // Only the most recent fully-deployed ECHConfigs should be advertised in DNS.
-// |list| may contain a newer set if those ECHConfigs are mid-deployment. It
+// |keys| may contain a newer set if those ECHConfigs are mid-deployment. It
 // should also contain older sets, until the DNS change has rolled out and the
 // old records have expired from caches.
 //
@@ -3628,8 +3622,7 @@ OPENSSL_EXPORT int SSL_ECH_SERVER_CONFIG_LIST_add(
 // reported |SSL_CLIENT_HELLO| structure and |SSL_get_servername| function will
 // transparently reflect the inner ClientHello. Callers should select parameters
 // based on these values to correctly handle ECH as well as the recovery flow.
-OPENSSL_EXPORT int SSL_CTX_set1_ech_server_config_list(
-    SSL_CTX *ctx, SSL_ECH_SERVER_CONFIG_LIST *list);
+OPENSSL_EXPORT int SSL_CTX_set1_ech_keys(SSL_CTX *ctx, SSL_ECH_KEYS *keys);
 
 // SSL_ech_accepted returns one if |ssl| negotiated ECH and zero otherwise.
 OPENSSL_EXPORT int SSL_ech_accepted(const SSL *ssl);
@@ -5101,10 +5094,8 @@ BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(SSL, SSL_free)
 BORINGSSL_MAKE_DELETER(SSL_CTX, SSL_CTX_free)
 BORINGSSL_MAKE_UP_REF(SSL_CTX, SSL_CTX_up_ref)
-BORINGSSL_MAKE_DELETER(SSL_ECH_SERVER_CONFIG_LIST,
-                       SSL_ECH_SERVER_CONFIG_LIST_free)
-BORINGSSL_MAKE_UP_REF(SSL_ECH_SERVER_CONFIG_LIST,
-                      SSL_ECH_SERVER_CONFIG_LIST_up_ref)
+BORINGSSL_MAKE_DELETER(SSL_ECH_KEYS, SSL_ECH_KEYS_free)
+BORINGSSL_MAKE_UP_REF(SSL_ECH_KEYS, SSL_ECH_KEYS_up_ref)
 BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 BORINGSSL_MAKE_UP_REF(SSL_SESSION, SSL_SESSION_up_ref)
 

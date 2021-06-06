@@ -492,9 +492,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_set1_sigalgs_list(ctx, sigalgs.c_str());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
-            SSL_ECH_SERVER_CONFIG_LIST_new());
-        if (config_list == nullptr) {
+        bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
+        if (keys == nullptr) {
           return;
         }
         uint8_t is_retry_config;
@@ -504,11 +503,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
             !CBS_get_u16_length_prefixed(cbs, &private_key)) {
           return;
         }
-        SSL_ECH_SERVER_CONFIG_LIST_add(
-            config_list.get(), is_retry_config, CBS_data(&ech_config),
-            CBS_len(&ech_config), CBS_data(&private_key),
-            CBS_len(&private_key));
-        SSL_CTX_set1_ech_server_config_list(ctx, config_list.get());
+        SSL_ECH_KEYS_add(keys.get(), is_retry_config, CBS_data(&ech_config),
+                         CBS_len(&ech_config), CBS_data(&private_key),
+                         CBS_len(&private_key));
+        SSL_CTX_set1_ech_keys(ctx, keys.get());
       },
   };
 

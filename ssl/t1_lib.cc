@@ -733,20 +733,19 @@ static bool ext_ech_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (ssl_protocol_version(ssl) < TLS1_3_VERSION ||  //
       ssl->s3->ech_accept ||                         //
-      hs->ech_server_config_list == nullptr) {
+      hs->ech_keys == nullptr) {
     return true;
   }
 
-  // Write the list of retry configs to |out|. Note
-  // |SSL_CTX_set1_ech_server_config_list| ensures |ech_server_config_list|
-  // contains at least one retry config.
+  // Write the list of retry configs to |out|. Note |SSL_CTX_set1_ech_keys|
+  // ensures |ech_keys| contains at least one retry config.
   CBB body, retry_configs;
   if (!CBB_add_u16(out, TLSEXT_TYPE_encrypted_client_hello) ||
       !CBB_add_u16_length_prefixed(out, &body) ||
       !CBB_add_u16_length_prefixed(&body, &retry_configs)) {
     return false;
   }
-  for (const auto &config : hs->ech_server_config_list->configs) {
+  for (const auto &config : hs->ech_keys->configs) {
     if (!config->is_retry_config()) {
       continue;
     }

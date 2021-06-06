@@ -230,7 +230,7 @@ const uint8_t kALPNProtocols[] = {
     0x01, 'a', 0x02, 'a', 'a', 0x03, 'a', 'a', 'a',
 };
 
-const uint8_t kECHServerConfig[] = {
+const uint8_t kECHConfig[] = {
     0xfe, 0x0a, 0x00, 0x47, 0x2a, 0x00, 0x20, 0x00, 0x20, 0x6c, 0x55,
     0x96, 0x41, 0x3d, 0x12, 0x4e, 0x63, 0x3d, 0x39, 0x7a, 0xe9, 0xbc,
     0xec, 0xb2, 0x55, 0xd0, 0xe6, 0xaa, 0xbd, 0xa9, 0x79, 0xb8, 0x86,
@@ -240,7 +240,7 @@ const uint8_t kECHServerConfig[] = {
     0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x00, 0x00,
 };
 
-const uint8_t kECHServerConfigPrivateKey[] = {
+const uint8_t kECHKey[] = {
     0x35, 0x6d, 0x45, 0x06, 0xb3, 0x88, 0x89, 0x2e, 0xd6, 0x87, 0x84,
     0xd2, 0x2d, 0x6f, 0x83, 0x48, 0xad, 0xf2, 0xfd, 0x08, 0x51, 0x73,
     0x10, 0xa0, 0xb8, 0xdd, 0xe9, 0x96, 0x6a, 0xde, 0xbc, 0x82,
@@ -455,18 +455,15 @@ class TLSFuzzer {
     SSL_CTX_set_tls_channel_id_enabled(ctx_.get(), 1);
 
     if (role_ == kServer) {
-      bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> config_list(
-          SSL_ECH_SERVER_CONFIG_LIST_new());
-      if (!config_list) {
+      bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
+      if (!keys) {
         return false;
       }
-      if (!SSL_ECH_SERVER_CONFIG_LIST_add(
-              config_list.get(), /*is_retry_config=*/true, kECHServerConfig,
-              sizeof(kECHServerConfig), kECHServerConfigPrivateKey,
-              sizeof(kECHServerConfigPrivateKey))) {
+      if (!SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/true, kECHConfig,
+                            sizeof(kECHConfig), kECHKey, sizeof(kECHKey))) {
         return false;
       }
-      if (!SSL_CTX_set1_ech_server_config_list(ctx_.get(), config_list.get())) {
+      if (!SSL_CTX_set1_ech_keys(ctx_.get(), keys.get())) {
         return false;
       }
     }

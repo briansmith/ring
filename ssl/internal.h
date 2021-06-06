@@ -1838,10 +1838,10 @@ struct SSL_HANDSHAKE {
   // the client if |in_early_data| is true.
   UniquePtr<SSL_SESSION> early_session;
 
-  // ech_server_config_list, for servers, is the list of ECHConfig values that
-  // were valid when the server received the first ClientHello. Its value will
-  // not change when the config list on |SSL_CTX| is updated.
-  UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> ech_server_config_list;
+  // ssl_ech_keys, for servers, is the set of ECH keys to use with this
+  // handshake. This is copied from |SSL_CTX| to ensure consistent behavior as
+  // |SSL_CTX| rotates keys.
+  UniquePtr<SSL_ECH_KEYS> ech_keys;
 
   // new_cipher is the cipher being negotiated in this handshake.
   const SSL_CIPHER *new_cipher = nullptr;
@@ -3465,10 +3465,10 @@ struct ssl_ctx_st {
   // Channel ID should not be offered on this connection.
   bssl::UniquePtr<EVP_PKEY> channel_id_private;
 
-  // ech_server_config_list contains the server's list of ECHConfig values and
-  // associated private keys. This list may be swapped out at any time, so all
-  // access must be synchronized through |lock|.
-  bssl::UniquePtr<SSL_ECH_SERVER_CONFIG_LIST> ech_server_config_list;
+  // ech_keys contains the server's list of ECHConfig values and associated
+  // private keys. This list may be swapped out at any time, so all access must
+  // be synchronized through |lock|.
+  bssl::UniquePtr<SSL_ECH_KEYS> ech_keys;
 
   // keylog_callback, if not NULL, is the key logging callback. See
   // |SSL_CTX_set_keylog_callback|.
@@ -3783,18 +3783,17 @@ struct ssl_session_st {
   friend void SSL_SESSION_free(SSL_SESSION *);
 };
 
-struct ssl_ech_server_config_list_st {
-  ssl_ech_server_config_list_st() = default;
-  ssl_ech_server_config_list_st(const ssl_ech_server_config_list_st &) = delete;
-  ssl_ech_server_config_list_st &operator=(
-      const ssl_ech_server_config_list_st &) = delete;
+struct ssl_ech_keys_st {
+  ssl_ech_keys_st() = default;
+  ssl_ech_keys_st(const ssl_ech_keys_st &) = delete;
+  ssl_ech_keys_st &operator=(const ssl_ech_keys_st &) = delete;
 
   bssl::GrowableArray<bssl::UniquePtr<bssl::ECHServerConfig>> configs;
   CRYPTO_refcount_t references = 1;
 
  private:
-  ~ssl_ech_server_config_list_st() = default;
-  friend void SSL_ECH_SERVER_CONFIG_LIST_free(SSL_ECH_SERVER_CONFIG_LIST *);
+  ~ssl_ech_keys_st() = default;
+  friend void SSL_ECH_KEYS_free(SSL_ECH_KEYS *);
 };
 
 #endif  // OPENSSL_HEADER_SSL_INTERNAL_H
