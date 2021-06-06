@@ -32,6 +32,7 @@
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
+#include <openssl/hpke.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
@@ -1539,40 +1540,48 @@ bool MakeECHConfig(std::vector<uint8_t> *out, uint8_t config_id,
 }
 
 TEST(SSLTest, ECHKeys) {
-  // kWrongPrivateKey is an unrelated, but valid X25519 private key.
-  const uint8_t kWrongPrivateKey[X25519_PRIVATE_KEY_LEN] = {
-      0xbb, 0xfe, 0x08, 0xf7, 0x31, 0xde, 0x9c, 0x8a, 0xf2, 0x06, 0x4a,
-      0x18, 0xd7, 0x8b, 0x79, 0x31, 0xe2, 0x53, 0xdd, 0x63, 0x8f, 0x58,
-      0x42, 0xda, 0x21, 0x0e, 0x61, 0x97, 0x29, 0xcc, 0x17, 0x71};
-
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
 
   bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
   ASSERT_TRUE(keys);
 
-  // Adding an ECHConfig with the wrong private key is an error.
+  // Adding an ECHConfig with the wrong public key is an error.
+  bssl::ScopedEVP_HPKE_KEY wrong_key;
+  ASSERT_TRUE(
+      EVP_HPKE_KEY_generate(wrong_key.get(), EVP_hpke_x25519_hkdf_sha256()));
   ASSERT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, kECHConfig,
-                                sizeof(kECHConfig), kWrongPrivateKey,
-                                sizeof(kWrongPrivateKey)));
+                                sizeof(kECHConfig), wrong_key.get()));
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
   EXPECT_EQ(SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH,
             ERR_GET_REASON(err));
   ERR_clear_error();
 
-  // Adding an ECHConfig with the matching private key succeeds.
+  // Adding an ECHConfig with the right public key, but wrong KEM ID, is an
+  // error.
+  bssl::ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
+                                kECHPrivateKey, sizeof(kECHPrivateKey)));
+  std::vector<uint8_t> ech_config;
+  ASSERT_TRUE(MakeECHConfig(
+      &ech_config, 0x42, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kECHPublicKey,
+      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
+      /*extensions=*/{}));
+  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                ech_config.data(), ech_config.size(),
+                                key.get()));
+
+  // Adding an ECHConfig with the matching public key succeeds.
   ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, kECHConfig,
-                               sizeof(kECHConfig), kECHPrivateKey,
-                               sizeof(kECHPrivateKey)));
+                               sizeof(kECHConfig), key.get()));
 
   ASSERT_TRUE(SSL_CTX_set1_ech_keys(ctx.get(), keys.get()));
 
   // Build a new config list and replace the old one on |ctx|.
   bssl::UniquePtr<SSL_ECH_KEYS> next_keys(SSL_ECH_KEYS_new());
   ASSERT_TRUE(SSL_ECH_KEYS_add(next_keys.get(), /*is_retry_config=*/1,
-                               kECHConfig, sizeof(kECHConfig), kECHPrivateKey,
-                               sizeof(kECHPrivateKey)));
+                               kECHConfig, sizeof(kECHConfig),key.get()));
   ASSERT_TRUE(SSL_CTX_set1_ech_keys(ctx.get(), next_keys.get()));
 }
 
@@ -1587,11 +1596,14 @@ TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
 
+  bssl::ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
+                                kECHPrivateKey, sizeof(kECHPrivateKey)));
   bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
   ASSERT_TRUE(keys);
   ASSERT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
                                 ech_config.data(), ech_config.size(),
-                                kECHPrivateKey, sizeof(kECHPrivateKey)));
+                                key.get()));
 
   uint32_t err = ERR_peek_error();
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
@@ -1609,10 +1621,11 @@ TEST(SSLTest, ECHServerConfigsWithoutRetryConfigs) {
   bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
   ASSERT_TRUE(keys);
 
-  // Adding an ECHConfig with the matching private key succeeds.
+  bssl::ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
+                                kECHPrivateKey, sizeof(kECHPrivateKey)));
   ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/0, kECHConfig,
-                               sizeof(kECHConfig), kECHPrivateKey,
-                               sizeof(kECHPrivateKey)));
+                               sizeof(kECHConfig), key.get()));
 
   ASSERT_FALSE(SSL_CTX_set1_ech_keys(ctx.get(), keys.get()));
   uint32_t err = ERR_peek_error();
@@ -1623,8 +1636,7 @@ TEST(SSLTest, ECHServerConfigsWithoutRetryConfigs) {
   // Add the same ECHConfig to the list, but this time mark it as a retry
   // config.
   ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, kECHConfig,
-                               sizeof(kECHConfig), kECHPrivateKey,
-                               sizeof(kECHPrivateKey)));
+                               sizeof(kECHConfig), key.get()));
   ASSERT_TRUE(SSL_CTX_set1_ech_keys(ctx.get(), keys.get()));
 }
 
@@ -1632,12 +1644,15 @@ TEST(SSLTest, ECHServerConfigsWithoutRetryConfigs) {
 TEST(SSLTest, UnsupportedECHConfig) {
   bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
   ASSERT_TRUE(keys);
+  bssl::ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
+                                kECHPrivateKey, sizeof(kECHPrivateKey)));
 
   // Unsupported versions are rejected.
   static const uint8_t kUnsupportedVersion[] = {0xff, 0xff, 0x00, 0x00};
   EXPECT_FALSE(SSL_ECH_KEYS_add(
       keys.get(), /*is_retry_config=*/1, kUnsupportedVersion,
-      sizeof(kUnsupportedVersion), kECHPrivateKey, sizeof(kECHPrivateKey)));
+      sizeof(kUnsupportedVersion), key.get()));
 
   // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
   std::vector<uint8_t> ech_config;
@@ -1647,27 +1662,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
       /*extensions=*/{}));
   EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
                                 ech_config.data(), ech_config.size(),
-                                kECHPrivateKey, sizeof(kECHPrivateKey)));
-
-  // Unsupported KEMs are rejected.
-  static const uint8_t kP256PublicKey[] = {
-      0x04, 0xe6, 0x2b, 0x69, 0xe2, 0xbf, 0x65, 0x9f, 0x97, 0xbe, 0x2f,
-      0x1e, 0x0d, 0x94, 0x8a, 0x4c, 0xd5, 0x97, 0x6b, 0xb7, 0xa9, 0x1e,
-      0x0d, 0x46, 0xfb, 0xdd, 0xa9, 0xa9, 0x1e, 0x9d, 0xdc, 0xba, 0x5a,
-      0x01, 0xe7, 0xd6, 0x97, 0xa8, 0x0a, 0x18, 0xf9, 0xc3, 0xc4, 0xa3,
-      0x1e, 0x56, 0xe2, 0x7c, 0x83, 0x48, 0xdb, 0x16, 0x1a, 0x1c, 0xf5,
-      0x1d, 0x7e, 0xf1, 0x94, 0x2d, 0x4b, 0xcf, 0x72, 0x22, 0xc1};
-  static const uint8_t kP256PrivateKey[] = {
-      0x07, 0x0f, 0x08, 0x72, 0x7a, 0xd4, 0xa0, 0x4a, 0x9c, 0xdd, 0x59,
-      0xc9, 0x4d, 0x89, 0x68, 0x77, 0x08, 0xb5, 0x6f, 0xc9, 0x5d, 0x30,
-      0x77, 0x0e, 0xe8, 0xd1, 0xc9, 0xce, 0x0a, 0x8b, 0xb4, 0x6a};
-  ASSERT_TRUE(MakeECHConfig(
-      &ech_config, 0x42, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kP256PublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
-      /*extensions=*/{}));
-  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
-                                ech_config.data(), ech_config.size(),
-                                kP256PrivateKey, sizeof(kP256PrivateKey)));
+                                key.get()));
 
   // Unsupported extensions are rejected.
   static const uint8_t kExtensions[] = {0x00, 0x01, 0x00, 0x00};
@@ -1677,7 +1672,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
       kExtensions));
   EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
                                 ech_config.data(), ech_config.size(),
-                                kECHPrivateKey, sizeof(kECHPrivateKey)));
+                                key.get()));
 }
 
 static void AppendSession(SSL_SESSION *session, void *arg) {

@@ -38,9 +38,11 @@
 struct evp_hpke_kem_st {
   uint16_t id;
   size_t public_key_len;
+  size_t private_key_len;
   size_t seed_len;
-  int (*init_key)(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
-                  const uint8_t *priv_key, size_t priv_key_len);
+  int (*init_key)(EVP_HPKE_KEY *key, const uint8_t *priv_key,
+                  size_t priv_key_len);
+  int (*generate_key)(EVP_HPKE_KEY *key);
   int (*encap_with_seed)(const EVP_HPKE_KEM *kem, uint8_t *out_shared_secret,
                          size_t *out_shared_secret_len, uint8_t *out_enc,
                          size_t *out_enc_len, size_t max_enc,
@@ -130,8 +132,8 @@ static int dhkem_extract_and_expand(uint16_t kem_id, const EVP_MD *hkdf_md,
                              kem_context_len);
 }
 
-static int x25519_init_key(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
-                           const uint8_t *priv_key, size_t priv_key_len) {
+static int x25519_init_key(EVP_HPKE_KEY *key, const uint8_t *priv_key,
+                           size_t priv_key_len) {
   if (priv_key_len != X25519_PRIVATE_KEY_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
@@ -139,6 +141,11 @@ static int x25519_init_key(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
 
   OPENSSL_memcpy(key->private_key, priv_key, priv_key_len);
   X25519_public_from_private(key->public_key, priv_key);
+  return 1;
+}
+
+static int x25519_generate_key(EVP_HPKE_KEY *key) {
+  X25519_keypair(key->public_key, key->private_key);
   return 1;
 }
 
@@ -207,8 +214,10 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
   static const EVP_HPKE_KEM kKEM = {
       /*id=*/EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
       /*public_key_len=*/X25519_PUBLIC_VALUE_LEN,
+      /*private_key_len=*/X25519_PRIVATE_KEY_LEN,
       /*seed_len=*/X25519_PRIVATE_KEY_LEN,
       x25519_init_key,
+      x25519_generate_key,
       x25519_encap_with_seed,
       x25519_decap,
   };
@@ -226,15 +235,35 @@ void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key) {
   // future.
 }
 
+int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst, const EVP_HPKE_KEY *src) {
+  // For now, |EVP_HPKE_KEY| is trivially copyable.
+  OPENSSL_memcpy(dst, src, sizeof(EVP_HPKE_KEY));
+  return 1;
+}
+
 int EVP_HPKE_KEY_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
                       const uint8_t *priv_key, size_t priv_key_len) {
   EVP_HPKE_KEY_zero(key);
   key->kem = kem;
-  if (!kem->init_key(key, kem, priv_key, priv_key_len)) {
+  if (!kem->init_key(key, priv_key, priv_key_len)) {
     key->kem = NULL;
     return 0;
   }
   return 1;
+}
+
+int EVP_HPKE_KEY_generate(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem) {
+  EVP_HPKE_KEY_zero(key);
+  key->kem = kem;
+  if (!kem->generate_key(key)) {
+    key->kem = NULL;
+    return 0;
+  }
+  return 1;
+}
+
+const EVP_HPKE_KEM *EVP_HPKE_KEY_kem(const EVP_HPKE_KEY *key) {
+  return key->kem;
 }
 
 int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key, uint8_t *out,
@@ -245,6 +274,17 @@ int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key, uint8_t *out,
   }
   OPENSSL_memcpy(out, key->public_key, key->kem->public_key_len);
   *out_len = key->kem->public_key_len;
+  return 1;
+}
+
+int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key, uint8_t *out,
+                            size_t *out_len, size_t max_out) {
+  if (max_out < key->kem->private_key_len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    return 0;
+  }
+  OPENSSL_memcpy(out, key->private_key, key->kem->private_key_len);
+  *out_len = key->kem->private_key_len;
   return 1;
 }
 

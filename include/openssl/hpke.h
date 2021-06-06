@@ -80,7 +80,8 @@ OPENSSL_EXPORT uint16_t EVP_HPKE_AEAD_id(const EVP_HPKE_AEAD *aead);
 // with the |EVP_HPKE_KEY| type.
 
 // EVP_HPKE_KEY_zero sets an uninitialized |EVP_HPKE_KEY| to the zero state. The
-// caller should then use |EVP_HPKE_KEY_init| to finish initializing |key|.
+// caller should then use |EVP_HPKE_KEY_init|, |EVP_HPKE_KEY_copy|, or
+// |EVP_HPKE_KEY_generate| to finish initializing |key|.
 //
 // It is safe, but not necessary to call |EVP_HPKE_KEY_cleanup| in this state.
 // This may be used for more uniform cleanup of |EVP_HPKE_KEY|.
@@ -88,6 +89,13 @@ OPENSSL_EXPORT void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key);
 
 // EVP_HPKE_KEY_cleanup releases memory referenced by |key|.
 OPENSSL_EXPORT void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key);
+
+// EVP_HPKE_KEY_copy sets |dst| to a copy of |src|. It returns one on success
+// and zero on error. On success, the caller must call |EVP_HPKE_KEY_cleanup| to
+// release |dst|. On failure, calling |EVP_HPKE_KEY_cleanup| is safe, but not
+// necessary.
+OPENSSL_EXPORT int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst,
+                                     const EVP_HPKE_KEY *src);
 
 // EVP_HPKE_KEY_init decodes |priv_key| as a private key for |kem| and
 // initializes |key| with the result. It returns one on success and zero if
@@ -97,6 +105,13 @@ OPENSSL_EXPORT void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key);
 OPENSSL_EXPORT int EVP_HPKE_KEY_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
                                      const uint8_t *priv_key,
                                      size_t priv_key_len);
+
+// EVP_HPKE_KEY_generate sets |key| to a newly-generated key using |kem|.
+OPENSSL_EXPORT int EVP_HPKE_KEY_generate(EVP_HPKE_KEY *key,
+                                         const EVP_HPKE_KEM *kem);
+
+// EVP_HPKE_KEY_kem returns the HPKE KEM used by |key|.
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEY_kem(const EVP_HPKE_KEY *key);
 
 // EVP_HPKE_MAX_PUBLIC_KEY_LENGTH is the maximum length of a public key for all
 // KEMs supported by this library.
@@ -110,6 +125,19 @@ OPENSSL_EXPORT int EVP_HPKE_KEY_init(EVP_HPKE_KEY *key, const EVP_HPKE_KEM *kem,
 OPENSSL_EXPORT int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key,
                                            uint8_t *out, size_t *out_len,
                                            size_t max_out);
+
+// EVP_HPKE_MAX_PRIVATE_KEY_LENGTH is the maximum length of a private key for
+// all KEMs supported by this library.
+#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 32
+
+// EVP_HPKE_KEY_private_key writes |key|'s private key to |out| and sets
+// |*out_len| to the number of bytes written. On success, it returns one and
+// writes at most |max_out| bytes. If |max_out| is too small, it returns zero.
+// Setting |max_out| to |EVP_HPKE_MAX_PRIVATE_KEY_LENGTH| will ensure the
+// private key fits.
+OPENSSL_EXPORT int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key,
+                                            uint8_t *out, size_t *out_len,
+                                            size_t max_out);
 
 
 // Encryption contexts.

@@ -352,8 +352,7 @@ bool ssl_client_hello_decrypt(
 
 
 bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
-                           Span<const uint8_t> private_key,
-                           bool is_retry_config) {
+                           const EVP_HPKE_KEY *key, bool is_retry_config) {
   assert(!initialized_);
   is_retry_config_ = is_retry_config;
 
@@ -420,27 +419,22 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
     }
   }
 
-  // We only support one KEM.
-  if (kem_id != EVP_HPKE_DHKEM_X25519_HKDF_SHA256) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
-    return false;
-  }
-  if (!EVP_HPKE_KEY_init(key_.get(), EVP_hpke_x25519_hkdf_sha256(),
-                         private_key.data(), private_key.size())) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return false;
-  }
-  // Check the public key in the ECHConfig matches the private key.
+  // Check the public key in the ECHConfig matches |key|.
   uint8_t expected_public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
   size_t expected_public_key_len;
-  if (!EVP_HPKE_KEY_public_key(key_.get(), expected_public_key,
+  if (!EVP_HPKE_KEY_public_key(key, expected_public_key,
                                &expected_public_key_len,
                                sizeof(expected_public_key))) {
     return false;
   }
-  if (MakeConstSpan(expected_public_key, expected_public_key_len) !=
-      public_key) {
+  if (kem_id != EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key)) ||
+      MakeConstSpan(expected_public_key, expected_public_key_len) !=
+          public_key) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH);
+    return false;
+  }
+
+  if (!EVP_HPKE_KEY_copy(key_.get(), key)) {
     return false;
   }
 
@@ -517,13 +511,12 @@ void SSL_ECH_KEYS_free(SSL_ECH_KEYS *keys) {
 
 int SSL_ECH_KEYS_add(SSL_ECH_KEYS *configs, int is_retry_config,
                      const uint8_t *ech_config, size_t ech_config_len,
-                     const uint8_t *private_key, size_t private_key_len) {
+                     const EVP_HPKE_KEY *key) {
   UniquePtr<ECHServerConfig> parsed_config = MakeUnique<ECHServerConfig>();
   if (!parsed_config) {
     return 0;
   }
-  if (!parsed_config->Init(MakeConstSpan(ech_config, ech_config_len),
-                           MakeConstSpan(private_key, private_key_len),
+  if (!parsed_config->Init(MakeConstSpan(ech_config, ech_config_len), key,
                            !!is_retry_config)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;

@@ -17,6 +17,7 @@
 #include <memory>
 
 #include <openssl/err.h>
+#include <openssl/hpke.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
@@ -61,12 +62,12 @@ static const struct argument kArguments[] = {
         "-ocsp-response", kOptionalArgument, "OCSP response file to send",
     },
     {
-        "-echconfig-key",
+        "-ech-key",
         kOptionalArgument,
         "File containing the private key corresponding to the ECHConfig.",
     },
     {
-        "-echconfig",
+        "-ech-config",
         kOptionalArgument,
         "File containing one ECHConfig.",
     },
@@ -271,40 +272,41 @@ bool Server(const std::vector<std::string> &args) {
     }
   }
 
-  if (args_map.count("-echconfig-key") + args_map.count("-echconfig") == 1) {
+  if (args_map.count("-ech-key") + args_map.count("-ech-config") == 1) {
     fprintf(stderr,
-            "-echconfig and -echconfig-key must be specified together.\n");
+            "-ech-config and -ech-key must be specified together.\n");
     return false;
   }
 
-  if (args_map.count("-echconfig-key") != 0) {
-    std::string echconfig_key_path = args_map["-echconfig-key"];
-    std::string echconfig_path = args_map["-echconfig"];
-
+  if (args_map.count("-ech-key") != 0) {
     // Load the ECH private key.
-    ScopedFILE echconfig_key_file(fopen(echconfig_key_path.c_str(), "rb"));
-    std::vector<uint8_t> echconfig_key;
-    if (echconfig_key_file == nullptr ||
-        !ReadAll(&echconfig_key, echconfig_key_file.get())) {
-      fprintf(stderr, "Error reading %s\n", echconfig_key_path.c_str());
+    std::string ech_key_path = args_map["-ech-key"];
+    ScopedFILE ech_key_file(fopen(ech_key_path.c_str(), "rb"));
+    std::vector<uint8_t> ech_key;
+    if (ech_key_file == nullptr ||
+        !ReadAll(&ech_key, ech_key_file.get())) {
+      fprintf(stderr, "Error reading %s\n", ech_key_path.c_str());
       return false;
     }
 
     // Load the ECHConfig.
-    ScopedFILE echconfig_file(fopen(echconfig_path.c_str(), "rb"));
-    std::vector<uint8_t> echconfig;
-    if (echconfig_file == nullptr ||
-        !ReadAll(&echconfig, echconfig_file.get())) {
-      fprintf(stderr, "Error reading %s\n", echconfig_path.c_str());
+    std::string ech_config_path = args_map["-ech-config"];
+    ScopedFILE ech_config_file(fopen(ech_config_path.c_str(), "rb"));
+    std::vector<uint8_t> ech_config;
+    if (ech_config_file == nullptr ||
+        !ReadAll(&ech_config, ech_config_file.get())) {
+      fprintf(stderr, "Error reading %s\n", ech_config_path.c_str());
       return false;
     }
 
     bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
+    bssl::ScopedEVP_HPKE_KEY key;
     if (!keys ||
+        !EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
+                           ech_key.data(), ech_key.size()) ||
         !SSL_ECH_KEYS_add(keys.get(),
-                          /*is_retry_config=*/1, echconfig.data(),
-                          echconfig.size(), echconfig_key.data(),
-                          echconfig_key.size()) ||
+                          /*is_retry_config=*/1, ech_config.data(),
+                          ech_config.size(), key.get()) ||
         !SSL_CTX_set1_ech_keys(ctx.get(), keys.get())) {
       fprintf(stderr, "Error setting server's ECHConfig and private key\n");
       return false;

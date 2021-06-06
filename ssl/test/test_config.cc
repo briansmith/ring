@@ -22,6 +22,7 @@
 #include <memory>
 
 #include <openssl/base64.h>
+#include <openssl/hpke.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
@@ -1737,12 +1738,15 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       const std::string &ech_config = ech_server_configs[i];
       const std::string &ech_private_key = ech_server_keys[i];
       const int is_retry_config = ech_is_retry_config[i];
-      if (!SSL_ECH_KEYS_add(
+      bssl::ScopedEVP_HPKE_KEY key;
+      if (!EVP_HPKE_KEY_init(
+              key.get(), EVP_hpke_x25519_hkdf_sha256(),
+              reinterpret_cast<const uint8_t *>(ech_private_key.data()),
+              ech_private_key.size()) ||
+          !SSL_ECH_KEYS_add(
               keys.get(), is_retry_config,
               reinterpret_cast<const uint8_t *>(ech_config.data()),
-              ech_config.size(),
-              reinterpret_cast<const uint8_t *>(ech_private_key.data()),
-              ech_private_key.size())) {
+              ech_config.size(), key.get())) {
         return nullptr;
       }
     }

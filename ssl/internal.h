@@ -1438,11 +1438,9 @@ class ECHServerConfig {
   ~ECHServerConfig() = default;
   ECHServerConfig &operator=(ECHServerConfig &&) = delete;
 
-  // Init parses |ech_config| as an ECHConfig and saves a copy of |private_key|.
-  // It returns true on success and false on error. It will also error if
-  // |private_key| is not a valid X25519 private key or it does not correspond
-  // to the parsed public key.
-  bool Init(Span<const uint8_t> ech_config, Span<const uint8_t> private_key,
+  // Init parses |ech_config| as an ECHConfig and saves a copy of |key|.
+  // It returns true on success and false on error.
+  bool Init(Span<const uint8_t> ech_config, const EVP_HPKE_KEY *key,
             bool is_retry_config);
 
   // SetupContext sets up |ctx| for a new connection, given the specified

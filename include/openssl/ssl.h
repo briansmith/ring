@@ -3574,21 +3574,21 @@ OPENSSL_EXPORT void SSL_ECH_KEYS_up_ref(SSL_ECH_KEYS *keys);
 // SSL_ECH_KEYS_free releases memory associated with |keys|.
 OPENSSL_EXPORT void SSL_ECH_KEYS_free(SSL_ECH_KEYS *keys);
 
-// SSL_ECH_KEYS_add appends an ECHConfig in |ech_config| and its
-// corresponding private key in |private_key| to |keys|. When |is_retry_config|
-// is non-zero, this config will be returned to the client on configuration
-// mismatch. It returns one on success and zero on error. See also
-// |SSL_CTX_set1_ech_keys|.
+// SSL_ECH_KEYS_add decodes |ech_config| as an ECHConfig and appends it with
+// |key| to |keys|. If |is_retry_config| is non-zero, this config will be
+// returned to the client on configuration mismatch. It returns one on success
+// and zero on error.
 //
 // This function should be called successively to register each ECHConfig in
 // decreasing order of preference. This configuration must be completed before
 // setting |keys| on an |SSL_CTX| with |SSL_CTX_set1_ech_keys|. After that
 // point, |keys| is immutable; no more ECHConfig values may be added.
+//
+// See also |SSL_CTX_set1_ech_keys|.
 OPENSSL_EXPORT int SSL_ECH_KEYS_add(SSL_ECH_KEYS *keys, int is_retry_config,
                                     const uint8_t *ech_config,
                                     size_t ech_config_len,
-                                    const uint8_t *private_key,
-                                    size_t private_key_len);
+                                    const EVP_HPKE_KEY *key);
 
 // SSL_CTX_set1_ech_keys configures |ctx| to use |keys| to decrypt encrypted
 // ClientHellos. It returns one on success, and zero on failure. If |keys| does

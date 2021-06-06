@@ -26,6 +26,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/hpke.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/ssl.h>
@@ -456,14 +457,13 @@ class TLSFuzzer {
 
     if (role_ == kServer) {
       bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
-      if (!keys) {
-        return false;
-      }
-      if (!SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/true, kECHConfig,
-                            sizeof(kECHConfig), kECHKey, sizeof(kECHKey))) {
-        return false;
-      }
-      if (!SSL_CTX_set1_ech_keys(ctx_.get(), keys.get())) {
+      bssl::ScopedEVP_HPKE_KEY key;
+      if (!keys ||
+          !EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(), kECHKey,
+                             sizeof(kECHKey)) ||
+          !SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/true, kECHConfig,
+                            sizeof(kECHConfig), key.get()) ||
+          !SSL_CTX_set1_ech_keys(ctx_.get(), keys.get())) {
         return false;
       }
     }
