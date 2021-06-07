@@ -278,9 +278,9 @@ class Array {
   T &operator[](size_t i) { return data_[i]; }
 
   T *begin() { return data_; }
-  const T *cbegin() const { return data_; }
+  const T *begin() const { return data_; }
   T *end() { return data_ + size_; }
-  const T *cend() const { return data_ + size_; }
+  const T *end() const { return data_ + size_; }
 
   void Reset() { Reset(nullptr, 0); }
 
@@ -389,9 +389,9 @@ class GrowableArray {
   T &operator[](size_t i) { return array_[i]; }
 
   T *begin() { return array_.data(); }
-  const T *cbegin() const { return array_.data(); }
+  const T *begin() const { return array_.data(); }
   T *end() { return array_.data() + size_; }
-  const T *cend() const { return array_.data() + size_; }
+  const T *end() const { return array_.data() + size_; }
 
   void clear() {
     size_ = 0;

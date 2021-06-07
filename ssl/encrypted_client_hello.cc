@@ -15,6 +15,7 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/bytestring.h>
 #include <openssl/curve25519.h>
@@ -32,6 +33,9 @@
 #endif
 
 BSSL_NAMESPACE_BEGIN
+
+// ECH reuses the extension code point for the version number.
+static const uint16_t kECHConfigVersion = TLSEXT_TYPE_encrypted_client_hello;
 
 static const decltype(&EVP_hpke_aes_128_gcm) kSupportedAEADs[] = {
     &EVP_hpke_aes_128_gcm,
@@ -373,7 +377,7 @@ bool ECHServerConfig::Init(Span<const uint8_t> ech_config,
   // configured in both the server and DNS. If the caller configures an
   // unsupported parameter, this is a deployment error. To catch these errors,
   // we fail early.
-  if (version != TLSEXT_TYPE_encrypted_client_hello) {
+  if (version != kECHConfigVersion) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ECH_SERVER_CONFIG);
     return false;
   }
@@ -493,6 +497,52 @@ void SSL_set_enable_ech_grease(SSL *ssl, int enable) {
   ssl->config->ech_grease_enabled = !!enable;
 }
 
+int SSL_marshal_ech_config(uint8_t **out, size_t *out_len, uint8_t config_id,
+                           const EVP_HPKE_KEY *key, const char *public_name,
+                           size_t max_name_len) {
+  size_t public_name_len = strlen(public_name);
+  if (public_name_len == 0) {
+    // TODO(https://crbug.com/boringssl/275): Check |public_name| is a valid DNS
+    // name.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ECH_PUBLIC_NAME);
+    return 0;
+  }
+
+  // See draft-ietf-tls-esni-10, section 4.
+  ScopedCBB cbb;
+  CBB contents, child;
+  uint8_t *public_key;
+  size_t public_key_len;
+  if (!CBB_init(cbb.get(), 128) ||  //
+      !CBB_add_u16(cbb.get(), kECHConfigVersion) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &contents) ||
+      !CBB_add_u8(&contents, config_id) ||
+      !CBB_add_u16(&contents, EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(key))) ||
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_reserve(&child, &public_key, EVP_HPKE_MAX_PUBLIC_KEY_LENGTH) ||
+      !EVP_HPKE_KEY_public_key(key, public_key, &public_key_len,
+                               EVP_HPKE_MAX_PUBLIC_KEY_LENGTH) ||
+      !CBB_did_write(&child, public_key_len) ||
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      // Write a default cipher suite configuration.
+      !CBB_add_u16(&child, EVP_HPKE_HKDF_SHA256) ||
+      !CBB_add_u16(&child, EVP_HPKE_AES_128_GCM) ||
+      !CBB_add_u16(&child, EVP_HPKE_HKDF_SHA256) ||
+      !CBB_add_u16(&child, EVP_HPKE_CHACHA20_POLY1305) ||
+      !CBB_add_u16(&contents, max_name_len) ||
+      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(public_name),
+                     public_name_len) ||
+      // TODO(https://crbug.com/boringssl/275): Reserve some GREASE extensions
+      // and include some.
+      !CBB_add_u16(&contents, 0 /* no extensions */) ||
+      !CBB_finish(cbb.get(), out, out_len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  return 1;
+}
+
 SSL_ECH_KEYS *SSL_ECH_KEYS_new() { return New<SSL_ECH_KEYS>(); }
 
 void SSL_ECH_KEYS_up_ref(SSL_ECH_KEYS *keys) {
@@ -526,6 +576,37 @@ int SSL_ECH_KEYS_add(SSL_ECH_KEYS *configs, int is_retry_config,
     return 0;
   }
   return 1;
+}
+
+int SSL_ECH_KEYS_has_duplicate_config_id(const SSL_ECH_KEYS *keys) {
+  bool seen[256] = {false};
+  for (const auto &config : keys->configs) {
+    if (seen[config->config_id()]) {
+      return 1;
+    }
+    seen[config->config_id()] = true;
+  }
+  return 0;
+}
+
+int SSL_ECH_KEYS_marshal_retry_configs(const SSL_ECH_KEYS *keys, uint8_t **out,
+                                       size_t *out_len) {
+  ScopedCBB cbb;
+  CBB child;
+  if (!CBB_init(cbb.get(), 128) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &child)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return false;
+  }
+  for (const auto &config : keys->configs) {
+    if (config->is_retry_config() &&
+        !CBB_add_bytes(&child, config->ech_config().data(),
+                       config->ech_config().size())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return false;
+    }
+  }
+  return CBB_finish(cbb.get(), out, out_len);
 }
 
 int SSL_CTX_set1_ech_keys(SSL_CTX *ctx, SSL_ECH_KEYS *keys) {

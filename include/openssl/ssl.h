@@ -3565,6 +3565,26 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 // as part of this connection.
 OPENSSL_EXPORT void SSL_set_enable_ech_grease(SSL *ssl, int enable);
 
+// SSL_marshal_ech_config constructs a new serialized ECHConfig. On success, it
+// sets |*out| to a newly-allocated buffer containing the result and |*out_len|
+// to the size of the buffer. The caller must call |OPENSSL_free| on |*out| to
+// release the memory. On failure, it returns zero.
+//
+// The |config_id| field is a single byte identifer for the ECHConfig. Reusing
+// config IDs is allowed, but if multiple ECHConfigs with the same config ID are
+// active at a time, server load may increase. See
+// |SSL_ECH_KEYS_has_duplicate_config_id|.
+//
+// The public key and KEM algorithm are taken from |key|. |public_name| is the
+// DNS name used to authenticate the recovery flow. |max_name_len| should be the
+// length of the longest name in the ECHConfig's anonymity set and influences
+// client padding decisions.
+OPENSSL_EXPORT int SSL_marshal_ech_config(uint8_t **out, size_t *out_len,
+                                          uint8_t config_id,
+                                          const EVP_HPKE_KEY *key,
+                                          const char *public_name,
+                                          size_t max_name_len);
+
 // SSL_ECH_KEYS_new returns a newly-allocated |SSL_ECH_KEYS| or NULL on error.
 OPENSSL_EXPORT SSL_ECH_KEYS *SSL_ECH_KEYS_new(void);
 
@@ -3589,6 +3609,23 @@ OPENSSL_EXPORT int SSL_ECH_KEYS_add(SSL_ECH_KEYS *keys, int is_retry_config,
                                     const uint8_t *ech_config,
                                     size_t ech_config_len,
                                     const EVP_HPKE_KEY *key);
+
+// SSL_ECH_KEYS_has_duplicate_config_id returns one if |keys| has duplicate
+// config IDs or zero otherwise. Duplicate config IDs still work, but may
+// increase server load due to trial decryption.
+OPENSSL_EXPORT int SSL_ECH_KEYS_has_duplicate_config_id(
+    const SSL_ECH_KEYS *keys);
+
+// SSL_ECH_KEYS_marshal_retry_configs serializes the retry configs in |keys| as
+// an ECHConfigList. On success, it sets |*out| to a newly-allocated buffer
+// containing the result and |*out_len| to the size of the buffer. The caller
+// must call |OPENSSL_free| on |*out| to release the memory. On failure, it
+// returns zero.
+//
+// This output may be advertised to clients in DNS.
+OPENSSL_EXPORT int SSL_ECH_KEYS_marshal_retry_configs(const SSL_ECH_KEYS *keys,
+                                                      uint8_t **out,
+                                                      size_t *out_len);
 
 // SSL_CTX_set1_ech_keys configures |ctx| to use |keys| to decrypt encrypted
 // ClientHellos. It returns one on success, and zero on failure. If |keys| does
@@ -5437,6 +5474,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_CLIENT_HELLO_INNER 314
 #define SSL_R_INVALID_ALPN_PROTOCOL_LIST 315
 #define SSL_R_COULD_NOT_PARSE_HINTS 316
+#define SSL_R_INVALID_ECH_PUBLIC_NAME 317
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

@@ -1464,73 +1464,66 @@ TEST(SSLTest, AddClientCA) {
   EXPECT_EQ(0, X509_NAME_cmp(sk_X509_NAME_value(list, 2), name1));
 }
 
-// kECHConfig contains a serialized ECHConfig value.
-static const uint8_t kECHConfig[] = {
-    // version
-    0xfe, 0x0a,
-    // length
-    0x00, 0x43,
-    // contents.config_id
-    0x42,
-    // contents.kem_id
-    0x00, 0x20,
-    // contents.public_key
-    0x00, 0x20, 0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3,
-    0x6a, 0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
-    0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c,
-    // contents.cipher_suites
-    0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03,
-    // contents.maximum_name_length
-    0x00, 0x10,
-    // contents.public_name
-    0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
-    0x6d, 0x70, 0x6c, 0x65,
-    // contents.extensions
-    0x00, 0x00};
+struct ECHConfigParams {
+  uint16_t version = TLSEXT_TYPE_encrypted_client_hello;
+  uint16_t config_id = 1;
+  std::string public_name = "example.com";
+  const EVP_HPKE_KEY *key = nullptr;
+  // kem_id, if zero, takes its value from |key|.
+  uint16_t kem_id = 0;
+  // public_key, if empty takes its value from |key|.
+  std::vector<uint8_t> public_key;
+  size_t max_name_len = 16;
+  // cipher_suites is a list of code points which should contain pairs of KDF
+  // and AEAD IDs.
+  std::vector<uint16_t> cipher_suites = {EVP_HPKE_HKDF_SHA256,
+                                         EVP_HPKE_AES_128_GCM};
+  std::vector<uint8_t> extensions;
+};
 
-// kECHPublicKey is the public key encoded in |kECHConfig|.
-static const uint8_t kECHPublicKey[X25519_PUBLIC_VALUE_LEN] = {
-    0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3, 0x6a,
-    0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
-    0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c};
+// MakeECHConfig serializes an ECHConfig from |params| and writes it to
+// |*out|.
+bool MakeECHConfig(std::vector<uint8_t> *out,
+                         const ECHConfigParams &params) {
+  uint16_t kem_id = params.kem_id == 0
+                        ? EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(params.key))
+                        : params.kem_id;
+  std::vector<uint8_t> public_key = params.public_key;
+  if (public_key.empty()) {
+    public_key.resize(EVP_HPKE_MAX_PUBLIC_KEY_LENGTH);
+    size_t len;
+    if (!EVP_HPKE_KEY_public_key(params.key, public_key.data(), &len,
+                                 public_key.size())) {
+      return false;
+    }
+    public_key.resize(len);
+  }
 
-// kECHPrivateKey is the X25519 private key corresponding to |kECHPublicKey|.
-static const uint8_t kECHPrivateKey[X25519_PRIVATE_KEY_LEN] = {
-    0xbc, 0xb5, 0x51, 0x29, 0x31, 0x10, 0x30, 0xc9, 0xed, 0x26, 0xde,
-    0xd4, 0xb3, 0xdf, 0x3a, 0xce, 0x06, 0x8a, 0xee, 0x17, 0xab, 0xce,
-    0xd7, 0xdb, 0xf3, 0x11, 0xe5, 0xa8, 0xf3, 0xb1, 0x8e, 0x24};
-
-// MakeECHConfig serializes an ECHConfig and writes it to |*out| with the
-// specified parameters. |cipher_suites| is a list of code points which should
-// contain pairs of KDF and AEAD IDs.
-bool MakeECHConfig(std::vector<uint8_t> *out, uint8_t config_id,
-                   uint16_t kem_id, Span<const uint8_t> public_key,
-                   Span<const uint16_t> cipher_suites,
-                   Span<const uint8_t> extensions) {
   bssl::ScopedCBB cbb;
   CBB contents, child;
-  static const char kPublicName[] = "example.com";
   if (!CBB_init(cbb.get(), 64) ||
-      !CBB_add_u16(cbb.get(), TLSEXT_TYPE_encrypted_client_hello) ||
+      !CBB_add_u16(cbb.get(), params.version) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &contents) ||
-      !CBB_add_u8(&contents, config_id) ||
+      !CBB_add_u8(&contents, params.config_id) ||
       !CBB_add_u16(&contents, kem_id) ||
       !CBB_add_u16_length_prefixed(&contents, &child) ||
       !CBB_add_bytes(&child, public_key.data(), public_key.size()) ||
       !CBB_add_u16_length_prefixed(&contents, &child)) {
     return false;
   }
-  for (uint16_t cipher_suite : cipher_suites) {
+  for (uint16_t cipher_suite : params.cipher_suites) {
     if (!CBB_add_u16(&child, cipher_suite)) {
       return false;
     }
   }
-  if (!CBB_add_u16(&contents, strlen(kPublicName)) ||  // maximum_name_length
+  if (!CBB_add_u16(&contents, params.max_name_len) ||
       !CBB_add_u16_length_prefixed(&contents, &child) ||
-      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(kPublicName),
-                     strlen(kPublicName)) ||
+      !CBB_add_bytes(
+          &child, reinterpret_cast<const uint8_t *>(params.public_name.data()),
+          params.public_name.size()) ||
       !CBB_add_u16_length_prefixed(&contents, &child) ||
-      !CBB_add_bytes(&child, extensions.data(), extensions.size()) ||
+      !CBB_add_bytes(&child, params.extensions.data(),
+                     params.extensions.size()) ||
       !CBB_flush(cbb.get())) {
     return false;
   }
@@ -1539,105 +1532,190 @@ bool MakeECHConfig(std::vector<uint8_t> *out, uint8_t config_id,
   return true;
 }
 
-TEST(SSLTest, ECHKeys) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(ctx);
+// Test that |SSL_marshal_ech_config| and |SSL_ECH_KEYS_marshal_retry_configs|
+// output values as expected.
+TEST(SSLTest, MarshalECHConfig) {
+  static const uint8_t kPrivateKey[X25519_PRIVATE_KEY_LEN] = {
+      0xbc, 0xb5, 0x51, 0x29, 0x31, 0x10, 0x30, 0xc9, 0xed, 0x26, 0xde,
+      0xd4, 0xb3, 0xdf, 0x3a, 0xce, 0x06, 0x8a, 0xee, 0x17, 0xab, 0xce,
+      0xd7, 0xdb, 0xf3, 0x11, 0xe5, 0xa8, 0xf3, 0xb1, 0x8e, 0x24};
+  bssl::ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
+                                kPrivateKey, sizeof(kPrivateKey)));
 
+  static const uint8_t kECHConfig[] = {
+      // version
+      0xfe, 0x0a,
+      // length
+      0x00, 0x43,
+      // contents.config_id
+      0x01,
+      // contents.kem_id
+      0x00, 0x20,
+      // contents.public_key
+      0x00, 0x20, 0xa6, 0x9a, 0x41, 0x48, 0x5d, 0x32, 0x96, 0xa4, 0xe0, 0xc3,
+      0x6a, 0xee, 0xf6, 0x63, 0x0f, 0x59, 0x32, 0x6f, 0xdc, 0xff, 0x81, 0x29,
+      0x59, 0xa5, 0x85, 0xd3, 0x9b, 0x3b, 0xde, 0x98, 0x55, 0x5c,
+      // contents.cipher_suites
+      0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x03,
+      // contents.maximum_name_length
+      0x00, 0x10,
+      // contents.public_name
+      0x00, 0x0e, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x2e, 0x65, 0x78, 0x61,
+      0x6d, 0x70, 0x6c, 0x65,
+      // contents.extensions
+      0x00, 0x00};
+  uint8_t *ech_config;
+  size_t ech_config_len;
+  ASSERT_TRUE(SSL_marshal_ech_config(&ech_config, &ech_config_len,
+                                     /*config_id=*/1, key.get(),
+                                     "public.example", 16));
+  bssl::UniquePtr<uint8_t> free_ech_config(ech_config);
+  EXPECT_EQ(Bytes(kECHConfig), Bytes(ech_config, ech_config_len));
+
+  // Generate a second ECHConfig.
+  bssl::ScopedEVP_HPKE_KEY key2;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key2.get(), EVP_hpke_x25519_hkdf_sha256()));
+  uint8_t *ech_config2;
+  size_t ech_config2_len;
+  ASSERT_TRUE(SSL_marshal_ech_config(&ech_config2, &ech_config2_len,
+                                     /*config_id=*/2, key2.get(),
+                                     "public.example", 16));
+  bssl::UniquePtr<uint8_t> free_ech_config2(ech_config2);
+
+  // Install both ECHConfigs in an |SSL_ECH_KEYS|.
   bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
   ASSERT_TRUE(keys);
+  ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, ech_config,
+                               ech_config_len, key.get()));
+  ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, ech_config2,
+                               ech_config2_len, key2.get()));
+
+  // The ECHConfigList should be correctly serialized.
+  uint8_t *ech_config_list;
+  size_t ech_config_list_len;
+  ASSERT_TRUE(SSL_ECH_KEYS_marshal_retry_configs(keys.get(), &ech_config_list,
+                                                 &ech_config_list_len));
+  bssl::UniquePtr<uint8_t> free_ech_config_list(ech_config_list);
+
+  // ECHConfigList is just the concatenation with a length prefix.
+  size_t len = ech_config_len + ech_config2_len;
+  std::vector<uint8_t> expected = {uint8_t(len >> 8), uint8_t(len)};
+  expected.insert(expected.end(), ech_config, ech_config + ech_config_len);
+  expected.insert(expected.end(), ech_config2, ech_config2 + ech_config2_len);
+  EXPECT_EQ(Bytes(expected), Bytes(ech_config_list, ech_config_list_len));
+
+  // TODO(https://crbug.com/boringssl/275): When the client is implemented, test
+  // that we are able to use our own ECHConfigs.
+}
+
+TEST(SSLTest, ECHHasDuplicateConfigID) {
+  const struct {
+    std::vector<uint8_t> ids;
+    bool has_duplicate;
+  } kTests[] = {
+      {{}, false},
+      {{1}, false},
+      {{1, 2, 3, 255}, false},
+      {{1, 2, 3, 1}, true},
+  };
+  for (const auto &test : kTests) {
+    bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
+    ASSERT_TRUE(keys);
+    for (const uint8_t id : test.ids) {
+      bssl::ScopedEVP_HPKE_KEY key;
+      ASSERT_TRUE(
+          EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+      uint8_t *ech_config;
+      size_t ech_config_len;
+      ASSERT_TRUE(SSL_marshal_ech_config(&ech_config, &ech_config_len, id,
+                                         key.get(), "public.example", 16));
+      bssl::UniquePtr<uint8_t> free_ech_config(ech_config);
+      ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                   ech_config, ech_config_len, key.get()));
+    }
+
+    EXPECT_EQ(test.has_duplicate ? 1 : 0,
+              SSL_ECH_KEYS_has_duplicate_config_id(keys.get()));
+  }
+}
+
+// Test that |SSL_ECH_KEYS_add| checks consistency between the public and
+// private key.
+TEST(SSLTest, ECHKeyConsistency) {
+  bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
+  ASSERT_TRUE(keys);
+  bssl::ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+  uint8_t public_key[EVP_HPKE_MAX_PUBLIC_KEY_LENGTH];
+  size_t public_key_len;
+  ASSERT_TRUE(EVP_HPKE_KEY_public_key(key.get(), public_key, &public_key_len,
+                                      sizeof(public_key)));
+
+  // Adding an ECHConfig with the matching public key succeeds.
+  ECHConfigParams params;
+  params.key = key.get();
+  std::vector<uint8_t> ech_config;
+  ASSERT_TRUE(MakeECHConfig(&ech_config, params));
+  EXPECT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                               ech_config.data(), ech_config.size(),
+                               key.get()));
 
   // Adding an ECHConfig with the wrong public key is an error.
   bssl::ScopedEVP_HPKE_KEY wrong_key;
   ASSERT_TRUE(
       EVP_HPKE_KEY_generate(wrong_key.get(), EVP_hpke_x25519_hkdf_sha256()));
-  ASSERT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, kECHConfig,
-                                sizeof(kECHConfig), wrong_key.get()));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH,
-            ERR_GET_REASON(err));
-  ERR_clear_error();
+  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                ech_config.data(), ech_config.size(),
+                                wrong_key.get()));
+
+  // Adding an ECHConfig with a truncated public key is an error.
+  ECHConfigParams truncated;
+  truncated.key = key.get();
+  truncated.public_key.assign(public_key, public_key + public_key_len - 1);
+  ASSERT_TRUE(MakeECHConfig(&ech_config, truncated));
+  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                ech_config.data(), ech_config.size(), key.get()));
 
   // Adding an ECHConfig with the right public key, but wrong KEM ID, is an
   // error.
-  bssl::ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
-                                kECHPrivateKey, sizeof(kECHPrivateKey)));
-  std::vector<uint8_t> ech_config;
-  ASSERT_TRUE(MakeECHConfig(
-      &ech_config, 0x42, 0x0010 /* DHKEM(P-256, HKDF-SHA256) */, kECHPublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
-      /*extensions=*/{}));
+  ECHConfigParams wrong_kem;
+  wrong_kem.key = key.get();
+  wrong_kem.kem_id = 0x0010;  // DHKEM(P-256, HKDF-SHA256)
+  ASSERT_TRUE(MakeECHConfig(&ech_config, wrong_kem));
   EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
                                 ech_config.data(), ech_config.size(),
                                 key.get()));
-
-  // Adding an ECHConfig with the matching public key succeeds.
-  ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, kECHConfig,
-                               sizeof(kECHConfig), key.get()));
-
-  ASSERT_TRUE(SSL_CTX_set1_ech_keys(ctx.get(), keys.get()));
-
-  // Build a new config list and replace the old one on |ctx|.
-  bssl::UniquePtr<SSL_ECH_KEYS> next_keys(SSL_ECH_KEYS_new());
-  ASSERT_TRUE(SSL_ECH_KEYS_add(next_keys.get(), /*is_retry_config=*/1,
-                               kECHConfig, sizeof(kECHConfig),key.get()));
-  ASSERT_TRUE(SSL_CTX_set1_ech_keys(ctx.get(), next_keys.get()));
-}
-
-TEST(SSLTest, ECHServerConfigListTruncatedPublicKey) {
-  std::vector<uint8_t> ech_config;
-  ASSERT_TRUE(MakeECHConfig(
-      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256,
-      MakeConstSpan(kECHPublicKey, sizeof(kECHPublicKey) - 1),
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
-      /*extensions=*/{}));
-
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(ctx);
-
-  bssl::ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
-                                kECHPrivateKey, sizeof(kECHPrivateKey)));
-  bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
-  ASSERT_TRUE(keys);
-  ASSERT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
-                                ech_config.data(), ech_config.size(),
-                                key.get()));
-
-  uint32_t err = ERR_peek_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_ECH_SERVER_CONFIG_AND_PRIVATE_KEY_MISMATCH,
-            ERR_GET_REASON(err));
-  ERR_clear_error();
 }
 
 // Test that |SSL_CTX_set1_ech_keys| fails when the config list
 // has no retry configs.
 TEST(SSLTest, ECHServerConfigsWithoutRetryConfigs) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(ctx);
+  bssl::ScopedEVP_HPKE_KEY key;
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
+  uint8_t *ech_config;
+  size_t ech_config_len;
+  ASSERT_TRUE(SSL_marshal_ech_config(&ech_config, &ech_config_len,
+                                     /*config_id=*/1, key.get(),
+                                     "public.example", 16));
+  bssl::UniquePtr<uint8_t> free_ech_config(ech_config);
 
+  // Install a non-retry config.
   bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
   ASSERT_TRUE(keys);
+  ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/0, ech_config,
+                               ech_config_len, key.get()));
 
-  bssl::ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
-                                kECHPrivateKey, sizeof(kECHPrivateKey)));
-  ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/0, kECHConfig,
-                               sizeof(kECHConfig), key.get()));
-
-  ASSERT_FALSE(SSL_CTX_set1_ech_keys(ctx.get(), keys.get()));
-  uint32_t err = ERR_peek_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_ECH_SERVER_WOULD_HAVE_NO_RETRY_CONFIGS, ERR_GET_REASON(err));
-  ERR_clear_error();
+  // |keys| has no retry configs.
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  EXPECT_FALSE(SSL_CTX_set1_ech_keys(ctx.get(), keys.get()));
 
   // Add the same ECHConfig to the list, but this time mark it as a retry
   // config.
-  ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, kECHConfig,
-                               sizeof(kECHConfig), key.get()));
-  ASSERT_TRUE(SSL_CTX_set1_ech_keys(ctx.get(), keys.get()));
+  ASSERT_TRUE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1, ech_config,
+                               ech_config_len, key.get()));
+  EXPECT_TRUE(SSL_CTX_set1_ech_keys(ctx.get(), keys.get()));
 }
 
 // Test that the server APIs reject ECHConfigs with unsupported features.
@@ -1645,31 +1723,41 @@ TEST(SSLTest, UnsupportedECHConfig) {
   bssl::UniquePtr<SSL_ECH_KEYS> keys(SSL_ECH_KEYS_new());
   ASSERT_TRUE(keys);
   bssl::ScopedEVP_HPKE_KEY key;
-  ASSERT_TRUE(EVP_HPKE_KEY_init(key.get(), EVP_hpke_x25519_hkdf_sha256(),
-                                kECHPrivateKey, sizeof(kECHPrivateKey)));
+  ASSERT_TRUE(EVP_HPKE_KEY_generate(key.get(), EVP_hpke_x25519_hkdf_sha256()));
 
   // Unsupported versions are rejected.
-  static const uint8_t kUnsupportedVersion[] = {0xff, 0xff, 0x00, 0x00};
-  EXPECT_FALSE(SSL_ECH_KEYS_add(
-      keys.get(), /*is_retry_config=*/1, kUnsupportedVersion,
-      sizeof(kUnsupportedVersion), key.get()));
-
-  // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
+  ECHConfigParams unsupported_version;
+  unsupported_version.version = 0xffff;
+  unsupported_version.key = key.get();
   std::vector<uint8_t> ech_config;
-  ASSERT_TRUE(MakeECHConfig(
-      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHPublicKey,
-      std::vector<uint16_t>{0x002 /* HKDF-SHA384 */, EVP_HPKE_AES_128_GCM},
-      /*extensions=*/{}));
+  ASSERT_TRUE(MakeECHConfig(&ech_config, unsupported_version));
   EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
                                 ech_config.data(), ech_config.size(),
                                 key.get()));
 
+  // Unsupported cipher suites are rejected. (We only support HKDF-SHA256.)
+  ECHConfigParams unsupported_kdf;
+  unsupported_kdf.key = key.get();
+  unsupported_kdf.cipher_suites = {0x002 /* HKDF-SHA384 */,
+                                   EVP_HPKE_AES_128_GCM};
+  ASSERT_TRUE(MakeECHConfig(&ech_config, unsupported_kdf));
+  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                ech_config.data(), ech_config.size(),
+                                key.get()));
+  ECHConfigParams unsupported_aead;
+  unsupported_aead.key = key.get();
+  unsupported_aead.cipher_suites = {EVP_HPKE_HKDF_SHA256, 0xffff};
+  ASSERT_TRUE(MakeECHConfig(&ech_config, unsupported_aead));
+  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                ech_config.data(), ech_config.size(),
+                                key.get()));
+
+
   // Unsupported extensions are rejected.
-  static const uint8_t kExtensions[] = {0x00, 0x01, 0x00, 0x00};
-  ASSERT_TRUE(MakeECHConfig(
-      &ech_config, 0x42, EVP_HPKE_DHKEM_X25519_HKDF_SHA256, kECHPublicKey,
-      std::vector<uint16_t>{EVP_HPKE_HKDF_SHA256, EVP_HPKE_AES_128_GCM},
-      kExtensions));
+  ECHConfigParams extensions;
+  extensions.key = key.get();
+  extensions.extensions = {0x00, 0x01, 0x00, 0x00};
+  ASSERT_TRUE(MakeECHConfig(&ech_config, extensions));
   EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
                                 ech_config.data(), ech_config.size(),
                                 key.get()));
