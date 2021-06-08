@@ -1651,6 +1651,10 @@ struct SSL_HANDSHAKE_HINTS {
 
   Array<uint8_t> decrypted_psk;
   bool ignore_psk = false;
+
+  uint16_t cert_compression_alg_id = 0;
+  Array<uint8_t> cert_compression_input;
+  Array<uint8_t> cert_compression_output;
 };
 
 struct SSL_HANDSHAKE {

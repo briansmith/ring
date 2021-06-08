@@ -15681,51 +15681,72 @@ func addOmitExtensionsTests() {
 	}
 }
 
-func addCertCompressionTests() {
+const (
+	shrinkingCompressionAlgID = 0xff01
+	expandingCompressionAlgID = 0xff02
+	randomCompressionAlgID    = 0xff03
+)
+
+var (
 	// shrinkingPrefix is the first two bytes of a Certificate message.
-	shrinkingPrefix := []byte{0, 0}
+	shrinkingPrefix = []byte{0, 0}
 	// expandingPrefix is just some arbitrary byte string. This has to match the
 	// value in the shim.
-	expandingPrefix := []byte{1, 2, 3, 4}
+	expandingPrefix = []byte{1, 2, 3, 4}
+)
 
-	shrinking := CertCompressionAlg{
-		Compress: func(uncompressed []byte) []byte {
-			if !bytes.HasPrefix(uncompressed, shrinkingPrefix) {
-				panic(fmt.Sprintf("cannot compress certificate message %x", uncompressed))
-			}
-			return uncompressed[len(shrinkingPrefix):]
-		},
-		Decompress: func(out []byte, compressed []byte) bool {
-			if len(out) != len(shrinkingPrefix)+len(compressed) {
-				return false
-			}
+var shrinkingCompression = CertCompressionAlg{
+	Compress: func(uncompressed []byte) []byte {
+		if !bytes.HasPrefix(uncompressed, shrinkingPrefix) {
+			panic(fmt.Sprintf("cannot compress certificate message %x", uncompressed))
+		}
+		return uncompressed[len(shrinkingPrefix):]
+	},
+	Decompress: func(out []byte, compressed []byte) bool {
+		if len(out) != len(shrinkingPrefix)+len(compressed) {
+			return false
+		}
 
-			copy(out, shrinkingPrefix)
-			copy(out[len(shrinkingPrefix):], compressed)
-			return true
-		},
-	}
+		copy(out, shrinkingPrefix)
+		copy(out[len(shrinkingPrefix):], compressed)
+		return true
+	},
+}
 
-	expanding := CertCompressionAlg{
-		Compress: func(uncompressed []byte) []byte {
-			ret := make([]byte, 0, len(expandingPrefix)+len(uncompressed))
-			ret = append(ret, expandingPrefix...)
-			return append(ret, uncompressed...)
-		},
-		Decompress: func(out []byte, compressed []byte) bool {
-			if !bytes.HasPrefix(compressed, expandingPrefix) {
-				return false
-			}
-			copy(out, compressed[len(expandingPrefix):])
-			return true
-		},
-	}
+var expandingCompression = CertCompressionAlg{
+	Compress: func(uncompressed []byte) []byte {
+		ret := make([]byte, 0, len(expandingPrefix)+len(uncompressed))
+		ret = append(ret, expandingPrefix...)
+		return append(ret, uncompressed...)
+	},
+	Decompress: func(out []byte, compressed []byte) bool {
+		if !bytes.HasPrefix(compressed, expandingPrefix) {
+			return false
+		}
+		copy(out, compressed[len(expandingPrefix):])
+		return true
+	},
+}
 
-	const (
-		shrinkingAlgID = 0xff01
-		expandingAlgID = 0xff02
-	)
+var randomCompression = CertCompressionAlg{
+	Compress: func(uncompressed []byte) []byte {
+		ret := make([]byte, 1+len(uncompressed))
+		if _, err := rand.Read(ret[:1]); err != nil {
+			panic(err)
+		}
+		copy(ret[1:], uncompressed)
+		return ret
+	},
+	Decompress: func(out []byte, compressed []byte) bool {
+		if len(compressed) != 1+len(out) {
+			return false
+		}
+		copy(out, compressed[1:])
+		return true
+	},
+}
 
+func addCertCompressionTests() {
 	for _, ver := range tlsVersions {
 		if ver.version < VersionTLS12 {
 			continue
@@ -15770,9 +15791,11 @@ func addCertCompressionTests() {
 				name:     "CertCompressionIgnoredBefore13-" + ver.name,
 				flags:    []string{"-install-cert-compression-algs"},
 				config: Config{
-					MinVersion:          ver.version,
-					MaxVersion:          ver.version,
-					CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgID: expanding},
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+					CertCompressionAlgs: map[uint16]CertCompressionAlg{
+						expandingCompressionAlgID: expandingCompression,
+					},
 				},
 			})
 
@@ -15784,11 +15807,13 @@ func addCertCompressionTests() {
 			name:     "CertCompressionExpands-" + ver.name,
 			flags:    []string{"-install-cert-compression-algs"},
 			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgID: expanding},
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					expandingCompressionAlgID: expandingCompression,
+				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgID,
+					ExpectedCompressedCert: expandingCompressionAlgID,
 				},
 			},
 		})
@@ -15798,17 +15823,39 @@ func addCertCompressionTests() {
 			name:     "CertCompressionShrinks-" + ver.name,
 			flags:    []string{"-install-cert-compression-algs"},
 			config: Config{
-				MinVersion:          ver.version,
-				MaxVersion:          ver.version,
-				CertCompressionAlgs: map[uint16]CertCompressionAlg{shrinkingAlgID: shrinking},
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingCompressionAlgID: shrinkingCompression,
+				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: shrinkingAlgID,
+					ExpectedCompressedCert: shrinkingCompressionAlgID,
+				},
+			},
+		})
+
+		// Test that the shim behaves consistently if the compression function
+		// is non-deterministic. This is intended to model version differences
+		// between the shim and handshaker with handshake hints, but it is also
+		// useful in confirming we only call the callbacks once.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "CertCompressionRandom-" + ver.name,
+			flags:    []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					randomCompressionAlgID: randomCompression,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert: randomCompressionAlgID,
 				},
 			},
 		})
 
 		// With both algorithms configured, the server should pick its most
-		// preferable. (Which is expandingAlgID.)
+		// preferable. (Which is expandingCompressionAlgID.)
 		testCases = append(testCases, testCase{
 			testType: serverTest,
 			name:     "CertCompressionPriority-" + ver.name,
@@ -15817,11 +15864,29 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgID: shrinking,
-					expandingAlgID: expanding,
+					shrinkingCompressionAlgID: shrinkingCompression,
+					expandingCompressionAlgID: expandingCompression,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgID,
+					ExpectedCompressedCert: expandingCompressionAlgID,
+				},
+			},
+		})
+
+		// With no common algorithms configured, the server should decline
+		// compression.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "CertCompressionNoCommonAlgs-" + ver.name,
+			flags:    []string{"-install-one-cert-compression-alg", strconv.Itoa(shrinkingCompressionAlgID)},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					expandingCompressionAlgID: expandingCompression,
+				},
+				Bugs: ProtocolBugs{
+					ExpectUncompressedCert: true,
 				},
 			},
 		})
@@ -15834,10 +15899,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					expandingAlgID: expanding,
+					expandingCompressionAlgID: expandingCompression,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: expandingAlgID,
+					ExpectedCompressedCert: expandingCompressionAlgID,
 				},
 			},
 		})
@@ -15850,10 +15915,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgID: shrinking,
+					shrinkingCompressionAlgID: shrinkingCompression,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert: shrinkingAlgID,
+					ExpectedCompressedCert: shrinkingCompressionAlgID,
 				},
 			},
 		})
@@ -15866,10 +15931,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgID: shrinking,
+					shrinkingCompressionAlgID: shrinkingCompression,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:   shrinkingAlgID,
+					ExpectedCompressedCert:   shrinkingCompressionAlgID,
 					SendCertCompressionAlgID: 1234,
 				},
 			},
@@ -15885,10 +15950,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgID: shrinking,
+					shrinkingCompressionAlgID: shrinkingCompression,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:     shrinkingAlgID,
+					ExpectedCompressedCert:     shrinkingCompressionAlgID,
 					SendCertUncompressedLength: 12,
 				},
 			},
@@ -15904,10 +15969,10 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgID: shrinking,
+					shrinkingCompressionAlgID: shrinkingCompression,
 				},
 				Bugs: ProtocolBugs{
-					ExpectedCompressedCert:     shrinkingAlgID,
+					ExpectedCompressedCert:     shrinkingCompressionAlgID,
 					SendCertUncompressedLength: 1 << 20,
 				},
 			},
@@ -17230,6 +17295,101 @@ func addHintMismatchTests() {
 				},
 			})
 		}
+
+		// The shim and handshaker may disagree on the certificate compression
+		// algorithm, whether to enable certificate compression, or certificate
+		// compression inputs.
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-CertificateCompression-ShimOnly",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingCompressionAlgID: shrinkingCompression,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert: shrinkingCompressionAlgID,
+				},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-install-cert-compression-algs",
+			},
+		})
+		testCases = append(testCases, testCase{
+			name:               protocol.String() + "-HintMismatch-CertificateCompression-HandshakerOnly",
+			testType:           serverTest,
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingCompressionAlgID: shrinkingCompression,
+				},
+				Bugs: ProtocolBugs{
+					ExpectUncompressedCert: true,
+				},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-handshaker-install-cert-compression-algs",
+			},
+		})
+		testCases = append(testCases, testCase{
+			testType:           serverTest,
+			name:               protocol.String() + "-HintMismatch-CertificateCompression-AlgorithmMismatch",
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingCompressionAlgID: shrinkingCompression,
+					expandingCompressionAlgID: expandingCompression,
+				},
+				Bugs: ProtocolBugs{
+					// The shim's preferences should take effect.
+					ExpectedCompressedCert: shrinkingCompressionAlgID,
+				},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-on-shim-install-one-cert-compression-alg", strconv.Itoa(shrinkingCompressionAlgID),
+				"-on-handshaker-install-one-cert-compression-alg", strconv.Itoa(expandingCompressionAlgID),
+			},
+		})
+		testCases = append(testCases, testCase{
+			testType:           serverTest,
+			name:               protocol.String() + "-HintMismatch-CertificateCompression-InputMismatch",
+			protocol:           protocol,
+			skipSplitHandshake: true,
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingCompressionAlgID: shrinkingCompression,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert: shrinkingCompressionAlgID,
+				},
+			},
+			flags: []string{
+				"-allow-hint-mismatch",
+				"-install-cert-compression-algs",
+				// Configure the shim and handshaker with different OCSP
+				// responses, so the compression inputs do not match.
+				"-on-shim-ocsp-response", base64.StdEncoding.EncodeToString(testOCSPResponse),
+				"-on-handshaker-ocsp-response", base64.StdEncoding.EncodeToString(testOCSPResponse2),
+			},
+			expectations: connectionExpectations{
+				// The shim's configuration should take precendence.
+				ocspResponse: testOCSPResponse,
+			},
+		})
 	}
 }
 

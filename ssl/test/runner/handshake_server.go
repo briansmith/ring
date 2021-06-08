@@ -1072,7 +1072,10 @@ ResendHelloRetryRequest:
 			for _, id := range hs.clientHello.compressedCertAlgs {
 				if id == candidate {
 					if expected := config.Bugs.ExpectedCompressedCert; expected != 0 && expected != id {
-						return fmt.Errorf("expected to send compressed cert with alg %d, but picked %d", expected, id)
+						return fmt.Errorf("tls: expected to send compressed cert with alg %d, but picked %d", expected, id)
+					}
+					if config.Bugs.ExpectUncompressedCert {
+						return errors.New("tls: expected to send uncompressed cert")
 					}
 
 					if override := config.Bugs.SendCertCompressionAlgID; override != 0 {
@@ -1101,7 +1104,7 @@ ResendHelloRetryRequest:
 
 		if !sentCompressedCertMsg {
 			if config.Bugs.ExpectedCompressedCert != 0 {
-				return errors.New("unexpectedly sent uncompressed certificate")
+				return errors.New("tls: unexpectedly sent uncompressed certificate")
 			}
 			hs.writeServerHash(certMsgBytes)
 			c.writeRecord(recordTypeHandshake, certMsgBytes)

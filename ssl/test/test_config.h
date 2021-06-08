@@ -173,6 +173,7 @@ struct TestConfig {
   bool decline_ocsp_callback = false;
   bool fail_ocsp_callback = false;
   bool install_cert_compression_algs = false;
+  int install_one_cert_compression_alg = 0;
   bool reverify_on_resume = false;
   bool enforce_rsa_key_usage = false;
   bool is_handshaker_supported = false;

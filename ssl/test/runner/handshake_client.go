@@ -1200,6 +1200,10 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 			if expected := c.config.Bugs.ExpectedCompressedCert; expected != 0 && expected != compressedCertMsg.algID {
 				return fmt.Errorf("tls: expected certificate compressed with algorithm %x, but message used %x", expected, compressedCertMsg.algID)
 			}
+
+			if c.config.Bugs.ExpectUncompressedCert {
+				return errors.New("tls: compressed certificate received")
+			}
 		} else {
 			if certMsg, ok = msg.(*certificateMsg); !ok {
 				c.sendAlert(alertUnexpectedMessage)

@@ -1789,6 +1789,10 @@ type ProtocolBugs struct {
 	// used on this connection, or zero if there are no special requirements.
 	ExpectedCompressedCert uint16
 
+	// ExpectUncompressedCert, if true, specifies that certificate compression
+	// should not be used on this connection.
+	ExpectUncompressedCert bool
+
 	// SendCertCompressionAlgID, if not zero, sets the algorithm ID that will be
 	// sent in the compressed certificate message.
 	SendCertCompressionAlgID uint16

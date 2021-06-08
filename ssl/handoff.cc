@@ -779,6 +779,7 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
 //     -- them up.
 //     decryptedPSKHint        [3] IMPLICIT OCTET STRING OPTIONAL,
 //     ignorePSKHint           [4] IMPLICIT NULL OPTIONAL,
+//     compressCertificateHint [5] IMPLICIT CompressCertificateHint OPTIONAL,
 // }
 //
 // KeyShareHint ::= SEQUENCE {
@@ -793,6 +794,12 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
 //     subjectPublicKeyInfo    OCTET STRING,
 //     signature               OCTET STRING,
 // }
+//
+// CompressCertificateHint ::= SEQUENCE {
+//     algorithm               INTEGER,
+//     input                   OCTET STRING,
+//     compressed              OCTET STRING,
+// }
 
 // HandshakeHints tags.
 static const unsigned kServerRandomTag = CBS_ASN1_CONTEXT_SPECIFIC | 0;
@@ -802,6 +809,7 @@ static const unsigned kSignatureHintTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 static const unsigned kDecryptedPSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 3;
 static const unsigned kIgnorePSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 4;
+static const unsigned kCompressCertificateTag = CBS_ASN1_CONTEXT_SPECIFIC | 5;
 
 int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
   const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
@@ -811,15 +819,14 @@ int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
   }
 
   const SSL_HANDSHAKE_HINTS *hints = hs->hints.get();
-  CBB seq, server_random, key_share_hint, signature_hint, decrypted_psk,
-      ignore_psk;
+  CBB seq, child;
   if (!CBB_add_asn1(out, &seq, CBS_ASN1_SEQUENCE)) {
     return 0;
   }
 
   if (!hints->server_random.empty()) {
-    if (!CBB_add_asn1(&seq, &server_random, kServerRandomTag) ||
-        !CBB_add_bytes(&server_random, hints->server_random.data(),
+    if (!CBB_add_asn1(&seq, &child, kServerRandomTag) ||
+        !CBB_add_bytes(&child, hints->server_random.data(),
                        hints->server_random.size())) {
       return 0;
     }
@@ -827,13 +834,11 @@ int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
 
   if (hints->key_share_group_id != 0 && !hints->key_share_public_key.empty() &&
       !hints->key_share_secret.empty()) {
-    if (!CBB_add_asn1(&seq, &key_share_hint, kKeyShareHintTag) ||
-        !CBB_add_asn1_uint64(&key_share_hint, hints->key_share_group_id) ||
-        !CBB_add_asn1_octet_string(&key_share_hint,
-                                   hints->key_share_public_key.data(),
+    if (!CBB_add_asn1(&seq, &child, kKeyShareHintTag) ||
+        !CBB_add_asn1_uint64(&child, hints->key_share_group_id) ||
+        !CBB_add_asn1_octet_string(&child, hints->key_share_public_key.data(),
                                    hints->key_share_public_key.size()) ||
-        !CBB_add_asn1_octet_string(&key_share_hint,
-                                   hints->key_share_secret.data(),
+        !CBB_add_asn1_octet_string(&child, hints->key_share_secret.data(),
                                    hints->key_share_secret.size())) {
       return 0;
     }
@@ -841,31 +846,43 @@ int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
 
   if (hints->signature_algorithm != 0 && !hints->signature_input.empty() &&
       !hints->signature.empty()) {
-    if (!CBB_add_asn1(&seq, &signature_hint, kSignatureHintTag) ||
-        !CBB_add_asn1_uint64(&signature_hint, hints->signature_algorithm) ||
-        !CBB_add_asn1_octet_string(&signature_hint,
-                                    hints->signature_input.data(),
-                                    hints->signature_input.size()) ||
-        !CBB_add_asn1_octet_string(&signature_hint,
-                                    hints->signature_spki.data(),
-                                    hints->signature_spki.size()) ||
-        !CBB_add_asn1_octet_string(&signature_hint, hints->signature.data(),
-                                    hints->signature.size())) {
+    if (!CBB_add_asn1(&seq, &child, kSignatureHintTag) ||
+        !CBB_add_asn1_uint64(&child, hints->signature_algorithm) ||
+        !CBB_add_asn1_octet_string(&child, hints->signature_input.data(),
+                                   hints->signature_input.size()) ||
+        !CBB_add_asn1_octet_string(&child, hints->signature_spki.data(),
+                                   hints->signature_spki.size()) ||
+        !CBB_add_asn1_octet_string(&child, hints->signature.data(),
+                                   hints->signature.size())) {
       return 0;
     }
   }
 
   if (!hints->decrypted_psk.empty()) {
-    if (!CBB_add_asn1(&seq, &decrypted_psk, kDecryptedPSKTag) ||
-        !CBB_add_bytes(&decrypted_psk, hints->decrypted_psk.data(),
+    if (!CBB_add_asn1(&seq, &child, kDecryptedPSKTag) ||
+        !CBB_add_bytes(&child, hints->decrypted_psk.data(),
                        hints->decrypted_psk.size())) {
       return 0;
     }
   }
 
   if (hints->ignore_psk &&  //
-      !CBB_add_asn1(&seq, &ignore_psk, kIgnorePSKTag)) {
+      !CBB_add_asn1(&seq, &child, kIgnorePSKTag)) {
     return 0;
+  }
+
+  if (hints->cert_compression_alg_id != 0 &&
+      !hints->cert_compression_input.empty() &&
+      !hints->cert_compression_output.empty()) {
+    if (!CBB_add_asn1(&seq, &child, kCompressCertificateTag) ||
+        !CBB_add_asn1_uint64(&child, hints->cert_compression_alg_id) ||
+        !CBB_add_asn1_octet_string(&child, hints->cert_compression_input.data(),
+                                   hints->cert_compression_input.size()) ||
+        !CBB_add_asn1_octet_string(&child,
+                                   hints->cert_compression_output.data(),
+                                   hints->cert_compression_output.size())) {
+      return 0;
+    }
   }
 
   return CBB_flush(out);
@@ -882,9 +899,10 @@ int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints, size_t hints_len) {
     return 0;
   }
 
-  CBS cbs, seq, server_random, key_share, signature_hint, ticket, ignore_psk;
+  CBS cbs, seq, server_random, key_share, signature_hint, ticket, ignore_psk,
+      cert_compression;
   int has_server_random, has_key_share, has_signature_hint, has_ticket,
-      has_ignore_psk;
+      has_ignore_psk, has_cert_compression;
   CBS_init(&cbs, hints, hints_len);
   if (!CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
       !CBS_get_optional_asn1(&seq, &server_random, &has_server_random,
@@ -895,7 +913,9 @@ int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints, size_t hints_len) {
                              kSignatureHintTag) ||
       !CBS_get_optional_asn1(&seq, &ticket, &has_ticket, kDecryptedPSKTag) ||
       !CBS_get_optional_asn1(&seq, &ignore_psk, &has_ignore_psk,
-                             kIgnorePSKTag)) {
+                             kIgnorePSKTag) ||
+      !CBS_get_optional_asn1(&seq, &cert_compression, &has_cert_compression,
+                             kCompressCertificateTag)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_COULD_NOT_PARSE_HINTS);
     return 0;
   }
@@ -945,6 +965,21 @@ int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints, size_t hints_len) {
       return 0;
     }
     hints_obj->ignore_psk = true;
+  }
+
+  if (has_cert_compression) {
+    uint64_t alg;
+    CBS input, output;
+    if (!CBS_get_asn1_uint64(&cert_compression, &alg) ||  //
+        alg == 0 || alg > 0xffff ||
+        !CBS_get_asn1(&cert_compression, &input, CBS_ASN1_OCTETSTRING) ||
+        !hints_obj->cert_compression_input.CopyFrom(input) ||
+        !CBS_get_asn1(&cert_compression, &output, CBS_ASN1_OCTETSTRING) ||
+        !hints_obj->cert_compression_output.CopyFrom(output)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_COULD_NOT_PARSE_HINTS);
+      return 0;
+    }
+    hints_obj->cert_compression_alg_id = static_cast<uint16_t>(alg);
   }
 
   ssl->s3->hs->hints = std::move(hints_obj);
