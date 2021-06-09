@@ -535,6 +535,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_setup_key_shares(hs, /*override_group_id=*/0) ||
+      !ssl_setup_extension_permutation(hs) ||
       !ssl_encrypt_client_hello(hs, MakeConstSpan(ech_enc, ech_enc_len)) ||
       !ssl_add_client_hello(hs)) {
     return ssl_hs_error;

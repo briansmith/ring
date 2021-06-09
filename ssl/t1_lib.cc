@@ -127,6 +127,7 @@
 #include <openssl/hpke.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
+#include <openssl/rand.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
@@ -3271,6 +3272,30 @@ static_assert(kNumExtensions <=
                   sizeof(((SSL_HANDSHAKE *)NULL)->extensions.received) * 8,
               "too many extensions for received bitset");
 
+bool ssl_setup_extension_permutation(SSL_HANDSHAKE *hs) {
+  if (!hs->config->permute_extensions) {
+    return true;
+  }
+
+  static_assert(kNumExtensions <= UINT8_MAX,
+                "extensions_permutation type is too small");
+  uint32_t seeds[kNumExtensions - 1];
+  Array<uint8_t> permutation;
+  if (!RAND_bytes(reinterpret_cast<uint8_t *>(seeds), sizeof(seeds)) ||
+      !permutation.Init(kNumExtensions)) {
+    return false;
+  }
+  for (size_t i = 0; i < kNumExtensions; i++) {
+    permutation[i] = i;
+  }
+  for (size_t i = kNumExtensions - 1; i > 0; i--) {
+    // Set element |i| to a randomly-selected element 0 <= j <= i.
+    std::swap(permutation[i], permutation[seeds[i - 1] % (i + 1)]);
+  }
+  hs->extension_permutation = std::move(permutation);
+  return true;
+}
+
 static const struct tls_extension *tls_extension_find(uint32_t *out_index,
                                                       uint16_t value) {
   unsigned i;
@@ -3328,7 +3353,10 @@ static bool ssl_add_clienthello_tlsext_inner(SSL_HANDSHAKE *hs, CBB *out,
     }
   }
 
-  for (size_t i = 0; i < kNumExtensions; i++) {
+  for (size_t unpermuted = 0; unpermuted < kNumExtensions; unpermuted++) {
+    size_t i = hs->extension_permutation.empty()
+                   ? unpermuted
+                   : hs->extension_permutation[unpermuted];
     const size_t len_before = CBB_len(&extensions);
     const size_t len_compressed_before = CBB_len(compressed.get());
     if (!kExtensions[i].add_clienthello(hs, &extensions, compressed.get(),
@@ -3462,7 +3490,10 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, CBB *out_encoded,
   }
 
   bool last_was_empty = false;
-  for (size_t i = 0; i < kNumExtensions; i++) {
+  for (size_t unpermuted = 0; unpermuted < kNumExtensions; unpermuted++) {
+    size_t i = hs->extension_permutation.empty()
+                   ? unpermuted
+                   : hs->extension_permutation[unpermuted];
     size_t bytes_written;
     if (omit_ech_len != 0 &&
         kExtensions[i].value == TLSEXT_TYPE_encrypted_client_hello) {

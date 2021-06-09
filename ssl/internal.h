@@ -1855,6 +1855,11 @@ struct SSL_HANDSHAKE {
   // peer_key is the peer's ECDH key for a TLS 1.2 client.
   Array<uint8_t> peer_key;
 
+  // extension_permutation is the permutation to apply to ClientHello
+  // extensions. It maps indices into the |kExtensions| table into other
+  // indices.
+  Array<uint8_t> extension_permutation;
+
   // cert_compression_alg_id, for a server, contains the negotiated certificate
   // compression algorithm for this client. It is only valid if
   // |cert_compression_negotiated| is true.
@@ -2099,6 +2104,10 @@ bool tls13_add_finished(SSL_HANDSHAKE *hs);
 bool tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg);
 bssl::UniquePtr<SSL_SESSION> tls13_create_session_with_ticket(SSL *ssl,
                                                               CBS *body);
+
+// ssl_setup_extension_permutation computes a ClientHello extension permutation
+// for |hs|, if applicable. It returns true on success and false on error.
+bool ssl_setup_extension_permutation(SSL_HANDSHAKE *hs);
 
 // ssl_setup_key_shares computes client key shares and saves them in |hs|. It
 // returns true on success and false on failure. If |override_group_id| is zero,
@@ -3028,6 +3037,9 @@ struct SSL_CONFIG {
   // QUIC drafts up to and including 32 used a different TLS extension
   // codepoint to convey QUIC's transport parameters.
   bool quic_use_legacy_codepoint : 1;
+
+  // permute_extensions is whether to permute extensions when sending messages.
+  bool permute_extensions : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.
@@ -3614,6 +3626,9 @@ struct ssl_ctx_st {
 
   // grease_enabled is whether GREASE (RFC 8701) is enabled.
   bool grease_enabled : 1;
+
+  // permute_extensions is whether to permute extensions when sending messages.
+  bool permute_extensions : 1;
 
   // allow_unknown_alpn_protos is whether the client allows unsolicited ALPN
   // protocols from the peer.

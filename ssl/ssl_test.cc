@@ -26,6 +26,7 @@
 
 #include <openssl/aead.h>
 #include <openssl/base64.h>
+#include <openssl/bytestring.h>
 #include <openssl/bio.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
@@ -7366,6 +7367,127 @@ TEST(SSLTest, CanReleasePrivateKey) {
                                       server_ctx.get()));
     SSL_set_session(client.get(), session.get());
     check_first_server_round_trip(client.get(), server.get());
+  }
+}
+
+// GetExtensionOrder sets |*out| to the list of extensions a client attached to
+// |ctx| will send in the ClientHello. If |ech_keys| is non-null, the client
+// will offer ECH with the public component. If |decrypt_ech| is true, |*out|
+// will be set to the ClientHelloInner's extensions, rather than
+// ClientHelloOuter.
+static bool GetExtensionOrder(SSL_CTX *client_ctx, std::vector<uint16_t> *out,
+                              SSL_ECH_KEYS *ech_keys, bool decrypt_ech) {
+  struct AppData {
+    std::vector<uint16_t> *out;
+    bool decrypt_ech;
+    bool callback_done = false;
+  };
+  AppData app_data;
+  app_data.out = out;
+  app_data.decrypt_ech = decrypt_ech;
+
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  if (!server_ctx ||  //
+      !SSL_CTX_set_app_data(server_ctx.get(), &app_data) ||
+      (decrypt_ech && !SSL_CTX_set1_ech_keys(server_ctx.get(), ech_keys))) {
+    return false;
+  }
+
+  // Configure the server to record the ClientHello extension order. We use a
+  // server rather than |GetClientHello| so it can decrypt ClientHelloInner.
+  SSL_CTX_set_select_certificate_cb(
+      server_ctx.get(),
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        AppData *app_data_ptr = static_cast<AppData *>(
+            SSL_CTX_get_app_data(SSL_get_SSL_CTX(client_hello->ssl)));
+        EXPECT_EQ(app_data_ptr->decrypt_ech ? 1 : 0,
+                  SSL_ech_accepted(client_hello->ssl));
+
+        app_data_ptr->out->clear();
+        CBS extensions;
+        CBS_init(&extensions, client_hello->extensions,
+                 client_hello->extensions_len);
+        while (CBS_len(&extensions)) {
+          uint16_t type;
+          CBS body;
+          if (!CBS_get_u16(&extensions, &type) ||
+              !CBS_get_u16_length_prefixed(&extensions, &body)) {
+            return ssl_select_cert_error;
+          }
+          app_data_ptr->out->push_back(type);
+        }
+
+        // Don't bother completing the handshake.
+        app_data_ptr->callback_done = true;
+        return ssl_select_cert_error;
+      });
+
+  bssl::UniquePtr<SSL> client, server;
+  if (!CreateClientAndServer(&client, &server, client_ctx, server_ctx.get()) ||
+      (ech_keys != nullptr && !InstallECHConfigList(client.get(), ech_keys))) {
+    return false;
+  }
+
+  // Run the handshake far enough to process the ClientHello.
+  SSL_do_handshake(client.get());
+  SSL_do_handshake(server.get());
+  return app_data.callback_done;
+}
+
+// Test that, when extension permutation is enabled, the ClientHello extension
+// order changes, both with and without ECH, and in both ClientHelloInner and
+// ClientHelloOuter.
+TEST(SSLTest, PermuteExtensions) {
+  bssl::UniquePtr<SSL_ECH_KEYS> keys = MakeTestECHKeys();
+  ASSERT_TRUE(keys);
+  for (bool offer_ech : {false, true}) {
+    SCOPED_TRACE(offer_ech);
+    SSL_ECH_KEYS *maybe_keys = offer_ech ? keys.get() : nullptr;
+    for (bool decrypt_ech : {false, true}) {
+      SCOPED_TRACE(decrypt_ech);
+      if (!offer_ech && decrypt_ech) {
+        continue;
+      }
+
+      // When extension permutation is disabled, the order should be consistent.
+      bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+      ASSERT_TRUE(ctx);
+      std::vector<uint16_t> order1, order2;
+      ASSERT_TRUE(
+          GetExtensionOrder(ctx.get(), &order1, maybe_keys, decrypt_ech));
+      ASSERT_TRUE(
+          GetExtensionOrder(ctx.get(), &order2, maybe_keys, decrypt_ech));
+      EXPECT_EQ(order1, order2);
+
+      ctx.reset(SSL_CTX_new(TLS_method()));
+      ASSERT_TRUE(ctx);
+      SSL_CTX_set_permute_extensions(ctx.get(), 1);
+
+      // When extension permutation is enabled, each ClientHello should have a
+      // different order.
+      //
+      // This test is inherently flaky, so we run it multiple times. We send at
+      // least five extensions by default from TLS 1.3: supported_versions,
+      // key_share, supported_groups, psk_key_exchange_modes, and
+      // signature_algorithms. That means the probability of a false negative is
+      // at most 1/120. Repeating the test 14 times lowers false negative rate
+      // to under 2^-96.
+      ASSERT_TRUE(
+          GetExtensionOrder(ctx.get(), &order1, maybe_keys, decrypt_ech));
+      EXPECT_GE(order1.size(), 5u);
+      static const int kNumIterations = 14;
+      bool passed = false;
+      for (int i = 0; i < kNumIterations; i++) {
+        ASSERT_TRUE(
+            GetExtensionOrder(ctx.get(), &order2, maybe_keys, decrypt_ech));
+        if (order1 != order2) {
+          passed = true;
+          break;
+        }
+      }
+      EXPECT_TRUE(passed) << "Extensions were not permuted";
+    }
   }
 }
 

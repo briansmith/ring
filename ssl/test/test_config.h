@@ -142,6 +142,7 @@ struct TestConfig {
   bool send_alert = false;
   bool peek_then_read = false;
   bool enable_grease = false;
+  bool permute_extensions = false;
   int max_cert_list = 0;
   std::string ticket_key;
   bool use_exporter_between_reads = false;

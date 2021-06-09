@@ -4301,6 +4301,14 @@ OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
 // GREASE. See RFC 8701.
 OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
 
+// SSL_CTX_set_permute_extensions configures whether sockets on |ctx| should
+// permute extensions. For now, this is only implemented for the ClientHello.
+OPENSSL_EXPORT void SSL_CTX_set_permute_extensions(SSL_CTX *ctx, int enabled);
+
+// SSL_set_permute_extensions configures whether sockets on |ssl| should
+// permute extensions. For now, this is only implemented for the ClientHello.
+OPENSSL_EXPORT void SSL_set_permute_extensions(SSL *ssl, int enabled);
+
 // SSL_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
 // record with |ssl|.
 OPENSSL_EXPORT size_t SSL_max_seal_overhead(const SSL *ssl);

@@ -8208,6 +8208,78 @@ func addExtensionTests() {
 					base64.StdEncoding.EncodeToString(testSCTList),
 				},
 			})
+
+			// Extension permutation should interact correctly with other extensions,
+			// HelloVerifyRequest, HelloRetryRequest, and ECH. SSLTest.PermuteExtensions
+			// in ssl_test.cc tests that the extensions are actually permuted. This
+			// tests the handshake still works.
+			//
+			// This test also tests that all our extensions interact with each other.
+			for _, ech := range []bool{false, true} {
+				if ech && ver.version < VersionTLS13 {
+					continue
+				}
+
+				test := testCase{
+					protocol:           protocol,
+					name:               "AllExtensions-Client-Permute",
+					skipQUICALPNConfig: true,
+					config: Config{
+						MinVersion:          ver.version,
+						MaxVersion:          ver.version,
+						NextProtos:          []string{"proto"},
+						ApplicationSettings: map[string][]byte{"proto": []byte("runner1")},
+						Bugs: ProtocolBugs{
+							SendServerNameAck: true,
+							ExpectServerName:  "example.com",
+							ExpectGREASE:      true,
+						},
+					},
+					resumeSession: true,
+					flags: []string{
+						"-permute-extensions",
+						"-enable-grease",
+						"-enable-ocsp-stapling",
+						"-enable-signed-cert-timestamps",
+						"-advertise-alpn", "\x05proto",
+						"-expect-alpn", "proto",
+						"-host-name", "example.com",
+					},
+				}
+
+				if ech {
+					test.name += "-ECH"
+					echConfig := generateServerECHConfig(&ECHConfig{ConfigID: 42})
+					test.config.ServerECHConfigs = []ServerECHConfig{echConfig}
+					test.flags = append(test.flags,
+						"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+						"-expect-ech-accept",
+					)
+					test.expectations.echAccepted = true
+				}
+
+				if ver.version >= VersionTLS13 {
+					// Trigger a HelloRetryRequest to test both ClientHellos. Note
+					// our DTLS tests always enable HelloVerifyRequest.
+					test.name += "-HelloRetryRequest"
+
+					// ALPS is only available on TLS 1.3.
+					test.config.ApplicationSettings = map[string][]byte{"proto": []byte("runner")}
+					test.flags = append(test.flags,
+						"-application-settings", "proto,shim",
+						"-expect-peer-application-settings", "runner")
+					test.expectations.peerApplicationSettings = []byte("shim")
+				}
+
+				if protocol == dtls {
+					test.config.SRTPProtectionProfiles = []uint16{SRTP_AES128_CM_HMAC_SHA1_80}
+					test.flags = append(test.flags, "-srtp-profiles", "SRTP_AES128_CM_SHA1_80")
+					test.expectations.srtpProtectionProfile = SRTP_AES128_CM_HMAC_SHA1_80
+				}
+
+				test.name += "-" + suffix
+				testCases = append(testCases, test)
+			}
 		}
 	}
 

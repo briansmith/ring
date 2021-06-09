@@ -562,6 +562,7 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       signed_cert_timestamps_enabled(false),
       channel_id_enabled(false),
       grease_enabled(false),
+      permute_extensions(false),
       allow_unknown_alpn_protos(false),
       false_start_allowed_without_alpn(false),
       handoff(false),
@@ -684,6 +685,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->custom_verify_callback = ctx->custom_verify_callback;
   ssl->config->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
+  ssl->config->permute_extensions = ctx->permute_extensions;
 
   if (!ssl->config->supported_group_list.CopyFrom(ctx->supported_group_list) ||
       !ssl->config->alpn_client_proto_list.CopyFrom(
@@ -730,7 +732,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       handoff(false),
       shed_handshake_config(false),
       jdk11_workaround(false),
-      quic_use_legacy_codepoint(false) {
+      quic_use_legacy_codepoint(false),
+      permute_extensions(false) {
   assert(ssl);
 }
 
@@ -2913,6 +2916,17 @@ void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx, int enabled) {
 
 void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled) {
   ctx->grease_enabled = !!enabled;
+}
+
+void SSL_CTX_set_permute_extensions(SSL_CTX *ctx, int enabled) {
+  ctx->permute_extensions = !!enabled;
+}
+
+void SSL_set_permute_extensions(SSL *ssl, int enabled) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->permute_extensions = !!enabled;
 }
 
 int32_t SSL_get_ticket_age_skew(const SSL *ssl) {

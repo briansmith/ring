@@ -118,6 +118,7 @@ const Flag<bool> kBoolFlags[] = {
     {"-send-alert", &TestConfig::send_alert},
     {"-peek-then-read", &TestConfig::peek_then_read},
     {"-enable-grease", &TestConfig::enable_grease},
+    {"-permute-extensions", &TestConfig::permute_extensions},
     {"-use-exporter-between-reads", &TestConfig::use_exporter_between_reads},
     {"-retain-only-sha256-client-cert",
      &TestConfig::retain_only_sha256_client_cert},
@@ -1426,6 +1427,10 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (enable_grease) {
     SSL_CTX_set_grease_enabled(ssl_ctx.get(), 1);
+  }
+
+  if (permute_extensions) {
+    SSL_CTX_set_permute_extensions(ssl_ctx.get(), 1);
   }
 
   if (!expect_server_name.empty()) {
