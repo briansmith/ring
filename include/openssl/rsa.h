@@ -400,7 +400,7 @@ OPENSSL_EXPORT int RSA_verify_pss_mgf1(RSA *rsa, const uint8_t *digest,
 // result for the signature scheme being implemented.
 //
 // WARNING: This function is a building block for a signature scheme, not a
-// complete one. Checking for arbitary strings in |out| will not result in a
+// complete one. Checking for arbitrary strings in |out| will not result in a
 // secure signature scheme.
 OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                                   size_t max_out, const uint8_t *in,
