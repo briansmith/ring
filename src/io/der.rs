@@ -130,71 +130,40 @@ where
 
 fn nonnegative_integer<'a>(
     input: &mut untrusted::Reader<'a>,
-    min_value: u8,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
-    // Verify that |input|, which has had any leading zero stripped off, is the
-    // encoding of a value of at least |min_value|.
-    fn check_minimum(input: untrusted::Input, min_value: u8) -> Result<(), error::Unspecified> {
-        input.read_all(error::Unspecified, |input| {
-            let first_byte = input.read_byte()?;
-            if input.at_end() && first_byte < min_value {
-                return Err(error::Unspecified);
-            }
-            input.skip_to_end();
-            Ok(())
-        })
-    }
-
     let value = expect_tag_and_get_value(input, Tag::Integer)?;
-
-    value.read_all(error::Unspecified, |input| {
-        // Empty encodings are not allowed.
-        let first_byte = input.read_byte()?;
-
-        if first_byte == 0 {
-            if input.at_end() {
-                // |value| is the legal encoding of zero.
-                if min_value > 0 {
-                    return Err(error::Unspecified);
-                }
-                return Ok(value);
+    match value
+        .as_slice_less_safe()
+        .split_first()
+        .ok_or(error::Unspecified)?
+    {
+        // Zero or leading zero.
+        (0, rest) => {
+            match rest.first() {
+                // Zero.
+                None => Ok(value),
+                // Necessary leading zero.
+                Some(&second) if second & 0x80 == 0x80 => Ok(untrusted::Input::from(rest)),
+                // Unnecessary leading zero.
+                _ => Err(error::Unspecified),
             }
-
-            let r = input.read_bytes_to_end();
-            r.read_all(error::Unspecified, |input| {
-                let second_byte = input.read_byte()?;
-                if (second_byte & 0x80) == 0 {
-                    // A leading zero is only allowed when the value's high bit
-                    // is set.
-                    return Err(error::Unspecified);
-                }
-                input.skip_to_end();
-                Ok(())
-            })?;
-            check_minimum(r, min_value)?;
-            return Ok(r);
         }
-
-        // Negative values are not allowed.
-        if (first_byte & 0x80) != 0 {
-            return Err(error::Unspecified);
-        }
-
-        input.skip_to_end();
-        check_minimum(value, min_value)?;
-        Ok(value)
-    })
+        // Positive value with no leading zero.
+        (first, _) if first & 0x80 == 0 => Ok(value),
+        // Negative value.
+        (_, _) => Err(error::Unspecified),
+    }
 }
 
 /// Parse as integer with a value in the in the range [0, 255], returning its
 /// numeric value. This is typically used for parsing version numbers.
 #[inline]
 pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, error::Unspecified> {
-    let value = nonnegative_integer(input, 0)?;
-    value.read_all(error::Unspecified, |input| {
-        let r = input.read_byte()?;
-        Ok(r)
-    })
+    let value = nonnegative_integer(input)?;
+    match *value.as_slice_less_safe() {
+        [b] => Ok(b),
+        _ => Err(error::Unspecified),
+    }
 }
 
 /// Parses a positive DER integer, returning the big-endian-encoded value,
@@ -202,7 +171,8 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, er
 pub fn positive_integer<'a>(
     input: &mut untrusted::Reader<'a>,
 ) -> Result<Positive<'a>, error::Unspecified> {
-    Positive::from_be_bytes(nonnegative_integer(input, 1)?)
+    let value = nonnegative_integer(input)?;
+    Positive::from_be_bytes(value)
 }
 
 #[cfg(test)]
