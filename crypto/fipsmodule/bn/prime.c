@@ -115,10 +115,6 @@
 #include "../../internal.h"
 
 
-// The quick sieve algorithm approach to weeding out primes is Philip
-// Zimmermann's, as implemented in PGP.  I have had a read of his comments and
-// implemented my own version.
-
 // kPrimes contains the first 1024 primes.
 static const uint16_t kPrimes[] = {
     2,    3,    5,    7,    11,   13,   17,   19,   23,   29,   31,   37,
