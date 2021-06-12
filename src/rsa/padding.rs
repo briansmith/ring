@@ -100,7 +100,7 @@ impl Verification for PKCS1 {
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let calculated = &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
         pkcs1_encode(&self, m_hash, calculated);
-        if m.read_bytes_to_end() != *calculated {
+        if m.read_bytes_to_end().as_slice_less_safe() != calculated {
             return Err(error::Unspecified);
         }
         Ok(())
@@ -394,7 +394,7 @@ impl Verification for PSS {
         let h_prime = pss_digest(self.digest_alg, m_hash, salt);
 
         // Step 14.
-        if h_hash != *h_prime.as_ref() {
+        if h_hash.as_slice_less_safe() != h_prime.as_ref() {
             return Err(error::Unspecified);
         }
 
