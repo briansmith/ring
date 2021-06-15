@@ -1533,6 +1533,38 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   return true;
 }
 
+static bssl::UniquePtr<SSL_SESSION> g_last_session;
+
+static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
+  // Save the most recent session.
+  g_last_session.reset(session);
+  return 1;
+}
+
+static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
+    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
+    const ClientConfig &config = ClientConfig()) {
+  g_last_session = nullptr;
+  SSL_CTX_sess_set_new_cb(client_ctx, SaveLastSession);
+
+  // Connect client and server to get a session.
+  bssl::UniquePtr<SSL> client, server;
+  if (!ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
+                              config) ||
+      !FlushNewSessionTickets(client.get(), server.get())) {
+    fprintf(stderr, "Failed to connect client and server.\n");
+    return nullptr;
+  }
+
+  SSL_CTX_sess_set_new_cb(client_ctx, nullptr);
+
+  if (!g_last_session) {
+    fprintf(stderr, "Client did not receive a session.\n");
+    return nullptr;
+  }
+  return std::move(g_last_session);
+}
+
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
 // before configuring as a server.
 TEST(SSLTest, ClientCAList) {
@@ -2340,7 +2372,7 @@ TEST_P(SSLVersionTest, OneSidedShutdown) {
   }
   ASSERT_TRUE(Connect());
 
-  // Shut down half the connection. SSL_shutdown will return 0 to signal only
+  // Shut down half the connection. |SSL_shutdown| will return 0 to signal only
   // one side has shut down.
   ASSERT_EQ(SSL_shutdown(client_.get()), 0);
 
@@ -2359,6 +2391,217 @@ TEST_P(SSLVersionTest, OneSidedShutdown) {
   // The server may then shutdown the connection.
   EXPECT_EQ(SSL_shutdown(server_.get()), 1);
   EXPECT_EQ(SSL_shutdown(client_.get()), 1);
+}
+
+// Test that, after calling |SSL_shutdown|, |SSL_write| fails.
+TEST_P(SSLVersionTest, WriteAfterShutdown) {
+  ASSERT_TRUE(Connect());
+
+  for (SSL *ssl : {client_.get(), server_.get()}) {
+    SCOPED_TRACE(SSL_is_server(ssl) ? "server" : "client");
+
+    bssl::UniquePtr<BIO> mem(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(mem);
+    SSL_set0_wbio(ssl, bssl::UpRef(mem).release());
+
+    // Shut down half the connection. |SSL_shutdown| will return 0 to signal
+    // only one side has shut down.
+    ASSERT_EQ(SSL_shutdown(ssl), 0);
+
+    // |ssl| should have written an alert to the transport.
+    const uint8_t *unused;
+    size_t len;
+    ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
+    EXPECT_NE(0u, len);
+    EXPECT_TRUE(BIO_reset(mem.get()));
+
+    // Writing should fail.
+    EXPECT_EQ(-1, SSL_write(ssl, "a", 1));
+
+    // Nothing should be written to the transport.
+    ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
+    EXPECT_EQ(0u, len);
+  }
+}
+
+// Test that, after sending a fatal alert in a failed |SSL_read|, |SSL_write|
+// fails.
+TEST_P(SSLVersionTest, WriteAfterReadSentFatalAlert) {
+  // Decryption failures are not fatal in DTLS.
+  if (is_dtls()) {
+    return;
+  }
+
+  ASSERT_TRUE(Connect());
+
+  // Save the write |BIO|s as the test will overwrite them.
+  bssl::UniquePtr<BIO> client_wbio = bssl::UpRef(SSL_get_wbio(client_.get()));
+  bssl::UniquePtr<BIO> server_wbio = bssl::UpRef(SSL_get_wbio(server_.get()));
+
+  for (bool test_server : {false, true}) {
+    SCOPED_TRACE(test_server ? "server" : "client");
+    SSL *ssl = test_server ? server_.get() : client_.get();
+    BIO *other_wbio = test_server ? client_wbio.get() : server_wbio.get();
+
+    bssl::UniquePtr<BIO> mem(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(mem);
+    SSL_set0_wbio(ssl, bssl::UpRef(mem).release());
+
+    // Read an invalid record from the peer.
+    static const uint8_t kInvalidRecord[] = "invalid record";
+    EXPECT_EQ(int{sizeof(kInvalidRecord)},
+              BIO_write(other_wbio, kInvalidRecord, sizeof(kInvalidRecord)));
+    char buf[256];
+    EXPECT_EQ(-1, SSL_read(ssl, buf, sizeof(buf)));
+
+    // |ssl| should have written an alert to the transport.
+    const uint8_t *unused;
+    size_t len;
+    ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
+    EXPECT_NE(0u, len);
+    EXPECT_TRUE(BIO_reset(mem.get()));
+
+    // Writing should fail.
+    EXPECT_EQ(-1, SSL_write(ssl, "a", 1));
+
+    // Nothing should be written to the transport.
+    ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
+    EXPECT_EQ(0u, len);
+  }
+}
+
+// Test that, after sending a fatal alert from the handshake, |SSL_write| fails.
+TEST_P(SSLVersionTest, WriteAfterHandshakeSentFatalAlert) {
+  for (bool test_server : {false, true}) {
+    SCOPED_TRACE(test_server ? "server" : "client");
+
+    bssl::UniquePtr<SSL> ssl(
+        SSL_new(test_server ? server_ctx_.get() : client_ctx_.get()));
+    ASSERT_TRUE(ssl);
+    if (test_server) {
+      SSL_set_accept_state(ssl.get());
+    } else {
+      SSL_set_connect_state(ssl.get());
+    }
+
+    std::vector<uint8_t> invalid;
+    if (is_dtls()) {
+      // In DTLS, invalid records are discarded. To cause the handshake to fail,
+      // use a valid handshake record with invalid contents.
+      invalid.push_back(SSL3_RT_HANDSHAKE);
+      invalid.push_back(DTLS1_VERSION >> 8);
+      invalid.push_back(DTLS1_VERSION & 0xff);
+      // epoch and sequence_number
+      for (int i = 0; i < 8; i++) {
+        invalid.push_back(0);
+      }
+      // A one-byte fragment is invalid.
+      invalid.push_back(0);
+      invalid.push_back(1);
+      // Arbitrary contents.
+      invalid.push_back(0);
+    } else {
+      invalid = {'i', 'n', 'v', 'a', 'l', 'i', 'd'};
+    }
+    bssl::UniquePtr<BIO> rbio(
+        BIO_new_mem_buf(invalid.data(), invalid.size()));
+    ASSERT_TRUE(rbio);
+    SSL_set0_rbio(ssl.get(), rbio.release());
+
+    bssl::UniquePtr<BIO> mem(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(mem);
+    SSL_set0_wbio(ssl.get(), bssl::UpRef(mem).release());
+
+    // The handshake should fail.
+    EXPECT_EQ(-1, SSL_do_handshake(ssl.get()));
+    EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), -1));
+    uint32_t err = ERR_get_error();
+
+    // |ssl| should have written an alert (and, in the client's case, a
+    // ClientHello) to the transport.
+    const uint8_t *unused;
+    size_t len;
+    ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
+    EXPECT_NE(0u, len);
+    EXPECT_TRUE(BIO_reset(mem.get()));
+
+    // Writing should fail, with the same error as the handshake.
+    EXPECT_EQ(-1, SSL_write(ssl.get(), "a", 1));
+    EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), -1));
+    EXPECT_EQ(err, ERR_get_error());
+
+    // Nothing should be written to the transport.
+    ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
+    EXPECT_EQ(0u, len);
+  }
+}
+
+// Test that, after seeing TLS 1.2 in response to early data, |SSL_write|
+// continues to report |SSL_R_WRONG_VERSION_ON_EARLY_DATA|. See
+// https://crbug.com/1078515.
+TEST(SSLTest, WriteAfterWrongVersionOnEarlyData) {
+  // Set up some 0-RTT-enabled contexts.
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  SSL_CTX_set_early_data_enabled(client_ctx.get(), 1);
+  SSL_CTX_set_early_data_enabled(server_ctx.get(), 1);
+  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
+
+  // Get an early-data-capable session.
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx.get(), server_ctx.get());
+  ASSERT_TRUE(session);
+  EXPECT_TRUE(SSL_SESSION_early_data_capable(session.get()));
+
+  // Offer the session to the server, but now the server speaks TLS 1.2.
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
+  SSL_set_session(client.get(), session.get());
+  EXPECT_TRUE(SSL_set_max_proto_version(server.get(), TLS1_2_VERSION));
+
+  // The client handshake initially succeeds in the early data state.
+  EXPECT_EQ(1, SSL_do_handshake(client.get()));
+  EXPECT_TRUE(SSL_in_early_data(client.get()));
+
+  // The server processes the ClientHello and negotiates TLS 1.2.
+  EXPECT_EQ(-1, SSL_do_handshake(server.get()));
+  EXPECT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server.get(), -1));
+  EXPECT_EQ(TLS1_2_VERSION, SSL_version(server.get()));
+
+  // Capture the client's output.
+  bssl::UniquePtr<BIO> mem(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(mem);
+  SSL_set0_wbio(client.get(), bssl::UpRef(mem).release());
+
+  // The client processes the ServerHello and fails.
+  EXPECT_EQ(-1, SSL_do_handshake(client.get()));
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(client.get(), -1));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_WRONG_VERSION_ON_EARLY_DATA, ERR_GET_REASON(err));
+
+  // The client should have written an alert to the transport.
+  const uint8_t *unused;
+  size_t len;
+  ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
+  EXPECT_NE(0u, len);
+  EXPECT_TRUE(BIO_reset(mem.get()));
+
+  // Writing should fail, with the same error as the handshake.
+  EXPECT_EQ(-1, SSL_write(client.get(), "a", 1));
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(client.get(), -1));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_WRONG_VERSION_ON_EARLY_DATA, ERR_GET_REASON(err));
+
+  // Nothing should be written to the transport.
+  ASSERT_TRUE(BIO_mem_contents(mem.get(), &unused, &len));
+  EXPECT_EQ(0u, len);
 }
 
 TEST(SSLTest, SessionDuplication) {
@@ -2696,38 +2939,6 @@ TEST(SSLTest, ClientHello) {
       }
     }
   }
-}
-
-static bssl::UniquePtr<SSL_SESSION> g_last_session;
-
-static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
-  // Save the most recent session.
-  g_last_session.reset(session);
-  return 1;
-}
-
-static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
-    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
-    const ClientConfig &config = ClientConfig()) {
-  g_last_session = nullptr;
-  SSL_CTX_sess_set_new_cb(client_ctx, SaveLastSession);
-
-  // Connect client and server to get a session.
-  bssl::UniquePtr<SSL> client, server;
-  if (!ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
-                              config) ||
-      !FlushNewSessionTickets(client.get(), server.get())) {
-    fprintf(stderr, "Failed to connect client and server.\n");
-    return nullptr;
-  }
-
-  SSL_CTX_sess_set_new_cb(client_ctx, nullptr);
-
-  if (!g_last_session) {
-    fprintf(stderr, "Client did not receive a session.\n");
-    return nullptr;
-  }
-  return std::move(g_last_session);
 }
 
 static void ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
