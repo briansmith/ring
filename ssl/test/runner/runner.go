@@ -17708,28 +17708,30 @@ func addEncryptedClientHelloTests() {
 		})
 
 		// Test the client can recognize when ECH is rejected.
-		// TODO(https://crbug.com/boringssl/275): Once implemented, this
-		// handshake should complete.
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			protocol: protocol,
 			name:     prefix + "ECH-Client-Reject",
 			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig2, echConfig3},
 				Bugs: ProtocolBugs{
 					ExpectServerName: "public.example",
 				},
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-retry-configs", base64FlagValue(CreateECHConfigList(echConfig2.ECHConfig.Raw, echConfig3.ECHConfig.Raw)),
 			},
-			shouldFail:    true,
-			expectedError: ":CONNECTION_REJECTED:",
+			shouldFail:         true,
+			expectedLocalError: "remote error: ECH required",
+			expectedError:      ":ECH_REJECTED:",
 		})
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			protocol: protocol,
 			name:     prefix + "ECH-Client-Reject-HelloRetryRequest",
 			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig2, echConfig3},
 				CurvePreferences: []CurveID{CurveP384},
 				Bugs: ProtocolBugs{
 					ExpectServerName:      "public.example",
@@ -17738,10 +17740,29 @@ func addEncryptedClientHelloTests() {
 			},
 			flags: []string{
 				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-retry-configs", base64FlagValue(CreateECHConfigList(echConfig2.ECHConfig.Raw, echConfig3.ECHConfig.Raw)),
 				"-expect-hrr", // Check we triggered HRR.
 			},
-			shouldFail:    true,
-			expectedError: ":CONNECTION_REJECTED:",
+			shouldFail:         true,
+			expectedLocalError: "remote error: ECH required",
+			expectedError:      ":ECH_REJECTED:",
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject-NoRetryConfigs",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ExpectServerName: "public.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-no-ech-retry-configs",
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: ECH required",
+			expectedError:      ":ECH_REJECTED:",
 		})
 		if protocol != quic {
 			testCases = append(testCases, testCase{
@@ -17751,18 +17772,78 @@ func addEncryptedClientHelloTests() {
 				config: Config{
 					MaxVersion: VersionTLS12,
 					Bugs: ProtocolBugs{
-						ExpectServerName:      "public.example",
-						ExpectMissingKeyShare: true, // Check we triggered HRR.
+						ExpectServerName: "public.example",
 					},
 				},
 				flags: []string{
 					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
-					"-expect-hrr", // Check we triggered HRR.
+					// TLS 1.2 cannot provide retry configs.
+					"-expect-no-ech-retry-configs",
 				},
-				shouldFail:    true,
-				expectedError: ":CONNECTION_REJECTED:",
+				shouldFail:         true,
+				expectedLocalError: "remote error: ECH required",
+				expectedError:      ":ECH_REJECTED:",
+			})
+
+			// Test that the client disables False Start when ECH is rejected.
+			testCases = append(testCases, testCase{
+				name: prefix + "ECH-Client-Reject-TLS12-NoFalseStart",
+				config: Config{
+					MaxVersion:   VersionTLS12,
+					CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+					NextProtos:   []string{"foo"},
+					Bugs: ProtocolBugs{
+						// The options below cause the server to, immediately
+						// after client Finished, send an alert and try to read
+						// application data without sending server Finished.
+						ExpectFalseStart:          true,
+						AlertBeforeFalseStartTest: alertAccessDenied,
+					},
+				},
+				flags: []string{
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-false-start",
+					"-advertise-alpn", "\x03foo",
+					"-expect-alpn", "foo",
+				},
+				shimWritesFirst: true,
+				shouldFail:      true,
+				// Ensure the client does not send application data at the False
+				// Start point. EOF comes from the client closing the connection
+				// in response ot the alert.
+				expectedLocalError: "tls: peer did not false start: EOF",
+				// Ensures the client picks up the alert before reporting an
+				// authenticated |SSL_R_ECH_REJECTED|.
+				expectedError: ":TLSV1_ALERT_ACCESS_DENIED:",
 			})
 		}
+
+		// Test that unsupported retry configs in a valid ECHConfigList are
+		// allowed. They will be skipped when configured in the retry.
+		retryConfigs := CreateECHConfigList(
+			unsupportedVersion,
+			unsupportedKEM.Raw,
+			unsupportedCipherSuites.Raw,
+			unsupportedMandatoryExtension.Raw,
+			echConfig2.ECHConfig.Raw)
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject-UnsupportedRetryConfigs",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendECHRetryConfigs: retryConfigs,
+					ExpectServerName:    "public.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-retry-configs", base64FlagValue(retryConfigs),
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: ECH required",
+			expectedError:      ":ECH_REJECTED:",
+		})
 
 		// Test that the client rejects ClientHelloOuter handshakes that attempt
 		// to resume the ClientHelloInner's ticket. In draft-ietf-tls-esni-10,
@@ -17771,7 +17852,7 @@ func addEncryptedClientHelloTests() {
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			protocol: protocol,
-			name:     prefix + "ECH-Client-Reject-ResumeInnerSession",
+			name:     prefix + "ECH-Client-Reject-ResumeInnerSession-TLS13",
 			config: Config{
 				ServerECHConfigs: []ServerECHConfig{echConfig},
 				Bugs: ProtocolBugs{
@@ -17779,6 +17860,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			resumeConfig: &Config{
+				MaxVersion:       VersionTLS13,
 				ServerECHConfigs: []ServerECHConfig{echConfig},
 				Bugs: ProtocolBugs{
 					ExpectServerName:                    "public.example",
@@ -17797,11 +17879,54 @@ func addEncryptedClientHelloTests() {
 			resumeExpectations: &connectionExpectations{echAccepted: false},
 		})
 
+		// Test the above, but the server now attempts to resume the
+		// ClientHelloInner's ticket at TLS 1.2.
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Reject-ResumeInnerSession-TLS12",
+				config: Config{
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					Bugs: ProtocolBugs{
+						ExpectServerName: "secret.example",
+					},
+				},
+				resumeConfig: &Config{
+					MinVersion:       VersionTLS12,
+					MaxVersion:       VersionTLS12,
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					Bugs: ProtocolBugs{
+						ExpectServerName:                    "public.example",
+						UseInnerSessionWithClientHelloOuter: true,
+						// The client only ever offers TLS 1.3 sessions in
+						// ClientHelloInner. AcceptAnySession allows them to be
+						// resumed at TLS 1.2.
+						AcceptAnySession: true,
+					},
+				},
+				resumeSession: true,
+				flags: []string{
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-host-name", "secret.example",
+					"-on-initial-expect-ech-accept",
+				},
+				// From the client's perspective, the server echoed a session ID to
+				// signal resumption, but the selected ClientHello had nothing to
+				// resume.
+				shouldFail:         true,
+				expectedError:      ":SERVER_ECHOED_INVALID_SESSION_ID:",
+				expectedLocalError: "remote error: illegal parameter",
+				expectations:       connectionExpectations{echAccepted: true},
+				resumeExpectations: &connectionExpectations{echAccepted: false},
+			})
+		}
+
 		// Test that the client can process ECH rejects after an early data reject.
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			protocol: protocol,
-			name:     prefix + "ECH-Client-Reject-EarlyDataReject",
+			name:     prefix + "ECH-Client-Reject-EarlyDataRejected",
 			config: Config{
 				ServerECHConfigs: []ServerECHConfig{echConfig},
 				Bugs: ProtocolBugs{
@@ -17809,6 +17934,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			resumeConfig: &Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig2},
 				Bugs: ProtocolBugs{
 					ExpectServerName: "public.example",
 				},
@@ -17819,6 +17945,10 @@ func addEncryptedClientHelloTests() {
 				// Although the resumption connection does not accept ECH, the
 				// API will report ECH was accepted at the 0-RTT point.
 				"-expect-ech-accept",
+				// -on-retry refers to the retried handshake after 0-RTT reject,
+				// while ech-retry-configs refers to the ECHConfigs to use in
+				// the next connection attempt.
+				"-on-retry-expect-ech-retry-configs", base64FlagValue(CreateECHConfigList(echConfig2.ECHConfig.Raw)),
 			},
 			resumeSession:           true,
 			expectResumeRejected:    true,
@@ -17826,16 +17956,15 @@ func addEncryptedClientHelloTests() {
 			expectEarlyDataRejected: true,
 			expectations:            connectionExpectations{echAccepted: true},
 			resumeExpectations:      &connectionExpectations{echAccepted: false},
-			// TODO(https://crbug.com/boringssl/275): Once implemented, this
-			// should complete the handshake.
-			shouldFail:    true,
-			expectedError: ":CONNECTION_REJECTED:",
+			shouldFail:              true,
+			expectedLocalError:      "remote error: ECH required",
+			expectedError:           ":ECH_REJECTED:",
 		})
 		if protocol != quic {
 			testCases = append(testCases, testCase{
 				testType: clientTest,
 				protocol: protocol,
-				name:     prefix + "ECH-Client-Reject-EarlyDataReject-TLS12",
+				name:     prefix + "ECH-Client-Reject-EarlyDataRejected-TLS12",
 				config: Config{
 					ServerECHConfigs: []ServerECHConfig{echConfig},
 					Bugs: ProtocolBugs{
@@ -17910,6 +18039,266 @@ func addEncryptedClientHelloTests() {
 				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{echAccepted: true},
+		})
+
+		// Test both sync and async mode, to test both with and without the
+		// client certificate callback.
+		for _, async := range []bool{false, true} {
+			var flags []string
+			var suffix string
+			if async {
+				flags = []string{"-async"}
+				suffix = "-Async"
+			}
+
+			// Test that ECH and client certificates can be used together.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-ClientCertificate" + suffix,
+				config: Config{
+					ServerECHConfigs: []ServerECHConfig{echConfig},
+					ClientAuth:       RequireAnyClientCert,
+				},
+				flags: append([]string{
+					"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+					"-key-file", path.Join(*resourceDir, rsaKeyFile),
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-expect-ech-accept",
+				}, flags...),
+				expectations: connectionExpectations{echAccepted: true},
+			})
+
+			// Test that, when ECH is rejected, the client does not send a client
+			// certificate.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Reject-NoClientCertificate-TLS13" + suffix,
+				config: Config{
+					MinVersion: VersionTLS13,
+					MaxVersion: VersionTLS13,
+					ClientAuth: RequireAnyClientCert,
+				},
+				flags: append([]string{
+					"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+					"-key-file", path.Join(*resourceDir, rsaKeyFile),
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				}, flags...),
+				shouldFail:         true,
+				expectedLocalError: "tls: client didn't provide a certificate",
+			})
+			if protocol != quic {
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					protocol: protocol,
+					name:     prefix + "ECH-Client-Reject-NoClientCertificate-TLS12" + suffix,
+					config: Config{
+						MinVersion: VersionTLS12,
+						MaxVersion: VersionTLS12,
+						ClientAuth: RequireAnyClientCert,
+					},
+					flags: append([]string{
+						"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+						"-key-file", path.Join(*resourceDir, rsaKeyFile),
+						"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					}, flags...),
+					shouldFail:         true,
+					expectedLocalError: "tls: client didn't provide a certificate",
+				})
+			}
+		}
+
+		// Test that ECH and Channel ID can be used together.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-ChannelID",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				RequestChannelID: true,
+			},
+			flags: []string{
+				"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+			},
+			resumeSession: true,
+			expectations: connectionExpectations{
+				channelID:   true,
+				echAccepted: true,
+			},
+		})
+
+		// Handshakes where ECH is rejected do not offer or accept Channel ID.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject-NoChannelID-TLS13",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					AlwaysNegotiateChannelID: true,
+				},
+			},
+			flags: []string{
+				"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: unsupported extension",
+			expectedError:      ":UNEXPECTED_EXTENSION:",
+		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Reject-NoChannelID-TLS12",
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						AlwaysNegotiateChannelID: true,
+					},
+				},
+				flags: []string{
+					"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				},
+				shouldFail:         true,
+				expectedLocalError: "remote error: unsupported extension",
+				expectedError:      ":UNEXPECTED_EXTENSION:",
+			})
+		}
+
+		// Test that ECH correctly overrides the host name for certificate
+		// verification.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-NotOffered-NoOverrideName",
+			flags: []string{
+				"-verify-peer",
+				"-use-custom-verify-callback",
+				// When not offering ECH, verify the usual name in both full
+				// and resumption handshakes.
+				"-reverify-on-resume",
+				"-expect-no-ech-name-override",
+			},
+			resumeSession: true,
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-GREASE-NoOverrideName",
+			flags: []string{
+				"-verify-peer",
+				"-use-custom-verify-callback",
+				"-enable-ech-grease",
+				// When offering ECH GREASE, verify the usual name in both full
+				// and resumption handshakes.
+				"-reverify-on-resume",
+				"-expect-no-ech-name-override",
+			},
+			resumeSession: true,
+		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Client-Rejected-OverrideName-TLS12",
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+				},
+				flags: []string{
+					"-verify-peer",
+					"-use-custom-verify-callback",
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					// When ECH is rejected, verify the public name. This can
+					// only happen in full handshakes.
+					"-expect-ech-name-override", "public.example",
+				},
+				shouldFail:         true,
+				expectedError:      ":ECH_REJECTED:",
+				expectedLocalError: "remote error: ECH required",
+			})
+		}
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject-OverrideName-TLS13",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+			},
+			flags: []string{
+				"-verify-peer",
+				"-use-custom-verify-callback",
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				// When ECH is rejected, verify the public name. This can
+				// only happen in full handshakes.
+				"-expect-ech-name-override", "public.example",
+			},
+			shouldFail:         true,
+			expectedError:      ":ECH_REJECTED:",
+			expectedLocalError: "remote error: ECH required",
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Accept-NoOverrideName",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+			},
+			flags: []string{
+				"-verify-peer",
+				"-use-custom-verify-callback",
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+				// When ECH is accepted, verify the usual name in both full and
+				// resumption handshakes.
+				"-reverify-on-resume",
+				"-expect-no-ech-name-override",
+			},
+			resumeSession: true,
+			expectations:  connectionExpectations{echAccepted: true},
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-Reject-EarlyDataRejected-OverrideNameOnRetry",
+			config: Config{
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+			},
+			resumeConfig: &Config{},
+			flags: []string{
+				"-verify-peer",
+				"-use-custom-verify-callback",
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				// Although the resumption connection does not accept ECH, the
+				// API will report ECH was accepted at the 0-RTT point.
+				"-expect-ech-accept",
+				// The resumption connection verifies certificates twice. First,
+				// if reverification is enabled, we verify the 0-RTT certificate
+				// as if ECH as accepted. There should be no name override.
+				// Next, on the post-0-RTT-rejection retry, we verify the new
+				// server certificate. This picks up the ECH reject, so it
+				// should use public.example.
+				"-reverify-on-resume",
+				"-on-resume-expect-no-ech-name-override",
+				"-on-retry-expect-ech-name-override", "public.example",
+			},
+			resumeSession:           true,
+			expectResumeRejected:    true,
+			earlyData:               true,
+			expectEarlyDataRejected: true,
+			expectations:            connectionExpectations{echAccepted: true},
+			resumeExpectations:      &connectionExpectations{echAccepted: false},
+			shouldFail:              true,
+			expectedError:           ":ECH_REJECTED:",
+			expectedLocalError:      "remote error: ECH required",
 		})
 	}
 }

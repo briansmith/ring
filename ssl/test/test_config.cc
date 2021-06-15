@@ -60,6 +60,8 @@ const Flag<bool> kBoolFlags[] = {
     {"-fallback-scsv", &TestConfig::fallback_scsv},
     {"-enable-ech-grease", &TestConfig::enable_ech_grease},
     {"-expect-ech-accept", &TestConfig::expect_ech_accept},
+    {"-expect-no-ech-name-override", &TestConfig::expect_no_ech_name_override},
+    {"-expect-no-ech-retry-configs", &TestConfig::expect_no_ech_retry_configs},
     {"-require-any-client-certificate",
      &TestConfig::require_any_client_certificate},
     {"-false-start", &TestConfig::false_start},
@@ -167,6 +169,7 @@ const Flag<std::string> kStringFlags[] = {
     {"-key-file", &TestConfig::key_file},
     {"-cert-file", &TestConfig::cert_file},
     {"-expect-server-name", &TestConfig::expect_server_name},
+    {"-expect-ech-name-override", &TestConfig::expect_ech_name_override},
     {"-advertise-npn", &TestConfig::advertise_npn},
     {"-expect-next-proto", &TestConfig::expect_next_proto},
     {"-select-next-proto", &TestConfig::select_next_proto},
@@ -201,6 +204,7 @@ const Flag<std::unique_ptr<std::string>> kOptionalStringFlags[] = {
 };
 
 const Flag<std::string> kBase64Flags[] = {
+    {"-expect-ech-retry-configs", &TestConfig::expect_ech_retry_configs},
     {"-ech-config-list", &TestConfig::ech_config_list},
     {"-expect-certificate-types", &TestConfig::expect_certificate_types},
     {"-expect-channel-id", &TestConfig::expect_channel_id},
@@ -772,6 +776,20 @@ static bool CheckVerifyCallback(SSL *ssl) {
       fprintf(stderr, "OCSP response not available in verify callback.\n");
       return false;
     }
+  }
+
+  const char *name_override;
+  size_t name_override_len;
+  SSL_get0_ech_name_override(ssl, &name_override, &name_override_len);
+  if (config->expect_no_ech_name_override && name_override_len != 0) {
+    fprintf(stderr, "Unexpected ECH name override.\n");
+    return false;
+  }
+  if (!config->expect_ech_name_override.empty() &&
+      config->expect_ech_name_override !=
+          std::string(name_override, name_override_len)) {
+    fprintf(stderr, "ECH name did not match expected value.\n");
+    return false;
   }
 
   if (GetTestState(ssl)->cert_verified) {

@@ -1650,7 +1650,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		serverExtensions.extendedMasterSecret = hs.clientHello.extendedMasterSecret && !disableEMS
 	}
 
-	if hs.clientHello.channelIDSupported && config.RequestChannelID {
+	if config.Bugs.AlwaysNegotiateChannelID || (hs.clientHello.channelIDSupported && config.RequestChannelID) {
 		serverExtensions.channelIDRequested = true
 	}
 

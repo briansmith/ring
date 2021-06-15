@@ -654,6 +654,11 @@ static bool ext_ech_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return false;
   }
 
+  if (!ssl_is_valid_ech_config_list(*contents)) {
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return false;
+  }
+
   // The server may only send retry configs in response to ClientHelloOuter (or
   // ECH GREASE), not ClientHelloInner. The unsolicited extension rule checks
   // this implicitly because the ClientHelloInner has no encrypted_client_hello
@@ -663,14 +668,13 @@ static bool ext_ech_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // https://github.com/tlswg/draft-ietf-tls-esni/pull/422 is merged, a later
   // draft will fold encrypted_client_hello and ech_is_inner together. Then this
   // assert should become a runtime check.
-  assert(!ssl->s3->ech_accept);
-
-  // TODO(https://crbug.com/boringssl/275): When the implementing the
-  // ClientHelloOuter flow, save the retry configs.
-  if (!ssl_is_valid_ech_config_list(*contents)) {
-    *out_alert = SSL_AD_DECODE_ERROR;
+  assert(ssl->s3->ech_status != ssl_ech_accepted);
+  if (hs->selected_ech_config &&
+      !hs->ech_retry_configs.CopyFrom(*contents)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
+
   return true;
 }
 
@@ -685,8 +689,8 @@ static bool ext_ech_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 static bool ext_ech_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (ssl_protocol_version(ssl) < TLS1_3_VERSION ||  //
-      ssl->s3->ech_accept ||                         //
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION ||
+      ssl->s3->ech_status == ssl_ech_accepted ||  //
       hs->ech_keys == nullptr) {
     return true;
   }
@@ -1634,12 +1638,21 @@ static bool ext_channel_id_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
                                            CBB *out_compressible,
                                            ssl_client_hello_type_t type) {
   const SSL *const ssl = hs->ssl;
-  if (!hs->config->channel_id_private || SSL_is_dtls(ssl)) {
+  if (!hs->config->channel_id_private || SSL_is_dtls(ssl) ||
+      // Don't offer Channel ID in ClientHelloOuter. ClientHelloOuter handshakes
+      // are not authenticated for the name that can learn the Channel ID.
+      //
+      // We could alternatively offer the extension but sign with a random key.
+      // For other extensions, we try to align |ssl_client_hello_outer| and
+      // |ssl_client_hello_unencrypted|, to improve the effectiveness of ECH
+      // GREASE. However, Channel ID is deprecated and unlikely to be used with
+      // ECH, so do the simplest thing.
+      type == ssl_client_hello_outer) {
     return true;
   }
 
-  if (!CBB_add_u16(out_compressible, TLSEXT_TYPE_channel_id) ||
-      !CBB_add_u16(out_compressible, 0 /* length */)) {
+  if (!CBB_add_u16(out, TLSEXT_TYPE_channel_id) ||
+      !CBB_add_u16(out, 0 /* length */)) {
     return false;
   }
 

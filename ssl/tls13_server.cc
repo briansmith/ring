@@ -601,7 +601,7 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (ssl->s3->ech_accept) {
+  if (ssl->s3->ech_status == ssl_ech_accepted) {
     // If we previously accepted the ClientHelloInner, check that the second
     // ClientHello contains an encrypted_client_hello extension.
     CBS ech_body;
@@ -761,7 +761,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  assert(!ssl->s3->ech_accept || hs->ech_is_inner_present);
+  assert(ssl->s3->ech_status != ssl_ech_accepted || hs->ech_is_inner_present);
   if (hs->ech_is_inner_present) {
     // Fill in the ECH confirmation signal.
     Span<uint8_t> random_suffix =

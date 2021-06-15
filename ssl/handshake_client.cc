@@ -731,13 +731,9 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // TODO(https://crbug.com/boringssl/275): If the server negotiates TLS 1.2 and
-  // we offer ECH, we handshake with ClientHelloOuter instead of
-  // ClientHelloInner. That path is not yet implemented. For now, terminate the
-  // handshake with a distinguishable error for testing.
+  // TLS 1.2 handshakes cannot accept ECH.
   if (hs->selected_ech_config) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
-    return ssl_hs_error;
+    ssl->s3->ech_status = ssl_ech_rejected;
   }
 
   // Copy over the server random.
@@ -764,44 +760,13 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (hs->session_id_len != 0 &&
-      CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len)) {
-    // Echoing the ClientHello session ID in TLS 1.2, whether from the session
-    // or a synthetic one, indicates resumption. If there was no session, this
-    // was the TLS 1.3 compatibility mode session ID. As we know this is not a
-    // session the server knows about, any server resuming it is in error.
-    // Reject the first connection deterministicly, rather than installing an
-    // invalid session into the session cache. https://crbug.com/796910
-    if (ssl->session == nullptr) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_ECHOED_INVALID_SESSION_ID);
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      return ssl_hs_error;
-    }
-    // We never offer sessions on renegotiation.
-    assert(!ssl->s3->initial_handshake_complete);
-    ssl->s3->session_reused = true;
-    // Note |ssl->session| may be a TLS 1.3 session, offered in a separate
-    // extension altogether. In that case, the version check below will fail the
-    // connection.
-  } else {
-    // The session wasn't resumed. Create a fresh SSL_SESSION to fill out.
-    ssl_set_session(ssl, NULL);
-    if (!ssl_get_new_session(hs)) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
-    // Note: session_id could be empty.
-    hs->new_session->session_id_length = CBS_len(&session_id);
-    OPENSSL_memcpy(hs->new_session->session_id, CBS_data(&session_id),
-                   CBS_len(&session_id));
-  }
-
   const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
   if (cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_RETURNED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
+  hs->new_cipher = cipher;
 
   // The cipher must be allowed in the selected version and enabled.
   uint32_t mask_a, mask_k;
@@ -815,7 +780,20 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (ssl->session != NULL) {
+  if (hs->session_id_len != 0 &&
+      CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len)) {
+    // Echoing the ClientHello session ID in TLS 1.2, whether from the session
+    // or a synthetic one, indicates resumption. If there was no session (or if
+    // the session was only offered in ECH ClientHelloInner), this was the
+    // TLS 1.3 compatibility mode session ID. As we know this is not a session
+    // the server knows about, any server resuming it is in error. Reject the
+    // first connection deterministicly, rather than installing an invalid
+    // session into the session cache. https://crbug.com/796910
+    if (ssl->session == nullptr || ssl->s3->ech_status == ssl_ech_rejected) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_ECHOED_INVALID_SESSION_ID);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      return ssl_hs_error;
+    }
     if (ssl->session->ssl_version != ssl->version) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_VERSION_NOT_RETURNED);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
@@ -833,10 +811,22 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
+    // We never offer sessions on renegotiation.
+    assert(!ssl->s3->initial_handshake_complete);
+    ssl->s3->session_reused = true;
   } else {
+    // The session wasn't resumed. Create a fresh SSL_SESSION to fill out.
+    ssl_set_session(ssl, NULL);
+    if (!ssl_get_new_session(hs)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
+    // Note: session_id could be empty.
+    hs->new_session->session_id_length = CBS_len(&session_id);
+    OPENSSL_memcpy(hs->new_session->session_id, CBS_data(&session_id),
+                   CBS_len(&session_id));
     hs->new_session->cipher = cipher;
   }
-  hs->new_cipher = cipher;
 
   // Now that the cipher is known, initialize the handshake hash and hash the
   // ServerHello.
@@ -1334,8 +1324,12 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  // Call cert_cb to update the certificate.
-  if (hs->config->cert->cert_cb != NULL) {
+  if (ssl->s3->ech_status == ssl_ech_rejected) {
+    // Do not send client certificates on ECH reject. We have not authenticated
+    // the server for the name that can learn the certificate.
+    SSL_certs_clear(ssl);
+  } else if (hs->config->cert->cert_cb != nullptr) {
+    // Call cert_cb to update the certificate.
     int rv = hs->config->cert->cert_cb(ssl, hs->config->cert->cert_cb_arg);
     if (rv == 0) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
@@ -1642,7 +1636,7 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
 }
 
 static bool can_false_start(const SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
+  const SSL *const ssl = hs->ssl;
 
   // False Start bypasses the Finished check's downgrade protection. This can
   // enable attacks where we send data under weaker settings than supported
@@ -1657,6 +1651,13 @@ static bool can_false_start(const SSL_HANDSHAKE *hs) {
       SSL_version(ssl) != TLS1_2_VERSION ||
       hs->new_cipher->algorithm_mkey != SSL_kECDHE ||
       hs->new_cipher->algorithm_mac != SSL_AEAD) {
+    return false;
+  }
+
+  // If ECH was rejected, disable False Start. We run the handshake to
+  // completion, including the Finished downgrade check, to authenticate the
+  // recovery flow.
+  if (ssl->s3->ech_status == ssl_ech_rejected) {
     return false;
   }
 
@@ -1796,6 +1797,13 @@ static enum ssl_hs_wait_t do_read_server_finished(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  if (ssl->s3->ech_status == ssl_ech_rejected) {
+    // Release the retry configs.
+    hs->ech_authenticated_reject = true;
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ECH_REQUIRED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_ECH_REJECTED);
+    return ssl_hs_error;
+  }
 
   ssl->method->on_handshake_complete(ssl);
 

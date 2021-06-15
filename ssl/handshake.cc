@@ -128,6 +128,7 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
       ech_present(false),
       ech_is_inner_present(false),
+      ech_authenticated_reject(false),
       scts_requested(false),
       handshake_finalized(false),
       accept_psk_mode(false),
@@ -715,6 +716,10 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         return -1;
 
       case ssl_hs_early_return:
+        if (!ssl->server) {
+          // On ECH reject, the handshake should never complete.
+          assert(ssl->s3->ech_status != ssl_ech_rejected);
+        }
         *out_early_return = true;
         hs->wait = ssl_hs_ok;
         return 1;
@@ -734,6 +739,10 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
       return -1;
     }
     if (hs->wait == ssl_hs_ok) {
+      if (!ssl->server) {
+        // On ECH reject, the handshake should never complete.
+        assert(ssl->s3->ech_status != ssl_ech_rejected);
+      }
       // The handshake has completed.
       *out_early_return = false;
       return 1;

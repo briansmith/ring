@@ -44,6 +44,10 @@ struct TestConfig {
   std::vector<std::string> ech_server_keys;
   std::vector<int> ech_is_retry_config;
   bool expect_ech_accept = false;
+  std::string expect_ech_name_override;
+  bool expect_no_ech_name_override = false;
+  std::string expect_ech_retry_configs;
+  bool expect_no_ech_retry_configs = false;
   std::string ech_config_list;
   std::string expect_certificate_types;
   bool require_any_client_certificate = false;

@@ -40,7 +40,8 @@
 BSSL_NAMESPACE_BEGIN
 
 // ECH reuses the extension code point for the version number.
-static const uint16_t kECHConfigVersion = TLSEXT_TYPE_encrypted_client_hello;
+static constexpr uint16_t kECHConfigVersion =
+    TLSEXT_TYPE_encrypted_client_hello;
 
 static const decltype(&EVP_hpke_aes_128_gcm) kSupportedAEADs[] = {
     &EVP_hpke_aes_128_gcm,
@@ -993,6 +994,47 @@ int SSL_set1_ech_config_list(SSL *ssl, const uint8_t *ech_config_list,
   return ssl->config->client_ech_config_list.CopyFrom(span);
 }
 
+void SSL_get0_ech_name_override(const SSL *ssl, const char **out_name,
+                                size_t *out_name_len) {
+  // When ECH is rejected, we use the public name. Note that, if
+  // |SSL_CTX_set_reverify_on_resume| is enabled, we reverify the certificate
+  // before the 0-RTT point. If also offering ECH, we verify as if
+  // ClientHelloInner was accepted and do not override. This works because, at
+  // this point, |ech_status| will be |ssl_ech_none|. See the
+  // ECH-Client-Reject-EarlyDataReject-OverrideNameOnRetry tests in runner.go.
+  const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
+  if (hs && ssl->s3->ech_status == ssl_ech_rejected) {
+    *out_name = reinterpret_cast<const char *>(
+        hs->selected_ech_config->public_name.data());
+    *out_name_len = hs->selected_ech_config->public_name.size();
+  } else {
+    *out_name = nullptr;
+    *out_name_len = 0;
+  }
+}
+
+void SSL_get0_ech_retry_configs(
+    const SSL *ssl, const uint8_t **out_retry_configs,
+    size_t *out_retry_configs_len) {
+  const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
+  if (!hs || !hs->ech_authenticated_reject) {
+    // It is an error to call this function except in response to
+    // |SSL_R_ECH_REJECTED|. Returning an empty string risks the caller
+    // mistakenly believing the server has disabled ECH. Instead, return a
+    // non-empty ECHConfigList with a syntax error, so the subsequent
+    // |SSL_set1_ech_config_list| call will fail.
+    assert(0);
+    static const uint8_t kPlaceholder[] = {
+        kECHConfigVersion >> 8, kECHConfigVersion & 0xff, 0xff, 0xff, 0xff};
+    *out_retry_configs = kPlaceholder;
+    *out_retry_configs_len = sizeof(kPlaceholder);
+    return;
+  }
+
+  *out_retry_configs = hs->ech_retry_configs.data();
+  *out_retry_configs_len = hs->ech_retry_configs.size();
+}
+
 int SSL_marshal_ech_config(uint8_t **out, size_t *out_len, uint8_t config_id,
                            const EVP_HPKE_KEY *key, const char *public_name,
                            size_t max_name_len) {
@@ -1129,5 +1171,5 @@ int SSL_ech_accepted(const SSL *ssl) {
     return ssl->s3->hs->selected_ech_config != nullptr;
   }
 
-  return ssl->s3->ech_accept;
+  return ssl->s3->ech_status == ssl_ech_accepted;
 }

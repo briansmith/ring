@@ -476,7 +476,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
                       ssl->s3->server_random + sizeof(ssl->s3->server_random) -
                           sizeof(ech_confirmation),
                       sizeof(ech_confirmation)) == 0) {
-      ssl->s3->ech_accept = true;
+      ssl->s3->ech_status = ssl_ech_accepted;
       hs->transcript = std::move(hs->inner_transcript);
       hs->extensions.sent = hs->inner_extensions_sent;
       // Report the inner random value through |SSL_get_client_random|.
@@ -489,13 +489,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
         return ssl_hs_error;
       }
-
-      // TODO(https://crbug.com/boringssl/275): If the server declines ECH, we
-      // handshake with ClientHelloOuter instead of ClientHelloInner. That path
-      // is not yet implemented. For now, terminate the handshake with a
-      // distiguisable error for testing.
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
-      return ssl_hs_error;
+      ssl->s3->ech_status = ssl_ech_rejected;
     }
   }
 
@@ -555,7 +549,7 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
     // If offering ECH, the server may not accept early data with
     // ClientHelloOuter. We do not offer sessions with ClientHelloOuter, so this
     // this should be implied by checking |session_reused|.
-    assert(hs->selected_ech_config == nullptr || ssl->s3->ech_accept);
+    assert(ssl->s3->ech_status != ssl_ech_rejected);
 
     if (hs->early_session->cipher != hs->new_session->cipher) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_MISMATCH_ON_EARLY_DATA);
@@ -835,8 +829,12 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  // Call cert_cb to update the certificate.
-  if (hs->config->cert->cert_cb != NULL) {
+  if (ssl->s3->ech_status == ssl_ech_rejected) {
+    // Do not send client certificates on ECH reject. We have not authenticated
+    // the server for the name that can learn the certificate.
+    SSL_certs_clear(ssl);
+  } else if (hs->config->cert->cert_cb != nullptr) {
+    // Call cert_cb to update the certificate.
     int rv = hs->config->cert->cert_cb(ssl, hs->config->cert->cert_cb_arg);
     if (rv == 0) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);

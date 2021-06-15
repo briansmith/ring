@@ -368,25 +368,33 @@ static bool ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
     return false;
   }
 
-  SSL_CTX *ssl_ctx = hs->ssl->ctx.get();
+  SSL *const ssl = hs->ssl;
+  SSL_CTX *ssl_ctx = ssl->ctx.get();
   X509_STORE *verify_store = ssl_ctx->cert_store;
   if (hs->config->cert->verify_store != nullptr) {
     verify_store = hs->config->cert->verify_store;
   }
 
   X509 *leaf = sk_X509_value(cert_chain, 0);
+  const char *name;
+  size_t name_len;
+  SSL_get0_ech_name_override(ssl, &name, &name_len);
   ScopedX509_STORE_CTX ctx;
   if (!X509_STORE_CTX_init(ctx.get(), verify_store, leaf, cert_chain) ||
-      !X509_STORE_CTX_set_ex_data(
-          ctx.get(), SSL_get_ex_data_X509_STORE_CTX_idx(), hs->ssl) ||
+      !X509_STORE_CTX_set_ex_data(ctx.get(),
+                                  SSL_get_ex_data_X509_STORE_CTX_idx(), ssl) ||
       // We need to inherit the verify parameters. These can be determined by
       // the context: if its a server it will verify SSL client certificates or
       // vice versa.
-      !X509_STORE_CTX_set_default(
-          ctx.get(), hs->ssl->server ? "ssl_client" : "ssl_server") ||
+      !X509_STORE_CTX_set_default(ctx.get(),
+                                  ssl->server ? "ssl_client" : "ssl_server") ||
       // Anything non-default in "param" should overwrite anything in the ctx.
       !X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(ctx.get()),
-                              hs->config->param)) {
+                              hs->config->param) ||
+      // ClientHelloOuter connections use a different name.
+      (name_len != 0 &&
+       !X509_VERIFY_PARAM_set1_host(X509_STORE_CTX_get0_param(ctx.get()), name,
+                                    name_len))) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return false;
   }

@@ -3557,6 +3557,11 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 // This can prevent observers from seeing cleartext information about the
 // connection, such as the server_name extension.
 //
+// By default, BoringSSL will treat the server name, session ticket, and client
+// certificate as secret, but most other parameters, such as the ALPN protocol
+// list will be treated as public and sent in the cleartext ClientHello. Other
+// APIs may be added for applications with different secrecy requirements.
+//
 // ECH support in BoringSSL is still experimental and under development.
 //
 // See https://tools.ietf.org/html/draft-ietf-tls-esni-10.
@@ -3573,15 +3578,56 @@ OPENSSL_EXPORT void SSL_set_enable_ech_grease(SSL *ssl, int enable);
 // valid but none of the ECHConfigs implement supported parameters, it will
 // return success and proceed without ECH.
 //
-// WARNING: Client ECH support is still incomplete and does not yet implement
-// the recovery flow. It currently treats ECH rejection as a fatal error. Do not
-// use this API yet.
+// If a supported ECHConfig is found, |ssl| will encrypt the true ClientHello
+// parameters. If the server cannot decrypt it, e.g. due to a key mismatch, ECH
+// has a recovery flow. |ssl| will handshake using the cleartext parameters,
+// including a public name in the ECHConfig. If using
+// |SSL_CTX_set_custom_verify|, callers should use |SSL_get0_ech_name_override|
+// to verify the certificate with the public name. If using the built-in
+// verifier, the |X509_STORE_CTX| will be configured automatically.
 //
-// TODO(https://crbug.com/boringssl/275): When the recovery flow is implemented,
-// fill in the remaining docs.
+// If no other errors are found in this handshake, it will fail with
+// |SSL_R_ECH_REJECTED|. Since it didn't use the true parameters, the connection
+// cannot be used for application data. Instead, callers should handle this
+// error by calling |SSL_get0_ech_retry_configs| and retrying the connection
+// with updated ECH parameters. If the retry also fails with
+// |SSL_R_ECH_REJECTED|, the caller should report a connection failure.
 OPENSSL_EXPORT int SSL_set1_ech_config_list(SSL *ssl,
                                             const uint8_t *ech_config_list,
                                             size_t ech_config_list_len);
+
+// SSL_get0_ech_name_override sets |*out_name| and |*out_name_len| to point to a
+// buffer containing the ECH public name, if the server rejected ECH, or the
+// empty string otherwise.
+//
+// This function should be called during the certificate verification callback
+// (see |SSL_CTX_set_custom_verify|) if |ssl| is a client offering ECH. If
+// |*out_name_len| is non-zero, the caller should verify the certificate against
+// the result, interpreted as a DNS name, rather than the true server name. In
+// this case, the handshake will never succeed and is only used to authenticate
+// retry configs. See also |SSL_get0_ech_retry_configs|.
+OPENSSL_EXPORT void SSL_get0_ech_name_override(const SSL *ssl,
+                                               const char **out_name,
+                                               size_t *out_name_len);
+
+// SSL_get0_ech_retry_configs sets |*out_retry_configs| and
+// |*out_retry_configs_len| to a buffer containing a serialized ECHConfigList.
+// If the server did not provide an ECHConfigList, |*out_retry_configs_len| will
+// be zero.
+//
+// When handling an |SSL_R_ECH_REJECTED| error code as a client, callers should
+// use this function to recover from potential key mismatches. If the result is
+// non-empty, the caller should retry the connection, passing this buffer to
+// |SSL_set1_ech_config_list|. If the result is empty, the server has rolled
+// back ECH support, and the caller should retry without ECH.
+//
+// This function must only be called in response to an |SSL_R_ECH_REJECTED|
+// error code. Calling this function on |ssl|s that have not authenticated the
+// rejection handshake will assert in debug builds and otherwise return an
+// unparsable list.
+OPENSSL_EXPORT void SSL_get0_ech_retry_configs(
+    const SSL *ssl, const uint8_t **out_retry_configs,
+    size_t *out_retry_configs_len);
 
 // SSL_marshal_ech_config constructs a new serialized ECHConfig. On success, it
 // sets |*out| to a newly-allocated buffer containing the result and |*out_len|
@@ -5502,6 +5548,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_COULD_NOT_PARSE_HINTS 316
 #define SSL_R_INVALID_ECH_PUBLIC_NAME 317
 #define SSL_R_INVALID_ECH_CONFIG_LIST 318
+#define SSL_R_ECH_REJECTED 319
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

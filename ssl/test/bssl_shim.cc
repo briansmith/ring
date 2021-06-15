@@ -809,7 +809,42 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     }
 
     assert(!config->handoff);
+    config = retry_config;
     ret = DoExchange(out_session, &ssl, retry_config, is_resume, true, writer);
+  }
+
+  // An ECH rejection appears as a failed connection. Note |ssl| may use a
+  // different config on ECH rejection.
+  if (config->expect_no_ech_retry_configs ||
+      !config->expect_ech_retry_configs.empty()) {
+    bssl::Span<const uint8_t> expected =
+        config->expect_no_ech_retry_configs
+            ? bssl::Span<const uint8_t>()
+            : bssl::MakeConstSpan(reinterpret_cast<const uint8_t *>(
+                                      config->expect_ech_retry_configs.data()),
+                                  config->expect_ech_retry_configs.size());
+    if (ret) {
+      fprintf(stderr, "Expected ECH rejection, but connection succeeded.\n");
+      return false;
+    }
+    uint32_t err = ERR_peek_error();
+    if (SSL_get_error(ssl.get(), -1) != SSL_ERROR_SSL ||
+        ERR_GET_LIB(err) != ERR_LIB_SSL ||
+        ERR_GET_REASON(err) != SSL_R_ECH_REJECTED) {
+      fprintf(stderr, "Expected ECH rejection, but connection succeeded.\n");
+      return false;
+    }
+    const uint8_t *retry_configs;
+    size_t retry_configs_len;
+    SSL_get0_ech_retry_configs(ssl.get(), &retry_configs, &retry_configs_len);
+    if (bssl::MakeConstSpan(retry_configs, retry_configs_len) != expected) {
+      fprintf(stderr, "ECH retry configs did not match expectations.\n");
+      // Clear the error queue. Otherwise |SSL_R_ECH_REJECTED| will be printed
+      // to stderr and the test framework will think the test had the expected
+      // expectations.
+      ERR_clear_error();
+      return false;
+    }
   }
 
   if (!ret) {

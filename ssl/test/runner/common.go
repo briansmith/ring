@@ -1677,6 +1677,10 @@ type ProtocolBugs struct {
 	// invalid Channel ID signature.
 	InvalidChannelIDSignature bool
 
+	// AlwaysNegotiateChannelID, if true, causes the server to negotiate Channel
+	// ID, even whenn the client does not offer it.
+	AlwaysNegotiateChannelID bool
+
 	// ExpectGREASE, if true, causes messages without GREASE values to be
 	// rejected. See RFC 8701.
 	ExpectGREASE bool
