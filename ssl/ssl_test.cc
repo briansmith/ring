@@ -1949,6 +1949,15 @@ TEST(SSLTest, UnsupportedECHConfig) {
   EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
                                 ech_config.data(), ech_config.size(),
                                 key.get()));
+
+  // Invalid public names are rejected.
+  ECHConfigParams invalid_public_name;
+  invalid_public_name.key = key.get();
+  invalid_public_name.public_name = "dns_names_have_no_underscores.example";
+  ASSERT_TRUE(MakeECHConfig(&ech_config, invalid_public_name));
+  EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
+                                ech_config.data(), ech_config.size(),
+                                key.get()));
 }
 
 // Test that |SSL_get_client_random| reports the correct value on both client
@@ -2076,6 +2085,73 @@ TEST(SSLTest, ECHPadding) {
     EXPECT_EQ(client_hello_len, client_hello_len_129);
     EXPECT_EQ(ech_len, ech_len_129);
   }
+}
+
+TEST(SSLTest, ECHPublicName) {
+  auto str_to_span = [](const char *str) -> Span<const uint8_t> {
+    return MakeConstSpan(reinterpret_cast<const uint8_t *>(str), strlen(str));
+  };
+
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("example.com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span(".example.com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.com.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example..com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("www.-example.com")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("www.example-.com")));
+  EXPECT_FALSE(
+      ssl_is_valid_ech_public_name(str_to_span("no_underscores.example")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("invalid_chars.\x01.example")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("invalid_chars.\xff.example")));
+  static const uint8_t kWithNUL[] = {'t', 'e', 's', 't', 0};
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(kWithNUL));
+
+  // Test an LDH label with every character and the maximum length.
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span(
+      "abcdefhijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span(
+      "abcdefhijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-01234567899")));
+
+  // Inputs that parse as IPv4 addresses are rejected.
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.0.0.1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0177.0.0.01")));
+  EXPECT_FALSE(
+      ssl_is_valid_ech_public_name(str_to_span("0x7f.0x.0x.0x00000001")));
+  EXPECT_FALSE(
+      ssl_is_valid_ech_public_name(str_to_span("0XAB.0XCD.0XEF.0X01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("255.255.255.255")));
+  // Out-of-bounds or overflowing components are not IP addresses.
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("256.255.255.255")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("255.0x100.255.255")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("255.255.255.0400")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(
+      str_to_span("255.255.255.0x100000000")));
+  // Invalid characters for the base are not IP addresses.
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("12a.0.0.1")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0xg.0.0.1")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("08.0.0.1")));
+  // Trailing components can be merged into a single component.
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.0.1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("2130706433")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x7f000001")));
+  // Merged components must respect their limits.
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0xff")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0xffff")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0xffffff")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0xffffffff")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0x100")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0.0x10000")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0x1000000")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0x100000000")));
+  // Correctly handle overflow in decimal and octal.
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("037777777777")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("040000000000")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("4294967295")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("4294967296")));
 }
 
 #if defined(OPENSSL_THREADS)

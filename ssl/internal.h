@@ -1525,6 +1525,11 @@ bool ssl_ech_accept_confirmation(const SSL_HANDSHAKE *hs, Span<uint8_t> out,
                                  const SSLTranscript &transcript,
                                  Span<const uint8_t> server_hello);
 
+// ssl_is_valid_ech_public_name returns true if |public_name| is a valid ECH
+// public name and false otherwise. It is exported for testing.
+OPENSSL_EXPORT bool ssl_is_valid_ech_public_name(
+    Span<const uint8_t> public_name);
+
 // ssl_is_valid_ech_config_list returns true if |ech_config_list| is a valid
 // ECHConfigList structure and false otherwise.
 bool ssl_is_valid_ech_config_list(Span<const uint8_t> ech_config_list);

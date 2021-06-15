@@ -17807,6 +17807,45 @@ func addEncryptedClientHelloTests() {
 				expectedError: ":WRONG_VERSION_ON_EARLY_DATA:",
 			})
 		}
+
+		// Test that the client ignores ECHConfigs with invalid public names.
+		invalidPublicName := generateServerECHConfig(&ECHConfig{PublicName: "dns_names_have_no_underscores.example"})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-SkipInvalidPublicName",
+			config: Config{
+				Bugs: ProtocolBugs{
+					// No ECHConfigs are supported, so the client should fall
+					// back to cleartext.
+					ExpectNoClientECH: true,
+					ExpectServerName:  "secret.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(invalidPublicName.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+			},
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-SkipInvalidPublicName-2",
+			config: Config{
+				// The client should skip |invalidPublicName| and use |echConfig|.
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectOuterServerName: "public.example",
+					ExpectServerName:      "secret.example",
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(invalidPublicName.ECHConfig.Raw, echConfig.ECHConfig.Raw)),
+				"-host-name", "secret.example",
+				"-expect-ech-accept",
+			},
+			expectations: connectionExpectations{echAccepted: true},
+		})
 	}
 }
 

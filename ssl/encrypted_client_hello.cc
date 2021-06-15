@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <openssl/aead.h>
@@ -358,6 +359,121 @@ bool ssl_client_hello_decrypt(
   return true;
 }
 
+static bool parse_ipv4_number(Span<const uint8_t> in, uint32_t *out) {
+  // See https://url.spec.whatwg.org/#ipv4-number-parser.
+  uint32_t base = 10;
+  if (in.size() >= 2 && in[0] == '0' && (in[1] == 'x' || in[1] == 'X')) {
+    in = in.subspan(2);
+    base = 16;
+  } else if (in.size() >= 1 && in[0] == '0') {
+    in = in.subspan(1);
+    base = 8;
+  }
+  *out = 0;
+  for (uint8_t c : in) {
+    uint32_t d;
+    if ('0' <= c && c <= '9') {
+      d = c - '0';
+    } else if ('a' <= c && c <= 'f') {
+      d = c - 'a' + 10;
+    } else if ('A' <= c && c <= 'F') {
+      d = c - 'A' + 10;
+    } else {
+      return false;
+    }
+    if (d >= base ||
+        *out > UINT32_MAX / base) {
+      return false;
+    }
+    *out *= base;
+    if (*out > UINT32_MAX - d) {
+      return false;
+    }
+    *out += d;
+  }
+  return true;
+}
+
+static bool is_ipv4_address(Span<const uint8_t> in) {
+  // See https://url.spec.whatwg.org/#concept-ipv4-parser
+  uint32_t numbers[4];
+  size_t num_numbers = 0;
+  while (!in.empty()) {
+    if (num_numbers == 4) {
+      // Too many components.
+      return false;
+    }
+    // Find the next dot-separated component.
+    auto dot = std::find(in.begin(), in.end(), '.');
+    if (dot == in.begin()) {
+      // Empty components are not allowed.
+      return false;
+    }
+    Span<const uint8_t> component;
+    if (dot == in.end()) {
+      component = in;
+      in = Span<const uint8_t>();
+    } else {
+      component = in.subspan(0, dot - in.begin());
+      in = in.subspan(dot - in.begin() + 1);  // Skip the dot.
+    }
+    if (!parse_ipv4_number(component, &numbers[num_numbers])) {
+      return false;
+    }
+    num_numbers++;
+  }
+  if (num_numbers == 0) {
+    return false;
+  }
+  for (size_t i = 0; i < num_numbers - 1; i++) {
+    if (numbers[i] > 255) {
+      return false;
+    }
+  }
+  return num_numbers == 1 ||
+         numbers[num_numbers - 1] < 1u << (8 * (5 - num_numbers));
+}
+
+bool ssl_is_valid_ech_public_name(Span<const uint8_t> public_name) {
+  // See draft-ietf-tls-esni-11, Section 4 and RFC5890, Section 2.3.1. The
+  // public name must be a dot-separated sequence of LDH labels and not begin or
+  // end with a dot.
+  auto copy = public_name;
+  if (copy.empty()) {
+    return false;
+  }
+  while (!copy.empty()) {
+    // Find the next dot-separated component.
+    auto dot = std::find(copy.begin(), copy.end(), '.');
+    Span<const uint8_t> component;
+    if (dot == copy.end()) {
+      component = copy;
+      copy = Span<const uint8_t>();
+    } else {
+      component = copy.subspan(0, dot - copy.begin());
+      copy = copy.subspan(dot - copy.begin() + 1);  // Skip the dot.
+      if (copy.empty()) {
+        // Trailing dots are not allowed.
+        return false;
+      }
+    }
+    // |component| must be a valid LDH label. Checking for empty components also
+    // rejects leading dots.
+    if (component.empty() || component.size() > 63 ||
+        component.front() == '-' || component.back() == '-') {
+      return false;
+    }
+    for (uint8_t c : component) {
+      if (!('a' <= c && c <= 'z') && !('A' <= c && c <= 'Z') &&
+          !('0' <= c && c <= '9') && c != '-') {
+        return false;
+      }
+    }
+  }
+
+  return !is_ipv4_address(public_name);
+}
+
 static bool parse_ech_config(CBS *cbs, ECHConfig *out, bool *out_supported,
                              bool all_extensions_mandatory) {
   uint16_t version;
@@ -400,7 +516,13 @@ static bool parse_ech_config(CBS *cbs, ECHConfig *out, bool *out_supported,
     return false;
   }
 
-  // TODO(https://crbug.com/boringssl/275): Check validity of |public_name|.
+  if (!ssl_is_valid_ech_public_name(public_name)) {
+    // TODO(https://crbug.com/boringssl/275): The draft says ECHConfigs with
+    // invalid public names should be ignored, but LDH syntax failures are
+    // unambiguously invalid.
+    *out_supported = false;
+    return true;
+  }
 
   out->public_key = public_key;
   out->public_name = public_name;
@@ -874,10 +996,9 @@ int SSL_set1_ech_config_list(SSL *ssl, const uint8_t *ech_config_list,
 int SSL_marshal_ech_config(uint8_t **out, size_t *out_len, uint8_t config_id,
                            const EVP_HPKE_KEY *key, const char *public_name,
                            size_t max_name_len) {
-  size_t public_name_len = strlen(public_name);
-  if (public_name_len == 0) {
-    // TODO(https://crbug.com/boringssl/275): Check |public_name| is a valid DNS
-    // name.
+  Span<const uint8_t> public_name_u8 = MakeConstSpan(
+      reinterpret_cast<const uint8_t *>(public_name), strlen(public_name));
+  if (!ssl_is_valid_ech_public_name(public_name_u8)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ECH_PUBLIC_NAME);
     return 0;
   }
@@ -905,8 +1026,7 @@ int SSL_marshal_ech_config(uint8_t **out, size_t *out_len, uint8_t config_id,
       !CBB_add_u16(&child, EVP_HPKE_CHACHA20_POLY1305) ||
       !CBB_add_u16(&contents, max_name_len) ||
       !CBB_add_u16_length_prefixed(&contents, &child) ||
-      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(public_name),
-                     public_name_len) ||
+      !CBB_add_bytes(&child, public_name_u8.data(), public_name_u8.size()) ||
       // TODO(https://crbug.com/boringssl/275): Reserve some GREASE extensions
       // and include some.
       !CBB_add_u16(&contents, 0 /* no extensions */) ||
