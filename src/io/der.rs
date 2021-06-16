@@ -228,12 +228,8 @@ mod tests {
 
     #[test]
     fn test_small_nonnegative_integer() {
-        let result = with_i(ZERO_INTEGER, |input| {
-            assert_eq!(small_nonnegative_integer(input)?, 0x00);
-            Ok(())
-        });
-        assert_eq!(result, Ok(()));
-        for &(test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
+        let zero = (ZERO_INTEGER, 0x00);
+        for &(test_in, test_out) in core::iter::once(&zero).chain(GOOD_POSITIVE_INTEGERS.iter()) {
             let result = with_i(test_in, |input| {
                 assert_eq!(small_nonnegative_integer(input)?, test_out);
                 Ok(())
@@ -248,23 +244,20 @@ mod tests {
 
     #[test]
     fn test_positive_integer() {
-        assert!(matches!(
-            with_i(ZERO_INTEGER, positive_integer),
-            Err(error::Unspecified)
-        ));
-
-        for &(test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
+        for (test_in, test_out) in GOOD_POSITIVE_INTEGERS
+            .iter()
+            .map(|(test_in, test_out)| (*test_in, core::slice::from_ref(test_out)))
+        {
             let result = with_i(test_in, |input| {
-                let test_out = [test_out];
                 assert_eq!(
                     positive_integer(input)?.big_endian_without_leading_zero(),
-                    &test_out[..]
+                    test_out
                 );
                 Ok(())
             });
             assert_eq!(result, Ok(()))
         }
-        for &test_in in BAD_NONNEGATIVE_INTEGERS.iter() {
+        for &test_in in core::iter::once(&ZERO_INTEGER).chain(BAD_NONNEGATIVE_INTEGERS.iter()) {
             let result = with_i(test_in, positive_integer);
             assert!(matches!(result, Err(error::Unspecified)));
         }
