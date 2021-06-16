@@ -209,6 +209,7 @@ mod tests {
         // Length mismatch
         &[0x02, 0x00, 0x01],
         &[0x02, 0x01],
+        // Would be valid if leading zero is ignored when comparing length.
         &[0x02, 0x01, 0x00, 0x01],
         &[0x02, 0x01, 0x01, 0x00], // Would be valid if last byte is ignored.
         &[0x02, 0x02, 0x01],
