@@ -1867,6 +1867,10 @@ type ProtocolBugs struct {
 	// CompatModeWithQUIC, if true, enables TLS 1.3 compatibility mode
 	// when running over QUIC.
 	CompatModeWithQUIC bool
+
+	// EncryptSessionTicketKey, if non-nil, is the ticket key to use when
+	// encrypting tickets.
+	EncryptSessionTicketKey *[32]byte
 }
 
 func (c *Config) serverInit() {

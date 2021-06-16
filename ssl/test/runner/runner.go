@@ -1360,19 +1360,35 @@ func doExchanges(test *testCase, shim *shimProcess, resumeCount int, transcripts
 		return err
 	}
 
+	nextTicketKey := config.SessionTicketKey
 	for i := 0; i < resumeCount; i++ {
 		var resumeConfig Config
 		if test.resumeConfig != nil {
 			resumeConfig = *test.resumeConfig
-			if !test.newSessionsOnResume {
-				resumeConfig.SessionTicketKey = config.SessionTicketKey
-				resumeConfig.ClientSessionCache = config.ClientSessionCache
-				resumeConfig.ServerSessionCache = config.ServerSessionCache
-			}
 			resumeConfig.Rand = config.Rand
 		} else {
 			resumeConfig = config
 		}
+
+		if test.newSessionsOnResume {
+			resumeConfig.ClientSessionCache = nil
+			resumeConfig.ServerSessionCache = nil
+			if _, err := resumeConfig.rand().Read(resumeConfig.SessionTicketKey[:]); err != nil {
+				return err
+			}
+		} else {
+			resumeConfig.ClientSessionCache = config.ClientSessionCache
+			resumeConfig.ServerSessionCache = config.ServerSessionCache
+			// Rotate the ticket keys between each connection, with each connection
+			// encrypting with next connection's keys. This ensures that we test
+			// the renewed sessions.
+			resumeConfig.SessionTicketKey = nextTicketKey
+			if _, err := resumeConfig.rand().Read(nextTicketKey[:]); err != nil {
+				return err
+			}
+			resumeConfig.Bugs.EncryptSessionTicketKey = &nextTicketKey
+		}
+
 		var connResume net.Conn
 		connResume, err = shim.accept()
 		if err != nil {
