@@ -189,7 +189,7 @@ mod tests {
 
     static ZERO_INTEGER: &[u8] = &[0x02, 0x01, 0x00];
 
-    static GOOD_POSITIVE_INTEGERS: &[(&[u8], u8)] = &[
+    static GOOD_POSITIVE_INTEGERS_SMALL: &[(&[u8], u8)] = &[
         (&[0x02, 0x01, 0x01], 0x01),
         (&[0x02, 0x01, 0x02], 0x02),
         (&[0x02, 0x01, 0x7e], 0x7e),
@@ -200,6 +200,19 @@ mod tests {
         (&[0x02, 0x02, 0x00, 0x81], 0x81),
         (&[0x02, 0x02, 0x00, 0xfe], 0xfe),
         (&[0x02, 0x02, 0x00, 0xff], 0xff),
+    ];
+
+    static GOOD_POSITIVE_INTEGERS_LARGE: &[(&[u8], &[u8])] = &[
+        (&[0x02, 0x02, 0x01, 0x00], &[0x01, 0x00]),
+        (&[0x02, 0x02, 0x02, 0x01], &[0x02, 0x01]),
+        (&[0x02, 0x02, 0x7e, 0xfe], &[0x7e, 0xfe]),
+        (&[0x02, 0x02, 0x7f, 0xff], &[0x7f, 0xff]),
+        // Values that need to have an 0x00 prefix to disambiguate them from
+        // them from negative values.
+        (&[0x02, 0x03, 0x00, 0x80, 0x00], &[0x80, 0x00]),
+        (&[0x02, 0x03, 0x00, 0x81, 0x01], &[0x81, 0x01]),
+        (&[0x02, 0x03, 0x00, 0xfe, 0xfe], &[0xfe, 0xfe]),
+        (&[0x02, 0x03, 0x00, 0xff, 0xff], &[0xff, 0xff]),
     ];
 
     static BAD_NONNEGATIVE_INTEGERS: &[&[u8]] = &[
@@ -229,14 +242,19 @@ mod tests {
     #[test]
     fn test_small_nonnegative_integer() {
         let zero = (ZERO_INTEGER, 0x00);
-        for &(test_in, test_out) in core::iter::once(&zero).chain(GOOD_POSITIVE_INTEGERS.iter()) {
+        for &(test_in, test_out) in
+            core::iter::once(&zero).chain(GOOD_POSITIVE_INTEGERS_SMALL.iter())
+        {
             let result = with_i(test_in, |input| {
                 assert_eq!(small_nonnegative_integer(input)?, test_out);
                 Ok(())
             });
             assert_eq!(result, Ok(()));
         }
-        for &test_in in BAD_NONNEGATIVE_INTEGERS.iter() {
+        for &test_in in BAD_NONNEGATIVE_INTEGERS
+            .iter()
+            .chain(GOOD_POSITIVE_INTEGERS_LARGE.iter().map(|(input, _)| input))
+        {
             let result = with_i(test_in, small_nonnegative_integer);
             assert_eq!(result, Err(error::Unspecified));
         }
@@ -244,9 +262,10 @@ mod tests {
 
     #[test]
     fn test_positive_integer() {
-        for (test_in, test_out) in GOOD_POSITIVE_INTEGERS
+        for (test_in, test_out) in GOOD_POSITIVE_INTEGERS_SMALL
             .iter()
             .map(|(test_in, test_out)| (*test_in, core::slice::from_ref(test_out)))
+            .chain(GOOD_POSITIVE_INTEGERS_LARGE.iter().copied())
         {
             let result = with_i(test_in, |input| {
                 assert_eq!(
