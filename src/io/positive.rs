@@ -90,9 +90,7 @@ mod tests {
         for &(input, result) in TEST_CASES {
             let input = untrusted::Input::from(input);
             assert_eq!(
-                Positive::from_be_bytes(input).map(|p| p
-                    .big_endian_without_leading_zero_as_input()
-                    .as_slice_less_safe()),
+                Positive::from_be_bytes(input).map(|p| p.big_endian_without_leading_zero()),
                 result
             );
         }
