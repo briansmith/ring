@@ -283,12 +283,7 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   // Clients never use the internal session cache.
   int use_internal_cache = ssl->server && !(ctx->session_cache_mode &
                                             SSL_SESS_CACHE_NO_INTERNAL_STORE);
-
-  // A client may see new sessions on abbreviated handshakes if the server
-  // decides to renew the ticket. Once the handshake is completed, it should be
-  // inserted into the cache.
-  if (ssl->s3->established_session.get() != ssl->session.get() ||
-      (!ssl->server && hs->ticket_expected)) {
+  if (ssl->s3->established_session.get() != ssl->session.get()) {
     if (use_internal_cache) {
       SSL_CTX_add_session(ctx, ssl->s3->established_session.get());
     }

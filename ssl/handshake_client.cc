@@ -1739,39 +1739,30 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
     return ssl_hs_read_change_cipher_spec;
   }
 
-  SSL_SESSION *session = hs->new_session.get();
-  UniquePtr<SSL_SESSION> renewed_session;
-  if (ssl->session != NULL) {
+  if (ssl->session != nullptr) {
     // The server is sending a new ticket for an existing session. Sessions are
     // immutable once established, so duplicate all but the ticket of the
     // existing session.
-    renewed_session =
+    assert(!hs->new_session);
+    hs->new_session =
         SSL_SESSION_dup(ssl->session.get(), SSL_SESSION_INCLUDE_NONAUTH);
-    if (!renewed_session) {
-      // This should never happen.
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    if (!hs->new_session) {
       return ssl_hs_error;
     }
-    session = renewed_session.get();
   }
 
   // |ticket_lifetime_hint| is measured from when the ticket was issued.
-  ssl_session_rebase_time(ssl, session);
+  ssl_session_rebase_time(ssl, hs->new_session.get());
 
-  if (!session->ticket.CopyFrom(ticket)) {
+  if (!hs->new_session->ticket.CopyFrom(ticket)) {
     return ssl_hs_error;
   }
-  session->ticket_lifetime_hint = ticket_lifetime_hint;
+  hs->new_session->ticket_lifetime_hint = ticket_lifetime_hint;
 
   // Historically, OpenSSL filled in fake session IDs for ticket-based sessions.
   // TODO(davidben): Are external callers relying on this? Try removing this.
-  SHA256(CBS_data(&ticket), CBS_len(&ticket), session->session_id);
-  session->session_id_length = SHA256_DIGEST_LENGTH;
-
-  if (renewed_session) {
-    session->not_resumable = false;
-    ssl->session = std::move(renewed_session);
-  }
+  SHA256(CBS_data(&ticket), CBS_len(&ticket), hs->new_session->session_id);
+  hs->new_session->session_id_length = SHA256_DIGEST_LENGTH;
 
   ssl->method->next_message(ssl);
   hs->state = state_process_change_cipher_spec;
@@ -1808,12 +1799,17 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
 
   ssl->method->on_handshake_complete(ssl);
 
-  if (ssl->session != NULL) {
+  // Note TLS 1.2 resumptions with ticket renewal have both |ssl->session| (the
+  // resumed session) and |hs->new_session| (the session with the new ticket).
+  if (hs->new_session == nullptr) {
+    assert(ssl->session != nullptr);
     ssl->s3->established_session = UpRef(ssl->session);
   } else {
-    // We make a copy of the session in order to maintain the immutability
-    // of the new established_session due to False Start. The caller may
-    // have taken a reference to the temporary session.
+    // When False Start is enabled, the handshake reports completion early. The
+    // caller may then have passed the (then unresuable) |hs->new_session| to
+    // another thread via |SSL_get0_session| for resumption. To avoid potential
+    // race conditions in such callers, we duplicate the session before
+    // clearing |not_resumable|.
     ssl->s3->established_session =
         SSL_SESSION_dup(hs->new_session.get(), SSL_SESSION_DUP_ALL);
     if (!ssl->s3->established_session) {

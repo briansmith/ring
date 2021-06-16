@@ -1791,9 +1791,11 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     ssl->ctx->x509_method->session_clear(hs->new_session.get());
   }
 
-  if (ssl->session != NULL) {
+  if (hs->new_session == nullptr) {
+    assert(ssl->session != nullptr);
     ssl->s3->established_session = UpRef(ssl->session);
   } else {
+    assert(ssl->session == nullptr);
     ssl->s3->established_session = std::move(hs->new_session);
     ssl->s3->established_session->not_resumable = false;
   }
