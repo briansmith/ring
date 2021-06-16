@@ -1794,7 +1794,7 @@ struct SSL_HANDSHAKE {
 
   union {
     // sent is a bitset where the bits correspond to elements of kExtensions
-    // in t1_lib.c. Each bit is set if that extension was sent in a
+    // in extensions.cc. Each bit is set if that extension was sent in a
     // ClientHello. It's not used by servers.
     uint32_t sent = 0;
     // received is a bitset, like |sent|, but is used by servers to record
