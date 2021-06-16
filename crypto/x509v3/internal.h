@@ -53,6 +53,13 @@ OPENSSL_EXPORT int x509v3_looks_like_dns_name(const unsigned char *in,
 // invalid.
 int x509v3_cache_extensions(X509 *x);
 
+// x509v3_a2i_ipadd decodes |ipasc| as an IPv4 or IPv6 address. IPv6 addresses
+// use colon-separated syntax while IPv4 addresses use dotted decimal syntax. If
+// it decodes an IPv4 address, it writes the result to the first four bytes of
+// |ipout| and returns four. If it decodes an IPv6 address, it writes the result
+// to all 16 bytes of |ipout| and returns 16. Otherwise, it returns zero.
+int x509v3_a2i_ipadd(unsigned char ipout[16], const char *ipasc);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

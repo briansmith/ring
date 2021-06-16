@@ -884,7 +884,6 @@ OPENSSL_EXPORT int X509_check_ip_asc(X509 *x, const char *ipasc,
 
 OPENSSL_EXPORT ASN1_OCTET_STRING *a2i_IPADDRESS(const char *ipasc);
 OPENSSL_EXPORT ASN1_OCTET_STRING *a2i_IPADDRESS_NC(const char *ipasc);
-OPENSSL_EXPORT int a2i_ipadd(unsigned char *ipout, const char *ipasc);
 OPENSSL_EXPORT int X509V3_NAME_from_section(X509_NAME *nm,
                                             STACK_OF(CONF_VALUE) *dn_sk,
                                             unsigned long chtype);
