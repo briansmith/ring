@@ -380,8 +380,7 @@ impl RsaKeyPair {
     pub fn public_modulus_len(&self) -> usize {
         self.public_key
             .modulus()
-            .big_endian_without_leading_zero_as_input()
-            .as_slice_less_safe()
+            .big_endian_without_leading_zero()
             .len()
     }
 }
