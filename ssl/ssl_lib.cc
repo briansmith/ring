@@ -272,50 +272,6 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
   return ret;
 }
 
-void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
-  SSL *const ssl = hs->ssl;
-  SSL_CTX *ctx = ssl->session_ctx.get();
-  if (!SSL_SESSION_is_resumable(ssl->s3->established_session.get()) ||
-      (ctx->session_cache_mode & mode) != mode) {
-    return;
-  }
-
-  // Clients never use the internal session cache.
-  int use_internal_cache = ssl->server && !(ctx->session_cache_mode &
-                                            SSL_SESS_CACHE_NO_INTERNAL_STORE);
-  if (ssl->s3->established_session.get() != ssl->session.get()) {
-    if (use_internal_cache) {
-      SSL_CTX_add_session(ctx, ssl->s3->established_session.get());
-    }
-    if (ctx->new_session_cb != NULL) {
-      UniquePtr<SSL_SESSION> ref = UpRef(ssl->s3->established_session);
-      if (ctx->new_session_cb(ssl, ref.get())) {
-        // |new_session_cb|'s return value signals whether it took ownership.
-        ref.release();
-      }
-    }
-  }
-
-  if (use_internal_cache &&
-      !(ctx->session_cache_mode & SSL_SESS_CACHE_NO_AUTO_CLEAR)) {
-    // Automatically flush the internal session cache every 255 connections.
-    int flush_cache = 0;
-    CRYPTO_MUTEX_lock_write(&ctx->lock);
-    ctx->handshakes_since_cache_flush++;
-    if (ctx->handshakes_since_cache_flush >= 255) {
-      flush_cache = 1;
-      ctx->handshakes_since_cache_flush = 0;
-    }
-    CRYPTO_MUTEX_unlock_write(&ctx->lock);
-
-    if (flush_cache) {
-      struct OPENSSL_timeval now;
-      ssl_get_current_time(ssl, &now);
-      SSL_CTX_flush_sessions(ctx, now.tv_sec);
-    }
-  }
-}
-
 static bool cbb_add_hex(CBB *cbb, Span<const uint8_t> in) {
   static const char hextable[] = "0123456789abcdef";
   uint8_t *out;

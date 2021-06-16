@@ -3147,7 +3147,7 @@ void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session);
 void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session,
                                uint32_t timeout);
 
-void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
+void ssl_update_cache(SSL *ssl);
 
 void ssl_send_alert(SSL *ssl, int level, int desc);
 int ssl_send_alert_impl(SSL *ssl, int level, int desc);

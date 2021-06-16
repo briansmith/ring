@@ -1801,10 +1801,8 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
 
   // Note TLS 1.2 resumptions with ticket renewal have both |ssl->session| (the
   // resumed session) and |hs->new_session| (the session with the new ticket).
-  if (hs->new_session == nullptr) {
-    assert(ssl->session != nullptr);
-    ssl->s3->established_session = UpRef(ssl->session);
-  } else {
+  bool has_new_session = hs->new_session != nullptr;
+  if (has_new_session) {
     // When False Start is enabled, the handshake reports completion early. The
     // caller may then have passed the (then unresuable) |hs->new_session| to
     // another thread via |SSL_get0_session| for resumption. To avoid potential
@@ -1821,11 +1819,16 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
     }
 
     hs->new_session.reset();
+  } else {
+    assert(ssl->session != nullptr);
+    ssl->s3->established_session = UpRef(ssl->session);
   }
 
   hs->handshake_finalized = true;
   ssl->s3->initial_handshake_complete = true;
-  ssl_update_cache(hs, SSL_SESS_CACHE_CLIENT);
+  if (has_new_session) {
+    ssl_update_cache(ssl);
+  }
 
   hs->state = state_done;
   return ssl_hs_ok;

@@ -1791,18 +1791,21 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     ssl->ctx->x509_method->session_clear(hs->new_session.get());
   }
 
-  if (hs->new_session == nullptr) {
-    assert(ssl->session != nullptr);
-    ssl->s3->established_session = UpRef(ssl->session);
-  } else {
+  bool has_new_session = hs->new_session != nullptr;
+  if (has_new_session) {
     assert(ssl->session == nullptr);
     ssl->s3->established_session = std::move(hs->new_session);
     ssl->s3->established_session->not_resumable = false;
+  } else {
+    assert(ssl->session != nullptr);
+    ssl->s3->established_session = UpRef(ssl->session);
   }
 
   hs->handshake_finalized = true;
   ssl->s3->initial_handshake_complete = true;
-  ssl_update_cache(hs, SSL_SESS_CACHE_SERVER);
+  if (has_new_session) {
+    ssl_update_cache(ssl);
+  }
 
   hs->state = state12_done;
   return ssl_hs_ok;
