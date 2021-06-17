@@ -266,6 +266,10 @@ func flagInts(flagName string, vals []int) []string {
 	return ret
 }
 
+func base64FlagValue(in []byte) string {
+	return base64.StdEncoding.EncodeToString(in)
+}
+
 func useDebugger() bool {
 	return *useGDB || *useLLDB || *useRR || *waitForDebugger
 }
@@ -1469,9 +1473,9 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 			}
 			flags = append(flags,
 				"-quic-transport-params",
-				base64.StdEncoding.EncodeToString([]byte{3, 4}),
+				base64FlagValue([]byte{3, 4}),
 				"-expect-quic-transport-params",
-				base64.StdEncoding.EncodeToString([]byte{1, 2}),
+				base64FlagValue([]byte{1, 2}),
 				"-quic-use-legacy-codepoint", useCodepointFlag)
 		}
 		if !test.skipQUICALPNConfig {
@@ -1982,7 +1986,7 @@ func addBasicTests() {
 			},
 			flags: []string{
 				"-expect-certificate-types",
-				base64.StdEncoding.EncodeToString([]byte{
+				base64FlagValue([]byte{
 					CertTypeDSSSign,
 					CertTypeRSASign,
 					CertTypeECDSASign,
@@ -5216,7 +5220,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			flags: []string{
 				"-enable-ocsp-stapling",
 				"-expect-ocsp-response",
-				base64.StdEncoding.EncodeToString(testOCSPResponse),
+				base64FlagValue(testOCSPResponse),
 				"-verify-peer",
 			},
 			resumeSession: true,
@@ -5232,7 +5236,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			},
 			flags: []string{
 				"-ocsp-response",
-				base64.StdEncoding.EncodeToString(testOCSPResponse),
+				base64FlagValue(testOCSPResponse),
 			},
 			resumeSession: true,
 		})
@@ -5309,7 +5313,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-use-ocsp-callback",
 				"-set-ocsp-in-callback",
 				"-ocsp-response",
-				base64.StdEncoding.EncodeToString(testOCSPResponse),
+				base64FlagValue(testOCSPResponse),
 			},
 			resumeSession: true,
 		})
@@ -5330,7 +5334,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-use-ocsp-callback",
 				"-decline-ocsp-callback",
 				"-ocsp-response",
-				base64.StdEncoding.EncodeToString(testOCSPResponse),
+				base64FlagValue(testOCSPResponse),
 			},
 			resumeSession: true,
 		})
@@ -5346,7 +5350,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-use-ocsp-callback",
 				"-fail-ocsp-callback",
 				"-ocsp-response",
-				base64.StdEncoding.EncodeToString(testOCSPResponse),
+				base64FlagValue(testOCSPResponse),
 			},
 			shouldFail:    true,
 			expectedError: ":OCSP_CB_ERROR:",
@@ -5790,7 +5794,7 @@ read alert 1 0
 			},
 			flags: []string{
 				"-expect-channel-id",
-				base64.StdEncoding.EncodeToString(channelIDBytes),
+				base64FlagValue(channelIDBytes),
 				"-advertise-npn", "\x03foo\x03bar\x03baz",
 				"-expect-next-proto", "bar",
 			},
@@ -5843,7 +5847,7 @@ read alert 1 0
 				},
 				flags: []string{
 					"-expect-channel-id",
-					base64.StdEncoding.EncodeToString(channelIDBytes),
+					base64FlagValue(channelIDBytes),
 				},
 				resumeSession: true,
 				expectations: connectionExpectations{
@@ -7750,7 +7754,7 @@ func addExtensionTests() {
 						}
 						flags := []string{
 							"-quic-transport-params",
-							base64.StdEncoding.EncodeToString([]byte{1, 2}),
+							base64FlagValue([]byte{1, 2}),
 							"-quic-use-legacy-codepoint", useCodepointFlag,
 						}
 						expectations := connectionExpectations{
@@ -7775,7 +7779,7 @@ func addExtensionTests() {
 						} else {
 							flags = append(flags,
 								"-expect-quic-transport-params",
-								base64.StdEncoding.EncodeToString([]byte{3, 4}))
+								base64FlagValue([]byte{3, 4}))
 						}
 						testCases = append(testCases, testCase{
 							testType: clientTest,
@@ -7813,7 +7817,7 @@ func addExtensionTests() {
 						}
 						flags := []string{
 							"-quic-transport-params",
-							base64.StdEncoding.EncodeToString([]byte{3, 4}),
+							base64FlagValue([]byte{3, 4}),
 							"-quic-use-legacy-codepoint", useCodepointFlag,
 						}
 						if clientSends != QUICUseCodepointBoth && clientSends != serverConfig {
@@ -7823,7 +7827,7 @@ func addExtensionTests() {
 						} else {
 							flags = append(flags,
 								"-expect-quic-transport-params",
-								base64.StdEncoding.EncodeToString([]byte{1, 2}),
+								base64FlagValue([]byte{1, 2}),
 							)
 						}
 						testCases = append(testCases, testCase{
@@ -7864,7 +7868,7 @@ func addExtensionTests() {
 							"-max-version",
 							strconv.Itoa(int(ver.versionWire)),
 							"-quic-transport-params",
-							base64.StdEncoding.EncodeToString([]byte{3, 4}),
+							base64FlagValue([]byte{3, 4}),
 							"-quic-use-legacy-codepoint", useCodepointFlag,
 						},
 						shouldFail:                true,
@@ -8167,7 +8171,7 @@ func addExtensionTests() {
 				flags: []string{
 					"-enable-signed-cert-timestamps",
 					"-expect-signed-cert-timestamps",
-					base64.StdEncoding.EncodeToString(testSCTList),
+					base64FlagValue(testSCTList),
 				},
 				resumeSession: true,
 			})
@@ -8190,7 +8194,7 @@ func addExtensionTests() {
 				flags: []string{
 					"-enable-signed-cert-timestamps",
 					"-expect-signed-cert-timestamps",
-					base64.StdEncoding.EncodeToString(testSCTList),
+					base64FlagValue(testSCTList),
 				},
 				resumeSession: true,
 			})
@@ -8204,7 +8208,7 @@ func addExtensionTests() {
 				},
 				flags: []string{
 					"-signed-cert-timestamps",
-					base64.StdEncoding.EncodeToString(testSCTList),
+					base64FlagValue(testSCTList),
 				},
 				expectations: connectionExpectations{
 					sctList: testSCTList,
@@ -8264,9 +8268,9 @@ func addExtensionTests() {
 				},
 				flags: []string{
 					"-ocsp-response",
-					base64.StdEncoding.EncodeToString(testOCSPResponse),
+					base64FlagValue(testOCSPResponse),
 					"-signed-cert-timestamps",
-					base64.StdEncoding.EncodeToString(testSCTList),
+					base64FlagValue(testSCTList),
 				},
 			})
 
@@ -8313,7 +8317,7 @@ func addExtensionTests() {
 					echConfig := generateServerECHConfig(&ECHConfig{ConfigID: 42})
 					test.config.ServerECHConfigs = []ServerECHConfig{echConfig}
 					test.flags = append(test.flags,
-						"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+						"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 						"-expect-ech-accept",
 					)
 					test.expectations.echAccepted = true
@@ -8438,7 +8442,7 @@ func addExtensionTests() {
 		flags: []string{
 			"-enable-ocsp-stapling",
 			"-expect-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
+			base64FlagValue(testOCSPResponse),
 		},
 		resumeSession: true,
 	})
@@ -8515,10 +8519,10 @@ func addExtensionTests() {
 		flags: []string{
 			"-enable-ocsp-stapling",
 			"-expect-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
+			base64FlagValue(testOCSPResponse),
 			"-enable-signed-cert-timestamps",
 			"-expect-signed-cert-timestamps",
-			base64.StdEncoding.EncodeToString(testSCTList),
+			base64FlagValue(testSCTList),
 		},
 		resumeSession: true,
 	})
@@ -8538,9 +8542,9 @@ func addExtensionTests() {
 			"-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaChainKeyFile),
 			"-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
+			base64FlagValue(testOCSPResponse),
 			"-signed-cert-timestamps",
-			base64.StdEncoding.EncodeToString(testSCTList),
+			base64FlagValue(testSCTList),
 		},
 	})
 
@@ -8555,9 +8559,9 @@ func addExtensionTests() {
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 			"-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
+			base64FlagValue(testOCSPResponse),
 			"-signed-cert-timestamps",
-			base64.StdEncoding.EncodeToString(testSCTList),
+			base64FlagValue(testSCTList),
 		},
 	})
 
@@ -8583,7 +8587,7 @@ func addExtensionTests() {
 		testType: serverTest,
 		flags: []string{
 			"-signed-cert-timestamps",
-			base64.StdEncoding.EncodeToString([]byte{0, 0}),
+			base64FlagValue([]byte{0, 0}),
 		},
 		shouldFail:    true,
 		expectedError: ":INVALID_SCT_LIST:",
@@ -8738,7 +8742,7 @@ func addResumptionVersionTests() {
 		},
 		flags: []string{
 			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+			base64FlagValue(TestShimTicketKey),
 		},
 	})
 
@@ -8758,7 +8762,7 @@ func addResumptionVersionTests() {
 		},
 		flags: []string{
 			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+			base64FlagValue(TestShimTicketKey),
 		},
 		expectResumeRejected: true,
 	})
@@ -8777,7 +8781,7 @@ func addResumptionVersionTests() {
 		},
 		flags: []string{
 			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+			base64FlagValue(TestShimTicketKey),
 		},
 		expectResumeRejected: true,
 	})
@@ -8798,7 +8802,7 @@ func addResumptionVersionTests() {
 		},
 		flags: []string{
 			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+			base64FlagValue(TestShimTicketKey),
 		},
 		expectResumeRejected: true,
 	})
@@ -8819,7 +8823,7 @@ func addResumptionVersionTests() {
 		flags: []string{
 			"-cipher", "AES128",
 			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+			base64FlagValue(TestShimTicketKey),
 		},
 		expectResumeRejected: true,
 	})
@@ -8840,7 +8844,7 @@ func addResumptionVersionTests() {
 		},
 		flags: []string{
 			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+			base64FlagValue(TestShimTicketKey),
 		},
 		shouldFail:           false,
 		expectResumeRejected: true,
@@ -8865,7 +8869,7 @@ func addResumptionVersionTests() {
 		},
 		flags: []string{
 			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+			base64FlagValue(TestShimTicketKey),
 		},
 		shouldFail:           false,
 		expectResumeRejected: true,
@@ -8886,7 +8890,7 @@ func addResumptionVersionTests() {
 		},
 		flags: []string{
 			"-ticket-key",
-			base64.StdEncoding.EncodeToString(TestShimTicketKey),
+			base64FlagValue(TestShimTicketKey),
 		},
 		expectResumeRejected: true,
 	})
@@ -9636,10 +9640,10 @@ func addRenegotiationTests() {
 			"-expect-total-renegotiations", "1",
 			"-enable-ocsp-stapling",
 			"-expect-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
+			base64FlagValue(testOCSPResponse),
 			"-enable-signed-cert-timestamps",
 			"-expect-signed-cert-timestamps",
-			base64.StdEncoding.EncodeToString(testSCTList),
+			base64FlagValue(testSCTList),
 			"-verify-fail",
 			"-expect-verify-result",
 		},
@@ -12912,7 +12916,7 @@ func makePerMessageTests() []perMessageTest {
 					},
 					flags: []string{
 						"-expect-channel-id",
-						base64.StdEncoding.EncodeToString(channelIDBytes),
+						base64FlagValue(channelIDBytes),
 					},
 				},
 			})
@@ -14617,7 +14621,7 @@ func addTLS13HandshakeTests() {
 		},
 		flags: []string{
 			"-expect-channel-id",
-			base64.StdEncoding.EncodeToString(channelIDBytes),
+			base64FlagValue(channelIDBytes),
 			"-on-resume-expect-early-data-reason", "channel_id",
 		},
 	})
@@ -16488,8 +16492,8 @@ func addEncryptedClientHelloTests() {
 				},
 				resumeSession: true,
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16516,8 +16520,8 @@ func addEncryptedClientHelloTests() {
 				},
 				resumeSession: true,
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16548,14 +16552,14 @@ func addEncryptedClientHelloTests() {
 				flags: []string{
 					// Configure three ECHConfigs on the shim, only two of which
 					// should be sent in retry configs.
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig1.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig1.Key),
+					"-ech-server-config", base64FlagValue(echConfig1.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig1.Key),
 					"-ech-is-retry-config", "0",
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig2.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig2.Key),
+					"-ech-server-config", base64FlagValue(echConfig2.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig2.Key),
 					"-ech-is-retry-config", "1",
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig3.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig3.Key),
+					"-ech-server-config", base64FlagValue(echConfig3.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig3.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "public.example",
 				},
@@ -16576,8 +16580,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1"},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
@@ -16600,8 +16604,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1",
 				},
 				shouldFail:         true,
@@ -16635,8 +16639,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16667,8 +16671,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1",
 				},
 				shouldFail:         true,
@@ -16694,8 +16698,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16724,8 +16728,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1",
 				},
 				shouldFail:         true,
@@ -16747,8 +16751,8 @@ func addEncryptedClientHelloTests() {
 			flags: []string{
 				"-async",
 				"-use-early-callback",
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
 				"-expect-ech-accept",
@@ -16769,11 +16773,11 @@ func addEncryptedClientHelloTests() {
 				ClientECHConfig: echConfig1.ECHConfig,
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig1.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig1.Key),
+				"-ech-server-config", base64FlagValue(echConfig1.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig1.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
 				"-expect-ech-accept",
@@ -16794,11 +16798,11 @@ func addEncryptedClientHelloTests() {
 				ClientECHConfig: echConfigRepeatID.ECHConfig,
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfigRepeatID.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfigRepeatID.Key),
+				"-ech-server-config", base64FlagValue(echConfigRepeatID.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfigRepeatID.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "secret.example",
 				"-expect-ech-accept",
@@ -16823,8 +16827,8 @@ func addEncryptedClientHelloTests() {
 					ECHCipherSuites: []HPKECipherSuite{cipher.cipher},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "secret.example",
 					"-expect-ech-accept",
@@ -16853,7 +16857,7 @@ func addEncryptedClientHelloTests() {
 					ServerECHConfigs: []ServerECHConfig{cipherConfig},
 				},
 				flags: []string{
-					"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(cipherConfig.ECHConfig.Raw)),
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(cipherConfig.ECHConfig.Raw)),
 					"-host-name", "secret.example",
 					"-expect-ech-accept",
 				},
@@ -16881,8 +16885,8 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-server-config", base64.StdEncoding.EncodeToString(otherCipherConfig.ECHConfig.Raw),
-					"-ech-server-key", base64.StdEncoding.EncodeToString(otherCipherConfig.Key),
+					"-ech-server-config", base64FlagValue(otherCipherConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(otherCipherConfig.Key),
 					"-ech-is-retry-config", "1",
 					"-expect-server-name", "public.example",
 				},
@@ -16904,8 +16908,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-server-name", "public.example",
 			},
@@ -16926,8 +16930,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 		})
@@ -16948,8 +16952,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 			shouldFail:         true,
@@ -16972,8 +16976,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 			shouldFail:         true,
@@ -16996,8 +17000,8 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
 			},
 			shouldFail:         true,
@@ -17017,8 +17021,8 @@ func addEncryptedClientHelloTests() {
 			resumeSession: true,
 			earlyData:     true,
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-ech-accept",
 			},
@@ -17042,8 +17046,8 @@ func addEncryptedClientHelloTests() {
 			earlyData:               true,
 			expectEarlyDataRejected: true,
 			flags: []string{
-				"-ech-server-config", base64.StdEncoding.EncodeToString(echConfig.ECHConfig.Raw),
-				"-ech-server-key", base64.StdEncoding.EncodeToString(echConfig.Key),
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
 				"-ech-is-retry-config", "1",
 				"-expect-ech-accept",
 			},
@@ -17281,7 +17285,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				"-expect-ech-accept",
 			},
@@ -17305,7 +17309,7 @@ func addEncryptedClientHelloTests() {
 			},
 			resumeSession: true,
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				"-expect-ech-accept",
 				"-expect-hrr", // Check we triggered HRR.
@@ -17327,7 +17331,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				"-expect-ech-accept",
 			},
@@ -17349,7 +17353,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				"-expect-ech-accept",
 			},
@@ -17376,7 +17380,7 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-on-resume-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-on-resume-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 					"-on-resume-expect-ech-accept",
 				},
 				resumeSession:        true,
@@ -17397,7 +17401,7 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-on-resume-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-on-resume-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 					"-on-resume-expect-ech-accept",
 				},
 				resumeSession:        true,
@@ -17418,7 +17422,7 @@ func addEncryptedClientHelloTests() {
 				ServerECHConfigs: []ServerECHConfig{echConfig},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-ech-accept",
 				// Enable NPN.
 				"-select-next-proto", "foo",
@@ -17447,7 +17451,7 @@ func addEncryptedClientHelloTests() {
 				ServerECHConfigs: []ServerECHConfig{echConfig},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(
 					unsupportedVersion,
 					unsupportedKEM.Raw,
 					unsupportedCipherSuites.Raw,
@@ -17476,7 +17480,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(
 					unsupportedVersion,
 					unsupportedKEM.Raw,
 					unsupportedCipherSuites.Raw,
@@ -17497,7 +17501,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(
 					unsupportedVersion,
 					unsupportedKEM.Raw,
 					unsupportedCipherSuites.Raw,
@@ -17517,7 +17521,7 @@ func addEncryptedClientHelloTests() {
 				ServerECHConfigs: []ServerECHConfig{echConfig},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-ech-accept",
 			},
 			resumeSession: true,
@@ -17537,7 +17541,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-ech-accept",
 				"-enable-grease",
 			},
@@ -17556,7 +17560,7 @@ func addEncryptedClientHelloTests() {
 				ServerECHConfigs: []ServerECHConfig{unsupportedExtension},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(unsupportedExtension.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(unsupportedExtension.ECHConfig.Raw)),
 				"-expect-ech-accept",
 			},
 			expectations: connectionExpectations{echAccepted: true},
@@ -17568,7 +17572,7 @@ func addEncryptedClientHelloTests() {
 			protocol: protocol,
 			name:     prefix + "ECH-Client-InvalidECHConfigList",
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw[1:])),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw[1:])),
 			},
 			shouldFail:    true,
 			expectedError: ":INVALID_ECH_CONFIG_LIST:",
@@ -17593,7 +17597,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				// No -host-name flag.
 				"-expect-ech-accept",
 			},
@@ -17623,7 +17627,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-ech-accept",
 				"-advertise-alpn", "\x05proto",
 				"-expect-alpn", "proto",
@@ -17652,7 +17656,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-ech-accept",
 				"-host-name", "public.example",
 			},
@@ -17674,7 +17678,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				"-expect-ech-accept",
 				"-min-version", strconv.Itoa(int(VersionTLS13)),
@@ -17696,7 +17700,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(maxNameLen10.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(maxNameLen10.ECHConfig.Raw)),
 				"-host-name", "test0123456789.example",
 				"-expect-ech-accept",
 			},
@@ -17716,7 +17720,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 			},
 			shouldFail:    true,
 			expectedError: ":CONNECTION_REJECTED:",
@@ -17733,7 +17737,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-expect-hrr", // Check we triggered HRR.
 			},
 			shouldFail:    true,
@@ -17752,7 +17756,7 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 					"-expect-hrr", // Check we triggered HRR.
 				},
 				shouldFail:    true,
@@ -17783,7 +17787,7 @@ func addEncryptedClientHelloTests() {
 			},
 			resumeSession: true,
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				"-on-initial-expect-ech-accept",
 			},
@@ -17810,7 +17814,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				// Although the resumption connection does not accept ECH, the
 				// API will report ECH was accepted at the 0-RTT point.
@@ -17845,7 +17849,7 @@ func addEncryptedClientHelloTests() {
 					},
 				},
 				flags: []string{
-					"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+					"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
 					"-host-name", "secret.example",
 					// Although the resumption connection does not accept ECH, the
 					// API will report ECH was accepted at the 0-RTT point.
@@ -17884,7 +17888,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(invalidPublicName.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(invalidPublicName.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 			},
 		})
@@ -17901,7 +17905,7 @@ func addEncryptedClientHelloTests() {
 				},
 			},
 			flags: []string{
-				"-ech-config-list", base64.StdEncoding.EncodeToString(CreateECHConfigList(invalidPublicName.ECHConfig.Raw, echConfig.ECHConfig.Raw)),
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(invalidPublicName.ECHConfig.Raw, echConfig.ECHConfig.Raw)),
 				"-host-name", "secret.example",
 				"-expect-ech-accept",
 			},
@@ -18217,8 +18221,8 @@ func addHintMismatchTests() {
 				"-install-cert-compression-algs",
 				// Configure the shim and handshaker with different OCSP
 				// responses, so the compression inputs do not match.
-				"-on-shim-ocsp-response", base64.StdEncoding.EncodeToString(testOCSPResponse),
-				"-on-handshaker-ocsp-response", base64.StdEncoding.EncodeToString(testOCSPResponse2),
+				"-on-shim-ocsp-response", base64FlagValue(testOCSPResponse),
+				"-on-handshaker-ocsp-response", base64FlagValue(testOCSPResponse2),
 			},
 			expectations: connectionExpectations{
 				// The shim's configuration should take precendence.
