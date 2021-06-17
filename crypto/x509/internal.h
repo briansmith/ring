@@ -112,7 +112,10 @@ struct X509_req_st {
   CRYPTO_refcount_t references;
 } /* X509_REQ */;
 
-struct X509_VERIFY_PARAM_ID_st {
+// TODO(davidben): This was historically a separate struct because
+// |X509_VERIFY_PARAM| used to be exported. Now that it is also opaque, embed it
+// directly.
+typedef struct {
   STACK_OF(OPENSSL_STRING) *hosts; /* Set of acceptable names */
   unsigned int hostflags;          /* Flags to control matching features */
   char *peername;                  /* Matching hostname in peer certificate */
@@ -121,7 +124,19 @@ struct X509_VERIFY_PARAM_ID_st {
   unsigned char *ip;    /* If not NULL IP address to match */
   size_t iplen;         /* Length of IP address */
   unsigned char poison; /* Fail all verifications */
-};
+} X509_VERIFY_PARAM_ID;
+
+struct X509_VERIFY_PARAM_st {
+  char *name;
+  time_t check_time;                // Time to use
+  unsigned long inh_flags;          // Inheritance flags
+  unsigned long flags;              // Various verify flags
+  int purpose;                      // purpose to check untrusted certificates
+  int trust;                        // trust setting to check
+  int depth;                        // Verify depth
+  STACK_OF(ASN1_OBJECT) *policies;  // Permissible policies
+  X509_VERIFY_PARAM_ID *id;         // opaque ID data
+} /* X509_VERIFY_PARAM */;
 
 
 /* RSA-PSS functions. */
