@@ -67,7 +67,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include "vpm_int.h"
+#include "internal.h"
 #include "../internal.h"
 #include "../x509v3/internal.h"
 
