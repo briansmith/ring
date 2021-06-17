@@ -180,20 +180,11 @@ mod tests {
     use super::*;
     use crate::error;
 
-    fn with_good_i<F, R>(value: &[u8], f: F)
+    fn with_i<'a, F, R>(value: &'a [u8], f: F) -> Result<R, error::Unspecified>
     where
-        F: FnOnce(&mut untrusted::Reader) -> Result<R, error::Unspecified>,
+        F: FnOnce(&mut untrusted::Reader<'a>) -> Result<R, error::Unspecified>,
     {
-        let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
-        assert!(r.is_ok());
-    }
-
-    fn with_bad_i<F, R>(value: &[u8], f: F)
-    where
-        F: FnOnce(&mut untrusted::Reader) -> Result<R, error::Unspecified>,
-    {
-        let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
-        assert!(r.is_err());
+        untrusted::Input::from(value).read_all(error::Unspecified, f)
     }
 
     static ZERO_INTEGER: &[u8] = &[0x02, 0x01, 0x00];
@@ -235,32 +226,33 @@ mod tests {
 
     #[test]
     fn test_small_nonnegative_integer() {
-        with_good_i(ZERO_INTEGER, |input| {
+        let result = with_i(ZERO_INTEGER, |input| {
             assert_eq!(small_nonnegative_integer(input)?, 0x00);
             Ok(())
         });
+        assert_eq!(result, Ok(()));
         for &(test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
-            with_good_i(test_in, |input| {
+            let result = with_i(test_in, |input| {
                 assert_eq!(small_nonnegative_integer(input)?, test_out);
                 Ok(())
             });
+            assert_eq!(result, Ok(()));
         }
         for &test_in in BAD_NONNEGATIVE_INTEGERS.iter() {
-            with_bad_i(test_in, |input| {
-                let _ = small_nonnegative_integer(input)?;
-                Ok(())
-            });
+            let result = with_i(test_in, small_nonnegative_integer);
+            assert_eq!(result, Err(error::Unspecified));
         }
     }
 
     #[test]
     fn test_positive_integer() {
-        with_bad_i(ZERO_INTEGER, |input| {
-            let _ = positive_integer(input)?;
-            Ok(())
-        });
+        assert!(matches!(
+            with_i(ZERO_INTEGER, positive_integer),
+            Err(error::Unspecified)
+        ));
+
         for &(test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
-            with_good_i(test_in, |input| {
+            let result = with_i(test_in, |input| {
                 let test_out = [test_out];
                 assert_eq!(
                     positive_integer(input)?.big_endian_without_leading_zero(),
@@ -268,12 +260,11 @@ mod tests {
                 );
                 Ok(())
             });
+            assert_eq!(result, Ok(()))
         }
         for &test_in in BAD_NONNEGATIVE_INTEGERS.iter() {
-            with_bad_i(test_in, |input| {
-                let _ = positive_integer(input)?;
-                Ok(())
-            });
+            let result = with_i(test_in, positive_integer);
+            assert!(matches!(result, Err(error::Unspecified)));
         }
     }
 }
