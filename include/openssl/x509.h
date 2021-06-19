@@ -1075,8 +1075,8 @@ OPENSSL_EXPORT int ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type,
                                     unsigned int *len);
 
 OPENSSL_EXPORT int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *algor1,
-                                    ASN1_BIT_STRING *signature, void *data,
-                                    EVP_PKEY *pkey);
+                                    const ASN1_BIT_STRING *signature,
+                                    void *data, EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                   X509_ALGOR *algor2,

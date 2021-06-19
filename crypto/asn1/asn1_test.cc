@@ -100,20 +100,23 @@ TEST(ASN1Test, IntegerSetting) {
 template <typename T>
 void TestSerialize(T obj, int (*i2d_func)(T a, uint8_t **pp),
                    bssl::Span<const uint8_t> expected) {
-  int len = static_cast<int>(expected.size());
-  ASSERT_EQ(i2d_func(obj, nullptr), len);
+  // Test the allocating version first. It is easiest to debug.
+  uint8_t *ptr = nullptr;
+  int len = i2d_func(obj, &ptr);
+  ASSERT_GT(len, 0);
+  EXPECT_EQ(Bytes(expected), Bytes(ptr, len));
+  OPENSSL_free(ptr);
 
-  std::vector<uint8_t> buf(expected.size());
-  uint8_t *ptr = buf.data();
-  ASSERT_EQ(i2d_func(obj, &ptr), len);
+  len = i2d_func(obj, nullptr);
+  ASSERT_GT(len, 0);
+  EXPECT_EQ(len, static_cast<int>(expected.size()));
+
+  std::vector<uint8_t> buf(len);
+  ptr = buf.data();
+  len = i2d_func(obj, &ptr);
+  ASSERT_EQ(len, static_cast<int>(expected.size()));
   EXPECT_EQ(ptr, buf.data() + buf.size());
   EXPECT_EQ(Bytes(expected), Bytes(buf));
-
-  // Test the allocating version.
-  ptr = nullptr;
-  ASSERT_EQ(i2d_func(obj, &ptr), len);
-  EXPECT_EQ(Bytes(expected), Bytes(ptr, expected.size()));
-  OPENSSL_free(ptr);
 }
 
 TEST(ASN1Test, SerializeObject) {
@@ -236,6 +239,163 @@ TEST(ASN1Test, ASN1ObjectReuse) {
   EXPECT_TRUE(d2i_ASN1_OBJECT(&obj, &ptr, sizeof(kDER)));
   EXPECT_EQ(NID_ED25519, OBJ_obj2nid(obj));
   ASN1_OBJECT_free(obj);
+}
+
+TEST(ASN1Test, BitString) {
+  const size_t kNotWholeBytes = static_cast<size_t>(-1);
+  const struct {
+    std::vector<uint8_t> in;
+    size_t num_bytes;
+  } kValidInputs[] = {
+      // Empty bit string
+      {{0x03, 0x01, 0x00}, 0},
+      // 0b1
+      {{0x03, 0x02, 0x07, 0x80}, kNotWholeBytes},
+      // 0b1010
+      {{0x03, 0x02, 0x04, 0xa0}, kNotWholeBytes},
+      // 0b1010101
+      {{0x03, 0x02, 0x01, 0xaa}, kNotWholeBytes},
+      // 0b10101010
+      {{0x03, 0x02, 0x00, 0xaa}, 1},
+      // Bits 0 and 63 are set
+      {{0x03, 0x09, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}, 8},
+      // 64 zero bits
+      {{0x03, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, 8},
+  };
+  for (const auto &test : kValidInputs) {
+    SCOPED_TRACE(Bytes(test.in));
+    // The input should parse and round-trip correctly.
+    const uint8_t *ptr = test.in.data();
+    bssl::UniquePtr<ASN1_BIT_STRING> val(
+        d2i_ASN1_BIT_STRING(nullptr, &ptr, test.in.size()));
+    ASSERT_TRUE(val);
+    TestSerialize(val.get(), i2d_ASN1_BIT_STRING, test.in);
+
+    // Check the byte count.
+    size_t num_bytes;
+    if (test.num_bytes == kNotWholeBytes) {
+      EXPECT_FALSE(ASN1_BIT_STRING_num_bytes(val.get(), &num_bytes));
+    } else {
+      ASSERT_TRUE(ASN1_BIT_STRING_num_bytes(val.get(), &num_bytes));
+      EXPECT_EQ(num_bytes, test.num_bytes);
+    }
+  }
+
+  const std::vector<uint8_t> kInvalidInputs[] = {
+      // Wrong tag
+      {0x04, 0x01, 0x00},
+      // Missing leading byte
+      {0x03, 0x00},
+      // Leading byte too high
+      {0x03, 0x02, 0x08, 0x00},
+      {0x03, 0x02, 0xff, 0x00},
+      // TODO(https://crbug.com/boringssl/354): Reject these inputs.
+      // Empty bit strings must have a zero leading byte.
+      // {0x03, 0x01, 0x01},
+      // Unused bits must all be zero.
+      // {0x03, 0x02, 0x06, 0xc1 /* 0b11000001 */},
+  };
+  for (const auto &test : kInvalidInputs) {
+    SCOPED_TRACE(Bytes(test));
+    const uint8_t *ptr = test.data();
+    bssl::UniquePtr<ASN1_BIT_STRING> val(
+        d2i_ASN1_BIT_STRING(nullptr, &ptr, test.size()));
+    EXPECT_FALSE(val);
+  }
+}
+
+TEST(ASN1Test, SetBit) {
+  bssl::UniquePtr<ASN1_BIT_STRING> val(ASN1_BIT_STRING_new());
+  ASSERT_TRUE(val);
+  static const uint8_t kBitStringEmpty[] = {0x03, 0x01, 0x00};
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitStringEmpty);
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 0));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 100));
+
+  // Set a few bits via |ASN1_BIT_STRING_set_bit|.
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 0, 1));
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 1, 1));
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 2, 0));
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 3, 1));
+  static const uint8_t kBitString1101[] = {0x03, 0x02, 0x04, 0xd0};
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitString1101);
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 0));
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 1));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 2));
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 3));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 4));
+
+  // Bits that were set may be cleared.
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 1, 0));
+  static const uint8_t kBitString1001[] = {0x03, 0x02, 0x04, 0x90};
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitString1001);
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 0));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 1));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 2));
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 3));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 4));
+
+  // Clearing trailing bits truncates the string.
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 3, 0));
+  static const uint8_t kBitString1[] = {0x03, 0x02, 0x07, 0x80};
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitString1);
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 0));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 1));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 2));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 3));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 4));
+
+  // Bits may be set beyond the end of the string.
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 63, 1));
+  static const uint8_t kBitStringLong[] = {0x03, 0x09, 0x00, 0x80, 0x00, 0x00,
+                                           0x00, 0x00, 0x00, 0x00, 0x01};
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitStringLong);
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 0));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 62));
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 63));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 64));
+
+  // The string can be truncated back down again.
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 63, 0));
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitString1);
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 0));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 62));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 63));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 64));
+
+  // |ASN1_BIT_STRING_set_bit| also truncates when starting from a parsed
+  // string.
+  const uint8_t *ptr = kBitStringLong;
+  val.reset(d2i_ASN1_BIT_STRING(nullptr, &ptr, sizeof(kBitStringLong)));
+  ASSERT_TRUE(val);
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitStringLong);
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 63, 0));
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitString1);
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 0));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 62));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 63));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 64));
+
+  // A parsed bit string preserves trailing zero bits.
+  static const uint8_t kBitString10010[] = {0x03, 0x02, 0x03, 0x90};
+  ptr = kBitString10010;
+  val.reset(d2i_ASN1_BIT_STRING(nullptr, &ptr, sizeof(kBitString10010)));
+  ASSERT_TRUE(val);
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitString10010);
+  // But |ASN1_BIT_STRING_set_bit| will truncate it even if otherwise a no-op.
+  ASSERT_TRUE(ASN1_BIT_STRING_set_bit(val.get(), 0, 1));
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitString1001);
+  EXPECT_EQ(1, ASN1_BIT_STRING_get_bit(val.get(), 0));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 62));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 63));
+  EXPECT_EQ(0, ASN1_BIT_STRING_get_bit(val.get(), 64));
+
+  // By default, a BIT STRING implicitly truncates trailing zeros.
+  val.reset(ASN1_BIT_STRING_new());
+  ASSERT_TRUE(val);
+  static const uint8_t kZeros[64] = {0};
+  ASSERT_TRUE(ASN1_STRING_set(val.get(), kZeros, sizeof(kZeros)));
+  TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitStringEmpty);
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of

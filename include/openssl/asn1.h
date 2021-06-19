@@ -177,13 +177,7 @@ extern "C" {
 // string.
 //
 // When representing a BIT STRING value, the type field is |V_ASN1_BIT_STRING|.
-// The data contains the encoded form of the BIT STRING, including any padding
-// bits added to round to a whole number of bytes, but excluding the leading
-// byte containing the number of padding bits. The number of padding bits is
-// encoded in the flags field. See |ASN1_STRING_FLAG_BITS_LEFT| for details. For
-// example, DER encodes the BIT STRING {1, 0} as {0x06, 0x80 = 0b10_000000}. The
-// |ASN1_STRING| representation has data of {0x80} and flags of
-// ASN1_STRING_FLAG_BITS_LEFT | 6.
+// See bit string documentation below for how the data and flags are used.
 //
 // When representing an INTEGER or ENUMERATED value, the data contains the
 // big-endian encoding of the absolute value of the integer. The sign bit is
@@ -308,8 +302,83 @@ OPENSSL_EXPORT int ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
 // |OPENSSL_malloc|.
 OPENSSL_EXPORT void ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
 
-// TODO(davidben): Pull up and document functions specific to individual string
-// types.
+// TODO(davidben): Expand and document function prototypes generated in macros.
+
+
+// Bit strings.
+//
+// An ASN.1 BIT STRING type represents a string of bits. The string may not
+// necessarily be a whole number of bytes. BIT STRINGs occur in ASN.1 structures
+// in several forms:
+//
+// Some BIT STRINGs represent a bitmask of named bits, such as the X.509 key
+// usage extension in RFC5280, section 4.2.1.3. For such bit strings, DER
+// imposes an additional restriction that trailing zero bits are removed. Some
+// functions like |ASN1_BIT_STRING_set_bit| help in maintaining this.
+//
+// Other BIT STRINGs are arbitrary strings of bits used as identifiers and do
+// not have this constraint, such as the X.509 issuerUniqueID field.
+//
+// Finally, some structures use BIT STRINGs as a container for byte strings. For
+// example, the signatureValue field in X.509 and the subjectPublicKey field in
+// SubjectPublicKeyInfo are defined as BIT STRINGs with a value specific to the
+// AlgorithmIdentifier. While some unknown algorithm could choose to store
+// arbitrary bit strings, all supported algorithms use a byte string, with bit
+// order matching the DER encoding. Callers interpreting a BIT STRING as a byte
+// string should use |ASN1_BIT_STRING_num_bytes| instead of |ASN1_STRING_length|
+// and reject bit strings that are not a whole number of bytes.
+//
+// This library represents BIT STRINGs as |ASN1_STRING|s with type
+// |V_ASN1_BIT_STRING|. The data contains the encoded form of the BIT STRING,
+// including any padding bits added to round to a whole number of bytes, but
+// excluding the leading byte containing the number of padding bits. If
+// |ASN1_STRING_FLAG_BITS_LEFT| is set, the bottom three bits contains the
+// number of padding bits. For example, DER encodes the BIT STRING {1, 0} as
+// {0x06, 0x80 = 0b10_000000}. The |ASN1_STRING| representation has data of
+// {0x80} and flags of ASN1_STRING_FLAG_BITS_LEFT | 6. If
+// |ASN1_STRING_FLAG_BITS_LEFT| is unset, trailing zero bits are implicitly
+// removed. Callers should not rely this representation when constructing bit
+// strings.
+
+// ASN1_BIT_STRING_num_bytes computes the length of |str| in bytes. If |str|'s
+// bit length is a multiple of 8, it sets |*out| to the byte length and returns
+// one. Otherwise, it returns zero.
+//
+// This function may be used with |ASN1_STRING_get0_data| to interpret |str| as
+// a byte string.
+OPENSSL_EXPORT int ASN1_BIT_STRING_num_bytes(const ASN1_BIT_STRING *str,
+                                             size_t *out);
+
+// ASN1_BIT_STRING_set calls |ASN1_STRING_set|. It leaves flags unchanged, so
+// the caller must set the number of unused bits.
+//
+// TODO(davidben): Maybe it should? Wrapping a byte string in a bit string is a
+// common use case.
+OPENSSL_EXPORT int ASN1_BIT_STRING_set(ASN1_BIT_STRING *str,
+                                       const unsigned char *d, int length);
+
+// ASN1_BIT_STRING_set_bit sets bit |n| of |str| to one if |value| is non-zero
+// and zero if |value| is zero, resizing |str| as needed. It then truncates
+// trailing zeros in |str| to align with the DER represention for a bit string
+// with named bits. It returns one on success and zero on error. |n| is indexed
+// beginning from zero.
+OPENSSL_EXPORT int ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *str, int n,
+                                           int value);
+
+// ASN1_BIT_STRING_get_bit returns one if bit |n| of |a| is in bounds and set,
+// and zero otherwise. |n| is indexed beginning from zero.
+OPENSSL_EXPORT int ASN1_BIT_STRING_get_bit(const ASN1_BIT_STRING *str, int n);
+
+// ASN1_BIT_STRING_check returns one if |str| only contains bits that are set in
+// the |flags_len| bytes pointed by |flags|. Otherwise it returns zero. Bits in
+// |flags| are arranged according to the DER representation, so bit 0
+// corresponds to the MSB of |flags[0]|.
+OPENSSL_EXPORT int ASN1_BIT_STRING_check(const ASN1_BIT_STRING *str,
+                                         const unsigned char *flags,
+                                         int flags_len);
+
+// TODO(davidben): Expand and document function prototypes generated in macros.
+
 
 
 // Arbitrary elements.
@@ -799,13 +868,6 @@ OPENSSL_EXPORT int i2c_ASN1_BIT_STRING(const ASN1_BIT_STRING *a,
 OPENSSL_EXPORT ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
                                                     const unsigned char **pp,
                                                     long length);
-OPENSSL_EXPORT int ASN1_BIT_STRING_set(ASN1_BIT_STRING *a, unsigned char *d,
-                                       int length);
-OPENSSL_EXPORT int ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n,
-                                           int value);
-OPENSSL_EXPORT int ASN1_BIT_STRING_get_bit(const ASN1_BIT_STRING *a, int n);
-OPENSSL_EXPORT int ASN1_BIT_STRING_check(const ASN1_BIT_STRING *a,
-                                         unsigned char *flags, int flags_len);
 
 OPENSSL_EXPORT int i2d_ASN1_BOOLEAN(int a, unsigned char **pp);
 OPENSSL_EXPORT int d2i_ASN1_BOOLEAN(int *a, const unsigned char **pp,
