@@ -110,7 +110,7 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   return 1;
 }
 
-int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
+int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
                             EVP_PKEY *pkey) {
   /* Convert the signature OID into digest and public key OIDs. */
   int sigalg_nid = OBJ_obj2nid(sigalg->algorithm);

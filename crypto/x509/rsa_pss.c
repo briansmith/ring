@@ -167,7 +167,8 @@ static const EVP_MD *rsa_algor_to_md(X509_ALGOR *alg) {
 }
 
 /* convert MGF1 algorithm ID to EVP_MD, default SHA1 */
-static const EVP_MD *rsa_mgf1_to_md(X509_ALGOR *alg, X509_ALGOR *maskHash) {
+static const EVP_MD *rsa_mgf1_to_md(const X509_ALGOR *alg,
+                                    X509_ALGOR *maskHash) {
   const EVP_MD *md;
   if (!alg) {
     return EVP_sha1();
@@ -246,7 +247,8 @@ err:
   return ret;
 }
 
-int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, X509_ALGOR *sigalg, EVP_PKEY *pkey) {
+int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
+                        EVP_PKEY *pkey) {
   assert(OBJ_obj2nid(sigalg->algorithm) == NID_rsassaPss);
 
   /* Decode PSS parameters */

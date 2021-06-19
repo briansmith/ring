@@ -69,7 +69,7 @@
 
 #include "internal.h"
 
-int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
+int ASN1_item_verify(const ASN1_ITEM *it, const X509_ALGOR *a,
                      const ASN1_BIT_STRING *signature, void *asn,
                      EVP_PKEY *pkey) {
     if (!pkey) {
