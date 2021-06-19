@@ -537,57 +537,46 @@ size_t ssl_ech_confirmation_signal_hello_offset(const SSL *ssl) {
          ECH_CONFIRMATION_SIGNAL_LEN;
 }
 
-bool ssl_ech_accept_confirmation(
-    const SSL_HANDSHAKE *hs, bssl::Span<uint8_t> out,
-    const SSLTranscript &transcript,
-    bssl::Span<const uint8_t> server_hello) {
-  // We hash |server_hello|, with the last |ECH_CONFIRMATION_SIGNAL_LEN| bytes
-  // of the random value zeroed.
-  static const uint8_t kZeroes[ECH_CONFIRMATION_SIGNAL_LEN] = {0};
-  const size_t offset = ssl_ech_confirmation_signal_hello_offset(hs->ssl);
-  if (server_hello.size() < offset + ECH_CONFIRMATION_SIGNAL_LEN) {
+bool ssl_ech_accept_confirmation(const SSL_HANDSHAKE *hs, Span<uint8_t> out,
+                                 Span<const uint8_t> client_random,
+                                 const SSLTranscript &transcript, bool is_hrr,
+                                 Span<const uint8_t> msg, size_t offset) {
+  // See draft-ietf-tls-esni-13, sections 7.2 and 7.2.1.
+  static const uint8_t kZeros[EVP_MAX_MD_SIZE] = {0};
+
+  // We hash |msg|, with bytes from |offset| zeroed.
+  if (msg.size() < offset + ECH_CONFIRMATION_SIGNAL_LEN) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }
 
-  auto before_zeroes = server_hello.subspan(0, offset);
-  auto after_zeroes =
-      server_hello.subspan(offset + ECH_CONFIRMATION_SIGNAL_LEN);
-  uint8_t context_hash[EVP_MAX_MD_SIZE];
-  unsigned context_hash_len;
+  auto before_zeros = msg.subspan(0, offset);
+  auto after_zeros = msg.subspan(offset + ECH_CONFIRMATION_SIGNAL_LEN);
+  uint8_t context[EVP_MAX_MD_SIZE];
+  unsigned context_len;
   ScopedEVP_MD_CTX ctx;
   if (!transcript.CopyToHashContext(ctx.get(), transcript.Digest()) ||
-      !EVP_DigestUpdate(ctx.get(), before_zeroes.data(),
-                        before_zeroes.size()) ||
-      !EVP_DigestUpdate(ctx.get(), kZeroes, sizeof(kZeroes)) ||
-      !EVP_DigestUpdate(ctx.get(), after_zeroes.data(), after_zeroes.size()) ||
-      !EVP_DigestFinal_ex(ctx.get(), context_hash, &context_hash_len)) {
+      !EVP_DigestUpdate(ctx.get(), before_zeros.data(), before_zeros.size()) ||
+      !EVP_DigestUpdate(ctx.get(), kZeros, ECH_CONFIRMATION_SIGNAL_LEN) ||
+      !EVP_DigestUpdate(ctx.get(), after_zeros.data(), after_zeros.size()) ||
+      !EVP_DigestFinal_ex(ctx.get(), context, &context_len)) {
     return false;
   }
 
-  // Per draft-ietf-tls-esni-10, accept_confirmation is computed with
-  // Derive-Secret, which derives a secret of size Hash.length. That value is
-  // then truncated to the first 8 bytes. Note this differs from deriving an
-  // 8-byte secret because the target length is included in the derivation.
-  //
-  // TODO(https://crbug.com/boringssl/275): draft-11 will avoid this.
-  uint8_t accept_confirmation_buf[EVP_MAX_MD_SIZE];
-  bssl::Span<uint8_t> accept_confirmation =
-      MakeSpan(accept_confirmation_buf, transcript.DigestLen());
-  if (!hkdf_expand_label(accept_confirmation, transcript.Digest(),
-                         hs->secret(), label_to_span("ech accept confirmation"),
-                         MakeConstSpan(context_hash, context_hash_len))) {
+  uint8_t secret[EVP_MAX_MD_SIZE];
+  size_t secret_len;
+  if (!HKDF_extract(secret, &secret_len, transcript.Digest(), kZeros,
+                    transcript.DigestLen(), client_random.data(),
+                    client_random.size())) {
     return false;
   }
 
-  static_assert(ECH_CONFIRMATION_SIGNAL_LEN < EVP_MAX_MD_SIZE,
-                "ECH confirmation signal too big");
-  if (out.size() != ECH_CONFIRMATION_SIGNAL_LEN) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-  OPENSSL_memcpy(out.data(), accept_confirmation.data(), out.size());
-  return true;
+  assert(out.size() == ECH_CONFIRMATION_SIGNAL_LEN);
+  return hkdf_expand_label(out, transcript.Digest(),
+                           MakeConstSpan(secret, secret_len),
+                           is_hrr ? label_to_span("hrr ech accept confirmation")
+                                  : label_to_span("ech accept confirmation"),
+                           MakeConstSpan(context, context_len));
 }
 
 BSSL_NAMESPACE_END

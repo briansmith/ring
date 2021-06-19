@@ -136,6 +136,8 @@ func (c *Context) KDF() uint16 { return c.kdfID }
 
 func (c *Context) AEAD() uint16 { return c.aeadID }
 
+func (c *Context) Overhead() int { return c.aead.Overhead() }
+
 func (c *Context) Seal(plaintext, additionalData []byte) []byte {
 	ciphertext := c.aead.Seal(nil, c.computeNonce(), plaintext, additionalData)
 	c.incrementSeq()

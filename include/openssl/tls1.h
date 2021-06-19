@@ -179,7 +179,7 @@ extern "C" {
 #define TLS1_AD_UNKNOWN_PSK_IDENTITY 115
 #define TLS1_AD_CERTIFICATE_REQUIRED 116
 #define TLS1_AD_NO_APPLICATION_PROTOCOL 120
-#define TLS1_AD_ECH_REQUIRED 121  // draft-ietf-tls-esni-10
+#define TLS1_AD_ECH_REQUIRED 121  // draft-ietf-tls-esni-13
 
 // ExtensionType values from RFC 6066
 #define TLSEXT_TYPE_server_name 0
@@ -246,10 +246,9 @@ extern "C" {
 // extension number.
 #define TLSEXT_TYPE_application_settings 17513
 
-// ExtensionType values from draft-ietf-tls-esni-10. This is not an IANA defined
+// ExtensionType values from draft-ietf-tls-esni-13. This is not an IANA defined
 // extension number.
-#define TLSEXT_TYPE_encrypted_client_hello 0xfe0a
-#define TLSEXT_TYPE_ech_is_inner 0xda09
+#define TLSEXT_TYPE_encrypted_client_hello 0xfe0d
 #define TLSEXT_TYPE_ech_outer_extensions 0xfd00
 
 // ExtensionType value from RFC 6962

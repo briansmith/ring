@@ -504,6 +504,91 @@ static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
   return true;
 }
 
+static bool decrypt_ech(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                        const SSL_CLIENT_HELLO *client_hello) {
+  SSL *const ssl = hs->ssl;
+  CBS body;
+  if (!ssl_client_hello_get_extension(client_hello, &body,
+                                      TLSEXT_TYPE_encrypted_client_hello)) {
+    return true;
+  }
+  uint8_t type;
+  if (!CBS_get_u8(&body, &type)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return false;
+  }
+  if (type != ECH_CLIENT_OUTER) {
+    return true;
+  }
+  // This is a ClientHelloOuter ECH extension. Attempt to decrypt it.
+  uint8_t config_id;
+  uint16_t kdf_id, aead_id;
+  CBS enc, payload;
+  if (!CBS_get_u16(&body, &kdf_id) ||   //
+      !CBS_get_u16(&body, &aead_id) ||  //
+      !CBS_get_u8(&body, &config_id) ||
+      !CBS_get_u16_length_prefixed(&body, &enc) ||
+      !CBS_get_u16_length_prefixed(&body, &payload) ||  //
+      CBS_len(&body) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return false;
+  }
+
+  {
+    MutexReadLock lock(&ssl->ctx->lock);
+    hs->ech_keys = UpRef(ssl->ctx->ech_keys);
+  }
+
+  if (!hs->ech_keys) {
+    ssl->s3->ech_status = ssl_ech_rejected;
+    return true;
+  }
+
+  for (const auto &config : hs->ech_keys->configs) {
+    hs->ech_hpke_ctx.Reset();
+    if (config_id != config->ech_config().config_id ||
+        !config->SetupContext(hs->ech_hpke_ctx.get(), kdf_id, aead_id, enc)) {
+      // Ignore the error and try another ECHConfig.
+      ERR_clear_error();
+      continue;
+    }
+    Array<uint8_t> encoded_client_hello_inner;
+    bool is_decrypt_error;
+    if (!ssl_client_hello_decrypt(hs->ech_hpke_ctx.get(),
+                                  &encoded_client_hello_inner,
+                                  &is_decrypt_error, client_hello, payload)) {
+      if (is_decrypt_error) {
+        // Ignore the error and try another ECHConfig.
+        ERR_clear_error();
+        continue;
+      }
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
+      return false;
+    }
+
+    // Recover the ClientHelloInner from the EncodedClientHelloInner.
+    bssl::Array<uint8_t> client_hello_inner;
+    if (!ssl_decode_client_hello_inner(ssl, out_alert, &client_hello_inner,
+                                       encoded_client_hello_inner,
+                                       client_hello)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return false;
+    }
+    hs->ech_client_hello_buf = std::move(client_hello_inner);
+    hs->ech_config_id = config_id;
+    ssl->s3->ech_status = ssl_ech_accepted;
+    return true;
+  }
+
+  // If we did not accept ECH, proceed with the ClientHelloOuter. Note this
+  // could be key mismatch or ECH GREASE, so we must complete the handshake
+  // as usual, except EncryptedExtensions will contain retry configs.
+  ssl->s3->ech_status = ssl_ech_rejected;
+  return true;
+}
+
 static bool extract_sni(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                         const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
@@ -583,98 +668,19 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_handoff;
   }
 
-  // If the ClientHello contains an encrypted_client_hello extension (and no
-  // ech_is_inner extension), act as a client-facing server and attempt to
-  // decrypt the ClientHelloInner.
-  CBS ech_body;
-  if (ssl_client_hello_get_extension(&client_hello, &ech_body,
-                                      TLSEXT_TYPE_encrypted_client_hello)) {
-    CBS unused;
-    if (ssl_client_hello_get_extension(&client_hello, &unused,
-                                       TLSEXT_TYPE_ech_is_inner)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      return ssl_hs_error;
-    }
-
-    // Parse a ClientECH out of the extension body.
-    uint8_t config_id;
-    uint16_t kdf_id, aead_id;
-    CBS enc, payload;
-    if (!CBS_get_u16(&ech_body, &kdf_id) ||  //
-        !CBS_get_u16(&ech_body, &aead_id) ||
-        !CBS_get_u8(&ech_body, &config_id) ||
-        !CBS_get_u16_length_prefixed(&ech_body, &enc) ||
-        !CBS_get_u16_length_prefixed(&ech_body, &payload) ||
-        CBS_len(&ech_body) != 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      return ssl_hs_error;
-    }
-
-    {
-      MutexReadLock lock(&ssl->ctx->lock);
-      hs->ech_keys = UpRef(ssl->ctx->ech_keys);
-    }
-
-    if (hs->ech_keys) {
-      for (const auto &config : hs->ech_keys->configs) {
-        hs->ech_hpke_ctx.Reset();
-        if (config_id != config->ech_config().config_id ||
-            !config->SetupContext(hs->ech_hpke_ctx.get(), kdf_id, aead_id,
-                                  enc)) {
-          // Ignore the error and try another ECHConfig.
-          ERR_clear_error();
-          continue;
-        }
-        Array<uint8_t> encoded_client_hello_inner;
-        bool is_decrypt_error;
-        if (!ssl_client_hello_decrypt(hs->ech_hpke_ctx.get(),
-                                      &encoded_client_hello_inner,
-                                      &is_decrypt_error, &client_hello, kdf_id,
-                                      aead_id, config_id, enc, payload)) {
-          if (is_decrypt_error) {
-            // Ignore the error and try another ECHConfig.
-            ERR_clear_error();
-            continue;
-          }
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
-          return ssl_hs_error;
-        }
-
-        // Recover the ClientHelloInner from the EncodedClientHelloInner.
-        uint8_t alert = SSL_AD_DECODE_ERROR;
-        bssl::Array<uint8_t> client_hello_inner;
-        if (!ssl_decode_client_hello_inner(ssl, &alert, &client_hello_inner,
-                                           encoded_client_hello_inner,
-                                           &client_hello)) {
-          ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
-          OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-          return ssl_hs_error;
-        }
-        hs->ech_client_hello_buf = std::move(client_hello_inner);
-
-        // Load the ClientHelloInner into |client_hello|.
-        if (!hs->GetClientHello(&msg, &client_hello)) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-          return ssl_hs_error;
-        }
-
-        hs->ech_config_id = config_id;
-        ssl->s3->ech_status = ssl_ech_accepted;
-        break;
-      }
-    }
-
-    // If we did not accept ECH, proceed with the ClientHelloOuter. Note this
-    // could be key mismatch or ECH GREASE, so we most complete the handshake
-    // as usual, except EncryptedExtensions will contain retry configs.
-    if (ssl->s3->ech_status != ssl_ech_accepted) {
-      ssl->s3->ech_status = ssl_ech_rejected;
-    }
+  uint8_t alert = SSL_AD_DECODE_ERROR;
+  if (!decrypt_ech(hs, &alert, &client_hello)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return ssl_hs_error;
   }
 
-  uint8_t alert = SSL_AD_DECODE_ERROR;
+  // ECH may have changed which ClientHello we process. Update |msg| and
+  // |client_hello| in case.
+  if (!hs->GetClientHello(&msg, &client_hello)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return ssl_hs_error;
+  }
+
   if (!extract_sni(hs, &alert, &client_hello)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
@@ -748,12 +754,6 @@ static enum ssl_hs_wait_t do_read_client_hello_after_ech(SSL_HANDSHAKE *hs) {
   // TLS extensions.
   if (!ssl_parse_clienthello_tlsext(hs, &client_hello)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-    return ssl_hs_error;
-  }
-
-  if (hs->ech_present && hs->ech_is_inner_present) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 

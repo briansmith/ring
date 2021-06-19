@@ -26,19 +26,18 @@ import (
 const echBadPayloadByte = 0xff
 
 type clientHandshakeState struct {
-	c                 *Conn
-	serverHello       *serverHelloMsg
-	hello             *clientHelloMsg
-	innerHello        *clientHelloMsg
-	echHPKEContext    *hpke.Context
-	suite             *cipherSuite
-	finishedHash      finishedHash
-	innerFinishedHash finishedHash
-	keyShares         map[CurveID]ecdhCurve
-	masterSecret      []byte
-	session           *ClientSessionState
-	finishedBytes     []byte
-	peerPublicKey     crypto.PublicKey
+	c              *Conn
+	serverHello    *serverHelloMsg
+	hello          *clientHelloMsg
+	innerHello     *clientHelloMsg
+	echHPKEContext *hpke.Context
+	suite          *cipherSuite
+	finishedHash   finishedHash
+	keyShares      map[CurveID]ecdhCurve
+	masterSecret   []byte
+	session        *ClientSessionState
+	finishedBytes  []byte
+	peerPublicKey  crypto.PublicKey
 }
 
 func mapClientHelloVersion(vers uint16, isDTLS bool) uint16 {
@@ -340,10 +339,6 @@ func (c *Conn) clientHandshake() error {
 
 	hs.finishedHash = newFinishedHash(c.wireVersion, c.isDTLS, hs.suite)
 	hs.finishedHash.WriteHandshake(hs.hello.marshal(), hs.c.sendHandshakeSeq-1)
-	if hs.innerHello != nil {
-		hs.innerFinishedHash = newFinishedHash(c.wireVersion, c.isDTLS, hs.suite)
-		hs.innerFinishedHash.WriteHandshake(hs.innerHello.marshal(), hs.c.sendHandshakeSeq-1)
-	}
 
 	if c.vers >= VersionTLS13 {
 		if err := hs.doTLS13Handshake(msg); err != nil {
@@ -533,9 +528,6 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 	// list of prefix extensions. The marshal function will try these
 	// extensions before any others, followed by any remaining extensions in
 	// the default order.
-	if innerHello != nil && c.config.Bugs.FirstExtensionInClientHelloOuter != 0 {
-		hello.prefixExtensions = append(hello.prefixExtensions, c.config.Bugs.FirstExtensionInClientHelloOuter)
-	}
 	if c.config.Bugs.PSKBinderFirst && !c.config.Bugs.OnlyCorruptSecondPSKBinder {
 		hello.prefixExtensions = append(hello.prefixExtensions, extensionPreSharedKey)
 	}
@@ -543,8 +535,24 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 		hello.prefixExtensions = append(hello.prefixExtensions, extensionALPN)
 		hello.prefixExtensions = append(hello.prefixExtensions, extensionNextProtoNeg)
 	}
-	if isInner && len(c.config.ECHOuterExtensions) > 0 && !c.config.Bugs.OnlyCompressSecondClientHelloInner {
-		applyECHOuterExtensions(hello, c.config.ECHOuterExtensions)
+
+	// Configure ech_outer_extensions.
+	if isInner {
+		hello.outerExtensions = c.config.ECHOuterExtensions
+		// If |OnlyCompressSecondClientHelloInner| is set, we still configure
+		// |hello.outerExtensions| for ordering, so that we do not introduce an
+		// unsolicited change across HelloRetryRequest.
+		hello.reorderOuterExtensionsWithoutCompressing = c.config.Bugs.OnlyCompressSecondClientHelloInner
+	} else {
+		// Compressed extensions must appear in the same relative order between
+		// ClientHelloInner and ClientHelloOuter. For simplicity, we default to
+		// forcing their order to match, but the caller can override this with
+		// either valid or invalid explicit orders.
+		if c.config.Bugs.ECHOuterExtensionOrder != nil {
+			hello.prefixExtensions = append(hello.prefixExtensions, c.config.Bugs.ECHOuterExtensionOrder...)
+		} else {
+			hello.prefixExtensions = append(hello.prefixExtensions, c.config.ECHOuterExtensions...)
+		}
 	}
 
 	if maxVersion >= VersionTLS13 {
@@ -816,9 +824,9 @@ NextCipherSuite:
 		hello.hasEarlyData = innerHello.hasEarlyData
 	}
 
-	if (isInner && !c.config.Bugs.OmitECHIsInner) || c.config.Bugs.AlwaysSendECHIsInner {
-		hello.echIsInner = true
-		hello.invalidECHIsInner = c.config.Bugs.SendInvalidECHIsInner
+	if (isInner && !c.config.Bugs.OmitECHInner) || c.config.Bugs.AlwaysSendECHInner {
+		hello.echInner = true
+		hello.invalidECHInner = c.config.Bugs.SendInvalidECHInner
 	}
 
 	if innerHello != nil {
@@ -827,9 +835,9 @@ NextCipherSuite:
 		}
 		if c.config.Bugs.CorruptEncryptedClientHello {
 			if c.config.Bugs.NullAllCiphers {
-				hello.clientECH.payload = []byte{echBadPayloadByte}
+				hello.echOuter.payload = []byte{echBadPayloadByte}
 			} else {
-				hello.clientECH.payload[0] ^= 1
+				hello.echOuter.payload[0] ^= 1
 			}
 		}
 	}
@@ -878,27 +886,31 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 		enc = enc[:1]
 	}
 
-	aad := newByteBuilder()
-	aad.addU16(hs.echHPKEContext.KDF())
-	aad.addU16(hs.echHPKEContext.AEAD())
-	aad.addU8(configID)
-	aad.addU16LengthPrefixed().addBytes(enc)
-	hello.marshalForOuterAAD(aad.addU24LengthPrefixed())
-
 	encodedInner := innerHello.marshalForEncodedInner()
-	payload := hs.echHPKEContext.Seal(encodedInner, aad.finish())
-
-	if c.config.Bugs.NullAllCiphers {
-		payload = encodedInner
+	padding := make([]byte, c.config.Bugs.ClientECHPadding)
+	if c.config.Bugs.BadClientECHPadding {
+		padding[0] = 1
 	}
+	encodedInner = append(encodedInner, padding...)
 
-	// Place the ECH extension in the outer CH.
-	hello.clientECH = &clientECH{
+	// Encode ClientHelloOuter with a placeholder payload string.
+	payloadLength := len(encodedInner)
+	if !c.config.Bugs.NullAllCiphers {
+		payloadLength += hs.echHPKEContext.Overhead()
+	}
+	hello.echOuter = &echClientOuter{
 		kdfID:    hs.echHPKEContext.KDF(),
 		aeadID:   hs.echHPKEContext.AEAD(),
 		configID: configID,
 		enc:      enc,
-		payload:  payload,
+		payload:  make([]byte, payloadLength),
+	}
+	aad := hello.marshal()[4:] // Remove message header
+
+	hello.raw = nil
+	hello.echOuter.payload = hs.echHPKEContext.Seal(encodedInner, aad)
+	if c.config.Bugs.NullAllCiphers {
+		hello.echOuter.payload = encodedInner
 	}
 
 	if c.config.Bugs.RecordClientHelloInner != nil {
@@ -913,8 +925,64 @@ func (hs *clientHandshakeState) encryptClientHello(hello, innerHello *clientHell
 	return nil
 }
 
+func (hs *clientHandshakeState) checkECHConfirmation(msg interface{}, hello *clientHelloMsg, finishedHash *finishedHash) bool {
+	var offset int
+	var raw, label []byte
+	if hrr, ok := msg.(*helloRetryRequestMsg); ok {
+		if hrr.echConfirmationOffset == 0 {
+			return false
+		}
+		raw = hrr.raw
+		label = echAcceptConfirmationHRRLabel
+		offset = hrr.echConfirmationOffset
+	} else {
+		raw = msg.(*serverHelloMsg).raw
+		label = echAcceptConfirmationLabel
+		offset = 4 + 2 + 32 - echAcceptConfirmationLength
+	}
+
+	withZeros := append(make([]byte, 0, len(raw)), raw...)
+	for i := 0; i < echAcceptConfirmationLength; i++ {
+		withZeros[i+offset] = 0
+	}
+
+	confirmation := finishedHash.echAcceptConfirmation(hello.random, label, withZeros)
+	return bytes.Equal(confirmation, raw[offset:offset+echAcceptConfirmationLength])
+}
+
 func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 	c := hs.c
+
+	// The first message may be a ServerHello or HelloRetryRequest.
+	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)
+	if haveHelloRetryRequest {
+		hs.finishedHash.UpdateForHelloRetryRequest()
+	}
+
+	// Determine whether the server accepted ECH and drop the unnecessary
+	// transcript.
+	if hs.innerHello != nil {
+		innerFinishedHash := newFinishedHash(c.wireVersion, c.isDTLS, hs.suite)
+		innerFinishedHash.WriteHandshake(hs.innerHello.marshal(), hs.c.sendHandshakeSeq-1)
+		if haveHelloRetryRequest {
+			innerFinishedHash.UpdateForHelloRetryRequest()
+		}
+		if hs.checkECHConfirmation(msg, hs.innerHello, &innerFinishedHash) {
+			c.echAccepted = true
+			// Replace the transcript. For now, leave hs.hello and hs.innerHello
+			// as-is. HelloRetryRequest requires both be available.
+			hs.finishedHash = innerFinishedHash
+		}
+	} else {
+		// When not offering ECH, test that the backend server does not (or does)
+		// send a confirmation as expected.
+		confirmed := hs.checkECHConfirmation(msg, hs.hello, &hs.finishedHash)
+		if hs.hello.echInner && !confirmed {
+			return fmt.Errorf("tls: server did not send ECH confirmation in %T when requested", msg)
+		} else if !hs.hello.echInner && confirmed {
+			return fmt.Errorf("tls: server sent ECH confirmation in %T when not requested", msg)
+		}
+	}
 
 	// Once the PRF hash is known, TLS 1.3 does not require a handshake buffer.
 	hs.finishedHash.discardHandshakeBuffer()
@@ -922,15 +990,8 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 	// The first server message must be followed by a ChangeCipherSpec.
 	c.expectTLS13ChangeCipherSpec = true
 
-	// The first message may be a ServerHello or HelloRetryRequest.
-	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)
 	if haveHelloRetryRequest {
-		hs.finishedHash.UpdateForHelloRetryRequest()
 		hs.writeServerHash(helloRetryRequest.marshal())
-		if hs.innerHello != nil {
-			hs.innerFinishedHash.UpdateForHelloRetryRequest()
-			hs.innerFinishedHash.WriteHandshake(helloRetryRequest.marshal(), c.recvHandshakeSeq-1)
-		}
 
 		if c.config.Bugs.FailIfHelloRetryRequested {
 			return errors.New("tls: unexpected HelloRetryRequest")
@@ -944,20 +1005,17 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 		// Reset the encryption state, in case we sent 0-RTT data.
 		c.out.resetCipher()
 
-		if hs.innerHello != nil {
-			if err := hs.applyHelloRetryRequest(helloRetryRequest, hs.innerHello, nil); err != nil {
+		if c.echAccepted {
+			if err := hs.applyHelloRetryRequest(helloRetryRequest, hs.innerHello, hs.hello); err != nil {
 				return err
 			}
-			if err := hs.applyHelloRetryRequest(helloRetryRequest, hs.hello, hs.innerHello); err != nil {
-				return err
-			}
-			hs.innerFinishedHash.WriteHandshake(hs.innerHello.marshal(), c.sendHandshakeSeq)
+			hs.writeClientHash(hs.innerHello.marshal())
 		} else {
 			if err := hs.applyHelloRetryRequest(helloRetryRequest, hs.hello, nil); err != nil {
 				return err
 			}
+			hs.writeClientHash(hs.hello.marshal())
 		}
-		hs.writeClientHash(hs.hello.marshal())
 		toWrite := hs.hello.marshal()
 
 		if c.config.Bugs.PartialSecondClientHelloAfterFirst {
@@ -990,6 +1048,12 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 		}
 	}
 
+	// We no longer need to retain two ClientHellos.
+	if c.echAccepted {
+		hs.hello = hs.innerHello
+	}
+	hs.innerHello = nil
+
 	var ok bool
 	hs.serverHello, ok = msg.(*serverHelloMsg)
 	if !ok {
@@ -1013,9 +1077,19 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 		return fmt.Errorf("tls: server sent non-matching cipher suite %04x vs %04x", hs.suite.id, hs.serverHello.cipherSuite)
 	}
 
-	if haveHelloRetryRequest && helloRetryRequest.hasSelectedGroup && helloRetryRequest.selectedGroup != hs.serverHello.keyShare.group {
-		c.sendAlert(alertHandshakeFailure)
-		return errors.New("tls: ServerHello parameters did not match HelloRetryRequest")
+	if haveHelloRetryRequest {
+		if helloRetryRequest.hasSelectedGroup && helloRetryRequest.selectedGroup != hs.serverHello.keyShare.group {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: ServerHello parameters did not match HelloRetryRequest")
+		}
+
+		// Both the ServerHello and HelloRetryRequest must have an ECH confirmation.
+		echConfirmed := hs.checkECHConfirmation(hs.serverHello, hs.hello, &hs.finishedHash)
+		if hs.hello.echInner && !echConfirmed {
+			return errors.New("tls: server did not send ECH confirmation in ServerHello when requested")
+		} else if !hs.hello.echInner && echConfirmed {
+			return errors.New("tls: server sent ECH confirmation in ServerHello when not requested")
+		}
 	}
 
 	if !bytes.Equal(hs.hello.sessionID, hs.serverHello.sessionID) {
@@ -1039,9 +1113,6 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 		c.didResume = true
 	}
 	hs.finishedHash.addEntropy(pskSecret)
-	if hs.innerHello != nil {
-		hs.innerFinishedHash.addEntropy(pskSecret)
-	}
 
 	if !hs.serverHello.hasKeyShare {
 		c.sendAlert(alertUnsupportedExtension)
@@ -1066,39 +1137,6 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 	}
 	hs.finishedHash.nextSecret()
 	hs.finishedHash.addEntropy(ecdheSecret)
-	if hs.innerHello != nil {
-		hs.innerFinishedHash.nextSecret()
-		hs.innerFinishedHash.addEntropy(ecdheSecret)
-	}
-
-	// Determine whether the server accepted ECH.
-	confirmHash := &hs.finishedHash
-	if hs.innerHello != nil {
-		confirmHash = &hs.innerFinishedHash
-	}
-	echConfirmed := bytes.Equal(hs.serverHello.random[24:], confirmHash.deriveSecretPeek([]byte("ech accept confirmation"), hs.serverHello.marshalForECHConf())[:8])
-	if hs.innerHello != nil {
-		c.echAccepted = echConfirmed
-		if c.echAccepted {
-			hs.hello = hs.innerHello
-			hs.finishedHash = hs.innerFinishedHash
-		}
-		hs.innerHello = nil
-		hs.innerFinishedHash = finishedHash{}
-	} else {
-		// When not offering ECH, we may still expect a confirmation signal to
-		// test the backend server behavior.
-		if hs.hello.echIsInner {
-			if !echConfirmed {
-				return errors.New("tls: server did not send ECH confirmation when requested")
-			}
-		} else {
-			if echConfirmed {
-				return errors.New("tls: server did sent ECH confirmation when not requested")
-			}
-		}
-	}
-
 	hs.writeServerHash(hs.serverHello.marshal())
 
 	// Derive handshake traffic keys and switch read key to handshake
@@ -1465,58 +1503,53 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg interface{}) error {
 }
 
 // applyHelloRetryRequest updates |hello| in-place based on |helloRetryRequest|.
-// If |innerHello| is not nil, this is the second ClientHelloOuter and should
-// contain an encrypted copy of |innerHello|
-func (hs *clientHandshakeState) applyHelloRetryRequest(helloRetryRequest *helloRetryRequestMsg, hello, innerHello *clientHelloMsg) error {
+// If |outerHello| is not nil, |outerHello| will be updated to contain an
+// encrypted copy of |hello|.
+func (hs *clientHandshakeState) applyHelloRetryRequest(helloRetryRequest *helloRetryRequestMsg, hello, outerHello *clientHelloMsg) error {
 	c := hs.c
 	firstHelloBytes := hello.marshal()
-	isInner := innerHello == nil && hs.echHPKEContext != nil
 	if len(helloRetryRequest.cookie) > 0 {
 		hello.tls13Cookie = helloRetryRequest.cookie
 	}
 
-	if innerHello != nil {
-		hello.keyShares = innerHello.keyShares
-	} else {
-		if c.config.Bugs.MisinterpretHelloRetryRequestCurve != 0 {
-			helloRetryRequest.hasSelectedGroup = true
-			helloRetryRequest.selectedGroup = c.config.Bugs.MisinterpretHelloRetryRequestCurve
+	if c.config.Bugs.MisinterpretHelloRetryRequestCurve != 0 {
+		helloRetryRequest.hasSelectedGroup = true
+		helloRetryRequest.selectedGroup = c.config.Bugs.MisinterpretHelloRetryRequestCurve
+	}
+	if helloRetryRequest.hasSelectedGroup {
+		var hrrCurveFound bool
+		group := helloRetryRequest.selectedGroup
+		for _, curveID := range hello.supportedCurves {
+			if group == curveID {
+				hrrCurveFound = true
+				break
+			}
 		}
-		if helloRetryRequest.hasSelectedGroup {
-			var hrrCurveFound bool
-			group := helloRetryRequest.selectedGroup
-			for _, curveID := range hello.supportedCurves {
-				if group == curveID {
-					hrrCurveFound = true
-					break
-				}
-			}
-			if !hrrCurveFound || hs.keyShares[group] != nil {
-				c.sendAlert(alertHandshakeFailure)
-				return errors.New("tls: received invalid HelloRetryRequest")
-			}
-			curve, ok := curveForCurveID(group, c.config)
-			if !ok {
-				return errors.New("tls: Unable to get curve requested in HelloRetryRequest")
-			}
-			publicKey, err := curve.offer(c.config.rand())
-			if err != nil {
-				return err
-			}
-			hs.keyShares[group] = curve
-			hello.keyShares = []keyShareEntry{{
-				group:       group,
-				keyExchange: publicKey,
-			}}
+		if !hrrCurveFound || hs.keyShares[group] != nil {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: received invalid HelloRetryRequest")
 		}
-
-		if c.config.Bugs.SecondClientHelloMissingKeyShare {
-			hello.hasKeyShares = false
+		curve, ok := curveForCurveID(group, c.config)
+		if !ok {
+			return errors.New("tls: Unable to get curve requested in HelloRetryRequest")
 		}
+		publicKey, err := curve.offer(c.config.rand())
+		if err != nil {
+			return err
+		}
+		hs.keyShares[group] = curve
+		hello.keyShares = []keyShareEntry{{
+			group:       group,
+			keyExchange: publicKey,
+		}}
 	}
 
-	if isInner && c.config.Bugs.OmitSecondECHIsInner {
-		hello.echIsInner = false
+	if c.config.Bugs.SecondClientHelloMissingKeyShare {
+		hello.hasKeyShares = false
+	}
+
+	if c.config.Bugs.OmitSecondECHInner {
+		hello.echInner = false
 	}
 
 	hello.hasEarlyData = c.config.Bugs.SendEarlyDataOnSecondClientHello
@@ -1524,54 +1557,49 @@ func (hs *clientHandshakeState) applyHelloRetryRequest(helloRetryRequest *helloR
 	if c.config.Bugs.PSKBinderFirst && c.config.Bugs.OnlyCorruptSecondPSKBinder {
 		hello.prefixExtensions = append(hello.prefixExtensions, extensionPreSharedKey)
 	}
-	// The first ClientHello may have skipped this due to OnlyCompressSecondClientHelloInner.
-	if isInner && len(c.config.ECHOuterExtensions) > 0 && c.config.Bugs.OnlyCompressSecondClientHelloInner {
-		applyECHOuterExtensions(hello, c.config.ECHOuterExtensions)
-	}
+	// The first ClientHello may have set this due to OnlyCompressSecondClientHelloInner.
+	hello.reorderOuterExtensionsWithoutCompressing = false
 	if c.config.Bugs.OmitPSKsOnSecondClientHello {
 		hello.pskIdentities = nil
 		hello.pskBinders = nil
 	}
 	hello.raw = nil
 
-	if innerHello != nil {
+	if len(hello.pskIdentities) > 0 {
+		generatePSKBinders(c.wireVersion, hello, hs.session, firstHelloBytes, helloRetryRequest.marshal(), c.config)
+	}
+
+	if outerHello != nil {
+		outerHello.raw = nil
+		// We know the server has accepted ECH, so the ClientHelloOuter's fields
+		// are irrelevant. In the general case, the HelloRetryRequest may not
+		// even be valid for ClientHelloOuter. However, we copy the key shares
+		// from ClientHelloInner so they remain eligible for compression.
+		if !c.config.Bugs.MinimalClientHelloOuter {
+			outerHello.keyShares = hello.keyShares
+		}
+
 		if c.config.Bugs.OmitSecondEncryptedClientHello {
-			hello.clientECH = nil
+			outerHello.echOuter = nil
 		} else {
 			configID := c.config.ClientECHConfig.ConfigID
 			if c.config.Bugs.CorruptSecondEncryptedClientHelloConfigID {
 				configID ^= 1
 			}
-			if err := hs.encryptClientHello(hello, innerHello, configID, nil); err != nil {
+			if err := hs.encryptClientHello(outerHello, hello, configID, nil); err != nil {
 				return err
 			}
 			if c.config.Bugs.CorruptSecondEncryptedClientHello {
 				if c.config.Bugs.NullAllCiphers {
-					hello.clientECH.payload = []byte{echBadPayloadByte}
+					outerHello.echOuter.payload = []byte{echBadPayloadByte}
 				} else {
-					hello.clientECH.payload[0] ^= 1
+					outerHello.echOuter.payload[0] ^= 1
 				}
 			}
 		}
 	}
 
-	// PSK binders and ECH both must be inserted last because they incorporate
-	// the rest of the ClientHello and conflict. See corresponding comment in
-	// |createClientHello|.
-	if len(hello.pskIdentities) > 0 {
-		generatePSKBinders(c.wireVersion, hello, hs.session, firstHelloBytes, helloRetryRequest.marshal(), c.config)
-	}
 	return nil
-}
-
-// applyECHOuterExtensions updates |hello| to compress |outerExtensions| with
-// the ech_outer_extensions mechanism.
-func applyECHOuterExtensions(hello *clientHelloMsg, outerExtensions []uint16) {
-	// Ensure that the ech_outer_extensions extension and each of the
-	// extensions it names are serialized consecutively.
-	hello.prefixExtensions = append(hello.prefixExtensions, extensionECHOuterExtensions)
-	hello.prefixExtensions = append(hello.prefixExtensions, outerExtensions...)
-	hello.outerExtensions = outerExtensions
 }
 
 func (hs *clientHandshakeState) doFullHandshake() error {

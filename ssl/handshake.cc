@@ -126,8 +126,7 @@ BSSL_NAMESPACE_BEGIN
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
-      ech_present(false),
-      ech_is_inner_present(false),
+      ech_is_inner(false),
       ech_authenticated_reject(false),
       scts_requested(false),
       handshake_finalized(false),

@@ -3569,7 +3569,7 @@ OPENSSL_EXPORT const char *SSL_early_data_reason_string(
 //
 // ECH support in BoringSSL is still experimental and under development.
 //
-// See https://tools.ietf.org/html/draft-ietf-tls-esni-10.
+// See https://tools.ietf.org/html/draft-ietf-tls-esni-13.
 
 // SSL_set_enable_ech_grease configures whether the client will send a GREASE
 // ECH extension when no supported ECHConfig is available.
@@ -5548,6 +5548,8 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_ECH_PUBLIC_NAME 317
 #define SSL_R_INVALID_ECH_CONFIG_LIST 318
 #define SSL_R_ECH_REJECTED 319
+#define SSL_R_OUTER_EXTENSION_NOT_FOUND 320
+#define SSL_R_INCONSISTENT_ECH_NEGOTIATION 321
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

@@ -31,12 +31,6 @@
 #include "internal.h"
 
 
-#if defined(OPENSSL_MSAN)
-#define NO_SANITIZE_MEMORY __attribute__((no_sanitize("memory")))
-#else
-#define NO_SANITIZE_MEMORY
-#endif
-
 BSSL_NAMESPACE_BEGIN
 
 // ECH reuses the extension code point for the version number.
@@ -84,159 +78,17 @@ static bool ssl_client_hello_write_without_extensions(
   return true;
 }
 
-bool ssl_decode_client_hello_inner(
-    SSL *ssl, uint8_t *out_alert, Array<uint8_t> *out_client_hello_inner,
-    Span<const uint8_t> encoded_client_hello_inner,
-    const SSL_CLIENT_HELLO *client_hello_outer) {
-  SSL_CLIENT_HELLO client_hello_inner;
-  if (!ssl_client_hello_init(ssl, &client_hello_inner,
-                             encoded_client_hello_inner)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return false;
-  }
-  // TLS 1.3 ClientHellos must have extensions, and EncodedClientHelloInners use
-  // ClientHelloOuter's session_id.
-  if (client_hello_inner.extensions_len == 0 ||
-      client_hello_inner.session_id_len != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return false;
-  }
-  client_hello_inner.session_id = client_hello_outer->session_id;
-  client_hello_inner.session_id_len = client_hello_outer->session_id_len;
-
-  // Begin serializing a message containing the ClientHelloInner in |cbb|.
-  ScopedCBB cbb;
-  CBB body, extensions;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO) ||
-      !ssl_client_hello_write_without_extensions(&client_hello_inner, &body) ||
-      !CBB_add_u16_length_prefixed(&body, &extensions)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-
-  // Sort the extensions in ClientHelloOuter, so ech_outer_extensions may be
-  // processed in O(n*log(n)) time, rather than O(n^2).
-  struct Extension {
-    uint16_t extension = 0;
-    Span<const uint8_t> body;
-    bool copied = false;
-  };
-
-  // MSan's libc interceptors do not handle |bsearch|. See b/182583130.
-  auto compare_extension = [](const void *a, const void *b)
-                               NO_SANITIZE_MEMORY -> int {
-    const Extension *extension_a = reinterpret_cast<const Extension *>(a);
-    const Extension *extension_b = reinterpret_cast<const Extension *>(b);
-    if (extension_a->extension < extension_b->extension) {
-      return -1;
-    } else if (extension_a->extension > extension_b->extension) {
-      return 1;
-    }
-    return 0;
-  };
-  GrowableArray<Extension> sorted_extensions;
-  CBS unsorted_extensions(MakeConstSpan(client_hello_outer->extensions,
-                                        client_hello_outer->extensions_len));
-  while (CBS_len(&unsorted_extensions) > 0) {
-    Extension extension;
-    CBS extension_body;
-    if (!CBS_get_u16(&unsorted_extensions, &extension.extension) ||
-        !CBS_get_u16_length_prefixed(&unsorted_extensions, &extension_body)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return false;
-    }
-    extension.body = extension_body;
-    if (!sorted_extensions.Push(extension)) {
-      return false;
-    }
-  }
-  qsort(sorted_extensions.data(), sorted_extensions.size(), sizeof(Extension),
-        compare_extension);
-
-  // Copy extensions from |client_hello_inner|, expanding ech_outer_extensions.
-  CBS inner_extensions(MakeConstSpan(client_hello_inner.extensions,
-                                     client_hello_inner.extensions_len));
-  while (CBS_len(&inner_extensions) > 0) {
-    uint16_t extension_id;
-    CBS extension_body;
-    if (!CBS_get_u16(&inner_extensions, &extension_id) ||
-        !CBS_get_u16_length_prefixed(&inner_extensions, &extension_body)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return false;
-    }
-    if (extension_id != TLSEXT_TYPE_ech_outer_extensions) {
-      if (!CBB_add_u16(&extensions, extension_id) ||
-          !CBB_add_u16(&extensions, CBS_len(&extension_body)) ||
-          !CBB_add_bytes(&extensions, CBS_data(&extension_body),
-                         CBS_len(&extension_body))) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        return false;
-      }
-      continue;
-    }
-
-    // Replace ech_outer_extensions with the corresponding outer extensions.
-    CBS outer_extensions;
-    if (!CBS_get_u8_length_prefixed(&extension_body, &outer_extensions) ||
-        CBS_len(&extension_body) != 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return false;
-    }
-    while (CBS_len(&outer_extensions) > 0) {
-      uint16_t extension_needed;
-      if (!CBS_get_u16(&outer_extensions, &extension_needed)) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-        return false;
-      }
-      if (extension_needed == TLSEXT_TYPE_encrypted_client_hello) {
-        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-        return false;
-      }
-      // Find the referenced extension.
-      Extension key;
-      key.extension = extension_needed;
-      Extension *result = reinterpret_cast<Extension *>(
-          bsearch(&key, sorted_extensions.data(), sorted_extensions.size(),
-                  sizeof(Extension), compare_extension));
-      if (result == nullptr) {
-        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-        return false;
-      }
-
-      // Extensions may be referenced at most once, to bound the result size.
-      if (result->copied) {
-        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-        OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-        return false;
-      }
-      result->copied = true;
-
-      if (!CBB_add_u16(&extensions, extension_needed) ||
-          !CBB_add_u16(&extensions, result->body.size()) ||
-          !CBB_add_bytes(&extensions, result->body.data(),
-                         result->body.size())) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        return false;
-      }
-    }
-  }
-  if (!CBB_flush(&body)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-
-  // See https://github.com/tlswg/draft-ietf-tls-esni/pull/411
+static bool is_valid_client_hello_inner(SSL *ssl, uint8_t *out_alert,
+                                        Span<const uint8_t> body) {
+  // See draft-ietf-tls-esni-13, section 7.1.
+  SSL_CLIENT_HELLO client_hello;
   CBS extension;
-  if (!ssl_client_hello_init(ssl, &client_hello_inner,
-                             MakeConstSpan(CBB_data(&body), CBB_len(&body))) ||
-      !ssl_client_hello_get_extension(&client_hello_inner, &extension,
-                                      TLSEXT_TYPE_ech_is_inner) ||
-      CBS_len(&extension) != 0 ||
-      ssl_client_hello_get_extension(&client_hello_inner, &extension,
-                                     TLSEXT_TYPE_encrypted_client_hello) ||
-      !ssl_client_hello_get_extension(&client_hello_inner, &extension,
+  if (!ssl_client_hello_init(ssl, &client_hello, body) ||
+      !ssl_client_hello_get_extension(&client_hello, &extension,
+                                      TLSEXT_TYPE_encrypted_client_hello) ||
+      CBS_len(&extension) != 1 ||  //
+      CBS_data(&extension)[0] != ECH_CLIENT_INNER ||
+      !ssl_client_hello_get_extension(&client_hello, &extension,
                                       TLSEXT_TYPE_supported_versions)) {
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_CLIENT_HELLO_INNER);
@@ -267,6 +119,131 @@ bool ssl_decode_client_hello_inner(
       return false;
     }
   }
+  return true;
+}
+
+bool ssl_decode_client_hello_inner(
+    SSL *ssl, uint8_t *out_alert, Array<uint8_t> *out_client_hello_inner,
+    Span<const uint8_t> encoded_client_hello_inner,
+    const SSL_CLIENT_HELLO *client_hello_outer) {
+  SSL_CLIENT_HELLO client_hello_inner;
+  CBS cbs = encoded_client_hello_inner;
+  if (!ssl_parse_client_hello_with_trailing_data(ssl, &cbs,
+                                                 &client_hello_inner)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return false;
+  }
+  // The remaining data is padding.
+  uint8_t padding;
+  while (CBS_get_u8(&cbs, &padding)) {
+    if (padding != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+      return false;
+    }
+  }
+
+  // TLS 1.3 ClientHellos must have extensions, and EncodedClientHelloInners use
+  // ClientHelloOuter's session_id.
+  if (client_hello_inner.extensions_len == 0 ||
+      client_hello_inner.session_id_len != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return false;
+  }
+  client_hello_inner.session_id = client_hello_outer->session_id;
+  client_hello_inner.session_id_len = client_hello_outer->session_id_len;
+
+  // Begin serializing a message containing the ClientHelloInner in |cbb|.
+  ScopedCBB cbb;
+  CBB body, extensions_cbb;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO) ||
+      !ssl_client_hello_write_without_extensions(&client_hello_inner, &body) ||
+      !CBB_add_u16_length_prefixed(&body, &extensions_cbb)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+
+  auto inner_extensions = MakeConstSpan(client_hello_inner.extensions,
+                                        client_hello_inner.extensions_len);
+  CBS ext_list_wrapper;
+  if (!ssl_client_hello_get_extension(&client_hello_inner, &ext_list_wrapper,
+                                      TLSEXT_TYPE_ech_outer_extensions)) {
+    // No ech_outer_extensions. Copy everything.
+    if (!CBB_add_bytes(&extensions_cbb, inner_extensions.data(),
+                       inner_extensions.size())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+  } else {
+    const size_t offset = CBS_data(&ext_list_wrapper) - inner_extensions.data();
+    auto inner_extensions_before =
+        inner_extensions.subspan(0, offset - 4 /* extension header */);
+    auto inner_extensions_after =
+        inner_extensions.subspan(offset + CBS_len(&ext_list_wrapper));
+    if (!CBB_add_bytes(&extensions_cbb, inner_extensions_before.data(),
+                       inner_extensions_before.size())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Expand ech_outer_extensions. See draft-ietf-tls-esni-13, Appendix B.
+    CBS ext_list;
+    if (!CBS_get_u8_length_prefixed(&ext_list_wrapper, &ext_list) ||
+        CBS_len(&ext_list) == 0 || CBS_len(&ext_list_wrapper) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return false;
+    }
+    CBS outer_extensions;
+    CBS_init(&outer_extensions, client_hello_outer->extensions,
+             client_hello_outer->extensions_len);
+    while (CBS_len(&ext_list) != 0) {
+      // Find the next extension to copy.
+      uint16_t want;
+      if (!CBS_get_u16(&ext_list, &want)) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+        return false;
+      }
+      // Seek to |want| in |outer_extensions|. |ext_list| is required to match
+      // ClientHelloOuter in order.
+      uint16_t found;
+      CBS ext_body;
+      do {
+        if (CBS_len(&outer_extensions) == 0) {
+          *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+          OPENSSL_PUT_ERROR(SSL, SSL_R_OUTER_EXTENSION_NOT_FOUND);
+          return false;
+        }
+        if (!CBS_get_u16(&outer_extensions, &found) ||
+            !CBS_get_u16_length_prefixed(&outer_extensions, &ext_body)) {
+          OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+          return false;
+        }
+      } while (found != want);
+      // Copy the extension.
+      if (!CBB_add_u16(&extensions_cbb, found) ||
+          !CBB_add_u16(&extensions_cbb, CBS_len(&ext_body)) ||
+          !CBB_add_bytes(&extensions_cbb, CBS_data(&ext_body),
+                         CBS_len(&ext_body))) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+        return false;
+      }
+    }
+
+    if (!CBB_add_bytes(&extensions_cbb, inner_extensions_after.data(),
+                       inner_extensions_after.size())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+  }
+  if (!CBB_flush(&body)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+
+  if (!is_valid_client_hello_inner(
+          ssl, out_alert, MakeConstSpan(CBB_data(&body), CBB_len(&body)))) {
+    return false;
+  }
 
   if (!ssl->method->finish_message(ssl, cbb.get(), out_client_hello_inner)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -275,56 +252,31 @@ bool ssl_decode_client_hello_inner(
   return true;
 }
 
-bool ssl_client_hello_decrypt(
-    EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out_encoded_client_hello_inner,
-    bool *out_is_decrypt_error, const SSL_CLIENT_HELLO *client_hello_outer,
-    uint16_t kdf_id, uint16_t aead_id, const uint8_t config_id,
-    Span<const uint8_t> enc, Span<const uint8_t> payload) {
+bool ssl_client_hello_decrypt(EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out,
+                              bool *out_is_decrypt_error,
+                              const SSL_CLIENT_HELLO *client_hello_outer,
+                              Span<const uint8_t> payload) {
   *out_is_decrypt_error = false;
 
-  // Compute the ClientHello portion of the ClientHelloOuterAAD value. See
-  // draft-ietf-tls-esni-10, section 5.2.
-  ScopedCBB aad;
-  CBB enc_cbb, outer_hello_cbb, extensions_cbb;
-  if (!CBB_init(aad.get(), 256) ||
-      !CBB_add_u16(aad.get(), kdf_id) ||
-      !CBB_add_u16(aad.get(), aead_id) ||
-      !CBB_add_u8(aad.get(), config_id) ||
-      !CBB_add_u16_length_prefixed(aad.get(), &enc_cbb) ||
-      !CBB_add_bytes(&enc_cbb, enc.data(), enc.size()) ||
-      !CBB_add_u24_length_prefixed(aad.get(), &outer_hello_cbb) ||
-      !ssl_client_hello_write_without_extensions(client_hello_outer,
-                                                 &outer_hello_cbb) ||
-      !CBB_add_u16_length_prefixed(&outer_hello_cbb, &extensions_cbb)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+  // The ClientHelloOuterAAD is |client_hello_outer| with |payload| (which must
+  // point within |client_hello_outer->extensions|) replaced with zeros. See
+  // draft-ietf-tls-esni-13, section 5.2.
+  Array<uint8_t> aad;
+  if (!aad.CopyFrom(MakeConstSpan(client_hello_outer->client_hello,
+                                  client_hello_outer->client_hello_len))) {
     return false;
   }
 
-  CBS extensions(MakeConstSpan(client_hello_outer->extensions,
-                               client_hello_outer->extensions_len));
-  while (CBS_len(&extensions) > 0) {
-    uint16_t extension_id;
-    CBS extension_body;
-    if (!CBS_get_u16(&extensions, &extension_id) ||
-        !CBS_get_u16_length_prefixed(&extensions, &extension_body)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return false;
-    }
-    if (extension_id == TLSEXT_TYPE_encrypted_client_hello) {
-      continue;
-    }
-    if (!CBB_add_u16(&extensions_cbb, extension_id) ||
-        !CBB_add_u16(&extensions_cbb, CBS_len(&extension_body)) ||
-        !CBB_add_bytes(&extensions_cbb, CBS_data(&extension_body),
-                       CBS_len(&extension_body))) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return false;
-    }
-  }
-  if (!CBB_flush(aad.get())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return false;
-  }
+  // We assert with |uintptr_t| because the comparison would be UB if they
+  // didn't alias.
+  assert(reinterpret_cast<uintptr_t>(client_hello_outer->extensions) <=
+         reinterpret_cast<uintptr_t>(payload.data()));
+  assert(reinterpret_cast<uintptr_t>(client_hello_outer->extensions +
+                                     client_hello_outer->extensions_len) >=
+         reinterpret_cast<uintptr_t>(payload.data() + payload.size()));
+  Span<uint8_t> payload_aad = MakeSpan(aad).subspan(
+      payload.data() - client_hello_outer->client_hello, payload.size());
+  OPENSSL_memset(payload_aad.data(), 0, payload_aad.size());
 
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   // In fuzzer mode, disable encryption to improve coverage. We reserve a short
@@ -336,26 +288,24 @@ bool ssl_client_hello_decrypt(
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
     return false;
   }
-  if (!out_encoded_client_hello_inner->CopyFrom(payload)) {
+  if (!out->CopyFrom(payload)) {
     return false;
   }
 #else
-  // Attempt to decrypt into |out_encoded_client_hello_inner|.
-  if (!out_encoded_client_hello_inner->Init(payload.size())) {
+  // Attempt to decrypt into |out|.
+  if (!out->Init(payload.size())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
-  size_t encoded_client_hello_inner_len;
-  if (!EVP_HPKE_CTX_open(hpke_ctx, out_encoded_client_hello_inner->data(),
-                         &encoded_client_hello_inner_len,
-                         out_encoded_client_hello_inner->size(), payload.data(),
-                         payload.size(), CBB_data(aad.get()),
-                         CBB_len(aad.get()))) {
+  size_t len;
+  if (!EVP_HPKE_CTX_open(hpke_ctx, out->data(), &len, out->size(),
+                         payload.data(), payload.size(), aad.data(),
+                         aad.size())) {
     *out_is_decrypt_error = true;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
     return false;
   }
-  out_encoded_client_hello_inner->Shrink(encoded_client_hello_inner_len);
+  out->Shrink(len);
 #endif
   return true;
 }
@@ -397,6 +347,9 @@ static bool parse_ipv4_number(Span<const uint8_t> in, uint32_t *out) {
 
 static bool is_ipv4_address(Span<const uint8_t> in) {
   // See https://url.spec.whatwg.org/#concept-ipv4-parser
+  //
+  // TODO(https://crbug.com/boringssl/275): Revise this, and maybe the spec, per
+  // https://groups.google.com/a/chromium.org/g/blink-dev/c/7QN5nxjwIfM/m/q9dw9MxoAwAJ
   uint32_t numbers[4];
   size_t num_numbers = 0;
   while (!in.empty()) {
@@ -436,7 +389,7 @@ static bool is_ipv4_address(Span<const uint8_t> in) {
 }
 
 bool ssl_is_valid_ech_public_name(Span<const uint8_t> public_name) {
-  // See draft-ietf-tls-esni-11, Section 4 and RFC 5890, Section 2.3.1. The
+  // See draft-ietf-tls-esni-13, Section 4 and RFC 5890, Section 2.3.1. The
   // public name must be a dot-separated sequence of LDH labels and not begin or
   // end with a dot.
   auto copy = public_name;
@@ -508,8 +461,8 @@ static bool parse_ech_config(CBS *cbs, ECHConfig *out, bool *out_supported,
       CBS_len(&public_key) == 0 ||
       !CBS_get_u16_length_prefixed(&contents, &cipher_suites) ||
       CBS_len(&cipher_suites) == 0 || CBS_len(&cipher_suites) % 4 != 0 ||
-      !CBS_get_u16(&contents, &out->maximum_name_length) ||
-      !CBS_get_u16_length_prefixed(&contents, &public_name) ||
+      !CBS_get_u8(&contents, &out->maximum_name_length) ||
+      !CBS_get_u8_length_prefixed(&contents, &public_name) ||
       CBS_len(&public_name) == 0 ||
       !CBS_get_u16_length_prefixed(&contents, &extensions) ||
       CBS_len(&contents) != 0) {
@@ -773,15 +726,6 @@ static size_t aead_overhead(const EVP_HPKE_AEAD *aead) {
 #endif
 }
 
-static size_t compute_extension_length(const EVP_HPKE_AEAD *aead,
-                                       size_t enc_len, size_t in_len) {
-  size_t ret = 4;      // HpkeSymmetricCipherSuite cipher_suite
-  ret++;               // uint8 config_id
-  ret += 2 + enc_len;  // opaque enc<1..2^16-1>
-  ret += 2 + in_len + aead_overhead(aead);  // opaque payload<1..2^16-1>
-  return ret;
-}
-
 // random_size returns a random value between |min| and |max|, inclusive.
 static size_t random_size(size_t min, size_t max) {
   assert(min < max);
@@ -814,38 +758,32 @@ static bool setup_ech_grease(SSL_HANDSHAKE *hs) {
   //   2+32+1+2   version, random, legacy_session_id, legacy_compression_methods
   //   2+4*2      cipher_suites (three TLS 1.3 ciphers, GREASE)
   //   2          extensions prefix
-  //   4          ech_is_inner
+  //   5          inner encrypted_client_hello
   //   4+1+2*2    supported_versions (TLS 1.3, GREASE)
   //   4+1+10*2   outer_extensions (key_share, sigalgs, sct, alpn,
   //              supported_groups, status_request, psk_key_exchange_modes,
   //              compress_certificate, GREASE x2)
   //
   // The server_name extension has an overhead of 9 bytes. For now, arbitrarily
-  // estimate maximum_name_length to be between 32 and 100 bytes.
-  //
-  // TODO(https://crbug.com/boringssl/275): If the padding scheme changes to
-  // also round the entire payload, adjust this to match. See
-  // https://github.com/tlswg/draft-ietf-tls-esni/issues/433
-  const size_t overhead = aead_overhead(aead);
-  const size_t in_len = random_size(128, 196);
-  const size_t extension_len =
-      compute_extension_length(aead, sizeof(enc), in_len);
+  // estimate maximum_name_length to be between 32 and 100 bytes. Then round up
+  // to a multiple of 32, to match draft-ietf-tls-esni-13, section 6.1.3.
+  const size_t payload_len =
+      32 * random_size(128 / 32, 224 / 32) + aead_overhead(aead);
   bssl::ScopedCBB cbb;
   CBB enc_cbb, payload_cbb;
   uint8_t *payload;
-  if (!CBB_init(cbb.get(), extension_len) ||
+  if (!CBB_init(cbb.get(), 256) ||
       !CBB_add_u16(cbb.get(), kdf_id) ||
       !CBB_add_u16(cbb.get(), EVP_HPKE_AEAD_id(aead)) ||
       !CBB_add_u8(cbb.get(), config_id) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &enc_cbb) ||
       !CBB_add_bytes(&enc_cbb, enc, sizeof(enc)) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &payload_cbb) ||
-      !CBB_add_space(&payload_cbb, &payload, in_len + overhead) ||
-      !RAND_bytes(payload, in_len + overhead) ||
-      !CBBFinishArray(cbb.get(), &hs->ech_client_bytes)) {
+      !CBB_add_space(&payload_cbb, &payload, payload_len) ||
+      !RAND_bytes(payload, payload_len) ||
+      !CBBFinishArray(cbb.get(), &hs->ech_client_outer)) {
     return false;
   }
-  assert(hs->ech_client_bytes.size() == extension_len);
   return true;
 }
 
@@ -856,11 +794,11 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
   }
 
   // Construct ClientHelloInner and EncodedClientHelloInner. See
-  // draft-ietf-tls-esni-10, sections 5.1 and 6.1.
+  // draft-ietf-tls-esni-13, sections 5.1 and 6.1.
   ScopedCBB cbb, encoded_cbb;
   CBB body;
   bool needs_psk_binder;
-  Array<uint8_t> hello_inner, encoded;
+  Array<uint8_t> hello_inner;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO) ||
       !CBB_init(encoded_cbb.get(), 256) ||
       !ssl_write_client_hello_without_extensions(hs, &body,
@@ -871,10 +809,8 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
                                                  /*empty_session_id=*/true) ||
       !ssl_add_clienthello_tlsext(hs, &body, encoded_cbb.get(),
                                   &needs_psk_binder, ssl_client_hello_inner,
-                                  CBB_len(&body),
-                                  /*omit_ech_len=*/0) ||
-      !ssl->method->finish_message(ssl, cbb.get(), &hello_inner) ||
-      !CBBFinishArray(encoded_cbb.get(), &encoded)) {
+                                  CBB_len(&body)) ||
+      !ssl->method->finish_message(ssl, cbb.get(), &hello_inner)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }
@@ -886,7 +822,10 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
       return false;
     }
     // Also update the EncodedClientHelloInner.
-    auto encoded_binder = MakeSpan(encoded).last(binder_len);
+    auto encoded_binder =
+        MakeSpan(const_cast<uint8_t *>(CBB_data(encoded_cbb.get())),
+                 CBB_len(encoded_cbb.get()))
+            .last(binder_len);
     auto hello_inner_binder = MakeConstSpan(hello_inner).last(binder_len);
     OPENSSL_memcpy(encoded_binder.data(), hello_inner_binder.data(),
                    binder_len);
@@ -896,72 +835,82 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
     return false;
   }
 
-  // Construct ClientHelloOuterAAD. See draft-ietf-tls-esni-10, section 5.2.
-  // TODO(https://crbug.com/boringssl/275): This ends up constructing the
-  // ClientHelloOuter twice. Revisit this in the next draft, which uses a more
-  // forgiving construction.
-  const EVP_HPKE_KDF *kdf = EVP_HPKE_CTX_kdf(hs->ech_hpke_ctx.get());
-  const EVP_HPKE_AEAD *aead = EVP_HPKE_CTX_aead(hs->ech_hpke_ctx.get());
-  const size_t extension_len =
-      compute_extension_length(aead, enc.size(), encoded.size());
-  bssl::ScopedCBB aad;
-  CBB outer_hello;
-  CBB enc_cbb;
-  if (!CBB_init(aad.get(), 256) ||
-      !CBB_add_u16(aad.get(), EVP_HPKE_KDF_id(kdf)) ||
-      !CBB_add_u16(aad.get(), EVP_HPKE_AEAD_id(aead)) ||
-      !CBB_add_u8(aad.get(), hs->selected_ech_config->config_id) ||
-      !CBB_add_u16_length_prefixed(aad.get(), &enc_cbb) ||
-      !CBB_add_bytes(&enc_cbb, enc.data(), enc.size()) ||
-      !CBB_add_u24_length_prefixed(aad.get(), &outer_hello) ||
-      !ssl_write_client_hello_without_extensions(hs, &outer_hello,
-                                                 ssl_client_hello_outer,
-                                                 /*empty_session_id=*/false) ||
-      !ssl_add_clienthello_tlsext(hs, &outer_hello, /*out_encoded=*/nullptr,
-                                  &needs_psk_binder, ssl_client_hello_outer,
-                                  CBB_len(&outer_hello),
-                                  /*omit_ech_len=*/4 + extension_len) ||
-      !CBB_flush(aad.get())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  // Pad the EncodedClientHelloInner. See draft-ietf-tls-esni-13, section 6.1.3.
+  size_t padding_len = 0;
+  size_t maximum_name_length = hs->selected_ech_config->maximum_name_length;
+  if (ssl->hostname) {
+    size_t hostname_len = strlen(ssl->hostname.get());
+    if (hostname_len <= maximum_name_length) {
+      padding_len = maximum_name_length - hostname_len;
+    }
+  } else {
+    // No SNI. Pad up to |maximum_name_length|, including server_name extension
+    // overhead.
+    padding_len = 9 + maximum_name_length;
+  }
+  // Pad the whole thing to a multiple of 32 bytes.
+  padding_len += 31 - ((CBB_len(encoded_cbb.get()) + padding_len - 1) % 32);
+  Array<uint8_t> encoded;
+  if (!CBB_add_zeros(encoded_cbb.get(), padding_len) ||
+      !CBBFinishArray(encoded_cbb.get(), &encoded)) {
     return false;
   }
-  // ClientHelloOuter may not require a PSK binder. Otherwise, we have a
-  // circular dependency.
-  assert(!needs_psk_binder);
 
-  CBB payload_cbb;
-  if (!CBB_init(cbb.get(), extension_len) ||
+  // Encrypt |encoded|. See draft-ietf-tls-esni-13, section 6.1.1. First,
+  // assemble the extension with a placeholder value for ClientHelloOuterAAD.
+  // See draft-ietf-tls-esni-13, section 5.2.
+  const EVP_HPKE_KDF *kdf = EVP_HPKE_CTX_kdf(hs->ech_hpke_ctx.get());
+  const EVP_HPKE_AEAD *aead = EVP_HPKE_CTX_aead(hs->ech_hpke_ctx.get());
+  size_t payload_len = encoded.size() + aead_overhead(aead);
+  CBB enc_cbb, payload_cbb;
+  if (!CBB_init(cbb.get(), 256) ||
       !CBB_add_u16(cbb.get(), EVP_HPKE_KDF_id(kdf)) ||
       !CBB_add_u16(cbb.get(), EVP_HPKE_AEAD_id(aead)) ||
       !CBB_add_u8(cbb.get(), hs->selected_ech_config->config_id) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &enc_cbb) ||
       !CBB_add_bytes(&enc_cbb, enc.data(), enc.size()) ||
-      !CBB_add_u16_length_prefixed(cbb.get(), &payload_cbb)) {
-    return false;
-  }
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  // In fuzzer mode, the server expects a cleartext payload.
-  if (!CBB_add_bytes(&payload_cbb, encoded.data(), encoded.size())) {
-    return false;
-  }
-#else
-  uint8_t *payload;
-  size_t payload_len =
-      encoded.size() + EVP_AEAD_max_overhead(EVP_HPKE_AEAD_aead(aead));
-  if (!CBB_reserve(&payload_cbb, &payload, payload_len) ||
-      !EVP_HPKE_CTX_seal(hs->ech_hpke_ctx.get(), payload, &payload_len,
-                         payload_len, encoded.data(), encoded.size(),
-                         CBB_data(aad.get()), CBB_len(aad.get())) ||
-      !CBB_did_write(&payload_cbb, payload_len)) {
-    return false;
-  }
-#endif // BORINGSSL_UNSAFE_FUZZER_MODE
-  if (!CBBFinishArray(cbb.get(), &hs->ech_client_bytes)) {
+      !CBB_add_u16_length_prefixed(cbb.get(), &payload_cbb) ||
+      !CBB_add_zeros(&payload_cbb, payload_len) ||
+      !CBBFinishArray(cbb.get(), &hs->ech_client_outer)) {
     return false;
   }
 
-  // The |aad| calculation relies on |extension_length| being correct.
-  assert(hs->ech_client_bytes.size() == extension_len);
+  // Construct ClientHelloOuterAAD.
+  // TODO(https://crbug.com/boringssl/275): This ends up constructing the
+  // ClientHelloOuter twice. Instead, reuse |aad| for the ClientHello, now that
+  // draft-12 made the length prefixes match.
+  bssl::ScopedCBB aad;
+  if (!CBB_init(aad.get(), 256) ||
+      !ssl_write_client_hello_without_extensions(hs, aad.get(),
+                                                 ssl_client_hello_outer,
+                                                 /*empty_session_id=*/false) ||
+      !ssl_add_clienthello_tlsext(hs, aad.get(), /*out_encoded=*/nullptr,
+                                  &needs_psk_binder, ssl_client_hello_outer,
+                                  CBB_len(aad.get()))) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return false;
+  }
+
+  // ClientHelloOuter may not require a PSK binder. Otherwise, we have a
+  // circular dependency.
+  assert(!needs_psk_binder);
+
+  // Replace the payload in |hs->ech_client_outer| with the encrypted value.
+  auto payload_span = MakeSpan(hs->ech_client_outer).last(payload_len);
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  // In fuzzer mode, the server expects a cleartext payload.
+  assert(payload_span.size() == encoded.size());
+  OPENSSL_memcpy(payload_span.data(), encoded.data(), encoded.size());
+#else
+  if (!EVP_HPKE_CTX_seal(hs->ech_hpke_ctx.get(), payload_span.data(),
+                         &payload_len, payload_span.size(), encoded.data(),
+                         encoded.size(), CBB_data(aad.get()),
+                         CBB_len(aad.get())) ||
+      payload_len != payload_span.size()) {
+    return false;
+  }
+#endif // BORINGSSL_UNSAFE_FUZZER_MODE
+
   return true;
 }
 
@@ -1041,7 +990,13 @@ int SSL_marshal_ech_config(uint8_t **out, size_t *out_len, uint8_t config_id,
     return 0;
   }
 
-  // See draft-ietf-tls-esni-10, section 4.
+  // The maximum name length is encoded in one byte.
+  if (max_name_len > 0xff) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_LENGTH);
+    return 0;
+  }
+
+  // See draft-ietf-tls-esni-13, section 4.
   ScopedCBB cbb;
   CBB contents, child;
   uint8_t *public_key;
@@ -1062,8 +1017,8 @@ int SSL_marshal_ech_config(uint8_t **out, size_t *out_len, uint8_t config_id,
       !CBB_add_u16(&child, EVP_HPKE_AES_128_GCM) ||
       !CBB_add_u16(&child, EVP_HPKE_HKDF_SHA256) ||
       !CBB_add_u16(&child, EVP_HPKE_CHACHA20_POLY1305) ||
-      !CBB_add_u16(&contents, max_name_len) ||
-      !CBB_add_u16_length_prefixed(&contents, &child) ||
+      !CBB_add_u8(&contents, max_name_len) ||
+      !CBB_add_u8_length_prefixed(&contents, &child) ||
       !CBB_add_bytes(&child, public_name_u8.data(), public_name_u8.size()) ||
       // TODO(https://crbug.com/boringssl/275): Reserve some GREASE extensions
       // and include some.

@@ -186,14 +186,21 @@ func (hs *serverHandshakeState) readClientHello() error {
 		return errors.New("tls: no GREASE extension found")
 	}
 
-	if clientECH := hs.clientHello.clientECH; clientECH != nil {
+	if config.Bugs.ExpectClientECH && hs.clientHello.echOuter == nil {
+		return errors.New("tls: expected client to offer ECH")
+	}
+	if config.Bugs.ExpectNoClientECH && hs.clientHello.echOuter != nil {
+		return errors.New("tls: expected client not to offer ECH")
+	}
+
+	if echOuter := hs.clientHello.echOuter; echOuter != nil {
 		for _, candidate := range config.ServerECHConfigs {
-			if candidate.ECHConfig.ConfigID != clientECH.configID {
+			if candidate.ECHConfig.ConfigID != echOuter.configID {
 				continue
 			}
 			var found bool
 			for _, suite := range candidate.ECHConfig.CipherSuites {
-				if clientECH.kdfID == suite.KDF && clientECH.aeadID == suite.AEAD {
+				if echOuter.kdfID == suite.KDF && echOuter.aeadID == suite.AEAD {
 					found = true
 					break
 				}
@@ -203,7 +210,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 			}
 			info := []byte("tls ech\x00")
 			info = append(info, candidate.ECHConfig.Raw...)
-			hs.echHPKEContext, err = hpke.SetupBaseReceiverX25519(clientECH.kdfID, clientECH.aeadID, clientECH.enc, candidate.Key, info)
+			hs.echHPKEContext, err = hpke.SetupBaseReceiverX25519(echOuter.kdfID, echOuter.aeadID, echOuter.enc, candidate.Key, info)
 			if err != nil {
 				continue
 			}
@@ -220,7 +227,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 			} else {
 				c.echAccepted = true
 				hs.clientHello = clientHelloInner
-				hs.echConfigID = clientECH.configID
+				hs.echConfigID = echOuter.configID
 			}
 		}
 	}
@@ -449,29 +456,17 @@ type echDecryptError struct {
 }
 
 func (hs *serverHandshakeState) decryptClientHello(helloOuter *clientHelloMsg) (helloInner *clientHelloMsg, err error) {
-	// See draft-ietf-tls-esni-10, section 5.2.
-	aad := newByteBuilder()
-	aad.addU16(helloOuter.clientECH.kdfID)
-	aad.addU16(helloOuter.clientECH.aeadID)
-	aad.addU8(helloOuter.clientECH.configID)
-	aad.addU16LengthPrefixed().addBytes(helloOuter.clientECH.enc)
-	// ClientHelloOuterAAD.outer_hello is ClientHelloOuter without the
-	// encrypted_client_hello extension. Construct this by piecing together
-	// the preserved portions from offsets and updating the length prefix.
-	//
-	// TODO(davidben): If https://github.com/tlswg/draft-ietf-tls-esni/pull/442
-	// is merged, a later iteration will hopefully be simpler.
-	outerHello := aad.addU24LengthPrefixed()
-	outerHello.addBytes(helloOuter.raw[4:helloOuter.extensionStart])
-	extensions := outerHello.addU16LengthPrefixed()
-	extensions.addBytes(helloOuter.raw[helloOuter.extensionStart+2 : helloOuter.echExtensionStart])
-	extensions.addBytes(helloOuter.raw[helloOuter.echExtensionEnd:])
+	// ClientHelloOuterAAD is ClientHelloOuter with the payload replaced by
+	// zeros. See draft-ietf-tls-esni-13, section 5.2.
+	aad := make([]byte, len(helloOuter.raw)-4)
+	copy(aad, helloOuter.raw[4:helloOuter.echPayloadStart])
+	copy(aad[helloOuter.echPayloadEnd-4:], helloOuter.raw[helloOuter.echPayloadEnd:])
 
 	// In fuzzer mode, the payload is cleartext.
-	encoded := helloOuter.clientECH.payload
+	encoded := helloOuter.echOuter.payload
 	if !hs.c.config.Bugs.NullAllCiphers {
 		var err error
-		encoded, err = hs.echHPKEContext.Open(helloOuter.clientECH.payload, aad.finish())
+		encoded, err = hs.echHPKEContext.Open(helloOuter.echOuter.payload, aad)
 		if err != nil {
 			// Wrap |err| so the caller can implement trial decryption.
 			return nil, &echDecryptError{err}
@@ -505,8 +500,8 @@ func (hs *serverHandshakeState) decryptClientHello(helloOuter *clientHelloMsg) (
 	if helloInner.nextProtoNeg || len(helloInner.supportedPoints) != 0 || helloInner.ticketSupported || helloInner.secureRenegotiation != nil || helloInner.extendedMasterSecret {
 		return nil, errors.New("tls: ClientHelloInner included a TLS-1.2-only extension")
 	}
-	if !helloInner.echIsInner {
-		return nil, errors.New("tls: ClientHelloInner missing ech_is_inner extension")
+	if !helloInner.echInner {
+		return nil, errors.New("tls: ClientHelloInner missing inner encrypted_client_hello extension")
 	}
 
 	return helloInner, nil
@@ -547,13 +542,6 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	encryptedExtensions.empty = config.Bugs.EmptyEncryptedExtensions
 	if err := hs.processClientExtensions(&encryptedExtensions.extensions); err != nil {
 		return err
-	}
-
-	if config.Bugs.ExpectClientECH && hs.clientHello.clientECH == nil {
-		return errors.New("tls: expected client to offer ECH")
-	}
-	if config.Bugs.ExpectNoClientECH && hs.clientHello.clientECH != nil {
-		return errors.New("tls: expected client not to offer ECH")
 	}
 
 	// Select the cipher suite.
@@ -754,6 +742,21 @@ ResendHelloRetryRequest:
 
 	if sendHelloRetryRequest {
 		hs.finishedHash.UpdateForHelloRetryRequest()
+
+		// Emit the ECH confirmation signal when requested.
+		if hs.clientHello.echInner {
+			helloRetryRequest.echConfirmation = make([]byte, 8)
+			helloRetryRequest.echConfirmation = hs.finishedHash.echAcceptConfirmation(hs.clientHello.random, echAcceptConfirmationHRRLabel, helloRetryRequest.marshal())
+			helloRetryRequest.raw = nil
+		} else if config.Bugs.AlwaysSendECHHelloRetryRequest {
+			// When solicited, a random ECH confirmation string should be ignored.
+			helloRetryRequest.echConfirmation = make([]byte, 8)
+			if _, err := io.ReadFull(config.rand(), helloRetryRequest.echConfirmation); err != nil {
+				c.sendAlert(alertInternalError)
+				return fmt.Errorf("tls: short read from Rand: %s", err)
+			}
+		}
+
 		hs.writeServerHash(helloRetryRequest.marshal())
 		if c.config.Bugs.PartialServerHelloWithHelloRetryRequest {
 			data := helloRetryRequest.marshal()
@@ -787,19 +790,19 @@ ResendHelloRetryRequest:
 		}
 
 		if c.echAccepted {
-			if newClientHello.clientECH == nil {
+			if newClientHello.echOuter == nil {
 				c.sendAlert(alertMissingExtension)
 				return errors.New("tls: second ClientHelloOuter had no encrypted_client_hello extension")
 			}
-			if newClientHello.clientECH.configID != hs.echConfigID ||
-				newClientHello.clientECH.kdfID != hs.echHPKEContext.KDF() ||
-				newClientHello.clientECH.aeadID != hs.echHPKEContext.AEAD() {
+			if newClientHello.echOuter.configID != hs.echConfigID ||
+				newClientHello.echOuter.kdfID != hs.echHPKEContext.KDF() ||
+				newClientHello.echOuter.aeadID != hs.echHPKEContext.AEAD() {
 				c.sendAlert(alertIllegalParameter)
 				return errors.New("tls: ECH parameters changed in second ClientHelloOuter")
 			}
-			if len(newClientHello.clientECH.enc) != 0 {
+			if len(newClientHello.echOuter.enc) != 0 {
 				c.sendAlert(alertIllegalParameter)
-				return errors.New("tls: second ClientECH had non-empty enc")
+				return errors.New("tls: second ClientHelloOuter had non-empty ECH enc")
 			}
 			newClientHello, err = hs.decryptClientHello(newClientHello)
 			if err != nil {
@@ -819,11 +822,6 @@ ResendHelloRetryRequest:
 		// Check that the new ClientHello matches the old ClientHello,
 		// except for relevant modifications. See RFC 8446, section 4.1.2.
 		ignoreExtensions := []uint16{extensionPadding}
-		// TODO(https://crbug.com/boringssl/275): draft-ietf-tls-esni-10 requires
-		// violating the RFC 8446 rules. See
-		// https://github.com/tlswg/draft-ietf-tls-esni/issues/358
-		// A later draft will likely fix this. Remove this line if it does.
-		ignoreExtensions = append(ignoreExtensions, extensionEncryptedClientHello)
 
 		if helloRetryRequest.hasSelectedGroup {
 			newKeyShares := newClientHello.keyShares
@@ -1006,13 +1004,13 @@ ResendHelloRetryRequest:
 		hs.finishedHash.addEntropy(hs.finishedHash.zeroSecret())
 	}
 
-	// Overwrite part of ServerHello.random to signal ECH acceptance to the client.
-	if hs.clientHello.echIsInner {
-		for i := 24; i < 32; i++ {
-			hs.hello.random[i] = 0
+	// Emit the ECH confirmation signal when requested.
+	if hs.clientHello.echInner && !config.Bugs.OmitServerHelloECHConfirmation {
+		randomSuffix := hs.hello.random[len(hs.hello.random)-echAcceptConfirmationLength:]
+		for i := range randomSuffix {
+			randomSuffix[i] = 0
 		}
-		echAcceptConfirmation := hs.finishedHash.deriveSecretPeek([]byte("ech accept confirmation"), hs.hello.marshal())
-		copy(hs.hello.random[24:], echAcceptConfirmation)
+		copy(randomSuffix, hs.finishedHash.echAcceptConfirmation(hs.clientHello.random, echAcceptConfirmationLabel, hs.hello.marshal()))
 		hs.hello.raw = nil
 	}
 
@@ -1696,7 +1694,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 
 	serverExtensions.serverNameAck = c.config.Bugs.SendServerNameAck
 
-	if (c.vers >= VersionTLS13 || c.config.Bugs.SendECHRetryConfigsInTLS12ServerHello) && hs.clientHello.clientECH != nil {
+	if (c.vers >= VersionTLS13 && hs.clientHello.echOuter != nil) || c.config.Bugs.AlwaysSendECHRetryConfigs {
 		if len(config.Bugs.SendECHRetryConfigs) > 0 {
 			serverExtensions.echRetryConfigs = config.Bugs.SendECHRetryConfigs
 		} else if len(config.ServerECHConfigs) > 0 {

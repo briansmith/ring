@@ -120,6 +120,54 @@ static bool parse_server_hello_tls13(const SSL_HANDSHAKE *hs,
   return true;
 }
 
+static bool is_hello_retry_request(const ParsedServerHello &server_hello) {
+  return Span<const uint8_t>(server_hello.random) == kHelloRetryRequest;
+}
+
+static bool check_ech_confirmation(const SSL_HANDSHAKE *hs, bool *out_accepted,
+                                   uint8_t *out_alert,
+                                   const ParsedServerHello &server_hello) {
+  const bool is_hrr = is_hello_retry_request(server_hello);
+  size_t offset;
+  if (is_hrr) {
+    // We check for an unsolicited extension when parsing all of them.
+    SSLExtension ech(TLSEXT_TYPE_encrypted_client_hello);
+    if (!ssl_parse_extensions(&server_hello.extensions, out_alert, {&ech},
+                              /*ignore_unknown=*/true)) {
+      return false;
+    }
+    if (!ech.present) {
+      *out_accepted = false;
+      return true;
+    }
+    if (CBS_len(&ech.data) != ECH_CONFIRMATION_SIGNAL_LEN) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return false;
+    }
+    offset = CBS_data(&ech.data) - CBS_data(&server_hello.raw);
+  } else {
+    offset = ssl_ech_confirmation_signal_hello_offset(hs->ssl);
+  }
+
+  if (!hs->selected_ech_config) {
+    *out_accepted = false;
+    return true;
+  }
+
+  uint8_t expected[ECH_CONFIRMATION_SIGNAL_LEN];
+  if (!ssl_ech_accept_confirmation(hs, expected, hs->inner_client_random,
+                                   hs->inner_transcript, is_hrr,
+                                   server_hello.raw, offset)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return false;
+  }
+
+  *out_accepted = CRYPTO_memcmp(CBS_data(&server_hello.raw) + offset, expected,
+                                sizeof(expected)) == 0;
+  return true;
+}
+
 static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   assert(ssl->s3->have_version);
@@ -156,17 +204,46 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
 
   hs->new_cipher = cipher;
 
-  if (!CBS_mem_equal(&server_hello.random, kHelloRetryRequest,
-                     SSL3_RANDOM_SIZE)) {
+  const bool is_hrr = is_hello_retry_request(server_hello);
+  if (!hs->transcript.InitHash(ssl_protocol_version(ssl), hs->new_cipher) ||
+      (is_hrr && !hs->transcript.UpdateForHelloRetryRequest())) {
+    return ssl_hs_error;
+  }
+  if (hs->selected_ech_config) {
+    if (!hs->inner_transcript.InitHash(ssl_protocol_version(ssl),
+                                       hs->new_cipher) ||
+        (is_hrr && !hs->inner_transcript.UpdateForHelloRetryRequest())) {
+      return ssl_hs_error;
+    }
+  }
+
+  // Determine which ClientHello the server is responding to. Run
+  // |check_ech_confirmation| unconditionally, so we validate the extension
+  // contents.
+  bool ech_accepted;
+  if (!check_ech_confirmation(hs, &ech_accepted, &alert, server_hello)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return ssl_hs_error;
+  }
+  if (hs->selected_ech_config) {
+    ssl->s3->ech_status = ech_accepted ? ssl_ech_accepted : ssl_ech_rejected;
+  }
+
+  if (!is_hrr) {
     hs->tls13_state = state_read_server_hello;
     return ssl_hs_ok;
   }
 
+  // The ECH extension, if present, was already parsed by
+  // |check_ech_confirmation|.
   SSLExtension cookie(TLSEXT_TYPE_cookie), key_share(TLSEXT_TYPE_key_share),
-      supported_versions(TLSEXT_TYPE_supported_versions);
-  if (!ssl_parse_extensions(&server_hello.extensions, &alert,
-                            {&cookie, &key_share, &supported_versions},
-                            /*ignore_unknown=*/false)) {
+      supported_versions(TLSEXT_TYPE_supported_versions),
+      ech_unused(TLSEXT_TYPE_encrypted_client_hello,
+                 hs->selected_ech_config || hs->config->ech_grease_enabled);
+  if (!ssl_parse_extensions(
+          &server_hello.extensions, &alert,
+          {&cookie, &key_share, &supported_versions, &ech_unused},
+          /*ignore_unknown=*/false)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
@@ -221,23 +298,16 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     }
   }
 
-  // We do not know whether ECH was chosen until ServerHello and must
-  // concurrently update both transcripts.
-  //
-  // TODO(https://crbug.com/boringssl/275): A later draft will likely add an ECH
-  // signal to HRR and change this.
-  if (!hs->transcript.InitHash(ssl_protocol_version(ssl), hs->new_cipher) ||
-      !hs->transcript.UpdateForHelloRetryRequest() ||
-      !ssl_hash_message(hs, msg)) {
+  // Although we now know whether ClientHelloInner was used, we currently
+  // maintain both transcripts up to ServerHello. We could swap transcripts
+  // early, but then ClientHello construction and |check_ech_confirmation|
+  // become more complex.
+  if (!ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
-  if (hs->selected_ech_config) {
-    if (!hs->inner_transcript.InitHash(ssl_protocol_version(ssl),
-                                       hs->new_cipher) ||
-        !hs->inner_transcript.UpdateForHelloRetryRequest() ||
-        !hs->inner_transcript.Update(msg.raw)) {
-      return ssl_hs_error;
-    }
+  if (ssl->s3->ech_status == ssl_ech_accepted &&
+      !hs->inner_transcript.Update(msg.raw)) {
+    return ssl_hs_error;
   }
 
   // HelloRetryRequest should be the end of the flight.
@@ -267,7 +337,8 @@ static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
 
   // Build the second ClientHelloInner, if applicable. The second ClientHello
   // uses an empty string for |enc|.
-  if (hs->selected_ech_config && !ssl_encrypt_client_hello(hs, {})) {
+  if (hs->ssl->s3->ech_status == ssl_ech_accepted &&
+      !ssl_encrypt_client_hello(hs, {})) {
     return ssl_hs_error;
   }
 
@@ -294,8 +365,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   // Forbid a second HelloRetryRequest.
-  if (CBS_mem_equal(&server_hello.random, kHelloRetryRequest,
-                    SSL3_RANDOM_SIZE)) {
+  if (is_hello_retry_request(server_hello)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     return ssl_hs_error;
@@ -308,11 +378,36 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  if (ssl->s3->ech_status == ssl_ech_accepted) {
+    if (ssl->s3->used_hello_retry_request) {
+      // HelloRetryRequest and ServerHello must accept ECH consistently.
+      bool ech_accepted;
+      if (!check_ech_confirmation(hs, &ech_accepted, &alert, server_hello)) {
+        ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+        return ssl_hs_error;
+      }
+      if (!ech_accepted) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_INCONSISTENT_ECH_NEGOTIATION);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+        return ssl_hs_error;
+      }
+    }
+
+    hs->transcript = std::move(hs->inner_transcript);
+    hs->extensions.sent = hs->inner_extensions_sent;
+    // Report the inner random value through |SSL_get_client_random|.
+    OPENSSL_memcpy(ssl->s3->client_random, hs->inner_client_random,
+                   SSL3_RANDOM_SIZE);
+  }
+
   OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_hello.random),
                  SSL3_RANDOM_SIZE);
 
+  // When offering ECH, |ssl->session| is only offered in ClientHelloInner.
+  const bool pre_shared_key_allowed =
+      ssl->session != nullptr && ssl->s3->ech_status != ssl_ech_rejected;
   SSLExtension key_share(TLSEXT_TYPE_key_share),
-      pre_shared_key(TLSEXT_TYPE_pre_shared_key, ssl->session != nullptr),
+      pre_shared_key(TLSEXT_TYPE_pre_shared_key, pre_shared_key_allowed),
       supported_versions(TLSEXT_TYPE_supported_versions);
   if (!ssl_parse_extensions(&server_hello.extensions, &alert,
                             {&key_share, &pre_shared_key, &supported_versions},
@@ -408,48 +503,8 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!tls13_advance_key_schedule(hs, dhe_secret)) {
-    return ssl_hs_error;
-  }
-
-  // Determine whether the server accepted ECH.
-  //
-  // TODO(https://crbug.com/boringssl/275): This is a bit late in the process of
-  // parsing ServerHello. |ssl->session| is only valid for ClientHelloInner, so
-  // the decisions made based on PSK need to be double-checked. draft-11 will
-  // fix this, at which point this logic can be moved before any processing.
-  if (hs->selected_ech_config) {
-    uint8_t ech_confirmation[ECH_CONFIRMATION_SIGNAL_LEN];
-    if (!hs->inner_transcript.InitHash(ssl_protocol_version(ssl),
-                                       hs->new_cipher) ||
-        !ssl_ech_accept_confirmation(hs, ech_confirmation, hs->inner_transcript,
-                                     msg.raw)) {
-      return ssl_hs_error;
-    }
-
-    if (CRYPTO_memcmp(ech_confirmation,
-                      ssl->s3->server_random + sizeof(ssl->s3->server_random) -
-                          sizeof(ech_confirmation),
-                      sizeof(ech_confirmation)) == 0) {
-      ssl->s3->ech_status = ssl_ech_accepted;
-      hs->transcript = std::move(hs->inner_transcript);
-      hs->extensions.sent = hs->inner_extensions_sent;
-      // Report the inner random value through |SSL_get_client_random|.
-      OPENSSL_memcpy(ssl->s3->client_random, hs->inner_client_random,
-                     SSL3_RANDOM_SIZE);
-    } else {
-      // Resuming against the ClientHelloOuter was an unsolicited extension.
-      if (pre_shared_key.present) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
-        return ssl_hs_error;
-      }
-      ssl->s3->ech_status = ssl_ech_rejected;
-    }
-  }
-
-
-  if (!ssl_hash_message(hs, msg) ||
+  if (!tls13_advance_key_schedule(hs, dhe_secret) ||
+      !ssl_hash_message(hs, msg) ||
       !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }

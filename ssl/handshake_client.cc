@@ -333,8 +333,7 @@ bool ssl_add_client_hello(SSL_HANDSHAKE *hs) {
       !ssl_write_client_hello_without_extensions(hs, &body, type,
                                                  /*empty_session_id*/ false) ||
       !ssl_add_clienthello_tlsext(hs, &body, /*out_encoded=*/nullptr,
-                                  &needs_psk_binder, type, CBB_len(&body),
-                                  /*omit_ech_len=*/0) ||
+                                  &needs_psk_binder, type, CBB_len(&body)) ||
       !ssl->method->finish_message(ssl, cbb.get(), &msg)) {
     return false;
   }
@@ -434,7 +433,7 @@ static ssl_early_data_reason_t should_offer_early_data(
 }
 
 void ssl_done_writing_client_hello(SSL_HANDSHAKE *hs) {
-  hs->ech_client_bytes.Reset();
+  hs->ech_client_outer.Reset();
   hs->cookie.Reset();
   hs->key_share_bytes.Reset();
 }
@@ -653,6 +652,7 @@ bool ssl_parse_server_hello(ParsedServerHello *out, uint8_t *out_alert,
     *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
     return false;
   }
+  out->raw = msg.raw;
   CBS body = msg.body;
   if (!CBS_get_u16(&body, &out->legacy_version) ||
       !CBS_get_bytes(&body, &out->random, SSL3_RANDOM_SIZE) ||
