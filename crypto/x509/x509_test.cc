@@ -1986,65 +1986,6 @@ TEST(X509Test, X509NameSet) {
   EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 2)), 2);
 }
 
-TEST(X509Test, StringDecoding) {
-  static const struct {
-    std::vector<uint8_t> in;
-    int type;
-    const char *expected;
-  } kTests[] = {
-      // Non-minimal, two-byte UTF-8.
-      {{0xc0, 0x81}, V_ASN1_UTF8STRING, nullptr},
-      // Non-minimal, three-byte UTF-8.
-      {{0xe0, 0x80, 0x81}, V_ASN1_UTF8STRING, nullptr},
-      // Non-minimal, four-byte UTF-8.
-      {{0xf0, 0x80, 0x80, 0x81}, V_ASN1_UTF8STRING, nullptr},
-      // Truncated, four-byte UTF-8.
-      {{0xf0, 0x80, 0x80}, V_ASN1_UTF8STRING, nullptr},
-      // Low-surrogate value.
-      {{0xed, 0xa0, 0x80}, V_ASN1_UTF8STRING, nullptr},
-      // High-surrogate value.
-      {{0xed, 0xb0, 0x81}, V_ASN1_UTF8STRING, nullptr},
-      // Initial BOMs should be rejected from UCS-2 and UCS-4.
-      {{0xfe, 0xff, 0, 88}, V_ASN1_BMPSTRING, nullptr},
-      {{0, 0, 0xfe, 0xff, 0, 0, 0, 88}, V_ASN1_UNIVERSALSTRING, nullptr},
-      // Otherwise, BOMs should pass through.
-      {{0, 88, 0xfe, 0xff}, V_ASN1_BMPSTRING, "X\xef\xbb\xbf"},
-      {{0, 0, 0, 88, 0, 0, 0xfe, 0xff}, V_ASN1_UNIVERSALSTRING,
-       "X\xef\xbb\xbf"},
-      // The maximum code-point should pass though.
-      {{0, 16, 0xff, 0xfd}, V_ASN1_UNIVERSALSTRING, "\xf4\x8f\xbf\xbd"},
-      // Values outside the Unicode space should not.
-      {{0, 17, 0, 0}, V_ASN1_UNIVERSALSTRING, nullptr},
-      // Non-characters should be rejected.
-      {{0, 1, 0xff, 0xff}, V_ASN1_UNIVERSALSTRING, nullptr},
-      {{0, 1, 0xff, 0xfe}, V_ASN1_UNIVERSALSTRING, nullptr},
-      {{0, 0, 0xfd, 0xd5}, V_ASN1_UNIVERSALSTRING, nullptr},
-      // BMPString is UCS-2, not UTF-16, so surrogate pairs are invalid.
-      {{0xd8, 0, 0xdc, 1}, V_ASN1_BMPSTRING, nullptr},
-  };
-
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTests); i++) {
-    SCOPED_TRACE(i);
-    const auto& test = kTests[i];
-    ASN1_STRING s;
-    s.type = test.type;
-    s.data = const_cast<uint8_t*>(test.in.data());
-    s.length = test.in.size();
-
-    uint8_t *utf8;
-    const int utf8_len = ASN1_STRING_to_UTF8(&utf8, &s);
-    EXPECT_EQ(utf8_len < 0, test.expected == nullptr);
-    if (utf8_len >= 0) {
-      if (test.expected != nullptr) {
-        EXPECT_EQ(Bytes(test.expected), Bytes(utf8, utf8_len));
-      }
-      OPENSSL_free(utf8);
-    } else {
-      ERR_clear_error();
-    }
-  }
-}
-
 TEST(X509Test, NoBasicConstraintsCertSign) {
   bssl::UniquePtr<X509> root(CertFromPEM(kSANTypesRoot));
   bssl::UniquePtr<X509> intermediate(

@@ -398,6 +398,64 @@ TEST(ASN1Test, SetBit) {
   TestSerialize(val.get(), i2d_ASN1_BIT_STRING, kBitStringEmpty);
 }
 
+TEST(ASN1Test, StringToUTF8) {
+  static const struct {
+    std::vector<uint8_t> in;
+    int type;
+    const char *expected;
+  } kTests[] = {
+      // Non-minimal, two-byte UTF-8.
+      {{0xc0, 0x81}, V_ASN1_UTF8STRING, nullptr},
+      // Non-minimal, three-byte UTF-8.
+      {{0xe0, 0x80, 0x81}, V_ASN1_UTF8STRING, nullptr},
+      // Non-minimal, four-byte UTF-8.
+      {{0xf0, 0x80, 0x80, 0x81}, V_ASN1_UTF8STRING, nullptr},
+      // Truncated, four-byte UTF-8.
+      {{0xf0, 0x80, 0x80}, V_ASN1_UTF8STRING, nullptr},
+      // Low-surrogate value.
+      {{0xed, 0xa0, 0x80}, V_ASN1_UTF8STRING, nullptr},
+      // High-surrogate value.
+      {{0xed, 0xb0, 0x81}, V_ASN1_UTF8STRING, nullptr},
+      // Initial BOMs should be rejected from UCS-2 and UCS-4.
+      {{0xfe, 0xff, 0, 88}, V_ASN1_BMPSTRING, nullptr},
+      {{0, 0, 0xfe, 0xff, 0, 0, 0, 88}, V_ASN1_UNIVERSALSTRING, nullptr},
+      // Otherwise, BOMs should pass through.
+      {{0, 88, 0xfe, 0xff}, V_ASN1_BMPSTRING, "X\xef\xbb\xbf"},
+      {{0, 0, 0, 88, 0, 0, 0xfe, 0xff}, V_ASN1_UNIVERSALSTRING,
+       "X\xef\xbb\xbf"},
+      // The maximum code-point should pass though.
+      {{0, 16, 0xff, 0xfd}, V_ASN1_UNIVERSALSTRING, "\xf4\x8f\xbf\xbd"},
+      // Values outside the Unicode space should not.
+      {{0, 17, 0, 0}, V_ASN1_UNIVERSALSTRING, nullptr},
+      // Non-characters should be rejected.
+      {{0, 1, 0xff, 0xff}, V_ASN1_UNIVERSALSTRING, nullptr},
+      {{0, 1, 0xff, 0xfe}, V_ASN1_UNIVERSALSTRING, nullptr},
+      {{0, 0, 0xfd, 0xd5}, V_ASN1_UNIVERSALSTRING, nullptr},
+      // BMPString is UCS-2, not UTF-16, so surrogate pairs are invalid.
+      {{0xd8, 0, 0xdc, 1}, V_ASN1_BMPSTRING, nullptr},
+  };
+
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(Bytes(test.in));
+    SCOPED_TRACE(test.type);
+    bssl::UniquePtr<ASN1_STRING> s(ASN1_STRING_type_new(test.type));
+    ASSERT_TRUE(s);
+    ASSERT_TRUE(ASN1_STRING_set(s.get(), test.in.data(), test.in.size()));
+
+    uint8_t *utf8;
+    const int utf8_len = ASN1_STRING_to_UTF8(&utf8, s.get());
+    EXPECT_EQ(utf8_len < 0, test.expected == nullptr);
+    if (utf8_len >= 0) {
+      if (test.expected != nullptr) {
+        EXPECT_EQ(Bytes(test.expected), Bytes(utf8, utf8_len));
+      }
+      OPENSSL_free(utf8);
+    } else {
+      ERR_clear_error();
+    }
+  }
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)

@@ -302,6 +302,13 @@ OPENSSL_EXPORT int ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
 // |OPENSSL_malloc|.
 OPENSSL_EXPORT void ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
 
+// ASN1_STRING_to_UTF8 converts |in| to UTF-8. On success, sets |*out| to a
+// newly-allocated buffer containing the resulting string and returns the length
+// of the string. The caller must call |OPENSSL_free| to release |*out| when
+// done. On error, it returns a negative number.
+OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out,
+                                       const ASN1_STRING *in);
+
 // TODO(davidben): Expand and document function prototypes generated in macros.
 
 
@@ -986,8 +993,6 @@ OPENSSL_EXPORT int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x);
 OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
                                            unsigned long flags);
 #endif
-
-OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in);
 
 OPENSSL_EXPORT void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *x);
 OPENSSL_EXPORT int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *x);
