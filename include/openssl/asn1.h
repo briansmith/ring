@@ -593,9 +593,6 @@ OPENSSL_EXPORT int ASN1_TYPE_cmp(const ASN1_TYPE *a, const ASN1_TYPE *b);
 #define MBSTRING_BMP (MBSTRING_FLAG | 2)
 #define MBSTRING_UNIV (MBSTRING_FLAG | 4)
 
-#define DECLARE_ASN1_SET_OF(type)    // filled in by mkstack.pl
-#define IMPLEMENT_ASN1_SET_OF(type)  // nothing, no longer needed
-
 // These are used internally in the ASN1_OBJECT to keep track of
 // whether the names and data need to be free()ed
 #define ASN1_OBJECT_FLAG_DYNAMIC 0x01          // internal use
@@ -832,10 +829,8 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
    ASN1_STRFLGS_DUMP_DER)
 
 DEFINE_STACK_OF(ASN1_INTEGER)
-DECLARE_ASN1_SET_OF(ASN1_INTEGER)
 
 DEFINE_STACK_OF(ASN1_TYPE)
-DECLARE_ASN1_SET_OF(ASN1_TYPE)
 
 typedef STACK_OF(ASN1_TYPE) ASN1_SEQUENCE_ANY;
 
@@ -931,8 +926,6 @@ OPENSSL_EXPORT ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **a,
                                             long length);
 
 DECLARE_ASN1_ITEM(ASN1_OBJECT)
-
-DECLARE_ASN1_SET_OF(ASN1_OBJECT)
 
 DECLARE_ASN1_FUNCTIONS(ASN1_BIT_STRING)
 OPENSSL_EXPORT int i2c_ASN1_BIT_STRING(const ASN1_BIT_STRING *a,

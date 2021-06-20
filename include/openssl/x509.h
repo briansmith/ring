@@ -111,7 +111,6 @@ extern "C" {
 #define X509v3_KU_UNDEF 0xffff
 
 DEFINE_STACK_OF(X509_ALGOR)
-DECLARE_ASN1_SET_OF(X509_ALGOR)
 
 typedef STACK_OF(X509_ALGOR) X509_ALGORS;
 
@@ -123,7 +122,6 @@ struct X509_name_entry_st {
 } /* X509_NAME_ENTRY */;
 
 DEFINE_STACK_OF(X509_NAME_ENTRY)
-DECLARE_ASN1_SET_OF(X509_NAME_ENTRY)
 
 // we always keep X509_NAMEs in 2 forms.
 struct X509_name_st {
@@ -146,10 +144,8 @@ struct X509_extension_st {
 typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
 
 DEFINE_STACK_OF(X509_EXTENSION)
-DECLARE_ASN1_SET_OF(X509_EXTENSION)
 
 DEFINE_STACK_OF(X509_ATTRIBUTE)
-DECLARE_ASN1_SET_OF(X509_ATTRIBUTE)
 
 struct x509_cinf_st {
   ASN1_INTEGER *version;  // [ 0 ] default of v1
@@ -199,7 +195,6 @@ struct x509_st {
 } /* X509 */;
 
 DEFINE_STACK_OF(X509)
-DECLARE_ASN1_SET_OF(X509)
 
 // This is used for a table of trust checking functions
 
@@ -321,7 +316,6 @@ struct x509_revoked_st {
 };
 
 DEFINE_STACK_OF(X509_REVOKED)
-DECLARE_ASN1_SET_OF(X509_REVOKED)
 
 struct X509_crl_info_st {
   ASN1_INTEGER *version;
@@ -359,7 +353,6 @@ struct X509_crl_st {
 } /* X509_CRL */;
 
 DEFINE_STACK_OF(X509_CRL)
-DECLARE_ASN1_SET_OF(X509_CRL)
 
 struct private_key_st {
   int version;

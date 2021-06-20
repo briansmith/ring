@@ -521,8 +521,6 @@ int X509_NAME_set(X509_NAME **xn, X509_NAME *name)
     return 1;
 }
 
-IMPLEMENT_ASN1_SET_OF(X509_NAME_ENTRY)
-
 int X509_NAME_ENTRY_set(const X509_NAME_ENTRY *ne)
 {
     return ne->set;
