@@ -485,7 +485,7 @@ static int cmp_data(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
 }
 
 static uint32_t hash_short_name(const ASN1_OBJECT *obj) {
-  return lh_strhash(obj->sn);
+  return OPENSSL_strhash(obj->sn);
 }
 
 static int cmp_short_name(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
@@ -493,7 +493,7 @@ static int cmp_short_name(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
 }
 
 static uint32_t hash_long_name(const ASN1_OBJECT *obj) {
-  return lh_strhash(obj->ln);
+  return OPENSSL_strhash(obj->ln);
 }
 
 static int cmp_long_name(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {

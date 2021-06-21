@@ -247,6 +247,8 @@ uint32_t OPENSSL_hash32(const void *ptr, size_t len) {
   return h;
 }
 
+uint32_t OPENSSL_strhash(const char *s) { return OPENSSL_hash32(s, strlen(s)); }
+
 size_t OPENSSL_strnlen(const char *s, size_t len) {
   for (size_t i = 0; i < len; i++) {
     if (s[i] == 0) {
