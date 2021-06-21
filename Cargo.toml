@@ -267,6 +267,7 @@ include = [
     "tests/ed25519_test_private_key.p8",
     "tests/ed25519_test_public_key.bin",
     "tests/ed25519_test_public_key.der",
+    "tests/ed25519_verify_tests.txt",
     "tests/hkdf_tests.rs",
     "tests/hkdf_tests.txt",
     "tests/hmac_tests.rs",
