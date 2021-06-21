@@ -1566,7 +1566,7 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 	listener = nil
 
 	var childErr error
-	if !useDebugger() {
+	if useDebugger() {
 		childErr = <-waitChan
 	} else {
 		waitTimeout := time.AfterFunc(*idleTimeout, func() {
