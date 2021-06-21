@@ -22,6 +22,7 @@
 #include <openssl/thread.h>
 
 #include "../internal.h"
+#include "../lhash/internal.h"
 #include "internal.h"
 
 

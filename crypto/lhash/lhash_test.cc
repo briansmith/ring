@@ -27,6 +27,8 @@
 
 #include <gtest/gtest.h>
 
+#include "internal.h"
+
 
 DEFINE_LHASH_OF(char)
 

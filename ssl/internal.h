@@ -163,6 +163,7 @@
 
 #include "../crypto/err/internal.h"
 #include "../crypto/internal.h"
+#include "../crypto/lhash/internal.h"
 
 
 #if defined(OPENSSL_WINDOWS)

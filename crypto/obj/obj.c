@@ -69,6 +69,7 @@
 
 #include "obj_dat.h"
 #include "../internal.h"
+#include "../lhash/internal.h"
 
 
 DEFINE_LHASH_OF(ASN1_OBJECT)

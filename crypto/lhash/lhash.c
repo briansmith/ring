@@ -62,6 +62,7 @@
 
 #include <openssl/mem.h>
 
+#include "internal.h"
 #include "../internal.h"
 
 
@@ -72,6 +73,16 @@ static const size_t kMinNumBuckets = 16;
 // average chain length exceeds this value, the hash table will be resized.
 static const size_t kMaxAverageChainLength = 2;
 static const size_t kMinAverageChainLength = 1;
+
+// lhash_item_st is an element of a hash chain. It points to the opaque data
+// for this element and to the next item in the chain. The linked-list is NULL
+// terminated.
+typedef struct lhash_item_st {
+  void *data;
+  struct lhash_item_st *next;
+  // hash contains the cached, hash value of |data|.
+  uint32_t hash;
+} LHASH_ITEM;
 
 struct lhash_st {
   // num_items contains the total number of items in the hash table.
