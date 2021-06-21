@@ -230,30 +230,18 @@ OPENSSL_EXPORT void OPENSSL_lh_doall_arg(_LHASH *lh,
   }                                                                            \
                                                                                \
   typedef struct {                                                             \
-    void (*doall)(type *);                                                     \
     void (*doall_arg)(type *, void *);                                         \
     void *arg;                                                                 \
   } LHASH_DOALL_##type;                                                        \
-                                                                               \
-  OPENSSL_INLINE void lh_##type##_call_doall(void *value, void *arg) {         \
-    const LHASH_DOALL_##type *cb = (const LHASH_DOALL_##type *)arg;            \
-    cb->doall((type *)value);                                                  \
-  }                                                                            \
                                                                                \
   OPENSSL_INLINE void lh_##type##_call_doall_arg(void *value, void *arg) {     \
     const LHASH_DOALL_##type *cb = (const LHASH_DOALL_##type *)arg;            \
     cb->doall_arg((type *)value, cb->arg);                                     \
   }                                                                            \
                                                                                \
-  OPENSSL_INLINE void lh_##type##_doall(LHASH_OF(type) *lh,                    \
-                                        void (*func)(type *)) {                \
-    LHASH_DOALL_##type cb = {func, NULL, NULL};                                \
-    OPENSSL_lh_doall_arg((_LHASH *)lh, lh_##type##_call_doall, &cb);           \
-  }                                                                            \
-                                                                               \
   OPENSSL_INLINE void lh_##type##_doall_arg(                                   \
       LHASH_OF(type) *lh, void (*func)(type *, void *), void *arg) {           \
-    LHASH_DOALL_##type cb = {NULL, func, arg};                                 \
+    LHASH_DOALL_##type cb = {func, arg};                                       \
     OPENSSL_lh_doall_arg((_LHASH *)lh, lh_##type##_call_doall_arg, &cb);       \
   }
 

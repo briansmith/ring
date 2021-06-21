@@ -94,15 +94,6 @@ TEST(LHashTest, Basic) {
                         &actual);
       std::sort(actual.begin(), actual.end());
       EXPECT_EQ(expected, actual);
-
-      // Also test |lh_*_doall|.
-      actual.clear();
-      static ValueList *global_actual_list;
-      global_actual_list = &actual;
-      lh_char_doall(lh.get(),
-                    [](char *ptr) { global_actual_list->push_back(ptr); });
-      std::sort(actual.begin(), actual.end());
-      EXPECT_EQ(expected, actual);
     }
 
     enum Action {
