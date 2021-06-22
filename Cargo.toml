@@ -29,6 +29,7 @@ include = [
 
     "pregenerated/*",
 
+    "benches/*.rs",
     "build.rs",
 
     "crypto/chacha/asm/chacha-armv4.pl",
@@ -186,12 +187,14 @@ libc = { version = "0.2.84", default-features = false }
 [build-dependencies]
 cc = { version = "1.0.66", default-features = false }
 
+[dev-dependencies]
+criterion = "0.3"
+
 [features]
 # These features are documented in the top-level module's documentation.
 default = ["alloc", "dev_urandom_fallback"]
 alloc = []
 dev_urandom_fallback = ["once_cell"]
-internal_benches = []
 slow_tests = []
 std = ["alloc"]
 test_logging = []
@@ -214,3 +217,7 @@ rpath = false
 lto = true
 debug-assertions = false
 codegen-units = 1
+
+[[bench]]
+name = "aead"
+harness = false
