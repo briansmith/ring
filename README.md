@@ -59,8 +59,7 @@ need to be installed.
 Benchmarks
 ----------
 
-*ring*'s benchmarks are in the
-[crypto-bench](https://github.com/briansmith/crypto-bench) project. Because
+*ring*'s benchmarks are located in the `benches` folder of this repository. Because
 there is lots of platform-specific code in *ring*, and because *ring* chooses
 dynamically at runtime which optimized implementation of each crypto primitive
 to use, it is very difficult to publish a useful single set of benchmarks;
@@ -104,8 +103,7 @@ contribute already, see these curated lists of open issues:
 
 In addition, we're always interested in these kinds of contributions:
 
-* Expanded benchmarks in the
-  [crypto-bench](https://github.com/briansmith/crypto-bench) project.
+* Expanding the benchmarks in the `benches` folder.
 * Additional testing code and additional test vectors.
 * Static analysis and fuzzing in the continuous integration.
 * Support for more platforms in the continuous integration (e.g. Android, iOS,
