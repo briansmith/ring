@@ -139,13 +139,9 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!CBS_mem_equal(&server_random, kHelloRetryRequest, SSL3_RANDOM_SIZE)) {
-    hs->tls13_state = state_read_server_hello;
-    return ssl_hs_ok;
-  }
-
+  // The cipher suite must be one we offered. We currently offer all supported
+  // TLS 1.3 ciphers, so check the version.
   const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
-  // Check if the cipher is a TLS 1.3 cipher.
   if (cipher == NULL ||
       SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
       SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl)) {
@@ -155,6 +151,11 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   }
 
   hs->new_cipher = cipher;
+
+  if (!CBS_mem_equal(&server_random, kHelloRetryRequest, SSL3_RANDOM_SIZE)) {
+    hs->tls13_state = state_read_server_hello;
+    return ssl_hs_ok;
+  }
 
   bool have_cookie, have_key_share, have_supported_versions;
   CBS cookie, key_share, supported_versions;
@@ -321,25 +322,15 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // Check the cipher suite, in case this is after HelloRetryRequest.
+  if (SSL_CIPHER_get_value(hs->new_cipher) != cipher_suite) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    return ssl_hs_error;
+  }
+
   OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random),
                  SSL3_RANDOM_SIZE);
-
-  // Check if the cipher is a TLS 1.3 cipher.
-  const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
-  if (cipher == nullptr ||
-      SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
-      SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return ssl_hs_error;
-  }
-
-  // Check that the cipher matches the one in the HelloRetryRequest.
-  if (ssl->s3->used_hello_retry_request && hs->new_cipher != cipher) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return ssl_hs_error;
-  }
 
   // Parse out the extensions.
   bool have_key_share = false, have_pre_shared_key = false,
@@ -359,7 +350,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // Recheck supported_versions, in case this is the second ServerHello.
+  // Recheck supported_versions, in case this is after HelloRetryRequest.
   uint16_t version;
   if (!have_supported_versions ||
       !CBS_get_u16(&supported_versions, &version) ||
@@ -389,7 +380,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    if (ssl->session->cipher->algorithm_prf != cipher->algorithm_prf) {
+    if (ssl->session->cipher->algorithm_prf != hs->new_cipher->algorithm_prf) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_PRF_HASH_MISMATCH);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
@@ -422,13 +413,11 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->new_session->cipher = cipher;
-  hs->new_cipher = cipher;
-
-  size_t hash_len =
-      EVP_MD_size(ssl_get_handshake_digest(ssl_protocol_version(ssl), cipher));
+  hs->new_session->cipher = hs->new_cipher;
 
   // Set up the key schedule and incorporate the PSK into the running secret.
+  size_t hash_len = EVP_MD_size(
+      ssl_get_handshake_digest(ssl_protocol_version(ssl), hs->new_cipher));
   if (!tls13_init_key_schedule(
           hs, ssl->s3->session_reused
                   ? MakeConstSpan(hs->new_session->secret,
