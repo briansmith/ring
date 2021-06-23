@@ -3716,18 +3716,10 @@ bool ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
   return true;
 }
 
-static bool ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
+static bool ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *cbs,
                                         int *out_alert) {
-  SSL *const ssl = hs->ssl;
-  // Before TLS 1.3, ServerHello extensions blocks may be omitted if empty.
-  if (CBS_len(cbs) == 0 && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
-    return true;
-  }
-
-  // Decode the extensions block and check it is valid.
-  CBS extensions;
-  if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
-      !tls1_check_duplicate_extensions(&extensions)) {
+  CBS extensions = *cbs;
+  if (!tls1_check_duplicate_extensions(&extensions)) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
   }
@@ -3849,7 +3841,7 @@ static bool ssl_check_serverhello_tlsext(SSL_HANDSHAKE *hs) {
   return true;
 }
 
-bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs) {
+bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *cbs) {
   SSL *const ssl = hs->ssl;
   int alert = SSL_AD_DECODE_ERROR;
   if (!ssl_scan_serverhello_tlsext(hs, cbs, &alert)) {

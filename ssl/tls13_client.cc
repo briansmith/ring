@@ -101,6 +101,25 @@ static bool close_early_data(SSL_HANDSHAKE *hs, ssl_encryption_level_t level) {
   return true;
 }
 
+static bool parse_server_hello_tls13(const SSL_HANDSHAKE *hs,
+                                     ParsedServerHello *out, uint8_t *out_alert,
+                                     const SSLMessage &msg) {
+  if (!ssl_parse_server_hello(out, out_alert, msg)) {
+    return false;
+  }
+  // The RFC8446 version of the structure fixes some legacy values.
+  // Additionally, the session ID must echo the original one.
+  if (out->legacy_version != TLS1_2_VERSION ||
+      out->compression_method != 0 ||
+      !CBS_mem_equal(&out->session_id, hs->session_id, hs->session_id_len) ||
+      CBS_len(&out->extensions) == 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return false;
+  }
+  return true;
+}
+
 static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   assert(ssl->s3->have_version);
@@ -117,32 +136,17 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
-    return ssl_hs_error;
-  }
-
-  CBS body = msg.body, extensions, server_random, session_id;
-  uint16_t server_version, cipher_suite;
-  uint8_t compression_method;
-  if (!CBS_get_u16(&body, &server_version) ||
-      !CBS_get_bytes(&body, &server_random, SSL3_RANDOM_SIZE) ||
-      !CBS_get_u8_length_prefixed(&body, &session_id) ||
-      !CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len) ||
-      !CBS_get_u16(&body, &cipher_suite) ||
-      !CBS_get_u8(&body, &compression_method) ||
-      compression_method != 0 ||
-      !CBS_get_u16_length_prefixed(&body, &extensions) ||
-      CBS_len(&extensions) == 0 ||
-      CBS_len(&body) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+  ParsedServerHello server_hello;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
+  if (!parse_server_hello_tls13(hs, &server_hello, &alert, msg)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
   // The cipher suite must be one we offered. We currently offer all supported
   // TLS 1.3 ciphers, so check the version.
-  const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
-  if (cipher == NULL ||
+  const SSL_CIPHER *cipher = SSL_get_cipher_by_value(server_hello.cipher_suite);
+  if (cipher == nullptr ||
       SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
       SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
@@ -152,7 +156,8 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
 
   hs->new_cipher = cipher;
 
-  if (!CBS_mem_equal(&server_random, kHelloRetryRequest, SSL3_RANDOM_SIZE)) {
+  if (!CBS_mem_equal(&server_hello.random, kHelloRetryRequest,
+                     SSL3_RANDOM_SIZE)) {
     hs->tls13_state = state_read_server_hello;
     return ssl_hs_ok;
   }
@@ -166,8 +171,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
        &supported_versions},
   };
 
-  uint8_t alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+  if (!ssl_parse_extensions(&server_hello.extensions, &alert, ext_types,
                             /*ignore_unknown=*/false)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
@@ -287,49 +291,29 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
   }
-  if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
-    return ssl_hs_error;
-  }
-
-  CBS body = msg.body, server_random, session_id, extensions;
-  uint16_t server_version;
-  uint16_t cipher_suite;
-  uint8_t compression_method;
-  if (!CBS_get_u16(&body, &server_version) ||
-      !CBS_get_bytes(&body, &server_random, SSL3_RANDOM_SIZE) ||
-      !CBS_get_u8_length_prefixed(&body, &session_id) ||
-      !CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len) ||
-      !CBS_get_u16(&body, &cipher_suite) ||
-      !CBS_get_u8(&body, &compression_method) ||
-      compression_method != 0 ||
-      !CBS_get_u16_length_prefixed(&body, &extensions) ||
-      CBS_len(&body) != 0) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return ssl_hs_error;
-  }
-
-  if (server_version != TLS1_2_VERSION) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_NUMBER);
+  ParsedServerHello server_hello;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
+  if (!parse_server_hello_tls13(hs, &server_hello, &alert, msg)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
   // Forbid a second HelloRetryRequest.
-  if (CBS_mem_equal(&server_random, kHelloRetryRequest, SSL3_RANDOM_SIZE)) {
+  if (CBS_mem_equal(&server_hello.random, kHelloRetryRequest,
+                    SSL3_RANDOM_SIZE)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     return ssl_hs_error;
   }
 
   // Check the cipher suite, in case this is after HelloRetryRequest.
-  if (SSL_CIPHER_get_value(hs->new_cipher) != cipher_suite) {
+  if (SSL_CIPHER_get_value(hs->new_cipher) != server_hello.cipher_suite) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
-  OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random),
+  OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_hello.random),
                  SSL3_RANDOM_SIZE);
 
   // Parse out the extensions.
@@ -343,8 +327,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
        &supported_versions},
   };
 
-  uint8_t alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+  if (!ssl_parse_extensions(&server_hello.extensions, &alert, ext_types,
                             /*ignore_unknown=*/false)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
@@ -521,14 +504,16 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  CBS body = msg.body;
-  if (!ssl_parse_serverhello_tlsext(hs, &body)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-    return ssl_hs_error;
-  }
-  if (CBS_len(&body) != 0) {
+  CBS body = msg.body, extensions;
+  if (!CBS_get_u16_length_prefixed(&body, &extensions) ||
+      CBS_len(&body) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return ssl_hs_error;
+  }
+
+  if (!ssl_parse_serverhello_tlsext(hs, &extensions)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     return ssl_hs_error;
   }
 

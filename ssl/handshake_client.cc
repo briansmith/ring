@@ -354,42 +354,36 @@ bool ssl_add_client_hello(SSL_HANDSHAKE *hs) {
   return ssl->method->add_message(ssl, std::move(msg));
 }
 
-static bool parse_supported_versions(SSL_HANDSHAKE *hs, uint16_t *version,
-                                     const CBS *in) {
-  // If the outer version is not TLS 1.2, or there is no extensions block, use
-  // the outer version.
-  if (*version != TLS1_2_VERSION || CBS_len(in) == 0) {
+static bool parse_server_version(const SSL_HANDSHAKE *hs, uint16_t *out_version,
+                                 uint8_t *out_alert,
+                                 const ParsedServerHello &server_hello) {
+  // If the outer version is not TLS 1.2, use it.
+  // TODO(davidben): This function doesn't quite match the RFC8446 formulation.
+  if (server_hello.legacy_version != TLS1_2_VERSION) {
+    *out_version = server_hello.legacy_version;
     return true;
-  }
-
-  SSL *const ssl = hs->ssl;
-  CBS copy = *in, extensions;
-  if (!CBS_get_u16_length_prefixed(&copy, &extensions) ||
-      CBS_len(&copy) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return false;
   }
 
   bool have_supported_versions;
   CBS supported_versions;
   const SSL_EXTENSION_TYPE ext_types[] = {
-    {TLSEXT_TYPE_supported_versions, &have_supported_versions,
-     &supported_versions},
+      {TLSEXT_TYPE_supported_versions, &have_supported_versions,
+       &supported_versions},
   };
-
-  uint8_t alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+  CBS extensions = server_hello.extensions;
+  if (!ssl_parse_extensions(&extensions, out_alert, ext_types,
                             /*ignore_unknown=*/true)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return false;
   }
 
-  // Override the outer version with the extension, if present.
-  if (have_supported_versions &&
-      (!CBS_get_u16(&supported_versions, version) ||
-       CBS_len(&supported_versions) != 0)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+  if (!have_supported_versions) {
+    *out_version = server_hello.legacy_version;
+    return true;
+  }
+
+  if (!CBS_get_u16(&supported_versions, out_version) ||
+       CBS_len(&supported_versions) != 0) {
+    *out_alert = SSL_AD_DECODE_ERROR;
     return false;
   }
 
@@ -657,6 +651,37 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
   return ssl_hs_flush;
 }
 
+bool ssl_parse_server_hello(ParsedServerHello *out, uint8_t *out_alert,
+                            const SSLMessage &msg) {
+  if (msg.type != SSL3_MT_SERVER_HELLO) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return false;
+  }
+  CBS body = msg.body;
+  if (!CBS_get_u16(&body, &out->legacy_version) ||
+      !CBS_get_bytes(&body, &out->random, SSL3_RANDOM_SIZE) ||
+      !CBS_get_u8_length_prefixed(&body, &out->session_id) ||
+      CBS_len(&out->session_id) > SSL3_SESSION_ID_SIZE ||
+      !CBS_get_u16(&body, &out->cipher_suite) ||
+      !CBS_get_u8(&body, &out->compression_method)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return false;
+  }
+  // In TLS 1.2 and below, empty extensions blocks may be omitted. In TLS 1.3,
+  // ServerHellos always have extensions, so this can be applied generically.
+  CBS_init(&out->extensions, nullptr, 0);
+  if ((CBS_len(&body) != 0 &&
+       !CBS_get_u16_length_prefixed(&body, &out->extensions)) ||
+      CBS_len(&body) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return false;
+  }
+  return true;
+}
+
 static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   SSLMessage msg;
@@ -664,26 +689,12 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_read_server_hello;
   }
 
-  if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
-    return ssl_hs_error;
-  }
-
-  CBS server_hello = msg.body, server_random, session_id;
-  uint16_t server_version, cipher_suite;
-  uint8_t compression_method;
-  if (!CBS_get_u16(&server_hello, &server_version) ||
-      !CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
-      !CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
-      CBS_len(&session_id) > SSL3_SESSION_ID_SIZE ||
-      !CBS_get_u16(&server_hello, &cipher_suite) ||
-      !CBS_get_u8(&server_hello, &compression_method)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return ssl_hs_error;
-  }
-
-  // Use the supported_versions extension if applicable.
-  if (!parse_supported_versions(hs, &server_version, &server_hello)) {
+  ParsedServerHello server_hello;
+  uint16_t server_version;
+  uint8_t alert = SSL_AD_DECODE_ERROR;
+  if (!ssl_parse_server_hello(&server_hello, &alert, msg) ||
+      !parse_server_version(hs, &server_version, &alert, server_hello)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
@@ -737,7 +748,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   // Copy over the server random.
-  OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random),
+  OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_hello.random),
                  SSL3_RANDOM_SIZE);
 
   // Enforce the TLS 1.3 anti-downgrade feature.
@@ -760,28 +771,26 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
-  if (cipher == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_RETURNED);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return ssl_hs_error;
-  }
-  hs->new_cipher = cipher;
-
   // The cipher must be allowed in the selected version and enabled.
+  const SSL_CIPHER *cipher = SSL_get_cipher_by_value(server_hello.cipher_suite);
   uint32_t mask_a, mask_k;
   ssl_get_client_disabled(hs, &mask_a, &mask_k);
-  if ((cipher->algorithm_mkey & mask_k) || (cipher->algorithm_auth & mask_a) ||
+  if (cipher == nullptr ||
+      (cipher->algorithm_mkey & mask_k) ||
+      (cipher->algorithm_auth & mask_a) ||
       SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
       SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl) ||
-      !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), NULL, cipher)) {
+      !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), nullptr, cipher)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
+  hs->new_cipher = cipher;
+
   if (hs->session_id_len != 0 &&
-      CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len)) {
+      CBS_mem_equal(&server_hello.session_id, hs->session_id,
+                    hs->session_id_len)) {
     // Echoing the ClientHello session ID in TLS 1.2, whether from the session
     // or a synthetic one, indicates resumption. If there was no session (or if
     // the session was only offered in ECH ClientHelloInner), this was the
@@ -799,7 +808,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-    if (ssl->session->cipher != cipher) {
+    if (ssl->session->cipher != hs->new_cipher) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
@@ -822,10 +831,11 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
     // Note: session_id could be empty.
-    hs->new_session->session_id_length = CBS_len(&session_id);
-    OPENSSL_memcpy(hs->new_session->session_id, CBS_data(&session_id),
-                   CBS_len(&session_id));
-    hs->new_session->cipher = cipher;
+    hs->new_session->session_id_length = CBS_len(&server_hello.session_id);
+    OPENSSL_memcpy(hs->new_session->session_id,
+                   CBS_data(&server_hello.session_id),
+                   CBS_len(&server_hello.session_id));
+    hs->new_session->cipher = hs->new_cipher;
   }
 
   // Now that the cipher is known, initialize the handshake hash and hash the
@@ -845,23 +855,14 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   // Only the NULL compression algorithm is supported.
-  if (compression_method != 0) {
+  if (server_hello.compression_method != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_COMPRESSION_ALGORITHM);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
-  // TLS extensions
-  if (!ssl_parse_serverhello_tlsext(hs, &server_hello)) {
+  if (!ssl_parse_serverhello_tlsext(hs, &server_hello.extensions)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-    return ssl_hs_error;
-  }
-
-  // There should be nothing left over in the record.
-  if (CBS_len(&server_hello) != 0) {
-    // wrong packet length
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 

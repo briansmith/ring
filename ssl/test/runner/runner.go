@@ -3833,7 +3833,7 @@ func addCipherSuiteTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":UNKNOWN_CIPHER_RETURNED:",
+		expectedError: ":WRONG_CIPHER_RETURNED:",
 	})
 	testCases = append(testCases, testCase{
 		name: "ServerHelloBogusCipher-TLS13",
@@ -13884,7 +13884,7 @@ func addTLS13HandshakeTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":WRONG_VERSION_NUMBER:",
+		expectedError: ":DECODE_ERROR:",
 	})
 
 	testCases = append(testCases, testCase{
