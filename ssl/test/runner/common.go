@@ -1011,6 +1011,10 @@ type ProtocolBugs struct {
 	// normally expected to look ahead for ChangeCipherSpec.)
 	EmptyTicketSessionID bool
 
+	// NewSessionIDLength, if non-zero is the length of the session ID to use
+	// when issung new sessions.
+	NewSessionIDLength int
+
 	// SendClientHelloSessionID, if not nil, is the session ID sent in the
 	// ClientHello.
 	SendClientHelloSessionID []byte

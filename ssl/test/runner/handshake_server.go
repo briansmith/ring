@@ -1849,7 +1849,11 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	// Generate a session ID if we're to save the session.
 	if !hs.hello.extensions.ticketSupported && config.ServerSessionCache != nil {
-		hs.hello.sessionID = make([]byte, 32)
+		l := config.Bugs.NewSessionIDLength
+		if l == 0 {
+			l = 32
+		}
+		hs.hello.sessionID = make([]byte, l)
 		if _, err := io.ReadFull(config.rand(), hs.hello.sessionID); err != nil {
 			c.sendAlert(alertInternalError)
 			return errors.New("tls: short read from Rand: " + err.Error())
