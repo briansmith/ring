@@ -158,9 +158,28 @@ class Span : private internal::SpanBase<const T> {
 
   Span subspan(size_t pos = 0, size_t len = npos) const {
     if (pos > size_) {
-      abort();  // absl::Span throws an exception here.
+      // absl::Span throws an exception here. Note std::span and Chromium
+      // base::span additionally forbid pos + len being out of range, with a
+      // special case at npos/dynamic_extent, while absl::Span::subspan clips
+      // the span. For now, we align with absl::Span in case we switch to it in
+      // the future.
+      abort();
     }
     return Span(data_ + pos, std::min(size_ - pos, len));
+  }
+
+  Span first(size_t len) {
+    if (len > size_) {
+      abort();
+    }
+    return Span(data_, len);
+  }
+
+  Span last(size_t len) {
+    if (len > size_) {
+      abort();
+    }
+    return Span(data_ + size_ - len, len);
   }
 
  private:

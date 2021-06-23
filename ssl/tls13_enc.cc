@@ -489,8 +489,8 @@ bool tls13_write_psk_binder(const SSL_HANDSHAKE *hs,
     return false;
   }
 
-  OPENSSL_memcpy(msg.data() + msg.size() - verify_data_len, verify_data,
-                 verify_data_len);
+  auto msg_binder = msg.last(verify_data_len);
+  OPENSSL_memcpy(msg_binder.data(), verify_data, verify_data_len);
   if (out_binder_len != nullptr) {
     *out_binder_len = verify_data_len;
   }

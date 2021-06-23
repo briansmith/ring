@@ -857,22 +857,24 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
 
   // Construct ClientHelloInner and EncodedClientHelloInner. See
   // draft-ietf-tls-esni-10, sections 5.1 and 6.1.
-  bssl::ScopedCBB cbb, encoded;
+  ScopedCBB cbb, encoded_cbb;
   CBB body;
   bool needs_psk_binder;
-  bssl::Array<uint8_t> hello_inner;
+  Array<uint8_t> hello_inner, encoded;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO) ||
-      !CBB_init(encoded.get(), 256) ||
+      !CBB_init(encoded_cbb.get(), 256) ||
       !ssl_write_client_hello_without_extensions(hs, &body,
                                                  ssl_client_hello_inner,
                                                  /*empty_session_id=*/false) ||
-      !ssl_write_client_hello_without_extensions(hs, encoded.get(),
+      !ssl_write_client_hello_without_extensions(hs, encoded_cbb.get(),
                                                  ssl_client_hello_inner,
                                                  /*empty_session_id=*/true) ||
-      !ssl_add_clienthello_tlsext(hs, &body, encoded.get(), &needs_psk_binder,
-                                  ssl_client_hello_inner, CBB_len(&body),
+      !ssl_add_clienthello_tlsext(hs, &body, encoded_cbb.get(),
+                                  &needs_psk_binder, ssl_client_hello_inner,
+                                  CBB_len(&body),
                                   /*omit_ech_len=*/0) ||
-      !ssl->method->finish_message(ssl, cbb.get(), &hello_inner)) {
+      !ssl->method->finish_message(ssl, cbb.get(), &hello_inner) ||
+      !CBBFinishArray(encoded_cbb.get(), &encoded)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }
@@ -884,13 +886,9 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
       return false;
     }
     // Also update the EncodedClientHelloInner.
-    if (CBB_len(encoded.get()) < binder_len) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return false;
-    }
-    OPENSSL_memcpy(const_cast<uint8_t *>(CBB_data(encoded.get())) +
-                       CBB_len(encoded.get()) - binder_len,
-                   hello_inner.data() + hello_inner.size() - binder_len,
+    auto encoded_binder = MakeSpan(encoded).last(binder_len);
+    auto hello_inner_binder = MakeConstSpan(hello_inner).last(binder_len);
+    OPENSSL_memcpy(encoded_binder.data(), hello_inner_binder.data(),
                    binder_len);
   }
 
@@ -905,7 +903,7 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
   const EVP_HPKE_KDF *kdf = EVP_HPKE_CTX_kdf(hs->ech_hpke_ctx.get());
   const EVP_HPKE_AEAD *aead = EVP_HPKE_CTX_aead(hs->ech_hpke_ctx.get());
   const size_t extension_len =
-      compute_extension_length(aead, enc.size(), CBB_len(encoded.get()));
+      compute_extension_length(aead, enc.size(), encoded.size());
   bssl::ScopedCBB aad;
   CBB outer_hello;
   CBB enc_cbb;
@@ -943,19 +941,17 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
   }
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   // In fuzzer mode, the server expects a cleartext payload.
-  if (!CBB_add_bytes(&payload_cbb, CBB_data(encoded.get()),
-                     CBB_len(encoded.get()))) {
+  if (!CBB_add_bytes(&payload_cbb, encoded.data(), encoded.size())) {
     return false;
   }
 #else
   uint8_t *payload;
   size_t payload_len =
-      CBB_len(encoded.get()) + EVP_AEAD_max_overhead(EVP_HPKE_AEAD_aead(aead));
+      encoded.size() + EVP_AEAD_max_overhead(EVP_HPKE_AEAD_aead(aead));
   if (!CBB_reserve(&payload_cbb, &payload, payload_len) ||
       !EVP_HPKE_CTX_seal(hs->ech_hpke_ctx.get(), payload, &payload_len,
-                         payload_len, CBB_data(encoded.get()),
-                         CBB_len(encoded.get()), CBB_data(aad.get()),
-                         CBB_len(aad.get())) ||
+                         payload_len, encoded.data(), encoded.size(),
+                         CBB_data(aad.get()), CBB_len(aad.get())) ||
       !CBB_did_write(&payload_cbb, payload_len)) {
     return false;
   }

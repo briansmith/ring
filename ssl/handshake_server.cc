@@ -973,8 +973,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 }
 
 static void copy_suffix(Span<uint8_t> out, Span<const uint8_t> in) {
-  out = out.subspan(out.size() - in.size());
-  assert(out.size() == in.size());
+  out = out.last(in.size());
   OPENSSL_memcpy(out.data(), in.data(), in.size());
 }
 

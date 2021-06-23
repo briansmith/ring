@@ -3880,8 +3880,8 @@ static enum ssl_ticket_aead_result_t decrypt_ticket_with_cipher_ctx(
     return ssl_ticket_aead_ignore_ticket;
   }
   // Split the ticket into the ticket and the MAC.
-  auto ticket_mac = ticket.subspan(ticket.size() - mac_len);
-  ticket = ticket.subspan(0, ticket.size() - mac_len);
+  auto ticket_mac = ticket.last(mac_len);
+  ticket = ticket.first(ticket.size() - mac_len);
   HMAC_Update(hmac_ctx, ticket.data(), ticket.size());
   HMAC_Final(hmac_ctx, mac, NULL);
   assert(mac_len == ticket_mac.size());
