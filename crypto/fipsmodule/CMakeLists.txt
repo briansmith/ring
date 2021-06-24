@@ -199,12 +199,15 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
   set(MAYBE_INJECT_HASH_SHA256_FLAG "")
-  if (ARCH STREQUAL "aarch64")
+  # If building with OPENSSL_NO_ASM then ARCH will be "generic", but we still
+  # need to use SHA-256. Since this only matters for FIPS, we only need to
+  # worry about the Linux spelling of AArch64.
+  if (ARCH STREQUAL "aarch64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
     set(MAYBE_INJECT_HASH_SHA256_FLAG "-sha256")
   endif()
 
   go_executable(inject_hash
-	        boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
+                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
     COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> ${MAYBE_INJECT_HASH_SHA256_FLAG}
