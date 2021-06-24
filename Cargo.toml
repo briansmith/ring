@@ -117,7 +117,6 @@ include = [
     "src/ec/curve25519/ed25519/ed25519_pkcs8_v2_template.der",
     "src/ec/suite_b/ecdsa/ecPublicKey_p256_pkcs8_v1_template.der",
     "src/ec/suite_b/ecdsa/ecPublicKey_p384_pkcs8_v1_template.der",
-    "src/rsa/convert_nist_rsa_test_vectors.py",
     "src/rsa/signature_rsa_example_private_key.der",
     "src/rsa/signature_rsa_example_public_key.der",
     "tests/**/*.rs",
