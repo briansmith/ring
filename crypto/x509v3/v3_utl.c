@@ -81,8 +81,8 @@ static STACK_OF(OPENSSL_STRING) *get_email(X509_NAME *name,
 static void str_free(OPENSSL_STRING str);
 static int append_ia5(STACK_OF(OPENSSL_STRING) **sk, ASN1_IA5STRING *email);
 
-static int ipv4_from_asc(unsigned char *v4, const char *in);
-static int ipv6_from_asc(unsigned char *v6, const char *in);
+static int ipv4_from_asc(unsigned char v4[4], const char *in);
+static int ipv6_from_asc(unsigned char v6[16], const char *in);
 static int ipv6_cb(const char *elem, int len, void *usr);
 static int ipv6_hex(unsigned char *out, const char *in, int inlen);
 
@@ -1187,7 +1187,7 @@ ASN1_OCTET_STRING *a2i_IPADDRESS_NC(const char *ipasc)
     return NULL;
 }
 
-int x509v3_a2i_ipadd(unsigned char *ipout, const char *ipasc)
+int x509v3_a2i_ipadd(unsigned char ipout[16], const char *ipasc)
 {
     /* If string contains a ':' assume IPv6 */
 
@@ -1202,7 +1202,7 @@ int x509v3_a2i_ipadd(unsigned char *ipout, const char *ipasc)
     }
 }
 
-static int ipv4_from_asc(unsigned char *v4, const char *in)
+static int ipv4_from_asc(unsigned char v4[4], const char *in)
 {
     int a0, a1, a2, a3;
     if (sscanf(in, "%d.%d.%d.%d", &a0, &a1, &a2, &a3) != 4)
@@ -1228,7 +1228,7 @@ typedef struct {
     int zero_cnt;
 } IPV6_STAT;
 
-static int ipv6_from_asc(unsigned char *v6, const char *in)
+static int ipv6_from_asc(unsigned char v6[16], const char *in)
 {
     IPV6_STAT v6stat;
     v6stat.total = 0;
