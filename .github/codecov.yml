@@ -1,0 +1,8 @@
+coverage:
+  status:
+    patch:
+      default:
+        # Even when coverage hasn't decreased, Codecov would report a reduction
+        # in coverage of about 0.01%, but only for the patch-level measurement.
+        # Work around that.
+        threshold: 0.02%
