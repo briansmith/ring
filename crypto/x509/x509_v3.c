@@ -72,12 +72,15 @@ int X509v3_get_ext_count(const STACK_OF(X509_EXTENSION) *x)
 int X509v3_get_ext_by_NID(const STACK_OF(X509_EXTENSION) *x, int nid,
                           int lastpos)
 {
-    const ASN1_OBJECT *obj;
-
-    obj = OBJ_nid2obj(nid);
-    if (obj == NULL)
-        return (-2);
-    return (X509v3_get_ext_by_OBJ(x, obj, lastpos));
+    const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
+    if (obj == NULL) {
+        /* TODO(davidben): Return -1 here. Callers often check the result
+         * against -1 without handling a theoretical -2 output. Reporting a
+         * different result should not be necessary because invalid NIDs are
+         * almost always a programmer error.  */
+        return -2;
+    }
+    return X509v3_get_ext_by_OBJ(x, obj, lastpos);
 }
 
 int X509v3_get_ext_by_OBJ(const STACK_OF(X509_EXTENSION) *sk,
@@ -172,11 +175,9 @@ STACK_OF(X509_EXTENSION) *X509v3_add_ext(STACK_OF(X509_EXTENSION) **x,
  err:
     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
  err2:
-    if (new_ex != NULL)
-        X509_EXTENSION_free(new_ex);
-    if (sk != NULL)
-        sk_X509_EXTENSION_free(sk);
-    return (NULL);
+    X509_EXTENSION_free(new_ex);
+    sk_X509_EXTENSION_free(sk);
+    return NULL;
 }
 
 X509_EXTENSION *X509_EXTENSION_create_by_NID(X509_EXTENSION **ex, int nid,
