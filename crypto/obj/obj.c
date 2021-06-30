@@ -67,9 +67,12 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
-#include "obj_dat.h"
+#include "../asn1/internal.h"
 #include "../internal.h"
 #include "../lhash/internal.h"
+
+// obj_data.h must be included after the definition of |ASN1_OBJECT|.
+#include "obj_dat.h"
 
 
 DEFINE_LHASH_OF(ASN1_OBJECT)

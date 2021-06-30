@@ -58,11 +58,12 @@
 
 #include <string.h>
 
-#include <openssl/asn1.h>
 #include <openssl/blake2.h>
 #include <openssl/bytestring.h>
+#include <openssl/obj.h>
 #include <openssl/nid.h>
 
+#include "../asn1/internal.h"
 #include "../internal.h"
 #include "../fipsmodule/digest/internal.h"
 
@@ -152,13 +153,14 @@ static const EVP_MD *cbs_to_md(const CBS *cbs) {
 }
 
 const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
-  // Handle objects with no corresponding OID.
+  // Handle objects with no corresponding OID. Note we don't use |OBJ_obj2nid|
+  // here to avoid pulling in the OID table.
   if (obj->nid != NID_undef) {
     return EVP_get_digestbynid(obj->nid);
   }
 
   CBS cbs;
-  CBS_init(&cbs, obj->data, obj->length);
+  CBS_init(&cbs, OBJ_get0_data(obj), OBJ_length(obj));
   return cbs_to_md(&cbs);
 }
 

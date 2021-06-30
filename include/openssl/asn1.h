@@ -593,29 +593,6 @@ OPENSSL_EXPORT int ASN1_TYPE_cmp(const ASN1_TYPE *a, const ASN1_TYPE *b);
 #define MBSTRING_BMP (MBSTRING_FLAG | 2)
 #define MBSTRING_UNIV (MBSTRING_FLAG | 4)
 
-// These are used internally in the ASN1_OBJECT to keep track of
-// whether the names and data need to be free()ed
-#define ASN1_OBJECT_FLAG_DYNAMIC 0x01          // internal use
-#define ASN1_OBJECT_FLAG_DYNAMIC_STRINGS 0x04  // internal use
-#define ASN1_OBJECT_FLAG_DYNAMIC_DATA 0x08     // internal use
-
-// An asn1_object_st (aka |ASN1_OBJECT|) represents an ASN.1 OBJECT IDENTIFIER.
-//
-// Note: Although the struct is exposed, mutating an |ASN1_OBJECT| is only
-// permitted when initializing it. The library maintains a table of static
-// |ASN1_OBJECT|s, which may be referenced by non-const |ASN1_OBJECT| pointers.
-// Code which receives an |ASN1_OBJECT| pointer externally must assume it is
-// immutable, even if the pointer is not const.
-//
-// TODO(davidben): Document this more completely in its own section.
-struct asn1_object_st {
-  const char *sn, *ln;
-  int nid;
-  int length;
-  const unsigned char *data;  // data remains const after init
-  int flags;                  // Should we free this one
-};
-
 DEFINE_STACK_OF(ASN1_OBJECT)
 
 // ASN1_ENCODING structure: this is used to save the received

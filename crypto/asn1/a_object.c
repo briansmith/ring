@@ -64,6 +64,7 @@
 #include <openssl/obj.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 
 int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp)

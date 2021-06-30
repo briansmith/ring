@@ -84,7 +84,8 @@ extern "C" {
 
 // Basic operations.
 
-// OBJ_dup returns a duplicate copy of |obj| or NULL on allocation failure.
+// OBJ_dup returns a duplicate copy of |obj| or NULL on allocation failure. The
+// caller must call |ASN1_OBJECT_free| on the result to release it.
 OPENSSL_EXPORT ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *obj);
 
 // OBJ_cmp returns a value less than, equal to or greater than zero if |a| is
@@ -133,9 +134,9 @@ OPENSSL_EXPORT int OBJ_txt2nid(const char *s);
 // OBJ_nid2obj returns the |ASN1_OBJECT| corresponding to |nid|, or NULL if
 // |nid| is unknown.
 //
-// This function returns a static, immutable |ASN1_OBJECT|. Although the output
-// is not const, callers may not mutate it. It is also not necessary to release
-// the object with |ASN1_OBJECT_free|.
+// Although the output is not const, this function returns a static, immutable
+// |ASN1_OBJECT|. It is not necessary to release the object with
+// |ASN1_OBJECT_free|.
 //
 // However, functions like |X509_ALGOR_set0| expect to take ownership of a
 // possibly dynamically-allocated |ASN1_OBJECT|. |ASN1_OBJECT_free| is a no-op
