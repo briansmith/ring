@@ -22,6 +22,7 @@
 #include <openssl/cpu.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
+#include <openssl/rand.h>
 #include <openssl/sha.h>
 
 #if defined(_MSC_VER)
@@ -939,6 +940,34 @@ OPENSSL_UNUSED static void poly_print(const struct poly *p) {
   printf("]\n");
 }
 
+// POLY_MUL_SCRATCH contains space for the working variables needed by
+// |poly_mul|. The contents afterwards may be discarded, but the object may also
+// be reused with future |poly_mul| calls to save heap allocations.
+//
+// This object must have 32-byte alignment.
+struct POLY_MUL_SCRATCH {
+  union {
+    // This is used by |poly_mul_novec|.
+    struct {
+      uint16_t prod[2 * N];
+      uint16_t scratch[1318];
+    } novec;
+
+#if defined(HRSS_HAVE_VECTOR_UNIT)
+    // This is used by |poly_mul_vec|.
+    struct {
+      vec_t prod[VECS_PER_POLY * 2];
+      vec_t scratch[172];
+    } vec;
+#endif
+
+#if defined(POLY_RQ_MUL_ASM)
+    // This is the space used by |poly_Rq_mul|.
+    uint8_t rq[POLY_MUL_RQ_SCRATCH_SPACE];
+#endif
+  } u;
+};
+
 #if defined(HRSS_HAVE_VECTOR_UNIT)
 
 // poly_mul_vec_aux is a recursive function that multiplies |n| words from |a|
@@ -1184,8 +1213,8 @@ static void poly_mul_vec_aux(vec_t *restrict out, vec_t *restrict scratch,
 }
 
 // poly_mul_vec sets |*out| to |x|×|y| mod (𝑥^n - 1).
-static void poly_mul_vec(struct poly *out, const struct poly *x,
-                         const struct poly *y) {
+static void poly_mul_vec(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
+                         const struct poly *x, const struct poly *y) {
   OPENSSL_memset((uint16_t *)&x->v[N], 0, 3 * sizeof(uint16_t));
   OPENSSL_memset((uint16_t *)&y->v[N], 0, 3 * sizeof(uint16_t));
 
@@ -1194,9 +1223,9 @@ static void poly_mul_vec(struct poly *out, const struct poly *x,
   OPENSSL_STATIC_ASSERT(alignof(struct poly) == alignof(vec_t),
                         "struct poly has incorrect alignment");
 
-  vec_t prod[VECS_PER_POLY * 2];
-  vec_t scratch[172];
-  poly_mul_vec_aux(prod, scratch, x->vectors, y->vectors, VECS_PER_POLY);
+  vec_t *const prod = scratch->u.vec.prod;
+  vec_t *const aux_scratch = scratch->u.vec.scratch;
+  poly_mul_vec_aux(prod, aux_scratch, x->vectors, y->vectors, VECS_PER_POLY);
 
   // |prod| needs to be reduced mod (𝑥^n - 1), which just involves adding the
   // upper-half to the lower-half. However, N is 701, which isn't a multiple of
@@ -1273,11 +1302,11 @@ static void poly_mul_novec_aux(uint16_t *out, uint16_t *scratch,
 }
 
 // poly_mul_novec sets |*out| to |x|×|y| mod (𝑥^n - 1).
-static void poly_mul_novec(struct poly *out, const struct poly *x,
-                           const struct poly *y) {
-  uint16_t prod[2 * N];
-  uint16_t scratch[1318];
-  poly_mul_novec_aux(prod, scratch, x->v, y->v, N);
+static void poly_mul_novec(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
+                           const struct poly *x, const struct poly *y) {
+  uint16_t *const prod = scratch->u.novec.prod;
+  uint16_t *const aux_scratch = scratch->u.novec.scratch;
+  poly_mul_novec_aux(prod, aux_scratch, x->v, y->v, N);
 
   for (size_t i = 0; i < N; i++) {
     out->v[i] = prod[i] + prod[i + N];
@@ -1285,25 +1314,25 @@ static void poly_mul_novec(struct poly *out, const struct poly *x,
   OPENSSL_memset(&out->v[N], 0, 3 * sizeof(uint16_t));
 }
 
-static void poly_mul(struct poly *r, const struct poly *a,
-                     const struct poly *b) {
+static void poly_mul(struct POLY_MUL_SCRATCH *scratch, struct poly *r,
+                     const struct poly *a, const struct poly *b) {
 #if defined(POLY_RQ_MUL_ASM)
   const int has_avx2 = (OPENSSL_ia32cap_P[2] & (1 << 5)) != 0;
   if (has_avx2) {
-    poly_Rq_mul(r->v, a->v, b->v);
+    poly_Rq_mul(r->v, a->v, b->v, scratch->u.rq);
     return;
   }
 #endif
 
 #if defined(HRSS_HAVE_VECTOR_UNIT)
   if (vec_capable()) {
-    poly_mul_vec(r, a, b);
+    poly_mul_vec(scratch, r, a, b);
     return;
   }
 #endif
 
   // Fallback, non-vector case.
-  poly_mul_novec(r, a, b);
+  poly_mul_novec(scratch, r, a, b);
 }
 
 // poly_mul_x_minus_1 sets |p| to |p|×(𝑥 - 1) mod (𝑥^n - 1).
@@ -1548,7 +1577,8 @@ static void poly_invert_mod2(struct poly *out, const struct poly *in) {
 }
 
 // poly_invert sets |*out| to |in^-1| (i.e. such that |*out|×|in| = 1 mod Φ(N)).
-static void poly_invert(struct poly *out, const struct poly *in) {
+static void poly_invert(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
+                        const struct poly *in) {
   // Inversion mod Q, which is done based on the result of inverting mod
   // 2. See [NTRUTN14] paper, bottom of page two.
   struct poly a, *b, tmp;
@@ -1565,9 +1595,9 @@ static void poly_invert(struct poly *out, const struct poly *in) {
   // We are working mod Q=2**13 and we need to iterate ceil(log_2(13))
   // times, which is four.
   for (unsigned i = 0; i < 4; i++) {
-    poly_mul(&tmp, &a, b);
+    poly_mul(scratch, &tmp, &a, b);
     tmp.v[0] += 2;
-    poly_mul(b, b, &tmp);
+    poly_mul(scratch, b, b, &tmp);
   }
 }
 
@@ -1886,146 +1916,216 @@ static struct private_key *private_key_from_external(
   return align_pointer(ext->opaque, 16);
 }
 
-void HRSS_generate_key(
+// malloc_align32 returns a pointer to |size| bytes of 32-byte-aligned heap and
+// sets |*out_ptr| to a value that can be passed to |OPENSSL_free| to release
+// it. It returns NULL if out of memory.
+static void *malloc_align32(void **out_ptr, size_t size) {
+  void *ptr = OPENSSL_malloc(size + 31);
+  if (!ptr) {
+    *out_ptr = NULL;
+    return NULL;
+  }
+
+  *out_ptr = ptr;
+  return align_pointer(ptr, 32);
+}
+
+int HRSS_generate_key(
     struct HRSS_public_key *out_pub, struct HRSS_private_key *out_priv,
     const uint8_t in[HRSS_SAMPLE_BYTES + HRSS_SAMPLE_BYTES + 32]) {
   struct public_key *pub = public_key_from_external(out_pub);
   struct private_key *priv = private_key_from_external(out_priv);
 
+  struct vars {
+    struct POLY_MUL_SCRATCH scratch;
+    struct poly f;
+    struct poly pg_phi1;
+    struct poly pfg_phi1;
+    struct poly pfg_phi1_inverse;
+  };
+
+  void *malloc_ptr;
+  struct vars *const vars = malloc_align32(&malloc_ptr, sizeof(struct vars));
+  if (!vars) {
+    // If the caller ignores the return value the output will still be safe.
+    // The private key output is randomised in case it's later passed to
+    // |HRSS_encap|.
+    memset(out_pub, 0, sizeof(struct HRSS_public_key));
+    RAND_bytes((uint8_t*) out_priv, sizeof(struct HRSS_private_key));
+    return 0;
+  }
+
   OPENSSL_memcpy(priv->hmac_key, in + 2 * HRSS_SAMPLE_BYTES,
                  sizeof(priv->hmac_key));
 
-  struct poly f;
-  poly_short_sample_plus(&f, in);
-  poly3_from_poly(&priv->f, &f);
+  poly_short_sample_plus(&vars->f, in);
+  poly3_from_poly(&priv->f, &vars->f);
   HRSS_poly3_invert(&priv->f_inverse, &priv->f);
 
   // pg_phi1 is p (i.e. 3) × g × Φ(1) (i.e. 𝑥-1).
-  struct poly pg_phi1;
-  poly_short_sample_plus(&pg_phi1, in + HRSS_SAMPLE_BYTES);
+  poly_short_sample_plus(&vars->pg_phi1, in + HRSS_SAMPLE_BYTES);
   for (unsigned i = 0; i < N; i++) {
-    pg_phi1.v[i] *= 3;
+    vars->pg_phi1.v[i] *= 3;
   }
-  poly_mul_x_minus_1(&pg_phi1);
+  poly_mul_x_minus_1(&vars->pg_phi1);
 
-  struct poly pfg_phi1;
-  poly_mul(&pfg_phi1, &f, &pg_phi1);
+  poly_mul(&vars->scratch, &vars->pfg_phi1, &vars->f, &vars->pg_phi1);
 
-  struct poly pfg_phi1_inverse;
-  poly_invert(&pfg_phi1_inverse, &pfg_phi1);
+  poly_invert(&vars->scratch, &vars->pfg_phi1_inverse, &vars->pfg_phi1);
 
-  poly_mul(&pub->ph, &pfg_phi1_inverse, &pg_phi1);
-  poly_mul(&pub->ph, &pub->ph, &pg_phi1);
+  poly_mul(&vars->scratch, &pub->ph, &vars->pfg_phi1_inverse, &vars->pg_phi1);
+  poly_mul(&vars->scratch, &pub->ph, &pub->ph, &vars->pg_phi1);
   poly_clamp(&pub->ph);
 
-  poly_mul(&priv->ph_inverse, &pfg_phi1_inverse, &f);
-  poly_mul(&priv->ph_inverse, &priv->ph_inverse, &f);
+  poly_mul(&vars->scratch, &priv->ph_inverse, &vars->pfg_phi1_inverse,
+           &vars->f);
+  poly_mul(&vars->scratch, &priv->ph_inverse, &priv->ph_inverse, &vars->f);
   poly_clamp(&priv->ph_inverse);
+
+  OPENSSL_free(malloc_ptr);
+  return 1;
 }
 
 static const char kSharedKey[] = "shared key";
 
-void HRSS_encap(uint8_t out_ciphertext[POLY_BYTES],
-                uint8_t out_shared_key[32],
-                const struct HRSS_public_key *in_pub,
-                const uint8_t in[HRSS_SAMPLE_BYTES + HRSS_SAMPLE_BYTES]) {
+int HRSS_encap(uint8_t out_ciphertext[POLY_BYTES], uint8_t out_shared_key[32],
+               const struct HRSS_public_key *in_pub,
+               const uint8_t in[HRSS_SAMPLE_BYTES + HRSS_SAMPLE_BYTES]) {
   const struct public_key *pub =
       public_key_from_external((struct HRSS_public_key *)in_pub);
-  struct poly m, r, m_lifted;
-  poly_short_sample(&m, in);
-  poly_short_sample(&r, in + HRSS_SAMPLE_BYTES);
-  poly_lift(&m_lifted, &m);
 
-  struct poly prh_plus_m;
-  poly_mul(&prh_plus_m, &r, &pub->ph);
-  for (unsigned i = 0; i < N; i++) {
-    prh_plus_m.v[i] += m_lifted.v[i];
+  struct vars {
+    struct POLY_MUL_SCRATCH scratch;
+    struct poly m, r, m_lifted;
+    struct poly prh_plus_m;
+    SHA256_CTX hash_ctx;
+    uint8_t m_bytes[HRSS_POLY3_BYTES];
+    uint8_t r_bytes[HRSS_POLY3_BYTES];
+  };
+
+  void *malloc_ptr;
+  struct vars *const vars = malloc_align32(&malloc_ptr, sizeof(struct vars));
+  if (!vars) {
+    // If the caller ignores the return value the output will still be safe.
+    // The private key output is randomised in case it's used to encrypt and
+    // transmit something.
+    memset(out_ciphertext, 0, POLY_BYTES);
+    RAND_bytes(out_shared_key, 32);
+    return 0;
   }
 
-  poly_marshal(out_ciphertext, &prh_plus_m);
+  poly_short_sample(&vars->m, in);
+  poly_short_sample(&vars->r, in + HRSS_SAMPLE_BYTES);
+  poly_lift(&vars->m_lifted, &vars->m);
 
-  uint8_t m_bytes[HRSS_POLY3_BYTES], r_bytes[HRSS_POLY3_BYTES];
-  poly_marshal_mod3(m_bytes, &m);
-  poly_marshal_mod3(r_bytes, &r);
+  poly_mul(&vars->scratch, &vars->prh_plus_m, &vars->r, &pub->ph);
+  for (unsigned i = 0; i < N; i++) {
+    vars->prh_plus_m.v[i] += vars->m_lifted.v[i];
+  }
 
-  SHA256_CTX hash_ctx;
-  SHA256_Init(&hash_ctx);
-  SHA256_Update(&hash_ctx, kSharedKey, sizeof(kSharedKey));
-  SHA256_Update(&hash_ctx, m_bytes, sizeof(m_bytes));
-  SHA256_Update(&hash_ctx, r_bytes, sizeof(r_bytes));
-  SHA256_Update(&hash_ctx, out_ciphertext, POLY_BYTES);
-  SHA256_Final(out_shared_key, &hash_ctx);
+  poly_marshal(out_ciphertext, &vars->prh_plus_m);
+
+  poly_marshal_mod3(vars->m_bytes, &vars->m);
+  poly_marshal_mod3(vars->r_bytes, &vars->r);
+
+  SHA256_Init(&vars->hash_ctx);
+  SHA256_Update(&vars->hash_ctx, kSharedKey, sizeof(kSharedKey));
+  SHA256_Update(&vars->hash_ctx, vars->m_bytes, sizeof(vars->m_bytes));
+  SHA256_Update(&vars->hash_ctx, vars->r_bytes, sizeof(vars->r_bytes));
+  SHA256_Update(&vars->hash_ctx, out_ciphertext, POLY_BYTES);
+  SHA256_Final(out_shared_key, &vars->hash_ctx);
+
+  OPENSSL_free(malloc_ptr);
+  return 1;
 }
 
-void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
+int HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
                 const struct HRSS_private_key *in_priv,
                 const uint8_t *ciphertext, size_t ciphertext_len) {
   const struct private_key *priv =
       private_key_from_external((struct HRSS_private_key *)in_priv);
 
+  struct vars {
+    struct POLY_MUL_SCRATCH scratch;
+    uint8_t masked_key[SHA256_CBLOCK];
+    SHA256_CTX hash_ctx;
+    struct poly c;
+    struct poly f, cf;
+    struct poly3 cf3, m3;
+    struct poly m, m_lifted;
+    struct poly r;
+    struct poly3 r3;
+    uint8_t expected_ciphertext[HRSS_CIPHERTEXT_BYTES];
+    uint8_t m_bytes[HRSS_POLY3_BYTES];
+    uint8_t r_bytes[HRSS_POLY3_BYTES];
+    uint8_t shared_key[32];
+  };
+
+  void *malloc_ptr;
+  struct vars *const vars = malloc_align32(&malloc_ptr, sizeof(struct vars));
+  if (!vars) {
+    // If the caller ignores the return value the output will still be safe.
+    // The private key output is randomised in case it's used to encrypt and
+    // transmit something.
+    RAND_bytes(out_shared_key, HRSS_KEY_BYTES);
+    return 0;
+  }
+
   // This is HMAC, expanded inline rather than using the |HMAC| function so that
   // we can avoid dealing with possible allocation failures and so keep this
   // function infallible.
-  uint8_t masked_key[SHA256_CBLOCK];
-  OPENSSL_STATIC_ASSERT(sizeof(priv->hmac_key) <= sizeof(masked_key),
+  OPENSSL_STATIC_ASSERT(sizeof(priv->hmac_key) <= sizeof(vars->masked_key),
                         "HRSS HMAC key larger than SHA-256 block size");
   for (size_t i = 0; i < sizeof(priv->hmac_key); i++) {
-    masked_key[i] = priv->hmac_key[i] ^ 0x36;
+    vars->masked_key[i] = priv->hmac_key[i] ^ 0x36;
   }
-  OPENSSL_memset(masked_key + sizeof(priv->hmac_key), 0x36,
-                 sizeof(masked_key) - sizeof(priv->hmac_key));
+  OPENSSL_memset(vars->masked_key + sizeof(priv->hmac_key), 0x36,
+                 sizeof(vars->masked_key) - sizeof(priv->hmac_key));
 
-  SHA256_CTX hash_ctx;
-  SHA256_Init(&hash_ctx);
-  SHA256_Update(&hash_ctx, masked_key, sizeof(masked_key));
-  SHA256_Update(&hash_ctx, ciphertext, ciphertext_len);
+  SHA256_Init(&vars->hash_ctx);
+  SHA256_Update(&vars->hash_ctx, vars->masked_key, sizeof(vars->masked_key));
+  SHA256_Update(&vars->hash_ctx, ciphertext, ciphertext_len);
   uint8_t inner_digest[SHA256_DIGEST_LENGTH];
-  SHA256_Final(inner_digest, &hash_ctx);
+  SHA256_Final(inner_digest, &vars->hash_ctx);
 
   for (size_t i = 0; i < sizeof(priv->hmac_key); i++) {
-    masked_key[i] ^= (0x5c ^ 0x36);
+    vars->masked_key[i] ^= (0x5c ^ 0x36);
   }
-  OPENSSL_memset(masked_key + sizeof(priv->hmac_key), 0x5c,
-                 sizeof(masked_key) - sizeof(priv->hmac_key));
+  OPENSSL_memset(vars->masked_key + sizeof(priv->hmac_key), 0x5c,
+                 sizeof(vars->masked_key) - sizeof(priv->hmac_key));
 
-  SHA256_Init(&hash_ctx);
-  SHA256_Update(&hash_ctx, masked_key, sizeof(masked_key));
-  SHA256_Update(&hash_ctx, inner_digest, sizeof(inner_digest));
+  SHA256_Init(&vars->hash_ctx);
+  SHA256_Update(&vars->hash_ctx, vars->masked_key, sizeof(vars->masked_key));
+  SHA256_Update(&vars->hash_ctx, inner_digest, sizeof(inner_digest));
   OPENSSL_STATIC_ASSERT(HRSS_KEY_BYTES == SHA256_DIGEST_LENGTH,
                         "HRSS shared key length incorrect");
-  SHA256_Final(out_shared_key, &hash_ctx);
+  SHA256_Final(out_shared_key, &vars->hash_ctx);
 
-  struct poly c;
   // If the ciphertext is publicly invalid then a random shared key is still
   // returned to simply the logic of the caller, but this path is not constant
   // time.
   if (ciphertext_len != HRSS_CIPHERTEXT_BYTES ||
-      !poly_unmarshal(&c, ciphertext)) {
-    return;
+      !poly_unmarshal(&vars->c, ciphertext)) {
+    goto out;
   }
 
-  struct poly f, cf;
-  struct poly3 cf3, m3;
-  poly_from_poly3(&f, &priv->f);
-  poly_mul(&cf, &c, &f);
-  poly3_from_poly(&cf3, &cf);
+  poly_from_poly3(&vars->f, &priv->f);
+  poly_mul(&vars->scratch, &vars->cf, &vars->c, &vars->f);
+  poly3_from_poly(&vars->cf3, &vars->cf);
   // Note that cf3 is not reduced mod Φ(N). That reduction is deferred.
-  HRSS_poly3_mul(&m3, &cf3, &priv->f_inverse);
+  HRSS_poly3_mul(&vars->m3, &vars->cf3, &priv->f_inverse);
 
-  struct poly m, m_lifted;
-  poly_from_poly3(&m, &m3);
-  poly_lift(&m_lifted, &m);
+  poly_from_poly3(&vars->m, &vars->m3);
+  poly_lift(&vars->m_lifted, &vars->m);
 
-  struct poly r;
   for (unsigned i = 0; i < N; i++) {
-    r.v[i] = c.v[i] - m_lifted.v[i];
+    vars->r.v[i] = vars->c.v[i] - vars->m_lifted.v[i];
   }
-  poly_mul(&r, &r, &priv->ph_inverse);
-  poly_mod_phiN(&r);
-  poly_clamp(&r);
+  poly_mul(&vars->scratch, &vars->r, &vars->r, &priv->ph_inverse);
+  poly_mod_phiN(&vars->r);
+  poly_clamp(&vars->r);
 
-  struct poly3 r3;
-  crypto_word_t ok = poly3_from_poly_checked(&r3, &r);
+  crypto_word_t ok = poly3_from_poly_checked(&vars->r3, &vars->r);
 
   // [NTRUCOMP] section 5.1 includes ReEnc2 and a proof that it's valid. Rather
   // than do an expensive |poly_mul|, it rebuilds |c'| from |c - lift(m)|
@@ -2050,32 +2150,34 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   // The |poly_marshal| here then is just confirming that |poly_unmarshal| is
   // strict and could be omitted.
 
-  uint8_t expected_ciphertext[HRSS_CIPHERTEXT_BYTES];
   OPENSSL_STATIC_ASSERT(HRSS_CIPHERTEXT_BYTES == POLY_BYTES,
                         "ciphertext is the wrong size");
-  assert(ciphertext_len == sizeof(expected_ciphertext));
-  poly_marshal(expected_ciphertext, &c);
+  assert(ciphertext_len == sizeof(vars->expected_ciphertext));
+  poly_marshal(vars->expected_ciphertext, &vars->c);
 
-  uint8_t m_bytes[HRSS_POLY3_BYTES];
-  uint8_t r_bytes[HRSS_POLY3_BYTES];
-  poly_marshal_mod3(m_bytes, &m);
-  poly_marshal_mod3(r_bytes, &r);
+  poly_marshal_mod3(vars->m_bytes, &vars->m);
+  poly_marshal_mod3(vars->r_bytes, &vars->r);
 
-  ok &= constant_time_is_zero_w(CRYPTO_memcmp(ciphertext, expected_ciphertext,
-                                              sizeof(expected_ciphertext)));
+  ok &= constant_time_is_zero_w(
+      CRYPTO_memcmp(ciphertext, vars->expected_ciphertext,
+                    sizeof(vars->expected_ciphertext)));
 
-  uint8_t shared_key[32];
-  SHA256_Init(&hash_ctx);
-  SHA256_Update(&hash_ctx, kSharedKey, sizeof(kSharedKey));
-  SHA256_Update(&hash_ctx, m_bytes, sizeof(m_bytes));
-  SHA256_Update(&hash_ctx, r_bytes, sizeof(r_bytes));
-  SHA256_Update(&hash_ctx, expected_ciphertext, sizeof(expected_ciphertext));
-  SHA256_Final(shared_key, &hash_ctx);
+  SHA256_Init(&vars->hash_ctx);
+  SHA256_Update(&vars->hash_ctx, kSharedKey, sizeof(kSharedKey));
+  SHA256_Update(&vars->hash_ctx, vars->m_bytes, sizeof(vars->m_bytes));
+  SHA256_Update(&vars->hash_ctx, vars->r_bytes, sizeof(vars->r_bytes));
+  SHA256_Update(&vars->hash_ctx, vars->expected_ciphertext,
+                sizeof(vars->expected_ciphertext));
+  SHA256_Final(vars->shared_key, &vars->hash_ctx);
 
-  for (unsigned i = 0; i < sizeof(shared_key); i++) {
+  for (unsigned i = 0; i < sizeof(vars->shared_key); i++) {
     out_shared_key[i] =
-        constant_time_select_8(ok, shared_key[i], out_shared_key[i]);
+        constant_time_select_8(ok, vars->shared_key[i], out_shared_key[i]);
   }
+
+out:
+  OPENSSL_free(malloc_ptr);
+  return 1;
 }
 
 void HRSS_marshal_public_key(uint8_t out[HRSS_PUBLIC_KEY_BYTES],

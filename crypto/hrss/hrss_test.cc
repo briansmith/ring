@@ -143,7 +143,7 @@ TEST(HRSS, Basic) {
 
   HRSS_public_key pub;
   HRSS_private_key priv;
-  HRSS_generate_key(&pub, &priv, generate_key_entropy);
+  ASSERT_TRUE(HRSS_generate_key(&pub, &priv, generate_key_entropy));
 
   uint8_t encap_entropy[HRSS_ENCAP_BYTES];
   for (unsigned i = 0; i < sizeof(encap_entropy); i++) {
@@ -157,10 +157,10 @@ TEST(HRSS, Basic) {
 
   uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
   uint8_t shared_key[HRSS_KEY_BYTES];
-  HRSS_encap(ciphertext, shared_key, &pub2, encap_entropy);
+  ASSERT_TRUE(HRSS_encap(ciphertext, shared_key, &pub2, encap_entropy));
 
   uint8_t shared_key2[HRSS_KEY_BYTES];
-  HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext));
+  ASSERT_TRUE(HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext)));
 
   EXPECT_EQ(Bytes(shared_key), Bytes(shared_key2));
 }
@@ -173,7 +173,7 @@ TEST(HRSS, Random) {
 
     HRSS_public_key pub;
     HRSS_private_key priv;
-    HRSS_generate_key(&pub, &priv, generate_key_entropy);
+    ASSERT_TRUE(HRSS_generate_key(&pub, &priv, generate_key_entropy));
 
     for (unsigned j = 0; j < 10; j++) {
       uint8_t encap_entropy[HRSS_ENCAP_BYTES];
@@ -182,10 +182,11 @@ TEST(HRSS, Random) {
 
       uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
       uint8_t shared_key[HRSS_KEY_BYTES];
-      HRSS_encap(ciphertext, shared_key, &pub, encap_entropy);
+      ASSERT_TRUE(HRSS_encap(ciphertext, shared_key, &pub, encap_entropy));
 
       uint8_t shared_key2[HRSS_KEY_BYTES];
-      HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext));
+      ASSERT_TRUE(
+          HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext)));
       EXPECT_EQ(Bytes(shared_key), Bytes(shared_key2));
 
       uint32_t offset;
@@ -193,7 +194,8 @@ TEST(HRSS, Random) {
       uint8_t bit;
       RAND_bytes(&bit, sizeof(bit));
       ciphertext[offset % sizeof(ciphertext)] ^= (1 << (bit & 7));
-      HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext));
+      ASSERT_TRUE(
+          HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext)));
       EXPECT_NE(Bytes(shared_key), Bytes(shared_key2));
     }
   }
@@ -216,7 +218,7 @@ TEST(HRSS, Golden) {
   HRSS_private_key priv;
   OPENSSL_memset(&pub, 0, sizeof(pub));
   OPENSSL_memset(&priv, 0, sizeof(priv));
-  HRSS_generate_key(&pub, &priv, generate_key_entropy);
+  ASSERT_TRUE(HRSS_generate_key(&pub, &priv, generate_key_entropy));
 
   static const uint8_t kExpectedPub[HRSS_PUBLIC_KEY_BYTES] = {
       0x4a, 0x21, 0x39, 0x7c, 0xb4, 0xa6, 0x58, 0x15, 0x35, 0x77, 0xe4, 0x2a,
@@ -325,7 +327,7 @@ TEST(HRSS, Golden) {
   }
   uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
   uint8_t shared_key[HRSS_KEY_BYTES];
-  HRSS_encap(ciphertext, shared_key, &pub, encap_entropy);
+  ASSERT_TRUE(HRSS_encap(ciphertext, shared_key, &pub, encap_entropy));
 
   static const uint8_t kExpectedCiphertext[HRSS_CIPHERTEXT_BYTES] = {
       0xe0, 0xc0, 0x77, 0xeb, 0x7a, 0x48, 0x7d, 0x74, 0x4e, 0x4f, 0x6d, 0xb9,
@@ -433,13 +435,13 @@ TEST(HRSS, Golden) {
   };
   EXPECT_EQ(Bytes(shared_key), Bytes(kExpectedSharedKey));
 
-  HRSS_decap(shared_key, &priv, ciphertext, sizeof(ciphertext));
+  ASSERT_TRUE(HRSS_decap(shared_key, &priv, ciphertext, sizeof(ciphertext)));
   EXPECT_EQ(Bytes(shared_key, sizeof(shared_key)),
             Bytes(kExpectedSharedKey, sizeof(kExpectedSharedKey)));
 
   // Corrupt the ciphertext and ensure that the failure key is constant.
   ciphertext[50] ^= 4;
-  HRSS_decap(shared_key, &priv, ciphertext, sizeof(ciphertext));
+  ASSERT_TRUE(HRSS_decap(shared_key, &priv, ciphertext, sizeof(ciphertext)));
 
   static const uint8_t kExpectedFailureKey[HRSS_KEY_BYTES] = {
       0x13, 0xf7, 0xed, 0x51, 0x00, 0xbc, 0xca, 0x29, 0xdf, 0xb0, 0xd0,
@@ -460,6 +462,23 @@ TEST(HRSS, ABI) {
   alignas(16) uint16_t r[N + 3];
   alignas(16) uint16_t a[N + 3] = {0};
   alignas(16) uint16_t b[N + 3] = {0};
-  CHECK_ABI(poly_Rq_mul, r, a, b);
+
+  uint8_t kCanary[256];
+  OPENSSL_STATIC_ASSERT(sizeof(kCanary) % 32 == 0, "needed for alignment");
+  memset(kCanary, 42, sizeof(kCanary));
+  alignas(32) uint8_t
+      scratch[sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE + sizeof(kCanary)];
+  OPENSSL_memcpy(scratch, kCanary, sizeof(kCanary));
+  OPENSSL_memcpy(scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE, kCanary,
+                 sizeof(kCanary));
+
+  // The function should not touch more than |POLY_MUL_RQ_SCRATCH_SPACE| bytes
+  // of |scratch|.
+  CHECK_ABI(poly_Rq_mul, r, a, b, &scratch[sizeof(kCanary)]);
+
+  EXPECT_EQ(Bytes(scratch, sizeof(kCanary)), Bytes(kCanary));
+  EXPECT_EQ(Bytes(scratch + sizeof(kCanary) + POLY_MUL_RQ_SCRATCH_SPACE,
+                  sizeof(kCanary)),
+            Bytes(kCanary));
 }
 #endif  // POLY_RQ_MUL_ASM && SUPPORTS_ABI_TEST

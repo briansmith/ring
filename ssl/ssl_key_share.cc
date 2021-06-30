@@ -206,7 +206,10 @@ class CECPQ2KeyShare : public SSLKeyShare {
     uint8_t hrss_entropy[HRSS_GENERATE_KEY_BYTES];
     HRSS_public_key hrss_public_key;
     RAND_bytes(hrss_entropy, sizeof(hrss_entropy));
-    HRSS_generate_key(&hrss_public_key, &hrss_private_key_, hrss_entropy);
+    if (!HRSS_generate_key(&hrss_public_key, &hrss_private_key_,
+                           hrss_entropy)) {
+      return false;
+    }
 
     uint8_t hrss_public_key_bytes[HRSS_PUBLIC_KEY_BYTES];
     HRSS_marshal_public_key(hrss_public_key_bytes, &hrss_public_key);
@@ -243,9 +246,10 @@ class CECPQ2KeyShare : public SSLKeyShare {
     uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
     uint8_t entropy[HRSS_ENCAP_BYTES];
     RAND_bytes(entropy, sizeof(entropy));
-    HRSS_encap(ciphertext, secret.data() + 32, &peer_public_key, entropy);
 
-    if (!CBB_add_bytes(out_public_key, x25519_public_key,
+    if (!HRSS_encap(ciphertext, secret.data() + 32, &peer_public_key,
+                    entropy) ||
+        !CBB_add_bytes(out_public_key, x25519_public_key,
                        sizeof(x25519_public_key)) ||
         !CBB_add_bytes(out_public_key, ciphertext, sizeof(ciphertext))) {
       return false;
@@ -272,8 +276,10 @@ class CECPQ2KeyShare : public SSLKeyShare {
       return false;
     }
 
-    HRSS_decap(secret.data() + 32, &hrss_private_key_, peer_key.data() + 32,
-               peer_key.size() - 32);
+    if (!HRSS_decap(secret.data() + 32, &hrss_private_key_,
+                    peer_key.data() + 32, peer_key.size() - 32)) {
+      return false;
+    }
 
     *out_secret = std::move(secret);
     return true;
