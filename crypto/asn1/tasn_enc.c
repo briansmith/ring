@@ -63,7 +63,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
-#include "asn1_locl.h"
+#include "internal.h"
 
 
 static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,

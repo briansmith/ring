@@ -63,7 +63,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
-#include "asn1_locl.h"
+#include "internal.h"
 #include "../internal.h"
 
 

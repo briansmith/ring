@@ -59,7 +59,7 @@
 #define _POSIX_C_SOURCE 201410L  /* for gmtime_r */
 #endif
 
-#include "asn1_locl.h"
+#include "internal.h"
 
 #include <time.h>
 

@@ -66,7 +66,7 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
-#include "../asn1/asn1_locl.h"
+#include "../asn1/internal.h"
 #include "../internal.h"
 
 

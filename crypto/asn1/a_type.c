@@ -61,7 +61,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
-#include "asn1_locl.h"
+#include "internal.h"
 
 
 int ASN1_TYPE_get(const ASN1_TYPE *a)

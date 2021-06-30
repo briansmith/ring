@@ -63,7 +63,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "asn1_locl.h"
+#include "internal.h"
 #include "../bytestring/internal.h"
 
 static int is_printable(uint32_t value);

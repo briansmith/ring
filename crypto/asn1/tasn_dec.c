@@ -65,7 +65,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
-#include "asn1_locl.h"
+#include "internal.h"
 
 /*
  * Constructed types with a recursive definition (such as can be found in PKCS7)

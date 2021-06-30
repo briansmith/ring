@@ -61,7 +61,7 @@
 #include <openssl/digest.h>
 #include <openssl/obj.h>
 
-#include "../asn1/asn1_locl.h"
+#include "../asn1/internal.h"
 
 
 ASN1_SEQUENCE(X509_ALGOR) = {

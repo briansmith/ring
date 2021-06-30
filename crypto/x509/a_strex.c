@@ -64,7 +64,7 @@
 #include <openssl/obj.h>
 
 #include "charmap.h"
-#include "../asn1/asn1_locl.h"
+#include "../asn1/internal.h"
 
 /*
  * ASN1_STRING_print_ex() and X509_NAME_print_ex(). Enhanced string and name
