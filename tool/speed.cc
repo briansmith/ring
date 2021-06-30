@@ -270,6 +270,16 @@ static bool SpeedRSA(const std::string &selected) {
       return false;
     }
     results.Print(name + " verify (fresh key)");
+
+    if (!TimeFunction(&results, [&]() -> bool {
+          return bssl::UniquePtr<RSA>(RSA_private_key_from_bytes(
+                     kRSAKeys[i].key, kRSAKeys[i].key_len)) != nullptr;
+        })) {
+      fprintf(stderr, "Failed to parse %s key.\n", name.c_str());
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    results.Print(name + " private key parse");
   }
 
   return true;
