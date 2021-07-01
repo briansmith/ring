@@ -38,8 +38,7 @@ key=value2
   ASSERT_TRUE(NCONF_load_bio(conf.get(), bio.get(), nullptr));
   EXPECT_TRUE(NCONF_get_section(conf.get(), "section_name"));
   EXPECT_FALSE(NCONF_get_section(conf.get(), "other_section"));
-  // Doesn't work but should.
-  // EXPECT_STREQ(NCONF_get_string(conf.get(), nullptr, "key"), "value");
+  EXPECT_STREQ(NCONF_get_string(conf.get(), nullptr, "key"), "value");
   EXPECT_STREQ(NCONF_get_string(conf.get(), "section_name", "key"), "value2");
   EXPECT_STREQ(NCONF_get_string(conf.get(), "other_section", "key"), nullptr);
 }

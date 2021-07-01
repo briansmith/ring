@@ -77,6 +77,8 @@ struct conf_st {
   LHASH_OF(CONF_VALUE) *data;
 };
 
+static const char kDefaultSectionName[] = "default";
+
 // The maximum length we can grow a value to after variable expansion. 64k
 // should be more than enough for all reasonable uses.
 #define MAX_CONF_VALUE_LENGTH 65536
@@ -395,6 +397,10 @@ const char *NCONF_get_string(const CONF *conf, const char *section,
                              const char *name) {
   CONF_VALUE template, *value;
 
+  if (section == NULL) {
+    section = kDefaultSectionName;
+  }
+
   OPENSSL_memset(&template, 0, sizeof(template));
   template.section = (char *) section;
   template.name = (char *) name;
@@ -543,7 +549,7 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
     goto err;
   }
 
-  section = OPENSSL_strdup("default");
+  section = OPENSSL_strdup(kDefaultSectionName);
   if (section == NULL) {
     OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
     goto err;
