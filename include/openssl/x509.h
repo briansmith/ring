@@ -1796,12 +1796,6 @@ OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_txt(
     STACK_OF(X509_ATTRIBUTE) **x, const char *attrname, int type,
     const unsigned char *bytes, int len);
 
-// TODO(davidben): Document or remove this function. The behavior of |lastpos|
-// is complex.
-OPENSSL_EXPORT void *X509at_get0_data_by_OBJ(STACK_OF(X509_ATTRIBUTE) *x,
-                                             ASN1_OBJECT *obj, int lastpos,
-                                             int type);
-
 // X509_ATTRIBUTE_create_by_NID returns a newly-allocated |X509_ATTRIBUTE| of
 // type |nid|, or NULL on error. The value is determined as in
 // |X509_ATTRIBUTE_set1_data|.
