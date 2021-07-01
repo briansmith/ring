@@ -297,6 +297,9 @@ OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
 // their needs). Thus this exists only to allow code to compile.
 #define EVP_MD_CTX_FLAG_NON_FIPS_ALLOW 0
 
+// EVP_MD_nid calls |EVP_MD_type|.
+OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
+
 
 struct evp_md_pctx_ops;
 

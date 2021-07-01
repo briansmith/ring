@@ -68,6 +68,8 @@
 
 int EVP_MD_type(const EVP_MD *md) { return md->type; }
 
+int EVP_MD_nid(const EVP_MD *md) { return EVP_MD_type(md); }
+
 uint32_t EVP_MD_flags(const EVP_MD *md) { return md->flags; }
 
 size_t EVP_MD_size(const EVP_MD *md) { return md->md_size; }

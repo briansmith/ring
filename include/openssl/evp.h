@@ -867,6 +867,12 @@ OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
                                                           void *arg),
                                          void *arg);
 
+OPENSSL_EXPORT void EVP_MD_do_all(void (*callback)(const EVP_MD *cipher,
+                                                   const char *name,
+                                                   const char *unused,
+                                                   void *arg),
+                                  void *arg);
+
 // i2d_PrivateKey marshals a private key from |key| to an ASN.1, DER
 // structure. If |outp| is not NULL then the result is written to |*outp| and
 // |*outp| is advanced just past the output. It returns the number of bytes in
