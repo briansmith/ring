@@ -82,7 +82,9 @@ struct conf_st {
 #define MAX_CONF_VALUE_LENGTH 65536
 
 static uint32_t conf_value_hash(const CONF_VALUE *v) {
-  return (OPENSSL_strhash(v->section) << 2) ^ OPENSSL_strhash(v->name);
+  const uint32_t section_hash = v->section ? OPENSSL_strhash(v->section) : 0;
+  const uint32_t name_hash = v->name ? OPENSSL_strhash(v->name) : 0;
+  return (section_hash << 2) ^ name_hash;
 }
 
 static int conf_value_cmp(const CONF_VALUE *a, const CONF_VALUE *b) {
