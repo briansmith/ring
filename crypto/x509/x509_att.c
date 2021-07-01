@@ -76,11 +76,7 @@ int X509at_get_attr_by_NID(const STACK_OF(X509_ATTRIBUTE) *x, int nid,
 {
     const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
     if (obj == NULL) {
-        /* TODO(davidben): Return -1 here. Callers often check the result
-         * against -1 without handling a theoretical -2 output. Reporting a
-         * different result should not be necessary because invalid NIDs are
-         * almost always a programmer error.  */
-        return -2;
+        return -1;
     }
     return X509at_get_attr_by_OBJ(x, obj, lastpos);
 }
