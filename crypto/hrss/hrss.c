@@ -1871,9 +1871,7 @@ static struct public_key *public_key_from_external(
       sizeof(struct HRSS_public_key) >= sizeof(struct public_key) + 15,
       "HRSS public key too small");
 
-  uintptr_t p = (uintptr_t)ext;
-  p = (p + 15) & ~15;
-  return (struct public_key *)p;
+  return align_pointer(ext->opaque, 16);
 }
 
 // private_key_from_external does the same thing as |public_key_from_external|,
@@ -1885,9 +1883,7 @@ static struct private_key *private_key_from_external(
       sizeof(struct HRSS_private_key) >= sizeof(struct private_key) + 15,
       "HRSS private key too small");
 
-  uintptr_t p = (uintptr_t)ext;
-  p = (p + 15) & ~15;
-  return (struct private_key *)p;
+  return align_pointer(ext->opaque, 16);
 }
 
 void HRSS_generate_key(
