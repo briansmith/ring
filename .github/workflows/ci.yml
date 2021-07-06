@@ -302,11 +302,11 @@ jobs:
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
-          mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          mk/cargo.sh test -vv --all-targets --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       - if: ${{ contains(matrix.host_os, 'windows') }}
         run: |
-          cargo test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+          cargo test -vv --all-targets --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
