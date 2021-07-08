@@ -118,7 +118,6 @@ struct X509_name_entry_st {
   ASN1_OBJECT *object;
   ASN1_STRING *value;
   int set;
-  int size;  // temp variable
 } /* X509_NAME_ENTRY */;
 
 DEFINE_STACK_OF(X509_NAME_ENTRY)
