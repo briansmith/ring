@@ -17071,6 +17071,47 @@ func addEncryptedClientHelloTests() {
 			},
 		})
 
+		// Test that ECH can be used with client certificates. In particular,
+		// the name override logic should not interfere with the server.
+		// Test the server can accept ECH.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-ClientAuth",
+			config: Config{
+				Certificates:    []Certificate{rsaCertificate},
+				ClientECHConfig: echConfig.ECHConfig,
+			},
+			flags: []string{
+				"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig.Key),
+				"-ech-is-retry-config", "1",
+				"-expect-ech-accept",
+				"-require-any-client-certificate",
+			},
+			expectations: connectionExpectations{
+				echAccepted: true,
+			},
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Server-Decline-ClientAuth",
+			config: Config{
+				Certificates:    []Certificate{rsaCertificate},
+				ClientECHConfig: echConfig.ECHConfig,
+				Bugs: ProtocolBugs{
+					ExpectECHRetryConfigs: CreateECHConfigList(echConfig1.ECHConfig.Raw),
+				},
+			},
+			flags: []string{
+				"-ech-server-config", base64FlagValue(echConfig1.ECHConfig.Raw),
+				"-ech-server-key", base64FlagValue(echConfig1.Key),
+				"-ech-is-retry-config", "1",
+				"-require-any-client-certificate",
+			},
+		})
+
 		// Test the client's behavior when the server ignores ECH GREASE.
 		testCases = append(testCases, testCase{
 			testType: clientTest,

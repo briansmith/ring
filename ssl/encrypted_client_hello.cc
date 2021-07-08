@@ -1003,7 +1003,7 @@ void SSL_get0_ech_name_override(const SSL *ssl, const char **out_name,
   // this point, |ech_status| will be |ssl_ech_none|. See the
   // ECH-Client-Reject-EarlyDataReject-OverrideNameOnRetry tests in runner.go.
   const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
-  if (hs && ssl->s3->ech_status == ssl_ech_rejected) {
+  if (!ssl->server && hs && ssl->s3->ech_status == ssl_ech_rejected) {
     *out_name = reinterpret_cast<const char *>(
         hs->selected_ech_config->public_name.data());
     *out_name_len = hs->selected_ech_config->public_name.size();
