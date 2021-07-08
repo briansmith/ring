@@ -285,8 +285,10 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   // pointer to the 'top' of snum
   wnump = &(snum->d[num_n - 1]);
 
-  // Setup to 'res'
-  res->neg = (numerator->neg ^ divisor->neg);
+  // Setup |res|. |numerator| and |res| may alias, so we save |numerator->neg|
+  // for later.
+  const int numerator_neg = numerator->neg;
+  res->neg = (numerator_neg ^ divisor->neg);
   if (!bn_wexpand(res, loop + 1)) {
     goto err;
   }
@@ -379,14 +381,11 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   bn_set_minimal_width(snum);
 
   if (rem != NULL) {
-    // Keep a copy of the neg flag in numerator because if |rem| == |numerator|
-    // |BN_rshift| will overwrite it.
-    int neg = numerator->neg;
     if (!BN_rshift(rem, snum, norm_shift)) {
       goto err;
     }
     if (!BN_is_zero(rem)) {
-      rem->neg = neg;
+      rem->neg = numerator_neg;
     }
   }
 
