@@ -778,11 +778,9 @@ static int send_flight(SSL *ssl) {
 
   dtls1_update_mtu(ssl);
 
-  int ret = -1;
-  uint8_t *packet = (uint8_t *)OPENSSL_malloc(ssl->d1->mtu);
-  if (packet == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
+  Array<uint8_t> packet;
+  if (!packet.Init(ssl->d1->mtu)) {
+    return -1;
   }
 
   while (ssl->d1->outgoing_written < ssl->d1->outgoing_messages_len) {
@@ -790,31 +788,26 @@ static int send_flight(SSL *ssl) {
     uint32_t old_offset = ssl->d1->outgoing_offset;
 
     size_t packet_len;
-    if (!seal_next_packet(ssl, packet, &packet_len, ssl->d1->mtu)) {
-      goto err;
+    if (!seal_next_packet(ssl, packet.data(), &packet_len, packet.size())) {
+      return -1;
     }
 
-    int bio_ret = BIO_write(ssl->wbio.get(), packet, packet_len);
+    int bio_ret = BIO_write(ssl->wbio.get(), packet.data(), packet_len);
     if (bio_ret <= 0) {
       // Retry this packet the next time around.
       ssl->d1->outgoing_written = old_written;
       ssl->d1->outgoing_offset = old_offset;
       ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
-      ret = bio_ret;
-      goto err;
+      return bio_ret;
     }
   }
 
   if (BIO_flush(ssl->wbio.get()) <= 0) {
     ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
-    goto err;
+    return -1;
   }
 
-  ret = 1;
-
-err:
-  OPENSSL_free(packet);
-  return ret;
+  return 1;
 }
 
 int dtls1_flush_flight(SSL *ssl) {
