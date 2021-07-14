@@ -10,6 +10,7 @@ add_executable(
   digest.cc
   fd.cc
   file.cc
+  generate_ech.cc
   generate_ed25519.cc
   genrsa.cc
   pkcs12.cc
