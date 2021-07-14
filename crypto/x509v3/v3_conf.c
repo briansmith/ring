@@ -69,6 +69,7 @@
 #include <openssl/x509v3.h>
 
 #include "../internal.h"
+#include "../x509/internal.h"
 #include "internal.h"
 
 static int v3_check_critical(const char **value);

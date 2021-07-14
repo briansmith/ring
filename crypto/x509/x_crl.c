@@ -66,6 +66,7 @@
 #include <openssl/x509v3.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 /*
  * Method to handle CRL access. In general a CRL could be very large (several

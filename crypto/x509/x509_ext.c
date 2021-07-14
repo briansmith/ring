@@ -62,6 +62,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "internal.h"
+
 int X509_CRL_get_ext_count(const X509_CRL *x)
 {
     return (X509v3_get_ext_count(x->crl->extensions));

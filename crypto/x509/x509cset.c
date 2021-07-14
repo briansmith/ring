@@ -60,6 +60,7 @@
 #include <openssl/x509.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 int X509_CRL_set_version(X509_CRL *x, long version)
 {

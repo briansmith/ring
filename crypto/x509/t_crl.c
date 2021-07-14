@@ -86,7 +86,13 @@ int X509_CRL_print(BIO *out, X509_CRL *x)
     BIO_printf(out, "Certificate Revocation List (CRL):\n");
     l = X509_CRL_get_version(x);
     BIO_printf(out, "%8sVersion %lu (0x%lx)\n", "", l + 1, l);
-    X509_signature_print(out, x->sig_alg, NULL);
+    const X509_ALGOR *sig_alg;
+    const ASN1_BIT_STRING *signature;
+    X509_CRL_get0_signature(x, &signature, &sig_alg);
+    // Note this and the other |X509_signature_print| call print the outer
+    // signature algorithm twice, rather than both the inner and outer ones.
+    // This matches OpenSSL, though it was probably a bug.
+    X509_signature_print(out, sig_alg, NULL);
     p = X509_NAME_oneline(X509_CRL_get_issuer(x), NULL, 0);
     BIO_printf(out, "%8sIssuer: %s\n", "", p);
     OPENSSL_free(p);
@@ -99,7 +105,8 @@ int X509_CRL_print(BIO *out, X509_CRL *x)
         BIO_printf(out, "NONE");
     BIO_printf(out, "\n");
 
-    X509V3_extensions_print(out, "CRL extensions", x->crl->extensions, 0, 8);
+    X509V3_extensions_print(out, "CRL extensions", X509_CRL_get0_extensions(x),
+                            0, 8);
 
     rev = X509_CRL_get_REVOKED(x);
 
@@ -118,7 +125,7 @@ int X509_CRL_print(BIO *out, X509_CRL *x)
         X509V3_extensions_print(out, "CRL entry extensions",
                                 r->extensions, 0, 8);
     }
-    X509_signature_print(out, x->sig_alg, x->signature);
+    X509_signature_print(out, sig_alg, signature);
 
     return 1;
 
