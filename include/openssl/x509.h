@@ -134,12 +134,6 @@ struct X509_name_st {
 
 DEFINE_STACK_OF(X509_NAME)
 
-struct X509_extension_st {
-  ASN1_OBJECT *object;
-  ASN1_BOOLEAN critical;
-  ASN1_OCTET_STRING *value;
-} /* X509_EXTENSION */;
-
 typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
 
 DEFINE_STACK_OF(X509_EXTENSION)
@@ -1702,7 +1696,7 @@ OPENSSL_EXPORT ASN1_OCTET_STRING *X509_EXTENSION_get_data(X509_EXTENSION *ne);
 
 // X509_EXTENSION_get_critical returns one if |ex| is critical and zero
 // otherwise.
-OPENSSL_EXPORT int X509_EXTENSION_get_critical(X509_EXTENSION *ex);
+OPENSSL_EXPORT int X509_EXTENSION_get_critical(const X509_EXTENSION *ex);
 
 // X509at_get_attr_count returns the number of attributes in |x|.
 OPENSSL_EXPORT int X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x);

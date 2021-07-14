@@ -107,20 +107,20 @@ int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag,
 {
     void *ext_str = NULL;
     char *value = NULL;
-    const unsigned char *p;
     const X509V3_EXT_METHOD *method;
     STACK_OF(CONF_VALUE) *nval = NULL;
     int ok = 1;
 
     if (!(method = X509V3_EXT_get(ext)))
         return unknown_ext_print(out, ext, flag, indent, 0);
-    p = ext->value->data;
-    if (method->it)
-        ext_str =
-            ASN1_item_d2i(NULL, &p, ext->value->length,
-                          ASN1_ITEM_ptr(method->it));
-    else
-        ext_str = method->d2i(NULL, &p, ext->value->length);
+    const ASN1_STRING *ext_data = X509_EXTENSION_get_data(ext);
+    const unsigned char *p = ASN1_STRING_get0_data(ext_data);
+    if (method->it) {
+        ext_str = ASN1_item_d2i(NULL, &p, ASN1_STRING_length(ext_data),
+                                ASN1_ITEM_ptr(method->it));
+    } else {
+        ext_str = method->d2i(NULL, &p, ASN1_STRING_length(ext_data));
+    }
 
     if (!ext_str)
         return unknown_ext_print(out, ext, flag, indent, 1);
@@ -183,7 +183,7 @@ int X509V3_extensions_print(BIO *bp, const char *title,
             return 0;
         if (!X509V3_EXT_print(bp, ex, flag, indent + 4)) {
             BIO_printf(bp, "%*s", indent + 4, "");
-            ASN1_STRING_print(bp, ex->value);
+            ASN1_STRING_print(bp, X509_EXTENSION_get_data(ex));
         }
         if (BIO_write(bp, "\n", 1) <= 0)
             return 0;
@@ -207,8 +207,11 @@ static int unknown_ext_print(BIO *out, X509_EXTENSION *ext,
         return 1;
 
     case X509V3_EXT_PARSE_UNKNOWN:
-    case X509V3_EXT_DUMP_UNKNOWN:
-        return BIO_hexdump(out, ext->value->data, ext->value->length, indent);
+    case X509V3_EXT_DUMP_UNKNOWN: {
+        const ASN1_STRING *data = X509_EXTENSION_get_data(ext);
+        return BIO_hexdump(out, ASN1_STRING_get0_data(data),
+                           ASN1_STRING_length(data), indent);
+    }
 
     default:
         return 1;
