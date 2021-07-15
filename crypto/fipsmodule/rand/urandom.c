@@ -367,6 +367,10 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
   return 1;
 }
 
+void CRYPTO_init_sysrand(void) {
+  CRYPTO_once(rand_once_bss_get(), init_once);
+}
+
 // CRYPTO_sysrand puts |requested| random bytes into |out|.
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/0)) {
@@ -375,18 +379,12 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   }
 }
 
-void CRYPTO_init_sysrand(void) {
-  CRYPTO_once(rand_once_bss_get(), init_once);
-}
-
-#if defined(BORINGSSL_FIPS)
 void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
   if (!fill_with_entropy(out, requested, /*block=*/1, /*seed=*/1)) {
     perror("entropy fill failed");
     abort();
   }
 }
-#endif  // BORINGSSL_FIPS
 
 int CRYPTO_sysrand_if_available(uint8_t *out, size_t requested) {
   if (fill_with_entropy(out, requested, /*block=*/0, /*seed=*/0)) {

@@ -293,7 +293,7 @@ static void rand_get_seed(struct rand_thread_state *state,
                           int *out_used_cpu) {
   // If not in FIPS mode, we don't overread from the system entropy source and
   // we don't depend only on the hardware RDRAND.
-  CRYPTO_sysrand(seed, CTR_DRBG_ENTROPY_LEN);
+  CRYPTO_sysrand_for_seed(seed, CTR_DRBG_ENTROPY_LEN);
   *out_used_cpu = 0;
 }
 
