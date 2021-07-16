@@ -1219,6 +1219,11 @@ enum ssl_private_key_result_t BORINGSSL_ENUM_INT {
 // key hooks. This is used to off-load signing operations to a custom,
 // potentially asynchronous, backend. Metadata about the key such as the type
 // and size are parsed out of the certificate.
+//
+// Callers that use this structure should additionally call
+// |SSL_set_signing_algorithm_prefs| or |SSL_CTX_set_signing_algorithm_prefs|
+// with the private key's capabilities. This ensures BoringSSL will select a
+// suitable signature algorithm for the private key.
 struct ssl_private_key_method_st {
   // sign signs the message |in| in using the specified signature algorithm. On
   // success, it returns |ssl_private_key_success| and writes at most |max_out|
