@@ -235,6 +235,23 @@ void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key) {
   // future.
 }
 
+EVP_HPKE_KEY *EVP_HPKE_KEY_new(void) {
+  EVP_HPKE_KEY *key = OPENSSL_malloc(sizeof(EVP_HPKE_KEY));
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  EVP_HPKE_KEY_zero(key);
+  return key;
+}
+
+void EVP_HPKE_KEY_free(EVP_HPKE_KEY *key) {
+  if (key != NULL) {
+    EVP_HPKE_KEY_cleanup(key);
+    OPENSSL_free(key);
+  }
+}
+
 int EVP_HPKE_KEY_copy(EVP_HPKE_KEY *dst, const EVP_HPKE_KEY *src) {
   // For now, |EVP_HPKE_KEY| is trivially copyable.
   OPENSSL_memcpy(dst, src, sizeof(EVP_HPKE_KEY));
@@ -429,6 +446,23 @@ void EVP_HPKE_CTX_zero(EVP_HPKE_CTX *ctx) {
 
 void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx) {
   EVP_AEAD_CTX_cleanup(&ctx->aead_ctx);
+}
+
+EVP_HPKE_CTX *EVP_HPKE_CTX_new(void) {
+  EVP_HPKE_CTX *ctx = OPENSSL_malloc(sizeof(EVP_HPKE_CTX));
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  EVP_HPKE_CTX_zero(ctx);
+  return ctx;
+}
+
+void EVP_HPKE_CTX_free(EVP_HPKE_CTX *ctx) {
+  if (ctx != NULL) {
+    EVP_HPKE_CTX_cleanup(ctx);
+    OPENSSL_free(ctx);
+  }
 }
 
 int EVP_HPKE_CTX_setup_sender(EVP_HPKE_CTX *ctx, uint8_t *out_enc,
