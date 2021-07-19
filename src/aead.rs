@@ -22,7 +22,10 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use crate::{cpu, error, hkdf, polyfill};
-use core::ops::RangeFrom;
+use core::{
+    convert::{TryFrom, TryInto},
+    ops::RangeFrom,
+};
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -208,14 +211,31 @@ impl PartialEq for Algorithm {
 
 impl Eq for Algorithm {}
 
-/// An authentication tag.
+/// A possibly valid authentication tag.
 #[must_use]
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct Tag([u8; TAG_LEN]);
 
 impl AsRef<[u8]> for Tag {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl TryFrom<&[u8]> for Tag {
+    type Error = error::Unspecified;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        let raw_tag: [u8; TAG_LEN] = value.try_into().map_err(|_| error::Unspecified)?;
+        Ok(Self::from(raw_tag))
+    }
+}
+
+impl From<[u8; TAG_LEN]> for Tag {
+    #[inline]
+    fn from(value: [u8; TAG_LEN]) -> Self {
+        Self(value)
     }
 }
 
