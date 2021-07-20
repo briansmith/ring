@@ -1040,20 +1040,15 @@ static enum ssl_hs_wait_t do_read_client_encrypted_extensions(
       return ssl_hs_error;
     }
 
-    // Parse out the extensions.
-    bool have_application_settings = false;
-    CBS application_settings;
-    SSL_EXTENSION_TYPE ext_types[] = {{TLSEXT_TYPE_application_settings,
-                                       &have_application_settings,
-                                       &application_settings}};
+    SSLExtension application_settings(TLSEXT_TYPE_application_settings);
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+    if (!ssl_parse_extensions(&extensions, &alert, {&application_settings},
                               /*ignore_unknown=*/false)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
 
-    if (!have_application_settings) {
+    if (!application_settings.present) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
       return ssl_hs_error;
@@ -1062,7 +1057,7 @@ static enum ssl_hs_wait_t do_read_client_encrypted_extensions(
     // Note that, if 0-RTT was accepted, these values will already have been
     // initialized earlier.
     if (!hs->new_session->peer_application_settings.CopyFrom(
-            application_settings) ||
+            application_settings.data) ||
         !ssl_hash_message(hs, msg)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;

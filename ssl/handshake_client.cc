@@ -364,25 +364,20 @@ static bool parse_server_version(const SSL_HANDSHAKE *hs, uint16_t *out_version,
     return true;
   }
 
-  bool have_supported_versions;
-  CBS supported_versions;
-  const SSL_EXTENSION_TYPE ext_types[] = {
-      {TLSEXT_TYPE_supported_versions, &have_supported_versions,
-       &supported_versions},
-  };
+  SSLExtension supported_versions(TLSEXT_TYPE_supported_versions);
   CBS extensions = server_hello.extensions;
-  if (!ssl_parse_extensions(&extensions, out_alert, ext_types,
+  if (!ssl_parse_extensions(&extensions, out_alert, {&supported_versions},
                             /*ignore_unknown=*/true)) {
     return false;
   }
 
-  if (!have_supported_versions) {
+  if (!supported_versions.present) {
     *out_version = server_hello.legacy_version;
     return true;
   }
 
-  if (!CBS_get_u16(&supported_versions, out_version) ||
-       CBS_len(&supported_versions) != 0) {
+  if (!CBS_get_u16(&supported_versions.data, out_version) ||
+       CBS_len(&supported_versions.data) != 0) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
   }

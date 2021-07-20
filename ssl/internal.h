@@ -146,6 +146,7 @@
 
 #include <stdlib.h>
 
+#include <initializer_list>
 #include <limits>
 #include <new>
 #include <type_traits>
@@ -2219,19 +2220,25 @@ bool ssl_get_local_application_settings(const SSL_HANDSHAKE *hs,
 bool ssl_negotiate_alps(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                         const SSL_CLIENT_HELLO *client_hello);
 
-struct SSL_EXTENSION_TYPE {
+struct SSLExtension {
+  SSLExtension(uint16_t type_arg, bool allowed_arg = true)
+      : type(type_arg), allowed(allowed_arg), present(false) {
+    CBS_init(&data, nullptr, 0);
+  }
+
   uint16_t type;
-  bool *out_present;
-  CBS *out_data;
+  bool allowed;
+  bool present;
+  CBS data;
 };
 
 // ssl_parse_extensions parses a TLS extensions block out of |cbs| and advances
-// it. It writes the parsed extensions to pointers denoted by |ext_types|. On
-// success, it fills in the |out_present| and |out_data| fields and returns
-// true. Otherwise, it sets |*out_alert| to an alert to send and returns false.
-// Unknown extensions are rejected unless |ignore_unknown| is true.
+// it. It writes the parsed extensions to pointers in |extensions|. On success,
+// it fills in the |present| and |data| fields and returns true. Otherwise, it
+// sets |*out_alert| to an alert to send and returns false. Unknown extensions
+// are rejected unless |ignore_unknown| is true.
 bool ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
-                          Span<const SSL_EXTENSION_TYPE> ext_types,
+                          std::initializer_list<SSLExtension *> extensions,
                           bool ignore_unknown);
 
 // ssl_verify_peer_cert verifies the peer certificate for |hs|.

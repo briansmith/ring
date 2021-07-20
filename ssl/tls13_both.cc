@@ -235,15 +235,14 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     }
 
     // Parse out the extensions.
-    bool have_status_request = false, have_sct = false;
-    CBS status_request, sct;
-    const SSL_EXTENSION_TYPE ext_types[] = {
-        {TLSEXT_TYPE_status_request, &have_status_request, &status_request},
-        {TLSEXT_TYPE_certificate_timestamp, &have_sct, &sct},
-    };
-
+    SSLExtension status_request(
+        TLSEXT_TYPE_status_request,
+        !ssl->server && hs->config->ocsp_stapling_enabled);
+    SSLExtension sct(
+        TLSEXT_TYPE_certificate_timestamp,
+        !ssl->server && hs->config->signed_cert_timestamps_enabled);
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+    if (!ssl_parse_extensions(&extensions, &alert, {&status_request, &sct},
                               /*ignore_unknown=*/false)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return false;
@@ -251,20 +250,14 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
 
     // All Certificate extensions are parsed, but only the leaf extensions are
     // stored.
-    if (have_status_request) {
-      if (ssl->server || !hs->config->ocsp_stapling_enabled) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
-        return false;
-      }
-
+    if (status_request.present) {
       uint8_t status_type;
       CBS ocsp_response;
-      if (!CBS_get_u8(&status_request, &status_type) ||
+      if (!CBS_get_u8(&status_request.data, &status_type) ||
           status_type != TLSEXT_STATUSTYPE_ocsp ||
-          !CBS_get_u24_length_prefixed(&status_request, &ocsp_response) ||
+          !CBS_get_u24_length_prefixed(&status_request.data, &ocsp_response) ||
           CBS_len(&ocsp_response) == 0 ||
-          CBS_len(&status_request) != 0) {
+          CBS_len(&status_request.data) != 0) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
         return false;
       }
@@ -279,14 +272,8 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
       }
     }
 
-    if (have_sct) {
-      if (ssl->server || !hs->config->signed_cert_timestamps_enabled) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
-        return false;
-      }
-
-      if (!ssl_is_sct_list_valid(&sct)) {
+    if (sct.present) {
+      if (!ssl_is_sct_list_valid(&sct.data)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
         return false;
@@ -294,7 +281,7 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
 
       if (sk_CRYPTO_BUFFER_num(certs.get()) == 1) {
         hs->new_session->signed_cert_timestamp_list.reset(
-            CRYPTO_BUFFER_new_from_CBS(&sct, ssl->ctx->pool));
+            CRYPTO_BUFFER_new_from_CBS(&sct.data, ssl->ctx->pool));
         if (hs->new_session->signed_cert_timestamp_list == nullptr) {
           ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
           return false;
