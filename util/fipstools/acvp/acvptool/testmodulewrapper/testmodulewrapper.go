@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/xts"
 )
 
@@ -24,6 +25,7 @@ var handlers = map[string]func([][]byte) error{
 	"KDF-counter":     kdfCounter,
 	"AES-XTS/encrypt": xtsEncrypt,
 	"AES-XTS/decrypt": xtsDecrypt,
+	"HKDF/SHA2-256":   hkdfMAC,
 }
 
 func getConfig(args [][]byte) error {
@@ -69,6 +71,39 @@ func getConfig(args [][]byte) error {
 		"tweakMode": [
 		  "number"
 		]
+	}, {
+		"algorithm": "KAS-KDF",
+		"mode": "TwoStep",
+		"revision": "Sp800-56Cr2",
+		"capabilities": [{
+			"macSaltMethods": [
+				"random",
+				"default"
+			],
+			"fixedInfoPattern": "uPartyInfo||vPartyInfo",
+			"encoding": [
+				"concatenation"
+			],
+			"kdfMode": "feedback",
+			"macMode": [
+				"HMAC-SHA2-256"
+			],
+			"supportedLengths": [{
+				"min": 128,
+				"max": 512,
+				"increment": 64
+			}],
+			"fixedDataOrder": [
+				"after fixed data"
+			],
+			"counterLength": [
+				8
+			],
+			"requiresEmptyIv": true,
+			"supportsEmptyIv": true
+		}],
+		"l": 256,
+		"z": [256, 384]
 	}
 ]`))
 }
@@ -186,6 +221,29 @@ func doXTS(args [][]byte, decrypt bool) error {
 	}
 
 	return reply(msg)
+}
+
+func hkdfMAC(args [][]byte) error {
+	if len(args) != 4 {
+		return fmt.Errorf("HKDF received %d args, wanted 4", len(args))
+	}
+
+	key := args[0]
+	salt := args[1]
+	info := args[2]
+	lengthBytes := args[3]
+
+	if len(lengthBytes) != 4 {
+		return fmt.Errorf("uint32 length was %d bytes long", len(lengthBytes))
+	}
+
+	length := binary.LittleEndian.Uint32(lengthBytes)
+
+	mac := hkdf.New(sha256.New, key, salt, info)
+	ret := make([]byte, length)
+	mac.Read(ret)
+
+	return reply(ret)
 }
 
 const (

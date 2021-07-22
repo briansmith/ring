@@ -72,6 +72,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | ECDSA/sigGen         | Curve name, private key, hash name, message | R, S |
 | ECDSA/sigVer         | Curve name, hash name, message, X, Y, R, S | Single-byte validity flag |
 | FFDH                 | p, q, g, peer public key, local private key (or empty),  local public key (or empty) | Local public key, shared key |
+| HKDF/&lt;HASH&gt;    | key, salt, info, num output bytes | Key |
 | HMAC-SHA-1           | Value to hash, key        | Digest  |
 | HMAC-SHA2-224        | Value to hash, key        | Digest  |
 | HMAC-SHA2-256        | Value to hash, key        | Digest  |
