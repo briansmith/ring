@@ -178,18 +178,20 @@ func trimLeadingSlash(s string) string {
 	return s
 }
 
-// looksLikeHeaderElement returns true iff element looks like it's a header,
-// not a test. Some ACVP files contain a header as the first element that
-// should be duplicated into the response, and some don't. If the element
-// contains a "url" field then we guess that it's a header.
+// looksLikeHeaderElement returns true iff element looks like it's a header, not
+// a test. Some ACVP files contain a header as the first element that should be
+// duplicated into the response, and some don't. If the element contains
+// a "url" field, or if it's missing an "algorithm" field, then we guess that
+// it's a header.
 func looksLikeHeaderElement(element json.RawMessage) bool {
 	var headerFields struct {
 		URL string `json:"url"`
+		Algorithm string `json:"algorithm"`
 	}
 	if err := json.Unmarshal(element, &headerFields); err != nil {
 		return false
 	}
-	return len(headerFields.URL) > 0
+	return len(headerFields.URL) > 0 || len(headerFields.Algorithm) == 0
 }
 
 // processFile reads a file containing vector sets, at least in the format
