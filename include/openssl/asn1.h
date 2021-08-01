@@ -232,14 +232,6 @@ struct asn1_string_st {
 // treated as padding. This behavior is deprecated and should not be used.
 #define ASN1_STRING_FLAG_BITS_LEFT 0x08
 
-// ASN1_STRING_FLAG_MSTRING indicates that the |ASN1_STRING| is an MSTRING type,
-// which is how this library refers to a CHOICE type of several string types.
-// For example, DirectoryString as defined in RFC5280.
-//
-// TODO(davidben): This is only used in one place within the library and is easy
-// to accidentally drop. Can it be removed?
-#define ASN1_STRING_FLAG_MSTRING 0x040
-
 // ASN1_STRING_type_new returns a newly-allocated empty |ASN1_STRING| object of
 // type |type|, or NULL on error.
 OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_type_new(int type);

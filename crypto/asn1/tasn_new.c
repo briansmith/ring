@@ -271,7 +271,6 @@ static void asn1_template_clear(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt)
 static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it)
 {
     ASN1_TYPE *typ;
-    ASN1_STRING *str;
     int utype;
 
     if (!it)
@@ -308,10 +307,7 @@ static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it)
         break;
 
     default:
-        str = ASN1_STRING_type_new(utype);
-        if (it->itype == ASN1_ITYPE_MSTRING && str)
-            str->flags |= ASN1_STRING_FLAG_MSTRING;
-        *pval = (ASN1_VALUE *)str;
+        *pval = (ASN1_VALUE *)ASN1_STRING_type_new(utype);
         break;
     }
     if (*pval)

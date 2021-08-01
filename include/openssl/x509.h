@@ -878,13 +878,6 @@ OPENSSL_EXPORT ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec,
 
 // X509_time_adj_ex behaves like |ASN1_TIME_adj|, but adds an offset to |*t|. If
 // |t| is NULL, it uses the current time instead of |*t|.
-//
-// TODO(davidben): This isn't quite right. If |s| is non-NULL and lacks the
-// |ASN1_STRING_FLAG_MSTRING| flag, it tries to preserve |s|'s current time
-// (UTCTime or GeneralizedTime), rather than implementing the RFC5280 CHOICE
-// type. Remove this behavior and then the flag. Whether |s| has the flag is
-// mostly an accident of it was constructed. Meanwhile, callers should use
-// |ASN1_TIME_adj|, which does the same thing without this quirk.
 OPENSSL_EXPORT ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day,
                                            long offset_sec, time_t *t);
 
