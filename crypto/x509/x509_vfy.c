@@ -1976,9 +1976,9 @@ int X509_cmp_time(const ASN1_TIME *ctm, time_t *cmp_time)
     return ret;
 }
 
-ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long adj)
+ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec)
 {
-    return X509_time_adj(s, adj, NULL);
+    return X509_time_adj(s, offset_sec, NULL);
 }
 
 ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec, time_t *in_tm)

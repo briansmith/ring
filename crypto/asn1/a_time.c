@@ -200,7 +200,7 @@ static int asn1_time_to_tm(struct tm *tm, const ASN1_TIME *t)
     return 0;
 }
 
-int ASN1_TIME_diff(int *pday, int *psec,
+int ASN1_TIME_diff(int *out_days, int *out_seconds,
                    const ASN1_TIME *from, const ASN1_TIME *to)
 {
     struct tm tm_from, tm_to;
@@ -208,5 +208,5 @@ int ASN1_TIME_diff(int *pday, int *psec,
         return 0;
     if (!asn1_time_to_tm(&tm_to, to))
         return 0;
-    return OPENSSL_gmtime_diff(pday, psec, &tm_from, &tm_to);
+    return OPENSSL_gmtime_diff(out_days, out_seconds, &tm_from, &tm_to);
 }
