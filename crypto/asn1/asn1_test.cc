@@ -15,6 +15,7 @@
 #include <limits.h>
 #include <stdio.h>
 
+#include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -452,6 +453,76 @@ TEST(ASN1Test, StringToUTF8) {
       OPENSSL_free(utf8);
     } else {
       ERR_clear_error();
+    }
+  }
+}
+
+static std::string ASN1StringToStdString(const ASN1_STRING *str) {
+  return std::string(ASN1_STRING_get0_data(str),
+                     ASN1_STRING_get0_data(str) + ASN1_STRING_length(str));
+}
+
+TEST(ASN1Test, SetTime) {
+  static const struct {
+    time_t time;
+    const char *generalized;
+    const char *utc;
+  } kTests[] = {
+    {-631152001, "19491231235959Z", nullptr},
+    {-631152000, "19500101000000Z", "500101000000Z"},
+    {0, "19700101000000Z", "700101000000Z"},
+    {981173106, "20010203040506Z", "010203040506Z"},
+#if defined(OPENSSL_64_BIT)
+    // TODO(https://crbug.com/boringssl/416): These cases overflow 32-bit
+    // |time_t| and do not consistently work on 32-bit platforms. For now,
+    // disable the tests on 32-bit. Re-enable them once the bug is fixed.
+    {2524607999, "20491231235959Z", "491231235959Z"},
+    {2524608000, "20500101000000Z", nullptr},
+    // TODO(davidben): Fix and then test boundary conditions for GeneralizedTime
+    // years.
+#endif
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.time);
+#if defined(OPENSSL_WINDOWS)
+    // Windows |time_t| functions can only handle 1970 through 3000. See
+    // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/gmtime-s-gmtime32-s-gmtime64-s?view=msvc-160
+    if (t.time < 0 || int64_t{t.time} > 32535215999) {
+      continue;
+    }
+#endif
+
+    bssl::UniquePtr<ASN1_UTCTIME> utc(ASN1_UTCTIME_set(nullptr, t.time));
+    if (t.utc) {
+      ASSERT_TRUE(utc);
+      EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(utc.get()));
+      EXPECT_EQ(t.utc, ASN1StringToStdString(utc.get()));
+    } else {
+      EXPECT_FALSE(utc);
+    }
+
+    bssl::UniquePtr<ASN1_GENERALIZEDTIME> generalized(
+        ASN1_GENERALIZEDTIME_set(nullptr, t.time));
+    if (t.generalized) {
+      ASSERT_TRUE(generalized);
+      EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(generalized.get()));
+      EXPECT_EQ(t.generalized, ASN1StringToStdString(generalized.get()));
+    } else {
+      EXPECT_FALSE(generalized);
+    }
+
+    bssl::UniquePtr<ASN1_TIME> choice(ASN1_TIME_set(nullptr, t.time));
+    if (t.generalized) {
+      ASSERT_TRUE(choice);
+      if (t.utc) {
+        EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(choice.get()));
+        EXPECT_EQ(t.utc, ASN1StringToStdString(choice.get()));
+      } else {
+        EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(choice.get()));
+        EXPECT_EQ(t.generalized, ASN1StringToStdString(choice.get()));
+      }
+    } else {
+      EXPECT_FALSE(choice);
     }
   }
 }
