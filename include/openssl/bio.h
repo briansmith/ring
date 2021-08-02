@@ -377,7 +377,9 @@ OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);
 
 // BIO_new_mem_buf creates read-only BIO that reads from |len| bytes at |buf|.
-// It does not take ownership of |buf|. It returns the BIO or NULL on error.
+// It returns the BIO or NULL on error. This function does not copy or take
+// ownership of |buf|. The caller must ensure the memory pointed to by |buf|
+// outlives the |BIO|.
 //
 // If |len| is negative, then |buf| is treated as a NUL-terminated string, but
 // don't depend on this in new code.
