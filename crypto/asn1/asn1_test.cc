@@ -478,8 +478,11 @@ TEST(ASN1Test, SetTime) {
     // disable the tests on 32-bit. Re-enable them once the bug is fixed.
     {2524607999, "20491231235959Z", "491231235959Z"},
     {2524608000, "20500101000000Z", nullptr},
-    // TODO(davidben): Fix and then test boundary conditions for GeneralizedTime
-    // years.
+    // Test boundary conditions.
+    {-62167219200, "00000101000000Z", nullptr},
+    {-62167219201, nullptr, nullptr},
+    {253402300799, "99991231235959Z", nullptr},
+    {253402300800, nullptr, nullptr},
 #endif
   };
   for (const auto &t : kTests) {

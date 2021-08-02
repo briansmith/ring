@@ -237,6 +237,11 @@ ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s,
             goto err;
     }
 
+    if (ts->tm_year < 0 - 1900 || ts->tm_year > 9999 - 1900) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_TIME_VALUE);
+        goto err;
+    }
+
     p = (char *)tmps->data;
     if ((p == NULL) || ((size_t)tmps->length < len)) {
         p = OPENSSL_malloc(len);
