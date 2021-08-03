@@ -519,7 +519,7 @@ fn test_aead_lesssafekey_clone_for_algorithm(algorithm: &'static aead::Algorithm
     let nonce_bytes = &test_bytes[..algorithm.nonce_len()];
 
     let key1: aead::LessSafeKey =
-        aead::LessSafeKey::new(aead::UnboundKey::new(algorithm, &key_bytes).unwrap());
+        aead::LessSafeKey::new(aead::UnboundKey::new(algorithm, key_bytes).unwrap());
     let key2 = key1.clone();
 
     // LessSafeKey doesn't support AsRef or PartialEq, so instead just check that both keys produce
@@ -528,14 +528,14 @@ fn test_aead_lesssafekey_clone_for_algorithm(algorithm: &'static aead::Algorithm
     let mut buf2 = buf1.clone();
     let tag1 = key1
         .seal_in_place_separate_tag(
-            aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+            aead::Nonce::try_assume_unique_for_key(nonce_bytes).unwrap(),
             aead::Aad::empty(),
             &mut buf1,
         )
         .unwrap();
     let tag2 = key2
         .seal_in_place_separate_tag(
-            aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+            aead::Nonce::try_assume_unique_for_key(nonce_bytes).unwrap(),
             aead::Aad::empty(),
             &mut buf2,
         )

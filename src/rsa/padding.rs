@@ -83,7 +83,7 @@ impl RsaEncoding for PKCS1 {
         _mod_bits: bits::BitLength,
         _rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified> {
-        pkcs1_encode(&self, m_hash, m_out);
+        pkcs1_encode(self, m_hash, m_out);
         Ok(())
     }
 }
@@ -99,7 +99,7 @@ impl Verification for PKCS1 {
         //      PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN` is ensured by `verify_rsa_()`.
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let calculated = &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
-        pkcs1_encode(&self, m_hash, calculated);
+        pkcs1_encode(self, m_hash, calculated);
         if m.read_bytes_to_end().as_slice_less_safe() != calculated {
             return Err(error::Unspecified);
         }

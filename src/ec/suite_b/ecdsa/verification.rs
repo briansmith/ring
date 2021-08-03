@@ -329,7 +329,7 @@ mod tests {
                 };
 
                 let digest = super::super::digest_scalar::digest_bytes_scalar(
-                    &alg.ops.scalar_ops,
+                    alg.ops.scalar_ops,
                     &digest[..],
                 );
                 let actual_result = alg.verify_digest(

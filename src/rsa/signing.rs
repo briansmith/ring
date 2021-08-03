@@ -140,7 +140,7 @@ impl RsaKeyPair {
     pub fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, KeyRejected> {
         const RSA_ENCRYPTION: &[u8] = include_bytes!("../data/alg-rsa-encryption.der");
         let (der, _) = pkcs8::unwrap_key_(
-            untrusted::Input::from(&RSA_ENCRYPTION),
+            untrusted::Input::from(RSA_ENCRYPTION),
             pkcs8::Version::V1Only,
             untrusted::Input::from(pkcs8),
         )?;

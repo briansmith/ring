@@ -68,11 +68,11 @@ fn test_verify_slices_are_equal() {
                 };
                 assert_eq!(a == b, expected_result.is_ok()); // Sanity check.
                 assert_eq!(
-                    constant_time::verify_slices_are_equal(&a, &b),
+                    constant_time::verify_slices_are_equal(a, b),
                     expected_result
                 );
                 assert_eq!(
-                    constant_time::verify_slices_are_equal(&b, &a),
+                    constant_time::verify_slices_are_equal(b, a),
                     expected_result
                 );
             }

@@ -427,7 +427,7 @@ fn parse_test_case(
             }
 
             // A blank line ends a test case if the test case isn't empty.
-            Some(ref line) if line.is_empty() => {
+            Some(line) if line.is_empty() => {
                 if !is_first_line {
                     return Some(TestCase { attributes });
                 }
@@ -435,9 +435,9 @@ fn parse_test_case(
             }
 
             // Comments start with '#'; ignore them.
-            Some(ref line) if line.starts_with('#') => (),
+            Some(line) if line.starts_with('#') => (),
 
-            Some(ref line) if line.starts_with('[') => {
+            Some(line) if line.starts_with('[') => {
                 assert!(is_first_line);
                 assert!(line.ends_with(']'));
                 current_section.truncate(0);
@@ -446,7 +446,7 @@ fn parse_test_case(
                 let _ = current_section.remove(0);
             }
 
-            Some(ref line) => {
+            Some(line) => {
                 is_first_line = false;
 
                 let parts: Vec<&str> = line.splitn(2, " = ").collect();

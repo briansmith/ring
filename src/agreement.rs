@@ -112,7 +112,7 @@ impl EphemeralPrivateKey {
         //
         // This only handles the key generation part of step 1. The rest of
         // step one is done by `compute_public_key()`.
-        let private_key = ec::Seed::generate(&alg.curve, rng, cpu_features)?;
+        let private_key = ec::Seed::generate(alg.curve, rng, cpu_features)?;
         Ok(Self {
             private_key,
             algorithm: alg,

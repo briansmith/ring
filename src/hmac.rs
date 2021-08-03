@@ -233,7 +233,7 @@ impl Key {
         for (padded_key, key_value) in padded_key.iter_mut().zip(key_value.iter()) {
             *padded_key ^= *key_value;
         }
-        key.inner.update(&padded_key);
+        key.inner.update(padded_key);
 
         const OPAD: u8 = 0x5C;
 
@@ -242,7 +242,7 @@ impl Key {
         for b in padded_key.iter_mut() {
             *b ^= IPAD ^ OPAD;
         }
-        key.outer.update(&padded_key);
+        key.outer.update(padded_key);
 
         key
     }

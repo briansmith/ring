@@ -412,7 +412,7 @@ impl<M, E: ReductionEncoding> Elem<M, E> {
         let mut one = [0; MODULUS_MAX_LIMBS];
         one[0] = 1;
         let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
-        limbs_mont_mul(&mut limbs, &one, &m.limbs, &m.n0);
+        limbs_mont_mul(&mut limbs, one, &m.limbs, &m.n0);
         Elem {
             limbs,
             encoding: PhantomData,
@@ -474,7 +474,7 @@ fn elem_mul_<M, AF, BF>(
 where
     (AF, BF): ProductEncoding,
 {
-    limbs_mont_mul(&mut b.limbs, &a.limbs, &m.limbs, &m.n0);
+    limbs_mont_mul(&mut b.limbs, &a.limbs, m.limbs, &m.n0);
     Elem {
         limbs: b.limbs,
         encoding: PhantomData,
@@ -532,7 +532,7 @@ fn elem_squared<M, E>(
 where
     (E, E): ProductEncoding,
 {
-    limbs_mont_square(&mut a.limbs, &m.limbs, &m.n0);
+    limbs_mont_square(&mut a.limbs, m.limbs, &m.n0);
     Elem {
         limbs: a.limbs,
         encoding: PhantomData,
@@ -709,7 +709,7 @@ pub fn elem_exp_vartime<M>(
     PublicExponent(exponent): PublicExponent,
     m: &Modulus<M>,
 ) -> Elem<M, R> {
-    let base = elem_mul(m.oneRR().as_ref(), base, &m);
+    let base = elem_mul(m.oneRR().as_ref(), base, m);
     elem_exp_vartime_(base, exponent, &m.as_partial())
 }
 
@@ -882,7 +882,7 @@ pub fn elem_inverse_consttime<M: Prime>(
     a: Elem<M, R>,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    elem_exp_consttime(a, &PrivateExponent::for_flt(&m), m)
+    elem_exp_consttime(a, &PrivateExponent::for_flt(m), m)
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -1136,7 +1136,7 @@ impl Nonnegative {
     }
 
     pub fn to_elem<M>(&self, m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        self.verify_less_than_modulus(&m)?;
+        self.verify_less_than_modulus(m)?;
         let mut r = m.zero();
         r.limbs[0..self.limbs.len()].copy_from_slice(&self.limbs);
         Ok(r)
@@ -1241,7 +1241,7 @@ fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N
             tmp.len(),
             m.as_ptr(),
             m.len(),
-            &n0,
+            n0,
         )
     })
     .unwrap()
@@ -1568,7 +1568,7 @@ mod tests {
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
-        if elem_verify_equal_consttime(&a, b).is_err() {
+        if elem_verify_equal_consttime(a, b).is_err() {
             panic!("{:x?} != {:x?}", &*a.limbs, &*b.limbs);
         }
     }
