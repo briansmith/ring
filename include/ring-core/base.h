@@ -91,6 +91,14 @@
 #define OPENSSL_MIPS64
 #elif defined(__wasm__)
 #define OPENSSL_32_BIT
+#elif defined(__riscv)
+# if (__riscv_xlen == 64)
+#  define OPENSSL_64_BIT
+#  define OPENSSL_RISCV64
+# elif(__riscv_xlen == 32)
+#  define OPENSSL_32_BIT
+#  define OPENSSL_RISCV32
+# endif
 #else
 // Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
 // little-endian architectures. Functions will not produce the correct answer
