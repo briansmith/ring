@@ -86,7 +86,7 @@ impl EcdsaKeyPair {
         let private_key = ec::Seed::generate(alg.curve, rng, cpu::features())?;
         let public_key = private_key.compute_public_key()?;
         Ok(pkcs8::wrap_key(
-            &alg.pkcs8_template,
+            alg.pkcs8_template,
             private_key.bytes_less_safe(),
             public_key.as_ref(),
         ))
@@ -422,7 +422,7 @@ fn format_rs_asn1(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8
         assert!(value.len() < 128);
         out[1] = value.len() as u8;
 
-        out[2..][..value.len()].copy_from_slice(&value);
+        out[2..][..value.len()].copy_from_slice(value);
 
         2 + value.len()
     }

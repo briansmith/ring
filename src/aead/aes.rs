@@ -118,7 +118,7 @@ fn ctr32_encrypt_blocks_(
     let output = in_out.as_mut_ptr();
 
     unsafe {
-        f(input, output, blocks, &key, ctr);
+        f(input, output, blocks, key, ctr);
     }
     ctr.increment_by_less_safe(blocks_u32);
 }

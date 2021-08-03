@@ -116,13 +116,13 @@ impl LessSafeKey {
     where
         A: AsRef<[u8]>,
     {
-        seal_in_place_separate_tag_(&self, nonce, Aad::from(aad.as_ref()), in_out)
+        seal_in_place_separate_tag_(self, nonce, Aad::from(aad.as_ref()), in_out)
     }
 
     /// The key's AEAD algorithm.
     #[inline]
     pub fn algorithm(&self) -> &'static Algorithm {
-        &self.algorithm
+        self.algorithm
     }
 
     pub(super) fn fmt_debug(

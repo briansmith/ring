@@ -1001,25 +1001,25 @@ mod tests {
         expected_point: &TestPoint,
     ) {
         let cops = ops.common;
-        let actual_x = &cops.point_x(&actual_point);
-        let actual_y = &cops.point_y(&actual_point);
-        let actual_z = &cops.point_z(&actual_point);
+        let actual_x = &cops.point_x(actual_point);
+        let actual_y = &cops.point_y(actual_point);
+        let actual_z = &cops.point_z(actual_point);
         match expected_point {
             TestPoint::Infinity => {
                 let zero = Elem::zero();
-                assert_elems_are_equal(cops, &actual_z, &zero);
+                assert_elems_are_equal(cops, actual_z, &zero);
             }
             TestPoint::Affine(expected_x, expected_y) => {
-                let zz_inv = ops.elem_inverse_squared(&actual_z);
-                let x_aff = cops.elem_product(&actual_x, &zz_inv);
+                let zz_inv = ops.elem_inverse_squared(actual_z);
+                let x_aff = cops.elem_product(actual_x, &zz_inv);
                 let y_aff = {
                     let zzzz_inv = cops.elem_squared(&zz_inv);
-                    let zzz_inv = cops.elem_product(&actual_z, &zzzz_inv);
-                    cops.elem_product(&actual_y, &zzz_inv)
+                    let zzz_inv = cops.elem_product(actual_z, &zzzz_inv);
+                    cops.elem_product(actual_y, &zzz_inv)
                 };
 
-                assert_elems_are_equal(cops, &x_aff, &expected_x);
-                assert_elems_are_equal(cops, &y_aff, &expected_y);
+                assert_elems_are_equal(cops, &x_aff, expected_x);
+                assert_elems_are_equal(cops, &y_aff, expected_y);
             }
         }
     }

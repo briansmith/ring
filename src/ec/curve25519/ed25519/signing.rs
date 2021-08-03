@@ -202,7 +202,7 @@ impl Ed25519KeyPair {
                 x25519_ge_scalarmult_base(&mut r, &nonce);
             }
             signature_r.copy_from_slice(&r.into_encoded_point());
-            let hram_digest = eddsa_digest(signature_r, &self.public_key.as_ref(), msg);
+            let hram_digest = eddsa_digest(signature_r, self.public_key.as_ref(), msg);
             let hram = Scalar::from_sha512_digest_reduced(hram_digest);
             unsafe {
                 x25519_sc_muladd(

@@ -156,7 +156,7 @@ pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
     parse_big_endian_and_pad_consttime(input, result)?;
     limbs_reduce_once_constant_time(result, m);
     if allow_zero != AllowZero::Yes {
-        if limbs_are_zero_constant_time(&result) != LimbMask::False {
+        if limbs_are_zero_constant_time(result) != LimbMask::False {
             return Err(error::Unspecified);
         }
     }
@@ -178,11 +178,11 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
     result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
-    if limbs_less_than_limbs_consttime(&result, max_exclusive) != LimbMask::True {
+    if limbs_less_than_limbs_consttime(result, max_exclusive) != LimbMask::True {
         return Err(error::Unspecified);
     }
     if allow_zero != AllowZero::Yes {
-        if limbs_are_zero_constant_time(&result) != LimbMask::False {
+        if limbs_are_zero_constant_time(result) != LimbMask::False {
             return Err(error::Unspecified);
         }
     }
