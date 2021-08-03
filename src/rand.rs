@@ -382,20 +382,21 @@ mod darwin {
     // this when
     // https://github.com/rust-lang/rfcs/pull/1861#issuecomment-274613536 is
     // resolved.
+    //
+    // Defined in `SecRandom.h`
     #[repr(C)]
-    struct SecRandomRef([u8; 0]);
+    struct __SecRandom([u8; 0]);
+    type SecRandomRef = *const __SecRandom;
+
+    // https://developer.apple.com/documentation/security/ksecrandomdefault
+    // says "This constant is a synonym for NULL."
+    const kSecRandomDefault: SecRandomRef = core::ptr::null();
 
     #[link(name = "Security", kind = "framework")]
     extern "C" {
-        static kSecRandomDefault: &'static SecRandomRef;
-
         // For now `rnd` must be `kSecRandomDefault`.
         #[must_use]
-        fn SecRandomCopyBytes(
-            rnd: &'static SecRandomRef,
-            count: c::size_t,
-            bytes: *mut u8,
-        ) -> c::int;
+        fn SecRandomCopyBytes(rnd: SecRandomRef, count: c::size_t, bytes: *mut u8) -> c::int;
     }
 }
 
