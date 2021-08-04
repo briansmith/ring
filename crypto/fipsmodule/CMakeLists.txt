@@ -1,6 +1,6 @@
 include_directories(../../include)
 
-if(${ARCH} STREQUAL "x86_64")
+if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
@@ -22,7 +22,7 @@ if(${ARCH} STREQUAL "x86_64")
   )
 endif()
 
-if(${ARCH} STREQUAL "x86")
+if(ARCH STREQUAL "x86")
   set(
     BCM_ASM_SOURCES
 
@@ -40,7 +40,7 @@ if(${ARCH} STREQUAL "x86")
   )
 endif()
 
-if(${ARCH} STREQUAL "arm")
+if(ARCH STREQUAL "arm")
   set(
     BCM_ASM_SOURCES
 
@@ -56,7 +56,7 @@ if(${ARCH} STREQUAL "arm")
   )
 endif()
 
-if(${ARCH} STREQUAL "aarch64")
+if(ARCH STREQUAL "aarch64")
   set(
     BCM_ASM_SOURCES
 
@@ -71,7 +71,7 @@ if(${ARCH} STREQUAL "aarch64")
   )
 endif()
 
-if(${ARCH} STREQUAL "ppc64le")
+if(ARCH STREQUAL "ppc64le")
   set(
     BCM_ASM_SOURCES
 
@@ -160,7 +160,7 @@ if(FIPS_DELOCATE)
     bcm.c
   )
 
-  if(${ARCH} STREQUAL "aarch64")
+  if(ARCH STREQUAL "aarch64")
     # Perlasm output on Aarch64 needs to pass through the C preprocessor before
     # it can be parsed by delocate.
     foreach(asm ${BCM_ASM_SOURCES})
@@ -202,7 +202,7 @@ if(FIPS_DELOCATE)
   # If building with OPENSSL_NO_ASM then ARCH will be "generic", but we still
   # need to use SHA-256. Since this only matters for FIPS, we only need to
   # worry about the Linux spelling of AArch64.
-  if (ARCH STREQUAL "aarch64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+  if (ARCH STREQUAL "aarch64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
     set(MAYBE_INJECT_HASH_SHA256_FLAG "-sha256")
   endif()
 
