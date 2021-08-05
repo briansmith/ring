@@ -125,7 +125,7 @@ TEST(GCMTest, ABI) {
       UINT64_C(0x66e94bd4ef8a2c3b),
       UINT64_C(0x884cfa59ca342b2e),
   };
-  static const size_t kBlockCounts[] = {1, 2, 3, 4, 7, 8, 15, 16, 31, 32};
+  static const size_t kBlockCounts[] = {1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 31, 32};
   uint8_t buf[16 * 32];
   OPENSSL_memset(buf, 42, sizeof(buf));
 
