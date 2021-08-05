@@ -1940,4 +1940,4 @@ rsaz_1024_gather5_avx2:
 ___
 }}}
 
-close STDOUT or die "error closing STDOUT";
+close STDOUT or die "error closing STDOUT: $!";

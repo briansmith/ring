@@ -1264,7 +1264,7 @@ print "#endif\n"			if ($gas);
 # See https://www.airs.com/blog/archives/518.
 print ".section\t.note.GNU-stack,\"\",\@progbits\n" if ($elf);
 
-close STDOUT;
+close STDOUT or die "error closing STDOUT: $!";
 
 #################################################
 # Cross-reference x86_64 ABI "card"

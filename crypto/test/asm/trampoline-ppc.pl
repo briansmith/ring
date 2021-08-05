@@ -259,4 +259,4 @@ abi_test_clobber_lr:
 ____
 
 print $code;
-close STDOUT or die "error closing STDOUT";
+close STDOUT or die "error closing STDOUT: $!";

@@ -314,4 +314,4 @@ print "#endif  // !OPENSSL_NO_ASM && __powerpc64__\n";
 # See https://www.airs.com/blog/archives/518.
 print ".section\t.note.GNU-stack,\"\",\@progbits\n" if ($flavour =~ /linux/);
 
-close STDOUT;
+close STDOUT or die "error closing STDOUT: $!";
