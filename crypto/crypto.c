@@ -15,6 +15,7 @@
 #include <ring-core/cpu.h>
 #include "internal.h"
 
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 // Our assembly does not use the GOT to reference symbols, which means
 // references to visible symbols will often require a TEXTREL. This is
 // undesirable, so all assembly-referenced symbols should be hidden. CPU
@@ -26,7 +27,6 @@
 #define HIDDEN __attribute__((visibility("hidden")))
 #endif
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 // This value must be explicitly initialised to zero in order to work around a
 // bug in libtool or the linker on OS X.
 //

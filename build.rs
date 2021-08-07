@@ -228,6 +228,13 @@ const ASM_TARGETS: &[AsmTarget] = &[
         asm_extension: "asm",
         preassemble: true,
     },
+    AsmTarget {
+        oss: &[WINDOWS],
+        arch: "aarch64",
+        perlasm_format: "win64",
+        asm_extension: "S",
+        preassemble: true,
+    },
 ];
 
 struct AsmTarget {
@@ -378,7 +385,7 @@ fn pregenerate_asm_main() {
             let os = WINDOWS;
 
             if !std::mem::replace(&mut generated_prefix_headers, true) {
-                generate_prefix_symbols_nasm(&pregenerated, &ring_core_prefix()).unwrap();
+                generate_prefix_symbols(&pregenerated, &ring_core_prefix()).unwrap();
             }
             let srcs = asm_srcs(perlasm_src_dsts);
 
@@ -390,10 +397,8 @@ fn pregenerate_asm_main() {
                 force_warnings_into_errors: true,
             };
 
-            let compiler = cc::Build::new().get_compiler();
-
             for src in srcs {
-                compile(&src, &target, &compiler, &pregenerated);
+                compile(&src, &target, &pregenerated);
             }
         }
     }
@@ -441,7 +446,7 @@ fn build_c_code(
         out_dir
     };
 
-    generate_prefix_symbols(target, out_dir, ring_core_prefix).unwrap();
+    generate_prefix_symbols(out_dir, ring_core_prefix).unwrap();
 
     let asm_srcs = if let Some(asm_target) = asm_target {
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
@@ -500,13 +505,11 @@ fn build_library(
     srcs: &[PathBuf],
     additional_srcs: &[PathBuf],
 ) {
-    let compiler = cc::Build::default().get_compiler();
-
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs
         .iter()
         .chain(srcs.iter())
-        .map(|f| compile(f, target, &compiler, out_dir))
+        .map(|f| compile(f, target, out_dir))
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
@@ -545,14 +548,14 @@ fn build_library(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(p: &Path, target: &Target, compiler: &cc::Tool, out_dir: &Path) -> String {
+fn compile(p: &Path, target: &Target, out_dir: &Path) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "o" {
         p.to_str().expect("Invalid path").into()
     } else {
         let out_path = obj_path(out_dir, p);
         let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(p, ext, target, compiler, &out_path, out_dir)
+            cc(p, ext, target, &out_path, out_dir)
         } else {
             nasm(p, &target.arch, &out_path, out_dir)
         };
@@ -571,27 +574,28 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
     out_path
 }
 
-fn cc(
-    file: &Path,
-    ext: &str,
-    target: &Target,
-    compiler: &cc::Tool,
-    out_path: &Path,
-    include_dir: &Path,
-) -> Command {
+fn cc(file: &Path, ext: &str, target: &Target, out_path: &Path, include_dir: &Path) -> Command {
     let mut c = cc::Build::new();
+
+    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
+    if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {
+        let _ = c.compiler("clang");
+    }
+
+    let compiler = c.get_compiler();
+
     let _ = c.include("include");
     let _ = c.include(include_dir);
     match ext {
         "c" => {
-            for f in c_flags(compiler) {
+            for f in c_flags(&compiler) {
                 let _ = c.flag(f);
             }
         }
         "S" => (),
         e => panic!("Unsupported file extension: {:?}", e),
     };
-    for f in cpp_flags(compiler) {
+    for f in cpp_flags(&compiler) {
         let _ = c.flag(f);
     }
     if target.os != "none"
@@ -843,24 +847,18 @@ fn ring_core_prefix() -> String {
 
 /// Creates the necessary header file for symbol renaming and returns the path of the
 /// generated include directory.
-fn generate_prefix_symbols(
-    target: &Target,
-    out_dir: &Path,
-    prefix: &str,
-) -> Result<(), std::io::Error> {
+fn generate_prefix_symbols(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
     generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
 
-    if target.os == "windows" {
-        let _ = generate_prefix_symbols_nasm(out_dir, prefix)?;
-    } else {
-        generate_prefix_symbols_header(
-            out_dir,
-            "prefix_symbols_asm.h",
-            '#',
-            Some("#if defined(__APPLE__)"),
-            prefix,
-        )?;
-    }
+    generate_prefix_symbols_nasm(out_dir, prefix)?;
+
+    generate_prefix_symbols_header(
+        out_dir,
+        "prefix_symbols_asm.h",
+        '#',
+        Some("#if defined(__APPLE__)"),
+        prefix,
+    )?;
 
     Ok(())
 }

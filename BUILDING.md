@@ -33,9 +33,12 @@ apply when building from crates.io:
   primitives (32- and 64- bit Intel, and 32- and 64-bit ARM), Perl must be
   installed and in `$PATH`.
 
-* For Windows targets, `target/tools/windows/nasm/nasm[.exe]` is used as the
-  assembler. The version to use and how to download it is documented in
-  [.github/workflows/ci.yml](.github/workflows/ci.yml).
+* For Windows targets except ARM64, `target/tools/windows/nasm/nasm[.exe]`
+  is used as the assembler. The version to use and how to download it is
+  documented in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+* For Windows ARM64 target, Clang is used as the C compiler and the assembler.
+  See below "Building for Windows ARM64" section.
 
 Cross Compiling
 ---------------
@@ -57,10 +60,12 @@ that the current beta and nightly releases work.
 
 On Windows, *ring* supports the x86_64-pc-windows-msvc and i686-pc-windows-msvc
 targets best. These targets require the “Visual C++ Build Tools
-2015” package or Visual Studio 2015 Update 3 or later to be installed. Patches
-to get it working on other variants, including in particular Visual Studio 2017
-([#338]), Windows ARM platforms, Windows Universal Platform, Windows XP (the
-v140_xp toolchain; [#339]), and the -gnu targets ([#330]) are welcome.
+2015” package or Visual Studio 2015 Update 3 or later to be installed.
+*ring* now also supports the aarch64-pc-windows-msvc target. For the detailed
+instructions please see the next section.
+Patches to get it working on other variants, including in particular Visual Studio 2017
+([#338]), Windows Universal Platform, Windows XP (the v140_xp toolchain; [#339]),
+and the -gnu targets ([#330]) are welcome.
 
 For other platforms, GCC 4.6 or later and Clang 3.5 or later are currently
 supported best. The build script passes options to the C/C++ compiler that are
@@ -76,6 +81,34 @@ the wrapper automatically passes flags to the actual compiler to define the
 `__ANDROID_API__` macro. Otherwise, the macro `__ANDROID_API__` must be
 defined with a value of at least 21 on 64-bit targets or 18 on 32-bit targets;
 e.g. export `CFLAGS=-D__ANDROID_API__=21`.
+
+
+Building for Windows ARM64
+--------------------------
+
+Windows ARM64 target requires the “Visual C++ Build Tools 2019” package or
+Visual Studio 2019 or later to be installed. “Desktop development with C++”
+workflow should be installed, as well as
+“MSVC v142 - VS 2019 C++ ARM64 build tools” component.
+
+To build *ring* for Windows ARM64, you will need to install Clang as it is used
+as the C compiler and the assembler for that platform. You can either use
+the version of Clang installed by Visual Studio, a standalone version from
+llvm.org, or a mingw64 version of Clang, for example, from [llvm-mingw
+project](https://github.com/mstorsjo/llvm-mingw).
+
+If you're buiding *ring* on an ARM64 device like Surface Pro X, please note
+that llvm.org and llvm-mingw have native ARM64 versions of Clang available.
+Also, if you're building *ring* on an ARM64 device, you might want to use
+`aarch64-pc-windows-msvc` Rustup toolchain, which can be installed using
+`rustup toolchain add aarch64-pc-windows-msvc`.
+
+When building on an ARM64 device, due to a bug in the Visual Studio installer,
+if you're using `rustc` version < 1.55 you would need to run `cargo build` /
+`cargo test` commands from x86_arm64 Developer Command Prompt. You can use
+`C:\Program Files (x86)\Microsoft Visual Studio\2019\<edition>\VC\Auxiliary\Build\vcvarsx86_arm64.bat`
+batch script to configure the environment. If you use `rustc` 1.55 beta or newer,
+you can run `cargo` commands without configuring the dev environment beforehand.
 
 
 Additional Features that are Useful for Development
