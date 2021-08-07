@@ -149,6 +149,9 @@ jobs:
           toolchain: stable
           profile: minimal
 
+      - run: echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
+        shell: bash
+
       - run: sh mk/package.sh
         shell: bash
 
@@ -167,6 +170,7 @@ jobs:
           - aarch64-apple-ios
           - aarch64-apple-darwin
           - aarch64-linux-android
+          - aarch64-pc-windows-msvc
           - aarch64-unknown-linux-gnu
           - aarch64-unknown-linux-musl
           - arm-unknown-linux-gnueabihf
@@ -232,6 +236,11 @@ jobs:
           - target: aarch64-linux-android
             host_os: ubuntu-18.04
             # TODO: https://github.com/briansmith/ring/issues/486
+            cargo_options: --no-run
+
+          - target: aarch64-pc-windows-msvc
+            host_os: windows-latest
+            # GitHub Actions doesn't have a way to run this target yet.
             cargo_options: --no-run
 
           - target: aarch64-unknown-linux-gnu
@@ -302,6 +311,12 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_12.4.app &&
           sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/*
+
+      - if: ${{ matrix.target == 'aarch64-pc-windows-msvc' }}
+        run: |
+          echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
+          echo "RUSTFLAGS=-C target-feature=+crt-static" >> $GITHUB_ENV
+        shell: bash
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
