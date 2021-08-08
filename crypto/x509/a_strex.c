@@ -88,15 +88,6 @@ static int send_bio_chars(void *arg, const void *buf, int len)
     return 1;
 }
 
-static int send_fp_chars(void *arg, const void *buf, int len)
-{
-    if (!arg)
-        return 1;
-    if (fwrite(buf, 1, len, arg) != (unsigned int)len)
-        return 0;
-    return 1;
-}
-
 typedef int char_io (void *arg, const void *buf, int len);
 
 /*
@@ -595,17 +586,18 @@ int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
 int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm, int indent,
                           unsigned long flags)
 {
-    if (flags == XN_FLAG_COMPAT) {
-        BIO *btmp;
-        int ret;
-        btmp = BIO_new_fp(fp, BIO_NOCLOSE);
-        if (!btmp)
+    BIO *bio = NULL;
+    if (fp != NULL) {
+        /* If |fp| is NULL, this function returns the number of bytes without
+         * writing. */
+        bio = BIO_new_fp(fp, BIO_NOCLOSE);
+        if (bio == NULL) {
             return -1;
-        ret = X509_NAME_print(btmp, nm, indent);
-        BIO_free(btmp);
-        return ret;
+        }
     }
-    return do_name_ex(send_fp_chars, fp, nm, indent, flags);
+    int ret = X509_NAME_print_ex(bio, nm, indent, flags);
+    BIO_free(bio);
+    return ret;
 }
 
 int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long flags)
@@ -615,7 +607,18 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long flags)
 
 int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str, unsigned long flags)
 {
-    return do_print_ex(send_fp_chars, fp, flags, str);
+    BIO *bio = NULL;
+    if (fp != NULL) {
+        /* If |fp| is NULL, this function returns the number of bytes without
+         * writing. */
+        bio = BIO_new_fp(fp, BIO_NOCLOSE);
+        if (bio == NULL) {
+            return -1;
+        }
+    }
+    int ret = ASN1_STRING_print_ex(bio, str, flags);
+    BIO_free(bio);
+    return ret;
 }
 
 /*
