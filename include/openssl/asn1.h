@@ -1155,8 +1155,13 @@ OPENSSL_EXPORT void *ASN1_item_unpack(const ASN1_STRING *oct,
 OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it,
                                            ASN1_OCTET_STRING **oct);
 
+// ASN1_STRING_set_default_mask does nothing.
 OPENSSL_EXPORT void ASN1_STRING_set_default_mask(unsigned long mask);
+
+// ASN1_STRING_set_default_mask_asc returns one.
 OPENSSL_EXPORT int ASN1_STRING_set_default_mask_asc(const char *p);
+
+// ASN1_STRING_get_default_mask returns |B_ASN1_UTF8STRING|.
 OPENSSL_EXPORT unsigned long ASN1_STRING_get_default_mask(void);
 
 OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out,

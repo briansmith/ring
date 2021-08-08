@@ -69,53 +69,17 @@ DEFINE_STACK_OF(ASN1_STRING_TABLE)
 static STACK_OF(ASN1_STRING_TABLE) *stable = NULL;
 static void st_free(ASN1_STRING_TABLE *tbl);
 
-/*
- * This is the global mask for the mbstring functions: this is use to mask
- * out certain types (such as BMPString and UTF8String) because certain
- * software (e.g. Netscape) has problems with them.
- */
-
-static unsigned long global_mask = B_ASN1_UTF8STRING;
-
 void ASN1_STRING_set_default_mask(unsigned long mask)
 {
-    global_mask = mask;
 }
 
 unsigned long ASN1_STRING_get_default_mask(void)
 {
-    return global_mask;
+    return B_ASN1_UTF8STRING;
 }
-
-/*
- * This function sets the default to various "flavours" of configuration.
- * based on an ASCII string. Currently this is: MASK:XXXX : a numerical mask
- * value. nobmp : Don't use BMPStrings (just Printable, T61). pkix : PKIX
- * recommendation in RFC2459. utf8only : only use UTF8Strings (RFC2459
- * recommendation for 2004). default: the default value, Printable, T61, BMP.
- */
 
 int ASN1_STRING_set_default_mask_asc(const char *p)
 {
-    unsigned long mask;
-    char *end;
-    if (!strncmp(p, "MASK:", 5)) {
-        if (!p[5])
-            return 0;
-        mask = strtoul(p + 5, &end, 0);
-        if (*end)
-            return 0;
-    } else if (!strcmp(p, "nombstr"))
-        mask = ~((unsigned long)(B_ASN1_BMPSTRING | B_ASN1_UTF8STRING));
-    else if (!strcmp(p, "pkix"))
-        mask = ~((unsigned long)B_ASN1_T61STRING);
-    else if (!strcmp(p, "utf8only"))
-        mask = B_ASN1_UTF8STRING;
-    else if (!strcmp(p, "default"))
-        mask = 0xFFFFFFFFL;
-    else
-        return 0;
-    ASN1_STRING_set_default_mask(mask);
     return 1;
 }
 
@@ -139,13 +103,12 @@ ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out,
     if (tbl) {
         mask = tbl->mask;
         if (!(tbl->flags & STABLE_NO_MASK))
-            mask &= global_mask;
+            mask &= B_ASN1_UTF8STRING;
         ret = ASN1_mbstring_ncopy(out, in, inlen, inform, mask,
                                   tbl->minsize, tbl->maxsize);
-    } else
-        ret =
-            ASN1_mbstring_copy(out, in, inlen, inform,
-                               DIRSTRING_TYPE & global_mask);
+    } else {
+        ret = ASN1_mbstring_copy(out, in, inlen, inform, B_ASN1_UTF8STRING);
+    }
     if (ret <= 0)
         return NULL;
     return *out;
