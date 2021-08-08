@@ -70,7 +70,6 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#ifndef OPENSSL_NO_FP_API
 STACK_OF(X509_INFO) *PEM_X509_INFO_read(FILE *fp, STACK_OF(X509_INFO) *sk,
                                         pem_password_cb *cb, void *u)
 {
@@ -83,7 +82,6 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read(FILE *fp, STACK_OF(X509_INFO) *sk,
     BIO_free(b);
     return ret;
 }
-#endif
 
 enum parse_result_t {
     parse_ok,

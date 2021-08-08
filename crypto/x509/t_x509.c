@@ -68,7 +68,6 @@
 #include "internal.h"
 
 
-#ifndef OPENSSL_NO_FP_API
 int X509_print_ex_fp(FILE *fp, X509 *x, unsigned long nmflag,
                      unsigned long cflag)
 {
@@ -86,7 +85,6 @@ int X509_print_fp(FILE *fp, X509 *x)
 {
     return X509_print_ex_fp(fp, x, XN_FLAG_COMPAT, X509_FLAG_COMPAT);
 }
-#endif
 
 int X509_print(BIO *bp, X509 *x)
 {

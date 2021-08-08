@@ -592,7 +592,6 @@ int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
     return do_name_ex(send_bio_chars, out, nm, indent, flags);
 }
 
-#ifndef OPENSSL_NO_FP_API
 int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm, int indent,
                           unsigned long flags)
 {
@@ -608,19 +607,16 @@ int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm, int indent,
     }
     return do_name_ex(send_fp_chars, fp, nm, indent, flags);
 }
-#endif
 
 int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long flags)
 {
     return do_print_ex(send_bio_chars, out, flags, str);
 }
 
-#ifndef OPENSSL_NO_FP_API
 int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str, unsigned long flags)
 {
     return do_print_ex(send_fp_chars, fp, flags, str);
 }
-#endif
 
 /*
  * Utility function: convert any string type to UTF8, returns number of bytes

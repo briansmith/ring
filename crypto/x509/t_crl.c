@@ -61,7 +61,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#ifndef OPENSSL_NO_FP_API
 int X509_CRL_print_fp(FILE *fp, X509_CRL *x)
 {
     BIO *b = BIO_new_fp(fp, BIO_NOCLOSE);
@@ -73,7 +72,6 @@ int X509_CRL_print_fp(FILE *fp, X509_CRL *x)
     BIO_free(b);
     return ret;
 }
-#endif
 
 int X509_CRL_print(BIO *out, X509_CRL *x)
 {

@@ -1104,12 +1104,10 @@ OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
 
 OPENSSL_EXPORT void *ASN1_item_dup(const ASN1_ITEM *it, void *x);
 
-#ifndef OPENSSL_NO_FP_API
 OPENSSL_EXPORT void *ASN1_item_d2i_fp(const ASN1_ITEM *it, FILE *in, void *x);
 OPENSSL_EXPORT int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x);
 OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
                                            unsigned long flags);
-#endif
 
 OPENSSL_EXPORT void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *x);
 OPENSSL_EXPORT int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *x);

@@ -112,15 +112,6 @@ extern "C" {
 // write. Now they are all implemented with either:
 // IMPLEMENT_PEM_rw(...) or IMPLEMENT_PEM_rw_cb(...)
 
-#ifdef OPENSSL_NO_FP_API
-
-#define IMPLEMENT_PEM_read_fp(name, type, str, asn1)            //
-#define IMPLEMENT_PEM_write_fp(name, type, str, asn1)           //
-#define IMPLEMENT_PEM_write_fp_const(name, type, str, asn1)     //
-#define IMPLEMENT_PEM_write_cb_fp(name, type, str, asn1)        //
-#define IMPLEMENT_PEM_write_cb_fp_const(name, type, str, asn1)  //
-
-#else
 
 #define IMPLEMENT_PEM_read_fp(name, type, str, asn1)                         \
   static void *pem_read_##name##_d2i(void **x, const unsigned char **inp,    \
@@ -173,7 +164,6 @@ extern "C" {
                           cb, u);                                              \
   }
 
-#endif
 
 #define IMPLEMENT_PEM_read_bio(name, type, str, asn1)                         \
   static void *pem_read_bio_##name##_d2i(void **x, const unsigned char **inp, \
@@ -260,14 +250,6 @@ extern "C" {
 
 // These are the same except they are for the declarations
 
-#if defined(OPENSSL_NO_FP_API)
-
-#define DECLARE_PEM_read_fp(name, type)      //
-#define DECLARE_PEM_write_fp(name, type)     //
-#define DECLARE_PEM_write_cb_fp(name, type)  //
-
-#else
-
 #define DECLARE_PEM_read_fp(name, type)                    \
   OPENSSL_EXPORT type *PEM_read_##name(FILE *fp, type **x, \
                                        pem_password_cb *cb, void *u);
@@ -282,8 +264,6 @@ extern "C" {
   OPENSSL_EXPORT int PEM_write_##name(                                         \
       FILE *fp, type *x, const EVP_CIPHER *enc, unsigned char *kstr, int klen, \
       pem_password_cb *cb, void *u);
-
-#endif
 
 #define DECLARE_PEM_read_bio(name, type)                      \
   OPENSSL_EXPORT type *PEM_read_bio_##name(BIO *bp, type **x, \
