@@ -157,6 +157,27 @@ extern "C" {
 #define V_ASN1_NEG_INTEGER (V_ASN1_INTEGER | V_ASN1_NEG)
 #define V_ASN1_NEG_ENUMERATED (V_ASN1_ENUMERATED | V_ASN1_NEG)
 
+// The following constants are bitmask representations of ASN.1 types.
+#define B_ASN1_NUMERICSTRING 0x0001
+#define B_ASN1_PRINTABLESTRING 0x0002
+#define B_ASN1_T61STRING 0x0004
+#define B_ASN1_TELETEXSTRING 0x0004
+#define B_ASN1_VIDEOTEXSTRING 0x0008
+#define B_ASN1_IA5STRING 0x0010
+#define B_ASN1_GRAPHICSTRING 0x0020
+#define B_ASN1_ISO64STRING 0x0040
+#define B_ASN1_VISIBLESTRING 0x0040
+#define B_ASN1_GENERALSTRING 0x0080
+#define B_ASN1_UNIVERSALSTRING 0x0100
+#define B_ASN1_OCTET_STRING 0x0200
+#define B_ASN1_BIT_STRING 0x0400
+#define B_ASN1_BMPSTRING 0x0800
+#define B_ASN1_UNKNOWN 0x1000
+#define B_ASN1_UTF8STRING 0x2000
+#define B_ASN1_UTCTIME 0x4000
+#define B_ASN1_GENERALIZEDTIME 0x8000
+#define B_ASN1_SEQUENCE 0x10000
+
 
 // Strings.
 //
@@ -302,6 +323,46 @@ OPENSSL_EXPORT void ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
 // done. On error, it returns a negative number.
 OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out,
                                        const ASN1_STRING *in);
+
+// The following formats define encodings for use with functions like
+// |ASN1_mbstring_copy|.
+#define MBSTRING_FLAG 0x1000
+#define MBSTRING_UTF8 (MBSTRING_FLAG)
+// |MBSTRING_ASC| refers to Latin-1, not ASCII.
+#define MBSTRING_ASC (MBSTRING_FLAG | 1)
+#define MBSTRING_BMP (MBSTRING_FLAG | 2)
+#define MBSTRING_UNIV (MBSTRING_FLAG | 4)
+
+// ASN1_mbstring_copy converts |len| bytes from |in| to an ASN.1 string. If
+// |len| is -1, |in| must be NUL-terminated and the length is determined by
+// |strlen|. |in| is decoded according to |inform|, which must be one of
+// |MBSTRING_*|. |mask| determines the set of valid output types and is a
+// bitmask containing a subset of |B_ASN1_PRINTABLESTRING|, |B_ASN1_IA5STRING|,
+// |B_ASN1_T61STRING|, |B_ASN1_BMPSTRING|, |B_ASN1_UNIVERSALSTRING|, and
+// |B_ASN1_UTF8STRING|, in that preference order. This function chooses the
+// first output type in |mask| which can represent |in|. It interprets T61String
+// as Latin-1, rather than T.61.
+//
+// On success, this function returns the |V_ASN1_*| constant corresponding to
+// the selected output type and, if |out| and |*out| are both non-NULL, updates
+// the object at |*out| with the result. If |out| is non-NULL and |*out| is
+// NULL, it instead sets |*out| to a newly-allocated |ASN1_STRING| containing
+// the result. If |out| is NULL, it returns the selected output type without
+// constructing an |ASN1_STRING|. On error, this function returns -1.
+//
+// TODO(davidben): If no format in |mask| can represent |in|, the function
+// currently falls back to |B_ASN1_UTF8STRING|. This is probably a bug and will
+// cause functions like |ASN1_STRING_set_by_NID| to output the wrong type.
+// Return an error instead.
+OPENSSL_EXPORT int ASN1_mbstring_copy(ASN1_STRING **out, const uint8_t *in,
+                                      int len, int inform, unsigned long mask);
+
+// ASN1_mbstring_ncopy behaves like |ASN1_mbstring_copy| but returns an error if
+// the output would be less than |minsize| or greater than |maxsize|. A
+// |maxsize| value of zero is ignored.
+OPENSSL_EXPORT int ASN1_mbstring_ncopy(ASN1_STRING **out, const uint8_t *in,
+                                       int len, int inform, unsigned long mask,
+                                       long minsize, long maxsize);
 
 // TODO(davidben): Expand and document function prototypes generated in macros.
 
@@ -682,37 +743,6 @@ OPENSSL_EXPORT int ASN1_TYPE_cmp(const ASN1_TYPE *a, const ASN1_TYPE *b);
 // Underdocumented functions.
 //
 // The following functions are not yet documented and organized.
-
-// For use with d2i_ASN1_type_bytes()
-#define B_ASN1_NUMERICSTRING 0x0001
-#define B_ASN1_PRINTABLESTRING 0x0002
-#define B_ASN1_T61STRING 0x0004
-#define B_ASN1_TELETEXSTRING 0x0004
-#define B_ASN1_VIDEOTEXSTRING 0x0008
-#define B_ASN1_IA5STRING 0x0010
-#define B_ASN1_GRAPHICSTRING 0x0020
-#define B_ASN1_ISO64STRING 0x0040
-#define B_ASN1_VISIBLESTRING 0x0040
-#define B_ASN1_GENERALSTRING 0x0080
-#define B_ASN1_UNIVERSALSTRING 0x0100
-#define B_ASN1_OCTET_STRING 0x0200
-#define B_ASN1_BIT_STRING 0x0400
-#define B_ASN1_BMPSTRING 0x0800
-#define B_ASN1_UNKNOWN 0x1000
-#define B_ASN1_UTF8STRING 0x2000
-#define B_ASN1_UTCTIME 0x4000
-#define B_ASN1_GENERALIZEDTIME 0x8000
-#define B_ASN1_SEQUENCE 0x10000
-
-// For use with ASN1_mbstring_copy()
-#define MBSTRING_FLAG 0x1000
-#define MBSTRING_UTF8 (MBSTRING_FLAG)
-// |MBSTRING_ASC| refers to Latin-1, not ASCII. It is used with TeletexString
-// which, in turn, is treated as Latin-1 rather than T.61 by OpenSSL and most
-// other software.
-#define MBSTRING_ASC (MBSTRING_FLAG | 1)
-#define MBSTRING_BMP (MBSTRING_FLAG | 2)
-#define MBSTRING_UNIV (MBSTRING_FLAG | 4)
 
 DEFINE_STACK_OF(ASN1_OBJECT)
 
@@ -1128,13 +1158,6 @@ OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it,
 OPENSSL_EXPORT void ASN1_STRING_set_default_mask(unsigned long mask);
 OPENSSL_EXPORT int ASN1_STRING_set_default_mask_asc(const char *p);
 OPENSSL_EXPORT unsigned long ASN1_STRING_get_default_mask(void);
-OPENSSL_EXPORT int ASN1_mbstring_copy(ASN1_STRING **out,
-                                      const unsigned char *in, int len,
-                                      int inform, unsigned long mask);
-OPENSSL_EXPORT int ASN1_mbstring_ncopy(ASN1_STRING **out,
-                                       const unsigned char *in, int len,
-                                       int inform, unsigned long mask,
-                                       long minsize, long maxsize);
 
 OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out,
                                                    const unsigned char *in,
