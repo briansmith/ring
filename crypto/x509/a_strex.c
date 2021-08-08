@@ -79,16 +79,11 @@
                   ASN1_STRFLGS_ESC_CTRL | \
                   ASN1_STRFLGS_ESC_MSB)
 
-static int send_bio_chars(void *arg, const void *buf, int len)
+static int maybe_write(BIO *out, const void *buf, int len)
 {
-    if (!arg)
-        return 1;
-    if (BIO_write(arg, buf, len) != len)
-        return 0;
-    return 1;
+    /* If |out| is NULL, ignore the output but report the length. */
+    return out == NULL || BIO_write(out, buf, len) == len;
 }
-
-typedef int char_io (void *arg, const void *buf, int len);
 
 /*
  * This function handles display of strings, one character at a time. It is
@@ -99,20 +94,20 @@ typedef int char_io (void *arg, const void *buf, int len);
 #define HEX_SIZE(type) (sizeof(type)*2)
 
 static int do_esc_char(uint32_t c, unsigned char flags, char *do_quotes,
-                       char_io *io_ch, void *arg)
+                       BIO *out)
 {
     unsigned char chflgs, chtmp;
     char tmphex[HEX_SIZE(uint32_t) + 3];
 
     if (c > 0xffff) {
         BIO_snprintf(tmphex, sizeof tmphex, "\\W%08" PRIX32, c);
-        if (!io_ch(arg, tmphex, 10))
+        if (!maybe_write(out, tmphex, 10))
             return -1;
         return 10;
     }
     if (c > 0xff) {
         BIO_snprintf(tmphex, sizeof tmphex, "\\U%04" PRIX32, c);
-        if (!io_ch(arg, tmphex, 6))
+        if (!maybe_write(out, tmphex, 6))
             return -1;
         return 6;
     }
@@ -126,19 +121,19 @@ static int do_esc_char(uint32_t c, unsigned char flags, char *do_quotes,
         if (chflgs & ASN1_STRFLGS_ESC_QUOTE) {
             if (do_quotes)
                 *do_quotes = 1;
-            if (!io_ch(arg, &chtmp, 1))
+            if (!maybe_write(out, &chtmp, 1))
                 return -1;
             return 1;
         }
-        if (!io_ch(arg, "\\", 1))
+        if (!maybe_write(out, "\\", 1))
             return -1;
-        if (!io_ch(arg, &chtmp, 1))
+        if (!maybe_write(out, &chtmp, 1))
             return -1;
         return 2;
     }
     if (chflgs & (ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB)) {
         BIO_snprintf(tmphex, 11, "\\%02X", chtmp);
-        if (!io_ch(arg, tmphex, 3))
+        if (!maybe_write(out, tmphex, 3))
             return -1;
         return 3;
     }
@@ -147,11 +142,11 @@ static int do_esc_char(uint32_t c, unsigned char flags, char *do_quotes,
      * character itself: backslash.
      */
     if (chtmp == '\\' && flags & ESC_FLAGS) {
-        if (!io_ch(arg, "\\\\", 2))
+        if (!maybe_write(out, "\\\\", 2))
             return -1;
         return 2;
     }
-    if (!io_ch(arg, &chtmp, 1))
+    if (!maybe_write(out, &chtmp, 1))
         return -1;
     return 1;
 }
@@ -166,8 +161,7 @@ static int do_esc_char(uint32_t c, unsigned char flags, char *do_quotes,
  */
 
 static int do_buf(unsigned char *buf, int buflen,
-                  int type, unsigned char flags, char *quotes, char_io *io_ch,
-                  void *arg)
+                  int type, unsigned char flags, char *quotes, BIO *out)
 {
     int i, outlen, len, charwidth;
     unsigned char orflags, *p, *q;
@@ -239,17 +233,14 @@ static int do_buf(unsigned char *buf, int buflen,
                  * otherwise each character will be > 0x7f and so the
                  * character will never be escaped on first and last.
                  */
-                len =
-                    do_esc_char(utfbuf[i], (unsigned char)(flags | orflags),
-                                quotes, io_ch, arg);
+                len = do_esc_char(utfbuf[i], (unsigned char)(flags | orflags),
+                                  quotes, out);
                 if (len < 0)
                     return -1;
                 outlen += len;
             }
         } else {
-            len =
-                do_esc_char(c, (unsigned char)(flags | orflags), quotes,
-                            io_ch, arg);
+            len = do_esc_char(c, (unsigned char)(flags | orflags), quotes, out);
             if (len < 0)
                 return -1;
             outlen += len;
@@ -260,19 +251,18 @@ static int do_buf(unsigned char *buf, int buflen,
 
 /* This function hex dumps a buffer of characters */
 
-static int do_hex_dump(char_io *io_ch, void *arg, unsigned char *buf,
-                       int buflen)
+static int do_hex_dump(BIO *out, unsigned char *buf, int buflen)
 {
     static const char hexdig[] = "0123456789ABCDEF";
     unsigned char *p, *q;
     char hextmp[2];
-    if (arg) {
+    if (out) {
         p = buf;
         q = buf + buflen;
         while (p != q) {
             hextmp[0] = hexdig[*p >> 4];
             hextmp[1] = hexdig[*p & 0xf];
-            if (!io_ch(arg, hextmp, 2))
+            if (!maybe_write(out, hextmp, 2))
                 return -1;
             p++;
         }
@@ -286,8 +276,7 @@ static int do_hex_dump(char_io *io_ch, void *arg, unsigned char *buf,
  * encoding. This uses the RFC2253 #01234 format.
  */
 
-static int do_dump(unsigned long lflags, char_io *io_ch, void *arg,
-                   const ASN1_STRING *str)
+static int do_dump(unsigned long lflags, BIO *out, const ASN1_STRING *str)
 {
     /*
      * Placing the ASN1_STRING in a temp ASN1_TYPE allows the DER encoding to
@@ -297,11 +286,11 @@ static int do_dump(unsigned long lflags, char_io *io_ch, void *arg,
     unsigned char *der_buf, *p;
     int outlen, der_len;
 
-    if (!io_ch(arg, "#", 1))
+    if (!maybe_write(out, "#", 1))
         return -1;
     /* If we don't dump DER encoding just dump content octets */
     if (!(lflags & ASN1_STRFLGS_DUMP_DER)) {
-        outlen = do_hex_dump(io_ch, arg, str->data, str->length);
+        outlen = do_hex_dump(out, str->data, str->length);
         if (outlen < 0)
             return -1;
         return outlen + 1;
@@ -314,7 +303,7 @@ static int do_dump(unsigned long lflags, char_io *io_ch, void *arg,
         return -1;
     p = der_buf;
     i2d_ASN1_TYPE(&t, &p);
-    outlen = do_hex_dump(io_ch, arg, der_buf, der_len);
+    outlen = do_hex_dump(out, der_buf, der_len);
     OPENSSL_free(der_buf);
     if (outlen < 0)
         return -1;
@@ -344,8 +333,7 @@ static const signed char tag2nbyte[] = {
  * an error occurred.
  */
 
-static int do_print_ex(char_io *io_ch, void *arg, unsigned long lflags,
-                       const ASN1_STRING *str)
+int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long lflags)
 {
     int outlen, len;
     int type;
@@ -363,7 +351,7 @@ static int do_print_ex(char_io *io_ch, void *arg, unsigned long lflags,
         const char *tagname;
         tagname = ASN1_tag2str(type);
         outlen += strlen(tagname);
-        if (!io_ch(arg, tagname, outlen) || !io_ch(arg, ":", 1))
+        if (!maybe_write(out, tagname, outlen) || !maybe_write(out, ":", 1))
             return -1;
         outlen++;
     }
@@ -387,7 +375,7 @@ static int do_print_ex(char_io *io_ch, void *arg, unsigned long lflags,
     }
 
     if (type == -1) {
-        len = do_dump(lflags, io_ch, arg, str);
+        len = do_dump(lflags, out, str);
         if (len < 0)
             return -1;
         outlen += len;
@@ -406,30 +394,47 @@ static int do_print_ex(char_io *io_ch, void *arg, unsigned long lflags,
             type |= BUF_TYPE_CONVUTF8;
     }
 
-    len = do_buf(str->data, str->length, type, flags, &quotes, io_ch, NULL);
+    len = do_buf(str->data, str->length, type, flags, &quotes, NULL);
     if (len < 0)
         return -1;
     outlen += len;
     if (quotes)
         outlen += 2;
-    if (!arg)
+    if (!out)
         return outlen;
-    if (quotes && !io_ch(arg, "\"", 1))
+    if (quotes && !maybe_write(out, "\"", 1))
         return -1;
-    if (do_buf(str->data, str->length, type, flags, NULL, io_ch, arg) < 0)
+    if (do_buf(str->data, str->length, type, flags, NULL, out) < 0)
         return -1;
-    if (quotes && !io_ch(arg, "\"", 1))
+    if (quotes && !maybe_write(out, "\"", 1))
         return -1;
     return outlen;
 }
 
+int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
+                            unsigned long flags)
+{
+    BIO *bio = NULL;
+    if (fp != NULL) {
+        /* If |fp| is NULL, this function returns the number of bytes without
+         * writing. */
+        bio = BIO_new_fp(fp, BIO_NOCLOSE);
+        if (bio == NULL) {
+            return -1;
+        }
+    }
+    int ret = ASN1_STRING_print_ex(bio, str, flags);
+    BIO_free(bio);
+    return ret;
+}
+
 /* Used for line indenting: print 'indent' spaces */
 
-static int do_indent(char_io *io_ch, void *arg, int indent)
+static int do_indent(BIO *out, int indent)
 {
     int i;
     for (i = 0; i < indent; i++)
-        if (!io_ch(arg, " ", 1))
+        if (!maybe_write(out, " ", 1))
             return 0;
     return 1;
 }
@@ -437,8 +442,8 @@ static int do_indent(char_io *io_ch, void *arg, int indent)
 #define FN_WIDTH_LN     25
 #define FN_WIDTH_SN     10
 
-static int do_name_ex(char_io *io_ch, void *arg, const X509_NAME *n,
-                      int indent, unsigned long flags)
+static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
+                      unsigned long flags)
 {
     int i, prev = -1, orflags, cnt;
     int fn_opt, fn_nid;
@@ -453,7 +458,7 @@ static int do_name_ex(char_io *io_ch, void *arg, const X509_NAME *n,
     if (indent < 0)
         indent = 0;
     outlen = indent;
-    if (!do_indent(io_ch, arg, indent))
+    if (!do_indent(out, indent))
         return -1;
     switch (flags & XN_FLAG_SEP_MASK) {
     case XN_FLAG_SEP_MULTILINE:
@@ -509,14 +514,14 @@ static int do_name_ex(char_io *io_ch, void *arg, const X509_NAME *n,
             ent = X509_NAME_get_entry(n, i);
         if (prev != -1) {
             if (prev == ent->set) {
-                if (!io_ch(arg, sep_mv, sep_mv_len))
+                if (!maybe_write(out, sep_mv, sep_mv_len))
                     return -1;
                 outlen += sep_mv_len;
             } else {
-                if (!io_ch(arg, sep_dn, sep_dn_len))
+                if (!maybe_write(out, sep_dn, sep_dn_len))
                     return -1;
                 outlen += sep_dn_len;
-                if (!do_indent(io_ch, arg, indent))
+                if (!do_indent(out, indent))
                     return -1;
                 outlen += indent;
             }
@@ -544,14 +549,14 @@ static int do_name_ex(char_io *io_ch, void *arg, const X509_NAME *n,
                 }
             }
             objlen = strlen(objbuf);
-            if (!io_ch(arg, objbuf, objlen))
+            if (!maybe_write(out, objbuf, objlen))
                 return -1;
             if ((objlen < fld_len) && (flags & XN_FLAG_FN_ALIGN)) {
-                if (!do_indent(io_ch, arg, fld_len - objlen))
+                if (!do_indent(out, fld_len - objlen))
                     return -1;
                 outlen += fld_len - objlen;
             }
-            if (!io_ch(arg, sep_eq, sep_eq_len))
+            if (!maybe_write(out, sep_eq, sep_eq_len))
                 return -1;
             outlen += objlen + sep_eq_len;
         }
@@ -565,7 +570,7 @@ static int do_name_ex(char_io *io_ch, void *arg, const X509_NAME *n,
         else
             orflags = 0;
 
-        len = do_print_ex(io_ch, arg, flags | orflags, val);
+        len = ASN1_STRING_print_ex(out, val, flags | orflags);
         if (len < 0)
             return -1;
         outlen += len;
@@ -580,7 +585,7 @@ int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
 {
     if (flags == XN_FLAG_COMPAT)
         return X509_NAME_print(out, nm, indent);
-    return do_name_ex(send_bio_chars, out, nm, indent, flags);
+    return do_name_ex(out, nm, indent, flags);
 }
 
 int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm, int indent,
@@ -596,27 +601,6 @@ int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm, int indent,
         }
     }
     int ret = X509_NAME_print_ex(bio, nm, indent, flags);
-    BIO_free(bio);
-    return ret;
-}
-
-int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long flags)
-{
-    return do_print_ex(send_bio_chars, out, flags, str);
-}
-
-int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str, unsigned long flags)
-{
-    BIO *bio = NULL;
-    if (fp != NULL) {
-        /* If |fp| is NULL, this function returns the number of bytes without
-         * writing. */
-        bio = BIO_new_fp(fp, BIO_NOCLOSE);
-        if (bio == NULL) {
-            return -1;
-        }
-    }
-    int ret = ASN1_STRING_print_ex(bio, str, flags);
     BIO_free(bio);
     return ret;
 }
