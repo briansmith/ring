@@ -211,6 +211,7 @@ add_library(
   asn1/a_object.c
   asn1/a_octet.c
   asn1/a_print.c
+  asn1/a_strex.c
   asn1/a_strnid.c
   asn1/a_time.c
   asn1/a_type.c
@@ -350,13 +351,13 @@ add_library(
   trust_token/voprf.c
   x509/a_digest.c
   x509/a_sign.c
-  x509/a_strex.c
   x509/a_verify.c
   x509/algorithm.c
   x509/asn1_gen.c
   x509/by_dir.c
   x509/by_file.c
   x509/i2d_pr.c
+  x509/name_print.c
   x509/rsa_pss.c
   x509/t_crl.c
   x509/t_req.c
