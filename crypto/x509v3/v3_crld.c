@@ -66,6 +66,9 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
+#include "internal.h"
+
+
 static void *v2i_crld(const X509V3_EXT_METHOD *method,
                       X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
 static int i2r_crldp(const X509V3_EXT_METHOD *method, void *pcrldp, BIO *out,

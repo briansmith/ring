@@ -961,13 +961,6 @@ struct X509_algor_st {
 
 DECLARE_ASN1_FUNCTIONS(X509_ALGOR)
 
-// This is used to contain a list of bit names
-typedef struct BIT_STRING_BITNAME_st {
-  int bitnum;
-  const char *lname;
-  const char *sname;
-} BIT_STRING_BITNAME;
-
 // M_ASN1_* are legacy aliases for various |ASN1_STRING| functions. Use the
 // functions themselves.
 #define M_ASN1_STRING_length(x) ASN1_STRING_length(x)

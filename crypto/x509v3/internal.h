@@ -60,6 +60,13 @@ int x509v3_cache_extensions(X509 *x);
 // to all 16 bytes of |ipout| and returns 16. Otherwise, it returns zero.
 int x509v3_a2i_ipadd(unsigned char ipout[16], const char *ipasc);
 
+// A |BIT_STRING_BITNAME| is used to contain a list of bit names.
+typedef struct {
+  int bitnum;
+  const char *lname;
+  const char *sname;
+} BIT_STRING_BITNAME;
+
 
 #if defined(__cplusplus)
 }  /* extern C */
