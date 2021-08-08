@@ -954,13 +954,6 @@ typedef STACK_OF(ASN1_TYPE) ASN1_SEQUENCE_ANY;
 DECLARE_ASN1_ENCODE_FUNCTIONS_const(ASN1_SEQUENCE_ANY, ASN1_SEQUENCE_ANY)
 DECLARE_ASN1_ENCODE_FUNCTIONS_const(ASN1_SEQUENCE_ANY, ASN1_SET_ANY)
 
-struct X509_algor_st {
-  ASN1_OBJECT *algorithm;
-  ASN1_TYPE *parameter;
-} /* X509_ALGOR */;
-
-DECLARE_ASN1_FUNCTIONS(X509_ALGOR)
-
 // M_ASN1_* are legacy aliases for various |ASN1_STRING| functions. Use the
 // functions themselves.
 #define M_ASN1_STRING_length(x) ASN1_STRING_length(x)
