@@ -779,17 +779,6 @@ typedef struct asn1_string_table_st {
   unsigned long flags;
 } ASN1_STRING_TABLE;
 
-// size limits: this stuff is taken straight from RFC2459
-
-#define ub_name 32768
-#define ub_common_name 64
-#define ub_locality_name 128
-#define ub_state_name 128
-#define ub_organization_name 64
-#define ub_organization_unit_name 64
-#define ub_title 64
-#define ub_email_address 128
-
 // Declarations for template structures: for full definitions
 // see asn1t.h
 typedef struct ASN1_TEMPLATE_st ASN1_TEMPLATE;
