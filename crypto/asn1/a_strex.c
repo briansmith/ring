@@ -284,35 +284,36 @@ static int do_hex_dump(BIO *out, unsigned char *buf, int buflen)
 
 static int do_dump(unsigned long lflags, BIO *out, const ASN1_STRING *str)
 {
-    /*
-     * Placing the ASN1_STRING in a temp ASN1_TYPE allows the DER encoding to
-     * readily obtained
-     */
-    ASN1_TYPE t;
-    unsigned char *der_buf, *p;
-    int outlen, der_len;
-
-    if (!maybe_write(out, "#", 1))
+    if (!maybe_write(out, "#", 1)) {
         return -1;
+    }
+
     /* If we don't dump DER encoding just dump content octets */
     if (!(lflags & ASN1_STRFLGS_DUMP_DER)) {
-        outlen = do_hex_dump(out, str->data, str->length);
-        if (outlen < 0)
+        int outlen = do_hex_dump(out, str->data, str->length);
+        if (outlen < 0) {
             return -1;
+        }
         return outlen + 1;
     }
+
+    /*
+     * Placing the ASN1_STRING in a temporary ASN1_TYPE allows the DER encoding
+     * to readily obtained.
+     */
+    ASN1_TYPE t;
     t.type = str->type;
-    t.value.ptr = (char *)str;
-    der_len = i2d_ASN1_TYPE(&t, NULL);
-    der_buf = OPENSSL_malloc(der_len);
-    if (!der_buf)
+    t.value.asn1_string = (ASN1_STRING *)str;
+    unsigned char *der_buf = NULL;
+    int der_len = i2d_ASN1_TYPE(&t, &der_buf);
+    if (der_len < 0) {
         return -1;
-    p = der_buf;
-    i2d_ASN1_TYPE(&t, &p);
-    outlen = do_hex_dump(out, der_buf, der_len);
+    }
+    int outlen = do_hex_dump(out, der_buf, der_len);
     OPENSSL_free(der_buf);
-    if (outlen < 0)
+    if (outlen < 0) {
         return -1;
+    }
     return outlen + 1;
 }
 
