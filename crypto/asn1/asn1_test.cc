@@ -721,6 +721,30 @@ TEST(ASN1Test, StringPrintEx) {
        ASN1_STRING_FLAG_BITS_LEFT | 4,
        ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_DUMP_DER,
        "#03020480"},
+      // INTEGER { 1 }
+      {V_ASN1_INTEGER,
+       {0x01},
+       0,
+       ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_DUMP_DER,
+       "#020101"},
+      // INTEGER { -1 }
+      {V_ASN1_NEG_INTEGER,
+       {0x01},
+       0,
+       ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_DUMP_DER,
+       "#0201FF"},
+      // ENUMERATED { 1 }
+      {V_ASN1_ENUMERATED,
+       {0x01},
+       0,
+       ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_DUMP_DER,
+       "#0A0101"},
+      // ENUMERATED { -1 }
+      {V_ASN1_NEG_ENUMERATED,
+       {0x01},
+       0,
+       ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_DUMP_DER,
+       "#0A01FF"},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.type);

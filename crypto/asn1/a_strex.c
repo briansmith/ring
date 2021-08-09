@@ -303,6 +303,20 @@ static int do_dump(unsigned long lflags, BIO *out, const ASN1_STRING *str)
      */
     ASN1_TYPE t;
     t.type = str->type;
+    /* Negative INTEGER and ENUMERATED values are the only case where
+     * |ASN1_STRING| and |ASN1_TYPE| types do not match.
+     *
+     * TODO(davidben): There are also some type fields which, in |ASN1_TYPE|, do
+     * not correspond to |ASN1_STRING|. It is unclear whether those are allowed
+     * in |ASN1_STRING| at all, or what the space of allowed types is.
+     * |ASN1_item_ex_d2i| will never produce such a value so, for now, we say
+     * this is an invalid input. But this corner of the library in general
+     * should be more robust. */
+    if (t.type == V_ASN1_NEG_INTEGER) {
+      t.type = V_ASN1_INTEGER;
+    } else if (t.type == V_ASN1_NEG_ENUMERATED) {
+      t.type = V_ASN1_ENUMERATED;
+    }
     t.value.asn1_string = (ASN1_STRING *)str;
     unsigned char *der_buf = NULL;
     int der_len = i2d_ASN1_TYPE(&t, &der_buf);
