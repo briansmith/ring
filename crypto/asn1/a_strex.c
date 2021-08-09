@@ -67,6 +67,15 @@
 #include "internal.h"
 
 
+// These flags must be distinct from |ESC_FLAGS| and fit in a byte.
+
+// Character is a valid PrintableString character
+#define CHARTYPE_PRINTABLESTRING 0x10
+// Character needs escaping if it is the first character
+#define CHARTYPE_FIRST_ESC_2253 0x20
+// Character needs escaping if it is the last character
+#define CHARTYPE_LAST_ESC_2253 0x40
+
 #define CHARTYPE_BS_ESC         (ASN1_STRFLGS_ESC_2253 | CHARTYPE_FIRST_ESC_2253 | CHARTYPE_LAST_ESC_2253)
 
 #define ESC_FLAGS (ASN1_STRFLGS_ESC_2253 | \
@@ -188,6 +197,8 @@ static int do_buf(unsigned char *buf, int buflen,
             orflags = CHARTYPE_FIRST_ESC_2253;
         else
             orflags = 0;
+        /* TODO(davidben): Replace this with |cbs_get_ucs2_be|, etc., to check
+         * for invalid codepoints. */
         switch (charwidth) {
         case 4:
             c = ((uint32_t)*p++) << 24;

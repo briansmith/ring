@@ -72,7 +72,7 @@ const char *ASN1_tag2str(int tag)
     };
 
     if ((tag == V_ASN1_NEG_INTEGER) || (tag == V_ASN1_NEG_ENUMERATED))
-        tag &= ~0x100;
+        tag &= ~V_ASN1_NEG;
 
     if (tag < 0 || tag > 30)
         return "(unknown)";

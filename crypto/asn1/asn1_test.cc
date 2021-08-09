@@ -530,6 +530,269 @@ TEST(ASN1Test, SetTime) {
   }
 }
 
+static std::vector<uint8_t> StringToVector(const std::string &str) {
+  return std::vector<uint8_t>(str.begin(), str.end());
+}
+
+TEST(ASN1Test, StringPrintEx) {
+  const struct {
+    int type;
+    std::vector<uint8_t> data;
+    int str_flags;
+    unsigned long flags;
+    std::string expected;
+  } kTests[] = {
+      // A string like "hello" is never escaped or quoted.
+      // |ASN1_STRFLGS_ESC_QUOTE| only introduces quotes when needed. Note
+      // OpenSSL interprets T61String as Latin-1.
+      {V_ASN1_T61STRING, StringToVector("hello"), 0, 0, "hello"},
+      {V_ASN1_T61STRING, StringToVector("hello"), 0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB,
+       "hello"},
+      {V_ASN1_T61STRING, StringToVector("hello"), 0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB |
+           ASN1_STRFLGS_ESC_QUOTE,
+       "hello"},
+
+      // By default, 8-bit characters are printed without escaping.
+      {V_ASN1_T61STRING,
+       {0, '\n', 0x80, 0xff, ',', '+', '"', '\\', '<', '>', ';'},
+       0,
+       0,
+       std::string(1, '\0') + "\n\x80\xff,+\"\\<>;"},
+
+      // Flags control different escapes. Note that any escape flag will cause
+      // blackslashes to be escaped.
+      {V_ASN1_T61STRING,
+       {0, '\n', 0x80, 0xff, ',', '+', '"', '\\', '<', '>', ';'},
+       0,
+       ASN1_STRFLGS_ESC_2253,
+       std::string(1, '\0') + "\n\x80\xff\\,\\+\\\"\\\\\\<\\>\\;"},
+      {V_ASN1_T61STRING,
+       {0, '\n', 0x80, 0xff, ',', '+', '"', '\\', '<', '>', ';'},
+       0,
+       ASN1_STRFLGS_ESC_CTRL,
+       "\\00\\0A\x80\xff,+\"\\\\<>;"},
+      {V_ASN1_T61STRING,
+       {0, '\n', 0x80, 0xff, ',', '+', '"', '\\', '<', '>', ';'},
+       0,
+       ASN1_STRFLGS_ESC_MSB,
+       std::string(1, '\0') + "\n\\80\\FF,+\"\\\\<>;"},
+      {V_ASN1_T61STRING,
+       {0, '\n', 0x80, 0xff, ',', '+', '"', '\\', '<', '>', ';'},
+       0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB,
+       "\\00\\0A\\80\\FF\\,\\+\\\"\\\\\\<\\>\\;"},
+
+      // When quoted, fewer characters need to be escaped in RFC2253.
+      {V_ASN1_T61STRING,
+       {0, '\n', 0x80, 0xff, ',', '+', '"', '\\', '<', '>', ';'},
+       0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB |
+           ASN1_STRFLGS_ESC_QUOTE,
+       "\"\\00\\0A\\80\\FF,+\\\"\\\\<>;\""},
+
+      // If no characters benefit from quotes, no quotes are added.
+      {V_ASN1_T61STRING,
+       {0, '\n', 0x80, 0xff, '"', '\\'},
+       0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB |
+           ASN1_STRFLGS_ESC_QUOTE,
+       "\\00\\0A\\80\\FF\\\"\\\\"},
+
+      // RFC2253 only escapes spaces at the start and end of a string.
+      {V_ASN1_T61STRING, StringToVector("   "), 0, ASN1_STRFLGS_ESC_2253,
+       "\\  \\ "},
+      {V_ASN1_T61STRING, StringToVector("   "), 0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_QUOTE, "\"   \""},
+
+      // RFC2253 only escapes # at the start of a string.
+      {V_ASN1_T61STRING, StringToVector("###"), 0, ASN1_STRFLGS_ESC_2253,
+       "\\###"},
+      {V_ASN1_T61STRING, StringToVector("###"), 0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_QUOTE, "\"###\""},
+
+      // By default, strings are decoded and Unicode code points are
+      // individually escaped.
+      {V_ASN1_UTF8STRING, StringToVector("a\xc2\x80\xc4\x80\xf0\x90\x80\x80"),
+       0, ASN1_STRFLGS_ESC_MSB, "a\\80\\U0100\\W00010000"},
+      {V_ASN1_BMPSTRING,
+       {0x00, 'a', 0x00, 0x80, 0x01, 0x00},
+       0,
+       ASN1_STRFLGS_ESC_MSB,
+       "a\\80\\U0100"},
+      {V_ASN1_UNIVERSALSTRING,
+       {0x00, 0x00, 0x00, 'a',   //
+        0x00, 0x00, 0x00, 0x80,  //
+        0x00, 0x00, 0x01, 0x00,  //
+        0x00, 0x01, 0x00, 0x00},
+       0,
+       ASN1_STRFLGS_ESC_MSB,
+       "a\\80\\U0100\\W00010000"},
+
+      // |ASN1_STRFLGS_UTF8_CONVERT| normalizes everything to UTF-8 and then
+      // escapes individual bytes.
+      {V_ASN1_IA5STRING, StringToVector("a\x80"), 0,
+       ASN1_STRFLGS_ESC_MSB | ASN1_STRFLGS_UTF8_CONVERT, "a\\C2\\80"},
+      {V_ASN1_T61STRING, StringToVector("a\x80"), 0,
+       ASN1_STRFLGS_ESC_MSB | ASN1_STRFLGS_UTF8_CONVERT, "a\\C2\\80"},
+      {V_ASN1_UTF8STRING, StringToVector("a\xc2\x80\xc4\x80\xf0\x90\x80\x80"),
+       0, ASN1_STRFLGS_ESC_MSB | ASN1_STRFLGS_UTF8_CONVERT,
+       "a\\C2\\80\\C4\\80\\F0\\90\\80\\80"},
+      {V_ASN1_BMPSTRING,
+       {0x00, 'a', 0x00, 0x80, 0x01, 0x00},
+       0,
+       ASN1_STRFLGS_ESC_MSB | ASN1_STRFLGS_UTF8_CONVERT,
+       "a\\C2\\80\\C4\\80"},
+      {V_ASN1_UNIVERSALSTRING,
+       {0x00, 0x00, 0x00, 'a',   //
+        0x00, 0x00, 0x00, 0x80,  //
+        0x00, 0x00, 0x01, 0x00,  //
+        0x00, 0x01, 0x00, 0x00},
+       0,
+       ASN1_STRFLGS_ESC_MSB | ASN1_STRFLGS_UTF8_CONVERT,
+       "a\\C2\\80\\C4\\80\\F0\\90\\80\\80"},
+
+      // The same as above, but without escaping the UTF-8 encoding.
+      {V_ASN1_IA5STRING, StringToVector("a\x80"), 0, ASN1_STRFLGS_UTF8_CONVERT,
+       "a\xc2\x80"},
+      {V_ASN1_T61STRING, StringToVector("a\x80"), 0, ASN1_STRFLGS_UTF8_CONVERT,
+       "a\xc2\x80"},
+      {V_ASN1_UTF8STRING, StringToVector("a\xc2\x80\xc4\x80\xf0\x90\x80\x80"),
+       0, ASN1_STRFLGS_UTF8_CONVERT, "a\xc2\x80\xc4\x80\xf0\x90\x80\x80"},
+      {V_ASN1_BMPSTRING,
+       {0x00, 'a', 0x00, 0x80, 0x01, 0x00},
+       0,
+       ASN1_STRFLGS_UTF8_CONVERT,
+       "a\xc2\x80\xc4\x80"},
+      {V_ASN1_UNIVERSALSTRING,
+       {0x00, 0x00, 0x00, 'a',   //
+        0x00, 0x00, 0x00, 0x80,  //
+        0x00, 0x00, 0x01, 0x00,  //
+        0x00, 0x01, 0x00, 0x00},
+       0,
+       ASN1_STRFLGS_UTF8_CONVERT,
+       "a\xc2\x80\xc4\x80\xf0\x90\x80\x80"},
+
+      // Types that cannot be decoded are, by default, treated as a byte string.
+      {V_ASN1_OCTET_STRING, {0xff}, 0, 0, "\xff"},
+      {-1, {0xff}, 0, 0, "\xff"},
+      {100, {0xff}, 0, 0, "\xff"},
+
+      // |ASN1_STRFLGS_UTF8_CONVERT| still converts these bytes to UTF-8.
+      //
+      // TODO(davidben): This seems like a bug. Although it's unclear because
+      // the non-RFC2253 options aren't especially sound. Can we just remove
+      // them?
+      {V_ASN1_OCTET_STRING, {0xff}, 0, ASN1_STRFLGS_UTF8_CONVERT, "\xc3\xbf"},
+      {-1, {0xff}, 0, ASN1_STRFLGS_UTF8_CONVERT, "\xc3\xbf"},
+      {100, {0xff}, 0, ASN1_STRFLGS_UTF8_CONVERT, "\xc3\xbf"},
+
+      // |ASN1_STRFLGS_IGNORE_TYPE| causes the string type to be ignored, so it
+      // is always treated as a byte string, even if it is not a valid encoding.
+      {V_ASN1_UTF8STRING, {0xff}, 0, ASN1_STRFLGS_IGNORE_TYPE, "\xff"},
+      {V_ASN1_BMPSTRING, {0xff}, 0, ASN1_STRFLGS_IGNORE_TYPE, "\xff"},
+      {V_ASN1_UNIVERSALSTRING, {0xff}, 0, ASN1_STRFLGS_IGNORE_TYPE, "\xff"},
+
+      // |ASN1_STRFLGS_SHOW_TYPE| prepends the type name.
+      {V_ASN1_UTF8STRING, {'a'}, 0, ASN1_STRFLGS_SHOW_TYPE, "UTF8STRING:a"},
+      {-1, {'a'}, 0, ASN1_STRFLGS_SHOW_TYPE, "(unknown):a"},
+      {100, {'a'}, 0, ASN1_STRFLGS_SHOW_TYPE, "(unknown):a"},
+
+      // |ASN1_STRFLGS_DUMP_ALL| and |ASN1_STRFLGS_DUMP_UNKNOWN| cause
+      // non-string types to be printed in hex, though without the DER wrapper
+      // by default.
+      {V_ASN1_UTF8STRING, StringToVector("\xe2\x98\x83"), 0,
+       ASN1_STRFLGS_DUMP_UNKNOWN, "\\U2603"},
+      {V_ASN1_UTF8STRING, StringToVector("\xe2\x98\x83"), 0,
+       ASN1_STRFLGS_DUMP_ALL, "#E29883"},
+      {V_ASN1_OCTET_STRING, StringToVector("\xe2\x98\x83"), 0,
+       ASN1_STRFLGS_DUMP_UNKNOWN, "#E29883"},
+      {V_ASN1_OCTET_STRING, StringToVector("\xe2\x98\x83"), 0,
+       ASN1_STRFLGS_DUMP_ALL, "#E29883"},
+
+      // |ASN1_STRFLGS_DUMP_DER| includes the entire element.
+      {V_ASN1_UTF8STRING, StringToVector("\xe2\x98\x83"), 0,
+       ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_DUMP_DER, "#0C03E29883"},
+      {V_ASN1_OCTET_STRING, StringToVector("\xe2\x98\x83"), 0,
+       ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_DUMP_DER, "#0403E29883"},
+      {V_ASN1_BIT_STRING,
+       {0x80},
+       ASN1_STRING_FLAG_BITS_LEFT | 4,
+       ASN1_STRFLGS_DUMP_ALL | ASN1_STRFLGS_DUMP_DER,
+       "#03020480"},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.type);
+    SCOPED_TRACE(Bytes(t.data));
+    SCOPED_TRACE(t.str_flags);
+    SCOPED_TRACE(t.flags);
+
+    bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(t.type));
+    ASSERT_TRUE(ASN1_STRING_set(str.get(), t.data.data(), t.data.size()));
+    str->flags = t.str_flags;
+
+    // If the |BIO| is null, it should measure the size.
+    int len = ASN1_STRING_print_ex(nullptr, str.get(), t.flags);
+    EXPECT_EQ(len, static_cast<int>(t.expected.size()));
+
+    // Measuring the size should also work for the |FILE| version
+    len = ASN1_STRING_print_ex_fp(nullptr, str.get(), t.flags);
+    EXPECT_EQ(len, static_cast<int>(t.expected.size()));
+
+    // Actually print the string.
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    len = ASN1_STRING_print_ex(bio.get(), str.get(), t.flags);
+    EXPECT_EQ(len, static_cast<int>(t.expected.size()));
+
+    const uint8_t *bio_contents;
+    size_t bio_len;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &bio_contents, &bio_len));
+    EXPECT_EQ(t.expected, std::string(bio_contents, bio_contents + bio_len));
+  }
+
+  const struct {
+    int type;
+    std::vector<uint8_t> data;
+    int str_flags;
+    unsigned long flags;
+  } kUnprintableTests[] = {
+      // When decoding strings, invalid codepoints are errors.
+      {V_ASN1_UTF8STRING, {0xff}, 0, ASN1_STRFLGS_ESC_MSB},
+      {V_ASN1_BMPSTRING, {0xff}, 0, ASN1_STRFLGS_ESC_MSB},
+      {V_ASN1_BMPSTRING, {0xff}, 0, ASN1_STRFLGS_ESC_MSB},
+      {V_ASN1_UNIVERSALSTRING, {0xff}, 0, ASN1_STRFLGS_ESC_MSB},
+  };
+  for (const auto &t : kUnprintableTests) {
+    SCOPED_TRACE(t.type);
+    SCOPED_TRACE(Bytes(t.data));
+    SCOPED_TRACE(t.str_flags);
+    SCOPED_TRACE(t.flags);
+
+    bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(t.type));
+    ASSERT_TRUE(ASN1_STRING_set(str.get(), t.data.data(), t.data.size()));
+    str->flags = t.str_flags;
+
+    // If the |BIO| is null, it should measure the size.
+    int len = ASN1_STRING_print_ex(nullptr, str.get(), t.flags);
+    EXPECT_EQ(len, -1);
+    ERR_clear_error();
+
+    // Measuring the size should also work for the |FILE| version
+    len = ASN1_STRING_print_ex_fp(nullptr, str.get(), t.flags);
+    EXPECT_EQ(len, -1);
+    ERR_clear_error();
+
+    // Actually print the string.
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    len = ASN1_STRING_print_ex(bio.get(), str.get(), t.flags);
+    EXPECT_EQ(len, -1);
+    ERR_clear_error();
+  }
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
