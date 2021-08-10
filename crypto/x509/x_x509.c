@@ -289,13 +289,15 @@ static int i2d_x509_aux_internal(X509 *a, unsigned char **pp)
         return length;
     }
 
-    tmplen = i2d_X509_CERT_AUX(a->aux, pp);
-    if (tmplen < 0) {
-        if (start != NULL)
-            *pp = start;
-        return tmplen;
+    if (a->aux != NULL) {
+        tmplen = i2d_X509_CERT_AUX(a->aux, pp);
+        if (tmplen < 0) {
+            if (start != NULL)
+                *pp = start;
+            return tmplen;
+        }
+        length += tmplen;
     }
-    length += tmplen;
 
     return length;
 }

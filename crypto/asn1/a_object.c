@@ -70,13 +70,8 @@
 int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp)
 {
     if (a == NULL) {
-        /* Match |ASN1_item_i2d| and "successfully" omit the object when passed
-         * NULL.
-         *
-         * TODO(davidben): Should this and |ASN1_item_i2d| be an error? OpenSSL
-         * did not do this, but our |CBB|-based functions like
-         * |i2d_RSAPrivateKey| don't allow NULL at all. */
-        return 0;
+        OPENSSL_PUT_ERROR(ASN1, ERR_R_PASSED_NULL_PARAMETER);
+        return -1;
     }
 
     if (a->length == 0) {

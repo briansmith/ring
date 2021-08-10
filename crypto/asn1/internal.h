@@ -124,10 +124,11 @@ int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
                      ASN1_TLC *ctx);
 
 /* ASN1_item_ex_i2d encodes |*pval| as a value of type |it| to |out| under the
- * i2d output convention. It returns the length on success, -1 on error, and
- * zero if the object was omitted. If |tag| is -1. the tag and class come from
- * |it|. Otherwise, the tag number is |tag| and the class is the
- * |ASN1_TFLG_TAG_CLASS| bits of |aclass|. This is used for implicit tagging.
+ * i2d output convention. It returns a non-zero length on success and -1 on
+ * error. If |tag| is -1. the tag and class come from |it|. Otherwise, the tag
+ * number is |tag| and the class is the |ASN1_TFLG_TAG_CLASS| bits of |aclass|.
+ * This is used for implicit tagging. This function treats a missing value as an
+ * error, not an optional field.
  *
  * TODO(davidben): Historically, |aclass| contained other flags, but we may have
  * removed the last of them. */

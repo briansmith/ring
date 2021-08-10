@@ -66,8 +66,12 @@
 #include "internal.h"
 
 
+static int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
+                                const ASN1_ITEM *it, int tag, int aclass,
+                                int optional);
 static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
-                                 const ASN1_ITEM *it, int tag, int aclass);
+                                 const ASN1_ITEM *it, int tag, int aclass,
+                                 int optional);
 static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cont, int *out_omit,
                        int *putype, const ASN1_ITEM *it);
 static int asn1_set_seq_out(STACK_OF(ASN1_VALUE) *sk, unsigned char **out,
@@ -114,14 +118,31 @@ int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it)
 int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
                      const ASN1_ITEM *it, int tag, int aclass)
 {
+    int ret = asn1_item_ex_i2d_opt(pval, out, it, tag, aclass, /*optional=*/0);
+    assert(ret != 0);
+    return ret;
+}
+
+/* asn1_item_ex_i2d_opt behaves like |ASN1_item_ex_i2d| but, if |optional| is
+ * non-zero and |*pval| is omitted, it returns zero and writes no bytes. */
+int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
+                         const ASN1_ITEM *it, int tag, int aclass,
+                         int optional)
+{
     const ASN1_TEMPLATE *tt = NULL;
     int i, seqcontlen, seqlen;
-    const ASN1_EXTERN_FUNCS *ef;
     const ASN1_AUX *aux = it->funcs;
     ASN1_aux_cb *asn1_cb = NULL;
 
-    if ((it->itype != ASN1_ITYPE_PRIMITIVE) && !*pval)
-        return 0;
+    /* All fields are pointers, except for boolean |ASN1_ITYPE_PRIMITIVE|s.
+     * Optional primitives are handled later. */
+    if ((it->itype != ASN1_ITYPE_PRIMITIVE) && !*pval) {
+        if (optional) {
+            return 0;
+        }
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_VALUE);
+        return -1;
+    }
 
     if (aux && aux->asn1_cb)
         asn1_cb = aux->asn1_cb;
@@ -129,10 +150,14 @@ int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
     switch (it->itype) {
 
     case ASN1_ITYPE_PRIMITIVE:
-        if (it->templates)
-            return asn1_template_ex_i2d(pval, out, it->templates,
-                                        tag, aclass);
-        return asn1_i2d_ex_primitive(pval, out, it, tag, aclass);
+        if (it->templates) {
+            if (it->templates->flags & ASN1_TFLG_OPTIONAL) {
+                OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
+                return -1;
+            }
+            return asn1_template_ex_i2d(pval, out, it->templates, tag, aclass);
+        }
+        return asn1_i2d_ex_primitive(pval, out, it, tag, aclass, optional);
 
     case ASN1_ITYPE_MSTRING:
         /*
@@ -143,7 +168,7 @@ int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
             OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
             return -1;
         }
-        return asn1_i2d_ex_primitive(pval, out, it, -1, aclass);
+        return asn1_i2d_ex_primitive(pval, out, it, -1, aclass, optional);
 
     case ASN1_ITYPE_CHOICE: {
         /*
@@ -162,6 +187,10 @@ int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
             return -1;
         }
         const ASN1_TEMPLATE *chtt = it->templates + i;
+        if (chtt->flags & ASN1_TFLG_OPTIONAL) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
+            return -1;
+        }
         ASN1_VALUE **pchval = asn1_get_field_ptr(pval, chtt);
         int ret = asn1_template_ex_i2d(pchval, out, chtt, -1, aclass);
         if (ret < 0 ||
@@ -171,10 +200,19 @@ int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
         return ret;
     }
 
-    case ASN1_ITYPE_EXTERN:
+    case ASN1_ITYPE_EXTERN: {
         /* If new style i2d it does all the work */
-        ef = it->funcs;
-        return ef->asn1_ex_i2d(pval, out, it, tag, aclass);
+        const ASN1_EXTERN_FUNCS *ef = it->funcs;
+        int ret = ef->asn1_ex_i2d(pval, out, it, tag, aclass);
+        if (ret == 0) {
+            /* |asn1_ex_i2d| should never return zero. We have already checked
+             * for optional values generically, and |ASN1_ITYPE_EXTERN| fields
+             * must be pointers. */
+            OPENSSL_PUT_ERROR(ASN1, ERR_R_INTERNAL_ERROR);
+            return -1;
+        }
+        return ret;
+    }
 
     case ASN1_ITYPE_SEQUENCE:
         i = asn1_enc_restore(&seqcontlen, out, pval, it);
@@ -236,9 +274,10 @@ int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
     }
 }
 
-/* asn1_template_ex_i2d behaves like |ASN1_item_ex_i2d| but uses an
+/* asn1_template_ex_i2d behaves like |asn1_item_ex_i2d_opt| but uses an
  * |ASN1_TEMPLATE| instead of an |ASN1_ITEM|. An |ASN1_TEMPLATE| wraps an
- * |ASN1_ITEM| with modifiers such as tagging, SEQUENCE or SET, etc. */
+ * |ASN1_ITEM| with modifiers such as tagging, SEQUENCE or SET, etc. Instead of
+ * taking an |optional| parameter, it uses the |ASN1_TFLG_OPTIONAL| flag. */
 static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
                                 const ASN1_TEMPLATE *tt, int tag, int iclass)
 {
@@ -274,6 +313,8 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
      */
     iclass &= ~ASN1_TFLG_TAG_CLASS;
 
+    const int optional = (flags & ASN1_TFLG_OPTIONAL) != 0;
+
     /*
      * At this point 'ttag' contains the outer tag to use, 'tclass' is the
      * class and iclass is any flags passed to this function.
@@ -286,8 +327,13 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
         int skcontlen, sklen;
         ASN1_VALUE *skitem;
 
-        if (!*pval)
-            return 0;
+        if (!*pval) {
+            if (optional) {
+                return 0;
+            }
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_VALUE);
+            return -1;
+        }
 
         if (flags & ASN1_TFLG_SET_OF) {
             isset = 1;
@@ -353,7 +399,8 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
     if (flags & ASN1_TFLG_EXPTAG) {
         /* EXPLICIT tagging */
         /* Find length of tagged item */
-        i = ASN1_item_ex_i2d(pval, NULL, ASN1_ITEM_ptr(tt->item), -1, iclass);
+        i = asn1_item_ex_i2d_opt(pval, NULL, ASN1_ITEM_ptr(tt->item), -1,
+                                 iclass, optional);
         if (i <= 0)
             return i;
         /* Find length of EXPLICIT tag */
@@ -370,8 +417,8 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
     }
 
     /* Either normal or IMPLICIT tagging: combine class and flags */
-    return ASN1_item_ex_i2d(pval, out, ASN1_ITEM_ptr(tt->item),
-                            ttag, tclass | iclass);
+    return asn1_item_ex_i2d_opt(pval, out, ASN1_ITEM_ptr(tt->item),
+                                ttag, tclass | iclass, optional);
 
 }
 
@@ -463,7 +510,8 @@ err:
 /* asn1_i2d_ex_primitive behaves like |ASN1_item_ex_i2d| but |item| must be a
  * a PRIMITIVE or MSTRING type that is not an |ASN1_ITEM_TEMPLATE|. */
 static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
-                                 const ASN1_ITEM *it, int tag, int aclass)
+                                 const ASN1_ITEM *it, int tag, int aclass,
+                                 int optional)
 {
     /* Get length of content octets and maybe find out the underlying type. */
     int omit;
@@ -473,7 +521,11 @@ static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
         return -1;
     }
     if (omit) {
-        return 0;
+        if (optional) {
+            return 0;
+        }
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_VALUE);
+        return -1;
     }
 
     /*

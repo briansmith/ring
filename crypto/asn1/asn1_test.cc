@@ -1131,7 +1131,7 @@ DECLARE_ASN1_ITEM(ASN1_LINKED_LIST)
 DECLARE_ASN1_FUNCTIONS(ASN1_LINKED_LIST)
 
 ASN1_SEQUENCE(ASN1_LINKED_LIST) = {
-  ASN1_OPT(ASN1_LINKED_LIST, next, ASN1_LINKED_LIST),
+    ASN1_OPT(ASN1_LINKED_LIST, next, ASN1_LINKED_LIST),
 } ASN1_SEQUENCE_END(ASN1_LINKED_LIST)
 
 IMPLEMENT_ASN1_FUNCTIONS(ASN1_LINKED_LIST)
@@ -1182,15 +1182,13 @@ struct IMPLICIT_CHOICE {
   ASN1_STRING *string;
 };
 
-// clang-format off
 DECLARE_ASN1_FUNCTIONS(IMPLICIT_CHOICE)
 
 ASN1_SEQUENCE(IMPLICIT_CHOICE) = {
-  ASN1_IMP(IMPLICIT_CHOICE, string, DIRECTORYSTRING, 0)
+    ASN1_IMP(IMPLICIT_CHOICE, string, DIRECTORYSTRING, 0),
 } ASN1_SEQUENCE_END(IMPLICIT_CHOICE)
 
 IMPLEMENT_ASN1_FUNCTIONS(IMPLICIT_CHOICE)
-// clang-format on
 
 // Test that the ASN.1 templates reject types with implicitly-tagged CHOICE
 // types.
@@ -1213,6 +1211,52 @@ TEST(ASN1Test, ImplicitChoice) {
   static const uint8_t kInput2[] = {0x30, 0x02, 0x80, 0x00};
   ptr = kInput2;
   EXPECT_EQ(nullptr, d2i_IMPLICIT_CHOICE(nullptr, &ptr, sizeof(kInput2)));
+}
+
+struct REQUIRED_FIELD {
+  ASN1_INTEGER *value;
+  ASN1_INTEGER *value_imp;
+  ASN1_INTEGER *value_exp;
+  STACK_OF(ASN1_INTEGER) *seq;
+  STACK_OF(ASN1_INTEGER) *seq_imp;
+  STACK_OF(ASN1_INTEGER) *seq_exp;
+};
+
+DECLARE_ASN1_FUNCTIONS(REQUIRED_FIELD)
+ASN1_SEQUENCE(REQUIRED_FIELD) = {
+    ASN1_SIMPLE(REQUIRED_FIELD, value, ASN1_INTEGER),
+    ASN1_IMP(REQUIRED_FIELD, value_imp, ASN1_INTEGER, 0),
+    ASN1_EXP(REQUIRED_FIELD, value_exp, ASN1_INTEGER, 1),
+    ASN1_SEQUENCE_OF(REQUIRED_FIELD, seq, ASN1_INTEGER),
+    ASN1_IMP_SEQUENCE_OF(REQUIRED_FIELD, seq_imp, ASN1_INTEGER, 2),
+    ASN1_EXP_SEQUENCE_OF(REQUIRED_FIELD, seq_exp, ASN1_INTEGER, 3),
+} ASN1_SEQUENCE_END(REQUIRED_FIELD)
+IMPLEMENT_ASN1_FUNCTIONS(REQUIRED_FIELD)
+
+// Test that structures with missing required fields cannot be serialized. Test
+// the full combination of tagging and SEQUENCE OF.
+TEST(ASN1Test, MissingRequiredField) {
+  EXPECT_EQ(-1, i2d_REQUIRED_FIELD(nullptr, nullptr));
+
+  std::unique_ptr<REQUIRED_FIELD, decltype(&REQUIRED_FIELD_free)> obj(
+      nullptr, REQUIRED_FIELD_free);
+  for (auto field : {&REQUIRED_FIELD::value, &REQUIRED_FIELD::value_imp,
+                     &REQUIRED_FIELD::value_exp}) {
+    obj.reset(REQUIRED_FIELD_new());
+    ASSERT_TRUE(obj);
+    ASN1_INTEGER_free((*obj).*field);
+    (*obj).*field = nullptr;
+    EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
+  }
+
+  for (auto field : {&REQUIRED_FIELD::seq, &REQUIRED_FIELD::seq_imp,
+                     &REQUIRED_FIELD::seq_exp}) {
+    obj.reset(REQUIRED_FIELD_new());
+    ASSERT_TRUE(obj);
+    sk_ASN1_INTEGER_pop_free((*obj).*field, ASN1_INTEGER_free);
+    (*obj).*field = nullptr;
+    EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
+  }
 }
 
 #endif  // !WINDOWS || !SHARED_LIBRARY
