@@ -35,8 +35,10 @@ pub(crate) fn features() -> Features {
         )
     ))]
     {
-        static INIT: spin::Once<()> = spin::Once::new();
-        let () = INIT.call_once(|| {
+        use once_cell::race::OnceBool;
+
+        static INIT: OnceBool = OnceBool::new();
+        let _ = INIT.get_or_init(|| {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             {
                 prefixed_extern! {
@@ -54,6 +56,8 @@ pub(crate) fn features() -> Features {
             {
                 arm::setup();
             }
+
+            true
         });
     }
 
