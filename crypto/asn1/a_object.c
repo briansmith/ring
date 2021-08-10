@@ -69,20 +69,31 @@
 
 int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp)
 {
-    unsigned char *p, *allocated = NULL;
-    int objsize;
+    if (a == NULL) {
+        /* Match |ASN1_item_i2d| and "successfully" omit the object when passed
+         * NULL.
+         *
+         * TODO(davidben): Should this and |ASN1_item_i2d| be an error? OpenSSL
+         * did not do this, but our |CBB|-based functions like
+         * |i2d_RSAPrivateKey| don't allow NULL at all. */
+        return 0;
+    }
 
-    if ((a == NULL) || (a->data == NULL))
-        return (0);
+    if (a->length == 0) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_OBJECT);
+        return -1;
+    }
 
-    objsize = ASN1_object_size(0, a->length, V_ASN1_OBJECT);
-    if (pp == NULL || objsize == -1)
+    int objsize = ASN1_object_size(0, a->length, V_ASN1_OBJECT);
+    if (pp == NULL || objsize == -1) {
         return objsize;
+    }
 
+    unsigned char *p, *allocated = NULL;
     if (*pp == NULL) {
         if ((p = allocated = OPENSSL_malloc(objsize)) == NULL) {
             OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-            return 0;
+            return -1;
         }
     } else {
         p = *pp;

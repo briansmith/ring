@@ -68,8 +68,8 @@
 
 static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
                                  const ASN1_ITEM *it, int tag, int aclass);
-static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cont, int *putype,
-                       const ASN1_ITEM *it);
+static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cont, int *out_omit,
+                       int *putype, const ASN1_ITEM *it);
 static int asn1_set_seq_out(STACK_OF(ASN1_VALUE) *sk, unsigned char **out,
                             int skcontlen, const ASN1_ITEM *item,
                             int do_sort, int iclass);
@@ -465,32 +465,24 @@ err:
 static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
                                  const ASN1_ITEM *it, int tag, int aclass)
 {
-    int len;
-    int utype;
-    int usetag;
-
-    utype = it->utype;
-
-    /*
-     * Get length of content octets and maybe find out the underlying type.
-     */
-
-    len = asn1_ex_i2c(pval, NULL, &utype, it);
-
-    /* -1 means omit type */
-    if (len == -1)
+    /* Get length of content octets and maybe find out the underlying type. */
+    int omit;
+    int utype = it->utype;
+    int len = asn1_ex_i2c(pval, NULL, &omit, &utype, it);
+    if (len < 0) {
+        return -1;
+    }
+    if (omit) {
         return 0;
+    }
 
     /*
      * If SEQUENCE, SET or OTHER then header is included in pseudo content
      * octets so don't include tag+length. We need to check here because the
      * call to asn1_ex_i2c() could change utype.
      */
-    if ((utype == V_ASN1_SEQUENCE) || (utype == V_ASN1_SET) ||
-        (utype == V_ASN1_OTHER))
-        usetag = 0;
-    else
-        usetag = 1;
+    int usetag = utype != V_ASN1_SEQUENCE && utype != V_ASN1_SET &&
+                 utype != V_ASN1_OTHER;
 
     /* If not implicitly tagged get tag from underlying type */
     if (tag == -1)
@@ -498,20 +490,28 @@ static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
 
     /* Output tag+length followed by content octets */
     if (out) {
-        if (usetag)
+        if (usetag) {
             ASN1_put_object(out, /*constructed=*/0, len, tag, aclass);
-        asn1_ex_i2c(pval, *out, &utype, it);
+        }
+        int len2 = asn1_ex_i2c(pval, *out, &omit, &utype, it);
+        if (len2 < 0) {
+          return -1;
+        }
+        assert(len == len2);
+        assert(!omit);
         *out += len;
     }
 
-    if (usetag)
+    if (usetag) {
         return ASN1_object_size(/*constructed=*/0, len, tag);
+    }
     return len;
 }
 
 /* asn1_ex_i2c writes the |*pval| to |cout| under the i2d output convention,
- * excluding the tag and length. It returns the number of bytes written on
- * success and -1 to if |*pval| should be omitted.
+ * excluding the tag and length. It returns the number of bytes written,
+ * possibly zero, on success or -1 on error. If |*pval| should be omitted, it
+ * returns zero and sets |*out_omit| to true.
  *
  * If |it| is an MSTRING or ANY type, it gets the underlying type from |*pval|,
  * which must be an |ASN1_STRING| or |ASN1_TYPE|, respectively. It then updates
@@ -522,10 +522,10 @@ static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
  *
  * Otherwise, |*putype| must contain |it->utype|.
  *
- * WARNING: Unlike most functions in this file, |asn1_ex_i2c| returns -1 to omit
- * the field instead of 0. It has no way to report an error condition. */
-static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
-                       const ASN1_ITEM *it)
+ * WARNING: Unlike most functions in this file, |asn1_ex_i2c| can return zero
+ * without omitting the element. ASN.1 values may have empty contents. */
+static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *out_omit,
+                       int *putype, const ASN1_ITEM *it)
 {
     ASN1_BOOLEAN *tbool = NULL;
     ASN1_STRING *strtmp;
@@ -539,11 +539,15 @@ static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
      * |ASN1_PRIMITIVE_FUNCS| table of callbacks. */
     assert(it->funcs == NULL);
 
+    *out_omit = 0;
+
     /* Should type be omitted? */
     if ((it->itype != ASN1_ITYPE_PRIMITIVE)
         || (it->utype != V_ASN1_BOOLEAN)) {
-        if (!*pval)
-            return -1;
+        if (!*pval) {
+            *out_omit = 1;
+            return 0;
+        }
     }
 
     if (it->itype == ASN1_ITYPE_MSTRING) {
@@ -580,8 +584,11 @@ static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
         otmp = (ASN1_OBJECT *)*pval;
         cont = otmp->data;
         len = otmp->length;
-        if (cont == NULL || len == 0)
+        if (len == 0) {
+            /* Some |ASN1_OBJECT|s do not have OIDs and cannot be serialized. */
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_OBJECT);
             return -1;
+        }
         break;
 
     case V_ASN1_NULL:
@@ -591,32 +598,39 @@ static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *putype,
 
     case V_ASN1_BOOLEAN:
         tbool = (ASN1_BOOLEAN *)pval;
-        if (*tbool == -1)
-            return -1;
+        if (*tbool == -1) {
+            *out_omit = 1;
+            return 0;
+        }
         if (it->utype != V_ASN1_ANY) {
             /*
              * Default handling if value == size field then omit
              */
-            if (*tbool && (it->size > 0))
-                return -1;
-            if (!*tbool && !it->size)
-                return -1;
+            if ((*tbool && (it->size > 0)) ||
+                (!*tbool && !it->size)) {
+                *out_omit = 1;
+                return 0;
+            }
         }
         c = *tbool ? 0xff : 0x00;
         cont = &c;
         len = 1;
         break;
 
-    case V_ASN1_BIT_STRING:
-        return i2c_ASN1_BIT_STRING((ASN1_BIT_STRING *)*pval,
-                                   cout ? &cout : NULL);
+    case V_ASN1_BIT_STRING: {
+        int ret = i2c_ASN1_BIT_STRING((ASN1_BIT_STRING *)*pval,
+                                      cout ? &cout : NULL);
+        /* |i2c_ASN1_BIT_STRING| returns zero on error instead of -1. */
+        return ret <= 0 ? -1 : ret;
+    }
 
     case V_ASN1_INTEGER:
-    case V_ASN1_ENUMERATED:
-        /*
-         * These are all have the same content format as ASN1_INTEGER
-         */
-        return i2c_ASN1_INTEGER((ASN1_INTEGER *)*pval, cout ? &cout : NULL);
+    case V_ASN1_ENUMERATED: {
+        /* |i2c_ASN1_INTEGER| also handles ENUMERATED. */
+        int ret = i2c_ASN1_INTEGER((ASN1_INTEGER *)*pval, cout ? &cout : NULL);
+        /* |i2c_ASN1_INTEGER| returns zero on error instead of -1. */
+        return ret <= 0 ? -1 : ret;
+    }
 
     case V_ASN1_OCTET_STRING:
     case V_ASN1_NUMERICSTRING:

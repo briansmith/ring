@@ -170,6 +170,8 @@ TEST(ASN1Test, ASN1Type) {
       {V_ASN1_BOOLEAN, {0x01, 0x01, 0x00}},
       // OCTET_STRING { "a" }
       {V_ASN1_OCTET_STRING, {0x04, 0x01, 0x61}},
+      // OCTET_STRING { }
+      {V_ASN1_OCTET_STRING, {0x04, 0x00}},
       // BIT_STRING { `01` `00` }
       {V_ASN1_BIT_STRING, {0x03, 0x02, 0x01, 0x00}},
       // INTEGER { -1 }
@@ -1081,6 +1083,17 @@ TEST(ASN1Test, InvalidChoice) {
   ASSERT_TRUE(names);
   EXPECT_TRUE(bssl::PushToStack(names.get(), std::move(name)));
   EXPECT_EQ(-1, i2d_GENERAL_NAMES(names.get(), nullptr));
+}
+
+// Encoding NID-only |ASN1_OBJECT|s should fail.
+TEST(ASN1Test, InvalidObject) {
+  EXPECT_EQ(-1, i2d_ASN1_OBJECT(OBJ_nid2obj(NID_kx_ecdhe), nullptr));
+
+  bssl::UniquePtr<X509_ALGOR> alg(X509_ALGOR_new());
+  ASSERT_TRUE(alg);
+  ASSERT_TRUE(X509_ALGOR_set0(alg.get(), OBJ_nid2obj(NID_kx_ecdhe),
+                              V_ASN1_UNDEF, nullptr));
+  EXPECT_EQ(-1, i2d_X509_ALGOR(alg.get(), nullptr));
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
