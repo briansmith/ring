@@ -1023,6 +1023,18 @@ TEST(ASN1Test, MBString) {
   }
 }
 
+// Test that multi-string types correctly encode negative ENUMERATED.
+// Multi-string types cannot contain INTEGER, so we only test ENUMERATED.
+TEST(ASN1Test, NegativeEnumeratedMultistring) {
+  static const uint8_t kMinusOne[] = {0x0a, 0x01, 0xff};  // ENUMERATED { -1 }
+  // |ASN1_PRINTABLE| is a multi-string type that allows ENUMERATED.
+  const uint8_t *p = kMinusOne;
+  bssl::UniquePtr<ASN1_STRING> str(
+      d2i_ASN1_PRINTABLE(nullptr, &p, sizeof(kMinusOne)));
+  ASSERT_TRUE(str);
+  TestSerialize(str.get(), i2d_ASN1_PRINTABLE, kMinusOne);
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
