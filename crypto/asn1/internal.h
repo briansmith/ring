@@ -123,15 +123,34 @@ int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
                      const ASN1_ITEM *it, int tag, int aclass, char opt,
                      ASN1_TLC *ctx);
 
+/* ASN1_item_ex_i2d encodes |*pval| as a value of type |it| to |out| under the
+ * i2d output convention. It returns the length on success, -1 on error, and
+ * zero if the object was omitted. If |tag| is -1. the tag and class come from
+ * |it|. Otherwise, the tag number is |tag| and the class is the
+ * |ASN1_TFLG_TAG_CLASS| bits of |aclass|. This is used for implicit tagging.
+ *
+ * TODO(davidben): Historically, |aclass| contained other flags, but we may have
+ * removed the last of them. */
 int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
                      const ASN1_ITEM *it, int tag, int aclass);
+
 void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
 
+/* asn1_get_choice_selector returns the CHOICE selector value for |*pval|, which
+ * must of type |it|. */
 int asn1_get_choice_selector(ASN1_VALUE **pval, const ASN1_ITEM *it);
+
 int asn1_set_choice_selector(ASN1_VALUE **pval, int value, const ASN1_ITEM *it);
 
+/* asn1_get_field_ptr returns a pointer to the field in |*pval| corresponding to
+ * |tt|. */
 ASN1_VALUE **asn1_get_field_ptr(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
 
+/* asn1_do_adb returns the |ASN1_TEMPLATE| for the ANY DEFINED BY field |tt|,
+ * based on the selector INTEGER or OID in |*pval|. If |tt| is not an ADB field,
+ * it returns |tt|. If the selector does not match any value, it returns NULL.
+ * If |nullerr| is non-zero, it will additionally push an error to the error
+ * queue when there is no match. */
 const ASN1_TEMPLATE *asn1_do_adb(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt,
                                  int nullerr);
 
@@ -140,8 +159,13 @@ int asn1_refcount_dec_and_test_zero(ASN1_VALUE **pval, const ASN1_ITEM *it);
 
 void asn1_enc_init(ASN1_VALUE **pval, const ASN1_ITEM *it);
 void asn1_enc_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
+
+/* asn1_enc_restore, if |*pval| has a saved encoding, writes it to |out| under
+ * the i2d output convention, sets |*len| to the length, and returns one. If it
+ * has no saved encoding, it returns zero. */
 int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval,
                      const ASN1_ITEM *it);
+
 int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
                   const ASN1_ITEM *it);
 
