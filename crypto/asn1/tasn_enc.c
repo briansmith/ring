@@ -145,7 +145,7 @@ int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
         }
         return asn1_i2d_ex_primitive(pval, out, it, -1, aclass);
 
-    case ASN1_ITYPE_CHOICE:
+    case ASN1_ITYPE_CHOICE: {
         /*
          * It never makes sense for CHOICE types to have implicit tagging, so if
          * tag != -1, then this looks like an error in the template.
@@ -157,19 +157,19 @@ int ASN1_item_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
         if (asn1_cb && !asn1_cb(ASN1_OP_I2D_PRE, pval, it, NULL))
             return -1;
         i = asn1_get_choice_selector(pval, it);
-        if ((i >= 0) && (i < it->tcount)) {
-            ASN1_VALUE **pchval;
-            const ASN1_TEMPLATE *chtt;
-            chtt = it->templates + i;
-            pchval = asn1_get_field_ptr(pval, chtt);
-            return asn1_template_ex_i2d(pchval, out, chtt, -1, aclass);
-        }
-        /* Fixme: error condition if selector out of range. Additionally,
-         * |asn1_cb| is currently called only on error when it should be called
-         * on success. */
-        if (asn1_cb && !asn1_cb(ASN1_OP_I2D_POST, pval, it, NULL))
+        if (i < 0 || i >= it->tcount) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_NO_MATCHING_CHOICE_TYPE);
             return -1;
-        return 0;
+        }
+        const ASN1_TEMPLATE *chtt = it->templates + i;
+        ASN1_VALUE **pchval = asn1_get_field_ptr(pval, chtt);
+        int ret = asn1_template_ex_i2d(pchval, out, chtt, -1, aclass);
+        if (ret < 0 ||
+            (asn1_cb && !asn1_cb(ASN1_OP_I2D_POST, pval, it, NULL))) {
+            return -1;
+        }
+        return ret;
+    }
 
     case ASN1_ITYPE_EXTERN:
         /* If new style i2d it does all the work */

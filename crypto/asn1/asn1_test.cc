@@ -1067,6 +1067,22 @@ TEST(ASN1Test, PrintableType) {
   }
 }
 
+// Encoding a CHOICE type with an invalid selector should fail.
+TEST(ASN1Test, InvalidChoice) {
+  bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+  ASSERT_TRUE(name);
+  // CHOICE types are initialized with an invalid selector.
+  EXPECT_EQ(-1, name->type);
+  // |name| should fail to encode.
+  EXPECT_EQ(-1, i2d_GENERAL_NAME(name.get(), nullptr));
+
+  // The error should be propagated through types containing |name|.
+  bssl::UniquePtr<GENERAL_NAMES> names(GENERAL_NAMES_new());
+  ASSERT_TRUE(names);
+  EXPECT_TRUE(bssl::PushToStack(names.get(), std::move(name)));
+  EXPECT_EQ(-1, i2d_GENERAL_NAMES(names.get(), nullptr));
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
