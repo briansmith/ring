@@ -817,6 +817,212 @@ TEST(ASN1Test, StringPrintEx) {
   }
 }
 
+TEST(ASN1Test, MBString) {
+  const unsigned long kAll = B_ASN1_PRINTABLESTRING | B_ASN1_IA5STRING |
+                             B_ASN1_T61STRING | B_ASN1_BMPSTRING |
+                             B_ASN1_UNIVERSALSTRING | B_ASN1_UTF8STRING;
+
+  const struct {
+    int format;
+    std::vector<uint8_t> in;
+    unsigned long mask;
+    int expected_type;
+    std::vector<uint8_t> expected_data;
+    int num_codepoints;
+  } kTests[] = {
+      // Given a choice of formats, we pick the smallest that fits.
+      {MBSTRING_UTF8, {}, kAll, V_ASN1_PRINTABLESTRING, {}, 0},
+      {MBSTRING_UTF8, {'a'}, kAll, V_ASN1_PRINTABLESTRING, {'a'}, 1},
+      {MBSTRING_UTF8, {'\n'}, kAll, V_ASN1_IA5STRING, {'\n'}, 1},
+      {MBSTRING_UTF8,
+       {0xc2, 0x80 /* U+0080 */},
+       kAll,
+       V_ASN1_T61STRING,
+       {0x80},
+       1},
+      {MBSTRING_UTF8,
+       {0xc4, 0x80 /* U+0100 */},
+       kAll,
+       V_ASN1_BMPSTRING,
+       {0x01, 0x00},
+       1},
+      {MBSTRING_UTF8,
+       {0xf0, 0x90, 0x80, 0x80 /* U+10000 */},
+       kAll,
+       V_ASN1_UNIVERSALSTRING,
+       {0x00, 0x01, 0x00, 0x00},
+       1},
+      {MBSTRING_UTF8,
+       {0xf0, 0x90, 0x80, 0x80 /* U+10000 */},
+       kAll & ~B_ASN1_UNIVERSALSTRING,
+       V_ASN1_UTF8STRING,
+       {0xf0, 0x90, 0x80, 0x80},
+       1},
+
+      // When a particular format is specified, we use it.
+      {MBSTRING_UTF8,
+       {'a'},
+       B_ASN1_PRINTABLESTRING,
+       V_ASN1_PRINTABLESTRING,
+       {'a'},
+       1},
+      {MBSTRING_UTF8, {'a'}, B_ASN1_IA5STRING, V_ASN1_IA5STRING, {'a'}, 1},
+      {MBSTRING_UTF8, {'a'}, B_ASN1_T61STRING, V_ASN1_T61STRING, {'a'}, 1},
+      {MBSTRING_UTF8, {'a'}, B_ASN1_UTF8STRING, V_ASN1_UTF8STRING, {'a'}, 1},
+      {MBSTRING_UTF8,
+       {'a'},
+       B_ASN1_BMPSTRING,
+       V_ASN1_BMPSTRING,
+       {0x00, 'a'},
+       1},
+      {MBSTRING_UTF8,
+       {'a'},
+       B_ASN1_UNIVERSALSTRING,
+       V_ASN1_UNIVERSALSTRING,
+       {0x00, 0x00, 0x00, 'a'},
+       1},
+
+      // A long string with characters of many widths, to test sizes are
+      // measured in code points.
+      {MBSTRING_UTF8,
+       {
+           'a',                     //
+           0xc2, 0x80,              // U+0080
+           0xc4, 0x80,              // U+0100
+           0xf0, 0x90, 0x80, 0x80,  // U+10000
+       },
+       B_ASN1_UNIVERSALSTRING,
+       V_ASN1_UNIVERSALSTRING,
+       {
+           0x00, 0x00, 0x00, 'a',   //
+           0x00, 0x00, 0x00, 0x80,  //
+           0x00, 0x00, 0x01, 0x00,  //
+           0x00, 0x01, 0x00, 0x00,  //
+       },
+       4},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.format);
+    SCOPED_TRACE(Bytes(t.in));
+    SCOPED_TRACE(t.mask);
+
+    // Passing in nullptr should do a dry run.
+    EXPECT_EQ(t.expected_type,
+              ASN1_mbstring_copy(nullptr, t.in.data(), t.in.size(), t.format,
+                                 t.mask));
+
+    // Test allocating a new object.
+    ASN1_STRING *str = nullptr;
+    EXPECT_EQ(
+        t.expected_type,
+        ASN1_mbstring_copy(&str, t.in.data(), t.in.size(), t.format, t.mask));
+    ASSERT_TRUE(str);
+    EXPECT_EQ(t.expected_type, ASN1_STRING_type(str));
+    EXPECT_EQ(Bytes(t.expected_data),
+              Bytes(ASN1_STRING_get0_data(str), ASN1_STRING_length(str)));
+
+    // Test writing into an existing object.
+    ASN1_STRING_free(str);
+    str = ASN1_STRING_new();
+    ASSERT_TRUE(str);
+    ASN1_STRING *old_str = str;
+    EXPECT_EQ(
+        t.expected_type,
+        ASN1_mbstring_copy(&str, t.in.data(), t.in.size(), t.format, t.mask));
+    ASSERT_EQ(old_str, str);
+    EXPECT_EQ(t.expected_type, ASN1_STRING_type(str));
+    EXPECT_EQ(Bytes(t.expected_data),
+              Bytes(ASN1_STRING_get0_data(str), ASN1_STRING_length(str)));
+    ASN1_STRING_free(str);
+    str = nullptr;
+
+    // minsize and maxsize should be enforced, even in a dry run.
+    EXPECT_EQ(t.expected_type,
+              ASN1_mbstring_ncopy(nullptr, t.in.data(), t.in.size(), t.format,
+                                  t.mask, /*minsize=*/t.num_codepoints,
+                                  /*maxsize=*/t.num_codepoints));
+
+    EXPECT_EQ(t.expected_type,
+              ASN1_mbstring_ncopy(&str, t.in.data(), t.in.size(), t.format,
+                                  t.mask, /*minsize=*/t.num_codepoints,
+                                  /*maxsize=*/t.num_codepoints));
+    ASSERT_TRUE(str);
+    EXPECT_EQ(t.expected_type, ASN1_STRING_type(str));
+    EXPECT_EQ(Bytes(t.expected_data),
+              Bytes(ASN1_STRING_get0_data(str), ASN1_STRING_length(str)));
+    ASN1_STRING_free(str);
+    str = nullptr;
+
+    EXPECT_EQ(-1, ASN1_mbstring_ncopy(
+                      nullptr, t.in.data(), t.in.size(), t.format, t.mask,
+                      /*minsize=*/t.num_codepoints + 1, /*maxsize=*/0));
+    ERR_clear_error();
+    EXPECT_EQ(-1, ASN1_mbstring_ncopy(
+                      &str, t.in.data(), t.in.size(), t.format, t.mask,
+                      /*minsize=*/t.num_codepoints + 1, /*maxsize=*/0));
+    EXPECT_FALSE(str);
+    ERR_clear_error();
+    if (t.num_codepoints > 1) {
+      EXPECT_EQ(-1, ASN1_mbstring_ncopy(
+                        nullptr, t.in.data(), t.in.size(), t.format, t.mask,
+                        /*minsize=*/0, /*maxsize=*/t.num_codepoints - 1));
+      ERR_clear_error();
+      EXPECT_EQ(-1, ASN1_mbstring_ncopy(
+                        &str, t.in.data(), t.in.size(), t.format, t.mask,
+                        /*minsize=*/0, /*maxsize=*/t.num_codepoints - 1));
+      EXPECT_FALSE(str);
+      ERR_clear_error();
+    }
+  }
+
+  const struct {
+    int format;
+    std::vector<uint8_t> in;
+    unsigned long mask;
+  } kInvalidTests[] = {
+      // Invalid encodings are rejected.
+      {MBSTRING_UTF8, {0xff}, B_ASN1_UTF8STRING},
+      {MBSTRING_BMP, {0xff}, B_ASN1_UTF8STRING},
+      {MBSTRING_UNIV, {0xff}, B_ASN1_UTF8STRING},
+
+      // Lone surrogates are not code points.
+      {MBSTRING_UTF8, {0xed, 0xa0, 0x80}, B_ASN1_UTF8STRING},
+      {MBSTRING_BMP, {0xd8, 0x00}, B_ASN1_UTF8STRING},
+      {MBSTRING_UNIV, {0x00, 0x00, 0xd8, 0x00}, B_ASN1_UTF8STRING},
+
+      // The input does not fit in the allowed output types.
+      {MBSTRING_UTF8, {'\n'}, B_ASN1_PRINTABLESTRING},
+      {MBSTRING_UTF8,
+       {0xc2, 0x80 /* U+0080 */},
+       B_ASN1_PRINTABLESTRING | B_ASN1_IA5STRING},
+      {MBSTRING_UTF8,
+       {0xc4, 0x80 /* U+0100 */},
+       B_ASN1_PRINTABLESTRING | B_ASN1_IA5STRING | B_ASN1_T61STRING},
+      {MBSTRING_UTF8,
+       {0xf0, 0x90, 0x80, 0x80 /* U+10000 */},
+       B_ASN1_PRINTABLESTRING | B_ASN1_IA5STRING | B_ASN1_T61STRING |
+           B_ASN1_BMPSTRING},
+
+      // Unrecognized bits are ignored.
+      {MBSTRING_UTF8, {'\n'}, B_ASN1_PRINTABLESTRING | B_ASN1_SEQUENCE},
+  };
+  for (const auto &t : kInvalidTests) {
+    SCOPED_TRACE(t.format);
+    SCOPED_TRACE(Bytes(t.in));
+    SCOPED_TRACE(t.mask);
+
+    EXPECT_EQ(-1, ASN1_mbstring_copy(nullptr, t.in.data(), t.in.size(),
+                                     t.format, t.mask));
+    ERR_clear_error();
+
+    ASN1_STRING *str = nullptr;
+    EXPECT_EQ(-1, ASN1_mbstring_copy(&str, t.in.data(), t.in.size(),
+                                     t.format, t.mask));
+    ERR_clear_error();
+    EXPECT_EQ(nullptr, str);
+  }
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)

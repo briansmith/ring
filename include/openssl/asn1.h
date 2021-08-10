@@ -337,6 +337,14 @@ OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out,
 #define MBSTRING_BMP (MBSTRING_FLAG | 2)
 #define MBSTRING_UNIV (MBSTRING_FLAG | 4)
 
+// DIRSTRING_TYPE contains the valid string types in an X.509 DirectoryString.
+#define DIRSTRING_TYPE                                            \
+  (B_ASN1_PRINTABLESTRING | B_ASN1_T61STRING | B_ASN1_BMPSTRING | \
+   B_ASN1_UTF8STRING)
+
+// PKCS9STRING_TYPE contains the valid string types in a PKCS9String.
+#define PKCS9STRING_TYPE (DIRSTRING_TYPE | B_ASN1_IA5STRING)
+
 // ASN1_mbstring_copy converts |len| bytes from |in| to an ASN.1 string. If
 // |len| is -1, |in| must be NUL-terminated and the length is determined by
 // |strlen|. |in| is decoded according to |inform|, which must be one of
@@ -347,23 +355,21 @@ OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out,
 // first output type in |mask| which can represent |in|. It interprets T61String
 // as Latin-1, rather than T.61.
 //
+// If |mask| is zero, |DIRSTRING_TYPE| is used by default.
+//
 // On success, this function returns the |V_ASN1_*| constant corresponding to
 // the selected output type and, if |out| and |*out| are both non-NULL, updates
 // the object at |*out| with the result. If |out| is non-NULL and |*out| is
 // NULL, it instead sets |*out| to a newly-allocated |ASN1_STRING| containing
 // the result. If |out| is NULL, it returns the selected output type without
 // constructing an |ASN1_STRING|. On error, this function returns -1.
-//
-// TODO(davidben): If no format in |mask| can represent |in|, the function
-// currently falls back to |B_ASN1_UTF8STRING|. This is probably a bug and will
-// cause functions like |ASN1_STRING_set_by_NID| to output the wrong type.
-// Return an error instead.
 OPENSSL_EXPORT int ASN1_mbstring_copy(ASN1_STRING **out, const uint8_t *in,
                                       int len, int inform, unsigned long mask);
 
 // ASN1_mbstring_ncopy behaves like |ASN1_mbstring_copy| but returns an error if
-// the output would be less than |minsize| or greater than |maxsize|. A
-// |maxsize| value of zero is ignored.
+// the input is less than |minsize| or greater than |maxsize| codepoints long. A
+// |maxsize| value of zero is ignored. Note the sizes are measured in
+// codepoints, not output bytes.
 OPENSSL_EXPORT int ASN1_mbstring_ncopy(ASN1_STRING **out, const uint8_t *in,
                                        int len, int inform, unsigned long mask,
                                        long minsize, long maxsize);
@@ -863,10 +869,6 @@ typedef struct ASN1_ENCODING_st {
 
 #define STABLE_FLAGS_MALLOC 0x01
 #define STABLE_NO_MASK 0x02
-#define DIRSTRING_TYPE                                            \
-  (B_ASN1_PRINTABLESTRING | B_ASN1_T61STRING | B_ASN1_BMPSTRING | \
-   B_ASN1_UTF8STRING)
-#define PKCS9STRING_TYPE (DIRSTRING_TYPE | B_ASN1_IA5STRING)
 
 typedef struct asn1_string_table_st {
   int nid;
