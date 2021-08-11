@@ -269,6 +269,7 @@ const LINUX_ABI: &[&str] = &[
     "netbsd",
     "openbsd",
     "linux",
+    "redox",
     "solaris",
 ];
 
