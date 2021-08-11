@@ -246,8 +246,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // The PRF hash is now known. Set up the key schedule and hash the
-  // ClientHello.
+  // The PRF hash is now known.
   if (!hs->transcript.InitHash(ssl_protocol_version(ssl), hs->new_cipher)) {
     return ssl_hs_error;
   }

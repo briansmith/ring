@@ -158,20 +158,14 @@ bool SSLTranscript::Init() {
   return true;
 }
 
-// InitDigestWithData calls |EVP_DigestInit_ex| on |ctx| with |md| and then
-// writes the data in |buf| to it.
-static bool InitDigestWithData(EVP_MD_CTX *ctx, const EVP_MD *md,
-                               const BUF_MEM *buf) {
-  if (!EVP_DigestInit_ex(ctx, md, NULL)) {
-    return false;
-  }
-  EVP_DigestUpdate(ctx, buf->data, buf->length);
-  return true;
-}
-
 bool SSLTranscript::InitHash(uint16_t version, const SSL_CIPHER *cipher) {
   const EVP_MD *md = ssl_get_handshake_digest(version, cipher);
-  return InitDigestWithData(hash_.get(), md, buffer_.get());
+  if (Digest() == md) {
+    // No need to re-hash the buffer.
+    return true;
+  }
+  return EVP_DigestInit_ex(hash_.get(), md, nullptr) &&
+         EVP_DigestUpdate(hash_.get(), buffer_->data, buffer_->length);
 }
 
 void SSLTranscript::FreeBuffer() {

@@ -694,7 +694,8 @@ class SSLTranscript {
   // InitHash initializes the handshake hash based on the PRF and contents of
   // the handshake transcript. Subsequent calls to |Update| will update the
   // rolling hash. It returns one on success and zero on failure. It is an error
-  // to call this function after the handshake buffer is released.
+  // to call this function after the handshake buffer is released. This may be
+  // called multiple times to change the hash function.
   bool InitHash(uint16_t version, const SSL_CIPHER *cipher);
 
   // UpdateForHelloRetryRequest resets the rolling hash with the
