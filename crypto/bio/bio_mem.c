@@ -116,17 +116,11 @@ static int mem_new(BIO *bio) {
 }
 
 static int mem_free(BIO *bio) {
-  BUF_MEM *b;
-
-  if (bio == NULL) {
-    return 0;
-  }
-
   if (!bio->shutdown || !bio->init || bio->ptr == NULL) {
     return 1;
   }
 
-  b = (BUF_MEM *)bio->ptr;
+  BUF_MEM *b = (BUF_MEM *)bio->ptr;
   if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
     b->data = NULL;
   }

@@ -320,7 +320,7 @@ static int conn_new(BIO *bio) {
   bio->init = 0;
   bio->num = -1;
   bio->flags = 0;
-  bio->ptr = (char *)BIO_CONNECT_new();
+  bio->ptr = BIO_CONNECT_new();
   return bio->ptr != NULL;
 }
 
@@ -340,10 +340,6 @@ static void conn_close_socket(BIO *bio) {
 }
 
 static int conn_free(BIO *bio) {
-  if (bio == NULL) {
-    return 0;
-  }
-
   if (bio->shutdown) {
     conn_close_socket(bio);
   }

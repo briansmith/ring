@@ -146,10 +146,6 @@ static int fd_new(BIO *bio) {
 }
 
 static int fd_free(BIO *bio) {
-  if (bio == NULL) {
-    return 0;
-  }
-
   if (bio->shutdown) {
     if (bio->init) {
       BORINGSSL_CLOSE(bio->num);
