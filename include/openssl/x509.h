@@ -121,23 +121,7 @@ DEFINE_STACK_OF(X509_ALGOR)
 
 typedef STACK_OF(X509_ALGOR) X509_ALGORS;
 
-struct X509_name_entry_st {
-  ASN1_OBJECT *object;
-  ASN1_STRING *value;
-  int set;
-} /* X509_NAME_ENTRY */;
-
 DEFINE_STACK_OF(X509_NAME_ENTRY)
-
-// we always keep X509_NAMEs in 2 forms.
-struct X509_name_st {
-  STACK_OF(X509_NAME_ENTRY) *entries;
-  int modified;  // true if 'bytes' needs to be built
-  BUF_MEM *bytes;
-  // unsigned long hash; Keep the hash around for lookups
-  unsigned char *canon_enc;
-  int canon_enclen;
-} /* X509_NAME */;
 
 DEFINE_STACK_OF(X509_NAME)
 
@@ -147,20 +131,6 @@ DEFINE_STACK_OF(X509_EXTENSION)
 
 DEFINE_STACK_OF(X509_ATTRIBUTE)
 
-struct x509_cinf_st {
-  ASN1_INTEGER *version;  // [ 0 ] default of v1
-  ASN1_INTEGER *serialNumber;
-  X509_ALGOR *signature;
-  X509_NAME *issuer;
-  X509_VAL *validity;
-  X509_NAME *subject;
-  X509_PUBKEY *key;
-  ASN1_BIT_STRING *issuerUID;            // [ 1 ] optional in v2
-  ASN1_BIT_STRING *subjectUID;           // [ 2 ] optional in v2
-  STACK_OF(X509_EXTENSION) *extensions;  // [ 3 ] optional in v3
-  ASN1_ENCODING enc;
-} /* X509_CINF */;
-
 // This stuff is certificate "auxiliary info"
 // it contains details which are useful in certificate
 // stores and databases. When used this is tagged onto
@@ -168,31 +138,6 @@ struct x509_cinf_st {
 
 DECLARE_STACK_OF(DIST_POINT)
 DECLARE_STACK_OF(GENERAL_NAME)
-
-struct x509_st {
-  X509_CINF *cert_info;
-  X509_ALGOR *sig_alg;
-  ASN1_BIT_STRING *signature;
-  CRYPTO_refcount_t references;
-  CRYPTO_EX_DATA ex_data;
-  // These contain copies of various extension values
-  long ex_pathlen;
-  long ex_pcpathlen;
-  unsigned long ex_flags;
-  unsigned long ex_kusage;
-  unsigned long ex_xkusage;
-  unsigned long ex_nscert;
-  ASN1_OCTET_STRING *skid;
-  AUTHORITY_KEYID *akid;
-  X509_POLICY_CACHE *policy_cache;
-  STACK_OF(DIST_POINT) *crldp;
-  STACK_OF(GENERAL_NAME) *altname;
-  NAME_CONSTRAINTS *nc;
-  unsigned char sha1_hash[SHA_DIGEST_LENGTH];
-  X509_CERT_AUX *aux;
-  CRYPTO_BUFFER *buf;
-  CRYPTO_MUTEX lock;
-} /* X509 */;
 
 DEFINE_STACK_OF(X509)
 
@@ -938,8 +883,6 @@ DECLARE_ASN1_FUNCTIONS(X509_NAME)
 // X509_NAME_set makes a copy of |name|. On success, it frees |*xn|, sets |*xn|
 // to the copy, and returns one. Otherwise, it returns zero.
 OPENSSL_EXPORT int X509_NAME_set(X509_NAME **xn, X509_NAME *name);
-
-DECLARE_ASN1_FUNCTIONS(X509_CINF)
 
 DECLARE_ASN1_FUNCTIONS(X509)
 DECLARE_ASN1_FUNCTIONS(X509_CERT_AUX)
@@ -1988,10 +1931,6 @@ BORINGSSL_MAKE_DELETER(X509_STORE, X509_STORE_free)
 BORINGSSL_MAKE_UP_REF(X509_STORE, X509_STORE_up_ref)
 BORINGSSL_MAKE_DELETER(X509_STORE_CTX, X509_STORE_CTX_free)
 BORINGSSL_MAKE_DELETER(X509_VERIFY_PARAM, X509_VERIFY_PARAM_free)
-
-using ScopedX509_STORE_CTX =
-    internal::StackAllocated<X509_STORE_CTX, void, X509_STORE_CTX_zero,
-                             X509_STORE_CTX_cleanup>;
 
 BSSL_NAMESPACE_END
 

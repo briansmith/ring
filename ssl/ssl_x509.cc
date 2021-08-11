@@ -379,8 +379,9 @@ static bool ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
   const char *name;
   size_t name_len;
   SSL_get0_ech_name_override(ssl, &name, &name_len);
-  ScopedX509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(ctx.get(), verify_store, leaf, cert_chain) ||
+  UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  if (!ctx ||
+      !X509_STORE_CTX_init(ctx.get(), verify_store, leaf, cert_chain) ||
       !X509_STORE_CTX_set_ex_data(ctx.get(),
                                   SSL_get_ex_data_X509_STORE_CTX_idx(), ssl) ||
       // We need to inherit the verify parameters. These can be determined by
@@ -411,11 +412,11 @@ static bool ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
     verify_ret = X509_verify_cert(ctx.get());
   }
 
-  session->verify_result = ctx->error;
+  session->verify_result = X509_STORE_CTX_get_error(ctx.get());
 
   // If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result.
   if (verify_ret <= 0 && hs->config->verify_mode != SSL_VERIFY_NONE) {
-    *out_alert = SSL_alert_from_verify_result(ctx->error);
+    *out_alert = SSL_alert_from_verify_result(session->verify_result);
     return false;
   }
 
@@ -464,9 +465,9 @@ static bool ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
     return false;
   }
 
-  ScopedX509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(ctx.get(), hs->ssl->ctx->cert_store, leaf.get(),
-                           NULL)) {
+  UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  if (!ctx || !X509_STORE_CTX_init(ctx.get(), hs->ssl->ctx->cert_store,
+                                   leaf.get(), nullptr)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return false;
   }
@@ -476,9 +477,13 @@ static bool ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
   ERR_clear_error();
 
   // Remove the leaf from the generated chain.
-  X509_free(sk_X509_shift(ctx->chain));
+  UniquePtr<STACK_OF(X509)> chain(X509_STORE_CTX_get1_chain(ctx.get()));
+  if (!chain) {
+    return false;
+  }
+  X509_free(sk_X509_shift(chain.get()));
 
-  if (!ssl_cert_set_chain(hs->config->cert.get(), ctx->chain)) {
+  if (!ssl_cert_set_chain(hs->config->cert.get(), chain.get())) {
     return false;
   }
 

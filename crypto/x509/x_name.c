@@ -68,6 +68,7 @@
 
 #include "../asn1/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 
 typedef STACK_OF(X509_NAME_ENTRY) STACK_OF_X509_NAME_ENTRY;

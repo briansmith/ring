@@ -67,6 +67,7 @@
 
 #include "pcy_int.h"
 #include "../internal.h"
+#include "../x509/internal.h"
 
 /*
  * Enable this to print out the complete policy tree at various point during

@@ -99,39 +99,8 @@ certificate chain.
 #define X509_LU_CRL 2
 #define X509_LU_PKEY 3
 
-typedef struct x509_object_st {
-  // one of the above types
-  int type;
-  union {
-    char *ptr;
-    X509 *x509;
-    X509_CRL *crl;
-    EVP_PKEY *pkey;
-  } data;
-} X509_OBJECT;
-
 DEFINE_STACK_OF(X509_LOOKUP)
 DEFINE_STACK_OF(X509_OBJECT)
-
-// This is a static that defines the function interface
-typedef struct x509_lookup_method_st {
-  const char *name;
-  int (*new_item)(X509_LOOKUP *ctx);
-  void (*free)(X509_LOOKUP *ctx);
-  int (*init)(X509_LOOKUP *ctx);
-  int (*shutdown)(X509_LOOKUP *ctx);
-  int (*ctrl)(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
-              char **ret);
-  int (*get_by_subject)(X509_LOOKUP *ctx, int type, X509_NAME *name,
-                        X509_OBJECT *ret);
-  int (*get_by_issuer_serial)(X509_LOOKUP *ctx, int type, X509_NAME *name,
-                              ASN1_INTEGER *serial, X509_OBJECT *ret);
-  int (*get_by_fingerprint)(X509_LOOKUP *ctx, int type, unsigned char *bytes,
-                            int len, X509_OBJECT *ret);
-  int (*get_by_alias)(X509_LOOKUP *ctx, int type, char *str, int len,
-                      X509_OBJECT *ret);
-} X509_LOOKUP_METHOD;
-
 DEFINE_STACK_OF(X509_VERIFY_PARAM)
 
 typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
@@ -153,102 +122,7 @@ typedef STACK_OF(X509_CRL) *(*X509_STORE_CTX_lookup_crls_fn)(
     X509_STORE_CTX *ctx, X509_NAME *nm);
 typedef int (*X509_STORE_CTX_cleanup_fn)(X509_STORE_CTX *ctx);
 
-// This is used to hold everything.  It is used for all certificate
-// validation.  Once we have a certificate chain, the 'verify'
-// function is then called to actually check the cert chain.
-struct x509_store_st {
-  // The following is a cache of trusted certs
-  int cache;                    // if true, stash any hits
-  STACK_OF(X509_OBJECT) *objs;  // Cache of all objects
-  CRYPTO_MUTEX objs_lock;
-  STACK_OF(X509) *additional_untrusted;
-
-  // These are external lookup methods
-  STACK_OF(X509_LOOKUP) *get_cert_methods;
-
-  X509_VERIFY_PARAM *param;
-
-  // Callbacks for various operations
-  X509_STORE_CTX_verify_fn verify;          // called to verify a certificate
-  X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
-  X509_STORE_CTX_check_issued_fn check_issued;  // check issued
-  X509_STORE_CTX_check_revocation_fn
-      check_revocation;                   // Check revocation status of chain
-  X509_STORE_CTX_get_crl_fn get_crl;      // retrieve CRL
-  X509_STORE_CTX_check_crl_fn check_crl;  // Check CRL validity
-  X509_STORE_CTX_cert_crl_fn cert_crl;    // Check certificate against CRL
-  X509_STORE_CTX_lookup_certs_fn lookup_certs;
-  X509_STORE_CTX_lookup_crls_fn lookup_crls;
-  X509_STORE_CTX_cleanup_fn cleanup;
-
-  CRYPTO_refcount_t references;
-} /* X509_STORE */;
-
 OPENSSL_EXPORT int X509_STORE_set_depth(X509_STORE *store, int depth);
-
-// This is the functions plus an instance of the local variables.
-struct x509_lookup_st {
-  int init;                    // have we been started
-  int skip;                    // don't use us.
-  X509_LOOKUP_METHOD *method;  // the functions
-  char *method_data;           // method data
-
-  X509_STORE *store_ctx;  // who owns us
-} /* X509_LOOKUP */;
-
-// This is a used when verifying cert chains.  Since the
-// gathering of the cert chain can take some time (and have to be
-// 'retried', this needs to be kept and passed around.
-struct x509_store_ctx_st  // X509_STORE_CTX
-{
-  X509_STORE *ctx;
-
-  // The following are set by the caller
-  X509 *cert;                 // The cert to check
-  STACK_OF(X509) *untrusted;  // chain of X509s - untrusted - passed in
-  STACK_OF(X509_CRL) *crls;   // set of CRLs passed in
-
-  X509_VERIFY_PARAM *param;
-  void *other_ctx;  // Other info for use with get_issuer()
-
-  // Callbacks for various operations
-  X509_STORE_CTX_verify_fn verify;          // called to verify a certificate
-  X509_STORE_CTX_verify_cb verify_cb;       // error callback
-  X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
-  X509_STORE_CTX_check_issued_fn check_issued;  // check issued
-  X509_STORE_CTX_check_revocation_fn
-      check_revocation;                   // Check revocation status of chain
-  X509_STORE_CTX_get_crl_fn get_crl;      // retrieve CRL
-  X509_STORE_CTX_check_crl_fn check_crl;  // Check CRL validity
-  X509_STORE_CTX_cert_crl_fn cert_crl;    // Check certificate against CRL
-  X509_STORE_CTX_check_policy_fn check_policy;
-  X509_STORE_CTX_lookup_certs_fn lookup_certs;
-  X509_STORE_CTX_lookup_crls_fn lookup_crls;
-  X509_STORE_CTX_cleanup_fn cleanup;
-
-  // The following is built up
-  int valid;               // if 0, rebuild chain
-  int last_untrusted;      // index of last untrusted cert
-  STACK_OF(X509) *chain;   // chain of X509s - built up and trusted
-  X509_POLICY_TREE *tree;  // Valid policy tree
-
-  int explicit_policy;  // Require explicit policy value
-
-  // When something goes wrong, this is why
-  int error_depth;
-  int error;
-  X509 *current_cert;
-  X509 *current_issuer;   // cert currently being tested as valid issuer
-  X509_CRL *current_crl;  // current CRL
-
-  int current_crl_score;         // score of current CRL
-  unsigned int current_reasons;  // Reason mask
-
-  X509_STORE_CTX *parent;  // For CRL path validation: parent context
-
-  CRYPTO_EX_DATA ex_data;
-} /* X509_STORE_CTX */;
 
 OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 

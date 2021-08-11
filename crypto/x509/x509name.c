@@ -64,6 +64,7 @@
 #include <openssl/x509.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 
 int X509_NAME_get_text_by_NID(const X509_NAME *name, int nid, char *buf,

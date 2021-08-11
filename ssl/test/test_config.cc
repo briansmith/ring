@@ -810,7 +810,7 @@ static int CertVerifyCallback(X509_STORE_CTX *store_ctx, void *arg) {
 
   GetTestState(ssl)->cert_verified = true;
   if (config->verify_fail) {
-    store_ctx->error = X509_V_ERR_APPLICATION_VERIFICATION;
+    X509_STORE_CTX_set_error(store_ctx, X509_V_ERR_APPLICATION_VERIFICATION);
     return 0;
   }
 

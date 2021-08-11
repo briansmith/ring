@@ -64,6 +64,7 @@
 #include <openssl/x509.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 
 /*
