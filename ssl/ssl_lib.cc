@@ -1023,7 +1023,7 @@ int SSL_read(SSL *ssl, void *buf, int num) {
 int SSL_peek(SSL *ssl, void *buf, int num) {
   if (ssl->quic_method != nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
+    return -1;
   }
 
   int ret = ssl_read_impl(ssl);
@@ -1044,7 +1044,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 
   if (ssl->quic_method != nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
+    return -1;
   }
 
   if (ssl->do_handshake == NULL) {
