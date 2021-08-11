@@ -35,9 +35,9 @@ pub(crate) fn features() -> Features {
         )
     ))]
     {
-        use once_cell::race::OnceBool;
+        use once_cell::sync::OnceCell;
 
-        static INIT: OnceBool = OnceBool::new();
+        static INIT: OnceCell<bool> = OnceCell::new();
         let _ = INIT.get_or_init(|| {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             {
