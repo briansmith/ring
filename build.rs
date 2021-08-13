@@ -614,12 +614,7 @@ fn cc(
     }
 
     if warnings_are_errors {
-        let flag = if &target.env != "msvc" {
-            "-Werror"
-        } else {
-            "/WX"
-        };
-        let _ = c.flag(flag);
+        c.warnings_into_errors(true);
     }
     if is_musl {
         // Some platforms enable _FORTIFY_SOURCE by default, but musl
