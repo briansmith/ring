@@ -99,8 +99,8 @@ const RING_TEST_SRCS: &[&str] = &[("crypto/constant_time_test.c")];
 
 const PREGENERATED: &str = "pregenerated";
 
-fn c_flags(target: &Target) -> &'static [&'static str] {
-    if target.env != MSVC {
+fn c_flags(compiler: &cc::Tool) -> &'static [&'static str] {
+    if !compiler.is_like_msvc() {
         static NON_MSVC_FLAGS: &[&str] = &[
             "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
             "-Wbad-function-cast",
@@ -113,8 +113,8 @@ fn c_flags(target: &Target) -> &'static [&'static str] {
     }
 }
 
-fn cpp_flags(target: &Target) -> &'static [&'static str] {
-    if target.env != MSVC {
+fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
+    if !compiler.is_like_msvc() {
         static NON_MSVC_FLAGS: &[&str] = &[
             "-pedantic",
             "-pedantic-errors",
@@ -271,9 +271,6 @@ const MACOS_ABI: &[&str] = &["ios", "macos"];
 
 const WINDOWS: &str = "windows";
 
-const MSVC: &str = "msvc";
-const MSVC_OBJ_OPT: &str = "/Fo";
-
 /// Read an environment variable and tell Cargo that we depend on it.
 ///
 /// This needs to be used for any environment variable that isn't a standard
@@ -308,7 +305,6 @@ fn ring_build_rs_main() {
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-    let obj_opt = if env == MSVC { MSVC_OBJ_OPT } else { "-o" };
 
     let is_git = std::fs::metadata(".git").is_ok();
 
@@ -319,7 +315,6 @@ fn ring_build_rs_main() {
         arch,
         os,
         env,
-        obj_opt,
         is_git,
         is_debug,
     };
@@ -369,7 +364,6 @@ struct Target {
     arch: String,
     os: String,
     env: String,
-    obj_opt: &'static str,
     is_git: bool,
     is_debug: bool,
 }
@@ -464,11 +458,13 @@ fn build_library(
     additional_srcs: &[PathBuf],
     warnings_are_errors: bool,
 ) {
+    let compiler = cc::Build::default().get_compiler();
+
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs
         .iter()
         .chain(srcs.iter())
-        .map(|f| compile(f, target, warnings_are_errors, out_dir))
+        .map(|f| compile(f, target, &compiler, warnings_are_errors, out_dir))
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
@@ -507,14 +503,28 @@ fn build_library(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path) -> String {
+fn compile(
+    p: &Path,
+    target: &Target,
+    compiler: &cc::Tool,
+    warnings_are_errors: bool,
+    out_dir: &Path,
+) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "o" {
         p.to_str().expect("Invalid path").into()
     } else {
         let out_path = obj_path(out_dir, p);
         let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(p, ext, target, warnings_are_errors, &out_path, out_dir)
+            cc(
+                p,
+                ext,
+                target,
+                compiler,
+                warnings_are_errors,
+                &out_path,
+                out_dir,
+            )
         } else {
             nasm(p, &target.arch, &out_path, out_dir)
         };
@@ -537,6 +547,7 @@ fn cc(
     file: &Path,
     ext: &str,
     target: &Target,
+    compiler: &cc::Tool,
     warnings_are_errors: bool,
     out_path: &Path,
     include_dir: &Path,
@@ -548,14 +559,14 @@ fn cc(
     let _ = c.include(include_dir);
     match ext {
         "c" => {
-            for f in c_flags(target) {
+            for f in c_flags(compiler) {
                 let _ = c.flag(f);
             }
         }
         "S" => (),
         e => panic!("Unsupported file extension: {:?}", e),
     };
-    for f in cpp_flags(target) {
+    for f in cpp_flags(compiler) {
         let _ = c.flag(f);
     }
     if target.os != "none"
@@ -566,21 +577,18 @@ fn cc(
         let _ = c.flag("-fstack-protector");
     }
 
-    match (target.os.as_str(), target.env.as_str()) {
+    if target.os.as_str() == "macos" {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
-        ("macos", _) => {
-            let _ = c.flag("-gfull");
-        }
-        (_, "msvc") => (),
-        _ => {
-            let _ = c.flag("-g3");
-        }
+        let _ = c.flag("-gfull");
+    } else if !compiler.is_like_msvc() {
+        let _ = c.flag("-g3");
     };
+
     if !target.is_debug {
         let _ = c.define("NDEBUG", None);
     }
 
-    if &target.env == "msvc" {
+    if compiler.is_like_msvc() {
         if std::env::var("OPT_LEVEL").unwrap() == "0" {
             let _ = c.flag("/Od"); // Disable optimization for debug builds.
                                    // run-time checking: (s)tack frame, (u)ninitialized variables
@@ -617,12 +625,13 @@ fn cc(
         let _ = c.flag("-U_FORTIFY_SOURCE");
     }
 
+    let obj_opt = if compiler.is_like_msvc() { "/Fo" } else { "-o" };
     let mut c = c.get_compiler().to_command();
     let _ = c
         .arg("-c")
         .arg(format!(
             "{}{}",
-            target.obj_opt,
+            obj_opt,
             out_path.to_str().expect("Invalid path")
         ))
         .arg(file);
