@@ -61,6 +61,12 @@ static crypto_word booth_recode_w7(crypto_word in) {
   return (d << 1) + (s & 1);
 }
 
+// The `(P256_LIMBS == 8)` case is unreachable for 64-bit targets.
+#if defined(OPENSSL_64_BIT) && defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
+#endif
+
 // copy_conditional copies |src| to |dst| if |move| is one and leaves it as-is
 // if |move| is zero.
 //
@@ -82,6 +88,10 @@ static void copy_conditional(BN_ULONG dst[P256_LIMBS],
     dst[7] = (src[7] & mask1) ^ (dst[7] & mask2);
   }
 }
+
+#if defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 // is_not_zero returns one iff in != 0 and zero otherwise.
 //

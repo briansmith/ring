@@ -70,12 +70,6 @@ typedef __m128i aes_word_t;
   _mm_set_epi32(0x00ff0000, 0x00ff0000, 0x00ff0000, 0x00ff0000)
 #define AES_NOHW_ROW3_MASK \
   _mm_set_epi32(0xff000000, 0xff000000, 0xff000000, 0xff000000)
-#define AES_NOHW_COL01_MASK \
-  _mm_set_epi32(0x00000000, 0x00000000, 0xffffffff, 0xffffffff)
-#define AES_NOHW_COL2_MASK \
-  _mm_set_epi32(0x00000000, 0xffffffff, 0x00000000, 0x00000000)
-#define AES_NOHW_COL3_MASK \
-  _mm_set_epi32(0xffffffff, 0x00000000, 0x00000000, 0x00000000)
 
 static inline aes_word_t aes_nohw_and(aes_word_t a, aes_word_t b) {
   return _mm_and_si128(a, b);
@@ -109,9 +103,6 @@ typedef uint64_t aes_word_t;
 #define AES_NOHW_ROW1_MASK UINT64_C(0x00f000f000f000f0)
 #define AES_NOHW_ROW2_MASK UINT64_C(0x0f000f000f000f00)
 #define AES_NOHW_ROW3_MASK UINT64_C(0xf000f000f000f000)
-#define AES_NOHW_COL01_MASK UINT64_C(0x00000000ffffffff)
-#define AES_NOHW_COL2_MASK UINT64_C(0x0000ffff00000000)
-#define AES_NOHW_COL3_MASK UINT64_C(0xffff000000000000)
 #else  // !OPENSSL_64_BIT
 typedef uint32_t aes_word_t;
 #define AES_NOHW_WORD_SIZE 4
@@ -120,9 +111,6 @@ typedef uint32_t aes_word_t;
 #define AES_NOHW_ROW1_MASK 0x0c0c0c0c
 #define AES_NOHW_ROW2_MASK 0x30303030
 #define AES_NOHW_ROW3_MASK 0xc0c0c0c0
-#define AES_NOHW_COL01_MASK 0x0000ffff
-#define AES_NOHW_COL2_MASK 0x00ff0000
-#define AES_NOHW_COL3_MASK 0xff000000
 #endif  // OPENSSL_64_BIT
 
 static inline aes_word_t aes_nohw_and(aes_word_t a, aes_word_t b) {
