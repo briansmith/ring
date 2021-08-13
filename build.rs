@@ -373,13 +373,27 @@ fn pregenerate_asm_main() {
         perlasm(&perlasm_src_dsts, asm_target);
 
         if asm_target.preassemble {
+            // Preassembly is currently only done for Windows targets.
+            assert_eq!(&asm_target.oss, &[WINDOWS]);
+            let os = WINDOWS;
+
             if !std::mem::replace(&mut generated_prefix_headers, true) {
                 generate_prefix_symbols_nasm(&pregenerated, &ring_core_prefix()).unwrap();
             }
             let srcs = asm_srcs(perlasm_src_dsts);
+
+            let target = Target {
+                arch: asm_target.arch.to_owned(),
+                os: os.to_owned(),
+                is_musl: false,
+                is_debug: false,
+                force_warnings_into_errors: true,
+            };
+
+            let compiler = cc::Build::new().get_compiler();
+
             for src in srcs {
-                let obj_path = obj_path(&pregenerated, &src);
-                run_command(nasm(&src, asm_target.arch, &obj_path, &pregenerated));
+                compile(&src, &target, &compiler, &pregenerated);
             }
         }
     }
