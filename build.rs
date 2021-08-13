@@ -273,7 +273,6 @@ const WINDOWS: &str = "windows";
 
 const MSVC: &str = "msvc";
 const MSVC_OBJ_OPT: &str = "/Fo";
-const MSVC_OBJ_EXT: &str = "obj";
 
 /// Read an environment variable and tell Cargo that we depend on it.
 ///
@@ -309,11 +308,7 @@ fn ring_build_rs_main() {
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-    let (obj_ext, obj_opt) = if env == MSVC {
-        (MSVC_OBJ_EXT, MSVC_OBJ_OPT)
-    } else {
-        ("o", "-o")
-    };
+    let obj_opt = if env == MSVC { MSVC_OBJ_OPT } else { "-o" };
 
     let is_git = std::fs::metadata(".git").is_ok();
 
@@ -324,7 +319,6 @@ fn ring_build_rs_main() {
         arch,
         os,
         env,
-        obj_ext,
         obj_opt,
         is_git,
         is_debug,
@@ -364,7 +358,7 @@ fn pregenerate_asm_main() {
             }
             let srcs = asm_srcs(perlasm_src_dsts);
             for src in srcs {
-                let obj_path = obj_path(&pregenerated, &src, MSVC_OBJ_EXT);
+                let obj_path = obj_path(&pregenerated, &src);
                 run_command(nasm(&src, asm_target.arch, &obj_path, &pregenerated));
             }
         }
@@ -375,7 +369,6 @@ struct Target {
     arch: String,
     os: String,
     env: String,
-    obj_ext: &'static str,
     obj_opt: &'static str,
     is_git: bool,
     is_debug: bool,
@@ -419,11 +412,9 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path, ring_cor
         // the user doesn't need to install the assembler. On other platforms we
         // assume the C compiler also assembles.
         if use_pregenerated && target.os == WINDOWS {
-            // The pregenerated object files always use ".obj" as the extension,
-            // even when the C/C++ compiler outputs files with the ".o" extension.
             asm_srcs = asm_srcs
                 .iter()
-                .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
+                .map(|src| obj_path(&pregenerated, src.as_path()))
                 .collect::<Vec<_>>();
         }
 
@@ -519,11 +510,10 @@ fn build_library(
 
 fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
-    if ext == "obj" {
+    if ext == "o" {
         p.to_str().expect("Invalid path").into()
     } else {
-        let mut out_path = out_dir.join(p.file_name().unwrap());
-        assert!(out_path.set_extension(target.obj_ext));
+        let out_path = obj_path(out_dir, p);
         let cmd = if target.os != WINDOWS || ext != "asm" {
             cc(p, ext, target, warnings_are_errors, &out_path, out_dir)
         } else {
@@ -535,9 +525,12 @@ fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path)
     }
 }
 
-fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
+fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
     let mut out_path = out_dir.join(src.file_name().unwrap());
-    assert!(out_path.set_extension(obj_ext));
+    // To eliminate unnecessary conditional logic, use ".o" as the extension,
+    // even when the compiler (e.g. MSVC) would normally use something else
+    // (e.g. ".obj"). cc-rs seems to do the same.
+    assert!(out_path.set_extension("o"));
     out_path
 }
 
