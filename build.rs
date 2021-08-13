@@ -304,7 +304,10 @@ fn ring_build_rs_main() {
 
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+    let is_musl = {
+        let env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
+        env.starts_with("musl")
+    };
 
     let is_git = std::fs::metadata(".git").is_ok();
 
@@ -330,7 +333,7 @@ fn ring_build_rs_main() {
     let target = Target {
         arch,
         os,
-        env,
+        is_musl,
         is_debug,
         force_warnings_into_errors,
     };
@@ -385,7 +388,9 @@ fn pregenerate_asm_main() {
 struct Target {
     arch: String,
     os: String,
-    env: String,
+
+    /// Is the target one that uses the musl C standard library instead of the default?
+    is_musl: bool,
 
     /// Is this a debug build? This affects whether assertions might be enabled
     /// in the C code. For packaged builds, this should always be `false`.
@@ -560,8 +565,6 @@ fn cc(
     out_path: &Path,
     include_dir: &Path,
 ) -> Command {
-    let is_musl = target.env.starts_with("musl");
-
     let mut c = cc::Build::new();
     let _ = c.include("include");
     let _ = c.include(include_dir);
@@ -610,7 +613,7 @@ fn cc(
     //
     // poly1305_vec.c requires <emmintrin.h> which requires <stdlib.h>.
     if (target.arch == "wasm32" && target.os == "unknown")
-        || (target.os == "linux" && is_musl && target.arch != "x86_64")
+        || (target.os == "linux" && target.is_musl && target.arch != "x86_64")
     {
         if let Ok(compiler) = c.try_get_compiler() {
             // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
@@ -624,7 +627,7 @@ fn cc(
     if target.force_warnings_into_errors {
         c.warnings_into_errors(true);
     }
-    if is_musl {
+    if target.is_musl {
         // Some platforms enable _FORTIFY_SOURCE by default, but musl
         // libc doesn't support it yet. See
         // http://wiki.musl-libc.org/wiki/Future_Ideas#Fortify
