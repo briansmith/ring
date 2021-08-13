@@ -468,7 +468,6 @@ fn build_library(
     let objs = additional_srcs
         .iter()
         .chain(srcs.iter())
-        .filter(|f| &target.env != "msvc" || f.extension().unwrap().to_str().unwrap() != "S")
         .map(|f| compile(f, target, warnings_are_errors, out_dir))
         .collect::<Vec<_>>();
 
