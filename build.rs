@@ -308,19 +308,41 @@ fn ring_build_rs_main() {
 
     let is_git = std::fs::metadata(".git").is_ok();
 
-    // Published builds are always release builds.
+    // Published builds are always built in release mode.
     let is_debug = is_git && env::var("DEBUG").unwrap() != "false";
+
+    // If `.git` exists then assume this is the "local hacking" case where
+    // we want to make it easy to build *ring* using `cargo build`/`cargo test`
+    // without a prerequisite `package` step, at the cost of needing additional
+    // tools like `Perl` and/or `nasm`.
+    //
+    // If `.git` doesn't exist then assume that this is a packaged build where
+    // we want to optimize for minimizing the build tools required: No Perl,
+    // no nasm, etc.
+    let use_pregenerated = !is_git;
+
+    // During local development, force warnings in non-Rust code to be treated
+    // as errors. Since warnings are highly compiler-dependent and compilers
+    // don't maintain backward compatibility w.r.t. which warnings they issue,
+    // don't do this for packaged builds.
+    let force_warnings_into_errors = is_git;
 
     let target = Target {
         arch,
         os,
         env,
-        is_git,
         is_debug,
+        force_warnings_into_errors,
     };
     let pregenerated = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
 
-    build_c_code(&target, pregenerated, &out_dir, &ring_core_prefix());
+    build_c_code(
+        &target,
+        pregenerated,
+        &out_dir,
+        &ring_core_prefix(),
+        use_pregenerated,
+    );
     emit_rerun_if_changed()
 }
 
@@ -364,11 +386,23 @@ struct Target {
     arch: String,
     os: String,
     env: String,
-    is_git: bool,
+
+    /// Is this a debug build? This affects whether assertions might be enabled
+    /// in the C code. For packaged builds, this should always be `false`.
     is_debug: bool,
+
+    /// true: Force warnings to be treated as errors.
+    /// false: Use the default behavior (perhaps determined by `$CFLAGS`, etc.)
+    force_warnings_into_errors: bool,
 }
 
-fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path, ring_core_prefix: &str) {
+fn build_c_code(
+    target: &Target,
+    pregenerated: PathBuf,
+    out_dir: &Path,
+    ring_core_prefix: &str,
+    use_pregenerated: bool,
+) {
     println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
 
     #[cfg(not(feature = "wasm32_c"))]
@@ -381,9 +415,6 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path, ring_cor
     let asm_target = ASM_TARGETS.iter().find(|asm_target| {
         asm_target.arch == target.arch && asm_target.oss.contains(&target.os.as_ref())
     });
-
-    let use_pregenerated = !target.is_git;
-    let warnings_are_errors = target.is_git;
 
     let asm_dir = if use_pregenerated {
         &pregenerated
@@ -434,14 +465,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path, ring_cor
     libs.iter()
         .for_each(|&(lib_name_suffix, srcs, additional_srcs)| {
             let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
-            build_library(
-                target,
-                out_dir,
-                &lib_name,
-                srcs,
-                additional_srcs,
-                warnings_are_errors,
-            )
+            build_library(target, out_dir, &lib_name, srcs, additional_srcs)
         });
 
     println!(
@@ -456,7 +480,6 @@ fn build_library(
     lib_name: &str,
     srcs: &[PathBuf],
     additional_srcs: &[PathBuf],
-    warnings_are_errors: bool,
 ) {
     let compiler = cc::Build::default().get_compiler();
 
@@ -464,7 +487,7 @@ fn build_library(
     let objs = additional_srcs
         .iter()
         .chain(srcs.iter())
-        .map(|f| compile(f, target, &compiler, warnings_are_errors, out_dir))
+        .map(|f| compile(f, target, &compiler, out_dir))
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
@@ -503,28 +526,14 @@ fn build_library(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(
-    p: &Path,
-    target: &Target,
-    compiler: &cc::Tool,
-    warnings_are_errors: bool,
-    out_dir: &Path,
-) -> String {
+fn compile(p: &Path, target: &Target, compiler: &cc::Tool, out_dir: &Path) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "o" {
         p.to_str().expect("Invalid path").into()
     } else {
         let out_path = obj_path(out_dir, p);
         let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(
-                p,
-                ext,
-                target,
-                compiler,
-                warnings_are_errors,
-                &out_path,
-                out_dir,
-            )
+            cc(p, ext, target, compiler, &out_path, out_dir)
         } else {
             nasm(p, &target.arch, &out_path, out_dir)
         };
@@ -548,7 +557,6 @@ fn cc(
     ext: &str,
     target: &Target,
     compiler: &cc::Tool,
-    warnings_are_errors: bool,
     out_path: &Path,
     include_dir: &Path,
 ) -> Command {
@@ -613,7 +621,7 @@ fn cc(
         }
     }
 
-    if warnings_are_errors {
+    if target.force_warnings_into_errors {
         c.warnings_into_errors(true);
     }
     if is_musl {
