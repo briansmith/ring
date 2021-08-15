@@ -390,6 +390,7 @@ mod darwin {
 
     // https://developer.apple.com/documentation/security/ksecrandomdefault
     // says "This constant is a synonym for NULL."
+    #[allow(non_upper_case_globals)]
     const kSecRandomDefault: SecRandomRef = core::ptr::null();
 
     #[link(name = "Security", kind = "framework")]
