@@ -117,7 +117,7 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
-  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla")
+  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -Wvla -Wshadow")
   if(MSVC)
     # clang-cl sets different default warnings than clang. It also treats -Wall
     # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
@@ -172,11 +172,6 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   if(CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
   endif()
-
-  if(CMAKE_COMPILER_IS_GNUCXX AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
-  endif()
-
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
       "C4061" # enumerator 'identifier' in switch of enum 'enumeration' is not
@@ -252,12 +247,6 @@ if(WIN32)
   # A bug in CMake < 3.13.0 may cause the space in this value to
   # cause issues when building with NASM. In that case, update CMake.
   add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
-endif()
-
-if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR
-   CLANG)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)

@@ -31,8 +31,10 @@ most recent stable version of each tool.
     `CMAKE_ASM_NASM_COMPILER`.
 
   * C and C++ compilers with C++11 support are required. On Windows, MSVC 14
-    (Visual Studio 2015) or later with Platform SDK 8.1 or later are supported.
-    Recent versions of GCC (4.8+) and Clang should work on non-Windows
+    (Visual Studio 2015) or later with Platform SDK 8.1 or later are supported,
+    but newer versions are recommended. We will drop support for Visual Studio
+    2015 in March 2022, five years after the release of Visual Studio 2017.
+    Recent versions of GCC (6.1+) and Clang should work on non-Windows
     platforms, and maybe on Windows too.
 
   * The most recent stable version of [Go](https://golang.org/dl/) is required.
