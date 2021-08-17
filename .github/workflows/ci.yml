@@ -191,9 +191,7 @@ jobs:
 
         rust_channel:
           - stable
-          # Work around failure to link on aarch64-apple-darwin in later
-          # nightly toolchains.
-          - nightly-2021-08-13
+          - nightly
           - 1.52.1 # MSRV
           - beta
 
