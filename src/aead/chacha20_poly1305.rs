@@ -19,11 +19,11 @@ use super::{
 use crate::{aead, cpu, endian::*, error, polyfill};
 use core::{convert::TryInto, ops::RangeFrom};
 
-/// ChaCha20-Poly1305 as described in [RFC 7539].
+/// ChaCha20-Poly1305 as described in [RFC 8439].
 ///
 /// The keys are 256 bits long and the nonces are 96 bits long.
 ///
-/// [RFC 7539]: https://tools.ietf.org/html/rfc7539
+/// [RFC 8439]: https://tools.ietf.org/html/rfc8439
 pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     key_len: chacha::KEY_LEN,
     init: chacha20_poly1305_init,
@@ -261,7 +261,7 @@ pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305:
 mod tests {
     #[test]
     fn max_input_len_test() {
-        // Errata 4858 at https://www.rfc-editor.org/errata_search.php?rfc=7539.
+        // https://tools.ietf.org/html/rfc8439#section-2.8
         assert_eq!(super::CHACHA20_POLY1305.max_input_len, 274_877_906_880u64);
     }
 }
