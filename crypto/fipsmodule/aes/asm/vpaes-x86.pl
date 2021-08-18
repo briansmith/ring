@@ -607,4 +607,4 @@ $k_deskew=0x180;	# deskew tables: inverts the sbox's "skew"
 
 &asm_finish();
 
-close STDOUT or die "error closing STDOUT";
+close STDOUT or die "error closing STDOUT: $!";
