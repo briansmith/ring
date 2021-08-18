@@ -1,4 +1,4 @@
-# Test vector from RFC 7539 Section 2.8.1.
+# Test vector from RFC 8439 Section 2.8.1.
 
 KEY = 808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f
 NONCE = 070000004041424344454647
@@ -58,7 +58,7 @@ TAG = 2a63876a887f4f080c9df418813fc1fd
 FAILS = WRONG_NONCE_LENGTH
 
 # Test vectors from chacha20_poly1305_deprecated_tests.txt, modified for the
-# RFC 7539 AEAD construction.
+# RFC 8439 AEAD construction.
 
 KEY = 9a97f65b9b4c721b960a672145fca8d4e32e67f9111ea979ce9c4826806aeee6
 NONCE = 000000003de9c0da2bd7f91e
