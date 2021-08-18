@@ -850,8 +850,6 @@ fn ring_core_prefix() -> String {
 fn generate_prefix_symbols(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
     generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
 
-    generate_prefix_symbols_nasm(out_dir, prefix)?;
-
     generate_prefix_symbols_header(
         out_dir,
         "prefix_symbols_asm.h",
@@ -860,17 +858,15 @@ fn generate_prefix_symbols(out_dir: &Path, prefix: &str) -> Result<(), std::io::
         prefix,
     )?;
 
-    Ok(())
-}
-
-fn generate_prefix_symbols_nasm(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
     generate_prefix_symbols_header(
         out_dir,
         "prefix_symbols_nasm.inc",
         '%',
         Some("%ifidn __OUTPUT_FORMAT__,win32"),
         prefix,
-    )
+    )?;
+
+    Ok(())
 }
 
 fn generate_prefix_symbols_header(
