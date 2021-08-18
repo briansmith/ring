@@ -365,7 +365,7 @@ fn pregenerate_asm_main() {
     let pregenerated_tmp = pregenerated.join("tmp");
     std::fs::create_dir(&pregenerated_tmp).unwrap();
 
-    let mut generated_prefix_headers = false;
+    generate_prefix_symbols_asm_headers(&pregenerated_tmp, &ring_core_prefix()).unwrap();
 
     for asm_target in ASM_TARGETS {
         // For Windows, package pregenerated object files instead of
@@ -385,9 +385,6 @@ fn pregenerate_asm_main() {
             assert_eq!(&asm_target.oss, &[WINDOWS]);
             let os = WINDOWS;
 
-            if !std::mem::replace(&mut generated_prefix_headers, true) {
-                generate_prefix_symbols_asm_headers(&pregenerated, &ring_core_prefix()).unwrap();
-            }
             let srcs = asm_srcs(perlasm_src_dsts);
 
             let target = Target {
@@ -399,7 +396,7 @@ fn pregenerate_asm_main() {
             };
 
             for src in srcs {
-                compile(&src, &target, &pregenerated);
+                compile(&src, &target, &pregenerated_tmp, &pregenerated);
             }
         }
     }
@@ -512,7 +509,7 @@ fn build_library(
     let objs = additional_srcs
         .iter()
         .chain(srcs.iter())
-        .map(|f| compile(f, target, out_dir))
+        .map(|f| compile(f, target, out_dir, out_dir))
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
@@ -551,16 +548,16 @@ fn build_library(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(p: &Path, target: &Target, out_dir: &Path) -> String {
+fn compile(p: &Path, target: &Target, include_dir: &Path, out_dir: &Path) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "o" {
         p.to_str().expect("Invalid path").into()
     } else {
         let out_file = obj_path(out_dir, p);
         let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(p, ext, target, out_dir, &out_file)
+            cc(p, ext, target, include_dir, &out_file)
         } else {
-            nasm(p, &target.arch, out_dir, &out_file)
+            nasm(p, &target.arch, include_dir, &out_file)
         };
 
         run_command(cmd);
