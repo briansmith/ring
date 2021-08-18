@@ -556,15 +556,15 @@ fn compile(p: &Path, target: &Target, out_dir: &Path) -> String {
     if ext == "o" {
         p.to_str().expect("Invalid path").into()
     } else {
-        let out_path = obj_path(out_dir, p);
+        let out_file = obj_path(out_dir, p);
         let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(p, ext, target, &out_path, out_dir)
+            cc(p, ext, target, out_dir, &out_file)
         } else {
-            nasm(p, &target.arch, &out_path, out_dir)
+            nasm(p, &target.arch, out_dir, &out_file)
         };
 
         run_command(cmd);
-        out_path.to_str().expect("Invalid path").into()
+        out_file.to_str().expect("Invalid path").into()
     }
 }
 
@@ -577,7 +577,7 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
     out_path
 }
 
-fn cc(file: &Path, ext: &str, target: &Target, out_path: &Path, include_dir: &Path) -> Command {
+fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Path) -> Command {
     let mut c = cc::Build::new();
 
     // FIXME: On Windows AArch64 we currently must use Clang to compile C code
@@ -664,13 +664,13 @@ fn cc(file: &Path, ext: &str, target: &Target, out_path: &Path, include_dir: &Pa
         .arg(format!(
             "{}{}",
             obj_opt,
-            out_path.to_str().expect("Invalid path")
+            out_file.to_str().expect("Invalid path")
         ))
         .arg(file);
     c
 }
 
-fn nasm(file: &Path, arch: &str, out_file: &Path, include_dir: &Path) -> Command {
+fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command {
     let oformat = match arch {
         "x86_64" => ("win64"),
         "x86" => ("win32"),
