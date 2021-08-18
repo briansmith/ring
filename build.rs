@@ -459,8 +459,7 @@ fn build_c_code(
         let mut asm_srcs = asm_srcs(perlasm_src_dsts);
 
         // For Windows we also pregenerate the object files for non-Git builds so
-        // the user doesn't need to install the assembler. On other platforms we
-        // assume the C compiler also assembles.
+        // the user doesn't need to install the assembler.
         if use_pregenerated && target.os == WINDOWS {
             asm_srcs = asm_srcs
                 .iter()
