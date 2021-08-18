@@ -386,7 +386,7 @@ fn pregenerate_asm_main() {
             let os = WINDOWS;
 
             if !std::mem::replace(&mut generated_prefix_headers, true) {
-                generate_prefix_symbols(&pregenerated, &ring_core_prefix()).unwrap();
+                generate_prefix_symbols_asm_headers(&pregenerated, &ring_core_prefix()).unwrap();
             }
             let srcs = asm_srcs(perlasm_src_dsts);
 
@@ -447,7 +447,10 @@ fn build_c_code(
         out_dir
     };
 
-    generate_prefix_symbols(out_dir, ring_core_prefix).unwrap();
+    generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, ring_core_prefix)
+        .unwrap();
+
+    generate_prefix_symbols_asm_headers(out_dir, ring_core_prefix).unwrap();
 
     let asm_srcs = if let Some(asm_target) = asm_target {
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
@@ -845,11 +848,12 @@ fn ring_core_prefix() -> String {
     links + "_"
 }
 
-/// Creates the necessary header file for symbol renaming and returns the path of the
-/// generated include directory.
-fn generate_prefix_symbols(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
-    generate_prefix_symbols_header(out_dir, "prefix_symbols.h", '#', None, prefix)?;
-
+/// Creates the necessary header files for symbol renaming that are included by
+/// assembly code.
+///
+/// For simplicity, both non-Nasm- and Nasm- style headers are always
+/// generated, even though local non-packaged builds need only one of them.
+fn generate_prefix_symbols_asm_headers(out_dir: &Path, prefix: &str) -> Result<(), std::io::Error> {
     generate_prefix_symbols_header(
         out_dir,
         "prefix_symbols_asm.h",
