@@ -261,7 +261,7 @@ DEFINE_STACK_OF(X509_TRUST)
 #define XN_FLAG_SEP_MASK (0xf << 16)
 
 #define XN_FLAG_COMPAT 0  // Traditional SSLeay: use old X509_NAME_print
-#define XN_FLAG_SEP_COMMA_PLUS (1 << 16)  // RFC2253 ,+
+#define XN_FLAG_SEP_COMMA_PLUS (1 << 16)  // RFC 2253 ,+
 #define XN_FLAG_SEP_CPLUS_SPC (2 << 16)   // ,+ spaced: more readable
 #define XN_FLAG_SEP_SPLUS_SPC (3 << 16)   // ;+ spaced
 #define XN_FLAG_SEP_MULTILINE (4 << 16)   // One line per field
@@ -280,13 +280,13 @@ DEFINE_STACK_OF(X509_TRUST)
 #define XN_FLAG_SPC_EQ (1 << 23)  // Put spaces round '='
 
 // This determines if we dump fields we don't recognise:
-// RFC2253 requires this.
+// RFC 2253 requires this.
 
 #define XN_FLAG_DUMP_UNKNOWN_FIELDS (1 << 24)
 
 #define XN_FLAG_FN_ALIGN (1 << 25)  // Align field names to 20 characters
 
-// Complete set of RFC2253 flags
+// Complete set of RFC 2253 flags
 
 #define XN_FLAG_RFC2253                                             \
   (ASN1_STRFLGS_RFC2253 | XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | \
@@ -463,7 +463,7 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
 #define X509_extract_key(x) X509_get_pubkey(x)
 
 // X509_get_pathlen returns path length constraint from the basic constraints
-// extension in |x509|. (See RFC5280, section 4.2.1.9.) It returns -1 if the
+// extension in |x509|. (See RFC 5280, section 4.2.1.9.) It returns -1 if the
 // constraint is not present, or if some extension in |x509| was invalid.
 //
 // Note that decoding an |X509| object will not check for invalid extensions. To
@@ -1144,7 +1144,7 @@ OPENSSL_EXPORT void X509_REQ_get0_signature(const X509_REQ *req,
 // a known NID.
 OPENSSL_EXPORT int X509_REQ_get_signature_nid(const X509_REQ *req);
 
-// i2d_re_X509_REQ_tbs serializes the CertificationRequestInfo (see RFC2986)
+// i2d_re_X509_REQ_tbs serializes the CertificationRequestInfo (see RFC 2986)
 // portion of |req|. If |outp| is NULL, nothing is written. Otherwise, if
 // |*outp| is not NULL, the result is written to |*outp|, which must have enough
 // space available, and |*outp| is advanced just past the output. If |outp| is
@@ -1171,7 +1171,7 @@ OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
 
 // X509_REQ_extension_nid returns one if |nid| is a supported CSR attribute type
 // for carrying extensions and zero otherwise. The supported types are
-// |NID_ext_req| (pkcs-9-at-extensionRequest from RFC2985) and |NID_ms_ext_req|
+// |NID_ext_req| (pkcs-9-at-extensionRequest from RFC 2985) and |NID_ms_ext_req|
 // (a Microsoft szOID_CERT_EXTENSIONS variant).
 OPENSSL_EXPORT int X509_REQ_extension_nid(int nid);
 
@@ -1179,7 +1179,7 @@ OPENSSL_EXPORT int X509_REQ_extension_nid(int nid);
 // returns a newly-allocated |STACK_OF(X509_EXTENSION)| containing the result.
 // It returns NULL on error, or if |req| did not request extensions.
 //
-// This function supports both pkcs-9-at-extensionRequest from RFC2985 and the
+// This function supports both pkcs-9-at-extensionRequest from RFC 2985 and the
 // Microsoft szOID_CERT_EXTENSIONS variant.
 OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req);
 

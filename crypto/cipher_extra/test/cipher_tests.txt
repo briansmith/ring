@@ -271,7 +271,7 @@ Plaintext =
 Ciphertext =
 
 
-# AES Counter test vectors from RFC3686
+# AES Counter test vectors from RFC 3686
 Cipher = AES-128-CTR
 Key = AE6852F8121067CC4BF7A5765577F39E
 IV = 00000030000000000000000000000001

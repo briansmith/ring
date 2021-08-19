@@ -175,7 +175,7 @@ func dnsQueryForHTTPS(domain string) ([][]byte, error) {
 		// Verify that this response answers the question that we asked in the
 		// query. If the resolver encountered any CNAMEs, it's not guaranteed
 		// that the response will contain a question with the same QNAME as our
-		// query. However, RFC8499 Section 4 indicates that in general use, the
+		// query. However, RFC 8499 Section 4 indicates that in general use, the
 		// response's QNAME should match the query, so we will make that
 		// assumption.
 		q, err := p.Question()

@@ -657,7 +657,7 @@ OPENSSL_EXPORT void *X509V3_EXT_d2i(const X509_EXTENSION *ext);
 // extension, or -1 if not found. If |out_idx| is non-NULL, duplicate extensions
 // are not treated as an error. Callers, however, should not rely on this
 // behavior as it may be removed in the future. Duplicate extensions are
-// forbidden in RFC5280.
+// forbidden in RFC 5280.
 //
 // WARNING: This function is difficult to use correctly. Callers should pass a
 // non-NULL |out_critical| and check both the return value and |*out_critical|
@@ -787,7 +787,7 @@ OPENSSL_EXPORT uint32_t X509_get_key_usage(X509 *x);
 OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x);
 
 // X509_get0_subject_key_id returns |x509|'s subject key identifier, if present.
-// (See RFC5280, section 4.2.1.2.) It returns NULL if the extension is not
+// (See RFC 5280, section 4.2.1.2.) It returns NULL if the extension is not
 // present or if some extension in |x509| was invalid.
 //
 // Note that decoding an |X509| object will not check for invalid extensions. To
@@ -796,7 +796,7 @@ OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x);
 OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_subject_key_id(X509 *x509);
 
 // X509_get0_authority_key_id returns keyIdentifier of |x509|'s authority key
-// identifier, if the extension and field are present. (See RFC5280,
+// identifier, if the extension and field are present. (See RFC 5280,
 // section 4.2.1.1.) It returns NULL if the extension is not present, if it is
 // present but lacks a keyIdentifier field, or if some extension in |x509| was
 // invalid.
@@ -808,7 +808,7 @@ OPENSSL_EXPORT const ASN1_OCTET_STRING *X509_get0_authority_key_id(X509 *x509);
 
 // X509_get0_authority_issuer returns the authorityCertIssuer of |x509|'s
 // authority key identifier, if the extension and field are present. (See
-// RFC5280, section 4.2.1.1.) It returns NULL if the extension is not present,
+// RFC 5280, section 4.2.1.1.) It returns NULL if the extension is not present,
 // if it is present but lacks a authorityCertIssuer field, or if some extension
 // in |x509| was invalid.
 //
@@ -819,7 +819,7 @@ OPENSSL_EXPORT const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x509);
 
 // X509_get0_authority_serial returns the authorityCertSerialNumber of |x509|'s
 // authority key identifier, if the extension and field are present. (See
-// RFC5280, section 4.2.1.1.) It returns NULL if the extension is not present,
+// RFC 5280, section 4.2.1.1.) It returns NULL if the extension is not present,
 // if it is present but lacks a authorityCertSerialNumber field, or if some
 // extension in |x509| was invalid.
 //

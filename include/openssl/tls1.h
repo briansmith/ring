@@ -181,26 +181,26 @@ extern "C" {
 #define TLS1_AD_NO_APPLICATION_PROTOCOL 120
 #define TLS1_AD_ECH_REQUIRED 121  // draft-ietf-tls-esni-10
 
-// ExtensionType values from RFC6066
+// ExtensionType values from RFC 6066
 #define TLSEXT_TYPE_server_name 0
 #define TLSEXT_TYPE_status_request 5
 
-// ExtensionType values from RFC4492
+// ExtensionType values from RFC 4492
 #define TLSEXT_TYPE_ec_point_formats 11
 
-// ExtensionType values from RFC5246
+// ExtensionType values from RFC 5246
 #define TLSEXT_TYPE_signature_algorithms 13
 
-// ExtensionType value from RFC5764
+// ExtensionType value from RFC 5764
 #define TLSEXT_TYPE_srtp 14
 
-// ExtensionType value from RFC7301
+// ExtensionType value from RFC 7301
 #define TLSEXT_TYPE_application_layer_protocol_negotiation 16
 
-// ExtensionType value from RFC7685
+// ExtensionType value from RFC 7685
 #define TLSEXT_TYPE_padding 21
 
-// ExtensionType value from RFC7627
+// ExtensionType value from RFC 7627
 #define TLSEXT_TYPE_extended_master_secret 23
 
 // ExtensionType value from draft-ietf-quic-tls. Drafts 00 through 32 use
@@ -210,7 +210,7 @@ extern "C" {
 // use the value 57 which was officially registered with IANA.
 #define TLSEXT_TYPE_quic_transport_parameters_legacy 0xffa5
 
-// ExtensionType value from RFC9000
+// ExtensionType value from RFC 9000
 #define TLSEXT_TYPE_quic_transport_parameters 57
 
 // TLSEXT_TYPE_quic_transport_parameters_standard is an alias for
@@ -219,13 +219,13 @@ extern "C" {
 #define TLSEXT_TYPE_quic_transport_parameters_standard \
   TLSEXT_TYPE_quic_transport_parameters
 
-// ExtensionType value from RFC8879
+// ExtensionType value from RFC 8879
 #define TLSEXT_TYPE_cert_compression 27
 
-// ExtensionType value from RFC4507
+// ExtensionType value from RFC 4507
 #define TLSEXT_TYPE_session_ticket 35
 
-// ExtensionType values from RFC8446
+// ExtensionType values from RFC 8446
 #define TLSEXT_TYPE_supported_groups 10
 #define TLSEXT_TYPE_pre_shared_key 41
 #define TLSEXT_TYPE_early_data 42
@@ -236,7 +236,7 @@ extern "C" {
 #define TLSEXT_TYPE_signature_algorithms_cert 50
 #define TLSEXT_TYPE_key_share 51
 
-// ExtensionType value from RFC5746
+// ExtensionType value from RFC 5746
 #define TLSEXT_TYPE_renegotiate 0xff01
 
 // ExtensionType value from draft-ietf-tls-subcerts.
@@ -252,7 +252,7 @@ extern "C" {
 #define TLSEXT_TYPE_ech_is_inner 0xda09
 #define TLSEXT_TYPE_ech_outer_extensions 0xfd00
 
-// ExtensionType value from RFC6962
+// ExtensionType value from RFC 6962
 #define TLSEXT_TYPE_certificate_timestamp 18
 
 // This is not an IANA defined extension number
@@ -313,7 +313,7 @@ extern "C" {
 #define TLS1_CK_DHE_DSS_EXPORT1024_WITH_RC4_56_SHA 0x03000065
 #define TLS1_CK_DHE_DSS_WITH_RC4_128_SHA 0x03000066
 
-// AES ciphersuites from RFC3268
+// AES ciphersuites from RFC 3268
 
 #define TLS1_CK_RSA_WITH_AES_128_SHA 0x0300002F
 #define TLS1_CK_DH_DSS_WITH_AES_128_SHA 0x03000030
@@ -337,7 +337,7 @@ extern "C" {
 #define TLS1_CK_DH_RSA_WITH_AES_128_SHA256 0x0300003F
 #define TLS1_CK_DHE_DSS_WITH_AES_128_SHA256 0x03000040
 
-// Camellia ciphersuites from RFC4132
+// Camellia ciphersuites from RFC 4132
 #define TLS1_CK_RSA_WITH_CAMELLIA_128_CBC_SHA 0x03000041
 #define TLS1_CK_DH_DSS_WITH_CAMELLIA_128_CBC_SHA 0x03000042
 #define TLS1_CK_DH_RSA_WITH_CAMELLIA_128_CBC_SHA 0x03000043
@@ -354,7 +354,7 @@ extern "C" {
 #define TLS1_CK_ADH_WITH_AES_128_SHA256 0x0300006C
 #define TLS1_CK_ADH_WITH_AES_256_SHA256 0x0300006D
 
-// Camellia ciphersuites from RFC4132
+// Camellia ciphersuites from RFC 4132
 #define TLS1_CK_RSA_WITH_CAMELLIA_256_CBC_SHA 0x03000084
 #define TLS1_CK_DH_DSS_WITH_CAMELLIA_256_CBC_SHA 0x03000085
 #define TLS1_CK_DH_RSA_WITH_CAMELLIA_256_CBC_SHA 0x03000086
@@ -362,7 +362,7 @@ extern "C" {
 #define TLS1_CK_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA 0x03000088
 #define TLS1_CK_ADH_WITH_CAMELLIA_256_CBC_SHA 0x03000089
 
-// SEED ciphersuites from RFC4162
+// SEED ciphersuites from RFC 4162
 #define TLS1_CK_RSA_WITH_SEED_SHA 0x03000096
 #define TLS1_CK_DH_DSS_WITH_SEED_SHA 0x03000097
 #define TLS1_CK_DH_RSA_WITH_SEED_SHA 0x03000098
@@ -370,7 +370,7 @@ extern "C" {
 #define TLS1_CK_DHE_RSA_WITH_SEED_SHA 0x0300009A
 #define TLS1_CK_ADH_WITH_SEED_SHA 0x0300009B
 
-// TLS v1.2 GCM ciphersuites from RFC5288
+// TLS v1.2 GCM ciphersuites from RFC 5288
 #define TLS1_CK_RSA_WITH_AES_128_GCM_SHA256 0x0300009C
 #define TLS1_CK_RSA_WITH_AES_256_GCM_SHA384 0x0300009D
 #define TLS1_CK_DHE_RSA_WITH_AES_128_GCM_SHA256 0x0300009E
@@ -384,7 +384,7 @@ extern "C" {
 #define TLS1_CK_ADH_WITH_AES_128_GCM_SHA256 0x030000A6
 #define TLS1_CK_ADH_WITH_AES_256_GCM_SHA384 0x030000A7
 
-// ECC ciphersuites from RFC4492
+// ECC ciphersuites from RFC 4492
 #define TLS1_CK_ECDH_ECDSA_WITH_NULL_SHA 0x0300C001
 #define TLS1_CK_ECDH_ECDSA_WITH_RC4_128_SHA 0x0300C002
 #define TLS1_CK_ECDH_ECDSA_WITH_DES_192_CBC3_SHA 0x0300C003
@@ -426,7 +426,7 @@ extern "C" {
 #define TLS1_CK_SRP_SHA_RSA_WITH_AES_256_CBC_SHA 0x0300C021
 #define TLS1_CK_SRP_SHA_DSS_WITH_AES_256_CBC_SHA 0x0300C022
 
-// ECDH HMAC based ciphersuites from RFC5289
+// ECDH HMAC based ciphersuites from RFC 5289
 
 #define TLS1_CK_ECDHE_ECDSA_WITH_AES_128_SHA256 0x0300C023
 #define TLS1_CK_ECDHE_ECDSA_WITH_AES_256_SHA384 0x0300C024
@@ -437,7 +437,7 @@ extern "C" {
 #define TLS1_CK_ECDH_RSA_WITH_AES_128_SHA256 0x0300C029
 #define TLS1_CK_ECDH_RSA_WITH_AES_256_SHA384 0x0300C02A
 
-// ECDH GCM based ciphersuites from RFC5289
+// ECDH GCM based ciphersuites from RFC 5289
 #define TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 0x0300C02B
 #define TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 0x0300C02C
 #define TLS1_CK_ECDH_ECDSA_WITH_AES_128_GCM_SHA256 0x0300C02D
@@ -473,7 +473,7 @@ extern "C" {
 #define TLS1_TXT_DHE_DSS_EXPORT1024_WITH_RC4_56_SHA "EXP1024-DHE-DSS-RC4-SHA"
 #define TLS1_TXT_DHE_DSS_WITH_RC4_128_SHA "DHE-DSS-RC4-SHA"
 
-// AES ciphersuites from RFC3268
+// AES ciphersuites from RFC 3268
 #define TLS1_TXT_RSA_WITH_AES_128_SHA "AES128-SHA"
 #define TLS1_TXT_DH_DSS_WITH_AES_128_SHA "DH-DSS-AES128-SHA"
 #define TLS1_TXT_DH_RSA_WITH_AES_128_SHA "DH-RSA-AES128-SHA"
@@ -488,7 +488,7 @@ extern "C" {
 #define TLS1_TXT_DHE_RSA_WITH_AES_256_SHA "DHE-RSA-AES256-SHA"
 #define TLS1_TXT_ADH_WITH_AES_256_SHA "ADH-AES256-SHA"
 
-// ECC ciphersuites from RFC4492
+// ECC ciphersuites from RFC 4492
 #define TLS1_TXT_ECDH_ECDSA_WITH_NULL_SHA "ECDH-ECDSA-NULL-SHA"
 #define TLS1_TXT_ECDH_ECDSA_WITH_RC4_128_SHA "ECDH-ECDSA-RC4-SHA"
 #define TLS1_TXT_ECDH_ECDSA_WITH_DES_192_CBC3_SHA "ECDH-ECDSA-DES-CBC3-SHA"
@@ -540,7 +540,7 @@ extern "C" {
 #define TLS1_TXT_SRP_SHA_RSA_WITH_AES_256_CBC_SHA "SRP-RSA-AES-256-CBC-SHA"
 #define TLS1_TXT_SRP_SHA_DSS_WITH_AES_256_CBC_SHA "SRP-DSS-AES-256-CBC-SHA"
 
-// Camellia ciphersuites from RFC4132
+// Camellia ciphersuites from RFC 4132
 #define TLS1_TXT_RSA_WITH_CAMELLIA_128_CBC_SHA "CAMELLIA128-SHA"
 #define TLS1_TXT_DH_DSS_WITH_CAMELLIA_128_CBC_SHA "DH-DSS-CAMELLIA128-SHA"
 #define TLS1_TXT_DH_RSA_WITH_CAMELLIA_128_CBC_SHA "DH-RSA-CAMELLIA128-SHA"
@@ -555,7 +555,7 @@ extern "C" {
 #define TLS1_TXT_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA "DHE-RSA-CAMELLIA256-SHA"
 #define TLS1_TXT_ADH_WITH_CAMELLIA_256_CBC_SHA "ADH-CAMELLIA256-SHA"
 
-// SEED ciphersuites from RFC4162
+// SEED ciphersuites from RFC 4162
 #define TLS1_TXT_RSA_WITH_SEED_SHA "SEED-SHA"
 #define TLS1_TXT_DH_DSS_WITH_SEED_SHA "DH-DSS-SEED-SHA"
 #define TLS1_TXT_DH_RSA_WITH_SEED_SHA "DH-RSA-SEED-SHA"
@@ -578,7 +578,7 @@ extern "C" {
 #define TLS1_TXT_ADH_WITH_AES_128_SHA256 "ADH-AES128-SHA256"
 #define TLS1_TXT_ADH_WITH_AES_256_SHA256 "ADH-AES256-SHA256"
 
-// TLS v1.2 GCM ciphersuites from RFC5288
+// TLS v1.2 GCM ciphersuites from RFC 5288
 #define TLS1_TXT_RSA_WITH_AES_128_GCM_SHA256 "AES128-GCM-SHA256"
 #define TLS1_TXT_RSA_WITH_AES_256_GCM_SHA384 "AES256-GCM-SHA384"
 #define TLS1_TXT_DHE_RSA_WITH_AES_128_GCM_SHA256 "DHE-RSA-AES128-GCM-SHA256"
@@ -592,7 +592,7 @@ extern "C" {
 #define TLS1_TXT_ADH_WITH_AES_128_GCM_SHA256 "ADH-AES128-GCM-SHA256"
 #define TLS1_TXT_ADH_WITH_AES_256_GCM_SHA384 "ADH-AES256-GCM-SHA384"
 
-// ECDH HMAC based ciphersuites from RFC5289
+// ECDH HMAC based ciphersuites from RFC 5289
 
 #define TLS1_TXT_ECDHE_ECDSA_WITH_AES_128_SHA256 "ECDHE-ECDSA-AES128-SHA256"
 #define TLS1_TXT_ECDHE_ECDSA_WITH_AES_256_SHA384 "ECDHE-ECDSA-AES256-SHA384"
@@ -603,7 +603,7 @@ extern "C" {
 #define TLS1_TXT_ECDH_RSA_WITH_AES_128_SHA256 "ECDH-RSA-AES128-SHA256"
 #define TLS1_TXT_ECDH_RSA_WITH_AES_256_SHA384 "ECDH-RSA-AES256-SHA384"
 
-// ECDH GCM based ciphersuites from RFC5289
+// ECDH GCM based ciphersuites from RFC 5289
 #define TLS1_TXT_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 \
   "ECDHE-ECDSA-AES128-GCM-SHA256"
 #define TLS1_TXT_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 \

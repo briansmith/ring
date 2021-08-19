@@ -234,7 +234,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
-    // GCM ciphersuites from RFC5288
+    // GCM ciphersuites from RFC 5288
 
     // Cipher 9C
     {
@@ -346,7 +346,7 @@ static constexpr SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
-    // GCM based TLS v1.2 ciphersuites from RFC5289
+    // GCM based TLS v1.2 ciphersuites from RFC 5289
 
     // Cipher C02B
     {

@@ -72,7 +72,7 @@ uint8_t *MD4(const uint8_t *data, size_t len, uint8_t out[MD4_DIGEST_LENGTH]) {
   return out;
 }
 
-// Implemented from RFC1186 The MD4 Message-Digest Algorithm.
+// Implemented from RFC 1186 The MD4 Message-Digest Algorithm.
 
 int MD4_Init(MD4_CTX *md4) {
   OPENSSL_memset(md4, 0, sizeof(MD4_CTX));

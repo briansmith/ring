@@ -176,7 +176,7 @@ const (
 	CertTypeRSAFixedDH = 3 // A certificate containing a static DH key
 	CertTypeDSSFixedDH = 4 // A certificate containing a static DH key
 
-	// See RFC4492 sections 3 and 5.5.
+	// See RFC 4492 sections 3 and 5.5.
 	CertTypeECDSASign      = 64 // A certificate containing an ECDSA-capable public key, signed with ECDSA.
 	CertTypeRSAFixedECDH   = 65 // A certificate containing an ECDH-capable public key, signed with RSA.
 	CertTypeECDSAFixedECDH = 66 // A certificate containing an ECDH-capable public key, signed with ECDSA.

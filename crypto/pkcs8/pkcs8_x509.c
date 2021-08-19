@@ -1180,7 +1180,7 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
   }
 
   // PKCS#12 is a very confusing recursive data format, built out of another
-  // recursive data format. Section 5.1 of RFC7292 describes the encoding
+  // recursive data format. Section 5.1 of RFC 7292 describes the encoding
   // algorithm, but there is no clear overview. A quick summary:
   //
   // PKCS#7 defines a ContentInfo structure, which is a overgeneralized typed

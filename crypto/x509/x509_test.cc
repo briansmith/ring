@@ -3059,7 +3059,7 @@ TEST(X509Test, X509AlgorExtract) {
 
 // Test the various |X509_ATTRIBUTE| creation functions.
 TEST(X509Test, Attribute) {
-  // The friendlyName attribute has a BMPString value. See RFC2985,
+  // The friendlyName attribute has a BMPString value. See RFC 2985,
   // section 5.5.1.
   static const uint8_t kTest1[] = {0x26, 0x03};  // U+2603 SNOWMAN
   static const uint8_t kTest1UTF8[] = {0xe2, 0x98, 0x83};

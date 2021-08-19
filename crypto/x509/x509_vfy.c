@@ -1403,12 +1403,12 @@ static int check_crl_path(X509_STORE_CTX *ctx, X509 *x)
 }
 
 /*
- * RFC3280 says nothing about the relationship between CRL path and
+ * RFC 3280 says nothing about the relationship between CRL path and
  * certificate path, which could lead to situations where a certificate could
- * be revoked or validated by a CA not authorised to do so. RFC5280 is more
+ * be revoked or validated by a CA not authorised to do so. RFC 5280 is more
  * strict and states that the two paths must end in the same trust anchor,
  * though some discussions remain... until this is resolved we use the
- * RFC5280 version
+ * RFC 5280 version
  */
 
 static int check_crl_chain(X509_STORE_CTX *ctx,
@@ -1919,8 +1919,8 @@ int X509_cmp_time(const ASN1_TIME *ctm, time_t *cmp_time)
     int i, day, sec, ret = 0;
 
     /*
-     * Note that ASN.1 allows much more slack in the time format than RFC5280.
-     * In RFC5280, the representation is fixed:
+     * Note that ASN.1 allows much more slack in the time format than RFC 5280.
+     * In RFC 5280, the representation is fixed:
      * UTCTime: YYMMDDHHMMSSZ
      * GeneralizedTime: YYYYMMDDHHMMSSZ
      *

@@ -279,7 +279,7 @@ static int do_hex_dump(BIO *out, unsigned char *buf, int buflen)
 /*
  * "dump" a string. This is done when the type is unknown, or the flags
  * request it. We can either dump the content octets or the entire DER
- * encoding. This uses the RFC2253 #01234 format.
+ * encoding. This uses the RFC 2253 #01234 format.
  */
 
 static int do_dump(unsigned long lflags, BIO *out, const ASN1_STRING *str)

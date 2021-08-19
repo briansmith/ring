@@ -65,7 +65,7 @@ DEFINE_STACK_OF(X509_POLICY_DATA)
 
 /*
  * This structure and the field names correspond to the Policy 'node' of
- * RFC3280. NB this structure contains no pointers to parent or child data:
+ * RFC 3280. NB this structure contains no pointers to parent or child data:
  * X509_POLICY_NODE contains that. This means that the main policy data can
  * be kept static and cached with the certificate.
  */

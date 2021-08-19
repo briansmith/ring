@@ -5,7 +5,7 @@ Key =
 Input = "More text test vectors to stuff up EBCDIC machines :-)"
 Output = e9139d1e6ee064ef8cf514fc7dc83e86
 
-# HMAC tests from RFC2104
+# HMAC tests from RFC 2104
 HMAC = MD5
 Key = 0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b
 Input = "Hi There"

@@ -1120,7 +1120,7 @@ int X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags)
 
 /*
  * Convert IP addresses both IPv4 and IPv6 into an OCTET STRING compatible
- * with RFC3280.
+ * with RFC 3280.
  */
 
 ASN1_OCTET_STRING *a2i_IPADDRESS(const char *ipasc)

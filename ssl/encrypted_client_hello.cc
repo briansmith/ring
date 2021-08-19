@@ -436,7 +436,7 @@ static bool is_ipv4_address(Span<const uint8_t> in) {
 }
 
 bool ssl_is_valid_ech_public_name(Span<const uint8_t> public_name) {
-  // See draft-ietf-tls-esni-11, Section 4 and RFC5890, Section 2.3.1. The
+  // See draft-ietf-tls-esni-11, Section 4 and RFC 5890, Section 2.3.1. The
   // public name must be a dot-separated sequence of LDH labels and not begin or
   // end with a dot.
   auto copy = public_name;

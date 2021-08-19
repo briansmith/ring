@@ -584,7 +584,7 @@ TEST(ASN1Test, StringPrintEx) {
        ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB,
        "\\00\\0A\\80\\FF\\,\\+\\\"\\\\\\<\\>\\;"},
 
-      // When quoted, fewer characters need to be escaped in RFC2253.
+      // When quoted, fewer characters need to be escaped in RFC 2253.
       {V_ASN1_T61STRING,
        {0, '\n', 0x80, 0xff, ',', '+', '"', '\\', '<', '>', ';'},
        0,
@@ -600,13 +600,13 @@ TEST(ASN1Test, StringPrintEx) {
            ASN1_STRFLGS_ESC_QUOTE,
        "\\00\\0A\\80\\FF\\\"\\\\"},
 
-      // RFC2253 only escapes spaces at the start and end of a string.
+      // RFC 2253 only escapes spaces at the start and end of a string.
       {V_ASN1_T61STRING, StringToVector("   "), 0, ASN1_STRFLGS_ESC_2253,
        "\\  \\ "},
       {V_ASN1_T61STRING, StringToVector("   "), 0,
        ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_QUOTE, "\"   \""},
 
-      // RFC2253 only escapes # at the start of a string.
+      // RFC 2253 only escapes # at the start of a string.
       {V_ASN1_T61STRING, StringToVector("###"), 0, ASN1_STRFLGS_ESC_2253,
        "\\###"},
       {V_ASN1_T61STRING, StringToVector("###"), 0,
@@ -682,7 +682,7 @@ TEST(ASN1Test, StringPrintEx) {
       // |ASN1_STRFLGS_UTF8_CONVERT| still converts these bytes to UTF-8.
       //
       // TODO(davidben): This seems like a bug. Although it's unclear because
-      // the non-RFC2253 options aren't especially sound. Can we just remove
+      // the non-RFC-2253 options aren't especially sound. Can we just remove
       // them?
       {V_ASN1_OCTET_STRING, {0xff}, 0, ASN1_STRFLGS_UTF8_CONVERT, "\xc3\xbf"},
       {-1, {0xff}, 0, ASN1_STRFLGS_UTF8_CONVERT, "\xc3\xbf"},

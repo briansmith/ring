@@ -332,7 +332,7 @@ static int tree_link_matching_nodes(X509_POLICY_LEVEL *curr,
 }
 
 /*
- * This corresponds to RFC3280 6.1.3(d)(1): link any data from
+ * This corresponds to RFC 3280 6.1.3(d)(1): link any data from
  * CertificatePolicies onto matching parent or anyPolicy if no match.
  */
 
@@ -365,7 +365,7 @@ static int tree_link_nodes(X509_POLICY_LEVEL *curr,
 }
 
 /*
- * This corresponds to RFC3280 6.1.3(d)(2): Create new data for any unmatched
+ * This corresponds to RFC 3280 6.1.3(d)(2): Create new data for any unmatched
  * policies in the parent and link to anyPolicy.
  */
 
@@ -500,7 +500,7 @@ static int tree_prune(X509_POLICY_TREE *tree, X509_POLICY_LEVEL *curr)
     if (curr->flags & X509_V_FLAG_INHIBIT_MAP) {
         for (i = sk_X509_POLICY_NODE_num(nodes) - 1; i >= 0; i--) {
             node = sk_X509_POLICY_NODE_value(nodes, i);
-            /* Delete any mapped data: see RFC3280 XXXX */
+            /* Delete any mapped data: see RFC 3280 XXXX */
             if (node->data->flags & POLICY_DATA_FLAG_MAP_MASK) {
                 node->parent->nchild--;
                 OPENSSL_free(node);

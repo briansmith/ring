@@ -193,7 +193,7 @@ static void gcm_mul64_nohw(uint64_t *out_lo, uint64_t *out_hi, uint64_t a,
 #endif  // BORINGSSL_HAS_UINT128
 
 void gcm_init_nohw(u128 Htable[16], const uint64_t Xi[2]) {
-  // We implement GHASH in terms of POLYVAL, as described in RFC8452. This
+  // We implement GHASH in terms of POLYVAL, as described in RFC 8452. This
   // avoids a shift by 1 in the multiplication, needed to account for bit
   // reversal losing a bit after multiplication, that is,
   // rev128(X) * rev128(Y) = rev255(X*Y).
