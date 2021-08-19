@@ -565,6 +565,28 @@ again:
 	return s
 }
 
+var rfcRegexp = regexp.MustCompile("RFC ([0-9]+)")
+
+func markupRFC(html template.HTML) template.HTML {
+	s := string(html)
+	matches := rfcRegexp.FindAllStringSubmatchIndex(s, -1)
+	if len(matches) == 0 {
+		return html
+	}
+
+	var b strings.Builder
+	var idx int
+	for _, match := range matches {
+		start, end := match[0], match[1]
+		number := s[match[2]:match[3]]
+		b.WriteString(s[idx:start])
+		fmt.Fprintf(&b, "<a href=\"https://www.rfc-editor.org/rfc/rfc%s.html\">%s</a>", number, s[start:end])
+		idx = end
+	}
+	b.WriteString(s[idx:])
+	return template.HTML(b.String())
+}
+
 func newlinesToBR(html template.HTML) template.HTML {
 	s := string(html)
 	if !strings.Contains(s, "\n") {
@@ -583,6 +605,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
 		"firstSentence":   firstSentence,
 		"markupPipeWords": func(s string) template.HTML { return markupPipeWords(allDecls, s) },
 		"markupFirstWord": markupFirstWord,
+		"markupRFC":       markupRFC,
 		"newlinesToBR":    newlinesToBR,
 	})
 	headerTmpl, err := headerTmpl.Parse(`<!DOCTYPE html>
@@ -625,7 +648,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
         {{range .Decls}}
           <div class="decl" {{if .Anchor}}id="{{.Anchor}}"{{end}}>
           {{range .Comment}}
-            <p>{{. | markupPipeWords | newlinesToBR | markupFirstWord}}</p>
+            <p>{{. | markupPipeWords | newlinesToBR | markupFirstWord | markupRFC}}</p>
           {{end}}
           <pre>{{.Decl}}</pre>
           </div>
