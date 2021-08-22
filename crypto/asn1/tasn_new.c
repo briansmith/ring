@@ -95,14 +95,8 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
 {
     const ASN1_TEMPLATE *tt = NULL;
     const ASN1_EXTERN_FUNCS *ef;
-    const ASN1_AUX *aux = it->funcs;
-    ASN1_aux_cb *asn1_cb;
     ASN1_VALUE **pseqval;
     int i;
-    if (aux && aux->asn1_cb)
-        asn1_cb = aux->asn1_cb;
-    else
-        asn1_cb = 0;
 
     switch (it->itype) {
 
@@ -127,7 +121,9 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
             goto memerr;
         break;
 
-    case ASN1_ITYPE_CHOICE:
+    case ASN1_ITYPE_CHOICE: {
+        const ASN1_AUX *aux = it->funcs;
+        ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
         if (asn1_cb) {
             i = asn1_cb(ASN1_OP_NEW_PRE, pval, it, NULL);
             if (!i)
@@ -146,8 +142,11 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
         if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL))
             goto auxerr2;
         break;
+    }
 
-    case ASN1_ITYPE_SEQUENCE:
+    case ASN1_ITYPE_SEQUENCE: {
+        const ASN1_AUX *aux = it->funcs;
+        ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
         if (asn1_cb) {
             i = asn1_cb(ASN1_OP_NEW_PRE, pval, it, NULL);
             if (!i)
@@ -172,6 +171,7 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
         if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL))
             goto auxerr2;
         break;
+    }
     }
     return 1;
 

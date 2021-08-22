@@ -170,8 +170,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
 {
     const ASN1_TEMPLATE *tt, *errtt = NULL;
     const ASN1_EXTERN_FUNCS *ef;
-    const ASN1_AUX *aux = it->funcs;
-    ASN1_aux_cb *asn1_cb;
     const unsigned char *p = NULL, *q;
     unsigned char oclass;
     char seq_eoc, seq_nolen, cst, isopt;
@@ -183,10 +181,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
     aclass &= ~ASN1_TFLG_COMBINE;
     if (!pval)
         return 0;
-    if (aux && aux->asn1_cb)
-        asn1_cb = aux->asn1_cb;
-    else
-        asn1_cb = 0;
 
     /*
      * Bound |len| to comfortably fit in an int. Lengths in this module often
@@ -264,7 +258,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         ef = it->funcs;
         return ef->asn1_ex_d2i(pval, in, len, it, tag, aclass, opt, ctx);
 
-    case ASN1_ITYPE_CHOICE:
+    case ASN1_ITYPE_CHOICE: {
         /*
          * It never makes sense for CHOICE types to have implicit tagging, so if
          * tag != -1, then this looks like an error in the template.
@@ -274,6 +268,8 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
             goto err;
         }
 
+        const ASN1_AUX *aux = it->funcs;
+        ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
         if (asn1_cb && !asn1_cb(ASN1_OP_D2I_PRE, pval, it, NULL))
             goto auxerr;
 
@@ -327,8 +323,9 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
             goto auxerr;
         *in = p;
         return 1;
+    }
 
-    case ASN1_ITYPE_SEQUENCE:
+    case ASN1_ITYPE_SEQUENCE: {
         p = *in;
 
         /* If no IMPLICIT tagging set to SEQUENCE, UNIVERSAL */
@@ -356,6 +353,8 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
             goto err;
         }
 
+        const ASN1_AUX *aux = it->funcs;
+        ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
         if (asn1_cb && !asn1_cb(ASN1_OP_D2I_PRE, pval, it, NULL))
             goto auxerr;
 
@@ -462,6 +461,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
             goto auxerr;
         *in = p;
         return 1;
+    }
 
     default:
         return 0;

@@ -118,6 +118,7 @@ int asn1_refcount_dec_and_test_zero(ASN1_VALUE **pval, const ASN1_ITEM *it) {
 }
 
 static ASN1_ENCODING *asn1_get_enc_ptr(ASN1_VALUE **pval, const ASN1_ITEM *it) {
+  assert(it->itype == ASN1_ITYPE_SEQUENCE);
   const ASN1_AUX *aux;
   if (!pval || !*pval) {
     return NULL;
