@@ -261,17 +261,13 @@ static int x509_name_ex_d2i(ASN1_VALUE **val,
 static int x509_name_ex_i2d(ASN1_VALUE **val, unsigned char **out,
                             const ASN1_ITEM *it, int tag, int aclass)
 {
-    int ret;
     X509_NAME *a = (X509_NAME *)*val;
-    if (a->modified) {
-        ret = x509_name_encode(a);
-        if (ret < 0)
-            return ret;
-        ret = x509_name_canon(a);
-        if (ret < 0)
-            return ret;
+    if (a->modified &&
+        (!x509_name_encode(a) ||
+         !x509_name_canon(a))) {
+        return -1;
     }
-    ret = a->bytes->length;
+    int ret = a->bytes->length;
     if (out != NULL) {
         OPENSSL_memcpy(*out, a->bytes->data, ret);
         *out += ret;
@@ -309,20 +305,26 @@ static int x509_name_encode(X509_NAME *a)
     ASN1_VALUE *intname_val = (ASN1_VALUE *)intname;
     len = ASN1_item_ex_i2d(&intname_val, NULL,
                            ASN1_ITEM_rptr(X509_NAME_INTERNAL), -1, -1);
+    if (len <= 0) {
+        goto err;
+    }
     if (!BUF_MEM_grow(a->bytes, len))
         goto memerr;
     p = (unsigned char *)a->bytes->data;
-    ASN1_item_ex_i2d(&intname_val,
-                     &p, ASN1_ITEM_rptr(X509_NAME_INTERNAL), -1, -1);
+    if (ASN1_item_ex_i2d(&intname_val,
+                         &p, ASN1_ITEM_rptr(X509_NAME_INTERNAL), -1, -1) <= 0) {
+        goto err;
+    }
     sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname,
                                          local_sk_X509_NAME_ENTRY_free);
     a->modified = 0;
-    return len;
+    return 1;
  memerr:
+    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
+err:
     sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname,
                                          local_sk_X509_NAME_ENTRY_free);
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-    return -1;
+    return 0;
 }
 
 /*
