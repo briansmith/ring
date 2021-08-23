@@ -179,7 +179,7 @@ web-sys = { version = "0.3.51", default-features = false, features = ["Crypto", 
 winapi = { version = "0.3.9", default-features = false, features = ["ntsecapi", "wtypesbase", "processthreadsapi"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-wasm-bindgen-test = { version = "0.3.18", default-features = false }
+wasm-bindgen-test = { version = "0.3.26", default-features = false }
 
 [target.'cfg(any(unix, windows))'.dev-dependencies]
 libc = { version = "0.2.84", default-features = false }
