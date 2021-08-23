@@ -188,7 +188,7 @@ libc = { version = "0.2.84", default-features = false }
 cc = { version = "1.0.69", default-features = false }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.3.5"
 
 [features]
 # These features are documented in the top-level module's documentation.
