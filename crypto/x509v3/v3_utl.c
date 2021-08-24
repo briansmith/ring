@@ -88,27 +88,38 @@ static int ipv6_hex(unsigned char *out, const char *in, int inlen);
 
 /* Add a CONF_VALUE name value pair to stack */
 
-int X509V3_add_value(const char *name, const char *value,
-                     STACK_OF(CONF_VALUE) **extlist)
+static int x509V3_add_len_value(const char *name, const char *value,
+                                size_t value_len, int omit_value,
+                                STACK_OF(CONF_VALUE) **extlist)
 {
     CONF_VALUE *vtmp = NULL;
     char *tname = NULL, *tvalue = NULL;
     if (name && !(tname = OPENSSL_strdup(name)))
-        goto err;
-    if (value && !(tvalue = OPENSSL_strdup(value)))
-        goto err;
+        goto malloc_err;
+    if (omit_value) {
+        /* |CONF_VALUE| cannot represent strings with NULs. */
+        if (OPENSSL_memchr(value, 0, value_len)) {
+            OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_VALUE);
+            goto err;
+        }
+        tvalue = OPENSSL_strndup(value, value_len);
+        if (tvalue == NULL) {
+            goto malloc_err;
+        }
+    }
     if (!(vtmp = CONF_VALUE_new()))
-        goto err;
+        goto malloc_err;
     if (!*extlist && !(*extlist = sk_CONF_VALUE_new_null()))
-        goto err;
+        goto malloc_err;
     vtmp->section = NULL;
     vtmp->name = tname;
     vtmp->value = tvalue;
     if (!sk_CONF_VALUE_push(*extlist, vtmp))
-        goto err;
+        goto malloc_err;
     return 1;
- err:
+ malloc_err:
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
+ err:
     if (vtmp)
         OPENSSL_free(vtmp);
     if (tname)
@@ -118,10 +129,24 @@ int X509V3_add_value(const char *name, const char *value,
     return 0;
 }
 
+int X509V3_add_value(const char *name, const char *value,
+                     STACK_OF(CONF_VALUE) **extlist)
+{
+    return x509V3_add_len_value(name, value, value != NULL ? strlen(value) : 0,
+                                /*omit_value=*/value == NULL, extlist);
+}
+
 int X509V3_add_value_uchar(const char *name, const unsigned char *value,
                            STACK_OF(CONF_VALUE) **extlist)
 {
     return X509V3_add_value(name, (const char *)value, extlist);
+}
+
+int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
+                                 STACK_OF(CONF_VALUE) **extlist)
+{
+    return x509V3_add_len_value(name, (const char *)value->data, value->length,
+                                /*omit_value=*/0, extlist);
 }
 
 /* Free function for STACK_OF(CONF_VALUE) */

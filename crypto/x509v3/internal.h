@@ -17,6 +17,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/conf.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -66,6 +68,13 @@ typedef struct {
   const char *lname;
   const char *sname;
 } BIT_STRING_BITNAME;
+
+// x509V3_add_value_asn1_string appends a |CONF_VALUE| with the specified name
+// and value to |*extlist|. if |*extlist| is NULL, it sets |*extlist| to a
+// newly-allocated |STACK_OF(CONF_VALUE)| first. It returns one on success and
+// zero on error.
+int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
+                                 STACK_OF(CONF_VALUE) **extlist);
 
 
 #if defined(__cplusplus)
