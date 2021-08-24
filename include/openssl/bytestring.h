@@ -154,6 +154,11 @@ OPENSSL_EXPORT int CBS_get_u16_length_prefixed(CBS *cbs, CBS *out);
 // returns one on success and zero on error.
 OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 
+// CBS_get_until_first finds the first instance of |c| in |cbs|. If found, it
+// sets |*out| to the text before the match, advances |cbs| over it, and returns
+// one. Otherwise, it returns zero and leaves |cbs| unmodified.
+OPENSSL_EXPORT int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c);
+
 
 // Parsing ASN.1
 //

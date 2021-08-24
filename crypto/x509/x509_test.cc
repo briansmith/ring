@@ -1557,6 +1557,9 @@ TEST(X509Test, NameConstraints) {
        X509_V_ERR_PERMITTED_VIOLATION},
       {GEN_DNS, "foo.example.com", ".unrelated.much.longer.name.example",
        X509_V_ERR_PERMITTED_VIOLATION},
+      // NUL bytes, if not rejected, should not confuse the matching logic.
+      {GEN_DNS, std::string({'a', '\0', 'a'}), std::string({'a', '\0', 'b'}),
+       X509_V_ERR_PERMITTED_VIOLATION},
 
       // Names must be emails.
       {GEN_EMAIL, "not-an-email.example", "not-an-email.example",

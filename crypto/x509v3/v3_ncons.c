@@ -389,25 +389,73 @@ static int nc_dn(X509_NAME *nm, X509_NAME *base)
     return X509_V_OK;
 }
 
+static int starts_with(const CBS *cbs, uint8_t c)
+{
+    return CBS_len(cbs) > 0 && CBS_data(cbs)[0] == c;
+}
+
+static int equal_case(const CBS *a, const CBS *b)
+{
+    if (CBS_len(a) != CBS_len(b)) {
+        return 0;
+    }
+    /* Note we cannot use |OPENSSL_strncasecmp| because that would stop
+     * iterating at NUL. */
+    const uint8_t *a_data = CBS_data(a), *b_data = CBS_data(b);
+    for (size_t i = 0; i < CBS_len(a); i++) {
+        if (OPENSSL_tolower(a_data[i]) != OPENSSL_tolower(b_data[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int has_suffix_case(const CBS *a, const CBS *b)
+{
+    if (CBS_len(a) < CBS_len(b)) {
+        return 0;
+    }
+    CBS copy = *a;
+    CBS_skip(&copy, CBS_len(a) - CBS_len(b));
+    return equal_case(&copy, b);
+}
+
 static int nc_dns(ASN1_IA5STRING *dns, ASN1_IA5STRING *base)
 {
-    char *baseptr = (char *)base->data;
-    char *dnsptr = (char *)dns->data;
+    CBS dns_cbs, base_cbs;
+    CBS_init(&dns_cbs, dns->data, dns->length);
+    CBS_init(&base_cbs, base->data, base->length);
+
     /* Empty matches everything */
-    if (!*baseptr)
+    if (CBS_len(&base_cbs) == 0) {
         return X509_V_OK;
+    }
+
+    /* If |base_cbs| begins with a '.', do a simple suffix comparison. This is
+     * not part of RFC5280, but is part of OpenSSL's original behavior. */
+    if (starts_with(&base_cbs, '.')) {
+        if (has_suffix_case(&dns_cbs, &base_cbs)) {
+            return X509_V_OK;
+        }
+        return X509_V_ERR_PERMITTED_VIOLATION;
+    }
+
     /*
      * Otherwise can add zero or more components on the left so compare RHS
      * and if dns is longer and expect '.' as preceding character.
      */
-    if (dns->length > base->length) {
-        dnsptr += dns->length - base->length;
-        if (*baseptr != '.' && dnsptr[-1] != '.')
+    if (CBS_len(&dns_cbs) > CBS_len(&base_cbs)) {
+        uint8_t dot;
+        if (!CBS_skip(&dns_cbs, CBS_len(&dns_cbs) - CBS_len(&base_cbs) - 1) ||
+            !CBS_get_u8(&dns_cbs, &dot) ||
+            dot != '.') {
             return X509_V_ERR_PERMITTED_VIOLATION;
+        }
     }
 
-    if (OPENSSL_strcasecmp(baseptr, dnsptr))
+    if (!equal_case(&dns_cbs, &base_cbs)) {
         return X509_V_ERR_PERMITTED_VIOLATION;
+    }
 
     return X509_V_OK;
 
@@ -415,86 +463,94 @@ static int nc_dns(ASN1_IA5STRING *dns, ASN1_IA5STRING *base)
 
 static int nc_email(ASN1_IA5STRING *eml, ASN1_IA5STRING *base)
 {
-    const char *baseptr = (char *)base->data;
-    const char *emlptr = (char *)eml->data;
+    CBS eml_cbs, base_cbs;
+    CBS_init(&eml_cbs, eml->data, eml->length);
+    CBS_init(&base_cbs, base->data, base->length);
 
-    const char *baseat = strchr(baseptr, '@');
-    const char *emlat = strchr(emlptr, '@');
-    if (!emlat)
+    /* TODO(davidben): In OpenSSL 1.1.1, this switched from the first '@' to the
+     * last one. Match them here, or perhaps do an actual parse. Looks like
+     * multiple '@'s may be allowed in quoted strings. */
+    CBS eml_local, base_local;
+    if (!CBS_get_until_first(&eml_cbs, &eml_local, '@')) {
         return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
+    int base_has_at = CBS_get_until_first(&base_cbs, &base_local, '@');
+
     /* Special case: inital '.' is RHS match */
-    if (!baseat && (*baseptr == '.')) {
-        if (eml->length > base->length) {
-            emlptr += eml->length - base->length;
-            if (!OPENSSL_strcasecmp(baseptr, emlptr))
-                return X509_V_OK;
+    if (!base_has_at && starts_with(&base_cbs, '.')) {
+        if (has_suffix_case(&eml_cbs, &base_cbs)) {
+            return X509_V_OK;
         }
         return X509_V_ERR_PERMITTED_VIOLATION;
     }
 
     /* If we have anything before '@' match local part */
-
-    if (baseat) {
-        if (baseat != baseptr) {
-            if ((baseat - baseptr) != (emlat - emlptr))
-                return X509_V_ERR_PERMITTED_VIOLATION;
+    if (base_has_at) {
+        /* TODO(davidben): This interprets a constraint of "@example.com" as
+         * "example.com", which is not part of RFC5280. */
+        if (CBS_len(&base_local) > 0) {
             /* Case sensitive match of local part */
-            if (strncmp(baseptr, emlptr, emlat - emlptr))
+            if (!CBS_mem_equal(&base_local, CBS_data(&eml_local),
+                               CBS_len(&eml_local))) {
                 return X509_V_ERR_PERMITTED_VIOLATION;
+            }
         }
         /* Position base after '@' */
-        baseptr = baseat + 1;
+        assert(starts_with(&base_cbs, '@'));
+        CBS_skip(&base_cbs, 1);
     }
-    emlptr = emlat + 1;
+
     /* Just have hostname left to match: case insensitive */
-    if (OPENSSL_strcasecmp(baseptr, emlptr))
+    assert(starts_with(&eml_cbs, '@'));
+    CBS_skip(&eml_cbs, 1);
+    if (!equal_case(&base_cbs, &eml_cbs)) {
         return X509_V_ERR_PERMITTED_VIOLATION;
+    }
 
     return X509_V_OK;
-
 }
 
 static int nc_uri(ASN1_IA5STRING *uri, ASN1_IA5STRING *base)
 {
-    const char *baseptr = (char *)base->data;
-    const char *hostptr = (char *)uri->data;
-    const char *p = strchr(hostptr, ':');
-    int hostlen;
+    CBS uri_cbs, base_cbs;
+    CBS_init(&uri_cbs, uri->data, uri->length);
+    CBS_init(&base_cbs, base->data, base->length);
+
     /* Check for foo:// and skip past it */
-    if (!p || (p[1] != '/') || (p[2] != '/'))
+    CBS scheme;
+    uint8_t byte;
+    if (!CBS_get_until_first(&uri_cbs, &scheme, ':') ||
+        !CBS_skip(&uri_cbs, 1) ||  // Skip the colon
+        !CBS_get_u8(&uri_cbs, &byte) || byte != '/' ||
+        !CBS_get_u8(&uri_cbs, &byte) || byte != '/') {
         return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
-    hostptr = p + 3;
+    }
 
-    /* Determine length of hostname part of URI */
+    /* Look for a port indicator as end of hostname first. Otherwise look for
+     * trailing slash, or the end of the string.
+     * TODO(davidben): This is not a correct URI parser and mishandles IPv6
+     * literals. */
+    CBS host;
+    if (!CBS_get_until_first(&uri_cbs, &host, ':') &&
+        !CBS_get_until_first(&uri_cbs, &host, '/')) {
+        host = uri_cbs;
+    }
 
-    /* Look for a port indicator as end of hostname first */
-
-    p = strchr(hostptr, ':');
-    /* Otherwise look for trailing slash */
-    if (!p)
-        p = strchr(hostptr, '/');
-
-    if (!p)
-        hostlen = strlen(hostptr);
-    else
-        hostlen = p - hostptr;
-
-    if (hostlen == 0)
+    if (CBS_len(&host) == 0) {
         return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+    }
 
     /* Special case: inital '.' is RHS match */
-    if (*baseptr == '.') {
-        if (hostlen > base->length) {
-            p = hostptr + hostlen - base->length;
-            if (!OPENSSL_strncasecmp(p, baseptr, base->length))
-                return X509_V_OK;
+    if (starts_with(&base_cbs, '.')) {
+        if (has_suffix_case(&host, &base_cbs)) {
+            return X509_V_OK;
         }
         return X509_V_ERR_PERMITTED_VIOLATION;
     }
 
-    if ((base->length != (int)hostlen)
-        || OPENSSL_strncasecmp(hostptr, baseptr, hostlen))
+    if (!equal_case(&base_cbs, &host)) {
         return X509_V_ERR_PERMITTED_VIOLATION;
+    }
 
     return X509_V_OK;
 

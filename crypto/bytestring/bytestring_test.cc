@@ -115,6 +115,28 @@ TEST(CBSTest, GetPrefixedBad) {
   EXPECT_FALSE(CBS_get_u24_length_prefixed(&data, &prefixed));
 }
 
+TEST(CBSTest, GetUntilFirst) {
+  static const uint8_t kData[] = {0, 1, 2, 3, 0, 1, 2, 3};
+  CBS data;
+  CBS_init(&data, kData, sizeof(kData));
+
+  CBS prefix;
+  EXPECT_FALSE(CBS_get_until_first(&data, &prefix, 4));
+  EXPECT_EQ(CBS_data(&data), kData);
+  EXPECT_EQ(CBS_len(&data), sizeof(kData));
+
+  ASSERT_TRUE(CBS_get_until_first(&data, &prefix, 0));
+  EXPECT_EQ(CBS_len(&prefix), 0u);
+  EXPECT_EQ(CBS_data(&data), kData);
+  EXPECT_EQ(CBS_len(&data), sizeof(kData));
+
+  ASSERT_TRUE(CBS_get_until_first(&data, &prefix, 2));
+  EXPECT_EQ(CBS_data(&prefix), kData);
+  EXPECT_EQ(CBS_len(&prefix), 2u);
+  EXPECT_EQ(CBS_data(&data), kData + 2);
+  EXPECT_EQ(CBS_len(&data), sizeof(kData) - 2);
+}
+
 TEST(CBSTest, GetASN1) {
   static const uint8_t kData1[] = {0x30, 2, 1, 2};
   static const uint8_t kData2[] = {0x30, 3, 1, 2};

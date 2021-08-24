@@ -216,6 +216,14 @@ int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out) {
   return cbs_get_length_prefixed(cbs, out, 3);
 }
 
+int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c) {
+  const uint8_t *split = OPENSSL_memchr(CBS_data(cbs), c, CBS_len(cbs));
+  if (split == NULL) {
+    return 0;
+  }
+  return CBS_get_bytes(cbs, out, split - CBS_data(cbs));
+}
+
 // parse_base128_integer reads a big-endian base-128 integer from |cbs| and sets
 // |*out| to the result. This is the encoding used in DER for both high tag
 // number form and OID components.
