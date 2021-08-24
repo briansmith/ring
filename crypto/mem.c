@@ -328,22 +328,15 @@ int BIO_vsnprintf(char *buf, size_t n, const char *format, va_list args) {
 }
 
 char *OPENSSL_strndup(const char *str, size_t size) {
-  char *ret;
-  size_t alloc_size;
-
-  if (str == NULL) {
-    return NULL;
-  }
-
   size = OPENSSL_strnlen(str, size);
 
-  alloc_size = size + 1;
+  size_t alloc_size = size + 1;
   if (alloc_size < size) {
     // overflow
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  ret = OPENSSL_malloc(alloc_size);
+  char *ret = OPENSSL_malloc(alloc_size);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return NULL;

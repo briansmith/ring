@@ -20,6 +20,7 @@
 #include <openssl/base.h>
 #include <openssl/crypto.h>
 #include <openssl/cipher.h>
+#include <openssl/mem.h>
 
 #include <gtest/gtest.h>
 
@@ -33,6 +34,12 @@ TEST(CryptoTest, Version) {
            (OPENSSL_VERSION_NUMBER >> 12) & 0xff);
   EXPECT_EQ(expected,
             std::string(OPENSSL_VERSION_TEXT).substr(0, strlen(expected)));
+}
+
+TEST(CryptoTest, Strndup) {
+  bssl::UniquePtr<char> str(OPENSSL_strndup(nullptr, 0));
+  EXPECT_TRUE(str);
+  EXPECT_STREQ("", str.get());
 }
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
