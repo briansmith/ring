@@ -96,7 +96,7 @@ static int x509V3_add_len_value(const char *name, const char *value,
     char *tname = NULL, *tvalue = NULL;
     if (name && !(tname = OPENSSL_strdup(name)))
         goto malloc_err;
-    if (omit_value) {
+    if (!omit_value) {
         /* |CONF_VALUE| cannot represent strings with NULs. */
         if (OPENSSL_memchr(value, 0, value_len)) {
             OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_VALUE);

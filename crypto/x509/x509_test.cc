@@ -1683,6 +1683,20 @@ TEST(X509Test, NameConstraints) {
   }
 }
 
+TEST(X509Test, PrintGeneralName) {
+  // TODO(https://crbug.com/boringssl/430): Add more tests. Also fix the
+  // external projects that use this to extract the SAN list and unexport.
+  bssl::UniquePtr<GENERAL_NAME> gen = MakeGeneralName(GEN_DNS, "example.com");
+  ASSERT_TRUE(gen);
+  bssl::UniquePtr<STACK_OF(CONF_VALUE)> values(
+      i2v_GENERAL_NAME(nullptr, gen.get(), nullptr));
+  ASSERT_TRUE(values);
+  ASSERT_EQ(1u, sk_CONF_VALUE_num(values.get()));
+  const CONF_VALUE *value = sk_CONF_VALUE_value(values.get(), 0);
+  EXPECT_STREQ(value->name, "DNS");
+  EXPECT_STREQ(value->value, "example.com");
+}
+
 TEST(X509Test, TestPSS) {
   bssl::UniquePtr<X509> cert(CertFromPEM(kExamplePSSCert));
   ASSERT_TRUE(cert);
