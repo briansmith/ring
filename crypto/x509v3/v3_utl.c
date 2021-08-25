@@ -94,6 +94,7 @@ static int x509V3_add_len_value(const char *name, const char *value,
 {
     CONF_VALUE *vtmp = NULL;
     char *tname = NULL, *tvalue = NULL;
+    int extlist_was_null = *extlist == NULL;
     if (name && !(tname = OPENSSL_strdup(name)))
         goto malloc_err;
     if (!omit_value) {
@@ -120,12 +121,13 @@ static int x509V3_add_len_value(const char *name, const char *value,
  malloc_err:
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
  err:
-    if (vtmp)
-        OPENSSL_free(vtmp);
-    if (tname)
-        OPENSSL_free(tname);
-    if (tvalue)
-        OPENSSL_free(tvalue);
+    if (extlist_was_null) {
+        sk_CONF_VALUE_free(*extlist);
+        *extlist = NULL;
+    }
+    OPENSSL_free(vtmp);
+    OPENSSL_free(tname);
+    OPENSSL_free(tvalue);
     return 0;
 }
 
@@ -293,7 +295,7 @@ ASN1_INTEGER *s2i_ASN1_INTEGER(X509V3_EXT_METHOD *method, const char *value)
     return aint;
 }
 
-int X509V3_add_value_int(const char *name, ASN1_INTEGER *aint,
+int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
                          STACK_OF(CONF_VALUE) **extlist)
 {
     char *strtmp;

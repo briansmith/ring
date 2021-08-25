@@ -483,12 +483,30 @@ OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(
     X509V3_EXT_METHOD *method, ASN1_BIT_STRING *bits,
     STACK_OF(CONF_VALUE) *extlist);
 
+// i2v_GENERAL_NAME serializes |gen| as a |CONF_VALUE|. If |ret| is non-NULL, it
+// appends the value to |ret| and returns |ret| on success or NULL on error. If
+// it returns NULL, the caller is still responsible for freeing |ret|. If |ret|
+// is NULL, it returns a newly-allocated |STACK_OF(CONF_VALUE)| containing the
+// result. |method| is ignored.
+//
+// Do not use this function. This is an internal implementation detail of the
+// human-readable print functions. If extracting a SAN list from a certificate,
+// look at |gen| directly.
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(
     X509V3_EXT_METHOD *method, GENERAL_NAME *gen, STACK_OF(CONF_VALUE) *ret);
 OPENSSL_EXPORT int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen);
 
 DECLARE_ASN1_FUNCTIONS(GENERAL_NAMES)
 
+// i2v_GENERAL_NAMES serializes |gen| as a list of |CONF_VALUE|s. If |ret| is
+// non-NULL, it appends the values to |ret| and returns |ret| on success or NULL
+// on error. If it returns NULL, the caller is still responsible for freeing
+// |ret|. If |ret| is NULL, it returns a newly-allocated |STACK_OF(CONF_VALUE)|
+// containing the results. |method| is ignored.
+//
+// Do not use this function. This is an internal implementation detail of the
+// human-readable print functions. If extracting a SAN list from a certificate,
+// look at |gen| directly.
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(
     X509V3_EXT_METHOD *method, GENERAL_NAMES *gen,
     STACK_OF(CONF_VALUE) *extlist);
@@ -602,15 +620,35 @@ OPENSSL_EXPORT void X509V3_section_free(X509V3_CTX *ctx,
 OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, X509 *issuer, X509 *subject,
                                    X509_REQ *req, X509_CRL *crl, int flags);
 
+// X509V3_add_value appends a |CONF_VALUE| containing |name| and |value| to
+// |*extlist|. It returns one on success and zero on error. If |*extlist| is
+// NULL, it sets |*extlist| to a newly-allocated |STACK_OF(CONF_VALUE)|
+// containing the result. Either |name| or |value| may be NULL to omit the
+// field.
+//
+// On failure, if |*extlist| was NULL, |*extlist| will remain NULL when the
+// function returns.
 OPENSSL_EXPORT int X509V3_add_value(const char *name, const char *value,
                                     STACK_OF(CONF_VALUE) **extlist);
+
+// X509V3_add_value_uchar behaves like |X509V3_add_value| but takes an
+// |unsigned char| pointer.
 OPENSSL_EXPORT int X509V3_add_value_uchar(const char *name,
                                           const unsigned char *value,
                                           STACK_OF(CONF_VALUE) **extlist);
+
+// X509V3_add_value_bool behaves like |X509V3_add_value| but stores the value
+// "TRUE" if |asn1_bool| is non-zero and "FALSE" otherwise.
 OPENSSL_EXPORT int X509V3_add_value_bool(const char *name, int asn1_bool,
                                          STACK_OF(CONF_VALUE) **extlist);
-OPENSSL_EXPORT int X509V3_add_value_int(const char *name, ASN1_INTEGER *aint,
+
+// X509V3_add_value_bool behaves like |X509V3_add_value| but stores a string
+// representation of |aint|. Note this string representation may be decimal or
+// hexadecimal, depending on the size of |aint|.
+OPENSSL_EXPORT int X509V3_add_value_int(const char *name,
+                                        const ASN1_INTEGER *aint,
                                         STACK_OF(CONF_VALUE) **extlist);
+
 OPENSSL_EXPORT char *i2s_ASN1_INTEGER(X509V3_EXT_METHOD *meth,
                                       const ASN1_INTEGER *aint);
 OPENSSL_EXPORT ASN1_INTEGER *s2i_ASN1_INTEGER(X509V3_EXT_METHOD *meth,
