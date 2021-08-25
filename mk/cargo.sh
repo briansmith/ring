@@ -48,6 +48,9 @@ for arg in $*; do
     --target=*)
       target=${arg#*=}
       ;;
+    +*)
+      toolchain=${arg#*+}
+      ;;
     *)
       ;;
   esac
@@ -236,11 +239,15 @@ fi
 cargo "$@"
 
 if [ -n "${RING_COVERAGE-}" ]; then
+  # Keep in sync with check-symbol-prefixes.sh.
+  # Use the host target-libdir, not the target target-libdir.
+  llvm_root="$(rustc +${toolchain} --print target-libdir)/../bin"
+
   while read executable; do
     basename=$(basename "$executable")
-    llvm-profdata-$llvm_version merge -sparse "$coverage_dir/$basename.profraw" -o "$coverage_dir/$basename.profdata"
+    ${llvm_root}/llvm-profdata merge -sparse "$coverage_dir/$basename.profraw" -o "$coverage_dir/$basename.profdata"
     mkdir -p "$coverage_dir"/reports
-    llvm-cov-$llvm_version export \
+    ${llvm_root}/llvm-cov export \
       --instr-profile "$coverage_dir"/$basename.profdata \
       --format lcov \
       "$executable" \

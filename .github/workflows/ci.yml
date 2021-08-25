@@ -588,7 +588,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }}
+      - run: rustup toolchain add --profile=minimal ${{ matrix.rust_channel }} --component llvm-tools-preview
       - run: rustup target add --toolchain=${{ matrix.rust_channel }} ${{ matrix.target }}
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}

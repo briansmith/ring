@@ -30,8 +30,11 @@ for arg in $*; do
   esac
 done
 
+# Keep in sync with cargo.sh.
 # Use the host target-libdir, not the target target-libdir.
-nm_exe=$(rustc +${toolchain} --print target-libdir)/../bin/llvm-nm
+llvm_root="$(rustc +${toolchain} --print target-libdir)/../bin"
+
+nm_exe="${llvm_root}/llvm-nm"
 
 # TODO: This should only look in one target directory.
 # TODO: This isn't as strict as it should be.
