@@ -26,6 +26,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     uint8_t *der = NULL;
     i2d_X509(x509, &der);
     OPENSSL_free(der);
+
+    BIO *bio = BIO_new(BIO_s_mem());
+    X509_print(bio, x509);
+    BIO_free(bio);
   }
   X509_free(x509);
   ERR_clear_error();
