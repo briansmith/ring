@@ -40,6 +40,7 @@ use crate::{
     arithmetic::montgomery::*,
     bits, bssl, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
+    polyfill::u64_from_usize,
 };
 use alloc::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use core::{
@@ -615,7 +616,7 @@ impl<M> One<M, RR> {
         let lg_base = 2usize; // Shifts vs. squaring trade-off.
         debug_assert_eq!(lg_base.count_ones(), 1); // Must 2**n for n >= 0.
         let shifts = r - bit + lg_base;
-        let exponent = (r / lg_base) as u64;
+        let exponent = u64_from_usize(r / lg_base);
         for _ in 0..shifts {
             elem_mul_by_2(&mut base, m)
         }
