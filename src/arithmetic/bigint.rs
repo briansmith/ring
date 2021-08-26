@@ -45,6 +45,7 @@ use crate::{
 use alloc::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use core::{
     marker::PhantomData,
+    num::NonZeroU64,
     ops::{Deref, DerefMut},
 };
 
@@ -616,7 +617,11 @@ impl<M> One<M, RR> {
         const LG_BASE: usize = 2; // Shifts vs. squaring trade-off.
         debug_assert_eq!(LG_BASE.count_ones(), 1); // Must be 2**n for n >= 0.
         let shifts = r - bit + LG_BASE;
-        let exponent = u64_from_usize(r / LG_BASE);
+        // `m_bits >= LG_BASE` (for the currently chosen value of `LG_BASE`)
+        // since we require the modulus to have at least `MODULUS_MIN_LIMBS`
+        // limbs. `r >= m_bits` as seen above. So `r >= LG_BASE` and thus
+        // `r / LG_BASE` is non-zero.
+        let exponent = NonZeroU64::new(u64_from_usize(r / LG_BASE)).unwrap();
         for _ in 0..shifts {
             elem_mul_by_2(&mut base, m)
         }
@@ -638,7 +643,7 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
 /// A non-secret odd positive value in the range
 /// [3, PUBLIC_EXPONENT_MAX_VALUE].
 #[derive(Clone, Copy, Debug)]
-pub struct PublicExponent(u64);
+pub struct PublicExponent(NonZeroU64);
 
 impl PublicExponent {
     pub fn from_be_bytes(
@@ -678,10 +683,11 @@ impl PublicExponent {
         if min_value < 3 {
             return Err(error::KeyRejected::invalid_component());
         }
-        if value < min_value {
+        let value = NonZeroU64::new(value).ok_or_else(error::KeyRejected::too_small)?;
+        if value.get() < min_value {
             return Err(error::KeyRejected::too_small());
         }
-        if value > PUBLIC_EXPONENT_MAX_VALUE {
+        if value.get() > PUBLIC_EXPONENT_MAX_VALUE {
             return Err(error::KeyRejected::too_large());
         }
 
@@ -715,7 +721,11 @@ pub fn elem_exp_vartime<M>(
 }
 
 /// Calculates base**exponent (mod m).
-fn elem_exp_vartime_<M>(base: Elem<M, R>, exponent: u64, m: &PartialModulus<M>) -> Elem<M, R> {
+fn elem_exp_vartime_<M>(
+    base: Elem<M, R>,
+    exponent: NonZeroU64,
+    m: &PartialModulus<M>,
+) -> Elem<M, R> {
     // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
     // square-and-multiply that scans the exponent from the most significant
     // bit to the least significant bit (left-to-right). Left-to-right requires
@@ -735,7 +745,7 @@ fn elem_exp_vartime_<M>(base: Elem<M, R>, exponent: u64, m: &PartialModulus<M>) 
     //
     // [Knuth]: The Art of Computer Programming, Volume 2: Seminumerical
     //          Algorithms (3rd Edition), Section 4.6.3.
-    assert!(exponent >= 1);
+    let exponent = exponent.get();
     assert!(exponent <= PUBLIC_EXPONENT_MAX_VALUE);
     let mut acc = base.clone();
     let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
