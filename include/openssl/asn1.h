@@ -111,10 +111,6 @@ extern "C" {
 // V_ASN1_UNDEF is used in some APIs to indicate an ASN.1 element is omitted.
 #define V_ASN1_UNDEF (-1)
 
-// V_ASN1_APP_CHOOSE is used in some APIs to specify a default ASN.1 type based
-// on the context.
-#define V_ASN1_APP_CHOOSE (-2)
-
 // V_ASN1_OTHER is used in |ASN1_TYPE| to indicate a non-universal ASN.1 type.
 #define V_ASN1_OTHER (-3)
 

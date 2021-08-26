@@ -367,10 +367,7 @@ int X509_NAME_ENTRY_set_data(X509_NAME_ENTRY *ne, int type,
     if (!i)
         return (0);
     if (type != V_ASN1_UNDEF) {
-        if (type == V_ASN1_APP_CHOOSE)
-            ne->value->type = ASN1_PRINTABLE_type(bytes, len);
-        else
-            ne->value->type = type;
+        ne->value->type = type;
     }
     return (1);
 }
