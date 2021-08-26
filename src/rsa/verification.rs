@@ -204,8 +204,13 @@ pub(crate) fn verify_rsa_(
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let public::Key { n, e, n_bits } =
-        public::Key::from_modulus_and_exponent(n, e, params.min_bits, max_bits, 3)?;
+    let public::Key { n, e, n_bits } = public::Key::from_modulus_and_exponent(
+        n,
+        e,
+        params.min_bits,
+        max_bits,
+        bigint::PublicExponent::_3,
+    )?;
 
     // The signature must be the same length as the modulus, in bytes.
     if signature.len() != n_bits.as_usize_bytes_rounded_up() {
