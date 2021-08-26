@@ -621,6 +621,13 @@ impl<M> One<M, RR> {
         // since we require the modulus to have at least `MODULUS_MIN_LIMBS`
         // limbs. `r >= m_bits` as seen above. So `r >= LG_BASE` and thus
         // `r / LG_BASE` is non-zero.
+        //
+        // The maximum value of `r` is determined by
+        // `MODULUS_MAX_LIMBS * LIMB_BITS`. Further `r` is a multiple of
+        // `LIMB_BITS` so the maximum Hamming Weight is bounded by
+        // `MODULUS_MAX_LIMBS`. For the common case of {2048, 4096, 8192}-bit
+        // moduli the Hamming weight is 1. For the other common case of 3072
+        // the Hamming weight is 2.
         let exponent = NonZeroU64::new(u64_from_usize(r / LG_BASE)).unwrap();
         for _ in 0..shifts {
             elem_mul_by_2(&mut base, m)
@@ -717,10 +724,20 @@ pub fn elem_exp_vartime<M>(
     m: &Modulus<M>,
 ) -> Elem<M, R> {
     let base = elem_mul(m.oneRR().as_ref(), base, m);
+    // During RSA public key operations the exponent is almost always either
+    // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
+    // weight of 2. The maximum bit length and maximum hamming weight of the
+    // exponent is bounded by the value of `PUBLIC_EXPONENT_MAX_VALUE`.
     elem_exp_vartime_(base, exponent, &m.as_partial())
 }
 
 /// Calculates base**exponent (mod m).
+///
+/// The run time  is a function of the number of limbs in `m` and the bit
+/// length and Hamming Weight of `exponent`. The bounds on `m` are pretty
+/// obvious but the bounds on `exponent` are less obvious. Callers should
+/// document the bounds they place on the maximum value and maximum Hamming
+/// weight of `exponent`.
 fn elem_exp_vartime_<M>(
     base: Elem<M, R>,
     exponent: NonZeroU64,
@@ -732,13 +749,11 @@ fn elem_exp_vartime_<M>(
     // less storage compared to right-to-left scanning, at the cost of needing
     // to compute `exponent.leading_zeros()`, which we assume to be cheap.
     //
-    // During RSA public key operations the exponent is almost always either 65537
-    // (0b10000000000000001) or 3 (0b11), both of which have a Hamming weight
-    // of 2. During Montgomery setup the exponent is almost always a power of two,
-    // with Hamming weight 1. As explained in [Knuth], exponentiation by squaring
-    // is the most efficient algorithm when the Hamming weight is 2 or less. It
-    // isn't the most efficient for all other, uncommon, exponent values but any
-    // suboptimality is bounded by `PUBLIC_EXPONENT_MAX_VALUE`.
+    // As explained in [Knuth], exponentiation by squaring is the most
+    // efficient algorithm when the Hamming weight is 2 or less. It isn't the
+    // most efficient for all other, uncommon, exponent values but any
+    // suboptimality is bounded at least by the small bit length of `exponent`
+    // as enforced by its type.
     //
     // This implementation is slightly simplified by taking advantage of the
     // fact that we require the exponent to be a positive integer.
@@ -746,7 +761,6 @@ fn elem_exp_vartime_<M>(
     // [Knuth]: The Art of Computer Programming, Volume 2: Seminumerical
     //          Algorithms (3rd Edition), Section 4.6.3.
     let exponent = exponent.get();
-    assert!(exponent <= PUBLIC_EXPONENT_MAX_VALUE);
     let mut acc = base.clone();
     let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
     debug_assert!((exponent & bit) != 0);
