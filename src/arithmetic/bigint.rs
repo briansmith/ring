@@ -614,7 +614,7 @@ impl<M> One<M, RR> {
         // TODO: Benchmark shift vs. squaring performance to determine the
         // optimal value of `lg_base`.
         let lg_base = 2usize; // Shifts vs. squaring trade-off.
-        debug_assert_eq!(lg_base.count_ones(), 1); // Must 2**n for n >= 0.
+        debug_assert_eq!(lg_base.count_ones(), 1); // Must be 2**n for n >= 0.
         let shifts = r - bit + lg_base;
         let exponent = u64_from_usize(r / lg_base);
         for _ in 0..shifts {
