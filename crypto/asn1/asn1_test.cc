@@ -833,6 +833,13 @@ TEST(ASN1Test, MBString) {
       // Given a choice of formats, we pick the smallest that fits.
       {MBSTRING_UTF8, {}, kAll, V_ASN1_PRINTABLESTRING, {}, 0},
       {MBSTRING_UTF8, {'a'}, kAll, V_ASN1_PRINTABLESTRING, {'a'}, 1},
+      {MBSTRING_UTF8,
+       {'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       kAll,
+       V_ASN1_PRINTABLESTRING,
+       {'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       14},
+      {MBSTRING_UTF8, {'*'}, kAll, V_ASN1_IA5STRING, {'*'}, 1},
       {MBSTRING_UTF8, {'\n'}, kAll, V_ASN1_IA5STRING, {'\n'}, 1},
       {MBSTRING_UTF8,
        {0xc2, 0x80 /* U+0080 */},
@@ -858,6 +865,10 @@ TEST(ASN1Test, MBString) {
        V_ASN1_UTF8STRING,
        {0xf0, 0x90, 0x80, 0x80},
        1},
+
+      // NUL is not printable. It should also not terminate iteration.
+      {MBSTRING_UTF8, {0}, kAll, V_ASN1_IA5STRING, {0}, 1},
+      {MBSTRING_UTF8, {0, 'a'}, kAll, V_ASN1_IA5STRING, {0, 'a'}, 2},
 
       // When a particular format is specified, we use it.
       {MBSTRING_UTF8,
