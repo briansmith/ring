@@ -28,7 +28,7 @@ impl Key {
         e: untrusted::Input,
         n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength,
-        e_min_value: u64,
+        e_min_value: bigint::PublicExponent,
     ) -> Result<Self, error::KeyRejected> {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers

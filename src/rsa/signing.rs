@@ -236,7 +236,7 @@ impl RsaKeyPair {
             e.big_endian_without_leading_zero_as_input(),
             bits::BitLength::from_usize_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
-            65537,
+            bigint::PublicExponent::_65537,
         )?;
 
         // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.

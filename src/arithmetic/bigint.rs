@@ -653,6 +653,14 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
 pub struct PublicExponent(NonZeroU64);
 
 impl PublicExponent {
+    #[cfg(test)]
+    const ALL_CONSTANTS: [Self; 3] = [Self::_3, Self::_65537, Self::MAX];
+
+    // TODO: Use `NonZeroU64::new(...).unwrap()` when `feature(const_panic)` is
+    // stable.
+    pub const _3: Self = Self(unsafe { NonZeroU64::new_unchecked(3) });
+    pub const _65537: Self = Self(unsafe { NonZeroU64::new_unchecked(65537) });
+
     // This limit was chosen to bound the performance of the simple
     // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
     // particular, it helps mitigate theoretical resource exhaustion attacks. 33
@@ -671,7 +679,7 @@ impl PublicExponent {
 
     pub fn from_be_bytes(
         input: untrusted::Input,
-        min_value: u64,
+        min_value: Self,
     ) -> Result<Self, error::KeyRejected> {
         if input.len() > 5 {
             return Err(error::KeyRejected::too_large());
@@ -698,17 +706,12 @@ impl PublicExponent {
         // `e >= 65537`. We enforce this when signing, but are more flexible in
         // verification, for compatibility. Only small public exponents are
         // supported.
-        if value & 1 != 1 {
-            return Err(error::KeyRejected::invalid_component());
-        }
-        debug_assert!(min_value & 1 == 1);
-        debug_assert!(min_value <= Self::MAX.0.get());
-        if min_value < 3 {
-            return Err(error::KeyRejected::invalid_component());
-        }
         let value = NonZeroU64::new(value).ok_or_else(error::KeyRejected::too_small)?;
-        if value.get() < min_value {
+        if value < min_value.0 {
             return Err(error::KeyRejected::too_small());
+        }
+        if value.get() & 1 != 1 {
+            return Err(error::KeyRejected::invalid_component());
         }
         if value > Self::MAX.0 {
             return Err(error::KeyRejected::too_large());
@@ -1549,10 +1552,22 @@ mod tests {
 
     #[test]
     fn test_public_exponent_debug() {
-        let exponent =
-            PublicExponent::from_be_bytes(untrusted::Input::from(&[0x1, 0x00, 0x01]), 65537)
-                .unwrap();
+        let exponent = PublicExponent::from_be_bytes(
+            untrusted::Input::from(&[0x1, 0x00, 0x01]),
+            PublicExponent::_65537,
+        )
+        .unwrap();
         assert_eq!("PublicExponent(65537)", format!("{:?}", exponent));
+    }
+
+    #[test]
+    fn test_public_exponent_constants() {
+        for value in PublicExponent::ALL_CONSTANTS.iter() {
+            let value: u64 = value.0.into();
+            assert_eq!(value & 1, 1);
+            assert!(value >= PublicExponent::_3.0.into()); // The absolute minimum.
+            assert!(value <= PublicExponent::MAX.0.into());
+        }
     }
 
     fn consume_elem<M>(
