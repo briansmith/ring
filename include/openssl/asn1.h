@@ -1118,9 +1118,11 @@ OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid,
                                                int len, const char *sn,
                                                const char *ln);
 
-// General
-// given a string, return the correct type, max is the maximum length
-OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int max);
+// ASN1_PRINTABLE_type interprets |len| bytes from |s| as a Latin-1 string. It
+// returns the first of |V_ASN1_PRINTABLESTRING|, |V_ASN1_IA5STRING|, or
+// |V_ASN1_T61STRING| that can represent every character. If |len| is negative,
+// |strlen(s)| is used instead.
+OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int len);
 
 OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
 

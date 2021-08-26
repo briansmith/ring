@@ -56,38 +56,28 @@
 
 #include <openssl/asn1.h>
 
-#include <openssl/err.h>
-#include <openssl/mem.h>
+#include <string.h>
+
+#include "internal.h"
+
 
 int ASN1_PRINTABLE_type(const unsigned char *s, int len)
 {
-    int c;
-    int ia5 = 0;
-    int t61 = 0;
-
-    if (len <= 0)
-        len = -1;
-    if (s == NULL)
-        return (V_ASN1_PRINTABLESTRING);
-
-    while ((*s) && (len-- != 0)) {
-        c = *(s++);
-        if (!(((c >= 'a') && (c <= 'z')) ||
-              ((c >= 'A') && (c <= 'Z')) ||
-              (c == ' ') ||
-              ((c >= '0') && (c <= '9')) ||
-              (c == ' ') || (c == '\'') ||
-              (c == '(') || (c == ')') ||
-              (c == '+') || (c == ',') ||
-              (c == '-') || (c == '.') ||
-              (c == '/') || (c == ':') || (c == '=') || (c == '?')))
-            ia5 = 1;
-        if (c & 0x80)
-            t61 = 1;
+    if (len < 0) {
+        len = strlen((const char *)s);
     }
-    if (t61)
-        return (V_ASN1_T61STRING);
-    if (ia5)
-        return (V_ASN1_IA5STRING);
-    return (V_ASN1_PRINTABLESTRING);
+
+    int printable = 1;
+    for (int i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if (c & 0x80) {
+            /* No need to continue iterating. */
+            return V_ASN1_T61STRING;
+        }
+        if (!asn1_is_printable(c)) {
+            printable = 0;
+        }
+    }
+
+    return printable ? V_ASN1_PRINTABLESTRING : V_ASN1_IA5STRING;
 }

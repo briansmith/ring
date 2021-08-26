@@ -1046,6 +1046,27 @@ TEST(ASN1Test, NegativeEnumeratedMultistring) {
   TestSerialize(str.get(), i2d_ASN1_PRINTABLE, kMinusOne);
 }
 
+TEST(ASN1Test, PrintableType) {
+  const struct {
+    std::vector<uint8_t> in;
+    int result;
+  } kTests[] = {
+      {{}, V_ASN1_PRINTABLESTRING},
+      {{'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
+       V_ASN1_PRINTABLESTRING},
+      {{'*'}, V_ASN1_IA5STRING},
+      {{'\0'}, V_ASN1_IA5STRING},
+      {{'\0', 'a'}, V_ASN1_IA5STRING},
+      {{0, 1, 2, 3, 125, 126, 127}, V_ASN1_IA5STRING},
+      {{0, 1, 2, 3, 125, 126, 127, 128}, V_ASN1_T61STRING},
+      {{128, 0, 1, 2, 3, 125, 126, 127}, V_ASN1_T61STRING},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.in));
+    EXPECT_EQ(t.result, ASN1_PRINTABLE_type(t.in.data(), t.in.size()));
+  }
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)

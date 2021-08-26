@@ -150,6 +150,10 @@ int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
  * a pointer. */
 const void *asn1_type_value_as_pointer(const ASN1_TYPE *a);
 
+/* asn1_is_printable returns one if |value| is a valid Unicode codepoint for an
+ * ASN.1 PrintableString, and zero otherwise. */
+int asn1_is_printable(uint32_t value);
+
 
 #if defined(__cplusplus)
 }  /* extern C */
