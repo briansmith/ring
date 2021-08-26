@@ -612,11 +612,11 @@ impl<M> One<M, RR> {
         // Take advantage of the fact that `elem_mul_by_2` is faster than
         // `elem_squared` by replacing some of the early squarings with shifts.
         // TODO: Benchmark shift vs. squaring performance to determine the
-        // optimal value of `lg_base`.
-        let lg_base = 2usize; // Shifts vs. squaring trade-off.
-        debug_assert_eq!(lg_base.count_ones(), 1); // Must be 2**n for n >= 0.
-        let shifts = r - bit + lg_base;
-        let exponent = u64_from_usize(r / lg_base);
+        // optimal value of `LG_BASE`.
+        const LG_BASE: usize = 2; // Shifts vs. squaring trade-off.
+        debug_assert_eq!(LG_BASE.count_ones(), 1); // Must be 2**n for n >= 0.
+        let shifts = r - bit + LG_BASE;
+        let exponent = u64_from_usize(r / LG_BASE);
         for _ in 0..shifts {
             elem_mul_by_2(&mut base, m)
         }
