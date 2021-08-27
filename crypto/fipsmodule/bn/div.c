@@ -456,7 +456,7 @@ void bn_mod_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 
 int bn_div_consttime(BIGNUM *quotient, BIGNUM *remainder,
                      const BIGNUM *numerator, const BIGNUM *divisor,
-                     BN_CTX *ctx) {
+                     unsigned divisor_min_bits, BN_CTX *ctx) {
   if (BN_is_negative(numerator) || BN_is_negative(divisor)) {
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
@@ -496,8 +496,26 @@ int bn_div_consttime(BIGNUM *quotient, BIGNUM *remainder,
   r->neg = 0;
 
   // Incorporate |numerator| into |r|, one bit at a time, reducing after each
-  // step. At the start of each loop iteration, |r| < |divisor|
-  for (int i = numerator->width - 1; i >= 0; i--) {
+  // step. We maintain the invariant that |0 <= r < divisor| and
+  // |q * divisor + r = n| where |n| is the portion of |numerator| incorporated
+  // so far.
+  //
+  // First, we short-circuit the loop: if we know |divisor| has at least
+  // |divisor_min_bits| bits, the top |divisor_min_bits - 1| can be incorporated
+  // without reductions. This significantly speeds up |RSA_check_key|. For
+  // simplicity, we round down to a whole number of words.
+  assert(divisor_min_bits <= BN_num_bits(divisor));
+  int initial_words = 0;
+  if (divisor_min_bits > 0) {
+    initial_words = (divisor_min_bits - 1) / BN_BITS2;
+    if (initial_words > numerator->width) {
+      initial_words = numerator->width;
+    }
+    OPENSSL_memcpy(r->d, numerator->d + numerator->width - initial_words,
+                   initial_words * sizeof(BN_ULONG));
+  }
+
+  for (int i = numerator->width - initial_words - 1; i >= 0; i--) {
     for (int bit = BN_BITS2 - 1; bit >= 0; bit--) {
       // Incorporate the next bit of the numerator, by computing
       // r = 2*r or 2*r + 1. Note the result fits in one more word. We store the

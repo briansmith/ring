@@ -657,7 +657,8 @@ err:
 }
 
 static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
-                             const BIGNUM *m, BN_CTX *ctx) {
+                             const BIGNUM *m, unsigned m_min_bits,
+                             BN_CTX *ctx) {
   if (BN_is_negative(ainv) || BN_cmp(ainv, m) >= 0) {
     *out_ok = 0;
     return 1;
@@ -670,7 +671,7 @@ static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
   BIGNUM *tmp = BN_CTX_get(ctx);
   int ret = tmp != NULL &&
             bn_mul_consttime(tmp, a, ainv, ctx) &&
-            bn_div_consttime(NULL, tmp, tmp, m, ctx);
+            bn_div_consttime(NULL, tmp, tmp, m, m_min_bits, ctx);
   if (ret) {
     *out_ok = BN_is_one(tmp);
   }
@@ -750,10 +751,15 @@ int RSA_check_key(const RSA *key) {
   // simply check that d * e is one mod p-1 and mod q-1. Note d and e were bound
   // by earlier checks in this function.
   if (!bn_usub_consttime(&pm1, key->p, BN_value_one()) ||
-      !bn_usub_consttime(&qm1, key->q, BN_value_one()) ||
-      !bn_mul_consttime(&de, key->d, key->e, ctx) ||
-      !bn_div_consttime(NULL, &tmp, &de, &pm1, ctx) ||
-      !bn_div_consttime(NULL, &de, &de, &qm1, ctx)) {
+      !bn_usub_consttime(&qm1, key->q, BN_value_one())) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
+    goto out;
+  }
+  const unsigned pm1_bits = BN_num_bits(&pm1);
+  const unsigned qm1_bits = BN_num_bits(&qm1);
+  if (!bn_mul_consttime(&de, key->d, key->e, ctx) ||
+      !bn_div_consttime(NULL, &tmp, &de, &pm1, pm1_bits, ctx) ||
+      !bn_div_consttime(NULL, &de, &de, &qm1, qm1_bits, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
@@ -772,9 +778,12 @@ int RSA_check_key(const RSA *key) {
 
   if (has_crt_values) {
     int dmp1_ok, dmq1_ok, iqmp_ok;
-    if (!check_mod_inverse(&dmp1_ok, key->e, key->dmp1, &pm1, ctx) ||
-        !check_mod_inverse(&dmq1_ok, key->e, key->dmq1, &qm1, ctx) ||
-        !check_mod_inverse(&iqmp_ok, key->q, key->iqmp, key->p, ctx)) {
+    if (!check_mod_inverse(&dmp1_ok, key->e, key->dmp1, &pm1, pm1_bits, ctx) ||
+        !check_mod_inverse(&dmq1_ok, key->e, key->dmq1, &qm1, qm1_bits, ctx) ||
+        // |p| is odd, so |pm1| and |p| have the same bit width. If they didn't,
+        // we only need a lower bound anyway.
+        !check_mod_inverse(&iqmp_ok, key->q, key->iqmp, key->p, pm1_bits,
+                           ctx)) {
       OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
       goto out;
     }
