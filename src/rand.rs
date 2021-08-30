@@ -187,6 +187,7 @@ use self::sysrand_or_urandom::fill as fill_impl;
     target_os = "openbsd",
     target_os = "redox",
     target_os = "solaris",
+    target_os = "haiku",
 ))]
 use self::urandom::fill as fill_impl;
 
@@ -344,6 +345,7 @@ mod sysrand_or_urandom {
     target_os = "openbsd",
     target_os = "redox",
     target_os = "solaris",
+    target_os = "haiku",
     target_os = "illumos"
 ))]
 mod urandom {

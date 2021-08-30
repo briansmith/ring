@@ -271,6 +271,7 @@ const LINUX_ABI: &[&str] = &[
     "linux",
     "redox",
     "solaris",
+    "haiku",
 ];
 
 /// Operating systems that have the same ABI as macOS on every architecture
