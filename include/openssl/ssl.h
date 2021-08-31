@@ -4894,12 +4894,6 @@ OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                       const char *dir);
 
-// SSL_set_verify_result calls |abort| unless |result| is |X509_V_OK|.
-//
-// TODO(davidben): Remove this function once it has been removed from
-// netty-tcnative.
-OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long result);
-
 // SSL_CTX_enable_tls_channel_id calls |SSL_CTX_set_tls_channel_id_enabled|.
 OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
 

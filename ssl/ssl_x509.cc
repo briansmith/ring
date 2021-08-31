@@ -711,13 +711,6 @@ int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *ca_file,
   return X509_STORE_load_locations(ctx->cert_store, ca_file, ca_dir);
 }
 
-void SSL_set_verify_result(SSL *ssl, long result) {
-  check_ssl_x509_method(ssl);
-  if (result != X509_V_OK) {
-    abort();
-  }
-}
-
 long SSL_get_verify_result(const SSL *ssl) {
   check_ssl_x509_method(ssl);
   SSL_SESSION *session = SSL_get_session(ssl);
