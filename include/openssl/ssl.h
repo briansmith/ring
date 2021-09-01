@@ -3601,12 +3601,12 @@ OPENSSL_EXPORT int SSL_set1_ech_config_list(SSL *ssl,
                                             const uint8_t *ech_config_list,
                                             size_t ech_config_list_len);
 
-// SSL_get0_ech_name_override sets |*out_name| and |*out_name_len| to point to a
-// buffer containing the ECH public name, if the server rejected ECH, or the
-// empty string otherwise.
+// SSL_get0_ech_name_override, if |ssl| is a client and the server rejected ECH,
+// sets |*out_name| and |*out_name_len| to point to a buffer containing the ECH
+// public name. Otherwise, the buffer will be empty.
 //
-// This function should be called during the certificate verification callback
-// (see |SSL_CTX_set_custom_verify|) if |ssl| is a client offering ECH. If
+// When offering ECH as a client, this function should be called during the
+// certificate verification callback (see |SSL_CTX_set_custom_verify|). If
 // |*out_name_len| is non-zero, the caller should verify the certificate against
 // the result, interpreted as a DNS name, rather than the true server name. In
 // this case, the handshake will never succeed and is only used to authenticate
