@@ -565,9 +565,9 @@ bool ssl_ech_accept_confirmation(const SSL_HANDSHAKE *hs, Span<uint8_t> out,
 
   uint8_t secret[EVP_MAX_MD_SIZE];
   size_t secret_len;
-  if (!HKDF_extract(secret, &secret_len, transcript.Digest(), kZeros,
-                    transcript.DigestLen(), client_random.data(),
-                    client_random.size())) {
+  if (!HKDF_extract(secret, &secret_len, transcript.Digest(),
+                    client_random.data(), client_random.size(), kZeros,
+                    transcript.DigestLen())) {
     return false;
   }
 

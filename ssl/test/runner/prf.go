@@ -410,7 +410,7 @@ func (h *finishedHash) deriveSecret(label []byte) []byte {
 // sections 7.2 and 7.2.1 of draft-ietf-tls-esni-13. The transcript hash is
 // computed by concatenating |h| with |extraMessages|.
 func (h *finishedHash) echAcceptConfirmation(clientRandom, label, extraMessages []byte) []byte {
-	secret := hkdf.Extract(h.suite.hash().New, h.zeroSecret(), clientRandom)
+	secret := hkdf.Extract(h.suite.hash().New, clientRandom, h.zeroSecret())
 	hashCopy := copyHash(h.hash, h.suite.hash())
 	hashCopy.Write(extraMessages)
 	return hkdfExpandLabel(h.suite.hash(), secret, label, hashCopy.Sum(nil), echAcceptConfirmationLength)
