@@ -2176,10 +2176,7 @@ static bool ext_early_data_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
   // If offering ECH, the extension only applies to ClientHelloInner, but we
   // send the extension in both ClientHellos. This ensures that, if the server
   // handshakes with ClientHelloOuter, it can skip past early data. See
-  // https://github.com/tlswg/draft-ietf-tls-esni/pull/415
-  //
-  // TODO(https://crbug.com/boringssl/275): Replace this with a reference to the
-  // right section in the next draft.
+  // draft-ietf-tls-esni-13, section 6.1.
   if (!CBB_add_u16(out_compressible, TLSEXT_TYPE_early_data) ||
       !CBB_add_u16(out_compressible, 0) ||
       !CBB_flush(out_compressible)) {
