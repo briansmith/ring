@@ -310,103 +310,53 @@ bool ssl_client_hello_decrypt(EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out,
   return true;
 }
 
-static bool parse_ipv4_number(Span<const uint8_t> in, uint32_t *out) {
-  // See https://url.spec.whatwg.org/#ipv4-number-parser.
-  uint32_t base = 10;
-  if (in.size() >= 2 && in[0] == '0' && (in[1] == 'x' || in[1] == 'X')) {
-    in = in.subspan(2);
-    base = 16;
-  } else if (in.size() >= 1 && in[0] == '0') {
-    in = in.subspan(1);
-    base = 8;
+static bool is_hex_component(Span<const uint8_t> in) {
+  if (in.size() < 2 || in[0] != '0' || (in[1] != 'x' && in[1] != 'X')) {
+    return false;
   }
-  *out = 0;
-  for (uint8_t c : in) {
-    uint32_t d;
-    if ('0' <= c && c <= '9') {
-      d = c - '0';
-    } else if ('a' <= c && c <= 'f') {
-      d = c - 'a' + 10;
-    } else if ('A' <= c && c <= 'F') {
-      d = c - 'A' + 10;
-    } else {
+  for (uint8_t b : in.subspan(2)) {
+    if (!('0' <= b && b <= '9') && !('a' <= b && b <= 'f') &&
+        !('A' <= b && b <= 'F')) {
       return false;
     }
-    if (d >= base ||
-        *out > UINT32_MAX / base) {
-      return false;
-    }
-    *out *= base;
-    if (*out > UINT32_MAX - d) {
-      return false;
-    }
-    *out += d;
   }
   return true;
 }
 
-static bool is_ipv4_address(Span<const uint8_t> in) {
-  // See https://url.spec.whatwg.org/#concept-ipv4-parser
-  //
-  // TODO(https://crbug.com/boringssl/275): Revise this, and maybe the spec, per
-  // https://groups.google.com/a/chromium.org/g/blink-dev/c/7QN5nxjwIfM/m/q9dw9MxoAwAJ
-  uint32_t numbers[4];
-  size_t num_numbers = 0;
-  while (!in.empty()) {
-    if (num_numbers == 4) {
-      // Too many components.
-      return false;
-    }
-    // Find the next dot-separated component.
-    auto dot = std::find(in.begin(), in.end(), '.');
-    if (dot == in.begin()) {
-      // Empty components are not allowed.
-      return false;
-    }
-    Span<const uint8_t> component;
-    if (dot == in.end()) {
-      component = in;
-      in = Span<const uint8_t>();
-    } else {
-      component = in.subspan(0, dot - in.begin());
-      in = in.subspan(dot - in.begin() + 1);  // Skip the dot.
-    }
-    if (!parse_ipv4_number(component, &numbers[num_numbers])) {
-      return false;
-    }
-    num_numbers++;
-  }
-  if (num_numbers == 0) {
+static bool is_decimal_component(Span<const uint8_t> in) {
+  if (in.empty()) {
     return false;
   }
-  for (size_t i = 0; i < num_numbers - 1; i++) {
-    if (numbers[i] > 255) {
+  for (uint8_t b : in) {
+    if (!('0' <= b && b <= '9')) {
       return false;
     }
   }
-  return num_numbers == 1 ||
-         numbers[num_numbers - 1] < 1u << (8 * (5 - num_numbers));
+  return true;
 }
 
 bool ssl_is_valid_ech_public_name(Span<const uint8_t> public_name) {
   // See draft-ietf-tls-esni-13, Section 4 and RFC 5890, Section 2.3.1. The
   // public name must be a dot-separated sequence of LDH labels and not begin or
   // end with a dot.
-  auto copy = public_name;
-  if (copy.empty()) {
+  auto remaining = public_name;
+  if (remaining.empty()) {
     return false;
   }
-  while (!copy.empty()) {
+  Span<const uint8_t> last;
+  while (!remaining.empty()) {
     // Find the next dot-separated component.
-    auto dot = std::find(copy.begin(), copy.end(), '.');
+    auto dot = std::find(remaining.begin(), remaining.end(), '.');
     Span<const uint8_t> component;
-    if (dot == copy.end()) {
-      component = copy;
-      copy = Span<const uint8_t>();
+    if (dot == remaining.end()) {
+      component = remaining;
+      last = component;
+      remaining = Span<const uint8_t>();
     } else {
-      component = copy.subspan(0, dot - copy.begin());
-      copy = copy.subspan(dot - copy.begin() + 1);  // Skip the dot.
-      if (copy.empty()) {
+      component = remaining.subspan(0, dot - remaining.begin());
+      // Skip the dot.
+      remaining = remaining.subspan(dot - remaining.begin() + 1);
+      if (remaining.empty()) {
         // Trailing dots are not allowed.
         return false;
       }
@@ -425,7 +375,15 @@ bool ssl_is_valid_ech_public_name(Span<const uint8_t> public_name) {
     }
   }
 
-  return !is_ipv4_address(public_name);
+  // The WHATWG URL parser additionally does not allow any DNS names that end in
+  // a numeric component. See:
+  // https://url.spec.whatwg.org/#concept-host-parser
+  // https://url.spec.whatwg.org/#ends-in-a-number-checker
+  //
+  // The WHATWG parser is formulated in terms of parsing decimal, octal, and
+  // hex, along with a separate ASCII digits check. The ASCII digits check
+  // subsumes the decimal and octal check, so we only need to check two cases.
+  return !is_hex_component(last) && !is_decimal_component(last);
 }
 
 static bool parse_ech_config(CBS *cbs, ECHConfig *out, bool *out_supported,

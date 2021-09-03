@@ -2119,44 +2119,39 @@ TEST(SSLTest, ECHPublicName) {
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span(
       "abcdefhijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-01234567899")));
 
-  // Inputs that parse as IPv4 addresses are rejected.
+  // Inputs with trailing numeric components are rejected.
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.0.0.1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0177.0.0.01")));
-  EXPECT_FALSE(
-      ssl_is_valid_ech_public_name(str_to_span("0x7f.0x.0x.0x00000001")));
-  EXPECT_FALSE(
-      ssl_is_valid_ech_public_name(str_to_span("0XAB.0XCD.0XEF.0X01")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("255.255.255.255")));
-  // Out-of-bounds or overflowing components are not IP addresses.
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("256.255.255.255")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("255.0x100.255.255")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("255.255.255.0400")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.0x01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("example.0X01")));
+  // Leading zeros and values that overflow |uint32_t| are still rejected.
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("example.123456789000000000000000")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("example.012345678900000000000000")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("example.0x123456789abcdefABCDEF0")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(
+      str_to_span("example.0x0123456789abcdefABCDEF")));
+  // Adding a non-digit or non-hex character makes it a valid DNS name again.
+  // Single-component numbers are rejected.
   EXPECT_TRUE(ssl_is_valid_ech_public_name(
-      str_to_span("255.255.255.0x100000000")));
-  // Invalid characters for the base are not IP addresses.
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("12a.0.0.1")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0xg.0.0.1")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("08.0.0.1")));
-  // Trailing components can be merged into a single component.
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.0.1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("127.1")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("2130706433")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x7f000001")));
-  // Merged components must respect their limits.
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0xff")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0.0xffff")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0.0xffffff")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0xffffffff")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0.0.0x100")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0.0x10000")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0.0x1000000")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("0x100000000")));
-  // Correctly handle overflow in decimal and octal.
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("037777777777")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("040000000000")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("4294967295")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("4294967296")));
+      str_to_span("example.1234567890a")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(
+      str_to_span("example.01234567890a")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(
+      str_to_span("example.0x123456789abcdefg")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("1")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x01")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0X01")));
+  // Numbers with trailing dots are rejected. (They are already rejected by the
+  // LDH label rules, but the WHATWG URL parser additionally rejects them.)
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("1.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("01.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x01.")));
+  EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0X01.")));
 }
 
 // When using the built-in verifier, test that |SSL_get0_ech_name_override| is
