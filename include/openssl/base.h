@@ -145,7 +145,7 @@ extern "C" {
 // Trusty isn't Linux but currently defines __linux__. As a workaround, we
 // exclude it here.
 // TODO(b/169780122): Remove this workaround once Trusty no longer defines it.
-#if defined(__linux__) && !defined(TRUSTY)
+#if defined(__linux__) && !defined(__TRUSTY__)
 #define OPENSSL_LINUX
 #endif
 
@@ -153,7 +153,7 @@ extern "C" {
 #define OPENSSL_FUCHSIA
 #endif
 
-#if defined(TRUSTY)
+#if defined(__TRUSTY__)
 #define OPENSSL_TRUSTY
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
