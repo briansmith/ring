@@ -1,3 +1,17 @@
+// Copyright (c) 2021, Google Inc.
+//
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted, provided that the above
+// copyright notice and this permission notice appear in all copies.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 // testmodulewrapper is a modulewrapper binary that works with acvptool and
 // implements the primitives that BoringSSL's modulewrapper doesn't, so that
 // we have something that can exercise all the code in avcptool.
@@ -21,11 +35,13 @@ import (
 )
 
 var handlers = map[string]func([][]byte) error{
-	"getConfig":       getConfig,
-	"KDF-counter":     kdfCounter,
-	"AES-XTS/encrypt": xtsEncrypt,
-	"AES-XTS/decrypt": xtsDecrypt,
-	"HKDF/SHA2-256":   hkdfMAC,
+	"getConfig":                getConfig,
+	"KDF-counter":              kdfCounter,
+	"AES-XTS/encrypt":          xtsEncrypt,
+	"AES-XTS/decrypt":          xtsDecrypt,
+	"HKDF/SHA2-256":            hkdfMAC,
+	"hmacDRBG-reseed/SHA2-256": hmacDRBGReseed,
+	"hmacDRBG-pr/SHA2-256":     hmacDRBGPredictionResistance,
 }
 
 func getConfig(args [][]byte) error {
@@ -104,6 +120,28 @@ func getConfig(args [][]byte) error {
 		}],
 		"l": 256,
 		"z": [256, 384]
+	}, {
+		"algorithm": "hmacDRBG",
+		"revision": "1.0",
+		"predResistanceEnabled": [false, true],
+		"reseedImplemented": true,
+		"capabilities": [{
+			"mode": "SHA2-256",
+			"derFuncEnabled": false,
+			"entropyInputLen": [
+				256
+			],
+			"nonceLen": [
+				128
+			],
+			"persoStringLen": [
+				256
+			],
+			"additionalInputLen": [
+				256
+			],
+			"returnedBitsLen": 256
+		}]
 	}
 ]`))
 }
@@ -246,8 +284,51 @@ func hkdfMAC(args [][]byte) error {
 	return reply(ret)
 }
 
+func hmacDRBGReseed(args [][]byte) error {
+	if len(args) != 8 {
+		return fmt.Errorf("hmacDRBG received %d args, wanted 8", len(args))
+	}
+
+	outLenBytes, entropy, personalisation, reseedAdditionalData, reseedEntropy, additionalData1, additionalData2, nonce := args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]
+
+	if len(outLenBytes) != 4 {
+		return fmt.Errorf("uint32 length was %d bytes long", len(outLenBytes))
+	}
+	outLen := binary.LittleEndian.Uint32(outLenBytes)
+	out := make([]byte, outLen)
+
+	drbg := NewHMACDRBG(entropy, nonce, personalisation)
+	drbg.Reseed(reseedEntropy, reseedAdditionalData)
+	drbg.Generate(out, additionalData1)
+	drbg.Generate(out, additionalData2)
+
+	return reply(out)
+}
+
+func hmacDRBGPredictionResistance(args [][]byte) error {
+	if len(args) != 8 {
+		return fmt.Errorf("hmacDRBG received %d args, wanted 8", len(args))
+	}
+
+	outLenBytes, entropy, personalisation, additionalData1, entropy1, additionalData2, entropy2, nonce := args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]
+
+	if len(outLenBytes) != 4 {
+		return fmt.Errorf("uint32 length was %d bytes long", len(outLenBytes))
+	}
+	outLen := binary.LittleEndian.Uint32(outLenBytes)
+	out := make([]byte, outLen)
+
+	drbg := NewHMACDRBG(entropy, nonce, personalisation)
+	drbg.Reseed(entropy1, additionalData1)
+	drbg.Generate(out, nil)
+	drbg.Reseed(entropy2, additionalData2)
+	drbg.Generate(out, nil)
+
+	return reply(out)
+}
+
 const (
-	maxArgs       = 8
+	maxArgs       = 9
 	maxArgLength  = 1 << 20
 	maxNameLength = 30
 )

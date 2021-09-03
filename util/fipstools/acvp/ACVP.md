@@ -66,6 +66,8 @@ The other commands are as follows. (Note that you only need to implement the com
 | CMAC-AES             | Number output bytes, key, message | MAC |
 | CMAC-AES/verify      | Key, message, claimed MAC | One-byte success flag |
 | ctrDRBG/AES-256      | Output length, entropy, personalisation, ad1, ad2, nonce | Output |
+| ctrDRBG-reseed/AES-256| Output length, entropy, personalisation, reseedAD, reseedEntropy, ad1, ad2, nonce | Output |
+| ctrDRBG-pr/AES-256   | Output length, entropy, personalisation, ad1, entropy1, ad2, entropy2, nonce | Output |
 | ECDH/&lt;CURVE&gt;   | X, Y, private key | X, Y, shared key |
 | ECDSA/keyGen         | Curve name | Private key, X, Y |
 | ECDSA/keyVer         | Curve name, X, Y | Single-byte valid flag |
@@ -79,6 +81,9 @@ The other commands are as follows. (Note that you only need to implement the com
 | HMAC-SHA2-384        | Value to hash, key        | Digest  |
 | HMAC-SHA2-512        | Value to hash, key        | Digest  |
 | HMAC-SHA2-512/256    | Value to hash, key        | Digest  |
+| hmacDRBG/&lt;HASH&gt;| Output length, entropy, personalisation, ad1, ad2, nonce | Output |
+| hmacDRBG-reseed/&lt;HASH&gt;| Output length, entropy, personalisation, reseedAD, reseedEntropy, ad1, ad2, nonce | Output |
+| hmacDRBG-pr/&lt;HASH&gt;| Output length, entropy, personalisation, ad1, entropy1, ad2, entropy2, nonce | Output |
 | KDF-counter          | Number output bytes, PRF name, counter location string, key, number of counter bits | Counter, output |
 | RSA/keyGen           | Modulus bit-size | e, p, q, n, d |
 | RSA/sigGen/&lt;HASH&gt;/pkcs1v1.5 | Modulus bit-size | n, e, signature |
