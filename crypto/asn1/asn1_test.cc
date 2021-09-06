@@ -1096,6 +1096,29 @@ TEST(ASN1Test, InvalidObject) {
   EXPECT_EQ(-1, i2d_X509_ALGOR(alg.get(), nullptr));
 }
 
+// Encoding invalid |ASN1_TYPE|s should fail. |ASN1_TYPE|s are
+// default-initialized to an invalid type.
+TEST(ASN1Test, InvalidASN1Type) {
+  bssl::UniquePtr<ASN1_TYPE> obj(ASN1_TYPE_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_ASN1_TYPE(obj.get(), nullptr));
+}
+
+// Encoding invalid MSTRING types should fail. An MSTRING is a CHOICE of
+// string-like types. They are initialized to an invalid type.
+TEST(ASN1Test, InvalidMSTRING) {
+  bssl::UniquePtr<ASN1_STRING> obj(ASN1_TIME_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_ASN1_TIME(obj.get(), nullptr));
+
+  obj.reset(DIRECTORYSTRING_new());
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(-1, obj->type);
+  EXPECT_EQ(-1, i2d_DIRECTORYSTRING(obj.get(), nullptr));
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
