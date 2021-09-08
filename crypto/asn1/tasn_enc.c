@@ -75,8 +75,7 @@ static int asn1_i2d_ex_primitive(ASN1_VALUE **pval, unsigned char **out,
 static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cont, int *out_omit,
                        int *putype, const ASN1_ITEM *it);
 static int asn1_set_seq_out(STACK_OF(ASN1_VALUE) *sk, unsigned char **out,
-                            int skcontlen, const ASN1_ITEM *item,
-                            int do_sort, int iclass);
+                            int skcontlen, const ASN1_ITEM *item, int do_sort);
 static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
                                 const ASN1_TEMPLATE *tt, int tag, int aclass);
 
@@ -132,6 +131,12 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
     const ASN1_TEMPLATE *tt = NULL;
     int i, seqcontlen, seqlen;
 
+    /* Historically, |aclass| was repurposed to pass additional flags into the
+     * encoding process. */
+    assert((aclass & ASN1_TFLG_TAG_CLASS) == aclass);
+    /* If not overridding the tag, |aclass| is ignored and should be zero. */
+    assert(tag != -1 || aclass == 0);
+
     /* All fields are pointers, except for boolean |ASN1_ITYPE_PRIMITIVE|s.
      * Optional primitives are handled later. */
     if ((it->itype != ASN1_ITYPE_PRIMITIVE) && !*pval) {
@@ -163,7 +168,7 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
             OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
             return -1;
         }
-        return asn1_i2d_ex_primitive(pval, out, it, -1, aclass, optional);
+        return asn1_i2d_ex_primitive(pval, out, it, -1, 0, optional);
 
     case ASN1_ITYPE_CHOICE: {
         /*
@@ -185,7 +190,7 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
             return -1;
         }
         ASN1_VALUE **pchval = asn1_get_field_ptr(pval, chtt);
-        return asn1_template_ex_i2d(pchval, out, chtt, -1, aclass);
+        return asn1_template_ex_i2d(pchval, out, chtt, -1, 0);
     }
 
     case ASN1_ITYPE_EXTERN: {
@@ -215,9 +220,7 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
         /* If no IMPLICIT tagging set to SEQUENCE, UNIVERSAL */
         if (tag == -1) {
             tag = V_ASN1_SEQUENCE;
-            /* Retain any other flags in aclass */
-            aclass = (aclass & ~ASN1_TFLG_TAG_CLASS)
-                | V_ASN1_UNIVERSAL;
+            aclass = V_ASN1_UNIVERSAL;
         }
         /* First work out sequence content length */
         for (i = 0, tt = it->templates; i < it->tcount; tt++, i++) {
@@ -228,7 +231,7 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
             if (!seqtt)
                 return -1;
             pseqval = asn1_get_field_ptr(pval, seqtt);
-            tmplen = asn1_template_ex_i2d(pseqval, NULL, seqtt, -1, aclass);
+            tmplen = asn1_template_ex_i2d(pseqval, NULL, seqtt, -1, 0);
             if (tmplen == -1 || (tmplen > INT_MAX - seqcontlen))
                 return -1;
             seqcontlen += tmplen;
@@ -246,7 +249,7 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
             if (!seqtt)
                 return -1;
             pseqval = asn1_get_field_ptr(pval, seqtt);
-            if (asn1_template_ex_i2d(pseqval, out, seqtt, -1, aclass) < 0) {
+            if (asn1_template_ex_i2d(pseqval, out, seqtt, -1, 0) < 0) {
                 return -1;
             }
         }
@@ -269,12 +272,17 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
     int i, ret, flags, ttag, tclass;
     size_t j;
     flags = tt->flags;
+
+    /* Historically, |iclass| was repurposed to pass additional flags into the
+     * encoding process. */
+    assert((iclass & ASN1_TFLG_TAG_CLASS) == iclass);
+    /* If not overridding the tag, |iclass| is ignored and should be zero. */
+    assert(tag != -1 || iclass == 0);
+
     /*
      * Work out tag and class to use: tagging may come either from the
      * template or the arguments, not both because this would create
-     * ambiguity. Additionally the iclass argument may contain some
-     * additional flags which should be noted and passed down to other
-     * levels.
+     * ambiguity.
      */
     if (flags & ASN1_TFLG_TAG_MASK) {
         /* Error if argument and template tagging */
@@ -293,16 +301,12 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
         ttag = -1;
         tclass = 0;
     }
-    /*
-     * Remove any class mask from iflag.
-     */
-    iclass &= ~ASN1_TFLG_TAG_CLASS;
 
     const int optional = (flags & ASN1_TFLG_OPTIONAL) != 0;
 
     /*
-     * At this point 'ttag' contains the outer tag to use, 'tclass' is the
-     * class and iclass is any flags passed to this function.
+     * At this point 'ttag' contains the outer tag to use, and 'tclass' is the
+     * class.
      */
 
     if (flags & ASN1_TFLG_SK_MASK) {
@@ -350,7 +354,7 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
             int tmplen;
             skitem = sk_ASN1_VALUE_value(sk, j);
             tmplen = ASN1_item_ex_i2d(&skitem, NULL, ASN1_ITEM_ptr(tt->item),
-                                      -1, iclass);
+                                      -1, 0);
             if (tmplen == -1 || (skcontlen > INT_MAX - tmplen))
                 return -1;
             skcontlen += tmplen;
@@ -375,7 +379,7 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
         ASN1_put_object(out, /*constructed=*/1, skcontlen, sktag, skaclass);
         /* And the stuff itself */
         if (!asn1_set_seq_out(sk, out, skcontlen, ASN1_ITEM_ptr(tt->item),
-                              isset, iclass)) {
+                              isset)) {
             return -1;
         }
         return ret;
@@ -384,8 +388,8 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
     if (flags & ASN1_TFLG_EXPTAG) {
         /* EXPLICIT tagging */
         /* Find length of tagged item */
-        i = asn1_item_ex_i2d_opt(pval, NULL, ASN1_ITEM_ptr(tt->item), -1,
-                                 iclass, optional);
+        i = asn1_item_ex_i2d_opt(pval, NULL, ASN1_ITEM_ptr(tt->item), -1, 0,
+                                 optional);
         if (i <= 0)
             return i;
         /* Find length of EXPLICIT tag */
@@ -394,16 +398,16 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
             /* Output tag and item */
             ASN1_put_object(out, /*constructed=*/1, i, ttag, tclass);
             if (ASN1_item_ex_i2d(pval, out, ASN1_ITEM_ptr(tt->item), -1,
-                                 iclass) < 0) {
+                                 0) < 0) {
                 return -1;
             }
         }
         return ret;
     }
 
-    /* Either normal or IMPLICIT tagging: combine class and flags */
+    /* Either normal or IMPLICIT tagging */
     return asn1_item_ex_i2d_opt(pval, out, ASN1_ITEM_ptr(tt->item),
-                                ttag, tclass | iclass, optional);
+                                ttag, tclass, optional);
 
 }
 
@@ -428,21 +432,16 @@ static int der_cmp(const void *a, const void *b)
 /* asn1_set_seq_out writes |sk| to |out| under the i2d output convention,
  * excluding the tag and length. It returns one on success and zero on error.
  * |skcontlen| must be the total encoded size. If |do_sort| is non-zero, the
- * elements are sorted for a SET OF type. Each element of |sk| has type |item|.
- * |iclass| contains flags for encoding elements of |sk|.
- *
- * TODO(davidben): After |ASN1_TFLG_NDEF| was removed, no more flags are passed
- * into |iclass|. However, due to a bug in x_name.c, we cannot assert |iclass|
- * is zero. Fix that, then unwind the flags. */
+ * elements are sorted for a SET OF type. Each element of |sk| has type
+ * |item|. */
 static int asn1_set_seq_out(STACK_OF(ASN1_VALUE) *sk, unsigned char **out,
-                            int skcontlen, const ASN1_ITEM *item,
-                            int do_sort, int iclass)
+                            int skcontlen, const ASN1_ITEM *item, int do_sort)
 {
     /* No need to sort if there are fewer than two items. */
     if (!do_sort || sk_ASN1_VALUE_num(sk) < 2) {
         for (size_t i = 0; i < sk_ASN1_VALUE_num(sk); i++) {
             ASN1_VALUE *skitem = sk_ASN1_VALUE_value(sk, i);
-            if (ASN1_item_ex_i2d(&skitem, out, item, -1, iclass) < 0) {
+            if (ASN1_item_ex_i2d(&skitem, out, item, -1, 0) < 0) {
                 return 0;
             }
         }
@@ -467,7 +466,7 @@ static int asn1_set_seq_out(STACK_OF(ASN1_VALUE) *sk, unsigned char **out,
     for (size_t i = 0; i < sk_ASN1_VALUE_num(sk); i++) {
         ASN1_VALUE *skitem = sk_ASN1_VALUE_value(sk, i);
         encoded[i].data = p;
-        encoded[i].length = ASN1_item_ex_i2d(&skitem, &p, item, -1, iclass);
+        encoded[i].length = ASN1_item_ex_i2d(&skitem, &p, item, -1, 0);
         if (encoded[i].length < 0) {
             goto err;
         }

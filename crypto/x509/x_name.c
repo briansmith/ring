@@ -303,16 +303,17 @@ static int x509_name_encode(X509_NAME *a)
             goto memerr;
     }
     ASN1_VALUE *intname_val = (ASN1_VALUE *)intname;
-    len = ASN1_item_ex_i2d(&intname_val, NULL,
-                           ASN1_ITEM_rptr(X509_NAME_INTERNAL), -1, -1);
+    len =
+        ASN1_item_ex_i2d(&intname_val, NULL, ASN1_ITEM_rptr(X509_NAME_INTERNAL),
+                         /*tag=*/-1, /*aclass=*/0);
     if (len <= 0) {
-        goto err;
+      goto err;
     }
     if (!BUF_MEM_grow(a->bytes, len))
         goto memerr;
     p = (unsigned char *)a->bytes->data;
-    if (ASN1_item_ex_i2d(&intname_val,
-                         &p, ASN1_ITEM_rptr(X509_NAME_INTERNAL), -1, -1) <= 0) {
+    if (ASN1_item_ex_i2d(&intname_val, &p, ASN1_ITEM_rptr(X509_NAME_INTERNAL),
+                         /*tag=*/-1, /*aclass=*/0) <= 0) {
         goto err;
     }
     sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname,
@@ -506,8 +507,8 @@ static int i2d_name_canon(STACK_OF(STACK_OF_X509_NAME_ENTRY) * _intname,
     len = 0;
     for (i = 0; i < sk_ASN1_VALUE_num(intname); i++) {
         v = sk_ASN1_VALUE_value(intname, i);
-        ltmp = ASN1_item_ex_i2d(&v, in,
-                                ASN1_ITEM_rptr(X509_NAME_ENTRIES), -1, -1);
+        ltmp = ASN1_item_ex_i2d(&v, in, ASN1_ITEM_rptr(X509_NAME_ENTRIES),
+                                /*tag=*/-1, /*aclass=*/0);
         if (ltmp < 0)
             return ltmp;
         len += ltmp;
