@@ -1887,12 +1887,16 @@ OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
 OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
 
 
-typedef struct rsa_pss_params_st {
+struct rsa_pss_params_st {
   X509_ALGOR *hashAlgorithm;
   X509_ALGOR *maskGenAlgorithm;
   ASN1_INTEGER *saltLength;
   ASN1_INTEGER *trailerField;
-} RSA_PSS_PARAMS;
+  // OpenSSL caches the MGF hash on |RSA_PSS_PARAMS| in some cases. None of the
+  // cases apply to BoringSSL, so this is always NULL, but Node expects the
+  // field to be present.
+  X509_ALGOR *maskHash;
+} /* RSA_PSS_PARAMS */;
 
 DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
 

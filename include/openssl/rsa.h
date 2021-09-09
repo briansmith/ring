@@ -684,6 +684,11 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
 // on success or zero otherwise.
 OPENSSL_EXPORT int RSA_print(BIO *bio, const RSA *rsa, int indent);
 
+// RSA_get0_pss_params returns NULL. In OpenSSL, this function retries RSA-PSS
+// parameters associated with |RSA| objects, but BoringSSL does not support
+// the id-RSASSA-PSS key encoding.
+OPENSSL_EXPORT const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa);
+
 
 struct rsa_meth_st {
   struct openssl_method_common_st common;

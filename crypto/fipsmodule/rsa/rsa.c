@@ -206,6 +206,12 @@ void RSA_get0_factors(const RSA *rsa, const BIGNUM **out_p,
   }
 }
 
+const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa) {
+  // We do not support the id-RSASSA-PSS key encoding. If we add support later,
+  // the |maskHash| field should be filled in for OpenSSL compatibility.
+  return NULL;
+}
+
 void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
                          const BIGNUM **out_dmq1, const BIGNUM **out_iqmp) {
   if (out_dmp1 != NULL) {

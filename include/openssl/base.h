@@ -422,6 +422,7 @@ typedef struct private_key_st X509_PKEY;
 typedef struct rand_meth_st RAND_METHOD;
 typedef struct rc4_key_st RC4_KEY;
 typedef struct rsa_meth_st RSA_METHOD;
+typedef struct rsa_pss_params_st RSA_PSS_PARAMS;
 typedef struct rsa_st RSA;
 typedef struct sha256_state_st SHA256_CTX;
 typedef struct sha512_state_st SHA512_CTX;
