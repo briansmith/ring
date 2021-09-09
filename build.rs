@@ -202,13 +202,6 @@ const ASM_TARGETS: &[AsmTarget] = &[
     },
     AsmTarget {
         oss: LINUX_ABI,
-        arch: "riscv32",
-        perlasm_format: "linux32",
-        asm_extension: "S",
-        preassemble: false,
-    },
-    AsmTarget {
-        oss: LINUX_ABI,
         arch: "riscv64",
         perlasm_format: "linux64",
         asm_extension: "S",
