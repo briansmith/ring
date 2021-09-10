@@ -1649,6 +1649,11 @@ OPENSSL_EXPORT int SSL_export_keying_material(
 // abbreviated handshake. It is reference-counted and immutable. Once
 // established, an |SSL_SESSION| may be shared by multiple |SSL| objects on
 // different threads and must not be modified.
+//
+// Note the TLS notion of "session" is not suitable for application-level
+// session state. It is an optional caching mechanism for the handshake. Not all
+// connections within an application-level session will reuse TLS sessions. TLS
+// sessions may be dropped by the client or ignored by the server at any time.
 
 DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
@@ -1703,6 +1708,19 @@ OPENSSL_EXPORT int SSL_SESSION_set_protocol_version(SSL_SESSION *session,
 
 // SSL_SESSION_get_id returns a pointer to a buffer containing |session|'s
 // session ID and sets |*out_len| to its length.
+//
+// This function should only be used for implementing a TLS session cache. TLS
+// sessions are not suitable for application-level session state, and a session
+// ID is an implementation detail of the TLS resumption handshake mechanism. Not
+// all resumption flows use session IDs, and not all connections within an
+// application-level session will reuse TLS sessions.
+//
+// To determine if resumption occurred, use |SSL_session_reused| instead.
+// Comparing session IDs will not give the right result in all cases.
+//
+// As a workaround for some broken applications, BoringSSL sometimes synthesizes
+// arbitrary session IDs for non-ID-based sessions. This behavior may be
+// removed in the future.
 OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
                                                  unsigned *out_len);
 
