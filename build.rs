@@ -536,7 +536,7 @@ fn build_library(
     // Handled below.
     let _ = c.cargo_metadata(false);
 
-    c.compile(
+    c.compiler("aarch64-none-elf-gcc").compile(
         lib_path
             .file_name()
             .and_then(|f| f.to_str())
@@ -655,7 +655,7 @@ fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Pa
     }
 
     let obj_opt = if compiler.is_like_msvc() { "/Fo" } else { "-o" };
-    let mut c = c.get_compiler().to_command();
+    let mut c = c.compiler("aarch64-none-elf-gcc").get_compiler().to_command();
     let _ = c
         .arg("-c")
         .arg(format!(

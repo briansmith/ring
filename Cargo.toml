@@ -12,7 +12,7 @@ readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
 
 # Keep in sync with `links` below.
-version = "0.17.0-not-released-yet"
+version = "0.16.99"
 
 # Keep in sync with `version` above.
 #
@@ -21,7 +21,7 @@ version = "0.17.0-not-released-yet"
 # build.rs uses this to derive the prefix for FFI symbols and the file names
 # of the FFI libraries, so it must be a valid identifier prefix and a valid
 # filename prefix.
-links = "ring_core_0_17_0_not_released_yet"
+links = "ring_core_0_16_99"
 
 include = [
     "LICENSE",
@@ -183,6 +183,9 @@ wasm-bindgen-test = { version = "0.3.18", default-features = false }
 
 [target.'cfg(any(unix, windows))'.dev-dependencies]
 libc = { version = "0.2.84", default-features = false }
+
+[target.'cfg(target_os = "switch")'.dependencies]
+nnsdk = "0.1"
 
 [build-dependencies]
 cc = { version = "1.0.69", default-features = false }

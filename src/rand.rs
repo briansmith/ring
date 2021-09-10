@@ -196,6 +196,9 @@ use self::darwin::fill as fill_impl;
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
 
+#[cfg(target_os = "switch")]
+use self::switch::fill as fill_impl;
+
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand_chunk {
     use crate::{c, error};
@@ -417,5 +420,18 @@ mod fuchsia {
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
+    }
+}
+
+#[cfg(target_os = "switch")]
+mod switch {
+    use crate::error;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        // Prevent overflow of u32
+        for chunk in dest.chunks_mut(u32::max_value() as usize) {
+            unsafe { nnsdk::os::GenerateRandomBytes(chunk.as_mut_ptr() as _, chunk.len() as _); }
+        }
+        Ok(())
     }
 }
