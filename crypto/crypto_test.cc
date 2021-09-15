@@ -18,6 +18,7 @@
 #include <string>
 
 #include <openssl/base.h>
+#include <openssl/aead.h>
 #include <openssl/crypto.h>
 #include <openssl/cipher.h>
 #include <openssl/mem.h>
@@ -43,39 +44,97 @@ TEST(CryptoTest, Strndup) {
 }
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
+using CounterArray = size_t[fips_counter_max + 1];
+
+static void read_all_counters(CounterArray counters) {
+  for (fips_counter_t counter = static_cast<fips_counter_t>(0);
+       counter <= fips_counter_max;
+       counter = static_cast<fips_counter_t>(counter + 1)) {
+    counters[counter] = FIPS_read_counter(counter);
+  }
+}
+
+static void expect_counter_delta_is_zero_except_for_a_one_at(
+    CounterArray before, CounterArray after, fips_counter_t position) {
+  for (fips_counter_t counter = static_cast<fips_counter_t>(0);
+       counter <= fips_counter_max;
+       counter = static_cast<fips_counter_t>(counter + 1)) {
+    const size_t expected_delta = counter == position ? 1 : 0;
+    EXPECT_EQ(after[counter], before[counter] + expected_delta) << counter;
+  }
+}
+
 TEST(CryptoTest, FIPSCountersEVP) {
   constexpr struct {
     const EVP_CIPHER *(*cipher)();
     fips_counter_t counter;
   } kTests[] = {
-    {
-        EVP_aes_128_gcm,
-        fips_counter_evp_aes_128_gcm,
-    },
-    {
-        EVP_aes_256_gcm,
-        fips_counter_evp_aes_256_gcm,
-    },
-    {
-        EVP_aes_128_ctr,
-        fips_counter_evp_aes_128_ctr,
-    },
-    {
-        EVP_aes_256_ctr,
-        fips_counter_evp_aes_256_ctr,
-    },
+      {
+          EVP_aes_128_gcm,
+          fips_counter_evp_aes_128_gcm,
+      },
+      {
+          EVP_aes_256_gcm,
+          fips_counter_evp_aes_256_gcm,
+      },
+      {
+          EVP_aes_128_ctr,
+          fips_counter_evp_aes_128_ctr,
+      },
+      {
+          EVP_aes_256_ctr,
+          fips_counter_evp_aes_256_ctr,
+      },
   };
 
   uint8_t key[EVP_MAX_KEY_LENGTH] = {0};
   uint8_t iv[EVP_MAX_IV_LENGTH] = {1};
-
-  for (const auto& test : kTests) {
-    const size_t before = FIPS_read_counter(test.counter);
-
+  CounterArray before, after;
+  for (const auto &test : kTests) {
+    read_all_counters(before);
     bssl::ScopedEVP_CIPHER_CTX ctx;
     ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), test.cipher(), /*engine=*/nullptr,
                                    key, iv));
-    ASSERT_GT(FIPS_read_counter(test.counter), before);
+    read_all_counters(after);
+
+    expect_counter_delta_is_zero_except_for_a_one_at(before, after,
+                                                     test.counter);
   }
 }
+
+TEST(CryptoTest, FIPSCountersEVP_AEAD) {
+  constexpr struct {
+    const EVP_AEAD *(*aead)();
+    unsigned key_len;
+    fips_counter_t counter;
+  } kTests[] = {
+      {
+          EVP_aead_aes_128_gcm,
+          16,
+          fips_counter_evp_aes_128_gcm,
+      },
+      {
+          EVP_aead_aes_256_gcm,
+          32,
+          fips_counter_evp_aes_256_gcm,
+      },
+  };
+
+  uint8_t key[EVP_AEAD_MAX_KEY_LENGTH] = {0};
+  CounterArray before, after;
+  for (const auto &test : kTests) {
+    ASSERT_LE(test.key_len, sizeof(key));
+
+    read_all_counters(before);
+    bssl::ScopedEVP_AEAD_CTX ctx;
+    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), test.aead(), key, test.key_len,
+                                  EVP_AEAD_DEFAULT_TAG_LENGTH,
+                                  /*engine=*/nullptr));
+    read_all_counters(after);
+
+    expect_counter_delta_is_zero_except_for_a_one_at(before, after,
+                                                     test.counter);
+  }
+}
+
 #endif  // BORINGSSL_FIPS_COUNTERS
