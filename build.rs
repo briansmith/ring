@@ -294,7 +294,7 @@ fn read_env_var(name: &'static str) -> Result<String, std::env::VarError> {
 fn main() {
 	// perform this assignment here because it is necessary to build docs
 	let ring_core_prefix = ring_core_prefix();
-    println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
+	println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
 	
 	if let Ok(_) = std::env::var("DOCS_RS") {
 		return;
