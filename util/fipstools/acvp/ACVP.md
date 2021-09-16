@@ -49,6 +49,8 @@ The other commands are as follows. (Note that you only need to implement the com
 | 3DES/encrypt         | Key, input block, num iterations¹ | Result, Previous result |
 | AES-CBC/decrypt      | Key, ciphertext, IV, num iterations¹ | Result, Previous result |
 | AES-CBC/encrypt      | Key, plaintext, IV, num iterations¹ | Result, Previous result |
+| AES-CBC-CS3/decrypt  | Key, ciphertext, IV, num iterations² | Result |
+| AES-CBC-CS3/encrypt  | Key, plaintext, IV, num iterations²  | Result |
 | AES-CCM/open         | Tag length, key, ciphertext, nonce, ad | One-byte success flag, plaintext or empty |
 | AES-CCM/seal         | Tag length, key, plaintext, nonce, ad | Ciphertext |
 | AES-CTR/decrypt      | Key, ciphertext, initial counter, constant 1 | Plaintext |
@@ -105,6 +107,8 @@ The other commands are as follows. (Note that you only need to implement the com
 | TLSKDF/&lt;1.0\|1.2&gt;/&lt;HASH&gt; | Number output bytes, secret, label, seed1, seed2 | Output |
 
 ¹ The iterated tests would result in excessive numbers of round trips if the module wrapper handled only basic operations. Thus some ACVP logic is pushed down for these tests so that the inner loop can be handled locally. Either read the NIST documentation ([block-ciphers](https://pages.nist.gov/ACVP/draft-celi-acvp-symmetric.html#name-monte-carlo-tests-for-block) [hashes](https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-monte-carlo-tests-for-sha-1)) to understand the iteration count and return values or, probably more fruitfully, see how these functions are handled in the `modulewrapper` directory.
+
+² Will always be one because MCT tests are not supported for CS3.
 
 ## Online operation
 

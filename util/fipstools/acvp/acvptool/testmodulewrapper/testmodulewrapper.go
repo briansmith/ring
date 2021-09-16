@@ -21,6 +21,7 @@ package main
 import (
 	"bytes"
 	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -42,6 +43,8 @@ var handlers = map[string]func([][]byte) error{
 	"HKDF/SHA2-256":            hkdfMAC,
 	"hmacDRBG-reseed/SHA2-256": hmacDRBGReseed,
 	"hmacDRBG-pr/SHA2-256":     hmacDRBGPredictionResistance,
+	"AES-CBC-CS3/encrypt":      ctsEncrypt,
+	"AES-CBC-CS3/decrypt":      ctsDecrypt,
 }
 
 func getConfig(args [][]byte) error {
@@ -142,6 +145,22 @@ func getConfig(args [][]byte) error {
 			],
 			"returnedBitsLen": 256
 		}]
+	}, {
+		"algorithm": "ACVP-AES-CBC-CS3",
+		"revision": "1.0",
+		"payloadLen": [{
+			"min": 128,
+			"max": 2048,
+			"increment": 8
+		}],
+		"direction": [
+		  "encrypt",
+		  "decrypt"
+		],
+		"keyLen": [
+		  128,
+		  256
+		]
 	}
 ]`))
 }
@@ -325,6 +344,122 @@ func hmacDRBGPredictionResistance(args [][]byte) error {
 	drbg.Generate(out, nil)
 
 	return reply(out)
+}
+
+func swapFinalTwoAESBlocks(d []byte) {
+	var blockNMinus1 [aes.BlockSize]byte
+	copy(blockNMinus1[:], d[len(d)-2*aes.BlockSize:])
+	copy(d[len(d)-2*aes.BlockSize:], d[len(d)-aes.BlockSize:])
+	copy(d[len(d)-aes.BlockSize:], blockNMinus1[:])
+}
+
+func roundUp(n, m int) int {
+	return n + (m-(n%m))%m
+}
+
+func doCTSEncrypt(key, origPlaintext, iv []byte) []byte {
+	// https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-38a-add.pdf
+	if len(origPlaintext) < aes.BlockSize {
+		panic("input too small")
+	}
+
+	plaintext := make([]byte, roundUp(len(origPlaintext), aes.BlockSize))
+	copy(plaintext, origPlaintext)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+	cbcEncryptor := cipher.NewCBCEncrypter(block, iv)
+	cbcEncryptor.CryptBlocks(plaintext, plaintext)
+	ciphertext := plaintext
+
+	if len(origPlaintext) > aes.BlockSize {
+		swapFinalTwoAESBlocks(ciphertext)
+
+		if len(origPlaintext)%16 != 0 {
+			// Truncate the ciphertext
+			ciphertext = ciphertext[:len(ciphertext)-aes.BlockSize+(len(origPlaintext)%aes.BlockSize)]
+		}
+	}
+
+	if len(ciphertext) != len(origPlaintext) {
+		panic("internal error")
+	}
+
+	return ciphertext
+}
+
+func doCTSDecrypt(key, origCiphertext, iv []byte) []byte {
+	if len(origCiphertext) < aes.BlockSize {
+		panic("input too small")
+	}
+
+	ciphertext := make([]byte, roundUp(len(origCiphertext), aes.BlockSize))
+	copy(ciphertext, origCiphertext)
+
+	if len(ciphertext) > aes.BlockSize {
+		swapFinalTwoAESBlocks(ciphertext)
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+	cbcDecrypter := cipher.NewCBCDecrypter(block, iv)
+
+	var plaintext []byte
+	if overhang := len(origCiphertext) % aes.BlockSize; overhang == 0 {
+		cbcDecrypter.CryptBlocks(ciphertext, ciphertext)
+		plaintext = ciphertext
+	} else {
+		ciphertext, finalBlock := ciphertext[:len(ciphertext)-aes.BlockSize], ciphertext[len(ciphertext)-aes.BlockSize:]
+		var plaintextFinalBlock [aes.BlockSize]byte
+		block.Decrypt(plaintextFinalBlock[:], finalBlock)
+		copy(ciphertext[len(ciphertext)-aes.BlockSize+overhang:], plaintextFinalBlock[overhang:])
+		plaintext = make([]byte, len(origCiphertext))
+		cbcDecrypter.CryptBlocks(plaintext, ciphertext)
+		for i := 0; i < overhang; i++ {
+			plaintextFinalBlock[i] ^= ciphertext[len(ciphertext)-aes.BlockSize+i]
+		}
+		copy(plaintext[len(ciphertext):], plaintextFinalBlock[:overhang])
+	}
+
+	return plaintext
+}
+
+func ctsEncrypt(args [][]byte) error {
+	if len(args) != 4 {
+		return fmt.Errorf("ctsEncrypt received %d args, wanted 4", len(args))
+	}
+
+	key, plaintext, iv, numIterations32 := args[0], args[1], args[2], args[3]
+	if len(numIterations32) != 4 || binary.LittleEndian.Uint32(numIterations32) != 1 {
+		return errors.New("only a single iteration supported for ctsEncrypt")
+	}
+
+	if len(plaintext) < aes.BlockSize {
+		return fmt.Errorf("ctsEncrypt plaintext too short: %d bytes", len(plaintext))
+	}
+
+	return reply(doCTSEncrypt(key, plaintext, iv))
+}
+
+func ctsDecrypt(args [][]byte) error {
+	if len(args) != 4 {
+		return fmt.Errorf("ctsDecrypt received %d args, wanted 4", len(args))
+	}
+
+	key, ciphertext, iv, numIterations32 := args[0], args[1], args[2], args[3]
+	if len(numIterations32) != 4 || binary.LittleEndian.Uint32(numIterations32) != 1 {
+		return errors.New("only a single iteration supported for ctsDecrypt")
+	}
+
+	if len(ciphertext) < aes.BlockSize {
+		return errors.New("ctsDecrypt ciphertext too short")
+	}
+
+	return reply(doCTSDecrypt(key, ciphertext, iv))
 }
 
 const (
