@@ -292,19 +292,27 @@ fn read_env_var(name: &'static str) -> Result<String, std::env::VarError> {
 }
 
 fn main() {
+	// perform this assignment here because it is necessary to build docs
+	let ring_core_prefix = ring_core_prefix();
+    println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
+	
+	if let Ok(_) = std::env::var("DOCS_RS") {
+		return;
+	}
+	
     const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
     match read_env_var(RING_PREGENERATE_ASM).as_deref() {
         Ok("1") => {
-            pregenerate_asm_main();
+            pregenerate_asm_main(&ring_core_prefix);
         }
-        Err(std::env::VarError::NotPresent) => ring_build_rs_main(),
+        Err(std::env::VarError::NotPresent) => ring_build_rs_main(&ring_core_prefix),
         _ => {
             panic!("${} has an invalid value", RING_PREGENERATE_ASM);
         }
     }
 }
 
-fn ring_build_rs_main() {
+fn ring_build_rs_main(ring_core_prefix: &str) {
     use std::env;
 
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -351,13 +359,13 @@ fn ring_build_rs_main() {
         &target,
         pregenerated,
         &out_dir,
-        &ring_core_prefix(),
+        &ring_core_prefix,
         use_pregenerated,
     );
     emit_rerun_if_changed()
 }
 
-fn pregenerate_asm_main() {
+fn pregenerate_asm_main(ring_core_prefix: &str) {
     println!("cargo:rustc-cfg=pregenerate_asm_only");
 
     let pregenerated = PathBuf::from(PREGENERATED);
@@ -365,7 +373,7 @@ fn pregenerate_asm_main() {
     let pregenerated_tmp = pregenerated.join("tmp");
     std::fs::create_dir(&pregenerated_tmp).unwrap();
 
-    generate_prefix_symbols_asm_headers(&pregenerated_tmp, &ring_core_prefix()).unwrap();
+    generate_prefix_symbols_asm_headers(&pregenerated_tmp, &ring_core_prefix).unwrap();
 
     for asm_target in ASM_TARGETS {
         // For Windows, package pregenerated object files instead of
@@ -425,8 +433,6 @@ fn build_c_code(
     ring_core_prefix: &str,
     use_pregenerated: bool,
 ) {
-    println!("cargo:rustc-env=RING_CORE_PREFIX={}", ring_core_prefix);
-
     #[cfg(not(feature = "wasm32_c"))]
     {
         if &target.arch == "wasm32" {
