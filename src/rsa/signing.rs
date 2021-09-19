@@ -591,7 +591,6 @@ impl RsaKeyPair {
         // not verified during `KeyPair` construction.
         {
             let verify = super::elem_exp_vartime(m.clone(), self.public.e, n);
-            let verify = verify.into_unencoded(n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
 

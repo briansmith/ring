@@ -20,7 +20,7 @@
 //! Low-level RSA primitives.
 
 use crate::{
-    arithmetic::{bigint, montgomery},
+    arithmetic::bigint,
     bits, error,
     io::{self, der},
     limb,
@@ -55,16 +55,16 @@ fn parse_public_key(
 
 /// Calculates base**exponent (mod m).
 fn elem_exp_vartime<M>(
-    base: bigint::Elem<M, montgomery::Unencoded>,
+    base: bigint::Elem<M>,
     exponent: public::Exponent,
     m: &bigint::Modulus<M>,
-) -> bigint::Elem<M, montgomery::R> {
+) -> bigint::Elem<M> {
     let base = bigint::elem_mul(m.oneRR().as_ref(), base, m);
     // During RSA public key operations the exponent is almost always either
     // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
     // weight of 2. The maximum bit length and maximum hamming weight of the
     // exponent is bounded by the value of `public::Exponent::MAX`.
-    bigint::elem_exp_vartime(base, exponent.into(), &m.as_partial())
+    bigint::elem_exp_vartime(base, exponent.into(), &m.as_partial()).into_unencoded(m)
 }
 
 // Type-level representation of an RSA public modulus *n*. See
