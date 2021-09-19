@@ -27,6 +27,7 @@ pub fn usize_from_u32(x: u32) -> usize {
 #[macro_use]
 mod chunks_fixed;
 
+mod array_flat_map;
 pub(crate) mod array_map;
 
-pub use chunks_fixed::*;
+pub use self::{array_flat_map::ArrayFlatMap, chunks_fixed::*};
