@@ -1,4 +1,5 @@
 use crate::error;
+use crate::polyfill::{ArrayFlatMap, LeadingZerosStripped};
 use core::num::NonZeroU64;
 
 /// The exponent `e` of an RSA public key.
@@ -76,6 +77,19 @@ impl Exponent {
         }
 
         Ok(Self(value))
+    }
+
+    /// The big-endian encoding of the exponent.
+    ///
+    /// There are no leading zeros.
+    #[inline]
+    pub fn be_bytes(&self) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
+        // TODO: unwrap is OK because ...
+        let bytes = ArrayFlatMap::new(core::iter::once(self.0.get()), |value| {
+            core::array::IntoIter::new(u64::to_be_bytes(value))
+        })
+        .unwrap();
+        LeadingZerosStripped::new(bytes)
     }
 }
 

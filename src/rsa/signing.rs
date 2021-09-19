@@ -22,10 +22,9 @@ use crate::{
     },
     bits, digest,
     error::{self, KeyRejected},
-    io::{self, der, der_writer},
-    pkcs8, rand, signature,
+    io::der,
+    pkcs8, rand, rsa, signature,
 };
-use alloc::boxed::Box;
 
 /// An RSA key pair, used for signing.
 pub struct RsaKeyPair {
@@ -35,10 +34,9 @@ pub struct RsaKeyPair {
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
     public: public::Key,
-    public_key: RsaSubjectPublicKey,
 }
 
-derive_debug_via_field!(RsaKeyPair, stringify!(RsaKeyPair), public_key);
+derive_debug_via_field!(RsaKeyPair, stringify!(RsaKeyPair), public);
 
 impl RsaKeyPair {
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
@@ -300,7 +298,6 @@ impl RsaKeyPair {
             public::Exponent::_65537,
         )?;
 
-        let n_bytes = n;
         let n = public_key.n().value();
 
         // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
@@ -423,9 +420,6 @@ impl RsaKeyPair {
 
         // This should never fail since `n` and `e` were validated above.
 
-        let public_key_serialized = RsaSubjectPublicKey::from_n_and_e(n_bytes, e)
-            .map_err(|_: error::Unspecified| KeyRejected::unexpected_error())?;
-
         Ok(Self {
             p,
             q,
@@ -433,7 +427,6 @@ impl RsaKeyPair {
             q_mod_n,
             qq,
             public: public_key,
-            public_key: public_key_serialized,
         })
     }
 
@@ -453,52 +446,10 @@ impl RsaKeyPair {
 }
 
 impl signature::KeyPair for RsaKeyPair {
-    type PublicKey = RsaSubjectPublicKey;
+    type PublicKey = rsa::public::Key;
 
     fn public_key(&self) -> &Self::PublicKey {
-        &self.public_key
-    }
-}
-
-/// A serialized RSA public key.
-#[derive(Clone)]
-pub struct RsaSubjectPublicKey(Box<[u8]>);
-
-impl AsRef<[u8]> for RsaSubjectPublicKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-derive_debug_self_as_ref_hex_bytes!(RsaSubjectPublicKey);
-
-impl RsaSubjectPublicKey {
-    // TODO: Replace this with a conversion from `public::Key` and avoid reparsing.
-    fn from_n_and_e(n: untrusted::Input, e: untrusted::Input) -> Result<Self, error::Unspecified> {
-        let n = io::Positive::from_be_bytes(n)?;
-        let e = io::Positive::from_be_bytes(e)?;
-
-        let bytes = der_writer::write_all(der::Tag::Sequence, &|output| {
-            der_writer::write_positive_integer(output, &n);
-            der_writer::write_positive_integer(output, &e);
-        });
-        Ok(Self(bytes))
-    }
-
-    /// The public modulus (n).
-    pub fn modulus(&self) -> io::Positive {
-        // Parsing won't fail because we serialized it ourselves.
-        let (public_key, _exponent) =
-            super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
-        public_key
-    }
-
-    /// The public exponent (e).
-    pub fn exponent(&self) -> io::Positive {
-        // Parsing won't fail because we serialized it ourselves.
-        let (_public_key, exponent) =
-            super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
-        exponent
+        self.public()
     }
 }
 

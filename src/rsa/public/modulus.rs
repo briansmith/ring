@@ -2,6 +2,7 @@ use crate::{arithmetic::bigint, bits, error, rsa::N};
 use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
+#[derive(Clone)]
 pub struct Modulus {
     value: bigint::Modulus<N>,
     bits: bits::BitLength,
@@ -46,6 +47,14 @@ impl Modulus {
         }
 
         Ok(Self { value, bits })
+    }
+
+    /// The big-endian encoding of the modulus.
+    ///
+    /// There are no leading zeros.
+    #[inline]
+    pub fn be_bytes(&self) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
+        self.value.be_bytes()
     }
 
     /// The length of the modulus in bits.

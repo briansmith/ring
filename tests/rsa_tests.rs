@@ -319,7 +319,6 @@ fn test_signature_rsa_primitive_verification() {
 fn rsa_test_public_key_coverage() {
     const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
     const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
-    const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
 
     let key_pair = signature::RsaKeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
@@ -329,19 +328,21 @@ fn rsa_test_public_key_coverage() {
     // Test `Clone`.
     let _ = key_pair.public_key().clone();
 
-    // Test `exponent()`.
+    // Test exponent encoding.
+    const _65537: &[u8] = &[0x01, 0x00, 0x01];
     assert_eq!(
-        &[0x01, 0x00, 0x01],
-        key_pair
-            .public_key()
-            .exponent()
-            .big_endian_without_leading_zero()
+        _65537,
+        &key_pair.public().e().be_bytes().collect::<Vec<_>>()
     );
 
     // Test `Debug`
-    assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));
+    // TODO: The modulus's value should be formatted.
     assert_eq!(
-        format!("RsaKeyPair {{ public_key: {:?} }}", key_pair.public_key()),
+        "Key { n: Modulus, e: Exponent(65537) }",
+        format!("{:?}", key_pair.public_key())
+    );
+    assert_eq!(
+        format!("RsaKeyPair {{ public: {:?} }}", key_pair.public_key()),
         format!("{:?}", key_pair)
     );
 }

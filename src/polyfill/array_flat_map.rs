@@ -73,7 +73,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec::Vec;
 
     #[test]
     fn test_array_flat_map() {
@@ -94,19 +93,11 @@ mod tests {
             ),
         ];
         TEST_CASES.iter().copied().for_each(|(input, f, expected)| {
-            let mut mapped = ArrayFlatMap::new(input.iter().copied(), |input| {
+            let mapped = ArrayFlatMap::new(input.iter().copied(), |input| {
                 core::array::IntoIter::new(f(input))
             })
             .unwrap();
-            assert_eq!(&mapped.clone().collect::<Vec<_>>(), expected);
-            for i in 0..expected.len() {
-                let len = mapped.len();
-                assert_eq!(len, expected.len() - i);
-                assert_eq!(mapped.size_hint(), (len, Some(len)));
-                assert_eq!(mapped.next().unwrap(), expected[i]);
-            }
-            assert_eq!(mapped.len(), 0);
-            assert_eq!(mapped.next(), None);
+            super::super::test::assert_exact_size_iterator(mapped, expected);
         });
     }
 

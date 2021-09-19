@@ -247,7 +247,7 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
 /// Returns an iterator of the big-endian encoding of `limbs`.
 ///
 /// The number of bytes returned will be a multiple of `LIMB_BYTES`.
-fn be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
+pub fn be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
     // The unwrap is safe because a slice can never be larger than `usize` bytes.
     ArrayFlatMap::new(limbs.iter().rev().copied(), |limb| {
         core::array::IntoIter::new(Limb::to_be_bytes(limb))
