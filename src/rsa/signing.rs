@@ -236,7 +236,7 @@ impl RsaKeyPair {
             e.big_endian_without_leading_zero_as_input(),
             bits::BitLength::from_usize_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
-            bigint::PublicExponent::_65537,
+            public::Exponent::_65537,
         )?;
 
         // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
@@ -590,7 +590,7 @@ impl RsaKeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = bigint::elem_exp_vartime(m.clone(), self.public.e, n);
+            let verify = super::elem_exp_vartime(m.clone(), self.public.e, n);
             let verify = verify.into_unencoded(n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }

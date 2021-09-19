@@ -209,7 +209,7 @@ pub(crate) fn verify_rsa_(
         e,
         params.min_bits,
         max_bits,
-        bigint::PublicExponent::_3,
+        public::Exponent::_3,
     )?;
 
     // The signature must be the same length as the modulus, in bytes.
@@ -226,7 +226,7 @@ pub(crate) fn verify_rsa_(
     }
 
     // Step 2.
-    let m = bigint::elem_exp_vartime(s, e, &n);
+    let m = super::elem_exp_vartime(s, e, &n);
     let m = m.into_unencoded(&n);
 
     // Step 3.

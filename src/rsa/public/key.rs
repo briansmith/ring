@@ -12,13 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::super::N;
+use super::super::{public, N};
 use crate::{arithmetic::bigint, bits, error};
 
 #[derive(Debug)]
 pub struct Key {
     pub(in crate::rsa) n: bigint::Modulus<N>,
-    pub(in crate::rsa) e: bigint::PublicExponent,
+    pub(in crate::rsa) e: public::Exponent,
     pub(in crate::rsa) n_bits: bits::BitLength,
 }
 
@@ -28,7 +28,7 @@ impl Key {
         e: untrusted::Input,
         n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength,
-        e_min_value: bigint::PublicExponent,
+        e_min_value: public::Exponent,
     ) -> Result<Self, error::KeyRejected> {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
@@ -63,7 +63,7 @@ impl Key {
 
         // Step 2 / Step b.
         // Step 3 / Step c for `e`.
-        let e = bigint::PublicExponent::from_be_bytes(e, e_min_value)?;
+        let e = public::Exponent::from_be_bytes(e, e_min_value)?;
 
         // If `n` is less than `e` then somebody has probably accidentally swapped
         // them. The largest acceptable `e` is smaller than the smallest acceptable
