@@ -227,7 +227,6 @@ pub(crate) fn verify_rsa_(
 
     // Step 2.
     let m = super::elem_exp_vartime(s, e, &n);
-    let m = m.into_unencoded(&n);
 
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
