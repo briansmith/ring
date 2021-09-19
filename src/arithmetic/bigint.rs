@@ -648,11 +648,24 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
 }
 
 /// A non-secret odd positive value in the range
-/// [3, PUBLIC_EXPONENT_MAX_VALUE].
+/// [3, PublicExponent::MAX].
 #[derive(Clone, Copy, Debug)]
 pub struct PublicExponent(NonZeroU64);
 
 impl PublicExponent {
+    // This limit was chosen to bound the performance of the simple
+    // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
+    // particular, it helps mitigate theoretical resource exhaustion attacks. 33
+    // bits was chosen as the limit based on the recommendations in [1] and
+    // [2]. Windows CryptoAPI (at least older versions) doesn't support values
+    // larger than 32 bits [3], so it is unlikely that exponents larger than 32
+    // bits are being used for anything Windows commonly does.
+    //
+    // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
+    // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
+    // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
+    const MAX: u64 = (1u64 << 33) - 1;
+
     pub fn from_be_bytes(
         input: untrusted::Input,
         min_value: u64,
@@ -686,7 +699,7 @@ impl PublicExponent {
             return Err(error::KeyRejected::invalid_component());
         }
         debug_assert!(min_value & 1 == 1);
-        debug_assert!(min_value <= PUBLIC_EXPONENT_MAX_VALUE);
+        debug_assert!(min_value <= Self::MAX);
         if min_value < 3 {
             return Err(error::KeyRejected::invalid_component());
         }
@@ -694,26 +707,13 @@ impl PublicExponent {
         if value.get() < min_value {
             return Err(error::KeyRejected::too_small());
         }
-        if value.get() > PUBLIC_EXPONENT_MAX_VALUE {
+        if value.get() > Self::MAX {
             return Err(error::KeyRejected::too_large());
         }
 
         Ok(Self(value))
     }
 }
-
-// This limit was chosen to bound the performance of the simple
-// exponentiation-by-squaring implementation in `elem_exp_vartime`. In
-// particular, it helps mitigate theoretical resource exhaustion attacks. 33
-// bits was chosen as the limit based on the recommendations in [1] and
-// [2]. Windows CryptoAPI (at least older versions) doesn't support values
-// larger than 32 bits [3], so it is unlikely that exponents larger than 32
-// bits are being used for anything Windows commonly does.
-//
-// [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-// [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-// [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
 
 /// Calculates base**exponent (mod m).
 // TODO: The test coverage needs to be expanded, e.g. test with the largest
@@ -727,7 +727,7 @@ pub fn elem_exp_vartime<M>(
     // During RSA public key operations the exponent is almost always either
     // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
     // weight of 2. The maximum bit length and maximum hamming weight of the
-    // exponent is bounded by the value of `PUBLIC_EXPONENT_MAX_VALUE`.
+    // exponent is bounded by the value of `PublicExponent::MAX`.
     elem_exp_vartime_(base, exponent, &m.as_partial())
 }
 
