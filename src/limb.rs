@@ -18,7 +18,7 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::{c, error};
+use crate::{c, error, polyfill::ArrayFlatMap};
 
 #[cfg(feature = "alloc")]
 use crate::bits;
@@ -237,16 +237,19 @@ pub fn parse_big_endian_and_pad_consttime(
 }
 
 pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
-    let num_limbs = limbs.len();
-    let out_len = out.len();
-    assert_eq!(out_len, num_limbs * LIMB_BYTES);
-    for i in 0..num_limbs {
-        let mut limb = limbs[i];
-        for j in 0..LIMB_BYTES {
-            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] = (limb & 0xff) as u8;
-            limb >>= 8;
-        }
-    }
+    let be_bytes = be_bytes(limbs);
+    assert_eq!(out.len(), be_bytes.len());
+    out.iter_mut().zip(be_bytes).for_each(|(o, i)| {
+        *o = i;
+    });
+}
+
+/// Returns an iterator of the big-endian encoding of `limbs`.
+///
+/// The number of bytes returned will be a multiple of `LIMB_BYTES`.
+fn be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
+    // The unwrap is safe because a slice can never be larger than `usize` bytes.
+    ArrayFlatMap::new(limbs.iter().rev().copied(), Limb::to_be_bytes).unwrap()
 }
 
 #[cfg(feature = "alloc")]
