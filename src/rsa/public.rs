@@ -15,6 +15,7 @@
 //! Low-level RSA public key API.
 
 mod components;
+mod exponent;
 mod key;
 
-pub use {components::Components, key::Key};
+pub use {components::Components, exponent::Exponent, key::Key};

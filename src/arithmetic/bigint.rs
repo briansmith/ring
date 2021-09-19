@@ -343,7 +343,7 @@ impl<M> Modulus<M> {
         }
     }
 
-    fn as_partial(&self) -> PartialModulus<M> {
+    pub(crate) fn as_partial(&self) -> PartialModulus<M> {
         PartialModulus {
             limbs: &self.limbs,
             n0: self.n0.clone(),
@@ -352,7 +352,7 @@ impl<M> Modulus<M> {
     }
 }
 
-struct PartialModulus<'a, M> {
+pub(crate) struct PartialModulus<'a, M> {
     limbs: &'a [Limb],
     n0: N0,
     m: PhantomData<M>,
@@ -606,7 +606,7 @@ impl<M> One<M, RR> {
         // concerned about the performance of those.
         //
         // Then double `base` again so that base == 2*R (mod n), i.e. `2` in
-        // Montgomery form (`elem_exp_vartime_()` requires the base to be in
+        // Montgomery form (`elem_exp_vartime()` requires the base to be in
         // Montgomery form). Then compute
         // RR = R**2 == base**r == R**r == (2**r)**r (mod n).
         //
@@ -632,7 +632,7 @@ impl<M> One<M, RR> {
         for _ in 0..shifts {
             elem_mul_by_2(&mut base, m)
         }
-        let RR = elem_exp_vartime_(base, exponent, m);
+        let RR = elem_exp_vartime(base, exponent, m);
 
         Self(Elem {
             limbs: RR.limbs,
@@ -647,96 +647,6 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     }
 }
 
-/// A non-secret odd positive value in the range
-/// [3, PublicExponent::MAX].
-#[derive(Clone, Copy, Debug)]
-pub struct PublicExponent(NonZeroU64);
-
-impl PublicExponent {
-    #[cfg(test)]
-    const ALL_CONSTANTS: [Self; 3] = [Self::_3, Self::_65537, Self::MAX];
-
-    // TODO: Use `NonZeroU64::new(...).unwrap()` when `feature(const_panic)` is
-    // stable.
-    pub const _3: Self = Self(unsafe { NonZeroU64::new_unchecked(3) });
-    pub const _65537: Self = Self(unsafe { NonZeroU64::new_unchecked(65537) });
-
-    // This limit was chosen to bound the performance of the simple
-    // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
-    // particular, it helps mitigate theoretical resource exhaustion attacks. 33
-    // bits was chosen as the limit based on the recommendations in [1] and
-    // [2]. Windows CryptoAPI (at least older versions) doesn't support values
-    // larger than 32 bits [3], so it is unlikely that exponents larger than 32
-    // bits are being used for anything Windows commonly does.
-    //
-    // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-    // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-    // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-    //
-    // TODO: Use `NonZeroU64::new(...).unwrap()` when `feature(const_panic)` is
-    // stable.
-    const MAX: Self = Self(unsafe { NonZeroU64::new_unchecked((1u64 << 33) - 1) });
-
-    pub fn from_be_bytes(
-        input: untrusted::Input,
-        min_value: Self,
-    ) -> Result<Self, error::KeyRejected> {
-        if input.len() > 5 {
-            return Err(error::KeyRejected::too_large());
-        }
-        let value = input.read_all(error::KeyRejected::invalid_encoding(), |input| {
-            // The exponent can't be zero and it can't be prefixed with
-            // zero-valued bytes.
-            if input.peek(0) {
-                return Err(error::KeyRejected::invalid_encoding());
-            }
-            let mut value = 0u64;
-            loop {
-                let byte = input
-                    .read_byte()
-                    .map_err(|untrusted::EndOfInput| error::KeyRejected::invalid_encoding())?;
-                value = (value << 8) | u64::from(byte);
-                if input.at_end() {
-                    return Ok(value);
-                }
-            }
-        })?;
-
-        // Step 2 / Step b. NIST SP800-89 defers to FIPS 186-3, which requires
-        // `e >= 65537`. We enforce this when signing, but are more flexible in
-        // verification, for compatibility. Only small public exponents are
-        // supported.
-        let value = NonZeroU64::new(value).ok_or_else(error::KeyRejected::too_small)?;
-        if value < min_value.0 {
-            return Err(error::KeyRejected::too_small());
-        }
-        if value.get() & 1 != 1 {
-            return Err(error::KeyRejected::invalid_component());
-        }
-        if value > Self::MAX.0 {
-            return Err(error::KeyRejected::too_large());
-        }
-
-        Ok(Self(value))
-    }
-}
-
-/// Calculates base**exponent (mod m).
-// TODO: The test coverage needs to be expanded, e.g. test with the largest
-// accepted exponent and with the most common values of 65537 and 3.
-pub fn elem_exp_vartime<M>(
-    base: Elem<M, Unencoded>,
-    PublicExponent(exponent): PublicExponent,
-    m: &Modulus<M>,
-) -> Elem<M, R> {
-    let base = elem_mul(m.oneRR().as_ref(), base, m);
-    // During RSA public key operations the exponent is almost always either
-    // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
-    // weight of 2. The maximum bit length and maximum hamming weight of the
-    // exponent is bounded by the value of `PublicExponent::MAX`.
-    elem_exp_vartime_(base, exponent, &m.as_partial())
-}
-
 /// Calculates base**exponent (mod m).
 ///
 /// The run time  is a function of the number of limbs in `m` and the bit
@@ -744,7 +654,9 @@ pub fn elem_exp_vartime<M>(
 /// obvious but the bounds on `exponent` are less obvious. Callers should
 /// document the bounds they place on the maximum value and maximum Hamming
 /// weight of `exponent`.
-fn elem_exp_vartime_<M>(
+// TODO: The test coverage needs to be expanded, e.g. test with the largest
+// accepted exponent and with the most common values of 65537 and 3.
+pub(crate) fn elem_exp_vartime<M>(
     base: Elem<M, R>,
     exponent: NonZeroU64,
     m: &PartialModulus<M>,
@@ -1548,26 +1460,6 @@ mod tests {
         ))
         .unwrap();
         assert_eq!("Modulus", format!("{:?}", modulus));
-    }
-
-    #[test]
-    fn test_public_exponent_debug() {
-        let exponent = PublicExponent::from_be_bytes(
-            untrusted::Input::from(&[0x1, 0x00, 0x01]),
-            PublicExponent::_65537,
-        )
-        .unwrap();
-        assert_eq!("PublicExponent(65537)", format!("{:?}", exponent));
-    }
-
-    #[test]
-    fn test_public_exponent_constants() {
-        for value in PublicExponent::ALL_CONSTANTS.iter() {
-            let value: u64 = value.0.into();
-            assert_eq!(value & 1, 1);
-            assert!(value >= PublicExponent::_3.0.into()); // The absolute minimum.
-            assert!(value <= PublicExponent::MAX.0.into());
-        }
     }
 
     fn consume_elem<M>(
