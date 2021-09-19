@@ -664,7 +664,10 @@ impl PublicExponent {
     // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
     // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
     // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-    const MAX: u64 = (1u64 << 33) - 1;
+    //
+    // TODO: Use `NonZeroU64::new(...).unwrap()` when `feature(const_panic)` is
+    // stable.
+    const MAX: Self = Self(unsafe { NonZeroU64::new_unchecked((1u64 << 33) - 1) });
 
     pub fn from_be_bytes(
         input: untrusted::Input,
@@ -699,7 +702,7 @@ impl PublicExponent {
             return Err(error::KeyRejected::invalid_component());
         }
         debug_assert!(min_value & 1 == 1);
-        debug_assert!(min_value <= Self::MAX);
+        debug_assert!(min_value <= Self::MAX.0.get());
         if min_value < 3 {
             return Err(error::KeyRejected::invalid_component());
         }
@@ -707,7 +710,7 @@ impl PublicExponent {
         if value.get() < min_value {
             return Err(error::KeyRejected::too_small());
         }
-        if value.get() > Self::MAX {
+        if value > Self::MAX.0 {
             return Err(error::KeyRejected::too_large());
         }
 
