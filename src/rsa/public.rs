@@ -17,5 +17,6 @@
 mod components;
 mod exponent;
 mod key;
+mod modulus;
 
-pub use {components::Components, exponent::Exponent, key::Key};
+pub use {components::Components, exponent::Exponent, key::Key, modulus::Modulus};

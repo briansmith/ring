@@ -12,14 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::super::{public, N};
-use crate::{arithmetic::bigint, bits, error};
+use super::{Exponent, Modulus};
+use crate::{bits, error};
 
 #[derive(Debug)]
 pub struct Key {
-    pub(in crate::rsa) n: bigint::Modulus<N>,
-    pub(in crate::rsa) e: public::Exponent,
-    pub(in crate::rsa) n_bits: bits::BitLength,
+    n: Modulus,
+    e: Exponent,
 }
 
 impl Key {
@@ -28,7 +27,7 @@ impl Key {
         e: untrusted::Input,
         n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength,
-        e_min_value: public::Exponent,
+        e_min_value: Exponent,
     ) -> Result<Self, error::KeyRejected> {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
@@ -39,31 +38,11 @@ impl Key {
         // and one set lettered. TODO: Document this in the end-user
         // documentation for RSA keys.
 
-        // Step 3 / Step c for `n` (out of order).
-        let (n, n_bits) = bigint::Modulus::from_be_bytes_with_bit_length(n)?;
-
-        // `pkcs1_encode` depends on this not being small. Otherwise,
-        // `pkcs1_encode` would generate padding that is invalid (too few 0xFF
-        // bytes) for very small keys.
-        const N_MIN_BITS: bits::BitLength = bits::BitLength::from_usize_bits(1024);
-
-        // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
-        // the public modulus to be exactly 2048 or 3072 bits, but we are more
-        // flexible to be compatible with other commonly-used crypto libraries.
-        assert!(n_min_bits >= N_MIN_BITS);
-        let n_bits_rounded_up =
-            bits::BitLength::from_usize_bytes(n_bits.as_usize_bytes_rounded_up())
-                .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-        if n_bits_rounded_up < n_min_bits {
-            return Err(error::KeyRejected::too_small());
-        }
-        if n_bits > n_max_bits {
-            return Err(error::KeyRejected::too_large());
-        }
+        let n = Modulus::from_be_bytes(n, n_min_bits..=n_max_bits)?;
 
         // Step 2 / Step b.
         // Step 3 / Step c for `e`.
-        let e = public::Exponent::from_be_bytes(e, e_min_value)?;
+        let e = Exponent::from_be_bytes(e, e_min_value)?;
 
         // If `n` is less than `e` then somebody has probably accidentally swapped
         // them. The largest acceptable `e` is smaller than the smallest acceptable
@@ -72,6 +51,14 @@ impl Key {
         // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
         // case in most other commonly-used crypto libraries.
 
-        Ok(Self { n, e, n_bits })
+        Ok(Self { n, e })
+    }
+
+    pub fn n(&self) -> &Modulus {
+        &self.n
+    }
+
+    pub fn e(&self) -> Exponent {
+        self.e
     }
 }

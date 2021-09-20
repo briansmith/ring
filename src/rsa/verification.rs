@@ -204,7 +204,7 @@ pub(crate) fn verify_rsa_(
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let public::Key { n, e, n_bits } = public::Key::from_modulus_and_exponent(
+    let key = public::Key::from_modulus_and_exponent(
         n,
         e,
         params.min_bits,
@@ -212,30 +212,33 @@ pub(crate) fn verify_rsa_(
         public::Exponent::_3,
     )?;
 
+    let n = key.n();
+    let e = key.e();
+
     // The signature must be the same length as the modulus, in bytes.
-    if signature.len() != n_bits.as_usize_bytes_rounded_up() {
+    if signature.len() != n.len_bits().as_usize_bytes_rounded_up() {
         return Err(error::Unspecified);
     }
 
     // RFC 8017 Section 5.2.2: RSAVP1.
 
     // Step 1.
-    let s = bigint::Elem::from_be_bytes_padded(signature, &n)?;
+    let s = bigint::Elem::from_be_bytes_padded(signature, n.value())?;
     if s.is_zero() {
         return Err(error::Unspecified);
     }
 
     // Step 2.
-    let m = super::elem_exp_vartime(s, e, &n);
+    let m = super::elem_exp_vartime(s, e, n.value());
 
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
-    let decoded = fill_be_bytes_n(m, n_bits, &mut decoded);
+    let decoded = fill_be_bytes_n(m, n.len_bits(), &mut decoded);
 
     // Verify the padded message is correct.
     let m_hash = digest::digest(params.padding_alg.digest_alg(), msg.as_slice_less_safe());
     untrusted::Input::from(decoded).read_all(error::Unspecified, |m| {
-        params.padding_alg.verify(&m_hash, m, n_bits)
+        params.padding_alg.verify(&m_hash, m, n.len_bits())
     })
 }
 
