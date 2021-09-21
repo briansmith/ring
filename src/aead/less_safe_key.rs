@@ -62,7 +62,8 @@ impl LessSafeKey {
         open_within_(self, nonce, aad, tag, in_out, ciphertext)
     }
 
-    /// Like [`OpeningKey::open_in_place()`], except it accepts an arbitrary nonce.
+    /// Like [`super::OpeningKey::open_in_place()`], except it accepts an
+    /// arbitrary nonce.
     ///
     /// `nonce` must be unique for every use of the key to open data.
     #[inline]
@@ -78,7 +79,8 @@ impl LessSafeKey {
         self.open_within(nonce, aad, in_out, 0..)
     }
 
-    /// Like [`OpeningKey::open_within()`], except it accepts an arbitrary nonce.
+    /// Like [`super::OpeningKey::open_within()`], except it accepts an
+    /// arbitrary nonce.
     ///
     /// `nonce` must be unique for every use of the key to open data.
     #[inline]
@@ -105,8 +107,8 @@ impl LessSafeKey {
         self.open_in_place_separate_tag(nonce, aad, received_tag, in_out, ciphertext)
     }
 
-    /// Like [`SealingKey::seal_in_place_append_tag()`], except it accepts an
-    /// arbitrary nonce.
+    /// Like [`super::SealingKey::seal_in_place_append_tag()`], except it
+    /// accepts an arbitrary nonce.
     ///
     /// `nonce` must be unique for every use of the key to seal data.
     #[inline]
@@ -124,8 +126,8 @@ impl LessSafeKey {
             .map(|tag| in_out.extend(tag.as_ref()))
     }
 
-    /// Like `SealingKey::seal_in_place_separate_tag()`, except it accepts an
-    /// arbitrary nonce.
+    /// Like `super::SealingKey::seal_in_place_separate_tag()`, except it
+    /// accepts an arbitrary nonce.
     ///
     /// `nonce` must be unique for every use of the key to seal data.
     #[inline]
