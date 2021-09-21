@@ -131,8 +131,11 @@ err:
   return ret;
 }
 
-int pkcs7_bundle(CBB *out, int (*cb)(CBB *out, const void *arg),
-                 const void *arg) {
+int pkcs7_add_signed_data(CBB *out,
+                          int (*digest_algos_cb)(CBB *out, const void *arg),
+                          int (*cert_crl_cb)(CBB *out, const void *arg),
+                          int (*signer_infos_cb)(CBB *out, const void *arg),
+                          const void *arg) {
   CBB outer_seq, oid, wrapped_seq, seq, version_bytes, digest_algos_set,
       content_info, signer_infos;
 
@@ -147,11 +150,13 @@ int pkcs7_bundle(CBB *out, int (*cb)(CBB *out, const void *arg),
       !CBB_add_asn1(&seq, &version_bytes, CBS_ASN1_INTEGER) ||
       !CBB_add_u8(&version_bytes, 1) ||
       !CBB_add_asn1(&seq, &digest_algos_set, CBS_ASN1_SET) ||
+      (digest_algos_cb != NULL && !digest_algos_cb(&digest_algos_set, arg)) ||
       !CBB_add_asn1(&seq, &content_info, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&content_info, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, kPKCS7Data, sizeof(kPKCS7Data)) ||
-      !cb(&seq, arg) ||
-      !CBB_add_asn1(&seq, &signer_infos, CBS_ASN1_SET)) {
+      (cert_crl_cb != NULL && !cert_crl_cb(&seq, arg)) ||
+      !CBB_add_asn1(&seq, &signer_infos, CBS_ASN1_SET) ||
+      (signer_infos_cb != NULL && !signer_infos_cb(&signer_infos, arg))) {
     return 0;
   }
 

@@ -200,15 +200,22 @@ OPENSSL_EXPORT int PKCS7_type_is_signedAndEnveloped(const PKCS7 *p7);
 #define PKCS7_STREAM 0x1000
 #define PKCS7_PARTIAL 0x4000
 
-// PKCS7_sign assembles |certs| into a PKCS#7 signed data ContentInfo with
+// PKCS7_sign can operate in two modes to provide some backwards compatibility:
+//
+// The first mode assembles |certs| into a PKCS#7 signed data ContentInfo with
 // external data and no signatures. It returns a newly-allocated |PKCS7| on
 // success or NULL on error. |sign_cert| and |pkey| must be NULL. |data| is
-// ignored. |flags| must be equal to |PKCS7_DETACHED|.
-//
-// Note this function only implements a subset of the corresponding OpenSSL
-// function. It is provided for backwards compatibility only. Additionally,
+// ignored. |flags| must be equal to |PKCS7_DETACHED|. Additionally,
 // certificates in SignedData structures are unordered. The order of |certs|
 // will not be preserved.
+//
+// The second mode generates a detached RSA SHA-256 signature of |data| using
+// |pkey| and produces a PKCS#7 SignedData structure containing it. |certs|
+// must be NULL and |flags| must be exactly |PKCS7_NOATTR | PKCS7_BINARY |
+// PKCS7_NOCERTS | PKCS7_DETACHED|.
+//
+// Note this function only implements a subset of the corresponding OpenSSL
+// function. It is provided for backwards compatibility only.
 OPENSSL_EXPORT PKCS7 *PKCS7_sign(X509 *sign_cert, EVP_PKEY *pkey,
                                  STACK_OF(X509) *certs, BIO *data, int flags);
 
