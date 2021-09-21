@@ -82,7 +82,7 @@ fn test_signature_rsa_pkcs1_sign() {
 
             // XXX: This test is too slow on Android ARM Travis CI builds.
             // TODO: re-enable these tests on Android ARM.
-            let mut actual = vec![0u8; key_pair.public_modulus_len()];
+            let mut actual = vec![test::UNINITIALIZED_U8; key_pair.public_modulus_len()];
             key_pair
                 .sign(alg, &rng, &msg, actual.as_mut_slice())
                 .unwrap();
@@ -121,7 +121,7 @@ fn test_signature_rsa_pss_sign() {
 
             let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
-            let mut actual = vec![0u8; key_pair.public_modulus_len()];
+            let mut actual = vec![test::UNINITIALIZED_U8; key_pair.public_modulus_len()];
             key_pair.sign(alg, &rng, &msg, actual.as_mut_slice())?;
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())

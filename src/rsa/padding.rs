@@ -591,7 +591,7 @@ mod test {
 
                 let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
-                let mut m_out = vec![0u8; bit_len.as_usize_bytes_rounded_up()];
+                let mut m_out = vec![test::UNINITIALIZED_U8; bit_len.as_usize_bytes_rounded_up()];
                 let digest = digest::digest(alg.digest_alg(), &msg);
                 alg.encode(&digest, &mut m_out, bit_len, &rng).unwrap();
                 assert_eq!(m_out, encoded);
