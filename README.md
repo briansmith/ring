@@ -155,7 +155,7 @@ time the rate of change in the API will probably slow to the point where it
 will be stable in practice.
 
 We don't have release notes. Instead, we try to clearly document each change
-in each commit. Read the the commit message, the tests, and the patch itself
+in each commit. Read the commit message, the tests, and the patch itself
 for each change. If anything is still unclear, let us know by submitting a pull
 request or by filing an issue in the issue tracker so that we can improve
 things.
