@@ -40,8 +40,6 @@ impl Key {
 
         let n = Modulus::from_be_bytes(n, n_min_bits..=n_max_bits)?;
 
-        // Step 2 / Step b.
-        // Step 3 / Step c for `e`.
         let e = Exponent::from_be_bytes(e, e_min_value)?;
 
         // If `n` is less than `e` then somebody has probably accidentally swapped
