@@ -34,6 +34,9 @@ impl Exponent {
         input: untrusted::Input,
         min_value: Self,
     ) -> Result<Self, error::KeyRejected> {
+        // See `public::Key::from_modulus_and_exponent` for background on the step
+        // numbering.
+
         if input.len() > 5 {
             return Err(error::KeyRejected::too_large());
         }
@@ -63,11 +66,13 @@ impl Exponent {
         if value < min_value.0 {
             return Err(error::KeyRejected::too_small());
         }
-        if value.get() & 1 != 1 {
-            return Err(error::KeyRejected::invalid_component());
-        }
         if value > Self::MAX.0 {
             return Err(error::KeyRejected::too_large());
+        }
+
+        // Step 3 / Step c.
+        if value.get() & 1 != 1 {
+            return Err(error::KeyRejected::invalid_component());
         }
 
         Ok(Self(value))
