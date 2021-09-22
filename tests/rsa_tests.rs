@@ -129,6 +129,39 @@ fn test_signature_rsa_pss_sign() {
     );
 }
 
+// `KeyPair::sign` requires that the output buffer is the same length as
+// the public key modulus. Test what happens when it isn't the same length.
+#[test]
+fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
+    // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
+    // SHA256 digest algorithm.
+    const MESSAGE: &[u8] = b"hello, world";
+    let rng = rand::SystemRandom::new();
+
+    const PRIVATE_KEY_DER: &[u8] =
+        include_bytes!("../src/rsa/signature_rsa_example_private_key.der");
+    let key_pair = signature::RsaKeyPair::from_der(PRIVATE_KEY_DER).unwrap();
+
+    // The output buffer is one byte too short.
+    let mut signature = vec![0; key_pair.public_modulus_len() - 1];
+
+    assert!(key_pair
+        .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
+        .is_err());
+
+    // The output buffer is the right length.
+    signature.push(0);
+    assert!(key_pair
+        .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
+        .is_ok());
+
+    // The output buffer is one byte too long.
+    signature.push(0);
+    assert!(key_pair
+        .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
+        .is_err());
+}
+
 #[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pkcs1_verify() {
