@@ -11,8 +11,8 @@ impl Exponent {
 
     // TODO: Use `NonZeroU64::new(...).unwrap()` when `feature(const_panic)` is
     // stable.
-    pub(in crate::rsa) const _3: Self = Self(unsafe { NonZeroU64::new_unchecked(3) });
-    pub(in crate::rsa) const _65537: Self = Self(unsafe { NonZeroU64::new_unchecked(65537) });
+    pub(in super::super) const _3: Self = Self(unsafe { NonZeroU64::new_unchecked(3) });
+    pub(in super::super) const _65537: Self = Self(unsafe { NonZeroU64::new_unchecked(65537) });
 
     // This limit was chosen to bound the performance of the simple
     // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
