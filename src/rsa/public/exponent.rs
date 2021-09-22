@@ -1,7 +1,7 @@
 use crate::error;
 use core::num::NonZeroU64;
 
-/// The exponent `e` of the RSA public key.
+/// The exponent `e` of an RSA public key.
 #[derive(Clone, Copy, Debug)]
 pub struct Exponent(NonZeroU64);
 
@@ -30,7 +30,7 @@ impl Exponent {
     // stable.
     const MAX: Self = Self(unsafe { NonZeroU64::new_unchecked((1u64 << 33) - 1) });
 
-    pub fn from_be_bytes(
+    pub(super) fn from_be_bytes(
         input: untrusted::Input,
         min_value: Self,
     ) -> Result<Self, error::KeyRejected> {

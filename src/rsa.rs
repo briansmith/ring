@@ -17,7 +17,7 @@
 // naming conventions. Also the standard camelCase names are used for `KeyPair`
 // components.
 
-//! Low-level RSA primitives.
+//! RSA.
 
 use crate::{
     arithmetic::bigint,

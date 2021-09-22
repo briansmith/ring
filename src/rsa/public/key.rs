@@ -15,6 +15,7 @@
 use super::{Exponent, Modulus};
 use crate::{bits, error};
 
+/// An RSA Public Key.
 #[derive(Debug)]
 pub struct Key {
     n: Modulus,
@@ -22,7 +23,7 @@ pub struct Key {
 }
 
 impl Key {
-    pub fn from_modulus_and_exponent(
+    pub(in super::super) fn from_modulus_and_exponent(
         n: untrusted::Input,
         e: untrusted::Input,
         n_min_bits: bits::BitLength,
@@ -52,10 +53,14 @@ impl Key {
         Ok(Self { n, e })
     }
 
+    /// The public modulus.
+    #[inline]
     pub fn n(&self) -> &Modulus {
         &self.n
     }
 
+    /// The public exponent.
+    #[inline]
     pub fn e(&self) -> Exponent {
         self.e
     }
