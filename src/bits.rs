@@ -12,19 +12,28 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//! Bit lengths.
+
 use crate::error;
 
+/// The length of something, in bits.
+///
+/// This can represent a bit length that isn't a whole number of bytes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
 pub struct BitLength(usize);
 
 // Lengths measured in bits, where all arithmetic is guaranteed not to
 // overflow.
 impl BitLength {
+    /// Constructs a `BitLength` from the given length in bits.
     #[inline]
     pub const fn from_usize_bits(bits: usize) -> Self {
         Self(bits)
     }
 
+    /// Constructs a `BitLength` from the given length in bytes.
+    ///
+    /// Fails if `bytes * 8` is too large for a `usize`.
     #[inline]
     pub fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
         let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
@@ -33,16 +42,18 @@ impl BitLength {
 
     #[cfg(feature = "alloc")]
     #[inline]
-    pub fn half_rounded_up(&self) -> Self {
+    pub(crate) fn half_rounded_up(&self) -> Self {
         let round_up = self.0 & 1;
         Self((self.0 / 2) + round_up)
     }
 
+    /// The number of bits this bit length represents, as a `usize`.
     #[inline]
     pub fn as_usize_bits(&self) -> usize {
         self.0
     }
 
+    /// The bit length, rounded up to a whole number of bytes.
     #[cfg(feature = "alloc")]
     #[inline]
     pub fn as_usize_bytes_rounded_up(&self) -> usize {
@@ -57,7 +68,7 @@ impl BitLength {
 
     #[cfg(feature = "alloc")]
     #[inline]
-    pub fn try_sub_1(self) -> Result<Self, error::Unspecified> {
+    pub(crate) fn try_sub_1(self) -> Result<Self, error::Unspecified> {
         let sum = self.0.checked_sub(1).ok_or(error::Unspecified)?;
         Ok(Self(sum))
     }
