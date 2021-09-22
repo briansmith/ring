@@ -13,7 +13,7 @@ impl core::fmt::Debug for Modulus {
 }
 
 impl Modulus {
-    pub(in crate::rsa) fn from_be_bytes(
+    pub(super) fn from_be_bytes(
         n: untrusted::Input,
         allowed_bit_lengths: RangeInclusive<bits::BitLength>,
     ) -> Result<Self, error::KeyRejected> {
@@ -52,7 +52,7 @@ impl Modulus {
         self.bits
     }
 
-    pub(in crate::rsa) fn value(&self) -> &bigint::Modulus<N> {
+    pub(in super::super) fn value(&self) -> &bigint::Modulus<N> {
         &self.value
     }
 }
