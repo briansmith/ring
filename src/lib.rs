@@ -85,7 +85,7 @@ mod polyfill;
 pub mod aead;
 pub mod agreement;
 
-mod bits;
+pub mod bits;
 
 pub(crate) mod c;
 pub mod constant_time;
