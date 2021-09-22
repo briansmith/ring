@@ -48,8 +48,9 @@ impl Modulus {
         Ok(Self { value, bits })
     }
 
+    /// The length of the modulus in bits.
     #[inline]
-    pub(crate) fn len_bits(&self) -> bits::BitLength {
+    pub fn len_bits(&self) -> bits::BitLength {
         self.bits
     }
 
