@@ -373,14 +373,18 @@ impl RsaKeyPair {
         })
     }
 
+    /// Returns a reference to the public key.
+    pub fn public(&self) -> &public::Key {
+        &self.public
+    }
+
     /// Returns the length in bytes of the key pair's public modulus.
     ///
     /// A signature has the same length as the public modulus.
+    #[deprecated = "Use `public().n().len_bits().as_usize_bits()`"]
+    #[inline]
     pub fn public_modulus_len(&self) -> usize {
-        self.public_key
-            .modulus()
-            .big_endian_without_leading_zero()
-            .len()
+        self.public().n().len_bits().as_usize_bits()
     }
 }
 

@@ -82,7 +82,8 @@ fn test_signature_rsa_pkcs1_sign() {
 
             // XXX: This test is too slow on Android ARM Travis CI builds.
             // TODO: re-enable these tests on Android ARM.
-            let mut actual = vec![0u8; key_pair.public_modulus_len()];
+            let mut actual =
+                vec![0u8; key_pair.public().n().len_bits().as_usize_bytes_rounded_up()];
             key_pair
                 .sign(alg, &rng, &msg, actual.as_mut_slice())
                 .unwrap();
@@ -121,7 +122,8 @@ fn test_signature_rsa_pss_sign() {
 
             let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
-            let mut actual = vec![0u8; key_pair.public_modulus_len()];
+            let mut actual =
+                vec![0u8; key_pair.public().n().len_bits().as_usize_bytes_rounded_up()];
             key_pair.sign(alg, &rng, &msg, actual.as_mut_slice())?;
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
@@ -143,7 +145,7 @@ fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
     let key_pair = signature::RsaKeyPair::from_der(PRIVATE_KEY_DER).unwrap();
 
     // The output buffer is one byte too short.
-    let mut signature = vec![0; key_pair.public_modulus_len() - 1];
+    let mut signature = vec![0; key_pair.public().n().len_bits().as_usize_bytes_rounded_up() - 1];
 
     assert!(key_pair
         .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
