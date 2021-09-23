@@ -9,14 +9,15 @@ use core::iter::FlatMap;
 /// length of the flat-mapped result is `inner_len * LEN`. (The constructor
 /// verifies that this multiplication doesn't overflow `usize`.)
 pub struct ArrayFlatMap<I, Item, F, const LEN: usize> {
-    inner: FlatMap<I, [Item; LEN], F>,
+    // TODO(rust 1.53.0): `FlatMap<I, [Item; LEN], F>`
+    inner: FlatMap<I, core::array::IntoIter<Item, LEN>, F>,
     remaining: usize,
 }
 
 impl<I, Item, F, const LEN: usize> ArrayFlatMap<I, Item, F, LEN>
 where
     I: ExactSizeIterator,
-    F: FnMut(I::Item) -> [Item; LEN],
+    F: FnMut(I::Item) -> core::array::IntoIter<Item, LEN>,
 {
     /// Constructs an `ArrayFlatMap` wrapping the given iterator, using the
     /// given function
@@ -30,8 +31,8 @@ where
 impl<I, Item, F, const LEN: usize> Clone for ArrayFlatMap<I, Item, F, LEN>
 where
     I: Iterator,
-    F: FnMut(I::Item) -> [Item; LEN],
-    FlatMap<I, [Item; LEN], F>: Clone,
+    F: FnMut(I::Item) -> core::array::IntoIter<Item, LEN>,
+    FlatMap<I, core::array::IntoIter<Item, LEN>, F>: Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -44,7 +45,7 @@ where
 impl<I, Item, F, const LEN: usize> Iterator for ArrayFlatMap<I, Item, F, LEN>
 where
     I: Iterator,
-    F: FnMut(I::Item) -> [Item; LEN],
+    F: FnMut(I::Item) -> core::array::IntoIter<Item, LEN>,
 {
     type Item = Item;
 
@@ -65,7 +66,7 @@ where
 impl<I, Item, F, const LEN: usize> ExactSizeIterator for ArrayFlatMap<I, Item, F, LEN>
 where
     I: Iterator,
-    F: FnMut(I::Item) -> [Item; LEN],
+    F: FnMut(I::Item) -> core::array::IntoIter<Item, LEN>,
 {
 }
 
@@ -93,7 +94,10 @@ mod tests {
             ),
         ];
         TEST_CASES.iter().copied().for_each(|(input, f, expected)| {
-            let mut mapped = ArrayFlatMap::new(input.iter().copied(), f).unwrap();
+            let mut mapped = ArrayFlatMap::new(input.iter().copied(), |input| {
+                core::array::IntoIter::new(f(input))
+            })
+            .unwrap();
             assert_eq!(&mapped.clone().collect::<Vec<_>>(), expected);
             for i in 0..expected.len() {
                 let len = mapped.len();
@@ -138,7 +142,9 @@ mod tests {
             let inner = DownwardCounter {
                 remaining: input_len,
             };
-            let mapped = ArrayFlatMap::new(inner, usize::to_be_bytes);
+            let mapped = ArrayFlatMap::new(inner, |input| {
+                core::array::IntoIter::new(usize::to_be_bytes(input))
+            });
             assert_eq!(mapped.is_some(), is_some);
             if let Some(mapped) = mapped {
                 assert_eq!(mapped.len(), input_len * core::mem::size_of::<usize>());
