@@ -46,7 +46,8 @@ impl RsaKeyPair {
     /// Only two-prime (not multi-prime) keys are supported. The public modulus
     /// (n) must be at least 2047 bits. The public modulus must be no larger
     /// than 4096 bits. It is recommended that the public modulus be exactly
-    /// 2048 or 3072 bits. The public exponent must be at least 65537.
+    /// 2048 or 3072 bits. The public exponent must be at least 65537 and must
+    /// be no more than 33 bits long.
     ///
     /// This will generate a 2048-bit RSA private key of the correct form using
     /// OpenSSL's command line tool:
@@ -122,9 +123,6 @@ impl RsaKeyPair {
     ///     instead). However, *ring*'s checks would not be sufficient for
     ///     validating a key pair for use by some other system; that other
     ///     system must check the value of `d` itself if `d` is to be used.
-    ///
-    /// In addition to the NIST requirements, *ring* requires that `p > q` and
-    /// that `e` must be no more than 33 bits.
     ///
     /// See [RFC 5958] and [RFC 3447 Appendix A.1.2] for more details of the
     /// encoding of the key.
