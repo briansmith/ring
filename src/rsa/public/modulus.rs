@@ -2,6 +2,7 @@ use crate::{arithmetic::bigint, bits, error, rsa::N};
 use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
+#[derive(Clone)]
 pub struct Modulus {
     value: bigint::Modulus<N>,
     bits: bits::BitLength,

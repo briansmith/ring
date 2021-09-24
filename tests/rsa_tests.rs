@@ -16,7 +16,7 @@
 use ring::{
     error,
     io::der,
-    rand,
+    rand, rsa,
     signature::{self, KeyPair},
     test, test_file,
 };
@@ -316,7 +316,7 @@ fn test_signature_rsa_primitive_verification() {
 
 #[cfg(feature = "alloc")]
 #[test]
-fn rsa_test_public_key_coverage() {
+fn rsa_test_keypair_coverage() {
     const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
     const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
     const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
@@ -326,22 +326,9 @@ fn rsa_test_public_key_coverage() {
     // Test `AsRef<[u8]>`
     assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
 
-    // Test `Clone`.
-    let _ = key_pair.public_key().clone();
-
-    // Test modulus encoding.
-    const PUBLIC_KEY_MODULUS_BE_BYTES: &[u8] = include_bytes!("rsa_test_public_modulus.bin");
-    assert_eq!(
-        PUBLIC_KEY_MODULUS_BE_BYTES,
-        key_pair.public().n().be_bytes().collect::<Vec<_>>()
-    );
-
-    // Test exponent encoding.
-    const _65537: &[u8] = &[0x01, 0x00, 0x01];
-    assert_eq!(
-        _65537,
-        &key_pair.public().e().be_bytes().collect::<Vec<_>>()
-    );
+    test_public_key_coverage(key_pair.public());
+    // Test clones.
+    test_public_key_coverage(&key_pair.public().clone());
 
     // Test `Debug`
     assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));
@@ -349,4 +336,17 @@ fn rsa_test_public_key_coverage() {
         format!("RsaKeyPair {{ public_key: {:?} }}", key_pair.public_key()),
         format!("{:?}", key_pair)
     );
+}
+
+fn test_public_key_coverage(key: &rsa::public::Key) {
+    // Test modulus encoding.
+    const PUBLIC_KEY_MODULUS_BE_BYTES: &[u8] = include_bytes!("rsa_test_public_modulus.bin");
+    assert_eq!(
+        PUBLIC_KEY_MODULUS_BE_BYTES,
+        key.n().be_bytes().collect::<Vec<_>>()
+    );
+
+    // Test exponent encoding.
+    const _65537: &[u8] = &[0x01, 0x00, 0x01];
+    assert_eq!(_65537, &key.e().be_bytes().collect::<Vec<_>>());
 }
