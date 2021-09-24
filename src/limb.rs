@@ -237,7 +237,7 @@ pub fn parse_big_endian_and_pad_consttime(
 }
 
 pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
-    let be_bytes = be_bytes(limbs);
+    let be_bytes = unstripped_be_bytes(limbs);
     assert_eq!(out.len(), be_bytes.len());
     out.iter_mut().zip(be_bytes).for_each(|(o, i)| {
         *o = i;
@@ -246,8 +246,9 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
 
 /// Returns an iterator of the big-endian encoding of `limbs`.
 ///
-/// The number of bytes returned will be a multiple of `LIMB_BYTES`.
-fn be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
+/// The number of bytes returned will be a multiple of `LIMB_BYTES`
+/// and thus may be padded with leading zeros.
+pub fn unstripped_be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
     // The unwrap is safe because a slice can never be larger than `usize` bytes.
     ArrayFlatMap::new(limbs.iter().rev().copied(), |limb| {
         core::array::IntoIter::new(Limb::to_be_bytes(limb))
