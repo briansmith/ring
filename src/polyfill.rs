@@ -29,5 +29,11 @@ mod chunks_fixed;
 
 mod array_flat_map;
 pub(crate) mod array_map;
+mod leading_zeros_skipped;
 
-pub use self::{array_flat_map::ArrayFlatMap, chunks_fixed::*};
+#[cfg(test)]
+mod test;
+
+pub use self::{
+    array_flat_map::ArrayFlatMap, chunks_fixed::*, leading_zeros_skipped::LeadingZerosStripped,
+};
