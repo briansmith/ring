@@ -223,6 +223,16 @@ pub struct Modulus<M> {
     oneRR: One<M, RR>,
 }
 
+impl<M: PublicModulus> Clone for Modulus<M> {
+    fn clone(&self) -> Self {
+        Self {
+            limbs: self.limbs.clone(),
+            n0: self.n0.clone(),
+            oneRR: self.oneRR.clone(),
+        }
+    }
+}
+
 impl<M: PublicModulus> core::fmt::Debug for Modulus<M> {
     fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
         fmt.debug_struct("Modulus")
@@ -650,6 +660,12 @@ impl<M> One<M, RR> {
 impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     fn as_ref(&self) -> &Elem<M, E> {
         &self.0
+    }
+}
+
+impl<M: PublicModulus, E> Clone for One<M, E> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 

@@ -16,7 +16,7 @@ use super::{Exponent, Modulus};
 use crate::{bits, error};
 
 /// An RSA Public Key.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Key {
     n: Modulus,
     e: Exponent,
