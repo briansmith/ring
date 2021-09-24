@@ -130,6 +130,7 @@ include = [
     "tests/ed25519_test_public_key.der",
     "tests/rsa_test_private_key_2048.p8",
     "tests/rsa_test_public_key_2048.der",
+    "tests/rsa_test_public_modulus.bin",
     "third_party/fiat/curve25519_32.h",
     "third_party/fiat/curve25519_64.h",
     "third_party/fiat/p256_32.h",
