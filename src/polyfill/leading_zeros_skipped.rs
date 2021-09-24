@@ -72,7 +72,7 @@ mod tests {
         ];
         TEST_CASES.iter().copied().for_each(|(input, expected)| {
             let stripped = LeadingZerosStripped::new(input.iter().copied());
-            super::super::test::assert_exact_size_iterator(stripped, expected);
+            super::super::test::assert_iterator(stripped, expected);
         });
     }
 }

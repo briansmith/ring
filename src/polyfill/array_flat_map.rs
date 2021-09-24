@@ -97,7 +97,7 @@ mod tests {
                 core::array::IntoIter::new(f(input))
             })
             .unwrap();
-            super::super::test::assert_exact_size_iterator(mapped, expected);
+            super::super::test::assert_iterator(mapped, expected);
         });
     }
 
