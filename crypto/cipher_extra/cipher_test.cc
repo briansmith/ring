@@ -524,3 +524,22 @@ TEST(CipherTest, SHA1WithSecretSuffix) {
     }
   }
 }
+
+TEST(CipherTest, GetCipher) {
+  const EVP_CIPHER *cipher = EVP_get_cipherbynid(NID_aes_128_gcm);
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_aes_128_gcm, EVP_CIPHER_nid(cipher));
+
+  cipher = EVP_get_cipherbyname("aes-128-gcm");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_aes_128_gcm, EVP_CIPHER_nid(cipher));
+
+  cipher = EVP_get_cipherbyname("AES-128-GCM");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_aes_128_gcm, EVP_CIPHER_nid(cipher));
+
+  // We support a tcpdump-specific alias for 3DES.
+  cipher = EVP_get_cipherbyname("3des");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_des_ede3_cbc, EVP_CIPHER_nid(cipher));
+}
