@@ -329,13 +329,18 @@ fn rsa_test_public_key_coverage() {
     // Test `Clone`.
     let _ = key_pair.public_key().clone();
 
-    // Test `exponent()`.
+    // Test modulus encoding.
+    const PUBLIC_KEY_MODULUS_BE_BYTES: &[u8] = include_bytes!("rsa_test_public_modulus.bin");
     assert_eq!(
-        &[0x01, 0x00, 0x01],
-        key_pair
-            .public_key()
-            .exponent()
-            .big_endian_without_leading_zero()
+        PUBLIC_KEY_MODULUS_BE_BYTES,
+        key_pair.public().n().be_bytes().collect::<Vec<_>>()
+    );
+
+    // Test exponent encoding.
+    const _65537: &[u8] = &[0x01, 0x00, 0x01];
+    assert_eq!(
+        _65537,
+        &key_pair.public().e().be_bytes().collect::<Vec<_>>()
     );
 
     // Test `Debug`

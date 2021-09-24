@@ -48,6 +48,14 @@ impl Modulus {
         Ok(Self { value, bits })
     }
 
+    /// The big-endian encoding of the modulus.
+    ///
+    /// There are no leading zeros.
+    #[inline]
+    pub fn be_bytes(&self) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
+        self.value.be_bytes()
+    }
+
     /// The length of the modulus in bits.
     #[inline]
     pub fn len_bits(&self) -> bits::BitLength {

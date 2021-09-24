@@ -484,22 +484,6 @@ impl RsaSubjectPublicKey {
         });
         Ok(Self(bytes))
     }
-
-    /// The public modulus (n).
-    pub fn modulus(&self) -> io::Positive {
-        // Parsing won't fail because we serialized it ourselves.
-        let (public_key, _exponent) =
-            super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
-        public_key
-    }
-
-    /// The public exponent (e).
-    pub fn exponent(&self) -> io::Positive {
-        // Parsing won't fail because we serialized it ourselves.
-        let (_public_key, exponent) =
-            super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
-        exponent
-    }
 }
 
 struct PrivatePrime<M: Prime> {

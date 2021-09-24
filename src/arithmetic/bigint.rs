@@ -40,7 +40,7 @@ use crate::{
     arithmetic::montgomery::*,
     bits, bssl, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
-    polyfill::u64_from_usize,
+    polyfill::{u64_from_usize, LeadingZerosStripped},
 };
 use alloc::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use core::{
@@ -349,6 +349,12 @@ impl<M> Modulus<M> {
             n0: self.n0.clone(),
             m: PhantomData,
         }
+    }
+}
+
+impl<M: PublicModulus> Modulus<M> {
+    pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + '_> {
+        LeadingZerosStripped::new(limb::unstripped_be_bytes(&self.limbs))
     }
 }
 
