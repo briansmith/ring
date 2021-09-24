@@ -13,14 +13,21 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Exponent, Modulus};
-use crate::{bits, error};
+use crate::{
+    bits, error,
+    io::{self, der, der_writer},
+};
+use alloc::boxed::Box;
 
 /// An RSA Public Key.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Key {
     n: Modulus,
     e: Exponent,
+    serialized: Box<[u8]>,
 }
+
+derive_debug_self_as_ref_hex_bytes!(Key);
 
 impl Key {
     pub(in super::super) fn from_modulus_and_exponent(
@@ -30,6 +37,9 @@ impl Key {
         n_max_bits: bits::BitLength,
         e_min_value: Exponent,
     ) -> Result<Self, error::KeyRejected> {
+        let n_bytes = n;
+        let e_bytes = e;
+
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
         // to NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key
@@ -50,7 +60,19 @@ impl Key {
         // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
         // case in most other commonly-used crypto libraries.
 
-        Ok(Self { n, e })
+        // TODO: Remove this re-parsing, and stop allocating this here.
+        // Instead we should serialize on demand without allocation, from
+        // `Modulus::be_bytes()` and `Exponent::be_bytes()`.
+        let n_bytes = io::Positive::from_be_bytes(n_bytes)
+            .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
+        let e_bytes = io::Positive::from_be_bytes(e_bytes)
+            .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
+        let serialized = der_writer::write_all(der::Tag::Sequence, &|output| {
+            der_writer::write_positive_integer(output, &n_bytes);
+            der_writer::write_positive_integer(output, &e_bytes);
+        });
+
+        Ok(Self { n, e, serialized })
     }
 
     /// The public modulus.
@@ -63,5 +85,12 @@ impl Key {
     #[inline]
     pub fn e(&self) -> Exponent {
         self.e
+    }
+}
+
+// XXX: Refactor `signature::KeyPair` to get rid of this.
+impl AsRef<[u8]> for Key {
+    fn as_ref(&self) -> &[u8] {
+        &self.serialized
     }
 }

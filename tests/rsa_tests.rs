@@ -318,27 +318,33 @@ fn test_signature_rsa_primitive_verification() {
 #[test]
 fn rsa_test_keypair_coverage() {
     const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
-    const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
-    const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
 
     let key_pair = signature::RsaKeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
-    // Test `AsRef<[u8]>`
-    assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
+    // Test that `signature::KeyPair::PublicKey` is `rsa::public::Key`; if it
+    // were a separate type then it would need to be tested separately.
+    let _: &rsa::public::Key = key_pair.public_key();
 
     test_public_key_coverage(key_pair.public());
     // Test clones.
     test_public_key_coverage(&key_pair.public().clone());
 
     // Test `Debug`
-    assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));
     assert_eq!(
-        format!("RsaKeyPair {{ public_key: {:?} }}", key_pair.public_key()),
+        format!("RsaKeyPair {{ public: {:?} }}", key_pair.public_key()),
         format!("{:?}", key_pair)
     );
 }
 
 fn test_public_key_coverage(key: &rsa::public::Key) {
+    // Test `AsRef<[u8]>`
+    const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
+    assert_eq!(key.as_ref(), PUBLIC_KEY);
+
+    // Test `Debug`.
+    const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
+    assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key));
+
     // Test modulus encoding.
     const PUBLIC_KEY_MODULUS_BE_BYTES: &[u8] = include_bytes!("rsa_test_public_modulus.bin");
     assert_eq!(
