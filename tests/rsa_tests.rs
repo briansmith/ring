@@ -16,7 +16,7 @@
 use ring::{
     error,
     io::der,
-    rand,
+    rand, rsa,
     signature::{self, KeyPair},
     test, test_file,
 };
@@ -316,40 +316,45 @@ fn test_signature_rsa_primitive_verification() {
 
 #[cfg(feature = "alloc")]
 #[test]
-fn rsa_test_public_key_coverage() {
+fn rsa_test_keypair_coverage() {
     const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
-    const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
 
     let key_pair = signature::RsaKeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
-    // Test `AsRef<[u8]>`
-    assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
+    test_public_key_coverage(&key_pair.public());
+    // Test clones.
+    test_public_key_coverage(&key_pair.public().clone());
 
-    // Test `Clone`.
-    let _ = key_pair.public_key().clone();
+    // Test that `signature::KeyPair::PublicKey` is `rsa::public::Key`; if it
+    // were a separate type then it would need to be tested separately.
+    let _: &rsa::public::Key = key_pair.public_key();
+
+    // Test the debug implementation of `RsaKeyPair`.
+    assert_eq!(
+        format!("RsaKeyPair {{ public: {:?} }}", key_pair.public_key()),
+        format!("{:?}", key_pair)
+    );
+}
+
+fn test_public_key_coverage(key: &rsa::public::Key) {
+    // Test `AsRef<[u8]>`
+    assert_eq!(key.as_ref(), include_bytes!("rsa_test_public_key_2048.der"));
 
     // Test modulus encoding.
     const PUBLIC_KEY_MODULUS_BE_BYTES: &[u8] = include_bytes!("rsa_test_public_modulus.bin");
     assert_eq!(
         PUBLIC_KEY_MODULUS_BE_BYTES,
-        key_pair.public().n().be_bytes().collect::<Vec<_>>()
+        key.n().be_bytes().collect::<Vec<_>>()
     );
 
     // Test exponent encoding.
     const _65537: &[u8] = &[0x01, 0x00, 0x01];
-    assert_eq!(
-        _65537,
-        &key_pair.public().e().be_bytes().collect::<Vec<_>>()
-    );
+    assert_eq!(_65537, &key.e().be_bytes().collect::<Vec<_>>());
 
     // Test `Debug`
     // TODO: The modulus's value should be formatted.
     assert_eq!(
         "Key { n: Modulus, e: Exponent(65537) }",
-        format!("{:?}", key_pair.public_key())
-    );
-    assert_eq!(
-        format!("RsaKeyPair {{ public: {:?} }}", key_pair.public_key()),
-        format!("{:?}", key_pair)
+        format!("{:?}", key)
     );
 }
