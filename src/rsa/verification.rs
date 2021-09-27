@@ -210,6 +210,7 @@ pub(crate) fn verify_rsa_(
         params.min_bits,
         max_bits,
         public::Exponent::_3,
+        cpu::features(),
     )?;
 
     let n = key.n();
