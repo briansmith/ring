@@ -178,23 +178,10 @@ impl PublicKey {
 }
 
 /// An unparsed, possibly malformed, public key for key agreement.
-pub struct UnparsedPublicKey<B: AsRef<[u8]>> {
+#[derive(Clone, Copy)]
+pub struct UnparsedPublicKey<B> {
     algorithm: &'static Algorithm,
     bytes: B,
-}
-
-impl<B: Copy> Copy for UnparsedPublicKey<B> where B: AsRef<[u8]> {}
-
-impl<B: Clone> Clone for UnparsedPublicKey<B>
-where
-    B: AsRef<[u8]>,
-{
-    fn clone(&self) -> Self {
-        Self {
-            algorithm: self.algorithm,
-            bytes: self.bytes.clone(),
-        }
-    }
 }
 
 impl<B: core::fmt::Debug> core::fmt::Debug for UnparsedPublicKey<B>
@@ -209,7 +196,7 @@ where
     }
 }
 
-impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
+impl<B> UnparsedPublicKey<B> {
     /// Constructs a new `UnparsedPublicKey`.
     pub fn new(algorithm: &'static Algorithm, bytes: B) -> Self {
         Self { algorithm, bytes }

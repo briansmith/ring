@@ -491,7 +491,7 @@ struct PrivatePrime<M: Prime> {
     exponent: bigint::PrivateExponent<M>,
 }
 
-impl<M: Prime + Clone> PrivatePrime<M> {
+impl<M: Prime> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
     fn new(p: bigint::Nonnegative, dP: untrusted::Input) -> Result<Self, KeyRejected> {
