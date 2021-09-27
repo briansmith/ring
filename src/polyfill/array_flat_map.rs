@@ -8,6 +8,7 @@ use core::iter::FlatMap;
 /// `I` is an exact-sized iterator of length `inner_len` then we know the
 /// length of the flat-mapped result is `inner_len * LEN`. (The constructor
 /// verifies that this multiplication doesn't overflow `usize`.)
+#[derive(Clone)]
 pub struct ArrayFlatMap<I, Item, F, const LEN: usize> {
     // TODO(rust 1.53.0): `FlatMap<I, [Item; LEN], F>`
     inner: FlatMap<I, core::array::IntoIter<Item, LEN>, F>,
@@ -25,20 +26,6 @@ where
         let remaining = inner.len().checked_mul(LEN)?;
         let inner = inner.flat_map(f);
         Some(Self { inner, remaining })
-    }
-}
-
-impl<I, Item, F, const LEN: usize> Clone for ArrayFlatMap<I, Item, F, LEN>
-where
-    I: Iterator,
-    F: FnMut(I::Item) -> core::array::IntoIter<Item, LEN>,
-    FlatMap<I, core::array::IntoIter<Item, LEN>, F>: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            remaining: self.remaining,
-        }
     }
 }
 

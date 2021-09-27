@@ -71,6 +71,7 @@ pub trait BoundKey<N: NonceSequence>: core::fmt::Debug {
 ///
 /// The type `A` could be a byte slice `&[u8]`, a byte array `[u8; N]`
 /// for some constant `N`, `Vec<u8>`, etc.
+#[derive(Clone, Copy)]
 pub struct Aad<A>(A);
 
 impl<A: AsRef<[u8]>> Aad<A> {
@@ -96,18 +97,6 @@ impl Aad<[u8; 0]> {
         Self::from([])
     }
 }
-
-impl<A> Clone for Aad<A>
-where
-    A: Clone,
-{
-    #[inline]
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl<A> Copy for Aad<A> where A: Copy {}
 
 impl<A> core::fmt::Debug for Aad<A>
 where
