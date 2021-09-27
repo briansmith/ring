@@ -352,26 +352,13 @@ pub trait VerificationAlgorithm: core::fmt::Debug + Sync + sealed::Sealed {
 }
 
 /// An unparsed, possibly malformed, public key for signature verification.
-pub struct UnparsedPublicKey<B: AsRef<[u8]>> {
+#[derive(Clone, Copy)]
+pub struct UnparsedPublicKey<B> {
     algorithm: &'static dyn VerificationAlgorithm,
     bytes: B,
 }
 
-impl<B: Copy> Copy for UnparsedPublicKey<B> where B: AsRef<[u8]> {}
-
-impl<B: Clone> Clone for UnparsedPublicKey<B>
-where
-    B: AsRef<[u8]>,
-{
-    fn clone(&self) -> Self {
-        Self {
-            algorithm: self.algorithm,
-            bytes: self.bytes.clone(),
-        }
-    }
-}
-
-impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
+impl<B> UnparsedPublicKey<B> {
     /// Construct a new `UnparsedPublicKey`.
     ///
     /// No validation of `bytes` is done until `verify()` is called.
@@ -384,7 +371,10 @@ impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
     /// `message` using it.
     ///
     /// See the [crate::signature] module-level documentation for examples.
-    pub fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), error::Unspecified> {
+    pub fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), error::Unspecified>
+    where
+        B: AsRef<[u8]>,
+    {
         let _ = cpu::features();
         self.algorithm.verify(
             untrusted::Input::from(self.bytes.as_ref()),
