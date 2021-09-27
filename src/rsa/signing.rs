@@ -618,7 +618,7 @@ impl RsaKeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = super::elem_exp_vartime(m.clone(), self.public.e(), n);
+            let verify = self.public.exponentiate_elem(m.clone());
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
 

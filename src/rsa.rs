@@ -53,20 +53,6 @@ fn parse_public_key(
     })
 }
 
-/// Calculates base**exponent (mod m).
-fn elem_exp_vartime(
-    base: bigint::Elem<N>,
-    exponent: public::Exponent,
-    n: &bigint::Modulus<N>,
-) -> bigint::Elem<N> {
-    let base = bigint::elem_mul(n.oneRR().as_ref(), base, n);
-    // During RSA public key operations the exponent is almost always either
-    // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
-    // weight of 2. The maximum bit length and maximum hamming weight of the
-    // exponent is bounded by the value of `public::Exponent::MAX`.
-    bigint::elem_exp_vartime(base, exponent.value(), &n.as_partial()).into_unencoded(n)
-}
-
 // Type-level representation of an RSA public modulus *n*. See
 // `super::bigint`'s modulue-level documentation.
 #[derive(Copy, Clone)]
