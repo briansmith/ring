@@ -1,6 +1,7 @@
 use super::super::public;
 
 /// RSA key pair components.
+#[derive(Clone, Copy)]
 pub struct Components<Public, Private = Public> {
     /// The public key components.
     pub public_key: super::super::public::Components<Public>,
@@ -22,31 +23,6 @@ pub struct Components<Public, Private = Public> {
 
     /// `q**-1 mod p`.
     pub qInv: Private,
-}
-
-impl<Public, Private> Copy for Components<Public, Private>
-where
-    public::Components<Public>: Copy,
-    Private: Copy,
-{
-}
-
-impl<Public, Private> Clone for Components<Public, Private>
-where
-    public::Components<Public>: Clone,
-    Private: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            public_key: self.public_key.clone(),
-            d: self.d.clone(),
-            p: self.p.clone(),
-            q: self.q.clone(),
-            dP: self.dP.clone(),
-            dQ: self.dQ.clone(),
-            qInv: self.qInv.clone(),
-        }
-    }
 }
 
 impl<Public, Private> core::fmt::Debug for Components<Public, Private>

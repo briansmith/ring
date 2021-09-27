@@ -25,20 +25,9 @@ pub trait FromByteArray<T> {
 
 macro_rules! define_endian {
     ($endian:ident) => {
+        #[derive(Clone, Copy)]
         #[repr(transparent)]
         pub struct $endian<T>(T);
-
-        impl<T> Copy for $endian<T> where T: Copy {}
-
-        impl<T> Clone for $endian<T>
-        where
-            T: Clone,
-        {
-            #[inline]
-            fn clone(&self) -> Self {
-                Self(self.0.clone())
-            }
-        }
 
         impl<T> core::ops::BitXorAssign for $endian<T>
         where
