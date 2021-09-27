@@ -20,7 +20,7 @@ use crate::{
         bigint::{self, Prime},
         montgomery::R,
     },
-    bits, digest,
+    bits, cpu, digest,
     error::{self, KeyRejected},
     io::der,
     pkcs8, rand, rsa, signature,
@@ -232,7 +232,7 @@ impl RsaKeyPair {
             dQ: components.dQ.as_ref(),
             qInv: components.qInv.as_ref(),
         };
-        Self::from_components_(&components)
+        Self::from_components_(&components, cpu::features())
     }
 
     fn from_components_(
@@ -245,6 +245,7 @@ impl RsaKeyPair {
             dQ,
             qInv,
         }: &Components<&[u8]>,
+        cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
         let d = untrusted::Input::from(d);
         let p = untrusted::Input::from(p);
@@ -296,6 +297,7 @@ impl RsaKeyPair {
             bits::BitLength::from_usize_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             public::Exponent::_65537,
+            cpu_features,
         )?;
 
         let n = public_key.n().value();
@@ -388,10 +390,10 @@ impl RsaKeyPair {
         // 6.4.1.4.3 - Step 7.
 
         // Step 7.a.
-        let p = PrivatePrime::new(p, dP)?;
+        let p = PrivatePrime::new(p, dP, cpu_features)?;
 
         // Step 7.b.
-        let q = PrivatePrime::new(q, dQ)?;
+        let q = PrivatePrime::new(q, dQ, cpu_features)?;
 
         let q_mod_p = q.modulus.to_elem(&p.modulus);
 
@@ -416,7 +418,7 @@ impl RsaKeyPair {
         bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
-        let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, n).into_modulus::<QQ>()?;
+        let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, n).into_modulus::<QQ>(cpu_features)?;
 
         // This should never fail since `n` and `e` were validated above.
 
@@ -461,8 +463,12 @@ struct PrivatePrime<M: Prime> {
 impl<M: Prime> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
-    fn new(p: bigint::Nonnegative, dP: untrusted::Input) -> Result<Self, KeyRejected> {
-        let (p, p_bits) = bigint::Modulus::from_nonnegative_with_bit_length(p)?;
+    fn new(
+        p: bigint::Nonnegative,
+        dP: untrusted::Input,
+        cpu_features: cpu::Features,
+    ) -> Result<Self, KeyRejected> {
+        let (p, p_bits) = bigint::Modulus::from_nonnegative_with_bit_length(p, cpu_features)?;
         if p_bits.as_usize_bits() % 512 != 0 {
             return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
         }

@@ -14,7 +14,7 @@
 
 use super::{Exponent, Modulus};
 use crate::{
-    bits, error,
+    bits, cpu, error,
     io::{self, der, der_writer},
 };
 use alloc::boxed::Box;
@@ -36,6 +36,7 @@ impl Key {
         n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength,
         e_min_value: Exponent,
+        cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
         let n_bytes = n;
         let e_bytes = e;
@@ -49,7 +50,7 @@ impl Key {
         // and one set lettered. TODO: Document this in the end-user
         // documentation for RSA keys.
 
-        let n = Modulus::from_be_bytes(n, n_min_bits..=n_max_bits)?;
+        let n = Modulus::from_be_bytes(n, n_min_bits..=n_max_bits, cpu_features)?;
 
         let e = Exponent::from_be_bytes(e, e_min_value)?;
 
