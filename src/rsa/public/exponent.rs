@@ -90,11 +90,9 @@ impl Exponent {
         .unwrap();
         LeadingZerosStripped::new(bytes)
     }
-}
 
-impl From<Exponent> for NonZeroU64 {
-    fn from(Exponent(value): Exponent) -> Self {
-        value
+    pub(in super::super) fn value(self) -> NonZeroU64 {
+        self.0
     }
 }
 
