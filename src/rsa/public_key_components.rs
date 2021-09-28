@@ -12,6 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use super::PublicKey;
+use core::iter::FromIterator;
+
 /// RSA public key components.
 ///
 /// `B` must implement `AsRef<[u8]>` like `&[u8]` or `Vec<u8>`.
@@ -33,5 +36,17 @@ where
             .field("n", &self.n)
             .field("e", &self.e)
             .finish()
+    }
+}
+
+impl<B> From<&PublicKey> for PublicKeyComponents<B>
+where
+    B: FromIterator<u8>,
+{
+    fn from(public_key: &PublicKey) -> Self {
+        Self {
+            n: public_key.n().be_bytes().collect(),
+            e: public_key.e().be_bytes().collect(),
+        }
     }
 }

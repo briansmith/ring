@@ -82,8 +82,7 @@ fn test_signature_rsa_pkcs1_sign() {
 
             // XXX: This test is too slow on Android ARM Travis CI builds.
             // TODO: re-enable these tests on Android ARM.
-            let mut actual =
-                vec![0u8; key_pair.public().n().len_bits().as_usize_bytes_rounded_up()];
+            let mut actual = vec![0u8; key_pair.public().modulus_len()];
             key_pair
                 .sign(alg, &rng, &msg, actual.as_mut_slice())
                 .unwrap();
@@ -122,8 +121,7 @@ fn test_signature_rsa_pss_sign() {
 
             let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
-            let mut actual =
-                vec![0u8; key_pair.public().n().len_bits().as_usize_bytes_rounded_up()];
+            let mut actual = vec![0u8; key_pair.public().modulus_len()];
             key_pair.sign(alg, &rng, &msg, actual.as_mut_slice())?;
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
             Ok(())
@@ -145,7 +143,7 @@ fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
     let key_pair = rsa::KeyPair::from_der(PRIVATE_KEY_DER).unwrap();
 
     // The output buffer is one byte too short.
-    let mut signature = vec![0; key_pair.public().n().len_bits().as_usize_bytes_rounded_up() - 1];
+    let mut signature = vec![0; key_pair.public().modulus_len() - 1];
 
     assert!(key_pair
         .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
@@ -345,14 +343,9 @@ fn test_public_key_coverage(key: &rsa::PublicKey) {
     const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
     assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key));
 
-    // Test modulus encoding.
+    let components = rsa::PublicKeyComponents::<Vec<_>>::from(key);
     const PUBLIC_KEY_MODULUS_BE_BYTES: &[u8] = include_bytes!("rsa_test_public_modulus.bin");
-    assert_eq!(
-        PUBLIC_KEY_MODULUS_BE_BYTES,
-        key.n().be_bytes().collect::<Vec<_>>()
-    );
-
-    // Test exponent encoding.
+    assert_eq!(PUBLIC_KEY_MODULUS_BE_BYTES, &components.n);
     const _65537: &[u8] = &[0x01, 0x00, 0x01];
-    assert_eq!(_65537, &key.e().be_bytes().collect::<Vec<_>>());
+    assert_eq!(_65537, &components.e);
 }

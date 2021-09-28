@@ -8,11 +8,12 @@ pub struct PublicModulus {
     bits: bits::BitLength,
 }
 
+/*
 impl core::fmt::Debug for PublicModulus {
     fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
         self.value.fmt(fmt)
     }
-}
+}*/
 
 impl PublicModulus {
     pub(super) fn from_be_bytes(
@@ -53,13 +54,11 @@ impl PublicModulus {
     /// The big-endian encoding of the modulus.
     ///
     /// There are no leading zeros.
-    #[inline]
     pub fn be_bytes(&self) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
         self.value.be_bytes()
     }
 
     /// The length of the modulus in bits.
-    #[inline]
     pub fn len_bits(&self) -> bits::BitLength {
         self.bits
     }

@@ -442,10 +442,10 @@ impl KeyPair {
     /// Returns the length in bytes of the key pair's public modulus.
     ///
     /// A signature has the same length as the public modulus.
-    #[deprecated = "Use `public().n().len_bits().as_usize_bits()`"]
+    #[deprecated = "Use `public().modulus_len()`"]
     #[inline]
     pub fn public_modulus_len(&self) -> usize {
-        self.public().n().len_bits().as_usize_bits()
+        self.public().modulus_len()
     }
 }
 
