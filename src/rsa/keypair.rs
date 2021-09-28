@@ -569,13 +569,37 @@ impl KeyPair {
         msg: &[u8],
         signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {
-        let mod_bits = self.public.n().len_bits();
-        if signature.len() != mod_bits.as_usize_bytes_rounded_up() {
+        if signature.len() != self.public().modulus_len() {
             return Err(error::Unspecified);
         }
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
-        padding_alg.encode(m_hash, signature, mod_bits, rng)?;
+
+        // Use the output buffer as the scratch space for the signature to
+        // reduce the required stack space.
+        padding_alg.encode(m_hash, signature, self.public().n().len_bits(), rng)?;
+
+        // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
+        // with Garner's algorithm.
+
+        // Steps 1 and 2.
+        let m = self.private_exponentiate(signature)?;
+
+        // Step 3.
+        m.fill_be_bytes(signature);
+
+        Ok(())
+    }
+
+    /// Returns base**d (mod n).
+    ///
+    /// This does not return or write any intermediate results into any buffers
+    /// that are provided by the caller so that no intermediate state will be
+    /// leaked that would endanger the private key.
+    ///
+    /// Panics if `in_out` is not `self.public().modulus_len()`.
+    fn private_exponentiate(&self, base: &[u8]) -> Result<bigint::Elem<N>, error::Unspecified> {
+        assert_eq!(base.len(), self.public().modulus_len());
 
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
@@ -583,7 +607,7 @@ impl KeyPair {
         let n = self.public.n().value();
 
         // Step 1. The value zero is also rejected.
-        let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(signature), n)?;
+        let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(base), n)?;
 
         // Step 2
         let c = base;
@@ -625,11 +649,8 @@ impl KeyPair {
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
 
-        // Step 3.
-        //
-        // See Falko Strenzke, "Manger's Attack revisited", ICICS 2010.
-        m.fill_be_bytes(signature);
+        // Step 3 will be done by the caller.
 
-        Ok(())
+        Ok(m)
     }
 }
