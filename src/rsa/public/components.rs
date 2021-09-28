@@ -15,26 +15,13 @@
 /// RSA public key components.
 ///
 /// `B` must implement `AsRef<[u8]>` like `&[u8]` or `Vec<u8>`.
+#[derive(Clone, Copy)]
 pub struct Components<B> {
     /// The public modulus, encoded in big-endian bytes without leading zeros.
     pub n: B,
 
     /// The public exponent, encoded in big-endian bytes without leading zeros.
     pub e: B,
-}
-
-impl<B> Copy for Components<B> where B: Copy {}
-
-impl<B> Clone for Components<B>
-where
-    B: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            n: self.n.clone(),
-            e: self.e.clone(),
-        }
-    }
 }
 
 impl<B> core::fmt::Debug for Components<B>
