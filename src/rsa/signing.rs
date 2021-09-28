@@ -554,11 +554,6 @@ impl RsaKeyPair {
     /// precomputed digest as input, instead of the message to digest. This
     /// function does *not* take a precomputed digest; instead, `sign`
     /// calculates the digest itself.
-    ///
-    /// Lots of effort has been made to make the signing operations close to
-    /// constant time to protect the private key from side channel attacks. On
-    /// x86-64, this is done pretty well, but not perfectly. On other
-    /// platforms, it is done less perfectly.
     pub fn sign(
         &self,
         padding_alg: &'static dyn RsaEncoding,
