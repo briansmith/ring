@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{keypair::Components, padding::RsaEncoding, public, N};
+use super::{padding::RsaEncoding, public, KeyPairComponents, N};
 
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
@@ -155,7 +155,7 @@ impl RsaKeyPair {
         let dQ = nonnegative_integer(input)?;
         let qInv = nonnegative_integer(input)?;
 
-        let components = Components {
+        let components = KeyPairComponents {
             public_key: super::public::Components { n, e },
             d,
             p,
@@ -214,13 +214,13 @@ impl RsaKeyPair {
     ///     validating a key pair for use by some other system; that other
     ///     system must check the value of `d` itself if `d` is to be used.
     pub fn from_components<Public, Private>(
-        components: &Components<Public, Private>,
+        components: &KeyPairComponents<Public, Private>,
     ) -> Result<Self, KeyRejected>
     where
         Public: AsRef<[u8]>,
         Private: AsRef<[u8]>,
     {
-        let components = Components {
+        let components = KeyPairComponents {
             public_key: public::Components {
                 n: components.public_key.n.as_ref(),
                 e: components.public_key.e.as_ref(),
@@ -236,7 +236,7 @@ impl RsaKeyPair {
     }
 
     fn from_components_(
-        &Components {
+        &KeyPairComponents {
             public_key,
             d,
             p,
@@ -244,7 +244,7 @@ impl RsaKeyPair {
             dP,
             dQ,
             qInv,
-        }: &Components<&[u8]>,
+        }: &KeyPairComponents<&[u8]>,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
         let d = untrusted::Input::from(d);

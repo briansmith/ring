@@ -1,10 +1,10 @@
-use super::super::public;
+use super::public;
 
 /// RSA key pair components.
 #[derive(Clone, Copy)]
-pub struct Components<Public, Private = Public> {
+pub struct KeyPairComponents<Public, Private = Public> {
     /// The public key components.
-    pub public_key: super::super::public::Components<Public>,
+    pub public_key: super::public::Components<Public>,
 
     /// The private exponent.
     pub d: Private,
@@ -25,7 +25,7 @@ pub struct Components<Public, Private = Public> {
     pub qInv: Private,
 }
 
-impl<Public, Private> core::fmt::Debug for Components<Public, Private>
+impl<Public, Private> core::fmt::Debug for KeyPairComponents<Public, Private>
 where
     public::Components<Public>: core::fmt::Debug,
 {
