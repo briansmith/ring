@@ -54,6 +54,7 @@ namespace acvp {
 #if defined(OPENSSL_TRUSTY)
 #include <trusty_log.h>
 #define LOG_ERROR(...) TLOGE(__VA_ARGS__)
+#define TLOG_TAG "modulewrapper"
 #else
 #define LOG_ERROR(...) fprintf(stderr, __VA_ARGS__)
 #endif  // OPENSSL_TRUSTY
