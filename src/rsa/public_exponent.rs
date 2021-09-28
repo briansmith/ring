@@ -3,7 +3,7 @@ use crate::polyfill::{ArrayFlatMap, LeadingZerosStripped};
 use core::num::NonZeroU64;
 
 /// The exponent `e` of an RSA public key.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct PublicExponent(NonZeroU64);
 
 impl PublicExponent {
@@ -99,17 +99,6 @@ impl PublicExponent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::format;
-
-    #[test]
-    fn test_public_exponent_debug() {
-        let exponent = PublicExponent::from_be_bytes(
-            untrusted::Input::from(&[0x1, 0x00, 0x01]),
-            PublicExponent::_65537,
-        )
-        .unwrap();
-        assert_eq!("PublicExponent(65537)", format!("{:?}", exponent));
-    }
 
     #[test]
     fn test_public_exponent_constants() {

@@ -84,15 +84,23 @@ impl PublicKey {
         })
     }
 
+    /// The length, in bytes, of the public modulus.
+    ///
+    /// The modulus length is rounded up to a whole number of bytes if its
+    /// bit length isn't a multiple of 8.
+    pub fn modulus_len(&self) -> usize {
+        self.n().len_bits().as_usize_bytes_rounded_up()
+    }
+
     /// The public modulus.
     #[inline]
-    pub fn n(&self) -> &PublicModulus {
+    pub(super) fn n(&self) -> &PublicModulus {
         &self.n
     }
 
     /// The public exponent.
     #[inline]
-    pub fn e(&self) -> PublicExponent {
+    pub(super) fn e(&self) -> PublicExponent {
         self.e
     }
 
