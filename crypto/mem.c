@@ -380,3 +380,13 @@ void *OPENSSL_memdup(const void *data, size_t size) {
   OPENSSL_memcpy(ret, data, size);
   return ret;
 }
+
+void *CRYPTO_malloc(size_t size, const char *file, int line) {
+  return OPENSSL_malloc(size);
+}
+
+void *CRYPTO_realloc(void *ptr, size_t new_size, const char *file, int line) {
+  return OPENSSL_realloc(ptr, new_size);
+}
+
+void CRYPTO_free(void *ptr, const char *file, int line) { OPENSSL_free(ptr); }
