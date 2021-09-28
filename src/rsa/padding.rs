@@ -148,7 +148,7 @@ macro_rules! rsa_pkcs1_padding {
 // don't currently have. But, it's a bad idea to use SHA-1 anyway, so perhaps
 // we just won't ever expose it.
 rsa_pkcs1_padding!(
-    pub(in super) RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
+    pub(super) RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
     &digest::SHA1_FOR_LEGACY_USE_ONLY,
     &SHA1_PKCS1_DIGESTINFO_PREFIX,
     "PKCS#1 1.5 padding using SHA-1 for RSA signatures."

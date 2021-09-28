@@ -12,10 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    super::{N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN},
-    Exponent, Modulus,
-};
+use super::{PublicExponent, PublicModulus, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
 use crate::{
     arithmetic::bigint,
     bits, cpu, error,
@@ -26,22 +23,22 @@ use alloc::boxed::Box;
 
 /// An RSA Public Key.
 #[derive(Clone)]
-pub struct Key {
-    n: Modulus,
-    e: Exponent,
+pub struct PublicKey {
+    n: PublicModulus,
+    e: PublicExponent,
     serialized: Box<[u8]>,
     cpu_features: cpu::Features,
 }
 
-derive_debug_self_as_ref_hex_bytes!(Key);
+derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
-impl Key {
-    pub(in super::super) fn from_modulus_and_exponent(
+impl PublicKey {
+    pub(super) fn from_modulus_and_exponent(
         n: untrusted::Input,
         e: untrusted::Input,
         n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength,
-        e_min_value: Exponent,
+        e_min_value: PublicExponent,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
         let n_bytes = n;
@@ -56,9 +53,9 @@ impl Key {
         // and one set lettered. TODO: Document this in the end-user
         // documentation for RSA keys.
 
-        let n = Modulus::from_be_bytes(n, n_min_bits..=n_max_bits, cpu_features)?;
+        let n = PublicModulus::from_be_bytes(n, n_min_bits..=n_max_bits, cpu_features)?;
 
-        let e = Exponent::from_be_bytes(e, e_min_value)?;
+        let e = PublicExponent::from_be_bytes(e, e_min_value)?;
 
         // If `n` is less than `e` then somebody has probably accidentally swapped
         // them. The largest acceptable `e` is smaller than the smallest acceptable
@@ -89,13 +86,13 @@ impl Key {
 
     /// The public modulus.
     #[inline]
-    pub fn n(&self) -> &Modulus {
+    pub fn n(&self) -> &PublicModulus {
         &self.n
     }
 
     /// The public exponent.
     #[inline]
-    pub fn e(&self) -> Exponent {
+    pub fn e(&self) -> PublicExponent {
         self.e
     }
 
@@ -106,7 +103,7 @@ impl Key {
     ///
     /// The result will be a slice of the encoded bytes of the result within
     /// `out_buffer`, if successful.
-    pub(in super::super) fn exponentiate<'out>(
+    pub(super) fn exponentiate<'out>(
         &self,
         base: untrusted::Input,
         out_buffer: &'out mut [u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN],
@@ -137,20 +134,20 @@ impl Key {
     /// Calculates base**e (mod n).
     ///
     /// This is constant-time with respect to `base` only.
-    pub(in super::super) fn exponentiate_elem(&self, base: bigint::Elem<N>) -> bigint::Elem<N> {
+    pub(super) fn exponentiate_elem(&self, base: bigint::Elem<N>) -> bigint::Elem<N> {
         let n = self.n.value();
 
         let base = bigint::elem_mul(n.oneRR().as_ref(), base, n);
         // During RSA public key operations the exponent is almost always either
         // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
         // weight of 2. The maximum bit length and maximum Hamming weight of the
-        // exponent is bounded by the value of `public::Exponent::MAX`.
+        // exponent is bounded by the value of `PublicExponent::MAX`.
         bigint::elem_exp_vartime(base, self.e.value(), &n.as_partial()).into_unencoded(n)
     }
 }
 
 // XXX: Refactor `signature::KeyPair` to get rid of this.
-impl AsRef<[u8]> for Key {
+impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] {
         &self.serialized
     }

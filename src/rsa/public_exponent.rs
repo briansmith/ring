@@ -4,16 +4,16 @@ use core::num::NonZeroU64;
 
 /// The exponent `e` of an RSA public key.
 #[derive(Clone, Copy, Debug)]
-pub struct Exponent(NonZeroU64);
+pub struct PublicExponent(NonZeroU64);
 
-impl Exponent {
+impl PublicExponent {
     #[cfg(test)]
     const ALL_CONSTANTS: [Self; 3] = [Self::_3, Self::_65537, Self::MAX];
 
     // TODO: Use `NonZeroU64::new(...).unwrap()` when `feature(const_panic)` is
     // stable.
-    pub(in super::super) const _3: Self = Self(unsafe { NonZeroU64::new_unchecked(3) });
-    pub(in super::super) const _65537: Self = Self(unsafe { NonZeroU64::new_unchecked(65537) });
+    pub(super) const _3: Self = Self(unsafe { NonZeroU64::new_unchecked(3) });
+    pub(super) const _65537: Self = Self(unsafe { NonZeroU64::new_unchecked(65537) });
 
     // This limit was chosen to bound the performance of the simple
     // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
@@ -35,7 +35,7 @@ impl Exponent {
         input: untrusted::Input,
         min_value: Self,
     ) -> Result<Self, error::KeyRejected> {
-        // See `public::Key::from_modulus_and_exponent` for background on the step
+        // See `PublicKey::from_modulus_and_exponent` for background on the step
         // numbering.
 
         if input.len() > 5 {
@@ -91,7 +91,7 @@ impl Exponent {
         LeadingZerosStripped::new(bytes)
     }
 
-    pub(in super::super) fn value(self) -> NonZeroU64 {
+    pub(super) fn value(self) -> NonZeroU64 {
         self.0
     }
 }
@@ -103,19 +103,21 @@ mod tests {
 
     #[test]
     fn test_public_exponent_debug() {
-        let exponent =
-            Exponent::from_be_bytes(untrusted::Input::from(&[0x1, 0x00, 0x01]), Exponent::_65537)
-                .unwrap();
-        assert_eq!("Exponent(65537)", format!("{:?}", exponent));
+        let exponent = PublicExponent::from_be_bytes(
+            untrusted::Input::from(&[0x1, 0x00, 0x01]),
+            PublicExponent::_65537,
+        )
+        .unwrap();
+        assert_eq!("PublicExponent(65537)", format!("{:?}", exponent));
     }
 
     #[test]
     fn test_public_exponent_constants() {
-        for value in Exponent::ALL_CONSTANTS.iter() {
+        for value in PublicExponent::ALL_CONSTANTS.iter() {
             let value: u64 = value.0.into();
             assert_eq!(value & 1, 1);
-            assert!(value >= Exponent::_3.0.into()); // The absolute minimum.
-            assert!(value <= Exponent::MAX.0.into());
+            assert!(value >= PublicExponent::_3.0.into()); // The absolute minimum.
+            assert!(value <= PublicExponent::MAX.0.into());
         }
     }
 }

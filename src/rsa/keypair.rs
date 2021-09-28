@@ -12,7 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{padding::RsaEncoding, public, KeyPairComponents, N};
+use super::{
+    padding::RsaEncoding, KeyPairComponents, PublicExponent, PublicKey, PublicKeyComponents, N,
+};
 
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
@@ -23,22 +25,22 @@ use crate::{
     bits, cpu, digest,
     error::{self, KeyRejected},
     io::der,
-    pkcs8, rand, rsa, signature,
+    pkcs8, rand, signature,
 };
 
 /// An RSA key pair, used for signing.
-pub struct RsaKeyPair {
+pub struct KeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
-    public: public::Key,
+    public: PublicKey,
 }
 
-derive_debug_via_field!(RsaKeyPair, stringify!(RsaKeyPair), public);
+derive_debug_via_field!(KeyPair, stringify!(RsaKeyPair), public);
 
-impl RsaKeyPair {
+impl KeyPair {
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
     ///
     /// This will generate a 2048-bit RSA private key of the correct form using
@@ -156,7 +158,7 @@ impl RsaKeyPair {
         let qInv = nonnegative_integer(input)?;
 
         let components = KeyPairComponents {
-            public_key: super::public::Components { n, e },
+            public_key: PublicKeyComponents { n, e },
             d,
             p,
             q,
@@ -221,7 +223,7 @@ impl RsaKeyPair {
         Private: AsRef<[u8]>,
     {
         let components = KeyPairComponents {
-            public_key: public::Components {
+            public_key: PublicKeyComponents {
                 n: components.public_key.n.as_ref(),
                 e: components.public_key.e.as_ref(),
             },
@@ -291,12 +293,12 @@ impl RsaKeyPair {
         // Step 1.c. We validate e >= 65537.
         let n = untrusted::Input::from(public_key.n);
         let e = untrusted::Input::from(public_key.e);
-        let public_key = public::Key::from_modulus_and_exponent(
+        let public_key = PublicKey::from_modulus_and_exponent(
             n,
             e,
             bits::BitLength::from_usize_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
-            public::Exponent::_65537,
+            PublicExponent::_65537,
             cpu_features,
         )?;
 
@@ -433,7 +435,7 @@ impl RsaKeyPair {
     }
 
     /// Returns a reference to the public key.
-    pub fn public(&self) -> &public::Key {
+    pub fn public(&self) -> &PublicKey {
         &self.public
     }
 
@@ -447,8 +449,8 @@ impl RsaKeyPair {
     }
 }
 
-impl signature::KeyPair for RsaKeyPair {
-    type PublicKey = rsa::public::Key;
+impl signature::KeyPair for KeyPair {
+    type PublicKey = PublicKey;
 
     fn public_key(&self) -> &Self::PublicKey {
         self.public()
@@ -542,7 +544,7 @@ unsafe impl bigint::SlightlySmallerModulus<P> for Q {}
 unsafe impl bigint::SmallerModulus<QQ> for Q {}
 unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
-impl RsaKeyPair {
+impl KeyPair {
     /// Sign `msg`. `msg` is digested using the digest algorithm from
     /// `padding_alg` and the digest is then padded using the padding algorithm
     /// from `padding_alg`. The signature it written into `signature`;
