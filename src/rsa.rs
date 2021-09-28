@@ -60,11 +60,17 @@ enum N {}
 
 unsafe impl bigint::PublicModulus for N {}
 
+mod keypair;
 mod keypair_components;
-pub mod public;
+mod public_exponent;
+mod public_key;
+mod public_key_components;
+mod public_modulus;
 
 pub(crate) mod verification;
 
-pub(crate) mod signing;
-
-pub use self::keypair_components::KeyPairComponents;
+pub use self::{
+    keypair::KeyPair, keypair_components::KeyPairComponents, public_exponent::PublicExponent,
+    public_key::PublicKey, public_key_components::PublicKeyComponents,
+    public_modulus::PublicModulus,
+};

@@ -1,10 +1,10 @@
-use super::public;
+use super::PublicKeyComponents;
 
 /// RSA key pair components.
 #[derive(Clone, Copy)]
 pub struct KeyPairComponents<Public, Private = Public> {
     /// The public key components.
-    pub public_key: super::public::Components<Public>,
+    pub public_key: PublicKeyComponents<Public>,
 
     /// The private exponent.
     pub d: Private,
@@ -27,11 +27,11 @@ pub struct KeyPairComponents<Public, Private = Public> {
 
 impl<Public, Private> core::fmt::Debug for KeyPairComponents<Public, Private>
 where
-    public::Components<Public>: core::fmt::Debug,
+    PublicKeyComponents<Public>: core::fmt::Debug,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         // Non-public components are intentionally skipped
-        f.debug_struct("Components")
+        f.debug_struct("KeyPairComponents")
             .field("public_key", &self.public_key)
             .finish()
     }

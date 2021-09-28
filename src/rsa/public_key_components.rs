@@ -1,4 +1,4 @@
-// Copyright 2021 Brian Smith.
+// Copyright 2015-2021 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,11 +12,26 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! RSA public keys.
+/// RSA public key components.
+///
+/// `B` must implement `AsRef<[u8]>` like `&[u8]` or `Vec<u8>`.
+#[derive(Clone, Copy)]
+pub struct PublicKeyComponents<B> {
+    /// The public modulus, encoded in big-endian bytes without leading zeros.
+    pub n: B,
 
-mod components;
-mod exponent;
-mod key;
-mod modulus;
+    /// The public exponent, encoded in big-endian bytes without leading zeros.
+    pub e: B,
+}
 
-pub use {components::Components, exponent::Exponent, key::Key, modulus::Modulus};
+impl<B> core::fmt::Debug for PublicKeyComponents<B>
+where
+    B: core::fmt::Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        f.debug_struct("PublicKeyComponents")
+            .field("n", &self.n)
+            .field("e", &self.e)
+            .finish()
+    }
+}

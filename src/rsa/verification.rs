@@ -14,7 +14,9 @@
 
 //! Verification of RSA signatures.
 
-use super::{parse_public_key, public, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
+use super::{
+    parse_public_key, PublicExponent, PublicKey, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+};
 use crate::{bits, cpu, digest, error, sealed, signature};
 
 impl signature::VerificationAlgorithm for RsaParameters {
@@ -142,9 +144,9 @@ rsa_params!(
              `ring::signature`'s module-level documentation for more details."
 );
 
-pub use super::public::Components as RsaPublicKeyComponents;
+pub use super::PublicKeyComponents as RsaPublicKeyComponents;
 
-impl<B> super::public::Components<B>
+impl<B> super::PublicKeyComponents<B>
 where
     B: AsRef<[u8]>,
 {
@@ -199,12 +201,12 @@ pub(crate) fn verify_rsa_(
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let key = public::Key::from_modulus_and_exponent(
+    let key = PublicKey::from_modulus_and_exponent(
         n,
         e,
         params.min_bits,
         max_bits,
-        public::Exponent::_3,
+        PublicExponent::_3,
         cpu::features(),
     )?;
 

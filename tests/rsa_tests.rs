@@ -39,7 +39,7 @@ fn rsa_from_pkcs8_test() {
             let input = test_case.consume_bytes("Input");
             let error = test_case.consume_optional_string("Error");
 
-            match (signature::RsaKeyPair::from_pkcs8(&input), error) {
+            match (rsa::KeyPair::from_pkcs8(&input), error) {
                 (Ok(_), None) => {}
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
@@ -73,7 +73,7 @@ fn test_signature_rsa_pkcs1_sign() {
             let expected = test_case.consume_bytes("Sig");
             let result = test_case.consume_string("Result");
 
-            let key_pair = signature::RsaKeyPair::from_der(&private_key);
+            let key_pair = rsa::KeyPair::from_der(&private_key);
             if result == "Fail-Invalid-Key" {
                 assert!(key_pair.is_err());
                 return Ok(());
@@ -111,7 +111,7 @@ fn test_signature_rsa_pss_sign() {
 
             let result = test_case.consume_string("Result");
             let private_key = test_case.consume_bytes("Key");
-            let key_pair = signature::RsaKeyPair::from_der(&private_key);
+            let key_pair = rsa::KeyPair::from_der(&private_key);
             if key_pair.is_err() && result == "Fail-Invalid-Key" {
                 return Ok(());
             }
@@ -142,7 +142,7 @@ fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
 
     const PRIVATE_KEY_DER: &[u8] =
         include_bytes!("../src/rsa/signature_rsa_example_private_key.der");
-    let key_pair = signature::RsaKeyPair::from_der(PRIVATE_KEY_DER).unwrap();
+    let key_pair = rsa::KeyPair::from_der(PRIVATE_KEY_DER).unwrap();
 
     // The output buffer is one byte too short.
     let mut signature = vec![0; key_pair.public().n().len_bits().as_usize_bytes_rounded_up() - 1];
@@ -319,11 +319,11 @@ fn test_signature_rsa_primitive_verification() {
 fn rsa_test_keypair_coverage() {
     const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
 
-    let key_pair = signature::RsaKeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
+    let key_pair = rsa::KeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
-    // Test that `signature::KeyPair::PublicKey` is `rsa::public::Key`; if it
+    // Test that `signature::KeyPair::PublicKey` is `rsa::PublicKey`; if it
     // were a separate type then it would need to be tested separately.
-    let _: &rsa::public::Key = key_pair.public_key();
+    let _: &rsa::PublicKey = key_pair.public_key();
 
     test_public_key_coverage(key_pair.public());
     // Test clones.
@@ -336,7 +336,7 @@ fn rsa_test_keypair_coverage() {
     );
 }
 
-fn test_public_key_coverage(key: &rsa::public::Key) {
+fn test_public_key_coverage(key: &rsa::PublicKey) {
     // Test `AsRef<[u8]>`
     const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
     assert_eq!(key.as_ref(), PUBLIC_KEY);

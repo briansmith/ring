@@ -3,24 +3,24 @@ use core::ops::RangeInclusive;
 
 /// The modulus (n) of an RSA public key.
 #[derive(Clone)]
-pub struct Modulus {
+pub struct PublicModulus {
     value: bigint::Modulus<N>,
     bits: bits::BitLength,
 }
 
-impl core::fmt::Debug for Modulus {
+impl core::fmt::Debug for PublicModulus {
     fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
         self.value.fmt(fmt)
     }
 }
 
-impl Modulus {
+impl PublicModulus {
     pub(super) fn from_be_bytes(
         n: untrusted::Input,
         allowed_bit_lengths: RangeInclusive<bits::BitLength>,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
-        // See `public::Key::from_modulus_and_exponent` for background on the step
+        // See `PublicKey::from_modulus_and_exponent` for background on the step
         // numbering.
 
         let min_bits = *allowed_bit_lengths.start();
@@ -64,7 +64,7 @@ impl Modulus {
         self.bits
     }
 
-    pub(in super::super) fn value(&self) -> &bigint::Modulus<N> {
+    pub(super) fn value(&self) -> &bigint::Modulus<N> {
         &self.value
     }
 }
