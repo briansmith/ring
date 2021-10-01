@@ -306,11 +306,6 @@ OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *ctx, int trust);
 OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *ctx,
                                          X509_VERIFY_PARAM *pm);
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *ctx);
-// X509_STORE_set0_additional_untrusted sets a stack of additional, untrusted
-// certificates that are available for chain building. This function does not
-// take ownership of the stack.
-OPENSSL_EXPORT void X509_STORE_set0_additional_untrusted(
-    X509_STORE *ctx, STACK_OF(X509) *untrusted);
 
 OPENSSL_EXPORT void X509_STORE_set_verify(X509_STORE *ctx,
                                           X509_STORE_CTX_verify_fn verify);

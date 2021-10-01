@@ -1111,9 +1111,8 @@ static const time_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
 static int Verify(
     X509 *leaf, const std::vector<X509 *> &roots,
     const std::vector<X509 *> &intermediates,
-    const std::vector<X509_CRL *> &crls, unsigned long flags,
-    bool use_additional_untrusted,
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback,
+    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr,
     int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
@@ -1133,14 +1132,8 @@ static int Verify(
     return X509_V_ERR_UNSPECIFIED;
   }
 
-  if (use_additional_untrusted) {
-    X509_STORE_set0_additional_untrusted(store.get(),
-                                         intermediates_stack.get());
-  }
-
-  if (!X509_STORE_CTX_init(
-          ctx.get(), store.get(), leaf,
-          use_additional_untrusted ? nullptr : intermediates_stack.get())) {
+  if (!X509_STORE_CTX_init(ctx.get(), store.get(), leaf,
+                           intermediates_stack.get())) {
     return X509_V_ERR_UNSPECIFIED;
   }
 
@@ -1162,27 +1155,6 @@ static int Verify(
   }
 
   return X509_V_OK;
-}
-
-static int Verify(
-    X509 *leaf, const std::vector<X509 *> &roots,
-    const std::vector<X509 *> &intermediates,
-    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr) {
-  const int r1 = Verify(leaf, roots, intermediates, crls, flags, false,
-                        configure_callback);
-  const int r2 =
-      Verify(leaf, roots, intermediates, crls, flags, true, configure_callback);
-
-  if (r1 != r2) {
-    fprintf(stderr,
-            "Verify with, and without, use_additional_untrusted gave different "
-            "results: %d vs %d.\n",
-            r1, r2);
-    return false;
-  }
-
-  return r1;
 }
 
 TEST(X509Test, TestVerify) {
@@ -1325,7 +1297,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
     // The correct value should work.
     ASSERT_EQ(X509_V_OK,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_TRUE(test.func(param, test.correct_value,
                                              test.correct_value_len));
@@ -1333,7 +1305,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
     // The wrong value should trigger a verification error.
     ASSERT_EQ(test.mismatch_error,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_TRUE(test.func(param, test.incorrect_value,
                                              test.incorrect_value_len));
@@ -1342,7 +1314,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
     // Passing zero as the length, unlike OpenSSL, should trigger an error and
     // should cause verification to fail.
     ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_FALSE(test.func(param, test.correct_value, 0));
                      }));
@@ -1350,7 +1322,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
     // Passing an empty value should be an error when setting and should cause
     // verification to fail.
     ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_FALSE(test.func(param, nullptr, 0));
                      }));
@@ -1358,7 +1330,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
     // Passing a value with embedded NULs should also be an error and should
     // also cause verification to fail.
     ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
                        ASSERT_FALSE(test.func(param, "a", 2));
                      }));
@@ -1368,14 +1340,14 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
   // The correct value should still work.
   ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
-                              false, [](X509_VERIFY_PARAM *param) {
+                              [](X509_VERIFY_PARAM *param) {
                                 ASSERT_TRUE(X509_VERIFY_PARAM_set1_ip(
                                     param, kIP, sizeof(kIP)));
                               }));
 
   // Incorrect values should still fail.
   ASSERT_EQ(X509_V_ERR_IP_ADDRESS_MISMATCH,
-            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                    [](X509_VERIFY_PARAM *param) {
                      ASSERT_TRUE(X509_VERIFY_PARAM_set1_ip(param, kWrongIP,
                                                            sizeof(kWrongIP)));
@@ -1384,14 +1356,14 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
   // Zero length values should trigger an error when setting and cause
   // verification to always fail.
   ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                    [](X509_VERIFY_PARAM *param) {
                      ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip(param, kIP, 0));
                    }));
 
   // ... and so should NULL values.
   ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0, false,
+            Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                    [](X509_VERIFY_PARAM *param) {
                      ASSERT_FALSE(X509_VERIFY_PARAM_set1_ip(param, nullptr, 0));
                    }));
@@ -2500,11 +2472,10 @@ TEST(X509Test, CommonNameFallback) {
   ASSERT_TRUE(with_ip);
 
   auto verify_cert = [&](X509 *leaf, unsigned flags, const char *host) {
-    return Verify(
-        leaf, {root.get()}, {}, {}, 0, false, [&](X509_VERIFY_PARAM *param) {
-          ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
-          X509_VERIFY_PARAM_set_hostflags(param, flags);
-        });
+    return Verify(leaf, {root.get()}, {}, {}, 0, [&](X509_VERIFY_PARAM *param) {
+      ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
+      X509_VERIFY_PARAM_set_hostflags(param, flags);
+    });
   };
 
   // By default, the common name is ignored if the SAN list is present but
@@ -2617,7 +2588,7 @@ TEST(X509Test, CommonNameAndNameConstraints) {
 
   auto verify_cert = [&](X509 *leaf, unsigned flags, const char *host) {
     return Verify(
-        leaf, {root.get()}, {intermediate.get()}, {}, 0, false,
+        leaf, {root.get()}, {intermediate.get()}, {}, 0,
         [&](X509_VERIFY_PARAM *param) {
           ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
           X509_VERIFY_PARAM_set_hostflags(param, flags);
@@ -2638,12 +2609,12 @@ TEST(X509Test, CommonNameAndNameConstraints) {
   // separately call |X509_check_host|.
   EXPECT_EQ(X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS,
             Verify(not_permitted.get(), {root.get()}, {intermediate.get()}, {},
-                   0 /* no flags */, false, nullptr));
+                   0 /* no flags */, nullptr));
 
   // If the leaf certificate has SANs, the common name fallback is always
   // disabled, so the name constraints do not apply.
   EXPECT_EQ(X509_V_OK, Verify(not_permitted_with_sans.get(), {root.get()},
-                              {intermediate.get()}, {}, 0, false, nullptr));
+                              {intermediate.get()}, {}, 0, nullptr));
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(not_permitted_with_sans.get(), 0 /* no flags */,
                         kCommonNameNotPermittedWithSANs));
@@ -2651,7 +2622,7 @@ TEST(X509Test, CommonNameAndNameConstraints) {
   // If the common name does not look like a DNS name, we apply neither name
   // constraints nor common name fallback.
   EXPECT_EQ(X509_V_OK, Verify(not_dns.get(), {root.get()}, {intermediate.get()},
-                              {}, 0, false, nullptr));
+                              {}, 0, nullptr));
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(not_dns.get(), 0 /* no flags */, kCommonNameNotDNS));
 }
@@ -2675,8 +2646,7 @@ TEST(X509Test, ServerGatedCryptoEKUs) {
 
   auto verify_cert = [&root](X509 *leaf) {
     return Verify(leaf, {root.get()}, /*intermediates=*/{}, /*crls=*/{},
-                  /*flags=*/0, /*use_additional_untrusted=*/false,
-                  [&](X509_VERIFY_PARAM *param) {
+                  /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
                     ASSERT_TRUE(X509_VERIFY_PARAM_set_purpose(
                         param, X509_PURPOSE_SSL_SERVER));
                   });

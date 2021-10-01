@@ -268,7 +268,6 @@ struct x509_store_st {
   int cache;                    // if true, stash any hits
   STACK_OF(X509_OBJECT) *objs;  // Cache of all objects
   CRYPTO_MUTEX objs_lock;
-  STACK_OF(X509) *additional_untrusted;
 
   // These are external lookup methods
   STACK_OF(X509_LOOKUP) *get_cert_methods;
