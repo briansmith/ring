@@ -1146,19 +1146,14 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
   X509_STORE_CTX_trusted_stack(ctx.get(), roots_stack.get());
   X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
 
-  X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_new();
-  if (param == nullptr) {
-    return X509_V_ERR_UNSPECIFIED;
-  }
+  X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
   X509_VERIFY_PARAM_set_time(param, kReferenceTime);
-  X509_VERIFY_PARAM_set_depth(param, 16);
   if (configure_callback) {
     configure_callback(param);
   }
   if (flags) {
     X509_VERIFY_PARAM_set_flags(param, flags);
   }
-  X509_STORE_CTX_set0_param(ctx.get(), param);
 
   ERR_clear_error();
   if (X509_verify_cert(ctx.get()) != 1) {
