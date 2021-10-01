@@ -528,7 +528,7 @@ static const X509_VERIFY_PARAM default_table[] = {
      (char *)"default",         /* X509 default parameters */
      0,                         /* Check time */
      0,                         /* internal flags */
-     0,                         /* flags */
+     X509_V_FLAG_TRUSTED_FIRST, /* flags */
      0,                         /* purpose */
      0,                         /* trust */
      100,                       /* depth */

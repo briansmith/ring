@@ -1108,12 +1108,13 @@ static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
 
 static const time_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
 
-static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
-                  const std::vector<X509 *> &intermediates,
-                  const std::vector<X509_CRL *> &crls, unsigned long flags,
-                  bool use_additional_untrusted,
-                  std::function<void(X509_VERIFY_PARAM *)> configure_callback,
-                  int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
+static int Verify(
+    X509 *leaf, const std::vector<X509 *> &roots,
+    const std::vector<X509 *> &intermediates,
+    const std::vector<X509_CRL *> &crls, unsigned long flags,
+    bool use_additional_untrusted,
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback,
+    int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
@@ -1163,14 +1164,15 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
   return X509_V_OK;
 }
 
-static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
-                   const std::vector<X509 *> &intermediates,
-                   const std::vector<X509_CRL *> &crls,
-                   unsigned long flags = 0) {
-  const int r1 =
-      Verify(leaf, roots, intermediates, crls, flags, false, nullptr);
+static int Verify(
+    X509 *leaf, const std::vector<X509 *> &roots,
+    const std::vector<X509 *> &intermediates,
+    const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr) {
+  const int r1 = Verify(leaf, roots, intermediates, crls, flags, false,
+                        configure_callback);
   const int r2 =
-      Verify(leaf, roots, intermediates, crls, flags, true, nullptr);
+      Verify(leaf, roots, intermediates, crls, flags, true, configure_callback);
 
   if (r1 != r2) {
     fprintf(stderr,
@@ -1184,6 +1186,15 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
 }
 
 TEST(X509Test, TestVerify) {
+  //  cross_signing_root
+  //         |
+  //   root_cross_signed    root
+  //              \         /
+  //             intermediate
+  //                |     |
+  //              leaf  leaf_no_key_usage
+  //                      |
+  //                    forgery
   bssl::UniquePtr<X509> cross_signing_root(CertFromPEM(kCrossSigningRootPEM));
   bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
   bssl::UniquePtr<X509> root_cross_signed(CertFromPEM(kRootCrossSignedPEM));
@@ -1203,41 +1214,77 @@ TEST(X509Test, TestVerify) {
   ASSERT_TRUE(forgery);
   ASSERT_TRUE(leaf_no_key_usage);
 
-  std::vector<X509*> empty;
-  std::vector<X509_CRL*> empty_crls;
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
-            Verify(leaf.get(), empty, empty, empty_crls));
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
-            Verify(leaf.get(), empty, {intermediate.get()}, empty_crls));
+  // Most of these tests work with or without |X509_V_FLAG_TRUSTED_FIRST|,
+  // though in different ways.
+  for (bool trusted_first : {true, false}) {
+    SCOPED_TRACE(trusted_first);
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback;
+    if (!trusted_first) {
+      // Note we need the callback to clear the flag. Setting |flags| to zero
+      // only skips setting new flags.
+      configure_callback = [&](X509_VERIFY_PARAM *param) {
+        X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
+      };
+    }
 
-  ASSERT_EQ(X509_V_OK,
-            Verify(leaf.get(), {root.get()}, {intermediate.get()}, empty_crls));
-  ASSERT_EQ(X509_V_OK,
-            Verify(leaf.get(), {cross_signing_root.get()},
-                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
-  ASSERT_EQ(X509_V_OK,
-            Verify(leaf.get(), {cross_signing_root.get(), root.get()},
-                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
+    // No trust anchors configured.
+    ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+              Verify(leaf.get(), /*roots=*/{}, /*intermediates=*/{},
+                     /*crls=*/{}, /*flags=*/0, configure_callback));
+    ASSERT_EQ(
+        X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+        Verify(leaf.get(), /*roots=*/{}, {intermediate.get()}, /*crls=*/{},
+               /*flags=*/0, configure_callback));
 
-  /* This is the “altchains” test – we remove the cross-signing CA but include
-   * the cross-sign in the intermediates. */
-  ASSERT_EQ(X509_V_OK,
-            Verify(leaf.get(), {root.get()},
-                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
-  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
-            Verify(leaf.get(), {root.get()},
-                   {intermediate.get(), root_cross_signed.get()}, empty_crls,
-                   X509_V_FLAG_NO_ALT_CHAINS));
-  ASSERT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(forgery.get(), {intermediate_self_signed.get()},
-                   {leaf_no_key_usage.get()}, empty_crls));
+    // Each chain works individually.
+    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                /*crls=*/{}, /*flags=*/0, configure_callback));
+    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {cross_signing_root.get()},
+                                {intermediate.get(), root_cross_signed.get()},
+                                /*crls=*/{}, /*flags=*/0, configure_callback));
 
-  /* Test that one cannot skip Basic Constraints checking with a contorted set
-   * of roots and intermediates. This is a regression test for CVE-2015-1793. */
-  ASSERT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(forgery.get(),
-                   {intermediate_self_signed.get(), root_cross_signed.get()},
-                   {leaf_no_key_usage.get(), intermediate.get()}, empty_crls));
+    // When both roots are available, we pick one or the other.
+    ASSERT_EQ(X509_V_OK,
+              Verify(leaf.get(), {cross_signing_root.get(), root.get()},
+                     {intermediate.get(), root_cross_signed.get()}, /*crls=*/{},
+                     /*flags=*/0, configure_callback));
+
+    // This is the “altchains” test – we remove the cross-signing CA but include
+    // the cross-sign in the intermediates. With |trusted_first|, we
+    // preferentially stop path-building at |intermediate|. Without
+    // |trusted_first|, the "altchains" logic repairs it.
+    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+                                {intermediate.get(), root_cross_signed.get()},
+                                /*crls=*/{}, /*flags=*/0, configure_callback));
+
+    // If |X509_V_FLAG_NO_ALT_CHAINS| is set and |trusted_first| is disabled, we
+    // get stuck on |root_cross_signed|. If either feature is enabled, we can
+    // build the path.
+    //
+    // This test exists to confirm our current behavior, but these modes are
+    // just workarounds for not having an actual path-building verifier. If we
+    // fix it, this test can be removed.
+    ASSERT_EQ(trusted_first ? X509_V_OK
+                            : X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+              Verify(leaf.get(), {root.get()},
+                     {intermediate.get(), root_cross_signed.get()}, /*crls=*/{},
+                     /*flags=*/X509_V_FLAG_NO_ALT_CHAINS, configure_callback));
+
+    // |forgery| is signed by |leaf_no_key_usage|, but is rejected because the
+    // leaf is not a CA.
+    ASSERT_EQ(X509_V_ERR_INVALID_CA,
+              Verify(forgery.get(), {intermediate_self_signed.get()},
+                     {leaf_no_key_usage.get()}, /*crls=*/{}, /*flags=*/0,
+                     configure_callback));
+
+    // Test that one cannot skip Basic Constraints checking with a contorted set
+    // of roots and intermediates. This is a regression test for CVE-2015-1793.
+    ASSERT_EQ(X509_V_ERR_INVALID_CA,
+              Verify(forgery.get(),
+                     {intermediate_self_signed.get(), root_cross_signed.get()},
+                     {leaf_no_key_usage.get(), intermediate.get()}, /*crls=*/{},
+                     /*flags=*/0, configure_callback));
+  }
 }
 
 static const char kHostname[] = "example.com";
@@ -1507,7 +1554,8 @@ static bssl::UniquePtr<GENERAL_NAME> MakeGeneralName(int type,
 }
 
 static bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
-                                          const char *subject, EVP_PKEY *key) {
+                                          const char *subject, EVP_PKEY *key,
+                                          bool is_ca) {
   bssl::UniquePtr<X509> cert(X509_new());
   if (!cert ||  //
       !X509_set_version(cert.get(), X509_VERSION_3) ||
@@ -1520,6 +1568,15 @@ static bssl::UniquePtr<X509> MakeTestCert(const char *issuer,
       !X509_set_pubkey(cert.get(), key) ||
       !ASN1_TIME_adj(X509_getm_notBefore(cert.get()), kReferenceTime, -1, 0) ||
       !ASN1_TIME_adj(X509_getm_notAfter(cert.get()), kReferenceTime, 1, 0)) {
+    return nullptr;
+  }
+  bssl::UniquePtr<BASIC_CONSTRAINTS> bc(BASIC_CONSTRAINTS_new());
+  if (!bc) {
+    return nullptr;
+  }
+  bc->ca = is_ca ? 0xff : 0x00;
+  if (!X509_add1_ext_i2d(cert.get(), NID_basic_constraints, bc.get(),
+                         /*crit=*/1, /*flags=*/0)) {
     return nullptr;
   }
   return cert;
@@ -1662,13 +1719,15 @@ TEST(X509Test, NameConstraints) {
     ASSERT_TRUE(subtree->base);
     ASSERT_TRUE(bssl::PushToStack(nc->permittedSubtrees, std::move(subtree)));
 
-    bssl::UniquePtr<X509> root = MakeTestCert("Root", "Root", key.get());
+    bssl::UniquePtr<X509> root =
+        MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
     ASSERT_TRUE(root);
     ASSERT_TRUE(X509_add1_ext_i2d(root.get(), NID_name_constraints, nc.get(),
                                   /*crit=*/1, /*flags=*/0));
     ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
 
-    bssl::UniquePtr<X509> leaf = MakeTestCert("Root", "Leaf", key.get());
+    bssl::UniquePtr<X509> leaf =
+        MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
     ASSERT_TRUE(leaf);
     ASSERT_TRUE(X509_add1_ext_i2d(leaf.get(), NID_subject_alt_name, names.get(),
                                   /*crit=*/0, /*flags=*/0));
@@ -3340,4 +3399,86 @@ TEST(X509Test, Attribute) {
   ASSERT_TRUE(
       X509_ATTRIBUTE_set1_data(attr.get(), V_ASN1_BMPSTRING, str.get(), -1));
   check_attribute(attr.get(), /*has_test2=*/false);
+}
+
+// Test that, by default, |X509_V_FLAG_TRUSTED_FIRST| is set, which means we'll
+// skip over server-sent expired intermediates when there is a local trust
+// anchor that works better.
+TEST(X509Test, TrustedFirst) {
+  // Generate the following certificates:
+  //
+  //                     Root 2 (in store, expired)
+  //                       |
+  // Root 1 (in store)   Root 1 (cross-sign)
+  //          \           /
+  //          Intermediate
+  //                |
+  //               Leaf
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<X509> root2 =
+      MakeTestCert("Root 2", "Root 2", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root2);
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(root2.get()), kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/-1));
+  ASSERT_TRUE(X509_sign(root2.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> root1 =
+      MakeTestCert("Root 1", "Root 1", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root1);
+  ASSERT_TRUE(X509_sign(root1.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> root1_cross =
+      MakeTestCert("Root 2", "Root 1", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root1_cross);
+  ASSERT_TRUE(X509_sign(root1_cross.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root 1", "Intermediate", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  // As a control, confirm that |leaf| -> |intermediate| -> |root1| is valid,
+  // but the path through |root1_cross| is expired.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root1.get()}, {intermediate.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_CERT_HAS_EXPIRED,
+            Verify(leaf.get(), {root2.get()},
+                   {intermediate.get(), root1_cross.get()}, {}));
+
+  // By default, we should find the |leaf| -> |intermediate| -> |root2| chain,
+  // skipping |root1_cross|.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root1.get(), root2.get()},
+                              {intermediate.get(), root1_cross.get()}, {}));
+
+  // When |X509_V_FLAG_TRUSTED_FIRST| is disabled, we get stuck on the expired
+  // intermediate. Note we need the callback to clear the flag. Setting |flags|
+  // to zero only skips setting new flags.
+  //
+  // This test exists to confirm our current behavior, but these modes are just
+  // workarounds for not having an actual path-building verifier. If we fix it,
+  // this test can be removed.
+  EXPECT_EQ(X509_V_ERR_CERT_HAS_EXPIRED,
+            Verify(leaf.get(), {root1.get(), root2.get()},
+                   {intermediate.get(), root1_cross.get()}, {}, /*flags=*/0,
+                   [&](X509_VERIFY_PARAM *param) {
+                     X509_VERIFY_PARAM_clear_flags(param,
+                                                   X509_V_FLAG_TRUSTED_FIRST);
+                   }));
+
+  // Even when |X509_V_FLAG_TRUSTED_FIRST| is disabled, if |root2| is not
+  // trusted, the alt chains logic recovers the path.
+  EXPECT_EQ(
+      X509_V_OK,
+      Verify(leaf.get(), {root1.get()}, {intermediate.get(), root1_cross.get()},
+             {}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+               X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
+             }));
 }
