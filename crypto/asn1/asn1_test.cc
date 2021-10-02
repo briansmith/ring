@@ -1157,6 +1157,51 @@ TEST(ASN1Test, StringByNID) {
   }
 }
 
+TEST(ASN1Test, StringByCustomNID) {
+  // This test affects library-global state. We rely on nothing else in the test
+  // suite using these OIDs.
+  int nid1 = OBJ_create("1.2.840.113554.4.1.72585.1000", "custom OID 1",
+                        "custom OID 1");
+  ASSERT_NE(NID_undef, nid1);
+  int nid2 = OBJ_create("1.2.840.113554.4.1.72585.1001", "custom OID 2",
+                        "custom OID 2");
+  ASSERT_NE(NID_undef, nid2);
+
+  // Values registered in the string table should be picked up.
+  ASSERT_TRUE(ASN1_STRING_TABLE_add(nid1, 5, 10, V_ASN1_PRINTABLESTRING,
+                                    STABLE_NO_MASK));
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_set_by_NID(
+      nullptr, reinterpret_cast<const uint8_t *>("12345"), 5, MBSTRING_UTF8,
+      nid1));
+  ASSERT_TRUE(str);
+  EXPECT_EQ(V_ASN1_PRINTABLESTRING, ASN1_STRING_type(str.get()));
+  EXPECT_EQ(Bytes("12345"), Bytes(ASN1_STRING_get0_data(str.get()),
+                                  ASN1_STRING_length(str.get())));
+
+  // Minimum and maximum lengths are enforced.
+  str.reset(ASN1_STRING_set_by_NID(
+      nullptr, reinterpret_cast<const uint8_t *>("1234"), 4, MBSTRING_UTF8,
+      nid1));
+  EXPECT_FALSE(str);
+  ERR_clear_error();
+  str.reset(ASN1_STRING_set_by_NID(
+      nullptr, reinterpret_cast<const uint8_t *>("12345678901"), 11,
+      MBSTRING_UTF8, nid1));
+  EXPECT_FALSE(str);
+  ERR_clear_error();
+
+  // Without |STABLE_NO_MASK|, we always pick UTF8String. -1 means there is no
+  // length limit.
+  ASSERT_TRUE(ASN1_STRING_TABLE_add(nid2, -1, -1, DIRSTRING_TYPE, 0));
+  str.reset(ASN1_STRING_set_by_NID(nullptr,
+                                   reinterpret_cast<const uint8_t *>("12345"),
+                                   5, MBSTRING_UTF8, nid2));
+  ASSERT_TRUE(str);
+  EXPECT_EQ(V_ASN1_UTF8STRING, ASN1_STRING_type(str.get()));
+  EXPECT_EQ(Bytes("12345"), Bytes(ASN1_STRING_get0_data(str.get()),
+                                  ASN1_STRING_length(str.get())));
+}
+
 // Test that multi-string types correctly encode negative ENUMERATED.
 // Multi-string types cannot contain INTEGER, so we only test ENUMERATED.
 TEST(ASN1Test, NegativeEnumeratedMultistring) {
