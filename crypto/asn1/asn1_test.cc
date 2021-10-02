@@ -30,6 +30,7 @@
 #include <openssl/x509v3.h>
 
 #include "../test/test_util.h"
+#include "internal.h"
 
 
 // kTag128 is an ASN.1 structure with a universal tag with number 128.
@@ -1117,6 +1118,15 @@ TEST(ASN1Test, InvalidMSTRING) {
   ASSERT_TRUE(obj);
   EXPECT_EQ(-1, obj->type);
   EXPECT_EQ(-1, i2d_DIRECTORYSTRING(obj.get(), nullptr));
+}
+
+TEST(ASN1Test, StringTableSorted) {
+  const ASN1_STRING_TABLE *table;
+  size_t table_len;
+  asn1_get_string_table_for_testing(&table, &table_len);
+  for (size_t i = 1; i < table_len; i++) {
+    EXPECT_LT(table[i-1].nid, table[i].nid);
+  }
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of

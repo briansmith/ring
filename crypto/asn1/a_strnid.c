@@ -64,6 +64,10 @@
 #include <openssl/obj.h>
 #include <openssl/stack.h>
 
+#include "../internal.h"
+#include "internal.h"
+
+
 DEFINE_STACK_OF(ASN1_STRING_TABLE)
 
 static STACK_OF(ASN1_STRING_TABLE) *stable = NULL;
@@ -244,33 +248,8 @@ static void st_free(ASN1_STRING_TABLE *tbl)
         OPENSSL_free(tbl);
 }
 
-#ifdef STRING_TABLE_TEST
-
-int main(void)
-{
-    ASN1_STRING_TABLE *tmp;
-    int i, last_nid = -1;
-
-    for (tmp = tbl_standard, i = 0;
-         i < sizeof(tbl_standard) / sizeof(ASN1_STRING_TABLE); i++, tmp++) {
-        if (tmp->nid < last_nid) {
-            last_nid = 0;
-            break;
-        }
-        last_nid = tmp->nid;
-    }
-
-    if (last_nid != 0) {
-        printf("Table order OK\n");
-        exit(0);
-    }
-
-    for (tmp = tbl_standard, i = 0;
-         i < sizeof(tbl_standard) / sizeof(ASN1_STRING_TABLE); i++, tmp++)
-        printf("Index %d, NID %d, Name=%s\n", i, tmp->nid,
-               OBJ_nid2ln(tmp->nid));
-
-    return 0;
+void asn1_get_string_table_for_testing(const ASN1_STRING_TABLE **out_ptr,
+                                       size_t *out_len) {
+    *out_ptr = tbl_standard;
+    *out_len = OPENSSL_ARRAY_SIZE(tbl_standard);
 }
-
-#endif

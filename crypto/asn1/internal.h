@@ -175,6 +175,11 @@ const void *asn1_type_value_as_pointer(const ASN1_TYPE *a);
  * ASN.1 PrintableString, and zero otherwise. */
 int asn1_is_printable(uint32_t value);
 
+/* asn1_get_string_table_for_testing sets |*out_ptr| and |*out_len| to the table
+ * of built-in |ASN1_STRING_TABLE| values. It is exported for testing. */
+OPENSSL_EXPORT void asn1_get_string_table_for_testing(
+    const ASN1_STRING_TABLE **out_ptr, size_t *out_len);
+
 
 #if defined(__cplusplus)
 }  /* extern C */
