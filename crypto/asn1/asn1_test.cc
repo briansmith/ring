@@ -1037,6 +1037,126 @@ TEST(ASN1Test, MBString) {
   }
 }
 
+TEST(ASN1Test, StringByNID) {
+  // |ASN1_mbstring_*| tests above test most of the interactions with |inform|,
+  // so all tests below use UTF-8.
+  const struct {
+    int nid;
+    std::string in;
+    int expected_type;
+    std::string expected;
+  } kTests[] = {
+      // Although DirectoryString and PKCS9String allow many types of strings,
+      // we prefer UTF8String.
+      {NID_commonName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_commonName, "\xe2\x98\x83", V_ASN1_UTF8STRING, "\xe2\x98\x83"},
+      {NID_localityName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_stateOrProvinceName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_organizationName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_organizationalUnitName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_pkcs9_unstructuredName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_pkcs9_challengePassword, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_pkcs9_unstructuredAddress, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_givenName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_givenName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_givenName, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_surname, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_initials, "abc", V_ASN1_UTF8STRING, "abc"},
+      {NID_name, "abc", V_ASN1_UTF8STRING, "abc"},
+
+      // Some attribute types use a particular string type.
+      {NID_countryName, "US", V_ASN1_PRINTABLESTRING, "US"},
+      {NID_pkcs9_emailAddress, "example@example.com", V_ASN1_IA5STRING,
+       "example@example.com"},
+      {NID_serialNumber, "1234", V_ASN1_PRINTABLESTRING, "1234"},
+      {NID_friendlyName, "abc", V_ASN1_BMPSTRING,
+       std::string({'\0', 'a', '\0', 'b', '\0', 'c'})},
+      {NID_dnQualifier, "US", V_ASN1_PRINTABLESTRING, "US"},
+      {NID_domainComponent, "com", V_ASN1_IA5STRING, "com"},
+      {NID_ms_csp_name, "abc", V_ASN1_BMPSTRING,
+       std::string({'\0', 'a', '\0', 'b', '\0', 'c'})},
+
+      // Unknown NIDs default to UTF8String.
+      {NID_rsaEncryption, "abc", V_ASN1_UTF8STRING, "abc"},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.nid);
+    SCOPED_TRACE(t.in);
+
+    // Test allocating a new object.
+    bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_set_by_NID(
+        nullptr, reinterpret_cast<const uint8_t *>(t.in.data()), t.in.size(),
+        MBSTRING_UTF8, t.nid));
+    ASSERT_TRUE(str);
+    EXPECT_EQ(t.expected_type, ASN1_STRING_type(str.get()));
+    EXPECT_EQ(Bytes(t.expected), Bytes(ASN1_STRING_get0_data(str.get()),
+                                       ASN1_STRING_length(str.get())));
+
+    // Test writing into an existing object.
+    str.reset(ASN1_STRING_new());
+    ASSERT_TRUE(str);
+    ASN1_STRING *old_str = str.get();
+    ASSERT_TRUE(ASN1_STRING_set_by_NID(
+        &old_str, reinterpret_cast<const uint8_t *>(t.in.data()), t.in.size(),
+        MBSTRING_UTF8, t.nid));
+    ASSERT_EQ(old_str, str.get());
+    EXPECT_EQ(t.expected_type, ASN1_STRING_type(str.get()));
+    EXPECT_EQ(Bytes(t.expected), Bytes(ASN1_STRING_get0_data(str.get()),
+                                       ASN1_STRING_length(str.get())));
+  }
+
+  const struct {
+    int nid;
+    std::string in;
+  } kInvalidTests[] = {
+      // DirectoryString forbids empty inputs.
+      {NID_commonName, ""},
+      {NID_localityName, ""},
+      {NID_stateOrProvinceName, ""},
+      {NID_organizationName, ""},
+      {NID_organizationalUnitName, ""},
+      {NID_pkcs9_unstructuredName, ""},
+      {NID_pkcs9_challengePassword, ""},
+      {NID_pkcs9_unstructuredAddress, ""},
+      {NID_givenName, ""},
+      {NID_givenName, ""},
+      {NID_givenName, ""},
+      {NID_surname, ""},
+      {NID_initials, ""},
+      {NID_name, ""},
+
+      // Test upper bounds from RFC 5280.
+      {NID_name, std::string(32769, 'a')},
+      {NID_commonName, std::string(65, 'a')},
+      {NID_localityName, std::string(129, 'a')},
+      {NID_stateOrProvinceName, std::string(129, 'a')},
+      {NID_organizationName, std::string(65, 'a')},
+      {NID_organizationalUnitName, std::string(65, 'a')},
+      {NID_pkcs9_emailAddress, std::string(256, 'a')},
+      {NID_serialNumber, std::string(65, 'a')},
+
+      // X520countryName must be exactly two characters.
+      {NID_countryName, "A"},
+      {NID_countryName, "AAA"},
+
+      // Some string types cannot represent all codepoints.
+      {NID_countryName, "\xe2\x98\x83"},
+      {NID_pkcs9_emailAddress, "\xe2\x98\x83"},
+      {NID_serialNumber, "\xe2\x98\x83"},
+      {NID_dnQualifier, "\xe2\x98\x83"},
+      {NID_domainComponent, "\xe2\x98\x83"},
+  };
+  for (const auto &t : kInvalidTests) {
+    SCOPED_TRACE(t.nid);
+    SCOPED_TRACE(t.in);
+    bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_set_by_NID(
+        nullptr, reinterpret_cast<const uint8_t *>(t.in.data()), t.in.size(),
+        MBSTRING_UTF8, t.nid));
+    EXPECT_FALSE(str);
+    ERR_clear_error();
+  }
+}
+
 // Test that multi-string types correctly encode negative ENUMERATED.
 // Multi-string types cannot contain INTEGER, so we only test ENUMERATED.
 TEST(ASN1Test, NegativeEnumeratedMultistring) {

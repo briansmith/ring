@@ -122,15 +122,13 @@ ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out,
  * Now the tables and helper functions for the string table:
  */
 
-/* size limits: this stuff is taken straight from RFC 3280 */
-
+/* See RFC 5280. */
 #define ub_name                         32768
 #define ub_common_name                  64
 #define ub_locality_name                128
 #define ub_state_name                   128
 #define ub_organization_name            64
 #define ub_organization_unit_name       64
-#define ub_title                        64
 #define ub_email_address                128
 #define ub_serial_number                64
 
