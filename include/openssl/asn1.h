@@ -370,6 +370,50 @@ OPENSSL_EXPORT int ASN1_mbstring_ncopy(ASN1_STRING **out, const uint8_t *in,
                                        int len, int inform, unsigned long mask,
                                        long minsize, long maxsize);
 
+// ASN1_STRING_set_by_NID behaves like |ASN1_mbstring_ncopy|, but determines
+// |mask|, |minsize|, and |maxsize| based on |nid|. When |nid| is a recognized
+// X.509 attribute type, it will pick a suitable ASN.1 string type and bounds.
+// For most attribute types, it preferentially chooses UTF8String. If |nid| is
+// unrecognized, it uses UTF8String by default.
+//
+// Slightly unlike |ASN1_mbstring_ncopy|, this function interprets |out| and
+// returns its result as follows: If |out| is NULL, it returns a newly-allocated
+// |ASN1_STRING| containing the result. If |out| is non-NULL and
+// |*out| is NULL, it additionally sets |*out| to the result. If both |out| and
+// |*out| are non-NULL, it instead updates the object at |*out| and returns
+// |*out|. In all cases, it returns NULL on error.
+//
+// This function supports the following NIDs: |NID_countryName|,
+// |NID_dnQualifier|, |NID_domainComponent|, |NID_friendlyName|,
+// |NID_givenName|, |NID_initials|, |NID_localityName|, |NID_ms_csp_name|,
+// |NID_name|, |NID_organizationalUnitName|, |NID_organizationName|,
+// |NID_pkcs9_challengePassword|, |NID_pkcs9_emailAddress|,
+// |NID_pkcs9_unstructuredAddress|, |NID_pkcs9_unstructuredName|,
+// |NID_serialNumber|, |NID_stateOrProvinceName|, and |NID_surname|. Additional
+// NIDs may be registered with |ASN1_STRING_set_by_NID|, but it is recommended
+// to call |ASN1_mbstring_ncopy| directly instead.
+OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out,
+                                                   const unsigned char *in,
+                                                   int len, int inform,
+                                                   int nid);
+
+// STABLE_NO_MASK causes |ASN1_STRING_TABLE_add| to allow types other than
+// UTF8String.
+#define STABLE_NO_MASK 0x02
+
+// ASN1_STRING_TABLE_add registers the corresponding parameters with |nid|, for
+// use with |ASN1_STRING_set_by_NID|. It returns one on success and zero on
+// error. It is an error to call this function if |nid| is a built-in NID, or
+// was already registered by a previous call.
+//
+// WARNING: This function affects global state in the library. If two libraries
+// in the same address space register information for the same OID, one call
+// will fail. Prefer directly passing the desired parametrs to
+// |ASN1_mbstring_copy| or |ASN1_mbstring_ncopy| instead.
+OPENSSL_EXPORT int ASN1_STRING_TABLE_add(int nid, long minsize, long maxsize,
+                                         unsigned long mask,
+                                         unsigned long flags);
+
 // TODO(davidben): Expand and document function prototypes generated in macros.
 
 
@@ -839,6 +883,30 @@ OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
                                            unsigned long flags);
 
 
+// Deprecated functions.
+
+// ASN1_PRINTABLE_type interprets |len| bytes from |s| as a Latin-1 string. It
+// returns the first of |V_ASN1_PRINTABLESTRING|, |V_ASN1_IA5STRING|, or
+// |V_ASN1_T61STRING| that can represent every character. If |len| is negative,
+// |strlen(s)| is used instead.
+//
+// TODO(davidben): Remove this once all copies of Conscrypt have been updated
+// past https://github.com/google/conscrypt/pull/1032.
+OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int len);
+
+// ASN1_STRING_set_default_mask does nothing.
+OPENSSL_EXPORT void ASN1_STRING_set_default_mask(unsigned long mask);
+
+// ASN1_STRING_set_default_mask_asc returns one.
+OPENSSL_EXPORT int ASN1_STRING_set_default_mask_asc(const char *p);
+
+// ASN1_STRING_get_default_mask returns |B_ASN1_UTF8STRING|.
+OPENSSL_EXPORT unsigned long ASN1_STRING_get_default_mask(void);
+
+// ASN1_STRING_TABLE_cleanup does nothing.
+OPENSSL_EXPORT void ASN1_STRING_TABLE_cleanup(void);
+
+
 // Underdocumented functions.
 //
 // The following functions are not yet documented and organized.
@@ -862,17 +930,6 @@ typedef struct ASN1_ENCODING_st {
   // |alias_only|.
   unsigned alias_only_on_next_parse : 1;
 } ASN1_ENCODING;
-
-#define STABLE_FLAGS_MALLOC 0x01
-#define STABLE_NO_MASK 0x02
-
-typedef struct asn1_string_table_st {
-  int nid;
-  long minsize;
-  long maxsize;
-  unsigned long mask;
-  unsigned long flags;
-} ASN1_STRING_TABLE;
 
 // Declarations for template structures: for full definitions
 // see asn1t.h
@@ -1114,12 +1171,6 @@ OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid,
                                                int len, const char *sn,
                                                const char *ln);
 
-// ASN1_PRINTABLE_type interprets |len| bytes from |s| as a Latin-1 string. It
-// returns the first of |V_ASN1_PRINTABLESTRING|, |V_ASN1_IA5STRING|, or
-// |V_ASN1_T61STRING| that can represent every character. If |len| is negative,
-// |strlen(s)| is used instead.
-OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int len);
-
 OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
 
 // SPECIALS
@@ -1145,24 +1196,6 @@ OPENSSL_EXPORT void *ASN1_item_unpack(const ASN1_STRING *oct,
 
 OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it,
                                            ASN1_OCTET_STRING **oct);
-
-// ASN1_STRING_set_default_mask does nothing.
-OPENSSL_EXPORT void ASN1_STRING_set_default_mask(unsigned long mask);
-
-// ASN1_STRING_set_default_mask_asc returns one.
-OPENSSL_EXPORT int ASN1_STRING_set_default_mask_asc(const char *p);
-
-// ASN1_STRING_get_default_mask returns |B_ASN1_UTF8STRING|.
-OPENSSL_EXPORT unsigned long ASN1_STRING_get_default_mask(void);
-
-OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out,
-                                                   const unsigned char *in,
-                                                   int inlen, int inform,
-                                                   int nid);
-OPENSSL_EXPORT ASN1_STRING_TABLE *ASN1_STRING_TABLE_get(int nid);
-OPENSSL_EXPORT int ASN1_STRING_TABLE_add(int, long, long, unsigned long,
-                                         unsigned long);
-OPENSSL_EXPORT void ASN1_STRING_TABLE_cleanup(void);
 
 // ASN1 template functions
 
