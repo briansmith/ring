@@ -111,11 +111,10 @@ int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
   return 1;
 }
 
-#define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
-#define Xupdate(a, ix, ia, ib, ic, id) \
-  do {                                 \
-    (a) = ((ia) ^ (ib) ^ (ic) ^ (id)); \
-    (ix) = (a) = ROTATE((a), 1);       \
+#define Xupdate(a, ix, ia, ib, ic, id)    \
+  do {                                    \
+    (a) = ((ia) ^ (ib) ^ (ic) ^ (id));    \
+    (ix) = (a) = CRYPTO_rotl_u32((a), 1); \
   } while (0)
 
 #define K_00_19 0x5a827999UL
@@ -133,45 +132,47 @@ int SHA1_Final(uint8_t out[SHA_DIGEST_LENGTH], SHA_CTX *c) {
 #define F_40_59(b, c, d) (((b) & (c)) | (((b) | (c)) & (d)))
 #define F_60_79(b, c, d) F_20_39(b, c, d)
 
-#define BODY_00_15(i, a, b, c, d, e, f, xi)                               \
-  do {                                                                    \
-    (f) = (xi) + (e) + K_00_19 + ROTATE((a), 5) + F_00_19((b), (c), (d)); \
-    (b) = ROTATE((b), 30);                                                \
+#define BODY_00_15(i, a, b, c, d, e, f, xi)                \
+  do {                                                     \
+    (f) = (xi) + (e) + K_00_19 + CRYPTO_rotl_u32((a), 5) + \
+          F_00_19((b), (c), (d));                          \
+    (b) = CRYPTO_rotl_u32((b), 30);                        \
   } while (0)
 
-#define BODY_16_19(i, a, b, c, d, e, f, xi, xa, xb, xc, xd)         \
-  do {                                                              \
-    Xupdate(f, xi, xa, xb, xc, xd);                                 \
-    (f) += (e) + K_00_19 + ROTATE((a), 5) + F_00_19((b), (c), (d)); \
-    (b) = ROTATE((b), 30);                                          \
+#define BODY_16_19(i, a, b, c, d, e, f, xi, xa, xb, xc, xd)                  \
+  do {                                                                       \
+    Xupdate(f, xi, xa, xb, xc, xd);                                          \
+    (f) += (e) + K_00_19 + CRYPTO_rotl_u32((a), 5) + F_00_19((b), (c), (d)); \
+    (b) = CRYPTO_rotl_u32((b), 30);                                          \
   } while (0)
 
-#define BODY_20_31(i, a, b, c, d, e, f, xi, xa, xb, xc, xd)         \
-  do {                                                              \
-    Xupdate(f, xi, xa, xb, xc, xd);                                 \
-    (f) += (e) + K_20_39 + ROTATE((a), 5) + F_20_39((b), (c), (d)); \
-    (b) = ROTATE((b), 30);                                          \
+#define BODY_20_31(i, a, b, c, d, e, f, xi, xa, xb, xc, xd)                  \
+  do {                                                                       \
+    Xupdate(f, xi, xa, xb, xc, xd);                                          \
+    (f) += (e) + K_20_39 + CRYPTO_rotl_u32((a), 5) + F_20_39((b), (c), (d)); \
+    (b) = CRYPTO_rotl_u32((b), 30);                                          \
   } while (0)
 
-#define BODY_32_39(i, a, b, c, d, e, f, xa, xb, xc, xd)             \
-  do {                                                              \
-    Xupdate(f, xa, xa, xb, xc, xd);                                 \
-    (f) += (e) + K_20_39 + ROTATE((a), 5) + F_20_39((b), (c), (d)); \
-    (b) = ROTATE((b), 30);                                          \
+#define BODY_32_39(i, a, b, c, d, e, f, xa, xb, xc, xd)                      \
+  do {                                                                       \
+    Xupdate(f, xa, xa, xb, xc, xd);                                          \
+    (f) += (e) + K_20_39 + CRYPTO_rotl_u32((a), 5) + F_20_39((b), (c), (d)); \
+    (b) = CRYPTO_rotl_u32((b), 30);                                          \
   } while (0)
 
-#define BODY_40_59(i, a, b, c, d, e, f, xa, xb, xc, xd)             \
-  do {                                                              \
-    Xupdate(f, xa, xa, xb, xc, xd);                                 \
-    (f) += (e) + K_40_59 + ROTATE((a), 5) + F_40_59((b), (c), (d)); \
-    (b) = ROTATE((b), 30);                                          \
+#define BODY_40_59(i, a, b, c, d, e, f, xa, xb, xc, xd)                      \
+  do {                                                                       \
+    Xupdate(f, xa, xa, xb, xc, xd);                                          \
+    (f) += (e) + K_40_59 + CRYPTO_rotl_u32((a), 5) + F_40_59((b), (c), (d)); \
+    (b) = CRYPTO_rotl_u32((b), 30);                                          \
   } while (0)
 
-#define BODY_60_79(i, a, b, c, d, e, f, xa, xb, xc, xd)                   \
-  do {                                                                    \
-    Xupdate(f, xa, xa, xb, xc, xd);                                       \
-    (f) = (xa) + (e) + K_60_79 + ROTATE((a), 5) + F_60_79((b), (c), (d)); \
-    (b) = ROTATE((b), 30);                                                \
+#define BODY_60_79(i, a, b, c, d, e, f, xa, xb, xc, xd)    \
+  do {                                                     \
+    Xupdate(f, xa, xa, xb, xc, xd);                        \
+    (f) = (xa) + (e) + K_60_79 + CRYPTO_rotl_u32((a), 5) + \
+          F_60_79((b), (c), (d));                          \
+    (b) = CRYPTO_rotl_u32((b), 30);                        \
   } while (0)
 
 #ifdef X
@@ -338,7 +339,6 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
 }
 #endif
 
-#undef ROTATE
 #undef Xupdate
 #undef K_00_19
 #undef K_20_39

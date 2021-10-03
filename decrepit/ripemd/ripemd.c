@@ -112,41 +112,39 @@ int RIPEMD160_Final(uint8_t out[RIPEMD160_DIGEST_LENGTH], RIPEMD160_CTX *c) {
 #define F4(x, y, z) ((((x) ^ (y)) & (z)) ^ (y))
 #define F5(x, y, z) (((~(z)) | (y)) ^ (x))
 
-#define ROTATE(a, n) (((a) << (n)) | (((a)&0xffffffff) >> (32 - (n))))
-
-#define RIP1(a, b, c, d, e, w, s) \
-  {                               \
-    a += F1(b, c, d) + X(w);      \
-    a = ROTATE(a, s) + e;         \
-    c = ROTATE(c, 10);            \
+#define RIP1(a, b, c, d, e, w, s)  \
+  {                                \
+    a += F1(b, c, d) + X(w);       \
+    a = CRYPTO_rotl_u32(a, s) + e; \
+    c = CRYPTO_rotl_u32(c, 10);    \
   }
 
 #define RIP2(a, b, c, d, e, w, s, K) \
   {                                  \
     a += F2(b, c, d) + X(w) + K;     \
-    a = ROTATE(a, s) + e;            \
-    c = ROTATE(c, 10);               \
+    a = CRYPTO_rotl_u32(a, s) + e;   \
+    c = CRYPTO_rotl_u32(c, 10);      \
   }
 
 #define RIP3(a, b, c, d, e, w, s, K) \
   {                                  \
     a += F3(b, c, d) + X(w) + K;     \
-    a = ROTATE(a, s) + e;            \
-    c = ROTATE(c, 10);               \
+    a = CRYPTO_rotl_u32(a, s) + e;   \
+    c = CRYPTO_rotl_u32(c, 10);      \
   }
 
 #define RIP4(a, b, c, d, e, w, s, K) \
   {                                  \
     a += F4(b, c, d) + X(w) + K;     \
-    a = ROTATE(a, s) + e;            \
-    c = ROTATE(c, 10);               \
+    a = CRYPTO_rotl_u32(a, s) + e;   \
+    c = CRYPTO_rotl_u32(c, 10);      \
   }
 
 #define RIP5(a, b, c, d, e, w, s, K) \
   {                                  \
     a += F5(b, c, d) + X(w) + K;     \
-    a = ROTATE(a, s) + e;            \
-    c = ROTATE(c, 10);               \
+    a = CRYPTO_rotl_u32(a, s) + e;   \
+    c = CRYPTO_rotl_u32(c, 10);      \
   }
 
 #define KL0 0x00000000L

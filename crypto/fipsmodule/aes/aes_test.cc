@@ -403,10 +403,6 @@ static uint32_t aes_ref_sub_word(uint32_t in) {
   return a0 | (a1 << 8) | (a2 << 16) | (a3 << 24);
 }
 
-static uint32_t aes_ref_rot_word(uint32_t in, uint32_t n) {
-  return (in >> n) | (in << (32 - n));
-}
-
 static int aes_ref_set_encrypt_key(const uint8_t *key, int key_bits,
                                    AES_KEY *out) {
   static const uint32_t kRCon[10] = {0x01, 0x02, 0x04, 0x08, 0x10,
@@ -431,7 +427,7 @@ static int aes_ref_set_encrypt_key(const uint8_t *key, int key_bits,
   for (size_t i = words; i < num_subkey_words; i++) {
     uint32_t tmp = out->rd_key[i - 1];
     if (i % words == 0) {
-      tmp = aes_ref_sub_word(aes_ref_rot_word(tmp, 8)) ^ kRCon[(i / words) - 1];
+      tmp = aes_ref_sub_word(CRYPTO_rotr_u32(tmp, 8)) ^ kRCon[(i / words) - 1];
     } else if (key_bits == 256 && i % 4 == 0) {
       tmp = aes_ref_sub_word(tmp);
     }
@@ -532,9 +528,9 @@ print("static const uint32_t kTable[256] = {%s};\n" % body)
   for (size_t i = 0; i < 4; i++) {
     uint32_t in = block[i];
     block[i] = kInvMixColumn[in >> 24];
-    block[i] ^= aes_ref_rot_word(kInvMixColumn[(in >> 16) & 0xff], 8);
-    block[i] ^= aes_ref_rot_word(kInvMixColumn[(in >> 8) & 0xff], 16);
-    block[i] ^= aes_ref_rot_word(kInvMixColumn[in & 0xff], 24);
+    block[i] ^= CRYPTO_rotr_u32(kInvMixColumn[(in >> 16) & 0xff], 8);
+    block[i] ^= CRYPTO_rotr_u32(kInvMixColumn[(in >> 8) & 0xff], 16);
+    block[i] ^= CRYPTO_rotr_u32(kInvMixColumn[in & 0xff], 24);
   }
 }
 

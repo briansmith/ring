@@ -113,24 +113,22 @@ int MD4_Final(uint8_t out[MD4_DIGEST_LENGTH], MD4_CTX *c) {
 #define G(b, c, d) (((b) & (c)) | ((b) & (d)) | ((c) & (d)))
 #define H(b, c, d) ((b) ^ (c) ^ (d))
 
-#define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
-
 #define R0(a, b, c, d, k, s, t)            \
   do {                                     \
     (a) += ((k) + (t) + F((b), (c), (d))); \
-    (a) = ROTATE(a, s);                    \
+    (a) = CRYPTO_rotl_u32(a, s);           \
   } while (0)
 
 #define R1(a, b, c, d, k, s, t)            \
   do {                                     \
     (a) += ((k) + (t) + G((b), (c), (d))); \
-    (a) = ROTATE(a, s);                    \
+    (a) = CRYPTO_rotl_u32(a, s);           \
   } while (0)
 
 #define R2(a, b, c, d, k, s, t)            \
   do {                                     \
     (a) += ((k) + (t) + H((b), (c), (d))); \
-    (a) = ROTATE(a, s);                    \
+    (a) = CRYPTO_rotl_u32(a, s);           \
   } while (0)
 
 void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
@@ -237,7 +235,6 @@ void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
 #undef F
 #undef G
 #undef H
-#undef ROTATE
 #undef R0
 #undef R1
 #undef R2

@@ -42,19 +42,17 @@ static const uint8_t kSigma[10 * 16] = {
     // clang-format on
 };
 
-#define RIGHT_ROTATE(v, n) (((v) >> (n)) | ((v) << (64 - (n))))
-
 // https://tools.ietf.org/html/rfc7693#section-3.1
 static void blake2b_mix(uint64_t v[16], int a, int b, int c, int d, uint64_t x,
                         uint64_t y) {
   v[a] = v[a] + v[b] + x;
-  v[d] = RIGHT_ROTATE(v[d] ^ v[a], 32);
+  v[d] = CRYPTO_rotr_u64(v[d] ^ v[a], 32);
   v[c] = v[c] + v[d];
-  v[b] = RIGHT_ROTATE(v[b] ^ v[c], 24);
+  v[b] = CRYPTO_rotr_u64(v[b] ^ v[c], 24);
   v[a] = v[a] + v[b] + y;
-  v[d] = RIGHT_ROTATE(v[d] ^ v[a], 16);
+  v[d] = CRYPTO_rotr_u64(v[d] ^ v[a], 16);
   v[c] = v[c] + v[d];
-  v[b] = RIGHT_ROTATE(v[b] ^ v[c], 63);
+  v[b] = CRYPTO_rotr_u64(v[b] ^ v[c], 63);
 }
 
 static void blake2b_transform(

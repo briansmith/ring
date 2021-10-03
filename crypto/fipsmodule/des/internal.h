@@ -218,7 +218,7 @@ how to use xors :-) I got it to its final state.
 #define D_ENCRYPT(ks, LL, R, S)                                                \
   do {                                                                         \
     LOAD_DATA(ks, R, S, u, t, E0, E1);                                         \
-    t = ROTATE(t, 4);                                                          \
+    t = CRYPTO_rotr_u32(t, 4);                                                 \
     (LL) ^=                                                                    \
         DES_SPtrans[0][(u >> 2L) & 0x3f] ^ DES_SPtrans[2][(u >> 10L) & 0x3f] ^ \
         DES_SPtrans[4][(u >> 18L) & 0x3f] ^                                    \
@@ -229,8 +229,6 @@ how to use xors :-) I got it to its final state.
 
 #define ITERATIONS 16
 #define HALF_ITERATIONS 8
-
-#define ROTATE(a, n) (((a) >> (n)) + ((a) << (32 - (n))))
 
 
 #if defined(__cplusplus)

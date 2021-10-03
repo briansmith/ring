@@ -184,15 +184,17 @@ static const uint32_t K256[64] = {
     0x682e6ff3UL, 0x748f82eeUL, 0x78a5636fUL, 0x84c87814UL, 0x8cc70208UL,
     0x90befffaUL, 0xa4506cebUL, 0xbef9a3f7UL, 0xc67178f2UL};
 
-#define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
-
-// FIPS specification refers to right rotations, while our ROTATE macro
-// is left one. This is why you might notice that rotation coefficients
-// differ from those observed in FIPS document by 32-N...
-#define Sigma0(x) (ROTATE((x), 30) ^ ROTATE((x), 19) ^ ROTATE((x), 10))
-#define Sigma1(x) (ROTATE((x), 26) ^ ROTATE((x), 21) ^ ROTATE((x), 7))
-#define sigma0(x) (ROTATE((x), 25) ^ ROTATE((x), 14) ^ ((x) >> 3))
-#define sigma1(x) (ROTATE((x), 15) ^ ROTATE((x), 13) ^ ((x) >> 10))
+// See FIPS 180-4, section 4.1.2.
+#define Sigma0(x)                                       \
+  (CRYPTO_rotr_u32((x), 2) ^ CRYPTO_rotr_u32((x), 13) ^ \
+   CRYPTO_rotr_u32((x), 22))
+#define Sigma1(x)                                       \
+  (CRYPTO_rotr_u32((x), 6) ^ CRYPTO_rotr_u32((x), 11) ^ \
+   CRYPTO_rotr_u32((x), 25))
+#define sigma0(x) \
+  (CRYPTO_rotr_u32((x), 7) ^ CRYPTO_rotr_u32((x), 18) ^ ((x) >> 3))
+#define sigma1(x) \
+  (CRYPTO_rotr_u32((x), 17) ^ CRYPTO_rotr_u32((x), 19) ^ ((x) >> 10))
 
 #define Ch(x, y, z) (((x) & (y)) ^ ((~(x)) & (z)))
 #define Maj(x, y, z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
@@ -309,7 +311,6 @@ void SHA256_TransformBlocks(uint32_t state[8], const uint8_t *data,
   sha256_block_data_order(state, data, num_blocks);
 }
 
-#undef ROTATE
 #undef Sigma0
 #undef Sigma1
 #undef sigma0

@@ -342,10 +342,10 @@ void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule) {
 
     // table contained 0213 4657
     t2 = ((t << 16L) | (s & 0x0000ffffL)) & 0xffffffffL;
-    schedule->subkeys[i][0] = ROTATE(t2, 30) & 0xffffffffL;
+    schedule->subkeys[i][0] = CRYPTO_rotr_u32(t2, 30);
 
     t2 = ((s >> 16L) | (t & 0xffff0000L));
-    schedule->subkeys[i][1] = ROTATE(t2, 26) & 0xffffffffL;
+    schedule->subkeys[i][1] = CRYPTO_rotr_u32(t2, 26);
   }
 }
 
@@ -392,8 +392,8 @@ static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {
   // <71755.204@CompuServe.COM> for pointing this out.
   // clear the top bits on machines with 8byte longs
   // shift left by 2
-  r = ROTATE(r, 29) & 0xffffffffL;
-  l = ROTATE(l, 29) & 0xffffffffL;
+  r = CRYPTO_rotr_u32(r, 29);
+  l = CRYPTO_rotr_u32(l, 29);
 
   // I don't know if it is worth the effort of loop unrolling the
   // inner loop
@@ -434,8 +434,8 @@ static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {
   }
 
   // rotate and clear the top bits on machines with 8byte longs
-  l = ROTATE(l, 3) & 0xffffffffL;
-  r = ROTATE(r, 3) & 0xffffffffL;
+  l = CRYPTO_rotr_u32(l, 3);
+  r = CRYPTO_rotr_u32(r, 3);
 
   FP(r, l);
   data[0] = l;
@@ -454,8 +454,8 @@ static void DES_encrypt2(uint32_t *data, const DES_key_schedule *ks, int enc) {
   // sparc2. Thanks to Richard Outerbridge <71755.204@CompuServe.COM> for
   // pointing this out.
   // clear the top bits on machines with 8byte longs
-  r = ROTATE(r, 29) & 0xffffffffL;
-  l = ROTATE(l, 29) & 0xffffffffL;
+  r = CRYPTO_rotr_u32(r, 29);
+  l = CRYPTO_rotr_u32(l, 29);
 
   // I don't know if it is worth the effort of loop unrolling the
   // inner loop
@@ -495,8 +495,8 @@ static void DES_encrypt2(uint32_t *data, const DES_key_schedule *ks, int enc) {
     D_ENCRYPT(ks, r, l, 0);
   }
   // rotate and clear the top bits on machines with 8byte longs
-  data[0] = ROTATE(l, 3) & 0xffffffffL;
-  data[1] = ROTATE(r, 3) & 0xffffffffL;
+  data[0] = CRYPTO_rotr_u32(l, 3);
+  data[1] = CRYPTO_rotr_u32(r, 3);
 }
 
 void DES_encrypt3(uint32_t *data, const DES_key_schedule *ks1,
@@ -782,4 +782,3 @@ void DES_set_key_unchecked(const DES_cblock *key, DES_key_schedule *schedule) {
 #undef D_ENCRYPT
 #undef ITERATIONS
 #undef HALF_ITERATIONS
-#undef ROTATE
