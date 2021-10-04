@@ -162,9 +162,6 @@ impl Context {
     }
 
     /// Updates the digest with all the data in `data`.
-    ///
-    /// `update` may be called zero or more times until `finish` is called. It
-    /// must not be called after `finish` has been called.
     pub fn update(&mut self, data: &[u8]) {
         let block_len = self.block.algorithm.block_len;
         if data.len() < block_len - self.num_pending {
@@ -232,7 +229,7 @@ pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
 
 /// A calculated digest value.
 ///
-/// Use `as_ref` to get the value as a `&[u8]`.
+/// Use [`Self::as_ref`] to get the value as a `&[u8]`.
 #[derive(Clone, Copy)]
 pub struct Digest {
     value: Output,
@@ -307,7 +304,7 @@ impl Algorithm {
     /// The size of the chaining value of the digest function, in bytes.
     ///
     /// For non-truncated algorithms (SHA-1, SHA-256, SHA-512), this is equal
-    /// to `output_len()`. For truncated algorithms (e.g. SHA-384,
+    /// to [`Self::output_len()`]. For truncated algorithms (e.g. SHA-384,
     /// SHA-512/256), this is equal to the length before truncation. This is
     /// mostly helpful for determining the size of an HMAC key that is
     /// appropriate for the digest algorithm.
@@ -464,15 +461,15 @@ union Output {
     as32: [BigEndian<u32>; 256 / 8 / core::mem::size_of::<BigEndian<u32>>()],
 }
 
-/// The maximum block length (`Algorithm::block_len()`) of all the algorithms
+/// The maximum block length ([`Algorithm::block_len()`]) of all the algorithms
 /// in this module.
 pub const MAX_BLOCK_LEN: usize = 1024 / 8;
 
-/// The maximum output length (`Algorithm::output_len()`) of all the algorithms
-/// in this module.
+/// The maximum output length ([`Algorithm::output_len()`]) of all the
+/// algorithms in this module.
 pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 
-/// The maximum chaining length (`Algorithm::chaining_len()`) of all the
+/// The maximum chaining length ([`Algorithm::chaining_len()`]) of all the
 /// algorithms in this module.
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
