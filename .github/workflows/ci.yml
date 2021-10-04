@@ -163,6 +163,7 @@ jobs:
 
     strategy:
       matrix:
+        # XXX: See `test-std` below.
         features:
           - # Default
 
@@ -316,6 +317,102 @@ jobs:
                 !contains(matrix.host_os, 'windows') &&
                 (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
         run: mk/check-symbol-prefixes.sh
+
+  # XXX: GitHub Actions won't let us add new dimensions to the `test` matrix
+  # because the resultant matrix would be larger than the maximum they allow.
+  test-std:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ${{ matrix.host_os }}
+    strategy:
+      matrix:
+        features:
+          - --features=std
+
+        target:
+          - aarch64-unknown-linux-musl
+          - i686-pc-windows-msvc
+          - x86_64-unknown-linux-gnu
+
+        mode:
+          - # debug
+          - --release
+
+        rust_channel:
+          - stable
+          - nightly
+          - 1.52.1 # MSRV
+          - beta
+
+        include:
+          - target: aarch64-unknown-linux-musl
+            host_os: ubuntu-18.04
+
+          - target: i686-pc-windows-msvc
+            host_os: windows-latest
+
+          - target: x86_64-unknown-linux-gnu
+            host_os: ubuntu-18.04
+
+    steps:
+      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
+        run: sudo apt-get update -y
+
+      - uses: briansmith/actions-checkout@v2
+        with:
+          persist-credentials: false
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: ./mk/install-build-tools.ps1
+
+      - uses: briansmith/actions-rs-toolchain@v1
+        with:
+          override: true
+          target: ${{ matrix.target }}
+          toolchain: ${{ matrix.rust_channel }}
+
+      # https://github.com/actions/virtual-environments/issues/2557#issuecomment-769611326
+      - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_12.4.app &&
+          sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/*
+
+      - if: ${{ matrix.target == 'aarch64-pc-windows-msvc' }}
+        run: |
+          echo "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin" >> $GITHUB_PATH
+          echo "RUSTFLAGS=-C target-feature=+crt-static" >> $GITHUB_ENV
+        shell: bash
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: |
+          mk/cargo.sh test -vv --all-targets --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: |
+          cargo test -vv --all-targets --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+      # --all-targets doesn't run doctests: https://github.com/rust-lang/cargo/issues/6669
+      # Run doctests only on x86_64 to avoid cross-compilation hassles with `--no-run`.
+      - if: ${{ contains(matrix.target, 'x86_64') }}
+        run: |
+          cargo test -vv --doc --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
+
+      # Check that all the needed symbol renaming was done.
+      # TODO: Do this check on Windows too.
+      # TODO: Check iOS too.
+      # TODO: Do this on Apple-hosted release builds too; currently these fail with:
+      #       Unknown attribute kind (528)
+      #       (Producer: 'LLVM12.0.0-rust-1.54.0-nightly'
+      #       Reader: 'LLVM APPLE_1_1200.0.32.29_0')
+      - if: ${{ matrix.target != 'aarch64-apple-ios' &&
+          !contains(matrix.host_os, 'windows') &&
+          (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
+        run: mk/check-symbol-prefixes.sh
+
 
   # The wasm32-unknown-unknown targets have a different set of feature sets and
   # an additional `webdriver` dimension.
