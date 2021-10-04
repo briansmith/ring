@@ -52,7 +52,7 @@ mod digest_shavs {
     use ring::{digest, test};
 
     fn run_known_answer_test(digest_alg: &'static digest::Algorithm, test_file: test::File) {
-        let section_name = &format!("L = {}", digest_alg.output_len);
+        let section_name = &format!("L = {}", digest_alg.output_len());
         test::run(test_file, |section, test_case| {
             assert_eq!(section_name, section);
             let len_bits = test_case.consume_usize("Len");
@@ -124,10 +124,10 @@ mod digest_shavs {
     }
 
     fn run_monte_carlo_test(digest_alg: &'static digest::Algorithm, test_file: test::File) {
-        let section_name = &format!("L = {}", digest_alg.output_len);
+        let section_name = &format!("L = {}", digest_alg.output_len());
 
         let mut expected_count: isize = -1;
-        let mut seed = Vec::with_capacity(digest_alg.output_len);
+        let mut seed = Vec::with_capacity(digest_alg.output_len());
 
         test::run(test_file, |section, test_case| {
             assert_eq!(section_name, section);
@@ -187,7 +187,7 @@ macro_rules! test_i_u_f {
         #[test]
         fn $test_name() {
             let mut input = [0; (digest::MAX_BLOCK_LEN + 1) * 3];
-            let max = $alg.block_len + 1;
+            let max = $alg.block_len() + 1;
             for i in 0..(max * 3) {
                 input[i] = (i & 0xff) as u8;
             }

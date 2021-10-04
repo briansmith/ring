@@ -70,7 +70,7 @@ fn hkdf_output_len_tests() {
             assert_eq!(&result.0, &[]);
         }
 
-        let max_out_len = MAX_BLOCKS * alg.hmac_algorithm().digest_algorithm().output_len;
+        let max_out_len = MAX_BLOCKS * alg.hmac_algorithm().digest_algorithm().output_len();
 
         {
             // Test maximum length output succeeds.

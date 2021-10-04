@@ -315,10 +315,10 @@ impl rand::sealed::SecureRandom for NonceRandom<'_> {
         // The random value is digested between the key and the message so that
         // the key and the message are not directly digested in the same digest
         // block.
-        assert!(key.len() <= digest_alg.block_len / 2);
+        assert!(key.len() <= digest_alg.block_len() / 2);
         {
             let mut rand = [0u8; digest::MAX_BLOCK_LEN];
-            let rand = &mut rand[..digest_alg.block_len - key.len()];
+            let rand = &mut rand[..digest_alg.block_len() - key.len()];
             assert!(rand.len() >= dest.len());
             self.rng.fill(rand)?;
             ctx.update(rand);

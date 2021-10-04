@@ -183,7 +183,7 @@ impl Key {
         F: FnOnce(&mut [u8]) -> Result<(), error::Unspecified>,
     {
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
-        let key_bytes = &mut key_bytes[..algorithm.0.output_len];
+        let key_bytes = &mut key_bytes[..algorithm.0.output_len()];
         fill(key_bytes)?;
         Ok(Self::new(algorithm, key_bytes))
     }
@@ -198,8 +198,8 @@ impl Key {
     /// `key_value` shouldn't be a password.
     ///
     /// As specified in RFC 2104, if `key_value` is shorter than the digest
-    /// algorithm's block length (as returned by `digest::Algorithm::block_len`,
-    /// not the digest length returned by `digest::Algorithm::output_len`) then
+    /// algorithm's block length (as returned by `digest::Algorithm::block_len()`,
+    /// not the digest length returned by `digest::Algorithm::output_len()`) then
     /// it will be padded with zeros. Similarly, if it is longer than the block
     /// length then it will be compressed using the digest algorithm.
     ///
@@ -214,8 +214,10 @@ impl Key {
             outer: digest::BlockContext::new(digest_alg),
         };
 
+        let block_len = digest_alg.block_len();
+
         let key_hash;
-        let key_value = if key_value.len() <= digest_alg.block_len {
+        let key_value = if key_value.len() <= block_len {
             key_value
         } else {
             key_hash = digest::digest(digest_alg, key_value);
@@ -225,7 +227,7 @@ impl Key {
         const IPAD: u8 = 0x36;
 
         let mut padded_key = [IPAD; digest::MAX_BLOCK_LEN];
-        let padded_key = &mut padded_key[..digest_alg.block_len];
+        let padded_key = &mut padded_key[..block_len];
 
         // If the key is shorter than one block then we're supposed to act like
         // it is padded with zero bytes up to the block length. `x ^ 0 == x` so
@@ -256,7 +258,7 @@ impl Key {
 
 impl hkdf::KeyType for Algorithm {
     fn len(&self) -> usize {
-        self.digest_algorithm().output_len
+        self.digest_algorithm().output_len()
     }
 }
 
@@ -309,8 +311,8 @@ impl Context {
     pub fn sign(self) -> Tag {
         let algorithm = self.inner.algorithm();
         let mut pending = [0u8; digest::MAX_BLOCK_LEN];
-        let pending = &mut pending[..algorithm.block_len];
-        let num_pending = algorithm.output_len;
+        let pending = &mut pending[..algorithm.block_len()];
+        let num_pending = algorithm.output_len();
         pending[..num_pending].copy_from_slice(self.inner.finish().as_ref());
         Tag(self.outer.finish(pending, num_pending))
     }

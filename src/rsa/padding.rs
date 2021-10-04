@@ -114,7 +114,7 @@ impl Verification for PKCS1 {
 fn pkcs1_encode(pkcs1: &PKCS1, m_hash: digest::Digest, m_out: &mut [u8]) {
     let em = m_out;
 
-    let digest_len = pkcs1.digestinfo_prefix.len() + pkcs1.digest_alg.output_len;
+    let digest_len = pkcs1.digestinfo_prefix.len() + pkcs1.digest_alg.output_len();
 
     // The specification requires at least 8 bytes of padding. Since we
     // disallow keys smaller than 1024 bits, this should always be true.
@@ -411,7 +411,7 @@ impl PSSMetrics {
         debug_assert!(leading_zero_bits < 8);
         let top_byte_mask = 0xffu8 >> leading_zero_bits;
 
-        let h_len = digest_alg.output_len;
+        let h_len = digest_alg.output_len();
 
         // We require the salt length to be equal to the digest length.
         let s_len = h_len;
@@ -442,7 +442,7 @@ impl PSSMetrics {
 // Masks `out` with the output of the mask-generating function MGF1 as
 // described in https://tools.ietf.org/html/rfc3447#appendix-B.2.1.
 fn mgf1(digest_alg: &'static digest::Algorithm, seed: &[u8], out: &mut [u8]) {
-    let digest_len = digest_alg.output_len;
+    let digest_len = digest_alg.output_len();
 
     // Maximum counter value is the value of (mask_len / digest_len) rounded up.
     for (i, out) in out.chunks_mut(digest_len).enumerate() {
