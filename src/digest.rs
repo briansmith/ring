@@ -161,9 +161,10 @@ impl Context {
         }
     }
 
-    /// Updates the digest with all the data in `data`. `update` may be called
-    /// zero or more times until `finish` is called. It must not be called
-    /// after `finish` has been called.
+    /// Updates the digest with all the data in `data`.
+    ///
+    /// `update` may be called zero or more times until `finish` is called. It
+    /// must not be called after `finish` has been called.
     pub fn update(&mut self, data: &[u8]) {
         let block_len = self.block.algorithm.block_len;
         if data.len() < block_len - self.num_pending {
@@ -191,9 +192,10 @@ impl Context {
         }
     }
 
-    /// Finalizes the digest calculation and returns the digest value. `finish`
-    /// consumes the context so it cannot be (mis-)used after `finish` has been
-    /// called.
+    /// Finalizes the digest calculation and returns the digest value.
+    ///
+    /// `finish` consumes the context so it cannot be (mis-)used after `finish`
+    /// has been called.
     pub fn finish(mut self) -> Digest {
         let block_len = self.block.algorithm.block_len;
         self.block
