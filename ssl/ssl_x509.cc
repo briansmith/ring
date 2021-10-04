@@ -149,7 +149,6 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
-#include <openssl/x509_vfy.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
