@@ -19,8 +19,6 @@ StatementMacros:
   - "DECLARE_ASN1_FUNCTIONS_const"
   - "DECLARE_ASN1_FUNCTIONS_fname"
   - "DECLARE_ASN1_FUNCTIONS_name"
-  - "DECLARE_ASN1_PRINT_FUNCTION"
-  - "DECLARE_ASN1_PRINT_FUNCTION_fname"
   - "DECLARE_PEM_read"
   - "DECLARE_PEM_read_bio"
   - "DECLARE_PEM_read_fp"

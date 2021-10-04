@@ -971,13 +971,6 @@ typedef struct ASN1_TLC_st ASN1_TLC;
   OPENSSL_EXPORT type *name##_new(void);              \
   OPENSSL_EXPORT void name##_free(type *a);
 
-#define DECLARE_ASN1_PRINT_FUNCTION(stname) \
-  DECLARE_ASN1_PRINT_FUNCTION_fname(stname, stname)
-
-#define DECLARE_ASN1_PRINT_FUNCTION_fname(stname, fname)                \
-  OPENSSL_EXPORT int fname##_print_ctx(BIO *out, stname *x, int indent, \
-                                       const ASN1_PCTX *pctx);
-
 typedef void *d2i_of_void(void **, const unsigned char **, long);
 typedef int i2d_of_void(const void *, unsigned char **);
 
