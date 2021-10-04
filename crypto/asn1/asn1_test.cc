@@ -1343,6 +1343,41 @@ TEST(ASN1Test, StringTableSorted) {
   }
 }
 
+TEST(ASN1Test, Null) {
+  // An |ASN1_NULL| is an opaque, non-null pointer. It is an arbitrary signaling
+  // value and does not need to be freed. (If the pointer is null, this is an
+  // omitted OPTIONAL NULL.)
+  EXPECT_NE(nullptr, ASN1_NULL_new());
+
+  // It is safe to free either the non-null pointer or the null one.
+  ASN1_NULL_free(ASN1_NULL_new());
+  ASN1_NULL_free(nullptr);
+
+  // A NULL may be decoded.
+  static const uint8_t kNull[] = {0x05, 0x00};
+  const uint8_t *ptr = kNull;
+  EXPECT_NE(nullptr, d2i_ASN1_NULL(nullptr, &ptr, sizeof(kNull)));
+  EXPECT_EQ(ptr, kNull + sizeof(kNull));
+
+  // It may also be re-encoded.
+  uint8_t *enc = nullptr;
+  int enc_len = i2d_ASN1_NULL(ASN1_NULL_new(), &enc);
+  ASSERT_GE(enc_len, 0);
+  EXPECT_EQ(Bytes(kNull), Bytes(enc, enc_len));
+  OPENSSL_free(enc);
+  enc = nullptr;
+
+  // Although the standalone representation of NULL is a non-null pointer, the
+  // |ASN1_TYPE| representation is a null pointer.
+  ptr = kNull;
+  bssl::UniquePtr<ASN1_TYPE> null_type(
+      d2i_ASN1_TYPE(nullptr, &ptr, sizeof(kNull)));
+  ASSERT_TRUE(null_type);
+  EXPECT_EQ(ptr, kNull + sizeof(kNull));
+  EXPECT_EQ(V_ASN1_NULL, ASN1_TYPE_get(null_type.get()));
+  EXPECT_EQ(nullptr, null_type->value.ptr);
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
@@ -1444,6 +1479,9 @@ struct REQUIRED_FIELD {
   STACK_OF(ASN1_INTEGER) *seq;
   STACK_OF(ASN1_INTEGER) *seq_imp;
   STACK_OF(ASN1_INTEGER) *seq_exp;
+  ASN1_NULL *null;
+  ASN1_NULL *null_imp;
+  ASN1_NULL *null_exp;
 };
 
 DECLARE_ASN1_FUNCTIONS(REQUIRED_FIELD)
@@ -1454,6 +1492,9 @@ ASN1_SEQUENCE(REQUIRED_FIELD) = {
     ASN1_SEQUENCE_OF(REQUIRED_FIELD, seq, ASN1_INTEGER),
     ASN1_IMP_SEQUENCE_OF(REQUIRED_FIELD, seq_imp, ASN1_INTEGER, 2),
     ASN1_EXP_SEQUENCE_OF(REQUIRED_FIELD, seq_exp, ASN1_INTEGER, 3),
+    ASN1_SIMPLE(REQUIRED_FIELD, null, ASN1_NULL),
+    ASN1_IMP(REQUIRED_FIELD, null_imp, ASN1_NULL, 4),
+    ASN1_EXP(REQUIRED_FIELD, null_exp, ASN1_NULL, 5),
 } ASN1_SEQUENCE_END(REQUIRED_FIELD)
 IMPLEMENT_ASN1_FUNCTIONS(REQUIRED_FIELD)
 
@@ -1478,6 +1519,14 @@ TEST(ASN1Test, MissingRequiredField) {
     obj.reset(REQUIRED_FIELD_new());
     ASSERT_TRUE(obj);
     sk_ASN1_INTEGER_pop_free((*obj).*field, ASN1_INTEGER_free);
+    (*obj).*field = nullptr;
+    EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
+  }
+
+  for (auto field : {&REQUIRED_FIELD::null, &REQUIRED_FIELD::null_imp,
+                     &REQUIRED_FIELD::null_exp}) {
+    obj.reset(REQUIRED_FIELD_new());
+    ASSERT_TRUE(obj);
     (*obj).*field = nullptr;
     EXPECT_EQ(-1, i2d_REQUIRED_FIELD(obj.get(), nullptr));
   }
