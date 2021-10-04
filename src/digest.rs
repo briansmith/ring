@@ -262,19 +262,9 @@ impl core::fmt::Debug for Digest {
 
 /// A digest algorithm.
 pub struct Algorithm {
-    /// The length of a finalized digest.
-    pub output_len: usize,
-
-    /// The size of the chaining value of the digest function, in bytes. For
-    /// non-truncated algorithms (SHA-1, SHA-256, SHA-512), this is equal to
-    /// `output_len`. For truncated algorithms (e.g. SHA-384, SHA-512/256),
-    /// this is equal to the length before truncation. This is mostly helpful
-    /// for determining the size of an HMAC key that is appropriate for the
-    /// digest algorithm.
-    pub chaining_len: usize,
-
-    /// The internal block length.
-    pub block_len: usize,
+    output_len: usize,
+    chaining_len: usize,
+    block_len: usize,
 
     /// The length of the length in the padding.
     len_len: usize,
@@ -305,6 +295,29 @@ impl PartialEq for Algorithm {
 impl Eq for Algorithm {}
 
 derive_debug_via_id!(Algorithm);
+
+impl Algorithm {
+    /// The internal block length.
+    pub fn block_len(&self) -> usize {
+        self.block_len
+    }
+
+    /// The size of the chaining value of the digest function, in bytes.
+    ///
+    /// For non-truncated algorithms (SHA-1, SHA-256, SHA-512), this is equal
+    /// to `output_len()`. For truncated algorithms (e.g. SHA-384,
+    /// SHA-512/256), this is equal to the length before truncation. This is
+    /// mostly helpful for determining the size of an HMAC key that is
+    /// appropriate for the digest algorithm.
+    pub fn chaining_len(&self) -> usize {
+        self.chaining_len
+    }
+
+    /// The length of a finalized digest.
+    pub fn output_len(&self) -> usize {
+        self.output_len
+    }
+}
 
 /// SHA-1 as specified in [FIPS 180-4]. Deprecated.
 ///
@@ -449,15 +462,15 @@ union Output {
     as32: [BigEndian<u32>; 256 / 8 / core::mem::size_of::<BigEndian<u32>>()],
 }
 
-/// The maximum block length (`Algorithm::block_len`) of all the algorithms in
-/// this module.
+/// The maximum block length (`Algorithm::block_len()`) of all the algorithms
+/// in this module.
 pub const MAX_BLOCK_LEN: usize = 1024 / 8;
 
-/// The maximum output length (`Algorithm::output_len`) of all the algorithms
+/// The maximum output length (`Algorithm::output_len()`) of all the algorithms
 /// in this module.
 pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 
-/// The maximum chaining length (`Algorithm::chaining_len`) of all the
+/// The maximum chaining length (`Algorithm::chaining_len()`) of all the
 /// algorithms in this module.
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 

@@ -47,7 +47,7 @@ pub static HKDF_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
 
 impl KeyType for Algorithm {
     fn len(&self) -> usize {
-        self.0.digest_algorithm().output_len
+        self.0.digest_algorithm().output_len()
     }
 }
 
@@ -130,7 +130,7 @@ impl Prk {
         len: L,
     ) -> Result<Okm<'a, L>, error::Unspecified> {
         let len_cached = len.len();
-        if len_cached > 255 * self.0.algorithm().digest_algorithm().output_len {
+        if len_cached > 255 * self.0.algorithm().digest_algorithm().output_len() {
             return Err(error::Unspecified);
         }
         Ok(Okm {
@@ -196,7 +196,7 @@ fn fill_okm(
     }
 
     let digest_alg = prk.0.algorithm().digest_algorithm();
-    assert!(digest_alg.block_len >= digest_alg.output_len);
+    assert!(digest_alg.block_len() >= digest_alg.output_len());
 
     let mut ctx = hmac::Context::with_key(&prk.0);
 
@@ -212,12 +212,12 @@ fn fill_okm(
         let t = t.as_ref();
 
         // Append `t` to the output.
-        out = if out.len() < digest_alg.output_len {
+        out = if out.len() < digest_alg.output_len() {
             let len = out.len();
             out.copy_from_slice(&t[..len]);
             &mut []
         } else {
-            let (this_chunk, rest) = out.split_at_mut(digest_alg.output_len);
+            let (this_chunk, rest) = out.split_at_mut(digest_alg.output_len());
             this_chunk.copy_from_slice(t);
             rest
         };
