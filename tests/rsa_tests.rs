@@ -142,24 +142,19 @@ fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
         include_bytes!("../src/rsa/signature_rsa_example_private_key.der");
     let key_pair = rsa::KeyPair::from_der(PRIVATE_KEY_DER).unwrap();
 
-    // The output buffer is one byte too short.
-    let mut signature = vec![0; key_pair.public().modulus_len() - 1];
-
-    assert!(key_pair
-        .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
-        .is_err());
-
-    // The output buffer is the right length.
-    signature.push(0);
-    assert!(key_pair
-        .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
-        .is_ok());
-
-    // The output buffer is one byte too long.
-    signature.push(0);
-    assert!(key_pair
-        .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
-        .is_err());
+    // When the output buffer is not exactly the right length, `sign()` returns
+    // an error (and does not panic or invoke UB). if `sign` doesn't check that
+    // the length is correct at the beginning then there are various possible
+    // failure points when the output buffer is too small.
+    for len in 0..key_pair.public().modulus_len() + 1 {
+        let mut signature = vec![0; len];
+        assert_eq!(
+            len == key_pair.public().modulus_len(),
+            key_pair
+                .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
+                .is_ok()
+        );
+    }
 }
 
 #[cfg(feature = "alloc")]
