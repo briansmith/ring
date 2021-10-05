@@ -29,11 +29,14 @@ mod chunks_fixed;
 
 mod array_flat_map;
 pub(crate) mod array_map;
+
+#[cfg(feature = "alloc")]
 mod leading_zeros_skipped;
 
 #[cfg(test)]
 mod test;
 
-pub use self::{
-    array_flat_map::ArrayFlatMap, chunks_fixed::*, leading_zeros_skipped::LeadingZerosStripped,
-};
+pub use self::{array_flat_map::ArrayFlatMap, chunks_fixed::*};
+
+#[cfg(feature = "alloc")]
+pub use leading_zeros_skipped::LeadingZerosStripped;
