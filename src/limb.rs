@@ -20,7 +20,7 @@
 
 use crate::{c, error, polyfill::ArrayFlatMap};
 
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 use crate::bits;
 
 #[cfg(feature = "alloc")]
@@ -86,13 +86,13 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 #[inline]
 pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 #[inline]
 pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
     unsafe { LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
@@ -105,7 +105,7 @@ pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
 // with respect to `a.len()` or the value of the result or the value of the
 // most significant bit (It's 1, unless the input is zero, in which case it's
 // zero.)
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
     for num_limbs in (1..=a.len()).rev() {
         let high_limb = a[num_limbs - 1];
@@ -359,11 +359,15 @@ prefixed_extern! {
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(any(test, feature = "alloc"))]
 prefixed_extern! {
     fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
     fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+}
+
+#[cfg(feature = "alloc")]
+prefixed_extern! {
     fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
 }
 

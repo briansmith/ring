@@ -432,6 +432,7 @@ prefixed_extern! {
 
 #[cfg(test)]
 mod tests {
+    extern crate alloc;
     use super::*;
     use crate::test;
     use alloc::{format, vec, vec::Vec};

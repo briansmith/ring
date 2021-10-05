@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[cfg(feature = "alloc")]
+#![cfg(feature = "alloc")]
+
 use ring::{
     error,
     io::der,
@@ -28,7 +29,6 @@ use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 #[cfg(all(target_arch = "wasm32", feature = "wasm32_c"))]
 wasm_bindgen_test_configure!(run_in_browser);
 
-#[cfg(feature = "alloc")]
 #[test]
 fn rsa_from_pkcs8_test() {
     test::run(

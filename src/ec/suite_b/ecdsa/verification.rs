@@ -289,6 +289,7 @@ pub static ECDSA_P384_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificatio
 
 #[cfg(test)]
 mod tests {
+    extern crate alloc;
     use super::*;
     use crate::test;
     use alloc::{vec, vec::Vec};

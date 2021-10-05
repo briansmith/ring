@@ -510,8 +510,8 @@ const SHA512_LEN_LEN: usize = 128 / 8;
 
 #[cfg(test)]
 mod tests {
-
     mod max_input {
+        extern crate alloc;
         use super::super::super::digest;
         use crate::polyfill;
         use alloc::vec;
