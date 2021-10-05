@@ -163,7 +163,7 @@ jobs:
 
     strategy:
       matrix:
-        # XXX: See `test-std` below.
+        # XXX: See `test-features` below.
         features:
           - # Default
 
@@ -318,9 +318,10 @@ jobs:
                 (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
         run: mk/check-symbol-prefixes.sh
 
-  # XXX: GitHub Actions won't let us add new dimensions to the `test` matrix
-  # because the resultant matrix would be larger than the maximum they allow.
-  test-std:
+  # XXX: GitHub Actions won't let us test all the combinations of features in
+  # the "test" matrix because the resultant matrix would be larger than the
+  # maximum they allow.
+  test-features:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
@@ -328,7 +329,10 @@ jobs:
     strategy:
       matrix:
         features:
-          - --features=std
+          - --no-default-features
+          - --no-default-features --features=alloc
+          - --no-default-features --features=dev_urandom_fallback
+          - --all-features
 
         target:
           - aarch64-unknown-linux-musl
