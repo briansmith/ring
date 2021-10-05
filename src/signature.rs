@@ -191,6 +191,7 @@
 //! ```
 //!
 //! ```
+//! # #[cfg(feature = "std")]
 //! use ring::{rand, rsa, signature};
 //!
 //! # #[cfg(feature = "std")]

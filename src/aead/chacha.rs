@@ -215,6 +215,8 @@ const BLOCK_LEN: usize = 64;
 
 #[cfg(test)]
 mod tests {
+    extern crate alloc;
+
     use super::*;
     use crate::test;
     use alloc::vec;

@@ -117,10 +117,10 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
-#[cfg(feature = "alloc")]
+extern crate alloc;
+
 use alloc::{format, string::String, vec::Vec};
 
-#[cfg(feature = "alloc")]
 use crate::{bits, digest, error};
 
 #[cfg(any(feature = "std", feature = "test_logging"))]
@@ -156,13 +156,11 @@ pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 /// typos and omissions.
 ///
 /// Requires the `alloc` default feature to be enabled.
-#[cfg(feature = "alloc")]
 #[derive(Debug)]
 pub struct TestCase {
     attributes: Vec<(String, String, bool)>,
 }
 
-#[cfg(feature = "alloc")]
 impl TestCase {
     /// Maps the string "true" to true and the string "false" to false.
     pub fn consume_bool(&mut self, key: &str) -> bool {
@@ -257,7 +255,6 @@ impl TestCase {
 
     /// Returns the value of an attribute that is an integer, in decimal
     /// notation, as a bit length.
-    #[cfg(feature = "alloc")]
     pub fn consume_usize_bits(&mut self, key: &str) -> bits::BitLength {
         let s = self.consume_string(key);
         let bits = s.parse::<usize>().unwrap();
@@ -288,7 +285,6 @@ impl TestCase {
 }
 
 /// References a test input file.
-#[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! test_file {
     ($file_name:expr) => {
@@ -300,7 +296,6 @@ macro_rules! test_file {
 }
 
 /// A test input file.
-#[cfg(feature = "alloc")]
 pub struct File<'a> {
     /// The name (path) of the file.
     pub file_name: &'a str,
@@ -312,9 +307,6 @@ pub struct File<'a> {
 /// Parses test cases out of the given file, calling `f` on each vector until
 /// `f` fails or until all the test vectors have been read. `f` can indicate
 /// failure either by returning `Err()` or by panicking.
-///
-/// Requires the `alloc` default feature to be enabled
-#[cfg(feature = "alloc")]
 pub fn run<F>(test_file: File, mut f: F)
 where
     F: FnMut(&str, &mut TestCase) -> Result<(), error::Unspecified>,
@@ -365,7 +357,6 @@ where
 
 /// Decode an string of hex digits into a sequence of bytes. The input must
 /// have an even number of digits.
-#[cfg(feature = "alloc")]
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     if hex_str.len() % 2 != 0 {
         return Err(String::from(
@@ -382,7 +373,6 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     Ok(result)
 }
 
-#[cfg(feature = "alloc")]
 fn from_hex_digit(d: u8) -> Result<u8, String> {
     use core::ops::RangeInclusive;
     const DECIMAL: (u8, RangeInclusive<u8>) = (0, b'0'..=b'9');
@@ -396,7 +386,6 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
     Err(format!("Invalid hex digit '{}'", d as char))
 }
 
-#[cfg(feature = "alloc")]
 fn parse_test_case(
     current_section: &mut String,
     lines: &mut dyn Iterator<Item = &str>,
