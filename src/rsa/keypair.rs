@@ -545,12 +545,18 @@ unsafe impl bigint::SmallerModulus<QQ> for Q {}
 unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
 impl KeyPair {
-    /// Sign `msg`. `msg` is digested using the digest algorithm from
-    /// `padding_alg` and the digest is then padded using the padding algorithm
-    /// from `padding_alg`. The signature it written into `signature`;
-    /// `signature`'s length must be exactly the length returned by
-    /// `public_modulus_len()`. `rng` may be used to randomize the padding
-    /// (e.g. for PSS).
+    /// Computes the signature of `msg` and writes it into `signature`.
+    ///
+    /// `msg` is digested using the digest algorithm from `padding_alg` and the
+    /// digest is then padded using the padding algorithm from `padding_alg`.
+    ///
+    /// The signature it written into `signature`; `signature`'s length must be
+    /// exactly the length returned by `self::public().modulus_len()` or else
+    /// an error will be returned. On failure, `signature` may contain
+    /// intermediate results, but won't contain anything that would endanger the
+    /// private key.
+    ///
+    /// `rng` may be used to randomize the padding (e.g. for PSS).
     ///
     /// Many other crypto libraries have signing functions that takes a
     /// precomputed digest as input, instead of the message to digest. This
