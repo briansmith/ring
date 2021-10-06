@@ -134,10 +134,10 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 ///
 /// On macOS and iOS, `fill()` is implemented using `SecRandomCopyBytes`.
 ///
-/// On wasm32-unknown-unknown (non-WASI), `fill()` is implemented using
-/// `window.crypto.getRandomValues()`. It must be used in a context where the
-/// global object is a `Window`; i.e. it must not be used in a Worker or a
-/// non-browser context.
+/// On wasm32-unknown-unknown when the "wasm32_unknown_unknown_js" feature is
+/// enabled, `fill()` is implemented using `window.crypto.getRandomValues()`.
+/// It must be used in a context where the global object is a `Window`; i.e. it
+/// must not be used in a Worker or a non-browser context.
 ///
 /// On Windows, `fill` is implemented using the platform's API for secure
 /// random number generation.
@@ -230,6 +230,7 @@ mod sysrand_chunk {
 }
 
 #[cfg(all(
+    feature = "wasm32_unknown_unknown_js",
     target_arch = "wasm32",
     target_vendor = "unknown",
     target_os = "unknown",
