@@ -174,7 +174,7 @@ once_cell = { version = "1.8.0", default-features = false, features=["std"], opt
 once_cell = { version = "1.8.0", default-features = false, features=["std"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown", target_env = ""))'.dependencies]
-web-sys = { version = "0.3.51", default-features = false, features = ["Crypto", "Window"] }
+web-sys = { version = "0.3.51", default-features = false, features = ["Crypto", "Window"], optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi = { version = "0.3.9", default-features = false, features = ["ntsecapi", "wtypesbase", "processthreadsapi"] }
@@ -199,6 +199,7 @@ dev_urandom_fallback = ["once_cell"]
 slow_tests = []
 std = ["alloc"]
 test_logging = []
+wasm32_unknown_unknown_js = ["web-sys"]
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 
