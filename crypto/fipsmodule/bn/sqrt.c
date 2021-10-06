@@ -75,10 +75,8 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
       if (ret == NULL) {
         ret = BN_new();
       }
-      if (ret == NULL) {
-        goto end;
-      }
-      if (!BN_set_word(ret, BN_is_bit_set(a, 0))) {
+      if (ret == NULL ||
+          !BN_set_word(ret, BN_is_bit_set(a, 0))) {
         if (ret != in) {
           BN_free(ret);
         }
@@ -88,17 +86,15 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
     }
 
     OPENSSL_PUT_ERROR(BN, BN_R_P_IS_NOT_PRIME);
-    return (NULL);
+    return NULL;
   }
 
   if (BN_is_zero(a) || BN_is_one(a)) {
     if (ret == NULL) {
       ret = BN_new();
     }
-    if (ret == NULL) {
-      goto end;
-    }
-    if (!BN_set_word(ret, BN_is_one(a))) {
+    if (ret == NULL ||
+        !BN_set_word(ret, BN_is_one(a))) {
       if (ret != in) {
         BN_free(ret);
       }
