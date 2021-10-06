@@ -430,7 +430,7 @@ jobs:
       matrix:
         features:
           - # Default
-          - --features=wasm32_c
+
         host_os:
           - ubuntu-18.04
         mode:

@@ -58,7 +58,6 @@ pub fn pbkdf2_tests() {
             assert_eq!(dk == out, verify_expected_result.is_ok() || dk.is_empty());
         }
 
-        #[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
         assert_eq!(
             pbkdf2::verify(algorithm, iterations, &salt, &secret, &dk),
             verify_expected_result

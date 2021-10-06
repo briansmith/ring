@@ -12,7 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
 use ring::{constant_time, error, rand};
 
 #[cfg(target_arch = "wasm32")]
