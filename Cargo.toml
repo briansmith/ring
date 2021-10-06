@@ -199,7 +199,6 @@ dev_urandom_fallback = ["once_cell"]
 slow_tests = []
 std = ["alloc"]
 test_logging = []
-wasm32_c = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

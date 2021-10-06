@@ -77,8 +77,6 @@ fn hmac_test_case_inner(
     {
         let signature = hmac::sign(&key, input);
         assert_eq!(is_ok, signature.as_ref() == output);
-
-        #[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
         assert_eq!(is_ok, hmac::verify(&key, input, output).is_ok());
     }
 
