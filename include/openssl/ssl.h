@@ -4158,7 +4158,7 @@ OPENSSL_EXPORT int SSL_set_max_send_fragment(SSL *ssl,
 // callbacks that are called very early on during the server handshake. At this
 // point, much of the SSL* hasn't been filled out and only the ClientHello can
 // be depended on.
-typedef struct ssl_early_callback_ctx {
+struct ssl_early_callback_ctx {
   SSL *ssl;
   const uint8_t *client_hello;
   size_t client_hello_len;
@@ -4173,7 +4173,7 @@ typedef struct ssl_early_callback_ctx {
   size_t compression_methods_len;
   const uint8_t *extensions;
   size_t extensions_len;
-} SSL_CLIENT_HELLO;
+} /* SSL_CLIENT_HELLO */;
 
 // ssl_select_cert_result_t enumerates the possible results from selecting a
 // certificate with |select_certificate_cb|.
