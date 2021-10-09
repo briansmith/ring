@@ -132,15 +132,49 @@ TEST(ASN1Test, SerializeObject) {
   TestSerialize(obj, i2d_ASN1_OBJECT, kDER);
 }
 
-TEST(ASN1Test, SerializeBoolean) {
+TEST(ASN1Test, Boolean) {
   static const uint8_t kTrue[] = {0x01, 0x01, 0xff};
   TestSerialize(0xff, i2d_ASN1_BOOLEAN, kTrue);
   // Other constants are also correctly encoded as TRUE.
   TestSerialize(1, i2d_ASN1_BOOLEAN, kTrue);
   TestSerialize(0x100, i2d_ASN1_BOOLEAN, kTrue);
 
+  const uint8_t *ptr = kTrue;
+  EXPECT_EQ(0xff, d2i_ASN1_BOOLEAN(nullptr, &ptr, sizeof(kTrue)));
+  EXPECT_EQ(ptr, kTrue + sizeof(kTrue));
+
   static const uint8_t kFalse[] = {0x01, 0x01, 0x00};
   TestSerialize(0x00, i2d_ASN1_BOOLEAN, kFalse);
+
+  ptr = kFalse;
+  EXPECT_EQ(0, d2i_ASN1_BOOLEAN(nullptr, &ptr, sizeof(kFalse)));
+  EXPECT_EQ(ptr, kFalse + sizeof(kFalse));
+
+  const std::vector<uint8_t> kInvalidBooleans[] = {
+      // No tag header.
+      {},
+      // No length.
+      {0x01},
+      // Truncated contents.
+      {0x01, 0x01},
+      // Contents too short or too long.
+      {0x01, 0x00},
+      {0x01, 0x02, 0x00, 0x00},
+      // Wrong tag number.
+      {0x02, 0x01, 0x00},
+      // Wrong tag class.
+      {0x81, 0x01, 0x00},
+      // Element is constructed.
+      {0x21, 0x01, 0x00},
+      // TODO(https://crbug.com/boringssl/354): Reject non-DER encodings of TRUE
+      // and test this.
+  };
+  for (const auto &invalid : kInvalidBooleans) {
+    SCOPED_TRACE(Bytes(invalid));
+    ptr = invalid.data();
+    EXPECT_EQ(-1, d2i_ASN1_BOOLEAN(nullptr, &ptr, invalid.size()));
+    ERR_clear_error();
+  }
 }
 
 // The templates go through a different codepath, so test them separately.

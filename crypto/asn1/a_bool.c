@@ -99,9 +99,14 @@ ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *a, const unsigned char **pp,
         return -1;
     }
 
-    if (tag != V_ASN1_BOOLEAN) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_A_BOOLEAN);
+    if (inf & V_ASN1_CONSTRUCTED) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
         return -1;
+    }
+
+    if (tag != V_ASN1_BOOLEAN || xclass != V_ASN1_UNIVERSAL) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_A_BOOLEAN);
+      return -1;
     }
 
     if (len != 1) {
