@@ -1113,9 +1113,10 @@ OPENSSL_EXPORT ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
                                                     const unsigned char **pp,
                                                     long length);
 
-OPENSSL_EXPORT int i2d_ASN1_BOOLEAN(int a, unsigned char **pp);
-OPENSSL_EXPORT int d2i_ASN1_BOOLEAN(int *a, const unsigned char **pp,
-                                    long length);
+OPENSSL_EXPORT int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **pp);
+OPENSSL_EXPORT ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *a,
+                                             const unsigned char **pp,
+                                             long length);
 
 DECLARE_ASN1_FUNCTIONS(ASN1_INTEGER)
 OPENSSL_EXPORT int i2c_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
