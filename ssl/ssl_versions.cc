@@ -396,3 +396,7 @@ int SSL_SESSION_set_protocol_version(SSL_SESSION *session, uint16_t version) {
   // used on unit test sessions anyway.
   return api_version_to_wire(&session->ssl_version, version);
 }
+
+int SSL_CTX_set_record_protocol_version(SSL_CTX *ctx, int version) {
+  return version == 0;
+}
