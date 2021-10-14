@@ -3652,10 +3652,15 @@ TEST(SSLTest, SetVersion) {
   ASSERT_TRUE(ctx);
 
   // Set valid TLS versions.
-  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_VERSION));
-  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_1_VERSION));
-  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_VERSION));
-  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_1_VERSION));
+  for (const auto &vers : kAllVersions) {
+    SCOPED_TRACE(vers.name);
+    if (vers.ssl_method == VersionParam::is_tls) {
+      EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), vers.version));
+      EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), vers.version);
+      EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), vers.version));
+      EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), vers.version);
+    }
+  }
 
   // Invalid TLS versions are rejected.
   EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_VERSION));
@@ -3671,21 +3676,24 @@ TEST(SSLTest, SetVersion) {
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
   EXPECT_EQ(TLS1_VERSION, SSL_CTX_get_min_proto_version(ctx.get()));
 
-  // TLS 1.3 is available, but not by default.
-  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_VERSION));
-  EXPECT_EQ(TLS1_3_VERSION, SSL_CTX_get_max_proto_version(ctx.get()));
-
   // SSL 3.0 is not available.
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), SSL3_VERSION));
 
   ctx.reset(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ctx);
 
-  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_VERSION));
-  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), DTLS1_2_VERSION));
-  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_VERSION));
-  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_2_VERSION));
+  // Set valid DTLS versions.
+  for (const auto &vers : kAllVersions) {
+    SCOPED_TRACE(vers.name);
+    if (vers.ssl_method == VersionParam::is_dtls) {
+      EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), vers.version));
+      EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), vers.version);
+      EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), vers.version));
+      EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), vers.version);
+    }
+  }
 
+  // Invalid DTLS versions are rejected.
   EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_VERSION));
   EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), 0xfefe /* DTLS 1.1 */));
   EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */));
@@ -3695,6 +3703,7 @@ TEST(SSLTest, SetVersion) {
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */));
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x1234));
 
+  // Zero is the default version.
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), 0));
   EXPECT_EQ(DTLS1_2_VERSION, SSL_CTX_get_max_proto_version(ctx.get()));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
