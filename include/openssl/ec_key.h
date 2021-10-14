@@ -294,43 +294,30 @@ struct ecdsa_method_st {
 // EC_KEY_set_asn1_flag does nothing.
 OPENSSL_EXPORT void EC_KEY_set_asn1_flag(EC_KEY *key, int flag);
 
-// d2i_ECPrivateKey parses an ASN.1, DER-encoded, private key from |len| bytes
-// at |*inp|. If |out_key| is not NULL then, on exit, a pointer to the result
-// is in |*out_key|. Note that, even if |*out_key| is already non-NULL on entry,
-// it * will not be written to. Rather, a fresh |EC_KEY| is allocated and the
-// previous * one is freed. On successful exit, |*inp| is advanced past the DER
-// structure. It returns the result or NULL on error.
-//
-// On input, if |*out_key| is non-NULL and has a group configured, the
-// parameters field may be omitted but must match that group if present.
+// d2i_ECPrivateKey parses a DER-encoded ECPrivateKey structure (RFC 5915) from
+// |len| bytes at |*inp|, as described in |d2i_SAMPLE|. On input, if |*out_key|
+// is non-NULL and has a group configured, the parameters field may be omitted
+// but must match that group if present.
 //
 // Use |EC_KEY_parse_private_key| instead.
 OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey(EC_KEY **out_key, const uint8_t **inp,
                                         long len);
 
-// i2d_ECPrivateKey marshals an EC private key from |key| to an ASN.1, DER
-// structure. If |outp| is not NULL then the result is written to |*outp| and
-// |*outp| is advanced just past the output. It returns the number of bytes in
-// the result, whether written or not, or a negative value on error.
+// i2d_ECPrivateKey marshals |key| as a DER-encoded ECPrivateKey structure (RFC
+// 5915), as described in |i2d_SAMPLE|.
 //
 // Use |EC_KEY_marshal_private_key| instead.
 OPENSSL_EXPORT int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp);
 
-// d2i_ECParameters parses an ASN.1, DER-encoded, set of EC parameters from
-// |len| bytes at |*inp|. If |out_key| is not NULL then, on exit, a pointer to
-// the result is in |*out_key|. Note that, even if |*out_key| is already
-// non-NULL on entry, it will not be written to. Rather, a fresh |EC_KEY| is
-// allocated and the previous one is freed. On successful exit, |*inp| is
-// advanced past the DER structure. It returns the result or NULL on error.
+// d2i_ECParameters parses a DER-encoded ECParameters structure (RFC 5480) from
+// |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
 //
 // Use |EC_KEY_parse_parameters| or |EC_KEY_parse_curve_name| instead.
 OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
                                         long len);
 
-// i2d_ECParameters marshals EC parameters from |key| to an ASN.1, DER
-// structure. If |outp| is not NULL then the result is written to |*outp| and
-// |*outp| is advanced just past the output. It returns the number of bytes in
-// the result, whether written or not, or a negative value on error.
+// i2d_ECParameters marshals |key|'s parameters as a DER-encoded OBJECT
+// IDENTIFIER, as described in |i2d_SAMPLE|.
 //
 // Use |EC_KEY_marshal_curve_name| instead.
 OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
@@ -344,10 +331,8 @@ OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
                                        long len);
 
-// i2o_ECPublicKey marshals an EC point from |key|. If |outp| is not NULL then
-// the result is written to |*outp| and |*outp| is advanced just past the
-// output. It returns the number of bytes in the result, whether written or
-// not, or a negative value on error.
+// i2o_ECPublicKey marshals an EC point from |key|, as described in
+// |i2d_SAMPLE|.
 //
 // Use |EC_POINT_point2cbb| instead.
 OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);

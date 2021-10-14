@@ -267,22 +267,14 @@ OPENSSL_EXPORT DH *DH_generate_parameters(int prime_len, int generator,
                                           void (*callback)(int, int, void *),
                                           void *cb_arg);
 
-// d2i_DHparams parses an ASN.1, DER encoded Diffie-Hellman parameters structure
-// from |len| bytes at |*inp|. If |ret| is not NULL then, on exit, a pointer to
-// the result is in |*ret|. Note that, even if |*ret| is already non-NULL on
-// entry, it will not be written to. Rather, a fresh |DH| is allocated and the
-// previous one is freed.
-//
-// On successful exit, |*inp| is advanced past the DER structure. It
-// returns the result or NULL on error.
+// d2i_DHparams parses a DER-encoded DHParameter structure (PKCS #3) from |len|
+// bytes at |*inp|, as in |d2i_SAMPLE|.
 //
 // Use |DH_parse_parameters| instead.
 OPENSSL_EXPORT DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);
 
-// i2d_DHparams marshals |in| to an ASN.1, DER structure. If |outp| is not NULL
-// then the result is written to |*outp| and |*outp| is advanced just past the
-// output. It returns the number of bytes in the result, whether written or
-// not, or a negative value on error.
+// i2d_DHparams marshals |in| to a DER-encoded DHParameter structure (PKCS #3),
+// as described in |i2d_SAMPLE|.
 //
 // Use |DH_marshal_parameters| instead.
 OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);

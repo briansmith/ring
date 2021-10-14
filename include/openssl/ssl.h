@@ -4575,20 +4575,13 @@ OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *ssl, int idx, int *psign,
 // SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START.
 #define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
 
-// i2d_SSL_SESSION serializes |in| to the bytes pointed to by |*pp|. On success,
-// it returns the number of bytes written and advances |*pp| by that many bytes.
-// On failure, it returns -1. If |pp| is NULL, no bytes are written and only the
-// length is returned.
+// i2d_SSL_SESSION serializes |in|, as described in |i2d_SAMPLE|.
 //
 // Use |SSL_SESSION_to_bytes| instead.
 OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
 
 // d2i_SSL_SESSION parses a serialized session from the |length| bytes pointed
-// to by |*pp|. It returns the new |SSL_SESSION| and advances |*pp| by the
-// number of bytes consumed on success and NULL on failure. The caller takes
-// ownership of the new session and must call |SSL_SESSION_free| when done.
-//
-// If |a| is non-NULL, |*a| is released and set the new |SSL_SESSION|.
+// to by |*pp|, as described in |d2i_SAMPLE|.
 //
 // Use |SSL_SESSION_from_bytes| instead.
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,

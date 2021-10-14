@@ -369,8 +369,8 @@ EVP_PKEY *d2i_PublicKey(int type, EVP_PKEY **out, const uint8_t **inp,
     // Unlike OpenSSL, we do not support EC keys with this API. The raw EC
     // public key serialization requires knowing the group. In OpenSSL, calling
     // this function with |EVP_PKEY_EC| and setting |out| to NULL does not work.
-    // It requires |*out| to include a partially-initiazed |EVP_PKEY| to extract
-    // the group.
+    // It requires |*out| to include a partially-initialized |EVP_PKEY| to
+    // extract the group.
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
       goto err;

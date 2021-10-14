@@ -873,34 +873,27 @@ OPENSSL_EXPORT void EVP_MD_do_all(void (*callback)(const EVP_MD *cipher,
                                                    void *arg),
                                   void *arg);
 
-// i2d_PrivateKey marshals a private key from |key| to an ASN.1, DER
-// structure. If |outp| is not NULL then the result is written to |*outp| and
-// |*outp| is advanced just past the output. It returns the number of bytes in
-// the result, whether written or not, or a negative value on error.
+// i2d_PrivateKey marshals a private key from |key| to type-specific format, as
+// described in |i2d_SAMPLE|.
 //
-// RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 3447) structure.
+// RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 8017) structure.
 // EC keys are serialized as a DER-encoded ECPrivateKey (RFC 5915) structure.
 //
 // Use |RSA_marshal_private_key| or |EC_KEY_marshal_private_key| instead.
 OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
 
-// i2d_PublicKey marshals a public key from |key| to a type-specific format.
-// If |outp| is not NULL then the result is written to |*outp| and
-// |*outp| is advanced just past the output. It returns the number of bytes in
-// the result, whether written or not, or a negative value on error.
+// i2d_PublicKey marshals a public key from |key| to a type-specific format, as
+// described in |i2d_SAMPLE|.
 //
-// RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 3447) structure.
+// RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 8017) structure.
 // EC keys are serialized as an EC point per SEC 1.
 //
 // Use |RSA_marshal_public_key| or |EC_POINT_point2cbb| instead.
 OPENSSL_EXPORT int i2d_PublicKey(const EVP_PKEY *key, uint8_t **outp);
 
-// d2i_PrivateKey parses an ASN.1, DER-encoded, private key from |len| bytes at
-// |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
-// |*out|. Note that, even if |*out| is already non-NULL on entry, it will not
-// be written to. Rather, a fresh |EVP_PKEY| is allocated and the previous one
-// is freed. On successful exit, |*inp| is advanced past the DER structure. It
-// returns the result or NULL on error.
+// d2i_PrivateKey parses a DER-encoded private key from |len| bytes at |*inp|,
+// as described in |d2i_SAMPLE|. The private key must have type |type|,
+// otherwise it will be rejected.
 //
 // This function tries to detect one of several formats. Instead, use
 // |EVP_parse_private_key| for a PrivateKeyInfo, |RSA_parse_private_key| for an
@@ -917,15 +910,12 @@ OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
 OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
                                             long len);
 
-// d2i_PublicKey parse a public key from |len| bytes at |*inp| in a type-
-// specific format specified by |type|. If |out| is not NULL then, on exit, a
-// pointer to the result is in |*out|. Note that, even if |*out| is already non-
-// NULL on entry, it will not be written to. Rather, a fresh |EVP_PKEY| is
-// allocated and the previous one is freed. On successful exit, |*inp| is
-// advanced past the decoded key. It returns the result or NULL on error.
+// d2i_PublicKey parses a public key from |len| bytes at |*inp| in a type-
+// specific format specified by |type|, as described in |d2i_SAMPLE|.
 //
-// RSA keys are parsed as a DER-encoded RSAPublicKey (RFC 3447) structure.
-// Parsing EC keys is not supported by this function.
+// The only supported value for |type| is |EVP_PKEY_RSA|, which parses a
+// DER-encoded RSAPublicKey (RFC 8017) structure. Parsing EC keys is not
+// supported by this function.
 //
 // Use |RSA_parse_public_key| instead.
 OPENSSL_EXPORT EVP_PKEY *d2i_PublicKey(int type, EVP_PKEY **out,
@@ -974,70 +964,54 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen(EVP_PKEY_CTX *ctx,
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md(EVP_PKEY_CTX *ctx,
                                                            const EVP_MD *md);
 
-// i2d_PUBKEY marshals a public key from |pkey| as a DER-encoded
-// SubjectPublicKeyInfo. If |outp| is not NULL, the result is written to |*outp|
-// and |*outp| is advanced just past the output. It returns the number of bytes
-// in the result, whether written or not, or a negative value on error.
+// i2d_PUBKEY marshals |pkey| as a DER-encoded SubjectPublicKeyInfo, as
+// described in |i2d_SAMPLE|.
 //
 // Use |EVP_marshal_public_key| instead.
 OPENSSL_EXPORT int i2d_PUBKEY(const EVP_PKEY *pkey, uint8_t **outp);
 
 // d2i_PUBKEY parses a DER-encoded SubjectPublicKeyInfo from |len| bytes at
-// |*inp|. It returns a newly-allocated result, or NULL on error. On success,
-// |*inp| is advanced past the DER structure. If |out| is not NULL, it also
-// frees any existing object pointed by |*out| and writes the result.
+// |*inp|, as described in |d2i_SAMPLE|.
 //
 // Use |EVP_parse_public_key| instead.
 OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY(EVP_PKEY **out, const uint8_t **inp,
                                     long len);
 
-// i2d_RSA_PUBKEY marshals |rsa| as a DER-encoded SubjectPublicKeyInfo. If
-// |outp| is not NULL, the result is written to |*outp| and
-// |*outp| is advanced just past the output. It returns the number of bytes in
-// the result, whether written or not, or a negative value on error.
+// i2d_RSA_PUBKEY marshals |rsa| as a DER-encoded SubjectPublicKeyInfo
+// structure, as described in |i2d_SAMPLE|.
 //
 // Use |EVP_marshal_public_key| instead.
 OPENSSL_EXPORT int i2d_RSA_PUBKEY(const RSA *rsa, uint8_t **outp);
 
 // d2i_RSA_PUBKEY parses an RSA public key as a DER-encoded SubjectPublicKeyInfo
-// from |len| bytes at |*inp|. It returns a newly-allocated result, or NULL on
-// error. On success, |*inp| is advanced past the DER structure. If |out| is not
-// NULL, it also frees any existing object pointed by |*out| and writes the
-// result.
+// from |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
+// SubjectPublicKeyInfo structures containing other key types are rejected.
 //
 // Use |EVP_parse_public_key| instead.
 OPENSSL_EXPORT RSA *d2i_RSA_PUBKEY(RSA **out, const uint8_t **inp, long len);
 
-// i2d_DSA_PUBKEY marshals |dsa| as a DER-encoded SubjectPublicKeyInfo. If
-// |outp| is not NULL, the result is written to |*outp| and |*outp| is advanced
-// just past the output. It returns the number of bytes in the result, whether
-// written or not, or a negative value on error.
+// i2d_DSA_PUBKEY marshals |dsa| as a DER-encoded SubjectPublicKeyInfo, as
+// described in |i2d_SAMPLE|.
 //
 // Use |EVP_marshal_public_key| instead.
 OPENSSL_EXPORT int i2d_DSA_PUBKEY(const DSA *dsa, uint8_t **outp);
 
 // d2i_DSA_PUBKEY parses a DSA public key as a DER-encoded SubjectPublicKeyInfo
-// from |len| bytes at |*inp|. It returns a newly-allocated result, or NULL on
-// error. On success, |*inp| is advanced past the DER structure. If |out| is not
-// NULL, it also frees any existing object pointed by |*out| and writes the
-// result.
+// from |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
+// SubjectPublicKeyInfo structures containing other key types are rejected.
 //
 // Use |EVP_parse_public_key| instead.
 OPENSSL_EXPORT DSA *d2i_DSA_PUBKEY(DSA **out, const uint8_t **inp, long len);
 
-// i2d_EC_PUBKEY marshals |ec_key| as a DER-encoded SubjectPublicKeyInfo. If
-// |outp| is not NULL, the result is written to |*outp| and |*outp| is advanced
-// just past the output. It returns the number of bytes in the result, whether
-// written or not, or a negative value on error.
+// i2d_EC_PUBKEY marshals |ec_key| as a DER-encoded SubjectPublicKeyInfo, as
+// described in |i2d_SAMPLE|.
 //
 // Use |EVP_marshal_public_key| instead.
 OPENSSL_EXPORT int i2d_EC_PUBKEY(const EC_KEY *ec_key, uint8_t **outp);
 
 // d2i_EC_PUBKEY parses an EC public key as a DER-encoded SubjectPublicKeyInfo
-// from |len| bytes at |*inp|. It returns a newly-allocated result, or NULL on
-// error. On success, |*inp| is advanced past the DER structure. If |out| is not
-// NULL, it also frees any existing object pointed by |*out| and writes the
-// result.
+// from |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
+// SubjectPublicKeyInfo structures containing other key types are rejected.
 //
 // Use |EVP_parse_public_key| instead.
 OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY(EC_KEY **out, const uint8_t **inp,

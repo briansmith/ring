@@ -137,11 +137,7 @@ typedef struct {
 } PKCS7;
 
 // d2i_PKCS7 parses a BER-encoded, PKCS#7 signed data ContentInfo structure from
-// |len| bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the
-// result is in |*out|. Note that, even if |*out| is already non-NULL on entry,
-// it will not be written to. Rather, a fresh |PKCS7| is allocated and the
-// previous one is freed. On successful exit, |*inp| is advanced past the BER
-// structure.  It returns the result or NULL on error.
+// |len| bytes at |*inp|, as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
                                 size_t len);
 
@@ -152,10 +148,8 @@ OPENSSL_EXPORT PKCS7 *d2i_PKCS7(PKCS7 **out, const uint8_t **inp,
 // from |bio|.
 OPENSSL_EXPORT PKCS7 *d2i_PKCS7_bio(BIO *bio, PKCS7 **out);
 
-// i2d_PKCS7 is a dummy function which copies the contents of |p7|. If |out| is
-// not NULL then the result is written to |*out| and |*out| is advanced just
-// past the output. It returns the number of bytes in the result, whether
-// written or not, or a negative value on error.
+// i2d_PKCS7 marshals |p7| as a DER-encoded PKCS#7 ContentInfo structure, as
+// described in |i2d_SAMPLE|.
 OPENSSL_EXPORT int i2d_PKCS7(const PKCS7 *p7, uint8_t **out);
 
 // i2d_PKCS7_bio writes |p7| to |bio|. It returns one on success and zero on

@@ -885,28 +885,16 @@ OPENSSL_EXPORT int i2d_X509_AUX(X509 *a, unsigned char **pp);
 OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **a, const unsigned char **pp,
                                   long length);
 
-// i2d_re_X509_tbs serializes the TBSCertificate portion of |x509|. If |outp| is
-// NULL, nothing is written. Otherwise, if |*outp| is not NULL, the result is
-// written to |*outp|, which must have enough space available, and |*outp| is
-// advanced just past the output. If |outp| is non-NULL and |*outp| is NULL, it
-// sets |*outp| to a newly-allocated buffer containing the result. The caller is
-// responsible for releasing the buffer with |OPENSSL_free|. In all cases, this
-// function returns the number of bytes in the result, whether written or not,
-// or a negative value on error.
+// i2d_re_X509_tbs serializes the TBSCertificate portion of |x509|, as described
+// in |i2d_SAMPLE|.
 //
 // This function re-encodes the TBSCertificate and may not reflect |x509|'s
 // original encoding. It may be used to manually generate a signature for a new
 // certificate. To verify certificates, use |i2d_X509_tbs| instead.
 OPENSSL_EXPORT int i2d_re_X509_tbs(X509 *x509, unsigned char **outp);
 
-// i2d_X509_tbs serializes the TBSCertificate portion of |x509|. If |outp| is
-// NULL, nothing is written. Otherwise, if |*outp| is not NULL, the result is
-// written to |*outp|, which must have enough space available, and |*outp| is
-// advanced just past the output. If |outp| is non-NULL and |*outp| is NULL, it
-// sets |*outp| to a newly-allocated buffer containing the result. The caller is
-// responsible for releasing the buffer with |OPENSSL_free|. In all cases, this
-// function returns the number of bytes in the result, whether written or not,
-// or a negative value on error.
+// i2d_X509_tbs serializes the TBSCertificate portion of |x509|, as described in
+// |i2d_SAMPLE|.
 //
 // This function preserves the original encoding of the TBSCertificate and may
 // not reflect modifications made to |x509|. It may be used to manually verify
@@ -1073,13 +1061,7 @@ OPENSSL_EXPORT void X509_REQ_get0_signature(const X509_REQ *req,
 OPENSSL_EXPORT int X509_REQ_get_signature_nid(const X509_REQ *req);
 
 // i2d_re_X509_REQ_tbs serializes the CertificationRequestInfo (see RFC 2986)
-// portion of |req|. If |outp| is NULL, nothing is written. Otherwise, if
-// |*outp| is not NULL, the result is written to |*outp|, which must have enough
-// space available, and |*outp| is advanced just past the output. If |outp| is
-// non-NULL and |*outp| is NULL, it sets |*outp| to a newly-allocated buffer
-// containing the result. The caller is responsible for releasing the buffer
-// with |OPENSSL_free|. In all cases, this function returns the number of bytes
-// in the result, whether written or not, or a negative value on error.
+// portion of |req|, as described in |i2d_SAMPLE|.
 //
 // This function re-encodes the CertificationRequestInfo and may not reflect
 // |req|'s original encoding. It may be used to manually generate a signature
@@ -1217,28 +1199,16 @@ OPENSSL_EXPORT void X509_CRL_get0_signature(const X509_CRL *crl,
 // a known NID.
 OPENSSL_EXPORT int X509_CRL_get_signature_nid(const X509_CRL *crl);
 
-// i2d_re_X509_CRL_tbs serializes the TBSCertList portion of |crl|. If |outp| is
-// NULL, nothing is written. Otherwise, if |*outp| is not NULL, the result is
-// written to |*outp|, which must have enough space available, and |*outp| is
-// advanced just past the output. If |outp| is non-NULL and |*outp| is NULL, it
-// sets |*outp| to a newly-allocated buffer containing the result. The caller is
-// responsible for releasing the buffer with |OPENSSL_free|. In all cases, this
-// function returns the number of bytes in the result, whether written or not,
-// or a negative value on error.
+// i2d_re_X509_CRL_tbs serializes the TBSCertList portion of |crl|, as described
+// in |i2d_SAMPLE|.
 //
 // This function re-encodes the TBSCertList and may not reflect |crl|'s original
 // encoding. It may be used to manually generate a signature for a new CRL. To
 // verify CRLs, use |i2d_X509_CRL_tbs| instead.
 OPENSSL_EXPORT int i2d_re_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp);
 
-// i2d_X509_CRL_tbs serializes the TBSCertList portion of |crl|. If |outp| is
-// NULL, nothing is written. Otherwise, if |*outp| is not NULL, the result is
-// written to |*outp|, which must have enough space available, and |*outp| is
-// advanced just past the output. If |outp| is non-NULL and |*outp| is NULL, it
-// sets |*outp| to a newly-allocated buffer containing the result. The caller is
-// responsible for releasing the buffer with |OPENSSL_free|. In all cases, this
-// function returns the number of bytes in the result, whether written or not,
-// or a negative value on error.
+// i2d_X509_CRL_tbs serializes the TBSCertList portion of |crl|, as described in
+// |i2d_SAMPLE|.
 //
 // This function preserves the original encoding of the TBSCertList and may not
 // reflect modifications made to |crl|. It may be used to manually verify the
