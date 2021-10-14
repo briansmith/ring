@@ -179,6 +179,151 @@ extern "C" {
 OPENSSL_EXPORT const char *ASN1_tag2str(int tag);
 
 
+// ASN.1 types.
+//
+// An |ASN1_ITEM| represents an ASN.1 type and allows working with ASN.1 types
+// generically.
+//
+// |ASN1_ITEM|s use a different namespace from C types and are accessed via
+// |ASN1_ITEM_*| macros. So, for example, |ASN1_OCTET_STRING| is both a C type
+// and the name of an |ASN1_ITEM|, referenced as
+// |ASN1_ITEM_rptr(ASN1_OCTET_STRING)|.
+//
+// Each |ASN1_ITEM| has a corresponding C type, typically with the same name,
+// which represents values in the ASN.1 type. With the exception of
+// |ASN1_BOOLEAN|, this type is a pointer type. NULL pointers represent omitted
+// values. For example, an OCTET STRING value is declared with the C type
+// |ASN1_OCTET_STRING*| and uses the |ASN1_ITEM| named |ASN1_OCTET_STRING|. An
+// OPTIONAL OCTET STRING uses the same C type and represents an omitted value
+// with a NULL pointer. |ASN1_BOOLEAN| uses a different representation,
+// described in a later section.
+
+// DECLARE_ASN1_ITEM declares an |ASN1_ITEM| with name |name|. The |ASN1_ITEM|
+// may be referenced with |ASN1_ITEM_rptr|. Uses of this macro should document
+// the corresponding ASN.1 and C types.
+#define DECLARE_ASN1_ITEM(name) extern OPENSSL_EXPORT const ASN1_ITEM name##_it;
+
+// ASN1_ITEM_rptr returns the |const ASN1_ITEM *| named |name|.
+#define ASN1_ITEM_rptr(name) (&(name##_it))
+
+// ASN1_ITEM_EXP is an abstraction for referencing an |ASN1_ITEM| in a
+// constant-initialized structure, such as a method table. It exists because, on
+// some OpenSSL platforms, |ASN1_ITEM| references are indirected through
+// functions. Structures reference the |ASN1_ITEM| by declaring a field like
+// |ASN1_ITEM_EXP *item| and initializing it with |ASN1_ITEM_ref|.
+typedef const ASN1_ITEM ASN1_ITEM_EXP;
+
+// ASN1_ITEM_ref returns an |ASN1_ITEM_EXP*| for the |ASN1_ITEM| named |name|.
+#define ASN1_ITEM_ref(name) (&(name##_it))
+
+// ASN1_ITEM_ptr converts |iptr|, which must be an |ASN1_ITEM_EXP*| to a
+// |const ASN1_ITEM*|.
+#define ASN1_ITEM_ptr(iptr) (iptr)
+
+// ASN1_VALUE_st (aka |ASN1_VALUE|) is an opaque type used as a placeholder for
+// the C type corresponding to an |ASN1_ITEM|.
+typedef struct ASN1_VALUE_st ASN1_VALUE;
+
+// ASN1_item_new allocates a new value of the C type corresponding to |it|, or
+// NULL on error. On success, the caller must release the value with
+// |ASN1_item_free|, or the corresponding C type's free function, when done. The
+// new value will initialize fields of the value to some default state, such as
+// an empty string. Note, however, that this default state sometimes omits
+// required values, such as with CHOICE types.
+//
+// This function may not be used with |ASN1_BOOLEAN|, |ASN1_TBOOLEAN|, or
+// |ASN1_FBOOLEAN|, whose C representations are not pointers.
+//
+// WARNING: Casting the result of this function to the wrong type is a
+// potentially exploitable memory error. Callers must ensure the value is used
+// consistently with |it|. Prefer using type-specific functions such as
+// |ASN1_OCTET_STRING_new|.
+OPENSSL_EXPORT ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it);
+
+// ASN1_item_free releases memory associated with |val|, which must be an object
+// of the C type corresponding to |it|.
+//
+// This function may not be used with |ASN1_BOOLEAN|, |ASN1_TBOOLEAN|, or
+// |ASN1_FBOOLEAN|, whose C representations are not pointers.
+//
+// WARNING: Passing a pointer of the wrong type into this function is a
+// potentially exploitable memory error. Callers must ensure |val| is consistent
+// with |it|. Prefer using type-specific functions such as
+// |ASN1_OCTET_STRING_free|.
+OPENSSL_EXPORT void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it);
+
+// ASN1_item_d2i parses the ASN.1 type |it| from up to |len| bytes at |*inp|.
+// It behaves like |d2i_SAMPLE_with_reuse|, except that |out| and the return
+// value are cast to |ASN1_VALUE| pointers.
+//
+// TODO(https://crbug.com/boringssl/444): C strict aliasing forbids type-punning
+// |T*| and |ASN1_VALUE*| the way this function signature does. When that bug is
+// resolved, we will need to pick which type |*out| is (probably |T*|). Do not
+// use a non-NULL |out| to avoid ending up on the wrong side of this question.
+//
+// This function may not be used with |ASN1_BOOLEAN|, |ASN1_TBOOLEAN|, or
+// |ASN1_FBOOLEAN|, whose C representations are not pointers.
+//
+// WARNING: Casting the result of this function to the wrong type, or passing a
+// pointer of the wrong type into this function, are potentially exploitable
+// memory errors. Callers must ensure |out| is consistent with |it|. Prefer
+// using type-specific functions such as |d2i_ASN1_OCTET_STRING|.
+OPENSSL_EXPORT ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **out,
+                                         const unsigned char **inp, long len,
+                                         const ASN1_ITEM *it);
+
+// ASN1_item_i2d marshals |val| as the ASN.1 type associated with |it|, as
+// described in |i2d_SAMPLE|.
+//
+// This function may not be used with |ASN1_BOOLEAN|, |ASN1_TBOOLEAN|, or
+// |ASN1_FBOOLEAN|, whose C representations are not pointers.
+//
+// WARNING: Passing a pointer of the wrong type into this function is a
+// potentially exploitable memory error. Callers must ensure |val| is consistent
+// with |it|. Prefer using type-specific functions such as
+// |i2d_ASN1_OCTET_STRING|.
+OPENSSL_EXPORT int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **outp,
+                                 const ASN1_ITEM *it);
+
+
+// Booleans.
+//
+// This library represents ASN.1 BOOLEAN values with |ASN1_BOOLEAN|, which is an
+// integer type. FALSE is zero, TRUE is 0xff, and an omitted OPTIONAL BOOLEAN is
+// -1.
+
+// d2i_ASN1_BOOLEAN parses a DER-encoded ASN.1 BOOLEAN from up to |len| bytes at
+// |*inp|. On success, it advances |*inp| by the number of bytes read and
+// returns the result. If |out| is non-NULL, it additionally writes the result
+// to |*out|. On error, it returns -1.
+//
+// This function does not reject trailing data in the input. This allows the
+// caller to parse a sequence of concatenated structures. Callers parsing only
+// one structure should check for trailing data by comparing the updated |*inp|
+// with the end of the input.
+//
+// WARNING: This function's is slightly different from other |d2i_*| functions
+// because |ASN1_BOOLEAN| is not a pointer type.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *out,
+                                             const unsigned char **inp,
+                                             long len);
+
+// i2d_ASN1_BOOLEAN marshals |a| as a DER-encoded ASN.1 BOOLEAN, as described in
+// |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **outp);
+
+// The following |ASN1_ITEM|s have ASN.1 type BOOLEAN and C type |ASN1_BOOLEAN|.
+// These are the only |ASN1_ITEM|s with non-pointer types. |ASN1_TBOOLEAN| and
+// |ASN1_FBOOLEAN| must be marked OPTIONAL. When omitted, they are parsed as
+// TRUE and FALSE, respectively, rather than -1.
+DECLARE_ASN1_ITEM(ASN1_BOOLEAN)
+DECLARE_ASN1_ITEM(ASN1_TBOOLEAN)
+DECLARE_ASN1_ITEM(ASN1_FBOOLEAN)
+
+
 // Strings.
 //
 // ASN.1 contains a myriad of string types, as well as types that contain data
@@ -687,10 +832,6 @@ OPENSSL_EXPORT int ASN1_TIME_set_string(ASN1_TIME *s, const char *str);
 
 // Arbitrary elements.
 
-// ASN1_VALUE_st (aka |ASN1_VALUE|) is an opaque type used internally in the
-// library.
-typedef struct ASN1_VALUE_st ASN1_VALUE;
-
 // An asn1_type_st (aka |ASN1_TYPE|) represents an arbitrary ASN.1 element,
 // typically used used for ANY types. It contains a |type| field and a |value|
 // union dependent on |type|.
@@ -974,53 +1115,6 @@ typedef struct ASN1_TLC_st ASN1_TLC;
 typedef void *d2i_of_void(void **, const unsigned char **, long);
 typedef int i2d_of_void(const void *, unsigned char **);
 
-// The following macros and typedefs allow an ASN1_ITEM
-// to be embedded in a structure and referenced. Since
-// the ASN1_ITEM pointers need to be globally accessible
-// (possibly from shared libraries) they may exist in
-// different forms. On platforms that support it the
-// ASN1_ITEM structure itself will be globally exported.
-// Other platforms will export a function that returns
-// an ASN1_ITEM pointer.
-//
-// To handle both cases transparently the macros below
-// should be used instead of hard coding an ASN1_ITEM
-// pointer in a structure.
-//
-// The structure will look like this:
-//
-// typedef struct SOMETHING_st {
-//      ...
-//      ASN1_ITEM_EXP *iptr;
-//      ...
-// } SOMETHING;
-//
-// It would be initialised as e.g.:
-//
-// SOMETHING somevar = {...,ASN1_ITEM_ref(X509),...};
-//
-// and the actual pointer extracted with:
-//
-// const ASN1_ITEM *it = ASN1_ITEM_ptr(somevar.iptr);
-//
-// Finally an ASN1_ITEM pointer can be extracted from an
-// appropriate reference with: ASN1_ITEM_rptr(X509). This
-// would be used when a function takes an ASN1_ITEM * argument.
-//
-
-// ASN1_ITEM pointer exported type
-typedef const ASN1_ITEM ASN1_ITEM_EXP;
-
-// Macro to obtain ASN1_ITEM pointer from exported type
-#define ASN1_ITEM_ptr(iptr) (iptr)
-
-// Macro to include ASN1_ITEM pointer from base type
-#define ASN1_ITEM_ref(iptr) (&(iptr##_it))
-
-#define ASN1_ITEM_rptr(ref) (&(ref##_it))
-
-#define DECLARE_ASN1_ITEM(name) extern OPENSSL_EXPORT const ASN1_ITEM name##_it;
-
 DEFINE_STACK_OF(ASN1_INTEGER)
 
 DEFINE_STACK_OF(ASN1_TYPE)
@@ -1113,11 +1207,6 @@ OPENSSL_EXPORT ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
                                                     const unsigned char **pp,
                                                     long length);
 
-OPENSSL_EXPORT int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **pp);
-OPENSSL_EXPORT ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *a,
-                                             const unsigned char **pp,
-                                             long length);
-
 DECLARE_ASN1_FUNCTIONS(ASN1_INTEGER)
 OPENSSL_EXPORT int i2c_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
 OPENSSL_EXPORT ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **a,
@@ -1192,15 +1281,6 @@ OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it,
                                            ASN1_OCTET_STRING **oct);
 
 // ASN1 template functions
-
-// Old API compatible functions
-OPENSSL_EXPORT ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it);
-OPENSSL_EXPORT void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it);
-OPENSSL_EXPORT ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **val,
-                                         const unsigned char **in, long len,
-                                         const ASN1_ITEM *it);
-OPENSSL_EXPORT int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out,
-                                 const ASN1_ITEM *it);
 
 OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_nconf(const char *str, CONF *nconf);
 OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);
