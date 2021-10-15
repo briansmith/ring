@@ -63,11 +63,10 @@
 #include <time.h>
 
 #include <openssl/bio.h>
+#include <openssl/bn.h>
 #include <openssl/stack.h>
 
-#include <openssl/bn.h>
-
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -556,10 +555,9 @@ OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out,
                                        const ASN1_STRING *in);
 
 // The following formats define encodings for use with functions like
-// |ASN1_mbstring_copy|.
+// |ASN1_mbstring_copy|. Note |MBSTRING_ASC| refers to Latin-1, not ASCII.
 #define MBSTRING_FLAG 0x1000
 #define MBSTRING_UTF8 (MBSTRING_FLAG)
-// |MBSTRING_ASC| refers to Latin-1, not ASCII.
 #define MBSTRING_ASC (MBSTRING_FLAG | 1)
 #define MBSTRING_BMP (MBSTRING_FLAG | 2)
 #define MBSTRING_UNIV (MBSTRING_FLAG | 4)
@@ -781,8 +779,8 @@ DECLARE_ASN1_ITEM(ASN1_INTEGER)
 // success and zero on error.
 OPENSSL_EXPORT int ASN1_INTEGER_set(ASN1_INTEGER *a, long v);
 
-// ASN1_INTEGER_set sets |a| to an INTEGER with value |v|. It returns one on
-// success and zero on error.
+// ASN1_INTEGER_set_uint64 sets |a| to an INTEGER with value |v|. It returns one
+// on success and zero on error.
 OPENSSL_EXPORT int ASN1_INTEGER_set_uint64(ASN1_INTEGER *out, uint64_t v);
 
 // ASN1_INTEGER_get returns the value of |a| as a |long|, or -1 if |a| is out of
@@ -836,8 +834,8 @@ DECLARE_ASN1_ITEM(ASN1_ENUMERATED)
 // on success and zero on error.
 OPENSSL_EXPORT int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v);
 
-// ASN1_INTEGER_get returns the value of |a| as a |long|, or -1 if |a| is out of
-// range or the wrong type.
+// ASN1_ENUMERATED_get returns the value of |a| as a |long|, or -1 if |a| is out
+// of range or the wrong type.
 OPENSSL_EXPORT long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a);
 
 // BN_to_ASN1_ENUMERATED sets |ai| to an ENUMERATED with value |bn| and returns
@@ -1500,8 +1498,8 @@ OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_nconf(const char *str, CONF *nconf);
 OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);
 
 
-#ifdef __cplusplus
-}
+#if defined(__cplusplus)
+}  // extern C
 
 extern "C++" {
 

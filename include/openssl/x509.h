@@ -82,7 +82,7 @@
 #include <openssl/thread.h>
 #include <time.h>
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -2336,8 +2336,8 @@ OPENSSL_EXPORT const X509_POLICY_NODE *X509_policy_node_get0_parent(
     const X509_POLICY_NODE *node);
 
 
-#ifdef __cplusplus
-}
+#if defined(__cplusplus)
+}  // extern C
 #endif
 
 #if !defined(BORINGSSL_NO_CXX)

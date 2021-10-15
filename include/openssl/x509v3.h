@@ -60,7 +60,7 @@
 #include <openssl/lhash.h>
 #include <openssl/x509.h>
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -928,8 +928,8 @@ DEFINE_STACK_OF(X509_POLICY_NODE)
 // made after this point may be overwritten when the script is next run.
 
 
-#ifdef __cplusplus
-}
+#if defined(__cplusplus)
+}  // extern C
 
 extern "C++" {
 
