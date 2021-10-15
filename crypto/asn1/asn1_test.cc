@@ -103,9 +103,15 @@ TEST(ASN1Test, IntegerSetting) {
   }
 }
 
-template <typename T>
-void TestSerialize(T obj, int (*i2d_func)(T a, uint8_t **pp),
+// |obj| and |i2d_func| require different template parameters because C++ may
+// deduce, say, |ASN1_STRING*| via |obj| and |const ASN1_STRING*| via
+// |i2d_func|. Template argument deduction then fails. The language is not able
+// to resolve this by observing that |const ASN1_STRING*| works for both.
+template <typename T, typename U>
+void TestSerialize(T obj, int (*i2d_func)(U a, uint8_t **pp),
                    bssl::Span<const uint8_t> expected) {
+  static_assert(std::is_convertible<T, U>::value,
+                "incompatible parameter to i2d_func");
   // Test the allocating version first. It is easiest to debug.
   uint8_t *ptr = nullptr;
   int len = i2d_func(obj, &ptr);
