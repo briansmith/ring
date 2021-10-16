@@ -1418,6 +1418,66 @@ TEST(ASN1Test, Null) {
   EXPECT_EQ(nullptr, null_type->value.ptr);
 }
 
+TEST(ASN1Test, Pack) {
+  bssl::UniquePtr<BASIC_CONSTRAINTS> val(BASIC_CONSTRAINTS_new());
+  ASSERT_TRUE(val);
+  val->ca = 0;
+
+  // Test all three calling conventions.
+  static const uint8_t kExpected[] = {0x30, 0x00};
+  bssl::UniquePtr<ASN1_STRING> str(
+      ASN1_item_pack(val.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS), nullptr));
+  ASSERT_TRUE(str);
+  EXPECT_EQ(
+      Bytes(ASN1_STRING_get0_data(str.get()), ASN1_STRING_length(str.get())),
+      Bytes(kExpected));
+
+  ASN1_STRING *raw = nullptr;
+  str.reset(ASN1_item_pack(val.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS), &raw));
+  ASSERT_TRUE(str);
+  EXPECT_EQ(raw, str.get());
+  EXPECT_EQ(
+      Bytes(ASN1_STRING_get0_data(str.get()), ASN1_STRING_length(str.get())),
+      Bytes(kExpected));
+
+  str.reset(ASN1_STRING_new());
+  ASSERT_TRUE(str);
+  raw = str.get();
+  EXPECT_TRUE(
+      ASN1_item_pack(val.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS), &raw));
+  EXPECT_EQ(raw, str.get());
+  EXPECT_EQ(
+      Bytes(ASN1_STRING_get0_data(str.get()), ASN1_STRING_length(str.get())),
+      Bytes(kExpected));
+}
+
+TEST(ASN1Test, Unpack) {
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_new());
+  ASSERT_TRUE(str);
+
+  static const uint8_t kValid[] = {0x30, 0x00};
+  ASSERT_TRUE(
+      ASN1_STRING_set(str.get(), kValid, sizeof(kValid)));
+  bssl::UniquePtr<BASIC_CONSTRAINTS> val(static_cast<BASIC_CONSTRAINTS *>(
+      ASN1_item_unpack(str.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS))));
+  ASSERT_TRUE(val);
+  EXPECT_EQ(val->ca, 0);
+  EXPECT_EQ(val->pathlen, nullptr);
+
+  static const uint8_t kInvalid[] = {0x31, 0x00};
+  ASSERT_TRUE(ASN1_STRING_set(str.get(), kInvalid, sizeof(kInvalid)));
+  val.reset(static_cast<BASIC_CONSTRAINTS *>(
+      ASN1_item_unpack(str.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS))));
+  EXPECT_FALSE(val);
+
+  static const uint8_t kTraiilingData[] = {0x30, 0x00, 0x00};
+  ASSERT_TRUE(
+      ASN1_STRING_set(str.get(), kTraiilingData, sizeof(kTraiilingData)));
+  val.reset(static_cast<BASIC_CONSTRAINTS *>(
+      ASN1_item_unpack(str.get(), ASN1_ITEM_rptr(BASIC_CONSTRAINTS))));
+  EXPECT_FALSE(val);
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
