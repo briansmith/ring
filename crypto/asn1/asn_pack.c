@@ -101,5 +101,6 @@ void *ASN1_item_unpack(const ASN1_STRING *oct, const ASN1_ITEM *it)
     p = oct->data;
     if (!(ret = ASN1_item_d2i(NULL, &p, oct->length, it)))
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_DECODE_ERROR);
+    /* TODO(davidben): Check for trailing data. */
     return ret;
 }

@@ -283,6 +283,66 @@ OPENSSL_EXPORT ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **out,
 OPENSSL_EXPORT int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **outp,
                                  const ASN1_ITEM *it);
 
+// ASN1_item_dup returns a newly-allocated copy of |x|, or NULL on error. |x|
+// must be an object of |it|'s C type.
+//
+// This function may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
+//
+// WARNING: Casting the result of this function to the wrong type, or passing a
+// pointer of the wrong type into this function, are potentially exploitable
+// memory errors. Prefer using type-specific functions such as
+// |ASN1_STRING_dup|.
+OPENSSL_EXPORT void *ASN1_item_dup(const ASN1_ITEM *it, void *x);
+
+// The following functions behave like |ASN1_item_d2i| but read from |in|
+// instead. |out| is the same parameter as in |ASN1_item_d2i|, but written with
+// |void*| instead. The return values similarly match.
+//
+// These functions may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
+//
+// WARNING: These functions do not bound how much data is read from |in|.
+// Parsing an untrusted input could consume unbounded memory.
+OPENSSL_EXPORT void *ASN1_item_d2i_fp(const ASN1_ITEM *it, FILE *in, void *out);
+OPENSSL_EXPORT void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *out);
+
+// The following functions behave like |ASN1_item_i2d| but write to |out|
+// instead. |in| is the same parameter as in |ASN1_item_i2d|, but written with
+// |void*| instead.
+//
+// These functions may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
+OPENSSL_EXPORT int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *in);
+OPENSSL_EXPORT int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *in);
+
+// ASN1_item_unpack parses |oct|'s contents as |it|'s ASN.1 type. It returns a
+// newly-allocated instance of |it|'s C type on success, or NULL on error.
+//
+// This function may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
+//
+// WARNING: Casting the result of this function to the wrong type is a
+// potentially exploitable memory error. Callers must ensure the value is used
+// consistently with |it|.
+OPENSSL_EXPORT void *ASN1_item_unpack(const ASN1_STRING *oct,
+                                      const ASN1_ITEM *it);
+
+// ASN1_item_pack marshals |obj| as |it|'s ASN.1 type. If |out| is NULL, it
+// returns a newly-allocated |ASN1_STRING| with the result, or NULL on error.
+// If |out| is non-NULL, but |*out| is NULL, it does the same but additionally
+// sets |*out| to the result. If both |out| and |*out| are non-NULL, it writes
+// the result to |*out| and returns |*out| on success or NULL on error.
+//
+// This function may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
+//
+// WARNING: Passing a pointer of the wrong type into this function is a
+// potentially exploitable memory error. Callers must ensure |val| is consistent
+// with |it|.
+OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it,
+                                           ASN1_STRING **out);
+
 
 // Booleans.
 //
@@ -1473,22 +1533,6 @@ OPENSSL_EXPORT void ASN1_put_object(unsigned char **pp, int constructed,
                                     int length, int tag, int xclass);
 OPENSSL_EXPORT int ASN1_put_eoc(unsigned char **pp);
 OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
-
-OPENSSL_EXPORT void *ASN1_item_dup(const ASN1_ITEM *it, void *x);
-
-OPENSSL_EXPORT void *ASN1_item_d2i_fp(const ASN1_ITEM *it, FILE *in, void *x);
-OPENSSL_EXPORT int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x);
-
-OPENSSL_EXPORT void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *x);
-OPENSSL_EXPORT int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *x);
-
-// Used to load and write netscape format cert
-
-OPENSSL_EXPORT void *ASN1_item_unpack(const ASN1_STRING *oct,
-                                      const ASN1_ITEM *it);
-
-OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it,
-                                           ASN1_OCTET_STRING **oct);
 
 // ASN1 template functions
 
