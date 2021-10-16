@@ -189,13 +189,12 @@ OPENSSL_EXPORT const char *ASN1_tag2str(int tag);
 // |ASN1_ITEM_rptr(ASN1_OCTET_STRING)|.
 //
 // Each |ASN1_ITEM| has a corresponding C type, typically with the same name,
-// which represents values in the ASN.1 type. With the exception of
-// |ASN1_BOOLEAN|, this type is a pointer type. NULL pointers represent omitted
+// which represents values in the ASN.1 type. This type is either a pointer type
+// or |ASN1_BOOLEAN|. When it is a pointer, NULL pointers represent omitted
 // values. For example, an OCTET STRING value is declared with the C type
 // |ASN1_OCTET_STRING*| and uses the |ASN1_ITEM| named |ASN1_OCTET_STRING|. An
 // OPTIONAL OCTET STRING uses the same C type and represents an omitted value
-// with a NULL pointer. |ASN1_BOOLEAN| uses a different representation,
-// described in a later section.
+// with a NULL pointer. |ASN1_BOOLEAN| is described in a later section.
 
 // DECLARE_ASN1_ITEM declares an |ASN1_ITEM| with name |name|. The |ASN1_ITEM|
 // may be referenced with |ASN1_ITEM_rptr|. Uses of this macro should document
@@ -230,8 +229,8 @@ typedef struct ASN1_VALUE_st ASN1_VALUE;
 // an empty string. Note, however, that this default state sometimes omits
 // required values, such as with CHOICE types.
 //
-// This function may not be used with |ASN1_BOOLEAN|, |ASN1_TBOOLEAN|, or
-// |ASN1_FBOOLEAN|, whose C representations are not pointers.
+// This function may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
 //
 // WARNING: Casting the result of this function to the wrong type is a
 // potentially exploitable memory error. Callers must ensure the value is used
@@ -242,8 +241,8 @@ OPENSSL_EXPORT ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it);
 // ASN1_item_free releases memory associated with |val|, which must be an object
 // of the C type corresponding to |it|.
 //
-// This function may not be used with |ASN1_BOOLEAN|, |ASN1_TBOOLEAN|, or
-// |ASN1_FBOOLEAN|, whose C representations are not pointers.
+// This function may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
 //
 // WARNING: Passing a pointer of the wrong type into this function is a
 // potentially exploitable memory error. Callers must ensure |val| is consistent
@@ -260,8 +259,8 @@ OPENSSL_EXPORT void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it);
 // resolved, we will need to pick which type |*out| is (probably |T*|). Do not
 // use a non-NULL |out| to avoid ending up on the wrong side of this question.
 //
-// This function may not be used with |ASN1_BOOLEAN|, |ASN1_TBOOLEAN|, or
-// |ASN1_FBOOLEAN|, whose C representations are not pointers.
+// This function may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
 //
 // WARNING: Casting the result of this function to the wrong type, or passing a
 // pointer of the wrong type into this function, are potentially exploitable
@@ -274,8 +273,8 @@ OPENSSL_EXPORT ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **out,
 // ASN1_item_i2d marshals |val| as the ASN.1 type associated with |it|, as
 // described in |i2d_SAMPLE|.
 //
-// This function may not be used with |ASN1_BOOLEAN|, |ASN1_TBOOLEAN|, or
-// |ASN1_FBOOLEAN|, whose C representations are not pointers.
+// This function may not be used with |ASN1_ITEM|s whose C type is
+// |ASN1_BOOLEAN|.
 //
 // WARNING: Passing a pointer of the wrong type into this function is a
 // potentially exploitable memory error. Callers must ensure |val| is consistent
@@ -315,9 +314,8 @@ OPENSSL_EXPORT ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *out,
 OPENSSL_EXPORT int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **outp);
 
 // The following |ASN1_ITEM|s have ASN.1 type BOOLEAN and C type |ASN1_BOOLEAN|.
-// These are the only |ASN1_ITEM|s with non-pointer types. |ASN1_TBOOLEAN| and
-// |ASN1_FBOOLEAN| must be marked OPTIONAL. When omitted, they are parsed as
-// TRUE and FALSE, respectively, rather than -1.
+// |ASN1_TBOOLEAN| and |ASN1_FBOOLEAN| must be marked OPTIONAL. When omitted,
+// they are parsed as TRUE and FALSE, respectively, rather than -1.
 DECLARE_ASN1_ITEM(ASN1_BOOLEAN)
 DECLARE_ASN1_ITEM(ASN1_TBOOLEAN)
 DECLARE_ASN1_ITEM(ASN1_FBOOLEAN)
