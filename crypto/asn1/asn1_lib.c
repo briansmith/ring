@@ -64,6 +64,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 
 /* Cross-module errors from crypto/x509/i2d_pr.c. */
@@ -406,17 +407,44 @@ void ASN1_STRING_free(ASN1_STRING *str)
 
 int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b)
 {
-    int i;
+    /* Capture padding bits and implicit truncation in BIT STRINGs. */
+    int a_length = a->length, b_length = b->length;
+    uint8_t a_padding = 0, b_padding = 0;
+    if (a->type == V_ASN1_BIT_STRING) {
+        a_length = asn1_bit_string_length(a, &a_padding);
+    }
+    if (b->type == V_ASN1_BIT_STRING) {
+        b_length = asn1_bit_string_length(b, &b_padding);
+    }
 
-    i = (a->length - b->length);
-    if (i == 0) {
-        i = OPENSSL_memcmp(a->data, b->data, a->length);
-        if (i == 0)
-            return (a->type - b->type);
-        else
-            return (i);
-    } else
-        return (i);
+    if (a_length < b_length) {
+        return -1;
+    }
+    if (a_length > b_length) {
+        return 1;
+    }
+    /* In a BIT STRING, the number of bits is 8 * length - padding. Invert this
+     * comparison so we compare by lengths. */
+    if (a_padding > b_padding) {
+        return -1;
+    }
+    if (a_padding < b_padding) {
+        return 1;
+    }
+
+    int ret = OPENSSL_memcmp(a->data, b->data, a_length);
+    if (ret != 0) {
+        return ret;
+    }
+
+    /* Comparing the type first is more natural, but this matches OpenSSL. */
+    if (a->type < b->type) {
+        return -1;
+    }
+    if (a->type > b->type) {
+        return 1;
+    }
+    return 0;
 }
 
 int ASN1_STRING_length(const ASN1_STRING *str)

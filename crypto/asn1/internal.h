@@ -175,6 +175,14 @@ const void *asn1_type_value_as_pointer(const ASN1_TYPE *a);
  * ASN.1 PrintableString, and zero otherwise. */
 int asn1_is_printable(uint32_t value);
 
+/* asn1_bit_string_length returns the number of bytes in |str| and sets
+ * |*out_padding_bits| to the number of padding bits.
+ *
+ * This function should be used instead of |ASN1_STRING_length| to correctly
+ * handle the non-|ASN1_STRING_FLAG_BITS_LEFT| case. */
+int asn1_bit_string_length(const ASN1_BIT_STRING *str,
+                           uint8_t *out_padding_bits);
+
 typedef struct {
   int nid;
   long minsize;

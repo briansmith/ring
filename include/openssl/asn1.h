@@ -503,13 +503,8 @@ OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *str);
 // suitable for sorting, callers should not rely on the exact order when |a|
 // and |b| are different types.
 //
-// If |a| or |b| are BIT STRINGs, this function does not compare the
-// |ASN1_STRING_FLAG_BITS_LEFT| flags. Additionally, if |a| and |b| are
-// INTEGERs, this comparison does not order the values numerically. For a
-// numerical comparison, use |ASN1_INTEGER_cmp|.
-//
-// TODO(https://crbug.com/boringssl/446): The BIT STRING comparison seems like a
-// bug. Fix it?
+// Note that, if |a| and |b| are INTEGERs, this comparison does not order the
+// values numerically. For a numerical comparison, use |ASN1_INTEGER_cmp|.
 OPENSSL_EXPORT int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b);
 
 // ASN1_STRING_set sets the contents of |str| to a copy of |len| bytes from
@@ -735,7 +730,7 @@ OPENSSL_EXPORT int ASN1_STRING_TABLE_add(int nid, long minsize, long maxsize,
 // {0x80} and flags of ASN1_STRING_FLAG_BITS_LEFT | 6. If
 // |ASN1_STRING_FLAG_BITS_LEFT| is unset, trailing zero bits are implicitly
 // removed. Callers should not rely this representation when constructing bit
-// strings.
+// strings. The padding bits in the |ASN1_STRING| data must be zero.
 
 // ASN1_BIT_STRING_new calls |ASN1_STRING_type_new| with |V_ASN1_BIT_STRING|.
 OPENSSL_EXPORT ASN1_BIT_STRING *ASN1_BIT_STRING_new(void);

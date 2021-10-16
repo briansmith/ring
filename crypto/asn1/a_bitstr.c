@@ -63,6 +63,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 
 int ASN1_BIT_STRING_set(ASN1_BIT_STRING *x, const unsigned char *d, int len)
@@ -70,8 +71,8 @@ int ASN1_BIT_STRING_set(ASN1_BIT_STRING *x, const unsigned char *d, int len)
     return ASN1_STRING_set(x, d, len);
 }
 
-static int asn1_bit_string_length(const ASN1_BIT_STRING *str,
-                                  uint8_t *out_padding_bits) {
+int asn1_bit_string_length(const ASN1_BIT_STRING *str,
+                           uint8_t *out_padding_bits) {
     int len = str->length;
     if (str->flags & ASN1_STRING_FLAG_BITS_LEFT) {
         // If the string is already empty, it cannot have padding bits.
@@ -79,8 +80,8 @@ static int asn1_bit_string_length(const ASN1_BIT_STRING *str,
         return len;
     }
 
-    // TODO(davidben): If we move this logic to |ASN1_BIT_STRING_set_bit|, can
-    // we remove this representation?
+    // TODO(https://crbug.com/boringssl/447): If we move this logic to
+    // |ASN1_BIT_STRING_set_bit|, can we remove this representation?
     while (len > 0 && str->data[len - 1] == 0) {
         len--;
     }

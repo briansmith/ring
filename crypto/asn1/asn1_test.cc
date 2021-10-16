@@ -1478,6 +1478,115 @@ TEST(ASN1Test, Unpack) {
   EXPECT_FALSE(val);
 }
 
+TEST(ASN1Test, StringCmp) {
+  struct Input {
+    int type;
+    std::vector<uint8_t> data;
+    int flags;
+    bool equals_previous;
+  };
+  // kInputs is a list of |ASN1_STRING| parameters, in sorted order. The input
+  // should be sorted by bit length, then data, then type.
+  const Input kInputs[] = {
+      {V_ASN1_BIT_STRING, {}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_BIT_STRING, {}, 0, true},
+      // When |ASN1_STRING_FLAG_BITS_LEFT| is unset, BIT STRINGs implicitly
+      // drop trailing zeros.
+      {V_ASN1_BIT_STRING, {0x00, 0x00, 0x00, 0x00}, 0, true},
+
+      {V_ASN1_OCTET_STRING, {}, 0, false},
+      {V_ASN1_UTF8STRING, {}, 0, false},
+
+      // BIT STRINGs with padding bits (i.e. not part of the actual value) are
+      // shorter and thus sort earlier:
+      // 1-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 7, false},
+      {V_ASN1_BIT_STRING, {0x80}, ASN1_STRING_FLAG_BITS_LEFT | 7, false},
+      // 2-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 6, false},
+      {V_ASN1_BIT_STRING, {0xc0}, ASN1_STRING_FLAG_BITS_LEFT | 6, false},
+      // 3-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 5, false},
+      {V_ASN1_BIT_STRING, {0xe0}, ASN1_STRING_FLAG_BITS_LEFT | 5, false},
+      // 4-bit inputs.
+      {V_ASN1_BIT_STRING, {0xf0}, ASN1_STRING_FLAG_BITS_LEFT | 4, false},
+      {V_ASN1_BIT_STRING, {0xf0}, 0, true},        // 4 trailing zeros dropped.
+      {V_ASN1_BIT_STRING, {0xf0, 0x00}, 0, true},  // 12 trailing zeros dropped.
+      // 5-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 3, false},
+      {V_ASN1_BIT_STRING, {0xf0}, ASN1_STRING_FLAG_BITS_LEFT | 3, false},
+      {V_ASN1_BIT_STRING, {0xf8}, ASN1_STRING_FLAG_BITS_LEFT | 3, false},
+      // 6-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 2, false},
+      {V_ASN1_BIT_STRING, {0xf0}, ASN1_STRING_FLAG_BITS_LEFT | 2, false},
+      {V_ASN1_BIT_STRING, {0xfc}, ASN1_STRING_FLAG_BITS_LEFT | 2, false},
+      // 7-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 1, false},
+      {V_ASN1_BIT_STRING, {0xf0}, ASN1_STRING_FLAG_BITS_LEFT | 1, false},
+      {V_ASN1_BIT_STRING, {0xfe}, ASN1_STRING_FLAG_BITS_LEFT | 1, false},
+
+      // 8-bit inputs.
+      {V_ASN1_BIT_STRING, {0x00}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0x00}, 0, false},
+      {V_ASN1_UTF8STRING, {0x00}, 0, false},
+
+      {V_ASN1_BIT_STRING, {0x80}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0x80}, 0, false},
+      {V_ASN1_UTF8STRING, {0x80}, 0, false},
+
+      {V_ASN1_BIT_STRING, {0xff}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_BIT_STRING, {0xff}, 0, true},  // No trailing zeros to drop.
+      {V_ASN1_OCTET_STRING, {0xff}, 0, false},
+      {V_ASN1_UTF8STRING, {0xff}, 0, false},
+
+      // Bytes are compared lexicographically.
+      {V_ASN1_BIT_STRING, {0x00, 0x00}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0x00, 0x00}, 0, false},
+      {V_ASN1_UTF8STRING, {0x00, 0x00}, 0, false},
+
+      {V_ASN1_BIT_STRING, {0x00, 0xff}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0x00, 0xff}, 0, false},
+      {V_ASN1_UTF8STRING, {0x00, 0xff}, 0, false},
+
+      {V_ASN1_BIT_STRING, {0xff, 0x00}, ASN1_STRING_FLAG_BITS_LEFT | 0, false},
+      {V_ASN1_OCTET_STRING, {0xff, 0x00}, 0, false},
+      {V_ASN1_UTF8STRING, {0xff, 0x00}, 0, false},
+  };
+  std::vector<bssl::UniquePtr<ASN1_STRING>> strs;
+  strs.reserve(OPENSSL_ARRAY_SIZE(kInputs));
+  for (const auto &input : kInputs) {
+    strs.emplace_back(ASN1_STRING_type_new(input.type));
+    ASSERT_TRUE(strs.back());
+    ASSERT_TRUE(ASN1_STRING_set(strs.back().get(), input.data.data(),
+                                input.data.size()));
+    strs.back()->flags = input.flags;
+  }
+
+  for (size_t i = 0; i < strs.size(); i++) {
+    SCOPED_TRACE(i);
+    bool expect_equal = true;
+    for (size_t j = i; j < strs.size(); j++) {
+      SCOPED_TRACE(j);
+      if (j > i && !kInputs[j].equals_previous) {
+        expect_equal = false;
+      }
+
+      const int cmp_i_j = ASN1_STRING_cmp(strs[i].get(), strs[j].get());
+      const int cmp_j_i = ASN1_STRING_cmp(strs[j].get(), strs[i].get());
+      if (expect_equal) {
+        EXPECT_EQ(cmp_i_j, 0);
+        EXPECT_EQ(cmp_j_i, 0);
+      } else if (i < j) {
+        EXPECT_LT(cmp_i_j, 0);
+        EXPECT_GT(cmp_j_i, 0);
+      } else {
+        EXPECT_GT(cmp_i_j, 0);
+        EXPECT_LT(cmp_j_i, 0);
+      }
+    }
+  }
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
