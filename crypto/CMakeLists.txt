@@ -220,7 +220,6 @@ add_library(
   asn1/asn1_lib.c
   asn1/asn1_par.c
   asn1/asn_pack.c
-  asn1/f_enum.c
   asn1/f_int.c
   asn1/f_string.c
   asn1/tasn_dec.c
