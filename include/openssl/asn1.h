@@ -1307,6 +1307,35 @@ OPENSSL_EXPORT int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
 OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
                                            unsigned long flags);
 
+// i2a_ASN1_INTEGER writes a human-readable representation of |a| to |bp|. It
+// returns the number of bytes written on success, or a negative number on
+// error. On error, this function may have written a partial output to |bp|.
+OPENSSL_EXPORT int i2a_ASN1_INTEGER(BIO *bp, const ASN1_INTEGER *a);
+
+// i2a_ASN1_ENUMERATED writes a human-readable representation of |a| to |bp|. It
+// returns the number of bytes written on success, or a negative number on
+// error. On error, this function may have written a partial output to |bp|.
+OPENSSL_EXPORT int i2a_ASN1_ENUMERATED(BIO *bp, const ASN1_ENUMERATED *a);
+
+// i2a_ASN1_OBJECT writes a human-readable representation of |a| to |bp|. It
+// returns the number of bytes written on success, or a negative number on
+// error. On error, this function may have written a partial output to |bp|.
+OPENSSL_EXPORT int i2a_ASN1_OBJECT(BIO *bp, const ASN1_OBJECT *a);
+
+// i2a_ASN1_STRING writes a text representation of |a|'s contents to |bp|. It
+// returns the number of bytes written on success, or a negative number on
+// error. On error, this function may have written a partial output to |bp|.
+// |type| is ignored.
+//
+// This function does not decode |a| into a Unicode string. It only hex-encodes
+// the internal representation of |a|. This is suitable for printing an OCTET
+// STRING, but may not be human-readable for any other string type.
+OPENSSL_EXPORT int i2a_ASN1_STRING(BIO *bp, const ASN1_STRING *a, int type);
+
+// i2t_ASN1_OBJECT calls |OBJ_obj2txt| with |always_return_oid| set to zero.
+OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
+                                   const ASN1_OBJECT *a);
+
 
 // Deprecated functions.
 
@@ -1506,13 +1535,6 @@ DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, ASN1_PRINTABLE)
 DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, DIRECTORYSTRING)
 DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, DISPLAYTEXT)
 DECLARE_ASN1_FUNCTIONS_const(ASN1_TIME)
-
-OPENSSL_EXPORT int i2a_ASN1_INTEGER(BIO *bp, const ASN1_INTEGER *a);
-OPENSSL_EXPORT int i2a_ASN1_ENUMERATED(BIO *bp, const ASN1_ENUMERATED *a);
-OPENSSL_EXPORT int i2a_ASN1_OBJECT(BIO *bp, const ASN1_OBJECT *a);
-OPENSSL_EXPORT int i2a_ASN1_STRING(BIO *bp, const ASN1_STRING *a, int type);
-OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
-                                   const ASN1_OBJECT *a);
 
 OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid,
                                                const unsigned char *data,
