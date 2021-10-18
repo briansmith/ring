@@ -173,6 +173,17 @@ extern "C" {
 #define B_ASN1_GENERALIZEDTIME 0x8000
 #define B_ASN1_SEQUENCE 0x10000
 
+// ASN1_tag2bit converts |tag| from the tag number of a universal type to a
+// corresponding |B_ASN1_*| constant, |B_ASN1_UNKNOWN|, or zero. If the
+// |B_ASN1_*| constant above is defined, it will map the corresponding
+// |V_ASN1_*| constant to it. Otherwise, whether it returns |B_ASN1_UNKNOWN| or
+// zero is ill-defined and callers should not rely on it.
+//
+// TODO(https://crbug.com/boringssl/412): Figure out what |B_ASN1_UNNOWN| vs
+// zero is meant to be. The main impact is what values go in |B_ASN1_PRINTABLE|.
+// To that end, we must return zero on types that can't go in |ASN1_STRING|.
+OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
+
 // ASN1_tag2str returns a string representation of |tag|, interpret as a tag
 // number for a universal type, or |V_ASN1_NEG_*|.
 OPENSSL_EXPORT const char *ASN1_tag2str(int tag);
@@ -709,6 +720,82 @@ OPENSSL_EXPORT int ASN1_STRING_TABLE_add(int nid, long minsize, long maxsize,
                                          unsigned long flags);
 
 
+// Multi-strings.
+//
+// A multi-string, or "MSTRING", is an |ASN1_STRING| that represents a CHOICE of
+// several string or string-like types, such as X.509's DirectoryString. The
+// |ASN1_STRING|'s type field determines which type is used.
+//
+// Multi-string types are associated with a bitmask, using the |B_ASN1_*|
+// constants, which defines which types are valid.
+
+// B_ASN1_DIRECTORYSTRING is a bitmask of types allowed in an X.509
+// DirectoryString (RFC 5280).
+#define B_ASN1_DIRECTORYSTRING                                        \
+  (B_ASN1_PRINTABLESTRING | B_ASN1_TELETEXSTRING | B_ASN1_BMPSTRING | \
+   B_ASN1_UNIVERSALSTRING | B_ASN1_UTF8STRING)
+
+// DIRECTORYSTRING_new returns a newly-allocated |ASN1_STRING| with type -1, or
+// NULL on error. The resulting |ASN1_STRING| is not a valid X.509
+// DirectoryString until initialized with a value.
+OPENSSL_EXPORT ASN1_STRING *DIRECTORYSTRING_new(void);
+
+// DIRECTORYSTRING_free calls |ASN1_STRING_free|.
+OPENSSL_EXPORT void DIRECTORYSTRING_free(ASN1_STRING *str);
+
+// d2i_DIRECTORYSTRING parses up to |len| bytes from |*inp| as a DER-encoded
+// X.509 DirectoryString (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+//
+// TODO(https://crbug.com/boringssl/449): DirectoryString's non-empty string
+// requirement is not currently enforced.
+OPENSSL_EXPORT ASN1_STRING *d2i_DIRECTORYSTRING(ASN1_STRING **out,
+                                                const uint8_t **inp, long len);
+
+// i2d_DIRECTORYSTRING marshals |in| as a DER-encoded X.509 DirectoryString (RFC
+// 5280), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_DIRECTORYSTRING(const ASN1_STRING *in, uint8_t **outp);
+
+// DIRECTORYSTRING is an |ASN1_ITEM| whose ASN.1 type is X.509 DirectoryString
+// (RFC 5280) and C type is |ASN1_STRING*|.
+DECLARE_ASN1_ITEM(DIRECTORYSTRING)
+
+// B_ASN1_DISPLAYTEXT is a bitmask of types allowed in an X.509 DisplayText (RFC
+// 5280).
+#define B_ASN1_DISPLAYTEXT                                      \
+  (B_ASN1_IA5STRING | B_ASN1_VISIBLESTRING | B_ASN1_BMPSTRING | \
+   B_ASN1_UTF8STRING)
+
+// DISPLAYTEXT_new returns a newly-allocated |ASN1_STRING| with type -1, or NULL
+// on error. The resulting |ASN1_STRING| is not a valid X.509 DisplayText until
+// initialized with a value.
+OPENSSL_EXPORT ASN1_STRING *DISPLAYTEXT_new(void);
+
+// DISPLAYTEXT_free calls |ASN1_STRING_free|.
+OPENSSL_EXPORT void DISPLAYTEXT_free(ASN1_STRING *str);
+
+// d2i_DISPLAYTEXT parses up to |len| bytes from |*inp| as a DER-encoded X.509
+// DisplayText (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+//
+// TODO(https://crbug.com/boringssl/449): DisplayText's size limits are not
+// currently enforced.
+OPENSSL_EXPORT ASN1_STRING *d2i_DISPLAYTEXT(ASN1_STRING **out,
+                                            const uint8_t **inp, long len);
+
+// i2d_DISPLAYTEXT marshals |in| as a DER-encoded X.509 DisplayText (RFC 5280),
+// as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_DISPLAYTEXT(const ASN1_STRING *in, uint8_t **outp);
+
+// DISPLAYTEXT is an |ASN1_ITEM| whose ASN.1 type is X.509 DisplayText (RFC
+// 5280) and C type is |ASN1_STRING*|.
+DECLARE_ASN1_ITEM(DISPLAYTEXT)
+
+
 // Bit strings.
 //
 // An ASN.1 BIT STRING type represents a string of bits. The string may not
@@ -986,8 +1073,9 @@ OPENSSL_EXPORT BIGNUM *ASN1_ENUMERATED_to_BN(const ASN1_ENUMERATED *ai,
 // BER, and the additional restrictions from RFC 5280, but future versions may.
 // Callers should not rely on fractional seconds and non-UTC time zones.
 //
-// The |ASN1_TIME| typedef represents the X.509 Time type, which is a CHOICE of
-// GeneralizedTime and UTCTime, using UTCTime when the value is in range.
+// The |ASN1_TIME| typedef is a multi-string representing the X.509 Time type,
+// which is a CHOICE of GeneralizedTime and UTCTime, using UTCTime when the
+// value is in range.
 
 // ASN1_UTCTIME_new calls |ASN1_STRING_type_new| with |V_ASN1_UTCTIME|. The
 // resulting object contains empty contents and must be initialized to be a
@@ -1097,6 +1185,33 @@ OPENSSL_EXPORT ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(
 // If |s| is NULL, this function validates |str| without copying it.
 OPENSSL_EXPORT int ASN1_GENERALIZEDTIME_set_string(ASN1_GENERALIZEDTIME *s,
                                                    const char *str);
+
+// B_ASN1_TIME is a bitmask of types allowed in an X.509 Time.
+#define B_ASN1_TIME (B_ASN1_UTCTIME | B_ASN1_GENERALIZEDTIME)
+
+// ASN1_TIME_new returns a newly-allocated |ASN1_TIME| with type -1, or NULL on
+// error. The resulting |ASN1_TIME| is not a valid X.509 Time until initialized
+// with a value.
+OPENSSL_EXPORT ASN1_TIME *ASN1_TIME_new(void);
+
+// ASN1_TIME_free releases memory associated with |str|.
+OPENSSL_EXPORT void ASN1_TIME_free(ASN1_TIME *str);
+
+// d2i_ASN1_TIME parses up to |len| bytes from |*inp| as a DER-encoded X.509
+// Time (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_TIME *d2i_ASN1_TIME(ASN1_TIME **out, const uint8_t **inp,
+                                        long len);
+
+// i2d_ASN1_TIME marshals |in| as a DER-encoded X.509 Time (RFC 5280), as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_ASN1_TIME(const ASN1_TIME *in, uint8_t **outp);
+
+// ASN1_TIME is an |ASN1_ITEM| whose ASN.1 type is X.509 Time (RFC 5280) and C
+// type is |ASN1_TIME*|.
+DECLARE_ASN1_ITEM(ASN1_TIME)
 
 // ASN1_TIME_diff computes |to| - |from|. On success, it sets |*out_days| to the
 // difference in days, rounded towards zero, sets |*out_seconds| to the
@@ -1642,6 +1757,50 @@ OPENSSL_EXPORT void ASN1_STRING_TABLE_cleanup(void);
 #define M_ASN1_UTF8STRING_new() ASN1_UTF8STRING_new()
 #define M_ASN1_UTF8STRING_free(a) ASN1_UTF8STRING_free(a)
 
+// B_ASN1_PRINTABLE is a bitmask for an ad-hoc subset of string-like types. Note
+// the presence of |B_ASN1_UNKNOWN| means it includes types which |ASN1_tag2bit|
+// maps to |B_ASN1_UNKNOWN|.
+//
+// Do not use this. Despite the name, it has no connection to PrintableString or
+// printable characters. See https://crbug.com/boringssl/412.
+#define B_ASN1_PRINTABLE                                              \
+  (B_ASN1_NUMERICSTRING | B_ASN1_PRINTABLESTRING | B_ASN1_T61STRING | \
+   B_ASN1_IA5STRING | B_ASN1_BIT_STRING | B_ASN1_UNIVERSALSTRING |    \
+   B_ASN1_BMPSTRING | B_ASN1_UTF8STRING | B_ASN1_SEQUENCE | B_ASN1_UNKNOWN)
+
+// ASN1_PRINTABLE_new returns a newly-allocated |ASN1_STRING| with type -1, or
+// NULL on error. The resulting |ASN1_STRING| is not a valid ASN.1 value until
+// initialized with a value.
+OPENSSL_EXPORT ASN1_STRING *ASN1_PRINTABLE_new(void);
+
+// ASN1_PRINTABLE_free calls |ASN1_STRING_free|.
+OPENSSL_EXPORT void ASN1_PRINTABLE_free(ASN1_STRING *str);
+
+// d2i_ASN1_PRINTABLE parses up to |len| bytes from |*inp| as a DER-encoded
+// CHOICE of an ad-hoc subset of string-like types, as described in
+// |d2i_SAMPLE_with_reuse|.
+//
+// Do not use this. Despite, the name it has no connection to PrintableString or
+// printable characters. See https://crbug.com/boringssl/412.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_STRING *d2i_ASN1_PRINTABLE(ASN1_STRING **out,
+                                               const uint8_t **inp, long len);
+
+// i2d_ASN1_PRINTABLE marshals |in| as DER, as described in |i2d_SAMPLE|.
+//
+// Do not use this. Despite the name, it has no connection to PrintableString or
+// printable characters. See https://crbug.com/boringssl/412.
+OPENSSL_EXPORT int i2d_ASN1_PRINTABLE(const ASN1_STRING *in, uint8_t **outp);
+
+// ASN1_PRINTABLE is an |ASN1_ITEM| whose ASN.1 type is a CHOICE of an ad-hoc
+// subset of string-like types, and whose C type is |ASN1_STRING*|.
+//
+// Do not use this. Despite the name, it has no connection to PrintableString or
+// printable characters. See https://crbug.com/boringssl/412.
+DECLARE_ASN1_ITEM(ASN1_PRINTABLE)
+
 
 // Underdocumented functions.
 //
@@ -1707,28 +1866,6 @@ typedef struct ASN1_TLC_st ASN1_TLC;
 
 typedef void *d2i_of_void(void **, const unsigned char **, long);
 typedef int i2d_of_void(const void *, unsigned char **);
-
-#define B_ASN1_TIME B_ASN1_UTCTIME | B_ASN1_GENERALIZEDTIME
-
-#define B_ASN1_PRINTABLE                                              \
-  B_ASN1_NUMERICSTRING | B_ASN1_PRINTABLESTRING | B_ASN1_T61STRING |  \
-      B_ASN1_IA5STRING | B_ASN1_BIT_STRING | B_ASN1_UNIVERSALSTRING | \
-      B_ASN1_BMPSTRING | B_ASN1_UTF8STRING | B_ASN1_SEQUENCE | B_ASN1_UNKNOWN
-
-#define B_ASN1_DIRECTORYSTRING                                       \
-  B_ASN1_PRINTABLESTRING | B_ASN1_TELETEXSTRING | B_ASN1_BMPSTRING | \
-      B_ASN1_UNIVERSALSTRING | B_ASN1_UTF8STRING
-
-#define B_ASN1_DISPLAYTEXT \
-  B_ASN1_IA5STRING | B_ASN1_VISIBLESTRING | B_ASN1_BMPSTRING | B_ASN1_UTF8STRING
-
-DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, ASN1_PRINTABLE)
-
-DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, DIRECTORYSTRING)
-DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, DISPLAYTEXT)
-DECLARE_ASN1_FUNCTIONS_const(ASN1_TIME)
-
-OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
 
 // ASN1 template functions
 
