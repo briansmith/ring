@@ -600,6 +600,18 @@ DECLARE_ASN1_ITEM(ASN1_UNIVERSALSTRING)
 DECLARE_ASN1_ITEM(ASN1_UTF8STRING)
 DECLARE_ASN1_ITEM(ASN1_VISIBLESTRING)
 
+// ASN1_OCTET_STRING_dup calls |ASN1_STRING_dup|.
+OPENSSL_EXPORT ASN1_OCTET_STRING *ASN1_OCTET_STRING_dup(
+    const ASN1_OCTET_STRING *a);
+
+// ASN1_OCTET_STRING_cmp calls |ASN1_STRING_cmp|.
+OPENSSL_EXPORT int ASN1_OCTET_STRING_cmp(const ASN1_OCTET_STRING *a,
+                                         const ASN1_OCTET_STRING *b);
+
+// ASN1_OCTET_STRING_set calls |ASN1_STRING_set|.
+OPENSSL_EXPORT int ASN1_OCTET_STRING_set(ASN1_OCTET_STRING *str,
+                                         const unsigned char *data, int len);
+
 // ASN1_STRING_to_UTF8 converts |in| to UTF-8. On success, sets |*out| to a
 // newly-allocated buffer containing the resulting string and returns the length
 // of the string. The caller must call |OPENSSL_free| to release |*out| when
@@ -811,6 +823,9 @@ OPENSSL_EXPORT ASN1_INTEGER *ASN1_INTEGER_new(void);
 
 // ASN1_INTEGER_free calls |ASN1_STRING_free|.
 OPENSSL_EXPORT void ASN1_INTEGER_free(ASN1_INTEGER *str);
+
+// ASN1_INTEGER_dup calls |ASN1_STRING_dup|.
+OPENSSL_EXPORT ASN1_INTEGER *ASN1_INTEGER_dup(const ASN1_INTEGER *x);
 
 // d2i_ASN1_INTEGER parses up to |len| bytes from |*inp| as a DER-encoded
 // ASN.1 INTEGER, as described in |d2i_SAMPLE_with_reuse|.
@@ -1117,8 +1132,8 @@ DECLARE_ASN1_ITEM(ASN1_NULL)
 // Arbitrary elements.
 
 // An asn1_type_st (aka |ASN1_TYPE|) represents an arbitrary ASN.1 element,
-// typically used used for ANY types. It contains a |type| field and a |value|
-// union dependent on |type|.
+// typically used for ANY types. It contains a |type| field and a |value| union
+// dependent on |type|.
 //
 // WARNING: This struct has a complex representation. Callers must not construct
 // |ASN1_TYPE| values manually. Use |ASN1_TYPE_set| and |ASN1_TYPE_set1|
@@ -1184,6 +1199,34 @@ struct asn1_type_st {
   } value;
 };
 
+DEFINE_STACK_OF(ASN1_TYPE)
+
+// ASN1_TYPE_new returns a newly-allocated |ASN1_TYPE|, or NULL on allocation
+// failure. The resulting object has type -1 and must be initialized to be
+// a valid ANY value.
+OPENSSL_EXPORT ASN1_TYPE *ASN1_TYPE_new(void);
+
+// ASN1_TYPE_free releases memory associated with |a|.
+OPENSSL_EXPORT void ASN1_TYPE_free(ASN1_TYPE *a);
+
+// d2i_ASN1_TYPE parses up to |len| bytes from |*inp| as an ASN.1 value of any
+// type, as described in |d2i_SAMPLE_with_reuse|. Note this function only
+// validates primitive, universal types supported by this library. Values of
+// type |V_ASN1_SEQUENCE|, |V_ASN1_SET|, |V_ASN1_OTHER|, or an unsupported
+// primitive type must be validated by the caller when interpreting.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_TYPE *d2i_ASN1_TYPE(ASN1_TYPE **out, const uint8_t **inp,
+                                        long len);
+
+// i2d_ASN1_TYPE marshals |in| as DER, as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_ASN1_TYPE(const ASN1_TYPE *in, uint8_t **outp);
+
+// ASN1_ANY is an |ASN1_ITEM| with ASN.1 type ANY and C type |ASN1_TYPE*|. Note
+// the |ASN1_ITEM| name and C type do not match.
+DECLARE_ASN1_ITEM(ASN1_ANY)
+
 // ASN1_TYPE_get returns the type of |a|, which will be one of the |V_ASN1_*|
 // constants, or zero if |a| is not fully initialized.
 OPENSSL_EXPORT int ASN1_TYPE_get(const ASN1_TYPE *a);
@@ -1211,8 +1254,39 @@ OPENSSL_EXPORT int ASN1_TYPE_set1(ASN1_TYPE *a, int type, const void *value);
 // ordering.
 OPENSSL_EXPORT int ASN1_TYPE_cmp(const ASN1_TYPE *a, const ASN1_TYPE *b);
 
-// TODO(davidben): Most of |ASN1_TYPE|'s APIs are hidden behind macros. Expand
-// the macros, document them, and move them to this section.
+typedef STACK_OF(ASN1_TYPE) ASN1_SEQUENCE_ANY;
+
+// d2i_ASN1_SEQUENCE_ANY parses up to |len| bytes from |*inp| as a DER-encoded
+// ASN.1 SEQUENCE OF ANY structure, as described in |d2i_SAMPLE_with_reuse|. The
+// resulting |ASN1_SEQUENCE_ANY| owns its contents and thus must be released
+// with |sk_ASN1_TYPE_pop_free| and |ASN1_TYPE_free|, not |sk_ASN1_TYPE_free|.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_SEQUENCE_ANY *d2i_ASN1_SEQUENCE_ANY(ASN1_SEQUENCE_ANY **out,
+                                                        const uint8_t **inp,
+                                                        long len);
+
+// i2d_ASN1_SEQUENCE_ANY marshals |in| as a DER-encoded SEQUENCE OF ANY
+// structure, as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_ASN1_SEQUENCE_ANY(const ASN1_SEQUENCE_ANY *in,
+                                         uint8_t **outp);
+
+// d2i_ASN1_SET_ANY parses up to |len| bytes from |*inp| as a DER-encoded ASN.1
+// SET OF ANY structure, as described in |d2i_SAMPLE_with_reuse|. The resulting
+// |ASN1_SEQUENCE_ANY| owns its contents and thus must be released with
+// |sk_ASN1_TYPE_pop_free| and |ASN1_TYPE_free|, not |sk_ASN1_TYPE_free|.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_SEQUENCE_ANY *d2i_ASN1_SET_ANY(ASN1_SEQUENCE_ANY **out,
+                                                   const uint8_t **inp,
+                                                   long len);
+
+// i2d_ASN1_SET_ANY marshals |in| as a DER-encoded SET OF ANY structure, as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_ASN1_SET_ANY(const ASN1_SEQUENCE_ANY *in,
+                                    uint8_t **outp);
 
 
 // Human-readable output.
@@ -1476,13 +1550,6 @@ typedef struct ASN1_TLC_st ASN1_TLC;
 typedef void *d2i_of_void(void **, const unsigned char **, long);
 typedef int i2d_of_void(const void *, unsigned char **);
 
-DEFINE_STACK_OF(ASN1_TYPE)
-
-typedef STACK_OF(ASN1_TYPE) ASN1_SEQUENCE_ANY;
-
-DECLARE_ASN1_ENCODE_FUNCTIONS_const(ASN1_SEQUENCE_ANY, ASN1_SEQUENCE_ANY)
-DECLARE_ASN1_ENCODE_FUNCTIONS_const(ASN1_SEQUENCE_ANY, ASN1_SET_ANY)
-
 #define B_ASN1_TIME B_ASN1_UTCTIME | B_ASN1_GENERALIZEDTIME
 
 #define B_ASN1_PRINTABLE                                              \
@@ -1496,8 +1563,6 @@ DECLARE_ASN1_ENCODE_FUNCTIONS_const(ASN1_SEQUENCE_ANY, ASN1_SET_ANY)
 
 #define B_ASN1_DISPLAYTEXT \
   B_ASN1_IA5STRING | B_ASN1_VISIBLESTRING | B_ASN1_BMPSTRING | B_ASN1_UTF8STRING
-
-DECLARE_ASN1_FUNCTIONS_fname(ASN1_TYPE, ASN1_ANY, ASN1_TYPE)
 
 OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_new(void);
 OPENSSL_EXPORT void ASN1_OBJECT_free(ASN1_OBJECT *a);
@@ -1521,14 +1586,6 @@ OPENSSL_EXPORT int i2c_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
 OPENSSL_EXPORT ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **a,
                                               const unsigned char **pp,
                                               long length);
-OPENSSL_EXPORT ASN1_INTEGER *ASN1_INTEGER_dup(const ASN1_INTEGER *x);
-
-OPENSSL_EXPORT ASN1_OCTET_STRING *ASN1_OCTET_STRING_dup(
-    const ASN1_OCTET_STRING *a);
-OPENSSL_EXPORT int ASN1_OCTET_STRING_cmp(const ASN1_OCTET_STRING *a,
-                                         const ASN1_OCTET_STRING *b);
-OPENSSL_EXPORT int ASN1_OCTET_STRING_set(ASN1_OCTET_STRING *str,
-                                         const unsigned char *data, int len);
 
 DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, ASN1_PRINTABLE)
 
