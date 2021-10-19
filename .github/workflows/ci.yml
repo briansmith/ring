@@ -453,3 +453,55 @@ jobs:
           directory: ./target/${{ matrix.target }}/debug/coverage/reports
           fail_ci_if_error: true
           verbose: true
+
+  # The x86_64-unknown-uefi targets doesn't have std crate.
+  # It can only be compiled under `no_std`.
+  test_uefi:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ${{ matrix.host_os }}
+
+    strategy:
+      matrix:
+        features:
+          - # Default
+        target:
+          - x86_64-unknown-uefi
+
+        mode:
+          - # debug
+          - --release
+
+        # Only nightly support no std build.
+        rust_channel:
+          - nightly
+
+        host_os:
+          - windows-latest
+          - ubuntu-18.04
+
+    steps:
+      - if: ${{ contains(matrix.host_os, 'ubuntu') }}
+        run: sudo apt-get update -y
+
+      - uses: briansmith/actions-checkout@v2
+        with:
+          persist-credentials: false
+
+      - if: ${{ !contains(matrix.host_os, 'windows') }}
+        run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
+
+      - if: ${{ contains(matrix.host_os, 'windows') }}
+        run: ./mk/install-build-tools.ps1
+
+      - uses: briansmith/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          components: rust-src
+
+      # Currently, there is no 'rust-std' for target 'x86_64-unknown-uefi'.
+      # Build-only approach for now.
+      # TODO: no std tests
+      - run: mk/cargo.sh build -Zbuild-std="core,alloc" --target=${{ matrix.target }}
