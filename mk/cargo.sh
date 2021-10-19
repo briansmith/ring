@@ -97,6 +97,11 @@ case $target in
       export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
     fi
     ;;
+  x86_64-unknown-uefi)
+    export CC_x86_64_unknown_uefi=clang-$llvm_version
+    export AR_x86_64_unknown_uefi=llvm-ar-$llvm_version
+    export NASM_EXECUTABLE=nasm
+    ;;
   wasm32-unknown-unknown)
     # The first two are only needed for when the "wasm_c" feature is enabled.
     export CC_wasm32_unknown_unknown=clang-$llvm_version
