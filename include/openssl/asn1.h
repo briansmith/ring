@@ -1411,6 +1411,64 @@ OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
                                    const ASN1_OBJECT *a);
 
 
+// Low-level encoding functions.
+
+// ASN1_get_object parses a BER element from up to |max_len| bytes at |*inp| and
+// returns a bitmask with status bits.
+//
+// If the return value has 0x80 set, the function failed to parse an element.
+// The contents of |*inp|, |*out_length|, |*out_tag|, and |*out_class| are
+// undefined. Note callers must check for bitwise AND with 0x80, not equality.
+// The return value on error may have other bits set,
+//
+// Otherwise, the function successfully parsed a element. The return value has
+// bit 0x01 set if the length is indefinite, and |V_ASN1_CONSTRUCTED| set if the
+// element was constructed. The function additionally advances |*inp| to the
+// element body and sets |*out_length|, |*out_tag|, and |*out_class| to the
+// element's length, tag number, and tag class, respectively. If the length is
+// indefinite, |*out_length| will be zero and the caller is responsible for
+// finding the end-of-contents.
+//
+// This function is very difficult to use correctly. Use |CBS_get_asn1| and
+// related functions from bytestring.h.
+//
+// TODO(https://crbug.com/boringssl/451): Simplify the return value on error.
+//
+// TODO(https://crbug.com/boringssl/354): Remove support for indefinite lengths
+// and non-minimal lengths.
+OPENSSL_EXPORT int ASN1_get_object(const unsigned char **inp, long *out_length,
+                                   int *out_tag, int *out_class, long max_len);
+
+// ASN1_put_object writes the header for a DER or BER element to |*outp| and
+// advances |*outp| by the number of bytes written. The caller is responsible
+// for ensuring |*outp| has enough space for the output. The header describes an
+// element with length |length|, tag number |tag|, and class |xclass|. |xclass|
+// should be one of the |V_ASN1_*| tag class constants. The element is primitive
+// if |constructed| is zero and constructed if it is one or two. If
+// |constructed| is two, |length| is ignored and the element uses
+// indefinite-length encoding.
+//
+// Use |CBB_add_asn1| instead.
+OPENSSL_EXPORT void ASN1_put_object(unsigned char **outp, int constructed,
+                                    int length, int tag, int xclass);
+
+// ASN1_put_eoc writes two zero bytes to |*outp|, advances |*outp| to point past
+// those bytes, and returns two.
+//
+// Use definite-length encoding instead.
+OPENSSL_EXPORT int ASN1_put_eoc(unsigned char **outp);
+
+// ASN1_object_size returns the number of bytes needed to encode a DER or BER
+// value with length |length| and tag number |tag|, or -1 on error. |tag| should
+// not include the constructed bit or tag class. If |constructed| is zero or
+// one, the result uses a definite-length encoding with minimally-encoded
+// length, as in DER. If |constructed| is two, the result uses BER
+// indefinite-length encoding.
+//
+// Use |CBB_add_asn1| instead.
+OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
+
+
 // Deprecated functions.
 
 // ASN1_PRINTABLE_type interprets |len| bytes from |s| as a Latin-1 string. It
@@ -1599,14 +1657,6 @@ OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid,
                                                const char *ln);
 
 OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
-
-// SPECIALS
-OPENSSL_EXPORT int ASN1_get_object(const unsigned char **pp, long *plength,
-                                   int *ptag, int *pclass, long omax);
-OPENSSL_EXPORT void ASN1_put_object(unsigned char **pp, int constructed,
-                                    int length, int tag, int xclass);
-OPENSSL_EXPORT int ASN1_put_eoc(unsigned char **pp);
-OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
 
 // ASN1 template functions
 
