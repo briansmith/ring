@@ -1136,7 +1136,7 @@ my $endbranch = sub {
 ########################################################################
 
 {
-  my $comment = "#";
+  my $comment = "//";
   $comment = ";" if ($masm || $nasm);
   print <<___;
 $comment This file is generated from a similarly-named Perl script in the BoringSSL
