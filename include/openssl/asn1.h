@@ -1413,13 +1413,11 @@ OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
 
 // Low-level encoding functions.
 
-// ASN1_get_object parses a BER element from up to |max_len| bytes at |*inp| and
-// returns a bitmask with status bits.
+// ASN1_get_object parses a BER element from up to |max_len| bytes at |*inp|.
 //
-// If the return value has 0x80 set, the function failed to parse an element.
+// If the return value is 0x80, the function failed to parse an element.
 // The contents of |*inp|, |*out_length|, |*out_tag|, and |*out_class| are
-// undefined. Note callers must check for bitwise AND with 0x80, not equality.
-// The return value on error may have other bits set,
+// undefined.
 //
 // Otherwise, the function successfully parsed a element. The return value has
 // bit 0x01 set if the length is indefinite, and |V_ASN1_CONSTRUCTED| set if the
@@ -1431,8 +1429,6 @@ OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
 //
 // This function is very difficult to use correctly. Use |CBS_get_asn1| and
 // related functions from bytestring.h.
-//
-// TODO(https://crbug.com/boringssl/451): Simplify the return value on error.
 //
 // TODO(https://crbug.com/boringssl/354): Remove support for indefinite lengths
 // and non-minimal lengths.

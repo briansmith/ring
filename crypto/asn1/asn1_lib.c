@@ -167,17 +167,13 @@ int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
 #endif
     if (*plength > (omax - (p - *pp))) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
-        /*
-         * Set this so that even if things are not long enough the values are
-         * set correctly
-         */
-        ret |= 0x80;
+        return 0x80;
     }
     *pp = p;
     return (ret | inf);
  err:
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
-    return (0x80);
+    return 0x80;
 }
 
 static int asn1_get_length(const unsigned char **pp, int *inf, long *rl,

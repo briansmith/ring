@@ -1669,6 +1669,17 @@ TEST(ASN1Test, PrintASN1Object) {
             std::string(reinterpret_cast<const char *>(bio_data), bio_len));
 }
 
+TEST(ASN1, GetObject) {
+  // The header is valid, but there are not enough bytes for the length.
+  static const uint8_t kTruncated[] = {0x30, 0x01};
+  const uint8_t *ptr = kTruncated;
+  long length;
+  int tag;
+  int tag_class;
+  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
+                                  sizeof(kTruncated)));
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
