@@ -106,6 +106,8 @@ struct asn1_object_st {
   int flags;                 /* Should we free this one */
 };
 
+ASN1_OBJECT *ASN1_OBJECT_new(void);
+
 int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
 int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d);
 
