@@ -18,18 +18,22 @@
 #include <openssl/lhash.h>
 #include <openssl/thread.h>
 
+#include "../lhash/internal.h"
+
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 
-DECLARE_LHASH_OF(CRYPTO_BUFFER)
+DEFINE_LHASH_OF(CRYPTO_BUFFER)
 
 struct crypto_buffer_st {
   CRYPTO_BUFFER_POOL *pool;
   uint8_t *data;
   size_t len;
   CRYPTO_refcount_t references;
+  int data_is_static;
 };
 
 struct crypto_buffer_pool_st {
