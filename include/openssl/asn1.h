@@ -764,6 +764,33 @@ OPENSSL_EXPORT ASN1_BIT_STRING *d2i_ASN1_BIT_STRING(ASN1_BIT_STRING **out,
 OPENSSL_EXPORT int i2d_ASN1_BIT_STRING(const ASN1_BIT_STRING *in,
                                        uint8_t **outp);
 
+// c2i_ASN1_BIT_STRING decodes |len| bytes from |*inp| as the contents of a
+// DER-encoded BIT STRING, excluding the tag and length. It behaves like
+// |d2i_SAMPLE_with_reuse| except, on success, it always consumes all |len|
+// bytes.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **out,
+                                                    const uint8_t **inp,
+                                                    long len);
+
+// i2c_ASN1_BIT_STRING encodes |in| as the contents of a DER-encoded BIT STRING,
+// excluding the tag and length. If |outp| is non-NULL, it writes the result to
+// |*outp|, advances |*outp| just past the output, and returns the number of
+// bytes written. |*outp| must have space available for the result. If |outp| is
+// NULL, it returns the number of bytes without writing anything. On error, it
+// returns a value <= 0.
+//
+// Note this function differs slightly from |i2d_SAMPLE|. If |outp| is non-NULL
+// and |*outp| is NULL, it does not allocate a new buffer.
+//
+// TODO(davidben): This function currently returns zero on error instead of -1,
+// but it is also mostly infallible. I've currently documented <= 0 to suggest
+// callers work with both.
+OPENSSL_EXPORT int i2c_ASN1_BIT_STRING(const ASN1_BIT_STRING *in,
+                                       uint8_t **outp);
+
 // ASN1_BIT_STRING is an |ASN1_ITEM| with ASN.1 type BIT STRING and C type
 // |ASN1_BIT_STRING*|.
 DECLARE_ASN1_ITEM(ASN1_BIT_STRING)
@@ -838,6 +865,31 @@ OPENSSL_EXPORT ASN1_INTEGER *d2i_ASN1_INTEGER(ASN1_INTEGER **out,
 // i2d_ASN1_INTEGER marshals |in| as a DER-encoded ASN.1 INTEGER, as
 // described in |i2d_SAMPLE|.
 OPENSSL_EXPORT int i2d_ASN1_INTEGER(const ASN1_INTEGER *in, uint8_t **outp);
+
+// c2i_ASN1_INTEGER decodes |len| bytes from |*inp| as the contents of a
+// DER-encoded INTEGER, excluding the tag and length. It behaves like
+// |d2i_SAMPLE_with_reuse| except, on success, it always consumes all |len|
+// bytes.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// some invalid inputs, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **in,
+                                              const uint8_t **outp, long len);
+
+// i2c_ASN1_INTEGER encodes |in| as the contents of a DER-encoded INTEGER,
+// excluding the tag and length. If |outp| is non-NULL, it writes the result to
+// |*outp|, advances |*outp| just past the output, and returns the number of
+// bytes written. |*outp| must have space available for the result. If |outp| is
+// NULL, it returns the number of bytes without writing anything. On error, it
+// returns a value <= 0.
+//
+// Note this function differs slightly from |i2d_SAMPLE|. If |outp| is non-NULL
+// and |*outp| is NULL, it does not allocate a new buffer.
+//
+// TODO(davidben): This function currently returns zero on error instead of -1,
+// but it is also mostly infallible. I've currently documented <= 0 to suggest
+// callers work with both.
+OPENSSL_EXPORT int i2c_ASN1_INTEGER(const ASN1_INTEGER *in, uint8_t **outp);
 
 // ASN1_INTEGER is an |ASN1_ITEM| with ASN.1 type INTEGER and C type
 // |ASN1_INTEGER*|.
@@ -1127,6 +1179,60 @@ OPENSSL_EXPORT int i2d_ASN1_NULL(const ASN1_NULL *in, uint8_t **outp);
 
 // ASN1_NULL is an |ASN1_ITEM| with ASN.1 type NULL and C type |ASN1_NULL*|.
 DECLARE_ASN1_ITEM(ASN1_NULL)
+
+
+// Object identifiers.
+//
+// An |ASN1_OBJECT| represents a ASN.1 OBJECT IDENTIFIER. See also obj.h for
+// additional functions relating to |ASN1_OBJECT|.
+//
+// TODO(davidben): What's the relationship between asn1.h and obj.h? Most of
+// obj.h deals with the large NID table, but then functions like |OBJ_get0_data|
+// or |OBJ_dup| are general |ASN1_OBJECT| functions.
+
+DEFINE_STACK_OF(ASN1_OBJECT)
+
+// ASN1_OBJECT_create returns a newly-allocated |ASN1_OBJECT| with |len| bytes
+// from |data| as the encoded OID, or NULL on error. |data| should contain the
+// DER-encoded identifier, excluding the tag and length.
+//
+// |nid| should be |NID_undef|. Passing a NID value that does not match |data|
+// will cause some functions to misbehave. |sn| and |ln| should be NULL. If
+// non-NULL, they are stored as short and long names, respectively, but these
+// values have no effect for |ASN1_OBJECT|s created through this function.
+//
+// TODO(davidben): Should we just ignore all those parameters? NIDs and names
+// are only relevant for |ASN1_OBJECT|s in the obj.h table.
+OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid, const uint8_t *data,
+                                               int len, const char *sn,
+                                               const char *ln);
+
+// ASN1_OBJECT_free releases memory associated with |a|. If |a| is a static
+// |ASN1_OBJECT|, returned from |OBJ_nid2obj|, this function does nothing.
+OPENSSL_EXPORT void ASN1_OBJECT_free(ASN1_OBJECT *a);
+
+// d2i_ASN1_OBJECT parses a DER-encoded ASN.1 OBJECT IDENTIFIER from up to |len|
+// bytes at |*inp|, as described in |d2i_SAMPLE_with_reuse|.
+//
+// TODO(https://crbug.com/boringssl/354): This function currently also accepts
+// BER, but this will be removed in the future.
+OPENSSL_EXPORT ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **out,
+                                            const uint8_t **inp, long len);
+
+// i2d_ASN1_OBJECT marshals |in| as a DER-encoded ASN.1 OBJECT IDENTIFIER, as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, uint8_t **outp);
+
+// c2i_ASN1_OBJECT decodes |len| bytes from |*inp| as the contents of a
+// DER-encoded OBJECT IDENTIFIER, excluding the tag and length. It behaves like
+// |d2i_SAMPLE_with_reuse| except, on success, it always consumes all |len|
+// bytes.
+OPENSSL_EXPORT ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **out,
+                                            const uint8_t **inp, long len);
+
+// ASN1_OBJECT is an |ASN1_ITEM| with ASN.1 type OBJECT IDENTIFIER and C type
+// |ASN1_OBJECT*|.
+DECLARE_ASN1_ITEM(ASN1_OBJECT)
 
 
 // Arbitrary elements.
@@ -1541,8 +1647,6 @@ OPENSSL_EXPORT void ASN1_STRING_TABLE_cleanup(void);
 //
 // The following functions are not yet documented and organized.
 
-DEFINE_STACK_OF(ASN1_OBJECT)
-
 // ASN1_ENCODING structure: this is used to save the received
 // encoding of an ASN1 type. This is useful to get round
 // problems with invalid encodings which can break signatures.
@@ -1618,38 +1722,11 @@ typedef int i2d_of_void(const void *, unsigned char **);
 #define B_ASN1_DISPLAYTEXT \
   B_ASN1_IA5STRING | B_ASN1_VISIBLESTRING | B_ASN1_BMPSTRING | B_ASN1_UTF8STRING
 
-OPENSSL_EXPORT void ASN1_OBJECT_free(ASN1_OBJECT *a);
-OPENSSL_EXPORT int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp);
-OPENSSL_EXPORT ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a,
-                                            const unsigned char **pp,
-                                            long length);
-OPENSSL_EXPORT ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **a,
-                                            const unsigned char **pp,
-                                            long length);
-
-DECLARE_ASN1_ITEM(ASN1_OBJECT)
-
-OPENSSL_EXPORT int i2c_ASN1_BIT_STRING(const ASN1_BIT_STRING *a,
-                                       unsigned char **pp);
-OPENSSL_EXPORT ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
-                                                    const unsigned char **pp,
-                                                    long length);
-
-OPENSSL_EXPORT int i2c_ASN1_INTEGER(const ASN1_INTEGER *a, unsigned char **pp);
-OPENSSL_EXPORT ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **a,
-                                              const unsigned char **pp,
-                                              long length);
-
 DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, ASN1_PRINTABLE)
 
 DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, DIRECTORYSTRING)
 DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, DISPLAYTEXT)
 DECLARE_ASN1_FUNCTIONS_const(ASN1_TIME)
-
-OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid,
-                                               const unsigned char *data,
-                                               int len, const char *sn,
-                                               const char *ln);
 
 OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
 
