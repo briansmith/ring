@@ -74,8 +74,12 @@ extern "C" {
 // Legacy ASN.1 library.
 //
 // This header is part of OpenSSL's ASN.1 implementation. It is retained for
-// compatibility but otherwise underdocumented and not actively maintained. Use
-// the new |CBS| and |CBB| library in <openssl/bytestring.h> instead.
+// compatibility but should not be used by new code. The functions are difficult
+// to use correctly, and have buggy or non-standard behaviors. They are thus
+// particularly prone to behavior changes and API removals, as BoringSSL
+// iterates on these issues.
+//
+// Use the new |CBS| and |CBB| library in <openssl/bytestring.h> instead.
 
 
 // Tag constants.
@@ -187,6 +191,88 @@ OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
 // ASN1_tag2str returns a string representation of |tag|, interpret as a tag
 // number for a universal type, or |V_ASN1_NEG_*|.
 OPENSSL_EXPORT const char *ASN1_tag2str(int tag);
+
+
+// API conventions.
+//
+// The following sample functions document the calling conventions used by
+// legacy ASN.1 APIs.
+
+#if 0  // Sample functions
+
+// d2i_SAMPLE parses a structure from up to |len| bytes at |*inp|. On success,
+// it advances |*inp| by the number of bytes read and returns a newly-allocated
+// |SAMPLE| object containing the parsed structure. If |out| is non-NULL, it
+// additionally frees the previous value at |*out| and updates |*out| to the
+// result. If parsing or allocating the result fails, it returns NULL.
+//
+// This function does not reject trailing data in the input. This allows the
+// caller to parse a sequence of concatenated structures. Callers parsing only
+// one structure should check for trailing data by comparing the updated |*inp|
+// with the end of the input.
+//
+// Note: If |out| and |*out| are both non-NULL, the object at |*out| is not
+// updated in-place. Instead, it is freed, and the pointer is updated to the
+// new object. This differs from OpenSSL, which behaves more like
+// |d2i_SAMPLE_with_reuse|. Callers are recommended to set |out| to NULL and
+// instead use the return value.
+SAMPLE *d2i_SAMPLE(SAMPLE **out, const uint8_t **inp, long len);
+
+// d2i_SAMPLE_with_reuse parses a structure from up to |len| bytes at |*inp|. On
+// success, it advances |*inp| by the number of bytes read and returns a
+// non-NULL pointer to an object containing the parsed structure. The object is
+// determined from |out| as follows:
+//
+// If |out| is NULL, the function places the result in a newly-allocated
+// |SAMPLE| object and returns it. This mode is recommended.
+//
+// If |out| is non-NULL, but |*out| is NULL, the function also places the result
+// in a newly-allocated |SAMPLE| object. It sets |*out| to this object and also
+// returns it.
+//
+// If |out| and |*out| are both non-NULL, the function updates the object at
+// |*out| in-place with the result and returns |*out|.
+//
+// If any of the above fail, the function returns NULL.
+//
+// This function does not reject trailing data in the input. This allows the
+// caller to parse a sequence of concatenated structures. Callers parsing only
+// one structure should check for trailing data by comparing the updated |*inp|
+// with the end of the input.
+//
+// WARNING: Callers should not rely on the in-place update mode. It often
+// produces the wrong result or breaks the type's internal invariants. Future
+// revisions of BoringSSL may standardize on the |d2i_SAMPLE| behavior.
+SAMPLE *d2i_SAMPLE_with_reuse(SAMPLE **out, const uint8_t **inp, long len);
+
+// i2d_SAMPLE marshals |in|. On error, it returns a negative value. On success,
+// it returns the length of the result and outputs it via |outp| as follows:
+//
+// If |outp| is NULL, the function writes nothing. This mode can be used to size
+// buffers.
+//
+// If |outp| is non-NULL but |*outp| is NULL, the function sets |*outp| to a
+// newly-allocated buffer containing the result. The caller is responsible for
+// releasing |*outp| with |OPENSSL_free|. This mode is recommended for most
+// callers.
+//
+// If |outp| and |*outp| are non-NULL, the function writes the result to
+// |*outp|, which must have enough space available, and advances |*outp| just
+// past the output.
+//
+// WARNING: In the third mode, the function does not internally check output
+// bounds. Failing to correctly size the buffer will result in a potentially
+// exploitable memory error.
+int i2d_SAMPLE(const SAMPLE *in, uint8_t **outp);
+
+#endif  // Sample functions
+
+// The following typedefs are sometimes used for pointers to functions like
+// |d2i_SAMPLE| and |i2d_SAMPLE|. Note, however, that these act on |void*|.
+// Calling a function with a different pointer type is undefined in C, so this
+// is only valid with a wrapper.
+typedef void *d2i_of_void(void **, const unsigned char **, long);
+typedef int i2d_of_void(const void *, unsigned char **);
 
 
 // ASN.1 types.
@@ -1686,6 +1772,46 @@ OPENSSL_EXPORT int ASN1_put_eoc(unsigned char **outp);
 OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
 
 
+// Function declaration macros.
+//
+// The following macros declare functions for ASN.1 types. Prefer writing the
+// prototypes directly. Particularly when |type|, |itname|, or |name| differ,
+// the macros can be difficult to understand.
+
+#define DECLARE_ASN1_FUNCTIONS(type) DECLARE_ASN1_FUNCTIONS_name(type, type)
+
+#define DECLARE_ASN1_ALLOC_FUNCTIONS(type) \
+  DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, type)
+
+#define DECLARE_ASN1_FUNCTIONS_name(type, name) \
+  DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, name) \
+  DECLARE_ASN1_ENCODE_FUNCTIONS(type, name, name)
+
+#define DECLARE_ASN1_FUNCTIONS_fname(type, itname, name) \
+  DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, name)          \
+  DECLARE_ASN1_ENCODE_FUNCTIONS(type, itname, name)
+
+#define DECLARE_ASN1_ENCODE_FUNCTIONS(type, itname, name)             \
+  OPENSSL_EXPORT type *d2i_##name(type **a, const unsigned char **in, \
+                                  long len);                          \
+  OPENSSL_EXPORT int i2d_##name(type *a, unsigned char **out);        \
+  DECLARE_ASN1_ITEM(itname)
+
+#define DECLARE_ASN1_ENCODE_FUNCTIONS_const(type, name)               \
+  OPENSSL_EXPORT type *d2i_##name(type **a, const unsigned char **in, \
+                                  long len);                          \
+  OPENSSL_EXPORT int i2d_##name(const type *a, unsigned char **out);  \
+  DECLARE_ASN1_ITEM(name)
+
+#define DECLARE_ASN1_FUNCTIONS_const(name) \
+  DECLARE_ASN1_ALLOC_FUNCTIONS(name)       \
+  DECLARE_ASN1_ENCODE_FUNCTIONS_const(name, name)
+
+#define DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, name) \
+  OPENSSL_EXPORT type *name##_new(void);              \
+  OPENSSL_EXPORT void name##_free(type *a);
+
+
 // Deprecated functions.
 
 // ASN1_PRINTABLE_type interprets |len| bytes from |s| as a Latin-1 string. It
@@ -1800,49 +1926,6 @@ OPENSSL_EXPORT int i2d_ASN1_PRINTABLE(const ASN1_STRING *in, uint8_t **outp);
 // Do not use this. Despite the name, it has no connection to PrintableString or
 // printable characters. See https://crbug.com/boringssl/412.
 DECLARE_ASN1_ITEM(ASN1_PRINTABLE)
-
-
-// Underdocumented functions.
-//
-// The following functions are not yet documented and organized.
-
-// Declare ASN1 functions: the implement macro in in asn1t.h
-
-#define DECLARE_ASN1_FUNCTIONS(type) DECLARE_ASN1_FUNCTIONS_name(type, type)
-
-#define DECLARE_ASN1_ALLOC_FUNCTIONS(type) \
-  DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, type)
-
-#define DECLARE_ASN1_FUNCTIONS_name(type, name) \
-  DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, name) \
-  DECLARE_ASN1_ENCODE_FUNCTIONS(type, name, name)
-
-#define DECLARE_ASN1_FUNCTIONS_fname(type, itname, name) \
-  DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, name)          \
-  DECLARE_ASN1_ENCODE_FUNCTIONS(type, itname, name)
-
-#define DECLARE_ASN1_ENCODE_FUNCTIONS(type, itname, name)             \
-  OPENSSL_EXPORT type *d2i_##name(type **a, const unsigned char **in, \
-                                  long len);                          \
-  OPENSSL_EXPORT int i2d_##name(type *a, unsigned char **out);        \
-  DECLARE_ASN1_ITEM(itname)
-
-#define DECLARE_ASN1_ENCODE_FUNCTIONS_const(type, name)               \
-  OPENSSL_EXPORT type *d2i_##name(type **a, const unsigned char **in, \
-                                  long len);                          \
-  OPENSSL_EXPORT int i2d_##name(const type *a, unsigned char **out);  \
-  DECLARE_ASN1_ITEM(name)
-
-#define DECLARE_ASN1_FUNCTIONS_const(name) \
-  DECLARE_ASN1_ALLOC_FUNCTIONS(name)       \
-  DECLARE_ASN1_ENCODE_FUNCTIONS_const(name, name)
-
-#define DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, name) \
-  OPENSSL_EXPORT type *name##_new(void);              \
-  OPENSSL_EXPORT void name##_free(type *a);
-
-typedef void *d2i_of_void(void **, const unsigned char **, long);
-typedef int i2d_of_void(const void *, unsigned char **);
 
 
 #if defined(__cplusplus)
