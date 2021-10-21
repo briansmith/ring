@@ -63,6 +63,8 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
+#include "../asn1/internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -355,6 +357,8 @@ struct x509_store_ctx_st {
 
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
+
+ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);
 
 
 /* RSA-PSS functions. */

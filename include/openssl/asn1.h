@@ -1806,29 +1806,6 @@ DECLARE_ASN1_ITEM(ASN1_PRINTABLE)
 //
 // The following functions are not yet documented and organized.
 
-// ASN1_ENCODING structure: this is used to save the received
-// encoding of an ASN1 type. This is useful to get round
-// problems with invalid encodings which can break signatures.
-
-typedef struct ASN1_ENCODING_st {
-  unsigned char *enc;  // DER encoding
-  long len;            // Length of encoding
-  int modified;        // set to 1 if 'enc' is invalid
-  // alias_only is zero if |enc| owns the buffer that it points to
-  // (although |enc| may still be NULL). If one, |enc| points into a
-  // buffer that is owned elsewhere.
-  unsigned alias_only : 1;
-  // alias_only_on_next_parse is one iff the next parsing operation
-  // should avoid taking a copy of the input and rather set
-  // |alias_only|.
-  unsigned alias_only_on_next_parse : 1;
-} ASN1_ENCODING;
-
-// Declarations for template structures: for full definitions
-// see asn1t.h
-typedef struct ASN1_TEMPLATE_st ASN1_TEMPLATE;
-typedef struct ASN1_TLC_st ASN1_TLC;
-
 // Declare ASN1 functions: the implement macro in in asn1t.h
 
 #define DECLARE_ASN1_FUNCTIONS(type) DECLARE_ASN1_FUNCTIONS_name(type, type)
@@ -1866,11 +1843,6 @@ typedef struct ASN1_TLC_st ASN1_TLC;
 
 typedef void *d2i_of_void(void **, const unsigned char **, long);
 typedef int i2d_of_void(const void *, unsigned char **);
-
-// ASN1 template functions
-
-OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_nconf(const char *str, CONF *nconf);
-OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);
 
 
 #if defined(__cplusplus)

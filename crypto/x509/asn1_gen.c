@@ -66,6 +66,7 @@
 
 #include "../internal.h"
 #include "../x509v3/internal.h"
+#include "internal.h"
 
 /*
  * Although this file is in crypto/x509 for layering purposes, it emits
@@ -135,17 +136,6 @@ static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
                              int depth, int *perr);
 static ASN1_TYPE *asn1_str2type(const char *str, int format, int utype);
 static int asn1_str2tag(const char *tagstr, int len);
-
-ASN1_TYPE *ASN1_generate_nconf(const char *str, CONF *nconf)
-{
-    X509V3_CTX cnf;
-
-    if (!nconf)
-        return ASN1_generate_v3(str, NULL);
-
-    X509V3_set_nconf(&cnf, nconf);
-    return ASN1_generate_v3(str, &cnf);
-}
 
 ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf)
 {

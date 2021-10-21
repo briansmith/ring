@@ -62,6 +62,7 @@
 #include <time.h>
 
 #include <openssl/asn1.h>
+#include <openssl/asn1t.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -107,6 +108,23 @@ struct asn1_object_st {
 };
 
 ASN1_OBJECT *ASN1_OBJECT_new(void);
+
+// ASN1_ENCODING structure: this is used to save the received
+// encoding of an ASN1 type. This is useful to get round
+// problems with invalid encodings which can break signatures.
+typedef struct ASN1_ENCODING_st {
+  unsigned char *enc;  // DER encoding
+  long len;            // Length of encoding
+  int modified;        // set to 1 if 'enc' is invalid
+  // alias_only is zero if |enc| owns the buffer that it points to
+  // (although |enc| may still be NULL). If one, |enc| points into a
+  // buffer that is owned elsewhere.
+  unsigned alias_only : 1;
+  // alias_only_on_next_parse is one iff the next parsing operation
+  // should avoid taking a copy of the input and rather set
+  // |alias_only|.
+  unsigned alias_only_on_next_parse : 1;
+} ASN1_ENCODING;
 
 int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
 int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d);

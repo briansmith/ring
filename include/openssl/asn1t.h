@@ -72,6 +72,9 @@ extern "C" {
  * |CBB| library in <openssl/bytestring.h> instead. */
 
 
+typedef struct ASN1_TEMPLATE_st ASN1_TEMPLATE;
+typedef struct ASN1_TLC_st ASN1_TLC;
+
 /* Macro to obtain ASN1_ADB pointer from a type (only used internally) */
 #define ASN1_ADB_ptr(iptr) ((const ASN1_ADB *)(iptr))
 
