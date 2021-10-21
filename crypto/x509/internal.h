@@ -70,10 +70,12 @@ extern "C" {
 
 /* Internal structures. */
 
-struct X509_val_st {
+typedef struct X509_val_st {
   ASN1_TIME *notBefore;
   ASN1_TIME *notAfter;
-} /* X509_VAL */;
+} X509_VAL;
+
+DECLARE_ASN1_FUNCTIONS(X509_VAL)
 
 struct X509_pubkey_st {
   X509_ALGOR *algor;
