@@ -3692,7 +3692,7 @@ struct ssl_ctx_st {
 
  private:
   ~ssl_ctx_st();
-  friend void SSL_CTX_free(SSL_CTX *);
+  friend OPENSSL_EXPORT void SSL_CTX_free(SSL_CTX *);
 };
 
 struct ssl_st {
@@ -3934,7 +3934,7 @@ struct ssl_session_st {
 
  private:
   ~ssl_session_st();
-  friend void SSL_SESSION_free(SSL_SESSION *);
+  friend OPENSSL_EXPORT void SSL_SESSION_free(SSL_SESSION *);
 };
 
 struct ssl_ech_keys_st {
@@ -3947,7 +3947,7 @@ struct ssl_ech_keys_st {
 
  private:
   ~ssl_ech_keys_st() = default;
-  friend void SSL_ECH_KEYS_free(SSL_ECH_KEYS *);
+  friend OPENSSL_EXPORT void SSL_ECH_KEYS_free(SSL_ECH_KEYS *);
 };
 
 #endif  // OPENSSL_HEADER_SSL_INTERNAL_H
