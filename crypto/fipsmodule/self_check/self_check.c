@@ -290,27 +290,27 @@ err:
 }
 
 #if defined(OPENSSL_ANDROID)
-static const size_t kModuleDigestSize = SHA256_DIGEST_LENGTH;
+#define MODULE_DIGEST_SIZE SHA256_DIGEST_LENGTH
 #else
-static const size_t kModuleDigestSize = SHA512_DIGEST_LENGTH;
+#define MODULE_DIGEST_SIZE SHA512_DIGEST_LENGTH
 #endif
 
 int boringssl_fips_self_test(
     const uint8_t *module_hash, size_t module_hash_len) {
 #if defined(BORINGSSL_FIPS_SELF_TEST_FLAG_FILE)
-  char flag_path[sizeof(kFlagPrefix) + 2*kModuleDigestSize];
+  char flag_path[sizeof(kFlagPrefix) + 2 * MODULE_DIGEST_SIZE];
   if (module_hash_len != 0) {
-    if (module_hash_len != kModuleDigestSize) {
+    if (module_hash_len != MODULE_DIGEST_SIZE) {
       fprintf(stderr,
-              "module hash of length %zu does not match expected length %zu\n",
-              module_hash_len, kModuleDigestSize);
+              "module hash of length %zu does not match expected length %d\n",
+              module_hash_len, MODULE_DIGEST_SIZE);
       BORINGSSL_FIPS_abort();
     }
 
     // Test whether the flag file exists.
     memcpy(flag_path, kFlagPrefix, sizeof(kFlagPrefix) - 1);
     static const char kHexTable[17] = "0123456789abcdef";
-    for (size_t i = 0; i < kModuleDigestSize; i++) {
+    for (size_t i = 0; i < MODULE_DIGEST_SIZE; i++) {
       flag_path[sizeof(kFlagPrefix) - 1 + 2 * i] =
           kHexTable[module_hash[i] >> 4];
       flag_path[sizeof(kFlagPrefix) - 1 + 2 * i + 1] =
