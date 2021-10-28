@@ -70,7 +70,6 @@
 #include <openssl/x509v3.h>
 
 #include "internal.h"
-#include "pcy_int.h"
 
 /* Certificate policies extension support: this one is a bit complex... */
 
