@@ -56,6 +56,7 @@
 
 #include <openssl/asn1.h>
 
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
