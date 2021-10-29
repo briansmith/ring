@@ -337,11 +337,10 @@ TEST(ASN1Test, BitString) {
       // Leading byte too high
       {0x03, 0x02, 0x08, 0x00},
       {0x03, 0x02, 0xff, 0x00},
-      // TODO(https://crbug.com/boringssl/354): Reject these inputs.
       // Empty bit strings must have a zero leading byte.
-      // {0x03, 0x01, 0x01},
+      {0x03, 0x01, 0x01},
       // Unused bits must all be zero.
-      // {0x03, 0x02, 0x06, 0xc1 /* 0b11000001 */},
+      {0x03, 0x02, 0x06, 0xc1 /* 0b11000001 */},
   };
   for (const auto &test : kInvalidInputs) {
     SCOPED_TRACE(Bytes(test));

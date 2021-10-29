@@ -159,8 +159,17 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
 
     p = *pp;
     padding = *(p++);
+    len--;
     if (padding > 7) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_BIT_STRING_BITS_LEFT);
+        goto err;
+    }
+
+    /* Unused bits in a BIT STRING must be zero. */
+    uint8_t padding_mask = (1 << padding) - 1;
+    if (padding != 0 &&
+        (len < 1 || (p[len - 1] & padding_mask) != 0)) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_BIT_STRING_PADDING);
         goto err;
     }
 
@@ -171,21 +180,19 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
     ret->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07); /* clear */
     ret->flags |= (ASN1_STRING_FLAG_BITS_LEFT | padding); /* set */
 
-    if (len-- > 1) {            /* using one because of the bits left byte */
-        s = (unsigned char *)OPENSSL_malloc((int)len);
+    if (len > 0) {
+        s = OPENSSL_memdup(p, len);
         if (s == NULL) {
             OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
             goto err;
         }
-        OPENSSL_memcpy(s, p, (int)len);
-        s[len - 1] &= (0xff << padding);
         p += len;
-    } else
+    } else {
         s = NULL;
+    }
 
     ret->length = (int)len;
-    if (ret->data != NULL)
-        OPENSSL_free(ret->data);
+    OPENSSL_free(ret->data);
     ret->data = s;
     ret->type = V_ASN1_BIT_STRING;
     if (a != NULL)
