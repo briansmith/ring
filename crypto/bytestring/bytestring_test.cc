@@ -22,6 +22,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/span.h>
 
 #include "internal.h"
 #include "../internal.h"
@@ -594,22 +595,22 @@ TEST(CBBTest, ASN1) {
   EXPECT_EQ(Bytes(test_data.data(), test_data.size()), Bytes(buf + 10, 100000));
 }
 
-static void ExpectBerConvert(const char *name, const uint8_t *der_expected,
-                             size_t der_len, const uint8_t *ber,
-                             size_t ber_len) {
+static void ExpectBerConvert(const char *name,
+                             bssl::Span<const uint8_t> der_expected,
+                             bssl::Span<const uint8_t> ber) {
   SCOPED_TRACE(name);
   CBS in, out;
   uint8_t *storage;
 
-  CBS_init(&in, ber, ber_len);
+  CBS_init(&in, ber.data(), ber.size());
   ASSERT_TRUE(CBS_asn1_ber_to_der(&in, &out, &storage));
   bssl::UniquePtr<uint8_t> scoper(storage);
 
-  EXPECT_EQ(Bytes(der_expected, der_len), Bytes(CBS_data(&out), CBS_len(&out)));
+  EXPECT_EQ(Bytes(der_expected), Bytes(CBS_data(&out), CBS_len(&out)));
   if (storage != nullptr) {
-    EXPECT_NE(Bytes(der_expected, der_len), Bytes(ber, ber_len));
+    EXPECT_NE(Bytes(der_expected), Bytes(ber));
   } else {
-    EXPECT_EQ(Bytes(der_expected, der_len), Bytes(ber, ber_len));
+    EXPECT_EQ(Bytes(der_expected), Bytes(ber));
   }
 }
 
@@ -670,22 +671,22 @@ TEST(CBSTest, BerConvert) {
       0xa0, 0x08, 0x04, 0x02, 0x00, 0x01, 0x04, 0x02, 0x02, 0x03,
   };
 
-  ExpectBerConvert("kSimpleBER", kSimpleBER, sizeof(kSimpleBER), kSimpleBER,
-                   sizeof(kSimpleBER));
+  // kConstructedBitString contains a BER constructed BIT STRING. These are not
+  // supported and thus are left unchanged.
+  static const uint8_t kConstructedBitStringBER[] = {
+      0x23, 0x0a, 0x03, 0x03, 0x00, 0x12, 0x34, 0x03, 0x03, 0x00, 0x56, 0x78};
+
+  ExpectBerConvert("kSimpleBER", kSimpleBER, kSimpleBER);
   ExpectBerConvert("kNonMinimalLengthBER", kNonMinimalLengthDER,
-                   sizeof(kNonMinimalLengthDER), kNonMinimalLengthBER,
-                   sizeof(kNonMinimalLengthBER));
-  ExpectBerConvert("kIndefBER", kIndefDER, sizeof(kIndefDER), kIndefBER,
-                   sizeof(kIndefBER));
-  ExpectBerConvert("kIndefBER2", kIndefDER2, sizeof(kIndefDER2), kIndefBER2,
-                   sizeof(kIndefBER2));
-  ExpectBerConvert("kOctetStringBER", kOctetStringDER, sizeof(kOctetStringDER),
-                   kOctetStringBER, sizeof(kOctetStringBER));
-  ExpectBerConvert("kNSSBER", kNSSDER, sizeof(kNSSDER), kNSSBER,
-                   sizeof(kNSSBER));
+                   kNonMinimalLengthBER);
+  ExpectBerConvert("kIndefBER", kIndefDER, kIndefBER);
+  ExpectBerConvert("kIndefBER2", kIndefDER2, kIndefBER2);
+  ExpectBerConvert("kOctetStringBER", kOctetStringDER, kOctetStringBER);
+  ExpectBerConvert("kNSSBER", kNSSDER, kNSSBER);
   ExpectBerConvert("kConstructedStringBER", kConstructedStringDER,
-                   sizeof(kConstructedStringDER), kConstructedStringBER,
-                   sizeof(kConstructedStringBER));
+                   kConstructedStringBER);
+  ExpectBerConvert("kConstructedBitStringBER", kConstructedBitStringBER,
+                   kConstructedBitStringBER);
 }
 
 struct BERTest {

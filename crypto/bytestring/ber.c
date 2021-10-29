@@ -29,11 +29,10 @@ static const unsigned kMaxDepth = 2048;
 // is_string_type returns one if |tag| is a string type and zero otherwise. It
 // ignores the constructed bit.
 static int is_string_type(unsigned tag) {
+  // While BER supports constructed BIT STRINGS, OpenSSL misparses them. To
+  // avoid acting on an ambiguous input, we do not support constructed BIT
+  // STRINGS. See https://github.com/openssl/openssl/issues/12810.
   switch (tag & ~CBS_ASN1_CONSTRUCTED) {
-    // TODO(davidben): Reject constructed BIT STRINGs. The current handling
-    // matches OpenSSL but is incorrect. See
-    // https://github.com/openssl/openssl/issues/12810.
-    case CBS_ASN1_BITSTRING:
     case CBS_ASN1_OCTETSTRING:
     case CBS_ASN1_UTF8STRING:
     case CBS_ASN1_NUMERICSTRING:
