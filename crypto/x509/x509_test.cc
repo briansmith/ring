@@ -2719,9 +2719,20 @@ TEST(X509Test, InvalidExtensions) {
             .c_str());
     ASSERT_TRUE(invalid_leaf);
 
+    bssl::UniquePtr<X509> trailing_leaf = CertFromPEM(
+        GetTestData((std::string("crypto/x509/test/trailing_data_leaf_") +
+                     ext + ".pem")
+                        .c_str())
+            .c_str());
+    ASSERT_TRUE(trailing_leaf);
+
     EXPECT_EQ(
         X509_V_ERR_INVALID_EXTENSION,
         Verify(invalid_leaf.get(), {root.get()}, {intermediate.get()}, {}));
+
+    EXPECT_EQ(
+        X509_V_ERR_INVALID_EXTENSION,
+        Verify(trailing_leaf.get(), {root.get()}, {intermediate.get()}, {}));
 
     // If the invalid extension is on an intermediate or root,
     // |X509_verify_cert| notices by way of being unable to build a path to

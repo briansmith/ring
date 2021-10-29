@@ -104,6 +104,13 @@ set(
   crypto/x509/test/some_names1.pem
   crypto/x509/test/some_names2.pem
   crypto/x509/test/some_names3.pem
+  crypto/x509/test/trailing_data_leaf_authority_key_identifier.pem
+  crypto/x509/test/trailing_data_leaf_basic_constraints.pem
+  crypto/x509/test/trailing_data_leaf_ext_key_usage.pem
+  crypto/x509/test/trailing_data_leaf_key_usage.pem
+  crypto/x509/test/trailing_data_leaf_name_constraints.pem
+  crypto/x509/test/trailing_data_leaf_subject_alt_name.pem
+  crypto/x509/test/trailing_data_leaf_subject_key_identifier.pem
   third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt
   third_party/wycheproof_testvectors/aes_cmac_test.txt
   third_party/wycheproof_testvectors/aes_gcm_siv_test.txt

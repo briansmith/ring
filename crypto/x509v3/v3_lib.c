@@ -213,10 +213,27 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext)
     if (!(method = X509V3_EXT_get(ext)))
         return NULL;
     p = ext->value->data;
-    if (method->it)
-        return ASN1_item_d2i(NULL, &p, ext->value->length,
-                             ASN1_ITEM_ptr(method->it));
-    return method->d2i(NULL, &p, ext->value->length);
+    void *ret;
+    if (method->it) {
+        ret = ASN1_item_d2i(NULL, &p, ext->value->length,
+                            ASN1_ITEM_ptr(method->it));
+    } else {
+        ret = method->d2i(NULL, &p, ext->value->length);
+    }
+    if (ret == NULL) {
+        return NULL;
+    }
+    /* Check for trailing data. */
+    if (p != ext->value->data + ext->value->length) {
+        if (method->it) {
+            ASN1_item_free(ret, ASN1_ITEM_ptr(method->it));
+        } else {
+            method->ext_free(ret);
+        }
+        OPENSSL_PUT_ERROR(X509V3, X509V3_R_TRAILING_DATA_IN_EXTENSION);
+        return NULL;
+    }
+    return ret;
 }
 
 void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions, int nid,
