@@ -1720,25 +1720,20 @@ OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
 
 // Low-level encoding functions.
 
-// ASN1_get_object parses a BER element from up to |max_len| bytes at |*inp|.
+// ASN1_get_object parses a BER element from up to |max_len| bytes at |*inp|. It
+// returns |V_ASN1_CONSTRUCTED| if it successfully parsed a constructed element,
+// zero if it successfully parsed a primitive element, and 0x80 on error. On
+// success, it additionally advances |*inp| to the element body, sets
+// |*out_length|, |*out_tag|, and |*out_class| to the element's length, tag
+// number, and tag class, respectively,
 //
-// If the return value is 0x80, the function failed to parse an element.
-// The contents of |*inp|, |*out_length|, |*out_tag|, and |*out_class| are
-// undefined.
+// Unlike OpenSSL, this function does not support indefinite-length elements.
 //
-// Otherwise, the function successfully parsed a element. The return value has
-// bit 0x01 set if the length is indefinite, and |V_ASN1_CONSTRUCTED| set if the
-// element was constructed. The function additionally advances |*inp| to the
-// element body and sets |*out_length|, |*out_tag|, and |*out_class| to the
-// element's length, tag number, and tag class, respectively. If the length is
-// indefinite, |*out_length| will be zero and the caller is responsible for
-// finding the end-of-contents.
+// This function is difficult to use correctly. Use |CBS_get_asn1| and related
+// functions from bytestring.h.
 //
-// This function is very difficult to use correctly. Use |CBS_get_asn1| and
-// related functions from bytestring.h.
-//
-// TODO(https://crbug.com/boringssl/354): Remove support for indefinite lengths
-// and non-minimal lengths.
+// TODO(https://crbug.com/boringssl/354): Remove support for non-minimal
+// lengths.
 OPENSSL_EXPORT int ASN1_get_object(const unsigned char **inp, long *out_length,
                                    int *out_tag, int *out_class, long max_len);
 

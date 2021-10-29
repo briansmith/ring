@@ -1678,6 +1678,11 @@ TEST(ASN1, GetObject) {
   int tag_class;
   EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
                                   sizeof(kTruncated)));
+
+  static const uint8_t kIndefinite[] = {0x30, 0x80, 0x00, 0x00};
+  ptr = kIndefinite;
+  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
+                                  sizeof(kIndefinite)));
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of

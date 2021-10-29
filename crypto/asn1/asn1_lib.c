@@ -104,8 +104,7 @@ OPENSSL_DECLARE_ERROR_REASON(ASN1, UNKNOWN_FORMAT)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNKNOWN_TAG)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNSUPPORTED_TYPE)
 
-static int asn1_get_length(const unsigned char **pp, int *inf, long *rl,
-                           long max);
+static int asn1_get_length(const unsigned char **pp, long *rl, long max);
 static void asn1_put_length(unsigned char **pp, int length);
 
 int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
@@ -114,7 +113,7 @@ int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
     int i, ret;
     long l;
     const unsigned char *p = *pp;
-    int tag, xclass, inf;
+    int tag, xclass;
     long max = omax;
 
     if (!max)
@@ -153,54 +152,43 @@ int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
 
     *ptag = tag;
     *pclass = xclass;
-    if (!asn1_get_length(&p, &inf, plength, max))
+    if (!asn1_get_length(&p, plength, max))
         goto err;
 
-    if (inf && !(ret & V_ASN1_CONSTRUCTED))
-        goto err;
-
-#if 0
-    fprintf(stderr, "p=%d + *plength=%ld > omax=%ld + *pp=%d  (%d > %d)\n",
-            (int)p, *plength, omax, (int)*pp, (int)(p + *plength),
-            (int)(omax + *pp));
-
-#endif
     if (*plength > (omax - (p - *pp))) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
         return 0x80;
     }
     *pp = p;
-    return (ret | inf);
+    return ret;
  err:
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
     return 0x80;
 }
 
-static int asn1_get_length(const unsigned char **pp, int *inf, long *rl,
-                           long max)
+static int asn1_get_length(const unsigned char **pp, long *rl, long max)
 {
     const unsigned char *p = *pp;
     unsigned long ret = 0;
     unsigned long i;
 
-    if (max-- < 1)
+    if (max-- < 1) {
         return 0;
+    }
     if (*p == 0x80) {
-        *inf = 1;
-        ret = 0;
-        p++;
+        /* We do not support BER indefinite-length encoding. */
+        return 0;
+    }
+    i = *p & 0x7f;
+    if (*(p++) & 0x80) {
+        if (i > sizeof(ret) || max < (long)i)
+            return 0;
+        while (i-- > 0) {
+            ret <<= 8L;
+            ret |= *(p++);
+        }
     } else {
-        *inf = 0;
-        i = *p & 0x7f;
-        if (*(p++) & 0x80) {
-            if (i > sizeof(ret) || max < (long)i)
-                return 0;
-            while (i-- > 0) {
-                ret <<= 8L;
-                ret |= *(p++);
-            }
-        } else
-            ret = i;
+        ret = i;
     }
     /*
      * Bound the length to comfortably fit in an int. Lengths in this module

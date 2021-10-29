@@ -3493,8 +3493,24 @@ HiAqcml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh
 -----END CERTIFICATE-----
 )";
 
+// kIndefiniteLength is an X.509 certificate where the outermost SEQUENCE uses
+// BER indefinite-length encoding.
+static const char kIndefiniteLength[] = R"(
+-----BEGIN CERTIFICATE-----
+MIAwgcagAwIBAgICBNIwCgYIKoZIzj0EAwIwDzENMAsGA1UEAxMEVGVzdDAgFw0w
+MDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowDzENMAsGA1UEAxMEVGVzdDBZ
+MBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8eDZSKTNWXa7epHg1G
++92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQtS89yIsGjEDAOMAwG
+A1UdEwQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKFHiAqcml3
+ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh4qnksoBs
+xWIAAA==
+-----END CERTIFICATE-----
+)";
+
 TEST(X509Test, BER) {
   // Constructed strings are forbidden in DER.
   EXPECT_FALSE(CertFromPEM(kConstructedBitString));
   EXPECT_FALSE(CertFromPEM(kConstructedOctetString));
+  // Indefinite lengths are forbidden in DER.
+  EXPECT_FALSE(CertFromPEM(kIndefiniteLength));
 }

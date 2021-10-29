@@ -215,13 +215,7 @@ static ASN1_TYPE *generate_v3(const char *str, X509V3_CTX *cnf, int depth,
          * For IMPLICIT tagging the length should match the original length
          * and constructed flag should be consistent.
          */
-        if (r & 0x1) {
-            /* Indefinite length constructed */
-            hdr_constructed = 2;
-            hdr_len = 0;
-        } else
-            /* Just retain constructed flag */
-            hdr_constructed = r & V_ASN1_CONSTRUCTED;
+        hdr_constructed = r & V_ASN1_CONSTRUCTED;
         /*
          * Work out new length with IMPLICIT tag: ignore constructed because
          * it will mess up if indefinite length
