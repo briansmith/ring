@@ -146,29 +146,29 @@ int i2a_ASN1_OBJECT(BIO *bp, const ASN1_OBJECT *a)
 ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
                              long length)
 {
-    const unsigned char *p;
     long len;
     int tag, xclass;
-    int inf, i;
-    ASN1_OBJECT *ret = NULL;
-    p = *pp;
-    inf = ASN1_get_object(&p, &len, &tag, &xclass, length);
+    const unsigned char *p = *pp;
+    int inf = ASN1_get_object(&p, &len, &tag, &xclass, length);
     if (inf & 0x80) {
-        i = ASN1_R_BAD_OBJECT_HEADER;
-        goto err;
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
+        return NULL;
     }
 
-    if (tag != V_ASN1_OBJECT) {
-        i = ASN1_R_EXPECTING_AN_OBJECT;
-        goto err;
+    if (inf & V_ASN1_CONSTRUCTED) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
+        return NULL;
     }
-    ret = c2i_ASN1_OBJECT(a, &p, len);
-    if (ret)
+
+    if (tag != V_ASN1_OBJECT || xclass != V_ASN1_UNIVERSAL) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_AN_OBJECT);
+        return NULL;
+    }
+    ASN1_OBJECT *ret = c2i_ASN1_OBJECT(a, &p, len);
+    if (ret) {
         *pp = p;
+    }
     return ret;
- err:
-    OPENSSL_PUT_ERROR(ASN1, i);
-    return (NULL);
 }
 
 ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
