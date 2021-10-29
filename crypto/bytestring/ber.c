@@ -30,6 +30,9 @@ static const unsigned kMaxDepth = 2048;
 // ignores the constructed bit.
 static int is_string_type(unsigned tag) {
   switch (tag & ~CBS_ASN1_CONSTRUCTED) {
+    // TODO(davidben): Reject constructed BIT STRINGs. The current handling
+    // matches OpenSSL but is incorrect. See
+    // https://github.com/openssl/openssl/issues/12810.
     case CBS_ASN1_BITSTRING:
     case CBS_ASN1_OCTETSTRING:
     case CBS_ASN1_UTF8STRING:

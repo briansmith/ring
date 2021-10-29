@@ -60,7 +60,6 @@
 #include <string.h>
 
 #include <openssl/asn1t.h>
-#include <openssl/buf.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -78,11 +77,6 @@
 static int asn1_check_eoc(const unsigned char **in, long len);
 static int asn1_find_end(const unsigned char **in, long len, char inf);
 
-static int asn1_collect(BUF_MEM *buf, const unsigned char **in, long len,
-                        char inf, int tag, int aclass, int depth);
-
-static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen);
-
 static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
                            char *inf, char *cst,
                            const unsigned char **in, long len,
@@ -97,7 +91,7 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val,
                                    const ASN1_TEMPLATE *tt, char opt,
                                    ASN1_TLC *ctx, int depth);
 static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
-                       int utype, char *free_cont, const ASN1_ITEM *it);
+                       int utype, const ASN1_ITEM *it);
 static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
                                  const unsigned char **in, long len,
                                  const ASN1_ITEM *it,
@@ -685,9 +679,8 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
 {
     int ret = 0, utype;
     long plen;
-    char cst, inf, free_cont = 0;
+    char cst, inf;
     const unsigned char *p;
-    BUF_MEM buf = {0, NULL, 0 };
     const unsigned char *cont = NULL;
     long len;
     if (!pval) {
@@ -763,33 +756,11 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
             p += plen;
         }
     } else if (cst) {
-        if (utype == V_ASN1_NULL || utype == V_ASN1_BOOLEAN
-            || utype == V_ASN1_OBJECT || utype == V_ASN1_INTEGER
-            || utype == V_ASN1_ENUMERATED) {
-            /* These types only have primitive encodings. */
-            OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
-            return 0;
-        }
-
-        /* Free any returned 'buf' content */
-        free_cont = 1;
-        /*
-         * Should really check the internal tags are correct but some things
-         * may get this wrong. The relevant specs say that constructed string
-         * types should be OCTET STRINGs internally irrespective of the type.
-         * So instead just check for UNIVERSAL class and ignore the tag.
-         */
-        if (!asn1_collect(&buf, &p, plen, inf, -1, V_ASN1_UNIVERSAL, 0)) {
-            goto err;
-        }
-        len = buf.length;
-        /* Append a final null to string */
-        if (!BUF_MEM_grow_clean(&buf, len + 1)) {
-            OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-            goto err;
-        }
-        buf.data[len] = 0;
-        cont = (const unsigned char *)buf.data;
+        /* This parser historically supported BER constructed strings. We no
+         * longer do and will gradually tighten this parser into a DER
+         * parser. BER types should use |CBS_asn1_ber_to_der|. */
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
+        return 0;
     } else {
         cont = p;
         len = plen;
@@ -797,22 +768,19 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
     }
 
     /* We now have content length and type: translate into a structure */
-    /* asn1_ex_c2i may reuse allocated buffer, and so sets free_cont to 0 */
-    if (!asn1_ex_c2i(pval, cont, len, utype, &free_cont, it))
+    if (!asn1_ex_c2i(pval, cont, len, utype, it))
         goto err;
 
     *in = p;
     ret = 1;
  err:
-    if (free_cont && buf.data)
-        OPENSSL_free(buf.data);
     return ret;
 }
 
 /* Translate ASN1 content octets into a structure */
 
 static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
-                       int utype, char *free_cont, const ASN1_ITEM *it)
+                       int utype, const ASN1_ITEM *it)
 {
     ASN1_VALUE **opval = NULL;
     ASN1_STRING *stmp;
@@ -916,20 +884,11 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
             stmp = (ASN1_STRING *)*pval;
             stmp->type = utype;
         }
-        /* If we've already allocated a buffer use it */
-        if (*free_cont) {
-            if (stmp->data)
-                OPENSSL_free(stmp->data);
-            stmp->data = (unsigned char *)cont; /* UGLY CAST! RL */
-            stmp->length = len;
-            *free_cont = 0;
-        } else {
-            if (!ASN1_STRING_set(stmp, cont, len)) {
-                OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-                ASN1_STRING_free(stmp);
-                *pval = NULL;
-                goto err;
-            }
+        if (!ASN1_STRING_set(stmp, cont, len)) {
+            OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
+            ASN1_STRING_free(stmp);
+            *pval = NULL;
+            goto err;
         }
         break;
     }
@@ -997,92 +956,6 @@ static int asn1_find_end(const unsigned char **in, long len, char inf)
         return 0;
     }
     *in = p;
-    return 1;
-}
-
-/*
- * This function collects the asn1 data from a constructred string type into
- * a buffer. The values of 'in' and 'len' should refer to the contents of the
- * constructed type and 'inf' should be set if it is indefinite length.
- */
-
-/*
- * This determines how many levels of recursion are permitted in ASN1 string
- * types. If it is not limited stack overflows can occur. If set to zero no
- * recursion is allowed at all. Although zero should be adequate examples
- * exist that require a value of 1. So 5 should be more than enough.
- */
-#define ASN1_MAX_STRING_NEST 5
-
-static int asn1_collect(BUF_MEM *buf, const unsigned char **in, long len,
-                        char inf, int tag, int aclass, int depth)
-{
-    const unsigned char *p, *q;
-    long plen;
-    char cst, ininf;
-    p = *in;
-    inf &= 1;
-    /*
-     * If no buffer and not indefinite length constructed just pass over the
-     * encoded data
-     */
-    if (!buf && !inf) {
-        *in += len;
-        return 1;
-    }
-    while (len > 0) {
-        q = p;
-        /* Check for EOC */
-        if (asn1_check_eoc(&p, len)) {
-            /*
-             * EOC is illegal outside indefinite length constructed form
-             */
-            if (!inf) {
-                OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNEXPECTED_EOC);
-                return 0;
-            }
-            inf = 0;
-            break;
-        }
-
-        if (!asn1_check_tlen(&plen, NULL, NULL, &ininf, &cst, &p,
-                             len, tag, aclass, 0, NULL)) {
-            OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
-            return 0;
-        }
-
-        /* If indefinite length constructed update max length */
-        if (cst) {
-            if (depth >= ASN1_MAX_STRING_NEST) {
-                OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_STRING);
-                return 0;
-            }
-            if (!asn1_collect(buf, &p, plen, ininf, tag, aclass, depth + 1))
-                return 0;
-        } else if (plen && !collect_data(buf, &p, plen))
-            return 0;
-        len -= p - q;
-    }
-    if (inf) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_EOC);
-        return 0;
-    }
-    *in = p;
-    return 1;
-}
-
-static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen)
-{
-    int len;
-    if (buf) {
-        len = buf->length;
-        if (!BUF_MEM_grow_clean(buf, len + plen)) {
-            OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-            return 0;
-        }
-        OPENSSL_memcpy(buf->data + len, *p, plen);
-    }
-    *p += plen;
     return 1;
 }
 

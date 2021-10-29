@@ -3463,3 +3463,38 @@ TEST(X509Test, TrustedFirst) {
                X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
              }));
 }
+
+// kConstructedBitString is an X.509 certificate where the signature is encoded
+// as a BER constructed BIT STRING. Note that, while OpenSSL's parser accepts
+// this input, it interprets the value incorrectly.
+static const char kConstructedBitString[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBJTCBxqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
+DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
+DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMQMA4w
+DAYDVR0TBAUwAwEB/zAKBggqhkjOPQQDAiNOAyQAMEYCIQCp0iIX5s30KXjihR4g
+KnJpd3seqGlVRqCVgrD0KGYDJgA1QAIhAKkx0vR82QU0NtHDD11KX/LuQF2T+2nX
+oeKp5LKAbMVi
+-----END CERTIFICATE-----
+)";
+
+// kConstructedOctetString is an X.509 certificate where an extension is encoded
+// as a BER constructed OCTET STRING.
+static const char kConstructedOctetString[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBJDCByqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
+DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
+DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMUMBIw
+EAYDVR0TJAkEAzADAQQCAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKF
+HiAqcml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh
+4qnksoBsxWI=
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, BER) {
+  // Constructed strings are forbidden in DER.
+  EXPECT_FALSE(CertFromPEM(kConstructedBitString));
+  EXPECT_FALSE(CertFromPEM(kConstructedOctetString));
+}
