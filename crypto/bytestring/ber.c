@@ -69,9 +69,9 @@ static int cbs_find_ber(const CBS *orig_in, int *ber_found, unsigned depth) {
     CBS contents;
     unsigned tag;
     size_t header_len;
-
+    int indefinite;
     if (!CBS_get_any_ber_asn1_element(&in, &contents, &tag, &header_len,
-                                      ber_found)) {
+                                      ber_found, &indefinite)) {
       return 0;
     }
     if (*ber_found) {
@@ -119,11 +119,11 @@ static int cbs_convert_ber(CBS *in, CBB *out, unsigned string_tag,
     CBS contents;
     unsigned tag, child_string_tag = string_tag;
     size_t header_len;
-    int ber_found;
+    int indefinite;
     CBB *out_contents, out_contents_storage;
 
     if (!CBS_get_any_ber_asn1_element(in, &contents, &tag, &header_len,
-                                      &ber_found)) {
+                                      /*out_ber_found=*/NULL, &indefinite)) {
       return 0;
     }
 
@@ -153,11 +153,9 @@ static int cbs_convert_ber(CBS *in, CBB *out, unsigned string_tag,
       out_contents = &out_contents_storage;
     }
 
-    if (CBS_len(&contents) == header_len && header_len > 0 &&
-        CBS_data(&contents)[header_len - 1] == 0x80) {
-      // This is an indefinite length element.
+    if (indefinite) {
       if (!cbs_convert_ber(in, out_contents, child_string_tag,
-                           1 /* looking for eoc */, depth + 1) ||
+                           /*looking_for_eoc=*/1, depth + 1) ||
           !CBB_flush(out)) {
         return 0;
       }
@@ -171,7 +169,7 @@ static int cbs_convert_ber(CBS *in, CBB *out, unsigned string_tag,
     if (tag & CBS_ASN1_CONSTRUCTED) {
       // Recurse into children.
       if (!cbs_convert_ber(&contents, out_contents, child_string_tag,
-                           0 /* not looking for eoc */, depth + 1)) {
+                           /*looking_for_eoc=*/0, depth + 1)) {
         return 0;
       }
     } else {

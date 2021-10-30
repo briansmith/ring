@@ -693,29 +693,38 @@ struct BERTest {
   const char *in_hex;
   bool ok;
   bool ber_found;
+  bool indefinite;
   unsigned tag;
 };
 
 static const BERTest kBERTests[] = {
-  // Trivial cases, also valid DER.
-  {"0000", true, false, 0},
-  {"0100", true, false, 1},
-  {"020101", true, false, 2},
+    // Trivial cases, also valid DER.
+    {"0000", true, false, false, 0},
+    {"0100", true, false, false, 1},
+    {"020101", true, false, false, 2},
 
-  // Non-minimally encoded lengths.
-  {"02810101", true, true, 2},
-  {"0282000101", true, true, 2},
-  {"028300000101", true, true, 2},
-  {"02840000000101", true, true, 2},
-  // Technically valid BER, but not handled.
-  {"02850000000101", false, false, 0},
+    // Non-minimally encoded lengths.
+    {"02810101", true, true, false, 2},
+    {"0282000101", true, true, false, 2},
+    {"028300000101", true, true, false, 2},
+    {"02840000000101", true, true, false, 2},
+    // Technically valid BER, but not handled.
+    {"02850000000101", false, false, false, 0},
 
-  {"0280", false, false, 0},  // Indefinite length, but not constructed.
-  {"2280", true, true, CBS_ASN1_CONSTRUCTED | 2},  // Indefinite length.
-  {"3f0000", false, false, 0},  // Invalid extended tag zero (X.690 8.1.2.4.2.c)
-  {"1f0100", false, false, 0},  // Should be a low-number tag form, even in BER.
-  {"1f4000", true, false, 0x40},
-  {"1f804000", false, false, 0},  // Non-minimal tags are invalid, even in BER.
+    // Indefinite length, but not constructed.
+    {"0280", false, false, false, 0},
+    // Indefinite length.
+    {"2280", true, true, true, CBS_ASN1_CONSTRUCTED | 2},
+    // Indefinite length with multi-byte tag.
+    {"bf1f80", true, true, true,
+     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 31},
+    // Invalid extended tag zero (X.690 8.1.2.4.2.c)
+    {"3f0000", false, false, false, 0},
+    // Should be a low-number tag form, even in BER.
+    {"1f0100", false, false, false, 0},
+    {"1f4000", true, false, false, 0x40},
+    // Non-minimal tags are invalid, even in BER.
+    {"1f804000", false, false, false, 0},
 };
 
 TEST(CBSTest, BERElementTest) {
@@ -729,14 +738,16 @@ TEST(CBSTest, BERElementTest) {
     unsigned tag;
     size_t header_len;
     int ber_found;
-    int ok =
-        CBS_get_any_ber_asn1_element(&in, &out, &tag, &header_len, &ber_found);
+    int indefinite;
+    int ok = CBS_get_any_ber_asn1_element(&in, &out, &tag, &header_len,
+                                          &ber_found, &indefinite);
     ASSERT_TRUE((ok == 1) == test.ok);
     if (!test.ok) {
       continue;
     }
 
-    EXPECT_TRUE((ber_found == 1) == test.ber_found);
+    EXPECT_EQ(test.ber_found ? 1 : 0, ber_found);
+    EXPECT_EQ(test.indefinite ? 1 : 0, indefinite);
     EXPECT_LE(header_len, in_bytes.size());
     EXPECT_EQ(CBS_len(&out), in_bytes.size());
     EXPECT_EQ(CBS_len(&in), 0u);
