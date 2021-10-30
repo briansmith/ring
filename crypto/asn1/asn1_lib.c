@@ -59,7 +59,7 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/asn1_mac.h>
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -104,101 +104,54 @@ OPENSSL_DECLARE_ERROR_REASON(ASN1, UNKNOWN_FORMAT)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNKNOWN_TAG)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNSUPPORTED_TYPE)
 
-static int asn1_get_length(const unsigned char **pp, long *rl, long max);
 static void asn1_put_length(unsigned char **pp, int length);
 
-int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
-                    int *pclass, long omax)
+int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
+                    int *out_class, long in_len)
 {
-    int i, ret;
-    long l;
-    const unsigned char *p = *pp;
-    int tag, xclass;
-    long max = omax;
-
-    if (!max)
-        goto err;
-    ret = (*p & V_ASN1_CONSTRUCTED);
-    xclass = (*p & V_ASN1_PRIVATE);
-    i = *p & V_ASN1_PRIMITIVE_TAG;
-    if (i == V_ASN1_PRIMITIVE_TAG) { /* high-tag */
-        p++;
-        if (--max == 0)
-            goto err;
-        l = 0;
-        while (*p & 0x80) {
-            l <<= 7L;
-            l |= *(p++) & 0x7f;
-            if (--max == 0)
-                goto err;
-            if (l > (INT_MAX >> 7L))
-                goto err;
-        }
-        l <<= 7L;
-        l |= *(p++) & 0x7f;
-        tag = (int)l;
-        if (--max == 0)
-            goto err;
-    } else {
-        tag = i;
-        p++;
-        if (--max == 0)
-            goto err;
-    }
-
-    /* To avoid ambiguity with V_ASN1_NEG, impose a limit on universal tags. */
-    if (xclass == V_ASN1_UNIVERSAL && tag > V_ASN1_MAX_UNIVERSAL)
-        goto err;
-
-    *ptag = tag;
-    *pclass = xclass;
-    if (!asn1_get_length(&p, plength, max))
-        goto err;
-
-    if (*plength > (omax - (p - *pp))) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
+    if (in_len < 0) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
         return 0x80;
     }
-    *pp = p;
-    return ret;
- err:
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
-    return 0x80;
-}
 
-static int asn1_get_length(const unsigned char **pp, long *rl, long max)
-{
-    const unsigned char *p = *pp;
-    unsigned long ret = 0;
-    unsigned long i;
+    /* TODO(https://crbug.com/boringssl/354): This should use |CBS_get_asn1| to
+     * reject non-minimal lengths, which are only allowed in BER. However,
+     * Android sometimes needs allow a non-minimal length in certificate
+     * signature fields (see b/18228011). Make this only apply to that field,
+     * while requiring DER elsewhere. Better yet, it should be limited to an
+     * preprocessing step in that part of Android. */
+    unsigned tag;
+    size_t header_len;
+    int indefinite;
+    CBS cbs, body;
+    CBS_init(&cbs, *inp, (size_t)in_len);
+    if (!CBS_get_any_ber_asn1_element(&cbs, &body, &tag, &header_len,
+        /*out_ber_found=*/NULL, &indefinite) ||
+        indefinite ||
+        !CBS_skip(&body, header_len) ||
+        /* Bound the length to comfortably fit in an int. Lengths in this
+         * module often switch between int and long without overflow checks. */
+        CBS_len(&body) > INT_MAX / 2) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
+        return 0x80;
+    }
 
-    if (max-- < 1) {
-        return 0;
+    /* Convert between tag representations. */
+    int tag_class = (tag & CBS_ASN1_CLASS_MASK) >> CBS_ASN1_TAG_SHIFT;
+    int constructed = (tag & CBS_ASN1_CONSTRUCTED) >> CBS_ASN1_TAG_SHIFT;
+    int tag_number = tag & CBS_ASN1_TAG_NUMBER_MASK;
+
+    /* To avoid ambiguity with V_ASN1_NEG, impose a limit on universal tags. */
+    if (tag_class == V_ASN1_UNIVERSAL && tag_number > V_ASN1_MAX_UNIVERSAL) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
+        return 0x80;
     }
-    if (*p == 0x80) {
-        /* We do not support BER indefinite-length encoding. */
-        return 0;
-    }
-    i = *p & 0x7f;
-    if (*(p++) & 0x80) {
-        if (i > sizeof(ret) || max < (long)i)
-            return 0;
-        while (i-- > 0) {
-            ret <<= 8L;
-            ret |= *(p++);
-        }
-    } else {
-        ret = i;
-    }
-    /*
-     * Bound the length to comfortably fit in an int. Lengths in this module
-     * often switch between int and long without overflow checks.
-     */
-    if (ret > INT_MAX / 2)
-        return 0;
-    *pp = p;
-    *rl = (long)ret;
-    return 1;
+
+    *inp = CBS_data(&body);
+    *out_len = CBS_len(&body);
+    *out_tag = tag_number;
+    *out_class = tag_class;
+    return constructed;
 }
 
 /*

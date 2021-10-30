@@ -3524,6 +3524,20 @@ BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQB
 -----END CERTIFICATE-----
 )";
 
+// kHighTagNumber is an X.509 certificate where the outermost SEQUENCE tag uses
+// high tag number form.
+static const char kHighTagNumber[] = R"(
+-----BEGIN CERTIFICATE-----
+PxCCASAwgcagAwIBAgICBNIwCgYIKoZIzj0EAwIwDzENMAsGA1UEAxMEVGVzdDAg
+Fw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowDzENMAsGA1UEAxMEVGVz
+dDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8eDZSKTNWXa7ep
+Hg1G+92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQtS89yIsGjEDAO
+MAwGA1UdEwQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKFHiAq
+cml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh4qnk
+soBsxWI=
+-----END CERTIFICATE-----
+)";
+
 TEST(X509Test, BER) {
   // Constructed strings are forbidden in DER.
   EXPECT_FALSE(CertFromPEM(kConstructedBitString));
@@ -3532,6 +3546,9 @@ TEST(X509Test, BER) {
   EXPECT_FALSE(CertFromPEM(kIndefiniteLength));
   // Padding bits in BIT STRINGs must be zero in BER.
   EXPECT_FALSE(CertFromPEM(kNonZeroPadding));
+  // Tags must be minimal in both BER and DER, though many BER decoders
+  // incorrectly support non-minimal tags.
+  EXPECT_FALSE(CertFromPEM(kHighTagNumber));
 }
 
 TEST(X509Test, Names) {
