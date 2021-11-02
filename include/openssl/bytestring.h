@@ -265,6 +265,10 @@ OPENSSL_EXPORT int CBS_get_any_asn1_element(CBS *cbs, CBS *out,
 // also true for empty elements so |*out_indefinite| should be checked). If
 // |out_ber_found| is not NULL then it is set to one if any case of invalid DER
 // but valid BER is found, and to zero otherwise.
+//
+// This function will not successfully parse an end-of-contents (EOC) as an
+// element. Callers parsing indefinite-length encoding must check for EOC
+// separately.
 OPENSSL_EXPORT int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out,
                                                 unsigned *out_tag,
                                                 size_t *out_header_len,

@@ -279,6 +279,13 @@ static int parse_asn1_tag(CBS *cbs, unsigned *out) {
 
   tag |= tag_number;
 
+  // Tag [UNIVERSAL 0] is reserved for use by the encoding. Reject it here to
+  // avoid some ambiguity around ANY values and BER indefinite-length EOCs. See
+  // https://crbug.com/boringssl/455.
+  if ((tag & ~CBS_ASN1_CONSTRUCTED) == 0) {
+    return 0;
+  }
+
   *out = tag;
   return 1;
 }

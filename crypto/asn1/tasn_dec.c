@@ -74,8 +74,6 @@
  */
 #define ASN1_MAX_CONSTRUCTED_NEST 30
 
-static int asn1_check_eoc(const unsigned char **in, long len);
-
 static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
                            char *cst, const unsigned char **in, long len,
                            int exptag, int expclass, char opt, ASN1_TLC *ctx);
@@ -373,13 +371,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
             if (!len)
                 break;
             q = p;
-            /* TODO(https://crbug.com/boringssl/455): Although we've removed
-             * indefinite-length support, this check is not quite a no-op.
-             * Reject [UNIVERSAL 0] in the tag parsers themselves. */
-            if (asn1_check_eoc(&p, len)) {
-                OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNEXPECTED_EOC);
-                goto err;
-            }
             /*
              * This determines the OPTIONAL flag value. The field cannot be
              * omitted if it is the last of a SEQUENCE and there is still
@@ -592,13 +583,6 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val,
         while (len > 0) {
             ASN1_VALUE *skfield;
             const unsigned char *q = p;
-            /* TODO(https://crbug.com/boringssl/455): Although we've removed
-             * indefinite-length support, this check is not quite a no-op.
-             * Reject [UNIVERSAL 0] in the tag parsers themselves. */
-            if (asn1_check_eoc(&p, len)) {
-                OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNEXPECTED_EOC);
-                goto err;
-            }
             skfield = NULL;
              if (!asn1_item_ex_d2i(&skfield, &p, len, ASN1_ITEM_ptr(tt->item),
                                    -1, 0, 0, ctx, depth)) {
@@ -866,21 +850,6 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
             *opval = NULL;
     }
     return ret;
-}
-
-/* Check for ASN1 EOC and swallow it if found */
-
-static int asn1_check_eoc(const unsigned char **in, long len)
-{
-    const unsigned char *p;
-    if (len < 2)
-        return 0;
-    p = *in;
-    if (!p[0] && !p[1]) {
-        *in += 2;
-        return 1;
-    }
-    return 0;
 }
 
 /*

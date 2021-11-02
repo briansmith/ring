@@ -2075,6 +2075,47 @@ TEST(ASN1Test, GetObject) {
                                   sizeof(kIndefinite)));
 }
 
+template <typename T>
+void ExpectNoParse(T *(*d2i)(T **, const uint8_t **, long),
+                   const std::vector<uint8_t> &in) {
+  SCOPED_TRACE(Bytes(in));
+  const uint8_t *ptr = in.data();
+  bssl::UniquePtr<T> obj(d2i(nullptr, &ptr, in.size()));
+  EXPECT_FALSE(obj);
+}
+
+// The zero tag, constructed or primitive, is reserved and should rejected by
+// the parser.
+TEST(ASN1Test, ZeroTag) {
+  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x00});
+  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x10, 0x00});
+  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
+  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
+  ExpectNoParse(d2i_ASN1_SEQUENCE_ANY, {0x30, 0x02, 0x00, 0x00});
+  ExpectNoParse(d2i_ASN1_SET_ANY, {0x31, 0x02, 0x00, 0x00});
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 PRIMITIVE] {}
+  // }
+  ExpectNoParse(d2i_X509_ALGOR,
+                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x00});
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 CONSTRUCTED] {}
+  // }
+  ExpectNoParse(d2i_X509_ALGOR,
+                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x20, 0x00});
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 PRIMITIVE] { "a" }
+  // }
+  ExpectNoParse(d2i_X509_ALGOR,
+                {0x30, 0x11, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61});
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)

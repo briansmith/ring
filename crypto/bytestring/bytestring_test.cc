@@ -699,7 +699,6 @@ struct BERTest {
 
 static const BERTest kBERTests[] = {
     // Trivial cases, also valid DER.
-    {"0000", true, false, false, 0},
     {"0100", true, false, false, 1},
     {"020101", true, false, false, 2},
 
@@ -725,6 +724,12 @@ static const BERTest kBERTests[] = {
     {"1f4000", true, false, false, 0x40},
     // Non-minimal tags are invalid, even in BER.
     {"1f804000", false, false, false, 0},
+
+    // EOCs and other forms of tag [UNIVERSAL 0] are rejected as elements.
+    {"0000", false, false, false, 0},
+    {"000100", false, false, false, 0},
+    {"00800000", false, false, false, 0},
+    {"2000", false, false, false, 0},
 };
 
 TEST(CBSTest, BERElementTest) {
