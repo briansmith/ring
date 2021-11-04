@@ -68,8 +68,7 @@
 
 
 // digest_to_scalar interprets |digest_len| bytes from |digest| as a scalar for
-// ECDSA. Note this value is not fully reduced modulo the order, only the
-// correct number of bits.
+// ECDSA.
 static void digest_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
                              const uint8_t *digest, size_t digest_len) {
   const BIGNUM *order = &group->order;
