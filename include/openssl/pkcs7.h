@@ -49,10 +49,15 @@ OPENSSL_EXPORT int PKCS7_get_raw_certificates(
 // them into |X509| objects.
 OPENSSL_EXPORT int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs);
 
-// PKCS7_bundle_certificates appends a PKCS#7, SignedData structure containing
-// |certs| to |out|. It returns one on success and zero on error. Note that
-// certificates in SignedData structures are unordered. The order in |certs|
-// will not be preserved.
+// PKCS7_bundle_raw_certificates appends a PKCS#7, SignedData structure
+// containing |certs| to |out|. It returns one on success and zero on error.
+// Note that certificates in SignedData structures are unordered. The order in
+// |certs| will not be preserved.
+OPENSSL_EXPORT int PKCS7_bundle_raw_certificates(
+    CBB *out, const STACK_OF(CRYPTO_BUFFER) *certs);
+
+// PKCS7_bundle_certificates behaves like |PKCS7_bundle_raw_certificates| but
+// takes |X509| objects as input.
 OPENSSL_EXPORT int PKCS7_bundle_certificates(
     CBB *out, const STACK_OF(X509) *certs);
 

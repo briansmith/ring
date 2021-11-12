@@ -708,6 +708,56 @@ TEST(PKCS7Test, SortCerts) {
   check_order(cert2, cert3, cert1);
 }
 
+// Test that we output certificates in the canonical DER order, using the
+// CRYPTO_BUFFER version of the parse and bundle functions.
+TEST(PKCS7Test, SortCertsRaw) {
+  // kPKCS7NSS contains three certificates in the canonical DER order.
+  CBS pkcs7;
+  CBS_init(&pkcs7, kPKCS7NSS, sizeof(kPKCS7NSS));
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> certs(sk_CRYPTO_BUFFER_new_null());
+  ASSERT_TRUE(certs);
+  ASSERT_TRUE(PKCS7_get_raw_certificates(certs.get(), &pkcs7, nullptr));
+  ASSERT_EQ(3u, sk_CRYPTO_BUFFER_num(certs.get()));
+
+  CRYPTO_BUFFER *cert1 = sk_CRYPTO_BUFFER_value(certs.get(), 0);
+  CRYPTO_BUFFER *cert2 = sk_CRYPTO_BUFFER_value(certs.get(), 1);
+  CRYPTO_BUFFER *cert3 = sk_CRYPTO_BUFFER_value(certs.get(), 2);
+
+  auto check_order = [&](CRYPTO_BUFFER *new_cert1, CRYPTO_BUFFER *new_cert2,
+                         CRYPTO_BUFFER *new_cert3) {
+    // Bundle the certificates in the new order.
+    bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_certs(
+        sk_CRYPTO_BUFFER_new_null());
+    ASSERT_TRUE(new_certs);
+    ASSERT_TRUE(bssl::PushToStack(new_certs.get(), bssl::UpRef(new_cert1)));
+    ASSERT_TRUE(bssl::PushToStack(new_certs.get(), bssl::UpRef(new_cert2)));
+    ASSERT_TRUE(bssl::PushToStack(new_certs.get(), bssl::UpRef(new_cert3)));
+    bssl::ScopedCBB cbb;
+    ASSERT_TRUE(CBB_init(cbb.get(), sizeof(kPKCS7NSS)));
+    ASSERT_TRUE(PKCS7_bundle_raw_certificates(cbb.get(), new_certs.get()));
+
+    // The bundle should be sorted back to the original order.
+    CBS cbs;
+    CBS_init(&cbs, CBB_data(cbb.get()), CBB_len(cbb.get()));
+    bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> result(
+        sk_CRYPTO_BUFFER_new_null());
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(PKCS7_get_raw_certificates(result.get(), &cbs, nullptr));
+    ASSERT_EQ(sk_CRYPTO_BUFFER_num(certs.get()),
+              sk_CRYPTO_BUFFER_num(result.get()));
+    for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(certs.get()); i++) {
+      CRYPTO_BUFFER *a = sk_CRYPTO_BUFFER_value(certs.get(), i);
+      CRYPTO_BUFFER *b = sk_CRYPTO_BUFFER_value(result.get(), i);
+      EXPECT_EQ(Bytes(CRYPTO_BUFFER_data(a), CRYPTO_BUFFER_len(a)),
+                Bytes(CRYPTO_BUFFER_data(b), CRYPTO_BUFFER_len(b)));
+    }
+  };
+
+  check_order(cert1, cert2, cert3);
+  check_order(cert3, cert2, cert1);
+  check_order(cert2, cert3, cert1);
+}
+
 // Test that we output CRLs in the canonical DER order.
 TEST(PKCS7Test, SortCRLs) {
   static const char kCRL1[] = R"(

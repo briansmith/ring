@@ -131,6 +131,35 @@ err:
   return ret;
 }
 
+static int pkcs7_bundle_raw_certificates_cb(CBB *out, const void *arg) {
+  const STACK_OF(CRYPTO_BUFFER) *certs = arg;
+  CBB certificates;
+
+  // See https://tools.ietf.org/html/rfc2315#section-9.1
+  if (!CBB_add_asn1(out, &certificates,
+                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+    return 0;
+  }
+
+  for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(certs); i++) {
+    CRYPTO_BUFFER *cert = sk_CRYPTO_BUFFER_value(certs, i);
+    if (!CBB_add_bytes(&certificates, CRYPTO_BUFFER_data(cert),
+                       CRYPTO_BUFFER_len(cert))) {
+      return 0;
+    }
+  }
+
+  // |certificates| is a implicitly-tagged SET OF.
+  return CBB_flush_asn1_set_of(&certificates) && CBB_flush(out);
+}
+
+int PKCS7_bundle_raw_certificates(CBB *out,
+                                  const STACK_OF(CRYPTO_BUFFER) *certs) {
+  return pkcs7_add_signed_data(out, /*digest_algos_cb=*/NULL,
+                               pkcs7_bundle_raw_certificates_cb,
+                               /*signer_infos_cb=*/NULL, certs);
+}
+
 int pkcs7_add_signed_data(CBB *out,
                           int (*digest_algos_cb)(CBB *out, const void *arg),
                           int (*cert_crl_cb)(CBB *out, const void *arg),
