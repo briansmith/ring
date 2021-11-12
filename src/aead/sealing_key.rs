@@ -18,7 +18,7 @@
 //! generic composition paradigm][AEAD] for an introduction to the concept of
 //! AEADs.
 //!
-//! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
+//! [AEAD]: https://eprint.iacr.org/2000/025.pdf
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use super::{Aad, Algorithm, BoundKey, LessSafeKey, NonceSequence, Tag, UnboundKey};
