@@ -362,9 +362,30 @@ OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
 // SSL_peek behaves like |SSL_read| but does not consume any bytes returned.
 OPENSSL_EXPORT int SSL_peek(SSL *ssl, void *buf, int num);
 
-// SSL_pending returns the number of bytes available in |ssl|. It does not read
-// from the transport.
+// SSL_pending returns the number of buffered, decrypted bytes available for
+// read in |ssl|. It does not read from the transport.
+//
+// In DTLS, it is possible for this function to return zero while there is
+// buffered, undecrypted data from the transport in |ssl|. For example,
+// |SSL_read| may read a datagram with two records, decrypt the first, and leave
+// the second buffered for a subsequent call to |SSL_read|. Callers that wish to
+// detect this case can use |SSL_has_pending|.
 OPENSSL_EXPORT int SSL_pending(const SSL *ssl);
+
+// SSL_has_pending returns one if |ssl| has buffered, decrypted bytes available
+// for read, or if |ssl| has buffered data from the transport that has not yet
+// been decrypted. If |ssl| has neither, this function returns zero.
+//
+// In TLS, BoringSSL does not implement read-ahead, so this function returns one
+// if and only if |SSL_pending| would return a non-zero value. In DTLS, it is
+// possible for this function to return one while |SSL_pending| returns zero.
+// For example, |SSL_read| may read a datagram with two records, decrypt the
+// first, and leave the second buffered for a subsequent call to |SSL_read|.
+//
+// As a result, if this function returns one, the next call to |SSL_read| may
+// still fail, read from the transport, or both. The buffered, undecrypted data
+// may be invalid or incomplete.
+OPENSSL_EXPORT int SSL_has_pending(const SSL *ssl);
 
 // SSL_write writes up to |num| bytes from |buf| into |ssl|. It implicitly runs
 // any pending handshakes, including renegotiations when enabled. On success, it

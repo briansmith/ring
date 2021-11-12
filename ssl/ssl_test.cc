@@ -4966,23 +4966,43 @@ TEST_P(SSLVersionTest, SSLPending) {
 
   ASSERT_TRUE(Connect());
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  EXPECT_EQ(0, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(5, SSL_write(server_.get(), "hello", 5));
   ASSERT_EQ(5, SSL_write(server_.get(), "world", 5));
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  EXPECT_EQ(0, SSL_has_pending(client_.get()));
 
   char buf[10];
   ASSERT_EQ(1, SSL_peek(client_.get(), buf, 1));
   EXPECT_EQ(5, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(1, SSL_read(client_.get(), buf, 1));
   EXPECT_EQ(4, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 
   ASSERT_EQ(4, SSL_read(client_.get(), buf, 10));
   EXPECT_EQ(0, SSL_pending(client_.get()));
+  if (is_dtls()) {
+    // In DTLS, the two records would have been read as a single datagram and
+    // buffered inside |client_|. Thus, |SSL_has_pending| should return true.
+    //
+    // This test is slightly unrealistic. It relies on |ConnectClientAndServer|
+    // using a |BIO| pair, which does not preserve datagram boundaries. Reading
+    // 1 byte, then 4 bytes, from the first record also relies on
+    // https://crbug.com/boringssl/65. But it does test the codepaths. When
+    // fixing either of these bugs, this test may need to be redone.
+    EXPECT_EQ(1, SSL_has_pending(client_.get()));
+  } else {
+    // In TLS, we do not overread, so |SSL_has_pending| should report no data is
+    // buffered.
+    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+  }
 
   ASSERT_EQ(2, SSL_read(client_.get(), buf, 2));
   EXPECT_EQ(3, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
