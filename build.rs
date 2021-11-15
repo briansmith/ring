@@ -265,6 +265,7 @@ const LINUX_ABI: &[&str] = &[
     "dragonfly",
     "freebsd",
     "fuchsia",
+    "haiku",
     "illumos",
     "netbsd",
     "openbsd",
