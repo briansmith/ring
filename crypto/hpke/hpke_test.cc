@@ -241,8 +241,8 @@ bool HPKETestVector::ReadFromFileTest(FileTest *t) {
   for (int i = 1; t->HasAttribute(BuildAttrName("aad", i)); i++) {
     Encryption encryption;
     if (!t->GetBytes(&encryption.aad, BuildAttrName("aad", i)) ||
-        !t->GetBytes(&encryption.ciphertext, BuildAttrName("ciphertext", i)) ||
-        !t->GetBytes(&encryption.plaintext, BuildAttrName("plaintext", i))) {
+        !t->GetBytes(&encryption.ciphertext, BuildAttrName("ct", i)) ||
+        !t->GetBytes(&encryption.plaintext, BuildAttrName("pt", i))) {
       return false;
     }
     encryptions_.push_back(std::move(encryption));

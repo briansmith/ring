@@ -86,9 +86,9 @@ type HpkeTestVector struct {
 	Exports     []ExportTestVector     `json:"exports"`
 }
 type EncryptionTestVector struct {
-	Plaintext      HexString `json:"plaintext"`
+	Plaintext      HexString `json:"pt"`
 	AdditionalData HexString `json:"aad"`
-	Ciphertext     HexString `json:"ciphertext"`
+	Ciphertext     HexString `json:"ct"`
 }
 type ExportTestVector struct {
 	ExportContext HexString `json:"exporter_context"`

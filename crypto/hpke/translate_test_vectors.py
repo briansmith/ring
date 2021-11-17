@@ -18,9 +18,9 @@
 
 Usage: translate_test_vectors.py TEST_VECTORS_JSON_FILE
 
-The TEST_VECTORS_JSON_FILE is expected to come from the HPKE reference
-implementation at https://github.com/cisco/go-hpke. The output file is
-hardcoded as "hpke_test_vectors.txt".
+The TEST_VECTORS_JSON_FILE is expected to come from the JSON copy of
+draft-irtf-cfrg-hpke-12's test vectors, linked from its [TestVectors] citation.
+The output is written to "hpke_test_vectors.txt".
 """
 
 import collections
@@ -66,7 +66,7 @@ def read_test_vectors_and_generate_code(json_file_in_path, test_file_out_path):
 
     for i, enc in enumerate(test["encryptions"]):
       lines.append("# encryptions[{}]".format(i))
-      for key in ("aad", "ciphertext", "plaintext"):
+      for key in ("aad", "ct", "pt"):
         lines.append("{} = {}".format(key, str(enc[key])))
 
     for i, exp in enumerate(test["exports"]):

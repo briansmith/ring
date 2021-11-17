@@ -30,7 +30,7 @@
 #include "../internal.h"
 
 
-// This file implements draft-irtf-cfrg-hpke-08.
+// This file implements draft-irtf-cfrg-hpke-12.
 
 #define MAX_SEED_LEN X25519_PRIVATE_KEY_LEN
 #define MAX_SHARED_SECRET_LEN SHA256_DIGEST_LENGTH
@@ -115,7 +115,7 @@ static int hpke_labeled_expand(const EVP_MD *hkdf_md, uint8_t *out_key,
 // KEM implementations.
 
 // dhkem_extract_and_expand implements the ExtractAndExpand operation in the
-// DHKEM construction. See section 4.1 of draft-irtf-cfrg-hpke-08.
+// DHKEM construction. See section 4.1 of draft-irtf-cfrg-hpke-12.
 static int dhkem_extract_and_expand(uint16_t kem_id, const EVP_MD *hkdf_md,
                                     uint8_t *out_key, size_t out_len,
                                     const uint8_t *dh, size_t dh_len,
