@@ -550,6 +550,27 @@ void DSA_SIG_free(DSA_SIG *sig) {
   OPENSSL_free(sig);
 }
 
+void DSA_SIG_get0(const DSA_SIG *sig, const BIGNUM **out_r,
+                  const BIGNUM **out_s) {
+  if (out_r != NULL) {
+    *out_r = sig->r;
+  }
+  if (out_s != NULL) {
+    *out_s = sig->s;
+  }
+}
+
+int DSA_SIG_set0(DSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
+  if (r == NULL || s == NULL) {
+    return 0;
+  }
+  BN_free(sig->r);
+  BN_free(sig->s);
+  sig->r = r;
+  sig->s = s;
+  return 1;
+}
+
 // mod_mul_consttime sets |r| to |a| * |b| modulo |mont->N|, treating |a| and
 // |b| as secret. This function internally uses Montgomery reduction, but
 // neither inputs nor outputs are in Montgomery form.

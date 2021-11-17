@@ -189,6 +189,16 @@ OPENSSL_EXPORT DSA_SIG *DSA_SIG_new(void);
 // DSA_SIG_free frees the contents of |sig| and then frees |sig| itself.
 OPENSSL_EXPORT void DSA_SIG_free(DSA_SIG *sig);
 
+// DSA_SIG_get0 sets |*out_r| and |*out_s|, if non-NULL, to the two components
+// of |sig|.
+OPENSSL_EXPORT void DSA_SIG_get0(const DSA_SIG *sig, const BIGNUM **out_r,
+                                 const BIGNUM **out_s);
+
+// DSA_SIG_set0 sets |sig|'s components to |r| and |s|, neither of which may be
+// NULL. On success, it takes ownership of each argument and returns one.
+// Otherwise, it returns zero.
+OPENSSL_EXPORT int DSA_SIG_set0(DSA_SIG *sig, BIGNUM *r, BIGNUM *s);
+
 // DSA_do_sign returns a signature of the hash in |digest| by the key in |dsa|
 // and returns an allocated, DSA_SIG structure, or NULL on error.
 OPENSSL_EXPORT DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len,

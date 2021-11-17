@@ -629,6 +629,18 @@ int EVP_DecryptInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
   return EVP_CipherInit(ctx, cipher, key, iv, 0);
 }
 
+int EVP_CipherFinal(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
+  return EVP_CipherFinal_ex(ctx, out, out_len);
+}
+
+int EVP_EncryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
+  return EVP_EncryptFinal_ex(ctx, out, out_len);
+}
+
+int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
+  return EVP_DecryptFinal_ex(ctx, out, out_len);
+}
+
 int EVP_add_cipher_alias(const char *a, const char *b) {
   return 1;
 }
