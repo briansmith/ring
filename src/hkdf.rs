@@ -33,17 +33,16 @@ impl Algorithm {
 }
 
 /// HKDF using HMAC-SHA-1. Obsolete.
-pub static HKDF_SHA1_FOR_LEGACY_USE_ONLY: Algorithm =
-    Algorithm(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY);
+pub const HKDF_SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY);
 
 /// HKDF using HMAC-SHA-256.
-pub static HKDF_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
+pub const HKDF_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
 
 /// HKDF using HMAC-SHA-384.
-pub static HKDF_SHA384: Algorithm = Algorithm(hmac::HMAC_SHA384);
+pub const HKDF_SHA384: Algorithm = Algorithm(hmac::HMAC_SHA384);
 
 /// HKDF using HMAC-SHA-512.
-pub static HKDF_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
+pub const HKDF_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
 
 impl KeyType for Algorithm {
     fn len(&self) -> usize {

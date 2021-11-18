@@ -24,7 +24,7 @@ use core::{convert::TryInto, ops::RangeFrom};
 /// The keys are 256 bits long and the nonces are 96 bits long.
 ///
 /// [RFC 8439]: https://tools.ietf.org/html/rfc8439
-pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
+pub const CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     key_len: chacha::KEY_LEN,
     init: chacha20_poly1305_init,
     seal: chacha20_poly1305_seal,

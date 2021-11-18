@@ -321,7 +321,7 @@ impl Algorithm {
 /// SHA-1 as specified in [FIPS 180-4]. Deprecated.
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
+pub const SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
     output_len: sha1::OUTPUT_LEN,
     chaining_len: sha1::CHAINING_LEN,
     block_len: sha1::BLOCK_LEN,
@@ -346,7 +346,7 @@ pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
 /// SHA-256 as specified in [FIPS 180-4].
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA256: Algorithm = Algorithm {
+pub const SHA256: Algorithm = Algorithm {
     output_len: SHA256_OUTPUT_LEN,
     chaining_len: SHA256_OUTPUT_LEN,
     block_len: 512 / 8,
@@ -371,7 +371,7 @@ pub static SHA256: Algorithm = Algorithm {
 /// SHA-384 as specified in [FIPS 180-4].
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA384: Algorithm = Algorithm {
+pub const SHA384: Algorithm = Algorithm {
     output_len: SHA384_OUTPUT_LEN,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
@@ -396,7 +396,7 @@ pub static SHA384: Algorithm = Algorithm {
 /// SHA-512 as specified in [FIPS 180-4].
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA512: Algorithm = Algorithm {
+pub const SHA512: Algorithm = Algorithm {
     output_len: SHA512_OUTPUT_LEN,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
@@ -425,7 +425,7 @@ pub static SHA512: Algorithm = Algorithm {
 /// state.
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA512_256: Algorithm = Algorithm {
+pub const SHA512_256: Algorithm = Algorithm {
     output_len: SHA512_256_OUTPUT_LEN,
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,

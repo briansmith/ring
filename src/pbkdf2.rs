@@ -120,16 +120,16 @@ use core::num::NonZeroU32;
 pub struct Algorithm(hmac::Algorithm);
 
 /// PBKDF2 using HMAC-SHA1.
-pub static PBKDF2_HMAC_SHA1: Algorithm = Algorithm(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY);
+pub const PBKDF2_HMAC_SHA1: Algorithm = Algorithm(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY);
 
 /// PBKDF2 using HMAC-SHA256.
-pub static PBKDF2_HMAC_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
+pub const PBKDF2_HMAC_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
 
 /// PBKDF2 using HMAC-SHA384.
-pub static PBKDF2_HMAC_SHA384: Algorithm = Algorithm(hmac::HMAC_SHA384);
+pub const PBKDF2_HMAC_SHA384: Algorithm = Algorithm(hmac::HMAC_SHA384);
 
 /// PBKDF2 using HMAC-SHA512.
-pub static PBKDF2_HMAC_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
+pub const PBKDF2_HMAC_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
 
 /// Fills `out` with the key derived using PBKDF2 with the given inputs.
 ///

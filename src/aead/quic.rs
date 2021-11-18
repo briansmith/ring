@@ -129,7 +129,7 @@ impl PartialEq for Algorithm {
 impl Eq for Algorithm {}
 
 /// AES-128.
-pub static AES_128: Algorithm = Algorithm {
+pub const AES_128: Algorithm = Algorithm {
     key_len: 16,
     init: aes_init_128,
     new_mask: aes_new_mask,
@@ -137,7 +137,7 @@ pub static AES_128: Algorithm = Algorithm {
 };
 
 /// AES-256.
-pub static AES_256: Algorithm = Algorithm {
+pub const AES_256: Algorithm = Algorithm {
     key_len: 32,
     init: aes_init_256,
     new_mask: aes_new_mask,
@@ -164,7 +164,7 @@ fn aes_new_mask(key: &KeyInner, sample: Sample) -> [u8; 5] {
 }
 
 /// ChaCha20.
-pub static CHACHA20: Algorithm = Algorithm {
+pub const CHACHA20: Algorithm = Algorithm {
     key_len: chacha::KEY_LEN,
     init: chacha20_init,
     new_mask: chacha20_new_mask,
