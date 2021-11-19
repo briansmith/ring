@@ -197,6 +197,10 @@ OPENSSL_EXPORT int PKCS12_parse(const PKCS12 *p12, const char *password,
 OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
                                      int password_len);
 
+// PKCS12_DEFAULT_ITER is the default number of KDF iterations used when
+// creating a |PKCS12| object.
+#define PKCS12_DEFAULT_ITER 2048
+
 // PKCS12_create returns a newly-allocated |PKCS12| object containing |pkey|,
 // |cert|, and |chain|, encrypted with the specified password. |name|, if not
 // NULL, specifies a user-friendly name to encode with the key and
@@ -207,7 +211,8 @@ OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
 //
 // Each of |key_nid|, |cert_nid|, |iterations|, and |mac_iterations| may be zero
 // to use defaults, which are |NID_pbe_WithSHA1And3_Key_TripleDES_CBC|,
-// |NID_pbe_WithSHA1And40BitRC2_CBC|, 2048, and one, respectively.
+// |NID_pbe_WithSHA1And40BitRC2_CBC|, |PKCS12_DEFAULT_ITER|, and one,
+// respectively.
 //
 // |key_nid| or |cert_nid| may also be -1 to disable encryption of the key or
 // certificate, respectively. This option is not recommended and is only

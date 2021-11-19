@@ -1161,7 +1161,7 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
     cert_nid = NID_pbe_WithSHA1And40BitRC2_CBC;
   }
   if (iterations == 0) {
-    iterations = PKCS5_DEFAULT_ITERATIONS;
+    iterations = PKCS12_DEFAULT_ITER;
   }
   if (mac_iterations == 0) {
     mac_iterations = 1;
