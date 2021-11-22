@@ -116,12 +116,12 @@ int X509_CRL_print(BIO *out, X509_CRL *x)
     for (i = 0; i < sk_X509_REVOKED_num(rev); i++) {
         r = sk_X509_REVOKED_value(rev, i);
         BIO_printf(out, "    Serial Number: ");
-        i2a_ASN1_INTEGER(out, r->serialNumber);
+        i2a_ASN1_INTEGER(out, X509_REVOKED_get0_serialNumber(r));
         BIO_printf(out, "\n        Revocation Date: ");
-        ASN1_TIME_print(out, r->revocationDate);
+        ASN1_TIME_print(out, X509_REVOKED_get0_revocationDate(r));
         BIO_printf(out, "\n");
         X509V3_extensions_print(out, "CRL entry extensions",
-                                r->extensions, 0, 8);
+                                X509_REVOKED_get0_extensions(r), 0, 8);
     }
     X509_signature_print(out, sig_alg, signature);
 

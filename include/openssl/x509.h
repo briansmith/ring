@@ -249,16 +249,6 @@ DEFINE_STACK_OF(X509_TRUST)
   (ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB | XN_FLAG_SEP_MULTILINE | \
    XN_FLAG_SPC_EQ | XN_FLAG_FN_LN | XN_FLAG_FN_ALIGN)
 
-struct x509_revoked_st {
-  ASN1_INTEGER *serialNumber;
-  ASN1_TIME *revocationDate;
-  STACK_OF(X509_EXTENSION) /* optional */ *extensions;
-  // Set up if indirect CRL
-  STACK_OF(GENERAL_NAME) *issuer;
-  // Revocation reason
-  int reason;
-};
-
 DEFINE_STACK_OF(X509_REVOKED)
 
 DECLARE_STACK_OF(GENERAL_NAMES)

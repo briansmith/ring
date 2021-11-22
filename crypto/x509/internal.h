@@ -179,6 +179,16 @@ struct X509_req_st {
   CRYPTO_refcount_t references;
 } /* X509_REQ */;
 
+struct x509_revoked_st {
+  ASN1_INTEGER *serialNumber;
+  ASN1_TIME *revocationDate;
+  STACK_OF(X509_EXTENSION) /* optional */ *extensions;
+  // Set up if indirect CRL
+  STACK_OF(GENERAL_NAME) *issuer;
+  // Revocation reason
+  int reason;
+} /* X509_REVOKED */;
+
 typedef struct {
   ASN1_INTEGER *version;
   X509_ALGOR *sig_alg;
