@@ -257,7 +257,6 @@ struct x509_revoked_st {
   STACK_OF(GENERAL_NAME) *issuer;
   // Revocation reason
   int reason;
-  int sequence;  // load sequence
 };
 
 DEFINE_STACK_OF(X509_REVOKED)
