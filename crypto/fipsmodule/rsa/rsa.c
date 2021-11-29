@@ -930,6 +930,8 @@ int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
 int RSA_flags(const RSA *rsa) { return rsa->flags; }
 
+int RSA_test_flags(const RSA *rsa, int flags) { return rsa->flags & flags; }
+
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
   return 1;
 }
