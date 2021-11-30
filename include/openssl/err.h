@@ -183,6 +183,11 @@ OPENSSL_EXPORT uint32_t ERR_get_error_line(const char **file, int *line);
 // can be printed. This is always set if |data| is non-NULL.
 #define ERR_FLAG_STRING 1
 
+// ERR_FLAG_MALLOCED is passed into |ERR_set_error_data| to indicate that |data|
+// was allocated with |OPENSSL_malloc|. It is never returned from
+// |ERR_get_error_line_data|.
+#define ERR_FLAG_MALLOCED 2
+
 // ERR_get_error_line_data acts like |ERR_get_error_line|, but also returns the
 // error-specific data pointer and flags. The flags are a bitwise-OR of
 // |ERR_FLAG_*| values. The error-specific data is owned by the error queue
@@ -408,9 +413,10 @@ OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
 // ERR_GET_FUNC returns zero. BoringSSL errors do not report a function code.
 #define ERR_GET_FUNC(packed_error) 0
 
-// ERR_TXT_STRING is provided for compatibility with code that assumes that
-// it's using OpenSSL.
+// ERR_TXT_* are provided for compatibility with code that assumes that it's
+// using OpenSSL.
 #define ERR_TXT_STRING ERR_FLAG_STRING
+#define ERR_TXT_MALLOCED ERR_FLAG_MALLOCED
 
 
 // Private functions.
@@ -443,6 +449,17 @@ OPENSSL_EXPORT void ERR_add_error_data(unsigned count, ...);
 // result as the data on the most recent error.
 OPENSSL_EXPORT void ERR_add_error_dataf(const char *format, ...)
     OPENSSL_PRINTF_FORMAT_FUNC(1, 2);
+
+// ERR_set_error_data sets the data on the most recent error to |data|, which
+// must be a NUL-terminated string. |flags| must contain |ERR_FLAG_STRING|. If
+// |flags| contains |ERR_FLAG_MALLOCED|, this function takes ownership of
+// |data|, which must have been allocated with |OPENSSL_malloc|. Otherwise, it
+// saves a copy of |data|.
+//
+// Note this differs from OpenSSL which, when |ERR_FLAG_MALLOCED| is unset,
+// saves the pointer as-is and requires it remain valid for the lifetime of the
+// address space.
+OPENSSL_EXPORT void ERR_set_error_data(char *data, int flags);
 
 // ERR_NUM_ERRORS is one more than the limit of the number of errors in the
 // queue.

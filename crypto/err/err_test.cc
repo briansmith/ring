@@ -75,6 +75,17 @@ TEST(ErrTest, PutError) {
   EXPECT_EQ(1, ERR_GET_LIB(packed_error));
   EXPECT_EQ(2, ERR_GET_REASON(packed_error));
   EXPECT_STREQ("testing", data);
+
+  ERR_put_error(1, 0 /* unused */, 2, "test", 4);
+  ERR_set_error_data(const_cast<char *>("testing"), ERR_FLAG_STRING);
+  packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
+  EXPECT_STREQ("testing", data);
+
+  ERR_put_error(1, 0 /* unused */, 2, "test", 4);
+  bssl::UniquePtr<char> str(OPENSSL_strdup("testing"));
+  ERR_set_error_data(str.release(), ERR_FLAG_STRING | ERR_FLAG_MALLOCED);
+  packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
+  EXPECT_STREQ("testing", data);
 }
 
 TEST(ErrTest, ClearError) {

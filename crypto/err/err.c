@@ -745,6 +745,22 @@ void ERR_add_error_dataf(const char *format, ...) {
   err_set_error_data(buf);
 }
 
+void ERR_set_error_data(char *data, int flags) {
+  if (!(flags & ERR_FLAG_STRING)) {
+    // We do not support non-string error data.
+    assert(0);
+    return;
+  }
+  if (flags & ERR_FLAG_MALLOCED) {
+    err_set_error_data(data);
+  } else {
+    char *copy = OPENSSL_strdup(data);
+    if (copy != NULL) {
+      err_set_error_data(copy);
+    }
+  }
+}
+
 int ERR_set_mark(void) {
   ERR_STATE *const state = err_get_state();
 
