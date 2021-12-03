@@ -72,6 +72,7 @@ where
 
 pub(crate) mod sealed {
     use crate::error;
+    use core::{mem, slice};
 
     pub trait SecureRandom: core::fmt::Debug {
         /// Fills `dest` with random bytes.
@@ -83,21 +84,43 @@ pub(crate) mod sealed {
         fn as_mut_bytes(&mut self) -> &mut [u8]; // `AsMut<[u8]>::as_mut`
     }
 
-    macro_rules! impl_random_arrays {
-        [ $($len:expr)+ ] => {
-            $(
-                impl RandomlyConstructable for [u8; $len] {
-                    #[inline]
-                    fn zero() -> Self { [0; $len] }
-
-                    #[inline]
-                    fn as_mut_bytes(&mut self) -> &mut [u8] { &mut self[..] }
-                }
-            )+
-        }
+    pub unsafe trait Pod: Sized + Copy {
+        fn zero() -> Self;
     }
 
-    impl_random_arrays![4 8 16 32 48 64 128 256];
+    macro_rules! impl_pod {
+        ($($type:ty),*) => {
+            $(
+                unsafe impl Pod for $type {
+                    #[inline]
+                    fn zero() -> Self { 0 }
+                }
+            )*
+        };
+    }
+
+    impl_pod!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
+
+    impl<T: Pod, const N: usize> RandomlyConstructable for [T; N] {
+        #[inline]
+        fn zero() -> Self {
+            [T::zero(); N]
+        }
+
+        #[inline]
+        fn as_mut_bytes(&mut self) -> &mut [u8] {
+            assert(
+                N == 0 || (isize::MAX as usize) / N < mem::size_of::<T>(),
+                "Array too large to be converted to slice of u8"
+            );
+
+            let data = self.as_mut_ptr();
+            let len = N * mem::size_of::<T>();
+            unsafe {
+                slice::from_raw_parts_mut(data as *mut u8, len)
+            }
+        }
+    }
 }
 
 /// A type that can be returned by `ring::rand::generate()`.
