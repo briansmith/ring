@@ -2459,6 +2459,15 @@ OPENSSL_EXPORT int (*SSL_CTX_get_verify_callback(const SSL_CTX *ctx))(
 OPENSSL_EXPORT int (*SSL_get_verify_callback(const SSL *ssl))(
     int ok, X509_STORE_CTX *store_ctx);
 
+// SSL_set1_host sets a DNS name that will be required to be present in the
+// verified leaf certificate.
+//
+// Note: unless _some_ name checking is performed, certificate validation is
+// ineffective. Simply checking that a host has some certificate from a CA is
+// rarely meaningful—you have to check that the CA believed that the host was
+// who you expect to be talking to.
+OPENSSL_EXPORT int SSL_set1_host(SSL *ssl, const char *hostname);
+
 // SSL_CTX_set_verify_depth sets the maximum depth of a certificate chain
 // accepted in verification. This number does not include the leaf, so a depth
 // of 1 allows the leaf and one CA certificate.
@@ -2631,6 +2640,11 @@ OPENSSL_EXPORT int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_set_verify_algorithm_prefs(SSL *ssl,
                                                   const uint16_t *prefs,
                                                   size_t num_prefs);
+
+// SSL_set_hostflags calls |X509_VERIFY_PARAM_set_hostflags| on the
+// |X509_VERIFY_PARAM| associated with this |SSL*|. The |flags| argument
+// should be one of the |X509_CHECK_*| constants.
+OPENSSL_EXPORT void SSL_set_hostflags(SSL *ssl, unsigned flags);
 
 
 // Client certificate CA list.

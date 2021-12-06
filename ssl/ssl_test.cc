@@ -39,6 +39,7 @@
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -1498,6 +1499,8 @@ static bool CreateClientAndServer(bssl::UniquePtr<SSL> *out_client,
 struct ClientConfig {
   SSL_SESSION *session = nullptr;
   std::string servername;
+  std::string verify_hostname;
+  unsigned hostflags = 0;
   bool early_data = false;
 };
 
@@ -1519,6 +1522,12 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   if (!config.servername.empty() &&
       !SSL_set_tlsext_host_name(client.get(), config.servername.c_str())) {
     return false;
+  }
+  if (!config.verify_hostname.empty()) {
+    if (!SSL_set1_host(client.get(), config.verify_hostname.c_str())) {
+      return false;
+    }
+    SSL_set_hostflags(client.get(), config.hostflags);
   }
 
   SSL_set_shed_handshake_config(client.get(), shed_handshake_config);
@@ -7999,6 +8008,85 @@ TEST(SSLTest, PermuteExtensions) {
       }
       EXPECT_TRUE(passed) << "Extensions were not permuted";
     }
+  }
+}
+
+TEST(SSLTest, HostMatching) {
+  static const char kCertPEM[] =
+      "-----BEGIN CERTIFICATE-----\n"
+      "MIIB9jCCAZ2gAwIBAgIQeudG9R61BOxUvWkeVhU5DTAKBggqhkjOPQQDAjApMRAw\n"
+      "DgYDVQQKEwdBY21lIENvMRUwEwYDVQQDEwxleGFtcGxlMy5jb20wHhcNMjExMjA2\n"
+      "MjA1NjU2WhcNMjIxMjA2MjA1NjU2WjApMRAwDgYDVQQKEwdBY21lIENvMRUwEwYD\n"
+      "VQQDEwxleGFtcGxlMy5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS7l2VO\n"
+      "Bl2TjVm9WfGk24+hMbVFUNB+RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaW\n"
+      "ULDDaoeDl1M0t4Hmo4GmMIGjMA4GA1UdDwEB/wQEAwIChDATBgNVHSUEDDAKBggr\n"
+      "BgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTTJWurcc1t+VPQBko3\n"
+      "Gsw6cbcWSTBMBgNVHREERTBDggxleGFtcGxlMS5jb22CDGV4YW1wbGUyLmNvbYIP\n"
+      "YSouZXhhbXBsZTQuY29tgg4qLmV4YW1wbGU1LmNvbYcEAQIDBDAKBggqhkjOPQQD\n"
+      "AgNHADBEAiAAv0ljHJGrgyzZDkG6XvNZ5ewxRfnXcZuD0Y7E4giCZgIgNK1qjilu\n"
+      "5DyVbfKeeJhOCtGxqE1dWLXyJBnoRomSYBY=\n"
+      "-----END CERTIFICATE-----\n";
+  bssl::UniquePtr<X509> cert(CertFromPEM(kCertPEM));
+  ASSERT_TRUE(cert);
+
+  static const char kKeyPEM[] =
+      "-----BEGIN PRIVATE KEY-----\n"
+      "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghsaSZhUzZAcQlLyJ\n"
+      "MDuy7WPdyqNsAX9rmEP650LF/q2hRANCAAS7l2VOBl2TjVm9WfGk24+hMbVFUNB+\n"
+      "RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaWULDDaoeDl1M0t4Hm\n"
+      "-----END PRIVATE KEY-----\n";
+  bssl::UniquePtr<EVP_PKEY> key(KeyFromPEM(kKeyPEM));
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx.get()),
+                                  cert.get()));
+  SSL_CTX_set_verify(client_ctx.get(),
+                     SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     nullptr);
+
+  struct TestCase {
+    std::string hostname;
+    unsigned flags;
+    bool should_match;
+  };
+  std::vector<TestCase> kTests = {
+      // These two names are present as SANs in the certificate.
+      {"example1.com", 0, true},
+      {"example2.com", 0, true},
+      // This is the CN of the certificate, but that shouldn't matter if a SAN
+      // extension is present.
+      {"example3.com", 0, false},
+      // a*.example4.com is a SAN, which is invalid because partial wildcards
+      // aren't a thing except for the OpenSSL verifier.
+      {"abc.example4.com", 0, true},
+      // ... but they can be turned off.
+      {"abc.example4.com", X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS, false},
+      // *.example5.com is a SAN in the certificate, which is a normal and valid
+      // wildcard.
+      {"abc.example5.com", 0, true},
+      // This name is not present.
+      {"notexample1.com", 0, false},
+      // The IPv4 address 1.2.3.4 is a SAN, but that shouldn't match against a
+      // hostname that happens to be its textual representation.
+      {"1.2.3.4", 0, false},
+  };
+
+  bssl::UniquePtr<SSL> client, server;
+  ClientConfig config;
+  for (const TestCase &test : kTests) {
+    SCOPED_TRACE(test.hostname);
+    config.verify_hostname = test.hostname;
+    config.hostflags = test.flags;
+    EXPECT_EQ(test.should_match,
+              ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), config));
   }
 }
 

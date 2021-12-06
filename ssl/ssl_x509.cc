@@ -1304,6 +1304,23 @@ int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store) {
   return set_cert_store(&ssl->config->cert->verify_store, store, 1);
 }
 
+int SSL_set1_host(SSL *ssl, const char *hostname) {
+  check_ssl_x509_method(ssl);
+  if (!ssl->config) {
+    return 0;
+  }
+  return X509_VERIFY_PARAM_set1_host(ssl->config->param, hostname,
+                                     strlen(hostname));
+}
+
+void SSL_set_hostflags(SSL *ssl, unsigned flags) {
+  check_ssl_x509_method(ssl);
+  if (!ssl->config) {
+    return;
+  }
+  X509_VERIFY_PARAM_set_hostflags(ssl->config->param, flags);
+}
+
 int SSL_alert_from_verify_result(long result) {
   switch (result) {
     case X509_V_ERR_CERT_CHAIN_TOO_LONG:
