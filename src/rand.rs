@@ -84,7 +84,12 @@ pub(crate) mod sealed {
         fn as_mut_bytes(&mut self) -> &mut [u8]; // `AsMut<[u8]>::as_mut`
     }
 
-    pub unsafe trait Pod: Sized + Copy {
+    // Safety: in order for a type to be POD, it must satisfy the following criteria:
+    // - The type must be inhabited (ie not the never type)
+    // - All bit patterns must be valid
+    // - The type must have no padding
+    // - Any fields within the type must also be Pod
+    pub unsafe trait Pod: Sized {
         fn zero() -> Self;
     }
 
@@ -101,21 +106,37 @@ pub(crate) mod sealed {
 
     impl_pod!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
 
-    impl<T: Pod, const N: usize> RandomlyConstructable for [T; N] {
+    impl<T: Pod + Copy, const N: usize> RandomlyConstructable for [T; N] {
         #[inline]
         fn zero() -> Self {
+            // Note that the Copy bound on T is required in order to initialize this array
+            // without unsafe code.
             [T::zero(); N]
         }
 
         #[inline]
         fn as_mut_bytes(&mut self) -> &mut [u8] {
-            assert(
-                N == 0 || (isize::MAX as usize) / N < mem::size_of::<T>(),
+            // Since all values in this expression are constant, the compiler should optimize this
+            // assertion out.
+            assert!(
+                N == 0 || (isize::MAX as usize) / N >= mem::size_of::<T>(),
                 "Array too large to be converted to slice of u8"
             );
 
             let data = self.as_mut_ptr();
             let len = N * mem::size_of::<T>();
+
+            // Safety:
+            // - `data` is valid (aligned, non-null, non-dangling) for reads and writes of size
+            //   `len` bytes
+            //   - The entire memory range of this slice is in a single allocated object because
+            //     it came from another mutable slice
+            //   - `data` is not dangling and properly aligned for all types because, again, it was
+            //     derived from another mutable slice
+            // - Because T is POD, and because `len` is calculated based on the size of T,
+            //   `data` points to `len` initialized u8s
+            // - We co-opt the lifetime of `self`, so no borrow checker rules are broken
+            // - `len` is less than `isize::MAX` by the assertion at the beginning of this function
             unsafe {
                 slice::from_raw_parts_mut(data as *mut u8, len)
             }
