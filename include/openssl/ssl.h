@@ -2460,7 +2460,7 @@ OPENSSL_EXPORT int (*SSL_get_verify_callback(const SSL *ssl))(
     int ok, X509_STORE_CTX *store_ctx);
 
 // SSL_set1_host sets a DNS name that will be required to be present in the
-// verified leaf certificate.
+// verified leaf certificate. It returns one on success and zero on error.
 //
 // Note: unless _some_ name checking is performed, certificate validation is
 // ineffective. Simply checking that a host has some certificate from a CA is
