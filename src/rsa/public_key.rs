@@ -27,7 +27,6 @@ pub struct PublicKey {
     n: PublicModulus,
     e: PublicExponent,
     serialized: Box<[u8]>,
-    cpu_features: cpu::Features,
 }
 
 derive_debug_self_as_ref_hex_bytes!(PublicKey);
@@ -76,12 +75,7 @@ impl PublicKey {
             der_writer::write_positive_integer(output, &e_bytes);
         });
 
-        Ok(Self {
-            n,
-            e,
-            serialized,
-            cpu_features,
-        })
+        Ok(Self { n, e, serialized })
     }
 
     /// The length, in bytes, of the public modulus.
