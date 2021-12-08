@@ -64,7 +64,9 @@ impl BlockContext {
     pub(crate) fn update(&mut self, input: &[u8]) {
         let num_blocks = input.len() / self.algorithm.block_len;
         assert_eq!(num_blocks * self.algorithm.block_len, input.len());
+
         if num_blocks > 0 {
+            let _cpu_features = self.cpu_features;
             unsafe {
                 (self.algorithm.block_data_order)(&mut self.state, input.as_ptr(), num_blocks);
             }
