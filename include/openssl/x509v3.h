@@ -890,10 +890,12 @@ OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
 #define X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT 0
 // Disable wildcard matching for dnsName fields and common name.
 #define X509_CHECK_FLAG_NO_WILDCARDS 0x2
-// Wildcards must not match a partial label.
-#define X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS 0x4
-// Allow (non-partial) wildcards to match multiple labels.
-#define X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS 0x8
+// X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS does nothing, but is necessary in
+// OpenSSL to enable standard wildcard matching. In BoringSSL, this behavior is
+// always enabled.
+#define X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS 0
+// Deprecated: this flag does nothing
+#define X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS 0
 // Constraint verifier subdomain patterns to match a single labels.
 #define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0x10
 // Skip the subject common name fallback if subjectAltNames is missing.

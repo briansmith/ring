@@ -821,7 +821,6 @@ static int wildcard_match(const unsigned char *prefix, size_t prefix_len,
     const unsigned char *wildcard_start;
     const unsigned char *wildcard_end;
     const unsigned char *p;
-    int allow_multi = 0;
     int allow_idna = 0;
 
     if (subject_len < prefix_len + suffix_len)
@@ -840,8 +839,6 @@ static int wildcard_match(const unsigned char *prefix, size_t prefix_len,
         if (wildcard_start == wildcard_end)
             return 0;
         allow_idna = 1;
-        if (flags & X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS)
-            allow_multi = 1;
     }
     /* IDNA labels cannot match partial wildcards */
     if (!allow_idna &&
@@ -853,14 +850,13 @@ static int wildcard_match(const unsigned char *prefix, size_t prefix_len,
         return 1;
     /*
      * Check that the part matched by the wildcard contains only
-     * permitted characters and only matches a single label unless
-     * allow_multi is set.
+     * permitted characters and only matches a single label.
      */
     for (p = wildcard_start; p != wildcard_end; ++p)
         if (!(('0' <= *p && *p <= '9') ||
               ('A' <= *p && *p <= 'Z') ||
               ('a' <= *p && *p <= 'z') ||
-              *p == '-' || (allow_multi && *p == '.')))
+              *p == '-'))
             return 0;
     return 1;
 }
@@ -892,12 +888,8 @@ static const unsigned char *valid_star(const unsigned char *p, size_t len,
              */
             if (star != NULL || (state & LABEL_IDNA) != 0 || dots)
                 return NULL;
-            /* Only full-label '*.example.com' wildcards? */
-            if ((flags & X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS)
-                && (!atstart || !atend))
-                return NULL;
-            /* No 'foo*bar' wildcards */
-            if (!atstart && !atend)
+            /* Only full-label '*.example.com' wildcards. */
+            if (!atstart || !atend)
                 return NULL;
             star = &p[i];
             state &= ~LABEL_START;

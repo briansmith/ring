@@ -8012,76 +8012,99 @@ TEST(SSLTest, PermuteExtensions) {
 }
 
 TEST(SSLTest, HostMatching) {
-  static const char kCertPEM[] =
-      "-----BEGIN CERTIFICATE-----\n"
-      "MIIB9jCCAZ2gAwIBAgIQeudG9R61BOxUvWkeVhU5DTAKBggqhkjOPQQDAjApMRAw\n"
-      "DgYDVQQKEwdBY21lIENvMRUwEwYDVQQDEwxleGFtcGxlMy5jb20wHhcNMjExMjA2\n"
-      "MjA1NjU2WhcNMjIxMjA2MjA1NjU2WjApMRAwDgYDVQQKEwdBY21lIENvMRUwEwYD\n"
-      "VQQDEwxleGFtcGxlMy5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS7l2VO\n"
-      "Bl2TjVm9WfGk24+hMbVFUNB+RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaW\n"
-      "ULDDaoeDl1M0t4Hmo4GmMIGjMA4GA1UdDwEB/wQEAwIChDATBgNVHSUEDDAKBggr\n"
-      "BgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTTJWurcc1t+VPQBko3\n"
-      "Gsw6cbcWSTBMBgNVHREERTBDggxleGFtcGxlMS5jb22CDGV4YW1wbGUyLmNvbYIP\n"
-      "YSouZXhhbXBsZTQuY29tgg4qLmV4YW1wbGU1LmNvbYcEAQIDBDAKBggqhkjOPQQD\n"
-      "AgNHADBEAiAAv0ljHJGrgyzZDkG6XvNZ5ewxRfnXcZuD0Y7E4giCZgIgNK1qjilu\n"
-      "5DyVbfKeeJhOCtGxqE1dWLXyJBnoRomSYBY=\n"
-      "-----END CERTIFICATE-----\n";
+  static const char kCertPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIB9jCCAZ2gAwIBAgIQeudG9R61BOxUvWkeVhU5DTAKBggqhkjOPQQDAjApMRAw
+DgYDVQQKEwdBY21lIENvMRUwEwYDVQQDEwxleGFtcGxlMy5jb20wHhcNMjExMjA2
+MjA1NjU2WhcNMjIxMjA2MjA1NjU2WjApMRAwDgYDVQQKEwdBY21lIENvMRUwEwYD
+VQQDEwxleGFtcGxlMy5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS7l2VO
+Bl2TjVm9WfGk24+hMbVFUNB+RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaW
+ULDDaoeDl1M0t4Hmo4GmMIGjMA4GA1UdDwEB/wQEAwIChDATBgNVHSUEDDAKBggr
+BgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTTJWurcc1t+VPQBko3
+Gsw6cbcWSTBMBgNVHREERTBDggxleGFtcGxlMS5jb22CDGV4YW1wbGUyLmNvbYIP
+YSouZXhhbXBsZTQuY29tgg4qLmV4YW1wbGU1LmNvbYcEAQIDBDAKBggqhkjOPQQD
+AgNHADBEAiAAv0ljHJGrgyzZDkG6XvNZ5ewxRfnXcZuD0Y7E4giCZgIgNK1qjilu
+5DyVbfKeeJhOCtGxqE1dWLXyJBnoRomSYBY=
+-----END CERTIFICATE-----
+)";
   bssl::UniquePtr<X509> cert(CertFromPEM(kCertPEM));
   ASSERT_TRUE(cert);
+  static const char kCertNoSANsPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBqzCCAVGgAwIBAgIQeudG9R61BOxUvWkeVhU5DTAKBggqhkjOPQQDAjArMRIw
+EAYDVQQKEwlBY21lIENvIDIxFTATBgNVBAMTDGV4YW1wbGUzLmNvbTAeFw0yMTEy
+MDYyMDU2NTZaFw0yMjEyMDYyMDU2NTZaMCsxEjAQBgNVBAoTCUFjbWUgQ28gMjEV
+MBMGA1UEAxMMZXhhbXBsZTMuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+u5dlTgZdk41ZvVnxpNuPoTG1RVDQfkVR1mwrxbzWQKFoiCds9+ESxiJ8mbwmfMSw
+L7LmllCww2qHg5dTNLeB5qNXMFUwDgYDVR0PAQH/BAQDAgKEMBMGA1UdJQQMMAoG
+CCsGAQUFBwMBMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFNMla6txzW35U9AG
+SjcazDpxtxZJMAoGCCqGSM49BAMCA0gAMEUCIG3YWGWtpVhbcGV7wFKQwTfmvwHW
+pw4qCFZlool4hCwsAiEA+2fc6NfSbNpFEtQkDOMJW2ANiScAVEmImNqPfb2klz4=
+-----END CERTIFICATE-----
+)";
+  bssl::UniquePtr<X509> cert_no_sans(CertFromPEM(kCertNoSANsPEM));
+  ASSERT_TRUE(cert_no_sans);
 
-  static const char kKeyPEM[] =
-      "-----BEGIN PRIVATE KEY-----\n"
-      "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghsaSZhUzZAcQlLyJ\n"
-      "MDuy7WPdyqNsAX9rmEP650LF/q2hRANCAAS7l2VOBl2TjVm9WfGk24+hMbVFUNB+\n"
-      "RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaWULDDaoeDl1M0t4Hm\n"
-      "-----END PRIVATE KEY-----\n";
+  static const char kKeyPEM[] = R"(
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghsaSZhUzZAcQlLyJ
+MDuy7WPdyqNsAX9rmEP650LF/q2hRANCAAS7l2VOBl2TjVm9WfGk24+hMbVFUNB+
+RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaWULDDaoeDl1M0t4Hm
+-----END PRIVATE KEY-----
+)";
   bssl::UniquePtr<EVP_PKEY> key(KeyFromPEM(kKeyPEM));
   ASSERT_TRUE(key);
-
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(server_ctx);
-  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
-  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx.get()),
                                   cert.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx.get()),
+                                  cert_no_sans.get()));
   SSL_CTX_set_verify(client_ctx.get(),
                      SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                      nullptr);
 
   struct TestCase {
+    X509 *cert;
     std::string hostname;
     unsigned flags;
     bool should_match;
   };
   std::vector<TestCase> kTests = {
       // These two names are present as SANs in the certificate.
-      {"example1.com", 0, true},
-      {"example2.com", 0, true},
+      {cert.get(), "example1.com", 0, true},
+      {cert.get(), "example2.com", 0, true},
       // This is the CN of the certificate, but that shouldn't matter if a SAN
       // extension is present.
-      {"example3.com", 0, false},
-      // a*.example4.com is a SAN, which is invalid because partial wildcards
-      // aren't a thing except for the OpenSSL verifier.
-      {"abc.example4.com", 0, true},
-      // ... but they can be turned off.
-      {"abc.example4.com", X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS, false},
+      {cert.get(), "example3.com", 0, false},
+      // If the SAN is not present, we, for now, look for DNS names in the CN.
+      {cert_no_sans.get(), "example3.com", 0, true},
+      // ... but this can be turned off.
+      {cert_no_sans.get(), "example3.com", X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
+       false},
+      // a*.example4.com is a SAN, but is invalid.
+      {cert.get(), "abc.example4.com", 0, false},
       // *.example5.com is a SAN in the certificate, which is a normal and valid
       // wildcard.
-      {"abc.example5.com", 0, true},
+      {cert.get(), "abc.example5.com", 0, true},
       // This name is not present.
-      {"notexample1.com", 0, false},
+      {cert.get(), "notexample1.com", 0, false},
       // The IPv4 address 1.2.3.4 is a SAN, but that shouldn't match against a
       // hostname that happens to be its textual representation.
-      {"1.2.3.4", 0, false},
+      {cert.get(), "1.2.3.4", 0, false},
   };
 
-  bssl::UniquePtr<SSL> client, server;
-  ClientConfig config;
   for (const TestCase &test : kTests) {
     SCOPED_TRACE(test.hostname);
+
+    bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(server_ctx);
+    ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), test.cert));
+    ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+    ClientConfig config;
+    bssl::UniquePtr<SSL> client, server;
     config.verify_hostname = test.hostname;
     config.hostflags = test.flags;
     EXPECT_EQ(test.should_match,
