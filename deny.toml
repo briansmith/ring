@@ -1,6 +1,8 @@
 [advisories]
-unmaintained = "deny"
-yanked = "deny"
+# cargo-audit handles these. In the case where we have to temporarily allow
+# some unmaintained/yanked crates, we'll do that in .cargo/audit.toml.
+unmaintained = "allow"
+yanked = "allow"
 notice = "deny"
 
 [licenses]
