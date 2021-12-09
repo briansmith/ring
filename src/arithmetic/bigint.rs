@@ -165,7 +165,7 @@ pub unsafe trait SlightlySmallerModulus<L>: SmallerModulus<L> {}
 /// ℤ/sℤ.
 pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
-pub unsafe trait PublicModulus {}
+pub trait PublicModulus {}
 
 /// The x86 implementation of `bn_mul_mont`, at least, requires at least 4
 /// limbs. For a long time we have required 4 limbs for all targets, though
@@ -1386,7 +1386,7 @@ mod tests {
     // Type-level representation of an arbitrary modulus.
     struct M {}
 
-    unsafe impl PublicModulus for M {}
+    impl PublicModulus for M {}
 
     #[test]
     fn test_elem_exp_consttime() {

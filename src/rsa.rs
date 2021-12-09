@@ -58,7 +58,7 @@ fn parse_public_key(
 #[derive(Copy, Clone)]
 enum N {}
 
-unsafe impl bigint::PublicModulus for N {}
+impl bigint::PublicModulus for N {}
 
 mod keypair;
 mod keypair_components;
