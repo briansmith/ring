@@ -33,6 +33,7 @@ const ARM: &str = "arm";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
+    (&[], "crypto/constant_time.c"),
     (&[], "crypto/fipsmodule/aes/aes_nohw.c"),
     (&[], "crypto/fipsmodule/bn/montgomery.c"),
     (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
@@ -904,6 +905,7 @@ fn generate_prefix_symbols_header(
 
 fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     static SYMBOLS_TO_PREFIX: &[&str] = &[
+        "CONSTANT_TIME_value_barrier_w",
         "CRYPTO_poly1305_finish",
         "CRYPTO_poly1305_finish_neon",
         "CRYPTO_poly1305_init",
