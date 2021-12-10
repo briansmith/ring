@@ -116,25 +116,29 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 #endif
 }
 
-void OPENSSL_cpuid_setup(void) {
-  // Determine the vendor and maximum input value.
-  uint32_t eax, ebx, ecx, edx;
-  OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0);
+// Initializes the shared cache of the CPU capabilities for Intel x86/x86-64 CPUs.
+//
+// is_intel: zero if the CPU is a non-Intel (e.g. AMD) CPU, non-zero otherwise.
+//
+// extended_features_in: If the CPU is new enough to report the extended features
+// (leaf 7) then this should be the reported extended features. Otherwise, this
+// should be zeros.
+//
+// eax, ebx, ecx, edx: The CPUID results for leaf 1.
+//
+// xcr0: xgetbv(0) if OSXSAVE is supported by the CPU, otherwise zero.
+//
+// output: The address of `OPENSSL_ia32cap_P`.
+//
+// TODO(low priority): Transliterate this to Rust in src/third_party/boringssl/cpu_intel.rs,
+// (preserving the license).
+static void OPENSSL_ia32cap_init(
+    int is_intel, uint32_t const extended_features_in[2],
+    uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
+    uint64_t xcr0, uint32_t output[4]) {
+  (void)ebx; // Unused
 
-  uint32_t num_ids = eax;
-
-  int is_intel = ebx == 0x756e6547 /* Genu */ &&
-                 edx == 0x49656e69 /* ineI */ &&
-                 ecx == 0x6c65746e /* ntel */;
-
-  uint32_t extended_features[2] = {0};
-  if (num_ids >= 7) {
-    OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 7);
-    extended_features[0] = ebx;
-    extended_features[1] = ecx;
-  }
-
-  OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 1);
+  uint32_t extended_features[2] = { extended_features_in[0], extended_features_in[1] };
 
   // Force the hyper-threading bit so that the more conservative path is always
   // chosen.
@@ -163,11 +167,6 @@ void OPENSSL_cpuid_setup(void) {
   // XOP code paths.
   ecx &= ~(1u << 11);
 
-  uint64_t xcr0 = 0;
-  if (ecx & (1u << 27)) {
-    // XCR0 may only be queried if the OSXSAVE bit is set.
-    xcr0 = OPENSSL_xgetbv(0);
-  }
   // See Intel manual, volume 1, section 14.3.
   if ((xcr0 & 6) != 6) {
     // YMM registers cannot be used.
@@ -194,10 +193,40 @@ void OPENSSL_cpuid_setup(void) {
     extended_features[0] &= ~(1u << 19);
   }
 
-  OPENSSL_ia32cap_P[0] = edx;
-  OPENSSL_ia32cap_P[1] = ecx;
-  OPENSSL_ia32cap_P[2] = extended_features[0];
-  OPENSSL_ia32cap_P[3] = extended_features[1];
+  output[0] = edx;
+  output[1] = ecx;
+  output[2] = extended_features[0];
+  output[3] = extended_features[1];
+}
+
+void OPENSSL_cpuid_setup(void) {
+  uint32_t eax, ebx, ecx, edx;
+
+  // Determine the vendor and maximum input value.
+  OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0);
+
+  uint32_t num_ids = eax;
+
+  int is_intel = ebx == 0x756e6547 /* Genu */ &&
+          edx == 0x49656e69 /* ineI */ &&
+          ecx == 0x6c65746e /* ntel */;
+
+  uint32_t extended_features[2] = {0};
+  if (num_ids >= 7) {
+    OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 7);
+    extended_features[0] = ebx;
+    extended_features[1] = ecx;
+  }
+
+  OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 1);
+
+  uint64_t xcr0 = 0;
+  if (ecx & (1u << 27)) {
+    // XCR0 may only be queried if the OSXSAVE bit is set.
+    xcr0 = OPENSSL_xgetbv(0);
+  }
+
+  OPENSSL_ia32cap_init(is_intel, extended_features, eax, ebx, ecx, edx, xcr0, OPENSSL_ia32cap_P);
 }
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64)

@@ -34,5 +34,9 @@
 // archive, linking on OS X will fail to resolve common symbols. By
 // initialising it to zero, it becomes a "data symbol", which isn't so
 // affected.
+//
+// TODO: Define this in src/cpu/intel.rs and remove this file. This may depend
+// on https://github.com/rust-lang/rust/issues/73958; see the comments on
+// `HIDDEN` above.
 HIDDEN uint32_t OPENSSL_ia32cap_P[4] = {0};
 #endif
