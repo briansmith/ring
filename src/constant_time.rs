@@ -21,20 +21,43 @@ use crate::error;
 /// contents of each, but NOT in constant time with respect to the lengths of
 /// `a` and `b`.
 pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecified> {
-    verify_all_bytes_are_equal(a.iter().copied(), b.iter().copied())
+    verify_equal(a.iter().copied(), b.iter().copied())
 }
+
+/// Types that have a zero value.
+pub(crate) trait Zero {
+    /// The zero value.
+    fn zero() -> Self;
+}
+
+/// All operations in the supertraits are assumed to be constant time.
+pub(crate) trait CryptoValue:
+    Zero + Into<Word> + core::ops::BitXor<Self, Output = Self> + core::ops::BitOr<Self, Output = Self>
+{
+}
+
+impl Zero for u8 {
+    fn zero() -> Self {
+        0
+    }
+}
+
+impl CryptoValue for u8 {}
 
 // TODO: Use this in internal callers, in favor of `verify_slices_are_equal`.
 #[inline]
-pub(crate) fn verify_all_bytes_are_equal(
-    a: impl ExactSizeIterator<Item = u8>,
-    b: impl ExactSizeIterator<Item = u8>,
-) -> Result<(), error::Unspecified> {
+pub(crate) fn verify_equal<T>(
+    a: impl ExactSizeIterator<Item = T>,
+    b: impl ExactSizeIterator<Item = T>,
+) -> Result<(), error::Unspecified>
+where
+    T: CryptoValue,
+{
     if a.len() != b.len() {
         return Err(error::Unspecified);
     }
-    let zero_if_equal = a.zip(b).fold(0, |accum, (a, b)| accum | (a ^ b));
-    let zero_if_equal = unsafe { RING_value_barrier_w(Word::from(zero_if_equal)) };
+    let zero_if_equal = a.zip(b).fold(T::zero(), |accum, (a, b)| accum | (a ^ b));
+    let zero_if_equal = unsafe { RING_value_barrier_w(zero_if_equal.into()) };
     match zero_if_equal {
         0 => Ok(()),
         _ => Err(error::Unspecified),
