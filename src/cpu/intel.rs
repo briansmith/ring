@@ -17,6 +17,8 @@
     allow(dead_code)
 )]
 
+use crate::c;
+
 pub(crate) struct Feature {
     word: usize,
     mask: u32,
@@ -28,9 +30,6 @@ impl Feature {
     pub fn available(&self, _: super::Features) -> bool {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
-            prefixed_extern! {
-                static mut OPENSSL_ia32cap_P: [u32; 4];
-            }
             return self.mask == self.mask & unsafe { OPENSSL_ia32cap_P[self.word] };
         }
 
@@ -78,6 +77,79 @@ pub(crate) const AVX: Feature = Feature {
     word: 1,
     mask: 1 << 28,
 };
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub(super) fn setup() {
+    prefixed_extern! {
+        fn OPENSSL_ia32cap_init(is_intel: c::int, extended_features_in: &[u32; 2],
+                                eax: u32, ebx: u32, ecx: u32, edx: u32, xcr0: u64,
+                                output: *mut [u32; 4]);
+    }
+
+    // See
+    // https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf.
+    // Chapter 3 "Instruction Set Reference," Section "CPUID—CPU Identification".
+
+    #[cfg(target_arch = "x86")]
+    use core::arch::x86 as arch;
+
+    #[cfg(target_arch = "x86_64")]
+    use core::arch::x86_64 as arch;
+
+    let (max_leaf, is_intel) = {
+        const GENU: u32 = u32::from_le_bytes([b'G', b'e', b'n', b'u']);
+        const INEI: u32 = u32::from_le_bytes([b'i', b'n', b'e', b'I']);
+        const NTEL: u32 = u32::from_le_bytes([b'n', b't', b'e', b'l']);
+
+        // Safety: This has undefined behavior on a CPU that doesn't support
+        // CPUID, but all the CPUs we support (32-bit i686 or later, and all
+        // non-SGX x86-64 targets) do support CPUID. All CPUs that support
+        // CPUID support leaf 0.
+        let result = unsafe { arch::__cpuid(0) };
+        let max_leaf = result.eax;
+        let is_intel = if result.ebx == GENU && result.edx == INEI && result.ecx == NTEL {
+            1
+        } else {
+            0
+        };
+        (max_leaf, is_intel)
+    };
+
+    let extended_features = if max_leaf >= 7 {
+        // Safety: We just verified that leaf 7 is supported.
+        let result = unsafe { arch::__cpuid(7) };
+        [result.ebx, result.ecx]
+    } else {
+        [0, 0]
+    };
+
+    // Safety: All CPUs that we support (see above) do support leaf 1.
+    let arch::CpuidResult { eax, ebx, ecx, edx } = unsafe { arch::__cpuid(1) };
+
+    // Safety: `_xgetbv` is supported if `OSXSAVE` (bit 27) is set.
+    let xcr0 = if (ecx & (1 << 27)) != 0 {
+        unsafe { arch::_xgetbv(0) }
+    } else {
+        0
+    };
+
+    unsafe {
+        OPENSSL_ia32cap_init(
+            is_intel,
+            &extended_features,
+            eax,
+            ebx,
+            ecx,
+            edx,
+            xcr0,
+            core::ptr::addr_of_mut!(OPENSSL_ia32cap_P),
+        );
+    }
+}
+
+prefixed_extern! {
+    static mut OPENSSL_ia32cap_P: [u32; 4];
+}
 
 #[cfg(all(target_arch = "x86_64", test))]
 mod x86_64_tests {

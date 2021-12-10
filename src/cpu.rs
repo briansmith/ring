@@ -44,12 +44,7 @@ pub(crate) fn features() -> Features {
         let () = INIT.call_once(|| {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             {
-                prefixed_extern! {
-                    fn OPENSSL_cpuid_setup();
-                }
-                unsafe {
-                    OPENSSL_cpuid_setup();
-                }
+                intel::setup();
             }
 
             #[cfg(all(

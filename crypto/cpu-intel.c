@@ -54,67 +54,9 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <ring-core/cpu.h>
-
-
-#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
-
-#if defined(_MSC_VER) && !defined(__clang__)
-#pragma warning(push, 3)
-#include <immintrin.h>
-#include <intrin.h>
-#pragma warning(pop)
-#endif
-
 #include "internal.h"
 
-
-// OPENSSL_cpuid runs the cpuid instruction. |leaf| is passed in as EAX and ECX
-// is set to zero. It writes EAX, EBX, ECX, and EDX to |*out_eax| through
-// |*out_edx|.
-static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
-                          uint32_t *out_ecx, uint32_t *out_edx, uint32_t leaf) {
-#if defined(_MSC_VER) && !defined(__clang__)
-  int tmp[4];
-  __cpuid(tmp, (int)leaf);
-  *out_eax = (uint32_t)tmp[0];
-  *out_ebx = (uint32_t)tmp[1];
-  *out_ecx = (uint32_t)tmp[2];
-  *out_edx = (uint32_t)tmp[3];
-#elif defined(__pic__) && defined(OPENSSL_32_BIT)
-  // Inline assembly may not clobber the PIC register. For 32-bit, this is EBX.
-  // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47602.
-  __asm__ volatile (
-    "xor %%ecx, %%ecx\n"
-    "mov %%ebx, %%edi\n"
-    "cpuid\n"
-    "xchg %%edi, %%ebx\n"
-    : "=a"(*out_eax), "=D"(*out_ebx), "=c"(*out_ecx), "=d"(*out_edx)
-    : "a"(leaf)
-  );
-#else
-  __asm__ volatile (
-    "xor %%ecx, %%ecx\n"
-    "cpuid\n"
-    : "=a"(*out_eax), "=b"(*out_ebx), "=c"(*out_ecx), "=d"(*out_edx)
-    : "a"(leaf)
-  );
-#endif
-}
-
-// OPENSSL_xgetbv returns the value of an Intel Extended Control Register (XCR).
-// Currently only XCR0 is defined by Intel so |xcr| should always be zero.
-//
-// See https://software.intel.com/en-us/articles/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family
-static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
-#if defined(_MSC_VER) && !defined(__clang__)
-  return (uint64_t)_xgetbv(xcr);
-#else
-  uint32_t eax, edx;
-  __asm__ volatile ("xgetbv" : "=a"(eax), "=d"(edx) : "c"(xcr));
-  return (((uint64_t)edx) << 32) | eax;
-#endif
-}
+#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
 // Initializes the shared cache of the CPU capabilities for Intel x86/x86-64 CPUs.
 //
@@ -132,7 +74,7 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 //
 // TODO(low priority): Transliterate this to Rust in src/third_party/boringssl/cpu_intel.rs,
 // (preserving the license).
-static void OPENSSL_ia32cap_init(
+void OPENSSL_ia32cap_init(
     int is_intel, uint32_t const extended_features_in[2],
     uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
     uint64_t xcr0, uint32_t output[4]) {
@@ -197,36 +139,6 @@ static void OPENSSL_ia32cap_init(
   output[1] = ecx;
   output[2] = extended_features[0];
   output[3] = extended_features[1];
-}
-
-void OPENSSL_cpuid_setup(void) {
-  uint32_t eax, ebx, ecx, edx;
-
-  // Determine the vendor and maximum input value.
-  OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0);
-
-  uint32_t num_ids = eax;
-
-  int is_intel = ebx == 0x756e6547 /* Genu */ &&
-          edx == 0x49656e69 /* ineI */ &&
-          ecx == 0x6c65746e /* ntel */;
-
-  uint32_t extended_features[2] = {0};
-  if (num_ids >= 7) {
-    OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 7);
-    extended_features[0] = ebx;
-    extended_features[1] = ecx;
-  }
-
-  OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 1);
-
-  uint64_t xcr0 = 0;
-  if (ecx & (1u << 27)) {
-    // XCR0 may only be queried if the OSXSAVE bit is set.
-    xcr0 = OPENSSL_xgetbv(0);
-  }
-
-  OPENSSL_ia32cap_init(is_intel, extended_features, eax, ebx, ecx, edx, xcr0, OPENSSL_ia32cap_P);
 }
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64)
