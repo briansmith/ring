@@ -31,8 +31,17 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecif
     }
 }
 
+/// The integer type that's the "natural" unsigned machine word size.
+pub type CryptoWord = CryptoWord_;
+
+// Keep in sync with `crypto_word` in crypto/internal.h.
+#[cfg(target_pointer_width = "32")]
+type CryptoWord_ = u32;
+#[cfg(target_pointer_width = "64")]
+type CryptoWord_ = u64;
+
 prefixed_extern! {
-    fn OPENSSL_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
+    fn OPENSSL_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> CryptoWord;
 }
 
 #[cfg(test)]

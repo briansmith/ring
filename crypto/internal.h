@@ -168,6 +168,8 @@ typedef __uint128_t uint128_t;
 // would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
 // pointers, which means that |size_t| can be 32 bits when |crypto_word| is 64
 // bits.
+//
+// Keep in sync with `CryptoWord` in constant_time.rs.
 #if defined(OPENSSL_64_BIT)
 typedef uint64_t crypto_word;
 #define CRYPTO_WORD_BITS (64u)

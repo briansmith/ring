@@ -57,6 +57,8 @@
 #ifndef OPENSSL_HEADER_MEM_H
 #define OPENSSL_HEADER_MEM_H
 
+#include "../../crypto/internal.h"
+
 #include <ring-core/base.h>
 
 // OPENSSL_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
@@ -64,6 +66,6 @@
 // of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
 // defined order as the return value when a != b is undefined, other than to be
 // non-zero.
-OPENSSL_EXPORT int OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
+OPENSSL_EXPORT crypto_word OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
 
 #endif  // OPENSSL_HEADER_MEM_H
