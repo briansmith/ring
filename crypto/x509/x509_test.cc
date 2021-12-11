@@ -3533,3 +3533,324 @@ TEST(X509Test, BER) {
   // Padding bits in BIT STRINGs must be zero in BER.
   EXPECT_FALSE(CertFromPEM(kNonZeroPadding));
 }
+
+TEST(X509Test, Names) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  struct {
+    std::vector<std::pair<int, std::string>> cert_subject;
+    std::vector<std::string> cert_dns_names;
+    std::vector<std::string> cert_emails;
+    std::vector<std::string> valid_dns_names;
+    std::vector<std::string> invalid_dns_names;
+    std::vector<std::string> valid_emails;
+    std::vector<std::string> invalid_emails;
+    unsigned flags;
+  } kTests[] = {
+      // DNS names only match DNS names and do so case-insensitively.
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{"example.com", "WWW.EXAMPLE.COM"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/
+          {"example.com", "EXAMPLE.COM", "www.example.com", "WWW.EXAMPLE.COM"},
+          /*invalid_dns_names=*/{"test.example.com", "example.org"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{"test@example.com", "example.com"},
+          /*flags=*/0,
+      },
+
+      // DNS wildcards match exactly one component.
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{"*.example.com", "*.EXAMPLE.ORG"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/
+          {"www.example.com", "WWW.EXAMPLE.COM", "www.example.org",
+           "WWW.EXAMPLE.ORG"},
+          /*invalid_dns_names=*/{"example.com", "test.www.example.com"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{"test@example.com", "www.example.com"},
+          /*flags=*/0,
+      },
+
+      // DNS wildcards can be disabled.
+      // TODO(davidben): Can we remove this feature? Does anyone use it?
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{"example.com", "*.example.com"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{"example.com"},
+          /*invalid_dns_names=*/{"www.example.com"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/X509_CHECK_FLAG_NO_WILDCARDS,
+      },
+
+      // Invalid DNS wildcards do not match.
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/
+          {"a.*", "**.b.example", "*c.example", "d*.example", "e*e.example",
+           "*", ".", "..", "*."},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{},
+          /*invalid_dns_names=*/
+          {"a.example", "test.b.example", "cc.example", "dd.example",
+           "eee.example", "f", "g."},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
+
+      // IDNs match like any other DNS labels.
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/
+          {"xn--rger-koa.a.example", "*.xn--rger-koa.b.example",
+           "www.xn--rger-koa.c.example"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/
+          {"xn--rger-koa.a.example", "www.xn--rger-koa.b.example",
+           "www.xn--rger-koa.c.example"},
+          /*invalid_dns_names=*/
+          {"www.xn--rger-koa.a.example", "xn--rger-koa.b.example",
+           "www.xn--rger-koa.d.example"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
+
+      // For now, DNS names are also extracted out of the common name, but only
+      // there is no SAN list.
+      // TODO(https://crbug.com/boringssl/464): Remove this.
+      {
+          /*cert_subject=*/{{NID_commonName, "a.example"},
+                            {NID_commonName, "*.b.example"}},
+          /*cert_dns_names=*/{},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/
+          {"a.example", "A.EXAMPLE", "test.b.example", "TEST.B.EXAMPLE"},
+          /*invalid_dns_names=*/{},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
+      {
+          /*cert_subject=*/{{NID_commonName, "a.example"},
+                            {NID_commonName, "*.b.example"}},
+          /*cert_dns_names=*/{"example.com"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{},
+          /*invalid_dns_names=*/
+          {"a.example", "A.EXAMPLE", "test.b.example", "TEST.B.EXAMPLE"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
+
+      // Other subject RDNs do not provide DNS names.
+      {
+          /*cert_subject=*/{{NID_organizationName, "example.com"}},
+          /*cert_dns_names=*/{},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{},
+          /*invalid_dns_names=*/{"example.com"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
+
+      // Input DNS names cannot have wildcards.
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{"www.example.com"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{},
+          /*invalid_dns_names=*/{"*.example.com"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
+
+      // However, OpenSSL has some non-standard behavior that implements this
+      // with a different syntax.
+      // TODO(https://crbug.com/boringssl/463): Remove this.
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{"www.a.example", "*.b.test"},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{".a.example", ".b.test", ".example", ".test"},
+          /*invalid_dns_names=*/{".www.a.example", ".www.b.test"},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
+
+      // Emails match case-sensitively before the '@' and case-insensitively
+      // after. They do not match DNS names.
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{},
+          /*cert_emails=*/{"test@a.example", "TEST@B.EXAMPLE"},
+          /*valid_dns_names=*/{},
+          /*invalid_dns_names=*/{"a.example", "b.example"},
+          /*valid_emails=*/
+          {"test@a.example", "test@A.EXAMPLE", "TEST@b.example",
+           "TEST@B.EXAMPLE"},
+          /*invalid_emails=*/
+          {"TEST@a.example", "test@B.EXAMPLE", "another-test@a.example",
+           "est@a.example"},
+          /*flags=*/0,
+      },
+
+      // Emails may also be found in the subject.
+      {
+          /*cert_subject=*/{{NID_pkcs9_emailAddress, "test@a.example"},
+                            {NID_pkcs9_emailAddress, "TEST@B.EXAMPLE"}},
+          /*cert_dns_names=*/{},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{},
+          /*invalid_dns_names=*/{"a.example", "b.example"},
+          /*valid_emails=*/
+          {"test@a.example", "test@A.EXAMPLE", "TEST@b.example",
+           "TEST@B.EXAMPLE"},
+          /*invalid_emails=*/
+          {"TEST@a.example", "test@B.EXAMPLE", "another-test@a.example",
+           "est@a.example"},
+          /*flags=*/0,
+      },
+
+      // There are no email wildcard names.
+      {
+          /*cert_subject=*/{},
+          /*cert_dns_names=*/{},
+          /*cert_emails=*/{"test@*.a.example", "@b.example", "*@c.example"},
+          /*valid_dns_names=*/{},
+          /*invalid_dns_names=*/{},
+          /*valid_emails=*/{},
+          /*invalid_emails=*/
+          {"test@test.a.example", "test@b.example", "test@c.example"},
+          /*flags=*/0,
+      },
+
+      // Unrelated RDNs can be skipped when looking in the subject.
+      {
+          /*cert_subject=*/{{NID_organizationName, "Acme Corporation"},
+                            {NID_commonName, "a.example"},
+                            {NID_pkcs9_emailAddress, "test@b.example"},
+                            {NID_countryName, "US"}},
+          /*cert_dns_names=*/{},
+          /*cert_emails=*/{},
+          /*valid_dns_names=*/{"a.example"},
+          /*invalid_dns_names=*/{},
+          /*valid_emails=*/{"test@b.example"},
+          /*invalid_emails=*/{},
+          /*flags=*/0,
+      },
+  };
+
+  size_t i = 0;
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(i++);
+
+    // Issue a test certificate.
+    bssl::UniquePtr<X509> cert =
+        MakeTestCert("Root", "Leaf", key.get(), /*is_ca=*/false);
+    ASSERT_TRUE(cert);
+    if (!t.cert_subject.empty()) {
+      bssl::UniquePtr<X509_NAME> subject(X509_NAME_new());
+      ASSERT_TRUE(subject);
+      for (const auto &entry : t.cert_subject) {
+        ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+            subject.get(), entry.first, MBSTRING_ASC,
+            reinterpret_cast<const unsigned char *>(entry.second.data()),
+            entry.second.size(), /*loc=*/-1, /*set=*/0));
+      }
+      ASSERT_TRUE(X509_set_subject_name(cert.get(), subject.get()));
+    }
+    bssl::UniquePtr<GENERAL_NAMES> sans(sk_GENERAL_NAME_new_null());
+    ASSERT_TRUE(sans);
+    for (const auto &dns : t.cert_dns_names) {
+      bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+      ASSERT_TRUE(name);
+      name->type = GEN_DNS;
+      name->d.dNSName = ASN1_IA5STRING_new();
+      ASSERT_TRUE(name->d.dNSName);
+      ASSERT_TRUE(ASN1_STRING_set(name->d.dNSName, dns.data(), dns.size()));
+      ASSERT_TRUE(bssl::PushToStack(sans.get(), std::move(name)));
+    }
+    for (const auto &email : t.cert_emails) {
+      bssl::UniquePtr<GENERAL_NAME> name(GENERAL_NAME_new());
+      ASSERT_TRUE(name);
+      name->type = GEN_EMAIL;
+      name->d.rfc822Name = ASN1_IA5STRING_new();
+      ASSERT_TRUE(name->d.rfc822Name);
+      ASSERT_TRUE(
+          ASN1_STRING_set(name->d.rfc822Name, email.data(), email.size()));
+      ASSERT_TRUE(bssl::PushToStack(sans.get(), std::move(name)));
+    }
+    if (sk_GENERAL_NAME_num(sans.get()) != 0) {
+      ASSERT_TRUE(X509_add1_ext_i2d(cert.get(), NID_subject_alt_name,
+                                    sans.get(), /*crit=*/0, /*flags=*/0));
+    }
+    ASSERT_TRUE(X509_sign(cert.get(), key.get(), EVP_sha256()));
+
+    for (const auto &dns : t.valid_dns_names) {
+      SCOPED_TRACE(dns);
+      EXPECT_EQ(1, X509_check_host(cert.get(), dns.data(), dns.size(), t.flags,
+                                   /*peername=*/nullptr));
+      EXPECT_EQ(X509_V_OK,
+                Verify(cert.get(), {root.get()}, /*intermediates=*/{},
+                       /*crls=*/{}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                         ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                             param, dns.data(), dns.size()));
+                         X509_VERIFY_PARAM_set_hostflags(param, t.flags);
+                       }));
+    }
+
+    for (const auto &dns : t.invalid_dns_names) {
+      SCOPED_TRACE(dns);
+      EXPECT_EQ(0, X509_check_host(cert.get(), dns.data(), dns.size(), t.flags,
+                                   /*peername=*/nullptr));
+      EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+                Verify(cert.get(), {root.get()}, /*intermediates=*/{},
+                       /*crls=*/{}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                         ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                             param, dns.data(), dns.size()));
+                         X509_VERIFY_PARAM_set_hostflags(param, t.flags);
+                       }));
+    }
+
+    for (const auto &email : t.valid_emails) {
+      SCOPED_TRACE(email);
+      EXPECT_EQ(
+          1, X509_check_email(cert.get(), email.data(), email.size(), t.flags));
+      EXPECT_EQ(X509_V_OK,
+                Verify(cert.get(), {root.get()}, /*intermediates=*/{},
+                       /*crls=*/{}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                         ASSERT_TRUE(X509_VERIFY_PARAM_set1_email(
+                             param, email.data(), email.size()));
+                         X509_VERIFY_PARAM_set_hostflags(param, t.flags);
+                       }));
+    }
+
+    for (const auto &email : t.invalid_emails) {
+      SCOPED_TRACE(email);
+      EXPECT_EQ(
+          0, X509_check_email(cert.get(), email.data(), email.size(), t.flags));
+      EXPECT_EQ(X509_V_ERR_EMAIL_MISMATCH,
+                Verify(cert.get(), {root.get()}, /*intermediates=*/{},
+                       /*crls=*/{}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                         ASSERT_TRUE(X509_VERIFY_PARAM_set1_email(
+                             param, email.data(), email.size()));
+                         X509_VERIFY_PARAM_set_hostflags(param, t.flags);
+                       }));
+    }
+  }
+}
