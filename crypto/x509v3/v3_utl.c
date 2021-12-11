@@ -708,44 +708,11 @@ typedef int (*equal_fn) (const unsigned char *pattern, size_t pattern_len,
                          const unsigned char *subject, size_t subject_len,
                          unsigned int flags);
 
-/* Skip pattern prefix to match "wildcard" subject */
-static void skip_prefix(const unsigned char **p, size_t *plen,
-                        const unsigned char *subject, size_t subject_len,
-                        unsigned int flags)
-{
-    const unsigned char *pattern = *p;
-    size_t pattern_len = *plen;
-
-    /*
-     * If subject starts with a leading '.' followed by more octets, and
-     * pattern is longer, compare just an equal-length suffix with the
-     * full subject (starting at the '.'), provided the prefix contains
-     * no NULs.
-     */
-    if ((flags & _X509_CHECK_FLAG_DOT_SUBDOMAINS) == 0)
-        return;
-
-    while (pattern_len > subject_len && *pattern) {
-        if ((flags & X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS) &&
-            *pattern == '.')
-            break;
-        ++pattern;
-        --pattern_len;
-    }
-
-    /* Skip if entire prefix acceptable */
-    if (pattern_len == subject_len) {
-        *p = pattern;
-        *plen = pattern_len;
-    }
-}
-
 /* Compare while ASCII ignoring case. */
 static int equal_nocase(const unsigned char *pattern, size_t pattern_len,
                         const unsigned char *subject, size_t subject_len,
                         unsigned int flags)
 {
-    skip_prefix(&pattern, &pattern_len, subject, subject_len, flags);
     if (pattern_len != subject_len)
         return 0;
     while (pattern_len) {
@@ -774,7 +741,6 @@ static int equal_case(const unsigned char *pattern, size_t pattern_len,
                       const unsigned char *subject, size_t subject_len,
                       unsigned int flags)
 {
-    skip_prefix(&pattern, &pattern_len, subject, subject_len, flags);
     if (pattern_len != subject_len)
         return 0;
     return !OPENSSL_memcmp(pattern, subject, pattern_len);
@@ -1051,17 +1017,12 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
     int rv = 0;
     equal_fn equal;
 
-    /* See below, this flag is internal-only */
-    flags &= ~_X509_CHECK_FLAG_DOT_SUBDOMAINS;
     if (check_type == GEN_EMAIL) {
         cnid = NID_pkcs9_emailAddress;
         alt_type = V_ASN1_IA5STRING;
         equal = equal_email;
     } else if (check_type == GEN_DNS) {
         cnid = NID_commonName;
-        /* Implicit client-side DNS sub-domain pattern */
-        if (chklen > 1 && chk[0] == '.')
-            flags |= _X509_CHECK_FLAG_DOT_SUBDOMAINS;
         alt_type = V_ASN1_IA5STRING;
         if (flags & X509_CHECK_FLAG_NO_WILDCARDS)
             equal = equal_nocase;

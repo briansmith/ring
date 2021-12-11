@@ -896,15 +896,10 @@ OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
 #define X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS 0
 // Deprecated: this flag does nothing
 #define X509_CHECK_FLAG_MULTI_LABEL_WILDCARDS 0
-// Constraint verifier subdomain patterns to match a single labels.
-#define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0x10
+// Deprecated: this flag does nothing
+#define X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS 0
 // Skip the subject common name fallback if subjectAltNames is missing.
 #define X509_CHECK_FLAG_NEVER_CHECK_SUBJECT 0x20
-//
-// Match reference identifiers starting with "." to any sub-domain.
-// This is a non-public flag, turned on implicitly when the subject
-// reference identity is a DNS name.
-#define _X509_CHECK_FLAG_DOT_SUBDOMAINS 0x8000
 
 OPENSSL_EXPORT int X509_check_host(X509 *x, const char *chk, size_t chklen,
                                    unsigned int flags, char **peername);

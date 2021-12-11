@@ -3678,15 +3678,16 @@ TEST(X509Test, Names) {
           /*flags=*/0,
       },
 
-      // However, OpenSSL has some non-standard behavior that implements this
-      // with a different syntax.
-      // TODO(https://crbug.com/boringssl/463): Remove this.
+      // OpenSSL has some non-standard wildcard syntax for input DNS names. We
+      // do not support this.
       {
           /*cert_subject=*/{},
           /*cert_dns_names=*/{"www.a.example", "*.b.test"},
           /*cert_emails=*/{},
-          /*valid_dns_names=*/{".a.example", ".b.test", ".example", ".test"},
-          /*invalid_dns_names=*/{".www.a.example", ".www.b.test"},
+          /*valid_dns_names=*/{},
+          /*invalid_dns_names=*/
+          {".www.a.example", ".www.b.test", ".a.example", ".b.test", ".example",
+           ".test"},
           /*valid_emails=*/{},
           /*invalid_emails=*/{},
           /*flags=*/0,
