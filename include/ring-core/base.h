@@ -89,6 +89,14 @@
 #elif defined(__MIPSEL__) && defined(__LP64__)
 #define OPENSSL_64_BIT
 #define OPENSSL_MIPS64
+#elif defined(__riscv) && __riscv_xlen == 64
+#define OPENSSL_64_BIT
+#define OPENSSL_RISCV64
+#define OPENSSL_NO_ASM
+#elif defined(__riscv) && __riscv_xlen == 32
+#define OPENSSL_32_BIT
+#define OPENSSL_RISCV32
+#define OPENSSL_NO_ASM
 #elif defined(__wasm__)
 #define OPENSSL_32_BIT
 #else

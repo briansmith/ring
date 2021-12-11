@@ -156,3 +156,211 @@ int bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
   }
   return 1;
 }
+
+# ifdef OPENSSL_NO_ASM
+
+#   include <alloca.h>
+
+#  define BN_BITS4        32
+#  define BN_MASK2        (0xffffffffffffffffL)
+#  define BN_MASK2l       (0xffffffffL)
+#  define BN_MASK2h       (0xffffffff00000000L)
+#  define BN_MASK2h1      (0xffffffff80000000L)
+#  define BN_DEC_CONV     (10000000000000000000UL)
+#  define BN_DEC_NUM      19
+#  define BN_DEC_FMT1     "%lu"
+#  define BN_DEC_FMT2     "%019lu"
+
+BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
+                      size_t n)
+{
+    BN_ULONG t1, t2;
+    BN_ULONG c = 0;
+
+    if (n <= 0)
+        return (BN_ULONG)0;
+
+#ifndef OPENSSL_SMALL_FOOTPRINT
+    while ((int)n & ~3) {
+        t1 = a[0];
+        t2 = b[0];
+        r[0] = (t1 - t2 - c) & BN_MASK2;
+        if (t1 != t2)
+            c = (t1 < t2);
+        t1 = a[1];
+        t2 = b[1];
+        r[1] = (t1 - t2 - c) & BN_MASK2;
+        if (t1 != t2)
+            c = (t1 < t2);
+        t1 = a[2];
+        t2 = b[2];
+        r[2] = (t1 - t2 - c) & BN_MASK2;
+        if (t1 != t2)
+            c = (t1 < t2);
+        t1 = a[3];
+        t2 = b[3];
+        r[3] = (t1 - t2 - c) & BN_MASK2;
+        if (t1 != t2)
+            c = (t1 < t2);
+        a += 4;
+        b += 4;
+        r += 4;
+        n -= 4;
+    }
+#endif
+    while (n) {
+        t1 = a[0];
+        t2 = b[0];
+        r[0] = (t1 - t2 - c) & BN_MASK2;
+        if (t1 != t2)
+            c = (t1 < t2);
+        a++;
+        b++;
+        r++;
+        n--;
+    }
+    return c;
+}
+
+#  define Lw(t)    (((BN_ULONG)(t))&BN_MASK2)
+#  define Hw(t)    (((BN_ULONG)((t)>>BN_BITS2))&BN_MASK2)
+
+#   define BN_UMULT_HIGH(a,b)          (((uint128_t)(a)*(b))>>64)
+#   define BN_UMULT_LOHI(low,high,a,b) ({       \
+        uint128_t ret=(uint128_t)(a)*(b);   \
+        (high)=ret>>64; (low)=ret;      })
+
+#  define mul_add(r,a,w,c) {              \
+        BN_ULONG high,low,ret,tmp=(a);  \
+        ret =  (r);                     \
+        high=  (BN_ULONG)BN_UMULT_HIGH(w,tmp);   \
+        ret += (c);                     \
+        low =  (w) * tmp;               \
+        (c) =  (ret<(c))?1:0;           \
+        (c) += high;                    \
+        ret += low;                     \
+        (c) += (ret<low)?1:0;           \
+        (r) =  ret;                     \
+        }
+
+#  define mul(r,a,w,c)    {               \
+        BN_ULONG high,low,ret,ta=(a);   \
+        low =  (w) * ta;                \
+        high=  (BN_ULONG)BN_UMULT_HIGH(w,ta);    \
+        ret =  low + (c);               \
+        (c) =  high;                    \
+        (c) += (ret<low)?1:0;           \
+        (r) =  ret;                     \
+        }
+
+#  define sqr(r0,r1,a)    {               \
+        BN_ULONG tmp=(a);               \
+        (r0) = tmp * tmp;               \
+        (r1) = BN_UMULT_HIGH(tmp,tmp);  \
+        }
+
+
+#endif
+
+/*
+ * This is essentially reference implementation, which may or may not
+ * result in performance improvement. E.g. on IA-32 this routine was
+ * observed to give 40% faster rsa1024 private key operations and 10%
+ * faster rsa4096 ones, while on AMD64 it improves rsa1024 sign only
+ * by 10% and *worsens* rsa4096 sign by 15%. Once again, it's a
+ * reference implementation, one to be used as starting point for
+ * platform-specific assembler. Mentioned numbers apply to compiler
+ * generated code compiled with and without -DOPENSSL_BN_ASM_MONT and
+ * can vary not only from platform to platform, but even for compiler
+ * versions. Assembler vs. assembler improvement coefficients can
+ * [and are known to] differ and are to be documented elsewhere.
+ */
+void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                const BN_ULONG *np, const BN_ULONG *n0p, size_t num)
+{
+    BN_ULONG c0, c1, ml, *tp, n0;
+#   ifdef mul64
+    BN_ULONG mh;
+#   endif
+    volatile BN_ULONG *vp;
+    size_t i = 0, j;
+
+#   if 0                        /* template for platform-specific
+                                 * implementation */
+    if (ap == bp)
+        return bn_sqr_mont(rp, ap, np, n0p, num);
+#   endif
+    vp = tp = alloca((num + 2) * sizeof(BN_ULONG));
+
+    n0 = *n0p;
+
+    c0 = 0;
+    ml = bp[0];
+#   ifdef mul64
+    mh = HBITS(ml);
+    ml = LBITS(ml);
+    for (j = 0; j < num; ++j)
+        mul(tp[j], ap[j], ml, mh, c0);
+#   else
+    for (j = 0; j < num; ++j)
+        mul(tp[j], ap[j], ml, c0);
+#   endif
+
+    tp[num] = c0;
+    tp[num + 1] = 0;
+    goto enter;
+
+    for (i = 0; i < num; i++) {
+        c0 = 0;
+        ml = bp[i];
+#   ifdef mul64
+        mh = HBITS(ml);
+        ml = LBITS(ml);
+        for (j = 0; j < num; ++j)
+            mul_add(tp[j], ap[j], ml, mh, c0);
+#   else
+        for (j = 0; j < num; ++j)
+            mul_add(tp[j], ap[j], ml, c0);
+#   endif
+        c1 = (tp[num] + c0) & BN_MASK2;
+        tp[num] = c1;
+        tp[num + 1] = (c1 < c0 ? 1 : 0);
+ enter:
+        c1 = tp[0];
+        ml = (c1 * n0) & BN_MASK2;
+        c0 = 0;
+#   ifdef mul64
+        mh = HBITS(ml);
+        ml = LBITS(ml);
+        mul_add(c1, np[0], ml, mh, c0);
+#   else
+        mul_add(c1, ml, np[0], c0);
+#   endif
+        for (j = 1; j < num; j++) {
+            c1 = tp[j];
+#   ifdef mul64
+            mul_add(c1, np[j], ml, mh, c0);
+#   else
+            mul_add(c1, ml, np[j], c0);
+#   endif
+            tp[j - 1] = c1 & BN_MASK2;
+        }
+        c1 = (tp[num] + c0) & BN_MASK2;
+        tp[num - 1] = c1;
+        tp[num] = tp[num + 1] + (c1 < c0 ? 1 : 0);
+    }
+
+    if (tp[num] != 0 || tp[num - 1] >= np[num - 1]) {
+        c0 = bn_sub_words(rp, tp, np, num);
+        if (tp[num] != 0 || c0 == 0) {
+            for (i = 0; i < num + 2; i++)
+                vp[i] = 0;
+            return;
+        }
+    }
+    for (i = 0; i < num; i++)
+        rp[i] = tp[i], vp[i] = 0;
+    vp[num] = 0;
+    vp[num + 1] = 0;
+    return;
+}
