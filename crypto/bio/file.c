@@ -308,4 +308,10 @@ int BIO_rw_filename(BIO *bio, const char *filename) {
                   BIO_CLOSE | BIO_FP_READ | BIO_FP_WRITE, (char *)filename);
 }
 
+long BIO_tell(BIO *bio) { return BIO_ctrl(bio, BIO_C_FILE_TELL, 0, NULL); }
+
+long BIO_seek(BIO *bio, long offset) {
+  return BIO_ctrl(bio, BIO_C_FILE_SEEK, offset, NULL);
+}
+
 #endif  // OPENSSL_TRUSTY

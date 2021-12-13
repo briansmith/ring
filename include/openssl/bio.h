@@ -508,6 +508,25 @@ OPENSSL_EXPORT int BIO_append_filename(BIO *bio, const char *filename);
 // |FILE| will be closed when |bio| is freed.
 OPENSSL_EXPORT int BIO_rw_filename(BIO *bio, const char *filename);
 
+// BIO_tell returns the file offset of |bio|, or a negative number on error or
+// if |bio| does not support the operation.
+//
+// TODO(https://crbug.com/boringssl/465): On platforms where |long| is 32-bit,
+// this function cannot report 64-bit offsets.
+OPENSSL_EXPORT long BIO_tell(BIO *bio);
+
+// BIO_seek sets the file offset of |bio| to |offset|. It returns a non-negative
+// number on success and a negative number on error. If |bio| is a file
+// descriptor |BIO|, it returns the resulting file offset on success. If |bio|
+// is a file |BIO|, it returns zero on success.
+//
+// WARNING: This function's return value conventions differs from most functions
+// in this library.
+//
+// TODO(https://crbug.com/boringssl/465): On platforms where |long| is 32-bit,
+// this function cannot handle 64-bit offsets.
+OPENSSL_EXPORT long BIO_seek(BIO *bio, long offset);
+
 
 // Socket BIOs.
 //
