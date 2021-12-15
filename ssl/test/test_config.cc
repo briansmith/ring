@@ -15,15 +15,22 @@
 #include "test_config.h"
 
 #include <assert.h>
+#include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
+#include <functional>
+#include <limits>
 #include <memory>
+#include <type_traits>
 
 #include <openssl/base64.h>
 #include <openssl/hpke.h>
 #include <openssl/rand.h>
+#include <openssl/span.h>
 #include <openssl/ssl.h>
 
 #include "../../crypto/internal.h"
@@ -34,235 +41,88 @@
 
 namespace {
 
-template <typename T>
 struct Flag {
-  const char *flag;
-  T TestConfig::*member;
+  const char *name;
+  bool has_param;
+  // If |has_param| is false, |param| will be nullptr.
+  std::function<bool(TestConfig *config, const char *param)> set_param;
 };
 
-// FindField looks for the flag in |flags| that matches |flag|. If one is found,
-// it returns a pointer to the corresponding field in |config|. Otherwise, it
-// returns NULL.
-template<typename T, size_t N>
-T *FindField(TestConfig *config, const Flag<T> (&flags)[N], const char *flag) {
-  for (size_t i = 0; i < N; i++) {
-    if (strcmp(flag, flags[i].flag) == 0) {
-      return &(config->*(flags[i].member));
-    }
-  }
-  return NULL;
+Flag BoolFlag(const char *name, bool TestConfig::*field) {
+  return Flag{name, false, [=](TestConfig *config, const char *) -> bool {
+                config->*field = true;
+                return true;
+              }};
 }
 
-const Flag<bool> kBoolFlags[] = {
-    {"-server", &TestConfig::is_server},
-    {"-dtls", &TestConfig::is_dtls},
-    {"-quic", &TestConfig::is_quic},
-    {"-fallback-scsv", &TestConfig::fallback_scsv},
-    {"-enable-ech-grease", &TestConfig::enable_ech_grease},
-    {"-expect-ech-accept", &TestConfig::expect_ech_accept},
-    {"-expect-no-ech-name-override", &TestConfig::expect_no_ech_name_override},
-    {"-expect-no-ech-retry-configs", &TestConfig::expect_no_ech_retry_configs},
-    {"-require-any-client-certificate",
-     &TestConfig::require_any_client_certificate},
-    {"-false-start", &TestConfig::false_start},
-    {"-async", &TestConfig::async},
-    {"-write-different-record-sizes",
-     &TestConfig::write_different_record_sizes},
-    {"-cbc-record-splitting", &TestConfig::cbc_record_splitting},
-    {"-partial-write", &TestConfig::partial_write},
-    {"-no-tls13", &TestConfig::no_tls13},
-    {"-no-tls12", &TestConfig::no_tls12},
-    {"-no-tls11", &TestConfig::no_tls11},
-    {"-no-tls1", &TestConfig::no_tls1},
-    {"-no-ticket", &TestConfig::no_ticket},
-    {"-enable-channel-id", &TestConfig::enable_channel_id},
-    {"-shim-writes-first", &TestConfig::shim_writes_first},
-    {"-expect-session-miss", &TestConfig::expect_session_miss},
-    {"-decline-alpn", &TestConfig::decline_alpn},
-    {"-reject-alpn", &TestConfig::reject_alpn},
-    {"-select-empty-alpn", &TestConfig::select_empty_alpn},
-    {"-defer-alps", &TestConfig::defer_alps},
-    {"-expect-extended-master-secret",
-     &TestConfig::expect_extended_master_secret},
-    {"-enable-ocsp-stapling", &TestConfig::enable_ocsp_stapling},
-    {"-enable-signed-cert-timestamps",
-     &TestConfig::enable_signed_cert_timestamps},
-    {"-implicit-handshake", &TestConfig::implicit_handshake},
-    {"-use-early-callback", &TestConfig::use_early_callback},
-    {"-fail-early-callback", &TestConfig::fail_early_callback},
-    {"-install-ddos-callback", &TestConfig::install_ddos_callback},
-    {"-fail-ddos-callback", &TestConfig::fail_ddos_callback},
-    {"-fail-cert-callback", &TestConfig::fail_cert_callback},
-    {"-handshake-never-done", &TestConfig::handshake_never_done},
-    {"-use-export-context", &TestConfig::use_export_context},
-    {"-tls-unique", &TestConfig::tls_unique},
-    {"-expect-ticket-renewal", &TestConfig::expect_ticket_renewal},
-    {"-expect-no-session", &TestConfig::expect_no_session},
-    {"-expect-ticket-supports-early-data",
-     &TestConfig::expect_ticket_supports_early_data},
-    {"-use-ticket-callback", &TestConfig::use_ticket_callback},
-    {"-renew-ticket", &TestConfig::renew_ticket},
-    {"-enable-early-data", &TestConfig::enable_early_data},
-    {"-check-close-notify", &TestConfig::check_close_notify},
-    {"-shim-shuts-down", &TestConfig::shim_shuts_down},
-    {"-verify-fail", &TestConfig::verify_fail},
-    {"-verify-peer", &TestConfig::verify_peer},
-    {"-verify-peer-if-no-obc", &TestConfig::verify_peer_if_no_obc},
-    {"-expect-verify-result", &TestConfig::expect_verify_result},
-    {"-renegotiate-once", &TestConfig::renegotiate_once},
-    {"-renegotiate-freely", &TestConfig::renegotiate_freely},
-    {"-renegotiate-ignore", &TestConfig::renegotiate_ignore},
-    {"-renegotiate-explicit", &TestConfig::renegotiate_explicit},
-    {"-forbid-renegotiation-after-handshake",
-     &TestConfig::forbid_renegotiation_after_handshake},
-    {"-use-old-client-cert-callback",
-     &TestConfig::use_old_client_cert_callback},
-    {"-send-alert", &TestConfig::send_alert},
-    {"-peek-then-read", &TestConfig::peek_then_read},
-    {"-enable-grease", &TestConfig::enable_grease},
-    {"-permute-extensions", &TestConfig::permute_extensions},
-    {"-use-exporter-between-reads", &TestConfig::use_exporter_between_reads},
-    {"-retain-only-sha256-client-cert",
-     &TestConfig::retain_only_sha256_client_cert},
-    {"-expect-sha256-client-cert", &TestConfig::expect_sha256_client_cert},
-    {"-read-with-unfinished-write", &TestConfig::read_with_unfinished_write},
-    {"-expect-secure-renegotiation", &TestConfig::expect_secure_renegotiation},
-    {"-expect-no-secure-renegotiation",
-     &TestConfig::expect_no_secure_renegotiation},
-    {"-expect-session-id", &TestConfig::expect_session_id},
-    {"-expect-no-session-id", &TestConfig::expect_no_session_id},
-    {"-expect-accept-early-data", &TestConfig::expect_accept_early_data},
-    {"-expect-reject-early-data", &TestConfig::expect_reject_early_data},
-    {"-expect-no-offer-early-data", &TestConfig::expect_no_offer_early_data},
-    {"-no-op-extra-handshake", &TestConfig::no_op_extra_handshake},
-    {"-handshake-twice", &TestConfig::handshake_twice},
-    {"-allow-unknown-alpn-protos", &TestConfig::allow_unknown_alpn_protos},
-    {"-use-custom-verify-callback", &TestConfig::use_custom_verify_callback},
-    {"-allow-false-start-without-alpn",
-     &TestConfig::allow_false_start_without_alpn},
-    {"-handoff", &TestConfig::handoff},
-    {"-handshake-hints", &TestConfig::handshake_hints},
-    {"-allow-hint-mismatch", &TestConfig::allow_hint_mismatch},
-    {"-use-ocsp-callback", &TestConfig::use_ocsp_callback},
-    {"-set-ocsp-in-callback", &TestConfig::set_ocsp_in_callback},
-    {"-decline-ocsp-callback", &TestConfig::decline_ocsp_callback},
-    {"-fail-ocsp-callback", &TestConfig::fail_ocsp_callback},
-    {"-install-cert-compression-algs",
-     &TestConfig::install_cert_compression_algs},
-    {"-is-handshaker-supported", &TestConfig::is_handshaker_supported},
-    {"-handshaker-resume", &TestConfig::handshaker_resume},
-    {"-reverify-on-resume", &TestConfig::reverify_on_resume},
-    {"-enforce-rsa-key-usage", &TestConfig::enforce_rsa_key_usage},
-    {"-jdk11-workaround", &TestConfig::jdk11_workaround},
-    {"-server-preference", &TestConfig::server_preference},
-    {"-export-traffic-secrets", &TestConfig::export_traffic_secrets},
-    {"-key-update", &TestConfig::key_update},
-    {"-expect-delegated-credential-used",
-     &TestConfig::expect_delegated_credential_used},
-    {"-expect-hrr", &TestConfig::expect_hrr},
-    {"-expect-no-hrr", &TestConfig::expect_no_hrr},
-    {"-wait-for-debugger", &TestConfig::wait_for_debugger},
-};
+template <typename T>
+bool StringToInt(T *out, const char *str) {
+  static_assert(std::is_integral<T>::value, "not an integral type");
+  static_assert(sizeof(T) <= sizeof(long long), "type too large for long long");
 
-const Flag<std::string> kStringFlags[] = {
-    {"-write-settings", &TestConfig::write_settings},
-    {"-key-file", &TestConfig::key_file},
-    {"-cert-file", &TestConfig::cert_file},
-    {"-expect-server-name", &TestConfig::expect_server_name},
-    {"-expect-ech-name-override", &TestConfig::expect_ech_name_override},
-    {"-advertise-npn", &TestConfig::advertise_npn},
-    {"-expect-next-proto", &TestConfig::expect_next_proto},
-    {"-select-next-proto", &TestConfig::select_next_proto},
-    {"-send-channel-id", &TestConfig::send_channel_id},
-    {"-host-name", &TestConfig::host_name},
-    {"-advertise-alpn", &TestConfig::advertise_alpn},
-    {"-expect-alpn", &TestConfig::expect_alpn},
-    {"-expect-late-alpn", &TestConfig::expect_late_alpn},
-    {"-expect-advertised-alpn", &TestConfig::expect_advertised_alpn},
-    {"-select-alpn", &TestConfig::select_alpn},
-    {"-psk", &TestConfig::psk},
-    {"-psk-identity", &TestConfig::psk_identity},
-    {"-srtp-profiles", &TestConfig::srtp_profiles},
-    {"-cipher", &TestConfig::cipher},
-    {"-export-label", &TestConfig::export_label},
-    {"-export-context", &TestConfig::export_context},
-    {"-expect-peer-cert-file", &TestConfig::expect_peer_cert_file},
-    {"-use-client-ca-list", &TestConfig::use_client_ca_list},
-    {"-expect-client-ca-list", &TestConfig::expect_client_ca_list},
-    {"-expect-msg-callback", &TestConfig::expect_msg_callback},
-    {"-handshaker-path", &TestConfig::handshaker_path},
-    {"-delegated-credential", &TestConfig::delegated_credential},
-    {"-expect-early-data-reason", &TestConfig::expect_early_data_reason},
-    {"-quic-early-data-context", &TestConfig::quic_early_data_context},
-};
+  // |strtoull| allows leading '-' with wraparound. Additionally, both
+  // functions accept empty strings and leading whitespace.
+  if (!isdigit(static_cast<unsigned char>(*str)) &&
+      (!std::is_signed<T>::value || *str != '-')) {
+    return false;
+  }
+
+  errno = 0;
+  char *end;
+  if (std::is_signed<T>::value) {
+    long long value = strtoll(str, &end, 10);
+    if (value < std::numeric_limits<T>::min() ||
+        value > std::numeric_limits<T>::max()) {
+      return false;
+    }
+    *out = static_cast<T>(value);
+  } else {
+    unsigned long long value = strtoull(str, &end, 10);
+    if (value > std::numeric_limits<T>::max()) {
+      return false;
+    }
+    *out = static_cast<T>(value);
+  }
+
+  // Check for overflow and that the whole input was consumed.
+  return errno != ERANGE && *end == '\0';
+}
+
+template <typename T>
+Flag IntFlag(const char *name, T TestConfig::*field) {
+  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                return StringToInt(&(config->*field), param);
+              }};
+}
+
+template <typename T>
+Flag IntVectorFlag(const char *name, std::vector<T> TestConfig::*field) {
+  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                T value;
+                if (!StringToInt(&value, param)) {
+                  return false;
+                }
+                (config->*field).push_back(value);
+                return true;
+              }};
+}
+
+Flag StringFlag(const char *name, std::string TestConfig::*field) {
+  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                config->*field = param;
+                return true;
+              }};
+}
 
 // TODO(davidben): When we can depend on C++17 or Abseil, switch this to
 // std::optional or absl::optional.
-const Flag<std::unique_ptr<std::string>> kOptionalStringFlags[] = {
-    {"-expect-peer-application-settings",
-     &TestConfig::expect_peer_application_settings},
-};
-
-const Flag<std::string> kBase64Flags[] = {
-    {"-expect-ech-retry-configs", &TestConfig::expect_ech_retry_configs},
-    {"-ech-config-list", &TestConfig::ech_config_list},
-    {"-expect-certificate-types", &TestConfig::expect_certificate_types},
-    {"-expect-channel-id", &TestConfig::expect_channel_id},
-    {"-expect-ocsp-response", &TestConfig::expect_ocsp_response},
-    {"-expect-signed-cert-timestamps",
-     &TestConfig::expect_signed_cert_timestamps},
-    {"-ocsp-response", &TestConfig::ocsp_response},
-    {"-signed-cert-timestamps", &TestConfig::signed_cert_timestamps},
-    {"-ticket-key", &TestConfig::ticket_key},
-    {"-quic-transport-params", &TestConfig::quic_transport_params},
-    {"-expect-quic-transport-params",
-     &TestConfig::expect_quic_transport_params},
-};
-
-const Flag<int> kIntFlags[] = {
-    {"-port", &TestConfig::port},
-    {"-resume-count", &TestConfig::resume_count},
-    {"-min-version", &TestConfig::min_version},
-    {"-max-version", &TestConfig::max_version},
-    {"-expect-version", &TestConfig::expect_version},
-    {"-mtu", &TestConfig::mtu},
-    {"-export-keying-material", &TestConfig::export_keying_material},
-    {"-expect-total-renegotiations", &TestConfig::expect_total_renegotiations},
-    {"-expect-peer-signature-algorithm",
-     &TestConfig::expect_peer_signature_algorithm},
-    {"-expect-curve-id", &TestConfig::expect_curve_id},
-    {"-initial-timeout-duration-ms", &TestConfig::initial_timeout_duration_ms},
-    {"-max-cert-list", &TestConfig::max_cert_list},
-    {"-expect-cipher-aes", &TestConfig::expect_cipher_aes},
-    {"-expect-cipher-no-aes", &TestConfig::expect_cipher_no_aes},
-    {"-expect-cipher", &TestConfig::expect_cipher},
-    {"-resumption-delay", &TestConfig::resumption_delay},
-    {"-max-send-fragment", &TestConfig::max_send_fragment},
-    {"-read-size", &TestConfig::read_size},
-    {"-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew},
-    {"-quic-use-legacy-codepoint", &TestConfig::quic_use_legacy_codepoint},
-    {"-install-one-cert-compression-alg",
-     &TestConfig::install_one_cert_compression_alg},
-    {"-early-write-after-message", &TestConfig::early_write_after_message},
-};
-
-const Flag<std::vector<int>> kIntVectorFlags[] = {
-    {"-signing-prefs", &TestConfig::signing_prefs},
-    {"-verify-prefs", &TestConfig::verify_prefs},
-    {"-expect-peer-verify-pref", &TestConfig::expect_peer_verify_prefs},
-    {"-curves", &TestConfig::curves},
-    {"-ech-is-retry-config", &TestConfig::ech_is_retry_config},
-};
-
-const Flag<std::vector<std::string>> kBase64VectorFlags[] = {
-    {"-ech-server-config", &TestConfig::ech_server_configs},
-    {"-ech-server-key", &TestConfig::ech_server_keys},
-};
-
-const Flag<std::vector<std::pair<std::string, std::string>>>
-    kStringPairVectorFlags[] = {
-        {"-application-settings", &TestConfig::application_settings},
-};
+Flag OptionalStringFlag(const char *name,
+                        std::unique_ptr<std::string> TestConfig::*field) {
+  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                (config->*field).reset(new std::string(param));
+                return true;
+              }};
+}
 
 bool DecodeBase64(std::string *out, const std::string &in) {
   size_t len;
@@ -281,134 +141,268 @@ bool DecodeBase64(std::string *out, const std::string &in) {
   return true;
 }
 
-bool ParseFlag(const char *flag, int argc, char **argv, int *i,
-               bool skip, TestConfig *out_config) {
-  bool *bool_field = FindField(out_config, kBoolFlags, flag);
-  if (bool_field != NULL) {
-    if (!skip) {
-      *bool_field = true;
-    }
-    return true;
+Flag Base64Flag(const char *name, std::string TestConfig::*field) {
+  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                return DecodeBase64(&(config->*field), param);
+              }};
+}
+
+Flag Base64VectorFlag(const char *name,
+                      std::vector<std::string> TestConfig::*field) {
+  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                std::string value;
+                if (!DecodeBase64(&value, param)) {
+                  return false;
+                }
+                (config->*field).push_back(std::move(value));
+                return true;
+              }};
+}
+
+Flag StringPairVectorFlag(
+    const char *name,
+    std::vector<std::pair<std::string, std::string>> TestConfig::*field) {
+  return Flag{name, true, [=](TestConfig *config, const char *param) -> bool {
+                const char *comma = strchr(param, ',');
+                if (!comma) {
+                  return false;
+                }
+                (config->*field)
+                    .push_back(std::make_pair(std::string(param, comma - param),
+                                              std::string(comma + 1)));
+                return true;
+              }};
+}
+
+std::vector<Flag> SortedFlags() {
+  // TODO(davidben): Reorder these to match the struct.
+  std::vector<Flag> flags = {
+      BoolFlag("-server", &TestConfig::is_server),
+      BoolFlag("-dtls", &TestConfig::is_dtls),
+      BoolFlag("-quic", &TestConfig::is_quic),
+      BoolFlag("-fallback-scsv", &TestConfig::fallback_scsv),
+      BoolFlag("-enable-ech-grease", &TestConfig::enable_ech_grease),
+      BoolFlag("-expect-ech-accept", &TestConfig::expect_ech_accept),
+      BoolFlag("-expect-no-ech-name-override",
+               &TestConfig::expect_no_ech_name_override),
+      BoolFlag("-expect-no-ech-retry-configs",
+               &TestConfig::expect_no_ech_retry_configs),
+      BoolFlag("-require-any-client-certificate",
+               &TestConfig::require_any_client_certificate),
+      BoolFlag("-false-start", &TestConfig::false_start),
+      BoolFlag("-async", &TestConfig::async),
+      BoolFlag("-write-different-record-sizes",
+               &TestConfig::write_different_record_sizes),
+      BoolFlag("-cbc-record-splitting", &TestConfig::cbc_record_splitting),
+      BoolFlag("-partial-write", &TestConfig::partial_write),
+      BoolFlag("-no-tls13", &TestConfig::no_tls13),
+      BoolFlag("-no-tls12", &TestConfig::no_tls12),
+      BoolFlag("-no-tls11", &TestConfig::no_tls11),
+      BoolFlag("-no-tls1", &TestConfig::no_tls1),
+      BoolFlag("-no-ticket", &TestConfig::no_ticket),
+      BoolFlag("-enable-channel-id", &TestConfig::enable_channel_id),
+      BoolFlag("-shim-writes-first", &TestConfig::shim_writes_first),
+      BoolFlag("-expect-session-miss", &TestConfig::expect_session_miss),
+      BoolFlag("-decline-alpn", &TestConfig::decline_alpn),
+      BoolFlag("-reject-alpn", &TestConfig::reject_alpn),
+      BoolFlag("-select-empty-alpn", &TestConfig::select_empty_alpn),
+      BoolFlag("-defer-alps", &TestConfig::defer_alps),
+      BoolFlag("-expect-extended-master-secret",
+               &TestConfig::expect_extended_master_secret),
+      BoolFlag("-enable-ocsp-stapling", &TestConfig::enable_ocsp_stapling),
+      BoolFlag("-enable-signed-cert-timestamps",
+               &TestConfig::enable_signed_cert_timestamps),
+      BoolFlag("-implicit-handshake", &TestConfig::implicit_handshake),
+      BoolFlag("-use-early-callback", &TestConfig::use_early_callback),
+      BoolFlag("-fail-early-callback", &TestConfig::fail_early_callback),
+      BoolFlag("-install-ddos-callback", &TestConfig::install_ddos_callback),
+      BoolFlag("-fail-ddos-callback", &TestConfig::fail_ddos_callback),
+      BoolFlag("-fail-cert-callback", &TestConfig::fail_cert_callback),
+      BoolFlag("-handshake-never-done", &TestConfig::handshake_never_done),
+      BoolFlag("-use-export-context", &TestConfig::use_export_context),
+      BoolFlag("-tls-unique", &TestConfig::tls_unique),
+      BoolFlag("-expect-ticket-renewal", &TestConfig::expect_ticket_renewal),
+      BoolFlag("-expect-no-session", &TestConfig::expect_no_session),
+      BoolFlag("-expect-ticket-supports-early-data",
+               &TestConfig::expect_ticket_supports_early_data),
+      BoolFlag("-use-ticket-callback", &TestConfig::use_ticket_callback),
+      BoolFlag("-renew-ticket", &TestConfig::renew_ticket),
+      BoolFlag("-enable-early-data", &TestConfig::enable_early_data),
+      BoolFlag("-check-close-notify", &TestConfig::check_close_notify),
+      BoolFlag("-shim-shuts-down", &TestConfig::shim_shuts_down),
+      BoolFlag("-verify-fail", &TestConfig::verify_fail),
+      BoolFlag("-verify-peer", &TestConfig::verify_peer),
+      BoolFlag("-verify-peer-if-no-obc", &TestConfig::verify_peer_if_no_obc),
+      BoolFlag("-expect-verify-result", &TestConfig::expect_verify_result),
+      BoolFlag("-renegotiate-once", &TestConfig::renegotiate_once),
+      BoolFlag("-renegotiate-freely", &TestConfig::renegotiate_freely),
+      BoolFlag("-renegotiate-ignore", &TestConfig::renegotiate_ignore),
+      BoolFlag("-renegotiate-explicit", &TestConfig::renegotiate_explicit),
+      BoolFlag("-forbid-renegotiation-after-handshake",
+               &TestConfig::forbid_renegotiation_after_handshake),
+      BoolFlag("-use-old-client-cert-callback",
+               &TestConfig::use_old_client_cert_callback),
+      BoolFlag("-send-alert", &TestConfig::send_alert),
+      BoolFlag("-peek-then-read", &TestConfig::peek_then_read),
+      BoolFlag("-enable-grease", &TestConfig::enable_grease),
+      BoolFlag("-permute-extensions", &TestConfig::permute_extensions),
+      BoolFlag("-use-exporter-between-reads",
+               &TestConfig::use_exporter_between_reads),
+      BoolFlag("-retain-only-sha256-client-cert",
+               &TestConfig::retain_only_sha256_client_cert),
+      BoolFlag("-expect-sha256-client-cert",
+               &TestConfig::expect_sha256_client_cert),
+      BoolFlag("-read-with-unfinished-write",
+               &TestConfig::read_with_unfinished_write),
+      BoolFlag("-expect-secure-renegotiation",
+               &TestConfig::expect_secure_renegotiation),
+      BoolFlag("-expect-no-secure-renegotiation",
+               &TestConfig::expect_no_secure_renegotiation),
+      BoolFlag("-expect-session-id", &TestConfig::expect_session_id),
+      BoolFlag("-expect-no-session-id", &TestConfig::expect_no_session_id),
+      BoolFlag("-expect-accept-early-data",
+               &TestConfig::expect_accept_early_data),
+      BoolFlag("-expect-reject-early-data",
+               &TestConfig::expect_reject_early_data),
+      BoolFlag("-expect-no-offer-early-data",
+               &TestConfig::expect_no_offer_early_data),
+      BoolFlag("-no-op-extra-handshake", &TestConfig::no_op_extra_handshake),
+      BoolFlag("-handshake-twice", &TestConfig::handshake_twice),
+      BoolFlag("-allow-unknown-alpn-protos",
+               &TestConfig::allow_unknown_alpn_protos),
+      BoolFlag("-use-custom-verify-callback",
+               &TestConfig::use_custom_verify_callback),
+      BoolFlag("-allow-false-start-without-alpn",
+               &TestConfig::allow_false_start_without_alpn),
+      BoolFlag("-handoff", &TestConfig::handoff),
+      BoolFlag("-handshake-hints", &TestConfig::handshake_hints),
+      BoolFlag("-allow-hint-mismatch", &TestConfig::allow_hint_mismatch),
+      BoolFlag("-use-ocsp-callback", &TestConfig::use_ocsp_callback),
+      BoolFlag("-set-ocsp-in-callback", &TestConfig::set_ocsp_in_callback),
+      BoolFlag("-decline-ocsp-callback", &TestConfig::decline_ocsp_callback),
+      BoolFlag("-fail-ocsp-callback", &TestConfig::fail_ocsp_callback),
+      BoolFlag("-install-cert-compression-algs",
+               &TestConfig::install_cert_compression_algs),
+      BoolFlag("-is-handshaker-supported",
+               &TestConfig::is_handshaker_supported),
+      BoolFlag("-handshaker-resume", &TestConfig::handshaker_resume),
+      BoolFlag("-reverify-on-resume", &TestConfig::reverify_on_resume),
+      BoolFlag("-enforce-rsa-key-usage", &TestConfig::enforce_rsa_key_usage),
+      BoolFlag("-jdk11-workaround", &TestConfig::jdk11_workaround),
+      BoolFlag("-server-preference", &TestConfig::server_preference),
+      BoolFlag("-export-traffic-secrets", &TestConfig::export_traffic_secrets),
+      BoolFlag("-key-update", &TestConfig::key_update),
+      BoolFlag("-expect-delegated-credential-used",
+               &TestConfig::expect_delegated_credential_used),
+      BoolFlag("-expect-hrr", &TestConfig::expect_hrr),
+      BoolFlag("-expect-no-hrr", &TestConfig::expect_no_hrr),
+      BoolFlag("-wait-for-debugger", &TestConfig::wait_for_debugger),
+      StringFlag("-write-settings", &TestConfig::write_settings),
+      StringFlag("-key-file", &TestConfig::key_file),
+      StringFlag("-cert-file", &TestConfig::cert_file),
+      StringFlag("-expect-server-name", &TestConfig::expect_server_name),
+      StringFlag("-expect-ech-name-override",
+                 &TestConfig::expect_ech_name_override),
+      StringFlag("-advertise-npn", &TestConfig::advertise_npn),
+      StringFlag("-expect-next-proto", &TestConfig::expect_next_proto),
+      StringFlag("-select-next-proto", &TestConfig::select_next_proto),
+      StringFlag("-send-channel-id", &TestConfig::send_channel_id),
+      StringFlag("-host-name", &TestConfig::host_name),
+      StringFlag("-advertise-alpn", &TestConfig::advertise_alpn),
+      StringFlag("-expect-alpn", &TestConfig::expect_alpn),
+      StringFlag("-expect-late-alpn", &TestConfig::expect_late_alpn),
+      StringFlag("-expect-advertised-alpn",
+                 &TestConfig::expect_advertised_alpn),
+      StringFlag("-select-alpn", &TestConfig::select_alpn),
+      StringFlag("-psk", &TestConfig::psk),
+      StringFlag("-psk-identity", &TestConfig::psk_identity),
+      StringFlag("-srtp-profiles", &TestConfig::srtp_profiles),
+      StringFlag("-cipher", &TestConfig::cipher),
+      StringFlag("-export-label", &TestConfig::export_label),
+      StringFlag("-export-context", &TestConfig::export_context),
+      StringFlag("-expect-peer-cert-file", &TestConfig::expect_peer_cert_file),
+      StringFlag("-use-client-ca-list", &TestConfig::use_client_ca_list),
+      StringFlag("-expect-client-ca-list", &TestConfig::expect_client_ca_list),
+      StringFlag("-expect-msg-callback", &TestConfig::expect_msg_callback),
+      StringFlag("-handshaker-path", &TestConfig::handshaker_path),
+      StringFlag("-delegated-credential", &TestConfig::delegated_credential),
+      StringFlag("-expect-early-data-reason",
+                 &TestConfig::expect_early_data_reason),
+      StringFlag("-quic-early-data-context",
+                 &TestConfig::quic_early_data_context),
+      OptionalStringFlag("-expect-peer-application-settings",
+                         &TestConfig::expect_peer_application_settings),
+      Base64Flag("-expect-ech-retry-configs",
+                 &TestConfig::expect_ech_retry_configs),
+      Base64Flag("-ech-config-list", &TestConfig::ech_config_list),
+      Base64Flag("-expect-certificate-types",
+                 &TestConfig::expect_certificate_types),
+      Base64Flag("-expect-channel-id", &TestConfig::expect_channel_id),
+      Base64Flag("-expect-ocsp-response", &TestConfig::expect_ocsp_response),
+      Base64Flag("-expect-signed-cert-timestamps",
+                 &TestConfig::expect_signed_cert_timestamps),
+      Base64Flag("-ocsp-response", &TestConfig::ocsp_response),
+      Base64Flag("-signed-cert-timestamps",
+                 &TestConfig::signed_cert_timestamps),
+      Base64Flag("-ticket-key", &TestConfig::ticket_key),
+      Base64Flag("-quic-transport-params", &TestConfig::quic_transport_params),
+      Base64Flag("-expect-quic-transport-params",
+                 &TestConfig::expect_quic_transport_params),
+      IntFlag("-port", &TestConfig::port),
+      IntFlag("-resume-count", &TestConfig::resume_count),
+      IntFlag("-min-version", &TestConfig::min_version),
+      IntFlag("-max-version", &TestConfig::max_version),
+      IntFlag("-expect-version", &TestConfig::expect_version),
+      IntFlag("-mtu", &TestConfig::mtu),
+      IntFlag("-export-keying-material", &TestConfig::export_keying_material),
+      IntFlag("-expect-total-renegotiations",
+              &TestConfig::expect_total_renegotiations),
+      IntFlag("-expect-peer-signature-algorithm",
+              &TestConfig::expect_peer_signature_algorithm),
+      IntFlag("-expect-curve-id", &TestConfig::expect_curve_id),
+      IntFlag("-initial-timeout-duration-ms",
+              &TestConfig::initial_timeout_duration_ms),
+      IntFlag("-max-cert-list", &TestConfig::max_cert_list),
+      IntFlag("-expect-cipher-aes", &TestConfig::expect_cipher_aes),
+      IntFlag("-expect-cipher-no-aes", &TestConfig::expect_cipher_no_aes),
+      IntFlag("-expect-cipher", &TestConfig::expect_cipher),
+      IntFlag("-resumption-delay", &TestConfig::resumption_delay),
+      IntFlag("-max-send-fragment", &TestConfig::max_send_fragment),
+      IntFlag("-read-size", &TestConfig::read_size),
+      IntFlag("-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew),
+      IntFlag("-quic-use-legacy-codepoint",
+              &TestConfig::quic_use_legacy_codepoint),
+      IntFlag("-install-one-cert-compression-alg",
+              &TestConfig::install_one_cert_compression_alg),
+      IntFlag("-early-write-after-message",
+              &TestConfig::early_write_after_message),
+      IntVectorFlag("-signing-prefs", &TestConfig::signing_prefs),
+      IntVectorFlag("-verify-prefs", &TestConfig::verify_prefs),
+      IntVectorFlag("-expect-peer-verify-pref",
+                    &TestConfig::expect_peer_verify_prefs),
+      IntVectorFlag("-curves", &TestConfig::curves),
+      IntVectorFlag("-ech-is-retry-config", &TestConfig::ech_is_retry_config),
+      Base64VectorFlag("-ech-server-config", &TestConfig::ech_server_configs),
+      Base64VectorFlag("-ech-server-key", &TestConfig::ech_server_keys),
+      StringPairVectorFlag("-application-settings",
+                           &TestConfig::application_settings),
+  };
+  std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
+    return strcmp(a.name, b.name) < 0;
+  });
+  return flags;
+}
+
+const Flag *FindFlag(const char *name) {
+  static const std::vector<Flag> kSortedFlags = SortedFlags();
+  auto iter = std::lower_bound(kSortedFlags.begin(), kSortedFlags.end(), name,
+                               [](const Flag &flag, const char *key) {
+                                 return strcmp(flag.name, key) < 0;
+                               });
+  if (iter == kSortedFlags.end() || strcmp(iter->name, name) != 0) {
+    return nullptr;
   }
-
-  std::string *string_field = FindField(out_config, kStringFlags, flag);
-  if (string_field != NULL) {
-    *i = *i + 1;
-    if (*i >= argc) {
-      fprintf(stderr, "Missing parameter.\n");
-      return false;
-    }
-    if (!skip) {
-      string_field->assign(argv[*i]);
-    }
-    return true;
-  }
-
-  std::unique_ptr<std::string> *optional_string_field =
-      FindField(out_config, kOptionalStringFlags, flag);
-  if (optional_string_field != NULL) {
-    *i = *i + 1;
-    if (*i >= argc) {
-      fprintf(stderr, "Missing parameter.\n");
-      return false;
-    }
-    if (!skip) {
-      optional_string_field->reset(new std::string(argv[*i]));
-    }
-    return true;
-  }
-
-  std::string *base64_field = FindField(out_config, kBase64Flags, flag);
-  if (base64_field != NULL) {
-    *i = *i + 1;
-    if (*i >= argc) {
-      fprintf(stderr, "Missing parameter.\n");
-      return false;
-    }
-    std::string value;
-    if (!DecodeBase64(&value, argv[*i])) {
-      return false;
-    }
-    if (!skip) {
-      *base64_field = std::move(value);
-    }
-    return true;
-  }
-
-  int *int_field = FindField(out_config, kIntFlags, flag);
-  if (int_field) {
-    *i = *i + 1;
-    if (*i >= argc) {
-      fprintf(stderr, "Missing parameter.\n");
-      return false;
-    }
-    if (!skip) {
-      *int_field = atoi(argv[*i]);
-    }
-    return true;
-  }
-
-  std::vector<int> *int_vector_field =
-      FindField(out_config, kIntVectorFlags, flag);
-  if (int_vector_field) {
-    *i = *i + 1;
-    if (*i >= argc) {
-      fprintf(stderr, "Missing parameter.\n");
-      return false;
-    }
-
-    // Each instance of the flag adds to the list.
-    if (!skip) {
-      int_vector_field->push_back(atoi(argv[*i]));
-    }
-    return true;
-  }
-
-  std::vector<std::string> *base64_vector_field =
-      FindField(out_config, kBase64VectorFlags, flag);
-  if (base64_vector_field) {
-    *i = *i + 1;
-    if (*i >= argc) {
-      fprintf(stderr, "Missing parameter.\n");
-      return false;
-    }
-    std::string value;
-    if (!DecodeBase64(&value, argv[*i])) {
-      return false;
-    }
-    // Each instance of the flag adds to the list.
-    if (!skip) {
-      base64_vector_field->push_back(std::move(value));
-    }
-    return true;
-  }
-
-  std::vector<std::pair<std::string, std::string>> *string_pair_vector_field =
-      FindField(out_config, kStringPairVectorFlags, flag);
-  if (string_pair_vector_field) {
-    *i = *i + 1;
-    if (*i >= argc) {
-      fprintf(stderr, "Missing parameter.\n");
-      return false;
-    }
-    const char *comma = strchr(argv[*i], ',');
-    if (!comma) {
-      fprintf(
-          stderr,
-          "Parameter should be a comma-separated triple composed of two base64 "
-          "strings followed by \"true\" or \"false\".\n");
-      return false;
-    }
-    // Each instance of the flag adds to the list.
-    if (!skip) {
-      string_pair_vector_field->push_back(std::make_pair(
-          std::string(argv[*i], comma - argv[*i]), std::string(comma + 1)));
-    }
-    return true;
-  }
-
-  fprintf(stderr, "Unknown argument: %s.\n", flag);
-  return false;
+  return &*iter;
 }
 
 // RemovePrefix checks if |*str| begins with |prefix| + "-". If so, it advances
@@ -433,15 +427,15 @@ bool ParseConfig(int argc, char **argv, bool is_shim,
   out_initial->argv = out_resume->argv = out_retry->argv = argv;
   for (int i = 0; i < argc; i++) {
     bool skip = false;
-    const char *flag = argv[i];
+    const char *name = argv[i];
 
     // -on-shim and -on-handshaker prefixes enable flags only on the shim or
     // handshaker.
-    if (RemovePrefix(&flag, "-on-shim")) {
+    if (RemovePrefix(&name, "-on-shim")) {
       if (!is_shim) {
         skip = true;
       }
-    } else if (RemovePrefix(&flag, "-on-handshaker")) {
+    } else if (RemovePrefix(&name, "-on-handshaker")) {
       if (is_shim) {
         skip = true;
       }
@@ -449,26 +443,45 @@ bool ParseConfig(int argc, char **argv, bool is_shim,
 
     // The following prefixes allow different configurations for each of the
     // initial, resumption, and 0-RTT retry handshakes.
-    if (RemovePrefix(&flag, "-on-initial")) {
-      if (!ParseFlag(flag, argc, argv, &i, skip, out_initial)) {
+    TestConfig *out = nullptr;
+    if (RemovePrefix(&name, "-on-initial")) {
+      out = out_initial;
+    } else if (RemovePrefix(&name, "-on-resume")) {
+      out = out_resume;
+    } else if (RemovePrefix(&name, "-on-retry")) {
+      out = out_retry;
+    }
+
+    const Flag *flag = FindFlag(name);
+    if (flag == nullptr) {
+      fprintf(stderr, "Unrecognized flag: %s\n", name);
+      return false;
+    }
+
+    const char *param = nullptr;
+    if (flag->has_param) {
+      if (i >= argc) {
+        fprintf(stderr, "Missing parameter for %s\n", name);
         return false;
       }
-    } else if (RemovePrefix(&flag, "-on-resume")) {
-      if (!ParseFlag(flag, argc, argv, &i, skip, out_resume)) {
-        return false;
-      }
-    } else if (RemovePrefix(&flag, "-on-retry")) {
-      if (!ParseFlag(flag, argc, argv, &i, skip, out_retry)) {
-        return false;
-      }
-    } else {
-      // Unprefixed flags apply to all three.
-      int i_init = i;
-      int i_resume = i;
-      if (!ParseFlag(flag, argc, argv, &i_init, skip, out_initial) ||
-          !ParseFlag(flag, argc, argv, &i_resume, skip, out_resume) ||
-          !ParseFlag(flag, argc, argv, &i, skip, out_retry)) {
-        return false;
+      i++;
+      param = argv[i];
+    }
+
+    if (!skip) {
+      if (out != nullptr) {
+        if (!flag->set_param(out, param)) {
+          fprintf(stderr, "Invalid parameter for %s: %s\n", name, param);
+          return false;
+        }
+      } else {
+        // Unprefixed flags apply to all three.
+        if (!flag->set_param(out_initial, param) ||
+            !flag->set_param(out_resume, param) ||
+            !flag->set_param(out_retry, param)) {
+          fprintf(stderr, "Invalid parameter for %s: %s\n", name, param);
+          return false;
+        }
       }
     }
   }
