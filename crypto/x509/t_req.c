@@ -103,8 +103,12 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
     }
   }
   if (!(cflag & X509_FLAG_NO_VERSION)) {
+    /* TODO(https://crbug.com/boringssl/467): This loses information on some
+     * invalid versions, but we should fix this by making invalid versions
+     * impossible. */
     l = X509_REQ_get_version(x);
-    if (BIO_printf(bio, "%8sVersion: %ld (0x%lx)\n", "", l + 1, l) <= 0) {
+    if (BIO_printf(bio, "%8sVersion: %ld (0x%lx)\n", "", l + 1,
+                   (unsigned long)l) <= 0) {
       goto err;
     }
   }

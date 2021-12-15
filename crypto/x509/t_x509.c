@@ -119,9 +119,14 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
             goto err;
     }
     if (!(cflag & X509_FLAG_NO_VERSION)) {
+        /* TODO(https://crbug.com/boringssl/467): This loses information on some
+         * invalid versions, but we should fix this by making invalid versions
+         * impossible. */
         l = X509_get_version(x);
-        if (BIO_printf(bp, "%8sVersion: %lu (0x%lx)\n", "", l + 1, l) <= 0)
+        if (BIO_printf(bp, "%8sVersion: %ld (0x%lx)\n", "", l + 1,
+                       (unsigned long)l) <= 0) {
             goto err;
+        }
     }
     if (!(cflag & X509_FLAG_NO_SERIAL)) {
         if (BIO_write(bp, "        Serial Number:", 22) <= 0) {

@@ -82,6 +82,9 @@ static int rinf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
         if (!rinf->attributes)
             return 0;
     }
+
+    /* TODO(https://crbug.com/boringssl/467): Add an |ASN1_OP_D2I_POST| callback
+     * and check the version. */
     return 1;
 }
 

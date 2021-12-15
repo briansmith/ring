@@ -64,6 +64,8 @@
 
 int X509_REQ_set_version(X509_REQ *x, long version)
 {
+    /* TODO(https://crbug.com/boringssl/467): Reject invalid version
+     * numbers. */
     if (x == NULL)
         return (0);
     return (ASN1_INTEGER_set(x->req_info->version, version));

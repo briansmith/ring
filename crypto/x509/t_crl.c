@@ -83,7 +83,10 @@ int X509_CRL_print(BIO *out, X509_CRL *x)
 
     BIO_printf(out, "Certificate Revocation List (CRL):\n");
     l = X509_CRL_get_version(x);
-    BIO_printf(out, "%8sVersion %lu (0x%lx)\n", "", l + 1, l);
+    // TODO(https://crbug.com/boringssl/467): This loses information on some
+    // invalid versions, but we should fix this by making invalid versions
+    // impossible.
+    BIO_printf(out, "%8sVersion %ld (0x%lx)\n", "", l + 1, (unsigned long)l);
     const X509_ALGOR *sig_alg;
     const ASN1_BIT_STRING *signature;
     X509_CRL_get0_signature(x, &signature, &sig_alg);

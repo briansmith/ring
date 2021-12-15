@@ -74,7 +74,7 @@ long X509_get_version(const X509 *x509)
 
 int X509_set_version(X509 *x, long version)
 {
-    // TODO(davidben): Reject invalid version numbers.
+    // TODO(https://crbug.com/boringssl/467): Reject invalid version numbers.
     if (x == NULL)
         return (0);
     if (version == 0) {

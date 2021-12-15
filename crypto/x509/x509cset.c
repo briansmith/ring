@@ -64,6 +64,9 @@
 
 int X509_CRL_set_version(X509_CRL *x, long version)
 {
+    /* TODO(https://crbug.com/boringssl/467): Reject invalid version
+     * numbers. Also correctly handle |X509_CRL_VERSION_1|, which should omit
+     * the encoding. */
     if (x == NULL)
         return (0);
     if (x->crl->version == NULL) {
