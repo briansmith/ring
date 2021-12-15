@@ -594,7 +594,8 @@ static void MessageCallback(int is_write, int version, int content_type,
   switch (content_type) {
     case 0:
       if (version != SSL2_VERSION) {
-        fprintf(stderr, "Incorrect version for V2ClientHello: %x.\n", version);
+        fprintf(stderr, "Incorrect version for V2ClientHello: %x.\n",
+                static_cast<unsigned>(version));
         state->msg_callback_ok = false;
         return;
       }
@@ -885,9 +886,8 @@ static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
   const TestConfig *config = GetTestConfig(ssl);
 
   if (!config->signing_prefs.empty()) {
-    std::vector<uint16_t> u16s(config->signing_prefs.begin(),
-                               config->signing_prefs.end());
-    if (!SSL_set_signing_algorithm_prefs(ssl, u16s.data(), u16s.size())) {
+    if (!SSL_set_signing_algorithm_prefs(ssl, config->signing_prefs.data(),
+                                         config->signing_prefs.size())) {
       return false;
     }
   }
@@ -1018,8 +1018,7 @@ static bool CheckPeerVerifyPrefs(SSL *ssl) {
       return false;
     }
     for (size_t i = 0; i < num_peer_sigalgs; i++) {
-      if (static_cast<int>(peer_sigalgs[i]) !=
-          config->expect_peer_verify_prefs[i]) {
+      if (peer_sigalgs[i] != config->expect_peer_verify_prefs[i]) {
         fprintf(stderr,
                 "peer verify preference %zu mismatch (got %04x, wanted %04x\n",
                 i, peer_sigalgs[i], config->expect_peer_verify_prefs[i]);
@@ -1475,9 +1474,8 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   }
 
   if (!verify_prefs.empty()) {
-    std::vector<uint16_t> u16s(verify_prefs.begin(), verify_prefs.end());
-    if (!SSL_CTX_set_verify_algorithm_prefs(ssl_ctx.get(), u16s.data(),
-                                            u16s.size())) {
+    if (!SSL_CTX_set_verify_algorithm_prefs(ssl_ctx.get(), verify_prefs.data(),
+                                            verify_prefs.size())) {
       return nullptr;
     }
   }
@@ -1841,11 +1839,11 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     SSL_enable_signed_cert_timestamps(ssl.get());
   }
   if (min_version != 0 &&
-      !SSL_set_min_proto_version(ssl.get(), (uint16_t)min_version)) {
+      !SSL_set_min_proto_version(ssl.get(), min_version)) {
     return nullptr;
   }
   if (max_version != 0 &&
-      !SSL_set_max_proto_version(ssl.get(), (uint16_t)max_version)) {
+      !SSL_set_max_proto_version(ssl.get(), max_version)) {
     return nullptr;
   }
   if (mtu != 0) {
