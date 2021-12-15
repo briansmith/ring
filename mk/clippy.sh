@@ -36,4 +36,11 @@ cargo clippy \
   --allow clippy::type_complexity \
   --allow clippy::unreadable_literal \
   --allow clippy::upper_case_acronyms \
+  --allow clippy::from_over_into \
+  --allow clippy::len_zero \
+  --allow clippy::missing_safety_doc \
+  --allow clippy::needless_borrow \
+  --allow clippy::needless-range-loop \
+  --allow clippy::vec_init_then_push \
+  --allow clippy::wrong_self_convention \
   $NULL
