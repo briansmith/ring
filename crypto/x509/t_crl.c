@@ -75,59 +75,74 @@ int X509_CRL_print_fp(FILE *fp, X509_CRL *x)
 
 int X509_CRL_print(BIO *out, X509_CRL *x)
 {
-    STACK_OF(X509_REVOKED) *rev;
-    X509_REVOKED *r;
-    long l;
-    size_t i;
-    char *p;
-
-    BIO_printf(out, "Certificate Revocation List (CRL):\n");
-    l = X509_CRL_get_version(x);
-    // TODO(https://crbug.com/boringssl/467): This loses information on some
-    // invalid versions, but we should fix this by making invalid versions
-    // impossible.
-    BIO_printf(out, "%8sVersion %ld (0x%lx)\n", "", l + 1, (unsigned long)l);
+    long version = X509_CRL_get_version(x);
     const X509_ALGOR *sig_alg;
     const ASN1_BIT_STRING *signature;
     X509_CRL_get0_signature(x, &signature, &sig_alg);
-    // Note this and the other |X509_signature_print| call print the outer
-    // signature algorithm twice, rather than both the inner and outer ones.
-    // This matches OpenSSL, though it was probably a bug.
-    X509_signature_print(out, sig_alg, NULL);
-    p = X509_NAME_oneline(X509_CRL_get_issuer(x), NULL, 0);
-    BIO_printf(out, "%8sIssuer: %s\n", "", p);
-    OPENSSL_free(p);
-    BIO_printf(out, "%8sLast Update: ", "");
-    ASN1_TIME_print(out, X509_CRL_get0_lastUpdate(x));
-    BIO_printf(out, "\n%8sNext Update: ", "");
-    if (X509_CRL_get0_nextUpdate(x))
-        ASN1_TIME_print(out, X509_CRL_get0_nextUpdate(x));
-    else
-        BIO_printf(out, "NONE");
-    BIO_printf(out, "\n");
-
-    X509V3_extensions_print(out, "CRL extensions", X509_CRL_get0_extensions(x),
-                            0, 8);
-
-    rev = X509_CRL_get_REVOKED(x);
-
-    if (sk_X509_REVOKED_num(rev) > 0)
-        BIO_printf(out, "Revoked Certificates:\n");
-    else
-        BIO_printf(out, "No Revoked Certificates.\n");
-
-    for (i = 0; i < sk_X509_REVOKED_num(rev); i++) {
-        r = sk_X509_REVOKED_value(rev, i);
-        BIO_printf(out, "    Serial Number: ");
-        i2a_ASN1_INTEGER(out, X509_REVOKED_get0_serialNumber(r));
-        BIO_printf(out, "\n        Revocation Date: ");
-        ASN1_TIME_print(out, X509_REVOKED_get0_revocationDate(r));
-        BIO_printf(out, "\n");
-        X509V3_extensions_print(out, "CRL entry extensions",
-                                X509_REVOKED_get0_extensions(r), 0, 8);
+    if (BIO_printf(out, "Certificate Revocation List (CRL):\n") <= 0 ||
+        // TODO(https://crbug.com/boringssl/467): This loses information on some
+        // invalid versions, but we should fix this by making invalid versions
+        // impossible.
+        BIO_printf(out, "%8sVersion %ld (0x%lx)\n", "", version + 1,
+                   (unsigned long)version) <= 0 ||
+        // Note this and the other |X509_signature_print| call both print the
+        // outer signature algorithm, rather than printing the inner and outer
+        // ones separately. This matches OpenSSL, though it was probably a bug.
+        !X509_signature_print(out, sig_alg, NULL)) {
+        return 0;
     }
-    X509_signature_print(out, sig_alg, signature);
 
-    return 1;
+    char *issuer = X509_NAME_oneline(X509_CRL_get_issuer(x), NULL, 0);
+    int ok = issuer != NULL &&
+             BIO_printf(out, "%8sIssuer: %s\n", "", issuer) > 0;
+    OPENSSL_free(issuer);
+    if (!ok) {
+        return 0;
+    }
 
+    if (BIO_printf(out, "%8sLast Update: ", "") <= 0 ||
+        !ASN1_TIME_print(out, X509_CRL_get0_lastUpdate(x)) ||
+        BIO_printf(out, "\n%8sNext Update: ", "") <= 0) {
+        return 0;
+    }
+    if (X509_CRL_get0_nextUpdate(x)) {
+        if (!ASN1_TIME_print(out, X509_CRL_get0_nextUpdate(x))) {
+            return 0;
+        }
+    } else {
+        if (BIO_printf(out, "NONE") <= 0) {
+            return 0;
+        }
+    }
+
+    if (BIO_printf(out, "\n") <= 0 ||
+        !X509V3_extensions_print(out, "CRL extensions",
+                                 X509_CRL_get0_extensions(x), 0, 8)) {
+        return 0;
+    }
+
+    const STACK_OF(X509_REVOKED) *rev = X509_CRL_get_REVOKED(x);
+    if (sk_X509_REVOKED_num(rev) > 0) {
+        if (BIO_printf(out, "Revoked Certificates:\n") <= 0) {
+            return 0;
+        }
+    } else {
+        if (BIO_printf(out, "No Revoked Certificates.\n") <= 0) {
+            return 0;
+        }
+    }
+
+    for (size_t i = 0; i < sk_X509_REVOKED_num(rev); i++) {
+        const X509_REVOKED *r = sk_X509_REVOKED_value(rev, i);
+        if (BIO_printf(out, "    Serial Number: ") <= 0 ||
+            i2a_ASN1_INTEGER(out, X509_REVOKED_get0_serialNumber(r)) <= 0 ||
+            BIO_printf(out, "\n        Revocation Date: ") <= 0 ||
+            !ASN1_TIME_print(out, X509_REVOKED_get0_revocationDate(r)) ||
+            BIO_printf(out, "\n") <= 0 ||
+            !X509V3_extensions_print(out, "CRL entry extensions",
+                                     X509_REVOKED_get0_extensions(r), 0, 8)) {
+        }
+    }
+
+    return X509_signature_print(out, sig_alg, signature);
 }
