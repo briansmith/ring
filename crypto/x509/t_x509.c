@@ -54,6 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <assert.h>
+
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/digest.h>
@@ -98,7 +100,6 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
     char *m = NULL, mlch = ' ';
     int nmindent = 0;
     X509_CINF *ci;
-    ASN1_INTEGER *bs;
     EVP_PKEY *pkey = NULL;
     const char *neg;
 
@@ -123,33 +124,32 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
             goto err;
     }
     if (!(cflag & X509_FLAG_NO_SERIAL)) {
-
-        if (BIO_write(bp, "        Serial Number:", 22) <= 0)
+        if (BIO_write(bp, "        Serial Number:", 22) <= 0) {
             goto err;
-
-        bs = X509_get_serialNumber(x);
-        if (bs->length < (int)sizeof(long)
-            || (bs->length == sizeof(long) && (bs->data[0] & 0x80) == 0)) {
-            l = ASN1_INTEGER_get(bs);
-            if (bs->type == V_ASN1_NEG_INTEGER) {
-                l = -l;
-                neg = "-";
-            } else
-                neg = "";
-            if (BIO_printf(bp, " %s%lu (%s0x%lx)\n", neg, l, neg, l) <= 0)
-                goto err;
-        } else {
-            neg = (bs->type == V_ASN1_NEG_INTEGER) ? " (Negative)" : "";
-            if (BIO_printf(bp, "\n%12s%s", "", neg) <= 0)
-                goto err;
-
-            for (i = 0; i < bs->length; i++) {
-                if (BIO_printf(bp, "%02x%c", bs->data[i],
-                               ((i + 1 == bs->length) ? '\n' : ':')) <= 0)
-                    goto err;
-            }
         }
 
+        const ASN1_INTEGER *serial = X509_get0_serialNumber(x);
+        /* |ASN1_INTEGER_get| returns -1 on overflow, so this check skips
+         * negative and large serial numbers. */
+        l = ASN1_INTEGER_get(serial);
+        if (l >= 0) {
+            assert(serial->type != V_ASN1_NEG_INTEGER);
+            if (BIO_printf(bp, " %ld (0x%lx)\n", l, (unsigned long)l) <= 0) {
+                goto err;
+            }
+        } else {
+            neg = (serial->type == V_ASN1_NEG_INTEGER) ? " (Negative)" : "";
+            if (BIO_printf(bp, "\n%12s%s", "", neg) <= 0) {
+                goto err;
+            }
+
+            for (i = 0; i < serial->length; i++) {
+                if (BIO_printf(bp, "%02x%c", serial->data[i],
+                               ((i + 1 == serial->length) ? '\n' : ':')) <= 0) {
+                    goto err;
+                }
+            }
+        }
     }
 
     if (!(cflag & X509_FLAG_NO_SIGNAME)) {
