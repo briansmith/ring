@@ -663,7 +663,7 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
 
   // Note that the loop runs to len+1, i.e. it'll process the terminating NUL.
   for (size_t offset = 0; offset < len+1; offset++) {
-    const char c = str[offset];
+    const unsigned char c = str[offset];
 
     switch (c) {
       case '+':

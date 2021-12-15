@@ -243,7 +243,7 @@ static int TestGenerate(FILE *out) {
     fprintf(out, "%02X%02X%02X%02X ", seed[i], seed[i + 1], seed[i + 2],
             seed[i + 3]);
   }
-  fprintf(out, "\ncounter=%d h=%ld\n", counter, h);
+  fprintf(out, "\ncounter=%d h=%lu\n", counter, h);
 
   if (counter != 105) {
     fprintf(stderr, "counter should be 105\n");

@@ -91,7 +91,7 @@ struct Event {
 
     switch (type) {
       case Syscall::kGetRandom:
-        snprintf(buf, sizeof(buf), "getrandom(_, %zu, %d)", length, flags);
+        snprintf(buf, sizeof(buf), "getrandom(_, %zu, %u)", length, flags);
         break;
 
       case Syscall::kOpen:

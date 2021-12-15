@@ -4694,7 +4694,7 @@ std::string TicketAEADMethodParamToString(
     }
   }
   char retry_count[256];
-  snprintf(retry_count, sizeof(retry_count), "%d", std::get<1>(params.param));
+  snprintf(retry_count, sizeof(retry_count), "%u", std::get<1>(params.param));
   ret += "_";
   ret += retry_count;
   ret += "Retries_";

@@ -253,7 +253,7 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
 
   if (priv_key) {
     if (!BIO_indent(bp, off, 128) ||
-        BIO_printf(bp, "%s: (%d bit)\n", ktype, BN_num_bits(x->p)) <= 0) {
+        BIO_printf(bp, "%s: (%u bit)\n", ktype, BN_num_bits(x->p)) <= 0) {
       goto err;
     }
   }
@@ -368,7 +368,7 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
   }
   order = BN_new();
   if (order == NULL || !EC_GROUP_get_order(group, order, NULL) ||
-      BIO_printf(bp, "%s: (%d bit)\n", ecstr, BN_num_bits(order)) <= 0) {
+      BIO_printf(bp, "%s: (%u bit)\n", ecstr, BN_num_bits(order)) <= 0) {
     goto err;
   }
 

@@ -1047,17 +1047,16 @@ static bool CheckCertificateRequest(SSL *ssl) {
     const size_t num_received = sk_X509_NAME_num(received);
 
     if (num_received != num_expected) {
-      fprintf(stderr, "expected %u names in CertificateRequest but got %u.\n",
-              static_cast<unsigned>(num_expected),
-              static_cast<unsigned>(num_received));
+      fprintf(stderr, "expected %zu names in CertificateRequest but got %zu.\n",
+              num_expected, num_received);
       return false;
     }
 
     for (size_t i = 0; i < num_received; i++) {
       if (X509_NAME_cmp(sk_X509_NAME_value(received, i),
                         sk_X509_NAME_value(expected.get(), i)) != 0) {
-        fprintf(stderr, "names in CertificateRequest differ at index #%d.\n",
-                static_cast<unsigned>(i));
+        fprintf(stderr, "names in CertificateRequest differ at index #%zu.\n",
+                i);
         return false;
       }
     }

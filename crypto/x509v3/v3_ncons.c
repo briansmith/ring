@@ -203,7 +203,8 @@ static int print_nc_ipadd(BIO *bp, ASN1_OCTET_STRING *ip)
                    p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
     } else if (len == 32) {
         for (i = 0; i < 16; i++) {
-            BIO_printf(bp, "%X", p[0] << 8 | p[1]);
+            uint16_t v = ((uint16_t)p[0] << 8) | p[1];
+            BIO_printf(bp, "%X", v);
             p += 2;
             if (i == 7)
                 BIO_puts(bp, "/");

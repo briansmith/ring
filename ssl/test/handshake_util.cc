@@ -255,7 +255,7 @@ static bool Proxy(BIO *socket, bool async, int control, int rfd, int wfd) {
           return false;
         }
         if (bytes_written != bytes_read) {
-          fprintf(stderr, "short write (%zu of %d bytes)\n", bytes_written,
+          fprintf(stderr, "short write (%zd of %d bytes)\n", bytes_written,
                   bytes_read);
           return false;
         }
