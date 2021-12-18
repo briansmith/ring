@@ -67,6 +67,31 @@ fn test_system_random_lengths() {
 }
 
 #[test]
+fn test_randomly_constructable() {
+    // Picked arbitrarily
+    const BY: u8 = 0x5A;
+
+    let rng = test::rand::FixedByteRandom {
+        byte: BY
+    };
+
+    assert!(rand::generate::<[u8; 0]>(&rng).is_ok());
+    assert!(rand::generate::<[u64; 0]>(&rng).is_ok());
+    assert!(rand::generate::<[usize; 0]>(&rng).is_ok());
+
+    let arr: [u8; 256] = rand::generate(&rng)
+        .unwrap()
+        .expose();
+    assert!(arr.iter().all(|&x| x == BY));
+
+    let arr: [u32; 256] = rand::generate(&rng)
+        .unwrap()
+        .expose();
+    // Endianness doesn't matter since all the bytes are the same
+    assert!(arr.iter().all(|&x| x.to_le_bytes() == [BY; 4]));
+}
+
+#[test]
 fn test_system_random_traits() {
     test::compile_time_assert_clone::<rand::SystemRandom>();
     test::compile_time_assert_send::<rand::SystemRandom>();
