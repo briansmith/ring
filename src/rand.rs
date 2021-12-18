@@ -90,16 +90,17 @@ pub(crate) mod sealed {
     // - The type must have no padding
     // - Any fields within the type must also be Pod
     pub unsafe trait Pod: Sized {
-        fn zero() -> Self;
+        #[inline]
+        fn zero() -> Self {
+            // Safe by the safety guarantees on the trait, notably that all bit patterns are valid
+            unsafe { mem::zeroed() }
+        }
     }
 
     macro_rules! impl_pod {
         ($($type:ty),*) => {
             $(
-                unsafe impl Pod for $type {
-                    #[inline]
-                    fn zero() -> Self { 0 }
-                }
+                unsafe impl Pod for $type {}
             )*
         };
     }
@@ -116,13 +117,6 @@ pub(crate) mod sealed {
 
         #[inline]
         fn as_mut_bytes(&mut self) -> &mut [u8] {
-            // Since all values in this expression are constant, the compiler should optimize this
-            // assertion out.
-            assert!(
-                N == 0 || (isize::MAX as usize) / N >= mem::size_of::<T>(),
-                "Array too large to be converted to slice of u8"
-            );
-
             let data = self.as_mut_ptr();
             let len = N * mem::size_of::<T>();
 
@@ -136,7 +130,7 @@ pub(crate) mod sealed {
             // - Because T is POD, and because `len` is calculated based on the size of T,
             //   `data` points to `len` initialized u8s
             // - We co-opt the lifetime of `self`, so no borrow checker rules are broken
-            // - `len` is less than `isize::MAX` by the assertion at the beginning of this function
+            // - `len` is less than `isize::MAX` since it was derived from the size of `self`
             unsafe {
                 slice::from_raw_parts_mut(data as *mut u8, len)
             }
