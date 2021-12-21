@@ -63,6 +63,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/crypto.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -124,16 +126,6 @@ int CRYPTO_is_ARMv8_AES_capable_at_runtime(void);
 // CRYPTO_is_ARMv8_PMULL_capable_at_runtime returns true if the current CPU
 // supports the ARMv8 PMULL instruction.
 int CRYPTO_is_ARMv8_PMULL_capable_at_runtime(void);
-
-#if defined(OPENSSL_ARM)
-// CRYPTO_has_broken_NEON returns one if the current CPU is known to have a
-// broken NEON unit. See https://crbug.com/341598.
-OPENSSL_EXPORT int CRYPTO_has_broken_NEON(void);
-
-// CRYPTO_needs_hwcap2_workaround returns one if the ARMv8 AArch32 AT_HWCAP2
-// workaround was needed. See https://crbug.com/boringssl/46.
-OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
-#endif
 #endif  // !OPENSSL_STATIC_ARMCAP
 
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
