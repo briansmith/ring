@@ -263,14 +263,14 @@ add_library(
   cipher_extra/tls_cbc.c
   cmac/cmac.c
   conf/conf.c
-  cpu-aarch64-apple.c
-  cpu-aarch64-fuchsia.c
-  cpu-aarch64-linux.c
-  cpu-aarch64-win.c
-  cpu-arm-linux.c
-  cpu-arm.c
-  cpu-intel.c
-  cpu-ppc64le.c
+  cpu_aarch64_apple.c
+  cpu_aarch64_fuchsia.c
+  cpu_aarch64_linux.c
+  cpu_aarch64_win.c
+  cpu_arm_linux.c
+  cpu_arm.c
+  cpu_intel.c
+  cpu_ppc64le.c
   crypto.c
   curve25519/curve25519.c
   curve25519/spake25519.c
@@ -504,7 +504,7 @@ add_executable(
   compiler_test.cc
   conf/conf_test.cc
   constant_time_test.cc
-  cpu-arm-linux_test.cc
+  cpu_arm_linux_test.cc
   crypto_test.cc
   curve25519/ed25519_test.cc
   curve25519/spake25519_test.cc

@@ -23,7 +23,7 @@
 #include <openssl/arm_arch.h>
 #include <openssl/mem.h>
 
-#include "cpu-arm-linux.h"
+#include "cpu_arm_linux.h"
 
 #define AT_HWCAP 16
 #define AT_HWCAP2 26

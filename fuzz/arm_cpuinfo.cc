@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include "../crypto/cpu-arm-linux.h"
+#include "../crypto/cpu_arm_linux.h"
 
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
