@@ -52,7 +52,6 @@
 #include <openssl/base.h>
 
 #include <openssl/aes.h>
-#include <openssl/cpu.h>
 
 #include <stdlib.h>
 #include <string.h>

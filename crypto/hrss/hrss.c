@@ -19,7 +19,6 @@
 #include <stdlib.h>
 
 #include <openssl/bn.h>
-#include <openssl/cpu.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>

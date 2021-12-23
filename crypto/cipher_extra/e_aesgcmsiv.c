@@ -17,11 +17,11 @@
 #include <assert.h>
 
 #include <openssl/cipher.h>
-#include <openssl/cpu.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
 #include "../fipsmodule/cipher/internal.h"
+#include "../internal.h"
 
 
 #define EVP_AEAD_AES_GCM_SIV_NONCE_LEN 12

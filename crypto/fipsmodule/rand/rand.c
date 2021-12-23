@@ -23,7 +23,6 @@
 #endif
 
 #include <openssl/chacha.h>
-#include <openssl/cpu.h>
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
 

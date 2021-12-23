@@ -16,9 +16,9 @@
 #define OPENSSL_HEADER_BN_RSAZ_EXP_H
 
 #include <openssl/bn.h>
-#include <openssl/cpu.h>
 
 #include "internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

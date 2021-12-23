@@ -14,8 +14,6 @@
 
 #include <openssl/crypto.h>
 
-#include <openssl/cpu.h>
-
 #include "fipsmodule/rand/fork_detect.h"
 #include "fipsmodule/rand/internal.h"
 #include "internal.h"

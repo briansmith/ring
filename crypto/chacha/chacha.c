@@ -19,8 +19,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/cpu.h>
-
 #include "../internal.h"
 #include "internal.h"
 

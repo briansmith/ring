@@ -14,10 +14,10 @@
 
 #include <gtest/gtest.h>
 
-#include <openssl/cpu.h>
 #include <openssl/hrss.h>
 #include <openssl/rand.h>
 
+#include "../internal.h"
 #include "../test/abi_test.h"
 #include "../test/test_util.h"
 #include "internal.h"

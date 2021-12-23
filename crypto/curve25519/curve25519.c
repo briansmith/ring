@@ -24,7 +24,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/cpu.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>

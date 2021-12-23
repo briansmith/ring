@@ -50,7 +50,6 @@
 
 #include <assert.h>
 
-#include <openssl/cpu.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>

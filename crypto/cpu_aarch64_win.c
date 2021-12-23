@@ -13,7 +13,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/cpu.h>
+#include "internal.h"
 
 #if defined(OPENSSL_AARCH64) && defined(OPENSSL_WINDOWS) && \
     !defined(OPENSSL_STATIC_ARMCAP)
@@ -21,8 +21,6 @@
 #include <windows.h>
 
 #include <openssl/arm_arch.h>
-
-#include "internal.h"
 
 extern uint32_t OPENSSL_armcap_P;
 void OPENSSL_cpuid_setup(void) {

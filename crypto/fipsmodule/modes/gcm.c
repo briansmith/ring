@@ -52,7 +52,6 @@
 #include <string.h>
 
 #include <openssl/mem.h>
-#include <openssl/cpu.h>
 
 #include "internal.h"
 #include "../../internal.h"

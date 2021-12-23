@@ -60,7 +60,6 @@
 #include <stdlib.h>
 
 #include <openssl/base.h>
-#include <openssl/cpu.h>
 #include <openssl/type_check.h>
 
 #include "../internal.h"

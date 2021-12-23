@@ -952,6 +952,124 @@ void boringssl_fips_inc_counter(enum fips_counter_t counter);
 OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
 #endif
 
+
+// Runtime CPU feature support
+
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+// OPENSSL_ia32cap_P contains the Intel CPUID bits when running on an x86 or
+// x86-64 system.
+//
+//   Index 0:
+//     EDX for CPUID where EAX = 1
+//     Bit 20 is always zero
+//     Bit 28 is adjusted to reflect whether the data cache is shared between
+//       multiple logical cores
+//     Bit 30 is used to indicate an Intel CPU
+//   Index 1:
+//     ECX for CPUID where EAX = 1
+//     Bit 11 is used to indicate AMD XOP support, not SDBG
+//   Index 2:
+//     EBX for CPUID where EAX = 7
+//   Index 3:
+//     ECX for CPUID where EAX = 7
+//
+// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
+// bits in XCR0, so it is not necessary to check those.
+extern uint32_t OPENSSL_ia32cap_P[4];
+
+#if defined(BORINGSSL_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
+const uint32_t *OPENSSL_ia32cap_get(void);
+#else
+OPENSSL_INLINE const uint32_t *OPENSSL_ia32cap_get(void) {
+  return OPENSSL_ia32cap_P;
+}
+#endif
+
+#endif
+
+#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+
+#if defined(OPENSSL_APPLE) && defined(OPENSSL_ARM)
+// We do not detect any features at runtime for Apple's 32-bit ARM platforms. On
+// 64-bit ARM, we detect some post-ARMv8.0 features.
+#define OPENSSL_STATIC_ARMCAP
+#endif
+
+#if !defined(OPENSSL_STATIC_ARMCAP)
+// CRYPTO_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
+// unit. Note that |OPENSSL_armcap_P| also exists and contains the same
+// information in a form that's easier for assembly to use.
+OPENSSL_EXPORT int CRYPTO_is_NEON_capable_at_runtime(void);
+
+// CRYPTO_is_ARMv8_AES_capable_at_runtime returns true if the current CPU
+// supports the ARMv8 AES instruction.
+int CRYPTO_is_ARMv8_AES_capable_at_runtime(void);
+
+// CRYPTO_is_ARMv8_PMULL_capable_at_runtime returns true if the current CPU
+// supports the ARMv8 PMULL instruction.
+int CRYPTO_is_ARMv8_PMULL_capable_at_runtime(void);
+#endif  // !OPENSSL_STATIC_ARMCAP
+
+// CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
+// this is known statically, it is a constant inline function.
+OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
+#if defined(__ARM_NEON__) || defined(__ARM_NEON) || \
+    defined(OPENSSL_STATIC_ARMCAP_NEON)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return CRYPTO_is_NEON_capable_at_runtime();
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return CRYPTO_is_ARMv8_AES_capable_at_runtime();
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
+  return 1;
+#elif defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return CRYPTO_is_ARMv8_PMULL_capable_at_runtime();
+#endif
+}
+
+#endif  // OPENSSL_ARM || OPENSSL_AARCH64
+
+#if defined(OPENSSL_PPC64LE)
+
+// CRYPTO_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
+// the Vector.AES category of instructions.
+int CRYPTO_is_PPC64LE_vcrypto_capable(void);
+
+extern unsigned long OPENSSL_ppc64le_hwcap2;
+
+#endif  // OPENSSL_PPC64LE
+
+#if defined(BORINGSSL_DISPATCH_TEST)
+// Runtime CPU dispatch testing support
+
+// BORINGSSL_function_hit is an array of flags. The following functions will
+// set these flags if BORINGSSL_DISPATCH_TEST is defined.
+//   0: aes_hw_ctr32_encrypt_blocks
+//   1: aes_hw_encrypt
+//   2: aesni_gcm_encrypt
+//   3: aes_hw_set_encrypt_key
+//   4: vpaes_encrypt
+//   5: vpaes_set_encrypt_key
+extern uint8_t BORINGSSL_function_hit[7];
+#endif  // BORINGSSL_DISPATCH_TEST
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

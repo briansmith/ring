@@ -52,7 +52,6 @@
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/cipher.h>
-#include <openssl/cpu.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>

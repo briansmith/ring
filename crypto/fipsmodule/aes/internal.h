@@ -17,7 +17,7 @@
 
 #include <stdlib.h>
 
-#include <openssl/cpu.h>
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
