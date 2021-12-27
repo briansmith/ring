@@ -449,12 +449,15 @@ close SELF;
 
 foreach(split("\n",$code)) {
 
-	s/\`([^\`]*)\`/eval($1)/geo;
+	s/\`([^\`]*)\`/eval($1)/ge;
 
-	s/\b(sha256\w+)\s+([qv].*)/unsha256($1,$2)/geo;
+	s/\b(sha256\w+)\s+([qv].*)/unsha256($1,$2)/ge;
 
-	s/\.\w?32\b//o		and s/\.16b/\.4s/go;
-	m/(ld|st)1[^\[]+\[0\]/o	and s/\.4s/\.s/go;
+	s/\bq([0-9]+)\b/v$1.16b/g;		# old->new registers
+
+	s/\.[ui]?8(\s)/$1/;
+	s/\.\w?32\b//		and s/\.16b/\.4s/g;
+	m/(ld|st)1[^\[]+\[0\]/	and s/\.4s/\.s/g;
 
 	print $_,"\n";
 }
