@@ -105,8 +105,9 @@ OPENSSL_INLINE const uint32_t *OPENSSL_ia32cap_get(void) {
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
-#if defined(OPENSSL_APPLE)
-// iOS builds use the static ARM configuration.
+#if defined(OPENSSL_APPLE) && defined(OPENSSL_ARM)
+// We do not detect any features at runtime for Apple's 32-bit ARM platforms. On
+// 64-bit ARM, we detect some post-ARMv8.0 features.
 #define OPENSSL_STATIC_ARMCAP
 #endif
 

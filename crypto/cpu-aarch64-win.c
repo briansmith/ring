@@ -36,6 +36,8 @@ void OPENSSL_cpuid_setup(void) {
     OPENSSL_armcap_P |= ARMV8_SHA1;
     OPENSSL_armcap_P |= ARMV8_SHA256;
   }
+  // As of writing, Windows does not have a |PF_*| value for ARMv8.2 SHA-512
+  // extensions. When it does, add it here.
 }
 
-#endif
+#endif  // OPENSSL_AARCH64 && OPENSSL_WINDOWS && !OPENSSL_STATIC_ARMCAP

@@ -263,6 +263,7 @@ add_library(
   cipher_extra/tls_cbc.c
   cmac/cmac.c
   conf/conf.c
+  cpu-aarch64-apple.c
   cpu-aarch64-fuchsia.c
   cpu-aarch64-linux.c
   cpu-aarch64-win.c

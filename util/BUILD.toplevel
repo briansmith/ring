@@ -89,9 +89,6 @@ posix_copts = [
     # ensure that binaries can be built with non-executable stack.
     "-Wa,--noexecstack",
 
-    # This is needed on Linux systems (at least) to get rwlock in pthread.
-    "-D_XOPEN_SOURCE=700",
-
     # This list of warnings should match those in the top-level CMakeLists.txt.
     "-Wall",
     "-Werror",
@@ -108,10 +105,17 @@ posix_copts = [
     # "-DOPENSSL_C11_ATOMIC",
 ]
 
+linux_copts = posix_copts + [
+    # This is needed on Linux systems (at least) to get rwlock in pthread, but
+    # it should not be set on Apple platforms, where it instead disables APIs
+    # we use. See compat(5) and sys/cdefs.h.
+    "-D_XOPEN_SOURCE=700",
+]
+
 boringssl_copts = select({
-    ":linux_aarch64": posix_copts,
-    ":linux_ppc64le": posix_copts,
-    ":linux_x86_64": posix_copts,
+    ":linux_aarch64": linux_copts,
+    ":linux_ppc64le": linux_copts,
+    ":linux_x86_64": linux_copts,
     ":mac_x86_64": posix_copts,
     ":windows_x86_64": [
         "-DWIN32_LEAN_AND_MEAN",

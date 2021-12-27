@@ -163,22 +163,17 @@ BoringSSL maintainers if making use of it.
     don't have steps for assembling the assembly language source files, so they
     currently cannot be used to build BoringSSL.
 
-## Embedded ARM
+## ARM CPU Capabilities
 
-ARM, unlike Intel, does not have an instruction that allows applications to
-discover the capabilities of the processor. Instead, the capability information
-has to be provided by the operating system somehow.
+ARM, unlike Intel, does not have a userspace instruction that allows
+applications to discover the capabilities of the processor. Instead, the
+capability information has to be provided by a combination of compile-time
+information and the operating system.
 
-By default, on Linux-based systems, BoringSSL will try to use `getauxval` and
-`/proc` to discover the capabilities. But some environments don't support that
-sort of thing and, for them, it's possible to configure the CPU capabilities at
-compile time.
-
-On iOS or builds which define `OPENSSL_STATIC_ARMCAP`, features will be
-determined based on the `__ARM_NEON__` and `__ARM_FEATURE_CRYPTO` preprocessor
-symbols reported by the compiler. These values are usually controlled by the
-`-march` flag. You can also define any of the following to enable the
-corresponding ARM feature.
+BoringSSL determines capabilities at compile-time based on `__ARM_NEON__`,
+`__ARM_FEATURE_CRYPTO`, and other preprocessor symbols reported by the compiler.
+These values are usually controlled by the `-march` flag. You can also define
+any of the following to enable the corresponding ARM feature.
 
   * `OPENSSL_STATIC_ARMCAP_NEON`
   * `OPENSSL_STATIC_ARMCAP_AES`
@@ -186,8 +181,16 @@ corresponding ARM feature.
   * `OPENSSL_STATIC_ARMCAP_SHA256`
   * `OPENSSL_STATIC_ARMCAP_PMULL`
 
-Note that if a feature is enabled in this way, but not actually supported at
-run-time, BoringSSL will likely crash.
+The resulting binary will assume all such features are always present. This can
+reduce code size, by allowing the compiler to omit fallbacks. However, if the
+feature is not actually supported at runtime, BoringSSL will likely crash.
+
+BoringSSL will additionally query the operating system at runtime for additional
+features, e.g. with `getauxval` on Linux. This allows a single binary to use
+newer instructions when present, but still function on CPUs without them. But
+some environments don't support runtime queries. If building for those, define
+`OPENSSL_STATIC_ARMCAP` to limit BoringSSL to compile-time capabilities. If not
+defined, the target operating system must be known to BoringSSL.
 
 ## Binary Size
 

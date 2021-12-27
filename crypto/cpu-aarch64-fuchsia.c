@@ -50,6 +50,9 @@ void OPENSSL_cpuid_setup(void) {
   if (hwcap & ZX_ARM64_FEATURE_ISA_SHA2) {
     OPENSSL_armcap_P |= ARMV8_SHA256;
   }
+  // As of writing, Fuchsia does not have a flag for ARMv8.2 SHA-512
+  // extensions. When it does, add it here. See
+  // https://bugs.fuchsia.dev/p/fuchsia/issues/detail?id=90759.
 }
 
-#endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP
+#endif  // OPENSSL_AARCH64 && OPENSSL_FUCHSIA && !OPENSSL_STATIC_ARMCAP

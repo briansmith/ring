@@ -105,6 +105,9 @@ HIDDEN uint32_t OPENSSL_armcap_P =
 #if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
     ARMV8_PMULL |
 #endif
+#if defined(__ARM_FEATURE_SHA512)
+    ARMV8_SHA512 |
+#endif
     0;
 
 #else
