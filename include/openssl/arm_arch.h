@@ -64,11 +64,6 @@
 # elif defined(__GNUC__)
 #  if defined(__aarch64__)
 #    define __ARM_ARCH__ 8
-#    if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#      define __ARMEB__
-#    else
-#      define __ARMEL__
-#    endif
   // Why doesn't gcc define __ARM_ARCH__? Instead it defines
   // bunch of below macros. See all_architectires[] table in
   // gcc/config/arm/arm.c. On a side note it defines

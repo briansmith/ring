@@ -61,7 +61,7 @@ $code.=<<___ if ($i<14 && !($i&1));
 	ldr	@Xx[$i+2],[$inp,#`($i+2)*4-64`]
 ___
 $code.=<<___ if ($i<14 && ($i&1));
-#ifdef	__ARMEB__
+#ifdef	__AARCH64EB__
 	ror	@Xx[$i+1],@Xx[$i+1],#32
 #else
 	rev32	@Xx[$i+1],@Xx[$i+1]
@@ -209,7 +209,7 @@ sha1_block_data_order:
 	movz	$K,#0x7999
 	sub	$num,$num,#1
 	movk	$K,#0x5a82,lsl#16
-#ifdef	__ARMEB__
+#ifdef	__AARCH64EB__
 	ror	$Xx[0],@Xx[0],#32
 #else
 	rev32	@Xx[0],@Xx[0]
