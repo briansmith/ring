@@ -204,6 +204,7 @@ parts of *ring*; *ring* should be compatible with GCC 4.8+, Clang 10+, and MSVC
 | -------------------------------| ----- |
 | aarch64-apple-darwin           | Build-only (GitHub Actions doesn't have a way to run the tests)
 | aarch64-apple-ios              | Build-only (GitHub Actions doesn't have a way to run the tests)
+| aarch64-pc-windows-msvc        | Build-only (GitHub Actions doesn't have a way to run the tests)
 | aarch64-unknown-linux-gnu      | Tested on 64-bit Linux using QEMU user emulation
 | aarch64-unknown-linux-musl     | Tested on 64-bit Linux using QEMU user emulation. [Needs more work; issue 713](https://github.com/briansmith/ring/issues/713)
 | aarch64-linux-android          | API level 21 (Android 5.0+); [Build-only; issue 486](https://github.com/briansmith/ring/issues/486)
