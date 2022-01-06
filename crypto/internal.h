@@ -995,6 +995,20 @@ OPENSSL_INLINE const uint32_t *OPENSSL_ia32cap_get(void) {
 #define OPENSSL_STATIC_ARMCAP
 #endif
 
+// Normalize some older feature flags to their modern ACLE values.
+// https://developer.arm.com/architectures/system-architectures/software-standards/acle
+#if defined(__ARM_NEON__) && !defined(__ARM_NEON)
+#define __ARM_NEON 1
+#endif
+#if defined(__ARM_FEATURE_CRYPTO)
+#if !defined(__ARM_FEATURE_AES)
+#define __ARM_FEATURE_AES 1
+#endif
+#if !defined(__ARM_FEATURE_SHA2)
+#define __ARM_FEATURE_SHA2 1
+#endif
+#endif
+
 #if !defined(OPENSSL_STATIC_ARMCAP)
 // CRYPTO_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
 // unit. Note that |OPENSSL_armcap_P| also exists and contains the same
@@ -1013,8 +1027,7 @@ int CRYPTO_is_ARMv8_PMULL_capable_at_runtime(void);
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
 // this is known statically, it is a constant inline function.
 OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
-#if defined(__ARM_NEON__) || defined(__ARM_NEON) || \
-    defined(OPENSSL_STATIC_ARMCAP_NEON)
+#if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON)
   return 1;
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;
@@ -1024,7 +1037,7 @@ OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
+#if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_AES)
   return 1;
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;
@@ -1034,7 +1047,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
+#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_AES)
   return 1;
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;

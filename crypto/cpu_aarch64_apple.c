@@ -53,7 +53,8 @@ void OPENSSL_cpuid_setup(void) {
   // Apple ARM64 platforms have NEON and cryptography extensions available
   // statically, so we do not need to query them. In particular, there sometimes
   // are no sysctls corresponding to such features. See below.
-#if !defined(__ARM_NEON) || !defined(__ARM_FEATURE_CRYPTO)
+#if !defined(__ARM_NEON) || !defined(__ARM_FEATURE_AES) || \
+    !defined(__ARM_FEATURE_SHA2)
 #error "NEON and crypto extensions should be statically available."
 #endif
   OPENSSL_armcap_P =

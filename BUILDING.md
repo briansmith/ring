@@ -170,10 +170,12 @@ applications to discover the capabilities of the processor. Instead, the
 capability information has to be provided by a combination of compile-time
 information and the operating system.
 
-BoringSSL determines capabilities at compile-time based on `__ARM_NEON__`,
-`__ARM_FEATURE_CRYPTO`, and other preprocessor symbols reported by the compiler.
+BoringSSL determines capabilities at compile-time based on `__ARM_NEON`,
+`__ARM_FEATURE_AES`, and other preprocessor symbols defined in
+[Arm C Language Extensions (ACLE)](https://developer.arm.com/architectures/system-architectures/software-standards/acle).
 These values are usually controlled by the `-march` flag. You can also define
-any of the following to enable the corresponding ARM feature.
+any of the following to enable the corresponding ARM feature, but using the ACLE
+symbols via `-march` is recommended.
 
   * `OPENSSL_STATIC_ARMCAP_NEON`
   * `OPENSSL_STATIC_ARMCAP_AES`

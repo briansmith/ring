@@ -37,8 +37,7 @@
 #include <emmintrin.h>
 #endif
 
-#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
-    (defined(__ARM_NEON__) || defined(__ARM_NEON))
+#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && defined(__ARM_NEON)
 #include <arm_neon.h>
 #endif
 
@@ -188,8 +187,7 @@ static inline vec_t vec_broadcast_bit(vec_t a) {
 // compiler requires that |i| be a compile-time constant.)
 #define vec_get_word(v, i) _mm_extract_epi16(v, i)
 
-#elif (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
-    (defined(__ARM_NEON__) || defined(__ARM_NEON))
+#elif (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && defined(__ARM_NEON)
 
 #define HRSS_HAVE_VECTOR_UNIT
 typedef uint16x8_t vec_t;
