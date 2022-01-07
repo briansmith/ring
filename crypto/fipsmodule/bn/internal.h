@@ -431,12 +431,11 @@ void bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
 
 uint64_t bn_mont_n0(const BIGNUM *n);
 
-// bn_mod_exp_base_2_consttime calculates r = 2**p (mod n). |p| must be larger
-// than log_2(n); i.e. 2**p must be larger than |n|. |n| must be positive and
-// odd. |p| and the bit width of |n| are assumed public, but |n| is otherwise
-// treated as secret.
-int bn_mod_exp_base_2_consttime(BIGNUM *r, unsigned p, const BIGNUM *n,
-                                BN_CTX *ctx);
+// bn_mont_ctx_set_RR_consttime initializes |mont->RR|. It returns one on
+// success and zero on error. |mont->N| and |mont->n0| must have been
+// initialized already. The bit width of |mont->N| is assumed public, but
+// |mont->N| is otherwise treated as secret.
+int bn_mont_ctx_set_RR_consttime(BN_MONT_CTX *mont, BN_CTX *ctx);
 
 #if defined(_MSC_VER)
 #if defined(OPENSSL_X86_64)

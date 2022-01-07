@@ -248,19 +248,12 @@ BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod, BN_CTX *ctx) {
 BN_MONT_CTX *BN_MONT_CTX_new_consttime(const BIGNUM *mod, BN_CTX *ctx) {
   BN_MONT_CTX *mont = BN_MONT_CTX_new();
   if (mont == NULL ||
-      !bn_mont_ctx_set_N_and_n0(mont, mod)) {
-    goto err;
-  }
-  unsigned lgBigR = mont->N.width * BN_BITS2;
-  if (!bn_mod_exp_base_2_consttime(&mont->RR, lgBigR * 2, &mont->N, ctx) ||
-      !bn_resize_words(&mont->RR, mont->N.width)) {
-    goto err;
+      !bn_mont_ctx_set_N_and_n0(mont, mod) ||
+      !bn_mont_ctx_set_RR_consttime(mont, ctx)) {
+    BN_MONT_CTX_free(mont);
+    return NULL;
   }
   return mont;
-
-err:
-  BN_MONT_CTX_free(mont);
-  return NULL;
 }
 
 int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
