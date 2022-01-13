@@ -3855,3 +3855,22 @@ TEST(X509Test, Names) {
     }
   }
 }
+
+TEST(X509Test, AddDuplicates) {
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  bssl::UniquePtr<X509> a(CertFromPEM(kCrossSigningRootPEM));
+  bssl::UniquePtr<X509> b(CertFromPEM(kRootCAPEM));
+
+  ASSERT_TRUE(store);
+  ASSERT_TRUE(a);
+  ASSERT_TRUE(b);
+
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+
+  EXPECT_EQ(sk_X509_OBJECT_num(X509_STORE_get0_objects(store.get())), 2u);
+}

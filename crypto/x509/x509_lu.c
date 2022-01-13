@@ -332,76 +332,54 @@ int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
     return 1;
 }
 
-int X509_STORE_add_cert(X509_STORE *ctx, X509 *x)
+static int x509_store_add(X509_STORE *ctx, void *x, int is_crl)
 {
-    X509_OBJECT *obj;
-    int ret = 1;
-
-    if (x == NULL)
+    if (x == NULL) {
         return 0;
-    obj = (X509_OBJECT *)OPENSSL_malloc(sizeof(X509_OBJECT));
+    }
+
+    X509_OBJECT *const obj = (X509_OBJECT *)OPENSSL_malloc(sizeof(X509_OBJECT));
     if (obj == NULL) {
         OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
         return 0;
     }
-    obj->type = X509_LU_X509;
-    obj->data.x509 = x;
+
+    if (is_crl) {
+        obj->type = X509_LU_CRL;
+        obj->data.crl = (X509_CRL *)x;
+    } else {
+        obj->type = X509_LU_X509;
+        obj->data.x509 = (X509 *)x;
+    }
+    X509_OBJECT_up_ref_count(obj);
 
     CRYPTO_MUTEX_lock_write(&ctx->objs_lock);
 
-    X509_OBJECT_up_ref_count(obj);
-
-    if (X509_OBJECT_retrieve_match(ctx->objs, obj)) {
-        X509_OBJECT_free_contents(obj);
-        OPENSSL_free(obj);
-        OPENSSL_PUT_ERROR(X509, X509_R_CERT_ALREADY_IN_HASH_TABLE);
-        ret = 0;
-    } else if (!sk_X509_OBJECT_push(ctx->objs, obj)) {
-        X509_OBJECT_free_contents(obj);
-        OPENSSL_free(obj);
-        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-        ret = 0;
+    int ret = 1;
+    int added = 0;
+    /* Duplicates are silently ignored */
+    if (!X509_OBJECT_retrieve_match(ctx->objs, obj)) {
+        ret = added = (sk_X509_OBJECT_push(ctx->objs, obj) != 0);
     }
 
     CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
+
+    if (!added) {
+        X509_OBJECT_free_contents(obj);
+        OPENSSL_free(obj);
+    }
 
     return ret;
 }
 
+int X509_STORE_add_cert(X509_STORE *ctx, X509 *x)
+{
+    return x509_store_add(ctx, x, /*is_crl=*/0);
+}
+
 int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x)
 {
-    X509_OBJECT *obj;
-    int ret = 1;
-
-    if (x == NULL)
-        return 0;
-    obj = (X509_OBJECT *)OPENSSL_malloc(sizeof(X509_OBJECT));
-    if (obj == NULL) {
-        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-        return 0;
-    }
-    obj->type = X509_LU_CRL;
-    obj->data.crl = x;
-
-    CRYPTO_MUTEX_lock_write(&ctx->objs_lock);
-
-    X509_OBJECT_up_ref_count(obj);
-
-    if (X509_OBJECT_retrieve_match(ctx->objs, obj)) {
-        X509_OBJECT_free_contents(obj);
-        OPENSSL_free(obj);
-        OPENSSL_PUT_ERROR(X509, X509_R_CERT_ALREADY_IN_HASH_TABLE);
-        ret = 0;
-    } else if (!sk_X509_OBJECT_push(ctx->objs, obj)) {
-        X509_OBJECT_free_contents(obj);
-        OPENSSL_free(obj);
-        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-        ret = 0;
-    }
-
-    CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
-
-    return ret;
+    return x509_store_add(ctx, x, /*is_crl=*/1);
 }
 
 int X509_OBJECT_up_ref_count(X509_OBJECT *a)

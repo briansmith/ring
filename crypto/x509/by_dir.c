@@ -438,6 +438,13 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                 ok = 1;
                 ret->type = tmp->type;
                 OPENSSL_memcpy(&ret->data, &tmp->data, sizeof(ret->data));
+
+                /*
+                 * Clear any errors that might have been raised processing empty
+                 * or malformed files.
+                 */
+                ERR_clear_error();
+
                 /*
                  * If we were going to up the reference count, we would need
                  * to do it on a perl 'type' basis
