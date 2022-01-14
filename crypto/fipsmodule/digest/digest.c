@@ -106,6 +106,11 @@ int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx) {
   return 1;
 }
 
+void EVP_MD_CTX_cleanse(EVP_MD_CTX *ctx) {
+  OPENSSL_cleanse(ctx->md_data, ctx->digest->ctx_size);
+  EVP_MD_CTX_cleanup(ctx);
+}
+
 void EVP_MD_CTX_free(EVP_MD_CTX *ctx) {
   if (!ctx) {
     return;

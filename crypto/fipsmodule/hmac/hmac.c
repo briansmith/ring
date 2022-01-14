@@ -102,6 +102,13 @@ void HMAC_CTX_cleanup(HMAC_CTX *ctx) {
   OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));
 }
 
+void HMAC_CTX_cleanse(HMAC_CTX *ctx) {
+  EVP_MD_CTX_cleanse(&ctx->i_ctx);
+  EVP_MD_CTX_cleanse(&ctx->o_ctx);
+  EVP_MD_CTX_cleanse(&ctx->md_ctx);
+  OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));
+}
+
 void HMAC_CTX_free(HMAC_CTX *ctx) {
   if (ctx == NULL) {
     return;

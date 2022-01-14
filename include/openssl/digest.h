@@ -117,6 +117,13 @@ OPENSSL_EXPORT EVP_MD_CTX *EVP_MD_CTX_new(void);
 // freshly initialised state. It does not free |ctx| itself. It returns one.
 OPENSSL_EXPORT int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx);
 
+// EVP_MD_CTX_cleanse zeros the digest state in |ctx| and then performs the
+// actions of |EVP_MD_CTX_cleanup|. Note that some |EVP_MD_CTX| objects contain
+// more than just a digest (e.g. those resulting from |EVP_DigestSignInit|) but
+// this function does not zero out more than just the digest state even in that
+// case.
+OPENSSL_EXPORT void EVP_MD_CTX_cleanse(EVP_MD_CTX *ctx);
+
 // EVP_MD_CTX_free calls |EVP_MD_CTX_cleanup| and then frees |ctx| itself.
 OPENSSL_EXPORT void EVP_MD_CTX_free(EVP_MD_CTX *ctx);
 

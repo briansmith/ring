@@ -233,13 +233,15 @@ BORINGSSL_bcm_power_on_self_test(void) {
     fprintf(stderr, "HMAC failed.\n");
     goto err;
   }
-  HMAC_CTX_cleanup(&hmac_ctx);
+  HMAC_CTX_cleanse(&hmac_ctx); // FIPS 140-3, AS05.10.
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
     goto err;
   }
+
+  OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
 
   if (!boringssl_fips_self_test(BORINGSSL_bcm_text_hash, sizeof(result))) {
     goto err;
