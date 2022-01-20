@@ -31,7 +31,6 @@ if(ANDROID)
 else()
   find_package(Perl REQUIRED)
   find_program(GO_EXECUTABLE go)
-  find_program(BINDGEN_EXECUTABLE bindgen)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
@@ -50,12 +49,6 @@ endif()
 
 if(NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Could not find Go")
-endif()
-
-if(NOT BINDGEN_EXECUTABLE)
-  message("Could not find bindgen. Not generating Rust bindings.")
-else()
-  add_subdirectory(rust)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -613,6 +606,15 @@ if(FUZZ)
   endif()
 
   add_subdirectory(fuzz)
+endif()
+
+if(RUST_BINDINGS)
+  find_program(BINDGEN_EXECUTABLE bindgen)
+  if(NOT BINDGEN_EXECUTABLE)
+    message(FATAL_ERROR "Could not find bindgen but was asked to generate Rust bindings.")
+  else()
+    add_subdirectory(rust)
+  endif()
 endif()
 
 if(UNIX AND NOT APPLE AND NOT ANDROID)
