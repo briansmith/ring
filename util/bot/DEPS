@@ -53,9 +53,13 @@ deps = {
     'dep_type': 'cipd',
   },
 
+  # TODO(davidben): Merge cmake-linux64 and cmake-mac. Now that we use CIPD,
+  # which supports a ${{platform}} marker, there is nothing platform-specific
+  # about this anymore. However, the recipe still expects CMake to be found at
+  # these directories, so this needs to be coordinated with a change there.
   'boringssl/util/bot/cmake-linux64': {
     'packages': [{
-      'package': 'infra/3pp/tools/cmake/linux-amd64',
+      'package': 'infra/3pp/tools/cmake/${{platform}}',
       'version': Var('cmake_version'),
     }],
     'condition': 'host_os == "linux"',
@@ -64,7 +68,7 @@ deps = {
 
   'boringssl/util/bot/cmake-mac': {
     'packages': [{
-      'package': 'infra/3pp/tools/cmake/mac-amd64',
+      'package': 'infra/3pp/tools/cmake/${{platform}}',
       'version': Var('cmake_version'),
     }],
     'condition': 'host_os == "mac"',
