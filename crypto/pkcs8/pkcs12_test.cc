@@ -34,7 +34,7 @@ std::string GetTestData(const char *path);
 static const char kPassword[] = "foo";
 
 // kUnicodePassword is the password for unicode_password.p12
-static const char kUnicodePassword[] = u8"Hello, 世界";
+static const char kUnicodePassword[] = "Hello, 世界";
 
 static bssl::Span<const uint8_t> StringToBytes(const std::string &str) {
   return bssl::MakeConstSpan(reinterpret_cast<const uint8_t *>(str.data()),
@@ -391,7 +391,7 @@ TEST(PKCS12Test, RoundTrip) {
                 {bssl::Span<const uint8_t>(kTestCert2)}, 0, 0, 0, 0);
 
   // Test some Unicode.
-  TestRoundTrip(kPassword, u8"Hello, 世界!",
+  TestRoundTrip(kPassword, "Hello, 世界!",
                 bssl::Span<const uint8_t>(kTestKey),
                 bssl::Span<const uint8_t>(kTestCert),
                 {bssl::Span<const uint8_t>(kTestCert2)}, 0, 0, 0, 0);
