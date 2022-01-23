@@ -39,6 +39,7 @@ struct crypto_buffer_st {
 struct crypto_buffer_pool_st {
   LHASH_OF(CRYPTO_BUFFER) *bufs;
   CRYPTO_MUTEX lock;
+  const uint64_t hash_key[2];
 };
 
 
