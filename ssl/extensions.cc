@@ -2581,7 +2581,7 @@ static bool parse_u16_array(const CBS *cbs, Array<uint16_t> *out) {
 
   assert(CBS_len(&copy) == 0);
   *out = std::move(ret);
-  return 1;
+  return true;
 }
 
 static bool ext_supported_groups_parse_clienthello(SSL_HANDSHAKE *hs,

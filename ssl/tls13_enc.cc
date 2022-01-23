@@ -364,9 +364,9 @@ bool tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
       !tls13_verify_data(out, out_len, hs->transcript.Digest(),
                          hs->ssl->version, traffic_secret,
                          MakeConstSpan(context_hash, context_hash_len))) {
-    return 0;
+    return false;
   }
-  return 1;
+  return true;
 }
 
 static const char kTLS13LabelResumptionPSK[] = "resumption";

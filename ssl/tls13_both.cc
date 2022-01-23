@@ -475,7 +475,7 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
                        CRYPTO_BUFFER_len(raw)) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return 0;
+      return false;
     }
     ssl->s3->delegated_credential_used = true;
   }

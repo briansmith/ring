@@ -5146,7 +5146,7 @@ TEST(SSLTest, Handoff) {
 
   SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_CLIENT);
   SSL_CTX_sess_set_new_cb(client_ctx.get(), SaveLastSession);
-  SSL_CTX_set_handoff_mode(server_ctx.get(), 1);
+  SSL_CTX_set_handoff_mode(server_ctx.get(), true);
   uint8_t keys[48];
   SSL_CTX_get_tlsext_ticket_keys(server_ctx.get(), &keys, sizeof(keys));
   SSL_CTX_set_tlsext_ticket_keys(handshaker_ctx.get(), &keys, sizeof(keys));
@@ -5251,7 +5251,7 @@ TEST(SSLTest, HandoffDeclined) {
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
 
-  SSL_CTX_set_handoff_mode(server_ctx.get(), 1);
+  SSL_CTX_set_handoff_mode(server_ctx.get(), true);
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_2_VERSION));
 
   bssl::UniquePtr<SSL> client, server;

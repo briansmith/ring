@@ -662,9 +662,9 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
     }
     OPENSSL_memcpy(ret->peer_sha256, CBS_data(&peer_sha256),
                    sizeof(ret->peer_sha256));
-    ret->peer_sha256_valid = 1;
+    ret->peer_sha256_valid = true;
   } else {
-    ret->peer_sha256_valid = 0;
+    ret->peer_sha256_valid = false;
   }
 
   if (!SSL_SESSION_parse_bounded_octet_string(

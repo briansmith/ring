@@ -528,20 +528,20 @@ bool ssl_send_finished(SSL_HANDSHAKE *hs) {
   size_t finished_len;
   if (!hs->transcript.GetFinishedMAC(finished, &finished_len, session,
                                      ssl->server)) {
-    return 0;
+    return false;
   }
 
   // Log the master secret, if logging is enabled.
   if (!ssl_log_secret(ssl, "CLIENT_RANDOM",
                       MakeConstSpan(session->secret, session->secret_length))) {
-    return 0;
+    return false;
   }
 
   // Copy the Finished so we can use it for renegotiation checks.
   if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
       finished_len > sizeof(ssl->s3->previous_server_finished)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+    return false;
   }
 
   if (ssl->server) {
@@ -558,10 +558,10 @@ bool ssl_send_finished(SSL_HANDSHAKE *hs) {
       !CBB_add_bytes(&body, finished, finished_len) ||
       !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 bool ssl_output_cert_chain(SSL_HANDSHAKE *hs) {

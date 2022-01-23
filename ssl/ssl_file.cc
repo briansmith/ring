@@ -179,7 +179,7 @@ STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
     }
   }
 
-  if (0) {
+  if (false) {
   err:
     sk_X509_NAME_pop_free(ret, X509_NAME_free);
     ret = NULL;

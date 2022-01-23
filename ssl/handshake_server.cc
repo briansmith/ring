@@ -1311,7 +1311,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     hs->new_session->verify_result = X509_V_OK;
   } else if (hs->config->retain_only_sha256_of_client_certs) {
     // The hash will have been filled in.
-    hs->new_session->peer_sha256_valid = 1;
+    hs->new_session->peer_sha256_valid = true;
   }
 
   ssl->method->next_message(ssl);
