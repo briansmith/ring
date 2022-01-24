@@ -176,39 +176,3 @@ int PEM_write_PrivateKey(FILE *fp, EVP_PKEY *x, const EVP_CIPHER *enc,
     BIO_free(b);
     return ret;
 }
-
-
-/* Transparently read in PKCS#3 or X9.42 DH parameters */
-
-DH *PEM_read_bio_DHparams(BIO *bp, DH **x, pem_password_cb *cb, void *u)
-{
-    char *nm = NULL;
-    const unsigned char *p = NULL;
-    unsigned char *data = NULL;
-    long len;
-    DH *ret = NULL;
-
-    if (!PEM_bytes_read_bio(&data, &len, &nm, PEM_STRING_DHPARAMS, bp, cb, u))
-        return NULL;
-    p = data;
-
-    ret = d2i_DHparams(x, &p, len);
-
-    if (ret == NULL)
-        OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
-    OPENSSL_free(nm);
-    OPENSSL_free(data);
-    return ret;
-}
-
-DH *PEM_read_DHparams(FILE *fp, DH **x, pem_password_cb *cb, void *u)
-{
-    BIO *b = BIO_new_fp(fp, BIO_NOCLOSE);
-    if (b == NULL) {
-        OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
-        return NULL;
-    }
-    DH *ret = PEM_read_bio_DHparams(b, x, cb, u);
-    BIO_free(b);
-    return ret;
-}
