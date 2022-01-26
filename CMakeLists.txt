@@ -618,7 +618,7 @@ if(RUST_BINDINGS)
   endif()
 endif()
 
-if(UNIX AND NOT APPLE AND NOT ANDROID)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
 endif()
 

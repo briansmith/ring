@@ -17,7 +17,7 @@ add_dependencies(bssl_shim global_target)
 
 target_link_libraries(bssl_shim test_support_lib ssl crypto)
 
-if(UNIX AND NOT APPLE AND NOT ANDROID)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(
     handshaker
 
