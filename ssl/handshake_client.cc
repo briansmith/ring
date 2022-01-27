@@ -331,7 +331,7 @@ bool ssl_add_client_hello(SSL_HANDSHAKE *hs) {
   Array<uint8_t> msg;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO) ||
       !ssl_write_client_hello_without_extensions(hs, &body, type,
-                                                 /*empty_session_id*/ false) ||
+                                                 /*empty_session_id=*/false) ||
       !ssl_add_clienthello_tlsext(hs, &body, /*out_encoded=*/nullptr,
                                   &needs_psk_binder, type, CBB_len(&body)) ||
       !ssl->method->finish_message(ssl, cbb.get(), &msg)) {

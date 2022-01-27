@@ -4039,10 +4039,16 @@ OPENSSL_EXPORT int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints,
 // |len| bytes from |buf| contain the handshake message, one-byte
 // ChangeCipherSpec body, and two-byte alert, respectively.
 //
+// In connections that enable ECH, |cb| is additionally called with
+// |content_type| = |SSL3_RT_CLIENT_HELLO_INNER| for each ClientHelloInner that
+// is encrypted or decrypted. The |len| bytes from |buf| contain the
+// ClientHelloInner, including the reconstructed outer extensions and handshake
+// header.
+//
 // For a V2ClientHello, |version| is |SSL2_VERSION|, |content_type| is zero, and
 // the |len| bytes from |buf| contain the V2ClientHello structure.
 OPENSSL_EXPORT void SSL_CTX_set_msg_callback(
-    SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type,
+    SSL_CTX *ctx, void (*cb)(int is_write, int version, int content_type,
                              const void *buf, size_t len, SSL *ssl, void *arg));
 
 // SSL_CTX_set_msg_callback_arg sets the |arg| parameter of the message

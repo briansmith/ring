@@ -602,6 +602,7 @@ static void MessageCallback(int is_write, int version, int content_type,
       state->msg_callback_text += "v2clienthello\n";
       return;
 
+    case SSL3_RT_CLIENT_HELLO_INNER:
     case SSL3_RT_HANDSHAKE: {
       CBS cbs;
       CBS_init(&cbs, buf_u8, len);
@@ -619,10 +620,19 @@ static void MessageCallback(int is_write, int version, int content_type,
         return;
       }
       char text[16];
-      snprintf(text, sizeof(text), "hs %d\n", type);
-      state->msg_callback_text += text;
-      if (!is_write) {
-        state->last_message_received = type;
+      if (content_type == SSL3_RT_CLIENT_HELLO_INNER) {
+        if (type != SSL3_MT_CLIENT_HELLO) {
+          fprintf(stderr, "Invalid header for ClientHelloInner.\n");
+          state->msg_callback_ok = false;
+          return;
+        }
+        state->msg_callback_text += "clienthelloinner\n";
+      } else {
+        snprintf(text, sizeof(text), "hs %d\n", type);
+        state->msg_callback_text += text;
+        if (!is_write) {
+          state->last_message_received = type;
+        }
       }
       return;
     }

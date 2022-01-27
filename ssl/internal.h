@@ -3513,7 +3513,7 @@ struct ssl_ctx_st {
   bssl::UniquePtr<bssl::CERT> cert;
 
   // callback that allows applications to peek at protocol messages
-  void (*msg_callback)(int write_p, int version, int content_type,
+  void (*msg_callback)(int is_write, int version, int content_type,
                        const void *buf, size_t len, SSL *ssl,
                        void *arg) = nullptr;
   void *msg_callback_arg = nullptr;

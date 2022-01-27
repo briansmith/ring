@@ -16869,6 +16869,45 @@ func addEncryptedClientHelloTests() {
 				expectedLocalError: "remote error: illegal parameter",
 				expectedError:      ":INVALID_OUTER_EXTENSION:",
 			})
+
+			// Test the message callback is correctly reported with ECH.
+			clientAndServerHello := "read hs 1\nread clienthelloinner\nwrite hs 2\n"
+			expectMsgCallback := clientAndServerHello + "write ccs\n"
+			if hrr {
+				expectMsgCallback += clientAndServerHello
+			}
+			// EncryptedExtensions onwards.
+			expectMsgCallback += `write hs 8
+write hs 11
+write hs 15
+write hs 20
+read hs 20
+write hs 4
+write hs 4
+`
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				protocol: protocol,
+				name:     prefix + "ECH-Server-MessageCallback" + suffix,
+				config: Config{
+					ServerName:      "secret.example",
+					ClientECHConfig: echConfig.ECHConfig,
+					DefaultCurves:   defaultCurves,
+					Bugs: ProtocolBugs{
+						NoCloseNotify: true, // Align QUIC and TCP traces.
+					},
+				},
+				flags: []string{
+					"-ech-server-config", base64FlagValue(echConfig.ECHConfig.Raw),
+					"-ech-server-key", base64FlagValue(echConfig.Key),
+					"-ech-is-retry-config", "1",
+					"-expect-ech-accept",
+					"-expect-msg-callback", expectMsgCallback,
+				},
+				expectations: connectionExpectations{
+					echAccepted: true,
+				},
+			})
 		}
 
 		// Test that ECH, which runs before an async early callback, interacts
@@ -18617,6 +18656,60 @@ func addEncryptedClientHelloTests() {
 			},
 			shouldFail:    true,
 			expectedError: ":INCONSISTENT_ECH_NEGOTIATION:",
+		})
+
+		// Test the message callback is correctly reported, with and without
+		// HelloRetryRequest.
+		clientAndServerHello := "write clienthelloinner\nwrite hs 1\nread hs 2\n"
+		// EncryptedExtensions onwards.
+		finishHandshake := `read hs 8
+read hs 11
+read hs 15
+read hs 20
+write hs 20
+read hs 4
+read hs 4
+`
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-MessageCallback",
+			config: Config{
+				MinVersion:       VersionTLS13,
+				MaxVersion:       VersionTLS13,
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					NoCloseNotify: true, // Align QUIC and TCP traces.
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+				"-expect-msg-callback", clientAndServerHello + "write ccs\n" + finishHandshake,
+			},
+			expectations: connectionExpectations{echAccepted: true},
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			protocol: protocol,
+			name:     prefix + "ECH-Client-MessageCallback-HelloRetryRequest",
+			config: Config{
+				MinVersion:       VersionTLS13,
+				MaxVersion:       VersionTLS13,
+				CurvePreferences: []CurveID{CurveP384},
+				ServerECHConfigs: []ServerECHConfig{echConfig},
+				Bugs: ProtocolBugs{
+					ExpectMissingKeyShare: true, // Check we triggered HRR.
+					NoCloseNotify:         true, // Align QUIC and TCP traces.
+				},
+			},
+			flags: []string{
+				"-ech-config-list", base64FlagValue(CreateECHConfigList(echConfig.ECHConfig.Raw)),
+				"-expect-ech-accept",
+				"-expect-hrr", // Check we triggered HRR.
+				"-expect-msg-callback", clientAndServerHello + "write ccs\n" + clientAndServerHello + finishHandshake,
+			},
+			expectations: connectionExpectations{echAccepted: true},
 		})
 	}
 }

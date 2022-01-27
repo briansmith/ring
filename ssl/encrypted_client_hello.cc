@@ -319,8 +319,14 @@ bool ssl_client_hello_decrypt(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   encoded.Shrink(len);
 #endif
 
-  return ssl_decode_client_hello_inner(hs->ssl, out_alert, out, encoded,
-                                       client_hello_outer);
+  if (!ssl_decode_client_hello_inner(hs->ssl, out_alert, out, encoded,
+                                     client_hello_outer)) {
+    return false;
+  }
+
+  ssl_do_msg_callback(hs->ssl, /*is_write=*/0, SSL3_RT_CLIENT_HELLO_INNER,
+                      *out);
+  return true;
 }
 
 static bool is_hex_component(Span<const uint8_t> in) {
@@ -802,6 +808,8 @@ bool ssl_encrypt_client_hello(SSL_HANDSHAKE *hs, Span<const uint8_t> enc) {
                    binder_len);
   }
 
+  ssl_do_msg_callback(ssl, /*is_write=*/1, SSL3_RT_CLIENT_HELLO_INNER,
+                      hello_inner);
   if (!hs->inner_transcript.Update(hello_inner)) {
     return false;
   }
