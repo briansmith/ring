@@ -16776,9 +16776,7 @@ func addEncryptedClientHelloTests() {
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
-				// The decoding algorithm relies on the ordering requirement, so
-				// the wrong order appears as a missing extension.
-				expectedError: ":OUTER_EXTENSION_NOT_FOUND:",
+				expectedError:      ":INVALID_OUTER_EXTENSION:",
 			})
 
 			// Test that the server rejects duplicated values in ech_outer_extensions.
@@ -16812,9 +16810,7 @@ func addEncryptedClientHelloTests() {
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
-				// The decoding algorithm relies on the ordering requirement, so
-				// duplicates appear as missing extensions.
-				expectedError: ":OUTER_EXTENSION_NOT_FOUND:",
+				expectedError:      ":INVALID_OUTER_EXTENSION:",
 			})
 
 			// Test that the server rejects references to missing extensions in
@@ -16843,7 +16839,7 @@ func addEncryptedClientHelloTests() {
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
-				expectedError:      ":DECODE_ERROR:",
+				expectedError:      ":INVALID_OUTER_EXTENSION:",
 			})
 
 			// Test that the server rejects a references to the ECH extension in
@@ -16871,7 +16867,7 @@ func addEncryptedClientHelloTests() {
 				},
 				shouldFail:         true,
 				expectedLocalError: "remote error: illegal parameter",
-				expectedError:      ":DECODE_ERROR:",
+				expectedError:      ":INVALID_OUTER_EXTENSION:",
 			})
 		}
 
