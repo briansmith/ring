@@ -258,8 +258,8 @@ bool ssl_decode_client_hello_inner(
   return true;
 }
 
-bool ssl_client_hello_decrypt(EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out,
-                              bool *out_is_decrypt_error,
+bool ssl_client_hello_decrypt(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                              bool *out_is_decrypt_error, Array<uint8_t> *out,
                               const SSL_CLIENT_HELLO *client_hello_outer,
                               Span<const uint8_t> payload) {
   *out_is_decrypt_error = false;
@@ -270,6 +270,7 @@ bool ssl_client_hello_decrypt(EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out,
   Array<uint8_t> aad;
   if (!aad.CopyFrom(MakeConstSpan(client_hello_outer->client_hello,
                                   client_hello_outer->client_hello_len))) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
 
@@ -284,36 +285,42 @@ bool ssl_client_hello_decrypt(EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out,
       payload.data() - client_hello_outer->client_hello, payload.size());
   OPENSSL_memset(payload_aad.data(), 0, payload_aad.size());
 
+  // Decrypt the EncodedClientHelloInner.
+  Array<uint8_t> encoded;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   // In fuzzer mode, disable encryption to improve coverage. We reserve a short
   // input to signal decryption failure, so the fuzzer can explore fallback to
   // ClientHelloOuter.
   const uint8_t kBadPayload[] = {0xff};
   if (payload == kBadPayload) {
+    *out_alert = SSL_AD_DECRYPT_ERROR;
     *out_is_decrypt_error = true;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
     return false;
   }
-  if (!out->CopyFrom(payload)) {
+  if (!encoded.CopyFrom(payload)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
 #else
-  // Attempt to decrypt into |out|.
-  if (!out->Init(payload.size())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+  if (!encoded.Init(payload.size())) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
   size_t len;
-  if (!EVP_HPKE_CTX_open(hpke_ctx, out->data(), &len, out->size(),
-                         payload.data(), payload.size(), aad.data(),
-                         aad.size())) {
+  if (!EVP_HPKE_CTX_open(hs->ech_hpke_ctx.get(), encoded.data(), &len,
+                         encoded.size(), payload.data(), payload.size(),
+                         aad.data(), aad.size())) {
+    *out_alert = SSL_AD_DECRYPT_ERROR;
     *out_is_decrypt_error = true;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
     return false;
   }
-  out->Shrink(len);
+  encoded.Shrink(len);
 #endif
-  return true;
+
+  return ssl_decode_client_hello_inner(hs->ssl, out_alert, out, encoded,
+                                       client_hello_outer);
 }
 
 static bool is_hex_component(Span<const uint8_t> in) {

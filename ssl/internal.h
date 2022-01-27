@@ -1498,17 +1498,19 @@ enum ssl_client_hello_type_t {
 // ClientHelloOuter |client_hello_outer|. If successful, it writes the recovered
 // ClientHelloInner to |out_client_hello_inner|. It returns true on success and
 // false on failure.
+//
+// This function is exported for fuzzing.
 OPENSSL_EXPORT bool ssl_decode_client_hello_inner(
     SSL *ssl, uint8_t *out_alert, Array<uint8_t> *out_client_hello_inner,
     Span<const uint8_t> encoded_client_hello_inner,
     const SSL_CLIENT_HELLO *client_hello_outer);
 
-// ssl_client_hello_decrypt attempts to decrypt the |payload| and writes the
-// result to |*out|. |payload| must point into |client_hello_outer|. It returns
-// true on success and false on error. On error, it sets |*out_is_decrypt_error|
-// to whether the failure was due to a bad ciphertext.
-bool ssl_client_hello_decrypt(EVP_HPKE_CTX *hpke_ctx, Array<uint8_t> *out,
-                              bool *out_is_decrypt_error,
+// ssl_client_hello_decrypt attempts to decrypt and decode the |payload|. It
+// writes the result to |*out|. |payload| must point into |client_hello_outer|.
+// It returns true on success and false on error. On error, it sets
+// |*out_is_decrypt_error| to whether the failure was due to a bad ciphertext.
+bool ssl_client_hello_decrypt(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                              bool *out_is_decrypt_error, Array<uint8_t> *out,
                               const SSL_CLIENT_HELLO *client_hello_outer,
                               Span<const uint8_t> payload);
 

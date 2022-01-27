@@ -554,29 +554,22 @@ static bool decrypt_ech(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       ERR_clear_error();
       continue;
     }
-    Array<uint8_t> encoded_client_hello_inner;
     bool is_decrypt_error;
-    if (!ssl_client_hello_decrypt(hs->ech_hpke_ctx.get(),
-                                  &encoded_client_hello_inner,
-                                  &is_decrypt_error, client_hello, payload)) {
+    if (!ssl_client_hello_decrypt(hs, out_alert, &is_decrypt_error,
+                                  &hs->ech_client_hello_buf, client_hello,
+                                  payload)) {
       if (is_decrypt_error) {
         // Ignore the error and try another ECHConfig.
         ERR_clear_error();
+        // The |out_alert| calling convention currently relies on a default of
+        // |SSL_AD_DECODE_ERROR|. https://crbug.com/boringssl/373 tracks
+        // switching to sum types, which avoids this.
+        *out_alert = SSL_AD_DECODE_ERROR;
         continue;
       }
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
       return false;
     }
-
-    // Recover the ClientHelloInner from the EncodedClientHelloInner.
-    bssl::Array<uint8_t> client_hello_inner;
-    if (!ssl_decode_client_hello_inner(ssl, out_alert, &client_hello_inner,
-                                       encoded_client_hello_inner,
-                                       client_hello)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return false;
-    }
-    hs->ech_client_hello_buf = std::move(client_hello_inner);
     hs->ech_config_id = config_id;
     ssl->s3->ech_status = ssl_ech_accepted;
     return true;

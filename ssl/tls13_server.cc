@@ -658,28 +658,16 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
     }
 
     // Decrypt the payload with the HPKE context from the first ClientHello.
-    Array<uint8_t> encoded_client_hello_inner;
+    uint8_t alert = SSL_AD_DECODE_ERROR;
     bool unused;
-    if (!ssl_client_hello_decrypt(hs->ech_hpke_ctx.get(),
-                                  &encoded_client_hello_inner, &unused,
-                                  &client_hello, payload)) {
+    if (!ssl_client_hello_decrypt(hs, &alert, &unused,
+                                  &hs->ech_client_hello_buf, &client_hello,
+                                  payload)) {
       // Decryption failure is fatal in the second ClientHello.
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-      return ssl_hs_error;
-    }
-
-    // Recover the ClientHelloInner from the EncodedClientHelloInner.
-    uint8_t alert = SSL_AD_DECODE_ERROR;
-    bssl::Array<uint8_t> client_hello_inner;
-    if (!ssl_decode_client_hello_inner(ssl, &alert, &client_hello_inner,
-                                       encoded_client_hello_inner,
-                                       &client_hello)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
-    hs->ech_client_hello_buf = std::move(client_hello_inner);
 
     // Reparse |client_hello| from the buffer owned by |hs|.
     if (!hs->GetClientHello(&msg, &client_hello)) {
