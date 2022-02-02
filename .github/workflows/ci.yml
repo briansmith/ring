@@ -155,6 +155,7 @@ jobs:
       - run: sh mk/package.sh
         shell: bash
 
+  # Intentionally excludes benchmarks for build performance reasons.
   test:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
@@ -321,6 +322,28 @@ jobs:
                 !contains(matrix.host_os, 'windows') &&
                 (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
         run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
+
+  test-bench:
+    # Don't run duplicate `push` jobs for the repo owner's PRs.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-22.04
+
+    steps:
+      - run: sudo apt-get update -y
+
+      - uses: briansmith/actions-checkout@v2
+        with:
+          persist-credentials: false
+
+      - run: mk/install-build-tools.sh --target=x86_64-unknown-linux-gnu
+
+      - uses: briansmith/actions-rs-toolchain@v1
+        with:
+          override: true
+          toolchain: stable
+
+      - run: cargo test -p ring-bench --all-features --all-targets
 
   # XXX: GitHub Actions won't let us test all the combinations of features in
   # the "test" matrix because the resultant matrix would be larger than the

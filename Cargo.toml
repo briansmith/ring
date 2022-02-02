@@ -192,9 +192,6 @@ libc = { version = "0.2.100", default-features = false }
 [build-dependencies]
 cc = { version = "1.0.69", default-features = false }
 
-[dev-dependencies]
-criterion = { version = "0.4", default-features = false }
-
 [features]
 # These features are documented in the top-level module's documentation.
 default = ["alloc", "dev_urandom_fallback"]
@@ -225,10 +222,9 @@ lto = true
 debug-assertions = false
 codegen-units = 1
 
-[[bench]]
-name = "aead"
-harness = false
-
-[[bench]]
-name = "x25519"
-harness = false
+[workspace]
+members = [
+    # intentionally not a default member so that `cargo test` doesn't cause criterion.rs and all its
+    # dependencies to get built.
+    "bench",
+]
