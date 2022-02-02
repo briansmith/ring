@@ -195,13 +195,11 @@ macro_rules! features {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) struct Feature {
     mask: u32,
 }
 
 impl Feature {
-    #[allow(dead_code)]
     #[inline(always)]
     pub fn available(&self, _: super::Features) -> bool {
         if self.mask == self.mask & ARMCAP_STATIC {
