@@ -1,0 +1,21 @@
+[package]
+edition = "2021"
+name = "ring-bench"
+publish = false
+version = "0.1.0"
+
+[dependencies]
+ring = { path = "../" }
+
+[dev-dependencies]
+criterion = { version = "0.4", default-features = false }
+
+[[bench]]
+name = "aead"
+harness = false
+path = "aead.rs"
+
+[[bench]]
+name = "x25519"
+harness = false
+path = "x25519.rs"
