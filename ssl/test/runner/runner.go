@@ -19309,8 +19309,22 @@ func main() {
 		noneOfPattern = strings.Split(*skipTest, ";")
 	}
 
+	shardIndex, shardTotal, err := getSharding()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	if shardTotal > 0 {
+		fmt.Printf("This is shard %d of 0..%d (inclusive)\n", shardIndex, shardTotal-1)
+	}
+
 	var foundTest bool
 	for i := range testCases {
+		if shardTotal > 0 && i%shardTotal != shardIndex {
+			continue
+		}
+
 		matched, err := match(oneOfPatternIfAny, noneOfPattern, testCases[i].name)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error matching pattern: %s\n", err)
@@ -19348,7 +19362,7 @@ func main() {
 		}
 	}
 
-	if !foundTest {
+	if !foundTest && shardTotal == 0 {
 		fmt.Fprintf(os.Stderr, "No tests run\n")
 		os.Exit(1)
 	}
