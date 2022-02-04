@@ -16,7 +16,26 @@
 
 #include "../../internal.h"
 
+#if (defined(OPENSSL_X86) || defined(OPENSSL_X86_64)) && defined(__SSE2__)
+#define OPENSSL_SSE2
+#endif
+
+// MSVC doesn't set __SSE2__
+#if defined(_MSC_VER) && !defined(__clang__)
+# if defined(OPENSSL_X86_64)
+#  define OPENSSL_SSE2
+# elif defined(OPENSSL_X86)
+#  if _M_IX86_FP == 2
+#   define OPENSSL_SSE2
+#  endif
+# endif
+#endif
+
 #if defined(OPENSSL_SSE2)
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+
 #include <emmintrin.h>
 #endif
 
@@ -783,7 +802,7 @@ static const uint8_t aes_nohw_rcon[10] = {0x01, 0x02, 0x04, 0x08, 0x10,
 // aes_nohw_rcon_slice returns the |i|th group of |AES_NOHW_BATCH_SIZE| bits in
 // |rcon|, stored in a |aes_word_t|.
 static inline aes_word_t aes_nohw_rcon_slice(uint8_t rcon, size_t i) {
-  rcon = (rcon >> (i * AES_NOHW_BATCH_SIZE)) & ((1 << AES_NOHW_BATCH_SIZE) - 1);
+  rcon = (uint8_t) ((rcon >> (i * AES_NOHW_BATCH_SIZE)) & ((1 << AES_NOHW_BATCH_SIZE) - 1));
 #if defined(OPENSSL_SSE2)
   return _mm_set_epi32(0, 0, 0, rcon);
 #else
