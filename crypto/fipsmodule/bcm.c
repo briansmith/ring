@@ -196,9 +196,17 @@ BORINGSSL_bcm_power_on_self_test(void) {
 #if defined(OPENSSL_AARCH64) || defined(OPENSSL_ANDROID)
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
+  if (!boringssl_self_test_sha256() ||
+      !boringssl_self_test_hmac_sha256()) {
+    goto err;
+  }
 #else
   uint8_t result[SHA512_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha512();
+  if (!boringssl_self_test_sha512() ||
+      !boringssl_self_test_hmac_sha256()) {
+    goto err;
+  }
 #endif
 
   static const uint8_t kHMACKey[64] = {0};

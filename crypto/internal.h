@@ -932,11 +932,22 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 // FIPS functions.
 
 #if defined(BORINGSSL_FIPS)
+
 // BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
 // fails. It prevents any further cryptographic operations by the current
 // process.
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
-#endif
+
+#endif  // FIPS
+
+// boringssl_self_test_sha256 performs a SHA-256 KAT.
+int boringssl_self_test_sha256(void);
+
+// boringssl_self_test_sha512 performs a SHA-512 KAT.
+int boringssl_self_test_sha512(void);
+
+// boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT.
+int boringssl_self_test_hmac_sha256(void);
 
 #if defined(BORINGSSL_FIPS_COUNTERS)
 void boringssl_fips_inc_counter(enum fips_counter_t counter);
