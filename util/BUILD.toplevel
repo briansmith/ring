@@ -36,52 +36,34 @@ exports_files(["LICENSE"])
 
 config_setting(
     name = "linux_aarch64",
-    values = {"cpu": "aarch64"},
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
 )
 
 config_setting(
     name = "linux_x86_64",
-    values = {"cpu": "k8"},
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
 )
 
 config_setting(
     name = "linux_ppc64le",
-    values = {"cpu": "ppc"},
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:ppc",
+    ],
 )
 
 config_setting(
-    name = "mac_x86_64",
-    values = {"cpu": "darwin"},
-)
-
-config_setting(
-    name = "windows_x86_64",
-    values = {"cpu": "x64_windows"},
-)
-
-config_setting(
-    name = "android_legacy",
-    values = {"crosstool_top": "//external:android/crosstool"},
-)
-
-config_setting(
-    name = "android_stlport",
-    values = {"crosstool_top": "@androidndk//:toolchain-stlport"},
-)
-
-config_setting(
-    name = "android_libcpp",
-    values = {"crosstool_top": "@androidndk//:toolchain-libcpp"},
-)
-
-config_setting(
-    name = "android_gnu_libstdcpp",
-    values = {"crosstool_top": "@androidndk//:toolchain-gnu-libstdcpp"},
-)
-
-config_setting(
-    name = "android_default",
-    values = {"crosstool_top": "@androidndk//:default_crosstool"},
+    name = "macos_x86_64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:x86_64",
+    ],
 )
 
 posix_copts = [
@@ -113,11 +95,9 @@ linux_copts = posix_copts + [
 ]
 
 boringssl_copts = select({
-    ":linux_aarch64": linux_copts,
-    ":linux_ppc64le": linux_copts,
-    ":linux_x86_64": linux_copts,
-    ":mac_x86_64": posix_copts,
-    ":windows_x86_64": [
+    "@platforms//os:linux": linux_copts,
+    "@platforms//os:macos": posix_copts,
+    "@platforms//os:windows": [
         "-DWIN32_LEAN_AND_MEAN",
         "-DOPENSSL_NO_ASM",
     ],
@@ -128,7 +108,7 @@ crypto_sources_asm = select({
     ":linux_aarch64": crypto_sources_linux_aarch64,
     ":linux_ppc64le": crypto_sources_linux_ppc64le,
     ":linux_x86_64": crypto_sources_linux_x86_64,
-    ":mac_x86_64": crypto_sources_mac_x86_64,
+    ":macos_x86_64": crypto_sources_mac_x86_64,
     "//conditions:default": [],
 })
 
@@ -141,10 +121,8 @@ posix_copts_c11 = [
 ]
 
 boringssl_copts_c11 = boringssl_copts + select({
-    ":linux_aarch64": posix_copts_c11,
-    ":linux_ppc64le": posix_copts_c11,
-    ":linux_x86_64": posix_copts_c11,
-    ":mac_x86_64": posix_copts_c11,
+    "@platforms//os:linux": posix_copts_c11,
+    "@platforms//os:macos": posix_copts_c11,
     "//conditions:default": [],
 })
 
@@ -155,10 +133,8 @@ posix_copts_cxx = [
 ]
 
 boringssl_copts_cxx = boringssl_copts + select({
-    ":linux_aarch64": posix_copts_cxx,
-    ":linux_ppc64le": posix_copts_cxx,
-    ":linux_x86_64": posix_copts_cxx,
-    ":mac_x86_64": posix_copts_cxx,
+    "@platforms//os:linux": posix_copts_cxx,
+    "@platforms//os:macos": posix_copts_cxx,
     "//conditions:default": [],
 })
 
@@ -171,13 +147,9 @@ cc_library(
     linkopts = select({
         # Android supports pthreads, but does not provide a libpthread
         # to link against.
-        ":android_legacy": [],
-        ":android_stlport": [],
-        ":android_libcpp": [],
-        ":android_gnu_libstdcpp": [],
-        ":android_default": [],
-        ":mac_x86_64": [],
-        ":windows_x86_64": ["-defaultlib:advapi32.lib"],
+        "@platforms//os:android": [],
+        "@platforms//os:macos": [],
+        "@platforms//os:windows": ["-defaultlib:advapi32.lib"],
         "//conditions:default": ["-lpthread"],
     }),
     visibility = ["//visibility:public"],
