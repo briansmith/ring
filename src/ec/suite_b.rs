@@ -160,8 +160,17 @@ pub(crate) fn key_pair_from_pkcs8(
     cpu_features: cpu::Features,
 ) -> Result<ec::KeyPair, error::KeyRejected> {
     let (ec_private_key, _) = pkcs8::unwrap_key(template, pkcs8::Version::V1Only, input)?;
+    key_pair_from_der(curve, template, ec_private_key, cpu_features)
+}
+
+pub(crate) fn key_pair_from_der(
+    curve: &'static ec::Curve,
+    template: &pkcs8::Template,
+    input: untrusted::Input,
+    cpu_features: cpu::Features,
+) -> Result<ec::KeyPair, error::KeyRejected> {
     let (private_key, public_key) =
-        ec_private_key.read_all(error::KeyRejected::invalid_encoding(), |input| {
+        input.read_all(error::KeyRejected::invalid_encoding(), |input| {
             // https://tools.ietf.org/html/rfc5915#section-3
             der::nested(
                 input,
