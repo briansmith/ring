@@ -82,8 +82,8 @@ macro_rules! ctr32_encrypt_blocks {
     ($name:ident, $in_out:expr, $src:expr, $key:expr, $ivec:expr ) => {{
         prefixed_extern! {
             fn $name(
-                input: *const u8,
-                output: *mut u8,
+                input: *const [u8; BLOCK_LEN],
+                output: *mut [u8; BLOCK_LEN],
                 blocks: c::size_t,
                 key: &AES_KEY,
                 ivec: &Counter,
@@ -96,8 +96,8 @@ macro_rules! ctr32_encrypt_blocks {
 #[inline]
 fn ctr32_encrypt_blocks_(
     f: unsafe extern "C" fn(
-        input: *const u8,
-        output: *mut u8,
+        input: *const [u8; BLOCK_LEN],
+        output: *mut [u8; BLOCK_LEN],
         blocks: c::size_t,
         key: &AES_KEY,
         ivec: &Counter,
@@ -114,8 +114,8 @@ fn ctr32_encrypt_blocks_(
     let blocks_u32 = blocks as u32;
     assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
 
-    let input = in_out[src].as_ptr();
-    let output = in_out.as_mut_ptr();
+    let input = in_out[src].as_ptr() as *const [u8; BLOCK_LEN];
+    let output = in_out.as_mut_ptr() as *mut [u8; BLOCK_LEN];
 
     unsafe {
         f(input, output, blocks, key, ctr);
