@@ -256,6 +256,7 @@ add_library(
   cipher_extra/e_aesctrhmac.c
   cipher_extra/e_aesgcmsiv.c
   cipher_extra/e_chacha20poly1305.c
+  cipher_extra/e_des.c
   cipher_extra/e_null.c
   cipher_extra/e_rc2.c
   cipher_extra/e_rc4.c
@@ -274,6 +275,7 @@ add_library(
   crypto.c
   curve25519/curve25519.c
   curve25519/spake25519.c
+  des/des.c
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c

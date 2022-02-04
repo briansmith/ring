@@ -20,7 +20,6 @@
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/bn.h>
-#include <openssl/des.h>
 #include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
@@ -356,23 +355,6 @@ int boringssl_fips_self_test(
       0x00
 #endif
   };
-  static const DES_cblock kDESKey1 = {"BCMDESK1"};
-  static const DES_cblock kDESKey2 = {"BCMDESK2"};
-  static const DES_cblock kDESKey3 = {"BCMDESK3"};
-  static const DES_cblock kDESIV = {"BCMDESIV"};
-  static const uint8_t kDESCiphertext[64] = {
-      0xa4, 0x30, 0x7a, 0x4c, 0x1f, 0x60, 0x16, 0xd7, 0x4f, 0x41, 0xe1,
-      0xbb, 0x27, 0xc4, 0x27, 0x37, 0xd4, 0x7f, 0xb9, 0x10, 0xf8, 0xbc,
-      0xaf, 0x93, 0x91, 0xb8, 0x88, 0x24, 0xb1, 0xf6, 0xf8, 0xbd, 0x31,
-      0x96, 0x06, 0x76, 0xde, 0x32, 0xcd, 0x29, 0x29, 0xba, 0x70, 0x5f,
-      0xea, 0xc0, 0xcb, 0xde, 0xc7, 0x75, 0x90, 0xe0, 0x0f, 0x5e, 0x2c,
-      0x0d, 0x49, 0x20, 0xd5, 0x30, 0x83, 0xf8, 0x08,
-#if !defined(BORINGSSL_FIPS_BREAK_DES)
-      0x5a
-#else
-      0x00
-#endif
-  };
   static const uint8_t kPlaintextSHA1[20] = {
       0xc6, 0xf8, 0xc9, 0x63, 0x1c, 0x14, 0x23, 0x62, 0x9b, 0xbd,
       0x55, 0x82, 0xf4, 0xd6, 0x1d, 0xf2, 0xab, 0x7d, 0xc8,
@@ -649,30 +631,6 @@ int boringssl_fips_self_test(
       !check_test(kPlaintext, output, sizeof(kPlaintext),
                   "AES-GCM Decryption KAT")) {
     fprintf(stderr, "EVP_AEAD_CTX_open for AES-128-GCM failed.\n");
-    goto err;
-  }
-
-  DES_key_schedule des1, des2, des3;
-  DES_cblock des_iv;
-  DES_set_key(&kDESKey1, &des1);
-  DES_set_key(&kDESKey2, &des2);
-  DES_set_key(&kDESKey3, &des3);
-
-  // 3DES Encryption KAT
-  memcpy(&des_iv, &kDESIV, sizeof(des_iv));
-  DES_ede3_cbc_encrypt(kPlaintext, output, sizeof(kPlaintext), &des1, &des2,
-                       &des3, &des_iv, DES_ENCRYPT);
-  if (!check_test(kDESCiphertext, output, sizeof(kDESCiphertext),
-                  "3DES Encryption KAT")) {
-    goto err;
-  }
-
-  // 3DES Decryption KAT
-  memcpy(&des_iv, &kDESIV, sizeof(des_iv));
-  DES_ede3_cbc_encrypt(kDESCiphertext, output, sizeof(kDESCiphertext), &des1,
-                       &des2, &des3, &des_iv, DES_DECRYPT);
-  if (!check_test(kPlaintext, output, sizeof(kPlaintext),
-                  "3DES Decryption KAT")) {
     goto err;
   }
 

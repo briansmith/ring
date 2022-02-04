@@ -59,7 +59,6 @@
 #include <openssl/nid.h>
 
 #include "internal.h"
-#include "../delocate.h"
 
 
 typedef struct {
@@ -88,17 +87,21 @@ static int des_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   return 1;
 }
 
-DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_des_cbc) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_des_cbc;
-  out->block_size = 8;
-  out->key_len = 8;
-  out->iv_len = 8;
-  out->ctx_size = sizeof(EVP_DES_KEY);
-  out->flags = EVP_CIPH_CBC_MODE;
-  out->init = des_init_key;
-  out->cipher = des_cbc_cipher;
-}
+static const EVP_CIPHER evp_des_cbc = {
+    /* nid = */ NID_des_cbc,
+    /* block_size = */ 8,
+    /* key_len = */ 8,
+    /* iv_len = */ 8,
+    /* ctx_size = */ sizeof(EVP_DES_KEY),
+    /* flags = */ EVP_CIPH_CBC_MODE,
+    /* app_data = */ NULL,
+    /* init = */ des_init_key,
+    /* cipher = */ des_cbc_cipher,
+    /* cleanup = */ NULL,
+    /* ctrl = */ NULL,
+};
+
+const EVP_CIPHER *EVP_des_cbc(void) { return &evp_des_cbc; }
 
 static int des_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                           size_t in_len) {
@@ -107,25 +110,29 @@ static int des_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   }
   in_len -= ctx->cipher->block_size;
 
-  EVP_DES_KEY *dat = (EVP_DES_KEY *) ctx->cipher_data;
+  EVP_DES_KEY *dat = (EVP_DES_KEY *)ctx->cipher_data;
   for (size_t i = 0; i <= in_len; i += ctx->cipher->block_size) {
-    DES_ecb_encrypt((DES_cblock *) (in + i), (DES_cblock *) (out + i),
+    DES_ecb_encrypt((DES_cblock *)(in + i), (DES_cblock *)(out + i),
                     &dat->ks.ks, ctx->encrypt);
   }
   return 1;
 }
 
-DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_des_ecb) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_des_ecb;
-  out->block_size = 8;
-  out->key_len = 8;
-  out->iv_len = 0;
-  out->ctx_size = sizeof(EVP_DES_KEY);
-  out->flags = EVP_CIPH_ECB_MODE;
-  out->init = des_init_key;
-  out->cipher = des_ecb_cipher;
-}
+static const EVP_CIPHER evp_des_ecb = {
+    /* nid = */ NID_des_ecb,
+    /* block_size = */ 8,
+    /* key_len = */ 8,
+    /* iv_len = */ 0,
+    /* ctx_size = */ sizeof(EVP_DES_KEY),
+    /* flags = */ EVP_CIPH_ECB_MODE,
+    /* app_data = */ NULL,
+    /* init = */ des_init_key,
+    /* cipher = */ des_ecb_cipher,
+    /* cleanup = */ NULL,
+    /* ctrl = */ NULL,
+};
+
+const EVP_CIPHER *EVP_des_ecb(void) { return &evp_des_ecb; }
 
 typedef struct {
   union {
@@ -137,7 +144,7 @@ typedef struct {
 static int des_ede3_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                              const uint8_t *iv, int enc) {
   DES_cblock *deskey = (DES_cblock *)key;
-  DES_EDE_KEY *dat = (DES_EDE_KEY*) ctx->cipher_data;
+  DES_EDE_KEY *dat = (DES_EDE_KEY *)ctx->cipher_data;
 
   DES_set_key(&deskey[0], &dat->ks.ks[0]);
   DES_set_key(&deskey[1], &dat->ks.ks[1]);
@@ -147,8 +154,8 @@ static int des_ede3_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 }
 
 static int des_ede3_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
-                              const uint8_t *in, size_t in_len) {
-  DES_EDE_KEY *dat = (DES_EDE_KEY*) ctx->cipher_data;
+                               const uint8_t *in, size_t in_len) {
+  DES_EDE_KEY *dat = (DES_EDE_KEY *)ctx->cipher_data;
 
   DES_ede3_cbc_encrypt(in, out, in_len, &dat->ks.ks[0], &dat->ks.ks[1],
                        &dat->ks.ks[2], (DES_cblock *)ctx->iv, ctx->encrypt);
@@ -156,22 +163,26 @@ static int des_ede3_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   return 1;
 }
 
-DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_des_ede3_cbc) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_des_ede3_cbc;
-  out->block_size = 8;
-  out->key_len = 24;
-  out->iv_len = 8;
-  out->ctx_size = sizeof(DES_EDE_KEY);
-  out->flags = EVP_CIPH_CBC_MODE;
-  out->init = des_ede3_init_key;
-  out->cipher = des_ede3_cbc_cipher;
-}
+static const EVP_CIPHER evp_des_ede3_cbc = {
+    /* nid = */ NID_des_ede3_cbc,
+    /* block_size = */ 8,
+    /* key_len = */ 24,
+    /* iv_len = */ 8,
+    /* ctx_size = */ sizeof(DES_EDE_KEY),
+    /* flags = */ EVP_CIPH_CBC_MODE,
+    /* app_data = */ NULL,
+    /* init = */ des_ede3_init_key,
+    /* cipher = */ des_ede3_cbc_cipher,
+    /* cleanup = */ NULL,
+    /* ctrl = */ NULL,
+};
+
+const EVP_CIPHER *EVP_des_ede3_cbc(void) { return &evp_des_ede3_cbc; }
 
 static int des_ede_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                             const uint8_t *iv, int enc) {
-  DES_cblock *deskey = (DES_cblock *) key;
-  DES_EDE_KEY *dat = (DES_EDE_KEY *) ctx->cipher_data;
+                            const uint8_t *iv, int enc) {
+  DES_cblock *deskey = (DES_cblock *)key;
+  DES_EDE_KEY *dat = (DES_EDE_KEY *)ctx->cipher_data;
 
   DES_set_key(&deskey[0], &dat->ks.ks[0]);
   DES_set_key(&deskey[1], &dat->ks.ks[1]);
@@ -180,17 +191,21 @@ static int des_ede_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   return 1;
 }
 
-DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_des_ede_cbc) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_des_ede_cbc;
-  out->block_size = 8;
-  out->key_len = 16;
-  out->iv_len = 8;
-  out->ctx_size = sizeof(DES_EDE_KEY);
-  out->flags = EVP_CIPH_CBC_MODE;
-  out->init = des_ede_init_key;
-  out->cipher = des_ede3_cbc_cipher;
-}
+static const EVP_CIPHER evp_des_ede_cbc = {
+    /* nid = */ NID_des_ede_cbc,
+    /* block_size = */ 8,
+    /* key_len = */ 16,
+    /* iv_len = */ 8,
+    /* ctx_size = */ sizeof(DES_EDE_KEY),
+    /* flags = */ EVP_CIPH_CBC_MODE,
+    /* app_data = */ NULL,
+    /* init = */ des_ede_init_key,
+    /* cipher = */ des_ede3_cbc_cipher,
+    /* cleanup = */ NULL,
+    /* ctrl = */ NULL,
+};
+
+const EVP_CIPHER *EVP_des_ede_cbc(void) { return &evp_des_ede_cbc; }
 
 static int des_ede_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                               const uint8_t *in, size_t in_len) {
@@ -208,30 +223,36 @@ static int des_ede_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   return 1;
 }
 
-DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_des_ede) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_des_ede_ecb;
-  out->block_size = 8;
-  out->key_len = 16;
-  out->iv_len = 0;
-  out->ctx_size = sizeof(DES_EDE_KEY);
-  out->flags = EVP_CIPH_ECB_MODE;
-  out->init = des_ede_init_key;
-  out->cipher = des_ede_ecb_cipher;
-}
+static const EVP_CIPHER evp_des_ede = {
+    /* nid = */ NID_des_ede_ecb,
+    /* block_size = */ 8,
+    /* key_len = */ 16,
+    /* iv_len = */ 0,
+    /* ctx_size = */ sizeof(DES_EDE_KEY),
+    /* flags = */ EVP_CIPH_ECB_MODE,
+    /* app_data = */ NULL,
+    /* init = */ des_ede_init_key,
+    /* cipher = */ des_ede_ecb_cipher,
+    /* cleanup = */ NULL,
+    /* ctrl = */ NULL,
+};
 
-DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_des_ede3) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-  out->nid = NID_des_ede3_ecb;
-  out->block_size = 8;
-  out->key_len = 24;
-  out->iv_len = 0;
-  out->ctx_size = sizeof(DES_EDE_KEY);
-  out->flags = EVP_CIPH_ECB_MODE;
-  out->init = des_ede3_init_key;
-  out->cipher = des_ede_ecb_cipher;
-}
+const EVP_CIPHER *EVP_des_ede(void) { return &evp_des_ede; }
 
-const EVP_CIPHER* EVP_des_ede3_ecb(void) {
-  return EVP_des_ede3();
-}
+static const EVP_CIPHER evp_des_ede3 = {
+    /* nid = */ NID_des_ede3_ecb,
+    /* block_size = */ 8,
+    /* key_len = */ 24,
+    /* iv_len = */ 0,
+    /* ctx_size = */ sizeof(DES_EDE_KEY),
+    /* flags = */ EVP_CIPH_ECB_MODE,
+    /* app_data = */ NULL,
+    /* init = */ des_ede3_init_key,
+    /* cipher = */ des_ede_ecb_cipher,
+    /* cleanup = */ NULL,
+    /* ctrl = */ NULL,
+};
+
+const EVP_CIPHER *EVP_des_ede3(void) { return &evp_des_ede3; }
+
+const EVP_CIPHER *EVP_des_ede3_ecb(void) { return EVP_des_ede3(); }
