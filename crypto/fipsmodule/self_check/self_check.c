@@ -55,7 +55,7 @@ static void hexdump(const uint8_t *in, size_t len) {
 static int check_test(const void *expected, const void *actual,
                       size_t expected_len, const char *name) {
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
-    fprintf(stderr, "%s failed.\nExpected: ", name);
+    fprintf(stderr, "%s failed.\nExpected:   ", name);
     hexdump(expected, expected_len);
     fprintf(stderr, "\nCalculated: ");
     hexdump(actual, expected_len);
