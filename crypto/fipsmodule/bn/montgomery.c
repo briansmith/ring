@@ -156,3 +156,17 @@ int bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
   }
   return 1;
 }
+
+#if !defined(OPENSSL_X86) && !defined(OPENSSL_X86_64) && \
+    !defined(OPENSSL_ARM) && !defined(OPENSSL_AARCH64)
+void bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                 const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+  Limb tmp[2 * num];
+  for (size_t i = 0; i < num; i++)
+    tmp[i] = 0;
+  for (size_t i = 0; i < num; i++)
+    tmp[num + i] = limbs_mul_add_limb(tmp + i, ap, bp[i], num);
+
+  bn_from_montgomery_in_place(rp, num, tmp, 2 * num, np, num, n0);
+}
+#endif
