@@ -86,6 +86,67 @@ fn ecdsa_from_pkcs8_test() {
     );
 }
 
+#[test]
+fn ecdsa_from_der_test() {
+    test::run(
+        test_file!("ecdsa_from_der_tests.txt"),
+        |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+            let ((this_fixed, this_asn1), (other_fixed, other_asn1)) = match curve_name.as_str() {
+                "P-256" => (
+                    (
+                        &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                        &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                    ),
+                    (
+                        &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+                        &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                    ),
+                ),
+                "P-384" => (
+                    (
+                        &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+                        &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                    ),
+                    (
+                        &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                        &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                    ),
+                ),
+                _ => unreachable!(),
+            };
+
+            let input = test_case.consume_bytes("Input");
+
+            let error = test_case.consume_optional_string("Error");
+
+            match (
+                signature::EcdsaKeyPair::from_der(this_fixed, &input),
+                error.clone(),
+            ) {
+                (Ok(_), None) => (),
+                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+            };
+
+            match (signature::EcdsaKeyPair::from_der(this_asn1, &input), error) {
+                (Ok(_), None) => (),
+                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+            };
+
+            assert!(signature::EcdsaKeyPair::from_der(other_fixed, &input).is_err());
+            assert!(signature::EcdsaKeyPair::from_der(other_asn1, &input).is_err());
+
+            Ok(())
+        },
+    );
+}
+
 // Verify that, at least, we generate PKCS#8 documents that we can read.
 #[test]
 fn ecdsa_generate_pkcs8_test() {
