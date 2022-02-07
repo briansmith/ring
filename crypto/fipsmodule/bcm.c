@@ -29,6 +29,7 @@
 #include <openssl/sha.h>
 
 #include "../internal.h"
+#include "fips_break_test.h"
 
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
@@ -243,7 +244,9 @@ BORINGSSL_bcm_power_on_self_test(void) {
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
+#if !defined(BORINGSSL_FIPS_BREAK_TESTS)
     goto err;
+#endif
   }
 
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
