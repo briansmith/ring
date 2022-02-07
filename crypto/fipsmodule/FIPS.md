@@ -61,12 +61,6 @@ There is a second interface to the RNG which allows the caller to supply bytes t
 
 FIPS requires that RNG state be zeroed when the process exits. In order to implement this, all per-thread RNG states are tracked in a linked list and a destructor function is included which clears them. In order for this to be safe in the presence of threads, a lock is used to stop all other threads from using the RNG once this process has begun. Thus the main thread exiting may cause other threads to deadlock, and drawing on entropy in a destructor function may also deadlock.
 
-## Self-test optimisation
-
-On Android, the self-tests are optimised in line with [IG](https://csrc.nist.gov/csrc/media/projects/cryptographic-module-validation-program/documents/fips140-2/fips1402ig.pdf) section 9.11. The module will always perform the integrity test at power-on, but the self-tests will test for the presence of a file named after the hex encoded, HMAC-SHA-256 hash of the module in `/dev/boringssl/selftest/`. If such a file is found then the self-tests are skipped. Otherwise, after the self-tests complete successfully, that file will be written. Any I/O errors are ignored and, if they occur when testing for the presence of the file, the module acts as if it's not present.
-
-It is intended that a `tmpfs` be mounted at that location in order to skip running the self tests for every process once they have already passed in a given instance of the operating system.
-
 ## Integrity Test
 
 FIPS-140 mandates that a module calculate an HMAC of its own code in a constructor function and compare the result to a known-good value. Typical code produced by a C compiler includes large numbers of relocations: places in the machine code where the linker needs to resolve and inject the final value of a symbolic expression. These relocations mean that the bytes that make up any specific bit of code generally aren't known until the final link has completed.
