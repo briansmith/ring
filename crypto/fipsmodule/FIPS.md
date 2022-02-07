@@ -13,12 +13,9 @@ BoringCrypto has undergone the following validations:
 1. 2019-08-08: certificate [#3678](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/3678), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Security-Policy-20190808.docx) (in docx format).
 1. 2019-10-20: certificate [#3753](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/3753), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Android-Security-Policy-20191020.docx) (in docx format).
 
-## Running CAVP tests
+## Running ACVP tests
 
-CAVP results are calculated by `util/fipstools/cavp`, but that binary is almost always run by `util/fipstools/run_cavp.go`. The latter knows the set of tests to be processed and the flags needed to configure `cavp` for each one. It must be run from the top of a CAVP directory and needs the following options:
-
-1. `-oracle-bin`: points to the location of `util/fipstools/cavp`
-2. `-no-fax`: this is needed to suppress checking of the FAX files, which are only included in sample sets.
+See `util/fipstools/acvp/ACVP.md` for details of how ACVP testing is done.
 
 ## Breaking known-answer and continuous tests
 

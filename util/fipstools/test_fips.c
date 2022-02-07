@@ -30,9 +30,9 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
-#include "../crypto/fipsmodule/rand/internal.h"
-#include "../crypto/fipsmodule/tls/internal.h"
-#include "../crypto/internal.h"
+#include "../../crypto/fipsmodule/rand/internal.h"
+#include "../../crypto/fipsmodule/tls/internal.h"
+#include "../../crypto/internal.h"
 
 
 static void hexdump(const void *a, size_t len) {

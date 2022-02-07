@@ -18,7 +18,7 @@
 set -x
 set -e
 
-TEST_FIPS_BIN="build/util/fipstools/cavp/test_fips"
+TEST_FIPS_BIN="build/util/fipstools/test_fips"
 
 if [ ! -f $TEST_FIPS_BIN ]; then
   echo "$TEST_FIPS_BIN is missing. Run this script from the top level of a"
