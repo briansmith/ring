@@ -33,6 +33,8 @@ import (
 	"time"
 )
 
+const loginEndpoint = "acvp/v1/login"
+
 // Server represents an ACVP server.
 type Server struct {
 	// PrefixTokens are access tokens that apply to URLs under a certain prefix.
@@ -239,7 +241,7 @@ func expired(tokenStr string) bool {
 	if json.Unmarshal(jsonBytes, &token) != nil {
 		return false
 	}
-	return token.Expiry > 0 && token.Expiry < uint64(time.Now().Unix())
+	return token.Expiry > 0 && token.Expiry < uint64(time.Now().Add(-10*time.Second).Unix())
 }
 
 func (server *Server) getToken(endPoint string) (string, error) {
@@ -255,7 +257,7 @@ func (server *Server) getToken(endPoint string) (string, error) {
 		var reply struct {
 			AccessToken string `json:"accessToken"`
 		}
-		if err := server.postMessage(&reply, "acvp/v1/login", map[string]string{
+		if err := server.postMessage(&reply, loginEndpoint, map[string]string{
 			"password":    server.totpFunc(),
 			"accessToken": token,
 		}); err != nil {
@@ -278,7 +280,7 @@ func (server *Server) Login() error {
 		SizeLimit             int64  `json:"sizeConstraint"`
 	}
 
-	if err := server.postMessage(&reply, "acvp/v1/login", map[string]string{"password": server.totpFunc()}); err != nil {
+	if err := server.postMessage(&reply, loginEndpoint, map[string]string{"password": server.totpFunc()}); err != nil {
 		return err
 	}
 
@@ -372,7 +374,7 @@ func (server *Server) newRequestWithToken(method, endpoint string, body io.Reade
 	if err != nil {
 		return nil, err
 	}
-	if len(token) != 0 {
+	if len(token) != 0 && endpoint != loginEndpoint {
 		req.Header.Add("Authorization", "Bearer "+token)
 	}
 	return req, nil
