@@ -55,6 +55,7 @@ foo:
 	movq %rbx, %rax # This is also legal.
 .size	foo, .-foo
 .type	foo, @function
+.uleb128 .foo-1-.bar
 .text
 .loc 2 2 0
 BORINGSSL_bcm_text_end:

@@ -44,7 +44,7 @@ SymbolShift <- ('<<' / '>>') WS? [0-9]+
 SymbolArg <- (OpenParen WS?)? (
                Offset /
                SymbolType /
-               (Offset / LocalSymbol / SymbolName / Dot) WS? Operator WS? (Offset / LocalSymbol / SymbolName) /
+               (Offset / LocalSymbol / SymbolName / Dot) (WS? Operator WS? (Offset / LocalSymbol / SymbolName))* /
                LocalSymbol TCMarker? /
                SymbolName Offset /
                SymbolName TCMarker?)
