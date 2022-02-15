@@ -585,9 +585,6 @@ err:
   return ret;
 }
 
-static const uint8_t kPlaintext[64] =
-    "BoringCryptoModule FIPS KAT Encryption and Decryption Plaintext!";
-
 int boringssl_self_test_sha256(void) {
   static const uint8_t kInput[16] = {
       0xff, 0x3b, 0x85, 0x7d, 0xa7, 0x23, 0x6a, 0x2b,
