@@ -938,6 +938,22 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 // process.
 void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
 
+// boringssl_self_test_startup runs all startup self tests and returns one on
+// success or zero on error. Startup self tests do not include lazy tests.
+// Call |BORINGSSL_self_test| to run every self test.
+int boringssl_self_test_startup(void);
+
+// boringssl_ensure_rsa_self_test checks whether the RSA self-test has been run
+// in this address space. If not, it runs it and crashes the address space if
+// unsuccessful.
+void boringssl_ensure_rsa_self_test(void);
+
+#else
+
+// Outside of FIPS mode, the lazy tests are no-ops.
+
+OPENSSL_INLINE void boringssl_ensure_rsa_self_test(void) {}
+
 #endif  // FIPS
 
 // boringssl_self_test_sha256 performs a SHA-256 KAT.

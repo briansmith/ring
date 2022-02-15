@@ -124,6 +124,28 @@ extern const BN_ULONG kBoringSSLRSASqrtTwo[];
 extern const size_t kBoringSSLRSASqrtTwoLen;
 
 
+// Functions that avoid self-tests.
+//
+// Self-tests need to call functions that don't try and ensure that the
+// self-tests have passed. These functions, in turn, need to limit themselves
+// to such functions too.
+//
+// These functions are the same as their public versions, but skip the self-test
+// check.
+
+int rsa_verify_no_self_test(int hash_nid, const uint8_t *digest,
+                            size_t digest_len, const uint8_t *sig,
+                            size_t sig_len, RSA *rsa);
+
+int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
+                                size_t max_out, const uint8_t *in,
+                                size_t in_len, int padding);
+
+int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
+                          unsigned digest_len, uint8_t *out, unsigned *out_len,
+                          RSA *rsa);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

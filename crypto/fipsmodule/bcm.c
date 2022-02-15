@@ -252,7 +252,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
 #endif  // OPENSSL_ASAN
 
-  if (!BORINGSSL_self_test()) {
+  if (!boringssl_self_test_startup()) {
     goto err;
   }
 
