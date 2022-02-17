@@ -282,29 +282,20 @@ int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v)
 
 static int asn1_string_set_uint64(ASN1_STRING *out, uint64_t v, int type)
 {
-    uint8_t *const newdata = OPENSSL_malloc(sizeof(uint64_t));
-    if (newdata == NULL) {
-        OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-        return 0;
-    }
-
-    OPENSSL_free(out->data);
-    out->data = newdata;
-    v = CRYPTO_bswap8(v);
-    memcpy(out->data, &v, sizeof(v));
-
-    out->type = type;
-
+    uint8_t buf[sizeof(uint64_t)];
+    CRYPTO_store_u64_be(buf, v);
     size_t leading_zeros;
-    for (leading_zeros = 0; leading_zeros < sizeof(uint64_t); leading_zeros++) {
-      if (out->data[leading_zeros] != 0) {
+    for (leading_zeros = 0; leading_zeros < sizeof(buf); leading_zeros++) {
+      if (buf[leading_zeros] != 0) {
         break;
       }
     }
 
-    out->length = sizeof(uint64_t) - leading_zeros;
-    OPENSSL_memmove(out->data, out->data + leading_zeros, out->length);
-
+    if (!ASN1_STRING_set(out, buf + leading_zeros,
+                         sizeof(buf) - leading_zeros)) {
+        return 0;
+    }
+    out->type = type;
     return 1;
 }
 
