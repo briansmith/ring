@@ -72,22 +72,26 @@ ASN1_INTEGER *ASN1_INTEGER_dup(const ASN1_INTEGER *x)
 
 int ASN1_INTEGER_cmp(const ASN1_INTEGER *x, const ASN1_INTEGER *y)
 {
-    int neg, ret;
-    /* Compare signs */
-    neg = x->type & V_ASN1_NEG;
+    /* Compare signs. */
+    int neg = x->type & V_ASN1_NEG;
     if (neg != (y->type & V_ASN1_NEG)) {
-        if (neg)
-            return -1;
-        else
-            return 1;
+        return neg ? -1 : 1;
     }
 
-    ret = ASN1_STRING_cmp(x, y);
+    int ret = ASN1_STRING_cmp(x, y);
+    if (neg) {
+        /* This could be |-ret|, but |ASN1_STRING_cmp| is not forbidden from
+         * returning |INT_MIN|. */
+        if (ret < 0) {
+            return 1;
+        } else if (ret > 0) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
 
-    if (neg)
-        return -ret;
-    else
-        return ret;
+    return ret;
 }
 
 /*
