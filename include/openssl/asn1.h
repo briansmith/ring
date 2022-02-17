@@ -1127,6 +1127,10 @@ DECLARE_ASN1_ITEM(ASN1_ENUMERATED)
 // on success and zero on error.
 OPENSSL_EXPORT int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v);
 
+// ASN1_ENUMERATED_set_uint64 sets |a| to an ENUMERATED with value |v|. It
+// returns one on success and zero on error.
+OPENSSL_EXPORT int ASN1_ENUMERATED_set_uint64(ASN1_ENUMERATED *out, uint64_t v);
+
 // ASN1_ENUMERATED_get returns the value of |a| as a |long|, or -1 if |a| is out
 // of range or the wrong type.
 OPENSSL_EXPORT long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a);
@@ -2035,5 +2039,6 @@ BSSL_NAMESPACE_END
 #define ASN1_R_NESTED_TOO_DEEP 192
 #define ASN1_R_BAD_TEMPLATE 193
 #define ASN1_R_INVALID_BIT_STRING_PADDING 194
+#define ASN1_R_WRONG_INTEGER_TYPE 195
 
 #endif

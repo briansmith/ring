@@ -203,7 +203,6 @@ add_library(
   asn1/a_bool.c
   asn1/a_d2i_fp.c
   asn1/a_dup.c
-  asn1/a_enum.c
   asn1/a_gentm.c
   asn1/a_i2d_fp.c
   asn1/a_int.c

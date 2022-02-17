@@ -304,7 +304,21 @@ int ASN1_INTEGER_set(ASN1_INTEGER *a, long v)
     return 1;
 }
 
-int ASN1_INTEGER_set_uint64(ASN1_INTEGER *out, uint64_t v)
+int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v)
+{
+    if (v >= 0) {
+        return ASN1_ENUMERATED_set_uint64(a, (uint64_t) v);
+    }
+
+    if (!ASN1_ENUMERATED_set_uint64(a, 0 - (uint64_t) v)) {
+        return 0;
+    }
+
+    a->type = V_ASN1_NEG_ENUMERATED;
+    return 1;
+}
+
+static int asn1_string_set_uint64(ASN1_STRING *out, uint64_t v, int type)
 {
     uint8_t *const newdata = OPENSSL_malloc(sizeof(uint64_t));
     if (newdata == NULL) {
@@ -317,7 +331,7 @@ int ASN1_INTEGER_set_uint64(ASN1_INTEGER *out, uint64_t v)
     v = CRYPTO_bswap8(v);
     memcpy(out->data, &v, sizeof(v));
 
-    out->type = V_ASN1_INTEGER;
+    out->type = type;
 
     size_t leading_zeros;
     for (leading_zeros = 0; leading_zeros < sizeof(uint64_t) - 1;
@@ -333,16 +347,26 @@ int ASN1_INTEGER_set_uint64(ASN1_INTEGER *out, uint64_t v)
     return 1;
 }
 
-long ASN1_INTEGER_get(const ASN1_INTEGER *a)
+int ASN1_INTEGER_set_uint64(ASN1_INTEGER *out, uint64_t v)
+{
+    return asn1_string_set_uint64(out, v, V_ASN1_INTEGER);
+}
+
+int ASN1_ENUMERATED_set_uint64(ASN1_ENUMERATED *out, uint64_t v)
+{
+    return asn1_string_set_uint64(out, v, V_ASN1_ENUMERATED);
+}
+
+static long asn1_string_get_long(const ASN1_STRING *a, int type)
 {
     int neg = 0, i;
 
     if (a == NULL)
         return (0L);
     i = a->type;
-    if (i == V_ASN1_NEG_INTEGER)
+    if (i == (type | V_ASN1_NEG))
         neg = 1;
-    else if (i != V_ASN1_INTEGER)
+    else if (i != type)
         return -1;
 
     OPENSSL_STATIC_ASSERT(sizeof(uint64_t) >= sizeof(long),
@@ -372,13 +396,24 @@ long ASN1_INTEGER_get(const ASN1_INTEGER *a)
     return r;
 }
 
-ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
+long ASN1_INTEGER_get(const ASN1_INTEGER *a)
+{
+    return asn1_string_get_long(a, V_ASN1_INTEGER);
+}
+
+long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a)
+{
+    return asn1_string_get_long(a, V_ASN1_ENUMERATED);
+}
+
+static ASN1_STRING *bn_to_asn1_string(const BIGNUM *bn, ASN1_STRING *ai,
+                                      int type)
 {
     ASN1_INTEGER *ret;
     int len, j;
 
     if (ai == NULL)
-        ret = ASN1_INTEGER_new();
+        ret = ASN1_STRING_type_new(type);
     else
         ret = ai;
     if (ret == NULL) {
@@ -386,9 +421,9 @@ ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
         goto err;
     }
     if (BN_is_negative(bn) && !BN_is_zero(bn))
-        ret->type = V_ASN1_NEG_INTEGER;
+        ret->type = type | V_ASN1_NEG;
     else
-        ret->type = V_ASN1_INTEGER;
+        ret->type = type;
     j = BN_num_bits(bn);
     len = ((j == 0) ? 0 : ((j / 8) + 1));
     if (ret->length < len + 4) {
@@ -408,17 +443,41 @@ ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
     return (ret);
  err:
     if (ret != ai)
-        ASN1_INTEGER_free(ret);
+        ASN1_STRING_free(ret);
     return (NULL);
+}
+
+ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
+{
+    return bn_to_asn1_string(bn, ai, V_ASN1_INTEGER);
+}
+
+ASN1_ENUMERATED *BN_to_ASN1_ENUMERATED(const BIGNUM *bn, ASN1_ENUMERATED *ai)
+{
+    return bn_to_asn1_string(bn, ai, V_ASN1_ENUMERATED);
+}
+
+static BIGNUM *asn1_string_to_bn(const ASN1_STRING *ai, BIGNUM *bn, int type)
+{
+    if ((ai->type & ~V_ASN1_NEG) != type) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_INTEGER_TYPE);
+        return NULL;
+    }
+
+    BIGNUM *ret;
+    if ((ret = BN_bin2bn(ai->data, ai->length, bn)) == NULL)
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_BN_LIB);
+    else if (ai->type & V_ASN1_NEG)
+        BN_set_negative(ret, 1);
+    return (ret);
 }
 
 BIGNUM *ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai, BIGNUM *bn)
 {
-    BIGNUM *ret;
+    return asn1_string_to_bn(ai, bn, V_ASN1_INTEGER);
+}
 
-    if ((ret = BN_bin2bn(ai->data, ai->length, bn)) == NULL)
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_BN_LIB);
-    else if (ai->type == V_ASN1_NEG_INTEGER)
-        BN_set_negative(ret, 1);
-    return (ret);
+BIGNUM *ASN1_ENUMERATED_to_BN(const ASN1_ENUMERATED *ai, BIGNUM *bn)
+{
+    return asn1_string_to_bn(ai, bn, V_ASN1_ENUMERATED);
 }
