@@ -499,10 +499,7 @@ jobs:
 
         # Coverage collection is Nightly-only
         rust_channel:
-          # XXX: Later Rust Nightly uses LLVM 13 which has a new coverage format.
-          # Use this older version until install-build-tools.sh and similar can
-          # be updated to use LLVM 13.
-          - nightly-2021-08-20
+          - nightly
 
         # TODO: targets
         include:

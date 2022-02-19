@@ -76,9 +76,9 @@ case $target in
 esac
 
 if [ -n "$use_clang" ]; then
-  # https://github.com/rust-lang/rust/pull/79365 upgraded the coverage file
-  # format to one that only LLVM 11+ can use
-  llvm_version=12
+  # https://github.com/rustls/rustls/pull/1009 upgraded Rust's LLVM version to
+  # 14
+  llvm_version=14
   sudo apt-key add mk/llvm-snapshot.gpg.key
   sudo add-apt-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-$llvm_version main"
   sudo apt-get update
