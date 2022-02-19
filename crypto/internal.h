@@ -121,6 +121,10 @@
 #include <valgrind/memcheck.h>
 #endif
 
+#if defined(BORINGSSL_FIPS_BREAK_TESTS)
+#include <stdlib.h>
+#endif
+
 #if !defined(__cplusplus)
 #if defined(_MSC_VER)
 #define alignas(x) __declspec(align(x))
@@ -970,6 +974,17 @@ void boringssl_fips_inc_counter(enum fips_counter_t counter);
 #else
 OPENSSL_INLINE void boringssl_fips_inc_counter(enum fips_counter_t counter) {}
 #endif
+
+#if defined(BORINGSSL_FIPS_BREAK_TESTS)
+OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
+  const char *const value = getenv("BORINGSSL_FIPS_BREAK_TEST");
+  return value != NULL && strcmp(value, test) == 0;
+}
+#else
+OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
+  return 0;
+}
+#endif  // BORINGSSL_FIPS_BREAK_TESTS
 
 
 // Runtime CPU feature support

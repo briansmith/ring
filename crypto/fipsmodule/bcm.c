@@ -29,7 +29,6 @@
 #include <openssl/sha.h>
 
 #include "../internal.h"
-#include "fips_break_test.h"
 
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"

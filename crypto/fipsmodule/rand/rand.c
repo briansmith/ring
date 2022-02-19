@@ -30,7 +30,6 @@
 #include "fork_detect.h"
 #include "../../internal.h"
 #include "../delocate.h"
-#include "../fips_break_test.h"
 
 
 // It's assumed that the operating system always has an unfailing source of
