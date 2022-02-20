@@ -112,60 +112,73 @@ fn test_ed25519_from_seed_and_public_key_misuse() {
     assert!(Ed25519KeyPair::from_seed_and_public_key(PUBLIC_KEY, PRIVATE_KEY).is_err());
 }
 
+enum FromPkcs8Variant {
+    Checked,
+    MaybeUnchecked,
+}
+
 #[test]
 fn test_ed25519_from_pkcs8_unchecked() {
     test_ed25519_from_pkcs8_(
-        test_file!("ed25519_from_pkcs8_unchecked_tests.txt"),
+        FromPkcs8Variant::MaybeUnchecked,
         Ed25519KeyPair::from_pkcs8_maybe_unchecked,
     )
 }
 
 #[test]
 fn test_ed25519_from_pkcs8() {
-    test_ed25519_from_pkcs8_(
-        test_file!("ed25519_from_pkcs8_tests.txt"),
-        Ed25519KeyPair::from_pkcs8,
-    )
+    test_ed25519_from_pkcs8_(FromPkcs8Variant::Checked, Ed25519KeyPair::from_pkcs8)
 }
 
 fn test_ed25519_from_pkcs8_(
-    test_file: test::File,
+    variant: FromPkcs8Variant,
     f: impl Fn(&[u8]) -> Result<Ed25519KeyPair, error::KeyRejected>,
 ) {
     // Just test that we can parse the input.
-    test::run(test_file, |section, test_case| {
-        assert_eq!(section, "");
-        let input = test_case.consume_bytes("Input");
-        let expected_error = {
-            let expected_result = test_case.consume_string("Result");
-            if expected_result == "OK" {
-                None
-            } else {
-                Some(expected_result)
-            }
-        };
-        let expected_public = if expected_error.is_none() {
-            Some(test_case.consume_bytes("Public"))
-        } else {
-            None
-        };
+    test::run(
+        test_file!("ed25519_from_pkcs8_tests.txt"),
+        |section, test_case| {
+            assert_eq!(section, "");
+            let input = test_case.consume_bytes("Input");
+            let expected_error = {
+                let expected_checked = test_case.consume_string("Result-Checked");
+                let expected_maybe_unchecked = test_case.consume_string("Result-Maybe-Unchecked");
+                let expected_result = match variant {
+                    FromPkcs8Variant::Checked => expected_checked,
+                    FromPkcs8Variant::MaybeUnchecked => expected_maybe_unchecked,
+                };
+                if expected_result == "OK" {
+                    None
+                } else {
+                    Some(expected_result)
+                }
+            };
+            let expected_public = {
+                let expected_if_no_error = test_case.consume_optional_bytes("Public");
+                if expected_error.is_none() {
+                    Some(expected_if_no_error.unwrap())
+                } else {
+                    None
+                }
+            };
 
-        match f(&input) {
-            Ok(keypair) => {
-                assert_eq!(expected_error, None);
-                assert_eq!(
-                    expected_public.as_deref(),
-                    Some(keypair.public_key().as_ref())
-                );
+            match f(&input) {
+                Ok(keypair) => {
+                    assert_eq!(expected_error, None);
+                    assert_eq!(
+                        expected_public.as_deref(),
+                        Some(keypair.public_key().as_ref())
+                    );
+                }
+                Err(actual_error) => {
+                    assert_eq!(expected_error, Some(format!("{}", actual_error)));
+                    assert_eq!(expected_public, None);
+                }
             }
-            Err(actual_error) => {
-                assert_eq!(expected_error, Some(format!("{}", actual_error)));
-                assert_eq!(expected_public, None);
-            }
-        }
 
-        Ok(())
-    });
+            Ok(())
+        },
+    );
 }
 
 #[test]
