@@ -35,6 +35,8 @@ pub enum Tag {
     UTCTime = 0x17,
     GeneralizedTime = 0x18,
 
+    ContextSpecific1 = CONTEXT_SPECIFIC | 1,
+
     ContextSpecificConstructed0 = CONTEXT_SPECIFIC | CONSTRUCTED | 0,
     ContextSpecificConstructed1 = CONTEXT_SPECIFIC | CONSTRUCTED | 1,
     ContextSpecificConstructed3 = CONTEXT_SPECIFIC | CONSTRUCTED | 3,
@@ -101,10 +103,18 @@ pub fn read_tag_and_get_value<'a>(
     Ok((tag, inner))
 }
 
+#[inline]
 pub fn bit_string_with_no_unused_bits<'a>(
     input: &mut untrusted::Reader<'a>,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
-    nested(input, Tag::BitString, error::Unspecified, |value| {
+    bit_string_tagged_with_no_unused_bits(Tag::BitString, input)
+}
+
+pub(crate) fn bit_string_tagged_with_no_unused_bits<'a>(
+    tag: Tag,
+    input: &mut untrusted::Reader<'a>,
+) -> Result<untrusted::Input<'a>, error::Unspecified> {
+    nested(input, tag, error::Unspecified, |value| {
         let unused_bits_at_end = value.read_byte().map_err(|_| error::Unspecified)?;
         if unused_bits_at_end != 0 {
             return Err(error::Unspecified);

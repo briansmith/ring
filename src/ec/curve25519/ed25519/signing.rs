@@ -71,11 +71,18 @@ impl Ed25519KeyPair {
     /// verify that the public key and the private key are consistent with each
     /// other.
     ///
+    /// Some early implementations of PKCS#8 v2, including earlier versions of
+    /// *ring* and other implementations, wrapped the public key in the wrong
+    /// ASN.1 tags. Both that incorrect form and the standardized form are
+    /// accepted.
+    ///
     /// If you need to parse PKCS#8 v1 files (without the public key) then use
     /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
     pub fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, error::KeyRejected> {
-        let (seed, public_key) =
-            unwrap_pkcs8(pkcs8::Version::V2Only, untrusted::Input::from(pkcs8))?;
+        let version = pkcs8::Version::V2Only(pkcs8::PublicKeyOptions {
+            accept_legacy_ed25519_public_key_tag: true,
+        });
+        let (seed, public_key) = unwrap_pkcs8(version, untrusted::Input::from(pkcs8))?;
         Self::from_seed_and_public_key(
             seed.as_slice_less_safe(),
             public_key.unwrap().as_slice_less_safe(),
@@ -95,10 +102,17 @@ impl Ed25519KeyPair {
     /// computed from the private key, and there will be no consistency check
     /// between the public key and the private key.
     ///
+    /// Some early implementations of PKCS#8 v2, including earlier versions of
+    /// *ring* and other implementations, wrapped the public key in the wrong
+    /// ASN.1 tags. Both that incorrect form and the standardized form are
+    /// accepted.
+    ///
     /// PKCS#8 v2 files are parsed exactly like `Ed25519KeyPair::from_pkcs8()`.
     pub fn from_pkcs8_maybe_unchecked(pkcs8: &[u8]) -> Result<Self, error::KeyRejected> {
-        let (seed, public_key) =
-            unwrap_pkcs8(pkcs8::Version::V1OrV2, untrusted::Input::from(pkcs8))?;
+        let version = pkcs8::Version::V1OrV2(pkcs8::PublicKeyOptions {
+            accept_legacy_ed25519_public_key_tag: true,
+        });
+        let (seed, public_key) = unwrap_pkcs8(version, untrusted::Input::from(pkcs8))?;
         if let Some(public_key) = public_key {
             Self::from_seed_and_public_key(
                 seed.as_slice_less_safe(),

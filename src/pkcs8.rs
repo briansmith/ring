@@ -18,10 +18,16 @@
 
 use crate::{ec, error, io::der};
 
+pub(crate) struct PublicKeyOptions {
+    /// Should the wrong public key ASN.1 tagging used by early implementations
+    /// of PKCS#8 v2 (including earlier versions of *ring*) be accepted?
+    pub accept_legacy_ed25519_public_key_tag: bool,
+}
+
 pub(crate) enum Version {
     V1Only,
-    V1OrV2,
-    V2Only,
+    V1OrV2(PublicKeyOptions),
+    V2Only(PublicKeyOptions),
 }
 
 /// A template for constructing PKCS#8 documents.
@@ -123,10 +129,10 @@ fn unwrap_key__<'a>(
         return Err(error::KeyRejected::wrong_algorithm());
     }
 
-    let require_public_key = match (actual_version, version) {
-        (0, Version::V1Only) => false,
-        (0, Version::V1OrV2) => false,
-        (1, Version::V1OrV2) | (1, Version::V2Only) => true,
+    let public_key_options = match (actual_version, version) {
+        (0, Version::V1Only) => None,
+        (0, Version::V1OrV2(_)) => None,
+        (1, Version::V1OrV2(options)) | (1, Version::V2Only(options)) => Some(options),
         _ => {
             return Err(error::KeyRejected::version_not_supported());
         }
@@ -141,17 +147,25 @@ fn unwrap_key__<'a>(
             .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
     }
 
-    let public_key = if require_public_key {
+    let public_key = if let Some(options) = public_key_options {
         if input.at_end() {
             return Err(error::KeyRejected::public_key_is_missing());
         }
-        let public_key = der::nested(
-            input,
-            der::Tag::ContextSpecificConstructed1,
-            error::Unspecified,
-            der::bit_string_with_no_unused_bits,
-        )
-        .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
+
+        const INCORRECT_LEGACY: der::Tag = der::Tag::ContextSpecificConstructed1;
+        let result =
+            if options.accept_legacy_ed25519_public_key_tag && input.peek(INCORRECT_LEGACY as u8) {
+                der::nested(
+                    input,
+                    INCORRECT_LEGACY,
+                    error::Unspecified,
+                    der::bit_string_with_no_unused_bits,
+                )
+            } else {
+                der::bit_string_tagged_with_no_unused_bits(der::Tag::ContextSpecific1, input)
+            };
+        let public_key =
+            result.map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
         Some(public_key)
     } else {
         None
