@@ -193,8 +193,15 @@ impl TestCase {
     /// even number of hex digits, or as a double-quoted UTF-8 string. The
     /// empty (zero-length) value is represented as "".
     pub fn consume_bytes(&mut self, key: &str) -> Vec<u8> {
-        let s = self.consume_string(key);
-        if s.starts_with('\"') {
+        self.consume_optional_bytes(key)
+            .unwrap_or_else(|| panic!("No attribute named \"{}\"", key))
+    }
+
+    /// Like `consume_bytes()` except it returns `None` if the test case
+    /// doesn't have the attribute.
+    pub fn consume_optional_bytes(&mut self, key: &str) -> Option<Vec<u8>> {
+        let s = self.consume_optional_string(key)?;
+        let result = if s.starts_with('\"') {
             // The value is a quoted UTF-8 string.
 
             let mut bytes = Vec::with_capacity(s.as_bytes().len() - 2);
@@ -243,7 +250,8 @@ impl TestCase {
                     panic!("{} in {}", err_str, s);
                 }
             }
-        }
+        };
+        Some(result)
     }
 
     /// Returns the value of an attribute that is an integer, in decimal
