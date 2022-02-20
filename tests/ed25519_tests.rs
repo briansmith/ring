@@ -114,46 +114,40 @@ fn test_ed25519_from_seed_and_public_key_misuse() {
 
 #[test]
 fn test_ed25519_from_pkcs8_unchecked() {
-    // Just test that we can parse the input.
-    test::run(
+    test_ed25519_from_pkcs8_(
         test_file!("ed25519_from_pkcs8_unchecked_tests.txt"),
-        |section, test_case| {
-            assert_eq!(section, "");
-            let input = test_case.consume_bytes("Input");
-            let error = test_case.consume_optional_string("Error");
-
-            match (Ed25519KeyPair::from_pkcs8_maybe_unchecked(&input), error) {
-                (Ok(_), None) => (),
-                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
-                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
-            };
-
-            Ok(())
-        },
-    );
+        Ed25519KeyPair::from_pkcs8_maybe_unchecked,
+    )
 }
 
 #[test]
 fn test_ed25519_from_pkcs8() {
-    // Just test that we can parse the input.
-    test::run(
+    test_ed25519_from_pkcs8_(
         test_file!("ed25519_from_pkcs8_tests.txt"),
-        |section, test_case| {
-            assert_eq!(section, "");
-            let input = test_case.consume_bytes("Input");
-            let error = test_case.consume_optional_string("Error");
+        Ed25519KeyPair::from_pkcs8,
+    )
+}
 
-            match (Ed25519KeyPair::from_pkcs8(&input), error) {
-                (Ok(_), None) => (),
-                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
-                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
-            };
+fn test_ed25519_from_pkcs8_(
+    test_file: test::File,
+    f: impl Fn(&[u8]) -> Result<Ed25519KeyPair, error::KeyRejected>,
+) {
+    // Just test that we can parse the input.
+    test::run(test_file, |section, test_case| {
+        assert_eq!(section, "");
+        let input = test_case.consume_bytes("Input");
+        let expected_error = test_case.consume_optional_string("Error");
 
-            Ok(())
-        },
-    );
+        let actual_result = f(&input);
+        match (actual_result, expected_error) {
+            (Ok(_), None) => (),
+            (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+            (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+            (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+        };
+
+        Ok(())
+    });
 }
 
 #[test]
