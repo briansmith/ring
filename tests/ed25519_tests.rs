@@ -144,14 +144,25 @@ fn test_ed25519_from_pkcs8_(
                 Some(expected_result)
             }
         };
-
-        let actual_result = f(&input);
-        match (actual_result, expected_error) {
-            (Ok(_), None) => (),
-            (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
-            (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-            (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
+        let expected_public = if expected_error.is_none() {
+            Some(test_case.consume_bytes("Public"))
+        } else {
+            None
         };
+
+        match f(&input) {
+            Ok(keypair) => {
+                assert_eq!(expected_error, None);
+                assert_eq!(
+                    expected_public.as_deref(),
+                    Some(keypair.public_key().as_ref())
+                );
+            }
+            Err(actual_error) => {
+                assert_eq!(expected_error, Some(format!("{}", actual_error)));
+                assert_eq!(expected_public, None);
+            }
+        }
 
         Ok(())
     });

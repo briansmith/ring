@@ -1,6 +1,7 @@
 # An Ed25519 private key. (This is from BoringSSL's tests.)
 Input = 302e020100300506032b6570042204209d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
 Result = OK
+Public = d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
 
 # The same as the above, but with an invalid NULL parameter. (This is from BoringSSL's tests.)
 Input = 3030020100300706032b65700500042204209d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
@@ -9,6 +10,7 @@ Result = WrongAlgorithm
 # Sample private key from draft-ietf-curdle-pkix-04.
 Input = 302e020100300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842
 Result = OK
+Public = 19bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
 
 # v1. valid except it includes publicKey.
 Input = 3053020100300506032b657004220420a22efdb713f0e1600d2a5ce948e321ca3a18137c47f15091a12c7126c1749a00a1230321001aeb8e3ee5ba5afd91113466d19f4ea77fa0feffbd8c5adcb499927f12535f77
