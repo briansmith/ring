@@ -136,7 +136,14 @@ fn test_ed25519_from_pkcs8_(
     test::run(test_file, |section, test_case| {
         assert_eq!(section, "");
         let input = test_case.consume_bytes("Input");
-        let expected_error = test_case.consume_optional_string("Error");
+        let expected_error = {
+            let expected_result = test_case.consume_string("Result");
+            if expected_result == "OK" {
+                None
+            } else {
+                Some(expected_result)
+            }
+        };
 
         let actual_result = f(&input);
         match (actual_result, expected_error) {
