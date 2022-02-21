@@ -63,6 +63,7 @@
 #include <string.h>
 
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -467,33 +468,33 @@ static char *strip_spaces(char *name)
 
 /* hex string utilities */
 
-/*
- * Given a buffer of length 'len' return a OPENSSL_malloc'ed string with its
- * hex representation @@@ (Contents of buffer are always kept in ASCII, also
- * on EBCDIC machines)
- */
-
-char *x509v3_bytes_to_hex(const unsigned char *buffer, long len)
+char *x509v3_bytes_to_hex(const uint8_t *in, size_t len)
 {
-    char *tmp, *q;
-    const unsigned char *p;
-    int i;
-    static const char hexdig[] = "0123456789ABCDEF";
-    if (!buffer || !len)
-        return NULL;
-    if (!(tmp = OPENSSL_malloc(len * 3 + 1))) {
-        OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
-        return NULL;
+    CBB cbb;
+    if (!CBB_init(&cbb, len * 3 + 1)) {
+        goto err;
     }
-    q = tmp;
-    for (i = 0, p = buffer; i < len; i++, p++) {
-        *q++ = hexdig[(*p >> 4) & 0xf];
-        *q++ = hexdig[*p & 0xf];
-        *q++ = ':';
+    for (size_t i = 0; i < len; i++) {
+        static const char hex[] = "0123456789ABCDEF";
+        if ((i > 0 && !CBB_add_u8(&cbb, ':')) ||
+            !CBB_add_u8(&cbb, hex[in[i] >> 4]) ||
+            !CBB_add_u8(&cbb, hex[in[i] & 0xf])) {
+            goto err;
+        }
     }
-    q[-1] = 0;
+    uint8_t *ret;
+    size_t unused_len;
+    if (!CBB_add_u8(&cbb, 0) ||
+        !CBB_finish(&cbb, &ret, &unused_len)) {
+        goto err;
+    }
 
-    return tmp;
+    return (char *)ret;
+
+err:
+    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
+    CBB_cleanup(&cbb);
+    return NULL;
 }
 
 unsigned char *x509v3_hex_to_bytes(const char *str, long *len)

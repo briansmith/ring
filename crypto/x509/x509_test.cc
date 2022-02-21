@@ -3891,3 +3891,23 @@ TEST(X509Test, AddDuplicates) {
 
   EXPECT_EQ(sk_X509_OBJECT_num(X509_STORE_get0_objects(store.get())), 2u);
 }
+
+TEST(X509Test, BytesToHex) {
+  struct {
+    std::vector<uint8_t> bytes;
+    const char *hex;
+  } kTests[] = {
+      {{}, ""},
+      {{0x00}, "00"},
+      {{0x00, 0x11, 0x22}, "00:11:22"},
+      {{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+       "01:23:45:67:89:AB:CD:EF"},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.bytes));
+    bssl::UniquePtr<char> hex(
+        x509v3_bytes_to_hex(t.bytes.data(), t.bytes.size()));
+    ASSERT_TRUE(hex);
+    EXPECT_STREQ(hex.get(), t.hex);
+  }
+}

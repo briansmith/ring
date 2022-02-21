@@ -70,21 +70,21 @@ extern "C" {
 #endif
 
 
-// x509v3_bytes_to_hex encodes |len| bytes from |buffer| to hex and returns a
+// x509v3_bytes_to_hex encodes |len| bytes from |in| to hex and returns a
 // newly-allocated NUL-terminated string containing the result, or NULL on
 // allocation error.
 //
-// Note this function was historically named |hex_to_string| in OpenSSL, not
-// |string_to_hex|.
-char *x509v3_bytes_to_hex(const unsigned char *buffer, long len);
+// This function was historically named |hex_to_string| in OpenSSL. Despite the
+// name, |hex_to_string| converted to hex.
+OPENSSL_EXPORT char *x509v3_bytes_to_hex(const uint8_t *in, size_t len);
 
 // x509v3_hex_string_to_bytes decodes |str| in hex and returns a newly-allocated
 // array containing the result, or NULL on error. On success, it sets |*len| to
 // the length of the result. Colon separators between bytes in the input are
 // allowed and ignored.
 //
-// Note this function was historically named |string_to_hex| in OpenSSL, not
-// |hex_to_string|.
+// This function was historically named |string_to_hex| in OpenSSL. Despite the
+// name, |string_to_hex| converted from hex.
 unsigned char *x509v3_hex_to_bytes(const char *str, long *len);
 
 // x509v3_name_cmp returns zero if |name| is equal to |cmp| or begins with |cmp|
