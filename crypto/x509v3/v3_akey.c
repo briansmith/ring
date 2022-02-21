@@ -93,10 +93,10 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_KEYID(X509V3_EXT_METHOD *method,
                                                  STACK_OF(CONF_VALUE)
                                                  *extlist)
 {
-    char *tmp = NULL;
     int extlist_was_null = extlist == NULL;
     if (akeyid->keyid) {
-        tmp = x509v3_bytes_to_hex(akeyid->keyid->data, akeyid->keyid->length);
+        char *tmp = x509v3_bytes_to_hex(akeyid->keyid->data,
+                                        akeyid->keyid->length);
         int ok = tmp != NULL && X509V3_add_value("keyid", tmp, &extlist);
         OPENSSL_free(tmp);
         if (!ok) {
@@ -112,10 +112,7 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_KEYID(X509V3_EXT_METHOD *method,
         extlist = tmpextlist;
     }
     if (akeyid->serial) {
-        tmp = x509v3_bytes_to_hex(akeyid->serial->data, akeyid->serial->length);
-        int ok = tmp != NULL && X509V3_add_value("serial", tmp, &extlist);
-        OPENSSL_free(tmp);
-        if (!ok) {
+        if (!X509V3_add_value_int("serial", akeyid->serial, &extlist)) {
             goto err;
         }
     }
