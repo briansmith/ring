@@ -9,7 +9,7 @@ Input = 3030020100300706032b65700500042204209d61b19deffd5a60ba844af492ec2cc44449
 Result-Checked = WrongAlgorithm
 Result-Maybe-Unchecked = WrongAlgorithm
 
-# v1. Sample private key from draft-ietf-curdle-pkix-04.
+# v1. Example private key from RFC 8410 Section-10.3.
 Input = 302e020100300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842
 Result-Checked = VersionNotSupported
 Result-Maybe-Unchecked = OK
