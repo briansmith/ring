@@ -47,9 +47,10 @@ OPENSSL_INLINE int rsaz_avx2_capable(void) {
 
 OPENSSL_INLINE int rsaz_avx2_preferred(void) {
   const uint32_t *cap = OPENSSL_ia32cap_get();
-  static const uint32_t kBMI2AndADX = (1 << 8) | (1 << 19);
-  if ((cap[2] & kBMI2AndADX) == kBMI2AndADX) {
-    // If BMI2 and ADX are available, x86_64-mont5.pl is faster.
+  static const uint32_t kBMI1BMI2AndADX = (1 << 3) | (1 << 8) | (1 << 19);
+  if ((cap[2] & kBMI1BMI2AndADX) == kBMI1BMI2AndADX) {
+    // If BMI1, BMI2, and ADX are available, x86_64-mont5.pl is faster. See the
+    // .Lmulx4x_enter and .Lpowerx5_enter branches.
     return 0;
   }
   return (cap[2] & (1 << 5)) != 0;  // AVX2
