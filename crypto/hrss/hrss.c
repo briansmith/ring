@@ -1314,8 +1314,7 @@ static void poly_mul_novec(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
 static void poly_mul(struct POLY_MUL_SCRATCH *scratch, struct poly *r,
                      const struct poly *a, const struct poly *b) {
 #if defined(POLY_RQ_MUL_ASM)
-  const int has_avx2 = (OPENSSL_ia32cap_P[2] & (1 << 5)) != 0;
-  if (has_avx2) {
+  if (CRYPTO_is_AVX2_capable()) {
     poly_Rq_mul(r->v, a->v, b->v, scratch->u.rq);
     return;
   }

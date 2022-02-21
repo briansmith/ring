@@ -1012,14 +1012,126 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 extern uint32_t OPENSSL_ia32cap_P[4];
 
 #if defined(BORINGSSL_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
-const uint32_t *OPENSSL_ia32cap_get(void);
+// The FIPS module, as a static library, requires an out-of-line version of
+// |OPENSSL_ia32cap_get| so accesses can be rewritten by delocate. Mark the
+// function const so multiple accesses can be optimized together.
+const uint32_t *OPENSSL_ia32cap_get(void) __attribute__((const));
 #else
 OPENSSL_INLINE const uint32_t *OPENSSL_ia32cap_get(void) {
   return OPENSSL_ia32cap_P;
 }
 #endif
 
+// See Intel manual, volume 2A, table 3-11.
+
+OPENSSL_INLINE int CRYPTO_is_FXSR_capable(void) {
+#if defined(__FXSR__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[0] & (1 << 24)) != 0;
 #endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_intel_cpu(void) {
+  // The reserved bit 30 is used to indicate an Intel CPU.
+  return (OPENSSL_ia32cap_get()[0] & (1 << 30)) != 0;
+}
+
+// See Intel manual, volume 2A, table 3-10.
+
+OPENSSL_INLINE int CRYPTO_is_PCLMUL_capable(void) {
+#if defined(__PCLMUL__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[1] & (1 << 1)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_SSSE3_capable(void) {
+#if defined(__SSSE3__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[1] & (1 << 9)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_SSE4_1_capable(void) {
+#if defined(__SSE4_1__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_P[1] & (1 << 19)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_MOVBE_capable(void) {
+#if defined(__MOVBE__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[1] & (1 << 22)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_AESNI_capable(void) {
+#if defined(__AES__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[1] & (1 << 25)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_AVX_capable(void) {
+#if defined(__AVX__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[1] & (1 << 28)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_RDRAND_capable(void) {
+  // The GCC/Clang feature name and preprocessor symbol for RDRAND are "rdrnd"
+  // and |__RDRND__|, respectively.
+#if defined(__RDRND__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[1] & (1u << 30)) != 0;
+#endif
+}
+
+// See Intel manual, volume 2A, table 3-8.
+
+OPENSSL_INLINE int CRYPTO_is_BMI1_capable(void) {
+#if defined(__BMI1__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[2] & (1 << 3)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_AVX2_capable(void) {
+#if defined(__AVX2__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[2] & (1 << 5)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_BMI2_capable(void) {
+#if defined(__BMI2__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[2] & (1 << 8)) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ADX_capable(void) {
+#if defined(__ADX__)
+  return 1;
+#else
+  return (OPENSSL_ia32cap_get()[2] & (1 << 19)) != 0;
+#endif
+}
+
+#endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 

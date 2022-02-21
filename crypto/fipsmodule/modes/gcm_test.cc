@@ -136,7 +136,7 @@ TEST(GCMTest, ABI) {
 
   alignas(16) u128 Htable[16];
 #if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
-  if (gcm_ssse3_capable()) {
+  if (CRYPTO_is_SSSE3_capable()) {
     CHECK_ABI_SEH(gcm_init_ssse3, Htable, kH);
     CHECK_ABI_SEH(gcm_gmult_ssse3, X, Htable);
     for (size_t blocks : kBlockCounts) {
@@ -152,7 +152,7 @@ TEST(GCMTest, ABI) {
     }
 
 #if defined(GHASH_ASM_X86_64)
-    if (((OPENSSL_ia32cap_get()[1] >> 22) & 0x41) == 0x41) {  // AVX+MOVBE
+    if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
       CHECK_ABI_SEH(gcm_init_avx, Htable, kH);
       CHECK_ABI_SEH(gcm_gmult_avx, X, Htable);
       for (size_t blocks : kBlockCounts) {

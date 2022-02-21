@@ -152,7 +152,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 
 #if defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
-    if (((OPENSSL_ia32cap_get()[1] >> 22) & 0x41) == 0x41) {  // AVX+MOVBE
+    if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
       gcm_init_avx(out_table, H.u);
       *out_mult = gcm_gmult_avx;
       *out_hash = gcm_ghash_avx;
@@ -164,7 +164,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     *out_hash = gcm_ghash_clmul;
     return;
   }
-  if (gcm_ssse3_capable()) {
+  if (CRYPTO_is_SSSE3_capable()) {
     gcm_init_ssse3(out_table, H.u);
     *out_mult = gcm_gmult_ssse3;
     *out_hash = gcm_ghash_ssse3;
@@ -177,7 +177,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     *out_hash = gcm_ghash_clmul;
     return;
   }
-  if (gcm_ssse3_capable()) {
+  if (CRYPTO_is_SSSE3_capable()) {
     gcm_init_ssse3(out_table, H.u);
     *out_mult = gcm_gmult_ssse3;
     *out_hash = gcm_ghash_ssse3;
@@ -722,9 +722,7 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, unsigned char *tag, size_t len) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 int crypto_gcm_clmul_enabled(void) {
 #if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
-  const uint32_t *ia32cap = OPENSSL_ia32cap_get();
-  return (ia32cap[0] & (1 << 24)) &&  // check FXSR bit
-         (ia32cap[1] & (1 << 1));     // check PCLMULQDQ bit
+  return CRYPTO_is_FXSR_capable() && CRYPTO_is_PCLMUL_capable();
 #else
   return 0;
 #endif

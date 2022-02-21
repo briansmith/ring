@@ -143,15 +143,14 @@ OPENSSL_EXPORT void CTR_DRBG_clear(CTR_DRBG_STATE *drbg);
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
 OPENSSL_INLINE int have_rdrand(void) {
-  return (OPENSSL_ia32cap_get()[1] & (1u << 30)) != 0;
+  return CRYPTO_is_RDRAND_capable();
 }
 
 // have_fast_rdrand returns true if RDRAND is supported and it's reasonably
 // fast. Concretely the latter is defined by whether the chip is Intel (fast) or
 // not (assumed slow).
 OPENSSL_INLINE int have_fast_rdrand(void) {
-  const uint32_t *const ia32cap = OPENSSL_ia32cap_get();
-  return (ia32cap[1] & (1u << 30)) && (ia32cap[0] & (1u << 30));
+  return CRYPTO_is_RDRAND_capable() && CRYPTO_is_intel_cpu();
 }
 
 // CRYPTO_rdrand writes eight bytes of random data from the hardware RNG to

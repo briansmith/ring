@@ -453,8 +453,7 @@ TEST(HRSS, Golden) {
 
 #if defined(POLY_RQ_MUL_ASM) && defined(SUPPORTS_ABI_TEST)
 TEST(HRSS, ABI) {
-  const bool has_avx2 = (OPENSSL_ia32cap_P[2] & (1 << 5)) != 0;
-  if (!has_avx2) {
+  if (!CRYPTO_is_AVX2_capable()) {
     fprintf(stderr, "Skipping ABI test due to lack of AVX2 support.\n");
     return;
   }

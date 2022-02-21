@@ -554,7 +554,7 @@ static void ecp_nistz256_inv0_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
 static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
                                                  EC_SCALAR *out,
                                                  const EC_SCALAR *in) {
-  if ((OPENSSL_ia32cap_get()[1] & (1 << 28)) == 0) {
+  if (!CRYPTO_is_AVX_capable()) {
     // No AVX support; fallback to generic code.
     return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
   }
