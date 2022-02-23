@@ -46,13 +46,13 @@ perl-win32.zip: Update to the latest 64-bit prebuilt "Portable" edition of
 
     The current revision is strawberry-perl-5.26.2.1-64bit-portable.zip.
 
-Finally, update sde-linux64.tar.bz2 and sde-win32.tar.bz2 by downloading the
+Finally, update sde-linux64.tar.xz and sde-win32.tar.xz by downloading the
 latet release from Intel at
 https://software.intel.com/en-us/articles/intel-software-development-emulator,
 but upload it with the following command. (Note the bucket is different.)
 
-    upload_to_google_storage.py -b chrome-boringssl-sde sde-linux64.tar.bz2 sde-win32.tar.bz2
+    upload_to_google_storage.py -b chrome-boringssl-sde sde-linux64.tar.xz sde-win32.tar.xz
 
-The current revision is sde-external-8.50.0-2020-03-26-*.tar.bz2.
+The current revision is sde-external-9.0.0-2021-11-07-*.tar.xz.
 
 When adding new files, remember to update .gitignore.

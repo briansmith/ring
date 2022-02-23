@@ -118,6 +118,8 @@ def main(args):
     entries = IterateTar(archive, 'gz')
   elif archive.endswith('.tar.bz2'):
     entries = IterateTar(archive, 'bz2')
+  elif archive.endswith('.tar.xz'):
+    entries = IterateTar(archive, 'xz')
   else:
     raise ValueError(archive)
 
