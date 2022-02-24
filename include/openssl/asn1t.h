@@ -260,7 +260,6 @@ typedef struct ASN1_TLC_st ASN1_TLC;
 /* Any defined by macros: the field used is in the table itself */
 
 #define ASN1_ADB_OBJECT(tblname) { ASN1_TFLG_ADB_OID, -1, 0, #tblname, (const ASN1_ITEM *)&(tblname##_adb) }
-#define ASN1_ADB_INTEGER(tblname) { ASN1_TFLG_ADB_INT, -1, 0, #tblname, (const ASN1_ITEM *)&(tblname##_adb) }
 /* Plain simple type */
 #define ASN1_SIMPLE(stname, field, type) ASN1_EX_TYPE(0,0, stname, field, type)
 
@@ -377,7 +376,7 @@ struct ASN1_ADB_st {
 };
 
 struct ASN1_ADB_TABLE_st {
-	long value;		/* NID for an object or value for an int */
+	int value;		/* NID for an object */
 	const ASN1_TEMPLATE tt;		/* item for this value */
 };
 
@@ -441,8 +440,6 @@ struct ASN1_ADB_TABLE_st {
 #define ASN1_TFLG_ADB_MASK	(0x3<<8)
 
 #define ASN1_TFLG_ADB_OID	(0x1<<8)
-
-#define ASN1_TFLG_ADB_INT	(0x1<<9)
 
 /* This flag means a parent structure is passed
  * instead of the field: this is useful is a
