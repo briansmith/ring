@@ -957,12 +957,18 @@ void boringssl_ensure_rsa_self_test(void);
 // address space if unsuccessful.
 void boringssl_ensure_ecc_self_test(void);
 
+// boringssl_ensure_ffdh_self_test checks whether the FFDH self-test has been
+// run in this address space. If not, it runs it and crashes the address space
+// if unsuccessful.
+void boringssl_ensure_ffdh_self_test(void);
+
 #else
 
 // Outside of FIPS mode, the lazy tests are no-ops.
 
 OPENSSL_INLINE void boringssl_ensure_rsa_self_test(void) {}
 OPENSSL_INLINE void boringssl_ensure_ecc_self_test(void) {}
+OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
 
 #endif  // FIPS
 

@@ -31,6 +31,7 @@
 #include <openssl/sha.h>
 
 #include "../../internal.h"
+#include "../dh/internal.h"
 #include "../ec/internal.h"
 #include "../ecdsa/internal.h"
 #include "../rand/internal.h"
@@ -534,40 +535,7 @@ err:
   return ret;
 }
 
-#if defined(BORINGSSL_FIPS)
-
-static void run_self_test_rsa(void) {
-  if (!boringssl_self_test_rsa()) {
-    BORINGSSL_FIPS_abort();
-  }
-}
-
-DEFINE_STATIC_ONCE(g_self_test_once_rsa);
-
-void boringssl_ensure_rsa_self_test(void) {
-  CRYPTO_once(g_self_test_once_rsa_bss_get(), run_self_test_rsa);
-}
-
-static void run_self_test_ecc(void) {
-  if (!boringssl_self_test_ecc()) {
-    BORINGSSL_FIPS_abort();
-  }
-}
-
-DEFINE_STATIC_ONCE(g_self_test_once_ecc);
-
-void boringssl_ensure_ecc_self_test(void) {
-  CRYPTO_once(g_self_test_once_ecc_bss_get(), run_self_test_ecc);
-}
-
-#endif  // BORINGSSL_FIPS
-
-
-// Startup self tests.
-//
-// These tests are run at process start when in FIPS mode.
-
-static int boringssl_self_test_slow(void) {
+static int boringssl_self_test_ffdh(void) {
   int ret = 0;
   DH *dh = NULL;
   BIGNUM *ffdhe2048_value = NULL;
@@ -628,7 +596,8 @@ static int boringssl_self_test_slow(void) {
   dh = self_test_dh();
   uint8_t dh_out[sizeof(kDHOutput)];
   if (dh == NULL || ffdhe2048_value == NULL || sizeof(dh_out) != DH_size(dh) ||
-      DH_compute_key_padded(dh_out, ffdhe2048_value, dh) != sizeof(dh_out) ||
+      dh_compute_key_padded_no_self_test(dh_out, ffdhe2048_value, dh) !=
+          sizeof(dh_out) ||
       !check_test(kDHOutput, dh_out, sizeof(dh_out), "FFC DH")) {
     fprintf(stderr, "FFDH failed.\n");
     goto err;
@@ -642,6 +611,51 @@ err:
 
   return ret;
 }
+
+#if defined(BORINGSSL_FIPS)
+
+static void run_self_test_rsa(void) {
+  if (!boringssl_self_test_rsa()) {
+    BORINGSSL_FIPS_abort();
+  }
+}
+
+DEFINE_STATIC_ONCE(g_self_test_once_rsa);
+
+void boringssl_ensure_rsa_self_test(void) {
+  CRYPTO_once(g_self_test_once_rsa_bss_get(), run_self_test_rsa);
+}
+
+static void run_self_test_ecc(void) {
+  if (!boringssl_self_test_ecc()) {
+    BORINGSSL_FIPS_abort();
+  }
+}
+
+DEFINE_STATIC_ONCE(g_self_test_once_ecc);
+
+void boringssl_ensure_ecc_self_test(void) {
+  CRYPTO_once(g_self_test_once_ecc_bss_get(), run_self_test_ecc);
+}
+
+static void run_self_test_ffdh(void) {
+  if (!boringssl_self_test_ffdh()) {
+    BORINGSSL_FIPS_abort();
+  }
+}
+
+DEFINE_STATIC_ONCE(g_self_test_once_ffdh);
+
+void boringssl_ensure_ffdh_self_test(void) {
+  CRYPTO_once(g_self_test_once_ffdh_bss_get(), run_self_test_ffdh);
+}
+
+#endif  // BORINGSSL_FIPS
+
+
+// Startup self tests.
+//
+// These tests are run at process start when in FIPS mode.
 
 int boringssl_self_test_sha256(void) {
   static const uint8_t kInput[16] = {
@@ -930,10 +944,10 @@ err:
 
 int BORINGSSL_self_test(void) {
   if (!boringssl_self_test_fast() ||
-      !boringssl_self_test_slow() ||
       // When requested to run self tests, also run the lazy tests.
       !boringssl_self_test_rsa() ||
-      !boringssl_self_test_ecc()) {
+      !boringssl_self_test_ecc() ||
+      !boringssl_self_test_ffdh()) {
     return 0;
   }
 
@@ -942,12 +956,7 @@ int BORINGSSL_self_test(void) {
 
 #if defined(BORINGSSL_FIPS)
 int boringssl_self_test_startup(void) {
-  if (!boringssl_self_test_fast() ||
-      !boringssl_self_test_slow()) {
-    return 0;
-  }
-
-  return 1;
+  return boringssl_self_test_fast();
 }
 #endif
 
