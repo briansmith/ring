@@ -439,6 +439,8 @@ int EC_KEY_generate_key(EC_KEY *key) {
 }
 
 int EC_KEY_generate_key_fips(EC_KEY *eckey) {
+  boringssl_ensure_ecc_self_test();
+
   if (EC_KEY_generate_key(eckey) && EC_KEY_check_fips(eckey)) {
     return 1;
   }

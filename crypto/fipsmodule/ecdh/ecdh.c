@@ -75,10 +75,13 @@
 #include <openssl/sha.h>
 
 #include "../ec/internal.h"
+#include "../../internal.h"
 
 
 int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
                           const EC_KEY *priv_key) {
+  boringssl_ensure_ecc_self_test();
+
   if (priv_key->priv_key == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
     return 0;

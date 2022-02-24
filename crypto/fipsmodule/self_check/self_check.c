@@ -400,28 +400,7 @@ err:
   return ret;
 }
 
-#if defined(BORINGSSL_FIPS)
-
-static void run_self_test_rsa(void) {
-  if (!boringssl_self_test_rsa()) {
-    BORINGSSL_FIPS_abort();
-  }
-}
-
-DEFINE_STATIC_ONCE(g_self_test_once_rsa);
-
-void boringssl_ensure_rsa_self_test(void) {
-  CRYPTO_once(g_self_test_once_rsa_bss_get(), run_self_test_rsa);
-}
-
-#endif  // BORINGSSL_FIPS
-
-
-// Startup self tests.
-//
-// These tests are run at process start when in FIPS mode.
-
-static int boringssl_self_test_slow(void) {
+static int boringssl_self_test_ecc(void) {
   int ret = 0;
   EC_KEY *ec_key = NULL;
   EC_GROUP *ec_group = NULL;
@@ -429,8 +408,6 @@ static int boringssl_self_test_slow(void) {
   EC_POINT *ec_point_out = NULL;
   BIGNUM *ec_scalar = NULL;
   ECDSA_SIG *sig = NULL;
-  DH *dh = NULL;
-  BIGNUM *ffdhe2048_value = NULL;
 
   ec_key = self_test_ecdsa_key();
   if (ec_key == NULL) {
@@ -487,8 +464,9 @@ static int boringssl_self_test_slow(void) {
 
   ECDSA_SIG_free(sig);
   sig = parse_ecdsa_sig(kECDSAVerifySig, sizeof(kECDSAVerifySig));
-  if (!sig || !ECDSA_do_verify(kECDSAVerifyDigest, sizeof(kECDSAVerifyDigest),
-                               sig, ec_key)) {
+  if (!sig ||
+      !ecdsa_do_verify_no_self_test(kECDSAVerifyDigest,
+                                    sizeof(kECDSAVerifyDigest), sig, ec_key)) {
     fprintf(stderr, "ECDSA-verify KAT failed.\n");
     goto err;
   }
@@ -533,8 +511,8 @@ static int boringssl_self_test_slow(void) {
       !EC_POINT_oct2point(ec_group, ec_point_in, kP256Point, sizeof(kP256Point),
                           NULL) ||
       !BN_bin2bn(kP256Scalar, sizeof(kP256Scalar), ec_scalar) ||
-      !EC_POINT_mul(ec_group, ec_point_out, NULL, ec_point_in, ec_scalar,
-                    NULL) ||
+      !ec_point_mul_no_self_test(ec_group, ec_point_out, NULL, ec_point_in,
+                                 ec_scalar, NULL) ||
       !EC_POINT_point2oct(ec_group, ec_point_out, POINT_CONVERSION_UNCOMPRESSED,
                           z_comp_result, sizeof(z_comp_result), NULL) ||
       !check_test(kP256PointResult, z_comp_result, sizeof(z_comp_result),
@@ -542,6 +520,57 @@ static int boringssl_self_test_slow(void) {
     fprintf(stderr, "Z-computation KAT failed.\n");
     goto err;
   }
+
+  ret = 1;
+
+err:
+  EC_KEY_free(ec_key);
+  EC_POINT_free(ec_point_in);
+  EC_POINT_free(ec_point_out);
+  EC_GROUP_free(ec_group);
+  BN_free(ec_scalar);
+  ECDSA_SIG_free(sig);
+
+  return ret;
+}
+
+#if defined(BORINGSSL_FIPS)
+
+static void run_self_test_rsa(void) {
+  if (!boringssl_self_test_rsa()) {
+    BORINGSSL_FIPS_abort();
+  }
+}
+
+DEFINE_STATIC_ONCE(g_self_test_once_rsa);
+
+void boringssl_ensure_rsa_self_test(void) {
+  CRYPTO_once(g_self_test_once_rsa_bss_get(), run_self_test_rsa);
+}
+
+static void run_self_test_ecc(void) {
+  if (!boringssl_self_test_ecc()) {
+    BORINGSSL_FIPS_abort();
+  }
+}
+
+DEFINE_STATIC_ONCE(g_self_test_once_ecc);
+
+void boringssl_ensure_ecc_self_test(void) {
+  CRYPTO_once(g_self_test_once_ecc_bss_get(), run_self_test_ecc);
+}
+
+#endif  // BORINGSSL_FIPS
+
+
+// Startup self tests.
+//
+// These tests are run at process start when in FIPS mode.
+
+static int boringssl_self_test_slow(void) {
+  int ret = 0;
+  DH *dh = NULL;
+  BIGNUM *ffdhe2048_value = NULL;
 
   // FFC Diffie-Hellman KAT
 
@@ -608,12 +637,6 @@ static int boringssl_self_test_slow(void) {
   ret = 1;
 
 err:
-  EC_KEY_free(ec_key);
-  EC_POINT_free(ec_point_in);
-  EC_POINT_free(ec_point_out);
-  EC_GROUP_free(ec_group);
-  BN_free(ec_scalar);
-  ECDSA_SIG_free(sig);
   DH_free(dh);
   BN_free(ffdhe2048_value);
 
@@ -909,7 +932,8 @@ int BORINGSSL_self_test(void) {
   if (!boringssl_self_test_fast() ||
       !boringssl_self_test_slow() ||
       // When requested to run self tests, also run the lazy tests.
-      !boringssl_self_test_rsa()) {
+      !boringssl_self_test_rsa() ||
+      !boringssl_self_test_ecc()) {
     return 0;
   }
 

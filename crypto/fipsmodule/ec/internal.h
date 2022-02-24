@@ -301,6 +301,13 @@ int ec_jacobian_to_affine_batch(const EC_GROUP *group, EC_AFFINE *out,
 int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_AFFINE *out,
                                     const EC_FELEM *x, const EC_FELEM *y);
 
+// ec_point_mul_no_self_test does the same as |EC_POINT_mul|, but doesn't try to
+// run the self-test first. This is for use in the self tests themselves, to
+// prevent an infinite loop.
+int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
+                              const BIGNUM *g_scalar, const EC_POINT *p,
+                              const BIGNUM *p_scalar, BN_CTX *ctx);
+
 // ec_point_mul_scalar sets |r| to |p| * |scalar|. Both inputs are considered
 // secret.
 int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
