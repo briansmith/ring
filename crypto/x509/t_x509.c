@@ -134,13 +134,12 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
         }
 
         const ASN1_INTEGER *serial = X509_get0_serialNumber(x);
-        /* |ASN1_INTEGER_get| returns -1 on overflow, so this check skips
-         * negative and large serial numbers. */
-        l = ASN1_INTEGER_get(serial);
-        if (l >= 0) {
+        uint64_t serial_u64;
+        if (ASN1_INTEGER_get_uint64(&serial_u64, serial)) {
             assert(serial->type != V_ASN1_NEG_INTEGER);
-            if (BIO_printf(bp, " %ld (0x%lx)\n", l, (unsigned long)l) <= 0) {
-                goto err;
+            if (BIO_printf(bp, " %" PRIu64 " (0x%" PRIx64 ")\n", serial_u64,
+                           serial_u64) <= 0) {
+              goto err;
             }
         } else {
             neg = (serial->type == V_ASN1_NEG_INTEGER) ? " (Negative)" : "";
