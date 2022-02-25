@@ -19,7 +19,7 @@
 Usage: translate_test_vectors.py TEST_VECTORS_JSON_FILE
 
 The TEST_VECTORS_JSON_FILE is expected to come from the JSON copy of
-draft-irtf-cfrg-hpke-12's test vectors, linked from its [TestVectors] citation.
+RFC 9180's test vectors, linked from its [TestVectors] citation.
 The output is written to "hpke_test_vectors.txt".
 """
 

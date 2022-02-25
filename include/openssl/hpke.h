@@ -30,7 +30,7 @@ extern "C" {
 // Hybrid Public Key Encryption (HPKE) enables a sender to encrypt messages to a
 // receiver with a public key.
 //
-// See https://tools.ietf.org/html/draft-irtf-cfrg-hpke-12.
+// See RFC 9180.
 
 
 // Parameters.
