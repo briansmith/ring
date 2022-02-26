@@ -503,7 +503,7 @@ func firstSentence(paragraphs []string) string {
 
 // markupPipeWords converts |s| into an HTML string, safe to be included outside
 // a tag, while also marking up words surrounded by |.
-func markupPipeWords(allDecls map[string]string, s string) template.HTML {
+func markupPipeWords(allDecls map[string]string, s string, linkDecls bool) template.HTML {
 	// It is safe to look for '|' in the HTML-escaped version of |s|
 	// below. The escaped version cannot include '|' instead tags because
 	// there are no tags by construction.
@@ -524,12 +524,10 @@ func markupPipeWords(allDecls map[string]string, s string) template.HTML {
 		if i > 0 && (j == -1 || j > i) {
 			ret += "<tt>"
 			anchor, isLink := allDecls[s[:i]]
-			if isLink {
-				ret += fmt.Sprintf("<a href=\"%s\">", template.HTMLEscapeString(anchor))
-			}
-			ret += s[:i]
-			if isLink {
-				ret += "</a>"
+			if linkDecls && isLink {
+				ret += fmt.Sprintf("<a href=\"%s\">%s</a>", template.HTMLEscapeString(anchor), s[:i])
+			} else {
+				ret += s[:i]
 			}
 			ret += "</tt>"
 			s = s[i+1:]
@@ -602,11 +600,12 @@ func generate(outPath string, config *Config) (map[string]string, error) {
 
 	headerTmpl := template.New("headerTmpl")
 	headerTmpl.Funcs(template.FuncMap{
-		"firstSentence":   firstSentence,
-		"markupPipeWords": func(s string) template.HTML { return markupPipeWords(allDecls, s) },
-		"markupFirstWord": markupFirstWord,
-		"markupRFC":       markupRFC,
-		"newlinesToBR":    newlinesToBR,
+		"firstSentence":         firstSentence,
+		"markupPipeWords":       func(s string) template.HTML { return markupPipeWords(allDecls, s, true /* linkDecls */) },
+		"markupPipeWordsNoLink": func(s string) template.HTML { return markupPipeWords(allDecls, s, false /* linkDecls */) },
+		"markupFirstWord":       markupFirstWord,
+		"markupRFC":             markupRFC,
+		"newlinesToBR":          newlinesToBR,
 	})
 	headerTmpl, err := headerTmpl.Parse(`<!DOCTYPE html>
 <html>
@@ -623,12 +622,12 @@ func generate(outPath string, config *Config) (map[string]string, error) {
       <a href="headers.html">All headers</a>
     </div>
 
-    {{range .Preamble}}<p>{{. | markupPipeWords}}</p>{{end}}
+    {{range .Preamble}}<p>{{. | markupPipeWords | markupRFC}}</p>{{end}}
 
     <ol>
       {{range .Sections}}
         {{if not .IsPrivate}}
-          {{if .Anchor}}<li class="header"><a href="#{{.Anchor}}">{{.Preamble | firstSentence | markupPipeWords}}</a></li>{{end}}
+          {{if .Anchor}}<li class="header"><a href="#{{.Anchor}}">{{.Preamble | firstSentence | markupPipeWordsNoLink}}</a></li>{{end}}
           {{range .Decls}}
             {{if .Anchor}}<li><a href="#{{.Anchor}}"><tt>{{.Name}}</tt></a></li>{{end}}
           {{end}}
@@ -641,7 +640,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
         <div class="section" {{if .Anchor}}id="{{.Anchor}}"{{end}}>
         {{if .Preamble}}
           <div class="sectionpreamble">
-          {{range .Preamble}}<p>{{. | markupPipeWords}}</p>{{end}}
+          {{range .Preamble}}<p>{{. | markupPipeWords | markupRFC}}</p>{{end}}
           </div>
         {{end}}
 
