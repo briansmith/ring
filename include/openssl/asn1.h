@@ -1076,16 +1076,25 @@ OPENSSL_EXPORT int i2c_ASN1_INTEGER(const ASN1_INTEGER *in, uint8_t **outp);
 // |ASN1_INTEGER*|.
 DECLARE_ASN1_ITEM(ASN1_INTEGER)
 
-// ASN1_INTEGER_set sets |a| to an INTEGER with value |v|. It returns one on
-// success and zero on error.
-OPENSSL_EXPORT int ASN1_INTEGER_set(ASN1_INTEGER *a, long v);
-
 // ASN1_INTEGER_set_uint64 sets |a| to an INTEGER with value |v|. It returns one
 // on success and zero on error.
 OPENSSL_EXPORT int ASN1_INTEGER_set_uint64(ASN1_INTEGER *out, uint64_t v);
 
+// ASN1_INTEGER_set sets |a| to an INTEGER with value |v|. It returns one on
+// success and zero on error.
+OPENSSL_EXPORT int ASN1_INTEGER_set(ASN1_INTEGER *a, long v);
+
+// ASN1_INTEGER_get_uint64 converts |a| to a |uint64_t|. On success, it returns
+// one and sets |*out| to the result. If |a| did not fit or has the wrong type,
+// it returns zero.
+OPENSSL_EXPORT int ASN1_INTEGER_get_uint64(uint64_t *out,
+                                           const ASN1_INTEGER *a);
+
 // ASN1_INTEGER_get returns the value of |a| as a |long|, or -1 if |a| is out of
 // range or the wrong type.
+//
+// WARNING: This function's return value cannot distinguish errors from -1.
+// Prefer |ASN1_INTEGER_get_uint64|.
 OPENSSL_EXPORT long ASN1_INTEGER_get(const ASN1_INTEGER *a);
 
 // BN_to_ASN1_INTEGER sets |ai| to an INTEGER with value |bn| and returns |ai|
@@ -1131,22 +1140,31 @@ OPENSSL_EXPORT int i2d_ASN1_ENUMERATED(const ASN1_ENUMERATED *in,
 // |ASN1_ENUMERATED*|.
 DECLARE_ASN1_ITEM(ASN1_ENUMERATED)
 
-// ASN1_ENUMERATED_set sets |a| to an ENUMERATED with value |v|. It returns one
-// on success and zero on error.
-OPENSSL_EXPORT int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v);
-
 // ASN1_ENUMERATED_set_uint64 sets |a| to an ENUMERATED with value |v|. It
 // returns one on success and zero on error.
 OPENSSL_EXPORT int ASN1_ENUMERATED_set_uint64(ASN1_ENUMERATED *out, uint64_t v);
 
+// ASN1_ENUMERATED_set sets |a| to an ENUMERATED with value |v|. It returns one
+// on success and zero on error.
+OPENSSL_EXPORT int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v);
+
+// ASN1_ENUMERATED_get_uint64 converts |a| to a |uint64_t|. On success, it
+// returns one and sets |*out| to the result. If |a| did not fit or has the
+// wrong type, it returns zero.
+OPENSSL_EXPORT int ASN1_ENUMERATED_get_uint64(uint64_t *out,
+                                              const ASN1_ENUMERATED *a);
+
 // ASN1_ENUMERATED_get returns the value of |a| as a |long|, or -1 if |a| is out
 // of range or the wrong type.
+//
+// WARNING: This function's return value cannot distinguish errors from -1.
+// Prefer |ASN1_ENUMERATED_get_uint64|.
 OPENSSL_EXPORT long ASN1_ENUMERATED_get(const ASN1_ENUMERATED *a);
 
 // BN_to_ASN1_ENUMERATED sets |ai| to an ENUMERATED with value |bn| and returns
 // |ai| on success or NULL or error. If |ai| is NULL, it returns a
-// newly-allocated |ASN1_INTEGER| on success instead, which the caller must
-// release with |ASN1_INTEGER_free|.
+// newly-allocated |ASN1_ENUMERATED| on success instead, which the caller must
+// release with |ASN1_ENUMERATED_free|.
 OPENSSL_EXPORT ASN1_ENUMERATED *BN_to_ASN1_ENUMERATED(const BIGNUM *bn,
                                                       ASN1_ENUMERATED *ai);
 

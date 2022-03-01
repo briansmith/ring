@@ -328,14 +328,17 @@ TEST(ASN1Test, Integer) {
     objs["der"] = std::move(by_der);
 
     // Construct |ASN1_INTEGER| from |long| or |uint64_t|, if it fits.
-    bool fits_in_long = false;
+    bool fits_in_long = false, fits_in_u64 = false;
+    uint64_t u64 = 0;
     long l = 0;
     uint64_t abs_u64;
     if (BN_get_u64(bn.get(), &abs_u64)) {
-      if (!BN_is_negative(bn.get())) {
+      fits_in_u64 = !BN_is_negative(bn.get());
+      if (fits_in_u64) {
+        u64 = abs_u64;
         bssl::UniquePtr<ASN1_INTEGER> by_u64(ASN1_INTEGER_new());
         ASSERT_TRUE(by_u64);
-        ASSERT_TRUE(ASN1_INTEGER_set_uint64(by_u64.get(), abs_u64));
+        ASSERT_TRUE(ASN1_INTEGER_set_uint64(by_u64.get(), u64));
         objs["u64"] = std::move(by_u64);
       }
 
@@ -383,8 +386,16 @@ TEST(ASN1Test, Integer) {
       ASSERT_TRUE(bn2);
       EXPECT_EQ(0, BN_cmp(bn.get(), bn2.get()));
 
-      // TODO(davidben): Fix |ASN1_INTEGER_get| to correctly handle |LONG_MIN|.
-      if (fits_in_long && l != LONG_MIN) {
+      if (fits_in_u64) {
+        uint64_t v;
+        ASSERT_TRUE(ASN1_INTEGER_get_uint64(&v, obj));
+        EXPECT_EQ(v, u64);
+      } else {
+        uint64_t v;
+        EXPECT_FALSE(ASN1_INTEGER_get_uint64(&v, obj));
+      }
+
+      if (fits_in_long) {
         EXPECT_EQ(l, ASN1_INTEGER_get(obj));
       } else {
         EXPECT_EQ(-1, ASN1_INTEGER_get(obj));

@@ -62,6 +62,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/type_check.h>
 
 #include "../internal.h"
 
@@ -309,43 +310,76 @@ int ASN1_ENUMERATED_set_uint64(ASN1_ENUMERATED *out, uint64_t v)
     return asn1_string_set_uint64(out, v, V_ASN1_ENUMERATED);
 }
 
+static int asn1_string_get_abs_uint64(uint64_t *out, const ASN1_STRING *a,
+                                      int type)
+{
+    if ((a->type & ~V_ASN1_NEG) != type) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_INTEGER_TYPE);
+        return 0;
+    }
+    uint8_t buf[sizeof(uint64_t)] = {0};
+    if (a->length > (int)sizeof(buf)) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_INTEGER);
+        return 0;
+    }
+    OPENSSL_memcpy(buf + sizeof(buf) - a->length, a->data, a->length);
+    *out = CRYPTO_load_u64_be(buf);
+    return 1;
+}
+
+static int asn1_string_get_uint64(uint64_t *out, const ASN1_STRING *a, int type)
+{
+    if (!asn1_string_get_abs_uint64(out, a, type)) {
+        return 0;
+    }
+    if (a->type & V_ASN1_NEG) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_INTEGER);
+        return 0;
+    }
+    return 1;
+}
+
+int ASN1_INTEGER_get_uint64(uint64_t *out, const ASN1_INTEGER *a)
+{
+    return asn1_string_get_uint64(out, a, V_ASN1_INTEGER);
+}
+
+int ASN1_ENUMERATED_get_uint64(uint64_t *out, const ASN1_ENUMERATED *a)
+{
+    return asn1_string_get_uint64(out, a, V_ASN1_ENUMERATED);
+}
+
 static long asn1_string_get_long(const ASN1_STRING *a, int type)
 {
-    int neg = 0, i;
-
-    if (a == NULL)
-        return (0L);
-    i = a->type;
-    if (i == (type | V_ASN1_NEG))
-        neg = 1;
-    else if (i != type)
-        return -1;
-
-    OPENSSL_STATIC_ASSERT(sizeof(uint64_t) >= sizeof(long),
-                          "long larger than uint64_t");
-
-    if (a->length > (int)sizeof(uint64_t)) {
-        /* hmm... a bit ugly, return all ones */
-        return -1;
+    if (a == NULL) {
+        return 0;
     }
 
-    uint64_t r64 = 0;
-    if (a->data != NULL) {
-      for (i = 0; i < a->length; i++) {
-          r64 <<= 8;
-          r64 |= (unsigned char)a->data[i];
-      }
-
-      if (r64 > LONG_MAX) {
-          return -1;
-      }
+    uint64_t v;
+    if (!asn1_string_get_abs_uint64(&v, a, type)) {
+        goto err;
     }
 
-    long r = (long) r64;
-    if (neg)
-        r = -r;
+    int64_t i64;
+    int fits_in_i64;
+    /* Check |v != 0| to handle manually-constructed negative zeros. */
+    if ((a->type & V_ASN1_NEG) && v != 0) {
+        i64 = (int64_t)(0u - v);
+        fits_in_i64 = i64 < 0;
+    } else {
+        i64 = (int64_t)v;
+        fits_in_i64 = i64 >= 0;
+    }
+    OPENSSL_STATIC_ASSERT(sizeof(long) <= sizeof(int64_t), "long is too big");
 
-    return r;
+    if (fits_in_i64 && LONG_MIN <= i64 && i64 <= LONG_MAX) {
+        return (long)i64;
+    }
+
+err:
+    /* This function's return value does not distinguish overflow from -1. */
+    ERR_clear_error();
+    return -1;
 }
 
 long ASN1_INTEGER_get(const ASN1_INTEGER *a)
