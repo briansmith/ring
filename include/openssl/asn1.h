@@ -605,7 +605,9 @@ OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *str);
 OPENSSL_EXPORT int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b);
 
 // ASN1_STRING_set sets the contents of |str| to a copy of |len| bytes from
-// |data|. It returns one on success and zero on error.
+// |data|. It returns one on success and zero on error. If |data| is NULL, it
+// updates the length and allocates the buffer as needed, but does not
+// initialize the contents.
 OPENSSL_EXPORT int ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
 
 // ASN1_STRING_set0 sets the contents of |str| to |len| bytes from |data|. It
@@ -1014,6 +1016,12 @@ OPENSSL_EXPORT int ASN1_BIT_STRING_check(const ASN1_BIT_STRING *str,
 // |V_ASN1_INTEGER| or |V_ASN1_ENUMERATED|, while negative values have a type of
 // |V_ASN1_NEG_INTEGER| or |V_ASN1_NEG_ENUMERATED|. Note this differs from DER's
 // two's complement representation.
+//
+// The data in the |ASN1_STRING| may not have leading zeros. Note this means
+// zero is represented as the empty string. Parsing functions will never return
+// invalid representations. If an invalid input is constructed, the marshaling
+// functions will skip leading zeros, however other functions, such as
+// |ASN1_INTEGER_cmp| or |ASN1_INTEGER_get|, may not return the correct result.
 
 DEFINE_STACK_OF(ASN1_INTEGER)
 
@@ -2040,5 +2048,6 @@ BSSL_NAMESPACE_END
 #define ASN1_R_BAD_TEMPLATE 193
 #define ASN1_R_INVALID_BIT_STRING_PADDING 194
 #define ASN1_R_WRONG_INTEGER_TYPE 195
+#define ASN1_R_INVALID_INTEGER 196
 
 #endif

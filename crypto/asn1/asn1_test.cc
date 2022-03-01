@@ -217,7 +217,7 @@ TEST(ASN1Test, Integer) {
       // -1
       {{0x02, 0x01, 0xff}, V_ASN1_NEG_INTEGER, {0x01}, "-1"},
       // 0
-      {{0x02, 0x01, 0x00}, V_ASN1_INTEGER, {0x00}, "0"},
+      {{0x02, 0x01, 0x00}, V_ASN1_INTEGER, {}, "0"},
       // 1
       {{0x02, 0x01, 0x01}, V_ASN1_INTEGER, {0x01}, "1"},
       // 127
@@ -360,6 +360,13 @@ TEST(ASN1Test, Integer) {
       }
     }
 
+    // Default construction should return the zero |ASN1_INTEGER|.
+    if (BN_is_zero(bn.get())) {
+      bssl::UniquePtr<ASN1_INTEGER> by_default(ASN1_INTEGER_new());
+      ASSERT_TRUE(by_default);
+      objs["default"] = std::move(by_default);
+    }
+
     // Test that every |ASN1_INTEGER| constructed behaves as expected.
     for (const auto &pair : objs) {
       // The fields should be as expected.
@@ -392,6 +399,21 @@ TEST(ASN1Test, Integer) {
         EXPECT_EQ(0, ASN1_STRING_cmp(obj, pair2.second.get()));
       }
     }
+
+    // Although our parsers will never output non-minimal |ASN1_INTEGER|s, it is
+    // possible to construct them manually. They should encode correctly.
+    std::vector<uint8_t> data = t.data;
+    const int kMaxExtraBytes = 5;
+    for (int i = 0; i < kMaxExtraBytes; i++) {
+      data.insert(data.begin(), 0x00);
+      SCOPED_TRACE(Bytes(data));
+
+      bssl::UniquePtr<ASN1_INTEGER> non_minimal(ASN1_STRING_type_new(t.type));
+      ASSERT_TRUE(non_minimal);
+      ASSERT_TRUE(ASN1_STRING_set(non_minimal.get(), data.data(), data.size()));
+
+      TestSerialize(non_minimal.get(), i2d_ASN1_INTEGER, t.der);
+    }
   }
 
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTests); i++) {
@@ -422,10 +444,39 @@ TEST(ASN1Test, Integer) {
     }
   }
 
+  std::vector<uint8_t> kInvalidTests[] = {
+      // The empty string is not an integer.
+      {0x02, 0x00},
+      // Integers must be minimally-encoded.
+      {0x02, 0x02, 0x00, 0x00},
+      {0x02, 0x02, 0x00, 0x7f},
+      {0x02, 0x02, 0xff, 0xff},
+      {0x02, 0x02, 0xff, 0x80},
+  };
+  for (const auto &invalid : kInvalidTests) {
+    SCOPED_TRACE(Bytes(invalid));
+
+    const uint8_t *ptr = invalid.data();
+    bssl::UniquePtr<ASN1_INTEGER> integer(
+        d2i_ASN1_INTEGER(nullptr, &ptr, invalid.size()));
+    EXPECT_FALSE(integer);
+  }
+
   // Callers expect |ASN1_INTEGER_get| and |ASN1_ENUMERATED_get| to return zero
   // given NULL.
   EXPECT_EQ(0, ASN1_INTEGER_get(nullptr));
   EXPECT_EQ(0, ASN1_ENUMERATED_get(nullptr));
+}
+
+// Although invalid, a negative zero should encode correctly.
+TEST(ASN1Test, NegativeZero) {
+  bssl::UniquePtr<ASN1_INTEGER> neg_zero(
+      ASN1_STRING_type_new(V_ASN1_NEG_INTEGER));
+  ASSERT_TRUE(neg_zero);
+  EXPECT_EQ(0, ASN1_INTEGER_get(neg_zero.get()));
+
+  static const uint8_t kDER[] = {0x02, 0x01, 0x00};
+  TestSerialize(neg_zero.get(), i2d_ASN1_INTEGER, kDER);
 }
 
 TEST(ASN1Test, SerializeObject) {
