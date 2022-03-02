@@ -7,6 +7,7 @@ ssl/test/runner/runner
 *.swo
 doc/*.html
 doc/doc.css
+rust/Cargo.lock
 rust/target
 
 util/bot/android_ndk
