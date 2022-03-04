@@ -30,7 +30,8 @@ extern "C" {
 #endif
 
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&   \
     !defined(OPENSSL_SMALL)
 
 // P-256 field operations.
@@ -142,8 +143,9 @@ void ecp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
 void ecp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                    const P256_POINT_AFFINE *b);
 
-#endif /* !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-           !defined(OPENSSL_SMALL) */
+#endif /* !defined(OPENSSL_NO_ASM) && \
+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&   \
+          !defined(OPENSSL_SMALL) */
 
 
 #if defined(__cplusplus)

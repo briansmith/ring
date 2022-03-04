@@ -94,7 +94,7 @@ MemoryRef <- (SymbolRef BaseIndexScale /
               BaseIndexScale)
 SymbolRef <- (Offset* '+')? (LocalSymbol / SymbolName) Offset* ('@' Section Offset*)?
 Low12BitsSymbolRef <- ":lo12:" (LocalSymbol / SymbolName) Offset?
-ARMBaseIndexScale <- '[' ARMRegister (',' WS? (('#' Offset ('*' [0-9]+)? ) / ARMGOTLow12 / Low12BitsSymbolRef / ARMRegister) (',' WS? ARMConstantTweak)?)? ']' ARMPostincrement?
+ARMBaseIndexScale <- '[' ARMRegister (',' WS? (('#' Offset (('*' [0-9]+) / ('*' '(' [0-9]+ Operator [0-9]+ ')') / (('+' [0-9]+)*))? ) / ARMGOTLow12 / Low12BitsSymbolRef / ARMRegister) (',' WS? ARMConstantTweak)?)? ']' ARMPostincrement?
 ARMGOTLow12 <- ":got_lo12:" SymbolName
 ARMPostincrement <- '!'
 BaseIndexScale <- '(' RegisterOrConstant? WS? (',' WS? RegisterOrConstant WS? (',' [0-9]+)? )? ')'

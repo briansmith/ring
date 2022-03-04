@@ -49,7 +49,7 @@ set(
   crypto/fipsmodule/bn/bn_tests.txt
   crypto/fipsmodule/bn/miller_rabin_tests.txt
   crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt
-  crypto/fipsmodule/ec/p256-x86_64_tests.txt
+  crypto/fipsmodule/ec/p256-nistz_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/modes/gcm_tests.txt

@@ -509,7 +509,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 				// This is a branch. Either the target needs to be written to a local
 				// version of the symbol to ensure that no relocations are emitted, or
 				// it needs to jump to a redirector function.
-				symbol, _, _, didChange, symbolIsLocal, _ := d.parseMemRef(arg.up)
+				symbol, offset, _, didChange, symbolIsLocal, _ := d.parseMemRef(arg.up)
 				changed = didChange
 
 				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
@@ -520,6 +520,13 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 					d.redirectors[symbol] = redirector
 					symbol = redirector
 					changed = true
+				} else if didChange && symbolIsLocal && len(offset) > 0 {
+					// didChange is set when the inputFile index is not 0; which is the index of the
+					// first file copied to the output, which is the generated assembly of bcm.c.
+					// In subsequently copied assembly files, local symbols are changed by appending (BCM_ + index)
+					// in order to ensure they don't collide. `index` gets incremented per file.
+					// If there is offset after the symbol, append the `offset`.
+					symbol = symbol + offset
 				}
 
 				args = append(args, symbol)

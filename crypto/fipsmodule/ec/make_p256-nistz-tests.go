@@ -69,7 +69,7 @@ func fromMontgomery(z, x *big.Int) *big.Int {
 
 func isAffineInfinity(x, y *big.Int) bool {
 	// Infinity, in affine coordinates, is represented as (0, 0) by
-	// both Go and p256-x86_64-asm.pl.
+	// both Go, p256-x86_64-asm.pl and p256-armv8-asm.pl.
 	return x.Sign() == 0 && y.Sign() == 0
 }
 
@@ -107,8 +107,8 @@ func toJacobian(xIn, yIn *big.Int) (x, y, z *big.Int) {
 		// arbitrary X and Y and include the special case. We also have
 		// not verified that add and double preserve this
 		// property. Thus, generate test vectors with unrelated X and Y,
-		// to test that p256-x86_64-asm.pl correctly handles
-		// unconstrained representations of infinity.
+		// to test that p256-x86_64-asm.pl and p256-armv8-asm.pl correctly
+		// handle unconstrained representations of infinity.
 		x = randNonZeroInt(p)
 		y = randNonZeroInt(p)
 		z = zero

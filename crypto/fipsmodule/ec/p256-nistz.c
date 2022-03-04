@@ -30,10 +30,10 @@
 #include "../delocate.h"
 #include "../../internal.h"
 #include "internal.h"
-#include "p256-x86_64.h"
+#include "p256-nistz.h"
 
-
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+#if !defined(OPENSSL_NO_ASM) &&  \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&    \
     !defined(OPENSSL_SMALL)
 
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
@@ -45,7 +45,7 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 };
 
 // Precomputed tables for the default generator
-#include "p256-x86_64-table.h"
+#include "p256-nistz-table.h"
 
 // Recode window to a signed digit, see |ec_GFp_nistp_recode_scalar_bits| in
 // util.c for details
@@ -554,10 +554,12 @@ static void ecp_nistz256_inv0_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
 static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
                                                  EC_SCALAR *out,
                                                  const EC_SCALAR *in) {
+#if defined(OPENSSL_X86_64)
   if (!CRYPTO_is_AVX_capable()) {
     // No AVX support; fallback to generic code.
     return ec_simple_scalar_to_montgomery_inv_vartime(group, out, in);
   }
+#endif
 
   assert(group->order.width == P256_LIMBS);
   if (!beeu_mod_inverse_vartime(out->words, in->words, group->order.d)) {
@@ -628,5 +630,6 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->cmp_x_coordinate = ecp_nistz256_cmp_x_coordinate;
 }
 
-#endif /* !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+#endif /* !defined(OPENSSL_NO_ASM) && \
+          (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&  \
           !defined(OPENSSL_SMALL) */

@@ -246,7 +246,8 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[2].param_len = 32;
   out->curves[2].params = kP256Params;
   out->curves[2].method =
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&   \
     !defined(OPENSSL_SMALL)
       EC_GFp_nistz256_method();
 #else
