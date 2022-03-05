@@ -993,8 +993,8 @@ int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
 
 // add_bag_attributes adds the bagAttributes field of a SafeBag structure,
 // containing the specified friendlyName and localKeyId attributes.
-static int add_bag_attributes(CBB *bag, const char *name, const uint8_t *key_id,
-                              size_t key_id_len) {
+static int add_bag_attributes(CBB *bag, const char *name, size_t name_len,
+                              const uint8_t *key_id, size_t key_id_len) {
   if (name == NULL && key_id_len == 0) {
     return 1;  // Omit the OPTIONAL SET.
   }
@@ -1003,7 +1003,7 @@ static int add_bag_attributes(CBB *bag, const char *name, const uint8_t *key_id,
   if (!CBB_add_asn1(bag, &attrs, CBS_ASN1_SET)) {
     return 0;
   }
-  if (name != NULL) {
+  if (name_len != 0) {
     // See https://tools.ietf.org/html/rfc2985, section 5.5.1.
     if (!CBB_add_asn1(&attrs, &attr, CBS_ASN1_SEQUENCE) ||
         !CBB_add_asn1(&attr, &oid, CBS_ASN1_OBJECT) ||
@@ -1014,7 +1014,7 @@ static int add_bag_attributes(CBB *bag, const char *name, const uint8_t *key_id,
     }
     // Convert the friendly name to a BMPString.
     CBS name_cbs;
-    CBS_init(&name_cbs, (const uint8_t *)name, strlen(name));
+    CBS_init(&name_cbs, (const uint8_t *)name, name_len);
     while (CBS_len(&name_cbs) != 0) {
       uint32_t c;
       if (!cbs_get_utf8(&name_cbs, &c) ||
@@ -1059,10 +1059,24 @@ static int add_cert_bag(CBB *cbb, X509 *cert, const char *name,
   }
   uint8_t *buf;
   int len = i2d_X509(cert, NULL);
+
+  int int_name_len = 0;
+  const char *cert_name = (const char *)X509_alias_get0(cert, &int_name_len);
+  size_t name_len = int_name_len;
+  if (name) {
+    if (name_len != 0) {
+      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_AMBIGUOUS_FRIENDLY_NAME);
+      return 0;
+    }
+    name_len = strlen(name);
+  } else {
+    name = cert_name;
+  }
+
   if (len < 0 ||
       !CBB_add_space(&cert_value, &buf, (size_t)len) ||
       i2d_X509(cert, &buf) < 0 ||
-      !add_bag_attributes(&bag, name, key_id, key_id_len) ||
+      !add_bag_attributes(&bag, name, name_len, key_id, key_id_len) ||
       !CBB_flush(cbb)) {
     return 0;
   }
@@ -1323,7 +1337,11 @@ PKCS12 *PKCS12_create(const char *password, const char *name,
         goto err;
       }
     }
-    if (!add_bag_attributes(&bag, name, key_id, key_id_len) ||
+    size_t name_len = 0;
+    if (name) {
+      name_len = strlen(name);
+    }
+    if (!add_bag_attributes(&bag, name, name_len, key_id, key_id_len) ||
         !CBB_flush(&content_infos)) {
       goto err;
     }
