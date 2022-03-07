@@ -574,7 +574,8 @@ int ASN1_GENERALIZEDTIME_print(BIO *bp, const ASN1_GENERALIZEDTIME *tm)
 // their value, updates |v| and |len|, and returns one. Otherwise, returns
 // zero.
 static int consume_two_digits(int* out, const char **v, int *len) {
-  if (*len < 2|| !isdigit((*v)[0]) || !isdigit((*v)[1])) {
+  if (*len < 2 || !isdigit((unsigned char)((*v)[0])) ||
+      !isdigit((unsigned char)((*v)[1]))) {
     return 0;
   }
   *out = ((*v)[0] - '0') * 10 + ((*v)[1] - '0');
