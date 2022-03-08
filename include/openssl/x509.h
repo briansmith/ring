@@ -858,7 +858,6 @@ DECLARE_ASN1_FUNCTIONS(X509_NAME)
 OPENSSL_EXPORT int X509_NAME_set(X509_NAME **xn, X509_NAME *name);
 
 DECLARE_ASN1_FUNCTIONS(X509)
-DECLARE_ASN1_FUNCTIONS(X509_CERT_AUX)
 
 // X509_up_ref adds one to the reference count of |x509| and returns one.
 OPENSSL_EXPORT int X509_up_ref(X509 *x509);
@@ -1362,7 +1361,6 @@ OPENSSL_EXPORT int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflag,
                                  unsigned long cflag);
 OPENSSL_EXPORT int X509_print(BIO *bp, X509 *x);
 OPENSSL_EXPORT int X509_ocspid_print(BIO *bp, X509 *x);
-OPENSSL_EXPORT int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 OPENSSL_EXPORT int X509_CRL_print(BIO *bp, X509_CRL *x);
 OPENSSL_EXPORT int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflag,
                                      unsigned long cflag);

@@ -106,13 +106,14 @@ struct x509_attributes_st {
   STACK_OF(ASN1_TYPE) *set;
 } /* X509_ATTRIBUTE */;
 
-struct x509_cert_aux_st {
+typedef struct x509_cert_aux_st {
   STACK_OF(ASN1_OBJECT) *trust;   // trusted uses
   STACK_OF(ASN1_OBJECT) *reject;  // rejected uses
   ASN1_UTF8STRING *alias;         // "friendly name"
   ASN1_OCTET_STRING *keyid;       // key id of private key
-  STACK_OF(X509_ALGOR) *other;    // other unspecified info
-} /* X509_CERT_AUX */;
+} X509_CERT_AUX;
+
+DECLARE_ASN1_FUNCTIONS(X509_CERT_AUX)
 
 struct X509_extension_st {
   ASN1_OBJECT *object;
@@ -369,6 +370,8 @@ struct x509_store_ctx_st {
 } /* X509_STORE_CTX */;
 
 ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);
+
+int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 
 
 /* RSA-PSS functions. */
