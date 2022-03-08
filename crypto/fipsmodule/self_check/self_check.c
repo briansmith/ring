@@ -35,6 +35,7 @@
 #include "../ec/internal.h"
 #include "../ecdsa/internal.h"
 #include "../rand/internal.h"
+#include "../rsa/internal.h"
 #include "../tls/internal.h"
 
 
