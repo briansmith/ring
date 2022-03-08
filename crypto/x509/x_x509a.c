@@ -95,6 +95,9 @@ static X509_CERT_AUX *aux_get(X509 *x)
 int X509_alias_set1(X509 *x, const unsigned char *name, int len)
 {
     X509_CERT_AUX *aux;
+    /* TODO(davidben): Empty aliases are not meaningful in PKCS#12, and the
+     * getters cannot quite represent them. Also erase the object if |len| is
+     * zero. */
     if (!name) {
         if (!x || !x->aux || !x->aux->alias)
             return 1;
@@ -112,6 +115,9 @@ int X509_alias_set1(X509 *x, const unsigned char *name, int len)
 int X509_keyid_set1(X509 *x, const unsigned char *id, int len)
 {
     X509_CERT_AUX *aux;
+    /* TODO(davidben): Empty key IDs are not meaningful in PKCS#12, and the
+     * getters cannot quite represent them. Also erase the object if |len| is
+     * zero. */
     if (!id) {
         if (!x || !x->aux || !x->aux->keyid)
             return 1;
@@ -126,22 +132,22 @@ int X509_keyid_set1(X509 *x, const unsigned char *id, int len)
     return ASN1_STRING_set(aux->keyid, id, len);
 }
 
-unsigned char *X509_alias_get0(X509 *x, int *len)
+unsigned char *X509_alias_get0(X509 *x, int *out_len)
 {
-    if (!x->aux || !x->aux->alias)
-        return NULL;
-    if (len)
-        *len = x->aux->alias->length;
-    return x->aux->alias->data;
+    const ASN1_UTF8STRING *alias = x->aux != NULL ? x->aux->alias : NULL;
+    if (out_len != NULL) {
+        *out_len = alias != NULL ? alias->length : 0;
+    }
+    return alias != NULL ? alias->data : NULL;
 }
 
-unsigned char *X509_keyid_get0(X509 *x, int *len)
+unsigned char *X509_keyid_get0(X509 *x, int *out_len)
 {
-    if (!x->aux || !x->aux->keyid)
-        return NULL;
-    if (len)
-        *len = x->aux->keyid->length;
-    return x->aux->keyid->data;
+    const ASN1_OCTET_STRING *keyid = x->aux != NULL ? x->aux->keyid : NULL;
+    if (out_len != NULL) {
+        *out_len = keyid != NULL ? keyid->length : 0;
+    }
+    return keyid != NULL ? keyid->data : NULL;
 }
 
 int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj)

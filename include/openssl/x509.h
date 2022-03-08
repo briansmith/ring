@@ -869,9 +869,6 @@ OPENSSL_EXPORT int X509_get_ex_new_index(long argl, void *argp,
                                          CRYPTO_EX_free *free_func);
 OPENSSL_EXPORT int X509_set_ex_data(X509 *r, int idx, void *arg);
 OPENSSL_EXPORT void *X509_get_ex_data(X509 *r, int idx);
-OPENSSL_EXPORT int i2d_X509_AUX(X509 *a, unsigned char **pp);
-OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **a, const unsigned char **pp,
-                                  long length);
 
 // i2d_re_X509_tbs serializes the TBSCertificate portion of |x509|, as described
 // in |i2d_SAMPLE|.
@@ -924,18 +921,83 @@ OPENSSL_EXPORT void X509_get0_signature(const ASN1_BIT_STRING **out_sig,
 // a known NID.
 OPENSSL_EXPORT int X509_get_signature_nid(const X509 *x509);
 
-OPENSSL_EXPORT int X509_alias_set1(X509 *x, const unsigned char *name, int len);
-OPENSSL_EXPORT int X509_keyid_set1(X509 *x, const unsigned char *id, int len);
-OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x, int *len);
-OPENSSL_EXPORT unsigned char *X509_keyid_get0(X509 *x, int *len);
-OPENSSL_EXPORT int (*X509_TRUST_set_default(int (*trust)(int, X509 *,
-                                                         int)))(int, X509 *,
-                                                                int);
-OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
+
+// Auxiliary properties.
+//
+// |X509| objects optionally maintain auxiliary properties. These are not part
+// of the certificates themselves, and thus are not covered by signatures or
+// preserved by the standard serialization. They are used as inputs or outputs
+// to other functions in this library.
+
+// i2d_X509_AUX marshals |x509| as a DER-encoded X.509 Certificate (RFC 5280),
+// followed optionally by a separate, OpenSSL-specific structure with auxiliary
+// properties. It behaves as described in |i2d_SAMPLE|.
+//
+// Unlike similarly-named functions, this function does not output a single
+// ASN.1 element. Directly embedding the output in a larger ASN.1 structure will
+// not behave correctly.
+OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, unsigned char **outp);
+
+// d2i_X509_AUX parses up to |length| bytes from |*inp| as a DER-encoded X.509
+// Certificate (RFC 5280), followed optionally by a separate, OpenSSL-specific
+// structure with auxiliary properties. It behaves as described in
+// |d2i_SAMPLE_with_reuse|.
+//
+// Some auxiliary properties affect trust decisions, so this function should not
+// be used with untrusted input.
+//
+// Unlike similarly-named functions, this function does not parse a single
+// ASN.1 element. Trying to parse data directly embedded in a larger ASN.1
+// structure will not behave correctly.
+OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **x509, const unsigned char **inp,
+                                  long length);
+
+// X509_alias_set1 sets |x509|'s alias to |len| bytes from |name|. If |name| is
+// NULL, the alias is cleared instead. Aliases are not part of the certificate
+// itself and will not be serialized by |i2d_X509|.
+OPENSSL_EXPORT int X509_alias_set1(X509 *x509, const unsigned char *name,
+                                   int len);
+
+// X509_keyid_set1 sets |x509|'s key ID to |len| bytes from |id|. If |id| is
+// NULL, the key ID is cleared instead. Key IDs are not part of the certificate
+// itself and will not be serialized by |i2d_X509|.
+OPENSSL_EXPORT int X509_keyid_set1(X509 *x509, const unsigned char *id,
+                                   int len);
+
+// X509_alias_get0 looks up |x509|'s alias. If found, it sets |*out_len| to the
+// alias's length and returns a pointer to a buffer containing the contents. If
+// not found, it outputs the empty string by returning NULL and setting
+// |*out_len| to zero.
+//
+// If |x509| was parsed from a PKCS#12 structure (see
+// |PKCS12_get_key_and_certs|), the alias will reflect the friendlyName
+// attribute (RFC 2985).
+//
+// WARNING: In OpenSSL, this function did not set |*out_len| when the alias was
+// missing. Callers that target both OpenSSL and BoringSSL should set the value
+// to zero before calling this function.
+OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x509, int *out_len);
+
+// X509_keyid_get0 looks up |x509|'s key ID. If found, it sets |*out_len| to the
+// key ID's length and returns a pointer to a buffer containing the contents. If
+// not found, it outputs the empty string by returning NULL and setting
+// |*out_len| to zero.
+//
+// WARNING: In OpenSSL, this function did not set |*out_len| when the alias was
+// missing. Callers that target both OpenSSL and BoringSSL should set the value
+// to zero before calling this function.
+OPENSSL_EXPORT unsigned char *X509_keyid_get0(X509 *x509, int *out_len);
+
 OPENSSL_EXPORT int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj);
 OPENSSL_EXPORT int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj);
 OPENSSL_EXPORT void X509_trust_clear(X509 *x);
 OPENSSL_EXPORT void X509_reject_clear(X509 *x);
+
+
+OPENSSL_EXPORT int (*X509_TRUST_set_default(int (*trust)(int, X509 *,
+                                                         int)))(int, X509 *,
+                                                                int);
+OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
 
 DECLARE_ASN1_FUNCTIONS(X509_REVOKED)
 DECLARE_ASN1_FUNCTIONS(X509_CRL)
