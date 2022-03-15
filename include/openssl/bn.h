@@ -584,9 +584,14 @@ OPENSSL_EXPORT int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a,
                                         const BIGNUM *m);
 
 // BN_mod_sqrt returns a newly-allocated |BIGNUM|, r, such that
-// r^2 == a (mod p). |p| must be a prime. It returns NULL on error or if |a| is
-// not a square mod |p|. In the latter case, it will add |BN_R_NOT_A_SQUARE| to
-// the error queue.
+// r^2 == a (mod p). It returns NULL on error or if |a| is not a square mod |p|.
+// In the latter case, it will add |BN_R_NOT_A_SQUARE| to the error queue.
+// If |a| is a square and |p| > 2, there are two possible square roots. This
+// function may return either and may even select one non-deterministically.
+//
+// This function only works if |p| is a prime. If |p| is composite, it may fail
+// or return an arbitrary value. Callers should not pass attacker-controlled
+// values of |p|.
 OPENSSL_EXPORT BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p,
                                    BN_CTX *ctx);
 

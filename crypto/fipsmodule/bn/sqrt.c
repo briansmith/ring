@@ -306,8 +306,7 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
   }
 
   // x := a^((q-1)/2)
-  if (BN_is_zero(t))  // special case: p = 2^e + 1
-  {
+  if (BN_is_zero(t)) {  // special case: p = 2^e + 1
     if (!BN_nnmod(t, A, p, ctx)) {
       goto end;
     }
@@ -350,7 +349,6 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
     // We have  a*b = x^2,
     //    y^2^(e-1) = -1,
     //    b^2^(e-1) = 1.
-
     if (BN_is_one(b)) {
       if (!BN_copy(ret, x)) {
         goto end;
@@ -359,23 +357,26 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
       goto vrfy;
     }
 
-
-    // find smallest  i  such that  b^(2^i) = 1
-    i = 1;
-    if (!BN_mod_sqr(t, b, p, ctx)) {
+    // Find the smallest i, 0 < i < e, such that b^(2^i) = 1
+    for (i = 1; i < e; i++) {
+      if (i == 1) {
+        if (!BN_mod_sqr(t, b, p, ctx)) {
+          goto end;
+        }
+      } else {
+        if (!BN_mod_mul(t, t, t, p, ctx)) {
+          goto end;
+        }
+      }
+      if (BN_is_one(t)) {
+        break;
+      }
+    }
+    // If not found, a is not a square or p is not a prime.
+    if (i >= e) {
+      OPENSSL_PUT_ERROR(BN, BN_R_NOT_A_SQUARE);
       goto end;
     }
-    while (!BN_is_one(t)) {
-      i++;
-      if (i == e) {
-        OPENSSL_PUT_ERROR(BN, BN_R_NOT_A_SQUARE);
-        goto end;
-      }
-      if (!BN_mod_mul(t, t, t, p, ctx)) {
-        goto end;
-      }
-    }
-
 
     // t := y^2^(e - i - 1)
     if (!BN_copy(t, y)) {
@@ -391,14 +392,15 @@ BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
         !BN_mod_mul(b, b, y, p, ctx)) {
       goto end;
     }
+
+    // e decreases each iteration, so this loop will terminate.
+    assert(i < e);
     e = i;
   }
 
 vrfy:
   if (!err) {
-    // verify the result -- the input might have been not a square
-    // (test added in 0.9.8)
-
+    // Verify the result. The input might have been not a square.
     if (!BN_mod_sqr(x, ret, p, ctx)) {
       err = 1;
     }

@@ -323,7 +323,15 @@ OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
 // |EC_GROUP_cmp| (even to themselves). |EC_GROUP_get_curve_name| will always
 // return |NID_undef|.
 //
-// Avoid using arbitrary curves and use |EC_GROUP_new_by_curve_name| instead.
+// This function is provided for compatibility with some legacy applications
+// only. Avoid using arbitrary curves and use |EC_GROUP_new_by_curve_name|
+// instead. This ensures the result meets preconditions necessary for
+// elliptic curve algorithms to function correctly and securely.
+//
+// Given invalid parameters, this function may fail or it may return an
+// |EC_GROUP| which breaks these preconditions. Subsequent operations may then
+// return arbitrary, incorrect values. Callers should not pass
+// attacker-controlled values to this function.
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p,
                                                 const BIGNUM *a,
                                                 const BIGNUM *b, BN_CTX *ctx);
