@@ -70,6 +70,10 @@ def _GetDesiredVsToolchainHashes(version):
     # Debuggers, and 10.0.17134 version of d3dcompiler_47.dll, with ARM64
     # libraries.
     return ['418b3076791776573a815eb298c8aa590307af63']
+  if version == '2019':
+    # VS 2019 16.61 with 10.0.19041 SDK, and 10.0.20348 version of
+    # d3dcompiler_47.dll, with ARM64 libraries and UWP support.
+    return ['3bda71a11e']
   raise Exception('Unsupported VS version %s' % version)
 
 
