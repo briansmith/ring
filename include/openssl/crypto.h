@@ -172,6 +172,14 @@ OPENSSL_EXPORT void OPENSSL_cleanup(void);
 // |BORINGSSL_FIPS| and zero otherwise.
 OPENSSL_EXPORT int FIPS_mode_set(int on);
 
+// FIPS_version returns the version of the FIPS module, or zero if the build
+// isn't exactly at a verified version. The version, expressed in base 10, will
+// be a date in the form yyyymmddXX where XX is often "00", but can be
+// incremented if multiple versions are defined on a single day.
+//
+// (This format exceeds a |uint32_t| in the year 4294.)
+OPENSSL_EXPORT uint32_t FIPS_version(void);
+
 // FIPS_query_algorithm_status returns one if |algorithm| is FIPS validated in
 // the current BoringSSL and zero otherwise.
 OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);

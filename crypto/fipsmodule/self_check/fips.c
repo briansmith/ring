@@ -28,6 +28,10 @@ int FIPS_mode(void) {
 
 int FIPS_mode_set(int on) { return on == FIPS_mode(); }
 
+uint32_t FIPS_version(void) {
+  return 0;
+}
+
 int FIPS_query_algorithm_status(const char *algorithm) {
 #if defined(BORINGSSL_FIPS)
   static const char kApprovedAlgorithms[][13] = {
