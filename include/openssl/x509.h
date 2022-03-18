@@ -993,9 +993,6 @@ OPENSSL_EXPORT void X509_trust_clear(X509 *x);
 OPENSSL_EXPORT void X509_reject_clear(X509 *x);
 
 
-OPENSSL_EXPORT int (*X509_TRUST_set_default(int (*trust)(int, X509 *,
-                                                         int)))(int, X509 *,
-                                                                int);
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
 
 DECLARE_ASN1_FUNCTIONS(X509_REVOKED)
