@@ -59,6 +59,12 @@ OPENSSL_EXPORT int CRYPTO_has_asm(void);
 // success and zero on error.
 OPENSSL_EXPORT int BORINGSSL_self_test(void);
 
+// BORINGSSL_integrity_test triggers the module's integrity test where the code
+// and data of the module is matched against a hash injected at build time. It
+// returns one on success or zero if there's a mismatch. This function only
+// exists if the module was built in FIPS mode without ASAN.
+OPENSSL_EXPORT int BORINGSSL_integrity_test(void);
+
 // CRYPTO_pre_sandbox_init initializes the crypto library, pre-acquiring some
 // unusual resources to aid running in sandboxed environments. It is safe to
 // call this function multiple times and concurrently from multiple threads.
