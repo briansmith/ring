@@ -172,6 +172,10 @@ OPENSSL_EXPORT void OPENSSL_cleanup(void);
 // |BORINGSSL_FIPS| and zero otherwise.
 OPENSSL_EXPORT int FIPS_mode_set(int on);
 
+// FIPS_query_algorithm_status returns one if |algorithm| is FIPS validated in
+// the current BoringSSL and zero otherwise.
+OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
+
 
 #if defined(__cplusplus)
 }  // extern C
