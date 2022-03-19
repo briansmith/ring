@@ -30,12 +30,10 @@ most recent stable version of each tool.
     by CMake, it may be configured explicitly by setting
     `CMAKE_ASM_NASM_COMPILER`.
 
-  * C and C++ compilers with C++11 support are required. On Windows, MSVC 14
-    (Visual Studio 2015) or later with Platform SDK 8.1 or later are supported,
-    but newer versions are recommended. We will drop support for Visual Studio
-    2015 in March 2022, five years after the release of Visual Studio 2017.
-    Recent versions of GCC (6.1+) and Clang should work on non-Windows
-    platforms, and maybe on Windows too.
+  * C and C++ compilers with C++11 support are required. On Windows, MSVC from
+    Visual Studio 2017 or later with Platform SDK 8.1 or later are supported,
+    but newer versions are recommended. Recent versions of GCC (6.1+) and Clang
+    should work on non-Windows platforms, and maybe on Windows too.
 
   * The most recent stable version of [Go](https://golang.org/dl/) is required.
     Note Go is exempt from the five year support window. If not found by CMake,

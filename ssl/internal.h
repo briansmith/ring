@@ -245,14 +245,6 @@ UniquePtr<T> MakeUnique(Args &&... args) {
   { abort(); }
 #endif
 
-// CONSTEXPR_ARRAY works around a VS 2015 bug where ranged for loops don't work
-// on constexpr arrays.
-#if defined(_MSC_VER) && !defined(__clang__) && _MSC_VER < 1910
-#define CONSTEXPR_ARRAY const
-#else
-#define CONSTEXPR_ARRAY constexpr
-#endif
-
 // Array<T> is an owning array of elements of |T|.
 template <typename T>
 class Array {

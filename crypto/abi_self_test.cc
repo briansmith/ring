@@ -58,9 +58,10 @@ TEST(ABITest, SanityCheck) {
 #if defined(OPENSSL_WINDOWS)
     // The invalid epilog makes Windows believe the epilog starts later than it
     // actually does. As a result, immediately after the popq, it does not
-    // realize the stack has been unwound and repeats the work.
-    EXPECT_NONFATAL_FAILURE(CHECK_ABI_SEH(abi_test_bad_unwind_epilog),
-                            "unwound past starting frame");
+    // realize the stack has been unwound and repeats the popq. This will result
+    // in reading the wrong return address and fail to unwind. The exact failure
+    // may vary depending on what was on the stack before.
+    EXPECT_NONFATAL_FAILURE(CHECK_ABI_SEH(abi_test_bad_unwind_epilog), "");
     CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_epilog);
 #endif  // OPENSSL_WINDOWS
   }

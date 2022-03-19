@@ -290,7 +290,7 @@ class CECPQ2KeyShare : public SSLKeyShare {
   HRSS_private_key hrss_private_key_;
 };
 
-CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
+constexpr NamedGroup kNamedGroups[] = {
     {NID_secp224r1, SSL_CURVE_SECP224R1, "P-224", "secp224r1"},
     {NID_X9_62_prime256v1, SSL_CURVE_SECP256R1, "P-256", "prime256v1"},
     {NID_secp384r1, SSL_CURVE_SECP384R1, "P-384", "secp384r1"},

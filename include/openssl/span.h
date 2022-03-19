@@ -96,6 +96,16 @@ class Span : private internal::SpanBase<const T> {
  private:
   static const size_t npos = static_cast<size_t>(-1);
 
+  // Heuristically test whether C is a container type that can be converted into
+  // a Span by checking for data() and size() member functions.
+  //
+  // TODO(davidben): Require C++14 support and switch to std::enable_if_t.
+  // Perhaps even C++17 now?
+  template <typename C>
+  using EnableIfContainer = typename std::enable_if<
+      std::is_convertible<decltype(std::declval<C>().data()), T *>::value &&
+      std::is_integral<decltype(std::declval<C>().size())>::value>::type;
+
  public:
   constexpr Span() : Span(nullptr, 0) {}
   constexpr Span(T *ptr, size_t len) : data_(ptr), size_(len) {}
@@ -104,27 +114,12 @@ class Span : private internal::SpanBase<const T> {
   constexpr Span(T (&array)[N]) : Span(array, N) {}
 
   template <
-      typename C,
-      // TODO(davidben): Switch everything to std::enable_if_t when we remove
-      // support for MSVC 2015. Although we could write our own enable_if_t and
-      // MSVC 2015 has std::enable_if_t anyway, MSVC 2015's SFINAE
-      // implementation is problematic and does not work below unless we write
-      // the ::type at use.
-      //
-      // TODO(davidben): Move this and the identical copy below into an
-      // EnableIfContainer alias when we drop MSVC 2015 support. MSVC 2015's
-      // SFINAE support cannot handle type aliases.
-      typename = typename std::enable_if<
-          std::is_convertible<decltype(std::declval<C>().data()), T *>::value &&
-          std::is_integral<decltype(std::declval<C>().size())>::value>::type,
+      typename C, typename = EnableIfContainer<C>,
       typename = typename std::enable_if<std::is_const<T>::value, C>::type>
   Span(const C &container) : data_(container.data()), size_(container.size()) {}
 
   template <
-      typename C,
-      typename = typename std::enable_if<
-          std::is_convertible<decltype(std::declval<C>().data()), T *>::value &&
-          std::is_integral<decltype(std::declval<C>().size())>::value>::type,
+      typename C, typename = EnableIfContainer<C>,
       typename = typename std::enable_if<!std::is_const<T>::value, C>::type>
   explicit Span(C &container)
       : data_(container.data()), size_(container.size()) {}

@@ -418,7 +418,7 @@ static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
   // JDK 11 always sends extensions in a particular order.
   constexpr uint16_t kMaxFragmentLength = 0x0001;
   constexpr uint16_t kStatusRequestV2 = 0x0011;
-  static CONSTEXPR_ARRAY struct {
+  static constexpr struct {
     uint16_t id;
     bool required;
   } kJavaExtensions[] = {
