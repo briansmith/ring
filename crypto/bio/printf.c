@@ -71,18 +71,6 @@ int BIO_printf(BIO *bio, const char *format, ...) {
   va_start(args, format);
   out_len = vsnprintf(buf, sizeof(buf), format, args);
   va_end(args);
-
-#if defined(OPENSSL_WINDOWS)
-  // On Windows, vsnprintf returns -1 rather than the requested length on
-  // truncation
-  if (out_len < 0) {
-    va_start(args, format);
-    out_len = _vscprintf(format, args);
-    va_end(args);
-    assert(out_len >= (int)sizeof(buf));
-  }
-#endif
-
   if (out_len < 0) {
     return -1;
   }
