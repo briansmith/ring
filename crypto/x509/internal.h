@@ -156,7 +156,7 @@ struct x509_st {
   STACK_OF(DIST_POINT) *crldp;
   STACK_OF(GENERAL_NAME) *altname;
   NAME_CONSTRAINTS *nc;
-  unsigned char sha1_hash[SHA_DIGEST_LENGTH];
+  unsigned char cert_hash[SHA256_DIGEST_LENGTH];
   X509_CERT_AUX *aux;
   CRYPTO_BUFFER *buf;
   CRYPTO_MUTEX lock;
@@ -219,7 +219,7 @@ struct X509_crl_st {
   // CRL and base CRL numbers for delta processing
   ASN1_INTEGER *crl_number;
   ASN1_INTEGER *base_crl_number;
-  unsigned char sha1_hash[SHA_DIGEST_LENGTH];
+  unsigned char crl_hash[SHA256_DIGEST_LENGTH];
   STACK_OF(GENERAL_NAMES) *issuers;
   const X509_CRL_METHOD *meth;
   void *meth_data;

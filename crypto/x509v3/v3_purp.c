@@ -437,7 +437,7 @@ int x509v3_cache_extensions(X509 *x)
         return (x->ex_flags & EXFLAG_INVALID) == 0;
     }
 
-    if (!X509_digest(x, EVP_sha1(), x->sha1_hash, NULL))
+    if (!X509_digest(x, EVP_sha256(), x->cert_hash, NULL))
         x->ex_flags |= EXFLAG_INVALID;
     /* V1 should mean no extensions ... */
     if (X509_get_version(x) == X509_VERSION_1)

@@ -101,7 +101,7 @@ int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b)
 
 int X509_CRL_match(const X509_CRL *a, const X509_CRL *b)
 {
-    return OPENSSL_memcmp(a->sha1_hash, b->sha1_hash, 20);
+    return OPENSSL_memcmp(a->crl_hash, b->crl_hash, SHA256_DIGEST_LENGTH);
 }
 
 X509_NAME *X509_get_issuer_name(const X509 *a)
@@ -154,7 +154,7 @@ unsigned long X509_subject_name_hash_old(X509 *x)
  */
 int X509_cmp(const X509 *a, const X509 *b)
 {
-    /* Fill in the |sha1_hash| fields.
+    /* Fill in the |cert_hash| fields.
      *
      * TODO(davidben): This may fail, in which case the the hash will be all
      * zeros. This produces a consistent comparison (failures are sticky), but
@@ -165,7 +165,7 @@ int X509_cmp(const X509 *a, const X509 *b)
     x509v3_cache_extensions((X509 *)a);
     x509v3_cache_extensions((X509 *)b);
 
-    int rv = OPENSSL_memcmp(a->sha1_hash, b->sha1_hash, SHA_DIGEST_LENGTH);
+    int rv = OPENSSL_memcmp(a->cert_hash, b->cert_hash, SHA256_DIGEST_LENGTH);
     if (rv)
         return rv;
     /* Check for match against stored encoding too */
