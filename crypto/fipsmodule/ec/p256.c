@@ -31,8 +31,10 @@
 #include "../delocate.h"
 #include "./internal.h"
 
+#if defined(OPENSSL_NO_ASM)
+#define FIAT_P256_NO_ASM
+#endif
 
-// MSVC does not implement uint128_t, and crashes with intrinsics
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_NISTP256_64BIT 1
 #include "../../../third_party/fiat/p256_64.h"
