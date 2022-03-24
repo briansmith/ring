@@ -204,6 +204,11 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
                             size_t in_len) {
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
 
+  // Work around a C language bug. See https://crbug.com/1019588.
+  if (in_len == 0) {
+    return;
+  }
+
 #if defined(OPENSSL_POLY1305_NEON)
   if (CRYPTO_is_NEON_capable()) {
     CRYPTO_poly1305_update_neon(statep, in, in_len);
