@@ -1940,7 +1940,7 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	w.WriteString(".type BORINGSSL_bcm_text_hash, @object\n")
-	w.WriteString(".size BORINGSSL_bcm_text_hash, 64\n")
+	w.WriteString(".size BORINGSSL_bcm_text_hash, 32\n")
 	w.WriteString("BORINGSSL_bcm_text_hash:\n")
 	for _, b := range fipscommon.UninitHashValue {
 		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")

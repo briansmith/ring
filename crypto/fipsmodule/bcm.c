@@ -210,21 +210,12 @@ int BORINGSSL_integrity_test(void) {
   assert_within(rodata_start, kP256Params, rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 
-#if defined(OPENSSL_AARCH64) || defined(OPENSSL_ANDROID)
   uint8_t result[SHA256_DIGEST_LENGTH];
   const EVP_MD *const kHashFunction = EVP_sha256();
   if (!boringssl_self_test_sha256() ||
       !boringssl_self_test_hmac_sha256()) {
     return 0;
   }
-#else
-  uint8_t result[SHA512_DIGEST_LENGTH];
-  const EVP_MD *const kHashFunction = EVP_sha512();
-  if (!boringssl_self_test_sha512() ||
-      !boringssl_self_test_hmac_sha256()) {
-    return 0;
-  }
-#endif
 
   static const uint8_t kHMACKey[64] = {0};
   unsigned result_len;
