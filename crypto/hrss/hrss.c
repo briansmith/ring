@@ -926,6 +926,20 @@ struct poly {
 #endif
 };
 
+// poly_normalize zeros out the excess elements of |x| which are included only
+// for alignment.
+static void poly_normalize(struct poly *x) {
+  OPENSSL_memset(&x->v[N], 0, 3 * sizeof(uint16_t));
+}
+
+// poly_assert_normalized asserts that the excess elements of |x| are zeroed out
+// for the cases that case. (E.g. |poly_mul_vec|.)
+static void poly_assert_normalized(const struct poly *x) {
+  assert(x->v[N] == 0);
+  assert(x->v[N + 1] == 0);
+  assert(x->v[N + 2] == 0);
+}
+
 OPENSSL_UNUSED static void poly_print(const struct poly *p) {
   printf("[");
   for (unsigned i = 0; i < N; i++) {
@@ -1212,13 +1226,12 @@ static void poly_mul_vec_aux(vec_t *restrict out, vec_t *restrict scratch,
 // poly_mul_vec sets |*out| to |x|×|y| mod (𝑥^n - 1).
 static void poly_mul_vec(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
                          const struct poly *x, const struct poly *y) {
-  OPENSSL_memset((uint16_t *)&x->v[N], 0, 3 * sizeof(uint16_t));
-  OPENSSL_memset((uint16_t *)&y->v[N], 0, 3 * sizeof(uint16_t));
-
   OPENSSL_STATIC_ASSERT(sizeof(out->v) == sizeof(vec_t) * VECS_PER_POLY,
                         "struct poly is the wrong size");
   OPENSSL_STATIC_ASSERT(alignof(struct poly) == alignof(vec_t),
                         "struct poly has incorrect alignment");
+  poly_assert_normalized(x);
+  poly_assert_normalized(y);
 
   vec_t *const prod = scratch->u.vec.prod;
   vec_t *const aux_scratch = scratch->u.vec.scratch;
@@ -1316,19 +1329,22 @@ static void poly_mul(struct POLY_MUL_SCRATCH *scratch, struct poly *r,
 #if defined(POLY_RQ_MUL_ASM)
   if (CRYPTO_is_AVX2_capable()) {
     poly_Rq_mul(r->v, a->v, b->v, scratch->u.rq);
-    return;
-  }
+    poly_normalize(r);
+  } else
 #endif
 
 #if defined(HRSS_HAVE_VECTOR_UNIT)
   if (vec_capable()) {
     poly_mul_vec(scratch, r, a, b);
-    return;
-  }
+  } else
 #endif
 
   // Fallback, non-vector case.
-  poly_mul_novec(scratch, r, a, b);
+  {
+    poly_mul_novec(scratch, r, a, b);
+  }
+
+  poly_assert_normalized(r);
 }
 
 // poly_mul_x_minus_1 sets |p| to |p|×(𝑥 - 1) mod (𝑥^n - 1).
@@ -1493,6 +1509,8 @@ static void poly_from_poly2(struct poly *out, const struct poly2 *in) {
       shift = 0;
     }
   }
+
+  poly_normalize(out);
 }
 
 static void poly_from_poly3(struct poly *out, const struct poly3 *in) {
@@ -1517,6 +1535,8 @@ static void poly_from_poly3(struct poly *out, const struct poly3 *in) {
       shift = 0;
     }
   }
+
+  poly_normalize(out);
 }
 
 // Polynomial inversion
@@ -1570,6 +1590,7 @@ static void poly_invert_mod2(struct poly *out, const struct poly *in) {
   assert(f.v[0] & 1);
   poly2_reverse_700(&v, &v);
   poly_from_poly2(out, &v);
+  poly_assert_normalized(out);
 }
 
 // poly_invert sets |*out| to |in^-1| (i.e. such that |*out|×|in| = 1 mod Φ(N)).
@@ -1583,6 +1604,7 @@ static void poly_invert(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
   for (unsigned i = 0; i < N; i++) {
     a.v[i] = -in->v[i];
   }
+  poly_normalize(&a);
 
   // b = in^-1 mod 2.
   b = out;
@@ -1595,6 +1617,8 @@ static void poly_invert(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
     tmp.v[0] += 2;
     poly_mul(scratch, b, b, &tmp);
   }
+
+  poly_assert_normalized(out);
 }
 
 // Marshal and unmarshal functions for various basic types.
@@ -1684,6 +1708,7 @@ static int poly_unmarshal(struct poly *out, const uint8_t in[POLY_BYTES]) {
   }
 
   out->v[N - 1] = (uint16_t)(0u - sum);
+  poly_normalize(out);
 
   return 1;
 }
@@ -1735,6 +1760,7 @@ static void poly_short_sample(struct poly *out,
     out->v[i] = v;
   }
   out->v[N - 1] = 0;
+  poly_normalize(out);
 }
 
 // poly_short_sample_plus performs the T+ sample as defined in [HRSSNIST],
@@ -1757,6 +1783,7 @@ static void poly_short_sample_plus(struct poly *out,
   for (unsigned i = 0; i < N; i += 2) {
     out->v[i] = (unsigned) out->v[i] * scale;
   }
+  poly_assert_normalized(out);
 }
 
 // poly_lift computes the function discussed in [HRSS], appendix B.
@@ -1872,6 +1899,7 @@ static void poly_lift(struct poly *out, const struct poly *a) {
   }
 
   poly_mul_x_minus_1(out);
+  poly_normalize(out);
 }
 
 struct public_key {
@@ -1951,6 +1979,10 @@ int HRSS_generate_key(
     return 0;
   }
 
+#if !defined(NDEBUG)
+  OPENSSL_memset(vars, 0xff, sizeof(struct vars));
+#endif
+
   OPENSSL_memcpy(priv->hmac_key, in + 2 * HRSS_SAMPLE_BYTES,
                  sizeof(priv->hmac_key));
 
@@ -2010,6 +2042,10 @@ int HRSS_encap(uint8_t out_ciphertext[POLY_BYTES], uint8_t out_shared_key[32],
     return 0;
   }
 
+#if !defined(NDEBUG)
+  OPENSSL_memset(vars, 0xff, sizeof(struct vars));
+#endif
+
   poly_short_sample(&vars->m, in);
   poly_short_sample(&vars->r, in + HRSS_SAMPLE_BYTES);
   poly_lift(&vars->m_lifted, &vars->m);
@@ -2067,6 +2103,10 @@ int HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
     return 0;
   }
 
+#if !defined(NDEBUG)
+  OPENSSL_memset(vars, 0xff, sizeof(struct vars));
+#endif
+
   // This is HMAC, expanded inline rather than using the |HMAC| function so that
   // we can avoid dealing with possible allocation failures and so keep this
   // function infallible.
@@ -2117,6 +2157,7 @@ int HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   for (unsigned i = 0; i < N; i++) {
     vars->r.v[i] = vars->c.v[i] - vars->m_lifted.v[i];
   }
+  poly_normalize(&vars->r);
   poly_mul(&vars->scratch, &vars->r, &vars->r, &priv->ph_inverse);
   poly_mod_phiN(&vars->r);
   poly_clamp(&vars->r);
