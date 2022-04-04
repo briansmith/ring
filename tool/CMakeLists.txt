@@ -21,6 +21,7 @@ add_executable(
   tool.cc
   transport_common.cc
 )
+install(TARGETS bssl)
 
 add_dependencies(bssl global_target)
 

@@ -41,6 +41,12 @@ add_library(
   tls13_enc.cc
   tls13_server.cc
 )
+target_include_directories(ssl INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+install(TARGETS ssl EXPORT OpenSSLTargets)
+set_property(TARGET ssl PROPERTY EXPORT_NAME SSL)
 
 add_dependencies(ssl global_target)
 

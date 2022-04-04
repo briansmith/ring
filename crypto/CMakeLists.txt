@@ -435,6 +435,12 @@ add_library(
   ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
 )
+target_include_directories(crypto INTERFACE
+ $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+ $<INSTALL_INTERFACE:include>
+)
+install(TARGETS crypto EXPORT OpenSSLTargets)
+set_property(TARGET crypto PROPERTY EXPORT_NAME Crypto)
 
 if(FIPS_SHARED)
   # Rewrite libcrypto.so to inject the correct module hash value. This assumes
