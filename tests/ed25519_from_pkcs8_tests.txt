@@ -130,74 +130,125 @@ Input = 3051020101300506032b657004220420a22efdb713f0e1600d2a5ce948e321ca3a18137c
 Result-Checked = InvalidEncoding
 Result-Maybe-Unchecked = InvalidEncoding
 
-# The same test vectors as above, but the public key is encoded with the wrong
-# [1] EXPLICIT tag instead of [1] IMPLICIT.
+# The same v2 test vectors as above, but the public key is encoded with the
+# wrong [1] EXPLICIT tag instead of [1] IMPLICIT.
 
+# [1] EXPLICIT bug.
+# v2. Example private key from RFC 8410 Section 10.3.
+Input = 3074020101300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842a01f301d060a2a864886f70d01090914310f0c0d437572646c6520436861697273A12303210019bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
+Result-Checked = OK
+Result-Maybe-Unchecked = OK
+Public = 19bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
+
+# [1] EXPLICIT bug.
+# v2. The v2 example from the RFC, without the attributes [0], but retaining
+# the public key [1].
+Input = 3053020101300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842A12303210019bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
+Result-Checked = OK
+Result-Maybe-Unchecked = OK
+Public = 19bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
+
+# [1] EXPLICIT bug.
+# The v2 example from the RFC, encoded with version v1. Invalid because the
+# public key is a v2-only attribute.
+Input = 3072020100300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842a01f301d060a2a864886f70d01090914310f0c0d437572646c6520436861697273A12303210019bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
+Result-Checked = VersionNotSupported
+Result-Maybe-Unchecked = InvalidEncoding
+
+# [1] EXPLICIT bug.
+# The v2 example from the RFC, without the attributes [0], but retaining the
+# public key [1], encoded with version v1. Invalid because the public key is a
+# v2-only attribute.
+Input = 3051020100300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842A12303210019bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
+Result-Checked = VersionNotSupported
+Result-Maybe-Unchecked = InvalidEncoding
+
+# [1] EXPLICIT bug.
+# The v2 example from the RFC, retaining the attributes [0], but without the
+# public key [1], encoded as v1.
+Input = 304f020100300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842a01f301d060a2a864886f70d01090914310f0c0d437572646c6520436861697273
+Result-Checked = VersionNotSupported
+Result-Maybe-Unchecked = OK
+Public = 19bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
+
+# [1] EXPLICIT bug.
 # v1. valid except it includes publicKey.
 Input = 3053020100300506032b657004220420a22efdb713f0e1600d2a5ce948e321ca3a18137c47f15091a12c7126c1749a00a1230321001aeb8e3ee5ba5afd91113466d19f4ea77fa0feffbd8c5adcb499927f12535f77
 Result-Checked = VersionNotSupported
 Result-Maybe-Unchecked = InvalidEncoding
 
+# [1] EXPLICIT bug.
 # v2. The private key ends with a zero byte.
 Input = 3053020101300506032b657004220420a22efdb713f0e1600d2a5ce948e321ca3a18137c47f15091a12c7126c1749a00a1230321001aeb8e3ee5ba5afd91113466d19f4ea77fa0feffbd8c5adcb499927f12535f77
 Result-Checked = OK
 Result-Maybe-Unchecked = OK
 Public = 1aeb8e3ee5ba5afd91113466d19f4ea77fa0feffbd8c5adcb499927f12535f77
 
+# [1] EXPLICIT bug.
 # v2. The private key's last byte, zero, is omitted.
 Input = 3052020101300506032b65700421041fa22efdb713f0e1600d2a5ce948e321ca3a18137c47f15091a12c7126c1749aa1230321001aeb8e3ee5ba5afd91113466d19f4ea77fa0feffbd8c5adcb499927f12535f77
 Result-Checked = InvalidEncoding
 Result-Maybe-Unchecked = InvalidEncoding
 
+# [1] EXPLICIT bug.
 # v2. The private key starts with a zero byte.
 Input = 3053020101300506032b65700422042000b1a7c20b2b4ed9c78f3686db82f854734cdc95be51def304d98e0cd30bf490a12303210063457cd4dfdd0e98a53796265831d46ac6a5a685f2a54c9697a38b2c800d60ba
 Result-Checked = OK
 Result-Maybe-Unchecked = OK
 Public = 63457cd4dfdd0e98a53796265831d46ac6a5a685f2a54c9697a38b2c800d60ba
 
+# [1] EXPLICIT bug.
 # v2. The private key's first byte, zero, is omitted.
 Input = 3052020101300506032b65700421041fb1a7c20b2b4ed9c78f3686db82f854734cdc95be51def304d98e0cd30bf490a12303210063457cd4dfdd0e98a53796265831d46ac6a5a685f2a54c9697a38b2c800d60ba
 Result-Checked = InvalidEncoding
 Result-Maybe-Unchecked = InvalidEncoding
 
+# [1] EXPLICIT bug.
 # v2. The public key's first byte is zero.
 Input = 3053020101300506032b6570042204202dc67de5186d9193021c0b104d9c6ef24bee2bd395ccb5ed5a2db5f37a2fc1f0a12303210000c17e4d8bbff27c1fb618c23fce988703c7efa3cd590aacac12d3f1e3c90c8c
 Result-Checked = OK
 Result-Maybe-Unchecked = OK
 Public = 00c17e4d8bbff27c1fb618c23fce988703c7efa3cd590aacac12d3f1e3c90c8c
 
+# [1] EXPLICIT bug.
 # v2. The public key's first byte, zero, is omitted.
 Input = 3052020101300506032b6570042204202dc67de5186d9193021c0b104d9c6ef24bee2bd395ccb5ed5a2db5f37a2fc1f0a122032000c17e4d8bbff27c1fb618c23fce988703c7efa3cd590aacac12d3f1e3c90c8c
 Result-Checked = InvalidEncoding
 Result-Maybe-Unchecked = InvalidEncoding
 
+# [1] EXPLICIT bug.
 # v2. The public key's last byte is zero.
 Input = 3053020101300506032b657004220420b2579f555a2eabdabac8d46997b1c08fe8ce63858df124efc29c60dfbb86c349a1230321009d421270ce2fcc08672c41e427214876245c9b0f14ab671b8bb9d266a492e400
 Result-Checked = OK
 Result-Maybe-Unchecked = OK
 Public = 9d421270ce2fcc08672c41e427214876245c9b0f14ab671b8bb9d266a492e400
 
+# [1] EXPLICIT bug.
 # v2. The public key's last byte, zero, is omitted (valid ASN.1 DER).
 Input = 3052020101300506032b657004220420b2579f555a2eabdabac8d46997b1c08fe8ce63858df124efc29c60dfbb86c349a1220320009d421270ce2fcc08672c41e427214876245c9b0f14ab671b8bb9d266a492e4
 Result-Checked = InvalidEncoding
 Result-Maybe-Unchecked = InvalidEncoding
 
+# [1] EXPLICIT bug.
 # v2. The public key's last byte, zero, has been truncated (invalid ASN.1 DER).
 Input = 3053020101300506032b657004220420b2579f555a2eabdabac8d46997b1c08fe8ce63858df124efc29c60dfbb86c349a1230321009d421270ce2fcc08672c41e427214876245c9b0f14ab671b8bb9d266a492e4
 Result-Checked = InvalidEncoding
 Result-Maybe-Unchecked = InvalidEncoding
 
+# [1] EXPLICIT bug.
 # v2. The public key's high bit has been flipped. Ed25519 public keys don't
 # have their high bit masked, so this is wrong.
 Input = 3053020101300506032b6570042204202dc67de5186d9193021c0b104d9c6ef24bee2bd395ccb5ed5a2db5f37a2fc1f0a12303210000c17e4d8bbff27c1fb618c23fce988703c7efa3cd590aacac12d3f1e3c90c0c
 Result-Checked = InconsistentComponents
 Result-Maybe-Unchecked = InconsistentComponents
 
+# [1] EXPLICIT bug.
 # v2. Valid except the public key field is missing.
 Input = 302e020101300506032b657004220420a22efdb713f0e1600d2a5ce948e321ca3a18137c47f15091a12c7126c1749a00
 Result-Checked = PublicKeyIsMissing
 Result-Maybe-Unchecked = PublicKeyIsMissing
 
+# [1] EXPLICIT bug.
 # v2. Valid except the public key is encoded as [0] EXPLICIT instead of [1]; i.e. the
 # attributes are invalid and the public key is missing.
 Input = 3053020101300506032b657004220420a22efdb713f0e1600d2a5ce948e321ca3a18137c47f15091a12c7126c1749a00a0230321001aeb8e3ee5ba5afd91113466d19f4ea77fa0feffbd8c5adcb499927f12535f77
