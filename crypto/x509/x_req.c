@@ -83,8 +83,13 @@ static int rinf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
             return 0;
     }
 
-    /* TODO(https://crbug.com/boringssl/467): Add an |ASN1_OP_D2I_POST| callback
-     * and check the version. */
+    if (operation == ASN1_OP_D2I_POST) {
+        if (ASN1_INTEGER_get(rinf->version) != X509_REQ_VERSION_1) {
+            OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
+            return 0;
+        }
+    }
+
     return 1;
 }
 

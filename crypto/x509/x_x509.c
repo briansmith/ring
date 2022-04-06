@@ -117,27 +117,27 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 
     case ASN1_OP_D2I_POST: {
         /* The version must be one of v1(0), v2(1), or v3(2). */
-        long version = 0;
+        long version = X509_VERSION_1;
         if (ret->cert_info->version != NULL) {
             version = ASN1_INTEGER_get(ret->cert_info->version);
-            /* TODO(https://crbug.com/boringssl/364): |version| = 0 should also
-             * be rejected. This means an explicitly-encoded X.509v1 version.
-             * v1 is DEFAULT, so DER requires it be omitted. */
-            if (version < 0 || version > 2) {
+            /* TODO(https://crbug.com/boringssl/364): |X509_VERSION_1| should
+             * also be rejected here. This means an explicitly-encoded X.509v1
+             * version. v1 is DEFAULT, so DER requires it be omitted. */
+            if (version < X509_VERSION_1 || version > X509_VERSION_3) {
                 OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
                 return 0;
             }
         }
 
         /* Per RFC 5280, section 4.1.2.8, these fields require v2 or v3. */
-        if (version == 0 && (ret->cert_info->issuerUID != NULL ||
-                             ret->cert_info->subjectUID != NULL)) {
+        if (version == X509_VERSION_1 && (ret->cert_info->issuerUID != NULL ||
+                                          ret->cert_info->subjectUID != NULL)) {
             OPENSSL_PUT_ERROR(X509, X509_R_INVALID_FIELD_FOR_VERSION);
             return 0;
         }
 
         /* Per RFC 5280, section 4.1.2.9, extensions require v3. */
-        if (version != 2 && ret->cert_info->extensions != NULL) {
+        if (version != X509_VERSION_3 && ret->cert_info->extensions != NULL) {
             OPENSSL_PUT_ERROR(X509, X509_R_INVALID_FIELD_FOR_VERSION);
             return 0;
         }

@@ -312,11 +312,8 @@ struct Netscape_spki_st {
 #define X509_VERSION_2 1
 #define X509_VERSION_3 2
 
-// X509_get_version returns the numerical value of |x509|'s version. Callers may
-// compare the result to the |X509_VERSION_*| constants. Unknown versions are
-// rejected by the parser, but a manually-created |X509| object may encode
-// invalid versions. In that case, the function will return the invalid version,
-// or -1 on overflow.
+// X509_get_version returns the numerical value of |x509|'s version, which will
+// be one of the |X509_VERSION_*| constants.
 OPENSSL_EXPORT long X509_get_version(const X509 *x509);
 
 // X509_set_version sets |x509|'s version to |version|, which should be one of
@@ -394,15 +391,12 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
 // |EXFLAG_INVALID| bit.
 OPENSSL_EXPORT long X509_get_pathlen(X509 *x509);
 
-// X509_REQ_VERSION_1 is the version constant for |X509_REQ| objects. Note no
-// other versions are defined.
+// X509_REQ_VERSION_1 is the version constant for |X509_REQ| objects. No other
+// versions are defined.
 #define X509_REQ_VERSION_1 0
 
 // X509_REQ_get_version returns the numerical value of |req|'s version. This
-// will be |X509_REQ_VERSION_1| for valid certificate requests. If |req| is
-// invalid, it may return another value, or -1 on overflow.
-//
-// TODO(davidben): Enforce the version number in the parser.
+// will always be |X509_REQ_VERSION_1|.
 OPENSSL_EXPORT long X509_REQ_get_version(const X509_REQ *req);
 
 // X509_REQ_get_subject_name returns |req|'s subject name. Note this function is
@@ -418,11 +412,8 @@ OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 #define X509_CRL_VERSION_1 0
 #define X509_CRL_VERSION_2 1
 
-// X509_CRL_get_version returns the numerical value of |crl|'s version. Callers
-// may compare the result to |X509_CRL_VERSION_*| constants. If |crl| is
-// invalid, it may return another value, or -1 on overflow.
-//
-// TODO(davidben): Enforce the version number in the parser.
+// X509_CRL_get_version returns the numerical value of |crl|'s version, which
+// will be one of the |X509_CRL_VERSION_*| constants.
 OPENSSL_EXPORT long X509_CRL_get_version(const X509_CRL *crl);
 
 // X509_CRL_get0_lastUpdate returns |crl|'s lastUpdate time.
@@ -1085,7 +1076,8 @@ OPENSSL_EXPORT const X509_ALGOR *X509_get0_tbs_sigalg(const X509 *x509);
 // X509_REQ_set_version sets |req|'s version to |version|, which should be
 // |X509_REQ_VERSION_1|. It returns one on success and zero on error.
 //
-// Note no versions other than |X509_REQ_VERSION_1| are defined for CSRs.
+// The only defined CSR version is |X509_REQ_VERSION_1|, so there is no need to
+// call this function.
 OPENSSL_EXPORT int X509_REQ_set_version(X509_REQ *req, long version);
 
 // X509_REQ_set_subject_name sets |req|'s subject to a copy of |name|. It

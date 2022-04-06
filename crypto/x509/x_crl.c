@@ -127,12 +127,6 @@ static int crl_inf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
          * affect the output of X509_CRL_print().
          */
     case ASN1_OP_D2I_POST:
-        /* TODO(https://crbug.com/boringssl/467): Reject invalid version
-         * numbers.
-         *
-         * TODO(davidben): Check that default |versions| are never encoded and
-         * that |extensions| is only present in v2. */
-
         (void)sk_X509_REVOKED_set_cmp_func(a->revoked, X509_REVOKED_cmp);
         break;
     }
@@ -250,7 +244,26 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
         crl->base_crl_number = NULL;
         break;
 
-    case ASN1_OP_D2I_POST:
+    case ASN1_OP_D2I_POST: {
+        /* The version must be one of v1(0) or v2(1). */
+        long version = X509_CRL_VERSION_1;
+        if (crl->crl->version != NULL) {
+            version = ASN1_INTEGER_get(crl->crl->version);
+            /* TODO(https://crbug.com/boringssl/364): |X509_CRL_VERSION_1|
+             * should also be rejected. This means an explicitly-encoded X.509v1
+             * version. v1 is DEFAULT, so DER requires it be omitted. */
+            if (version < X509_CRL_VERSION_1 || version > X509_CRL_VERSION_2) {
+                OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
+                return 0;
+            }
+        }
+
+        /* Per RFC 5280, section 5.1.2.1, extensions require v2. */
+        if (version != X509_CRL_VERSION_2 && crl->crl->extensions != NULL) {
+            OPENSSL_PUT_ERROR(X509, X509_R_INVALID_FIELD_FOR_VERSION);
+            return 0;
+        }
+
         if (!X509_CRL_digest(crl, EVP_sha256(), crl->crl_hash, NULL)) {
             return 0;
         }
@@ -324,6 +337,7 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                 return 0;
         }
         break;
+    }
 
     case ASN1_OP_FREE_POST:
         /* |crl->meth| may be NULL if constructing the object failed before

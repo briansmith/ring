@@ -54,6 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <assert.h>
+
 #include <openssl/asn1.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -76,13 +78,11 @@ int X509_CRL_print_fp(FILE *fp, X509_CRL *x)
 int X509_CRL_print(BIO *out, X509_CRL *x)
 {
     long version = X509_CRL_get_version(x);
+    assert(X509_CRL_VERSION_1 <= version && version <= X509_CRL_VERSION_2);
     const X509_ALGOR *sig_alg;
     const ASN1_BIT_STRING *signature;
     X509_CRL_get0_signature(x, &signature, &sig_alg);
     if (BIO_printf(out, "Certificate Revocation List (CRL):\n") <= 0 ||
-        // TODO(https://crbug.com/boringssl/467): This loses information on some
-        // invalid versions, but we should fix this by making invalid versions
-        // impossible.
         BIO_printf(out, "%8sVersion %ld (0x%lx)\n", "", version + 1,
                    (unsigned long)version) <= 0 ||
         // Note this and the other |X509_signature_print| call both print the

@@ -54,6 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include <openssl/bn.h>
@@ -103,10 +104,8 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
     }
   }
   if (!(cflag & X509_FLAG_NO_VERSION)) {
-    /* TODO(https://crbug.com/boringssl/467): This loses information on some
-     * invalid versions, but we should fix this by making invalid versions
-     * impossible. */
     l = X509_REQ_get_version(x);
+    assert(l == X509_REQ_VERSION_1);
     if (BIO_printf(bio, "%8sVersion: %ld (0x%lx)\n", "", l + 1,
                    (unsigned long)l) <= 0) {
       goto err;

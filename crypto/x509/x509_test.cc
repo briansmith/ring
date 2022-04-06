@@ -1047,7 +1047,7 @@ TXHOSQQD8Dl4BK0wOet+TP6LBEjHlRFjAqK4bu9xpxV2
 -----END CERTIFICATE-----
 )";
 
-// CertFromPEM parses the given, NUL-terminated pem block and returns an
+// CertFromPEM parses the given, NUL-terminated PEM block and returns an
 // |X509*|.
 static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
@@ -1055,7 +1055,7 @@ static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
-// CRLFromPEM parses the given, NUL-terminated pem block and returns an
+// CRLFromPEM parses the given, NUL-terminated PEM block and returns an
 // |X509_CRL*|.
 static bssl::UniquePtr<X509_CRL> CRLFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
@@ -1063,7 +1063,15 @@ static bssl::UniquePtr<X509_CRL> CRLFromPEM(const char *pem) {
       PEM_read_bio_X509_CRL(bio.get(), nullptr, nullptr, nullptr));
 }
 
-// PrivateKeyFromPEM parses the given, NUL-terminated pem block and returns an
+// CSRFromPEM parses the given, NUL-terminated PEM block and returns an
+// |X509_REQ*|.
+static bssl::UniquePtr<X509_REQ> CSRFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  return bssl::UniquePtr<X509_REQ>(
+      PEM_read_bio_X509_REQ(bio.get(), nullptr, nullptr, nullptr));
+}
+
+// PrivateKeyFromPEM parses the given, NUL-terminated PEM block and returns an
 // |EVP_PKEY*|.
 static bssl::UniquePtr<EVP_PKEY> PrivateKeyFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(
@@ -2871,12 +2879,70 @@ MlJhXnXJFA==
 -----END CERTIFICATE-----
 )";
 
-// Test that the X.509 parser enforces versions are valid and match the fields
+// kV1CRLWithExtensionsPEM is a v1 CRL with extensions.
+static const char kV1CRLWithExtensionsPEM[] = R"(
+-----BEGIN X509 CRL-----
+MIIBpDCBjTANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UECAwK
+Q2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJQm9y
+aW5nU1NMFw0xNjA5MjYxNTEwNTVaFw0xNjEwMjYxNTEwNTVaoA4wDDAKBgNVHRQE
+AwIBATANBgkqhkiG9w0BAQsFAAOCAQEAnrBKKgvd9x9zwK9rtUvVeFeJ7+LNZEAc
++a5oxpPNEsJx6hXoApYEbzXMxuWBQoCs5iEBycSGudct21L+MVf27M38KrWoeOkq
+0a2siqViQZO2Fb/SUFR0k9zb8xl86Zf65lgPplALun0bV/HT7MJcl04Tc4osdsAR
+eBs5nqTGNEd5AlC1iKHvQZkM//MD51DspKnDpsDiUVi54h9C1SpfZmX8H2Vvdiyu
+0fZ/bPAM3VAGawatf/SyWfBMyKpoPXEG39oAzmjjOj8en82psn7m474IGaho/vBb
+hl1ms5qQiLYPjm4YELtnXQoFyC72tBjbdFd/ZE9k4CNKDbxFUXFbkw==
+-----END X509 CRL-----
+)";
+
+// kExplicitDefaultVersionCRLPEM is a v1 CRL with an explicitly-encoded version
+// field.
+static const char kExplicitDefaultVersionCRLPEM[] = R"(
+-----BEGIN X509 CRL-----
+MIIBlzCBgAIBADANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE
+CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ
+Qm9yaW5nU1NMFw0xNjA5MjYxNTEwNTVaFw0xNjEwMjYxNTEwNTVaMA0GCSqGSIb3
+DQEBCwUAA4IBAQCesEoqC933H3PAr2u1S9V4V4nv4s1kQBz5rmjGk80SwnHqFegC
+lgRvNczG5YFCgKzmIQHJxIa51y3bUv4xV/bszfwqtah46SrRrayKpWJBk7YVv9JQ
+VHST3NvzGXzpl/rmWA+mUAu6fRtX8dPswlyXThNziix2wBF4GzmepMY0R3kCULWI
+oe9BmQz/8wPnUOykqcOmwOJRWLniH0LVKl9mZfwfZW92LK7R9n9s8AzdUAZrBq1/
+9LJZ8EzIqmg9cQbf2gDOaOM6Px6fzamyfubjvggZqGj+8FuGXWazmpCItg+ObhgQ
+u2ddCgXILva0GNt0V39kT2TgI0oNvEVRcVuT
+-----END X509 CRL-----
+)";
+
+// kV3CRLPEM is a v3 CRL. CRL versions only go up to v2.
+static const char kV3CRLPEM[] = R"(
+-----BEGIN X509 CRL-----
+MIIBpzCBkAIBAjANBgkqhkiG9w0BAQsFADBOMQswCQYDVQQGEwJVUzETMBEGA1UE
+CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzESMBAGA1UECgwJ
+Qm9yaW5nU1NMFw0xNjA5MjYxNTEwNTVaFw0xNjEwMjYxNTEwNTVaoA4wDDAKBgNV
+HRQEAwIBATANBgkqhkiG9w0BAQsFAAOCAQEAnrBKKgvd9x9zwK9rtUvVeFeJ7+LN
+ZEAc+a5oxpPNEsJx6hXoApYEbzXMxuWBQoCs5iEBycSGudct21L+MVf27M38KrWo
+eOkq0a2siqViQZO2Fb/SUFR0k9zb8xl86Zf65lgPplALun0bV/HT7MJcl04Tc4os
+dsAReBs5nqTGNEd5AlC1iKHvQZkM//MD51DspKnDpsDiUVi54h9C1SpfZmX8H2Vv
+diyu0fZ/bPAM3VAGawatf/SyWfBMyKpoPXEG39oAzmjjOj8en82psn7m474IGaho
+/vBbhl1ms5qQiLYPjm4YELtnXQoFyC72tBjbdFd/ZE9k4CNKDbxFUXFbkw==
+-----END X509 CRL-----
+)";
+
+// kV2CSRPEM is a v2 CSR. CSR versions only go up to v1.
+static const char kV2CSRPEM[] = R"(
+-----BEGIN CERTIFICATE REQUEST-----
+MIHJMHECAQEwDzENMAsGA1UEAwwEVGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABJjsayyAQod1J7UJYNT8AH4WWxLdKV0ozhrIz6hCzBAze7AqXWOSH8G+1EWC
+pSfL3oMQNtBdJS0kpXXaUqEAgTSgADAKBggqhkjOPQQDAgNIADBFAiAUXVaEYATg
+4Cc917T73KBImxh6xyhsA5pKuYpq1S4m9wIhAK+G93HR4ur7Ghel6+zUTvIAsj9e
+rsn4lSYsqI4OI4ei
+-----END CERTIFICATE REQUEST-----
+)";
+
+// Test that the library enforces versions are valid and match the fields
 // present.
 TEST(X509Test, InvalidVersion) {
   // kExplicitDefaultVersionPEM is invalid but, for now, we accept it. See
   // https://crbug.com/boringssl/364.
   EXPECT_TRUE(CertFromPEM(kExplicitDefaultVersionPEM));
+  EXPECT_TRUE(CRLFromPEM(kExplicitDefaultVersionCRLPEM));
 
   EXPECT_FALSE(CertFromPEM(kNegativeVersionPEM));
   EXPECT_FALSE(CertFromPEM(kFutureVersionPEM));
@@ -2885,6 +2951,27 @@ TEST(X509Test, InvalidVersion) {
   EXPECT_FALSE(CertFromPEM(kV2WithExtensionsPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithIssuerUniqueIDPEM));
   EXPECT_FALSE(CertFromPEM(kV1WithSubjectUniqueIDPEM));
+  EXPECT_FALSE(CRLFromPEM(kV1CRLWithExtensionsPEM));
+  EXPECT_FALSE(CRLFromPEM(kV3CRLPEM));
+  EXPECT_FALSE(CSRFromPEM(kV2CSRPEM));
+
+  bssl::UniquePtr<X509> x509(X509_new());
+  ASSERT_TRUE(x509);
+  EXPECT_FALSE(X509_set_version(x509.get(), -1));
+  EXPECT_FALSE(X509_set_version(x509.get(), X509_VERSION_3 + 1));
+  EXPECT_FALSE(X509_set_version(x509.get(), 9999));
+
+  bssl::UniquePtr<X509_CRL> crl(X509_CRL_new());
+  ASSERT_TRUE(crl);
+  EXPECT_FALSE(X509_CRL_set_version(crl.get(), -1));
+  EXPECT_FALSE(X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2 + 1));
+  EXPECT_FALSE(X509_CRL_set_version(crl.get(), 9999));
+
+  bssl::UniquePtr<X509_REQ> req(X509_REQ_new());
+  ASSERT_TRUE(req);
+  EXPECT_FALSE(X509_REQ_set_version(req.get(), -1));
+  EXPECT_FALSE(X509_REQ_set_version(req.get(), X509_REQ_VERSION_1 + 1));
+  EXPECT_FALSE(X509_REQ_set_version(req.get(), 9999));
 }
 
 // Unlike upstream OpenSSL, we require a non-null store in

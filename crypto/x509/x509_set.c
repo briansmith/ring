@@ -74,19 +74,29 @@ long X509_get_version(const X509 *x509)
 
 int X509_set_version(X509 *x, long version)
 {
-    // TODO(https://crbug.com/boringssl/467): Reject invalid version numbers.
-    if (x == NULL)
-        return (0);
-    if (version == 0) {
+    if (x == NULL) {
+        return 0;
+    }
+
+    if (version < X509_VERSION_1 || version > X509_VERSION_3) {
+        OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
+        return 0;
+    }
+
+    /* v1(0) is default and is represented by omitting the version. */
+    if (version == X509_VERSION_1) {
         ASN1_INTEGER_free(x->cert_info->version);
         x->cert_info->version = NULL;
-        return (1);
+        return 1;
     }
+
     if (x->cert_info->version == NULL) {
-        if ((x->cert_info->version = ASN1_INTEGER_new()) == NULL)
-            return (0);
+        x->cert_info->version = ASN1_INTEGER_new();
+        if (x->cert_info->version == NULL) {
+            return 0;
+        }
     }
-    return (ASN1_INTEGER_set(x->cert_info->version, version));
+    return ASN1_INTEGER_set(x->cert_info->version, version);
 }
 
 int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial)

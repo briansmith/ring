@@ -64,16 +64,29 @@
 
 int X509_CRL_set_version(X509_CRL *x, long version)
 {
-    /* TODO(https://crbug.com/boringssl/467): Reject invalid version
-     * numbers. Also correctly handle |X509_CRL_VERSION_1|, which should omit
-     * the encoding. */
-    if (x == NULL)
-        return (0);
-    if (x->crl->version == NULL) {
-        if ((x->crl->version = ASN1_INTEGER_new()) == NULL)
-            return (0);
+    if (x == NULL) {
+        return 0;
     }
-    return (ASN1_INTEGER_set(x->crl->version, version));
+
+    if (version < X509_CRL_VERSION_1 || version > X509_CRL_VERSION_2) {
+        OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
+        return 0;
+    }
+
+    /* v1(0) is default and is represented by omitting the version. */
+    if (version == X509_CRL_VERSION_1) {
+        ASN1_INTEGER_free(x->crl->version);
+        x->crl->version = NULL;
+        return 1;
+    }
+
+    if (x->crl->version == NULL) {
+        x->crl->version = ASN1_INTEGER_new();
+        if (x->crl->version == NULL) {
+            return 0;
+        }
+    }
+    return ASN1_INTEGER_set(x->crl->version, version);
 }
 
 int X509_CRL_set_issuer_name(X509_CRL *x, X509_NAME *name)
