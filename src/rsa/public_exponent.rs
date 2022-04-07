@@ -1,5 +1,5 @@
 use crate::error;
-use crate::polyfill::{ArrayFlatMap, LeadingZerosStripped};
+use crate::polyfill::{self, ArrayFlatMap, LeadingZerosStripped};
 use core::num::NonZeroU64;
 
 /// The exponent `e` of an RSA public key.
@@ -85,7 +85,7 @@ impl PublicExponent {
     pub fn be_bytes(&self) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
         // The `unwrap()` won't fail as `self.0` is only a few bytes long.
         let bytes = ArrayFlatMap::new(core::iter::once(self.0.get()), |value| {
-            core::array::IntoIter::new(u64::to_be_bytes(value))
+            polyfill::array::into_iter(u64::to_be_bytes(value))
         })
         .unwrap();
         LeadingZerosStripped::new(bytes)

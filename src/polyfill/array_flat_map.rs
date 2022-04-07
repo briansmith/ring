@@ -60,6 +60,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::polyfill;
 
     #[test]
     fn test_array_flat_map() {
@@ -81,7 +82,7 @@ mod tests {
         ];
         TEST_CASES.iter().copied().for_each(|(input, f, expected)| {
             let mapped = ArrayFlatMap::new(input.iter().copied(), |input| {
-                core::array::IntoIter::new(f(input))
+                polyfill::array::into_iter(f(input))
             })
             .unwrap();
             super::super::test::assert_iterator(mapped, expected);
@@ -121,7 +122,7 @@ mod tests {
                 remaining: input_len,
             };
             let mapped = ArrayFlatMap::new(inner, |input| {
-                core::array::IntoIter::new(usize::to_be_bytes(input))
+                polyfill::array::into_iter(usize::to_be_bytes(input))
             });
             assert_eq!(mapped.is_some(), is_some);
             if let Some(mapped) = mapped {

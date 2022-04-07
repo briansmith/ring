@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2022 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,33 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Polyfills for functionality that will (hopefully) be added to Rust's
-//! standard library soon.
-
+// TODO: Remove this and use `IntoIterator::into_ter` once MSRV is 1.59.0 or later.
 #[inline(always)]
-pub const fn u64_from_usize(x: usize) -> u64 {
-    x as u64
+pub(crate) fn into_iter<T, const N: usize>(array: [T; N]) -> core::array::IntoIter<T, N> {
+    #[allow(deprecated)]
+    core::array::IntoIter::new(array)
 }
-
-pub fn usize_from_u32(x: u32) -> usize {
-    x as usize
-}
-
-#[macro_use]
-mod chunks_fixed;
-
-pub(crate) mod array;
-
-mod array_flat_map;
-pub(crate) mod array_map;
-
-#[cfg(feature = "alloc")]
-mod leading_zeros_skipped;
-
-#[cfg(test)]
-mod test;
-
-pub use self::{array_flat_map::ArrayFlatMap, chunks_fixed::*};
-
-#[cfg(feature = "alloc")]
-pub use leading_zeros_skipped::LeadingZerosStripped;
