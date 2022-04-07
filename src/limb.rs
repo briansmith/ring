@@ -18,7 +18,10 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::{c, error, polyfill::ArrayFlatMap};
+use crate::{
+    c, error,
+    polyfill::{self, ArrayFlatMap},
+};
 
 #[cfg(any(test, feature = "alloc"))]
 use crate::bits;
@@ -251,7 +254,7 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
 pub fn unstripped_be_bytes(limbs: &[Limb]) -> impl ExactSizeIterator<Item = u8> + Clone + '_ {
     // The unwrap is safe because a slice can never be larger than `usize` bytes.
     ArrayFlatMap::new(limbs.iter().rev().copied(), |limb| {
-        core::array::IntoIter::new(Limb::to_be_bytes(limb))
+        polyfill::array::into_iter(Limb::to_be_bytes(limb))
     })
     .unwrap()
 }
