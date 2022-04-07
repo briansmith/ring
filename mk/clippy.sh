@@ -20,7 +20,7 @@ IFS=$'\n\t'
 export NULL=""
 cargo clippy \
   --target-dir=target/clippy \
-  --all-features ---all-targets \
+  --all-features --all-targets \
   -- \
   --deny missing_docs \
   --deny warnings \
