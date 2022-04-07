@@ -782,7 +782,7 @@ fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
         let dst = dst
             .to_str()
             .expect("Could not convert path")
-            .replace("\\", "/");
+            .replace('\\', "/");
         args.push(dst);
         run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"), &args);
     }
@@ -876,7 +876,7 @@ fn generate_prefix_symbols_header(
     let path = dir.join(filename);
     let mut file = std::fs::File::create(&path)?;
 
-    let filename_ident = filename.replace(".", "_").to_uppercase();
+    let filename_ident = filename.replace('.', "_").to_uppercase();
     writeln!(
         file,
         r#"
