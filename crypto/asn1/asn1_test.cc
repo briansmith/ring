@@ -871,6 +871,8 @@ TEST(ASN1Test, StringToUTF8) {
       {{0, 0, 0xfd, 0xd5}, V_ASN1_UNIVERSALSTRING, nullptr},
       // BMPString is UCS-2, not UTF-16, so surrogate pairs are invalid.
       {{0xd8, 0, 0xdc, 1}, V_ASN1_BMPSTRING, nullptr},
+      // INTEGERs are stored as strings, but cannot be converted to UTF-8.
+      {{0x01}, V_ASN1_INTEGER, nullptr},
   };
 
   for (const auto &test : kTests) {
