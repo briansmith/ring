@@ -258,6 +258,22 @@ mod sysrand_chunk {
     }
 }
 
+#[cfg(all(
+    feature = "wasm32_unknown_unknown_getrandom",
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+    target_env = "",
+))]
+mod sysrand_chunk {
+    use crate::error;
+
+    pub fn chunk(mut dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        getrandom::getrandom(dest).map_err(|_| error::Unspecified)?;
+        Ok(dest.len())
+    }
+}
+
 #[cfg(windows)]
 mod sysrand_chunk {
     use crate::{error, polyfill};
