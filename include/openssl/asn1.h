@@ -1650,6 +1650,8 @@ OPENSSL_EXPORT int ASN1_TIME_print(BIO *out, const ASN1_TIME *a);
 // replaced with '.'.
 OPENSSL_EXPORT int ASN1_STRING_print(BIO *out, const ASN1_STRING *str);
 
+// The following flags must not collide with |XN_FLAG_*|.
+
 // ASN1_STRFLGS_ESC_2253 causes characters to be escaped as in RFC 2253, section
 // 2.4.
 #define ASN1_STRFLGS_ESC_2253 1

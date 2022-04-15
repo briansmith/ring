@@ -3911,3 +3911,294 @@ TEST(X509Test, BytesToHex) {
     EXPECT_STREQ(hex.get(), t.hex);
   }
 }
+
+TEST(X509Test, NamePrint) {
+  // kTestName is a DER-encoded X.509 that covers many cases.
+  //
+  // SEQUENCE {
+  //   SET {
+  //     SEQUENCE {
+  //       # countryName
+  //       OBJECT_IDENTIFIER { 2.5.4.6 }
+  //       PrintableString { "US" }
+  //     }
+  //   }
+  //   # Sets may be multi-valued, with different attributes. Try to keep this
+  //   # in DER set order, in case we ever enforce this in the parser.
+  //   SET {
+  //     SEQUENCE {
+  //       # stateOrProvinceName
+  //       OBJECT_IDENTIFIER { 2.5.4.8 }
+  //       PrintableString { "Some State" }
+  //     }
+  //     SEQUENCE {
+  //       # stateOrProvinceName
+  //       OBJECT_IDENTIFIER { 2.5.4.8 }
+  //       UTF8String { "Some Other State \xe2\x98\x83" }
+  //     }
+  //     SEQUENCE {
+  //       # stateOrProvinceName
+  //       OBJECT_IDENTIFIER { 2.5.4.8 }
+  //       BMPString { u"Another State \u2603" }
+  //     }
+  //     SEQUENCE {
+  //       # A custom OID
+  //       OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.2 }
+  //       UniversalString { U"\u2603" }
+  //     }
+  //   }
+  //   # Custom OIDs may have non-string values.
+  //   SET {
+  //     SEQUENCE {
+  //       OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.3 }
+  //       SEQUENCE { INTEGER { 1 } INTEGER { 2 } }
+  //     }
+  //   }
+  //   SET {
+  //     SEQUENCE {
+  //       # organizationName
+  //       OBJECT_IDENTIFIER { 2.5.4.10 }
+  //       PrintableString { "Org Name" }
+  //     }
+  //   }
+  //   SET {
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       # Embed common delimiter forms to test how well they get escaped.
+  //       UTF8String { "Common
+  //       Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\nCN=A\n" }
+  //     }
+  //   }
+  //   SET {
+  //   SEQUENCE {
+  //     # commonName
+  //     OBJECT_IDENTIFIER { 2.5.4.3 }
+  //     # Test escaping of leading and trailing spaces.
+  //     UTF8String { " spaces " }
+  //   }
+  // }
+  static const uint8_t kTestName[] = {
+      0x30, 0x82, 0x01, 0x00, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04,
+      0x06, 0x13, 0x02, 0x55, 0x53, 0x31, 0x6d, 0x30, 0x11, 0x06, 0x03, 0x55,
+      0x04, 0x08, 0x13, 0x0a, 0x53, 0x6f, 0x6d, 0x65, 0x20, 0x53, 0x74, 0x61,
+      0x74, 0x65, 0x30, 0x1b, 0x06, 0x03, 0x55, 0x04, 0x08, 0x0c, 0x14, 0x53,
+      0x6f, 0x6d, 0x65, 0x20, 0x4f, 0x74, 0x68, 0x65, 0x72, 0x20, 0x53, 0x74,
+      0x61, 0x74, 0x65, 0x20, 0xe2, 0x98, 0x83, 0x30, 0x25, 0x06, 0x03, 0x55,
+      0x04, 0x08, 0x1e, 0x1e, 0x00, 0x41, 0x00, 0x6e, 0x00, 0x6f, 0x00, 0x74,
+      0x00, 0x68, 0x00, 0x65, 0x00, 0x72, 0x00, 0x20, 0x00, 0x53, 0x00, 0x74,
+      0x00, 0x61, 0x00, 0x74, 0x00, 0x65, 0x00, 0x20, 0x26, 0x03, 0x30, 0x14,
+      0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+      0x09, 0x02, 0x1c, 0x04, 0x00, 0x00, 0x26, 0x03, 0x31, 0x18, 0x30, 0x16,
+      0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+      0x09, 0x03, 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02, 0x31, 0x11,
+      0x30, 0x0f, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x13, 0x08, 0x4f, 0x72, 0x67,
+      0x20, 0x4e, 0x61, 0x6d, 0x65, 0x31, 0x42, 0x30, 0x40, 0x06, 0x03, 0x55,
+      0x04, 0x03, 0x0c, 0x39, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x20, 0x4e,
+      0x61, 0x6d, 0x65, 0x2f, 0x43, 0x4e, 0x3d, 0x41, 0x2f, 0x43, 0x4e, 0x3d,
+      0x42, 0x2c, 0x43, 0x4e, 0x3d, 0x41, 0x2c, 0x43, 0x4e, 0x3d, 0x42, 0x2b,
+      0x43, 0x4e, 0x3d, 0x41, 0x2b, 0x43, 0x4e, 0x3d, 0x42, 0x3b, 0x43, 0x4e,
+      0x3d, 0x41, 0x3b, 0x43, 0x4e, 0x3d, 0x42, 0x0a, 0x43, 0x4e, 0x3d, 0x41,
+      0x0a, 0x31, 0x11, 0x30, 0x0f, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x08,
+      0x20, 0x73, 0x70, 0x61, 0x63, 0x65, 0x73, 0x20};
+
+  const uint8_t *ptr = kTestName;
+  bssl::UniquePtr<X509_NAME> name(
+      d2i_X509_NAME(nullptr, &ptr, sizeof(kTestName)));
+  ASSERT_TRUE(name);
+  EXPECT_EQ(ptr, kTestName + sizeof(kTestName));
+
+  struct {
+    int indent;
+    unsigned long flags;
+    std::string printed;
+  } kTests[] = {
+      // RFC 2253 uses , and + separators and encodes the RDNs in reverse.
+      // OpenSSL's implementation additionally happens to reverse the values
+      // within each RDN. RFC 2253 says any order is permissible.
+      {/*indent=*/0,
+       /*flags=*/XN_FLAG_RFC2253,
+       "CN=\\ spaces\\ ,"
+       "CN=Common "
+       "Name/CN=A/CN=B\\,CN=A\\,CN=B\\+CN=A\\+CN=B\\;CN=A\\;CN=B\\0ACN=A\\0A,"
+       "O=Org Name,"
+       "1.2.840.113554.4.1.72585.3=#3006020101020102,"
+       "1.2.840.113554.4.1.72585.2=#1C0400002603+"
+       "ST=Another State \\E2\\98\\83+"
+       "ST=Some Other State \\E2\\98\\83+"
+       "ST=Some State,"
+       "C=US"},
+      {/*indent=*/2,
+       /*flags=*/XN_FLAG_RFC2253,
+       "  "
+       "CN=\\ spaces\\ ,"
+       "CN=Common "
+       "Name/CN=A/CN=B\\,CN=A\\,CN=B\\+CN=A\\+CN=B\\;CN=A\\;CN=B\\0ACN=A\\0A,"
+       "O=Org Name,"
+       "1.2.840.113554.4.1.72585.3=#3006020101020102,"
+       "1.2.840.113554.4.1.72585.2=#1C0400002603+"
+       "ST=Another State \\E2\\98\\83+"
+       "ST=Some Other State \\E2\\98\\83+"
+       "ST=Some State,"
+       "C=US"},
+      // |XN_FLAG_ONELINE| is an OpenSSL-specific single-line format. It also
+      // omits |XN_FLAG_DUMP_UNKNOWN_FIELDS|, so unknown OIDs that use known
+      // string types will still be decoded. (This may drop important
+      // information if the unknown OID distinguishes between string types.) It
+      // also passes |ASN1_STRFLGS_ESC_QUOTE|.
+      {/*indent=*/0,
+       /*flags=*/XN_FLAG_ONELINE,
+       "C = US, "
+       "ST = Some State + "
+       "ST = Some Other State \\E2\\98\\83 + "
+       "ST = Another State \\E2\\98\\83 + "
+       "1.2.840.113554.4.1.72585.2 = \\E2\\98\\83, "
+       "1.2.840.113554.4.1.72585.3 = #3006020101020102, "
+       "O = Org Name, "
+       "CN = \"Common "
+       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\", "
+       "CN = \" spaces \""},
+      // |XN_FLAG_MULTILINE| is an OpenSSL-specific multi-line format that tries
+      // to vertically align the equal sizes. The vertical alignment doesn't
+      // quite handle multi-valued RDNs right and uses a non-RFC-2253 escaping.
+      {/*indent=*/0,
+       /*flags=*/XN_FLAG_MULTILINE,
+       "countryName               = US\n"
+       "stateOrProvinceName       = Some State + "
+       "stateOrProvinceName       = Some Other State \\U2603 + "
+       "stateOrProvinceName       = Another State \\U2603 + "
+       "1.2.840.113554.4.1.72585.2 = \\U2603\n"
+       "1.2.840.113554.4.1.72585.3 = 0\\06\\02\\01\\01\\02\\01\\02\n"
+       "organizationName          = Org Name\n"
+       "commonName                = Common "
+       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\n"
+       "commonName                =  spaces "},
+      // The multiline format indents every line.
+      {/*indent=*/2,
+       /*flags=*/XN_FLAG_MULTILINE,
+       "  countryName               = US\n"
+       "  stateOrProvinceName       = Some State + "
+       "stateOrProvinceName       = Some Other State \\U2603 + "
+       "stateOrProvinceName       = Another State \\U2603 + "
+       "1.2.840.113554.4.1.72585.2 = \\U2603\n"
+       "  1.2.840.113554.4.1.72585.3 = 0\\06\\02\\01\\01\\02\\01\\02\n"
+       "  organizationName          = Org Name\n"
+       "  commonName                = Common "
+       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\n"
+       "  commonName                =  spaces "},
+      // Callers can also customize the output, wuith both |XN_FLAG_*| and
+      // |ASN1_STRFLGS_*|. |XN_FLAG_SEP_SPLUS_SPC| uses semicolon separators and
+      // |XN_FLAG_FN_OID| forces OIDs.
+      {/*indent=*/0,
+       /*flags=*/XN_FLAG_SEP_SPLUS_SPC | XN_FLAG_FN_OID | ASN1_STRFLGS_RFC2253 |
+           ASN1_STRFLGS_ESC_QUOTE,
+       "2.5.4.6=US; "
+       "2.5.4.8=Some State + "
+       "2.5.4.8=Some Other State \\E2\\98\\83 + "
+       "2.5.4.8=Another State \\E2\\98\\83 + "
+       "1.2.840.113554.4.1.72585.2=\\E2\\98\\83; "
+       "1.2.840.113554.4.1.72585.3=#3006020101020102; "
+       "2.5.4.10=Org Name; "
+       "2.5.4.3=\"Common "
+       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\"; "
+       "2.5.4.3=\" spaces \""},
+      // |XN_FLAG_COMPAT| matches |X509_NAME_print|, rather than
+      // |X509_NAME_print_ex|.
+      //
+      // TODO(davidben): This works by post-processing the output of
+      // |X509_NAME_oneline|, which uses "/"" separators, and replacing with
+      // ", ". The escaping is ambiguous and the post-processing is buggy, so
+      // some of the trailing slashes are still present and some internal
+      // slashes are mis-converted.
+      {/*indent=*/0,
+       /*flags=*/XN_FLAG_COMPAT,
+       "C=US, "
+       "ST=Some State, "
+       "ST=Some Other State \\xE2\\x98\\x83, "
+       "ST=\\x00A\\x00n\\x00o\\x00t\\x00h\\x00e\\x00r\\x00 "
+       "\\x00S\\x00t\\x00a\\x00t\\x00e\\x00 &\\x03/"
+       "1.2.840.113554.4.1.72585.2=\\x00\\x00&\\x03/"
+       "1.2.840.113554.4.1.72585.3=0\\x06\\x02\\x01\\x01\\x02\\x01\\x02, "
+       "O=Org Name, "
+       "CN=Common Name, "
+       "CN=A, CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\x0ACN=A\\x0A, "
+       "CN= spaces "},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.printed);
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    int len = X509_NAME_print_ex(bio.get(), name.get(), t.indent, t.flags);
+    ASSERT_GT(len, 0);
+
+    const uint8_t *printed;
+    size_t printed_len;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &printed, &printed_len));
+    EXPECT_EQ(std::string(printed, printed + printed_len), t.printed);
+    if (t.flags != XN_FLAG_COMPAT) {
+      // TODO(davidben): |XN_FLAG_COMPAT| does not return the length.
+      EXPECT_EQ(static_cast<size_t>(len), printed_len);
+
+      // Passing a null |BIO| measures the output instead.
+      len = X509_NAME_print_ex(nullptr, name.get(), t.indent, t.flags);
+      EXPECT_GT(len, 0);
+      EXPECT_EQ(static_cast<size_t>(len), printed_len);
+    }
+  }
+
+  // TODO(davidben): This escapes the underlying bytes in the string, but that
+  // is ambiguous without capturing the type. Should this escape like
+  // |ASN1_STRFLGS_UTF8_CONVERT| instead?
+  static const char *kOnelineComponents[] = {
+      "/C=US",
+      "/ST=Some State",
+      "/ST=Some Other State \\xE2\\x98\\x83",
+      "/ST=\\x00A\\x00n\\x00o\\x00t\\x00h\\x00e\\x00r\\x00 "
+      "\\x00S\\x00t\\x00a\\x00t\\x00e\\x00 &\\x03",
+      "/1.2.840.113554.4.1.72585.2=\\x00\\x00&\\x03",
+      "/1.2.840.113554.4.1.72585.3=0\\x06\\x02\\x01\\x01\\x02\\x01\\x02",
+      "/O=Org Name",
+      "/CN=Common Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\x0ACN=A\\x0A",
+      "/CN= spaces ",
+  };
+  std::string oneline_expected;
+  for (const auto& component : kOnelineComponents) {
+    oneline_expected += component;
+  }
+
+  // Given null buffer, |X509_NAME_oneline| allocates a new output.
+  bssl::UniquePtr<char> oneline(X509_NAME_oneline(name.get(), nullptr, 0));
+  ASSERT_TRUE(oneline);
+  EXPECT_EQ(oneline.get(), oneline_expected);
+
+  // Otherwise it writes to the specified buffer. Note one extra byte is needed
+  // for the trailing NUL.
+  char buf[1024];
+  ASSERT_GE(sizeof(buf), oneline_expected.size() + 2);
+  ASSERT_EQ(buf,
+            X509_NAME_oneline(name.get(), buf, oneline_expected.size() + 1));
+  EXPECT_EQ(buf, oneline_expected);
+
+  memset(buf, 'a', sizeof(buf));
+  ASSERT_EQ(buf,
+            X509_NAME_oneline(name.get(), buf, oneline_expected.size() + 2));
+  EXPECT_EQ(buf, oneline_expected);
+
+  // If the length is too small, |X509_NAME_oneline| truncates at name
+  // entry boundaries.
+  EXPECT_EQ(nullptr, X509_NAME_oneline(name.get(), buf, 0));
+  for (size_t len = 1; len < oneline_expected.size(); len++) {
+    SCOPED_TRACE(len);
+    memset(buf, 'a', sizeof(buf));
+    EXPECT_EQ(buf, X509_NAME_oneline(name.get(), buf, len));
+
+    std::string truncated;
+    for (const auto& component : kOnelineComponents) {
+      if (truncated.size() + strlen(component) + 1 > len) {
+        break;
+      }
+      truncated += component;
+    }
+    EXPECT_EQ(buf, truncated);
+  }
+}

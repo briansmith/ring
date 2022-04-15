@@ -199,7 +199,8 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_FLAG_NO_ATTRIBUTES (1L << 11)
 #define X509_FLAG_NO_IDS (1L << 12)
 
-// Flags specific to X509_NAME_print_ex()
+// Flags specific to X509_NAME_print_ex(). These flags must not collide with
+// |ASN1_STRFLGS_*|.
 
 // The field separator information
 
