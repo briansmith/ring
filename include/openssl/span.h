@@ -99,12 +99,11 @@ class Span : private internal::SpanBase<const T> {
   // Heuristically test whether C is a container type that can be converted into
   // a Span by checking for data() and size() member functions.
   //
-  // TODO(davidben): Require C++14 support and switch to std::enable_if_t.
-  // Perhaps even C++17 now?
+  // TODO(davidben): Require C++17 support for std::is_convertible_v, etc.
   template <typename C>
-  using EnableIfContainer = typename std::enable_if<
+  using EnableIfContainer = std::enable_if_t<
       std::is_convertible<decltype(std::declval<C>().data()), T *>::value &&
-      std::is_integral<decltype(std::declval<C>().size())>::value>::type;
+      std::is_integral<decltype(std::declval<C>().size())>::value>;
 
  public:
   constexpr Span() : Span(nullptr, 0) {}
@@ -113,14 +112,12 @@ class Span : private internal::SpanBase<const T> {
   template <size_t N>
   constexpr Span(T (&array)[N]) : Span(array, N) {}
 
-  template <
-      typename C, typename = EnableIfContainer<C>,
-      typename = typename std::enable_if<std::is_const<T>::value, C>::type>
+  template <typename C, typename = EnableIfContainer<C>,
+            typename = std::enable_if_t<std::is_const<T>::value, C>>
   Span(const C &container) : data_(container.data()), size_(container.size()) {}
 
-  template <
-      typename C, typename = EnableIfContainer<C>,
-      typename = typename std::enable_if<!std::is_const<T>::value, C>::type>
+  template <typename C, typename = EnableIfContainer<C>,
+            typename = std::enable_if_t<!std::is_const<T>::value, C>>
   explicit Span(C &container)
       : data_(container.data()), size_(container.size()) {}
 

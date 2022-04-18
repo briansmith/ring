@@ -443,16 +443,14 @@ namespace internal {
 
 // Stacks defined with |DEFINE_CONST_STACK_OF| are freed with |sk_free|.
 template <typename Stack>
-struct DeleterImpl<
-    Stack, typename std::enable_if<StackTraits<Stack>::kIsConst>::type> {
+struct DeleterImpl<Stack, std::enable_if_t<StackTraits<Stack>::kIsConst>> {
   static void Free(Stack *sk) { sk_free(reinterpret_cast<_STACK *>(sk)); }
 };
 
 // Stacks defined with |DEFINE_STACK_OF| are freed with |sk_pop_free| and the
 // corresponding type's deleter.
 template <typename Stack>
-struct DeleterImpl<
-    Stack, typename std::enable_if<!StackTraits<Stack>::kIsConst>::type> {
+struct DeleterImpl<Stack, std::enable_if_t<!StackTraits<Stack>::kIsConst>> {
   static void Free(Stack *sk) {
     // sk_FOO_pop_free is defined by macros and bound by name, so we cannot
     // access it from C++ here.
@@ -502,18 +500,17 @@ class StackIteratorImpl {
 };
 
 template <typename Stack>
-using StackIterator = typename std::enable_if<StackTraits<Stack>::kIsStack,
-                                              StackIteratorImpl<Stack>>::type;
+using StackIterator =
+    std::enable_if_t<StackTraits<Stack>::kIsStack, StackIteratorImpl<Stack>>;
 
 }  // namespace internal
 
 // PushToStack pushes |elem| to |sk|. It returns true on success and false on
 // allocation failure.
 template <typename Stack>
-inline
-    typename std::enable_if<!internal::StackTraits<Stack>::kIsConst, bool>::type
-    PushToStack(Stack *sk,
-                UniquePtr<typename internal::StackTraits<Stack>::Type> elem) {
+inline std::enable_if_t<!internal::StackTraits<Stack>::kIsConst, bool>
+PushToStack(Stack *sk,
+            UniquePtr<typename internal::StackTraits<Stack>::Type> elem) {
   if (!sk_push(reinterpret_cast<_STACK *>(sk), elem.get())) {
     return false;
   }

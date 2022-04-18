@@ -380,9 +380,9 @@ inline crypto_word_t CheckImpl(Result *out, bool unwind, R (*func)(Args...),
 // CheckImpl implementation. It must be specialized for void returns because we
 // call |func| directly.
 template <typename R, typename... Args>
-inline typename std::enable_if<!std::is_void<R>::value, crypto_word_t>::type
-CheckImpl(Result *out, bool /* unwind */, R (*func)(Args...),
-          typename DeductionGuard<Args>::Type... args) {
+inline std::enable_if_t<!std::is_void<R>::value, crypto_word_t> CheckImpl(
+    Result *out, bool /* unwind */, R (*func)(Args...),
+    typename DeductionGuard<Args>::Type... args) {
   *out = Result();
   return func(args...);
 }

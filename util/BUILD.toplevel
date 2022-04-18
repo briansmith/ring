@@ -137,9 +137,9 @@ boringssl_copts_c11 = boringssl_copts + select({
     "//conditions:default": [],
 })
 
-# For C++ targets only (not C), compile with C++11 support.
+# For C++ targets only (not C), compile with C++14 support.
 posix_copts_cxx = [
-    "-std=c++11",
+    "-std=c++14",
     "-Wmissing-declarations",
 ]
 

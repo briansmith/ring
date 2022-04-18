@@ -1327,34 +1327,33 @@ BSSL_NAMESPACE_END
 
 using namespace bssl;
 
-static constexpr int ssl_cipher_id_cmp_inner(const SSL_CIPHER *a,
-                                             const SSL_CIPHER *b) {
-  // C++11's constexpr functions must have a body consisting of just a
-  // return-statement.
-  return (a->id > b->id) ? 1 : ((a->id < b->id) ? -1 : 0);
+static constexpr int ssl_cipher_id_cmp(const SSL_CIPHER *a,
+                                       const SSL_CIPHER *b) {
+  if (a->id > b->id) {
+    return 1;
+  }
+  if (a->id < b->id) {
+    return -1;
+  }
+  return 0;
 }
 
-static int ssl_cipher_id_cmp(const void *in_a, const void *in_b) {
-  return ssl_cipher_id_cmp_inner(reinterpret_cast<const SSL_CIPHER *>(in_a),
-                                 reinterpret_cast<const SSL_CIPHER *>(in_b));
+static int ssl_cipher_id_cmp_void(const void *in_a, const void *in_b) {
+  return ssl_cipher_id_cmp(reinterpret_cast<const SSL_CIPHER *>(in_a),
+                           reinterpret_cast<const SSL_CIPHER *>(in_b));
 }
 
-template <typename T, size_t N>
-static constexpr size_t countof(T const (&)[N]) {
-  return N;
+template <size_t N>
+static constexpr bool ssl_ciphers_sorted(const SSL_CIPHER (&ciphers)[N]) {
+  for (size_t i = 1; i < N; i++) {
+    if (ssl_cipher_id_cmp(&ciphers[i - 1], &ciphers[i]) >= 0) {
+      return false;
+    }
+  }
+  return true;
 }
 
-template <typename T, size_t I>
-static constexpr int check_order(const T (&arr)[I], size_t N) {
-  // C++11's constexpr functions must have a body consisting of just a
-  // return-statement.
-  return N > 1 ? ((ssl_cipher_id_cmp_inner(&arr[N - 2], &arr[N - 1]) < 0)
-                      ? check_order(arr, N - 1)
-                      : 0)
-               : 1;
-}
-
-static_assert(check_order(kCiphers, countof(kCiphers)) == 1,
+static_assert(ssl_ciphers_sorted(kCiphers),
               "Ciphers are not sorted, bsearch won't work");
 
 const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
@@ -1363,7 +1362,7 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
   c.id = 0x03000000L | value;
   return reinterpret_cast<const SSL_CIPHER *>(bsearch(
       &c, kCiphers, OPENSSL_ARRAY_SIZE(kCiphers), sizeof(SSL_CIPHER),
-      ssl_cipher_id_cmp));
+      ssl_cipher_id_cmp_void));
 }
 
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }
