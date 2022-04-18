@@ -30,7 +30,8 @@ most recent stable version of each tool.
     by CMake, it may be configured explicitly by setting
     `CMAKE_ASM_NASM_COMPILER`.
 
-  * C and C++ compilers with C++14 support are required. On Windows, MSVC from
+  * C and C++ compilers with C++14 support are required. If using a C compiler
+    other than MSVC, C11 support is also requried. On Windows, MSVC from
     Visual Studio 2017 or later with Platform SDK 8.1 or later are supported,
     but newer versions are recommended. Recent versions of GCC (6.1+) and Clang
     should work on non-Windows platforms, and maybe on Windows too.
