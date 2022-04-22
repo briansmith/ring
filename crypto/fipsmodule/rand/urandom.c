@@ -135,7 +135,7 @@ static void maybe_set_extra_getrandom_flags(void) {
   }
 
   value[length] = 0;
-  if (strcasecmp(value, "true") == 0) {
+  if (OPENSSL_strcasecmp(value, "true") == 0) {
     *extra_getrandom_flags_for_seed_bss_get() = GRND_RANDOM;
   }
 #endif
