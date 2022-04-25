@@ -45,7 +45,7 @@ target_include_directories(ssl INTERFACE
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-install(TARGETS ssl EXPORT OpenSSLTargets)
+install(TARGETS ssl EXPORT OpenSSLTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
 set_property(TARGET ssl PROPERTY EXPORT_NAME SSL)
 
 add_dependencies(ssl global_target)

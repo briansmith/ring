@@ -20,6 +20,8 @@ include(sources.cmake)
 enable_language(C)
 enable_language(CXX)
 
+include(GNUInstallDirs)
+
 # This is a dummy target which all other targets depend on (manually - see other
 # CMakeLists.txt files). This gives us a hook to add any targets which need to
 # run before all other targets.
@@ -563,7 +565,7 @@ if(USE_CUSTOM_LIBCXX)
     -DLIBCXX_BUILDING_LIBCXXABI
   )
   target_link_libraries(libcxx libcxxabi)
-  install(TARGETS libcxx EXPORT OpenSSLTargets)
+  install(TARGETS libcxx EXPORT OpenSSLTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 # Add minimal googletest targets. The provided one has many side-effects, and
@@ -665,7 +667,7 @@ add_custom_target(
     DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
     USES_TERMINAL)
 
-install(DIRECTORY include/ TYPE INCLUDE)
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(EXPORT OpenSSLTargets
   FILE OpenSSLTargets.cmake

@@ -441,7 +441,7 @@ target_include_directories(crypto INTERFACE
  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
  $<INSTALL_INTERFACE:include>
 )
-install(TARGETS crypto EXPORT OpenSSLTargets)
+install(TARGETS crypto EXPORT OpenSSLTargets DESTINATION ${CMAKE_INSTALL_LIBDIR})
 set_property(TARGET crypto PROPERTY EXPORT_NAME Crypto)
 
 if(FIPS_SHARED)
