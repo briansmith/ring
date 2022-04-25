@@ -165,18 +165,7 @@ int X509_cmp(const X509 *a, const X509 *b)
     x509v3_cache_extensions((X509 *)a);
     x509v3_cache_extensions((X509 *)b);
 
-    int rv = OPENSSL_memcmp(a->cert_hash, b->cert_hash, SHA256_DIGEST_LENGTH);
-    if (rv)
-        return rv;
-    /* Check for match against stored encoding too */
-    if (!a->cert_info->enc.modified && !b->cert_info->enc.modified) {
-        rv = (int)(a->cert_info->enc.len - b->cert_info->enc.len);
-        if (rv)
-            return rv;
-        return OPENSSL_memcmp(a->cert_info->enc.enc, b->cert_info->enc.enc,
-                              a->cert_info->enc.len);
-    }
-    return rv;
+    return OPENSSL_memcmp(a->cert_hash, b->cert_hash, SHA256_DIGEST_LENGTH);
 }
 
 int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b)
