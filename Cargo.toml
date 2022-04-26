@@ -339,13 +339,13 @@ once_cell = { version = "1.5.2", default-features = false, features=["std"], opt
 [target.'cfg(any(target_os = "dragonfly", target_os = "freebsd", target_os = "illumos", target_os = "netbsd", target_os = "openbsd", target_os = "solaris"))'.dependencies]
 once_cell = { version = "1.5.2", default-features = false, features=["std"] }
 
-[target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown", target_env = ""))'.dependencies]
+[target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown", target_env = "", not(feature = "no_wasm_exports")))'.dependencies]
 web-sys = { version = "0.3.37", default-features = false, features = ["Crypto", "Window"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi = { version = "0.3.8", default-features = false, features = ["ntsecapi", "wtypesbase"] }
 
-[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+[target.'cfg(all(target_arch = "wasm32", not(feature = "no_wasm_exports")))'.dev-dependencies]
 wasm-bindgen-test = { version = "0.3.18", default-features = false }
 
 [target.'cfg(any(unix, windows))'.dev-dependencies]
@@ -364,6 +364,7 @@ slow_tests = []
 std = ["alloc"]
 test_logging = []
 wasm32_c = []
+no_wasm_exports = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 
