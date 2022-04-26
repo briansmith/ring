@@ -233,6 +233,7 @@ mod sysrand_chunk {
     target_vendor = "unknown",
     target_os = "unknown",
     target_env = "",
+    not(feature = "no_wasm_exports")
 ))]
 mod sysrand_chunk {
     use crate::error;
@@ -253,6 +254,21 @@ mod sysrand_chunk {
             .map_err(|_| error::Unspecified)?;
 
         Ok(dest.len())
+    }
+}
+
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+    target_env = "",
+    feature = "no_wasm_exports"
+))]
+mod sysrand_chunk {
+    use crate::error;
+
+    pub fn chunk(mut _dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        unimplemented!("sysrand_chunk: no window.crypto available.");
     }
 }
 
