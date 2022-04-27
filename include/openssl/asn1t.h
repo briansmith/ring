@@ -509,19 +509,8 @@ const char *sname;		/* Structure name */
 
 #define ASN1_ITYPE_MSTRING		0x5
 
-/* Cache for ASN1 tag and length, so we
- * don't keep re-reading it for things
- * like CHOICE
- */
-
-struct ASN1_TLC_st{
-	char valid;	/* Values below are valid */
-	int ret;	/* return value */
-	long plen;	/* length */
-	int ptag;	/* class value */
-	int pclass;	/* class value */
-	int hdrlen;	/* header length */
-};
+/* Deprecated tag and length cache */
+struct ASN1_TLC_st;
 
 /* Typedefs for ASN1 function pointers */
 
