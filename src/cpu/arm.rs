@@ -12,6 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#![cfg_attr(
+    not(any(target_arch = "aarch64", target_arch = "arm")),
+    allow(dead_code)
+)]
+
 #[cfg(all(
     any(target_os = "android", target_os = "linux"),
     any(target_arch = "aarch64", target_arch = "arm")
