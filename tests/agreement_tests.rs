@@ -59,6 +59,9 @@ fn agreement_traits() {
         format!("{:?}", unparsed_public_key),
         r#"UnparsedPublicKey { algorithm: Algorithm { curve: Curve25519 }, bytes: "010203" }"#
     );
+
+    // Test `AsRef<[u8]>`
+    assert_eq!(unparsed_public_key.as_ref(), &[0x01, 0x02, 0x03]);
 }
 
 #[test]

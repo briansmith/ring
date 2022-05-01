@@ -255,7 +255,7 @@
 //! # }
 //! ```
 
-use crate::{cpu, ec, error, sealed};
+use crate::{cpu, debug, ec, error, sealed};
 
 pub use crate::ec::{
     curve25519::ed25519::{
@@ -359,6 +359,27 @@ pub trait VerificationAlgorithm: core::fmt::Debug + Sync + sealed::Sealed {
 pub struct UnparsedPublicKey<B> {
     algorithm: &'static dyn VerificationAlgorithm,
     bytes: B,
+}
+
+impl<B> AsRef<[u8]> for UnparsedPublicKey<B>
+where
+    B: AsRef<[u8]>,
+{
+    fn as_ref(&self) -> &[u8] {
+        self.bytes.as_ref()
+    }
+}
+
+impl<B: core::fmt::Debug> core::fmt::Debug for UnparsedPublicKey<B>
+where
+    B: AsRef<[u8]>,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        f.debug_struct("UnparsedPublicKey")
+            .field("algorithm", &self.algorithm)
+            .field("bytes", &debug::HexStr(self.bytes.as_ref()))
+            .finish()
+    }
 }
 
 impl<B> UnparsedPublicKey<B> {
