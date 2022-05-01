@@ -184,6 +184,15 @@ pub struct UnparsedPublicKey<B> {
     bytes: B,
 }
 
+impl<B> AsRef<[u8]> for UnparsedPublicKey<B>
+where
+    B: AsRef<[u8]>,
+{
+    fn as_ref(&self) -> &[u8] {
+        self.bytes.as_ref()
+    }
+}
+
 impl<B: core::fmt::Debug> core::fmt::Debug for UnparsedPublicKey<B>
 where
     B: AsRef<[u8]>,
@@ -202,7 +211,7 @@ impl<B> UnparsedPublicKey<B> {
         Self { algorithm, bytes }
     }
 
-    /// TODO: doc
+    /// The algorithm for the public key.
     #[inline]
     pub fn algorithm(&self) -> &'static Algorithm {
         self.algorithm
