@@ -185,7 +185,7 @@ func trimLeadingSlash(s string) string {
 // it's a header.
 func looksLikeHeaderElement(element json.RawMessage) bool {
 	var headerFields struct {
-		URL string `json:"url"`
+		URL       string `json:"url"`
 		Algorithm string `json:"algorithm"`
 	}
 	if err := json.Unmarshal(element, &headerFields); err != nil {
