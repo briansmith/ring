@@ -430,7 +430,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "algorithm": "ctrDRBG",
         "revision": "1.0",
         "predResistanceEnabled": [false],
-        "reseedImplemented": false,
+        "reseedImplemented": true,
         "capabilities": [{
           "mode": "AES-256",
           "derFuncEnabled": false,
@@ -1419,17 +1419,31 @@ static bool HMAC(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({Span<const uint8_t>(digest, digest_len)});
 }
 
+template <bool WithReseed>
 static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   const auto out_len_bytes = args[0];
   const auto entropy = args[1];
   const auto personalisation = args[2];
-  const auto additional_data1 = args[3];
-  const auto additional_data2 = args[4];
-  const auto nonce = args[5];
+
+  Span<const uint8_t> reseed_additional_data, reseed_entropy, additional_data1,
+      additional_data2, nonce;
+  if (!WithReseed) {
+    additional_data1 = args[3];
+    additional_data2 = args[4];
+    nonce = args[5];
+  } else {
+    reseed_additional_data = args[3];
+    reseed_entropy = args[4];
+    additional_data1 = args[5];
+    additional_data2 = args[6];
+    nonce = args[7];
+  }
 
   uint32_t out_len;
   if (out_len_bytes.size() != sizeof(out_len) ||
       entropy.size() != CTR_DRBG_ENTROPY_LEN ||
+      (!reseed_entropy.empty() &&
+       reseed_entropy.size() != CTR_DRBG_ENTROPY_LEN) ||
       // nonces are not supported
       nonce.size() != 0) {
     return false;
@@ -1443,6 +1457,10 @@ static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   CTR_DRBG_STATE drbg;
   if (!CTR_DRBG_init(&drbg, entropy.data(), personalisation.data(),
                      personalisation.size()) ||
+      (!reseed_entropy.empty() &&
+       !CTR_DRBG_reseed(&drbg, reseed_entropy.data(),
+                        reseed_additional_data.data(),
+                        reseed_additional_data.size())) ||
       !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data1.data(),
                          additional_data1.size()) ||
       !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data2.data(),
@@ -1955,7 +1973,8 @@ static constexpr struct {
     {"HMAC-SHA2-384", 2, HMAC<EVP_sha384>},
     {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
     {"HMAC-SHA2-512/256", 2, HMAC<EVP_sha512_256>},
-    {"ctrDRBG/AES-256", 6, DRBG},
+    {"ctrDRBG/AES-256", 6, DRBG<false>},
+    {"ctrDRBG-reseed/AES-256", 8, DRBG<true>},
     {"ECDSA/keyGen", 1, ECDSAKeyGen},
     {"ECDSA/keyVer", 3, ECDSAKeyVer},
     {"ECDSA/sigGen", 4, ECDSASigGen},

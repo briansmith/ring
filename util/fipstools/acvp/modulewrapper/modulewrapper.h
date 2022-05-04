@@ -26,7 +26,7 @@ namespace acvp {
 
 // kMaxArgs is the maximum number of arguments (including the function name)
 // that an ACVP request can contain.
-constexpr size_t kMaxArgs = 8;
+constexpr size_t kMaxArgs = 9;
 // kMaxNameLength is the maximum length of a function name in an ACVP request.
 constexpr size_t kMaxNameLength = 30;
 
