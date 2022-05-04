@@ -417,6 +417,16 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
+        "algorithm": "HMAC-SHA2-512/256",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 2048, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 256, "increment": 8
+        }]
+      },
+      {
         "algorithm": "ctrDRBG",
         "revision": "1.0",
         "predResistanceEnabled": [false],
@@ -473,7 +483,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "SHA2-224",
             "SHA2-256",
             "SHA2-384",
-            "SHA2-512"
+            "SHA2-512",
+            "SHA2-512/256"
           ]
         }]
       },
@@ -493,7 +504,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "SHA2-224",
             "SHA2-256",
             "SHA2-384",
-            "SHA2-512"
+            "SHA2-512",
+            "SHA2-512/256"
           ]
         }]
       },
@@ -587,6 +599,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
+            }, {
+              "hashAlg": "SHA2-512/256",
+              "saltLen": 32
             }]
           }]
         },{
@@ -605,6 +620,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
+            }, {
+              "hashAlg": "SHA2-512/256",
+              "saltLen": 32
             }]
           }]
         },{
@@ -623,6 +641,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
+            }, {
+              "hashAlg": "SHA2-512/256",
+              "saltLen": 32
             }]
           }]
         }]
@@ -711,6 +732,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384",
               "saltLen": 48
             }, {
+              "hashAlg": "SHA2-512/256",
+              "saltLen": 32
+            }, {
               "hashAlg": "SHA-1",
               "saltLen": 20
             }]
@@ -731,6 +755,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
+            }, {
+              "hashAlg": "SHA2-512/256",
+              "saltLen": 32
             }, {
               "hashAlg": "SHA-1",
               "saltLen": 20
@@ -753,6 +780,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-512",
               "saltLen": 64
             }, {
+              "hashAlg": "SHA2-512/256",
+              "saltLen": 32
+            }, {
               "hashAlg": "SHA-1",
               "saltLen": 20
             }]
@@ -773,6 +803,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
+            }, {
+              "hashAlg": "SHA2-512/256",
+              "saltLen": 32
             }, {
               "hashAlg": "SHA-1",
               "saltLen": 20
@@ -1521,6 +1554,8 @@ static const EVP_MD *HashFromName(Span<const uint8_t> name) {
     return EVP_sha384();
   } else if (StringEq(name, "SHA2-512")) {
     return EVP_sha512();
+  } else if (StringEq(name, "SHA2-512/256")) {
+    return EVP_sha512_256();
   } else {
     return nullptr;
   }
@@ -1919,6 +1954,7 @@ static constexpr struct {
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
     {"HMAC-SHA2-384", 2, HMAC<EVP_sha384>},
     {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
+    {"HMAC-SHA2-512/256", 2, HMAC<EVP_sha512_256>},
     {"ctrDRBG/AES-256", 6, DRBG},
     {"ECDSA/keyGen", 1, ECDSAKeyGen},
     {"ECDSA/keyVer", 3, ECDSAKeyVer},
@@ -1936,6 +1972,7 @@ static constexpr struct {
     {"RSA/sigGen/SHA2-256/pss", 2, RSASigGen<EVP_sha256, true>},
     {"RSA/sigGen/SHA2-384/pss", 2, RSASigGen<EVP_sha384, true>},
     {"RSA/sigGen/SHA2-512/pss", 2, RSASigGen<EVP_sha512, true>},
+    {"RSA/sigGen/SHA2-512/256/pss", 2, RSASigGen<EVP_sha512_256, true>},
     {"RSA/sigGen/SHA-1/pss", 2, RSASigGen<EVP_sha1, true>},
     {"RSA/sigVer/SHA2-224/pkcs1v1.5", 4, RSASigVer<EVP_sha224, false>},
     {"RSA/sigVer/SHA2-256/pkcs1v1.5", 4, RSASigVer<EVP_sha256, false>},
@@ -1946,6 +1983,7 @@ static constexpr struct {
     {"RSA/sigVer/SHA2-256/pss", 4, RSASigVer<EVP_sha256, true>},
     {"RSA/sigVer/SHA2-384/pss", 4, RSASigVer<EVP_sha384, true>},
     {"RSA/sigVer/SHA2-512/pss", 4, RSASigVer<EVP_sha512, true>},
+    {"RSA/sigVer/SHA2-512/256/pss", 4, RSASigVer<EVP_sha512_256, true>},
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
     {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
