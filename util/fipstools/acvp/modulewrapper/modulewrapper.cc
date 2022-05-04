@@ -700,6 +700,24 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         },{
           "sigType": "pss",
           "properties": [{
+            "modulo": 1024,
+            "hashPair": [{
+              "hashAlg": "SHA2-224",
+              "saltLen": 28
+            }, {
+              "hashAlg": "SHA2-256",
+              "saltLen": 32
+            }, {
+              "hashAlg": "SHA2-384",
+              "saltLen": 48
+            }, {
+              "hashAlg": "SHA-1",
+              "saltLen": 20
+            }]
+          }]
+        },{
+          "sigType": "pss",
+          "properties": [{
             "modulo": 2048,
             "hashPair": [{
               "hashAlg": "SHA2-224",
