@@ -82,8 +82,6 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"ACVP-AES-CBC-CS3": &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},
 		"ACVP-AES-CTR":     &blockCipher{"AES-CTR", 16, 1, false, true, nil},
 		"ACVP-AES-XTS":     &xts{},
-		"ACVP-TDES-ECB":    &blockCipher{"3DES-ECB", 8, 3, true, false, iterate3DES},
-		"ACVP-TDES-CBC":    &blockCipher{"3DES-CBC", 8, 3, true, true, iterate3DESCBC},
 		"ACVP-AES-GCM":     &aead{"AES-GCM", false},
 		"ACVP-AES-GMAC":    &aead{"AES-GCM", false},
 		"ACVP-AES-CCM":     &aead{"AES-CCM", true},

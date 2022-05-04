@@ -367,20 +367,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "aadLen": [{"min": 0, "max": 1024, "increment": 8}]
       },
       {
-        "algorithm": "ACVP-TDES-ECB",
-        "revision": "1.0",
-        "direction": ["encrypt", "decrypt"],
-        "keyLen": [192],
-        "keyingOption": [1]
-      },
-      {
-        "algorithm": "ACVP-TDES-CBC",
-        "revision": "1.0",
-        "direction": ["encrypt", "decrypt"],
-        "keyLen": [192],
-        "keyingOption": [1]
-      },
-      {
         "algorithm": "HMAC-SHA-1",
         "revision": "1.0",
         "keyLen": [{

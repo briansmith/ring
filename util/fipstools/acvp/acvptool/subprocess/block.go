@@ -18,7 +18,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/bits"
 )
 
 // aesKeyShuffle is the "AES Monte Carlo Key Shuffle" from the ACVP
@@ -119,113 +118,6 @@ func iterateAESCBC(transact func(n int, args ...[]byte) ([][]byte, error), encry
 	return mctResults
 }
 
-// xorKeyWithOddParityLSB XORs value into key while setting the LSB of each bit
-// to establish odd parity. This embedding of a parity check in a DES key is an
-// old tradition and something that NIST's tests require (despite being
-// undocumented).
-func xorKeyWithOddParityLSB(key, value []byte) {
-	for i := range key {
-		v := key[i] ^ value[i]
-		// Use LSB to establish odd parity.
-		v ^= byte((bits.OnesCount8(v) & 1)) ^ 1
-		key[i] = v
-	}
-}
-
-// desKeyShuffle implements the manipulation of the Key arrays in the "TDES
-// Monte Carlo Test - ECB mode" algorithm from the ACVP specification.
-func keyShuffle3DES(key, result, prevResult, prevPrevResult []byte) {
-	xorKeyWithOddParityLSB(key[:8], result)
-	xorKeyWithOddParityLSB(key[8:16], prevResult)
-	xorKeyWithOddParityLSB(key[16:], prevPrevResult)
-}
-
-// iterate3DES implements "TDES Monte Carlo Test - ECB mode" from the ACVP
-// specification.
-func iterate3DES(transact func(n int, args ...[]byte) ([][]byte, error), encrypt bool, key, input, iv []byte) (mctResults []blockCipherMCTResult) {
-	for i := 0; i < 400; i++ {
-		var iteration blockCipherMCTResult
-		keyHex := hex.EncodeToString(key)
-		iteration.Key1Hex = keyHex[:16]
-		iteration.Key2Hex = keyHex[16:32]
-		iteration.Key3Hex = keyHex[32:]
-
-		if encrypt {
-			iteration.PlaintextHex = hex.EncodeToString(input)
-		} else {
-			iteration.CiphertextHex = hex.EncodeToString(input)
-		}
-
-		results, err := transact(3, key, input, uint32le(10000))
-		if err != nil {
-			panic("block operation failed")
-		}
-		result := results[0]
-		prevResult := results[1]
-		prevPrevResult := results[2]
-
-		if encrypt {
-			iteration.CiphertextHex = hex.EncodeToString(result)
-		} else {
-			iteration.PlaintextHex = hex.EncodeToString(result)
-		}
-
-		keyShuffle3DES(key, result, prevResult, prevPrevResult)
-		mctResults = append(mctResults, iteration)
-		input = result
-	}
-
-	return mctResults
-}
-
-// iterate3DESCBC implements "TDES Monte Carlo Test - CBC mode" from the ACVP
-// specification.
-func iterate3DESCBC(transact func(n int, args ...[]byte) ([][]byte, error), encrypt bool, key, input, iv []byte) (mctResults []blockCipherMCTResult) {
-	for i := 0; i < 400; i++ {
-		var iteration blockCipherMCTResult
-		keyHex := hex.EncodeToString(key)
-		iteration.Key1Hex = keyHex[:16]
-		iteration.Key2Hex = keyHex[16:32]
-		iteration.Key3Hex = keyHex[32:]
-
-		if encrypt {
-			iteration.PlaintextHex = hex.EncodeToString(input)
-		} else {
-			iteration.CiphertextHex = hex.EncodeToString(input)
-		}
-		iteration.IVHex = hex.EncodeToString(iv)
-
-		results, err := transact(3, key, input, iv, uint32le(10000))
-		if err != nil {
-			panic("block operation failed")
-		}
-
-		result := results[0]
-		prevResult := results[1]
-		prevPrevResult := results[2]
-
-		if encrypt {
-			iteration.CiphertextHex = hex.EncodeToString(result)
-		} else {
-			iteration.PlaintextHex = hex.EncodeToString(result)
-		}
-
-		keyShuffle3DES(key, result, prevResult, prevPrevResult)
-
-		if encrypt {
-			input = prevResult
-			iv = result
-		} else {
-			iv = prevResult
-			input = result
-		}
-
-		mctResults = append(mctResults, iteration)
-	}
-
-	return mctResults
-}
-
 // blockCipher implements an ACVP algorithm by making requests to the subprocess
 // to encrypt and decrypt with a block cipher.
 type blockCipher struct {
@@ -256,11 +148,6 @@ type blockCipherTestGroup struct {
 		CiphertextHex string  `json:"ct"`
 		IVHex         string  `json:"iv"`
 		KeyHex        string  `json:"key"`
-
-		// 3DES tests serialise the key differently.
-		Key1Hex string `json:"key1"`
-		Key2Hex string `json:"key2"`
-		Key3Hex string `json:"key3"`
 	} `json:"tests"`
 }
 
@@ -281,11 +168,6 @@ type blockCipherMCTResult struct {
 	PlaintextHex  string `json:"pt"`
 	CiphertextHex string `json:"ct"`
 	IVHex         string `json:"iv,omitempty"`
-
-	// 3DES tests serialise the key differently.
-	Key1Hex string `json:"key1,omitempty"`
-	Key2Hex string `json:"key2,omitempty"`
-	Key3Hex string `json:"key3,omitempty"`
 }
 
 func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, error) {
@@ -331,11 +213,6 @@ func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, er
 			return nil, fmt.Errorf("test group %d has unknown type %q", group.ID, group.Type)
 		}
 
-		if group.KeyBits == 0 {
-			// 3DES tests fail to set this parameter.
-			group.KeyBits = 192
-		}
-
 		if group.KeyBits%8 != 0 {
 			return nil, fmt.Errorf("test group %d contains non-byte-multiple key length %d", group.ID, group.KeyBits)
 		}
@@ -346,11 +223,6 @@ func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, er
 		}
 
 		for _, test := range group.Tests {
-			if len(test.KeyHex) == 0 && len(test.Key1Hex) > 0 {
-				// 3DES encodes the key differently.
-				test.KeyHex = test.Key1Hex + test.Key2Hex + test.Key3Hex
-			}
-
 			if len(test.KeyHex) != keyBytes*2 {
 				return nil, fmt.Errorf("test case %d/%d contains key %q of length %d, but expected %d-bit key", group.ID, test.ID, test.KeyHex, len(test.KeyHex), group.KeyBits)
 			}

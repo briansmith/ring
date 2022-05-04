@@ -9,8 +9,6 @@
 {"Wrapper": "modulewrapper", "In": "vectors/ACVP-AES-KW.bz2", "Out": "expected/ACVP-AES-KW.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ACVP-AES-KWP.bz2", "Out": "expected/ACVP-AES-KWP.bz2"},
 {"Wrapper": "testmodulewrapper", "In": "vectors/ACVP-AES-XTS.bz2", "Out": "expected/ACVP-AES-XTS.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/ACVP-TDES-CBC.bz2", "Out": "expected/ACVP-TDES-CBC.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/ACVP-TDES-ECB.bz2", "Out": "expected/ACVP-TDES-ECB.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/CMAC-AES.bz2", "Out": "expected/CMAC-AES.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ctrDRBG.bz2", "Out": "expected/ctrDRBG.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/ECDSA.bz2", "Out": "expected/ECDSA.bz2"},
