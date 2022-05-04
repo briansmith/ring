@@ -28,6 +28,8 @@ int FIPS_mode(void) {
 
 int FIPS_mode_set(int on) { return on == FIPS_mode(); }
 
+const char *FIPS_module_name(void) { return "BoringCrypto"; }
+
 uint32_t FIPS_version(void) {
   return 0;
 }
