@@ -575,9 +575,31 @@ impl KeyPair {
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
 
+        self.sign_digest_less_safe(padding_alg, rng, m_hash, signature)
+    }
+
+    /// Compute the signature of `digest`.
+    ///
+    /// The `digest` algorithm must match that of the signing algorithm.
+    ///
+    /// In general, it is not safe to sign an arbitrary digest. Ensure that
+    /// you only sign digests that you have computed yourself, or that you
+    /// otherwise know are safe to sign. It could be a bad mistake to sign
+    /// an attacker-controlled digest.
+    pub fn sign_digest_less_safe(
+        &self,
+        padding_alg: &'static dyn RsaEncoding,
+        rng: &dyn rand::SecureRandom,
+        digest: digest::Digest,
+        signature: &mut [u8]
+    ) -> Result<(), error::Unspecified> {
+        if signature.len() != self.public().modulus_len() {
+            return Err(error::Unspecified);
+        }
+
         // Use the output buffer as the scratch space for the signature to
         // reduce the required stack space.
-        padding_alg.encode(m_hash, signature, self.public().n().len_bits(), rng)?;
+        padding_alg.encode(digest, signature, self.public().n().len_bits(), rng)?;
 
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.

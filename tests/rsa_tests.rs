@@ -15,6 +15,7 @@
 #![cfg(feature = "alloc")]
 
 use ring::{
+    digest,
     error,
     io::der,
     rand, rsa,
@@ -61,10 +62,10 @@ fn test_signature_rsa_pkcs1_sign() {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");
-            let alg = match digest_name.as_ref() {
-                "SHA256" => &signature::RSA_PKCS1_SHA256,
-                "SHA384" => &signature::RSA_PKCS1_SHA384,
-                "SHA512" => &signature::RSA_PKCS1_SHA512,
+            let (alg, digest_alg) = match digest_name.as_ref() {
+                "SHA256" => (&signature::RSA_PKCS1_SHA256, &digest::SHA256),
+                "SHA384" => (&signature::RSA_PKCS1_SHA384, &digest::SHA384),
+                "SHA512" => (&signature::RSA_PKCS1_SHA512, &digest::SHA512),
                 _ => panic!("Unsupported digest: {}", digest_name),
             };
 
@@ -87,6 +88,13 @@ fn test_signature_rsa_pkcs1_sign() {
                 .sign(alg, &rng, &msg, actual.as_mut_slice())
                 .unwrap();
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
+
+            let digest = digest::digest(&digest_alg, &msg);
+            key_pair
+                .sign_digest_less_safe(alg, &rng, digest, actual.as_mut_slice())
+                .unwrap();
+            assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
+
             Ok(())
         },
     );
@@ -101,10 +109,10 @@ fn test_signature_rsa_pss_sign() {
             assert_eq!(section, "");
 
             let digest_name = test_case.consume_string("Digest");
-            let alg = match digest_name.as_ref() {
-                "SHA256" => &signature::RSA_PSS_SHA256,
-                "SHA384" => &signature::RSA_PSS_SHA384,
-                "SHA512" => &signature::RSA_PSS_SHA512,
+            let (alg, digest_alg) = match digest_name.as_ref() {
+                "SHA256" => (&signature::RSA_PSS_SHA256, &digest::SHA256),
+                "SHA384" => (&signature::RSA_PSS_SHA384, &digest::SHA384),
+                "SHA512" => (&signature::RSA_PSS_SHA512, &digest::SHA512),
                 _ => panic!("Unsupported digest: {}", digest_name),
             };
 
@@ -124,6 +132,13 @@ fn test_signature_rsa_pss_sign() {
             let mut actual = vec![0u8; key_pair.public().modulus_len()];
             key_pair.sign(alg, &rng, &msg, actual.as_mut_slice())?;
             assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
+
+            let digest = digest::digest(&digest_alg, &msg);
+            key_pair
+                .sign_digest_less_safe(alg, &rng, digest, actual.as_mut_slice())
+                .unwrap();
+            assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
+
             Ok(())
         },
     );
