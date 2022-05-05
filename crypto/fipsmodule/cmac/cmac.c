@@ -55,7 +55,7 @@
 #include <openssl/cipher.h>
 #include <openssl/mem.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 
 struct cmac_ctx_st {

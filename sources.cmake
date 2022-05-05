@@ -38,16 +38,16 @@ set(
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
   crypto/curve25519/ed25519_tests.txt
-  crypto/cmac/cavp_3des_cmac_tests.txt
-  crypto/cmac/cavp_aes128_cmac_tests.txt
-  crypto/cmac/cavp_aes192_cmac_tests.txt
-  crypto/cmac/cavp_aes256_cmac_tests.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp/evp_tests.txt
   crypto/evp/scrypt_tests.txt
   crypto/fipsmodule/aes/aes_tests.txt
   crypto/fipsmodule/bn/bn_tests.txt
   crypto/fipsmodule/bn/miller_rabin_tests.txt
+  crypto/fipsmodule/cmac/cavp_3des_cmac_tests.txt
+  crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt
+  crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt
+  crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt
   crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt
   crypto/fipsmodule/ec/p256-nistz_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt

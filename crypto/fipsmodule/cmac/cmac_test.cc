@@ -23,9 +23,9 @@
 #include <openssl/cmac.h>
 #include <openssl/mem.h>
 
-#include "../test/file_test.h"
-#include "../test/test_util.h"
-#include "../test/wycheproof_util.h"
+#include "../../test/file_test.h"
+#include "../../test/test_util.h"
+#include "../../test/wycheproof_util.h"
 
 
 static void test(const char *name, const uint8_t *key, size_t key_len,
@@ -248,20 +248,21 @@ static void RunCAVPTest(const char *path, const EVP_CIPHER *cipher,
 }
 
 TEST(CMACTest, CAVPAES128) {
-  RunCAVPTest("crypto/cmac/cavp_aes128_cmac_tests.txt", EVP_aes_128_cbc(),
-              false);
+  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt",
+              EVP_aes_128_cbc(), false);
 }
 
 TEST(CMACTest, CAVPAES192) {
-  RunCAVPTest("crypto/cmac/cavp_aes192_cmac_tests.txt", EVP_aes_192_cbc(),
-              false);
+  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt",
+              EVP_aes_192_cbc(), false);
 }
 
 TEST(CMACTest, CAVPAES256) {
-  RunCAVPTest("crypto/cmac/cavp_aes256_cmac_tests.txt", EVP_aes_256_cbc(),
-              false);
+  RunCAVPTest("crypto/fipsmodule/cmac/cavp_aes256_cmac_tests.txt",
+              EVP_aes_256_cbc(), false);
 }
 
 TEST(CMACTest, CAVP3DES) {
-  RunCAVPTest("crypto/cmac/cavp_3des_cmac_tests.txt", EVP_des_ede3_cbc(), true);
+  RunCAVPTest("crypto/fipsmodule/cmac/cavp_3des_cmac_tests.txt",
+              EVP_des_ede3_cbc(), true);
 }

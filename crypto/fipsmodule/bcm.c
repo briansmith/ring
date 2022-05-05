@@ -58,6 +58,8 @@
 #include "cipher/aead.c"
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
+#include "cipher/e_aesccm.c"
+#include "cmac/cmac.c"
 #include "dh/check.c"
 #include "dh/dh.c"
 #include "digest/digest.c"
