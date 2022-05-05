@@ -330,9 +330,7 @@ int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
 void ec_GFp_simple_felem_to_bytes(const EC_GROUP *group, uint8_t *out,
                                   size_t *out_len, const EC_FELEM *in) {
   size_t len = BN_num_bytes(&group->field);
-  for (size_t i = 0; i < len; i++) {
-    out[i] = in->bytes[len - 1 - i];
-  }
+  bn_words_to_big_endian(out, len, in->words, group->field.width);
   *out_len = len;
 }
 
@@ -343,10 +341,7 @@ int ec_GFp_simple_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
     return 0;
   }
 
-  OPENSSL_memset(out, 0, sizeof(EC_FELEM));
-  for (size_t i = 0; i < len; i++) {
-    out->bytes[i] = in[len - 1 - i];
-  }
+  bn_big_endian_to_words(out->words, group->field.width, in, len);
 
   if (!bn_less_than_words(out->words, group->field.d, group->field.width)) {
     OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);

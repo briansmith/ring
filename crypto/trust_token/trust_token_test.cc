@@ -854,7 +854,7 @@ TEST_P(TrustTokenBadKeyTest, BadKey) {
                           &key->key.y1, &key->key.xs, &key->key.ys};
 
   // Corrupt private key scalar.
-  scalars[corrupted_key()]->bytes[0] ^= 42;
+  scalars[corrupted_key()]->words[0] ^= 42;
 
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(

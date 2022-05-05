@@ -1175,15 +1175,12 @@ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
     return 0;
   }
 
-  // For simplicity, in case of width mismatches between |group->field| and
-  // |group->order|, zero any untouched words in |out|.
-  OPENSSL_memset(out, 0, sizeof(EC_SCALAR));
-  for (size_t i = 0; i < len; i++) {
-    out->bytes[len - i - 1] = bytes[i];
-  }
-
-  // We must have p < 2×order, assuming p is not tiny (p >= 17). Thus rather we
-  // can reduce by performing at most one subtraction.
+  // The x-coordinate is bounded by p, but we need a scalar, bounded by the
+  // order. These may not have the same size. However, we must have p < 2×order,
+  // assuming p is not tiny (p >= 17).
+  //
+  // Thus |bytes| will fit in |order.width + 1| words, and we can reduce by
+  // performing at most one subtraction.
   //
   // Proof: We only work with prime order curves, so the number of points on
   // the curve is the order. Thus Hasse's theorem gives:
@@ -1197,14 +1194,11 @@ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
   //
   // Additionally, one can manually check this property for built-in curves. It
   // is enforced for legacy custom curves in |EC_GROUP_set_generator|.
-
-  // The above does not guarantee |group->field| is not one word larger than
-  // |group->order|, so read one extra carry word.
-  BN_ULONG tmp[EC_MAX_WORDS];
-  BN_ULONG carry =
-      group->order.width < EC_MAX_WORDS ? out->words[group->order.width] : 0;
-  bn_reduce_once_in_place(out->words, carry, group->order.d, tmp,
-                          group->order.width);
+  const BIGNUM *order = &group->order;
+  BN_ULONG words[EC_MAX_WORDS + 1];
+  bn_big_endian_to_words(words, order->width + 1, bytes, len);
+  bn_reduce_once(out->words, words, /*carry=*/words[order->width], order->d,
+                 order->width);
   return 1;
 }
 

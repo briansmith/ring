@@ -78,10 +78,7 @@ static void digest_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
   if (digest_len > num_bytes) {
     digest_len = num_bytes;
   }
-  OPENSSL_memset(out, 0, sizeof(EC_SCALAR));
-  for (size_t i = 0; i < digest_len; i++) {
-    out->bytes[i] = digest[digest_len - 1 - i];
-  }
+  bn_big_endian_to_words(out->words, order->width, digest, digest_len);
 
   // If it is still too long, truncate remaining bits with a shift.
   if (8 * digest_len > num_bits) {
