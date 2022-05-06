@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <stdlib.h>
 
+#include <openssl/ctrdrbg.h>
 #include <openssl/rand.h>
 
 #include "internal.h"

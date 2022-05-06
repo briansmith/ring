@@ -20,6 +20,7 @@
 #include <openssl/cipher.h>
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
+#include <openssl/ctrdrbg.h>
 #include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>

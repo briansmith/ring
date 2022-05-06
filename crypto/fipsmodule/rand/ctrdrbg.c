@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/rand.h>
+#include <openssl/ctrdrbg.h>
 
 #include <openssl/type_check.h>
 #include <openssl/mem.h>
@@ -27,6 +27,21 @@
 
 // See table 3.
 static const uint64_t kMaxReseedCount = UINT64_C(1) << 48;
+
+CTR_DRBG_STATE *CTR_DRBG_new(const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],
+                             const uint8_t *personalization,
+                             size_t personalization_len) {
+  CTR_DRBG_STATE *drbg = OPENSSL_malloc(sizeof(CTR_DRBG_STATE));
+  if (drbg == NULL ||
+      !CTR_DRBG_init(drbg, entropy, personalization, personalization_len)) {
+    CTR_DRBG_free(drbg);
+    return NULL;
+  }
+
+  return drbg;
+}
+
+void CTR_DRBG_free(CTR_DRBG_STATE *state) { OPENSSL_free(state); }
 
 int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
                   const uint8_t entropy[CTR_DRBG_ENTROPY_LEN],

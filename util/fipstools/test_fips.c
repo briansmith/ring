@@ -21,6 +21,7 @@
 #include <openssl/aes.h>
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
+#include <openssl/ctrdrbg.h>
 #include <openssl/des.h>
 #include <openssl/dh.h>
 #include <openssl/ecdsa.h>

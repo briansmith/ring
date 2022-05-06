@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include <openssl/rand.h>
+#include <openssl/ctrdrbg.h>
 #include <openssl/sha.h>
 
 #include "internal.h"
@@ -58,6 +58,18 @@ TEST(CTRDRBGTest, Basic) {
   EXPECT_EQ(Bytes(kExpected), Bytes(out));
 
   CTR_DRBG_clear(&drbg);
+}
+
+TEST(CTRDRBGTest, Allocated) {
+  const uint8_t kSeed[CTR_DRBG_ENTROPY_LEN] = {0};
+
+  CTR_DRBG_STATE *allocated = CTR_DRBG_new(kSeed, nullptr, 0);
+  ASSERT_TRUE(allocated);
+  CTR_DRBG_free(allocated);
+
+  allocated = CTR_DRBG_new(kSeed, nullptr, 1<<20);
+  ASSERT_FALSE(allocated);
+  CTR_DRBG_free(allocated);
 }
 
 TEST(CTRDRBGTest, Large) {
