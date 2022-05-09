@@ -140,6 +140,8 @@
 
 #include <openssl/ssl.h>
 
+#include <algorithm>
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -3023,6 +3025,13 @@ SSL_SESSION *SSL_process_tls13_new_session_ticket(SSL *ssl, const uint8_t *buf,
     return nullptr;
   }
   return session.release();
+}
+
+int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets) {
+  num_tickets = std::min(num_tickets, kMaxTickets);
+  static_assert(kMaxTickets <= 0xff, "Too many tickets.");
+  ctx->num_tickets = static_cast<uint8_t>(num_tickets);
+  return 1;
 }
 
 int SSL_set_tlsext_status_type(SSL *ssl, int type) {

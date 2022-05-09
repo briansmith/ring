@@ -2281,6 +2281,13 @@ OPENSSL_EXPORT void SSL_CTX_set_ticket_aead_method(
 OPENSSL_EXPORT SSL_SESSION *SSL_process_tls13_new_session_ticket(
     SSL *ssl, const uint8_t *buf, size_t buf_len);
 
+// SSL_CTX_set_num_tickets configures |ctx| to send |num_tickets| immediately
+// after a successful TLS 1.3 handshake as a server. It returns one. Large
+// values of |num_tickets| will be capped within the library.
+//
+// By default, BoringSSL sends two tickets.
+OPENSSL_EXPORT int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets);
+
 
 // Elliptic curve Diffie-Hellman.
 //

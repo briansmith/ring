@@ -2056,6 +2056,11 @@ struct SSL_HANDSHAKE {
   uint8_t grease_seed[ssl_grease_last_index + 1] = {0};
 };
 
+// kMaxTickets is the maximum number of tickets to send immediately after the
+// handshake. We use a one-byte ticket nonce, and there is no point in sending
+// so many tickets.
+constexpr size_t kMaxTickets = 16;
+
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
 
 // ssl_check_message_type checks if |msg| has type |type|. If so it returns
@@ -3415,6 +3420,11 @@ struct ssl_ctx_st {
   // |SSL_CTX_set_min_proto_version|. Note this version is normalized in DTLS
   // and is further constrainted by |SSL_OP_NO_*|.
   uint16_t conf_min_version = 0;
+
+  // num_tickets is the number of tickets to send immediately after the TLS 1.3
+  // handshake. TLS 1.3 recommends single-use tickets so, by default, issue two
+  /// in case the client makes several connections before getting a renewal.
+  uint8_t num_tickets = 2;
 
   // quic_method is the method table corresponding to the QUIC hooks.
   const SSL_QUIC_METHOD *quic_method = nullptr;
