@@ -27,9 +27,9 @@ void RAND_need_entropy(size_t bytes_needed) {
     todo = bytes_needed;
   }
 
-  int used_cpu;
-  CRYPTO_get_seed_entropy(buf, todo, &used_cpu);
-  RAND_load_entropy(buf, todo, used_cpu);
+  int want_additional_input;
+  CRYPTO_get_seed_entropy(buf, todo, &want_additional_input);
+  RAND_load_entropy(buf, todo, want_additional_input);
 }
 
 #endif  // FIPS

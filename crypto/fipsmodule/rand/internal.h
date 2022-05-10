@@ -50,10 +50,10 @@ void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
                              int *out_used_cpu);
 
 // RAND_load_entropy supplies |entropy_len| bytes of entropy to the module. The
-// |from_cpu| parameter is true iff the entropy was obtained directly from the
-// CPU.
+// |want_additional_input| parameter is true iff the entropy was obtained from
+// a source other than the system, e.g. directly from the CPU.
 void RAND_load_entropy(const uint8_t *entropy, size_t entropy_len,
-                       int from_cpu);
+                       int want_additional_input);
 
 // RAND_need_entropy is implemented outside of the FIPS module and is called
 // when the module has stopped because it has run out of entropy.
