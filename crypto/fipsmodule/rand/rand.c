@@ -184,7 +184,8 @@ void CRYPTO_get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
 
 struct entropy_buffer {
   // bytes contains entropy suitable for seeding a DRBG.
-  uint8_t bytes[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
+  uint8_t
+      bytes[CRNGT_BLOCK_SIZE + CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
   // bytes_valid indicates the number of bytes of |bytes| that contain valid
   // data.
   size_t bytes_valid;
@@ -248,36 +249,46 @@ static void get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
 static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN],
                           int *out_want_additional_input) {
-  if (!state->last_block_valid) {
-    int unused;
-    get_seed_entropy(state->last_block, sizeof(state->last_block), &unused);
-    state->last_block_valid = 1;
+  uint8_t entropy_bytes[sizeof(state->last_block) +
+                        CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
+  uint8_t *entropy = entropy_bytes;
+  size_t entropy_len = sizeof(entropy_bytes);
+
+  if (state->last_block_valid) {
+    // No need to fill |state->last_block| with entropy from the read.
+    entropy += sizeof(state->last_block);
+    entropy_len -= sizeof(state->last_block);
   }
 
-  uint8_t entropy[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
-  get_seed_entropy(entropy, sizeof(entropy), out_want_additional_input);
+  get_seed_entropy(entropy, entropy_len, out_want_additional_input);
+
+  if (!state->last_block_valid) {
+    OPENSSL_memcpy(state->last_block, entropy, sizeof(state->last_block));
+    entropy += sizeof(state->last_block);
+    entropy_len -= sizeof(state->last_block);
+  }
 
   // See FIPS 140-2, section 4.9.2. This is the “continuous random number
   // generator test” which causes the program to randomly abort. Hopefully the
   // rate of failure is small enough not to be a problem in practice.
-  if (CRYPTO_memcmp(state->last_block, entropy, CRNGT_BLOCK_SIZE) == 0) {
+  if (CRYPTO_memcmp(state->last_block, entropy, sizeof(state->last_block)) ==
+      0) {
     fprintf(stderr, "CRNGT failed.\n");
     BORINGSSL_FIPS_abort();
   }
 
-  OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, "");
-  for (size_t i = CRNGT_BLOCK_SIZE; i < sizeof(entropy);
-       i += CRNGT_BLOCK_SIZE) {
+  assert(entropy_len % CRNGT_BLOCK_SIZE == 0);
+  for (size_t i = CRNGT_BLOCK_SIZE; i < entropy_len; i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
                       CRNGT_BLOCK_SIZE) == 0) {
       fprintf(stderr, "CRNGT failed.\n");
       BORINGSSL_FIPS_abort();
     }
   }
-  OPENSSL_memcpy(state->last_block,
-                 entropy + sizeof(entropy) - CRNGT_BLOCK_SIZE,
+  OPENSSL_memcpy(state->last_block, entropy + entropy_len - CRNGT_BLOCK_SIZE,
                  CRNGT_BLOCK_SIZE);
 
+  assert(entropy_len == BORINGSSL_FIPS_OVERREAD * CTR_DRBG_ENTROPY_LEN);
   OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
 
   for (size_t i = 1; i < BORINGSSL_FIPS_OVERREAD; i++) {

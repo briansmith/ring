@@ -21,7 +21,8 @@
 // RAND_need_entropy is called by the FIPS module when it has blocked because of
 // a lack of entropy. This signal is used as an indication to feed it more.
 void RAND_need_entropy(size_t bytes_needed) {
-  uint8_t buf[CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
+  uint8_t buf[/* last_block size */ 16 +
+              CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
   size_t todo = sizeof(buf);
   if (todo > bytes_needed) {
     todo = bytes_needed;

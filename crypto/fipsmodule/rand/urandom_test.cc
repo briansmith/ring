@@ -420,8 +420,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   if (!have_rdrand()) {
     if ((!have_fork_detection() && !sysrand(true, kAdditionalDataLength)) ||
         // Initialise CRNGT.
-        (is_fips && !sysrand(true, 16)) ||
-        !sysrand(true, kSeedLength) ||
+        !sysrand(true, kSeedLength + (is_fips ? 16 : 0)) ||
         // Second entropy draw.
         (!have_fork_detection() && !sysrand(true, kAdditionalDataLength))) {
       return ret;
