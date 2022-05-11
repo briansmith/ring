@@ -64,25 +64,12 @@
 #include <openssl/bio.h>
 #include <openssl/mem.h>
 
-#include "charmap.h"
 #include "internal.h"
 
 
-// These flags must be distinct from |ESC_FLAGS| and fit in a byte.
-
-// Character is a valid PrintableString character
-#define CHARTYPE_PRINTABLESTRING 0x10
-// Character needs escaping if it is the first character
-#define CHARTYPE_FIRST_ESC_2253 0x20
-// Character needs escaping if it is the last character
-#define CHARTYPE_LAST_ESC_2253 0x40
-
-#define CHARTYPE_BS_ESC         (ASN1_STRFLGS_ESC_2253 | CHARTYPE_FIRST_ESC_2253 | CHARTYPE_LAST_ESC_2253)
-
-#define ESC_FLAGS (ASN1_STRFLGS_ESC_2253 | \
-                  ASN1_STRFLGS_ESC_QUOTE | \
-                  ASN1_STRFLGS_ESC_CTRL | \
-                  ASN1_STRFLGS_ESC_MSB)
+#define ESC_FLAGS                                                           \
+  (ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_QUOTE | ASN1_STRFLGS_ESC_CTRL | \
+   ASN1_STRFLGS_ESC_MSB)
 
 static int maybe_write(BIO *out, const void *buf, int len)
 {
@@ -90,70 +77,54 @@ static int maybe_write(BIO *out, const void *buf, int len)
     return out == NULL || BIO_write(out, buf, len) == len;
 }
 
-/*
- * This function handles display of strings, one character at a time. It is
- * passed an unsigned long for each character because it could come from 2 or
- * even 4 byte forms.
- */
-
-#define HEX_SIZE(type) (sizeof(type)*2)
-
-static int do_esc_char(uint32_t c, unsigned char flags, char *do_quotes,
-                       BIO *out)
+static int is_control_character(unsigned char c)
 {
-    unsigned char chflgs, chtmp;
-    char tmphex[HEX_SIZE(uint32_t) + 3];
+    return c < 32 || c == 127;
+}
 
+static int do_esc_char(uint32_t c, unsigned long flags, char *do_quotes,
+                       BIO *out, int is_first, int is_last)
+{
+    /* |c| is a |uint32_t| because, depending on |ASN1_STRFLGS_UTF8_CONVERT|,
+     * we may be escaping bytes or Unicode codepoints. */
+    char buf[16];  /* Large enough for "\\W01234567". */
+    unsigned char u8 = (unsigned char)c;
     if (c > 0xffff) {
-        BIO_snprintf(tmphex, sizeof tmphex, "\\W%08" PRIX32, c);
-        if (!maybe_write(out, tmphex, 10))
-            return -1;
-        return 10;
-    }
-    if (c > 0xff) {
-        BIO_snprintf(tmphex, sizeof tmphex, "\\U%04" PRIX32, c);
-        if (!maybe_write(out, tmphex, 6))
-            return -1;
-        return 6;
-    }
-    chtmp = (unsigned char)c;
-    if (chtmp > 0x7f)
-        chflgs = flags & ASN1_STRFLGS_ESC_MSB;
-    else
-        chflgs = char_type[chtmp] & flags;
-    if (chflgs & CHARTYPE_BS_ESC) {
-        /* If we don't escape with quotes, signal we need quotes */
-        if (chflgs & ASN1_STRFLGS_ESC_QUOTE) {
-            if (do_quotes)
-                *do_quotes = 1;
-            if (!maybe_write(out, &chtmp, 1))
-                return -1;
-            return 1;
+        BIO_snprintf(buf, sizeof(buf), "\\W%08" PRIX32, c);
+    } else if (c > 0xff) {
+        BIO_snprintf(buf, sizeof(buf), "\\U%04" PRIX32, c);
+    } else if ((flags & ASN1_STRFLGS_ESC_MSB) && c > 0x7f) {
+        BIO_snprintf(buf, sizeof(buf), "\\%02X", c);
+    } else if ((flags & ASN1_STRFLGS_ESC_CTRL) && is_control_character(c)) {
+        BIO_snprintf(buf, sizeof(buf), "\\%02X", c);
+    } else if (flags & ASN1_STRFLGS_ESC_2253) {
+        /* See RFC 2253, sections 2.4 and 4. */
+        if (c == '\\' || c == '"') {
+            /* Quotes and backslashes are always escaped, quoted or not. */
+            BIO_snprintf(buf, sizeof(buf), "\\%c", (int)c);
+        } else if (c == ',' || c == '+' || c == '<' || c == '>' || c == ';' ||
+                   (is_first && (c == ' ' || c == '#')) ||
+                   (is_last && (c == ' '))) {
+            if (flags & ASN1_STRFLGS_ESC_QUOTE) {
+                /* No need to escape, just tell the caller to quote. */
+                if (do_quotes != NULL) {
+                    *do_quotes = 1;
+                }
+                return maybe_write(out, &u8, 1) ? 1 : -1;
+            }
+            BIO_snprintf(buf, sizeof(buf), "\\%c", (int)c);
+        } else {
+            return maybe_write(out, &u8, 1) ? 1 : -1;
         }
-        if (!maybe_write(out, "\\", 1))
-            return -1;
-        if (!maybe_write(out, &chtmp, 1))
-            return -1;
-        return 2;
+    } else if ((flags & ESC_FLAGS) && c == '\\') {
+        /* If any escape flags are set, also escape backslashes. */
+        BIO_snprintf(buf, sizeof(buf), "\\%c", (int)c);
+    } else {
+        return maybe_write(out, &u8, 1) ? 1 : -1;
     }
-    if (chflgs & (ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB)) {
-        BIO_snprintf(tmphex, 11, "\\%02X", chtmp);
-        if (!maybe_write(out, tmphex, 3))
-            return -1;
-        return 3;
-    }
-    /*
-     * If we get this far and do any escaping at all must escape the escape
-     * character itself: backslash.
-     */
-    if (chtmp == '\\' && flags & ESC_FLAGS) {
-        if (!maybe_write(out, "\\\\", 2))
-            return -1;
-        return 2;
-    }
-    if (!maybe_write(out, &chtmp, 1))
-        return -1;
-    return 1;
+
+    int len = strlen(buf);
+    return maybe_write(out, buf, len) ? len : -1;
 }
 
 /*
@@ -163,7 +134,7 @@ static int do_esc_char(uint32_t c, unsigned char flags, char *do_quotes,
  */
 
 static int do_buf(const unsigned char *buf, int buflen, int encoding,
-                  int utf8_convert, unsigned char flags, char *quotes, BIO *out)
+                  int utf8_convert, unsigned long flags, char *quotes, BIO *out)
 {
     /* Reject invalid UCS-4 and UCS-2 lengths without parsing. */
     switch (encoding) {
@@ -185,10 +156,7 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
     const unsigned char *q = buf + buflen;
     int outlen = 0;
     while (p != q) {
-        unsigned char orflags = 0;
-        if (p == buf && flags & ASN1_STRFLGS_ESC_2253) {
-            orflags = CHARTYPE_FIRST_ESC_2253;
-        }
+        const int is_first = p == buf;
         /* TODO(davidben): Replace this with |cbs_get_ucs2_be|, etc., to check
          * for invalid codepoints. Before doing that, enforce it in the parser,
          * https://crbug.com/boringssl/427, so these error cases are not
@@ -224,8 +192,7 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
             assert(0);
             return -1;
         }
-        if (p == q && flags & ASN1_STRFLGS_ESC_2253)
-            orflags = CHARTYPE_LAST_ESC_2253;
+        const int is_last = p == q;
         if (utf8_convert) {
             unsigned char utfbuf[6];
             int utflen;
@@ -237,14 +204,15 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
                  * otherwise each character will be > 0x7f and so the
                  * character will never be escaped on first and last.
                  */
-                int len = do_esc_char(utfbuf[i], flags | orflags, quotes, out);
+                int len = do_esc_char(utfbuf[i], flags, quotes, out, is_first,
+                                      is_last);
                 if (len < 0) {
                     return -1;
                 }
                 outlen += len;
             }
         } else {
-            int len = do_esc_char(c, flags | orflags, quotes, out);
+            int len = do_esc_char(c, flags, quotes, out, is_first, is_last);
             if (len < 0) {
                 return -1;
             }
@@ -281,14 +249,14 @@ static int do_hex_dump(BIO *out, unsigned char *buf, int buflen)
  * encoding. This uses the RFC 2253 #01234 format.
  */
 
-static int do_dump(unsigned long lflags, BIO *out, const ASN1_STRING *str)
+static int do_dump(unsigned long flags, BIO *out, const ASN1_STRING *str)
 {
     if (!maybe_write(out, "#", 1)) {
         return -1;
     }
 
     /* If we don't dump DER encoding just dump content octets */
-    if (!(lflags & ASN1_STRFLGS_DUMP_DER)) {
+    if (!(flags & ASN1_STRFLGS_DUMP_DER)) {
         int outlen = do_hex_dump(out, str->data, str->length);
         if (outlen < 0) {
             return -1;
@@ -362,13 +330,11 @@ static int string_type_to_encoding(int type) {
  * an error occurred.
  */
 
-int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long lflags)
+int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long flags)
 {
-    /* Keep a copy of escape flags */
-    unsigned char flags = (unsigned char)(lflags & ESC_FLAGS);
     int type = str->type;
     int outlen = 0;
-    if (lflags & ASN1_STRFLGS_SHOW_TYPE) {
+    if (flags & ASN1_STRFLGS_SHOW_TYPE) {
         const char *tagname = ASN1_tag2str(type);
         outlen += strlen(tagname);
         if (!maybe_write(out, tagname, outlen) || !maybe_write(out, ":", 1))
@@ -378,21 +344,21 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long lflags)
 
     /* Decide what to do with |str|, either dump the contents or display it. */
     int encoding;
-    if (lflags & ASN1_STRFLGS_DUMP_ALL) {
+    if (flags & ASN1_STRFLGS_DUMP_ALL) {
         /* Dump everything. */
         encoding = -1;
-    } else if (lflags & ASN1_STRFLGS_IGNORE_TYPE) {
+    } else if (flags & ASN1_STRFLGS_IGNORE_TYPE) {
         /* Ignore the string type and interpret the contents as Latin-1. */
         encoding = MBSTRING_ASC;
     } else {
         encoding = string_type_to_encoding(type);
-        if (encoding == -1 && (lflags & ASN1_STRFLGS_DUMP_UNKNOWN) == 0) {
+        if (encoding == -1 && (flags & ASN1_STRFLGS_DUMP_UNKNOWN) == 0) {
             encoding = MBSTRING_ASC;
         }
     }
 
     if (encoding == -1) {
-        int len = do_dump(lflags, out, str);
+        int len = do_dump(flags, out, str);
         if (len < 0)
             return -1;
         outlen += len;
@@ -400,7 +366,7 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str, unsigned long lflags)
     }
 
     int utf8_convert = 0;
-    if (lflags & ASN1_STRFLGS_UTF8_CONVERT) {
+    if (flags & ASN1_STRFLGS_UTF8_CONVERT) {
         /* If the string is UTF-8, skip decoding and just interpret it as 1 byte
          * per character to avoid converting twice.
          *
