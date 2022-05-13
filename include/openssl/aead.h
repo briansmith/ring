@@ -212,15 +212,15 @@ union evp_aead_ctx_st_state {
   uint64_t alignment;
 };
 
-// An EVP_AEAD_CTX represents an AEAD algorithm configured with a specific key
-// and message-independent IV.
-typedef struct evp_aead_ctx_st {
+// An evp_aead_ctx_st (typedefed as |EVP_AEAD_CTX| in base.h) represents an AEAD
+// algorithm configured with a specific key and message-independent IV.
+struct evp_aead_ctx_st {
   const EVP_AEAD *aead;
   union evp_aead_ctx_st_state state;
   // tag_len may contain the actual length of the authentication tag if it is
   // known at initialization time.
   uint8_t tag_len;
-} EVP_AEAD_CTX;
+};
 
 // EVP_AEAD_MAX_KEY_LENGTH contains the maximum key length used by
 // any AEAD defined in this header.

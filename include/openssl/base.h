@@ -402,6 +402,7 @@ typedef struct engine_st ENGINE;
 typedef struct env_md_ctx_st EVP_MD_CTX;
 typedef struct env_md_st EVP_MD;
 typedef struct evp_aead_st EVP_AEAD;
+typedef struct evp_aead_ctx_st EVP_AEAD_CTX;
 typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
 typedef struct evp_cipher_st EVP_CIPHER;
 typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
