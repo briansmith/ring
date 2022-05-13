@@ -99,16 +99,13 @@ static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
   out += 16 * bsaes_blocks;
   blocks -= bsaes_blocks;
 
-  union {
-    uint32_t u32[4];
-    uint8_t u8[16];
-  } new_ivec;
-  memcpy(new_ivec.u8, ivec, 16);
-  uint32_t ctr = CRYPTO_bswap4(new_ivec.u32[3]) + bsaes_blocks;
-  new_ivec.u32[3] = CRYPTO_bswap4(ctr);
+  uint8_t new_ivec[16];
+  memcpy(new_ivec, ivec, 12);
+  uint32_t ctr = CRYPTO_load_u32_be(ivec + 12) + bsaes_blocks;
+  CRYPTO_store_u32_be(new_ivec + 12, ctr);
 
   // Finish any remaining blocks with |vpaes_ctr32_encrypt_blocks|.
-  vpaes_ctr32_encrypt_blocks(in, out, blocks, key, new_ivec.u8);
+  vpaes_ctr32_encrypt_blocks(in, out, blocks, key, new_ivec);
 }
 #endif  // BSAES
 

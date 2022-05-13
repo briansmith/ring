@@ -137,76 +137,69 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        const uint8_t gcm_key[16]) {
   *out_is_avx = 0;
 
-  union {
-    uint64_t u[2];
-    uint8_t c[16];
-  } H;
-
-  OPENSSL_memcpy(H.c, gcm_key, 16);
-
-  // H is stored in host byte order
-  H.u[0] = CRYPTO_bswap8(H.u[0]);
-  H.u[1] = CRYPTO_bswap8(H.u[1]);
-
-  OPENSSL_memcpy(out_key, H.c, 16);
+  // H is stored in host byte order.
+  uint64_t H[2] = {CRYPTO_load_u64_be(gcm_key),
+                   CRYPTO_load_u64_be(gcm_key + 8)};
+  out_key->hi = H[0];
+  out_key->lo = H[1];
 
 #if defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
     if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
-      gcm_init_avx(out_table, H.u);
+      gcm_init_avx(out_table, H);
       *out_mult = gcm_gmult_avx;
       *out_hash = gcm_ghash_avx;
       *out_is_avx = 1;
       return;
     }
-    gcm_init_clmul(out_table, H.u);
+    gcm_init_clmul(out_table, H);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
     return;
   }
   if (CRYPTO_is_SSSE3_capable()) {
-    gcm_init_ssse3(out_table, H.u);
+    gcm_init_ssse3(out_table, H);
     *out_mult = gcm_gmult_ssse3;
     *out_hash = gcm_ghash_ssse3;
     return;
   }
 #elif defined(GHASH_ASM_X86)
   if (crypto_gcm_clmul_enabled()) {
-    gcm_init_clmul(out_table, H.u);
+    gcm_init_clmul(out_table, H);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
     return;
   }
   if (CRYPTO_is_SSSE3_capable()) {
-    gcm_init_ssse3(out_table, H.u);
+    gcm_init_ssse3(out_table, H);
     *out_mult = gcm_gmult_ssse3;
     *out_hash = gcm_ghash_ssse3;
     return;
   }
 #elif defined(GHASH_ASM_ARM)
   if (gcm_pmull_capable()) {
-    gcm_init_v8(out_table, H.u);
+    gcm_init_v8(out_table, H);
     *out_mult = gcm_gmult_v8;
     *out_hash = gcm_ghash_v8;
     return;
   }
 
   if (gcm_neon_capable()) {
-    gcm_init_neon(out_table, H.u);
+    gcm_init_neon(out_table, H);
     *out_mult = gcm_gmult_neon;
     *out_hash = gcm_ghash_neon;
     return;
   }
 #elif defined(GHASH_ASM_PPC64LE)
   if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
-    gcm_init_p8(out_table, H.u);
+    gcm_init_p8(out_table, H);
     *out_mult = gcm_gmult_p8;
     *out_hash = gcm_ghash_p8;
     return;
   }
 #endif
 
-  gcm_init_nohw(out_table, H.u);
+  gcm_init_nohw(out_table, H);
   *out_mult = gcm_gmult_nohw;
   *out_hash = gcm_ghash_nohw;
 }

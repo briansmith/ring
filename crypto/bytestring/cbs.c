@@ -496,15 +496,12 @@ int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
   if (len > sizeof(int64_t)) {
     return 0;
   }
-  union {
-    int64_t i;
-    uint8_t bytes[sizeof(int64_t)];
-  } u;
-  memset(u.bytes, is_negative ? 0xff : 0, sizeof(u.bytes));  // Sign-extend.
+  uint8_t sign_extend[sizeof(int64_t)];
+  memset(sign_extend, is_negative ? 0xff : 0, sizeof(sign_extend));
   for (size_t i = 0; i < len; i++) {
-    u.bytes[i] = data[len - i - 1];
+    sign_extend[i] = data[len - i - 1];
   }
-  *out = u.i;
+  memcpy(out, sign_extend, sizeof(sign_extend));
   return 1;
 }
 

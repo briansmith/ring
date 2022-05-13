@@ -542,14 +542,11 @@ int CBB_add_asn1_int64(CBB *cbb, int64_t value) {
     return CBB_add_asn1_uint64(cbb, value);
   }
 
-  union {
-    int64_t i;
-    uint8_t bytes[sizeof(int64_t)];
-  } u;
-  u.i = value;
+  uint8_t bytes[sizeof(int64_t)];
+  memcpy(bytes, &value, sizeof(value));
   int start = 7;
   // Skip leading sign-extension bytes unless they are necessary.
-  while (start > 0 && (u.bytes[start] == 0xff && (u.bytes[start - 1] & 0x80))) {
+  while (start > 0 && (bytes[start] == 0xff && (bytes[start - 1] & 0x80))) {
     start--;
   }
 
@@ -558,7 +555,7 @@ int CBB_add_asn1_int64(CBB *cbb, int64_t value) {
     return 0;
   }
   for (int i = start; i >= 0; i--) {
-    if (!CBB_add_u8(&child, u.bytes[i])) {
+    if (!CBB_add_u8(&child, bytes[i])) {
       return 0;
     }
   }
