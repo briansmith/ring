@@ -65,6 +65,7 @@
 #include <openssl/nid.h>
 
 #include "internal.h"
+#include "../service_indicator/internal.h"
 #include "../../internal.h"
 
 
@@ -322,24 +323,26 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
-  int n, ret;
+  int n;
   unsigned int i, b, bl;
 
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
-    ret = ctx->cipher->cipher(ctx, out, NULL, 0);
-    if (ret < 0) {
+    // When EVP_CIPH_FLAG_CUSTOM_CIPHER is set, the return value of |cipher| is
+    // the number of bytes written, or -1 on error. Otherwise the return value
+    // is one on success and zero on error.
+    const int num_bytes = ctx->cipher->cipher(ctx, out, NULL, 0);
+    if (num_bytes < 0) {
       return 0;
-    } else {
-      *out_len = ret;
     }
-    return 1;
+    *out_len = num_bytes;
+    goto out;
   }
 
   b = ctx->cipher->block_size;
   assert(b <= sizeof(ctx->buf));
   if (b == 1) {
     *out_len = 0;
-    return 1;
+    goto out;
   }
 
   bl = ctx->buf_len;
@@ -349,20 +352,21 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
       return 0;
     }
     *out_len = 0;
-    return 1;
+    goto out;
   }
 
   n = b - bl;
   for (i = bl; i < b; i++) {
     ctx->buf[i] = n;
   }
-  ret = ctx->cipher->cipher(ctx, out, ctx->buf, b);
-
-  if (ret) {
-    *out_len = b;
+  if (!ctx->cipher->cipher(ctx, out, ctx->buf, b)) {
+    return 0;
   }
+  *out_len = b;
 
-  return ret;
+out:
+  EVP_Cipher_verify_service_indicator(ctx);
+  return 1;
 }
 
 int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
@@ -436,7 +440,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     } else {
       *out_len = i;
     }
-    return 1;
+    goto out;
   }
 
   b = ctx->cipher->block_size;
@@ -446,7 +450,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
       return 0;
     }
     *out_len = 0;
-    return 1;
+    goto out;
   }
 
   if (b > 1) {
@@ -480,12 +484,30 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     *out_len = 0;
   }
 
+out:
+  EVP_Cipher_verify_service_indicator(ctx);
   return 1;
 }
 
 int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                size_t in_len) {
-  return ctx->cipher->cipher(ctx, out, in, in_len);
+  const int ret = ctx->cipher->cipher(ctx, out, in, in_len);
+
+  // |EVP_CIPH_FLAG_CUSTOM_CIPHER| never sets the FIPS indicator via
+  // |EVP_Cipher| because it's complicated whether the operation has completed
+  // or not. E.g. AES-GCM with a non-NULL |in| argument hasn't completed an
+  // operation. Callers should use the |EVP_AEAD| API or, at least,
+  // |EVP_CipherUpdate| etc.
+  //
+  // This call can't be pushed into |EVP_Cipher_verify_service_indicator|
+  // because whether |ret| indicates success or not depends on whether
+  // |EVP_CIPH_FLAG_CUSTOM_CIPHER| is set. (This unreasonable, but matches
+  // OpenSSL.)
+  if (!(ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) && ret) {
+    EVP_Cipher_verify_service_indicator(ctx);
+  }
+
+  return ret;
 }
 
 int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,

@@ -323,6 +323,9 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   // into the RBG. This is a hardening measure against entropy failure.
   OPENSSL_STATIC_ASSERT(SHA512_DIGEST_LENGTH >= 32,
                         "additional_data is too large for SHA-512");
+
+  FIPS_service_indicator_lock_state();
+
   SHA512_CTX sha;
   uint8_t additional_data[SHA512_DIGEST_LENGTH];
   SHA512_Init(&sha);
@@ -330,17 +333,22 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   SHA512_Update(&sha, digest, digest_len);
   SHA512_Final(additional_data, &sha);
 
+  ECDSA_SIG *ret = NULL;
   for (;;) {
     EC_SCALAR k;
     if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
-      return NULL;
+      ret = NULL;
+      goto out;
     }
 
     int retry;
-    ECDSA_SIG *sig =
-        ecdsa_sign_impl(group, &retry, priv_key, &k, digest, digest_len);
-    if (sig != NULL || !retry) {
-      return sig;
+    ret = ecdsa_sign_impl(group, &retry, priv_key, &k, digest, digest_len);
+    if (ret != NULL || !retry) {
+      goto out;
     }
   }
+
+out:
+  FIPS_service_indicator_unlock_state();
+  return ret;
 }

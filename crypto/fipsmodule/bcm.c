@@ -99,6 +99,7 @@
 #include "rsa/rsa_impl.c"
 #include "self_check/fips.c"
 #include "self_check/self_check.c"
+#include "service_indicator/service_indicator.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"
 #include "sha/sha256.c"

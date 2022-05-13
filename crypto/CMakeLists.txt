@@ -530,6 +530,7 @@ add_executable(
   fipsmodule/modes/gcm_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
   fipsmodule/rand/fork_detect_test.cc
+  fipsmodule/service_indicator/service_indicator_test.cc
   fipsmodule/sha/sha_test.cc
   hkdf/hkdf_test.cc
   hpke/hpke_test.cc

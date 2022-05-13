@@ -55,6 +55,7 @@
 #include <openssl/mem.h>
 
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
 
 
 // kDefaultIV is the default IV value given in RFC 3394, 2.2.3.1.
@@ -98,6 +99,7 @@ int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
   }
 
   OPENSSL_memcpy(out, A, 8);
+  FIPS_service_indicator_update_state();
   return (int)in_len + 8;
 }
 
@@ -151,6 +153,7 @@ int AES_unwrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
     return -1;
   }
 
+  FIPS_service_indicator_update_state();
   return (int)in_len - 8;
 }
 
@@ -190,12 +193,15 @@ int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
   assert(padded_len >= 8);
   memset(padded_in + padded_len - 8, 0, 8);
   memcpy(padded_in, in, in_len);
+  FIPS_service_indicator_lock_state();
   const int ret = AES_wrap_key(key, block, out, padded_in, padded_len);
+  FIPS_service_indicator_unlock_state();
   OPENSSL_free(padded_in);
   if (ret < 0) {
     return 0;
   }
   *out_len = ret;
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
@@ -232,5 +238,9 @@ int AES_unwrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
   }
 
   *out_len = constant_time_select_w(ok, claimed_len, 0);
-  return ok & 1;
+  const int ret = ok & 1;
+  if (ret) {
+    FIPS_service_indicator_update_state();
+  }
+  return ret;
 }

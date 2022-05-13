@@ -58,6 +58,7 @@
 
 #include "internal.h"
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
 
 
 // tls1_P_hash computes the TLS P_<hash> function as described in RFC 5246,
@@ -146,12 +147,16 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
 
   OPENSSL_memset(out, 0, out_len);
 
+  const EVP_MD *const original_digest = digest;
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
+
   if (digest == EVP_md5_sha1()) {
     // If using the MD5/SHA1 PRF, |secret| is partitioned between MD5 and SHA-1.
     size_t secret_half = secret_len - (secret_len / 2);
     if (!tls1_P_hash(out, out_len, EVP_md5(), secret, secret_half, label,
                      label_len, seed1, seed1_len, seed2, seed2_len)) {
-      return 0;
+      goto end;
     }
 
     // Note that, if |secret_len| is odd, the two halves share a byte.
@@ -160,6 +165,13 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
     digest = EVP_sha1();
   }
 
-  return tls1_P_hash(out, out_len, digest, secret, secret_len, label, label_len,
-                     seed1, seed1_len, seed2, seed2_len);
+  ret = tls1_P_hash(out, out_len, digest, secret, secret_len, label, label_len,
+                    seed1, seed1_len, seed2, seed2_len);
+
+end:
+  FIPS_service_indicator_unlock_state();
+  if (ret) {
+    TLSKDF_verify_service_indicator(original_digest);
+  }
+  return ret;
 }

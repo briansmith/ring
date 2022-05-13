@@ -60,8 +60,9 @@
 
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
+#include "internal.h"
 
 
 // The 32-bit hash algorithms share a common byte-order neutral collector and
@@ -274,6 +275,7 @@ static int sha512_final_impl(uint8_t *out, SHA512_CTX *sha) {
     out += 8;
   }
 
+  FIPS_service_indicator_update_state();
   return 1;
 }
 
