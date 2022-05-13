@@ -817,9 +817,6 @@ OPENSSL_EXPORT const char *X509_get_default_cert_dir_env(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
 OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
-OPENSSL_EXPORT X509_REQ *X509_to_X509_REQ(X509 *x, EVP_PKEY *pkey,
-                                          const EVP_MD *md);
-
 DECLARE_ASN1_ENCODE_FUNCTIONS(X509_ALGORS, X509_ALGORS, X509_ALGORS)
 
 DECLARE_ASN1_FUNCTIONS(X509_PUBKEY)
