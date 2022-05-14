@@ -15,6 +15,7 @@ where
 /// due to the coherence rules.
 pub trait ArrayEncoding<T> {
     fn as_byte_array(&self) -> &T;
+    fn as_mut_byte_array(&mut self) -> &mut T;
 }
 
 /// Work around the inability to implement `from` for arrays of `Encoding`s
@@ -64,6 +65,13 @@ macro_rules! impl_array_encoding {
                 let as_bytes_ptr =
                     self.as_ptr() as *const [u8; $elems * core::mem::size_of::<$base>()];
                 unsafe { &*as_bytes_ptr }
+            }
+
+            #[inline]
+            fn as_mut_byte_array(&mut self) -> &mut [u8; $elems * core::mem::size_of::<$base>()] {
+                let as_bytes_ptr =
+                    self.as_mut_ptr() as *mut [u8; $elems * core::mem::size_of::<$base>()];
+                unsafe { &mut *as_bytes_ptr }
             }
         }
 

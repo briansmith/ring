@@ -357,3 +357,95 @@ fn digest_test_fmt() {
         &format!("{:?}", digest::digest(&digest::SHA512_256, b"hello, world"))
     );
 }
+
+#[test]
+fn digest_test_from_bytes() {
+    assert_eq!(
+        "SHA1:b7e23ec29af22b0b4e41da31e868d57226121c84",
+        &format!(
+            "{:?}",
+            digest::Digest::from_bytes(
+                &digest::SHA1_FOR_LEGACY_USE_ONLY,
+                b"\xb7\xe2\x3e\xc2\x9a\xf2\x2b\x0b\x4e\x41\xda\x31\xe8\x68\xd5\x72\
+                \x26\x12\x1c\x84"
+            )
+            .unwrap(),
+        )
+    );
+    assert_eq!(
+        "SHA256:09ca7e4eaa6e8ae9c7d261167129184883644d\
+         07dfba7cbfbc4c8a2e08360d5b",
+        &format!(
+            "{:?}",
+            digest::Digest::from_bytes(
+                &digest::SHA256,
+                b"\x09\xca\x7e\x4e\xaa\x6e\x8a\xe9\xc7\xd2\x61\x16\x71\x29\x18\x48\x83\x64\x4d\
+                \x07\xdf\xba\x7c\xbf\xbc\x4c\x8a\x2e\x08\x36\x0d\x5b"
+            )
+            .unwrap(),
+        ),
+    );
+    assert_eq!(
+        "SHA384:1fcdb6059ce05172a26bbe2a3ccc88ed5a8cd5\
+         fc53edfd9053304d429296a6da23b1cd9e5c9ed3bb34f0\
+         0418a70cdb7e",
+        &format!(
+            "{:?}",
+            digest::Digest::from_bytes(
+                &digest::SHA384,
+                b"\x1f\xcd\xb6\x05\x9c\xe0\x51\x72\xa2\x6b\xbe\x2a\x3c\xcc\x88\xed\x5a\x8c\xd5\
+                \xfc\x53\xed\xfd\x90\x53\x30\x4d\x42\x92\x96\xa6\xda\x23\xb1\xcd\x9e\x5c\x9e\
+                \xd3\xbb\x34\xf0\x04\x18\xa7\x0c\xdb\x7e"
+            )
+            .unwrap(),
+        )
+    );
+    assert_eq!(
+        "SHA512:8710339dcb6814d0d9d2290ef422285c9322b7\
+         163951f9a0ca8f883d3305286f44139aa374848e4174f5\
+         aada663027e4548637b6d19894aec4fb6c46a139fbf9",
+        &format!(
+            "{:?}",
+            digest::Digest::from_bytes(
+                &digest::SHA512,
+                b"\x87\x10\x33\x9d\xcb\x68\x14\xd0\xd9\xd2\x29\x0e\xf4\x22\x28\x5c\x93\x22\xb7\
+                \x16\x39\x51\xf9\xa0\xca\x8f\x88\x3d\x33\x05\x28\x6f\x44\x13\x9a\xa3\x74\x84\
+                \x8e\x41\x74\xf5\xaa\xda\x66\x30\x27\xe4\x54\x86\x37\xb6\xd1\x98\x94\xae\xc4\
+                \xfb\x6c\x46\xa1\x39\xfb\xf9"
+            )
+            .unwrap(),
+        )
+    );
+    assert_eq!(
+        "SHA512_256:11f2c88c04f0a9c3d0970894ad2472505e\
+         0bc6e8c7ec46b5211cd1fa3e253e62",
+        &format!(
+            "{:?}",
+            digest::Digest::from_bytes(
+                &digest::SHA512_256,
+                b"\x11\xf2\xc8\x8c\x04\xf0\xa9\xc3\xd0\x97\x08\x94\xad\x24\x72\x50\x5e\
+                \x0b\xc6\xe8\xc7\xec\x46\xb5\x21\x1c\xd1\xfa\x3e\x25\x3e\x62"
+            )
+            .unwrap(),
+        )
+    );
+
+    // Ensure we don't create a digest when the input is too short.
+    assert!(digest::Digest::from_bytes(&digest::SHA1_FOR_LEGACY_USE_ONLY, b"\x01").is_err());
+    assert!(digest::Digest::from_bytes(&digest::SHA256, b"\x01").is_err());
+    assert!(digest::Digest::from_bytes(&digest::SHA384, b"\x01").is_err());
+    assert!(digest::Digest::from_bytes(&digest::SHA512, b"\x01").is_err());
+    assert!(digest::Digest::from_bytes(&digest::SHA512_256, b"\x01").is_err());
+
+    // Ensure we don't create a digest when it's too long.
+    let input = b"\x87\x10\x33\x9d\xcb\x68\x14\xd0\xd9\xd2\x29\x0e\xf4\x22\x28\x5c\
+                  \x93\x22\xb7\x16\x39\x51\xf9\xa0\xca\x8f\x88\x3d\x33\x05\x28\x6f\
+                  \x44\x13\x9a\xa3\x74\x84\x8e\x41\x74\xf5\xaa\xda\x66\x30\x27\xe4\
+                  \x54\x86\x37\xb6\xd1\x98\x94\xae\xc4\xfb\x6c\x46\xa1\x39\xfb\xf9\
+                  \xCC\xCC\xCC\xCC";
+    assert!(digest::Digest::from_bytes(&digest::SHA1_FOR_LEGACY_USE_ONLY, input).is_err());
+    assert!(digest::Digest::from_bytes(&digest::SHA256, input).is_err());
+    assert!(digest::Digest::from_bytes(&digest::SHA384, input).is_err());
+    assert!(digest::Digest::from_bytes(&digest::SHA512, input).is_err());
+    assert!(digest::Digest::from_bytes(&digest::SHA512_256, input).is_err());
+}

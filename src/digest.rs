@@ -239,6 +239,28 @@ pub struct Digest {
 }
 
 impl Digest {
+    /// Create a `Digest` from an algorithm and an already computed digest.
+    ///
+    /// The `data` needs to match the expected output length of the `algorithm`.
+    pub fn from_bytes(
+        algorithm: &'static Algorithm,
+        data: &[u8]
+    ) -> Result<Digest, crate::error::Unspecified> {
+        if algorithm.output_len != data.len() {
+            return Err(crate::error::Unspecified);
+        }
+
+        const SIZE: usize = 512 / 8 / core::mem::size_of::<BigEndian<u64>>();
+        let mut value = Output {
+            as64: [BigEndian::<u64>::from(0); SIZE]
+        };
+
+        let ptr = unsafe { value.as64.as_mut_byte_array() };
+        ptr[..algorithm.output_len].copy_from_slice(data);
+
+        Ok(Digest { value, algorithm })
+    }
+
     /// The algorithm that was used to calculate the digest value.
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm {
