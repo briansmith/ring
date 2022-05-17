@@ -55,7 +55,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#if !defined(_POSIX_C_SOURCE)
+#if defined(__linux__) && !defined(_POSIX_C_SOURCE)
 #define _POSIX_C_SOURCE 201410L  /* for gmtime_r */
 #endif
 
