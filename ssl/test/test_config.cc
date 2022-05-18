@@ -385,6 +385,7 @@ std::vector<Flag> SortedFlags() {
                  &TestConfig::quic_early_data_context),
       IntFlag("-early-write-after-message",
               &TestConfig::early_write_after_message),
+      BoolFlag("-fips-202205", &TestConfig::fips_202205),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;
@@ -1764,6 +1765,11 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (enable_ech_grease) {
     SSL_set_enable_ech_grease(ssl.get(), 1);
+  }
+  if (fips_202205 && !SSL_set_compliance_policy(
+                         ssl.get(), ssl_compliance_policy_fips_202205)) {
+    fprintf(stderr, "SSL_set_compliance_policy failed\n");
+    return nullptr;
   }
   if (!ech_config_list.empty() &&
       !SSL_set1_ech_config_list(

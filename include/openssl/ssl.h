@@ -5104,6 +5104,44 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 OPENSSL_EXPORT uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher);
 
 
+// Compliance policy configurations
+//
+// A TLS connection has a large number of different parameters. Some are well
+// known, like cipher suites, but many are obscure and configuration functions
+// for them may not exist. These policy controls allow broad configuration
+// goals to be specified so that they can flow down to all the different
+// parameters of a TLS connection.
+
+enum ssl_compliance_policy_t BORINGSSL_ENUM_INT {
+  // ssl_policy_fips_202205 configures a TLS connection to use:
+  //   * TLS 1.2 or 1.3
+  //   * For TLS 1.2, only ECDHE_[RSA|ECDSA]_WITH_AES_*_GCM_SHA*.
+  //   * For TLS 1.3, only AES-GCM
+  //   * P-256 or P-384 for key agreement.
+  //   * For server signatures, only PKCS#1/PSS with SHA256/384/512, or ECDSA
+  //     with P-256 or P-384.
+  //
+  // Note: this policy can be configured even if BoringSSL has not been built in
+  // FIPS mode. Call |FIPS_mode| to check that.
+  //
+  // Note: this setting aids with compliance with NIST requirements but does not
+  // guarantee it. Careful reading of SP 800-52r2 is recommended.
+  ssl_compliance_policy_fips_202205,
+};
+
+// SSL_CTX_set_compliance_policy configures various aspects of |ctx| based on
+// the given policy requirements. Subsequently calling other functions that
+// configure |ctx| may override |policy|, or may not. This should be the final
+// configuration function called in order to have defined behaviour.
+OPENSSL_EXPORT int SSL_CTX_set_compliance_policy(
+    SSL_CTX *ctx, enum ssl_compliance_policy_t policy);
+
+// SSL_set_compliance_policy acts the same as |SSL_CTX_set_compliance_policy|,
+// but only configures a single |SSL*|.
+OPENSSL_EXPORT int SSL_set_compliance_policy(
+    SSL *ssl, enum ssl_compliance_policy_t policy);
+
+
 // Nodejs compatibility section (hidden).
 //
 // These defines exist for node.js, with the hope that we can eliminate the

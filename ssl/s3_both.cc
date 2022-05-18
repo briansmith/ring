@@ -691,8 +691,25 @@ class CipherScorer {
   const bool security_128_is_fine_;
 };
 
+bool ssl_tls13_cipher_meets_policy(uint16_t cipher_id, bool only_fips) {
+  if (!only_fips) {
+    return true;
+  }
+
+  switch (cipher_id) {
+    case TLS1_CK_AES_128_GCM_SHA256 & 0xffff:
+    case TLS1_CK_AES_256_GCM_SHA384 & 0xffff:
+      return true;
+    case TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff:
+      return false;
+    default:
+      assert(false);
+      return false;
+  }
+}
+
 const SSL_CIPHER *ssl_choose_tls13_cipher(CBS cipher_suites, uint16_t version,
-                                          uint16_t group_id) {
+                                          uint16_t group_id, bool only_fips) {
   if (CBS_len(&cipher_suites) % 2 != 0) {
     return nullptr;
   }
@@ -712,6 +729,11 @@ const SSL_CIPHER *ssl_choose_tls13_cipher(CBS cipher_suites, uint16_t version,
     if (candidate == nullptr ||
         SSL_CIPHER_get_min_version(candidate) > version ||
         SSL_CIPHER_get_max_version(candidate) < version) {
+      continue;
+    }
+
+    if (!ssl_tls13_cipher_meets_policy(SSL_CIPHER_get_protocol_id(candidate),
+                                       only_fips)) {
       continue;
     }
 

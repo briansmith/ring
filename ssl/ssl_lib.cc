@@ -519,7 +519,8 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       allow_unknown_alpn_protos(false),
       false_start_allowed_without_alpn(false),
       handoff(false),
-      enable_early_data(false) {
+      enable_early_data(false),
+      only_fips_cipher_suites_in_tls13(false) {
   CRYPTO_MUTEX_init(&lock);
   CRYPTO_new_ex_data(&ex_data);
 }
@@ -639,6 +640,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
   ssl->config->permute_extensions = ctx->permute_extensions;
+  ssl->config->only_fips_cipher_suites_in_tls13 =
+      ctx->only_fips_cipher_suites_in_tls13;
 
   if (!ssl->config->supported_group_list.CopyFrom(ctx->supported_group_list) ||
       !ssl->config->alpn_client_proto_list.CopyFrom(
@@ -3078,4 +3081,94 @@ int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
 int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg) {
   ctx->legacy_ocsp_callback_arg = arg;
   return 1;
+}
+
+namespace fips202205 {
+
+// (References are to SP 800-52r2):
+
+// Section 3.4.2.2
+// "at least one of the NIST-approved curves, P-256 (secp256r1) and P384
+// (secp384r1), shall be supported as described in RFC 8422."
+//
+// Section 3.3.1
+// "The server shall be configured to only use cipher suites that are
+// composed entirely of NIST approved algorithms"
+static const int kCurves[] = {NID_X9_62_prime256v1, NID_secp384r1};
+
+static const uint16_t kSigAlgs[] = {
+    SSL_SIGN_RSA_PKCS1_SHA256,
+    SSL_SIGN_RSA_PKCS1_SHA384,
+    SSL_SIGN_RSA_PKCS1_SHA512,
+    // Table 4.1:
+    // "The curve should be P-256 or P-384"
+    SSL_SIGN_ECDSA_SECP256R1_SHA256,
+    SSL_SIGN_ECDSA_SECP384R1_SHA384,
+    SSL_SIGN_RSA_PSS_RSAE_SHA256,
+    SSL_SIGN_RSA_PSS_RSAE_SHA384,
+    SSL_SIGN_RSA_PSS_RSAE_SHA512,
+};
+
+static const char kTLS12Ciphers[] =
+    "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:"
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:"
+    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:"
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384";
+
+static int Configure(SSL_CTX *ctx) {
+  ctx->only_fips_cipher_suites_in_tls13 = true;
+
+  return
+      // Section 3.1:
+      // "Servers that support government-only applications shall be
+      // configured to use TLS 1.2 and should be configured to use TLS 1.3
+      // as well. These servers should not be configured to use TLS 1.1 and
+      // shall not use TLS 1.0, SSL 3.0, or SSL 2.0.
+      SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) &&
+      SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION) &&
+      // Sections 3.3.1.1.1 and 3.3.1.1.2 are ambiguous about whether
+      // HMAC-SHA-1 cipher suites are permitted with TLS 1.2. However, later the
+      // Encrypt-then-MAC extension is required for all CBC cipher suites and so
+      // it's easier to drop them.
+      SSL_CTX_set_strict_cipher_list(ctx, kTLS12Ciphers) &&
+      SSL_CTX_set1_curves(ctx, kCurves, OPENSSL_ARRAY_SIZE(kCurves)) &&
+      SSL_CTX_set_signing_algorithm_prefs(ctx, kSigAlgs,
+                                          OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
+      SSL_CTX_set_verify_algorithm_prefs(ctx, kSigAlgs,
+                                         OPENSSL_ARRAY_SIZE(kSigAlgs));
+}
+
+static int Configure(SSL *ssl) {
+  ssl->config->only_fips_cipher_suites_in_tls13 = true;
+
+  // See |Configure(SSL_CTX)|, above, for reasoning.
+  return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
+         SSL_set_max_proto_version(ssl, TLS1_3_VERSION) &&
+         SSL_set_strict_cipher_list(ssl, kTLS12Ciphers) &&
+         SSL_set1_curves(ssl, kCurves, OPENSSL_ARRAY_SIZE(kCurves)) &&
+         SSL_set_signing_algorithm_prefs(ssl, kSigAlgs,
+                                         OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
+         SSL_set_verify_algorithm_prefs(ssl, kSigAlgs,
+                                        OPENSSL_ARRAY_SIZE(kSigAlgs));
+}
+
+}  // namespace fips202205
+
+int SSL_CTX_set_compliance_policy(SSL_CTX *ctx,
+                                  enum ssl_compliance_policy_t policy) {
+  switch (policy) {
+    case ssl_compliance_policy_fips_202205:
+      return fips202205::Configure(ctx);
+    default:
+      return 0;
+  }
+}
+
+int SSL_set_compliance_policy(SSL *ssl, enum ssl_compliance_policy_t policy) {
+  switch (policy) {
+    case ssl_compliance_policy_fips_202205:
+      return fips202205::Configure(ssl);
+    default:
+      return 0;
+  }
 }
