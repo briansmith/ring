@@ -4289,3 +4289,87 @@ TEST(X509Test, NamePrint) {
     EXPECT_EQ(buf, truncated);
   }
 }
+
+// kLargeSerialPEM is a certificate with a large serial number.
+static const char kLargeSerialPEM[] = R"(
+-----BEGIN CERTIFICATE-----
+MIICZjCCAc+gAwIBAgIQASNFZ4mrze8BI0VniavN7zANBgkqhkiG9w0BAQsFADA2
+MRowGAYDVQQKExFCb3JpbmdTU0wgVEVTVElORzEYMBYGA1UEAxMPSW50ZXJtZWRp
+YXRlIENBMCAXDTE1MDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAyMRowGAYD
+VQQKExFCb3JpbmdTU0wgVEVTVElORzEUMBIGA1UEAxMLZXhhbXBsZS5jb20wgZ8w
+DQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMPRTRliCpKEnug6OzI0rJVcQep5p+aT
+9sCg+pj+HVyg/DYTwqZ6qJRKhM+MbkhdJuU7FyqlsBeCeM/OjwMjcY0yEB/xJg1i
+ygfuBztTLuPnHxtSuKwae5MeqSofp3j97sRMnuLcKlHxu8rXoOCAS9BO50uKnPwU
+Ee1iEVqR92FPAgMBAAGjdzB1MA4GA1UdDwEB/wQEAwIFoDAdBgNVHSUEFjAUBggr
+BgEFBQcDAQYIKwYBBQUHAwIwDAYDVR0TAQH/BAIwADAZBgNVHQ4EEgQQo3mm9u6v
+uaVeN4wRgDTidTAbBgNVHSMEFDASgBCMGmiotXbbXVd7H40UsgajMA0GCSqGSIb3
+DQEBCwUAA4GBAGP+n4kKGn/8uddYLWTXbUsz+KLuEXNDMyu3vRufLjTpIbP2MCNo
+85fhLeC3fzKuGOk+6QGVLOBBcWDrrLqrmqnWdBMPULDo2QoF71a4GVjeJh+ax/tZ
+PyeGVPUK21TE0LDIxf2a11d1CJw582MgZQIPk4tXk+AcU9EqIceKgECG
+-----END CERTIFICATE-----
+)";
+
+TEST(X509Test, Print) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kLargeSerialPEM));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
+  EXPECT_TRUE(X509_print_ex(bio.get(), cert.get(), 0, 0));
+  // Nothing should be left in the error queue.
+  EXPECT_EQ(0u, ERR_peek_error());
+
+  // This output is not guaranteed to be stable, but we assert on it to make
+  // sure something is printed.
+  const uint8_t *data;
+  size_t data_len;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
+  std::string print(reinterpret_cast<const char*>(data), data_len);
+  EXPECT_EQ(print, R"(Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            01:23:45:67:89:ab:cd:ef:01:23:45:67:89:ab:cd:ef
+    Signature Algorithm: sha256WithRSAEncryption
+        Issuer: O=BoringSSL TESTING, CN=Intermediate CA
+        Validity
+            Not Before: Jan  1 00:00:00 2015 GMT
+            Not After : Jan  1 00:00:00 2100 GMT
+        Subject: O=BoringSSL TESTING, CN=example.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (1024 bit)
+                Modulus:
+                    00:c3:d1:4d:19:62:0a:92:84:9e:e8:3a:3b:32:34:
+                    ac:95:5c:41:ea:79:a7:e6:93:f6:c0:a0:fa:98:fe:
+                    1d:5c:a0:fc:36:13:c2:a6:7a:a8:94:4a:84:cf:8c:
+                    6e:48:5d:26:e5:3b:17:2a:a5:b0:17:82:78:cf:ce:
+                    8f:03:23:71:8d:32:10:1f:f1:26:0d:62:ca:07:ee:
+                    07:3b:53:2e:e3:e7:1f:1b:52:b8:ac:1a:7b:93:1e:
+                    a9:2a:1f:a7:78:fd:ee:c4:4c:9e:e2:dc:2a:51:f1:
+                    bb:ca:d7:a0:e0:80:4b:d0:4e:e7:4b:8a:9c:fc:14:
+                    11:ed:62:11:5a:91:f7:61:4f
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment
+            X509v3 Extended Key Usage: 
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Subject Key Identifier: 
+                A3:79:A6:F6:EE:AF:B9:A5:5E:37:8C:11:80:34:E2:75
+            X509v3 Authority Key Identifier: 
+                keyid:8C:1A:68:A8:B5:76:DB:5D:57:7B:1F:8D:14:B2:06:A3
+
+    Signature Algorithm: sha256WithRSAEncryption
+         63:fe:9f:89:0a:1a:7f:fc:b9:d7:58:2d:64:d7:6d:4b:33:f8:
+         a2:ee:11:73:43:33:2b:b7:bd:1b:9f:2e:34:e9:21:b3:f6:30:
+         23:68:f3:97:e1:2d:e0:b7:7f:32:ae:18:e9:3e:e9:01:95:2c:
+         e0:41:71:60:eb:ac:ba:ab:9a:a9:d6:74:13:0f:50:b0:e8:d9:
+         0a:05:ef:56:b8:19:58:de:26:1f:9a:c7:fb:59:3f:27:86:54:
+         f5:0a:db:54:c4:d0:b0:c8:c5:fd:9a:d7:57:75:08:9c:39:f3:
+         63:20:65:02:0f:93:8b:57:93:e0:1c:53:d1:2a:21:c7:8a:80:
+         40:86
+)");
+}
