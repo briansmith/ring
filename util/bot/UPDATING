@@ -12,10 +12,10 @@ DEPS: Update the variables as described in the comments.
 
 update_clang.py: Set CLANG_REVISION and CLANG_SUB_REVISION to the values used in
     Chromium, found at
-    https://chromium.googlesource.com/chromium/src/+/master/tools/clang/scripts/update.py
+    https://chromium.googlesource.com/chromium/src/+/main/tools/clang/scripts/update.py
 
 vs_toolchain.py: Update _GetDesiredVsToolchainHashes from Chromium, found at
-    https://chromium.googlesource.com/chromium/src/+/master/build/vs_toolchain.py
+    https://chromium.googlesource.com/chromium/src/+/main/build/vs_toolchain.py
     This may require taking other updates to that file. (Don't remove MSVC
     versions if BoringSSL still needs to support them.)
 
@@ -26,7 +26,7 @@ update, place the updated files in their intended location and run:
 
 nasm-win32.exe: Update to the appropriate release of NASM, found at
     https://www.nasm.us/. Use the same version as Chromium, found at
-    https://chromium.googlesource.com/chromium/src/+/master/third_party/nasm/README.chromium
+    https://chromium.googlesource.com/chromium/src/+/main/third_party/nasm/README.chromium
     Extract nasm.exe from the download named nasm-VERSION-win64.zip.
 
     The current revision is nasm-2.13.03-win64.zip.
