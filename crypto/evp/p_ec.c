@@ -179,18 +179,18 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   EC_PKEY_CTX *dctx = ctx->data;
 
   switch (type) {
-    case EVP_PKEY_CTRL_MD:
-      if (EVP_MD_type((const EVP_MD *)p2) != NID_sha1 &&
-          EVP_MD_type((const EVP_MD *)p2) != NID_ecdsa_with_SHA1 &&
-          EVP_MD_type((const EVP_MD *)p2) != NID_sha224 &&
-          EVP_MD_type((const EVP_MD *)p2) != NID_sha256 &&
-          EVP_MD_type((const EVP_MD *)p2) != NID_sha384 &&
-          EVP_MD_type((const EVP_MD *)p2) != NID_sha512) {
+    case EVP_PKEY_CTRL_MD: {
+      const EVP_MD *md = p2;
+      int md_type = EVP_MD_type(md);
+      if (md_type != NID_sha1 && md_type != NID_sha224 &&
+          md_type != NID_sha256 && md_type != NID_sha384 &&
+          md_type != NID_sha512) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_TYPE);
         return 0;
       }
-      dctx->md = p2;
+      dctx->md = md;
       return 1;
+    }
 
     case EVP_PKEY_CTRL_GET_MD:
       *(const EVP_MD **)p2 = dctx->md;
