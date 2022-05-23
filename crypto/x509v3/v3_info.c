@@ -68,22 +68,18 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
-static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(X509V3_EXT_METHOD
-                                                       *method, AUTHORITY_INFO_ACCESS
-                                                       *ainfo, STACK_OF(CONF_VALUE)
-                                                       *ret);
-static AUTHORITY_INFO_ACCESS *v2i_AUTHORITY_INFO_ACCESS(X509V3_EXT_METHOD
-                                                        *method,
-                                                        X509V3_CTX *ctx,
-                                                        STACK_OF(CONF_VALUE)
-                                                        *nval);
+static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
+    const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *ret);
+static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
+                                       X509V3_CTX *ctx,
+                                       STACK_OF(CONF_VALUE) *nval);
 
 const X509V3_EXT_METHOD v3_info = { NID_info_access, X509V3_EXT_MULTILINE,
     ASN1_ITEM_ref(AUTHORITY_INFO_ACCESS),
     0, 0, 0, 0,
     0, 0,
-    (X509V3_EXT_I2V) i2v_AUTHORITY_INFO_ACCESS,
-    (X509V3_EXT_V2I)v2i_AUTHORITY_INFO_ACCESS,
+    i2v_AUTHORITY_INFO_ACCESS,
+    v2i_AUTHORITY_INFO_ACCESS,
     0, 0,
     NULL
 };
@@ -92,8 +88,8 @@ const X509V3_EXT_METHOD v3_sinfo = { NID_sinfo_access, X509V3_EXT_MULTILINE,
     ASN1_ITEM_ref(AUTHORITY_INFO_ACCESS),
     0, 0, 0, 0,
     0, 0,
-    (X509V3_EXT_I2V) i2v_AUTHORITY_INFO_ACCESS,
-    (X509V3_EXT_V2I)v2i_AUTHORITY_INFO_ACCESS,
+    i2v_AUTHORITY_INFO_ACCESS,
+    v2i_AUTHORITY_INFO_ACCESS,
     0, 0,
     NULL
 };
@@ -112,17 +108,16 @@ ASN1_ITEM_TEMPLATE_END(AUTHORITY_INFO_ACCESS)
 IMPLEMENT_ASN1_FUNCTIONS(AUTHORITY_INFO_ACCESS)
 
 static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
-    X509V3_EXT_METHOD *method, AUTHORITY_INFO_ACCESS *ainfo,
-    STACK_OF(CONF_VALUE) *ret)
+    const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *ret)
 {
+    const AUTHORITY_INFO_ACCESS *ainfo = ext;
     ACCESS_DESCRIPTION *desc;
-    size_t i;
     int nlen;
     char objtmp[80], *ntmp;
     CONF_VALUE *vtmp;
     STACK_OF(CONF_VALUE) *tret = ret;
 
-    for (i = 0; i < sk_ACCESS_DESCRIPTION_num(ainfo); i++) {
+    for (size_t i = 0; i < sk_ACCESS_DESCRIPTION_num(ainfo); i++) {
         STACK_OF(CONF_VALUE) *tmp;
 
         desc = sk_ACCESS_DESCRIPTION_value(ainfo, i);
@@ -154,24 +149,19 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
     return NULL;
 }
 
-static AUTHORITY_INFO_ACCESS *v2i_AUTHORITY_INFO_ACCESS(X509V3_EXT_METHOD
-                                                        *method,
-                                                        X509V3_CTX *ctx,
-                                                        STACK_OF(CONF_VALUE)
-                                                        *nval)
+static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
+                                       X509V3_CTX *ctx,
+                                       STACK_OF(CONF_VALUE) *nval)
 {
     AUTHORITY_INFO_ACCESS *ainfo = NULL;
-    CONF_VALUE *cnf, ctmp;
     ACCESS_DESCRIPTION *acc;
-    size_t i;
-    int objlen;
     char *objtmp, *ptmp;
     if (!(ainfo = sk_ACCESS_DESCRIPTION_new_null())) {
         OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
         return NULL;
     }
-    for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
-        cnf = sk_CONF_VALUE_value(nval, i);
+    for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
+        CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
         if (!(acc = ACCESS_DESCRIPTION_new())
             || !sk_ACCESS_DESCRIPTION_push(ainfo, acc)) {
             OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
@@ -182,7 +172,8 @@ static AUTHORITY_INFO_ACCESS *v2i_AUTHORITY_INFO_ACCESS(X509V3_EXT_METHOD
             OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SYNTAX);
             goto err;
         }
-        objlen = ptmp - cnf->name;
+        int objlen = ptmp - cnf->name;
+        CONF_VALUE ctmp;
         ctmp.name = ptmp + 1;
         ctmp.value = cnf->value;
         if (!v2i_GENERAL_NAME_ex(acc->location, method, ctx, &ctmp, 0))
@@ -211,8 +202,5 @@ static AUTHORITY_INFO_ACCESS *v2i_AUTHORITY_INFO_ACCESS(X509V3_EXT_METHOD
 int i2a_ACCESS_DESCRIPTION(BIO *bp, const ACCESS_DESCRIPTION *a)
 {
     i2a_ASN1_OBJECT(bp, a->method);
-#ifdef UNDEF
-    i2a_GENERAL_NAME(bp, a->location);
-#endif
     return 2;
 }

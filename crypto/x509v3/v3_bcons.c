@@ -65,21 +65,19 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
-static STACK_OF(CONF_VALUE) *i2v_BASIC_CONSTRAINTS(X509V3_EXT_METHOD *method,
-                                                   BASIC_CONSTRAINTS *bcons,
-                                                   STACK_OF(CONF_VALUE)
-                                                   *extlist);
-static BASIC_CONSTRAINTS *v2i_BASIC_CONSTRAINTS(X509V3_EXT_METHOD *method,
-                                                X509V3_CTX *ctx,
-                                                STACK_OF(CONF_VALUE) *values);
+static STACK_OF(CONF_VALUE) *i2v_BASIC_CONSTRAINTS(
+    const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *extlist);
+static void *v2i_BASIC_CONSTRAINTS(const X509V3_EXT_METHOD *method,
+                                   X509V3_CTX *ctx,
+                                   STACK_OF(CONF_VALUE) *values);
 
 const X509V3_EXT_METHOD v3_bcons = {
     NID_basic_constraints, 0,
     ASN1_ITEM_ref(BASIC_CONSTRAINTS),
     0, 0, 0, 0,
     0, 0,
-    (X509V3_EXT_I2V) i2v_BASIC_CONSTRAINTS,
-    (X509V3_EXT_V2I)v2i_BASIC_CONSTRAINTS,
+    i2v_BASIC_CONSTRAINTS,
+    v2i_BASIC_CONSTRAINTS,
     NULL, NULL,
     NULL
 };
@@ -91,19 +89,18 @@ ASN1_SEQUENCE(BASIC_CONSTRAINTS) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(BASIC_CONSTRAINTS)
 
-static STACK_OF(CONF_VALUE) *i2v_BASIC_CONSTRAINTS(X509V3_EXT_METHOD *method,
-                                                   BASIC_CONSTRAINTS *bcons,
-                                                   STACK_OF(CONF_VALUE)
-                                                   *extlist)
+static STACK_OF(CONF_VALUE) *i2v_BASIC_CONSTRAINTS(
+    const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *extlist)
 {
+    const BASIC_CONSTRAINTS *bcons = ext;
     X509V3_add_value_bool("CA", bcons->ca, &extlist);
     X509V3_add_value_int("pathlen", bcons->pathlen, &extlist);
     return extlist;
 }
 
-static BASIC_CONSTRAINTS *v2i_BASIC_CONSTRAINTS(X509V3_EXT_METHOD *method,
-                                                X509V3_CTX *ctx,
-                                                STACK_OF(CONF_VALUE) *values)
+static void *v2i_BASIC_CONSTRAINTS(const X509V3_EXT_METHOD *method,
+                                   X509V3_CTX *ctx,
+                                   STACK_OF(CONF_VALUE) *values)
 {
     BASIC_CONSTRAINTS *bcons = NULL;
     CONF_VALUE *val;

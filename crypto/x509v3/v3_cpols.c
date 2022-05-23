@@ -73,13 +73,13 @@
 
 /* Certificate policies extension support: this one is a bit complex... */
 
-static int i2r_certpol(X509V3_EXT_METHOD *method, STACK_OF(POLICYINFO) *pol,
-                       BIO *out, int indent);
-static STACK_OF(POLICYINFO) *r2i_certpol(X509V3_EXT_METHOD *method,
-                                         X509V3_CTX *ctx, char *value);
-static void print_qualifiers(BIO *out, STACK_OF(POLICYQUALINFO) *quals,
+static int i2r_certpol(const X509V3_EXT_METHOD *method, void *ext, BIO *out,
+                       int indent);
+static void *r2i_certpol(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+                         const char *value);
+static void print_qualifiers(BIO *out, const STACK_OF(POLICYQUALINFO) *quals,
                              int indent);
-static void print_notice(BIO *out, USERNOTICE *notice, int indent);
+static void print_notice(BIO *out, const USERNOTICE *notice, int indent);
 static POLICYINFO *policy_section(X509V3_CTX *ctx,
                                   STACK_OF(CONF_VALUE) *polstrs, int ia5org);
 static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
@@ -91,8 +91,8 @@ const X509V3_EXT_METHOD v3_cpols = {
     0, 0, 0, 0,
     0, 0,
     0, 0,
-    (X509V3_EXT_I2R)i2r_certpol,
-    (X509V3_EXT_R2I)r2i_certpol,
+    i2r_certpol,
+    r2i_certpol,
     NULL
 };
 
@@ -137,8 +137,8 @@ ASN1_SEQUENCE(NOTICEREF) = {
 
 IMPLEMENT_ASN1_FUNCTIONS(NOTICEREF)
 
-static STACK_OF(POLICYINFO) *r2i_certpol(X509V3_EXT_METHOD *method,
-                                         X509V3_CTX *ctx, char *value)
+static void *r2i_certpol(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+                         const char *value)
 {
     STACK_OF(POLICYINFO) *pols = NULL;
     char *pstr;
@@ -405,14 +405,13 @@ static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums, STACK_OF(CONF_VALUE) *nos)
     return 0;
 }
 
-static int i2r_certpol(X509V3_EXT_METHOD *method, STACK_OF(POLICYINFO) *pol,
+static int i2r_certpol(const X509V3_EXT_METHOD *method, void *ext,
                        BIO *out, int indent)
 {
-    size_t i;
-    POLICYINFO *pinfo;
+    const STACK_OF(POLICYINFO) *pol = ext;
     /* First print out the policy OIDs */
-    for (i = 0; i < sk_POLICYINFO_num(pol); i++) {
-        pinfo = sk_POLICYINFO_value(pol, i);
+    for (size_t i = 0; i < sk_POLICYINFO_num(pol); i++) {
+        const POLICYINFO *pinfo = sk_POLICYINFO_value(pol, i);
         BIO_printf(out, "%*sPolicy: ", indent, "");
         i2a_ASN1_OBJECT(out, pinfo->policyid);
         BIO_puts(out, "\n");
@@ -422,13 +421,11 @@ static int i2r_certpol(X509V3_EXT_METHOD *method, STACK_OF(POLICYINFO) *pol,
     return 1;
 }
 
-static void print_qualifiers(BIO *out, STACK_OF(POLICYQUALINFO) *quals,
+static void print_qualifiers(BIO *out, const STACK_OF(POLICYQUALINFO) *quals,
                              int indent)
 {
-    POLICYQUALINFO *qualinfo;
-    size_t i;
-    for (i = 0; i < sk_POLICYQUALINFO_num(quals); i++) {
-        qualinfo = sk_POLICYQUALINFO_value(quals, i);
+    for (size_t i = 0; i < sk_POLICYQUALINFO_num(quals); i++) {
+        const POLICYQUALINFO *qualinfo = sk_POLICYQUALINFO_value(quals, i);
         switch (OBJ_obj2nid(qualinfo->pqualid)) {
         case NID_id_qt_cps:
             BIO_printf(out, "%*sCPS: %.*s\n", indent, "",
@@ -450,9 +447,8 @@ static void print_qualifiers(BIO *out, STACK_OF(POLICYQUALINFO) *quals,
     }
 }
 
-static void print_notice(BIO *out, USERNOTICE *notice, int indent)
+static void print_notice(BIO *out, const USERNOTICE *notice, int indent)
 {
-    size_t i;
     if (notice->noticeref) {
         NOTICEREF *ref;
         ref = notice->noticeref;
@@ -460,7 +456,7 @@ static void print_notice(BIO *out, USERNOTICE *notice, int indent)
                    ref->organization->length, ref->organization->data);
         BIO_printf(out, "%*sNumber%s: ", indent, "",
                    sk_ASN1_INTEGER_num(ref->noticenos) > 1 ? "s" : "");
-        for (i = 0; i < sk_ASN1_INTEGER_num(ref->noticenos); i++) {
+        for (size_t i = 0; i < sk_ASN1_INTEGER_num(ref->noticenos); i++) {
             ASN1_INTEGER *num;
             char *tmp;
             num = sk_ASN1_INTEGER_value(ref->noticenos, i);

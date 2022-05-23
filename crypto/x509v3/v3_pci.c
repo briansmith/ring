@@ -47,24 +47,25 @@
 #include "internal.h"
 
 
-static int i2r_pci(X509V3_EXT_METHOD *method, PROXY_CERT_INFO_EXTENSION *ext,
-                   BIO *out, int indent);
-static PROXY_CERT_INFO_EXTENSION *r2i_pci(X509V3_EXT_METHOD *method,
-                                          X509V3_CTX *ctx, char *str);
+static int i2r_pci(const X509V3_EXT_METHOD *method, void *ext, BIO *out,
+                   int indent);
+static void *r2i_pci(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+                     const char *str);
 
 const X509V3_EXT_METHOD v3_pci =
     { NID_proxyCertInfo, 0, ASN1_ITEM_ref(PROXY_CERT_INFO_EXTENSION),
     0, 0, 0, 0,
     0, 0,
     NULL, NULL,
-    (X509V3_EXT_I2R)i2r_pci,
-    (X509V3_EXT_R2I)r2i_pci,
+    i2r_pci,
+    r2i_pci,
     NULL,
 };
 
-static int i2r_pci(X509V3_EXT_METHOD *method, PROXY_CERT_INFO_EXTENSION *pci,
-                   BIO *out, int indent)
+static int i2r_pci(const X509V3_EXT_METHOD *method, void *ext, BIO *out,
+                   int indent)
 {
+    const PROXY_CERT_INFO_EXTENSION *pci = ext;
     BIO_printf(out, "%*sPath Length Constraint: ", indent, "");
     if (pci->pcPathLengthConstraint)
         i2a_ASN1_INTEGER(out, pci->pcPathLengthConstraint);
@@ -195,8 +196,8 @@ static int process_pci_value(CONF_VALUE *val,
     return 0;
 }
 
-static PROXY_CERT_INFO_EXTENSION *r2i_pci(X509V3_EXT_METHOD *method,
-                                          X509V3_CTX *ctx, char *value)
+static void *r2i_pci(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+                     const char *value)
 {
     PROXY_CERT_INFO_EXTENSION *pci = NULL;
     STACK_OF(CONF_VALUE) *vals;

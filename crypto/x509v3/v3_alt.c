@@ -68,40 +68,44 @@
 #include "internal.h"
 
 
-static GENERAL_NAMES *v2i_subject_alt(X509V3_EXT_METHOD *method,
-                                      X509V3_CTX *ctx,
-                                      STACK_OF(CONF_VALUE) *nval);
-static GENERAL_NAMES *v2i_issuer_alt(X509V3_EXT_METHOD *method,
-                                     X509V3_CTX *ctx,
-                                     STACK_OF(CONF_VALUE) *nval);
+static void *v2i_subject_alt(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+                             STACK_OF(CONF_VALUE) *nval);
+static void *v2i_issuer_alt(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+                            STACK_OF(CONF_VALUE) *nval);
 static int copy_email(X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p);
 static int copy_issuer(X509V3_CTX *ctx, GENERAL_NAMES *gens);
 static int do_othername(GENERAL_NAME *gen, const char *value, X509V3_CTX *ctx);
 static int do_dirname(GENERAL_NAME *gen, const char *value, X509V3_CTX *ctx);
 
+static STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES_cb(
+    const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *ret)
+{
+    return i2v_GENERAL_NAMES(method, ext, ret);
+}
+
 const X509V3_EXT_METHOD v3_alt[] = {
     {NID_subject_alt_name, 0, ASN1_ITEM_ref(GENERAL_NAMES),
      0, 0, 0, 0,
      0, 0,
-     (X509V3_EXT_I2V) i2v_GENERAL_NAMES,
-     (X509V3_EXT_V2I)v2i_subject_alt,
+     i2v_GENERAL_NAMES_cb,
+     v2i_subject_alt,
      NULL, NULL, NULL},
 
     {NID_issuer_alt_name, 0, ASN1_ITEM_ref(GENERAL_NAMES),
      0, 0, 0, 0,
      0, 0,
-     (X509V3_EXT_I2V) i2v_GENERAL_NAMES,
-     (X509V3_EXT_V2I)v2i_issuer_alt,
+     i2v_GENERAL_NAMES_cb,
+     v2i_issuer_alt,
      NULL, NULL, NULL},
 
     {NID_certificate_issuer, 0, ASN1_ITEM_ref(GENERAL_NAMES),
      0, 0, 0, 0,
      0, 0,
-     (X509V3_EXT_I2V) i2v_GENERAL_NAMES,
+     i2v_GENERAL_NAMES_cb,
      NULL, NULL, NULL, NULL},
 };
 
-STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(X509V3_EXT_METHOD *method,
+STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
                                         GENERAL_NAMES *gens,
                                         STACK_OF(CONF_VALUE) *ret)
 {
@@ -122,7 +126,7 @@ STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(X509V3_EXT_METHOD *method,
     return ret;
 }
 
-STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(X509V3_EXT_METHOD *method,
+STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(const X509V3_EXT_METHOD *method,
                                        GENERAL_NAME *gen,
                                        STACK_OF(CONF_VALUE) *ret)
 {
@@ -266,9 +270,8 @@ int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen)
     return 1;
 }
 
-static GENERAL_NAMES *v2i_issuer_alt(X509V3_EXT_METHOD *method,
-                                     X509V3_CTX *ctx,
-                                     STACK_OF(CONF_VALUE) *nval)
+static void *v2i_issuer_alt(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+                            STACK_OF(CONF_VALUE) *nval)
 {
     GENERAL_NAMES *gens = NULL;
     CONF_VALUE *cnf;
@@ -336,9 +339,8 @@ err:
     return ret;
 }
 
-static GENERAL_NAMES *v2i_subject_alt(X509V3_EXT_METHOD *method,
-                                      X509V3_CTX *ctx,
-                                      STACK_OF(CONF_VALUE) *nval)
+static void *v2i_subject_alt(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+                             STACK_OF(CONF_VALUE) *nval)
 {
     GENERAL_NAMES *gens = NULL;
     CONF_VALUE *cnf;

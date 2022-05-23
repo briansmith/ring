@@ -91,15 +91,10 @@ static const BIT_STRING_BITNAME key_usage_type_table[] = {
     {-1, NULL, NULL}
 };
 
-const X509V3_EXT_METHOD v3_nscert =
-EXT_BITSTRING(NID_netscape_cert_type, ns_cert_type_table);
-const X509V3_EXT_METHOD v3_key_usage =
-EXT_BITSTRING(NID_key_usage, key_usage_type_table);
-
-STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
-                                          ASN1_BIT_STRING *bits,
-                                          STACK_OF(CONF_VALUE) *ret)
+static STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(
+    const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *ret)
 {
+    const ASN1_BIT_STRING *bits = ext;
     const BIT_STRING_BITNAME *bnam;
     for (bnam = method->usr_data; bnam->lname; bnam++) {
         if (ASN1_BIT_STRING_get_bit(bits, bnam->bitnum))
@@ -108,9 +103,8 @@ STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
     return ret;
 }
 
-ASN1_BIT_STRING *v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
-                                     X509V3_CTX *ctx,
-                                     STACK_OF(CONF_VALUE) *nval)
+static void *v2i_ASN1_BIT_STRING(const X509V3_EXT_METHOD *method,
+                                 X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval)
 {
     CONF_VALUE *val;
     ASN1_BIT_STRING *bs;
@@ -142,3 +136,14 @@ ASN1_BIT_STRING *v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
     }
     return bs;
 }
+
+#define EXT_BITSTRING(nid, table)                                             \
+  {                                                                           \
+    nid, 0, ASN1_ITEM_ref(ASN1_BIT_STRING), 0, 0, 0, 0, 0, 0,                 \
+        i2v_ASN1_BIT_STRING, v2i_ASN1_BIT_STRING, NULL, NULL, (void *)(table) \
+  }
+
+const X509V3_EXT_METHOD v3_nscert =
+EXT_BITSTRING(NID_netscape_cert_type, ns_cert_type_table);
+const X509V3_EXT_METHOD v3_key_usage =
+EXT_BITSTRING(NID_key_usage, key_usage_type_table);
