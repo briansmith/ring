@@ -472,17 +472,6 @@ OPENSSL_EXPORT void X509_SIG_get0(const X509_SIG *sig,
 OPENSSL_EXPORT void X509_SIG_getm(X509_SIG *sig, X509_ALGOR **out_alg,
                                   ASN1_OCTET_STRING **out_digest);
 
-OPENSSL_EXPORT void X509_CRL_set_default_method(const X509_CRL_METHOD *meth);
-OPENSSL_EXPORT X509_CRL_METHOD *X509_CRL_METHOD_new(
-    int (*crl_init)(X509_CRL *crl), int (*crl_free)(X509_CRL *crl),
-    int (*crl_lookup)(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *ser,
-                      X509_NAME *issuer),
-    int (*crl_verify)(X509_CRL *crl, EVP_PKEY *pk));
-OPENSSL_EXPORT void X509_CRL_METHOD_free(X509_CRL_METHOD *m);
-
-OPENSSL_EXPORT void X509_CRL_set_meth_data(X509_CRL *crl, void *dat);
-OPENSSL_EXPORT void *X509_CRL_get_meth_data(X509_CRL *crl);
-
 // X509_get_X509_PUBKEY returns the public key of |x509|. Note this function is
 // not const-correct for legacy reasons. Callers should not modify the returned
 // object.
@@ -2388,7 +2377,6 @@ BORINGSSL_MAKE_DELETER(X509_ALGOR, X509_ALGOR_free)
 BORINGSSL_MAKE_DELETER(X509_ATTRIBUTE, X509_ATTRIBUTE_free)
 BORINGSSL_MAKE_DELETER(X509_CRL, X509_CRL_free)
 BORINGSSL_MAKE_UP_REF(X509_CRL, X509_CRL_up_ref)
-BORINGSSL_MAKE_DELETER(X509_CRL_METHOD, X509_CRL_METHOD_free)
 BORINGSSL_MAKE_DELETER(X509_EXTENSION, X509_EXTENSION_free)
 BORINGSSL_MAKE_DELETER(X509_INFO, X509_INFO_free)
 BORINGSSL_MAKE_DELETER(X509_LOOKUP, X509_LOOKUP_free)
