@@ -79,6 +79,7 @@
 
 #include "internal.h"
 #include "../delocate.h"
+#include "../service_indicator/internal.h"
 #include "../../internal.h"
 
 

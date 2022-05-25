@@ -64,6 +64,7 @@
 #include "../../internal.h"
 #include "../bn/internal.h"
 #include "../ec/internal.h"
+#include "../service_indicator/internal.h"
 #include "internal.h"
 
 
