@@ -603,7 +603,7 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   }
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_cbc_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_cbc) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_cbc;
@@ -616,7 +616,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_cbc_generic) {
   out->cipher = aes_cbc_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_ctr_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ctr) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_ctr;
@@ -641,7 +641,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_ecb_generic) {
   out->cipher = aes_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_ofb_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ofb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_ofb128;
@@ -654,7 +654,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_ofb_generic) {
   out->cipher = aes_ofb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_gcm_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_gcm) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_gcm;
@@ -671,7 +671,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_gcm_generic) {
   out->ctrl = aes_gcm_ctrl;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_cbc_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_cbc) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_cbc;
@@ -684,7 +684,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_cbc_generic) {
   out->cipher = aes_cbc_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ctr_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ctr) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_ctr;
@@ -709,7 +709,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ecb_generic) {
   out->cipher = aes_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ofb_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ofb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_ofb128;
@@ -722,7 +722,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ofb_generic) {
   out->cipher = aes_ofb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_gcm_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_gcm) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_gcm;
@@ -739,7 +739,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_gcm_generic) {
   out->ctrl = aes_gcm_ctrl;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_cbc_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_cbc) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_cbc;
@@ -752,7 +752,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_cbc_generic) {
   out->cipher = aes_cbc_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_ctr_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ctr) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_ctr;
@@ -777,7 +777,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_ecb_generic) {
   out->cipher = aes_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_ofb_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ofb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_ofb128;
@@ -790,7 +790,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_ofb_generic) {
   out->cipher = aes_ofb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_gcm_generic) {
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_gcm) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_gcm;
@@ -874,26 +874,6 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_hw_256_ecb) {
   }
 
 #endif  // HWAES_ECB
-
-#define EVP_CIPHER_FUNCTION(keybits, mode)             \
-  const EVP_CIPHER *EVP_aes_##keybits##_##mode(void) { \
-    return aes_##keybits##_##mode##_generic();         \
-  }
-
-EVP_CIPHER_FUNCTION(128, cbc)
-EVP_CIPHER_FUNCTION(128, ctr)
-EVP_CIPHER_FUNCTION(128, ofb)
-EVP_CIPHER_FUNCTION(128, gcm)
-
-EVP_CIPHER_FUNCTION(192, cbc)
-EVP_CIPHER_FUNCTION(192, ctr)
-EVP_CIPHER_FUNCTION(192, ofb)
-EVP_CIPHER_FUNCTION(192, gcm)
-
-EVP_CIPHER_FUNCTION(256, cbc)
-EVP_CIPHER_FUNCTION(256, ctr)
-EVP_CIPHER_FUNCTION(256, ofb)
-EVP_CIPHER_FUNCTION(256, gcm)
 
 EVP_ECB_CIPHER_FUNCTION(128)
 EVP_ECB_CIPHER_FUNCTION(192)
