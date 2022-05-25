@@ -19,6 +19,7 @@
 #include <openssl/aes.h>
 #include <openssl/obj.h>
 
+#include "../../crypto/fipsmodule/cipher/internal.h"
 #include "../../crypto/internal.h"
 
 typedef struct {

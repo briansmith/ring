@@ -64,6 +64,7 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
+#include "../../crypto/fipsmodule/cipher/internal.h"
 #include "../../crypto/internal.h"
 #include "internal.h"
 #include "../macros.h"

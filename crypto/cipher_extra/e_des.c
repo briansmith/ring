@@ -58,6 +58,7 @@
 #include <openssl/des.h>
 #include <openssl/nid.h>
 
+#include "../fipsmodule/cipher/internal.h"
 #include "internal.h"
 
 
