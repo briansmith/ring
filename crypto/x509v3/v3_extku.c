@@ -78,7 +78,7 @@ const X509V3_EXT_METHOD v3_ext_ku = {
     i2v_EXTENDED_KEY_USAGE,
     v2i_EXTENDED_KEY_USAGE,
     0, 0,
-    NULL
+    NULL,
 };
 
 /* NB OCSP acceptable responses also is a SEQUENCE OF OBJECT */
@@ -90,7 +90,7 @@ const X509V3_EXT_METHOD v3_ocsp_accresp = {
     i2v_EXTENDED_KEY_USAGE,
     v2i_EXTENDED_KEY_USAGE,
     0, 0,
-    NULL
+    NULL,
 };
 
 ASN1_ITEM_TEMPLATE(EXTENDED_KEY_USAGE) =

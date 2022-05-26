@@ -82,7 +82,7 @@ const X509V3_EXT_METHOD v3_akey_id = {
     i2v_AUTHORITY_KEYID,
     v2i_AUTHORITY_KEYID,
     0, 0,
-    NULL
+    NULL,
 };
 
 static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_KEYID(

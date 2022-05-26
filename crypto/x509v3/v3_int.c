@@ -77,7 +77,7 @@ const X509V3_EXT_METHOD v3_crl_num = {
     0, 0, 0, 0,
     i2s_ASN1_INTEGER_cb,
     0,
-    0, 0, 0, 0, NULL
+    0, 0, 0, 0, NULL,
 };
 
 const X509V3_EXT_METHOD v3_delta_crl = {
@@ -85,7 +85,7 @@ const X509V3_EXT_METHOD v3_delta_crl = {
     0, 0, 0, 0,
     i2s_ASN1_INTEGER_cb,
     0,
-    0, 0, 0, 0, NULL
+    0, 0, 0, 0, NULL,
 };
 
 const X509V3_EXT_METHOD v3_inhibit_anyp = {
@@ -93,5 +93,5 @@ const X509V3_EXT_METHOD v3_inhibit_anyp = {
     0, 0, 0, 0,
     i2s_ASN1_INTEGER_cb,
     s2i_asn1_int,
-    0, 0, 0, 0, NULL
+    0, 0, 0, 0, NULL,
 };

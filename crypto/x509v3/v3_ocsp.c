@@ -31,7 +31,7 @@ const X509V3_EXT_METHOD v3_crl_invdate = {
     0, 0,
     0, 0,
     i2r_ocsp_acutoff, 0,
-    NULL
+    NULL,
 };
 
 const X509V3_EXT_METHOD v3_ocsp_nocheck = {
@@ -40,7 +40,7 @@ const X509V3_EXT_METHOD v3_ocsp_nocheck = {
     0, s2i_ocsp_nocheck,
     0, 0,
     i2r_ocsp_nocheck, 0,
-    NULL
+    NULL,
 };
 
 static int i2r_ocsp_acutoff(const X509V3_EXT_METHOD *method, void *cutoff,

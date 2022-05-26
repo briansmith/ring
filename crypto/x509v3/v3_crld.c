@@ -82,7 +82,7 @@ const X509V3_EXT_METHOD v3_crld = {
     0,
     v2i_crld,
     i2r_crldp, 0,
-    NULL
+    NULL,
 };
 
 const X509V3_EXT_METHOD v3_freshest_crl = {
@@ -92,7 +92,7 @@ const X509V3_EXT_METHOD v3_freshest_crl = {
     0,
     v2i_crld,
     i2r_crldp, 0,
-    NULL
+    NULL,
 };
 
 static STACK_OF(GENERAL_NAME) *gnames_from_sectname(X509V3_CTX *ctx,
@@ -366,7 +366,7 @@ static int dpn_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 
 ASN1_CHOICE_cb(DIST_POINT_NAME, dpn_cb) = {
         ASN1_IMP_SEQUENCE_OF(DIST_POINT_NAME, name.fullname, GENERAL_NAME, 0),
-        ASN1_IMP_SET_OF(DIST_POINT_NAME, name.relativename, X509_NAME_ENTRY, 1)
+        ASN1_IMP_SET_OF(DIST_POINT_NAME, name.relativename, X509_NAME_ENTRY, 1),
 } ASN1_CHOICE_END_cb(DIST_POINT_NAME, DIST_POINT_NAME, type)
 
 
@@ -375,7 +375,7 @@ IMPLEMENT_ASN1_FUNCTIONS(DIST_POINT_NAME)
 ASN1_SEQUENCE(DIST_POINT) = {
         ASN1_EXP_OPT(DIST_POINT, distpoint, DIST_POINT_NAME, 0),
         ASN1_IMP_OPT(DIST_POINT, reasons, ASN1_BIT_STRING, 1),
-        ASN1_IMP_SEQUENCE_OF_OPT(DIST_POINT, CRLissuer, GENERAL_NAME, 2)
+        ASN1_IMP_SEQUENCE_OF_OPT(DIST_POINT, CRLissuer, GENERAL_NAME, 2),
 } ASN1_SEQUENCE_END(DIST_POINT)
 
 IMPLEMENT_ASN1_FUNCTIONS(DIST_POINT)
@@ -392,7 +392,7 @@ ASN1_SEQUENCE(ISSUING_DIST_POINT) = {
         ASN1_IMP_OPT(ISSUING_DIST_POINT, onlyCA, ASN1_FBOOLEAN, 2),
         ASN1_IMP_OPT(ISSUING_DIST_POINT, onlysomereasons, ASN1_BIT_STRING, 3),
         ASN1_IMP_OPT(ISSUING_DIST_POINT, indirectCRL, ASN1_FBOOLEAN, 4),
-        ASN1_IMP_OPT(ISSUING_DIST_POINT, onlyattr, ASN1_FBOOLEAN, 5)
+        ASN1_IMP_OPT(ISSUING_DIST_POINT, onlyattr, ASN1_FBOOLEAN, 5),
 } ASN1_SEQUENCE_END(ISSUING_DIST_POINT)
 
 IMPLEMENT_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
@@ -410,7 +410,7 @@ const X509V3_EXT_METHOD v3_idp = {
     0,
     v2i_idp,
     i2r_idp, 0,
-    NULL
+    NULL,
 };
 
 static void *v2i_idp(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,

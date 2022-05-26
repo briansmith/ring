@@ -101,5 +101,5 @@ const X509V3_EXT_METHOD v3_crl_reason = {
     i2s_ASN1_ENUMERATED_TABLE,
     0,
     0, 0, 0, 0,
-    (void *)crl_reasons
+    (void *)crl_reasons,
 };

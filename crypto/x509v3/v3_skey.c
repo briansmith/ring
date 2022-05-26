@@ -157,5 +157,5 @@ const X509V3_EXT_METHOD v3_skey_id = {
     i2s_ASN1_OCTET_STRING_cb,
     s2i_skey_id,
     0, 0, 0, 0,
-    NULL
+    NULL,
 };
