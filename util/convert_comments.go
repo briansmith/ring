@@ -232,6 +232,29 @@ func convertComments(path string, in []byte) []byte {
 			}
 
 			for i, line := range group.lines {
+				// The OpenSSL style writes multiline block comments with a
+				// blank line at the top and bottom, like so:
+				//
+				//   /*
+				//    * Some multi-line
+				//    * comment
+				//    */
+				//
+				// The trailing lines are already removed above, when buffering.
+				// Remove the leading lines here. (The leading lines cannot be
+				// removed when buffering because we may discover the comment is
+				// not convertible in later lines.)
+				//
+				// Note the leading line cannot be easily removed if there is
+				// code before it, such as the following. Skip those cases.
+				//
+				//   foo(); /*
+				//           * Some multi-line
+				//           * comment
+				//           */
+				if i == 0 && allSpaces(line[:group.column]) && len(line) == group.column+2 {
+					continue
+				}
 				newLine := fmt.Sprintf("%s%s//%s", line[:group.column], adjust, strings.TrimRight(line[group.column+2:], " "))
 				if len(newLine) > 80 {
 					fmt.Fprintf(os.Stderr, "%s:%d: Line is now longer than 80 characters\n", path, lineNo+i+1)
