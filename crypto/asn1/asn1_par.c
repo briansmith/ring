@@ -60,15 +60,37 @@
 const char *ASN1_tag2str(int tag)
 {
     static const char *const tag2str[] = {
-        "EOC", "BOOLEAN", "INTEGER", "BIT STRING", "OCTET STRING", /* 0-4 */
-        "NULL", "OBJECT", "OBJECT DESCRIPTOR", "EXTERNAL", "REAL", /* 5-9 */
-        "ENUMERATED", "<ASN1 11>", "UTF8STRING", "<ASN1 13>", /* 10-13 */
-        "<ASN1 14>", "<ASN1 15>", "SEQUENCE", "SET", /* 15-17 */
-        "NUMERICSTRING", "PRINTABLESTRING", "T61STRING", /* 18-20 */
-        "VIDEOTEXSTRING", "IA5STRING", "UTCTIME", "GENERALIZEDTIME", /* 21-24
-                                                                      */
-        "GRAPHICSTRING", "VISIBLESTRING", "GENERALSTRING", /* 25-27 */
-        "UNIVERSALSTRING", "<ASN1 29>", "BMPSTRING" /* 28-30 */
+        "EOC",
+        "BOOLEAN",
+        "INTEGER",
+        "BIT STRING",
+        "OCTET STRING",
+        "NULL",
+        "OBJECT",
+        "OBJECT DESCRIPTOR",
+        "EXTERNAL",
+        "REAL",
+        "ENUMERATED",
+        "<ASN1 11>",
+        "UTF8STRING",
+        "<ASN1 13>",
+        "<ASN1 14>",
+        "<ASN1 15>",
+        "SEQUENCE",
+        "SET",
+        "NUMERICSTRING",
+        "PRINTABLESTRING",
+        "T61STRING",
+        "VIDEOTEXSTRING",
+        "IA5STRING",
+        "UTCTIME",
+        "GENERALIZEDTIME",
+        "GRAPHICSTRING",
+        "VISIBLESTRING",
+        "GENERALSTRING",
+        "UNIVERSALSTRING",
+        "<ASN1 29>",
+        "BMPSTRING",
     };
 
     if ((tag == V_ASN1_NEG_INTEGER) || (tag == V_ASN1_NEG_ENUMERATED))

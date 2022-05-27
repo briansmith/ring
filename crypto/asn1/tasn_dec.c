@@ -97,29 +97,43 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
                             char opt, int depth);
 
 /* Table to convert tags to bit values, used for MSTRING type */
-static const unsigned long tag2bit[32] = {
-    0, 0, 0, B_ASN1_BIT_STRING, /* tags 0 - 3 */
-    B_ASN1_OCTET_STRING, 0, 0, B_ASN1_UNKNOWN, /* tags 4- 7 */
-    B_ASN1_UNKNOWN, B_ASN1_UNKNOWN, B_ASN1_UNKNOWN, B_ASN1_UNKNOWN, /* tags
-                                                                     * 8-11 */
-    B_ASN1_UTF8STRING, B_ASN1_UNKNOWN, B_ASN1_UNKNOWN, B_ASN1_UNKNOWN, /* tags
-                                                                        * 12-15
-                                                                        */
-    B_ASN1_SEQUENCE, 0, B_ASN1_NUMERICSTRING, B_ASN1_PRINTABLESTRING, /* tags
-                                                                       * 16-19
-                                                                       */
-    B_ASN1_T61STRING, B_ASN1_VIDEOTEXSTRING, B_ASN1_IA5STRING, /* tags 20-22 */
-    B_ASN1_UTCTIME, B_ASN1_GENERALIZEDTIME, /* tags 23-24 */
-    B_ASN1_GRAPHICSTRING, B_ASN1_ISO64STRING, B_ASN1_GENERALSTRING, /* tags
-                                                                     * 25-27 */
-    B_ASN1_UNIVERSALSTRING, B_ASN1_UNKNOWN, B_ASN1_BMPSTRING, B_ASN1_UNKNOWN, /* tags
-                                                                               * 28-31
-                                                                               */
+static const unsigned long tag2bit[31] = {
+    0, /* (reserved) */
+    0, /* BOOLEAN */
+    0, /* INTEGER */
+    B_ASN1_BIT_STRING,
+    B_ASN1_OCTET_STRING,
+    0,              /* NULL */
+    0,              /* OBJECT IDENTIFIER */
+    B_ASN1_UNKNOWN, /* ObjectDescriptor */
+    B_ASN1_UNKNOWN, /* EXTERNAL */
+    B_ASN1_UNKNOWN, /* REAL */
+    B_ASN1_UNKNOWN, /* ENUMERATED */
+    B_ASN1_UNKNOWN, /* EMBEDDED PDV */
+    B_ASN1_UTF8STRING,
+    B_ASN1_UNKNOWN, /* RELATIVE-OID */
+    B_ASN1_UNKNOWN, /* TIME */
+    B_ASN1_UNKNOWN, /* (reserved) */
+    B_ASN1_SEQUENCE,
+    0, /* SET */
+    B_ASN1_NUMERICSTRING,
+    B_ASN1_PRINTABLESTRING,
+    B_ASN1_T61STRING,
+    B_ASN1_VIDEOTEXSTRING,
+    B_ASN1_IA5STRING,
+    B_ASN1_UTCTIME,
+    B_ASN1_GENERALIZEDTIME,
+    B_ASN1_GRAPHICSTRING,
+    B_ASN1_ISO64STRING,
+    B_ASN1_GENERALSTRING,
+    B_ASN1_UNIVERSALSTRING,
+    B_ASN1_UNKNOWN, /* CHARACTER STRING */
+    B_ASN1_BMPSTRING,
 };
 
 unsigned long ASN1_tag2bit(int tag)
 {
-    if ((tag < 0) || (tag > 30))
+    if (tag < 0 || tag > 30)
         return 0;
     return tag2bit[tag];
 }
