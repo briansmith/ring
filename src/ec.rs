@@ -36,7 +36,7 @@ derive_debug_via_id!(Curve);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CurveID {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(target_family = "wasm"))]
     Curve25519,
     P256,
     P384,

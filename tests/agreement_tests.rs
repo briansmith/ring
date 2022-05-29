@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(not(target_arch = "wasm32"))]
+#![cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 
 extern crate alloc;
 

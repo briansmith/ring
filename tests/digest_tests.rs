@@ -14,10 +14,10 @@
 
 use ring::{digest, test, test_file};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
 wasm_bindgen_test_configure!(run_in_browser);
 
 /// Test vectors from BoringSSL, Go, and other sources.
@@ -81,7 +81,7 @@ mod digest_shavs {
                 use super::{run_known_answer_test, run_monte_carlo_test};
                 use ring::{digest, test_file};
 
-                #[cfg(target_arch = "wasm32")]
+                #[cfg(all(target_family = "wasm", target_os = "unknown"))]
                 use wasm_bindgen_test::wasm_bindgen_test as test;
 
                 #[test]
@@ -183,7 +183,7 @@ macro_rules! test_i_u_f {
     ( $test_name:ident, $alg:expr) => {
         #[cfg(not(debug_assertions))]
         // TODO: Get this working on WebAssembly
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
         #[test]
         fn $test_name() {
             let mut input = [0; (digest::MAX_BLOCK_LEN + 1) * 3];
@@ -245,7 +245,7 @@ macro_rules! test_large_digest {
     ( $test_name:ident, $alg:expr, $len:expr, $expected:expr) => {
         // TODO: get this working on WebAssembly.
         #[cfg(not(debug_assertions))]
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
         #[test]
         fn $test_name() {
             let chunk = vec![123u8; 16 * 1024];

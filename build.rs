@@ -30,6 +30,8 @@ const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
+const WASM32: &str = "wasm32";
+const WASM64: &str = "wasm64";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
@@ -41,13 +43,13 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/poly1305/poly1305.c"),
 
-    (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
+    (&[AARCH64, ARM, X86_64, X86, WASM32, WASM64], "crypto/crypto.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
     (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/p256.c"),
 
-    (&[X86_64, X86], "crypto/cpu-intel.c"),
+    (&[X86_64, X86, WASM32, WASM64], "crypto/cpu-intel.c"),
 
     (&[X86], "crypto/fipsmodule/aes/asm/aesni-x86.pl"),
     (&[X86], "crypto/fipsmodule/aes/asm/vpaes-x86.pl"),
@@ -64,7 +66,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"),
-    (&[X86_64], "crypto/poly1305/poly1305_vec.c"),
+    (&[X86_64, WASM32, WASM64], "crypto/poly1305/poly1305_vec.c"),
     (&[X86_64], SHA512_X86_64),
     (&[X86_64], "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"),
 
@@ -491,6 +493,17 @@ fn build_c_code(
     );
 }
 
+fn cc_builder() -> cc::Build {
+    let mut c = cc::Build::new();
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+    if target_os == "wasi" {
+        let wasi_sdk_path =
+            &std::env::var("WASI_SDK_DIR").expect("missing environment variable: WASI_SDK_DIR");
+        c.flag(format!("--sysroot={}", wasi_sdk_path).as_str());
+    }
+    c
+}
+
 fn build_library(
     target: &Target,
     out_dir: &Path,
@@ -508,7 +521,7 @@ fn build_library(
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
 
-    let mut c = cc::Build::new();
+    let mut c = cc_builder();
 
     for f in LD_FLAGS {
         let _ = c.flag(f);
@@ -568,7 +581,7 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 }
 
 fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Path) -> Command {
-    let mut c = cc::Build::new();
+    let mut c = cc_builder();
 
     // FIXME: On Windows AArch64 we currently must use Clang to compile C code
     if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {
@@ -595,6 +608,7 @@ fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Pa
         && target.os != "redox"
         && target.os != "windows"
         && target.arch != "wasm32"
+        && target.arch != "wasm64"
     {
         let _ = c.flag("-fstack-protector");
     }

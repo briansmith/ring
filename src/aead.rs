@@ -189,6 +189,7 @@ derive_debug_via_id!(Algorithm);
 enum AlgorithmID {
     AES_128_GCM,
     AES_256_GCM,
+    #[allow(dead_code)]
     CHACHA20_POLY1305,
 }
 

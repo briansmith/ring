@@ -79,7 +79,7 @@ mod polyfill;
 
 pub mod aead;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 pub mod agreement;
 
 mod bits;

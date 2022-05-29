@@ -14,10 +14,10 @@
 
 use ring::{constant_time, error, rand};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
 wasm_bindgen_test_configure!(run_in_browser);
 
 // This logic is loosly based on BoringSSL's `TEST(ConstantTimeTest, MemCmp)`.
