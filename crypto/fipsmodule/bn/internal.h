@@ -391,7 +391,7 @@ void bn_scatter5(const BN_ULONG *inp, size_t num, BN_ULONG *table,
 
 // bn_gather5 loads index |power| of |table| and stores it in |out|. |out| and
 // each entry of |table| are |num| words long. |power| must be less than 32.
-void bn_gather5(BN_ULONG *out, size_t num, BN_ULONG *table, size_t power);
+void bn_gather5(BN_ULONG *out, size_t num, const BN_ULONG *table, size_t power);
 
 // bn_power5 squares |ap| five times and multiplies it by the value stored at
 // index |power| of |table|, modulo |np|. It stores the result in |rp|. The
