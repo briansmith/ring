@@ -979,13 +979,13 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 #if defined(OPENSSL_BN_ASM_MONT5)
   if (window >= 5) {
     window = 5;  // ~5% improvement for RSA2048 sign, and even for RSA4096
-    // reserve space for mont->N.d[] copy
+    // Reserve space for the |mont->N| copy.
     powerbufLen += top * sizeof(mont->N.d[0]);
   }
 #endif
 
   // Allocate a buffer large enough to hold all of the pre-computed
-  // powers of am, am itself and tmp.
+  // powers of |am|, |am| itself, and |tmp|.
   numPowers = 1 << window;
   powerbufLen +=
       sizeof(m->d[0]) *
@@ -1008,7 +1008,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   }
   OPENSSL_memset(powerbuf, 0, powerbufLen);
 
-  // lay down tmp and am right after powers table
+  // Place |tmp| and |am| right after powers table.
   tmp.d = powerbuf + top * numPowers;
   am.d = tmp.d + top;
   tmp.width = am.width = 0;
@@ -1028,18 +1028,26 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   }
 
 #if defined(OPENSSL_BN_ASM_MONT5)
-  // This optimization uses ideas from http://eprint.iacr.org/2011/239,
-  // specifically optimization of cache-timing attack countermeasures
-  // and pre-computation optimization.
-
-  // Dedicated window==4 case improves 512-bit RSA sign by ~15%, but as
-  // 512-bit RSA is hardly relevant, we omit it to spare size...
+  // This optimization uses ideas from https://eprint.iacr.org/2011/239,
+  // specifically optimization of cache-timing attack countermeasures,
+  // pre-computation optimization, and Almost Montgomery Multiplication.
+  //
+  // The paper discusses a 4-bit window to optimize 512-bit modular
+  // exponentiation, used in RSA-1024 with CRT, but RSA-1024 is no longer
+  // important.
+  //
+  // |bn_mul_mont_gather5| and |bn_power5| implement the "almost" reduction
+  // variant, so the values here may not be fully reduced. They are bounded by R
+  // (i.e. they fit in |top| words), not |m|. Additionally, we pass these
+  // "almost" reduced inputs into |bn_mul_mont|, which implements the normal
+  // reduction variant. Given those inputs, |bn_mul_mont| may not give reduced
+  // output, but it will still produce "almost" reduced output.
+  //
+  // TODO(davidben): Using "almost" reduction complicates analysis of this code,
+  // and its interaction with other parts of the project. Determine whether this
+  // is actually necessary for performance.
   if (window == 5 && top > 1) {
-    const BN_ULONG *n0 = mont->n0;
-    BN_ULONG *np;
-
-    // BN_to_montgomery can contaminate words above .top
-    // [in BN_DEBUG[_DEBUG] build]...
+    // Ensure |am| and |tmp| are padded to the right width.
     for (i = am.width; i < top; i++) {
       am.d[i] = 0;
     }
@@ -1047,30 +1055,34 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       tmp.d[i] = 0;
     }
 
-    // copy mont->N.d[] to improve cache locality
-    for (np = am.d + top, i = 0; i < top; i++) {
+    // Copy |mont->N| to improve cache locality.
+    BN_ULONG *np = am.d + top;
+    for (i = 0; i < top; i++) {
       np[i] = mont->N.d[i];
     }
 
+    // Fill |powerbuf| with the first 32 powers of |am|.
+    const BN_ULONG *n0 = mont->n0;
     bn_scatter5(tmp.d, top, powerbuf, 0);
     bn_scatter5(am.d, am.width, powerbuf, 1);
     bn_mul_mont(tmp.d, am.d, am.d, np, n0, top);
     bn_scatter5(tmp.d, top, powerbuf, 2);
 
-    // same as above, but uses squaring for 1/2 of operations
+    // Square to compute powers of two.
     for (i = 4; i < 32; i *= 2) {
       bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
       bn_scatter5(tmp.d, top, powerbuf, i);
     }
+    // Compute odd powers |i| based on |i - 1|, then all powers |i * 2^j|.
     for (i = 3; i < 8; i += 2) {
-      int j;
       bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
       bn_scatter5(tmp.d, top, powerbuf, i);
-      for (j = 2 * i; j < 32; j *= 2) {
+      for (int j = 2 * i; j < 32; j *= 2) {
         bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
         bn_scatter5(tmp.d, top, powerbuf, j);
       }
     }
+    // These two loops are the above with the inner loop unrolled.
     for (; i < 16; i += 2) {
       bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
       bn_scatter5(tmp.d, top, powerbuf, i);
@@ -1137,15 +1149,15 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
         bn_power5(tmp.d, tmp.d, powerbuf, np, n0, top, val);
       }
     }
-
-    ret = bn_from_montgomery(tmp.d, tmp.d, NULL, np, n0, top);
-    tmp.width = top;
-    if (ret) {
-      if (!BN_copy(rr, &tmp)) {
-        ret = 0;
-      }
-      goto err;  // non-zero ret means it's not error
-    }
+    // The result is now in |tmp| in Montgomery form, but it may not be fully
+    // reduced. This is within bounds for |BN_from_montgomery| (tmp < R <= m*R)
+    // so it will, when converting from Montgomery form, produce a fully reduced
+    // result.
+    //
+    // This differs from Figure 2 of the paper, which uses AMM(h, 1) to convert
+    // from Montgomery form with unreduced output, followed by an extra
+    // reduction step. In the paper's terminology, we replace steps 9 and 10
+    // with MM(h, 1).
   } else
 #endif
   {
@@ -1206,7 +1218,11 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
   }
 
-  // Convert the final result from montgomery to standard format
+  // Convert the final result from Montgomery to standard format. If we used the
+  // |OPENSSL_BN_ASM_MONT5| codepath, |tmp| may not be fully reduced. It is only
+  // bounded by R rather than |m|. However, that is still within bounds for
+  // |BN_from_montgomery|, which implements full Montgomery reduction, not
+  // "almost" Montgomery reduction.
   if (!BN_from_montgomery(rr, &tmp, mont, ctx)) {
     goto err;
   }
