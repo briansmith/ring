@@ -1074,24 +1074,13 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       bn_scatter5(tmp.d, top, powerbuf, i);
     }
     // Compute odd powers |i| based on |i - 1|, then all powers |i * 2^j|.
-    for (i = 3; i < 8; i += 2) {
+    for (i = 3; i < 32; i += 2) {
       bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
       bn_scatter5(tmp.d, top, powerbuf, i);
       for (int j = 2 * i; j < 32; j *= 2) {
         bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
         bn_scatter5(tmp.d, top, powerbuf, j);
       }
-    }
-    // These two loops are the above with the inner loop unrolled.
-    for (; i < 16; i += 2) {
-      bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
-      bn_scatter5(tmp.d, top, powerbuf, i);
-      bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-      bn_scatter5(tmp.d, top, powerbuf, 2 * i);
-    }
-    for (; i < 32; i += 2) {
-      bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
-      bn_scatter5(tmp.d, top, powerbuf, i);
     }
 
     bits--;
