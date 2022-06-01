@@ -146,29 +146,28 @@ impl<M, E> Elem<M, E> {
     }
 }
 
-impl<M, E: ReductionEncoding> Elem<M, E> {
-    fn decode_once(self, m: &Modulus<M>) -> Elem<M, <E as ReductionEncoding>::Output> {
-        // A multiplication isn't required since we're multiplying by the
-        // unencoded value one (1); only a Montgomery reduction is needed.
-        // However the only non-multiplication Montgomery reduction function we
-        // have requires the input to be large, so we avoid using it here.
-        let mut limbs = self.limbs;
-        let num_limbs = m.width().num_limbs;
-        let mut one = [0; MODULUS_MAX_LIMBS];
-        one[0] = 1;
-        let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
-        limbs_mont_mul(&mut limbs, one, m.limbs(), m.n0(), m.cpu_features());
-        Elem {
-            limbs,
-            encoding: PhantomData,
-        }
+/// Does a Montgomery reduction on `limbs` assuming they are Montgomery-encoded ('R') and assuming
+/// they are the same size as `m`, but perhaps not reduced mod `m`. The result will be
+/// fully reduced mod `m`.
+fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unencoded> {
+    debug_assert_eq!(limbs.len(), m.limbs().len());
+
+    let mut limbs = limbs;
+    let num_limbs = m.width().num_limbs;
+    let mut one = [0; MODULUS_MAX_LIMBS];
+    one[0] = 1;
+    let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
+    limbs_mont_mul(&mut limbs, one, m.limbs(), m.n0(), m.cpu_features());
+    Elem {
+        limbs,
+        encoding: PhantomData,
     }
 }
 
 impl<M> Elem<M, R> {
     #[inline]
     pub fn into_unencoded(self, m: &Modulus<M>) -> Elem<M, Unencoded> {
-        self.decode_once(m)
+        from_montgomery_amm(self.limbs, m)
     }
 }
 
@@ -623,7 +622,13 @@ pub fn elem_exp_consttime<M>(
         limbs_mont_square(acc, m, n0, cpu_features);
     }
 
-    fn gather_mul_base(table: &[Limb], state: &mut [Limb], n0: &N0, i: Window, num_limbs: usize) {
+    fn gather_mul_base_amm(
+        table: &[Limb],
+        state: &mut [Limb],
+        n0: &N0,
+        i: Window,
+        num_limbs: usize,
+    ) {
         prefixed_extern! {
             fn bn_mul_mont_gather5(
                 rp: *mut Limb,
@@ -648,7 +653,7 @@ pub fn elem_exp_consttime<M>(
         }
     }
 
-    fn power(table: &[Limb], state: &mut [Limb], n0: &N0, i: Window, num_limbs: usize) {
+    fn power_amm(table: &[Limb], state: &mut [Limb], n0: &N0, i: Window, num_limbs: usize) {
         prefixed_extern! {
             fn bn_power5(
                 r: *mut Limb,
@@ -690,7 +695,7 @@ pub fn elem_exp_consttime<M>(
             // TODO: Optimize this to avoid gathering
             gather_square(table, state, m.n0(), i / 2, num_limbs, cpu_features);
         } else {
-            gather_mul_base(table, state, m.n0(), i - 1, num_limbs)
+            gather_mul_base_amm(table, state, m.n0(), i - 1, num_limbs)
         };
         scatter(table, state, i, num_limbs);
     }
@@ -702,37 +707,15 @@ pub fn elem_exp_consttime<M>(
             state
         },
         |state, window| {
-            power(table, state, m.n0(), window, num_limbs);
+            power_amm(table, state, m.n0(), window, num_limbs);
             state
         },
     );
 
-    prefixed_extern! {
-        fn bn_from_montgomery(
-            r: *mut Limb,
-            a: *const Limb,
-            not_used: *const Limb,
-            n: *const Limb,
-            n0: &N0,
-            num: c::size_t,
-        ) -> bssl::Result;
-    }
-    Result::from(unsafe {
-        bn_from_montgomery(
-            entry_mut(state, ACC, num_limbs).as_mut_ptr(),
-            entry(state, ACC, num_limbs).as_ptr(),
-            core::ptr::null(),
-            entry(state, M, num_limbs).as_ptr(),
-            m.n0(),
-            num_limbs,
-        )
-    })?;
-    let mut r = Elem {
-        limbs: base.limbs,
-        encoding: PhantomData,
-    };
-    r.limbs.copy_from_slice(entry(state, ACC, num_limbs));
-    Ok(r)
+    let mut r_amm = base.limbs;
+    r_amm.copy_from_slice(entry(state, ACC, num_limbs));
+
+    Ok(from_montgomery_amm(r_amm, m))
 }
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
