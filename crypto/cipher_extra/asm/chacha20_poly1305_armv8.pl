@@ -378,9 +378,9 @@ chacha20_poly1305_seal:
 .cfi_offset w30, -72
 .cfi_offset w29, -80
     mov x29, sp
-# We probably could do .cfi_def_cfa w29, 80 at this point, but since
-# we don't actually use the frame pointer like that, it's probably not
-# worth bothering.
+    // We probably could do .cfi_def_cfa w29, 80 at this point, but since
+    // we don't actually use the frame pointer like that, it's probably not
+    // worth bothering.
     stp d8, d9, [sp, #16]
     stp d10, d11, [sp, #32]
     stp d12, d13, [sp, #48]
@@ -881,7 +881,7 @@ ___
     &poly_add_vec($LEN_STORE);
     &poly_mul();
 $code.=<<___;
-    # Final reduction step
+    // Final reduction step
     sub  $t1, xzr, $one
     orr  $t2, xzr, #3
     subs $t0, $acc0, #-5
@@ -986,9 +986,9 @@ chacha20_poly1305_open:
 .cfi_offset w30, -72
 .cfi_offset w29, -80
     mov x29, sp
-# We probably could do .cfi_def_cfa w29, 80 at this point, but since
-# we don't actually use the frame pointer like that, it's probably not
-# worth bothering.
+    // We probably could do .cfi_def_cfa w29, 80 at this point, but since
+    // we don't actually use the frame pointer like that, it's probably not
+    // worth bothering.
     stp	d8, d9, [sp, #16]
     stp	d10, d11, [sp, #32]
     stp	d12, d13, [sp, #48]
@@ -1502,7 +1502,7 @@ ___
     &poly_add_vec($LEN_STORE);
     &poly_mul();
 $code.=<<___;
-    # Final reduction step
+    // Final reduction step
     sub  $t1, xzr, $one
     orr  $t2, xzr, #3
     subs $t0, $acc0, #-5
