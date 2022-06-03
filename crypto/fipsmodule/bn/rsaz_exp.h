@@ -90,7 +90,11 @@ void rsaz_1024_gather5_avx2(BN_ULONG val[40], const BN_ULONG tbl[32 * 18],
                             int i);
 
 // rsaz_1024_red2norm_avx2 converts |red| from RSAZ to |BIGNUM| representation
-// and writes the result to |norm|.
+// and writes the result to |norm|. The result will be <= the modulus.
+//
+// WARNING: The result of this operation may not be fully reduced. |norm| may be
+// the modulus instead of zero. This function should be followed by a call to
+// |bn_reduce_once|.
 void rsaz_1024_red2norm_avx2(BN_ULONG norm[16], const BN_ULONG red[40]);
 
 

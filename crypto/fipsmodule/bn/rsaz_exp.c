@@ -219,6 +219,8 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
   rsaz_1024_mul_avx2(result, result, one, m, k0);
 
   rsaz_1024_red2norm_avx2(result_norm, result);
+  BN_ULONG scratch[16];
+  bn_reduce_once_in_place(result_norm, /*carry=*/0, m_norm, scratch, 16);
 
   OPENSSL_cleanse(storage, MOD_EXP_CTIME_STORAGE_LEN * sizeof(BN_ULONG));
 }
