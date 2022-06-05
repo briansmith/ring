@@ -178,6 +178,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
+#define EVP_PKEY_HKDF NID_hkdf
 
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
 // the given type. It returns one if successful or zero if the |type| argument
@@ -665,11 +666,11 @@ OPENSSL_EXPORT int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx);
 // success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 
-// EVP_PKEY_derive derives a shared key between the two keys configured in
-// |ctx|. If |key| is non-NULL then, on entry, |out_key_len| must contain the
-// amount of space at |key|. If sufficient then the shared key will be written
-// to |key| and |*out_key_len| will be set to the length. If |key| is NULL then
-// |out_key_len| will be set to the maximum length.
+// EVP_PKEY_derive derives a shared key from |ctx|. If |key| is non-NULL then,
+// on entry, |out_key_len| must contain the amount of space at |key|. If
+// sufficient then the shared key will be written to |key| and |*out_key_len|
+// will be set to the length. If |key| is NULL then |out_key_len| will be set to
+// the maximum length.
 //
 // WARNING: Setting |out| to NULL only gives the maximum size of the key. The
 // actual key may be smaller.

@@ -296,6 +296,7 @@ add_library(
   evp/p_ec_asn1.c
   evp/p_ed25519.c
   evp/p_ed25519_asn1.c
+  evp/p_hkdf.c
   evp/p_rsa.c
   evp/p_rsa_asn1.c
   evp/p_x25519.c

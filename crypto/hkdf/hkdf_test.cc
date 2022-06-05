@@ -14,7 +14,9 @@
 
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/hkdf.h>
+#include <openssl/kdf.h>
 
 #include <gtest/gtest.h>
 
@@ -266,6 +268,108 @@ TEST(HKDFTest, TestVectors) {
                      test->ikm_len, test->salt, test->salt_len, test->info,
                      test->info_len));
     EXPECT_EQ(Bytes(test->out, test->out_len), Bytes(buf, test->out_len));
+
+    // Repeat the test with the OpenSSL compatibility |EVP_PKEY_derive| API.
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_hkdf_mode(ctx.get(), EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), test->md_func()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set1_hkdf_key(ctx.get(), test->ikm, test->ikm_len));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set1_hkdf_salt(ctx.get(), test->salt, test->salt_len));
+    for (bool copy_ctx : {false, true}) {
+      SCOPED_TRACE(copy_ctx);
+      bssl::UniquePtr<EVP_PKEY_CTX> copy;
+      EVP_PKEY_CTX *use_ctx = ctx.get();
+      if (copy_ctx) {
+        copy.reset(EVP_PKEY_CTX_dup(ctx.get()));
+        ASSERT_TRUE(copy);
+        use_ctx = copy.get();
+      }
+
+      // A null output should report the length.
+      prk_len = 0;
+      ASSERT_TRUE(EVP_PKEY_derive(use_ctx, nullptr, &prk_len));
+      EXPECT_EQ(prk_len, test->prk_len);
+
+      // Too small of a buffer should cleanly fail.
+      prk_len = test->prk_len - 1;
+      EXPECT_FALSE(EVP_PKEY_derive(use_ctx, prk, &prk_len));
+      ERR_clear_error();
+
+      // Test the correct buffer size.
+      OPENSSL_memset(prk, 0, sizeof(prk));
+      prk_len = test->prk_len;
+      ASSERT_TRUE(EVP_PKEY_derive(use_ctx, prk, &prk_len));
+      EXPECT_EQ(Bytes(test->prk, test->prk_len), Bytes(prk, prk_len));
+
+      // Test a larger buffer than necessary.
+      OPENSSL_memset(prk, 0, sizeof(prk));
+      prk_len = test->prk_len + 1;
+      ASSERT_TRUE(EVP_PKEY_derive(use_ctx, prk, &prk_len));
+      EXPECT_EQ(Bytes(test->prk, test->prk_len), Bytes(prk, prk_len));
+    }
+
+    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_hkdf_mode(ctx.get(), EVP_PKEY_HKDEF_MODE_EXPAND_ONLY));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), test->md_func()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set1_hkdf_key(ctx.get(), test->prk, test->prk_len));
+    // |info| can be passed in multiple parts.
+    size_t half = test->info_len / 2;
+    ASSERT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(ctx.get(), test->info, half));
+    ASSERT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(ctx.get(), test->info + half,
+                                            test->info_len - half));
+    for (bool copy_ctx : {false, true}) {
+      SCOPED_TRACE(copy_ctx);
+      bssl::UniquePtr<EVP_PKEY_CTX> copy;
+      EVP_PKEY_CTX *use_ctx = ctx.get();
+      if (copy_ctx) {
+        copy.reset(EVP_PKEY_CTX_dup(ctx.get()));
+        ASSERT_TRUE(copy);
+        use_ctx = copy.get();
+      }
+      OPENSSL_memset(buf, 0, sizeof(buf));
+      size_t len = test->out_len;
+      ASSERT_TRUE(EVP_PKEY_derive(use_ctx, buf, &len));
+      EXPECT_EQ(Bytes(test->out, test->out_len), Bytes(buf, len));
+    }
+
+    ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr));
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(EVP_PKEY_derive_init(ctx.get()));
+    ASSERT_TRUE(EVP_PKEY_CTX_hkdf_mode(ctx.get(),
+                                       EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND));
+    ASSERT_TRUE(EVP_PKEY_CTX_set_hkdf_md(ctx.get(), test->md_func()));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set1_hkdf_key(ctx.get(), test->ikm, test->ikm_len));
+    ASSERT_TRUE(
+        EVP_PKEY_CTX_set1_hkdf_salt(ctx.get(), test->salt, test->salt_len));
+    // |info| can be passed in multiple parts.
+    ASSERT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(ctx.get(), test->info, half));
+    ASSERT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(ctx.get(), test->info + half,
+                                            test->info_len - half));
+    for (bool copy_ctx : {false, true}) {
+      SCOPED_TRACE(copy_ctx);
+      bssl::UniquePtr<EVP_PKEY_CTX> copy;
+      EVP_PKEY_CTX *use_ctx = ctx.get();
+      if (copy_ctx) {
+        copy.reset(EVP_PKEY_CTX_dup(ctx.get()));
+        ASSERT_TRUE(copy);
+        use_ctx = copy.get();
+      }
+      OPENSSL_memset(buf, 0, sizeof(buf));
+      size_t len = test->out_len;
+      ASSERT_TRUE(EVP_PKEY_derive(use_ctx, buf, &len));
+      EXPECT_EQ(Bytes(test->out, test->out_len), Bytes(buf, len));
+    }
   }
 }
 
