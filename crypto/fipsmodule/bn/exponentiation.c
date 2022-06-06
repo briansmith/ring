@@ -1016,14 +1016,16 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   tmp.neg = am.neg = 0;
   tmp.flags = am.flags = BN_FLG_STATIC_DATA;
 
-  if (!bn_one_to_montgomery(&tmp, mont, ctx)) {
+  if (!bn_one_to_montgomery(&tmp, mont, ctx) ||
+      !bn_resize_words(&tmp, top)) {
     goto err;
   }
 
-  // prepare a^1 in Montgomery domain
+  // Prepare a^1 in the Montgomery domain.
   assert(!a->neg);
   assert(BN_ucmp(a, m) < 0);
-  if (!BN_to_montgomery(&am, a, mont, ctx)) {
+  if (!BN_to_montgomery(&am, a, mont, ctx) ||
+      !bn_resize_words(&am, top)) {
     goto err;
   }
 
@@ -1047,14 +1049,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   // and its interaction with other parts of the project. Determine whether this
   // is actually necessary for performance.
   if (window == 5 && top > 1) {
-    // Ensure |am| and |tmp| are padded to the right width.
-    for (i = am.width; i < top; i++) {
-      am.d[i] = 0;
-    }
-    for (i = tmp.width; i < top; i++) {
-      tmp.d[i] = 0;
-    }
-
     // Copy |mont->N| to improve cache locality.
     BN_ULONG *np = am.d + top;
     for (i = 0; i < top; i++) {
