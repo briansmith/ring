@@ -58,6 +58,7 @@
 #include <openssl/err.h>
 
 #include "../../evp/internal.h"
+#include "../delocate.h"
 #include "../digest/internal.h"
 #include "../service_indicator/internal.h"
 
