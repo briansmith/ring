@@ -29,6 +29,7 @@ use core::{
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
+    aes_ccm::AES_128_CCM,
     chacha20_poly1305::CHACHA20_POLY1305,
     less_safe_key::LessSafeKey,
     nonce::{Nonce, NONCE_LEN},
@@ -122,6 +123,7 @@ impl<A> Eq for Aad<A> where A: Eq {}
 #[allow(clippy::large_enum_variant, variant_size_differences)]
 #[derive(Clone)]
 enum KeyInner {
+    AesCcm(aes::Key),
     AesGcm(aes_gcm::Key),
     ChaCha20Poly1305(chacha20_poly1305::Key),
 }
@@ -190,6 +192,7 @@ enum AlgorithmID {
     AES_128_GCM,
     AES_256_GCM,
     CHACHA20_POLY1305,
+    AES_128_CCM,
 }
 
 impl PartialEq for Algorithm {
@@ -242,6 +245,7 @@ mod block;
 mod chacha;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
+mod aes_ccm;
 mod gcm;
 mod less_safe_key;
 mod nonce;
