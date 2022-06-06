@@ -63,6 +63,7 @@
 #include <openssl/mem.h>
 
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
 
 
 uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
