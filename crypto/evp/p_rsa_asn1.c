@@ -171,6 +171,8 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   // 1.2.840.113549.1.1.1
   {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01}, 9,
 
+  &rsa_pkey_meth,
+
   rsa_pub_decode,
   rsa_pub_encode,
   rsa_pub_cmp,

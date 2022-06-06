@@ -84,26 +84,9 @@ static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
   return NULL;
 }
 
-static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
-  EVP_PKEY_CTX *ret;
-  const EVP_PKEY_METHOD *pmeth;
-
-  if (id == -1) {
-    if (!pkey || !pkey->ameth) {
-      return NULL;
-    }
-    id = pkey->ameth->pkey_id;
-  }
-
-  pmeth = evp_pkey_meth_find(id);
-
-  if (pmeth == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    ERR_add_error_dataf("algorithm %d", id);
-    return NULL;
-  }
-
-  ret = OPENSSL_malloc(sizeof(EVP_PKEY_CTX));
+static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e,
+                                      const EVP_PKEY_METHOD *pmeth) {
+  EVP_PKEY_CTX *ret = OPENSSL_malloc(sizeof(EVP_PKEY_CTX));
   if (!ret) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return NULL;
@@ -131,11 +114,30 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
 }
 
 EVP_PKEY_CTX *EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e) {
-  return evp_pkey_ctx_new(pkey, e, -1);
+  if (pkey == NULL || pkey->ameth == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  const EVP_PKEY_METHOD *pkey_method = pkey->ameth->pkey_method;
+  if (pkey_method == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    ERR_add_error_dataf("algorithm %d", pkey->ameth->pkey_id);
+    return NULL;
+  }
+
+  return evp_pkey_ctx_new(pkey, e, pkey_method);
 }
 
 EVP_PKEY_CTX *EVP_PKEY_CTX_new_id(int id, ENGINE *e) {
-  return evp_pkey_ctx_new(NULL, e, id);
+  const EVP_PKEY_METHOD *pkey_method = evp_pkey_meth_find(id);
+  if (pkey_method == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    ERR_add_error_dataf("algorithm %d", id);
+    return NULL;
+  }
+
+  return evp_pkey_ctx_new(NULL, e, pkey_method);
 }
 
 void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx) {

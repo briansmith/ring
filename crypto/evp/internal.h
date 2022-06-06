@@ -71,6 +71,8 @@ struct evp_pkey_asn1_method_st {
   uint8_t oid[9];
   uint8_t oid_len;
 
+  const EVP_PKEY_METHOD *pkey_method;
+
   // pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
   // and writes the result into |out|. It returns one on success and zero on
   // error. |params| is the AlgorithmIdentifier after the OBJECT IDENTIFIER
