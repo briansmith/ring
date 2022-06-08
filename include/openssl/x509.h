@@ -1191,6 +1191,24 @@ OPENSSL_EXPORT int X509_REQ_add1_attr_by_txt(X509_REQ *req,
                                              const unsigned char *data,
                                              int len);
 
+// X509_REQ_set1_signature_algo sets |req|'s signature algorithm to |algo| and
+// returns one on success or zero on error.
+OPENSSL_EXPORT int X509_REQ_set1_signature_algo(X509_REQ *req,
+                                                const X509_ALGOR *algo);
+
+// X509_REQ_set1_signature_value sets |req|'s signature to a copy of the
+// |sig_len| bytes pointed by |sig|. It returns one on success and zero on
+// error.
+//
+// Due to a specification error, PKCS#10 certificate requests store signatures
+// in ASN.1 BIT STRINGs, but signature algorithms return byte strings rather
+// than bit strings. This function creates a BIT STRING containing a whole
+// number of bytes, with the bit order matching the DER encoding. This matches
+// the encoding used by all X.509 signature algorithms.
+OPENSSL_EXPORT int X509_REQ_set1_signature_value(X509_REQ *req,
+                                                 const uint8_t *sig,
+                                                 size_t sig_len);
+
 // X509_CRL_set_version sets |crl|'s version to |version|, which should be one
 // of the |X509_CRL_VERSION_*| constants. It returns one on success and zero on
 // error.

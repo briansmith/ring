@@ -87,3 +87,29 @@ int X509_REQ_set_pubkey(X509_REQ *x, EVP_PKEY *pkey)
         return (0);
     return (X509_PUBKEY_set(&x->req_info->pubkey, pkey));
 }
+
+int X509_REQ_set1_signature_algo(X509_REQ *req, const X509_ALGOR *algo)
+{
+    /* TODO(https://crbug.com/boringssl/407): Generated ASN.1 dup functions
+     * should be const. Alternatively, when we can embed required fields
+     * directly in structs, import |X509_ALGOR_copy| from upstream. */
+    X509_ALGOR *copy = X509_ALGOR_dup((X509_ALGOR *)algo);
+    if (copy == NULL) {
+        return 0;
+    }
+
+    X509_ALGOR_free(req->sig_alg);
+    req->sig_alg = copy;
+    return 1;
+}
+
+int X509_REQ_set1_signature_value(X509_REQ *req, const uint8_t *sig,
+                                  size_t sig_len)
+{
+    if (!ASN1_STRING_set(req->signature, sig, sig_len)) {
+      return 0;
+    }
+    req->signature->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
+    req->signature->flags |= ASN1_STRING_FLAG_BITS_LEFT;
+    return 1;
+}
