@@ -238,6 +238,20 @@ mod sysrand_chunk {
 ))]
 mod sysrand_chunk {
     use crate::error;
+    use js_sys::Reflect;
+    use wasm_bindgen::{JsValue, JsCast};
+    use web_sys::Crypto;
+
+    /**
+     * Gets a handle to Crypto in both normal and worker environments. Based on
+     * the discussion in https://github.com/rustwasm/wasm-bindgen/issues/2148
+     * and the approach taken here: https://github.com/devashishdxt/rexie/commit/8637e4ebc2d2dfc6b33cd60dc85b99e46d6afa96
+     */
+    fn get_crypto() -> Result<Crypto, error::Unspecified> {
+        Reflect::get(&js_sys::global(), &JsValue::from("crypto"))
+            .map_err(|_| error::Unspecified)?
+            .dyn_into::<Crypto>().map_err(|_| error::Unspecified)
+    }
 
     pub fn chunk(mut dest: &mut [u8]) -> Result<usize, error::Unspecified> {
         // This limit is specified in
@@ -247,10 +261,9 @@ mod sysrand_chunk {
             dest = &mut dest[..MAX_LEN];
         };
 
-        let _ = web_sys::window()
-            .ok_or(error::Unspecified)?
-            .crypto()
-            .map_err(|_| error::Unspecified)?
+        let crypto = get_crypto()?;
+
+        let _ = crypto
             .get_random_values_with_u8_array(dest)
             .map_err(|_| error::Unspecified)?;
 
