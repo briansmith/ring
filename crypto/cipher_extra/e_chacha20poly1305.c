@@ -35,11 +35,9 @@ struct aead_chacha20_poly1305_ctx {
 OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                           sizeof(struct aead_chacha20_poly1305_ctx),
                       "AEAD state is too small");
-#if defined(__GNUC__) || defined(__clang__)
 OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
                           alignof(struct aead_chacha20_poly1305_ctx),
                       "AEAD state has insufficient alignment");
-#endif
 
 static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                        size_t key_len, size_t tag_len) {
