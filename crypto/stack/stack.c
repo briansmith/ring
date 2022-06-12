@@ -131,7 +131,7 @@ void sk_free(_STACK *sk) {
   OPENSSL_free(sk);
 }
 
-void sk_pop_free_ex(_STACK *sk, void (*call_free_func)(stack_free_func, void *),
+void sk_pop_free_ex(_STACK *sk, stack_call_free_func call_free_func,
                     stack_free_func free_func) {
   if (sk == NULL) {
     return;
@@ -234,8 +234,7 @@ void *sk_delete_ptr(_STACK *sk, const void *p) {
 }
 
 int sk_find(const _STACK *sk, size_t *out_index, const void *p,
-            int (*call_cmp_func)(stack_cmp_func, const void **,
-                                 const void **)) {
+            stack_call_cmp_func call_cmp_func) {
   if (sk == NULL) {
     return 0;
   }
@@ -355,24 +354,43 @@ err:
   return NULL;
 }
 
-void sk_sort(_STACK *sk) {
+#if defined(_MSC_VER)
+struct sort_compare_ctx {
+  stack_call_cmp_func call_cmp_func;
+  stack_cmp_func cmp_func;
+};
+
+static int sort_compare(void *ctx_v, const void *a, const void *b) {
+  struct sort_compare_ctx *ctx = ctx_v;
+  return ctx->call_cmp_func(ctx->cmp_func, a, b);
+}
+#endif
+
+void sk_sort(_STACK *sk, stack_call_cmp_func call_cmp_func) {
   if (sk == NULL || sk->comp == NULL || sk->sorted) {
     return;
   }
 
-  // sk->comp is a function that takes pointers to pointers to elements, but
-  // qsort take a comparison function that just takes pointers to elements.
-  // However, since we're passing an array of pointers to qsort, we can just
-  // cast the comparison function and everything works.
-  //
-  // TODO(davidben): This is undefined behavior, but the call is in libc so,
-  // e.g., CFI does not notice. Unfortunately, |qsort| is missing a void*
-  // parameter in its callback and |qsort_s| / |qsort_r| are a mess of
-  // incompatibility.
   if (sk->num >= 2) {
+#if defined(_MSC_VER)
+    // MSVC's |qsort_s| is different from the C11 one.
+    // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/qsort-s?view=msvc-170
+    struct sort_compare_ctx ctx = {call_cmp_func, sk->comp};
+    qsort_s(sk->data, sk->num, sizeof(void *), sort_compare, &ctx);
+#else
+    // sk->comp is a function that takes pointers to pointers to elements, but
+    // qsort take a comparison function that just takes pointers to elements.
+    // However, since we're passing an array of pointers to qsort, we can just
+    // cast the comparison function and everything works.
+    //
+    // TODO(davidben): This is undefined behavior, but the call is in libc so,
+    // e.g., CFI does not notice. |qsort| is missing a void* parameter in its
+    // callback, while no one defines |qsort_r| or |qsort_s| consistently. See
+    // https://stackoverflow.com/a/39561369
     int (*comp_func)(const void *, const void *) =
         (int (*)(const void *, const void *))(sk->comp);
     qsort(sk->data, sk->num, sizeof(void *), comp_func);
+#endif
   }
   sk->sorted = 1;
 }
@@ -395,10 +413,9 @@ stack_cmp_func sk_set_cmp_func(_STACK *sk, stack_cmp_func comp) {
   return old;
 }
 
-_STACK *sk_deep_copy(const _STACK *sk,
-                     void *(*call_copy_func)(stack_copy_func, void *),
+_STACK *sk_deep_copy(const _STACK *sk, stack_call_copy_func call_copy_func,
                      stack_copy_func copy_func,
-                     void (*call_free_func)(stack_free_func, void *),
+                     stack_call_free_func call_free_func,
                      stack_free_func free_func) {
   _STACK *ret = sk_dup(sk);
   if (ret == NULL) {

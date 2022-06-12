@@ -117,7 +117,8 @@ static int closesocket(int sock) {
 // split_host_and_port sets |*out_host| and |*out_port| to the host and port
 // parsed from |name|. It returns one on success or zero on error. Even when
 // successful, |*out_port| may be NULL on return if no port was specified.
-static int split_host_and_port(char **out_host, char **out_port, const char *name) {
+static int split_host_and_port(char **out_host, char **out_port,
+                               const char *name) {
   const char *host, *port = NULL;
   size_t host_len = 0;
 
@@ -466,8 +467,7 @@ static long conn_ctrl(BIO *bio, int cmd, long num, void *ptr) {
     case BIO_CTRL_FLUSH:
       break;
     case BIO_CTRL_GET_CALLBACK: {
-      int (**fptr)(const BIO *bio, int state, int xret);
-      fptr = (int (**)(const BIO *bio, int state, int xret))ptr;
+      int (**fptr)(const BIO *bio, int state, int xret) = ptr;
       *fptr = data->info_callback;
     } break;
     default:
@@ -485,7 +485,13 @@ static long conn_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
 
   switch (cmd) {
     case BIO_CTRL_SET_CALLBACK:
+      // This is the actual type signature of |fp|. The caller is expected to
+      // cast it to |bio_info_cb| due to the |BIO_callback_ctrl| calling
+      // convention.
+      OPENSSL_MSVC_PRAGMA(warning(push))
+      OPENSSL_MSVC_PRAGMA(warning(disable : 4191))
       data->info_callback = (int (*)(const struct bio_st *, int, int))fp;
+      OPENSSL_MSVC_PRAGMA(warning(pop))
       break;
     default:
       ret = 0;

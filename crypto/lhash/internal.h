@@ -157,6 +157,16 @@ OPENSSL_EXPORT void OPENSSL_lh_doall_arg(_LHASH *lh,
                                          void *arg);
 
 #define DEFINE_LHASH_OF(type)                                                  \
+  /* We disable MSVC C4191 in this macro, which warns when pointers are cast   \
+   * to the wrong type. While the cast itself is valid, it is often a bug      \
+   * because calling it through the cast is UB. However, we never actually     \
+   * call functions as |lhash_cmp_func|. The type is just a type-erased        \
+   * function pointer. (C does not guarantee function pointers fit in          \
+   * |void*|, and GCC will warn on this.) Thus we just disable the false       \
+   * positive warning. */                                                      \
+  OPENSSL_MSVC_PRAGMA(warning(push))                                           \
+  OPENSSL_MSVC_PRAGMA(warning(disable : 4191))                                 \
+                                                                               \
   DECLARE_LHASH_OF(type)                                                       \
                                                                                \
   typedef int (*lhash_##type##_cmp_func)(const type *, const type *);          \
@@ -243,7 +253,9 @@ OPENSSL_EXPORT void OPENSSL_lh_doall_arg(_LHASH *lh,
       LHASH_OF(type) *lh, void (*func)(type *, void *), void *arg) {           \
     LHASH_DOALL_##type cb = {func, arg};                                       \
     OPENSSL_lh_doall_arg((_LHASH *)lh, lh_##type##_call_doall_arg, &cb);       \
-  }
+  }                                                                            \
+                                                                               \
+  OPENSSL_MSVC_PRAGMA(warning(pop))
 
 
 #if defined(__cplusplus)
