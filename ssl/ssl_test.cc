@@ -8159,5 +8159,106 @@ TEST(SSLTest, NumTickets) {
   EXPECT_EQ(count_tickets(), 16u);
 }
 
+TEST(SSLTest, CertSubjectsToStack) {
+  const std::string kCert1 = R"(
+-----BEGIN CERTIFICATE-----
+MIIBzzCCAXagAwIBAgIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC
+QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp
+dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ
+BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l
+dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni
+v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa
+HPUdfvGULUvPciLBo1AwTjAdBgNVHQ4EFgQUq4TSrKuV8IJOFngHVVdf5CaNgtEw
+HwYDVR0jBBgwFoAUq4TSrKuV8IJOFngHVVdf5CaNgtEwDAYDVR0TBAUwAwEB/zAJ
+BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E
+BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=
+-----END CERTIFICATE-----
+)";
+  const std::vector<uint8_t> kName1 = {
+      0x30, 0x45, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x06, 0x13,
+      0x02, 0x41, 0x55, 0x31, 0x13, 0x30, 0x11, 0x06, 0x03, 0x55, 0x04, 0x08,
+      0x0c, 0x0a, 0x53, 0x6f, 0x6d, 0x65, 0x2d, 0x53, 0x74, 0x61, 0x74, 0x65,
+      0x31, 0x21, 0x30, 0x1f, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x18, 0x49,
+      0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x20, 0x57, 0x69, 0x64, 0x67,
+      0x69, 0x74, 0x73, 0x20, 0x50, 0x74, 0x79, 0x20, 0x4c, 0x74, 0x64};
+  const std::string kCert2 = R"(
+-----BEGIN CERTIFICATE-----
+MIICXjCCAcegAwIBAgIIWjO48ufpunYwDQYJKoZIhvcNAQELBQAwNjEaMBgGA1UE
+ChMRQm9yaW5nU1NMIFRFU1RJTkcxGDAWBgNVBAMTD0ludGVybWVkaWF0ZSBDQTAg
+Fw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowMjEaMBgGA1UEChMRQm9y
+aW5nU1NMIFRFU1RJTkcxFDASBgNVBAMTC2V4YW1wbGUuY29tMIGfMA0GCSqGSIb3
+DQEBAQUAA4GNADCBiQKBgQDD0U0ZYgqShJ7oOjsyNKyVXEHqeafmk/bAoPqY/h1c
+oPw2E8KmeqiUSoTPjG5IXSblOxcqpbAXgnjPzo8DI3GNMhAf8SYNYsoH7gc7Uy7j
+5x8bUrisGnuTHqkqH6d4/e7ETJ7i3CpR8bvK16DggEvQTudLipz8FBHtYhFakfdh
+TwIDAQABo3cwdTAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwEG
+CCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAwGQYDVR0OBBIEEKN5pvbur7mlXjeMEYA0
+4nUwGwYDVR0jBBQwEoAQjBpoqLV2211Xex+NFLIGozANBgkqhkiG9w0BAQsFAAOB
+gQBj/p+JChp//LnXWC1k121LM/ii7hFzQzMrt70bny406SGz9jAjaPOX4S3gt38y
+rhjpPukBlSzgQXFg66y6q5qp1nQTD1Cw6NkKBe9WuBlY3iYfmsf7WT8nhlT1CttU
+xNCwyMX9mtdXdQicOfNjIGUCD5OLV5PgHFPRKiHHioBAhg==
+-----END CERTIFICATE-----
+)";
+  const std::vector<uint8_t> kName2 = {
+      0x30, 0x32, 0x31, 0x1a, 0x30, 0x18, 0x06, 0x03, 0x55, 0x04, 0x0a,
+      0x13, 0x11, 0x42, 0x6f, 0x72, 0x69, 0x6e, 0x67, 0x53, 0x53, 0x4c,
+      0x20, 0x54, 0x45, 0x53, 0x54, 0x49, 0x4e, 0x47, 0x31, 0x14, 0x30,
+      0x12, 0x06, 0x03, 0x55, 0x04, 0x03, 0x13, 0x0b, 0x65, 0x78, 0x61,
+      0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d};
+
+  const struct {
+    std::vector<std::vector<uint8_t>> existing;
+    std::string pem;
+    std::vector<std::vector<uint8_t>> expected;
+  } kTests[] = {
+      // Do nothing.
+      {{}, "", {}},
+      // Append to an empty list, skipping duplicates.
+      {{}, kCert1 + kCert2 + kCert1, {kName1, kName2}},
+      // One of the names was already present.
+      {{kName1}, kCert1 + kCert2, {kName1, kName2}},
+      // Both names were already present.
+      {{kName1, kName2}, kCert1 + kCert2, {kName1, kName2}},
+      // Preserve existing duplicates.
+      {{kName1, kName2, kName2}, kCert1 + kCert2, {kName1, kName2, kName2}},
+  };
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTests); i++) {
+    SCOPED_TRACE(i);
+    const auto &t = kTests[i];
+
+    bssl::UniquePtr<STACK_OF(X509_NAME)> stack(sk_X509_NAME_new_null());
+    ASSERT_TRUE(stack);
+    for (const auto& name : t.existing) {
+      const uint8_t *inp = name.data();
+      bssl::UniquePtr<X509_NAME> name_obj(
+          d2i_X509_NAME(nullptr, &inp, name.size()));
+      ASSERT_TRUE(name_obj);
+      EXPECT_EQ(inp, name.data() + name.size());
+      ASSERT_TRUE(bssl::PushToStack(stack.get(), std::move(name_obj)));
+    }
+
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(t.pem.data(), t.pem.size()));
+    ASSERT_TRUE(bio);
+    ASSERT_TRUE(SSL_add_bio_cert_subjects_to_stack(stack.get(), bio.get()));
+
+    // The function should have left |stack|'s comparison function alone.
+    EXPECT_EQ(nullptr, sk_X509_NAME_set_cmp_func(stack.get(), nullptr));
+
+    std::vector<std::vector<uint8_t>> expected = t.expected, result;
+    for (X509_NAME *name : stack.get()) {
+      uint8_t *der = nullptr;
+      int der_len = i2d_X509_NAME(name, &der);
+      ASSERT_GE(der_len, 0);
+      result.push_back(std::vector<uint8_t>(der, der + der_len));
+      OPENSSL_free(der);
+    }
+
+    // |SSL_add_bio_cert_subjects_to_stack| does not return the output in a
+    // well-defined order.
+    std::sort(expected.begin(), expected.end());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ(result, expected);
+  }
+}
+
 }  // namespace
 BSSL_NAMESPACE_END

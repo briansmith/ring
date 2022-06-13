@@ -2718,7 +2718,7 @@ OPENSSL_EXPORT int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509);
 
 // SSL_load_client_CA_file opens |file| and reads PEM-encoded certificates from
 // it. It returns a newly-allocated stack of the certificate subjects or NULL
-// on error.
+// on error. Duplicates in |file| are ignored.
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file);
 
 // SSL_dup_CA_list makes a deep copy of |list|. It returns the new list on
@@ -2730,6 +2730,11 @@ OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list);
 // error.
 OPENSSL_EXPORT int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                        const char *file);
+
+// SSL_add_bio_cert_subjects_to_stack behaves like
+// |SSL_add_file_cert_subjects_to_stack| but reads from |bio|.
+OPENSSL_EXPORT int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
+                                                      BIO *bio);
 
 
 // Server name indication.
