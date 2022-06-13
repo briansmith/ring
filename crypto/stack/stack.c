@@ -67,7 +67,7 @@
 // stack.
 static const size_t kMinSize = 4;
 
-_STACK *sk_new(stack_cmp_func comp) {
+_STACK *sk_new(OPENSSL_sk_cmp_func comp) {
   _STACK *ret = OPENSSL_malloc(sizeof(_STACK));
   if (ret == NULL) {
     return NULL;
@@ -131,8 +131,8 @@ void sk_free(_STACK *sk) {
   OPENSSL_free(sk);
 }
 
-void sk_pop_free_ex(_STACK *sk, stack_call_free_func call_free_func,
-                    stack_free_func free_func) {
+void sk_pop_free_ex(_STACK *sk, OPENSSL_sk_call_free_func call_free_func,
+                    OPENSSL_sk_free_func free_func) {
   if (sk == NULL) {
     return;
   }
@@ -145,14 +145,14 @@ void sk_pop_free_ex(_STACK *sk, stack_call_free_func call_free_func,
   sk_free(sk);
 }
 
-// Historically, |sk_pop_free| called the function as |stack_free_func|
+// Historically, |sk_pop_free| called the function as |OPENSSL_sk_free_func|
 // directly. This is undefined in C. Some callers called |sk_pop_free| directly,
 // so we must maintain a compatibility version for now.
-static void call_free_func_legacy(stack_free_func func, void *ptr) {
+static void call_free_func_legacy(OPENSSL_sk_free_func func, void *ptr) {
   func(ptr);
 }
 
-void sk_pop_free(_STACK *sk, stack_free_func free_func) {
+void sk_pop_free(_STACK *sk, OPENSSL_sk_free_func free_func) {
   sk_pop_free_ex(sk, call_free_func_legacy, free_func);
 }
 
@@ -234,7 +234,7 @@ void *sk_delete_ptr(_STACK *sk, const void *p) {
 }
 
 int sk_find(const _STACK *sk, size_t *out_index, const void *p,
-            stack_call_cmp_func call_cmp_func) {
+            OPENSSL_sk_call_cmp_func call_cmp_func) {
   if (sk == NULL) {
     return 0;
   }
@@ -356,8 +356,8 @@ err:
 
 #if defined(_MSC_VER)
 struct sort_compare_ctx {
-  stack_call_cmp_func call_cmp_func;
-  stack_cmp_func cmp_func;
+  OPENSSL_sk_call_cmp_func call_cmp_func;
+  OPENSSL_sk_cmp_func cmp_func;
 };
 
 static int sort_compare(void *ctx_v, const void *a, const void *b) {
@@ -366,7 +366,7 @@ static int sort_compare(void *ctx_v, const void *a, const void *b) {
 }
 #endif
 
-void sk_sort(_STACK *sk, stack_call_cmp_func call_cmp_func) {
+void sk_sort(_STACK *sk, OPENSSL_sk_call_cmp_func call_cmp_func) {
   if (sk == NULL || sk->comp == NULL || sk->sorted) {
     return;
   }
@@ -402,8 +402,8 @@ int sk_is_sorted(const _STACK *sk) {
   return sk->sorted;
 }
 
-stack_cmp_func sk_set_cmp_func(_STACK *sk, stack_cmp_func comp) {
-  stack_cmp_func old = sk->comp;
+OPENSSL_sk_cmp_func sk_set_cmp_func(_STACK *sk, OPENSSL_sk_cmp_func comp) {
+  OPENSSL_sk_cmp_func old = sk->comp;
 
   if (sk->comp != comp) {
     sk->sorted = 0;
@@ -413,10 +413,10 @@ stack_cmp_func sk_set_cmp_func(_STACK *sk, stack_cmp_func comp) {
   return old;
 }
 
-_STACK *sk_deep_copy(const _STACK *sk, stack_call_copy_func call_copy_func,
-                     stack_copy_func copy_func,
-                     stack_call_free_func call_free_func,
-                     stack_free_func free_func) {
+_STACK *sk_deep_copy(const _STACK *sk, OPENSSL_sk_call_copy_func call_copy_func,
+                     OPENSSL_sk_copy_func copy_func,
+                     OPENSSL_sk_call_free_func call_free_func,
+                     OPENSSL_sk_free_func free_func) {
   _STACK *ret = sk_dup(sk);
   if (ret == NULL) {
     return NULL;
