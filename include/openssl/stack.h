@@ -437,18 +437,10 @@ BSSL_NAMESPACE_END
   BORINGSSL_DEFINE_STACK_OF_IMPL(type, const type *, const type *) \
   BORINGSSL_DEFINE_STACK_TRAITS(type, const type, true)
 
-// DEFINE_SPECIAL_STACK_OF defines |STACK_OF(type)| to be a stack whose elements
-// are |type|, where |type| must be a typedef for a pointer.
-#define DEFINE_SPECIAL_STACK_OF(type)                   \
-  OPENSSL_STATIC_ASSERT(sizeof(type) == sizeof(void *), \
-                        #type " is not a pointer");     \
-  BORINGSSL_DEFINE_STACK_OF_IMPL(type, type, const type)
-
-
 typedef char *OPENSSL_STRING;
 
 DEFINE_STACK_OF(void)
-DEFINE_SPECIAL_STACK_OF(OPENSSL_STRING)
+DEFINE_NAMED_STACK_OF(OPENSSL_STRING, char)
 
 
 #if defined(__cplusplus)
