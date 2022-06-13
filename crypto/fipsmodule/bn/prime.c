@@ -386,6 +386,8 @@ int BN_GENCB_call(BN_GENCB *callback, int event, int n) {
   return callback->callback(event, n, callback);
 }
 
+void *BN_GENCB_get_arg(const BN_GENCB *callback) { return callback->arg; }
+
 int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe, const BIGNUM *add,
                          const BIGNUM *rem, BN_GENCB *cb) {
   BIGNUM *t;
