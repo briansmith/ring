@@ -78,14 +78,29 @@ OPENSSL_EXPORT void TRUST_TOKEN_free(TRUST_TOKEN *token);
 // to ensure success, these should be at least
 // |TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE| and |TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE|.
 //
-// WARNING: This API is unstable and the serializations of these keys are
-// subject to change. Keys generated with this function may not be persisted.
-//
 // This function returns one on success or zero on error.
 OPENSSL_EXPORT int TRUST_TOKEN_generate_key(
     const TRUST_TOKEN_METHOD *method, uint8_t *out_priv_key,
     size_t *out_priv_key_len, size_t max_priv_key_len, uint8_t *out_pub_key,
     size_t *out_pub_key_len, size_t max_pub_key_len, uint32_t id);
+
+// TRUST_TOKEN_derive_key_from_secret deterministically derives a new Trust
+// Token keypair labeled with |id| from an input |secret| and serializes the
+// private and public keys, writing the private key to |out_priv_key| and
+// setting |*out_priv_key_len| to the number of bytes written, and writing the
+// public key to |out_pub_key| and setting |*out_pub_key_len| to the number of
+// bytes written.
+//
+// At most |max_priv_key_len| and |max_pub_key_len| bytes are written. In order
+// to ensure success, these should be at least
+// |TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE| and |TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE|.
+//
+// This function returns one on success or zero on error.
+OPENSSL_EXPORT int TRUST_TOKEN_derive_key_from_secret(
+    const TRUST_TOKEN_METHOD *method, uint8_t *out_priv_key,
+    size_t *out_priv_key_len, size_t max_priv_key_len, uint8_t *out_pub_key,
+    size_t *out_pub_key_len, size_t max_pub_key_len, uint32_t id,
+    const uint8_t *secret, size_t secret_len);
 
 
 // Trust Token client implementation.

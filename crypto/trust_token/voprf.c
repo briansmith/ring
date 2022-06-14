@@ -110,26 +110,64 @@ static int scalar_from_cbs(CBS *cbs, const EC_GROUP *group, EC_SCALAR *out) {
   return 1;
 }
 
-static int voprf_generate_key(const VOPRF_METHOD *method, CBB *out_private,
-                              CBB *out_public) {
+static int voprf_calculate_key(const VOPRF_METHOD *method, CBB *out_private,
+                               CBB *out_public, const EC_SCALAR *priv) {
   const EC_GROUP *group = method->group;
   EC_RAW_POINT pub;
-  EC_SCALAR priv;
   EC_AFFINE pub_affine;
-  if (!ec_random_nonzero_scalar(group, &priv, kDefaultAdditionalData) ||
-      !ec_point_mul_scalar_base(group, &pub, &priv) ||
+  if (!ec_point_mul_scalar_base(group, &pub, priv) ||
       !ec_jacobian_to_affine(group, &pub_affine, &pub)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_KEYGEN_FAILURE);
     return 0;
   }
 
-  if (!scalar_to_cbb(out_private, group, &priv) ||
+  if (!scalar_to_cbb(out_private, group, priv) ||
       !cbb_add_point(out_public, group, &pub_affine)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
   return 1;
+}
+
+
+static int voprf_generate_key(const VOPRF_METHOD *method, CBB *out_private,
+                              CBB *out_public) {
+  EC_SCALAR priv;
+  if (!ec_random_nonzero_scalar(method->group, &priv, kDefaultAdditionalData)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_KEYGEN_FAILURE);
+    return 0;
+  }
+  return voprf_calculate_key(method, out_private, out_public, &priv);
+}
+
+static int voprf_derive_key_from_secret(const VOPRF_METHOD *method,
+                                        CBB *out_private, CBB *out_public,
+                                        const uint8_t *secret,
+                                        size_t secret_len) {
+  static const uint8_t kKeygenLabel[] = "TrustTokenVOPRFKeyGen";
+
+  EC_SCALAR priv;
+  int ok = 0;
+  CBB cbb;
+  CBB_zero(&cbb);
+  uint8_t *buf = NULL;
+  size_t len;
+  if (!CBB_init(&cbb, 0) ||
+      !CBB_add_bytes(&cbb, kKeygenLabel, sizeof(kKeygenLabel)) ||
+      !CBB_add_bytes(&cbb, secret, secret_len) ||
+      !CBB_finish(&cbb, &buf, &len) ||
+      !method->hash_to_scalar(method->group, &priv, buf, len)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_KEYGEN_FAILURE);
+    goto err;
+  }
+
+  ok = voprf_calculate_key(method, out_private, out_public, &priv);
+
+err:
+  CBB_cleanup(&cbb);
+  OPENSSL_free(buf);
+  return ok;
 }
 
 static int voprf_client_key_from_bytes(const VOPRF_METHOD *method,
@@ -709,6 +747,17 @@ int voprf_exp2_generate_key(CBB *out_private, CBB *out_public) {
   }
 
   return voprf_generate_key(&voprf_exp2_method, out_private, out_public);
+}
+
+int voprf_exp2_derive_key_from_secret(CBB *out_private, CBB *out_public,
+                                      const uint8_t *secret,
+                                      size_t secret_len) {
+  if (!voprf_exp2_init_method()) {
+    return 0;
+  }
+
+  return voprf_derive_key_from_secret(&voprf_exp2_method, out_private,
+                                      out_public, secret, secret_len);
 }
 
 int voprf_exp2_client_key_from_bytes(TRUST_TOKEN_CLIENT_KEY *key,

@@ -93,6 +93,9 @@ DEFINE_STACK_OF(TRUST_TOKEN_PRETOKEN)
 // functions for |TRUST_TOKENS_experiment_v1|'s PMBTokens construction which
 // uses P-384.
 int pmbtoken_exp1_generate_key(CBB *out_private, CBB *out_public);
+int pmbtoken_exp1_derive_key_from_secret(CBB *out_private, CBB *out_public,
+                                         const uint8_t *secret,
+                                         size_t secret_len);
 int pmbtoken_exp1_client_key_from_bytes(TRUST_TOKEN_CLIENT_KEY *key,
                                         const uint8_t *in, size_t len);
 int pmbtoken_exp1_issuer_key_from_bytes(TRUST_TOKEN_ISSUER_KEY *key,
@@ -118,6 +121,9 @@ OPENSSL_EXPORT int pmbtoken_exp1_get_h_for_testing(uint8_t out[97]);
 // functions for |TRUST_TOKENS_experiment_v2|'s PMBTokens construction which
 // uses P-384.
 int pmbtoken_exp2_generate_key(CBB *out_private, CBB *out_public);
+int pmbtoken_exp2_derive_key_from_secret(CBB *out_private, CBB *out_public,
+                                         const uint8_t *secret,
+                                         size_t secret_len);
 int pmbtoken_exp2_client_key_from_bytes(TRUST_TOKEN_CLIENT_KEY *key,
                                         const uint8_t *in, size_t len);
 int pmbtoken_exp2_issuer_key_from_bytes(TRUST_TOKEN_ISSUER_KEY *key,
@@ -153,6 +159,8 @@ OPENSSL_EXPORT int pmbtoken_exp2_get_h_for_testing(uint8_t out[97]);
 // functions for |TRUST_TOKENS_experiment_v2|'s VOPRF construction which uses
 // P-384.
 int voprf_exp2_generate_key(CBB *out_private, CBB *out_public);
+int voprf_exp2_derive_key_from_secret(CBB *out_private, CBB *out_public,
+                                      const uint8_t *secret, size_t secret_len);
 int voprf_exp2_client_key_from_bytes(TRUST_TOKEN_CLIENT_KEY *key,
                                      const uint8_t *in, size_t len);
 int voprf_exp2_issuer_key_from_bytes(TRUST_TOKEN_ISSUER_KEY *key,
@@ -178,6 +186,12 @@ struct trust_token_method_st {
   // forms into |out_private| and |out_public|. It returns one on success and
   // zero on failure.
   int (*generate_key)(CBB *out_private, CBB *out_public);
+
+  // derive_key_from_secret deterministically derives a keypair based on
+  // |secret| and writes their serialized forms into |out_private| and
+  // |out_public|. It returns one on success and zero on failure.
+  int (*derive_key_from_secret)(CBB *out_private, CBB *out_public,
+                                  const uint8_t *secret, size_t secret_len);
 
   // client_key_from_bytes decodes a client key from |in| and sets |key|
   // to the resulting key. It returns one on success and zero

@@ -30,6 +30,7 @@
 const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void) {
   static const TRUST_TOKEN_METHOD kMethod = {
       pmbtoken_exp1_generate_key,
+      pmbtoken_exp1_derive_key_from_secret,
       pmbtoken_exp1_client_key_from_bytes,
       pmbtoken_exp1_issuer_key_from_bytes,
       pmbtoken_exp1_blind,
@@ -46,6 +47,7 @@ const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v1(void) {
 const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v2_voprf(void) {
   static const TRUST_TOKEN_METHOD kMethod = {
       voprf_exp2_generate_key,
+      voprf_exp2_derive_key_from_secret,
       voprf_exp2_client_key_from_bytes,
       voprf_exp2_issuer_key_from_bytes,
       voprf_exp2_blind,
@@ -62,6 +64,7 @@ const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v2_voprf(void) {
 const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v2_pmb(void) {
   static const TRUST_TOKEN_METHOD kMethod = {
       pmbtoken_exp2_generate_key,
+      pmbtoken_exp2_derive_key_from_secret,
       pmbtoken_exp2_client_key_from_bytes,
       pmbtoken_exp2_issuer_key_from_bytes,
       pmbtoken_exp2_blind,
@@ -123,6 +126,43 @@ int TRUST_TOKEN_generate_key(const TRUST_TOKEN_METHOD *method,
   }
 
   if (!method->generate_key(&priv_cbb, &pub_cbb)) {
+    goto err;
+  }
+
+  if (!CBB_finish(&priv_cbb, NULL, out_priv_key_len) ||
+      !CBB_finish(&pub_cbb, NULL, out_pub_key_len)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  CBB_cleanup(&priv_cbb);
+  CBB_cleanup(&pub_cbb);
+  return ret;
+}
+
+int TRUST_TOKEN_derive_key_from_secret(
+    const TRUST_TOKEN_METHOD *method, uint8_t *out_priv_key,
+    size_t *out_priv_key_len, size_t max_priv_key_len, uint8_t *out_pub_key,
+    size_t *out_pub_key_len, size_t max_pub_key_len, uint32_t id,
+    const uint8_t *secret, size_t secret_len) {
+  // Prepend the key ID in front of the PMBTokens format.
+  int ret = 0;
+  CBB priv_cbb, pub_cbb;
+  CBB_zero(&priv_cbb);
+  CBB_zero(&pub_cbb);
+  if (!CBB_init_fixed(&priv_cbb, out_priv_key, max_priv_key_len) ||
+      !CBB_init_fixed(&pub_cbb, out_pub_key, max_pub_key_len) ||
+      !CBB_add_u32(&priv_cbb, id) ||
+      !CBB_add_u32(&pub_cbb, id)) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
+    goto err;
+  }
+
+  if (!method->derive_key_from_secret(&priv_cbb, &pub_cbb, secret,
+                                        secret_len)) {
     goto err;
   }
 
