@@ -56,7 +56,7 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #if defined(__linux__) && !defined(_POSIX_C_SOURCE)
-#define _POSIX_C_SOURCE 201410L  /* for gmtime_r */
+#define _POSIX_C_SOURCE 201410L /* for gmtime_r */
 #endif
 
 #include "internal.h"

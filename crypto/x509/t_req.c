@@ -82,7 +82,7 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
                       unsigned long cflag) {
   long l;
   EVP_PKEY *pkey;
-  STACK_OF(X509_ATTRIBUTE) * sk;
+  STACK_OF(X509_ATTRIBUTE) *sk;
   char mlch = ' ';
 
   int nmindent = 0;
@@ -187,10 +187,8 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
             goto err;
           }
 
-          if (type == V_ASN1_PRINTABLESTRING ||
-              type == V_ASN1_UTF8STRING ||
-              type == V_ASN1_IA5STRING ||
-              type == V_ASN1_T61STRING) {
+          if (type == V_ASN1_PRINTABLESTRING || type == V_ASN1_UTF8STRING ||
+              type == V_ASN1_IA5STRING || type == V_ASN1_T61STRING) {
             if (BIO_write(bio, (char *)bs->data, bs->length) != bs->length) {
               goto err;
             }

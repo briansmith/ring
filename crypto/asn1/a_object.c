@@ -67,233 +67,224 @@
 #include "internal.h"
 
 
-int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp)
-{
-    if (a == NULL) {
-        OPENSSL_PUT_ERROR(ASN1, ERR_R_PASSED_NULL_PARAMETER);
-        return -1;
-    }
+int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp) {
+  if (a == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_PASSED_NULL_PARAMETER);
+    return -1;
+  }
 
-    if (a->length == 0) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_OBJECT);
-        return -1;
-    }
+  if (a->length == 0) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_OBJECT);
+    return -1;
+  }
 
-    int objsize = ASN1_object_size(0, a->length, V_ASN1_OBJECT);
-    if (pp == NULL || objsize == -1) {
-        return objsize;
-    }
-
-    unsigned char *p, *allocated = NULL;
-    if (*pp == NULL) {
-        if ((p = allocated = OPENSSL_malloc(objsize)) == NULL) {
-            OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-            return -1;
-        }
-    } else {
-        p = *pp;
-    }
-
-    ASN1_put_object(&p, 0, a->length, V_ASN1_OBJECT, V_ASN1_UNIVERSAL);
-    OPENSSL_memcpy(p, a->data, a->length);
-
-    /*
-     * If a new buffer was allocated, just return it back.
-     * If not, return the incremented buffer pointer.
-     */
-    *pp = allocated != NULL ? allocated : p + a->length;
+  int objsize = ASN1_object_size(0, a->length, V_ASN1_OBJECT);
+  if (pp == NULL || objsize == -1) {
     return objsize;
+  }
+
+  unsigned char *p, *allocated = NULL;
+  if (*pp == NULL) {
+    if ((p = allocated = OPENSSL_malloc(objsize)) == NULL) {
+      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
+      return -1;
+    }
+  } else {
+    p = *pp;
+  }
+
+  ASN1_put_object(&p, 0, a->length, V_ASN1_OBJECT, V_ASN1_UNIVERSAL);
+  OPENSSL_memcpy(p, a->data, a->length);
+
+  /*
+   * If a new buffer was allocated, just return it back.
+   * If not, return the incremented buffer pointer.
+   */
+  *pp = allocated != NULL ? allocated : p + a->length;
+  return objsize;
 }
 
-int i2t_ASN1_OBJECT(char *buf, int buf_len, const ASN1_OBJECT *a)
-{
-    return OBJ_obj2txt(buf, buf_len, a, 0);
+int i2t_ASN1_OBJECT(char *buf, int buf_len, const ASN1_OBJECT *a) {
+  return OBJ_obj2txt(buf, buf_len, a, 0);
 }
 
-static int write_str(BIO *bp, const char *str)
-{
-    int len = strlen(str);
-    return BIO_write(bp, str, len) == len ? len : -1;
+static int write_str(BIO *bp, const char *str) {
+  int len = strlen(str);
+  return BIO_write(bp, str, len) == len ? len : -1;
 }
 
-int i2a_ASN1_OBJECT(BIO *bp, const ASN1_OBJECT *a)
-{
-    if (a == NULL || a->data == NULL) {
-        return write_str(bp, "NULL");
-    }
+int i2a_ASN1_OBJECT(BIO *bp, const ASN1_OBJECT *a) {
+  if (a == NULL || a->data == NULL) {
+    return write_str(bp, "NULL");
+  }
 
-    char buf[80], *allocated = NULL;
-    const char *str = buf;
-    int len = i2t_ASN1_OBJECT(buf, sizeof(buf), a);
-    if (len > (int)sizeof(buf) - 1) {
-        /* The input was truncated. Allocate a buffer that fits. */
-        allocated = OPENSSL_malloc(len + 1);
-        if (allocated == NULL) {
-            return -1;
-        }
-        len = i2t_ASN1_OBJECT(allocated, len + 1, a);
-        str = allocated;
+  char buf[80], *allocated = NULL;
+  const char *str = buf;
+  int len = i2t_ASN1_OBJECT(buf, sizeof(buf), a);
+  if (len > (int)sizeof(buf) - 1) {
+    /* The input was truncated. Allocate a buffer that fits. */
+    allocated = OPENSSL_malloc(len + 1);
+    if (allocated == NULL) {
+      return -1;
     }
-    if (len <= 0) {
-        str = "<INVALID>";
-    }
+    len = i2t_ASN1_OBJECT(allocated, len + 1, a);
+    str = allocated;
+  }
+  if (len <= 0) {
+    str = "<INVALID>";
+  }
 
-    int ret = write_str(bp, str);
-    OPENSSL_free(allocated);
-    return ret;
+  int ret = write_str(bp, str);
+  OPENSSL_free(allocated);
+  return ret;
 }
 
 ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
-                             long length)
-{
-    long len;
-    int tag, xclass;
-    const unsigned char *p = *pp;
-    int inf = ASN1_get_object(&p, &len, &tag, &xclass, length);
-    if (inf & 0x80) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
-        return NULL;
-    }
+                             long length) {
+  long len;
+  int tag, xclass;
+  const unsigned char *p = *pp;
+  int inf = ASN1_get_object(&p, &len, &tag, &xclass, length);
+  if (inf & 0x80) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
+    return NULL;
+  }
 
-    if (inf & V_ASN1_CONSTRUCTED) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
-        return NULL;
-    }
+  if (inf & V_ASN1_CONSTRUCTED) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
+    return NULL;
+  }
 
-    if (tag != V_ASN1_OBJECT || xclass != V_ASN1_UNIVERSAL) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_AN_OBJECT);
-        return NULL;
-    }
-    ASN1_OBJECT *ret = c2i_ASN1_OBJECT(a, &p, len);
-    if (ret) {
-        *pp = p;
-    }
-    return ret;
+  if (tag != V_ASN1_OBJECT || xclass != V_ASN1_UNIVERSAL) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_AN_OBJECT);
+    return NULL;
+  }
+  ASN1_OBJECT *ret = c2i_ASN1_OBJECT(a, &p, len);
+  if (ret) {
+    *pp = p;
+  }
+  return ret;
 }
 
 ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
-                             long len)
-{
-    ASN1_OBJECT *ret = NULL;
-    const unsigned char *p;
-    unsigned char *data;
-    int i, length;
+                             long len) {
+  ASN1_OBJECT *ret = NULL;
+  const unsigned char *p;
+  unsigned char *data;
+  int i, length;
 
-    /*
-     * Sanity check OID encoding. Need at least one content octet. MSB must
-     * be clear in the last octet. can't have leading 0x80 in subidentifiers,
-     * see: X.690 8.19.2
-     */
-    if (len <= 0 || len > INT_MAX || pp == NULL || (p = *pp) == NULL ||
-        p[len - 1] & 0x80) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
-        return NULL;
+  /*
+   * Sanity check OID encoding. Need at least one content octet. MSB must
+   * be clear in the last octet. can't have leading 0x80 in subidentifiers,
+   * see: X.690 8.19.2
+   */
+  if (len <= 0 || len > INT_MAX || pp == NULL || (p = *pp) == NULL ||
+      p[len - 1] & 0x80) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
+    return NULL;
+  }
+  /* Now 0 < len <= INT_MAX, so the cast is safe. */
+  length = (int)len;
+  for (i = 0; i < length; i++, p++) {
+    if (*p == 0x80 && (!i || !(p[-1] & 0x80))) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
+      return NULL;
     }
-    /* Now 0 < len <= INT_MAX, so the cast is safe. */
-    length = (int)len;
-    for (i = 0; i < length; i++, p++) {
-        if (*p == 0x80 && (!i || !(p[-1] & 0x80))) {
-            OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
-            return NULL;
-        }
-    }
+  }
 
-    if ((a == NULL) || ((*a) == NULL) ||
-        !((*a)->flags & ASN1_OBJECT_FLAG_DYNAMIC)) {
-        if ((ret = ASN1_OBJECT_new()) == NULL)
-            return (NULL);
-    } else {
-        ret = (*a);
-    }
+  if ((a == NULL) || ((*a) == NULL) ||
+      !((*a)->flags & ASN1_OBJECT_FLAG_DYNAMIC)) {
+    if ((ret = ASN1_OBJECT_new()) == NULL)
+      return (NULL);
+  } else {
+    ret = (*a);
+  }
 
-    p = *pp;
-    /* detach data from object */
-    data = (unsigned char *)ret->data;
-    ret->data = NULL;
-    /* once detached we can change it */
-    if ((data == NULL) || (ret->length < length)) {
-        ret->length = 0;
-        if (data != NULL)
-            OPENSSL_free(data);
-        data = (unsigned char *)OPENSSL_malloc(length);
-        if (data == NULL) {
-            i = ERR_R_MALLOC_FAILURE;
-            goto err;
-        }
-        ret->flags |= ASN1_OBJECT_FLAG_DYNAMIC_DATA;
-    }
-    OPENSSL_memcpy(data, p, length);
-    /* If there are dynamic strings, free them here, and clear the flag */
-    if ((ret->flags & ASN1_OBJECT_FLAG_DYNAMIC_STRINGS) != 0) {
-        OPENSSL_free((char *)ret->sn);
-        OPENSSL_free((char *)ret->ln);
-        ret->flags &= ~ASN1_OBJECT_FLAG_DYNAMIC_STRINGS;
-    }
-    /* reattach data to object, after which it remains const */
-    ret->data = data;
-    ret->length = length;
-    ret->sn = NULL;
-    ret->ln = NULL;
-    p += length;
-
-    if (a != NULL)
-        (*a) = ret;
-    *pp = p;
-    return (ret);
- err:
-    OPENSSL_PUT_ERROR(ASN1, i);
-    if ((ret != NULL) && ((a == NULL) || (*a != ret)))
-        ASN1_OBJECT_free(ret);
-    return (NULL);
-}
-
-ASN1_OBJECT *ASN1_OBJECT_new(void)
-{
-    ASN1_OBJECT *ret;
-
-    ret = (ASN1_OBJECT *)OPENSSL_malloc(sizeof(ASN1_OBJECT));
-    if (ret == NULL) {
-        OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-        return (NULL);
-    }
+  p = *pp;
+  /* detach data from object */
+  data = (unsigned char *)ret->data;
+  ret->data = NULL;
+  /* once detached we can change it */
+  if ((data == NULL) || (ret->length < length)) {
     ret->length = 0;
-    ret->data = NULL;
-    ret->nid = 0;
-    ret->sn = NULL;
-    ret->ln = NULL;
-    ret->flags = ASN1_OBJECT_FLAG_DYNAMIC;
-    return (ret);
+    if (data != NULL)
+      OPENSSL_free(data);
+    data = (unsigned char *)OPENSSL_malloc(length);
+    if (data == NULL) {
+      i = ERR_R_MALLOC_FAILURE;
+      goto err;
+    }
+    ret->flags |= ASN1_OBJECT_FLAG_DYNAMIC_DATA;
+  }
+  OPENSSL_memcpy(data, p, length);
+  /* If there are dynamic strings, free them here, and clear the flag */
+  if ((ret->flags & ASN1_OBJECT_FLAG_DYNAMIC_STRINGS) != 0) {
+    OPENSSL_free((char *)ret->sn);
+    OPENSSL_free((char *)ret->ln);
+    ret->flags &= ~ASN1_OBJECT_FLAG_DYNAMIC_STRINGS;
+  }
+  /* reattach data to object, after which it remains const */
+  ret->data = data;
+  ret->length = length;
+  ret->sn = NULL;
+  ret->ln = NULL;
+  p += length;
+
+  if (a != NULL)
+    (*a) = ret;
+  *pp = p;
+  return (ret);
+err:
+  OPENSSL_PUT_ERROR(ASN1, i);
+  if ((ret != NULL) && ((a == NULL) || (*a != ret)))
+    ASN1_OBJECT_free(ret);
+  return (NULL);
 }
 
-void ASN1_OBJECT_free(ASN1_OBJECT *a)
-{
-    if (a == NULL)
-        return;
-    if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC_STRINGS) {
-        OPENSSL_free((void *)a->sn);
-        OPENSSL_free((void *)a->ln);
-        a->sn = a->ln = NULL;
-    }
-    if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC_DATA) {
-        OPENSSL_free((void *)a->data);
-        a->data = NULL;
-        a->length = 0;
-    }
-    if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC)
-        OPENSSL_free(a);
+ASN1_OBJECT *ASN1_OBJECT_new(void) {
+  ASN1_OBJECT *ret;
+
+  ret = (ASN1_OBJECT *)OPENSSL_malloc(sizeof(ASN1_OBJECT));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
+    return (NULL);
+  }
+  ret->length = 0;
+  ret->data = NULL;
+  ret->nid = 0;
+  ret->sn = NULL;
+  ret->ln = NULL;
+  ret->flags = ASN1_OBJECT_FLAG_DYNAMIC;
+  return (ret);
+}
+
+void ASN1_OBJECT_free(ASN1_OBJECT *a) {
+  if (a == NULL)
+    return;
+  if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC_STRINGS) {
+    OPENSSL_free((void *)a->sn);
+    OPENSSL_free((void *)a->ln);
+    a->sn = a->ln = NULL;
+  }
+  if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC_DATA) {
+    OPENSSL_free((void *)a->data);
+    a->data = NULL;
+    a->length = 0;
+  }
+  if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC)
+    OPENSSL_free(a);
 }
 
 ASN1_OBJECT *ASN1_OBJECT_create(int nid, const unsigned char *data, int len,
-                                const char *sn, const char *ln)
-{
-    ASN1_OBJECT o;
+                                const char *sn, const char *ln) {
+  ASN1_OBJECT o;
 
-    o.sn = sn;
-    o.ln = ln;
-    o.data = data;
-    o.nid = nid;
-    o.length = len;
-    o.flags = ASN1_OBJECT_FLAG_DYNAMIC | ASN1_OBJECT_FLAG_DYNAMIC_STRINGS |
-        ASN1_OBJECT_FLAG_DYNAMIC_DATA;
-    return (OBJ_dup(&o));
+  o.sn = sn;
+  o.ln = ln;
+  o.data = data;
+  o.nid = nid;
+  o.length = len;
+  o.flags = ASN1_OBJECT_FLAG_DYNAMIC | ASN1_OBJECT_FLAG_DYNAMIC_STRINGS |
+            ASN1_OBJECT_FLAG_DYNAMIC_DATA;
+  return (OBJ_dup(&o));
 }

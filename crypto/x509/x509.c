@@ -73,8 +73,7 @@ int X509_signature_dump(BIO *bp, const ASN1_STRING *sig, int indent) {
   s = sig->data;
   for (i = 0; i < n; i++) {
     if ((i % 18) == 0) {
-      if (BIO_write(bp, "\n", 1) <= 0 ||
-          BIO_indent(bp, indent, indent) <= 0) {
+      if (BIO_write(bp, "\n", 1) <= 0 || BIO_indent(bp, indent, indent) <= 0) {
         return 0;
       }
     }

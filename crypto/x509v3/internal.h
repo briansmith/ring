@@ -136,11 +136,11 @@ DEFINE_STACK_OF(X509_POLICY_DATA)
  */
 
 struct X509_POLICY_DATA_st {
-    unsigned int flags;
-    /* Policy OID and qualifiers for this data */
-    ASN1_OBJECT *valid_policy;
-    STACK_OF(POLICYQUALINFO) *qualifier_set;
-    STACK_OF(ASN1_OBJECT) *expected_policy_set;
+  unsigned int flags;
+  /* Policy OID and qualifiers for this data */
+  ASN1_OBJECT *valid_policy;
+  STACK_OF(POLICYQUALINFO) *qualifier_set;
+  STACK_OF(ASN1_OBJECT) *expected_policy_set;
 };
 
 /* X509_POLICY_DATA flags values */
@@ -150,50 +150,50 @@ struct X509_POLICY_DATA_st {
  * extension. If policy mapping is not active its references get deleted.
  */
 
-#define POLICY_DATA_FLAG_MAPPED                 0x1
+#define POLICY_DATA_FLAG_MAPPED 0x1
 
 /*
  * This flag indicates the data doesn't correspond to a policy in Certificate
  * Policies: it has been mapped to any policy.
  */
 
-#define POLICY_DATA_FLAG_MAPPED_ANY             0x2
+#define POLICY_DATA_FLAG_MAPPED_ANY 0x2
 
 /* AND with flags to see if any mapping has occurred */
 
-#define POLICY_DATA_FLAG_MAP_MASK               0x3
+#define POLICY_DATA_FLAG_MAP_MASK 0x3
 
 /* qualifiers are shared and shouldn't be freed */
 
-#define POLICY_DATA_FLAG_SHARED_QUALIFIERS      0x4
+#define POLICY_DATA_FLAG_SHARED_QUALIFIERS 0x4
 
 /* Parent node is an extra node and should be freed */
 
-#define POLICY_DATA_FLAG_EXTRA_NODE             0x8
+#define POLICY_DATA_FLAG_EXTRA_NODE 0x8
 
 /* Corresponding CertificatePolicies is critical */
 
-#define POLICY_DATA_FLAG_CRITICAL               0x10
+#define POLICY_DATA_FLAG_CRITICAL 0x10
 
 /* This structure is cached with a certificate */
 
 struct X509_POLICY_CACHE_st {
-    /* anyPolicy data or NULL if no anyPolicy */
-    X509_POLICY_DATA *anyPolicy;
-    /* other policy data */
-    STACK_OF(X509_POLICY_DATA) *data;
-    /* If InhibitAnyPolicy present this is its value or -1 if absent. */
-    long any_skip;
-    /*
-     * If policyConstraints and requireExplicitPolicy present this is its
-     * value or -1 if absent.
-     */
-    long explicit_skip;
-    /*
-     * If policyConstraints and policyMapping present this is its value or -1
-     * if absent.
-     */
-    long map_skip;
+  /* anyPolicy data or NULL if no anyPolicy */
+  X509_POLICY_DATA *anyPolicy;
+  /* other policy data */
+  STACK_OF(X509_POLICY_DATA) *data;
+  /* If InhibitAnyPolicy present this is its value or -1 if absent. */
+  long any_skip;
+  /*
+   * If policyConstraints and requireExplicitPolicy present this is its
+   * value or -1 if absent.
+   */
+  long explicit_skip;
+  /*
+   * If policyConstraints and policyMapping present this is its value or -1
+   * if absent.
+   */
+  long map_skip;
 };
 
 /*
@@ -203,45 +203,45 @@ struct X509_POLICY_CACHE_st {
 /* This structure represents the relationship between nodes */
 
 struct X509_POLICY_NODE_st {
-    /* node data this refers to */
-    const X509_POLICY_DATA *data;
-    /* Parent node */
-    X509_POLICY_NODE *parent;
-    /* Number of child nodes */
-    int nchild;
+  /* node data this refers to */
+  const X509_POLICY_DATA *data;
+  /* Parent node */
+  X509_POLICY_NODE *parent;
+  /* Number of child nodes */
+  int nchild;
 };
 
 struct X509_POLICY_LEVEL_st {
-    /* Cert for this level */
-    X509 *cert;
-    /* nodes at this level */
-    STACK_OF(X509_POLICY_NODE) *nodes;
-    /* anyPolicy node */
-    X509_POLICY_NODE *anyPolicy;
-    /* Extra data */
-    /*
-     * STACK_OF(X509_POLICY_DATA) *extra_data;
-     */
-    unsigned int flags;
+  /* Cert for this level */
+  X509 *cert;
+  /* nodes at this level */
+  STACK_OF(X509_POLICY_NODE) *nodes;
+  /* anyPolicy node */
+  X509_POLICY_NODE *anyPolicy;
+  /* Extra data */
+  /*
+   * STACK_OF(X509_POLICY_DATA) *extra_data;
+   */
+  unsigned int flags;
 };
 
 struct X509_POLICY_TREE_st {
-    /* This is the tree 'level' data */
-    X509_POLICY_LEVEL *levels;
-    int nlevel;
-    /*
-     * Extra policy data when additional nodes (not from the certificate) are
-     * required.
-     */
-    STACK_OF(X509_POLICY_DATA) *extra_data;
-    /* This is the authority constained policy set */
-    STACK_OF(X509_POLICY_NODE) *auth_policies;
-    STACK_OF(X509_POLICY_NODE) *user_policies;
-    unsigned int flags;
+  /* This is the tree 'level' data */
+  X509_POLICY_LEVEL *levels;
+  int nlevel;
+  /*
+   * Extra policy data when additional nodes (not from the certificate) are
+   * required.
+   */
+  STACK_OF(X509_POLICY_DATA) *extra_data;
+  /* This is the authority constained policy set */
+  STACK_OF(X509_POLICY_NODE) *auth_policies;
+  STACK_OF(X509_POLICY_NODE) *user_policies;
+  unsigned int flags;
 };
 
 /* Set if anyPolicy present in user policies */
-#define POLICY_FLAG_ANY_POLICY          0x2
+#define POLICY_FLAG_ANY_POLICY 0x2
 
 /* Useful macros */
 
@@ -283,7 +283,7 @@ const X509_POLICY_CACHE *policy_cache_set(X509 *x);
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+} /* extern C */
 #endif
 
-#endif  /* OPENSSL_HEADER_X509V3_INTERNAL_H */
+#endif /* OPENSSL_HEADER_X509V3_INTERNAL_H */

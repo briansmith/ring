@@ -219,7 +219,7 @@ OPENSSL_EXPORT void asn1_get_string_table_for_testing(
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+} /* extern C */
 #endif
 
-#endif  /* OPENSSL_HEADER_ASN1_ASN1_LOCL_H */
+#endif /* OPENSSL_HEADER_ASN1_ASN1_LOCL_H */

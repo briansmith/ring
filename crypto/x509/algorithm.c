@@ -107,8 +107,7 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   const int digest_nid = EVP_MD_type(digest);
   int sign_nid;
   if (!x509_digest_nid_ok(digest_nid) ||
-      !OBJ_find_sigid_by_algs(&sign_nid, digest_nid,
-                              EVP_PKEY_id(pkey))) {
+      !OBJ_find_sigid_by_algs(&sign_nid, digest_nid, EVP_PKEY_id(pkey))) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
     return 0;
   }

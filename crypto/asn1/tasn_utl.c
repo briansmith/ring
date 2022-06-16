@@ -60,9 +60,9 @@
 #include <string.h>
 
 #include <openssl/asn1t.h>
+#include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
-#include <openssl/err.h>
 #include <openssl/thread.h>
 
 #include "../internal.h"
@@ -173,7 +173,7 @@ int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
   enc->alias_only_on_next_parse = 0;
 
   if (enc->alias_only) {
-    enc->enc = (uint8_t *) in;
+    enc->enc = (uint8_t *)in;
   } else {
     enc->enc = OPENSSL_malloc(inlen);
     if (!enc->enc) {

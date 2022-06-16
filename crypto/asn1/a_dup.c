@@ -65,23 +65,22 @@
  * directly dup the underlying structure instead of doing and encode and
  * decode.
  */
-void *ASN1_item_dup(const ASN1_ITEM *it, void *x)
-{
-    unsigned char *b = NULL;
-    const unsigned char *p;
-    long i;
-    void *ret;
+void *ASN1_item_dup(const ASN1_ITEM *it, void *x) {
+  unsigned char *b = NULL;
+  const unsigned char *p;
+  long i;
+  void *ret;
 
-    if (x == NULL)
-        return (NULL);
+  if (x == NULL)
+    return (NULL);
 
-    i = ASN1_item_i2d(x, &b, it);
-    if (b == NULL) {
-        OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-        return (NULL);
-    }
-    p = b;
-    ret = ASN1_item_d2i(NULL, &p, i, it);
-    OPENSSL_free(b);
-    return (ret);
+  i = ASN1_item_i2d(x, &b, it);
+  if (b == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
+    return (NULL);
+  }
+  p = b;
+  ret = ASN1_item_d2i(NULL, &p, i, it);
+  OPENSSL_free(b);
+  return (ret);
 }

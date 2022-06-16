@@ -65,10 +65,8 @@ extern const X509V3_EXT_METHOD v3_info, v3_sinfo;
 extern const X509V3_EXT_METHOD v3_ns_ia5_list[], v3_alt[], v3_skey_id,
     v3_akey_id;
 extern const X509V3_EXT_METHOD v3_crl_num, v3_crl_reason, v3_crl_invdate;
-extern const X509V3_EXT_METHOD v3_delta_crl, v3_cpols, v3_crld,
-    v3_freshest_crl;
-extern const X509V3_EXT_METHOD v3_ocsp_nonce, v3_ocsp_accresp,
-    v3_ocsp_acutoff;
+extern const X509V3_EXT_METHOD v3_delta_crl, v3_cpols, v3_crld, v3_freshest_crl;
+extern const X509V3_EXT_METHOD v3_ocsp_nonce, v3_ocsp_accresp, v3_ocsp_acutoff;
 extern const X509V3_EXT_METHOD v3_ocsp_crlid, v3_ocsp_nocheck,
     v3_ocsp_serviceloc;
 extern const X509V3_EXT_METHOD v3_crl_hold, v3_pci;
@@ -131,7 +129,8 @@ static const X509V3_EXT_METHOD *const standard_exts[] = {
 
 /* Number of standard extensions */
 
-#define STANDARD_EXTENSION_COUNT (sizeof(standard_exts)/sizeof(X509V3_EXT_METHOD *))
+#define STANDARD_EXTENSION_COUNT \
+  (sizeof(standard_exts) / sizeof(X509V3_EXT_METHOD *))
 
 #if defined(__cplusplus)
 } /* extern C */

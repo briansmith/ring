@@ -9,7 +9,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -60,8 +60,8 @@
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 #include <openssl/bio.h>
-#include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/obj.h>
 
 #include "internal.h"
@@ -77,10 +77,10 @@ static int rsa_pss_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 }
 
 ASN1_SEQUENCE_cb(RSA_PSS_PARAMS, rsa_pss_cb) = {
-  ASN1_EXP_OPT(RSA_PSS_PARAMS, hashAlgorithm, X509_ALGOR,0),
-  ASN1_EXP_OPT(RSA_PSS_PARAMS, maskGenAlgorithm, X509_ALGOR,1),
-  ASN1_EXP_OPT(RSA_PSS_PARAMS, saltLength, ASN1_INTEGER,2),
-  ASN1_EXP_OPT(RSA_PSS_PARAMS, trailerField, ASN1_INTEGER,3),
+    ASN1_EXP_OPT(RSA_PSS_PARAMS, hashAlgorithm, X509_ALGOR, 0),
+    ASN1_EXP_OPT(RSA_PSS_PARAMS, maskGenAlgorithm, X509_ALGOR, 1),
+    ASN1_EXP_OPT(RSA_PSS_PARAMS, saltLength, ASN1_INTEGER, 2),
+    ASN1_EXP_OPT(RSA_PSS_PARAMS, trailerField, ASN1_INTEGER, 3),
 } ASN1_SEQUENCE_END_cb(RSA_PSS_PARAMS, RSA_PSS_PARAMS)
 
 IMPLEMENT_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
@@ -183,8 +183,7 @@ static const EVP_MD *rsa_mgf1_to_md(const X509_ALGOR *alg,
     return EVP_sha1();
   }
   /* Check mask and lookup mask hash algorithm */
-  if (OBJ_obj2nid(alg->algorithm) != NID_mgf1 ||
-      maskHash == NULL) {
+  if (OBJ_obj2nid(alg->algorithm) != NID_mgf1 || maskHash == NULL) {
     OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
     return NULL;
   }
@@ -230,8 +229,7 @@ int x509_rsa_ctx_to_pss(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
 
   if (saltlen != 20) {
     pss->saltLength = ASN1_INTEGER_new();
-    if (!pss->saltLength ||
-        !ASN1_INTEGER_set(pss->saltLength, saltlen)) {
+    if (!pss->saltLength || !ASN1_INTEGER_set(pss->saltLength, saltlen)) {
       goto err;
     }
   }
@@ -325,8 +323,7 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
     goto err;
   }
 
-  if (BIO_puts(bp, "\n") <= 0 ||
-      !BIO_indent(bp, indent, 128) ||
+  if (BIO_puts(bp, "\n") <= 0 || !BIO_indent(bp, indent, 128) ||
       BIO_puts(bp, "Hash Algorithm: ") <= 0) {
     goto err;
   }
@@ -339,8 +336,7 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
     goto err;
   }
 
-  if (BIO_puts(bp, "\n") <= 0 ||
-      !BIO_indent(bp, indent, 128) ||
+  if (BIO_puts(bp, "\n") <= 0 || !BIO_indent(bp, indent, 128) ||
       BIO_puts(bp, "Mask Algorithm: ") <= 0) {
     goto err;
   }
@@ -363,8 +359,7 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
   }
   BIO_puts(bp, "\n");
 
-  if (!BIO_indent(bp, indent, 128) ||
-      BIO_puts(bp, "Salt Length: 0x") <= 0) {
+  if (!BIO_indent(bp, indent, 128) || BIO_puts(bp, "Salt Length: 0x") <= 0) {
     goto err;
   }
 
@@ -377,8 +372,7 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
   }
   BIO_puts(bp, "\n");
 
-  if (!BIO_indent(bp, indent, 128) ||
-      BIO_puts(bp, "Trailer Field: 0x") <= 0) {
+  if (!BIO_indent(bp, indent, 128) || BIO_puts(bp, "Trailer Field: 0x") <= 0) {
     goto err;
   }
 

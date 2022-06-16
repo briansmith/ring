@@ -409,7 +409,7 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+} /* extern C */
 #endif
 
-#endif  /* OPENSSL_HEADER_X509_INTERNAL_H */
+#endif /* OPENSSL_HEADER_X509_INTERNAL_H */
