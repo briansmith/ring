@@ -55,13 +55,13 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/asn1.h>
+#include <openssl/asn1t.h>
+#include <openssl/bytestring.h>
+#include <openssl/err.h>
+#include <openssl/mem.h>
 
 #include <limits.h>
 #include <string.h>
-
-#include <openssl/asn1t.h>
-#include <openssl/err.h>
-#include <openssl/mem.h>
 
 #include "../internal.h"
 #include "internal.h"
@@ -820,6 +820,23 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
         if (utype == V_ASN1_UNIVERSALSTRING && (len & 3)) {
             OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNIVERSALSTRING_IS_WRONG_LENGTH);
             goto err;
+        }
+        if (utype == V_ASN1_UTCTIME) {
+            CBS cbs;
+            CBS_init(&cbs, cont, (size_t)len);
+            if (!CBS_parse_utc_time(&cbs, NULL, /*allow_timezone_offset=*/1)) {
+                OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_TIME_FORMAT);
+                goto err;
+            }
+        }
+        if (utype == V_ASN1_GENERALIZEDTIME) {
+            CBS cbs;
+            CBS_init(&cbs, cont, (size_t)len);
+            if (!CBS_parse_generalized_time(&cbs, NULL,
+                                            /*allow_timezone_offset=*/0)) {
+                OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_TIME_FORMAT);
+                goto err;
+            }
         }
         /* All based on ASN1_STRING and handled the same */
         if (!*pval) {

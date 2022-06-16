@@ -55,130 +55,26 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/asn1.h>
+#include <openssl/bytestring.h>
+#include <openssl/err.h>
+#include <openssl/mem.h>
 
 #include <string.h>
 #include <time.h>
-
-#include <openssl/err.h>
-#include <openssl/mem.h>
 
 #include "internal.h"
 
 int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d)
 {
-    static const int min[9] = { 0, 0, 1, 1, 0, 0, 0, 0, 0 };
-    static const int max[9] = { 99, 99, 12, 31, 23, 59, 59, 12, 59 };
-    char *a;
-    int n, i, l, o;
-
-    if (d->type != V_ASN1_GENERALIZEDTIME)
-        return (0);
-    l = d->length;
-    a = (char *)d->data;
-    o = 0;
-    /*
-     * GENERALIZEDTIME is similar to UTCTIME except the year is represented
-     * as YYYY. This stuff treats everything as a two digit field so make
-     * first two fields 00 to 99
-     */
-    if (l < 13)
-        goto err;
-    for (i = 0; i < 7; i++) {
-        if ((i == 6) && ((a[o] == 'Z') || (a[o] == '+') || (a[o] == '-'))) {
-            i++;
-            if (tm)
-                tm->tm_sec = 0;
-            break;
-        }
-        if ((a[o] < '0') || (a[o] > '9'))
-            goto err;
-        n = a[o] - '0';
-        if (++o > l)
-            goto err;
-
-        if ((a[o] < '0') || (a[o] > '9'))
-            goto err;
-        n = (n * 10) + a[o] - '0';
-        if (++o > l)
-            goto err;
-
-        if ((n < min[i]) || (n > max[i]))
-            goto err;
-        if (tm) {
-            switch (i) {
-            case 0:
-                tm->tm_year = n * 100 - 1900;
-                break;
-            case 1:
-                tm->tm_year += n;
-                break;
-            case 2:
-                tm->tm_mon = n - 1;
-                break;
-            case 3:
-                tm->tm_mday = n;
-                break;
-            case 4:
-                tm->tm_hour = n;
-                break;
-            case 5:
-                tm->tm_min = n;
-                break;
-            case 6:
-                tm->tm_sec = n;
-                break;
-            }
-        }
+    if (d->type != V_ASN1_GENERALIZEDTIME) {
+        return 0;
     }
-    /*
-     * Optional fractional seconds: decimal point followed by one or more
-     * digits.
-     */
-    if (a[o] == '.') {
-        if (++o > l)
-            goto err;
-        i = o;
-        while ((a[o] >= '0') && (a[o] <= '9') && (o <= l))
-            o++;
-        /* Must have at least one digit after decimal point */
-        if (i == o)
-            goto err;
+    CBS cbs;
+    CBS_init(&cbs, d->data, (size_t)d->length);
+    if (!CBS_parse_generalized_time(&cbs, tm, /*allow_timezone_offset=*/0)) {
+        return 0;
     }
-
-    if (a[o] == 'Z')
-        o++;
-    else if ((a[o] == '+') || (a[o] == '-')) {
-        int offsign = a[o] == '-' ? 1 : -1, offset = 0;
-        o++;
-        if (o + 4 > l)
-            goto err;
-        for (i = 7; i < 9; i++) {
-            if ((a[o] < '0') || (a[o] > '9'))
-                goto err;
-            n = a[o] - '0';
-            o++;
-            if ((a[o] < '0') || (a[o] > '9'))
-                goto err;
-            n = (n * 10) + a[o] - '0';
-            if ((n < min[i]) || (n > max[i]))
-                goto err;
-            if (tm) {
-                if (i == 7)
-                    offset = n * 3600;
-                else if (i == 8)
-                    offset += n * 60;
-            }
-            o++;
-        }
-        if (offset && !OPENSSL_gmtime_adj(tm, 0, offset * offsign))
-            return 0;
-    } else if (a[o]) {
-        /* Missing time zone information. */
-        goto err;
-    }
-    return (o == l);
- err:
-    return (0);
+    return 1;
 }
 
 int ASN1_GENERALIZEDTIME_check(const ASN1_GENERALIZEDTIME *d)

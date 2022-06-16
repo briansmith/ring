@@ -901,6 +901,31 @@ static std::string ASN1StringToStdString(const ASN1_STRING *str) {
                      ASN1_STRING_get0_data(str) + ASN1_STRING_length(str));
 }
 
+static bool ASN1Time_check_time_t(const ASN1_TIME *s, time_t t) {
+  struct tm stm, ttm;
+  int day, sec;
+
+  switch (ASN1_STRING_type(s)) {
+    case V_ASN1_GENERALIZEDTIME:
+      if (!asn1_generalizedtime_to_tm(&stm, s)) {
+        return false;
+      }
+      break;
+    case V_ASN1_UTCTIME:
+      if (!asn1_utctime_to_tm(&stm, s)) {
+        return false;
+      }
+      break;
+    default:
+      return 0;
+  }
+  if (!OPENSSL_gmtime(&t, &ttm) ||
+      !OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm)) {
+    return false;
+  }
+  return day == 0 && sec ==0;
+}
+
 TEST(ASN1Test, SetTime) {
   static const struct {
     time_t time;
@@ -911,6 +936,7 @@ TEST(ASN1Test, SetTime) {
     {-631152000, "19500101000000Z", "500101000000Z"},
     {0, "19700101000000Z", "700101000000Z"},
     {981173106, "20010203040506Z", "010203040506Z"},
+    {951804000, "20000229060000Z", "000229060000Z"},
 #if defined(OPENSSL_64_BIT)
     // TODO(https://crbug.com/boringssl/416): These cases overflow 32-bit
     // |time_t| and do not consistently work on 32-bit platforms. For now,
@@ -939,6 +965,7 @@ TEST(ASN1Test, SetTime) {
       ASSERT_TRUE(utc);
       EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(utc.get()));
       EXPECT_EQ(t.utc, ASN1StringToStdString(utc.get()));
+      EXPECT_TRUE(ASN1Time_check_time_t(utc.get(), t.time));
     } else {
       EXPECT_FALSE(utc);
     }
@@ -949,6 +976,7 @@ TEST(ASN1Test, SetTime) {
       ASSERT_TRUE(generalized);
       EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(generalized.get()));
       EXPECT_EQ(t.generalized, ASN1StringToStdString(generalized.get()));
+      EXPECT_TRUE(ASN1Time_check_time_t(generalized.get(), t.time));
     } else {
       EXPECT_FALSE(generalized);
     }
@@ -963,6 +991,7 @@ TEST(ASN1Test, SetTime) {
         EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(choice.get()));
         EXPECT_EQ(t.generalized, ASN1StringToStdString(choice.get()));
       }
+      EXPECT_TRUE(ASN1Time_check_time_t(choice.get(), t.time));
     } else {
       EXPECT_FALSE(choice);
     }

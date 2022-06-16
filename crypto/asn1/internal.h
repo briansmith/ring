@@ -72,7 +72,7 @@ extern "C" {
 /* Wrapper functions for time functions. */
 
 /* OPENSSL_gmtime wraps |gmtime_r|. See the manual page for that function. */
-struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result);
+OPENSSL_EXPORT struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result);
 
 /* OPENSSL_gmtime_adj updates |tm| by adding |offset_day| days and |offset_sec|
  * seconds. */
@@ -81,9 +81,9 @@ int OPENSSL_gmtime_adj(struct tm *tm, int offset_day, long offset_sec);
 /* OPENSSL_gmtime_diff calculates the difference between |from| and |to| and
  * outputs the difference as a number of days and seconds in |*out_days| and
  * |*out_secs|. */
-int OPENSSL_gmtime_diff(int *out_days, int *out_secs, const struct tm *from,
-                        const struct tm *to);
-
+OPENSSL_EXPORT int OPENSSL_gmtime_diff(int *out_days, int *out_secs,
+                                       const struct tm *from,
+                                       const struct tm *to);
 
 /* Internal ASN1 structures and functions: not for application use */
 
@@ -216,6 +216,9 @@ typedef struct {
 OPENSSL_EXPORT void asn1_get_string_table_for_testing(
     const ASN1_STRING_TABLE **out_ptr, size_t *out_len);
 
+OPENSSL_EXPORT int asn1_generalizedtime_to_tm(struct tm *tm,
+                                              const ASN1_GENERALIZEDTIME *d);
+OPENSSL_EXPORT int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
 
 #if defined(__cplusplus)
 }  /* extern C */
