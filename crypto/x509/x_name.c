@@ -74,10 +74,8 @@
 typedef STACK_OF(X509_NAME_ENTRY) STACK_OF_X509_NAME_ENTRY;
 DEFINE_STACK_OF(STACK_OF_X509_NAME_ENTRY)
 
-/*
- * Maximum length of X509_NAME: much larger than anything we should
- * ever see in practice.
- */
+// Maximum length of X509_NAME: much larger than anything we should
+// ever see in practice.
 
 #define X509_NAME_MAX (1024 * 1024)
 
@@ -104,10 +102,8 @@ ASN1_SEQUENCE(X509_NAME_ENTRY) = {
 IMPLEMENT_ASN1_FUNCTIONS(X509_NAME_ENTRY)
 IMPLEMENT_ASN1_DUP_FUNCTION(X509_NAME_ENTRY)
 
-/*
- * For the "Name" type we need a SEQUENCE OF { SET OF X509_NAME_ENTRY } so
- * declare two template wrappers for this
- */
+// For the "Name" type we need a SEQUENCE OF { SET OF X509_NAME_ENTRY } so
+// declare two template wrappers for this
 
 ASN1_ITEM_TEMPLATE(X509_NAME_ENTRIES) = ASN1_EX_TEMPLATE_TYPE(ASN1_TFLG_SET_OF,
                                                               0, RDNS,
@@ -118,18 +114,16 @@ ASN1_ITEM_TEMPLATE(X509_NAME_INTERNAL) =
     ASN1_EX_TEMPLATE_TYPE(ASN1_TFLG_SEQUENCE_OF, 0, Name, X509_NAME_ENTRIES)
 ASN1_ITEM_TEMPLATE_END(X509_NAME_INTERNAL)
 
-/*
- * Normally that's where it would end: we'd have two nested STACK structures
- * representing the ASN1. Unfortunately X509_NAME uses a completely different
- * form and caches encodings so we have to process the internal form and
- * convert to the external form.
- */
+// Normally that's where it would end: we'd have two nested STACK structures
+// representing the ASN1. Unfortunately X509_NAME uses a completely different
+// form and caches encodings so we have to process the internal form and
+// convert to the external form.
 
 static const ASN1_EXTERN_FUNCS x509_name_ff = {
     NULL,
     x509_name_ex_new,
     x509_name_ex_free,
-    0, /* Default clear behaviour is OK */
+    0,  // Default clear behaviour is OK
     x509_name_ex_d2i,
     x509_name_ex_i2d,
     NULL,
@@ -204,13 +198,13 @@ static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
   int ret;
   STACK_OF(X509_NAME_ENTRY) *entries;
   X509_NAME_ENTRY *entry;
-  /* Bound the size of an X509_NAME we are willing to parse. */
+  // Bound the size of an X509_NAME we are willing to parse.
   if (len > X509_NAME_MAX) {
     len = X509_NAME_MAX;
   }
   q = p;
 
-  /* Get internal representation of Name */
+  // Get internal representation of Name
   ASN1_VALUE *intname_val = NULL;
   ret = ASN1_item_ex_d2i(&intname_val, &p, len,
                          ASN1_ITEM_rptr(X509_NAME_INTERNAL), tag, aclass, opt,
@@ -228,13 +222,13 @@ static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
     goto err;
   }
   nm = (X509_NAME *)nm_val;
-  /* We've decoded it: now cache encoding */
+  // We've decoded it: now cache encoding
   if (!BUF_MEM_grow(nm->bytes, p - q)) {
     goto err;
   }
   OPENSSL_memcpy(nm->bytes->data, q, p - q);
 
-  /* Convert internal representation to X509_NAME structure */
+  // Convert internal representation to X509_NAME structure
   for (i = 0; i < sk_STACK_OF_X509_NAME_ENTRY_num(intname); i++) {
     entries = sk_STACK_OF_X509_NAME_ENTRY_value(intname, i);
     for (j = 0; j < sk_X509_NAME_ENTRY_num(entries); j++) {
@@ -330,16 +324,14 @@ err:
   return 0;
 }
 
-/*
- * This function generates the canonical encoding of the Name structure. In
- * it all strings are converted to UTF8, leading, trailing and multiple
- * spaces collapsed, converted to lower case and the leading SEQUENCE header
- * removed. In future we could also normalize the UTF8 too. By doing this
- * comparison of Name structures can be rapidly perfomed by just using
- * OPENSSL_memcmp() of the canonical encoding. By omitting the leading SEQUENCE
- * name constraints of type dirName can also be checked with a simple
- * OPENSSL_memcmp().
- */
+// This function generates the canonical encoding of the Name structure. In
+// it all strings are converted to UTF8, leading, trailing and multiple
+// spaces collapsed, converted to lower case and the leading SEQUENCE header
+// removed. In future we could also normalize the UTF8 too. By doing this
+// comparison of Name structures can be rapidly perfomed by just using
+// OPENSSL_memcmp() of the canonical encoding. By omitting the leading SEQUENCE
+// name constraints of type dirName can also be checked with a simple
+// OPENSSL_memcmp().
 
 static int x509_name_canon(X509_NAME *a) {
   unsigned char *p;
@@ -353,7 +345,7 @@ static int x509_name_canon(X509_NAME *a) {
     OPENSSL_free(a->canon_enc);
     a->canon_enc = NULL;
   }
-  /* Special case: empty X509_NAME => null encoding */
+  // Special case: empty X509_NAME => null encoding
   if (sk_X509_NAME_ENTRY_num(a->entries) == 0) {
     a->canon_enclen = 0;
     return 1;
@@ -389,7 +381,7 @@ static int x509_name_canon(X509_NAME *a) {
     tmpentry = NULL;
   }
 
-  /* Finally generate encoding */
+  // Finally generate encoding
 
   len = i2d_name_canon(intname, NULL);
   if (len < 0) {
@@ -421,7 +413,7 @@ err:
   return ret;
 }
 
-/* Bitmap of all the types of string that will be canonicalized. */
+// Bitmap of all the types of string that will be canonicalized.
 
 #define ASN1_MASK_CANON                                            \
   (B_ASN1_UTF8STRING | B_ASN1_BMPSTRING | B_ASN1_UNIVERSALSTRING | \
@@ -432,7 +424,7 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
   unsigned char *to, *from;
   int len, i;
 
-  /* If type not in bitmask just copy string across */
+  // If type not in bitmask just copy string across
   if (!(ASN1_tag2bit(in->type) & ASN1_MASK_CANON)) {
     if (!ASN1_STRING_copy(out, in)) {
       return 0;
@@ -451,13 +443,11 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
 
   len = out->length;
 
-  /*
-   * Convert string in place to canonical form. Ultimately we may need to
-   * handle a wider range of characters but for now ignore anything with
-   * MSB set and rely on the isspace() and tolower() functions.
-   */
+  // Convert string in place to canonical form. Ultimately we may need to
+  // handle a wider range of characters but for now ignore anything with
+  // MSB set and rely on the isspace() and tolower() functions.
 
-  /* Ignore leading spaces */
+  // Ignore leading spaces
   while ((len > 0) && !(*from & 0x80) && isspace(*from)) {
     from++;
     len--;
@@ -465,7 +455,7 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
 
   to = from + len;
 
-  /* Ignore trailing spaces */
+  // Ignore trailing spaces
   while ((len > 0) && !(to[-1] & 0x80) && isspace(to[-1])) {
     to--;
     len--;
@@ -475,20 +465,18 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
 
   i = 0;
   while (i < len) {
-    /* If MSB set just copy across */
+    // If MSB set just copy across
     if (*from & 0x80) {
       *to++ = *from++;
       i++;
     }
-    /* Collapse multiple spaces */
+    // Collapse multiple spaces
     else if (isspace(*from)) {
-      /* Copy one space across */
+      // Copy one space across
       *to++ = ' ';
-      /*
-       * Ignore subsequent spaces. Note: don't need to check len here
-       * because we know the last character is a non-space so we can't
-       * overflow.
-       */
+      // Ignore subsequent spaces. Note: don't need to check len here
+      // because we know the last character is a non-space so we can't
+      // overflow.
       do {
         from++;
         i++;
@@ -538,7 +526,7 @@ int X509_NAME_ENTRY_set(const X509_NAME_ENTRY *ne) { return ne->set; }
 
 int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **pder,
                        size_t *pderlen) {
-  /* Make sure encoding is valid */
+  // Make sure encoding is valid
   if (i2d_X509_NAME(nm, NULL) <= 0) {
     return 0;
   }

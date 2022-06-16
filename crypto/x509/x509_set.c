@@ -81,7 +81,7 @@ int X509_set_version(X509 *x, long version) {
     return 0;
   }
 
-  /* v1(0) is default and is represented by omitting the version. */
+  // v1(0) is default and is represented by omitting the version.
   if (version == X509_VERSION_1) {
     ASN1_INTEGER_free(x->cert_info->version);
     x->cert_info->version = NULL;

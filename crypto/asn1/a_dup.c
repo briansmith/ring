@@ -59,12 +59,10 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-/*
- * ASN1_ITEM version of dup: this follows the model above except we don't
- * need to allocate the buffer. At some point this could be rewritten to
- * directly dup the underlying structure instead of doing and encode and
- * decode.
- */
+// ASN1_ITEM version of dup: this follows the model above except we don't
+// need to allocate the buffer. At some point this could be rewritten to
+// directly dup the underlying structure instead of doing and encode and
+// decode.
 void *ASN1_item_dup(const ASN1_ITEM *it, void *x) {
   unsigned char *b = NULL;
   const unsigned char *p;

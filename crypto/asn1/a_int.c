@@ -72,7 +72,7 @@ ASN1_INTEGER *ASN1_INTEGER_dup(const ASN1_INTEGER *x) {
 }
 
 int ASN1_INTEGER_cmp(const ASN1_INTEGER *x, const ASN1_INTEGER *y) {
-  /* Compare signs. */
+  // Compare signs.
   int neg = x->type & V_ASN1_NEG;
   if (neg != (y->type & V_ASN1_NEG)) {
     return neg ? -1 : 1;
@@ -80,8 +80,8 @@ int ASN1_INTEGER_cmp(const ASN1_INTEGER *x, const ASN1_INTEGER *y) {
 
   int ret = ASN1_STRING_cmp(x, y);
   if (neg) {
-    /* This could be |-ret|, but |ASN1_STRING_cmp| is not forbidden from
-     * returning |INT_MIN|. */
+    // This could be |-ret|, but |ASN1_STRING_cmp| is not forbidden from
+    // returning |INT_MIN|.
     if (ret < 0) {
       return 1;
     } else if (ret > 0) {
@@ -94,8 +94,8 @@ int ASN1_INTEGER_cmp(const ASN1_INTEGER *x, const ASN1_INTEGER *y) {
   return ret;
 }
 
-/* negate_twos_complement negates |len| bytes from |buf| in-place, interpreted
- * as a signed, big-endian two's complement value. */
+// negate_twos_complement negates |len| bytes from |buf| in-place, interpreted
+// as a signed, big-endian two's complement value.
 static void negate_twos_complement(uint8_t *buf, size_t len) {
   uint8_t borrow = 0;
   for (size_t i = len - 1; i < len; i--) {
@@ -119,9 +119,9 @@ int i2c_ASN1_INTEGER(const ASN1_INTEGER *in, unsigned char **outp) {
     return 0;
   }
 
-  /* |ASN1_INTEGER|s should be represented minimally, but it is possible to
-   * construct invalid ones. Skip leading zeros so this does not produce an
-   * invalid encoding or break invariants. */
+  // |ASN1_INTEGER|s should be represented minimally, but it is possible to
+  // construct invalid ones. Skip leading zeros so this does not produce an
+  // invalid encoding or break invariants.
   int start = 0;
   while (start < in->length && in->data[start] == 0) {
     start++;
@@ -130,20 +130,20 @@ int i2c_ASN1_INTEGER(const ASN1_INTEGER *in, unsigned char **outp) {
   int is_negative = (in->type & V_ASN1_NEG) != 0;
   int pad;
   if (start >= in->length) {
-    /* Zero is represented as a single byte. */
+    // Zero is represented as a single byte.
     is_negative = 0;
     pad = 1;
   } else if (is_negative) {
-    /* 0x80...01 through 0xff...ff have a two's complement of 0x7f...ff
-     * through 0x00...01 and need an extra byte to be negative.
-     * 0x01...00 through 0x80...00 have a two's complement of 0xfe...ff
-     * through 0x80...00 and can be negated as-is. */
+    // 0x80...01 through 0xff...ff have a two's complement of 0x7f...ff
+    // through 0x00...01 and need an extra byte to be negative.
+    // 0x01...00 through 0x80...00 have a two's complement of 0xfe...ff
+    // through 0x80...00 and can be negated as-is.
     pad = in->data[start] > 0x80 ||
           (in->data[start] == 0x80 &&
            !is_all_zeros(in->data + start + 1, in->length - start - 1));
   } else {
-    /* If the high bit is set, the signed representation needs an extra
-     * byte to be positive. */
+    // If the high bit is set, the signed representation needs an extra
+    // byte to be positive.
     pad = (in->data[start] & 0x80) != 0;
   }
 
@@ -173,11 +173,9 @@ int i2c_ASN1_INTEGER(const ASN1_INTEGER *in, unsigned char **outp) {
 
 ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **out, const unsigned char **inp,
                                long len) {
-  /*
-   * This function can handle lengths up to INT_MAX - 1, but the rest of the
-   * legacy ASN.1 code mixes integer types, so avoid exposing it to
-   * ASN1_INTEGERS with larger lengths.
-   */
+  // This function can handle lengths up to INT_MAX - 1, but the rest of the
+  // legacy ASN.1 code mixes integer types, so avoid exposing it to
+  // ASN1_INTEGERS with larger lengths.
   if (len < 0 || len > INT_MAX / 2) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
     return NULL;
@@ -201,19 +199,19 @@ ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **out, const unsigned char **inp,
     ret = *out;
   }
 
-  /* Convert to |ASN1_INTEGER|'s sign-and-magnitude representation. First,
-   * determine the size needed for a minimal result. */
+  // Convert to |ASN1_INTEGER|'s sign-and-magnitude representation. First,
+  // determine the size needed for a minimal result.
   if (is_negative) {
-    /* 0xff00...01 through 0xff7f..ff have a two's complement of 0x00ff...ff
-     * through 0x000100...001 and need one leading zero removed. 0x8000...00
-     * through 0xff00...00 have a two's complement of 0x8000...00 through
-     * 0x0100...00 and will be minimally-encoded as-is. */
+    // 0xff00...01 through 0xff7f..ff have a two's complement of 0x00ff...ff
+    // through 0x000100...001 and need one leading zero removed. 0x8000...00
+    // through 0xff00...00 have a two's complement of 0x8000...00 through
+    // 0x0100...00 and will be minimally-encoded as-is.
     if (CBS_len(&cbs) > 0 && CBS_data(&cbs)[0] == 0xff &&
         !is_all_zeros(CBS_data(&cbs) + 1, CBS_len(&cbs) - 1)) {
       CBS_skip(&cbs, 1);
     }
   } else {
-    /* Remove the leading zero byte, if any. */
+    // Remove the leading zero byte, if any.
     if (CBS_len(&cbs) > 0 && CBS_data(&cbs)[0] == 0x00) {
       CBS_skip(&cbs, 1);
     }
@@ -230,9 +228,9 @@ ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **out, const unsigned char **inp,
     ret->type = V_ASN1_INTEGER;
   }
 
-  /* The value should be minimally-encoded. */
+  // The value should be minimally-encoded.
   assert(ret->length == 0 || ret->data[0] != 0);
-  /* Zero is not negative. */
+  // Zero is not negative.
   assert(!is_negative || ret->length > 0);
 
   *inp += len;
@@ -347,7 +345,7 @@ static long asn1_string_get_long(const ASN1_STRING *a, int type) {
 
   int64_t i64;
   int fits_in_i64;
-  /* Check |v != 0| to handle manually-constructed negative zeros. */
+  // Check |v != 0| to handle manually-constructed negative zeros.
   if ((a->type & V_ASN1_NEG) && v != 0) {
     i64 = (int64_t)(0u - v);
     fits_in_i64 = i64 < 0;
@@ -362,7 +360,7 @@ static long asn1_string_get_long(const ASN1_STRING *a, int type) {
   }
 
 err:
-  /* This function's return value does not distinguish overflow from -1. */
+  // This function's return value does not distinguish overflow from -1.
   ERR_clear_error();
   return -1;
 }

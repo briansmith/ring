@@ -72,10 +72,8 @@ int i2d_PrivateKey(const EVP_PKEY *a, uint8_t **pp) {
     case EVP_PKEY_DSA:
       return i2d_DSAPrivateKey(a->pkey.dsa, pp);
     default:
-      /*
-       * Although this file is in crypto/x509 for layering reasons, it emits
-       * an error code from ASN1 for OpenSSL compatibility.
-       */
+      // Although this file is in crypto/x509 for layering reasons, it emits
+      // an error code from ASN1 for OpenSSL compatibility.
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
       return -1;
   }

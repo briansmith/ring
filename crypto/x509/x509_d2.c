@@ -74,7 +74,7 @@ int X509_STORE_set_default_paths(X509_STORE *ctx) {
   }
   X509_LOOKUP_add_dir(lookup, NULL, X509_FILETYPE_DEFAULT);
 
-  /* clear any errors */
+  // clear any errors
   ERR_clear_error();
 
   return (1);

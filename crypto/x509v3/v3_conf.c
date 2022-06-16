@@ -55,7 +55,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-/* extension creation utilities */
+// extension creation utilities
 
 #include <ctype.h>
 #include <stdio.h>
@@ -83,9 +83,9 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
                                   int crit, void *ext_struc);
 static unsigned char *generic_asn1(const char *value, X509V3_CTX *ctx,
                                    long *ext_len);
-/* CONF *conf:  Config file    */
-/* char *name:  Name    */
-/* char *value:  Value    */
+// CONF *conf:  Config file
+// char *name:  Name
+// char *value:  Value
 X509_EXTENSION *X509V3_EXT_nconf(CONF *conf, X509V3_CTX *ctx, const char *name,
                                  const char *value) {
   int crit;
@@ -103,8 +103,8 @@ X509_EXTENSION *X509V3_EXT_nconf(CONF *conf, X509V3_CTX *ctx, const char *name,
   return ret;
 }
 
-/* CONF *conf:  Config file    */
-/* char *value:  Value    */
+// CONF *conf:  Config file
+// char *value:  Value
 X509_EXTENSION *X509V3_EXT_nconf_nid(CONF *conf, X509V3_CTX *ctx, int ext_nid,
                                      const char *value) {
   int crit;
@@ -117,8 +117,8 @@ X509_EXTENSION *X509V3_EXT_nconf_nid(CONF *conf, X509V3_CTX *ctx, int ext_nid,
   return do_ext_nconf(conf, ctx, ext_nid, crit, value);
 }
 
-/* CONF *conf:  Config file    */
-/* char *value:  Value    */
+// CONF *conf:  Config file
+// char *value:  Value
 static X509_EXTENSION *do_ext_nconf(CONF *conf, X509V3_CTX *ctx, int ext_nid,
                                     int crit, const char *value) {
   const X509V3_EXT_METHOD *method;
@@ -133,7 +133,7 @@ static X509_EXTENSION *do_ext_nconf(CONF *conf, X509V3_CTX *ctx, int ext_nid,
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNKNOWN_EXTENSION);
     return NULL;
   }
-  /* Now get internal extension representation based on type */
+  // Now get internal extension representation based on type
   if (method->v2i) {
     if (*value == '@') {
       nval = NCONF_get_section(conf, value + 1);
@@ -188,7 +188,7 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
   int ext_len;
   ASN1_OCTET_STRING *ext_oct;
   X509_EXTENSION *ext;
-  /* Convert internal representation to DER */
+  // Convert internal representation to DER
   if (method->it) {
     ext_der = NULL;
     ext_len = ASN1_item_i2d(ext_struc, &ext_der, ASN1_ITEM_ptr(method->it));
@@ -223,7 +223,7 @@ merr:
   return NULL;
 }
 
-/* Given an internal structure, nid and critical flag create an extension */
+// Given an internal structure, nid and critical flag create an extension
 
 X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit, void *ext_struc) {
   const X509V3_EXT_METHOD *method;
@@ -234,7 +234,7 @@ X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit, void *ext_struc) {
   return do_ext_i2d(method, ext_nid, crit, ext_struc);
 }
 
-/* Check the extension string for critical flag */
+// Check the extension string for critical flag
 static int v3_check_critical(const char **value) {
   const char *p = *value;
   if ((strlen(p) < 9) || strncmp(p, "critical,", 9)) {
@@ -248,7 +248,7 @@ static int v3_check_critical(const char **value) {
   return 1;
 }
 
-/* Check extension string for generic extension and return the type */
+// Check extension string for generic extension and return the type
 static int v3_check_generic(const char **value) {
   int gen_type = 0;
   const char *p = *value;
@@ -269,7 +269,7 @@ static int v3_check_generic(const char **value) {
   return gen_type;
 }
 
-/* Create a generic extension: for now just handle DER type */
+// Create a generic extension: for now just handle DER type
 static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
                                             int crit, int gen_type,
                                             X509V3_CTX *ctx) {
@@ -329,10 +329,8 @@ static unsigned char *generic_asn1(const char *value, X509V3_CTX *ctx,
   return ext_der;
 }
 
-/*
- * This is the main function: add a bunch of extensions based on a config
- * file section to an extension STACK.
- */
+// This is the main function: add a bunch of extensions based on a config
+// file section to an extension STACK.
 
 int X509V3_EXT_add_nconf_sk(CONF *conf, X509V3_CTX *ctx, const char *section,
                             STACK_OF(X509_EXTENSION) **sk) {
@@ -356,9 +354,7 @@ int X509V3_EXT_add_nconf_sk(CONF *conf, X509V3_CTX *ctx, const char *section,
   return 1;
 }
 
-/*
- * Convenience functions to add extensions to a certificate, CRL and request
- */
+// Convenience functions to add extensions to a certificate, CRL and request
 
 int X509V3_EXT_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
                          X509 *cert) {
@@ -369,7 +365,7 @@ int X509V3_EXT_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
   return X509V3_EXT_add_nconf_sk(conf, ctx, section, sk);
 }
 
-/* Same as above but for a CRL */
+// Same as above but for a CRL
 
 int X509V3_EXT_CRL_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
                              X509_CRL *crl) {
@@ -380,7 +376,7 @@ int X509V3_EXT_CRL_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
   return X509V3_EXT_add_nconf_sk(conf, ctx, section, sk);
 }
 
-/* Add extensions to certificate request */
+// Add extensions to certificate request
 
 int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
                              X509_REQ *req) {
@@ -398,7 +394,7 @@ int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
   return i;
 }
 
-/* Config database functions */
+// Config database functions
 
 char *X509V3_get_string(X509V3_CTX *ctx, const char *name,
                         const char *section) {
@@ -443,11 +439,11 @@ void X509V3_section_free(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *section) {
 
 static char *nconf_get_string(void *db, const char *section,
                               const char *value) {
-  /* TODO(fork): This returns a non-const pointer because |X509V3_CONF_METHOD|
-   * allows |get_string| to return caller-owned pointers, provided they're
-   * freed by |free_string|. |nconf_method| leaves |free_string| NULL, and
-   * there are no other implementations of |X509V3_CONF_METHOD|, so this can
-   * be simplified if we make it private. */
+  // TODO(fork): This returns a non-const pointer because |X509V3_CONF_METHOD|
+  // allows |get_string| to return caller-owned pointers, provided they're
+  // freed by |free_string|. |nconf_method| leaves |free_string| NULL, and
+  // there are no other implementations of |X509V3_CONF_METHOD|, so this can
+  // be simplified if we make it private.
   return (char *)NCONF_get_string(db, section, value);
 }
 

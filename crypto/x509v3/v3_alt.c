@@ -117,9 +117,9 @@ STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
 STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(const X509V3_EXT_METHOD *method,
                                        GENERAL_NAME *gen,
                                        STACK_OF(CONF_VALUE) *ret) {
-  /* Note the error-handling for this function relies on there being at most
-   * one |X509V3_add_value| call. If there were two and the second failed, we
-   * would need to sometimes free the first call's result. */
+  // Note the error-handling for this function relies on there being at most
+  // one |X509V3_add_value| call. If there were two and the second failed, we
+  // would need to sometimes free the first call's result.
   unsigned char *p;
   char oline[256], htmp[5];
   int i;
@@ -217,7 +217,7 @@ int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen) {
       break;
 
     case GEN_EDIPARTY:
-      /* Maybe fix this: it is supported now */
+      // Maybe fix this: it is supported now
       BIO_printf(out, "EdiPartyName:<unsupported>");
       break;
 
@@ -297,7 +297,7 @@ err:
   return NULL;
 }
 
-/* Append subject altname of issuer to issuer alt name of subject */
+// Append subject altname of issuer to issuer alt name of subject
 
 static int copy_issuer(X509V3_CTX *ctx, GENERAL_NAMES *gens) {
   if (ctx && (ctx->flags == CTX_TEST)) {
@@ -327,7 +327,7 @@ static int copy_issuer(X509V3_CTX *ctx, GENERAL_NAMES *gens) {
       OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    /* Ownership of |gen| has moved from |ialt| to |gens|. */
+    // Ownership of |gen| has moved from |ialt| to |gens|.
     sk_GENERAL_NAME_set(ialt, j, NULL);
   }
 
@@ -373,9 +373,7 @@ err:
   return NULL;
 }
 
-/*
- * Copy any email addresses in a certificate or request to GENERAL_NAMES
- */
+// Copy any email addresses in a certificate or request to GENERAL_NAMES
 
 static int copy_email(X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p) {
   X509_NAME *nm;
@@ -390,14 +388,14 @@ static int copy_email(X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_SUBJECT_DETAILS);
     goto err;
   }
-  /* Find the subject name */
+  // Find the subject name
   if (ctx->subject_cert) {
     nm = X509_get_subject_name(ctx->subject_cert);
   } else {
     nm = X509_REQ_get_subject_name(ctx->subject_req);
   }
 
-  /* Now add any email address(es) to STACK */
+  // Now add any email address(es) to STACK
   i = -1;
   while ((i = X509_NAME_get_index_by_NID(nm, NID_pkcs9_emailAddress, i)) >= 0) {
     ne = X509_NAME_get_entry(nm, i);
@@ -593,10 +591,8 @@ static int do_othername(GENERAL_NAME *gen, const char *value, X509V3_CTX *ctx) {
   if (!(gen->d.otherName = OTHERNAME_new())) {
     return 0;
   }
-  /*
-   * Free this up because we will overwrite it. no need to free type_id
-   * because it is static
-   */
+  // Free this up because we will overwrite it. no need to free type_id
+  // because it is static
   ASN1_TYPE_free(gen->d.otherName->value);
   if (!(gen->d.otherName->value = ASN1_generate_v3(p + 1, ctx))) {
     return 0;
@@ -628,7 +624,7 @@ static int do_dirname(GENERAL_NAME *gen, const char *value, X509V3_CTX *ctx) {
     ERR_add_error_data(2, "section=", value);
     goto err;
   }
-  /* FIXME: should allow other character types... */
+  // FIXME: should allow other character types...
   if (!X509V3_NAME_from_section(nm, sk, MBSTRING_ASC)) {
     goto err;
   }

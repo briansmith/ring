@@ -130,9 +130,9 @@ EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
     }
     PKCS8_PRIV_KEY_INFO_free(p8inf);
   } else if (strcmp(nm, PEM_STRING_RSA) == 0) {
-    /* TODO(davidben): d2i_PrivateKey parses PKCS#8 along with the
-     * standalone format. This and the cases below probably should not
-     * accept PKCS#8. */
+    // TODO(davidben): d2i_PrivateKey parses PKCS#8 along with the
+    // standalone format. This and the cases below probably should not
+    // accept PKCS#8.
     ret = d2i_PrivateKey(EVP_PKEY_RSA, x, &p, len);
   } else if (strcmp(nm, PEM_STRING_EC) == 0) {
     ret = d2i_PrivateKey(EVP_PKEY_EC, x, &p, len);

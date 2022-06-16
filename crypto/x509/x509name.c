@@ -114,7 +114,7 @@ int X509_NAME_get_index_by_NID(const X509_NAME *name, int nid, int lastpos) {
   return (X509_NAME_get_index_by_OBJ(name, obj, lastpos));
 }
 
-/* NOTE: you should be passsing -1, not 0 as lastpos */
+// NOTE: you should be passsing -1, not 0 as lastpos
 int X509_NAME_get_index_by_OBJ(const X509_NAME *name, const ASN1_OBJECT *obj,
                                int lastpos) {
   int n;
@@ -164,7 +164,7 @@ X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *name, int loc) {
     return (ret);
   }
 
-  /* else we need to fixup the set field */
+  // else we need to fixup the set field
   if (loc != 0) {
     set_prev = (sk_X509_NAME_ENTRY_value(sk, loc - 1))->set;
   } else {
@@ -172,11 +172,9 @@ X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *name, int loc) {
   }
   set_next = sk_X509_NAME_ENTRY_value(sk, loc)->set;
 
-  /*
-   * set_prev is the previous set set is the current set set_next is the
-   * following prev 1 1 1 1 1 1 1 1 set 1 1 2 2 next 1 1 2 2 2 2 3 2 so
-   * basically only if prev and next differ by 2, then re-number down by 1
-   */
+  // set_prev is the previous set set is the current set set_next is the
+  // following prev 1 1 1 1 1 1 1 1 set 1 1 2 2 next 1 1 2 2 2 2 3 2 so
+  // basically only if prev and next differ by 2, then re-number down by 1
   if (set_prev + 1 < set_next) {
     for (i = loc; i < n; i++) {
       sk_X509_NAME_ENTRY_value(sk, i)->set--;
@@ -227,10 +225,8 @@ int X509_NAME_add_entry_by_txt(X509_NAME *name, const char *field, int type,
   return ret;
 }
 
-/*
- * if set is -1, append to previous set, 0 'a new one', and 1, prepend to the
- * guy we are about to stomp on.
- */
+// if set is -1, append to previous set, 0 'a new one', and 1, prepend to the
+// guy we are about to stomp on.
 int X509_NAME_add_entry(X509_NAME *name, X509_NAME_ENTRY *ne, int loc,
                         int set) {
   X509_NAME_ENTRY *new_name = NULL;
@@ -258,7 +254,7 @@ int X509_NAME_add_entry(X509_NAME *name, X509_NAME_ENTRY *ne, int loc,
     } else {
       set = sk_X509_NAME_ENTRY_value(sk, loc - 1)->set;
     }
-  } else { /* if (set >= 0) */
+  } else {  // if (set >= 0)
 
     if (loc >= n) {
       if (loc != 0) {

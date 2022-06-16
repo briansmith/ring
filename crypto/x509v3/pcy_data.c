@@ -64,11 +64,11 @@
 
 #include "internal.h"
 
-/* Policy Node routines */
+// Policy Node routines
 
 void policy_data_free(X509_POLICY_DATA *data) {
   ASN1_OBJECT_free(data->valid_policy);
-  /* Don't free qualifiers if shared */
+  // Don't free qualifiers if shared
   if (!(data->flags & POLICY_DATA_FLAG_SHARED_QUALIFIERS)) {
     sk_POLICYQUALINFO_pop_free(data->qualifier_set, POLICYQUALINFO_free);
   }
@@ -76,13 +76,11 @@ void policy_data_free(X509_POLICY_DATA *data) {
   OPENSSL_free(data);
 }
 
-/*
- * Create a data based on an existing policy. If 'id' is NULL use the oid in
- * the policy, otherwise use 'id'. This behaviour covers the two types of
- * data in RFC 3280: data with from a CertificatePolcies extension and
- * additional data with just the qualifiers of anyPolicy and ID from another
- * source.
- */
+// Create a data based on an existing policy. If 'id' is NULL use the oid in
+// the policy, otherwise use 'id'. This behaviour covers the two types of
+// data in RFC 3280: data with from a CertificatePolcies extension and
+// additional data with just the qualifiers of anyPolicy and ID from another
+// source.
 
 X509_POLICY_DATA *policy_data_new(POLICYINFO *policy, const ASN1_OBJECT *cid,
                                   int crit) {

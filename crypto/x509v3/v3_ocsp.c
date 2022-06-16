@@ -13,9 +13,7 @@
 #include <openssl/bio.h>
 #include <openssl/nid.h>
 
-/*
- * OCSP extensions and a couple of CRL entry extensions
- */
+// OCSP extensions and a couple of CRL entry extensions
 
 static int i2r_ocsp_acutoff(const X509V3_EXT_METHOD *method, void *nonce,
                             BIO *out, int indent);
@@ -70,7 +68,7 @@ static int i2r_ocsp_acutoff(const X509V3_EXT_METHOD *method, void *cutoff,
   return 1;
 }
 
-/* Nocheck is just a single NULL. Don't print anything and always set it */
+// Nocheck is just a single NULL. Don't print anything and always set it
 
 static int i2r_ocsp_nocheck(const X509V3_EXT_METHOD *method, void *nocheck,
                             BIO *out, int indent) {

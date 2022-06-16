@@ -98,15 +98,15 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                                X509_OBJECT *ret);
 static X509_LOOKUP_METHOD x509_dir_lookup = {
     "Load certs from files in a directory",
-    new_dir,             /* new */
-    free_dir,            /* free */
-    NULL,                /* init */
-    NULL,                /* shutdown */
-    dir_ctrl,            /* ctrl */
-    get_cert_by_subject, /* get_by_subject */
-    NULL,                /* get_by_issuer_serial */
-    NULL,                /* get_by_fingerprint */
-    NULL,                /* get_by_alias */
+    new_dir,              // new
+    free_dir,             // free
+    NULL,                 // init
+    NULL,                 // shutdown
+    dir_ctrl,             // ctrl
+    get_cert_by_subject,  // get_by_subject
+    NULL,                 // get_by_issuer_serial
+    NULL,                 // get_by_fingerprint
+    NULL,                 // get_by_alias
 };
 
 X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void) { return (&x509_dir_lookup); }
@@ -247,10 +247,8 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
   return 1;
 }
 
-/*
- * g_ent_hashes_lock protects the |hashes| member of all |BY_DIR_ENTRY|
- * objects.
- */
+// g_ent_hashes_lock protects the |hashes| member of all |BY_DIR_ENTRY|
+// objects.
 static struct CRYPTO_STATIC_MUTEX g_ent_hashes_lock = CRYPTO_STATIC_MUTEX_INIT;
 
 static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
@@ -337,23 +335,19 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
 #ifdef OPENSSL_SYS_VMS
         c = ent->dir[strlen(ent->dir) - 1];
         if (c != ':' && c != '>' && c != ']') {
-          /*
-           * If no separator is present, we assume the directory
-           * specifier is a logical name, and add a colon.  We
-           * really should use better VMS routines for merging
-           * things like this, but this will do for now... --
-           * Richard Levitte
-           */
+          // If no separator is present, we assume the directory
+          // specifier is a logical name, and add a colon.  We
+          // really should use better VMS routines for merging
+          // things like this, but this will do for now... --
+          // Richard Levitte
           c = ':';
         } else {
           c = '\0';
         }
 #endif
         if (c == '\0') {
-          /*
-           * This is special.  When c == '\0', no directory
-           * separator should be added.
-           */
+          // This is special.  When c == '\0', no directory
+          // separator should be added.
           BIO_snprintf(b->data, b->max, "%s%08lx.%s%d", ent->dir, h, postfix,
                        k);
         } else {
@@ -371,7 +365,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
           }
         }
 #endif
-        /* found one. */
+        // found one.
         if (type == X509_LU_X509) {
           if ((X509_load_cert_file(xl, b->data, ent->dir_type)) == 0) {
             break;
@@ -381,13 +375,11 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
             break;
           }
         }
-        /* else case will caught higher up */
+        // else case will caught higher up
         k++;
       }
 
-      /*
-       * we have added it to the cache so now pull it out again
-       */
+      // we have added it to the cache so now pull it out again
       CRYPTO_MUTEX_lock_write(&xl->store_ctx->objs_lock);
       tmp = NULL;
       sk_X509_OBJECT_sort(xl->store_ctx->objs);
@@ -396,16 +388,12 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
       }
       CRYPTO_MUTEX_unlock_write(&xl->store_ctx->objs_lock);
 
-      /*
-       * If a CRL, update the last file suffix added for this
-       */
+      // If a CRL, update the last file suffix added for this
 
       if (type == X509_LU_CRL) {
         CRYPTO_STATIC_MUTEX_lock_write(&g_ent_hashes_lock);
-        /*
-         * Look for entry again in case another thread added an entry
-         * first.
-         */
+        // Look for entry again in case another thread added an entry
+        // first.
         if (!hent) {
           htmp.hash = h;
           sk_BY_DIR_HASH_sort(ent->hashes);
@@ -441,20 +429,15 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         ret->type = tmp->type;
         OPENSSL_memcpy(&ret->data, &tmp->data, sizeof(ret->data));
 
-        /*
-         * Clear any errors that might have been raised processing empty
-         * or malformed files.
-         */
+        // Clear any errors that might have been raised processing empty
+        // or malformed files.
         ERR_clear_error();
 
-        /*
-         * If we were going to up the reference count, we would need
-         * to do it on a perl 'type' basis
-         */
-        /*
-         * CRYPTO_add(&tmp->data.x509->references,1,
-         * CRYPTO_LOCK_X509);
-         */
+        // If we were going to up the reference count, we would need
+        // to do it on a perl 'type' basis
+        //
+        // CRYPTO_add(&tmp->data.x509->references,1,
+        // CRYPTO_LOCK_X509);
         goto finish;
       }
     }

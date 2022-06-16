@@ -304,11 +304,9 @@ int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
     }
     atype = attrtype;
   }
-  /*
-   * This is a bit naughty because the attribute should really have at
-   * least one value but some types use and zero length SET and require
-   * this.
-   */
+  // This is a bit naughty because the attribute should really have at
+  // least one value but some types use and zero length SET and require
+  // this.
   if (attrtype == 0) {
     ASN1_STRING_free(stmp);
     return 1;

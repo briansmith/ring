@@ -72,11 +72,9 @@ static int trust_compat(X509_TRUST *trust, X509 *x, int flags);
 
 static int obj_trust(int id, X509 *x, int flags);
 
-/*
- * WARNING: the following table should be kept in order of trust and without
- * any gaps so we can just subtract the minimum trust value to get an index
- * into the table
- */
+// WARNING: the following table should be kept in order of trust and without
+// any gaps so we can just subtract the minimum trust value to get an index
+// into the table
 
 static X509_TRUST trstandard[] = {
     {X509_TRUST_COMPAT, 0, trust_compat, (char *)"compatible", 0, NULL},
@@ -109,7 +107,7 @@ int X509_check_trust(X509 *x, int id, int flags) {
   if (id == -1) {
     return 1;
   }
-  /* We get this as a default value */
+  // We get this as a default value
   if (id == 0) {
     int rv;
     rv = obj_trust(NID_anyExtendedKeyUsage, x, 0);
@@ -176,15 +174,13 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
   X509_TRUST *trtmp;
   char *name_dup;
 
-  /*
-   * This is set according to what we change: application can't set it
-   */
+  // This is set according to what we change: application can't set it
   flags &= ~X509_TRUST_DYNAMIC;
-  /* This will always be set for application modified trust entries */
+  // This will always be set for application modified trust entries
   flags |= X509_TRUST_DYNAMIC_NAME;
-  /* Get existing entry if any */
+  // Get existing entry if any
   idx = X509_TRUST_get_by_id(id);
-  /* Need a new entry */
+  // Need a new entry
   if (idx == -1) {
     if (!(trtmp = OPENSSL_malloc(sizeof(X509_TRUST)))) {
       OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
@@ -195,7 +191,7 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
     trtmp = X509_TRUST_get0(idx);
   }
 
-  /* Duplicate the supplied name. */
+  // Duplicate the supplied name.
   name_dup = OPENSSL_strdup(name);
   if (name_dup == NULL) {
     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
@@ -205,14 +201,14 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
     return 0;
   }
 
-  /* OPENSSL_free existing name if dynamic */
+  // OPENSSL_free existing name if dynamic
   if (trtmp->flags & X509_TRUST_DYNAMIC_NAME) {
     OPENSSL_free(trtmp->name);
   }
   trtmp->name = name_dup;
-  /* Keep the dynamic flag of existing entry */
+  // Keep the dynamic flag of existing entry
   trtmp->flags &= X509_TRUST_DYNAMIC;
-  /* Set all other flags */
+  // Set all other flags
   trtmp->flags |= flags;
 
   trtmp->trust = id;
@@ -220,7 +216,7 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
   trtmp->arg1 = arg1;
   trtmp->arg2 = arg2;
 
-  /* If its a new entry manage the dynamic table */
+  // If its a new entry manage the dynamic table
   if (idx == -1) {
     if (!trtable && !(trtable = sk_X509_TRUST_new(tr_cmp))) {
       OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
@@ -267,10 +263,8 @@ static int trust_1oidany(X509_TRUST *trust, X509 *x, int flags) {
   if (x->aux && (x->aux->trust || x->aux->reject)) {
     return obj_trust(trust->arg1, x, flags);
   }
-  /*
-   * we don't have any trust settings: for compatibility we return trusted
-   * if it is self signed
-   */
+  // we don't have any trust settings: for compatibility we return trusted
+  // if it is self signed
   return trust_compat(trust, x, flags);
 }
 

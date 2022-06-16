@@ -160,10 +160,8 @@ node_error:
 
 void policy_node_free(X509_POLICY_NODE *node) { OPENSSL_free(node); }
 
-/*
- * See if a policy node matches a policy OID. If mapping enabled look through
- * expected policy set otherwise just valid policy.
- */
+// See if a policy node matches a policy OID. If mapping enabled look through
+// expected policy set otherwise just valid policy.
 
 int policy_node_match(const X509_POLICY_LEVEL *lvl,
                       const X509_POLICY_NODE *node, const ASN1_OBJECT *oid) {

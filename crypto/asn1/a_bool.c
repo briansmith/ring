@@ -80,10 +80,8 @@ int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **pp) {
   ASN1_put_object(&p, 0, 1, V_ASN1_BOOLEAN, V_ASN1_UNIVERSAL);
   *p = a ? 0xff : 0x00;
 
-  /*
-   * If a new buffer was allocated, just return it back.
-   * If not, return the incremented buffer pointer.
-   */
+  // If a new buffer was allocated, just return it back.
+  // If not, return the incremented buffer pointer.
   *pp = allocated != NULL ? allocated : p + 1;
   return r;
 }

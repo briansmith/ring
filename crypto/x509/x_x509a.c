@@ -64,12 +64,10 @@
 #include "internal.h"
 
 
-/*
- * X509_CERT_AUX routines. These are used to encode additional user
- * modifiable data about a certificate. This data is appended to the X509
- * encoding when the *_X509_AUX routines are used. This means that the
- * "traditional" X509 routines will simply ignore the extra data.
- */
+// X509_CERT_AUX routines. These are used to encode additional user
+// modifiable data about a certificate. This data is appended to the X509
+// encoding when the *_X509_AUX routines are used. This means that the
+// "traditional" X509 routines will simply ignore the extra data.
 
 static X509_CERT_AUX *aux_get(X509 *x);
 
@@ -94,9 +92,9 @@ static X509_CERT_AUX *aux_get(X509 *x) {
 
 int X509_alias_set1(X509 *x, const unsigned char *name, int len) {
   X509_CERT_AUX *aux;
-  /* TODO(davidben): Empty aliases are not meaningful in PKCS#12, and the
-   * getters cannot quite represent them. Also erase the object if |len| is
-   * zero. */
+  // TODO(davidben): Empty aliases are not meaningful in PKCS#12, and the
+  // getters cannot quite represent them. Also erase the object if |len| is
+  // zero.
   if (!name) {
     if (!x || !x->aux || !x->aux->alias) {
       return 1;
@@ -116,9 +114,9 @@ int X509_alias_set1(X509 *x, const unsigned char *name, int len) {
 
 int X509_keyid_set1(X509 *x, const unsigned char *id, int len) {
   X509_CERT_AUX *aux;
-  /* TODO(davidben): Empty key IDs are not meaningful in PKCS#12, and the
-   * getters cannot quite represent them. Also erase the object if |len| is
-   * zero. */
+  // TODO(davidben): Empty key IDs are not meaningful in PKCS#12, and the
+  // getters cannot quite represent them. Also erase the object if |len| is
+  // zero.
   if (!id) {
     if (!x || !x->aux || !x->aux->keyid) {
       return 1;

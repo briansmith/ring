@@ -96,10 +96,8 @@ int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp) {
   ASN1_put_object(&p, 0, a->length, V_ASN1_OBJECT, V_ASN1_UNIVERSAL);
   OPENSSL_memcpy(p, a->data, a->length);
 
-  /*
-   * If a new buffer was allocated, just return it back.
-   * If not, return the incremented buffer pointer.
-   */
+  // If a new buffer was allocated, just return it back.
+  // If not, return the incremented buffer pointer.
   *pp = allocated != NULL ? allocated : p + a->length;
   return objsize;
 }
@@ -122,7 +120,7 @@ int i2a_ASN1_OBJECT(BIO *bp, const ASN1_OBJECT *a) {
   const char *str = buf;
   int len = i2t_ASN1_OBJECT(buf, sizeof(buf), a);
   if (len > (int)sizeof(buf) - 1) {
-    /* The input was truncated. Allocate a buffer that fits. */
+    // The input was truncated. Allocate a buffer that fits.
     allocated = OPENSSL_malloc(len + 1);
     if (allocated == NULL) {
       return -1;
@@ -173,17 +171,15 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
   unsigned char *data;
   int i, length;
 
-  /*
-   * Sanity check OID encoding. Need at least one content octet. MSB must
-   * be clear in the last octet. can't have leading 0x80 in subidentifiers,
-   * see: X.690 8.19.2
-   */
+  // Sanity check OID encoding. Need at least one content octet. MSB must
+  // be clear in the last octet. can't have leading 0x80 in subidentifiers,
+  // see: X.690 8.19.2
   if (len <= 0 || len > INT_MAX || pp == NULL || (p = *pp) == NULL ||
       p[len - 1] & 0x80) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
     return NULL;
   }
-  /* Now 0 < len <= INT_MAX, so the cast is safe. */
+  // Now 0 < len <= INT_MAX, so the cast is safe.
   length = (int)len;
   for (i = 0; i < length; i++, p++) {
     if (*p == 0x80 && (!i || !(p[-1] & 0x80))) {
@@ -202,10 +198,10 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
   }
 
   p = *pp;
-  /* detach data from object */
+  // detach data from object
   data = (unsigned char *)ret->data;
   ret->data = NULL;
-  /* once detached we can change it */
+  // once detached we can change it
   if ((data == NULL) || (ret->length < length)) {
     ret->length = 0;
     if (data != NULL) {
@@ -219,13 +215,13 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
     ret->flags |= ASN1_OBJECT_FLAG_DYNAMIC_DATA;
   }
   OPENSSL_memcpy(data, p, length);
-  /* If there are dynamic strings, free them here, and clear the flag */
+  // If there are dynamic strings, free them here, and clear the flag
   if ((ret->flags & ASN1_OBJECT_FLAG_DYNAMIC_STRINGS) != 0) {
     OPENSSL_free((char *)ret->sn);
     OPENSSL_free((char *)ret->ln);
     ret->flags &= ~ASN1_OBJECT_FLAG_DYNAMIC_STRINGS;
   }
-  /* reattach data to object, after which it remains const */
+  // reattach data to object, after which it remains const
   ret->data = data;
   ret->length = length;
   ret->sn = NULL;

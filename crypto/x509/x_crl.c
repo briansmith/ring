@@ -80,11 +80,9 @@ ASN1_SEQUENCE(X509_REVOKED) = {
 static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *serial,
                       X509_NAME *issuer);
 
-/*
- * The X509_CRL_INFO structure needs a bit of customisation. Since we cache
- * the original encoding the signature wont be affected by reordering of the
- * revoked field.
- */
+// The X509_CRL_INFO structure needs a bit of customisation. Since we cache
+// the original encoding the signature wont be affected by reordering of the
+// revoked field.
 static int crl_inf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                       void *exarg) {
   X509_CRL_INFO *a = (X509_CRL_INFO *)*pval;
@@ -93,10 +91,8 @@ static int crl_inf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
     return 1;
   }
   switch (operation) {
-      /*
-       * Just set cmp function here. We don't sort because that would
-       * affect the output of X509_CRL_print().
-       */
+      // Just set cmp function here. We don't sort because that would
+      // affect the output of X509_CRL_print().
     case ASN1_OP_D2I_POST:
       (void)sk_X509_REVOKED_set_cmp_func(a->revoked, X509_REVOKED_cmp);
       break;
@@ -115,10 +111,8 @@ ASN1_SEQUENCE_enc(X509_CRL_INFO, enc, crl_inf_cb) = {
     ASN1_EXP_SEQUENCE_OF_OPT(X509_CRL_INFO, extensions, X509_EXTENSION, 0),
 } ASN1_SEQUENCE_END_enc(X509_CRL_INFO, X509_CRL_INFO)
 
-/*
- * Set CRL entry issuer according to CRL certificate issuer extension. Check
- * for unhandled critical CRL entry extensions.
- */
+// Set CRL entry issuer according to CRL certificate issuer extension. Check
+// for unhandled critical CRL entry extensions.
 
 static int crl_set_issuers(X509_CRL *crl) {
   size_t i, k;
@@ -167,7 +161,7 @@ static int crl_set_issuers(X509_CRL *crl) {
       rev->reason = CRL_REASON_NONE;
     }
 
-    /* Check for critical CRL entry extensions */
+    // Check for critical CRL entry extensions
 
     exts = rev->extensions;
 
@@ -187,10 +181,8 @@ static int crl_set_issuers(X509_CRL *crl) {
   return 1;
 }
 
-/*
- * The X509_CRL structure needs a bit of customisation. Cache some extensions
- * and hash of the whole CRL.
- */
+// The X509_CRL structure needs a bit of customisation. Cache some extensions
+// and hash of the whole CRL.
 static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                   void *exarg) {
   X509_CRL *crl = (X509_CRL *)*pval;
@@ -212,20 +204,20 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       break;
 
     case ASN1_OP_D2I_POST: {
-      /* The version must be one of v1(0) or v2(1). */
+      // The version must be one of v1(0) or v2(1).
       long version = X509_CRL_VERSION_1;
       if (crl->crl->version != NULL) {
         version = ASN1_INTEGER_get(crl->crl->version);
-        /* TODO(https://crbug.com/boringssl/364): |X509_CRL_VERSION_1|
-         * should also be rejected. This means an explicitly-encoded X.509v1
-         * version. v1 is DEFAULT, so DER requires it be omitted. */
+        // TODO(https://crbug.com/boringssl/364): |X509_CRL_VERSION_1|
+        // should also be rejected. This means an explicitly-encoded X.509v1
+        // version. v1 is DEFAULT, so DER requires it be omitted.
         if (version < X509_CRL_VERSION_1 || version > X509_CRL_VERSION_2) {
           OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
           return 0;
         }
       }
 
-      /* Per RFC 5280, section 5.1.2.1, extensions require v2. */
+      // Per RFC 5280, section 5.1.2.1, extensions require v2.
       if (version != X509_CRL_VERSION_2 && crl->crl->extensions != NULL) {
         OPENSSL_PUT_ERROR(X509, X509_R_INVALID_FIELD_FOR_VERSION);
         return 0;
@@ -260,18 +252,16 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       if (crl->base_crl_number == NULL && i != -1) {
         return 0;
       }
-      /* Delta CRLs must have CRL number */
+      // Delta CRLs must have CRL number
       if (crl->base_crl_number && !crl->crl_number) {
         OPENSSL_PUT_ERROR(X509, X509_R_DELTA_CRL_WITHOUT_CRL_NUMBER);
         return 0;
       }
 
-      /*
-       * See if we have any unhandled critical CRL extensions and indicate
-       * this in a flag. We only currently handle IDP so anything else
-       * critical sets the flag. This code accesses the X509_CRL structure
-       * directly: applications shouldn't do this.
-       */
+      // See if we have any unhandled critical CRL extensions and indicate
+      // this in a flag. We only currently handle IDP so anything else
+      // critical sets the flag. This code accesses the X509_CRL structure
+      // directly: applications shouldn't do this.
 
       exts = crl->crl->extensions;
 
@@ -283,7 +273,7 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
           crl->flags |= EXFLAG_FRESHEST;
         }
         if (X509_EXTENSION_get_critical(ext)) {
-          /* We handle IDP and deltas */
+          // We handle IDP and deltas
           if ((nid == NID_issuing_distribution_point) ||
               (nid == NID_authority_key_identifier) || (nid == NID_delta_crl)) {
             continue;
@@ -311,11 +301,11 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
   return 1;
 }
 
-/* Convert IDP into a more convenient form */
+// Convert IDP into a more convenient form
 
 static int setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp) {
   int idp_only = 0;
-  /* Set various flags according to IDP */
+  // Set various flags according to IDP
   crl->idp_flags |= IDP_PRESENT;
   if (idp->onlyuser > 0) {
     idp_only++;
@@ -441,10 +431,8 @@ static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *serial,
   X509_REVOKED rtmp, *rev;
   size_t idx;
   rtmp.serialNumber = serial;
-  /*
-   * Sort revoked into serial number order if not already sorted. Do this
-   * under a lock to avoid race condition.
-   */
+  // Sort revoked into serial number order if not already sorted. Do this
+  // under a lock to avoid race condition.
 
   CRYPTO_STATIC_MUTEX_lock_read(&g_crl_sort_lock);
   const int is_sorted = sk_X509_REVOKED_is_sorted(crl->crl->revoked);
@@ -461,7 +449,7 @@ static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *serial,
   if (!sk_X509_REVOKED_find(crl->crl->revoked, &idx, &rtmp)) {
     return 0;
   }
-  /* Need to look for matching name */
+  // Need to look for matching name
   for (; idx < sk_X509_REVOKED_num(crl->crl->revoked); idx++) {
     rev = sk_X509_REVOKED_value(crl->crl->revoked, idx);
     if (ASN1_INTEGER_cmp(rev->serialNumber, serial)) {

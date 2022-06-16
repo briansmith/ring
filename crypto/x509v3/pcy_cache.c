@@ -68,10 +68,8 @@ static int policy_data_cmp(const X509_POLICY_DATA **a,
                            const X509_POLICY_DATA **b);
 static int policy_cache_set_int(long *out, ASN1_INTEGER *value);
 
-/*
- * Set cache entry according to CertificatePolicies extension. Note: this
- * destroys the passed CERTIFICATEPOLICIES structure.
- */
+// Set cache entry according to CertificatePolicies extension. Note: this
+// destroys the passed CERTIFICATEPOLICIES structure.
 
 static int policy_cache_create(X509 *x, CERTIFICATEPOLICIES *policies,
                                int crit) {
@@ -93,9 +91,7 @@ static int policy_cache_create(X509 *x, CERTIFICATEPOLICIES *policies,
     if (!data) {
       goto bad_policy;
     }
-    /*
-     * Duplicate policy OIDs are illegal: reject if matches found.
-     */
+    // Duplicate policy OIDs are illegal: reject if matches found.
     sk_X509_POLICY_DATA_sort(cache->data);
     if (OBJ_obj2nid(data->valid_policy) == NID_any_policy) {
       if (cache->anyPolicy) {
@@ -146,10 +142,8 @@ static int policy_cache_new(X509 *x) {
 
   x->policy_cache = cache;
 
-  /*
-   * Handle requireExplicitPolicy *first*. Need to process this even if we
-   * don't have any policies.
-   */
+  // Handle requireExplicitPolicy *first*. Need to process this even if we
+  // don't have any policies.
   ext_pcons = X509_get_ext_d2i(x, NID_policy_constraints, &i, NULL);
 
   if (!ext_pcons) {
@@ -170,15 +164,13 @@ static int policy_cache_new(X509 *x) {
     }
   }
 
-  /* Process CertificatePolicies */
+  // Process CertificatePolicies
 
   ext_cpols = X509_get_ext_d2i(x, NID_certificate_policies, &i, NULL);
-  /*
-   * If no CertificatePolicies extension or problem decoding then there is
-   * no point continuing because the valid policies will be NULL.
-   */
+  // If no CertificatePolicies extension or problem decoding then there is
+  // no point continuing because the valid policies will be NULL.
   if (!ext_cpols) {
-    /* If not absent some problem with extension */
+    // If not absent some problem with extension
     if (i != -1) {
       goto bad_cache;
     }
@@ -187,7 +179,7 @@ static int policy_cache_new(X509 *x) {
 
   i = policy_cache_create(x, ext_cpols, i);
 
-  /* NB: ext_cpols freed by policy_cache_set_policies */
+  // NB: ext_cpols freed by policy_cache_set_policies
 
   if (i <= 0) {
     return i;
@@ -196,7 +188,7 @@ static int policy_cache_new(X509 *x) {
   ext_pmaps = X509_get_ext_d2i(x, NID_policy_mappings, &i, NULL);
 
   if (!ext_pmaps) {
-    /* If not absent some problem with extension */
+    // If not absent some problem with extension
     if (i != -1) {
       goto bad_cache;
     }
@@ -246,11 +238,9 @@ void policy_cache_free(X509_POLICY_CACHE *cache) {
   OPENSSL_free(cache);
 }
 
-/*
- * g_x509_policy_cache_lock is used to protect against concurrent calls to
- * |policy_cache_new|. Ideally this would be done with a |CRYPTO_once_t| in
- * the |X509| structure, but |CRYPTO_once_t| isn't public.
- */
+// g_x509_policy_cache_lock is used to protect against concurrent calls to
+// |policy_cache_new|. Ideally this would be done with a |CRYPTO_once_t| in
+// the |X509| structure, but |CRYPTO_once_t| isn't public.
 static struct CRYPTO_STATIC_MUTEX g_x509_policy_cache_lock =
     CRYPTO_STATIC_MUTEX_INIT;
 

@@ -55,7 +55,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-/* X509 v3 extension utilities */
+// X509 v3 extension utilities
 
 #include <stdio.h>
 
@@ -64,12 +64,12 @@
 #include <openssl/mem.h>
 #include <openssl/x509v3.h>
 
-/* Extension printing routines */
+// Extension printing routines
 
 static int unknown_ext_print(BIO *out, X509_EXTENSION *ext, unsigned long flag,
                              int indent, int supported);
 
-/* Print out a name+value stack */
+// Print out a name+value stack
 
 void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent,
                         int ml) {
@@ -104,7 +104,7 @@ void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent,
   }
 }
 
-/* Main routine: print out a general extension */
+// Main routine: print out a general extension
 
 int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag,
                      int indent) {

@@ -63,7 +63,7 @@
 
 #include "internal.h"
 
-/* Free up an ASN1 structure */
+// Free up an ASN1 structure
 
 void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it) {
   asn1_item_combine_free(&val, it, 0);
@@ -144,11 +144,9 @@ void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
         }
       }
       asn1_enc_free(pval, it);
-      /*
-       * If we free up as normal we will invalidate any ANY DEFINED BY
-       * field and we wont be able to determine the type of the field it
-       * defines. So free up in reverse order.
-       */
+      // If we free up as normal we will invalidate any ANY DEFINED BY
+      // field and we wont be able to determine the type of the field it
+      // defines. So free up in reverse order.
       tt = it->templates + it->tcount - 1;
       for (i = 0; i < it->tcount; tt--, i++) {
         ASN1_VALUE **pseqval;
@@ -190,10 +188,10 @@ void ASN1_template_free(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
 
 void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   int utype;
-  /* Historically, |it->funcs| for primitive types contained an
-   * |ASN1_PRIMITIVE_FUNCS| table of calbacks. */
+  // Historically, |it->funcs| for primitive types contained an
+  // |ASN1_PRIMITIVE_FUNCS| table of calbacks.
   assert(it == NULL || it->funcs == NULL);
-  /* Special case: if 'it' is NULL free contents of ASN1_TYPE */
+  // Special case: if 'it' is NULL free contents of ASN1_TYPE
   if (!it) {
     ASN1_TYPE *typ = (ASN1_TYPE *)*pval;
     utype = typ->type;

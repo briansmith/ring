@@ -69,15 +69,15 @@ static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
                         char **ret);
 static X509_LOOKUP_METHOD x509_file_lookup = {
     "Load file into cache",
-    NULL,         /* new */
-    NULL,         /* free */
-    NULL,         /* init */
-    NULL,         /* shutdown */
-    by_file_ctrl, /* ctrl */
-    NULL,         /* get_by_subject */
-    NULL,         /* get_by_issuer_serial */
-    NULL,         /* get_by_fingerprint */
-    NULL,         /* get_by_alias */
+    NULL,          // new
+    NULL,          // free
+    NULL,          // init
+    NULL,          // shutdown
+    by_file_ctrl,  // ctrl
+    NULL,          // get_by_subject
+    NULL,          // get_by_issuer_serial
+    NULL,          // get_by_fingerprint
+    NULL,          // get_by_alias
 };
 
 X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return (&x509_file_lookup); }
@@ -291,4 +291,4 @@ err:
   return count;
 }
 
-#endif /* OPENSSL_NO_STDIO */
+#endif  // OPENSSL_NO_STDIO

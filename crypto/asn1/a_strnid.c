@@ -82,11 +82,9 @@ int ASN1_STRING_set_default_mask_asc(const char *p) { return 1; }
 
 static const ASN1_STRING_TABLE *asn1_string_table_get(int nid);
 
-/*
- * The following function generates an ASN1_STRING based on limits in a
- * table. Frequently the types and length of an ASN1_STRING are restricted by
- * a corresponding OID. For example certificates and certificate requests.
- */
+// The following function generates an ASN1_STRING based on limits in a
+// table. Frequently the types and length of an ASN1_STRING are restricted by
+// a corresponding OID. For example certificates and certificate requests.
 
 ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out, const unsigned char *in,
                                     int len, int inform, int nid) {
@@ -112,11 +110,9 @@ ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out, const unsigned char *in,
   return *out;
 }
 
-/*
- * Now the tables and helper functions for the string table:
- */
+// Now the tables and helper functions for the string table:
 
-/* See RFC 5280. */
+// See RFC 5280.
 #define ub_name 32768
 #define ub_common_name 64
 #define ub_locality_name 128
@@ -126,7 +122,7 @@ ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out, const unsigned char *in,
 #define ub_email_address 128
 #define ub_serial_number 64
 
-/* This table must be kept in NID order */
+// This table must be kept in NID order
 
 static const ASN1_STRING_TABLE tbl_standard[] = {
     {NID_commonName, 1, ub_common_name, DIRSTRING_TYPE, 0},
@@ -185,15 +181,15 @@ static const ASN1_STRING_TABLE *asn1_string_table_get(int nid) {
     tbl = lh_ASN1_STRING_TABLE_retrieve(string_tables, &key);
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&string_tables_lock);
-  /* Note returning |tbl| without the lock is only safe because
-   * |ASN1_STRING_TABLE_add| cannot modify or delete existing entries. If we
-   * wish to support that, this function must copy the result under a lock. */
+  // Note returning |tbl| without the lock is only safe because
+  // |ASN1_STRING_TABLE_add| cannot modify or delete existing entries. If we
+  // wish to support that, this function must copy the result under a lock.
   return tbl;
 }
 
 int ASN1_STRING_TABLE_add(int nid, long minsize, long maxsize,
                           unsigned long mask, unsigned long flags) {
-  /* Existing entries cannot be overwritten. */
+  // Existing entries cannot be overwritten.
   if (asn1_string_table_get(nid) != NULL) {
     OPENSSL_PUT_ERROR(ASN1, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -208,8 +204,8 @@ int ASN1_STRING_TABLE_add(int nid, long minsize, long maxsize,
       goto err;
     }
   } else {
-    /* Check again for an existing entry. One may have been added while
-     * unlocked. */
+    // Check again for an existing entry. One may have been added while
+    // unlocked.
     ASN1_STRING_TABLE key;
     key.nid = nid;
     if (lh_ASN1_STRING_TABLE_retrieve(string_tables, &key) != NULL) {

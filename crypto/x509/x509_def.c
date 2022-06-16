@@ -57,7 +57,7 @@
 
 #include <openssl/x509.h>
 
-/* TODO(fork): cleanup */
+// TODO(fork): cleanup
 
 #if defined(OPENSSL_FUCHSIA)
 #define OPENSSLDIR "/config/ssl"

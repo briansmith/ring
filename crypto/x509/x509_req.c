@@ -104,7 +104,7 @@ int X509_REQ_check_private_key(X509_REQ *x, EVP_PKEY *k) {
         break;
       }
       if (k->type == EVP_PKEY_DH) {
-        /* No idea */
+        // No idea
         OPENSSL_PUT_ERROR(X509, X509_R_CANT_CHECK_DH_KEY);
         break;
       }
@@ -142,14 +142,12 @@ STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req) {
       NULL, &p, ext->value.sequence->length, ASN1_ITEM_rptr(X509_EXTENSIONS));
 }
 
-/*
- * Add a STACK_OF extensions to a certificate request: allow alternative OIDs
- * in case we want to create a non standard one.
- */
+// Add a STACK_OF extensions to a certificate request: allow alternative OIDs
+// in case we want to create a non standard one.
 
 int X509_REQ_add_extensions_nid(X509_REQ *req,
                                 const STACK_OF(X509_EXTENSION) *exts, int nid) {
-  /* Generate encoding of extensions */
+  // Generate encoding of extensions
   unsigned char *ext = NULL;
   int ext_len =
       ASN1_item_i2d((ASN1_VALUE *)exts, &ext, ASN1_ITEM_rptr(X509_EXTENSIONS));
@@ -161,13 +159,13 @@ int X509_REQ_add_extensions_nid(X509_REQ *req,
   return ret;
 }
 
-/* This is the normal usage: use the "official" OID */
+// This is the normal usage: use the "official" OID
 int X509_REQ_add_extensions(X509_REQ *req,
                             const STACK_OF(X509_EXTENSION) *exts) {
   return X509_REQ_add_extensions_nid(req, exts, NID_ext_req);
 }
 
-/* Request attribute functions */
+// Request attribute functions
 
 int X509_REQ_get_attr_count(const X509_REQ *req) {
   return X509at_get_attr_count(req->req_info->attributes);

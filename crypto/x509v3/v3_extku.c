@@ -86,7 +86,7 @@ const X509V3_EXT_METHOD v3_ext_ku = {
     NULL,
 };
 
-/* NB OCSP acceptable responses also is a SEQUENCE OF OBJECT */
+// NB OCSP acceptable responses also is a SEQUENCE OF OBJECT
 const X509V3_EXT_METHOD v3_ocsp_accresp = {
     NID_id_pkix_OCSP_acceptableResponses,
     0,

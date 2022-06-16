@@ -189,14 +189,12 @@ static void ext_list_free(X509V3_EXT_METHOD *ext) {
   }
 }
 
-/*
- * Legacy function: we don't need to add standard extensions any more because
- * they are now kept in ext_dat.h.
- */
+// Legacy function: we don't need to add standard extensions any more because
+// they are now kept in ext_dat.h.
 
 int X509V3_add_standard_extensions(void) { return 1; }
 
-/* Return an extension internal structure */
+// Return an extension internal structure
 
 void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
   const X509V3_EXT_METHOD *method;
@@ -216,7 +214,7 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
   if (ret == NULL) {
     return NULL;
   }
-  /* Check for trailing data. */
+  // Check for trailing data.
   if (p != ext->value->data + ext->value->length) {
     if (method->it) {
       ASN1_item_free(ret, ASN1_ITEM_ptr(method->it));
@@ -255,13 +253,13 @@ void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions, int nid,
     ex = sk_X509_EXTENSION_value(extensions, i);
     if (OBJ_obj2nid(ex->object) == nid) {
       if (out_idx) {
-        /* TODO(https://crbug.com/boringssl/379): Consistently reject
-         * duplicate extensions. */
+        // TODO(https://crbug.com/boringssl/379): Consistently reject
+        // duplicate extensions.
         *out_idx = i;
         found_ex = ex;
         break;
       } else if (found_ex) {
-        /* Found more than one */
+        // Found more than one
         if (out_critical) {
           *out_critical = -2;
         }
@@ -271,14 +269,14 @@ void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions, int nid,
     }
   }
   if (found_ex) {
-    /* Found it */
+    // Found it
     if (out_critical) {
       *out_critical = X509_EXTENSION_get_critical(found_ex);
     }
     return X509V3_EXT_d2i(found_ex);
   }
 
-  /* Extension not found */
+  // Extension not found
   if (out_idx) {
     *out_idx = -1;
   }
@@ -288,11 +286,9 @@ void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions, int nid,
   return NULL;
 }
 
-/*
- * This function is a general extension append, replace and delete utility.
- * The precise operation is governed by the 'flags' value. The 'crit' and
- * 'value' arguments (if relevant) are the extensions internal structure.
- */
+// This function is a general extension append, replace and delete utility.
+// The precise operation is governed by the 'flags' value. The 'crit' and
+// 'value' arguments (if relevant) are the extensions internal structure.
 
 int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
                     int crit, unsigned long flags) {
@@ -301,26 +297,24 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
   STACK_OF(X509_EXTENSION) *ret = NULL;
   unsigned long ext_op = flags & X509V3_ADD_OP_MASK;
 
-  /*
-   * If appending we don't care if it exists, otherwise look for existing
-   * extension.
-   */
+  // If appending we don't care if it exists, otherwise look for existing
+  // extension.
   if (ext_op != X509V3_ADD_APPEND) {
     extidx = X509v3_get_ext_by_NID(*x, nid, -1);
   }
 
-  /* See if extension exists */
+  // See if extension exists
   if (extidx >= 0) {
-    /* If keep existing, nothing to do */
+    // If keep existing, nothing to do
     if (ext_op == X509V3_ADD_KEEP_EXISTING) {
       return 1;
     }
-    /* If default then its an error */
+    // If default then its an error
     if (ext_op == X509V3_ADD_DEFAULT) {
       errcode = X509V3_R_EXTENSION_EXISTS;
       goto err;
     }
-    /* If delete, just delete it */
+    // If delete, just delete it
     if (ext_op == X509V3_ADD_DELETE) {
       if (!sk_X509_EXTENSION_delete(*x, extidx)) {
         return -1;
@@ -328,9 +322,7 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
       return 1;
     }
   } else {
-    /*
-     * If replace existing or delete, error since extension must exist
-     */
+    // If replace existing or delete, error since extension must exist
     if ((ext_op == X509V3_ADD_REPLACE_EXISTING) ||
         (ext_op == X509V3_ADD_DELETE)) {
       errcode = X509V3_R_EXTENSION_NOT_FOUND;
@@ -338,10 +330,8 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
     }
   }
 
-  /*
-   * If we get this far then we have to create an extension: could have
-   * some flags for alternative encoding schemes...
-   */
+  // If we get this far then we have to create an extension: could have
+  // some flags for alternative encoding schemes...
 
   ext = X509V3_EXT_i2d(nid, crit, value);
 
@@ -350,7 +340,7 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
     return 0;
   }
 
-  /* If extension exists replace it.. */
+  // If extension exists replace it..
   if (extidx >= 0) {
     extmp = sk_X509_EXTENSION_value(*x, extidx);
     X509_EXTENSION_free(extmp);

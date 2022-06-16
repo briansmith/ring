@@ -65,14 +65,14 @@
 
 ASN1_SEQUENCE(OTHERNAME) = {
     ASN1_SIMPLE(OTHERNAME, type_id, ASN1_OBJECT),
-    /* Maybe have a true ANY DEFINED BY later */
+    // Maybe have a true ANY DEFINED BY later
     ASN1_EXP(OTHERNAME, value, ASN1_ANY, 0),
 } ASN1_SEQUENCE_END(OTHERNAME)
 
 IMPLEMENT_ASN1_FUNCTIONS(OTHERNAME)
 
 ASN1_SEQUENCE(EDIPARTYNAME) = {
-    /* DirectoryString is a CHOICE type, so use explicit tagging. */
+    // DirectoryString is a CHOICE type, so use explicit tagging.
     ASN1_EXP_OPT(EDIPARTYNAME, nameAssigner, DIRECTORYSTRING, 0),
     ASN1_EXP(EDIPARTYNAME, partyName, DIRECTORYSTRING, 1),
 } ASN1_SEQUENCE_END(EDIPARTYNAME)
@@ -83,9 +83,9 @@ ASN1_CHOICE(GENERAL_NAME) = {
     ASN1_IMP(GENERAL_NAME, d.otherName, OTHERNAME, GEN_OTHERNAME),
     ASN1_IMP(GENERAL_NAME, d.rfc822Name, ASN1_IA5STRING, GEN_EMAIL),
     ASN1_IMP(GENERAL_NAME, d.dNSName, ASN1_IA5STRING, GEN_DNS),
-    /* Don't decode this */
+    // Don't decode this
     ASN1_IMP(GENERAL_NAME, d.x400Address, ASN1_SEQUENCE, GEN_X400),
-    /* X509_NAME is a CHOICE type so use EXPLICIT */
+    // X509_NAME is a CHOICE type so use EXPLICIT
     ASN1_EXP(GENERAL_NAME, d.directoryName, X509_NAME, GEN_DIRNAME),
     ASN1_IMP(GENERAL_NAME, d.ediPartyName, EDIPARTYNAME, GEN_EDIPARTY),
     ASN1_IMP(GENERAL_NAME, d.uniformResourceIdentifier, ASN1_IA5STRING,
@@ -106,7 +106,7 @@ IMPLEMENT_ASN1_FUNCTIONS(GENERAL_NAMES)
 IMPLEMENT_ASN1_DUP_FUNCTION(GENERAL_NAME)
 
 static int edipartyname_cmp(const EDIPARTYNAME *a, const EDIPARTYNAME *b) {
-  /* nameAssigner is optional and may be NULL. */
+  // nameAssigner is optional and may be NULL.
   if (a->nameAssigner == NULL) {
     if (b->nameAssigner != NULL) {
       return -1;
@@ -118,11 +118,11 @@ static int edipartyname_cmp(const EDIPARTYNAME *a, const EDIPARTYNAME *b) {
     }
   }
 
-  /* partyName may not be NULL. */
+  // partyName may not be NULL.
   return ASN1_STRING_cmp(a->partyName, b->partyName);
 }
 
-/* Returns 0 if they are equal, != 0 otherwise. */
+// Returns 0 if they are equal, != 0 otherwise.
 int GENERAL_NAME_cmp(const GENERAL_NAME *a, const GENERAL_NAME *b) {
   if (!a || !b || a->type != b->type) {
     return -1;
@@ -156,18 +156,18 @@ int GENERAL_NAME_cmp(const GENERAL_NAME *a, const GENERAL_NAME *b) {
   return -1;
 }
 
-/* Returns 0 if they are equal, != 0 otherwise. */
+// Returns 0 if they are equal, != 0 otherwise.
 int OTHERNAME_cmp(OTHERNAME *a, OTHERNAME *b) {
   int result = -1;
 
   if (!a || !b) {
     return -1;
   }
-  /* Check their type first. */
+  // Check their type first.
   if ((result = OBJ_cmp(a->type_id, b->type_id)) != 0) {
     return result;
   }
-  /* Check the value. */
+  // Check the value.
   result = ASN1_TYPE_cmp(a->value, b->value);
   return result;
 }

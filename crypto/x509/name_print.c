@@ -65,11 +65,11 @@
 
 
 static int maybe_write(BIO *out, const void *buf, int len) {
-  /* If |out| is NULL, ignore the output but report the length. */
+  // If |out| is NULL, ignore the output but report the length.
   return out == NULL || BIO_write(out, buf, len) == len;
 }
 
-/* do_indent prints |indent| spaces to |out|. */
+// do_indent prints |indent| spaces to |out|.
 static int do_indent(BIO *out, int indent) {
   for (int i = 0; i < indent; i++) {
     if (!maybe_write(out, " ", 1)) {
@@ -179,7 +179,7 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
       int objlen, fld_len;
       if ((fn_opt == XN_FLAG_FN_OID) || (fn_nid == NID_undef)) {
         OBJ_obj2txt(objtmp, sizeof objtmp, fn, 1);
-        fld_len = 0; /* XXX: what should this be? */
+        fld_len = 0;  // XXX: what should this be?
         objbuf = objtmp;
       } else {
         if (fn_opt == XN_FLAG_FN_SN) {
@@ -189,7 +189,7 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
           fld_len = FN_WIDTH_LN;
           objbuf = OBJ_nid2ln(fn_nid);
         } else {
-          fld_len = 0; /* XXX: what should this be? */
+          fld_len = 0;  // XXX: what should this be?
           objbuf = "";
         }
       }
@@ -208,11 +208,9 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
       }
       outlen += objlen + sep_eq_len;
     }
-    /*
-     * If the field name is unknown then fix up the DER dump flag. We
-     * might want to limit this further so it will DER dump on anything
-     * other than a few 'standard' fields.
-     */
+    // If the field name is unknown then fix up the DER dump flag. We
+    // might want to limit this further so it will DER dump on anything
+    // other than a few 'standard' fields.
     if ((fn_nid == NID_undef) && (flags & XN_FLAG_DUMP_UNKNOWN_FIELDS)) {
       orflags = ASN1_STRFLGS_DUMP_ALL;
     } else {
@@ -240,8 +238,8 @@ int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm, int indent,
                           unsigned long flags) {
   BIO *bio = NULL;
   if (fp != NULL) {
-    /* If |fp| is NULL, this function returns the number of bytes without
-     * writing. */
+    // If |fp| is NULL, this function returns the number of bytes without
+    // writing.
     bio = BIO_new_fp(fp, BIO_NOCLOSE);
     if (bio == NULL) {
       return -1;

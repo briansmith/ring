@@ -180,7 +180,7 @@ static int x509_object_cmp(const X509_OBJECT **a, const X509_OBJECT **b) {
       ret = X509_CRL_cmp((*a)->data.crl, (*b)->data.crl);
       break;
     default:
-      /* abort(); */
+      // abort();
       return 0;
   }
   return ret;
@@ -241,7 +241,7 @@ static void cleanup(X509_OBJECT *a) {
   } else if (a->type == X509_LU_CRL) {
     X509_CRL_free(a->data.crl);
   } else {
-    /* abort(); */
+    // abort();
   }
 
   OPENSSL_free(a);
@@ -289,7 +289,7 @@ X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v, X509_LOOKUP_METHOD *m) {
       return lu;
     }
   }
-  /* a new one */
+  // a new one
   lu = X509_LOOKUP_new(m);
   if (lu == NULL) {
     return NULL;
@@ -328,9 +328,7 @@ int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type, X509_NAME *name,
     }
   }
 
-  /*
-   * if (ret->data.ptr != NULL) X509_OBJECT_free_contents(ret);
-   */
+  // if (ret->data.ptr != NULL) X509_OBJECT_free_contents(ret);
 
   ret->type = tmp->type;
   ret->data.ptr = tmp->data.ptr;
@@ -364,7 +362,7 @@ static int x509_store_add(X509_STORE *ctx, void *x, int is_crl) {
 
   int ret = 1;
   int added = 0;
-  /* Duplicates are silently ignored */
+  // Duplicates are silently ignored
   if (!X509_OBJECT_retrieve_match(ctx->objs, obj)) {
     ret = added = (sk_X509_OBJECT_push(ctx->objs, obj) != 0);
   }
@@ -440,7 +438,7 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
       crl_info_s.issuer = name;
       break;
     default:
-      /* abort(); */
+      // abort();
       return -1;
   }
 
@@ -498,10 +496,8 @@ STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *ctx, X509_NAME *nm) {
   CRYPTO_MUTEX_lock_write(&ctx->ctx->objs_lock);
   idx = x509_object_idx_cnt(ctx->ctx->objs, X509_LU_X509, nm, &cnt);
   if (idx < 0) {
-    /*
-     * Nothing found in cache: do lookup to possibly add new objects to
-     * cache
-     */
+    // Nothing found in cache: do lookup to possibly add new objects to
+    // cache
     X509_OBJECT xobj;
     CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
     if (!X509_STORE_get_by_subject(ctx, X509_LU_X509, nm, &xobj)) {
@@ -541,7 +537,7 @@ STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm) {
     return NULL;
   }
 
-  /* Always do lookup to possibly add new CRLs to cache. */
+  // Always do lookup to possibly add new CRLs to cache.
   if (!X509_STORE_get_by_subject(ctx, X509_LU_CRL, nm, &xobj)) {
     sk_X509_CRL_free(sk);
     return NULL;
@@ -602,13 +598,11 @@ X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
   return NULL;
 }
 
-/*
- * Try to get issuer certificate from store. Due to limitations of the API
- * this can only retrieve a single certificate matching a given subject name.
- * However it will fill the cache with all matching certificates, so we can
- * examine the cache for all matches. Return values are: 1 lookup
- * successful.  0 certificate not found. -1 some other error.
- */
+// Try to get issuer certificate from store. Due to limitations of the API
+// this can only retrieve a single certificate matching a given subject name.
+// However it will fill the cache with all matching certificates, so we can
+// examine the cache for all matches. Return values are: 1 lookup
+// successful.  0 certificate not found. -1 some other error.
 int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   X509_NAME *xn;
   X509_OBJECT obj, *pobj;
@@ -618,23 +612,23 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   if (!X509_STORE_get_by_subject(ctx, X509_LU_X509, xn, &obj)) {
     return 0;
   }
-  /* If certificate matches all OK */
+  // If certificate matches all OK
   if (ctx->check_issued(ctx, x, obj.data.x509)) {
     *issuer = obj.data.x509;
     return 1;
   }
   X509_OBJECT_free_contents(&obj);
 
-  /* Else find index of first cert accepted by 'check_issued' */
+  // Else find index of first cert accepted by 'check_issued'
   ret = 0;
   CRYPTO_MUTEX_lock_write(&ctx->ctx->objs_lock);
   idx = X509_OBJECT_idx_by_subject(ctx->ctx->objs, X509_LU_X509, xn);
-  if (idx != -1) { /* should be true as we've had at least one
-                    * match */
-    /* Look through all matching certs for suitable issuer */
+  if (idx != -1) {  // should be true as we've had at least one
+                    // match
+    // Look through all matching certs for suitable issuer
     for (i = idx; i < sk_X509_OBJECT_num(ctx->ctx->objs); i++) {
       pobj = sk_X509_OBJECT_value(ctx->ctx->objs, i);
-      /* See if we've run past the matches */
+      // See if we've run past the matches
       if (pobj->type != X509_LU_X509) {
         break;
       }

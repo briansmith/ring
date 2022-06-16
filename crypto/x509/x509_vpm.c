@@ -67,7 +67,7 @@
 #include "internal.h"
 
 
-/* X509_VERIFY_PARAM functions */
+// X509_VERIFY_PARAM functions
 
 #define SET_HOST 0
 #define ADD_HOST 1
@@ -87,10 +87,8 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
     return 0;
   }
 
-  /*
-   * Refuse names with embedded NUL bytes.
-   * XXX: Do we need to push an error onto the error stack?
-   */
+  // Refuse names with embedded NUL bytes.
+  // XXX: Do we need to push an error onto the error stack?
   if (name && OPENSSL_memchr(name, '\0', namelen)) {
     return 0;
   }
@@ -130,9 +128,7 @@ static void x509_verify_param_zero(X509_VERIFY_PARAM *param) {
   param->name = NULL;
   param->purpose = 0;
   param->trust = 0;
-  /*
-   * param->inh_flags = X509_VP_FLAG_DEFAULT;
-   */
+  // param->inh_flags = X509_VP_FLAG_DEFAULT;
   param->inh_flags = 0;
   param->flags = 0;
   param->depth = -1;
@@ -180,45 +176,44 @@ void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param) {
   OPENSSL_free(param);
 }
 
-/*-
- * This function determines how parameters are "inherited" from one structure
- * to another. There are several different ways this can happen.
- *
- * 1. If a child structure needs to have its values initialized from a parent
- *    they are simply copied across. For example SSL_CTX copied to SSL.
- * 2. If the structure should take on values only if they are currently unset.
- *    For example the values in an SSL structure will take appropriate value
- *    for SSL servers or clients but only if the application has not set new
- *    ones.
- *
- * The "inh_flags" field determines how this function behaves.
- *
- * Normally any values which are set in the default are not copied from the
- * destination and verify flags are ORed together.
- *
- * If X509_VP_FLAG_DEFAULT is set then anything set in the source is copied
- * to the destination. Effectively the values in "to" become default values
- * which will be used only if nothing new is set in "from".
- *
- * If X509_VP_FLAG_OVERWRITE is set then all value are copied across whether
- * they are set or not. Flags is still Ored though.
- *
- * If X509_VP_FLAG_RESET_FLAGS is set then the flags value is copied instead
- * of ORed.
- *
- * If X509_VP_FLAG_LOCKED is set then no values are copied.
- *
- * If X509_VP_FLAG_ONCE is set then the current inh_flags setting is zeroed
- * after the next call.
- */
+//-
+// This function determines how parameters are "inherited" from one structure
+// to another. There are several different ways this can happen.
+//
+// 1. If a child structure needs to have its values initialized from a parent
+//    they are simply copied across. For example SSL_CTX copied to SSL.
+// 2. If the structure should take on values only if they are currently unset.
+//    For example the values in an SSL structure will take appropriate value
+//    for SSL servers or clients but only if the application has not set new
+//    ones.
+//
+// The "inh_flags" field determines how this function behaves.
+//
+// Normally any values which are set in the default are not copied from the
+// destination and verify flags are ORed together.
+//
+// If X509_VP_FLAG_DEFAULT is set then anything set in the source is copied
+// to the destination. Effectively the values in "to" become default values
+// which will be used only if nothing new is set in "from".
+//
+// If X509_VP_FLAG_OVERWRITE is set then all value are copied across whether
+// they are set or not. Flags is still Ored though.
+//
+// If X509_VP_FLAG_RESET_FLAGS is set then the flags value is copied instead
+// of ORed.
+//
+// If X509_VP_FLAG_LOCKED is set then no values are copied.
+//
+// If X509_VP_FLAG_ONCE is set then the current inh_flags setting is zeroed
+// after the next call.
 
-/* Macro to test if a field should be copied from src to dest */
+// Macro to test if a field should be copied from src to dest
 
 #define test_x509_verify_param_copy(field, def) \
   (to_overwrite ||                              \
    ((src->field != (def)) && (to_default || (dest->field == (def)))))
 
-/* Macro to test and copy a field if necessary */
+// Macro to test and copy a field if necessary
 
 #define x509_verify_param_copy(field, def)     \
   if (test_x509_verify_param_copy(field, def)) \
@@ -257,12 +252,12 @@ int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
   x509_verify_param_copy(trust, 0);
   x509_verify_param_copy(depth, -1);
 
-  /* If overwrite or check time not set, copy across */
+  // If overwrite or check time not set, copy across
 
   if (to_overwrite || !(dest->flags & X509_V_FLAG_USE_CHECK_TIME)) {
     dest->check_time = src->check_time;
     dest->flags &= ~X509_V_FLAG_USE_CHECK_TIME;
-    /* Don't need to copy flag: that is done below */
+    // Don't need to copy flag: that is done below
   }
 
   if (inh_flags & X509_VP_FLAG_RESET_FLAGS) {
@@ -277,7 +272,7 @@ int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
     }
   }
 
-  /* Copy the host flags if and only if we're copying the host list */
+  // Copy the host flags if and only if we're copying the host list
   if (test_x509_verify_param_copy(hosts, NULL)) {
     if (dest->hosts) {
       string_stack_free(dest->hosts);
@@ -510,57 +505,55 @@ const char *X509_VERIFY_PARAM_get0_name(const X509_VERIFY_PARAM *param) {
 
 #define vpm_empty_id NULL, 0U, NULL, NULL, 0, NULL, 0, 0
 
-/*
- * Default verify parameters: these are used for various applications and can
- * be overridden by the user specified table. NB: the 'name' field *must* be
- * in alphabetical order because it will be searched using OBJ_search.
- */
+// Default verify parameters: these are used for various applications and can
+// be overridden by the user specified table. NB: the 'name' field *must* be
+// in alphabetical order because it will be searched using OBJ_search.
 
 static const X509_VERIFY_PARAM default_table[] = {
-    {(char *)"default",         /* X509 default parameters */
-     0,                         /* Check time */
-     0,                         /* internal flags */
-     X509_V_FLAG_TRUSTED_FIRST, /* flags */
-     0,                         /* purpose */
-     0,                         /* trust */
-     100,                       /* depth */
-     NULL,                      /* policies */
+    {(char *)"default",          // X509 default parameters
+     0,                          // Check time
+     0,                          // internal flags
+     X509_V_FLAG_TRUSTED_FIRST,  // flags
+     0,                          // purpose
+     0,                          // trust
+     100,                        // depth
+     NULL,                       // policies
      vpm_empty_id},
-    {(char *)"pkcs7",         /* S/MIME sign parameters */
-     0,                       /* Check time */
-     0,                       /* internal flags */
-     0,                       /* flags */
-     X509_PURPOSE_SMIME_SIGN, /* purpose */
-     X509_TRUST_EMAIL,        /* trust */
-     -1,                      /* depth */
-     NULL,                    /* policies */
+    {(char *)"pkcs7",          // S/MIME sign parameters
+     0,                        // Check time
+     0,                        // internal flags
+     0,                        // flags
+     X509_PURPOSE_SMIME_SIGN,  // purpose
+     X509_TRUST_EMAIL,         // trust
+     -1,                       // depth
+     NULL,                     // policies
      vpm_empty_id},
-    {(char *)"smime_sign",    /* S/MIME sign parameters */
-     0,                       /* Check time */
-     0,                       /* internal flags */
-     0,                       /* flags */
-     X509_PURPOSE_SMIME_SIGN, /* purpose */
-     X509_TRUST_EMAIL,        /* trust */
-     -1,                      /* depth */
-     NULL,                    /* policies */
+    {(char *)"smime_sign",     // S/MIME sign parameters
+     0,                        // Check time
+     0,                        // internal flags
+     0,                        // flags
+     X509_PURPOSE_SMIME_SIGN,  // purpose
+     X509_TRUST_EMAIL,         // trust
+     -1,                       // depth
+     NULL,                     // policies
      vpm_empty_id},
-    {(char *)"ssl_client",    /* SSL/TLS client parameters */
-     0,                       /* Check time */
-     0,                       /* internal flags */
-     0,                       /* flags */
-     X509_PURPOSE_SSL_CLIENT, /* purpose */
-     X509_TRUST_SSL_CLIENT,   /* trust */
-     -1,                      /* depth */
-     NULL,                    /* policies */
+    {(char *)"ssl_client",     // SSL/TLS client parameters
+     0,                        // Check time
+     0,                        // internal flags
+     0,                        // flags
+     X509_PURPOSE_SSL_CLIENT,  // purpose
+     X509_TRUST_SSL_CLIENT,    // trust
+     -1,                       // depth
+     NULL,                     // policies
      vpm_empty_id},
-    {(char *)"ssl_server",    /* SSL/TLS server parameters */
-     0,                       /* Check time */
-     0,                       /* internal flags */
-     0,                       /* flags */
-     X509_PURPOSE_SSL_SERVER, /* purpose */
-     X509_TRUST_SSL_SERVER,   /* trust */
-     -1,                      /* depth */
-     NULL,                    /* policies */
+    {(char *)"ssl_server",     // SSL/TLS server parameters
+     0,                        // Check time
+     0,                        // internal flags
+     0,                        // flags
+     X509_PURPOSE_SSL_SERVER,  // purpose
+     X509_TRUST_SSL_SERVER,    // trust
+     -1,                       // depth
+     NULL,                     // policies
      vpm_empty_id}};
 
 static STACK_OF(X509_VERIFY_PARAM) *param_table = NULL;

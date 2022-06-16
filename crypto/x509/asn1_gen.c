@@ -68,10 +68,8 @@
 #include "../x509v3/internal.h"
 #include "internal.h"
 
-/*
- * Although this file is in crypto/x509 for layering purposes, it emits
- * errors from the ASN.1 module for OpenSSL compatibility.
- */
+// Although this file is in crypto/x509 for layering purposes, it emits
+// errors from the ASN.1 module for OpenSSL compatibility.
 
 #define ASN1_GEN_FLAG 0x10000
 #define ASN1_GEN_FLAG_IMP (ASN1_GEN_FLAG | 1)
@@ -87,18 +85,18 @@
   { str, sizeof(str) - 1, val }
 
 #define ASN1_FLAG_EXP_MAX 20
-/* Maximum number of nested sequences */
+// Maximum number of nested sequences
 #define ASN1_GEN_SEQ_MAX_DEPTH 50
 
-/* Input formats */
+// Input formats
 
-/* ASCII: default */
+// ASCII: default
 #define ASN1_GEN_FORMAT_ASCII 1
-/* UTF8 */
+// UTF8
 #define ASN1_GEN_FORMAT_UTF8 2
-/* Hex */
+// Hex
 #define ASN1_GEN_FORMAT_HEX 3
-/* List of bits */
+// List of bits
 #define ASN1_GEN_FORMAT_BITLIST 4
 
 struct tag_name_st {
@@ -190,65 +188,61 @@ static ASN1_TYPE *generate_v3(const char *str, X509V3_CTX *cnf, int depth,
     return NULL;
   }
 
-  /* If no tagging return base type */
+  // If no tagging return base type
   if ((asn1_tags.imp_tag == -1) && (asn1_tags.exp_count == 0)) {
     return ret;
   }
 
-  /* Generate the encoding */
+  // Generate the encoding
   cpy_len = i2d_ASN1_TYPE(ret, &orig_der);
   ASN1_TYPE_free(ret);
   ret = NULL;
-  /* Set point to start copying for modified encoding */
+  // Set point to start copying for modified encoding
   cpy_start = orig_der;
 
-  /* Do we need IMPLICIT tagging? */
+  // Do we need IMPLICIT tagging?
   if (asn1_tags.imp_tag != -1) {
-    /* If IMPLICIT we will replace the underlying tag */
-    /* Skip existing tag+len */
+    // If IMPLICIT we will replace the underlying tag
+    // Skip existing tag+len
     r = ASN1_get_object(&cpy_start, &hdr_len, &hdr_tag, &hdr_class, cpy_len);
     if (r & 0x80) {
       goto err;
     }
-    /* Update copy length */
+    // Update copy length
     cpy_len -= cpy_start - orig_der;
-    /*
-     * For IMPLICIT tagging the length should match the original length
-     * and constructed flag should be consistent.
-     */
+    // For IMPLICIT tagging the length should match the original length
+    // and constructed flag should be consistent.
     hdr_constructed = r & V_ASN1_CONSTRUCTED;
-    /*
-     * Work out new length with IMPLICIT tag: ignore constructed because
-     * it will mess up if indefinite length
-     */
+    // Work out new length with IMPLICIT tag: ignore constructed because
+    // it will mess up if indefinite length
     len = ASN1_object_size(0, hdr_len, asn1_tags.imp_tag);
   } else {
     len = cpy_len;
   }
 
-  /* Work out length in any EXPLICIT, starting from end */
+  // Work out length in any EXPLICIT, starting from end
 
   for (i = 0, etmp = asn1_tags.exp_list + asn1_tags.exp_count - 1;
        i < asn1_tags.exp_count; i++, etmp--) {
-    /* Content length: number of content octets + any padding */
+    // Content length: number of content octets + any padding
     len += etmp->exp_pad;
     etmp->exp_len = len;
-    /* Total object length: length including new header */
+    // Total object length: length including new header
     len = ASN1_object_size(0, len, etmp->exp_tag);
   }
 
-  /* Allocate buffer for new encoding */
+  // Allocate buffer for new encoding
 
   new_der = OPENSSL_malloc(len);
   if (!new_der) {
     goto err;
   }
 
-  /* Generate tagged encoding */
+  // Generate tagged encoding
 
   p = new_der;
 
-  /* Output explicit tags first */
+  // Output explicit tags first
 
   for (i = 0, etmp = asn1_tags.exp_list; i < asn1_tags.exp_count; i++, etmp++) {
     ASN1_put_object(&p, etmp->exp_constructed, etmp->exp_len, etmp->exp_tag,
@@ -258,7 +252,7 @@ static ASN1_TYPE *generate_v3(const char *str, X509V3_CTX *cnf, int depth,
     }
   }
 
-  /* If IMPLICIT, output tag */
+  // If IMPLICIT, output tag
 
   if (asn1_tags.imp_tag != -1) {
     if (asn1_tags.imp_class == V_ASN1_UNIVERSAL &&
@@ -270,12 +264,12 @@ static ASN1_TYPE *generate_v3(const char *str, X509V3_CTX *cnf, int depth,
                     asn1_tags.imp_class);
   }
 
-  /* Copy across original encoding */
+  // Copy across original encoding
   OPENSSL_memcpy(p, cpy_start, cpy_len);
 
   cp = new_der;
 
-  /* Obtain new ASN1_TYPE structure */
+  // Obtain new ASN1_TYPE structure
   ret = d2i_ASN1_TYPE(NULL, &cp, len);
 
 err:
@@ -303,7 +297,7 @@ static int asn1_cb(const char *elem, int len, void *bitstr) {
   }
 
   for (i = 0, p = elem; i < len; p++, i++) {
-    /* Look for the ':' in name value pairs */
+    // Look for the ':' in name value pairs
     if (*p == ':') {
       vstart = p + 1;
       vlen = len - (vstart - elem);
@@ -320,11 +314,11 @@ static int asn1_cb(const char *elem, int len, void *bitstr) {
     return -1;
   }
 
-  /* If this is not a modifier mark end of string and exit */
+  // If this is not a modifier mark end of string and exit
   if (!(utype & ASN1_GEN_FLAG)) {
     arg->utype = utype;
     arg->str = vstart;
-    /* If no value and not end of string, error */
+    // If no value and not end of string, error
     if (!vstart && elem[len]) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_VALUE);
       return -1;
@@ -334,7 +328,7 @@ static int asn1_cb(const char *elem, int len, void *bitstr) {
 
   switch (utype) {
     case ASN1_GEN_FLAG_IMP:
-      /* Check for illegal multiple IMPLICIT tagging */
+      // Check for illegal multiple IMPLICIT tagging
       if (arg->imp_tag != -1) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_NESTED_TAGGING);
         return -1;
@@ -409,7 +403,7 @@ static int parse_tagging(const char *vstart, int vlen, int *ptag, int *pclass) {
     return 0;
   }
   tag_num = strtoul(vstart, &eptr, 10);
-  /* Check we haven't gone past max length: should be impossible */
+  // Check we haven't gone past max length: should be impossible
   if (eptr && *eptr && (eptr > vstart + vlen)) {
     return 0;
   }
@@ -418,7 +412,7 @@ static int parse_tagging(const char *vstart, int vlen, int *ptag, int *pclass) {
     return 0;
   }
   *ptag = tag_num;
-  /* If we have non numeric characters, parse them */
+  // If we have non numeric characters, parse them
   if (eptr) {
     vlen -= eptr - vstart;
   } else {
@@ -457,7 +451,7 @@ static int parse_tagging(const char *vstart, int vlen, int *ptag, int *pclass) {
   return 1;
 }
 
-/* Handle multiple types: SET and SEQUENCE */
+// Handle multiple types: SET and SEQUENCE
 
 static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
                              int depth, int *perr) {
@@ -491,9 +485,7 @@ static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
     }
   }
 
-  /*
-   * Now we has a STACK of the components, convert to the correct form
-   */
+  // Now we has a STACK of the components, convert to the correct form
 
   if (utype == V_ASN1_SET) {
     derlen = i2d_ASN1_SET_ANY(sk, &der);
@@ -539,7 +531,7 @@ bad:
 static int append_exp(tag_exp_arg *arg, int exp_tag, int exp_class,
                       int exp_constructed, int exp_pad, int imp_ok) {
   tag_exp_type *exp_tmp;
-  /* Can only have IMPLICIT if permitted */
+  // Can only have IMPLICIT if permitted
   if ((arg->imp_tag != -1) && !imp_ok) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_IMPLICIT_TAG);
     return 0;
@@ -552,10 +544,8 @@ static int append_exp(tag_exp_arg *arg, int exp_tag, int exp_class,
 
   exp_tmp = &arg->exp_list[arg->exp_count++];
 
-  /*
-   * If IMPLICIT set tag to implicit value then reset implicit tag since it
-   * has been used.
-   */
+  // If IMPLICIT set tag to implicit value then reset implicit tag since it
+  // has been used.
   if (arg->imp_tag != -1) {
     exp_tmp->exp_tag = arg->imp_tag;
     exp_tmp->exp_class = arg->imp_class;
@@ -612,24 +602,24 @@ static int asn1_str2tag(const char *tagstr, int len) {
           ASN1_GEN_STR("NUMERIC", V_ASN1_NUMERICSTRING),
           ASN1_GEN_STR("NUMERICSTRING", V_ASN1_NUMERICSTRING),
 
-          /* Special cases */
+          // Special cases
           ASN1_GEN_STR("SEQUENCE", V_ASN1_SEQUENCE),
           ASN1_GEN_STR("SEQ", V_ASN1_SEQUENCE),
           ASN1_GEN_STR("SET", V_ASN1_SET),
-          /* type modifiers */
-          /* Explicit tag */
+          // type modifiers
+          // Explicit tag
           ASN1_GEN_STR("EXP", ASN1_GEN_FLAG_EXP),
           ASN1_GEN_STR("EXPLICIT", ASN1_GEN_FLAG_EXP),
-          /* Implicit tag */
+          // Implicit tag
           ASN1_GEN_STR("IMP", ASN1_GEN_FLAG_IMP),
           ASN1_GEN_STR("IMPLICIT", ASN1_GEN_FLAG_IMP),
-          /* OCTET STRING wrapper */
+          // OCTET STRING wrapper
           ASN1_GEN_STR("OCTWRAP", ASN1_GEN_FLAG_OCTWRAP),
-          /* SEQUENCE wrapper */
+          // SEQUENCE wrapper
           ASN1_GEN_STR("SEQWRAP", ASN1_GEN_FLAG_SEQWRAP),
-          /* SET wrapper */
+          // SET wrapper
           ASN1_GEN_STR("SETWRAP", ASN1_GEN_FLAG_SETWRAP),
-          /* BIT STRING wrapper */
+          // BIT STRING wrapper
           ASN1_GEN_STR("BITWRAP", ASN1_GEN_FLAG_BITWRAP),
           ASN1_GEN_STR("FORM", ASN1_GEN_FLAG_FORMAT),
           ASN1_GEN_STR("FORMAT", ASN1_GEN_FLAG_FORMAT),

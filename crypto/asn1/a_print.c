@@ -70,7 +70,7 @@ int ASN1_PRINTABLE_type(const unsigned char *s, int len) {
   for (int i = 0; i < len; i++) {
     unsigned char c = s[i];
     if (c & 0x80) {
-      /* No need to continue iterating. */
+      // No need to continue iterating.
       return V_ASN1_T61STRING;
     }
     if (!asn1_is_printable(c)) {

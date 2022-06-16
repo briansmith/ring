@@ -130,12 +130,12 @@ void *PEM_ASN1_read(d2i_of_void *d2i, const char *name, FILE *fp, void **x,
 }
 
 static int check_pem(const char *nm, const char *name) {
-  /* Normal matching nm and name */
+  // Normal matching nm and name
   if (!strcmp(nm, name)) {
     return 1;
   }
 
-  /* Make PEM_STRING_EVP_PKEY match any private key */
+  // Make PEM_STRING_EVP_PKEY match any private key
 
   if (!strcmp(name, PEM_STRING_EVP_PKEY)) {
     return !strcmp(nm, PEM_STRING_PKCS8) || !strcmp(nm, PEM_STRING_PKCS8INF) ||
@@ -143,7 +143,7 @@ static int check_pem(const char *nm, const char *name) {
            !strcmp(nm, PEM_STRING_DSA);
   }
 
-  /* Permit older strings */
+  // Permit older strings
 
   if (!strcmp(nm, PEM_STRING_X509_OLD) && !strcmp(name, PEM_STRING_X509)) {
     return 1;
@@ -154,7 +154,7 @@ static int check_pem(const char *nm, const char *name) {
     return 1;
   }
 
-  /* Allow normal certs to be read as trusted certs */
+  // Allow normal certs to be read as trusted certs
   if (!strcmp(nm, PEM_STRING_X509) && !strcmp(name, PEM_STRING_X509_TRUSTED)) {
     return 1;
   }
@@ -164,7 +164,7 @@ static int check_pem(const char *nm, const char *name) {
     return 1;
   }
 
-  /* Some CAs use PKCS#7 with CERTIFICATE headers */
+  // Some CAs use PKCS#7 with CERTIFICATE headers
   if (!strcmp(nm, PEM_STRING_X509) && !strcmp(name, PEM_STRING_PKCS7)) {
     return 1;
   }
@@ -177,7 +177,7 @@ static int check_pem(const char *nm, const char *name) {
   if (!strcmp(nm, PEM_STRING_X509) && !strcmp(name, PEM_STRING_CMS)) {
     return 1;
   }
-  /* Allow CMS to be read from PKCS#7 headers */
+  // Allow CMS to be read from PKCS#7 headers
   if (!strcmp(nm, PEM_STRING_PKCS7) && !strcmp(name, PEM_STRING_CMS)) {
     return 1;
   }
@@ -187,9 +187,9 @@ static int check_pem(const char *nm, const char *name) {
 }
 
 static const EVP_CIPHER *cipher_by_name(const char *name) {
-  /* This is similar to the (deprecated) function |EVP_get_cipherbyname|. Note
-   * the PEM code assumes that ciphers have at least 8 bytes of IV, at most 20
-   * bytes of overhead and generally behave like CBC mode. */
+  // This is similar to the (deprecated) function |EVP_get_cipherbyname|. Note
+  // the PEM code assumes that ciphers have at least 8 bytes of IV, at most 20
+  // bytes of overhead and generally behave like CBC mode.
   if (0 == strcmp(name, SN_des_cbc)) {
     return EVP_des_cbc();
   } else if (0 == strcmp(name, SN_des_ede3_cbc)) {
@@ -295,8 +295,8 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     dsize = 0;
     goto err;
   }
-  /* dzise + 8 bytes are needed */
-  /* actually it needs the cipher block size extra... */
+  // dzise + 8 bytes are needed
+  // actually it needs the cipher block size extra...
   data = (unsigned char *)OPENSSL_malloc((unsigned int)dsize + 20);
   if (data == NULL) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
@@ -321,13 +321,11 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
       kstr = (unsigned char *)buf;
     }
     assert(iv_len <= (int)sizeof(iv));
-    if (!RAND_bytes(iv, iv_len)) { /* Generate a salt */
+    if (!RAND_bytes(iv, iv_len)) {  // Generate a salt
       goto err;
     }
-    /*
-     * The 'iv' is used as the iv and as a salt.  It is NOT taken from
-     * the BytesToKey function
-     */
+    // The 'iv' is used as the iv and as a salt.  It is NOT taken from
+    // the BytesToKey function
     if (!EVP_BytesToKey(enc, EVP_md5(), iv, kstr, klen, 1, key, NULL)) {
       goto err;
     }
@@ -341,7 +339,7 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     buf[0] = '\0';
     PEM_proc_type(buf, PEM_TYPE_ENCRYPTED);
     PEM_dek_info(buf, objstr, iv_len, (char *)iv);
-    /* k=strlen(buf); */
+    // k=strlen(buf);
 
     EVP_CIPHER_CTX_init(&ctx);
     ret = 1;

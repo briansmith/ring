@@ -147,10 +147,8 @@ static int process_pci_value(CONF_VALUE *val, ASN1_OBJECT **language,
         (*policy)->data[(*policy)->length] = '\0';
       } else {
         OPENSSL_free(tmp_data2);
-        /*
-         * realloc failure implies the original data space is b0rked
-         * too!
-         */
+        // realloc failure implies the original data space is b0rked
+        // too!
         (*policy)->data = NULL;
         (*policy)->length = 0;
         OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
@@ -169,10 +167,8 @@ static int process_pci_value(CONF_VALUE *val, ASN1_OBJECT **language,
         (*policy)->length += val_len;
         (*policy)->data[(*policy)->length] = '\0';
       } else {
-        /*
-         * realloc failure implies the original data space is b0rked
-         * too!
-         */
+        // realloc failure implies the original data space is b0rked
+        // too!
         (*policy)->data = NULL;
         (*policy)->length = 0;
         OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
@@ -243,7 +239,7 @@ static void *r2i_pci(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
     }
   }
 
-  /* Language is mandatory */
+  // Language is mandatory
   if (!language) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_PROXY_CERT_POLICY_LANGUAGE_DEFINED);
     goto err;

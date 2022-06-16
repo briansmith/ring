@@ -67,19 +67,17 @@
 #include "internal.h"
 
 
-/* Cross-module errors from crypto/x509/i2d_pr.c. */
+// Cross-module errors from crypto/x509/i2d_pr.c.
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNSUPPORTED_PUBLIC_KEY_TYPE)
 
-/* Cross-module errors from crypto/x509/algorithm.c. */
+// Cross-module errors from crypto/x509/algorithm.c.
 OPENSSL_DECLARE_ERROR_REASON(ASN1, CONTEXT_NOT_INITIALISED)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, DIGEST_AND_KEY_TYPE_NOT_SUPPORTED)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNKNOWN_MESSAGE_DIGEST_ALGORITHM)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNKNOWN_SIGNATURE_ALGORITHM)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, WRONG_PUBLIC_KEY_TYPE)
-/*
- * Cross-module errors from crypto/x509/asn1_gen.c. TODO(davidben): Remove
- * these once asn1_gen.c is gone.
- */
+// Cross-module errors from crypto/x509/asn1_gen.c. TODO(davidben): Remove
+// these once asn1_gen.c is gone.
 OPENSSL_DECLARE_ERROR_REASON(ASN1, DEPTH_EXCEEDED)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, ILLEGAL_BITSTRING_FORMAT)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, ILLEGAL_BOOLEAN)
@@ -113,12 +111,12 @@ int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
     return 0x80;
   }
 
-  /* TODO(https://crbug.com/boringssl/354): This should use |CBS_get_asn1| to
-   * reject non-minimal lengths, which are only allowed in BER. However,
-   * Android sometimes needs allow a non-minimal length in certificate
-   * signature fields (see b/18228011). Make this only apply to that field,
-   * while requiring DER elsewhere. Better yet, it should be limited to an
-   * preprocessing step in that part of Android. */
+  // TODO(https://crbug.com/boringssl/354): This should use |CBS_get_asn1| to
+  // reject non-minimal lengths, which are only allowed in BER. However,
+  // Android sometimes needs allow a non-minimal length in certificate
+  // signature fields (see b/18228011). Make this only apply to that field,
+  // while requiring DER elsewhere. Better yet, it should be limited to an
+  // preprocessing step in that part of Android.
   unsigned tag;
   size_t header_len;
   int indefinite;
@@ -127,19 +125,19 @@ int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
   if (!CBS_get_any_ber_asn1_element(&cbs, &body, &tag, &header_len,
                                     /*out_ber_found=*/NULL, &indefinite) ||
       indefinite || !CBS_skip(&body, header_len) ||
-      /* Bound the length to comfortably fit in an int. Lengths in this
-       * module often switch between int and long without overflow checks. */
+      // Bound the length to comfortably fit in an int. Lengths in this
+      // module often switch between int and long without overflow checks.
       CBS_len(&body) > INT_MAX / 2) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
     return 0x80;
   }
 
-  /* Convert between tag representations. */
+  // Convert between tag representations.
   int tag_class = (tag & CBS_ASN1_CLASS_MASK) >> CBS_ASN1_TAG_SHIFT;
   int constructed = (tag & CBS_ASN1_CONSTRUCTED) >> CBS_ASN1_TAG_SHIFT;
   int tag_number = tag & CBS_ASN1_TAG_NUMBER_MASK;
 
-  /* To avoid ambiguity with V_ASN1_NEG, impose a limit on universal tags. */
+  // To avoid ambiguity with V_ASN1_NEG, impose a limit on universal tags.
   if (tag_class == V_ASN1_UNIVERSAL && tag_number > V_ASN1_MAX_UNIVERSAL) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
     return 0x80;
@@ -152,9 +150,7 @@ int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
   return constructed;
 }
 
-/*
- * class 0 is constructed constructed == 2 for indefinite length constructed
- */
+// class 0 is constructed constructed == 2 for indefinite length constructed
 void ASN1_put_object(unsigned char **pp, int constructed, int length, int tag,
                      int xclass) {
   unsigned char *p = *pp;
@@ -188,8 +184,8 @@ void ASN1_put_object(unsigned char **pp, int constructed, int length, int tag,
 }
 
 int ASN1_put_eoc(unsigned char **pp) {
-  /* This function is no longer used in the library, but some external code
-   * uses it. */
+  // This function is no longer used in the library, but some external code
+  // uses it.
   unsigned char *p = *pp;
   *p++ = 0;
   *p++ = 0;
@@ -303,7 +299,7 @@ int ASN1_STRING_set(ASN1_STRING *str, const void *_data, int len) {
   str->length = len;
   if (data != NULL) {
     OPENSSL_memcpy(str->data, data, len);
-    /* an allowance for strings :-) */
+    // an allowance for strings :-)
     str->data[len] = '\0';
   }
   return (1);
@@ -343,7 +339,7 @@ void ASN1_STRING_free(ASN1_STRING *str) {
 }
 
 int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b) {
-  /* Capture padding bits and implicit truncation in BIT STRINGs. */
+  // Capture padding bits and implicit truncation in BIT STRINGs.
   int a_length = a->length, b_length = b->length;
   uint8_t a_padding = 0, b_padding = 0;
   if (a->type == V_ASN1_BIT_STRING) {
@@ -359,8 +355,8 @@ int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b) {
   if (a_length > b_length) {
     return 1;
   }
-  /* In a BIT STRING, the number of bits is 8 * length - padding. Invert this
-   * comparison so we compare by lengths. */
+  // In a BIT STRING, the number of bits is 8 * length - padding. Invert this
+  // comparison so we compare by lengths.
   if (a_padding > b_padding) {
     return -1;
   }
@@ -373,7 +369,7 @@ int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b) {
     return ret;
   }
 
-  /* Comparing the type first is more natural, but this matches OpenSSL. */
+  // Comparing the type first is more natural, but this matches OpenSSL.
   if (a->type < b->type) {
     return -1;
   }

@@ -131,11 +131,9 @@ static int xp_cmp(const X509_PURPOSE **a, const X509_PURPOSE **b) {
   return (*a)->purpose - (*b)->purpose;
 }
 
-/*
- * As much as I'd like to make X509_check_purpose use a "const" X509* I
- * really can't because it does recalculate hashes and do other non-const
- * things.
- */
+// As much as I'd like to make X509_check_purpose use a "const" X509* I
+// really can't because it does recalculate hashes and do other non-const
+// things.
 int X509_check_purpose(X509 *x, int id, int ca) {
   int idx;
   const X509_PURPOSE *pt;
@@ -218,15 +216,13 @@ int X509_PURPOSE_add(int id, int trust, int flags,
   X509_PURPOSE *ptmp;
   char *name_dup, *sname_dup;
 
-  /*
-   * This is set according to what we change: application can't set it
-   */
+  // This is set according to what we change: application can't set it
   flags &= ~X509_PURPOSE_DYNAMIC;
-  /* This will always be set for application modified trust entries */
+  // This will always be set for application modified trust entries
   flags |= X509_PURPOSE_DYNAMIC_NAME;
-  /* Get existing entry if any */
+  // Get existing entry if any
   idx = X509_PURPOSE_get_by_id(id);
-  /* Need a new entry */
+  // Need a new entry
   if (idx == -1) {
     if (!(ptmp = OPENSSL_malloc(sizeof(X509_PURPOSE)))) {
       OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
@@ -237,7 +233,7 @@ int X509_PURPOSE_add(int id, int trust, int flags,
     ptmp = X509_PURPOSE_get0(idx);
   }
 
-  /* Duplicate the supplied names. */
+  // Duplicate the supplied names.
   name_dup = OPENSSL_strdup(name);
   sname_dup = OPENSSL_strdup(sname);
   if (name_dup == NULL || sname_dup == NULL) {
@@ -254,17 +250,17 @@ int X509_PURPOSE_add(int id, int trust, int flags,
     return 0;
   }
 
-  /* OPENSSL_free existing name if dynamic */
+  // OPENSSL_free existing name if dynamic
   if (ptmp->flags & X509_PURPOSE_DYNAMIC_NAME) {
     OPENSSL_free(ptmp->name);
     OPENSSL_free(ptmp->sname);
   }
-  /* dup supplied name */
+  // dup supplied name
   ptmp->name = name_dup;
   ptmp->sname = sname_dup;
-  /* Keep the dynamic flag of existing entry */
+  // Keep the dynamic flag of existing entry
   ptmp->flags &= X509_PURPOSE_DYNAMIC;
-  /* Set all other flags */
+  // Set all other flags
   ptmp->flags |= flags;
 
   ptmp->purpose = id;
@@ -272,7 +268,7 @@ int X509_PURPOSE_add(int id, int trust, int flags,
   ptmp->check_purpose = ck;
   ptmp->usr_data = arg;
 
-  /* If its a new entry manage the dynamic table */
+  // If its a new entry manage the dynamic table
   if (idx == -1) {
     if (!xptable && !(xptable = sk_X509_PURPOSE_new(xp_cmp))) {
       OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
@@ -325,26 +321,24 @@ static int nid_cmp(const void *void_a, const void *void_b) {
 }
 
 int X509_supported_extension(X509_EXTENSION *ex) {
-  /*
-   * This table is a list of the NIDs of supported extensions: that is
-   * those which are used by the verify process. If an extension is
-   * critical and doesn't appear in this list then the verify process will
-   * normally reject the certificate. The list must be kept in numerical
-   * order because it will be searched using bsearch.
-   */
+  // This table is a list of the NIDs of supported extensions: that is
+  // those which are used by the verify process. If an extension is
+  // critical and doesn't appear in this list then the verify process will
+  // normally reject the certificate. The list must be kept in numerical
+  // order because it will be searched using bsearch.
 
   static const int supported_nids[] = {
-      NID_netscape_cert_type,   /* 71 */
-      NID_key_usage,            /* 83 */
-      NID_subject_alt_name,     /* 85 */
-      NID_basic_constraints,    /* 87 */
-      NID_certificate_policies, /* 89 */
-      NID_ext_key_usage,        /* 126 */
-      NID_policy_constraints,   /* 401 */
-      NID_proxyCertInfo,        /* 663 */
-      NID_name_constraints,     /* 666 */
-      NID_policy_mappings,      /* 747 */
-      NID_inhibit_any_policy    /* 748 */
+      NID_netscape_cert_type,    // 71
+      NID_key_usage,             // 83
+      NID_subject_alt_name,      // 85
+      NID_basic_constraints,     // 87
+      NID_certificate_policies,  // 89
+      NID_ext_key_usage,         // 126
+      NID_policy_constraints,    // 401
+      NID_proxyCertInfo,         // 663
+      NID_name_constraints,      // 666
+      NID_policy_mappings,       // 747
+      NID_inhibit_any_policy     // 748
   };
 
   int ex_nid = OBJ_obj2nid(X509_EXTENSION_get_object(ex));
@@ -432,11 +426,11 @@ int x509v3_cache_extensions(X509 *x) {
   if (!X509_digest(x, EVP_sha256(), x->cert_hash, NULL)) {
     x->ex_flags |= EXFLAG_INVALID;
   }
-  /* V1 should mean no extensions ... */
+  // V1 should mean no extensions ...
   if (X509_get_version(x) == X509_VERSION_1) {
     x->ex_flags |= EXFLAG_V1;
   }
-  /* Handle basic constraints */
+  // Handle basic constraints
   if ((bs = X509_get_ext_d2i(x, NID_basic_constraints, &j, NULL))) {
     if (bs->ca) {
       x->ex_flags |= EXFLAG_CA;
@@ -446,11 +440,11 @@ int x509v3_cache_extensions(X509 *x) {
         x->ex_flags |= EXFLAG_INVALID;
         x->ex_pathlen = 0;
       } else {
-        /* TODO(davidben): |ASN1_INTEGER_get| returns -1 on overflow,
-         * which currently acts as if the constraint isn't present. This
-         * works (an overflowing path length constraint may as well be
-         * infinity), but Chromium's verifier simply treats values above
-         * 255 as an error. */
+        // TODO(davidben): |ASN1_INTEGER_get| returns -1 on overflow,
+        // which currently acts as if the constraint isn't present. This
+        // works (an overflowing path length constraint may as well be
+        // infinity), but Chromium's verifier simply treats values above
+        // 255 as an error.
         x->ex_pathlen = ASN1_INTEGER_get(bs->pathlen);
       }
     } else {
@@ -461,7 +455,7 @@ int x509v3_cache_extensions(X509 *x) {
   } else if (j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
   }
-  /* Handle proxy certificates */
+  // Handle proxy certificates
   if ((pci = X509_get_ext_d2i(x, NID_proxyCertInfo, &j, NULL))) {
     if (x->ex_flags & EXFLAG_CA ||
         X509_get_ext_by_NID(x, NID_subject_alt_name, -1) >= 0 ||
@@ -478,7 +472,7 @@ int x509v3_cache_extensions(X509 *x) {
   } else if (j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
   }
-  /* Handle key usage */
+  // Handle key usage
   if ((usage = X509_get_ext_d2i(x, NID_key_usage, &j, NULL))) {
     if (usage->length > 0) {
       x->ex_kusage = usage->data[0];
@@ -560,10 +554,10 @@ int x509v3_cache_extensions(X509 *x) {
   if (x->akid == NULL && j != -1) {
     x->ex_flags |= EXFLAG_INVALID;
   }
-  /* Does subject name match issuer ? */
+  // Does subject name match issuer ?
   if (!X509_NAME_cmp(X509_get_subject_name(x), X509_get_issuer_name(x))) {
     x->ex_flags |= EXFLAG_SI;
-    /* If SKID matches AKID also indicate self signed */
+    // If SKID matches AKID also indicate self signed
     if (X509_check_akid(x, x->akid) == X509_V_OK &&
         !ku_reject(x, KU_KEY_CERT_SIGN)) {
       x->ex_flags |= EXFLAG_SS;
@@ -600,18 +594,18 @@ int x509v3_cache_extensions(X509 *x) {
   return (x->ex_flags & EXFLAG_INVALID) == 0;
 }
 
-/* check_ca returns one if |x| should be considered a CA certificate and zero
- * otherwise. */
+// check_ca returns one if |x| should be considered a CA certificate and zero
+// otherwise.
 static int check_ca(const X509 *x) {
-  /* keyUsage if present should allow cert signing */
+  // keyUsage if present should allow cert signing
   if (ku_reject(x, KU_KEY_CERT_SIGN)) {
     return 0;
   }
-  /* Version 1 certificates are considered CAs and don't have extensions. */
+  // Version 1 certificates are considered CAs and don't have extensions.
   if ((x->ex_flags & V1_ROOT) == V1_ROOT) {
     return 1;
   }
-  /* Otherwise, it's only a CA if basicConstraints says so. */
+  // Otherwise, it's only a CA if basicConstraints says so.
   return ((x->ex_flags & EXFLAG_BCONS) && (x->ex_flags & EXFLAG_CA));
 }
 
@@ -630,22 +624,20 @@ static int check_purpose_ssl_client(const X509_PURPOSE *xp, const X509 *x,
   if (ca) {
     return check_ca(x);
   }
-  /* We need to do digital signatures or key agreement */
+  // We need to do digital signatures or key agreement
   if (ku_reject(x, KU_DIGITAL_SIGNATURE | KU_KEY_AGREEMENT)) {
     return 0;
   }
-  /* nsCertType if present should allow SSL client use */
+  // nsCertType if present should allow SSL client use
   if (ns_reject(x, NS_SSL_CLIENT)) {
     return 0;
   }
   return 1;
 }
 
-/*
- * Key usage needed for TLS/SSL server: digital signature, encipherment or
- * key agreement. The ssl code can check this more thoroughly for individual
- * key types.
- */
+// Key usage needed for TLS/SSL server: digital signature, encipherment or
+// key agreement. The ssl code can check this more thoroughly for individual
+// key types.
 #define KU_TLS (KU_DIGITAL_SIGNATURE | KU_KEY_ENCIPHERMENT | KU_KEY_AGREEMENT)
 
 static int check_purpose_ssl_server(const X509_PURPOSE *xp, const X509 *x,
@@ -674,21 +666,21 @@ static int check_purpose_ns_ssl_server(const X509_PURPOSE *xp, const X509 *x,
   if (!ret || ca) {
     return ret;
   }
-  /* We need to encipher or Netscape complains */
+  // We need to encipher or Netscape complains
   if (ku_reject(x, KU_KEY_ENCIPHERMENT)) {
     return 0;
   }
   return ret;
 }
 
-/* purpose_smime returns one if |x| is a valid S/MIME leaf (|ca| is zero) or CA
- * (|ca| is one) certificate, and zero otherwise. */
+// purpose_smime returns one if |x| is a valid S/MIME leaf (|ca| is zero) or CA
+// (|ca| is one) certificate, and zero otherwise.
 static int purpose_smime(const X509 *x, int ca) {
   if (xku_reject(x, XKU_SMIME)) {
     return 0;
   }
   if (ca) {
-    /* check nsCertType if present */
+    // check nsCertType if present
     if ((x->ex_flags & EXFLAG_NSCERT) && (x->ex_nscert & NS_SMIME_CA) == 0) {
       return 0;
     }
@@ -738,16 +730,14 @@ static int check_purpose_crl_sign(const X509_PURPOSE *xp, const X509 *x,
   return 1;
 }
 
-/*
- * OCSP helper: this is *not* a full OCSP check. It just checks that each CA
- * is valid. Additional checks must be made on the chain.
- */
+// OCSP helper: this is *not* a full OCSP check. It just checks that each CA
+// is valid. Additional checks must be made on the chain.
 
 static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca) {
   if (ca) {
     return check_ca(x);
   }
-  /* leaf certificate is checked in OCSP_verify() */
+  // leaf certificate is checked in OCSP_verify()
   return 1;
 }
 
@@ -755,29 +745,27 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
                                         int ca) {
   int i_ext;
 
-  /* If ca is true we must return if this is a valid CA certificate. */
+  // If ca is true we must return if this is a valid CA certificate.
   if (ca) {
     return check_ca(x);
   }
 
-  /*
-   * Check the optional key usage field:
-   * if Key Usage is present, it must be one of digitalSignature
-   * and/or nonRepudiation (other values are not consistent and shall
-   * be rejected).
-   */
+  // Check the optional key usage field:
+  // if Key Usage is present, it must be one of digitalSignature
+  // and/or nonRepudiation (other values are not consistent and shall
+  // be rejected).
   if ((x->ex_flags & EXFLAG_KUSAGE) &&
       ((x->ex_kusage & ~(KU_NON_REPUDIATION | KU_DIGITAL_SIGNATURE)) ||
        !(x->ex_kusage & (KU_NON_REPUDIATION | KU_DIGITAL_SIGNATURE)))) {
     return 0;
   }
 
-  /* Only time stamp key usage is permitted and it's required. */
+  // Only time stamp key usage is permitted and it's required.
   if (!(x->ex_flags & EXFLAG_XKUSAGE) || x->ex_xkusage != XKU_TIMESTAMP) {
     return 0;
   }
 
-  /* Extended Key Usage MUST be critical */
+  // Extended Key Usage MUST be critical
   i_ext = X509_get_ext_by_NID((X509 *)x, NID_ext_key_usage, -1);
   if (i_ext >= 0) {
     X509_EXTENSION *ext = X509_get_ext((X509 *)x, i_ext);
@@ -791,15 +779,13 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
 
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca) { return 1; }
 
-/*
- * Various checks to see if one certificate issued the second. This can be
- * used to prune a set of possible issuer certificates which have been looked
- * up using some simple method such as by subject name. These are: 1. Check
- * issuer_name(subject) == subject_name(issuer) 2. If akid(subject) exists
- * check it matches issuer 3. If key_usage(issuer) exists check it supports
- * certificate signing returns 0 for OK, positive for reason for mismatch,
- * reasons match codes for X509_verify_cert()
- */
+// Various checks to see if one certificate issued the second. This can be
+// used to prune a set of possible issuer certificates which have been looked
+// up using some simple method such as by subject name. These are: 1. Check
+// issuer_name(subject) == subject_name(issuer) 2. If akid(subject) exists
+// check it matches issuer 3. If key_usage(issuer) exists check it supports
+// certificate signing returns 0 for OK, positive for reason for mismatch,
+// reasons match codes for X509_verify_cert()
 
 int X509_check_issued(X509 *issuer, X509 *subject) {
   if (X509_NAME_cmp(X509_get_subject_name(issuer),
@@ -832,23 +818,21 @@ int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid) {
     return X509_V_OK;
   }
 
-  /* Check key ids (if present) */
+  // Check key ids (if present)
   if (akid->keyid && issuer->skid &&
       ASN1_OCTET_STRING_cmp(akid->keyid, issuer->skid)) {
     return X509_V_ERR_AKID_SKID_MISMATCH;
   }
-  /* Check serial number */
+  // Check serial number
   if (akid->serial &&
       ASN1_INTEGER_cmp(X509_get_serialNumber(issuer), akid->serial)) {
     return X509_V_ERR_AKID_ISSUER_SERIAL_MISMATCH;
   }
-  /* Check issuer name */
+  // Check issuer name
   if (akid->issuer) {
-    /*
-     * Ugh, for some peculiar reason AKID includes SEQUENCE OF
-     * GeneralName. So look for a DirName. There may be more than one but
-     * we only take any notice of the first.
-     */
+    // Ugh, for some peculiar reason AKID includes SEQUENCE OF
+    // GeneralName. So look for a DirName. There may be more than one but
+    // we only take any notice of the first.
     GENERAL_NAMES *gens;
     GENERAL_NAME *gen;
     X509_NAME *nm = NULL;
@@ -869,8 +853,8 @@ int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid) {
 }
 
 uint32_t X509_get_extension_flags(X509 *x) {
-  /* Ignore the return value. On failure, |x->ex_flags| will include
-   * |EXFLAG_INVALID|. */
+  // Ignore the return value. On failure, |x->ex_flags| will include
+  // |EXFLAG_INVALID|.
   x509v3_cache_extensions(x);
   return x->ex_flags;
 }

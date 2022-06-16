@@ -56,7 +56,7 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #if defined(__linux__) && !defined(_POSIX_C_SOURCE)
-#define _POSIX_C_SOURCE 201410L /* for gmtime_r */
+#define _POSIX_C_SOURCE 201410L  // for gmtime_r
 #endif
 
 #include "internal.h"
@@ -77,7 +77,7 @@ struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result) {
 #endif
 }
 
-/* Convert date to and from julian day Uses Fliegel & Van Flandern algorithm */
+// Convert date to and from julian day Uses Fliegel & Van Flandern algorithm
 static long date_to_julian(int y, int m, int d) {
   return (1461 * (y + 4800 + (m - 14) / 12)) / 4 +
          (367 * (m - 2 - 12 * ((m - 14) / 12))) / 12 -
@@ -99,20 +99,20 @@ static void julian_to_date(long jd, int *y, int *m, int *d) {
   *y = 100 * (n - 49) + i + L;
 }
 
-/* Convert tm structure and offset into julian day and seconds */
+// Convert tm structure and offset into julian day and seconds
 static int julian_adj(const struct tm *tm, int off_day, long offset_sec,
                       long *pday, int *psec) {
   int offset_hms, offset_day;
   long time_jd;
   int time_year, time_month, time_day;
-  /* split offset into days and day seconds */
+  // split offset into days and day seconds
   offset_day = offset_sec / SECS_PER_DAY;
-  /* Avoid sign issues with % operator */
+  // Avoid sign issues with % operator
   offset_hms = offset_sec - (offset_day * SECS_PER_DAY);
   offset_day += off_day;
-  /* Add current time seconds to offset */
+  // Add current time seconds to offset
   offset_hms += tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec;
-  /* Adjust day seconds if overflow */
+  // Adjust day seconds if overflow
   if (offset_hms >= SECS_PER_DAY) {
     offset_day++;
     offset_hms -= SECS_PER_DAY;
@@ -121,7 +121,7 @@ static int julian_adj(const struct tm *tm, int off_day, long offset_sec,
     offset_hms += SECS_PER_DAY;
   }
 
-  /* Convert date of time structure into a Julian day number. */
+  // Convert date of time structure into a Julian day number.
 
   time_year = tm->tm_year + 1900;
   time_month = tm->tm_mon + 1;
@@ -129,7 +129,7 @@ static int julian_adj(const struct tm *tm, int off_day, long offset_sec,
 
   time_jd = date_to_julian(time_year, time_month, time_day);
 
-  /* Work out Julian day of new date */
+  // Work out Julian day of new date
   time_jd += offset_day;
 
   if (time_jd < 0) {
@@ -145,12 +145,12 @@ int OPENSSL_gmtime_adj(struct tm *tm, int off_day, long offset_sec) {
   int time_sec, time_year, time_month, time_day;
   long time_jd;
 
-  /* Convert time and offset into julian day and seconds */
+  // Convert time and offset into julian day and seconds
   if (!julian_adj(tm, off_day, offset_sec, &time_jd, &time_sec)) {
     return 0;
   }
 
-  /* Convert Julian day back to date */
+  // Convert Julian day back to date
 
   julian_to_date(time_jd, &time_year, &time_month, &time_day);
 
@@ -158,7 +158,7 @@ int OPENSSL_gmtime_adj(struct tm *tm, int off_day, long offset_sec) {
     return 0;
   }
 
-  /* Update tm structure */
+  // Update tm structure
 
   tm->tm_year = time_year - 1900;
   tm->tm_mon = time_month - 1;
@@ -185,7 +185,7 @@ int OPENSSL_gmtime_diff(int *out_days, int *out_secs, const struct tm *from,
 
   diff_day = to_jd - from_jd;
   diff_sec = to_sec - from_sec;
-  /* Adjust differences so both positive or both negative */
+  // Adjust differences so both positive or both negative
   if (diff_day > 0 && diff_sec < 0) {
     diff_day--;
     diff_sec += SECS_PER_DAY;

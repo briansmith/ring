@@ -55,10 +55,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-/*
- * This module was send to me my Pat Richards <patr@x509.com> who wrote it.
- * It is under my Copyright with his permission.
- */
+// This module was send to me my Pat Richards <patr@x509.com> who wrote it.
+// It is under my Copyright with his permission.
 
 #include <openssl/asn1t.h>
 #include <openssl/x509.h>

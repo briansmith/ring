@@ -69,14 +69,10 @@
 #include "../x509/internal.h"
 #include "internal.h"
 
-/*
- * Enable this to print out the complete policy tree at various point during
- * evaluation.
- */
+// Enable this to print out the complete policy tree at various point during
+// evaluation.
 
-/*
- * #define OPENSSL_POLICY_DEBUG
- */
+// #define OPENSSL_POLICY_DEBUG
 
 #ifdef OPENSSL_POLICY_DEBUG
 
@@ -133,19 +129,18 @@ static void tree_print(char *str, X509_POLICY_TREE *tree,
 }
 #else
 
-#define tree_print(a, b, c) /* */
+#define tree_print(a, b, c)  //
 
 #endif
 
-/*-
- * Initialize policy tree. Return values:
- *  0 Some internal error occurred.
- * -1 Inconsistent or invalid extensions in certificates.
- *  1 Tree initialized OK.
- *  2 Policy tree is empty.
- *  5 Tree OK and requireExplicitPolicy true.
- *  6 Tree empty and requireExplicitPolicy true.
- */
+//-
+// Initialize policy tree. Return values:
+//  0 Some internal error occurred.
+// -1 Inconsistent or invalid extensions in certificates.
+//  1 Tree initialized OK.
+//  2 Policy tree is empty.
+//  5 Tree OK and requireExplicitPolicy true.
+//  6 Tree empty and requireExplicitPolicy true.
 
 static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
                      unsigned int flags) {
@@ -163,7 +158,7 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
   n = sk_X509_num(certs);
 
 #if 0
-    /* Disable policy mapping for now... */
+    // Disable policy mapping for now...
     flags |= X509_V_FLAG_INHIBIT_MAP;
 #endif
 
@@ -185,33 +180,27 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
     map_skip = n + 1;
   }
 
-  /* Can't do anything with just a trust anchor */
+  // Can't do anything with just a trust anchor
   if (n == 1) {
     return 1;
   }
-  /*
-   * First setup policy cache in all certificates apart from the trust
-   * anchor. Note any bad cache results on the way. Also can calculate
-   * explicit_policy value at this point.
-   */
+  // First setup policy cache in all certificates apart from the trust
+  // anchor. Note any bad cache results on the way. Also can calculate
+  // explicit_policy value at this point.
   for (i = n - 2; i >= 0; i--) {
     x = sk_X509_value(certs, i);
     X509_check_purpose(x, -1, -1);
     cache = policy_cache_set(x);
-    /* If cache NULL something bad happened: return immediately */
+    // If cache NULL something bad happened: return immediately
     if (cache == NULL) {
       return 0;
     }
-    /*
-     * If inconsistent extensions keep a note of it but continue
-     */
+    // If inconsistent extensions keep a note of it but continue
     if (x->ex_flags & EXFLAG_INVALID_POLICY) {
       ret = -1;
     }
-    /*
-     * Otherwise if we have no data (hence no CertificatePolicies) and
-     * haven't already set an inconsistent code note it.
-     */
+    // Otherwise if we have no data (hence no CertificatePolicies) and
+    // haven't already set an inconsistent code note it.
     else if ((ret == 1) && !cache->data) {
       ret = 2;
     }
@@ -233,7 +222,7 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
     return ret;
   }
 
-  /* If we get this far initialize the tree */
+  // If we get this far initialize the tree
 
   tree = OPENSSL_malloc(sizeof(X509_POLICY_TREE));
 
@@ -259,7 +248,7 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
 
   level = tree->levels;
 
-  /* Root data: initialize to anyPolicy */
+  // Root data: initialize to anyPolicy
 
   data = policy_data_new(NULL, OBJ_nid2obj(NID_any_policy), 0);
 
@@ -278,12 +267,10 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
       level->flags |= X509_V_FLAG_INHIBIT_ANY;
     }
 
-    /* Determine inhibit any and inhibit map flags */
+    // Determine inhibit any and inhibit map flags
     if (any_skip == 0) {
-      /*
-       * Any matching allowed if certificate is self issued and not the
-       * last in the chain.
-       */
+      // Any matching allowed if certificate is self issued and not the
+      // last in the chain.
       if (!(x->ex_flags & EXFLAG_SI) || (i == 0)) {
         level->flags |= X509_V_FLAG_INHIBIT_ANY;
       }
@@ -329,7 +316,7 @@ static int tree_link_matching_nodes(X509_POLICY_LEVEL *curr,
   X509_POLICY_NODE *node;
   int matched = 0;
   size_t i;
-  /* Iterate through all in nodes linking matches */
+  // Iterate through all in nodes linking matches
   for (i = 0; i < sk_X509_POLICY_NODE_num(last->nodes); i++) {
     node = sk_X509_POLICY_NODE_value(last->nodes, i);
     if (policy_node_match(last, node, data->valid_policy)) {
@@ -347,10 +334,8 @@ static int tree_link_matching_nodes(X509_POLICY_LEVEL *curr,
   return 1;
 }
 
-/*
- * This corresponds to RFC 3280 6.1.3(d)(1): link any data from
- * CertificatePolicies onto matching parent or anyPolicy if no match.
- */
+// This corresponds to RFC 3280 6.1.3(d)(1): link any data from
+// CertificatePolicies onto matching parent or anyPolicy if no match.
 
 static int tree_link_nodes(X509_POLICY_LEVEL *curr,
                            const X509_POLICY_CACHE *cache) {
@@ -359,20 +344,18 @@ static int tree_link_nodes(X509_POLICY_LEVEL *curr,
 
   for (i = 0; i < sk_X509_POLICY_DATA_num(cache->data); i++) {
     data = sk_X509_POLICY_DATA_value(cache->data, i);
-    /*
-     * If a node is mapped any it doesn't have a corresponding
-     * CertificatePolicies entry. However such an identical node would
-     * be created if anyPolicy matching is enabled because there would be
-     * no match with the parent valid_policy_set. So we create link
-     * because then it will have the mapping flags right and we can prune
-     * it later.
-     */
+    // If a node is mapped any it doesn't have a corresponding
+    // CertificatePolicies entry. However such an identical node would
+    // be created if anyPolicy matching is enabled because there would be
+    // no match with the parent valid_policy_set. So we create link
+    // because then it will have the mapping flags right and we can prune
+    // it later.
 #if 0
         if ((data->flags & POLICY_DATA_FLAG_MAPPED_ANY)
             && !(curr->flags & X509_V_FLAG_INHIBIT_ANY))
             continue;
 #endif
-    /* Look for matching nodes in previous level */
+    // Look for matching nodes in previous level
     if (!tree_link_matching_nodes(curr, data)) {
       return 0;
     }
@@ -380,10 +363,8 @@ static int tree_link_nodes(X509_POLICY_LEVEL *curr,
   return 1;
 }
 
-/*
- * This corresponds to RFC 3280 6.1.3(d)(2): Create new data for any unmatched
- * policies in the parent and link to anyPolicy.
- */
+// This corresponds to RFC 3280 6.1.3(d)(2): Create new data for any unmatched
+// policies in the parent and link to anyPolicy.
 
 static int tree_add_unmatched(X509_POLICY_LEVEL *curr,
                               const X509_POLICY_CACHE *cache,
@@ -393,16 +374,14 @@ static int tree_add_unmatched(X509_POLICY_LEVEL *curr,
   if (id == NULL) {
     id = node->data->valid_policy;
   }
-  /*
-   * Create a new node with qualifiers from anyPolicy and id from unmatched
-   * node.
-   */
+  // Create a new node with qualifiers from anyPolicy and id from unmatched
+  // node.
   data = policy_data_new(NULL, id, node_critical(node));
 
   if (data == NULL) {
     return 0;
   }
-  /* Curr may not have anyPolicy */
+  // Curr may not have anyPolicy
   data->qualifier_set = cache->anyPolicy->qualifier_set;
   data->flags |= POLICY_DATA_FLAG_SHARED_QUALIFIERS;
   if (!level_add_node(curr, data, node, tree)) {
@@ -421,21 +400,21 @@ static int tree_link_unmatched(X509_POLICY_LEVEL *curr,
 
   if ((last->flags & X509_V_FLAG_INHIBIT_MAP) ||
       !(node->data->flags & POLICY_DATA_FLAG_MAPPED)) {
-    /* If no policy mapping: matched if one child present */
+    // If no policy mapping: matched if one child present
     if (node->nchild) {
       return 1;
     }
     if (!tree_add_unmatched(curr, cache, NULL, node, tree)) {
       return 0;
     }
-    /* Add it */
+    // Add it
   } else {
-    /* If mapping: matched if one child per expected policy set */
+    // If mapping: matched if one child per expected policy set
     STACK_OF(ASN1_OBJECT) *expset = node->data->expected_policy_set;
     if ((size_t)node->nchild == sk_ASN1_OBJECT_num(expset)) {
       return 1;
     }
-    /* Locate unmatched nodes */
+    // Locate unmatched nodes
     for (i = 0; i < sk_ASN1_OBJECT_num(expset); i++) {
       ASN1_OBJECT *oid = sk_ASN1_OBJECT_value(expset, i);
       if (level_find_node(curr, node, oid)) {
@@ -454,9 +433,7 @@ static int tree_link_any(X509_POLICY_LEVEL *curr,
                          const X509_POLICY_CACHE *cache,
                          X509_POLICY_TREE *tree) {
   size_t i;
-  /*
-   * X509_POLICY_DATA *data;
-   */
+  // X509_POLICY_DATA *data;
   X509_POLICY_NODE *node;
   X509_POLICY_LEVEL *last = curr - 1;
 
@@ -469,24 +446,20 @@ static int tree_link_any(X509_POLICY_LEVEL *curr,
 
 #if 0
 
-        /*
-         * Skip any node with any children: we only want unmathced nodes.
-         * Note: need something better for policy mapping because each node
-         * may have multiple children
-         */
+        // Skip any node with any children: we only want unmathced nodes.
+        // Note: need something better for policy mapping because each node
+        // may have multiple children
         if (node->nchild)
             continue;
 
-        /*
-         * Create a new node with qualifiers from anyPolicy and id from
-         * unmatched node.
-         */
+        // Create a new node with qualifiers from anyPolicy and id from
+        // unmatched node.
         data = policy_data_new(NULL, node->data->valid_policy,
                                node_critical(node));
 
         if (data == NULL)
             return 0;
-        /* Curr may not have anyPolicy */
+        // Curr may not have anyPolicy
         data->qualifier_set = cache->anyPolicy->qualifier_set;
         data->flags |= POLICY_DATA_FLAG_SHARED_QUALIFIERS;
         if (!level_add_node(curr, data, node, tree)) {
@@ -495,7 +468,7 @@ static int tree_link_any(X509_POLICY_LEVEL *curr,
         }
 #endif
   }
-  /* Finally add link to anyPolicy */
+  // Finally add link to anyPolicy
   if (last->anyPolicy) {
     if (!level_add_node(curr, cache->anyPolicy, last->anyPolicy, NULL)) {
       return 0;
@@ -504,11 +477,9 @@ static int tree_link_any(X509_POLICY_LEVEL *curr,
   return 1;
 }
 
-/*
- * Prune the tree: delete any child mapped child data on the current level
- * then proceed up the tree deleting any data with no children. If we ever
- * have no data on a level we can halt because the tree will be empty.
- */
+// Prune the tree: delete any child mapped child data on the current level
+// then proceed up the tree deleting any data with no children. If we ever
+// have no data on a level we can halt because the tree will be empty.
 
 static int tree_prune(X509_POLICY_TREE *tree, X509_POLICY_LEVEL *curr) {
   STACK_OF(X509_POLICY_NODE) *nodes;
@@ -518,7 +489,7 @@ static int tree_prune(X509_POLICY_TREE *tree, X509_POLICY_LEVEL *curr) {
   if (curr->flags & X509_V_FLAG_INHIBIT_MAP) {
     for (i = sk_X509_POLICY_NODE_num(nodes) - 1; i >= 0; i--) {
       node = sk_X509_POLICY_NODE_value(nodes, i);
-      /* Delete any mapped data: see RFC 3280 XXXX */
+      // Delete any mapped data: see RFC 3280 XXXX
       if (node->data->flags & POLICY_DATA_FLAG_MAP_MASK) {
         node->parent->nchild--;
         OPENSSL_free(node);
@@ -546,7 +517,7 @@ static int tree_prune(X509_POLICY_TREE *tree, X509_POLICY_LEVEL *curr) {
       curr->anyPolicy = NULL;
     }
     if (curr == tree->levels) {
-      /* If we zapped anyPolicy at top then tree is empty */
+      // If we zapped anyPolicy at top then tree is empty
       if (!curr->anyPolicy) {
         return 2;
       }
@@ -575,14 +546,12 @@ static int tree_add_auth_node(STACK_OF(X509_POLICY_NODE) **pnodes,
   return 1;
 }
 
-/*
- * Calculate the authority set based on policy tree. The 'pnodes' parameter
- * is used as a store for the set of policy nodes used to calculate the user
- * set. If the authority set is not anyPolicy then pnodes will just point to
- * the authority set. If however the authority set is anyPolicy then the set
- * of valid policies (other than anyPolicy) is store in pnodes. The return
- * value of '2' is used in this case to indicate that pnodes should be freed.
- */
+// Calculate the authority set based on policy tree. The 'pnodes' parameter
+// is used as a store for the set of policy nodes used to calculate the user
+// set. If the authority set is not anyPolicy then pnodes will just point to
+// the authority set. If however the authority set is anyPolicy then the set
+// of valid policies (other than anyPolicy) is store in pnodes. The return
+// value of '2' is used in this case to indicate that pnodes should be freed.
 
 static int tree_calculate_authority_set(X509_POLICY_TREE *tree,
                                         STACK_OF(X509_POLICY_NODE) **pnodes) {
@@ -593,23 +562,21 @@ static int tree_calculate_authority_set(X509_POLICY_TREE *tree,
   size_t j;
   curr = tree->levels + tree->nlevel - 1;
 
-  /* If last level contains anyPolicy set is anyPolicy */
+  // If last level contains anyPolicy set is anyPolicy
   if (curr->anyPolicy) {
     if (!tree_add_auth_node(&tree->auth_policies, curr->anyPolicy)) {
       return 0;
     }
     addnodes = pnodes;
   } else {
-    /* Add policies to authority set */
+    // Add policies to authority set
     addnodes = &tree->auth_policies;
   }
 
   curr = tree->levels;
   for (i = 1; i < tree->nlevel; i++) {
-    /*
-     * If no anyPolicy node on this this level it can't appear on lower
-     * levels so end search.
-     */
+    // If no anyPolicy node on this this level it can't appear on lower
+    // levels so end search.
     if (!(anyptr = curr->anyPolicy)) {
       break;
     }
@@ -641,10 +608,8 @@ static int tree_calculate_user_set(X509_POLICY_TREE *tree,
   X509_POLICY_NODE *anyPolicy;
   X509_POLICY_DATA *extra;
 
-  /*
-   * Check if anyPolicy present in authority constrained policy set: this
-   * will happen if it is a leaf node.
-   */
+  // Check if anyPolicy present in authority constrained policy set: this
+  // will happen if it is a leaf node.
 
   if (sk_ASN1_OBJECT_num(policy_oids) <= 0) {
     return 1;
@@ -667,10 +632,8 @@ static int tree_calculate_user_set(X509_POLICY_TREE *tree,
       if (!anyPolicy) {
         continue;
       }
-      /*
-       * Create a new node with policy ID from user set and qualifiers
-       * from anyPolicy.
-       */
+      // Create a new node with policy ID from user set and qualifiers
+      // from anyPolicy.
       extra = policy_data_new(NULL, oid, node_critical(anyPolicy));
       if (!extra) {
         return 0;
@@ -755,14 +718,13 @@ void X509_policy_tree_free(X509_POLICY_TREE *tree) {
   OPENSSL_free(tree);
 }
 
-/*-
- * Application policy checking function.
- * Return codes:
- *  0   Internal Error.
- *  1   Successful.
- * -1   One or more certificates contain invalid or inconsistent extensions
- * -2   User constrained policy set empty and requireExplicit true.
- */
+//-
+// Application policy checking function.
+// Return codes:
+//  0   Internal Error.
+//  1   Successful.
+// -1   One or more certificates contain invalid or inconsistent extensions
+// -2   User constrained policy set empty and requireExplicit true.
 
 int X509_policy_check(X509_POLICY_TREE **ptree, int *pexplicit_policy,
                       STACK_OF(X509) *certs, STACK_OF(ASN1_OBJECT) *policy_oids,
@@ -777,41 +739,39 @@ int X509_policy_check(X509_POLICY_TREE **ptree, int *pexplicit_policy,
   ret = tree_init(&tree, certs, flags);
 
   switch (ret) {
-      /* Tree empty requireExplicit False: OK */
+      // Tree empty requireExplicit False: OK
     case 2:
       return 1;
 
-      /* Some internal error */
+      // Some internal error
     case -1:
       return -1;
 
-      /* Some internal error */
+      // Some internal error
     case 0:
       return 0;
 
-      /* Tree empty requireExplicit True: Error */
+      // Tree empty requireExplicit True: Error
 
     case 6:
       *pexplicit_policy = 1;
       return -2;
 
-      /* Tree OK requireExplicit True: OK and continue */
+      // Tree OK requireExplicit True: OK and continue
     case 5:
       *pexplicit_policy = 1;
       break;
 
-      /* Tree OK: continue */
+      // Tree OK: continue
 
     case 1:
       if (!tree) {
-        /*
-         * tree_init() returns success and a null tree
-         * if it's just looking at a trust anchor.
-         * I'm not sure that returning success here is
-         * correct, but I'm sure that reporting this
-         * as an internal error which our caller
-         * interprets as a malloc failure is wrong.
-         */
+        // tree_init() returns success and a null tree
+        // if it's just looking at a trust anchor.
+        // I'm not sure that returning success here is
+        // correct, but I'm sure that reporting this
+        // as an internal error which our caller
+        // interprets as a malloc failure is wrong.
         return 1;
       }
       break;
@@ -828,7 +788,7 @@ int X509_policy_check(X509_POLICY_TREE **ptree, int *pexplicit_policy,
     goto error;
   }
 
-  /* Return value 2 means tree empty */
+  // Return value 2 means tree empty
   if (ret == 2) {
     X509_policy_tree_free(tree);
     if (*pexplicit_policy) {
@@ -838,7 +798,7 @@ int X509_policy_check(X509_POLICY_TREE **ptree, int *pexplicit_policy,
     }
   }
 
-  /* Tree is not empty: continue */
+  // Tree is not empty: continue
 
   calc_ret = tree_calculate_authority_set(tree, &auth_nodes);
 

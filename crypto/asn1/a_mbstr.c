@@ -66,14 +66,12 @@
 #include "../bytestring/internal.h"
 #include "internal.h"
 
-/*
- * These functions take a string in UTF8, ASCII or multibyte form and a mask
- * of permissible ASN1 string types. It then works out the minimal type
- * (using the order Printable < IA5 < T61 < BMP < Universal < UTF8) and
- * creates a string of the correct type with the supplied data. Yes this is
- * horrible: it has to be :-( The 'ncopy' form checks minimum and maximum
- * size limits too.
- */
+// These functions take a string in UTF8, ASCII or multibyte form and a mask
+// of permissible ASN1 string types. It then works out the minimal type
+// (using the order Printable < IA5 < T61 < BMP < Universal < UTF8) and
+// creates a string of the correct type with the supplied data. Yes this is
+// horrible: it has to be :-( The 'ncopy' form checks minimum and maximum
+// size limits too.
 
 int ASN1_mbstring_copy(ASN1_STRING **out, const unsigned char *in, int len,
                        int inform, unsigned long mask) {
@@ -127,7 +125,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
       return -1;
   }
 
-  /* Check |minsize| and |maxsize| and work out the minimal type, if any. */
+  // Check |minsize| and |maxsize| and work out the minimal type, if any.
   CBS cbs;
   CBS_init(&cbs, in, len);
   size_t utf8_len = 0;
@@ -139,17 +137,17 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     }
     if (nchar == 0 && (inform == MBSTRING_BMP || inform == MBSTRING_UNIV) &&
         c == 0xfeff) {
-      /* Reject byte-order mark. We could drop it but that would mean
-       * adding ambiguity around whether a BOM was included or not when
-       * matching strings.
-       *
-       * For a little-endian UCS-2 string, the BOM will appear as 0xfffe
-       * and will be rejected as noncharacter, below. */
+      // Reject byte-order mark. We could drop it but that would mean
+      // adding ambiguity around whether a BOM was included or not when
+      // matching strings.
+      //
+      // For a little-endian UCS-2 string, the BOM will appear as 0xfffe
+      // and will be rejected as noncharacter, below.
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_CHARACTERS);
       return -1;
     }
 
-    /* Update which output formats are still possible. */
+    // Update which output formats are still possible.
     if ((mask & B_ASN1_PRINTABLESTRING) && !asn1_is_printable(c)) {
       mask &= ~B_ASN1_PRINTABLESTRING;
     }
@@ -185,7 +183,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     return -1;
   }
 
-  /* Now work out output format and string type */
+  // Now work out output format and string type
   int (*encode_func)(CBB *, uint32_t) = cbb_add_latin1;
   size_t size_estimate = nchar;
   int outform = MBSTRING_ASC;
@@ -237,7 +235,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     *out = dest;
   }
 
-  /* If both the same type just copy across */
+  // If both the same type just copy across
   if (inform == outform) {
     if (!ASN1_STRING_set(dest, in, len)) {
       OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
@@ -261,8 +259,8 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
   }
   uint8_t *data = NULL;
   size_t data_len;
-  if (/* OpenSSL historically NUL-terminated this value with a single byte,
-       * even for |MBSTRING_BMP| and |MBSTRING_UNIV|. */
+  if (// OpenSSL historically NUL-terminated this value with a single byte,
+      // even for |MBSTRING_BMP| and |MBSTRING_UNIV|.
       !CBB_add_u8(&cbb, 0) || !CBB_finish(&cbb, &data, &data_len) ||
       data_len < 1 || data_len > INT_MAX) {
     OPENSSL_PUT_ERROR(ASN1, ERR_R_INTERNAL_ERROR);
@@ -285,7 +283,7 @@ int asn1_is_printable(uint32_t value) {
   if (value > 0x7f) {
     return 0;
   }
-  /* Note we cannot use |isalnum| because it is locale-dependent. */
+  // Note we cannot use |isalnum| because it is locale-dependent.
   return ('a' <= value && value <= 'z') ||  //
          ('A' <= value && value <= 'Z') ||  //
          ('0' <= value && value <= '9') ||  //

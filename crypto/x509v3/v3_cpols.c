@@ -71,7 +71,7 @@
 
 #include "internal.h"
 
-/* Certificate policies extension support: this one is a bit complex... */
+// Certificate policies extension support: this one is a bit complex...
 
 static int i2r_certpol(const X509V3_EXT_METHOD *method, void *ext, BIO *out,
                        int indent);
@@ -432,7 +432,7 @@ err:
 static int i2r_certpol(const X509V3_EXT_METHOD *method, void *ext, BIO *out,
                        int indent) {
   const STACK_OF(POLICYINFO) *pol = ext;
-  /* First print out the policy OIDs */
+  // First print out the policy OIDs
   for (size_t i = 0; i < sk_POLICYINFO_num(pol); i++) {
     const POLICYINFO *pinfo = sk_POLICYINFO_value(pol, i);
     BIO_printf(out, "%*sPolicy: ", indent, "");

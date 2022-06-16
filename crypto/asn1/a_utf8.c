@@ -61,16 +61,14 @@
 
 #include "internal.h"
 
-/* UTF8 utilities */
+// UTF8 utilities
 
-/*
- * This parses a UTF8 string one character at a time. It is passed a pointer
- * to the string and the length of the string. It sets 'value' to the value
- * of the current character. It returns the number of characters read or a
- * negative error code: -1 = string too short -2 = illegal character -3 =
- * subsequent characters not of the form 10xxxxxx -4 = character encoded
- * incorrectly (not minimal length).
- */
+// This parses a UTF8 string one character at a time. It is passed a pointer
+// to the string and the length of the string. It sets 'value' to the value
+// of the current character. It returns the number of characters read or a
+// negative error code: -1 = string too short -2 = illegal character -3 =
+// subsequent characters not of the form 10xxxxxx -4 = character encoded
+// incorrectly (not minimal length).
 
 int UTF8_getc(const unsigned char *str, int len, uint32_t *val) {
   const unsigned char *p;
@@ -81,7 +79,7 @@ int UTF8_getc(const unsigned char *str, int len, uint32_t *val) {
   }
   p = str;
 
-  /* Check syntax and work out the encoded value (if correct) */
+  // Check syntax and work out the encoded value (if correct)
   if ((*p & 0x80) == 0) {
     value = *p++ & 0x7f;
     ret = 1;
@@ -171,17 +169,15 @@ int UTF8_getc(const unsigned char *str, int len, uint32_t *val) {
   return ret;
 }
 
-/*
- * This takes a character 'value' and writes the UTF8 encoded value in 'str'
- * where 'str' is a buffer containing 'len' characters. Returns the number of
- * characters written or -1 if 'len' is too small. 'str' can be set to NULL
- * in which case it just returns the number of characters. It will need at
- * most 6 characters.
- */
+// This takes a character 'value' and writes the UTF8 encoded value in 'str'
+// where 'str' is a buffer containing 'len' characters. Returns the number of
+// characters written or -1 if 'len' is too small. 'str' can be set to NULL
+// in which case it just returns the number of characters. It will need at
+// most 6 characters.
 
 int UTF8_putc(unsigned char *str, int len, uint32_t value) {
   if (!str) {
-    len = 6; /* Maximum we will need */
+    len = 6;  // Maximum we will need
   } else if (len <= 0) {
     return -1;
   }

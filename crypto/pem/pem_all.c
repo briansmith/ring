@@ -127,12 +127,10 @@ IMPLEMENT_PEM_write(X509_REQ_NEW, X509_REQ, PEM_STRING_X509_REQ_OLD, X509_REQ)
 IMPLEMENT_PEM_rw(X509_CRL, X509_CRL, PEM_STRING_X509_CRL, X509_CRL)
 IMPLEMENT_PEM_rw(PKCS7, PKCS7, PEM_STRING_PKCS7, PKCS7)
 
-/*
- * We treat RSA or DSA private keys as a special case. For private keys we
- * read in an EVP_PKEY structure with PEM_read_bio_PrivateKey() and extract
- * the relevant private key: this means can handle "traditional" and PKCS#8
- * formats transparently.
- */
+// We treat RSA or DSA private keys as a special case. For private keys we
+// read in an EVP_PKEY structure with PEM_read_bio_PrivateKey() and extract
+// the relevant private key: this means can handle "traditional" and PKCS#8
+// formats transparently.
 static RSA *pkey_get_rsa(EVP_PKEY *key, RSA **rsa) {
   RSA *rtmp;
   if (!key) {
@@ -190,7 +188,7 @@ DSA *PEM_read_bio_DSAPrivateKey(BIO *bp, DSA **dsa, pem_password_cb *cb,
                                 void *u) {
   EVP_PKEY *pktmp;
   pktmp = PEM_read_bio_PrivateKey(bp, NULL, cb, u);
-  return pkey_get_dsa(pktmp, dsa); /* will free pktmp */
+  return pkey_get_dsa(pktmp, dsa);  // will free pktmp
 }
 
 IMPLEMENT_PEM_write_cb_const(DSAPrivateKey, DSA, PEM_STRING_DSA, DSAPrivateKey)
@@ -199,7 +197,7 @@ IMPLEMENT_PEM_rw(DSA_PUBKEY, DSA, PEM_STRING_PUBLIC, DSA_PUBKEY)
 DSA *PEM_read_DSAPrivateKey(FILE *fp, DSA **dsa, pem_password_cb *cb, void *u) {
   EVP_PKEY *pktmp;
   pktmp = PEM_read_PrivateKey(fp, NULL, cb, u);
-  return pkey_get_dsa(pktmp, dsa); /* will free pktmp */
+  return pkey_get_dsa(pktmp, dsa);  // will free pktmp
 }
 
 IMPLEMENT_PEM_rw_const(DSAparams, DSA, PEM_STRING_DSAPARAMS, DSAparams)
@@ -225,7 +223,7 @@ EC_KEY *PEM_read_bio_ECPrivateKey(BIO *bp, EC_KEY **key, pem_password_cb *cb,
                                   void *u) {
   EVP_PKEY *pktmp;
   pktmp = PEM_read_bio_PrivateKey(bp, NULL, cb, u);
-  return pkey_get_eckey(pktmp, key); /* will free pktmp */
+  return pkey_get_eckey(pktmp, key);  // will free pktmp
 }
 
 IMPLEMENT_PEM_write_cb(ECPrivateKey, EC_KEY, PEM_STRING_ECPRIVATEKEY,
@@ -236,7 +234,7 @@ EC_KEY *PEM_read_ECPrivateKey(FILE *fp, EC_KEY **eckey, pem_password_cb *cb,
                               void *u) {
   EVP_PKEY *pktmp;
   pktmp = PEM_read_PrivateKey(fp, NULL, cb, u);
-  return pkey_get_eckey(pktmp, eckey); /* will free pktmp */
+  return pkey_get_eckey(pktmp, eckey);  // will free pktmp
 }
 
 

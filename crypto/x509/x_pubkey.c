@@ -70,7 +70,7 @@
 #include "../internal.h"
 #include "internal.h"
 
-/* Minor tweak to operation: free up EVP_PKEY */
+// Minor tweak to operation: free up EVP_PKEY
 static int pubkey_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                      void *exarg) {
   if (operation == ASN1_OP_FREE_POST) {
@@ -122,10 +122,10 @@ error:
   return 0;
 }
 
-/* g_pubkey_lock is used to protect the initialisation of the |pkey| member of
- * |X509_PUBKEY| objects. Really |X509_PUBKEY| should have a |CRYPTO_once_t|
- * inside it for this, but |CRYPTO_once_t| is private and |X509_PUBKEY| is
- * not. */
+// g_pubkey_lock is used to protect the initialisation of the |pkey| member of
+// |X509_PUBKEY| objects. Really |X509_PUBKEY| should have a |CRYPTO_once_t|
+// inside it for this, but |CRYPTO_once_t| is private and |X509_PUBKEY| is
+// not.
 static struct CRYPTO_STATIC_MUTEX g_pubkey_lock = CRYPTO_STATIC_MUTEX_INIT;
 
 EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
@@ -144,7 +144,7 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
 
-  /* Re-encode the |X509_PUBKEY| to DER and parse it. */
+  // Re-encode the |X509_PUBKEY| to DER and parse it.
   int spki_len = i2d_X509_PUBKEY(key, &spki);
   if (spki_len < 0) {
     goto error;
@@ -157,7 +157,7 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
     goto error;
   }
 
-  /* Check to see if another thread set key->pkey first */
+  // Check to see if another thread set key->pkey first
   CRYPTO_STATIC_MUTEX_lock_write(&g_pubkey_lock);
   if (key->pkey) {
     CRYPTO_STATIC_MUTEX_unlock_write(&g_pubkey_lock);
@@ -185,7 +185,7 @@ int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj, int param_type,
   }
 
   ASN1_STRING_set0(pub->public_key, key, key_len);
-  /* Set the number of unused bits to zero. */
+  // Set the number of unused bits to zero.
   pub->public_key->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
   pub->public_key->flags |= ASN1_STRING_FLAG_BITS_LEFT;
   return 1;

@@ -125,13 +125,11 @@ err:
   return NULL;
 }
 
-/*
- * Currently two options: keyid: use the issuers subject keyid, the value
- * 'always' means its is an error if the issuer certificate doesn't have a
- * key id. issuer: use the issuers cert issuer and serial number. The default
- * is to only use this if keyid is not present. With the option 'always' this
- * is always included.
- */
+// Currently two options: keyid: use the issuers subject keyid, the value
+// 'always' means its is an error if the issuer certificate doesn't have a
+// key id. issuer: use the issuers cert issuer and serial number. The default
+// is to only use this if keyid is not present. With the option 'always' this
+// is always included.
 
 static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
                                  X509V3_CTX *ctx,

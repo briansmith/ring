@@ -61,8 +61,8 @@
 #include <openssl/mem.h>
 
 
-/* |X509_R_UNSUPPORTED_ALGORITHM| is no longer emitted, but continue to define
- * it to avoid downstream churn. */
+// |X509_R_UNSUPPORTED_ALGORITHM| is no longer emitted, but continue to define
+// it to avoid downstream churn.
 OPENSSL_DECLARE_ERROR_REASON(X509, UNSUPPORTED_ALGORITHM)
 
 int X509_signature_dump(BIO *bp, const ASN1_STRING *sig, int indent) {

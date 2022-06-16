@@ -65,11 +65,9 @@
 
 #include "internal.h"
 
-/*
- * This is an implementation of the ASN1 Time structure which is: Time ::=
- * CHOICE { utcTime UTCTime, generalTime GeneralizedTime } written by Steve
- * Henson.
- */
+// This is an implementation of the ASN1 Time structure which is: Time ::=
+// CHOICE { utcTime UTCTime, generalTime GeneralizedTime } written by Steve
+// Henson.
 
 IMPLEMENT_ASN1_MSTRING(ASN1_TIME, B_ASN1_TIME)
 
@@ -109,7 +107,7 @@ int ASN1_TIME_check(const ASN1_TIME *t) {
   return 0;
 }
 
-/* Convert an ASN1_TIME structure to GeneralizedTime */
+// Convert an ASN1_TIME structure to GeneralizedTime
 ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(const ASN1_TIME *t,
                                                    ASN1_GENERALIZEDTIME **out) {
   ASN1_GENERALIZEDTIME *ret = NULL;
@@ -128,7 +126,7 @@ ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(const ASN1_TIME *t,
     ret = *out;
   }
 
-  /* If already GeneralizedTime just copy across */
+  // If already GeneralizedTime just copy across
   if (t->type == V_ASN1_GENERALIZEDTIME) {
     if (!ASN1_STRING_set(ret, t->data, t->length)) {
       goto err;
@@ -136,14 +134,14 @@ ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(const ASN1_TIME *t,
     goto done;
   }
 
-  /* grow the string */
+  // grow the string
   if (!ASN1_STRING_set(ret, NULL, t->length + 2)) {
     goto err;
   }
-  /* ASN1_STRING_set() allocated 'len + 1' bytes. */
+  // ASN1_STRING_set() allocated 'len + 1' bytes.
   newlen = t->length + 2 + 1;
   str = (char *)ret->data;
-  /* Work out the century and prepend */
+  // Work out the century and prepend
   if (t->data[0] >= '5') {
     OPENSSL_strlcpy(str, "19", newlen);
   } else {

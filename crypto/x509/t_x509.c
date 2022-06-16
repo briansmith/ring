@@ -139,7 +139,7 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
         goto err;
       }
     } else {
-      ERR_clear_error(); /* Clear |ASN1_INTEGER_get_uint64|'s error. */
+      ERR_clear_error();  // Clear |ASN1_INTEGER_get_uint64|'s error.
       neg = (serial->type == V_ASN1_NEG_INTEGER) ? " (Negative)" : "";
       if (BIO_printf(bp, "\n%12s%s", "", neg) <= 0) {
         goto err;
@@ -276,9 +276,7 @@ int X509_ocspid_print(BIO *bp, X509 *x) {
   int i;
   unsigned char SHA1md[SHA_DIGEST_LENGTH];
 
-  /*
-   * display the hash of the subject as it would appear in OCSP requests
-   */
+  // display the hash of the subject as it would appear in OCSP requests
   if (BIO_printf(bp, "        Subject OCSP hash: ") <= 0) {
     goto err;
   }
@@ -299,9 +297,7 @@ int X509_ocspid_print(BIO *bp, X509 *x) {
   OPENSSL_free(der);
   der = NULL;
 
-  /*
-   * display the hash of the public key as it would appear in OCSP requests
-   */
+  // display the hash of the public key as it would appear in OCSP requests
   if (BIO_printf(bp, "\n        Public key OCSP hash: ") <= 0) {
     goto err;
   }
@@ -335,7 +331,7 @@ int X509_signature_print(BIO *bp, const X509_ALGOR *sigalg,
     return 0;
   }
 
-  /* RSA-PSS signatures have parameters to print. */
+  // RSA-PSS signatures have parameters to print.
   int sig_nid = OBJ_obj2nid(sigalg->algorithm);
   if (sig_nid == NID_rsassaPss &&
       !x509_print_rsa_pss_params(bp, sigalg, 9, 0)) {
@@ -362,7 +358,7 @@ int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase) {
     OPENSSL_free(b);
     return 1;
   }
-  s = b + 1; /* skip the first slash */
+  s = b + 1;  // skip the first slash
 
   c = s;
   for (;;) {
@@ -374,7 +370,7 @@ int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase) {
       if (BIO_write(bp, c, i) != i) {
         goto err;
       }
-      c = s + 1; /* skip following slash */
+      c = s + 1;  // skip following slash
       if (*s != '\0') {
         if (BIO_write(bp, ", ", 2) != 2) {
           goto err;

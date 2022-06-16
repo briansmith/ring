@@ -83,7 +83,7 @@ ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it) {
   return NULL;
 }
 
-/* Allocate an ASN1 structure */
+// Allocate an ASN1 structure
 
 int ASN1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   return asn1_item_ex_combine_new(pval, it, 0);
@@ -235,13 +235,13 @@ static int ASN1_template_new(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
     asn1_template_clear(pval, tt);
     return 1;
   }
-  /* If ANY DEFINED BY nothing to do */
+  // If ANY DEFINED BY nothing to do
 
   if (tt->flags & ASN1_TFLG_ADB_MASK) {
     *pval = NULL;
     return 1;
   }
-  /* If SET OF or SEQUENCE OF, its a STACK */
+  // If SET OF or SEQUENCE OF, its a STACK
   if (tt->flags & ASN1_TFLG_SK_MASK) {
     STACK_OF(ASN1_VALUE) *skval;
     skval = sk_ASN1_VALUE_new_null();
@@ -254,14 +254,14 @@ static int ASN1_template_new(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
     ret = 1;
     goto done;
   }
-  /* Otherwise pass it back to the item routine */
+  // Otherwise pass it back to the item routine
   ret = asn1_item_ex_combine_new(pval, it, tt->flags & ASN1_TFLG_COMBINE);
 done:
   return ret;
 }
 
 static void asn1_template_clear(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
-  /* If ADB or STACK just NULL the field */
+  // If ADB or STACK just NULL the field
   if (tt->flags & (ASN1_TFLG_ADB_MASK | ASN1_TFLG_SK_MASK)) {
     *pval = NULL;
   } else {
@@ -269,10 +269,8 @@ static void asn1_template_clear(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
   }
 }
 
-/*
- * NB: could probably combine most of the real XXX_new() behaviour and junk
- * all the old functions.
- */
+// NB: could probably combine most of the real XXX_new() behaviour and junk
+// all the old functions.
 
 static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   ASN1_TYPE *typ;
@@ -282,8 +280,8 @@ static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
     return 0;
   }
 
-  /* Historically, |it->funcs| for primitive types contained an
-   * |ASN1_PRIMITIVE_FUNCS| table of calbacks. */
+  // Historically, |it->funcs| for primitive types contained an
+  // |ASN1_PRIMITIVE_FUNCS| table of calbacks.
   assert(it->funcs == NULL);
 
   if (it->itype == ASN1_ITYPE_MSTRING) {
@@ -326,8 +324,8 @@ static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
 
 static void asn1_primitive_clear(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   int utype;
-  /* Historically, |it->funcs| for primitive types contained an
-   * |ASN1_PRIMITIVE_FUNCS| table of calbacks. */
+  // Historically, |it->funcs| for primitive types contained an
+  // |ASN1_PRIMITIVE_FUNCS| table of calbacks.
   assert(it == NULL || it->funcs == NULL);
   if (!it || (it->itype == ASN1_ITYPE_MSTRING)) {
     utype = -1;

@@ -60,9 +60,9 @@
 
 #include "internal.h"
 
-/* accessor functions */
+// accessor functions
 
-/* X509_POLICY_TREE stuff */
+// X509_POLICY_TREE stuff
 
 int X509_policy_tree_level_count(const X509_POLICY_TREE *tree) {
   if (!tree) {
@@ -99,7 +99,7 @@ STACK_OF(X509_POLICY_NODE) *X509_policy_tree_get0_user_policies(
   }
 }
 
-/* X509_POLICY_LEVEL stuff */
+// X509_POLICY_LEVEL stuff
 
 int X509_policy_level_node_count(X509_POLICY_LEVEL *level) {
   int n;
@@ -130,7 +130,7 @@ X509_POLICY_NODE *X509_policy_level_get0_node(X509_POLICY_LEVEL *level, int i) {
   return sk_X509_POLICY_NODE_value(level->nodes, i);
 }
 
-/* X509_POLICY_NODE stuff */
+// X509_POLICY_NODE stuff
 
 const ASN1_OBJECT *X509_policy_node_get0_policy(const X509_POLICY_NODE *node) {
   if (!node) {
