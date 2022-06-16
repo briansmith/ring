@@ -88,13 +88,15 @@ int ASN1_GENERALIZEDTIME_set_string(ASN1_GENERALIZEDTIME *s, const char *str) {
   t.data = (unsigned char *)str;
   if (ASN1_GENERALIZEDTIME_check(&t)) {
     if (s != NULL) {
-      if (!ASN1_STRING_set((ASN1_STRING *)s, (unsigned char *)str, t.length))
+      if (!ASN1_STRING_set((ASN1_STRING *)s, (unsigned char *)str, t.length)) {
         return 0;
+      }
       s->type = V_ASN1_GENERALIZEDTIME;
     }
     return (1);
-  } else
+  } else {
     return (0);
+  }
 }
 
 ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_set(ASN1_GENERALIZEDTIME *s,
@@ -111,20 +113,24 @@ ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s,
   size_t len = 20;
   ASN1_GENERALIZEDTIME *tmps = NULL;
 
-  if (s == NULL)
+  if (s == NULL) {
     tmps = ASN1_GENERALIZEDTIME_new();
-  else
+  } else {
     tmps = s;
-  if (tmps == NULL)
+  }
+  if (tmps == NULL) {
     return NULL;
+  }
 
   ts = OPENSSL_gmtime(&t, &data);
-  if (ts == NULL)
+  if (ts == NULL) {
     goto err;
+  }
 
   if (offset_day || offset_sec) {
-    if (!OPENSSL_gmtime_adj(ts, offset_day, offset_sec))
+    if (!OPENSSL_gmtime_adj(ts, offset_day, offset_sec)) {
       goto err;
+    }
   }
 
   if (ts->tm_year < 0 - 1900 || ts->tm_year > 9999 - 1900) {
@@ -150,7 +156,8 @@ ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s,
   tmps->type = V_ASN1_GENERALIZEDTIME;
   return tmps;
 err:
-  if (s == NULL)
+  if (s == NULL) {
     ASN1_GENERALIZEDTIME_free(tmps);
+  }
   return NULL;
 }

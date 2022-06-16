@@ -103,26 +103,31 @@ const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid) {
   const X509V3_EXT_METHOD *t = &tmp, *const * ret;
   size_t idx;
 
-  if (nid < 0)
+  if (nid < 0) {
     return NULL;
+  }
   tmp.ext_nid = nid;
   ret = bsearch(&t, standard_exts, STANDARD_EXTENSION_COUNT,
                 sizeof(X509V3_EXT_METHOD *), ext_cmp);
-  if (ret)
+  if (ret) {
     return *ret;
-  if (!ext_list)
+  }
+  if (!ext_list) {
     return NULL;
+  }
 
   sk_X509V3_EXT_METHOD_sort(ext_list);
-  if (!sk_X509V3_EXT_METHOD_find(ext_list, &idx, &tmp))
+  if (!sk_X509V3_EXT_METHOD_find(ext_list, &idx, &tmp)) {
     return NULL;
+  }
   return sk_X509V3_EXT_METHOD_value(ext_list, idx);
 }
 
 const X509V3_EXT_METHOD *X509V3_EXT_get(const X509_EXTENSION *ext) {
   int nid;
-  if ((nid = OBJ_obj2nid(ext->object)) == NID_undef)
+  if ((nid = OBJ_obj2nid(ext->object)) == NID_undef) {
     return NULL;
+  }
   return X509V3_EXT_get_nid(nid);
 }
 
@@ -133,11 +138,11 @@ int X509V3_EXT_free(int nid, void *ext_data) {
     return 0;
   }
 
-  if (ext_method->it != NULL)
+  if (ext_method->it != NULL) {
     ASN1_item_free(ext_data, ASN1_ITEM_ptr(ext_method->it));
-  else if (ext_method->ext_free != NULL)
+  } else if (ext_method->ext_free != NULL) {
     ext_method->ext_free(ext_data);
-  else {
+  } else {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
     return 0;
   }
@@ -146,9 +151,11 @@ int X509V3_EXT_free(int nid, void *ext_data) {
 }
 
 int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist) {
-  for (; extlist->ext_nid != -1; extlist++)
-    if (!X509V3_EXT_add(extlist))
+  for (; extlist->ext_nid != -1; extlist++) {
+    if (!X509V3_EXT_add(extlist)) {
       return 0;
+    }
+  }
   return 1;
 }
 
@@ -177,8 +184,9 @@ void X509V3_EXT_cleanup(void) {
 }
 
 static void ext_list_free(X509V3_EXT_METHOD *ext) {
-  if (ext->ext_flags & X509V3_EXT_DYNAMIC)
+  if (ext->ext_flags & X509V3_EXT_DYNAMIC) {
     OPENSSL_free(ext);
+  }
 }
 
 /*
@@ -194,8 +202,9 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
   const X509V3_EXT_METHOD *method;
   const unsigned char *p;
 
-  if (!(method = X509V3_EXT_get(ext)))
+  if (!(method = X509V3_EXT_get(ext))) {
     return NULL;
+  }
   p = ext->value->data;
   void *ret;
   if (method->it) {
@@ -226,18 +235,22 @@ void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions, int nid,
   size_t i;
   X509_EXTENSION *ex, *found_ex = NULL;
   if (!extensions) {
-    if (out_idx)
+    if (out_idx) {
       *out_idx = -1;
-    if (out_critical)
+    }
+    if (out_critical) {
       *out_critical = -1;
+    }
     return NULL;
   }
-  if (out_idx)
+  if (out_idx) {
     lastpos = *out_idx + 1;
-  else
+  } else {
     lastpos = 0;
-  if (lastpos < 0)
+  }
+  if (lastpos < 0) {
     lastpos = 0;
+  }
   for (i = lastpos; i < sk_X509_EXTENSION_num(extensions); i++) {
     ex = sk_X509_EXTENSION_value(extensions, i);
     if (OBJ_obj2nid(ex->object) == nid) {
@@ -249,8 +262,9 @@ void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions, int nid,
         break;
       } else if (found_ex) {
         /* Found more than one */
-        if (out_critical)
+        if (out_critical) {
           *out_critical = -2;
+        }
         return NULL;
       }
       found_ex = ex;
@@ -258,16 +272,19 @@ void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *extensions, int nid,
   }
   if (found_ex) {
     /* Found it */
-    if (out_critical)
+    if (out_critical) {
       *out_critical = X509_EXTENSION_get_critical(found_ex);
+    }
     return X509V3_EXT_d2i(found_ex);
   }
 
   /* Extension not found */
-  if (out_idx)
+  if (out_idx) {
     *out_idx = -1;
-  if (out_critical)
+  }
+  if (out_critical) {
     *out_critical = -1;
+  }
   return NULL;
 }
 
@@ -288,14 +305,16 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
    * If appending we don't care if it exists, otherwise look for existing
    * extension.
    */
-  if (ext_op != X509V3_ADD_APPEND)
+  if (ext_op != X509V3_ADD_APPEND) {
     extidx = X509v3_get_ext_by_NID(*x, nid, -1);
+  }
 
   /* See if extension exists */
   if (extidx >= 0) {
     /* If keep existing, nothing to do */
-    if (ext_op == X509V3_ADD_KEEP_EXISTING)
+    if (ext_op == X509V3_ADD_KEEP_EXISTING) {
       return 1;
+    }
     /* If default then its an error */
     if (ext_op == X509V3_ADD_DEFAULT) {
       errcode = X509V3_R_EXTENSION_EXISTS;
@@ -303,8 +322,9 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
     }
     /* If delete, just delete it */
     if (ext_op == X509V3_ADD_DELETE) {
-      if (!sk_X509_EXTENSION_delete(*x, extidx))
+      if (!sk_X509_EXTENSION_delete(*x, extidx)) {
         return -1;
+      }
       return 1;
     }
   } else {
@@ -334,27 +354,32 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
   if (extidx >= 0) {
     extmp = sk_X509_EXTENSION_value(*x, extidx);
     X509_EXTENSION_free(extmp);
-    if (!sk_X509_EXTENSION_set(*x, extidx, ext))
+    if (!sk_X509_EXTENSION_set(*x, extidx, ext)) {
       return -1;
+    }
     return 1;
   }
 
-  if ((ret = *x) == NULL && (ret = sk_X509_EXTENSION_new_null()) == NULL)
+  if ((ret = *x) == NULL && (ret = sk_X509_EXTENSION_new_null()) == NULL) {
     goto m_fail;
-  if (!sk_X509_EXTENSION_push(ret, ext))
+  }
+  if (!sk_X509_EXTENSION_push(ret, ext)) {
     goto m_fail;
+  }
 
   *x = ret;
   return 1;
 
 m_fail:
-  if (ret != *x)
+  if (ret != *x) {
     sk_X509_EXTENSION_free(ret);
+  }
   X509_EXTENSION_free(ext);
   return -1;
 
 err:
-  if (!(flags & X509V3_ADD_SILENT))
+  if (!(flags & X509V3_ADD_SILENT)) {
     OPENSSL_PUT_ERROR(X509V3, errcode);
+  }
   return 0;
 }

@@ -89,8 +89,9 @@ static int crl_inf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                       void *exarg) {
   X509_CRL_INFO *a = (X509_CRL_INFO *)*pval;
 
-  if (!a || !a->revoked)
+  if (!a || !a->revoked) {
     return 1;
+  }
   switch (operation) {
       /*
        * Just set cmp function here. We don't sort because that would
@@ -143,11 +144,13 @@ static int crl_set_issuers(X509_CRL *crl) {
       gens = gtmp;
       if (!crl->issuers) {
         crl->issuers = sk_GENERAL_NAMES_new_null();
-        if (!crl->issuers)
+        if (!crl->issuers) {
           return 0;
+        }
       }
-      if (!sk_GENERAL_NAMES_push(crl->issuers, gtmp))
+      if (!sk_GENERAL_NAMES_push(crl->issuers, gtmp)) {
         return 0;
+      }
     }
     rev->issuer = gens;
 
@@ -160,8 +163,9 @@ static int crl_set_issuers(X509_CRL *crl) {
     if (reason) {
       rev->reason = ASN1_ENUMERATED_get(reason);
       ASN1_ENUMERATED_free(reason);
-    } else
+    } else {
       rev->reason = CRL_REASON_NONE;
+    }
 
     /* Check for critical CRL entry extensions */
 
@@ -171,8 +175,9 @@ static int crl_set_issuers(X509_CRL *crl) {
       ext = sk_X509_EXTENSION_value(exts, k);
       if (X509_EXTENSION_get_critical(ext)) {
         if (OBJ_obj2nid(X509_EXTENSION_get_object(ext)) ==
-            NID_certificate_issuer)
+            NID_certificate_issuer) {
           continue;
+        }
         crl->flags |= EXFLAG_CRITICAL;
         break;
       }
@@ -274,20 +279,23 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
         int nid;
         ext = sk_X509_EXTENSION_value(exts, idx);
         nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
-        if (nid == NID_freshest_crl)
+        if (nid == NID_freshest_crl) {
           crl->flags |= EXFLAG_FRESHEST;
+        }
         if (X509_EXTENSION_get_critical(ext)) {
           /* We handle IDP and deltas */
           if ((nid == NID_issuing_distribution_point) ||
-              (nid == NID_authority_key_identifier) || (nid == NID_delta_crl))
+              (nid == NID_authority_key_identifier) || (nid == NID_delta_crl)) {
             continue;
+          }
           crl->flags |= EXFLAG_CRITICAL;
           break;
         }
       }
 
-      if (!crl_set_issuers(crl))
+      if (!crl_set_issuers(crl)) {
         return 0;
+      }
 
       break;
     }
@@ -322,18 +330,22 @@ static int setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp) {
     crl->idp_flags |= IDP_ONLYATTR;
   }
 
-  if (idp_only > 1)
+  if (idp_only > 1) {
     crl->idp_flags |= IDP_INVALID;
+  }
 
-  if (idp->indirectCRL > 0)
+  if (idp->indirectCRL > 0) {
     crl->idp_flags |= IDP_INDIRECT;
+  }
 
   if (idp->onlysomereasons) {
     crl->idp_flags |= IDP_REASONS;
-    if (idp->onlysomereasons->length > 0)
+    if (idp->onlysomereasons->length > 0) {
       crl->idp_reasons = idp->onlysomereasons->data[0];
-    if (idp->onlysomereasons->length > 1)
+    }
+    if (idp->onlysomereasons->length > 1) {
       crl->idp_reasons |= (idp->onlysomereasons->data[1] << 8);
+    }
     crl->idp_reasons &= CRLDP_ALL_REASONS;
   }
 
@@ -361,8 +373,9 @@ static int X509_REVOKED_cmp(const X509_REVOKED **a, const X509_REVOKED **b) {
 int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev) {
   X509_CRL_INFO *inf;
   inf = crl->crl;
-  if (!inf->revoked)
+  if (!inf->revoked) {
     inf->revoked = sk_X509_REVOKED_new(X509_REVOKED_cmp);
+  }
   if (!inf->revoked || !sk_X509_REVOKED_push(inf->revoked, rev)) {
     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -396,22 +409,27 @@ static int crl_revoked_issuer_match(X509_CRL *crl, X509_NAME *nm,
   size_t i;
 
   if (!rev->issuer) {
-    if (!nm)
+    if (!nm) {
       return 1;
-    if (!X509_NAME_cmp(nm, X509_CRL_get_issuer(crl)))
+    }
+    if (!X509_NAME_cmp(nm, X509_CRL_get_issuer(crl))) {
       return 1;
+    }
     return 0;
   }
 
-  if (!nm)
+  if (!nm) {
     nm = X509_CRL_get_issuer(crl);
+  }
 
   for (i = 0; i < sk_GENERAL_NAME_num(rev->issuer); i++) {
     GENERAL_NAME *gen = sk_GENERAL_NAME_value(rev->issuer, i);
-    if (gen->type != GEN_DIRNAME)
+    if (gen->type != GEN_DIRNAME) {
       continue;
-    if (!X509_NAME_cmp(nm, gen->d.directoryName))
+    }
+    if (!X509_NAME_cmp(nm, gen->d.directoryName)) {
       return 1;
+    }
   }
   return 0;
 }
@@ -440,18 +458,22 @@ static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *serial,
     CRYPTO_STATIC_MUTEX_unlock_write(&g_crl_sort_lock);
   }
 
-  if (!sk_X509_REVOKED_find(crl->crl->revoked, &idx, &rtmp))
+  if (!sk_X509_REVOKED_find(crl->crl->revoked, &idx, &rtmp)) {
     return 0;
+  }
   /* Need to look for matching name */
   for (; idx < sk_X509_REVOKED_num(crl->crl->revoked); idx++) {
     rev = sk_X509_REVOKED_value(crl->crl->revoked, idx);
-    if (ASN1_INTEGER_cmp(rev->serialNumber, serial))
+    if (ASN1_INTEGER_cmp(rev->serialNumber, serial)) {
       return 0;
+    }
     if (crl_revoked_issuer_match(crl, issuer, rev)) {
-      if (ret)
+      if (ret) {
         *ret = rev;
-      if (rev->reason == CRL_REASON_REMOVE_FROM_CRL)
+      }
+      if (rev->reason == CRL_REASON_REMOVE_FROM_CRL) {
         return 2;
+      }
       return 1;
     }
   }

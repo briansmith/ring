@@ -127,8 +127,9 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
   NAME_CONSTRAINTS *ncons = NULL;
   GENERAL_SUBTREE *sub = NULL;
   ncons = NAME_CONSTRAINTS_new();
-  if (!ncons)
+  if (!ncons) {
     goto memerr;
+  }
   for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     val = sk_CONF_VALUE_value(nval, i);
     if (!strncmp(val->name, "permitted", 9) && val->name[9]) {
@@ -143,12 +144,15 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
     }
     tval.value = val->value;
     sub = GENERAL_SUBTREE_new();
-    if (!v2i_GENERAL_NAME_ex(sub->base, method, ctx, &tval, 1))
+    if (!v2i_GENERAL_NAME_ex(sub->base, method, ctx, &tval, 1)) {
       goto err;
-    if (!*ptree)
+    }
+    if (!*ptree) {
       *ptree = sk_GENERAL_SUBTREE_new_null();
-    if (!*ptree || !sk_GENERAL_SUBTREE_push(*ptree, sub))
+    }
+    if (!*ptree || !sk_GENERAL_SUBTREE_push(*ptree, sub)) {
       goto memerr;
+    }
     sub = NULL;
   }
 
@@ -157,10 +161,12 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
 memerr:
   OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 err:
-  if (ncons)
+  if (ncons) {
     NAME_CONSTRAINTS_free(ncons);
-  if (sub)
+  }
+  if (sub) {
     GENERAL_SUBTREE_free(sub);
+  }
 
   return NULL;
 }
@@ -179,15 +185,17 @@ static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
                                    int ind, const char *name) {
   GENERAL_SUBTREE *tree;
   size_t i;
-  if (sk_GENERAL_SUBTREE_num(trees) > 0)
+  if (sk_GENERAL_SUBTREE_num(trees) > 0) {
     BIO_printf(bp, "%*s%s:\n", ind, "", name);
+  }
   for (i = 0; i < sk_GENERAL_SUBTREE_num(trees); i++) {
     tree = sk_GENERAL_SUBTREE_value(trees, i);
     BIO_printf(bp, "%*s", ind + 2, "");
-    if (tree->base->type == GEN_IPADD)
+    if (tree->base->type == GEN_IPADD) {
       print_nc_ipadd(bp, tree->base->d.ip);
-    else
+    } else {
       GENERAL_NAME_print(bp, tree->base);
+    }
     BIO_puts(bp, "\n");
   }
   return 1;
@@ -207,13 +215,15 @@ static int print_nc_ipadd(BIO *bp, ASN1_OCTET_STRING *ip) {
       uint16_t v = ((uint16_t)p[0] << 8) | p[1];
       BIO_printf(bp, "%X", v);
       p += 2;
-      if (i == 7)
+      if (i == 7) {
         BIO_puts(bp, "/");
-      else if (i != 15)
+      } else if (i != 15) {
         BIO_puts(bp, ":");
+      }
     }
-  } else
+  } else {
     BIO_printf(bp, "IP Address:<invalid>");
+  }
   return 1;
 }
 
@@ -260,8 +270,9 @@ int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
 
     r = nc_match(&gntmp, nc);
 
-    if (r != X509_V_OK)
+    if (r != X509_V_OK) {
       return r;
+    }
 
     gntmp.type = GEN_EMAIL;
 
@@ -270,25 +281,29 @@ int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
     for (i = -1;;) {
       X509_NAME_ENTRY *ne;
       i = X509_NAME_get_index_by_NID(nm, NID_pkcs9_emailAddress, i);
-      if (i == -1)
+      if (i == -1) {
         break;
+      }
       ne = X509_NAME_get_entry(nm, i);
       gntmp.d.rfc822Name = X509_NAME_ENTRY_get_data(ne);
-      if (gntmp.d.rfc822Name->type != V_ASN1_IA5STRING)
+      if (gntmp.d.rfc822Name->type != V_ASN1_IA5STRING) {
         return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
+      }
 
       r = nc_match(&gntmp, nc);
 
-      if (r != X509_V_OK)
+      if (r != X509_V_OK) {
         return r;
+      }
     }
   }
 
   for (j = 0; j < sk_GENERAL_NAME_num(x->altname); j++) {
     GENERAL_NAME *gen = sk_GENERAL_NAME_value(x->altname, j);
     r = nc_match(gen, nc);
-    if (r != X509_V_OK)
+    if (r != X509_V_OK) {
       return r;
+    }
   }
 
   return X509_V_OK;
@@ -306,39 +321,48 @@ static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc) {
 
   for (i = 0; i < sk_GENERAL_SUBTREE_num(nc->permittedSubtrees); i++) {
     sub = sk_GENERAL_SUBTREE_value(nc->permittedSubtrees, i);
-    if (gen->type != sub->base->type)
+    if (gen->type != sub->base->type) {
       continue;
-    if (sub->minimum || sub->maximum)
+    }
+    if (sub->minimum || sub->maximum) {
       return X509_V_ERR_SUBTREE_MINMAX;
+    }
     /* If we already have a match don't bother trying any more */
-    if (match == 2)
+    if (match == 2) {
       continue;
-    if (match == 0)
+    }
+    if (match == 0) {
       match = 1;
+    }
     r = nc_match_single(gen, sub->base);
-    if (r == X509_V_OK)
+    if (r == X509_V_OK) {
       match = 2;
-    else if (r != X509_V_ERR_PERMITTED_VIOLATION)
+    } else if (r != X509_V_ERR_PERMITTED_VIOLATION) {
       return r;
+    }
   }
 
-  if (match == 1)
+  if (match == 1) {
     return X509_V_ERR_PERMITTED_VIOLATION;
+  }
 
   /* Excluded subtrees: must not match any of these */
 
   for (i = 0; i < sk_GENERAL_SUBTREE_num(nc->excludedSubtrees); i++) {
     sub = sk_GENERAL_SUBTREE_value(nc->excludedSubtrees, i);
-    if (gen->type != sub->base->type)
+    if (gen->type != sub->base->type) {
       continue;
-    if (sub->minimum || sub->maximum)
+    }
+    if (sub->minimum || sub->maximum) {
       return X509_V_ERR_SUBTREE_MINMAX;
+    }
 
     r = nc_match_single(gen, sub->base);
-    if (r == X509_V_OK)
+    if (r == X509_V_OK) {
       return X509_V_ERR_EXCLUDED_VIOLATION;
-    else if (r != X509_V_ERR_PERMITTED_VIOLATION)
+    } else if (r != X509_V_ERR_PERMITTED_VIOLATION) {
       return r;
+    }
   }
 
   return X509_V_OK;
@@ -372,14 +396,18 @@ static int nc_match_single(GENERAL_NAME *gen, GENERAL_NAME *base) {
 
 static int nc_dn(X509_NAME *nm, X509_NAME *base) {
   /* Ensure canonical encodings are up to date.  */
-  if (nm->modified && i2d_X509_NAME(nm, NULL) < 0)
+  if (nm->modified && i2d_X509_NAME(nm, NULL) < 0) {
     return X509_V_ERR_OUT_OF_MEM;
-  if (base->modified && i2d_X509_NAME(base, NULL) < 0)
+  }
+  if (base->modified && i2d_X509_NAME(base, NULL) < 0) {
     return X509_V_ERR_OUT_OF_MEM;
-  if (base->canon_enclen > nm->canon_enclen)
+  }
+  if (base->canon_enclen > nm->canon_enclen) {
     return X509_V_ERR_PERMITTED_VIOLATION;
-  if (OPENSSL_memcmp(base->canon_enc, nm->canon_enc, base->canon_enclen))
+  }
+  if (OPENSSL_memcmp(base->canon_enc, nm->canon_enc, base->canon_enclen)) {
     return X509_V_ERR_PERMITTED_VIOLATION;
+  }
   return X509_V_OK;
 }
 

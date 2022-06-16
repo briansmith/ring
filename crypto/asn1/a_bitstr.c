@@ -149,10 +149,12 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
   }
 
   if ((a == NULL) || ((*a) == NULL)) {
-    if ((ret = ASN1_BIT_STRING_new()) == NULL)
+    if ((ret = ASN1_BIT_STRING_new()) == NULL) {
       return (NULL);
-  } else
+    }
+  } else {
     ret = (*a);
+  }
 
   p = *pp;
   padding = *(p++);
@@ -191,13 +193,15 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
   OPENSSL_free(ret->data);
   ret->data = s;
   ret->type = V_ASN1_BIT_STRING;
-  if (a != NULL)
+  if (a != NULL) {
     (*a) = ret;
+  }
   *pp = p;
   return (ret);
 err:
-  if ((ret != NULL) && ((a == NULL) || (*a != ret)))
+  if ((ret != NULL) && ((a == NULL) || (*a != ret))) {
     ASN1_BIT_STRING_free(ret);
+  }
   return (NULL);
 }
 
@@ -211,33 +215,39 @@ int ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value) {
   w = n / 8;
   v = 1 << (7 - (n & 0x07));
   iv = ~v;
-  if (!value)
+  if (!value) {
     v = 0;
+  }
 
-  if (a == NULL)
+  if (a == NULL) {
     return 0;
+  }
 
   a->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07); /* clear, set on write */
 
   if ((a->length < (w + 1)) || (a->data == NULL)) {
-    if (!value)
+    if (!value) {
       return (1); /* Don't need to set */
-    if (a->data == NULL)
+    }
+    if (a->data == NULL) {
       c = (unsigned char *)OPENSSL_malloc(w + 1);
-    else
+    } else {
       c = (unsigned char *)OPENSSL_realloc(a->data, w + 1);
+    }
     if (c == NULL) {
       OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       return 0;
     }
-    if (w + 1 - a->length > 0)
+    if (w + 1 - a->length > 0) {
       OPENSSL_memset(c + a->length, 0, w + 1 - a->length);
+    }
     a->data = c;
     a->length = w + 1;
   }
   a->data[w] = ((a->data[w]) & iv) | v;
-  while ((a->length > 0) && (a->data[a->length - 1] == 0))
+  while ((a->length > 0) && (a->data[a->length - 1] == 0)) {
     a->length--;
+  }
   return (1);
 }
 
@@ -246,8 +256,9 @@ int ASN1_BIT_STRING_get_bit(const ASN1_BIT_STRING *a, int n) {
 
   w = n / 8;
   v = 1 << (7 - (n & 0x07));
-  if ((a == NULL) || (a->length < (w + 1)) || (a->data == NULL))
+  if ((a == NULL) || (a->length < (w + 1)) || (a->data == NULL)) {
     return (0);
+  }
   return ((a->data[w] & v) != 0);
 }
 
@@ -261,8 +272,9 @@ int ASN1_BIT_STRING_check(const ASN1_BIT_STRING *a, const unsigned char *flags,
                           int flags_len) {
   int i, ok;
   /* Check if there is one bit set at all. */
-  if (!a || !a->data)
+  if (!a || !a->data) {
     return 1;
+  }
 
   /*
    * Check each byte of the internal representation of the bit string.

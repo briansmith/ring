@@ -88,13 +88,15 @@ int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str) {
   t.data = (unsigned char *)str;
   if (ASN1_UTCTIME_check(&t)) {
     if (s != NULL) {
-      if (!ASN1_STRING_set((ASN1_STRING *)s, (unsigned char *)str, t.length))
+      if (!ASN1_STRING_set((ASN1_STRING *)s, (unsigned char *)str, t.length)) {
         return 0;
+      }
       s->type = V_ASN1_UTCTIME;
     }
     return (1);
-  } else
+  } else {
     return (0);
+  }
 }
 
 ASN1_UTCTIME *ASN1_UTCTIME_set(ASN1_UTCTIME *s, time_t t) {
@@ -113,20 +115,24 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t, int offset_day,
     free_s = 1;
     s = ASN1_UTCTIME_new();
   }
-  if (s == NULL)
+  if (s == NULL) {
     goto err;
-
-  ts = OPENSSL_gmtime(&t, &data);
-  if (ts == NULL)
-    goto err;
-
-  if (offset_day || offset_sec) {
-    if (!OPENSSL_gmtime_adj(ts, offset_day, offset_sec))
-      goto err;
   }
 
-  if ((ts->tm_year < 50) || (ts->tm_year >= 150))
+  ts = OPENSSL_gmtime(&t, &data);
+  if (ts == NULL) {
     goto err;
+  }
+
+  if (offset_day || offset_sec) {
+    if (!OPENSSL_gmtime_adj(ts, offset_day, offset_sec)) {
+      goto err;
+    }
+  }
+
+  if ((ts->tm_year < 50) || (ts->tm_year >= 150)) {
+    goto err;
+  }
 
   p = (char *)s->data;
   if ((p == NULL) || ((size_t)s->length < len)) {
@@ -135,8 +141,9 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t, int offset_day,
       OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    if (s->data != NULL)
+    if (s->data != NULL) {
       OPENSSL_free(s->data);
+    }
     s->data = (unsigned char *)p;
   }
 
@@ -147,8 +154,9 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t, int offset_day,
   s->type = V_ASN1_UTCTIME;
   return (s);
 err:
-  if (free_s && s)
+  if (free_s && s) {
     ASN1_UTCTIME_free(s);
+  }
   return NULL;
 }
 
@@ -156,22 +164,29 @@ int ASN1_UTCTIME_cmp_time_t(const ASN1_UTCTIME *s, time_t t) {
   struct tm stm, ttm;
   int day, sec;
 
-  if (!asn1_utctime_to_tm(&stm, s))
+  if (!asn1_utctime_to_tm(&stm, s)) {
     return -2;
+  }
 
-  if (!OPENSSL_gmtime(&t, &ttm))
+  if (!OPENSSL_gmtime(&t, &ttm)) {
     return -2;
+  }
 
-  if (!OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm))
+  if (!OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm)) {
     return -2;
+  }
 
-  if (day > 0)
+  if (day > 0) {
     return 1;
-  if (day < 0)
+  }
+  if (day < 0) {
     return -1;
-  if (sec > 0)
+  }
+  if (sec > 0) {
     return 1;
-  if (sec < 0)
+  }
+  if (sec < 0) {
     return -1;
+  }
   return 0;
 }

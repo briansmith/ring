@@ -100,8 +100,9 @@ int X509_set_version(X509 *x, long version) {
 int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
   ASN1_INTEGER *in;
 
-  if (x == NULL)
+  if (x == NULL) {
     return (0);
+  }
   in = x->cert_info->serialNumber;
   if (in != serial) {
     in = ASN1_INTEGER_dup(serial);
@@ -114,22 +115,25 @@ int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
 }
 
 int X509_set_issuer_name(X509 *x, X509_NAME *name) {
-  if ((x == NULL) || (x->cert_info == NULL))
+  if ((x == NULL) || (x->cert_info == NULL)) {
     return (0);
+  }
   return (X509_NAME_set(&x->cert_info->issuer, name));
 }
 
 int X509_set_subject_name(X509 *x, X509_NAME *name) {
-  if ((x == NULL) || (x->cert_info == NULL))
+  if ((x == NULL) || (x->cert_info == NULL)) {
     return (0);
+  }
   return (X509_NAME_set(&x->cert_info->subject, name));
 }
 
 int X509_set1_notBefore(X509 *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
-  if ((x == NULL) || (x->cert_info->validity == NULL))
+  if ((x == NULL) || (x->cert_info->validity == NULL)) {
     return (0);
+  }
   in = x->cert_info->validity->notBefore;
   if (in != tm) {
     in = ASN1_STRING_dup(tm);
@@ -166,8 +170,9 @@ ASN1_TIME *X509_get_notBefore(const X509 *x509) {
 int X509_set1_notAfter(X509 *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
-  if ((x == NULL) || (x->cert_info->validity == NULL))
+  if ((x == NULL) || (x->cert_info->validity == NULL)) {
     return (0);
+  }
   in = x->cert_info->validity->notAfter;
   if (in != tm) {
     in = ASN1_STRING_dup(tm);
@@ -212,8 +217,9 @@ void X509_get0_uids(const X509 *x509, const ASN1_BIT_STRING **out_issuer_uid,
 }
 
 int X509_set_pubkey(X509 *x, EVP_PKEY *pkey) {
-  if ((x == NULL) || (x->cert_info == NULL))
+  if ((x == NULL) || (x->cert_info == NULL)) {
     return (0);
+  }
   return (X509_PUBKEY_set(&(x->cert_info->key), pkey));
 }
 

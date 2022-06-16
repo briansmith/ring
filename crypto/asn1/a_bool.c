@@ -64,8 +64,9 @@ int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **pp) {
   unsigned char *p, *allocated = NULL;
 
   r = ASN1_object_size(0, 1, V_ASN1_BOOLEAN);
-  if (pp == NULL)
+  if (pp == NULL) {
     return (r);
+  }
 
   if (*pp == NULL) {
     if ((p = allocated = OPENSSL_malloc(r)) == NULL) {

@@ -75,12 +75,14 @@ void *PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name, BIO *bp, void **x,
   long len;
   char *ret = NULL;
 
-  if (!PEM_bytes_read_bio(&data, &len, NULL, name, bp, cb, u))
+  if (!PEM_bytes_read_bio(&data, &len, NULL, name, bp, cb, u)) {
     return NULL;
+  }
   p = data;
   ret = d2i(x, &p, len);
-  if (ret == NULL)
+  if (ret == NULL) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
+  }
   OPENSSL_free(data);
   return ret;
 }

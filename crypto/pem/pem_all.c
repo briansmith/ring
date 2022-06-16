@@ -135,12 +135,14 @@ IMPLEMENT_PEM_rw(PKCS7, PKCS7, PEM_STRING_PKCS7, PKCS7)
  */
 static RSA *pkey_get_rsa(EVP_PKEY *key, RSA **rsa) {
   RSA *rtmp;
-  if (!key)
+  if (!key) {
     return NULL;
+  }
   rtmp = EVP_PKEY_get1_RSA(key);
   EVP_PKEY_free(key);
-  if (!rtmp)
+  if (!rtmp) {
     return NULL;
+  }
   if (rsa) {
     RSA_free(*rsa);
     *rsa = rtmp;
@@ -169,12 +171,14 @@ IMPLEMENT_PEM_rw(RSA_PUBKEY, RSA, PEM_STRING_PUBLIC, RSA_PUBKEY)
 #ifndef OPENSSL_NO_DSA
 static DSA *pkey_get_dsa(EVP_PKEY *key, DSA **dsa) {
   DSA *dtmp;
-  if (!key)
+  if (!key) {
     return NULL;
+  }
   dtmp = EVP_PKEY_get1_DSA(key);
   EVP_PKEY_free(key);
-  if (!dtmp)
+  if (!dtmp) {
     return NULL;
+  }
   if (dsa) {
     DSA_free(*dsa);
     *dsa = dtmp;
@@ -202,12 +206,14 @@ IMPLEMENT_PEM_rw_const(DSAparams, DSA, PEM_STRING_DSAPARAMS, DSAparams)
 #endif
 static EC_KEY *pkey_get_eckey(EVP_PKEY *key, EC_KEY **eckey) {
   EC_KEY *dtmp;
-  if (!key)
+  if (!key) {
     return NULL;
+  }
   dtmp = EVP_PKEY_get1_EC_KEY(key);
   EVP_PKEY_free(key);
-  if (!dtmp)
+  if (!dtmp) {
     return NULL;
+  }
   if (eckey) {
     EC_KEY_free(*eckey);
     *eckey = dtmp;

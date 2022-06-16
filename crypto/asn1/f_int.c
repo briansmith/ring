@@ -63,30 +63,35 @@ int i2a_ASN1_INTEGER(BIO *bp, const ASN1_INTEGER *a) {
   static const char *h = "0123456789ABCDEF";
   char buf[2];
 
-  if (a == NULL)
+  if (a == NULL) {
     return (0);
+  }
 
   if (a->type & V_ASN1_NEG) {
-    if (BIO_write(bp, "-", 1) != 1)
+    if (BIO_write(bp, "-", 1) != 1) {
       goto err;
+    }
     n = 1;
   }
 
   if (a->length == 0) {
-    if (BIO_write(bp, "00", 2) != 2)
+    if (BIO_write(bp, "00", 2) != 2) {
       goto err;
+    }
     n += 2;
   } else {
     for (i = 0; i < a->length; i++) {
       if ((i != 0) && (i % 35 == 0)) {
-        if (BIO_write(bp, "\\\n", 2) != 2)
+        if (BIO_write(bp, "\\\n", 2) != 2) {
           goto err;
+        }
         n += 2;
       }
       buf[0] = h[((unsigned char)a->data[i] >> 4) & 0x0f];
       buf[1] = h[((unsigned char)a->data[i]) & 0x0f];
-      if (BIO_write(bp, buf, 2) != 2)
+      if (BIO_write(bp, buf, 2) != 2) {
         goto err;
+      }
       n += 2;
     }
   }

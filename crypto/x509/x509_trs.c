@@ -106,34 +106,40 @@ static int tr_cmp(const X509_TRUST **a, const X509_TRUST **b) {
 int X509_check_trust(X509 *x, int id, int flags) {
   X509_TRUST *pt;
   int idx;
-  if (id == -1)
+  if (id == -1) {
     return 1;
+  }
   /* We get this as a default value */
   if (id == 0) {
     int rv;
     rv = obj_trust(NID_anyExtendedKeyUsage, x, 0);
-    if (rv != X509_TRUST_UNTRUSTED)
+    if (rv != X509_TRUST_UNTRUSTED) {
       return rv;
+    }
     return trust_compat(NULL, x, 0);
   }
   idx = X509_TRUST_get_by_id(id);
-  if (idx == -1)
+  if (idx == -1) {
     return obj_trust(id, x, flags);
+  }
   pt = X509_TRUST_get0(idx);
   return pt->check_trust(pt, x, flags);
 }
 
 int X509_TRUST_get_count(void) {
-  if (!trtable)
+  if (!trtable) {
     return X509_TRUST_COUNT;
+  }
   return sk_X509_TRUST_num(trtable) + X509_TRUST_COUNT;
 }
 
 X509_TRUST *X509_TRUST_get0(int idx) {
-  if (idx < 0)
+  if (idx < 0) {
     return NULL;
-  if (idx < (int)X509_TRUST_COUNT)
+  }
+  if (idx < (int)X509_TRUST_COUNT) {
     return trstandard + idx;
+  }
   return sk_X509_TRUST_value(trtable, idx - X509_TRUST_COUNT);
 }
 
@@ -141,11 +147,13 @@ int X509_TRUST_get_by_id(int id) {
   X509_TRUST tmp;
   size_t idx;
 
-  if ((id >= X509_TRUST_MIN) && (id <= X509_TRUST_MAX))
+  if ((id >= X509_TRUST_MIN) && (id <= X509_TRUST_MAX)) {
     return id - X509_TRUST_MIN;
+  }
   tmp.trust = id;
-  if (!trtable)
+  if (!trtable) {
     return -1;
+  }
   sk_X509_TRUST_sort(trtable);
   if (!sk_X509_TRUST_find(trtable, &idx, &tmp)) {
     return -1;
@@ -183,21 +191,24 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
       return 0;
     }
     trtmp->flags = X509_TRUST_DYNAMIC;
-  } else
+  } else {
     trtmp = X509_TRUST_get0(idx);
+  }
 
   /* Duplicate the supplied name. */
   name_dup = OPENSSL_strdup(name);
   if (name_dup == NULL) {
     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-    if (idx == -1)
+    if (idx == -1) {
       OPENSSL_free(trtmp);
+    }
     return 0;
   }
 
   /* OPENSSL_free existing name if dynamic */
-  if (trtmp->flags & X509_TRUST_DYNAMIC_NAME)
+  if (trtmp->flags & X509_TRUST_DYNAMIC_NAME) {
     OPENSSL_free(trtmp->name);
+  }
   trtmp->name = name_dup;
   /* Keep the dynamic flag of existing entry */
   trtmp->flags &= X509_TRUST_DYNAMIC;
@@ -226,19 +237,22 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
 }
 
 static void trtable_free(X509_TRUST *p) {
-  if (!p)
+  if (!p) {
     return;
+  }
   if (p->flags & X509_TRUST_DYNAMIC) {
-    if (p->flags & X509_TRUST_DYNAMIC_NAME)
+    if (p->flags & X509_TRUST_DYNAMIC_NAME) {
       OPENSSL_free(p->name);
+    }
     OPENSSL_free(p);
   }
 }
 
 void X509_TRUST_cleanup(void) {
   unsigned int i;
-  for (i = 0; i < X509_TRUST_COUNT; i++)
+  for (i = 0; i < X509_TRUST_COUNT; i++) {
     trtable_free(trstandard + i);
+  }
   sk_X509_TRUST_pop_free(trtable, trtable_free);
   trtable = NULL;
 }
@@ -250,8 +264,9 @@ char *X509_TRUST_get0_name(const X509_TRUST *xp) { return xp->name; }
 int X509_TRUST_get_trust(const X509_TRUST *xp) { return xp->trust; }
 
 static int trust_1oidany(X509_TRUST *trust, X509 *x, int flags) {
-  if (x->aux && (x->aux->trust || x->aux->reject))
+  if (x->aux && (x->aux->trust || x->aux->reject)) {
     return obj_trust(trust->arg1, x, flags);
+  }
   /*
    * we don't have any trust settings: for compatibility we return trusted
    * if it is self signed
@@ -260,18 +275,21 @@ static int trust_1oidany(X509_TRUST *trust, X509 *x, int flags) {
 }
 
 static int trust_1oid(X509_TRUST *trust, X509 *x, int flags) {
-  if (x->aux)
+  if (x->aux) {
     return obj_trust(trust->arg1, x, flags);
+  }
   return X509_TRUST_UNTRUSTED;
 }
 
 static int trust_compat(X509_TRUST *trust, X509 *x, int flags) {
-  if (!x509v3_cache_extensions(x))
+  if (!x509v3_cache_extensions(x)) {
     return X509_TRUST_UNTRUSTED;
-  if (x->ex_flags & EXFLAG_SS)
+  }
+  if (x->ex_flags & EXFLAG_SS) {
     return X509_TRUST_TRUSTED;
-  else
+  } else {
     return X509_TRUST_UNTRUSTED;
+  }
 }
 
 static int obj_trust(int id, X509 *x, int flags) {
@@ -279,20 +297,23 @@ static int obj_trust(int id, X509 *x, int flags) {
   size_t i;
   X509_CERT_AUX *ax;
   ax = x->aux;
-  if (!ax)
+  if (!ax) {
     return X509_TRUST_UNTRUSTED;
+  }
   if (ax->reject) {
     for (i = 0; i < sk_ASN1_OBJECT_num(ax->reject); i++) {
       obj = sk_ASN1_OBJECT_value(ax->reject, i);
-      if (OBJ_obj2nid(obj) == id)
+      if (OBJ_obj2nid(obj) == id) {
         return X509_TRUST_REJECTED;
+      }
     }
   }
   if (ax->trust) {
     for (i = 0; i < sk_ASN1_OBJECT_num(ax->trust); i++) {
       obj = sk_ASN1_OBJECT_value(ax->trust, i);
-      if (OBJ_obj2nid(obj) == id)
+      if (OBJ_obj2nid(obj) == id) {
         return X509_TRUST_TRUSTED;
+      }
     }
   }
   return X509_TRUST_UNTRUSTED;

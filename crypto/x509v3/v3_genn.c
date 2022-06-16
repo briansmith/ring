@@ -124,8 +124,9 @@ static int edipartyname_cmp(const EDIPARTYNAME *a, const EDIPARTYNAME *b) {
 
 /* Returns 0 if they are equal, != 0 otherwise. */
 int GENERAL_NAME_cmp(const GENERAL_NAME *a, const GENERAL_NAME *b) {
-  if (!a || !b || a->type != b->type)
+  if (!a || !b || a->type != b->type) {
     return -1;
+  }
 
   switch (a->type) {
     case GEN_X400:
@@ -159,11 +160,13 @@ int GENERAL_NAME_cmp(const GENERAL_NAME *a, const GENERAL_NAME *b) {
 int OTHERNAME_cmp(OTHERNAME *a, OTHERNAME *b) {
   int result = -1;
 
-  if (!a || !b)
+  if (!a || !b) {
     return -1;
+  }
   /* Check their type first. */
-  if ((result = OBJ_cmp(a->type_id, b->type_id)) != 0)
+  if ((result = OBJ_cmp(a->type_id, b->type_id)) != 0) {
     return result;
+  }
   /* Check the value. */
   result = ASN1_TYPE_cmp(a->value, b->value);
   return result;
@@ -205,8 +208,9 @@ void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value) {
 }
 
 void *GENERAL_NAME_get0_value(const GENERAL_NAME *a, int *ptype) {
-  if (ptype)
+  if (ptype) {
     *ptype = a->type;
+  }
   switch (a->type) {
     case GEN_X400:
       return a->d.x400Address;
@@ -240,8 +244,9 @@ int GENERAL_NAME_set0_othername(GENERAL_NAME *gen, ASN1_OBJECT *oid,
                                 ASN1_TYPE *value) {
   OTHERNAME *oth;
   oth = OTHERNAME_new();
-  if (!oth)
+  if (!oth) {
     return 0;
+  }
   ASN1_TYPE_free(oth->value);
   oth->type_id = oid;
   oth->value = value;
@@ -251,11 +256,14 @@ int GENERAL_NAME_set0_othername(GENERAL_NAME *gen, ASN1_OBJECT *oid,
 
 int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen, ASN1_OBJECT **poid,
                                 ASN1_TYPE **pvalue) {
-  if (gen->type != GEN_OTHERNAME)
+  if (gen->type != GEN_OTHERNAME) {
     return 0;
-  if (poid)
+  }
+  if (poid) {
     *poid = gen->d.otherName->type_id;
-  if (pvalue)
+  }
+  if (pvalue) {
     *pvalue = gen->d.otherName->value;
+  }
   return 1;
 }

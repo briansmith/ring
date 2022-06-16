@@ -92,10 +92,12 @@ const char *ASN1_tag2str(int tag) {
       "BMPSTRING",
   };
 
-  if ((tag == V_ASN1_NEG_INTEGER) || (tag == V_ASN1_NEG_ENUMERATED))
+  if ((tag == V_ASN1_NEG_INTEGER) || (tag == V_ASN1_NEG_ENUMERATED)) {
     tag &= ~V_ASN1_NEG;
+  }
 
-  if (tag < 0 || tag > 30)
+  if (tag < 0 || tag > 30) {
     return "(unknown)";
+  }
   return tag2str[tag];
 }

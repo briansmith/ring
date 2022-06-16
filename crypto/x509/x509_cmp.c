@@ -78,8 +78,9 @@ int X509_issuer_and_serial_cmp(const X509 *a, const X509 *b) {
   ai = a->cert_info;
   bi = b->cert_info;
   i = ASN1_INTEGER_cmp(ai->serialNumber, bi->serialNumber);
-  if (i)
+  if (i) {
     return (i);
+  }
   return (X509_NAME_cmp(ai->issuer, bi->issuer));
 }
 
@@ -161,20 +162,23 @@ int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b) {
 
   if (!a->canon_enc || a->modified) {
     ret = i2d_X509_NAME((X509_NAME *)a, NULL);
-    if (ret < 0)
+    if (ret < 0) {
       return -2;
+    }
   }
 
   if (!b->canon_enc || b->modified) {
     ret = i2d_X509_NAME((X509_NAME *)b, NULL);
-    if (ret < 0)
+    if (ret < 0) {
       return -2;
+    }
   }
 
   ret = a->canon_enclen - b->canon_enclen;
 
-  if (ret)
+  if (ret) {
     return ret;
+  }
 
   return OPENSSL_memcmp(a->canon_enc, b->canon_enc, a->canon_enclen);
 }
@@ -185,8 +189,9 @@ unsigned long X509_NAME_hash(X509_NAME *x) {
 
   /* Make sure X509_NAME structure contains valid cached encoding */
   i2d_X509_NAME(x, NULL);
-  if (!EVP_Digest(x->canon_enc, x->canon_enclen, md, NULL, EVP_sha1(), NULL))
+  if (!EVP_Digest(x->canon_enc, x->canon_enclen, md, NULL, EVP_sha1(), NULL)) {
     return 0;
+  }
 
   ret = (((unsigned long)md[0]) | ((unsigned long)md[1] << 8L) |
          ((unsigned long)md[2] << 16L) | ((unsigned long)md[3] << 24L)) &
@@ -210,10 +215,11 @@ unsigned long X509_NAME_hash_old(X509_NAME *x) {
   /* EVP_MD_CTX_set_flags(&md_ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); */
   if (EVP_DigestInit_ex(&md_ctx, EVP_md5(), NULL) &&
       EVP_DigestUpdate(&md_ctx, x->bytes->data, x->bytes->length) &&
-      EVP_DigestFinal_ex(&md_ctx, md, NULL))
+      EVP_DigestFinal_ex(&md_ctx, md, NULL)) {
     ret = (((unsigned long)md[0]) | ((unsigned long)md[1] << 8L) |
            ((unsigned long)md[2] << 16L) | ((unsigned long)md[3] << 24L)) &
           0xffffffffL;
+  }
   EVP_MD_CTX_cleanup(&md_ctx);
 
   return (ret);
@@ -226,8 +232,9 @@ X509 *X509_find_by_issuer_and_serial(STACK_OF(X509) *sk, X509_NAME *name,
   X509_CINF cinf;
   X509 x, *x509 = NULL;
 
-  if (!sk)
+  if (!sk) {
     return NULL;
+  }
 
   x.cert_info = &cinf;
   cinf.serialNumber = serial;
@@ -235,8 +242,9 @@ X509 *X509_find_by_issuer_and_serial(STACK_OF(X509) *sk, X509_NAME *name,
 
   for (i = 0; i < sk_X509_num(sk); i++) {
     x509 = sk_X509_value(sk, i);
-    if (X509_issuer_and_serial_cmp(x509, &x) == 0)
+    if (X509_issuer_and_serial_cmp(x509, &x) == 0) {
       return (x509);
+    }
   }
   return (NULL);
 }
@@ -247,21 +255,24 @@ X509 *X509_find_by_subject(STACK_OF(X509) *sk, X509_NAME *name) {
 
   for (i = 0; i < sk_X509_num(sk); i++) {
     x509 = sk_X509_value(sk, i);
-    if (X509_NAME_cmp(X509_get_subject_name(x509), name) == 0)
+    if (X509_NAME_cmp(X509_get_subject_name(x509), name) == 0) {
       return (x509);
+    }
   }
   return (NULL);
 }
 
 EVP_PKEY *X509_get_pubkey(X509 *x) {
-  if ((x == NULL) || (x->cert_info == NULL))
+  if ((x == NULL) || (x->cert_info == NULL)) {
     return (NULL);
+  }
   return (X509_PUBKEY_get(x->cert_info->key));
 }
 
 ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x) {
-  if (!x)
+  if (!x) {
     return NULL;
+  }
   return x->cert_info->key->public_key;
 }
 
@@ -271,10 +282,11 @@ int X509_check_private_key(X509 *x, const EVP_PKEY *k) {
 
   xk = X509_get_pubkey(x);
 
-  if (xk)
+  if (xk) {
     ret = EVP_PKEY_cmp(xk, k);
-  else
+  } else {
     ret = -2;
+  }
 
   switch (ret) {
     case 1:
@@ -288,10 +300,12 @@ int X509_check_private_key(X509 *x, const EVP_PKEY *k) {
     case -2:
       OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
   }
-  if (xk)
+  if (xk) {
     EVP_PKEY_free(xk);
-  if (ret > 0)
+  }
+  if (ret > 0) {
     return 1;
+  }
   return 0;
 }
 
@@ -304,29 +318,36 @@ int X509_check_private_key(X509 *x, const EVP_PKEY *k) {
 static int check_suite_b(EVP_PKEY *pkey, int sign_nid, unsigned long *pflags) {
   const EC_GROUP *grp = NULL;
   int curve_nid;
-  if (pkey && pkey->type == EVP_PKEY_EC)
+  if (pkey && pkey->type == EVP_PKEY_EC) {
     grp = EC_KEY_get0_group(pkey->pkey.ec);
-  if (!grp)
+  }
+  if (!grp) {
     return X509_V_ERR_SUITE_B_INVALID_ALGORITHM;
+  }
   curve_nid = EC_GROUP_get_curve_name(grp);
   /* Check curve is consistent with LOS */
   if (curve_nid == NID_secp384r1) { /* P-384 */
     /*
      * Check signature algorithm is consistent with curve.
      */
-    if (sign_nid != -1 && sign_nid != NID_ecdsa_with_SHA384)
+    if (sign_nid != -1 && sign_nid != NID_ecdsa_with_SHA384) {
       return X509_V_ERR_SUITE_B_INVALID_SIGNATURE_ALGORITHM;
-    if (!(*pflags & X509_V_FLAG_SUITEB_192_LOS))
+    }
+    if (!(*pflags & X509_V_FLAG_SUITEB_192_LOS)) {
       return X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED;
+    }
     /* If we encounter P-384 we cannot use P-256 later */
     *pflags &= ~X509_V_FLAG_SUITEB_128_LOS_ONLY;
   } else if (curve_nid == NID_X9_62_prime256v1) { /* P-256 */
-    if (sign_nid != -1 && sign_nid != NID_ecdsa_with_SHA256)
+    if (sign_nid != -1 && sign_nid != NID_ecdsa_with_SHA256) {
       return X509_V_ERR_SUITE_B_INVALID_SIGNATURE_ALGORITHM;
-    if (!(*pflags & X509_V_FLAG_SUITEB_128_LOS_ONLY))
+    }
+    if (!(*pflags & X509_V_FLAG_SUITEB_128_LOS_ONLY)) {
       return X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED;
-  } else
+    }
+  } else {
     return X509_V_ERR_SUITE_B_INVALID_CURVE;
+  }
 
   return X509_V_OK;
 }
@@ -337,15 +358,17 @@ int X509_chain_check_suiteb(int *perror_depth, X509 *x, STACK_OF(X509) *chain,
   size_t i;
   EVP_PKEY *pk = NULL;
   unsigned long tflags;
-  if (!(flags & X509_V_FLAG_SUITEB_128_LOS))
+  if (!(flags & X509_V_FLAG_SUITEB_128_LOS)) {
     return X509_V_OK;
+  }
   tflags = flags;
   /* If no EE certificate passed in must be first in chain */
   if (x == NULL) {
     x = sk_X509_value(chain, 0);
     i = 1;
-  } else
+  } else {
     i = 0;
+  }
 
   if (X509_get_version(x) != X509_VERSION_3) {
     rv = X509_V_ERR_SUITE_B_INVALID_VERSION;
@@ -372,37 +395,43 @@ int X509_chain_check_suiteb(int *perror_depth, X509 *x, STACK_OF(X509) *chain,
     EVP_PKEY_free(pk);
     pk = X509_get_pubkey(x);
     rv = check_suite_b(pk, sign_nid, &tflags);
-    if (rv != X509_V_OK)
+    if (rv != X509_V_OK) {
       goto end;
+    }
   }
 
   /* Final check: root CA signature */
   rv = check_suite_b(pk, X509_get_signature_nid(x), &tflags);
 end:
-  if (pk)
+  if (pk) {
     EVP_PKEY_free(pk);
+  }
   if (rv != X509_V_OK) {
     /* Invalid signature or LOS errors are for previous cert */
     if ((rv == X509_V_ERR_SUITE_B_INVALID_SIGNATURE_ALGORITHM ||
          rv == X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED) &&
-        i)
+        i) {
       i--;
+    }
     /*
      * If we have LOS error and flags changed then we are signing P-384
      * with P-256. Use more meaninggul error.
      */
-    if (rv == X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED && flags != tflags)
+    if (rv == X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED && flags != tflags) {
       rv = X509_V_ERR_SUITE_B_CANNOT_SIGN_P_384_WITH_P_256;
-    if (perror_depth)
+    }
+    if (perror_depth) {
       *perror_depth = i;
+    }
   }
   return rv;
 }
 
 int X509_CRL_check_suiteb(X509_CRL *crl, EVP_PKEY *pk, unsigned long flags) {
   int sign_nid;
-  if (!(flags & X509_V_FLAG_SUITEB_128_LOS))
+  if (!(flags & X509_V_FLAG_SUITEB_128_LOS)) {
     return X509_V_OK;
+  }
   sign_nid = OBJ_obj2nid(crl->crl->sig_alg->algorithm);
   return check_suite_b(pk, sign_nid, &flags);
 }

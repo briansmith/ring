@@ -78,17 +78,20 @@ void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
   const ASN1_TEMPLATE *tt = NULL, *seqtt;
   const ASN1_EXTERN_FUNCS *ef;
   int i;
-  if (!pval)
+  if (!pval) {
     return;
-  if ((it->itype != ASN1_ITYPE_PRIMITIVE) && !*pval)
+  }
+  if ((it->itype != ASN1_ITYPE_PRIMITIVE) && !*pval) {
     return;
+  }
 
   switch (it->itype) {
     case ASN1_ITYPE_PRIMITIVE:
-      if (it->templates)
+      if (it->templates) {
         ASN1_template_free(pval, it->templates);
-      else
+      } else {
         ASN1_primitive_free(pval, it);
+      }
       break;
 
     case ASN1_ITYPE_MSTRING:
@@ -100,8 +103,9 @@ void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
       ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
       if (asn1_cb) {
         i = asn1_cb(ASN1_OP_FREE_PRE, pval, it, NULL);
-        if (i == 2)
+        if (i == 2) {
           return;
+        }
       }
       i = asn1_get_choice_selector(pval, it);
       if ((i >= 0) && (i < it->tcount)) {
@@ -110,8 +114,9 @@ void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
         pchval = asn1_get_field_ptr(pval, tt);
         ASN1_template_free(pchval, tt);
       }
-      if (asn1_cb)
+      if (asn1_cb) {
         asn1_cb(ASN1_OP_FREE_POST, pval, it, NULL);
+      }
       if (!combine) {
         OPENSSL_free(*pval);
         *pval = NULL;
@@ -121,19 +126,22 @@ void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
 
     case ASN1_ITYPE_EXTERN:
       ef = it->funcs;
-      if (ef && ef->asn1_ex_free)
+      if (ef && ef->asn1_ex_free) {
         ef->asn1_ex_free(pval, it);
+      }
       break;
 
     case ASN1_ITYPE_SEQUENCE: {
-      if (!asn1_refcount_dec_and_test_zero(pval, it))
+      if (!asn1_refcount_dec_and_test_zero(pval, it)) {
         return;
+      }
       const ASN1_AUX *aux = it->funcs;
       ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
       if (asn1_cb) {
         i = asn1_cb(ASN1_OP_FREE_PRE, pval, it, NULL);
-        if (i == 2)
+        if (i == 2) {
           return;
+        }
       }
       asn1_enc_free(pval, it);
       /*
@@ -145,13 +153,15 @@ void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
       for (i = 0; i < it->tcount; tt--, i++) {
         ASN1_VALUE **pseqval;
         seqtt = asn1_do_adb(pval, tt, 0);
-        if (!seqtt)
+        if (!seqtt) {
           continue;
+        }
         pseqval = asn1_get_field_ptr(pval, seqtt);
         ASN1_template_free(pseqval, seqtt);
       }
-      if (asn1_cb)
+      if (asn1_cb) {
         asn1_cb(ASN1_OP_FREE_POST, pval, it, NULL);
+      }
       if (!combine) {
         OPENSSL_free(*pval);
         *pval = NULL;
@@ -172,9 +182,10 @@ void ASN1_template_free(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
     }
     sk_ASN1_VALUE_free(sk);
     *pval = NULL;
-  } else
+  } else {
     asn1_item_combine_free(pval, ASN1_ITEM_ptr(tt->item),
                            tt->flags & ASN1_TFLG_COMBINE);
+  }
 }
 
 void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
@@ -187,16 +198,19 @@ void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
     ASN1_TYPE *typ = (ASN1_TYPE *)*pval;
     utype = typ->type;
     pval = &typ->value.asn1_value;
-    if (utype != V_ASN1_BOOLEAN && !*pval)
+    if (utype != V_ASN1_BOOLEAN && !*pval) {
       return;
+    }
   } else if (it->itype == ASN1_ITYPE_MSTRING) {
     utype = -1;
-    if (!*pval)
+    if (!*pval) {
       return;
+    }
   } else {
     utype = it->utype;
-    if ((utype != V_ASN1_BOOLEAN) && !*pval)
+    if ((utype != V_ASN1_BOOLEAN) && !*pval) {
       return;
+    }
   }
 
   switch (utype) {
@@ -205,10 +219,11 @@ void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       break;
 
     case V_ASN1_BOOLEAN:
-      if (it)
+      if (it) {
         *(ASN1_BOOLEAN *)pval = it->size;
-      else
+      } else {
         *(ASN1_BOOLEAN *)pval = -1;
+      }
       return;
 
     case V_ASN1_NULL:

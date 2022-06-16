@@ -123,16 +123,18 @@ static int dir_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
     case X509_L_ADD_DIR:
       if (argl == X509_FILETYPE_DEFAULT) {
         dir = (char *)getenv(X509_get_default_cert_dir_env());
-        if (dir)
+        if (dir) {
           ret = add_cert_dir(ld, dir, X509_FILETYPE_PEM);
-        else
+        } else {
           ret =
               add_cert_dir(ld, X509_get_default_cert_dir(), X509_FILETYPE_PEM);
+        }
         if (!ret) {
           OPENSSL_PUT_ERROR(X509, X509_R_LOADING_CERT_DIR);
         }
-      } else
+      } else {
         ret = add_cert_dir(ld, argp, (int)argl);
+      }
       break;
   }
   return (ret);
@@ -141,8 +143,9 @@ static int dir_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
 static int new_dir(X509_LOOKUP *lu) {
   BY_DIR *a;
 
-  if ((a = (BY_DIR *)OPENSSL_malloc(sizeof(BY_DIR))) == NULL)
+  if ((a = (BY_DIR *)OPENSSL_malloc(sizeof(BY_DIR))) == NULL) {
     return (0);
+  }
   if ((a->buffer = BUF_MEM_new()) == NULL) {
     OPENSSL_free(a);
     return (0);
@@ -155,18 +158,22 @@ static int new_dir(X509_LOOKUP *lu) {
 static void by_dir_hash_free(BY_DIR_HASH *hash) { OPENSSL_free(hash); }
 
 static int by_dir_hash_cmp(const BY_DIR_HASH **a, const BY_DIR_HASH **b) {
-  if ((*a)->hash > (*b)->hash)
+  if ((*a)->hash > (*b)->hash) {
     return 1;
-  if ((*a)->hash < (*b)->hash)
+  }
+  if ((*a)->hash < (*b)->hash) {
     return -1;
+  }
   return 0;
 }
 
 static void by_dir_entry_free(BY_DIR_ENTRY *ent) {
-  if (ent->dir)
+  if (ent->dir) {
     OPENSSL_free(ent->dir);
-  if (ent->hashes)
+  }
+  if (ent->hashes) {
     sk_BY_DIR_HASH_pop_free(ent->hashes, by_dir_hash_free);
+  }
   OPENSSL_free(ent);
 }
 
@@ -174,10 +181,12 @@ static void free_dir(X509_LOOKUP *lu) {
   BY_DIR *a;
 
   a = (BY_DIR *)lu->method_data;
-  if (a->dirs != NULL)
+  if (a->dirs != NULL) {
     sk_BY_DIR_ENTRY_pop_free(a->dirs, by_dir_entry_free);
-  if (a->buffer != NULL)
+  }
+  if (a->buffer != NULL) {
     BUF_MEM_free(a->buffer);
+  }
   OPENSSL_free(a);
 }
 
@@ -198,15 +207,18 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
       ss = s;
       s = p + 1;
       len = p - ss;
-      if (len == 0)
+      if (len == 0) {
         continue;
+      }
       for (j = 0; j < sk_BY_DIR_ENTRY_num(ctx->dirs); j++) {
         ent = sk_BY_DIR_ENTRY_value(ctx->dirs, j);
-        if (strlen(ent->dir) == len && strncmp(ent->dir, ss, len) == 0)
+        if (strlen(ent->dir) == len && strncmp(ent->dir, ss, len) == 0) {
           break;
+        }
       }
-      if (j < sk_BY_DIR_ENTRY_num(ctx->dirs))
+      if (j < sk_BY_DIR_ENTRY_num(ctx->dirs)) {
         continue;
+      }
       if (ctx->dirs == NULL) {
         ctx->dirs = sk_BY_DIR_ENTRY_new_null();
         if (!ctx->dirs) {
@@ -215,8 +227,9 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
         }
       }
       ent = OPENSSL_malloc(sizeof(BY_DIR_ENTRY));
-      if (!ent)
+      if (!ent) {
         return 0;
+      }
       ent->dir_type = type;
       ent->hashes = sk_BY_DIR_HASH_new(by_dir_hash_cmp);
       ent->dir = OPENSSL_malloc(len + 1);
@@ -263,8 +276,9 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
   X509_OBJECT stmp, *tmp;
   const char *postfix = "";
 
-  if (name == NULL)
+  if (name == NULL) {
     return (0);
+  }
 
   stmp.type = type;
   if (type == X509_LU_X509) {
@@ -352,17 +366,20 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
 #endif
         {
           struct stat st;
-          if (stat(b->data, &st) < 0)
+          if (stat(b->data, &st) < 0) {
             break;
+          }
         }
 #endif
         /* found one. */
         if (type == X509_LU_X509) {
-          if ((X509_load_cert_file(xl, b->data, ent->dir_type)) == 0)
+          if ((X509_load_cert_file(xl, b->data, ent->dir_type)) == 0) {
             break;
+          }
         } else if (type == X509_LU_CRL) {
-          if ((X509_load_crl_file(xl, b->data, ent->dir_type)) == 0)
+          if ((X509_load_crl_file(xl, b->data, ent->dir_type)) == 0) {
             break;
+          }
         }
         /* else case will caught higher up */
         k++;
@@ -392,8 +409,9 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         if (!hent) {
           htmp.hash = h;
           sk_BY_DIR_HASH_sort(ent->hashes);
-          if (sk_BY_DIR_HASH_find(ent->hashes, &idx, &htmp))
+          if (sk_BY_DIR_HASH_find(ent->hashes, &idx, &htmp)) {
             hent = sk_BY_DIR_HASH_value(ent->hashes, idx);
+          }
         }
         if (!hent) {
           hent = OPENSSL_malloc(sizeof(BY_DIR_HASH));
@@ -411,8 +429,9 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
             goto finish;
           }
           sk_BY_DIR_HASH_sort(ent->hashes);
-        } else if (hent->suffix < k)
+        } else if (hent->suffix < k) {
           hent->suffix = k;
+        }
 
         CRYPTO_STATIC_MUTEX_unlock_write(&g_ent_hashes_lock);
       }
@@ -441,8 +460,9 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
     }
   }
 finish:
-  if (b != NULL)
+  if (b != NULL) {
     BUF_MEM_free(b);
+  }
   return (ok);
 }
 

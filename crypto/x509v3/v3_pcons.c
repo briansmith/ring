@@ -118,11 +118,13 @@ static void *v2i_POLICY_CONSTRAINTS(const X509V3_EXT_METHOD *method,
   for (i = 0; i < sk_CONF_VALUE_num(values); i++) {
     val = sk_CONF_VALUE_value(values, i);
     if (!strcmp(val->name, "requireExplicitPolicy")) {
-      if (!X509V3_get_value_int(val, &pcons->requireExplicitPolicy))
+      if (!X509V3_get_value_int(val, &pcons->requireExplicitPolicy)) {
         goto err;
+      }
     } else if (!strcmp(val->name, "inhibitPolicyMapping")) {
-      if (!X509V3_get_value_int(val, &pcons->inhibitPolicyMapping))
+      if (!X509V3_get_value_int(val, &pcons->inhibitPolicyMapping)) {
         goto err;
+      }
     } else {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NAME);
       X509V3_conf_err(val);

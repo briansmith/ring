@@ -83,10 +83,12 @@ ASN1_SEQUENCE(X509_CERT_AUX) = {
 IMPLEMENT_ASN1_FUNCTIONS(X509_CERT_AUX)
 
 static X509_CERT_AUX *aux_get(X509 *x) {
-  if (!x)
+  if (!x) {
     return NULL;
-  if (!x->aux && !(x->aux = X509_CERT_AUX_new()))
+  }
+  if (!x->aux && !(x->aux = X509_CERT_AUX_new())) {
     return NULL;
+  }
   return x->aux;
 }
 
@@ -96,16 +98,19 @@ int X509_alias_set1(X509 *x, const unsigned char *name, int len) {
    * getters cannot quite represent them. Also erase the object if |len| is
    * zero. */
   if (!name) {
-    if (!x || !x->aux || !x->aux->alias)
+    if (!x || !x->aux || !x->aux->alias) {
       return 1;
+    }
     ASN1_UTF8STRING_free(x->aux->alias);
     x->aux->alias = NULL;
     return 1;
   }
-  if (!(aux = aux_get(x)))
+  if (!(aux = aux_get(x))) {
     return 0;
-  if (!aux->alias && !(aux->alias = ASN1_UTF8STRING_new()))
+  }
+  if (!aux->alias && !(aux->alias = ASN1_UTF8STRING_new())) {
     return 0;
+  }
   return ASN1_STRING_set(aux->alias, name, len);
 }
 
@@ -115,16 +120,19 @@ int X509_keyid_set1(X509 *x, const unsigned char *id, int len) {
    * getters cannot quite represent them. Also erase the object if |len| is
    * zero. */
   if (!id) {
-    if (!x || !x->aux || !x->aux->keyid)
+    if (!x || !x->aux || !x->aux->keyid) {
       return 1;
+    }
     ASN1_OCTET_STRING_free(x->aux->keyid);
     x->aux->keyid = NULL;
     return 1;
   }
-  if (!(aux = aux_get(x)))
+  if (!(aux = aux_get(x))) {
     return 0;
-  if (!aux->keyid && !(aux->keyid = ASN1_OCTET_STRING_new()))
+  }
+  if (!aux->keyid && !(aux->keyid = ASN1_OCTET_STRING_new())) {
     return 0;
+  }
   return ASN1_STRING_set(aux->keyid, id, len);
 }
 
@@ -146,16 +154,19 @@ unsigned char *X509_keyid_get0(X509 *x, int *out_len) {
 
 int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj) {
   ASN1_OBJECT *objtmp = OBJ_dup(obj);
-  if (objtmp == NULL)
+  if (objtmp == NULL) {
     goto err;
+  }
   X509_CERT_AUX *aux = aux_get(x);
   if (aux->trust == NULL) {
     aux->trust = sk_ASN1_OBJECT_new_null();
-    if (aux->trust == NULL)
+    if (aux->trust == NULL) {
       goto err;
+    }
   }
-  if (!sk_ASN1_OBJECT_push(aux->trust, objtmp))
+  if (!sk_ASN1_OBJECT_push(aux->trust, objtmp)) {
     goto err;
+  }
   return 1;
 
 err:
@@ -165,16 +176,19 @@ err:
 
 int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj) {
   ASN1_OBJECT *objtmp = OBJ_dup(obj);
-  if (objtmp == NULL)
+  if (objtmp == NULL) {
     goto err;
+  }
   X509_CERT_AUX *aux = aux_get(x);
   if (aux->reject == NULL) {
     aux->reject = sk_ASN1_OBJECT_new_null();
-    if (aux->reject == NULL)
+    if (aux->reject == NULL) {
       goto err;
+    }
   }
-  if (!sk_ASN1_OBJECT_push(aux->reject, objtmp))
+  if (!sk_ASN1_OBJECT_push(aux->reject, objtmp)) {
     goto err;
+  }
   return 1;
 
 err:

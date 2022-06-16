@@ -73,18 +73,20 @@ static int i2r_pci(const X509V3_EXT_METHOD *method, void *ext, BIO *out,
                    int indent) {
   const PROXY_CERT_INFO_EXTENSION *pci = ext;
   BIO_printf(out, "%*sPath Length Constraint: ", indent, "");
-  if (pci->pcPathLengthConstraint)
+  if (pci->pcPathLengthConstraint) {
     i2a_ASN1_INTEGER(out, pci->pcPathLengthConstraint);
-  else
+  } else {
     BIO_printf(out, "infinite");
+  }
   BIO_puts(out, "\n");
   BIO_printf(out, "%*sPolicy Language: ", indent, "");
   i2a_ASN1_OBJECT(out, pci->proxyPolicy->policyLanguage);
   BIO_puts(out, "\n");
-  if (pci->proxyPolicy->policy && pci->proxyPolicy->policy->data)
+  if (pci->proxyPolicy->policy && pci->proxyPolicy->policy->data) {
     BIO_printf(out, "%*sPolicy Text: %.*s\n", indent, "",
                pci->proxyPolicy->policy->length,
                pci->proxyPolicy->policy->data);
+  }
   return 1;
 }
 
@@ -230,8 +232,9 @@ static void *r2i_pci(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
                                       &pathlen, &policy);
       }
       X509V3_section_free(ctx, sect);
-      if (!success_p)
+      if (!success_p) {
         goto err;
+      }
     } else {
       if (!process_pci_value(cnf, &language, &pathlen, &policy)) {
         X509V3_conf_err(cnf);

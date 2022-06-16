@@ -423,10 +423,11 @@ static BIGNUM *asn1_string_to_bn(const ASN1_STRING *ai, BIGNUM *bn, int type) {
   }
 
   BIGNUM *ret;
-  if ((ret = BN_bin2bn(ai->data, ai->length, bn)) == NULL)
+  if ((ret = BN_bin2bn(ai->data, ai->length, bn)) == NULL) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_BN_LIB);
-  else if (ai->type & V_ASN1_NEG)
+  } else if (ai->type & V_ASN1_NEG) {
     BN_set_negative(ret, 1);
+  }
   return (ret);
 }
 

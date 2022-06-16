@@ -87,10 +87,12 @@ char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len) {
   char tmp_buf[80];
 
   if (buf == NULL) {
-    if ((b = BUF_MEM_new()) == NULL)
+    if ((b = BUF_MEM_new()) == NULL) {
       goto err;
-    if (!BUF_MEM_grow(b, 200))
+    }
+    if (!BUF_MEM_grow(b, 200)) {
       goto err;
+    }
     b->data[0] = '\0';
     len = 200;
   } else if (len <= 0) {
@@ -126,25 +128,30 @@ char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len) {
 
     if ((type == V_ASN1_GENERALSTRING) && ((num % 4) == 0)) {
       gs_doit[0] = gs_doit[1] = gs_doit[2] = gs_doit[3] = 0;
-      for (j = 0; j < num; j++)
-        if (q[j] != 0)
+      for (j = 0; j < num; j++) {
+        if (q[j] != 0) {
           gs_doit[j & 3] = 1;
+        }
+      }
 
-      if (gs_doit[0] | gs_doit[1] | gs_doit[2])
+      if (gs_doit[0] | gs_doit[1] | gs_doit[2]) {
         gs_doit[0] = gs_doit[1] = gs_doit[2] = gs_doit[3] = 1;
-      else {
+      } else {
         gs_doit[0] = gs_doit[1] = gs_doit[2] = 0;
         gs_doit[3] = 1;
       }
-    } else
+    } else {
       gs_doit[0] = gs_doit[1] = gs_doit[2] = gs_doit[3] = 1;
+    }
 
     for (l2 = j = 0; j < num; j++) {
-      if (!gs_doit[j & 3])
+      if (!gs_doit[j & 3]) {
         continue;
+      }
       l2++;
-      if ((q[j] < ' ') || (q[j] > '~'))
+      if ((q[j] < ' ') || (q[j] > '~')) {
         l2 += 3;
+      }
     }
 
     lold = l;
@@ -154,13 +161,15 @@ char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len) {
       goto end;
     }
     if (b != NULL) {
-      if (!BUF_MEM_grow(b, l + 1))
+      if (!BUF_MEM_grow(b, l + 1)) {
         goto err;
+      }
       p = &(b->data[lold]);
     } else if (l > len) {
       break;
-    } else
+    } else {
       p = &(buf[lold]);
+    }
     *(p++) = '/';
     OPENSSL_memcpy(p, s, (unsigned int)l1);
     p += l1;
@@ -169,26 +178,30 @@ char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len) {
     q = ne->value->data;
 
     for (j = 0; j < num; j++) {
-      if (!gs_doit[j & 3])
+      if (!gs_doit[j & 3]) {
         continue;
+      }
       n = q[j];
       if ((n < ' ') || (n > '~')) {
         *(p++) = '\\';
         *(p++) = 'x';
         *(p++) = hex[(n >> 4) & 0x0f];
         *(p++) = hex[n & 0x0f];
-      } else
+      } else {
         *(p++) = n;
+      }
     }
     *p = '\0';
   }
   if (b != NULL) {
     p = b->data;
     OPENSSL_free(b);
-  } else
+  } else {
     p = buf;
-  if (i == 0)
+  }
+  if (i == 0) {
     *p = '\0';
+  }
   return (p);
 err:
   OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);

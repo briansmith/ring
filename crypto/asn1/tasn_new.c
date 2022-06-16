@@ -77,8 +77,9 @@ static void asn1_primitive_clear(ASN1_VALUE **pval, const ASN1_ITEM *it);
 
 ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it) {
   ASN1_VALUE *ret = NULL;
-  if (ASN1_item_ex_new(&ret, it) > 0)
+  if (ASN1_item_ex_new(&ret, it) > 0) {
     return ret;
+  }
   return NULL;
 }
 
@@ -99,22 +100,26 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
     case ASN1_ITYPE_EXTERN:
       ef = it->funcs;
       if (ef && ef->asn1_ex_new) {
-        if (!ef->asn1_ex_new(pval, it))
+        if (!ef->asn1_ex_new(pval, it)) {
           goto memerr;
+        }
       }
       break;
 
     case ASN1_ITYPE_PRIMITIVE:
       if (it->templates) {
-        if (!ASN1_template_new(pval, it->templates))
+        if (!ASN1_template_new(pval, it->templates)) {
           goto memerr;
-      } else if (!ASN1_primitive_new(pval, it))
+        }
+      } else if (!ASN1_primitive_new(pval, it)) {
         goto memerr;
+      }
       break;
 
     case ASN1_ITYPE_MSTRING:
-      if (!ASN1_primitive_new(pval, it))
+      if (!ASN1_primitive_new(pval, it)) {
         goto memerr;
+      }
       break;
 
     case ASN1_ITYPE_CHOICE: {
@@ -122,21 +127,24 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
       ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
       if (asn1_cb) {
         i = asn1_cb(ASN1_OP_NEW_PRE, pval, it, NULL);
-        if (!i)
+        if (!i) {
           goto auxerr;
+        }
         if (i == 2) {
           return 1;
         }
       }
       if (!combine) {
         *pval = OPENSSL_malloc(it->size);
-        if (!*pval)
+        if (!*pval) {
           goto memerr;
+        }
         OPENSSL_memset(*pval, 0, it->size);
       }
       asn1_set_choice_selector(pval, -1, it);
-      if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL))
+      if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL)) {
         goto auxerr2;
+      }
       break;
     }
 
@@ -145,27 +153,31 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
       ASN1_aux_cb *asn1_cb = aux != NULL ? aux->asn1_cb : NULL;
       if (asn1_cb) {
         i = asn1_cb(ASN1_OP_NEW_PRE, pval, it, NULL);
-        if (!i)
+        if (!i) {
           goto auxerr;
+        }
         if (i == 2) {
           return 1;
         }
       }
       if (!combine) {
         *pval = OPENSSL_malloc(it->size);
-        if (!*pval)
+        if (!*pval) {
           goto memerr;
+        }
         OPENSSL_memset(*pval, 0, it->size);
         asn1_refcount_set_one(pval, it);
         asn1_enc_init(pval, it);
       }
       for (i = 0, tt = it->templates; i < it->tcount; tt++, i++) {
         pseqval = asn1_get_field_ptr(pval, tt);
-        if (!ASN1_template_new(pseqval, tt))
+        if (!ASN1_template_new(pseqval, tt)) {
           goto memerr2;
+        }
       }
-      if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL))
+      if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL)) {
         goto auxerr2;
+      }
       break;
     }
   }
@@ -190,17 +202,19 @@ static void asn1_item_clear(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   switch (it->itype) {
     case ASN1_ITYPE_EXTERN:
       ef = it->funcs;
-      if (ef && ef->asn1_ex_clear)
+      if (ef && ef->asn1_ex_clear) {
         ef->asn1_ex_clear(pval, it);
-      else
+      } else {
         *pval = NULL;
+      }
       break;
 
     case ASN1_ITYPE_PRIMITIVE:
-      if (it->templates)
+      if (it->templates) {
         asn1_template_clear(pval, it->templates);
-      else
+      } else {
         asn1_primitive_clear(pval, it);
+      }
       break;
 
     case ASN1_ITYPE_MSTRING:
@@ -248,10 +262,11 @@ done:
 
 static void asn1_template_clear(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
   /* If ADB or STACK just NULL the field */
-  if (tt->flags & (ASN1_TFLG_ADB_MASK | ASN1_TFLG_SK_MASK))
+  if (tt->flags & (ASN1_TFLG_ADB_MASK | ASN1_TFLG_SK_MASK)) {
     *pval = NULL;
-  else
+  } else {
     asn1_item_clear(pval, ASN1_ITEM_ptr(tt->item));
+  }
 }
 
 /*
@@ -263,17 +278,19 @@ static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   ASN1_TYPE *typ;
   int utype;
 
-  if (!it)
+  if (!it) {
     return 0;
+  }
 
   /* Historically, |it->funcs| for primitive types contained an
    * |ASN1_PRIMITIVE_FUNCS| table of calbacks. */
   assert(it->funcs == NULL);
 
-  if (it->itype == ASN1_ITYPE_MSTRING)
+  if (it->itype == ASN1_ITYPE_MSTRING) {
     utype = -1;
-  else
+  } else {
     utype = it->utype;
+  }
   switch (utype) {
     case V_ASN1_OBJECT:
       *pval = (ASN1_VALUE *)OBJ_nid2obj(NID_undef);
@@ -289,8 +306,9 @@ static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
 
     case V_ASN1_ANY:
       typ = OPENSSL_malloc(sizeof(ASN1_TYPE));
-      if (!typ)
+      if (!typ) {
         return 0;
+      }
       typ->value.ptr = NULL;
       typ->type = -1;
       *pval = (ASN1_VALUE *)typ;
@@ -300,8 +318,9 @@ static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       *pval = (ASN1_VALUE *)ASN1_STRING_type_new(utype);
       break;
   }
-  if (*pval)
+  if (*pval) {
     return 1;
+  }
   return 0;
 }
 
@@ -310,12 +329,14 @@ static void asn1_primitive_clear(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   /* Historically, |it->funcs| for primitive types contained an
    * |ASN1_PRIMITIVE_FUNCS| table of calbacks. */
   assert(it == NULL || it->funcs == NULL);
-  if (!it || (it->itype == ASN1_ITYPE_MSTRING))
+  if (!it || (it->itype == ASN1_ITYPE_MSTRING)) {
     utype = -1;
-  else
+  } else {
     utype = it->utype;
-  if (utype == V_ASN1_BOOLEAN)
+  }
+  if (utype == V_ASN1_BOOLEAN) {
     *(ASN1_BOOLEAN *)pval = it->size;
-  else
+  } else {
     *pval = NULL;
+  }
 }

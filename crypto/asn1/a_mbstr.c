@@ -92,10 +92,12 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
   ASN1_STRING *dest;
   size_t nchar = 0;
   char strbuf[32];
-  if (len == -1)
+  if (len == -1) {
     len = strlen((const char *)in);
-  if (!mask)
+  }
+  if (!mask) {
     mask = DIRSTRING_TYPE;
+  }
 
   int (*decode_func)(CBS *, uint32_t *);
   int error;
@@ -213,8 +215,9 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     return -1;
   }
 
-  if (!out)
+  if (!out) {
     return str_type;
+  }
   if (*out) {
     free_out = 0;
     dest = *out;
@@ -271,8 +274,9 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
   return str_type;
 
 err:
-  if (free_out)
+  if (free_out) {
     ASN1_STRING_free(dest);
+  }
   CBB_cleanup(&cbb);
   return -1;
 }

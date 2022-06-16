@@ -87,8 +87,9 @@ static char *i2s_ASN1_ENUMERATED_TABLE(const X509V3_EXT_METHOD *method,
   const ASN1_ENUMERATED *e = ext;
   long strval = ASN1_ENUMERATED_get(e);
   for (const ENUMERATED_NAMES *enam = method->usr_data; enam->lname; enam++) {
-    if (strval == enam->bitnum)
+    if (strval == enam->bitnum) {
       return OPENSSL_strdup(enam->lname);
+    }
   }
   return i2s_ASN1_ENUMERATED(method, e);
 }

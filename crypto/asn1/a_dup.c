@@ -71,8 +71,9 @@ void *ASN1_item_dup(const ASN1_ITEM *it, void *x) {
   long i;
   void *ret;
 
-  if (x == NULL)
+  if (x == NULL) {
     return (NULL);
+  }
 
   i = ASN1_item_i2d(x, &b, it);
   if (b == NULL) {

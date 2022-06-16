@@ -162,25 +162,28 @@ void ASN1_put_object(unsigned char **pp, int constructed, int length, int tag,
 
   i = (constructed) ? V_ASN1_CONSTRUCTED : 0;
   i |= (xclass & V_ASN1_PRIVATE);
-  if (tag < 31)
+  if (tag < 31) {
     *(p++) = i | (tag & V_ASN1_PRIMITIVE_TAG);
-  else {
+  } else {
     *(p++) = i | V_ASN1_PRIMITIVE_TAG;
-    for (i = 0, ttag = tag; ttag > 0; i++)
+    for (i = 0, ttag = tag; ttag > 0; i++) {
       ttag >>= 7;
+    }
     ttag = i;
     while (i-- > 0) {
       p[i] = tag & 0x7f;
-      if (i != (ttag - 1))
+      if (i != (ttag - 1)) {
         p[i] |= 0x80;
+      }
       tag >>= 7;
     }
     p += ttag;
   }
-  if (constructed == 2)
+  if (constructed == 2) {
     *(p++) = 0x80;
-  else
+  } else {
     asn1_put_length(&p, length);
+  }
   *pp = p;
 }
 
@@ -197,12 +200,13 @@ int ASN1_put_eoc(unsigned char **pp) {
 static void asn1_put_length(unsigned char **pp, int length) {
   unsigned char *p = *pp;
   int i, l;
-  if (length <= 127)
+  if (length <= 127) {
     *(p++) = (unsigned char)length;
-  else {
+  } else {
     l = length;
-    for (i = 0; l > 0; i++)
+    for (i = 0; l > 0; i++) {
       l >>= 8;
+    }
     *(p++) = i | 0x80;
     l = i;
     while (i-- > 0) {
@@ -216,8 +220,9 @@ static void asn1_put_length(unsigned char **pp, int length) {
 
 int ASN1_object_size(int constructed, int length, int tag) {
   int ret = 1;
-  if (length < 0)
+  if (length < 0) {
     return -1;
+  }
   if (tag >= 31) {
     while (tag > 0) {
       tag >>= 7;
@@ -236,16 +241,19 @@ int ASN1_object_size(int constructed, int length, int tag) {
       }
     }
   }
-  if (ret >= INT_MAX - length)
+  if (ret >= INT_MAX - length) {
     return -1;
+  }
   return ret + length;
 }
 
 int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str) {
-  if (str == NULL)
+  if (str == NULL) {
     return 0;
-  if (!ASN1_STRING_set(dst, str->data, str->length))
+  }
+  if (!ASN1_STRING_set(dst, str->data, str->length)) {
     return 0;
+  }
   dst->type = str->type;
   dst->flags = str->flags;
   return 1;
@@ -253,11 +261,13 @@ int ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str) {
 
 ASN1_STRING *ASN1_STRING_dup(const ASN1_STRING *str) {
   ASN1_STRING *ret;
-  if (!str)
+  if (!str) {
     return NULL;
+  }
   ret = ASN1_STRING_new();
-  if (!ret)
+  if (!ret) {
     return NULL;
+  }
   if (!ASN1_STRING_copy(ret, str)) {
     ASN1_STRING_free(ret);
     return NULL;
@@ -270,17 +280,19 @@ int ASN1_STRING_set(ASN1_STRING *str, const void *_data, int len) {
   const char *data = _data;
 
   if (len < 0) {
-    if (data == NULL)
+    if (data == NULL) {
       return (0);
-    else
+    } else {
       len = strlen(data);
+    }
   }
   if ((str->length <= len) || (str->data == NULL)) {
     c = str->data;
-    if (c == NULL)
+    if (c == NULL) {
       str->data = OPENSSL_malloc(len + 1);
-    else
+    } else {
       str->data = OPENSSL_realloc(c, len + 1);
+    }
 
     if (str->data == NULL) {
       OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
@@ -323,8 +335,9 @@ ASN1_STRING *ASN1_STRING_type_new(int type) {
 }
 
 void ASN1_STRING_free(ASN1_STRING *str) {
-  if (str == NULL)
+  if (str == NULL) {
     return;
+  }
   OPENSSL_free(str->data);
   OPENSSL_free(str);
 }

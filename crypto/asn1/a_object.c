@@ -194,8 +194,9 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
 
   if ((a == NULL) || ((*a) == NULL) ||
       !((*a)->flags & ASN1_OBJECT_FLAG_DYNAMIC)) {
-    if ((ret = ASN1_OBJECT_new()) == NULL)
+    if ((ret = ASN1_OBJECT_new()) == NULL) {
       return (NULL);
+    }
   } else {
     ret = (*a);
   }
@@ -207,8 +208,9 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
   /* once detached we can change it */
   if ((data == NULL) || (ret->length < length)) {
     ret->length = 0;
-    if (data != NULL)
+    if (data != NULL) {
       OPENSSL_free(data);
+    }
     data = (unsigned char *)OPENSSL_malloc(length);
     if (data == NULL) {
       i = ERR_R_MALLOC_FAILURE;
@@ -230,14 +232,16 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
   ret->ln = NULL;
   p += length;
 
-  if (a != NULL)
+  if (a != NULL) {
     (*a) = ret;
+  }
   *pp = p;
   return (ret);
 err:
   OPENSSL_PUT_ERROR(ASN1, i);
-  if ((ret != NULL) && ((a == NULL) || (*a != ret)))
+  if ((ret != NULL) && ((a == NULL) || (*a != ret))) {
     ASN1_OBJECT_free(ret);
+  }
   return (NULL);
 }
 
@@ -259,8 +263,9 @@ ASN1_OBJECT *ASN1_OBJECT_new(void) {
 }
 
 void ASN1_OBJECT_free(ASN1_OBJECT *a) {
-  if (a == NULL)
+  if (a == NULL) {
     return;
+  }
   if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC_STRINGS) {
     OPENSSL_free((void *)a->sn);
     OPENSSL_free((void *)a->ln);
@@ -271,8 +276,9 @@ void ASN1_OBJECT_free(ASN1_OBJECT *a) {
     a->data = NULL;
     a->length = 0;
   }
-  if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC)
+  if (a->flags & ASN1_OBJECT_FLAG_DYNAMIC) {
     OPENSSL_free(a);
+  }
 }
 
 ASN1_OBJECT *ASN1_OBJECT_create(int nid, const unsigned char *data, int len,

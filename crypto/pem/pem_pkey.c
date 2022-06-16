@@ -76,19 +76,22 @@ EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
   long len;
   EVP_PKEY *ret = NULL;
 
-  if (!PEM_bytes_read_bio(&data, &len, &nm, PEM_STRING_EVP_PKEY, bp, cb, u))
+  if (!PEM_bytes_read_bio(&data, &len, &nm, PEM_STRING_EVP_PKEY, bp, cb, u)) {
     return NULL;
+  }
   p = data;
 
   if (strcmp(nm, PEM_STRING_PKCS8INF) == 0) {
     PKCS8_PRIV_KEY_INFO *p8inf;
     p8inf = d2i_PKCS8_PRIV_KEY_INFO(NULL, &p, len);
-    if (!p8inf)
+    if (!p8inf) {
       goto p8err;
+    }
     ret = EVP_PKCS82PKEY(p8inf);
     if (x) {
-      if (*x)
+      if (*x) {
         EVP_PKEY_free((EVP_PKEY *)*x);
+      }
       *x = ret;
     }
     PKCS8_PRIV_KEY_INFO_free(p8inf);
@@ -98,12 +101,14 @@ EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
     int klen;
     char psbuf[PEM_BUFSIZE];
     p8 = d2i_X509_SIG(NULL, &p, len);
-    if (!p8)
+    if (!p8) {
       goto p8err;
+    }
 
     klen = 0;
-    if (!cb)
+    if (!cb) {
       cb = PEM_def_callback;
+    }
     klen = cb(psbuf, PEM_BUFSIZE, 0, u);
     if (klen <= 0) {
       OPENSSL_PUT_ERROR(PEM, PEM_R_BAD_PASSWORD_READ);
@@ -113,12 +118,14 @@ EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
     p8inf = PKCS8_decrypt(p8, psbuf, klen);
     X509_SIG_free(p8);
     OPENSSL_cleanse(psbuf, klen);
-    if (!p8inf)
+    if (!p8inf) {
       goto p8err;
+    }
     ret = EVP_PKCS82PKEY(p8inf);
     if (x) {
-      if (*x)
+      if (*x) {
         EVP_PKEY_free((EVP_PKEY *)*x);
+      }
       *x = ret;
     }
     PKCS8_PRIV_KEY_INFO_free(p8inf);
@@ -133,8 +140,9 @@ EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
     ret = d2i_PrivateKey(EVP_PKEY_DSA, x, &p, len);
   }
 p8err:
-  if (ret == NULL)
+  if (ret == NULL) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
+  }
 
 err:
   OPENSSL_free(nm);

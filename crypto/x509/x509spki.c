@@ -62,14 +62,16 @@
 #include <openssl/x509.h>
 
 int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *x, EVP_PKEY *pkey) {
-  if ((x == NULL) || (x->spkac == NULL))
+  if ((x == NULL) || (x->spkac == NULL)) {
     return (0);
+  }
   return (X509_PUBKEY_set(&(x->spkac->pubkey), pkey));
 }
 
 EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *x) {
-  if ((x == NULL) || (x->spkac == NULL))
+  if ((x == NULL) || (x->spkac == NULL)) {
     return (NULL);
+  }
   return (X509_PUBKEY_get(x->spkac->pubkey));
 }
 
@@ -80,8 +82,9 @@ NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str, int len) {
   const unsigned char *p;
   size_t spki_len;
   NETSCAPE_SPKI *spki;
-  if (len <= 0)
+  if (len <= 0) {
     len = strlen(str);
+  }
   if (!EVP_DecodedLength(&spki_len, len)) {
     OPENSSL_PUT_ERROR(X509, X509_R_BASE64_DECODE_ERROR);
     return NULL;

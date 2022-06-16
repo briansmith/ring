@@ -86,10 +86,11 @@ void ASN1_TYPE_set(ASN1_TYPE *a, int type, void *value) {
   ASN1_TYPE **tmp_a = &a;
   ASN1_primitive_free((ASN1_VALUE **)tmp_a, NULL);
   a->type = type;
-  if (type == V_ASN1_BOOLEAN)
+  if (type == V_ASN1_BOOLEAN) {
     a->value.boolean = value ? 0xff : 0;
-  else
+  } else {
     a->value.ptr = value;
+  }
 }
 
 int ASN1_TYPE_set1(ASN1_TYPE *a, int type, const void *value) {
@@ -99,14 +100,16 @@ int ASN1_TYPE_set1(ASN1_TYPE *a, int type, const void *value) {
   } else if (type == V_ASN1_OBJECT) {
     ASN1_OBJECT *odup;
     odup = OBJ_dup(value);
-    if (!odup)
+    if (!odup) {
       return 0;
+    }
     ASN1_TYPE_set(a, type, odup);
   } else {
     ASN1_STRING *sdup;
     sdup = ASN1_STRING_dup(value);
-    if (!sdup)
+    if (!sdup) {
       return 0;
+    }
     ASN1_TYPE_set(a, type, sdup);
   }
   return 1;
@@ -116,8 +119,9 @@ int ASN1_TYPE_set1(ASN1_TYPE *a, int type, const void *value) {
 int ASN1_TYPE_cmp(const ASN1_TYPE *a, const ASN1_TYPE *b) {
   int result = -1;
 
-  if (!a || !b || a->type != b->type)
+  if (!a || !b || a->type != b->type) {
     return -1;
+  }
 
   switch (a->type) {
     case V_ASN1_OBJECT:

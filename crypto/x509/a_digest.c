@@ -85,8 +85,9 @@ int ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type, void *asn,
   unsigned char *str = NULL;
 
   i = ASN1_item_i2d(asn, &str, it);
-  if (!str)
+  if (!str) {
     return (0);
+  }
 
   ret = EVP_Digest(str, i, md, len, type, NULL);
   OPENSSL_free(str);

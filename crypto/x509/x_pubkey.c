@@ -92,8 +92,9 @@ int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey) {
   uint8_t *spki = NULL;
   size_t spki_len;
 
-  if (x == NULL)
+  if (x == NULL) {
     return (0);
+  }
 
   CBB cbb;
   if (!CBB_init(&cbb, 0) || !EVP_marshal_public_key(&cbb, pkey) ||
@@ -131,8 +132,9 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
   EVP_PKEY *ret = NULL;
   uint8_t *spki = NULL;
 
-  if (key == NULL)
+  if (key == NULL) {
     goto error;
+  }
 
   CRYPTO_STATIC_MUTEX_lock_read(&g_pubkey_lock);
   if (key->pkey != NULL) {

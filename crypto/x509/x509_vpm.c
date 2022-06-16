@@ -91,8 +91,9 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
    * Refuse names with embedded NUL bytes.
    * XXX: Do we need to push an error onto the error stack?
    */
-  if (name && OPENSSL_memchr(name, '\0', namelen))
+  if (name && OPENSSL_memchr(name, '\0', namelen)) {
     return 0;
+  }
 
   if (mode == SET_HOST && param->hosts) {
     string_stack_free(param->hosts);
@@ -100,8 +101,9 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
   }
 
   copy = OPENSSL_strndup(name, namelen);
-  if (copy == NULL)
+  if (copy == NULL) {
     return 0;
+  }
 
   if (param->hosts == NULL &&
       (param->hosts = sk_OPENSSL_STRING_new_null()) == NULL) {
@@ -122,8 +124,9 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
 }
 
 static void x509_verify_param_zero(X509_VERIFY_PARAM *param) {
-  if (!param)
+  if (!param) {
     return;
+  }
   param->name = NULL;
   param->purpose = 0;
   param->trust = 0;
@@ -161,16 +164,18 @@ static void x509_verify_param_zero(X509_VERIFY_PARAM *param) {
 X509_VERIFY_PARAM *X509_VERIFY_PARAM_new(void) {
   X509_VERIFY_PARAM *param;
   param = OPENSSL_malloc(sizeof(X509_VERIFY_PARAM));
-  if (!param)
+  if (!param) {
     return NULL;
+  }
   OPENSSL_memset(param, 0, sizeof(X509_VERIFY_PARAM));
   x509_verify_param_zero(param);
   return param;
 }
 
 void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param) {
-  if (param == NULL)
+  if (param == NULL) {
     return;
+  }
   x509_verify_param_zero(param);
   OPENSSL_free(param);
 }
@@ -223,25 +228,30 @@ int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
                               const X509_VERIFY_PARAM *src) {
   unsigned long inh_flags;
   int to_default, to_overwrite;
-  if (!src)
+  if (!src) {
     return 1;
+  }
   inh_flags = dest->inh_flags | src->inh_flags;
 
-  if (inh_flags & X509_VP_FLAG_ONCE)
+  if (inh_flags & X509_VP_FLAG_ONCE) {
     dest->inh_flags = 0;
+  }
 
-  if (inh_flags & X509_VP_FLAG_LOCKED)
+  if (inh_flags & X509_VP_FLAG_LOCKED) {
     return 1;
+  }
 
-  if (inh_flags & X509_VP_FLAG_DEFAULT)
+  if (inh_flags & X509_VP_FLAG_DEFAULT) {
     to_default = 1;
-  else
+  } else {
     to_default = 0;
+  }
 
-  if (inh_flags & X509_VP_FLAG_OVERWRITE)
+  if (inh_flags & X509_VP_FLAG_OVERWRITE) {
     to_overwrite = 1;
-  else
+  } else {
     to_overwrite = 0;
+  }
 
   x509_verify_param_copy(purpose, 0);
   x509_verify_param_copy(trust, 0);
@@ -255,14 +265,16 @@ int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
     /* Don't need to copy flag: that is done below */
   }
 
-  if (inh_flags & X509_VP_FLAG_RESET_FLAGS)
+  if (inh_flags & X509_VP_FLAG_RESET_FLAGS) {
     dest->flags = 0;
+  }
 
   dest->flags |= src->flags;
 
   if (test_x509_verify_param_copy(policies, NULL)) {
-    if (!X509_VERIFY_PARAM_set1_policies(dest, src->policies))
+    if (!X509_VERIFY_PARAM_set1_policies(dest, src->policies)) {
       return 0;
+    }
   }
 
   /* Copy the host flags if and only if we're copying the host list */
@@ -273,20 +285,23 @@ int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
     }
     if (src->hosts) {
       dest->hosts = sk_OPENSSL_STRING_deep_copy(src->hosts, str_copy, str_free);
-      if (dest->hosts == NULL)
+      if (dest->hosts == NULL) {
         return 0;
+      }
       dest->hostflags = src->hostflags;
     }
   }
 
   if (test_x509_verify_param_copy(email, NULL)) {
-    if (!X509_VERIFY_PARAM_set1_email(dest, src->email, src->emaillen))
+    if (!X509_VERIFY_PARAM_set1_email(dest, src->email, src->emaillen)) {
       return 0;
+    }
   }
 
   if (test_x509_verify_param_copy(ip, NULL)) {
-    if (!X509_VERIFY_PARAM_set1_ip(dest, src->ip, src->iplen))
+    if (!X509_VERIFY_PARAM_set1_ip(dest, src->ip, src->iplen)) {
       return 0;
+    }
   }
 
   dest->poison = src->poison;
@@ -318,27 +333,32 @@ static int int_x509_param_set1(char **pdest, size_t *pdestlen, const char *src,
     return 0;
   }
 
-  if (*pdest)
+  if (*pdest) {
     OPENSSL_free(*pdest);
+  }
   *pdest = tmp;
-  if (pdestlen)
+  if (pdestlen) {
     *pdestlen = srclen;
+  }
   return 1;
 }
 
 int X509_VERIFY_PARAM_set1_name(X509_VERIFY_PARAM *param, const char *name) {
-  if (param->name)
+  if (param->name) {
     OPENSSL_free(param->name);
+  }
   param->name = OPENSSL_strdup(name);
-  if (param->name)
+  if (param->name) {
     return 1;
+  }
   return 0;
 }
 
 int X509_VERIFY_PARAM_set_flags(X509_VERIFY_PARAM *param, unsigned long flags) {
   param->flags |= flags;
-  if (flags & X509_V_FLAG_POLICY_MASK)
+  if (flags & X509_V_FLAG_POLICY_MASK) {
     param->flags |= X509_V_FLAG_POLICY_CHECK;
+  }
   return 1;
 }
 
@@ -373,11 +393,13 @@ int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
                                   ASN1_OBJECT *policy) {
   if (!param->policies) {
     param->policies = sk_ASN1_OBJECT_new_null();
-    if (!param->policies)
+    if (!param->policies) {
       return 0;
+    }
   }
-  if (!sk_ASN1_OBJECT_push(param->policies, policy))
+  if (!sk_ASN1_OBJECT_push(param->policies, policy)) {
     return 0;
+  }
   return 1;
 }
 
@@ -385,10 +407,12 @@ int X509_VERIFY_PARAM_set1_policies(X509_VERIFY_PARAM *param,
                                     STACK_OF(ASN1_OBJECT) *policies) {
   size_t i;
   ASN1_OBJECT *oid, *doid;
-  if (!param)
+  if (!param) {
     return 0;
-  if (param->policies)
+  }
+  if (param->policies) {
     sk_ASN1_OBJECT_pop_free(param->policies, ASN1_OBJECT_free);
+  }
 
   if (!policies) {
     param->policies = NULL;
@@ -396,14 +420,16 @@ int X509_VERIFY_PARAM_set1_policies(X509_VERIFY_PARAM *param,
   }
 
   param->policies = sk_ASN1_OBJECT_new_null();
-  if (!param->policies)
+  if (!param->policies) {
     return 0;
+  }
 
   for (i = 0; i < sk_ASN1_OBJECT_num(policies); i++) {
     oid = sk_ASN1_OBJECT_value(policies, i);
     doid = OBJ_dup(oid);
-    if (!doid)
+    if (!doid) {
       return 0;
+    }
     if (!sk_ASN1_OBJECT_push(param->policies, doid)) {
       ASN1_OBJECT_free(doid);
       return 0;
@@ -468,8 +494,9 @@ int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param, const char *ipasc) {
   size_t iplen;
 
   iplen = (size_t)x509v3_a2i_ipadd(ipout, ipasc);
-  if (iplen == 0)
+  if (iplen == 0) {
     return 0;
+  }
   return X509_VERIFY_PARAM_set1_ip(param, ipout, iplen);
 }
 
@@ -546,8 +573,9 @@ int X509_VERIFY_PARAM_add0_table(X509_VERIFY_PARAM *param) {
   X509_VERIFY_PARAM *ptmp;
   if (!param_table) {
     param_table = sk_X509_VERIFY_PARAM_new(param_cmp);
-    if (!param_table)
+    if (!param_table) {
       return 0;
+    }
   } else {
     size_t idx;
 
@@ -558,22 +586,25 @@ int X509_VERIFY_PARAM_add0_table(X509_VERIFY_PARAM *param) {
       (void)sk_X509_VERIFY_PARAM_delete(param_table, idx);
     }
   }
-  if (!sk_X509_VERIFY_PARAM_push(param_table, param))
+  if (!sk_X509_VERIFY_PARAM_push(param_table, param)) {
     return 0;
+  }
   return 1;
 }
 
 int X509_VERIFY_PARAM_get_count(void) {
   int num = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-  if (param_table)
+  if (param_table) {
     num += sk_X509_VERIFY_PARAM_num(param_table);
+  }
   return num;
 }
 
 const X509_VERIFY_PARAM *X509_VERIFY_PARAM_get0(int id) {
   int num = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-  if (id < num)
+  if (id < num) {
     return default_table + id;
+  }
   return sk_X509_VERIFY_PARAM_value(param_table, id - num);
 }
 
@@ -585,8 +616,9 @@ const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name) {
   if (param_table) {
     size_t idx;
     sk_X509_VERIFY_PARAM_sort(param_table);
-    if (sk_X509_VERIFY_PARAM_find(param_table, &idx, &pm))
+    if (sk_X509_VERIFY_PARAM_find(param_table, &idx, &pm)) {
       return sk_X509_VERIFY_PARAM_value(param_table, idx);
+    }
   }
 
   limit = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
@@ -599,7 +631,8 @@ const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name) {
 }
 
 void X509_VERIFY_PARAM_table_cleanup(void) {
-  if (param_table)
+  if (param_table) {
     sk_X509_VERIFY_PARAM_pop_free(param_table, X509_VERIFY_PARAM_free);
+  }
   param_table = NULL;
 }

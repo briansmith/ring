@@ -84,32 +84,37 @@ int X509at_get_attr_by_OBJ(const STACK_OF(X509_ATTRIBUTE) *sk,
   int n;
   X509_ATTRIBUTE *ex;
 
-  if (sk == NULL)
+  if (sk == NULL) {
     return (-1);
+  }
   lastpos++;
-  if (lastpos < 0)
+  if (lastpos < 0) {
     lastpos = 0;
+  }
   n = sk_X509_ATTRIBUTE_num(sk);
   for (; lastpos < n; lastpos++) {
     ex = sk_X509_ATTRIBUTE_value(sk, lastpos);
-    if (OBJ_cmp(ex->object, obj) == 0)
+    if (OBJ_cmp(ex->object, obj) == 0) {
       return (lastpos);
+    }
   }
   return (-1);
 }
 
 X509_ATTRIBUTE *X509at_get_attr(const STACK_OF(X509_ATTRIBUTE) *x, int loc) {
-  if (x == NULL || loc < 0 || sk_X509_ATTRIBUTE_num(x) <= (size_t)loc)
+  if (x == NULL || loc < 0 || sk_X509_ATTRIBUTE_num(x) <= (size_t)loc) {
     return NULL;
-  else
+  } else {
     return sk_X509_ATTRIBUTE_value(x, loc);
+  }
 }
 
 X509_ATTRIBUTE *X509at_delete_attr(STACK_OF(X509_ATTRIBUTE) *x, int loc) {
   X509_ATTRIBUTE *ret;
 
-  if (x == NULL || loc < 0 || sk_X509_ATTRIBUTE_num(x) <= (size_t)loc)
+  if (x == NULL || loc < 0 || sk_X509_ATTRIBUTE_num(x) <= (size_t)loc) {
     return (NULL);
+  }
   ret = sk_X509_ATTRIBUTE_delete(x, loc);
   return (ret);
 }
@@ -125,25 +130,32 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr(STACK_OF(X509_ATTRIBUTE) **x,
   }
 
   if (*x == NULL) {
-    if ((sk = sk_X509_ATTRIBUTE_new_null()) == NULL)
+    if ((sk = sk_X509_ATTRIBUTE_new_null()) == NULL) {
       goto err;
-  } else
+    }
+  } else {
     sk = *x;
+  }
 
-  if ((new_attr = X509_ATTRIBUTE_dup(attr)) == NULL)
+  if ((new_attr = X509_ATTRIBUTE_dup(attr)) == NULL) {
     goto err2;
-  if (!sk_X509_ATTRIBUTE_push(sk, new_attr))
+  }
+  if (!sk_X509_ATTRIBUTE_push(sk, new_attr)) {
     goto err;
-  if (*x == NULL)
+  }
+  if (*x == NULL) {
     *x = sk;
+  }
   return (sk);
 err:
   OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 err2:
-  if (new_attr != NULL)
+  if (new_attr != NULL) {
     X509_ATTRIBUTE_free(new_attr);
-  if (sk != NULL)
+  }
+  if (sk != NULL) {
     sk_X509_ATTRIBUTE_free(sk);
+  }
   return (NULL);
 }
 
@@ -155,8 +167,9 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_OBJ(STACK_OF(X509_ATTRIBUTE) **x,
   X509_ATTRIBUTE *attr;
   STACK_OF(X509_ATTRIBUTE) *ret;
   attr = X509_ATTRIBUTE_create_by_OBJ(NULL, obj, type, bytes, len);
-  if (!attr)
+  if (!attr) {
     return 0;
+  }
   ret = X509at_add1_attr(x, attr);
   X509_ATTRIBUTE_free(attr);
   return ret;
@@ -169,8 +182,9 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_NID(STACK_OF(X509_ATTRIBUTE) **x,
   X509_ATTRIBUTE *attr;
   STACK_OF(X509_ATTRIBUTE) *ret;
   attr = X509_ATTRIBUTE_create_by_NID(NULL, nid, type, bytes, len);
-  if (!attr)
+  if (!attr) {
     return 0;
+  }
   ret = X509at_add1_attr(x, attr);
   X509_ATTRIBUTE_free(attr);
   return ret;
@@ -184,8 +198,9 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_txt(STACK_OF(X509_ATTRIBUTE) **x,
   X509_ATTRIBUTE *attr;
   STACK_OF(X509_ATTRIBUTE) *ret;
   attr = X509_ATTRIBUTE_create_by_txt(NULL, attrname, type, bytes, len);
-  if (!attr)
+  if (!attr) {
     return 0;
+  }
   ret = X509at_add1_attr(x, attr);
   X509_ATTRIBUTE_free(attr);
   return ret;
@@ -215,20 +230,25 @@ X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_OBJ(X509_ATTRIBUTE **attr,
       OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
       return (NULL);
     }
-  } else
+  } else {
     ret = *attr;
+  }
 
-  if (!X509_ATTRIBUTE_set1_object(ret, obj))
+  if (!X509_ATTRIBUTE_set1_object(ret, obj)) {
     goto err;
-  if (!X509_ATTRIBUTE_set1_data(ret, attrtype, data, len))
+  }
+  if (!X509_ATTRIBUTE_set1_data(ret, attrtype, data, len)) {
     goto err;
+  }
 
-  if ((attr != NULL) && (*attr == NULL))
+  if ((attr != NULL) && (*attr == NULL)) {
     *attr = ret;
+  }
   return (ret);
 err:
-  if ((attr == NULL) || (ret != *attr))
+  if ((attr == NULL) || (ret != *attr)) {
     X509_ATTRIBUTE_free(ret);
+  }
   return (NULL);
 }
 
@@ -251,8 +271,9 @@ X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_txt(X509_ATTRIBUTE **attr,
 }
 
 int X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr, const ASN1_OBJECT *obj) {
-  if ((attr == NULL) || (obj == NULL))
+  if ((attr == NULL) || (obj == NULL)) {
     return (0);
+  }
   ASN1_OBJECT_free(attr->object);
   attr->object = OBJ_dup(obj);
   return attr->object != NULL;
@@ -263,8 +284,9 @@ int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
   ASN1_TYPE *ttmp = NULL;
   ASN1_STRING *stmp = NULL;
   int atype = 0;
-  if (!attr)
+  if (!attr) {
     return 0;
+  }
   if (attrtype & MBSTRING_FLAG) {
     stmp = ASN1_STRING_set_by_NID(NULL, data, len, attrtype,
                                   OBJ_obj2nid(attr->object));
@@ -274,10 +296,12 @@ int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
     }
     atype = stmp->type;
   } else if (len != -1) {
-    if (!(stmp = ASN1_STRING_type_new(attrtype)))
+    if (!(stmp = ASN1_STRING_type_new(attrtype))) {
       goto err;
-    if (!ASN1_STRING_set(stmp, data, len))
+    }
+    if (!ASN1_STRING_set(stmp, data, len)) {
       goto err;
+    }
     atype = attrtype;
   }
   /*
@@ -289,17 +313,20 @@ int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
     ASN1_STRING_free(stmp);
     return 1;
   }
-  if (!(ttmp = ASN1_TYPE_new()))
+  if (!(ttmp = ASN1_TYPE_new())) {
     goto err;
+  }
   if ((len == -1) && !(attrtype & MBSTRING_FLAG)) {
-    if (!ASN1_TYPE_set1(ttmp, attrtype, data))
+    if (!ASN1_TYPE_set1(ttmp, attrtype, data)) {
       goto err;
+    }
   } else {
     ASN1_TYPE_set(ttmp, atype, stmp);
     stmp = NULL;
   }
-  if (!sk_ASN1_TYPE_push(attr->set, ttmp))
+  if (!sk_ASN1_TYPE_push(attr->set, ttmp)) {
     goto err;
+  }
   return 1;
 err:
   OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
@@ -313,8 +340,9 @@ int X509_ATTRIBUTE_count(const X509_ATTRIBUTE *attr) {
 }
 
 ASN1_OBJECT *X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr) {
-  if (attr == NULL)
+  if (attr == NULL) {
     return (NULL);
+  }
   return (attr->object);
 }
 
@@ -322,8 +350,9 @@ void *X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx, int attrtype,
                                void *unused) {
   ASN1_TYPE *ttmp;
   ttmp = X509_ATTRIBUTE_get0_type(attr, idx);
-  if (!ttmp)
+  if (!ttmp) {
     return NULL;
+  }
   if (attrtype != ASN1_TYPE_get(ttmp)) {
     OPENSSL_PUT_ERROR(X509, X509_R_WRONG_TYPE);
     return NULL;
@@ -332,9 +361,11 @@ void *X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx, int attrtype,
 }
 
 ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr, int idx) {
-  if (attr == NULL)
+  if (attr == NULL) {
     return NULL;
-  if (idx >= X509_ATTRIBUTE_count(attr))
+  }
+  if (idx >= X509_ATTRIBUTE_count(attr)) {
     return NULL;
+  }
   return sk_ASN1_TYPE_value(attr->set, idx);
 }

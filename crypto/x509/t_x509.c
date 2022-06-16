@@ -104,15 +104,18 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
     nmindent = 12;
   }
 
-  if (nmflags == X509_FLAG_COMPAT)
+  if (nmflags == X509_FLAG_COMPAT) {
     nmindent = 16;
+  }
 
   ci = x->cert_info;
   if (!(cflag & X509_FLAG_NO_HEADER)) {
-    if (BIO_write(bp, "Certificate:\n", 13) <= 0)
+    if (BIO_write(bp, "Certificate:\n", 13) <= 0) {
       goto err;
-    if (BIO_write(bp, "    Data:\n", 10) <= 0)
+    }
+    if (BIO_write(bp, "    Data:\n", 10) <= 0) {
       goto err;
+    }
   }
   if (!(cflag & X509_FLAG_NO_VERSION)) {
     l = X509_get_version(x);
@@ -152,49 +155,68 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
   }
 
   if (!(cflag & X509_FLAG_NO_SIGNAME)) {
-    if (X509_signature_print(bp, ci->signature, NULL) <= 0)
+    if (X509_signature_print(bp, ci->signature, NULL) <= 0) {
       goto err;
+    }
   }
 
   if (!(cflag & X509_FLAG_NO_ISSUER)) {
-    if (BIO_printf(bp, "        Issuer:%c", mlch) <= 0)
+    if (BIO_printf(bp, "        Issuer:%c", mlch) <= 0) {
       goto err;
-    if (X509_NAME_print_ex(bp, X509_get_issuer_name(x), nmindent, nmflags) < 0)
+    }
+    if (X509_NAME_print_ex(bp, X509_get_issuer_name(x), nmindent, nmflags) <
+        0) {
       goto err;
-    if (BIO_write(bp, "\n", 1) <= 0)
+    }
+    if (BIO_write(bp, "\n", 1) <= 0) {
       goto err;
+    }
   }
   if (!(cflag & X509_FLAG_NO_VALIDITY)) {
-    if (BIO_write(bp, "        Validity\n", 17) <= 0)
+    if (BIO_write(bp, "        Validity\n", 17) <= 0) {
       goto err;
-    if (BIO_write(bp, "            Not Before: ", 24) <= 0)
+    }
+    if (BIO_write(bp, "            Not Before: ", 24) <= 0) {
       goto err;
-    if (!ASN1_TIME_print(bp, X509_get_notBefore(x)))
+    }
+    if (!ASN1_TIME_print(bp, X509_get_notBefore(x))) {
       goto err;
-    if (BIO_write(bp, "\n            Not After : ", 25) <= 0)
+    }
+    if (BIO_write(bp, "\n            Not After : ", 25) <= 0) {
       goto err;
-    if (!ASN1_TIME_print(bp, X509_get_notAfter(x)))
+    }
+    if (!ASN1_TIME_print(bp, X509_get_notAfter(x))) {
       goto err;
-    if (BIO_write(bp, "\n", 1) <= 0)
+    }
+    if (BIO_write(bp, "\n", 1) <= 0) {
       goto err;
+    }
   }
   if (!(cflag & X509_FLAG_NO_SUBJECT)) {
-    if (BIO_printf(bp, "        Subject:%c", mlch) <= 0)
+    if (BIO_printf(bp, "        Subject:%c", mlch) <= 0) {
       goto err;
-    if (X509_NAME_print_ex(bp, X509_get_subject_name(x), nmindent, nmflags) < 0)
+    }
+    if (X509_NAME_print_ex(bp, X509_get_subject_name(x), nmindent, nmflags) <
+        0) {
       goto err;
-    if (BIO_write(bp, "\n", 1) <= 0)
+    }
+    if (BIO_write(bp, "\n", 1) <= 0) {
       goto err;
+    }
   }
   if (!(cflag & X509_FLAG_NO_PUBKEY)) {
-    if (BIO_write(bp, "        Subject Public Key Info:\n", 33) <= 0)
+    if (BIO_write(bp, "        Subject Public Key Info:\n", 33) <= 0) {
       goto err;
-    if (BIO_printf(bp, "%12sPublic Key Algorithm: ", "") <= 0)
+    }
+    if (BIO_printf(bp, "%12sPublic Key Algorithm: ", "") <= 0) {
       goto err;
-    if (i2a_ASN1_OBJECT(bp, ci->key->algor->algorithm) <= 0)
+    }
+    if (i2a_ASN1_OBJECT(bp, ci->key->algor->algorithm) <= 0) {
       goto err;
-    if (BIO_puts(bp, "\n") <= 0)
+    }
+    if (BIO_puts(bp, "\n") <= 0) {
       goto err;
+    }
 
     pkey = X509_get_pubkey(x);
     if (pkey == NULL) {
@@ -208,34 +230,42 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
 
   if (!(cflag & X509_FLAG_NO_IDS)) {
     if (ci->issuerUID) {
-      if (BIO_printf(bp, "%8sIssuer Unique ID: ", "") <= 0)
+      if (BIO_printf(bp, "%8sIssuer Unique ID: ", "") <= 0) {
         goto err;
-      if (!X509_signature_dump(bp, ci->issuerUID, 12))
+      }
+      if (!X509_signature_dump(bp, ci->issuerUID, 12)) {
         goto err;
+      }
     }
     if (ci->subjectUID) {
-      if (BIO_printf(bp, "%8sSubject Unique ID: ", "") <= 0)
+      if (BIO_printf(bp, "%8sSubject Unique ID: ", "") <= 0) {
         goto err;
-      if (!X509_signature_dump(bp, ci->subjectUID, 12))
+      }
+      if (!X509_signature_dump(bp, ci->subjectUID, 12)) {
         goto err;
+      }
     }
   }
 
-  if (!(cflag & X509_FLAG_NO_EXTENSIONS))
+  if (!(cflag & X509_FLAG_NO_EXTENSIONS)) {
     X509V3_extensions_print(bp, "X509v3 extensions", ci->extensions, cflag, 8);
+  }
 
   if (!(cflag & X509_FLAG_NO_SIGDUMP)) {
-    if (X509_signature_print(bp, x->sig_alg, x->signature) <= 0)
+    if (X509_signature_print(bp, x->sig_alg, x->signature) <= 0) {
       goto err;
+    }
   }
   if (!(cflag & X509_FLAG_NO_AUX)) {
-    if (!X509_CERT_AUX_print(bp, x->aux, 0))
+    if (!X509_CERT_AUX_print(bp, x->aux, 0)) {
       goto err;
+    }
   }
   ret = 1;
 err:
-  if (m != NULL)
+  if (m != NULL) {
     OPENSSL_free(m);
+  }
   return (ret);
 }
 
@@ -249,18 +279,22 @@ int X509_ocspid_print(BIO *bp, X509 *x) {
   /*
    * display the hash of the subject as it would appear in OCSP requests
    */
-  if (BIO_printf(bp, "        Subject OCSP hash: ") <= 0)
+  if (BIO_printf(bp, "        Subject OCSP hash: ") <= 0) {
     goto err;
+  }
   derlen = i2d_X509_NAME(x->cert_info->subject, NULL);
-  if ((der = dertmp = (unsigned char *)OPENSSL_malloc(derlen)) == NULL)
+  if ((der = dertmp = (unsigned char *)OPENSSL_malloc(derlen)) == NULL) {
     goto err;
+  }
   i2d_X509_NAME(x->cert_info->subject, &dertmp);
 
-  if (!EVP_Digest(der, derlen, SHA1md, NULL, EVP_sha1(), NULL))
+  if (!EVP_Digest(der, derlen, SHA1md, NULL, EVP_sha1(), NULL)) {
     goto err;
+  }
   for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
-    if (BIO_printf(bp, "%02X", SHA1md[i]) <= 0)
+    if (BIO_printf(bp, "%02X", SHA1md[i]) <= 0) {
       goto err;
+    }
   }
   OPENSSL_free(der);
   der = NULL;
@@ -268,32 +302,38 @@ int X509_ocspid_print(BIO *bp, X509 *x) {
   /*
    * display the hash of the public key as it would appear in OCSP requests
    */
-  if (BIO_printf(bp, "\n        Public key OCSP hash: ") <= 0)
+  if (BIO_printf(bp, "\n        Public key OCSP hash: ") <= 0) {
     goto err;
+  }
 
   if (!EVP_Digest(x->cert_info->key->public_key->data,
                   x->cert_info->key->public_key->length, SHA1md, NULL,
-                  EVP_sha1(), NULL))
+                  EVP_sha1(), NULL)) {
     goto err;
+  }
   for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
-    if (BIO_printf(bp, "%02X", SHA1md[i]) <= 0)
+    if (BIO_printf(bp, "%02X", SHA1md[i]) <= 0) {
       goto err;
+    }
   }
   BIO_printf(bp, "\n");
 
   return (1);
 err:
-  if (der != NULL)
+  if (der != NULL) {
     OPENSSL_free(der);
+  }
   return (0);
 }
 
 int X509_signature_print(BIO *bp, const X509_ALGOR *sigalg,
                          const ASN1_STRING *sig) {
-  if (BIO_puts(bp, "    Signature Algorithm: ") <= 0)
+  if (BIO_puts(bp, "    Signature Algorithm: ") <= 0) {
     return 0;
-  if (i2a_ASN1_OBJECT(bp, sigalg->algorithm) <= 0)
+  }
+  if (i2a_ASN1_OBJECT(bp, sigalg->algorithm) <= 0) {
     return 0;
+  }
 
   /* RSA-PSS signatures have parameters to print. */
   int sig_nid = OBJ_obj2nid(sigalg->algorithm);
@@ -302,10 +342,11 @@ int X509_signature_print(BIO *bp, const X509_ALGOR *sigalg,
     return 0;
   }
 
-  if (sig)
+  if (sig) {
     return X509_signature_dump(bp, sig, 9);
-  else if (BIO_puts(bp, "\n") <= 0)
+  } else if (BIO_puts(bp, "\n") <= 0) {
     return 0;
+  }
   return 1;
 }
 
@@ -314,8 +355,9 @@ int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase) {
   int ret = 0, i;
 
   b = X509_NAME_oneline(name, NULL, 0);
-  if (!b)
+  if (!b) {
     return 0;
+  }
   if (!*b) {
     OPENSSL_free(b);
     return 1;
@@ -329,16 +371,19 @@ int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase) {
                                             (s[3] == '='))))) ||
         (*s == '\0')) {
       i = s - c;
-      if (BIO_write(bp, c, i) != i)
+      if (BIO_write(bp, c, i) != i) {
         goto err;
+      }
       c = s + 1; /* skip following slash */
       if (*s != '\0') {
-        if (BIO_write(bp, ", ", 2) != 2)
+        if (BIO_write(bp, ", ", 2) != 2) {
           goto err;
+        }
       }
     }
-    if (*s == '\0')
+    if (*s == '\0') {
       break;
+    }
     s++;
   }
 

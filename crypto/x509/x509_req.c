@@ -77,8 +77,9 @@ X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req) {
 }
 
 EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req) {
-  if ((req == NULL) || (req->req_info == NULL))
+  if ((req == NULL) || (req->req_info == NULL)) {
     return (NULL);
+  }
   return (X509_PUBKEY_get(req->req_info->pubkey));
 }
 
@@ -190,8 +191,9 @@ X509_ATTRIBUTE *X509_REQ_delete_attr(X509_REQ *req, int loc) {
 }
 
 int X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr) {
-  if (X509at_add1_attr(&req->req_info->attributes, attr))
+  if (X509at_add1_attr(&req->req_info->attributes, attr)) {
     return 1;
+  }
   return 0;
 }
 
@@ -199,33 +201,38 @@ int X509_REQ_add1_attr_by_OBJ(X509_REQ *req, const ASN1_OBJECT *obj,
                               int attrtype, const unsigned char *data,
                               int len) {
   if (X509at_add1_attr_by_OBJ(&req->req_info->attributes, obj, attrtype, data,
-                              len))
+                              len)) {
     return 1;
+  }
   return 0;
 }
 
 int X509_REQ_add1_attr_by_NID(X509_REQ *req, int nid, int attrtype,
                               const unsigned char *data, int len) {
   if (X509at_add1_attr_by_NID(&req->req_info->attributes, nid, attrtype, data,
-                              len))
+                              len)) {
     return 1;
+  }
   return 0;
 }
 
 int X509_REQ_add1_attr_by_txt(X509_REQ *req, const char *attrname, int attrtype,
                               const unsigned char *data, int len) {
   if (X509at_add1_attr_by_txt(&req->req_info->attributes, attrname, attrtype,
-                              data, len))
+                              data, len)) {
     return 1;
+  }
   return 0;
 }
 
 void X509_REQ_get0_signature(const X509_REQ *req, const ASN1_BIT_STRING **psig,
                              const X509_ALGOR **palg) {
-  if (psig != NULL)
+  if (psig != NULL) {
     *psig = req->signature;
-  if (palg != NULL)
+  }
+  if (palg != NULL) {
     *palg = req->sig_alg;
+  }
 }
 
 int X509_REQ_get_signature_nid(const X509_REQ *req) {

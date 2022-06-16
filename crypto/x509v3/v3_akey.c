@@ -153,12 +153,14 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
     cnf = sk_CONF_VALUE_value(values, i);
     if (!strcmp(cnf->name, "keyid")) {
       keyid = 1;
-      if (cnf->value && !strcmp(cnf->value, "always"))
+      if (cnf->value && !strcmp(cnf->value, "always")) {
         keyid = 2;
+      }
     } else if (!strcmp(cnf->name, "issuer")) {
       issuer = 1;
-      if (cnf->value && !strcmp(cnf->value, "always"))
+      if (cnf->value && !strcmp(cnf->value, "always")) {
         issuer = 2;
+      }
     } else {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNKNOWN_OPTION);
       ERR_add_error_data(2, "name=", cnf->name);
@@ -167,8 +169,9 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
   }
 
   if (!ctx || !ctx->issuer_cert) {
-    if (ctx && (ctx->flags == CTX_TEST))
+    if (ctx && (ctx->flags == CTX_TEST)) {
       return AUTHORITY_KEYID_new();
+    }
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_ISSUER_CERTIFICATE);
     return NULL;
   }
@@ -177,8 +180,9 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
 
   if (keyid) {
     j = X509_get_ext_by_NID(cert, NID_subject_key_identifier, -1);
-    if ((j >= 0) && (ext = X509_get_ext(cert, j)))
+    if ((j >= 0) && (ext = X509_get_ext(cert, j))) {
       ikeyid = X509V3_EXT_d2i(ext);
+    }
     if (keyid == 2 && !ikeyid) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNABLE_TO_GET_ISSUER_KEYID);
       return NULL;
@@ -194,8 +198,9 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
     }
   }
 
-  if (!(akeyid = AUTHORITY_KEYID_new()))
+  if (!(akeyid = AUTHORITY_KEYID_new())) {
     goto err;
+  }
 
   if (isname) {
     if (!(gens = sk_GENERAL_NAME_new_null()) || !(gen = GENERAL_NAME_new()) ||

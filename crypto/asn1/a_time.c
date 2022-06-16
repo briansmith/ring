@@ -90,19 +90,22 @@ ASN1_TIME *ASN1_TIME_adj(ASN1_TIME *s, time_t t, int offset_day,
     return NULL;
   }
   if (offset_day || offset_sec) {
-    if (!OPENSSL_gmtime_adj(ts, offset_day, offset_sec))
+    if (!OPENSSL_gmtime_adj(ts, offset_day, offset_sec)) {
       return NULL;
+    }
   }
-  if ((ts->tm_year >= 50) && (ts->tm_year < 150))
+  if ((ts->tm_year >= 50) && (ts->tm_year < 150)) {
     return ASN1_UTCTIME_adj(s, t, offset_day, offset_sec);
+  }
   return ASN1_GENERALIZEDTIME_adj(s, t, offset_day, offset_sec);
 }
 
 int ASN1_TIME_check(const ASN1_TIME *t) {
-  if (t->type == V_ASN1_GENERALIZEDTIME)
+  if (t->type == V_ASN1_GENERALIZEDTIME) {
     return ASN1_GENERALIZEDTIME_check(t);
-  else if (t->type == V_ASN1_UTCTIME)
+  } else if (t->type == V_ASN1_UTCTIME) {
     return ASN1_UTCTIME_check(t);
+  }
   return 0;
 }
 
@@ -113,45 +116,52 @@ ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(const ASN1_TIME *t,
   char *str;
   int newlen;
 
-  if (!ASN1_TIME_check(t))
+  if (!ASN1_TIME_check(t)) {
     return NULL;
+  }
 
   if (!out || !*out) {
-    if (!(ret = ASN1_GENERALIZEDTIME_new()))
+    if (!(ret = ASN1_GENERALIZEDTIME_new())) {
       goto err;
+    }
   } else {
     ret = *out;
   }
 
   /* If already GeneralizedTime just copy across */
   if (t->type == V_ASN1_GENERALIZEDTIME) {
-    if (!ASN1_STRING_set(ret, t->data, t->length))
+    if (!ASN1_STRING_set(ret, t->data, t->length)) {
       goto err;
+    }
     goto done;
   }
 
   /* grow the string */
-  if (!ASN1_STRING_set(ret, NULL, t->length + 2))
+  if (!ASN1_STRING_set(ret, NULL, t->length + 2)) {
     goto err;
+  }
   /* ASN1_STRING_set() allocated 'len + 1' bytes. */
   newlen = t->length + 2 + 1;
   str = (char *)ret->data;
   /* Work out the century and prepend */
-  if (t->data[0] >= '5')
+  if (t->data[0] >= '5') {
     OPENSSL_strlcpy(str, "19", newlen);
-  else
+  } else {
     OPENSSL_strlcpy(str, "20", newlen);
+  }
 
   OPENSSL_strlcat(str, (char *)t->data, newlen);
 
 done:
-  if (out != NULL && *out == NULL)
+  if (out != NULL && *out == NULL) {
     *out = ret;
+  }
   return ret;
 
 err:
-  if (out == NULL || *out != ret)
+  if (out == NULL || *out != ret) {
     ASN1_GENERALIZEDTIME_free(ret);
+  }
   return NULL;
 }
 
@@ -167,12 +177,14 @@ int ASN1_TIME_set_string(ASN1_TIME *s, const char *str) {
 
   if (!ASN1_TIME_check(&t)) {
     t.type = V_ASN1_GENERALIZEDTIME;
-    if (!ASN1_TIME_check(&t))
+    if (!ASN1_TIME_check(&t)) {
       return 0;
+    }
   }
 
-  if (s && !ASN1_STRING_copy((ASN1_STRING *)s, (ASN1_STRING *)&t))
+  if (s && !ASN1_STRING_copy((ASN1_STRING *)s, (ASN1_STRING *)&t)) {
     return 0;
+  }
 
   return 1;
 }
@@ -181,15 +193,17 @@ static int asn1_time_to_tm(struct tm *tm, const ASN1_TIME *t) {
   if (t == NULL) {
     time_t now_t;
     time(&now_t);
-    if (OPENSSL_gmtime(&now_t, tm))
+    if (OPENSSL_gmtime(&now_t, tm)) {
       return 1;
+    }
     return 0;
   }
 
-  if (t->type == V_ASN1_UTCTIME)
+  if (t->type == V_ASN1_UTCTIME) {
     return asn1_utctime_to_tm(tm, t);
-  else if (t->type == V_ASN1_GENERALIZEDTIME)
+  } else if (t->type == V_ASN1_GENERALIZEDTIME) {
     return asn1_generalizedtime_to_tm(tm, t);
+  }
 
   return 0;
 }
@@ -197,9 +211,11 @@ static int asn1_time_to_tm(struct tm *tm, const ASN1_TIME *t) {
 int ASN1_TIME_diff(int *out_days, int *out_seconds, const ASN1_TIME *from,
                    const ASN1_TIME *to) {
   struct tm tm_from, tm_to;
-  if (!asn1_time_to_tm(&tm_from, from))
+  if (!asn1_time_to_tm(&tm_from, from)) {
     return 0;
-  if (!asn1_time_to_tm(&tm_to, to))
+  }
+  if (!asn1_time_to_tm(&tm_to, to)) {
     return 0;
+  }
   return OPENSSL_gmtime_diff(out_days, out_seconds, &tm_from, &tm_to);
 }

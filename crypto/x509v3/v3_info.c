@@ -135,29 +135,33 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
 
     desc = sk_ACCESS_DESCRIPTION_value(ainfo, i);
     tmp = i2v_GENERAL_NAME(method, desc->location, tret);
-    if (tmp == NULL)
+    if (tmp == NULL) {
       goto err;
+    }
     tret = tmp;
     vtmp = sk_CONF_VALUE_value(tret, i);
     i2t_ASN1_OBJECT(objtmp, sizeof objtmp, desc->method);
     nlen = strlen(objtmp) + strlen(vtmp->name) + 5;
     ntmp = OPENSSL_malloc(nlen);
-    if (ntmp == NULL)
+    if (ntmp == NULL) {
       goto err;
+    }
     OPENSSL_strlcpy(ntmp, objtmp, nlen);
     OPENSSL_strlcat(ntmp, " - ", nlen);
     OPENSSL_strlcat(ntmp, vtmp->name, nlen);
     OPENSSL_free(vtmp->name);
     vtmp->name = ntmp;
   }
-  if (ret == NULL && tret == NULL)
+  if (ret == NULL && tret == NULL) {
     return sk_CONF_VALUE_new_null();
+  }
 
   return tret;
 err:
   OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
-  if (ret == NULL && tret != NULL)
+  if (ret == NULL && tret != NULL) {
     sk_CONF_VALUE_pop_free(tret, X509V3_conf_free);
+  }
   return NULL;
 }
 
@@ -187,8 +191,9 @@ static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
     CONF_VALUE ctmp;
     ctmp.name = ptmp + 1;
     ctmp.value = cnf->value;
-    if (!v2i_GENERAL_NAME_ex(acc->location, method, ctx, &ctmp, 0))
+    if (!v2i_GENERAL_NAME_ex(acc->location, method, ctx, &ctmp, 0)) {
       goto err;
+    }
     if (!(objtmp = OPENSSL_malloc(objlen + 1))) {
       OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;

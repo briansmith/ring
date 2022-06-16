@@ -236,24 +236,28 @@ X509 *d2i_X509_AUX(X509 **a, const unsigned char **pp, long length) {
   X509 *ret;
   int freeret = 0;
 
-  if (!a || *a == NULL)
+  if (!a || *a == NULL) {
     freeret = 1;
+  }
   ret = d2i_X509(a, &q, length);
   /* If certificate unreadable then forget it */
-  if (!ret)
+  if (!ret) {
     return NULL;
+  }
   /* update length */
   length -= q - *pp;
   /* Parse auxiliary information if there is any. */
-  if (length > 0 && !d2i_X509_CERT_AUX(&ret->aux, &q, length))
+  if (length > 0 && !d2i_X509_CERT_AUX(&ret->aux, &q, length)) {
     goto err;
+  }
   *pp = q;
   return ret;
 err:
   if (freeret) {
     X509_free(ret);
-    if (a)
+    if (a) {
       *a = NULL;
+    }
   }
   return NULL;
 }
@@ -283,8 +287,9 @@ static int i2d_x509_aux_internal(X509 *a, unsigned char **pp) {
   if (a->aux != NULL) {
     tmplen = i2d_X509_CERT_AUX(a->aux, pp);
     if (tmplen < 0) {
-      if (start != NULL)
+      if (start != NULL) {
         *pp = start;
+      }
       return tmplen;
     }
     length += tmplen;
@@ -307,17 +312,20 @@ int i2d_X509_AUX(X509 *a, unsigned char **pp) {
   unsigned char *tmp;
 
   /* Buffer provided by caller */
-  if (pp == NULL || *pp != NULL)
+  if (pp == NULL || *pp != NULL) {
     return i2d_x509_aux_internal(a, pp);
+  }
 
   /* Obtain the combined length */
-  if ((length = i2d_x509_aux_internal(a, NULL)) <= 0)
+  if ((length = i2d_x509_aux_internal(a, NULL)) <= 0) {
     return length;
+  }
 
   /* Allocate requisite combined storage */
   *pp = tmp = OPENSSL_malloc(length);
-  if (tmp == NULL)
+  if (tmp == NULL) {
     return -1; /* Push error onto error stack? */
+  }
 
   /* Encode, but keep *pp at the originally malloced pointer */
   length = i2d_x509_aux_internal(a, &tmp);
@@ -367,10 +375,12 @@ int X509_set1_signature_value(X509 *x509, const uint8_t *sig, size_t sig_len) {
 
 void X509_get0_signature(const ASN1_BIT_STRING **psig, const X509_ALGOR **palg,
                          const X509 *x) {
-  if (psig)
+  if (psig) {
     *psig = x->signature;
-  if (palg)
+  }
+  if (palg) {
     *palg = x->sig_alg;
+  }
 }
 
 int X509_get_signature_nid(const X509 *x) {

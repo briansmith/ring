@@ -271,8 +271,9 @@ int X509_pubkey_digest(const X509 *data, const EVP_MD *type, unsigned char *md,
                        unsigned int *len) {
   ASN1_BIT_STRING *key;
   key = X509_get0_pubkey_bitstr(data);
-  if (!key)
+  if (!key) {
     return 0;
+  }
   return EVP_Digest(key->data, key->length, md, len, type, NULL);
 }
 
@@ -314,8 +315,9 @@ int i2d_PKCS8PrivateKeyInfo_fp(FILE *fp, EVP_PKEY *key) {
   PKCS8_PRIV_KEY_INFO *p8inf;
   int ret;
   p8inf = EVP_PKEY2PKCS8(key);
-  if (!p8inf)
+  if (!p8inf) {
     return 0;
+  }
   ret = i2d_PKCS8_PRIV_KEY_INFO_fp(fp, p8inf);
   PKCS8_PRIV_KEY_INFO_free(p8inf);
   return ret;
@@ -336,8 +338,9 @@ int i2d_PKCS8PrivateKeyInfo_bio(BIO *bp, EVP_PKEY *key) {
   PKCS8_PRIV_KEY_INFO *p8inf;
   int ret;
   p8inf = EVP_PKEY2PKCS8(key);
-  if (!p8inf)
+  if (!p8inf) {
     return 0;
+  }
   ret = i2d_PKCS8_PRIV_KEY_INFO_bio(bp, p8inf);
   PKCS8_PRIV_KEY_INFO_free(p8inf);
   return ret;

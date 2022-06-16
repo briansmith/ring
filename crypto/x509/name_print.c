@@ -94,11 +94,13 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
   int outlen, len;
   const char *sep_dn, *sep_mv, *sep_eq;
   int sep_dn_len, sep_mv_len, sep_eq_len;
-  if (indent < 0)
+  if (indent < 0) {
     indent = 0;
+  }
   outlen = indent;
-  if (!do_indent(out, indent))
+  if (!do_indent(out, indent)) {
     return -1;
+  }
   switch (flags & XN_FLAG_SEP_MASK) {
     case XN_FLAG_SEP_MULTILINE:
       sep_dn = "\n";
@@ -147,21 +149,25 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
 
   cnt = X509_NAME_entry_count(n);
   for (i = 0; i < cnt; i++) {
-    if (flags & XN_FLAG_DN_REV)
+    if (flags & XN_FLAG_DN_REV) {
       ent = X509_NAME_get_entry(n, cnt - i - 1);
-    else
+    } else {
       ent = X509_NAME_get_entry(n, i);
+    }
     if (prev != -1) {
       if (prev == X509_NAME_ENTRY_set(ent)) {
-        if (!maybe_write(out, sep_mv, sep_mv_len))
+        if (!maybe_write(out, sep_mv, sep_mv_len)) {
           return -1;
+        }
         outlen += sep_mv_len;
       } else {
-        if (!maybe_write(out, sep_dn, sep_dn_len))
+        if (!maybe_write(out, sep_dn, sep_dn_len)) {
           return -1;
+        }
         outlen += sep_dn_len;
-        if (!do_indent(out, indent))
+        if (!do_indent(out, indent)) {
           return -1;
+        }
         outlen += indent;
       }
     }
@@ -188,15 +194,18 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
         }
       }
       objlen = strlen(objbuf);
-      if (!maybe_write(out, objbuf, objlen))
+      if (!maybe_write(out, objbuf, objlen)) {
         return -1;
+      }
       if ((objlen < fld_len) && (flags & XN_FLAG_FN_ALIGN)) {
-        if (!do_indent(out, fld_len - objlen))
+        if (!do_indent(out, fld_len - objlen)) {
           return -1;
+        }
         outlen += fld_len - objlen;
       }
-      if (!maybe_write(out, sep_eq, sep_eq_len))
+      if (!maybe_write(out, sep_eq, sep_eq_len)) {
         return -1;
+      }
       outlen += objlen + sep_eq_len;
     }
     /*
@@ -204,14 +213,16 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
      * might want to limit this further so it will DER dump on anything
      * other than a few 'standard' fields.
      */
-    if ((fn_nid == NID_undef) && (flags & XN_FLAG_DUMP_UNKNOWN_FIELDS))
+    if ((fn_nid == NID_undef) && (flags & XN_FLAG_DUMP_UNKNOWN_FIELDS)) {
       orflags = ASN1_STRFLGS_DUMP_ALL;
-    else
+    } else {
       orflags = 0;
+    }
 
     len = ASN1_STRING_print_ex(out, val, flags | orflags);
-    if (len < 0)
+    if (len < 0) {
       return -1;
+    }
     outlen += len;
   }
   return outlen;
@@ -219,8 +230,9 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
 
 int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
                        unsigned long flags) {
-  if (flags == XN_FLAG_COMPAT)
+  if (flags == XN_FLAG_COMPAT) {
     return X509_NAME_print(out, nm, indent);
+  }
   return do_name_ex(out, nm, indent, flags);
 }
 

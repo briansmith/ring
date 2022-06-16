@@ -176,8 +176,9 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
 
       case MBSTRING_UTF8: {
         int consumed = UTF8_getc(p, buflen, &c);
-        if (consumed < 0)
+        if (consumed < 0) {
           return -1; /* Invalid UTF8String */
+        }
         buflen -= consumed;
         p += consumed;
         break;
@@ -228,8 +229,9 @@ static int do_hex_dump(BIO *out, unsigned char *buf, int buflen) {
     while (p != q) {
       hextmp[0] = hexdig[*p >> 4];
       hextmp[1] = hexdig[*p & 0xf];
-      if (!maybe_write(out, hextmp, 2))
+      if (!maybe_write(out, hextmp, 2)) {
         return -1;
+      }
       p++;
     }
   }
@@ -329,8 +331,9 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
   if (flags & ASN1_STRFLGS_SHOW_TYPE) {
     const char *tagname = ASN1_tag2str(type);
     outlen += strlen(tagname);
-    if (!maybe_write(out, tagname, outlen) || !maybe_write(out, ":", 1))
+    if (!maybe_write(out, tagname, outlen) || !maybe_write(out, ":", 1)) {
       return -1;
+    }
     outlen++;
   }
 
@@ -351,8 +354,9 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
 
   if (encoding == -1) {
     int len = do_dump(flags, out, str);
-    if (len < 0)
+    if (len < 0) {
       return -1;
+    }
     outlen += len;
     return outlen;
   }
@@ -413,8 +417,9 @@ int ASN1_STRING_print_ex_fp(FILE *fp, const ASN1_STRING *str,
 }
 
 int ASN1_STRING_to_UTF8(unsigned char **out, const ASN1_STRING *in) {
-  if (!in)
+  if (!in) {
     return -1;
+  }
   int mbflag = string_type_to_encoding(in->type);
   if (mbflag == -1) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_TAG);
@@ -426,8 +431,9 @@ int ASN1_STRING_to_UTF8(unsigned char **out, const ASN1_STRING *in) {
   stmp.flags = 0;
   int ret =
       ASN1_mbstring_copy(&str, in->data, in->length, mbflag, B_ASN1_UTF8STRING);
-  if (ret < 0)
+  if (ret < 0) {
     return ret;
+  }
   *out = stmp.data;
   return stmp.length;
 }
@@ -437,33 +443,40 @@ int ASN1_STRING_print(BIO *bp, const ASN1_STRING *v) {
   char buf[80];
   const char *p;
 
-  if (v == NULL)
+  if (v == NULL) {
     return (0);
+  }
   n = 0;
   p = (const char *)v->data;
   for (i = 0; i < v->length; i++) {
-    if ((p[i] > '~') || ((p[i] < ' ') && (p[i] != '\n') && (p[i] != '\r')))
+    if ((p[i] > '~') || ((p[i] < ' ') && (p[i] != '\n') && (p[i] != '\r'))) {
       buf[n] = '.';
-    else
+    } else {
       buf[n] = p[i];
+    }
     n++;
     if (n >= 80) {
-      if (BIO_write(bp, buf, n) <= 0)
+      if (BIO_write(bp, buf, n) <= 0) {
         return (0);
+      }
       n = 0;
     }
   }
-  if (n > 0)
-    if (BIO_write(bp, buf, n) <= 0)
+  if (n > 0) {
+    if (BIO_write(bp, buf, n) <= 0) {
       return (0);
+    }
+  }
   return (1);
 }
 
 int ASN1_TIME_print(BIO *bp, const ASN1_TIME *tm) {
-  if (tm->type == V_ASN1_UTCTIME)
+  if (tm->type == V_ASN1_UTCTIME) {
     return ASN1_UTCTIME_print(bp, tm);
-  if (tm->type == V_ASN1_GENERALIZEDTIME)
+  }
+  if (tm->type == V_ASN1_GENERALIZEDTIME) {
     return ASN1_GENERALIZEDTIME_print(bp, tm);
+  }
   BIO_write(bp, "Bad time value", 14);
   return (0);
 }
@@ -482,18 +495,23 @@ int ASN1_GENERALIZEDTIME_print(BIO *bp, const ASN1_GENERALIZEDTIME *tm) {
   i = tm->length;
   v = (char *)tm->data;
 
-  if (i < 12)
+  if (i < 12) {
     goto err;
-  if (v[i - 1] == 'Z')
+  }
+  if (v[i - 1] == 'Z') {
     gmt = 1;
-  for (i = 0; i < 12; i++)
-    if ((v[i] > '9') || (v[i] < '0'))
+  }
+  for (i = 0; i < 12; i++) {
+    if ((v[i] > '9') || (v[i] < '0')) {
       goto err;
+    }
+  }
   y = (v[0] - '0') * 1000 + (v[1] - '0') * 100 + (v[2] - '0') * 10 +
       (v[3] - '0');
   M = (v[4] - '0') * 10 + (v[5] - '0');
-  if ((M > 12) || (M < 1))
+  if ((M > 12) || (M < 1)) {
     goto err;
+  }
   d = (v[6] - '0') * 10 + (v[7] - '0');
   h = (v[8] - '0') * 10 + (v[9] - '0');
   m = (v[10] - '0') * 10 + (v[11] - '0');
@@ -505,16 +523,18 @@ int ASN1_GENERALIZEDTIME_print(BIO *bp, const ASN1_GENERALIZEDTIME *tm) {
       int l = tm->length;
       f = &v[14]; /* The decimal point. */
       f_len = 1;
-      while (14 + f_len < l && f[f_len] >= '0' && f[f_len] <= '9')
+      while (14 + f_len < l && f[f_len] >= '0' && f[f_len] <= '9') {
         ++f_len;
+      }
     }
   }
 
   if (BIO_printf(bp, "%s %2d %02d:%02d:%02d%.*s %d%s", mon[M - 1], d, h, m, s,
-                 f_len, f, y, (gmt) ? " GMT" : "") <= 0)
+                 f_len, f, y, (gmt) ? " GMT" : "") <= 0) {
     return (0);
-  else
+  } else {
     return (1);
+  }
 err:
   BIO_write(bp, "Bad time value", 14);
   return (0);

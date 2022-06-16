@@ -320,20 +320,23 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
 
       /* use the normal code to write things out */
       i = PEM_write_bio(bp, PEM_STRING_RSA, buf, data, i);
-      if (i <= 0)
+      if (i <= 0) {
         goto err;
+      }
     } else {
       /* Add DSA/DH */
       /* normal optionally encrypted stuff */
       if (PEM_write_bio_RSAPrivateKey(bp, xi->x_pkey->dec_pkey->pkey.rsa, enc,
-                                      kstr, klen, cb, u) <= 0)
+                                      kstr, klen, cb, u) <= 0) {
         goto err;
+      }
     }
   }
 
   /* if we have a certificate then write it out now */
-  if ((xi->x509 != NULL) && (PEM_write_bio_X509(bp, xi->x509) <= 0))
+  if ((xi->x509 != NULL) && (PEM_write_bio_X509(bp, xi->x509) <= 0)) {
     goto err;
+  }
 
   /*
    * we are ignoring anything else that is loaded into the X509_INFO

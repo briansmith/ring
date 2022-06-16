@@ -104,34 +104,38 @@ static void *s2i_skey_id(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
   unsigned char pkey_dig[EVP_MAX_MD_SIZE];
   unsigned int diglen;
 
-  if (strcmp(str, "hash"))
+  if (strcmp(str, "hash")) {
     return s2i_ASN1_OCTET_STRING(method, ctx, str);
+  }
 
   if (!(oct = ASN1_OCTET_STRING_new())) {
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
-  if (ctx && (ctx->flags == CTX_TEST))
+  if (ctx && (ctx->flags == CTX_TEST)) {
     return oct;
+  }
 
   if (!ctx || (!ctx->subject_req && !ctx->subject_cert)) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_PUBLIC_KEY);
     goto err;
   }
 
-  if (ctx->subject_req)
+  if (ctx->subject_req) {
     pk = ctx->subject_req->req_info->pubkey->public_key;
-  else
+  } else {
     pk = ctx->subject_cert->cert_info->key->public_key;
+  }
 
   if (!pk) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_PUBLIC_KEY);
     goto err;
   }
 
-  if (!EVP_Digest(pk->data, pk->length, pkey_dig, &diglen, EVP_sha1(), NULL))
+  if (!EVP_Digest(pk->data, pk->length, pkey_dig, &diglen, EVP_sha1(), NULL)) {
     goto err;
+  }
 
   if (!ASN1_OCTET_STRING_set(oct, pkey_dig, diglen)) {
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);

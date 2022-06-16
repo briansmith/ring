@@ -73,8 +73,9 @@
 static char *i2s_ASN1_IA5STRING(const X509V3_EXT_METHOD *method, void *ext) {
   const ASN1_IA5STRING *ia5 = ext;
   char *tmp;
-  if (!ia5 || !ia5->length)
+  if (!ia5 || !ia5->length) {
     return NULL;
+  }
   if (!(tmp = OPENSSL_malloc(ia5->length + 1))) {
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
@@ -91,8 +92,9 @@ static void *s2i_ASN1_IA5STRING(const X509V3_EXT_METHOD *method,
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_ARGUMENT);
     return NULL;
   }
-  if (!(ia5 = ASN1_IA5STRING_new()))
+  if (!(ia5 = ASN1_IA5STRING_new())) {
     goto err;
+  }
   if (!ASN1_STRING_set(ia5, str, strlen(str))) {
     ASN1_IA5STRING_free(ia5);
     goto err;

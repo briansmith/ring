@@ -94,8 +94,9 @@ static STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(
   const ASN1_BIT_STRING *bits = ext;
   const BIT_STRING_BITNAME *bnam;
   for (bnam = method->usr_data; bnam->lname; bnam++) {
-    if (ASN1_BIT_STRING_get_bit(bits, bnam->bitnum))
+    if (ASN1_BIT_STRING_get_bit(bits, bnam->bitnum)) {
       X509V3_add_value(bnam->lname, NULL, &ret);
+    }
   }
   return ret;
 }

@@ -107,8 +107,9 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
     OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
     goto err;
   }
-  if (signature->data != NULL)
+  if (signature->data != NULL) {
     OPENSSL_free(signature->data);
+  }
   signature->data = buf_out;
   buf_out = NULL;
   signature->length = outl;

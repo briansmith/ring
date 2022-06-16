@@ -89,16 +89,18 @@ int X509_CRL_set_version(X509_CRL *x, long version) {
 }
 
 int X509_CRL_set_issuer_name(X509_CRL *x, X509_NAME *name) {
-  if ((x == NULL) || (x->crl == NULL))
+  if ((x == NULL) || (x->crl == NULL)) {
     return (0);
+  }
   return (X509_NAME_set(&x->crl->issuer, name));
 }
 
 int X509_CRL_set1_lastUpdate(X509_CRL *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
-  if (x == NULL)
+  if (x == NULL) {
     return (0);
+  }
   in = x->crl->lastUpdate;
   if (in != tm) {
     in = ASN1_STRING_dup(tm);
@@ -113,8 +115,9 @@ int X509_CRL_set1_lastUpdate(X509_CRL *x, const ASN1_TIME *tm) {
 int X509_CRL_set1_nextUpdate(X509_CRL *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
-  if (x == NULL)
+  if (x == NULL) {
     return (0);
+  }
   in = x->crl->nextUpdate;
   if (in != tm) {
     in = ASN1_STRING_dup(tm);
@@ -170,10 +173,12 @@ const STACK_OF(X509_EXTENSION) *X509_CRL_get0_extensions(const X509_CRL *crl) {
 
 void X509_CRL_get0_signature(const X509_CRL *crl, const ASN1_BIT_STRING **psig,
                              const X509_ALGOR **palg) {
-  if (psig != NULL)
+  if (psig != NULL) {
     *psig = crl->signature;
-  if (palg != NULL)
+  }
+  if (palg != NULL) {
     *palg = crl->sig_alg;
+  }
 }
 
 int X509_CRL_get_signature_nid(const X509_CRL *crl) {
@@ -188,8 +193,9 @@ int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
                                     const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
-  if (revoked == NULL)
+  if (revoked == NULL) {
     return (0);
+  }
   in = revoked->revocationDate;
   if (in != tm) {
     in = ASN1_STRING_dup(tm);
@@ -210,8 +216,9 @@ int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
                                   const ASN1_INTEGER *serial) {
   ASN1_INTEGER *in;
 
-  if (revoked == NULL)
+  if (revoked == NULL) {
     return (0);
+  }
   in = revoked->serialNumber;
   if (in != serial) {
     in = ASN1_INTEGER_dup(serial);

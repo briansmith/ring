@@ -140,10 +140,11 @@ static void *v2i_EXTENDED_KEY_USAGE(const X509V3_EXT_METHOD *method,
 
   for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     val = sk_CONF_VALUE_value(nval, i);
-    if (val->value)
+    if (val->value) {
       extval = val->value;
-    else
+    } else {
       extval = val->name;
+    }
     if (!(objtmp = OBJ_txt2obj(extval, 0))) {
       sk_ASN1_OBJECT_pop_free(extku, ASN1_OBJECT_free);
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
