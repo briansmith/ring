@@ -126,8 +126,9 @@ typedef struct ASN1_ENCODING_st {
   unsigned alias_only_on_next_parse : 1;
 } ASN1_ENCODING;
 
-int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
-int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d);
+OPENSSL_EXPORT int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
+OPENSSL_EXPORT int asn1_generalizedtime_to_tm(struct tm *tm,
+                                              const ASN1_GENERALIZEDTIME *d);
 
 void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
                             int combine);
@@ -216,9 +217,6 @@ typedef struct {
 OPENSSL_EXPORT void asn1_get_string_table_for_testing(
     const ASN1_STRING_TABLE **out_ptr, size_t *out_len);
 
-OPENSSL_EXPORT int asn1_generalizedtime_to_tm(struct tm *tm,
-                                              const ASN1_GENERALIZEDTIME *d);
-OPENSSL_EXPORT int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
 
 #if defined(__cplusplus)
 }  /* extern C */
