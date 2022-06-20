@@ -239,17 +239,15 @@ struct evp_pkey_method_st {
 } /* EVP_PKEY_METHOD */;
 
 typedef struct {
-  union {
-    uint8_t priv[64];
-    struct {
-      // Shift the location of the public key to align with where it is in the
-      // private key representation.
-      uint8_t pad[32];
-      uint8_t value[32];
-    } pub;
-  } key;
+  // key is the concatenation of the private seed and public key. It is stored
+  // as a single 64-bit array to allow passing to |ED25519_sign|. If
+  // |has_private| is false, the first 32 bytes are uninitialized and the public
+  // key is in the last 32 bytes.
+  uint8_t key[64];
   char has_private;
 } ED25519_KEY;
+
+#define ED25519_PUBLIC_KEY_OFFSET 32
 
 typedef struct {
   uint8_t pub[32];

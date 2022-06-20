@@ -43,7 +43,7 @@ static int ed25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
   // The RFC 8032 encoding stores only the 32-byte seed, so we must recover the
   // full representation which we use from it.
   uint8_t pubkey_unused[32];
-  ED25519_keypair_from_seed(pubkey_unused, key->key.priv, in);
+  ED25519_keypair_from_seed(pubkey_unused, key->key, in);
   key->has_private = 1;
 
   ed25519_free(pkey);
@@ -63,7 +63,7 @@ static int ed25519_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
     return 0;
   }
 
-  OPENSSL_memcpy(key->key.pub.value, in, 32);
+  OPENSSL_memcpy(key->key + ED25519_PUBLIC_KEY_OFFSET, in, 32);
   key->has_private = 0;
 
   ed25519_free(pkey);
@@ -90,7 +90,7 @@ static int ed25519_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
   }
 
   // The raw private key format is the first 32 bytes of the private key.
-  OPENSSL_memcpy(out, key->key.priv, 32);
+  OPENSSL_memcpy(out, key->key, 32);
   *out_len = 32;
   return 1;
 }
@@ -108,7 +108,7 @@ static int ed25519_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
     return 0;
   }
 
-  OPENSSL_memcpy(out, key->key.pub.value, 32);
+  OPENSSL_memcpy(out, key->key + ED25519_PUBLIC_KEY_OFFSET, 32);
   *out_len = 32;
   return 1;
 }
@@ -136,7 +136,8 @@ static int ed25519_pub_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_bytes(&oid, ed25519_asn1_meth.oid, ed25519_asn1_meth.oid_len) ||
       !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
       !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
-      !CBB_add_bytes(&key_bitstring, key->key.pub.value, 32) ||
+      !CBB_add_bytes(&key_bitstring, key->key + ED25519_PUBLIC_KEY_OFFSET,
+                     32) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
@@ -148,7 +149,8 @@ static int ed25519_pub_encode(CBB *out, const EVP_PKEY *pkey) {
 static int ed25519_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   const ED25519_KEY *a_key = a->pkey.ptr;
   const ED25519_KEY *b_key = b->pkey.ptr;
-  return OPENSSL_memcmp(a_key->key.pub.value, b_key->key.pub.value, 32) == 0;
+  return OPENSSL_memcmp(a_key->key + ED25519_PUBLIC_KEY_OFFSET,
+                        b_key->key + ED25519_PUBLIC_KEY_OFFSET, 32) == 0;
 }
 
 static int ed25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
@@ -185,7 +187,7 @@ static int ed25519_priv_encode(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_asn1(&private_key, &inner, CBS_ASN1_OCTETSTRING) ||
       // The PKCS#8 encoding stores only the 32-byte seed which is the first 32
       // bytes of the private key.
-      !CBB_add_bytes(&inner, key->key.priv, 32) ||
+      !CBB_add_bytes(&inner, key->key, 32) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
