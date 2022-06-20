@@ -1297,12 +1297,9 @@ static int aead_aes_gcm_tls12_seal_scatter(
   }
 
   // The given nonces must be strictly monotonically increasing.
-  uint64_t given_counter;
-  OPENSSL_memcpy(&given_counter, nonce + nonce_len - sizeof(given_counter),
-                 sizeof(given_counter));
-  given_counter = CRYPTO_bswap8(given_counter);
-  if (given_counter == UINT64_MAX ||
-      given_counter < gcm_ctx->min_next_nonce) {
+  uint64_t given_counter =
+      CRYPTO_load_u64_be(nonce + nonce_len - sizeof(uint64_t));
+  if (given_counter == UINT64_MAX || given_counter < gcm_ctx->min_next_nonce) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE);
     return 0;
   }
@@ -1397,10 +1394,8 @@ static int aead_aes_gcm_tls13_seal_scatter(
   // The given nonces must be strictly monotonically increasing. See
   // https://tools.ietf.org/html/rfc8446#section-5.3 for details of the TLS 1.3
   // nonce construction.
-  uint64_t given_counter;
-  OPENSSL_memcpy(&given_counter, nonce + nonce_len - sizeof(given_counter),
-                 sizeof(given_counter));
-  given_counter = CRYPTO_bswap8(given_counter);
+  uint64_t given_counter =
+      CRYPTO_load_u64_be(nonce + nonce_len - sizeof(uint64_t));
 
   if (gcm_ctx->first) {
     // In the first call the sequence number will be zero and therefore the

@@ -59,7 +59,7 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
   }
 
   drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material, 32);
-  OPENSSL_memcpy(drbg->counter.bytes, seed_material + 32, 16);
+  OPENSSL_memcpy(drbg->counter, seed_material + 32, 16);
   drbg->reseed_counter = 1;
 
   return 1;
@@ -71,8 +71,8 @@ OPENSSL_STATIC_ASSERT(CTR_DRBG_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
 // ctr_inc adds |n| to the last four bytes of |drbg->counter|, treated as a
 // big-endian number.
 static void ctr32_add(CTR_DRBG_STATE *drbg, uint32_t n) {
-  drbg->counter.words[3] =
-      CRYPTO_bswap4(CRYPTO_bswap4(drbg->counter.words[3]) + n);
+  uint32_t ctr = CRYPTO_load_u32_be(drbg->counter + 12);
+  CRYPTO_store_u32_be(drbg->counter + 12, ctr + n);
 }
 
 static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
@@ -87,7 +87,7 @@ static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
   uint8_t temp[CTR_DRBG_ENTROPY_LEN];
   for (size_t i = 0; i < CTR_DRBG_ENTROPY_LEN; i += AES_BLOCK_SIZE) {
     ctr32_add(drbg, 1);
-    drbg->block(drbg->counter.bytes, temp + i, &drbg->ks);
+    drbg->block(drbg->counter, temp + i, &drbg->ks);
   }
 
   for (size_t i = 0; i < data_len; i++) {
@@ -95,7 +95,7 @@ static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
   }
 
   drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, temp, 32);
-  OPENSSL_memcpy(drbg->counter.bytes, temp + 32, 16);
+  OPENSSL_memcpy(drbg->counter, temp + 32, 16);
 
   return 1;
 }
@@ -167,12 +167,12 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
     if (drbg->ctr) {
       OPENSSL_memset(out, 0, todo);
       ctr32_add(drbg, 1);
-      drbg->ctr(out, out, num_blocks, &drbg->ks, drbg->counter.bytes);
+      drbg->ctr(out, out, num_blocks, &drbg->ks, drbg->counter);
       ctr32_add(drbg, num_blocks - 1);
     } else {
       for (size_t i = 0; i < todo; i += AES_BLOCK_SIZE) {
         ctr32_add(drbg, 1);
-        drbg->block(drbg->counter.bytes, out + i, &drbg->ks);
+        drbg->block(drbg->counter, out + i, &drbg->ks);
       }
     }
 
@@ -183,7 +183,7 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
   if (out_len > 0) {
     uint8_t block[AES_BLOCK_SIZE];
     ctr32_add(drbg, 1);
-    drbg->block(drbg->counter.bytes, block, &drbg->ks);
+    drbg->block(drbg->counter, block, &drbg->ks);
 
     OPENSSL_memcpy(out, block, out_len);
   }

@@ -116,11 +116,7 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   assert(inptr >= outptr || inptr + len <= outptr);
 
   size_t n;
-  union {
-    crypto_word_t t[16 / sizeof(crypto_word_t)];
-    uint8_t c[16];
-  } tmp;
-
+  alignas(16) uint8_t tmp[16];
   if ((inptr >= 32 && outptr <= inptr - 32) || inptr < outptr) {
     // If |out| is at least two blocks behind |in| or completely disjoint, there
     // is no need to decrypt to a temporary block.
@@ -144,10 +140,10 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                           "block cannot be evenly divided into words");
 
     while (len >= 16) {
-      (*block)(in, tmp.c, key);
+      (*block)(in, tmp, key);
       for (n = 0; n < 16; n += sizeof(crypto_word_t)) {
         crypto_word_t c = CRYPTO_load_word_le(in + n);
-        CRYPTO_store_word_le(out + n, tmp.t[n / sizeof(crypto_word_t)] ^
+        CRYPTO_store_word_le(out + n, CRYPTO_load_word_le(tmp + n) ^
                                           CRYPTO_load_word_le(ivec + n));
         CRYPTO_store_word_le(ivec + n, c);
       }
@@ -159,10 +155,10 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
   while (len) {
     uint8_t c;
-    (*block)(in, tmp.c, key);
+    (*block)(in, tmp, key);
     for (n = 0; n < 16 && n < len; ++n) {
       c = in[n];
-      out[n] = tmp.c[n] ^ ivec[n];
+      out[n] = tmp[n] ^ ivec[n];
       ivec[n] = c;
     }
     if (len <= 16) {
