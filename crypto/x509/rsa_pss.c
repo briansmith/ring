@@ -323,7 +323,8 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
     goto err;
   }
 
-  if (BIO_puts(bp, "\n") <= 0 || !BIO_indent(bp, indent, 128) ||
+  if (BIO_puts(bp, "\n") <= 0 ||       //
+      !BIO_indent(bp, indent, 128) ||  //
       BIO_puts(bp, "Hash Algorithm: ") <= 0) {
     goto err;
   }
@@ -336,7 +337,8 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
     goto err;
   }
 
-  if (BIO_puts(bp, "\n") <= 0 || !BIO_indent(bp, indent, 128) ||
+  if (BIO_puts(bp, "\n") <= 0 ||       //
+      !BIO_indent(bp, indent, 128) ||  //
       BIO_puts(bp, "Mask Algorithm: ") <= 0) {
     goto err;
   }
@@ -359,7 +361,8 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
   }
   BIO_puts(bp, "\n");
 
-  if (!BIO_indent(bp, indent, 128) || BIO_puts(bp, "Salt Length: 0x") <= 0) {
+  if (!BIO_indent(bp, indent, 128) ||  //
+      BIO_puts(bp, "Salt Length: 0x") <= 0) {
     goto err;
   }
 
@@ -372,7 +375,8 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
   }
   BIO_puts(bp, "\n");
 
-  if (!BIO_indent(bp, indent, 128) || BIO_puts(bp, "Trailer Field: 0x") <= 0) {
+  if (!BIO_indent(bp, indent, 128) ||  //
+      BIO_puts(bp, "Trailer Field: 0x") <= 0) {
     goto err;
   }
 

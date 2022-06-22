@@ -97,8 +97,10 @@ int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey) {
   }
 
   CBB cbb;
-  if (!CBB_init(&cbb, 0) || !EVP_marshal_public_key(&cbb, pkey) ||
-      !CBB_finish(&cbb, &spki, &spki_len) || spki_len > LONG_MAX) {
+  if (!CBB_init(&cbb, 0) ||  //
+      !EVP_marshal_public_key(&cbb, pkey) ||
+      !CBB_finish(&cbb, &spki, &spki_len) ||  //
+      spki_len > LONG_MAX) {
     CBB_cleanup(&cbb);
     OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_ENCODE_ERROR);
     goto error;

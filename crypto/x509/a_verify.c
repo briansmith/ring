@@ -58,7 +58,6 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-#include <time.h>
 
 #include <openssl/bn.h>
 #include <openssl/digest.h>
