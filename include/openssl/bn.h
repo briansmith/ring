@@ -205,6 +205,10 @@ OPENSSL_EXPORT unsigned BN_num_bits(const BIGNUM *bn);
 
 // BN_num_bytes returns the minimum number of bytes needed to represent the
 // absolute value of |bn|.
+//
+// While |size_t| is the preferred type for byte counts, callers can assume that
+// |BIGNUM|s are bounded such that this value, and its corresponding bit count,
+// will always fit in |int|.
 OPENSSL_EXPORT unsigned BN_num_bytes(const BIGNUM *bn);
 
 // BN_zero sets |bn| to zero.

@@ -138,7 +138,7 @@ BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
     BN_free(bn);
     return NULL;
   }
-  ret->width = num_words;
+  ret->width = (int)num_words;
 
   // Make sure the top bytes will be zeroed.
   ret->d[num_words - 1] = 0;

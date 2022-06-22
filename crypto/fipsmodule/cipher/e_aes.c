@@ -47,6 +47,7 @@
  * ==================================================================== */
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/aead.h>
@@ -289,8 +290,10 @@ static int aes_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes) {
+  // This function assumes the key length was previously validated.
+  assert(key_bytes == 128 / 8 || key_bytes == 192 / 8 || key_bytes == 256 / 8);
   if (hwaes_capable()) {
-    aes_hw_set_encrypt_key(key, key_bytes * 8, aes_key);
+    aes_hw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (gcm_key != NULL) {
       CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_hw_encrypt, 1);
     }
@@ -301,7 +304,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
   }
 
   if (vpaes_capable()) {
-    vpaes_set_encrypt_key(key, key_bytes * 8, aes_key);
+    vpaes_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
     if (out_block) {
       *out_block = vpaes_encrypt;
     }
@@ -318,7 +321,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
 #endif
   }
 
-  aes_nohw_set_encrypt_key(key, key_bytes * 8, aes_key);
+  aes_nohw_set_encrypt_key(key, (int)key_bytes * 8, aes_key);
   if (gcm_key != NULL) {
     CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt, 0);
   }
@@ -552,6 +555,14 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
     return -1;
   }
 
+  if (len > INT_MAX) {
+    // This function signature can only express up to |INT_MAX| bytes encrypted.
+    //
+    // TODO(https://crbug.com/boringssl/494): Make the internal |EVP_CIPHER|
+    // calling convention |size_t|-clean.
+    return -1;
+  }
+
   if (in) {
     if (out == NULL) {
       if (!CRYPTO_gcm128_aad(&gctx->gcm, in, len)) {
@@ -580,7 +591,7 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
         }
       }
     }
-    return len;
+    return (int)len;
   } else {
     if (!ctx->encrypt) {
       if (gctx->taglen < 0 ||

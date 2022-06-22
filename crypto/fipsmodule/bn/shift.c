@@ -258,9 +258,9 @@ int BN_clear_bit(BIGNUM *a, int n) {
   return 1;
 }
 
-int bn_is_bit_set_words(const BN_ULONG *a, size_t num, unsigned bit) {
-  unsigned i = bit / BN_BITS2;
-  unsigned j = bit % BN_BITS2;
+int bn_is_bit_set_words(const BN_ULONG *a, size_t num, size_t bit) {
+  size_t i = bit / BN_BITS2;
+  size_t j = bit % BN_BITS2;
   if (i >= num) {
     return 0;
   }

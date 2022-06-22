@@ -49,6 +49,7 @@
 #include <openssl/cmac.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/aes.h>
@@ -269,7 +270,10 @@ int CMAC_Update(CMAC_CTX *ctx, const uint8_t *in, size_t in_len) {
   }
 
   OPENSSL_memcpy(ctx->block, in, in_len);
-  ctx->block_used = in_len;
+  // |in_len| is bounded by |block_size|, which fits in |unsigned|.
+  static_assert(EVP_MAX_BLOCK_LENGTH < UINT_MAX,
+                "EVP_MAX_BLOCK_LENGTH is too large");
+  ctx->block_used = (unsigned)in_len;
   ret = 1;
 
 out:

@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -377,7 +378,8 @@ class FileLineReader : public FileTest::LineReader {
       return FileTest::kReadError;
     }
 
-    if (fgets(out, len, file_) == nullptr) {
+    len = std::min(len, size_t{INT_MAX});
+    if (fgets(out, static_cast<int>(len), file_) == nullptr) {
       return feof(file_) ? FileTest::kReadEOF : FileTest::kReadError;
     }
 

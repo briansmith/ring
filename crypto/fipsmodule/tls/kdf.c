@@ -91,7 +91,7 @@ static int tls1_P_hash(uint8_t *out, size_t out_len,
   }
 
   for (;;) {
-    unsigned len;
+    unsigned len_u;
     uint8_t hmac[EVP_MAX_MD_SIZE];
     if (!HMAC_CTX_copy_ex(&ctx, &ctx_init) ||
         !HMAC_Update(&ctx, A1, A1_len) ||
@@ -100,16 +100,17 @@ static int tls1_P_hash(uint8_t *out, size_t out_len,
         !HMAC_Update(&ctx, (const uint8_t *) label, label_len) ||
         !HMAC_Update(&ctx, seed1, seed1_len) ||
         !HMAC_Update(&ctx, seed2, seed2_len) ||
-        !HMAC_Final(&ctx, hmac, &len)) {
+        !HMAC_Final(&ctx, hmac, &len_u)) {
       goto err;
     }
+    size_t len = len_u;
     assert(len == chunk);
 
     // XOR the result into |out|.
     if (len > out_len) {
       len = out_len;
     }
-    for (unsigned i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
       out[i] ^= hmac[i];
     }
     out += len;

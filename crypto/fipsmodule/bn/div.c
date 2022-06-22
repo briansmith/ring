@@ -552,7 +552,7 @@ static BIGNUM *bn_scratch_space_from_ctx(size_t width, BN_CTX *ctx) {
     return NULL;
   }
   ret->neg = 0;
-  ret->width = width;
+  ret->width = (int)width;
   return ret;
 }
 

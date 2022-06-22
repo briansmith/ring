@@ -67,6 +67,11 @@
 #include "../delocate.h"
 
 
+// BN_MAX_WORDS is the maximum number of words allowed in a |BIGNUM|. It is
+// sized so byte and bit counts of a |BIGNUM| always fit in |int|, with room to
+// spare.
+#define BN_MAX_WORDS (INT_MAX / (4 * BN_BITS2))
+
 BIGNUM *BN_new(void) {
   BIGNUM *bn = OPENSSL_malloc(sizeof(BIGNUM));
 
@@ -292,8 +297,9 @@ void bn_set_static_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   }
   bn->d = (BN_ULONG *)words;
 
-  bn->width = num;
-  bn->dmax = num;
+  assert(num <= BN_MAX_WORDS);
+  bn->width = (int)num;
+  bn->dmax = (int)num;
   bn->neg = 0;
   bn->flags |= BN_FLG_STATIC_DATA;
 }
@@ -346,7 +352,7 @@ int bn_wexpand(BIGNUM *bn, size_t words) {
     return 1;
   }
 
-  if (words > (INT_MAX / (4 * BN_BITS2))) {
+  if (words > BN_MAX_WORDS) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return 0;
   }
@@ -403,7 +409,7 @@ int bn_resize_words(BIGNUM *bn, size_t words) {
     }
     OPENSSL_memset(bn->d + bn->width, 0,
                    (words - bn->width) * sizeof(BN_ULONG));
-    bn->width = words;
+    bn->width = (int)words;
     return 1;
   }
 
@@ -412,7 +418,7 @@ int bn_resize_words(BIGNUM *bn, size_t words) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return 0;
   }
-  bn->width = words;
+  bn->width = (int)words;
   return 1;
 }
 

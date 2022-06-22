@@ -368,7 +368,8 @@ int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
   int ret = -1;
   BIGNUM *shared_key = BN_CTX_get(ctx);
   if (shared_key && dh_compute_key(dh, shared_key, peers_key, ctx)) {
-    ret = BN_bn2bin(shared_key, out);
+    // A |BIGNUM|'s byte count fits in |int|.
+    ret = (int)BN_bn2bin(shared_key, out);
   }
 
   BN_CTX_end(ctx);

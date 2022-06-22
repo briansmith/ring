@@ -336,7 +336,7 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
   assert(bn_in_range_words(r->d, min_inclusive, max_exclusive->d, words));
 
   r->neg = 0;
-  r->width = words;
+  r->width = (int)words;
   return 1;
 }
 
