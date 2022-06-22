@@ -426,7 +426,7 @@ static BIGNUM *asn1_string_to_bn(const ASN1_STRING *ai, BIGNUM *bn, int type) {
   } else if (ai->type & V_ASN1_NEG) {
     BN_set_negative(ret, 1);
   }
-  return (ret);
+  return ret;
 }
 
 BIGNUM *ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai, BIGNUM *bn) {

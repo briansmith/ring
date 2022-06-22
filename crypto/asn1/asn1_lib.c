@@ -277,7 +277,7 @@ int ASN1_STRING_set(ASN1_STRING *str, const void *_data, int len) {
 
   if (len < 0) {
     if (data == NULL) {
-      return (0);
+      return 0;
     } else {
       len = strlen(data);
     }
@@ -293,7 +293,7 @@ int ASN1_STRING_set(ASN1_STRING *str, const void *_data, int len) {
     if (str->data == NULL) {
       OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       str->data = c;
-      return (0);
+      return 0;
     }
   }
   str->length = len;
@@ -302,7 +302,7 @@ int ASN1_STRING_set(ASN1_STRING *str, const void *_data, int len) {
     // an allowance for strings :-)
     str->data[len] = '\0';
   }
-  return (1);
+  return 1;
 }
 
 void ASN1_STRING_set0(ASN1_STRING *str, void *data, int len) {
@@ -321,13 +321,13 @@ ASN1_STRING *ASN1_STRING_type_new(int type) {
   ret = (ASN1_STRING *)OPENSSL_malloc(sizeof(ASN1_STRING));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-    return (NULL);
+    return NULL;
   }
   ret->length = 0;
   ret->type = type;
   ret->data = NULL;
   ret->flags = 0;
-  return (ret);
+  return ret;
 }
 
 void ASN1_STRING_free(ASN1_STRING *str) {

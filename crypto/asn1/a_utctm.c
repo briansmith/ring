@@ -93,9 +93,9 @@ int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str) {
       }
       s->type = V_ASN1_UTCTIME;
     }
-    return (1);
+    return 1;
   } else {
-    return (0);
+    return 0;
   }
 }
 
@@ -152,7 +152,7 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t, int offset_day,
                ts->tm_sec);
   s->length = strlen(p);
   s->type = V_ASN1_UTCTIME;
-  return (s);
+  return s;
 err:
   if (free_s && s) {
     ASN1_UTCTIME_free(s);

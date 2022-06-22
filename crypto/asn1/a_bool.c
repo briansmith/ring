@@ -65,7 +65,7 @@ int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **pp) {
 
   r = ASN1_object_size(0, 1, V_ASN1_BOOLEAN);
   if (pp == NULL) {
-    return (r);
+    return r;
   }
 
   if (*pp == NULL) {

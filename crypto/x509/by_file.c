@@ -80,7 +80,7 @@ static X509_LOOKUP_METHOD x509_file_lookup = {
     NULL,          // get_by_alias
 };
 
-X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return (&x509_file_lookup); }
+X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return &x509_file_lookup; }
 
 static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
                         char **ret) {
@@ -112,7 +112,7 @@ static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
       }
       break;
   }
-  return (ok);
+  return ok;
 }
 
 int X509_load_cert_file(X509_LOOKUP *ctx, const char *file, int type) {
@@ -177,7 +177,7 @@ err:
   if (in != NULL) {
     BIO_free(in);
   }
-  return (ret);
+  return ret;
 }
 
 int X509_load_crl_file(X509_LOOKUP *ctx, const char *file, int type) {
@@ -242,7 +242,7 @@ err:
   if (in != NULL) {
     BIO_free(in);
   }
-  return (ret);
+  return ret;
 }
 
 int X509_load_cert_crl_file(X509_LOOKUP *ctx, const char *file, int type) {

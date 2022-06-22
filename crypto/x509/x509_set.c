@@ -101,7 +101,7 @@ int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
   ASN1_INTEGER *in;
 
   if (x == NULL) {
-    return (0);
+    return 0;
   }
   in = x->cert_info->serialNumber;
   if (in != serial) {
@@ -111,19 +111,19 @@ int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
       x->cert_info->serialNumber = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 int X509_set_issuer_name(X509 *x, X509_NAME *name) {
   if ((x == NULL) || (x->cert_info == NULL)) {
-    return (0);
+    return 0;
   }
   return (X509_NAME_set(&x->cert_info->issuer, name));
 }
 
 int X509_set_subject_name(X509 *x, X509_NAME *name) {
   if ((x == NULL) || (x->cert_info == NULL)) {
-    return (0);
+    return 0;
   }
   return (X509_NAME_set(&x->cert_info->subject, name));
 }
@@ -132,7 +132,7 @@ int X509_set1_notBefore(X509 *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
   if ((x == NULL) || (x->cert_info->validity == NULL)) {
-    return (0);
+    return 0;
   }
   in = x->cert_info->validity->notBefore;
   if (in != tm) {
@@ -142,7 +142,7 @@ int X509_set1_notBefore(X509 *x, const ASN1_TIME *tm) {
       x->cert_info->validity->notBefore = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 int X509_set_notBefore(X509 *x, const ASN1_TIME *tm) {
@@ -171,7 +171,7 @@ int X509_set1_notAfter(X509 *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
   if ((x == NULL) || (x->cert_info->validity == NULL)) {
-    return (0);
+    return 0;
   }
   in = x->cert_info->validity->notAfter;
   if (in != tm) {
@@ -181,7 +181,7 @@ int X509_set1_notAfter(X509 *x, const ASN1_TIME *tm) {
       x->cert_info->validity->notAfter = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 int X509_set_notAfter(X509 *x, const ASN1_TIME *tm) {
@@ -218,7 +218,7 @@ void X509_get0_uids(const X509 *x509, const ASN1_BIT_STRING **out_issuer_uid,
 
 int X509_set_pubkey(X509 *x, EVP_PKEY *pkey) {
   if ((x == NULL) || (x->cert_info == NULL)) {
-    return (0);
+    return 0;
   }
   return (X509_PUBKEY_set(&(x->cert_info->key), pkey));
 }

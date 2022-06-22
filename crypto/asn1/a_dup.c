@@ -70,16 +70,16 @@ void *ASN1_item_dup(const ASN1_ITEM *it, void *x) {
   void *ret;
 
   if (x == NULL) {
-    return (NULL);
+    return NULL;
   }
 
   i = ASN1_item_i2d(x, &b, it);
   if (b == NULL) {
     OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-    return (NULL);
+    return NULL;
   }
   p = b;
   ret = ASN1_item_d2i(NULL, &p, i, it);
   OPENSSL_free(b);
-  return (ret);
+  return ret;
 }

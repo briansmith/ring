@@ -121,5 +121,5 @@ err:
   EVP_MD_CTX_cleanup(ctx);
   OPENSSL_free(buf_in);
   OPENSSL_free(buf_out);
-  return (outl);
+  return outl;
 }

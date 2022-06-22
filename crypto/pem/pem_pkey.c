@@ -147,7 +147,7 @@ p8err:
 err:
   OPENSSL_free(nm);
   OPENSSL_free(data);
-  return (ret);
+  return ret;
 }
 
 int PEM_write_bio_PrivateKey(BIO *bp, EVP_PKEY *x, const EVP_CIPHER *enc,

@@ -79,7 +79,7 @@ int X509_issuer_and_serial_cmp(const X509 *a, const X509 *b) {
   bi = b->cert_info;
   i = ASN1_INTEGER_cmp(ai->serialNumber, bi->serialNumber);
   if (i) {
-    return (i);
+    return i;
   }
   return (X509_NAME_cmp(ai->issuer, bi->issuer));
 }
@@ -101,7 +101,7 @@ int X509_CRL_match(const X509_CRL *a, const X509_CRL *b) {
 }
 
 X509_NAME *X509_get_issuer_name(const X509 *a) {
-  return (a->cert_info->issuer);
+  return a->cert_info->issuer;
 }
 
 unsigned long X509_issuer_name_hash(X509 *x) {
@@ -113,11 +113,11 @@ unsigned long X509_issuer_name_hash_old(X509 *x) {
 }
 
 X509_NAME *X509_get_subject_name(const X509 *a) {
-  return (a->cert_info->subject);
+  return a->cert_info->subject;
 }
 
 ASN1_INTEGER *X509_get_serialNumber(X509 *a) {
-  return (a->cert_info->serialNumber);
+  return a->cert_info->serialNumber;
 }
 
 const ASN1_INTEGER *X509_get0_serialNumber(const X509 *x509) {
@@ -194,7 +194,7 @@ unsigned long X509_NAME_hash(X509_NAME *x) {
   ret = (((unsigned long)md[0]) | ((unsigned long)md[1] << 8L) |
          ((unsigned long)md[2] << 16L) | ((unsigned long)md[3] << 24L)) &
         0xffffffffL;
-  return (ret);
+  return ret;
 }
 
 // I now DER encode the name and hash it.  Since I cache the DER encoding,
@@ -218,7 +218,7 @@ unsigned long X509_NAME_hash_old(X509_NAME *x) {
   }
   EVP_MD_CTX_cleanup(&md_ctx);
 
-  return (ret);
+  return ret;
 }
 
 // Search a stack of X509 for a match
@@ -239,10 +239,10 @@ X509 *X509_find_by_issuer_and_serial(STACK_OF(X509) *sk, X509_NAME *name,
   for (i = 0; i < sk_X509_num(sk); i++) {
     x509 = sk_X509_value(sk, i);
     if (X509_issuer_and_serial_cmp(x509, &x) == 0) {
-      return (x509);
+      return x509;
     }
   }
-  return (NULL);
+  return NULL;
 }
 
 X509 *X509_find_by_subject(STACK_OF(X509) *sk, X509_NAME *name) {
@@ -252,15 +252,15 @@ X509 *X509_find_by_subject(STACK_OF(X509) *sk, X509_NAME *name) {
   for (i = 0; i < sk_X509_num(sk); i++) {
     x509 = sk_X509_value(sk, i);
     if (X509_NAME_cmp(X509_get_subject_name(x509), name) == 0) {
-      return (x509);
+      return x509;
     }
   }
-  return (NULL);
+  return NULL;
 }
 
 EVP_PKEY *X509_get_pubkey(X509 *x) {
   if ((x == NULL) || (x->cert_info == NULL)) {
-    return (NULL);
+    return NULL;
   }
   return (X509_PUBKEY_get(x->cert_info->key));
 }

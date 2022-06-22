@@ -434,7 +434,7 @@ int ASN1_STRING_print(BIO *bp, const ASN1_STRING *v) {
   const char *p;
 
   if (v == NULL) {
-    return (0);
+    return 0;
   }
   n = 0;
   p = (const char *)v->data;
@@ -447,17 +447,17 @@ int ASN1_STRING_print(BIO *bp, const ASN1_STRING *v) {
     n++;
     if (n >= 80) {
       if (BIO_write(bp, buf, n) <= 0) {
-        return (0);
+        return 0;
       }
       n = 0;
     }
   }
   if (n > 0) {
     if (BIO_write(bp, buf, n) <= 0) {
-      return (0);
+      return 0;
     }
   }
-  return (1);
+  return 1;
 }
 
 int ASN1_TIME_print(BIO *bp, const ASN1_TIME *tm) {
@@ -468,7 +468,7 @@ int ASN1_TIME_print(BIO *bp, const ASN1_TIME *tm) {
     return ASN1_GENERALIZEDTIME_print(bp, tm);
   }
   BIO_write(bp, "Bad time value", 14);
-  return (0);
+  return 0;
 }
 
 static const char *const mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -521,13 +521,13 @@ int ASN1_GENERALIZEDTIME_print(BIO *bp, const ASN1_GENERALIZEDTIME *tm) {
 
   if (BIO_printf(bp, "%s %2d %02d:%02d:%02d%.*s %d%s", mon[M - 1], d, h, m, s,
                  f_len, f, y, (gmt) ? " GMT" : "") <= 0) {
-    return (0);
+    return 0;
   } else {
-    return (1);
+    return 1;
   }
 err:
   BIO_write(bp, "Bad time value", 14);
-  return (0);
+  return 0;
 }
 
 // consume_two_digits is a helper function for ASN1_UTCTIME_print. If |*v|,

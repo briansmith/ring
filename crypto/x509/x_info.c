@@ -67,7 +67,7 @@ X509_INFO *X509_INFO_new(void) {
   ret = (X509_INFO *)OPENSSL_malloc(sizeof(X509_INFO));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-    return (NULL);
+    return NULL;
   }
 
   ret->enc_cipher.cipher = NULL;
@@ -77,7 +77,7 @@ X509_INFO *X509_INFO_new(void) {
   ret->x509 = NULL;
   ret->crl = NULL;
   ret->x_pkey = NULL;
-  return (ret);
+  return ret;
 }
 
 void X509_INFO_free(X509_INFO *x) {

@@ -128,7 +128,7 @@ int i2c_ASN1_BIT_STRING(const ASN1_BIT_STRING *a, unsigned char **pp) {
   }
   p += len;
   *pp = p;
-  return (ret);
+  return ret;
 }
 
 ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
@@ -150,7 +150,7 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
 
   if ((a == NULL) || ((*a) == NULL)) {
     if ((ret = ASN1_BIT_STRING_new()) == NULL) {
-      return (NULL);
+      return NULL;
     }
   } else {
     ret = (*a);
@@ -195,12 +195,12 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
     (*a) = ret;
   }
   *pp = p;
-  return (ret);
+  return ret;
 err:
   if ((ret != NULL) && ((a == NULL) || (*a != ret))) {
     ASN1_BIT_STRING_free(ret);
   }
-  return (NULL);
+  return NULL;
 }
 
 // These next 2 functions from Goetz Babin-Ebell <babinebell@trustcenter.de>
@@ -223,7 +223,7 @@ int ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value) {
 
   if ((a->length < (w + 1)) || (a->data == NULL)) {
     if (!value) {
-      return (1);  // Don't need to set
+      return 1;  // Don't need to set
     }
     if (a->data == NULL) {
       c = (unsigned char *)OPENSSL_malloc(w + 1);
@@ -244,7 +244,7 @@ int ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value) {
   while ((a->length > 0) && (a->data[a->length - 1] == 0)) {
     a->length--;
   }
-  return (1);
+  return 1;
 }
 
 int ASN1_BIT_STRING_get_bit(const ASN1_BIT_STRING *a, int n) {
@@ -253,7 +253,7 @@ int ASN1_BIT_STRING_get_bit(const ASN1_BIT_STRING *a, int n) {
   w = n / 8;
   v = 1 << (7 - (n & 0x07));
   if ((a == NULL) || (a->length < (w + 1)) || (a->data == NULL)) {
-    return (0);
+    return 0;
   }
   return ((a->data[w] & v) != 0);
 }

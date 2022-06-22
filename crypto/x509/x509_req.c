@@ -78,7 +78,7 @@ X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req) {
 
 EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req) {
   if ((req == NULL) || (req->req_info == NULL)) {
-    return (NULL);
+    return NULL;
   }
   return (X509_PUBKEY_get(req->req_info->pubkey));
 }
@@ -112,7 +112,7 @@ int X509_REQ_check_private_key(X509_REQ *x, EVP_PKEY *k) {
   }
 
   EVP_PKEY_free(xk);
-  return (ok);
+  return ok;
 }
 
 int X509_REQ_extension_nid(int req_nid) {

@@ -90,7 +90,7 @@ int X509_CRL_set_version(X509_CRL *x, long version) {
 
 int X509_CRL_set_issuer_name(X509_CRL *x, X509_NAME *name) {
   if ((x == NULL) || (x->crl == NULL)) {
-    return (0);
+    return 0;
   }
   return (X509_NAME_set(&x->crl->issuer, name));
 }
@@ -99,7 +99,7 @@ int X509_CRL_set1_lastUpdate(X509_CRL *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
   if (x == NULL) {
-    return (0);
+    return 0;
   }
   in = x->crl->lastUpdate;
   if (in != tm) {
@@ -109,14 +109,14 @@ int X509_CRL_set1_lastUpdate(X509_CRL *x, const ASN1_TIME *tm) {
       x->crl->lastUpdate = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 int X509_CRL_set1_nextUpdate(X509_CRL *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
   if (x == NULL) {
-    return (0);
+    return 0;
   }
   in = x->crl->nextUpdate;
   if (in != tm) {
@@ -126,7 +126,7 @@ int X509_CRL_set1_nextUpdate(X509_CRL *x, const ASN1_TIME *tm) {
       x->crl->nextUpdate = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 int X509_CRL_sort(X509_CRL *c) {
@@ -194,7 +194,7 @@ int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
   ASN1_TIME *in;
 
   if (revoked == NULL) {
-    return (0);
+    return 0;
   }
   in = revoked->revocationDate;
   if (in != tm) {
@@ -204,7 +204,7 @@ int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
       revoked->revocationDate = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(
@@ -217,7 +217,7 @@ int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
   ASN1_INTEGER *in;
 
   if (revoked == NULL) {
-    return (0);
+    return 0;
   }
   in = revoked->serialNumber;
   if (in != serial) {
@@ -227,7 +227,7 @@ int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
       revoked->serialNumber = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(

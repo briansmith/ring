@@ -93,7 +93,7 @@ int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey) {
   size_t spki_len;
 
   if (x == NULL) {
-    return (0);
+    return 0;
   }
 
   CBB cbb;

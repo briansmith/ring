@@ -200,10 +200,10 @@ char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len) {
   if (i == 0) {
     *p = '\0';
   }
-  return (p);
+  return p;
 err:
   OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 end:
   BUF_MEM_free(b);
-  return (NULL);
+  return NULL;
 }

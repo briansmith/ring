@@ -266,7 +266,7 @@ err:
   if (m != NULL) {
     OPENSSL_free(m);
   }
-  return (ret);
+  return ret;
 }
 
 int X509_ocspid_print(BIO *bp, X509 *x) {
@@ -314,12 +314,12 @@ int X509_ocspid_print(BIO *bp, X509 *x) {
   }
   BIO_printf(bp, "\n");
 
-  return (1);
+  return 1;
 err:
   if (der != NULL) {
     OPENSSL_free(der);
   }
-  return (0);
+  return 0;
 }
 
 int X509_signature_print(BIO *bp, const X509_ALGOR *sigalg,
@@ -389,5 +389,5 @@ int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase) {
     OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
   }
   OPENSSL_free(b);
-  return (ret);
+  return ret;
 }

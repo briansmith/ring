@@ -109,7 +109,7 @@ static X509_LOOKUP_METHOD x509_dir_lookup = {
     NULL,                 // get_by_alias
 };
 
-X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void) { return (&x509_dir_lookup); }
+X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void) { return &x509_dir_lookup; }
 
 static int dir_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
                     char **retp) {
@@ -137,22 +137,22 @@ static int dir_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
       }
       break;
   }
-  return (ret);
+  return ret;
 }
 
 static int new_dir(X509_LOOKUP *lu) {
   BY_DIR *a;
 
   if ((a = (BY_DIR *)OPENSSL_malloc(sizeof(BY_DIR))) == NULL) {
-    return (0);
+    return 0;
   }
   if ((a->buffer = BUF_MEM_new()) == NULL) {
     OPENSSL_free(a);
-    return (0);
+    return 0;
   }
   a->dirs = NULL;
   lu->method_data = (char *)a;
-  return (1);
+  return 1;
 }
 
 static void by_dir_hash_free(BY_DIR_HASH *hash) { OPENSSL_free(hash); }
@@ -275,7 +275,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
   const char *postfix = "";
 
   if (name == NULL) {
-    return (0);
+    return 0;
   }
 
   stmp.type = type;
@@ -443,7 +443,7 @@ finish:
   if (b != NULL) {
     BUF_MEM_free(b);
   }
-  return (ok);
+  return ok;
 }
 
 #endif  // OPENSSL_TRUSTY

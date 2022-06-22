@@ -93,9 +93,9 @@ int ASN1_GENERALIZEDTIME_set_string(ASN1_GENERALIZEDTIME *s, const char *str) {
       }
       s->type = V_ASN1_GENERALIZEDTIME;
     }
-    return (1);
+    return 1;
   } else {
-    return (0);
+    return 0;
   }
 }
 
