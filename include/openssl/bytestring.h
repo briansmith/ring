@@ -362,16 +362,17 @@ OPENSSL_EXPORT char *CBS_asn1_oid_to_text(const CBS *cbs);
 // corresponding time in UTC. This function does not compute |out_tm->tm_wday|
 // or |out_tm->tm_yday|.
 OPENSSL_EXPORT int CBS_parse_generalized_time(const CBS *cbs, struct tm *out_tm,
-                                              int allow_timezeone_offset);
+                                              int allow_timezone_offset);
 
 // CBS_parse_utc_time returns one if |cbs| is a valid DER-encoded, ASN.1
 // UTCTime body within the limitations imposed by RFC 5280, or zero otherwise.
 // If |allow_timezone_offset| is non-zero, four-digit timezone offsets, which
 // would not be allowed by DER, are permitted. On success, if |out_tm| is
 // non-NULL, |*out_tm| will be zeroed, and then set to the corresponding time
-// in UTC. This function does not compute |out_tm->tm_wday| or |out_tm->tm_yday|.
+// in UTC. This function does not compute |out_tm->tm_wday| or
+// |out_tm->tm_yday|.
 OPENSSL_EXPORT int CBS_parse_utc_time(const CBS *cbs, struct tm *out_tm,
-                                      int allow_timezeone_offset);
+                                      int allow_timezone_offset);
 
 // CRYPTO ByteBuilder.
 //

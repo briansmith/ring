@@ -2129,10 +2129,10 @@ TEST(X509Test, TestPrintUTCTIME) {
     {"000000000000Z", "Bad time value"},
     {"999999999999Z", "Bad time value"},
 
-    // Missing components. Not legal RFC 5280, but permitted.
-    {"090303125425", "Mar  3 12:54:25 2009"},
-    {"9003031254", "Mar  3 12:54:00 1990"},
-    {"9003031254Z", "Mar  3 12:54:00 1990 GMT"},
+    // Missing components.
+    {"090303125425", "Bad time value"},
+    {"9003031254", "Bad time value"},
+    {"9003031254Z", "Bad time value"},
 
     // GENERALIZEDTIME confused for UTCTIME.
     {"20090303125425Z", "Bad time value"},
