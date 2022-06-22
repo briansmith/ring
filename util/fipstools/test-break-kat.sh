@@ -32,7 +32,8 @@ KATS=$(go run util/fipstools/break-kat.go --list-tests)
 for kat in $KATS; do
   go run util/fipstools/break-kat.go $TEST_FIPS_BIN $kat > break-kat-bin
   chmod u+x ./break-kat-bin
-  if ! (./break-kat-bin 2>&1 || true) | egrep -q "^$kat[^a-zA-Z0-9]"; then
+  if ! (./break-kat-bin 2>&1 >/dev/null || true) | \
+       egrep -q "^$kat[^a-zA-Z0-9]"; then
     echo "Failure for $kat did not mention that name in the output"
     exit 1
   fi
