@@ -2175,6 +2175,75 @@ TEST(ASN1Test, ZeroTag) {
                  0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61});
 }
 
+TEST(ASN1Test, StringEncoding) {
+  const struct {
+    ASN1_STRING *(*d2i)(ASN1_STRING **out, const uint8_t **inp, long len);
+    std::vector<uint8_t> in;
+    bool valid;
+  } kTests[] = {
+      // All OCTET STRINGs are valid.
+      {d2i_ASN1_OCTET_STRING, {0x04, 0x00}, true},
+      {d2i_ASN1_OCTET_STRING, {0x04, 0x01, 0x00}, true},
+
+      // UTF8String must be valid UTF-8.
+      {d2i_ASN1_UTF8STRING, {0x0c, 0x00}, true},
+      {d2i_ASN1_UTF8STRING, {0x0c, 0x01, 'a'}, true},
+      {d2i_ASN1_UTF8STRING, {0x0c, 0x03, 0xe2, 0x98, 0x83}, true},
+      // Non-minimal, two-byte UTF-8.
+      {d2i_ASN1_UTF8STRING, {0x0c, 0x02, 0xc0, 0x81}, false},
+      // Truncated, four-byte UTF-8.
+      {d2i_ASN1_UTF8STRING, {0x0c, 0x03, 0xf0, 0x80, 0x80}, false},
+      // Low-surrogate value.
+      {d2i_ASN1_UTF8STRING, {0x0c, 0x03, 0xed, 0xa0, 0x80}, false},
+      // High-surrogate value.
+      {d2i_ASN1_UTF8STRING, {0x0c, 0x03, 0xed, 0xb0, 0x81}, false},
+
+      // BMPString must be valid UCS-2.
+      {d2i_ASN1_BMPSTRING, {0x1e, 0x00}, true},
+      {d2i_ASN1_BMPSTRING, {0x1e, 0x02, 0x00, 'a'}, true},
+      // Truncated code unit.
+      {d2i_ASN1_BMPSTRING, {0x1e, 0x01, 'a'}, false},
+      // Lone surrogate.
+      {d2i_ASN1_BMPSTRING, {0x1e, 0x02, 0xd8, 0}, false},
+      // BMPString is UCS-2, not UTF-16, so surrogate pairs are also invalid.
+      {d2i_ASN1_BMPSTRING, {0x1e, 0x04, 0xd8, 0, 0xdc, 1}, false},
+
+      // UniversalString must be valid UTF-32.
+      {d2i_ASN1_UNIVERSALSTRING, {0x1c, 0x00}, true},
+      {d2i_ASN1_UNIVERSALSTRING, {0x1c, 0x04, 0x00, 0x00, 0x00, 'a'}, true},
+      // Maximum code point.
+      {d2i_ASN1_UNIVERSALSTRING, {0x1c, 0x04, 0x00, 0x10, 0xff, 0xfd}, true},
+      // Reserved.
+      {d2i_ASN1_UNIVERSALSTRING, {0x1c, 0x04, 0x00, 0x10, 0xff, 0xfe}, false},
+      {d2i_ASN1_UNIVERSALSTRING, {0x1c, 0x04, 0x00, 0x10, 0xff, 0xff}, false},
+      // Too high.
+      {d2i_ASN1_UNIVERSALSTRING, {0x1c, 0x04, 0x00, 0x11, 0x00, 0x00}, false},
+      // Surrogates are not characters.
+      {d2i_ASN1_UNIVERSALSTRING, {0x1c, 0x04, 0x00, 0x00, 0xd8, 0}, false},
+      // Truncated codepoint.
+      {d2i_ASN1_UNIVERSALSTRING, {0x1c, 0x03, 0x00, 0x00, 0x00}, false},
+
+      // We interpret T61String as Latin-1, so all inputs are valid.
+      {d2i_ASN1_T61STRING, {0x14, 0x00}, true},
+      {d2i_ASN1_T61STRING, {0x14, 0x01, 0x00}, true},
+  };
+  for (const auto& t : kTests) {
+    SCOPED_TRACE(Bytes(t.in));
+    const uint8_t *inp;
+
+    if (t.d2i != nullptr) {
+      inp = t.in.data();
+      bssl::UniquePtr<ASN1_STRING> str(t.d2i(nullptr, &inp, t.in.size()));
+      EXPECT_EQ(t.valid, str != nullptr);
+    }
+
+    // Also test with the ANY parser.
+    inp = t.in.data();
+    bssl::UniquePtr<ASN1_TYPE> any(d2i_ASN1_TYPE(nullptr, &inp, t.in.size()));
+    EXPECT_EQ(t.valid, any != nullptr);
+  }
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)

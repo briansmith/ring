@@ -63,6 +63,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
@@ -797,32 +798,51 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
     case V_ASN1_OTHER:
     case V_ASN1_SET:
     case V_ASN1_SEQUENCE:
-    default:
-      if (utype == V_ASN1_BMPSTRING && (len & 1)) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_BMPSTRING_IS_WRONG_LENGTH);
-        goto err;
+    default: {
+      CBS cbs;
+      CBS_init(&cbs, cont, (size_t)len);
+      if (utype == V_ASN1_BMPSTRING) {
+        while (CBS_len(&cbs) != 0) {
+          uint32_t c;
+          if (!cbs_get_ucs2_be(&cbs, &c)) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_BMPSTRING);
+            goto err;
+          }
+        }
       }
-      if (utype == V_ASN1_UNIVERSALSTRING && (len & 3)) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNIVERSALSTRING_IS_WRONG_LENGTH);
-        goto err;
+      if (utype == V_ASN1_UNIVERSALSTRING) {
+        while (CBS_len(&cbs) != 0) {
+          uint32_t c;
+          if (!cbs_get_utf32_be(&cbs, &c)) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_UNIVERSALSTRING);
+            goto err;
+          }
+        }
+      }
+      if (utype == V_ASN1_UTF8STRING) {
+        while (CBS_len(&cbs) != 0) {
+          uint32_t c;
+          if (!cbs_get_utf8(&cbs, &c)) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_UTF8STRING);
+            goto err;
+          }
+        }
       }
       if (utype == V_ASN1_UTCTIME) {
-        CBS cbs;
-        CBS_init(&cbs, cont, (size_t)len);
         if (!CBS_parse_utc_time(&cbs, NULL, /*allow_timezone_offset=*/1)) {
           OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_TIME_FORMAT);
           goto err;
         }
       }
       if (utype == V_ASN1_GENERALIZEDTIME) {
-        CBS cbs;
-        CBS_init(&cbs, cont, (size_t)len);
         if (!CBS_parse_generalized_time(&cbs, NULL,
                                         /*allow_timezone_offset=*/0)) {
           OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_TIME_FORMAT);
           goto err;
         }
       }
+      // TODO(https://crbug.com/boringssl/427): Check other string types.
+
       // All based on ASN1_STRING and handled the same
       if (!*pval) {
         stmp = ASN1_STRING_type_new(utype);
@@ -842,6 +862,7 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
         goto err;
       }
       break;
+    }
   }
   // If ASN1_ANY and NULL type fix up value
   if (typ && (utype == V_ASN1_NULL)) {
