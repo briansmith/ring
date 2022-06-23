@@ -114,10 +114,9 @@ X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void) { return &x509_dir_lookup; }
 static int dir_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
                     char **retp) {
   int ret = 0;
-  BY_DIR *ld;
   char *dir = NULL;
 
-  ld = (BY_DIR *)ctx->method_data;
+  BY_DIR *ld = ctx->method_data;
 
   switch (cmd) {
     case X509_L_ADD_DIR:
@@ -151,7 +150,7 @@ static int new_dir(X509_LOOKUP *lu) {
     return 0;
   }
   a->dirs = NULL;
-  lu->method_data = (char *)a;
+  lu->method_data = a;
   return 1;
 }
 
@@ -168,26 +167,20 @@ static int by_dir_hash_cmp(const BY_DIR_HASH **a, const BY_DIR_HASH **b) {
 }
 
 static void by_dir_entry_free(BY_DIR_ENTRY *ent) {
-  if (ent->dir) {
+  if (ent != NULL) {
     OPENSSL_free(ent->dir);
-  }
-  if (ent->hashes) {
     sk_BY_DIR_HASH_pop_free(ent->hashes, by_dir_hash_free);
+    OPENSSL_free(ent);
   }
-  OPENSSL_free(ent);
 }
 
 static void free_dir(X509_LOOKUP *lu) {
-  BY_DIR *a;
-
-  a = (BY_DIR *)lu->method_data;
-  if (a->dirs != NULL) {
+  BY_DIR *a = lu->method_data;
+  if (a != NULL) {
     sk_BY_DIR_ENTRY_pop_free(a->dirs, by_dir_entry_free);
-  }
-  if (a->buffer != NULL) {
     BUF_MEM_free(a->buffer);
+    OPENSSL_free(a);
   }
-  OPENSSL_free(a);
 }
 
 static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
@@ -253,7 +246,6 @@ static struct CRYPTO_STATIC_MUTEX g_ent_hashes_lock = CRYPTO_STATIC_MUTEX_INIT;
 
 static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                                X509_OBJECT *ret) {
-  BY_DIR *ctx;
   union {
     struct {
       X509 st_x509;
@@ -299,7 +291,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
     goto finish;
   }
 
-  ctx = (BY_DIR *)xl->method_data;
+  BY_DIR *ctx = xl->method_data;
 
   hash_array[0] = X509_NAME_hash(name);
   hash_array[1] = X509_NAME_hash_old(name);
@@ -440,9 +432,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
     }
   }
 finish:
-  if (b != NULL) {
-    BUF_MEM_free(b);
-  }
+  BUF_MEM_free(b);
   return ok;
 }
 

@@ -158,15 +158,9 @@ void X509V3_conf_free(CONF_VALUE *conf) {
   if (!conf) {
     return;
   }
-  if (conf->name) {
-    OPENSSL_free(conf->name);
-  }
-  if (conf->value) {
-    OPENSSL_free(conf->value);
-  }
-  if (conf->section) {
-    OPENSSL_free(conf->section);
-  }
+  OPENSSL_free(conf->name);
+  OPENSSL_free(conf->value);
+  OPENSSL_free(conf->section);
   OPENSSL_free(conf);
 }
 
@@ -551,9 +545,7 @@ unsigned char *x509v3_hex_to_bytes(const char *str, long *len) {
   return hexbuf;
 
 err:
-  if (hexbuf) {
-    OPENSSL_free(hexbuf);
-  }
+  OPENSSL_free(hexbuf);
   OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   return NULL;
 

@@ -154,7 +154,7 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t, int offset_day,
   s->type = V_ASN1_UTCTIME;
   return s;
 err:
-  if (free_s && s) {
+  if (free_s) {
     ASN1_UTCTIME_free(s);
   }
   return NULL;

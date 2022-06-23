@@ -146,7 +146,7 @@ void asn1_enc_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   ASN1_ENCODING *enc;
   enc = asn1_get_enc_ptr(pval, it);
   if (enc) {
-    if (enc->enc && !enc->alias_only) {
+    if (!enc->alias_only) {
       OPENSSL_free(enc->enc);
     }
     enc->enc = NULL;

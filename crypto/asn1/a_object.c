@@ -204,9 +204,7 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
   // once detached we can change it
   if ((data == NULL) || (ret->length < length)) {
     ret->length = 0;
-    if (data != NULL) {
-      OPENSSL_free(data);
-    }
+    OPENSSL_free(data);
     data = (unsigned char *)OPENSSL_malloc(length);
     if (data == NULL) {
       i = ERR_R_MALLOC_FAILURE;

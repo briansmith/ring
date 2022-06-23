@@ -161,13 +161,8 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
 memerr:
   OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 err:
-  if (ncons) {
-    NAME_CONSTRAINTS_free(ncons);
-  }
-  if (sub) {
-    GENERAL_SUBTREE_free(sub);
-  }
-
+  NAME_CONSTRAINTS_free(ncons);
+  GENERAL_SUBTREE_free(sub);
   return NULL;
 }
 

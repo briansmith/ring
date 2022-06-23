@@ -310,9 +310,7 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
 err:
   ASN1_OBJECT_free(obj);
   ASN1_OCTET_STRING_free(oct);
-  if (ext_der) {
-    OPENSSL_free(ext_der);
-  }
+  OPENSSL_free(ext_der);
   return extension;
 }
 
