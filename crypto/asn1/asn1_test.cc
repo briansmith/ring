@@ -1072,6 +1072,8 @@ TEST(ASN1Test, StringPrintEx) {
       {V_ASN1_T61STRING, StringToVector("   "), 0, ASN1_STRFLGS_ESC_2253,
        "\\  \\ "},
       {V_ASN1_T61STRING, StringToVector("   "), 0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_UTF8_CONVERT, "\\  \\ "},
+      {V_ASN1_T61STRING, StringToVector("   "), 0,
        ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_QUOTE, "\"   \""},
 
       // RFC 2253 only escapes # at the start of a string.

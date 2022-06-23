@@ -192,11 +192,8 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
       int utflen;
       utflen = UTF8_putc(utfbuf, sizeof utfbuf, c);
       for (int i = 0; i < utflen; i++) {
-        // We don't need to worry about setting orflags correctly
-        // because if utflen==1 its value will be correct anyway
-        // otherwise each character will be > 0x7f and so the
-        // character will never be escaped on first and last.
-        int len = do_esc_char(utfbuf[i], flags, quotes, out, is_first, is_last);
+        int len = do_esc_char(utfbuf[i], flags, quotes, out, is_first && i == 0,
+                              is_last && i == utflen - 1);
         if (len < 0) {
           return -1;
         }
