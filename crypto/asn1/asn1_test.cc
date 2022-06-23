@@ -1278,11 +1278,23 @@ TEST(ASN1Test, StringPrintEx) {
     int str_flags;
     unsigned long flags;
   } kUnprintableTests[] = {
-      // When decoding strings, invalid codepoints are errors.
+      // It is an error if the string cannot be decoded.
       {V_ASN1_UTF8STRING, {0xff}, 0, ASN1_STRFLGS_ESC_MSB},
       {V_ASN1_BMPSTRING, {0xff}, 0, ASN1_STRFLGS_ESC_MSB},
       {V_ASN1_BMPSTRING, {0xff}, 0, ASN1_STRFLGS_ESC_MSB},
       {V_ASN1_UNIVERSALSTRING, {0xff}, 0, ASN1_STRFLGS_ESC_MSB},
+      // Invalid codepoints are errors.
+      {V_ASN1_UTF8STRING, {0xed, 0xa0, 0x80}, 0, ASN1_STRFLGS_ESC_MSB},
+      {V_ASN1_BMPSTRING, {0xd8, 0x00}, 0, ASN1_STRFLGS_ESC_MSB},
+      {V_ASN1_UNIVERSALSTRING,
+       {0x00, 0x00, 0xd8, 0x00},
+       0,
+       ASN1_STRFLGS_ESC_MSB},
+      // Even when re-encoding UTF-8 back into UTF-8, we should check validity.
+      {V_ASN1_UTF8STRING,
+       {0xff},
+       0,
+       ASN1_STRFLGS_ESC_MSB | ASN1_STRFLGS_UTF8_CONVERT},
   };
   for (const auto &t : kUnprintableTests) {
     SCOPED_TRACE(t.type);

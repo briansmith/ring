@@ -66,6 +66,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/mem.h>
 
+#include "../bytestring/internal.h"
 #include "internal.h"
 
 
@@ -129,70 +130,46 @@ static int do_esc_char(uint32_t c, unsigned long flags, char *do_quotes,
 // appropriate.
 
 static int do_buf(const unsigned char *buf, int buflen, int encoding,
-                  int utf8_convert, unsigned long flags, char *quotes,
-                  BIO *out) {
-  // Reject invalid UCS-4 and UCS-2 lengths without parsing.
+                  unsigned long flags, char *quotes, BIO *out) {
+  int (*get_char)(CBS *cbs, uint32_t *out);
+  int get_char_error;
   switch (encoding) {
     case MBSTRING_UNIV:
-      if (buflen & 3) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_UNIVERSALSTRING);
-        return -1;
-      }
+      get_char = cbs_get_utf32_be;
+      get_char_error = ASN1_R_INVALID_UNIVERSALSTRING;
       break;
     case MBSTRING_BMP:
-      if (buflen & 1) {
-        OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_BMPSTRING);
-        return -1;
-      }
+      get_char = cbs_get_ucs2_be;
+      get_char_error = ASN1_R_INVALID_BMPSTRING;
       break;
+    case MBSTRING_ASC:
+      get_char = cbs_get_latin1;
+      get_char_error = ERR_R_INTERNAL_ERROR;  // Should not be possible.
+      break;
+    case MBSTRING_UTF8:
+      get_char = cbs_get_utf8;
+      get_char_error = ASN1_R_INVALID_UTF8STRING;
+      break;
+    default:
+      assert(0);
+      return -1;
   }
 
-  const unsigned char *p = buf;
-  const unsigned char *q = buf + buflen;
+  CBS cbs;
+  CBS_init(&cbs, buf, buflen);
   int outlen = 0;
-  while (p != q) {
-    const int is_first = p == buf;
-    // TODO(davidben): Replace this with |cbs_get_ucs2_be|, etc., to check
-    // for invalid codepoints. Before doing that, enforce it in the parser,
-    // https://crbug.com/boringssl/427, so these error cases are not
-    // reachable from parsed objects.
+  while (CBS_len(&cbs) != 0) {
+    const int is_first = CBS_data(&cbs) == buf;
     uint32_t c;
-    switch (encoding) {
-      case MBSTRING_UNIV:
-        c = ((uint32_t)*p++) << 24;
-        c |= ((uint32_t)*p++) << 16;
-        c |= ((uint32_t)*p++) << 8;
-        c |= *p++;
-        break;
-
-      case MBSTRING_BMP:
-        c = ((uint32_t)*p++) << 8;
-        c |= *p++;
-        break;
-
-      case MBSTRING_ASC:
-        c = *p++;
-        break;
-
-      case MBSTRING_UTF8: {
-        int consumed = UTF8_getc(p, buflen, &c);
-        if (consumed < 0) {
-          return -1;  // Invalid UTF8String
-        }
-        buflen -= consumed;
-        p += consumed;
-        break;
-      }
-
-      default:
-        assert(0);
-        return -1;
+    if (!get_char(&cbs, &c)) {
+      OPENSSL_PUT_ERROR(ASN1, get_char_error);
+      return -1;
     }
-    const int is_last = p == q;
-    if (utf8_convert) {
+    const int is_last = CBS_len(&cbs) == 0;
+    if (flags & ASN1_STRFLGS_UTF8_CONVERT) {
       unsigned char utfbuf[6];
       int utflen;
-      utflen = UTF8_putc(utfbuf, sizeof utfbuf, c);
+      utflen = UTF8_putc(utfbuf, sizeof(utfbuf), c);
       for (int i = 0; i < utflen; i++) {
         int len = do_esc_char(utfbuf[i], flags, quotes, out, is_first && i == 0,
                               is_last && i == utflen - 1);
@@ -350,24 +327,9 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
     return outlen;
   }
 
-  int utf8_convert = 0;
-  if (flags & ASN1_STRFLGS_UTF8_CONVERT) {
-    // If the string is UTF-8, skip decoding and just interpret it as 1 byte
-    // per character to avoid converting twice.
-    //
-    // TODO(davidben): This is not quite a valid optimization if the input
-    // was invalid UTF-8.
-    if (encoding == MBSTRING_UTF8) {
-      encoding = MBSTRING_ASC;
-    } else {
-      utf8_convert = 1;
-    }
-  }
-
   // Measure the length.
   char quotes = 0;
-  int len = do_buf(str->data, str->length, encoding, utf8_convert, flags,
-                   &quotes, NULL);
+  int len = do_buf(str->data, str->length, encoding, flags, &quotes, NULL);
   if (len < 0) {
     return -1;
   }
@@ -381,8 +343,7 @@ int ASN1_STRING_print_ex(BIO *out, const ASN1_STRING *str,
 
   // Encode the value.
   if ((quotes && !maybe_write(out, "\"", 1)) ||
-      do_buf(str->data, str->length, encoding, utf8_convert, flags, NULL, out) <
-          0 ||
+      do_buf(str->data, str->length, encoding, flags, NULL, out) < 0 ||
       (quotes && !maybe_write(out, "\"", 1))) {
     return -1;
   }
