@@ -167,12 +167,17 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
     }
     const int is_last = CBS_len(&cbs) == 0;
     if (flags & ASN1_STRFLGS_UTF8_CONVERT) {
-      unsigned char utfbuf[6];
-      int utflen;
-      utflen = UTF8_putc(utfbuf, sizeof(utfbuf), c);
-      for (int i = 0; i < utflen; i++) {
-        int len = do_esc_char(utfbuf[i], flags, quotes, out, is_first && i == 0,
-                              is_last && i == utflen - 1);
+      uint8_t utf8_buf[6];
+      CBB utf8_cbb;
+      CBB_init_fixed(&utf8_cbb, utf8_buf, sizeof(utf8_buf));
+      if (!cbb_add_utf8(&utf8_cbb, c)) {
+        OPENSSL_PUT_ERROR(ASN1, ERR_R_INTERNAL_ERROR);
+        return 1;
+      }
+      size_t utf8_len = CBB_len(&utf8_cbb);
+      for (size_t i = 0; i < utf8_len; i++) {
+        int len = do_esc_char(utf8_buf[i], flags, quotes, out,
+                              is_first && i == 0, is_last && i == utf8_len - 1);
         if (len < 0) {
           return -1;
         }

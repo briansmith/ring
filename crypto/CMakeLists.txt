@@ -217,7 +217,6 @@ add_library(
   asn1/a_time.c
   asn1/a_type.c
   asn1/a_utctm.c
-  asn1/a_utf8.c
   asn1/asn1_lib.c
   asn1/asn1_par.c
   asn1/asn_pack.c
