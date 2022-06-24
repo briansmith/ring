@@ -391,28 +391,40 @@ OPENSSL_EXPORT int CBS_parse_utc_time(const CBS *cbs, struct tm *out_tm,
 
 struct cbb_buffer_st {
   uint8_t *buf;
-  size_t len;      // The number of valid bytes.
-  size_t cap;      // The size of buf.
-  char can_resize; /* One iff |buf| is owned by this object. If not then |buf|
-                      cannot be resized. */
-  char error;      /* One iff there was an error writing to this CBB. All future
-                      operations will fail. */
+  // len is the number of valid bytes in |buf|.
+  size_t len;
+  // cap is the size of |buf|.
+  size_t cap;
+  // can_resize is one iff |buf| is owned by this object. If not then |buf|
+  // cannot be resized.
+  unsigned can_resize : 1;
+  // error is one if there was an error writing to this CBB. All future
+  // operations will fail.
+  unsigned error : 1;
 };
 
-struct cbb_st {
+struct cbb_child_st {
+  // base is a pointer to the buffer this |CBB| writes to.
   struct cbb_buffer_st *base;
-  // child points to a child CBB if a length-prefix is pending.
-  CBB *child;
   // offset is the number of bytes from the start of |base->buf| to this |CBB|'s
   // pending length prefix.
   size_t offset;
   // pending_len_len contains the number of bytes in this |CBB|'s pending
   // length-prefix, or zero if no length-prefix is pending.
   uint8_t pending_len_len;
-  char pending_is_asn1;
-  // is_child is true iff this is a child |CBB| (as opposed to a top-level
-  // |CBB|). Top-level objects are valid arguments for |CBB_finish|.
+  unsigned pending_is_asn1 : 1;
+};
+
+struct cbb_st {
+  // child points to a child CBB if a length-prefix is pending.
+  CBB *child;
+  // is_child is one if this is a child |CBB| and zero if it is a top-level
+  // |CBB|. This determines which arm of the union is valid.
   char is_child;
+  union {
+    struct cbb_buffer_st base;
+    struct cbb_child_st child;
+  } u;
 };
 
 // CBB_zero sets an uninitialised |cbb| to the zero state. It must be
@@ -428,7 +440,8 @@ OPENSSL_EXPORT int CBB_init(CBB *cbb, size_t initial_capacity);
 
 // CBB_init_fixed initialises |cbb| to write to |len| bytes at |buf|. Since
 // |buf| cannot grow, trying to write more than |len| bytes will cause CBB
-// functions to fail. It returns one on success or zero on error.
+// functions to fail. This function is infallible and always returns one. It is
+// safe, but not necessary, to call |CBB_cleanup| on |cbb|.
 OPENSSL_EXPORT int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len);
 
 // CBB_cleanup frees all resources owned by |cbb| and other |CBB| objects

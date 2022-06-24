@@ -376,28 +376,36 @@ TEST(CBBTest, Basic) {
 }
 
 TEST(CBBTest, Fixed) {
-  bssl::ScopedCBB cbb;
+  CBB cbb;
   uint8_t buf[1];
   uint8_t *out_buf;
   size_t out_size;
 
-  ASSERT_TRUE(CBB_init_fixed(cbb.get(), NULL, 0));
-  ASSERT_TRUE(CBB_finish(cbb.get(), &out_buf, &out_size));
+  ASSERT_TRUE(CBB_init_fixed(&cbb, NULL, 0));
+  ASSERT_TRUE(CBB_finish(&cbb, &out_buf, &out_size));
   EXPECT_EQ(NULL, out_buf);
   EXPECT_EQ(0u, out_size);
 
-  cbb.Reset();
-  ASSERT_TRUE(CBB_init_fixed(cbb.get(), buf, 1));
-  ASSERT_TRUE(CBB_add_u8(cbb.get(), 1));
-  ASSERT_TRUE(CBB_finish(cbb.get(), &out_buf, &out_size));
+  ASSERT_TRUE(CBB_init_fixed(&cbb, buf, 1));
+  ASSERT_TRUE(CBB_add_u8(&cbb, 1));
+  ASSERT_TRUE(CBB_finish(&cbb, &out_buf, &out_size));
   EXPECT_EQ(buf, out_buf);
   EXPECT_EQ(1u, out_size);
   EXPECT_EQ(1u, buf[0]);
 
-  cbb.Reset();
-  ASSERT_TRUE(CBB_init_fixed(cbb.get(), buf, 1));
-  ASSERT_TRUE(CBB_add_u8(cbb.get(), 1));
-  EXPECT_FALSE(CBB_add_u8(cbb.get(), 2));
+  ASSERT_TRUE(CBB_init_fixed(&cbb, buf, 1));
+  ASSERT_TRUE(CBB_add_u8(&cbb, 1));
+  EXPECT_FALSE(CBB_add_u8(&cbb, 2));
+  // We do not need |CBB_cleanup| or |bssl::ScopedCBB| here because a fixed
+  // |CBB| has no allocations. Leak-checking tools will confirm there was
+  // nothing to clean up.
+
+  // However, it should be harmless to call |CBB_cleanup|.
+  CBB cbb2;
+  ASSERT_TRUE(CBB_init_fixed(&cbb2, buf, 1));
+  ASSERT_TRUE(CBB_add_u8(&cbb2, 1));
+  EXPECT_FALSE(CBB_add_u8(&cbb2, 2));
+  CBB_cleanup(&cbb2);
 }
 
 // Test that calling CBB_finish on a child does nothing.
