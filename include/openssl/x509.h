@@ -115,7 +115,25 @@ struct X509_algor_st {
   ASN1_TYPE *parameter;
 } /* X509_ALGOR */;
 
-DECLARE_ASN1_FUNCTIONS_const(X509_ALGOR)
+// X509_ALGOR is an |ASN1_ITEM| whose ASN.1 type is AlgorithmIdentifier and C
+// type is |X509_ALGOR*|.
+DECLARE_ASN1_ITEM(X509_ALGOR)
+
+// X509_ALGOR_new returns a newly-allocated, empty |X509_ALGOR| object, or NULL
+// on error.
+OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_new(void);
+
+// X509_ALGOR_free releases memory associated with |alg|.
+OPENSSL_EXPORT void X509_ALGOR_free(X509_ALGOR *alg);
+
+// d2i_X509_ALGOR parses up to |len| bytes from |*inp| as a DER-encoded
+// AlgorithmIdentifier, as described in |d2i_SAMPLE_with_reuse|.
+OPENSSL_EXPORT X509_ALGOR *d2i_X509_ALGOR(X509_ALGOR **out, const uint8_t **inp,
+                                          long len);
+
+// i2d_X509_ALGOR marshals |alg| as a DER-encoded AlgorithmIdentifier, as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_X509_ALGOR(const X509_ALGOR *alg, uint8_t **outp);
 
 DEFINE_STACK_OF(X509_ALGOR)
 
@@ -812,9 +830,29 @@ OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
 
 DECLARE_ASN1_FUNCTIONS_const(X509_SIG)
 
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(X509_REQ)
+// X509_REQ is an |ASN1_ITEM| whose ASN.1 type is CertificateRequest (RFC 2986)
+// and C type is |X509_REQ*|.
+DECLARE_ASN1_ITEM(X509_REQ)
+
+// X509_REQ_new returns a newly-allocated, empty |X509_REQ| object, or NULL on
+// error. This object may be filled in and then signed to construct a CSR.
+OPENSSL_EXPORT X509_REQ *X509_REQ_new(void);
+
+// X509_REQ_free releases memory associated with |req|.
+OPENSSL_EXPORT void X509_REQ_free(X509_REQ *req);
+
+// d2i_X509_REQ parses up to |len| bytes from |*inp| as a DER-encoded
+// CertificateRequest (RFC 2986), as described in |d2i_SAMPLE_with_reuse|.
+OPENSSL_EXPORT X509_REQ *d2i_X509_REQ(X509_REQ **out, const uint8_t **inp,
+                                      long len);
+
+// i2d_X509_REQ marshals |req| as a CertificateRequest (RFC 2986), as described
+// in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |req| was
+// mutated.
+OPENSSL_EXPORT int i2d_X509_REQ(X509_REQ *req, uint8_t **outp);
 
 DECLARE_ASN1_FUNCTIONS_const(X509_ATTRIBUTE)
 
@@ -838,9 +876,29 @@ DECLARE_ASN1_FUNCTIONS(X509_NAME)
 // to the copy, and returns one. Otherwise, it returns zero.
 OPENSSL_EXPORT int X509_NAME_set(X509_NAME **xn, X509_NAME *name);
 
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(X509)
+// X509 is an |ASN1_ITEM| whose ASN.1 type is X.509 Certificate (RFC 5280) and C
+// type is |X509*|.
+DECLARE_ASN1_ITEM(X509)
+
+// X509_new returns a newly-allocated, empty |X509| object, or NULL on error.
+// This object may be filled in and then signed to construct a certificate.
+OPENSSL_EXPORT X509 *X509_new(void);
+
+// X509_free decrements |x509|'s reference count and, if zero, releases memory
+// associated with |x509|.
+OPENSSL_EXPORT void X509_free(X509 *x509);
+
+// d2i_X509 parses up to |len| bytes from |*inp| as a DER-encoded X.509
+// Certificate (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+OPENSSL_EXPORT X509 *d2i_X509(X509 **out, const uint8_t **inp, long len);
+
+// i2d_X509 marshals |x509| as a DER-encoded X.509 Certificate (RFC 5280), as
+// described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |x509| was
+// mutated.
+OPENSSL_EXPORT int i2d_X509(X509 *x509, uint8_t **outp);
 
 // X509_up_ref adds one to the reference count of |x509| and returns one.
 OPENSSL_EXPORT int X509_up_ref(X509 *x509);
@@ -981,9 +1039,31 @@ OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_REVOKED)
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(X509_CRL)
+
+// X509_CRL is an |ASN1_ITEM| whose ASN.1 type is X.509 CertificateList (RFC
+// 5280) and C type is |X509_CRL*|.
+DECLARE_ASN1_ITEM(X509_CRL)
+
+// X509_CRL_new returns a newly-allocated, empty |X509_CRL| object, or NULL on
+// error. This object may be filled in and then signed to construct a CRL.
+OPENSSL_EXPORT X509_CRL *X509_CRL_new(void);
+
+// X509_CRL_free decrements |crl|'s reference count and, if zero, releases
+// memory associated with |crl|.
+OPENSSL_EXPORT void X509_CRL_free(X509_CRL *crl);
+
+// d2i_X509_CRL parses up to |len| bytes from |*inp| as a DER-encoded X.509
+// CertificateList (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+OPENSSL_EXPORT X509_CRL *d2i_X509_CRL(X509_CRL **out, const uint8_t **inp,
+                                      long len);
+
+// i2d_X509_CRL marshals |crl| as a X.509 CertificateList (RFC 5280), as
+// described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |crl| was
+// mutated.
+OPENSSL_EXPORT int i2d_X509_CRL(X509_CRL *crl, uint8_t **outp);
 
 OPENSSL_EXPORT int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev);
 OPENSSL_EXPORT int X509_CRL_get0_by_serial(X509_CRL *crl, X509_REVOKED **ret,
