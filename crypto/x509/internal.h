@@ -181,7 +181,6 @@ struct X509_req_st {
   X509_REQ_INFO *req_info;
   X509_ALGOR *sig_alg;
   ASN1_BIT_STRING *signature;
-  CRYPTO_refcount_t references;
 } /* X509_REQ */;
 
 struct x509_revoked_st {
