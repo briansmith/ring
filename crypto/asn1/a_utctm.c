@@ -105,59 +105,43 @@ ASN1_UTCTIME *ASN1_UTCTIME_set(ASN1_UTCTIME *s, time_t t) {
 
 ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t, int offset_day,
                                long offset_sec) {
-  char *p;
-  struct tm *ts;
   struct tm data;
-  size_t len = 20;
-  int free_s = 0;
-
-  if (s == NULL) {
-    free_s = 1;
-    s = ASN1_UTCTIME_new();
-  }
-  if (s == NULL) {
-    goto err;
-  }
-
-  ts = OPENSSL_gmtime(&t, &data);
-  if (ts == NULL) {
-    goto err;
+  if (!OPENSSL_gmtime(&t, &data)) {
+    return NULL;
   }
 
   if (offset_day || offset_sec) {
-    if (!OPENSSL_gmtime_adj(ts, offset_day, offset_sec)) {
-      goto err;
+    if (!OPENSSL_gmtime_adj(&data, offset_day, offset_sec)) {
+      return NULL;
     }
   }
 
-  if ((ts->tm_year < 50) || (ts->tm_year >= 150)) {
-    goto err;
+  if (data.tm_year < 50 || data.tm_year >= 150) {
+    return NULL;
   }
 
-  p = (char *)s->data;
-  if ((p == NULL) || ((size_t)s->length < len)) {
-    p = OPENSSL_malloc(len);
-    if (p == NULL) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-      goto err;
+  char buf[14];
+  BIO_snprintf(buf, sizeof(buf), "%02d%02d%02d%02d%02d%02dZ",
+               data.tm_year % 100, data.tm_mon + 1, data.tm_mday, data.tm_hour,
+               data.tm_min, data.tm_sec);
+
+  int free_s = 0;
+  if (s == NULL) {
+    free_s = 1;
+    s = ASN1_UTCTIME_new();
+    if (s == NULL) {
+      return NULL;
     }
-    if (s->data != NULL) {
-      OPENSSL_free(s->data);
-    }
-    s->data = (unsigned char *)p;
   }
 
-  BIO_snprintf(p, len, "%02d%02d%02d%02d%02d%02dZ", ts->tm_year % 100,
-               ts->tm_mon + 1, ts->tm_mday, ts->tm_hour, ts->tm_min,
-               ts->tm_sec);
-  s->length = strlen(p);
+  if (!ASN1_STRING_set(s, buf, strlen(buf))) {
+    if (free_s) {
+      ASN1_UTCTIME_free(s);
+    }
+    return NULL;
+  }
   s->type = V_ASN1_UTCTIME;
   return s;
-err:
-  if (free_s) {
-    ASN1_UTCTIME_free(s);
-  }
-  return NULL;
 }
 
 int ASN1_UTCTIME_cmp_time_t(const ASN1_UTCTIME *s, time_t t) {
