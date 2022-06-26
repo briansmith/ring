@@ -115,7 +115,7 @@ struct X509_algor_st {
   ASN1_TYPE *parameter;
 } /* X509_ALGOR */;
 
-DECLARE_ASN1_FUNCTIONS(X509_ALGOR)
+DECLARE_ASN1_FUNCTIONS_const(X509_ALGOR)
 
 DEFINE_STACK_OF(X509_ALGOR)
 
@@ -704,12 +704,12 @@ OPENSSL_EXPORT DH *d2i_DHparams_bio(BIO *bp, DH **dh);
 OPENSSL_EXPORT int i2d_DHparams_bio(BIO *bp, const DH *dh);
 
 OPENSSL_EXPORT X509 *X509_dup(X509 *x509);
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_dup(X509_ATTRIBUTE *xa);
-OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_dup(X509_EXTENSION *ex);
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_dup(const X509_ATTRIBUTE *xa);
+OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_dup(const X509_EXTENSION *ex);
 OPENSSL_EXPORT X509_CRL *X509_CRL_dup(X509_CRL *crl);
 OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(X509_REVOKED *rev);
 OPENSSL_EXPORT X509_REQ *X509_REQ_dup(X509_REQ *req);
-OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(X509_ALGOR *xn);
+OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(const X509_ALGOR *xn);
 
 // X509_ALGOR_set0 sets |alg| to an AlgorithmIdentifier with algorithm |obj| and
 // parameter determined by |param_type| and |param_value|. It returns one on
@@ -761,7 +761,7 @@ OPENSSL_EXPORT void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md);
 OPENSSL_EXPORT int X509_ALGOR_cmp(const X509_ALGOR *a, const X509_ALGOR *b);
 
 OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *xn);
-OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_dup(X509_NAME_ENTRY *ne);
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_dup(const X509_NAME_ENTRY *ne);
 OPENSSL_EXPORT int X509_NAME_ENTRY_set(const X509_NAME_ENTRY *ne);
 
 OPENSSL_EXPORT int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **pder,
@@ -799,9 +799,9 @@ OPENSSL_EXPORT const char *X509_get_default_cert_dir_env(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
 OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
-DECLARE_ASN1_ENCODE_FUNCTIONS(X509_ALGORS, X509_ALGORS, X509_ALGORS)
+DECLARE_ASN1_ENCODE_FUNCTIONS_const(X509_ALGORS, X509_ALGORS)
 
-DECLARE_ASN1_FUNCTIONS(X509_PUBKEY)
+DECLARE_ASN1_FUNCTIONS_const(X509_PUBKEY)
 
 // X509_PUBKEY_set serializes |pkey| into a newly-allocated |X509_PUBKEY|
 // structure. On success, it frees |*x|, sets |*x| to the new object, and
@@ -814,10 +814,13 @@ OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
 // not mutate the result.
 OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
 
-DECLARE_ASN1_FUNCTIONS(X509_SIG)
+DECLARE_ASN1_FUNCTIONS_const(X509_SIG)
+
+// TODO(https://crbug.com/boringssl/407): This is not const because it contains
+// an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_REQ)
 
-DECLARE_ASN1_FUNCTIONS(X509_ATTRIBUTE)
+DECLARE_ASN1_FUNCTIONS_const(X509_ATTRIBUTE)
 
 // X509_ATTRIBUTE_create returns a newly-allocated |X509_ATTRIBUTE|, or NULL on
 // error. The attribute has type |nid| and contains a single value determined by
@@ -826,17 +829,21 @@ DECLARE_ASN1_FUNCTIONS(X509_ATTRIBUTE)
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int attrtype,
                                                      void *value);
 
-DECLARE_ASN1_FUNCTIONS(X509_EXTENSION)
-DECLARE_ASN1_ENCODE_FUNCTIONS(X509_EXTENSIONS, X509_EXTENSIONS, X509_EXTENSIONS)
+DECLARE_ASN1_FUNCTIONS_const(X509_EXTENSION)
+DECLARE_ASN1_ENCODE_FUNCTIONS_const(X509_EXTENSIONS, X509_EXTENSIONS)
 
-DECLARE_ASN1_FUNCTIONS(X509_NAME_ENTRY)
+DECLARE_ASN1_FUNCTIONS_const(X509_NAME_ENTRY)
 
+// TODO(https://crbug.com/boringssl/407): This is not const because serializing
+// an |X509_NAME| is sometimes not thread-safe.
 DECLARE_ASN1_FUNCTIONS(X509_NAME)
 
 // X509_NAME_set makes a copy of |name|. On success, it frees |*xn|, sets |*xn|
 // to the copy, and returns one. Otherwise, it returns zero.
 OPENSSL_EXPORT int X509_NAME_set(X509_NAME **xn, X509_NAME *name);
 
+// TODO(https://crbug.com/boringssl/407): This is not const because it contains
+// an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509)
 
 // X509_up_ref adds one to the reference count of |x509| and returns one.
@@ -975,7 +982,11 @@ OPENSSL_EXPORT void X509_reject_clear(X509 *x);
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
 
+// TODO(https://crbug.com/boringssl/407): This is not const because it contains
+// an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_REVOKED)
+// TODO(https://crbug.com/boringssl/407): This is not const because it contains
+// an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_CRL)
 
 OPENSSL_EXPORT int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev);
@@ -987,8 +998,8 @@ OPENSSL_EXPORT int X509_CRL_get0_by_cert(X509_CRL *crl, X509_REVOKED **ret,
 OPENSSL_EXPORT X509_PKEY *X509_PKEY_new(void);
 OPENSSL_EXPORT void X509_PKEY_free(X509_PKEY *a);
 
-DECLARE_ASN1_FUNCTIONS(NETSCAPE_SPKI)
-DECLARE_ASN1_FUNCTIONS(NETSCAPE_SPKAC)
+DECLARE_ASN1_FUNCTIONS_const(NETSCAPE_SPKI)
+DECLARE_ASN1_FUNCTIONS_const(NETSCAPE_SPKAC)
 
 OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
@@ -1830,7 +1841,7 @@ OPENSSL_EXPORT X509 *X509_find_by_subject(STACK_OF(X509) *sk, X509_NAME *name);
 
 // PKCS#8 utilities
 
-DECLARE_ASN1_FUNCTIONS(PKCS8_PRIV_KEY_INFO)
+DECLARE_ASN1_FUNCTIONS_const(PKCS8_PRIV_KEY_INFO)
 
 OPENSSL_EXPORT EVP_PKEY *EVP_PKCS82PKEY(PKCS8_PRIV_KEY_INFO *p8);
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8(EVP_PKEY *pkey);
@@ -1897,7 +1908,7 @@ struct rsa_pss_params_st {
   X509_ALGOR *maskHash;
 } /* RSA_PSS_PARAMS */;
 
-DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
+DECLARE_ASN1_FUNCTIONS_const(RSA_PSS_PARAMS)
 
 /*
 SSL_CTX -> X509_STORE

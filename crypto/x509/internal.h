@@ -77,7 +77,7 @@ typedef struct X509_val_st {
   ASN1_TIME *notAfter;
 } X509_VAL;
 
-DECLARE_ASN1_FUNCTIONS(X509_VAL)
+DECLARE_ASN1_FUNCTIONS_const(X509_VAL)
 
 struct X509_pubkey_st {
   X509_ALGOR *algor;
@@ -113,7 +113,7 @@ typedef struct x509_cert_aux_st {
   ASN1_OCTET_STRING *keyid;       // key id of private key
 } X509_CERT_AUX;
 
-DECLARE_ASN1_FUNCTIONS(X509_CERT_AUX)
+DECLARE_ASN1_FUNCTIONS_const(X509_CERT_AUX)
 
 struct X509_extension_st {
   ASN1_OBJECT *object;
@@ -135,6 +135,8 @@ typedef struct {
   ASN1_ENCODING enc;
 } X509_CINF;
 
+// TODO(https://crbug.com/boringssl/407): This is not const because it contains
+// an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_CINF)
 
 struct x509_st {
@@ -171,6 +173,8 @@ typedef struct {
   STACK_OF(X509_ATTRIBUTE) *attributes;  // [ 0 ]
 } X509_REQ_INFO;
 
+// TODO(https://crbug.com/boringssl/407): This is not const because it contains
+// an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_REQ_INFO)
 
 struct X509_req_st {
@@ -201,6 +205,8 @@ typedef struct {
   ASN1_ENCODING enc;
 } X509_CRL_INFO;
 
+// TODO(https://crbug.com/boringssl/407): This is not const because it contains
+// an |X509_NAME|.
 DECLARE_ASN1_FUNCTIONS(X509_CRL_INFO)
 
 struct X509_crl_st {

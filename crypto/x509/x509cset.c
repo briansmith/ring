@@ -245,11 +245,8 @@ int i2d_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp) {
 }
 
 int X509_CRL_set1_signature_algo(X509_CRL *crl, const X509_ALGOR *algo) {
-  // TODO(https://crbug.com/boringssl/407): Generated ASN.1 dup functions
-  // should be const. Alternatively, when we can embed required fields
-  // directly in structs, import |X509_ALGOR_copy| from upstream.
-  X509_ALGOR *copy1 = X509_ALGOR_dup((X509_ALGOR *)algo);
-  X509_ALGOR *copy2 = X509_ALGOR_dup((X509_ALGOR *)algo);
+  X509_ALGOR *copy1 = X509_ALGOR_dup(algo);
+  X509_ALGOR *copy2 = X509_ALGOR_dup(algo);
   if (copy1 == NULL || copy2 == NULL) {
     X509_ALGOR_free(copy1);
     X509_ALGOR_free(copy2);
