@@ -82,7 +82,11 @@ static int rinf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
   }
 
   if (operation == ASN1_OP_D2I_POST) {
-    if (ASN1_INTEGER_get(rinf->version) != X509_REQ_VERSION_1) {
+    // The only defined CSR version is v1(0). For compatibility, we also accept
+    // a hypothetical v3(2). Although not defined, older versions of certbot
+    // use it. See https://github.com/certbot/certbot/pull/9334.
+    long version = ASN1_INTEGER_get(rinf->version);
+    if (version != X509_REQ_VERSION_1 && version != 2) {
       OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
       return 0;
     }

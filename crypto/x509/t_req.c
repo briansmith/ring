@@ -105,7 +105,9 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
   }
   if (!(cflag & X509_FLAG_NO_VERSION)) {
     l = X509_REQ_get_version(x);
-    assert(l == X509_REQ_VERSION_1);
+    // Only zero, |X509_REQ_VERSION_1|, is valid but our parser accepts some
+    // invalid values for compatibility.
+    assert(0 <= l && l <= 2);
     if (BIO_printf(bio, "%8sVersion: %ld (0x%lx)\n", "", l + 1,
                    (unsigned long)l) <= 0) {
       goto err;

@@ -396,7 +396,9 @@ OPENSSL_EXPORT long X509_get_pathlen(X509 *x509);
 #define X509_REQ_VERSION_1 0
 
 // X509_REQ_get_version returns the numerical value of |req|'s version. This
-// will always be |X509_REQ_VERSION_1|.
+// will always be |X509_REQ_VERSION_1| for valid CSRs. For compatibility,
+// |d2i_X509_REQ| also accepts some invalid version numbers, in which case this
+// function may return other values.
 OPENSSL_EXPORT long X509_REQ_get_version(const X509_REQ *req);
 
 // X509_REQ_get_subject_name returns |req|'s subject name. Note this function is

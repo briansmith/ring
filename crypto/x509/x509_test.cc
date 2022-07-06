@@ -2936,6 +2936,17 @@ rsn4lSYsqI4OI4ei
 -----END CERTIFICATE REQUEST-----
 )";
 
+// kV3CSRPEM is a v3 CSR. CSR versions only go up to v1.
+static const char kV3CSRPEM[] = R"(
+-----BEGIN CERTIFICATE REQUEST-----
+MIHJMHECAQIwDzENMAsGA1UEAwwEVGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABJjsayyAQod1J7UJYNT8AH4WWxLdKV0ozhrIz6hCzBAze7AqXWOSH8G+1EWC
+pSfL3oMQNtBdJS0kpXXaUqEAgTSgADAKBggqhkjOPQQDAgNIADBFAiAUXVaEYATg
+4Cc917T73KBImxh6xyhsA5pKuYpq1S4m9wIhAK+G93HR4ur7Ghel6+zUTvIAsj9e
+rsn4lSYsqI4OI4ei
+-----END CERTIFICATE REQUEST-----
+)";
+
 // Test that the library enforces versions are valid and match the fields
 // present.
 TEST(X509Test, InvalidVersion) {
@@ -2954,6 +2965,10 @@ TEST(X509Test, InvalidVersion) {
   EXPECT_FALSE(CRLFromPEM(kV1CRLWithExtensionsPEM));
   EXPECT_FALSE(CRLFromPEM(kV3CRLPEM));
   EXPECT_FALSE(CSRFromPEM(kV2CSRPEM));
+
+  // kV3CSRPEM is invalid but, for now, we accept it. See
+  // https://github.com/certbot/certbot/pull/9334
+  EXPECT_TRUE(CSRFromPEM(kV3CSRPEM));
 
   bssl::UniquePtr<X509> x509(X509_new());
   ASSERT_TRUE(x509);
