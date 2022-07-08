@@ -449,7 +449,8 @@ OPENSSL_EXPORT int i2d_X509_CRL(X509_CRL *crl, uint8_t **outp);
 // will be one of the |X509_CRL_VERSION_*| constants.
 OPENSSL_EXPORT long X509_CRL_get_version(const X509_CRL *crl);
 
-// X509_CRL_get0_lastUpdate returns |crl|'s lastUpdate time.
+// X509_CRL_get0_lastUpdate returns |crl|'s thisUpdate time. The OpenSSL API
+// refers to this field as lastUpdate.
 OPENSSL_EXPORT const ASN1_TIME *X509_CRL_get0_lastUpdate(const X509_CRL *crl);
 
 // X509_CRL_get0_nextUpdate returns |crl|'s nextUpdate time, or NULL if |crl|
@@ -521,8 +522,9 @@ OPENSSL_EXPORT int X509_CRL_set_version(X509_CRL *crl, long version);
 // one on success and zero on error.
 OPENSSL_EXPORT int X509_CRL_set_issuer_name(X509_CRL *crl, X509_NAME *name);
 
-// X509_CRL_set1_lastUpdate sets |crl|'s lastUpdate time to |tm|. It returns one
-// on success and zero on error.
+// X509_CRL_set1_lastUpdate sets |crl|'s thisUpdate time to |tm|. It returns one
+// on success and zero on error. The OpenSSL API refers to this field as
+// lastUpdate.
 OPENSSL_EXPORT int X509_CRL_set1_lastUpdate(X509_CRL *crl, const ASN1_TIME *tm);
 
 // X509_CRL_set1_nextUpdate sets |crl|'s nextUpdate time to |tm|. It returns one
@@ -843,7 +845,9 @@ OPENSSL_EXPORT int X509_set_notBefore(X509 *x509, const ASN1_TIME *tm);
 // instead.
 OPENSSL_EXPORT int X509_set_notAfter(X509 *x509, const ASN1_TIME *tm);
 
-// X509_CRL_get_lastUpdate returns a mutable pointer to |crl|'s lastUpdate time.
+// X509_CRL_get_lastUpdate returns a mutable pointer to |crl|'s thisUpdate time.
+// The OpenSSL API refers to this field as lastUpdate.
+//
 // Use |X509_CRL_get0_lastUpdate| or |X509_CRL_set1_lastUpdate| instead.
 OPENSSL_EXPORT ASN1_TIME *X509_CRL_get_lastUpdate(X509_CRL *crl);
 
