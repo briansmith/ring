@@ -4388,3 +4388,163 @@ TEST(X509Test, Print) {
          40:86
 )");
 }
+
+TEST(X509Test, AddExt) {
+  bssl::UniquePtr<X509> x509(X509_new());
+  ASSERT_TRUE(x509);
+
+  struct Extension {
+    int nid;
+    bool critical;
+    std::vector<uint8_t> data;
+  };
+  auto expect_extensions = [&](const std::vector<Extension> &exts) {
+    ASSERT_EQ(static_cast<size_t>(X509_get_ext_count(x509.get())), exts.size());
+    for (size_t i = 0; i < exts.size(); i++) {
+      SCOPED_TRACE(i);
+      X509_EXTENSION *ext = X509_get_ext(x509.get(), static_cast<int>(i));
+      EXPECT_EQ(OBJ_obj2nid(X509_EXTENSION_get_object(ext)), exts[i].nid);
+      EXPECT_EQ(X509_EXTENSION_get_critical(ext), exts[i].critical ? 1 : 0);
+      ASN1_OCTET_STRING *data = X509_EXTENSION_get_data(ext);
+      EXPECT_EQ(Bytes(ASN1_STRING_get0_data(data), ASN1_STRING_length(data)),
+                Bytes(exts[i].data));
+    }
+  };
+
+  // Make a few sample extensions.
+
+  // SEQUENCE {}
+  std::vector<uint8_t> basic1_der = {0x30, 0x00};
+  const uint8_t *inp = basic1_der.data();
+  bssl::UniquePtr<BASIC_CONSTRAINTS> basic1_obj(
+      d2i_BASIC_CONSTRAINTS(nullptr, &inp, basic1_der.size()));
+  EXPECT_EQ(inp, basic1_der.data() + basic1_der.size());
+
+  // SEQUENCE { BOOLEAN { TRUE } }
+  std::vector<uint8_t> basic2_der = {0x30, 0x03, 0x01, 0x01, 0xff};
+  inp = basic2_der.data();
+  bssl::UniquePtr<BASIC_CONSTRAINTS> basic2_obj(
+      d2i_BASIC_CONSTRAINTS(nullptr, &inp, basic2_der.size()));
+  EXPECT_EQ(inp, basic2_der.data() + basic2_der.size());
+
+  // OCTET_STRING {}
+  std::vector<uint8_t> skid1_der = {0x04, 0x00};
+  inp = skid1_der.data();
+  bssl::UniquePtr<ASN1_OCTET_STRING> skid1_obj(
+      d2i_ASN1_OCTET_STRING(nullptr, &inp, skid1_der.size()));
+  EXPECT_EQ(inp, skid1_der.data() + skid1_der.size());
+
+  // OCTET_STRING { "a" }
+  std::vector<uint8_t> skid2_der = {0x04, 0x01, 0x61};
+  inp = skid2_der.data();
+  bssl::UniquePtr<ASN1_OCTET_STRING> skid2_obj(
+      d2i_ASN1_OCTET_STRING(nullptr, &inp, skid2_der.size()));
+  EXPECT_EQ(inp, skid2_der.data() + skid2_der.size());
+
+  // Initially, the extension list is empty.
+  expect_extensions({});
+
+  // Adding extensions works with the default settings.
+  EXPECT_EQ(
+      1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic1_obj.get(),
+                           /*crit=*/1, X509V3_ADD_DEFAULT));
+  expect_extensions({{NID_basic_constraints, true, basic1_der}});
+  EXPECT_EQ(1, X509_add1_ext_i2d(x509.get(), NID_subject_key_identifier,
+                                 skid1_obj.get(),
+                                 /*crit=*/0, X509V3_ADD_DEFAULT));
+  expect_extensions({{NID_basic_constraints, true, basic1_der},
+                     {NID_subject_key_identifier, false, skid1_der}});
+
+  // By default, we cannot add duplicates.
+  EXPECT_EQ(
+      0, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic2_obj.get(),
+                           /*crit=*/0, X509V3_ADD_DEFAULT));
+  expect_extensions({{NID_basic_constraints, true, basic1_der},
+                     {NID_subject_key_identifier, false, skid1_der}});
+
+  // |X509V3_ADD_KEEP_EXISTING| silently keeps the existing extension if already
+  // present.
+  EXPECT_EQ(
+      1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic2_obj.get(),
+                           /*crit=*/0, X509V3_ADD_KEEP_EXISTING));
+  expect_extensions({{NID_basic_constraints, true, basic1_der},
+                     {NID_subject_key_identifier, false, skid1_der}});
+
+  // |X509V3_ADD_REPLACE| replaces it.
+  EXPECT_EQ(
+      1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic2_obj.get(),
+                           /*crit=*/0, X509V3_ADD_REPLACE));
+  expect_extensions({{NID_basic_constraints, false, basic2_der},
+                     {NID_subject_key_identifier, false, skid1_der}});
+
+  // |X509V3_ADD_REPLACE_EXISTING| also replaces matches.
+  EXPECT_EQ(1, X509_add1_ext_i2d(x509.get(), NID_subject_key_identifier,
+                                 skid2_obj.get(),
+                                 /*crit=*/1, X509V3_ADD_REPLACE_EXISTING));
+  expect_extensions({{NID_basic_constraints, false, basic2_der},
+                     {NID_subject_key_identifier, true, skid2_der}});
+
+  // |X509V3_ADD_DELETE| ignores the value and deletes the extension.
+  EXPECT_EQ(1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, nullptr, 0,
+                                 X509V3_ADD_DELETE));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der}});
+
+  // Not finding an extension to delete is an error.
+  EXPECT_EQ(0, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, nullptr, 0,
+                                 X509V3_ADD_DELETE));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der}});
+
+  // |X509V3_ADD_REPLACE_EXISTING| fails if it cannot find a match.
+  EXPECT_EQ(
+      0, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic1_obj.get(),
+                           /*crit=*/1, X509V3_ADD_REPLACE_EXISTING));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der}});
+
+  // |X509V3_ADD_REPLACE| adds a new extension if not preseent.
+  EXPECT_EQ(
+      1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic1_obj.get(),
+                           /*crit=*/1, X509V3_ADD_REPLACE));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der},
+                     {NID_basic_constraints, true, basic1_der}});
+
+  // Delete the extension again.
+  EXPECT_EQ(1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, nullptr, 0,
+                                 X509V3_ADD_DELETE));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der}});
+
+  // |X509V3_ADD_KEEP_EXISTING| adds a new extension if not preseent.
+  EXPECT_EQ(
+      1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic1_obj.get(),
+                           /*crit=*/1, X509V3_ADD_KEEP_EXISTING));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der},
+                     {NID_basic_constraints, true, basic1_der}});
+
+  // Delete the extension again.
+  EXPECT_EQ(1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, nullptr, 0,
+                                 X509V3_ADD_DELETE));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der}});
+
+  // |X509V3_ADD_APPEND| adds a new extension if not present.
+  EXPECT_EQ(
+      1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic1_obj.get(),
+                           /*crit=*/1, X509V3_ADD_APPEND));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der},
+                     {NID_basic_constraints, true, basic1_der}});
+
+  // |X509V3_ADD_APPEND| keeps adding duplicates (invalid) even if present.
+  EXPECT_EQ(
+      1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, basic2_obj.get(),
+                           /*crit=*/0, X509V3_ADD_APPEND));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der},
+                     {NID_basic_constraints, true, basic1_der},
+                     {NID_basic_constraints, false, basic2_der}});
+
+  // |X509V3_ADD_DELETE| only deletes one extension at a time.
+  EXPECT_EQ(1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, nullptr, 0,
+                                 X509V3_ADD_DELETE));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der},
+                     {NID_basic_constraints, false, basic2_der}});
+  EXPECT_EQ(1, X509_add1_ext_i2d(x509.get(), NID_basic_constraints, nullptr, 0,
+                                 X509V3_ADD_DELETE));
+  expect_extensions({{NID_subject_key_identifier, true, skid2_der}});
+}
