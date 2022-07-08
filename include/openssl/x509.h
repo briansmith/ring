@@ -119,8 +119,6 @@ DECLARE_ASN1_FUNCTIONS_const(X509_ALGOR)
 
 DEFINE_STACK_OF(X509_ALGOR)
 
-typedef STACK_OF(X509_ALGOR) X509_ALGORS;
-
 DEFINE_STACK_OF(X509_NAME_ENTRY)
 
 DEFINE_STACK_OF(X509_NAME)
@@ -798,8 +796,6 @@ OPENSSL_EXPORT const char *X509_get_default_cert_file(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_dir_env(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_file_env(void);
 OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
-
-DECLARE_ASN1_ENCODE_FUNCTIONS_const(X509_ALGORS, X509_ALGORS)
 
 DECLARE_ASN1_FUNCTIONS_const(X509_PUBKEY)
 

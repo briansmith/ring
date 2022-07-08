@@ -69,14 +69,7 @@ ASN1_SEQUENCE(X509_ALGOR) = {
     ASN1_OPT(X509_ALGOR, parameter, ASN1_ANY),
 } ASN1_SEQUENCE_END(X509_ALGOR)
 
-ASN1_ITEM_TEMPLATE(X509_ALGORS) = ASN1_EX_TEMPLATE_TYPE(ASN1_TFLG_SEQUENCE_OF,
-                                                        0, algorithms,
-                                                        X509_ALGOR)
-ASN1_ITEM_TEMPLATE_END(X509_ALGORS)
-
 IMPLEMENT_ASN1_FUNCTIONS_const(X509_ALGOR)
-IMPLEMENT_ASN1_ENCODE_FUNCTIONS_const_fname(X509_ALGORS, X509_ALGORS,
-                                            X509_ALGORS)
 IMPLEMENT_ASN1_DUP_FUNCTION_const(X509_ALGOR)
 
 int X509_ALGOR_set0(X509_ALGOR *alg, ASN1_OBJECT *aobj, int ptype, void *pval) {
