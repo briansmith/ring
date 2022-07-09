@@ -80,14 +80,12 @@ int X509_NAME_get_text_by_NID(const X509_NAME *name, int nid, char *buf,
 
 int X509_NAME_get_text_by_OBJ(const X509_NAME *name, const ASN1_OBJECT *obj,
                               char *buf, int len) {
-  int i;
-  ASN1_STRING *data;
-
-  i = X509_NAME_get_index_by_OBJ(name, obj, -1);
+  int i = X509_NAME_get_index_by_OBJ(name, obj, -1);
   if (i < 0) {
     return -1;
   }
-  data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name, i));
+  const ASN1_STRING *data =
+      X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name, i));
   i = (data->length > (len - 1)) ? (len - 1) : data->length;
   if (buf == NULL) {
     return data->length;
@@ -148,51 +146,46 @@ X509_NAME_ENTRY *X509_NAME_get_entry(const X509_NAME *name, int loc) {
 }
 
 X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *name, int loc) {
-  X509_NAME_ENTRY *ret;
-  int i, n, set_prev, set_next;
-  STACK_OF(X509_NAME_ENTRY) *sk;
-
   if (name == NULL || loc < 0 ||
       sk_X509_NAME_ENTRY_num(name->entries) <= (size_t)loc) {
     return NULL;
   }
-  sk = name->entries;
-  ret = sk_X509_NAME_ENTRY_delete(sk, loc);
-  n = sk_X509_NAME_ENTRY_num(sk);
+
+  STACK_OF(X509_NAME_ENTRY) *sk = name->entries;
+  X509_NAME_ENTRY *ret = sk_X509_NAME_ENTRY_delete(sk, loc);
+  int n = sk_X509_NAME_ENTRY_num(sk);
   name->modified = 1;
   if (loc == n) {
     return ret;
   }
 
-  // else we need to fixup the set field
+  int set_prev;
   if (loc != 0) {
-    set_prev = (sk_X509_NAME_ENTRY_value(sk, loc - 1))->set;
+    set_prev = sk_X509_NAME_ENTRY_value(sk, loc - 1)->set;
   } else {
     set_prev = ret->set - 1;
   }
-  set_next = sk_X509_NAME_ENTRY_value(sk, loc)->set;
+  int set_next = sk_X509_NAME_ENTRY_value(sk, loc)->set;
 
-  // set_prev is the previous set set is the current set set_next is the
-  // following prev 1 1 1 1 1 1 1 1 set 1 1 2 2 next 1 1 2 2 2 2 3 2 so
-  // basically only if prev and next differ by 2, then re-number down by 1
+  // If we removed a singleton RDN, update the RDN indices so they are
+  // consecutive again.
   if (set_prev + 1 < set_next) {
-    for (i = loc; i < n; i++) {
+    for (int i = loc; i < n; i++) {
       sk_X509_NAME_ENTRY_value(sk, i)->set--;
     }
   }
   return ret;
 }
 
-int X509_NAME_add_entry_by_OBJ(X509_NAME *name, ASN1_OBJECT *obj, int type,
-                               const unsigned char *bytes, int len, int loc,
-                               int set) {
-  X509_NAME_ENTRY *ne;
-  int ret;
-  ne = X509_NAME_ENTRY_create_by_OBJ(NULL, obj, type, bytes, len);
+int X509_NAME_add_entry_by_OBJ(X509_NAME *name, const ASN1_OBJECT *obj,
+                               int type, const unsigned char *bytes, int len,
+                               int loc, int set) {
+  X509_NAME_ENTRY *ne =
+      X509_NAME_ENTRY_create_by_OBJ(NULL, obj, type, bytes, len);
   if (!ne) {
     return 0;
   }
-  ret = X509_NAME_add_entry(name, ne, loc, set);
+  int ret = X509_NAME_add_entry(name, ne, loc, set);
   X509_NAME_ENTRY_free(ne);
   return ret;
 }
@@ -200,13 +193,12 @@ int X509_NAME_add_entry_by_OBJ(X509_NAME *name, ASN1_OBJECT *obj, int type,
 int X509_NAME_add_entry_by_NID(X509_NAME *name, int nid, int type,
                                const unsigned char *bytes, int len, int loc,
                                int set) {
-  X509_NAME_ENTRY *ne;
-  int ret;
-  ne = X509_NAME_ENTRY_create_by_NID(NULL, nid, type, bytes, len);
+  X509_NAME_ENTRY *ne =
+      X509_NAME_ENTRY_create_by_NID(NULL, nid, type, bytes, len);
   if (!ne) {
     return 0;
   }
-  ret = X509_NAME_add_entry(name, ne, loc, set);
+  int ret = X509_NAME_add_entry(name, ne, loc, set);
   X509_NAME_ENTRY_free(ne);
   return ret;
 }
@@ -214,20 +206,19 @@ int X509_NAME_add_entry_by_NID(X509_NAME *name, int nid, int type,
 int X509_NAME_add_entry_by_txt(X509_NAME *name, const char *field, int type,
                                const unsigned char *bytes, int len, int loc,
                                int set) {
-  X509_NAME_ENTRY *ne;
-  int ret;
-  ne = X509_NAME_ENTRY_create_by_txt(NULL, field, type, bytes, len);
+  X509_NAME_ENTRY *ne =
+      X509_NAME_ENTRY_create_by_txt(NULL, field, type, bytes, len);
   if (!ne) {
     return 0;
   }
-  ret = X509_NAME_add_entry(name, ne, loc, set);
+  int ret = X509_NAME_add_entry(name, ne, loc, set);
   X509_NAME_ENTRY_free(ne);
   return ret;
 }
 
 // if set is -1, append to previous set, 0 'a new one', and 1, prepend to the
 // guy we are about to stomp on.
-int X509_NAME_add_entry(X509_NAME *name, X509_NAME_ENTRY *ne, int loc,
+int X509_NAME_add_entry(X509_NAME *name, const X509_NAME_ENTRY *entry, int loc,
                         int set) {
   X509_NAME_ENTRY *new_name = NULL;
   int n, i, inc;
@@ -267,7 +258,7 @@ int X509_NAME_add_entry(X509_NAME *name, X509_NAME_ENTRY *ne, int loc,
     }
   }
 
-  if ((new_name = X509_NAME_ENTRY_dup(ne)) == NULL) {
+  if ((new_name = X509_NAME_ENTRY_dup(entry)) == NULL) {
     goto err;
   }
   new_name->set = set;

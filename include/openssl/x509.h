@@ -711,6 +711,246 @@ OPENSSL_EXPORT int X509_REQ_set1_signature_value(X509_REQ *req,
                                                  size_t sig_len);
 
 
+// Names.
+//
+// An |X509_NAME| represents an X.509 Name structure (RFC 5280). X.509 names are
+// a complex, hierarchical structure over a collection of attributes. Each name
+// is sequence of relative distinguished names (RDNs), decreasing in
+// specificity. For example, the first RDN may specify the country, while the
+// next RDN may specify a locality. Each RDN is, itself, a set of attributes.
+// Having more than one attribute in an RDN is uncommon, but possible. Within an
+// RDN, attributes have the same level in specificity. Attribute types are
+// OBJECT IDENTIFIERs. This determines the ASN.1 type of the value, which is
+// commonly a string but may be other types.
+//
+// The |X509_NAME| representation flattens this two-level structure into a
+// single list of attributes. Each attribute is stored in an |X509_NAME_ENTRY|,
+// with also maintains the index of the RDN it is part of, accessible via
+// |X509_NAME_ENTRY_set|. This can be used to recover the two-level structure.
+//
+// X.509 names are largely vestigial. Historically, DNS names were parsed out of
+// the subject's common name attribute, but this is deprecated and has since
+// moved to the subject alternative name extension. In modern usage, X.509 names
+// are primarily opaque identifiers to link a certificate with its issuer.
+
+DEFINE_STACK_OF(X509_NAME_ENTRY)
+DEFINE_STACK_OF(X509_NAME)
+
+// X509_NAME is an |ASN1_ITEM| whose ASN.1 type is X.509 Name (RFC 5280) and C
+// type is |X509_NAME*|.
+DECLARE_ASN1_ITEM(X509_NAME)
+
+// X509_NAME_new returns a new, empty |X509_NAME_new|, or NULL on
+// error.
+OPENSSL_EXPORT X509_NAME *X509_NAME_new(void);
+
+// X509_NAME_free releases memory associated with |name|.
+OPENSSL_EXPORT void X509_NAME_free(X509_NAME *name);
+
+// d2i_X509_NAME parses up to |len| bytes from |*inp| as a DER-encoded X.509
+// Name (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+OPENSSL_EXPORT X509_NAME *d2i_X509_NAME(X509_NAME **out, const uint8_t **inp,
+                                        long len);
+
+// i2d_X509_NAME marshals |in| as a DER-encoded X.509 Name (RFC 5280), as
+// described in |i2d_SAMPLE|.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |in| was
+// mutated.
+OPENSSL_EXPORT int i2d_X509_NAME(X509_NAME *in, uint8_t **outp);
+
+// X509_NAME_dup returns a newly-allocated copy of |name|, or NULL on error.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |name| was
+// mutated.
+OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *name);
+
+// X509_NAME_get0_der sets |*out_der| and |*out_der_len|
+//
+// Avoid this function and prefer |i2d_X509_NAME|. It is one of the reasons
+// these functions are not consistently thread-safe or const-correct. Depending
+// on the resolution of https://crbug.com/boringssl/407, this function may be
+// removed or cause poor performance.
+OPENSSL_EXPORT int X509_NAME_get0_der(X509_NAME *name, const uint8_t **out_der,
+                                      size_t *out_der_len);
+
+// X509_NAME_set makes a copy of |name|. On success, it frees |*xn|, sets |*xn|
+// to the copy, and returns one. Otherwise, it returns zero.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |name| was
+// mutated.
+OPENSSL_EXPORT int X509_NAME_set(X509_NAME **xn, X509_NAME *name);
+
+// X509_NAME_entry_count returns the number of entries in |name|.
+OPENSSL_EXPORT int X509_NAME_entry_count(const X509_NAME *name);
+
+// X509_NAME_get_index_by_NID returns the zero-based index of the first
+// attribute in |name| with type |nid|, or -1 if there is none. |nid| should be
+// one of the |NID_*| constants. If |lastpos| is non-negative, it begins
+// searching at |lastpos+1|. To search all attributes, pass in -1, not zero.
+//
+// Indices from this function refer to |X509_NAME|'s flattened representation.
+OPENSSL_EXPORT int X509_NAME_get_index_by_NID(const X509_NAME *name, int nid,
+                                              int lastpos);
+
+// X509_NAME_get_index_by_OBJ behaves like |X509_NAME_get_index_by_NID| but
+// looks for attributes with type |obj|.
+OPENSSL_EXPORT int X509_NAME_get_index_by_OBJ(const X509_NAME *name,
+                                              const ASN1_OBJECT *obj,
+                                              int lastpos);
+
+// X509_NAME_get_entry returns the attribute in |name| at index |loc|, or NULL
+// if |loc| is out of range. |loc| is interpreted using |X509_NAME|'s flattened
+// representation. This function returns a non-const pointer for OpenSSL
+// compatibility, but callers should not mutate the result. Doing so will break
+// internal invariants in the library.
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_get_entry(const X509_NAME *name,
+                                                    int loc);
+
+// X509_NAME_delete_entry removes and returns the attribute in |name| at index
+// |loc|, or NULL if |loc| is out of range. |loc| is interpreted using
+// |X509_NAME|'s flattened representation. If the attribute is found, the caller
+// is responsible for releasing the result with |X509_NAME_ENTRY_free|.
+//
+// This function will internally update RDN indices (see |X509_NAME_ENTRY_set|)
+// so they continue to be consecutive.
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *name,
+                                                       int loc);
+
+// X509_NAME_add_entry adds a copy of |entry| to |name| and returns one on
+// success or zero on error. If |loc| is -1, the entry is appended to |name|.
+// Otherwise, it is inserted at index |loc|. If |set| is -1, the entry is added
+// to the previous entry's RDN. If it is 0, the entry becomes a singleton RDN.
+// If 1, it is added to next entry's RDN.
+//
+// This function will internally update RDN indices (see |X509_NAME_ENTRY_set|)
+// so they continue to be consecutive.
+OPENSSL_EXPORT int X509_NAME_add_entry(X509_NAME *name,
+                                       const X509_NAME_ENTRY *entry, int loc,
+                                       int set);
+
+// X509_NAME_add_entry_by_OBJ adds a new entry to |name| and returns one on
+// success or zero on error. The entry's attribute type is |obj|. The entry's
+// attribute value is determined by |type|, |bytes|, and |len|, as in
+// |X509_NAME_ENTRY_set_data|. The entry's position is determined by |loc| and
+// |set| as in |X509_NAME_entry|.
+OPENSSL_EXPORT int X509_NAME_add_entry_by_OBJ(X509_NAME *name,
+                                              const ASN1_OBJECT *obj, int type,
+                                              const uint8_t *bytes, int len,
+                                              int loc, int set);
+
+// X509_NAME_add_entry_by_NID behaves like |X509_NAME_add_entry_by_OBJ| but sets
+// the entry's attribute type to |nid|, which should be one of the |NID_*|
+// constants.
+OPENSSL_EXPORT int X509_NAME_add_entry_by_NID(X509_NAME *name, int nid,
+                                              int type, const uint8_t *bytes,
+                                              int len, int loc, int set);
+
+// X509_NAME_add_entry_by_txt behaves like |X509_NAME_add_entry_by_OBJ| but sets
+// the entry's attribute type to |field|, which is passed to |OBJ_txt2obj|.
+OPENSSL_EXPORT int X509_NAME_add_entry_by_txt(X509_NAME *name,
+                                              const char *field, int type,
+                                              const uint8_t *bytes, int len,
+                                              int loc, int set);
+
+// X509_NAME_ENTRY is an |ASN1_ITEM| whose ASN.1 type is AttributeTypeAndValue
+// (RFC 5280) and C type is |X509_NAME_ENTRY*|.
+DECLARE_ASN1_ITEM(X509_NAME_ENTRY)
+
+// X509_NAME_ENTRY_new returns a new, empty |X509_NAME_ENTRY_new|, or NULL on
+// error.
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_new(void);
+
+// X509_NAME_ENTRY_free releases memory associated with |entry|.
+OPENSSL_EXPORT void X509_NAME_ENTRY_free(X509_NAME_ENTRY *entry);
+
+// d2i_X509_NAME_ENTRY parses up to |len| bytes from |*inp| as a DER-encoded
+// AttributeTypeAndValue (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+OPENSSL_EXPORT X509_NAME_ENTRY *d2i_X509_NAME_ENTRY(X509_NAME_ENTRY **out,
+                                                    const uint8_t **inp,
+                                                    long len);
+
+// i2d_X509_NAME_ENTRY marshals |in| as a DER-encoded AttributeTypeAndValue (RFC
+// 5280), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_X509_NAME_ENTRY(const X509_NAME_ENTRY *in,
+                                       uint8_t **outp);
+
+// X509_NAME_ENTRY_dup returns a newly-allocated copy of |entry|, or NULL on
+// error.
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_dup(
+    const X509_NAME_ENTRY *entry);
+
+// X509_NAME_ENTRY_get_object returns |entry|'s attribute type. This function
+// returns a non-const pointer for OpenSSL compatibility, but callers should not
+// mutate the result. Doing so will break internal invariants in the library.
+OPENSSL_EXPORT ASN1_OBJECT *X509_NAME_ENTRY_get_object(
+    const X509_NAME_ENTRY *entry);
+
+// X509_NAME_ENTRY_set_object sets |entry|'s attribute type to |obj|. It returns
+// one on success and zero on error.
+OPENSSL_EXPORT int X509_NAME_ENTRY_set_object(X509_NAME_ENTRY *entry,
+                                              const ASN1_OBJECT *obj);
+
+// X509_NAME_ENTRY_get_data returns |entry|'s attribute value, represented as an
+// |ASN1_STRING|. This value may have any ASN.1 type, so callers must check the
+// type before interpreting the contents. This function returns a non-const
+// pointer for OpenSSL compatibility, but callers should not mutate the result.
+// Doing so will break internal invariants in the library.
+//
+// TODO(https://crbug.com/boringssl/412): Although the spec says any ASN.1 type
+// is allowed, we currently only allow an ad-hoc set of types. Additionally, it
+// is unclear if some types can even be represented by this function.
+OPENSSL_EXPORT ASN1_STRING *X509_NAME_ENTRY_get_data(
+    const X509_NAME_ENTRY *entry);
+
+// X509_NAME_ENTRY_set_data sets |entry|'s value to |len| bytes from |bytes|. It
+// returns one on success and zero on error. If |len| is -1, |bytes| must be a
+// NUL-terminated C string and the length is determined by |strlen|. |bytes| is
+// converted to an ASN.1 type as follows:
+//
+// If |type| is a |MBSTRING_*| constant, the value is an ASN.1 string. The
+// string is determined by decoding |bytes| in the encoding specified by |type|,
+// and then re-encoding it in a form appropriate for |entry|'s attribute type.
+// See |ASN1_STRING_set_by_NID| for details.
+//
+// Otherwise, the value is an |ASN1_STRING| with type |type| and value |bytes|.
+// See |ASN1_STRING| for how to format ASN.1 types as an |ASN1_STRING|. If
+// |type| is |V_ASN1_UNDEF| the previous |ASN1_STRING| type is reused.
+OPENSSL_EXPORT int X509_NAME_ENTRY_set_data(X509_NAME_ENTRY *entry, int type,
+                                            const uint8_t *bytes, int len);
+
+// X509_NAME_ENTRY_set returns the zero-based index of the RDN which contains
+// |entry|. Consecutive entries with the same index are part of the same RDN.
+OPENSSL_EXPORT int X509_NAME_ENTRY_set(const X509_NAME_ENTRY *entry);
+
+// X509_NAME_ENTRY_create_by_OBJ creates a new |X509_NAME_ENTRY| with attribute
+// type |obj|. The attribute value is determined from |type|, |bytes|, and |len|
+// as in |X509_NAME_ENTRY_set_data|. It returns the |X509_NAME_ENTRY| on success
+// and NULL on error.
+//
+// If |out| is non-NULL and |*out| is NULL, it additionally sets |*out| to the
+// result on success. If both |out| and |*out| are non-NULL, it updates the
+// object at |*out| instead of allocating a new one.
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_OBJ(
+    X509_NAME_ENTRY **out, const ASN1_OBJECT *obj, int type,
+    const uint8_t *bytes, int len);
+
+// X509_NAME_ENTRY_create_by_NID behaves like |X509_NAME_ENTRY_create_by_OBJ|
+// except the attribute type is |nid|, which should be one of the |NID_*|
+// constants.
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_NID(
+    X509_NAME_ENTRY **out, int nid, int type, const uint8_t *bytes, int len);
+
+// X509_NAME_ENTRY_create_by_txt behaves like |X509_NAME_ENTRY_create_by_OBJ|
+// except the attribute type is |field|, which is passed to |OBJ_txt2obj|.
+OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(
+    X509_NAME_ENTRY **out, const char *field, int type, const uint8_t *bytes,
+    int len);
+
+
 // Algorithm identifiers.
 //
 // An |X509_ALGOR| represents an AlgorithmIdentifier structure, used in X.509
@@ -874,6 +1114,31 @@ OPENSSL_EXPORT ASN1_TIME *X509_CRL_get_nextUpdate(X509_CRL *crl);
 // Prefer |X509_get0_serialNumber|.
 OPENSSL_EXPORT ASN1_INTEGER *X509_get_serialNumber(X509 *x509);
 
+// X509_NAME_get_text_by_OBJ finds the first attribute with type |obj| in
+// |name|. If found, it ignores the value's ASN.1 type, writes the raw
+// |ASN1_STRING| representation to |buf|, followed by a NUL byte, and
+// returns the number of bytes in output, excluding the NUL byte.
+//
+// This function writes at most |len| bytes, including the NUL byte. If |len| is
+// not large enough, it silently truncates the output to fit. If |buf| is NULL,
+// it instead writes enough and returns the number of bytes in the output,
+// excluding the NUL byte.
+//
+// WARNING: Do not use this function. It does not return enough information for
+// the caller to correctly interpret its output. The attribute value may be of
+// any type, including one of several ASN.1 string encodings, but this function
+// only outputs the raw |ASN1_STRING| representation. See
+// https://crbug.com/boringssl/436.
+OPENSSL_EXPORT int X509_NAME_get_text_by_OBJ(const X509_NAME *name,
+                                             const ASN1_OBJECT *obj, char *buf,
+                                             int len);
+
+// X509_NAME_get_text_by_NID behaves like |X509_NAME_get_text_by_OBJ| except it
+// finds an attribute of type |nid|, which should be one of the |NID_*|
+// constants.
+OPENSSL_EXPORT int X509_NAME_get_text_by_NID(const X509_NAME *name, int nid,
+                                             char *buf, int len);
+
 
 // Private structures.
 
@@ -899,10 +1164,6 @@ struct X509_algor_st {
 #define X509v3_KU_ENCIPHER_ONLY 0x0001
 #define X509v3_KU_DECIPHER_ONLY 0x8000
 #define X509v3_KU_UNDEF 0xffff
-
-DEFINE_STACK_OF(X509_NAME_ENTRY)
-
-DEFINE_STACK_OF(X509_NAME)
 
 typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
 
@@ -1269,13 +1530,6 @@ OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(X509_REVOKED *rev);
 OPENSSL_EXPORT X509_REQ *X509_REQ_dup(X509_REQ *req);
 OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(const X509_ALGOR *xn);
 
-OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *xn);
-OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_dup(const X509_NAME_ENTRY *ne);
-OPENSSL_EXPORT int X509_NAME_ENTRY_set(const X509_NAME_ENTRY *ne);
-
-OPENSSL_EXPORT int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **pder,
-                                      size_t *pderlen);
-
 // X509_cmp_time compares |s| against |*t|. On success, it returns a negative
 // number if |s| <= |*t| and a positive number if |s| > |*t|. On error, it
 // returns zero. If |t| is NULL, it uses the current time instead of |*t|.
@@ -1334,16 +1588,6 @@ OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int attrtype,
 
 DECLARE_ASN1_FUNCTIONS_const(X509_EXTENSION)
 DECLARE_ASN1_ENCODE_FUNCTIONS_const(X509_EXTENSIONS, X509_EXTENSIONS)
-
-DECLARE_ASN1_FUNCTIONS_const(X509_NAME_ENTRY)
-
-// TODO(https://crbug.com/boringssl/407): This is not const because serializing
-// an |X509_NAME| is sometimes not thread-safe.
-DECLARE_ASN1_FUNCTIONS(X509_NAME)
-
-// X509_NAME_set makes a copy of |name|. On success, it frees |*xn|, sets |*xn|
-// to the copy, and returns one. Otherwise, it returns zero.
-OPENSSL_EXPORT int X509_NAME_set(X509_NAME **xn, X509_NAME *name);
 
 OPENSSL_EXPORT int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj);
 OPENSSL_EXPORT int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj);
@@ -1558,56 +1802,6 @@ OPENSSL_EXPORT int X509_CRL_print(BIO *bp, X509_CRL *x);
 OPENSSL_EXPORT int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflag,
                                      unsigned long cflag);
 OPENSSL_EXPORT int X509_REQ_print(BIO *bp, X509_REQ *req);
-
-OPENSSL_EXPORT int X509_NAME_entry_count(const X509_NAME *name);
-OPENSSL_EXPORT int X509_NAME_get_text_by_NID(const X509_NAME *name, int nid,
-                                             char *buf, int len);
-OPENSSL_EXPORT int X509_NAME_get_text_by_OBJ(const X509_NAME *name,
-                                             const ASN1_OBJECT *obj, char *buf,
-                                             int len);
-
-// NOTE: you should be passsing -1, not 0 as lastpos.  The functions that use
-// lastpos, search after that position on.
-OPENSSL_EXPORT int X509_NAME_get_index_by_NID(const X509_NAME *name, int nid,
-                                              int lastpos);
-OPENSSL_EXPORT int X509_NAME_get_index_by_OBJ(const X509_NAME *name,
-                                              const ASN1_OBJECT *obj,
-                                              int lastpos);
-OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_get_entry(const X509_NAME *name,
-                                                    int loc);
-OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *name,
-                                                       int loc);
-OPENSSL_EXPORT int X509_NAME_add_entry(X509_NAME *name, X509_NAME_ENTRY *ne,
-                                       int loc, int set);
-OPENSSL_EXPORT int X509_NAME_add_entry_by_OBJ(X509_NAME *name, ASN1_OBJECT *obj,
-                                              int type,
-                                              const unsigned char *bytes,
-                                              int len, int loc, int set);
-OPENSSL_EXPORT int X509_NAME_add_entry_by_NID(X509_NAME *name, int nid,
-                                              int type,
-                                              const unsigned char *bytes,
-                                              int len, int loc, int set);
-OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(
-    X509_NAME_ENTRY **ne, const char *field, int type,
-    const unsigned char *bytes, int len);
-OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_NID(
-    X509_NAME_ENTRY **ne, int nid, int type, const unsigned char *bytes,
-    int len);
-OPENSSL_EXPORT int X509_NAME_add_entry_by_txt(X509_NAME *name,
-                                              const char *field, int type,
-                                              const unsigned char *bytes,
-                                              int len, int loc, int set);
-OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_OBJ(
-    X509_NAME_ENTRY **ne, const ASN1_OBJECT *obj, int type,
-    const unsigned char *bytes, int len);
-OPENSSL_EXPORT int X509_NAME_ENTRY_set_object(X509_NAME_ENTRY *ne,
-                                              const ASN1_OBJECT *obj);
-OPENSSL_EXPORT int X509_NAME_ENTRY_set_data(X509_NAME_ENTRY *ne, int type,
-                                            const unsigned char *bytes,
-                                            int len);
-OPENSSL_EXPORT ASN1_OBJECT *X509_NAME_ENTRY_get_object(
-    const X509_NAME_ENTRY *ne);
-OPENSSL_EXPORT ASN1_STRING *X509_NAME_ENTRY_get_data(const X509_NAME_ENTRY *ne);
 
 // X509v3_get_ext_count returns the number of extensions in |x|.
 OPENSSL_EXPORT int X509v3_get_ext_count(const STACK_OF(X509_EXTENSION) *x);
@@ -1968,8 +2162,6 @@ OPENSSL_EXPORT int X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr,
 // specified by |attrtype|, and then re-encoding it in a form appropriate for
 // |attr|'s type. If |len| is -1, |strlen(data)| is used instead. See
 // |ASN1_STRING_set_by_NID| for details.
-//
-// TODO(davidben): Document |ASN1_STRING_set_by_NID| so the reference is useful.
 //
 // Otherwise, if |len| is not -1, the value is an ASN.1 string. |attrtype| is an
 // |ASN1_STRING| type value and the |len| bytes from |data| are copied as the

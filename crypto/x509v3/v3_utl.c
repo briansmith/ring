@@ -77,10 +77,11 @@
 
 static char *strip_spaces(char *name);
 static int sk_strcmp(const char **a, const char **b);
-static STACK_OF(OPENSSL_STRING) *get_email(X509_NAME *name,
-                                           GENERAL_NAMES *gens);
+static STACK_OF(OPENSSL_STRING) *get_email(const X509_NAME *name,
+                                           const GENERAL_NAMES *gens);
 static void str_free(OPENSSL_STRING str);
-static int append_ia5(STACK_OF(OPENSSL_STRING) **sk, ASN1_IA5STRING *email);
+static int append_ia5(STACK_OF(OPENSSL_STRING) **sk,
+                      const ASN1_IA5STRING *email);
 
 static int ipv4_from_asc(unsigned char v4[4], const char *in);
 static int ipv6_from_asc(unsigned char v6[16], const char *in);
@@ -617,27 +618,22 @@ STACK_OF(OPENSSL_STRING) *X509_REQ_get1_email(X509_REQ *x) {
   return ret;
 }
 
-static STACK_OF(OPENSSL_STRING) *get_email(X509_NAME *name,
-                                           GENERAL_NAMES *gens) {
+static STACK_OF(OPENSSL_STRING) *get_email(const X509_NAME *name,
+                                           const GENERAL_NAMES *gens) {
   STACK_OF(OPENSSL_STRING) *ret = NULL;
-  X509_NAME_ENTRY *ne;
-  ASN1_IA5STRING *email;
-  GENERAL_NAME *gen;
-  int i;
-  size_t j;
   // Now add any email address(es) to STACK
-  i = -1;
+  int i = -1;
   // First supplied X509_NAME
   while ((i = X509_NAME_get_index_by_NID(name, NID_pkcs9_emailAddress, i)) >=
          0) {
-    ne = X509_NAME_get_entry(name, i);
-    email = X509_NAME_ENTRY_get_data(ne);
+    const X509_NAME_ENTRY *ne = X509_NAME_get_entry(name, i);
+    const ASN1_IA5STRING *email = X509_NAME_ENTRY_get_data(ne);
     if (!append_ia5(&ret, email)) {
       return NULL;
     }
   }
-  for (j = 0; j < sk_GENERAL_NAME_num(gens); j++) {
-    gen = sk_GENERAL_NAME_value(gens, j);
+  for (size_t j = 0; j < sk_GENERAL_NAME_num(gens); j++) {
+    const GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, j);
     if (gen->type != GEN_EMAIL) {
       continue;
     }
@@ -650,7 +646,8 @@ static STACK_OF(OPENSSL_STRING) *get_email(X509_NAME *name,
 
 static void str_free(OPENSSL_STRING str) { OPENSSL_free(str); }
 
-static int append_ia5(STACK_OF(OPENSSL_STRING) **sk, ASN1_IA5STRING *email) {
+static int append_ia5(STACK_OF(OPENSSL_STRING) **sk,
+                      const ASN1_IA5STRING *email) {
   // First some sanity checks
   if (email->type != V_ASN1_IA5STRING) {
     return 1;
@@ -952,7 +949,7 @@ int x509v3_looks_like_dns_name(const unsigned char *in, size_t len) {
 // cmp_type > 0 only compare if string matches the type, otherwise convert it
 // to UTF8.
 
-static int do_check_string(ASN1_STRING *a, int cmp_type, equal_fn equal,
+static int do_check_string(const ASN1_STRING *a, int cmp_type, equal_fn equal,
                            unsigned int flags, int check_type, const char *b,
                            size_t blen, char **peername) {
   int rv = 0;
@@ -997,15 +994,10 @@ static int do_check_string(ASN1_STRING *a, int cmp_type, equal_fn equal,
 
 static int do_x509_check(X509 *x, const char *chk, size_t chklen,
                          unsigned int flags, int check_type, char **peername) {
-  GENERAL_NAMES *gens = NULL;
-  X509_NAME *name = NULL;
-  size_t i;
-  int j;
   int cnid = NID_undef;
   int alt_type;
   int rv = 0;
   equal_fn equal;
-
   if (check_type == GEN_EMAIL) {
     cnid = NID_pkcs9_emailAddress;
     alt_type = V_ASN1_IA5STRING;
@@ -1023,15 +1015,14 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
     equal = equal_case;
   }
 
-  gens = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
+  GENERAL_NAMES *gens = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
   if (gens) {
-    for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
-      GENERAL_NAME *gen;
-      ASN1_STRING *cstr;
-      gen = sk_GENERAL_NAME_value(gens, i);
+    for (size_t i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
+      const GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
       if (gen->type != check_type) {
         continue;
       }
+      const ASN1_STRING *cstr;
       if (check_type == GEN_EMAIL) {
         cstr = gen->d.rfc822Name;
       } else if (check_type == GEN_DNS) {
@@ -1054,13 +1045,11 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
     return 0;
   }
 
-  j = -1;
-  name = X509_get_subject_name(x);
+  int j = -1;
+  const X509_NAME *name = X509_get_subject_name(x);
   while ((j = X509_NAME_get_index_by_NID(name, cnid, j)) >= 0) {
-    X509_NAME_ENTRY *ne;
-    ASN1_STRING *str;
-    ne = X509_NAME_get_entry(name, j);
-    str = X509_NAME_ENTRY_get_data(ne);
+    const X509_NAME_ENTRY *ne = X509_NAME_get_entry(name, j);
+    const ASN1_STRING *str = X509_NAME_ENTRY_get_data(ne);
     // Positive on success, negative on error!
     if ((rv = do_check_string(str, -1, equal, flags, check_type, chk, chklen,
                               peername)) != 0) {

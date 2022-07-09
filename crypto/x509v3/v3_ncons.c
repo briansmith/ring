@@ -76,14 +76,14 @@ static int i2r_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method, void *a,
 static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
                                    STACK_OF(GENERAL_SUBTREE) *trees, BIO *bp,
                                    int ind, const char *name);
-static int print_nc_ipadd(BIO *bp, ASN1_OCTET_STRING *ip);
+static int print_nc_ipadd(BIO *bp, const ASN1_OCTET_STRING *ip);
 
 static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc);
 static int nc_match_single(GENERAL_NAME *sub, GENERAL_NAME *gen);
 static int nc_dn(X509_NAME *sub, X509_NAME *nm);
-static int nc_dns(ASN1_IA5STRING *sub, ASN1_IA5STRING *dns);
-static int nc_email(ASN1_IA5STRING *sub, ASN1_IA5STRING *eml);
-static int nc_uri(ASN1_IA5STRING *uri, ASN1_IA5STRING *base);
+static int nc_dns(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *dns);
+static int nc_email(const ASN1_IA5STRING *sub, const ASN1_IA5STRING *eml);
+static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base);
 
 const X509V3_EXT_METHOD v3_name_constraints = {
     NID_name_constraints,
@@ -196,7 +196,7 @@ static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
   return 1;
 }
 
-static int print_nc_ipadd(BIO *bp, ASN1_OCTET_STRING *ip) {
+static int print_nc_ipadd(BIO *bp, const ASN1_OCTET_STRING *ip) {
   int i, len;
   unsigned char *p;
   p = ip->data;
@@ -273,12 +273,11 @@ int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc) {
     // Process any email address attributes in subject name
 
     for (i = -1;;) {
-      X509_NAME_ENTRY *ne;
       i = X509_NAME_get_index_by_NID(nm, NID_pkcs9_emailAddress, i);
       if (i == -1) {
         break;
       }
-      ne = X509_NAME_get_entry(nm, i);
+      const X509_NAME_ENTRY *ne = X509_NAME_get_entry(nm, i);
       gntmp.d.rfc822Name = X509_NAME_ENTRY_get_data(ne);
       if (gntmp.d.rfc822Name->type != V_ASN1_IA5STRING) {
         return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
@@ -429,7 +428,7 @@ static int has_suffix_case(const CBS *a, const CBS *b) {
   return equal_case(&copy, b);
 }
 
-static int nc_dns(ASN1_IA5STRING *dns, ASN1_IA5STRING *base) {
+static int nc_dns(const ASN1_IA5STRING *dns, const ASN1_IA5STRING *base) {
   CBS dns_cbs, base_cbs;
   CBS_init(&dns_cbs, dns->data, dns->length);
   CBS_init(&base_cbs, base->data, base->length);
@@ -465,7 +464,7 @@ static int nc_dns(ASN1_IA5STRING *dns, ASN1_IA5STRING *base) {
   return X509_V_OK;
 }
 
-static int nc_email(ASN1_IA5STRING *eml, ASN1_IA5STRING *base) {
+static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base) {
   CBS eml_cbs, base_cbs;
   CBS_init(&eml_cbs, eml->data, eml->length);
   CBS_init(&base_cbs, base->data, base->length);
@@ -513,7 +512,7 @@ static int nc_email(ASN1_IA5STRING *eml, ASN1_IA5STRING *base) {
   return X509_V_OK;
 }
 
-static int nc_uri(ASN1_IA5STRING *uri, ASN1_IA5STRING *base) {
+static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
   CBS uri_cbs, base_cbs;
   CBS_init(&uri_cbs, uri->data, uri->length);
   CBS_init(&base_cbs, base->data, base->length);

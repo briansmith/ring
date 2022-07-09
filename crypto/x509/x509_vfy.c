@@ -689,7 +689,7 @@ end:
 }
 
 static int reject_dns_name_in_common_name(X509 *x509) {
-  X509_NAME *name = X509_get_subject_name(x509);
+  const X509_NAME *name = X509_get_subject_name(x509);
   int i = -1;
   for (;;) {
     i = X509_NAME_get_index_by_NID(name, NID_commonName, i);
@@ -697,8 +697,8 @@ static int reject_dns_name_in_common_name(X509 *x509) {
       return X509_V_OK;
     }
 
-    X509_NAME_ENTRY *entry = X509_NAME_get_entry(name, i);
-    ASN1_STRING *common_name = X509_NAME_ENTRY_get_data(entry);
+    const X509_NAME_ENTRY *entry = X509_NAME_get_entry(name, i);
+    const ASN1_STRING *common_name = X509_NAME_ENTRY_get_data(entry);
     unsigned char *idval;
     int idlen = ASN1_STRING_to_UTF8(&idval, common_name);
     if (idlen < 0) {
