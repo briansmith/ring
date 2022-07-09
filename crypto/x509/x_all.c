@@ -241,7 +241,6 @@ IMPLEMENT_I2D_BIO(RSA, i2d_RSAPublicKey_bio, i2d_RSAPublicKey)
 IMPLEMENT_D2I_BIO(RSA, d2i_RSA_PUBKEY_bio, d2i_RSA_PUBKEY)
 IMPLEMENT_I2D_BIO(RSA, i2d_RSA_PUBKEY_bio, i2d_RSA_PUBKEY)
 
-#ifndef OPENSSL_NO_DSA
 IMPLEMENT_D2I_FP(DSA, d2i_DSAPrivateKey_fp, d2i_DSAPrivateKey_bio)
 IMPLEMENT_I2D_FP(DSA, i2d_DSAPrivateKey_fp, i2d_DSAPrivateKey_bio)
 
@@ -253,7 +252,6 @@ IMPLEMENT_I2D_BIO(DSA, i2d_DSAPrivateKey_bio, i2d_DSAPrivateKey)
 
 IMPLEMENT_D2I_BIO(DSA, d2i_DSA_PUBKEY_bio, d2i_DSA_PUBKEY)
 IMPLEMENT_I2D_BIO(DSA, i2d_DSA_PUBKEY_bio, i2d_DSA_PUBKEY)
-#endif
 
 IMPLEMENT_D2I_FP(EC_KEY, d2i_ECPrivateKey_fp, d2i_ECPrivateKey_bio)
 IMPLEMENT_I2D_FP(EC_KEY, i2d_ECPrivateKey_fp, i2d_ECPrivateKey_bio)

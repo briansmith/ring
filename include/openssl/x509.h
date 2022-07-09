@@ -1045,6 +1045,141 @@ OPENSSL_EXPORT int X509_signature_print(BIO *bio, const X509_ALGOR *alg,
                                         const ASN1_STRING *sig);
 
 
+// Convenience functions.
+
+// X509_pubkey_digest hashes the contents of the BIT STRING in |x509|'s
+// subjectPublicKeyInfo field with |md| and writes the result to |out|.
+// |EVP_MD_CTX_size| bytes are written, which is at most |EVP_MAX_MD_SIZE|. If
+// |out_len| is not NULL, |*out_len| is set to the number of bytes written. This
+// function returns one on success and zero on error.
+//
+// This hash omits the BIT STRING tag, length, and number of unused bits. It
+// also omits the AlgorithmIdentifier which describes the key type. It
+// corresponds to the OCSP KeyHash definition and is not suitable for other
+// purposes.
+OPENSSL_EXPORT int X509_pubkey_digest(const X509 *x509, const EVP_MD *md,
+                                      uint8_t *out, unsigned *out_len);
+
+// X509_digest hashes |x509|'s DER encoding with |md| and writes the result to
+// |out|. |EVP_MD_CTX_size| bytes are written, which is at most
+// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
+// of bytes written. This function returns one on success and zero on error.
+// Note this digest covers the entire certificate, not just the signed portion.
+OPENSSL_EXPORT int X509_digest(const X509 *x509, const EVP_MD *md, uint8_t *out,
+                               unsigned *out_len);
+
+// X509_CRL_digest hashes |crl|'s DER encoding with |md| and writes the result
+// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
+// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
+// of bytes written. This function returns one on success and zero on error.
+// Note this digest covers the entire CRL, not just the signed portion.
+OPENSSL_EXPORT int X509_CRL_digest(const X509_CRL *crl, const EVP_MD *md,
+                                   uint8_t *out, unsigned *out_len);
+
+// X509_REQ_digest hashes |req|'s DER encoding with |md| and writes the result
+// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
+// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
+// of bytes written. This function returns one on success and zero on error.
+// Note this digest covers the entire certificate request, not just the signed
+// portion.
+OPENSSL_EXPORT int X509_REQ_digest(const X509_REQ *req, const EVP_MD *md,
+                                   uint8_t *out, unsigned *out_len);
+
+// X509_NAME_digest hashes |name|'s DER encoding with |md| and writes the result
+// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
+// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
+// of bytes written. This function returns one on success and zero on error.
+OPENSSL_EXPORT int X509_NAME_digest(const X509_NAME *name, const EVP_MD *md,
+                                    uint8_t *out, unsigned *out_len);
+
+// The following functions behave like the corresponding unsuffixed |d2i_*|
+// functions, but read the result from |bp| instead. Callers using these
+// functions with memory |BIO|s to parse structures already in memory should use
+// |d2i_*| instead.
+OPENSSL_EXPORT X509 *d2i_X509_bio(BIO *bp, X509 **x509);
+OPENSSL_EXPORT X509_CRL *d2i_X509_CRL_bio(BIO *bp, X509_CRL **crl);
+OPENSSL_EXPORT X509_REQ *d2i_X509_REQ_bio(BIO *bp, X509_REQ **req);
+OPENSSL_EXPORT RSA *d2i_RSAPrivateKey_bio(BIO *bp, RSA **rsa);
+OPENSSL_EXPORT RSA *d2i_RSAPublicKey_bio(BIO *bp, RSA **rsa);
+OPENSSL_EXPORT RSA *d2i_RSA_PUBKEY_bio(BIO *bp, RSA **rsa);
+OPENSSL_EXPORT DSA *d2i_DSA_PUBKEY_bio(BIO *bp, DSA **dsa);
+OPENSSL_EXPORT DSA *d2i_DSAPrivateKey_bio(BIO *bp, DSA **dsa);
+OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY_bio(BIO *bp, EC_KEY **eckey);
+OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey_bio(BIO *bp, EC_KEY **eckey);
+OPENSSL_EXPORT X509_SIG *d2i_PKCS8_bio(BIO *bp, X509_SIG **p8);
+OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *d2i_PKCS8_PRIV_KEY_INFO_bio(
+    BIO *bp, PKCS8_PRIV_KEY_INFO **p8inf);
+OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY_bio(BIO *bp, EVP_PKEY **a);
+OPENSSL_EXPORT DH *d2i_DHparams_bio(BIO *bp, DH **dh);
+
+// d2i_PrivateKey_bio behaves like |d2i_AutoPrivateKey|, but reads from |bp|
+// instead.
+OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey_bio(BIO *bp, EVP_PKEY **a);
+
+// The following functions behave like the corresponding unsuffixed |i2d_*|
+// functions, but write the result to |bp|. They return one on success and zero
+// on error. Callers using them with memory |BIO|s to encode structures to
+// memory should use |i2d_*| directly instead.
+OPENSSL_EXPORT int i2d_X509_bio(BIO *bp, X509 *x509);
+OPENSSL_EXPORT int i2d_X509_CRL_bio(BIO *bp, X509_CRL *crl);
+OPENSSL_EXPORT int i2d_X509_REQ_bio(BIO *bp, X509_REQ *req);
+OPENSSL_EXPORT int i2d_RSAPrivateKey_bio(BIO *bp, RSA *rsa);
+OPENSSL_EXPORT int i2d_RSAPublicKey_bio(BIO *bp, RSA *rsa);
+OPENSSL_EXPORT int i2d_RSA_PUBKEY_bio(BIO *bp, RSA *rsa);
+OPENSSL_EXPORT int i2d_DSA_PUBKEY_bio(BIO *bp, DSA *dsa);
+OPENSSL_EXPORT int i2d_DSAPrivateKey_bio(BIO *bp, DSA *dsa);
+OPENSSL_EXPORT int i2d_EC_PUBKEY_bio(BIO *bp, EC_KEY *eckey);
+OPENSSL_EXPORT int i2d_ECPrivateKey_bio(BIO *bp, EC_KEY *eckey);
+OPENSSL_EXPORT int i2d_PKCS8_bio(BIO *bp, X509_SIG *p8);
+OPENSSL_EXPORT int i2d_PKCS8_PRIV_KEY_INFO_bio(BIO *bp,
+                                               PKCS8_PRIV_KEY_INFO *p8inf);
+OPENSSL_EXPORT int i2d_PrivateKey_bio(BIO *bp, EVP_PKEY *pkey);
+OPENSSL_EXPORT int i2d_PUBKEY_bio(BIO *bp, EVP_PKEY *pkey);
+OPENSSL_EXPORT int i2d_DHparams_bio(BIO *bp, const DH *dh);
+
+// i2d_PKCS8PrivateKeyInfo_bio encodes |key| as a PKCS#8 PrivateKeyInfo
+// structure (see |EVP_marshal_private_key|) and writes the result to |bp|. It
+// returns one on success and zero on error.
+OPENSSL_EXPORT int i2d_PKCS8PrivateKeyInfo_bio(BIO *bp, EVP_PKEY *key);
+
+// The following functions behave like the corresponding |d2i_*_bio| functions,
+// but read from |fp| instead.
+OPENSSL_EXPORT X509 *d2i_X509_fp(FILE *fp, X509 **x509);
+OPENSSL_EXPORT X509_CRL *d2i_X509_CRL_fp(FILE *fp, X509_CRL **crl);
+OPENSSL_EXPORT X509_REQ *d2i_X509_REQ_fp(FILE *fp, X509_REQ **req);
+OPENSSL_EXPORT RSA *d2i_RSAPrivateKey_fp(FILE *fp, RSA **rsa);
+OPENSSL_EXPORT RSA *d2i_RSAPublicKey_fp(FILE *fp, RSA **rsa);
+OPENSSL_EXPORT RSA *d2i_RSA_PUBKEY_fp(FILE *fp, RSA **rsa);
+OPENSSL_EXPORT DSA *d2i_DSA_PUBKEY_fp(FILE *fp, DSA **dsa);
+OPENSSL_EXPORT DSA *d2i_DSAPrivateKey_fp(FILE *fp, DSA **dsa);
+OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY_fp(FILE *fp, EC_KEY **eckey);
+OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey_fp(FILE *fp, EC_KEY **eckey);
+OPENSSL_EXPORT X509_SIG *d2i_PKCS8_fp(FILE *fp, X509_SIG **p8);
+OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *d2i_PKCS8_PRIV_KEY_INFO_fp(
+    FILE *fp, PKCS8_PRIV_KEY_INFO **p8inf);
+OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey_fp(FILE *fp, EVP_PKEY **a);
+OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY_fp(FILE *fp, EVP_PKEY **a);
+
+// The following functions behave like the corresponding |i2d_*_bio| functions,
+// but write to |fp| instead.
+OPENSSL_EXPORT int i2d_X509_fp(FILE *fp, X509 *x509);
+OPENSSL_EXPORT int i2d_X509_CRL_fp(FILE *fp, X509_CRL *crl);
+OPENSSL_EXPORT int i2d_X509_REQ_fp(FILE *fp, X509_REQ *req);
+OPENSSL_EXPORT int i2d_RSAPrivateKey_fp(FILE *fp, RSA *rsa);
+OPENSSL_EXPORT int i2d_RSAPublicKey_fp(FILE *fp, RSA *rsa);
+OPENSSL_EXPORT int i2d_RSA_PUBKEY_fp(FILE *fp, RSA *rsa);
+OPENSSL_EXPORT int i2d_DSA_PUBKEY_fp(FILE *fp, DSA *dsa);
+OPENSSL_EXPORT int i2d_DSAPrivateKey_fp(FILE *fp, DSA *dsa);
+OPENSSL_EXPORT int i2d_EC_PUBKEY_fp(FILE *fp, EC_KEY *eckey);
+OPENSSL_EXPORT int i2d_ECPrivateKey_fp(FILE *fp, EC_KEY *eckey);
+OPENSSL_EXPORT int i2d_PKCS8_fp(FILE *fp, X509_SIG *p8);
+OPENSSL_EXPORT int i2d_PKCS8_PRIV_KEY_INFO_fp(FILE *fp,
+                                              PKCS8_PRIV_KEY_INFO *p8inf);
+OPENSSL_EXPORT int i2d_PKCS8PrivateKeyInfo_fp(FILE *fp, EVP_PKEY *key);
+OPENSSL_EXPORT int i2d_PrivateKey_fp(FILE *fp, EVP_PKEY *pkey);
+OPENSSL_EXPORT int i2d_PUBKEY_fp(FILE *fp, EVP_PKEY *pkey);
+
+
 // ex_data functions.
 //
 // See |ex_data.h| for details.
@@ -1411,121 +1546,6 @@ OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *spki,
 // signing parameters use |pkey|'s defaults.
 OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
                                       const EVP_MD *md);
-
-// X509_pubkey_digest hashes the contents of the BIT STRING in |x509|'s
-// subjectPublicKeyInfo field with |md| and writes the result to |out|.
-// |EVP_MD_CTX_size| bytes are written, which is at most |EVP_MAX_MD_SIZE|. If
-// |out_len| is not NULL, |*out_len| is set to the number of bytes written. This
-// function returns one on success and zero on error.
-//
-// This hash omits the BIT STRING tag, length, and number of unused bits. It
-// also omits the AlgorithmIdentifier which describes the key type. It
-// corresponds to the OCSP KeyHash definition and is not suitable for other
-// purposes.
-OPENSSL_EXPORT int X509_pubkey_digest(const X509 *x509, const EVP_MD *md,
-                                      uint8_t *out, unsigned *out_len);
-
-// X509_digest hashes |x509|'s DER encoding with |md| and writes the result to
-// |out|. |EVP_MD_CTX_size| bytes are written, which is at most
-// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
-// of bytes written. This function returns one on success and zero on error.
-// Note this digest covers the entire certificate, not just the signed portion.
-OPENSSL_EXPORT int X509_digest(const X509 *x509, const EVP_MD *md, uint8_t *out,
-                               unsigned *out_len);
-
-// X509_CRL_digest hashes |crl|'s DER encoding with |md| and writes the result
-// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
-// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
-// of bytes written. This function returns one on success and zero on error.
-// Note this digest covers the entire CRL, not just the signed portion.
-OPENSSL_EXPORT int X509_CRL_digest(const X509_CRL *crl, const EVP_MD *md,
-                                   uint8_t *out, unsigned *out_len);
-
-// X509_REQ_digest hashes |req|'s DER encoding with |md| and writes the result
-// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
-// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
-// of bytes written. This function returns one on success and zero on error.
-// Note this digest covers the entire certificate request, not just the signed
-// portion.
-OPENSSL_EXPORT int X509_REQ_digest(const X509_REQ *req, const EVP_MD *md,
-                                   uint8_t *out, unsigned *out_len);
-
-// X509_NAME_digest hashes |name|'s DER encoding with |md| and writes the result
-// to |out|. |EVP_MD_CTX_size| bytes are written, which is at most
-// |EVP_MAX_MD_SIZE|. If |out_len| is not NULL, |*out_len| is set to the number
-// of bytes written. This function returns one on success and zero on error.
-OPENSSL_EXPORT int X509_NAME_digest(const X509_NAME *name, const EVP_MD *md,
-                                    uint8_t *out, unsigned *out_len);
-
-OPENSSL_EXPORT X509 *d2i_X509_fp(FILE *fp, X509 **x509);
-OPENSSL_EXPORT int i2d_X509_fp(FILE *fp, X509 *x509);
-OPENSSL_EXPORT X509_CRL *d2i_X509_CRL_fp(FILE *fp, X509_CRL **crl);
-OPENSSL_EXPORT int i2d_X509_CRL_fp(FILE *fp, X509_CRL *crl);
-OPENSSL_EXPORT X509_REQ *d2i_X509_REQ_fp(FILE *fp, X509_REQ **req);
-OPENSSL_EXPORT int i2d_X509_REQ_fp(FILE *fp, X509_REQ *req);
-OPENSSL_EXPORT RSA *d2i_RSAPrivateKey_fp(FILE *fp, RSA **rsa);
-OPENSSL_EXPORT int i2d_RSAPrivateKey_fp(FILE *fp, RSA *rsa);
-OPENSSL_EXPORT RSA *d2i_RSAPublicKey_fp(FILE *fp, RSA **rsa);
-OPENSSL_EXPORT int i2d_RSAPublicKey_fp(FILE *fp, RSA *rsa);
-OPENSSL_EXPORT RSA *d2i_RSA_PUBKEY_fp(FILE *fp, RSA **rsa);
-OPENSSL_EXPORT int i2d_RSA_PUBKEY_fp(FILE *fp, RSA *rsa);
-#ifndef OPENSSL_NO_DSA
-OPENSSL_EXPORT DSA *d2i_DSA_PUBKEY_fp(FILE *fp, DSA **dsa);
-OPENSSL_EXPORT int i2d_DSA_PUBKEY_fp(FILE *fp, DSA *dsa);
-OPENSSL_EXPORT DSA *d2i_DSAPrivateKey_fp(FILE *fp, DSA **dsa);
-OPENSSL_EXPORT int i2d_DSAPrivateKey_fp(FILE *fp, DSA *dsa);
-#endif
-OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY_fp(FILE *fp, EC_KEY **eckey);
-OPENSSL_EXPORT int i2d_EC_PUBKEY_fp(FILE *fp, EC_KEY *eckey);
-OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey_fp(FILE *fp, EC_KEY **eckey);
-OPENSSL_EXPORT int i2d_ECPrivateKey_fp(FILE *fp, EC_KEY *eckey);
-OPENSSL_EXPORT X509_SIG *d2i_PKCS8_fp(FILE *fp, X509_SIG **p8);
-OPENSSL_EXPORT int i2d_PKCS8_fp(FILE *fp, X509_SIG *p8);
-OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *d2i_PKCS8_PRIV_KEY_INFO_fp(
-    FILE *fp, PKCS8_PRIV_KEY_INFO **p8inf);
-OPENSSL_EXPORT int i2d_PKCS8_PRIV_KEY_INFO_fp(FILE *fp,
-                                              PKCS8_PRIV_KEY_INFO *p8inf);
-OPENSSL_EXPORT int i2d_PKCS8PrivateKeyInfo_fp(FILE *fp, EVP_PKEY *key);
-OPENSSL_EXPORT int i2d_PrivateKey_fp(FILE *fp, EVP_PKEY *pkey);
-OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey_fp(FILE *fp, EVP_PKEY **a);
-OPENSSL_EXPORT int i2d_PUBKEY_fp(FILE *fp, EVP_PKEY *pkey);
-OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY_fp(FILE *fp, EVP_PKEY **a);
-
-OPENSSL_EXPORT X509 *d2i_X509_bio(BIO *bp, X509 **x509);
-OPENSSL_EXPORT int i2d_X509_bio(BIO *bp, X509 *x509);
-OPENSSL_EXPORT X509_CRL *d2i_X509_CRL_bio(BIO *bp, X509_CRL **crl);
-OPENSSL_EXPORT int i2d_X509_CRL_bio(BIO *bp, X509_CRL *crl);
-OPENSSL_EXPORT X509_REQ *d2i_X509_REQ_bio(BIO *bp, X509_REQ **req);
-OPENSSL_EXPORT int i2d_X509_REQ_bio(BIO *bp, X509_REQ *req);
-OPENSSL_EXPORT RSA *d2i_RSAPrivateKey_bio(BIO *bp, RSA **rsa);
-OPENSSL_EXPORT int i2d_RSAPrivateKey_bio(BIO *bp, RSA *rsa);
-OPENSSL_EXPORT RSA *d2i_RSAPublicKey_bio(BIO *bp, RSA **rsa);
-OPENSSL_EXPORT int i2d_RSAPublicKey_bio(BIO *bp, RSA *rsa);
-OPENSSL_EXPORT RSA *d2i_RSA_PUBKEY_bio(BIO *bp, RSA **rsa);
-OPENSSL_EXPORT int i2d_RSA_PUBKEY_bio(BIO *bp, RSA *rsa);
-#ifndef OPENSSL_NO_DSA
-OPENSSL_EXPORT DSA *d2i_DSA_PUBKEY_bio(BIO *bp, DSA **dsa);
-OPENSSL_EXPORT int i2d_DSA_PUBKEY_bio(BIO *bp, DSA *dsa);
-OPENSSL_EXPORT DSA *d2i_DSAPrivateKey_bio(BIO *bp, DSA **dsa);
-OPENSSL_EXPORT int i2d_DSAPrivateKey_bio(BIO *bp, DSA *dsa);
-#endif
-OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY_bio(BIO *bp, EC_KEY **eckey);
-OPENSSL_EXPORT int i2d_EC_PUBKEY_bio(BIO *bp, EC_KEY *eckey);
-OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey_bio(BIO *bp, EC_KEY **eckey);
-OPENSSL_EXPORT int i2d_ECPrivateKey_bio(BIO *bp, EC_KEY *eckey);
-OPENSSL_EXPORT X509_SIG *d2i_PKCS8_bio(BIO *bp, X509_SIG **p8);
-OPENSSL_EXPORT int i2d_PKCS8_bio(BIO *bp, X509_SIG *p8);
-OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *d2i_PKCS8_PRIV_KEY_INFO_bio(
-    BIO *bp, PKCS8_PRIV_KEY_INFO **p8inf);
-OPENSSL_EXPORT int i2d_PKCS8_PRIV_KEY_INFO_bio(BIO *bp,
-                                               PKCS8_PRIV_KEY_INFO *p8inf);
-OPENSSL_EXPORT int i2d_PKCS8PrivateKeyInfo_bio(BIO *bp, EVP_PKEY *key);
-OPENSSL_EXPORT int i2d_PrivateKey_bio(BIO *bp, EVP_PKEY *pkey);
-OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey_bio(BIO *bp, EVP_PKEY **a);
-OPENSSL_EXPORT int i2d_PUBKEY_bio(BIO *bp, EVP_PKEY *pkey);
-OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY_bio(BIO *bp, EVP_PKEY **a);
-OPENSSL_EXPORT DH *d2i_DHparams_bio(BIO *bp, DH **dh);
-OPENSSL_EXPORT int i2d_DHparams_bio(BIO *bp, const DH *dh);
 
 OPENSSL_EXPORT X509 *X509_dup(X509 *x509);
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_dup(const X509_ATTRIBUTE *xa);
