@@ -2243,13 +2243,6 @@ DECLARE_ASN1_FUNCTIONS_const(PKCS8_PRIV_KEY_INFO)
 OPENSSL_EXPORT EVP_PKEY *EVP_PKCS82PKEY(PKCS8_PRIV_KEY_INFO *p8);
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8(EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int PKCS8_pkey_set0(PKCS8_PRIV_KEY_INFO *priv, ASN1_OBJECT *aobj,
-                                   int version, int ptype, void *pval,
-                                   unsigned char *penc, int penclen);
-OPENSSL_EXPORT int PKCS8_pkey_get0(ASN1_OBJECT **ppkalg,
-                                   const unsigned char **pk, int *ppklen,
-                                   X509_ALGOR **pa, PKCS8_PRIV_KEY_INFO *p8);
-
 // X509_PUBKEY_set0_param sets |pub| to a key with AlgorithmIdentifier
 // determined by |obj|, |param_type|, and |param_value|, and an encoded
 // public key of |key|. On success, it takes ownership of all its parameters and
