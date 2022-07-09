@@ -400,7 +400,6 @@ add_library(
   x509/x_x509a.c
   x509v3/pcy_cache.c
   x509v3/pcy_data.c
-  x509v3/pcy_lib.c
   x509v3/pcy_map.c
   x509v3/pcy_node.c
   x509v3/pcy_tree.c

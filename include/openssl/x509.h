@@ -2660,10 +2660,6 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx,
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
     X509_STORE_CTX *ctx, int (*verify_cb)(int, X509_STORE_CTX *));
 
-OPENSSL_EXPORT X509_POLICY_TREE *X509_STORE_CTX_get0_policy_tree(
-    X509_STORE_CTX *ctx);
-OPENSSL_EXPORT int X509_STORE_CTX_get_explicit_policy(X509_STORE_CTX *ctx);
-
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(
     X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_set0_param(X509_STORE_CTX *ctx,
@@ -2729,37 +2725,6 @@ OPENSSL_EXPORT const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(
     const char *name);
 OPENSSL_EXPORT void X509_VERIFY_PARAM_table_cleanup(void);
 
-OPENSSL_EXPORT int X509_policy_check(X509_POLICY_TREE **ptree,
-                                     int *pexplicit_policy,
-                                     STACK_OF(X509) *certs,
-                                     STACK_OF(ASN1_OBJECT) *policy_oids,
-                                     unsigned int flags);
-
-OPENSSL_EXPORT void X509_policy_tree_free(X509_POLICY_TREE *tree);
-
-OPENSSL_EXPORT int X509_policy_tree_level_count(const X509_POLICY_TREE *tree);
-OPENSSL_EXPORT X509_POLICY_LEVEL *X509_policy_tree_get0_level(
-    const X509_POLICY_TREE *tree, int i);
-
-OPENSSL_EXPORT STACK_OF(X509_POLICY_NODE) *X509_policy_tree_get0_policies(
-    const X509_POLICY_TREE *tree);
-
-OPENSSL_EXPORT STACK_OF(X509_POLICY_NODE) *X509_policy_tree_get0_user_policies(
-    const X509_POLICY_TREE *tree);
-
-OPENSSL_EXPORT int X509_policy_level_node_count(X509_POLICY_LEVEL *level);
-
-OPENSSL_EXPORT X509_POLICY_NODE *X509_policy_level_get0_node(
-    X509_POLICY_LEVEL *level, int i);
-
-OPENSSL_EXPORT const ASN1_OBJECT *X509_policy_node_get0_policy(
-    const X509_POLICY_NODE *node);
-
-OPENSSL_EXPORT STACK_OF(POLICYQUALINFO) *X509_policy_node_get0_qualifiers(
-    const X509_POLICY_NODE *node);
-OPENSSL_EXPORT const X509_POLICY_NODE *X509_policy_node_get0_parent(
-    const X509_POLICY_NODE *node);
-
 
 #if defined(__cplusplus)
 }  // extern C
@@ -2784,7 +2749,6 @@ BORINGSSL_MAKE_DELETER(X509_LOOKUP, X509_LOOKUP_free)
 BORINGSSL_MAKE_DELETER(X509_NAME, X509_NAME_free)
 BORINGSSL_MAKE_DELETER(X509_NAME_ENTRY, X509_NAME_ENTRY_free)
 BORINGSSL_MAKE_DELETER(X509_PKEY, X509_PKEY_free)
-BORINGSSL_MAKE_DELETER(X509_POLICY_TREE, X509_policy_tree_free)
 BORINGSSL_MAKE_DELETER(X509_PUBKEY, X509_PUBKEY_free)
 BORINGSSL_MAKE_DELETER(X509_REQ, X509_REQ_free)
 BORINGSSL_MAKE_DELETER(X509_REVOKED, X509_REVOKED_free)

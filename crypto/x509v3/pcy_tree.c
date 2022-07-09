@@ -811,7 +811,11 @@ int X509_policy_check(X509_POLICY_TREE **ptree, int *pexplicit_policy,
   }
 
   if (*pexplicit_policy) {
-    nodes = X509_policy_tree_get0_user_policies(tree);
+    if (tree->flags & POLICY_FLAG_ANY_POLICY) {
+      nodes = tree->auth_policies;
+    } else {
+      nodes = tree->user_policies;
+    }
     if (sk_X509_POLICY_NODE_num(nodes) <= 0) {
       return -2;
     }
@@ -820,8 +824,6 @@ int X509_policy_check(X509_POLICY_TREE **ptree, int *pexplicit_policy,
   return 1;
 
 error:
-
   X509_policy_tree_free(tree);
-
   return 0;
 }

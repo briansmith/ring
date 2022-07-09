@@ -72,6 +72,9 @@ extern "C" {
 
 // Internal structures.
 
+typedef struct X509_POLICY_CACHE_st X509_POLICY_CACHE;
+typedef struct X509_POLICY_TREE_st X509_POLICY_TREE;
+
 typedef struct X509_val_st {
   ASN1_TIME *notBefore;
   ASN1_TIME *notAfter;

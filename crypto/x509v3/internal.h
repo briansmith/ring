@@ -65,6 +65,11 @@
 #include <openssl/stack.h>
 #include <openssl/x509v3.h>
 
+// TODO(davidben): Merge x509 and x509v3. This include is needed because some
+// internal typedefs are shared between the two, but the two modules depend on
+// each other circularly.
+#include "../x509/internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -122,9 +127,6 @@ typedef struct {
 int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
                                  STACK_OF(CONF_VALUE) **extlist);
 
-typedef struct X509_POLICY_DATA_st X509_POLICY_DATA;
-
-DEFINE_STACK_OF(X509_POLICY_DATA)
 
 // Internal structures
 
@@ -132,6 +134,12 @@ DEFINE_STACK_OF(X509_POLICY_DATA)
 // RFC 3280. NB this structure contains no pointers to parent or child data:
 // X509_POLICY_NODE contains that. This means that the main policy data can
 // be kept static and cached with the certificate.
+
+typedef struct X509_POLICY_DATA_st X509_POLICY_DATA;
+typedef struct X509_POLICY_LEVEL_st X509_POLICY_LEVEL;
+typedef struct X509_POLICY_NODE_st X509_POLICY_NODE;
+
+DEFINE_STACK_OF(X509_POLICY_DATA)
 
 struct X509_POLICY_DATA_st {
   unsigned int flags;
@@ -199,6 +207,8 @@ struct X509_POLICY_NODE_st {
   int nchild;
 };
 
+DEFINE_STACK_OF(X509_POLICY_NODE)
+
 struct X509_POLICY_LEVEL_st {
   // Cert for this level
   X509 *cert;
@@ -234,6 +244,14 @@ struct X509_POLICY_TREE_st {
 #define node_critical(node) node_data_critical((node)->data)
 
 // Internal functions
+
+void X509_POLICY_NODE_print(BIO *out, X509_POLICY_NODE *node, int indent);
+
+int X509_policy_check(X509_POLICY_TREE **ptree, int *pexplicit_policy,
+                      STACK_OF(X509) *certs, STACK_OF(ASN1_OBJECT) *policy_oids,
+                      unsigned int flags);
+
+void X509_policy_tree_free(X509_POLICY_TREE *tree);
 
 X509_POLICY_DATA *policy_data_new(POLICYINFO *policy, const ASN1_OBJECT *id,
                                   int crit);

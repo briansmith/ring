@@ -1710,6 +1710,9 @@ static int check_policy(X509_STORE_CTX *ctx) {
   if (ctx->parent) {
     return 1;
   }
+  // TODO(davidben): Historically, outputs of the |X509_policy_check| were saved
+  // on |ctx| and accessible via the public API. This has since been removed, so
+  // remove the fields from |X509_STORE_CTX|.
   ret = X509_policy_check(&ctx->tree, &ctx->explicit_policy, ctx->chain,
                           ctx->param->policies, ctx->param->flags);
   if (ret == 0) {
@@ -2404,14 +2407,6 @@ X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx) { return ctx->cert; }
 void X509_STORE_CTX_set_verify_cb(X509_STORE_CTX *ctx,
                                   int (*verify_cb)(int, X509_STORE_CTX *)) {
   ctx->verify_cb = verify_cb;
-}
-
-X509_POLICY_TREE *X509_STORE_CTX_get0_policy_tree(X509_STORE_CTX *ctx) {
-  return ctx->tree;
-}
-
-int X509_STORE_CTX_get_explicit_policy(X509_STORE_CTX *ctx) {
-  return ctx->explicit_policy;
 }
 
 int X509_STORE_CTX_set_default(X509_STORE_CTX *ctx, const char *name) {
