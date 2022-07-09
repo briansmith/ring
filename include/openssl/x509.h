@@ -1797,7 +1797,6 @@ OPENSSL_EXPORT int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
 OPENSSL_EXPORT int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflag,
                                  unsigned long cflag);
 OPENSSL_EXPORT int X509_print(BIO *bp, X509 *x);
-OPENSSL_EXPORT int X509_ocspid_print(BIO *bp, X509 *x);
 OPENSSL_EXPORT int X509_CRL_print(BIO *bp, X509_CRL *x);
 OPENSSL_EXPORT int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflag,
                                      unsigned long cflag);
