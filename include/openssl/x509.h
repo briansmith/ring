@@ -1759,11 +1759,6 @@ OPENSSL_EXPORT X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer,
 OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *x509, EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
-OPENSSL_EXPORT int X509_chain_check_suiteb(int *perror_depth, X509 *x,
-                                           STACK_OF(X509) *chain,
-                                           unsigned long flags);
-OPENSSL_EXPORT int X509_CRL_check_suiteb(X509_CRL *crl, EVP_PKEY *pk,
-                                         unsigned long flags);
 
 OPENSSL_EXPORT int X509_issuer_and_serial_cmp(const X509 *a, const X509 *b);
 
@@ -2410,14 +2405,6 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_ERR_UNSUPPORTED_NAME_SYNTAX 53
 #define X509_V_ERR_CRL_PATH_VALIDATION_ERROR 54
 
-// Suite B mode algorithm violation
-#define X509_V_ERR_SUITE_B_INVALID_VERSION 56
-#define X509_V_ERR_SUITE_B_INVALID_ALGORITHM 57
-#define X509_V_ERR_SUITE_B_INVALID_CURVE 58
-#define X509_V_ERR_SUITE_B_INVALID_SIGNATURE_ALGORITHM 59
-#define X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED 60
-#define X509_V_ERR_SUITE_B_CANNOT_SIGN_P_384_WITH_P_256 61
-
 // Host, email and IP check errors
 #define X509_V_ERR_HOSTNAME_MISMATCH 62
 #define X509_V_ERR_EMAIL_MISMATCH 63
@@ -2464,12 +2451,6 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000
 // Use trusted store first
 #define X509_V_FLAG_TRUSTED_FIRST 0x8000
-// Suite B 128 bit only mode: not normally used
-#define X509_V_FLAG_SUITEB_128_LOS_ONLY 0x10000
-// Suite B 192 bit only mode
-#define X509_V_FLAG_SUITEB_192_LOS 0x20000
-// Suite B 128 bit mode allowing 192 bit algorithms
-#define X509_V_FLAG_SUITEB_128_LOS 0x30000
 
 // Allow partial chains if at least one certificate is in trusted store
 #define X509_V_FLAG_PARTIAL_CHAIN 0x80000
