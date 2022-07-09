@@ -1412,11 +1412,16 @@ OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *spki,
 OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
                                       const EVP_MD *md);
 
-// X509_pubkey_digest hashes the DER encoding of |x509|'s subjectPublicKeyInfo
-// field with |md| and writes the result to |out|. |EVP_MD_CTX_size| bytes are
-// written, which is at most |EVP_MAX_MD_SIZE|. If |out_len| is not NULL,
-// |*out_len| is set to the number of bytes written. This function returns one
-// on success and zero on error.
+// X509_pubkey_digest hashes the contents of the BIT STRING in |x509|'s
+// subjectPublicKeyInfo field with |md| and writes the result to |out|.
+// |EVP_MD_CTX_size| bytes are written, which is at most |EVP_MAX_MD_SIZE|. If
+// |out_len| is not NULL, |*out_len| is set to the number of bytes written. This
+// function returns one on success and zero on error.
+//
+// This hash omits the BIT STRING tag, length, and number of unused bits. It
+// also omits the AlgorithmIdentifier which describes the key type. It
+// corresponds to the OCSP KeyHash definition and is not suitable for other
+// purposes.
 OPENSSL_EXPORT int X509_pubkey_digest(const X509 *x509, const EVP_MD *md,
                                       uint8_t *out, unsigned *out_len);
 
