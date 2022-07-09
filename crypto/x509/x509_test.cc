@@ -4548,3 +4548,119 @@ TEST(X509Test, AddExt) {
                                  X509V3_ADD_DELETE));
   expect_extensions({{NID_subject_key_identifier, true, skid2_der}});
 }
+
+TEST(X509Test, NameEntry) {
+  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  ASSERT_TRUE(name);
+
+  auto check_name = [&](const char *expected_rfc2253) {
+    // Check RDN indices are self-consistent.
+    int num = X509_NAME_entry_count(name.get());
+    if (num > 0) {
+      // RDN indices must start at zero.
+      EXPECT_EQ(0, X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 0)));
+    }
+    for (int i = 1; i < num; i++) {
+      int prev = X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), i - 1));
+      int current = X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), i));
+      // RDN indices must increase consecutively.
+      EXPECT_TRUE(prev == current || prev + 1 == current)
+          << "Entry " << i << " has RDN index " << current
+          << " which is inconsistent with previous index " << prev;
+    }
+
+    // Check the name based on the RFC 2253 serialization. Note the RFC 2253
+    // serialization is in reverse.
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    EXPECT_GE(X509_NAME_print_ex(bio.get(), name.get(), 0, XN_FLAG_RFC2253), 0);
+    const uint8_t *data;
+    size_t len;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &len));
+    EXPECT_EQ(expected_rfc2253, std::string(data, data + len));
+  };
+
+  check_name("");
+
+  // |loc| = -1, |set| = 0 appends as new RDNs.
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      name.get(), NID_organizationName, MBSTRING_UTF8,
+      reinterpret_cast<const unsigned char *>("Org"), /*len=*/-1, /*loc=*/-1,
+      /*set=*/0));
+  check_name("O=Org");
+
+  // |loc| = -1, |set| = 0 appends as new RDNs.
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      name.get(), NID_commonName, MBSTRING_UTF8,
+      reinterpret_cast<const unsigned char *>("Name"), /*len=*/-1, /*loc=*/-1,
+      /*set=*/0));
+  check_name("CN=Name,O=Org");
+
+  // Inserting in the middle of the set, but with |set| = 0 inserts a new RDN
+  // and fixes the "set" values as needed.
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      name.get(), NID_organizationalUnitName, MBSTRING_UTF8,
+      reinterpret_cast<const unsigned char *>("Unit"), /*len=*/-1, /*loc=*/1,
+      /*set=*/0));
+  check_name("CN=Name,OU=Unit,O=Org");
+
+  // |set = -1| adds to the previous entry's RDN. (Although putting O and OU at
+  // the same level makes little sense, the test is written this way to check
+  // the function isn't using attribute types to order things.)
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      name.get(), NID_organizationName, MBSTRING_UTF8,
+      reinterpret_cast<const unsigned char *>("Org2"), /*len=*/-1, /*loc=*/2,
+      /*set=*/-1));
+  check_name("CN=Name,O=Org2+OU=Unit,O=Org");
+
+  // |set| = 1 adds to the next entry's RDN.
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      name.get(), NID_commonName, MBSTRING_UTF8,
+      reinterpret_cast<const unsigned char *>("Name2"), /*len=*/-1, /*loc=*/2,
+      /*set=*/-1));
+  check_name("CN=Name,O=Org2+CN=Name2+OU=Unit,O=Org");
+
+  // If there is no previous RDN, |set| = -1 makes a new RDN.
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      name.get(), NID_countryName, MBSTRING_UTF8,
+      reinterpret_cast<const unsigned char *>("US"), /*len=*/-1, /*loc=*/0,
+      /*set=*/-1));
+  check_name("CN=Name,O=Org2+CN=Name2+OU=Unit,O=Org,C=US");
+
+  // Likewise if there is no next RDN.
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      name.get(), NID_commonName, MBSTRING_UTF8,
+      reinterpret_cast<const unsigned char *>("Name3"), /*len=*/-1, /*loc=*/-1,
+      /*set=*/1));
+  check_name("CN=Name3,CN=Name,O=Org2+CN=Name2+OU=Unit,O=Org,C=US");
+
+  // If |set| = 0 and we insert in the middle of an existing RDN, it adds an
+  // RDN boundary after the entry but not before. This is a quirk of how the
+  // function is implemented and hopefully not something any caller depends on.
+  ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+      name.get(), NID_commonName, MBSTRING_UTF8,
+      reinterpret_cast<const unsigned char *>("Name4"), /*len=*/-1, /*loc=*/3,
+      /*set=*/0));
+  check_name("CN=Name3,CN=Name,O=Org2+CN=Name2,CN=Name4+OU=Unit,O=Org,C=US");
+
+  // Entries may be deleted.
+  X509_NAME_ENTRY_free(X509_NAME_delete_entry(name.get(), 7));
+  check_name("CN=Name,O=Org2+CN=Name2,CN=Name4+OU=Unit,O=Org,C=US");
+
+  // When deleting the only attribute in an RDN, index invariants should still
+  // hold.
+  X509_NAME_ENTRY_free(X509_NAME_delete_entry(name.get(), 0));
+  check_name("CN=Name,O=Org2+CN=Name2,CN=Name4+OU=Unit,O=Org");
+
+  // Index invariants also hold when deleting attributes from non-singular RDNs.
+  X509_NAME_ENTRY_free(X509_NAME_delete_entry(name.get(), 1));
+  check_name("CN=Name,O=Org2+CN=Name2,CN=Name4,O=Org");
+  X509_NAME_ENTRY_free(X509_NAME_delete_entry(name.get(), 1));
+  check_name("CN=Name,O=Org2+CN=Name2,O=Org");
+
+  // Same as above, but delete the second attribute first.
+  X509_NAME_ENTRY_free(X509_NAME_delete_entry(name.get(), 2));
+  check_name("CN=Name,CN=Name2,O=Org");
+  X509_NAME_ENTRY_free(X509_NAME_delete_entry(name.get(), 1));
+  check_name("CN=Name,O=Org");
+}
