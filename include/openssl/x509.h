@@ -2240,8 +2240,19 @@ OPENSSL_EXPORT X509 *X509_find_by_subject(STACK_OF(X509) *sk, X509_NAME *name);
 
 DECLARE_ASN1_FUNCTIONS_const(PKCS8_PRIV_KEY_INFO)
 
-OPENSSL_EXPORT EVP_PKEY *EVP_PKCS82PKEY(PKCS8_PRIV_KEY_INFO *p8);
-OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8(EVP_PKEY *pkey);
+// EVP_PKCS82PKEY returns |p8| as a newly-allocated |EVP_PKEY|, or NULL if the
+// key was unsupported or could not be decoded. If non-NULL, the caller must
+// release the result with |EVP_PKEY_free| when done.
+//
+// Use |EVP_parse_private_key| instead.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKCS82PKEY(const PKCS8_PRIV_KEY_INFO *p8);
+
+// EVP_PKEY2PKCS8 encodes |pkey| as a PKCS#8 PrivateKeyInfo (RFC 5208),
+// represented as a newly-allocated |PKCS8_PRIV_KEY_INFO|, or NULL on error. The
+// caller must release the result with |PKCS8_PRIV_KEY_INFO_free| when done.
+//
+// Use |EVP_marshal_private_key| instead.
+OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8(const EVP_PKEY *pkey);
 
 // X509_PUBKEY_set0_param sets |pub| to a key with AlgorithmIdentifier
 // determined by |obj|, |param_type|, and |param_value|, and an encoded
