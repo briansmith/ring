@@ -131,6 +131,16 @@ OPENSSL_EXPORT int X509_up_ref(X509 *x509);
 // one.
 OPENSSL_EXPORT STACK_OF(X509) *X509_chain_up_ref(STACK_OF(X509) *chain);
 
+// X509_dup returns a newly-allocated copy of |x509|, or NULL on error. This
+// function works by serializing the structure, so auxiliary properties (see
+// |i2d_X509_AUX|) are not preserved. Additionally, if |x509| is incomplete,
+// this function may fail.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |crl| was
+// mutated.
+OPENSSL_EXPORT X509 *X509_dup(X509 *x509);
+
 // X509_free decrements |x509|'s reference count and, if zero, releases memory
 // associated with |x509|.
 OPENSSL_EXPORT void X509_free(X509 *x509);
@@ -425,6 +435,15 @@ DECLARE_ASN1_ITEM(X509_CRL)
 // X509_CRL_up_ref adds one to the reference count of |crl| and returns one.
 OPENSSL_EXPORT int X509_CRL_up_ref(X509_CRL *crl);
 
+// X509_CRL_dup returns a newly-allocated copy of |crl|, or NULL on error. This
+// function works by serializing the structure, so if |crl| is incomplete, it
+// may fail.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |crl| was
+// mutated.
+OPENSSL_EXPORT X509_CRL *X509_CRL_dup(X509_CRL *crl);
+
 // X509_CRL_free decrements |crl|'s reference count and, if zero, releases
 // memory associated with |crl|.
 OPENSSL_EXPORT void X509_CRL_free(X509_CRL *crl);
@@ -592,6 +611,15 @@ OPENSSL_EXPORT int X509_CRL_set1_signature_value(X509_CRL *crl,
 // X509_REQ is an |ASN1_ITEM| whose ASN.1 type is CertificateRequest (RFC 2986)
 // and C type is |X509_REQ*|.
 DECLARE_ASN1_ITEM(X509_REQ)
+
+// X509_REQ_dup returns a newly-allocated copy of |req|, or NULL on error. This
+// function works by serializing the structure, so if |req| is incomplete, it
+// may fail.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |req| was
+// mutated.
+OPENSSL_EXPORT X509_REQ *X509_REQ_dup(X509_REQ *req);
 
 // X509_REQ_free releases memory associated with |req|.
 OPENSSL_EXPORT void X509_REQ_free(X509_REQ *req);
@@ -965,6 +993,11 @@ DECLARE_ASN1_ITEM(X509_ALGOR)
 // X509_ALGOR_new returns a newly-allocated, empty |X509_ALGOR| object, or NULL
 // on error.
 OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_new(void);
+
+// X509_ALGOR_dup returns a newly-allocated copy of |alg|, or NULL on error.
+// This function works by serializing the structure, so if |alg| is incomplete,
+// it may fail.
+OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(const X509_ALGOR *alg);
 
 // X509_ALGOR_free releases memory associated with |alg|.
 OPENSSL_EXPORT void X509_ALGOR_free(X509_ALGOR *alg);
@@ -1547,13 +1580,20 @@ OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *spki,
 OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
                                       const EVP_MD *md);
 
-OPENSSL_EXPORT X509 *X509_dup(X509 *x509);
+// X509_ATTRIBUTE_dup returns a newly-allocated copy of |xa|, or NULL on error.
+// This function works by serializing the structure, so if |xa| is incomplete,
+// it may fail.
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_dup(const X509_ATTRIBUTE *xa);
+
+// X509_EXTENSION_dup returns a newly-allocated copy of |ex|, or NULL on error.
+// This function works by serializing the structure, so if |ex| is incomplete,
+// it may fail.
 OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_dup(const X509_EXTENSION *ex);
-OPENSSL_EXPORT X509_CRL *X509_CRL_dup(X509_CRL *crl);
+
+// X509_REVOKED_dup returns a newly-allocated copy of |rev|, or NULL on error.
+// This function works by serializing the structure, so if |rev| is incomplete,
+// it may fail.
 OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(const X509_REVOKED *rev);
-OPENSSL_EXPORT X509_REQ *X509_REQ_dup(X509_REQ *req);
-OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(const X509_ALGOR *xn);
 
 // X509_cmp_time compares |s| against |*t|. On success, it returns a negative
 // number if |s| <= |*t| and a positive number if |s| > |*t|. On error, it
