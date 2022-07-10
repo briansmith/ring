@@ -144,7 +144,7 @@ X509_EXTENSION *X509v3_delete_ext(STACK_OF(X509_EXTENSION) *x, int loc) {
 }
 
 STACK_OF(X509_EXTENSION) *X509v3_add_ext(STACK_OF(X509_EXTENSION) **x,
-                                         X509_EXTENSION *ex, int loc) {
+                                         const X509_EXTENSION *ex, int loc) {
   X509_EXTENSION *new_ex = NULL;
   int n;
   STACK_OF(X509_EXTENSION) *sk = NULL;
@@ -267,14 +267,14 @@ int X509_EXTENSION_set_data(X509_EXTENSION *ex, const ASN1_OCTET_STRING *data) {
   return 1;
 }
 
-ASN1_OBJECT *X509_EXTENSION_get_object(X509_EXTENSION *ex) {
+ASN1_OBJECT *X509_EXTENSION_get_object(const X509_EXTENSION *ex) {
   if (ex == NULL) {
     return NULL;
   }
   return ex->object;
 }
 
-ASN1_OCTET_STRING *X509_EXTENSION_get_data(X509_EXTENSION *ex) {
+ASN1_OCTET_STRING *X509_EXTENSION_get_data(const X509_EXTENSION *ex) {
   if (ex == NULL) {
     return NULL;
   }

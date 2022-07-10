@@ -143,7 +143,6 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
   GENERAL_NAMES *gens = NULL;
   GENERAL_NAME *gen = NULL;
   ASN1_INTEGER *serial = NULL;
-  X509_EXTENSION *ext;
   X509 *cert;
   AUTHORITY_KEYID *akeyid;
 
@@ -178,6 +177,7 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
 
   if (keyid) {
     j = X509_get_ext_by_NID(cert, NID_subject_key_identifier, -1);
+    const X509_EXTENSION *ext;
     if ((j >= 0) && (ext = X509_get_ext(cert, j))) {
       ikeyid = X509V3_EXT_d2i(ext);
     }

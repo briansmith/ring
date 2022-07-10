@@ -320,7 +320,7 @@ static int nid_cmp(const void *void_a, const void *void_b) {
   return *a - *b;
 }
 
-int X509_supported_extension(X509_EXTENSION *ex) {
+int X509_supported_extension(const X509_EXTENSION *ex) {
   // This table is a list of the NIDs of supported extensions: that is
   // those which are used by the verify process. If an extension is
   // critical and doesn't appear in this list then the verify process will
@@ -405,7 +405,6 @@ int x509v3_cache_extensions(X509 *x) {
   ASN1_BIT_STRING *usage;
   ASN1_BIT_STRING *ns;
   EXTENDED_KEY_USAGE *extusage;
-  X509_EXTENSION *ex;
   size_t i;
   int j;
 
@@ -576,7 +575,7 @@ int x509v3_cache_extensions(X509 *x) {
   }
 
   for (j = 0; j < X509_get_ext_count(x); j++) {
-    ex = X509_get_ext(x, j);
+    const X509_EXTENSION *ex = X509_get_ext(x, j);
     if (OBJ_obj2nid(X509_EXTENSION_get_object(ex)) == NID_freshest_crl) {
       x->ex_flags |= EXFLAG_FRESHEST;
     }
@@ -768,7 +767,7 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
   // Extended Key Usage MUST be critical
   i_ext = X509_get_ext_by_NID((X509 *)x, NID_ext_key_usage, -1);
   if (i_ext >= 0) {
-    X509_EXTENSION *ext = X509_get_ext((X509 *)x, i_ext);
+    const X509_EXTENSION *ext = X509_get_ext((X509 *)x, i_ext);
     if (!X509_EXTENSION_get_critical(ext)) {
       return 0;
     }

@@ -66,15 +66,13 @@
 
 // Extension printing routines
 
-static int unknown_ext_print(BIO *out, X509_EXTENSION *ext, unsigned long flag,
-                             int indent, int supported);
+static int unknown_ext_print(BIO *out, const X509_EXTENSION *ext,
+                             unsigned long flag, int indent, int supported);
 
 // Print out a name+value stack
 
-void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent,
+void X509V3_EXT_val_prn(BIO *out, const STACK_OF(CONF_VALUE) *val, int indent,
                         int ml) {
-  size_t i;
-  CONF_VALUE *nval;
   if (!val) {
     return;
   }
@@ -84,13 +82,13 @@ void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent,
       BIO_puts(out, "<EMPTY>\n");
     }
   }
-  for (i = 0; i < sk_CONF_VALUE_num(val); i++) {
+  for (size_t i = 0; i < sk_CONF_VALUE_num(val); i++) {
     if (ml) {
       BIO_printf(out, "%*s", indent, "");
     } else if (i > 0) {
       BIO_printf(out, ", ");
     }
-    nval = sk_CONF_VALUE_value(val, i);
+    const CONF_VALUE *nval = sk_CONF_VALUE_value(val, i);
     if (!nval->name) {
       BIO_puts(out, nval->value);
     } else if (!nval->value) {
@@ -106,7 +104,7 @@ void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent,
 
 // Main routine: print out a general extension
 
-int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag,
+int X509V3_EXT_print(BIO *out, const X509_EXTENSION *ext, unsigned long flag,
                      int indent) {
   void *ext_str = NULL;
   char *value = NULL;
@@ -180,13 +178,11 @@ int X509V3_extensions_print(BIO *bp, const char *title,
   }
 
   for (i = 0; i < sk_X509_EXTENSION_num(exts); i++) {
-    ASN1_OBJECT *obj;
-    X509_EXTENSION *ex;
-    ex = sk_X509_EXTENSION_value(exts, i);
+    const X509_EXTENSION *ex = sk_X509_EXTENSION_value(exts, i);
     if (indent && BIO_printf(bp, "%*s", indent, "") <= 0) {
       return 0;
     }
-    obj = X509_EXTENSION_get_object(ex);
+    const ASN1_OBJECT *obj = X509_EXTENSION_get_object(ex);
     i2a_ASN1_OBJECT(bp, obj);
     j = X509_EXTENSION_get_critical(ex);
     if (BIO_printf(bp, ": %s\n", j ? "critical" : "") <= 0) {
@@ -203,8 +199,8 @@ int X509V3_extensions_print(BIO *bp, const char *title,
   return 1;
 }
 
-static int unknown_ext_print(BIO *out, X509_EXTENSION *ext, unsigned long flag,
-                             int indent, int supported) {
+static int unknown_ext_print(BIO *out, const X509_EXTENSION *ext,
+                             unsigned long flag, int indent, int supported) {
   switch (flag & X509V3_EXT_UNKNOWN_MASK) {
     case X509V3_EXT_DEFAULT:
       return 0;
@@ -229,7 +225,8 @@ static int unknown_ext_print(BIO *out, X509_EXTENSION *ext, unsigned long flag,
   }
 }
 
-int X509V3_EXT_print_fp(FILE *fp, X509_EXTENSION *ext, int flag, int indent) {
+int X509V3_EXT_print_fp(FILE *fp, const X509_EXTENSION *ext, int flag,
+                        int indent) {
   BIO *bio_tmp;
   int ret;
   if (!(bio_tmp = BIO_new_fp(fp, BIO_NOCLOSE))) {

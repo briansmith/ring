@@ -99,7 +99,7 @@ int X509_CRL_add1_ext_i2d(X509_CRL *x, int nid, void *value, int crit,
   return X509V3_add1_i2d(&x->crl->extensions, nid, value, crit, flags);
 }
 
-int X509_CRL_add_ext(X509_CRL *x, X509_EXTENSION *ex, int loc) {
+int X509_CRL_add_ext(X509_CRL *x, const X509_EXTENSION *ex, int loc) {
   return (X509v3_add_ext(&(x->crl->extensions), ex, loc) != NULL);
 }
 
@@ -127,7 +127,7 @@ X509_EXTENSION *X509_delete_ext(X509 *x, int loc) {
   return (X509v3_delete_ext(x->cert_info->extensions, loc));
 }
 
-int X509_add_ext(X509 *x, X509_EXTENSION *ex, int loc) {
+int X509_add_ext(X509 *x, const X509_EXTENSION *ex, int loc) {
   return (X509v3_add_ext(&(x->cert_info->extensions), ex, loc) != NULL);
 }
 
@@ -168,7 +168,7 @@ X509_EXTENSION *X509_REVOKED_delete_ext(X509_REVOKED *x, int loc) {
   return (X509v3_delete_ext(x->extensions, loc));
 }
 
-int X509_REVOKED_add_ext(X509_REVOKED *x, X509_EXTENSION *ex, int loc) {
+int X509_REVOKED_add_ext(X509_REVOKED *x, const X509_EXTENSION *ex, int loc) {
   return (X509v3_add_ext(&(x->extensions), ex, loc) != NULL);
 }
 

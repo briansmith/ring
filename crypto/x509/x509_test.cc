@@ -4402,10 +4402,10 @@ TEST(X509Test, AddExt) {
     ASSERT_EQ(static_cast<size_t>(X509_get_ext_count(x509.get())), exts.size());
     for (size_t i = 0; i < exts.size(); i++) {
       SCOPED_TRACE(i);
-      X509_EXTENSION *ext = X509_get_ext(x509.get(), static_cast<int>(i));
+      const X509_EXTENSION *ext = X509_get_ext(x509.get(), static_cast<int>(i));
       EXPECT_EQ(OBJ_obj2nid(X509_EXTENSION_get_object(ext)), exts[i].nid);
       EXPECT_EQ(X509_EXTENSION_get_critical(ext), exts[i].critical ? 1 : 0);
-      ASN1_OCTET_STRING *data = X509_EXTENSION_get_data(ext);
+      const ASN1_OCTET_STRING *data = X509_EXTENSION_get_data(ext);
       EXPECT_EQ(Bytes(ASN1_STRING_get0_data(data), ASN1_STRING_length(data)),
                 Bytes(exts[i].data));
     }

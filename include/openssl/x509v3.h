@@ -787,12 +787,13 @@ OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid,
 // hexdump.
 #define X509V3_EXT_DUMP_UNKNOWN (3L << 16)
 
-OPENSSL_EXPORT void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val,
+OPENSSL_EXPORT void X509V3_EXT_val_prn(BIO *out,
+                                       const STACK_OF(CONF_VALUE) *val,
                                        int indent, int ml);
-OPENSSL_EXPORT int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext,
+OPENSSL_EXPORT int X509V3_EXT_print(BIO *out, const X509_EXTENSION *ext,
                                     unsigned long flag, int indent);
-OPENSSL_EXPORT int X509V3_EXT_print_fp(FILE *out, X509_EXTENSION *ext, int flag,
-                                       int indent);
+OPENSSL_EXPORT int X509V3_EXT_print_fp(FILE *out, const X509_EXTENSION *ext,
+                                       int flag, int indent);
 
 // X509V3_extensions_print prints |title|, followed by a human-readable
 // representation of |exts| to |out|. It returns one on success and zero on
@@ -805,7 +806,7 @@ OPENSSL_EXPORT int X509V3_extensions_print(BIO *out, const char *title,
 
 OPENSSL_EXPORT int X509_check_ca(X509 *x);
 OPENSSL_EXPORT int X509_check_purpose(X509 *x, int id, int ca);
-OPENSSL_EXPORT int X509_supported_extension(X509_EXTENSION *ex);
+OPENSSL_EXPORT int X509_supported_extension(const X509_EXTENSION *ex);
 OPENSSL_EXPORT int X509_PURPOSE_set(int *p, int purpose);
 OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
 OPENSSL_EXPORT int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);
