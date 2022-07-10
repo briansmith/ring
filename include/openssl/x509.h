@@ -222,6 +222,28 @@ OPENSSL_EXPORT void X509_get0_uids(const X509 *x509,
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_get0_extensions(
     const X509 *x509);
 
+// X509_get_ext_count returns the number of extensions in |x|.
+OPENSSL_EXPORT int X509_get_ext_count(const X509 *x);
+
+// X509_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches for
+// extensions in |x|.
+OPENSSL_EXPORT int X509_get_ext_by_NID(const X509 *x, int nid, int lastpos);
+
+// X509_get_ext_by_OBJ behaves like |X509v3_get_ext_by_OBJ| but searches for
+// extensions in |x|.
+OPENSSL_EXPORT int X509_get_ext_by_OBJ(const X509 *x, const ASN1_OBJECT *obj,
+                                       int lastpos);
+
+// X509_get_ext_by_critical behaves like |X509v3_get_ext_by_critical| but
+// searches for extensions in |x|.
+OPENSSL_EXPORT int X509_get_ext_by_critical(const X509 *x, int crit,
+                                            int lastpos);
+
+// X509_get_ext returns the extension in |x| at index |loc|, or NULL if |loc| is
+// out of bounds. This function returns a non-const pointer for OpenSSL
+// compatibility, but callers should not mutate the result.
+OPENSSL_EXPORT X509_EXTENSION *X509_get_ext(const X509 *x, int loc);
+
 // X509_get0_tbs_sigalg returns the signature algorithm in |x509|'s
 // TBSCertificate. For the outer signature algorithm, see |X509_get0_signature|.
 //
@@ -304,6 +326,20 @@ OPENSSL_EXPORT int X509_set_subject_name(X509 *x509, X509_NAME *name);
 // and zero on error. This function does not take ownership of |pkey| and
 // internally copies and updates reference counts as needed.
 OPENSSL_EXPORT int X509_set_pubkey(X509 *x509, EVP_PKEY *pkey);
+
+// X509_delete_ext removes the extension in |x| at index |loc| and returns the
+// removed extension, or NULL if |loc| was out of bounds. If non-NULL, the
+// caller must release the result with |X509_EXTENSION_free|.
+OPENSSL_EXPORT X509_EXTENSION *X509_delete_ext(X509 *x, int loc);
+
+// X509_add_ext adds a copy of |ex| to |x|. It returns one on success and zero
+// on failure. The caller retains ownership of |ex| and can release it
+// independently of |x|.
+//
+// The new extension is inserted at index |loc|, shifting extensions to the
+// right. If |loc| is -1 or out of bounds, the new extension is appended to the
+// list.
+OPENSSL_EXPORT int X509_add_ext(X509 *x, const X509_EXTENSION *ex, int loc);
 
 // X509_sign signs |x509| with |pkey| and replaces the signature algorithm and
 // signature fields. It returns one on success and zero on error. This function
@@ -493,6 +529,29 @@ OPENSSL_EXPORT STACK_OF(X509_REVOKED) *X509_CRL_get_REVOKED(X509_CRL *crl);
 OPENSSL_EXPORT const STACK_OF(X509_EXTENSION) *X509_CRL_get0_extensions(
     const X509_CRL *crl);
 
+// X509_CRL_get_ext_count returns the number of extensions in |x|.
+OPENSSL_EXPORT int X509_CRL_get_ext_count(const X509_CRL *x);
+
+// X509_CRL_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches for
+// extensions in |x|.
+OPENSSL_EXPORT int X509_CRL_get_ext_by_NID(const X509_CRL *x, int nid,
+                                           int lastpos);
+
+// X509_CRL_get_ext_by_OBJ behaves like |X509v3_get_ext_by_OBJ| but searches for
+// extensions in |x|.
+OPENSSL_EXPORT int X509_CRL_get_ext_by_OBJ(const X509_CRL *x,
+                                           const ASN1_OBJECT *obj, int lastpos);
+
+// X509_CRL_get_ext_by_critical behaves like |X509v3_get_ext_by_critical| but
+// searches for extensions in |x|.
+OPENSSL_EXPORT int X509_CRL_get_ext_by_critical(const X509_CRL *x, int crit,
+                                                int lastpos);
+
+// X509_CRL_get_ext returns the extension in |x| at index |loc|, or NULL if
+// |loc| is out of bounds. This function returns a non-const pointer for OpenSSL
+// compatibility, but callers should not mutate the result.
+OPENSSL_EXPORT X509_EXTENSION *X509_CRL_get_ext(const X509_CRL *x, int loc);
+
 // X509_CRL_get0_signature sets |*out_sig| and |*out_alg| to the signature and
 // signature algorithm of |crl|, respectively. Either output pointer may be NULL
 // to ignore the value.
@@ -549,6 +608,21 @@ OPENSSL_EXPORT int X509_CRL_set1_lastUpdate(X509_CRL *crl, const ASN1_TIME *tm);
 // X509_CRL_set1_nextUpdate sets |crl|'s nextUpdate time to |tm|. It returns one
 // on success and zero on error.
 OPENSSL_EXPORT int X509_CRL_set1_nextUpdate(X509_CRL *crl, const ASN1_TIME *tm);
+
+// X509_CRL_delete_ext removes the extension in |x| at index |loc| and returns
+// the removed extension, or NULL if |loc| was out of bounds. If non-NULL, the
+// caller must release the result with |X509_EXTENSION_free|.
+OPENSSL_EXPORT X509_EXTENSION *X509_CRL_delete_ext(X509_CRL *x, int loc);
+
+// X509_CRL_add_ext adds a copy of |ex| to |x|. It returns one on success and
+// zero on failure. The caller retains ownership of |ex| and can release it
+// independently of |x|.
+//
+// The new extension is inserted at index |loc|, shifting extensions to the
+// right. If |loc| is -1 or out of bounds, the new extension is appended to the
+// list.
+OPENSSL_EXPORT int X509_CRL_add_ext(X509_CRL *x, const X509_EXTENSION *ex,
+                                    int loc);
 
 // X509_CRL_sign signs |crl| with |pkey| and replaces the signature algorithm
 // and signature fields. It returns one on success and zero on error. This
@@ -979,6 +1053,164 @@ OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(
     int len);
 
 
+// Extensions.
+//
+// X.509 certificates and CRLs may contain a list of extensions (RFC 5280).
+// Extensions have a type, specified by an object identifier (|ASN1_OBJECT|) and
+// a byte string value, which should a DER-encoded structure whose type is
+// determined by the extension type. This library represents extensions with the
+// |X509_EXTENSION| type.
+
+// X509_EXTENSION is an |ASN1_ITEM| whose ASN.1 type is X.509 Extension (RFC
+// 5280) and C type is |X509_EXTENSION*|.
+DECLARE_ASN1_ITEM(X509_EXTENSION)
+
+// X509_EXTENSION_new returns a newly-allocated, empty |X509_EXTENSION| object
+// or NULL on error.
+OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_new(void);
+
+// X509_EXTENSION_free releases memory associated with |ex|.
+OPENSSL_EXPORT void X509_EXTENSION_free(X509_EXTENSION *ex);
+
+// d2i_X509_EXTENSION parses up to |len| bytes from |*inp| as a DER-encoded
+// X.509 Extension (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+OPENSSL_EXPORT X509_EXTENSION *d2i_X509_EXTENSION(X509_EXTENSION **out,
+                                                  const uint8_t **inp,
+                                                  long len);
+
+// i2d_X509_EXTENSION marshals |alg| as a DER-encoded X.509 Extension (RFC
+// 5280), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_X509_EXTENSION(const X509_EXTENSION *alg,
+                                      uint8_t **outp);
+
+// X509_EXTENSION_dup returns a newly-allocated copy of |ex|, or NULL on error.
+// This function works by serializing the structure, so if |ex| is incomplete,
+// it may fail.
+OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_dup(const X509_EXTENSION *ex);
+
+// X509_EXTENSION_create_by_NID creates a new |X509_EXTENSION| with type |nid|,
+// value |data|, and critical bit |crit|. It returns an |X509_EXTENSION| on
+// success, and NULL on error. |nid| should be a |NID_*| constant.
+//
+// If |ex| and |*ex| are both non-NULL, |*ex| is used to hold the result,
+// otherwise a new object is allocated. If |ex| is non-NULL and |*ex| is NULL,
+// the function sets |*ex| to point to the newly allocated result, in addition
+// to returning the result.
+OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_create_by_NID(
+    X509_EXTENSION **ex, int nid, int crit, const ASN1_OCTET_STRING *data);
+
+// X509_EXTENSION_create_by_OBJ behaves like |X509_EXTENSION_create_by_NID|, but
+// the extension type is determined by an |ASN1_OBJECT|.
+OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_create_by_OBJ(
+    X509_EXTENSION **ex, const ASN1_OBJECT *obj, int crit,
+    const ASN1_OCTET_STRING *data);
+
+// X509_EXTENSION_get_object returns |ex|'s extension type. This function
+// returns a non-const pointer for OpenSSL compatibility, but callers should not
+// mutate the result.
+OPENSSL_EXPORT ASN1_OBJECT *X509_EXTENSION_get_object(const X509_EXTENSION *ex);
+
+// X509_EXTENSION_get_data returns |ne|'s extension value. This function returns
+// a non-const pointer for OpenSSL compatibility, but callers should not mutate
+// the result.
+OPENSSL_EXPORT ASN1_OCTET_STRING *X509_EXTENSION_get_data(
+    const X509_EXTENSION *ne);
+
+// X509_EXTENSION_get_critical returns one if |ex| is critical and zero
+// otherwise.
+OPENSSL_EXPORT int X509_EXTENSION_get_critical(const X509_EXTENSION *ex);
+
+// X509_EXTENSION_set_object sets |ex|'s extension type to |obj|. It returns one
+// on success and zero on error.
+OPENSSL_EXPORT int X509_EXTENSION_set_object(X509_EXTENSION *ex,
+                                             const ASN1_OBJECT *obj);
+
+// X509_EXTENSION_set_critical sets |ex| to critical if |crit| is non-zero and
+// to non-critical if |crit| is zero.
+OPENSSL_EXPORT int X509_EXTENSION_set_critical(X509_EXTENSION *ex, int crit);
+
+// X509_EXTENSION_set_data set's |ex|'s extension value to a copy of |data|. It
+// returns one on success and zero on error.
+OPENSSL_EXPORT int X509_EXTENSION_set_data(X509_EXTENSION *ex,
+                                           const ASN1_OCTET_STRING *data);
+
+
+// Extension lists.
+//
+// The following functions manipulate lists of extensions. Most of them have
+// corresponding functions on the containing |X509|, |X509_CRL|, or
+// |X509_REVOKED|.
+
+DEFINE_STACK_OF(X509_EXTENSION)
+typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
+
+// X509_EXTENSIONS is an |ASN1_ITEM| whose ASN.1 type is SEQUENCE of Extension
+// (RFC 5280) and C type is |STACK_OF(X509_EXTENSION)*|.
+DECLARE_ASN1_ITEM(X509_EXTENSIONS)
+
+// d2i_X509_EXTENSIONS parses up to |len| bytes from |*inp| as a DER-encoded
+// SEQUENCE OF Extension (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+OPENSSL_EXPORT X509_EXTENSIONS *d2i_X509_EXTENSIONS(X509_EXTENSIONS **out,
+                                                    const uint8_t **inp,
+                                                    long len);
+
+// i2d_X509_EXTENSIONS marshals |alg| as a DER-encoded SEQUENCE OF Extension
+// (RFC 5280), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_X509_EXTENSIONS(const X509_EXTENSIONS *alg,
+                                       uint8_t **outp);
+
+// X509v3_get_ext_count returns the number of extensions in |x|.
+OPENSSL_EXPORT int X509v3_get_ext_count(const STACK_OF(X509_EXTENSION) *x);
+
+// X509v3_get_ext_by_NID returns the index of the first extension in |x| with
+// type |nid|, or a negative number if not found. If found, callers can use
+// |X509v3_get_ext| to look up the extension by index.
+//
+// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
+// can thus loop over all matching extensions by first passing -1 and then
+// passing the previously-returned value until no match is returned.
+OPENSSL_EXPORT int X509v3_get_ext_by_NID(const STACK_OF(X509_EXTENSION) *x,
+                                         int nid, int lastpos);
+
+// X509v3_get_ext_by_OBJ behaves like |X509v3_get_ext_by_NID| but looks for
+// extensions matching |obj|.
+OPENSSL_EXPORT int X509v3_get_ext_by_OBJ(const STACK_OF(X509_EXTENSION) *x,
+                                         const ASN1_OBJECT *obj, int lastpos);
+
+// X509v3_get_ext_by_critical returns the index of the first extension in |x|
+// whose critical bit matches |crit|, or a negative number if no such extension
+// was found.
+//
+// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
+// can thus loop over all matching extensions by first passing -1 and then
+// passing the previously-returned value until no match is returned.
+OPENSSL_EXPORT int X509v3_get_ext_by_critical(const STACK_OF(X509_EXTENSION) *x,
+                                              int crit, int lastpos);
+
+// X509v3_get_ext returns the extension in |x| at index |loc|, or NULL if |loc|
+// is out of bounds. This function returns a non-const pointer for OpenSSL
+// compatibility, but callers should not mutate the result.
+OPENSSL_EXPORT X509_EXTENSION *X509v3_get_ext(const STACK_OF(X509_EXTENSION) *x,
+                                              int loc);
+
+// X509v3_delete_ext removes the extension in |x| at index |loc| and returns the
+// removed extension, or NULL if |loc| was out of bounds. If an extension was
+// returned, the caller must release it with |X509_EXTENSION_free|.
+OPENSSL_EXPORT X509_EXTENSION *X509v3_delete_ext(STACK_OF(X509_EXTENSION) *x,
+                                                 int loc);
+
+// X509v3_add_ext adds a copy of |ex| to the extension list in |*x|. If |*x| is
+// NULL, it allocates a new |STACK_OF(X509_EXTENSION)| to hold the copy and sets
+// |*x| to the new list. It returns |*x| on success and NULL on error. The
+// caller retains ownership of |ex| and can release it independently of |*x|.
+//
+// The new extension is inserted at index |loc|, shifting extensions to the
+// right. If |loc| is -1 or out of bounds, the new extension is appended to the
+// list.
+OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509v3_add_ext(
+    STACK_OF(X509_EXTENSION) **x, const X509_EXTENSION *ex, int loc);
+
+
 // Algorithm identifiers.
 //
 // An |X509_ALGOR| represents an AlgorithmIdentifier structure, used in X.509
@@ -1333,10 +1565,6 @@ struct X509_algor_st {
 #define X509v3_KU_DECIPHER_ONLY 0x8000
 #define X509v3_KU_UNDEF 0xffff
 
-typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
-
-DEFINE_STACK_OF(X509_EXTENSION)
-
 DEFINE_STACK_OF(X509_ATTRIBUTE)
 
 // This stuff is certificate "auxiliary info"
@@ -1585,11 +1813,6 @@ OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
 // it may fail.
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_dup(const X509_ATTRIBUTE *xa);
 
-// X509_EXTENSION_dup returns a newly-allocated copy of |ex|, or NULL on error.
-// This function works by serializing the structure, so if |ex| is incomplete,
-// it may fail.
-OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_dup(const X509_EXTENSION *ex);
-
 // X509_REVOKED_dup returns a newly-allocated copy of |rev|, or NULL on error.
 // This function works by serializing the structure, so if |rev| is incomplete,
 // it may fail.
@@ -1650,9 +1873,6 @@ DECLARE_ASN1_FUNCTIONS_const(X509_ATTRIBUTE)
 // this function takes ownership of |value|.
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int attrtype,
                                                      void *value);
-
-DECLARE_ASN1_FUNCTIONS_const(X509_EXTENSION)
-DECLARE_ASN1_ENCODE_FUNCTIONS_const(X509_EXTENSIONS, X509_EXTENSIONS)
 
 OPENSSL_EXPORT int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj);
 OPENSSL_EXPORT int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj);
@@ -1860,94 +2080,6 @@ OPENSSL_EXPORT int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflag,
                                      unsigned long cflag);
 OPENSSL_EXPORT int X509_REQ_print(BIO *bp, X509_REQ *req);
 
-// X509v3_get_ext_count returns the number of extensions in |x|.
-OPENSSL_EXPORT int X509v3_get_ext_count(const STACK_OF(X509_EXTENSION) *x);
-
-// X509v3_get_ext_by_NID returns the index of the first extension in |x| with
-// type |nid|, or a negative number if not found. If found, callers can use
-// |X509v3_get_ext| to look up the extension by index.
-//
-// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
-// can thus loop over all matching extensions by first passing -1 and then
-// passing the previously-returned value until no match is returned.
-OPENSSL_EXPORT int X509v3_get_ext_by_NID(const STACK_OF(X509_EXTENSION) *x,
-                                         int nid, int lastpos);
-
-// X509v3_get_ext_by_OBJ behaves like |X509v3_get_ext_by_NID| but looks for
-// extensions matching |obj|.
-OPENSSL_EXPORT int X509v3_get_ext_by_OBJ(const STACK_OF(X509_EXTENSION) *x,
-                                         const ASN1_OBJECT *obj, int lastpos);
-
-// X509v3_get_ext_by_critical returns the index of the first extension in |x|
-// whose critical bit matches |crit|, or a negative number if no such extension
-// was found.
-//
-// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
-// can thus loop over all matching extensions by first passing -1 and then
-// passing the previously-returned value until no match is returned.
-OPENSSL_EXPORT int X509v3_get_ext_by_critical(const STACK_OF(X509_EXTENSION) *x,
-                                              int crit, int lastpos);
-
-// X509v3_get_ext returns the extension in |x| at index |loc|, or NULL if |loc|
-// is out of bounds. This function returns a non-const pointer for OpenSSL
-// compatibility, but callers should not mutate the result.
-OPENSSL_EXPORT X509_EXTENSION *X509v3_get_ext(const STACK_OF(X509_EXTENSION) *x,
-                                              int loc);
-
-// X509v3_delete_ext removes the extension in |x| at index |loc| and returns the
-// removed extension, or NULL if |loc| was out of bounds. If an extension was
-// returned, the caller must release it with |X509_EXTENSION_free|.
-OPENSSL_EXPORT X509_EXTENSION *X509v3_delete_ext(STACK_OF(X509_EXTENSION) *x,
-                                                 int loc);
-
-// X509v3_add_ext adds a copy of |ex| to the extension list in |*x|. If |*x| is
-// NULL, it allocates a new |STACK_OF(X509_EXTENSION)| to hold the copy and sets
-// |*x| to the new list. It returns |*x| on success and NULL on error. The
-// caller retains ownership of |ex| and can release it independently of |*x|.
-//
-// The new extension is inserted at index |loc|, shifting extensions to the
-// right. If |loc| is -1 or out of bounds, the new extension is appended to the
-// list.
-OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509v3_add_ext(
-    STACK_OF(X509_EXTENSION) **x, const X509_EXTENSION *ex, int loc);
-
-// X509_get_ext_count returns the number of extensions in |x|.
-OPENSSL_EXPORT int X509_get_ext_count(const X509 *x);
-
-// X509_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches for
-// extensions in |x|.
-OPENSSL_EXPORT int X509_get_ext_by_NID(const X509 *x, int nid, int lastpos);
-
-// X509_get_ext_by_OBJ behaves like |X509v3_get_ext_by_OBJ| but searches for
-// extensions in |x|.
-OPENSSL_EXPORT int X509_get_ext_by_OBJ(const X509 *x, const ASN1_OBJECT *obj,
-                                       int lastpos);
-
-// X509_get_ext_by_critical behaves like |X509v3_get_ext_by_critical| but
-// searches for extensions in |x|.
-OPENSSL_EXPORT int X509_get_ext_by_critical(const X509 *x, int crit,
-                                            int lastpos);
-
-// X509_get_ext returns the extension in |x| at index |loc|, or NULL if |loc| is
-// out of bounds. This function returns a non-const pointer for OpenSSL
-// compatibility, but callers should not mutate the result.
-OPENSSL_EXPORT X509_EXTENSION *X509_get_ext(const X509 *x, int loc);
-
-// X509_delete_ext removes the extension in |x| at index |loc| and returns the
-// removed extension, or NULL if |loc| was out of bounds. If non-NULL, the
-// caller must release the result with |X509_EXTENSION_free|. It is also safe,
-// but not necessary, to call |X509_EXTENSION_free| if the result is NULL.
-OPENSSL_EXPORT X509_EXTENSION *X509_delete_ext(X509 *x, int loc);
-
-// X509_add_ext adds a copy of |ex| to |x|. It returns one on success and zero
-// on failure. The caller retains ownership of |ex| and can release it
-// independently of |x|.
-//
-// The new extension is inserted at index |loc|, shifting extensions to the
-// right. If |loc| is -1 or out of bounds, the new extension is appended to the
-// list.
-OPENSSL_EXPORT int X509_add_ext(X509 *x, const X509_EXTENSION *ex, int loc);
-
 // X509_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the extension in
 // |x509|'s extension list.
 //
@@ -1964,45 +2096,6 @@ OPENSSL_EXPORT void *X509_get_ext_d2i(const X509 *x509, int nid,
 // |X509V3_add1_i2d| for details.
 OPENSSL_EXPORT int X509_add1_ext_i2d(X509 *x, int nid, void *value, int crit,
                                      unsigned long flags);
-
-// X509_CRL_get_ext_count returns the number of extensions in |x|.
-OPENSSL_EXPORT int X509_CRL_get_ext_count(const X509_CRL *x);
-
-// X509_CRL_get_ext_by_NID behaves like |X509v3_get_ext_by_NID| but searches for
-// extensions in |x|.
-OPENSSL_EXPORT int X509_CRL_get_ext_by_NID(const X509_CRL *x, int nid,
-                                           int lastpos);
-
-// X509_CRL_get_ext_by_OBJ behaves like |X509v3_get_ext_by_OBJ| but searches for
-// extensions in |x|.
-OPENSSL_EXPORT int X509_CRL_get_ext_by_OBJ(const X509_CRL *x,
-                                           const ASN1_OBJECT *obj, int lastpos);
-
-// X509_CRL_get_ext_by_critical behaves like |X509v3_get_ext_by_critical| but
-// searches for extensions in |x|.
-OPENSSL_EXPORT int X509_CRL_get_ext_by_critical(const X509_CRL *x, int crit,
-                                                int lastpos);
-
-// X509_CRL_get_ext returns the extension in |x| at index |loc|, or NULL if
-// |loc| is out of bounds. This function returns a non-const pointer for OpenSSL
-// compatibility, but callers should not mutate the result.
-OPENSSL_EXPORT X509_EXTENSION *X509_CRL_get_ext(const X509_CRL *x, int loc);
-
-// X509_CRL_delete_ext removes the extension in |x| at index |loc| and returns
-// the removed extension, or NULL if |loc| was out of bounds. If non-NULL, the
-// caller must release the result with |X509_EXTENSION_free|. It is also safe,
-// but not necessary, to call |X509_EXTENSION_free| if the result is NULL.
-OPENSSL_EXPORT X509_EXTENSION *X509_CRL_delete_ext(X509_CRL *x, int loc);
-
-// X509_CRL_add_ext adds a copy of |ex| to |x|. It returns one on success and
-// zero on failure. The caller retains ownership of |ex| and can release it
-// independently of |x|.
-//
-// The new extension is inserted at index |loc|, shifting extensions to the
-// right. If |loc| is -1 or out of bounds, the new extension is appended to the
-// list.
-OPENSSL_EXPORT int X509_CRL_add_ext(X509_CRL *x, const X509_EXTENSION *ex,
-                                    int loc);
 
 // X509_CRL_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the
 // extension in |crl|'s extension list.
@@ -2048,9 +2141,7 @@ OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_get_ext(const X509_REVOKED *x,
 
 // X509_REVOKED_delete_ext removes the extension in |x| at index |loc| and
 // returns the removed extension, or NULL if |loc| was out of bounds. If
-// non-NULL, the caller must release the result with |X509_EXTENSION_free|. It
-// is also safe, but not necessary, to call |X509_EXTENSION_free| if the result
-// is NULL.
+// non-NULL, the caller must release the result with |X509_EXTENSION_free|.
 OPENSSL_EXPORT X509_EXTENSION *X509_REVOKED_delete_ext(X509_REVOKED *x,
                                                        int loc);
 
@@ -2082,52 +2173,6 @@ OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *revoked,
 OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
                                              void *value, int crit,
                                              unsigned long flags);
-
-// X509_EXTENSION_create_by_NID creates a new |X509_EXTENSION| with type |nid|,
-// value |data|, and critical bit |crit|. It returns the newly-allocated
-// |X509_EXTENSION| on success, and false on error. |nid| should be a |NID_*|
-// constant.
-//
-// If |ex| and |*ex| are both non-NULL, it modifies and returns |*ex| instead of
-// creating a new object. If |ex| is non-NULL, but |*ex| is NULL, it sets |*ex|
-// to the new |X509_EXTENSION|, in addition to returning the result.
-OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_create_by_NID(
-    X509_EXTENSION **ex, int nid, int crit, const ASN1_OCTET_STRING *data);
-
-// X509_EXTENSION_create_by_OBJ behaves like |X509_EXTENSION_create_by_NID|, but
-// the extension type is determined by an |ASN1_OBJECT|.
-OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_create_by_OBJ(
-    X509_EXTENSION **ex, const ASN1_OBJECT *obj, int crit,
-    const ASN1_OCTET_STRING *data);
-
-// X509_EXTENSION_set_object sets |ex|'s extension type to |obj|. It returns one
-// on success and zero on error.
-OPENSSL_EXPORT int X509_EXTENSION_set_object(X509_EXTENSION *ex,
-                                             const ASN1_OBJECT *obj);
-
-// X509_EXTENSION_set_critical sets |ex| to critical if |crit| is non-zero and
-// to non-critical if |crit| is zero.
-OPENSSL_EXPORT int X509_EXTENSION_set_critical(X509_EXTENSION *ex, int crit);
-
-// X509_EXTENSION_set_data set's |ex|'s extension value to a copy of |data|. It
-// returns one on success and zero on error.
-OPENSSL_EXPORT int X509_EXTENSION_set_data(X509_EXTENSION *ex,
-                                           const ASN1_OCTET_STRING *data);
-
-// X509_EXTENSION_get_object returns |ex|'s extension type. This function
-// returns a non-const pointer for OpenSSL compatibility, but callers should not
-// mutate the result.
-OPENSSL_EXPORT ASN1_OBJECT *X509_EXTENSION_get_object(const X509_EXTENSION *ex);
-
-// X509_EXTENSION_get_data returns |ne|'s extension value. This function returns
-// a non-const pointer for OpenSSL compatibility, but callers should not mutate
-// the result.
-OPENSSL_EXPORT ASN1_OCTET_STRING *X509_EXTENSION_get_data(
-    const X509_EXTENSION *ne);
-
-// X509_EXTENSION_get_critical returns one if |ex| is critical and zero
-// otherwise.
-OPENSSL_EXPORT int X509_EXTENSION_get_critical(const X509_EXTENSION *ex);
 
 // X509at_get_attr_count returns the number of attributes in |x|.
 OPENSSL_EXPORT int X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x);
