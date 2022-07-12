@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.8)
 
 # Defer enabling C and CXX languages.
 project(BoringSSL NONE)
@@ -160,7 +160,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
   endif()
 
-  if(CLANG OR NOT "7.0.0" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
+  if(CLANG OR CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "7.0.0")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wimplicit-fallthrough")
   endif()
 
@@ -406,10 +406,13 @@ endif()
 
 function(go_executable dest package)
   set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
-  if(CMAKE_VERSION VERSION_LESS "3.7" OR NOT CMAKE_GENERATOR STREQUAL "Ninja")
-    # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
-    # only works with Ninja. Query the sources at configure time. Additionally,
-    # everything depends on go.mod. That affects what external packages to use.
+  if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
+    # The DEPFILE parameter to add_custom_command only works with Ninja. Query
+    # the sources at configure time. Additionally, everything depends on go.mod.
+    # That affects what external packages to use.
+    #
+    # TODO(davidben): Starting CMake 3.20, it also works with Make. Starting
+    # 3.21, it works with Visual Studio and Xcode too.
     execute_process(COMMAND ${GO_EXECUTABLE} run ${godeps} -format cmake
                             -pkg ${package}
                     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
