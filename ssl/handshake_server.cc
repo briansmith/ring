@@ -411,7 +411,7 @@ static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
   // JDK 11 does not support ChaCha20-Poly1305. This is unusual: many modern
   // clients implement ChaCha20-Poly1305.
   if (ssl_client_cipher_list_contains_cipher(
-          client_hello, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
+          client_hello, TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
     return false;
   }
 

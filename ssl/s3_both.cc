@@ -697,10 +697,10 @@ bool ssl_tls13_cipher_meets_policy(uint16_t cipher_id, bool only_fips) {
   }
 
   switch (cipher_id) {
-    case TLS1_CK_AES_128_GCM_SHA256 & 0xffff:
-    case TLS1_CK_AES_256_GCM_SHA384 & 0xffff:
+    case TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff:
+    case TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff:
       return true;
-    case TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff:
+    case TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff:
       return false;
     default:
       assert(false);

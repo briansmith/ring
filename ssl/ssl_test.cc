@@ -1002,7 +1002,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha256,
       },
       {
-          TLS1_CK_AES_256_GCM_SHA384,
+          TLS1_3_CK_AES_256_GCM_SHA384,
           "TLS_AES_256_GCM_SHA384",
           NID_aes_256_gcm,
           NID_undef,
@@ -1011,7 +1011,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha384,
       },
       {
-          TLS1_CK_AES_128_GCM_SHA256,
+          TLS1_3_CK_AES_128_GCM_SHA256,
           "TLS_AES_128_GCM_SHA256",
           NID_aes_128_gcm,
           NID_undef,
@@ -1020,7 +1020,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha256,
       },
       {
-          TLS1_CK_CHACHA20_POLY1305_SHA256,
+          TLS1_3_CK_CHACHA20_POLY1305_SHA256,
           "TLS_CHACHA20_POLY1305_SHA256",
           NID_chacha20_poly1305,
           NID_undef,
