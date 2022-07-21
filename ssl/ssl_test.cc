@@ -8151,11 +8151,13 @@ TEST(SSLTest, NumTickets) {
   for (size_t num_tickets : {0, 1, 2, 3, 4, 5}) {
     SCOPED_TRACE(num_tickets);
     ASSERT_TRUE(SSL_CTX_set_num_tickets(server_ctx.get(), num_tickets));
+    EXPECT_EQ(SSL_CTX_get_num_tickets(server_ctx.get()), num_tickets);
     EXPECT_EQ(count_tickets(), num_tickets);
   }
 
   // Configuring too many tickets causes us to stop at some point.
   ASSERT_TRUE(SSL_CTX_set_num_tickets(server_ctx.get(), 100000));
+  EXPECT_EQ(SSL_CTX_get_num_tickets(server_ctx.get()), 16u);
   EXPECT_EQ(count_tickets(), 16u);
 }
 

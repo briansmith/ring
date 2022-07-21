@@ -3037,6 +3037,8 @@ int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets) {
   return 1;
 }
 
+size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx) { return ctx->num_tickets; }
+
 int SSL_set_tlsext_status_type(SSL *ssl, int type) {
   if (!ssl->config) {
     return 0;

@@ -2288,6 +2288,10 @@ OPENSSL_EXPORT SSL_SESSION *SSL_process_tls13_new_session_ticket(
 // By default, BoringSSL sends two tickets.
 OPENSSL_EXPORT int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets);
 
+// SSL_CTX_get_num_tickets returns the number of tickets |ctx| will send
+// immediately after a successful TLS 1.3 handshake as a server.
+OPENSSL_EXPORT size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx);
+
 
 // Elliptic curve Diffie-Hellman.
 //
