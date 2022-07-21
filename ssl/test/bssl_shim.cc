@@ -667,24 +667,34 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   }
 
   // Test that handshake hints correctly skipped the expected operations.
-  //
-  // TODO(davidben): Add support for TLS 1.2 hints and remove the version check.
-  // Also add a check for the session cache lookup.
-  if (config->handshake_hints && !config->allow_hint_mismatch &&
-      SSL_version(ssl) == TLS1_3_VERSION) {
+  if (config->handshake_hints && !config->allow_hint_mismatch) {
     const TestState *state = GetTestState(ssl);
-    if (!SSL_used_hello_retry_request(ssl) && state->used_private_key) {
+    // If the private key operation is performed in the first roundtrip, a hint
+    // match should have skipped it. This is ECDHE-based cipher suites in TLS
+    // 1.2 and non-HRR handshakes in TLS 1.3.
+    bool private_key_allowed;
+    if (SSL_version(ssl) == TLS1_3_VERSION) {
+      private_key_allowed = SSL_used_hello_retry_request(ssl);
+    } else {
+      private_key_allowed =
+          SSL_CIPHER_get_kx_nid(SSL_get_current_cipher(ssl)) == NID_kx_rsa;
+    }
+    if (!private_key_allowed && state->used_private_key) {
       fprintf(
           stderr,
           "Performed private key operation, but hint should have skipped it\n");
       return false;
     }
 
-    if (state->ticket_decrypt_done) {
+    // TODO(davidben): Make handshake hints skip TLS 1.2 ticket decryption.
+    if (SSL_version(ssl) == TLS1_3_VERSION && state->ticket_decrypt_done) {
       fprintf(stderr,
               "Performed ticket decryption, but hint should have skipped it\n");
       return false;
     }
+
+    // TODO(davidben): Decide what we want to do with TLS 1.2 stateful
+    // resumption.
   }
   return true;
 }

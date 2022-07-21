@@ -3977,8 +3977,9 @@ OPENSSL_EXPORT int SSL_CTX_set_record_protocol_version(SSL_CTX *ctx,
 // those cases, BoringSSL will not predict a signature as there is no benefit.
 // Callers must allow for handshakes to complete without a predicted signature.
 //
-// For now, only TLS 1.3 is hinted. TLS 1.2 will work, but the hints will be
-// empty.
+// Handshake hints are supported for TLS 1.3 and partially supported for
+// TLS 1.2. TLS 1.2 resumption handshakes are not yet fully hinted. They will
+// still work, but may not be as efficient.
 
 // SSL_serialize_capabilities writes an opaque byte string to |out| describing
 // some of |ssl|'s capabilities. It returns one on success and zero on error.

@@ -769,7 +769,7 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
 // implicit tagging to make it a little more compact.
 //
 // HandshakeHints ::= SEQUENCE {
-//     serverRandom            [0] IMPLICIT OCTET STRING OPTIONAL,
+//     serverRandomTLS13       [0] IMPLICIT OCTET STRING OPTIONAL,
 //     keyShareHint            [1] IMPLICIT KeyShareHint OPTIONAL,
 //     signatureHint           [2] IMPLICIT SignatureHint OPTIONAL,
 //     -- At most one of decryptedPSKHint or ignorePSKHint may be present. It
@@ -779,6 +779,12 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
 //     decryptedPSKHint        [3] IMPLICIT OCTET STRING OPTIONAL,
 //     ignorePSKHint           [4] IMPLICIT NULL OPTIONAL,
 //     compressCertificateHint [5] IMPLICIT CompressCertificateHint OPTIONAL,
+//     -- TLS 1.2 and 1.3 use different server random hints because one contains
+//     -- a timestamp while the other doesn't. If the hint was generated
+//     -- assuming TLS 1.3 but we actually negotiate TLS 1.2, mixing the two
+//     -- will break this.
+//     serverRandomTLS12       [7] IMPLICIT OCTET STRING OPTIONAL,
+//     ecdheHint               [6] IMPLICIT ECDHEHint OPTIONAL
 // }
 //
 // KeyShareHint ::= SEQUENCE {
@@ -799,9 +805,15 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
 //     input                   OCTET STRING,
 //     compressed              OCTET STRING,
 // }
+//
+// ECDHEHint ::= SEQUENCE {
+//     groupId                 INTEGER,
+//     publicKey               OCTET STRING,
+//     privateKey              OCTET STRING,
+// }
 
 // HandshakeHints tags.
-static const unsigned kServerRandomTag = CBS_ASN1_CONTEXT_SPECIFIC | 0;
+static const unsigned kServerRandomTLS13Tag = CBS_ASN1_CONTEXT_SPECIFIC | 0;
 static const unsigned kKeyShareHintTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 static const unsigned kSignatureHintTag =
@@ -809,6 +821,8 @@ static const unsigned kSignatureHintTag =
 static const unsigned kDecryptedPSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 3;
 static const unsigned kIgnorePSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 4;
 static const unsigned kCompressCertificateTag = CBS_ASN1_CONTEXT_SPECIFIC | 5;
+static const unsigned kServerRandomTLS12Tag = CBS_ASN1_CONTEXT_SPECIFIC | 6;
+static const unsigned kECDHEHintTag = CBS_ASN1_CONSTRUCTED | 7;
 
 int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
   const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
@@ -823,10 +837,10 @@ int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
     return 0;
   }
 
-  if (!hints->server_random.empty()) {
-    if (!CBB_add_asn1(&seq, &child, kServerRandomTag) ||
-        !CBB_add_bytes(&child, hints->server_random.data(),
-                       hints->server_random.size())) {
+  if (!hints->server_random_tls13.empty()) {
+    if (!CBB_add_asn1(&seq, &child, kServerRandomTLS13Tag) ||
+        !CBB_add_bytes(&child, hints->server_random_tls13.data(),
+                       hints->server_random_tls13.size())) {
       return 0;
     }
   }
@@ -884,6 +898,26 @@ int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
     }
   }
 
+  if (!hints->server_random_tls12.empty()) {
+    if (!CBB_add_asn1(&seq, &child, kServerRandomTLS12Tag) ||
+        !CBB_add_bytes(&child, hints->server_random_tls12.data(),
+                       hints->server_random_tls12.size())) {
+      return 0;
+    }
+  }
+
+  if (hints->ecdhe_group_id != 0 && !hints->ecdhe_public_key.empty() &&
+      !hints->ecdhe_private_key.empty()) {
+    if (!CBB_add_asn1(&seq, &child, kECDHEHintTag) ||
+        !CBB_add_asn1_uint64(&child, hints->ecdhe_group_id) ||
+        !CBB_add_asn1_octet_string(&child, hints->ecdhe_public_key.data(),
+                                   hints->ecdhe_public_key.size()) ||
+        !CBB_add_asn1_octet_string(&child, hints->ecdhe_private_key.data(),
+                                   hints->ecdhe_private_key.size())) {
+      return 0;
+    }
+  }
+
   return CBB_flush(out);
 }
 
@@ -898,14 +932,14 @@ int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints, size_t hints_len) {
     return 0;
   }
 
-  CBS cbs, seq, server_random, key_share, signature_hint, ticket, ignore_psk,
-      cert_compression;
-  int has_server_random, has_key_share, has_signature_hint, has_ticket,
-      has_ignore_psk, has_cert_compression;
+  CBS cbs, seq, server_random_tls13, key_share, signature_hint, ticket,
+      ignore_psk, cert_compression, server_random_tls12, ecdhe;
+  int has_server_random_tls13, has_key_share, has_signature_hint, has_ticket,
+      has_ignore_psk, has_cert_compression, has_server_random_tls12, has_ecdhe;
   CBS_init(&cbs, hints, hints_len);
   if (!CBS_get_asn1(&cbs, &seq, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_optional_asn1(&seq, &server_random, &has_server_random,
-                             kServerRandomTag) ||
+      !CBS_get_optional_asn1(&seq, &server_random_tls13,
+                             &has_server_random_tls13, kServerRandomTLS13Tag) ||
       !CBS_get_optional_asn1(&seq, &key_share, &has_key_share,
                              kKeyShareHintTag) ||
       !CBS_get_optional_asn1(&seq, &signature_hint, &has_signature_hint,
@@ -914,12 +948,16 @@ int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints, size_t hints_len) {
       !CBS_get_optional_asn1(&seq, &ignore_psk, &has_ignore_psk,
                              kIgnorePSKTag) ||
       !CBS_get_optional_asn1(&seq, &cert_compression, &has_cert_compression,
-                             kCompressCertificateTag)) {
+                             kCompressCertificateTag) ||
+      !CBS_get_optional_asn1(&seq, &server_random_tls12,
+                             &has_server_random_tls12, kServerRandomTLS12Tag) ||
+      !CBS_get_optional_asn1(&seq, &ecdhe, &has_ecdhe, kECDHEHintTag)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_COULD_NOT_PARSE_HINTS);
     return 0;
   }
 
-  if (has_server_random && !hints_obj->server_random.CopyFrom(server_random)) {
+  if (has_server_random_tls13 &&
+      !hints_obj->server_random_tls13.CopyFrom(server_random_tls13)) {
     return 0;
   }
 
@@ -979,6 +1017,26 @@ int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints, size_t hints_len) {
       return 0;
     }
     hints_obj->cert_compression_alg_id = static_cast<uint16_t>(alg);
+  }
+
+  if (has_server_random_tls12 &&
+      !hints_obj->server_random_tls12.CopyFrom(server_random_tls12)) {
+    return 0;
+  }
+
+  if (has_ecdhe) {
+    uint64_t group_id;
+    CBS public_key, private_key;
+    if (!CBS_get_asn1_uint64(&ecdhe, &group_id) ||  //
+        group_id == 0 || group_id > 0xffff ||
+        !CBS_get_asn1(&ecdhe, &public_key, CBS_ASN1_OCTETSTRING) ||
+        !hints_obj->ecdhe_public_key.CopyFrom(public_key) ||
+        !CBS_get_asn1(&ecdhe, &private_key, CBS_ASN1_OCTETSTRING) ||
+        !hints_obj->ecdhe_private_key.CopyFrom(private_key)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_COULD_NOT_PARSE_HINTS);
+      return 0;
+    }
+    hints_obj->ecdhe_group_id = static_cast<uint16_t>(group_id);
   }
 
   ssl->s3->hs->hints = std::move(hints_obj);

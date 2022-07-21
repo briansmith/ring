@@ -1697,7 +1697,8 @@ enum handback_t {
 struct SSL_HANDSHAKE_HINTS {
   static constexpr bool kAllowUniquePtr = true;
 
-  Array<uint8_t> server_random;
+  Array<uint8_t> server_random_tls12;
+  Array<uint8_t> server_random_tls13;
 
   uint16_t key_share_group_id = 0;
   Array<uint8_t> key_share_public_key;
@@ -1714,6 +1715,10 @@ struct SSL_HANDSHAKE_HINTS {
   uint16_t cert_compression_alg_id = 0;
   Array<uint8_t> cert_compression_input;
   Array<uint8_t> cert_compression_output;
+
+  uint16_t ecdhe_group_id = 0;
+  Array<uint8_t> ecdhe_public_key;
+  Array<uint8_t> ecdhe_private_key;
 };
 
 struct SSL_HANDSHAKE {

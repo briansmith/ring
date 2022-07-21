@@ -201,6 +201,31 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t sigalg, Span<const uint8_t> in) {
   SSL *const ssl = hs->ssl;
+  SSL_HANDSHAKE_HINTS *const hints = hs->hints.get();
+  Array<uint8_t> spki;
+  if (hints) {
+    ScopedCBB spki_cbb;
+    if (!CBB_init(spki_cbb.get(), 64) ||
+        !EVP_marshal_public_key(spki_cbb.get(), hs->local_pubkey.get()) ||
+        !CBBFinishArray(spki_cbb.get(), &spki)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return ssl_private_key_failure;
+    }
+  }
+
+  // Replay the signature from handshake hints if available.
+  if (hints && !hs->hints_requested &&         //
+      sigalg == hints->signature_algorithm &&  //
+      in == hints->signature_input &&
+      MakeConstSpan(spki) == hints->signature_spki &&
+      !hints->signature.empty() &&  //
+      hints->signature.size() <= max_out) {
+    // Signature algorithm and input both match. Reuse the signature from hints.
+    *out_len = hints->signature.size();
+    OPENSSL_memcpy(out, hints->signature.data(), hints->signature.size());
+    return ssl_private_key_success;
+  }
+
   const SSL_PRIVATE_KEY_METHOD *key_method = hs->config->cert->key_method;
   EVP_PKEY *privatekey = hs->config->cert->privatekey.get();
   assert(!hs->can_release_private_key);
@@ -214,21 +239,33 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     if (hs->pending_private_key_op) {
       ret = key_method->complete(ssl, out, out_len, max_out);
     } else {
-      ret = key_method->sign(ssl, out, out_len, max_out,
-                             sigalg, in.data(), in.size());
+      ret = key_method->sign(ssl, out, out_len, max_out, sigalg, in.data(),
+                             in.size());
     }
     if (ret == ssl_private_key_failure) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PRIVATE_KEY_OPERATION_FAILED);
     }
     hs->pending_private_key_op = ret == ssl_private_key_retry;
-    return ret;
+    if (ret != ssl_private_key_success) {
+      return ret;
+    }
+  } else {
+    *out_len = max_out;
+    ScopedEVP_MD_CTX ctx;
+    if (!setup_ctx(ssl, ctx.get(), privatekey, sigalg, false /* sign */) ||
+        !EVP_DigestSign(ctx.get(), out, out_len, in.data(), in.size())) {
+      return ssl_private_key_failure;
+    }
   }
 
-  *out_len = max_out;
-  ScopedEVP_MD_CTX ctx;
-  if (!setup_ctx(ssl, ctx.get(), privatekey, sigalg, false /* sign */) ||
-      !EVP_DigestSign(ctx.get(), out, out_len, in.data(), in.size())) {
-    return ssl_private_key_failure;
+  // Save the hint if applicable.
+  if (hints && hs->hints_requested) {
+    hints->signature_algorithm = sigalg;
+    hints->signature_spki = std::move(spki);
+    if (!hints->signature_input.CopyFrom(in) ||
+        !hints->signature.CopyFrom(MakeConstSpan(out, *out_len))) {
+      return ssl_private_key_failure;
+    }
   }
   return ssl_private_key_success;
 }
