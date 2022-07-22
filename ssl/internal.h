@@ -2645,7 +2645,6 @@ struct SSL3_STATE {
   unsigned int wnum = 0;  // number of bytes sent so far
   int wpend_tot = 0;      // number bytes written
   int wpend_type = 0;
-  int wpend_ret = 0;  // number of bytes submitted
   const uint8_t *wpend_buf = nullptr;
 
   // read_shutdown is the shutdown state for the read half of the connection.
@@ -2725,9 +2724,6 @@ struct SSL3_STATE {
   // key_update_pending is true if we have a KeyUpdate acknowledgment
   // outstanding.
   bool key_update_pending : 1;
-
-  // wpend_pending is true if we have a pending write outstanding.
-  bool wpend_pending : 1;
 
   // early_data_accepted is true if early data was accepted by the server.
   bool early_data_accepted : 1;

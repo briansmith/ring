@@ -147,10 +147,10 @@ int tls_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
   // Ensure that if we end up with a smaller value of data to write out than
   // the the original len from a write which didn't complete for non-blocking
   // I/O and also somehow ended up avoiding the check for this in
-  // tls_write_pending/SSL_R_BAD_WRITE_RETRY as it must never be possible to
-  // end up with (len-tot) as a large number that will then promptly send
-  // beyond the end of the users buffer ... so we trap and report the error in
-  // a way the user will notice.
+  // do_tls_write/SSL_R_BAD_WRITE_RETRY as it must never be possible to end up
+  // with (len-tot) as a large number that will then promptly send beyond the
+  // end of the users buffer ... so we trap and report the error in a way the
+  // user will notice.
   if (len < 0 || (size_t)len < tot) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_LENGTH);
     return -1;
@@ -196,29 +196,31 @@ int tls_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
   }
 }
 
-static int tls_write_pending(SSL *ssl, int type, const uint8_t *in,
-                             unsigned int len) {
-  if (ssl->s3->wpend_tot > (int)len ||
-      (!(ssl->mode & SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER) &&
-       ssl->s3->wpend_buf != in) ||
-      ssl->s3->wpend_type != type) {
+// do_tls_write writes an SSL record of the given type.
+static int do_tls_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
+  // If there is a pending write, the retry must be consistent.
+  if (ssl->s3->wpend_tot > 0 &&
+      (ssl->s3->wpend_tot > (int)len ||
+       (!(ssl->mode & SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER) &&
+        ssl->s3->wpend_buf != in) ||
+       ssl->s3->wpend_type != type)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_WRITE_RETRY);
     return -1;
   }
 
+  // Flush any unwritten data to the transport. There may be data to flush even
+  // if |wpend_tot| is zero.
   int ret = ssl_write_buffer_flush(ssl);
   if (ret <= 0) {
     return ret;
   }
-  ssl->s3->wpend_pending = false;
-  return ssl->s3->wpend_ret;
-}
 
-// do_tls_write writes an SSL record of the given type.
-static int do_tls_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
-  // If there is still data from the previous record, flush it.
-  if (ssl->s3->wpend_pending) {
-    return tls_write_pending(ssl, type, in, len);
+  // If there is a pending write, we just completed it. Report it to the caller.
+  if (ssl->s3->wpend_tot > 0) {
+    ret = ssl->s3->wpend_tot;
+    ssl->s3->wpend_buf = nullptr;
+    ssl->s3->wpend_tot = 0;
+    return ret;
   }
 
   SSLBuffer *buf = &ssl->s3->write_buffer;
@@ -282,16 +284,19 @@ static int do_tls_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
   // acknowledgments.
   ssl->s3->key_update_pending = false;
 
-  // Memorize arguments so that tls_write_pending can detect bad write retries
-  // later.
-  ssl->s3->wpend_tot = len;
-  ssl->s3->wpend_buf = in;
-  ssl->s3->wpend_type = type;
-  ssl->s3->wpend_ret = len;
-  ssl->s3->wpend_pending = true;
+  // Flush the write buffer.
+  ret = ssl_write_buffer_flush(ssl);
+  if (ret <= 0) {
+    // Track the unfinished write.
+    if (len > 0) {
+      ssl->s3->wpend_tot = len;
+      ssl->s3->wpend_buf = in;
+      ssl->s3->wpend_type = type;
+    }
+    return ret;
+  }
 
-  // We now just need to write the buffer.
-  return tls_write_pending(ssl, type, in, len);
+  return len;
 }
 
 ssl_open_record_t tls_open_app_data(SSL *ssl, Span<uint8_t> *out,

@@ -1239,7 +1239,8 @@ void SSL_reset_early_data_reject(SSL *ssl) {
   // Discard any unfinished writes from the perspective of |SSL_write|'s
   // retry. The handshake will transparently flush out the pending record
   // (discarded by the server) to keep the framing correct.
-  ssl->s3->wpend_pending = false;
+  ssl->s3->wpend_buf = nullptr;
+  ssl->s3->wpend_tot = 0;
 }
 
 enum ssl_early_data_reason_t SSL_get_early_data_reason(const SSL *ssl) {

@@ -8332,5 +8332,63 @@ xNCwyMX9mtdXdQicOfNjIGUCD5OLV5PgHFPRKiHHioBAhg==
   }
 }
 
+TEST(SSLTest, EmptyWriteBlockedOnHandshakeData) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3. This test requires post-handshake NewSessionTicket.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  // Connect a client and server with tiny buffer between the two.
+  bssl::UniquePtr<SSL> client(SSL_new(client_ctx.get())),
+      server(SSL_new(server_ctx.get()));
+  ASSERT_TRUE(client);
+  ASSERT_TRUE(server);
+  SSL_set_connect_state(client.get());
+  SSL_set_accept_state(server.get());
+  BIO *bio1, *bio2;
+  ASSERT_TRUE(BIO_new_bio_pair(&bio1, 1, &bio2, 1));
+  SSL_set_bio(client.get(), bio1, bio1);
+  SSL_set_bio(server.get(), bio2, bio2);
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // We defer NewSessionTicket to the first write, so the server has a pending
+  // NewSessionTicket. See https://boringssl-review.googlesource.com/34948. This
+  // means an empty write will flush the ticket. However, the transport only
+  // allows one byte through, so this will fail with |SSL_ERROR_WANT_WRITE|.
+  int ret = SSL_write(server.get(), nullptr, 0);
+  ASSERT_EQ(ret, -1);
+  ASSERT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_WANT_WRITE);
+
+  // Attempting to write non-zero data should not trip |SSL_R_BAD_WRITE_RETRY|.
+  const uint8_t kData[] = {'h', 'e', 'l', 'l', 'o'};
+  ret = SSL_write(server.get(), kData, sizeof(kData));
+  ASSERT_EQ(ret, -1);
+  ASSERT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_WANT_WRITE);
+
+  // Byte by byte, the data should eventually get through.
+  uint8_t buf[sizeof(kData)];
+  for (;;) {
+    ret = SSL_read(client.get(), buf, sizeof(buf));
+    ASSERT_EQ(ret, -1);
+    ASSERT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
+
+    ret = SSL_write(server.get(), kData, sizeof(kData));
+    if (ret > 0) {
+      ASSERT_EQ(ret, 5);
+      break;
+    }
+    ASSERT_EQ(ret, -1);
+    ASSERT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_WANT_WRITE);
+  }
+
+  ret = SSL_read(client.get(), buf, sizeof(buf));
+  ASSERT_EQ(ret, static_cast<int>(sizeof(kData)));
+  ASSERT_EQ(Bytes(buf, ret), Bytes(kData));
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
