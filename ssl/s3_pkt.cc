@@ -143,7 +143,6 @@ int tls_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
   // TODO(davidben): Switch this logic to |size_t| and |bssl::Span|.
   assert(ssl->s3->wnum <= INT_MAX);
   unsigned tot = ssl->s3->wnum;
-  ssl->s3->wnum = 0;
 
   // Ensure that if we end up with a smaller value of data to write out than
   // the the original len from a write which didn't complete for non-blocking
@@ -188,6 +187,7 @@ int tls_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
     }
 
     if (ret == (int)n || (ssl->mode & SSL_MODE_ENABLE_PARTIAL_WRITE)) {
+      ssl->s3->wnum = 0;
       return tot + ret;
     }
 
