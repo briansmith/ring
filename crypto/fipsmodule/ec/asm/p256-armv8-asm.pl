@@ -72,56 +72,6 @@ $code.=<<___;
 .quad	0xccd1c8aaee00bc4f
 .asciz	"ECP_NISTZ256 for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 
-// void	ecp_nistz256_to_mont(BN_ULONG x0[4],const BN_ULONG x1[4]);
-.globl	ecp_nistz256_to_mont
-.type	ecp_nistz256_to_mont,%function
-.align	6
-ecp_nistz256_to_mont:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-32]!
-	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-
-	ldr	$bi,.LRR		// bp[0]
-	ldp	$a0,$a1,[$ap]
-	ldp	$a2,$a3,[$ap,#16]
-	ldr	$poly1,.Lpoly+8
-	ldr	$poly3,.Lpoly+24
-	adr	$bp,.LRR		// &bp[0]
-
-	bl	__ecp_nistz256_mul_mont
-
-	ldp	x19,x20,[sp,#16]
-	ldp	x29,x30,[sp],#32
-	AARCH64_VALIDATE_LINK_REGISTER
-	ret
-.size	ecp_nistz256_to_mont,.-ecp_nistz256_to_mont
-
-// void	ecp_nistz256_from_mont(BN_ULONG x0[4],const BN_ULONG x1[4]);
-.globl	ecp_nistz256_from_mont
-.type	ecp_nistz256_from_mont,%function
-.align	4
-ecp_nistz256_from_mont:
-	AARCH64_SIGN_LINK_REGISTER
-	stp	x29,x30,[sp,#-32]!
-	add	x29,sp,#0
-	stp	x19,x20,[sp,#16]
-
-	mov	$bi,#1			// bp[0]
-	ldp	$a0,$a1,[$ap]
-	ldp	$a2,$a3,[$ap,#16]
-	ldr	$poly1,.Lpoly+8
-	ldr	$poly3,.Lpoly+24
-	adr	$bp,.Lone		// &bp[0]
-
-	bl	__ecp_nistz256_mul_mont
-
-	ldp	x19,x20,[sp,#16]
-	ldp	x29,x30,[sp],#32
-	AARCH64_VALIDATE_LINK_REGISTER
-	ret
-.size	ecp_nistz256_from_mont,.-ecp_nistz256_from_mont
-
 // void	ecp_nistz256_mul_mont(BN_ULONG x0[4],const BN_ULONG x1[4],
 //					     const BN_ULONG x2[4]);
 .globl	ecp_nistz256_mul_mont
