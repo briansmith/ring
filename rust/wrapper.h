@@ -70,7 +70,6 @@
 #include "../include/openssl/thread.h"
 #include "../include/openssl/tls1.h"
 #include "../include/openssl/trust_token.h"
-#include "../include/openssl/type_check.h"
 #include "../include/openssl/x509.h"
 #include "../include/openssl/x509_vfy.h"
 #include "../include/openssl/x509v3.h"

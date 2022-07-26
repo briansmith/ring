@@ -64,22 +64,6 @@ extern "C" {
 #endif
 
 
-#if defined(__cplusplus) || (defined(_MSC_VER) && !defined(__clang__))
-// In C++ and non-clang MSVC, |static_assert| is a keyword.
-#define OPENSSL_STATIC_ASSERT(cond, msg) static_assert(cond, msg)
-#else
-// C11 defines the |_Static_assert| keyword and the |static_assert| macro in
-// assert.h. While the former is available at all versions in Clang and GCC, the
-// later depends on libc and, in glibc, depends on being built in C11 mode. We
-// require C11 mode to build the library but, for now, do not require it in
-// public headers. Use |_Static_assert| directly.
-//
-// TODO(davidben): In July 2022, if the C11 change has not been reverted, switch
-// all uses of this macro within the library to C11 |static_assert|. This macro
-// will only be necessary in public headers.
-#define OPENSSL_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
-#endif
-
 // CHECKED_CAST casts |p| from type |from| to type |to|.
 //
 // TODO(davidben): Although this macro is not public API and is unused in

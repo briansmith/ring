@@ -59,8 +59,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/type_check.h>
-
 #if defined(__cplusplus)
 extern "C" {
 #endif

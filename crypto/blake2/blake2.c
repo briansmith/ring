@@ -14,7 +14,7 @@
 
 #include <openssl/blake2.h>
 
-#include <openssl/type_check.h>
+#include <assert.h>
 
 #include "../internal.h"
 
@@ -61,7 +61,7 @@ static void blake2b_transform(
     size_t num_bytes, int is_final_block) {
   // https://tools.ietf.org/html/rfc7693#section-3.2
   uint64_t v[16];
-  OPENSSL_STATIC_ASSERT(sizeof(v) == sizeof(b2b->h) + sizeof(kIV), "");
+  static_assert(sizeof(v) == sizeof(b2b->h) + sizeof(kIV), "");
   OPENSSL_memcpy(v, b2b->h, sizeof(b2b->h));
   OPENSSL_memcpy(&v[8], kIV, sizeof(kIV));
 
@@ -97,7 +97,7 @@ static void blake2b_transform(
 void BLAKE2B256_Init(BLAKE2B_CTX *b2b) {
   OPENSSL_memset(b2b, 0, sizeof(BLAKE2B_CTX));
 
-  OPENSSL_STATIC_ASSERT(sizeof(kIV) == sizeof(b2b->h), "");
+  static_assert(sizeof(kIV) == sizeof(b2b->h), "");
   OPENSSL_memcpy(&b2b->h, kIV, sizeof(kIV));
 
   // https://tools.ietf.org/html/rfc7693#section-2.5
@@ -143,7 +143,7 @@ void BLAKE2B256_Final(uint8_t out[BLAKE2B256_DIGEST_LENGTH], BLAKE2B_CTX *b2b) {
                  sizeof(b2b->block.bytes) - b2b->block_used);
   blake2b_transform(b2b, b2b->block.words, b2b->block_used,
                     /*is_final_block=*/1);
-  OPENSSL_STATIC_ASSERT(BLAKE2B256_DIGEST_LENGTH <= sizeof(b2b->h), "");
+  static_assert(BLAKE2B256_DIGEST_LENGTH <= sizeof(b2b->h), "");
   memcpy(out, b2b->h, BLAKE2B256_DIGEST_LENGTH);
 }
 

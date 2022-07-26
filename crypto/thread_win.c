@@ -20,17 +20,17 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <openssl/mem.h>
-#include <openssl/type_check.h>
 
 
-OPENSSL_STATIC_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(SRWLOCK),
-                      "CRYPTO_MUTEX is too small");
-OPENSSL_STATIC_ASSERT(alignof(CRYPTO_MUTEX) >= alignof(SRWLOCK),
-                      "CRYPTO_MUTEX has insufficient alignment");
+static_assert(sizeof(CRYPTO_MUTEX) >= sizeof(SRWLOCK),
+              "CRYPTO_MUTEX is too small");
+static_assert(alignof(CRYPTO_MUTEX) >= alignof(SRWLOCK),
+              "CRYPTO_MUTEX has insufficient alignment");
 
 static BOOL CALLBACK call_once_init(INIT_ONCE *once, void *arg, void **out) {
   void (**init)(void) = (void (**)(void))arg;

@@ -23,7 +23,6 @@
 #include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/sha.h>
-#include <openssl/type_check.h>
 
 #include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
@@ -42,15 +41,12 @@ typedef struct {
   char implicit_iv;
 } AEAD_TLS_CTX;
 
-OPENSSL_STATIC_ASSERT(EVP_MAX_MD_SIZE < 256,
-                      "mac_key_len does not fit in uint8_t");
+static_assert(EVP_MAX_MD_SIZE < 256, "mac_key_len does not fit in uint8_t");
 
-OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                          sizeof(AEAD_TLS_CTX),
-                      "AEAD state is too small");
-OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                          alignof(AEAD_TLS_CTX),
-                      "AEAD state has insufficient alignment");
+static_assert(sizeof(((EVP_AEAD_CTX *)NULL)->state) >= sizeof(AEAD_TLS_CTX),
+              "AEAD state is too small");
+static_assert(alignof(union evp_aead_ctx_st_state) >= alignof(AEAD_TLS_CTX),
+              "AEAD state has insufficient alignment");
 
 static void aead_tls_cleanup(EVP_AEAD_CTX *ctx) {
   AEAD_TLS_CTX *tls_ctx = (AEAD_TLS_CTX *)&ctx->state;

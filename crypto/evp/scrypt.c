@@ -13,7 +13,6 @@
 
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/type_check.h>
 
 #include "../internal.h"
 
@@ -30,7 +29,7 @@
 // A block_t is a Salsa20 block.
 typedef struct { uint32_t words[16]; } block_t;
 
-OPENSSL_STATIC_ASSERT(sizeof(block_t) == 64, "block_t has padding");
+static_assert(sizeof(block_t) == 64, "block_t has padding");
 
 // salsa208_word_specification implements the Salsa20/8 core function, also
 // described in RFC 7914, section 3. It modifies the block at |inout|
@@ -171,7 +170,7 @@ int EVP_PBE_scrypt(const char *password, size_t password_len,
 
   // Allocate and divide up the scratch space. |max_mem| fits in a size_t, which
   // is no bigger than uint64_t, so none of these operations may overflow.
-  OPENSSL_STATIC_ASSERT(UINT64_MAX >= ((size_t)-1), "size_t exceeds uint64_t");
+  static_assert(UINT64_MAX >= ((size_t)-1), "size_t exceeds uint64_t");
   size_t B_blocks = p * 2 * r;
   size_t B_bytes = B_blocks * sizeof(block_t);
   size_t T_blocks = 2 * r;

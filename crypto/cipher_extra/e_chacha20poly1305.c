@@ -14,6 +14,7 @@
 
 #include <openssl/aead.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/chacha.h>
@@ -21,7 +22,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/poly1305.h>
-#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../chacha/internal.h"
@@ -32,12 +32,12 @@ struct aead_chacha20_poly1305_ctx {
   uint8_t key[32];
 };
 
-OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                          sizeof(struct aead_chacha20_poly1305_ctx),
-                      "AEAD state is too small");
-OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                          alignof(struct aead_chacha20_poly1305_ctx),
-                      "AEAD state has insufficient alignment");
+static_assert(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                  sizeof(struct aead_chacha20_poly1305_ctx),
+              "AEAD state is too small");
+static_assert(alignof(union evp_aead_ctx_st_state) >=
+                  alignof(struct aead_chacha20_poly1305_ctx),
+              "AEAD state has insufficient alignment");
 
 static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                        size_t key_len, size_t tag_len) {

@@ -60,8 +60,6 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/type_check.h>
-
 #include "../internal.h"
 
 
@@ -98,8 +96,8 @@ static uint8_t conv_bin2ascii(uint8_t a) {
   return ret;
 }
 
-OPENSSL_STATIC_ASSERT(sizeof(((EVP_ENCODE_CTX *)(NULL))->data) % 3 == 0,
-                      "data length must be a multiple of base64 chunk size");
+static_assert(sizeof(((EVP_ENCODE_CTX *)(NULL))->data) % 3 == 0,
+              "data length must be a multiple of base64 chunk size");
 
 int EVP_EncodedLength(size_t *out_len, size_t len) {
   if (len + 2 < len) {

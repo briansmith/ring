@@ -16,18 +16,18 @@
 
 #if defined(OPENSSL_PTHREADS)
 
+#include <assert.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <openssl/mem.h>
-#include <openssl/type_check.h>
 
 
-OPENSSL_STATIC_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(pthread_rwlock_t),
-                      "CRYPTO_MUTEX is too small");
-OPENSSL_STATIC_ASSERT(alignof(CRYPTO_MUTEX) >= alignof(pthread_rwlock_t),
-                      "CRYPTO_MUTEX has insufficient alignment");
+static_assert(sizeof(CRYPTO_MUTEX) >= sizeof(pthread_rwlock_t),
+              "CRYPTO_MUTEX is too small");
+static_assert(alignof(CRYPTO_MUTEX) >= alignof(pthread_rwlock_t),
+              "CRYPTO_MUTEX has insufficient alignment");
 
 void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
   if (pthread_rwlock_init((pthread_rwlock_t *) lock, NULL) != 0) {

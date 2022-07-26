@@ -46,8 +46,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * ==================================================================== */
 
-#include <openssl/type_check.h>
-
 #include <assert.h>
 #include <string.h>
 
@@ -70,8 +68,8 @@ static void ctr128_inc(uint8_t *counter) {
   } while (n);
 }
 
-OPENSSL_STATIC_ASSERT(16 % sizeof(crypto_word_t) == 0,
-                      "block cannot be divided into crypto_word_t");
+static_assert(16 % sizeof(crypto_word_t) == 0,
+              "block cannot be divided into crypto_word_t");
 
 // The input encrypted as though 128bit counter mode is being used.  The extra
 // state information to record how much of the 128bit block we have used is

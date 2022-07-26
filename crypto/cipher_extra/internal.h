@@ -57,10 +57,10 @@
 #ifndef OPENSSL_HEADER_CIPHER_EXTRA_INTERNAL_H
 #define OPENSSL_HEADER_CIPHER_EXTRA_INTERNAL_H
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include <openssl/base.h>
-#include <openssl/type_check.h>
 
 #include "../internal.h"
 
@@ -166,10 +166,10 @@ union chacha20_poly1305_seal_data {
 #if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) &&  \
     !defined(OPENSSL_NO_ASM)
 
-OPENSSL_STATIC_ASSERT(sizeof(union chacha20_poly1305_open_data) == 48,
-                      "wrong chacha20_poly1305_open_data size");
-OPENSSL_STATIC_ASSERT(sizeof(union chacha20_poly1305_seal_data) == 48 + 8 + 8,
-                      "wrong chacha20_poly1305_seal_data size");
+static_assert(sizeof(union chacha20_poly1305_open_data) == 48,
+              "wrong chacha20_poly1305_open_data size");
+static_assert(sizeof(union chacha20_poly1305_seal_data) == 48 + 8 + 8,
+              "wrong chacha20_poly1305_seal_data size");
 
 OPENSSL_INLINE int chacha20_poly1305_asm_capable(void) {
 #if defined(OPENSSL_X86_64)

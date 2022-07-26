@@ -108,12 +108,12 @@
 
 #include <openssl/bn.h>
 
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
 #include <openssl/err.h>
 #include <openssl/rand.h>
-#include <openssl/type_check.h>
 
 #include "../../internal.h"
 #include "../rand/internal.h"
@@ -199,8 +199,8 @@ static crypto_word_t bn_less_than_word_mask(const BN_ULONG *a, size_t len,
   }
 
   // |a| < |b| iff a[1..len-1] are all zero and a[0] < b.
-  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                        "crypto_word_t is too small");
+  static_assert(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                "crypto_word_t is too small");
   crypto_word_t mask = 0;
   for (size_t i = 1; i < len; i++) {
     mask |= a[i];

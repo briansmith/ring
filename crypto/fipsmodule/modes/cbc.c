@@ -49,8 +49,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/type_check.h>
-
 #include "internal.h"
 #include "../../internal.h"
 
@@ -120,8 +118,8 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   if ((inptr >= 32 && outptr <= inptr - 32) || inptr < outptr) {
     // If |out| is at least two blocks behind |in| or completely disjoint, there
     // is no need to decrypt to a temporary block.
-    OPENSSL_STATIC_ASSERT(16 % sizeof(crypto_word_t) == 0,
-                          "block cannot be evenly divided into words");
+    static_assert(16 % sizeof(crypto_word_t) == 0,
+                  "block cannot be evenly divided into words");
     const uint8_t *iv = ivec;
     while (len >= 16) {
       (*block)(in, out, key);
@@ -136,8 +134,8 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     }
     OPENSSL_memcpy(ivec, iv, 16);
   } else {
-    OPENSSL_STATIC_ASSERT(16 % sizeof(crypto_word_t) == 0,
-                          "block cannot be evenly divided into words");
+    static_assert(16 % sizeof(crypto_word_t) == 0,
+                  "block cannot be evenly divided into words");
 
     while (len >= 16) {
       (*block)(in, tmp, key);

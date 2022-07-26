@@ -70,10 +70,11 @@
 
 #include <openssl/base.h>
 
+#include <assert.h>
+
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/ex_data.h>
-#include <openssl/type_check.h>
 
 #include "../bn/internal.h"
 
@@ -91,8 +92,8 @@ extern "C" {
 #define EC_MAX_BYTES 66
 #define EC_MAX_WORDS ((EC_MAX_BYTES + BN_BYTES - 1) / BN_BYTES)
 
-OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
-                      "bn_*_small functions not usable");
+static_assert(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
+              "bn_*_small functions not usable");
 
 
 // Scalars.

@@ -21,18 +21,17 @@
 #include "fork_detect.h"
 
 #if defined(OPENSSL_LINUX)
+#include <assert.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <stdlib.h>
-
-#include <openssl/type_check.h>
 
 #include "../delocate.h"
 #include "../../internal.h"
 
 
 #if defined(MADV_WIPEONFORK)
-OPENSSL_STATIC_ASSERT(MADV_WIPEONFORK == 18, "MADV_WIPEONFORK is not 18");
+static_assert(MADV_WIPEONFORK == 18, "MADV_WIPEONFORK is not 18");
 #else
 #define MADV_WIPEONFORK 18
 #endif

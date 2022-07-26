@@ -56,6 +56,7 @@
 
 #include <openssl/bn.h>
 
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
@@ -416,8 +417,8 @@ int bn_resize_words(BIGNUM *bn, size_t words) {
 void bn_select_words(BN_ULONG *r, BN_ULONG mask, const BN_ULONG *a,
                      const BN_ULONG *b, size_t num) {
   for (size_t i = 0; i < num; i++) {
-    OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                          "crypto_word_t is too small");
+    static_assert(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                  "crypto_word_t is too small");
     r[i] = constant_time_select_w(mask, a[i], b[i]);
   }
 }

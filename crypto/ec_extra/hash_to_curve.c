@@ -17,7 +17,6 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
-#include <openssl/type_check.h>
 
 #include <assert.h>
 
@@ -61,7 +60,7 @@ static int expand_message_xmd(const EVP_MD *md, uint8_t *out, size_t out_len,
   EVP_MD_CTX_init(&ctx);
 
   // Long DSTs are hashed down to size. See section 5.3.3.
-  OPENSSL_STATIC_ASSERT(EVP_MAX_MD_SIZE < 256, "hashed DST still too large");
+  static_assert(EVP_MAX_MD_SIZE < 256, "hashed DST still too large");
   uint8_t dst_buf[EVP_MAX_MD_SIZE];
   if (dst_len >= 256) {
     static const char kPrefix[] = "H2C-OVERSIZE-DST-";

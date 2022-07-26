@@ -152,10 +152,10 @@ static inline aes_word_t aes_nohw_shift_right(aes_word_t a, aes_word_t i) {
 }
 #endif  // OPENSSL_SSE2
 
-OPENSSL_STATIC_ASSERT(AES_NOHW_BATCH_SIZE * 128 == 8 * 8 * sizeof(aes_word_t),
-                      "batch size does not match word size");
-OPENSSL_STATIC_ASSERT(AES_NOHW_WORD_SIZE == sizeof(aes_word_t),
-                      "AES_NOHW_WORD_SIZE is incorrect");
+static_assert(AES_NOHW_BATCH_SIZE * 128 == 8 * 8 * sizeof(aes_word_t),
+              "batch size does not match word size");
+static_assert(AES_NOHW_WORD_SIZE == sizeof(aes_word_t),
+              "AES_NOHW_WORD_SIZE is incorrect");
 
 
 // Block representations.

@@ -202,9 +202,8 @@ int ec_GFp_mont_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
 
   // Store the comb in affine coordinates to shrink the table. (This reduces
   // cache pressure and makes the constant-time selects faster.)
-  OPENSSL_STATIC_ASSERT(
-      OPENSSL_ARRAY_SIZE(comb) == OPENSSL_ARRAY_SIZE(out->comb),
-      "comb sizes did not match");
+  static_assert(OPENSSL_ARRAY_SIZE(comb) == OPENSSL_ARRAY_SIZE(out->comb),
+                "comb sizes did not match");
   return ec_jacobian_to_affine_batch(group, out->comb, comb,
                                      OPENSSL_ARRAY_SIZE(comb));
 }

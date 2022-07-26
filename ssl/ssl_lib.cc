@@ -166,6 +166,10 @@
 
 BSSL_NAMESPACE_BEGIN
 
+static_assert(SSL3_RT_MAX_ENCRYPTED_OVERHEAD >=
+                  SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD,
+              "max overheads are inconsistent");
+
 // |SSL_R_UNKNOWN_PROTOCOL| is no longer emitted, but continue to define it
 // to avoid downstream churn.
 OPENSSL_DECLARE_ERROR_REASON(SSL, UNKNOWN_PROTOCOL)

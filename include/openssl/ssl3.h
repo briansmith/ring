@@ -118,7 +118,6 @@
 #define OPENSSL_HEADER_SSL3_H
 
 #include <openssl/aead.h>
-#include <openssl/type_check.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -250,10 +249,6 @@ extern "C" {
 // nonces, so it includes both the AEAD overhead as well as the nonce.
 #define SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD \
     (EVP_AEAD_MAX_OVERHEAD + EVP_AEAD_MAX_NONCE_LENGTH)
-
-OPENSSL_STATIC_ASSERT(SSL3_RT_MAX_ENCRYPTED_OVERHEAD >=
-                          SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD,
-                      "max overheads are inconsistent");
 
 // SSL3_RT_MAX_COMPRESSED_LENGTH is an alias for
 // |SSL3_RT_MAX_PLAIN_LENGTH|. Compression is gone, so don't include the

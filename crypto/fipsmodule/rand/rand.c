@@ -25,7 +25,6 @@
 #include <openssl/chacha.h>
 #include <openssl/ctrdrbg.h>
 #include <openssl/mem.h>
-#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "fork_detect.h"
