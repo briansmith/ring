@@ -15,145 +15,21 @@
 #include <openssl/ctrdrbg.h>
 
 #include "../fipsmodule/rand/internal.h"
-#include "../internal.h"
 
 #if defined(BORINGSSL_FIPS)
-
-#define ENTROPY_READ_LEN \
-  (/* last_block size */ 16 + CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD)
-
-#if defined(OPENSSL_ANDROID)
-
-#include <errno.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
-
-static struct CRYPTO_STATIC_MUTEX g_socket_history_lock =
-    CRYPTO_STATIC_MUTEX_INIT;
-
-// socket_history_t enumerates whether the entropy daemon should be contacted
-// for a given entropy request. Values other than socket_not_yet_attempted are
-// sticky so if the first attempt to read from the daemon fails it's assumed
-// that the daemon is not present and no more attempts will be made. If the
-// first attempt is successful then attempts will be made forever more.
-enum socket_history_t {
-  // initial value, no connections to the entropy daemon have been made yet.
-  socket_not_yet_attempted = 0,
-  // reading from the entropy daemon was successful
-  socket_success,
-  // reading from the entropy daemon failed.
-  socket_failed,
-};
-
-enum socket_history_t g_socket_history = socket_not_yet_attempted;
-
-// DAEMON_RESPONSE_LEN is the number of bytes that the entropy daemon replies
-// with.
-#define DAEMON_RESPONSE_LEN 496
-
-OPENSSL_STATIC_ASSERT(ENTROPY_READ_LEN == DAEMON_RESPONSE_LEN,
-                      "entropy daemon response length mismatch");
-
-static int get_seed_from_daemon(uint8_t *out_entropy, size_t out_entropy_len) {
-  // |RAND_need_entropy| should never call this function for more than
-  // |DAEMON_RESPONSE_LEN| bytes.
-  if (out_entropy_len > DAEMON_RESPONSE_LEN) {
-    abort();
-  }
-
-  CRYPTO_STATIC_MUTEX_lock_read(&g_socket_history_lock);
-  const enum socket_history_t socket_history = g_socket_history;
-  CRYPTO_STATIC_MUTEX_unlock_read(&g_socket_history_lock);
-
-  if (socket_history == socket_failed) {
-    return 0;
-  }
-
-  int ret = 0;
-  const int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (sock < 0) {
-    goto out;
-  }
-
-  struct sockaddr_un sun;
-  memset(&sun, 0, sizeof(sun));
-  sun.sun_family = AF_UNIX;
-  static const char kSocketPath[] = "/dev/socket/prng_seeder";
-  OPENSSL_memcpy(sun.sun_path, kSocketPath, sizeof(kSocketPath));
-
-  if (connect(sock, (struct sockaddr *)&sun, sizeof(sun))) {
-    goto out;
-  }
-
-  uint8_t buffer[DAEMON_RESPONSE_LEN];
-  size_t done = 0;
-  while (done < sizeof(buffer)) {
-    ssize_t n;
-    do {
-      n = read(sock, buffer + done, sizeof(buffer) - done);
-    } while (n == -1 && errno == EINTR);
-
-    if (n < 1) {
-      goto out;
-    }
-    done += n;
-  }
-
-  if (done != DAEMON_RESPONSE_LEN) {
-    // The daemon should always write |DAEMON_RESPONSE_LEN| bytes on every
-    // connection.
-    goto out;
-  }
-
-  assert(out_entropy_len <= DAEMON_RESPONSE_LEN);
-  OPENSSL_memcpy(out_entropy, buffer, out_entropy_len);
-  ret = 1;
-
-out:
-  if (socket_history == socket_not_yet_attempted) {
-    CRYPTO_STATIC_MUTEX_lock_write(&g_socket_history_lock);
-    if (g_socket_history == socket_not_yet_attempted) {
-      g_socket_history = (ret == 0) ? socket_failed : socket_success;
-    }
-    CRYPTO_STATIC_MUTEX_unlock_write(&g_socket_history_lock);
-  }
-
-  close(sock);
-  return ret;
-}
-
-#else
-
-static int get_seed_from_daemon(uint8_t *out_entropy, size_t out_entropy_len) {
-  return 0;
-}
-
-#endif  // OPENSSL_ANDROID
 
 // RAND_need_entropy is called by the FIPS module when it has blocked because of
 // a lack of entropy. This signal is used as an indication to feed it more.
 void RAND_need_entropy(size_t bytes_needed) {
-  uint8_t buf[ENTROPY_READ_LEN];
+  uint8_t buf[/* last_block size */ 16 +
+              CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
   size_t todo = sizeof(buf);
   if (todo > bytes_needed) {
     todo = bytes_needed;
   }
 
   int want_additional_input;
-  if (get_seed_from_daemon(buf, todo)) {
-    want_additional_input = 1;
-  } else {
-    CRYPTO_get_seed_entropy(buf, todo, &want_additional_input);
-  }
-
-  if (boringssl_fips_break_test("CRNG")) {
-    // This breaks the "continuous random number generator test" defined in FIPS
-    // 140-2, section 4.9.2, and implemented in |rand_get_seed|.
-    OPENSSL_memset(buf, 0, todo);
-  }
-
+  CRYPTO_get_seed_entropy(buf, todo, &want_additional_input);
   RAND_load_entropy(buf, todo, want_additional_input);
 }
 
