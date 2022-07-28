@@ -8459,5 +8459,40 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
+// Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
+// a close_notify, down to |SSL_read| reporting |SSL_ERROR_ZERO_RETURN|.
+TEST(SSLTest, QuietShutdown) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  SSL_CTX_set_quiet_shutdown(server_ctx.get(), 1);
+  bssl::UniquePtr<SSL> client, server;
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Quiet shutdown is enabled, so |SSL_shutdown| on the server should
+  // immediately return that bidirectional shutdown "completed".
+  EXPECT_EQ(SSL_shutdown(server.get()), 1);
+
+  // Shut down writes so the client gets an EOF.
+  EXPECT_TRUE(BIO_shutdown_wr(SSL_get_wbio(server.get())));
+
+  // Confirm no close notify was actually sent. Client reads should report a
+  // transport EOF, not a close_notify. (Both have zero return, but
+  // |SSL_get_error| is different.)
+  char buf[1];
+  int ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+
+  // The server believes bidirectional shutdown completed, so reads should
+  // replay the (simulated) close_notify.
+  ret = SSL_read(server.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
