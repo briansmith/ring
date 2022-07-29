@@ -15,18 +15,24 @@
 #include <gtest/gtest.h>
 #include <stdlib.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/ctrdrbg.h>
 #include <openssl/rand.h>
 
-#include "internal.h"
 #include "getrandom_fillin.h"
+#include "internal.h"
 
-#if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && defined(USE_NR_getrandom)
+#if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
+    !defined(BORINGSSL_SHARED_LIBRARY) &&                    \
+    defined(OPENSSL_URANDOM) && defined(USE_NR_getrandom)
 
+#include <elf.h>
 #include <linux/random.h>
 #include <sys/ptrace.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
+#include <sys/uio.h>
+#include <sys/un.h>
 #include <sys/user.h>
 
 #include "fork_detect.h"
@@ -34,6 +40,23 @@
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
 #endif
+
+#if defined(OPENSSL_ANDROID)
+static const bool kIsAndroid = true;
+#else
+static const bool kIsAndroid = false;
+#endif
+
+#if defined(BORINGSSL_FIPS)
+static const bool kIsFIPS = true;
+#else
+static const bool kIsFIPS = false;
+#endif
+
+static const bool kUsesDaemon = kIsFIPS && kIsAndroid;
+
+// kDaemonWriteLength is the number of bytes that the entropy daemon writes.
+static const size_t kDaemonWriteLength = 496;
 
 // This test can be run with $OPENSSL_ia32cap=~0x4000000000000000 in order to
 // simulate the absence of RDRAND of machines that have it.
@@ -45,6 +68,10 @@ struct Event {
     kGetRandom,
     kOpen,
     kUrandomRead,
+    kSocket,
+    kConnect,
+    kSocketRead,
+    kSocketClose,
     kAbort,
   };
 
@@ -53,8 +80,7 @@ struct Event {
   bool operator==(const Event &other) const {
     return type == other.type && length == other.length &&
            flags == other.flags &&
-           ((filename == nullptr && other.filename == nullptr) ||
-            strcmp(filename, other.filename) == 0);
+           filename == other.filename;
   }
 
   static Event GetRandom(size_t length, unsigned flags) {
@@ -64,7 +90,7 @@ struct Event {
     return e;
   }
 
-  static Event Open(const char *filename) {
+  static Event Open(const std::string &filename) {
     Event e(Syscall::kOpen);
     e.filename = filename;
     return e;
@@ -73,6 +99,27 @@ struct Event {
   static Event UrandomRead(size_t length) {
     Event e(Syscall::kUrandomRead);
     e.length = length;
+    return e;
+  }
+
+  static Event Socket() {
+    Event e(Syscall::kSocket);
+    return e;
+  }
+
+  static Event Connect() {
+    Event e(Syscall::kConnect);
+    return e;
+  }
+
+  static Event SocketRead(size_t length) {
+    Event e(Syscall::kSocketRead);
+    e.length = length;
+    return e;
+  }
+
+  static Event SocketClose() {
+    Event e(Syscall::kSocketClose);
     return e;
   }
 
@@ -90,12 +137,25 @@ struct Event {
         break;
 
       case Syscall::kOpen:
-        snprintf(buf, sizeof(buf), "open(%s, _)", filename);
+        snprintf(buf, sizeof(buf), "open(%s, _)", filename.c_str());
         break;
 
       case Syscall::kUrandomRead:
         snprintf(buf, sizeof(buf), "read(urandom_fd, _, %zu)", length);
         break;
+
+      case Syscall::kSocket:
+        return "socket(UNIX, STREAM, _)";
+
+      case Syscall::kConnect:
+        return "connect(sock, _, _)";
+
+      case Syscall::kSocketRead:
+        snprintf(buf, sizeof(buf), "read(sock_fd, _, %zu)", length);
+        break;
+
+      case Syscall::kSocketClose:
+        return "close(sock)";
 
       case Syscall::kAbort:
         return "abort()";
@@ -107,7 +167,7 @@ struct Event {
   const Syscall type;
   size_t length = 0;
   unsigned flags = 0;
-  const char *filename = nullptr;
+  std::string filename;
 };
 
 static std::string ToString(const std::vector<Event> &trace) {
@@ -134,7 +194,224 @@ static const unsigned GETRANDOM_NOT_READY = 4;
 static const unsigned GETRANDOM_ERROR = 8;
 // Reading from /dev/urandom gives |EINVAL|.
 static const unsigned URANDOM_ERROR = 16;
-static const unsigned NEXT_FLAG = 32;
+static const unsigned SOCKET_ERROR = 32;
+static const unsigned CONNECT_ERROR = 64;
+static const unsigned SOCKET_READ_ERROR = 128;
+static const unsigned SOCKET_READ_SHORT = 256;
+static const unsigned NEXT_FLAG = 512;
+
+// regs_read fetches the registers of |child_pid| and writes them to |out_regs|.
+// That structure will contain at least the following members:
+//   syscall: the syscall number, if registers were read just before entering
+//       one.
+//   args[0..2]: syscall arguments, if registers were read just before
+//       entering one.
+//   ret: the syscall return value, if registers were read just after finishing
+//       one.
+//
+// This call returns true on success and false otherwise.
+static bool regs_read(struct regs *out_regs, int child_pid);
+
+// regs_set_ret sets the return value of the system call that |child_pid| has
+// just finished, to |ret|. It returns true on success and false otherwise.
+static bool regs_set_ret(int child_pid, int ret);
+
+// regs_break_syscall causes the system call that |child_pid| is about to enter
+// to fail to run.
+static bool regs_break_syscall(int child_pid, const struct regs *orig_regs);
+
+#if defined(OPENSSL_X86_64)
+
+struct regs {
+  uintptr_t syscall;
+  uintptr_t args[3];
+  uintptr_t ret;
+  struct user_regs_struct regs;
+};
+
+static bool regs_read(struct regs *out_regs, int child_pid) {
+  if (ptrace(PTRACE_GETREGS, child_pid, nullptr, &out_regs->regs) != 0) {
+    return false;
+  }
+
+  out_regs->syscall = out_regs->regs.orig_rax;
+  out_regs->ret = out_regs->regs.rax;
+  out_regs->args[0] = out_regs->regs.rdi;
+  out_regs->args[1] = out_regs->regs.rsi;
+  out_regs->args[2] = out_regs->regs.rdx;
+  return true;
+}
+
+static bool regs_set_ret(int child_pid, int ret) {
+  struct regs regs;
+  if (!regs_read(&regs, child_pid)) {
+    return false;
+  }
+  regs.regs.rax = ret;
+  return ptrace(PTRACE_SETREGS, child_pid, nullptr, &regs.regs) == 0;
+}
+
+static bool regs_break_syscall(int child_pid, const struct regs *orig_regs) {
+  // Replacing the syscall number with -1 doesn't work on AArch64 thus we set
+  // the first argument to -1, which suffices to break the syscalls that we care
+  // about here.
+  struct user_regs_struct regs;
+  memcpy(&regs, &orig_regs->regs, sizeof(regs));
+  regs.rdi = -1;
+  return ptrace(PTRACE_SETREGS, child_pid, nullptr, &regs) == 0;
+}
+
+#elif defined(OPENSSL_AARCH64)
+
+struct regs {
+  uintptr_t syscall;
+  uintptr_t args[3];
+  uintptr_t ret;
+  uint64_t regs[9];
+};
+
+static bool regs_read(struct regs *out_regs, int child_pid) {
+  struct iovec io;
+  io.iov_base = out_regs->regs;
+  io.iov_len = sizeof(out_regs->regs);
+  if (ptrace(PTRACE_GETREGSET, child_pid, NT_PRSTATUS, &io) != 0) {
+    return false;
+  }
+
+  out_regs->syscall = out_regs->regs[8];
+  out_regs->ret = out_regs->regs[0];
+  out_regs->args[0] = out_regs->regs[0];
+  out_regs->args[1] = out_regs->regs[1];
+  out_regs->args[2] = out_regs->regs[2];
+
+  return true;
+}
+
+static bool regs_set(int child_pid, const struct regs *new_regs) {
+  struct iovec io;
+  io.iov_base = (void *) new_regs->regs;
+  io.iov_len = sizeof(new_regs->regs);
+  return ptrace(PTRACE_SETREGSET, child_pid, NT_PRSTATUS, &io) == 0;
+}
+
+static bool regs_set_ret(int child_pid, int ret) {
+  struct regs regs;
+  if (!regs_read(&regs, child_pid)) {
+    return false;
+  }
+  regs.regs[0] = ret;
+  return regs_set(child_pid, &regs);
+}
+
+static bool regs_break_syscall(int child_pid, const struct regs *orig_regs) {
+  // Replacing the syscall number with -1 doesn't work on AArch64 thus we set
+  // the first argument to -1, which suffices to break the syscalls that we care
+  // about here.
+  struct regs copy = *orig_regs;
+  copy.regs[0] = -1;
+  return regs_set(child_pid, orig_regs);
+}
+
+#endif
+
+// SyscallResult is like std::optional<int>.
+// TODO: use std::optional when we can use C++17.
+class SyscallResult {
+ public:
+  SyscallResult &operator=(int value) {
+    has_value_ = true;
+    value_ = value;
+    return *this;
+  }
+
+  int value() const {
+    if (!has_value_) {
+      abort();
+    }
+    return value_;
+  }
+
+  bool has_value() const { return has_value_; }
+
+ private:
+  bool has_value_ = false;
+  int value_ = 0;
+};
+
+// memcpy_to_remote copies |n| bytes from |in_src| in the local address space,
+// to |dest| in the address space of |child_pid|.
+static void memcpy_to_remote(int child_pid, uint64_t dest, const void *in_src,
+                             size_t n) {
+  const uint8_t *src = reinterpret_cast<const uint8_t *>(in_src);
+
+  // ptrace always works with ill-defined "words", which appear to be 64-bit
+  // on 64-bit systems.
+#if !defined(OPENSSL_64_BIT)
+#error "This code probably doesn't work"
+#endif
+
+  while (n) {
+    const uintptr_t aligned_addr = dest & ~7;
+    const uintptr_t offset = dest - aligned_addr;
+    const size_t space = 8 - offset;
+    size_t todo = n;
+    if (todo > space) {
+      todo = space;
+    }
+
+    uint64_t word;
+    if (offset == 0 && todo == 8) {
+      word = CRYPTO_load_u64_le(src);
+    } else {
+      uint8_t bytes[8];
+      CRYPTO_store_u64_le(
+          bytes, ptrace(PTRACE_PEEKDATA, child_pid,
+                        reinterpret_cast<void *>(aligned_addr), nullptr));
+      memcpy(&bytes[offset], src, todo);
+      word = CRYPTO_load_u64_le(bytes);
+    }
+
+    ASSERT_EQ(0, ptrace(PTRACE_POKEDATA, child_pid,
+                        reinterpret_cast<void *>(aligned_addr),
+                        reinterpret_cast<void *>(word)));
+
+    src += todo;
+    n -= todo;
+    dest += todo;
+  }
+}
+
+static uint8_t get_byte_from_remote(int child_pid, uint64_t ptr) {
+  // ptrace always works with ill-defined "words", which appear to be 64-bit
+  // on 64-bit systems.
+#if !defined(OPENSSL_64_BIT)
+#error "This code probably doesn't work"
+#endif
+
+  const uintptr_t aligned_addr = ptr & ~7;
+  const uintptr_t offset = ptr - aligned_addr;
+
+  uint64_t word = ptrace(PTRACE_PEEKDATA, child_pid,
+                         reinterpret_cast<void *>(aligned_addr), 0);
+  uint8_t bytes[8];
+  CRYPTO_store_u64_le(bytes, word);
+  return bytes[offset];
+}
+
+static std::string get_string_from_remote(int child_pid, uint64_t ptr) {
+  std::string ret;
+
+  for (;;) {
+    const uint8_t byte = get_byte_from_remote(child_pid, ptr);
+    if (byte == 0) {
+      break;
+    }
+    ret.push_back((char)byte);
+    ptr++;
+  }
+
+  return ret;
+}
 
 // GetTrace runs |thunk| in a forked process and observes the resulting system
 // calls using ptrace. It simulates a variety of failures based on the contents
@@ -173,6 +450,10 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
   // process, if it opens it.
   int urandom_fd = -1;
 
+  // sock_fd tracks the file descriptor number for the socket to the entropy
+  // daemon, if one is opened.
+  int sock_fd = -1;
+
   for (;;) {
     // Advance the child to the next system call.
     ASSERT_EQ(0, ptrace(PTRACE_SYSCALL, child_pid, 0, 0));
@@ -187,64 +468,120 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     // Otherwise the only valid ptrace event is a system call stop.
     ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
 
-    struct user_regs_struct regs;
-    ASSERT_EQ(0, ptrace(PTRACE_GETREGS, child_pid, nullptr, &regs));
-    const auto syscall_number = regs.orig_rax;
+    struct regs regs;
+    ASSERT_TRUE(regs_read(&regs, child_pid));
 
     bool is_opening_urandom = false;
-    // inject_error is zero to indicate that the system call should run
+    bool is_socket_call = false;
+    bool is_socket_read = false;
+    uint64_t socket_read_bytes = 0;
+    // force_result is unset to indicate that the system call should run
     // normally. Otherwise it's, e.g. -EINVAL, to indicate that the system call
-    // should not run and that error should be injected on return.
-    int inject_error = 0;
+    // should not run and that the given value should be injected on return.
+    SyscallResult force_result;
 
-    switch (syscall_number) {
+    switch (regs.syscall) {
       case __NR_getrandom:
         if (flags & NO_GETRANDOM) {
-          inject_error = -ENOSYS;
+          force_result = -ENOSYS;
         } else if (flags & GETRANDOM_ERROR) {
-          inject_error = -EINVAL;
+          force_result = -EINVAL;
         } else if (flags & GETRANDOM_NOT_READY) {
-          if (regs.rdx & GRND_NONBLOCK) {
-            inject_error = -EAGAIN;
+          if (regs.args[2] & GRND_NONBLOCK) {
+            force_result = -EAGAIN;
           }
         }
         out_trace->push_back(
-            Event::GetRandom(/*length=*/regs.rsi, /*flags=*/regs.rdx));
+            Event::GetRandom(/*length=*/regs.args[1], /*flags=*/regs.args[2]));
         break;
 
       case __NR_openat:
-      case __NR_open: {
-        // It's assumed that any arguments to open(2) are constants in read-only
-        // memory and thus the pointer in the child's context will also be a
-        // valid pointer in our address space.
-        const char *filename = reinterpret_cast<const char *>(
-            (syscall_number == __NR_openat) ? regs.rsi : regs.rdi);
-        out_trace->push_back(Event::Open(filename));
-        is_opening_urandom = strcmp(filename, "/dev/urandom") == 0;
+#if defined(OPENSSL_X86_64)
+      case __NR_open:
+#endif
+      {
+        uintptr_t filename_ptr =
+            (regs.syscall == __NR_openat) ? regs.args[1] : regs.args[0];
+        const std::string filename = get_string_from_remote(child_pid, filename_ptr);
+        if (filename.find("/dev/__properties__/") == 0) {
+          // Android may try opening these files as part of SELinux support.
+          // They are ignored here.
+        } else {
+          out_trace->push_back(Event::Open(filename));
+        }
+        is_opening_urandom = (filename == "/dev/urandom");
         if (is_opening_urandom && (flags & NO_URANDOM)) {
-          inject_error = -ENOENT;
+          force_result = -ENOENT;
         }
         break;
       }
 
       case __NR_read: {
-        const int read_fd = regs.rdi;
+        const int read_fd = regs.args[0];
         if (urandom_fd >= 0 && urandom_fd == read_fd) {
-          out_trace->push_back(Event::UrandomRead(/*length=*/regs.rdx));
+          out_trace->push_back(Event::UrandomRead(/*length=*/regs.args[2]));
           if (flags & URANDOM_ERROR) {
-            inject_error = -EINVAL;
+            force_result = -EINVAL;
+          }
+        } else if (sock_fd >= 0 && sock_fd == read_fd) {
+          uint64_t length = regs.args[2];
+          out_trace->push_back(Event::SocketRead(length));
+          if (flags & SOCKET_READ_ERROR) {
+            force_result = -EINVAL;
+          } else {
+            is_socket_read = true;
+            socket_read_bytes = length;
+
+            if (flags & SOCKET_READ_SHORT) {
+              ASSERT_GT(socket_read_bytes, 0u);
+              socket_read_bytes--;
+              flags &= ~SOCKET_READ_SHORT;
+            }
           }
         }
         break;
       }
+
+      case __NR_close: {
+        if (sock_fd >= 0 && static_cast<int>(regs.args[0]) == sock_fd) {
+          out_trace->push_back(Event::SocketClose());
+          sock_fd = -1;
+        }
+        break;
+      }
+
+      case __NR_socket: {
+        const int family = regs.args[0];
+        const int type = regs.args[1];
+        if (family == AF_UNIX && type == SOCK_STREAM) {
+          out_trace->push_back(Event::Socket());
+          is_socket_call = true;
+          if (flags & SOCKET_ERROR) {
+            force_result = -EINVAL;
+          }
+        }
+        break;
+      }
+
+      case __NR_connect: {
+        const int connect_fd = regs.args[0];
+        if (sock_fd >= 0 && connect_fd == sock_fd) {
+          out_trace->push_back(Event::Connect());
+          if (flags & CONNECT_ERROR) {
+            force_result = -EINVAL;
+          } else {
+            // The test system might not have an entropy daemon running so
+            // inject a success result.
+            force_result = 0;
+          }
+        }
+
+        break;
+      }
     }
 
-    if (inject_error) {
-      // Replace the system call number with -1 to cause the kernel to ignore
-      // the call. The -ENOSYS will be replaced later with the value of
-      // |inject_error|.
-      regs.orig_rax = -1;
-      ASSERT_EQ(0, ptrace(PTRACE_SETREGS, child_pid, nullptr, &regs));
+    if (force_result.has_value()) {
+      ASSERT_TRUE(regs_break_syscall(child_pid, &regs));
     }
 
     ASSERT_EQ(0, ptrace(PTRACE_SYSCALL, child_pid, 0, 0));
@@ -261,15 +598,26 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     // and know that these events happen in pairs.
     ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
 
-    if (inject_error) {
-      if (inject_error != -ENOSYS) {
-        ASSERT_EQ(0, ptrace(PTRACE_GETREGS, child_pid, nullptr, &regs));
-        regs.rax = inject_error;
-        ASSERT_EQ(0, ptrace(PTRACE_SETREGS, child_pid, nullptr, &regs));
-      }
+    if (force_result.has_value()) {
+      ASSERT_TRUE(regs_set_ret(child_pid, force_result.value()));
     } else if (is_opening_urandom) {
-      ASSERT_EQ(0, ptrace(PTRACE_GETREGS, child_pid, nullptr, &regs));
-      urandom_fd = regs.rax;
+      ASSERT_TRUE(regs_read(&regs, child_pid));
+      urandom_fd = regs.ret;
+    } else if (is_socket_call) {
+      ASSERT_TRUE(regs_read(&regs, child_pid));
+      sock_fd = regs.ret;
+    } else if (is_socket_read) {
+      // Simulate a response from the entropy daemon since it might not be
+      // running on the current system.
+      uint8_t entropy[kDaemonWriteLength];
+      ASSERT_LE(socket_read_bytes, sizeof(entropy));
+
+      for (size_t i = 0; i < sizeof(entropy); i++) {
+        entropy[i] = i & 0xff;
+      }
+      memcpy_to_remote(child_pid, regs.args[1], entropy, socket_read_bytes);
+
+      ASSERT_TRUE(regs_set_ret(child_pid, socket_read_bytes));
     }
   }
 }
@@ -281,22 +629,43 @@ static void TestFunction() {
   RAND_bytes(&byte, sizeof(byte));
 }
 
-static bool have_fork_detection() {
-  return CRYPTO_get_fork_generation() != 0;
+static bool have_fork_detection() { return CRYPTO_get_fork_generation() != 0; }
+
+static bool AppendDaemonEvents(std::vector<Event> *events, unsigned flags) {
+  events->push_back(Event::Socket());
+  if (flags & SOCKET_ERROR) {
+    return false;
+  }
+
+  bool ret = false;
+  events->push_back(Event::Connect());
+  if (flags & CONNECT_ERROR) {
+    goto out;
+  }
+
+  events->push_back(Event::SocketRead(kDaemonWriteLength));
+  if (flags & SOCKET_READ_ERROR) {
+    goto out;
+  }
+
+  if (flags & SOCKET_READ_SHORT) {
+    events->push_back(Event::SocketRead(1));
+  }
+
+  ret = true;
+
+out:
+  events->push_back(Event::SocketClose());
+  return ret;
 }
 
 // TestFunctionPRNGModel is a model of how the urandom.c code will behave when
 // |TestFunction| is run. It should return the same trace of events that
 // |GetTrace| will observe the real code making.
 static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
-#if defined(BORINGSSL_FIPS)
-  static const bool is_fips = true;
-#else
-  static const bool is_fips = false;
-#endif
-
   std::vector<Event> ret;
   bool getrandom_ready = false;
+  const bool used_daemon = kUsesDaemon && AppendDaemonEvents(&ret, flags);
 
   // Probe for getrandom support
   ret.push_back(Event::GetRandom(1, GRND_NONBLOCK));
@@ -304,7 +673,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   std::function<bool(bool, size_t)> sysrand;
 
   if (flags & NO_GETRANDOM) {
-    if (is_fips) {
+    if (kIsFIPS) {
       // FIPS builds require getrandom.
       ret.push_back(Event::Abort());
       return ret;
@@ -349,13 +718,15 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
     };
   }
 
-  const size_t kSeedLength = CTR_DRBG_ENTROPY_LEN * (is_fips ? 10 : 1);
+  const size_t kSeedLength = CTR_DRBG_ENTROPY_LEN * (kIsFIPS ? 10 : 1);
   const size_t kAdditionalDataLength = 32;
 
   if (!have_rdrand()) {
     if ((!have_fork_detection() && !sysrand(true, kAdditionalDataLength)) ||
         // Initialise CRNGT.
-        !sysrand(true, kSeedLength + (is_fips ? 16 : 0)) ||
+        (!used_daemon && !sysrand(true, kSeedLength + (kIsFIPS ? 16 : 0))) ||
+        // Personalisation draw if the daemon was used.
+        (used_daemon && !sysrand(false, CTR_DRBG_ENTROPY_LEN)) ||
         // Second entropy draw.
         (!have_fork_detection() && !sysrand(true, kAdditionalDataLength))) {
       return ret;
@@ -368,7 +739,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       // Opportuntistic entropy draw in FIPS mode because RDRAND was used.
       // In non-FIPS mode it's just drawn from |CRYPTO_sysrand| in a blocking
       // way.
-      !sysrand(!is_fips, CTR_DRBG_ENTROPY_LEN) ||
+      !sysrand(!kIsFIPS, CTR_DRBG_ENTROPY_LEN) ||
       // Second entropy draw's additional data.
       (!have_fast_rdrand() && !have_fork_detection() &&
        !sysrand(false, kAdditionalDataLength))) {
@@ -410,11 +781,22 @@ TEST(URandomTest, Test) {
   SCOPED_TRACE(buf);
 
   for (unsigned flags = 0; flags < NEXT_FLAG; flags++) {
+    if (!kUsesDaemon && (flags & (SOCKET_ERROR | CONNECT_ERROR |
+                                  SOCKET_READ_ERROR | SOCKET_READ_SHORT))) {
+      // These cases are meaningless unless the code will try to use the entropy
+      // daemon.
+      continue;
+    }
+
     TRACE_FLAG(NO_GETRANDOM);
     TRACE_FLAG(NO_URANDOM);
     TRACE_FLAG(GETRANDOM_NOT_READY);
     TRACE_FLAG(GETRANDOM_ERROR);
     TRACE_FLAG(URANDOM_ERROR);
+    TRACE_FLAG(SOCKET_ERROR);
+    TRACE_FLAG(CONNECT_ERROR);
+    TRACE_FLAG(SOCKET_READ_ERROR);
+    TRACE_FLAG(SOCKET_READ_SHORT);
 
     const std::vector<Event> expected_trace = TestFunctionPRNGModel(flags);
     CheckInvariants(expected_trace);
@@ -445,5 +827,5 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-#endif  // X86_64 && !SHARED_LIBRARY && !UNSAFE_DETERMINISTIC_MODE &&
-        // USE_NR_getrandom
+#endif  // (X86_64 || AARCH64) && !SHARED_LIBRARY &&
+        // !UNSAFE_DETERMINISTIC_MODE && USE_NR_getrandom
