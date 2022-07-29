@@ -64,20 +64,21 @@
 
 #include "internal.h"
 
-int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d) {
+int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d,
+                       int allow_timezone_offset) {
   if (d->type != V_ASN1_UTCTIME) {
     return 0;
   }
   CBS cbs;
   CBS_init(&cbs, d->data, (size_t)d->length);
-  if (!CBS_parse_utc_time(&cbs, tm, /*allow_timezone_offset=*/1)) {
+  if (!CBS_parse_utc_time(&cbs, tm, allow_timezone_offset)) {
     return 0;
   }
   return 1;
 }
 
 int ASN1_UTCTIME_check(const ASN1_UTCTIME *d) {
-  return asn1_utctime_to_tm(NULL, d);
+  return asn1_utctime_to_tm(NULL, d, /*allow_timezone_offset=*/1);
 }
 
 int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str) {
@@ -148,7 +149,7 @@ int ASN1_UTCTIME_cmp_time_t(const ASN1_UTCTIME *s, time_t t) {
   struct tm stm, ttm;
   int day, sec;
 
-  if (!asn1_utctime_to_tm(&stm, s)) {
+  if (!asn1_utctime_to_tm(&stm, s, /*allow_timezone_offset=*/1)) {
     return -2;
   }
 

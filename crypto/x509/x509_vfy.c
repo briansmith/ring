@@ -1872,66 +1872,13 @@ int X509_cmp_current_time(const ASN1_TIME *ctm) {
 }
 
 int X509_cmp_time(const ASN1_TIME *ctm, time_t *cmp_time) {
-  static const size_t utctime_length = sizeof("YYMMDDHHMMSSZ") - 1;
-  static const size_t generalizedtime_length = sizeof("YYYYMMDDHHMMSSZ") - 1;
-  ASN1_TIME *asn1_cmp_time = NULL;
-  int i, day, sec, ret = 0;
-
-  // Note that ASN.1 allows much more slack in the time format than RFC 5280.
-  // In RFC 5280, the representation is fixed:
-  // UTCTime: YYMMDDHHMMSSZ
-  // GeneralizedTime: YYYYMMDDHHMMSSZ
-  //
-  // We do NOT currently enforce the following RFC 5280 requirement:
-  // "CAs conforming to this profile MUST always encode certificate
-  //  validity dates through the year 2049 as UTCTime; certificate validity
-  //  dates in 2050 or later MUST be encoded as GeneralizedTime."
-  switch (ctm->type) {
-    case V_ASN1_UTCTIME:
-      if (ctm->length != (int)(utctime_length)) {
-        return 0;
-      }
-      break;
-    case V_ASN1_GENERALIZEDTIME:
-      if (ctm->length != (int)(generalizedtime_length)) {
-        return 0;
-      }
-      break;
-    default:
-      return 0;
-  }
-
-  //*
-  // Verify the format: the ASN.1 functions we use below allow a more
-  // flexible format than what's mandated by RFC 5280.
-  // Digit and date ranges will be verified in the conversion methods.
-  for (i = 0; i < ctm->length - 1; i++) {
-    if (!isdigit(ctm->data[i])) {
-      return 0;
-    }
-  }
-  if (ctm->data[ctm->length - 1] != 'Z') {
+  int64_t ctm_time;
+  if (!ASN1_TIME_to_posix(ctm, &ctm_time)) {
     return 0;
   }
-
-  // There is ASN1_UTCTIME_cmp_time_t but no
-  // ASN1_GENERALIZEDTIME_cmp_time_t or ASN1_TIME_cmp_time_t,
-  // so we go through ASN.1
-  asn1_cmp_time = X509_time_adj(NULL, 0, cmp_time);
-  if (asn1_cmp_time == NULL) {
-    goto err;
-  }
-  if (!ASN1_TIME_diff(&day, &sec, ctm, asn1_cmp_time)) {
-    goto err;
-  }
-
-  // X509_cmp_time comparison is <=.
+  int64_t compare_time = (cmp_time == NULL) ? time(NULL) : *cmp_time;
   // The return value 0 is reserved for errors.
-  ret = (day >= 0 && sec >= 0) ? -1 : 1;
-
-err:
-  ASN1_TIME_free(asn1_cmp_time);
-  return ret;
+  return (ctm_time - compare_time <= 0) ? -1 : 1;
 }
 
 ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec) {

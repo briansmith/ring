@@ -229,7 +229,7 @@ add_library(
   asn1/tasn_new.c
   asn1/tasn_typ.c
   asn1/tasn_utl.c
-  asn1/time_support.c
+  asn1/posix_time.c
   base64/base64.c
   bio/bio.c
   bio/bio_mem.c

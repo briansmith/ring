@@ -187,7 +187,8 @@ int ASN1_TIME_set_string(ASN1_TIME *s, const char *str) {
   return 1;
 }
 
-static int asn1_time_to_tm(struct tm *tm, const ASN1_TIME *t) {
+static int asn1_time_to_tm(struct tm *tm, const ASN1_TIME *t,
+                           int allow_timezone_offset) {
   if (t == NULL) {
     time_t now_t;
     time(&now_t);
@@ -198,7 +199,7 @@ static int asn1_time_to_tm(struct tm *tm, const ASN1_TIME *t) {
   }
 
   if (t->type == V_ASN1_UTCTIME) {
-    return asn1_utctime_to_tm(tm, t);
+    return asn1_utctime_to_tm(tm, t, allow_timezone_offset);
   } else if (t->type == V_ASN1_GENERALIZEDTIME) {
     return asn1_generalizedtime_to_tm(tm, t);
   }
@@ -209,11 +210,35 @@ static int asn1_time_to_tm(struct tm *tm, const ASN1_TIME *t) {
 int ASN1_TIME_diff(int *out_days, int *out_seconds, const ASN1_TIME *from,
                    const ASN1_TIME *to) {
   struct tm tm_from, tm_to;
-  if (!asn1_time_to_tm(&tm_from, from)) {
+  if (!asn1_time_to_tm(&tm_from, from, /*allow_timezone_offset=*/1)) {
     return 0;
   }
-  if (!asn1_time_to_tm(&tm_to, to)) {
+  if (!asn1_time_to_tm(&tm_to, to, /*allow_timezone_offset=*/1)) {
     return 0;
   }
   return OPENSSL_gmtime_diff(out_days, out_seconds, &tm_from, &tm_to);
+}
+
+// The functions below do *not* permissively allow the use of four digit
+// timezone offsets in UTC times, as is done elsewhere in the code. They are
+// both new API, and used internally to X509_cmp_time. This is to discourage the
+// use of nonstandard times in new code, and to ensure that this code behaves
+// correctly in X509_cmp_time which historically did its own time validations
+// slightly different than the many other copies of X.509 time validation
+// sprinkled through the codebase. The custom checks in X509_cmp_time meant that
+// it did not allow four digit timezone offsets in UTC times.
+int ASN1_TIME_to_time_t(const ASN1_TIME *t, time_t *out_time) {
+  struct tm tm;
+  if (!asn1_time_to_tm(&tm, t, /*allow_timezone_offset=*/0)) {
+    return 0;
+  }
+  return OPENSSL_timegm(&tm, out_time);
+}
+
+int ASN1_TIME_to_posix(const ASN1_TIME *t, int64_t *out_time) {
+  struct tm tm;
+  if (!asn1_time_to_tm(&tm, t, /*allow_timezone_offset=*/0)) {
+    return 0;
+  }
+  return OPENSSL_tm_to_posix(&tm, out_time);
 }

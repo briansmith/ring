@@ -913,12 +913,12 @@ static bool ASN1Time_check_time_t(const ASN1_TIME *s, time_t t) {
       }
       break;
     case V_ASN1_UTCTIME:
-      if (!asn1_utctime_to_tm(&stm, s)) {
+      if (!asn1_utctime_to_tm(&stm, s, /*allow_timezone_offset=*/1)) {
         return false;
       }
       break;
     default:
-      return 0;
+      return false;
   }
   if (!OPENSSL_gmtime(&t, &ttm) ||
       !OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm)) {
@@ -955,6 +955,10 @@ TEST(ASN1Test, SetTime) {
     {0, "19700101000000Z", "700101000000Z", "Jan  1 00:00:00 1970 GMT"},
     {981173106, "20010203040506Z", "010203040506Z", "Feb  3 04:05:06 2001 GMT"},
     {951804000, "20000229060000Z", "000229060000Z", "Feb 29 06:00:00 2000 GMT"},
+    // NASA says this is the correct time for posterity.
+    {-16751025, "19690621025615Z", "690621025615Z", "Jun 21 02:56:15 1969 GMT"},
+    // -1 is sometimes used as an error value. Ensure we correctly handle it.
+    {-1, "19691231235959Z", "691231235959Z", "Dec 31 23:59:59 1969 GMT"},
 #if defined(OPENSSL_64_BIT)
     // TODO(https://crbug.com/boringssl/416): These cases overflow 32-bit
     // |time_t| and do not consistently work on 32-bit platforms. For now,
@@ -970,14 +974,8 @@ TEST(ASN1Test, SetTime) {
 #endif
   };
   for (const auto &t : kTests) {
+    time_t tt;
     SCOPED_TRACE(t.time);
-#if defined(OPENSSL_WINDOWS)
-    // Windows |time_t| functions can only handle 1970 through 3000. See
-    // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/gmtime-s-gmtime32-s-gmtime64-s?view=msvc-160
-    if (t.time < 0 || int64_t{t.time} > 32535215999) {
-      continue;
-    }
-#endif
 
     bssl::UniquePtr<ASN1_UTCTIME> utc(ASN1_UTCTIME_set(nullptr, t.time));
     if (t.utc) {
@@ -985,6 +983,8 @@ TEST(ASN1Test, SetTime) {
       EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(utc.get()));
       EXPECT_EQ(t.utc, ASN1StringToStdString(utc.get()));
       EXPECT_TRUE(ASN1Time_check_time_t(utc.get(), t.time));
+      EXPECT_EQ(ASN1_TIME_to_time_t(utc.get(), &tt), 1);
+      EXPECT_EQ(tt, t.time);
       EXPECT_EQ(PrintStringToBIO(utc.get(), &ASN1_UTCTIME_print), t.printed);
       EXPECT_EQ(PrintStringToBIO(utc.get(), &ASN1_TIME_print), t.printed);
     } else {
@@ -998,6 +998,8 @@ TEST(ASN1Test, SetTime) {
       EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(generalized.get()));
       EXPECT_EQ(t.generalized, ASN1StringToStdString(generalized.get()));
       EXPECT_TRUE(ASN1Time_check_time_t(generalized.get(), t.time));
+      EXPECT_EQ(ASN1_TIME_to_time_t(generalized.get(), &tt), 1);
+      EXPECT_EQ(tt, t.time);
       EXPECT_EQ(
           PrintStringToBIO(generalized.get(), &ASN1_GENERALIZEDTIME_print),
           t.printed);
@@ -1018,6 +1020,8 @@ TEST(ASN1Test, SetTime) {
         EXPECT_EQ(t.generalized, ASN1StringToStdString(choice.get()));
       }
       EXPECT_TRUE(ASN1Time_check_time_t(choice.get(), t.time));
+      EXPECT_EQ(ASN1_TIME_to_time_t(choice.get(), &tt), 1);
+      EXPECT_EQ(tt, t.time);
     } else {
       EXPECT_FALSE(choice);
     }
@@ -2253,6 +2257,53 @@ TEST(ASN1Test, StringEncoding) {
     inp = t.in.data();
     bssl::UniquePtr<ASN1_TYPE> any(d2i_ASN1_TYPE(nullptr, &inp, t.in.size()));
     EXPECT_EQ(t.valid, any != nullptr);
+  }
+}
+
+// Exhaustively test POSIX time conversions for every day across the millenium.
+TEST(ASN1Test, POSIXTime) {
+  const int kDaysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+  // Test the epoch explicitly, to confirm our baseline is correct.
+  struct tm civil_time;
+  ASSERT_TRUE(OPENSSL_posix_to_tm(0, &civil_time));
+  ASSERT_EQ(civil_time.tm_year + 1900, 1970);
+  ASSERT_EQ(civil_time.tm_mon + 1, 1);
+  ASSERT_EQ(civil_time.tm_mday, 1);
+  ASSERT_EQ(civil_time.tm_hour, 0);
+  ASSERT_EQ(civil_time.tm_min, 0);
+  ASSERT_EQ(civil_time.tm_sec, 0);
+
+  int64_t posix_time = -11676096000;  // Sat, 01 Jan 1600 00:00:00 +0000
+  for (int year = 1600; year < 3000; year++) {
+    SCOPED_TRACE(year);
+    bool is_leap_year = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+    for (int month = 1; month <= 12; month++) {
+      SCOPED_TRACE(month);
+      int days = kDaysInMonth[month - 1];
+      if (month == 2 && is_leap_year) {
+        days++;
+      }
+      for (int day = 1; day <= days; day++) {
+        SCOPED_TRACE(day);
+        SCOPED_TRACE(posix_time);
+
+        ASSERT_TRUE(OPENSSL_posix_to_tm(posix_time, &civil_time));
+        ASSERT_EQ(civil_time.tm_year + 1900, year);
+        ASSERT_EQ(civil_time.tm_mon + 1, month);
+        ASSERT_EQ(civil_time.tm_mday, day);
+        ASSERT_EQ(civil_time.tm_hour, 0);
+        ASSERT_EQ(civil_time.tm_min, 0);
+        ASSERT_EQ(civil_time.tm_sec, 0);
+
+        int64_t posix_time_computed;
+        ASSERT_TRUE(OPENSSL_tm_to_posix(&civil_time, &posix_time_computed));
+        ASSERT_EQ(posix_time_computed, posix_time);
+
+        // Advance to the next day.
+        posix_time += 24 * 60 * 60;
+      }
+    }
   }
 }
 

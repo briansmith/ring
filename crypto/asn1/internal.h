@@ -71,16 +71,38 @@ extern "C" {
 
 // Wrapper functions for time functions.
 
-// OPENSSL_gmtime wraps |gmtime_r|. See the manual page for that function.
+// OPENSSL_posix_to_tm converts a int64_t POSIX time value in |time| whuch must
+// be in the range of year 0000 to 9999 to a broken out time value in |tm|. It
+// returns one on success and zero on error.
+OPENSSL_EXPORT int OPENSSL_posix_to_tm(int64_t time, struct tm *out_tm);
+
+// OPENSSL_tm_to_posix converts a time value between the years 0 and 9999 in
+// |tm| to a POSIX time value in |out|. One is returned on success, zero is
+// returned on failure. It is a failure if the tm contains out of range values.
+OPENSSL_EXPORT int OPENSSL_tm_to_posix(const struct tm *tm, int64_t *out);
+
+// OPENSSL_gmtime converts a time_t value in |time| which must be in the range
+// of year 0000 to 9999 to a broken out time value in |tm|. On success |tm| is
+// returned. On failure NULL is returned.
 OPENSSL_EXPORT struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result);
 
-// OPENSSL_gmtime_adj updates |tm| by adding |offset_day| days and |offset_sec|
-// seconds.
+// OPENSSL_timegm converts a time value between the years 0 and 9999 in |tm| to
+// a time_t value in |out|. One is returned on success, zero is returned on
+// failure. It is a failure if the converted time can not be represented in a
+// time_t, or if the tm contains out of range values.
+OPENSSL_EXPORT int OPENSSL_timegm(const struct tm *tm, time_t *out);
+
+// OPENSSL_gmtime_adj returns one on success, and updates |tm| by adding
+// |offset_day| days and |offset_sec| seconds. It returns zero on failure. |tm|
+// must be in the range of year 0000 to 9999 both before and after the update or
+// a failure will be returned.
 int OPENSSL_gmtime_adj(struct tm *tm, int offset_day, long offset_sec);
 
-// OPENSSL_gmtime_diff calculates the difference between |from| and |to| and
-// outputs the difference as a number of days and seconds in |*out_days| and
-// |*out_secs|.
+// OPENSSL_gmtime_diff calculates the difference between |from| and |to|. It
+// returns one, and outputs the difference as a number of days and seconds in
+// |*out_days| and |*out_secs| on success. It returns zero on failure.  Both
+// |from| and |to| must be in the range of year 0000 to 9999 or a failure will
+// be returned.
 OPENSSL_EXPORT int OPENSSL_gmtime_diff(int *out_days, int *out_secs,
                                        const struct tm *from,
                                        const struct tm *to);
@@ -126,7 +148,8 @@ typedef struct ASN1_ENCODING_st {
   unsigned alias_only_on_next_parse : 1;
 } ASN1_ENCODING;
 
-OPENSSL_EXPORT int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
+OPENSSL_EXPORT int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d,
+                                      int allow_timezone_offset);
 OPENSSL_EXPORT int asn1_generalizedtime_to_tm(struct tm *tm,
                                               const ASN1_GENERALIZEDTIME *d);
 
