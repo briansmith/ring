@@ -439,7 +439,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 	argNodes := instructionArgs(instruction.next)
 
 	switch instructionName {
-	case "cset", "csel", "csetm", "cneg", "csinv", "cinc", "csinc", "csneg":
+	case "ccmn", "ccmp", "cinc", "cinv", "cneg", "csel", "cset", "csetm", "csinc", "csinv", "csneg":
 		// These functions are special because they take a condition-code name as
 		// an argument and that looks like a symbol reference.
 		d.writeNode(statement)
