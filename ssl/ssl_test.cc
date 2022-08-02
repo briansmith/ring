@@ -8332,6 +8332,15 @@ xNCwyMX9mtdXdQicOfNjIGUCD5OLV5PgHFPRKiHHioBAhg==
   }
 }
 
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
+TEST(SSLTest, EmptyClientCAList) {
+  // Use /dev/null on POSIX systems as an empty file.
+  bssl::UniquePtr<STACK_OF(X509_NAME)> names(
+      SSL_load_client_CA_file("/dev/null"));
+  EXPECT_FALSE(names);
+}
+#endif  // OPENSSL_LINUX || OPENSSL_APPLE
+
 TEST(SSLTest, EmptyWriteBlockedOnHandshakeData) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =

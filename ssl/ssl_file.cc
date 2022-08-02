@@ -128,25 +128,8 @@ static int xname_cmp(const X509_NAME **a, const X509_NAME **b) {
   return X509_NAME_cmp(*a, *b);
 }
 
-STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
-  bssl::UniquePtr<STACK_OF(X509_NAME)> ret(sk_X509_NAME_new_null());
-  if (ret == nullptr ||
-      !SSL_add_file_cert_subjects_to_stack(ret.get(), file)) {
-    return nullptr;
-  }
-  return ret.release();
-}
-
-int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
-                                        const char *file) {
-  bssl::UniquePtr<BIO> in(BIO_new_file(file, "r"));
-  if (in == nullptr) {
-    return 0;
-  }
-  return SSL_add_bio_cert_subjects_to_stack(out, in.get());
-}
-
-int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
+static int add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio,
+                                          bool allow_empty) {
   // This function historically sorted |out| after every addition and skipped
   // duplicates. This implementation preserves that behavior, but only sorts at
   // the end, to avoid a quadratic running time. Existing duplicates in |out|
@@ -165,15 +148,20 @@ int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
   RestoreCmpFunc restore = {out, sk_X509_NAME_set_cmp_func(out, xname_cmp)};
 
   sk_X509_NAME_sort(out);
+  bool first = true;
   for (;;) {
     bssl::UniquePtr<X509> x509(
         PEM_read_bio_X509(bio, nullptr, nullptr, nullptr));
     if (x509 == nullptr) {
+      if (first && !allow_empty) {
+        return 0;
+      }
       // TODO(davidben): This ignores PEM syntax errors. It should only succeed
       // on |PEM_R_NO_START_LINE|.
       ERR_clear_error();
       break;
     }
+    first = false;
 
     X509_NAME *subject = X509_get_subject_name(x509.get());
     // Skip if already present in |out|. Duplicates in |to_append| will be
@@ -209,6 +197,33 @@ int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
   // maintaining the sorted list.
   sk_X509_NAME_sort(out);
   return 1;
+}
+
+STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
+  bssl::UniquePtr<BIO> in(BIO_new_file(file, "r"));
+  if (in == nullptr) {
+    return nullptr;
+  }
+  bssl::UniquePtr<STACK_OF(X509_NAME)> ret(sk_X509_NAME_new_null());
+  if (ret == nullptr ||  //
+      !add_bio_cert_subjects_to_stack(ret.get(), in.get(),
+                                      /*allow_empty=*/false)) {
+    return nullptr;
+  }
+  return ret.release();
+}
+
+int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
+                                        const char *file) {
+  bssl::UniquePtr<BIO> in(BIO_new_file(file, "r"));
+  if (in == nullptr) {
+    return 0;
+  }
+  return SSL_add_bio_cert_subjects_to_stack(out, in.get());
+}
+
+int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
+  return add_bio_cert_subjects_to_stack(out, bio, /*allow_empty=*/true);
 }
 
 int SSL_use_certificate_file(SSL *ssl, const char *file, int type) {
