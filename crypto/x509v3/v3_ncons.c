@@ -478,7 +478,7 @@ static int nc_email(const ASN1_IA5STRING *eml, const ASN1_IA5STRING *base) {
   }
   int base_has_at = CBS_get_until_first(&base_cbs, &base_local, '@');
 
-  // Special case: inital '.' is RHS match
+  // Special case: initial '.' is RHS match
   if (!base_has_at && starts_with(&base_cbs, '.')) {
     if (has_suffix_case(&eml_cbs, &base_cbs)) {
       return X509_V_OK;
@@ -541,7 +541,7 @@ static int nc_uri(const ASN1_IA5STRING *uri, const ASN1_IA5STRING *base) {
     return X509_V_ERR_UNSUPPORTED_NAME_SYNTAX;
   }
 
-  // Special case: inital '.' is RHS match
+  // Special case: initial '.' is RHS match
   if (starts_with(&base_cbs, '.')) {
     if (has_suffix_case(&host, &base_cbs)) {
       return X509_V_OK;
