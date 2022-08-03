@@ -3976,6 +3976,16 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
                                                       : ssl_ticket_aead_error;
   } else if (is_psk && hints && !hs->hints_requested && hints->ignore_psk) {
     result = ssl_ticket_aead_ignore_ticket;
+  } else if (!is_psk && hints && !hs->hints_requested &&
+             !hints->decrypted_ticket.empty()) {
+    if (plaintext.CopyFrom(hints->decrypted_ticket)) {
+      result = ssl_ticket_aead_success;
+      *out_renew_ticket = hints->renew_ticket;
+    } else {
+      result = ssl_ticket_aead_error;
+    }
+  } else if (!is_psk && hints && !hs->hints_requested && hints->ignore_ticket) {
+    result = ssl_ticket_aead_ignore_ticket;
   } else if (ssl->session_ctx->ticket_aead_method != NULL) {
     result = ssl_decrypt_ticket_with_method(hs, &plaintext, out_renew_ticket,
                                             ticket);
@@ -3994,12 +4004,24 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     }
   }
 
-  if (is_psk && hints && hs->hints_requested) {
+  if (hints && hs->hints_requested) {
     if (result == ssl_ticket_aead_ignore_ticket) {
-      hints->ignore_psk = true;
-    } else if (result == ssl_ticket_aead_success &&
-               !hints->decrypted_psk.CopyFrom(plaintext)) {
-      return ssl_ticket_aead_error;
+      if (is_psk) {
+        hints->ignore_psk = true;
+      } else {
+        hints->ignore_ticket = true;
+      }
+    } else if (result == ssl_ticket_aead_success) {
+      if (is_psk) {
+        if (!hints->decrypted_psk.CopyFrom(plaintext)) {
+          return ssl_ticket_aead_error;
+        }
+      } else {
+        if (!hints->decrypted_ticket.CopyFrom(plaintext)) {
+          return ssl_ticket_aead_error;
+        }
+        hints->renew_ticket = *out_renew_ticket;
+      }
     }
   }
 

@@ -686,8 +686,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
       return false;
     }
 
-    // TODO(davidben): Make handshake hints skip TLS 1.2 ticket decryption.
-    if (SSL_version(ssl) == TLS1_3_VERSION && state->ticket_decrypt_done) {
+    if (state->ticket_decrypt_done) {
       fprintf(stderr,
               "Performed ticket decryption, but hint should have skipped it\n");
       return false;

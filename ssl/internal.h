@@ -1719,6 +1719,10 @@ struct SSL_HANDSHAKE_HINTS {
   uint16_t ecdhe_group_id = 0;
   Array<uint8_t> ecdhe_public_key;
   Array<uint8_t> ecdhe_private_key;
+
+  Array<uint8_t> decrypted_ticket;
+  bool renew_ticket = false;
+  bool ignore_ticket = false;
 };
 
 struct SSL_HANDSHAKE {
