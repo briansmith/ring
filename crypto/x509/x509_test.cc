@@ -184,26 +184,6 @@ DSLfRgaQwcb2gg2xpDFoG+W0vc6O651uF23WGt5JaFFJJxqjII05IexfCNhuPmp4
 -----END CERTIFICATE-----
 )";
 
-// kExamplePSSCert is an example RSA-PSS self-signed certificate, signed with
-// the default hash functions.
-static const char kExamplePSSCert[] = R"(
------BEGIN CERTIFICATE-----
-MIICYjCCAcagAwIBAgIJAI3qUyT6SIfzMBIGCSqGSIb3DQEBCjAFogMCAWowRTEL
-MAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVy
-bmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0xNDEwMDkxOTA5NTVaFw0xNTEwMDkxOTA5
-NTVaMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQK
-DBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwgZ8wDQYJKoZIhvcNAQEBBQADgY0A
-MIGJAoGBAPi4bIO0vNmoV8CltFl2jFQdeesiUgR+0zfrQf2D+fCmhRU0dXFahKg8
-0u9aTtPel4rd/7vPCqqGkr64UOTNb4AzMHYTj8p73OxaymPHAyXvqIqDWHYg+hZ3
-13mSYwFIGth7Z/FSVUlO1m5KXNd6NzYM3t2PROjCpywrta9kS2EHAgMBAAGjUDBO
-MB0GA1UdDgQWBBTQQfuJQR6nrVrsNF1JEflVgXgfEzAfBgNVHSMEGDAWgBTQQfuJ
-QR6nrVrsNF1JEflVgXgfEzAMBgNVHRMEBTADAQH/MBIGCSqGSIb3DQEBCjAFogMC
-AWoDgYEASUy2RZcgNbNQZA0/7F+V1YTLEXwD16bm+iSVnzGwtexmQVEYIZG74K/w
-xbdZQdTbpNJkp1QPjPfh0zsatw6dmt5QoZ8K8No0DjR9dgf+Wvv5WJvJUIQBoAVN
-Z0IL+OQFz6+LcTHxD27JJCebrATXZA0wThGTQDm7crL+a+SujBY=
------END CERTIFICATE-----
-)";
-
 // kBadPSSCertPEM is a self-signed RSA-PSS certificate with bad parameters.
 static const char kBadPSSCertPEM[] = R"(
 -----BEGIN CERTIFICATE-----
@@ -1750,13 +1730,46 @@ TEST(X509Test, PrintGeneralName) {
 }
 
 TEST(X509Test, TestPSS) {
-  bssl::UniquePtr<X509> cert(CertFromPEM(kExamplePSSCert));
-  ASSERT_TRUE(cert);
+  static const char *kGoodCerts[] = {
+      "crypto/x509/test/pss_sha256.pem",
+      "crypto/x509/test/pss_sha384.pem",
+      "crypto/x509/test/pss_sha512.pem",
+      // We accept inputs with and without explicit NULLs. See RFC 4055,
+      // section 2.1.
+      "crypto/x509/test/pss_sha256_omit_nulls.pem",
+      // Although invalid, we tolerate an explicit trailerField value. See the
+      // certificates in cl/362617931.
+      "crypto/x509/test/pss_sha256_explicit_trailer.pem",
+  };
+  for (const char *path : kGoodCerts) {
+    SCOPED_TRACE(path);
+    bssl::UniquePtr<X509> cert = CertFromPEM(GetTestData(path).c_str());
+    ASSERT_TRUE(cert);
+    bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+    ASSERT_TRUE(pkey);
+    EXPECT_TRUE(X509_verify(cert.get(), pkey.get()));
+  }
 
-  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
-  ASSERT_TRUE(pkey);
-
-  ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
+  static const char *kBadCerts[] = {
+      "crypto/x509/test/pss_sha1_explicit.pem",
+      "crypto/x509/test/pss_sha1_mgf1_syntax_error.pem",
+      "crypto/x509/test/pss_sha1.pem",
+      "crypto/x509/test/pss_sha224.pem",
+      "crypto/x509/test/pss_sha256_mgf1_sha384.pem",
+      "crypto/x509/test/pss_sha256_mgf1_syntax_error.pem",
+      "crypto/x509/test/pss_sha256_salt_overflow.pem",
+      "crypto/x509/test/pss_sha256_salt31.pem",
+      "crypto/x509/test/pss_sha256_unknown_mgf.pem",
+      "crypto/x509/test/pss_sha256_wrong_trailer.pem",
+  };
+  for (const char *path : kBadCerts) {
+    SCOPED_TRACE(path);
+    bssl::UniquePtr<X509> cert = CertFromPEM(GetTestData(path).c_str());
+    ASSERT_TRUE(cert);
+    bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+    ASSERT_TRUE(pkey);
+    EXPECT_FALSE(X509_verify(cert.get(), pkey.get()));
+  }
 }
 
 TEST(X509Test, TestPSSBadParameters) {
@@ -1857,18 +1870,10 @@ TEST(X509Test, RSASign) {
       EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()));
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pkey.get()));
 
-  // Test RSA-PSS with custom parameters.
-  md_ctx.Reset();
-  EVP_PKEY_CTX *pkey_ctx;
-  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha256(), NULL,
-                                 pkey.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()));
-  ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pkey.get()));
-
   // RSA-PSS with salt length matching hash length should work when passing in
   // -1 or the value explicitly.
   md_ctx.Reset();
+  EVP_PKEY_CTX *pkey_ctx;
   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha256(), NULL,
                                  pkey.get()));
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
@@ -1881,6 +1886,37 @@ TEST(X509Test, RSASign) {
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pkey_ctx, 32));
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pkey.get()));
+
+  // RSA-PSS with SHA-1 is not supported.
+  md_ctx.Reset();
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha1(), NULL,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pkey_ctx, -1));
+  bssl::UniquePtr<X509> cert = CertFromPEM(kLeafPEM);
+  ASSERT_TRUE(cert);
+  EXPECT_FALSE(X509_sign_ctx(cert.get(), md_ctx.get()));
+
+  // RSA-PSS with mismatched hashes is not supported.
+  md_ctx.Reset();
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha256(), NULL,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pkey_ctx, -1));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()));
+  cert = CertFromPEM(kLeafPEM);
+  ASSERT_TRUE(cert);
+  EXPECT_FALSE(X509_sign_ctx(cert.get(), md_ctx.get()));
+
+  // RSA-PSS with the wrong salt length is not supported.
+  md_ctx.Reset();
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha256(), NULL,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pkey_ctx, 33));
+  cert = CertFromPEM(kLeafPEM);
+  ASSERT_TRUE(cert);
+  EXPECT_FALSE(X509_sign_ctx(cert.get(), md_ctx.get()));
 }
 
 // Test the APIs for manually signing a certificate.
