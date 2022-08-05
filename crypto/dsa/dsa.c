@@ -130,6 +130,8 @@ int DSA_up_ref(DSA *dsa) {
   return 1;
 }
 
+unsigned DSA_bits(const DSA *dsa) { return BN_num_bits(dsa->p); }
+
 const BIGNUM *DSA_get0_pub_key(const DSA *dsa) { return dsa->pub_key; }
 
 const BIGNUM *DSA_get0_priv_key(const DSA *dsa) { return dsa->priv_key; }

@@ -89,6 +89,9 @@ OPENSSL_EXPORT int DH_up_ref(DH *dh);
 
 // Properties.
 
+// DH_bits returns the size of |dh|'s group modulus, in bits.
+OPENSSL_EXPORT unsigned DH_bits(const DH *dh);
+
 // DH_get0_pub_key returns |dh|'s public key.
 OPENSSL_EXPORT const BIGNUM *DH_get0_pub_key(const DH *dh);
 

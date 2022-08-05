@@ -94,6 +94,9 @@ OPENSSL_EXPORT int DSA_up_ref(DSA *dsa);
 
 // Properties.
 
+// DSA_bits returns the size of |dsa|'s group modulus, in bits.
+OPENSSL_EXPORT unsigned DSA_bits(const DSA *dsa);
+
 // DSA_get0_pub_key returns |dsa|'s public key.
 OPENSSL_EXPORT const BIGNUM *DSA_get0_pub_key(const DSA *dsa);
 
