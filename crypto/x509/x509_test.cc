@@ -1470,6 +1470,23 @@ TEST(X509Test, TestCRL) {
             Verify(leaf.get(), {root.get()}, {root.get()},
                    {algorithm_mismatch_crl2.get()}, X509_V_FLAG_CRL_CHECK));
 
+  // The CRL is valid for a month.
+  EXPECT_EQ(X509_V_ERR_CRL_HAS_EXPIRED,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
+                   X509_V_FLAG_CRL_CHECK, [](X509_VERIFY_PARAM *param) {
+                     X509_VERIFY_PARAM_set_time(
+                         param, kReferenceTime + 2 * 30 * 24 * 3600);
+                   }));
+
+  // X509_V_FLAG_NO_CHECK_TIME suppresses the validity check.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
+                   X509_V_FLAG_CRL_CHECK | X509_V_FLAG_NO_CHECK_TIME,
+                   [](X509_VERIFY_PARAM *param) {
+                     X509_VERIFY_PARAM_set_time(
+                         param, kReferenceTime + 2 * 30 * 24 * 3600);
+                   }));
+
   // Parsing kBadExtensionCRL should fail.
   EXPECT_FALSE(CRLFromPEM(kBadExtensionCRL));
 }
@@ -3564,6 +3581,95 @@ TEST(X509Test, TrustedFirst) {
              {}, /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
                X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
              }));
+}
+
+// Test that notBefore and notAfter checks work correctly.
+TEST(X509Test, Expiry) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  // The following are measured in seconds relative to kReferenceTime. The
+  // validity periods are staggered so we can independently test both leaf and
+  // root time checks.
+  const time_t kSecondsInDay = 24 * 3600;
+  const time_t kRootStart = -30 * kSecondsInDay;
+  const time_t kIntermediateStart = -20 * kSecondsInDay;
+  const time_t kLeafStart = -10 * kSecondsInDay;
+  const time_t kIntermediateEnd = 10 * kSecondsInDay;
+  const time_t kLeafEnd = 20 * kSecondsInDay;
+  const time_t kRootEnd = 30 * kSecondsInDay;
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notBefore(root.get()), kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/kRootStart));
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(root.get()), kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/kRootEnd));
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> intermediate =
+      MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notBefore(intermediate.get()),
+                            kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/kIntermediateStart));
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(intermediate.get()),
+                            kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/kIntermediateEnd));
+  ASSERT_TRUE(X509_sign(intermediate.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notBefore(leaf.get()), kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/kLeafStart));
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(leaf.get()), kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/kLeafEnd));
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  struct VerifyAt {
+    time_t time;
+    void operator()(X509_VERIFY_PARAM *param) const {
+      X509_VERIFY_PARAM_set_time(param, time);
+    }
+  };
+
+  for (bool check_time : {true, false}) {
+    SCOPED_TRACE(check_time);
+    unsigned long flags = check_time ? 0 : X509_V_FLAG_NO_CHECK_TIME;
+    int not_yet_valid = check_time ? X509_V_ERR_CERT_NOT_YET_VALID : X509_V_OK;
+    int has_expired = check_time ? X509_V_ERR_CERT_HAS_EXPIRED : X509_V_OK;
+
+    EXPECT_EQ(not_yet_valid,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
+                     VerifyAt{kReferenceTime + kRootStart - 1}));
+    EXPECT_EQ(not_yet_valid,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
+                     VerifyAt{kReferenceTime + kIntermediateStart - 1}));
+    EXPECT_EQ(not_yet_valid,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
+                     VerifyAt{kReferenceTime + kLeafStart - 1}));
+
+    EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                                {}, flags, VerifyAt{kReferenceTime}));
+
+    EXPECT_EQ(has_expired,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
+                     VerifyAt{kReferenceTime + kRootEnd + 1}));
+    EXPECT_EQ(has_expired,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
+                     VerifyAt{kReferenceTime + kIntermediateEnd + 1}));
+    EXPECT_EQ(has_expired,
+              Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, flags,
+                     VerifyAt{kReferenceTime + kLeafEnd + 1}));
+  }
 }
 
 // kConstructedBitString is an X.509 certificate where the signature is encoded

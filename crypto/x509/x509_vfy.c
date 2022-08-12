@@ -971,18 +971,21 @@ err:
 // Check CRL times against values in X509_STORE_CTX
 
 static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
-  time_t *ptime;
-  int i;
+  if (ctx->param->flags & X509_V_FLAG_NO_CHECK_TIME) {
+    return 1;
+  }
+
   if (notify) {
     ctx->current_crl = crl;
   }
+  time_t *ptime;
   if (ctx->param->flags & X509_V_FLAG_USE_CHECK_TIME) {
     ptime = &ctx->param->check_time;
   } else {
     ptime = NULL;
   }
 
-  i = X509_cmp_time(X509_CRL_get0_lastUpdate(crl), ptime);
+  int i = X509_cmp_time(X509_CRL_get0_lastUpdate(crl), ptime);
   if (i == 0) {
     if (!notify) {
       return 0;
@@ -1739,16 +1742,18 @@ static int check_policy(X509_STORE_CTX *ctx) {
 }
 
 static int check_cert_time(X509_STORE_CTX *ctx, X509 *x) {
-  time_t *ptime;
-  int i;
+  if (ctx->param->flags & X509_V_FLAG_NO_CHECK_TIME) {
+    return 1;
+  }
 
+  time_t *ptime;
   if (ctx->param->flags & X509_V_FLAG_USE_CHECK_TIME) {
     ptime = &ctx->param->check_time;
   } else {
     ptime = NULL;
   }
 
-  i = X509_cmp_time(X509_get_notBefore(x), ptime);
+  int i = X509_cmp_time(X509_get_notBefore(x), ptime);
   if (i == 0) {
     ctx->error = X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD;
     ctx->current_cert = x;
