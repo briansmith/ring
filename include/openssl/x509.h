@@ -2684,8 +2684,21 @@ OPENSSL_EXPORT void X509_STORE_CTX_zero(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_free(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
                                        X509 *x509, STACK_OF(X509) *chain);
+
+// X509_STORE_CTX_set0_trusted_stack configures |ctx| to trust the certificates
+// in |sk|. |sk| must remain valid for the duration of |ctx|.
+//
+// WARNING: This function differs from most |set0| functions in that it does not
+// take ownership of its input. The caller is required to ensure the lifetimes
+// are consistent.
+OPENSSL_EXPORT void X509_STORE_CTX_set0_trusted_stack(X509_STORE_CTX *ctx,
+                                                      STACK_OF(X509) *sk);
+
+// X509_STORE_CTX_trusted_stack is a deprecated alias for
+// |X509_STORE_CTX_set0_trusted_stack|.
 OPENSSL_EXPORT void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx,
                                                  STACK_OF(X509) *sk);
+
 OPENSSL_EXPORT void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx);

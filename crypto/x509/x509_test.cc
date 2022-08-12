@@ -1145,7 +1145,7 @@ static int Verify(
     return X509_V_ERR_UNSPECIFIED;
   }
 
-  X509_STORE_CTX_trusted_stack(ctx.get(), roots_stack.get());
+  X509_STORE_CTX_set0_trusted_stack(ctx.get(), roots_stack.get());
   X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
 
   X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
