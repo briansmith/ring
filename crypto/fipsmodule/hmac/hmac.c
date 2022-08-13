@@ -224,9 +224,9 @@ int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
   return ret;
 }
 
-size_t HMAC_size(const HMAC_CTX *ctx) {
-  return EVP_MD_size(ctx->md);
-}
+size_t HMAC_size(const HMAC_CTX *ctx) { return EVP_MD_size(ctx->md); }
+
+const EVP_MD *HMAC_CTX_get_md(const HMAC_CTX *ctx) { return ctx->md; }
 
 int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src) {
   if (!EVP_MD_CTX_copy_ex(&dest->i_ctx, &src->i_ctx) ||

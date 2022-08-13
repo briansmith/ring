@@ -137,6 +137,9 @@ OPENSSL_EXPORT int HMAC_Final(HMAC_CTX *ctx, uint8_t *out,
 // |ctx|. On entry, |ctx| must have been setup with |HMAC_Init_ex|.
 OPENSSL_EXPORT size_t HMAC_size(const HMAC_CTX *ctx);
 
+// HMAC_CTX_get_md returns |ctx|'s hash function.
+OPENSSL_EXPORT const EVP_MD *HMAC_CTX_get_md(const HMAC_CTX *ctx);
+
 // HMAC_CTX_copy_ex sets |dest| equal to |src|. On entry, |dest| must have been
 // initialised by calling |HMAC_CTX_init|. It returns one on success and zero
 // on error.
