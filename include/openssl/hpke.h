@@ -51,6 +51,14 @@ OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
 // will be one of the |EVP_HPKE_KEM_*| constants.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 
+// EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
+// shared secret, for all supported KEMs in this library.
+#define EVP_HPKE_MAX_ENC_LENGTH 32
+
+// EVP_HPKE_KEM_enc_len returns the length of the "enc", the encapsulated shared
+// secret, for |kem|. This value will be at most |EVP_HPKE_MAX_ENC_LENGTH|.
+OPENSSL_EXPORT size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem);
+
 // The following constants are KDF identifiers.
 #define EVP_HPKE_HKDF_SHA256 0x0001
 
@@ -182,16 +190,13 @@ OPENSSL_EXPORT EVP_HPKE_CTX *EVP_HPKE_CTX_new(void);
 // created with |EVP_HPKE_CTX_new|.
 OPENSSL_EXPORT void EVP_HPKE_CTX_free(EVP_HPKE_CTX *ctx);
 
-// EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
-// shared secret, for all supported KEMs in this library.
-#define EVP_HPKE_MAX_ENC_LENGTH 32
-
 // EVP_HPKE_CTX_setup_sender implements the SetupBaseS HPKE operation. It
 // encapsulates a shared secret for |peer_public_key| and sets up |ctx| as a
 // sender context. It writes the encapsulated shared secret to |out_enc| and
 // sets |*out_enc_len| to the number of bytes written. It writes at most
 // |max_enc| bytes and fails if the buffer is too small. Setting |max_enc| to at
-// least |EVP_HPKE_MAX_ENC_LENGTH| will ensure the buffer is large enough.
+// least |EVP_HPKE_MAX_ENC_LENGTH| will ensure the buffer is large enough. An
+// exact size may also be determined by |EVP_PKEY_KEM_enc_len|.
 //
 // This function returns one on success and zero on error. Note that
 // |peer_public_key| may be invalid, in which case this function will return an
@@ -292,6 +297,10 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *ctx, uint8_t *out,
 // up as a sender.
 OPENSSL_EXPORT size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *ctx);
 
+// EVP_HPKE_CTX_kem returns |ctx|'s configured KEM, or NULL if the context has
+// not been set up.
+OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_CTX_kem(const EVP_HPKE_CTX *ctx);
+
 // EVP_HPKE_CTX_aead returns |ctx|'s configured AEAD, or NULL if the context has
 // not been set up.
 OPENSSL_EXPORT const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *ctx);
@@ -307,6 +316,7 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_HPKE_CTX_kdf(const EVP_HPKE_CTX *ctx);
 // but accessing or modifying their fields is forbidden.
 
 struct evp_hpke_ctx_st {
+  const EVP_HPKE_KEM *kem;
   const EVP_HPKE_AEAD *aead;
   const EVP_HPKE_KDF *kdf;
   EVP_AEAD_CTX aead_ctx;

@@ -40,6 +40,7 @@ struct evp_hpke_kem_st {
   size_t public_key_len;
   size_t private_key_len;
   size_t seed_len;
+  size_t enc_len;
   int (*init_key)(EVP_HPKE_KEY *key, const uint8_t *priv_key,
                   size_t priv_key_len);
   int (*generate_key)(EVP_HPKE_KEY *key);
@@ -216,6 +217,7 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
       /*public_key_len=*/X25519_PUBLIC_VALUE_LEN,
       /*private_key_len=*/X25519_PRIVATE_KEY_LEN,
       /*seed_len=*/X25519_PRIVATE_KEY_LEN,
+      /*enc_len=*/X25519_PUBLIC_VALUE_LEN,
       x25519_init_key,
       x25519_generate_key,
       x25519_encap_with_seed,
@@ -225,6 +227,8 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
 }
 
 uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem) { return kem->id; }
+
+size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem) { return kem->enc_len; }
 
 void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key) {
   OPENSSL_memset(key, 0, sizeof(EVP_HPKE_KEY));
@@ -351,9 +355,9 @@ static int hpke_build_suite_id(const EVP_HPKE_CTX *ctx,
                                uint8_t out[HPKE_SUITE_ID_LEN]) {
   CBB cbb;
   int ret = CBB_init_fixed(&cbb, out, HPKE_SUITE_ID_LEN) &&
-            add_label_string(&cbb, "HPKE") &&
-            CBB_add_u16(&cbb, EVP_HPKE_DHKEM_X25519_HKDF_SHA256) &&
-            CBB_add_u16(&cbb, ctx->kdf->id) &&
+            add_label_string(&cbb, "HPKE") &&   //
+            CBB_add_u16(&cbb, ctx->kem->id) &&  //
+            CBB_add_u16(&cbb, ctx->kdf->id) &&  //
             CBB_add_u16(&cbb, ctx->aead->id);
   CBB_cleanup(&cbb);
   return ret;
@@ -487,6 +491,7 @@ int EVP_HPKE_CTX_setup_sender_with_seed_for_testing(
     size_t seed_len) {
   EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 1;
+  ctx->kem = kem;
   ctx->kdf = kdf;
   ctx->aead = aead;
   uint8_t shared_secret[MAX_SHARED_SECRET_LEN];
@@ -509,12 +514,13 @@ int EVP_HPKE_CTX_setup_recipient(EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key,
                                  size_t info_len) {
   EVP_HPKE_CTX_zero(ctx);
   ctx->is_sender = 0;
+  ctx->kem = key->kem;
   ctx->kdf = kdf;
   ctx->aead = aead;
   uint8_t shared_secret[MAX_SHARED_SECRET_LEN];
   size_t shared_secret_len;
   if (!key->kem->decap(key, shared_secret, &shared_secret_len, enc, enc_len) ||
-      !hpke_key_schedule(ctx, shared_secret, sizeof(shared_secret), info,
+      !hpke_key_schedule(ctx, shared_secret, shared_secret_len, info,
                          info_len)) {
     EVP_HPKE_CTX_cleanup(ctx);
     return 0;
@@ -607,6 +613,10 @@ int EVP_HPKE_CTX_export(const EVP_HPKE_CTX *ctx, uint8_t *out,
 size_t EVP_HPKE_CTX_max_overhead(const EVP_HPKE_CTX *ctx) {
   assert(ctx->is_sender);
   return EVP_AEAD_max_overhead(EVP_AEAD_CTX_aead(&ctx->aead_ctx));
+}
+
+const EVP_HPKE_KEM *EVP_HPKE_CTX_kem(const EVP_HPKE_CTX *ctx) {
+  return ctx->kem;
 }
 
 const EVP_HPKE_AEAD *EVP_HPKE_CTX_aead(const EVP_HPKE_CTX *ctx) {
