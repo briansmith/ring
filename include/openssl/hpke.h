@@ -68,6 +68,11 @@ OPENSSL_EXPORT const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void);
 // EVP_HPKE_KDF_id returns the HPKE KDF identifier for |kdf|.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf);
 
+// EVP_HPKE_KDF_hkdf_md returns the HKDF hash function corresponding to |kdf|,
+// or NULL if |kdf| is not an HKDF-based KDF. All currently supported KDFs are
+// HKDF-based.
+OPENSSL_EXPORT const EVP_MD *EVP_HPKE_KDF_hkdf_md(const EVP_HPKE_KDF *kdf);
+
 // The following constants are AEAD identifiers.
 #define EVP_HPKE_AES_128_GCM 0x0001
 #define EVP_HPKE_AES_256_GCM 0x0002
