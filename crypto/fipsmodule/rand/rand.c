@@ -242,12 +242,13 @@ static void get_seed_entropy(uint8_t *out_entropy, size_t out_entropy_len,
   CRYPTO_STATIC_MUTEX_unlock_write(entropy_buffer_lock_bss_get());
 }
 
-// rand_get_seed fills |seed| with entropy and sets
-// |*out_want_additional_input| to one if that entropy came directly from the
-// CPU and zero otherwise.
+// rand_get_seed fills |seed| with entropy. In some cases, it will additionally
+// fill |additional_input| with entropy to supplement |seed|. It sets
+// |*out_additional_input_len| to the number of extra bytes.
 static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-                          int *out_want_additional_input) {
+                          uint8_t additional_input[CTR_DRBG_ENTROPY_LEN],
+                          size_t *out_additional_input_len) {
   uint8_t entropy_bytes[sizeof(state->last_block) +
                         CTR_DRBG_ENTROPY_LEN * BORINGSSL_FIPS_OVERREAD];
   uint8_t *entropy = entropy_bytes;
@@ -259,7 +260,8 @@ static void rand_get_seed(struct rand_thread_state *state,
     entropy_len -= sizeof(state->last_block);
   }
 
-  get_seed_entropy(entropy, entropy_len, out_want_additional_input);
+  int want_additional_input;
+  get_seed_entropy(entropy, entropy_len, &want_additional_input);
 
   if (!state->last_block_valid) {
     OPENSSL_memcpy(state->last_block, entropy, sizeof(state->last_block));
@@ -295,20 +297,30 @@ static void rand_get_seed(struct rand_thread_state *state,
       seed[j] ^= entropy[CTR_DRBG_ENTROPY_LEN * i + j];
     }
   }
+
+  // If we used something other than system entropy then also
+  // opportunistically read from the system. This avoids solely relying on the
+  // hardware once the entropy pool has been initialized.
+  *out_additional_input_len = 0;
+  if (want_additional_input &&
+      CRYPTO_sysrand_if_available(additional_input, CTR_DRBG_ENTROPY_LEN)) {
+    *out_additional_input_len = CTR_DRBG_ENTROPY_LEN;
+  }
 }
 
 #else
 
-// rand_get_seed fills |seed| with entropy and sets
-// |*out_want_additional_input| to one if that entropy came directly from the
-// CPU and zero otherwise.
+// rand_get_seed fills |seed| with entropy. In some cases, it will additionally
+// fill |additional_input| with entropy to supplement |seed|. It sets
+// |*out_additional_input_len| to the number of extra bytes.
 static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-                          int *out_want_additional_input) {
+                          uint8_t additional_input[CTR_DRBG_ENTROPY_LEN],
+                          size_t *out_additional_input_len) {
   // If not in FIPS mode, we don't overread from the system entropy source and
   // we don't depend only on the hardware RDRAND.
   CRYPTO_sysrand_for_seed(seed, CTR_DRBG_ENTROPY_LEN);
-  *out_want_additional_input = 0;
+  *out_additional_input_len = 0;
 }
 
 #endif
@@ -367,20 +379,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
     state->last_block_valid = 0;
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-    int want_additional_input;
-    rand_get_seed(state, seed, &want_additional_input);
-
     uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
     size_t personalization_len = 0;
-#if defined(OPENSSL_URANDOM)
-    // If we used something other than system entropy then also
-    // opportunistically read from the system. This avoids solely relying on the
-    // hardware once the entropy pool has been initialized.
-    if (want_additional_input &&
-        CRYPTO_sysrand_if_available(personalization, sizeof(personalization))) {
-      personalization_len = sizeof(personalization);
-    }
-#endif
+    rand_get_seed(state, seed, personalization, &personalization_len);
 
     if (!CTR_DRBG_init(&state->drbg, seed, personalization,
                        personalization_len)) {
@@ -407,8 +408,10 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   if (state->calls >= kReseedInterval ||
       state->fork_generation != fork_generation) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-    int want_additional_input;
-    rand_get_seed(state, seed, &want_additional_input);
+    uint8_t reseed_additional_data[CTR_DRBG_ENTROPY_LEN] = {0};
+    size_t reseed_additional_data_len = 0;
+    rand_get_seed(state, seed, reseed_additional_data,
+                  &reseed_additional_data_len);
 #if defined(BORINGSSL_FIPS)
     // Take a read lock around accesses to |state->drbg|. This is needed to
     // avoid returning bad entropy if we race with
@@ -420,7 +423,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // kernel, syscalls made with |syscall| did not abort the transaction.
     CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
 #endif
-    if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
+    if (!CTR_DRBG_reseed(&state->drbg, seed, reseed_additional_data,
+                         reseed_additional_data_len)) {
       abort();
     }
     state->calls = 0;
