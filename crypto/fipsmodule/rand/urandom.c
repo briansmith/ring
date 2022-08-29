@@ -198,7 +198,7 @@ static void init_once(void) {
 
   int fd;
   do {
-    fd = open("/dev/urandom", O_RDONLY);
+    fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
   } while (fd == -1 && errno == EINTR);
 
   if (fd < 0) {
@@ -206,20 +206,6 @@ static void init_once(void) {
     abort();
   }
 
-  int flags = fcntl(fd, F_GETFD);
-  if (flags == -1) {
-    // Native Client doesn't implement |fcntl|.
-    if (errno != ENOSYS) {
-      perror("failed to get flags from urandom fd");
-      abort();
-    }
-  } else {
-    flags |= FD_CLOEXEC;
-    if (fcntl(fd, F_SETFD, flags) == -1) {
-      perror("failed to set FD_CLOEXEC on urandom fd");
-      abort();
-    }
-  }
   *urandom_fd_bss_get() = fd;
 }
 
