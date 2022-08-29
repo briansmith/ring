@@ -45,7 +45,6 @@ struct Event {
     kGetRandom,
     kOpen,
     kUrandomRead,
-    kUrandomIoctl,
     kAbort,
   };
 
@@ -77,11 +76,6 @@ struct Event {
     return e;
   }
 
-  static Event UrandomIoctl() {
-    Event e(Syscall::kUrandomIoctl);
-    return e;
-  }
-
   static Event Abort() {
     Event e(Syscall::kAbort);
     return e;
@@ -102,9 +96,6 @@ struct Event {
       case Syscall::kUrandomRead:
         snprintf(buf, sizeof(buf), "read(urandom_fd, _, %zu)", length);
         break;
-
-      case Syscall::kUrandomIoctl:
-        return "ioctl(urandom_fd, RNDGETENTCNT, _)";
 
       case Syscall::kAbort:
         return "abort()";
@@ -139,14 +130,11 @@ static const unsigned NO_GETRANDOM = 1;
 static const unsigned NO_URANDOM = 2;
 // getrandom always returns |EAGAIN| if given |GRNG_NONBLOCK|.
 static const unsigned GETRANDOM_NOT_READY = 4;
-// The ioctl on urandom returns only 255 bits of entropy the first time that
-// it's called.
-static const unsigned URANDOM_NOT_READY = 8;
 // getrandom gives |EINVAL| unless |NO_GETRANDOM| is set.
-static const unsigned GETRANDOM_ERROR = 16;
+static const unsigned GETRANDOM_ERROR = 8;
 // Reading from /dev/urandom gives |EINVAL|.
-static const unsigned URANDOM_ERROR = 32;
-static const unsigned NEXT_FLAG = 64;
+static const unsigned URANDOM_ERROR = 16;
+static const unsigned NEXT_FLAG = 32;
 
 // GetTrace runs |thunk| in a forked process and observes the resulting system
 // calls using ptrace. It simulates a variety of failures based on the contents
@@ -204,8 +192,6 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     const auto syscall_number = regs.orig_rax;
 
     bool is_opening_urandom = false;
-    bool is_urandom_ioctl = false;
-    uintptr_t ioctl_output_addr = 0;
     // inject_error is zero to indicate that the system call should run
     // normally. Otherwise it's, e.g. -EINVAL, to indicate that the system call
     // should not run and that error should be injected on return.
@@ -251,16 +237,6 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
         }
         break;
       }
-
-      case __NR_ioctl: {
-        const int ioctl_fd = regs.rdi;
-        if (urandom_fd >= 0 && ioctl_fd == urandom_fd &&
-            regs.rsi == RNDGETENTCNT) {
-          out_trace->push_back(Event::UrandomIoctl());
-          is_urandom_ioctl = true;
-          ioctl_output_addr = regs.rdx;
-        }
-      }
     }
 
     if (inject_error) {
@@ -294,33 +270,6 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     } else if (is_opening_urandom) {
       ASSERT_EQ(0, ptrace(PTRACE_GETREGS, child_pid, nullptr, &regs));
       urandom_fd = regs.rax;
-    } else if (is_urandom_ioctl) {
-      // The result is the number of bits of entropy that the kernel currently
-      // believes that it has. urandom.c waits until 256 bits are ready.
-      int result = 256;
-
-      // If we are simulating urandom not being ready then we have the ioctl
-      // indicate one too few bits of entropy the first time it's queried.
-      if (flags & URANDOM_NOT_READY) {
-        result--;
-        flags &= ~URANDOM_NOT_READY;
-      }
-
-      // ptrace always works with ill-defined "words", which appear to be 64-bit
-      // on x86-64. Since the ioctl result is a 32-bit int, do a
-      // read-modify-write to inject the answer.
-      const uintptr_t aligned_addr = ioctl_output_addr & ~7;
-      const uintptr_t offset = ioctl_output_addr - aligned_addr;
-      union {
-        uint64_t word;
-        uint8_t bytes[8];
-      } u;
-      u.word = ptrace(PTRACE_PEEKDATA, child_pid,
-                      reinterpret_cast<void *>(aligned_addr), nullptr);
-      memcpy(&u.bytes[offset], &result, sizeof(result));
-      ASSERT_EQ(0, ptrace(PTRACE_POKEDATA, child_pid,
-                          reinterpret_cast<void *>(aligned_addr),
-                          reinterpret_cast<void *>(u.word)));
     }
   }
 }
@@ -347,7 +296,6 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 #endif
 
   std::vector<Event> ret;
-  bool urandom_probed = false;
   bool getrandom_ready = false;
 
   // Probe for getrandom support
@@ -356,32 +304,19 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   std::function<bool(bool, size_t)> sysrand;
 
   if (flags & NO_GETRANDOM) {
+    if (is_fips) {
+      // FIPS builds require getrandom.
+      ret.push_back(Event::Abort());
+      return ret;
+    }
+
     ret.push_back(Event::Open("/dev/urandom"));
     if (flags & NO_URANDOM) {
       ret.push_back(Event::Abort());
       return ret;
     }
 
-    wait_for_entropy = [&ret, &urandom_probed, flags] {
-      if (!is_fips || urandom_probed) {
-        return;
-      }
-
-      // Probe urandom for entropy.
-      ret.push_back(Event::UrandomIoctl());
-      if (flags & URANDOM_NOT_READY) {
-        // If the first attempt doesn't report enough entropy, probe
-        // repeatedly until it does, which will happen with the second attempt.
-        ret.push_back(Event::UrandomIoctl());
-      }
-
-      urandom_probed = true;
-    };
-
-    sysrand = [&ret, &wait_for_entropy, flags](bool block, size_t len) {
-      if (block) {
-        wait_for_entropy();
-      }
+    sysrand = [&ret, flags](bool block, size_t len) {
       ret.push_back(Event::UrandomRead(len));
       if (flags & URANDOM_ERROR) {
         ret.push_back(Event::Abort());
@@ -457,11 +392,6 @@ static void CheckInvariants(const std::vector<Event> &events) {
           }
           break;
 
-        case Event::Syscall::kUrandomIoctl:
-          ADD_FAILURE() << "Urandom polling found with RDRAND: "
-                        << ToString(events);
-          break;
-
         default:
           break;
       }
@@ -483,7 +413,6 @@ TEST(URandomTest, Test) {
     TRACE_FLAG(NO_GETRANDOM);
     TRACE_FLAG(NO_URANDOM);
     TRACE_FLAG(GETRANDOM_NOT_READY);
-    TRACE_FLAG(URANDOM_NOT_READY);
     TRACE_FLAG(GETRANDOM_ERROR);
     TRACE_FLAG(URANDOM_ERROR);
 
