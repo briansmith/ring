@@ -587,6 +587,9 @@ struct evp_cipher_ctx_st {
   int final_used;
 
   uint8_t final[EVP_MAX_BLOCK_LENGTH];  // possible final block
+
+  // Has this structure been rendered unusable by a failure.
+  int poisoned;
 } /* EVP_CIPHER_CTX */;
 
 typedef struct evp_cipher_info_st {
