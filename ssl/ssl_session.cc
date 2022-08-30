@@ -1169,20 +1169,31 @@ SSL_SESSION *SSL_magic_pending_session_ptr(void) {
 }
 
 SSL_SESSION *SSL_get_session(const SSL *ssl) {
-  // Once the handshake completes we return the established session. Otherwise
-  // we return the intermediate session, either |session| (for resumption) or
-  // |new_session| if doing a full handshake.
-  if (!SSL_in_init(ssl)) {
+  // Once the initially handshake completes, we return the most recently
+  // established session. In particular, if there is a pending renegotiation, we
+  // do not return information about it until it completes.
+  //
+  // Code in the handshake must either use |hs->new_session| (if updating a
+  // partial session) or |ssl_handshake_session| (if trying to query properties
+  // consistently across TLS 1.2 resumption and other handshakes).
+  if (ssl->s3->established_session != nullptr) {
     return ssl->s3->established_session.get();
   }
+
+  // Otherwise, we must be in the initial handshake.
   SSL_HANDSHAKE *hs = ssl->s3->hs.get();
+  assert(hs != nullptr);
+  assert(!ssl->s3->initial_handshake_complete);
+
+  // Return the 0-RTT session, if in the 0-RTT state. While the handshake has
+  // not actually completed, the public accessors all report properties as if
+  // it has.
   if (hs->early_session) {
     return hs->early_session.get();
   }
-  if (hs->new_session) {
-    return hs->new_session.get();
-  }
-  return ssl->session.get();
+
+  // Otherwise, return the partial session.
+  return (SSL_SESSION *)ssl_handshake_session(hs);
 }
 
 SSL_SESSION *SSL_get1_session(SSL *ssl) {

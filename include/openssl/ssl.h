@@ -4135,6 +4135,13 @@ enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT {
 // renegotiation attempts by a server. If |ssl| is a server, peer-initiated
 // renegotiations are *always* rejected and this function does nothing.
 //
+// WARNING: Renegotiation is error-prone, complicates TLS's security properties,
+// and increases its attack surface. When enabled, many common assumptions about
+// BoringSSL's behavior no longer hold, and the calling application must handle
+// more cases. Renegotiation is also incompatible with many application
+// protocols, e.g. section 9.2.1 of RFC 7540. Many functions behave in ambiguous
+// or undefined ways during a renegotiation.
+//
 // The renegotiation mode defaults to |ssl_renegotiate_never|, but may be set
 // at any point in a connection's lifetime. Set it to |ssl_renegotiate_once| to
 // allow one renegotiation, |ssl_renegotiate_freely| to allow all
@@ -4155,6 +4162,20 @@ enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT {
 // enabling it on a given connection. Callers that condition renegotiation on,
 // e.g., ALPN must enable renegotiation before the handshake and conditionally
 // disable it afterwards.
+//
+// When enabled, renegotiation can cause properties of |ssl|, such as the cipher
+// suite, to change during the lifetime of the connection. More over, during a
+// renegotiation, not all properties of the new handshake are available or fully
+// established. In BoringSSL, most functions, such as |SSL_get_current_cipher|,
+// report information from the most recently completed handshake, not the
+// pending one. However, renegotiation may rerun handshake callbacks, such as
+// |SSL_CTX_set_cert_cb|. Such callbacks must ensure they are acting on the
+// desired versions of each property.
+//
+// BoringSSL does not reverify peer certificates on renegotiation and instead
+// requires they match between handshakes, so certificate verification callbacks
+// (see |SSL_CTX_set_custom_verify|) may assume |ssl| is in the initial
+// handshake and use |SSL_get0_peer_certificates|, etc.
 //
 // There is no support in BoringSSL for initiating renegotiations as a client
 // or server.
