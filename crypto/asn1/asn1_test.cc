@@ -1048,6 +1048,34 @@ TEST(ASN1Test, SetTime) {
   }
 }
 
+TEST(ASN1Test, TimeSetString) {
+  bssl::UniquePtr<ASN1_STRING> s(ASN1_STRING_new());
+  ASSERT_TRUE(s);
+
+  ASSERT_TRUE(ASN1_UTCTIME_set_string(s.get(), "700101000000Z"));
+  EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(s.get()));
+  EXPECT_EQ("700101000000Z", ASN1StringToStdString(s.get()));
+
+  ASSERT_TRUE(ASN1_GENERALIZEDTIME_set_string(s.get(), "19700101000000Z"));
+  EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(s.get()));
+  EXPECT_EQ("19700101000000Z", ASN1StringToStdString(s.get()));
+
+  // |ASN1_TIME_set_string| accepts either format. It relies on there being no
+  // overlap between the two.
+  ASSERT_TRUE(ASN1_TIME_set_string(s.get(), "700101000000Z"));
+  EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(s.get()));
+  EXPECT_EQ("700101000000Z", ASN1StringToStdString(s.get()));
+
+  ASSERT_TRUE(ASN1_TIME_set_string(s.get(), "19700101000000Z"));
+  EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(s.get()));
+  EXPECT_EQ("19700101000000Z", ASN1StringToStdString(s.get()));
+
+  // Invalid inputs are rejected.
+  EXPECT_FALSE(ASN1_UTCTIME_set_string(s.get(), "nope"));
+  EXPECT_FALSE(ASN1_GENERALIZEDTIME_set_string(s.get(), "nope"));
+  EXPECT_FALSE(ASN1_TIME_set_string(s.get(), "nope"));
+}
+
 TEST(ASN1Test, AdjTime) {
   struct tm tm1, tm2;
   int days, secs;

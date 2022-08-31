@@ -164,28 +164,9 @@ err:
   return NULL;
 }
 
-
 int ASN1_TIME_set_string(ASN1_TIME *s, const char *str) {
-  ASN1_TIME t;
-
-  t.length = strlen(str);
-  t.data = (unsigned char *)str;
-  t.flags = 0;
-
-  t.type = V_ASN1_UTCTIME;
-
-  if (!ASN1_TIME_check(&t)) {
-    t.type = V_ASN1_GENERALIZEDTIME;
-    if (!ASN1_TIME_check(&t)) {
-      return 0;
-    }
-  }
-
-  if (s && !ASN1_STRING_copy((ASN1_STRING *)s, (ASN1_STRING *)&t)) {
-    return 0;
-  }
-
-  return 1;
+  return ASN1_UTCTIME_set_string(s, str) ||
+         ASN1_GENERALIZEDTIME_set_string(s, str);
 }
 
 static int asn1_time_to_tm(struct tm *tm, const ASN1_TIME *t,

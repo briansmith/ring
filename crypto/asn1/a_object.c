@@ -107,8 +107,12 @@ int i2t_ASN1_OBJECT(char *buf, int buf_len, const ASN1_OBJECT *a) {
 }
 
 static int write_str(BIO *bp, const char *str) {
-  int len = strlen(str);
-  return BIO_write(bp, str, len) == len ? len : -1;
+  size_t len = strlen(str);
+  if (len > INT_MAX) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
+    return -1;
+  }
+  return BIO_write(bp, str, (int)len) == (int)len ? (int)len : -1;
 }
 
 int i2a_ASN1_OBJECT(BIO *bp, const ASN1_OBJECT *a) {

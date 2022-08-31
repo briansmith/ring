@@ -82,22 +82,16 @@ int ASN1_UTCTIME_check(const ASN1_UTCTIME *d) {
 }
 
 int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str) {
-  ASN1_UTCTIME t;
-
-  t.type = V_ASN1_UTCTIME;
-  t.length = strlen(str);
-  t.data = (unsigned char *)str;
-  if (ASN1_UTCTIME_check(&t)) {
-    if (s != NULL) {
-      if (!ASN1_STRING_set((ASN1_STRING *)s, (unsigned char *)str, t.length)) {
-        return 0;
-      }
-      s->type = V_ASN1_UTCTIME;
-    }
-    return 1;
-  } else {
+  size_t len = strlen(str);
+  CBS cbs;
+  CBS_init(&cbs, (const uint8_t *)str, len);
+  if (!CBS_parse_utc_time(&cbs, /*out_tm=*/NULL,
+                          /*allow_timezone_offset=*/1) ||
+      !ASN1_STRING_set(s, str, len)) {
     return 0;
   }
+  s->type = V_ASN1_UTCTIME;
+  return 1;
 }
 
 ASN1_UTCTIME *ASN1_UTCTIME_set(ASN1_UTCTIME *s, time_t t) {

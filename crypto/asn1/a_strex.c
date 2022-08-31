@@ -121,7 +121,7 @@ static int do_esc_char(uint32_t c, unsigned long flags, char *do_quotes,
     return maybe_write(out, &u8, 1) ? 1 : -1;
   }
 
-  int len = strlen(buf);
+  int len = (int)strlen(buf);  // |buf| is guaranteed to be short.
   return maybe_write(out, buf, len) ? len : -1;
 }
 
