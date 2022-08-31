@@ -469,3 +469,10 @@ int RAND_bytes(uint8_t *out, size_t out_len) {
 int RAND_pseudo_bytes(uint8_t *buf, size_t len) {
   return RAND_bytes(buf, len);
 }
+
+void RAND_get_system_entropy_for_custom_prng(uint8_t *buf, size_t len) {
+  if (len > 256) {
+    abort();
+  }
+  CRYPTO_sysrand_for_seed(buf, len);
+}
