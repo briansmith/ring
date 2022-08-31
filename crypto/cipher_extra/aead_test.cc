@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -48,13 +49,8 @@ constexpr uint32_t kNondeterministic = 1 << 7;
 
 // RequiresADLength encodes an AD length requirement into flags.
 constexpr uint32_t RequiresADLength(size_t length) {
-  // If we had a more recent C++ version we could assert that the length is
-  // sufficiently small with:
-  //
-  // if (length >= 16) {
-  //  __builtin_unreachable();
-  // }
-  return (length & 0xf) << 3;
+  assert(length < 16);
+  return static_cast<uint32_t>((length & 0xf) << 3);
 }
 
 // RequiredADLength returns the AD length requirement encoded in |flags|, or
@@ -64,9 +60,8 @@ constexpr size_t RequiredADLength(uint32_t flags) {
 }
 
 constexpr uint32_t RequiresMinimumTagLength(size_t length) {
-  // See above for statically checking the size at compile time with future C++
-  // versions.
-  return (length & 0xf) << 8;
+  assert(length < 16);
+  return static_cast<uint32_t>((length & 0xf) << 8);
 }
 
 constexpr size_t MinimumTagLength(uint32_t flags) {

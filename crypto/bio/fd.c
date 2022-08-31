@@ -158,7 +158,7 @@ static int fd_free(BIO *bio) {
 static int fd_read(BIO *b, char *out, int outl) {
   int ret = 0;
 
-  ret = BORINGSSL_READ(b->num, out, outl);
+  ret = (int)BORINGSSL_READ(b->num, out, outl);
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
     if (bio_fd_should_retry(ret)) {
@@ -170,7 +170,7 @@ static int fd_read(BIO *b, char *out, int outl) {
 }
 
 static int fd_write(BIO *b, const char *in, int inl) {
-  int ret = BORINGSSL_WRITE(b->num, in, inl);
+  int ret = (int)BORINGSSL_WRITE(b->num, in, inl);
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
     if (bio_fd_should_retry(ret)) {

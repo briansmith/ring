@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -304,8 +305,9 @@ class TrustTokenProtocolTestBase : public ::testing::Test {
 
   // KeyID returns the key ID associated with key index |i|.
   static uint32_t KeyID(size_t i) {
+    assert(i <= UINT32_MAX);
     // Use a different value from the indices to that we do not mix them up.
-    return 7 + i;
+    return static_cast<uint32_t>(7 + i);
   }
 
   const TRUST_TOKEN_METHOD *method() { return method_; }

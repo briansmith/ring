@@ -192,7 +192,13 @@ int BIO_write_all(BIO *bio, const void *data, size_t len) {
 }
 
 int BIO_puts(BIO *bio, const char *in) {
-  return BIO_write(bio, in, strlen(in));
+  size_t len = strlen(in);
+  if (len > INT_MAX) {
+    // |BIO_write| and the return value both assume the string fits in |int|.
+    OPENSSL_PUT_ERROR(BIO, ERR_R_OVERFLOW);
+    return -1;
+  }
+  return BIO_write(bio, in, (int)len);
 }
 
 int BIO_flush(BIO *bio) {

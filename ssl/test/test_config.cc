@@ -1619,7 +1619,7 @@ static unsigned PskClientCallback(SSL *ssl, const char *hint,
 
   OPENSSL_strlcpy(out_identity, config->psk_identity.c_str(), max_identity_len);
   OPENSSL_memcpy(out_psk, config->psk.data(), config->psk.size());
-  return config->psk.size();
+  return static_cast<unsigned>(config->psk.size());
 }
 
 static unsigned PskServerCallback(SSL *ssl, const char *identity,
@@ -1637,7 +1637,7 @@ static unsigned PskServerCallback(SSL *ssl, const char *identity,
   }
 
   OPENSSL_memcpy(out_psk, config->psk.data(), config->psk.size());
-  return config->psk.size();
+  return static_cast<unsigned>(config->psk.size());
 }
 
 static ssl_verify_result_t CustomVerifyCallback(SSL *ssl, uint8_t *out_alert) {

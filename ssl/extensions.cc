@@ -1248,10 +1248,12 @@ static bool ext_npn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     }
   }
 
+  // |orig_len| fits in |unsigned| because TLS extensions use 16-bit lengths.
   uint8_t *selected;
   uint8_t selected_len;
   if (ssl->ctx->next_proto_select_cb(
-          ssl, &selected, &selected_len, orig_contents, orig_len,
+          ssl, &selected, &selected_len, orig_contents,
+          static_cast<unsigned>(orig_len),
           ssl->ctx->next_proto_select_cb_arg) != SSL_TLSEXT_ERR_OK ||
       !ssl->s3->next_proto_negotiated.CopyFrom(
           MakeConstSpan(selected, selected_len))) {
@@ -1564,11 +1566,14 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return false;
   }
 
+  // |protocol_name_list| fits in |unsigned| because TLS extensions use 16-bit
+  // lengths.
   const uint8_t *selected;
   uint8_t selected_len;
   int ret = ssl->ctx->alpn_select_cb(
       ssl, &selected, &selected_len, CBS_data(&protocol_name_list),
-      CBS_len(&protocol_name_list), ssl->ctx->alpn_select_cb_arg);
+      static_cast<unsigned>(CBS_len(&protocol_name_list)),
+      ssl->ctx->alpn_select_cb_arg);
   // ALPN is required when QUIC is used.
   if (ssl->quic_method &&
       (ret == SSL_TLSEXT_ERR_NOACK || ret == SSL_TLSEXT_ERR_ALERT_WARNING)) {

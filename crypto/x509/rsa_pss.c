@@ -202,7 +202,7 @@ int x509_rsa_ctx_to_pss(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
     OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
     return 0;
   }
-  int md_len = EVP_MD_size(sigmd);
+  int md_len = (int)EVP_MD_size(sigmd);
   if (saltlen == -1) {
     saltlen = md_len;
   } else if (saltlen != md_len) {

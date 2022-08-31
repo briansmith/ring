@@ -145,7 +145,7 @@ static int chacha20_poly1305_seal_scatter(
   // encrypted byte-by-byte first.
   if (extra_in_len) {
     static const size_t kChaChaBlockSize = 64;
-    uint32_t block_counter = 1 + (in_len / kChaChaBlockSize);
+    uint32_t block_counter = (uint32_t)(1 + (in_len / kChaChaBlockSize));
     size_t offset = in_len % kChaChaBlockSize;
     uint8_t block[64 /* kChaChaBlockSize */];
 

@@ -612,16 +612,19 @@ err:
 static int add_cbor_int_with_type(CBB *cbb, uint8_t major_type,
                                   uint64_t value) {
   if (value <= 23) {
-    return CBB_add_u8(cbb, value | major_type);
+    return CBB_add_u8(cbb, (uint8_t)value | major_type);
   }
   if (value <= 0xff) {
-    return CBB_add_u8(cbb, 0x18 | major_type) && CBB_add_u8(cbb, value);
+    return CBB_add_u8(cbb, 0x18 | major_type) &&
+           CBB_add_u8(cbb, (uint8_t)value);
   }
   if (value <= 0xffff) {
-    return CBB_add_u8(cbb, 0x19 | major_type) && CBB_add_u16(cbb, value);
+    return CBB_add_u8(cbb, 0x19 | major_type) &&
+           CBB_add_u16(cbb, (uint16_t)value);
   }
   if (value <= 0xffffffff) {
-    return CBB_add_u8(cbb, 0x1a | major_type) && CBB_add_u32(cbb, value);
+    return CBB_add_u8(cbb, 0x1a | major_type) &&
+           CBB_add_u32(cbb, (uint32_t)value);
   }
   if (value <= 0xffffffffffffffff) {
     return CBB_add_u8(cbb, 0x1b | major_type) && CBB_add_u64(cbb, value);
