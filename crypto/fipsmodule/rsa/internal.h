@@ -142,7 +142,7 @@ int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t in_len, int padding);
 
 int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
-                          unsigned digest_len, uint8_t *out, unsigned *out_len,
+                          size_t digest_len, uint8_t *out, unsigned *out_len,
                           RSA *rsa);
 
 

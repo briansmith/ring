@@ -298,8 +298,8 @@ OPENSSL_EXPORT int RSA_private_decrypt(size_t flen, const uint8_t *from,
 // |hash_nid|. Passing unhashed inputs will not result in a secure signature
 // scheme.
 OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *digest,
-                            unsigned digest_len, uint8_t *out,
-                            unsigned *out_len, RSA *rsa);
+                            size_t digest_len, uint8_t *out, unsigned *out_len,
+                            RSA *rsa);
 
 // RSA_sign_pss_mgf1 signs |digest_len| bytes from |digest| with the public key
 // from |rsa| using RSASSA-PSS with MGF1 as the mask generation function. It
@@ -625,7 +625,7 @@ OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
 // should use instead. It returns NULL on error, or a newly-allocated |RSA| on
 // success. This function is provided for compatibility only. The |callback|
 // and |cb_arg| parameters must be NULL.
-OPENSSL_EXPORT RSA *RSA_generate_key(int bits, unsigned long e, void *callback,
+OPENSSL_EXPORT RSA *RSA_generate_key(int bits, uint64_t e, void *callback,
                                      void *cb_arg);
 
 // d2i_RSAPublicKey parses a DER-encoded RSAPublicKey structure (RFC 8017) from
