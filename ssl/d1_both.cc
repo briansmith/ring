@@ -487,10 +487,7 @@ ssl_open_record_t dtls1_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
 
 // Sending handshake messages.
 
-void DTLS_OUTGOING_MESSAGE::Clear() {
-  OPENSSL_free(data);
-  data = nullptr;
-}
+void DTLS_OUTGOING_MESSAGE::Clear() { data.Reset(); }
 
 void dtls_clear_outgoing_messages(SSL *ssl) {
   for (size_t i = 0; i < ssl->d1->outgoing_messages_len; i++) {
@@ -578,9 +575,7 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
 
   DTLS_OUTGOING_MESSAGE *msg =
       &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
-  size_t len;
-  data.Release(&msg->data, &len);
-  msg->len = len;
+  msg->data = std::move(data);
   msg->epoch = ssl->d1->w_epoch;
   msg->is_ccs = is_ccs;
 
@@ -665,7 +660,7 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
   // DTLS messages are serialized as a single fragment in |msg|.
   CBS cbs, body;
   struct hm_header_st hdr;
-  CBS_init(&cbs, msg->data, msg->len);
+  CBS_init(&cbs, msg->data.data(), msg->data.size());
   if (!dtls1_parse_fragment(&cbs, &hdr, &body) ||
       hdr.frag_off != 0 ||
       hdr.frag_len != CBS_len(&body) ||
