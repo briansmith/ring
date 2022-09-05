@@ -102,7 +102,7 @@
 
 struct tag_name_st {
   const char *strnam;
-  int len;
+  size_t len;
   int tag;
 };
 
@@ -126,15 +126,16 @@ typedef struct {
 
 static ASN1_TYPE *generate_v3(const char *str, X509V3_CTX *cnf, int depth,
                               int *perr);
-static int bitstr_cb(const char *elem, int len, void *bitstr);
-static int asn1_cb(const char *elem, int len, void *bitstr);
+static int bitstr_cb(const char *elem, size_t len, void *bitstr);
+static int asn1_cb(const char *elem, size_t len, void *bitstr);
 static int append_exp(tag_exp_arg *arg, int exp_tag, int exp_class,
                       int exp_constructed, int exp_pad, int imp_ok);
-static int parse_tagging(const char *vstart, int vlen, int *ptag, int *pclass);
+static int parse_tagging(const char *vstart, size_t vlen, int *ptag,
+                         int *pclass);
 static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
                              int depth, int *perr);
 static ASN1_TYPE *asn1_str2type(const char *str, int format, int utype);
-static int asn1_str2tag(const char *tagstr, int len);
+static int asn1_str2tag(const char *tagstr, size_t len);
 
 ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf) {
   int err = 0;
@@ -279,31 +280,23 @@ err:
   return ret;
 }
 
-static int asn1_cb(const char *elem, int len, void *bitstr) {
+static int asn1_cb(const char *elem, size_t len, void *bitstr) {
   tag_exp_arg *arg = bitstr;
-  int i;
-  int utype;
-  int vlen = 0;
-  const char *p, *vstart = NULL;
-
-  int tmp_tag, tmp_class;
-
   if (elem == NULL) {
     return -1;
   }
 
-  for (i = 0, p = elem; i < len; p++, i++) {
-    // Look for the ':' in name value pairs
-    if (*p == ':') {
-      vstart = p + 1;
-      vlen = len - (vstart - elem);
-      len = p - elem;
-      break;
-    }
+  // Look for the ':' in name:value pairs.
+  const char *vstart = NULL;
+  size_t vlen = 0;
+  const char *colon = OPENSSL_memchr(elem, ':', len);
+  if (colon != NULL) {
+    vstart = colon + 1;
+    vlen = len - (vstart - elem);
+    len = colon - elem;
   }
 
-  utype = asn1_str2tag(elem, len);
-
+  int utype = asn1_str2tag(elem, len);
   if (utype == -1) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_TAG);
     ERR_add_error_data(2, "tag=", elem);
@@ -334,8 +327,8 @@ static int asn1_cb(const char *elem, int len, void *bitstr) {
       }
       break;
 
-    case ASN1_GEN_FLAG_EXP:
-
+    case ASN1_GEN_FLAG_EXP: {
+      int tmp_tag, tmp_class;
       if (!parse_tagging(vstart, vlen, &tmp_tag, &tmp_class)) {
         return -1;
       }
@@ -343,6 +336,7 @@ static int asn1_cb(const char *elem, int len, void *bitstr) {
         return -1;
       }
       break;
+    }
 
     case ASN1_GEN_FLAG_SEQWRAP:
       if (!append_exp(arg, V_ASN1_SEQUENCE, V_ASN1_UNIVERSAL, 1, 0, 1)) {
@@ -391,7 +385,8 @@ static int asn1_cb(const char *elem, int len, void *bitstr) {
   return 1;
 }
 
-static int parse_tagging(const char *vstart, int vlen, int *ptag, int *pclass) {
+static int parse_tagging(const char *vstart, size_t vlen, int *ptag,
+                         int *pclass) {
   char erch[2];
   long tag_num;
   char *eptr;
@@ -548,78 +543,71 @@ static int append_exp(tag_exp_arg *arg, int exp_tag, int exp_class,
   return 1;
 }
 
-static int asn1_str2tag(const char *tagstr, int len) {
-  unsigned int i;
-  static const struct tag_name_st *tntmp,
-      tnst[] = {
-          ASN1_GEN_STR("BOOL", V_ASN1_BOOLEAN),
-          ASN1_GEN_STR("BOOLEAN", V_ASN1_BOOLEAN),
-          ASN1_GEN_STR("NULL", V_ASN1_NULL),
-          ASN1_GEN_STR("INT", V_ASN1_INTEGER),
-          ASN1_GEN_STR("INTEGER", V_ASN1_INTEGER),
-          ASN1_GEN_STR("ENUM", V_ASN1_ENUMERATED),
-          ASN1_GEN_STR("ENUMERATED", V_ASN1_ENUMERATED),
-          ASN1_GEN_STR("OID", V_ASN1_OBJECT),
-          ASN1_GEN_STR("OBJECT", V_ASN1_OBJECT),
-          ASN1_GEN_STR("UTCTIME", V_ASN1_UTCTIME),
-          ASN1_GEN_STR("UTC", V_ASN1_UTCTIME),
-          ASN1_GEN_STR("GENERALIZEDTIME", V_ASN1_GENERALIZEDTIME),
-          ASN1_GEN_STR("GENTIME", V_ASN1_GENERALIZEDTIME),
-          ASN1_GEN_STR("OCT", V_ASN1_OCTET_STRING),
-          ASN1_GEN_STR("OCTETSTRING", V_ASN1_OCTET_STRING),
-          ASN1_GEN_STR("BITSTR", V_ASN1_BIT_STRING),
-          ASN1_GEN_STR("BITSTRING", V_ASN1_BIT_STRING),
-          ASN1_GEN_STR("UNIVERSALSTRING", V_ASN1_UNIVERSALSTRING),
-          ASN1_GEN_STR("UNIV", V_ASN1_UNIVERSALSTRING),
-          ASN1_GEN_STR("IA5", V_ASN1_IA5STRING),
-          ASN1_GEN_STR("IA5STRING", V_ASN1_IA5STRING),
-          ASN1_GEN_STR("UTF8", V_ASN1_UTF8STRING),
-          ASN1_GEN_STR("UTF8String", V_ASN1_UTF8STRING),
-          ASN1_GEN_STR("BMP", V_ASN1_BMPSTRING),
-          ASN1_GEN_STR("BMPSTRING", V_ASN1_BMPSTRING),
-          ASN1_GEN_STR("VISIBLESTRING", V_ASN1_VISIBLESTRING),
-          ASN1_GEN_STR("VISIBLE", V_ASN1_VISIBLESTRING),
-          ASN1_GEN_STR("PRINTABLESTRING", V_ASN1_PRINTABLESTRING),
-          ASN1_GEN_STR("PRINTABLE", V_ASN1_PRINTABLESTRING),
-          ASN1_GEN_STR("T61", V_ASN1_T61STRING),
-          ASN1_GEN_STR("T61STRING", V_ASN1_T61STRING),
-          ASN1_GEN_STR("TELETEXSTRING", V_ASN1_T61STRING),
-          ASN1_GEN_STR("GeneralString", V_ASN1_GENERALSTRING),
-          ASN1_GEN_STR("GENSTR", V_ASN1_GENERALSTRING),
-          ASN1_GEN_STR("NUMERIC", V_ASN1_NUMERICSTRING),
-          ASN1_GEN_STR("NUMERICSTRING", V_ASN1_NUMERICSTRING),
+static int asn1_str2tag(const char *tagstr, size_t len) {
+  static const struct tag_name_st tnst[] = {
+      ASN1_GEN_STR("BOOL", V_ASN1_BOOLEAN),
+      ASN1_GEN_STR("BOOLEAN", V_ASN1_BOOLEAN),
+      ASN1_GEN_STR("NULL", V_ASN1_NULL),
+      ASN1_GEN_STR("INT", V_ASN1_INTEGER),
+      ASN1_GEN_STR("INTEGER", V_ASN1_INTEGER),
+      ASN1_GEN_STR("ENUM", V_ASN1_ENUMERATED),
+      ASN1_GEN_STR("ENUMERATED", V_ASN1_ENUMERATED),
+      ASN1_GEN_STR("OID", V_ASN1_OBJECT),
+      ASN1_GEN_STR("OBJECT", V_ASN1_OBJECT),
+      ASN1_GEN_STR("UTCTIME", V_ASN1_UTCTIME),
+      ASN1_GEN_STR("UTC", V_ASN1_UTCTIME),
+      ASN1_GEN_STR("GENERALIZEDTIME", V_ASN1_GENERALIZEDTIME),
+      ASN1_GEN_STR("GENTIME", V_ASN1_GENERALIZEDTIME),
+      ASN1_GEN_STR("OCT", V_ASN1_OCTET_STRING),
+      ASN1_GEN_STR("OCTETSTRING", V_ASN1_OCTET_STRING),
+      ASN1_GEN_STR("BITSTR", V_ASN1_BIT_STRING),
+      ASN1_GEN_STR("BITSTRING", V_ASN1_BIT_STRING),
+      ASN1_GEN_STR("UNIVERSALSTRING", V_ASN1_UNIVERSALSTRING),
+      ASN1_GEN_STR("UNIV", V_ASN1_UNIVERSALSTRING),
+      ASN1_GEN_STR("IA5", V_ASN1_IA5STRING),
+      ASN1_GEN_STR("IA5STRING", V_ASN1_IA5STRING),
+      ASN1_GEN_STR("UTF8", V_ASN1_UTF8STRING),
+      ASN1_GEN_STR("UTF8String", V_ASN1_UTF8STRING),
+      ASN1_GEN_STR("BMP", V_ASN1_BMPSTRING),
+      ASN1_GEN_STR("BMPSTRING", V_ASN1_BMPSTRING),
+      ASN1_GEN_STR("VISIBLESTRING", V_ASN1_VISIBLESTRING),
+      ASN1_GEN_STR("VISIBLE", V_ASN1_VISIBLESTRING),
+      ASN1_GEN_STR("PRINTABLESTRING", V_ASN1_PRINTABLESTRING),
+      ASN1_GEN_STR("PRINTABLE", V_ASN1_PRINTABLESTRING),
+      ASN1_GEN_STR("T61", V_ASN1_T61STRING),
+      ASN1_GEN_STR("T61STRING", V_ASN1_T61STRING),
+      ASN1_GEN_STR("TELETEXSTRING", V_ASN1_T61STRING),
+      ASN1_GEN_STR("GeneralString", V_ASN1_GENERALSTRING),
+      ASN1_GEN_STR("GENSTR", V_ASN1_GENERALSTRING),
+      ASN1_GEN_STR("NUMERIC", V_ASN1_NUMERICSTRING),
+      ASN1_GEN_STR("NUMERICSTRING", V_ASN1_NUMERICSTRING),
 
-          // Special cases
-          ASN1_GEN_STR("SEQUENCE", V_ASN1_SEQUENCE),
-          ASN1_GEN_STR("SEQ", V_ASN1_SEQUENCE),
-          ASN1_GEN_STR("SET", V_ASN1_SET),
-          // type modifiers
-          // Explicit tag
-          ASN1_GEN_STR("EXP", ASN1_GEN_FLAG_EXP),
-          ASN1_GEN_STR("EXPLICIT", ASN1_GEN_FLAG_EXP),
-          // Implicit tag
-          ASN1_GEN_STR("IMP", ASN1_GEN_FLAG_IMP),
-          ASN1_GEN_STR("IMPLICIT", ASN1_GEN_FLAG_IMP),
-          // OCTET STRING wrapper
-          ASN1_GEN_STR("OCTWRAP", ASN1_GEN_FLAG_OCTWRAP),
-          // SEQUENCE wrapper
-          ASN1_GEN_STR("SEQWRAP", ASN1_GEN_FLAG_SEQWRAP),
-          // SET wrapper
-          ASN1_GEN_STR("SETWRAP", ASN1_GEN_FLAG_SETWRAP),
-          // BIT STRING wrapper
-          ASN1_GEN_STR("BITWRAP", ASN1_GEN_FLAG_BITWRAP),
-          ASN1_GEN_STR("FORM", ASN1_GEN_FLAG_FORMAT),
-          ASN1_GEN_STR("FORMAT", ASN1_GEN_FLAG_FORMAT),
-      };
+      // Special cases
+      ASN1_GEN_STR("SEQUENCE", V_ASN1_SEQUENCE),
+      ASN1_GEN_STR("SEQ", V_ASN1_SEQUENCE),
+      ASN1_GEN_STR("SET", V_ASN1_SET),
+      // type modifiers
+      // Explicit tag
+      ASN1_GEN_STR("EXP", ASN1_GEN_FLAG_EXP),
+      ASN1_GEN_STR("EXPLICIT", ASN1_GEN_FLAG_EXP),
+      // Implicit tag
+      ASN1_GEN_STR("IMP", ASN1_GEN_FLAG_IMP),
+      ASN1_GEN_STR("IMPLICIT", ASN1_GEN_FLAG_IMP),
+      // OCTET STRING wrapper
+      ASN1_GEN_STR("OCTWRAP", ASN1_GEN_FLAG_OCTWRAP),
+      // SEQUENCE wrapper
+      ASN1_GEN_STR("SEQWRAP", ASN1_GEN_FLAG_SEQWRAP),
+      // SET wrapper
+      ASN1_GEN_STR("SETWRAP", ASN1_GEN_FLAG_SETWRAP),
+      // BIT STRING wrapper
+      ASN1_GEN_STR("BITWRAP", ASN1_GEN_FLAG_BITWRAP),
+      ASN1_GEN_STR("FORM", ASN1_GEN_FLAG_FORMAT),
+      ASN1_GEN_STR("FORMAT", ASN1_GEN_FLAG_FORMAT),
+  };
 
-  if (len == -1) {
-    len = strlen(tagstr);
-  }
-
-  tntmp = tnst;
-  for (i = 0; i < sizeof(tnst) / sizeof(struct tag_name_st); i++, tntmp++) {
-    if ((len == tntmp->len) && !strncmp(tntmp->strnam, tagstr, len)) {
-      return tntmp->tag;
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(tnst); i++) {
+    if (len == tnst[i].len && strncmp(tnst[i].strnam, tagstr, len) == 0) {
+      return tnst[i].tag;
     }
   }
 
@@ -797,7 +785,7 @@ bad_form:
   return NULL;
 }
 
-static int bitstr_cb(const char *elem, int len, void *bitstr) {
+static int bitstr_cb(const char *elem, size_t len, void *bitstr) {
   long bitnum;
   char *eptr;
   if (!elem) {

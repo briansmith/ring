@@ -32,7 +32,7 @@ CONF_VALUE *CONF_VALUE_new(void);
 // value is returned immediately. Otherwise it returns one. Note that |list_cb|
 // may be called on an empty member.
 int CONF_parse_list(const char *list, char sep, int remove_whitespace,
-                    int (*list_cb)(const char *elem, int len, void *usr),
+                    int (*list_cb)(const char *elem, size_t len, void *usr),
                     void *arg);
 
 

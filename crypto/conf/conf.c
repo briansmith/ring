@@ -766,7 +766,7 @@ int NCONF_load_bio(CONF *conf, BIO *bio, long *out_error_line) {
 }
 
 int CONF_parse_list(const char *list, char sep, int remove_whitespace,
-                    int (*list_cb)(const char *elem, int len, void *usr),
+                    int (*list_cb)(const char *elem, size_t len, void *usr),
                     void *arg) {
   int ret;
   const char *lstart, *tmpend, *p;
