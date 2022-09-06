@@ -1018,6 +1018,14 @@ OPENSSL_EXPORT int i2d_EC_PUBKEY(const EC_KEY *ec_key, uint8_t **outp);
 OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY(EC_KEY **out, const uint8_t **inp,
                                      long len);
 
+// EVP_PKEY_CTX_set_dsa_paramgen_bits returns zero.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_bits(EVP_PKEY_CTX *ctx,
+                                                      int nbits);
+
+// EVP_PKEY_CTX_set_dsa_paramgen_q_bits returns zero.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
+                                                        int qbits);
+
 
 // Preprocessor compatibility section (hidden).
 //
