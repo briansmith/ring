@@ -328,7 +328,7 @@ OPENSSL_EXPORT int BIO_printf(BIO *bio, const char *format, ...)
 OPENSSL_EXPORT int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent);
 
 // BIO_hexdump writes a hex dump of |data| to |bio|. Each line will be indented
-// by |indent| spaces.
+// by |indent| spaces. It returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len,
                                unsigned indent);
 
