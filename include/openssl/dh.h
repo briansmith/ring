@@ -137,15 +137,40 @@ OPENSSL_EXPORT int DH_set_length(DH *dh, unsigned priv_length);
 
 // Standard parameters.
 
+// DH_get_rfc7919_2048 returns the group `ffdhe2048` from
+// https://tools.ietf.org/html/rfc7919#appendix-A.1. It returns NULL if out
+// of memory.
+OPENSSL_EXPORT DH *DH_get_rfc7919_2048(void);
+
 // BN_get_rfc3526_prime_1536 sets |*ret| to the 1536-bit MODP group from RFC
 // 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
 // and returned. It returns NULL on allocation failure.
 OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_1536(BIGNUM *ret);
 
-// DH_get_rfc7919_2048 returns the group `ffdhe2048` from
-// https://tools.ietf.org/html/rfc7919#appendix-A.1. It returns NULL if out
-// of memory.
-OPENSSL_EXPORT DH *DH_get_rfc7919_2048(void);
+// BN_get_rfc3526_prime_2048 sets |*ret| to the 2048-bit MODP group from RFC
+// 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
+// and returned. It returns NULL on allocation failure.
+OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_2048(BIGNUM *ret);
+
+// BN_get_rfc3526_prime_3072 sets |*ret| to the 3072-bit MODP group from RFC
+// 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
+// and returned. It returns NULL on allocation failure.
+OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_3072(BIGNUM *ret);
+
+// BN_get_rfc3526_prime_4096 sets |*ret| to the 4096-bit MODP group from RFC
+// 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
+// and returned. It returns NULL on allocation failure.
+OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_4096(BIGNUM *ret);
+
+// BN_get_rfc3526_prime_6144 sets |*ret| to the 6144-bit MODP group from RFC
+// 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
+// and returned. It returns NULL on allocation failure.
+OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_6144(BIGNUM *ret);
+
+// BN_get_rfc3526_prime_8192 sets |*ret| to the 8192-bit MODP group from RFC
+// 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
+// and returned. It returns NULL on allocation failure.
+OPENSSL_EXPORT BIGNUM *BN_get_rfc3526_prime_8192(BIGNUM *ret);
 
 
 // Parameter generation.
