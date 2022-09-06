@@ -328,9 +328,10 @@ TEST(ASN1Test, Integer) {
     EXPECT_EQ(ptr, t.der.data() + t.der.size());
     objs["der"] = std::move(by_der);
 
-    // Construct |ASN1_INTEGER| from |long| or |uint64_t|, if it fits.
-    bool fits_in_long = false, fits_in_u64 = false;
+    // Construct |ASN1_INTEGER| from various C types, if it fits.
+    bool fits_in_long = false, fits_in_i64 = false, fits_in_u64 = false;
     uint64_t u64 = 0;
+    int64_t i64 = 0;
     long l = 0;
     uint64_t abs_u64;
     if (BN_get_u64(bn.get(), &abs_u64)) {
@@ -343,20 +344,26 @@ TEST(ASN1Test, Integer) {
         objs["u64"] = std::move(by_u64);
       }
 
+      fits_in_i64 = BN_cmp(int64_min.get(), bn.get()) <= 0 &&
+                    BN_cmp(bn.get(), int64_max.get()) <= 0;
+
+      if (fits_in_i64) {
+        if (BN_is_negative(bn.get())) {
+          i64 = static_cast<int64_t>(0u - abs_u64);
+        } else {
+          i64 = static_cast<int64_t>(abs_u64);
+        }
+      }
+
       if (sizeof(long) == 8) {
-        fits_in_long = BN_cmp(int64_min.get(), bn.get()) <= 0 &&
-                       BN_cmp(bn.get(), int64_max.get()) <= 0;
+        fits_in_long = fits_in_i64;
       } else {
         ASSERT_EQ(4u, sizeof(long));
         fits_in_long = BN_cmp(int32_min.get(), bn.get()) <= 0 &&
                        BN_cmp(bn.get(), int32_max.get()) <= 0;
       }
       if (fits_in_long) {
-        if (BN_is_negative(bn.get())) {
-          l = static_cast<long>(0u - abs_u64);
-        } else {
-          l = static_cast<long>(abs_u64);
-        }
+        l = static_cast<long>(i64);
         bssl::UniquePtr<ASN1_INTEGER> by_long(ASN1_INTEGER_new());
         ASSERT_TRUE(by_long);
         ASSERT_TRUE(ASN1_INTEGER_set(by_long.get(), l));
@@ -394,6 +401,15 @@ TEST(ASN1Test, Integer) {
       } else {
         uint64_t v;
         EXPECT_FALSE(ASN1_INTEGER_get_uint64(&v, obj));
+      }
+
+      if (fits_in_i64) {
+        int64_t v;
+        ASSERT_TRUE(ASN1_INTEGER_get_int64(&v, obj));
+        EXPECT_EQ(v, i64);
+      } else {
+        int64_t v;
+        EXPECT_FALSE(ASN1_INTEGER_get_int64(&v, obj));
       }
 
       if (fits_in_long) {

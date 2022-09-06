@@ -1090,6 +1090,11 @@ OPENSSL_EXPORT int ASN1_INTEGER_set(ASN1_INTEGER *a, long v);
 OPENSSL_EXPORT int ASN1_INTEGER_get_uint64(uint64_t *out,
                                            const ASN1_INTEGER *a);
 
+// ASN1_INTEGER_get_int64 converts |a| to a |int64_t|. On success, it returns
+// one and sets |*out| to the result. If |a| did not fit or has the wrong type,
+// it returns zero.
+OPENSSL_EXPORT int ASN1_INTEGER_get_int64(int64_t *out, const ASN1_INTEGER *a);
+
 // ASN1_INTEGER_get returns the value of |a| as a |long|, or -1 if |a| is out of
 // range or the wrong type.
 //
@@ -1153,6 +1158,12 @@ OPENSSL_EXPORT int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v);
 // wrong type, it returns zero.
 OPENSSL_EXPORT int ASN1_ENUMERATED_get_uint64(uint64_t *out,
                                               const ASN1_ENUMERATED *a);
+
+// ASN1_ENUMERATED_get_int64 converts |a| to a |int64_t|. On success, it
+// returns one and sets |*out| to the result. If |a| did not fit or has the
+// wrong type, it returns zero.
+OPENSSL_EXPORT int ASN1_ENUMERATED_get_int64(int64_t *out,
+                                             const ASN1_ENUMERATED *a);
 
 // ASN1_ENUMERATED_get returns the value of |a| as a |long|, or -1 if |a| is out
 // of range or the wrong type.

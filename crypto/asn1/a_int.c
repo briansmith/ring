@@ -333,16 +333,11 @@ int ASN1_ENUMERATED_get_uint64(uint64_t *out, const ASN1_ENUMERATED *a) {
   return asn1_string_get_uint64(out, a, V_ASN1_ENUMERATED);
 }
 
-static long asn1_string_get_long(const ASN1_STRING *a, int type) {
-  if (a == NULL) {
-    return 0;
-  }
-
+static int asn1_string_get_int64(int64_t *out, const ASN1_STRING *a, int type) {
   uint64_t v;
   if (!asn1_string_get_abs_uint64(&v, a, type)) {
-    goto err;
+    return 0;
   }
-
   int64_t i64;
   int fits_in_i64;
   // Check |v != 0| to handle manually-constructed negative zeros.
@@ -353,16 +348,36 @@ static long asn1_string_get_long(const ASN1_STRING *a, int type) {
     i64 = (int64_t)v;
     fits_in_i64 = i64 >= 0;
   }
-  static_assert(sizeof(long) <= sizeof(int64_t), "long is too big");
+  if (!fits_in_i64) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_INTEGER);
+    return 0;
+  }
+  *out = i64;
+  return 1;
+}
 
-  if (fits_in_i64 && LONG_MIN <= i64 && i64 <= LONG_MAX) {
-    return (long)i64;
+int ASN1_INTEGER_get_int64(int64_t *out, const ASN1_INTEGER *a) {
+  return asn1_string_get_int64(out, a, V_ASN1_INTEGER);
+}
+
+int ASN1_ENUMERATED_get_int64(int64_t *out, const ASN1_ENUMERATED *a) {
+  return asn1_string_get_int64(out, a, V_ASN1_ENUMERATED);
+}
+
+static long asn1_string_get_long(const ASN1_STRING *a, int type) {
+  if (a == NULL) {
+    return 0;
   }
 
-err:
-  // This function's return value does not distinguish overflow from -1.
-  ERR_clear_error();
-  return -1;
+  int64_t v;
+  if (!asn1_string_get_int64(&v, a, type) ||  //
+      v < LONG_MIN || v > LONG_MAX) {
+    // This function's return value does not distinguish overflow from -1.
+    ERR_clear_error();
+    return -1;
+  }
+
+  return (long)v;
 }
 
 long ASN1_INTEGER_get(const ASN1_INTEGER *a) {
