@@ -80,11 +80,11 @@ static int bn_print(BIO *bp, const char *number, const BIGNUM *num,
     return 1;
   }
 
-  if (BN_num_bytes(num) <= sizeof(long)) {
+  uint64_t u64;
+  if (BN_get_u64(num, &u64)) {
     const char *neg = BN_is_negative(num) ? "-" : "";
-    if (BIO_printf(bp, "%s %s%lu (%s0x%lx)\n", number, neg,
-                   (unsigned long)num->d[0], neg,
-                   (unsigned long)num->d[0]) <= 0) {
+    if (BIO_printf(bp, "%s %s%" PRIu64 " (%s0x%" PRIx64 ")\n", number, neg, u64,
+                   neg, u64) <= 0) {
       return 0;
     }
   } else {
