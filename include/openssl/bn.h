@@ -967,6 +967,9 @@ OPENSSL_EXPORT int BN_bn2binpad(const BIGNUM *in, uint8_t *out, int len);
 // conservative.)
 #define BN_prime_checks BN_prime_checks_for_validation
 
+// BN_secure_new calls |BN_new|.
+OPENSSL_EXPORT BIGNUM *BN_secure_new(void);
+
 
 // Private functions
 

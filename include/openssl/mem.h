@@ -164,6 +164,21 @@ OPENSSL_EXPORT void CRYPTO_free(void *ptr, const char *file, int line);
 // allocations on free, but we define |OPENSSL_clear_free| for compatibility.
 OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 
+// CRYPTO_secure_malloc_init returns zero.
+OPENSSL_EXPORT int CRYPTO_secure_malloc_init(size_t size, size_t min_size);
+
+// CRYPTO_secure_malloc_initialized returns zero.
+OPENSSL_EXPORT int CRYPTO_secure_malloc_initialized(void);
+
+// CRYPTO_secure_used returns zero.
+OPENSSL_EXPORT size_t CRYPTO_secure_used(void);
+
+// OPENSSL_secure_malloc calls |OPENSSL_malloc|.
+OPENSSL_EXPORT void *OPENSSL_secure_malloc(size_t size);
+
+// OPENSSL_secure_clear_free calls |OPENSSL_clear_free|.
+OPENSSL_EXPORT void OPENSSL_secure_clear_free(void *ptr, size_t len);
+
 
 #if defined(__cplusplus)
 }  // extern C

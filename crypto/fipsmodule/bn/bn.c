@@ -81,6 +81,8 @@ BIGNUM *BN_new(void) {
   return bn;
 }
 
+BIGNUM *BN_secure_new(void) { return BN_new(); }
+
 void BN_init(BIGNUM *bn) {
   OPENSSL_memset(bn, 0, sizeof(BIGNUM));
 }
