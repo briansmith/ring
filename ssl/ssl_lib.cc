@@ -1949,6 +1949,22 @@ int SSL_set1_curves_list(SSL *ssl, const char *curves) {
   return tls1_set_curves_list(&ssl->config->supported_group_list, curves);
 }
 
+int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups, size_t groups_len) {
+  return SSL_CTX_set1_curves(ctx, groups, groups_len);
+}
+
+int SSL_set1_groups(SSL *ssl, const int *groups, size_t groups_len) {
+  return SSL_set1_curves(ssl, groups, groups_len);
+}
+
+int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups) {
+  return SSL_CTX_set1_curves_list(ctx, groups);
+}
+
+int SSL_set1_groups_list(SSL *ssl, const char *groups) {
+  return SSL_set1_curves_list(ssl, groups);
+}
+
 uint16_t SSL_get_curve_id(const SSL *ssl) {
   SSL_SESSION *session = SSL_get_session(ssl);
   if (session == NULL) {

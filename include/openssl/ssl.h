@@ -2352,6 +2352,20 @@ OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
 // the given TLS curve id, or NULL if the curve is unknown.
 OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 
+// SSL_CTX_set1_groups calls |SSL_CTX_set1_curves|.
+OPENSSL_EXPORT int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups,
+                                       size_t groups_len);
+
+// SSL_set1_groups calls |SSL_set1_curves|.
+OPENSSL_EXPORT int SSL_set1_groups(SSL *ssl, const int *groups,
+                                   size_t groups_len);
+
+// SSL_CTX_set1_groups_list calls |SSL_CTX_set1_curves_list|.
+OPENSSL_EXPORT int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups);
+
+// SSL_set1_groups_list calls |SSL_set1_curves_list|.
+OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
+
 
 // Certificate verification.
 //
