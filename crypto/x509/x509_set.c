@@ -98,8 +98,12 @@ int X509_set_version(X509 *x, long version) {
 }
 
 int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
-  ASN1_INTEGER *in;
+  if (serial->type != V_ASN1_INTEGER) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_TYPE);
+    return 0;
+  }
 
+  ASN1_INTEGER *in;
   if (x == NULL) {
     return 0;
   }

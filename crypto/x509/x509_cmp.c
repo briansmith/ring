@@ -232,6 +232,10 @@ X509 *X509_find_by_issuer_and_serial(STACK_OF(X509) *sk, X509_NAME *name,
     return NULL;
   }
 
+  if (serial->type != V_ASN1_INTEGER) {
+    return NULL;
+  }
+
   x.cert_info = &cinf;
   cinf.serialNumber = serial;
   cinf.issuer = name;

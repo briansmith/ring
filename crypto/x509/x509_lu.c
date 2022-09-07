@@ -146,6 +146,9 @@ int X509_LOOKUP_by_issuer_serial(X509_LOOKUP *ctx, int type, X509_NAME *name,
   if ((ctx->method == NULL) || (ctx->method->get_by_issuer_serial == NULL)) {
     return 0;
   }
+  if (serial->type != V_ASN1_INTEGER) {
+    return 0;
+  }
   return ctx->method->get_by_issuer_serial(ctx, type, name, serial, ret) > 0;
 }
 
