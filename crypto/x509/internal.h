@@ -273,12 +273,6 @@ struct x509_lookup_method_st {
               char **ret);
   int (*get_by_subject)(X509_LOOKUP *ctx, int type, X509_NAME *name,
                         X509_OBJECT *ret);
-  int (*get_by_issuer_serial)(X509_LOOKUP *ctx, int type, X509_NAME *name,
-                              ASN1_INTEGER *serial, X509_OBJECT *ret);
-  int (*get_by_fingerprint)(X509_LOOKUP *ctx, int type, unsigned char *bytes,
-                            int len, X509_OBJECT *ret);
-  int (*get_by_alias)(X509_LOOKUP *ctx, int type, char *str, int len,
-                      X509_OBJECT *ret);
 } /* X509_LOOKUP_METHOD */;
 
 // This is used to hold everything.  It is used for all certificate

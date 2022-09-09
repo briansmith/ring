@@ -75,9 +75,6 @@ static X509_LOOKUP_METHOD x509_file_lookup = {
     NULL,          // shutdown
     by_file_ctrl,  // ctrl
     NULL,          // get_by_subject
-    NULL,          // get_by_issuer_serial
-    NULL,          // get_by_fingerprint
-    NULL,          // get_by_alias
 };
 
 X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return &x509_file_lookup; }

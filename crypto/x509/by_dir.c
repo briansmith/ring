@@ -104,9 +104,6 @@ static X509_LOOKUP_METHOD x509_dir_lookup = {
     NULL,                 // shutdown
     dir_ctrl,             // ctrl
     get_cert_by_subject,  // get_by_subject
-    NULL,                 // get_by_issuer_serial
-    NULL,                 // get_by_fingerprint
-    NULL,                 // get_by_alias
 };
 
 X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void) { return &x509_dir_lookup; }

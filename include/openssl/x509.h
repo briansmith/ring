@@ -2733,15 +2733,6 @@ OPENSSL_EXPORT void X509_LOOKUP_free(X509_LOOKUP *ctx);
 OPENSSL_EXPORT int X509_LOOKUP_init(X509_LOOKUP *ctx);
 OPENSSL_EXPORT int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type,
                                           X509_NAME *name, X509_OBJECT *ret);
-OPENSSL_EXPORT int X509_LOOKUP_by_issuer_serial(X509_LOOKUP *ctx, int type,
-                                                X509_NAME *name,
-                                                ASN1_INTEGER *serial,
-                                                X509_OBJECT *ret);
-OPENSSL_EXPORT int X509_LOOKUP_by_fingerprint(X509_LOOKUP *ctx, int type,
-                                              unsigned char *bytes, int len,
-                                              X509_OBJECT *ret);
-OPENSSL_EXPORT int X509_LOOKUP_by_alias(X509_LOOKUP *ctx, int type, char *str,
-                                        int len, X509_OBJECT *ret);
 OPENSSL_EXPORT int X509_LOOKUP_shutdown(X509_LOOKUP *ctx);
 
 #ifndef OPENSSL_NO_STDIO
