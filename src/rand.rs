@@ -180,6 +180,7 @@ use self::sysrand::fill as fill_impl;
 use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(
+    target_os = "aix",
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "illumos",
@@ -339,6 +340,7 @@ mod sysrand_or_urandom {
         any(target_os = "android", target_os = "linux"),
         feature = "dev_urandom_fallback"
     ),
+    target_os = "aix",
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "netbsd",

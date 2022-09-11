@@ -41,6 +41,7 @@ include = [
     "crypto/cipher_extra/test/aes_256_gcm_siv_tests.txt",
     "crypto/constant_time_test.c",
     "crypto/cpu-intel.c",
+    "crypto/cpu-ppc.c",
     "crypto/crypto.c",
     "crypto/curve25519/asm/x25519-asm-arm.S",
     "crypto/curve25519/curve25519.c",
@@ -57,6 +58,8 @@ include = [
     "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl",
     "crypto/fipsmodule/bn/asm/armv4-mont.pl",
     "crypto/fipsmodule/bn/asm/armv8-mont.pl",
+    "crypto/fipsmodule/bn/asm/ppc-mont.pl",
+    "crypto/fipsmodule/bn/asm/ppc64-mont.pl",
     "crypto/fipsmodule/bn/asm/x86-mont.pl",
     "crypto/fipsmodule/bn/asm/x86_64-mont.pl",
     "crypto/fipsmodule/bn/asm/x86_64-mont5.pl",
@@ -93,6 +96,7 @@ include = [
     "crypto/limbs/limbs.inl",
     "crypto/mem.c",
     "crypto/perlasm/arm-xlate.pl",
+    "crypto/perlasm/ppc-xlate.pl",
     "crypto/perlasm/x86asm.pl",
     "crypto/perlasm/x86gas.pl",
     "crypto/perlasm/x86nasm.pl",
@@ -171,7 +175,7 @@ spin = { version = "0.9.2", default-features = false, features = ["once"] }
 libc = { version = "0.2.100", default-features = false }
 once_cell = { version = "1.8.0", default-features = false, features=["std"], optional = true }
 
-[target.'cfg(any(target_os = "dragonfly", target_os = "freebsd", target_os = "illumos", target_os = "netbsd", target_os = "openbsd", target_os = "redox", target_os = "solaris"))'.dependencies]
+[target.'cfg(any(target_os = "dragonfly", target_os = "freebsd", target_os = "illumos", target_os = "netbsd", target_os = "openbsd", target_os = "redox", target_os = "solaris", target_os = "aix"))'.dependencies]
 once_cell = { version = "1.8.0", default-features = false, features=["std"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown", target_env = ""))'.dependencies]

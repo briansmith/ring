@@ -1221,7 +1221,8 @@ fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0, _cpu_features
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "powerpc64",
     ))]
     unsafe {
         bn_mul_mont(
@@ -1238,7 +1239,8 @@ fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0, _cpu_features
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "powerpc64",
     )))]
     {
         let mut tmp = [0; 2 * MODULUS_MAX_LIMBS];
@@ -1278,7 +1280,8 @@ fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N
     target_arch = "aarch64",
     target_arch = "arm",
     target_arch = "x86_64",
-    target_arch = "x86"
+    target_arch = "x86",
+    target_arch = "powerpc64",
 )))]
 fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
     debug_assert_eq!(r.len(), 2 * a.len());
@@ -1316,7 +1319,8 @@ fn limbs_mont_product(
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "powerpc64",
     ))]
     unsafe {
         bn_mul_mont(
@@ -1333,7 +1337,8 @@ fn limbs_mont_product(
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "powerpc64",
     )))]
     {
         let mut tmp = [0; 2 * MODULUS_MAX_LIMBS];
@@ -1350,7 +1355,8 @@ fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0, _cpu_features: cpu::Fe
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "powerpc64",
     ))]
     unsafe {
         bn_mul_mont(
@@ -1367,7 +1373,8 @@ fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0, _cpu_features: cpu::Fe
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "powerpc64",
     )))]
     {
         let mut tmp = [0; 2 * MODULUS_MAX_LIMBS];
@@ -1381,7 +1388,8 @@ fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0, _cpu_features: cpu::Fe
     target_arch = "aarch64",
     target_arch = "arm",
     target_arch = "x86_64",
-    target_arch = "x86"
+    target_arch = "x86",
+    target_arch = "powerpc64",
 ))]
 prefixed_extern! {
     // `r` and/or 'a' and/or 'b' may alias.
@@ -1401,7 +1409,8 @@ prefixed_extern! {
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "x86_64",
-        target_arch = "x86"
+        target_arch = "x86",
+        target_arch = "powerpc64",
     ))
 ))]
 prefixed_extern! {

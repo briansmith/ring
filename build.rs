@@ -30,6 +30,8 @@ const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
+const PPC64: &str = "powerpc64";
+const PPC: &str = "powerpc";
 
 #[rustfmt::skip]
 const RING_SRCS: &[(&[&str], &str)] = &[
@@ -41,11 +43,11 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/poly1305/poly1305.c"),
 
-    (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/p256.c"),
+    (&[AARCH64, ARM, X86_64, X86, PPC64, PPC], "crypto/crypto.c"),
+    (&[AARCH64, ARM, X86_64, X86, PPC64, PPC], "crypto/fipsmodule/ec/ecp_nistz.c"),
+    (&[AARCH64, ARM, X86_64, X86, PPC64, PPC], "crypto/fipsmodule/ec/gfp_p256.c"),
+    (&[AARCH64, ARM, X86_64, X86, PPC64, PPC], "crypto/fipsmodule/ec/gfp_p384.c"),
+    (&[AARCH64, ARM, X86_64, X86, PPC64, PPC], "crypto/fipsmodule/ec/p256.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -87,6 +89,10 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+
+    (&[PPC64], "crypto/fipsmodule/bn/asm/ppc64-mont.pl"),
+    (&[PPC], "crypto/fipsmodule/bn/asm/ppc-mont.pl"),
+    (&[PPC64, PPC], "crypto/cpu-ppc.c"),
 ];
 
 const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
@@ -235,6 +241,13 @@ const ASM_TARGETS: &[AsmTarget] = &[
         asm_extension: "S",
         preassemble: true,
     },
+    AsmTarget {
+        oss: &[AIX],
+        arch: "powerpc64",
+        perlasm_format: "aix64",
+        asm_extension: "s",
+        preassemble: true,
+    },
 ];
 
 struct AsmTarget {
@@ -278,6 +291,8 @@ const LINUX_ABI: &[&str] = &[
 const MACOS_ABI: &[&str] = &["ios", "macos"];
 
 const WINDOWS: &str = "windows";
+
+const AIX: &str = "aix";
 
 /// Read an environment variable and tell Cargo that we depend on it.
 ///
