@@ -313,7 +313,8 @@ bool ssl_write_client_hello_without_extensions(const SSL_HANDSHAKE *hs,
 
   if (SSL_is_dtls(ssl)) {
     if (!CBB_add_u8_length_prefixed(cbb, &child) ||
-        !CBB_add_bytes(&child, ssl->d1->cookie, ssl->d1->cookie_len)) {
+        !CBB_add_bytes(&child, hs->dtls_cookie.data(),
+                       hs->dtls_cookie.size())) {
       return false;
     }
   }
@@ -626,15 +627,16 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
   uint16_t server_version;
   if (!CBS_get_u16(&hello_verify_request, &server_version) ||
       !CBS_get_u8_length_prefixed(&hello_verify_request, &cookie) ||
-      CBS_len(&cookie) > sizeof(ssl->d1->cookie) ||
       CBS_len(&hello_verify_request) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
-  OPENSSL_memcpy(ssl->d1->cookie, CBS_data(&cookie), CBS_len(&cookie));
-  ssl->d1->cookie_len = CBS_len(&cookie);
+  if (!hs->dtls_cookie.CopyFrom(cookie)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    return ssl_hs_error;
+  }
 
   ssl->method->next_message(ssl);
 

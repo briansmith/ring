@@ -639,6 +639,14 @@ type ProtocolBugs struct {
 	// HelloVerifyRequest message.
 	SkipHelloVerifyRequest bool
 
+	// HelloVerifyRequestCookieLength, if non-zero, is the length of the cookie
+	// to request in HelloVerifyRequest.
+	HelloVerifyRequestCookieLength int
+
+	// EmptyHelloVerifyRequestCookie, if true, causes a DTLS server to request
+	// an empty cookie in HelloVerifyRequest.
+	EmptyHelloVerifyRequestCookie bool
+
 	// SkipCertificateStatus, if true, causes the server to skip the
 	// CertificateStatus message. This is legal because CertificateStatus is
 	// optional, even with a status_request in ServerHello.

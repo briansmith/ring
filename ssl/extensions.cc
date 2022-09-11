@@ -240,8 +240,7 @@ bool ssl_parse_client_hello_with_trailing_data(const SSL *ssl, CBS *cbs,
   // Skip past DTLS cookie
   if (SSL_is_dtls(out->ssl)) {
     CBS cookie;
-    if (!CBS_get_u8_length_prefixed(cbs, &cookie) ||
-        CBS_len(&cookie) > DTLS1_COOKIE_LENGTH) {
+    if (!CBS_get_u8_length_prefixed(cbs, &cookie)) {
       return false;
     }
   }

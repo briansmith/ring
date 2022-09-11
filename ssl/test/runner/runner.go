@@ -3546,6 +3546,31 @@ read alert 1 0
 			},
 			flags: []string{"-async"},
 		},
+		{
+			// DTLS 1.2 allows up to a 255-byte HelloVerifyRequest cookie, which
+			// is the largest encodable value.
+			protocol: dtls,
+			name:     "DTLS-HelloVerifyRequest-255",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					HelloVerifyRequestCookieLength: 255,
+				},
+			},
+		},
+		{
+			// DTLS 1.2 allows up to a 0-byte HelloVerifyRequest cookie, which
+			// was probably a mistake in the spec but test that it works
+			// nonetheless.
+			protocol: dtls,
+			name:     "DTLS-HelloVerifyRequest-0",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					EmptyHelloVerifyRequestCookie: true,
+				},
+			},
+		},
 	}
 	testCases = append(testCases, basicTests...)
 
