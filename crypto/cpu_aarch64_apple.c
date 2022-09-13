@@ -58,13 +58,15 @@ void OPENSSL_cpuid_setup(void) {
   OPENSSL_armcap_P =
       ARMV7_NEON | ARMV8_AES | ARMV8_PMULL | ARMV8_SHA1 | ARMV8_SHA256;
 
-  // macOS has sysctls named both like "hw.optional.arm.FEAT_SHA512" and like
-  // "hw.optional.armv8_2_sha512". There does not appear to be documentation on
-  // which to use. The "armv8_2_sha512" style omits statically-available
-  // features, while the "FEAT_SHA512" style includes them. However, the
-  // "FEAT_SHA512" style was added in macOS 12, so we use the older style for
-  // better compatibility and handle static features above.
-  if (has_hw_feature("hw.optional.armv8_2_sha512")) {
+  // See Apple's documentation for sysctl names:
+  // https://developer.apple.com/documentation/kernel/1387446-sysctlbyname/determining_instruction_set_characteristics
+  //
+  // The new feature names, e.g. "hw.optional.arm.FEAT_SHA512", are only
+  // available in macOS 12. For compatibility with macOS 11, we also support
+  // the old names. The old names don't have values for features like FEAT_AES,
+  // so instead we detect them statically above.
+  if (has_hw_feature("hw.optional.arm.FEAT_SHA512") ||
+      has_hw_feature("hw.optional.armv8_2_sha512")) {
     OPENSSL_armcap_P |= ARMV8_SHA512;
   }
 }
