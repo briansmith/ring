@@ -12,10 +12,15 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <string>
+#include <vector>
+
 #include <openssl/bio.h>
 #include <openssl/conf.h>
 
 #include <gtest/gtest.h>
+
+#include "internal.h"
 
 
 TEST(ConfTest, Parse) {
@@ -41,4 +46,55 @@ key=value2
   EXPECT_STREQ(NCONF_get_string(conf.get(), nullptr, "key"), "value");
   EXPECT_STREQ(NCONF_get_string(conf.get(), "section_name", "key"), "value2");
   EXPECT_STREQ(NCONF_get_string(conf.get(), "other_section", "key"), nullptr);
+}
+
+TEST(ConfTest, ParseList) {
+  const struct {
+    const char *list;
+    char sep;
+    bool remove_whitespace;
+    std::vector<std::string> expected;
+  } kTests[] = {
+      {"", ',', /*remove_whitespace=*/0, {""}},
+      {"", ',', /*remove_whitespace=*/1, {""}},
+
+      {" ", ',', /*remove_whitespace=*/0, {" "}},
+      {" ", ',', /*remove_whitespace=*/1, {""}},
+
+      {"hello world", ',', /*remove_whitespace=*/0, {"hello world"}},
+      {"hello world", ',', /*remove_whitespace=*/1, {"hello world"}},
+
+      {" hello world ", ',', /*remove_whitespace=*/0, {" hello world "}},
+      {" hello world ", ',', /*remove_whitespace=*/1, {"hello world"}},
+
+      {"hello,world", ',', /*remove_whitespace=*/0, {"hello", "world"}},
+      {"hello,world", ',', /*remove_whitespace=*/1, {"hello", "world"}},
+
+      {"hello,,world", ',', /*remove_whitespace=*/0, {"hello", "", "world"}},
+      {"hello,,world", ',', /*remove_whitespace=*/1, {"hello", "", "world"}},
+
+      {"\tab cd , , ef gh ",
+       ',',
+       /*remove_whitespace=*/0,
+       {"\tab cd ", " ", " ef gh "}},
+      {"\tab cd , , ef gh ",
+       ',',
+       /*remove_whitespace=*/1,
+       {"ab cd", "", "ef gh"}},
+  };
+  for (const auto& t : kTests) {
+    SCOPED_TRACE(t.list);
+    SCOPED_TRACE(t.sep);
+    SCOPED_TRACE(t.remove_whitespace);
+
+    std::vector<std::string> result;
+    auto append_to_vector = [](const char *elem, size_t len, void *arg) -> int {
+      auto *vec = static_cast<std::vector<std::string> *>(arg);
+      vec->push_back(std::string(elem, len));
+      return 1;
+    };
+    ASSERT_TRUE(CONF_parse_list(t.list, t.sep, t.remove_whitespace,
+                                append_to_vector, &result));
+    EXPECT_EQ(result, t.expected);
+  }
 }
