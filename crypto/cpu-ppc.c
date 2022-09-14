@@ -8,7 +8,7 @@
  */
 /* This file is derived from ppccap.c in OpenSSL */
 
-#include <GFp/cpu.h>
+#include <ring-core/cpu.h>
 #include "internal.h"
 
 int bn_mul_mont_int(unsigned long *rp, const unsigned long *ap, const unsigned long *bp,

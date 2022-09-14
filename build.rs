@@ -245,7 +245,7 @@ const ASM_TARGETS: &[AsmTarget] = &[
         oss: &[AIX],
         arch: "powerpc64",
         perlasm_format: "aix64",
-        asm_extension: "s",
+        asm_extension: "S",
         preassemble: true,
     },
 ];
