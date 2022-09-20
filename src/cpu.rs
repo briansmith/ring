@@ -29,6 +29,7 @@ pub(crate) fn features() -> Features {
     #[cfg(any(
         target_arch = "x86",
         target_arch = "x86_64",
+        target_arch = "loongarch64",
         all(
             any(target_arch = "aarch64", target_arch = "arm"),
             any(
@@ -64,6 +65,12 @@ pub(crate) fn features() -> Features {
             {
                 arm::setup();
             }
+
+            #[cfg(any(target_arch = "loongarch64"))]
+            {
+                loongarch::setup();
+            }
+
         });
     }
 
@@ -72,3 +79,4 @@ pub(crate) fn features() -> Features {
 
 pub mod arm;
 pub mod intel;
+pub mod loongarch;
