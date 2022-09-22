@@ -17,6 +17,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -338,14 +339,16 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
   } else {
     session = s3->session_reused ? ssl->session.get() : hs->new_session.get();
   }
+  uint8_t read_sequence[8], write_sequence[8];
+  CRYPTO_store_u64_be(read_sequence, s3->read_sequence);
+  CRYPTO_store_u64_be(write_sequence, s3->write_sequence);
   static const uint8_t kUnusedChannelID[64] = {0};
   if (!CBB_add_asn1(out, &seq, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&seq, kHandbackVersion) ||
       !CBB_add_asn1_uint64(&seq, type) ||
-      !CBB_add_asn1_octet_string(&seq, s3->read_sequence,
-                                 sizeof(s3->read_sequence)) ||
-      !CBB_add_asn1_octet_string(&seq, s3->write_sequence,
-                                 sizeof(s3->write_sequence)) ||
+      !CBB_add_asn1_octet_string(&seq, read_sequence, sizeof(read_sequence)) ||
+      !CBB_add_asn1_octet_string(&seq, write_sequence,
+                                 sizeof(write_sequence)) ||
       !CBB_add_asn1_octet_string(&seq, s3->server_random,
                                  sizeof(s3->server_random)) ||
       !CBB_add_asn1_octet_string(&seq, s3->client_random,
@@ -366,7 +369,7 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
                                  sizeof(kUnusedChannelID)) ||
       // These two fields were historically |token_binding_negotiated| and
       // |negotiated_token_binding_param|.
-      !CBB_add_asn1_bool(&seq, 0) ||
+      !CBB_add_asn1_bool(&seq, 0) ||  //
       !CBB_add_asn1_uint64(&seq, 0) ||
       !CBB_add_asn1_bool(&seq, s3->hs->next_proto_neg_seen) ||
       !CBB_add_asn1_bool(&seq, s3->hs->cert_request) ||
@@ -694,11 +697,13 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       }
       break;
   }
-  if (!CopyExact({s3->read_sequence, sizeof(s3->read_sequence)}, &read_seq) ||
-      !CopyExact({s3->write_sequence, sizeof(s3->write_sequence)},
-                 &write_seq)) {
+  uint8_t read_sequence[8], write_sequence[8];
+  if (!CopyExact(read_sequence, &read_seq) ||
+      !CopyExact(write_sequence, &write_seq)) {
     return false;
   }
+  s3->read_sequence = CRYPTO_load_u64_be(read_sequence);
+  s3->write_sequence = CRYPTO_load_u64_be(write_sequence);
   if (type == handback_after_ecdhe &&
       (hs->key_shares[0] = SSLKeyShare::Create(&key_share)) == nullptr) {
     return false;

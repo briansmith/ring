@@ -151,17 +151,6 @@ static bool ssl_needs_record_splitting(const SSL *ssl) {
 #endif
 }
 
-bool ssl_record_sequence_update(uint8_t *seq, size_t seq_len) {
-  for (size_t i = seq_len - 1; i < seq_len; i--) {
-    ++seq[i];
-    if (seq[i] != 0) {
-      return true;
-    }
-  }
-  OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-  return false;
-}
-
 size_t ssl_record_prefix_len(const SSL *ssl) {
   size_t header_len;
   if (SSL_is_dtls(ssl)) {
@@ -286,6 +275,13 @@ ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
     return skip_early_data(ssl, out_alert, *out_consumed);
   }
 
+  // Ensure the sequence number update does not overflow.
+  if (ssl->s3->read_sequence + 1 == 0) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return ssl_open_record_error;
+  }
+
   // Decrypt the body in-place.
   if (!ssl->s3->aead_read_ctx->Open(
           out, type, version, ssl->s3->read_sequence, header,
@@ -301,11 +297,7 @@ ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
   }
 
   ssl->s3->skip_early_data = false;
-
-  if (!ssl_record_sequence_update(ssl->s3->read_sequence, 8)) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
-    return ssl_open_record_error;
-  }
+  ssl->s3->read_sequence++;
 
   // TLS 1.3 hides the record type inside the encrypted data.
   bool has_padding =
@@ -411,13 +403,19 @@ static bool do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
   out_prefix[4] = ciphertext_len & 0xff;
   Span<const uint8_t> header = MakeSpan(out_prefix, SSL3_RT_HEADER_LENGTH);
 
-  if (!aead->SealScatter(out_prefix + SSL3_RT_HEADER_LENGTH, out, out_suffix,
-                         out_prefix[0], record_version, ssl->s3->write_sequence,
-                         header, in, in_len, extra_in, extra_in_len) ||
-      !ssl_record_sequence_update(ssl->s3->write_sequence, 8)) {
+  // Ensure the sequence number update does not overflow.
+  if (ssl->s3->write_sequence + 1 == 0) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return false;
   }
 
+  if (!aead->SealScatter(out_prefix + SSL3_RT_HEADER_LENGTH, out, out_suffix,
+                         out_prefix[0], record_version, ssl->s3->write_sequence,
+                         header, in, in_len, extra_in, extra_in_len)) {
+    return false;
+  }
+
+  ssl->s3->write_sequence++;
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, header);
   return true;
 }

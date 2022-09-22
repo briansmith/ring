@@ -829,15 +829,14 @@ class SSLAEADContext {
   // to the plaintext in |in| and returns true.  Otherwise, it returns
   // false. The output will always be |ExplicitNonceLen| bytes ahead of |in|.
   bool Open(Span<uint8_t> *out, uint8_t type, uint16_t record_version,
-            const uint8_t seqnum[8], Span<const uint8_t> header,
-            Span<uint8_t> in);
+            uint64_t seqnum, Span<const uint8_t> header, Span<uint8_t> in);
 
   // Seal encrypts and authenticates |in_len| bytes from |in| and writes the
   // result to |out|. It returns true on success and false on error.
   //
   // If |in| and |out| alias then |out| + |ExplicitNonceLen| must be == |in|.
   bool Seal(uint8_t *out, size_t *out_len, size_t max_out, uint8_t type,
-            uint16_t record_version, const uint8_t seqnum[8],
+            uint16_t record_version, uint64_t seqnum,
             Span<const uint8_t> header, const uint8_t *in, size_t in_len);
 
   // SealScatter encrypts and authenticates |in_len| bytes from |in| and splits
@@ -856,10 +855,9 @@ class SSLAEADContext {
   // If |in| and |out| alias then |out| must be == |in|. Other arguments may not
   // alias anything.
   bool SealScatter(uint8_t *out_prefix, uint8_t *out, uint8_t *out_suffix,
-                   uint8_t type, uint16_t record_version,
-                   const uint8_t seqnum[8], Span<const uint8_t> header,
-                   const uint8_t *in, size_t in_len, const uint8_t *extra_in,
-                   size_t extra_in_len);
+                   uint8_t type, uint16_t record_version, uint64_t seqnum,
+                   Span<const uint8_t> header, const uint8_t *in, size_t in_len,
+                   const uint8_t *extra_in, size_t extra_in_len);
 
   bool GetIV(const uint8_t **out_iv, size_t *out_iv_len) const;
 
@@ -868,8 +866,7 @@ class SSLAEADContext {
   // necessary.
   Span<const uint8_t> GetAdditionalData(uint8_t storage[13], uint8_t type,
                                         uint16_t record_version,
-                                        const uint8_t seqnum[8],
-                                        size_t plaintext_len,
+                                        uint64_t seqnum, size_t plaintext_len,
                                         Span<const uint8_t> header);
 
   const SSL_CIPHER *cipher_;
@@ -915,10 +912,6 @@ struct DTLS1_BITMAP {
 
 
 // Record layer.
-
-// ssl_record_sequence_update increments the sequence number in |seq|. It
-// returns true on success and false on wraparound.
-bool ssl_record_sequence_update(uint8_t *seq, size_t seq_len);
 
 // ssl_record_prefix_len returns the length of the prefix before the ciphertext
 // of a record for |ssl|.
@@ -2644,8 +2637,8 @@ struct SSL3_STATE {
   SSL3_STATE();
   ~SSL3_STATE();
 
-  uint8_t read_sequence[8] = {0};
-  uint8_t write_sequence[8] = {0};
+  uint64_t read_sequence = 0;
+  uint64_t write_sequence = 0;
 
   uint8_t server_random[SSL3_RANDOM_SIZE] = {0};
   uint8_t client_random[SSL3_RANDOM_SIZE] = {0};
@@ -2935,7 +2928,7 @@ struct DTLS1_STATE {
   uint16_t handshake_read_seq = 0;
 
   // save last sequence number for retransmissions
-  uint8_t last_write_sequence[8] = {0};
+  uint64_t last_write_sequence = 0;
   UniquePtr<SSLAEADContext> last_aead_write_ctx;
 
   // incoming_messages is a ring buffer of incoming handshake messages that have
