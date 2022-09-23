@@ -65,6 +65,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include <assert.h>
+
 #include "../internal.h"
 #include "internal.h"
 
@@ -430,9 +432,9 @@ static struct CRYPTO_STATIC_MUTEX g_crl_sort_lock = CRYPTO_STATIC_MUTEX_INIT;
 
 static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *serial,
                       X509_NAME *issuer) {
-  if (serial->type != V_ASN1_INTEGER) {
-    return 0;
-  }
+  // Use an assert, rather than a runtime error, because returning nothing for a
+  // CRL is arguably failing open, rather than closed.
+  assert(serial->type == V_ASN1_INTEGER || serial->type == V_ASN1_NEG_INTEGER);
   X509_REVOKED rtmp, *rev;
   size_t idx;
   rtmp.serialNumber = serial;

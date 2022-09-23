@@ -4816,6 +4816,15 @@ TEST(X509Test, SetSerialNumberChecksASN1StringType) {
   // Passing an IA5String to X509_set_serialNumber() should fail.
   bssl::UniquePtr<ASN1_IA5STRING> str(ASN1_IA5STRING_new());
   ASSERT_TRUE(str);
-  int r = X509_set_serialNumber(root.get(), str.get());
-  ASSERT_EQ(r, 0);
+  EXPECT_FALSE(X509_set_serialNumber(root.get(), str.get()));
+
+  // Passing a negative serial number is allowed. While invalid, we do accept
+  // them and some callers rely in this for tests.
+  bssl::UniquePtr<ASN1_INTEGER> serial(ASN1_INTEGER_new());
+  ASSERT_TRUE(serial);
+  ASSERT_TRUE(ASN1_INTEGER_set(serial.get(), -1));
+  ASSERT_TRUE(X509_set_serialNumber(root.get(), serial.get()));
+  int64_t val;
+  ASSERT_TRUE(ASN1_INTEGER_get_int64(&val, X509_get0_serialNumber(root.get())));
+  EXPECT_EQ(-1, val);
 }

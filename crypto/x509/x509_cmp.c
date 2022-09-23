@@ -210,7 +210,7 @@ unsigned long X509_NAME_hash_old(X509_NAME *x) {
 
 X509 *X509_find_by_issuer_and_serial(const STACK_OF(X509) *sk, X509_NAME *name,
                                      const ASN1_INTEGER *serial) {
-  if (serial->type != V_ASN1_INTEGER) {
+  if (serial->type != V_ASN1_INTEGER && serial->type != V_ASN1_NEG_INTEGER) {
     return NULL;
   }
 
