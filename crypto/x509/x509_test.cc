@@ -1943,7 +1943,7 @@ TEST(X509Test, RSASignManual) {
       cert.reset(X509_new());
       // Fill in some fields for the certificate arbitrarily.
       EXPECT_TRUE(X509_set_version(cert.get(), X509_VERSION_3));
-      EXPECT_TRUE(ASN1_INTEGER_set(X509_get_serialNumber(cert.get()), 1));
+      EXPECT_TRUE(ASN1_INTEGER_set_int64(X509_get_serialNumber(cert.get()), 1));
       EXPECT_TRUE(X509_gmtime_adj(X509_getm_notBefore(cert.get()), 0));
       EXPECT_TRUE(
           X509_gmtime_adj(X509_getm_notAfter(cert.get()), 60 * 60 * 24));
@@ -2088,7 +2088,7 @@ TEST(X509Test, TestFromBufferModified) {
   ASSERT_TRUE(root);
 
   bssl::UniquePtr<ASN1_INTEGER> fourty_two(ASN1_INTEGER_new());
-  ASN1_INTEGER_set(fourty_two.get(), 42);
+  ASN1_INTEGER_set_int64(fourty_two.get(), 42);
   X509_set_serialNumber(root.get(), fourty_two.get());
 
   ASSERT_EQ(static_cast<long>(data_len), i2d_X509(root.get(), nullptr));
@@ -4822,7 +4822,7 @@ TEST(X509Test, SetSerialNumberChecksASN1StringType) {
   // them and some callers rely in this for tests.
   bssl::UniquePtr<ASN1_INTEGER> serial(ASN1_INTEGER_new());
   ASSERT_TRUE(serial);
-  ASSERT_TRUE(ASN1_INTEGER_set(serial.get(), -1));
+  ASSERT_TRUE(ASN1_INTEGER_set_int64(serial.get(), -1));
   ASSERT_TRUE(X509_set_serialNumber(root.get(), serial.get()));
   int64_t val;
   ASSERT_TRUE(ASN1_INTEGER_get_int64(&val, X509_get0_serialNumber(root.get())));

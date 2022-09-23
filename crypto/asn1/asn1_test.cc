@@ -346,13 +346,16 @@ TEST(ASN1Test, Integer) {
 
       fits_in_i64 = BN_cmp(int64_min.get(), bn.get()) <= 0 &&
                     BN_cmp(bn.get(), int64_max.get()) <= 0;
-
       if (fits_in_i64) {
         if (BN_is_negative(bn.get())) {
           i64 = static_cast<int64_t>(0u - abs_u64);
         } else {
           i64 = static_cast<int64_t>(abs_u64);
         }
+        bssl::UniquePtr<ASN1_INTEGER> by_i64(ASN1_INTEGER_new());
+        ASSERT_TRUE(by_i64);
+        ASSERT_TRUE(ASN1_INTEGER_set_int64(by_i64.get(), i64));
+        objs["i64"] = std::move(by_i64);
       }
 
       if (sizeof(long) == 8) {

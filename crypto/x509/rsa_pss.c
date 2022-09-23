@@ -221,7 +221,7 @@ int x509_rsa_ctx_to_pss(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   assert(saltlen != 20);
   pss->saltLength = ASN1_INTEGER_new();
   if (!pss->saltLength ||  //
-      !ASN1_INTEGER_set(pss->saltLength, saltlen)) {
+      !ASN1_INTEGER_set_int64(pss->saltLength, saltlen)) {
     goto err;
   }
 

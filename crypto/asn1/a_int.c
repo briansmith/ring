@@ -246,7 +246,7 @@ err:
   return NULL;
 }
 
-int ASN1_INTEGER_set(ASN1_INTEGER *a, long v) {
+int ASN1_INTEGER_set_int64(ASN1_INTEGER *a, int64_t v) {
   if (v >= 0) {
     return ASN1_INTEGER_set_uint64(a, (uint64_t)v);
   }
@@ -259,7 +259,7 @@ int ASN1_INTEGER_set(ASN1_INTEGER *a, long v) {
   return 1;
 }
 
-int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v) {
+int ASN1_ENUMERATED_set_int64(ASN1_ENUMERATED *a, int64_t v) {
   if (v >= 0) {
     return ASN1_ENUMERATED_set_uint64(a, (uint64_t)v);
   }
@@ -270,6 +270,16 @@ int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v) {
 
   a->type = V_ASN1_NEG_ENUMERATED;
   return 1;
+}
+
+int ASN1_INTEGER_set(ASN1_INTEGER *a, long v) {
+  static_assert(sizeof(long) <= sizeof(int64_t), "long fits in int64_t");
+  return ASN1_INTEGER_set_int64(a, v);
+}
+
+int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v) {
+  static_assert(sizeof(long) <= sizeof(int64_t), "long fits in int64_t");
+  return ASN1_ENUMERATED_set_int64(a, v);
 }
 
 static int asn1_string_set_uint64(ASN1_STRING *out, uint64_t v, int type) {

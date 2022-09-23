@@ -70,7 +70,7 @@ int X509_REQ_set_version(X509_REQ *x, long version) {
     OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
     return 0;
   }
-  return ASN1_INTEGER_set(x->req_info->version, version);
+  return ASN1_INTEGER_set_int64(x->req_info->version, version);
 }
 
 int X509_REQ_set_subject_name(X509_REQ *x, X509_NAME *name) {

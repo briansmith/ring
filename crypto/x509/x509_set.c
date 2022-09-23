@@ -94,7 +94,7 @@ int X509_set_version(X509 *x, long version) {
       return 0;
     }
   }
-  return ASN1_INTEGER_set(x->cert_info->version, version);
+  return ASN1_INTEGER_set_int64(x->cert_info->version, version);
 }
 
 int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
