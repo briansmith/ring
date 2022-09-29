@@ -51,8 +51,24 @@ OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void);
 // will be one of the |EVP_HPKE_KEM_*| constants.
 OPENSSL_EXPORT uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem);
 
+// EVP_HPKE_MAX_PUBLIC_KEY_LENGTH is the maximum length of an encoded public key
+// for all KEMs currently supported by this library.
+#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 32
+
+// EVP_HPKE_KEM_public_key_len returns the length of a public key for |kem|.
+// This value will be at most |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH|.
+OPENSSL_EXPORT size_t EVP_HPKE_KEM_public_key_len(const EVP_HPKE_KEM *kem);
+
+// EVP_HPKE_MAX_PRIVATE_KEY_LENGTH is the maximum length of an encoded private
+// key for all KEMs currently supported by this library.
+#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 32
+
+// EVP_HPKE_KEM_private_key_len returns the length of a private key for |kem|.
+// This value will be at most |EVP_HPKE_MAX_PRIVATE_KEY_LENGTH|.
+OPENSSL_EXPORT size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem);
+
 // EVP_HPKE_MAX_ENC_LENGTH is the maximum length of "enc", the encapsulated
-// shared secret, for all supported KEMs in this library.
+// shared secret, for all KEMs currently supported by this library.
 #define EVP_HPKE_MAX_ENC_LENGTH 32
 
 // EVP_HPKE_KEM_enc_len returns the length of the "enc", the encapsulated shared
@@ -140,28 +156,22 @@ OPENSSL_EXPORT int EVP_HPKE_KEY_generate(EVP_HPKE_KEY *key,
 // EVP_HPKE_KEY_kem returns the HPKE KEM used by |key|.
 OPENSSL_EXPORT const EVP_HPKE_KEM *EVP_HPKE_KEY_kem(const EVP_HPKE_KEY *key);
 
-// EVP_HPKE_MAX_PUBLIC_KEY_LENGTH is the maximum length of a public key for all
-// KEMs supported by this library.
-#define EVP_HPKE_MAX_PUBLIC_KEY_LENGTH 32
-
 // EVP_HPKE_KEY_public_key writes |key|'s public key to |out| and sets
 // |*out_len| to the number of bytes written. On success, it returns one and
 // writes at most |max_out| bytes. If |max_out| is too small, it returns zero.
 // Setting |max_out| to |EVP_HPKE_MAX_PUBLIC_KEY_LENGTH| will ensure the public
-// key fits.
+// key fits. An exact size can also be determined by
+// |EVP_HPKE_KEM_public_key_len|.
 OPENSSL_EXPORT int EVP_HPKE_KEY_public_key(const EVP_HPKE_KEY *key,
                                            uint8_t *out, size_t *out_len,
                                            size_t max_out);
-
-// EVP_HPKE_MAX_PRIVATE_KEY_LENGTH is the maximum length of a private key for
-// all KEMs supported by this library.
-#define EVP_HPKE_MAX_PRIVATE_KEY_LENGTH 32
 
 // EVP_HPKE_KEY_private_key writes |key|'s private key to |out| and sets
 // |*out_len| to the number of bytes written. On success, it returns one and
 // writes at most |max_out| bytes. If |max_out| is too small, it returns zero.
 // Setting |max_out| to |EVP_HPKE_MAX_PRIVATE_KEY_LENGTH| will ensure the
-// private key fits.
+// private key fits. An exact size can also be determined by
+// |EVP_HPKE_KEM_private_key_len|.
 OPENSSL_EXPORT int EVP_HPKE_KEY_private_key(const EVP_HPKE_KEY *key,
                                             uint8_t *out, size_t *out_len,
                                             size_t max_out);

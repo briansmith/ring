@@ -228,6 +228,14 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
 
 uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem) { return kem->id; }
 
+size_t EVP_HPKE_KEM_public_key_len(const EVP_HPKE_KEM *kem) {
+  return kem->public_key_len;
+}
+
+size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem) {
+  return kem->private_key_len;
+}
+
 size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem) { return kem->enc_len; }
 
 void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key) {
