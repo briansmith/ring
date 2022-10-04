@@ -134,6 +134,8 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 ///
 /// On macOS and iOS, `fill()` is implemented using `SecRandomCopyBytes`.
 ///
+/// On OpenBSD `fill()` is implemented using the [`getentropy`] syscall.
+///
 /// On wasm32-unknown-unknown when the "wasm32_unknown_unknown_js" feature is
 /// enabled, `fill()` is implemented using `window.crypto.getRandomValues()`.
 /// It must be used in a context where the global object is a `Window`; i.e. it
@@ -142,6 +144,7 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 /// On Windows, `fill` is implemented using the platform's API for secure
 /// random number generation.
 ///
+/// [`getentropy`]: https://man.openbsd.org/getentropy
 /// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
 #[derive(Clone, Debug)]
 pub struct SystemRandom(());
@@ -168,6 +171,7 @@ impl crate::sealed::Sealed for SystemRandom {}
         any(target_os = "android", target_os = "linux"),
         not(feature = "dev_urandom_fallback")
     ),
+    target_os = "openbsd",
     target_arch = "wasm32",
     windows
 ))]
@@ -184,7 +188,6 @@ use self::sysrand_or_urandom::fill as fill_impl;
     target_os = "freebsd",
     target_os = "illumos",
     target_os = "netbsd",
-    target_os = "openbsd",
     target_os = "redox",
     target_os = "solaris",
 ))]
@@ -226,6 +229,22 @@ mod sysrand_chunk {
             return Err(error::Unspecified);
         }
         Ok(r as usize)
+    }
+}
+
+#[cfg(target_os = "openbsd")]
+mod sysrand_chunk {
+    use core::cmp::min;
+    use crate::{c, error};
+
+    #[inline]
+    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        let chunk_len: c::size_t = min(dest.len(), 256);
+        let r = unsafe { libc::getentropy(dest.as_mut_ptr() as *mut libc::c_void, chunk_len) };
+        if r < 0 {
+            return Err(error::Unspecified);
+        }
+        Ok(chunk_len)
     }
 }
 
@@ -285,6 +304,7 @@ mod sysrand_chunk {
 #[cfg(any(
     target_os = "android",
     target_os = "linux",
+    target_os = "openbsd",
     target_arch = "wasm32",
     windows
 ))]
@@ -342,7 +362,6 @@ mod sysrand_or_urandom {
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "netbsd",
-    target_os = "openbsd",
     target_os = "redox",
     target_os = "solaris",
     target_os = "illumos"
