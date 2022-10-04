@@ -74,6 +74,7 @@
 
 #include "internal.h"
 #include "../fipsmodule/bn/internal.h"
+#include "../fipsmodule/dh/internal.h"
 #include "../internal.h"
 
 

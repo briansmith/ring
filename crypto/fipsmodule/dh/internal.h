@@ -17,10 +17,30 @@
 
 #include <openssl/base.h>
 
+#include <openssl/thread.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+
+struct dh_st {
+  BIGNUM *p;
+  BIGNUM *g;
+  BIGNUM *q;
+  BIGNUM *pub_key;   // g^x mod p
+  BIGNUM *priv_key;  // x
+
+  // priv_length contains the length, in bits, of the private value. If zero,
+  // the private value will be the same length as |p|.
+  unsigned priv_length;
+
+  CRYPTO_MUTEX method_mont_p_lock;
+  BN_MONT_CTX *method_mont_p;
+
+  int flags;
+  CRYPTO_refcount_t references;
+};
 
 // dh_compute_key_padded_no_self_test does the same as |DH_compute_key_padded|,
 // but doesn't try to run the self-test first. This is for use in the self tests

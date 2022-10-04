@@ -101,9 +101,6 @@ void DH_free(DH *dh) {
   BN_clear_free(dh->p);
   BN_clear_free(dh->g);
   BN_clear_free(dh->q);
-  BN_clear_free(dh->j);
-  OPENSSL_free(dh->seed);
-  BN_clear_free(dh->counter);
   BN_clear_free(dh->pub_key);
   BN_clear_free(dh->priv_key);
   CRYPTO_MUTEX_cleanup(&dh->method_mont_p_lock);

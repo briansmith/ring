@@ -57,6 +57,7 @@
 #include <openssl/mem.h>
 
 #include "../fipsmodule/bn/internal.h"
+#include "../fipsmodule/dh/internal.h"
 
 
 static BIGNUM *get_params(BIGNUM *ret, const BN_ULONG *words, size_t num_words) {
@@ -452,21 +453,8 @@ static int int_dh_param_copy(DH *to, const DH *from, int is_x942) {
     return 1;
   }
 
-  if (!int_dh_bn_cpy(&to->q, from->q) ||
-      !int_dh_bn_cpy(&to->j, from->j)) {
+  if (!int_dh_bn_cpy(&to->q, from->q)) {
     return 0;
-  }
-
-  OPENSSL_free(to->seed);
-  to->seed = NULL;
-  to->seedlen = 0;
-
-  if (from->seed) {
-    to->seed = OPENSSL_memdup(from->seed, from->seedlen);
-    if (!to->seed) {
-      return 0;
-    }
-    to->seedlen = from->seedlen;
   }
 
   return 1;
