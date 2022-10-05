@@ -762,8 +762,7 @@ TEST(EVPExtraTest, Print) {
       61
 )");
 
-  // TODO(davidben): This output is a little off. |BIO_hexdump| does not really
-  // fit for printing the public key, and we've lost the curve name.
+  // TODO(davidben): This output should include the curve name.
   bssl::UniquePtr<EVP_PKEY> ec =
       ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER));
   ASSERT_TRUE(ec);
@@ -771,11 +770,12 @@ TEST(EVPExtraTest, Print) {
             "  ECDSA-Parameters: (256 bit)\n");
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_public),
             R"(  Public-Key: (256 bit)
-  00000000  04 e6 2b 69 e2 bf 65 9f  97 be 2f 1e 0d 94 8a 4c  |..+i..e.../....L|
-  00000010  d5 97 6b b7 a9 1e 0d 46  fb dd a9 a9 1e 9d dc ba  |..k....F........|
-  00000020  5a 01 e7 d6 97 a8 0a 18  f9 c3 c4 a3 1e 56 e2 7c  |Z............V.||
-  00000030  83 48 db 16 1a 1c f5 1d  7e f1 94 2d 4b cf 72 22  |.H......~..-K.r"|
-  00000040  c1                                                |.|
+  pub:
+      04:e6:2b:69:e2:bf:65:9f:97:be:2f:1e:0d:94:8a:
+      4c:d5:97:6b:b7:a9:1e:0d:46:fb:dd:a9:a9:1e:9d:
+      dc:ba:5a:01:e7:d6:97:a8:0a:18:f9:c3:c4:a3:1e:
+      56:e2:7c:83:48:db:16:1a:1c:f5:1d:7e:f1:94:2d:
+      4b:cf:72:22:c1
 )");
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_private),
             R"(  Private-Key: (256 bit)
@@ -783,11 +783,12 @@ TEST(EVPExtraTest, Print) {
       07:0f:08:72:7a:d4:a0:4a:9c:dd:59:c9:4d:89:68:
       77:08:b5:6f:c9:5d:30:77:0e:e8:d1:c9:ce:0a:8b:
       b4:6a
-  00000000  04 e6 2b 69 e2 bf 65 9f  97 be 2f 1e 0d 94 8a 4c  |..+i..e.../....L|
-  00000010  d5 97 6b b7 a9 1e 0d 46  fb dd a9 a9 1e 9d dc ba  |..k....F........|
-  00000020  5a 01 e7 d6 97 a8 0a 18  f9 c3 c4 a3 1e 56 e2 7c  |Z............V.||
-  00000030  83 48 db 16 1a 1c f5 1d  7e f1 94 2d 4b cf 72 22  |.H......~..-K.r"|
-  00000040  c1                                                |.|
+  pub:
+      04:e6:2b:69:e2:bf:65:9f:97:be:2f:1e:0d:94:8a:
+      4c:d5:97:6b:b7:a9:1e:0d:46:fb:dd:a9:a9:1e:9d:
+      dc:ba:5a:01:e7:d6:97:a8:0a:18:f9:c3:c4:a3:1e:
+      56:e2:7c:83:48:db:16:1a:1c:f5:1d:7e:f1:94:2d:
+      4b:cf:72:22:c1
 )");
 }
 
