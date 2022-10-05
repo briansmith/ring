@@ -585,7 +585,8 @@ TEST(EVPExtraTest, Print) {
       EVP_PKEY_DSA, kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER));
   ASSERT_TRUE(dsa);
   EXPECT_EQ(PrintToString(dsa.get(), /*indent=*/2, &EVP_PKEY_print_params),
-            R"(  P:
+            R"(  DSA-Parameters: (2048 bit)
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -629,7 +630,8 @@ TEST(EVPExtraTest, Print) {
       61
 )");
   EXPECT_EQ(PrintToString(dsa.get(), /*indent=*/2, &EVP_PKEY_print_public),
-            R"(  pub:
+            R"(  Public-Key: (2048 bit)
+  pub:
       31:97:31:a1:4e:38:56:88:db:94:1d:bf:65:5c:da:
       4b:c2:10:de:74:20:03:ce:13:60:f2:25:1d:55:7c:
       5d:94:82:54:08:53:db:85:95:bf:dd:5e:50:d5:96:

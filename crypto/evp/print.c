@@ -210,14 +210,11 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
     ktype = "Public-Key";
   }
 
-  if (priv_key) {
-    if (!BIO_indent(bp, off, 128) ||
-        BIO_printf(bp, "%s: (%u bit)\n", ktype, BN_num_bits(x->p)) <= 0) {
-      return 0;
-    }
-  }
-
-  if (!bn_print(bp, "priv:", priv_key, off) ||
+  if (!BIO_indent(bp, off, 128) ||
+      BIO_printf(bp, "%s: (%u bit)\n", ktype, BN_num_bits(x->p)) <= 0 ||
+      // |priv_key| and |pub_key| may be NULL, in which case |bn_print| will
+      // silently skip them.
+      !bn_print(bp, "priv:", priv_key, off) ||
       !bn_print(bp, "pub:", pub_key, off) ||
       !bn_print(bp, "P:", x->p, off) ||
       !bn_print(bp, "Q:", x->q, off) ||
