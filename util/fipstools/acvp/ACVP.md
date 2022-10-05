@@ -249,6 +249,6 @@ The current list of objects is:
 
 ### Running test sessions
 
-In online mode, a given algorithm can be run by using the `-run` option. For example, `-run SHA2-256`. This will fetch a vector set, have the module-under-test answer it, and upload the answer. If you want to just fetch the vector set for later use with the `-json` option (documented above) then you can use `-fetch` instead of `-run`.
+In online mode, a given algorithm can be run by using the `-run` option. For example, `-run SHA2-256`. This will fetch a vector set, have the module-under-test answer it, and upload the answer. If you want to just fetch the vector set for later use with the `-json` option (documented above) then you can use `-fetch` instead of `-run`. The `-fetch` option also supports passing `-expected-out <filename>` to fetch and write the expected results, if the server supports that.
 
 The tool doesn't currently support the sorts of operations that a lab would need, like uploading results from a file.

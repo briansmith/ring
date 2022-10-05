@@ -28,6 +28,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -42,12 +43,13 @@ import (
 )
 
 var (
-	dumpRegcap     = flag.Bool("regcap", false, "Print module capabilities JSON to stdout")
-	configFilename = flag.String("config", "config.json", "Location of the configuration JSON file")
-	jsonInputFile  = flag.String("json", "", "Location of a vector-set input file")
-	runFlag        = flag.String("run", "", "Name of primitive to run tests for")
-	fetchFlag      = flag.String("fetch", "", "Name of primitive to fetch vectors for")
-	wrapperPath    = flag.String("wrapper", "../../../../build/util/fipstools/acvp/modulewrapper/modulewrapper", "Path to the wrapper binary")
+	dumpRegcap      = flag.Bool("regcap", false, "Print module capabilities JSON to stdout")
+	configFilename  = flag.String("config", "config.json", "Location of the configuration JSON file")
+	jsonInputFile   = flag.String("json", "", "Location of a vector-set input file")
+	runFlag         = flag.String("run", "", "Name of primitive to run tests for")
+	fetchFlag       = flag.String("fetch", "", "Name of primitive to fetch vectors for")
+	expectedOutFlag = flag.String("expected-out", "", "Name of a file to write the expected results to")
+	wrapperPath     = flag.String("wrapper", "../../../../build/util/fipstools/acvp/modulewrapper/modulewrapper", "Path to the wrapper binary")
 )
 
 type Config struct {
@@ -286,6 +288,32 @@ func processFile(filename string, supportedAlgos []map[string]interface{}, middl
 	return nil
 }
 
+// getVectorsWithRetry fetches the given url from the server and parses it as a
+// set of vectors. Any server requested retry is handled.
+func getVectorsWithRetry(server *acvp.Server, url string) (out acvp.Vectors, vectorsBytes []byte, err error) {
+	for {
+		if vectorsBytes, err = server.GetBytes(url); err != nil {
+			return out, nil, err
+		}
+
+		var vectors acvp.Vectors
+		if err := json.Unmarshal(vectorsBytes, &vectors); err != nil {
+			return out, nil, err
+		}
+
+		retry := vectors.Retry
+		if retry == 0 {
+			return vectors, vectorsBytes, nil
+		}
+
+		log.Printf("Server requested %d seconds delay", retry)
+		if retry > 10 {
+			retry = 10
+		}
+		time.Sleep(time.Duration(retry) * time.Second)
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -397,13 +425,31 @@ func main() {
 	}
 
 	var requestedAlgosFlag string
+	// The output file to which expected results are written, if requested.
+	var expectedOut *os.File
+	// A tee that outputs to both stdout (for vectors) and the file for
+	// expected results, if any.
+	var fetchOutputTee io.Writer
+
 	if len(*runFlag) > 0 && len(*fetchFlag) > 0 {
 		log.Fatalf("cannot specify both -run and -fetch")
+	}
+	if len(*expectedOutFlag) > 0 && len(*fetchFlag) == 0 {
+		log.Fatalf("-expected-out can only be used with -fetch")
 	}
 	if len(*runFlag) > 0 {
 		requestedAlgosFlag = *runFlag
 	} else {
 		requestedAlgosFlag = *fetchFlag
+		if len(*expectedOutFlag) > 0 {
+			if expectedOut, err = os.Create(*expectedOutFlag); err != nil {
+				log.Fatalf("cannot open %q: %s", *expectedOutFlag, err)
+			}
+			fetchOutputTee = io.MultiWriter(os.Stdout, expectedOut)
+			defer expectedOut.Close()
+		} else {
+			fetchOutputTee = os.Stdout
+		}
 	}
 
 	runAlgos := make(map[string]bool)
@@ -499,8 +545,8 @@ func main() {
 	log.Printf("Have vector sets %v", result.VectorSetURLs)
 
 	if len(*fetchFlag) > 0 {
-		os.Stdout.WriteString("[\n")
-		json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		io.WriteString(fetchOutputTee, "[\n")
+		json.NewEncoder(fetchOutputTee).Encode(map[string]interface{}{
 			"url":           url,
 			"vectorSetUrls": result.VectorSetURLs,
 			"time":          time.Now().Format(time.RFC3339),
@@ -508,125 +554,118 @@ func main() {
 	}
 
 	for _, setURL := range result.VectorSetURLs {
-		firstTime := true
-		for {
-			if firstTime {
-				log.Printf("Fetching test vectors %q", setURL)
-				firstTime = false
-			}
+		log.Printf("Fetching test vectors %q", setURL)
 
-			vectorsBytes, err := server.GetBytes(trimLeadingSlash(setURL))
+		vectors, vectorsBytes, err := getVectorsWithRetry(server, trimLeadingSlash(setURL))
+		if err != nil {
+			log.Fatalf("Failed to fetch vector set %q: %s", setURL, err)
+		}
+
+		if len(*fetchFlag) > 0 {
+			os.Stdout.WriteString(",\n")
+			os.Stdout.Write(vectorsBytes)
+		}
+
+		if expectedOut != nil {
+			log.Printf("Fetching expected results")
+
+			_, expectedResultsBytes, err := getVectorsWithRetry(server, trimLeadingSlash(setURL)+"/expected")
 			if err != nil {
-				log.Fatalf("Failed to fetch vector set %q: %s", setURL, err)
+				log.Fatalf("Failed to fetch expected results: %s", err)
 			}
 
-			var vectors acvp.Vectors
-			if err := json.Unmarshal(vectorsBytes, &vectors); err != nil {
-				log.Fatalf("Failed to parse vector set from %q: %s", setURL, err)
-			}
+			expectedOut.WriteString(",")
+			expectedOut.Write(expectedResultsBytes)
+		}
 
-			if retry := vectors.Retry; retry > 0 {
-				log.Printf("Server requested %d seconds delay", retry)
-				if retry > 10 {
-					retry = 10
-				}
-				time.Sleep(time.Duration(retry) * time.Second)
-				continue
-			}
+		if len(*fetchFlag) > 0 {
+			continue
+		}
 
-			if len(*fetchFlag) > 0 {
-				os.Stdout.WriteString(",\n")
-				os.Stdout.Write(vectorsBytes)
-				break
-			}
+		replyGroups, err := middle.Process(vectors.Algo, vectorsBytes)
+		if err != nil {
+			log.Printf("Failed: %s", err)
+			log.Printf("Deleting test set")
+			server.Delete(url)
+			os.Exit(1)
+		}
 
-			replyGroups, err := middle.Process(vectors.Algo, vectorsBytes)
-			if err != nil {
-				log.Printf("Failed: %s", err)
-				log.Printf("Deleting test set")
-				server.Delete(url)
-				os.Exit(1)
-			}
+		headerBytes, err := json.Marshal(acvp.Vectors{
+			ID:   vectors.ID,
+			Algo: vectors.Algo,
+		})
+		if err != nil {
+			log.Printf("Failed to marshal result: %s", err)
+			log.Printf("Deleting test set")
+			server.Delete(url)
+			os.Exit(1)
+		}
 
-			headerBytes, err := json.Marshal(acvp.Vectors{
-				ID:   vectors.ID,
-				Algo: vectors.Algo,
+		var resultBuf bytes.Buffer
+		resultBuf.Write(headerBytes[:len(headerBytes)-1])
+		resultBuf.WriteString(`,"testGroups":`)
+		replyBytes, err := json.Marshal(replyGroups)
+		if err != nil {
+			log.Printf("Failed to marshal result: %s", err)
+			log.Printf("Deleting test set")
+			server.Delete(url)
+			os.Exit(1)
+		}
+		resultBuf.Write(replyBytes)
+		resultBuf.WriteString("}")
+
+		resultData := resultBuf.Bytes()
+		resultSize := uint64(len(resultData)) + 32 /* for framing overhead */
+		if server.SizeLimit > 0 && resultSize >= server.SizeLimit {
+			// The NIST ACVP server no longer requires the large-upload process,
+			// suggesting that it may no longer be needed.
+			log.Printf("Result is %d bytes, too much given server limit of %d bytes. Using large-upload process.", resultSize, server.SizeLimit)
+			largeRequestBytes, err := json.Marshal(acvp.LargeUploadRequest{
+				Size: resultSize,
+				URL:  setURL,
 			})
 			if err != nil {
-				log.Printf("Failed to marshal result: %s", err)
+				log.Printf("Failed to marshal large-upload request: %s", err)
 				log.Printf("Deleting test set")
 				server.Delete(url)
 				os.Exit(1)
 			}
 
-			var resultBuf bytes.Buffer
-			resultBuf.Write(headerBytes[:len(headerBytes)-1])
-			resultBuf.WriteString(`,"testGroups":`)
-			replyBytes, err := json.Marshal(replyGroups)
+			var largeResponse acvp.LargeUploadResponse
+			if err := server.Post(&largeResponse, "/large", largeRequestBytes); err != nil {
+				log.Fatalf("Failed to request large-upload endpoint: %s", err)
+			}
+
+			log.Printf("Directed to large-upload endpoint at %q", largeResponse.URL)
+			client := &http.Client{}
+			req, err := http.NewRequest("POST", largeResponse.URL, bytes.NewBuffer(resultData))
 			if err != nil {
-				log.Printf("Failed to marshal result: %s", err)
-				log.Printf("Deleting test set")
-				server.Delete(url)
-				os.Exit(1)
+				log.Fatalf("Failed to create POST request: %s", err)
 			}
-			resultBuf.Write(replyBytes)
-			resultBuf.WriteString("}")
-
-			resultData := resultBuf.Bytes()
-			resultSize := uint64(len(resultData)) + 32 /* for framing overhead */
-			if server.SizeLimit > 0 && resultSize >= server.SizeLimit {
-				// The NIST ACVP server no longer requires the large-upload process,
-				// suggesting that it may no longer be needed.
-				log.Printf("Result is %d bytes, too much given server limit of %d bytes. Using large-upload process.", resultSize, server.SizeLimit)
-				largeRequestBytes, err := json.Marshal(acvp.LargeUploadRequest{
-					Size: resultSize,
-					URL:  setURL,
-				})
-				if err != nil {
-					log.Printf("Failed to marshal large-upload request: %s", err)
-					log.Printf("Deleting test set")
-					server.Delete(url)
-					os.Exit(1)
-				}
-
-				var largeResponse acvp.LargeUploadResponse
-				if err := server.Post(&largeResponse, "/large", largeRequestBytes); err != nil {
-					log.Fatalf("Failed to request large-upload endpoint: %s", err)
-				}
-
-				log.Printf("Directed to large-upload endpoint at %q", largeResponse.URL)
-				client := &http.Client{}
-				req, err := http.NewRequest("POST", largeResponse.URL, bytes.NewBuffer(resultData))
-				if err != nil {
-					log.Fatalf("Failed to create POST request: %s", err)
-				}
-				token := largeResponse.AccessToken
-				if len(token) == 0 {
-					token = server.AccessToken
-				}
-				req.Header.Add("Authorization", "Bearer "+token)
-				req.Header.Add("Content-Type", "application/json")
-				resp, err := client.Do(req)
-				if err != nil {
-					log.Fatalf("Failed writing large upload: %s", err)
-				}
-				resp.Body.Close()
-				if resp.StatusCode != 200 {
-					log.Fatalf("Large upload resulted in status code %d", resp.StatusCode)
-				}
-			} else {
-				log.Printf("Result size %d bytes", resultSize)
-				if err := server.Post(nil, trimLeadingSlash(setURL)+"/results", resultData); err != nil {
-					log.Fatalf("Failed to upload results: %s\n", err)
-				}
+			token := largeResponse.AccessToken
+			if len(token) == 0 {
+				token = server.AccessToken
 			}
-
-			break
+			req.Header.Add("Authorization", "Bearer "+token)
+			req.Header.Add("Content-Type", "application/json")
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Fatalf("Failed writing large upload: %s", err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != 200 {
+				log.Fatalf("Large upload resulted in status code %d", resp.StatusCode)
+			}
+		} else {
+			log.Printf("Result size %d bytes", resultSize)
+			if err := server.Post(nil, trimLeadingSlash(setURL)+"/results", resultData); err != nil {
+				log.Fatalf("Failed to upload results: %s\n", err)
+			}
 		}
 	}
 
 	if len(*fetchFlag) > 0 {
-		os.Stdout.WriteString("]\n")
+		io.WriteString(fetchOutputTee, "]\n")
 		os.Exit(0)
 	}
 
