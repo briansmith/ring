@@ -259,8 +259,11 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
   if (!BIO_indent(bp, off, 128)) {
     return 0;
   }
-  if (BIO_printf(bp, "%s: (%u bit)\n", ecstr,
-                 BN_num_bits(EC_GROUP_get0_order(group))) <= 0) {
+  int curve_name = EC_GROUP_get_curve_name(group);
+  if (BIO_printf(bp, "%s: (%s)\n", ecstr,
+                 curve_name == NID_undef
+                     ? "unknown curve"
+                     : EC_curve_nid2nist(curve_name)) <= 0) {
     return 0;
   }
 

@@ -762,14 +762,13 @@ TEST(EVPExtraTest, Print) {
       61
 )");
 
-  // TODO(davidben): This output should include the curve name.
   bssl::UniquePtr<EVP_PKEY> ec =
       ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER));
   ASSERT_TRUE(ec);
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_params),
-            "  ECDSA-Parameters: (256 bit)\n");
+            "  ECDSA-Parameters: (P-256)\n");
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_public),
-            R"(  Public-Key: (256 bit)
+            R"(  Public-Key: (P-256)
   pub:
       04:e6:2b:69:e2:bf:65:9f:97:be:2f:1e:0d:94:8a:
       4c:d5:97:6b:b7:a9:1e:0d:46:fb:dd:a9:a9:1e:9d:
@@ -778,7 +777,7 @@ TEST(EVPExtraTest, Print) {
       4b:cf:72:22:c1
 )");
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_private),
-            R"(  Private-Key: (256 bit)
+            R"(  Private-Key: (P-256)
   priv:
       07:0f:08:72:7a:d4:a0:4a:9c:dd:59:c9:4d:89:68:
       77:08:b5:6f:c9:5d:30:77:0e:e8:d1:c9:ce:0a:8b:
