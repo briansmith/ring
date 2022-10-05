@@ -585,7 +585,7 @@ TEST(EVPExtraTest, Print) {
       EVP_PKEY_DSA, kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER));
   ASSERT_TRUE(dsa);
   EXPECT_EQ(PrintToString(dsa.get(), /*indent=*/2, &EVP_PKEY_print_params),
-            R"(  P:   
+            R"(  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -604,11 +604,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:
@@ -629,7 +629,7 @@ TEST(EVPExtraTest, Print) {
       61
 )");
   EXPECT_EQ(PrintToString(dsa.get(), /*indent=*/2, &EVP_PKEY_print_public),
-            R"(  pub: 
+            R"(  pub:
       31:97:31:a1:4e:38:56:88:db:94:1d:bf:65:5c:da:
       4b:c2:10:de:74:20:03:ce:13:60:f2:25:1d:55:7c:
       5d:94:82:54:08:53:db:85:95:bf:dd:5e:50:d5:96:
@@ -648,7 +648,7 @@ TEST(EVPExtraTest, Print) {
       c0:6b:b1:15:dd:64:d7:c9:75:17:73:72:da:33:c4:
       6f:a5:47:a1:cc:d1:c6:62:e5:ca:ab:5f:2a:8f:6b:
       cc
-  P:   
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -667,11 +667,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:
@@ -697,7 +697,7 @@ TEST(EVPExtraTest, Print) {
       00:b0:c7:68:70:27:43:bc:51:24:29:93:a9:71:a5:
       28:89:79:54:44:f7:c6:45:22:03:d0:ce:84:fe:61:
       17:d4:6e
-  pub: 
+  pub:
       31:97:31:a1:4e:38:56:88:db:94:1d:bf:65:5c:da:
       4b:c2:10:de:74:20:03:ce:13:60:f2:25:1d:55:7c:
       5d:94:82:54:08:53:db:85:95:bf:dd:5e:50:d5:96:
@@ -716,7 +716,7 @@ TEST(EVPExtraTest, Print) {
       c0:6b:b1:15:dd:64:d7:c9:75:17:73:72:da:33:c4:
       6f:a5:47:a1:cc:d1:c6:62:e5:ca:ab:5f:2a:8f:6b:
       cc
-  P:   
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -735,11 +735,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:

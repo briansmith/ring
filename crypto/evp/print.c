@@ -218,10 +218,10 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
   }
 
   if (!bn_print(bp, "priv:", priv_key, off) ||
-      !bn_print(bp, "pub: ", pub_key, off) ||
-      !bn_print(bp, "P:   ", x->p, off) ||
-      !bn_print(bp, "Q:   ", x->q, off) ||
-      !bn_print(bp, "G:   ", x->g, off)) {
+      !bn_print(bp, "pub:", pub_key, off) ||
+      !bn_print(bp, "P:", x->p, off) ||
+      !bn_print(bp, "Q:", x->q, off) ||
+      !bn_print(bp, "G:", x->g, off)) {
     return 0;
   }
 
