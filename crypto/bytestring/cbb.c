@@ -503,13 +503,16 @@ void CBB_discard_child(CBB *cbb) {
 }
 
 int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
-  CBB child;
-  int started = 0;
+  return CBB_add_asn1_uint64_with_tag(cbb, value, CBS_ASN1_INTEGER);
+}
 
-  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_INTEGER)) {
+int CBB_add_asn1_uint64_with_tag(CBB *cbb, uint64_t value, unsigned tag) {
+  CBB child;
+  if (!CBB_add_asn1(cbb, &child, tag)) {
     return 0;
   }
 
+  int started = 0;
   for (size_t i = 0; i < 8; i++) {
     uint8_t byte = (value >> 8*(7-i)) & 0xff;
     if (!started) {
@@ -538,8 +541,12 @@ int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
 }
 
 int CBB_add_asn1_int64(CBB *cbb, int64_t value) {
+  return CBB_add_asn1_int64_with_tag(cbb, value, CBS_ASN1_INTEGER);
+}
+
+int CBB_add_asn1_int64_with_tag(CBB *cbb, int64_t value, unsigned tag) {
   if (value >= 0) {
-    return CBB_add_asn1_uint64(cbb, value);
+    return CBB_add_asn1_uint64_with_tag(cbb, (uint64_t)value, tag);
   }
 
   uint8_t bytes[sizeof(int64_t)];
@@ -551,7 +558,7 @@ int CBB_add_asn1_int64(CBB *cbb, int64_t value) {
   }
 
   CBB child;
-  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_INTEGER)) {
+  if (!CBB_add_asn1(cbb, &child, tag)) {
     return 0;
   }
   for (int i = start; i >= 0; i--) {

@@ -557,10 +557,22 @@ OPENSSL_EXPORT void CBB_discard_child(CBB *cbb);
 // error.
 OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
 
+// CBB_add_asn1_uint64_with_tag behaves like |CBB_add_asn1_uint64| but uses
+// |tag| as the tag instead of INTEGER. This is useful if the INTEGER type uses
+// implicit tagging.
+OPENSSL_EXPORT int CBB_add_asn1_uint64_with_tag(CBB *cbb, uint64_t value,
+                                                unsigned tag);
+
 // CBB_add_asn1_int64 writes an ASN.1 INTEGER into |cbb| using |CBB_add_asn1|
 // and writes |value| in its contents. It returns one on success and zero on
 // error.
 OPENSSL_EXPORT int CBB_add_asn1_int64(CBB *cbb, int64_t value);
+
+// CBB_add_asn1_int64_with_tag behaves like |CBB_add_asn1_int64| but uses |tag|
+// as the tag instead of INTEGER. This is useful if the INTEGER type uses
+// implicit tagging.
+OPENSSL_EXPORT int CBB_add_asn1_int64_with_tag(CBB *cbb, int64_t value,
+                                               unsigned tag);
 
 // CBB_add_asn1_octet_string writes an ASN.1 OCTET STRING into |cbb| with the
 // given contents. It returns one on success and zero on error.

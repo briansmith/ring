@@ -862,12 +862,28 @@ TEST(CBSTest, ASN1Uint64) {
     EXPECT_EQ(0, is_negative);
     EXPECT_TRUE(CBS_is_unsigned_asn1_integer(&child));
 
-    bssl::ScopedCBB cbb;
-    ASSERT_TRUE(CBB_init(cbb.get(), 0));
-    ASSERT_TRUE(CBB_add_asn1_uint64(cbb.get(), test.value));
-    ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
-    bssl::UniquePtr<uint8_t> scoper(out);
-    EXPECT_EQ(Bytes(test.encoding, test.encoding_len), Bytes(out, len));
+    {
+      bssl::ScopedCBB cbb;
+      ASSERT_TRUE(CBB_init(cbb.get(), 0));
+      ASSERT_TRUE(CBB_add_asn1_uint64(cbb.get(), test.value));
+      ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
+      bssl::UniquePtr<uint8_t> scoper(out);
+      EXPECT_EQ(Bytes(test.encoding, test.encoding_len), Bytes(out, len));
+    }
+
+    {
+      // Overwrite the tag.
+      bssl::ScopedCBB cbb;
+      ASSERT_TRUE(CBB_init(cbb.get(), 0));
+      ASSERT_TRUE(CBB_add_asn1_uint64_with_tag(cbb.get(), test.value,
+                                               CBS_ASN1_CONTEXT_SPECIFIC | 1));
+      ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
+      bssl::UniquePtr<uint8_t> scoper(out);
+      std::vector<uint8_t> expected(test.encoding,
+                                    test.encoding + test.encoding_len);
+      expected[0] = 0x81;
+      EXPECT_EQ(Bytes(expected), Bytes(out, len));
+    }
   }
 
   for (const ASN1InvalidUint64Test &test : kASN1InvalidUint64Tests) {
@@ -952,12 +968,28 @@ TEST(CBSTest, ASN1Int64) {
     EXPECT_EQ(test.value < 0, !!is_negative);
     EXPECT_EQ(test.value >= 0, !!CBS_is_unsigned_asn1_integer(&child));
 
-    bssl::ScopedCBB cbb;
-    ASSERT_TRUE(CBB_init(cbb.get(), 0));
-    ASSERT_TRUE(CBB_add_asn1_int64(cbb.get(), test.value));
-    ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
-    bssl::UniquePtr<uint8_t> scoper(out);
-    EXPECT_EQ(Bytes(test.encoding, test.encoding_len), Bytes(out, len));
+    {
+      bssl::ScopedCBB cbb;
+      ASSERT_TRUE(CBB_init(cbb.get(), 0));
+      ASSERT_TRUE(CBB_add_asn1_int64(cbb.get(), test.value));
+      ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
+      bssl::UniquePtr<uint8_t> scoper(out);
+      EXPECT_EQ(Bytes(test.encoding, test.encoding_len), Bytes(out, len));
+    }
+
+    {
+      // Overwrite the tag.
+      bssl::ScopedCBB cbb;
+      ASSERT_TRUE(CBB_init(cbb.get(), 0));
+      ASSERT_TRUE(CBB_add_asn1_int64_with_tag(cbb.get(), test.value,
+                                              CBS_ASN1_CONTEXT_SPECIFIC | 1));
+      ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
+      bssl::UniquePtr<uint8_t> scoper(out);
+      std::vector<uint8_t> expected(test.encoding,
+                                    test.encoding + test.encoding_len);
+      expected[0] = 0x81;
+      EXPECT_EQ(Bytes(expected), Bytes(out, len));
+    }
   }
 
   for (const ASN1InvalidInt64Test &test : kASN1InvalidInt64Tests) {
