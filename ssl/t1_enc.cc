@@ -302,7 +302,7 @@ using namespace bssl;
 
 size_t SSL_get_key_block_len(const SSL *ssl) {
   // See |SSL_generate_key_block|.
-  if (SSL_in_init(ssl)) {
+  if (SSL_in_init(ssl) || ssl_protocol_version(ssl) > TLS1_2_VERSION) {
     return 0;
   }
 
@@ -321,7 +321,7 @@ int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
   // there are points where read and write states are from different epochs.
   // During a handshake, before ChangeCipherSpec, the encryption states may not
   // match |ssl->s3->client_random| and |ssl->s3->server_random|.
-  if (SSL_in_init(ssl)) {
+  if (SSL_in_init(ssl) || ssl_protocol_version(ssl) > TLS1_2_VERSION) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
