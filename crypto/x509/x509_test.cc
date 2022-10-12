@@ -1880,7 +1880,7 @@ static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   }
 
   // Re-encode the certificate. X509 objects contain a cached TBSCertificate
-  // encoding and |X509_sign_ctx| should have refreshed that cache.
+  // encoding and |X509_sign_ctx| should have dropped that cache.
   bssl::UniquePtr<X509> copy = ReencodeCertificate(cert.get());
   return copy && X509_verify(copy.get(), pkey);
 }
@@ -2025,7 +2025,7 @@ TEST(X509Test, SignCertificate) {
       EXPECT_TRUE(X509_verify(cert.get(), pkey.get()));
 
       // Re-encode the certificate. X509 objects contain a cached TBSCertificate
-      // encoding and |i2d_re_X509_tbs| should have refreshed that cache.
+      // encoding and |i2d_re_X509_tbs| should have dropped that cache.
       bssl::UniquePtr<X509> copy = ReencodeCertificate(cert.get());
       ASSERT_TRUE(copy);
       EXPECT_TRUE(X509_verify(copy.get(), pkey.get()));
@@ -2115,7 +2115,7 @@ TEST(X509Test, SignCRL) {
       EXPECT_TRUE(X509_CRL_verify(crl.get(), pkey.get()));
 
       // Re-encode the CRL. X509_CRL objects contain a cached TBSCertList
-      // encoding and |i2d_re_X509_tbs| should have refreshed that cache.
+      // encoding and |i2d_re_X509_tbs| should have dropped that cache.
       bssl::UniquePtr<X509_CRL> copy = ReencodeCRL(crl.get());
       ASSERT_TRUE(copy);
       EXPECT_TRUE(X509_CRL_verify(copy.get(), pkey.get()));
@@ -2220,7 +2220,7 @@ TEST(X509Test, SignCSR) {
 
       // Re-encode the CSR. X509_REQ objects contain a cached
       // CertificationRequestInfo encoding and |i2d_re_X509_REQ_tbs| should have
-      // refreshed that cache.
+      // dropped that cache.
       bssl::UniquePtr<X509_REQ> copy = ReencodeCSR(csr.get());
       ASSERT_TRUE(copy);
       EXPECT_TRUE(X509_REQ_verify(copy.get(), pkey.get()));
