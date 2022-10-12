@@ -54,6 +54,9 @@ void OPENSSL_cpuid_setup(void) {
   if (ID_AA64ISAR0_SHA2_VAL(id_aa64isar0) >= ID_AA64ISAR0_SHA2_BASE) {
     OPENSSL_armcap_P |= ARMV8_SHA256;
   }
+  if (ID_AA64ISAR0_SHA2_VAL(id_aa64isar0) >= ID_AA64ISAR0_SHA2_512) {
+    OPENSSL_armcap_P |= ARMV8_SHA512;
+  }
 }
 
 #endif  // OPENSSL_AARCH64 && OPENSSL_FREEBSD && !OPENSSL_STATIC_ARMCAP
