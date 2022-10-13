@@ -2025,7 +2025,7 @@ TEST(X509Test, SignCertificate) {
       EXPECT_TRUE(X509_verify(cert.get(), pkey.get()));
 
       // Re-encode the certificate. X509 objects contain a cached TBSCertificate
-      // encoding and |i2d_re_X509_tbs| should have dropped that cache.
+      // encoding and re-signing should have dropped that cache.
       bssl::UniquePtr<X509> copy = ReencodeCertificate(cert.get());
       ASSERT_TRUE(copy);
       EXPECT_TRUE(X509_verify(copy.get(), pkey.get()));
@@ -2115,7 +2115,7 @@ TEST(X509Test, SignCRL) {
       EXPECT_TRUE(X509_CRL_verify(crl.get(), pkey.get()));
 
       // Re-encode the CRL. X509_CRL objects contain a cached TBSCertList
-      // encoding and |i2d_re_X509_tbs| should have dropped that cache.
+      // encoding and re-signing should have dropped that cache.
       bssl::UniquePtr<X509_CRL> copy = ReencodeCRL(crl.get());
       ASSERT_TRUE(copy);
       EXPECT_TRUE(X509_CRL_verify(copy.get(), pkey.get()));
@@ -2189,28 +2189,28 @@ TEST(X509Test, SignCSR) {
       EXPECT_TRUE(X509_REQ_set_pubkey(csr.get(), pkey.get()));
 
       if (sign_manual) {
-      // Fill in the signature algorithm.
-      ASSERT_TRUE(X509_REQ_set1_signature_algo(csr.get(), algor.get()));
+        // Fill in the signature algorithm.
+        ASSERT_TRUE(X509_REQ_set1_signature_algo(csr.get(), algor.get()));
 
-      // Extract the CertificationRequestInfo.
-      uint8_t *tbs = nullptr;
-      int tbs_len = i2d_re_X509_REQ_tbs(csr.get(), &tbs);
-      bssl::UniquePtr<uint8_t> free_tbs(tbs);
-      ASSERT_GT(tbs_len, 0);
+        // Extract the CertificationRequestInfo.
+        uint8_t *tbs = nullptr;
+        int tbs_len = i2d_re_X509_REQ_tbs(csr.get(), &tbs);
+        bssl::UniquePtr<uint8_t> free_tbs(tbs);
+        ASSERT_GT(tbs_len, 0);
 
-      // Generate a signature externally and fill it in.
-      bssl::ScopedEVP_MD_CTX md_ctx;
-      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, kSignatureHash,
-                                     nullptr, pkey.get()));
-      size_t sig_len;
-      ASSERT_TRUE(
-          EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, tbs, tbs_len));
-      std::vector<uint8_t> sig(sig_len);
-      ASSERT_TRUE(
-          EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, tbs, tbs_len));
-      sig.resize(sig_len);
-      ASSERT_TRUE(
-          X509_REQ_set1_signature_value(csr.get(), sig.data(), sig.size()));
+        // Generate a signature externally and fill it in.
+        bssl::ScopedEVP_MD_CTX md_ctx;
+        ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, kSignatureHash,
+                                       nullptr, pkey.get()));
+        size_t sig_len;
+        ASSERT_TRUE(
+            EVP_DigestSign(md_ctx.get(), nullptr, &sig_len, tbs, tbs_len));
+        std::vector<uint8_t> sig(sig_len);
+        ASSERT_TRUE(
+            EVP_DigestSign(md_ctx.get(), sig.data(), &sig_len, tbs, tbs_len));
+        sig.resize(sig_len);
+        ASSERT_TRUE(
+            X509_REQ_set1_signature_value(csr.get(), sig.data(), sig.size()));
       } else {
         ASSERT_TRUE(X509_REQ_sign(csr.get(), pkey.get(), EVP_sha384()));
       }
@@ -2219,8 +2219,8 @@ TEST(X509Test, SignCSR) {
       EXPECT_TRUE(X509_REQ_verify(csr.get(), pkey.get()));
 
       // Re-encode the CSR. X509_REQ objects contain a cached
-      // CertificationRequestInfo encoding and |i2d_re_X509_REQ_tbs| should have
-      // dropped that cache.
+      // CertificationRequestInfo encoding and re-signing should have dropped
+      // that cache.
       bssl::UniquePtr<X509_REQ> copy = ReencodeCSR(csr.get());
       ASSERT_TRUE(copy);
       EXPECT_TRUE(X509_REQ_verify(copy.get(), pkey.get()));
