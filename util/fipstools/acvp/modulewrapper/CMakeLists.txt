@@ -7,7 +7,6 @@ if(FIPS)
     main.cc
     modulewrapper.cc
   )
-  install(TARGETS modulewrapper)
 
   add_dependencies(modulewrapper global_target)
 
