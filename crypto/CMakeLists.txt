@@ -470,6 +470,10 @@ endif()
 
 SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
 
+if(WIN32)
+  target_link_libraries(crypto ws2_32)
+endif()
+
 if(NOT ANDROID)
   find_package(Threads REQUIRED)
   target_link_libraries(crypto Threads::Threads)
