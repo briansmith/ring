@@ -200,7 +200,7 @@ mod tests {
                     bytes: n_minus_1_bytes,
                 };
                 let key = agreement::EphemeralPrivateKey::generate(alg, &rng).unwrap();
-                assert_eq!(&n_minus_1_bytes[..], key.bytes());
+                assert_eq!(n_minus_1_bytes, key.bytes());
             }
 
             // Test that n + 1 also fails.

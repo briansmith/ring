@@ -25,6 +25,7 @@ cargo clippy \
   --deny missing_docs \
   --deny warnings \
   --allow clippy::collapsible_if \
+  --allow clippy::derive_partial_eq_without_eq \
   --allow clippy::identity_op \
   --allow clippy::len_without_is_empty \
   --allow clippy::ptr_arg \
