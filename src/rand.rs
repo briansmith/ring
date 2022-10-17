@@ -362,6 +362,7 @@ mod urandom {
         match *FILE {
             Ok(ref file) => {
                 use std::io::Read;
+                #[allow(clippy::borrow_deref_ref)]
                 (&*file).read_exact(dest).map_err(|_| error::Unspecified)
             }
             Err(_) => Err(error::Unspecified),

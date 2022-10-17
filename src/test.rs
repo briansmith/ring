@@ -296,7 +296,7 @@ impl TestCase {
 #[macro_export]
 macro_rules! test_file {
     ($file_name:expr) => {
-        crate::test::File {
+        $crate::test::File {
             file_name: $file_name,
             contents: include_str!($file_name),
         }
