@@ -75,7 +75,17 @@ func main() {
 		os.Exit(3)
 	}
 
-	binaryContents[i] ^= 1
+	// Zero out the entire value because the compiler may produce code
+	// where parts of the value are embedded in the instructions.
+	for j := range testInputValue {
+		binaryContents[i+j] = 0
+	}
+
+	if bytes.Index(binaryContents, testInputValue) >= 0 {
+		fmt.Fprintln(os.Stderr, "Test input value was still found after erasing it. Second copy?")
+		os.Exit(4)
+	}
+
 	os.Stdout.Write(binaryContents)
 }
 
