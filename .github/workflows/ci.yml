@@ -193,7 +193,7 @@ jobs:
         rust_channel:
           - stable
           - nightly
-          - 1.52.1 # MSRV
+          - 1.56.1 # MSRV
           - beta
 
         include:
@@ -346,7 +346,7 @@ jobs:
         rust_channel:
           - stable
           - nightly
-          - 1.52.1 # MSRV
+          - 1.56.1 # MSRV
           - beta
 
         include:
