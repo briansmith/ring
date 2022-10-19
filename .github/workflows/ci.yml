@@ -316,7 +316,7 @@ jobs:
       - if: ${{ matrix.target != 'aarch64-apple-ios' &&
                 !contains(matrix.host_os, 'windows') &&
                 (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
-        run: mk/check-symbol-prefixes.sh
+        run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
 
   # XXX: GitHub Actions won't let us test all the combinations of features in
   # the "test" matrix because the resultant matrix would be larger than the
@@ -415,7 +415,7 @@ jobs:
       - if: ${{ matrix.target != 'aarch64-apple-ios' &&
           !contains(matrix.host_os, 'windows') &&
           (!contains(matrix.host_os, 'macos') || matrix.mode != '--release') }}
-        run: mk/check-symbol-prefixes.sh
+        run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
 
 
   # The wasm32-unknown-unknown targets have a different set of feature sets and
@@ -470,7 +470,7 @@ jobs:
 
       # Check that all the needed symbol renaming was done.
       # TODO: Do this check on Windows too.
-      - run: mk/check-symbol-prefixes.sh
+      - run: mk/check-symbol-prefixes.sh --target=${{ matrix.target }}
 
   coverage:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
