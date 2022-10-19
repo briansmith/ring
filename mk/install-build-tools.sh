@@ -27,12 +27,19 @@ function install_packages {
 use_clang=
 case $target in
 --target*android*)
-  mkdir -p "${ANDROID_SDK_ROOT}/licenses"
-  android_license_file="${ANDROID_SDK_ROOT}/licenses/android-sdk-license"
+  mkdir -p "${ANDROID_HOME}/licenses"
+  ndk_version=25.1.8937393
+  android_license_file="${ANDROID_HOME}/licenses/android-sdk-license"
   accept_android_license=24333f8a63b6825ea9c5514f83c2829b004d1fee
   grep --quiet --no-messages "$accept_android_license" "$android_license_file" \
     || echo $accept_android_license  >> "$android_license_file"
-  "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ndk-bundle
+  "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "ndk;$ndk_version"
+
+  ANDROID_NDK_ROOT=
+  # XXX: Older Rust toolchain versions link with `-lgcc` instead of `-lunwind`;
+  # see https://github.com/rust-lang/rust/pull/85806.
+  find -L ${ANDROID_NDK_ROOT:-${ANDROID_HOME}/ndk/$ndk_version} -name libunwind.a \
+          -execdir sh -c 'echo "INPUT(-lunwind)" > libgcc.a' \;
   ;;
 esac
 
