@@ -66,7 +66,8 @@
 #include "internal.h"
 
 
-int ASN1_BIT_STRING_set(ASN1_BIT_STRING *x, const unsigned char *d, int len) {
+int ASN1_BIT_STRING_set(ASN1_BIT_STRING *x, const unsigned char *d,
+                        ossl_ssize_t len) {
   return ASN1_STRING_set(x, d, len);
 }
 

@@ -14,10 +14,15 @@
 
 #include <openssl/crypto.h>
 
+#include <assert.h>
+
 #include "fipsmodule/rand/fork_detect.h"
 #include "fipsmodule/rand/internal.h"
 #include "internal.h"
 
+
+static_assert(sizeof(ossl_ssize_t) == sizeof(size_t),
+              "ossl_ssize_t should be the same size as size_t");
 
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_STATIC_ARMCAP) && \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \

@@ -608,7 +608,8 @@ OPENSSL_EXPORT int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b);
 // |data|. It returns one on success and zero on error. If |data| is NULL, it
 // updates the length and allocates the buffer as needed, but does not
 // initialize the contents.
-OPENSSL_EXPORT int ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
+OPENSSL_EXPORT int ASN1_STRING_set(ASN1_STRING *str, const void *data,
+                                   ossl_ssize_t len);
 
 // ASN1_STRING_set0 sets the contents of |str| to |len| bytes from |data|. It
 // takes ownership of |data|, which must have been allocated with
@@ -985,7 +986,8 @@ OPENSSL_EXPORT int ASN1_BIT_STRING_num_bytes(const ASN1_BIT_STRING *str,
 // TODO(davidben): Maybe it should? Wrapping a byte string in a bit string is a
 // common use case.
 OPENSSL_EXPORT int ASN1_BIT_STRING_set(ASN1_BIT_STRING *str,
-                                       const unsigned char *d, int length);
+                                       const unsigned char *d,
+                                       ossl_ssize_t length);
 
 // ASN1_BIT_STRING_set_bit sets bit |n| of |str| to one if |value| is non-zero
 // and zero if |value| is zero, resizing |str| as needed. It then truncates
