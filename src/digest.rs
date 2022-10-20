@@ -24,7 +24,6 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use crate::polyfill::array_map::Map;
 use crate::{
     c, cpu, debug,
     endian::{ArrayEncoding, BigEndian},
@@ -478,14 +477,14 @@ pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 fn sha256_format_output(input: State) -> Output {
     let input = unsafe { &input.as32 };
     Output {
-        as32: input.array_map(BigEndian::from),
+        as32: input.map(BigEndian::from),
     }
 }
 
 fn sha512_format_output(input: State) -> Output {
     let input = unsafe { &input.as64 };
     Output {
-        as64: input.array_map(BigEndian::from),
+        as64: input.map(BigEndian::from),
     }
 }
 

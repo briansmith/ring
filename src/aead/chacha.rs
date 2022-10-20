@@ -14,10 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{quic::Sample, Nonce};
-use crate::{
-    cpu,
-    polyfill::{array_map::Map, ChunksFixed},
-};
+use crate::{cpu, polyfill::ChunksFixed};
 
 #[cfg(any(
     test,
@@ -42,7 +39,7 @@ impl Key {
     pub(super) fn new(value: [u8; KEY_LEN], cpu_features: cpu::Features) -> Self {
         let value: &[[u8; 4]; KEY_LEN / 4] = value.chunks_fixed();
         Self {
-            words: value.array_map(u32::from_le_bytes),
+            words: value.map(u32::from_le_bytes),
             cpu_features,
         }
     }
@@ -201,7 +198,7 @@ pub struct Iv([u32; 4]);
 impl Iv {
     fn assume_unique_for_key(value: [u8; 16]) -> Self {
         let value: &[[u8; 4]; 4] = value.chunks_fixed();
-        Self(value.array_map(u32::from_le_bytes))
+        Self(value.map(u32::from_le_bytes))
     }
 
     fn into_counter_for_single_block_less_safe(self) -> Counter {
