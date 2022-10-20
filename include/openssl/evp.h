@@ -936,7 +936,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx,
 // EVP_PKEY_set1_tls_encodedpoint replaces |pkey| with a public key encoded by
 // |in|. It returns one on success and zero on error.
 //
-// This function only works on X25519 keys.
+// If |pkey| is an EC key, the format is an X9.62 point and |pkey| must already
+// have an EC group configured. If it is an X25519 key, it is the 32-byte X25519
+// public key representation. This function is not supported for other key types
+// and will fail.
 OPENSSL_EXPORT int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey,
                                                   const uint8_t *in,
                                                   size_t len);
@@ -946,7 +949,10 @@ OPENSSL_EXPORT int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey,
 // |OPENSSL_free| to release this buffer. The function returns the length of the
 // buffer on success and zero on error.
 //
-// This function only works on X25519 keys.
+// If |pkey| is an EC key, the format is an X9.62 point with uncompressed
+// coordinates. If it is an X25519 key, it is the 32-byte X25519 public key
+// representation. This function is not supported for other key types and will
+// fail.
 OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
                                                      uint8_t **out_ptr);
 

@@ -179,6 +179,13 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
                                                             const BIGNUM *x,
                                                             const BIGNUM *y);
 
+// EC_KEY_oct2key decodes |len| bytes from |in| as an EC public key in X9.62
+// form. |key| must already have a group configured. On success, it sets the
+// public key in |key| to the result and returns one. Otherwise, it returns
+// zero.
+OPENSSL_EXPORT int EC_KEY_oct2key(EC_KEY *key, const uint8_t *in, size_t len,
+                                  BN_CTX *ctx);
+
 // EC_KEY_key2buf encodes the public key in |key| to an allocated octet string
 // and sets |*out_buf| to point to it. It returns the length of the encoded
 // octet string or zero if an error occurred.

@@ -1558,12 +1558,8 @@ static bool ECDSAKeyVer(const Span<const uint8_t> args[], ReplyCallback write_re
   bssl::UniquePtr<BIGNUM> x(BytesToBIGNUM(args[1]));
   bssl::UniquePtr<BIGNUM> y(BytesToBIGNUM(args[2]));
 
-  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(EC_KEY_get0_group(key.get())));
   uint8_t reply[1];
-  if (!EC_POINT_set_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
-                                           point.get(), x.get(), y.get(),
-                                           /*ctx=*/nullptr) ||
-      !EC_KEY_set_public_key(key.get(), point.get()) ||
+  if (!EC_KEY_set_public_key_affine_coordinates(key.get(), x.get(), y.get()) ||
       !EC_KEY_check_fips(key.get())) {
     reply[0] = 0;
   } else {
@@ -1636,12 +1632,8 @@ static bool ECDSASigVer(const Span<const uint8_t> args[], ReplyCallback write_re
     return false;
   }
 
-  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(EC_KEY_get0_group(key.get())));
   uint8_t reply[1];
-  if (!EC_POINT_set_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
-                                           point.get(), x.get(), y.get(),
-                                           /*ctx=*/nullptr) ||
-      !EC_KEY_set_public_key(key.get(), point.get()) ||
+  if (!EC_KEY_set_public_key_affine_coordinates(key.get(), x.get(), y.get()) ||
       !EC_KEY_check_fips(key.get()) ||
       !ECDSA_do_verify(digest, digest_len, &sig, key.get())) {
     reply[0] = 0;

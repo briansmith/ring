@@ -167,30 +167,35 @@ static int rsa_bits(const EVP_PKEY *pkey) {
 static void int_rsa_free(EVP_PKEY *pkey) { RSA_free(pkey->pkey.rsa); }
 
 const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
-  EVP_PKEY_RSA,
-  // 1.2.840.113549.1.1.1
-  {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01}, 9,
+    EVP_PKEY_RSA,
+    // 1.2.840.113549.1.1.1
+    {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01},
+    9,
 
-  &rsa_pkey_meth,
+    &rsa_pkey_meth,
 
-  rsa_pub_decode,
-  rsa_pub_encode,
-  rsa_pub_cmp,
+    rsa_pub_decode,
+    rsa_pub_encode,
+    rsa_pub_cmp,
 
-  rsa_priv_decode,
-  rsa_priv_encode,
+    rsa_priv_decode,
+    rsa_priv_encode,
 
-  NULL /* set_priv_raw */,
-  NULL /* set_pub_raw */,
-  NULL /* get_priv_raw */,
-  NULL /* get_pub_raw */,
+    /*set_priv_raw=*/NULL,
+    /*set_pub_raw=*/NULL,
+    /*get_priv_raw=*/NULL,
+    /*get_pub_raw=*/NULL,
+    /*set1_tls_encodedpoint=*/NULL,
+    /*get1_tls_encodedpoint=*/NULL,
 
-  rsa_opaque,
+    rsa_opaque,
 
-  int_rsa_size,
-  rsa_bits,
+    int_rsa_size,
+    rsa_bits,
 
-  0,0,0,
+    0,
+    0,
+    0,
 
-  int_rsa_free,
+    int_rsa_free,
 };

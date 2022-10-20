@@ -448,6 +448,25 @@ void OpenSSL_add_all_digests(void) {}
 
 void EVP_cleanup(void) {}
 
+int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
+                                   size_t len) {
+  if (pkey->ameth->set1_tls_encodedpoint == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return pkey->ameth->set1_tls_encodedpoint(pkey, in, len);
+}
+
+size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey, uint8_t **out_ptr) {
+  if (pkey->ameth->get1_tls_encodedpoint == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return pkey->ameth->get1_tls_encodedpoint(pkey, out_ptr);
+}
+
 int EVP_PKEY_base_id(const EVP_PKEY *pkey) {
   // OpenSSL has two notions of key type because it supports multiple OIDs for
   // the same algorithm: NID_rsa vs NID_rsaEncryption and five distinct spelling

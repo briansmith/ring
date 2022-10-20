@@ -248,34 +248,37 @@ static int dsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 static void int_dsa_free(EVP_PKEY *pkey) { DSA_free(pkey->pkey.dsa); }
 
 const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
-  EVP_PKEY_DSA,
-  // 1.2.840.10040.4.1
-  {0x2a, 0x86, 0x48, 0xce, 0x38, 0x04, 0x01}, 7,
+    EVP_PKEY_DSA,
+    // 1.2.840.10040.4.1
+    {0x2a, 0x86, 0x48, 0xce, 0x38, 0x04, 0x01},
+    7,
 
-  NULL /* pkey_method */,
+    /*pkey_method=*/NULL,
 
-  dsa_pub_decode,
-  dsa_pub_encode,
-  dsa_pub_cmp,
+    dsa_pub_decode,
+    dsa_pub_encode,
+    dsa_pub_cmp,
 
-  dsa_priv_decode,
-  dsa_priv_encode,
+    dsa_priv_decode,
+    dsa_priv_encode,
 
-  NULL /* set_priv_raw */,
-  NULL /* set_pub_raw */,
-  NULL /* get_priv_raw */,
-  NULL /* get_pub_raw */,
+    /*set_priv_raw=*/NULL,
+    /*set_pub_raw=*/NULL,
+    /*get_priv_raw=*/NULL,
+    /*get_pub_raw=*/NULL,
+    /*set1_tls_encodedpoint=*/NULL,
+    /*get1_tls_encodedpoint=*/NULL,
 
-  NULL /* pkey_opaque */,
+    /*pkey_opaque=*/NULL,
 
-  int_dsa_size,
-  dsa_bits,
+    int_dsa_size,
+    dsa_bits,
 
-  dsa_missing_parameters,
-  dsa_copy_parameters,
-  dsa_cmp_parameters,
+    dsa_missing_parameters,
+    dsa_copy_parameters,
+    dsa_cmp_parameters,
 
-  int_dsa_free,
+    int_dsa_free,
 };
 
 int EVP_PKEY_CTX_set_dsa_paramgen_bits(EVP_PKEY_CTX *ctx, int nbits) {

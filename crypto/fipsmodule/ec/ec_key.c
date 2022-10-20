@@ -394,6 +394,20 @@ err:
   return ok;
 }
 
+int EC_KEY_oct2key(EC_KEY *key, const uint8_t *in, size_t len, BN_CTX *ctx) {
+  if (key->group == NULL) {
+    OPENSSL_PUT_ERROR(EC, EC_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
+  EC_POINT *point = EC_POINT_new(key->group);
+  int ok = point != NULL &&
+           EC_POINT_oct2point(key->group, point, in, len, ctx) &&
+           EC_KEY_set_public_key(key, point);
+  EC_POINT_free(point);
+  return ok;
+}
+
 size_t EC_KEY_key2buf(const EC_KEY *key, point_conversion_form_t form,
                       unsigned char **out_buf, BN_CTX *ctx) {
   if (key == NULL || key->pub_key == NULL || key->group == NULL) {
