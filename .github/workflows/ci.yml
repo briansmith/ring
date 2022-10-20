@@ -9,7 +9,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: briansmith/actions-rs-toolchain@v1
@@ -26,7 +26,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: briansmith/actions-rs-toolchain@v1
@@ -45,7 +45,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: briansmith/actions-rs-toolchain@v1
@@ -76,7 +76,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: briansmith/actions-rs-toolchain@v1
@@ -105,7 +105,7 @@ jobs:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
 
     strategy:
       matrix:
@@ -208,7 +208,7 @@ jobs:
             cargo_options: --no-run
 
           - target: aarch64-linux-android
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
             # TODO: https://github.com/briansmith/ring/issues/486
             cargo_options: --no-run
 
@@ -218,21 +218,21 @@ jobs:
             cargo_options: --no-run
 
           - target: aarch64-unknown-linux-gnu
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: aarch64-unknown-linux-musl
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: arm-unknown-linux-gnueabihf
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: armv7-linux-androideabi
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
             # TODO: https://github.com/briansmith/ring/issues/838
             cargo_options: --no-run
 
           - target: armv7-unknown-linux-musleabihf
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
             # TODO: https://github.com/briansmith/ring/issues/1115
             cargo_options: --no-run
 
@@ -240,10 +240,10 @@ jobs:
             host_os: windows-latest
 
           - target: i686-unknown-linux-gnu
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: i686-unknown-linux-musl
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: x86_64-pc-windows-gnu
             host_os: windows-latest
@@ -255,10 +255,10 @@ jobs:
             host_os: macos-12
 
           - target: x86_64-unknown-linux-musl
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-gnu
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
     steps:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}
@@ -345,13 +345,13 @@ jobs:
 
         include:
           - target: aarch64-unknown-linux-musl
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: i686-pc-windows-msvc
             host_os: windows-latest
 
           - target: x86_64-unknown-linux-gnu
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
     steps:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}
@@ -421,7 +421,7 @@ jobs:
           - --no-default-features --features=wasm32_unknown_unknown_js
 
         host_os:
-          - ubuntu-18.04
+          - ubuntu-22.04
         mode:
           - # debug
           - --release
@@ -432,8 +432,11 @@ jobs:
         target:
           - wasm32-unknown-unknown
         webdriver:
-          - GECKODRIVER=geckodriver
-          - CHROMEDRIVER=chromedriver
+          # TODO: Firefox is not in Ubuntu 22.04 images according to
+          # https://github.com/actions/runner-images/issues/5490 and our
+          # testing.
+          # - GECKODRIVER=$GECKOWEBDRIVER/geckodriver
+          - CHROMEDRIVER=$CHROMEWEBDRIVER/chromedriver
 
     steps:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}
@@ -495,16 +498,16 @@ jobs:
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: aarch64-unknown-linux-gnu
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           # TODO: Use the -musl target after
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: i686-unknown-linux-gnu
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-musl
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           # TODO: Add an ARM target after
           # https://github.com/rust-lang/rust/issues/79555 is fixed. This may
