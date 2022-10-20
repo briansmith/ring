@@ -83,21 +83,17 @@ pub(crate) mod sealed {
         fn as_mut_bytes(&mut self) -> &mut [u8]; // `AsMut<[u8]>::as_mut`
     }
 
-    macro_rules! impl_random_arrays {
-        [ $($len:expr)+ ] => {
-            $(
-                impl RandomlyConstructable for [u8; $len] {
-                    #[inline]
-                    fn zero() -> Self { [0; $len] }
+    impl<const N: usize> RandomlyConstructable for [u8; N] {
+        #[inline]
+        fn zero() -> Self {
+            [0; N]
+        }
 
-                    #[inline]
-                    fn as_mut_bytes(&mut self) -> &mut [u8] { &mut self[..] }
-                }
-            )+
+        #[inline]
+        fn as_mut_bytes(&mut self) -> &mut [u8] {
+            &mut self[..]
         }
     }
-
-    impl_random_arrays![4 8 16 32 48 64 128 256];
 }
 
 /// A type that can be returned by `ring::rand::generate()`.
