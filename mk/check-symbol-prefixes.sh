@@ -17,7 +17,7 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
-llvm_version=14
+llvm_version=15
 
 for arg in $*; do
   case $arg in
