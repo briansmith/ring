@@ -10,15 +10,14 @@ use core::iter::FlatMap;
 /// verifies that this multiplication doesn't overflow `usize`.)
 #[derive(Clone)]
 pub struct ArrayFlatMap<I, Item, F, const LEN: usize> {
-    // TODO(rust 1.53.0): `FlatMap<I, [Item; LEN], F>`
-    inner: FlatMap<I, core::array::IntoIter<Item, LEN>, F>,
+    inner: FlatMap<I, [Item; LEN], F>,
     remaining: usize,
 }
 
 impl<I, Item, F, const LEN: usize> ArrayFlatMap<I, Item, F, LEN>
 where
     I: ExactSizeIterator,
-    F: FnMut(I::Item) -> core::array::IntoIter<Item, LEN>,
+    F: FnMut(I::Item) -> [Item; LEN],
 {
     /// Constructs an `ArrayFlatMap` wrapping the given iterator, using the
     /// given function
@@ -32,7 +31,7 @@ where
 impl<I, Item, F, const LEN: usize> Iterator for ArrayFlatMap<I, Item, F, LEN>
 where
     I: Iterator,
-    F: FnMut(I::Item) -> core::array::IntoIter<Item, LEN>,
+    F: FnMut(I::Item) -> [Item; LEN],
 {
     type Item = Item;
 
@@ -53,14 +52,13 @@ where
 impl<I, Item, F, const LEN: usize> ExactSizeIterator for ArrayFlatMap<I, Item, F, LEN>
 where
     I: Iterator,
-    F: FnMut(I::Item) -> core::array::IntoIter<Item, LEN>,
+    F: FnMut(I::Item) -> [Item; LEN],
 {
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::polyfill;
 
     #[test]
     fn test_array_flat_map() {
@@ -81,10 +79,7 @@ mod tests {
             ),
         ];
         TEST_CASES.iter().copied().for_each(|(input, f, expected)| {
-            let mapped = ArrayFlatMap::new(input.iter().copied(), |input| {
-                polyfill::array::into_iter(f(input))
-            })
-            .unwrap();
+            let mapped = ArrayFlatMap::new(input.iter().copied(), f).unwrap();
             super::super::test::assert_iterator(mapped, expected);
         });
     }
@@ -121,9 +116,7 @@ mod tests {
             let inner = DownwardCounter {
                 remaining: input_len,
             };
-            let mapped = ArrayFlatMap::new(inner, |input| {
-                polyfill::array::into_iter(usize::to_be_bytes(input))
-            });
+            let mapped = ArrayFlatMap::new(inner, usize::to_be_bytes);
             assert_eq!(mapped.is_some(), is_some);
             if let Some(mapped) = mapped {
                 assert_eq!(mapped.len(), input_len * core::mem::size_of::<usize>());
