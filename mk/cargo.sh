@@ -43,7 +43,7 @@ for arg in $*; do
 done
 
 # See comments in install-build-tools.sh.
-llvm_version=14
+llvm_version=15
 
 case $target in
    aarch64-linux-android)
