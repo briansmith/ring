@@ -30,7 +30,6 @@ mod chunks_fixed;
 pub(crate) mod array;
 
 mod array_flat_map;
-pub(crate) mod array_map;
 
 #[cfg(feature = "alloc")]
 mod leading_zeros_skipped;

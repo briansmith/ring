@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{endian::*, polyfill::array_map::Map};
+use crate::endian::*;
 use core::ops::{BitXor, BitXorAssign};
 
 #[repr(transparent)]
@@ -52,7 +52,7 @@ impl From<[u64; 2]> for Block {
 impl From<Block> for [u64; 2] {
     #[inline]
     fn from(Block(components): Block) -> Self {
-        components.array_map(Into::into)
+        components.map(Into::into)
     }
 }
 
