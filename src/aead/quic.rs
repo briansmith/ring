@@ -20,7 +20,6 @@ use crate::{
     aead::{aes, chacha},
     cpu, error, hkdf,
 };
-use core::convert::{TryFrom, TryInto};
 
 /// A key for generating QUIC Header Protection masks.
 pub struct HeaderProtectionKey {

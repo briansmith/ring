@@ -1,5 +1,3 @@
-use core::convert::TryInto;
-
 /// Allows splitting a reference to an array type into fixed-length chunks.
 pub trait ChunksFixed<'a, Chunks>
 where

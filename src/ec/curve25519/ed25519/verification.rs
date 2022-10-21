@@ -16,7 +16,6 @@
 
 use super::{super::ops::*, eddsa_digest};
 use crate::{error, sealed, signature};
-use core::convert::TryInto;
 
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;
