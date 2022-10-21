@@ -17,31 +17,15 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
-llvm_version=15
-
-for arg in $*; do
-  case $arg in
-    --target=*)
-      target=${arg#*=}
-      ;;
-    *)
-      ;;
-  esac
-done
-
-nm_exe=nm
-case $target in
---target=aarch64-unknown-linux-gnu|*-musl*|wasm32-*)
+case "$OSTYPE" in
+darwin*)
+  nm_exe=nm
+  ;;
+*)
+  llvm_version=15
   nm_exe=llvm-nm-$llvm_version
   ;;
---target=*-android*)
-    ndk_version=25.1.8937393
-    ANDROID_NDK_ROOT=${ANDROID_NDK_ROOT:-${ANDROID_HOME}/ndk/$ndk_version}
-    android_tools=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin
-    nm_exe=$android_tools/llvm-nm
-  ;;
 esac
-
 
 # TODO: This should only look in one target directory.
 # TODO: This isn't as strict as it should be.
@@ -51,14 +35,9 @@ esac
 #
 # This is very liberal in filtering out symbols that "look like"
 # Rust-compiler-generated symbols.
-find target/$target -type f -name libring-*.rlib | while read -r infile; do
-  tmpfile=$infile-without-lib-rmeta
-  cp "$infile" "$tmpfile"
-  # `nm` doesn't understand `lib.rmeta`.
-  ar d "$tmpfile" lib.rmeta
-  bad=$($nm_exe --defined-only --extern-only --print-file-name "$tmpfile" \
-    | ( grep -v -E " . _?(ring_core_|__rustc|_ZN|DW.ref.rust_eh_personality)" || [[ $? == 1 ]] ))
-  rm "$tmpfile"
+find target -type f -name libring-*.rlib | while read -r infile; do
+  bad=$($nm_exe --defined-only --extern-only --print-file-name "$infile" \
+    | ( grep -v -E " . _?(__imp__ZN4ring|ring_core_|__rustc|_ZN|DW.ref.rust_eh_personality)" || [[ $? == 1 ]] ))
   if [ ! -z "${bad-}" ]; then
     echo "$bad"
     exit 1
