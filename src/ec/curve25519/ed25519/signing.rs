@@ -21,7 +21,6 @@ use crate::{
     pkcs8, rand,
     signature::{self, KeyPair as SigningKeyPair},
 };
-use core::convert::TryInto;
 
 /// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {

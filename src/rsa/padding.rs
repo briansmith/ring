@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::{bits, digest, error, rand};
-use core::convert::TryInto;
 
 mod pkcs1;
 mod pss;

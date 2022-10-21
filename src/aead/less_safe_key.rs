@@ -14,7 +14,7 @@
 
 use super::{Aad, Algorithm, KeyInner, Nonce, Tag, UnboundKey, TAG_LEN};
 use crate::{constant_time, cpu, error, polyfill};
-use core::{convert::TryInto, ops::RangeFrom};
+use core::ops::RangeFrom;
 
 /// Immutable keys for use in situations where `OpeningKey`/`SealingKey` and
 /// `NonceSequence` cannot reasonably be used.

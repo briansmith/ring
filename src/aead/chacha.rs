@@ -217,7 +217,6 @@ mod tests {
     use super::*;
     use crate::test;
     use alloc::vec;
-    use core::convert::TryInto;
 
     const MAX_ALIGNMENT_AND_OFFSET: (usize, usize) = (15, 259);
     const MAX_ALIGNMENT_AND_OFFSET_SUBSET: (usize, usize) =

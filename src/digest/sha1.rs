@@ -15,7 +15,7 @@
 
 use super::sha2::{ch, maj, Word};
 use crate::{c, polyfill::ChunksFixed};
-use core::{convert::TryInto, num::Wrapping};
+use core::num::Wrapping;
 
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;

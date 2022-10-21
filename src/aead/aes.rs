@@ -435,7 +435,6 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
 mod tests {
     use super::*;
     use crate::test;
-    use core::convert::TryInto;
 
     #[test]
     pub fn test_aes() {

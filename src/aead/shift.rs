@@ -19,8 +19,6 @@ pub fn shift_full_blocks<F>(in_out: &mut [u8], src: core::ops::RangeFrom<usize>,
 where
     F: FnMut(&[u8; BLOCK_LEN]) -> Block,
 {
-    use core::convert::TryFrom;
-
     let in_out_len = in_out[src.clone()].len();
 
     for i in (0..in_out_len).step_by(BLOCK_LEN) {

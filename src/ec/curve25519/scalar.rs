@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::{digest, error, limb};
-use core::convert::TryInto;
 
 #[repr(transparent)]
 pub struct Scalar([u8; SCALAR_LEN]);

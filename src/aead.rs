@@ -22,10 +22,7 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use crate::{cpu, error, hkdf, polyfill};
-use core::{
-    convert::{TryFrom, TryInto},
-    ops::RangeFrom,
-};
+use core::ops::RangeFrom;
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},

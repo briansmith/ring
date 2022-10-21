@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::error;
-use core::convert::TryInto;
 
 /// A nonce for a single AEAD opening or sealing operation.
 ///

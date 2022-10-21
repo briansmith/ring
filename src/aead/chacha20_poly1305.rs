@@ -17,7 +17,7 @@ use super::{
     poly1305, Aad, Nonce, Tag,
 };
 use crate::{aead, cpu, endian::*, error, polyfill};
-use core::{convert::TryInto, ops::RangeFrom};
+use core::ops::RangeFrom;
 
 /// ChaCha20-Poly1305 as described in [RFC 8439].
 ///
