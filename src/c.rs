@@ -19,6 +19,9 @@
 //! are all uniformly defined on the platforms we care about. This will
 //! probably change if/when we support 16-bit platforms or platforms where
 //! `usize` and `uintptr_t` are different sizes.
+//!
+//! TODO(MSRV-1.64): Use `core::ffi::{c_int, c_uint}`, remove the libc
+//! compatibility testing, and remove the libc dev-dependency.
 
 // Keep in sync with the checks in base.h that verify these assumptions.
 
