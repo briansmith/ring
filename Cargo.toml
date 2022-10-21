@@ -10,7 +10,6 @@ license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
-resolver = "2"
 
 # Keep in sync with `links` below.
 version = "0.17.0-not-released-yet"
