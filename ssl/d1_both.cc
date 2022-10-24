@@ -682,6 +682,7 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
 
   // Assemble a fragment, to be sealed in-place.
   ScopedCBB cbb;
+  CBB child;
   uint8_t *frag = out + prefix;
   size_t max_frag = max_out - prefix, frag_len;
   if (!CBB_init_fixed(cbb.get(), frag, max_frag) ||
@@ -689,8 +690,8 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
       !CBB_add_u24(cbb.get(), hdr.msg_len) ||
       !CBB_add_u16(cbb.get(), hdr.seq) ||
       !CBB_add_u24(cbb.get(), ssl->d1->outgoing_offset) ||
-      !CBB_add_u24(cbb.get(), todo) ||
-      !CBB_add_bytes(cbb.get(), CBS_data(&body), todo) ||
+      !CBB_add_u24_length_prefixed(cbb.get(), &child) ||
+      !CBB_add_bytes(&child, CBS_data(&body), todo) ||
       !CBB_finish(cbb.get(), NULL, &frag_len)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return seal_error;

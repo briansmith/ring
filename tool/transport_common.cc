@@ -843,7 +843,7 @@ class SocketLineReader {
       }
 
       if (i == 0) {
-        *out_code = code;
+        *out_code = static_cast<unsigned>(code);
       } else if (code != *out_code) {
         fprintf(stderr,
                 "Reply code varied within a single reply: was %u, now %u\n",

@@ -143,6 +143,7 @@
 #include <algorithm>
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -2199,8 +2200,10 @@ found:
 
 void SSL_get0_next_proto_negotiated(const SSL *ssl, const uint8_t **out_data,
                                     unsigned *out_len) {
+  // NPN protocols have one-byte lengths, so they must fit in |unsigned|.
+  assert(ssl->s3->next_proto_negotiated.size() <= UINT_MAX);
   *out_data = ssl->s3->next_proto_negotiated.data();
-  *out_len = ssl->s3->next_proto_negotiated.size();
+  *out_len = static_cast<unsigned>(ssl->s3->next_proto_negotiated.size());
 }
 
 void SSL_CTX_set_next_protos_advertised_cb(
@@ -2220,7 +2223,7 @@ void SSL_CTX_set_next_proto_select_cb(
 }
 
 int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
-                            unsigned protos_len) {
+                            size_t protos_len) {
   // Note this function's return value is backwards.
   auto span = MakeConstSpan(protos, protos_len);
   if (!span.empty() && !ssl_is_valid_alpn_list(span)) {
@@ -2230,7 +2233,7 @@ int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
   return ctx->alpn_client_proto_list.CopyFrom(span) ? 0 : 1;
 }
 
-int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, unsigned protos_len) {
+int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, size_t protos_len) {
   // Note this function's return value is backwards.
   if (!ssl->config) {
     return 1;
@@ -2254,13 +2257,16 @@ void SSL_CTX_set_alpn_select_cb(SSL_CTX *ctx,
 
 void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
                             unsigned *out_len) {
+  Span<const uint8_t> protocol;
   if (SSL_in_early_data(ssl) && !ssl->server) {
-    *out_data = ssl->s3->hs->early_session->early_alpn.data();
-    *out_len = ssl->s3->hs->early_session->early_alpn.size();
+    protocol = ssl->s3->hs->early_session->early_alpn;
   } else {
-    *out_data = ssl->s3->alpn_selected.data();
-    *out_len = ssl->s3->alpn_selected.size();
+    protocol = ssl->s3->alpn_selected;
   }
+  // ALPN protocols have one-byte lengths, so they must fit in |unsigned|.
+  assert(protocol.size() < UINT_MAX);
+  *out_data = protocol.data();
+  *out_len = static_cast<unsigned>(protocol.size());
 }
 
 void SSL_CTX_set_allow_unknown_alpn_protos(SSL_CTX *ctx, int enabled) {

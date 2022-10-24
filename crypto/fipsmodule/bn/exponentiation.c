@@ -396,7 +396,7 @@ err:
 //
 // (with draws in between).  Very small exponents are often selected
 // with low Hamming weight, so we use  w = 1  for b <= 23.
-static int BN_window_bits_for_exponent_size(int b) {
+static int BN_window_bits_for_exponent_size(size_t b) {
   if (b > 671) {
     return 6;
   }
@@ -721,12 +721,14 @@ err:
 void bn_mod_exp_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
                            const BN_ULONG *p, size_t num_p,
                            const BN_MONT_CTX *mont) {
-  if (num != (size_t)mont->N.width || num > BN_SMALL_MAX_WORDS) {
+  if (num != (size_t)mont->N.width || num > BN_SMALL_MAX_WORDS ||
+      num_p > ((size_t)-1) / BN_BITS2) {
     abort();
   }
   assert(BN_is_odd(&mont->N));
 
-  // Count the number of bits in |p|. Note this function treats |p| as public.
+  // Count the number of bits in |p|, skipping leading zeros. Note this function
+  // treats |p| as public.
   while (num_p != 0 && p[num_p - 1] == 0) {
     num_p--;
   }
@@ -734,7 +736,7 @@ void bn_mod_exp_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
     bn_from_montgomery_small(r, num, mont->RR.d, num, mont);
     return;
   }
-  unsigned bits = BN_num_bits_word(p[num_p - 1]) + (num_p - 1) * BN_BITS2;
+  size_t bits = BN_num_bits_word(p[num_p - 1]) + (num_p - 1) * BN_BITS2;
   assert(bits != 0);
 
   // We exponentiate by looking at sliding windows of the exponent and
@@ -758,7 +760,7 @@ void bn_mod_exp_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
   // |p| is non-zero, so at least one window is non-zero. To save some
   // multiplications, defer initializing |r| until then.
   int r_is_one = 1;
-  unsigned wstart = bits - 1;  // The top bit of the window.
+  size_t wstart = bits - 1;  // The top bit of the window.
   for (;;) {
     if (!bn_is_bit_set_words(p, num_p, wstart)) {
       if (!r_is_one) {

@@ -690,9 +690,10 @@ void bn_mod_mul_montgomery_small(BN_ULONG *r, const BN_ULONG *a,
 // bn_mod_exp_mont_small sets |r| to |a|^|p| mod |mont->N|. It returns one on
 // success and zero on programmer or internal error. Both inputs and outputs are
 // in the Montgomery domain. |r| and |a| are |num| words long, which must be
-// |mont->N.width| and at most |BN_SMALL_MAX_WORDS|. |a| must be fully-reduced.
-// This function runs in time independent of |a|, but |p| and |mont->N| are
-// public values. |a| must be fully-reduced and may alias with |r|.
+// |mont->N.width| and at most |BN_SMALL_MAX_WORDS|. |num_p|, measured in bits,
+// must fit in |size_t|. |a| must be fully-reduced. This function runs in time
+// independent of |a|, but |p| and |mont->N| are public values. |a| must be
+// fully-reduced and may alias with |r|.
 //
 // Note this function differs from |BN_mod_exp_mont| which uses Montgomery
 // reduction but takes input and output outside the Montgomery domain. Combine

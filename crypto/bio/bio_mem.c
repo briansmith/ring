@@ -66,7 +66,7 @@
 #include "../internal.h"
 
 
-BIO *BIO_new_mem_buf(const void *buf, int len) {
+BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len) {
   BIO *ret;
   BUF_MEM *b;
   const size_t size = len < 0 ? strlen((char *)buf) : (size_t)len;
