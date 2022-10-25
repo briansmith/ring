@@ -198,12 +198,12 @@ jobs:
 
         include:
           - target: aarch64-apple-darwin
-            host_os: macos-latest
+            host_os: macos-12
             # GitHub Actions doesn't have a way to run this target yet.
             cargo_options: --no-run
 
           - target: aarch64-apple-ios
-            host_os: macos-latest
+            host_os: macos-12
             # GitHub Actions doesn't have a way to run this target yet.
             cargo_options: --no-run
 
@@ -252,7 +252,7 @@ jobs:
             host_os: windows-latest
 
           - target: x86_64-apple-darwin
-            host_os: macos-latest
+            host_os: macos-12
 
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-18.04
@@ -279,12 +279,6 @@ jobs:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
-
-      # https://github.com/actions/virtual-environments/issues/2557#issuecomment-769611326
-      - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
-        run: |
-          sudo xcode-select -s /Applications/Xcode_12.4.app &&
-          sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/*
 
       - if: ${{ matrix.target == 'aarch64-pc-windows-msvc' }}
         run: |
@@ -378,12 +372,6 @@ jobs:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
-
-      # https://github.com/actions/virtual-environments/issues/2557#issuecomment-769611326
-      - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
-        run: |
-          sudo xcode-select -s /Applications/Xcode_12.4.app &&
-          sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/*
 
       - if: ${{ matrix.target == 'aarch64-pc-windows-msvc' }}
         run: |
@@ -539,9 +527,6 @@ jobs:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
-
-      - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
-        run: echo "DEVELOPER_DIR=/Applications/Xcode_12.2.app/Contents/Developer" >> $GITHUB_ENV
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: |
