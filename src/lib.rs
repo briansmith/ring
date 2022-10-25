@@ -22,14 +22,6 @@
 //!     <th>Description
 //! <tr><td><code>alloc (default)</code>
 //!     <td>Enable features that require use of the heap, RSA in particular.
-//! <tr><td><code>dev_urandom_fallback (default)</code>
-//!     <td>This is only applicable to Linux. On Linux, by default,
-//!         <code>ring::rand::SystemRandom</code> will fall back to reading
-//!         from <code>/dev/urandom</code> if the <code>getrandom()</code>
-//!         syscall isn't supported at runtime. When the
-//!         <code>dev_urandom_fallback</code> feature is disabled, such
-//!         fallbacks will not occur. See the documentation for
-//!         <code>rand::SystemRandom</code> for more details.
 //! <tr><td><code>std</code>
 //!     <td>Enable features that use libstd, in particular
 //!         <code>std::error::Error</code> integration. Implies `alloc`.
@@ -37,7 +29,8 @@
 //!     <td>When this feature is enabled, for the wasm32-unknown-unknown target,
 //!         Web APIs will be used to implement features like `ring::rand` that
 //!         require an operating environment of some kind. This has no effect
-//!         for any other target.
+//!         for any other target. This enables the `getrandom` crate's `js`
+//!         feature.
 //! </table>
 
 // When running mk/package.sh, don't actually build any code.
