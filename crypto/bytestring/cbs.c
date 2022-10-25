@@ -254,7 +254,7 @@ static int parse_base128_integer(CBS *cbs, uint64_t *out) {
   return 1;
 }
 
-static int parse_asn1_tag(CBS *cbs, unsigned *out) {
+static int parse_asn1_tag(CBS *cbs, CBS_ASN1_TAG *out) {
   uint8_t tag_byte;
   if (!CBS_get_u8(cbs, &tag_byte)) {
     return 0;
@@ -266,8 +266,8 @@ static int parse_asn1_tag(CBS *cbs, unsigned *out) {
   // If the number portion is 31 (0x1f, the largest value that fits in the
   // allotted bits), then the tag is more than one byte long and the
   // continuation bytes contain the tag number.
-  unsigned tag = ((unsigned)tag_byte & 0xe0) << CBS_ASN1_TAG_SHIFT;
-  unsigned tag_number = tag_byte & 0x1f;
+  CBS_ASN1_TAG tag = ((CBS_ASN1_TAG)tag_byte & 0xe0) << CBS_ASN1_TAG_SHIFT;
+  CBS_ASN1_TAG tag_number = tag_byte & 0x1f;
   if (tag_number == 0x1f) {
     uint64_t v;
     if (!parse_base128_integer(cbs, &v) ||
@@ -277,7 +277,7 @@ static int parse_asn1_tag(CBS *cbs, unsigned *out) {
         v < 0x1f) {
       return 0;
     }
-    tag_number = (unsigned)v;
+    tag_number = (CBS_ASN1_TAG)v;
   }
 
   tag |= tag_number;
@@ -293,7 +293,7 @@ static int parse_asn1_tag(CBS *cbs, unsigned *out) {
   return 1;
 }
 
-static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
+static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag,
                                     size_t *out_header_len, int *out_ber_found,
                                     int *out_indefinite, int ber_ok) {
   CBS header = *cbs;
@@ -310,7 +310,7 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
     assert(out_indefinite == NULL);
   }
 
-  unsigned tag;
+  CBS_ASN1_TAG tag;
   if (!parse_asn1_tag(&header, &tag)) {
     return 0;
   }
@@ -394,7 +394,7 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   return CBS_get_bytes(cbs, out, len);
 }
 
-int CBS_get_any_asn1(CBS *cbs, CBS *out, unsigned *out_tag) {
+int CBS_get_any_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag) {
   size_t header_len;
   if (!CBS_get_any_asn1_element(cbs, out, out_tag, &header_len)) {
     return 0;
@@ -408,13 +408,13 @@ int CBS_get_any_asn1(CBS *cbs, CBS *out, unsigned *out_tag) {
   return 1;
 }
 
-int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
+int CBS_get_any_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag,
                                     size_t *out_header_len) {
   return cbs_get_any_asn1_element(cbs, out, out_tag, out_header_len, NULL, NULL,
                                   /*ber_ok=*/0);
 }
 
-int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
+int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag,
                                  size_t *out_header_len, int *out_ber_found,
                                  int *out_indefinite) {
   int ber_found_temp;
@@ -424,10 +424,10 @@ int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
       /*ber_ok=*/1);
 }
 
-static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value,
+static int cbs_get_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value,
                         int skip_header) {
   size_t header_len;
-  unsigned tag;
+  CBS_ASN1_TAG tag;
   CBS throwaway;
 
   if (out == NULL) {
@@ -447,21 +447,21 @@ static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value,
   return 1;
 }
 
-int CBS_get_asn1(CBS *cbs, CBS *out, unsigned tag_value) {
+int CBS_get_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value) {
   return cbs_get_asn1(cbs, out, tag_value, 1 /* skip header */);
 }
 
-int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value) {
+int CBS_get_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value) {
   return cbs_get_asn1(cbs, out, tag_value, 0 /* include header */);
 }
 
-int CBS_peek_asn1_tag(const CBS *cbs, unsigned tag_value) {
+int CBS_peek_asn1_tag(const CBS *cbs, CBS_ASN1_TAG tag_value) {
   if (CBS_len(cbs) < 1) {
     return 0;
   }
 
   CBS copy = *cbs;
-  unsigned actual_tag;
+  CBS_ASN1_TAG actual_tag;
   return parse_asn1_tag(&copy, &actual_tag) && tag_value == actual_tag;
 }
 
@@ -524,7 +524,7 @@ int CBS_get_asn1_bool(CBS *cbs, int *out) {
   return 1;
 }
 
-int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present, unsigned tag) {
+int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present, CBS_ASN1_TAG tag) {
   int present = 0;
 
   if (CBS_peek_asn1_tag(cbs, tag)) {
@@ -542,7 +542,7 @@ int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present, unsigned tag) {
 }
 
 int CBS_get_optional_asn1_octet_string(CBS *cbs, CBS *out, int *out_present,
-                                       unsigned tag) {
+                                       CBS_ASN1_TAG tag) {
   CBS child;
   int present;
   if (!CBS_get_optional_asn1(cbs, &child, &present, tag)) {
@@ -563,7 +563,7 @@ int CBS_get_optional_asn1_octet_string(CBS *cbs, CBS *out, int *out_present,
   return 1;
 }
 
-int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out, unsigned tag,
+int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out, CBS_ASN1_TAG tag,
                                  uint64_t default_value) {
   CBS child;
   int present;
@@ -581,7 +581,7 @@ int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out, unsigned tag,
   return 1;
 }
 
-int CBS_get_optional_asn1_bool(CBS *cbs, int *out, unsigned tag,
+int CBS_get_optional_asn1_bool(CBS *cbs, int *out, CBS_ASN1_TAG tag,
                                int default_value) {
   CBS child, child2;
   int present;

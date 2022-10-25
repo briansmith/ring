@@ -333,14 +333,14 @@ static int add_base128_integer(CBB *cbb, uint64_t v) {
   return 1;
 }
 
-int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag) {
+int CBB_add_asn1(CBB *cbb, CBB *out_contents, CBS_ASN1_TAG tag) {
   if (!CBB_flush(cbb)) {
     return 0;
   }
 
   // Split the tag into leading bits and tag number.
   uint8_t tag_bits = (tag >> CBS_ASN1_TAG_SHIFT) & 0xe0;
-  unsigned tag_number = tag & CBS_ASN1_TAG_NUMBER_MASK;
+  CBS_ASN1_TAG tag_number = tag & CBS_ASN1_TAG_NUMBER_MASK;
   if (tag_number >= 0x1f) {
     // Set all the bits in the tag number to signal high tag number form.
     if (!CBB_add_u8(cbb, tag_bits | 0x1f) ||
@@ -470,7 +470,7 @@ int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
   return CBB_add_asn1_uint64_with_tag(cbb, value, CBS_ASN1_INTEGER);
 }
 
-int CBB_add_asn1_uint64_with_tag(CBB *cbb, uint64_t value, unsigned tag) {
+int CBB_add_asn1_uint64_with_tag(CBB *cbb, uint64_t value, CBS_ASN1_TAG tag) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, tag)) {
     return 0;
@@ -508,7 +508,7 @@ int CBB_add_asn1_int64(CBB *cbb, int64_t value) {
   return CBB_add_asn1_int64_with_tag(cbb, value, CBS_ASN1_INTEGER);
 }
 
-int CBB_add_asn1_int64_with_tag(CBB *cbb, int64_t value, unsigned tag) {
+int CBB_add_asn1_int64_with_tag(CBB *cbb, int64_t value, CBS_ASN1_TAG tag) {
   if (value >= 0) {
     return CBB_add_asn1_uint64_with_tag(cbb, (uint64_t)value, tag);
   }

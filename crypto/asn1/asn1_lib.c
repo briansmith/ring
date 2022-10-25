@@ -117,7 +117,7 @@ int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
   // signature fields (see b/18228011). Make this only apply to that field,
   // while requiring DER elsewhere. Better yet, it should be limited to an
   // preprocessing step in that part of Android.
-  unsigned tag;
+  CBS_ASN1_TAG tag;
   size_t header_len;
   int indefinite;
   CBS cbs, body;

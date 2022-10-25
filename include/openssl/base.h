@@ -335,6 +335,10 @@ enum ssl_verify_result_t BORINGSSL_ENUM_INT;
 // are sizes of or indices into C objects, can be converted without overflow.
 typedef ptrdiff_t ossl_ssize_t;
 
+// CBS_ASN1_TAG is the type used by |CBS| and |CBB| for ASN.1 tags. See that
+// header for details. This type is defined in base.h as a forward declaration.
+typedef uint32_t CBS_ASN1_TAG;
+
 // CRYPTO_THREADID is a dummy value.
 typedef int CRYPTO_THREADID;
 

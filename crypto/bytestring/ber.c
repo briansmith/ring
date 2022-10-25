@@ -24,11 +24,11 @@
 // kMaxDepth is a just a sanity limit. The code should be such that the length
 // of the input being processes always decreases. None the less, a very large
 // input could otherwise cause the stack to overflow.
-static const unsigned kMaxDepth = 2048;
+static const uint32_t kMaxDepth = 2048;
 
 // is_string_type returns one if |tag| is a string type and zero otherwise. It
 // ignores the constructed bit.
-static int is_string_type(unsigned tag) {
+static int is_string_type(CBS_ASN1_TAG tag) {
   // While BER supports constructed BIT STRINGS, OpenSSL misparses them. To
   // avoid acting on an ambiguous input, we do not support constructed BIT
   // STRINGS. See https://github.com/openssl/openssl/issues/12810.
@@ -55,7 +55,7 @@ static int is_string_type(unsigned tag) {
 // depending on whether an indefinite length element or constructed string was
 // found. The value of |orig_in| is not changed. It returns one on success (i.e.
 // |*ber_found| was set) and zero on error.
-static int cbs_find_ber(const CBS *orig_in, int *ber_found, unsigned depth) {
+static int cbs_find_ber(const CBS *orig_in, int *ber_found, uint32_t depth) {
   CBS in;
 
   if (depth > kMaxDepth) {
@@ -67,7 +67,7 @@ static int cbs_find_ber(const CBS *orig_in, int *ber_found, unsigned depth) {
 
   while (CBS_len(&in) > 0) {
     CBS contents;
-    unsigned tag;
+    CBS_ASN1_TAG tag;
     size_t header_len;
     int indefinite;
     if (!CBS_get_any_ber_asn1_element(&in, &contents, &tag, &header_len,
@@ -110,8 +110,8 @@ static int cbs_get_eoc(CBS *cbs) {
 // constructed string. If |looking_for_eoc| is set then any EOC elements found
 // will cause the function to return after consuming it. It returns one on
 // success and zero on error.
-static int cbs_convert_ber(CBS *in, CBB *out, unsigned string_tag,
-                           char looking_for_eoc, unsigned depth) {
+static int cbs_convert_ber(CBS *in, CBB *out, CBS_ASN1_TAG string_tag,
+                           int looking_for_eoc, uint32_t depth) {
   assert(!(string_tag & CBS_ASN1_CONSTRUCTED));
 
   if (depth > kMaxDepth) {
@@ -124,7 +124,7 @@ static int cbs_convert_ber(CBS *in, CBB *out, unsigned string_tag,
     }
 
     CBS contents;
-    unsigned tag, child_string_tag = string_tag;
+    CBS_ASN1_TAG tag, child_string_tag = string_tag;
     size_t header_len;
     int indefinite;
     CBB *out_contents, out_contents_storage;
@@ -142,7 +142,7 @@ static int cbs_convert_ber(CBS *in, CBB *out, unsigned string_tag,
       }
       out_contents = out;
     } else {
-      unsigned out_tag = tag;
+      CBS_ASN1_TAG out_tag = tag;
       if ((tag & CBS_ASN1_CONSTRUCTED) && is_string_type(tag)) {
         // If a constructed string, clear the constructed bit and inform
         // children to concatenate bodies.
@@ -221,7 +221,8 @@ int CBS_asn1_ber_to_der(CBS *in, CBS *out, uint8_t **out_storage) {
 }
 
 int CBS_get_asn1_implicit_string(CBS *in, CBS *out, uint8_t **out_storage,
-                                 unsigned outer_tag, unsigned inner_tag) {
+                                 CBS_ASN1_TAG outer_tag,
+                                 CBS_ASN1_TAG inner_tag) {
   assert(!(outer_tag & CBS_ASN1_CONSTRUCTED));
   assert(!(inner_tag & CBS_ASN1_CONSTRUCTED));
   assert(is_string_type(inner_tag));

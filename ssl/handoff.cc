@@ -26,7 +26,7 @@ BSSL_NAMESPACE_BEGIN
 constexpr int kHandoffVersion = 0;
 constexpr int kHandbackVersion = 0;
 
-static const unsigned kHandoffTagALPS = CBS_ASN1_CONTEXT_SPECIFIC | 0;
+static const CBS_ASN1_TAG kHandoffTagALPS = CBS_ASN1_CONTEXT_SPECIFIC | 0;
 
 // early_data_t represents the state of early data in a more compact way than
 // the 3 bits used by the implementation.
@@ -823,19 +823,22 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
 // }
 
 // HandshakeHints tags.
-static const unsigned kServerRandomTLS13Tag = CBS_ASN1_CONTEXT_SPECIFIC | 0;
-static const unsigned kKeyShareHintTag =
+static const CBS_ASN1_TAG kServerRandomTLS13Tag =
+    CBS_ASN1_CONTEXT_SPECIFIC | 0;
+static const CBS_ASN1_TAG kKeyShareHintTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
-static const unsigned kSignatureHintTag =
+static const CBS_ASN1_TAG kSignatureHintTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
-static const unsigned kDecryptedPSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 3;
-static const unsigned kIgnorePSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 4;
-static const unsigned kCompressCertificateTag = CBS_ASN1_CONTEXT_SPECIFIC | 5;
-static const unsigned kServerRandomTLS12Tag = CBS_ASN1_CONTEXT_SPECIFIC | 6;
-static const unsigned kECDHEHintTag = CBS_ASN1_CONSTRUCTED | 7;
-static const unsigned kDecryptedTicketTag = CBS_ASN1_CONTEXT_SPECIFIC | 8;
-static const unsigned kRenewTicketTag = CBS_ASN1_CONTEXT_SPECIFIC | 9;
-static const unsigned kIgnoreTicketTag = CBS_ASN1_CONTEXT_SPECIFIC | 10;
+static const CBS_ASN1_TAG kDecryptedPSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 3;
+static const CBS_ASN1_TAG kIgnorePSKTag = CBS_ASN1_CONTEXT_SPECIFIC | 4;
+static const CBS_ASN1_TAG kCompressCertificateTag =
+    CBS_ASN1_CONTEXT_SPECIFIC | 5;
+static const CBS_ASN1_TAG kServerRandomTLS12Tag =
+    CBS_ASN1_CONTEXT_SPECIFIC | 6;
+static const CBS_ASN1_TAG kECDHEHintTag = CBS_ASN1_CONSTRUCTED | 7;
+static const CBS_ASN1_TAG kDecryptedTicketTag = CBS_ASN1_CONTEXT_SPECIFIC | 8;
+static const CBS_ASN1_TAG kRenewTicketTag = CBS_ASN1_CONTEXT_SPECIFIC | 9;
+static const CBS_ASN1_TAG kIgnoreTicketTag = CBS_ASN1_CONTEXT_SPECIFIC | 10;
 
 int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
   const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
@@ -954,7 +957,7 @@ int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
 }
 
 static bool get_optional_implicit_null(CBS *cbs, bool *out_present,
-                                       unsigned tag) {
+                                       CBS_ASN1_TAG tag) {
   CBS value;
   int present;
   if (!CBS_get_optional_asn1(cbs, &value, &present, tag) ||

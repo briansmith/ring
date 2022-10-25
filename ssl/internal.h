@@ -1313,7 +1313,8 @@ enum ssl_key_usage_t {
 // ssl_cert_check_key_usage parses the DER-encoded, X.509 certificate in |in|
 // and returns true if doesn't specify a key usage or, if it does, if it
 // includes |bit|. Otherwise it pushes to the error queue and returns false.
-bool ssl_cert_check_key_usage(const CBS *in, enum ssl_key_usage_t bit);
+OPENSSL_EXPORT bool ssl_cert_check_key_usage(const CBS *in,
+                                             enum ssl_key_usage_t bit);
 
 // ssl_cert_parse_pubkey extracts the public key from the DER-encoded, X.509
 // certificate in |in|. It returns an allocated |EVP_PKEY| or else returns
