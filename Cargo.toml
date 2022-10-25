@@ -161,6 +161,7 @@ all-features = true
 name = "ring"
 
 [dependencies]
+getrandom = { version = "0.2.8" }
 untrusted = { version = "0.9" }
 
 [target.'cfg(any(target_arch = "x86",target_arch = "x86_64", all(any(target_arch = "aarch64", target_arch = "arm"), any(target_os = "android", target_os = "fuchsia", target_os = "linux", target_os = "windows"))))'.dependencies]
@@ -168,15 +169,8 @@ spin = { version = "0.9.2", default-features = false, features = ["once"] }
 
 [target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
 libc = { version = "0.2.100", default-features = false }
-once_cell = { version = "1.8.0", default-features = false, features=["std"], optional = true }
 
-[target.'cfg(any(target_os = "dragonfly", target_os = "freebsd", target_os = "illumos", target_os = "netbsd", target_os = "openbsd", target_os = "redox", target_os = "solaris"))'.dependencies]
-once_cell = { version = "1.8.0", default-features = false, features=["std"] }
-
-[target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown", target_env = ""))'.dependencies]
-web-sys = { version = "0.3.51", default-features = false, features = ["Crypto", "Window"], optional = true }
-
-[target.'cfg(target_os = "windows")'.dependencies]
+[target.'cfg(all(target_arch = "aarch64", target_os = "windows"))'.dependencies]
 winapi = { version = "0.3.9", default-features = false, features = ["ntsecapi", "wtypesbase", "processthreadsapi"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
@@ -195,11 +189,11 @@ criterion = { version = "0.4", default-features = false }
 # These features are documented in the top-level module's documentation.
 default = ["alloc", "dev_urandom_fallback"]
 alloc = []
-dev_urandom_fallback = ["once_cell"]
+dev_urandom_fallback = []
 slow_tests = []
 std = ["alloc"]
 test_logging = []
-wasm32_unknown_unknown_js = ["web-sys"]
+wasm32_unknown_unknown_js = ["getrandom/js"]
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

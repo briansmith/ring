@@ -73,9 +73,7 @@ case $target in
   use_clang=1
   ;;
 --target=wasm32-unknown-unknown)
-  # The version of wasm-bindgen-cli must match the wasm-bindgen version.
-  wasm_bindgen_version=$(cargo metadata --format-version 1 | jq -r '.packages | map(select( .name == "wasm-bindgen")) | map(.version) | .[0]')
-  cargo install wasm-bindgen-cli --vers "$wasm_bindgen_version" --bin wasm-bindgen-test-runner
+  cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
   use_clang=1
   ;;
 --target=*)
