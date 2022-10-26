@@ -333,16 +333,12 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
                                const char *label, size_t label_len,
                                const uint8_t *context, size_t context_len,
                                int use_context) {
-  // Exporters may be used in False Start and server 0-RTT, where the handshake
-  // has progressed enough. Otherwise, they may not be used during a handshake.
-  if (SSL_in_init(ssl) &&
-      !SSL_in_false_start(ssl) &&
-      !(SSL_is_server(ssl) && SSL_in_early_data(ssl))) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
-    return 0;
-  }
-
-  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+  // In TLS 1.3, the exporter may be used whenever the secret has been derived.
+  if (ssl->s3->have_version && ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+    if (ssl->s3->exporter_secret_len == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
+      return 0;
+    }
     if (!use_context) {
       context = nullptr;
       context_len = 0;
@@ -351,6 +347,13 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
         ssl, MakeSpan(out, out_len),
         MakeConstSpan(ssl->s3->exporter_secret, ssl->s3->exporter_secret_len),
         MakeConstSpan(label, label_len), MakeConstSpan(context, context_len));
+  }
+
+  // Exporters may be used in False Start, where the handshake has progressed
+  // enough. Otherwise, they may not be used during a handshake.
+  if (SSL_in_init(ssl) && !SSL_in_false_start(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
+    return 0;
   }
 
   size_t seed_len = 2 * SSL3_RANDOM_SIZE;

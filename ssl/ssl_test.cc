@@ -2367,6 +2367,81 @@ TEST(SSLTest, ECHThreads) {
 }
 #endif  // OPENSSL_THREADS
 
+TEST(SSLTest, TLS13ExporterAvailability) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
+
+  std::vector<uint8_t> buffer(32);
+  const char *label = "EXPORTER-test-label";
+
+  // The exporters are not available before the handshake starts.
+  EXPECT_FALSE(SSL_export_keying_material(client.get(), buffer.data(),
+                                          buffer.size(), label, strlen(label),
+                                          nullptr, 0, 0));
+  EXPECT_FALSE(SSL_export_keying_material(server.get(), buffer.data(),
+                                          buffer.size(), label, strlen(label),
+                                          nullptr, 0, 0));
+
+  // Send the client's first flight of handshake messages.
+  int client_ret = SSL_do_handshake(client.get());
+  EXPECT_EQ(SSL_get_error(client.get(), client_ret), SSL_ERROR_WANT_READ);
+
+  // The handshake isn't far enough for the exporters to work.
+  EXPECT_FALSE(SSL_export_keying_material(client.get(), buffer.data(),
+                                          buffer.size(), label, strlen(label),
+                                          nullptr, 0, 0));
+  EXPECT_FALSE(SSL_export_keying_material(server.get(), buffer.data(),
+                                          buffer.size(), label, strlen(label),
+                                          nullptr, 0, 0));
+
+  // Send all the server's handshake messages.
+  int server_ret = SSL_do_handshake(server.get());
+  EXPECT_EQ(SSL_get_error(server.get(), server_ret), SSL_ERROR_WANT_READ);
+
+  // At this point in the handshake, the server should have the exporter key
+  // derived since it's sent its Finished message. The client hasn't yet
+  // processed the server's handshake messages, so the exporter shouldn't be
+  // available to the client.
+  EXPECT_FALSE(SSL_export_keying_material(client.get(), buffer.data(),
+                                          buffer.size(), label, strlen(label),
+                                          nullptr, 0, 0));
+  EXPECT_TRUE(SSL_export_keying_material(server.get(), buffer.data(),
+                                         buffer.size(), label, strlen(label),
+                                         nullptr, 0, 0));
+
+  // Finish the handshake on the client.
+  EXPECT_EQ(SSL_do_handshake(client.get()), 1);
+
+  // The exporter should be available on both endpoints.
+  EXPECT_TRUE(SSL_export_keying_material(client.get(), buffer.data(),
+                                         buffer.size(), label, strlen(label),
+                                         nullptr, 0, 0));
+  EXPECT_TRUE(SSL_export_keying_material(server.get(), buffer.data(),
+                                         buffer.size(), label, strlen(label),
+                                         nullptr, 0, 0));
+
+  // Finish the handshake on the server.
+  EXPECT_EQ(SSL_do_handshake(server.get()), 1);
+
+  // The exporter should still be available on both endpoints.
+  EXPECT_TRUE(SSL_export_keying_material(client.get(), buffer.data(),
+                                         buffer.size(), label, strlen(label),
+                                         nullptr, 0, 0));
+  EXPECT_TRUE(SSL_export_keying_material(server.get(), buffer.data(),
+                                         buffer.size(), label, strlen(label),
+                                         nullptr, 0, 0));
+}
+
 static void AppendSession(SSL_SESSION *session, void *arg) {
   std::vector<SSL_SESSION*> *out =
       reinterpret_cast<std::vector<SSL_SESSION*>*>(arg);
