@@ -64,6 +64,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/ghash-x86_64.pl"),
+    (&[X86_64], "crypto/fipsmodule/rand/asm/rdrand-x86_64.pl"),
     (&[X86_64], "crypto/poly1305/poly1305_vec.c"),
     (&[X86_64], SHA512_X86_64),
     (&[X86_64], "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"),
@@ -222,7 +223,7 @@ const ASM_TARGETS: &[AsmTarget] = &[
         preassemble: true,
     },
     AsmTarget {
-        oss: &[WINDOWS],
+        oss: &[WINDOWS, UEFI],
         arch: "x86_64",
         perlasm_format: "nasm",
         asm_extension: "asm",
@@ -278,6 +279,8 @@ const LINUX_ABI: &[&str] = &[
 const MACOS_ABI: &[&str] = &["ios", "macos"];
 
 const WINDOWS: &str = "windows";
+
+const UEFI: &str = "uefi";
 
 /// Read an environment variable and tell Cargo that we depend on it.
 ///
@@ -381,8 +384,9 @@ fn pregenerate_asm_main() {
         perlasm(&perlasm_src_dsts, asm_target);
 
         if asm_target.preassemble {
-            // Preassembly is currently only done for Windows targets.
-            assert_eq!(&asm_target.oss, &[WINDOWS]);
+            // Preassembly is currently done for Windows and UEFI targets.
+            assert!(asm_target.oss.contains(&WINDOWS) || asm_target.oss.contains(&UEFI));
+
             let os = WINDOWS;
 
             let srcs = asm_srcs(perlasm_src_dsts);
@@ -453,7 +457,7 @@ fn build_c_code(
 
         // For Windows we also pregenerate the object files for non-Git builds so
         // the user doesn't need to install the assembler.
-        if use_pregenerated && target.os == WINDOWS {
+        if use_pregenerated && supports_preassembly(&target.arch, &target.os) {
             asm_srcs = asm_srcs
                 .iter()
                 .map(|src| obj_path(&pregenerated, src.as_path()))
@@ -547,7 +551,7 @@ fn compile(p: &Path, target: &Target, include_dir: &Path, out_dir: &Path) -> Str
         p.to_str().expect("Invalid path").into()
     } else {
         let out_file = obj_path(out_dir, p);
-        let cmd = if target.os != WINDOWS || ext != "asm" {
+        let cmd = if !supports_preassembly(&target.arch, &target.os) || ext != "asm" {
             cc(p, ext, target, include_dir, &out_file)
         } else {
             nasm(p, &target.arch, include_dir, &out_file)
@@ -595,6 +599,7 @@ fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Pa
         && target.os != "redox"
         && target.os != "windows"
         && target.arch != "wasm32"
+        && target.os != UEFI
     {
         let _ = c.flag("-fstack-protector");
     }
@@ -620,17 +625,25 @@ fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Pa
         }
     }
 
+    // UEFI is a baremental freestanding environment without stdlib.
+    let freestanding = target.os == UEFI;
+
     // Allow cross-compiling without a target sysroot for these targets.
     //
     // poly1305_vec.c requires <emmintrin.h> which requires <stdlib.h>.
     if (target.arch == "wasm32" && target.os == "unknown")
         || (target.os == "linux" && target.is_musl && target.arch != "x86_64")
+        || freestanding
     {
         if let Ok(compiler) = c.try_get_compiler() {
             // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
             if compiler.is_like_clang() {
                 let _ = c.flag("-nostdlibinc");
                 let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
+
+                if freestanding {
+                    let _ = c.flag("-ffreestanding");
+                }
             }
         }
     }
@@ -673,7 +686,10 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command
         std::path::MAIN_SEPARATOR,
     )));
 
-    let mut c = Command::new("./target/tools/windows/nasm/nasm");
+    let mut c = Command::new(&get_command(
+        "NASM_EXECUTABLE",
+        "./target/tools/windows/nasm/nasm",
+    ));
     let _ = c
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
@@ -910,6 +926,8 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "CRYPTO_poly1305_init_neon",
         "CRYPTO_poly1305_update",
         "CRYPTO_poly1305_update_neon",
+        "CRYPTO_rdrand",
+        "CRYPTO_rdrand_multiple8_buf",
         "ChaCha20_ctr32",
         "LIMBS_add_mod",
         "LIMBS_are_even",
@@ -1019,4 +1037,10 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     }
 
     out
+}
+
+fn supports_preassembly(arch: &str, os: &str) -> bool {
+    ASM_TARGETS.iter().any(|asm_target| {
+        asm_target.preassemble && asm_target.arch == arch && asm_target.oss.contains(&os)
+    })
 }

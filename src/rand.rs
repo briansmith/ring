@@ -139,6 +139,10 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 /// random number generation.
 ///
 /// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
+///
+/// On UEFI, `fill` is implemented using `CRYPTO_rdrand`
+/// & `CRYPTO_rdrand_multiple8_buf` which provided by BoringSSL.
+///
 #[derive(Clone, Debug)]
 pub struct SystemRandom(());
 
@@ -191,6 +195,9 @@ use self::darwin::fill as fill_impl;
 
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
+
+#[cfg(any(target_os = "uefi"))]
+use self::uefi::fill as fill_impl;
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand_chunk {
@@ -415,5 +422,68 @@ mod fuchsia {
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
+    }
+}
+
+#[cfg(any(target_os = "uefi"))]
+mod uefi {
+    use crate::error;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        fill_impl(dest)
+    }
+
+    #[cfg(not(any(target_arch = "x86_64")))]
+    fn fill_impl(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        Err(error::Unspecified)
+    }
+
+    #[cfg(any(target_arch = "x86_64"))]
+    fn fill_impl(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        fn is_avaiable() -> bool {
+            // TODO(xiaoyuxlu): use cpu::intel::RDRAND.avaiable when cpu.rs updated
+            // https://github.com/briansmith/ring/pull/1406#discussion_r720394928
+            // Current implementation may cause problem on AMD cpu. REF:
+            // https://github.com/nagisa/rust_rdrand/blob/f2fdd528a6103c946a2e9d0961c0592498b36493/src/lib.rs#L161
+            prefixed_extern! {
+                static mut OPENSSL_ia32cap_P: [u32; 4];
+            }
+            const FLAG: u32 = 1 << 30;
+            unsafe { OPENSSL_ia32cap_P[1] & FLAG == FLAG }
+        }
+
+        // We must make sure current cpu support `rdrand`
+        if !is_avaiable() {
+            return Err(error::Unspecified);
+        }
+
+        use crate::c;
+        prefixed_extern! {
+            fn CRYPTO_rdrand_multiple8_buf(buffer: *mut u8, length: c::size_t) -> c::int;
+        }
+        prefixed_extern! {
+            fn CRYPTO_rdrand(dest: *mut u8) -> c::int;
+        }
+
+        let len = dest.len();
+        let len_multiple8 = len & (!7usize);
+        let remainder = len - len_multiple8;
+
+        let mut res = 1;
+        if res != 0 && len_multiple8 != 0 {
+            res = unsafe { CRYPTO_rdrand_multiple8_buf(dest.as_mut_ptr(), len_multiple8) };
+        }
+        if res != 0 && remainder != 0 {
+            let mut rand_buf = [0u8; 8];
+            res = unsafe { CRYPTO_rdrand(rand_buf.as_mut_ptr()) };
+            if res != 0 {
+                dest[len_multiple8..].copy_from_slice(&rand_buf[..remainder]);
+            }
+        }
+        if res == 1 {
+            Ok(())
+        } else {
+            Err(error::Unspecified)
+        }
     }
 }
