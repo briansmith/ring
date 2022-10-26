@@ -194,6 +194,7 @@ slow_tests = []
 std = ["alloc"]
 test_logging = []
 wasm32_unknown_unknown_js = ["getrandom/js"]
+rdrand = ["getrandom/rdrand"]
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

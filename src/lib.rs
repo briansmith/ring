@@ -31,6 +31,10 @@
 //!         require an operating environment of some kind. This has no effect
 //!         for any other target. This enables the `getrandom` crate's `js`
 //!         feature.
+//! <tr><td><code>rdrand </code>
+//!     <td>Enable getrandom/rdrand feature.
+//!         When this feature is enabled, getrandom will fallback RDRAND-based
+//!         implementation for those x86/x86_64 targets getrandom not supported.
 //! </table>
 
 // When running mk/package.sh, don't actually build any code.
