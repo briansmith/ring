@@ -626,11 +626,7 @@ static int add_cbor_int_with_type(CBB *cbb, uint8_t major_type,
     return CBB_add_u8(cbb, 0x1a | major_type) &&
            CBB_add_u32(cbb, (uint32_t)value);
   }
-  if (value <= 0xffffffffffffffff) {
-    return CBB_add_u8(cbb, 0x1b | major_type) && CBB_add_u64(cbb, value);
-  }
-
-  return 0;
+  return CBB_add_u8(cbb, 0x1b | major_type) && CBB_add_u64(cbb, value);
 }
 
 // https://tools.ietf.org/html/rfc7049#section-2.1
