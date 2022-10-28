@@ -12,44 +12,19 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[cfg(all(
-    any(target_os = "android", target_os = "linux"),
-    any(target_arch = "aarch64", target_arch = "arm")
-))]
+// TODO(MSRV): Replace this with use of `std::arch::is_arm_feature_detected!()`.
+#[cfg(all(target_arch = "arm", any(target_os = "android", target_os = "linux")))]
 pub fn setup() {
-    use libc::c_ulong;
+    use libc::{c_ulong, getauxval, AT_HWCAP};
 
-    // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
-    // across all Android/Linux targets, e.g. musl.
-    extern "C" {
-        fn getauxval(type_: c_ulong) -> c_ulong;
-    }
-
-    const AT_HWCAP: c_ulong = 16;
-
-    #[cfg(target_arch = "aarch64")]
-    const HWCAP_NEON: c_ulong = 1 << 1;
-
-    #[cfg(target_arch = "arm")]
     const HWCAP_NEON: c_ulong = 1 << 12;
 
     let caps = unsafe { getauxval(AT_HWCAP) };
-
-    // We assume NEON is available on AARCH64 because it is a required
-    // feature.
-    #[cfg(target_arch = "aarch64")]
-    debug_assert!(caps & HWCAP_NEON == HWCAP_NEON);
 
     // OpenSSL and BoringSSL don't enable any other features if NEON isn't
     // available.
     if caps & HWCAP_NEON == HWCAP_NEON {
         let mut features = NEON.mask;
-
-        #[cfg(target_arch = "aarch64")]
-        const OFFSET: c_ulong = 3;
-
-        #[cfg(target_arch = "arm")]
-        const OFFSET: c_ulong = 0;
 
         #[cfg(target_arch = "arm")]
         let caps = {
@@ -57,17 +32,17 @@ pub fn setup() {
             unsafe { getauxval(AT_HWCAP2) }
         };
 
-        const HWCAP_AES: c_ulong = 1 << 0 + OFFSET;
-        const HWCAP_PMULL: c_ulong = 1 << 1 + OFFSET;
-        const HWCAP_SHA2: c_ulong = 1 << 3 + OFFSET;
+        const HWCAP2_AES: c_ulong = 1 << 0;
+        const HWCAP2_PMULL: c_ulong = 1 << 1;
+        const HWCAP2_SHA2: c_ulong = 1 << 3;
 
-        if caps & HWCAP_AES == HWCAP_AES {
+        if caps & HWCAP2_AES == HWCAP2_AES {
             features |= AES.mask;
         }
-        if caps & HWCAP_PMULL == HWCAP_PMULL {
+        if caps & HWCAP2_PMULL == HWCAP2_PMULL {
             features |= PMULL.mask;
         }
-        if caps & HWCAP_SHA2 == HWCAP_SHA2 {
+        if caps & HWCAP2_SHA2 == HWCAP2_SHA2 {
             features |= SHA256.mask;
         }
 
@@ -75,70 +50,11 @@ pub fn setup() {
     }
 }
 
-#[cfg(all(target_os = "fuchsia", target_arch = "aarch64"))]
-pub fn setup() {
-    type zx_status_t = i32;
-
-    #[link(name = "zircon")]
-    extern "C" {
-        fn zx_system_get_features(kind: u32, features: *mut u32) -> zx_status_t;
-    }
-
-    const ZX_OK: i32 = 0;
-    const ZX_FEATURE_KIND_CPU: u32 = 0;
-    const ZX_ARM64_FEATURE_ISA_ASIMD: u32 = 1 << 2;
-    const ZX_ARM64_FEATURE_ISA_AES: u32 = 1 << 3;
-    const ZX_ARM64_FEATURE_ISA_PMULL: u32 = 1 << 4;
-    const ZX_ARM64_FEATURE_ISA_SHA2: u32 = 1 << 6;
-
-    let mut caps = 0;
-    let rc = unsafe { zx_system_get_features(ZX_FEATURE_KIND_CPU, &mut caps) };
-
-    // OpenSSL and BoringSSL don't enable any other features if NEON isn't
-    // available.
-    if rc == ZX_OK && (caps & ZX_ARM64_FEATURE_ISA_ASIMD == ZX_ARM64_FEATURE_ISA_ASIMD) {
-        let mut features = NEON.mask;
-
-        if caps & ZX_ARM64_FEATURE_ISA_AES == ZX_ARM64_FEATURE_ISA_AES {
-            features |= AES.mask;
-        }
-        if caps & ZX_ARM64_FEATURE_ISA_PMULL == ZX_ARM64_FEATURE_ISA_PMULL {
-            features |= PMULL.mask;
-        }
-        if caps & ZX_ARM64_FEATURE_ISA_SHA2 == ZX_ARM64_FEATURE_ISA_SHA2 {
-            features |= 1 << 4;
-        }
-
-        unsafe { OPENSSL_armcap_P = features };
-    }
-}
-
-#[cfg(all(target_os = "windows", target_arch = "aarch64"))]
-pub fn setup() {
-    // We do not need to check for the presence of NEON, as Armv8-A always has it
-    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
-    let mut features = ARMCAP_STATIC;
-
-    let result = unsafe {
-        windows_sys::Win32::System::Threading::IsProcessorFeaturePresent(
-            windows_sys::Win32::System::Threading::PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
-        )
-    };
-
-    if result != 0 {
-        // These are all covered by one call in Windows
-        features |= AES.mask;
-        features |= PMULL.mask;
-        features |= SHA256.mask;
-    }
-
-    unsafe { OPENSSL_armcap_P = features };
-}
-
 macro_rules! features {
-    {
+    {   // Use `:tt` instead of `:literal` to work around
+        // https://github.com/rust-lang/rust/issues/72726.
         $(
-            $target_feature_name:expr => $name:ident {
+            $static_target_feature_name:literal then $dynamic_target_feature_name:tt => $name:ident {
                 mask: $mask:expr,
             }
         ),+
@@ -151,16 +67,22 @@ macro_rules! features {
             };
         )+
 
-        const ARMCAP_STATIC: u32 = ARMCAP_STATIC_OVERRIDE
+        #[cfg(target_arch = "aarch64")]
+        pub fn setup() {
+            extern crate std;
+            use std::arch::is_aarch64_feature_detected;
+
+            let features = 0
             $(
-                | (
-                    if cfg!(all(any(target_arch = "aarch64", target_arch = "arm"),
-                                target_feature = $target_feature_name)) {
-                        $name.mask
-                    } else {
-                        0
-                    }
-                )
+                | (if is_aarch64_feature_detected!($dynamic_target_feature_name) { $name.mask } else { 0 })
+            )+;
+            debug_assert_eq!(features & ARMCAP_STATIC, ARMCAP_STATIC);
+            unsafe { OPENSSL_armcap_P = features };
+        }
+
+        const ARMCAP_STATIC: u32 = 0
+            $(
+                | ( if cfg!(target_feature = $static_target_feature_name) { $name.mask } else { 0 } )
             )+;
 
         const _ALL_FEATURES_MASK: u32 = 0
@@ -175,21 +97,6 @@ macro_rules! features {
         ];
     }
 }
-
-// TODO(MSRV 1.61.0): `cfg!(target_feature = X)` is false for many
-// AArch64 targets prior to Rust 1.61.0. Since we don't support dynamic
-// detection for Apple targets, implement a special workaround for them.
-// See https://github.com/rust-lang/rust/pull/91608 for background.
-//
-// In the case of non-Apple targets, presently we do assume that NEON
-// is present (e.g. see the Windows logic above).
-const ARMCAP_STATIC_OVERRIDE: u32 = if cfg!(all(target_arch = "aarch64", target_vendor = "apple")) {
-    NEON.mask | AES.mask | PMULL.mask | SHA256.mask
-} else if cfg!(target_arch = "aarch64") {
-    NEON.mask
-} else {
-    0
-};
 
 pub(crate) struct Feature {
     mask: u32,
@@ -223,15 +130,15 @@ impl Feature {
 
 // Assumes all target feature names are the same for ARM and AAarch64.
 features! {
-    "neon" => NEON {
+    "neon" then "neon" => NEON {
         mask: 1 << 0,
     },
 
-    "aes" => AES {
+    "aes" then "aes" => AES {
         mask: 1 << 2,
     },
 
-    "sha2" => SHA256 {
+    "sha2" then "sha2" => SHA256 {
         mask: 1 << 4,
     },
 
@@ -241,7 +148,7 @@ features! {
     // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
     // "Features introduced prior to 2020." Change this to use "pmull" when
     // that is supported.
-    "aes" => PMULL {
+    "aes" then "pmull" => PMULL {
         mask: 1 << 5,
     },
 }
