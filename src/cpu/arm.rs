@@ -264,12 +264,12 @@ prefixed_export! {
     static mut OPENSSL_armcap_P: u32 = ARMCAP_STATIC;
 }
 
-#[cfg(all(
-    any(target_arch = "arm", target_arch = "aarch64"),
-    target_vendor = "apple"
-))]
-#[test]
-fn test_armcap_static_matches_armcap_dynamic() {
-    assert_eq!(ARMCAP_STATIC, 1 | 4 | 16 | 32);
-    assert_eq!(ARMCAP_STATIC, unsafe { OPENSSL_armcap_P });
+#[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
+mod tests {
+    #[cfg(target_vendor = "apple")]
+    #[test]
+    fn test_armcap_static_matches_armcap_dynamic() {
+        assert_eq!(ARMCAP_STATIC, 1 | 4 | 16 | 32);
+        assert_eq!(ARMCAP_STATIC, unsafe { OPENSSL_armcap_P });
+    }
 }
