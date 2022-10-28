@@ -184,14 +184,12 @@ macro_rules! features {
         #[cfg(not(all(target_arch = "aarch64", target_vendor = "apple")))]
         const ARMCAP_STATIC: u32 = 0;
 
-        #[cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
-        #[test]
-        fn test_armcap_static_available() {
-            let features = crate::cpu::features();
+        #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
+        const ALL_FEATURES: [Feature; 4] = [
             $(
-                assert!($name.available(features));
-            )+
-        }
+                $name
+            ),+
+        ];
     }
 }
 
@@ -266,10 +264,36 @@ prefixed_export! {
 
 #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mask_abi() {
+        assert_eq!(NEON.mask, 1);
+        assert_eq!(AES.mask, 4);
+        assert_eq!(SHA256.mask, 16);
+        assert_eq!(PMULL.mask, 32);
+    }
+
     #[cfg(target_vendor = "apple")]
     #[test]
-    fn test_armcap_static_matches_armcap_dynamic() {
-        assert_eq!(ARMCAP_STATIC, 1 | 4 | 16 | 32);
-        assert_eq!(ARMCAP_STATIC, unsafe { OPENSSL_armcap_P });
+    fn test_apple_minimum_features() {
+        ALL_FEATURES.iter().for_each(|feature| {
+            assert_eq!(ARMCAP_STATIC & feature.mask, feature.mask);
+        });
+    }
+
+    #[test]
+    fn test_armcap_static_is_subset_of_armcap_dynamic() {
+        // Ensure `OPENSSL_armcap_P` is initialized.
+        let cpu = crate::cpu::features();
+
+        let armcap_dynamic = unsafe { OPENSSL_armcap_P };
+        assert_eq!(armcap_dynamic & ARMCAP_STATIC, ARMCAP_STATIC);
+
+        ALL_FEATURES.iter().for_each(|feature| {
+            if (ARMCAP_STATIC & feature.mask) != 0 {
+                assert!(feature.available(cpu));
+            }
+        })
     }
 }
