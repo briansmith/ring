@@ -116,7 +116,8 @@ pub fn setup() {
 #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
 pub fn setup() {
     // We do not need to check for the presence of NEON, as Armv8-A always has it
-    let mut features = NEON.mask;
+    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
+    let mut features = ARMCAP_STATIC;
 
     let result = unsafe {
         windows_sys::Win32::System::Threading::IsProcessorFeaturePresent(
@@ -137,17 +138,8 @@ pub fn setup() {
 macro_rules! features {
     {
         $(
-            $name:ident {
+            $target_feature_name:expr => $name:ident {
                 mask: $mask:expr,
-
-                // Should we assume that the feature is always available
-                // for aarch64-apple-* targets? The first AArch64 iOS
-                // device used the Apple A7 chip.
-                // TODO: When we can use `if` in const expressions:
-                // ```
-                // aarch64_apple: $aarch64_apple,
-                // ```
-                aarch64_apple: true,
             }
         ),+
         , // trailing comma is required.
@@ -159,33 +151,16 @@ macro_rules! features {
             };
         )+
 
-        // TODO: When we can use `if` in const expressions, do this:
-        // ```
-        // const ARMCAP_STATIC: u32 = 0
-        //    $(
-        //        | ( if $aarch64_apple &&
-        //               cfg!(all(target_arch = "aarch64",
-        //                        target_vendor = "apple")) {
-        //                $name.mask
-        //            } else {
-        //                0
-        //            }
-        //          )
-        //    )+;
-        // ```
-        //
-        // TODO: Add static feature detection to other targets.
-        // TODO: Combine static feature detection with runtime feature
-        //       detection.
-        #[cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
         const ARMCAP_STATIC: u32 = 0
-            $(  | $name.mask
-            )+;
-        #[cfg(not(all(target_arch = "aarch64", target_vendor = "apple")))]
-        const ARMCAP_STATIC: u32 = 0;
-
-        const _ALL_FEATURES_MASK: u32 = 0
-            $(  | $name.mask
+            $(
+                | (
+                    if cfg!(all(any(target_arch = "aarch64", target_arch = "arm"),
+                                target_feature = $target_feature_name)) {
+                        $name.mask
+                    } else {
+                        0
+                    }
+                )
             )+;
 
         #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
@@ -227,29 +202,33 @@ impl Feature {
     }
 }
 
+// Assumes all target feature names are the same for ARM and AAarch64.
 features! {
     // Keep in sync with `ARMV7_NEON`.
-    NEON {
+    "neon" => NEON {
         mask: 1 << 0,
-        aarch64_apple: true,
     },
 
     // Keep in sync with `ARMV8_AES`.
-    AES {
+    "aes" => AES {
         mask: 1 << 2,
-        aarch64_apple: true,
     },
 
     // Keep in sync with `ARMV8_SHA256`.
-    SHA256 {
+    "sha2" => SHA256 {
         mask: 1 << 4,
-        aarch64_apple: true,
     },
 
     // Keep in sync with `ARMV8_PMULL`.
-    PMULL {
+    //
+    // TODO(MSRV): There is no "pmull" feature listed from
+    // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
+    // PMULL detection into AES detection, but later versions split it; see
+    // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
+    // "Features introduced prior to 2020." Change this to use "pmull" when
+    // that is supported.
+    "aes" => PMULL {
         mask: 1 << 5,
-        aarch64_apple: true,
     },
 }
 
@@ -266,8 +245,32 @@ prefixed_export! {
     static mut OPENSSL_armcap_P: u32 = ARMCAP_STATIC;
 }
 
-const _APPLE_TARGETS_HAVE_ALL_FEATURES: () = assert!(
-    (ARMCAP_STATIC == _ALL_FEATURES_MASK)
+// MSRV: Enforce 1.61.0 on some aarch64-* targets (aarch64-apple-*, in particular) prior to. Earlier
+// versions of Rust before did not report the AAarch64 CPU features correctly for these targets.
+// Cargo.toml specifies `rust-version` but versions before Rust 1.56 don't know about it.
+//
+// ```
+// $ rustc +1.61.0 --print cfg --target=aarch64-apple-ios | grep -E "neon|aes|sha|pmull"
+// target_feature="aes"
+// target_feature="neon"
+// target_feature="sha2"
+// $ rustc +1.61.0 --print cfg --target=aarch64-apple-darwin | grep -E "neon|aes|sha|pmull"
+// target_feature="aes"
+// target_feature="neon"
+// target_feature="sha2"
+// target_feature="sha3"
+// ```
+#[allow(clippy::assertions_on_constants)]
+const _NON_AARCH64_HAS_ZERO_ARMCAP_STATIC: () =
+    assert!((ARMCAP_STATIC == 0) || cfg!(target_arch = "aarch64"));
+#[allow(clippy::assertions_on_constants)]
+const _AARCH64_HAS_NEON: () =
+    assert!(((ARMCAP_STATIC & NEON.mask) == NEON.mask) || !cfg!(target_arch = "aarch64"));
+#[allow(clippy::assertions_on_constants)]
+const _AARCH64_APPLE_FEATURES: u32 = NEON.mask | AES.mask | SHA256.mask | PMULL.mask;
+#[allow(clippy::assertions_on_constants)]
+const _AARCH64_APPLE_TARGETS_EXPECTED_FEATURES: () = assert!(
+    ((ARMCAP_STATIC & _AARCH64_APPLE_FEATURES) == _AARCH64_APPLE_FEATURES)
         || !cfg!(all(target_arch = "aarch64", target_vendor = "apple"))
 );
 
@@ -281,14 +284,6 @@ mod tests {
         assert_eq!(AES.mask, 4);
         assert_eq!(SHA256.mask, 16);
         assert_eq!(PMULL.mask, 32);
-    }
-
-    #[cfg(target_vendor = "apple")]
-    #[test]
-    fn test_apple_minimum_features() {
-        ALL_FEATURES.iter().for_each(|feature| {
-            assert_eq!(ARMCAP_STATIC & feature.mask, feature.mask);
-        });
     }
 
     #[test]
