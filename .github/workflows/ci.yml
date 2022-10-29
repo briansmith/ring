@@ -194,8 +194,8 @@ jobs:
 
         rust_channel:
           - stable
-          # Some benchmarking dependencies require 1.60.
-          - 1.60.0 # MSRV
+          # Keep in sync with Cargo.toml and similar `rust_channel` sections.
+          - 1.61.0 # MSRV
           # TODO: Move these to a daily/pre-release job.
           # - nightly
           # - beta
@@ -350,7 +350,8 @@ jobs:
         rust_channel:
           - stable
           - nightly
-          - 1.60.0 # MSRV
+          # Keep in sync with Cargo.toml and similar `rust_channel` sections.
+          - 1.61.0 # MSRV
 
         include:
           - target: aarch64-unknown-linux-musl
