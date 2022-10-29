@@ -116,7 +116,8 @@ pub fn setup() {
 #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
 pub fn setup() {
     // We do not need to check for the presence of NEON, as Armv8-A always has it
-    let mut features = NEON.mask;
+    const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
+    let mut features = ARMCAP_STATIC;
 
     let result = unsafe {
         windows_sys::Win32::System::Threading::IsProcessorFeaturePresent(
