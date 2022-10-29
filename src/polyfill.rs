@@ -35,7 +35,9 @@ mod leading_zeros_skipped;
 #[cfg(test)]
 mod test;
 
-pub use self::{array_flat_map::ArrayFlatMap, chunks_fixed::*};
+mod unwrap_const;
+
+pub use self::{array_flat_map::ArrayFlatMap, chunks_fixed::*, unwrap_const::unwrap_const};
 
 #[cfg(feature = "alloc")]
 pub use leading_zeros_skipped::LeadingZerosStripped;
