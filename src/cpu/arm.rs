@@ -137,17 +137,8 @@ pub fn setup() {
 macro_rules! features {
     {
         $(
-            $name:ident {
+            $target_feature_name:expr => $name:ident {
                 mask: $mask:expr,
-
-                // Should we assume that the feature is always available
-                // for aarch64-apple-* targets? The first AArch64 iOS
-                // device used the Apple A7 chip.
-                // TODO: When we can use `if` in const expressions:
-                // ```
-                // aarch64_apple: $aarch64_apple,
-                // ```
-                aarch64_apple: true,
             }
         ),+
         , // trailing comma is required.
@@ -159,30 +150,17 @@ macro_rules! features {
             };
         )+
 
-        // TODO: When we can use `if` in const expressions, do this:
-        // ```
-        // const ARMCAP_STATIC: u32 = 0
-        //    $(
-        //        | ( if $aarch64_apple &&
-        //               cfg!(all(target_arch = "aarch64",
-        //                        target_vendor = "apple")) {
-        //                $name.mask
-        //            } else {
-        //                0
-        //            }
-        //          )
-        //    )+;
-        // ```
-        //
-        // TODO: Add static feature detection to other targets.
-        // TODO: Combine static feature detection with runtime feature
-        //       detection.
-        #[cfg(all(target_arch = "aarch64", target_vendor = "apple"))]
-        const ARMCAP_STATIC: u32 = 0
-            $(  | $name.mask
+        const ARMCAP_STATIC: u32 = ARMCAP_STATIC_OVERRIDE
+            $(
+                | (
+                    if cfg!(all(any(target_arch = "aarch64", target_arch = "arm"),
+                                target_feature = $target_feature_name)) {
+                        $name.mask
+                    } else {
+                        0
+                    }
+                )
             )+;
-        #[cfg(not(all(target_arch = "aarch64", target_vendor = "apple")))]
-        const ARMCAP_STATIC: u32 = 0;
 
         const _ALL_FEATURES_MASK: u32 = 0
             $(  | $name.mask
@@ -196,6 +174,21 @@ macro_rules! features {
         ];
     }
 }
+
+// TODO(MSRV 1.61.0): `cfg!(target_feature = X)` is false for many
+// AArch64 targets prior to Rust 1.61.0. Since we don't support dynamic
+// detection for Apple targets, implement a special workaround for them.
+// See https://github.com/rust-lang/rust/pull/91608 for background.
+//
+// In the case of non-Apple targets, presently we do assume that NEON
+// is present (e.g. see the Windows logic above).
+const ARMCAP_STATIC_OVERRIDE: u32 = if cfg!(all(target_arch = "aarch64", target_vendor = "apple")) {
+    NEON.mask | AES.mask | PMULL.mask | SHA256.mask
+} else if cfg!(target_arch = "aarch64") {
+    NEON.mask
+} else {
+    0
+};
 
 pub(crate) struct Feature {
     mask: u32,
@@ -227,29 +220,28 @@ impl Feature {
     }
 }
 
+// Assumes all target feature names are the same for ARM and AAarch64.
 features! {
-    // Keep in sync with `ARMV7_NEON`.
-    NEON {
+    "neon" => NEON {
         mask: 1 << 0,
-        aarch64_apple: true,
     },
 
-    // Keep in sync with `ARMV8_AES`.
-    AES {
+    "aes" => AES {
         mask: 1 << 2,
-        aarch64_apple: true,
     },
 
-    // Keep in sync with `ARMV8_SHA256`.
-    SHA256 {
+    "sha2" => SHA256 {
         mask: 1 << 4,
-        aarch64_apple: true,
     },
 
-    // Keep in sync with `ARMV8_PMULL`.
-    PMULL {
+    // TODO(MSRV): There is no "pmull" feature listed from
+    // `rustc --print cfg --target=aarch64-apple-darwin`. Originally ARMv8 tied
+    // PMULL detection into AES detection, but later versions split it; see
+    // https://developer.arm.com/downloads/-/exploration-tools/feature-names-for-a-profile
+    // "Features introduced prior to 2020." Change this to use "pmull" when
+    // that is supported.
+    "aes" => PMULL {
         mask: 1 << 5,
-        aarch64_apple: true,
     },
 }
 
