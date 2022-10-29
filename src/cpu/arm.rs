@@ -184,6 +184,10 @@ macro_rules! features {
         #[cfg(not(all(target_arch = "aarch64", target_vendor = "apple")))]
         const ARMCAP_STATIC: u32 = 0;
 
+        const _ALL_FEATURES_MASK: u32 = 0
+            $(  | $name.mask
+            )+;
+
         #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
         const ALL_FEATURES: [Feature; 4] = [
             $(
@@ -261,6 +265,11 @@ prefixed_export! {
     #[allow(non_upper_case_globals)]
     static mut OPENSSL_armcap_P: u32 = ARMCAP_STATIC;
 }
+
+const _APPLE_TARGETS_HAVE_ALL_FEATURES: () = assert!(
+    (ARMCAP_STATIC == _ALL_FEATURES_MASK)
+        || !cfg!(all(target_arch = "aarch64", target_vendor = "apple"))
+);
 
 #[cfg(all(test, any(target_arch = "arm", target_arch = "aarch64")))]
 mod tests {
