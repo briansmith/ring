@@ -24,13 +24,30 @@ pub(crate) struct Features(());
 
 #[inline(always)]
 pub(crate) fn features() -> Features {
-    // We don't do runtime feature detection on aarch64-apple-* as all AAarch64
-    // features we use are available on every device since the first devices.
+    // TODO: The list of operating systems for `aarch64` should really be
+    // "whatever has `std::arch::is_aarch64_feature_detected`".
     #[cfg(any(
         target_arch = "x86",
         target_arch = "x86_64",
         all(
-            any(target_arch = "aarch64", target_arch = "arm"),
+            target_arch = "aarch64",
+            any(
+                target_os = "android",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "illumos",
+                target_os = "ios",
+                target_os = "linux",
+                target_os = "macos",
+                target_os = "netbsd",
+                target_os = "openbsd",
+                target_os = "redox",
+                target_os = "solaris",
+                target_os = "windows",
+            )
+        ),
+        all(
+            target_arch = "arm",
             any(
                 target_os = "android",
                 target_os = "fuchsia",
@@ -52,15 +69,7 @@ pub(crate) fn features() -> Features {
                 }
             }
 
-            #[cfg(all(
-                any(target_arch = "aarch64", target_arch = "arm"),
-                any(
-                    target_os = "android",
-                    target_os = "fuchsia",
-                    target_os = "linux",
-                    target_os = "windows"
-                )
-            ))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             {
                 arm::setup();
             }

@@ -67,7 +67,7 @@ macro_rules! features {
             };
         )+
 
-        #[cfg(target_arch = "aarch64")]
+        #[cfg(all(target_arch = "aarch64", any(target_family = "unix", target_family = "windows")))]
         pub fn setup() {
             extern crate std;
             use std::arch::is_aarch64_feature_detected;
