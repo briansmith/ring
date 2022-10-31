@@ -110,6 +110,12 @@
 // ARMV8_SHA256 indicates support for hardware SHA-256 instructions.
 #define ARMV8_SHA256 (1 << 4)
 
+// ARMV8_PMULL indicates support for carryless multiplication.
+#define ARMV8_PMULL (1 << 5)
+
+// ARMV8_SHA512 indicates support for hardware SHA-512 instructions.
+#define ARMV8_SHA512 (1 << 6)
+
 #if defined(__ASSEMBLER__)
 
 #if defined(__GNUC__)
