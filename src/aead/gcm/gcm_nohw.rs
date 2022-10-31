@@ -138,7 +138,7 @@ fn gcm_mul64_nohw(a: u64, b: u64) -> (u64, u64) {
 }
 
 pub(super) fn init(xi: [u64; 2]) -> super::u128 {
-    // We implement GHASH in terms of POLYVAL, as described in RFC8452. This
+    // We implement GHASH in terms of POLYVAL, as described in RFC 8452. This
     // avoids a shift by 1 in the multiplication, needed to account for bit
     // reversal losing a bit after multiplication, that is,
     // rev128(X) * rev128(Y) = rev255(X*Y).

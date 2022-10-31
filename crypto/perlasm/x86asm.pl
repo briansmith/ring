@@ -275,7 +275,7 @@ sub ::asciz
 
 sub ::asm_finish
 {   &file_end();
-    my $comment = "#";
+    my $comment = "//";
     $comment = ";" if ($win32);
     print <<___;
 $comment This file is generated from a similarly-named Perl script in the BoringSSL
