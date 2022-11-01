@@ -12,8 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <ring-core/cpu.h>
-#include "internal.h"
+#include <ring-core/base.h>
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 // Our assembly does not use the GOT to reference symbols, which means
