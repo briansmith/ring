@@ -42,7 +42,14 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 
-// MSVC does not implement uint128_t, and crashes with intrinsics
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Winline"
+#endif
+
+#if defined(OPENSSL_NO_ASM)
+#define FIAT_P256_NO_ASM
+#endif
+
 #if defined(BORINGSSL_HAS_UINT128)
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -383,11 +390,11 @@ void p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
       recode_scalar_bits(&sign, &digit, bits);
 
       // select the point to add or subtract, in constant time.
-      fiat_p256_select_point(digit, 17,
+      fiat_p256_select_point((fiat_p256_limb_t)digit, 17,
         RING_CORE_POINTLESS_ARRAY_CONST_CAST((const fiat_p256_felem(*)[3]))p_pre_comp,
         tmp);
       fiat_p256_opp(ftmp, tmp[1]);  // (X, -Y, Z) is the negative point.
-      fiat_p256_cmovznz(tmp[1], sign, tmp[1], ftmp);
+      fiat_p256_cmovznz(tmp[1], (fiat_p256_limb_t)sign, tmp[1], ftmp);
 
       if (!skip) {
         fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2],
@@ -425,7 +432,8 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
     bits |= fiat_p256_get_bit(scalar_bytes, i + 96) << 1;
     bits |= fiat_p256_get_bit(scalar_bytes, i + 32);
     // Select the point to add, in constant time.
-    fiat_p256_select_point_affine(bits, 15, fiat_p256_g_pre_comp[1], tmp);
+    fiat_p256_select_point_affine((fiat_p256_limb_t)bits, 15,
+                                  fiat_p256_g_pre_comp[1], tmp);
 
     if (!skip) {
       fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2],
@@ -443,7 +451,7 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
     bits |= fiat_p256_get_bit(scalar_bytes, i + 64) << 1;
     bits |= fiat_p256_get_bit(scalar_bytes, i);
     // Select the point to add, in constant time.
-    fiat_p256_select_point_affine(bits, 15, fiat_p256_g_pre_comp[0], tmp);
+    fiat_p256_select_point_affine((fiat_p256_limb_t)bits, 15, fiat_p256_g_pre_comp[0], tmp);
     fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
                         tmp[0], tmp[1], tmp[2]);
   }
