@@ -36,8 +36,16 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Winline"
+#endif
+
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
+
+#if defined(OPENSSL_NO_ASM)
+#define FIAT_25519_NO_ASM
+#endif
 
 #if defined(BORINGSSL_CURVE25519_64BIT)
 #if defined(__GNUC__)
