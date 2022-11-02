@@ -887,6 +887,27 @@ fn generate_prefix_symbols_header(
         filename_ident = filename_ident
     )?;
 
+    // Rename some nistz256 assembly functions to match the names of their
+    // polyfills.
+    static SYMBOLS_TO_RENAME: &[(&str, &str)] = &[
+        ("ecp_nistz256_point_double", "p256_point_double"),
+        ("ecp_nistz256_point_add", "p256_point_add"),
+        ("ecp_nistz256_point_add_affine", "p256_point_add_affine"),
+        ("ecp_nistz256_ord_mul_mont", "p256_scalar_mul_mont"),
+        ("ecp_nistz256_ord_sqr_mont", "p256_scalar_sqr_rep_mont"),
+        ("ecp_nistz256_mul_mont", "p256_mul_mont"),
+        ("ecp_nistz256_sqr_mont", "p256_sqr_mont"),
+    ];
+    for (old, new) in SYMBOLS_TO_RENAME {
+        writeln!(
+            file,
+            "{pp}define {old} {new}",
+            pp = pp,
+            old = old,
+            new = new
+        )?;
+    }
+
     if let Some(prefix_condition) = prefix_condition {
         writeln!(file, "{}", prefix_condition)?;
         writeln!(file, "{}", prefix_all_symbols(pp, "_", prefix))?;
@@ -961,9 +982,9 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "gcm_init_neon",
         "limbs_mul_add_limb",
         "little_endian_bytes_from_scalar",
-        "nistz256_neg",
-        "nistz256_select_w5",
-        "nistz256_select_w7",
+        "ecp_nistz256_neg",
+        "ecp_nistz256_select_w5",
+        "ecp_nistz256_select_w7",
         "nistz384_point_add",
         "nistz384_point_double",
         "nistz384_point_mul",
