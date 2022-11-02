@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 
-#include "p256-x86_64.h"
+#include "p256-nistz.h"
 
 #if defined(OPENSSL_USE_NISTZ256)
 
@@ -35,7 +35,7 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 };
 
 // Precomputed tables for the default generator
-#include "p256-x86_64-table.h"
+#include "p256-nistz-table.h"
 
 // Recode window to a signed digit, see |nistp_recode_scalar_bits| in
 // util.c for details
