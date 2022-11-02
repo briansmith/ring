@@ -2090,7 +2090,7 @@ my ($M1,$T2a,$T2b,$TMP2,$M2,$T2a,$T2b,$TMP2)=map("%xmm$_",(8..15));
 
 $code.=<<___;
 ################################################################################
-# void ecp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, crypto_word index);
+# void ecp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, int index);
 .globl	ecp_nistz256_select_w5
 .type	ecp_nistz256_select_w5,\@abi-omnipotent
 .align	32
@@ -2190,7 +2190,7 @@ $code.=<<___;
 .size	ecp_nistz256_select_w5,.-ecp_nistz256_select_w5
 
 ################################################################################
-# void ecp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, crypto_word index);
+# void ecp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
 .globl	ecp_nistz256_select_w7
 .type	ecp_nistz256_select_w7,\@abi-omnipotent
 .align	32

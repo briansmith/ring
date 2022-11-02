@@ -75,14 +75,14 @@ typedef struct {
 // and all zeros (the point at infinity) if |index| is 0. This is done in
 // constant time.
 void ecp_nistz256_select_w5(P256_POINT *val, const P256_POINT in_t[16],
-                            crypto_word index);
+                            int index);
 
 // ecp_nistz256_select_w7 sets |*val| to |in_t[index-1]| if 1 <= |index| <= 64
 // and all zeros (the point at infinity) if |index| is 0. This is done in
 // constant time.
 void ecp_nistz256_select_w7(P256_POINT_AFFINE *val,
                             const P256_POINT_AFFINE in_t[64],
-                            crypto_word index);
+                            int index);
 
 // ecp_nistz256_point_double sets |r| to |a| doubled.
 void ecp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
