@@ -889,27 +889,6 @@ fn generate_prefix_symbols_header(
         filename_ident = filename_ident
     )?;
 
-    // Rename some nistz256 assembly functions to match the names of their
-    // polyfills.
-    static SYMBOLS_TO_RENAME: &[(&str, &str)] = &[
-        ("ecp_nistz256_point_double", "p256_point_double"),
-        ("ecp_nistz256_point_add", "p256_point_add"),
-        ("ecp_nistz256_point_add_affine", "p256_point_add_affine"),
-        ("ecp_nistz256_ord_mul_mont", "p256_scalar_mul_mont"),
-        ("ecp_nistz256_ord_sqr_mont", "p256_scalar_sqr_rep_mont"),
-        ("ecp_nistz256_mul_mont", "p256_mul_mont"),
-        ("ecp_nistz256_sqr_mont", "p256_sqr_mont"),
-    ];
-    for (old, new) in SYMBOLS_TO_RENAME {
-        writeln!(
-            file,
-            "{pp}define {old} {new}",
-            pp = pp,
-            old = old,
-            new = new
-        )?;
-    }
-
     if let Some(prefix_condition) = prefix_condition {
         writeln!(file, "{}", prefix_condition)?;
         writeln!(file, "{}", prefix_all_symbols(pp, "_", prefix))?;
@@ -926,6 +905,18 @@ fn generate_prefix_symbols_header(
 }
 
 fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
+    // Rename some nistz256 assembly functions to match the names of their
+    // polyfills.
+    static SYMBOLS_TO_RENAME: &[(&str, &str)] = &[
+        ("ecp_nistz256_point_double", "p256_point_double"),
+        ("ecp_nistz256_point_add", "p256_point_add"),
+        ("ecp_nistz256_point_add_affine", "p256_point_add_affine"),
+        ("ecp_nistz256_ord_mul_mont", "p256_scalar_mul_mont"),
+        ("ecp_nistz256_ord_sqr_mont", "p256_scalar_sqr_rep_mont"),
+        ("ecp_nistz256_mul_mont", "p256_mul_mont"),
+        ("ecp_nistz256_sqr_mont", "p256_sqr_mont"),
+    ];
+
     static SYMBOLS_TO_PREFIX: &[&str] = &[
         "CRYPTO_poly1305_finish",
         "CRYPTO_poly1305_finish_neon",
@@ -1029,6 +1020,17 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     ];
 
     let mut out = String::new();
+
+    for (old, new) in SYMBOLS_TO_RENAME {
+        let line = format!(
+            "{pp}define {prefix_prefix}{old} {prefix_prefix}{new}\n",
+            pp = pp,
+            prefix_prefix = prefix_prefix,
+            old = old,
+            new = new
+        );
+        out += &line;
+    }
 
     for symbol in SYMBOLS_TO_PREFIX {
         let line = format!(
