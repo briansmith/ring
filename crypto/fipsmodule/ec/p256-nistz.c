@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 
-#include "p256-x86_64.h"
+#include "p256-nistz.h"
 
 #if defined(OPENSSL_USE_NISTZ256)
 
@@ -35,7 +35,7 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 };
 
 // Precomputed tables for the default generator
-#include "p256-x86_64-table.h"
+#include "p256-nistz-table.h"
 
 // Recode window to a signed digit, see |nistp_recode_scalar_bits| in
 // util.c for details
@@ -168,7 +168,7 @@ static void ecp_nistz256_windowed_mul(P256_POINT *r,
   crypto_word wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
-  ecp_nistz256_select_w5(r, table, booth_recode_w5(wvalue) >> 1);
+  ecp_nistz256_select_w5(r, table, (int)(booth_recode_w5(wvalue) >> 1));
 
   while (index >= 5) {
     if (index != 255) {
@@ -179,7 +179,7 @@ static void ecp_nistz256_windowed_mul(P256_POINT *r,
 
       wvalue = booth_recode_w5(wvalue);
 
-      ecp_nistz256_select_w5(&h, table, wvalue >> 1);
+      ecp_nistz256_select_w5(&h, table, (int)(wvalue >> 1));
 
       ecp_nistz256_neg(tmp, h.Y);
       copy_conditional(h.Y, tmp, (wvalue & 1));
@@ -202,7 +202,7 @@ static void ecp_nistz256_windowed_mul(P256_POINT *r,
 
   wvalue = booth_recode_w5(wvalue);
 
-  ecp_nistz256_select_w5(&h, table, wvalue >> 1);
+  ecp_nistz256_select_w5(&h, table, (int)(wvalue >> 1));
 
   ecp_nistz256_neg(tmp, h.Y);
   copy_conditional(h.Y, tmp, wvalue & 1);
@@ -258,7 +258,7 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   size_t index = 0;
   crypto_word wvalue = calc_first_wvalue(&index, p_str);
 
-  ecp_nistz256_select_w7(&p.a, ecp_nistz256_precomputed[0], wvalue >> 1);
+  ecp_nistz256_select_w7(&p.a, ecp_nistz256_precomputed[0], (int)(wvalue >> 1));
   ecp_nistz256_neg(p.p.Z, p.p.Y);
   copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
 
@@ -271,7 +271,7 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   for (int i = 1; i < 37; i++) {
     wvalue = calc_wvalue(&index, p_str);
 
-    ecp_nistz256_select_w7(&t.a, ecp_nistz256_precomputed[i], wvalue >> 1);
+    ecp_nistz256_select_w7(&t.a, ecp_nistz256_precomputed[i], (int)(wvalue >> 1));
 
     ecp_nistz256_neg(t.p.Z, t.a.Y);
     copy_conditional(t.a.Y, t.p.Z, wvalue & 1);

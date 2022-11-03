@@ -9,7 +9,7 @@
  */
 
 // This is the precomputed constant time access table for the code in
-// p256-x86_64.c, for the default generator. The table consists of 37
+// p256-nistz.c, for the default generator. The table consists of 37
 // subtables, each subtable contains 64 affine points. The affine points are
 // encoded as eight uint64's, four for the x coordinate and four for the y.
 // Both values are in little-endian order. There are 37 tables because a
