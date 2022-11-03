@@ -250,6 +250,7 @@ pub fn verify(
         derive_block(&secret, iterations, salt, idx, derived_chunk);
 
         // XXX: This isn't fully constant-time-safe. TODO: Fix that.
+        #[allow(clippy::bool_to_int_with_if)]
         let current_block_matches =
             if constant_time::verify_slices_are_equal(derived_chunk, previously_derived_chunk)
                 .is_ok()
