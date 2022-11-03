@@ -56,9 +56,11 @@ fn chacha20_poly1305_seal(
         _ => unreachable!(),
     };
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     {
-        if cpu::intel::SSE41.available(chacha20_key.cpu_features()) {
+        if cpu::intel::SSE41.available(chacha20_key.cpu_features())
+            || cpu::arm::NEON.available(chacha20_key.cpu_features())
+        {
             // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
             // structure, but Rust can't do that yet; see
             // https://github.com/rust-lang/rust/issues/73557.
@@ -137,9 +139,11 @@ fn chacha20_poly1305_open(
         _ => unreachable!(),
     };
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
     {
-        if cpu::intel::SSE41.available(chacha20_key.cpu_features()) {
+        if cpu::intel::SSE41.available(chacha20_key.cpu_features())
+            || cpu::arm::NEON.available(chacha20_key.cpu_features())
+        {
             // XXX: BoringSSL uses `alignas(16)` on `key` instead of on the
             // structure, but Rust can't do that yet; see
             // https://github.com/rust-lang/rust/issues/73557.
@@ -218,7 +222,7 @@ pub type Key = chacha::Key;
 // Keep in sync with BoringSSL's `chacha20_poly1305_open_data` and
 // `chacha20_poly1305_seal_data`.
 #[repr(C)]
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 union InOut<T>
 where
     T: Copy,
@@ -231,7 +235,7 @@ where
 // 16-byte aligned. In practice it will always be 16-byte aligned because it
 // is embedded in a union where the other member of the union is 16-byte
 // aligned.
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
 #[derive(Clone, Copy)]
 #[repr(align(16), C)]
 struct Out {
