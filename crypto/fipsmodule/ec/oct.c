@@ -91,9 +91,9 @@ size_t ec_point_byte_len(const EC_GROUP *group, point_conversion_form_t form) {
 
 size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
                          point_conversion_form_t form, uint8_t *buf,
-                         size_t len) {
+                         size_t max_out) {
   size_t output_len = ec_point_byte_len(group, form);
-  if (len < output_len) {
+  if (max_out < output_len) {
     OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -210,7 +210,7 @@ int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
 
 size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
                           point_conversion_form_t form, uint8_t *buf,
-                          size_t len, BN_CTX *ctx) {
+                          size_t max_out, BN_CTX *ctx) {
   if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
@@ -228,7 +228,29 @@ size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
   if (!ec_jacobian_to_affine(group, &affine, &point->raw)) {
     return 0;
   }
-  return ec_point_to_bytes(group, &affine, form, buf, len);
+  return ec_point_to_bytes(group, &affine, form, buf, max_out);
+}
+
+size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
+                          point_conversion_form_t form, uint8_t **out_buf,
+                          BN_CTX *ctx) {
+  *out_buf = NULL;
+  size_t len = EC_POINT_point2oct(group, point, form, NULL, 0, ctx);
+  if (len == 0) {
+    return 0;
+  }
+  uint8_t *buf = OPENSSL_malloc(len);
+  if (buf == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  len = EC_POINT_point2oct(group, point, form, buf, len, ctx);
+  if (len == 0) {
+    OPENSSL_free(buf);
+    return 0;
+  }
+  *out_buf = buf;
+  return len;
 }
 
 int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,

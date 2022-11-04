@@ -186,12 +186,31 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
 OPENSSL_EXPORT int EC_KEY_oct2key(EC_KEY *key, const uint8_t *in, size_t len,
                                   BN_CTX *ctx);
 
-// EC_KEY_key2buf encodes the public key in |key| to an allocated octet string
-// and sets |*out_buf| to point to it. It returns the length of the encoded
-// octet string or zero if an error occurred.
+// EC_KEY_key2buf behaves like |EC_POINT_point2buf|, except it encodes the
+// public key in |key|.
 OPENSSL_EXPORT size_t EC_KEY_key2buf(const EC_KEY *key,
                                      point_conversion_form_t form,
-                                     unsigned char **out_buf, BN_CTX *ctx);
+                                     uint8_t **out_buf, BN_CTX *ctx);
+
+// EC_KEY_oct2priv decodes a big-endian, zero-padded integer from |len| bytes
+// from |in| and sets |key|'s private key to the result. It returns one on
+// success and zero on error. The input must be padded to the size of |key|'s
+// group order.
+OPENSSL_EXPORT int EC_KEY_oct2priv(EC_KEY *key, const uint8_t *in, size_t len);
+
+// EC_KEY_priv2oct serializes |key|'s private key as a big-endian integer,
+// zero-padded to the size of |key|'s group order and writes the result to at
+// most |max_out| bytes of |out|. It returns the number of bytes written on
+// success and zero on error. If |out| is NULL, it returns the number of bytes
+// needed without writing anything.
+OPENSSL_EXPORT size_t EC_KEY_priv2oct(const EC_KEY *key, uint8_t *out,
+                                      size_t max_out);
+
+// EC_KEY_priv2buf behaves like |EC_KEY_priv2oct| but sets |*out_buf| to a
+// newly-allocated buffer containing the result. It returns the size of the
+// result on success and zero on error. The caller must release |*out_buf| with
+// |OPENSSL_free| when done.
+OPENSSL_EXPORT size_t EC_KEY_priv2buf(const EC_KEY *key, uint8_t **out_buf);
 
 
 // Key generation.

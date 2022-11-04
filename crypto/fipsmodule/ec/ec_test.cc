@@ -105,6 +105,20 @@ static const uint8_t kECKeyWithZeros[] = {
   0x37, 0xbf, 0x51, 0xf5,
 };
 
+static const uint8_t kECKeyWithZerosPublic[] = {
+    0x04, 0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42, 0x47, 0xf8, 0xbc,
+    0xe6, 0xe5, 0x63, 0xa4, 0x40, 0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d,
+    0xeb, 0x33, 0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2, 0x96,
+    0x4f, 0xe3, 0x42, 0xe2, 0xfe, 0x1a, 0x7f, 0x9b, 0x8e, 0xe7, 0xeb,
+    0x4a, 0x7c, 0x0f, 0x9e, 0x16, 0x2b, 0xce, 0x33, 0x57, 0x6b, 0x31,
+    0x5e, 0xce, 0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5,
+};
+
+static const uint8_t kECKeyWithZerosRawPrivate[] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+
 // DecodeECPrivateKey decodes |in| as an ECPrivateKey structure and returns the
 // result or nullptr on error.
 static bssl::UniquePtr<EC_KEY> DecodeECPrivateKey(const uint8_t *in,
@@ -191,11 +205,52 @@ TEST(ECTest, ZeroPadding) {
   EXPECT_TRUE(EncodeECPrivateKey(&out, key.get()));
   EXPECT_EQ(Bytes(kECKeyWithZeros), Bytes(out.data(), out.size()));
 
+  // Check the private key encodes correctly, including with the leading zeros.
+  EXPECT_EQ(32u, EC_KEY_priv2oct(key.get(), nullptr, 0));
+  uint8_t buf[32];
+  ASSERT_EQ(32u, EC_KEY_priv2oct(key.get(), buf, sizeof(buf)));
+  EXPECT_EQ(Bytes(buf), Bytes(kECKeyWithZerosRawPrivate));
+
+  // Buffer too small.
+  EXPECT_EQ(0u, EC_KEY_priv2oct(key.get(), buf, sizeof(buf) - 1));
+
+  // Extra space in buffer.
+  uint8_t large_buf[33];
+  ASSERT_EQ(32u, EC_KEY_priv2oct(key.get(), large_buf, sizeof(large_buf)));
+  EXPECT_EQ(Bytes(buf), Bytes(kECKeyWithZerosRawPrivate));
+
+  // Allocating API.
+  uint8_t *buf_alloc;
+  size_t len = EC_KEY_priv2buf(key.get(), &buf_alloc);
+  ASSERT_GT(len, 0u);
+  bssl::UniquePtr<uint8_t> free_buf_alloc(buf_alloc);
+  EXPECT_EQ(Bytes(buf_alloc, len), Bytes(kECKeyWithZerosRawPrivate));
+
   // Keys without leading zeros also parse, but they encode correctly.
   key = DecodeECPrivateKey(kECKeyMissingZeros, sizeof(kECKeyMissingZeros));
   ASSERT_TRUE(key);
   EXPECT_TRUE(EncodeECPrivateKey(&out, key.get()));
   EXPECT_EQ(Bytes(kECKeyWithZeros), Bytes(out.data(), out.size()));
+
+  // Test the key can be constructed with |EC_KEY_oct2*|.
+  key.reset(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EC_KEY_oct2key(key.get(), kECKeyWithZerosPublic,
+                             sizeof(kECKeyWithZerosPublic), nullptr));
+  ASSERT_TRUE(EC_KEY_oct2priv(key.get(), kECKeyWithZerosRawPrivate,
+                              sizeof(kECKeyWithZerosRawPrivate)));
+  EXPECT_TRUE(EncodeECPrivateKey(&out, key.get()));
+  EXPECT_EQ(Bytes(kECKeyWithZeros), Bytes(out.data(), out.size()));
+
+  // |EC_KEY_oct2priv|'s format is fixed-width and must match the group order.
+  key.reset(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(key);
+  EXPECT_FALSE(EC_KEY_oct2priv(key.get(), kECKeyWithZerosRawPrivate + 1,
+                               sizeof(kECKeyWithZerosRawPrivate) - 1));
+  uint8_t padded[sizeof(kECKeyWithZerosRawPrivate) + 1] = {0};
+  memcpy(padded + 1, kECKeyWithZerosRawPrivate,
+         sizeof(kECKeyWithZerosRawPrivate));
+  EXPECT_FALSE(EC_KEY_oct2priv(key.get(), padded, sizeof(padded)));
 }
 
 TEST(ECTest, SpecifiedCurve) {

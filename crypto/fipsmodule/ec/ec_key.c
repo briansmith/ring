@@ -409,24 +409,70 @@ int EC_KEY_oct2key(EC_KEY *key, const uint8_t *in, size_t len, BN_CTX *ctx) {
 }
 
 size_t EC_KEY_key2buf(const EC_KEY *key, point_conversion_form_t form,
-                      unsigned char **out_buf, BN_CTX *ctx) {
+                      uint8_t **out_buf, BN_CTX *ctx) {
   if (key == NULL || key->pub_key == NULL || key->group == NULL) {
+    OPENSSL_PUT_ERROR(EC, EC_R_MISSING_PARAMETERS);
     return 0;
   }
 
-  const size_t len =
-      EC_POINT_point2oct(key->group, key->pub_key, form, NULL, 0, ctx);
+  return EC_POINT_point2buf(key->group, key->pub_key, form, out_buf, ctx);
+}
+
+int EC_KEY_oct2priv(EC_KEY *key, const uint8_t *in, size_t len) {
+  if (key->group == NULL) {
+    OPENSSL_PUT_ERROR(EC, EC_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
+  if (len != BN_num_bytes(EC_GROUP_get0_order(key->group))) {
+    OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
+    return 0;
+  }
+
+  BIGNUM *priv_key = BN_bin2bn(in, len, NULL);
+  int ok = priv_key != NULL &&  //
+           EC_KEY_set_private_key(key, priv_key);
+  BN_free(priv_key);
+  return ok;
+}
+
+size_t EC_KEY_priv2oct(const EC_KEY *key, uint8_t *out, size_t max_out) {
+  if (key->group == NULL || key->priv_key == NULL) {
+    OPENSSL_PUT_ERROR(EC, EC_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
+  size_t len = BN_num_bytes(EC_GROUP_get0_order(key->group));
+  if (out == NULL) {
+    return len;
+  }
+
+  if (max_out < len) {
+    OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  size_t bytes_written;
+  ec_scalar_to_bytes(key->group, out, &bytes_written, &key->priv_key->scalar);
+  assert(bytes_written == len);
+  return len;
+}
+
+size_t EC_KEY_priv2buf(const EC_KEY *key, uint8_t **out_buf) {
+  *out_buf = NULL;
+  size_t len = EC_KEY_priv2oct(key, NULL, 0);
   if (len == 0) {
     return 0;
   }
 
   uint8_t *buf = OPENSSL_malloc(len);
   if (buf == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  if (EC_POINT_point2oct(key->group, key->pub_key, form, buf, len, ctx) !=
-      len) {
+  len = EC_KEY_priv2oct(key, buf, len);
+  if (len == 0) {
     OPENSSL_free(buf);
     return 0;
   }
