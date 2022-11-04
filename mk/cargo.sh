@@ -136,7 +136,7 @@ if [ -n "${RING_COVERAGE-}" ]; then
   declare -x "${runner_var}=mk/runner ${!runner_var-}"
 
   rustflags_var=CARGO_TARGET_${target_upper}_RUSTFLAGS
-  declare -x "${rustflags_var}=-Zinstrument-coverage ${!rustflags_var-}"
+  declare -x "${rustflags_var}=-Cinstrument-coverage ${!rustflags_var-}"
 fi
 
 cargo "$@"
