@@ -123,8 +123,7 @@ err:
 
 static int point_to_cbb(CBB *out, const EC_GROUP *group,
                         const EC_AFFINE *point) {
-  size_t len =
-      ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, NULL, 0);
+  size_t len = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
   if (len == 0) {
     return 0;
   }

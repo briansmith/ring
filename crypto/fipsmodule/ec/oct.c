@@ -73,9 +73,7 @@
 #include "internal.h"
 
 
-size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
-                         point_conversion_form_t form, uint8_t *buf,
-                         size_t len) {
+size_t ec_point_byte_len(const EC_GROUP *group, point_conversion_form_t form) {
   if (form != POINT_CONVERSION_COMPRESSED &&
       form != POINT_CONVERSION_UNCOMPRESSED) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FORM);
@@ -88,27 +86,30 @@ size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
     // Uncompressed points have a second coordinate.
     output_len += field_len;
   }
+  return output_len;
+}
 
-  // if 'buf' is NULL, just return required length
-  if (buf != NULL) {
-    if (len < output_len) {
-      OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
-      return 0;
-    }
+size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
+                         point_conversion_form_t form, uint8_t *buf,
+                         size_t len) {
+  size_t output_len = ec_point_byte_len(group, form);
+  if (len < output_len) {
+    OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
 
-    size_t field_len_out;
-    ec_felem_to_bytes(group, buf + 1, &field_len_out, &point->X);
-    assert(field_len_out == field_len);
+  size_t field_len;
+  ec_felem_to_bytes(group, buf + 1, &field_len, &point->X);
+  assert(field_len == BN_num_bytes(&group->field));
 
-    if (form == POINT_CONVERSION_UNCOMPRESSED) {
-      ec_felem_to_bytes(group, buf + 1 + field_len, &field_len_out, &point->Y);
-      assert(field_len_out == field_len);
-      buf[0] = form;
-    } else {
-      uint8_t y_buf[EC_MAX_BYTES];
-      ec_felem_to_bytes(group, y_buf, &field_len_out, &point->Y);
-      buf[0] = form + (y_buf[field_len_out - 1] & 1);
-    }
+  if (form == POINT_CONVERSION_UNCOMPRESSED) {
+    ec_felem_to_bytes(group, buf + 1 + field_len, &field_len, &point->Y);
+    assert(field_len == BN_num_bytes(&group->field));
+    buf[0] = form;
+  } else {
+    uint8_t y_buf[EC_MAX_BYTES];
+    ec_felem_to_bytes(group, y_buf, &field_len, &point->Y);
+    buf[0] = form + (y_buf[field_len - 1] & 1);
   }
 
   return output_len;
@@ -213,6 +214,15 @@ size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
   if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
+  }
+  if (buf == NULL) {
+    // When |buf| is NULL, just return the number of bytes that would be
+    // written, without doing an expensive Jacobian-to-affine conversion.
+    if (ec_GFp_simple_is_at_infinity(group, &point->raw)) {
+      OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
+      return 0;
+    }
+    return ec_point_byte_len(group, form);
   }
   EC_AFFINE affine;
   if (!ec_jacobian_to_affine(group, &affine, &point->raw)) {

@@ -62,8 +62,7 @@ static int voprf_init_method(VOPRF_METHOD *method, int curve_nid,
 
 static int cbb_add_point(CBB *out, const EC_GROUP *group,
                          const EC_AFFINE *point) {
-  size_t len =
-      ec_point_to_bytes(group, point, POINT_CONVERSION_UNCOMPRESSED, NULL, 0);
+  size_t len = ec_point_byte_len(group,  POINT_CONVERSION_UNCOMPRESSED);
   if (len == 0) {
     return 0;
   }

@@ -891,6 +891,29 @@ TEST_P(ECCurveTest, GPlusMinusG) {
   EXPECT_TRUE(EC_POINT_is_at_infinity(group(), sum.get()));
 }
 
+// Test that we refuse to encode or decode the point at infinity.
+TEST_P(ECCurveTest, EncodeInfinity) {
+  // The point at infinity is encoded as a single zero byte, but we do not
+  // support it.
+  static const uint8_t kInfinity[] = {0};
+  bssl::UniquePtr<EC_POINT> inf(EC_POINT_new(group()));
+  ASSERT_TRUE(inf);
+  EXPECT_FALSE(EC_POINT_oct2point(group(), inf.get(), kInfinity,
+                                  sizeof(kInfinity), nullptr));
+
+  // Encoding it also fails.
+  ASSERT_TRUE(EC_POINT_set_to_infinity(group(), inf.get()));
+  uint8_t buf[128];
+  EXPECT_EQ(
+      0u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
+                             buf, sizeof(buf), nullptr));
+
+  // Measuring the length of the encoding also fails.
+  EXPECT_EQ(
+      0u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
+                             nullptr, 0, nullptr));
+}
+
 static std::vector<EC_builtin_curve> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);

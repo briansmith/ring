@@ -439,11 +439,18 @@ int ec_get_x_coordinate_as_bytes(const EC_GROUP *group, uint8_t *out,
                                  size_t *out_len, size_t max_out,
                                  const EC_RAW_POINT *p);
 
-// ec_point_to_bytes behaves like |EC_POINT_point2oct| but takes an
-// |EC_AFFINE|.
+// ec_point_byte_len returns the number of bytes in the byte representation of
+// a non-infinity point in |group|, encoded according to |form|, or zero if
+// |form| is invalid.
+size_t ec_point_byte_len(const EC_GROUP *group, point_conversion_form_t form);
+
+// ec_point_to_bytes encodes |point| according to |form| and writes the result
+// |buf|. It returns the size of the output on success or zero on error. At most
+// |max_out| bytes will be written. The buffer should be at least
+// |ec_point_byte_len| long to guarantee success.
 size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
                          point_conversion_form_t form, uint8_t *buf,
-                         size_t len);
+                         size_t max_out);
 
 // ec_point_from_uncompressed parses |in| as a point in uncompressed form and
 // sets the result to |out|. It returns one on success and zero if the input was
