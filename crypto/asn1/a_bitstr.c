@@ -115,6 +115,10 @@ int i2c_ASN1_BIT_STRING(const ASN1_BIT_STRING *a, unsigned char **pp) {
 
   uint8_t bits;
   int len = asn1_bit_string_length(a, &bits);
+  if (len > INT_MAX - 1) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_OVERFLOW);
+    return 0;
+  }
   int ret = 1 + len;
   if (pp == NULL) {
     return ret;
