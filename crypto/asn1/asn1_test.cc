@@ -1047,6 +1047,32 @@ TEST(ASN1Test, SetTime) {
   }
 }
 
+TEST(ASN1Test, AdjTime) {
+  struct tm tm1, tm2;
+  int days, secs;
+
+  OPENSSL_posix_to_tm(0, &tm1);
+  OPENSSL_posix_to_tm(0, &tm2);
+  // Test values that are too large and should be rejected.
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&tm1, INT_MIN, INT_MIN));
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&tm1, INT_MAX, INT_MAX));
+  // Basic functionality.
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&tm2, 1, 1));
+  EXPECT_TRUE(OPENSSL_gmtime_diff(&days, &secs, &tm1, &tm2));
+  EXPECT_EQ(days, 1);
+  EXPECT_EQ(secs, 1);
+  EXPECT_TRUE(OPENSSL_gmtime_diff(&days, &secs, &tm2, &tm1));
+  EXPECT_EQ(days, -1);
+  EXPECT_EQ(secs, -1);
+  // Test a value of days that is very large, but valid.
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&tm2, 2932800, 0));
+  EXPECT_TRUE(OPENSSL_gmtime_diff(&days, &secs, &tm1, &tm2));
+  EXPECT_EQ(days, 2932801);
+  EXPECT_EQ(secs, 1);
+  EXPECT_TRUE(OPENSSL_gmtime_diff(&days, &secs, &tm2, &tm1));
+  EXPECT_EQ(days, -2932801);
+  EXPECT_EQ(secs, -1);
+}
 static std::vector<uint8_t> StringToVector(const std::string &str) {
   return std::vector<uint8_t>(str.begin(), str.end());
 }

@@ -191,9 +191,10 @@ int OPENSSL_gmtime_adj(struct tm *tm, int off_day, long offset_sec) {
                            tm->tm_hour, tm->tm_min, tm->tm_sec, &posix_time)) {
     return 0;
   }
-  if (!utc_from_posix_time(posix_time + off_day * SECS_PER_DAY + offset_sec,
-                           &tm->tm_year, &tm->tm_mon, &tm->tm_mday,
-                           &tm->tm_hour, &tm->tm_min, &tm->tm_sec)) {
+  if (!utc_from_posix_time(
+          posix_time + (int64_t)off_day * SECS_PER_DAY + offset_sec,
+          &tm->tm_year, &tm->tm_mon, &tm->tm_mday, &tm->tm_hour, &tm->tm_min,
+          &tm->tm_sec)) {
     return 0;
   }
   tm->tm_year -= 1900;
