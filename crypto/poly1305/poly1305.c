@@ -24,7 +24,7 @@
 
 #if !defined(BORINGSSL_HAS_UINT128) || !defined(OPENSSL_X86_64)
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #pragma GCC diagnostic ignored "-Wconversion"
 #endif
