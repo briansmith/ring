@@ -584,16 +584,16 @@ mod tests {
         })
     }
 
-    // There is no `nistz256_neg` on other targets.
+    // There is no `ecp_nistz256_neg` on other targets.
     #[cfg(target_arch = "x86_64")]
     #[test]
     fn p256_elem_neg_test() {
         prefixed_extern! {
-            fn nistz256_neg(r: *mut Limb, a: *const Limb);
+            fn ecp_nistz256_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(
             &p256::COMMON_OPS,
-            nistz256_neg,
+            ecp_nistz256_neg,
             test_file!("ops/p256_elem_neg_tests.txt"),
         );
     }

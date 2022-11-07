@@ -23,8 +23,8 @@ import (
 )
 
 func main() {
-	if err := writeP256X86_64Table("p256-x86_64-table.h"); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing p256-x86_64-table.h: %s\n", err)
+	if err := writeP256NistzTable("p256-nistz-table.h"); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing p256-nistz-table.h: %s\n", err)
 		os.Exit(1)
 	}
 
@@ -34,7 +34,7 @@ func main() {
 	}
 }
 
-func writeP256X86_64Table(path string) error {
+func writeP256NistzTable(path string) error {
 	curve := elliptic.P256()
 	tables := make([][][2]*big.Int, 0, 37)
 	for shift := 0; shift < 256; shift += 7 {
@@ -59,7 +59,7 @@ func writeP256X86_64Table(path string) error {
  */
 
 // This is the precomputed constant time access table for the code in
-// p256-x86_64.c, for the default generator. The table consists of 37
+// p256-nistz.c, for the default generator. The table consists of 37
 // subtables, each subtable contains 64 affine points. The affine points are
 // encoded as eight uint64's, four for the x coordinate and four for the y.
 // Both values are in little-endian order. There are 37 tables because a
