@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           toolchain: stable
           profile: minimal
           components: rustfmt
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
       - run: cargo fmt --all -- --check
 
   clippy:
@@ -25,13 +25,13 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           toolchain: stable
           profile: minimal
           components: clippy
 
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
 
       - run: cargo clippy --all-features ---all-targets -- --deny warnings
 
@@ -42,12 +42,12 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           toolchain: stable
           profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: briansmith/actions-cache@v2
         with:
           path: |
             ~/.cargo/bin/cargo-audit
@@ -57,7 +57,7 @@ jobs:
 
       - run: cargo install cargo-audit --vers "0.13.1"
 
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
 
       - run: cargo generate-lockfile
 
@@ -70,12 +70,12 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           toolchain: stable
           profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: briansmith/actions-cache@v2
         with:
           path: |
             ~/.cargo/bin/cargo-deny
@@ -85,7 +85,7 @@ jobs:
 
       - run: cargo install cargo-deny --vers "0.8.4"
 
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
 
       - run: cargo deny check
 
@@ -107,13 +107,13 @@ jobs:
           - target: x86_64-unknown-linux-gnu
 
     steps:
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.rust_channel }}
 
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
 
       - run: |
           cargo doc --all-features
@@ -125,11 +125,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
 
       - run: powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1
 
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           toolchain: stable
           profile: minimal
@@ -273,7 +273,7 @@ jobs:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}
         run: sudo apt-get update -y
 
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
@@ -283,7 +283,7 @@ jobs:
           (powershell -ExecutionPolicy Bypass ./mk/install-build-tools.ps1) -and
           ("$pwd\target\tools" >> $env:GITHUB_PATH)
 
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
@@ -332,13 +332,13 @@ jobs:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}
         run: sudo apt-get update -y
 
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
 
       - run: cargo generate-lockfile
 
       - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
@@ -397,12 +397,12 @@ jobs:
       - if: ${{ contains(matrix.host_os, 'ubuntu') }}
         run: sudo apt-get update -y
 
-      - uses: actions/checkout@v2
+      - uses: briansmith/actions-checkout@v2
 
       - if: ${{ !contains(matrix.host_os, 'windows') }}
         run: RING_COVERAGE=1 mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
-      - uses: actions-rs/toolchain@v1
+      - uses: briansmith/actions-rs-toolchain@v1
         with:
           override: true
           target: ${{ matrix.target }}
@@ -415,7 +415,7 @@ jobs:
         run: |
           RING_COVERAGE=1 mk/cargo.sh +${{ matrix.rust_channel }} test -vv --target=${{ matrix.target }} ${{ matrix.cargo_options }} ${{ matrix.features }} ${{ matrix.mode }}
 
-      - uses: codecov/codecov-action@v1
+      - uses: briansmith/codecov-codecov-action@v3
         with:
           directory: ./target/${{ matrix.target }}/debug/coverage/reports
           fail_ci_if_error: true
