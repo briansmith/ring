@@ -33,7 +33,7 @@ jobs:
 
       - uses: briansmith/actions-checkout@v2
 
-      - run: cargo clippy --all-features ---all-targets -- --deny warnings
+      - run: cargo clippy --all-features --all-targets -- --deny warnings
 
   audit:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
