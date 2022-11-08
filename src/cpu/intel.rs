@@ -56,7 +56,6 @@ pub(crate) const SSSE3: Feature = Feature {
     mask: 1 << 9,
 };
 
-#[cfg(target_arch = "x86_64")]
 pub(crate) const SSE41: Feature = Feature {
     word: 1,
     mask: 1 << 19,
