@@ -329,11 +329,17 @@ static void fiat_p256_select_point(const fiat_p256_limb_t idx, size_t size,
 }
 
 // fiat_p256_get_bit returns the |i|th bit in |in|
-static crypto_word fiat_p256_get_bit(const uint8_t *in, int i) {
+static crypto_word fiat_p256_get_bit(const Limb in[P256_LIMBS], int i) {
   if (i < 0 || i >= 256) {
     return 0;
   }
-  return (in[i >> 3] >> (i & 7)) & 1;
+#if defined(OPENSSL_64_BIT)
+  OPENSSL_STATIC_ASSERT(sizeof(Limb) == 8, "BN_ULONG was not 64-bit");
+  return (in[i >> 6] >> (i & 63)) & 1;
+#else
+  OPENSSL_STATIC_ASSERT(sizeof(Limb) == 4, "BN_ULONG was not 32-bit");
+  return (in[i >> 5] >> (i & 31)) & 1;
+#endif
 }
 
 void p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
@@ -343,12 +349,8 @@ void p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
   debug_assert_nonsecret(p_x != NULL);
   debug_assert_nonsecret(p_y != NULL);
 
-  P256_SCALAR_BYTES scalar_bytes;
-  p256_scalar_bytes_from_limbs(scalar_bytes, scalar);
-
   fiat_p256_felem p_pre_comp[17][3];
   OPENSSL_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
-
   // Precompute multiples.
   limbs_copy(&p_pre_comp[1][0][0], p_x, P256_LIMBS);
   limbs_copy(&p_pre_comp[1][1][0], p_y, P256_LIMBS);
@@ -380,12 +382,12 @@ void p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
 
     // do other additions every 5 doublings
     if (i % 5 == 0) {
-      crypto_word bits = fiat_p256_get_bit(scalar_bytes, i + 4) << 5;
-      bits |= fiat_p256_get_bit(scalar_bytes, i + 3) << 4;
-      bits |= fiat_p256_get_bit(scalar_bytes, i + 2) << 3;
-      bits |= fiat_p256_get_bit(scalar_bytes, i + 1) << 2;
-      bits |= fiat_p256_get_bit(scalar_bytes, i) << 1;
-      bits |= fiat_p256_get_bit(scalar_bytes, i - 1);
+      crypto_word bits = fiat_p256_get_bit(scalar, i + 4) << 5;
+      bits |= fiat_p256_get_bit(scalar, i + 3) << 4;
+      bits |= fiat_p256_get_bit(scalar, i + 2) << 3;
+      bits |= fiat_p256_get_bit(scalar, i + 1) << 2;
+      bits |= fiat_p256_get_bit(scalar, i) << 1;
+      bits |= fiat_p256_get_bit(scalar, i - 1);
       crypto_word sign, digit;
       recode_scalar_bits(&sign, &digit, bits);
 
@@ -414,9 +416,6 @@ void p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
 }
 
 void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
-  P256_SCALAR_BYTES scalar_bytes;
-  p256_scalar_bytes_from_limbs(scalar_bytes, scalar);
-
   // Set nq to the point at infinity.
   fiat_p256_felem nq[3] = {{0}, {0}, {0}}, tmp[3];
 
@@ -427,10 +426,10 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
     }
 
     // First, look 32 bits upwards.
-    crypto_word bits = fiat_p256_get_bit(scalar_bytes, i + 224) << 3;
-    bits |= fiat_p256_get_bit(scalar_bytes, i + 160) << 2;
-    bits |= fiat_p256_get_bit(scalar_bytes, i + 96) << 1;
-    bits |= fiat_p256_get_bit(scalar_bytes, i + 32);
+    crypto_word bits = fiat_p256_get_bit(scalar, i + 224) << 3;
+    bits |= fiat_p256_get_bit(scalar, i + 160) << 2;
+    bits |= fiat_p256_get_bit(scalar, i + 96) << 1;
+    bits |= fiat_p256_get_bit(scalar, i + 32);
     // Select the point to add, in constant time.
     fiat_p256_select_point_affine((fiat_p256_limb_t)bits, 15,
                                   fiat_p256_g_pre_comp[1], tmp);
@@ -446,12 +445,13 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
     }
 
     // Second, look at the current position.
-    bits = fiat_p256_get_bit(scalar_bytes, i + 192) << 3;
-    bits |= fiat_p256_get_bit(scalar_bytes, i + 128) << 2;
-    bits |= fiat_p256_get_bit(scalar_bytes, i + 64) << 1;
-    bits |= fiat_p256_get_bit(scalar_bytes, i);
+    bits = fiat_p256_get_bit(scalar, i + 192) << 3;
+    bits |= fiat_p256_get_bit(scalar, i + 128) << 2;
+    bits |= fiat_p256_get_bit(scalar, i + 64) << 1;
+    bits |= fiat_p256_get_bit(scalar, i);
     // Select the point to add, in constant time.
-    fiat_p256_select_point_affine((fiat_p256_limb_t)bits, 15, fiat_p256_g_pre_comp[0], tmp);
+    fiat_p256_select_point_affine((fiat_p256_limb_t)bits, 15,
+                                  fiat_p256_g_pre_comp[0], tmp);
     fiat_p256_point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
                         tmp[0], tmp[1], tmp[2]);
   }
