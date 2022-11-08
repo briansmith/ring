@@ -329,16 +329,16 @@ static void fiat_p256_select_point(const fiat_p256_limb_t idx, size_t size,
 }
 
 // fiat_p256_get_bit returns the |i|th bit in |in|
-static crypto_word fiat_p256_get_bit(const Limb scalar[P256_LIMBS], int i) {
+static crypto_word fiat_p256_get_bit(const Limb in[P256_LIMBS], int i) {
   if (i < 0 || i >= 256) {
     return 0;
   }
 #if defined(OPENSSL_64_BIT)
   OPENSSL_STATIC_ASSERT(sizeof(Limb) == 8, "BN_ULONG was not 64-bit");
-  return (in->words[i >> 6] >> (i & 63)) & 1;
+  return (in[i >> 6] >> (i & 63)) & 1;
 #else
   OPENSSL_STATIC_ASSERT(sizeof(Limb) == 4, "BN_ULONG was not 32-bit");
-  return (in->words[i >> 5] >> (i & 31)) & 1;
+  return (in[i >> 5] >> (i & 31)) & 1;
 #endif
 }
 
