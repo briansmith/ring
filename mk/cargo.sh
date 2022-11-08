@@ -24,8 +24,12 @@ qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
 # be needed to compile the build script, or to compile for other targets.
-if [ -n "${ANDROID_SDK_ROOT-}" ]; then
-  android_tools=$ANDROID_SDK_ROOT/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin
+if [ -n "${ANDROID_HOME-}" ]; then
+  ndk_version=25.1.8937393
+  ANDROID_NDK_ROOT=${ANDROID_NDK_ROOT:-${ANDROID_HOME}/ndk/$ndk_version}
+fi
+if [ -n "${ANDROID_NDK_ROOT-}" ]; then
+  android_tools=${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin
 fi
 
 for arg in $*; do
@@ -38,16 +42,12 @@ for arg in $*; do
   esac
 done
 
-# See comments in install-build-tools.sh.
-llvm_version=10
-if [ -n "${RING_COVERAGE-}" ]; then
-  llvm_version=11
-fi
+llvm_version=15
 
 case $target in
    aarch64-linux-android)
     export CC_aarch64_linux_android=$android_tools/aarch64-linux-android21-clang
-    export AR_aarch64_linux_android=$android_tools/aarch64-linux-android-ar
+    export AR_aarch64_linux_android=$android_tools/llvm-ar
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$android_tools/aarch64-linux-android21-clang
     ;;
   aarch64-unknown-linux-gnu)
@@ -70,9 +70,9 @@ case $target in
     export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="$qemu_arm"
     ;;
   armv7-linux-androideabi)
-    export CC_armv7_linux_androideabi=$android_tools/armv7a-linux-androideabi18-clang
-    export AR_armv7_linux_androideabi=$android_tools/arm-linux-androideabi-ar
-    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$android_tools/armv7a-linux-androideabi18-clang
+    export CC_armv7_linux_androideabi=$android_tools/armv7a-linux-androideabi19-clang
+    export AR_armv7_linux_androideabi=$android_tools/llvm-ar
+    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$android_tools/armv7a-linux-androideabi19-clang
     ;;
   armv7-unknown-linux-musleabihf)
     export CC_armv7_unknown_linux_musleabihf=clang-$llvm_version
