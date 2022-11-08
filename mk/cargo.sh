@@ -38,11 +38,7 @@ for arg in $*; do
   esac
 done
 
-# See comments in install-build-tools.sh.
-llvm_version=10
-if [ -n "${RING_COVERAGE-}" ]; then
-  llvm_version=11
-fi
+llvm_version=15
 
 case $target in
    aarch64-linux-android)
