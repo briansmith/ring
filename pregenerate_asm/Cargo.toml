@@ -9,4 +9,4 @@ path = "../build.rs"
 
 # Keep this in sync with `[build-dependencies]` in ../Cargo.toml.
 [dependencies]
-cc = { version = "1.0.62", default-features = false }
+cc = { version = "1.0.73", default-features = false }
