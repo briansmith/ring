@@ -36,6 +36,7 @@
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
+pub(crate) use self::private_exponent::PrivateExponent;
 pub(crate) use super::nonnegative::Nonnegative;
 use crate::{
     arithmetic::montgomery::*,
@@ -51,6 +52,7 @@ use core::{
 };
 
 mod bn_mul_mont_fallback;
+mod private_exponent;
 
 /// A prime modulus.
 ///
@@ -767,46 +769,6 @@ pub(crate) fn elem_exp_vartime<M>(
     acc
 }
 
-// `M` represents the prime modulus for which the exponent is in the interval
-// [1, `m` - 1).
-pub struct PrivateExponent<M> {
-    limbs: BoxedLimbs<M>,
-}
-
-impl<M> PrivateExponent<M> {
-    pub fn from_be_bytes_padded(
-        input: untrusted::Input,
-        p: &Modulus<M>,
-    ) -> Result<Self, error::Unspecified> {
-        let dP = BoxedLimbs::from_be_bytes_padded_less_than(input, p)?;
-
-        // Proof that `dP < p - 1`:
-        //
-        // If `dP < p` then either `dP == p - 1` or `dP < p - 1`. Since `p` is
-        // odd, `p - 1` is even. `d` is odd, and an odd number modulo an even
-        // number is odd. Therefore `dP` must be odd. But then it cannot be
-        // `p - 1` and so we know `dP < p - 1`.
-        //
-        // Further we know `dP != 0` because `dP` is not even.
-        if limb::limbs_are_even_constant_time(&dP) != LimbMask::False {
-            return Err(error::Unspecified);
-        }
-
-        Ok(Self { limbs: dP })
-    }
-}
-
-impl<M: Prime> PrivateExponent<M> {
-    // Returns `p - 2`.
-    fn for_flt(p: &Modulus<M>) -> Self {
-        let two = elem_add(p.one(), p.one(), p);
-        let p_minus_2 = elem_sub(p.zero(), &two, p);
-        Self {
-            limbs: p_minus_2.limbs,
-        }
-    }
-}
-
 #[cfg(not(target_arch = "x86_64"))]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
@@ -878,7 +840,7 @@ pub fn elem_exp_consttime<M>(
     }
 
     let (r, _) = limb::fold_5_bit_windows(
-        &exponent.limbs,
+        exponent.limbs(),
         |initial_window| {
             let mut r = Elem {
                 limbs: base.limbs,
@@ -1070,7 +1032,7 @@ pub fn elem_exp_consttime<M>(
     }
 
     let state = limb::fold_5_bit_windows(
-        &exponent.limbs,
+        exponent.limbs(),
         |initial_window| {
             gather(table, state, initial_window, num_limbs);
             state
