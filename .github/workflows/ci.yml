@@ -182,6 +182,7 @@ jobs:
           - i686-unknown-linux-musl
           - powerpc64le-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
+          - s390x-unknown-linux-gnu
           - x86_64-pc-windows-gnu
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
@@ -253,6 +254,9 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: riscv64gc-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: s390x-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: x86_64-pc-windows-gnu
@@ -342,6 +346,7 @@ jobs:
           - aarch64-unknown-linux-musl
           - i686-pc-windows-msvc
           - powerpc64le-unknown-linux-gnu
+          - s390x-unknown-linux-gnu
           - x86_64-unknown-linux-gnu
 
         mode:
@@ -361,6 +366,9 @@ jobs:
             host_os: windows-latest
 
           - target: powerpc64le-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: s390x-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-gnu
@@ -498,6 +506,7 @@ jobs:
           - i686-unknown-linux-gnu
           - powerpc64le-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
+          - s390x-unknown-linux-gnu
           - x86_64-unknown-linux-musl
 
         mode:
@@ -525,6 +534,9 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: riscv64gc-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: s390x-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-musl
