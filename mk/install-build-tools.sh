@@ -105,6 +105,14 @@ case $target in
     libc6-dev-riscv64-cross \
     qemu-user
   ;;
+--target=s390x-unknown-linux-gnu)
+  # Clang is needed for code coverage.
+  use_clang=1
+  install_packages \
+    qemu-user \
+    gcc-s390x-linux-gnu \
+    libc6-dev-s390x-cross
+  ;;
 --target=wasm32-unknown-unknown)
   cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
   use_clang=1

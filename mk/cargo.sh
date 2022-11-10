@@ -23,6 +23,7 @@ qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
 qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
 qemu_powerpc64le="qemu-ppc64le -L /usr/powerpc64le-linux-gnu"
 qemu_riscv64="qemu-riscv64 -L /usr/riscv64-linux-gnu"
+qemu_s390x="qemu-s390x -L /usr/s390x-linux-gnu"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
@@ -113,6 +114,16 @@ case $target in
     export AR_riscv64gc_unknown_linux_gnu=llvm-ar-$llvm_version
     export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
     export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="$qemu_riscv64"
+    ;;
+  s390x-unknown-linux-gnu)
+    export CC_s390x_unknown_linux_gnu=clang-$llvm_version
+    export AR_s390x_unknown_linux_gnu=llvm-ar-$llvm_version
+    # XXX: Using -march=zEC12 to work around a z13 instruction bug in
+    # QEMU 8.0.2 and earlier that causes `test_constant_time` to fail
+    # (https://lists.gnu.org/archive/html/qemu-devel/2023-05/msg06965.html).
+    export CFLAGS_s390x_unknown_linux_gnu="--sysroot=/usr/s390x-linux-gnu -march=zEC12"
+    export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_LINKER=s390x-linux-gnu-gcc
+    export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_RUNNER="$qemu_s390x"
     ;;
   x86_64-unknown-linux-musl)
     export CC_x86_64_unknown_linux_musl=clang-$llvm_version
