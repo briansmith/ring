@@ -74,9 +74,9 @@ case $target in
   ;;
 --target=mipsel-unknown-linux-gnu)
   install_packages \
-    qemu-user \
     gcc-mipsel-linux-gnu \
-    libc6-dev-mipsel-cross
+    libc6-dev-mipsel-cross \
+    qemu-user
   ;;
 --target=wasm32-unknown-unknown)
   cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
