@@ -273,6 +273,9 @@ static inline aes_word_t aes_nohw_delta_swap(aes_word_t a, aes_word_t mask,
 // http://programming.sirrida.de/calcperm.php on smaller inputs.
 #if defined(OPENSSL_64_BIT)
 static inline uint64_t aes_nohw_compact_word(uint64_t a) {
+#if defined(RING_BIG_ENDIAN)
+  a = CRYPTO_bswap8(a);
+#endif
   // Numbering the 64/2 = 16 4-bit chunks, least to most significant, we swap
   // quartets of those chunks:
   //   0 1 2 3 | 4 5 6 7 | 8  9 10 11 | 12 13 14 15 =>
@@ -294,10 +297,16 @@ static inline uint64_t aes_nohw_uncompact_word(uint64_t a) {
   a = aes_nohw_delta_swap(a, UINT64_C(0x00000000ffff0000), 16);
   a = aes_nohw_delta_swap(a, UINT64_C(0x0000ff000000ff00), 8);
   a = aes_nohw_delta_swap(a, UINT64_C(0x00f000f000f000f0), 4);
+#if defined(RING_BIG_ENDIAN)
+  a = CRYPTO_bswap8(a);
+#endif
   return a;
 }
 #else   // !OPENSSL_64_BIT
 static inline uint32_t aes_nohw_compact_word(uint32_t a) {
+#if defined(RING_BIG_ENDIAN)
+  a = CRYPTO_bswap4(a);
+#endif
   // Numbering the 32/2 = 16 pairs of bits, least to most significant, we swap:
   //   0 1 2 3 | 4 5 6 7 | 8  9 10 11 | 12 13 14 15 =>
   //   0 4 2 6 | 1 5 3 7 | 8 12 10 14 |  9 13 11 15
@@ -316,6 +325,9 @@ static inline uint32_t aes_nohw_uncompact_word(uint32_t a) {
   // Reverse the steps of |aes_nohw_uncompact_word|.
   a = aes_nohw_delta_swap(a, 0x0000f0f0, 12);
   a = aes_nohw_delta_swap(a, 0x00cc00cc, 6);
+#if defined(RING_BIG_ENDIAN)
+  a = CRYPTO_bswap4(a);
+#endif
   return a;
 }
 
