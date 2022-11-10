@@ -401,55 +401,77 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
 // endianness. They use |memcpy|, and so avoid alignment or strict aliasing
 // requirements on the input and output pointers.
 
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define RING_BIG_ENDIAN
+#endif
+#endif
+
 static inline uint32_t CRYPTO_load_u32_le(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(RING_BIG_ENDIAN)
+  return CRYPTO_bswap4(v);
+#else
   return v;
+#endif
 }
 
 static inline void CRYPTO_store_u32_le(void *out, uint32_t v) {
+#if defined(RING_BIG_ENDIAN)
+  v = CRYPTO_bswap4(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
 static inline uint32_t CRYPTO_load_u32_be(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if !defined(RING_BIG_ENDIAN)
   return CRYPTO_bswap4(v);
+#else
+  return v;
+#endif
 }
 
 static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
+#if !defined(RING_BIG_ENDIAN)
   v = CRYPTO_bswap4(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
 static inline uint64_t CRYPTO_load_u64_le(const void *in) {
   uint64_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(RING_BIG_ENDIAN)
+  return CRYPTO_bswap8(v);
+#else
   return v;
+#endif
 }
 
 static inline void CRYPTO_store_u64_le(void *out, uint64_t v) {
+#if defined(RING_BIG_ENDIAN)
+  v = CRYPTO_bswap8(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
 static inline uint64_t CRYPTO_load_u64_be(const void *ptr) {
   uint64_t ret;
   OPENSSL_memcpy(&ret, ptr, sizeof(ret));
+#if !defined(RING_BIG_ENDIAN)
   return CRYPTO_bswap8(ret);
+#else
+  return ret;
+#endif
 }
 
 static inline void CRYPTO_store_u64_be(void *out, uint64_t v) {
+#if !defined(RING_BIG_ENDIAN)
   v = CRYPTO_bswap8(v);
-  OPENSSL_memcpy(out, &v, sizeof(v));
-}
-
-static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
-  crypto_word_t v;
-  OPENSSL_memcpy(&v, in, sizeof(v));
-  return v;
-}
-
-static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
