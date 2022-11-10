@@ -20,7 +20,7 @@ IFS=$'\n\t'
 rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
-qemu_mipsel="qemu-system-mipsel -L /usr/mipsel-linux-gnu"
+qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may

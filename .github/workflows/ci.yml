@@ -247,7 +247,7 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: mipsel-unknown-linux-gnu
-            host_os: ubuntu-18.04
+            host_os: ubuntu-22.04
 
           - target: x86_64-pc-windows-gnu
             host_os: windows-latest
