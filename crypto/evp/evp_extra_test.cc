@@ -1132,12 +1132,13 @@ TEST(EVPExtraTest, TLSEncodedPoint) {
 
     bssl::UniquePtr<EVP_PKEY> from_encoded_point(EVP_PKEY_new());
     ASSERT_TRUE(from_encoded_point);
-    ASSERT_TRUE(EVP_PKEY_set_type(from_encoded_point.get(), test.pkey_type));
     if (test.pkey_type == EVP_PKEY_EC) {
       // |EVP_PKEY_EC| should have been |EVP_PKEY_EC_P256|, etc., but instead
       // part of the type is buried inside parameters.
       ASSERT_TRUE(
           EVP_PKEY_copy_parameters(from_encoded_point.get(), from_spki.get()));
+    } else {
+      ASSERT_TRUE(EVP_PKEY_set_type(from_encoded_point.get(), test.pkey_type));
     }
     ASSERT_TRUE(EVP_PKEY_set1_tls_encodedpoint(from_encoded_point.get(),
                                                test.encoded_point.data(),
