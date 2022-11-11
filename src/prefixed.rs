@@ -14,7 +14,7 @@ macro_rules! prefixed_extern {
                     $name
                     {
                         $( #[$meta] )*
-                        $vis fn $name ( $( $arg_pat : $arg_ty ),* ) $( -> $ret_ty )?
+                        $vis fn $name ( $( $arg_pat : $arg_ty ),* ) $( -> $ret_ty )?;
                     }
 
                 }
@@ -33,15 +33,31 @@ macro_rules! prefixed_extern {
                 $name
                 {
                     $( #[$meta] )*
-                    $vis static mut $name: $typ
+                    $vis static mut $name: $typ;
                 }
             }
         }
     };
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 macro_rules! prefixed_export {
+    // A function.
+    {
+        $( #[$meta:meta] )*
+        $vis:vis unsafe fn $name:ident ( $( $arg_pat:ident : $arg_ty:ty ),* $(,)? ) $body:block
+    } => {
+        prefixed_item! {
+            export_name
+            $name
+            {
+                $( #[$meta] )*
+                $vis unsafe fn $name ( $( $arg_pat : $arg_ty ),* ) $body
+            }
+        }
+    };
+
+    // A global variable.
     {
         $( #[$meta:meta] )*
         $vis:vis static mut $name:ident: $typ:ty = $initial_value:expr;
@@ -51,10 +67,10 @@ macro_rules! prefixed_export {
             $name
             {
                 $( #[$meta] )*
-                $vis static mut $name: $typ = $initial_value
+                $vis static mut $name: $typ = $initial_value;
             }
         }
-    }
+    };
 }
 
 macro_rules! prefixed_item {
@@ -80,6 +96,6 @@ macro_rules! prefixed_item {
         { $( $item:tt )+ }
     } => {
         #[$attr = $prefixed_name]
-        $( $item )+;
+        $( $item )+
     };
 }
