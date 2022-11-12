@@ -167,10 +167,21 @@ int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
     return 0;
   }
 
+  // Once set, parameters may not change.
+  if (!EVP_PKEY_missing_parameters(to)) {
+    if (EVP_PKEY_cmp_parameters(to, from) == 1) {
+      return 1;
+    }
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_PARAMETERS);
+    return 0;
+  }
+
   if (from->ameth && from->ameth->param_copy) {
     return from->ameth->param_copy(to, from);
   }
 
+  // TODO(https://crbug.com/boringssl/536): If the algorithm takes no
+  // parameters, copying them should vacuously succeed.
   return 0;
 }
 
@@ -419,6 +430,8 @@ int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
   if (a->ameth && a->ameth->param_cmp) {
     return a->ameth->param_cmp(a, b);
   }
+  // TODO(https://crbug.com/boringssl/536): If the algorithm doesn't use
+  // parameters, they should compare as vacuously equal.
   return -2;
 }
 

@@ -216,7 +216,7 @@ static int ec_bits(const EVP_PKEY *pkey) {
 }
 
 static int ec_missing_parameters(const EVP_PKEY *pkey) {
-  return EC_KEY_get0_group(pkey->pkey.ec) == NULL;
+  return pkey->pkey.ec == NULL || EC_KEY_get0_group(pkey->pkey.ec) == NULL;
 }
 
 static int ec_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
@@ -239,8 +239,14 @@ static int ec_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
 }
 
 static int ec_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
+  if (a->pkey.ec == NULL || b->pkey.ec == NULL) {
+    return -2;
+  }
   const EC_GROUP *group_a = EC_KEY_get0_group(a->pkey.ec),
                  *group_b = EC_KEY_get0_group(b->pkey.ec);
+  if (group_a == NULL || group_b == NULL) {
+    return -2;
+  }
   if (EC_GROUP_cmp(group_a, group_b, NULL) != 0) {
     // mismatch
     return 0;

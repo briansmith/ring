@@ -1150,3 +1150,73 @@ TEST(EVPExtraTest, TLSEncodedPoint) {
     EXPECT_EQ(Bytes(CBB_data(cbb.get()), CBB_len(cbb.get())), Bytes(test.spki));
   }
 }
+
+TEST(EVPExtraTest, Parameters) {
+  auto new_pkey_with_type = [](int type) -> bssl::UniquePtr<EVP_PKEY> {
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    if (!pkey ||  //
+        !EVP_PKEY_set_type(pkey.get(), type)) {
+      return nullptr;
+    }
+    return pkey;
+  };
+
+  auto new_pkey_with_curve = [](int curve_nid) -> bssl::UniquePtr<EVP_PKEY> {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+    EVP_PKEY *pkey = nullptr;
+    if (!ctx ||  //
+        !EVP_PKEY_paramgen_init(ctx.get()) ||
+        !EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), curve_nid) ||
+        !EVP_PKEY_paramgen(ctx.get(), &pkey)) {
+      return nullptr;
+    }
+    return bssl::UniquePtr<EVP_PKEY>(pkey);
+  };
+
+  // RSA keys have no parameters.
+  bssl::UniquePtr<EVP_PKEY> rsa = new_pkey_with_type(EVP_PKEY_RSA);
+  ASSERT_TRUE(rsa);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(rsa.get()));
+
+  // EC keys have parameters.
+  bssl::UniquePtr<EVP_PKEY> ec_no_params = new_pkey_with_type(EVP_PKEY_EC);
+  ASSERT_TRUE(ec_no_params);
+  EXPECT_TRUE(EVP_PKEY_missing_parameters(ec_no_params.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p256 = new_pkey_with_curve(NID_X9_62_prime256v1);
+  ASSERT_TRUE(p256);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p256.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p256_2 = new_pkey_with_curve(NID_X9_62_prime256v1);
+  ASSERT_TRUE(p256_2);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p256_2.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p384 = new_pkey_with_curve(NID_secp384r1);
+  ASSERT_TRUE(p384);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p384.get()));
+
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), p256_2.get()));
+  EXPECT_EQ(0, EVP_PKEY_cmp_parameters(p256.get(), p384.get()));
+
+  // Copying parameters onto a curve-less EC key works.
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(ec_no_params.get(), p256.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), ec_no_params.get()));
+
+  // No-op copies silently succeed.
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(ec_no_params.get(), p256.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), ec_no_params.get()));
+
+  // Copying parameters onto a type-less key works.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(pkey.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_EC, EVP_PKEY_id(pkey.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), pkey.get()));
+
+  // |EVP_PKEY_copy_parameters| cannot change a key's type or curve.
+  EXPECT_FALSE(EVP_PKEY_copy_parameters(rsa.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_RSA, EVP_PKEY_id(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_copy_parameters(rsa.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_RSA, EVP_PKEY_id(rsa.get()));
+}
