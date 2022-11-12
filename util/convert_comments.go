@@ -17,7 +17,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -270,11 +269,11 @@ func convertComments(path string, in []byte) []byte {
 
 func main() {
 	for _, arg := range os.Args[1:] {
-		in, err := ioutil.ReadFile(arg)
+		in, err := os.ReadFile(arg)
 		if err != nil {
 			panic(err)
 		}
-		if err := ioutil.WriteFile(arg, convertComments(arg, in), 0666); err != nil {
+		if err := os.WriteFile(arg, convertComments(arg, in), 0666); err != nil {
 			panic(err)
 		}
 	}

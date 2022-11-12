@@ -16,7 +16,6 @@ package runner
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -68,7 +67,7 @@ func getSharding() (index, total int, err error) {
 	}
 
 	if len(statusFile) > 0 {
-		if err := ioutil.WriteFile(statusFile, nil, 0664); err != nil {
+		if err := os.WriteFile(statusFile, nil, 0664); err != nil {
 			return 0, 0, err
 		}
 	}

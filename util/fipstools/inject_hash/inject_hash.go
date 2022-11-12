@@ -27,7 +27,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -78,7 +77,7 @@ func do(outPath, oInput string, arInput string) error {
 		}
 		perm = fi.Mode()
 
-		if objectBytes, err = ioutil.ReadFile(oInput); err != nil {
+		if objectBytes, err = os.ReadFile(oInput); err != nil {
 			return err
 		}
 		isStatic = strings.HasSuffix(oInput, ".o")
@@ -245,7 +244,7 @@ func do(outPath, oInput string, arInput string) error {
 
 	copy(objectBytes[offset:], calculated)
 
-	return ioutil.WriteFile(outPath, objectBytes, perm & 0777)
+	return os.WriteFile(outPath, objectBytes, perm&0777)
 }
 
 func main() {

@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"sort"
@@ -518,7 +517,7 @@ extern "C" {
 		return err
 	}
 
-	return ioutil.WriteFile(path, []byte(formatted), 0666)
+	return os.WriteFile(path, []byte(formatted), 0666)
 }
 
 // TODO(davidben): Replace this with sort.Slice once Go 1.8 is sufficiently
@@ -710,7 +709,7 @@ func writeData(path string, objs *objects) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path, []byte(formatted), 0666)
+	return os.WriteFile(path, []byte(formatted), 0666)
 }
 
 func main() {

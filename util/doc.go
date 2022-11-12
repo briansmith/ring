@@ -14,7 +14,6 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -746,11 +745,11 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
 }
 
 func copyFile(outPath string, inFilePath string) error {
-	bytes, err := ioutil.ReadFile(inFilePath)
+	bytes, err := os.ReadFile(inFilePath)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(outPath, filepath.Base(inFilePath)), bytes, 0666)
+	return os.WriteFile(filepath.Join(outPath, filepath.Base(inFilePath)), bytes, 0666)
 }
 
 func main() {
@@ -772,7 +771,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	configBytes, err := ioutil.ReadFile(*configFlag)
+	configBytes, err := os.ReadFile(*configFlag)
 	if err != nil {
 		fmt.Printf("Failed to open config file: %s\n", err)
 		os.Exit(1)

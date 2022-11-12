@@ -29,7 +29,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	neturl "net/url"
@@ -157,7 +156,7 @@ func loadCachedSessionTokens(server *acvp.Server, cachePath string) error {
 			continue
 		}
 		path := filepath.Join(cachePath, name)
-		contents, err := ioutil.ReadFile(path)
+		contents, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("Failed to read session token cache entry %q: %s", path, err)
 		}
@@ -199,7 +198,7 @@ func looksLikeHeaderElement(element json.RawMessage) bool {
 // processFile reads a file containing vector sets, at least in the format
 // preferred by our lab, and writes the results to stdout.
 func processFile(filename string, supportedAlgos []map[string]interface{}, middle Middle) error {
-	jsonBytes, err := ioutil.ReadFile(filename)
+	jsonBytes, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -386,7 +385,7 @@ func main() {
 	if len(config.CertPEMFile) == 0 {
 		log.Fatal("Config file missing CertPEMFile")
 	}
-	certPEM, err := ioutil.ReadFile(config.CertPEMFile)
+	certPEM, err := os.ReadFile(config.CertPEMFile)
 	if err != nil {
 		log.Fatalf("failed to read certificate from %q: %s", config.CertPEMFile, err)
 	}
@@ -404,7 +403,7 @@ func main() {
 		privateKeyFile = config.PrivateKeyFile
 	}
 
-	keyBytes, err := ioutil.ReadFile(privateKeyFile)
+	keyBytes, err := os.ReadFile(privateKeyFile)
 	if err != nil {
 		log.Fatalf("failed to read private key from %q: %s", privateKeyFile, err)
 	}
@@ -538,7 +537,7 @@ func main() {
 	if token := result.AccessToken; len(token) > 0 {
 		server.PrefixTokens[url] = token
 		if len(sessionTokensCacheDir) > 0 {
-			ioutil.WriteFile(filepath.Join(sessionTokensCacheDir, neturl.PathEscape(url))+".token", []byte(token), 0600)
+			os.WriteFile(filepath.Join(sessionTokensCacheDir, neturl.PathEscape(url))+".token", []byte(token), 0600)
 		}
 	}
 

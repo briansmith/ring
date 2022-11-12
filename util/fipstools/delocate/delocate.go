@@ -20,7 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strconv"
@@ -1980,7 +1979,7 @@ func parseInputs(inputs []inputFile) error {
 				contents = string(c)
 			}
 		} else {
-			inBytes, err := ioutil.ReadFile(input.path)
+			inBytes, err := os.ReadFile(input.path)
 			if err != nil {
 				return err
 			}

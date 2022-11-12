@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -122,7 +121,7 @@ func printComment(w io.Writer, in string) error {
 }
 
 func convertWycheproof(f io.Writer, jsonPath string) error {
-	jsonData, err := ioutil.ReadFile(jsonPath)
+	jsonData, err := os.ReadFile(jsonPath)
 	if err != nil {
 		return err
 	}

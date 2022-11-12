@@ -17,7 +17,7 @@ package main
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -75,9 +75,9 @@ func TestDelocate(t *testing.T) {
 			}
 
 			if *update {
-				ioutil.WriteFile(test.Path(test.out), buf.Bytes(), 0666)
+				os.WriteFile(test.Path(test.out), buf.Bytes(), 0666)
 			} else {
-				expected, err := ioutil.ReadFile(test.Path(test.out))
+				expected, err := os.ReadFile(test.Path(test.out))
 				if err != nil {
 					t.Fatalf("could not read %q: %s", test.Path(test.out), err)
 				}

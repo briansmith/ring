@@ -23,8 +23,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"time"
 )
 
@@ -75,7 +75,7 @@ func main() {
 		}
 
 		certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
-		if err := ioutil.WriteFile(fmt.Sprintf("basic_constraints_%s.pem", cert.name), certPEM, 0666); err != nil {
+		if err := os.WriteFile(fmt.Sprintf("basic_constraints_%s.pem", cert.name), certPEM, 0666); err != nil {
 			panic(err)
 		}
 	}
