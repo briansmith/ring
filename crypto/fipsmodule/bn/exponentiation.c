@@ -860,9 +860,6 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
   return 1;
 }
 
-#define MOD_EXP_CTIME_MIN_CACHE_LINE_MASK \
-  (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - 1)
-
 // Window sizes optimized for fixed window size modular exponentiation
 // algorithm (BN_mod_exp_mont_consttime).
 //
@@ -887,13 +884,6 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 #define BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE (5)
 
 #endif
-
-// Given a pointer value, compute the next address that is a cache line
-// multiple.
-#define MOD_EXP_CTIME_ALIGN(x_)          \
-  ((unsigned char *)(x_) +               \
-   (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - \
-    (((size_t)(x_)) & (MOD_EXP_CTIME_MIN_CACHE_LINE_MASK))))
 
 // This variant of |BN_mod_exp_mont| uses fixed windows and fixed memory access
 // patterns to protect secret exponents (cf. the hyper-threading timing attacks
@@ -1006,7 +996,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     if (powerbufFree == NULL) {
       goto err;
     }
-    powerbuf = (BN_ULONG *)MOD_EXP_CTIME_ALIGN(powerbufFree);
+    powerbuf = align_pointer(powerbufFree, MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH);
   }
   OPENSSL_memset(powerbuf, 0, powerbufLen);
 
