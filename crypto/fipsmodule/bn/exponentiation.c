@@ -877,14 +877,12 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
                               const BIGNUM *m, BN_CTX *ctx,
                               const BN_MONT_CTX *mont) {
-  int i, ret = 0, window, wvalue;
+  int i, ret = 0, wvalue;
   BN_MONT_CTX *new_mont = NULL;
 
-  int numPowers;
-  unsigned char *powerbufFree = NULL;
-  int powerbufLen = 0;
+  unsigned char *powerbuf_free = NULL;
+  size_t powerbuf_len = 0;
   BN_ULONG *powerbuf = NULL;
-  BIGNUM tmp, am;
 
   if (!BN_is_odd(m)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
@@ -951,40 +949,41 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 #endif
 
   // Get the window size to use with size of p.
-  window = BN_window_bits_for_ctime_exponent_size(bits);
+  int window = BN_window_bits_for_ctime_exponent_size(bits);
 #if defined(OPENSSL_BN_ASM_MONT5)
   if (window >= 5) {
     window = 5;  // ~5% improvement for RSA2048 sign, and even for RSA4096
     // Reserve space for the |mont->N| copy.
-    powerbufLen += top * sizeof(mont->N.d[0]);
+    powerbuf_len += top * sizeof(mont->N.d[0]);
   }
 #endif
 
   // Allocate a buffer large enough to hold all of the pre-computed
   // powers of |am|, |am| itself, and |tmp|.
-  numPowers = 1 << window;
-  powerbufLen +=
+  int num_powers = 1 << window;
+  powerbuf_len +=
       sizeof(m->d[0]) *
-      (top * numPowers + ((2 * top) > numPowers ? (2 * top) : numPowers));
+      (top * num_powers + ((2 * top) > num_powers ? (2 * top) : num_powers));
 
 #if defined(OPENSSL_BN_ASM_MONT5)
-  if ((size_t)powerbufLen <= sizeof(storage)) {
+  if (powerbuf_len <= sizeof(storage)) {
     powerbuf = storage;
   }
   // |storage| is more than large enough to handle 1024-bit inputs.
   assert(powerbuf != NULL || top * BN_BITS2 > 1024);
 #endif
   if (powerbuf == NULL) {
-    powerbufFree = OPENSSL_malloc(powerbufLen + MOD_EXP_CTIME_ALIGN);
-    if (powerbufFree == NULL) {
+    powerbuf_free = OPENSSL_malloc(powerbuf_len + MOD_EXP_CTIME_ALIGN);
+    if (powerbuf_free == NULL) {
       goto err;
     }
-    powerbuf = align_pointer(powerbufFree, MOD_EXP_CTIME_ALIGN);
+    powerbuf = align_pointer(powerbuf_free, MOD_EXP_CTIME_ALIGN);
   }
-  OPENSSL_memset(powerbuf, 0, powerbufLen);
+  OPENSSL_memset(powerbuf, 0, powerbuf_len);
 
   // Place |tmp| and |am| right after powers table.
-  tmp.d = powerbuf + top * numPowers;
+  BIGNUM tmp, am;
+  tmp.d = powerbuf + top * num_powers;
   am.d = tmp.d + top;
   tmp.width = am.width = 0;
   tmp.dmax = am.dmax = top;
@@ -1133,7 +1132,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
       copy_to_prebuf(&tmp, top, powerbuf, 2, window);
 
-      for (i = 3; i < numPowers; i++) {
+      for (i = 3; i < num_powers; i++) {
         // Calculate a^i = a^(i-1) * a
         if (!BN_mod_mul_montgomery(&tmp, &am, &tmp, mont, ctx)) {
           goto err;
@@ -1188,11 +1187,11 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
 err:
   BN_MONT_CTX_free(new_mont);
-  if (powerbuf != NULL && powerbufFree == NULL) {
-    OPENSSL_cleanse(powerbuf, powerbufLen);
+  if (powerbuf != NULL && powerbuf_free == NULL) {
+    OPENSSL_cleanse(powerbuf, powerbuf_len);
   }
-  OPENSSL_free(powerbufFree);
-  return (ret);
+  OPENSSL_free(powerbuf_free);
+  return ret;
 }
 
 int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
