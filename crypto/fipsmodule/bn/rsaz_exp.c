@@ -40,8 +40,8 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
                             const BN_ULONG m_norm[16], const BN_ULONG RR[16],
                             BN_ULONG k0,
                             BN_ULONG storage[MOD_EXP_CTIME_STORAGE_LEN]) {
-  static_assert(MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH % 64 == 0,
-                "MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH is too small");
+  static_assert(MOD_EXP_CTIME_ALIGN % 64 == 0,
+                "MOD_EXP_CTIME_ALIGN is too small");
   assert((uintptr_t)storage % 64 == 0);
 
   BN_ULONG *a_inv, *m, *result, *table_s = storage + 40 * 3, *R2 = table_s;

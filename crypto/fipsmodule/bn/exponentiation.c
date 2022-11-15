@@ -863,27 +863,12 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 // Window sizes optimized for fixed window size modular exponentiation
 // algorithm (BN_mod_exp_mont_consttime).
 //
-// To achieve the security goals of BN_mode_exp_mont_consttime, the maximum
-// size of the window must not exceed
-// log_2(MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH).
-//
-// Window size thresholds are defined for cache line sizes of 32 and 64, cache
-// line sizes where log_2(32)=5 and log_2(64)=6 respectively. A window size of
-// 7 should only be used on processors that have a 128 byte or greater cache
-// line size.
-#if MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH == 64
-
+// TODO(davidben): These window sizes were originally set for 64-byte cache
+// lines with a cache-line-dependent constant-time mitigation. They can probably
+// be revised now that our implementation is no longer cache-time-dependent.
 #define BN_window_bits_for_ctime_exponent_size(b) \
   ((b) > 937 ? 6 : (b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
 #define BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE (6)
-
-#elif MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH == 32
-
-#define BN_window_bits_for_ctime_exponent_size(b) \
-  ((b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
-#define BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE (5)
-
-#endif
 
 // This variant of |BN_mod_exp_mont| uses fixed windows and fixed memory access
 // patterns to protect secret exponents (cf. the hyper-threading timing attacks
@@ -945,8 +930,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   // paths. If we were to use separate static buffers for each then there is
   // some chance that both large buffers would be allocated on the stack,
   // causing the stack space requirement to be truly huge (~10KB).
-  alignas(MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH) BN_ULONG
-    storage[MOD_EXP_CTIME_STORAGE_LEN];
+  alignas(MOD_EXP_CTIME_ALIGN) BN_ULONG storage[MOD_EXP_CTIME_STORAGE_LEN];
 #endif
 #if defined(RSAZ_ENABLED)
   // If the size of the operands allow it, perform the optimized RSAZ
@@ -991,12 +975,11 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   assert(powerbuf != NULL || top * BN_BITS2 > 1024);
 #endif
   if (powerbuf == NULL) {
-    powerbufFree =
-        OPENSSL_malloc(powerbufLen + MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH);
+    powerbufFree = OPENSSL_malloc(powerbufLen + MOD_EXP_CTIME_ALIGN);
     if (powerbufFree == NULL) {
       goto err;
     }
-    powerbuf = align_pointer(powerbufFree, MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH);
+    powerbuf = align_pointer(powerbufFree, MOD_EXP_CTIME_ALIGN);
   }
   OPENSSL_memset(powerbuf, 0, powerbufLen);
 

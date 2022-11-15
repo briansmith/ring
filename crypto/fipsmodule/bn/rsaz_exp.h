@@ -32,8 +32,7 @@ extern "C" {
 // modulo |m_norm|. |base_norm| must be fully-reduced and |exponent| must have
 // the high bit set (it is 1024 bits wide). |RR| and |k0| must be |RR| and |n0|,
 // respectively, extracted from |m_norm|'s |BN_MONT_CTX|. |storage_words| is a
-// temporary buffer that must be aligned to |MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH|
-// bytes.
+// temporary buffer that must be aligned to |MOD_EXP_CTIME_ALIGN| bytes.
 void RSAZ_1024_mod_exp_avx2(BN_ULONG result[16], const BN_ULONG base_norm[16],
                             const BN_ULONG exponent[16],
                             const BN_ULONG m_norm[16], const BN_ULONG RR[16],
