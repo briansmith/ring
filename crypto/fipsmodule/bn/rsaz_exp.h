@@ -79,13 +79,15 @@ void rsaz_1024_sqr_avx2(BN_ULONG ret[40], const BN_ULONG a[40],
                         const BN_ULONG n[40], BN_ULONG k, int count);
 
 // rsaz_1024_scatter5_avx2 stores |val| at index |i| of |tbl|. |i| must be
-// positive and at most 31. Note the table only uses 18 |BN_ULONG|s per entry
-// instead of 40. It packs two 29-bit limbs into each |BN_ULONG| and only stores
-// 36 limbs rather than the padded 40.
+// positive and at most 31. It is treated as public. Note the table only uses 18
+// |BN_ULONG|s per entry instead of 40. It packs two 29-bit limbs into each
+// |BN_ULONG| and only stores 36 limbs rather than the padded 40.
 void rsaz_1024_scatter5_avx2(BN_ULONG tbl[32 * 18], const BN_ULONG val[40],
                              int i);
 
-// rsaz_1024_gather5_avx2 loads index |i| of |tbl| and writes it to |val|.
+// rsaz_1024_gather5_avx2 loads index |i| of |tbl| and writes it to |val|. |i|
+// must be positive and at most 31. It is treated as secret. |tbl| must be
+// aligned to 32 bytes.
 void rsaz_1024_gather5_avx2(BN_ULONG val[40], const BN_ULONG tbl[32 * 18],
                             int i);
 
