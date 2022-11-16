@@ -154,73 +154,70 @@ TEST(BIOTest, Printf) {
   }
 }
 
-static const size_t kLargeASN1PayloadLen = 8000;
+TEST(BIOTest, ReadASN1) {
+  static const size_t kLargeASN1PayloadLen = 8000;
 
-struct ASN1TestParam {
-  bool should_succeed;
-  std::vector<uint8_t> input;
-  // suffix_len is the number of zeros to append to |input|.
-  size_t suffix_len;
-  // expected_len, if |should_succeed| is true, is the expected length of the
-  // ASN.1 element.
-  size_t expected_len;
-  size_t max_len;
-} kASN1TestParams[] = {
-    {true, {0x30, 2, 1, 2, 0, 0}, 0, 4, 100},
-    {false /* truncated */, {0x30, 3, 1, 2}, 0, 0, 100},
-    {false /* should be short len */, {0x30, 0x81, 1, 1}, 0, 0, 100},
-    {false /* zero padded */, {0x30, 0x82, 0, 1, 1}, 0, 0, 100},
+  struct ASN1Test {
+    bool should_succeed;
+    std::vector<uint8_t> input;
+    // suffix_len is the number of zeros to append to |input|.
+    size_t suffix_len;
+    // expected_len, if |should_succeed| is true, is the expected length of the
+    // ASN.1 element.
+    size_t expected_len;
+    size_t max_len;
+  } kASN1Tests[] = {
+      {true, {0x30, 2, 1, 2, 0, 0}, 0, 4, 100},
+      {false /* truncated */, {0x30, 3, 1, 2}, 0, 0, 100},
+      {false /* should be short len */, {0x30, 0x81, 1, 1}, 0, 0, 100},
+      {false /* zero padded */, {0x30, 0x82, 0, 1, 1}, 0, 0, 100},
 
-    // Test a large payload.
-    {true,
-     {0x30, 0x82, kLargeASN1PayloadLen >> 8, kLargeASN1PayloadLen & 0xff},
-     kLargeASN1PayloadLen,
-     4 + kLargeASN1PayloadLen,
-     kLargeASN1PayloadLen * 2},
-    {false /* max_len too short */,
-     {0x30, 0x82, kLargeASN1PayloadLen >> 8, kLargeASN1PayloadLen & 0xff},
-     kLargeASN1PayloadLen,
-     4 + kLargeASN1PayloadLen,
-     3 + kLargeASN1PayloadLen},
+      // Test a large payload.
+      {true,
+       {0x30, 0x82, kLargeASN1PayloadLen >> 8, kLargeASN1PayloadLen & 0xff},
+       kLargeASN1PayloadLen,
+       4 + kLargeASN1PayloadLen,
+       kLargeASN1PayloadLen * 2},
+      {false /* max_len too short */,
+       {0x30, 0x82, kLargeASN1PayloadLen >> 8, kLargeASN1PayloadLen & 0xff},
+       kLargeASN1PayloadLen,
+       4 + kLargeASN1PayloadLen,
+       3 + kLargeASN1PayloadLen},
 
-    // Test an indefinite-length input.
-    {true,
-     {0x30, 0x80},
-     kLargeASN1PayloadLen + 2,
-     2 + kLargeASN1PayloadLen + 2,
-     kLargeASN1PayloadLen * 2},
-    {false /* max_len too short */,
-     {0x30, 0x80},
-     kLargeASN1PayloadLen + 2,
-     2 + kLargeASN1PayloadLen + 2,
-     2 + kLargeASN1PayloadLen + 1},
-};
+      // Test an indefinite-length input.
+      {true,
+       {0x30, 0x80},
+       kLargeASN1PayloadLen + 2,
+       2 + kLargeASN1PayloadLen + 2,
+       kLargeASN1PayloadLen * 2},
+      {false /* max_len too short */,
+       {0x30, 0x80},
+       kLargeASN1PayloadLen + 2,
+       2 + kLargeASN1PayloadLen + 2,
+       2 + kLargeASN1PayloadLen + 1},
+  };
 
-class BIOASN1Test : public testing::TestWithParam<ASN1TestParam> {};
+  for (const auto &t : kASN1Tests) {
+    std::vector<uint8_t> input = t.input;
+    input.resize(input.size() + t.suffix_len, 0);
 
-TEST_P(BIOASN1Test, ReadASN1) {
-  const ASN1TestParam& param = GetParam();
-  std::vector<uint8_t> input = param.input;
-  input.resize(input.size() + param.suffix_len, 0);
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(input.data(), input.size()));
+    ASSERT_TRUE(bio);
 
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(input.data(), input.size()));
-  ASSERT_TRUE(bio);
+    uint8_t *out;
+    size_t out_len;
+    int ok = BIO_read_asn1(bio.get(), &out, &out_len, t.max_len);
+    if (!ok) {
+      out = nullptr;
+    }
+    bssl::UniquePtr<uint8_t> out_storage(out);
 
-  uint8_t *out;
-  size_t out_len;
-  int ok = BIO_read_asn1(bio.get(), &out, &out_len, param.max_len);
-  if (!ok) {
-    out = nullptr;
-  }
-  bssl::UniquePtr<uint8_t> out_storage(out);
-
-  ASSERT_EQ(param.should_succeed, (ok == 1));
-  if (param.should_succeed) {
-    EXPECT_EQ(Bytes(input.data(), param.expected_len), Bytes(out, out_len));
+    ASSERT_EQ(t.should_succeed, (ok == 1));
+    if (t.should_succeed) {
+      EXPECT_EQ(Bytes(input.data(), t.expected_len), Bytes(out, out_len));
+    }
   }
 }
-
-INSTANTIATE_TEST_SUITE_P(All, BIOASN1Test, testing::ValuesIn(kASN1TestParams));
 
 // Run through the tests twice, swapping |bio1| and |bio2|, for symmetry.
 class BIOPairTest : public testing::TestWithParam<bool> {};
