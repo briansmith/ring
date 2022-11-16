@@ -978,7 +978,7 @@ class BNTest : public testing::Test {
   bssl::UniquePtr<BN_CTX> ctx_;
 };
 
-TEST_F(BNTest, TestVectors) {
+static void RunBNFileTest(FileTest *t, BN_CTX *ctx) {
   static const struct {
     const char *name;
     void (*func)(BIGNUMFileTest *t, BN_CTX *ctx);
@@ -999,37 +999,84 @@ TEST_F(BNTest, TestVectors) {
       {"ModInv", TestModInv},
       {"GCD", TestGCD},
   };
-
-  FileTestGTest("crypto/fipsmodule/bn/bn_tests.txt", [&](FileTest *t) {
-    void (*func)(BIGNUMFileTest *t, BN_CTX *ctx) = nullptr;
-    for (const auto &test : kTests) {
-      if (t->GetType() == test.name) {
-        func = test.func;
-        break;
-      }
+  void (*func)(BIGNUMFileTest * t, BN_CTX * ctx) = nullptr;
+  for (const auto &test : kTests) {
+    if (t->GetType() == test.name) {
+      func = test.func;
+      break;
     }
-    if (!func) {
-      FAIL() << "Unknown test type: " << t->GetType();
-      return;
-    }
+  }
+  if (!func) {
+    FAIL() << "Unknown test type: " << t->GetType();
+    return;
+  }
 
-    // Run the test with normalize-sized |BIGNUM|s.
-    BIGNUMFileTest bn_test(t, 0);
-    BN_CTX_start(ctx());
-    func(&bn_test, ctx());
-    BN_CTX_end(ctx());
-    unsigned num_bignums = bn_test.num_bignums();
+  // Run the test with normalize-sized |BIGNUM|s.
+  BIGNUMFileTest bn_test(t, 0);
+  BN_CTX_start(ctx);
+  func(&bn_test, ctx);
+  BN_CTX_end(ctx);
+  unsigned num_bignums = bn_test.num_bignums();
 
-    // Repeat the test with all combinations of large and small |BIGNUM|s.
-    for (unsigned large_mask = 1; large_mask < (1u << num_bignums);
-         large_mask++) {
-      SCOPED_TRACE(large_mask);
-      BIGNUMFileTest bn_test2(t, large_mask);
-      BN_CTX_start(ctx());
-      func(&bn_test2, ctx());
-      BN_CTX_end(ctx());
-    }
-  });
+  // Repeat the test with all combinations of large and small |BIGNUM|s.
+  for (unsigned large_mask = 1; large_mask < (1u << num_bignums);
+       large_mask++) {
+    SCOPED_TRACE(large_mask);
+    BIGNUMFileTest bn_test2(t, large_mask);
+    BN_CTX_start(ctx);
+    func(&bn_test2, ctx);
+    BN_CTX_end(ctx);
+  }
+}
+
+TEST_F(BNTest, ExpTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/exp_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, GCDTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/gcd_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, ModExpTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/mod_exp_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, ModInvTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/mod_inv_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, ModMulTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/mod_mul_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, ModSqrtTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/mod_sqrt_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, ProductTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/product_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, QuotientTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/quotient_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, ShiftTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/shift_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, SumTestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/sum_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
 TEST_F(BNTest, BN2BinPadded) {
@@ -2324,7 +2371,7 @@ TEST_F(BNTest, PrimeChecking) {
 
 TEST_F(BNTest, MillerRabinIteration) {
   FileTestGTest(
-      "crypto/fipsmodule/bn/miller_rabin_tests.txt", [&](FileTest *t) {
+      "crypto/fipsmodule/bn/test/miller_rabin_tests.txt", [&](FileTest *t) {
         BIGNUMFileTest bn_test(t, /*large_mask=*/0);
 
         bssl::UniquePtr<BIGNUM> w = bn_test.GetBIGNUM("W");
