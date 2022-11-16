@@ -961,9 +961,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   // Allocate a buffer large enough to hold all of the pre-computed
   // powers of |am|, |am| itself, and |tmp|.
   int num_powers = 1 << window;
-  powerbuf_len +=
-      sizeof(m->d[0]) *
-      (top * num_powers + ((2 * top) > num_powers ? (2 * top) : num_powers));
+  powerbuf_len += sizeof(m->d[0]) * top * (num_powers + 2);
 
 #if defined(OPENSSL_BN_ASM_MONT5)
   if (powerbuf_len <= sizeof(storage)) {
