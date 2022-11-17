@@ -66,6 +66,7 @@
 #include <openssl/rsa.h>
 #include <openssl/stack.h>
 
+#include "../asn1/internal.h"
 #include "internal.h"
 
 
@@ -84,37 +85,37 @@ int X509_REQ_verify(X509_REQ *req, EVP_PKEY *pkey) {
 }
 
 int X509_sign(X509 *x, EVP_PKEY *pkey, const EVP_MD *md) {
-  x->cert_info->enc.modified = 1;
+  asn1_encoding_clear(&x->cert_info->enc);
   return (ASN1_item_sign(ASN1_ITEM_rptr(X509_CINF), x->cert_info->signature,
                          x->sig_alg, x->signature, x->cert_info, pkey, md));
 }
 
 int X509_sign_ctx(X509 *x, EVP_MD_CTX *ctx) {
-  x->cert_info->enc.modified = 1;
+  asn1_encoding_clear(&x->cert_info->enc);
   return ASN1_item_sign_ctx(ASN1_ITEM_rptr(X509_CINF), x->cert_info->signature,
                             x->sig_alg, x->signature, x->cert_info, ctx);
 }
 
 int X509_REQ_sign(X509_REQ *x, EVP_PKEY *pkey, const EVP_MD *md) {
-  x->req_info->enc.modified = 1;
+  asn1_encoding_clear(&x->req_info->enc);
   return (ASN1_item_sign(ASN1_ITEM_rptr(X509_REQ_INFO), x->sig_alg, NULL,
                          x->signature, x->req_info, pkey, md));
 }
 
 int X509_REQ_sign_ctx(X509_REQ *x, EVP_MD_CTX *ctx) {
-  x->req_info->enc.modified = 1;
+  asn1_encoding_clear(&x->req_info->enc);
   return ASN1_item_sign_ctx(ASN1_ITEM_rptr(X509_REQ_INFO), x->sig_alg, NULL,
                             x->signature, x->req_info, ctx);
 }
 
 int X509_CRL_sign(X509_CRL *x, EVP_PKEY *pkey, const EVP_MD *md) {
-  x->crl->enc.modified = 1;
+  asn1_encoding_clear(&x->crl->enc);
   return (ASN1_item_sign(ASN1_ITEM_rptr(X509_CRL_INFO), x->crl->sig_alg,
                          x->sig_alg, x->signature, x->crl, pkey, md));
 }
 
 int X509_CRL_sign_ctx(X509_CRL *x, EVP_MD_CTX *ctx) {
-  x->crl->enc.modified = 1;
+  asn1_encoding_clear(&x->crl->enc);
   return ASN1_item_sign_ctx(ASN1_ITEM_rptr(X509_CRL_INFO), x->crl->sig_alg,
                             x->sig_alg, x->signature, x->crl, ctx);
 }

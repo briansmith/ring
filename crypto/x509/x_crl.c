@@ -67,6 +67,7 @@
 
 #include <assert.h>
 
+#include "../asn1/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
@@ -374,7 +375,7 @@ int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev) {
     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  inf->enc.modified = 1;
+  asn1_encoding_clear(&inf->enc);
   return 1;
 }
 

@@ -68,6 +68,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "../asn1/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
@@ -329,7 +330,7 @@ int i2d_X509_AUX(X509 *a, unsigned char **pp) {
 }
 
 int i2d_re_X509_tbs(X509 *x509, unsigned char **outp) {
-  x509->cert_info->enc.modified = 1;
+  asn1_encoding_clear(&x509->cert_info->enc);
   return i2d_X509_CINF(x509->cert_info, outp);
 }
 

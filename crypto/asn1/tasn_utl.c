@@ -131,29 +131,19 @@ static ASN1_ENCODING *asn1_get_enc_ptr(ASN1_VALUE **pval, const ASN1_ITEM *it) {
 }
 
 void asn1_enc_init(ASN1_VALUE **pval, const ASN1_ITEM *it) {
-  ASN1_ENCODING *enc;
-  enc = asn1_get_enc_ptr(pval, it);
+  ASN1_ENCODING *enc = asn1_get_enc_ptr(pval, it);
   if (enc) {
     enc->enc = NULL;
     enc->len = 0;
     enc->alias_only = 0;
     enc->alias_only_on_next_parse = 0;
-    enc->modified = 1;
   }
 }
 
 void asn1_enc_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
-  ASN1_ENCODING *enc;
-  enc = asn1_get_enc_ptr(pval, it);
+  ASN1_ENCODING *enc = asn1_get_enc_ptr(pval, it);
   if (enc) {
-    if (!enc->alias_only) {
-      OPENSSL_free(enc->enc);
-    }
-    enc->enc = NULL;
-    enc->len = 0;
-    enc->alias_only = 0;
-    enc->alias_only_on_next_parse = 0;
-    enc->modified = 1;
+    asn1_encoding_clear(enc);
   }
 }
 
@@ -183,16 +173,23 @@ int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
   }
 
   enc->len = inlen;
-  enc->modified = 0;
-
   return 1;
+}
+
+void asn1_encoding_clear(ASN1_ENCODING *enc) {
+  if (!enc->alias_only) {
+    OPENSSL_free(enc->enc);
+  }
+  enc->enc = NULL;
+  enc->len = 0;
+  enc->alias_only = 0;
+  enc->alias_only_on_next_parse = 0;
 }
 
 int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval,
                      const ASN1_ITEM *it) {
-  ASN1_ENCODING *enc;
-  enc = asn1_get_enc_ptr(pval, it);
-  if (!enc || enc->modified) {
+  ASN1_ENCODING *enc = asn1_get_enc_ptr(pval, it);
+  if (!enc || enc->len == 0) {
     return 0;
   }
   if (out) {
