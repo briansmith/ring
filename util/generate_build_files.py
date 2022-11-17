@@ -328,7 +328,7 @@ class GN(object):
   def __init__(self):
     self.firstSection = True
     self.header = \
-"""# Copyright (c) 2016 The Chromium Authors. All rights reserved.
+"""# Copyright 2016 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -387,7 +387,7 @@ class GYP(object):
 
   def __init__(self):
     self.header = \
-"""# Copyright (c) 2016 The Chromium Authors. All rights reserved.
+"""# Copyright 2016 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
