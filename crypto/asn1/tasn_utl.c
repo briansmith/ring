@@ -165,11 +165,10 @@ int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
   if (enc->alias_only) {
     enc->enc = (uint8_t *)in;
   } else {
-    enc->enc = OPENSSL_malloc(inlen);
+    enc->enc = OPENSSL_memdup(in, inlen);
     if (!enc->enc) {
       return 0;
     }
-    OPENSSL_memcpy(enc->enc, in, inlen);
   }
 
   enc->len = inlen;
