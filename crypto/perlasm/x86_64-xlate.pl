@@ -72,6 +72,7 @@ open STDOUT,">$output" || die "can't open $output: $!"
 
 my $gas=1;	$gas=0 if ($output =~ /\.asm$/);
 my $elf=1;	$elf=0 if (!$gas);
+my $apple=0;
 my $win64=0;
 my $prefix="";
 my $decor=".L";
@@ -91,7 +92,7 @@ if    ($flavour eq "mingw64")	{ $gas=1; $elf=0; $win64=1;
 				  $prefix=`echo __USER_LABEL_PREFIX__ | $ENV{CC} -E -P -`;
 				  $prefix =~ s|\R$||; # Better chomp
 				}
-elsif ($flavour eq "macosx")	{ $gas=1; $elf=0; $prefix="_"; $decor="L\$"; }
+elsif ($flavour eq "macosx")	{ $gas=1; $elf=0; $apple=1; $prefix="_"; $decor="L\$"; }
 elsif ($flavour eq "masm")	{ $gas=0; $elf=0; $masm=$masmref; $win64=1; $decor="\$L\$"; }
 elsif ($flavour eq "nasm")	{ $gas=0; $elf=0; $nasm=$nasmref; $win64=1; $decor="\$L\$"; $PTR=""; }
 elsif (!$gas)			{ die "unknown flavour $flavour"; }
@@ -1146,15 +1147,17 @@ ___
 }
 
 if ($nasm) {
+    die "unknown target" unless ($win64);
     print <<___;
+\%ifidn __OUTPUT_FORMAT__, win64
 default	rel
-%define XMMWORD
-%define YMMWORD
-%define ZMMWORD
+\%define XMMWORD
+\%define YMMWORD
+\%define ZMMWORD
 
-%ifdef BORINGSSL_PREFIX
-%include "boringssl_prefix_symbols_nasm.inc"
-%endif
+\%ifdef BORINGSSL_PREFIX
+\%include "boringssl_prefix_symbols_nasm.inc"
+\%endif
 ___
 } elsif ($masm) {
     print <<___;
@@ -1163,14 +1166,24 @@ ___
 }
 
 if ($gas) {
-	print <<___;
+    my $target;
+    if ($elf) {
+        # The "elf" target is really ELF with SysV ABI, but every ELF platform
+        # uses the SysV ABI.
+        $target = "defined(__ELF__)";
+    } elsif ($apple) {
+        $target = "defined(__APPLE__)";
+    } else {
+        die "unknown target: $flavour";
+    }
+    print <<___;
 #if defined(__has_feature)
 #if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
 #define OPENSSL_NO_ASM
 #endif
 #endif
 
-#if defined(__x86_64__) && !defined(OPENSSL_NO_ASM)
+#if defined(__x86_64__) && !defined(OPENSSL_NO_ASM) && $target
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>
 #endif
@@ -1259,10 +1272,21 @@ while(defined(my $line=<>)) {
 }
 
 print "\n$current_segment\tENDS\n"	if ($current_segment && $masm);
-print "END\n"				if ($masm);
-print "#endif\n"			if ($gas);
-# See https://www.airs.com/blog/archives/518.
-print ".section\t.note.GNU-stack,\"\",\@progbits\n" if ($elf);
+if ($masm) {
+    print "END\n";
+} elsif ($gas) {
+    print <<___;
+#endif
+#if defined(__ELF__)
+// See https://www.airs.com/blog/archives/518.
+.section .note.GNU-stack,"",\%progbits
+#endif
+___
+} elsif ($nasm) {
+    print "\%endif\n";
+} else {
+    die "unknown assembler";
+}
 
 close STDOUT or die "error closing STDOUT: $!";
 

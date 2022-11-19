@@ -265,7 +265,7 @@ print <<___;
 #endif
 #endif
 
-#if !defined(OPENSSL_NO_ASM) && defined(__powerpc64__)
+#if !defined(OPENSSL_NO_ASM) && defined(__powerpc64__) && defined(__ELF__)
 ___
 
 while($line=<>) {
@@ -309,9 +309,12 @@ while($line=<>) {
     print "\n";
 }
 
-print "#endif  // !OPENSSL_NO_ASM && __powerpc64__\n";
-
-# See https://www.airs.com/blog/archives/518.
-print ".section\t.note.GNU-stack,\"\",\@progbits\n" if ($flavour =~ /linux/);
+print <<___;
+#endif  // !OPENSSL_NO_ASM && __powerpc64__ && __ELF__
+#if defined(__ELF__)
+// See https://www.airs.com/blog/archives/518.
+.section .note.GNU-stack,"",\%progbits
+#endif
+___
 
 close STDOUT or die "error closing STDOUT: $!";
