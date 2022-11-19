@@ -136,7 +136,12 @@ extern "C" {
 
 // BN provides support for working with arbitrary sized integers. For example,
 // although the largest integer supported by the compiler might be 64 bits, BN
-// will allow you to work with numbers until you run out of memory.
+// will allow you to work with much larger numbers.
+//
+// This library is developed for use inside BoringSSL, and uses implementation
+// strategies that may not be ideal for other applications. Non-cryptographic
+// uses should use a more general-purpose integer library, especially if
+// performance-sensitive.
 
 
 // BN_ULONG is the native word size when working with big integers.
