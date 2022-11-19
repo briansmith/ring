@@ -172,6 +172,10 @@ static int bn_mont_ctx_set_N_and_n0(BN_MONT_CTX *mont, const BIGNUM *mod) {
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
+  if (!bn_fits_in_words(mod, BN_MONTGOMERY_MAX_WORDS)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
+    return 0;
+  }
 
   // Save the modulus.
   if (!BN_copy(&mont->N, mod)) {
@@ -428,6 +432,9 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     if (!bn_wexpand(r, num)) {
       return 0;
     }
+    // This bound is implied by |bn_mont_ctx_set_N_and_n0|. |bn_mul_mont|
+    // allocates |num| words on the stack, so |num| cannot be too large.
+    assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
     if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
       // The check above ensures this won't happen.
       assert(0);

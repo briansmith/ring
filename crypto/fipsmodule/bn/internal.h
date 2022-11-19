@@ -350,6 +350,12 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
 int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
                          const BIGNUM *max_exclusive);
 
+// BN_MONTGOMERY_MAX_WORDS is the maximum numer of words allowed in a |BIGNUM|
+// used with Montgomery reduction. Ideally this limit would be applied to all
+// |BIGNUM|s, in |bn_wexpand|, but the exactfloat library needs to create 8 MiB
+// values for other operations.
+#define BN_MONTGOMERY_MAX_WORDS (8 * 1024 / sizeof(BN_ULONG))
+
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
@@ -362,11 +368,13 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
 // If at least one of |ap| or |bp| is fully reduced, |rp| will be fully reduced.
 // If neither is fully-reduced, the output may not be either.
 //
+// This function allocates |num| words on the stack, so |num| should be at most
+// |BN_MONTGOMERY_MAX_WORDS|.
+//
 // TODO(davidben): The x86_64 implementation expects a 32-bit input and masks
 // off upper bits. The aarch64 implementation expects a 64-bit input and does
 // not. |size_t| is the safer option but not strictly correct for x86_64. But
-// this function implicitly already has a bound on the size of |num| because it
-// internally creates |num|-sized stack allocation.
+// the |BN_MONTGOMERY_MAX_WORDS| bound makes this moot.
 //
 // See also discussion in |ToWord| in abi_test.h for notes on smaller-than-word
 // inputs.

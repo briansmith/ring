@@ -109,6 +109,7 @@
 #include <openssl/bn.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -868,7 +869,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 // be revised now that our implementation is no longer cache-time-dependent.
 #define BN_window_bits_for_ctime_exponent_size(b) \
   ((b) > 937 ? 6 : (b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
-#define BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE (6)
+#define BN_MAX_MOD_EXP_CTIME_WINDOW (6)
 
 // This variant of |BN_mod_exp_mont| uses fixed windows and fixed memory access
 // patterns to protect secret exponents (cf. the hyper-threading timing attacks
@@ -950,6 +951,16 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   // Get the window size to use with size of p.
   int window = BN_window_bits_for_ctime_exponent_size(bits);
+  assert(window <= BN_MAX_MOD_EXP_CTIME_WINDOW);
+
+  // Calculating |powerbuf_len| below cannot overflow because of the bound on
+  // Montgomery reduction.
+  assert((size_t)top <= BN_MONTGOMERY_MAX_WORDS);
+  static_assert(
+      BN_MONTGOMERY_MAX_WORDS <=
+          INT_MAX / sizeof(BN_ULONG) / ((1 << BN_MAX_MOD_EXP_CTIME_WINDOW) + 3),
+      "powerbuf_len may overflow");
+
 #if defined(OPENSSL_BN_ASM_MONT5)
   if (window >= 5) {
     window = 5;  // ~5% improvement for RSA2048 sign, and even for RSA4096

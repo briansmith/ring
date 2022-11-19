@@ -2775,6 +2775,27 @@ TEST_F(BNTest, ModSqrtInvalid) {
   BN_free(BN_mod_sqrt(nullptr, bn2140142.get(), bn4588033.get(), ctx()));
 }
 
+// Test that constructing Montgomery contexts for large bignums is not possible.
+// Our Montgomery reduction implementation stack-allocates temporaries, so we
+// cap how large of moduli we accept.
+TEST_F(BNTest, MontgomeryLarge) {
+  std::vector<uint8_t> large_bignum_bytes(16 * 1024, 0xff);
+  bssl::UniquePtr<BIGNUM> large_bignum(
+      BN_bin2bn(large_bignum_bytes.data(), large_bignum_bytes.size(), nullptr));
+  ASSERT_TRUE(large_bignum);
+  bssl::UniquePtr<BN_MONT_CTX> mont(
+      BN_MONT_CTX_new_for_modulus(large_bignum.get(), ctx()));
+  EXPECT_FALSE(mont);
+
+  // The same limit should apply when |BN_mod_exp_mont_consttime| internally
+  // constructs a |BN_MONT_CTX|.
+  bssl::UniquePtr<BIGNUM> r(BN_new());
+  ASSERT_TRUE(r);
+  EXPECT_FALSE(BN_mod_exp_mont_consttime(r.get(), BN_value_one(),
+                                         large_bignum.get(), large_bignum.get(),
+                                         ctx(), nullptr));
+}
+
 #if defined(OPENSSL_BN_ASM_MONT) && defined(SUPPORTS_ABI_TEST)
 TEST_F(BNTest, BNMulMontABI) {
   for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
