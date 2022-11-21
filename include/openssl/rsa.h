@@ -775,7 +775,7 @@ struct rsa_st {
   // num_blindings contains the size of the |blindings| and |blindings_inuse|
   // arrays. This member and the |blindings_inuse| array are protected by
   // |lock|.
-  unsigned num_blindings;
+  size_t num_blindings;
   // blindings is an array of BN_BLINDING structures that can be reserved by a
   // thread by locking |lock| and changing the corresponding element in
   // |blindings_inuse| from 0 to 1.
