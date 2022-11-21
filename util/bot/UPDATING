@@ -26,13 +26,10 @@ update, place the updated files in their intended location and run:
 
 nasm-win32.exe: Update to the appropriate release of NASM, found at
     https://www.nasm.us/. Use the same version as Chromium, found at
-    https://chromium.googlesource.com/chromium/src/+/main/third_party/nasm/README.chromium
+    https://chromium.googlesource.com/chromium/deps/nasm/+/refs/heads/main/README.chromium
     Extract nasm.exe from the download named nasm-VERSION-win64.zip.
 
     The current revision is nasm-2.13.03-win64.zip.
-
-    TODO(davidben): The Chromium link currently does not work. It will get
-    filled in in the future. See https://crbug.com/766721.
 
 perl-win32.zip: Update to the latest 64-bit prebuilt "Portable" edition of
     Strawberry Perl, found at http://strawberryperl.com/releases.html. The
