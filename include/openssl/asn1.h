@@ -1849,15 +1849,6 @@ OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
 
 // Deprecated functions.
 
-// ASN1_PRINTABLE_type interprets |len| bytes from |s| as a Latin-1 string. It
-// returns the first of |V_ASN1_PRINTABLESTRING|, |V_ASN1_IA5STRING|, or
-// |V_ASN1_T61STRING| that can represent every character. If |len| is negative,
-// |strlen(s)| is used instead.
-//
-// TODO(davidben): Remove this once all copies of Conscrypt have been updated
-// past https://github.com/google/conscrypt/pull/1032.
-OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int len);
-
 // ASN1_STRING_set_default_mask does nothing.
 OPENSSL_EXPORT void ASN1_STRING_set_default_mask(unsigned long mask);
 

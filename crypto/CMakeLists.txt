@@ -211,7 +211,6 @@ add_library(
   asn1/a_mbstr.c
   asn1/a_object.c
   asn1/a_octet.c
-  asn1/a_print.c
   asn1/a_strex.c
   asn1/a_strnid.c
   asn1/a_time.c
