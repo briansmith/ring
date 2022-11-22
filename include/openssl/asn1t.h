@@ -348,7 +348,7 @@ typedef struct ASN1_TLC_st ASN1_TLC;
  */
 
 struct ASN1_TEMPLATE_st {
-unsigned long flags;		/* Various flags */
+uint32_t flags;		/* Various flags */
 long tag;			/* tag, not used if no tagging */
 unsigned long offset;		/* Offset of this field in structure */
 const char *field_name;		/* Field name */
@@ -366,7 +366,7 @@ typedef struct ASN1_ADB_st ASN1_ADB;
 typedef struct asn1_must_be_null_st ASN1_MUST_BE_NULL;
 
 struct ASN1_ADB_st {
-	unsigned long flags;	/* Various flags */
+	uint32_t flags;	/* Various flags */
 	unsigned long offset;	/* Offset of selector field */
 	ASN1_MUST_BE_NULL *unused;
 	const ASN1_ADB_TABLE *tbl;	/* Table of possible types */
@@ -563,7 +563,7 @@ typedef int ASN1_aux_cb(int operation, ASN1_VALUE **in, const ASN1_ITEM *it,
 
 typedef struct ASN1_AUX_st {
 	void *app_data;
-	int flags;
+	uint32_t flags;
 	int ref_offset;		/* Offset of reference value */
 	ASN1_aux_cb *asn1_cb;
 	int enc_offset;		/* Offset of ASN1_ENCODING structure */

@@ -263,9 +263,9 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
 // taking an |optional| parameter, it uses the |ASN1_TFLG_OPTIONAL| flag.
 static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
                                 const ASN1_TEMPLATE *tt, int tag, int iclass) {
-  int i, ret, flags, ttag, tclass;
+  int i, ret, ttag, tclass;
   size_t j;
-  flags = tt->flags;
+  uint32_t flags = tt->flags;
 
   // Historically, |iclass| was repurposed to pass additional flags into the
   // encoding process.

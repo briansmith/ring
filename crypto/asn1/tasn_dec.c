@@ -377,7 +377,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         if (i == (it->tcount - 1)) {
           isopt = 0;
         } else {
-          isopt = (char)(seqtt->flags & ASN1_TFLG_OPTIONAL);
+          isopt = (seqtt->flags & ASN1_TFLG_OPTIONAL) != 0;
         }
         // attempt to read in field, allowing each to be OPTIONAL
 
@@ -459,14 +459,14 @@ int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
 static int asn1_template_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
                                 long inlen, const ASN1_TEMPLATE *tt, char opt,
                                 int depth) {
-  int flags, aclass;
+  int aclass;
   int ret;
   long len;
   const unsigned char *p, *q;
   if (!val) {
     return 0;
   }
-  flags = tt->flags;
+  uint32_t flags = tt->flags;
   aclass = flags & ASN1_TFLG_TAG_CLASS;
 
   p = *in;
@@ -517,13 +517,13 @@ err:
 static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
                                    long len, const ASN1_TEMPLATE *tt, char opt,
                                    int depth) {
-  int flags, aclass;
+  int aclass;
   int ret;
   const unsigned char *p;
   if (!val) {
     return 0;
   }
-  flags = tt->flags;
+  uint32_t flags = tt->flags;
   aclass = flags & ASN1_TFLG_TAG_CLASS;
 
   p = *in;
