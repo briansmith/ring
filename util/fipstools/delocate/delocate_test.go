@@ -65,7 +65,7 @@ func TestDelocate(t *testing.T) {
 				})
 			}
 
-			if err := parseInputs(inputs); err != nil {
+			if err := parseInputs(inputs, nil); err != nil {
 				t.Fatalf("parseInputs failed: %s", err)
 			}
 

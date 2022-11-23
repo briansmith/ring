@@ -17,10 +17,13 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -1955,7 +1958,25 @@ func transform(w stringWriter, inputs []inputFile) error {
 	return nil
 }
 
-func parseInputs(inputs []inputFile) error {
+// preprocess runs source through the C preprocessor.
+func preprocess(cppCommand []string, path string) ([]byte, error) {
+	var args []string
+	args = append(args, cppCommand...)
+	args = append(args, path)
+
+	cpp := exec.Command(args[0], args[1:]...)
+	cpp.Stderr = os.Stderr
+	var result bytes.Buffer
+	cpp.Stdout = &result
+
+	if err := cpp.Run(); err != nil {
+		return nil, err
+	}
+
+	return result.Bytes(), nil
+}
+
+func parseInputs(inputs []inputFile, cppCommand []string) error {
 	for i, input := range inputs {
 		var contents string
 
@@ -1979,7 +2000,14 @@ func parseInputs(inputs []inputFile) error {
 				contents = string(c)
 			}
 		} else {
-			inBytes, err := os.ReadFile(input.path)
+			var inBytes []byte
+			var err error
+
+			if len(cppCommand) > 0 {
+				inBytes, err = preprocess(cppCommand, input.path)
+			} else {
+				inBytes, err = os.ReadFile(input.path)
+			}
 			if err != nil {
 				return err
 			}
@@ -2001,12 +2029,36 @@ func parseInputs(inputs []inputFile) error {
 	return nil
 }
 
+// includePathFromHeaderFilePath returns an include directory path based on the
+// path of a specific header file. It walks up the path and assumes that the
+// include files are rooted in a directory called "openssl".
+func includePathFromHeaderFilePath(path string) (string, error) {
+	dir := path
+	for {
+		var file string
+		dir, file = filepath.Split(dir)
+
+		if file == "openssl" {
+			return dir, nil
+		}
+
+		if len(dir) == 0 {
+			break
+		}
+		dir = dir[:len(dir)-1]
+	}
+
+	return "", fmt.Errorf("failed to find 'openssl' path element in header file path %q", path)
+}
+
 func main() {
 	// The .a file, if given, is expected to be an archive of textual
 	// assembly sources. That's odd, but CMake really wants to create
 	// archive files so it's the only way that we can make it work.
 	arInput := flag.String("a", "", "Path to a .a file containing assembly sources")
 	outFile := flag.String("o", "", "Path to output assembly")
+	ccPath := flag.String("cc", "", "Path to the C compiler for preprocessing inputs")
+	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
 
 	flag.Parse()
 
@@ -2024,8 +2076,22 @@ func main() {
 		})
 	}
 
+	includePaths := make(map[string]struct{})
+
 	for i, path := range flag.Args() {
 		if len(path) == 0 {
+			continue
+		}
+
+		// Header files are not processed but their path is remembered
+		// and passed as -I arguments when invoking the preprocessor.
+		if strings.HasSuffix(path, ".h") {
+			dir, err := includePathFromHeaderFilePath(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+				os.Exit(1)
+			}
+			includePaths[dir] = struct{}{}
 			continue
 		}
 
@@ -2035,7 +2101,27 @@ func main() {
 		})
 	}
 
-	if err := parseInputs(inputs); err != nil {
+	var cppCommand []string
+	if len(*ccPath) > 0 {
+		cppCommand = append(cppCommand, *ccPath)
+		cppCommand = append(cppCommand, strings.Fields(*ccFlags)...)
+		// Some of ccFlags might be superfluous when running the
+		// preprocessor, but we don't want the compiler complaining that
+		// "argument unused during compilation".
+		cppCommand = append(cppCommand, "-Wno-unused-command-line-argument")
+		// We are preprocessing for assembly output and need to simulate that
+		// environment for arm_arch.h.
+		cppCommand = append(cppCommand, "-D__ASSEMBLER__=1")
+
+		for includePath := range includePaths {
+			cppCommand = append(cppCommand, "-I"+includePath)
+		}
+
+		// -E requests only preprocessing.
+		cppCommand = append(cppCommand, "-E")
+	}
+
+	if err := parseInputs(inputs, cppCommand); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
