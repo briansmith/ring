@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/asn1.h>
+#include <openssl/time.h>
 
 #include <string.h>
 #include <time.h>

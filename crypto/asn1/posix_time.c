@@ -15,6 +15,8 @@
 // Time conversion to/from POSIX time_t and struct tm, with no support
 // for time zones other than UTC
 
+#include <openssl/time.h>
+
 #include <assert.h>
 #include <inttypes.h>
 #include <limits.h>
