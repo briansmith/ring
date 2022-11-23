@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,17 +67,18 @@ static bool g_print_json = false;
 // TimeResults represents the results of benchmarking a function.
 struct TimeResults {
   // num_calls is the number of function calls done in the time period.
-  unsigned num_calls;
+  uint64_t num_calls;
   // us is the number of microseconds that elapsed in the time period.
-  unsigned us;
+  uint64_t us;
 
   void Print(const std::string &description) const {
     if (g_print_json) {
       PrintJSON(description);
     } else {
-      printf("Did %u %s operations in %uus (%.1f ops/sec)\n", num_calls,
-             description.c_str(), us,
-             (static_cast<double>(num_calls) / us) * 1000000);
+      printf(
+          "Did %" PRIu64 " %s operations in %" PRIu64 "us (%.1f ops/sec)\n",
+          num_calls, description.c_str(), us,
+          (static_cast<double>(num_calls) / static_cast<double>(us)) * 1000000);
     }
   }
 
@@ -85,10 +87,13 @@ struct TimeResults {
     if (g_print_json) {
       PrintJSON(description, bytes_per_call);
     } else {
-      printf("Did %u %s operations in %uus (%.1f ops/sec): %.1f MB/s\n",
-             num_calls, description.c_str(), us,
-             (static_cast<double>(num_calls) / us) * 1000000,
-             static_cast<double>(bytes_per_call * num_calls) / us);
+      printf(
+          "Did %" PRIu64 " %s operations in %" PRIu64
+          "us (%.1f ops/sec): %.1f MB/s\n",
+          num_calls, description.c_str(), us,
+          (static_cast<double>(num_calls) / static_cast<double>(us)) * 1000000,
+          static_cast<double>(bytes_per_call * num_calls) /
+              static_cast<double>(us));
     }
   }
 
@@ -99,7 +104,8 @@ struct TimeResults {
       puts(",");
     }
 
-    printf("{\"description\": \"%s\", \"numCalls\": %u, \"microseconds\": %u",
+    printf("{\"description\": \"%s\", \"numCalls\": %" PRIu64
+           ", \"microseconds\": %" PRIu64,
            description.c_str(), num_calls, us);
 
     if (bytes_per_call > 0) {
@@ -151,13 +157,13 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   // for.
   const uint64_t total_us = g_timeout_seconds * 1000000;
   uint64_t start = time_now(), now, delta;
-  unsigned done = 0, iterations_between_time_checks;
 
   if (!func()) {
     return false;
   }
   now = time_now();
   delta = now - start;
+  unsigned iterations_between_time_checks;
   if (delta == 0) {
     iterations_between_time_checks = 250;
   } else {
@@ -171,6 +177,7 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
     }
   }
 
+  uint64_t done = 0;
   for (;;) {
     for (unsigned i = 0; i < iterations_between_time_checks; i++) {
       if (!func()) {
@@ -204,7 +211,7 @@ static bool SpeedRSA(const std::string &selected) {
     {"RSA 4096", kDERRSAPrivate4096, kDERRSAPrivate4096Len},
   };
 
-  for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kRSAKeys); i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kRSAKeys); i++) {
     const std::string name = kRSAKeys[i].name;
 
     bssl::UniquePtr<RSA> key(
@@ -301,9 +308,9 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
   const std::vector<int> kSizes = {2048, 3072, 4096};
   for (int size : kSizes) {
     const uint64_t start = time_now();
-    unsigned num_calls = 0;
-    unsigned us;
-    std::vector<unsigned> durations;
+    uint64_t num_calls = 0;
+    uint64_t us;
+    std::vector<uint64_t> durations;
 
     for (;;) {
       bssl::UniquePtr<RSA> rsa(RSA_new());
@@ -336,18 +343,13 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
     // Distribution information is useful, but doesn't fit into the standard
     // format used by |g_print_json|.
     if (!g_print_json) {
-      // |min| and |max| must be stored in temporary variables to avoid an MSVC
-      // bug on x86. There, size_t is a typedef for unsigned, but MSVC's printf
-      // warning tries to retain the distinction and suggest %zu for size_t
-      // instead of %u. It gets confused if std::vector<unsigned> and
-      // std::vector<size_t> are both instantiated. Being typedefs, the two
-      // instantiations are identical, which somehow breaks the size_t vs
-      // unsigned metadata.
-      unsigned min = durations[0];
-      unsigned median = n & 1 ? durations[n / 2]
+      uint64_t min = durations[0];
+      uint64_t median = n & 1 ? durations[n / 2]
                               : (durations[n / 2 - 1] + durations[n / 2]) / 2;
-      unsigned max = durations[n - 1];
-      printf("  min: %uus, median: %uus, max: %uus\n", min, median, max);
+      uint64_t max = durations[n - 1];
+      printf("  min: %" PRIu64 "us, median: %" PRIu64 "us, max: %" PRIu64
+             "us\n",
+             min, median, max);
     }
   }
 
