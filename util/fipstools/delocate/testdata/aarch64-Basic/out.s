@@ -88,8 +88,31 @@ foo:
 
 	bl bss_symbol_bss_get
 
-	# Regression test for a two-digit index.
+	// Regression test for a two-digit index.
 	ld1 { v1.b }[10], [x9]
+
+	// Ensure that registers aren't interpreted as symbols.
+	add x0, x0
+	add x12, x12
+	add w0, x0
+	add w12, x12
+	add d0, d0
+	add d12, d12
+	add q0, q0
+	add q12, q12
+	add s0, s0
+	add s12, s12
+	add h0, h0
+	add h12, h12
+	add b0, b0
+	add b12, b12
+
+	// But 'y' is not a register prefix so far, so these should be
+	// processed as symbols.
+// WAS add y0, y0
+	add	bcm_redirector_y0, bcm_redirector_y0
+// WAS add y12, y12
+	add	bcm_redirector_y12, bcm_redirector_y12
 
 
 .Llocal_function_local_target:
@@ -114,6 +137,22 @@ bcm_redirector_remote_function:
 	b remote_function
 .cfi_endproc
 .size bcm_redirector_remote_function, .-bcm_redirector_remote_function
+.p2align 2
+.hidden bcm_redirector_y0
+.type bcm_redirector_y0, @function
+bcm_redirector_y0:
+.cfi_startproc
+	b y0
+.cfi_endproc
+.size bcm_redirector_y0, .-bcm_redirector_y0
+.p2align 2
+.hidden bcm_redirector_y12
+.type bcm_redirector_y12, @function
+bcm_redirector_y12:
+.cfi_startproc
+	b y12
+.cfi_endproc
+.size bcm_redirector_y12, .-bcm_redirector_y12
 .p2align 2
 .hidden bss_symbol_bss_get
 .type bss_symbol_bss_get, @function
