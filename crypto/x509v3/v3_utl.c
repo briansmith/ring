@@ -1352,21 +1352,17 @@ static int ipv6_hex(unsigned char *out, const char *in, size_t inlen) {
   return 1;
 }
 
-int X509V3_NAME_from_section(X509_NAME *nm, STACK_OF(CONF_VALUE) *dn_sk,
-                             unsigned long chtype) {
-  CONF_VALUE *v;
-  int mval;
-  size_t i;
-  char *p, *type;
+int X509V3_NAME_from_section(X509_NAME *nm, const STACK_OF(CONF_VALUE) *dn_sk,
+                             int chtype) {
   if (!nm) {
     return 0;
   }
 
-  for (i = 0; i < sk_CONF_VALUE_num(dn_sk); i++) {
-    v = sk_CONF_VALUE_value(dn_sk, i);
-    type = v->name;
+  for (size_t i = 0; i < sk_CONF_VALUE_num(dn_sk); i++) {
+    const CONF_VALUE *v = sk_CONF_VALUE_value(dn_sk, i);
+    const char *type = v->name;
     // Skip past any leading X. X: X, etc to allow for multiple instances
-    for (p = type; *p; p++) {
+    for (const char *p = type; *p; p++) {
       if ((*p == ':') || (*p == ',') || (*p == '.')) {
         p++;
         if (*p) {
@@ -1375,6 +1371,7 @@ int X509V3_NAME_from_section(X509_NAME *nm, STACK_OF(CONF_VALUE) *dn_sk,
         break;
       }
     }
+    int mval;
     if (*type == '+') {
       mval = -1;
       type++;

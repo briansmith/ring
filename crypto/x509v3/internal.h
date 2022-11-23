@@ -127,6 +127,13 @@ typedef struct {
 int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
                                  STACK_OF(CONF_VALUE) **extlist);
 
+// X509V3_NAME_from_section adds attributes to |nm| by interpreting the
+// key/value pairs in |dn_sk|. It returns one on success and zero on error.
+// |chtype|, which should be one of |MBSTRING_*| constants, determines the
+// character encoding used to interpret values.
+int X509V3_NAME_from_section(X509_NAME *nm, const STACK_OF(CONF_VALUE) *dn_sk,
+                             int chtype);
+
 
 // Internal structures
 
