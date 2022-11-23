@@ -241,7 +241,7 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
       }
       pol->policyid = pobj;
 
-    } else if (!x509v3_name_cmp(cnf->name, "CPS")) {
+    } else if (x509v3_conf_name_matches(cnf->name, "CPS")) {
       if (!pol->qualifiers) {
         pol->qualifiers = sk_POLICYQUALINFO_new_null();
       }
@@ -263,7 +263,7 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
       if (!ASN1_STRING_set(qual->d.cpsuri, cnf->value, strlen(cnf->value))) {
         goto merr;
       }
-    } else if (!x509v3_name_cmp(cnf->name, "userNotice")) {
+    } else if (x509v3_conf_name_matches(cnf->name, "userNotice")) {
       STACK_OF(CONF_VALUE) *unot;
       if (*cnf->value != '@') {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXPECTED_A_SECTION_NAME);

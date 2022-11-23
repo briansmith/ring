@@ -278,7 +278,7 @@ static void *v2i_issuer_alt(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
   }
   for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     cnf = sk_CONF_VALUE_value(nval, i);
-    if (!x509v3_name_cmp(cnf->name, "issuer") && cnf->value &&
+    if (x509v3_conf_name_matches(cnf->name, "issuer") && cnf->value &&
         !strcmp(cnf->value, "copy")) {
       if (!copy_issuer(ctx, gens)) {
         goto err;
@@ -349,12 +349,12 @@ static void *v2i_subject_alt(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
   }
   for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     cnf = sk_CONF_VALUE_value(nval, i);
-    if (!x509v3_name_cmp(cnf->name, "email") && cnf->value &&
+    if (x509v3_conf_name_matches(cnf->name, "email") && cnf->value &&
         !strcmp(cnf->value, "copy")) {
       if (!copy_email(ctx, gens, 0)) {
         goto err;
       }
-    } else if (!x509v3_name_cmp(cnf->name, "email") && cnf->value &&
+    } else if (x509v3_conf_name_matches(cnf->name, "email") && cnf->value &&
                !strcmp(cnf->value, "move")) {
       if (!copy_email(ctx, gens, 1)) {
         goto err;
@@ -558,19 +558,19 @@ GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
     return NULL;
   }
 
-  if (!x509v3_name_cmp(name, "email")) {
+  if (x509v3_conf_name_matches(name, "email")) {
     type = GEN_EMAIL;
-  } else if (!x509v3_name_cmp(name, "URI")) {
+  } else if (x509v3_conf_name_matches(name, "URI")) {
     type = GEN_URI;
-  } else if (!x509v3_name_cmp(name, "DNS")) {
+  } else if (x509v3_conf_name_matches(name, "DNS")) {
     type = GEN_DNS;
-  } else if (!x509v3_name_cmp(name, "RID")) {
+  } else if (x509v3_conf_name_matches(name, "RID")) {
     type = GEN_RID;
-  } else if (!x509v3_name_cmp(name, "IP")) {
+  } else if (x509v3_conf_name_matches(name, "IP")) {
     type = GEN_IPADD;
-  } else if (!x509v3_name_cmp(name, "dirName")) {
+  } else if (x509v3_conf_name_matches(name, "dirName")) {
     type = GEN_DIRNAME;
-  } else if (!x509v3_name_cmp(name, "otherName")) {
+  } else if (x509v3_conf_name_matches(name, "otherName")) {
     type = GEN_OTHERNAME;
   } else {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNSUPPORTED_OPTION);

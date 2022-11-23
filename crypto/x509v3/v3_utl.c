@@ -556,18 +556,14 @@ badhex:
   return NULL;
 }
 
-int x509v3_name_cmp(const char *name, const char *cmp) {
-  int len, ret;
-  char c;
-  len = strlen(cmp);
-  if ((ret = strncmp(name, cmp, len))) {
-    return ret;
-  }
-  c = name[len];
-  if (!c || (c == '.')) {
+int x509v3_conf_name_matches(const char *name, const char *cmp) {
+  // |name| must begin with |cmp|.
+  size_t len = strlen(cmp);
+  if (strncmp(name, cmp, len) != 0) {
     return 0;
   }
-  return 1;
+  // |name| must either be equal to |cmp| or begin with |cmp|, followed by '.'.
+  return name[len] == '\0' || name[len] == '.';
 }
 
 static int sk_strcmp(const char **a, const char **b) { return strcmp(*a, *b); }
