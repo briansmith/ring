@@ -411,9 +411,9 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				lines = lines[1:]
 				lineNo++
 				break
-			}
+		 	}
 			if line == cppGuard {
-				return nil, fmt.Errorf("hit ending C++ guard while in section on line %d", lineNo)
+				return nil, fmt.Errorf("hit ending C++ guard while in section on line %d (possibly missing two empty lines ahead of guard?)", lineNo)
 			}
 
 			var comment []string
