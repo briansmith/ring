@@ -265,11 +265,11 @@ static const BIO_METHOD methods_fdp = {
 const BIO_METHOD *BIO_s_fd(void) { return &methods_fdp; }
 
 int BIO_set_fd(BIO *bio, int fd, int close_flag) {
-  return BIO_int_ctrl(bio, BIO_C_SET_FD, close_flag, fd);
+  return (int)BIO_int_ctrl(bio, BIO_C_SET_FD, close_flag, fd);
 }
 
 int BIO_get_fd(BIO *bio, int *out_fd) {
-  return BIO_ctrl(bio, BIO_C_GET_FD, 0, (char *) out_fd);
+  return (int)BIO_ctrl(bio, BIO_C_GET_FD, 0, (char *) out_fd);
 }
 
 #endif  // OPENSSL_TRUSTY

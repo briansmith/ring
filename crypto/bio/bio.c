@@ -202,7 +202,7 @@ int BIO_puts(BIO *bio, const char *in) {
 }
 
 int BIO_flush(BIO *bio) {
-  return BIO_ctrl(bio, BIO_CTRL_FLUSH, 0, NULL);
+  return (int)BIO_ctrl(bio, BIO_CTRL_FLUSH, 0, NULL);
 }
 
 long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) {
@@ -235,11 +235,11 @@ long BIO_int_ctrl(BIO *b, int cmd, long larg, int iarg) {
 }
 
 int BIO_reset(BIO *bio) {
-  return BIO_ctrl(bio, BIO_CTRL_RESET, 0, NULL);
+  return (int)BIO_ctrl(bio, BIO_CTRL_RESET, 0, NULL);
 }
 
 int BIO_eof(BIO *bio) {
-  return BIO_ctrl(bio, BIO_CTRL_EOF, 0, NULL);
+  return (int)BIO_ctrl(bio, BIO_CTRL_EOF, 0, NULL);
 }
 
 void BIO_set_flags(BIO *bio, int flags) {
@@ -339,7 +339,7 @@ size_t BIO_wpending(const BIO *bio) {
 }
 
 int BIO_set_close(BIO *bio, int close_flag) {
-  return BIO_ctrl(bio, BIO_CTRL_SET_CLOSE, close_flag, NULL);
+  return (int)BIO_ctrl(bio, BIO_CTRL_SET_CLOSE, close_flag, NULL);
 }
 
 OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio) {

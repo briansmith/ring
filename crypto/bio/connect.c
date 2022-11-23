@@ -523,11 +523,11 @@ static const BIO_METHOD methods_connectp = {
 const BIO_METHOD *BIO_s_connect(void) { return &methods_connectp; }
 
 int BIO_set_conn_hostname(BIO *bio, const char *name) {
-  return BIO_ctrl(bio, BIO_C_SET_CONNECT, 0, (void*) name);
+  return (int)BIO_ctrl(bio, BIO_C_SET_CONNECT, 0, (void*) name);
 }
 
 int BIO_set_conn_port(BIO *bio, const char *port_str) {
-  return BIO_ctrl(bio, BIO_C_SET_CONNECT, 1, (void*) port_str);
+  return (int)BIO_ctrl(bio, BIO_C_SET_CONNECT, 1, (void*) port_str);
 }
 
 int BIO_set_conn_int_port(BIO *bio, const int *port) {
@@ -537,11 +537,11 @@ int BIO_set_conn_int_port(BIO *bio, const int *port) {
 }
 
 int BIO_set_nbio(BIO *bio, int on) {
-  return BIO_ctrl(bio, BIO_C_SET_NBIO, on, NULL);
+  return (int)BIO_ctrl(bio, BIO_C_SET_NBIO, on, NULL);
 }
 
 int BIO_do_connect(BIO *bio) {
-  return BIO_ctrl(bio, BIO_C_DO_STATE_MACHINE, 0, NULL);
+  return (int)BIO_ctrl(bio, BIO_C_DO_STATE_MACHINE, 0, NULL);
 }
 
 #endif  // OPENSSL_TRUSTY

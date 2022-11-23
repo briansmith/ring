@@ -281,31 +281,32 @@ const BIO_METHOD *BIO_s_file(void) { return &methods_filep; }
 
 
 int BIO_get_fp(BIO *bio, FILE **out_file) {
-  return BIO_ctrl(bio, BIO_C_GET_FILE_PTR, 0, (char*) out_file);
+  return (int)BIO_ctrl(bio, BIO_C_GET_FILE_PTR, 0, (char *)out_file);
 }
 
 int BIO_set_fp(BIO *bio, FILE *file, int close_flag) {
-  return BIO_ctrl(bio, BIO_C_SET_FILE_PTR, close_flag, (char *) file);
+  return (int)BIO_ctrl(bio, BIO_C_SET_FILE_PTR, close_flag, (char *)file);
 }
 
 int BIO_read_filename(BIO *bio, const char *filename) {
-  return BIO_ctrl(bio, BIO_C_SET_FILENAME, BIO_CLOSE | BIO_FP_READ,
-                  (char *)filename);
+  return (int)BIO_ctrl(bio, BIO_C_SET_FILENAME, BIO_CLOSE | BIO_FP_READ,
+                       (char *)filename);
 }
 
 int BIO_write_filename(BIO *bio, const char *filename) {
-  return BIO_ctrl(bio, BIO_C_SET_FILENAME, BIO_CLOSE | BIO_FP_WRITE,
-                  (char *)filename);
+  return (int)BIO_ctrl(bio, BIO_C_SET_FILENAME, BIO_CLOSE | BIO_FP_WRITE,
+                       (char *)filename);
 }
 
 int BIO_append_filename(BIO *bio, const char *filename) {
-  return BIO_ctrl(bio, BIO_C_SET_FILENAME, BIO_CLOSE | BIO_FP_APPEND,
-                  (char *)filename);
+  return (int)BIO_ctrl(bio, BIO_C_SET_FILENAME, BIO_CLOSE | BIO_FP_APPEND,
+                       (char *)filename);
 }
 
 int BIO_rw_filename(BIO *bio, const char *filename) {
-  return BIO_ctrl(bio, BIO_C_SET_FILENAME,
-                  BIO_CLOSE | BIO_FP_READ | BIO_FP_WRITE, (char *)filename);
+  return (int)BIO_ctrl(bio, BIO_C_SET_FILENAME,
+                       BIO_CLOSE | BIO_FP_READ | BIO_FP_WRITE,
+                       (char *)filename);
 }
 
 long BIO_tell(BIO *bio) { return BIO_ctrl(bio, BIO_C_FILE_TELL, 0, NULL); }

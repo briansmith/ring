@@ -312,13 +312,13 @@ long BIO_get_mem_data(BIO *bio, char **contents) {
 }
 
 int BIO_get_mem_ptr(BIO *bio, BUF_MEM **out) {
-  return BIO_ctrl(bio, BIO_C_GET_BUF_MEM_PTR, 0, (char *) out);
+  return (int)BIO_ctrl(bio, BIO_C_GET_BUF_MEM_PTR, 0, (char *) out);
 }
 
 int BIO_set_mem_buf(BIO *bio, BUF_MEM *b, int take_ownership) {
-  return BIO_ctrl(bio, BIO_C_SET_BUF_MEM, take_ownership, (char *) b);
+  return (int)BIO_ctrl(bio, BIO_C_SET_BUF_MEM, take_ownership, (char *) b);
 }
 
 int BIO_set_mem_eof_return(BIO *bio, int eof_value) {
-  return BIO_ctrl(bio, BIO_C_SET_BUF_MEM_EOF_RETURN, eof_value, NULL);
+  return (int)BIO_ctrl(bio, BIO_C_SET_BUF_MEM_EOF_RETURN, eof_value, NULL);
 }
