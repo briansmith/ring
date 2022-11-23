@@ -361,7 +361,7 @@ OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
                                        long len);
 
 // i2o_ECPublicKey marshals an EC point from |key|, as described in
-// |i2d_SAMPLE|.
+// |i2d_SAMPLE|, except it returns zero on error instead of a negative value.
 //
 // Use |EC_POINT_point2cbb| instead.
 OPENSSL_EXPORT int i2o_ECPublicKey(const EC_KEY *key, unsigned char **outp);
