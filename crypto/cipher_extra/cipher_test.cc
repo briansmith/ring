@@ -106,6 +106,8 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
     return EVP_aes_192_ctr();
   } else if (name == "AES-192-ECB") {
     return EVP_aes_192_ecb();
+  } else if (name == "AES-192-GCM") {
+    return EVP_aes_192_gcm();
   } else if (name == "AES-192-OFB") {
     return EVP_aes_192_ofb();
   } else if (name == "AES-256-CBC") {
@@ -424,10 +426,12 @@ static void CipherFileTest(FileTest *t) {
   Operation op = Operation::kBoth;
   if (t->HasAttribute("Operation")) {
     const std::string &str = t->GetAttributeOrDie("Operation");
-    if (str == "ENCRYPT") {
+    if (str == "Encrypt" || str == "ENCRYPT") {
       op = Operation::kEncrypt;
-    } else if (str == "DECRYPT") {
+    } else if (str == "Decrypt" || str == "DECRYPT") {
       op = Operation::kDecrypt;
+    } else if (str == "InvalidDecrypt") {
+      op = Operation::kInvalidDecrypt;
     } else {
       FAIL() << "Unknown operation: " << str;
     }
