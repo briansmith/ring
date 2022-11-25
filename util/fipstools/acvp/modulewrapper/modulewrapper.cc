@@ -165,8 +165,51 @@ Span<const Span<const uint8_t>> ParseArgsFromFd(int fd,
   return Span<const Span<const uint8_t>>(buffer->args, num_args);
 }
 
+// g_reply_buffer contains buffered replies which will be flushed when acvp
+// requests.
+static std::vector<uint8_t> g_reply_buffer;
+
+bool WriteReplyToBuffer(const std::vector<Span<const uint8_t>> &spans) {
+  if (spans.size() > kMaxArgs) {
+    abort();
+  }
+
+  uint8_t buf[4];
+  CRYPTO_store_u32_le(buf, spans.size());
+  g_reply_buffer.insert(g_reply_buffer.end(), buf, buf + sizeof(buf));
+  for (const auto &span : spans) {
+    CRYPTO_store_u32_le(buf, span.size());
+    g_reply_buffer.insert(g_reply_buffer.end(), buf, buf + sizeof(buf));
+  }
+  for (const auto &span : spans) {
+    g_reply_buffer.insert(g_reply_buffer.end(), span.begin(), span.end());
+  }
+
+  return true;
+}
+
+bool FlushBuffer(int fd) {
+  size_t done = 0;
+
+  while (done < g_reply_buffer.size()) {
+    ssize_t n;
+    do {
+      n = write(fd, g_reply_buffer.data() + done, g_reply_buffer.size() - done);
+    } while (n < 0 && errno == EINTR);
+
+    if (n < 0) {
+      return false;
+    }
+    done += static_cast<size_t>(n);
+  }
+
+  g_reply_buffer.clear();
+
+  return true;
+}
+
 bool WriteReplyToFd(int fd, const std::vector<Span<const uint8_t>> &spans) {
-  if (spans.empty() || spans.size() > kMaxArgs) {
+  if (spans.size() > kMaxArgs) {
     abort();
   }
 
@@ -227,6 +270,10 @@ bool WriteReplyToFd(int fd, const std::vector<Span<const uint8_t>> &spans) {
 static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   static constexpr char kConfig[] =
       R"([
+      {
+        "algorithm": "acvptool",
+        "features": ["batch"]
+      },
       {
         "algorithm": "SHA2-224",
         "revision": "1.0",
@@ -928,6 +975,14 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
     ])";
   return write_reply({Span<const uint8_t>(
       reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
+}
+
+static bool Flush(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  fprintf(
+      stderr,
+      "modulewrapper code processed a `flush` command but this must be handled "
+      "at a higher-level. See the example in main.cc in BoringSSL\n");
+  abort();
 }
 
 template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
@@ -2047,6 +2102,7 @@ static constexpr struct {
   bool (*handler)(const Span<const uint8_t> args[], ReplyCallback write_reply);
 } kFunctions[] = {
     {"getConfig", 0, GetConfig},
+    {"flush", 0, Flush},
     {"SHA-1", 1, Hash<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224", 1, Hash<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},

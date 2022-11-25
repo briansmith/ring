@@ -93,6 +93,10 @@ func (h *hmacPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 		if group.MACBits > h.mdLen*8 {
 			return nil, fmt.Errorf("test group %d specifies MAC length should be %d, but maximum possible length is %d", group.ID, group.MACBits, h.mdLen*8)
 		}
+		if group.MACBits%8 != 0 {
+			return nil, fmt.Errorf("fractional-byte HMAC output length requested: %d", group.MACBits)
+		}
+		outBytes := group.MACBits / 8
 
 		for _, test := range group.Tests {
 			if len(test.MsgHex)*4 != group.MsgBits {
@@ -111,14 +115,27 @@ func (h *hmacPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 				return nil, fmt.Errorf("failed to decode key in test case %d/%d: %s", group.ID, test.ID, err)
 			}
 
-			// https://pages.nist.gov/ACVP/draft-fussell-acvp-mac.html#name-test-vectors
-			response.Tests = append(response.Tests, hmacTestResponse{
-				ID:     test.ID,
-				MACHex: hex.EncodeToString(h.hmac(msg, key, group.MACBits, m)),
+			m.TransactAsync(h.algo, 1, [][]byte{msg, key}, func(result [][]byte) error {
+				if l := len(result[0]); l < outBytes {
+					return fmt.Errorf("HMAC result too short: %d bytes but wanted %d", l, outBytes)
+				}
+
+				// https://pages.nist.gov/ACVP/draft-fussell-acvp-mac.html#name-test-vectors
+				response.Tests = append(response.Tests, hmacTestResponse{
+					ID:     test.ID,
+					MACHex: hex.EncodeToString(result[0][:outBytes]),
+				})
+				return nil
 			})
 		}
 
-		ret = append(ret, response)
+		m.Barrier(func() {
+			ret = append(ret, response)
+		})
+	}
+
+	if err := m.Flush(); err != nil {
+		return nil, err
 	}
 
 	return ret, nil

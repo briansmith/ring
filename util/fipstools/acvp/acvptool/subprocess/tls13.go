@@ -36,7 +36,7 @@ type tls13TestGroup struct {
 }
 
 type tls13Test struct {
-	ID                uint64 `json:"tcId"`
+	ID uint64 `json:"tcId"`
 	// Although ACVP refers to these as client and server randoms, these
 	// fields are misnamed and really contain portions of the handshake
 	// transcript. Concatenated in order, they give the transcript up to

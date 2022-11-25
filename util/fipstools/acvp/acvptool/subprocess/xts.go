@@ -126,22 +126,26 @@ func (h *xts) Process(vectorSet []byte, m Transactable) (any, error) {
 				return nil, fmt.Errorf("failed to decode hex in test case %d/%d: %s", group.ID, test.ID, err)
 			}
 
-			result, err := m.Transact(funcName, 1, key, msg, tweak[:])
-			if err != nil {
-				return nil, fmt.Errorf("submodule failed on test case %d/%d: %s", group.ID, test.ID, err)
-			}
+			m.TransactAsync(funcName, 1, [][]byte{key, msg, tweak[:]}, func(result [][]byte) error {
+				testResponse := xtsTestResponse{ID: test.ID}
+				if decrypt {
+					testResponse.PlaintextHex = hex.EncodeToString(result[0])
+				} else {
+					testResponse.CiphertextHex = hex.EncodeToString(result[0])
+				}
 
-			testResponse := xtsTestResponse{ID: test.ID}
-			if decrypt {
-				testResponse.PlaintextHex = hex.EncodeToString(result[0])
-			} else {
-				testResponse.CiphertextHex = hex.EncodeToString(result[0])
-			}
-
-			response.Tests = append(response.Tests, testResponse)
+				response.Tests = append(response.Tests, testResponse)
+				return nil
+			})
 		}
 
-		ret = append(ret, response)
+		m.Barrier(func() {
+			ret = append(ret, response)
+		})
+	}
+
+	if err := m.Flush(); err != nil {
+		return nil, err
 	}
 
 	return ret, nil

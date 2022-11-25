@@ -579,6 +579,12 @@ func main() {
 					continue
 				}
 			}
+			if value, ok := algo["algorithm"]; ok {
+				algorithm, ok := value.(string)
+				if ok && algorithm == "acvptool" {
+					continue
+				}
+			}
 			nonTestAlgos = append(nonTestAlgos, algo)
 		}
 

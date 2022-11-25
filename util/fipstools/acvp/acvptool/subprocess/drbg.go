@@ -116,7 +116,8 @@ func (d *drbg) Process(vectorSet []byte, m Transactable) (any, error) {
 			var outLenBytes [4]byte
 			binary.LittleEndian.PutUint32(outLenBytes[:], uint32(outLen))
 
-			var result [][]byte
+			var cmd string
+			var args [][]byte
 			if group.PredictionResistance {
 				var a1, a2, a3, a4 []byte
 				if err := extractOtherInputs(test.Other, []drbgOtherInputExpectations{
@@ -124,7 +125,8 @@ func (d *drbg) Process(vectorSet []byte, m Transactable) (any, error) {
 					{"generate", group.AdditionalDataBits, &a3, group.EntropyBits, &a4}}); err != nil {
 					return nil, fmt.Errorf("failed to parse other inputs from test case %d/%d: %s", group.ID, test.ID, err)
 				}
-				result, err = m.Transact(d.algo+"-pr/"+group.Mode, 1, outLenBytes[:], ent, perso, a1, a2, a3, a4, nonce)
+				cmd = d.algo + "-pr/" + group.Mode
+				args = [][]byte{outLenBytes[:], ent, perso, a1, a2, a3, a4, nonce}
 			} else if group.Reseed {
 				var a1, a2, a3, a4 []byte
 				if err := extractOtherInputs(test.Other, []drbgOtherInputExpectations{
@@ -133,7 +135,8 @@ func (d *drbg) Process(vectorSet []byte, m Transactable) (any, error) {
 					{"generate", group.AdditionalDataBits, &a4, 0, nil}}); err != nil {
 					return nil, fmt.Errorf("failed to parse other inputs from test case %d/%d: %s", group.ID, test.ID, err)
 				}
-				result, err = m.Transact(d.algo+"-reseed/"+group.Mode, 1, outLenBytes[:], ent, perso, a1, a2, a3, a4, nonce)
+				cmd = d.algo + "-reseed/" + group.Mode
+				args = [][]byte{outLenBytes[:], ent, perso, a1, a2, a3, a4, nonce}
 			} else {
 				var a1, a2 []byte
 				if err := extractOtherInputs(test.Other, []drbgOtherInputExpectations{
@@ -141,25 +144,31 @@ func (d *drbg) Process(vectorSet []byte, m Transactable) (any, error) {
 					{"generate", group.AdditionalDataBits, &a2, 0, nil}}); err != nil {
 					return nil, fmt.Errorf("failed to parse other inputs from test case %d/%d: %s", group.ID, test.ID, err)
 				}
-				result, err = m.Transact(d.algo+"/"+group.Mode, 1, outLenBytes[:], ent, perso, a1, a2, nonce)
+				cmd = d.algo + "/" + group.Mode
+				args = [][]byte{outLenBytes[:], ent, perso, a1, a2, nonce}
 			}
 
-			if err != nil {
-				return nil, fmt.Errorf("DRBG operation failed: %s", err)
-			}
+			m.TransactAsync(cmd, 1, args, func(result [][]byte) error {
+				if l := uint64(len(result[0])); l != outLen {
+					return fmt.Errorf("wrong length DRBG result: %d bytes but wanted %d", l, outLen)
+				}
 
-			if l := uint64(len(result[0])); l != outLen {
-				return nil, fmt.Errorf("wrong length DRBG result: %d bytes but wanted %d", l, outLen)
-			}
-
-			// https://pages.nist.gov/ACVP/draft-vassilev-acvp-drbg.html#name-responses
-			response.Tests = append(response.Tests, drbgTestResponse{
-				ID:     test.ID,
-				OutHex: hex.EncodeToString(result[0]),
+				// https://pages.nist.gov/ACVP/draft-vassilev-acvp-drbg.html#name-responses
+				response.Tests = append(response.Tests, drbgTestResponse{
+					ID:     test.ID,
+					OutHex: hex.EncodeToString(result[0]),
+				})
+				return nil
 			})
 		}
 
-		ret = append(ret, response)
+		m.Barrier(func() {
+			ret = append(ret, response)
+		})
+	}
+
+	if err := m.Flush(); err != nil {
+		return nil, err
 	}
 
 	return ret, nil

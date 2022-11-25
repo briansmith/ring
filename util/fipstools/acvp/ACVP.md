@@ -112,6 +112,12 @@ The other commands are as follows. (Note that you only need to implement the com
 
 ² Will always be one because MCT tests are not supported for CS3.
 
+### Batching
+
+Requests are written without waiting for responses. Implementations can run a read-execute-reply loop without worrying about this. However, if batching is useful then implementations may gather up multiple requests before executing them. But this risks deadlock because some requests depend on the result of the previous one. If the `getConfig` result contains a dummy entry for the algorithm `acvptool` it will be filtered out when running with `-regcap`. However, a list of strings called `features` in that block may include the string `batch` to indicate that the implementation would like to receive a `flush` command whenever previous results must be received in order to progress. Implementations that batch can observe this to avoid deadlock.
+
+The `flush` command must not produce a response itself; it only indicates that all previous responses must be received to progress. The `getConfig` command must always be serviced immediately because a flush command will not be sent prior to processing the `getConfig` response.
+
 ## Online operation
 
 If you have credentials to speak to either of the NIST ACVP servers then you can run the tool in online mode.
