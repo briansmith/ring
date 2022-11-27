@@ -159,35 +159,26 @@ static bool DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
   return true;
 }
 
-static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
-                          bool copy, bool in_place, size_t chunk_size,
-                          const std::vector<uint8_t> &key,
-                          const std::vector<uint8_t> &iv,
-                          const std::vector<uint8_t> &plaintext,
-                          const std::vector<uint8_t> &ciphertext,
-                          const std::vector<uint8_t> &aad,
-                          const std::vector<uint8_t> &tag) {
-  const std::vector<uint8_t> *in, *out;
-  if (encrypt) {
-    in = &plaintext;
-    out = &ciphertext;
-  } else {
-    in = &ciphertext;
-    out = &plaintext;
-  }
-
+static void TestOperation(const EVP_CIPHER *cipher, bool encrypt, bool copy,
+                          bool in_place, size_t chunk_size,
+                          bssl::Span<const uint8_t> key,
+                          bssl::Span<const uint8_t> iv,
+                          bssl::Span<const uint8_t> plaintext,
+                          bssl::Span<const uint8_t> ciphertext,
+                          bssl::Span<const uint8_t> aad,
+                          bssl::Span<const uint8_t> tag) {
+  bssl::Span<const uint8_t> in = encrypt ? plaintext : ciphertext;
+  bssl::Span<const uint8_t> expected = encrypt ? ciphertext : plaintext;
   bool is_aead = EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE;
 
   bssl::ScopedEVP_CIPHER_CTX ctx1;
   ASSERT_TRUE(EVP_CipherInit_ex(ctx1.get(), cipher, nullptr, nullptr, nullptr,
                                 encrypt ? 1 : 0));
-  if (t->HasAttribute("IV")) {
-    if (is_aead) {
-      ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx1.get(), EVP_CTRL_AEAD_SET_IVLEN,
-                                      iv.size(), 0));
-    } else {
-      ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx1.get()));
-    }
+  if (is_aead) {
+    ASSERT_TRUE(
+        EVP_CIPHER_CTX_ctrl(ctx1.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), 0));
+  } else {
+    ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx1.get()));
   }
 
   bssl::ScopedEVP_CIPHER_CTX ctx2;
@@ -203,7 +194,7 @@ static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
   }
   // The ciphers are run with no padding. For each of the ciphers we test, the
   // output size matches the input size.
-  ASSERT_EQ(in->size(), out->size());
+  ASSERT_EQ(in.size(), expected.size());
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx, key.size()));
   ASSERT_TRUE(
       EVP_CipherInit_ex(ctx, nullptr, nullptr, key.data(), iv.data(), -1));
@@ -217,8 +208,8 @@ static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
   }
   ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx, 0));
   std::vector<uint8_t> result;
-  ASSERT_TRUE(DoCipher(ctx, &result, *in, chunk_size, in_place));
-  EXPECT_EQ(Bytes(*out), Bytes(result));
+  ASSERT_TRUE(DoCipher(ctx, &result, in, chunk_size, in_place));
+  EXPECT_EQ(Bytes(expected), Bytes(result));
   if (encrypt && is_aead) {
     uint8_t rtag[16];
     ASSERT_LE(tag.size(), sizeof(rtag));
@@ -246,16 +237,14 @@ static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
       }
 
       // The low-level APIs all work in-place.
-      bssl::Span<const uint8_t> input = *in;
       result.clear();
       if (in_place) {
-        result = *in;
-        input = result;
+        result.assign(in.begin(), in.end());
       } else {
-        result.resize(out->size());
+        result.resize(expected.size());
       }
-      bssl::Span<uint8_t> output = bssl::MakeSpan(result);
-      ASSERT_EQ(input.size(), output.size());
+      bssl::Span<uint8_t> out = bssl::MakeSpan(result);
+      ASSERT_EQ(in.size(), out.size());
 
       // The low-level APIs all use block-size IVs.
       ASSERT_EQ(iv.size(), size_t{AES_BLOCK_SIZE});
@@ -266,48 +255,46 @@ static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
         unsigned num = 0;
         uint8_t ecount_buf[AES_BLOCK_SIZE];
         if (chunk_size == 0) {
-          AES_ctr128_encrypt(input.data(), output.data(), input.size(), &aes,
-                             ivec, ecount_buf, &num);
+          AES_ctr128_encrypt(in.data(), out.data(), in.size(), &aes, ivec,
+                             ecount_buf, &num);
         } else {
           do {
-            size_t todo = std::min(input.size(), chunk_size);
-            AES_ctr128_encrypt(input.data(), output.data(), todo, &aes, ivec,
+            size_t todo = std::min(in.size(), chunk_size);
+            AES_ctr128_encrypt(in.data(), out.data(), todo, &aes, ivec,
                                ecount_buf, &num);
-            input = input.subspan(todo);
-            output = output.subspan(todo);
-          } while (!input.empty());
+            in = in.subspan(todo);
+            out = out.subspan(todo);
+          } while (!in.empty());
         }
-        EXPECT_EQ(Bytes(*out), Bytes(result));
+        EXPECT_EQ(Bytes(expected), Bytes(result));
       } else if (is_cbc && chunk_size % AES_BLOCK_SIZE == 0) {
         // Note |AES_cbc_encrypt| requires block-aligned chunks.
         if (chunk_size == 0) {
-          AES_cbc_encrypt(input.data(), output.data(), input.size(), &aes, ivec,
+          AES_cbc_encrypt(in.data(), out.data(), in.size(), &aes, ivec,
                           encrypt);
         } else {
           do {
-            size_t todo = std::min(input.size(), chunk_size);
-            AES_cbc_encrypt(input.data(), output.data(), todo, &aes, ivec,
-                            encrypt);
-            input = input.subspan(todo);
-            output = output.subspan(todo);
-          } while (!input.empty());
+            size_t todo = std::min(in.size(), chunk_size);
+            AES_cbc_encrypt(in.data(), out.data(), todo, &aes, ivec, encrypt);
+            in = in.subspan(todo);
+            out = out.subspan(todo);
+          } while (!in.empty());
         }
-        EXPECT_EQ(Bytes(*out), Bytes(result));
+        EXPECT_EQ(Bytes(expected), Bytes(result));
       } else if (is_ofb) {
         int num = 0;
         if (chunk_size == 0) {
-          AES_ofb128_encrypt(input.data(), output.data(), input.size(), &aes,
-                             ivec, &num);
+          AES_ofb128_encrypt(in.data(), out.data(), in.size(), &aes, ivec,
+                             &num);
         } else {
           do {
-            size_t todo = std::min(input.size(), chunk_size);
-            AES_ofb128_encrypt(input.data(), output.data(), todo, &aes, ivec,
-                               &num);
-            input = input.subspan(todo);
-            output = output.subspan(todo);
-          } while (!input.empty());
+            size_t todo = std::min(in.size(), chunk_size);
+            AES_ofb128_encrypt(in.data(), out.data(), todo, &aes, ivec, &num);
+            in = in.subspan(todo);
+            out = out.subspan(todo);
+          } while (!in.empty());
         }
-        EXPECT_EQ(Bytes(*out), Bytes(result));
+        EXPECT_EQ(Bytes(expected), Bytes(result));
       }
     }
   }
@@ -360,14 +347,14 @@ static void TestCipher(FileTest *t) {
         // operation.
         if (operation != kDecrypt) {
           SCOPED_TRACE("encrypt");
-          TestOperation(t, cipher, true /* encrypt */, copy, in_place,
-                        chunk_size, key, iv, plaintext, ciphertext, aad, tag);
+          TestOperation(cipher, true /* encrypt */, copy, in_place, chunk_size,
+                        key, iv, plaintext, ciphertext, aad, tag);
         }
 
         if (operation != kEncrypt) {
           SCOPED_TRACE("decrypt");
-          TestOperation(t, cipher, false /* decrypt */, copy, in_place,
-                        chunk_size, key, iv, plaintext, ciphertext, aad, tag);
+          TestOperation(cipher, false /* decrypt */, copy, in_place, chunk_size,
+                        key, iv, plaintext, ciphertext, aad, tag);
         }
       }
     }
