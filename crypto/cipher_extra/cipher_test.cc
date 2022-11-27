@@ -152,6 +152,21 @@ static const char *OperationToString(Operation op) {
   abort();
 }
 
+// MaybeCopyCipherContext, if |copy| is true, replaces |*ctx| with a, hopefully
+// equivalent, copy of it.
+static bool MaybeCopyCipherContext(bool copy,
+                                   bssl::UniquePtr<EVP_CIPHER_CTX> *ctx) {
+  if (!copy) {
+    return true;
+  }
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx2(EVP_CIPHER_CTX_new());
+  if (!ctx2 || !EVP_CIPHER_CTX_copy(ctx2.get(), ctx->get())) {
+    return false;
+  }
+  *ctx = std::move(ctx2);
+  return true;
+}
+
 static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
                           bool copy, bool in_place, size_t chunk_size,
                           bssl::Span<const uint8_t> key,
@@ -165,32 +180,42 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   bssl::Span<const uint8_t> expected = encrypt ? ciphertext : plaintext;
   bool is_aead = EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE;
 
-  bssl::ScopedEVP_CIPHER_CTX ctx1;
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx1.get(), cipher, nullptr, nullptr, nullptr,
+  // Some |EVP_CIPHER|s take a variable-length key, and need to first be
+  // configured with the key length, which requires configuring the cipher.
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, /*engine=*/nullptr,
+                                /*key=*/nullptr, /*iv=*/nullptr,
                                 encrypt ? 1 : 0));
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
+  if (!padding) {
+    ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
+  }
+
+  // Configure the key.
+  ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), /*cipher=*/nullptr,
+                                /*engine=*/nullptr, key.data(), /*iv=*/nullptr,
+                                /*enc=*/-1));
+
+  // Configure the IV to run the actual operation. Callers that wish to use a
+  // key for multiple, potentially concurrent, operations will likely copy at
+  // this point. The |EVP_CIPHER_CTX| API uses the same type to represent a
+  // pre-computed key schedule and a streaming operation.
+  ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
   if (is_aead) {
     ASSERT_TRUE(
-        EVP_CIPHER_CTX_ctrl(ctx1.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), 0));
+        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), 0));
   } else {
-    ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx1.get()));
+    ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx.get()));
   }
-
-  bssl::ScopedEVP_CIPHER_CTX ctx2;
-  EVP_CIPHER_CTX *ctx = ctx1.get();
-  if (copy) {
-    ASSERT_TRUE(EVP_CIPHER_CTX_copy(ctx2.get(), ctx1.get()));
-    ctx = ctx2.get();
-  }
-
-  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx, key.size()));
-  ASSERT_TRUE(
-      EVP_CipherInit_ex(ctx, nullptr, nullptr, key.data(), iv.data(), -1));
-  if (!padding) {
-    ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx, 0));
-  }
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), /*cipher=*/nullptr,
+                                /*engine=*/nullptr,
+                                /*key=*/nullptr, iv.data(), /*enc=*/-1));
 
   if (is_aead && !encrypt) {
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag.size(),
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                    tag.size(),
                                     const_cast<uint8_t *>(tag.data())));
   }
 
@@ -200,15 +225,15 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   if (!aad.empty()) {
     int unused;
     ASSERT_TRUE(
-        EVP_CipherUpdate(ctx, nullptr, &unused, aad.data(), aad.size()));
+        EVP_CipherUpdate(ctx.get(), nullptr, &unused, aad.data(), aad.size()));
   }
 
   // Set up the output buffer.
   size_t max_out = in.size();
-  size_t block_size = EVP_CIPHER_CTX_block_size(ctx);
+  size_t block_size = EVP_CIPHER_CTX_block_size(ctx.get());
   if (block_size > 1 &&
-      (EVP_CIPHER_CTX_flags(ctx) & EVP_CIPH_NO_PADDING) == 0 &&
-      EVP_CIPHER_CTX_encrypting(ctx)) {
+      (EVP_CIPHER_CTX_flags(ctx.get()) & EVP_CIPH_NO_PADDING) == 0 &&
+      EVP_CIPHER_CTX_encrypting(ctx.get())) {
     max_out += block_size - (max_out % block_size);
   }
   std::vector<uint8_t> result(max_out);
@@ -222,8 +247,9 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   while (!in.empty()) {
     size_t todo = chunk_size == 0 ? in.size() : std::min(in.size(), chunk_size);
     EXPECT_LE(todo, static_cast<size_t>(INT_MAX));
-    ASSERT_TRUE(EVP_CipherUpdate(ctx, result.data() + total, &len, in.data(),
-                          static_cast<int>(todo)));
+    ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
+    ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), result.data() + total, &len,
+                                 in.data(), static_cast<int>(todo)));
     ASSERT_GE(len, 0);
     total += static_cast<size_t>(len);
     in = in.subspan(todo);
@@ -231,9 +257,9 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   if (op == Operation::kInvalidDecrypt) {
     // Invalid padding and invalid tags all appear as a failed
     // |EVP_CipherFinal_ex|.
-    EXPECT_FALSE(EVP_CipherFinal_ex(ctx, result.data() + total, &len));
+    EXPECT_FALSE(EVP_CipherFinal_ex(ctx.get(), result.data() + total, &len));
   } else {
-    ASSERT_TRUE(EVP_CipherFinal_ex(ctx, result.data() + total, &len));
+    ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), result.data() + total, &len));
     ASSERT_GE(len, 0);
     total += static_cast<size_t>(len);
     result.resize(total);
@@ -241,8 +267,9 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
     if (encrypt && is_aead) {
       uint8_t rtag[16];
       ASSERT_LE(tag.size(), sizeof(rtag));
-      ASSERT_TRUE(
-          EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag.size(), rtag));
+      ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
+      ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+                                      tag.size(), rtag));
       EXPECT_EQ(Bytes(tag), Bytes(rtag, tag.size()));
     }
   }
