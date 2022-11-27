@@ -126,9 +126,10 @@ static bool DoCipher(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
                      bssl::Span<const uint8_t> in, size_t chunk,
                      bool in_place) {
   size_t max_out = in.size();
-  if ((EVP_CIPHER_CTX_flags(ctx) & EVP_CIPH_NO_PADDING) == 0 &&
+  size_t block_size = EVP_CIPHER_CTX_block_size(ctx);
+  if (block_size > 1 &&
+      (EVP_CIPHER_CTX_flags(ctx) & EVP_CIPH_NO_PADDING) == 0 &&
       EVP_CIPHER_CTX_encrypting(ctx)) {
-    unsigned block_size = EVP_CIPHER_CTX_block_size(ctx);
     max_out += block_size - (max_out % block_size);
   }
   out->resize(max_out);
