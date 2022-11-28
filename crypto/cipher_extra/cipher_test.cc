@@ -224,10 +224,16 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   // Note: the deprecated |EVP_CIPHER|-based AEAD API is sensitive to whether
   // parameters are NULL, so it is important to skip the |in| and |aad|
   // |EVP_CipherUpdate| calls when empty.
-  if (!aad.empty()) {
-    int unused;
+  while (!aad.empty()) {
+    size_t todo =
+        chunk_size == 0 ? aad.size() : std::min(aad.size(), chunk_size);
+    int len;
     ASSERT_TRUE(
-        EVP_CipherUpdate(ctx.get(), nullptr, &unused, aad.data(), aad.size()));
+        EVP_CipherUpdate(ctx.get(), nullptr, &len, aad.data(), todo));
+    // Although it doesn't output anything, |EVP_CipherUpdate| should claim to
+    // output the input length.
+    EXPECT_EQ(len, static_cast<int>(todo));
+    aad = aad.subspan(todo);
   }
 
   // Set up the output buffer.
@@ -386,7 +392,8 @@ static void TestCipher(const EVP_CIPHER *cipher, Operation input_op,
                                          17, 31, 32, 33, 63, 64, 65, 512};
     for (size_t chunk_size : kChunkSizes) {
       SCOPED_TRACE(chunk_size);
-      if (chunk_size > std::max(plaintext.size(), ciphertext.size())) {
+      if (chunk_size > plaintext.size() && chunk_size > ciphertext.size() &&
+          chunk_size > aad.size()) {
         continue;
       }
       for (bool in_place : {false, true}) {
