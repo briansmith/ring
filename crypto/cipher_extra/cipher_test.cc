@@ -170,14 +170,16 @@ static bool MaybeCopyCipherContext(bool copy,
 }
 
 static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
-                          bool copy, bool in_place, size_t chunk_size,
-                          bssl::Span<const uint8_t> key,
+                          bool copy, bool in_place, bool use_evp_cipher,
+                          size_t chunk_size, bssl::Span<const uint8_t> key,
                           bssl::Span<const uint8_t> iv,
                           bssl::Span<const uint8_t> plaintext,
                           bssl::Span<const uint8_t> ciphertext,
                           bssl::Span<const uint8_t> aad,
                           bssl::Span<const uint8_t> tag) {
   bool encrypt = op == Operation::kEncrypt;
+  bool is_custom_cipher =
+      EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_CUSTOM_CIPHER;
   bssl::Span<const uint8_t> in = encrypt ? plaintext : ciphertext;
   bssl::Span<const uint8_t> expected = encrypt ? ciphertext : plaintext;
   bool is_aead = EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE;
@@ -227,12 +229,19 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   while (!aad.empty()) {
     size_t todo =
         chunk_size == 0 ? aad.size() : std::min(aad.size(), chunk_size);
-    int len;
-    ASSERT_TRUE(
-        EVP_CipherUpdate(ctx.get(), nullptr, &len, aad.data(), todo));
-    // Although it doesn't output anything, |EVP_CipherUpdate| should claim to
-    // output the input length.
-    EXPECT_EQ(len, static_cast<int>(todo));
+    if (use_evp_cipher) {
+      // AEADs always use the "custom cipher" return value convention. Passing a
+      // null output pointer triggers the AAD logic.
+      ASSERT_TRUE(is_custom_cipher);
+      ASSERT_EQ(static_cast<int>(todo),
+                EVP_Cipher(ctx.get(), nullptr, aad.data(), todo));
+    } else {
+      int len;
+      ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), nullptr, &len, aad.data(), todo));
+      // Although it doesn't output anything, |EVP_CipherUpdate| should claim to
+      // output the input length.
+      EXPECT_EQ(len, static_cast<int>(todo));
+    }
     aad = aad.subspan(todo);
   }
 
@@ -256,18 +265,47 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
     size_t todo = chunk_size == 0 ? in.size() : std::min(in.size(), chunk_size);
     EXPECT_LE(todo, static_cast<size_t>(INT_MAX));
     ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
-    ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), result.data() + total, &len,
-                                 in.data(), static_cast<int>(todo)));
+    if (use_evp_cipher) {
+      // |EVP_Cipher| sometimes returns the number of bytes written, or -1 on
+      // error, and sometimes 1 or 0, implicitly writing |in_len| bytes.
+      if (is_custom_cipher) {
+        len = EVP_Cipher(ctx.get(), result.data() + total, in.data(), todo);
+      } else {
+        ASSERT_EQ(
+            1, EVP_Cipher(ctx.get(), result.data() + total, in.data(), todo));
+        len = static_cast<int>(todo);
+      }
+    } else {
+      ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), result.data() + total, &len,
+                                   in.data(), static_cast<int>(todo)));
+    }
     ASSERT_GE(len, 0);
     total += static_cast<size_t>(len);
     in = in.subspan(todo);
   }
   if (op == Operation::kInvalidDecrypt) {
-    // Invalid padding and invalid tags all appear as a failed
-    // |EVP_CipherFinal_ex|.
-    EXPECT_FALSE(EVP_CipherFinal_ex(ctx.get(), result.data() + total, &len));
+    if (use_evp_cipher) {
+      // Only the "custom cipher" return value convention can report failures.
+      // Passing all nulls should act like |EVP_CipherFinal_ex|.
+      ASSERT_TRUE(is_custom_cipher);
+      EXPECT_EQ(-1, EVP_Cipher(ctx.get(), nullptr, nullptr, 0));
+    } else {
+      // Invalid padding and invalid tags all appear as a failed
+      // |EVP_CipherFinal_ex|.
+      EXPECT_FALSE(EVP_CipherFinal_ex(ctx.get(), result.data() + total, &len));
+    }
   } else {
-    ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), result.data() + total, &len));
+    if (use_evp_cipher) {
+      if (is_custom_cipher) {
+        // Only the "custom cipher" convention has an |EVP_CipherFinal_ex|
+        // equivalent.
+        len = EVP_Cipher(ctx.get(), nullptr, nullptr, 0);
+      } else {
+        len = 0;
+      }
+    } else {
+      ASSERT_TRUE(EVP_CipherFinal_ex(ctx.get(), result.data() + total, &len));
+    }
     ASSERT_GE(len, 0);
     total += static_cast<size_t>(len);
     result.resize(total);
@@ -379,6 +417,7 @@ static void TestCipher(const EVP_CIPHER *cipher, Operation input_op,
                        bssl::Span<const uint8_t> ciphertext,
                        bssl::Span<const uint8_t> aad,
                        bssl::Span<const uint8_t> tag) {
+  size_t block_size = EVP_CIPHER_block_size(cipher);
   std::vector<Operation> ops;
   if (input_op == Operation::kBoth) {
     ops = {Operation::kEncrypt, Operation::kDecrypt};
@@ -400,8 +439,14 @@ static void TestCipher(const EVP_CIPHER *cipher, Operation input_op,
         SCOPED_TRACE(in_place);
         for (bool copy : {false, true}) {
           SCOPED_TRACE(copy);
-          TestCipherAPI(cipher, op, padding, copy, in_place, chunk_size, key,
-                        iv, plaintext, ciphertext, aad, tag);
+          TestCipherAPI(cipher, op, padding, copy, in_place,
+                        /*use_evp_cipher=*/false, chunk_size, key, iv,
+                        plaintext, ciphertext, aad, tag);
+          if (!padding && chunk_size % block_size == 0) {
+            TestCipherAPI(cipher, op, padding, copy, in_place,
+                          /*use_evp_cipher=*/true, chunk_size, key, iv,
+                          plaintext, ciphertext, aad, tag);
+          }
         }
         if (!padding) {
           TestLowLevelAPI(cipher, op, in_place, chunk_size, key, iv, plaintext,

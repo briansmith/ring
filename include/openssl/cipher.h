@@ -214,26 +214,6 @@ OPENSSL_EXPORT int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                        int *out_len);
 
-// EVP_Cipher performs a one-shot encryption/decryption operation for non-AEAD
-// ciphers. No partial blocks are maintained between calls. However, any
-// internal cipher state is still updated. For CBC-mode ciphers, the IV is
-// updated to the final ciphertext block. For stream ciphers, the stream is
-// advanced past the bytes used. It returns one on success and zero otherwise.
-//
-// WARNING: This function behaves completely differently on AEAD ciphers, such
-// as |EVP_aes_128_gcm|. Rather than being a one-shot operation, it behaves like
-// |EVP_CipherUpdate| or |EVP_CipherFinal_ex|, depending on whether |in| is
-// NULL. It also instead returns the number of bytes written or -1 on error.
-// This behavior is deprecated. Use |EVP_CipherUpdate| or |EVP_CipherFinal_ex|
-// instead.
-//
-// TODO(davidben): The normal ciphers currently never fail, even if, e.g.,
-// |in_len| is not a multiple of the block size for CBC-mode decryption. The
-// input just gets rounded up while the output gets truncated. This should
-// either be officially documented or fail.
-OPENSSL_EXPORT int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
-                              const uint8_t *in, size_t in_len);
-
 // EVP_CipherUpdate calls either |EVP_EncryptUpdate| or |EVP_DecryptUpdate|
 // depending on how |ctx| has been setup.
 OPENSSL_EXPORT int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out,
@@ -431,6 +411,30 @@ OPENSSL_EXPORT int EVP_EncryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
 // EVP_DecryptFinal calls |EVP_DecryptFinal_ex|.
 OPENSSL_EXPORT int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                     int *out_len);
+
+// EVP_Cipher historically exposed an internal implementation detail of |ctx|
+// and should not be used. Use |EVP_CipherUpdate| and |EVP_CipherFinal_ex|
+// instead.
+//
+// If |ctx|'s cipher does not have the |EVP_CIPH_FLAG_CUSTOM_CIPHER| flag, it
+// encrypts or decrypts |in_len| bytes from |in| and writes the resulting
+// |in_len| bytes to |out|. It returns one on success and zero on error.
+// |in_len| must be a multiple of the cipher's block size, or the behavior is
+// undefined.
+//
+// TODO(davidben): Rather than being undefined (it'll often round the length up
+// and likely read past the buffer), just fail the operation.
+//
+// If |ctx|'s cipher has the |EVP_CIPH_FLAG_CUSTOM_CIPHER| flag, it runs in one
+// of two modes: If |in| is non-NULL, it behaves like |EVP_CipherUpdate|. If
+// |in| is NULL, it behaves like |EVP_CipherFinal_ex|. In both cases, it returns
+// |*out_len| on success and -1 on error.
+//
+// WARNING: The two possible calling conventions of this function signal errors
+// incompatibly. In the first, zero indicates an error. In the second, zero
+// indicates success with zero bytes of output.
+OPENSSL_EXPORT int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                              const uint8_t *in, size_t in_len);
 
 // EVP_add_cipher_alias does nothing and returns one.
 OPENSSL_EXPORT int EVP_add_cipher_alias(const char *a, const char *b);
