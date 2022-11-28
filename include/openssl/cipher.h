@@ -449,6 +449,12 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
 // These AEADs are deprecated AES-GCM implementations that set
 // |EVP_CIPH_FLAG_CUSTOM_CIPHER|. Use |EVP_aead_aes_128_gcm| and
 // |EVP_aead_aes_256_gcm| instead.
+//
+// WARNING: Although these APIs allow streaming an individual AES-GCM operation,
+// this is not secure. Until calling |EVP_DecryptFinal_ex|, the tag has not yet
+// been checked and output released by |EVP_DecryptUpdate| is unauthenticated
+// and easily manipulated by attackers. Callers must buffer the output and may
+// not act on it until the entire operation is complete.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 
