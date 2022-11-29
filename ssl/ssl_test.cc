@@ -8498,5 +8498,23 @@ TEST(SSLTest, QuietShutdown) {
   EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
 }
 
+TEST(SSLTest, InvalidSignatureAlgorithm) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  static const uint16_t kInvalidPrefs[] = {1234};
+  EXPECT_FALSE(SSL_CTX_set_signing_algorithm_prefs(
+      ctx.get(), kInvalidPrefs, OPENSSL_ARRAY_SIZE(kInvalidPrefs)));
+  EXPECT_FALSE(SSL_CTX_set_verify_algorithm_prefs(
+      ctx.get(), kInvalidPrefs, OPENSSL_ARRAY_SIZE(kInvalidPrefs)));
+
+  static const uint16_t kDuplicatePrefs[] = {SSL_SIGN_RSA_PKCS1_SHA256,
+                                             SSL_SIGN_RSA_PKCS1_SHA256};
+  EXPECT_FALSE(SSL_CTX_set_signing_algorithm_prefs(
+      ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
+  EXPECT_FALSE(SSL_CTX_set_verify_algorithm_prefs(
+      ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
+}
+
 }  // namespace
 BSSL_NAMESPACE_END

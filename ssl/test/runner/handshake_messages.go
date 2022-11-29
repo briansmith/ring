@@ -841,6 +841,12 @@ func parseSignatureAlgorithms(reader *byteReader, out *[]signatureAlgorithm, all
 		if !sigAlgs.readU16(&v) {
 			return false
 		}
+		if signatureAlgorithm(v) == signatureRSAPKCS1WithMD5AndSHA1 {
+			// signatureRSAPKCS1WithMD5AndSHA1 is an internal value BoringSSL
+			// uses to represent the TLS 1.0 MD5/SHA-1 concatenation. It should
+			// never appear on the wire.
+			return false
+		}
 		*out = append(*out, signatureAlgorithm(v))
 	}
 	return true

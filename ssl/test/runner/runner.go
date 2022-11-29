@@ -9852,13 +9852,15 @@ func addSignatureAlgorithmTests() {
 						[]string{
 							"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
 							"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
-							"-signing-prefs", strconv.Itoa(int(alg.id)),
 						},
 						flagInts("-curves", shimConfig.AllCurves)...,
 					),
 					expectations: connectionExpectations{
 						peerSignatureAlgorithm: alg.id,
 					},
+				}
+				if alg.id != 0 {
+					negotiateTest.flags = append(negotiateTest.flags, "-signing-prefs", strconv.Itoa(int(alg.id)))
 				}
 
 				if testType == serverTest {
@@ -9892,20 +9894,18 @@ func addSignatureAlgorithmTests() {
 							IgnorePeerSignatureAlgorithmPreferences: shouldFail,
 						},
 					},
-					flags: append(
-						[]string{
-							"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
-							// The algorithm may be disabled by default, so explicitly enable it.
-							"-verify-prefs", strconv.Itoa(int(alg.id)),
-						},
-						flagInts("-curves", shimConfig.AllCurves)...,
-					),
+					flags: flagInts("-curves", shimConfig.AllCurves),
 					// Resume the session to assert the peer signature
 					// algorithm is reported on both handshakes.
 					resumeSession:      !shouldFail,
 					shouldFail:         shouldFail,
 					expectedError:      verifyError,
 					expectedLocalError: verifyLocalError,
+				}
+				if alg.id != 0 {
+					verifyTest.flags = append(verifyTest.flags, "-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)))
+					// The algorithm may be disabled by default, so explicitly enable it.
+					verifyTest.flags = append(verifyTest.flags, "-verify-prefs", strconv.Itoa(int(alg.id)))
 				}
 
 				// Test whether the shim expects the algorithm enabled by default.
@@ -9951,13 +9951,13 @@ func addSignatureAlgorithmTests() {
 							InvalidSignature: true,
 						},
 					},
-					flags: append(
-						// The algorithm may be disabled by default, so explicitly enable it.
-						[]string{"-verify-prefs", strconv.Itoa(int(alg.id))},
-						flagInts("-curves", shimConfig.AllCurves)...,
-					),
+					flags:         flagInts("-curves", shimConfig.AllCurves),
 					shouldFail:    true,
 					expectedError: ":BAD_SIGNATURE:",
+				}
+				if alg.id != 0 {
+					// The algorithm may be disabled by default, so explicitly enable it.
+					invalidTest.flags = append(invalidTest.flags, "-verify-prefs", strconv.Itoa(int(alg.id)))
 				}
 
 				if testType == serverTest {
@@ -10477,10 +10477,8 @@ func addSignatureAlgorithmTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
-			"-signing-prefs", strconv.Itoa(int(fakeSigAlg1)),
 			"-signing-prefs", strconv.Itoa(int(signatureECDSAWithP256AndSHA256)),
 			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
-			"-signing-prefs", strconv.Itoa(int(fakeSigAlg2)),
 		},
 		expectations: connectionExpectations{
 			peerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
@@ -10791,6 +10789,9 @@ func addSignatureAlgorithmTests() {
 					"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 					"-key-file", path.Join(*resourceDir, rsaKeyFile),
 					"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithMD5AndSHA1)),
+					// Include a valid algorithm as well, to avoid an empty list
+					// if filtered out.
+					"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
 				},
 				shouldFail:    true,
 				expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
@@ -10814,6 +10815,9 @@ func addSignatureAlgorithmTests() {
 					"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 					"-key-file", path.Join(*resourceDir, rsaKeyFile),
 					"-verify-prefs", strconv.Itoa(int(signatureRSAPKCS1WithMD5AndSHA1)),
+					// Include a valid algorithm as well, to avoid an empty list
+					// if filtered out.
+					"-verify-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
 					"-require-any-client-certificate",
 				},
 				shouldFail:    true,
