@@ -72,7 +72,7 @@ pub fn elem_exp_consttime<M>(
     const WINDOW_BITS: usize = 5;
     const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
 
-    let num_limbs = m.limbs.len();
+    let num_limbs = m.limbs().len();
 
     let mut table = vec![0; TABLE_ENTRIES * num_limbs];
 
@@ -115,7 +115,6 @@ pub fn elem_exp_consttime<M>(
     fn entry_mut(table: &mut [Limb], i: usize, num_limbs: usize) -> &mut [Limb] {
         &mut table[(i * num_limbs)..][..num_limbs]
     }
-    let num_limbs = m.limbs.len();
     entry_mut(&mut table, 0, num_limbs).copy_from_slice(&tmp.limbs);
     entry_mut(&mut table, 1, num_limbs).copy_from_slice(&base.limbs);
     for i in 2..TABLE_ENTRIES {
@@ -128,7 +127,7 @@ pub fn elem_exp_consttime<M>(
         let src1 = entry(previous, src1, num_limbs);
         let src2 = entry(previous, src2, num_limbs);
         let dst = entry_mut(rest, 0, num_limbs);
-        limbs_mont_product(dst, src1, src2, &m.limbs, &m.n0, m.cpu_features);
+        limbs_mont_product(dst, src1, src2, m.limbs(), m.n0(), m.cpu_features());
     }
 
     let (r, _) = limb::fold_5_bit_windows(
@@ -161,7 +160,7 @@ pub fn elem_exp_consttime<M>(
     // Pretty much all the math here requires CPU feature detection to have
     // been done. `cpu_features` isn't threaded through all the internal
     // functions, so just make it clear that it has been done at this point.
-    let _ = m.cpu_features;
+    let _ = m.cpu_features();
 
     // The x86_64 assembly was written under the assumption that the input data
     // is aligned to `MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH` bytes, which was/is
@@ -177,7 +176,7 @@ pub fn elem_exp_consttime<M>(
     const WINDOW_BITS: usize = 5;
     const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
 
-    let num_limbs = m.limbs.len();
+    let num_limbs = m.limbs().len();
 
     const ALIGNMENT: usize = 64;
     assert_eq!(ALIGNMENT % LIMB_BYTES, 0);
@@ -201,7 +200,7 @@ pub fn elem_exp_consttime<M>(
     const M: usize = BASE + 1; // `np` in OpenSSL
 
     entry_mut(state, BASE, num_limbs).copy_from_slice(&base.limbs);
-    entry_mut(state, M, num_limbs).copy_from_slice(&m.limbs);
+    entry_mut(state, M, num_limbs).copy_from_slice(m.limbs());
 
     fn scatter(table: &mut [Limb], state: &[Limb], i: Window, num_limbs: usize) {
         prefixed_extern! {
@@ -300,7 +299,7 @@ pub fn elem_exp_consttime<M>(
     {
         let acc = entry_mut(state, ACC, num_limbs);
         acc[0] = 1;
-        limbs_mont_mul(acc, &m.oneRR.0.limbs, &m.limbs, &m.n0, m.cpu_features);
+        limbs_mont_mul(acc, &m.oneRR().0.limbs, m.limbs(), m.n0(), m.cpu_features());
     }
     scatter(table, state, 0, num_limbs);
 
@@ -311,9 +310,9 @@ pub fn elem_exp_consttime<M>(
     for i in 2..(TABLE_ENTRIES as Window) {
         if i % 2 == 0 {
             // TODO: Optimize this to avoid gathering
-            gather_square(table, state, &m.n0, i / 2, num_limbs, m.cpu_features);
+            gather_square(table, state, m.n0(), i / 2, num_limbs, m.cpu_features());
         } else {
-            gather_mul_base(table, state, &m.n0, i - 1, num_limbs)
+            gather_mul_base(table, state, m.n0(), i - 1, num_limbs)
         };
         scatter(table, state, i, num_limbs);
     }
@@ -325,7 +324,7 @@ pub fn elem_exp_consttime<M>(
             state
         },
         |state, window| {
-            power(table, state, &m.n0, window, num_limbs);
+            power(table, state, m.n0(), window, num_limbs);
             state
         },
     );
@@ -346,7 +345,7 @@ pub fn elem_exp_consttime<M>(
             entry(state, ACC, num_limbs).as_ptr(),
             core::ptr::null(),
             entry(state, M, num_limbs).as_ptr(),
-            &m.n0,
+            m.n0(),
             num_limbs,
         )
     })?;
