@@ -422,7 +422,7 @@ impl KeyPair {
 
         // TODO: Does `qq` need oneRR?
         let qq = bigint::Modulus::from_elem(
-            bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n),
+            bigint::elem_mul(&q_mod_n, q_mod_n_decoded, n),
             cpu_features,
         )?;
 

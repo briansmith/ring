@@ -36,6 +36,7 @@
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
+use self::n0::N0;
 pub(crate) use self::{
     modulus::{Modulus, PartialModulus, MODULUS_MAX_LIMBS},
     private_exponent::{elem_exp_consttime, PrivateExponent},
@@ -56,6 +57,7 @@ use core::{
 
 mod bn_mul_mont_fallback;
 mod modulus;
+mod n0;
 mod private_exponent;
 
 /// A prime modulus.
@@ -580,27 +582,6 @@ impl Nonnegative {
             }
         }
         Ok(())
-    }
-}
-
-#[derive(Clone)]
-#[repr(transparent)]
-struct N0([Limb; 2]);
-
-const N0_LIMBS_USED: usize = 64 / LIMB_BITS;
-
-impl From<u64> for N0 {
-    #[inline]
-    fn from(n0: u64) -> Self {
-        #[cfg(target_pointer_width = "64")]
-        {
-            Self([n0, 0])
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        {
-            Self([n0 as Limb, (n0 >> LIMB_BITS) as Limb])
-        }
     }
 }
 

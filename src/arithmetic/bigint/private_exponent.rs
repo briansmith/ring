@@ -154,8 +154,8 @@ pub fn elem_exp_consttime<M>(
     exponent: &PrivateExponent<M>,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    use super::{limbs_mont_mul, limbs_mont_square, LIMB_BYTES, N0};
-    use crate::cpu;
+    use super::{limbs_mont_mul, limbs_mont_square, n0::N0};
+    use crate::{cpu, limb::LIMB_BYTES};
 
     // Pretty much all the math here requires CPU feature detection to have
     // been done. `cpu_features` isn't threaded through all the internal
