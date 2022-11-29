@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2015-2023 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -36,13 +36,14 @@
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
+pub(crate) use super::nonnegative::Nonnegative;
 use crate::{
     arithmetic::montgomery::*,
     bits, bssl, c, cpu, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
     polyfill::{u64_from_usize, LeadingZerosStripped},
 };
-use alloc::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
+use alloc::{borrow::ToOwned as _, boxed::Box, vec};
 use core::{
     marker::PhantomData,
     num::NonZeroU64,
@@ -293,7 +294,7 @@ impl<M> Modulus<M> {
         cpu_features: cpu::Features,
     ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
         let limbs = BoxedLimbs {
-            limbs: n.limbs.into_boxed_slice(),
+            limbs: n.into_limbs(),
             m: PhantomData,
         };
         Self::from_boxed_limbs(limbs, cpu_features)
@@ -1133,63 +1134,25 @@ pub fn elem_verify_equal_consttime<M, E>(
     }
 }
 
-/// Nonnegative integers.
-pub struct Nonnegative {
-    limbs: Vec<Limb>,
-}
-
+// TODO: Move these methods from `Nonnegative` to `Modulus`.
 impl Nonnegative {
-    pub fn from_be_bytes_with_bit_length(
-        input: untrusted::Input,
-    ) -> Result<(Self, bits::BitLength), error::Unspecified> {
-        let mut limbs = vec![0; (input.len() + LIMB_BYTES - 1) / LIMB_BYTES];
-        // Rejects empty inputs.
-        limb::parse_big_endian_and_pad_consttime(input, &mut limbs)?;
-        while limbs.last() == Some(&0) {
-            let _ = limbs.pop();
-        }
-        let r_bits = limb::limbs_minimal_bits(&limbs);
-        Ok((Self { limbs }, r_bits))
-    }
-
-    #[inline]
-    pub fn is_odd(&self) -> bool {
-        limb::limbs_are_even_constant_time(&self.limbs) != LimbMask::True
-    }
-
-    pub fn verify_less_than(&self, other: &Self) -> Result<(), error::Unspecified> {
-        if !greater_than(other, self) {
-            return Err(error::Unspecified);
-        }
-        Ok(())
-    }
-
     pub fn to_elem<M>(&self, m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
         self.verify_less_than_modulus(m)?;
         let mut r = m.zero();
-        r.limbs[0..self.limbs.len()].copy_from_slice(&self.limbs);
+        r.limbs[0..self.limbs().len()].copy_from_slice(self.limbs());
         Ok(r)
     }
 
     pub fn verify_less_than_modulus<M>(&self, m: &Modulus<M>) -> Result<(), error::Unspecified> {
-        if self.limbs.len() > m.limbs.len() {
+        if self.limbs().len() > m.limbs.len() {
             return Err(error::Unspecified);
         }
-        if self.limbs.len() == m.limbs.len() {
-            if limb::limbs_less_than_limbs_consttime(&self.limbs, &m.limbs) != LimbMask::True {
+        if self.limbs().len() == m.limbs.len() {
+            if limb::limbs_less_than_limbs_consttime(self.limbs(), &m.limbs) != LimbMask::True {
                 return Err(error::Unspecified);
             }
         }
         Ok(())
-    }
-}
-
-// Returns a > b.
-fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
-    if a.limbs.len() == b.limbs.len() {
-        limb::limbs_less_than_limbs_vartime(&b.limbs, &a.limbs)
-    } else {
-        a.limbs.len() > b.limbs.len()
     }
 }
 
@@ -1516,7 +1479,7 @@ mod tests {
             num_limbs,
             m: PhantomData,
         });
-        limbs[0..value.limbs.len()].copy_from_slice(&value.limbs);
+        limbs[0..value.limbs().len()].copy_from_slice(value.limbs());
         Elem {
             limbs,
             encoding: PhantomData,
