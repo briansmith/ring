@@ -151,6 +151,20 @@ static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
     return false;
   }
 
+  if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
+    // TLS 1.0 and 1.1 do not negotiate algorithms and always sign one of two
+    // hardcoded algorithms.
+    return sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1 ||
+           sigalg == SSL_SIGN_ECDSA_SHA1;
+  }
+
+  // |SSL_SIGN_RSA_PKCS1_MD5_SHA1| is not a real SignatureScheme for TLS 1.2 and
+  // higher. It is an internal value we use to represent TLS 1.0/1.1's MD5/SHA1
+  // concatenation.
+  if (sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
+    return false;
+  }
+
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     // RSA keys may only be used with RSA-PSS.
     if (alg->pkey_type == EVP_PKEY_RSA && !alg->is_rsa_pss) {

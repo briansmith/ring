@@ -4102,10 +4102,7 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   Span<const uint16_t> peer_sigalgs = tls1_get_peer_verify_algorithms(hs);
 
   for (uint16_t sigalg : sigalgs) {
-    // SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal value and should never be
-    // negotiated.
-    if (sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1 ||
-        !ssl_private_key_supports_signature_algorithm(hs, sigalg)) {
+    if (!ssl_private_key_supports_signature_algorithm(hs, sigalg)) {
       continue;
     }
 

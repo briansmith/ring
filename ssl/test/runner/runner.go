@@ -10616,7 +10616,7 @@ func addSignatureAlgorithmTests() {
 			Certificates: []Certificate{ed25519Certificate},
 			Bugs: ProtocolBugs{
 				// Sign with Ed25519 even though it is TLS 1.1.
-				UseLegacySigningAlgorithm: signatureEd25519,
+				SigningAlgorithmForLegacyVersions: signatureEd25519,
 			},
 		},
 		flags:         []string{"-verify-prefs", strconv.Itoa(int(signatureEd25519))},
@@ -10644,7 +10644,7 @@ func addSignatureAlgorithmTests() {
 			Certificates: []Certificate{ed25519Certificate},
 			Bugs: ProtocolBugs{
 				// Sign with Ed25519 even though it is TLS 1.1.
-				UseLegacySigningAlgorithm: signatureEd25519,
+				SigningAlgorithmForLegacyVersions: signatureEd25519,
 			},
 		},
 		flags: []string{
@@ -10764,6 +10764,63 @@ func addSignatureAlgorithmTests() {
 			"-verify-prefs", strconv.Itoa(int(signatureEd25519)),
 		},
 	})
+
+	for _, testType := range []testType{clientTest, serverTest} {
+		for _, ver := range tlsVersions {
+			if ver.version < VersionTLS12 {
+				continue
+			}
+
+			prefix := "Client-" + ver.name + "-"
+			if testType == serverTest {
+				prefix = "Server-" + ver.name + "-"
+			}
+
+			// Test that the shim will not sign MD5/SHA1 with RSA at TLS 1.2,
+			// even if specified in signing preferences.
+			testCases = append(testCases, testCase{
+				testType: testType,
+				name:     prefix + "NoSign-RSA_PKCS1_MD5_SHA1",
+				config: Config{
+					MaxVersion:                ver.version,
+					CipherSuites:              signingCiphers,
+					ClientAuth:                RequireAnyClientCert,
+					VerifySignatureAlgorithms: []signatureAlgorithm{signatureRSAPKCS1WithMD5AndSHA1},
+				},
+				flags: []string{
+					"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+					"-key-file", path.Join(*resourceDir, rsaKeyFile),
+					"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithMD5AndSHA1)),
+				},
+				shouldFail:    true,
+				expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+			})
+
+			// Test that the shim will not accept MD5/SHA1 with RSA at TLS 1.2,
+			// even if specified in verify preferences.
+			testCases = append(testCases, testCase{
+				testType: testType,
+				name:     prefix + "NoVerify-RSA_PKCS1_MD5_SHA1",
+				config: Config{
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{rsaCertificate},
+					Bugs: ProtocolBugs{
+						IgnorePeerSignatureAlgorithmPreferences: true,
+						AlwaysSignAsLegacyVersion:               true,
+						SendSignatureAlgorithm:                  signatureRSAPKCS1WithMD5AndSHA1,
+					},
+				},
+				flags: []string{
+					"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+					"-key-file", path.Join(*resourceDir, rsaKeyFile),
+					"-verify-prefs", strconv.Itoa(int(signatureRSAPKCS1WithMD5AndSHA1)),
+					"-require-any-client-certificate",
+				},
+				shouldFail:    true,
+				expectedError: ":WRONG_SIGNATURE_TYPE:",
+			})
+		}
+	}
 }
 
 // timeouts is the retransmit schedule for BoringSSL. It doubles and
