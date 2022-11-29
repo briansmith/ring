@@ -1,4 +1,4 @@
-// Copyright 2017 Brian Smith.
+// Copyright 2017-2022 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -19,3 +19,4 @@ pub mod constant;
 pub mod bigint;
 
 pub mod montgomery;
+mod nonnegative;
