@@ -18,6 +18,7 @@
 #include "../include/openssl/conf.h"
 #include "../include/openssl/cpu.h"
 #include "../include/openssl/crypto.h"
+#include "../include/openssl/ctrdrbg.h"
 #include "../include/openssl/curve25519.h"
 #include "../include/openssl/des.h"
 #include "../include/openssl/dh.h"
