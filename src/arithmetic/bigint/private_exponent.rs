@@ -17,17 +17,16 @@ use super::{
 };
 
 use crate::{bssl, c, error};
-use alloc::vec;
+use alloc::{boxed::Box, vec};
 use core::marker::PhantomData;
 
-// `M` represents the prime modulus for which the exponent is in the interval
-// [1, `m` - 1).
-pub struct PrivateExponent<M> {
-    limbs: BoxedLimbs<M>,
+pub struct PrivateExponent {
+    limbs: Box<[Limb]>,
 }
 
-impl<M> PrivateExponent<M> {
-    pub fn from_be_bytes_padded(
+impl PrivateExponent {
+    // `p` is the modulus for which the exponent is in the interval [1, `p` - 1).
+    pub fn from_be_bytes_padded<M>(
         input: untrusted::Input,
         p: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
@@ -45,17 +44,17 @@ impl<M> PrivateExponent<M> {
             return Err(error::Unspecified);
         }
 
-        Ok(Self { limbs: dP })
+        Ok(Self {
+            limbs: dP.into_limbs(),
+        })
     }
-}
 
-impl<M: Prime> PrivateExponent<M> {
     // Returns `p - 2`.
-    pub(super) fn for_flt(p: &Modulus<M>) -> Self {
+    pub(super) fn for_flt<P: Prime>(p: &Modulus<P>) -> Self {
         let two = elem_add(p.one(), p.one(), p);
         let p_minus_2 = elem_sub(p.zero(), &two, p);
         Self {
-            limbs: p_minus_2.limbs,
+            limbs: p_minus_2.limbs.into_limbs(),
         }
     }
 }
@@ -63,7 +62,7 @@ impl<M: Prime> PrivateExponent<M> {
 #[cfg(not(target_arch = "x86_64"))]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
-    exponent: &PrivateExponent<M>,
+    exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     use super::{elem_mul, elem_squared, limbs_mont_product};
@@ -151,7 +150,7 @@ pub fn elem_exp_consttime<M>(
 #[cfg(target_arch = "x86_64")]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
-    exponent: &PrivateExponent<M>,
+    exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     use super::{limbs_mont_mul, limbs_mont_square, n0::N0};

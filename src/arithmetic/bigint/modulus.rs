@@ -114,10 +114,7 @@ impl<M> Modulus<M> {
         n: Nonnegative,
         cpu_features: cpu::Features,
     ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
-        let limbs = BoxedLimbs {
-            limbs: n.into_limbs(),
-            m: PhantomData,
-        };
+        let limbs = BoxedLimbs::new_unchecked(n.into_limbs());
         Self::from_boxed_limbs(limbs, cpu_features)
     }
 
@@ -172,10 +169,10 @@ impl<M> Modulus<M> {
             N0::from(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
         };
 
-        let bits = limb::limbs_minimal_bits(&n.limbs);
+        let bits = limb::limbs_minimal_bits(&n);
         let oneRR = {
             let partial = PartialModulus {
-                limbs: &n.limbs,
+                limbs: &n,
                 n0: n0.clone(),
                 m: PhantomData,
                 cpu_features,
@@ -239,12 +236,8 @@ impl<M> Modulus<M> {
     {
         // TODO: Encode this assertion into the `where` above.
         assert_eq!(self.width().num_limbs, l.width().num_limbs);
-        let limbs = self.limbs.clone();
         Elem {
-            limbs: BoxedLimbs {
-                limbs: limbs.limbs,
-                m: PhantomData,
-            },
+            limbs: BoxedLimbs::new_unchecked(self.limbs.clone().into_limbs()),
             encoding: PhantomData,
         }
     }

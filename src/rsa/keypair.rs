@@ -463,7 +463,7 @@ impl signature::KeyPair for KeyPair {
 
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
-    exponent: bigint::PrivateExponent<M>,
+    exponent: bigint::PrivateExponent,
 }
 
 impl<M: Prime> PrivatePrime<M> {
