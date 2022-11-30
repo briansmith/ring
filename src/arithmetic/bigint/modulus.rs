@@ -14,7 +14,8 @@
 
 use super::{
     super::montgomery::{Unencoded, R, RR},
-    BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SmallerModulus, Width, N0, N0_LIMBS_USED,
+    BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SlightlySmallerModulus, SmallerModulus,
+    Width, N0, N0_LIMBS_USED,
 };
 use crate::{
     bits, cpu, error,
@@ -120,7 +121,21 @@ impl<M> Modulus<M> {
         Self::from_boxed_limbs(limbs, cpu_features)
     }
 
-    pub(super) fn from_boxed_limbs(
+    pub(crate) fn from_elem<L>(
+        elem: Elem<L, Unencoded>,
+        cpu_features: cpu::Features,
+    ) -> Result<Self, error::KeyRejected>
+    where
+        M: SlightlySmallerModulus<L>,
+    {
+        let (m, _bits) = Self::from_boxed_limbs(
+            BoxedLimbs::minimal_width_from_unpadded(&elem.limbs),
+            cpu_features,
+        )?;
+        Ok(m)
+    }
+
+    fn from_boxed_limbs(
         n: BoxedLimbs<M>,
         cpu_features: cpu::Features,
     ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
