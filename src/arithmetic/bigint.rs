@@ -36,7 +36,7 @@
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
-use self::n0::N0;
+use self::{boxed_limbs::BoxedLimbs, n0::N0};
 pub(crate) use self::{
     modulus::{Modulus, PartialModulus, MODULUS_MAX_LIMBS},
     private_exponent::PrivateExponent,
@@ -45,17 +45,14 @@ pub(crate) use super::nonnegative::Nonnegative;
 use crate::{
     arithmetic::montgomery::*,
     bits, bssl, c, cpu, error,
-    limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
+    limb::{self, Limb, LimbMask, LIMB_BITS},
     polyfill::u64_from_usize,
 };
-use alloc::{borrow::ToOwned as _, boxed::Box, vec};
-use core::{
-    marker::PhantomData,
-    num::NonZeroU64,
-    ops::{Deref, DerefMut},
-};
+use alloc::vec;
+use core::{marker::PhantomData, num::NonZeroU64};
 
 mod bn_mul_mont_fallback;
+mod boxed_limbs;
 mod modulus;
 mod n0;
 mod private_exponent;
@@ -77,103 +74,6 @@ struct Width<M> {
 
     /// The modulus *m* that the width originated from.
     m: PhantomData<M>,
-}
-
-/// All `BoxedLimbs<M>` are stored in the same number of limbs.
-struct BoxedLimbs<M> {
-    limbs: Box<[Limb]>,
-
-    /// The modulus *m* that determines the size of `limbx`.
-    m: PhantomData<M>,
-}
-
-impl<M> Deref for BoxedLimbs<M> {
-    type Target = [Limb];
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.limbs
-    }
-}
-
-impl<M> DerefMut for BoxedLimbs<M> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.limbs
-    }
-}
-
-// TODO: `derive(Clone)` after https://github.com/rust-lang/rust/issues/26925
-// is resolved or restrict `M: Clone`.
-impl<M> Clone for BoxedLimbs<M> {
-    fn clone(&self) -> Self {
-        Self {
-            limbs: self.limbs.clone(),
-            m: self.m,
-        }
-    }
-}
-
-impl<M> BoxedLimbs<M> {
-    fn positive_minimal_width_from_be_bytes(
-        input: untrusted::Input,
-    ) -> Result<Self, error::KeyRejected> {
-        // Reject leading zeros. Also reject the value zero ([0]) because zero
-        // isn't positive.
-        if untrusted::Reader::new(input).peek(0) {
-            return Err(error::KeyRejected::invalid_encoding());
-        }
-        let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
-        let mut r = Self::zero(Width {
-            num_limbs,
-            m: PhantomData,
-        });
-        limb::parse_big_endian_and_pad_consttime(input, &mut r)
-            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-        Ok(r)
-    }
-
-    fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
-        debug_assert_ne!(limbs.last(), Some(&0));
-        Self {
-            limbs: limbs.to_owned().into_boxed_slice(),
-            m: PhantomData,
-        }
-    }
-
-    fn from_be_bytes_padded_less_than(
-        input: untrusted::Input,
-        m: &Modulus<M>,
-    ) -> Result<Self, error::Unspecified> {
-        let mut r = Self::zero(m.width());
-        limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
-        if limb::limbs_less_than_limbs_consttime(&r, m.limbs()) != LimbMask::True {
-            return Err(error::Unspecified);
-        }
-        Ok(r)
-    }
-
-    #[inline]
-    fn is_zero(&self) -> bool {
-        limb::limbs_are_zero_constant_time(&self.limbs) == LimbMask::True
-    }
-
-    fn zero(width: Width<M>) -> Self {
-        Self {
-            limbs: vec![0; width.num_limbs].into_boxed_slice(),
-            m: PhantomData,
-        }
-    }
-
-    fn width(&self) -> Width<M> {
-        Width {
-            num_limbs: self.limbs.len(),
-            m: PhantomData,
-        }
-    }
-
-    fn into_limbs(self) -> Box<[Limb]> {
-        self.limbs
-    }
 }
 
 /// A modulus *s* that is smaller than another modulus *l* so every element of
@@ -342,10 +242,7 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
     assert!(r.len() <= m.limbs().len());
     limb::limbs_reduce_once_constant_time(&mut r, m.limbs());
     Elem {
-        limbs: BoxedLimbs {
-            limbs: r.limbs,
-            m: PhantomData,
-        },
+        limbs: BoxedLimbs::new_unchecked(r.into_limbs()),
         encoding: PhantomData,
     }
 }
@@ -636,6 +533,8 @@ pub fn elem_exp_consttime<M>(
     exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    use crate::limb::LIMB_BYTES;
+
     // Pretty much all the math here requires CPU feature detection to have
     // been done. `cpu_features` isn't threaded through all the internal
     // functions, so just make it clear that it has been done at this point.
@@ -1020,7 +919,7 @@ prefixed_extern! {
 #[cfg(test)]
 mod tests {
     use super::{modulus::MODULUS_MIN_LIMBS, *};
-    use crate::test;
+    use crate::{limb::LIMB_BYTES, test};
     use alloc::format;
 
     // Type-level representation of an arbitrary modulus.
