@@ -16,9 +16,7 @@ use super::{
     super::montgomery::{Unencoded, R, RR},
     n0::{N0, N0_LIMBS_USED},
     one::One,
-
-    BoxedLimbs, Elem, Nonnegative, PublicModulus, SlightlySmallerModulus, SmallerModulus,
-    Width,
+    BoxedLimbs, Elem, Nonnegative, PublicModulus, SlightlySmallerModulus, SmallerModulus, Width,
 };
 use crate::{
     bits, cpu, error,
