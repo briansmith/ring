@@ -283,17 +283,6 @@ impl<M> Elem<M, Unencoded> {
         limb::big_endian_from_limbs(&self.limbs, out)
     }
 
-    pub(crate) fn into_modulus<MM>(
-        self,
-        cpu_features: cpu::Features,
-    ) -> Result<Modulus<MM>, error::KeyRejected> {
-        let (m, _bits) = Modulus::from_boxed_limbs(
-            BoxedLimbs::minimal_width_from_unpadded(&self.limbs),
-            cpu_features,
-        )?;
-        Ok(m)
-    }
-
     fn is_one(&self) -> bool {
         limb::limbs_equal_limb_constant_time(&self.limbs, 1) == LimbMask::True
     }
