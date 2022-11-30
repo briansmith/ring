@@ -36,6 +36,7 @@ vars = {
   'libfuzzer_revision': 'debe7d2d1982e540fbd6bd78604bf001753f9e74',
   'libcxx_revision': 'cd0a05047451dfbdef5ba85f97ac4888e432a377',
   'libcxxabi_revision': '1a32724f721e1c3b6c590a07fe4a954344f15e48',
+  'ninja_version': 'version:2@1.8.2.chromium.3',
 }
 
 deps = {
@@ -105,6 +106,14 @@ deps = {
     'url': Var('chromium_git') + '/external/github.com/llvm/llvm-project/libcxxabi.git' + '@' + Var('libcxxabi_revision'),
     'condition': 'checkout_libcxx',
   },
+
+  'boringssl/util/bot/ninja': {
+    'packages': [{
+      'package': 'infra/3pp/tools/ninja/${{platform}}',
+      'version': Var('ninja_version'),
+    }],
+    'dep_type': 'cipd',
+  }
 }
 
 recursedeps = [

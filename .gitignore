@@ -21,6 +21,7 @@ util/bot/libcxx
 util/bot/libcxxabi
 util/bot/llvm-build
 util/bot/nasm-win32.exe
+util/bot/ninja
 util/bot/perl-win32
 util/bot/perl-win32.zip
 util/bot/sde-linux64
