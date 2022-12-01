@@ -15,7 +15,10 @@
 use super::{
     super::montgomery::{Unencoded, R, RR},
     n0::{N0, N0_LIMBS_USED},
-    BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SmallerModulus, Width,
+    one::One,
+
+    BoxedLimbs, Elem, Nonnegative, PublicModulus, SlightlySmallerModulus, SmallerModulus,
+    Width,
 };
 use crate::{
     bits, cpu, error,
@@ -126,7 +129,7 @@ impl<M> Modulus<M> {
         M: SlightlySmallerModulus<L>,
     {
         let (m, _bits) = Self::from_boxed_limbs(
-            BoxedLimbs::minimal_width_from_unpadded(&elem.limbs),
+            BoxedLimbs::minimal_width_from_unpadded(elem.limbs()),
             cpu_features,
         )?;
         Ok(m)
@@ -213,33 +216,27 @@ impl<M> Modulus<M> {
     }
 
     pub(super) fn zero<E>(&self) -> Elem<M, E> {
-        Elem {
-            limbs: BoxedLimbs::zero(self.width()),
-            encoding: PhantomData,
-        }
+        Elem::new_unchecked(BoxedLimbs::zero(self.width()))
     }
 
     // TODO: Get rid of this
     pub(super) fn one(&self) -> Elem<M, Unencoded> {
         let mut r = self.zero();
-        r.limbs[0] = 1;
+        r.limbs_mut()[0] = 1;
         r
     }
 
-    pub fn oneRR(&self) -> &One<M, RR> {
+    pub(crate) fn oneRR(&self) -> &One<M, RR> {
         &self.oneRR
     }
 
-    pub fn to_elem<L>(&self, l: &Modulus<L>) -> Elem<L, Unencoded>
+    pub(crate) fn to_elem<L>(&self, l: &Modulus<L>) -> Elem<L, Unencoded>
     where
         M: SmallerModulus<L>,
     {
         // TODO: Encode this assertion into the `where` above.
         assert_eq!(self.width().num_limbs, l.width().num_limbs);
-        Elem {
-            limbs: BoxedLimbs::new_unchecked(self.limbs.clone().into_limbs()),
-            encoding: PhantomData,
-        }
+        Elem::new_unchecked(BoxedLimbs::new_unchecked(self.limbs.clone().into_limbs()))
     }
 
     pub(crate) fn as_partial(&self) -> PartialModulus<M> {
@@ -272,10 +269,7 @@ impl<M> PartialModulus<'_, M> {
             num_limbs: self.limbs.len(),
             m: PhantomData,
         };
-        Elem {
-            limbs: BoxedLimbs::zero(width),
-            encoding: PhantomData,
-        }
+        Elem::zero(width)
     }
 
     #[inline]

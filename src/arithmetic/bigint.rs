@@ -38,22 +38,24 @@
 
 use self::{boxed_limbs::BoxedLimbs, n0::N0};
 pub(crate) use self::{
+    elem::Elem,
     modulus::{Modulus, PartialModulus, MODULUS_MAX_LIMBS},
     private_exponent::{elem_exp_consttime, PrivateExponent},
 };
 pub(crate) use super::nonnegative::Nonnegative;
 use crate::{
     arithmetic::montgomery::*,
-    bits, bssl, c, cpu, error,
-    limb::{self, Limb, LimbMask, LIMB_BITS},
-    polyfill::u64_from_usize,
+    bssl, c, cpu, error,
+    limb::{self, Limb, LimbMask},
 };
 use core::{marker::PhantomData, num::NonZeroU64};
 
 mod bn_mul_mont_fallback;
 mod boxed_limbs;
+mod elem;
 mod modulus;
 mod n0;
+mod one;
 mod private_exponent;
 
 /// A prime modulus.
@@ -114,86 +116,7 @@ pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
 pub trait PublicModulus {}
 
-/// Elements of ℤ/mℤ for some modulus *m*.
-//
-// Defaulting `E` to `Unencoded` is a convenience for callers from outside this
-// submodule. However, for maximum clarity, we always explicitly use
-// `Unencoded` within the `bigint` submodule.
-pub struct Elem<M, E = Unencoded> {
-    limbs: BoxedLimbs<M>,
-
-    /// The number of Montgomery factors that need to be canceled out from
-    /// `value` to get the actual value.
-    encoding: PhantomData<E>,
-}
-
-// TODO: `derive(Clone)` after https://github.com/rust-lang/rust/issues/26925
-// is resolved or restrict `M: Clone` and `E: Clone`.
-impl<M, E> Clone for Elem<M, E> {
-    fn clone(&self) -> Self {
-        Self {
-            limbs: self.limbs.clone(),
-            encoding: self.encoding,
-        }
-    }
-}
-
-impl<M, E> Elem<M, E> {
-    #[inline]
-    pub fn is_zero(&self) -> bool {
-        self.limbs.is_zero()
-    }
-}
-
-impl<M, E: ReductionEncoding> Elem<M, E> {
-    fn decode_once(self, m: &Modulus<M>) -> Elem<M, <E as ReductionEncoding>::Output> {
-        // A multiplication isn't required since we're multiplying by the
-        // unencoded value one (1); only a Montgomery reduction is needed.
-        // However the only non-multiplication Montgomery reduction function we
-        // have requires the input to be large, so we avoid using it here.
-        let mut limbs = self.limbs;
-        let num_limbs = m.width().num_limbs;
-        let mut one = [0; MODULUS_MAX_LIMBS];
-        one[0] = 1;
-        let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
-        limbs_mont_mul(&mut limbs, one, m.limbs(), m.n0(), m.cpu_features());
-        Elem {
-            limbs,
-            encoding: PhantomData,
-        }
-    }
-}
-
-impl<M> Elem<M, R> {
-    #[inline]
-    pub fn into_unencoded(self, m: &Modulus<M>) -> Elem<M, Unencoded> {
-        self.decode_once(m)
-    }
-}
-
-impl<M> Elem<M, Unencoded> {
-    pub fn from_be_bytes_padded(
-        input: untrusted::Input,
-        m: &Modulus<M>,
-    ) -> Result<Self, error::Unspecified> {
-        Ok(Self {
-            limbs: BoxedLimbs::from_be_bytes_padded_less_than(input, m)?,
-            encoding: PhantomData,
-        })
-    }
-
-    #[inline]
-    pub fn fill_be_bytes(&self, out: &mut [u8]) {
-        // See Falko Strenzke, "Manger's Attack revisited", ICICS 2010.
-        limb::big_endian_from_limbs(&self.limbs, out)
-    }
-
-    fn is_one(&self) -> bool {
-        limb::limbs_equal_limb_constant_time(&self.limbs, 1) == LimbMask::True
-    }
-}
-
-pub fn elem_mul<M, AF, BF>(
+pub(crate) fn elem_mul<M, AF, BF>(
     a: &Elem<M, AF>,
     b: Elem<M, BF>,
     m: &Modulus<M>,
@@ -212,11 +135,14 @@ fn elem_mul_<M, AF, BF>(
 where
     (AF, BF): ProductEncoding,
 {
-    limbs_mont_mul(&mut b.limbs, &a.limbs, m.limbs(), m.n0(), m.cpu_features());
-    Elem {
-        limbs: b.limbs,
-        encoding: PhantomData,
-    }
+    limbs_mont_mul(
+        b.limbs_mut(),
+        a.limbs(),
+        m.limbs(),
+        m.n0(),
+        m.cpu_features(),
+    );
+    Elem::new_unchecked(b.into_limbs())
 }
 
 fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
@@ -225,38 +151,35 @@ fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
     }
     unsafe {
         LIMBS_shl_mod(
-            a.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
+            a.limbs_mut().as_mut_ptr(),
+            a.limbs().as_ptr(),
             m.limbs().as_ptr(),
             m.limbs().len(),
         );
     }
 }
 
-pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
+pub(crate) fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
     a: &Elem<Larger, Unencoded>,
     m: &Modulus<Smaller>,
 ) -> Elem<Smaller, Unencoded> {
-    let mut r = a.limbs.clone();
+    let mut r = a.limbs().clone();
     assert!(r.len() <= m.limbs().len());
     limb::limbs_reduce_once_constant_time(&mut r, m.limbs());
-    Elem {
-        limbs: BoxedLimbs::new_unchecked(r.into_limbs()),
-        encoding: PhantomData,
-    }
+    Elem::new_unchecked(BoxedLimbs::new_unchecked(r.into_limbs()))
 }
 
 #[inline]
-pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
+pub(crate) fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     a: &Elem<Larger, Unencoded>,
     m: &Modulus<Smaller>,
 ) -> Elem<Smaller, RInverse> {
     let mut tmp = [0; MODULUS_MAX_LIMBS];
-    let tmp = &mut tmp[..a.limbs.len()];
-    tmp.copy_from_slice(&a.limbs);
+    let tmp = &mut tmp[..a.limbs().len()];
+    tmp.copy_from_slice(a.limbs());
 
     let mut r = m.zero();
-    limbs_from_mont_in_place(&mut r.limbs, tmp, m.limbs(), m.n0());
+    limbs_from_mont_in_place(r.limbs_mut(), tmp, m.limbs(), m.n0());
     r
 }
 
@@ -267,30 +190,27 @@ fn elem_squared<M, E>(
 where
     (E, E): ProductEncoding,
 {
-    limbs_mont_square(&mut a.limbs, m.limbs(), m.n0(), m.cpu_features());
-    Elem {
-        limbs: a.limbs,
-        encoding: PhantomData,
-    }
+    limbs_mont_square(a.limbs_mut(), m.limbs(), m.n0(), m.cpu_features());
+    Elem::new_unchecked(a.into_limbs())
 }
 
-pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
+pub(crate) fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
     a: Elem<Smaller, Unencoded>,
     m: &Modulus<Larger>,
 ) -> Elem<Larger, Unencoded> {
     let mut r = m.zero();
-    r.limbs[..a.limbs.len()].copy_from_slice(&a.limbs);
+    r.limbs_mut()[..a.limbs().len()].copy_from_slice(a.limbs());
     r
 }
 
 // TODO: Document why this works for all Montgomery factors.
-pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
-    limb::limbs_add_assign_mod(&mut a.limbs, &b.limbs, m.limbs());
+pub(crate) fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
+    limb::limbs_add_assign_mod(a.limbs_mut(), b.limbs(), m.limbs());
     a
 }
 
 // TODO: Document why this works for all Montgomery factors.
-pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
+pub(crate) fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
     prefixed_extern! {
         // `r` and `a` may alias.
         fn LIMBS_sub_mod(
@@ -303,87 +223,14 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem
     }
     unsafe {
         LIMBS_sub_mod(
-            a.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
-            b.limbs.as_ptr(),
+            a.limbs_mut().as_mut_ptr(),
+            a.limbs().as_ptr(),
+            b.limbs().as_ptr(),
             m.limbs().as_ptr(),
             m.limbs().len(),
         );
     }
     a
-}
-
-// The value 1, Montgomery-encoded some number of times.
-pub struct One<M, E>(Elem<M, E>);
-
-impl<M> One<M, RR> {
-    // Returns RR = = R**2 (mod n) where R = 2**r is the smallest power of
-    // 2**LIMB_BITS such that R > m.
-    //
-    // Even though the assembly on some 32-bit platforms works with 64-bit
-    // values, using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`,
-    // is correct because R**2 will still be a multiple of the latter as
-    // `N0_LIMBS_USED` is either one or two.
-    fn newRR(m: &PartialModulus<M>, m_bits: bits::BitLength) -> Self {
-        let m_bits = m_bits.as_usize_bits();
-        let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
-
-        // base = 2**(lg m - 1).
-        let bit = m_bits - 1;
-        let mut base = m.zero();
-        base.limbs[bit / LIMB_BITS] = 1 << (bit % LIMB_BITS);
-
-        // Double `base` so that base == R == 2**r (mod m). For normal moduli
-        // that have the high bit of the highest limb set, this requires one
-        // doubling. Unusual moduli require more doublings but we are less
-        // concerned about the performance of those.
-        //
-        // Then double `base` again so that base == 2*R (mod n), i.e. `2` in
-        // Montgomery form (`elem_exp_vartime()` requires the base to be in
-        // Montgomery form). Then compute
-        // RR = R**2 == base**r == R**r == (2**r)**r (mod n).
-        //
-        // Take advantage of the fact that `elem_mul_by_2` is faster than
-        // `elem_squared` by replacing some of the early squarings with shifts.
-        // TODO: Benchmark shift vs. squaring performance to determine the
-        // optimal value of `LG_BASE`.
-        const LG_BASE: usize = 2; // Shifts vs. squaring trade-off.
-        debug_assert_eq!(LG_BASE.count_ones(), 1); // Must be 2**n for n >= 0.
-        let shifts = r - bit + LG_BASE;
-        // `m_bits >= LG_BASE` (for the currently chosen value of `LG_BASE`)
-        // since we require the modulus to have at least `MODULUS_MIN_LIMBS`
-        // limbs. `r >= m_bits` as seen above. So `r >= LG_BASE` and thus
-        // `r / LG_BASE` is non-zero.
-        //
-        // The maximum value of `r` is determined by
-        // `MODULUS_MAX_LIMBS * LIMB_BITS`. Further `r` is a multiple of
-        // `LIMB_BITS` so the maximum Hamming Weight is bounded by
-        // `MODULUS_MAX_LIMBS`. For the common case of {2048, 4096, 8192}-bit
-        // moduli the Hamming weight is 1. For the other common case of 3072
-        // the Hamming weight is 2.
-        let exponent = NonZeroU64::new(u64_from_usize(r / LG_BASE)).unwrap();
-        for _ in 0..shifts {
-            elem_mul_by_2(&mut base, m)
-        }
-        let RR = elem_exp_vartime(base, exponent, m);
-
-        Self(Elem {
-            limbs: RR.limbs,
-            encoding: PhantomData, // PhantomData<RR>
-        })
-    }
-}
-
-impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
-    fn as_ref(&self) -> &Elem<M, E> {
-        &self.0
-    }
-}
-
-impl<M: PublicModulus, E> Clone for One<M, E> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
 }
 
 /// Calculates base**exponent (mod m).
@@ -432,7 +279,7 @@ pub(crate) fn elem_exp_vartime<M>(
 }
 
 /// Uses Fermat's Little Theorem to calculate modular inverse in constant time.
-pub fn elem_inverse_consttime<M: Prime>(
+pub(crate) fn elem_inverse_consttime<M: Prime>(
     a: Elem<M, R>,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
@@ -440,7 +287,7 @@ pub fn elem_inverse_consttime<M: Prime>(
 }
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
-pub fn verify_inverses_consttime<M>(
+pub(crate) fn verify_inverses_consttime<M>(
     a: &Elem<M, R>,
     b: Elem<M, Unencoded>,
     m: &Modulus<M>,
@@ -453,11 +300,11 @@ pub fn verify_inverses_consttime<M>(
 }
 
 #[inline]
-pub fn elem_verify_equal_consttime<M, E>(
+pub(crate) fn elem_verify_equal_consttime<M, E>(
     a: &Elem<M, E>,
     b: &Elem<M, E>,
 ) -> Result<(), error::Unspecified> {
-    if limb::limbs_equal_limbs_consttime(&a.limbs, &b.limbs) == LimbMask::True {
+    if limb::limbs_equal_limbs_consttime(a.limbs(), b.limbs()) == LimbMask::True {
         Ok(())
     } else {
         Err(error::Unspecified)
@@ -468,7 +315,7 @@ impl Nonnegative {
     pub fn to_elem<M>(&self, m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
         self.verify_less_than_modulus(m)?;
         let mut r = m.zero();
-        r.limbs[0..self.limbs().len()].copy_from_slice(self.limbs());
+        r.limbs_mut()[0..self.limbs().len()].copy_from_slice(self.limbs());
         Ok(r)
     }
 
@@ -695,7 +542,7 @@ mod tests {
                 let m = consume_modulus::<M>(test_case, "M", cpu_features);
                 let expected_result = consume_elem(test_case, "R", &m);
                 let a =
-                    consume_elem_unchecked::<MM>(test_case, "A", expected_result.limbs.len() * 2);
+                    consume_elem_unchecked::<MM>(test_case, "A", expected_result.limbs().len() * 2);
 
                 let actual_result = elem_reduced(&a, &m);
                 let oneRR = m.oneRR();
@@ -758,15 +605,12 @@ mod tests {
         num_limbs: usize,
     ) -> Elem<M, Unencoded> {
         let value = consume_nonnegative(test_case, name);
-        let mut limbs = BoxedLimbs::zero(Width {
+        let mut r = Elem::zero(Width {
             num_limbs,
             m: PhantomData,
         });
-        limbs[0..value.limbs().len()].copy_from_slice(value.limbs());
-        Elem {
-            limbs,
-            encoding: PhantomData,
-        }
+        r.limbs_mut()[0..value.limbs().len()].copy_from_slice(value.limbs());
+        r
     }
 
     pub(super) fn consume_modulus<M>(
@@ -790,11 +634,11 @@ mod tests {
 
     pub(super) fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
         if elem_verify_equal_consttime(a, b).is_err() {
-            panic!("{:x?} != {:x?}", &*a.limbs, &*b.limbs);
+            panic!("{:x?} != {:x?}", a.limbs().as_ref(), b.limbs().as_ref());
         }
     }
 
-    pub fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
+    pub(crate) fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
         elem_mul(m.oneRR().as_ref(), a, m)
     }
 

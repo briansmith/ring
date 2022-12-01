@@ -18,7 +18,6 @@ use super::{
 
 use crate::{bssl, c, error};
 use alloc::{boxed::Box, vec};
-use core::marker::PhantomData;
 
 pub struct PrivateExponent {
     limbs: Box<[Limb]>,
@@ -54,13 +53,13 @@ impl PrivateExponent {
         let two = elem_add(p.one(), p.one(), p);
         let p_minus_2 = elem_sub(p.zero(), &two, p);
         Self {
-            limbs: p_minus_2.limbs.into_limbs(),
+            limbs: p_minus_2.into_limbs().into_limbs(),
         }
     }
 }
 
 #[cfg(not(target_arch = "x86_64"))]
-pub fn elem_exp_consttime<M>(
+pub(crate) fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
@@ -85,7 +84,12 @@ pub fn elem_exp_consttime<M>(
             ) -> bssl::Result;
         }
         Result::from(unsafe {
-            LIMBS_select_512_32(r.limbs.as_mut_ptr(), table.as_ptr(), r.limbs.len(), i)
+            LIMBS_select_512_32(
+                r.limbs_mut().as_mut_ptr(),
+                table.as_ptr(),
+                r.limbs().len(),
+                i,
+            )
         })
         .unwrap();
     }
@@ -114,8 +118,8 @@ pub fn elem_exp_consttime<M>(
     fn entry_mut(table: &mut [Limb], i: usize, num_limbs: usize) -> &mut [Limb] {
         &mut table[(i * num_limbs)..][..num_limbs]
     }
-    entry_mut(&mut table, 0, num_limbs).copy_from_slice(&tmp.limbs);
-    entry_mut(&mut table, 1, num_limbs).copy_from_slice(&base.limbs);
+    entry_mut(&mut table, 0, num_limbs).copy_from_slice(tmp.limbs());
+    entry_mut(&mut table, 1, num_limbs).copy_from_slice(base.limbs());
     for i in 2..TABLE_ENTRIES {
         let (src1, src2) = if i % 2 == 0 {
             (i / 2, i / 2)
@@ -132,10 +136,7 @@ pub fn elem_exp_consttime<M>(
     let (r, _) = limb::fold_5_bit_windows(
         &exponent.limbs,
         |initial_window| {
-            let mut r = Elem {
-                limbs: base.limbs,
-                encoding: PhantomData,
-            };
+            let mut r = Elem::new_unchecked(base.into_limbs());
             gather(&table, initial_window, &mut r);
             (r, tmp)
         },
@@ -148,7 +149,7 @@ pub fn elem_exp_consttime<M>(
 }
 
 #[cfg(target_arch = "x86_64")]
-pub fn elem_exp_consttime<M>(
+pub(crate) fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
     m: &Modulus<M>,
@@ -198,7 +199,7 @@ pub fn elem_exp_consttime<M>(
     const BASE: usize = ACC + 1; // `am` in OpenSSL
     const M: usize = BASE + 1; // `np` in OpenSSL
 
-    entry_mut(state, BASE, num_limbs).copy_from_slice(&base.limbs);
+    entry_mut(state, BASE, num_limbs).copy_from_slice(base.limbs());
     entry_mut(state, M, num_limbs).copy_from_slice(m.limbs());
 
     fn scatter(table: &mut [Limb], state: &[Limb], i: Window, num_limbs: usize) {
@@ -298,12 +299,18 @@ pub fn elem_exp_consttime<M>(
     {
         let acc = entry_mut(state, ACC, num_limbs);
         acc[0] = 1;
-        limbs_mont_mul(acc, &m.oneRR().0.limbs, m.limbs(), m.n0(), m.cpu_features());
+        limbs_mont_mul(
+            acc,
+            m.oneRR().as_ref().limbs(),
+            m.limbs(),
+            m.n0(),
+            m.cpu_features(),
+        );
     }
     scatter(table, state, 0, num_limbs);
 
     // table[1] = base**1.
-    entry_mut(state, ACC, num_limbs).copy_from_slice(&base.limbs);
+    entry_mut(state, ACC, num_limbs).copy_from_slice(base.limbs());
     scatter(table, state, 1, num_limbs);
 
     for i in 2..(TABLE_ENTRIES as Window) {
@@ -348,11 +355,8 @@ pub fn elem_exp_consttime<M>(
             num_limbs,
         )
     })?;
-    let mut r = Elem {
-        limbs: base.limbs,
-        encoding: PhantomData,
-    };
-    r.limbs.copy_from_slice(entry(state, ACC, num_limbs));
+    let mut r = Elem::new_unchecked(base.into_limbs());
+    r.limbs_mut().copy_from_slice(entry(state, ACC, num_limbs));
     Ok(r)
 }
 

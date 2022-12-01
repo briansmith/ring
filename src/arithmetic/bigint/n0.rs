@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Limb, LIMB_BITS};
+use crate::limb::{Limb, LIMB_BITS};
 
 #[derive(Clone)]
 #[repr(transparent)]
