@@ -15727,24 +15727,26 @@ func addRSAKeyUsageTests() {
 			// In 1.2 and below, we should not enforce without the enforce-rsa-key-usage flag.
 			testCases = append(testCases, testCase{
 				testType: clientTest,
-				name:     "RSAKeyUsage-Client-WantSignature-GotEncipherment-Unenforced" + ver.name,
+				name:     "RSAKeyUsage-Client-WantSignature-GotEncipherment-Unenforced-" + ver.name,
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
 					Certificates: []Certificate{dsCert},
 					CipherSuites: encSuites,
 				},
+				flags: []string{"-expect-key-usage-invalid"},
 			})
 
 			testCases = append(testCases, testCase{
 				testType: clientTest,
-				name:     "RSAKeyUsage-Client-WantEncipherment-GotSignature-Unenforced" + ver.name,
+				name:     "RSAKeyUsage-Client-WantEncipherment-GotSignature-Unenforced-" + ver.name,
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,
 					Certificates: []Certificate{encCert},
 					CipherSuites: dsSuites,
 				},
+				flags: []string{"-expect-key-usage-invalid"},
 			})
 		}
 
@@ -15752,7 +15754,7 @@ func addRSAKeyUsageTests() {
 			// In 1.3 and above, we enforce keyUsage even without the flag.
 			testCases = append(testCases, testCase{
 				testType: clientTest,
-				name:     "RSAKeyUsage-Client-WantSignature-GotEncipherment-Enforced" + ver.name,
+				name:     "RSAKeyUsage-Client-WantSignature-GotEncipherment-Enforced-" + ver.name,
 				config: Config{
 					MinVersion:   ver.version,
 					MaxVersion:   ver.version,

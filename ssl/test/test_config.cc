@@ -365,6 +365,8 @@ std::vector<Flag> SortedFlags() {
               &TestConfig::install_one_cert_compression_alg),
       BoolFlag("-reverify-on-resume", &TestConfig::reverify_on_resume),
       BoolFlag("-enforce-rsa-key-usage", &TestConfig::enforce_rsa_key_usage),
+      BoolFlag("-expect-key-usage-invalid",
+               &TestConfig::expect_key_usage_invalid),
       BoolFlag("-is-handshaker-supported",
                &TestConfig::is_handshaker_supported),
       BoolFlag("-handshaker-resume", &TestConfig::handshaker_resume),

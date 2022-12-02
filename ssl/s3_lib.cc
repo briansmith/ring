@@ -178,7 +178,8 @@ SSL3_STATE::SSL3_STATE()
       early_data_accepted(false),
       alert_dispatch(false),
       renegotiate_pending(false),
-      used_hello_retry_request(false) {}
+      used_hello_retry_request(false),
+      was_key_usage_invalid(false) {}
 
 SSL3_STATE::~SSL3_STATE() {}
 

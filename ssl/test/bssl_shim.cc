@@ -666,6 +666,12 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
+  if (config->expect_key_usage_invalid != !!SSL_was_key_usage_invalid(ssl)) {
+    fprintf(stderr, "X.509 key usage was %svalid, but wanted opposite.\n",
+            SSL_was_key_usage_invalid(ssl) ? "in" : "");
+    return false;
+  }
+
   // Test that handshake hints correctly skipped the expected operations.
   if (config->handshake_hints && !config->allow_hint_mismatch) {
     const TestState *state = GetTestState(ssl);

@@ -4327,11 +4327,23 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
 // respected on clients.
 OPENSSL_EXPORT void SSL_CTX_set_reverify_on_resume(SSL_CTX *ctx, int enabled);
 
-// SSL_set_enforce_rsa_key_usage configures whether the keyUsage extension of
-// RSA leaf certificates will be checked for consistency with the TLS
-// usage. This parameter may be set late; it will not be read until after the
+// SSL_set_enforce_rsa_key_usage configures whether, when |ssl| is a client
+// negotiating TLS 1.2 or below, the keyUsage extension of RSA leaf server
+// certificates will be checked for consistency with the TLS usage. In all other
+// cases, this check is always enabled.
+//
+// This parameter may be set late; it will not be read until after the
 // certificate verification callback.
 OPENSSL_EXPORT void SSL_set_enforce_rsa_key_usage(SSL *ssl, int enabled);
+
+// SSL_was_key_usage_invalid returns one if |ssl|'s handshake succeeded despite
+// using TLS parameters which were incompatible with the leaf certificate's
+// keyUsage extension. Otherwise, it returns zero.
+//
+// If |SSL_set_enforce_rsa_key_usage| is enabled or not applicable, this
+// function will always return zero because key usages will be consistently
+// checked.
+OPENSSL_EXPORT int SSL_was_key_usage_invalid(const SSL *ssl);
 
 // SSL_ST_* are possible values for |SSL_state|, the bitmasks that make them up,
 // and some historical values for compatibility. Only |SSL_ST_INIT| and

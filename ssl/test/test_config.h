@@ -178,6 +178,7 @@ struct TestConfig {
   int install_one_cert_compression_alg = 0;
   bool reverify_on_resume = false;
   bool enforce_rsa_key_usage = false;
+  bool expect_key_usage_invalid = false;
   bool is_handshaker_supported = false;
   bool handshaker_resume = false;
   std::string handshaker_path;

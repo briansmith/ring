@@ -2807,6 +2807,10 @@ void SSL_set_enforce_rsa_key_usage(SSL *ssl, int enabled) {
   ssl->config->enforce_rsa_key_usage = !!enabled;
 }
 
+int SSL_was_key_usage_invalid(const SSL *ssl) {
+  return ssl->s3->was_key_usage_invalid;
+}
+
 void SSL_set_renegotiate_mode(SSL *ssl, enum ssl_renegotiate_mode_t mode) {
   ssl->renegotiate_mode = mode;
 

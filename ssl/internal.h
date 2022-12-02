@@ -2763,6 +2763,11 @@ struct SSL3_STATE {
   // HelloRetryRequest message.
   bool used_hello_retry_request : 1;
 
+  // was_key_usage_invalid is whether the handshake succeeded despite using a
+  // TLS mode which was incompatible with the leaf certificate's keyUsage
+  // extension.
+  bool was_key_usage_invalid : 1;
+
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
 
