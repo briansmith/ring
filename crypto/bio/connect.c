@@ -363,7 +363,7 @@ static int conn_read(BIO *bio, char *out, int out_len) {
   }
 
   bio_clear_socket_error();
-  ret = recv(bio->num, out, out_len, 0);
+  ret = (int)recv(bio->num, out, out_len, 0);
   BIO_clear_retry_flags(bio);
   if (ret <= 0) {
     if (bio_fd_should_retry(ret)) {
@@ -387,7 +387,7 @@ static int conn_write(BIO *bio, const char *in, int in_len) {
   }
 
   bio_clear_socket_error();
-  ret = send(bio->num, in, in_len, 0);
+  ret = (int)send(bio->num, in, in_len, 0);
   BIO_clear_retry_flags(bio);
   if (ret <= 0) {
     if (bio_fd_should_retry(ret)) {
