@@ -513,13 +513,6 @@ else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
-if(ANDROID AND NOT ANDROID_NDK_REVISION AND ARCH STREQUAL "arm")
-  # The third-party Android-NDK CMake files somehow fail to set the -march flag
-  # for assembly files. Without this flag, the compiler believes that it's
-  # building for ARMv5.
-  set(CMAKE_ASM_FLAGS "-march=${CMAKE_SYSTEM_PROCESSOR} ${CMAKE_ASM_FLAGS}")
-endif()
-
 if(USE_CUSTOM_LIBCXX)
   if(NOT CLANG)
     message(FATAL_ERROR "USE_CUSTOM_LIBCXX only supported with Clang")
