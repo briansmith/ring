@@ -19,9 +19,13 @@ load(
     "crypto_internal_headers",
     "crypto_sources",
     "crypto_sources_apple_aarch64",
+    "crypto_sources_apple_arm",
+    "crypto_sources_apple_x86",
     "crypto_sources_apple_x86_64",
     "crypto_sources_linux_aarch64",
+    "crypto_sources_linux_arm",
     "crypto_sources_linux_ppc64le",
+    "crypto_sources_linux_x86",
     "crypto_sources_linux_x86_64",
     "fips_fragments",
     "ssl_headers",
@@ -35,43 +39,37 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
-config_setting(
-    name = "linux_aarch64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:aarch64",
-    ],
-)
-
-config_setting(
-    name = "linux_x86_64",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-    ],
-)
+[
+    (
+        config_setting(
+            name = os + "_" + arch,
+            constraint_values = [
+                "@platforms//os:" + os,
+                "@platforms//cpu:" + arch,
+            ],
+        ),
+    )
+    for os in [
+        "linux",
+        "android",
+        "macos",
+        "ios",
+        "tvos",
+        "watchos",
+    ]
+    for arch in [
+        "arm64",
+        "armv7",
+        "x86_64",
+        "x86_32",
+    ]
+]
 
 config_setting(
     name = "linux_ppc64le",
     constraint_values = [
         "@platforms//os:linux",
         "@platforms//cpu:ppc",
-    ],
-)
-
-config_setting(
-    name = "macos_aarch64",
-    constraint_values = [
-        "@platforms//os:macos",
-        "@platforms//cpu:aarch64",
-    ],
-)
-
-config_setting(
-    name = "macos_x86_64",
-    constraint_values = [
-        "@platforms//os:macos",
-        "@platforms//cpu:x86_64",
     ],
 )
 
@@ -91,35 +89,80 @@ posix_copts = [
     "-fno-common",
 ]
 
-linux_copts = posix_copts + [
-    # This is needed on Linux systems (at least) to get rwlock in pthread, but
-    # it should not be set on Apple platforms, where it instead disables APIs
-    # we use. See compat(5) and sys/cdefs.h.
+glibc_copts = posix_copts + [
+    # This is needed on glibc systems (at least) to get rwlock in pthread, but
+    # it should not be set on Apple platforms or FreeBSD, where it instead
+    # disables APIs we use.
+    # See compat(5), sys/cdefs.h, and https://crbug.com/boringssl/471
     "-D_XOPEN_SOURCE=700",
 ]
 
 boringssl_copts = select({
-    "@platforms//os:linux": linux_copts,
+    "@platforms//os:linux": glibc_copts,
+    "@platforms//os:android": posix_copts,
     "@platforms//os:macos": posix_copts,
+    "@platforms//os:ios": posix_copts,
+    "@platforms//os:tvos": posix_copts,
+    "@platforms//os:watchos": posix_copts,
     "@platforms//os:windows": ["-DWIN32_LEAN_AND_MEAN"],
     "//conditions:default": [],
 })
 
 # These selects must be kept in sync.
 crypto_sources_asm = select({
-    ":linux_aarch64": crypto_sources_linux_aarch64,
     ":linux_ppc64le": crypto_sources_linux_ppc64le,
+    ":linux_armv7": crypto_sources_linux_arm,
+    ":linux_arm64": crypto_sources_linux_aarch64,
+    ":linux_x86_32": crypto_sources_linux_x86,
     ":linux_x86_64": crypto_sources_linux_x86_64,
-    ":macos_aarch64": crypto_sources_apple_aarch64,
+    ":android_armv7": crypto_sources_linux_arm,
+    ":android_arm64": crypto_sources_linux_aarch64,
+    ":android_x86_32": crypto_sources_linux_x86,
+    ":android_x86_64": crypto_sources_linux_x86_64,
+    ":macos_armv7": crypto_sources_apple_arm,
+    ":macos_arm64": crypto_sources_apple_aarch64,
+    ":macos_x86_32": crypto_sources_apple_x86,
     ":macos_x86_64": crypto_sources_apple_x86_64,
+    ":ios_armv7": crypto_sources_apple_arm,
+    ":ios_arm64": crypto_sources_apple_aarch64,
+    ":ios_x86_32": crypto_sources_apple_x86,
+    ":ios_x86_64": crypto_sources_apple_x86_64,
+    ":tvos_armv7": crypto_sources_apple_arm,
+    ":tvos_arm64": crypto_sources_apple_aarch64,
+    ":tvos_x86_32": crypto_sources_apple_x86,
+    ":tvos_x86_64": crypto_sources_apple_x86_64,
+    ":watchos_armv7": crypto_sources_apple_arm,
+    ":watchos_arm64": crypto_sources_apple_aarch64,
+    ":watchos_x86_32": crypto_sources_apple_x86,
+    ":watchos_x86_64": crypto_sources_apple_x86_64,
     "//conditions:default": [],
 })
 boringssl_copts += select({
-    ":linux_aarch64": [],
     ":linux_ppc64le": [],
+    ":linux_armv7": [],
+    ":linux_arm64": [],
+    ":linux_x86_32": [],
     ":linux_x86_64": [],
-    ":macos_aarch64": [],
+    ":android_armv7": [],
+    ":android_arm64": [],
+    ":android_x86_32": [],
+    ":android_x86_64": [],
+    ":macos_armv7": [],
+    ":macos_arm64": [],
+    ":macos_x86_32": [],
     ":macos_x86_64": [],
+    ":ios_armv7": [],
+    ":ios_arm64": [],
+    ":ios_x86_32": [],
+    ":ios_x86_64": [],
+    ":tvos_armv7": [],
+    ":tvos_arm64": [],
+    ":tvos_x86_32": [],
+    ":tvos_x86_64": [],
+    ":watchos_armv7": [],
+    ":watchos_arm64": [],
+    ":watchos_x86_32": [],
+    ":watchos_x86_64": [],
     "//conditions:default": ["-DOPENSSL_NO_ASM"],
 })
 
@@ -133,7 +176,11 @@ posix_copts_c11 = [
 
 boringssl_copts_c11 = boringssl_copts + select({
     "@platforms//os:linux": posix_copts_c11,
+    "@platforms//os:android": posix_copts_c11,
     "@platforms//os:macos": posix_copts_c11,
+    "@platforms//os:ios": posix_copts_c11,
+    "@platforms//os:tvos": posix_copts_c11,
+    "@platforms//os:watchos": posix_copts_c11,
     "//conditions:default": [],
 })
 
@@ -145,7 +192,11 @@ posix_copts_cxx = [
 
 boringssl_copts_cxx = boringssl_copts + select({
     "@platforms//os:linux": posix_copts_cxx,
+    "@platforms//os:android": posix_copts_cxx,
     "@platforms//os:macos": posix_copts_cxx,
+    "@platforms//os:ios": posix_copts_cxx,
+    "@platforms//os:tvos": posix_copts_cxx,
+    "@platforms//os:watchos": posix_copts_cxx,
     "//conditions:default": [],
 })
 
@@ -160,6 +211,9 @@ cc_library(
         # to link against.
         "@platforms//os:android": [],
         "@platforms//os:macos": [],
+        "@platforms//os:ios": [],
+        "@platforms//os:tvos": [],
+        "@platforms//os:watchos": [],
         "@platforms//os:windows": ["-defaultlib:advapi32.lib"],
         "//conditions:default": ["-lpthread"],
     }),
