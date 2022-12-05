@@ -78,7 +78,8 @@ static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cont, int *out_omit,
 static int asn1_set_seq_out(STACK_OF(ASN1_VALUE) *sk, unsigned char **out,
                             int skcontlen, const ASN1_ITEM *item, int do_sort);
 static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
-                                const ASN1_TEMPLATE *tt, int tag, int aclass);
+                                const ASN1_TEMPLATE *tt, int tag, int aclass,
+                                int optional);
 
 // Top level i2d equivalents
 
@@ -144,11 +145,13 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
   switch (it->itype) {
     case ASN1_ITYPE_PRIMITIVE:
       if (it->templates) {
+        // This is an |ASN1_ITEM_TEMPLATE|.
         if (it->templates->flags & ASN1_TFLG_OPTIONAL) {
           OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
           return -1;
         }
-        return asn1_template_ex_i2d(pval, out, it->templates, tag, aclass);
+        return asn1_template_ex_i2d(pval, out, it->templates, tag, aclass,
+                                    optional);
       }
       return asn1_i2d_ex_primitive(pval, out, it, tag, aclass, optional);
 
@@ -179,7 +182,7 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
         return -1;
       }
       ASN1_VALUE **pchval = asn1_get_field_ptr(pval, chtt);
-      return asn1_template_ex_i2d(pchval, out, chtt, -1, 0);
+      return asn1_template_ex_i2d(pchval, out, chtt, -1, 0, /*optional=*/0);
     }
 
     case ASN1_ITYPE_EXTERN: {
@@ -223,7 +226,8 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
           return -1;
         }
         pseqval = asn1_get_field_ptr(pval, seqtt);
-        tmplen = asn1_template_ex_i2d(pseqval, NULL, seqtt, -1, 0);
+        tmplen =
+            asn1_template_ex_i2d(pseqval, NULL, seqtt, -1, 0, /*optional=*/0);
         if (tmplen == -1 || (tmplen > INT_MAX - seqcontlen)) {
           return -1;
         }
@@ -244,7 +248,8 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
           return -1;
         }
         pseqval = asn1_get_field_ptr(pval, seqtt);
-        if (asn1_template_ex_i2d(pseqval, out, seqtt, -1, 0) < 0) {
+        if (asn1_template_ex_i2d(pseqval, out, seqtt, -1, 0, /*optional=*/0) <
+            0) {
           return -1;
         }
       }
@@ -259,10 +264,10 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
 
 // asn1_template_ex_i2d behaves like |asn1_item_ex_i2d_opt| but uses an
 // |ASN1_TEMPLATE| instead of an |ASN1_ITEM|. An |ASN1_TEMPLATE| wraps an
-// |ASN1_ITEM| with modifiers such as tagging, SEQUENCE or SET, etc. Instead of
-// taking an |optional| parameter, it uses the |ASN1_TFLG_OPTIONAL| flag.
+// |ASN1_ITEM| with modifiers such as tagging, SEQUENCE or SET, etc.
 static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
-                                const ASN1_TEMPLATE *tt, int tag, int iclass) {
+                                const ASN1_TEMPLATE *tt, int tag, int iclass,
+                                int optional) {
   int i, ret, ttag, tclass;
   size_t j;
   uint32_t flags = tt->flags;
@@ -294,7 +299,12 @@ static int asn1_template_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
     tclass = 0;
   }
 
-  const int optional = (flags & ASN1_TFLG_OPTIONAL) != 0;
+  // The template may itself by marked as optional, or this may be the template
+  // of an |ASN1_ITEM_TEMPLATE| type which was contained inside an outer
+  // optional template. (They cannot both be true because the
+  // |ASN1_ITEM_TEMPLATE| codepath rejects optional templates.)
+  assert(!optional || (flags & ASN1_TFLG_OPTIONAL) == 0);
+  optional = optional || (flags & ASN1_TFLG_OPTIONAL) != 0;
 
   // At this point 'ttag' contains the outer tag to use, and 'tclass' is the
   // class.

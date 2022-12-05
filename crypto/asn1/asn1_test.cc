@@ -2600,4 +2600,61 @@ TEST(ASN1Test, OptionalAndDefaultBooleans) {
   // TODO(https://crbug.com/boringssl/354): Reject explicit DEFAULTs.
 }
 
+// EXPLICIT_BOOLEAN is a [1] EXPLICIT BOOLEAN.
+ASN1_ITEM_TEMPLATE(EXPLICIT_BOOLEAN) = ASN1_EX_TEMPLATE_TYPE(ASN1_TFLG_EXPLICIT,
+                                                             1,
+                                                             EXPLICIT_BOOLEAN,
+                                                             ASN1_BOOLEAN)
+ASN1_ITEM_TEMPLATE_END(EXPLICIT_BOOLEAN)
+
+// EXPLICIT_OCTET_STRING is a [2] EXPLICIT OCTET STRING.
+ASN1_ITEM_TEMPLATE(EXPLICIT_OCTET_STRING) = ASN1_EX_TEMPLATE_TYPE(
+    ASN1_TFLG_EXPLICIT, 2, EXPLICIT_OCTET_STRING, ASN1_OCTET_STRING)
+ASN1_ITEM_TEMPLATE_END(EXPLICIT_OCTET_STRING)
+
+// DOUBLY_TAGGED is
+//   SEQUENCE {
+//     b   [3] EXPLICIT [1] EXPLICIT BOOLEAN OPTIONAL,
+//     oct [4] EXPLICIT [2] EXPLICIT OCTET STRING OPTIONAL }
+// with explicit tagging.
+struct DOUBLY_TAGGED {
+  ASN1_BOOLEAN b;
+  ASN1_OCTET_STRING *oct;
+};
+
+DECLARE_ASN1_FUNCTIONS(DOUBLY_TAGGED)
+ASN1_SEQUENCE(DOUBLY_TAGGED) = {
+    ASN1_EXP_OPT(DOUBLY_TAGGED, b, EXPLICIT_BOOLEAN, 3),
+    ASN1_EXP_OPT(DOUBLY_TAGGED, oct, EXPLICIT_OCTET_STRING, 4),
+} ASN1_SEQUENCE_END(DOUBLY_TAGGED)
+IMPLEMENT_ASN1_FUNCTIONS(DOUBLY_TAGGED)
+
+// Test that optional fields with two layers of explicit tagging are correctly
+// handled.
+TEST(ASN1Test, DoublyTagged) {
+  std::unique_ptr<DOUBLY_TAGGED, decltype(&DOUBLY_TAGGED_free)> obj(
+      nullptr, DOUBLY_TAGGED_free);
+
+  // Both fields missing.
+  static const uint8_t kOmitted[] = {0x30, 0x00};
+  const uint8_t *inp = kOmitted;
+  obj.reset(d2i_DOUBLY_TAGGED(nullptr, &inp, sizeof(kOmitted)));
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(obj->b, -1);
+  EXPECT_FALSE(obj->oct);
+  TestSerialize(obj.get(), i2d_DOUBLY_TAGGED, kOmitted);
+
+  // Both fields present, true and the empty string.
+  static const uint8_t kTrueEmpty[] = {0x30, 0x0d, 0xa3, 0x05, 0xa1,
+                                       0x03, 0x01, 0x01, 0xff, 0xa4,
+                                       0x04, 0xa2, 0x02, 0x04, 0x00};
+  inp = kTrueEmpty;
+  obj.reset(d2i_DOUBLY_TAGGED(nullptr, &inp, sizeof(kTrueEmpty)));
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(obj->b, 0xff);
+  ASSERT_TRUE(obj->oct);
+  EXPECT_EQ(ASN1_STRING_length(obj->oct), 0);
+  TestSerialize(obj.get(), i2d_DOUBLY_TAGGED, kTrueEmpty);
+}
+
 #endif  // !WINDOWS || !SHARED_LIBRARY
