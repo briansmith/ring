@@ -230,6 +230,28 @@ typedef struct {
 OPENSSL_EXPORT void asn1_get_string_table_for_testing(
     const ASN1_STRING_TABLE **out_ptr, size_t *out_len);
 
+typedef ASN1_VALUE *ASN1_new_func(void);
+typedef void ASN1_free_func(ASN1_VALUE *a);
+typedef ASN1_VALUE *ASN1_d2i_func(ASN1_VALUE **a, const unsigned char **in,
+                                  long length);
+typedef int ASN1_i2d_func(ASN1_VALUE *a, unsigned char **in);
+
+typedef int ASN1_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
+                        const ASN1_ITEM *it, int opt, ASN1_TLC *ctx);
+
+typedef int ASN1_ex_i2d(ASN1_VALUE **pval, unsigned char **out,
+                        const ASN1_ITEM *it);
+typedef int ASN1_ex_new_func(ASN1_VALUE **pval, const ASN1_ITEM *it);
+typedef void ASN1_ex_free_func(ASN1_VALUE **pval, const ASN1_ITEM *it);
+
+typedef struct ASN1_EXTERN_FUNCS_st {
+  ASN1_ex_new_func *asn1_ex_new;
+  ASN1_ex_free_func *asn1_ex_free;
+  ASN1_ex_free_func *asn1_ex_clear;
+  ASN1_ex_d2i *asn1_ex_d2i;
+  ASN1_ex_i2d *asn1_ex_i2d;
+} ASN1_EXTERN_FUNCS;
+
 
 #if defined(__cplusplus)
 }  // extern C

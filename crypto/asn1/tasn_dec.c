@@ -161,7 +161,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
                             long len, const ASN1_ITEM *it, int tag, int aclass,
                             char opt, int depth) {
   const ASN1_TEMPLATE *tt, *errtt = NULL;
-  const ASN1_EXTERN_FUNCS *ef;
   const unsigned char *p = NULL, *q;
   unsigned char oclass;
   char cst, isopt;
@@ -238,10 +237,15 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
       }
       return asn1_d2i_ex_primitive(pval, in, len, it, otag, 0, 0);
 
-    case ASN1_ITYPE_EXTERN:
-      // Use new style d2i
-      ef = it->funcs;
-      return ef->asn1_ex_d2i(pval, in, len, it, tag, aclass, opt, NULL);
+    case ASN1_ITYPE_EXTERN: {
+      // We don't support implicit tagging with external types.
+      if (tag != -1) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
+        goto err;
+      }
+      const ASN1_EXTERN_FUNCS *ef = it->funcs;
+      return ef->asn1_ex_d2i(pval, in, len, it, opt, NULL);
+    }
 
     case ASN1_ITYPE_CHOICE: {
       // It never makes sense for CHOICE types to have implicit tagging, so if

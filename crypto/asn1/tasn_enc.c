@@ -186,9 +186,13 @@ int asn1_item_ex_i2d_opt(ASN1_VALUE **pval, unsigned char **out,
     }
 
     case ASN1_ITYPE_EXTERN: {
-      // If new style i2d it does all the work
+      // We don't support implicit tagging with external types.
+      if (tag != -1) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
+        return -1;
+      }
       const ASN1_EXTERN_FUNCS *ef = it->funcs;
-      int ret = ef->asn1_ex_i2d(pval, out, it, tag, aclass);
+      int ret = ef->asn1_ex_i2d(pval, out, it);
       if (ret == 0) {
         // |asn1_ex_i2d| should never return zero. We have already checked
         // for optional values generically, and |ASN1_ITYPE_EXTERN| fields

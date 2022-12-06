@@ -80,11 +80,11 @@ DEFINE_STACK_OF(STACK_OF_X509_NAME_ENTRY)
 #define X509_NAME_MAX (1024 * 1024)
 
 static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
-                            long len, const ASN1_ITEM *it, int tag, int aclass,
-                            char opt, ASN1_TLC *ctx);
+                            long len, const ASN1_ITEM *it, int opt,
+                            ASN1_TLC *ctx);
 
 static int x509_name_ex_i2d(ASN1_VALUE **val, unsigned char **out,
-                            const ASN1_ITEM *it, int tag, int aclass);
+                            const ASN1_ITEM *it);
 static int x509_name_ex_new(ASN1_VALUE **val, const ASN1_ITEM *it);
 static void x509_name_ex_free(ASN1_VALUE **val, const ASN1_ITEM *it);
 
@@ -120,13 +120,11 @@ ASN1_ITEM_TEMPLATE_END(X509_NAME_INTERNAL)
 // convert to the external form.
 
 static const ASN1_EXTERN_FUNCS x509_name_ff = {
-    NULL,
     x509_name_ex_new,
     x509_name_ex_free,
     0,  // Default clear behaviour is OK
     x509_name_ex_d2i,
     x509_name_ex_i2d,
-    NULL,
 };
 
 IMPLEMENT_EXTERN_ASN1(X509_NAME, V_ASN1_SEQUENCE, x509_name_ff)
@@ -189,8 +187,8 @@ static void local_sk_X509_NAME_ENTRY_pop_free(STACK_OF(X509_NAME_ENTRY) *ne) {
 }
 
 static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
-                            long len, const ASN1_ITEM *it, int tag, int aclass,
-                            char opt, ASN1_TLC *ctx) {
+                            long len, const ASN1_ITEM *it, int opt,
+                            ASN1_TLC *ctx) {
   const unsigned char *p = *in, *q;
   STACK_OF(STACK_OF_X509_NAME_ENTRY) *intname = NULL;
   X509_NAME *nm = NULL;
@@ -207,8 +205,8 @@ static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
   // Get internal representation of Name
   ASN1_VALUE *intname_val = NULL;
   ret = ASN1_item_ex_d2i(&intname_val, &p, len,
-                         ASN1_ITEM_rptr(X509_NAME_INTERNAL), tag, aclass, opt,
-                         ctx);
+                         ASN1_ITEM_rptr(X509_NAME_INTERNAL), /*tag=*/-1,
+                         /*aclass=*/0, opt, ctx);
   if (ret <= 0) {
     return ret;
   }
@@ -258,7 +256,7 @@ err:
 }
 
 static int x509_name_ex_i2d(ASN1_VALUE **val, unsigned char **out,
-                            const ASN1_ITEM *it, int tag, int aclass) {
+                            const ASN1_ITEM *it) {
   X509_NAME *a = (X509_NAME *)*val;
   if (a->modified && (!x509_name_encode(a) || !x509_name_canon(a))) {
     return -1;

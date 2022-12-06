@@ -512,35 +512,6 @@ const char *sname;		/* Structure name */
 /* Deprecated tag and length cache */
 struct ASN1_TLC_st;
 
-/* Typedefs for ASN1 function pointers */
-
-typedef ASN1_VALUE * ASN1_new_func(void);
-typedef void ASN1_free_func(ASN1_VALUE *a);
-typedef ASN1_VALUE * ASN1_d2i_func(ASN1_VALUE **a, const unsigned char ** in, long length);
-typedef int ASN1_i2d_func(ASN1_VALUE * a, unsigned char **in);
-
-typedef int ASN1_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len, const ASN1_ITEM *it,
-					int tag, int aclass, char opt, ASN1_TLC *ctx);
-
-typedef int ASN1_ex_i2d(ASN1_VALUE **pval, unsigned char **out, const ASN1_ITEM *it, int tag, int aclass);
-typedef int ASN1_ex_new_func(ASN1_VALUE **pval, const ASN1_ITEM *it);
-typedef void ASN1_ex_free_func(ASN1_VALUE **pval, const ASN1_ITEM *it);
-
-typedef int ASN1_ex_print_func(BIO *out, ASN1_VALUE **pval, 
-						int indent, const char *fname, 
-						const ASN1_PCTX *pctx);
-
-typedef struct ASN1_EXTERN_FUNCS_st {
-	void *app_data;
-	ASN1_ex_new_func *asn1_ex_new;
-	ASN1_ex_free_func *asn1_ex_free;
-	ASN1_ex_free_func *asn1_ex_clear;
-	ASN1_ex_d2i *asn1_ex_d2i;
-	ASN1_ex_i2d *asn1_ex_i2d;
-	/* asn1_ex_print is unused. */
-	ASN1_ex_print_func *asn1_ex_print;
-} ASN1_EXTERN_FUNCS;
-
 /* This is the ASN1_AUX structure: it handles various
  * miscellaneous requirements. For example the use of
  * reference counts and an informational callback.
