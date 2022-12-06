@@ -19,11 +19,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 // The following structures reflect the JSON of ACVP KAS KDF tests. See
-// https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-kdf-twostep.html
+// https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-kdf-hkdf.html
 
 type hkdfTestVectorSet struct {
 	Groups []hkdfTestGroup `json:"testGroups"`
@@ -46,33 +45,21 @@ type hkdfTest struct {
 
 type hkdfConfiguration struct {
 	Type               string `json:"kdfType"`
-	AdditionalNonce    bool   `json:"requiresAdditionalNoncePair"`
 	OutputBits         uint32 `json:"l"`
+	HashName           string `json:"hmacAlg"`
 	FixedInfoPattern   string `json:"fixedInfoPattern"`
 	FixedInputEncoding string `json:"fixedInfoEncoding"`
-	KDFMode            string `json:"kdfMode"`
-	MACMode            string `json:"macMode"`
-	CounterLocation    string `json:"counterLocation"`
-	CounterBits        uint   `json:"counterLen"`
 }
 
 func (c *hkdfConfiguration) extract() (outBytes uint32, hashName string, err error) {
-	if c.Type != "twoStep" ||
-		c.AdditionalNonce ||
+	if c.Type != "hkdf" ||
 		c.FixedInfoPattern != "uPartyInfo||vPartyInfo" ||
 		c.FixedInputEncoding != "concatenation" ||
-		c.KDFMode != "feedback" ||
-		c.CounterLocation != "after fixed data" ||
-		c.CounterBits != 8 ||
 		c.OutputBits%8 != 0 {
-		return 0, "", fmt.Errorf("KAS-KDF not configured for HKDF: %#v", c)
+		return 0, "", fmt.Errorf("KDA not configured for HKDF: %#v", c)
 	}
 
-	if !strings.HasPrefix(c.MACMode, "HMAC-") {
-		return 0, "", fmt.Errorf("MAC mode %q does't start with 'HMAC-'", c.MACMode)
-	}
-
-	return c.OutputBits / 8, c.MACMode[5:], nil
+	return c.OutputBits / 8, c.HashName, nil
 }
 
 type hkdfParameters struct {

@@ -106,7 +106,7 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"ctrDRBG":           &drbg{"ctrDRBG", map[string]bool{"AES-128": true, "AES-192": true, "AES-256": true}},
 		"hmacDRBG":          &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}},
 		"KDF":               &kdfPrimitive{},
-		"KAS-KDF":           &hkdf{},
+		"KDA":               &hkdf{},
 		"CMAC-AES":          &keyedMACPrimitive{"CMAC-AES"},
 		"RSA":               &rsa{},
 		"kdf-components":    &tlsKDF{},
