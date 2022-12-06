@@ -226,8 +226,9 @@ int TRUST_TOKEN_CLIENT_set_srr_key(TRUST_TOKEN_CLIENT *ctx, EVP_PKEY *key) {
   return 1;
 }
 
-int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
-                                      size_t *out_len, size_t count) {
+static int trust_token_client_begin_issuance_impl(
+    TRUST_TOKEN_CLIENT *ctx, uint8_t **out, size_t *out_len, size_t count,
+    int include_message, const uint8_t *msg, size_t msg_len) {
   if (count > ctx->max_batchsize) {
     count = ctx->max_batchsize;
   }
@@ -241,7 +242,8 @@ int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
     goto err;
   }
 
-  pretokens = ctx->method->blind(&request, count);
+  pretokens =
+      ctx->method->blind(&request, count, include_message, msg, msg_len);
   if (pretokens == NULL) {
     goto err;
   }
@@ -261,6 +263,20 @@ err:
   sk_TRUST_TOKEN_PRETOKEN_pop_free(pretokens, TRUST_TOKEN_PRETOKEN_free);
   return ret;
 }
+
+int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx, uint8_t **out,
+                                      size_t *out_len, size_t count) {
+  return trust_token_client_begin_issuance_impl(ctx, out, out_len, count,
+                                                /*include_message=*/0, NULL, 0);
+}
+
+int TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+    TRUST_TOKEN_CLIENT *ctx, uint8_t **out, size_t *out_len, size_t count,
+    const uint8_t *msg, size_t msg_len) {
+  return trust_token_client_begin_issuance_impl(
+      ctx, out, out_len, count, /*include_message=*/1, msg, msg_len);
+}
+
 
 STACK_OF(TRUST_TOKEN) *
     TRUST_TOKEN_CLIENT_finish_issuance(TRUST_TOKEN_CLIENT *ctx,
@@ -542,13 +558,11 @@ err:
   return ret;
 }
 
-
-int TRUST_TOKEN_ISSUER_redeem_raw(const TRUST_TOKEN_ISSUER *ctx,
-                                  uint32_t *out_public, uint8_t *out_private,
-                                  TRUST_TOKEN **out_token,
-                                  uint8_t **out_client_data,
-                                  size_t *out_client_data_len,
-                                  const uint8_t *request, size_t request_len) {
+static int trust_token_issuer_redeem_impl(
+    const TRUST_TOKEN_ISSUER *ctx, uint32_t *out_public, uint8_t *out_private,
+    TRUST_TOKEN **out_token, uint8_t **out_client_data,
+    size_t *out_client_data_len, const uint8_t *request, size_t request_len,
+    int include_message, const uint8_t *msg, size_t msg_len) {
   CBS request_cbs, token_cbs;
   CBS_init(&request_cbs, request, request_len);
   if (!CBS_get_u16_length_prefixed(&request_cbs, &token_cbs)) {
@@ -570,7 +584,8 @@ int TRUST_TOKEN_ISSUER_redeem_raw(const TRUST_TOKEN_ISSUER *ctx,
   uint8_t nonce[TRUST_TOKEN_NONCE_SIZE];
   if (key == NULL ||
       !ctx->method->read(&key->key, nonce, &private_metadata,
-                         CBS_data(&token_cbs), CBS_len(&token_cbs))) {
+                         CBS_data(&token_cbs), CBS_len(&token_cbs),
+                         include_message, msg, msg_len)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_TOKEN);
     return 0;
   }
@@ -606,6 +621,28 @@ int TRUST_TOKEN_ISSUER_redeem_raw(const TRUST_TOKEN_ISSUER *ctx,
 err:
   OPENSSL_free(client_data_buf);
   return 0;
+}
+
+
+int TRUST_TOKEN_ISSUER_redeem_raw(const TRUST_TOKEN_ISSUER *ctx,
+                                  uint32_t *out_public, uint8_t *out_private,
+                                  TRUST_TOKEN **out_token,
+                                  uint8_t **out_client_data,
+                                  size_t *out_client_data_len,
+                                  const uint8_t *request, size_t request_len) {
+  return trust_token_issuer_redeem_impl(ctx, out_public, out_private, out_token,
+                                        out_client_data, out_client_data_len,
+                                        request, request_len, 0, NULL, 0);
+}
+
+int TRUST_TOKEN_ISSUER_redeem_over_message(
+    const TRUST_TOKEN_ISSUER *ctx, uint32_t *out_public, uint8_t *out_private,
+    TRUST_TOKEN **out_token, uint8_t **out_client_data,
+    size_t *out_client_data_len, const uint8_t *request, size_t request_len,
+    const uint8_t *msg, size_t msg_len) {
+  return trust_token_issuer_redeem_impl(ctx, out_public, out_private, out_token,
+                                        out_client_data, out_client_data_len,
+                                        request, request_len, 1, msg, msg_len);
 }
 
 // https://tools.ietf.org/html/rfc7049#section-2.1
@@ -691,9 +728,9 @@ int TRUST_TOKEN_ISSUER_redeem(const TRUST_TOKEN_ISSUER *ctx, uint8_t **out,
   const struct trust_token_issuer_key_st *key =
       trust_token_issuer_get_key(ctx, public_metadata);
   uint8_t nonce[TRUST_TOKEN_NONCE_SIZE];
-  if (key == NULL ||
-      !ctx->method->read(&key->key, nonce, &private_metadata,
-                         CBS_data(&token_cbs), CBS_len(&token_cbs))) {
+  if (key == NULL || !ctx->method->read(&key->key, nonce, &private_metadata,
+                                        CBS_data(&token_cbs),
+                                        CBS_len(&token_cbs), 0, NULL, 0)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_TOKEN);
     return 0;
   }

@@ -143,6 +143,15 @@ OPENSSL_EXPORT int TRUST_TOKEN_CLIENT_begin_issuance(TRUST_TOKEN_CLIENT *ctx,
                                                      size_t *out_len,
                                                      size_t count);
 
+// TRUST_TOKEN_CLIENT_begin_issuance_over_message produces a request for a trust
+// token derived from |msg| and serializes the request into a newly-allocated
+// buffer, setting |*out| to that buffer and |*out_len| to its length. The
+// caller takes ownership of the buffer and must call |OPENSSL_free| when done.
+// It returns one on success and zero on error.
+OPENSSL_EXPORT int TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+    TRUST_TOKEN_CLIENT *ctx, uint8_t **out, size_t *out_len, size_t count,
+    const uint8_t *msg, size_t msg_len);
+
 // TRUST_TOKEN_CLIENT_finish_issuance consumes |response| from the issuer and
 // extracts the tokens, returning a list of tokens and the index of the key used
 // to sign the tokens in |*out_key_index|. The caller can use this to determine
@@ -277,6 +286,26 @@ OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem_raw(
     const TRUST_TOKEN_ISSUER *ctx, uint32_t *out_public, uint8_t *out_private,
     TRUST_TOKEN **out_token, uint8_t **out_client_data,
     size_t *out_client_data_len, const uint8_t *request, size_t request_len);
+
+// TRUST_TOKEN_ISSUER_redeem_over_message ingests a |request| for token
+// redemption and a message and verifies the token and that it is derived from
+// the provided |msg|. The public metadata is stored in
+// |*out_public|. The private metadata (if any) is stored in |*out_private|. The
+// extracted |TRUST_TOKEN| is stored into a newly-allocated buffer and stored in
+// |*out_token|. The extracted client data is stored into a newly-allocated
+// buffer and stored in |*out_client_data|. The caller takes ownership of each
+// output buffer and must call |OPENSSL_free| when done. It returns one on
+// success or zero on error.
+//
+// The caller must keep track of all values of |*out_token| seen globally before
+// returning a response to the client. If the value has been reused, the caller
+// must report an error to the client. Returning a response with replayed values
+// allows an attacker to double-spend tokens.
+OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem_over_message(
+    const TRUST_TOKEN_ISSUER *ctx, uint32_t *out_public, uint8_t *out_private,
+    TRUST_TOKEN **out_token, uint8_t **out_client_data,
+    size_t *out_client_data_len, const uint8_t *request, size_t request_len,
+    const uint8_t *msg, size_t msg_len);
 
 // TRUST_TOKEN_decode_private_metadata decodes |encrypted_bit| using the
 // private metadata key specified by a |key| buffer of length |key_len| and the

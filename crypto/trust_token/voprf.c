@@ -21,6 +21,7 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
 #include "../ec_extra/internal.h"
 #include "../fipsmodule/ec/internal.h"
@@ -200,8 +201,13 @@ static int voprf_issuer_key_from_bytes(const VOPRF_METHOD *method,
   return 1;
 }
 
-static STACK_OF(TRUST_TOKEN_PRETOKEN) *
-    voprf_blind(const VOPRF_METHOD *method, CBB *cbb, size_t count) {
+static STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_blind(const VOPRF_METHOD *method,
+                                                   CBB *cbb, size_t count,
+                                                   int include_message,
+                                                   const uint8_t *msg,
+                                                   size_t msg_len) {
+  SHA512_CTX hash_ctx;
+
   const EC_GROUP *group = method->group;
   STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens =
       sk_TRUST_TOKEN_PRETOKEN_new_null();
@@ -221,7 +227,16 @@ static STACK_OF(TRUST_TOKEN_PRETOKEN) *
       goto err;
     }
 
-    RAND_bytes(pretoken->t, sizeof(pretoken->t));
+    RAND_bytes(pretoken->salt, sizeof(pretoken->salt));
+    if (include_message) {
+      assert(SHA512_DIGEST_LENGTH == TRUST_TOKEN_NONCE_SIZE);
+      SHA512_Init(&hash_ctx);
+      SHA512_Update(&hash_ctx, pretoken->salt, sizeof(pretoken->salt));
+      SHA512_Update(&hash_ctx, msg, msg_len);
+      SHA512_Final(pretoken->t, &hash_ctx);
+    } else {
+      OPENSSL_memcpy(pretoken->t, pretoken->salt, TRUST_TOKEN_NONCE_SIZE);
+    }
 
     // We sample r in Montgomery form to simplify inverting.
     EC_SCALAR r;
@@ -547,10 +562,10 @@ err:
   return ret;
 }
 
-static STACK_OF(TRUST_TOKEN) *
-    voprf_unblind(const VOPRF_METHOD *method, const TRUST_TOKEN_CLIENT_KEY *key,
-                  const STACK_OF(TRUST_TOKEN_PRETOKEN) * pretokens, CBS *cbs,
-                  size_t count, uint32_t key_id) {
+static STACK_OF(TRUST_TOKEN) *voprf_unblind(
+    const VOPRF_METHOD *method, const TRUST_TOKEN_CLIENT_KEY *key,
+    const STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens, CBS *cbs, size_t count,
+    uint32_t key_id) {
   const EC_GROUP *group = method->group;
   if (count > sk_TRUST_TOKEN_PRETOKEN_num(pretokens)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
@@ -617,7 +632,7 @@ static STACK_OF(TRUST_TOKEN) *
     size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
     if (!CBB_init(&token_cbb, 4 + TRUST_TOKEN_NONCE_SIZE + (2 + point_len)) ||
         !CBB_add_u32(&token_cbb, key_id) ||
-        !CBB_add_bytes(&token_cbb, pretoken->t, TRUST_TOKEN_NONCE_SIZE) ||
+        !CBB_add_bytes(&token_cbb, pretoken->salt, TRUST_TOKEN_NONCE_SIZE) ||
         !cbb_add_point(&token_cbb, group, &N_affine) ||
         !CBB_flush(&token_cbb)) {
       CBB_cleanup(&token_cbb);
@@ -676,16 +691,28 @@ err:
 static int voprf_read(const VOPRF_METHOD *method,
                       const TRUST_TOKEN_ISSUER_KEY *key,
                       uint8_t out_nonce[TRUST_TOKEN_NONCE_SIZE],
-                      const uint8_t *token, size_t token_len) {
+                      const uint8_t *token, size_t token_len,
+                      int include_message, const uint8_t *msg, size_t msg_len) {
   const EC_GROUP *group = method->group;
-  CBS cbs;
+  CBS cbs, salt;
   CBS_init(&cbs, token, token_len);
   EC_AFFINE Ws;
-  if (!CBS_copy_bytes(&cbs, out_nonce, TRUST_TOKEN_NONCE_SIZE) ||
+  if (!CBS_get_bytes(&cbs, &salt, TRUST_TOKEN_NONCE_SIZE) ||
       !cbs_get_point(&cbs, group, &Ws) ||
       CBS_len(&cbs) != 0) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_INVALID_TOKEN);
     return 0;
+  }
+
+  if (include_message) {
+    SHA512_CTX hash_ctx;
+    assert(SHA512_DIGEST_LENGTH == TRUST_TOKEN_NONCE_SIZE);
+    SHA512_Init(&hash_ctx);
+    SHA512_Update(&hash_ctx, CBS_data(&salt), CBS_len(&salt));
+    SHA512_Update(&hash_ctx, msg, msg_len);
+    SHA512_Final(out_nonce, &hash_ctx);
+  } else {
+    OPENSSL_memcpy(out_nonce, CBS_data(&salt), CBS_len(&salt));
   }
 
 
@@ -775,11 +802,15 @@ int voprf_exp2_issuer_key_from_bytes(TRUST_TOKEN_ISSUER_KEY *key,
   return voprf_issuer_key_from_bytes(&voprf_exp2_method, key, in, len);
 }
 
-STACK_OF(TRUST_TOKEN_PRETOKEN) * voprf_exp2_blind(CBB *cbb, size_t count) {
+STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_exp2_blind(CBB *cbb, size_t count,
+                                                 int include_message,
+                                                 const uint8_t *msg,
+                                                 size_t msg_len) {
   if (!voprf_exp2_init_method()) {
     return NULL;
   }
-  return voprf_blind(&voprf_exp2_method, cbb, count);
+  return voprf_blind(&voprf_exp2_method, cbb, count, include_message, msg,
+                     msg_len);
 }
 
 int voprf_exp2_sign(const TRUST_TOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
@@ -792,23 +823,24 @@ int voprf_exp2_sign(const TRUST_TOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
                     num_to_issue);
 }
 
-STACK_OF(TRUST_TOKEN) *
-    voprf_exp2_unblind(const TRUST_TOKEN_CLIENT_KEY *key,
-                       const STACK_OF(TRUST_TOKEN_PRETOKEN) * pretokens,
-                       CBS *cbs, size_t count, uint32_t key_id) {
+STACK_OF(TRUST_TOKEN) *voprf_exp2_unblind(
+    const TRUST_TOKEN_CLIENT_KEY *key,
+    const STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens, CBS *cbs, size_t count,
+    uint32_t key_id) {
   if (!voprf_exp2_init_method()) {
     return NULL;
   }
-  return voprf_unblind(&voprf_exp2_method, key, pretokens, cbs, count,
-                          key_id);
+  return voprf_unblind(&voprf_exp2_method, key, pretokens, cbs, count, key_id);
 }
 
 int voprf_exp2_read(const TRUST_TOKEN_ISSUER_KEY *key,
                     uint8_t out_nonce[TRUST_TOKEN_NONCE_SIZE],
                     uint8_t *out_private_metadata, const uint8_t *token,
-                    size_t token_len) {
+                    size_t token_len, int include_message, const uint8_t *msg,
+                    size_t msg_len) {
   if (!voprf_exp2_init_method()) {
     return 0;
   }
-  return voprf_read(&voprf_exp2_method, key, out_nonce, token, token_len);
+  return voprf_read(&voprf_exp2_method, key, out_nonce, token, token_len,
+                    include_message, msg, msg_len);
 }

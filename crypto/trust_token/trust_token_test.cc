@@ -45,6 +45,8 @@ BSSL_NAMESPACE_BEGIN
 
 namespace {
 
+const uint8_t kMessage[] = "MSG";
+
 TEST(TrustTokenTest, KeyGenExp1) {
   uint8_t priv_key[TRUST_TOKEN_MAX_PRIVATE_KEY_SIZE];
   uint8_t pub_key[TRUST_TOKEN_MAX_PUBLIC_KEY_SIZE];
@@ -300,8 +302,9 @@ static std::vector<const TRUST_TOKEN_METHOD *> AllMethods() {
 
 class TrustTokenProtocolTestBase : public ::testing::Test {
  public:
-  explicit TrustTokenProtocolTestBase(const TRUST_TOKEN_METHOD *method_arg)
-      : method_(method_arg) {}
+  explicit TrustTokenProtocolTestBase(const TRUST_TOKEN_METHOD *method_arg,
+                                      bool use_msg)
+      : method_(method_arg), use_msg_(use_msg) {}
 
   // KeyID returns the key ID associated with key index |i|.
   static uint32_t KeyID(size_t i) {
@@ -311,6 +314,8 @@ class TrustTokenProtocolTestBase : public ::testing::Test {
   }
 
   const TRUST_TOKEN_METHOD *method() { return method_; }
+
+  const bool use_message() { return use_msg_; }
 
  protected:
   void SetupContexts() {
@@ -350,6 +355,7 @@ class TrustTokenProtocolTestBase : public ::testing::Test {
   }
 
   const TRUST_TOKEN_METHOD *method_;
+  bool use_msg_;
   uint16_t client_max_batchsize = 10;
   uint16_t issuer_max_batchsize = 10;
   bssl::UniquePtr<TRUST_TOKEN_CLIENT> client;
@@ -359,13 +365,17 @@ class TrustTokenProtocolTestBase : public ::testing::Test {
 
 class TrustTokenProtocolTest
     : public TrustTokenProtocolTestBase,
-      public testing::WithParamInterface<const TRUST_TOKEN_METHOD *> {
+      public testing::WithParamInterface<
+          std::tuple<const TRUST_TOKEN_METHOD *, bool>> {
  public:
-  TrustTokenProtocolTest() : TrustTokenProtocolTestBase(GetParam()) {}
+  TrustTokenProtocolTest()
+      : TrustTokenProtocolTestBase(std::get<0>(GetParam()),
+                                   std::get<1>(GetParam())) {}
 };
 
 INSTANTIATE_TEST_SUITE_P(TrustTokenAllProtocolTest, TrustTokenProtocolTest,
-                         testing::ValuesIn(AllMethods()));
+                         testing::Combine(testing::ValuesIn(AllMethods()),
+                                          testing::Bool()));
 
 TEST_P(TrustTokenProtocolTest, InvalidToken) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
@@ -375,8 +385,13 @@ TEST_P(TrustTokenProtocolTest, InvalidToken) {
 
   size_t key_index;
   size_t tokens_issued;
-  ASSERT_TRUE(
-      TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg, &msg_len, 1));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 1, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 1));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
       issuer.get(), &issue_resp, &resp_len, &tokens_issued, issue_msg, msg_len,
@@ -396,13 +411,20 @@ TEST_P(TrustTokenProtocolTest, InvalidToken) {
     ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_redemption(
         client.get(), &redeem_msg, &msg_len, token, NULL, 0, 0));
     bssl::UniquePtr<uint8_t> free_redeem_msg(redeem_msg);
+    uint32_t public_value;
+    uint8_t private_value;
     TRUST_TOKEN *rtoken;
     uint8_t *client_data;
     size_t client_data_len;
-    uint64_t redemption_time;
-    ASSERT_FALSE(TRUST_TOKEN_ISSUER_redeem(
-        issuer.get(), &redeem_resp, &resp_len, &rtoken, &client_data,
-        &client_data_len, &redemption_time, redeem_msg, msg_len, 600));
+    if (use_message()) {
+      ASSERT_FALSE(TRUST_TOKEN_ISSUER_redeem_over_message(
+          issuer.get(), &public_value, &private_value, &rtoken, &client_data,
+          &client_data_len, redeem_msg, msg_len, kMessage, sizeof(kMessage)));
+    } else {
+      ASSERT_FALSE(TRUST_TOKEN_ISSUER_redeem_raw(
+          issuer.get(), &public_value, &private_value, &rtoken,
+          &client_data, &client_data_len, redeem_msg, msg_len));
+    }
     bssl::UniquePtr<uint8_t> free_redeem_resp(redeem_resp);
   }
 }
@@ -412,8 +434,13 @@ TEST_P(TrustTokenProtocolTest, TruncatedIssuanceRequest) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   msg_len = 10;
   size_t tokens_issued;
@@ -429,8 +456,13 @@ TEST_P(TrustTokenProtocolTest, TruncatedIssuanceResponse) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
@@ -451,8 +483,13 @@ TEST_P(TrustTokenProtocolTest, ExtraDataIssuanceResponse) {
 
   uint8_t *request = NULL, *response = NULL;
   size_t request_len, response_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &request,
-                                                &request_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &request, &request_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &request,
+                                                  &request_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_request(request);
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(issuer.get(), &response, &response_len,
@@ -475,8 +512,13 @@ TEST_P(TrustTokenProtocolTest, TruncatedRedemptionRequest) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
@@ -494,30 +536,48 @@ TEST_P(TrustTokenProtocolTest, TruncatedRedemptionRequest) {
     const uint8_t kClientData[] = "\x70TEST CLIENT DATA";
     uint64_t kRedemptionTime = (method()->has_srr ? 13374242 : 0);
 
-    uint8_t *redeem_msg = NULL, *redeem_resp = NULL;
+    uint8_t *redeem_msg = NULL;
     ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_redemption(
         client.get(), &redeem_msg, &msg_len, token, kClientData,
         sizeof(kClientData) - 1, kRedemptionTime));
     bssl::UniquePtr<uint8_t> free_redeem_msg(redeem_msg);
     msg_len = 10;
 
+    uint32_t public_value;
+    uint8_t private_value;
     TRUST_TOKEN *rtoken;
     uint8_t *client_data;
     size_t client_data_len;
-    uint64_t redemption_time;
-    ASSERT_FALSE(TRUST_TOKEN_ISSUER_redeem(
-        issuer.get(), &redeem_resp, &resp_len, &rtoken, &client_data,
-        &client_data_len, &redemption_time, redeem_msg, msg_len, 600));
+    if (use_message()) {
+      ASSERT_FALSE(TRUST_TOKEN_ISSUER_redeem_over_message(
+          issuer.get(), &public_value, &private_value, &rtoken, &client_data,
+          &client_data_len, redeem_msg, msg_len, kMessage, sizeof(kMessage)));
+    } else {
+      ASSERT_FALSE(TRUST_TOKEN_ISSUER_redeem_raw(
+          issuer.get(), &public_value, &private_value, &rtoken,
+          &client_data, &client_data_len, redeem_msg, msg_len));
+    }
   }
 }
 
 TEST_P(TrustTokenProtocolTest, TruncatedRedemptionResponse) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 
+  // Token issuances derived from messages aren't supported by the old-style
+  // redemption record response.
+  if (use_message()) {
+    return;
+  }
+
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
@@ -614,8 +674,13 @@ TEST_P(TrustTokenProtocolTest, IssuedWithBadKeyID) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
@@ -631,22 +696,34 @@ TEST_P(TrustTokenProtocolTest, IssuedWithBadKeyID) {
 class TrustTokenMetadataTest
     : public TrustTokenProtocolTestBase,
       public testing::WithParamInterface<
-          std::tuple<const TRUST_TOKEN_METHOD *, int, bool>> {
+    std::tuple<const TRUST_TOKEN_METHOD *, bool, int, bool>> {
  public:
   TrustTokenMetadataTest()
-      : TrustTokenProtocolTestBase(std::get<0>(GetParam())) {}
+      : TrustTokenProtocolTestBase(std::get<0>(GetParam()),
+                                   std::get<1>(GetParam())) {}
 
-  int public_metadata() { return std::get<1>(GetParam()); }
-  bool private_metadata() { return std::get<2>(GetParam()); }
+  int public_metadata() { return std::get<2>(GetParam()); }
+  bool private_metadata() { return std::get<3>(GetParam()); }
 };
 
 TEST_P(TrustTokenMetadataTest, SetAndGetMetadata) {
   ASSERT_NO_FATAL_FAILURE(SetupContexts());
 
+  // Token issuances derived from messages aren't supported by the old-style
+  // redemption record response.
+  if (use_message()) {
+    return;
+  }
+
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   bool result = TRUST_TOKEN_ISSUER_issue(
@@ -777,8 +854,13 @@ TEST_P(TrustTokenMetadataTest, RawSetAndGetMetadata) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   bool result = TRUST_TOKEN_ISSUER_issue(
@@ -811,9 +893,15 @@ TEST_P(TrustTokenMetadataTest, RawSetAndGetMetadata) {
     TRUST_TOKEN *rtoken;
     uint8_t *client_data;
     size_t client_data_len;
-    ASSERT_TRUE(TRUST_TOKEN_ISSUER_redeem_raw(
-        issuer.get(), &public_value, &private_value, &rtoken,
-        &client_data, &client_data_len, redeem_msg, msg_len));
+    if (use_message()) {
+      ASSERT_TRUE(TRUST_TOKEN_ISSUER_redeem_over_message(
+          issuer.get(), &public_value, &private_value, &rtoken, &client_data,
+          &client_data_len, redeem_msg, msg_len, kMessage, sizeof(kMessage)));
+    } else {
+      ASSERT_TRUE(TRUST_TOKEN_ISSUER_redeem_raw(
+          issuer.get(), &public_value, &private_value, &rtoken,
+          &client_data, &client_data_len, redeem_msg, msg_len));
+    }
     bssl::UniquePtr<uint8_t> free_client_data(client_data);
     bssl::UniquePtr<TRUST_TOKEN> free_rtoken(rtoken);
 
@@ -834,8 +922,13 @@ TEST_P(TrustTokenMetadataTest, TooManyRequests) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
@@ -861,8 +954,13 @@ TEST_P(TrustTokenMetadataTest, TruncatedProof) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
@@ -924,8 +1022,13 @@ TEST_P(TrustTokenMetadataTest, ExcessDataProof) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
   size_t tokens_issued;
   ASSERT_TRUE(TRUST_TOKEN_ISSUER_issue(
@@ -982,6 +1085,7 @@ TEST_P(TrustTokenMetadataTest, ExcessDataProof) {
 INSTANTIATE_TEST_SUITE_P(
     TrustTokenAllMetadataTest, TrustTokenMetadataTest,
     testing::Combine(testing::ValuesIn(AllMethods()),
+                     testing::Bool(),
                      testing::Values(TrustTokenProtocolTest::KeyID(0),
                                      TrustTokenProtocolTest::KeyID(1),
                                      TrustTokenProtocolTest::KeyID(2)),
@@ -990,13 +1094,14 @@ INSTANTIATE_TEST_SUITE_P(
 class TrustTokenBadKeyTest
     : public TrustTokenProtocolTestBase,
       public testing::WithParamInterface<
-          std::tuple<const TRUST_TOKEN_METHOD *, bool, int>> {
+          std::tuple<const TRUST_TOKEN_METHOD *, bool, bool, int>> {
  public:
   TrustTokenBadKeyTest()
-      : TrustTokenProtocolTestBase(std::get<0>(GetParam())) {}
+      : TrustTokenProtocolTestBase(std::get<0>(GetParam()),
+                                   std::get<1>(GetParam())) {}
 
-  bool private_metadata() { return std::get<1>(GetParam()); }
-  int corrupted_key() { return std::get<2>(GetParam()); }
+  bool private_metadata() { return std::get<2>(GetParam()); }
+  int corrupted_key() { return std::get<3>(GetParam()); }
 };
 
 TEST_P(TrustTokenBadKeyTest, BadKey) {
@@ -1012,8 +1117,13 @@ TEST_P(TrustTokenBadKeyTest, BadKey) {
 
   uint8_t *issue_msg = NULL, *issue_resp = NULL;
   size_t msg_len, resp_len;
-  ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
-                                                &msg_len, 10));
+  if (use_message()) {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance_over_message(
+        client.get(), &issue_msg, &msg_len, 10, kMessage, sizeof(kMessage)));
+  } else {
+    ASSERT_TRUE(TRUST_TOKEN_CLIENT_begin_issuance(client.get(), &issue_msg,
+                                                  &msg_len, 10));
+  }
   bssl::UniquePtr<uint8_t> free_issue_msg(issue_msg);
 
   struct trust_token_issuer_key_st *key = &issuer->keys[0];
@@ -1044,6 +1154,7 @@ TEST_P(TrustTokenBadKeyTest, BadKey) {
 
 INSTANTIATE_TEST_SUITE_P(TrustTokenAllBadKeyTest, TrustTokenBadKeyTest,
                          testing::Combine(testing::ValuesIn(AllMethods()),
+                                          testing::Bool(),
                                           testing::Bool(),
                                           testing::Values(0, 1, 2, 3, 4, 5)));
 
