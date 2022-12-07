@@ -428,6 +428,32 @@ func connect(config *Config, sessionTokensCacheDir string) (*acvp.Server, error)
 	return server, nil
 }
 
+func getResultsWithRetry(server *acvp.Server, url string) (bool, error) {
+FetchResults:
+	for {
+		var results acvp.SessionResults
+		if err := server.Get(&results, trimLeadingSlash(url)+"/results"); err != nil {
+			return false, errors.New("failed to fetch session results: " + err.Error())
+		}
+
+		if results.Passed {
+			log.Print("Test passed")
+			return true, nil
+		}
+
+		for _, result := range results.Results {
+			if result.Status == "incomplete" {
+				log.Print("Server hasn't finished processing results. Waiting 10 seconds.")
+				time.Sleep(10 * time.Second)
+				continue FetchResults
+			}
+		}
+
+		log.Printf("Server did not accept results: %#v", results)
+		return false, nil
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -683,26 +709,9 @@ func main() {
 		os.Exit(0)
 	}
 
-FetchResults:
-	for {
-		var results acvp.SessionResults
-		if err := server.Get(&results, trimLeadingSlash(url)+"/results"); err != nil {
-			log.Fatalf("Failed to fetch session results: %s", err)
-		}
-
-		if results.Passed {
-			log.Print("Test passed")
-			break
-		}
-
-		for _, result := range results.Results {
-			if result.Status == "incomplete" {
-				log.Print("Server hasn't finished processing results. Waiting 10 seconds.")
-				time.Sleep(10 * time.Second)
-				continue FetchResults
-			}
-		}
-
-		log.Fatalf("Server did not accept results: %#v", results)
+	if ok, err := getResultsWithRetry(server, url); err != nil {
+		log.Fatal(err)
+	} else if !ok {
+		os.Exit(1)
 	}
 }
