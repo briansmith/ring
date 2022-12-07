@@ -2267,6 +2267,8 @@ XRqE7XFhHL+7TNC2a9OOAjQsEF137YPWo+rhgko=
   ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
   SSL_CTX_set_cert_store(client_ctx.get(), store.release());
   SSL_CTX_set_verify(client_ctx.get(), SSL_VERIFY_PEER, nullptr);
+  X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(client_ctx.get()),
+                              X509_V_FLAG_NO_CHECK_TIME);
   static const char kSecretName[] = "secret.example";
   ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(SSL_CTX_get0_param(client_ctx.get()),
                                           kSecretName, strlen(kSecretName)));
