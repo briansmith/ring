@@ -361,12 +361,94 @@ func uploadResult(server *acvp.Server, setURL string, resultData []byte) error {
 	return nil
 }
 
+func connect(config *Config, sessionTokensCacheDir string) (*acvp.Server, error) {
+	if len(config.TOTPSecret) == 0 {
+		return nil, errors.New("config file missing TOTPSecret")
+	}
+	totpSecret, err := base64.StdEncoding.DecodeString(config.TOTPSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to base64-decode TOTP secret from config file: %s. (Note that the secret _itself_ should be in the config, not the name of a file that contains it.)", err)
+	}
+
+	if len(config.CertPEMFile) == 0 {
+		return nil, errors.New("config file missing CertPEMFile")
+	}
+	certPEM, err := os.ReadFile(config.CertPEMFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read certificate from %q: %s", config.CertPEMFile, err)
+	}
+	block, _ := pem.Decode(certPEM)
+	certDER := block.Bytes
+
+	if len(config.PrivateKeyDERFile) == 0 && len(config.PrivateKeyFile) == 0 {
+		return nil, errors.New("config file missing PrivateKeyDERFile and PrivateKeyFile")
+	}
+	if len(config.PrivateKeyDERFile) != 0 && len(config.PrivateKeyFile) != 0 {
+		return nil, errors.New("config file has both PrivateKeyDERFile and PrivateKeyFile. Can only have one.")
+	}
+	privateKeyFile := config.PrivateKeyDERFile
+	if len(config.PrivateKeyFile) > 0 {
+		privateKeyFile = config.PrivateKeyFile
+	}
+
+	keyBytes, err := os.ReadFile(privateKeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key from %q: %s", privateKeyFile, err)
+	}
+
+	var keyDER []byte
+	pemBlock, _ := pem.Decode(keyBytes)
+	if pemBlock != nil {
+		keyDER = pemBlock.Bytes
+	} else {
+		keyDER = keyBytes
+	}
+
+	var certKey crypto.PrivateKey
+	if certKey, err = x509.ParsePKCS1PrivateKey(keyDER); err != nil {
+		if certKey, err = x509.ParsePKCS8PrivateKey(keyDER); err != nil {
+			return nil, fmt.Errorf("failed to parse private key from %q: %s", privateKeyFile, err)
+		}
+	}
+
+	serverURL := "https://demo.acvts.nist.gov/"
+	if len(config.ACVPServer) > 0 {
+		serverURL = config.ACVPServer
+	}
+	server := acvp.NewServer(serverURL, config.LogFile, [][]byte{certDER}, certKey, func() string {
+		return TOTP(totpSecret[:])
+	})
+
+	if len(sessionTokensCacheDir) > 0 {
+		if err := loadCachedSessionTokens(server, sessionTokensCacheDir); err != nil {
+			return nil, err
+		}
+	}
+
+	return server, nil
+}
+
 func main() {
 	flag.Parse()
 
-	var err error
-	var middle Middle
-	middle, err = subprocess.New(*wrapperPath)
+	var config Config
+	if err := jsonFromFile(&config, *configFilename); err != nil {
+		log.Fatalf("Failed to load config file: %s", err)
+	}
+
+	var sessionTokensCacheDir string
+	if len(config.SessionTokensCache) > 0 {
+		sessionTokensCacheDir = config.SessionTokensCache
+		if strings.HasPrefix(sessionTokensCacheDir, "~/") {
+			home := os.Getenv("HOME")
+			if len(home) == 0 {
+				log.Fatal("~ used in config file but $HOME not set")
+			}
+			sessionTokensCacheDir = filepath.Join(home, sessionTokensCacheDir[2:])
+		}
+	}
+
+	middle, err := subprocess.New(*wrapperPath)
 	if err != nil {
 		log.Fatalf("failed to initialise middle: %s", err)
 	}
@@ -415,60 +497,6 @@ func main() {
 			log.Fatalf("failed to process input file: %s", err)
 		}
 		os.Exit(0)
-	}
-
-	var config Config
-	if err := jsonFromFile(&config, *configFilename); err != nil {
-		log.Fatalf("Failed to load config file: %s", err)
-	}
-
-	if len(config.TOTPSecret) == 0 {
-		log.Fatal("Config file missing TOTPSecret")
-	}
-	totpSecret, err := base64.StdEncoding.DecodeString(config.TOTPSecret)
-	if err != nil {
-		log.Fatalf("Failed to base64-decode TOTP secret from config file: %s. (Note that the secret _itself_ should be in the config, not the name of a file that contains it.)", err)
-	}
-
-	if len(config.CertPEMFile) == 0 {
-		log.Fatal("Config file missing CertPEMFile")
-	}
-	certPEM, err := os.ReadFile(config.CertPEMFile)
-	if err != nil {
-		log.Fatalf("failed to read certificate from %q: %s", config.CertPEMFile, err)
-	}
-	block, _ := pem.Decode(certPEM)
-	certDER := block.Bytes
-
-	if len(config.PrivateKeyDERFile) == 0 && len(config.PrivateKeyFile) == 0 {
-		log.Fatal("Config file missing PrivateKeyDERFile and PrivateKeyFile")
-	}
-	if len(config.PrivateKeyDERFile) != 0 && len(config.PrivateKeyFile) != 0 {
-		log.Fatal("Config file has both PrivateKeyDERFile and PrivateKeyFile. Can only have one.")
-	}
-	privateKeyFile := config.PrivateKeyDERFile
-	if len(config.PrivateKeyFile) > 0 {
-		privateKeyFile = config.PrivateKeyFile
-	}
-
-	keyBytes, err := os.ReadFile(privateKeyFile)
-	if err != nil {
-		log.Fatalf("failed to read private key from %q: %s", privateKeyFile, err)
-	}
-
-	var keyDER []byte
-	pemBlock, _ := pem.Decode(keyBytes)
-	if pemBlock != nil {
-		keyDER = pemBlock.Bytes
-	} else {
-		keyDER = keyBytes
-	}
-
-	var certKey crypto.PrivateKey
-	if certKey, err = x509.ParsePKCS1PrivateKey(keyDER); err != nil {
-		if certKey, err = x509.ParsePKCS8PrivateKey(keyDER); err != nil {
-			log.Fatalf("failed to parse private key from %q: %s", privateKeyFile, err)
-		}
 	}
 
 	var requestedAlgosFlag string
@@ -530,27 +558,9 @@ func main() {
 		}
 	}
 
-	if len(config.ACVPServer) == 0 {
-		config.ACVPServer = "https://demo.acvts.nist.gov/"
-	}
-	server := acvp.NewServer(config.ACVPServer, config.LogFile, [][]byte{certDER}, certKey, func() string {
-		return TOTP(totpSecret[:])
-	})
-
-	var sessionTokensCacheDir string
-	if len(config.SessionTokensCache) > 0 {
-		sessionTokensCacheDir = config.SessionTokensCache
-		if strings.HasPrefix(sessionTokensCacheDir, "~/") {
-			home := os.Getenv("HOME")
-			if len(home) == 0 {
-				log.Fatal("~ used in config file but $HOME not set")
-			}
-			sessionTokensCacheDir = filepath.Join(home, sessionTokensCacheDir[2:])
-		}
-
-		if err := loadCachedSessionTokens(server, sessionTokensCacheDir); err != nil {
-			log.Fatal(err)
-		}
+	server, err := connect(&config, sessionTokensCacheDir)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if err := server.Login(); err != nil {
