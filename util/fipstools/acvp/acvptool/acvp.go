@@ -313,6 +313,54 @@ func getVectorsWithRetry(server *acvp.Server, url string) (out acvp.Vectors, vec
 	}
 }
 
+func uploadResult(server *acvp.Server, setURL string, resultData []byte) error {
+	resultSize := uint64(len(resultData)) + 32 /* for framing overhead */
+	if server.SizeLimit == 0 || resultSize < server.SizeLimit {
+		log.Printf("Result size %d bytes", resultSize)
+		return server.Post(nil, trimLeadingSlash(setURL)+"/results", resultData)
+	}
+
+	// The NIST ACVP server no longer requires the large-upload process,
+	// suggesting that this may no longer be needed.
+	log.Printf("Result is %d bytes, too much given server limit of %d bytes. Using large-upload process.", resultSize, server.SizeLimit)
+	largeRequestBytes, err := json.Marshal(acvp.LargeUploadRequest{
+		Size: resultSize,
+		URL:  setURL,
+	})
+	if err != nil {
+		return errors.New("failed to marshal large-upload request: " + err.Error())
+	}
+
+	var largeResponse acvp.LargeUploadResponse
+	if err := server.Post(&largeResponse, "/large", largeRequestBytes); err != nil {
+		return errors.New("failed to request large-upload endpoint: " + err.Error())
+	}
+
+	log.Printf("Directed to large-upload endpoint at %q", largeResponse.URL)
+	req, err := http.NewRequest("POST", largeResponse.URL, bytes.NewBuffer(resultData))
+	if err != nil {
+		return errors.New("failed to create POST request: " + err.Error())
+	}
+	token := largeResponse.AccessToken
+	if len(token) == 0 {
+		token = server.AccessToken
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.New("failed writing large upload: " + err.Error())
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("large upload resulted in status code %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func main() {
 	flag.Parse()
 
@@ -613,53 +661,10 @@ func main() {
 		resultBuf.Write(replyBytes)
 		resultBuf.WriteString("}")
 
-		resultData := resultBuf.Bytes()
-		resultSize := uint64(len(resultData)) + 32 /* for framing overhead */
-		if server.SizeLimit > 0 && resultSize >= server.SizeLimit {
-			// The NIST ACVP server no longer requires the large-upload process,
-			// suggesting that it may no longer be needed.
-			log.Printf("Result is %d bytes, too much given server limit of %d bytes. Using large-upload process.", resultSize, server.SizeLimit)
-			largeRequestBytes, err := json.Marshal(acvp.LargeUploadRequest{
-				Size: resultSize,
-				URL:  setURL,
-			})
-			if err != nil {
-				log.Printf("Failed to marshal large-upload request: %s", err)
-				log.Printf("Deleting test set")
-				server.Delete(url)
-				os.Exit(1)
-			}
-
-			var largeResponse acvp.LargeUploadResponse
-			if err := server.Post(&largeResponse, "/large", largeRequestBytes); err != nil {
-				log.Fatalf("Failed to request large-upload endpoint: %s", err)
-			}
-
-			log.Printf("Directed to large-upload endpoint at %q", largeResponse.URL)
-			client := &http.Client{}
-			req, err := http.NewRequest("POST", largeResponse.URL, bytes.NewBuffer(resultData))
-			if err != nil {
-				log.Fatalf("Failed to create POST request: %s", err)
-			}
-			token := largeResponse.AccessToken
-			if len(token) == 0 {
-				token = server.AccessToken
-			}
-			req.Header.Add("Authorization", "Bearer "+token)
-			req.Header.Add("Content-Type", "application/json")
-			resp, err := client.Do(req)
-			if err != nil {
-				log.Fatalf("Failed writing large upload: %s", err)
-			}
-			resp.Body.Close()
-			if resp.StatusCode != 200 {
-				log.Fatalf("Large upload resulted in status code %d", resp.StatusCode)
-			}
-		} else {
-			log.Printf("Result size %d bytes", resultSize)
-			if err := server.Post(nil, trimLeadingSlash(setURL)+"/results", resultData); err != nil {
-				log.Fatalf("Failed to upload results: %s\n", err)
-			}
+		if err := uploadResult(server, setURL, resultBuf.Bytes()); err != nil {
+			log.Printf("Deleting test set")
+			server.Delete(url)
+			log.Fatal(err)
 		}
 	}
 
