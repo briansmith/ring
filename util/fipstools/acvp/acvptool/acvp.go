@@ -45,6 +45,7 @@ var (
 	dumpRegcap      = flag.Bool("regcap", false, "Print module capabilities JSON to stdout")
 	configFilename  = flag.String("config", "config.json", "Location of the configuration JSON file")
 	jsonInputFile   = flag.String("json", "", "Location of a vector-set input file")
+	uploadInputFile = flag.String("upload", "", "Location of a JSON results file to upload")
 	runFlag         = flag.String("run", "", "Name of primitive to run tests for")
 	fetchFlag       = flag.String("fetch", "", "Name of primitive to fetch vectors for")
 	expectedOutFlag = flag.String("expected-out", "", "Name of a file to write the expected results to")
@@ -179,12 +180,12 @@ func trimLeadingSlash(s string) string {
 	return s
 }
 
-// looksLikeHeaderElement returns true iff element looks like it's a header, not
-// a test. Some ACVP files contain a header as the first element that should be
-// duplicated into the response, and some don't. If the element contains
-// a "url" field, or if it's missing an "algorithm" field, then we guess that
-// it's a header.
-func looksLikeHeaderElement(element json.RawMessage) bool {
+// looksLikeVectorSetHeader returns true iff element looks like it's a
+// vectorSetHeader, not a test. Some ACVP files contain a header as the first
+// element that should be duplicated into the response, and some don't. If the
+// element contains a "url" field, or if it's missing an "algorithm" field,
+// then we guess that it's a header.
+func looksLikeVectorSetHeader(element json.RawMessage) bool {
 	var headerFields struct {
 		URL       string `json:"url"`
 		Algorithm string `json:"algorithm"`
@@ -214,7 +215,7 @@ func processFile(filename string, supportedAlgos []map[string]interface{}, middl
 	}
 
 	var header json.RawMessage
-	if looksLikeHeaderElement(elements[0]) {
+	if looksLikeVectorSetHeader(elements[0]) {
 		header, elements = elements[0], elements[1:]
 		if len(elements) == 0 {
 			return errors.New("JSON input is empty")
@@ -269,6 +270,7 @@ func processFile(filename string, supportedAlgos []map[string]interface{}, middl
 		group := map[string]interface{}{
 			"vsId":       commonFields.ID,
 			"testGroups": replyGroups,
+			"algorithm":  algo,
 		}
 		replyBytes, err := json.MarshalIndent(group, "", "    ")
 		if err != nil {
@@ -454,6 +456,76 @@ FetchResults:
 	}
 }
 
+// vectorSetHeader is the first element in the array of JSON elements that makes
+// up the on-disk format for a vector set.
+type vectorSetHeader struct {
+	URL           string   `json:"url,omitempty"`
+	VectorSetURLs []string `json:"vectorSetUrls,omitempty"`
+	Time          string   `json:"time,omitempty"`
+}
+
+func uploadFromFile(file string, config *Config, sessionTokensCacheDir string) {
+	if len(*jsonInputFile) > 0 {
+		log.Fatalf("-upload cannot be used with -json")
+	}
+	if len(*runFlag) > 0 {
+		log.Fatalf("-upload cannot be used with -run")
+	}
+	if len(*fetchFlag) > 0 {
+		log.Fatalf("-upload cannot be used with -fetch")
+	}
+	if len(*expectedOutFlag) > 0 {
+		log.Fatalf("-upload cannot be used with -expected-out")
+	}
+	if *dumpRegcap {
+		log.Fatalf("-upload cannot be used with -regcap")
+	}
+
+	in, err := os.Open(file)
+	if err != nil {
+		log.Fatalf("Cannot open input: %s", err)
+	}
+	defer in.Close()
+
+	decoder := json.NewDecoder(in)
+
+	var input []json.RawMessage
+	if err := decoder.Decode(&input); err != nil {
+		log.Fatalf("Failed to parse input: %s", err)
+	}
+
+	if len(input) < 2 {
+		log.Fatalf("Input JSON has fewer than two elements")
+	}
+
+	var header vectorSetHeader
+	if err := json.Unmarshal(input[0], &header); err != nil {
+		log.Fatalf("Failed to parse input header: %s", err)
+	}
+
+	if numGroups := len(input) - 1; numGroups != len(header.VectorSetURLs) {
+		log.Fatalf("have %d URLs from header, but only %d result groups", len(header.VectorSetURLs), numGroups)
+	}
+
+	server, err := connect(config, sessionTokensCacheDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for i, url := range header.VectorSetURLs {
+		log.Printf("Uploading result for %q", url)
+		if err := uploadResult(server, url, input[i+1]); err != nil {
+			log.Fatalf("Failed to upload: %s", err)
+		}
+	}
+
+	if ok, err := getResultsWithRetry(server, header.URL); err != nil {
+		log.Fatal(err)
+	} else if !ok {
+		os.Exit(1)
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -472,6 +544,11 @@ func main() {
 			}
 			sessionTokensCacheDir = filepath.Join(home, sessionTokensCacheDir[2:])
 		}
+	}
+
+	if len(*uploadInputFile) > 0 {
+		uploadFromFile(*uploadInputFile, &config, sessionTokensCacheDir)
+		return
 	}
 
 	middle, err := subprocess.New(*wrapperPath)
@@ -629,10 +706,10 @@ func main() {
 
 	if len(*fetchFlag) > 0 {
 		io.WriteString(fetchOutputTee, "[\n")
-		json.NewEncoder(fetchOutputTee).Encode(map[string]interface{}{
-			"url":           url,
-			"vectorSetUrls": result.VectorSetURLs,
-			"time":          time.Now().Format(time.RFC3339),
+		json.NewEncoder(fetchOutputTee).Encode(vectorSetHeader{
+			URL:           url,
+			VectorSetURLs: result.VectorSetURLs,
+			Time:          time.Now().Format(time.RFC3339),
 		})
 	}
 
