@@ -67,6 +67,17 @@ foo:
 	add y0, y0
 	add y12, y12
 
+	// Make sure that the magic extension constants are recognised rather
+	// than being interpreted as symbols.
+	add w0, w1, b2, uxtb
+	add w0, w1, b2, uxth
+	add w0, w1, b2, uxtw
+	add w0, w1, b2, uxtx
+	add w0, w1, b2, sxtb
+	add w0, w1, b2, sxth
+	add w0, w1, b2, sxtw
+	add w0, w1, b2, sxtx
+
 
 local_function:
 

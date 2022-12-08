@@ -77,7 +77,7 @@ RegisterOrConstant <- (('%'[[A-Z]][[A-Z0-9]]*) /
                        ('#' '~'? '(' [0-9] WS? "<<" WS? [0-9] ')' ) /
                        ARMRegister)
                       ![fb:(+\-]
-ARMConstantTweak <- ("lsl" / "sxtw" / "sxtb" / "uxtw" / "uxtb" / "lsr" / "ror" / "asr") (WS '#' Offset)?
+ARMConstantTweak <- (([us] "xt" [xwhb]) / "lsl" / "lsr" / "ror" / "asr") (WS '#' Offset)?
 ARMRegister <- "sp" / ([xwdqshb] [0-9] [0-9]?) / "xzr" / "wzr" / "NZCV" / ARMVectorRegister / ('{' WS? ARMVectorRegister (',' WS? ARMVectorRegister)* WS? '}' ('[' [0-9] [0-9]? ']')? )
 ARMVectorRegister <- "v" [0-9] [0-9]? ('.' [0-9]* [bsdhq] ('[' [0-9] [0-9]? ']')? )?
 # Compilers only output a very limited number of expression forms. Rather than

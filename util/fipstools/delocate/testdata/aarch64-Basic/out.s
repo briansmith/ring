@@ -114,6 +114,17 @@ foo:
 // WAS add y12, y12
 	add	bcm_redirector_y12, bcm_redirector_y12
 
+	// Make sure that the magic extension constants are recognised rather
+	// than being interpreted as symbols.
+	add w0, w1, b2, uxtb
+	add w0, w1, b2, uxth
+	add w0, w1, b2, uxtw
+	add w0, w1, b2, uxtx
+	add w0, w1, b2, sxtb
+	add w0, w1, b2, sxth
+	add w0, w1, b2, sxtw
+	add w0, w1, b2, sxtx
+
 
 .Llocal_function_local_target:
 local_function:
