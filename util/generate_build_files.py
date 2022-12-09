@@ -255,6 +255,23 @@ class Bazel(object):
         self.PrintVariableSection(
             out, 'crypto_sources_%s_%s' % (osname, arch), asm_files)
 
+      # Generate combined source lists for gas and nasm. Consumers have a choice
+      # of using the per-platform ones or the combined ones. In the combined
+      # mode, Windows x86 and Windows x86_64 must still be special-cased, but
+      # otherwise all assembly files can be linked together.
+      out.write('\n')
+      out.write('crypto_sources_asm = []\n')
+      for (osname, arch, _, _, asm_ext) in OS_ARCH_COMBOS:
+        if asm_ext == 'S':
+          out.write('crypto_sources_asm.extend(crypto_sources_%s_%s)\n' %
+                    (osname, arch))
+      out.write('\n')
+      out.write('crypto_sources_nasm = []\n')
+      for (osname, arch, _, _, asm_ext) in OS_ARCH_COMBOS:
+        if asm_ext == 'asm':
+          out.write('crypto_sources_nasm.extend(crypto_sources_%s_%s)\n' %
+                    (osname, arch))
+
     with open('BUILD.generated_tests.bzl', 'w+') as out:
       out.write(self.header)
 

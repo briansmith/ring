@@ -18,14 +18,7 @@ load(
     "crypto_headers",
     "crypto_internal_headers",
     "crypto_sources",
-    "crypto_sources_apple_aarch64",
-    "crypto_sources_apple_arm",
-    "crypto_sources_apple_x86",
-    "crypto_sources_apple_x86_64",
-    "crypto_sources_linux_aarch64",
-    "crypto_sources_linux_arm",
-    "crypto_sources_linux_x86",
-    "crypto_sources_linux_x86_64",
+    "crypto_sources_asm",
     "fips_fragments",
     "ssl_headers",
     "ssl_internal_headers",
@@ -38,33 +31,47 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
-[
-    (
-        config_setting(
-            name = os + "_" + arch,
-            constraint_values = [
-                "@platforms//os:" + os,
-                "@platforms//cpu:" + arch,
-            ],
-        ),
-    )
-    for os in [
-        "linux",
-        "android",
-        "macos",
-        "ios",
-        "tvos",
-        "watchos",
-    ]
-    for arch in [
-        "arm64",
-        "armv7",
-        "x86_64",
-        "x86_32",
-    ]
-]
+# By default, the C files will expect assembly files, if any, to be linked in
+# with the build. This default can be flipped with -DOPENSSL_NO_ASM. If building
+# in a configuration where we have no assembly optimizations, -DOPENSSL_NO_ASM
+# has no effect, and either value is fine.
+#
+# Like C files, assembly files are wrapped in #ifdef (or NASM equivalent), so it
+# is safe to include a file for the wrong platform in the build. It will just
+# output an empty object file. However, we need some platform selectors to
+# distinguish between gas or NASM syntax.
+#
+# For all non-Windows platforms, we use gas assembly syntax and can assume any
+# GCC-compatible toolchain includes a gas-compatible assembler.
+#
+# For Windows, we use NASM on x86 and x86_64 and gas, specifically
+# clang-assembler, on aarch64. We have not yet added NASM support to this build,
+# and would need to detect MSVC vs clang-cl for aarch64 so, for now, we just
+# disable assembly on Windows across the board.
+#
+# These two selects for asm_sources and asm_copts must be kept in sync. If we
+# specify assembly, we don't want OPENSSL_NO_ASM. If we don't specify assembly,
+# we want OPENSSL_NO_ASM, in case the C files expect them in some format (e.g.
+# NASM) this build file doesn't yet support.
+#
+# TODO(https://crbug.com/boringssl/531): Enable assembly for Windows.
+asm_sources = select({
+    "@platforms//os:windows": [],
+    "//conditions:default": crypto_sources_asm,
+})
+asm_copts = select({
+    "@platforms//os:windows": ["-DOPENSSL_NO_ASM"],
+    "//conditions:default": [],
+})
 
-posix_copts = [
+# Configure C, C++, and common flags for GCC-compatible toolchains.
+#
+# TODO(davidben): Can we remove some of these? In Bazel, are warnings the
+# toolchain or project's responsibility? -Wa,--noexecstack should be unnecessary
+# now, though https://crbug.com/boringssl/292 tracks testing this in CI.
+# -fno-common did not become default until
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85678.
+gcc_copts = [
     # Assembler option --noexecstack adds .note.GNU-stack to each object to
     # ensure that binaries can be built with non-executable stack.
     "-Wa,--noexecstack",
@@ -79,119 +86,51 @@ posix_copts = [
     "-Wshadow",
     "-fno-common",
 ]
-
-glibc_copts = posix_copts + [
-    # This is needed on glibc systems (at least) to get rwlock in pthread, but
-    # it should not be set on Apple platforms or FreeBSD, where it instead
-    # disables APIs we use.
-    # See compat(5), sys/cdefs.h, and https://crbug.com/boringssl/471
-    "-D_XOPEN_SOURCE=700",
-]
-
-boringssl_copts = select({
-    "@platforms//os:linux": glibc_copts,
-    "@platforms//os:android": posix_copts,
-    "@platforms//os:macos": posix_copts,
-    "@platforms//os:ios": posix_copts,
-    "@platforms//os:tvos": posix_copts,
-    "@platforms//os:watchos": posix_copts,
-    "@platforms//os:windows": ["-DWIN32_LEAN_AND_MEAN"],
-    "//conditions:default": [],
-})
-
-# These selects must be kept in sync.
-crypto_sources_asm = select({
-    ":linux_armv7": crypto_sources_linux_arm,
-    ":linux_arm64": crypto_sources_linux_aarch64,
-    ":linux_x86_32": crypto_sources_linux_x86,
-    ":linux_x86_64": crypto_sources_linux_x86_64,
-    ":android_armv7": crypto_sources_linux_arm,
-    ":android_arm64": crypto_sources_linux_aarch64,
-    ":android_x86_32": crypto_sources_linux_x86,
-    ":android_x86_64": crypto_sources_linux_x86_64,
-    ":macos_armv7": crypto_sources_apple_arm,
-    ":macos_arm64": crypto_sources_apple_aarch64,
-    ":macos_x86_32": crypto_sources_apple_x86,
-    ":macos_x86_64": crypto_sources_apple_x86_64,
-    ":ios_armv7": crypto_sources_apple_arm,
-    ":ios_arm64": crypto_sources_apple_aarch64,
-    ":ios_x86_32": crypto_sources_apple_x86,
-    ":ios_x86_64": crypto_sources_apple_x86_64,
-    ":tvos_armv7": crypto_sources_apple_arm,
-    ":tvos_arm64": crypto_sources_apple_aarch64,
-    ":tvos_x86_32": crypto_sources_apple_x86,
-    ":tvos_x86_64": crypto_sources_apple_x86_64,
-    ":watchos_armv7": crypto_sources_apple_arm,
-    ":watchos_arm64": crypto_sources_apple_aarch64,
-    ":watchos_x86_32": crypto_sources_apple_x86,
-    ":watchos_x86_64": crypto_sources_apple_x86_64,
-    "//conditions:default": [],
-})
-boringssl_copts += select({
-    ":linux_armv7": [],
-    ":linux_arm64": [],
-    ":linux_x86_32": [],
-    ":linux_x86_64": [],
-    ":android_armv7": [],
-    ":android_arm64": [],
-    ":android_x86_32": [],
-    ":android_x86_64": [],
-    ":macos_armv7": [],
-    ":macos_arm64": [],
-    ":macos_x86_32": [],
-    ":macos_x86_64": [],
-    ":ios_armv7": [],
-    ":ios_arm64": [],
-    ":ios_x86_32": [],
-    ":ios_x86_64": [],
-    ":tvos_armv7": [],
-    ":tvos_arm64": [],
-    ":tvos_x86_32": [],
-    ":tvos_x86_64": [],
-    ":watchos_armv7": [],
-    ":watchos_arm64": [],
-    ":watchos_x86_32": [],
-    ":watchos_x86_64": [],
-    "//conditions:default": ["-DOPENSSL_NO_ASM"],
-})
-
-# For C targets only (not C++), compile with C11 support.
-posix_copts_c11 = [
+gcc_copts_c11 = [
     "-std=c11",
     "-Wmissing-prototypes",
     "-Wold-style-definition",
     "-Wstrict-prototypes",
 ]
-
-boringssl_copts_c11 = boringssl_copts + select({
-    "@platforms//os:linux": posix_copts_c11,
-    "@platforms//os:android": posix_copts_c11,
-    "@platforms//os:macos": posix_copts_c11,
-    "@platforms//os:ios": posix_copts_c11,
-    "@platforms//os:tvos": posix_copts_c11,
-    "@platforms//os:watchos": posix_copts_c11,
-    "//conditions:default": [],
-})
-
-# For C++ targets only (not C), compile with C++14 support.
-posix_copts_cxx = [
+gcc_copts_cxx = [
     "-std=c++14",
     "-Wmissing-declarations",
 ]
 
-boringssl_copts_cxx = boringssl_copts + select({
-    "@platforms//os:linux": posix_copts_cxx,
-    "@platforms//os:android": posix_copts_cxx,
-    "@platforms//os:macos": posix_copts_cxx,
-    "@platforms//os:ios": posix_copts_cxx,
-    "@platforms//os:tvos": posix_copts_cxx,
-    "@platforms//os:watchos": posix_copts_cxx,
+boringssl_copts = select({
+    # We assume that non-Windows builds use a GCC-compatible toolchain and that
+    # Windows builds do not.
+    #
+    # TODO(davidben): Should these be querying something in @bazel_tools?
+    # Unfortunately, @bazel_tools is undocumented. See
+    # https://github.com/bazelbuild/bazel/issues/14914
+    "@platforms//os:windows": [],
+    "//conditions:default": gcc_copts,
+}) + select({
+    # This is needed on glibc systems to get rwlock in pthreads, but it should
+    # not be set on Apple platforms or FreeBSD, where it instead disables APIs
+    # we use.
+    # See compat(5), sys/cdefs.h, and https://crbug.com/boringssl/471
+    "@platforms//os:linux": ["-D_XOPEN_SOURCE=700"],
+    # Without WIN32_LEAN_AND_MEAN, <windows.h> pulls in wincrypt.h, which
+    # conflicts with our <openssl/x509.h>.
+    "@platforms//os:windows": ["-DWIN32_LEAN_AND_MEAN"],
     "//conditions:default": [],
+}) + asm_copts
+
+boringssl_copts_c11 = boringssl_copts + select({
+    "@platforms//os:windows": [],
+    "//conditions:default": gcc_copts_c11,
+})
+
+boringssl_copts_cxx = boringssl_copts + select({
+    "@platforms//os:windows": [],
+    "//conditions:default": gcc_copts_cxx,
 })
 
 cc_library(
     name = "crypto",
-    srcs = crypto_sources + crypto_internal_headers + crypto_sources_asm,
+    srcs = crypto_sources + crypto_internal_headers + asm_sources,
     hdrs = crypto_headers + fips_fragments,
     copts = boringssl_copts_c11,
     includes = ["src/include"],
