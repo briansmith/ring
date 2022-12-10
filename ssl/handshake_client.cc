@@ -833,11 +833,18 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
-    // Note: session_id could be empty.
-    hs->new_session->session_id_length = CBS_len(&server_hello.session_id);
+
+    // Save the session ID from the server. This may be empty if the session
+    // isn't resumable, or if we'll receive a session ticket later.
+    assert(CBS_len(&server_hello.session_id) <= SSL3_SESSION_ID_SIZE);
+    static_assert(SSL3_SESSION_ID_SIZE <= UINT8_MAX,
+                  "max session ID is too large");
+    hs->new_session->session_id_length =
+        static_cast<uint8_t>(CBS_len(&server_hello.session_id));
     OPENSSL_memcpy(hs->new_session->session_id,
                    CBS_data(&server_hello.session_id),
                    CBS_len(&server_hello.session_id));
+
     hs->new_session->cipher = hs->new_cipher;
   }
 

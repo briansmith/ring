@@ -486,7 +486,7 @@ static int SSL_SESSION_parse_bounded_octet_string(CBS *cbs, uint8_t *out,
     return 0;
   }
   OPENSSL_memcpy(out, CBS_data(&value), CBS_len(&value));
-  *out_len = (uint8_t)CBS_len(&value);
+  *out_len = static_cast<uint8_t>(CBS_len(&value));
   return 1;
 }
 
@@ -578,9 +578,13 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
     return nullptr;
   }
   OPENSSL_memcpy(ret->session_id, CBS_data(&session_id), CBS_len(&session_id));
-  ret->session_id_length = CBS_len(&session_id);
+  static_assert(SSL3_MAX_SSL_SESSION_ID_LENGTH <= UINT8_MAX,
+                "max session ID is too large");
+  ret->session_id_length = static_cast<uint8_t>(CBS_len(&session_id));
   OPENSSL_memcpy(ret->secret, CBS_data(&secret), CBS_len(&secret));
-  ret->secret_length = CBS_len(&secret);
+  static_assert(SSL_MAX_MASTER_KEY_LENGTH <= UINT8_MAX,
+                "max secret is too large");
+  ret->secret_length = static_cast<uint8_t>(CBS_len(&secret));
 
   CBS child;
   uint64_t timeout;
