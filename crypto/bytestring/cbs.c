@@ -480,10 +480,6 @@ int CBS_get_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value) {
 }
 
 int CBS_peek_asn1_tag(const CBS *cbs, CBS_ASN1_TAG tag_value) {
-  if (CBS_len(cbs) < 1) {
-    return 0;
-  }
-
   CBS copy = *cbs;
   CBS_ASN1_TAG actual_tag;
   return parse_asn1_tag(&copy, &actual_tag) && tag_value == actual_tag;
