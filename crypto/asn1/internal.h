@@ -143,9 +143,6 @@ OPENSSL_EXPORT int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d,
 OPENSSL_EXPORT int asn1_generalizedtime_to_tm(struct tm *tm,
                                               const ASN1_GENERALIZEDTIME *d);
 
-void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
-                            int combine);
-
 int ASN1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it);
 void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
 

@@ -203,11 +203,7 @@ int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval,
 
 // Given an ASN1_TEMPLATE get a pointer to a field
 ASN1_VALUE **asn1_get_field_ptr(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
-  ASN1_VALUE **pvaltmp;
-  if (tt->flags & ASN1_TFLG_COMBINE) {
-    return pval;
-  }
-  pvaltmp = offset2ptr(*pval, tt->offset);
+  ASN1_VALUE **pvaltmp = offset2ptr(*pval, tt->offset);
   // NOTE for BOOLEAN types the field is just a plain int so we can't return
   // int **, so settle for (int *).
   return pvaltmp;

@@ -168,8 +168,6 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
   int otag;
   int ret = 0;
   ASN1_VALUE **pchptr;
-  int combine = aclass & ASN1_TFLG_COMBINE;
-  aclass &= ~ASN1_TFLG_COMBINE;
   if (!pval) {
     return 0;
   }
@@ -440,9 +438,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
 auxerr:
   OPENSSL_PUT_ERROR(ASN1, ASN1_R_AUX_ERROR);
 err:
-  if (combine == 0) {
-    ASN1_item_ex_free(pval, it);
-  }
+  ASN1_item_ex_free(pval, it);
   if (errtt) {
     ERR_add_error_data(4, "Field=", errtt->field_name, ", Type=", it->sname);
   } else {
@@ -602,8 +598,8 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
     }
   } else {
     // Nothing special
-    ret = asn1_item_ex_d2i(val, &p, len, ASN1_ITEM_ptr(tt->item), -1,
-                           tt->flags & ASN1_TFLG_COMBINE, opt, depth);
+    ret = asn1_item_ex_d2i(val, &p, len, ASN1_ITEM_ptr(tt->item), -1, 0, opt,
+                           depth);
     if (!ret) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
       goto err;
