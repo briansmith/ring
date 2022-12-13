@@ -646,7 +646,7 @@ static int tree_calculate_user_set(X509_POLICY_TREE *tree,
     if (!tree->user_policies) {
       tree->user_policies = sk_X509_POLICY_NODE_new_null();
       if (!tree->user_policies) {
-        return 1;
+        return 0;
       }
     }
     if (!sk_X509_POLICY_NODE_push(tree->user_policies, node)) {
