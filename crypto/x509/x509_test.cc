@@ -37,6 +37,10 @@
 #include "../test/test_util.h"
 #include "../x509v3/internal.h"
 
+#if defined(OPENSSL_THREADS)
+#include <thread>
+#endif
+
 
 std::string GetTestData(const char *path);
 
@@ -1246,6 +1250,31 @@ TEST(X509Test, TestVerify) {
                      /*flags=*/0, configure_callback));
   }
 }
+
+#if defined(OPENSSL_THREADS)
+// Verifying the same |X509| objects on two threads should be safe.
+TEST(X509Test, VerifyThreads) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(kIntermediatePEM));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(leaf);
+
+  const size_t kNumThreads = 10;
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumThreads; i++) {
+    threads.emplace_back([&] {
+      EXPECT_EQ(X509_V_OK,
+                Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                       /*crls=*/{}));
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}
+#endif  // OPENSSL_THREADS
 
 static const char kHostname[] = "example.com";
 static const char kWrongHostname[] = "example2.com";
