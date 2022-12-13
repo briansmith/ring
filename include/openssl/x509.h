@@ -2808,7 +2808,7 @@ OPENSSL_EXPORT void X509_VERIFY_PARAM_set_time(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
                                                  ASN1_OBJECT *policy);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_policies(
-    X509_VERIFY_PARAM *param, STACK_OF(ASN1_OBJECT) *policies);
+    X509_VERIFY_PARAM *param, const STACK_OF(ASN1_OBJECT) *policies);
 
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
