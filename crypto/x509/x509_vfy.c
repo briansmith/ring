@@ -1706,10 +1706,8 @@ static int check_policy(X509_STORE_CTX *ctx) {
   // Invalid or inconsistent extensions
   if (ret == -1) {
     // Locate certificates with bad extensions and notify callback.
-    X509 *x;
-    size_t i;
-    for (i = 1; i < sk_X509_num(ctx->chain); i++) {
-      x = sk_X509_value(ctx->chain, i);
+    for (size_t i = 0; i < sk_X509_num(ctx->chain); i++) {
+      X509 *x = sk_X509_value(ctx->chain, i);
       if (!(x->ex_flags & EXFLAG_INVALID_POLICY)) {
         continue;
       }

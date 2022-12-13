@@ -12,8 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-// make_invalid_extensions.go generates a number of certificate chains with
-// invalid extension encodings.
+// make_policy_certs.go generates certificates for testing policy handling.
 package main
 
 import (
@@ -21,30 +20,21 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
-	"fmt"
 	"math/big"
 	"os"
 	"time"
 )
 
-type extension struct {
-	// The name of the extension, in a form suitable for including in a
-	// filename.
-	name string
-	// The extension's OID.
-	oid []int
-}
+var (
+	// https://davidben.net/oid
+	testOID1 = asn1.ObjectIdentifier([]int{1, 2, 840, 113554, 4, 1, 72585, 2, 1})
+	testOID2 = asn1.ObjectIdentifier([]int{1, 2, 840, 113554, 4, 1, 72585, 2, 2})
 
-var extensions = []extension{
-	{name: "authority_key_identifier", oid: []int{2, 5, 29, 35}},
-	{name: "basic_constraints", oid: []int{2, 5, 29, 19}},
-	{name: "ext_key_usage", oid: []int{2, 5, 29, 37}},
-	{name: "key_usage", oid: []int{2, 5, 29, 15}},
-	{name: "name_constraints", oid: []int{2, 5, 29, 30}},
-	{name: "subject_alt_name", oid: []int{2, 5, 29, 17}},
-	{name: "subject_key_identifier", oid: []int{2, 5, 29, 14}},
-}
+	// https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.4
+	certificatePoliciesOID = asn1.ObjectIdentifier([]int{2, 5, 29, 32})
+)
 
 var leafKey, intermediateKey, rootKey *ecdsa.PrivateKey
 
@@ -89,7 +79,7 @@ func main() {
 	root := templateAndKey{
 		template: x509.Certificate{
 			SerialNumber:          new(big.Int).SetInt64(1),
-			Subject:               pkix.Name{CommonName: "Invalid Extensions Root"},
+			Subject:               pkix.Name{CommonName: "Policy Root"},
 			NotBefore:             notBefore,
 			NotAfter:              notAfter,
 			BasicConstraintsValid: true,
@@ -97,14 +87,13 @@ func main() {
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			KeyUsage:              x509.KeyUsageCertSign,
 			SignatureAlgorithm:    x509.ECDSAWithSHA256,
-			SubjectKeyId:          []byte("root"),
 		},
 		key: rootKey,
 	}
 	intermediate := templateAndKey{
 		template: x509.Certificate{
 			SerialNumber:          new(big.Int).SetInt64(2),
-			Subject:               pkix.Name{CommonName: "Invalid Extensions Intermediate"},
+			Subject:               pkix.Name{CommonName: "Policy Intermediate"},
 			NotBefore:             notBefore,
 			NotAfter:              notAfter,
 			BasicConstraintsValid: true,
@@ -112,7 +101,7 @@ func main() {
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			KeyUsage:              x509.KeyUsageCertSign,
 			SignatureAlgorithm:    x509.ECDSAWithSHA256,
-			SubjectKeyId:          []byte("intermediate"),
+			PolicyIdentifiers:     []asn1.ObjectIdentifier{testOID1, testOID2},
 		},
 		key: intermediateKey,
 	}
@@ -128,57 +117,30 @@ func main() {
 			KeyUsage:              x509.KeyUsageCertSign,
 			SignatureAlgorithm:    x509.ECDSAWithSHA256,
 			DNSNames:              []string{"www.example.com"},
-			SubjectKeyId:          []byte("leaf"),
-			PermittedDNSDomains:   []string{"www.example.com"},
+			PolicyIdentifiers:     []asn1.ObjectIdentifier{testOID1, testOID2},
 		},
 		key: leafKey,
 	}
 
 	// Generate a valid certificate chain from the templates.
-	mustGenerateCertificate("invalid_extension_root.pem", &root, &root)
-	mustGenerateCertificate("invalid_extension_intermediate.pem", &intermediate, &root)
-	leafDER := mustGenerateCertificate("invalid_extension_leaf.pem", &leaf, &intermediate)
+	mustGenerateCertificate("policy_root.pem", &root, &root)
+	mustGenerateCertificate("policy_intermediate.pem", &intermediate, &root)
+	mustGenerateCertificate("policy_leaf.pem", &leaf, &intermediate)
 
-	leafCert, err := x509.ParseCertificate(leafDER)
-	if err != nil {
-		panic(err)
-	}
+	// Introduce syntax errors in the leaf and intermediate.
+	leafInvalid := leaf
+	leafInvalid.template.PolicyIdentifiers = nil
+	leafInvalid.template.ExtraExtensions = []pkix.Extension{{Id: certificatePoliciesOID, Value: []byte("INVALID")}}
+	mustGenerateCertificate("policy_leaf_invalid.pem", &leafInvalid, &root)
 
-	// Make copies of the certificates with invalid extensions. These copies may
-	// be substituted into the valid chain.
-	for _, ext := range extensions {
-		invalidExtension := []pkix.Extension{{Id: ext.oid, Value: []byte("INVALID")}}
+	intermediateInvalid := intermediate
+	intermediateInvalid.template.PolicyIdentifiers = nil
+	intermediateInvalid.template.ExtraExtensions = []pkix.Extension{{Id: certificatePoliciesOID, Value: []byte("INVALID")}}
+	mustGenerateCertificate("policy_intermediate_invalid.pem", &intermediateInvalid, &root)
 
-		rootInvalid := root
-		rootInvalid.template.ExtraExtensions = invalidExtension
-		mustGenerateCertificate(fmt.Sprintf("invalid_extension_root_%s.pem", ext.name), &rootInvalid, &rootInvalid)
-
-		intermediateInvalid := intermediate
-		intermediateInvalid.template.ExtraExtensions = invalidExtension
-		mustGenerateCertificate(fmt.Sprintf("invalid_extension_intermediate_%s.pem", ext.name), &intermediateInvalid, &root)
-
-		leafInvalid := leaf
-		leafInvalid.template.ExtraExtensions = invalidExtension
-		mustGenerateCertificate(fmt.Sprintf("invalid_extension_leaf_%s.pem", ext.name), &leafInvalid, &intermediate)
-
-		// Additionally generate a copy of the leaf certificate with extra data in
-		// the extension.
-		var trailingDataExtension []pkix.Extension
-		for _, leafExt := range leafCert.Extensions {
-			if leafExt.Id.Equal(ext.oid) {
-				newValue := make([]byte, len(leafExt.Value)+1)
-				copy(newValue, leafExt.Value)
-				trailingDataExtension = append(trailingDataExtension, pkix.Extension{Id: ext.oid, Critical: leafExt.Critical, Value: newValue})
-			}
-		}
-		if len(trailingDataExtension) != 1 {
-			panic(fmt.Sprintf("could not find sample extension %s", ext.name))
-		}
-
-		leafTrailingData := leaf
-		leafTrailingData.template.ExtraExtensions = trailingDataExtension
-		mustGenerateCertificate(fmt.Sprintf("trailing_data_leaf_%s.pem", ext.name), &leafTrailingData, &intermediate)
-	}
+	// TODO(davidben): Generate more certificates to test policy validation more
+	// extensively, including an intermediate with constraints. For now this
+	// just tests the basic case.
 }
 
 const leafKeyPEM = `-----BEGIN PRIVATE KEY-----
