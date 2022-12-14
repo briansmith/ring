@@ -34,10 +34,16 @@ var (
 	// https://davidben.net/oid
 	testOID1 = asn1.ObjectIdentifier([]int{1, 2, 840, 113554, 4, 1, 72585, 2, 1})
 	testOID2 = asn1.ObjectIdentifier([]int{1, 2, 840, 113554, 4, 1, 72585, 2, 2})
+	testOID3 = asn1.ObjectIdentifier([]int{1, 2, 840, 113554, 4, 1, 72585, 2, 3})
+	testOID4 = asn1.ObjectIdentifier([]int{1, 2, 840, 113554, 4, 1, 72585, 2, 4})
+	testOID5 = asn1.ObjectIdentifier([]int{1, 2, 840, 113554, 4, 1, 72585, 2, 5})
 
 	// https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.4
 	certificatePoliciesOID = asn1.ObjectIdentifier([]int{2, 5, 29, 32})
 	anyPolicyOID           = asn1.ObjectIdentifier([]int{2, 5, 29, 32, 0})
+
+	// https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.5
+	policyMappingsOID = asn1.ObjectIdentifier([]int{2, 5, 29, 33})
 
 	// https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.11
 	policyConstraintsOID = asn1.ObjectIdentifier([]int{2, 5, 29, 36})
@@ -180,6 +186,59 @@ func main() {
 	leafAny := leaf
 	leafAny.template.PolicyIdentifiers = []asn1.ObjectIdentifier{anyPolicyOID}
 	mustGenerateCertificate("policy_leaf_any.pem", &leafAny, &intermediate)
+
+	// An intermediate which maps OID1 to (OID2, OID3), and which asserts the
+	// input OIDs either all at once, or as anyPolicy.
+	b = cryptobyte.NewBuilder(nil)
+	b.AddASN1(cbasn1.SEQUENCE, func(seq *cryptobyte.Builder) {
+		// Map OID3 to (OID1, OID2).
+		seq.AddASN1(cbasn1.SEQUENCE, func(mapping *cryptobyte.Builder) {
+			mapping.AddASN1ObjectIdentifier(testOID3)
+			mapping.AddASN1ObjectIdentifier(testOID1)
+		})
+		seq.AddASN1(cbasn1.SEQUENCE, func(mapping *cryptobyte.Builder) {
+			mapping.AddASN1ObjectIdentifier(testOID3)
+			mapping.AddASN1ObjectIdentifier(testOID2)
+		})
+
+		// Map all pairs of OID4 and OID5 to each other.
+		seq.AddASN1(cbasn1.SEQUENCE, func(mapping *cryptobyte.Builder) {
+			mapping.AddASN1ObjectIdentifier(testOID4)
+			mapping.AddASN1ObjectIdentifier(testOID4)
+		})
+		seq.AddASN1(cbasn1.SEQUENCE, func(mapping *cryptobyte.Builder) {
+			mapping.AddASN1ObjectIdentifier(testOID4)
+			mapping.AddASN1ObjectIdentifier(testOID5)
+		})
+		seq.AddASN1(cbasn1.SEQUENCE, func(mapping *cryptobyte.Builder) {
+			mapping.AddASN1ObjectIdentifier(testOID5)
+			mapping.AddASN1ObjectIdentifier(testOID4)
+		})
+		seq.AddASN1(cbasn1.SEQUENCE, func(mapping *cryptobyte.Builder) {
+			mapping.AddASN1ObjectIdentifier(testOID5)
+			mapping.AddASN1ObjectIdentifier(testOID5)
+		})
+	})
+	intermediateMapped := intermediate
+	intermediateMapped.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1, testOID2, testOID3, testOID4, testOID5}
+	intermediateMapped.template.ExtraExtensions = []pkix.Extension{{Id: policyMappingsOID, Value: b.BytesOrPanic()}}
+	mustGenerateCertificate("policy_intermediate_mapped.pem", &intermediateMapped, &root)
+
+	intermediateMapped.template.PolicyIdentifiers = []asn1.ObjectIdentifier{anyPolicyOID}
+	mustGenerateCertificate("policy_intermediate_mapped_any.pem", &intermediateMapped, &root)
+
+	// Leaves which assert more specific OIDs, to test intermediate_mapped.
+	leafSingle := leaf
+	leafSingle.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1}
+	mustGenerateCertificate("policy_leaf_oid1.pem", &leafSingle, &intermediate)
+	leafSingle.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID2}
+	mustGenerateCertificate("policy_leaf_oid2.pem", &leafSingle, &intermediate)
+	leafSingle.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID3}
+	mustGenerateCertificate("policy_leaf_oid3.pem", &leafSingle, &intermediate)
+	leafSingle.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID4}
+	mustGenerateCertificate("policy_leaf_oid4.pem", &leafSingle, &intermediate)
+	leafSingle.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID5}
+	mustGenerateCertificate("policy_leaf_oid5.pem", &leafSingle, &intermediate)
 
 	// TODO(davidben): Generate more certificates to test policy validation more
 	// extensively, including an intermediate with constraints. For now this
