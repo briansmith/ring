@@ -16,11 +16,16 @@
 #include <openssl/mem.h>
 #include <openssl/x509.h>
 
+#include "../crypto/x509v3/internal.h"
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   X509 *x509 = d2i_X509(NULL, &buf, len);
   if (x509 != NULL) {
     // Extract the public key.
     EVP_PKEY_free(X509_get_pubkey(x509));
+
+    // Fuzz some deferred parsing.
+    x509v3_cache_extensions(x509);
 
     // Reserialize the structure.
     uint8_t *der = NULL;

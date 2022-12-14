@@ -104,7 +104,7 @@ OPENSSL_EXPORT int x509v3_looks_like_dns_name(const unsigned char *in,
 // x509v3_cache_extensions fills in a number of fields relating to X.509
 // extensions in |x|. It returns one on success and zero if some extensions were
 // invalid.
-int x509v3_cache_extensions(X509 *x);
+OPENSSL_EXPORT int x509v3_cache_extensions(X509 *x);
 
 // x509v3_a2i_ipadd decodes |ipasc| as an IPv4 or IPv6 address. IPv6 addresses
 // use colon-separated syntax while IPv4 addresses use dotted decimal syntax. If
