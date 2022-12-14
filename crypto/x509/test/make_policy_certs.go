@@ -138,6 +138,15 @@ func main() {
 	intermediateInvalid.template.ExtraExtensions = []pkix.Extension{{Id: certificatePoliciesOID, Value: []byte("INVALID")}}
 	mustGenerateCertificate("policy_intermediate_invalid.pem", &intermediateInvalid, &root)
 
+	// Duplicates are not allowed in certificatePolicies.
+	leafDuplicate := leaf
+	leafDuplicate.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1, testOID2, testOID2}
+	mustGenerateCertificate("policy_leaf_duplicate.pem", &leafDuplicate, &root)
+
+	intermediateDuplicate := intermediate
+	intermediateDuplicate.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1, testOID2, testOID2}
+	mustGenerateCertificate("policy_intermediate_duplicate.pem", &intermediateDuplicate, &root)
+
 	// TODO(davidben): Generate more certificates to test policy validation more
 	// extensively, including an intermediate with constraints. For now this
 	// just tests the basic case.
