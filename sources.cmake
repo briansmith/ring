@@ -112,12 +112,14 @@ set(
   crypto/x509/test/many_names2.pem
   crypto/x509/test/many_names3.pem
   crypto/x509/test/policy_root.pem
+  crypto/x509/test/policy_intermediate_any.pem
   crypto/x509/test/policy_intermediate_duplicate.pem
   crypto/x509/test/policy_intermediate_invalid.pem
   crypto/x509/test/policy_intermediate_require.pem
   crypto/x509/test/policy_intermediate_require_duplicate.pem
   crypto/x509/test/policy_intermediate_require_no_policies.pem
   crypto/x509/test/policy_intermediate.pem
+  crypto/x509/test/policy_leaf_any.pem
   crypto/x509/test/policy_leaf_duplicate.pem
   crypto/x509/test/policy_leaf_invalid.pem
   crypto/x509/test/policy_leaf.pem

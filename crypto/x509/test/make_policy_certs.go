@@ -37,6 +37,7 @@ var (
 
 	// https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.4
 	certificatePoliciesOID = asn1.ObjectIdentifier([]int{2, 5, 29, 32})
+	anyPolicyOID           = asn1.ObjectIdentifier([]int{2, 5, 29, 32, 0})
 
 	// https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.11
 	policyConstraintsOID = asn1.ObjectIdentifier([]int{2, 5, 29, 36})
@@ -170,6 +171,15 @@ func main() {
 	// Same as above, but the policy list has duplicates.
 	intermediateRequire.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1, testOID2, testOID2}
 	mustGenerateCertificate("policy_intermediate_require_duplicate.pem", &intermediateRequire, &root)
+
+	// Corresponding certificates that instead assert the anyPolicy OID.
+	intermediateAny := intermediate
+	intermediateAny.template.PolicyIdentifiers = []asn1.ObjectIdentifier{anyPolicyOID}
+	mustGenerateCertificate("policy_intermediate_any.pem", &intermediateAny, &root)
+
+	leafAny := leaf
+	leafAny.template.PolicyIdentifiers = []asn1.ObjectIdentifier{anyPolicyOID}
+	mustGenerateCertificate("policy_leaf_any.pem", &leafAny, &intermediate)
 
 	// TODO(davidben): Generate more certificates to test policy validation more
 	// extensively, including an intermediate with constraints. For now this
