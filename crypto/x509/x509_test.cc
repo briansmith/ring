@@ -5119,6 +5119,19 @@ TEST(X509Test, Policy) {
       GetTestData("crypto/x509/test/policy_intermediate_duplicate.pem")
           .c_str()));
   ASSERT_TRUE(intermediate_duplicate);
+  bssl::UniquePtr<X509> intermediate_require(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate_require.pem")
+          .c_str()));
+  ASSERT_TRUE(intermediate_require);
+  bssl::UniquePtr<X509> intermediate_require_duplicate(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate_require_duplicate.pem")
+          .c_str()));
+  ASSERT_TRUE(intermediate_require_duplicate);
+  bssl::UniquePtr<X509> intermediate_require_no_policies(CertFromPEM(
+      GetTestData(
+          "crypto/x509/test/policy_intermediate_require_no_policies.pem")
+          .c_str()));
+  ASSERT_TRUE(intermediate_require_no_policies);
   bssl::UniquePtr<X509> leaf(
       CertFromPEM(GetTestData("crypto/x509/test/policy_leaf.pem").c_str()));
   ASSERT_TRUE(leaf);
@@ -5145,6 +5158,9 @@ TEST(X509Test, Policy) {
       ASSERT_TRUE(X509_VERIFY_PARAM_add0_policy(param, copy.get()));
       copy.release();  // |X509_VERIFY_PARAM_add0_policy| takes ownership on
                        // success.
+      // TODO(davidben): |X509_VERIFY_PARAM_add0_policy| does not set this flag,
+      // while |X509_VERIFY_PARAM_set1_policies| does. Is this a bug?
+      X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_POLICY_CHECK);
     }
   };
 
@@ -5202,6 +5218,51 @@ TEST(X509Test, Policy) {
             Verify(leaf_duplicate.get(), {root.get()}, {intermediate.get()},
                    /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
                    [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+
+  // Without |X509_V_FLAG_EXPLICIT_POLICY|, the policy tree is built and
+  // intersected with user-specified policies, but it is not required to result
+  // in any valid policies.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3.get()});
+                   }));
+
+  // However, a CA with policy constraints can require an explicit policy.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+                              {intermediate_require.get()}, /*crls=*/{},
+                              /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                                set_policies(param, {oid1.get()});
+                              }));
+  EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
+            Verify(leaf.get(), {root.get()}, {intermediate_require.get()},
+                   /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3.get()});
+                   }));
+
+  // An intermediate that requires an explicit policy, but then specifies no
+  // policies should fail verification as a result.
+  EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
+            Verify(leaf.get(), {root.get()},
+                   {intermediate_require_no_policies.get()}, /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+
+  // A constrained intermediate's policy extension has a duplicate policy, which
+  // is invalid. Historically this, and the above case, leaked memory.
+  EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+            Verify(leaf.get(), {root.get()},
+                   {intermediate_require_duplicate.get()}, /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
                      set_policies(param, {oid1.get()});
                    }));
 }

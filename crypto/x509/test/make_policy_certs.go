@@ -25,6 +25,9 @@ import (
 	"math/big"
 	"os"
 	"time"
+
+	"golang.org/x/crypto/cryptobyte"
+	cbasn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
 
 var (
@@ -34,6 +37,9 @@ var (
 
 	// https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.4
 	certificatePoliciesOID = asn1.ObjectIdentifier([]int{2, 5, 29, 32})
+
+	// https://www.rfc-editor.org/rfc/rfc5280.html#section-4.2.1.11
+	policyConstraintsOID = asn1.ObjectIdentifier([]int{2, 5, 29, 36})
 )
 
 var leafKey, intermediateKey, rootKey *ecdsa.PrivateKey
@@ -146,6 +152,24 @@ func main() {
 	intermediateDuplicate := intermediate
 	intermediateDuplicate.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1, testOID2, testOID2}
 	mustGenerateCertificate("policy_intermediate_duplicate.pem", &intermediateDuplicate, &root)
+
+	// A version of the intermediate that sets requireExplicitPolicy without
+	// skipping certificates.
+	b := cryptobyte.NewBuilder(nil)
+	b.AddASN1(cbasn1.SEQUENCE, func(seq *cryptobyte.Builder) {
+		seq.AddASN1Int64WithTag(0, cbasn1.Tag(0).ContextSpecific())
+	})
+	intermediateRequire := intermediate
+	intermediateRequire.template.ExtraExtensions = []pkix.Extension{{Id: policyConstraintsOID, Value: b.BytesOrPanic()}}
+	mustGenerateCertificate("policy_intermediate_require.pem", &intermediateRequire, &root)
+
+	// Same as above, but there are no policies on the intermediate.
+	intermediateRequire.template.PolicyIdentifiers = nil
+	mustGenerateCertificate("policy_intermediate_require_no_policies.pem", &intermediateRequire, &root)
+
+	// Same as above, but the policy list has duplicates.
+	intermediateRequire.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1, testOID2, testOID2}
+	mustGenerateCertificate("policy_intermediate_require_duplicate.pem", &intermediateRequire, &root)
 
 	// TODO(davidben): Generate more certificates to test policy validation more
 	// extensively, including an intermediate with constraints. For now this

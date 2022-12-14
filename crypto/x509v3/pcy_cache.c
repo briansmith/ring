@@ -123,16 +123,15 @@ bad_policy:
   return ret;
 }
 
-static int policy_cache_new(X509 *x) {
+static void policy_cache_new(X509 *x) {
   X509_POLICY_CACHE *cache;
   ASN1_INTEGER *ext_any = NULL;
   POLICY_CONSTRAINTS *ext_pcons = NULL;
   CERTIFICATEPOLICIES *ext_cpols = NULL;
   POLICY_MAPPINGS *ext_pmaps = NULL;
-  int i;
   cache = OPENSSL_malloc(sizeof(X509_POLICY_CACHE));
   if (!cache) {
-    return 0;
+    return;
   }
   cache->anyPolicy = NULL;
   cache->data = NULL;
@@ -144,10 +143,10 @@ static int policy_cache_new(X509 *x) {
 
   // Handle requireExplicitPolicy *first*. Need to process this even if we
   // don't have any policies.
-  ext_pcons = X509_get_ext_d2i(x, NID_policy_constraints, &i, NULL);
-
+  int critical;
+  ext_pcons = X509_get_ext_d2i(x, NID_policy_constraints, &critical, NULL);
   if (!ext_pcons) {
-    if (i != -1) {
+    if (critical != -1) {
       goto bad_cache;
     }
   } else {
@@ -164,45 +163,42 @@ static int policy_cache_new(X509 *x) {
     }
   }
 
-  // Process CertificatePolicies
-
-  ext_cpols = X509_get_ext_d2i(x, NID_certificate_policies, &i, NULL);
+  ext_cpols = X509_get_ext_d2i(x, NID_certificate_policies, &critical, NULL);
   // If no CertificatePolicies extension or problem decoding then there is
   // no point continuing because the valid policies will be NULL.
   if (!ext_cpols) {
     // If not absent some problem with extension
-    if (i != -1) {
+    if (critical != -1) {
       goto bad_cache;
     }
-    return 1;
+    goto done;
   }
 
-  i = policy_cache_create(x, ext_cpols, i);
-
-  // NB: ext_cpols freed by policy_cache_set_policies
-
-  if (i <= 0) {
-    return i;
+  // This call frees |ext_cpols|.
+  if (policy_cache_create(x, ext_cpols, critical) <= 0) {
+    // |policy_cache_create| already sets |EXFLAG_INVALID_POLICY|.
+    //
+    // TODO(davidben): While it does, it's missing some spots. Align this and
+    // |policy_cache_set_mapping|.
+    goto done;
   }
 
-  ext_pmaps = X509_get_ext_d2i(x, NID_policy_mappings, &i, NULL);
-
+  ext_pmaps = X509_get_ext_d2i(x, NID_policy_mappings, &critical, NULL);
   if (!ext_pmaps) {
     // If not absent some problem with extension
-    if (i != -1) {
+    if (critical != -1) {
       goto bad_cache;
     }
   } else {
-    i = policy_cache_set_mapping(x, ext_pmaps);
-    if (i <= 0) {
+    // This call frees |ext_pmaps|.
+    if (policy_cache_set_mapping(x, ext_pmaps) <= 0) {
       goto bad_cache;
     }
   }
 
-  ext_any = X509_get_ext_d2i(x, NID_inhibit_any_policy, &i, NULL);
-
+  ext_any = X509_get_ext_d2i(x, NID_inhibit_any_policy, &critical, NULL);
   if (!ext_any) {
-    if (i != -1) {
+    if (critical != -1) {
       goto bad_cache;
     }
   } else if (!policy_cache_set_int(&cache->any_skip, ext_any)) {
@@ -214,15 +210,9 @@ static int policy_cache_new(X509 *x) {
     x->ex_flags |= EXFLAG_INVALID_POLICY;
   }
 
-  if (ext_pcons) {
-    POLICY_CONSTRAINTS_free(ext_pcons);
-  }
-
-  if (ext_any) {
-    ASN1_INTEGER_free(ext_any);
-  }
-
-  return 1;
+done:
+  POLICY_CONSTRAINTS_free(ext_pcons);
+  ASN1_INTEGER_free(ext_any);
 }
 
 void policy_cache_free(X509_POLICY_CACHE *cache) {
