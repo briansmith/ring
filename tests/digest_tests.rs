@@ -14,10 +14,10 @@
 
 use ring::{digest, test, test_file};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 wasm_bindgen_test_configure!(run_in_browser);
 
 /// Test vectors from BoringSSL, Go, and other sources.
@@ -79,7 +79,7 @@ mod digest_shavs {
                 use super::{run_known_answer_test, run_monte_carlo_test};
                 use ring::{digest, test_file};
 
-                #[cfg(target_arch = "wasm32")]
+                #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
                 use wasm_bindgen_test::wasm_bindgen_test as test;
 
                 #[test]

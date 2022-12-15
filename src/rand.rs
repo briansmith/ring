@@ -140,6 +140,7 @@ impl crate::sealed::Sealed for SystemRandom {}
     target_os = "solaris",
     target_os = "windows",
     target_os = "vita",
+    target_os = "wasi",
     all(
         feature = "wasm32_unknown_unknown_js",
         target_arch = "wasm32",
