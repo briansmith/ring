@@ -86,11 +86,15 @@ int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str) {
   CBS cbs;
   CBS_init(&cbs, (const uint8_t *)str, len);
   if (!CBS_parse_utc_time(&cbs, /*out_tm=*/NULL,
-                          /*allow_timezone_offset=*/1) ||
-      !ASN1_STRING_set(s, str, len)) {
+                          /*allow_timezone_offset=*/1)) {
     return 0;
   }
-  s->type = V_ASN1_UTCTIME;
+  if (s != NULL) {
+    if (!ASN1_STRING_set(s, str, len)) {
+      return 0;
+    }
+    s->type = V_ASN1_UTCTIME;
+  }
   return 1;
 }
 

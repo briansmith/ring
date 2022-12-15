@@ -1072,8 +1072,20 @@ TEST(ASN1Test, TimeSetString) {
 
   // Invalid inputs are rejected.
   EXPECT_FALSE(ASN1_UTCTIME_set_string(s.get(), "nope"));
+  EXPECT_FALSE(ASN1_UTCTIME_set_string(s.get(), "19700101000000Z"));
   EXPECT_FALSE(ASN1_GENERALIZEDTIME_set_string(s.get(), "nope"));
+  EXPECT_FALSE(ASN1_GENERALIZEDTIME_set_string(s.get(), "700101000000Z"));
   EXPECT_FALSE(ASN1_TIME_set_string(s.get(), "nope"));
+
+  // If passed a null object, the functions validate the input without writing
+  // to anything.
+  EXPECT_TRUE(ASN1_UTCTIME_set_string(nullptr, "700101000000Z"));
+  EXPECT_TRUE(ASN1_TIME_set_string(nullptr, "700101000000Z"));
+  EXPECT_TRUE(ASN1_GENERALIZEDTIME_set_string(nullptr, "19700101000000Z"));
+  EXPECT_TRUE(ASN1_TIME_set_string(nullptr, "19700101000000Z"));
+  EXPECT_FALSE(ASN1_UTCTIME_set_string(nullptr, "nope"));
+  EXPECT_FALSE(ASN1_GENERALIZEDTIME_set_string(nullptr, "nope"));
+  EXPECT_FALSE(ASN1_TIME_set_string(nullptr, "nope"));
 }
 
 TEST(ASN1Test, AdjTime) {

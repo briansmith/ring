@@ -85,11 +85,15 @@ int ASN1_GENERALIZEDTIME_set_string(ASN1_GENERALIZEDTIME *s, const char *str) {
   CBS cbs;
   CBS_init(&cbs, (const uint8_t *)str, len);
   if (!CBS_parse_generalized_time(&cbs, /*out_tm=*/NULL,
-                                  /*allow_timezone_offset=*/0) ||
-      !ASN1_STRING_set(s, str, len)) {
+                                  /*allow_timezone_offset=*/0)) {
     return 0;
   }
-  s->type = V_ASN1_GENERALIZEDTIME;
+  if (s != NULL) {
+    if (!ASN1_STRING_set(s, str, len)) {
+      return 0;
+    }
+    s->type = V_ASN1_GENERALIZEDTIME;
+  }
   return 1;
 }
 
