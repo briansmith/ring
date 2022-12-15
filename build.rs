@@ -494,6 +494,19 @@ fn build_c_code(
     );
 }
 
+fn cc_builder() -> cc::Build {
+    let mut c = cc::Build::new();
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+    if target_os == "wasi" {
+        // std::env::var("WASI_SDK_PATH").expect("missing environment variable: WASI_SDK_PATH");
+        // c.flag(format!("--sysroot=${{WASI_SDK_PATH}}/share/wasi-sysroot").as_str());
+        let wasi_sdk_path =
+            &std::env::var("WASI_SDK_PATH").expect("missing environment variable: WASI_SDK_PATH");
+        c.flag(format!("--sysroot={}/share/wasi-sysroot", wasi_sdk_path).as_str());
+    }
+    c
+}
+
 fn build_library(
     target: &Target,
     out_dir: &Path,
@@ -511,7 +524,7 @@ fn build_library(
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
 
-    let mut c = cc::Build::new();
+    let mut c = cc_builder();
 
     for f in LD_FLAGS {
         let _ = c.flag(f);
@@ -571,7 +584,7 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 }
 
 fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Path) -> Command {
-    let mut c = cc::Build::new();
+    let mut c = cc_builder();
 
     // FIXME: On Windows AArch64 we currently must use Clang to compile C code
     if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {

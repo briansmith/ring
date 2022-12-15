@@ -179,7 +179,7 @@ winapi = { version = "0.3.9", default-features = false, features = ["ntsecapi", 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = { version = "0.3.26", default-features = false }
 
-[target.'cfg(any(unix, windows))'.dev-dependencies]
+[target.'cfg(any(unix, windows, target_os = "wasi"))'.dev-dependencies]
 libc = { version = "0.2.100", default-features = false }
 
 [build-dependencies]
