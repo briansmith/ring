@@ -498,8 +498,6 @@ fn cc_builder() -> cc::Build {
     let mut c = cc::Build::new();
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
     if target_os == "wasi" {
-        // std::env::var("WASI_SDK_PATH").expect("missing environment variable: WASI_SDK_PATH");
-        // c.flag(format!("--sysroot=${{WASI_SDK_PATH}}/share/wasi-sysroot").as_str());
         let wasi_sdk_path =
             &std::env::var("WASI_SDK_PATH").expect("missing environment variable: WASI_SDK_PATH");
         c.flag(format!("--sysroot={}/share/wasi-sysroot", wasi_sdk_path).as_str());

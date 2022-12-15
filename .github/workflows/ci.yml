@@ -513,10 +513,10 @@ jobs:
       
       - name: Install precompiled wasmtime
         run: |
-          export WASMTIME_URL=$(curl -s https://api.github.com/repos/bytecodealliance/wasmtime/releases/latest | jq -r '.assets[] | select(.name | contains("x86_64-linux.tar.xz")) | .browser_download_url')
-          wget -O /tmp/binaries.tar.xz $WASMTIME_URL
-          tar -C /tmp -xf /tmp/binaries.tar.xz --strip-components=1
-          mv /tmp/wasmtime ~/.cargo/bin
+          VERSION=v3.0.0
+          URL=https://github.com/bytecodealliance/wasmtime/releases/download/${VERSION}/wasmtime-${VERSION}-x86_64-linux.tar.xz
+          wget -O - $URL | tar -xJ --strip-components=1 -C ~/.cargo/bin
+          wasmtime --version
 
       - run: |
           mk/cargo.sh test -vv --target=${{ matrix.target }} ${{ matrix.mode }}
