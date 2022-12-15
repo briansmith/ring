@@ -116,6 +116,12 @@ case $target in
     export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
     export WASM_BINDGEN_TEST_TIMEOUT=60
     ;;
+  wasm32-wasi)
+    # The first two are only needed for when the "wasm_c" feature is enabled.
+    export CC_wasm32_wasi=$WASI_SDK_PATH/bin/clang
+    export AR_wasm32_wasi=$WASI_SDK_PATH/bin/llvm-ar
+    export CARGO_TARGET_WASM32_WASI_RUNNER=wasmtime
+    ;;
   *)
     ;;
 esac
