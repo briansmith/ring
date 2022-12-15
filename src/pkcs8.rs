@@ -14,7 +14,7 @@
 
 //! PKCS#8 is specified in [RFC 5958].
 //!
-//! [RFC 5958]: https://tools.ietf.org/html/rfc5958.
+//! [RFC 5958]: https://tools.ietf.org/html/rfc5958
 
 use crate::{ec, error, io::der};
 
@@ -72,7 +72,7 @@ impl Template {
 ///
 /// PKCS#8 is specified in [RFC 5958].
 ///
-/// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
+/// [RFC 5958]: https://tools.ietf.org/html/rfc5958
 pub(crate) fn unwrap_key<'a>(
     template: &Template,
     version: Version,
@@ -90,7 +90,7 @@ pub(crate) fn unwrap_key<'a>(
 ///
 /// PKCS#8 is specified in [RFC 5958].
 ///
-/// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
+/// [RFC 5958]: https://tools.ietf.org/html/rfc5958
 pub(crate) fn unwrap_key_<'a>(
     alg_id: untrusted::Input,
     version: Version,
