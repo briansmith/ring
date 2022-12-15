@@ -44,8 +44,8 @@ pub fn generate_private_scalar_bytes(
     // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
     // "Key Pair Generation by Testing Candidates".
     //
-    // [NSA Suite B Implementer's Guide to ECDSA]: doc/ecdsa.pdf.
-    // [NSA Suite B Implementer's Guide to NIST SP 800-56A]: doc/ecdh.pdf.
+    // [NSA Suite B Implementer's Guide to ECDSA]: doc/ecdsa.pdf
+    // [NSA Suite B Implementer's Guide to NIST SP 800-56A]: doc/ecdh.pdf
 
     // TODO: The NSA guide also suggests, in appendix B.1, another mechanism
     // that would avoid the need to use `rng.fill()` more than once. It works
@@ -116,8 +116,8 @@ pub fn scalar_from_big_endian_bytes(
     // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
     // "Key Pair Generation by Testing Candidates".
     //
-    // [NSA Suite B Implementer's Guide to ECDSA]: doc/ecdsa.pdf.
-    // [NSA Suite B Implementer's Guide to NIST SP 800-56A]: doc/ecdh.pdf.
+    // [NSA Suite B Implementer's Guide to ECDSA]: doc/ecdsa.pdf
+    // [NSA Suite B Implementer's Guide to NIST SP 800-56A]: doc/ecdh.pdf
     //
     // Steps 5, 6, and 7.
     //
