@@ -501,7 +501,7 @@ fn cc_builder() -> cc::Build {
         let wasi_sdk_path =
             &std::env::var("WASI_SDK_PATH").expect("missing environment variable: WASI_SDK_PATH");
         c.compiler(format!("{}/bin/clang", wasi_sdk_path).as_str());
-        c.archiver(format!("{}/bin/ar", wasi_sdk_path).as_str());
+        c.archiver(format!("{}/bin/llvm-ar", wasi_sdk_path).as_str());
         c.flag(format!("--sysroot={}/share/wasi-sysroot", wasi_sdk_path).as_str());
     }
     c
