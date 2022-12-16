@@ -497,11 +497,9 @@ jobs:
 
       - run: mk/install-build-tools.sh --target=${{ matrix.target }} ${{ matrix.features }}
 
-      - uses: briansmith/actions-rs-toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          override: true
           target: ${{ matrix.target }}
-          toolchain: ${{ matrix.rust_channel }}
 
       - name: Install wasi-sdk
         run: |
