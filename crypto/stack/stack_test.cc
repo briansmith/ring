@@ -290,6 +290,7 @@ TEST(StackTest, Sorted) {
     // Removing elements does not affect sortedness.
     TEST_INT_free(sk_TEST_INT_delete(sk.get(), 0));
     EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+    EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
 
     // Changing the comparison function invalidates sortedness.
     sk_TEST_INT_set_cmp_func(sk.get(), compare_reverse);
@@ -391,4 +392,45 @@ TEST(StackTest, BinarySearch) {
       }
     }
   }
+}
+
+TEST(StackTest, DeleteIf) {
+  bssl::UniquePtr<STACK_OF(TEST_INT)> sk(sk_TEST_INT_new(compare));
+  for (int v : {1, 9, 2, 8, 3, 7, 4, 6, 5}) {
+    auto obj = TEST_INT_new(v);
+    ASSERT_TRUE(obj);
+    ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(obj)));
+  }
+
+  auto keep_only_multiples = [](TEST_INT *x, void *data) {
+    auto d = static_cast<const int *>(data);
+    if (*x % *d == 0) {
+      return 0;
+    }
+    TEST_INT_free(x);
+    return 1;
+  };
+
+  int d = 2;
+  sk_TEST_INT_delete_if(sk.get(), keep_only_multiples, &d);
+  ExpectStackEquals(sk.get(), {2, 8, 4, 6});
+
+  EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
+  sk_TEST_INT_sort(sk.get());
+  ExpectStackEquals(sk.get(), {2, 4, 6, 8});
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // Keep only multiples of four.
+  d = 4;
+  sk_TEST_INT_delete_if(sk.get(), keep_only_multiples, &d);
+  ExpectStackEquals(sk.get(), {4, 8});
+
+  // Removing elements preserves the sorted bit.
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // Delete everything.
+  d = 16;
+  sk_TEST_INT_delete_if(sk.get(), keep_only_multiples, &d);
+  ExpectStackEquals(sk.get(), {});
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
 }
