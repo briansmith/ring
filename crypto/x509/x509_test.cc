@@ -5518,6 +5518,90 @@ TEST(X509Test, Policy) {
              }));
 }
 
+#if defined(OPENSSL_THREADS)
+// A similar test to the above, but ensures the various bits of intermediate
+// state are computed safely.
+TEST(X509Test, PolicyThreads) {
+  const size_t kNumThreads = 10;
+
+  bssl::UniquePtr<ASN1_OBJECT> oid1(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.1", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid1);
+  bssl::UniquePtr<ASN1_OBJECT> oid2(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.2", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid2);
+  bssl::UniquePtr<ASN1_OBJECT> oid3(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.3", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid3);
+
+  auto set_policies = [](X509_VERIFY_PARAM *param,
+                         std::vector<const ASN1_OBJECT *> oids) {
+    for (const ASN1_OBJECT *oid : oids) {
+      bssl::UniquePtr<ASN1_OBJECT> copy(OBJ_dup(oid));
+      ASSERT_TRUE(copy);
+      ASSERT_TRUE(X509_VERIFY_PARAM_add0_policy(param, copy.get()));
+      copy.release();  // |X509_VERIFY_PARAM_add0_policy| takes ownership on
+                       // success.
+    }
+  };
+
+  {
+    bssl::UniquePtr<X509> root(
+        CertFromPEM(GetTestData("crypto/x509/test/policy_root.pem").c_str()));
+    ASSERT_TRUE(root);
+    bssl::UniquePtr<X509> intermediate(CertFromPEM(
+        GetTestData("crypto/x509/test/policy_intermediate.pem").c_str()));
+    ASSERT_TRUE(intermediate);
+    bssl::UniquePtr<X509> leaf(
+        CertFromPEM(GetTestData("crypto/x509/test/policy_leaf.pem").c_str()));
+    ASSERT_TRUE(leaf);
+
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < kNumThreads; i++) {
+      threads.emplace_back([&] {
+        EXPECT_EQ(
+            X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+      });
+    }
+    for (auto &thread : threads) {
+      thread.join();
+    }
+  }
+
+  {
+    bssl::UniquePtr<X509> root(
+        CertFromPEM(GetTestData("crypto/x509/test/policy_root.pem").c_str()));
+    ASSERT_TRUE(root);
+    bssl::UniquePtr<X509> intermediate(CertFromPEM(
+        GetTestData("crypto/x509/test/policy_intermediate.pem").c_str()));
+    ASSERT_TRUE(intermediate);
+    bssl::UniquePtr<X509> leaf_invalid(CertFromPEM(
+        GetTestData("crypto/x509/test/policy_leaf_invalid.pem").c_str()));
+    ASSERT_TRUE(leaf_invalid);
+
+
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < kNumThreads; i++) {
+      threads.emplace_back([&] {
+        EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+                  Verify(leaf_invalid.get(), {root.get()}, {intermediate.get()},
+                         /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                         [&](X509_VERIFY_PARAM *param) {
+                           set_policies(param, {oid1.get()});
+                         }));
+      });
+    }
+    for (auto &thread : threads) {
+      thread.join();
+    }
+  }
+}
+#endif  // OPENSSL_THREADS
+
 TEST(X509Test, ExtensionFromConf) {
   static const char kTestOID[] = "1.2.840.113554.4.1.72585.2";
   const struct {

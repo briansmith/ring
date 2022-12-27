@@ -72,9 +72,6 @@ extern "C" {
 
 // Internal structures.
 
-typedef struct X509_POLICY_CACHE_st X509_POLICY_CACHE;
-typedef struct X509_POLICY_TREE_st X509_POLICY_TREE;
-
 typedef struct X509_val_st {
   ASN1_TIME *notBefore;
   ASN1_TIME *notAfter;
@@ -157,7 +154,6 @@ struct x509_st {
   uint32_t ex_nscert;
   ASN1_OCTET_STRING *skid;
   AUTHORITY_KEYID *akid;
-  X509_POLICY_CACHE *policy_cache;
   STACK_OF(DIST_POINT) *crldp;
   STACK_OF(GENERAL_NAME) *altname;
   NAME_CONSTRAINTS *nc;
@@ -350,9 +346,6 @@ struct x509_store_ctx_st {
   int valid;               // if 0, rebuild chain
   int last_untrusted;      // index of last untrusted cert
   STACK_OF(X509) *chain;   // chain of X509s - built up and trusted
-  X509_POLICY_TREE *tree;  // Valid policy tree
-
-  int explicit_policy;  // Require explicit policy value
 
   // When something goes wrong, this is why
   int error_depth;
@@ -408,6 +401,19 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 // zero on error.
 int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
                             EVP_PKEY *pkey);
+
+
+// Path-building functions.
+
+// X509_policy_check checks certificate policies in |certs|. |user_policies| is
+// the user-initial-policy-set. |flags| is a set of |X509_V_FLAG_*| values to
+// apply. It returns |X509_V_OK| on success and |X509_V_ERR_*| on error. It
+// additionally sets |*out_current_cert| to the certificate where the error
+// occurred. If the function succeeded, or the error applies to the entire
+// chain, it sets |*out_current_cert| to NULL.
+int X509_policy_check(const STACK_OF(X509) *certs,
+                      const STACK_OF(ASN1_OBJECT) *user_policies,
+                      unsigned long flags, X509 **out_current_cert);
 
 
 #if defined(__cplusplus)

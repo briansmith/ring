@@ -1689,39 +1689,19 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x) {
 }
 
 static int check_policy(X509_STORE_CTX *ctx) {
-  int ret;
   if (ctx->parent) {
     return 1;
   }
-  // TODO(davidben): Historically, outputs of the |X509_policy_check| were saved
-  // on |ctx| and accessible via the public API. This has since been removed, so
-  // remove the fields from |X509_STORE_CTX|.
-  ret = X509_policy_check(&ctx->tree, &ctx->explicit_policy, ctx->chain,
-                          ctx->param->policies, ctx->param->flags);
-  if (ret == 0) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-    ctx->error = X509_V_ERR_OUT_OF_MEM;
-    return 0;
-  }
-  // Invalid or inconsistent extensions
-  if (ret == -1) {
-    // Locate certificates with bad extensions and notify callback.
-    for (size_t i = 0; i < sk_X509_num(ctx->chain); i++) {
-      X509 *x = sk_X509_value(ctx->chain, i);
-      if (!(x->ex_flags & EXFLAG_INVALID_POLICY)) {
-        continue;
-      }
-      ctx->current_cert = x;
-      ctx->error = X509_V_ERR_INVALID_POLICY_EXTENSION;
-      if (!ctx->verify_cb(0, ctx)) {
-        return 0;
-      }
+
+  X509 *current_cert = NULL;
+  int ret = X509_policy_check(ctx->chain, ctx->param->policies,
+                              ctx->param->flags, &current_cert);
+  if (ret != X509_V_OK) {
+    ctx->current_cert = current_cert;
+    ctx->error = ret;
+    if (ret == X509_V_ERR_OUT_OF_MEM) {
+      return 0;
     }
-    return 1;
-  }
-  if (ret == -2) {
-    ctx->current_cert = NULL;
-    ctx->error = X509_V_ERR_NO_EXPLICIT_POLICY;
     return ctx->verify_cb(0, ctx);
   }
 
@@ -2310,10 +2290,6 @@ void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx) {
       X509_VERIFY_PARAM_free(ctx->param);
     }
     ctx->param = NULL;
-  }
-  if (ctx->tree != NULL) {
-    X509_policy_tree_free(ctx->tree);
-    ctx->tree = NULL;
   }
   if (ctx->chain != NULL) {
     sk_X509_pop_free(ctx->chain, X509_free);

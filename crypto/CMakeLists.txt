@@ -359,6 +359,7 @@ add_library(
   x509/by_file.c
   x509/i2d_pr.c
   x509/name_print.c
+  x509/policy.c
   x509/rsa_pss.c
   x509/t_crl.c
   x509/t_req.c
@@ -398,11 +399,6 @@ add_library(
   x509/x_val.c
   x509/x_x509.c
   x509/x_x509a.c
-  x509v3/pcy_cache.c
-  x509v3/pcy_data.c
-  x509v3/pcy_map.c
-  x509v3/pcy_node.c
-  x509v3/pcy_tree.c
   x509v3/v3_akey.c
   x509v3/v3_akeya.c
   x509v3/v3_alt.c
