@@ -434,3 +434,47 @@ TEST(StackTest, DeleteIf) {
   ExpectStackEquals(sk.get(), {});
   EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
 }
+
+TEST(StackTest, IsSorted) {
+  bssl::UniquePtr<STACK_OF(TEST_INT)> sk(sk_TEST_INT_new_null());
+  ASSERT_TRUE(sk);
+  EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // Empty lists are always known to be sorted.
+  sk_TEST_INT_set_cmp_func(sk.get(), compare);
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // As are one-element lists.
+  auto value = TEST_INT_new(2);
+  ASSERT_TRUE(value);
+  ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(value)));
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // Two-element lists require an explicit sort.
+  value = TEST_INT_new(1);
+  ASSERT_TRUE(value);
+  ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(value)));
+  EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // The list is now sorted.
+  sk_TEST_INT_sort(sk.get());
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // After changing the comparison function, it no longer is sorted.
+  sk_TEST_INT_set_cmp_func(sk.get(), compare_reverse);
+  EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
+
+  sk_TEST_INT_sort(sk.get());
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // But, starting from one element, switching the comparison function preserves
+  // the sorted bit.
+  TEST_INT_free(sk_TEST_INT_pop(sk.get()));
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+  sk_TEST_INT_set_cmp_func(sk.get(), compare);
+  EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
+
+  // Without a comparison function, the list cannot be sorted.
+  sk_TEST_INT_set_cmp_func(sk.get(), nullptr);
+  EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
+}

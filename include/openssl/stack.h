@@ -267,8 +267,9 @@ typedef void *(*OPENSSL_sk_copy_func)(void *ptr);
 // Note its actual type is |int (*)(const T **a, const T **b)|. Low-level |sk_*|
 // functions will be passed a type-specific wrapper to call it correctly.
 //
-// TODO(davidben): This type should be |const T *const *|. It is already fixed
-// in OpenSSL 1.1.1, so hopefully we can fix this compatibly.
+// TODO(https://crbug.com/boringssl/498): This type should be
+// |const T *const *|. It is already fixed in OpenSSL 1.1.1, so hopefully we can
+// fix this compatibly.
 typedef int (*OPENSSL_sk_cmp_func)(const void **a, const void **b);
 
 // OPENSSL_sk_delete_if_func is the generic version of

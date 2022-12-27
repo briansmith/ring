@@ -415,7 +415,8 @@ int sk_is_sorted(const _STACK *sk) {
   if (!sk) {
     return 1;
   }
-  return sk->sorted;
+  // Zero- and one-element lists are always sorted.
+  return sk->sorted || (sk->comp != NULL && sk->num < 2);
 }
 
 OPENSSL_sk_cmp_func sk_set_cmp_func(_STACK *sk, OPENSSL_sk_cmp_func comp) {
