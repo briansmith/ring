@@ -279,6 +279,7 @@ size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 #endif  // OPENSSL_X86
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+
 #define GHASH_ASM_ARM
 #define GCM_FUNCREF
 
@@ -297,6 +298,15 @@ void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
+
+#if defined(OPENSSL_AARCH64)
+#define HW_GCM
+// These functions are defined in aesv8-gcm-armv8.pl.
+void aes_gcm_enc_kernel(const uint8_t *in, uint64_t in_bits, void *out,
+                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+void aes_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
+                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+#endif
 
 #elif defined(OPENSSL_PPC64LE)
 #define GHASH_ASM_PPC64LE

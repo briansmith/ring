@@ -61,6 +61,7 @@ if(ARCH STREQUAL "aarch64")
     BCM_ASM_SOURCES
 
     aesv8-armx.${ASM_EXT}
+    aesv8-gcm-armv8.${ASM_EXT}
     armv8-mont.${ASM_EXT}
     ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
@@ -87,6 +88,7 @@ perlasm(aesni-x86_64.${ASM_EXT} aes/asm/aesni-x86_64.pl)
 perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
 perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
 perlasm(aesv8-armx.${ASM_EXT} aes/asm/aesv8-armx.pl)
+perlasm(aesv8-gcm-armv8.${ASM_EXT} modes/asm/aesv8-gcm-armv8.pl)
 perlasm(armv4-mont.${ASM_EXT} bn/asm/armv4-mont.pl)
 perlasm(armv8-mont.${ASM_EXT} bn/asm/armv8-mont.pl)
 perlasm(bn-586.${ASM_EXT} bn/asm/bn-586.pl)

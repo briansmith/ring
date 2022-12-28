@@ -146,6 +146,32 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 }
 #endif  // HW_GCM && X86_64
 
+#if defined(HW_GCM) && defined(OPENSSL_AARCH64)
+
+static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                             const AES_KEY *key, uint8_t ivec[16],
+                             uint64_t *Xi) {
+  const size_t len_blocks = len & kSizeTWithoutLower4Bits;
+  if (!len_blocks) {
+    return 0;
+  }
+  aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+  return len_blocks;
+}
+
+static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
+                             const AES_KEY *key, uint8_t ivec[16],
+                             uint64_t *Xi) {
+  const size_t len_blocks = len & kSizeTWithoutLower4Bits;
+  if (!len_blocks) {
+    return 0;
+  }
+  aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+  return len_blocks;
+}
+
+#endif  // HW_GCM && AARCH64
+
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        u128 *out_key, u128 out_table[16], int *out_is_avx,
                        const uint8_t gcm_key[16]) {
@@ -231,7 +257,12 @@ void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
   CRYPTO_ghash_init(&gcm_key->gmult, &gcm_key->ghash, &gcm_key->H,
                     gcm_key->Htable, &is_avx, ghash_key);
 
-  gcm_key->use_hw_gcm_crypt = (is_avx && block_is_hwaes) ? 1 : 0;
+#if defined(OPENSSL_AARCH64)
+    gcm_key->use_hw_gcm_crypt = (gcm_pmull_capable() && block_is_hwaes) ? 1 :
+      0;
+#else
+    gcm_key->use_hw_gcm_crypt = (is_avx && block_is_hwaes) ? 1 : 0;
+#endif
 }
 
 void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
