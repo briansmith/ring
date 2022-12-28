@@ -227,6 +227,30 @@ int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c) {
   return CBS_get_bytes(cbs, out, split - CBS_data(cbs));
 }
 
+int CBS_get_u64_decimal(CBS *cbs, uint64_t *out) {
+  uint64_t v = 0;
+  int seen_digit = 0;
+  while (CBS_len(cbs) != 0) {
+    uint8_t c = CBS_data(cbs)[0];
+    if (!isdigit(c)) {
+      break;
+    }
+    CBS_skip(cbs, 1);
+    if (// Forbid stray leading zeros.
+        (v == 0 && seen_digit) ||
+        // Check for overflow.
+        v > UINT64_MAX / 10 ||  //
+        v * 10 > UINT64_MAX - (c - '0')) {
+      return 0;
+    }
+    v = v * 10 + (c - '0');
+    seen_digit = 1;
+  }
+
+  *out = v;
+  return seen_digit;
+}
+
 // parse_base128_integer reads a big-endian base-128 integer from |cbs| and sets
 // |*out| to the result. This is the encoding used in DER for both high tag
 // number form and OID components.

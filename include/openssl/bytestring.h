@@ -160,6 +160,13 @@ OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 // one. Otherwise, it returns zero and leaves |cbs| unmodified.
 OPENSSL_EXPORT int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c);
 
+// CBS_get_u64_decimal reads a decimal integer from |cbs| and writes it to
+// |*out|. It stops reading at the end of the string, or the first non-digit
+// character. It returns one on success and zero on error. This function behaves
+// analogously to |strtoul| except it does not accept empty inputs, leading
+// zeros, or negative values.
+OPENSSL_EXPORT int CBS_get_u64_decimal(CBS *cbs, uint64_t *out);
+
 
 // Parsing ASN.1
 //

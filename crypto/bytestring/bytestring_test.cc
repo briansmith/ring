@@ -1657,3 +1657,53 @@ TEST(CBSTest, BogusTime) {
     EXPECT_FALSE(CBS_parse_utc_time(&cbs, NULL, /*allow_timezone_offset=*/1));
   }
 }
+
+TEST(CBSTest, GetU64Decimal) {
+  const struct {
+    uint64_t val;
+    const char *text;
+  } kTests[] = {
+      {0, "0"},
+      {1, "1"},
+      {123456, "123456"},
+      // 2^64 - 1
+      {UINT64_C(18446744073709551615), "18446744073709551615"},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.text);
+    CBS cbs;
+    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(t.text), strlen(t.text));
+    uint64_t v;
+    ASSERT_TRUE(CBS_get_u64_decimal(&cbs, &v));
+    EXPECT_EQ(v, t.val);
+    EXPECT_EQ(CBS_data(&cbs),
+              reinterpret_cast<const uint8_t *>(t.text) + strlen(t.text));
+    EXPECT_EQ(CBS_len(&cbs), 0u);
+
+    std::string str(t.text);
+    str += "Z";
+    CBS_init(&cbs, reinterpret_cast<const uint8_t *>(str.data()), str.size());
+    ASSERT_TRUE(CBS_get_u64_decimal(&cbs, &v));
+    EXPECT_EQ(v, t.val);
+    EXPECT_EQ(CBS_data(&cbs),
+              reinterpret_cast<const uint8_t *>(str.data()) + strlen(t.text));
+    EXPECT_EQ(CBS_len(&cbs), 1u);
+  }
+
+  static const char *kInvalidTests[] = {
+      "",
+      "nope",
+      "-1",
+      // 2^64
+      "18446744073709551616",
+      // Overflows at multiplying by 10.
+      "18446744073709551620",
+  };
+  for (const char *invalid : kInvalidTests) {
+    SCOPED_TRACE(invalid);
+    CBS cbs;
+    CBS_init(&cbs, reinterpret_cast<const uint8_t *>(invalid), strlen(invalid));
+    uint64_t v;
+    EXPECT_FALSE(CBS_get_u64_decimal(&cbs, &v));
+  }
+}

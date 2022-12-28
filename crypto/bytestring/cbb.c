@@ -560,30 +560,15 @@ int CBB_add_asn1_bool(CBB *cbb, int value) {
 // component and the dot, so |cbs| may be passed into the function again for the
 // next value.
 static int parse_dotted_decimal(CBS *cbs, uint64_t *out) {
-  *out = 0;
-  int seen_digit = 0;
-  for (;;) {
-    // Valid terminators for a component are the end of the string or a
-    // non-terminal dot. If the string ends with a dot, this is not a valid OID
-    // string.
-    uint8_t u;
-    if (!CBS_get_u8(cbs, &u) ||
-        (u == '.' && CBS_len(cbs) > 0)) {
-      break;
-    }
-    if (u < '0' || u > '9' ||
-        // Forbid stray leading zeros.
-        (seen_digit && *out == 0) ||
-        // Check for overflow.
-        *out > UINT64_MAX / 10 ||
-        *out * 10 > UINT64_MAX - (u - '0')) {
-      return 0;
-    }
-    *out = *out * 10 + (u - '0');
-    seen_digit = 1;
+  if (!CBS_get_u64_decimal(cbs, out)) {
+    return 0;
   }
-  // The empty string is not a legal OID component.
-  return seen_digit;
+
+  // The integer must have either ended at the end of the string, or a
+  // non-terminal dot, which should be consumed. If the string ends with a dot,
+  // this is not a valid OID string.
+  uint8_t dot;
+  return !CBS_get_u8(cbs, &dot) || (dot == '.' && CBS_len(cbs) > 0);
 }
 
 int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text, size_t len) {
