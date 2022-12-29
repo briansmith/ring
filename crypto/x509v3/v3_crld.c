@@ -123,9 +123,7 @@ static STACK_OF(GENERAL_NAME) *gnames_from_sectname(X509V3_CTX *ctx,
     return NULL;
   }
   gens = v2i_GENERAL_NAMES(NULL, ctx, gnsect);
-  if (*sect == '@') {
-    X509V3_section_free(ctx, gnsect);
-  } else {
+  if (*sect != '@') {
     sk_CONF_VALUE_pop_free(gnsect, X509V3_conf_free);
   }
   return gens;
@@ -142,19 +140,17 @@ static int set_dist_point_name(DIST_POINT_NAME **pdp, X509V3_CTX *ctx,
     }
   } else if (!strcmp(cnf->name, "relativename")) {
     int ret;
-    STACK_OF(CONF_VALUE) *dnsect;
     X509_NAME *nm;
     nm = X509_NAME_new();
     if (!nm) {
       return -1;
     }
-    dnsect = X509V3_get_section(ctx, cnf->value);
+    const STACK_OF(CONF_VALUE) *dnsect = X509V3_get_section(ctx, cnf->value);
     if (!dnsect) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_SECTION_NOT_FOUND);
       return -1;
     }
     ret = X509V3_NAME_from_section(nm, dnsect, MBSTRING_ASC);
-    X509V3_section_free(ctx, dnsect);
     rnm = nm->entries;
     nm->entries = NULL;
     X509_NAME_free(nm);
@@ -322,13 +318,11 @@ static void *v2i_crld(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
     DIST_POINT *point;
     cnf = sk_CONF_VALUE_value(nval, i);
     if (!cnf->value) {
-      STACK_OF(CONF_VALUE) *dpsect;
-      dpsect = X509V3_get_section(ctx, cnf->name);
+      STACK_OF(CONF_VALUE) *dpsect = X509V3_get_section(ctx, cnf->name);
       if (!dpsect) {
         goto err;
       }
       point = crldp_from_section(ctx, dpsect);
-      X509V3_section_free(ctx, dpsect);
       if (!point) {
         goto err;
       }

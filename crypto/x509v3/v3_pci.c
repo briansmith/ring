@@ -202,11 +202,10 @@ static void *r2i_pci(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
   ASN1_OBJECT *language = NULL;
   ASN1_INTEGER *pathlen = NULL;
   ASN1_OCTET_STRING *policy = NULL;
-  size_t i, j;
   int nid;
 
   vals = X509V3_parse_list(value);
-  for (i = 0; i < sk_CONF_VALUE_num(vals); i++) {
+  for (size_t i = 0; i < sk_CONF_VALUE_num(vals); i++) {
     CONF_VALUE *cnf = sk_CONF_VALUE_value(vals, i);
     if (!cnf->name || (*cnf->name != '@' && !cnf->value)) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_PROXY_POLICY_SETTING);
@@ -214,22 +213,17 @@ static void *r2i_pci(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
       goto err;
     }
     if (*cnf->name == '@') {
-      STACK_OF(CONF_VALUE) *sect;
-      int success_p = 1;
-
-      sect = X509V3_get_section(ctx, cnf->name + 1);
+      const STACK_OF(CONF_VALUE) *sect = X509V3_get_section(ctx, cnf->name + 1);
       if (!sect) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SECTION);
         X509V3_conf_err(cnf);
         goto err;
       }
-      for (j = 0; success_p && j < sk_CONF_VALUE_num(sect); j++) {
-        success_p = process_pci_value(sk_CONF_VALUE_value(sect, j), &language,
-                                      &pathlen, &policy);
-      }
-      X509V3_section_free(ctx, sect);
-      if (!success_p) {
-        goto err;
+      for (size_t j = 0; j < sk_CONF_VALUE_num(sect); j++) {
+        if (!process_pci_value(sk_CONF_VALUE_value(sect, j), &language,
+                               &pathlen, &policy)) {
+          goto err;
+        }
       }
     } else {
       if (!process_pci_value(cnf, &language, &pathlen, &policy)) {

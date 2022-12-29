@@ -448,7 +448,7 @@ static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
                              int depth, int *perr) {
   ASN1_TYPE *ret = NULL;
   STACK_OF(ASN1_TYPE) *sk = NULL;
-  STACK_OF(CONF_VALUE) *sect = NULL;
+  const STACK_OF(CONF_VALUE) *sect = NULL;
   unsigned char *der = NULL;
   int derlen;
   size_t i;
@@ -506,7 +506,6 @@ static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
 bad:
   OPENSSL_free(der);
   sk_ASN1_TYPE_pop_free(sk, ASN1_TYPE_free);
-  X509V3_section_free(cnf, sect);
   return ret;
 }
 

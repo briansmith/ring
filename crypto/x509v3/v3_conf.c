@@ -160,7 +160,7 @@ static X509_EXTENSION *do_ext_nconf(CONF *conf, X509V3_CTX *ctx, int ext_nid,
       return NULL;
     }
   } else if (method->r2i) {
-    if (!ctx->db || !ctx->db_meth) {
+    if (!ctx->db) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_CONFIG_DATABASE);
       return NULL;
     }
@@ -394,45 +394,17 @@ int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
 
 // Config database functions
 
+// TODO(davidben): This function and |NCONF_get_section| should return const
+// pointers.
 STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx, const char *section) {
-  if (!ctx->db || !ctx->db_meth || !ctx->db_meth->get_section) {
+  if (ctx->db == NULL) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
     return NULL;
   }
-  if (ctx->db_meth->get_section) {
-    return ctx->db_meth->get_section(ctx->db, section);
-  }
-  return NULL;
+  return NCONF_get_section(ctx->db, section);
 }
 
-void X509V3_section_free(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *section) {
-  if (!section) {
-    return;
-  }
-  if (ctx->db_meth->free_section) {
-    ctx->db_meth->free_section(ctx->db, section);
-  }
-}
-
-static char *nconf_get_string(void *db, const char *section,
-                              const char *value) {
-  // TODO(fork): This returns a non-const pointer because |X509V3_CONF_METHOD|
-  // allows |get_string| to return caller-owned pointers, provided they're
-  // freed by |free_string|. |nconf_method| leaves |free_string| NULL, and
-  // there are no other implementations of |X509V3_CONF_METHOD|, so this can
-  // be simplified if we make it private.
-  return (char *)NCONF_get_string(db, section, value);
-}
-
-static STACK_OF(CONF_VALUE) *nconf_get_section(void *db, const char *section) {
-  return NCONF_get_section(db, section);
-}
-
-static const X509V3_CONF_METHOD nconf_method = {nconf_get_string,
-                                                nconf_get_section, NULL, NULL};
-
-void X509V3_set_nconf(X509V3_CTX *ctx, CONF *conf) {
-  ctx->db_meth = &nconf_method;
+void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf) {
   ctx->db = conf;
 }
 

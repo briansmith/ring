@@ -126,13 +126,6 @@ struct v3_ext_method {
   void *usr_data;  // Any extension specific data
 };
 
-typedef struct X509V3_CONF_METHOD_st {
-  char *(*get_string)(void *db, const char *section, const char *value);
-  STACK_OF(CONF_VALUE) *(*get_section)(void *db, const char *section);
-  void (*free_string)(void *db, char *string);
-  void (*free_section)(void *db, STACK_OF(CONF_VALUE) *section);
-} X509V3_CONF_METHOD;
-
 // Context specific info
 struct v3_ext_ctx {
 #define CTX_TEST 0x1
@@ -141,9 +134,7 @@ struct v3_ext_ctx {
   X509 *subject_cert;
   X509_REQ *subject_req;
   X509_CRL *crl;
-  const X509V3_CONF_METHOD *db_meth;
-  void *db;
-  // Maybe more here
+  const CONF *db;
 };
 
 DEFINE_STACK_OF(X509V3_EXT_METHOD)
@@ -590,7 +581,7 @@ OPENSSL_EXPORT int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx,
 OPENSSL_EXPORT int X509V3_EXT_CRL_add_nconf(CONF *conf, X509V3_CTX *ctx,
                                             const char *section, X509_CRL *crl);
 
-OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, CONF *conf);
+OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf);
 
 OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, X509 *issuer, X509 *subject,
                                    X509_REQ *req, X509_CRL *crl, int flags);
