@@ -67,8 +67,8 @@
 
 
 static void *v2i_EXTENDED_KEY_USAGE(const X509V3_EXT_METHOD *method,
-                                    X509V3_CTX *ctx,
-                                    STACK_OF(CONF_VALUE) *nval);
+                                    const X509V3_CTX *ctx,
+                                    const STACK_OF(CONF_VALUE) *nval);
 static STACK_OF(CONF_VALUE) *i2v_EXTENDED_KEY_USAGE(
     const X509V3_EXT_METHOD *method, void *eku, STACK_OF(CONF_VALUE) *extlist);
 
@@ -115,12 +115,10 @@ IMPLEMENT_ASN1_FUNCTIONS_const(EXTENDED_KEY_USAGE)
 
 static STACK_OF(CONF_VALUE) *i2v_EXTENDED_KEY_USAGE(
     const X509V3_EXT_METHOD *method, void *a, STACK_OF(CONF_VALUE) *ext_list) {
-  EXTENDED_KEY_USAGE *eku = a;
-  size_t i;
-  ASN1_OBJECT *obj;
-  char obj_tmp[80];
-  for (i = 0; i < sk_ASN1_OBJECT_num(eku); i++) {
-    obj = sk_ASN1_OBJECT_value(eku, i);
+  const EXTENDED_KEY_USAGE *eku = a;
+  for (size_t i = 0; i < sk_ASN1_OBJECT_num(eku); i++) {
+    const ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(eku, i);
+    char obj_tmp[80];
     i2t_ASN1_OBJECT(obj_tmp, 80, obj);
     X509V3_add_value(NULL, obj_tmp, &ext_list);
   }
@@ -128,33 +126,31 @@ static STACK_OF(CONF_VALUE) *i2v_EXTENDED_KEY_USAGE(
 }
 
 static void *v2i_EXTENDED_KEY_USAGE(const X509V3_EXT_METHOD *method,
-                                    X509V3_CTX *ctx,
-                                    STACK_OF(CONF_VALUE) *nval) {
-  EXTENDED_KEY_USAGE *extku;
-  char *extval;
-  ASN1_OBJECT *objtmp;
-  CONF_VALUE *val;
-  size_t i;
-
-  if (!(extku = sk_ASN1_OBJECT_new_null())) {
+                                    const X509V3_CTX *ctx,
+                                    const STACK_OF(CONF_VALUE) *nval) {
+  EXTENDED_KEY_USAGE *extku = sk_ASN1_OBJECT_new_null();
+  if (extku == NULL) {
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
-  for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
-    val = sk_CONF_VALUE_value(nval, i);
+  for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
+    const CONF_VALUE *val = sk_CONF_VALUE_value(nval, i);
+    const char *extval;
     if (val->value) {
       extval = val->value;
     } else {
       extval = val->name;
     }
-    if (!(objtmp = OBJ_txt2obj(extval, 0))) {
+    ASN1_OBJECT *obj = OBJ_txt2obj(extval, 0);
+    if (obj == NULL || !sk_ASN1_OBJECT_push(extku, obj)) {
+      ASN1_OBJECT_free(obj);
       sk_ASN1_OBJECT_pop_free(extku, ASN1_OBJECT_free);
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
       X509V3_conf_err(val);
       return NULL;
     }
-    sk_ASN1_OBJECT_push(extku, objtmp);
   }
+
   return extku;
 }

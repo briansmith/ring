@@ -102,17 +102,16 @@ static STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(
 }
 
 static void *v2i_ASN1_BIT_STRING(const X509V3_EXT_METHOD *method,
-                                 X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval) {
-  CONF_VALUE *val;
+                                 const X509V3_CTX *ctx,
+                                 const STACK_OF(CONF_VALUE) *nval) {
   ASN1_BIT_STRING *bs;
-  size_t i;
-  const BIT_STRING_BITNAME *bnam;
   if (!(bs = ASN1_BIT_STRING_new())) {
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
-    val = sk_CONF_VALUE_value(nval, i);
+  for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
+    const CONF_VALUE *val = sk_CONF_VALUE_value(nval, i);
+    const BIT_STRING_BITNAME *bnam;
     for (bnam = method->usr_data; bnam->lname; bnam++) {
       if (!strcmp(bnam->sname, val->name) || !strcmp(bnam->lname, val->name)) {
         if (!ASN1_BIT_STRING_set_bit(bs, bnam->bitnum, 1)) {

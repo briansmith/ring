@@ -20,8 +20,8 @@ static int i2r_ocsp_acutoff(const X509V3_EXT_METHOD *method, void *nonce,
 
 static int i2r_ocsp_nocheck(const X509V3_EXT_METHOD *method, void *nocheck,
                             BIO *out, int indent);
-static void *s2i_ocsp_nocheck(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
-                              const char *str);
+static void *s2i_ocsp_nocheck(const X509V3_EXT_METHOD *method,
+                              const X509V3_CTX *ctx, const char *str);
 
 const X509V3_EXT_METHOD v3_crl_invdate = {
     NID_invalidity_date,
@@ -75,7 +75,7 @@ static int i2r_ocsp_nocheck(const X509V3_EXT_METHOD *method, void *nocheck,
   return 1;
 }
 
-static void *s2i_ocsp_nocheck(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
-                              const char *str) {
+static void *s2i_ocsp_nocheck(const X509V3_EXT_METHOD *method,
+                              const X509V3_CTX *ctx, const char *str) {
   return ASN1_NULL_new();
 }

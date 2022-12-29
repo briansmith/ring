@@ -75,16 +75,19 @@
 
 static int i2r_certpol(const X509V3_EXT_METHOD *method, void *ext, BIO *out,
                        int indent);
-static void *r2i_certpol(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+static void *r2i_certpol(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
                          const char *value);
 static void print_qualifiers(BIO *out, const STACK_OF(POLICYQUALINFO) *quals,
                              int indent);
 static void print_notice(BIO *out, const USERNOTICE *notice, int indent);
-static POLICYINFO *policy_section(X509V3_CTX *ctx,
-                                  STACK_OF(CONF_VALUE) *polstrs, int ia5org);
-static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
-                                      STACK_OF(CONF_VALUE) *unot, int ia5org);
-static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums, STACK_OF(CONF_VALUE) *nos);
+static POLICYINFO *policy_section(const X509V3_CTX *ctx,
+                                  const STACK_OF(CONF_VALUE) *polstrs,
+                                  int ia5org);
+static POLICYQUALINFO *notice_section(const X509V3_CTX *ctx,
+                                      const STACK_OF(CONF_VALUE) *unot,
+                                      int ia5org);
+static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums,
+                    const STACK_OF(CONF_VALUE) *nos);
 
 const X509V3_EXT_METHOD v3_cpols = {
     NID_certificate_policies,
@@ -147,40 +150,33 @@ ASN1_SEQUENCE(NOTICEREF) = {
 
 IMPLEMENT_ASN1_FUNCTIONS_const(NOTICEREF)
 
-static void *r2i_certpol(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+static void *r2i_certpol(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
                          const char *value) {
-  STACK_OF(POLICYINFO) *pols = NULL;
-  char *pstr;
-  POLICYINFO *pol;
-  ASN1_OBJECT *pobj;
-  STACK_OF(CONF_VALUE) *vals;
-  CONF_VALUE *cnf;
-  size_t i;
-  int ia5org;
-  pols = sk_POLICYINFO_new_null();
+  STACK_OF(POLICYINFO) *pols = sk_POLICYINFO_new_null();
   if (pols == NULL) {
     OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  vals = X509V3_parse_list(value);
+  STACK_OF(CONF_VALUE) *vals = X509V3_parse_list(value);
   if (vals == NULL) {
     OPENSSL_PUT_ERROR(X509V3, ERR_R_X509V3_LIB);
     goto err;
   }
-  ia5org = 0;
-  for (i = 0; i < sk_CONF_VALUE_num(vals); i++) {
-    cnf = sk_CONF_VALUE_value(vals, i);
+  int ia5org = 0;
+  for (size_t i = 0; i < sk_CONF_VALUE_num(vals); i++) {
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(vals, i);
     if (cnf->value || !cnf->name) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_POLICY_IDENTIFIER);
       X509V3_conf_err(cnf);
       goto err;
     }
-    pstr = cnf->name;
+    POLICYINFO *pol;
+    const char *pstr = cnf->name;
     if (!strcmp(pstr, "ia5org")) {
       ia5org = 1;
       continue;
     } else if (*pstr == '@') {
-      STACK_OF(CONF_VALUE) *polsect = X509V3_get_section(ctx, pstr + 1);
+      const STACK_OF(CONF_VALUE) *polsect = X509V3_get_section(ctx, pstr + 1);
       if (!polsect) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SECTION);
 
@@ -192,7 +188,8 @@ static void *r2i_certpol(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
         goto err;
       }
     } else {
-      if (!(pobj = OBJ_txt2obj(cnf->name, 0))) {
+      ASN1_OBJECT *pobj = OBJ_txt2obj(cnf->name, 0);
+      if (pobj == NULL) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
         X509V3_conf_err(cnf);
         goto err;
@@ -219,17 +216,16 @@ err:
   return NULL;
 }
 
-static POLICYINFO *policy_section(X509V3_CTX *ctx,
-                                  STACK_OF(CONF_VALUE) *polstrs, int ia5org) {
-  size_t i;
-  CONF_VALUE *cnf;
+static POLICYINFO *policy_section(const X509V3_CTX *ctx,
+                                  const STACK_OF(CONF_VALUE) *polstrs,
+                                  int ia5org) {
   POLICYINFO *pol;
   POLICYQUALINFO *qual;
   if (!(pol = POLICYINFO_new())) {
     goto merr;
   }
-  for (i = 0; i < sk_CONF_VALUE_num(polstrs); i++) {
-    cnf = sk_CONF_VALUE_value(polstrs, i);
+  for (size_t i = 0; i < sk_CONF_VALUE_num(polstrs); i++) {
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(polstrs, i);
     if (!strcmp(cnf->name, "policyIdentifier")) {
       ASN1_OBJECT *pobj;
       if (!(pobj = OBJ_txt2obj(cnf->value, 0))) {
@@ -267,10 +263,10 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
         X509V3_conf_err(cnf);
         goto err;
       }
-      STACK_OF(CONF_VALUE) *unot = X509V3_get_section(ctx, cnf->value + 1);
+      const STACK_OF(CONF_VALUE) *unot =
+          X509V3_get_section(ctx, cnf->value + 1);
       if (!unot) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SECTION);
-
         X509V3_conf_err(cnf);
         goto err;
       }
@@ -306,12 +302,10 @@ err:
   return NULL;
 }
 
-static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
-                                      STACK_OF(CONF_VALUE) *unot, int ia5org) {
-  size_t i;
-  int ret;
-  CONF_VALUE *cnf;
-  USERNOTICE * not ;
+static POLICYQUALINFO *notice_section(const X509V3_CTX *ctx,
+                                      const STACK_OF(CONF_VALUE) *unot,
+                                      int ia5org) {
+  USERNOTICE *notice;
   POLICYQUALINFO *qual;
   if (!(qual = POLICYQUALINFO_new())) {
     goto merr;
@@ -321,29 +315,29 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
     OPENSSL_PUT_ERROR(X509V3, ERR_R_INTERNAL_ERROR);
     goto err;
   }
-  if (!(not = USERNOTICE_new())) {
+  if (!(notice = USERNOTICE_new())) {
     goto merr;
   }
-  qual->d.usernotice = not ;
-  for (i = 0; i < sk_CONF_VALUE_num(unot); i++) {
-    cnf = sk_CONF_VALUE_value(unot, i);
+  qual->d.usernotice = notice;
+  for (size_t i = 0; i < sk_CONF_VALUE_num(unot); i++) {
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(unot, i);
     if (!strcmp(cnf->name, "explicitText")) {
-      not ->exptext = ASN1_VISIBLESTRING_new();
-      if (not ->exptext == NULL) {
+      notice->exptext = ASN1_VISIBLESTRING_new();
+      if (notice->exptext == NULL) {
         goto merr;
       }
-      if (!ASN1_STRING_set(not ->exptext, cnf->value, strlen(cnf->value))) {
+      if (!ASN1_STRING_set(notice->exptext, cnf->value, strlen(cnf->value))) {
         goto merr;
       }
     } else if (!strcmp(cnf->name, "organization")) {
       NOTICEREF *nref;
-      if (!not ->noticeref) {
+      if (!notice->noticeref) {
         if (!(nref = NOTICEREF_new())) {
           goto merr;
         }
-        not ->noticeref = nref;
+        notice->noticeref = nref;
       } else {
-        nref = not ->noticeref;
+        nref = notice->noticeref;
       }
       if (ia5org) {
         nref->organization->type = V_ASN1_IA5STRING;
@@ -357,13 +351,13 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
     } else if (!strcmp(cnf->name, "noticeNumbers")) {
       NOTICEREF *nref;
       STACK_OF(CONF_VALUE) *nos;
-      if (!not ->noticeref) {
+      if (!notice->noticeref) {
         if (!(nref = NOTICEREF_new())) {
           goto merr;
         }
-        not ->noticeref = nref;
+        notice->noticeref = nref;
       } else {
-        nref = not ->noticeref;
+        nref = notice->noticeref;
       }
       nos = X509V3_parse_list(cnf->value);
       if (!nos || !sk_CONF_VALUE_num(nos)) {
@@ -371,7 +365,7 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
         X509V3_conf_err(cnf);
         goto err;
       }
-      ret = nref_nos(nref->noticenos, nos);
+      int ret = nref_nos(nref->noticenos, nos);
       sk_CONF_VALUE_pop_free(nos, X509V3_conf_free);
       if (!ret) {
         goto err;
@@ -383,8 +377,8 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
     }
   }
 
-  if (not ->noticeref &&
-      (!not ->noticeref->noticenos || !not ->noticeref->organization)) {
+  if (notice->noticeref &&
+      (!notice->noticeref->noticenos || !notice->noticeref->organization)) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_NEED_ORGANIZATION_AND_NUMBERS);
     goto err;
   }
@@ -399,30 +393,22 @@ err:
   return NULL;
 }
 
-static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums, STACK_OF(CONF_VALUE) *nos) {
-  CONF_VALUE *cnf;
-  ASN1_INTEGER *aint;
-
-  size_t i;
-
-  for (i = 0; i < sk_CONF_VALUE_num(nos); i++) {
-    cnf = sk_CONF_VALUE_value(nos, i);
-    if (!(aint = s2i_ASN1_INTEGER(NULL, cnf->name))) {
+static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums,
+                    const STACK_OF(CONF_VALUE) *nos) {
+  for (size_t i = 0; i < sk_CONF_VALUE_num(nos); i++) {
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(nos, i);
+    ASN1_INTEGER *aint = s2i_ASN1_INTEGER(NULL, cnf->name);
+    if (aint == NULL) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NUMBER);
-      goto err;
+      return 0;
     }
     if (!sk_ASN1_INTEGER_push(nnums, aint)) {
-      goto merr;
+      ASN1_INTEGER_free(aint);
+      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
+      return 0;
     }
   }
   return 1;
-
-merr:
-  ASN1_INTEGER_free(aint);
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
-
-err:
-  return 0;
 }
 
 static int i2r_certpol(const X509V3_EXT_METHOD *method, void *ext, BIO *out,

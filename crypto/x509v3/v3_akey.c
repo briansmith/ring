@@ -72,7 +72,8 @@
 static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_KEYID(
     const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *extlist);
 static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
-                                 X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *values);
+                                 const X509V3_CTX *ctx,
+                                 const STACK_OF(CONF_VALUE) *values);
 
 const X509V3_EXT_METHOD v3_akey_id = {
     NID_authority_key_identifier,
@@ -132,22 +133,20 @@ err:
 // is always included.
 
 static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
-                                 X509V3_CTX *ctx,
-                                 STACK_OF(CONF_VALUE) *values) {
+                                 const X509V3_CTX *ctx,
+                                 const STACK_OF(CONF_VALUE) *values) {
   char keyid = 0, issuer = 0;
-  size_t i;
   int j;
-  CONF_VALUE *cnf;
   ASN1_OCTET_STRING *ikeyid = NULL;
   X509_NAME *isname = NULL;
   GENERAL_NAMES *gens = NULL;
   GENERAL_NAME *gen = NULL;
   ASN1_INTEGER *serial = NULL;
-  X509 *cert;
+  const X509 *cert;
   AUTHORITY_KEYID *akeyid;
 
-  for (i = 0; i < sk_CONF_VALUE_num(values); i++) {
-    cnf = sk_CONF_VALUE_value(values, i);
+  for (size_t i = 0; i < sk_CONF_VALUE_num(values); i++) {
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(values, i);
     if (!strcmp(cnf->name, "keyid")) {
       keyid = 1;
       if (cnf->value && !strcmp(cnf->value, "always")) {
@@ -189,7 +188,7 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
 
   if ((issuer && !ikeyid) || (issuer == 2)) {
     isname = X509_NAME_dup(X509_get_issuer_name(cert));
-    serial = ASN1_INTEGER_dup(X509_get_serialNumber(cert));
+    serial = ASN1_INTEGER_dup(X509_get0_serialNumber(cert));
     if (!isname || !serial) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNABLE_TO_GET_ISSUER_DETAILS);
       goto err;

@@ -136,7 +136,8 @@ int X509V3_NAME_from_section(X509_NAME *nm, const STACK_OF(CONF_VALUE) *dn_sk,
 
 int X509V3_get_value_bool(const CONF_VALUE *value, int *asn1_bool);
 int X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint);
-STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx, const char *section);
+const STACK_OF(CONF_VALUE) *X509V3_get_section(const X509V3_CTX *ctx,
+                                               const char *section);
 
 // X509V3_add_value appends a |CONF_VALUE| containing |name| and |value| to
 // |*extlist|. It returns one on success and zero on error. If |*extlist| is

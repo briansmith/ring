@@ -385,8 +385,9 @@ static CONF_VALUE *get_section(const CONF *conf, const char *section) {
   return lh_CONF_VALUE_retrieve(conf->data, &template);
 }
 
-STACK_OF(CONF_VALUE) *NCONF_get_section(const CONF *conf, const char *section) {
-  CONF_VALUE *section_value = get_section(conf, section);
+const STACK_OF(CONF_VALUE) *NCONF_get_section(const CONF *conf,
+                                              const char *section) {
+  const CONF_VALUE *section_value = get_section(conf, section);
   if (section_value == NULL) {
     return NULL;
   }

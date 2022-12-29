@@ -110,8 +110,8 @@ OPENSSL_EXPORT int NCONF_load_bio(CONF *conf, BIO *bio, long *out_error_line);
 // NCONF_get_section returns a stack of values for a given section in |conf|.
 // If |section| is NULL, the default section is returned. It returns NULL on
 // error.
-OPENSSL_EXPORT STACK_OF(CONF_VALUE) *NCONF_get_section(const CONF *conf,
-                                                       const char *section);
+OPENSSL_EXPORT const STACK_OF(CONF_VALUE) *NCONF_get_section(
+    const CONF *conf, const char *section);
 
 // NCONF_get_string returns the value of the key |name|, in section |section|.
 // The |section| argument may be NULL to indicate the default section. It

@@ -70,7 +70,8 @@
 
 
 static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
-                                  X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
+                                  const X509V3_CTX *ctx,
+                                  const STACK_OF(CONF_VALUE) *nval);
 static int i2r_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method, void *a,
                                 BIO *bp, int ind);
 static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
@@ -120,9 +121,8 @@ IMPLEMENT_ASN1_ALLOC_FUNCTIONS(GENERAL_SUBTREE)
 IMPLEMENT_ASN1_ALLOC_FUNCTIONS(NAME_CONSTRAINTS)
 
 static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
-                                  X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval) {
-  size_t i;
-  CONF_VALUE tval, *val;
+                                  const X509V3_CTX *ctx,
+                                  const STACK_OF(CONF_VALUE) *nval) {
   STACK_OF(GENERAL_SUBTREE) **ptree = NULL;
   NAME_CONSTRAINTS *ncons = NULL;
   GENERAL_SUBTREE *sub = NULL;
@@ -130,8 +130,9 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
   if (!ncons) {
     goto memerr;
   }
-  for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
-    val = sk_CONF_VALUE_value(nval, i);
+  for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
+    const CONF_VALUE *val = sk_CONF_VALUE_value(nval, i);
+    CONF_VALUE tval;
     if (!strncmp(val->name, "permitted", 9) && val->name[9]) {
       ptree = &ncons->permittedSubtrees;
       tval.name = val->name + 10;

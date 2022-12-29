@@ -71,8 +71,8 @@
 static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
     const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *ret);
 static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
-                                       X509V3_CTX *ctx,
-                                       STACK_OF(CONF_VALUE) *nval);
+                                       const X509V3_CTX *ctx,
+                                       const STACK_OF(CONF_VALUE) *nval);
 
 const X509V3_EXT_METHOD v3_info = {
     NID_info_access,
@@ -166,8 +166,8 @@ err:
 }
 
 static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
-                                       X509V3_CTX *ctx,
-                                       STACK_OF(CONF_VALUE) *nval) {
+                                       const X509V3_CTX *ctx,
+                                       const STACK_OF(CONF_VALUE) *nval) {
   AUTHORITY_INFO_ACCESS *ainfo = NULL;
   ACCESS_DESCRIPTION *acc;
   char *objtmp, *ptmp;
@@ -176,7 +176,7 @@ static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
     return NULL;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
-    CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
     if (!(acc = ACCESS_DESCRIPTION_new()) ||
         !sk_ACCESS_DESCRIPTION_push(ainfo, acc)) {
       OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);

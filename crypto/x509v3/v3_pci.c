@@ -49,7 +49,7 @@
 
 static int i2r_pci(const X509V3_EXT_METHOD *method, void *ext, BIO *out,
                    int indent);
-static void *r2i_pci(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+static void *r2i_pci(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
                      const char *str);
 
 const X509V3_EXT_METHOD v3_pci = {
@@ -195,7 +195,7 @@ err:
   return 0;
 }
 
-static void *r2i_pci(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+static void *r2i_pci(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
                      const char *value) {
   PROXY_CERT_INFO_EXTENSION *pci = NULL;
   STACK_OF(CONF_VALUE) *vals;

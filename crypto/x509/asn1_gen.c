@@ -124,7 +124,7 @@ typedef struct {
   int exp_count;
 } tag_exp_arg;
 
-static ASN1_TYPE *generate_v3(const char *str, X509V3_CTX *cnf, int depth,
+static ASN1_TYPE *generate_v3(const char *str, const X509V3_CTX *cnf, int depth,
                               int *perr);
 static int bitstr_cb(const char *elem, size_t len, void *bitstr);
 static int asn1_cb(const char *elem, size_t len, void *bitstr);
@@ -132,12 +132,12 @@ static int append_exp(tag_exp_arg *arg, int exp_tag, int exp_class,
                       int exp_constructed, int exp_pad, int imp_ok);
 static int parse_tagging(const char *vstart, size_t vlen, int *ptag,
                          int *pclass);
-static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
-                             int depth, int *perr);
+static ASN1_TYPE *asn1_multi(int utype, const char *section,
+                             const X509V3_CTX *cnf, int depth, int *perr);
 static ASN1_TYPE *asn1_str2type(const char *str, int format, int utype);
 static int asn1_str2tag(const char *tagstr, size_t len);
 
-ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf) {
+ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf) {
   int err = 0;
   ASN1_TYPE *ret = generate_v3(str, cnf, 0, &err);
   if (err) {
@@ -146,7 +146,7 @@ ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf) {
   return ret;
 }
 
-static ASN1_TYPE *generate_v3(const char *str, X509V3_CTX *cnf, int depth,
+static ASN1_TYPE *generate_v3(const char *str, const X509V3_CTX *cnf, int depth,
                               int *perr) {
   ASN1_TYPE *ret;
   tag_exp_arg asn1_tags;
@@ -444,8 +444,8 @@ static int parse_tagging(const char *vstart, size_t vlen, int *ptag,
 
 // Handle multiple types: SET and SEQUENCE
 
-static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
-                             int depth, int *perr) {
+static ASN1_TYPE *asn1_multi(int utype, const char *section,
+                             const X509V3_CTX *cnf, int depth, int *perr) {
   ASN1_TYPE *ret = NULL;
   STACK_OF(ASN1_TYPE) *sk = NULL;
   const STACK_OF(CONF_VALUE) *sect = NULL;
@@ -460,7 +460,7 @@ static ASN1_TYPE *asn1_multi(int utype, const char *section, X509V3_CTX *cnf,
     if (!cnf) {
       goto bad;
     }
-    sect = X509V3_get_section(cnf, (char *)section);
+    sect = X509V3_get_section(cnf, section);
     if (!sect) {
       goto bad;
     }
