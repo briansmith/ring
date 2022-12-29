@@ -971,11 +971,6 @@ struct POLY_MUL_SCRATCH {
       vec_t scratch[172];
     } vec;
 #endif
-
-#if defined(POLY_RQ_MUL_ASM)
-    // This is the space used by |poly_Rq_mul|.
-    uint8_t rq[POLY_MUL_RQ_SCRATCH_SPACE];
-#endif
   } u;
 };
 
@@ -1326,13 +1321,6 @@ static void poly_mul_novec(struct POLY_MUL_SCRATCH *scratch, struct poly *out,
 
 static void poly_mul(struct POLY_MUL_SCRATCH *scratch, struct poly *r,
                      const struct poly *a, const struct poly *b) {
-#if defined(POLY_RQ_MUL_ASM)
-  if (CRYPTO_is_AVX2_capable()) {
-    poly_Rq_mul(r->v, a->v, b->v, scratch->u.rq);
-    poly_normalize(r);
-  } else
-#endif
-
 #if defined(HRSS_HAVE_VECTOR_UNIT)
   if (vec_capable()) {
     poly_mul_vec(scratch, r, a, b);

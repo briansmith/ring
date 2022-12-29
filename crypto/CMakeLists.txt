@@ -149,7 +149,6 @@ if(ARCH STREQUAL "x86_64")
     chacha/chacha-x86_64.${ASM_EXT}
     cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
     cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-    hrss/asm/poly_rq_mul.S
     test/trampoline-x86_64.${ASM_EXT}
   )
 endif()
