@@ -59,46 +59,36 @@
 #include <limits.h>
 #include <string.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
+#include "../bytestring/internal.h"
 #include "../internal.h"
 #include "internal.h"
 
 
-int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, unsigned char **pp) {
-  if (a == NULL) {
+int i2d_ASN1_OBJECT(const ASN1_OBJECT *in, unsigned char **outp) {
+  if (in == NULL) {
     OPENSSL_PUT_ERROR(ASN1, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
 
-  if (a->length == 0) {
+  if (in->length <= 0) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_OBJECT);
     return -1;
   }
 
-  int objsize = ASN1_object_size(0, a->length, V_ASN1_OBJECT);
-  if (pp == NULL || objsize == -1) {
-    return objsize;
+  CBB cbb, child;
+  if (!CBB_init(&cbb, (size_t)in->length + 2) ||
+      !CBB_add_asn1(&cbb, &child, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&child, in->data, in->length)) {
+    CBB_cleanup(&cbb);
+    return -1;
   }
 
-  unsigned char *p, *allocated = NULL;
-  if (*pp == NULL) {
-    if ((p = allocated = OPENSSL_malloc(objsize)) == NULL) {
-      return -1;
-    }
-  } else {
-    p = *pp;
-  }
-
-  ASN1_put_object(&p, 0, a->length, V_ASN1_OBJECT, V_ASN1_UNIVERSAL);
-  OPENSSL_memcpy(p, a->data, a->length);
-
-  // If a new buffer was allocated, just return it back.
-  // If not, return the incremented buffer pointer.
-  *pp = allocated != NULL ? allocated : p + a->length;
-  return objsize;
+  return CBB_finish_i2d(&cbb, outp);
 }
 
 int i2t_ASN1_OBJECT(char *buf, int buf_len, const ASN1_OBJECT *a) {
@@ -140,29 +130,25 @@ int i2a_ASN1_OBJECT(BIO *bp, const ASN1_OBJECT *a) {
   return ret;
 }
 
-ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
-                             long length) {
-  long len;
-  int tag, xclass;
-  const unsigned char *p = *pp;
-  int inf = ASN1_get_object(&p, &len, &tag, &xclass, length);
-  if (inf & 0x80) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
+ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **out, const unsigned char **inp,
+                             long len) {
+  if (len < 0) {
     return NULL;
   }
 
-  if (inf & V_ASN1_CONSTRUCTED) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
+  CBS cbs, child;
+  CBS_init(&cbs, *inp, (size_t)len);
+  if (!CBS_get_asn1(&cbs, &child, CBS_ASN1_OBJECT)) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_DECODE_ERROR);
     return NULL;
   }
 
-  if (tag != V_ASN1_OBJECT || xclass != V_ASN1_UNIVERSAL) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_AN_OBJECT);
-    return NULL;
-  }
-  ASN1_OBJECT *ret = c2i_ASN1_OBJECT(a, &p, len);
-  if (ret) {
-    *pp = p;
+  const uint8_t *contents = CBS_data(&child);
+  ASN1_OBJECT *ret = c2i_ASN1_OBJECT(out, &contents, CBS_len(&child));
+  if (ret != NULL) {
+    // |c2i_ASN1_OBJECT| should have consumed the entire input.
+    assert(CBS_data(&cbs) == contents);
+    *inp = CBS_data(&cbs);
   }
   return ret;
 }

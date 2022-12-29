@@ -56,64 +56,40 @@
 
 #include <openssl/asn1.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 
-int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **pp) {
-  int r;
-  unsigned char *p, *allocated = NULL;
+#include "../bytestring/internal.h"
 
-  r = ASN1_object_size(0, 1, V_ASN1_BOOLEAN);
-  if (pp == NULL) {
-    return r;
+
+int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **outp) {
+  CBB cbb;
+  if (!CBB_init(&cbb, 3) ||  //
+      !CBB_add_asn1_bool(&cbb, a != ASN1_BOOLEAN_FALSE)) {
+    CBB_cleanup(&cbb);
+    return -1;
   }
-
-  if (*pp == NULL) {
-    if ((p = allocated = OPENSSL_malloc(r)) == NULL) {
-      return -1;
-    }
-  } else {
-    p = *pp;
-  }
-
-  ASN1_put_object(&p, 0, 1, V_ASN1_BOOLEAN, V_ASN1_UNIVERSAL);
-  *p = a ? ASN1_BOOLEAN_TRUE : ASN1_BOOLEAN_FALSE;
-
-  // If a new buffer was allocated, just return it back.
-  // If not, return the incremented buffer pointer.
-  *pp = allocated != NULL ? allocated : p + 1;
-  return r;
+  return CBB_finish_i2d(&cbb, outp);
 }
 
-ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *a, const unsigned char **pp,
-                              long length) {
-  const unsigned char *p = *pp;
-  long len;
-  int inf, tag, xclass;
-  inf = ASN1_get_object(&p, &len, &tag, &xclass, length);
-  if (inf & 0x80) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
+ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *out, const unsigned char **inp,
+                              long len) {
+  if (len < 0) {
     return ASN1_BOOLEAN_NONE;
   }
 
-  if (inf & V_ASN1_CONSTRUCTED) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
+  CBS cbs;
+  CBS_init(&cbs, *inp, (size_t)len);
+  int val;
+  if (!CBS_get_asn1_bool(&cbs, &val)) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_DECODE_ERROR);
     return ASN1_BOOLEAN_NONE;
   }
 
-  if (tag != V_ASN1_BOOLEAN || xclass != V_ASN1_UNIVERSAL) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_A_BOOLEAN);
-    return ASN1_BOOLEAN_NONE;
+  ASN1_BOOLEAN ret = val ? ASN1_BOOLEAN_TRUE : ASN1_BOOLEAN_FALSE;
+  if (out != NULL) {
+    *out = ret;
   }
-
-  if (len != 1) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_BOOLEAN_IS_WRONG_LENGTH);
-    return ASN1_BOOLEAN_NONE;
-  }
-  ASN1_BOOLEAN ret = (ASN1_BOOLEAN) * (p++);
-  if (a != NULL) {
-    (*a) = ret;
-  }
-  *pp = p;
+  *inp = CBS_data(&cbs);
   return ret;
 }

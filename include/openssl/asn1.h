@@ -443,9 +443,6 @@ OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it,
 //
 // WARNING: This function's is slightly different from other |d2i_*| functions
 // because |ASN1_BOOLEAN| is not a pointer type.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *out,
                                              const unsigned char **inp,
                                              long len);
@@ -1444,15 +1441,12 @@ OPENSSL_EXPORT void ASN1_OBJECT_free(ASN1_OBJECT *a);
 
 // d2i_ASN1_OBJECT parses a DER-encoded ASN.1 OBJECT IDENTIFIER from up to |len|
 // bytes at |*inp|, as described in |d2i_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **out,
                                             const uint8_t **inp, long len);
 
 // i2d_ASN1_OBJECT marshals |in| as a DER-encoded ASN.1 OBJECT IDENTIFIER, as
 // described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_ASN1_OBJECT(const ASN1_OBJECT *a, uint8_t **outp);
+OPENSSL_EXPORT int i2d_ASN1_OBJECT(const ASN1_OBJECT *in, uint8_t **outp);
 
 // c2i_ASN1_OBJECT decodes |len| bytes from |*inp| as the contents of a
 // DER-encoded OBJECT IDENTIFIER, excluding the tag and length. It behaves like

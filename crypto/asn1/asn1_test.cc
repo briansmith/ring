@@ -552,8 +552,10 @@ TEST(ASN1Test, Boolean) {
       {0x81, 0x01, 0x00},
       // Element is constructed.
       {0x21, 0x01, 0x00},
-      // TODO(https://crbug.com/boringssl/354): Reject non-DER encodings of TRUE
-      // and test this.
+      // Not a DER encoding of TRUE.
+      {0x01, 0x01, 0x01},
+      // Non-minimal tag length.
+      {0x01, 0x81, 0x01, 0xff},
   };
   for (const auto &invalid : kInvalidBooleans) {
     SCOPED_TRACE(Bytes(invalid));
@@ -690,6 +692,8 @@ TEST(ASN1Test, ParseASN1Object) {
       {0x86, 0x03, 0x2b, 0x65, 0x70},
       // Element is constructed.
       {0x26, 0x03, 0x2b, 0x65, 0x70},
+      // Non-minimal tag length.
+      {0x06, 0x81, 0x03, 0x2b, 0x65, 0x70},
   };
   for (const auto &invalid : kInvalidObjects) {
     SCOPED_TRACE(Bytes(invalid));
