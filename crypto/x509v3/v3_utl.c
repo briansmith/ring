@@ -142,11 +142,6 @@ int X509V3_add_value(const char *name, const char *value,
                               /*omit_value=*/value == NULL, extlist);
 }
 
-int X509V3_add_value_uchar(const char *name, const unsigned char *value,
-                           STACK_OF(CONF_VALUE) **extlist) {
-  return X509V3_add_value(name, (const char *)value, extlist);
-}
-
 int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
                                  STACK_OF(CONF_VALUE) **extlist) {
   return x509V3_add_len_value(name, (const char *)value->data, value->length,
@@ -171,14 +166,6 @@ int X509V3_add_value_bool(const char *name, int asn1_bool,
     return X509V3_add_value(name, "TRUE", extlist);
   }
   return X509V3_add_value(name, "FALSE", extlist);
-}
-
-int X509V3_add_value_bool_nf(const char *name, int asn1_bool,
-                             STACK_OF(CONF_VALUE) **extlist) {
-  if (asn1_bool) {
-    return X509V3_add_value(name, "TRUE", extlist);
-  }
-  return 1;
 }
 
 static char *bignum_to_string(const BIGNUM *bn) {

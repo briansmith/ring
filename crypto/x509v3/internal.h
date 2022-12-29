@@ -134,6 +134,39 @@ int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
 int X509V3_NAME_from_section(X509_NAME *nm, const STACK_OF(CONF_VALUE) *dn_sk,
                              int chtype);
 
+int X509V3_get_value_bool(const CONF_VALUE *value, int *asn1_bool);
+int X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint);
+STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx, const char *section);
+void X509V3_section_free(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *section);
+
+// X509V3_add_value appends a |CONF_VALUE| containing |name| and |value| to
+// |*extlist|. It returns one on success and zero on error. If |*extlist| is
+// NULL, it sets |*extlist| to a newly-allocated |STACK_OF(CONF_VALUE)|
+// containing the result. Either |name| or |value| may be NULL to omit the
+// field.
+//
+// On failure, if |*extlist| was NULL, |*extlist| will remain NULL when the
+// function returns.
+int X509V3_add_value(const char *name, const char *value,
+                     STACK_OF(CONF_VALUE) **extlist);
+
+// X509V3_add_value_bool behaves like |X509V3_add_value| but stores the value
+// "TRUE" if |asn1_bool| is non-zero and "FALSE" otherwise.
+int X509V3_add_value_bool(const char *name, int asn1_bool,
+                          STACK_OF(CONF_VALUE) **extlist);
+
+// X509V3_add_value_bool behaves like |X509V3_add_value| but stores a string
+// representation of |aint|. Note this string representation may be decimal or
+// hexadecimal, depending on the size of |aint|.
+int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
+                         STACK_OF(CONF_VALUE) **extlist);
+
+STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
+
+#define X509V3_conf_err(val)                                               \
+  ERR_add_error_data(6, "section:", (val)->section, ",name:", (val)->name, \
+                     ",value:", (val)->value);
+
 
 // Internal structures
 

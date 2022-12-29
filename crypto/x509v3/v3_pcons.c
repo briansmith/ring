@@ -65,6 +65,9 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
+#include "internal.h"
+
+
 static STACK_OF(CONF_VALUE) *i2v_POLICY_CONSTRAINTS(
     const X509V3_EXT_METHOD *method, void *bcons,
     STACK_OF(CONF_VALUE) *extlist);

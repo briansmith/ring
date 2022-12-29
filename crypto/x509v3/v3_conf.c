@@ -394,18 +394,6 @@ int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
 
 // Config database functions
 
-char *X509V3_get_string(X509V3_CTX *ctx, const char *name,
-                        const char *section) {
-  if (!ctx->db || !ctx->db_meth || !ctx->db_meth->get_string) {
-    OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
-    return NULL;
-  }
-  if (ctx->db_meth->get_string) {
-    return ctx->db_meth->get_string(ctx->db, name, section);
-  }
-  return NULL;
-}
-
 STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx, const char *section) {
   if (!ctx->db || !ctx->db_meth || !ctx->db_meth->get_section) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
@@ -415,15 +403,6 @@ STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx, const char *section) {
     return ctx->db_meth->get_section(ctx->db, section);
   }
   return NULL;
-}
-
-void X509V3_string_free(X509V3_CTX *ctx, char *str) {
-  if (!str) {
-    return;
-  }
-  if (ctx->db_meth->free_string) {
-    ctx->db_meth->free_string(ctx->db, str);
-  }
 }
 
 void X509V3_section_free(X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *section) {
