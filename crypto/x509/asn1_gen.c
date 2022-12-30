@@ -124,8 +124,8 @@ typedef struct {
   int exp_count;
 } tag_exp_arg;
 
-static ASN1_TYPE *generate_v3(const char *str, const X509V3_CTX *cnf, int depth,
-                              int *perr);
+static ASN1_TYPE *generate_v3(const char *str, const X509V3_CTX *cnf,
+                              int depth);
 static int bitstr_cb(const char *elem, size_t len, void *bitstr);
 static int asn1_cb(const char *elem, size_t len, void *bitstr);
 static int append_exp(tag_exp_arg *arg, int exp_tag, int exp_class,
@@ -133,21 +133,16 @@ static int append_exp(tag_exp_arg *arg, int exp_tag, int exp_class,
 static int parse_tagging(const char *vstart, size_t vlen, int *ptag,
                          int *pclass);
 static ASN1_TYPE *asn1_multi(int utype, const char *section,
-                             const X509V3_CTX *cnf, int depth, int *perr);
+                             const X509V3_CTX *cnf, int depth);
 static ASN1_TYPE *asn1_str2type(const char *str, int format, int utype);
 static int asn1_str2tag(const char *tagstr, size_t len);
 
 ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf) {
-  int err = 0;
-  ASN1_TYPE *ret = generate_v3(str, cnf, 0, &err);
-  if (err) {
-    OPENSSL_PUT_ERROR(ASN1, err);
-  }
-  return ret;
+  return generate_v3(str, cnf, 0);
 }
 
-static ASN1_TYPE *generate_v3(const char *str, const X509V3_CTX *cnf, int depth,
-                              int *perr) {
+static ASN1_TYPE *generate_v3(const char *str, const X509V3_CTX *cnf,
+                              int depth) {
   ASN1_TYPE *ret;
   tag_exp_arg asn1_tags;
   tag_exp_type *etmp;
@@ -168,20 +163,20 @@ static ASN1_TYPE *generate_v3(const char *str, const X509V3_CTX *cnf, int depth,
   asn1_tags.format = ASN1_GEN_FORMAT_ASCII;
   asn1_tags.exp_count = 0;
   if (CONF_parse_list(str, ',', 1, asn1_cb, &asn1_tags) != 0) {
-    *perr = ASN1_R_UNKNOWN_TAG;
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_TAG);
     return NULL;
   }
 
   if ((asn1_tags.utype == V_ASN1_SEQUENCE) || (asn1_tags.utype == V_ASN1_SET)) {
     if (!cnf) {
-      *perr = ASN1_R_SEQUENCE_OR_SET_NEEDS_CONFIG;
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_SEQUENCE_OR_SET_NEEDS_CONFIG);
       return NULL;
     }
     if (depth >= ASN1_GEN_SEQ_MAX_DEPTH) {
-      *perr = ASN1_R_ILLEGAL_NESTED_TAGGING;
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_NESTED_TAGGING);
       return NULL;
     }
-    ret = asn1_multi(asn1_tags.utype, asn1_tags.str, cnf, depth, perr);
+    ret = asn1_multi(asn1_tags.utype, asn1_tags.str, cnf, depth);
   } else {
     ret = asn1_str2type(asn1_tags.str, asn1_tags.format, asn1_tags.utype);
   }
@@ -445,7 +440,7 @@ static int parse_tagging(const char *vstart, size_t vlen, int *ptag,
 // Handle multiple types: SET and SEQUENCE
 
 static ASN1_TYPE *asn1_multi(int utype, const char *section,
-                             const X509V3_CTX *cnf, int depth, int *perr) {
+                             const X509V3_CTX *cnf, int depth) {
   ASN1_TYPE *ret = NULL;
   STACK_OF(ASN1_TYPE) *sk = NULL;
   const STACK_OF(CONF_VALUE) *sect = NULL;
@@ -465,8 +460,8 @@ static ASN1_TYPE *asn1_multi(int utype, const char *section,
       goto bad;
     }
     for (i = 0; i < sk_CONF_VALUE_num(sect); i++) {
-      ASN1_TYPE *typ = generate_v3(sk_CONF_VALUE_value(sect, i)->value, cnf,
-                                   depth + 1, perr);
+      ASN1_TYPE *typ =
+          generate_v3(sk_CONF_VALUE_value(sect, i)->value, cnf, depth + 1);
       if (!typ) {
         goto bad;
       }
