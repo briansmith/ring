@@ -134,7 +134,11 @@ int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
 int X509V3_NAME_from_section(X509_NAME *nm, const STACK_OF(CONF_VALUE) *dn_sk,
                              int chtype);
 
-int X509V3_get_value_bool(const CONF_VALUE *value, ASN1_BOOLEAN *asn1_bool);
+// X509V3_bool_from_string decodes |str| as a boolean. On success, it returns
+// one and sets |*out_bool| to resulting value. Otherwise, it returns zero.
+int X509V3_bool_from_string(const char *str, ASN1_BOOLEAN *out_bool);
+
+int X509V3_get_value_bool(const CONF_VALUE *value, ASN1_BOOLEAN *out_bool);
 int X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint);
 const STACK_OF(CONF_VALUE) *X509V3_get_section(const X509V3_CTX *ctx,
                                                const char *section);

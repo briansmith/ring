@@ -300,23 +300,33 @@ int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
   return ret;
 }
 
-int X509V3_get_value_bool(const CONF_VALUE *value, ASN1_BOOLEAN *asn1_bool) {
-  char *btmp;
-  if (!(btmp = value->value)) {
+int X509V3_bool_from_string(const char *str, ASN1_BOOLEAN *out_bool) {
+  if (!strcmp(str, "TRUE") || !strcmp(str, "true") || !strcmp(str, "Y") ||
+      !strcmp(str, "y") || !strcmp(str, "YES") || !strcmp(str, "yes")) {
+    *out_bool = ASN1_BOOLEAN_TRUE;
+    return 1;
+  }
+  if (!strcmp(str, "FALSE") || !strcmp(str, "false") || !strcmp(str, "N") ||
+      !strcmp(str, "n") || !strcmp(str, "NO") || !strcmp(str, "no")) {
+    *out_bool = ASN1_BOOLEAN_FALSE;
+    return 1;
+  }
+  OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_BOOLEAN_STRING);
+  return 0;
+}
+
+int X509V3_get_value_bool(const CONF_VALUE *value, ASN1_BOOLEAN *out_bool) {
+  const char *btmp = value->value;
+  if (btmp == NULL) {
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_BOOLEAN_STRING);
     goto err;
   }
-  if (!strcmp(btmp, "TRUE") || !strcmp(btmp, "true") || !strcmp(btmp, "Y") ||
-      !strcmp(btmp, "y") || !strcmp(btmp, "YES") || !strcmp(btmp, "yes")) {
-    *asn1_bool = ASN1_BOOLEAN_TRUE;
-    return 1;
-  } else if (!strcmp(btmp, "FALSE") || !strcmp(btmp, "false") ||
-             !strcmp(btmp, "N") || !strcmp(btmp, "n") || !strcmp(btmp, "NO") ||
-             !strcmp(btmp, "no")) {
-    *asn1_bool = ASN1_BOOLEAN_FALSE;
-    return 1;
+  if (!X509V3_bool_from_string(btmp, out_bool)) {
+    goto err;
   }
+  return 1;
+
 err:
-  OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_BOOLEAN_STRING);
   X509V3_conf_err(value);
   return 0;
 }

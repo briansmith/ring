@@ -6028,8 +6028,8 @@ TEST(X509Test, ExtensionFromConf) {
         0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x04, 0x03, 0x02, 0x02, 0x44}},
 
       {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:1,invalid,5", nullptr, {}},
-      // TODO(davidben): Handle overflow and enable this test.
-      // {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:4294967296", nullptr, {}},
+      // Overflow.
+      {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:4294967296", nullptr, {}},
 
       // Unsupported formats for string types.
       {kTestOID, "ASN1:FORMAT:BITLIST,IA5:abcd", nullptr, {}},
@@ -6102,6 +6102,13 @@ val = SEQ:seq1
         0x30, 0x12, 0x7f, 0x64, 0x0f, 0xbf, 0x87, 0x68, 0x0b, 0x04,
         0x09, 0x30, 0x07, 0x31, 0x05, 0x03, 0x03, 0x00, 0x05, 0x00}},
 
+      // Invalid tag numbers.
+      {kTestOID, "ASN1:EXP:-1,NULL", nullptr, {}},
+      {kTestOID, "ASN1:EXP:1?,NULL", nullptr, {}},
+      // Fits in |uint32_t| but exceeds |CBS_ASN1_TAG_NUMBER_MASK|, the largest
+      // tag number we support.
+      {kTestOID, "ASN1:EXP:536870912,NULL", nullptr, {}},
+
       // Implicit tagging may also be applied to the underlying type, or the
       // wrapping modifiers.
       {kTestOID,
@@ -6117,6 +6124,9 @@ val = SEQ:seq1
       // here.
       {kTestOID, "ASN1:IMP:1,EXP:1,NULL", nullptr, {}},
       {kTestOID, "ASN1:IMP:1,IMP:1,NULL", nullptr, {}},
+
+      // [UNIVERSAL 0] is reserved.
+      {kTestOID, "ASN1:0U,NULL", nullptr, {}},
 
       // Leading and trailing spaces on name:value pairs are removed. However,
       // while these pairs are delimited by commas, a type will consumes
