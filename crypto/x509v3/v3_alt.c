@@ -302,7 +302,7 @@ err:
 // Append subject altname of issuer to issuer alt name of subject
 
 static int copy_issuer(const X509V3_CTX *ctx, GENERAL_NAMES *gens) {
-  if (ctx && (ctx->flags == CTX_TEST)) {
+  if (ctx && (ctx->flags == X509V3_CTX_TEST)) {
     return 1;
   }
   if (!ctx || !ctx->issuer_cert) {
@@ -382,7 +382,7 @@ static int copy_email(const X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p) {
   X509_NAME_ENTRY *ne;
   GENERAL_NAME *gen = NULL;
   int i;
-  if (ctx != NULL && ctx->flags == CTX_TEST) {
+  if (ctx != NULL && ctx->flags == X509V3_CTX_TEST) {
     return 1;
   }
   if (!ctx || (!ctx->subject_cert && !ctx->subject_req)) {

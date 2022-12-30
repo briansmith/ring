@@ -164,7 +164,7 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
   }
 
   if (!ctx || !ctx->issuer_cert) {
-    if (ctx && (ctx->flags == CTX_TEST)) {
+    if (ctx && (ctx->flags == X509V3_CTX_TEST)) {
       return AUTHORITY_KEYID_new();
     }
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_ISSUER_CERTIFICATE);

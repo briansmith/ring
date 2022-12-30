@@ -577,8 +577,7 @@ struct v3_ext_ctx {
   const CONF *db;
 };
 
-// TODO(davidben): Rename this to |X509V3_CTX_TEST|.
-#define CTX_TEST 0x1
+#define X509V3_CTX_TEST 0x1
 
 // X509V3_set_ctx partially initializes |ctx| with the specified objects. Some
 // string formats will reference fields in these objects. Each object may be
@@ -603,7 +602,7 @@ OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, const X509 *issuer,
 //
 // TODO(davidben): Can we remove this?
 #define X509V3_set_ctx_test(ctx) \
-  X509V3_set_ctx(ctx, NULL, NULL, NULL, NULL, CTX_TEST)
+  X509V3_set_ctx(ctx, NULL, NULL, NULL, NULL, X509V3_CTX_TEST)
 
 // X509V3_set_nconf partially initializes |ctx| with |conf| as the config
 // database. Some string formats will reference sections in |conf|. |conf| may

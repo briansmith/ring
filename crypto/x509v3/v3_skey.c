@@ -113,7 +113,7 @@ static void *s2i_skey_id(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
     return NULL;
   }
 
-  if (ctx && (ctx->flags == CTX_TEST)) {
+  if (ctx && (ctx->flags == X509V3_CTX_TEST)) {
     return oct;
   }
 
