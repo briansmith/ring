@@ -136,6 +136,10 @@ static X509_EXTENSION *do_ext_nconf(const CONF *conf, const X509V3_CTX *ctx,
   // Now get internal extension representation based on type
   if (method->v2i) {
     if (*value == '@') {
+      if (conf == NULL) {
+        OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_CONFIG_DATABASE);
+        return NULL;
+      }
       nval = NCONF_get_section(conf, value + 1);
     } else {
       nval_owned = X509V3_parse_list(value);

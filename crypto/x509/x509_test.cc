@@ -5542,9 +5542,8 @@ TEST(X509Test, ExtensionFromConf) {
        {0x30, 0x0f, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff, 0x04, 0x05,
         0x30, 0x03, 0x01, 0x01, 0xff}},
 
-      // TODO(davidben): Enable this test. There is a missing NULL check, so it
-      // crashes right now.
-      // {"basicConstraints", "critical,@section", nullptr, {}},
+      // If no config is provided, this should fail.
+      {"basicConstraints", "critical,@section", nullptr, {}},
 
       // The "DER:" prefix just specifies an arbitrary byte string. Colons
       // separators are ignored.

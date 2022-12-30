@@ -628,10 +628,10 @@ OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf);
 // value specified by |value|. It returns a newly-allocated |X509_EXTENSION|
 // object on success, or NULL on error. |conf| and |ctx| specify additional
 // information referenced by some formats. |conf| may be NULL, in which case
-// features which use it will be disabled or crash.
+// features which use it will be disabled.
 //
-// TODO(davidben): Fix the crashes. Also allow |ctx| to be NULL. One caller
-// seems to do it, even though it doesn't really work.
+// TODO(davidben): Allow |ctx| to be NULL. One caller seems to do it, even
+// though it doesn't really work.
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf,
                                                 const X509V3_CTX *ctx,
                                                 const char *name,
