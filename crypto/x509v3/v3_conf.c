@@ -82,19 +82,27 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
                                   int crit, void *ext_struc);
 static unsigned char *generic_asn1(const char *value, const X509V3_CTX *ctx,
                                    long *ext_len);
-// CONF *conf:  Config file
-// char *name:  Name
-// char *value:  Value
-X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf, const X509V3_CTX *ctx,
-                                 const char *name, const char *value) {
-  int crit;
-  int ext_type;
-  X509_EXTENSION *ret;
-  crit = v3_check_critical(&value);
-  if ((ext_type = v3_check_generic(&value))) {
-    return v3_generic_extension(name, value, crit, ext_type, ctx);
+
+static void setup_ctx(X509V3_CTX *out, const CONF *conf,
+                      const X509V3_CTX *ctx_in) {
+  if (ctx_in == NULL) {
+    X509V3_set_ctx(out, NULL, NULL, NULL, NULL, 0);
+  } else {
+    *out = *ctx_in;
   }
-  ret = do_ext_nconf(conf, ctx, OBJ_sn2nid(name), crit, value);
+  X509V3_set_nconf(out, conf);
+}
+
+X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf, const X509V3_CTX *ctx_in,
+                                 const char *name, const char *value) {
+  X509V3_CTX ctx;
+  setup_ctx(&ctx, conf, ctx_in);
+  int crit = v3_check_critical(&value);
+  int ext_type = v3_check_generic(&value);
+  if (ext_type != 0) {
+    return v3_generic_extension(name, value, crit, ext_type, &ctx);
+  }
+  X509_EXTENSION *ret = do_ext_nconf(conf, &ctx, OBJ_sn2nid(name), crit, value);
   if (!ret) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_ERROR_IN_EXTENSION);
     ERR_add_error_data(4, "name=", name, ", value=", value);
@@ -102,18 +110,17 @@ X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf, const X509V3_CTX *ctx,
   return ret;
 }
 
-// CONF *conf:  Config file
-// char *value:  Value
-X509_EXTENSION *X509V3_EXT_nconf_nid(const CONF *conf, const X509V3_CTX *ctx,
+X509_EXTENSION *X509V3_EXT_nconf_nid(const CONF *conf, const X509V3_CTX *ctx_in,
                                      int ext_nid, const char *value) {
-  int crit;
-  int ext_type;
-  crit = v3_check_critical(&value);
-  if ((ext_type = v3_check_generic(&value))) {
+  X509V3_CTX ctx;
+  setup_ctx(&ctx, conf, ctx_in);
+  int crit = v3_check_critical(&value);
+  int ext_type = v3_check_generic(&value);
+  if (ext_type != 0) {
     return v3_generic_extension(OBJ_nid2sn(ext_nid), value, crit, ext_type,
-                                ctx);
+                                &ctx);
   }
-  return do_ext_nconf(conf, ctx, ext_nid, crit, value);
+  return do_ext_nconf(conf, &ctx, ext_nid, crit, value);
 }
 
 // CONF *conf:  Config file
