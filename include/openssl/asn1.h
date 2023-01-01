@@ -1432,7 +1432,7 @@ DEFINE_STACK_OF(ASN1_OBJECT)
 // TODO(davidben): Should we just ignore all those parameters? NIDs and names
 // are only relevant for |ASN1_OBJECT|s in the obj.h table.
 OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid, const uint8_t *data,
-                                               int len, const char *sn,
+                                               size_t len, const char *sn,
                                                const char *ln);
 
 // ASN1_OBJECT_free releases memory associated with |a|. If |a| is a static
