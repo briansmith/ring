@@ -54,13 +54,13 @@
  * Hudson (tjh@cryptsoft.com).
  *
  */
-#ifndef HEADER_ASN1T_H
-#define HEADER_ASN1T_H
+#ifndef OPENSSL_HEADER_ASN1T_H
+#define OPENSSL_HEADER_ASN1T_H
 
 #include <openssl/base.h>
 #include <openssl/asn1.h>
 
-#ifdef  __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -658,7 +658,9 @@ DECLARE_ASN1_ITEM(ASN1_SEQUENCE)
 
 DEFINE_STACK_OF(ASN1_VALUE)
 
-#ifdef  __cplusplus
-}
+
+#if defined(__cplusplus)
+}  // extern "C"
 #endif
-#endif
+
+#endif  // OPENSSL_HEADER_ASN1T_H

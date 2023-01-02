@@ -55,8 +55,8 @@
  * [including the GNU Public Licence.]
  */
 
-#ifndef HEADER_ASN1_H
-#define HEADER_ASN1_H
+#ifndef OPENSSL_HEADER_ASN1_H
+#define OPENSSL_HEADER_ASN1_H
 
 #include <openssl/base.h>
 
@@ -2108,4 +2108,4 @@ BSSL_NAMESPACE_END
 #define ASN1_R_WRONG_INTEGER_TYPE 195
 #define ASN1_R_INVALID_INTEGER 196
 
-#endif
+#endif  // OPENSSL_HEADER_ASN1_H

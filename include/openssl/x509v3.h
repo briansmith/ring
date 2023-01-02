@@ -52,8 +52,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#ifndef HEADER_X509V3_H
-#define HEADER_X509V3_H
+#ifndef OPENSSL_HEADER_X509V3_H
+#define OPENSSL_HEADER_X509V3_H
 
 #include <openssl/bio.h>
 #include <openssl/conf.h>
@@ -1027,4 +1027,4 @@ BSSL_NAMESPACE_END
 #define X509V3_R_INVALID_VALUE 163
 #define X509V3_R_TRAILING_DATA_IN_EXTENSION 164
 
-#endif
+#endif  // OPENSSL_HEADER_X509V3_H

@@ -60,8 +60,8 @@
  * SUN MICROSYSTEMS, INC., and contributed to the OpenSSL project.
  */
 
-#ifndef HEADER_X509_H
-#define HEADER_X509_H
+#ifndef OPENSSL_HEADER_X509_H
+#define OPENSSL_HEADER_X509_H
 
 #include <openssl/asn1.h>
 #include <openssl/base.h>
@@ -2923,4 +2923,4 @@ BSSL_NAMESPACE_END
 #define X509_R_NO_CRL_FOUND 143
 #define X509_R_INVALID_POLICY_EXTENSION 144
 
-#endif
+#endif  // OPENSSL_HEADER_X509_H
