@@ -1105,8 +1105,7 @@ static int Verify(
     X509 *leaf, const std::vector<X509 *> &roots,
     const std::vector<X509 *> &intermediates,
     const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr,
-    int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
@@ -5342,6 +5341,13 @@ TEST(X509Test, Policy) {
                    [&](X509_VERIFY_PARAM *param) {
                      set_policies(param, {oid3.get()});
                    }));
+
+  // With just a trust anchor, policy checking silently succeeds.
+  EXPECT_EQ(X509_V_OK, Verify(root.get(), {root.get()}, {},
+                              /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                              [&](X509_VERIFY_PARAM *param) {
+                                set_policies(param, {oid1.get()});
+                              }));
 
   for (bool use_any : {false, true}) {
     SCOPED_TRACE(use_any);
