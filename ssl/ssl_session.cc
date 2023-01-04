@@ -214,9 +214,9 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     }
   }
   if (session->certs != nullptr) {
-    auto buf_up_ref = [](CRYPTO_BUFFER *buf) {
-      CRYPTO_BUFFER_up_ref(buf);
-      return buf;
+    auto buf_up_ref = [](const CRYPTO_BUFFER *buf) {
+      CRYPTO_BUFFER_up_ref(const_cast<CRYPTO_BUFFER *>(buf));
+      return const_cast<CRYPTO_BUFFER*>(buf);
     };
     new_session->certs.reset(sk_CRYPTO_BUFFER_deep_copy(
         session->certs.get(), buf_up_ref, CRYPTO_BUFFER_free));

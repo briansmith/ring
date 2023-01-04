@@ -163,7 +163,7 @@ TEST(StackTest, Basic) {
   // Test both deep and shallow copies.
   bssl::UniquePtr<STACK_OF(TEST_INT)> copy(sk_TEST_INT_deep_copy(
       sk.get(),
-      [](TEST_INT *x) -> TEST_INT * {
+      [](const TEST_INT *x) -> TEST_INT * {
         return x == nullptr ? nullptr : TEST_INT_new(*x).release();
       },
       TEST_INT_free));
@@ -179,13 +179,12 @@ TEST(StackTest, Basic) {
   }
 
   // Deep copies may fail. This should clean up temporaries.
-  EXPECT_FALSE(sk_TEST_INT_deep_copy(sk.get(),
-                                     [](TEST_INT *x) -> TEST_INT * {
-                                       return x == nullptr || *x == 4
-                                                  ? nullptr
-                                                  : TEST_INT_new(*x).release();
-                                     },
-                                     TEST_INT_free));
+  EXPECT_FALSE(sk_TEST_INT_deep_copy(
+      sk.get(),
+      [](const TEST_INT *x) -> TEST_INT * {
+        return x == nullptr || *x == 4 ? nullptr : TEST_INT_new(*x).release();
+      },
+      TEST_INT_free));
 
   // sk_TEST_INT_zero clears a stack, but does not free the elements.
   ShallowStack shallow2(sk_TEST_INT_dup(sk.get()));
@@ -274,7 +273,9 @@ TEST(StackTest, Sorted) {
     // Copies preserve comparison and sorted information.
     bssl::UniquePtr<STACK_OF(TEST_INT)> copy(sk_TEST_INT_deep_copy(
         sk.get(),
-        [](TEST_INT *x) -> TEST_INT * { return TEST_INT_new(*x).release(); },
+        [](const TEST_INT *x) -> TEST_INT * {
+          return TEST_INT_new(*x).release();
+        },
         TEST_INT_free));
     ASSERT_TRUE(copy);
     EXPECT_TRUE(sk_TEST_INT_is_sorted(copy.get()));

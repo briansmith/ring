@@ -142,9 +142,9 @@ CERT::~CERT() {
   x509_method->cert_free(this);
 }
 
-static CRYPTO_BUFFER *buffer_up_ref(CRYPTO_BUFFER *buffer) {
-  CRYPTO_BUFFER_up_ref(buffer);
-  return buffer;
+static CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer) {
+  CRYPTO_BUFFER_up_ref(const_cast<CRYPTO_BUFFER *>(buffer));
+  return const_cast<CRYPTO_BUFFER *>(buffer);
 }
 
 UniquePtr<CERT> ssl_cert_dup(CERT *cert) {

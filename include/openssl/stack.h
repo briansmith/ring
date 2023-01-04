@@ -120,7 +120,7 @@ typedef void (*sk_SAMPLE_free_func)(SAMPLE *);
 
 // sk_SAMPLE_copy_func is a callback to copy an element in a stack. It should
 // return the copy or NULL on error.
-typedef SAMPLE *(*sk_SAMPLE_copy_func)(SAMPLE *);
+typedef SAMPLE *(*sk_SAMPLE_copy_func)(const SAMPLE *);
 
 // sk_SAMPLE_cmp_func is a callback to compare |*a| to |*b|. It should return a
 // value < 0, 0, or > 0 if |*a| is less than, equal to, or greater than |*b|,
@@ -255,9 +255,9 @@ STACK_OF(SAMPLE) *sk_SAMPLE_deep_copy(const STACK_OF(SAMPLE) *sk,
 typedef void (*OPENSSL_sk_free_func)(void *ptr);
 
 // OPENSSL_sk_copy_func is a function that copies an element in a stack. Note
-// its actual type is T *(*)(T *) for some T. Low-level |sk_*| functions will be
-// passed a type-specific wrapper to call it correctly.
-typedef void *(*OPENSSL_sk_copy_func)(void *ptr);
+// its actual type is T *(*)(const T *) for some T. Low-level |sk_*| functions
+// will be passed a type-specific wrapper to call it correctly.
+typedef void *(*OPENSSL_sk_copy_func)(const void *ptr);
 
 // OPENSSL_sk_cmp_func is a comparison function that returns a value < 0, 0 or >
 // 0 if |*a| is less than, equal to or greater than |*b|, respectively.  Note
@@ -279,7 +279,7 @@ typedef int (*OPENSSL_sk_delete_if_func)(void *obj, void *data);
 // The following function types call the above type-erased signatures with the
 // true types.
 typedef void (*OPENSSL_sk_call_free_func)(OPENSSL_sk_free_func, void *);
-typedef void *(*OPENSSL_sk_call_copy_func)(OPENSSL_sk_copy_func, void *);
+typedef void *(*OPENSSL_sk_call_copy_func)(OPENSSL_sk_copy_func, const void *);
 typedef int (*OPENSSL_sk_call_cmp_func)(OPENSSL_sk_cmp_func,
                                         const void *const *,
                                         const void *const *);
@@ -386,7 +386,7 @@ BSSL_NAMESPACE_END
   DECLARE_STACK_OF(name)                                                      \
                                                                               \
   typedef void (*sk_##name##_free_func)(ptrtype);                             \
-  typedef ptrtype (*sk_##name##_copy_func)(ptrtype);                          \
+  typedef ptrtype (*sk_##name##_copy_func)(constptrtype);                     \
   typedef int (*sk_##name##_cmp_func)(constptrtype *, constptrtype *);        \
   typedef int (*sk_##name##_delete_if_func)(ptrtype, void *);                 \
                                                                               \
@@ -396,8 +396,8 @@ BSSL_NAMESPACE_END
   }                                                                           \
                                                                               \
   OPENSSL_INLINE void *sk_##name##_call_copy_func(                            \
-      OPENSSL_sk_copy_func copy_func, void *ptr) {                            \
-    return (void *)((sk_##name##_copy_func)copy_func)((ptrtype)ptr);          \
+      OPENSSL_sk_copy_func copy_func, const void *ptr) {                      \
+    return (void *)((sk_##name##_copy_func)copy_func)((constptrtype)ptr);     \
   }                                                                           \
                                                                               \
   OPENSSL_INLINE int sk_##name##_call_cmp_func(OPENSSL_sk_cmp_func cmp_func,  \

@@ -1041,7 +1041,11 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
 }
 
 STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list) {
-  return sk_X509_NAME_deep_copy(list, X509_NAME_dup, X509_NAME_free);
+  // TODO(https://crbug.com/boringssl/407): |X509_NAME_dup| should be const.
+  auto name_dup = [](const X509_NAME *name) {
+    return X509_NAME_dup(const_cast<X509_NAME *>(name));
+  };
+  return sk_X509_NAME_deep_copy(list, name_dup, X509_NAME_free);
 }
 
 static void set_client_CA_list(UniquePtr<STACK_OF(CRYPTO_BUFFER)> *ca_list,
