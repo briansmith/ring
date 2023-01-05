@@ -117,6 +117,7 @@ set(
   crypto/x509/test/policy_intermediate_invalid.pem
   crypto/x509/test/policy_intermediate_mapped.pem
   crypto/x509/test/policy_intermediate_mapped_any.pem
+  crypto/x509/test/policy_intermediate_mapped_oid3.pem
   crypto/x509/test/policy_intermediate_require.pem
   crypto/x509/test/policy_intermediate_require_duplicate.pem
   crypto/x509/test/policy_intermediate_require_no_policies.pem

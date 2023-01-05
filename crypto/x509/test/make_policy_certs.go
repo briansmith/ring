@@ -227,6 +227,9 @@ func main() {
 	intermediateMapped.template.PolicyIdentifiers = []asn1.ObjectIdentifier{anyPolicyOID}
 	mustGenerateCertificate("policy_intermediate_mapped_any.pem", &intermediateMapped, &root)
 
+	intermediateMapped.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID3}
+	mustGenerateCertificate("policy_intermediate_mapped_oid3.pem", &intermediateMapped, &root)
+
 	// Leaves which assert more specific OIDs, to test intermediate_mapped.
 	leafSingle := leaf
 	leafSingle.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1}

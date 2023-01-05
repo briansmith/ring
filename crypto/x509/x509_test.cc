@@ -5136,6 +5136,10 @@ TEST(X509Test, Policy) {
       GetTestData("crypto/x509/test/policy_intermediate_mapped_any.pem")
           .c_str()));
   ASSERT_TRUE(intermediate_mapped_any);
+  bssl::UniquePtr<X509> intermediate_mapped_oid3(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate_mapped_oid3.pem")
+          .c_str()));
+  ASSERT_TRUE(intermediate_mapped_oid3);
   bssl::UniquePtr<X509> intermediate_require(CertFromPEM(
       GetTestData("crypto/x509/test/policy_intermediate_require.pem").c_str()));
   ASSERT_TRUE(intermediate_require);
@@ -5429,6 +5433,22 @@ TEST(X509Test, Policy) {
                                   set_policies(param, {oid4.get(), oid5.get()});
                                 }));
   }
+
+  // Although |intermediate_mapped_oid3| contains many mappings, it only accepts
+  // OID3. Nodes should not be created for the other mappings.
+  EXPECT_EQ(X509_V_OK, Verify(leaf_oid1.get(), {root.get()},
+                              {intermediate_mapped_oid3.get()},
+                              /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                              [&](X509_VERIFY_PARAM *param) {
+                                set_policies(param, {oid3.get()});
+                              }));
+  EXPECT_EQ(
+      X509_V_ERR_NO_EXPLICIT_POLICY,
+      Verify(leaf_oid4.get(), {root.get()}, {intermediate_mapped_oid3.get()},
+             /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+             [&](X509_VERIFY_PARAM *param) {
+               set_policies(param, {oid4.get()});
+             }));
 }
 
 TEST(X509Test, ExtensionFromConf) {
