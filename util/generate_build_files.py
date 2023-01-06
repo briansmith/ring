@@ -438,10 +438,6 @@ endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -fvisibility=hidden -fno-common -fno-exceptions -fno-rtti")
-  if(APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-  endif()
-
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -fno-common -std=c11")
 endif()
 
