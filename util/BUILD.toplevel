@@ -207,15 +207,8 @@ cc_library(
     copts = boringssl_copts_c11,
     includes = ["src/include"],
     linkopts = select({
-        # Android supports pthreads, but does not provide a libpthread
-        # to link against.
-        "@platforms//os:android": [],
-        "@platforms//os:macos": [],
-        "@platforms//os:ios": [],
-        "@platforms//os:tvos": [],
-        "@platforms//os:watchos": [],
         "@platforms//os:windows": ["-defaultlib:advapi32.lib"],
-        "//conditions:default": ["-lpthread"],
+        "//conditions:default": ["-pthread"],
     }),
     visibility = ["//visibility:public"],
 )
