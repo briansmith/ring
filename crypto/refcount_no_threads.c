@@ -18,35 +18,25 @@
 #include <stdlib.h>
 
 
-#if !defined(OPENSSL_C11_ATOMIC) && !defined(OPENSSL_WINDOWS_ATOMIC)
+#if !defined(OPENSSL_THREADS)
 
 static_assert((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
               "CRYPTO_REFCOUNT_MAX is incorrect");
 
-static struct CRYPTO_STATIC_MUTEX g_refcount_lock = CRYPTO_STATIC_MUTEX_INIT;
-
 void CRYPTO_refcount_inc(CRYPTO_refcount_t *count) {
-  CRYPTO_STATIC_MUTEX_lock_write(&g_refcount_lock);
   if (*count < CRYPTO_REFCOUNT_MAX) {
     (*count)++;
   }
-  CRYPTO_STATIC_MUTEX_unlock_write(&g_refcount_lock);
 }
 
 int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count) {
-  int ret;
-
-  CRYPTO_STATIC_MUTEX_lock_write(&g_refcount_lock);
   if (*count == 0) {
     abort();
   }
   if (*count < CRYPTO_REFCOUNT_MAX) {
     (*count)--;
   }
-  ret = (*count == 0);
-  CRYPTO_STATIC_MUTEX_unlock_write(&g_refcount_lock);
-
-  return ret;
+  return *count == 0;
 }
 
-#endif  // !OPENSSL_C11_ATOMIC && !OPENSSL_WINDOWS_ATOMICS
+#endif  // !OPENSSL_THREADS

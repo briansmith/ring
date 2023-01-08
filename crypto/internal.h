@@ -556,6 +556,16 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 #define OPENSSL_WINDOWS_ATOMIC
 #endif
 
+// Require some atomics implementation. Contact BoringSSL maintainers if you
+// have a platform with fails this check.
+//
+// Note this check can only be done in C. From C++, we don't know whether the
+// corresponding C mode would support C11 atomics.
+#if !defined(__cplusplus) && defined(OPENSSL_THREADS) && \
+    !defined(OPENSSL_C11_ATOMIC) && !defined(OPENSSL_WINDOWS_ATOMIC)
+#error "Thread-compatible configurations require atomics"
+#endif
+
 // CRYPTO_REFCOUNT_MAX is the value at which the reference count saturates.
 #define CRYPTO_REFCOUNT_MAX 0xffffffff
 
