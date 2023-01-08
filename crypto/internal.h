@@ -548,6 +548,14 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 #define OPENSSL_C11_ATOMIC
 #endif
 
+// Older MSVC does not support C11 atomics, so we fallback to the Windows APIs.
+// This can be removed once we can rely on
+// https://devblogs.microsoft.com/cppblog/c11-atomics-in-visual-studio-2022-version-17-5-preview-2/
+#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) && \
+    defined(OPENSSL_WINDOWS)
+#define OPENSSL_WINDOWS_ATOMIC
+#endif
+
 // CRYPTO_REFCOUNT_MAX is the value at which the reference count saturates.
 #define CRYPTO_REFCOUNT_MAX 0xffffffff
 

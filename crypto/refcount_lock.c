@@ -18,7 +18,7 @@
 #include <stdlib.h>
 
 
-#if !defined(OPENSSL_C11_ATOMIC)
+#if !defined(OPENSSL_C11_ATOMIC) && !defined(OPENSSL_WINDOWS_ATOMIC)
 
 static_assert((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
               "CRYPTO_REFCOUNT_MAX is incorrect");
@@ -49,4 +49,4 @@ int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count) {
   return ret;
 }
 
-#endif  // OPENSSL_C11_ATOMIC
+#endif  // !OPENSSL_C11_ATOMIC && !OPENSSL_WINDOWS_ATOMICS
