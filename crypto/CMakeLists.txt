@@ -202,9 +202,7 @@ add_library(
   rand_extra/rand_extra.c
   rand_extra/windows.c
   rc4/rc4.c
-  refcount_c11.c
-  refcount_no_threads.c
-  refcount_win.c
+  refcount.c
   rsa_extra/rsa_asn1.c
   rsa_extra/rsa_crypt.c
   rsa_extra/rsa_print.c

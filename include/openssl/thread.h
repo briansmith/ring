@@ -100,7 +100,7 @@ typedef union crypto_mutex_st {
 // _Atomic qualifier. However, this header is included by C++ programs as well
 // as C code that might not set -std=c11. So, in practice, it's not possible to
 // do that. Instead we statically assert that the size and native alignment of
-// a plain uint32_t and an _Atomic uint32_t are equal in refcount_c11.c.
+// a plain uint32_t and an _Atomic uint32_t are equal in refcount.c.
 typedef uint32_t CRYPTO_refcount_t;
 
 

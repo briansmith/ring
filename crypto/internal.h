@@ -155,6 +155,32 @@
 #if defined(OPENSSL_THREADS) && !defined(OPENSSL_PTHREADS) && \
     defined(OPENSSL_WINDOWS)
 #define OPENSSL_WINDOWS_THREADS
+#endif
+
+// Determine the atomics implementation to use with C.
+#if !defined(__cplusplus)
+#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
+    !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
+    __STDC_VERSION__ >= 201112L
+#define OPENSSL_C11_ATOMIC
+#endif
+
+// Older MSVC does not support C11 atomics, so we fallback to the Windows APIs.
+// When both are available (e.g. clang-cl), we prefer the C11 ones. The Windows
+// APIs don't allow some operations to be implemented as efficiently. This can
+// be removed once we can rely on
+// https://devblogs.microsoft.com/cppblog/c11-atomics-in-visual-studio-2022-version-17-5-preview-2/
+#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) && \
+    defined(OPENSSL_WINDOWS)
+#define OPENSSL_WINDOWS_ATOMIC
+#endif
+#endif  // !__cplusplus
+
+#if defined(OPENSSL_C11_ATOMIC)
+#include <stdatomic.h>
+#endif
+
+#if defined(OPENSSL_WINDOWS_THREADS) || defined(OPENSSL_WINDOWS_ATOMIC)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
@@ -539,32 +565,101 @@ typedef pthread_once_t CRYPTO_once_t;
 OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 
-// Reference counting.
+// Atomics.
+//
+// The following functions provide an API analogous to <stdatomic.h> from C11
+// and abstract between a few variations on atomics we need to support.
 
-// Automatically enable C11 atomics if implemented.
-#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) &&   \
-    !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
-    __STDC_VERSION__ >= 201112L
-#define OPENSSL_C11_ATOMIC
-#endif
+#if defined(__cplusplus)
 
-// Older MSVC does not support C11 atomics, so we fallback to the Windows APIs.
-// This can be removed once we can rely on
-// https://devblogs.microsoft.com/cppblog/c11-atomics-in-visual-studio-2022-version-17-5-preview-2/
-#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) && \
-    defined(OPENSSL_WINDOWS)
-#define OPENSSL_WINDOWS_ATOMIC
-#endif
+// In C++, we can't easily detect whether C will use |OPENSSL_C11_ATOMIC| or
+// |OPENSSL_WINDOWS_ATOMIC|. Instead, we define a layout-compatible type without
+// the corresponding functions. When we can rely on C11 atomics in MSVC, that
+// will no longer be a concern.
+typedef uint32_t CRYPTO_atomic_u32;
+
+#elif defined(OPENSSL_C11_ATOMIC)
+
+typedef _Atomic uint32_t CRYPTO_atomic_u32;
+
+// This should be const, but the |OPENSSL_WINDOWS_ATOMIC| implementation is not
+// const due to Windows limitations. When we can rely on C11 atomics, make this
+// const-correct.
+OPENSSL_INLINE uint32_t CRYPTO_atomic_load_u32(CRYPTO_atomic_u32 *val) {
+  return atomic_load(val);
+}
+
+OPENSSL_INLINE int CRYPTO_atomic_compare_exchange_weak_u32(
+    CRYPTO_atomic_u32 *val, uint32_t *expected, uint32_t desired) {
+  return atomic_compare_exchange_weak(val, expected, desired);
+}
+
+#elif defined(OPENSSL_WINDOWS_ATOMIC)
+
+typedef LONG CRYPTO_atomic_u32;
+
+OPENSSL_INLINE uint32_t CRYPTO_atomic_load_u32(volatile CRYPTO_atomic_u32 *val) {
+  // This is not ideal because it still writes to a cacheline. MSVC is not able
+  // to optimize this to a true atomic read, and Windows does not provide an
+  // InterlockedLoad function.
+  //
+  // The Windows documentation [1] does say "Simple reads and writes to
+  // properly-aligned 32-bit variables are atomic operations", but this is not
+  // phrased in terms of the C11 and C++11 memory models, and indeed a read or
+  // write seems to produce slightly different code on MSVC than a sequentially
+  // consistent std::atomic::load in C++. Moreover, it is unclear if non-MSVC
+  // compilers on Windows provide the same guarantees. Thus we avoid relying on
+  // this and instead still use an interlocked function. This is still
+  // preferable a global mutex, and eventually this code will be replaced by
+  // [2]. Additionally, on clang-cl, we'll use the |OPENSSL_C11_ATOMIC| path.
+  //
+  // [1] https://learn.microsoft.com/en-us/windows/win32/sync/interlocked-variable-access
+  // [2] https://devblogs.microsoft.com/cppblog/c11-atomics-in-visual-studio-2022-version-17-5-preview-2/
+  return (uint32_t)InterlockedCompareExchange(val, 0, 0);
+}
+
+OPENSSL_INLINE int CRYPTO_atomic_compare_exchange_weak_u32(
+    volatile CRYPTO_atomic_u32 *val, uint32_t *expected32, uint32_t desired) {
+  LONG expected = (LONG)*expected32;
+  LONG actual = InterlockedCompareExchange(val, (LONG)desired, expected);
+  *expected32 = (uint32_t)actual;
+  return actual == expected;
+}
+
+#elif !defined(OPENSSL_THREADS)
+
+typedef uint32_t CRYPTO_atomic_u32;
+
+OPENSSL_INLINE uint32_t CRYPTO_atomic_load_u32(CRYPTO_atomic_u32 *val) {
+  return *val;
+}
+
+OPENSSL_INLINE int CRYPTO_atomic_compare_exchange_weak_u32(
+    CRYPTO_atomic_u32 *val, uint32_t *expected, uint32_t desired) {
+  if (*val != *expected) {
+    *expected = *val;
+    return 0;
+  }
+  *val = desired;
+  return 1;
+}
+
+#else
 
 // Require some atomics implementation. Contact BoringSSL maintainers if you
 // have a platform with fails this check.
-//
-// Note this check can only be done in C. From C++, we don't know whether the
-// corresponding C mode would support C11 atomics.
-#if !defined(__cplusplus) && defined(OPENSSL_THREADS) && \
-    !defined(OPENSSL_C11_ATOMIC) && !defined(OPENSSL_WINDOWS_ATOMIC)
 #error "Thread-compatible configurations require atomics"
+
 #endif
+
+// See the comment in the |__cplusplus| section above.
+static_assert(sizeof(CRYPTO_atomic_u32) == sizeof(uint32_t),
+              "CRYPTO_atomic_u32 does not match uint32_t size");
+static_assert(alignof(CRYPTO_atomic_u32) == alignof(uint32_t),
+              "CRYPTO_atomic_u32 does not match uint32_t alignment");
+
+
+// Reference counting.
 
 // CRYPTO_REFCOUNT_MAX is the value at which the reference count saturates.
 #define CRYPTO_REFCOUNT_MAX 0xffffffff
