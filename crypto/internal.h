@@ -594,6 +594,11 @@ OPENSSL_INLINE int CRYPTO_atomic_compare_exchange_weak_u32(
   return atomic_compare_exchange_weak(val, expected, desired);
 }
 
+OPENSSL_INLINE void CRYPTO_atomic_store_u32(CRYPTO_atomic_u32 *val,
+                                            uint32_t desired) {
+  atomic_store(val, desired);
+}
+
 #elif defined(OPENSSL_WINDOWS_ATOMIC)
 
 typedef LONG CRYPTO_atomic_u32;
@@ -626,6 +631,11 @@ OPENSSL_INLINE int CRYPTO_atomic_compare_exchange_weak_u32(
   return actual == expected;
 }
 
+OPENSSL_INLINE void CRYPTO_atomic_store_u32(volatile CRYPTO_atomic_u32 *val,
+                                            uint32_t desired) {
+  InterlockedExchange(val, (LONG)desired);
+}
+
 #elif !defined(OPENSSL_THREADS)
 
 typedef uint32_t CRYPTO_atomic_u32;
@@ -642,6 +652,11 @@ OPENSSL_INLINE int CRYPTO_atomic_compare_exchange_weak_u32(
   }
   *val = desired;
   return 1;
+}
+
+OPENSSL_INLINE void CRYPTO_atomic_store_u32(CRYPTO_atomic_u32 *val,
+                                            uint32_t desired) {
+  *val = desired;
 }
 
 #else

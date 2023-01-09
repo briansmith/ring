@@ -38,7 +38,7 @@ static_assert(MADV_WIPEONFORK == 18, "MADV_WIPEONFORK is not 18");
 
 DEFINE_STATIC_ONCE(g_fork_detect_once);
 DEFINE_STATIC_MUTEX(g_fork_detect_lock);
-DEFINE_BSS_GET(volatile char *, g_fork_detect_addr);
+DEFINE_BSS_GET(CRYPTO_atomic_u32 *, g_fork_detect_addr);
 DEFINE_BSS_GET(uint64_t, g_fork_generation);
 DEFINE_BSS_GET(int, g_force_madv_wipeonfork);
 DEFINE_BSS_GET(int, g_force_madv_wipeonfork_enabled);
@@ -70,7 +70,7 @@ static void init_fork_detect(void) {
     return;
   }
 
-  *((volatile char *) addr) = 1;
+  CRYPTO_atomic_store_u32(addr, 1);
   *g_fork_detect_addr_bss_get() = addr;
   *g_fork_generation_bss_get() = 1;
 }
@@ -83,16 +83,12 @@ uint64_t CRYPTO_get_fork_generation(void) {
   // is initialised atomically, even if multiple threads enter this function
   // concurrently.
   //
-  // In the limit, the kernel may clear WIPEONFORK pages while a multi-threaded
-  // process is running. (For example, because a VM was cloned.) Therefore a
-  // lock is used below to synchronise the potentially multiple threads that may
-  // concurrently observe the cleared flag.
+  // Additionally, while the kernel will only clear WIPEONFORK at a point when a
+  // child process is single-threaded, the child may become multi-threaded
+  // before it observes this. Therefore, we must synchronize the logic below.
 
   CRYPTO_once(g_fork_detect_once_bss_get(), init_fork_detect);
-  // This pointer is |volatile| because the value pointed to may be changed by
-  // external forces (i.e. the kernel wiping the page) thus the compiler must
-  // not assume that it has exclusive access to it.
-  volatile char *const flag_ptr = *g_fork_detect_addr_bss_get();
+  CRYPTO_atomic_u32 *const flag_ptr = *g_fork_detect_addr_bss_get();
   if (flag_ptr == NULL) {
     // Our kernel is too old to support |MADV_WIPEONFORK| or
     // |g_force_madv_wipeonfork| is set.
@@ -105,28 +101,34 @@ uint64_t CRYPTO_get_fork_generation(void) {
     return 0;
   }
 
-  struct CRYPTO_STATIC_MUTEX *const lock = g_fork_detect_lock_bss_get();
+  // In the common case, try to observe the flag without taking a lock. This
+  // avoids cacheline contention in the PRNG.
   uint64_t *const generation_ptr = g_fork_generation_bss_get();
-
-  CRYPTO_STATIC_MUTEX_lock_read(lock);
-  uint64_t current_generation = *generation_ptr;
-  if (*flag_ptr) {
-    CRYPTO_STATIC_MUTEX_unlock_read(lock);
-    return current_generation;
+  if (CRYPTO_atomic_load_u32(flag_ptr) != 0) {
+    // If we observe a non-zero flag, it is safe to read |generation_ptr|
+    // without a lock. The flag and generation number are fixed for this copy of
+    // the address space.
+    return *generation_ptr;
   }
 
-  CRYPTO_STATIC_MUTEX_unlock_read(lock);
+  // The flag was zero. The generation number must be incremented, but other
+  // threads may have concurrently observed the zero, so take a lock before
+  // incrementing.
+  struct CRYPTO_STATIC_MUTEX *const lock = g_fork_detect_lock_bss_get();
   CRYPTO_STATIC_MUTEX_lock_write(lock);
-  current_generation = *generation_ptr;
-  if (*flag_ptr == 0) {
+  uint64_t current_generation = *generation_ptr;
+  if (CRYPTO_atomic_load_u32(flag_ptr) == 0) {
     // A fork has occurred.
-    *flag_ptr = 1;
-
     current_generation++;
     if (current_generation == 0) {
+      // Zero means fork detection isn't supported, so skip that value.
       current_generation = 1;
     }
+
+    // We must update |generation_ptr| before |flag_ptr|. Other threads may
+    // observe |flag_ptr| without taking a lock.
     *generation_ptr = current_generation;
+    CRYPTO_atomic_store_u32(flag_ptr, 1);
   }
   CRYPTO_STATIC_MUTEX_unlock_write(lock);
 

@@ -72,6 +72,10 @@ struct rand_thread_state {
   // next and prev form a NULL-terminated, double-linked list of all states in
   // a process.
   struct rand_thread_state *next, *prev;
+  // clear_drbg_lock synchronizes between uses of |drbg| and
+  // |rand_thread_state_clear_all| clearing it. This lock should be uncontended
+  // in the common case, except on shutdown.
+  CRYPTO_MUTEX clear_drbg_lock;
 #endif
 };
 
@@ -82,18 +86,19 @@ struct rand_thread_state {
 // called when the whole process is exiting.
 DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list);
 DEFINE_STATIC_MUTEX(thread_states_list_lock);
-DEFINE_STATIC_MUTEX(state_clear_all_lock);
 
 static void rand_thread_state_clear_all(void) __attribute__((destructor));
 static void rand_thread_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
-  CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
+    CRYPTO_MUTEX_lock_write(&cur->clear_drbg_lock);
     CTR_DRBG_clear(&cur->drbg);
   }
   // The locks are deliberately left locked so that any threads that are still
-  // running will hang if they try to call |RAND_bytes|.
+  // running will hang if they try to call |RAND_bytes|. It also ensures
+  // |rand_thread_state_free| cannot free any thread state while we've taken the
+  // lock.
 }
 #endif
 
@@ -385,6 +390,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     state->fork_generation = fork_generation;
 
 #if defined(BORINGSSL_FIPS)
+    CRYPTO_MUTEX_init(&state->clear_drbg_lock);
     if (state != &stack_state) {
       CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
       struct rand_thread_state **states_list = thread_states_list_bss_get();
@@ -410,7 +416,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // Take a read lock around accesses to |state->drbg|. This is needed to
     // avoid returning bad entropy if we race with
     // |rand_thread_state_clear_all|.
-    CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
+    CRYPTO_MUTEX_lock_read(&state->clear_drbg_lock);
 #endif
     if (!CTR_DRBG_reseed(&state->drbg, seed, reseed_additional_data,
                          reseed_additional_data_len)) {
@@ -420,7 +426,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     state->fork_generation = fork_generation;
   } else {
 #if defined(BORINGSSL_FIPS)
-    CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
+    CRYPTO_MUTEX_lock_read(&state->clear_drbg_lock);
 #endif
   }
 
@@ -449,7 +455,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
 #if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
+  CRYPTO_MUTEX_unlock_read(&state->clear_drbg_lock);
 #endif
 }
 
