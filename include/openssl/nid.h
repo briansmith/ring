@@ -4255,6 +4255,12 @@ extern "C" {
 #define LN_hkdf "hkdf"
 #define NID_hkdf 963
 
+#define SN_X25519Kyber768 "X25519Kyber768"
+#define NID_X25519Kyber768 964
+
+#define SN_P256Kyber768 "P256Kyber768"
+#define NID_P256Kyber768 965
+
 
 #if defined(__cplusplus)
 } /* extern C */
