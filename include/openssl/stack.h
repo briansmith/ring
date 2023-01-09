@@ -127,10 +127,8 @@ typedef SAMPLE *(*sk_SAMPLE_copy_func)(const SAMPLE *);
 // respectively.  Note the extra indirection - the function is given a pointer
 // to a pointer to the element. This is the |qsort|/|bsearch| comparison
 // function applied to an array of |SAMPLE*|.
-//
-// TODO(https://crbug.com/boringssl/498): The parameters should be
-// |const SAMPLE *const *|.
-typedef int (*sk_SAMPLE_cmp_func)(const SAMPLE **a, const SAMPLE **b);
+typedef int (*sk_SAMPLE_cmp_func)(const SAMPLE *const *a,
+                                  const SAMPLE *const *b);
 
 // sk_SAMPLE_new creates a new, empty stack with the given comparison function,
 // which may be NULL. It returns the new stack or NULL on allocation failure.
@@ -264,13 +262,10 @@ typedef void *(*OPENSSL_sk_copy_func)(const void *ptr);
 // the extra indirection - the function is given a pointer to a pointer to the
 // element. This differs from the usual qsort/bsearch comparison function.
 //
-// Note its actual type is |int (*)(const T **a, const T **b)|. Low-level |sk_*|
-// functions will be passed a type-specific wrapper to call it correctly.
-//
-// TODO(https://crbug.com/boringssl/498): This type should be
-// |const T *const *|. It is already fixed in OpenSSL 1.1.1, so hopefully we can
-// fix this compatibly.
-typedef int (*OPENSSL_sk_cmp_func)(const void **a, const void **b);
+// Note its actual type is |int (*)(const T *const *a, const T *const *b)|.
+// Low-level |sk_*| functions will be passed a type-specific wrapper to call it
+// correctly.
+typedef int (*OPENSSL_sk_cmp_func)(const void *const *a, const void *const *b);
 
 // OPENSSL_sk_delete_if_func is the generic version of
 // |sk_SAMPLE_delete_if_func|.
@@ -387,7 +382,8 @@ BSSL_NAMESPACE_END
                                                                               \
   typedef void (*sk_##name##_free_func)(ptrtype);                             \
   typedef ptrtype (*sk_##name##_copy_func)(constptrtype);                     \
-  typedef int (*sk_##name##_cmp_func)(constptrtype *, constptrtype *);        \
+  typedef int (*sk_##name##_cmp_func)(constptrtype const *,                   \
+                                      constptrtype const *);                  \
   typedef int (*sk_##name##_delete_if_func)(ptrtype, void *);                 \
                                                                               \
   OPENSSL_INLINE void sk_##name##_call_free_func(                             \

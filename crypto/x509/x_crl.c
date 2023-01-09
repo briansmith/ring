@@ -71,7 +71,8 @@
 #include "../internal.h"
 #include "internal.h"
 
-static int X509_REVOKED_cmp(const X509_REVOKED **a, const X509_REVOKED **b);
+static int X509_REVOKED_cmp(const X509_REVOKED *const *a,
+                            const X509_REVOKED *const *b);
 static int setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp);
 
 ASN1_SEQUENCE(X509_REVOKED) = {
@@ -361,7 +362,8 @@ IMPLEMENT_ASN1_FUNCTIONS(X509_CRL_INFO)
 IMPLEMENT_ASN1_FUNCTIONS(X509_CRL)
 IMPLEMENT_ASN1_DUP_FUNCTION(X509_CRL)
 
-static int X509_REVOKED_cmp(const X509_REVOKED **a, const X509_REVOKED **b) {
+static int X509_REVOKED_cmp(const X509_REVOKED *const *a,
+                            const X509_REVOKED *const *b) {
   return ASN1_STRING_cmp((*a)->serialNumber, (*b)->serialNumber);
 }
 

@@ -121,8 +121,8 @@ static X509_POLICY_NODE *x509_policy_node_new(const ASN1_OBJECT *policy) {
   return node;
 }
 
-static int x509_policy_node_cmp(const X509_POLICY_NODE **a,
-                                const X509_POLICY_NODE **b) {
+static int x509_policy_node_cmp(const X509_POLICY_NODE *const *a,
+                                const X509_POLICY_NODE *const *b) {
   return OBJ_cmp((*a)->policy, (*b)->policy);
 }
 
@@ -201,7 +201,8 @@ static int x509_policy_level_add_nodes(X509_POLICY_LEVEL *level,
   return 1;
 }
 
-static int policyinfo_cmp(const POLICYINFO **a, const POLICYINFO **b) {
+static int policyinfo_cmp(const POLICYINFO *const *a,
+                          const POLICYINFO *const *b) {
   return OBJ_cmp((*a)->policyid, (*b)->policyid);
 }
 
@@ -312,13 +313,13 @@ err:
   return ret;
 }
 
-static int compare_issuer_policy(const POLICY_MAPPING **a,
-                                 const POLICY_MAPPING **b) {
+static int compare_issuer_policy(const POLICY_MAPPING *const *a,
+                                 const POLICY_MAPPING *const *b) {
   return OBJ_cmp((*a)->issuerDomainPolicy, (*b)->issuerDomainPolicy);
 }
 
-static int compare_subject_policy(const POLICY_MAPPING **a,
-                                  const POLICY_MAPPING **b) {
+static int compare_subject_policy(const POLICY_MAPPING *const *a,
+                                  const POLICY_MAPPING *const *b) {
   return OBJ_cmp((*a)->subjectDomainPolicy, (*b)->subjectDomainPolicy);
 }
 
@@ -651,7 +652,8 @@ static int has_explicit_policy(STACK_OF(X509_POLICY_LEVEL) *levels,
   return 0;
 }
 
-static int asn1_object_cmp(const ASN1_OBJECT **a, const ASN1_OBJECT **b) {
+static int asn1_object_cmp(const ASN1_OBJECT *const *a,
+                           const ASN1_OBJECT *const *b) {
   return OBJ_cmp(*a, *b);
 }
 

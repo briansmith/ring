@@ -549,7 +549,8 @@ static const X509_VERIFY_PARAM default_table[] = {
 
 static STACK_OF(X509_VERIFY_PARAM) *param_table = NULL;
 
-static int param_cmp(const X509_VERIFY_PARAM **a, const X509_VERIFY_PARAM **b) {
+static int param_cmp(const X509_VERIFY_PARAM *const *a,
+                     const X509_VERIFY_PARAM *const *b) {
   return strcmp((*a)->name, (*b)->name);
 }
 

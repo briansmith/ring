@@ -75,7 +75,7 @@
 
 
 static char *strip_spaces(char *name);
-static int sk_strcmp(const char **a, const char **b);
+static int sk_strcmp(const char *const *a, const char *const *b);
 static STACK_OF(OPENSSL_STRING) *get_email(const X509_NAME *name,
                                            const GENERAL_NAMES *gens);
 static void str_free(OPENSSL_STRING str);
@@ -551,7 +551,9 @@ int x509v3_conf_name_matches(const char *name, const char *cmp) {
   return name[len] == '\0' || name[len] == '.';
 }
 
-static int sk_strcmp(const char **a, const char **b) { return strcmp(*a, *b); }
+static int sk_strcmp(const char *const *a, const char *const *b) {
+  return strcmp(*a, *b);
+}
 
 STACK_OF(OPENSSL_STRING) *X509_get1_email(X509 *x) {
   GENERAL_NAMES *gens;

@@ -210,7 +210,7 @@ TEST(StackTest, BigStack) {
 
 static uint64_t g_compare_count = 0;
 
-static int compare(const TEST_INT **a, const TEST_INT **b) {
+static int compare(const TEST_INT *const *a, const TEST_INT *const *b) {
   g_compare_count++;
   if (**a < **b) {
     return -1;
@@ -221,7 +221,7 @@ static int compare(const TEST_INT **a, const TEST_INT **b) {
   return 0;
 }
 
-static int compare_reverse(const TEST_INT **a, const TEST_INT **b) {
+static int compare_reverse(const TEST_INT *const *a, const TEST_INT *const *b) {
   return -compare(a, b);
 }
 

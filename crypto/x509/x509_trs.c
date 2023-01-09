@@ -63,7 +63,7 @@
 #include "internal.h"
 
 
-static int tr_cmp(const X509_TRUST **a, const X509_TRUST **b);
+static int tr_cmp(const X509_TRUST *const *a, const X509_TRUST *const *b);
 static void trtable_free(X509_TRUST *p);
 
 static int trust_1oidany(X509_TRUST *trust, X509 *x, int flags);
@@ -97,7 +97,7 @@ static X509_TRUST trstandard[] = {
 
 static STACK_OF(X509_TRUST) *trtable = NULL;
 
-static int tr_cmp(const X509_TRUST **a, const X509_TRUST **b) {
+static int tr_cmp(const X509_TRUST *const *a, const X509_TRUST *const *b) {
   return (*a)->trust - (*b)->trust;
 }
 

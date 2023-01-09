@@ -152,7 +152,8 @@ static int new_dir(X509_LOOKUP *lu) {
 
 static void by_dir_hash_free(BY_DIR_HASH *hash) { OPENSSL_free(hash); }
 
-static int by_dir_hash_cmp(const BY_DIR_HASH **a, const BY_DIR_HASH **b) {
+static int by_dir_hash_cmp(const BY_DIR_HASH *const *a,
+                           const BY_DIR_HASH *const *b) {
   if ((*a)->hash > (*b)->hash) {
     return 1;
   }

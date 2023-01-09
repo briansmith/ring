@@ -124,7 +124,7 @@
 #include "internal.h"
 
 
-static int xname_cmp(const X509_NAME **a, const X509_NAME **b) {
+static int xname_cmp(const X509_NAME *const *a, const X509_NAME *const *b) {
   return X509_NAME_cmp(*a, *b);
 }
 
@@ -143,7 +143,7 @@ static int add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio,
   struct RestoreCmpFunc {
     ~RestoreCmpFunc() { sk_X509_NAME_set_cmp_func(stack, old_cmp); }
     STACK_OF(X509_NAME) *stack;
-    int (*old_cmp)(const X509_NAME **, const X509_NAME **);
+    int (*old_cmp)(const X509_NAME *const *, const X509_NAME *const *);
   };
   RestoreCmpFunc restore = {out, sk_X509_NAME_set_cmp_func(out, xname_cmp)};
 
