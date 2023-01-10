@@ -1,4 +1,5 @@
 # additional interop for things like macros and inlined functions
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 add_library(
   rust_wrapper
   STATIC
