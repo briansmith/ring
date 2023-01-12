@@ -22,6 +22,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
+	"flag"
 	"math/big"
 	"os"
 	"time"
@@ -29,6 +30,8 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 	cbasn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
+
+var resetFlag = flag.Bool("reset", false, "if set, regenerates certificates that already exist")
 
 var (
 	// https://davidben.net/oid
@@ -62,7 +65,17 @@ type templateAndKey struct {
 	key      *ecdsa.PrivateKey
 }
 
-func mustGenerateCertificate(path string, subject, issuer *templateAndKey) []byte {
+func mustGenerateCertificate(path string, subject, issuer *templateAndKey) {
+	if !*resetFlag {
+		// Skip if the file already exists.
+		_, err := os.Stat(path)
+		if err == nil {
+			return
+		}
+		if !os.IsNotExist(err) {
+			panic(err)
+		}
+	}
 	cert, err := x509.CreateCertificate(rand.Reader, &subject.template, &issuer.template, &subject.key.PublicKey, issuer.key)
 	if err != nil {
 		panic(err)
@@ -76,10 +89,11 @@ func mustGenerateCertificate(path string, subject, issuer *templateAndKey) []byt
 	if err != nil {
 		panic(err)
 	}
-	return cert
 }
 
 func main() {
+	flag.Parse()
+
 	notBefore, err := time.Parse(time.RFC3339, "2000-01-01T00:00:00Z")
 	if err != nil {
 		panic(err)
@@ -160,14 +174,29 @@ func main() {
 	intermediateDuplicate.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID1, testOID2, testOID2}
 	mustGenerateCertificate("policy_intermediate_duplicate.pem", &intermediateDuplicate, &root)
 
-	// A version of the intermediate that sets requireExplicitPolicy without
-	// skipping certificates.
+	// Various policy constraints with requireExplicitPolicy values.
 	b := cryptobyte.NewBuilder(nil)
 	b.AddASN1(cbasn1.SEQUENCE, func(seq *cryptobyte.Builder) {
 		seq.AddASN1Int64WithTag(0, cbasn1.Tag(0).ContextSpecific())
 	})
+	requireExplicitPolicy0 := b.BytesOrPanic()
+
+	b = cryptobyte.NewBuilder(nil)
+	b.AddASN1(cbasn1.SEQUENCE, func(seq *cryptobyte.Builder) {
+		seq.AddASN1Int64WithTag(1, cbasn1.Tag(0).ContextSpecific())
+	})
+	requireExplicitPolicy1 := b.BytesOrPanic()
+
+	b = cryptobyte.NewBuilder(nil)
+	b.AddASN1(cbasn1.SEQUENCE, func(seq *cryptobyte.Builder) {
+		seq.AddASN1Int64WithTag(2, cbasn1.Tag(0).ContextSpecific())
+	})
+	requireExplicitPolicy2 := b.BytesOrPanic()
+
+	// A version of the intermediate that sets requireExplicitPolicy, skipping
+	// zero certificates.
 	intermediateRequire := intermediate
-	intermediateRequire.template.ExtraExtensions = []pkix.Extension{{Id: policyConstraintsOID, Value: b.BytesOrPanic()}}
+	intermediateRequire.template.ExtraExtensions = []pkix.Extension{{Id: policyConstraintsOID, Value: requireExplicitPolicy0}}
 	mustGenerateCertificate("policy_intermediate_require.pem", &intermediateRequire, &root)
 
 	// Same as above, but there are no policies on the intermediate.
@@ -182,6 +211,18 @@ func main() {
 	intermediateAny := intermediate
 	intermediateAny.template.PolicyIdentifiers = []asn1.ObjectIdentifier{anyPolicyOID}
 	mustGenerateCertificate("policy_intermediate_any.pem", &intermediateAny, &root)
+
+	// Other requireExplicitPolicy values, on the leaf and intermediate.
+	intermediateRequire = intermediate
+	intermediateRequire.template.ExtraExtensions = []pkix.Extension{{Id: policyConstraintsOID, Value: requireExplicitPolicy1}}
+	mustGenerateCertificate("policy_intermediate_require1.pem", &intermediateRequire, &root)
+	intermediateRequire.template.ExtraExtensions = []pkix.Extension{{Id: policyConstraintsOID, Value: requireExplicitPolicy2}}
+	mustGenerateCertificate("policy_intermediate_require2.pem", &intermediateRequire, &root)
+	leafRequire := leaf
+	leafRequire.template.ExtraExtensions = []pkix.Extension{{Id: policyConstraintsOID, Value: requireExplicitPolicy0}}
+	mustGenerateCertificate("policy_leaf_require.pem", &leafRequire, &intermediate)
+	leafRequire.template.ExtraExtensions = []pkix.Extension{{Id: policyConstraintsOID, Value: requireExplicitPolicy1}}
+	mustGenerateCertificate("policy_leaf_require1.pem", &leafRequire, &intermediate)
 
 	leafAny := leaf
 	leafAny.template.PolicyIdentifiers = []asn1.ObjectIdentifier{anyPolicyOID}

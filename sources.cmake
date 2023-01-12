@@ -111,16 +111,17 @@ set(
   crypto/x509/test/many_names1.pem
   crypto/x509/test/many_names2.pem
   crypto/x509/test/many_names3.pem
-  crypto/x509/test/policy_root.pem
   crypto/x509/test/policy_intermediate_any.pem
   crypto/x509/test/policy_intermediate_duplicate.pem
   crypto/x509/test/policy_intermediate_invalid.pem
-  crypto/x509/test/policy_intermediate_mapped.pem
   crypto/x509/test/policy_intermediate_mapped_any.pem
   crypto/x509/test/policy_intermediate_mapped_oid3.pem
-  crypto/x509/test/policy_intermediate_require.pem
+  crypto/x509/test/policy_intermediate_mapped.pem
   crypto/x509/test/policy_intermediate_require_duplicate.pem
   crypto/x509/test/policy_intermediate_require_no_policies.pem
+  crypto/x509/test/policy_intermediate_require.pem
+  crypto/x509/test/policy_intermediate_require1.pem
+  crypto/x509/test/policy_intermediate_require2.pem
   crypto/x509/test/policy_intermediate.pem
   crypto/x509/test/policy_leaf_any.pem
   crypto/x509/test/policy_leaf_duplicate.pem
@@ -130,7 +131,10 @@ set(
   crypto/x509/test/policy_leaf_oid3.pem
   crypto/x509/test/policy_leaf_oid4.pem
   crypto/x509/test/policy_leaf_oid5.pem
+  crypto/x509/test/policy_leaf_require.pem
+  crypto/x509/test/policy_leaf_require1.pem
   crypto/x509/test/policy_leaf.pem
+  crypto/x509/test/policy_root.pem
   crypto/x509/test/pss_sha1_explicit.pem
   crypto/x509/test/pss_sha1_mgf1_syntax_error.pem
   crypto/x509/test/pss_sha1.pem

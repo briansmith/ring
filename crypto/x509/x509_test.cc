@@ -5143,6 +5143,14 @@ TEST(X509Test, Policy) {
   bssl::UniquePtr<X509> intermediate_require(CertFromPEM(
       GetTestData("crypto/x509/test/policy_intermediate_require.pem").c_str()));
   ASSERT_TRUE(intermediate_require);
+  bssl::UniquePtr<X509> intermediate_require1(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate_require1.pem")
+          .c_str()));
+  ASSERT_TRUE(intermediate_require1);
+  bssl::UniquePtr<X509> intermediate_require2(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate_require2.pem")
+          .c_str()));
+  ASSERT_TRUE(intermediate_require2);
   bssl::UniquePtr<X509> intermediate_require_duplicate(CertFromPEM(
       GetTestData("crypto/x509/test/policy_intermediate_require_duplicate.pem")
           .c_str()));
@@ -5179,6 +5187,12 @@ TEST(X509Test, Policy) {
   bssl::UniquePtr<X509> leaf_oid5(CertFromPEM(
       GetTestData("crypto/x509/test/policy_leaf_oid5.pem").c_str()));
   ASSERT_TRUE(leaf_oid5);
+  bssl::UniquePtr<X509> leaf_require(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_leaf_require.pem").c_str()));
+  ASSERT_TRUE(leaf_require);
+  bssl::UniquePtr<X509> leaf_require1(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_leaf_require1.pem").c_str()));
+  ASSERT_TRUE(leaf_require1);
 
   // By default, OpenSSL does not check policies, so even syntax errors in the
   // certificatePolicies extension go unnoticed. (This is probably not
@@ -5286,6 +5300,57 @@ TEST(X509Test, Policy) {
                      set_policies(param, {oid3.get()});
                    }));
 
+  // A leaf can also set requireExplicitPolicy.
+  EXPECT_EQ(X509_V_OK, Verify(leaf_require.get(), {root.get()},
+                              {intermediate.get()}, /*crls=*/{},
+                              /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                                set_policies(param, {oid1.get()});
+                              }));
+  EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
+            Verify(leaf_require.get(), {root.get()}, {intermediate.get()},
+                   /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3.get()});
+                   }));
+
+  // requireExplicitPolicy is a count of certificates to skip. If the value is
+  // not zero by the end of the chain, it doesn't count.
+  EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
+            Verify(leaf.get(), {root.get()}, {intermediate_require1.get()},
+                   /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate_require2.get()},
+                   /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf_require1.get(), {root.get()}, {intermediate.get()},
+                   /*crls=*/{},
+                   /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3.get()});
+                   }));
+
+  // If multiple certificates specify the constraint, the more constrained value
+  // wins.
+  EXPECT_EQ(
+      X509_V_ERR_NO_EXPLICIT_POLICY,
+      Verify(leaf_require1.get(), {root.get()}, {intermediate_require1.get()},
+             /*crls=*/{},
+             /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+               set_policies(param, {oid3.get()});
+             }));
+  EXPECT_EQ(
+      X509_V_ERR_NO_EXPLICIT_POLICY,
+      Verify(leaf_require.get(), {root.get()}, {intermediate_require2.get()},
+             /*crls=*/{},
+             /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
+               set_policies(param, {oid3.get()});
+             }));
+
   // An intermediate that requires an explicit policy, but then specifies no
   // policies should fail verification as a result.
   EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
@@ -5306,16 +5371,18 @@ TEST(X509Test, Policy) {
 
   // The leaf asserts anyPolicy, but the intermediate does not. The resulting
   // valid policies are the intersection.
-  EXPECT_EQ(X509_V_OK,
-            Verify(leaf_any.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
-                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
-                     set_policies(param, {oid1.get()});
-                   }));
-  EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
-            Verify(leaf_any.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
-                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
-                     set_policies(param, {oid3.get()});
-                   }));
+  EXPECT_EQ(
+      X509_V_OK,
+      Verify(leaf_any.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+             X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+               set_policies(param, {oid1.get()});
+             }));
+  EXPECT_EQ(
+      X509_V_ERR_NO_EXPLICIT_POLICY,
+      Verify(leaf_any.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+             X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+               set_policies(param, {oid3.get()});
+             }));
 
   // The intermediate asserts anyPolicy, but the leaf does not. The resulting
   // valid policies are the intersection.
