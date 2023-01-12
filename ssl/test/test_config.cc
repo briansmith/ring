@@ -585,8 +585,9 @@ static void MessageCallback(int is_write, int version, int content_type,
   }
 
   if (content_type == SSL3_RT_HEADER) {
-    if (len !=
-        (config->is_dtls ? DTLS1_RT_HEADER_LENGTH : SSL3_RT_HEADER_LENGTH)) {
+    size_t header_len =
+        config->is_dtls ? DTLS1_RT_HEADER_LENGTH : SSL3_RT_HEADER_LENGTH;
+    if (len != header_len) {
       fprintf(stderr, "Incorrect length for record header: %zu.\n", len);
       state->msg_callback_ok = false;
     }
