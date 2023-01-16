@@ -159,7 +159,6 @@ struct x509_st {
   NAME_CONSTRAINTS *nc;
   unsigned char cert_hash[SHA256_DIGEST_LENGTH];
   X509_CERT_AUX *aux;
-  CRYPTO_BUFFER *buf;
   CRYPTO_MUTEX lock;
 } /* X509 */;
 

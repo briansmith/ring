@@ -101,14 +101,8 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       ret->akid = NULL;
       ret->aux = NULL;
       ret->crldp = NULL;
-      ret->buf = NULL;
       CRYPTO_new_ex_data(&ret->ex_data);
       CRYPTO_MUTEX_init(&ret->lock);
-      break;
-
-    case ASN1_OP_D2I_PRE:
-      CRYPTO_BUFFER_free(ret->buf);
-      ret->buf = NULL;
       break;
 
     case ASN1_OP_D2I_POST: {
@@ -150,7 +144,6 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       CRL_DIST_POINTS_free(ret->crldp);
       GENERAL_NAMES_free(ret->altname);
       NAME_CONSTRAINTS_free(ret->nc);
-      CRYPTO_BUFFER_free(ret->buf);
       break;
   }
 
@@ -170,29 +163,20 @@ IMPLEMENT_ASN1_DUP_FUNCTION(X509)
 X509 *X509_parse_from_buffer(CRYPTO_BUFFER *buf) {
   if (CRYPTO_BUFFER_len(buf) > LONG_MAX) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return 0;
-  }
-
-  X509 *x509 = X509_new();
-  if (x509 == NULL) {
     return NULL;
   }
 
-  x509->cert_info->enc.alias_only_on_next_parse = 1;
-
+  // Pass |buf| into the parser so that the cached encoding in |X509_CINF| can
+  // alias into the original buffer and save some memory.
   const uint8_t *inp = CRYPTO_BUFFER_data(buf);
-  X509 *x509p = x509;
-  X509 *ret = d2i_X509(&x509p, &inp, CRYPTO_BUFFER_len(buf));
-  if (ret == NULL ||
-      inp - CRYPTO_BUFFER_data(buf) != (ptrdiff_t)CRYPTO_BUFFER_len(buf)) {
-    X509_free(x509p);
+  X509 *ret = NULL;
+  if (ASN1_item_ex_d2i((ASN1_VALUE **)&ret, &inp, CRYPTO_BUFFER_len(buf),
+                       ASN1_ITEM_rptr(X509), /*tag=*/-1,
+                       /*aclass=*/0, /*opt=*/0, buf) <= 0 ||
+      inp != CRYPTO_BUFFER_data(buf) + CRYPTO_BUFFER_len(buf)) {
+    X509_free(ret);
     return NULL;
   }
-  assert(x509p == x509);
-  assert(ret == x509);
-
-  CRYPTO_BUFFER_up_ref(buf);
-  ret->buf = buf;
 
   return ret;
 }

@@ -2381,12 +2381,18 @@ TEST(X509Test, TestFromBufferReused) {
   size_t data2_len;
   bssl::UniquePtr<uint8_t> data2;
   ASSERT_TRUE(PEMToDER(&data2, &data2_len, kLeafPEM));
+  EXPECT_TRUE(buffers_alias(root->cert_info->enc.enc, root->cert_info->enc.len,
+                            CRYPTO_BUFFER_data(buf.get()),
+                            CRYPTO_BUFFER_len(buf.get())));
 
   X509 *x509p = root.get();
   const uint8_t *inp = data2.get();
   X509 *ret = d2i_X509(&x509p, &inp, data2_len);
   ASSERT_EQ(root.get(), ret);
-  ASSERT_EQ(nullptr, root->buf);
+  ASSERT_EQ(nullptr, root->cert_info->enc.buf);
+  EXPECT_FALSE(buffers_alias(root->cert_info->enc.enc, root->cert_info->enc.len,
+                             CRYPTO_BUFFER_data(buf.get()),
+                             CRYPTO_BUFFER_len(buf.get())));
 
   // Free |data2| and ensure that |root| took its own copy. Otherwise the
   // following will trigger a use-after-free.
@@ -2401,7 +2407,7 @@ TEST(X509Test, TestFromBufferReused) {
 
   ASSERT_EQ(static_cast<long>(data2_len), i2d_len);
   ASSERT_EQ(0, OPENSSL_memcmp(data2.get(), i2d, i2d_len));
-  ASSERT_EQ(nullptr, root->buf);
+  ASSERT_EQ(nullptr, root->cert_info->enc.buf);
 }
 
 TEST(X509Test, TestFailedParseFromBuffer) {

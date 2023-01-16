@@ -206,7 +206,7 @@ static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
   ASN1_VALUE *intname_val = NULL;
   ret = ASN1_item_ex_d2i(&intname_val, &p, len,
                          ASN1_ITEM_rptr(X509_NAME_INTERNAL), /*tag=*/-1,
-                         /*aclass=*/0, opt, ctx);
+                         /*aclass=*/0, opt, /*buf=*/NULL);
   if (ret <= 0) {
     return ret;
   }

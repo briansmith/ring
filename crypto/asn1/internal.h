@@ -122,20 +122,16 @@ struct asn1_object_st {
 
 ASN1_OBJECT *ASN1_OBJECT_new(void);
 
-// ASN1_ENCODING structure: this is used to save the received
-// encoding of an ASN1 type. This is useful to get round
-// problems with invalid encodings which can break signatures.
+// ASN1_ENCODING is used to save the received encoding of an ASN.1 type. This
+// avoids problems with invalid encodings that break signatures.
 typedef struct ASN1_ENCODING_st {
-  unsigned char *enc;  // DER encoding
-  long len;            // Length of encoding, or zero if not present.
-  // alias_only is zero if |enc| owns the buffer that it points to
-  // (although |enc| may still be NULL). If one, |enc| points into a
-  // buffer that is owned elsewhere.
-  unsigned alias_only : 1;
-  // alias_only_on_next_parse is one iff the next parsing operation
-  // should avoid taking a copy of the input and rather set
-  // |alias_only|.
-  unsigned alias_only_on_next_parse : 1;
+  // enc is the saved DER encoding. Its ownership is determined by |buf|.
+  uint8_t *enc;
+  // len is the length of |enc|. If zero, there is no saved encoding.
+  size_t len;
+  // buf, if non-NULL, is the |CRYPTO_BUFFER| that |enc| points into. If NULL,
+  // |enc| must be released with |OPENSSL_free|.
+  CRYPTO_BUFFER *buf;
 } ASN1_ENCODING;
 
 OPENSSL_EXPORT int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d,
@@ -147,9 +143,18 @@ int ASN1_item_ex_new(ASN1_VALUE **pval, const ASN1_ITEM *it);
 void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
 
 void ASN1_template_free(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
+
+// ASN1_item_ex_d2i parses |len| bytes from |*in| as a structure of type |it|
+// and writes the result to |*pval|. If |tag| is non-negative, |it| is
+// implicitly tagged with the tag specified by |tag| and |aclass|. If |opt| is
+// non-zero, the value is optional. If |buf| is non-NULL, |*in| must point into
+// |buf|.
+//
+// This function returns one and advances |*in| if an object was successfully
+// parsed, -1 if an optional value was successfully skipped, and zero on error.
 int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
                      const ASN1_ITEM *it, int tag, int aclass, char opt,
-                     ASN1_TLC *ctx);
+                     CRYPTO_BUFFER *buf);
 
 // ASN1_item_ex_i2d encodes |*pval| as a value of type |it| to |out| under the
 // i2d output convention. It returns a non-zero length on success and -1 on
@@ -191,8 +196,11 @@ void asn1_enc_free(ASN1_VALUE **pval, const ASN1_ITEM *it);
 int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval,
                      const ASN1_ITEM *it);
 
-int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
-                  const ASN1_ITEM *it);
+// asn1_enc_save saves |inlen| bytes from |in| as |*pval|'s saved encoding. It
+// returns one on success and zero on error. If |buf| is non-NULL, |in| must
+// point into |buf|.
+int asn1_enc_save(ASN1_VALUE **pval, const uint8_t *in, size_t inlen,
+                  const ASN1_ITEM *it, CRYPTO_BUFFER *buf);
 
 // asn1_encoding_clear clears the cached encoding in |enc|.
 void asn1_encoding_clear(ASN1_ENCODING *enc);

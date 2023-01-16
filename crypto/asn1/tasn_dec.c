@@ -59,6 +59,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/pool.h>
 
 #include <limits.h>
 #include <string.h>
@@ -79,10 +80,10 @@ static int asn1_check_tlen(long *olen, int *otag, unsigned char *oclass,
 
 static int asn1_template_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
                                 long len, const ASN1_TEMPLATE *tt, char opt,
-                                int depth);
+                                CRYPTO_BUFFER *buf, int depth);
 static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
                                    long len, const ASN1_TEMPLATE *tt, char opt,
-                                   int depth);
+                                   CRYPTO_BUFFER *buf, int depth);
 static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
                        int utype, const ASN1_ITEM *it);
 static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
@@ -90,7 +91,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
                                  int aclass, char opt);
 static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
                             long len, const ASN1_ITEM *it, int tag, int aclass,
-                            char opt, int depth);
+                            char opt, CRYPTO_BUFFER *buf, int depth);
 
 // Table to convert tags to bit values, used for MSTRING type
 static const unsigned long tag2bit[31] = {
@@ -148,7 +149,8 @@ ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
     pval = &ptmpval;
   }
 
-  if (asn1_item_ex_d2i(pval, in, len, it, -1, 0, 0, 0) > 0) {
+  if (asn1_item_ex_d2i(pval, in, len, it, /*tag=*/-1, /*aclass=*/0, /*opt=*/0,
+                       /*buf=*/NULL, /*depth=*/0) > 0) {
     return *pval;
   }
   return NULL;
@@ -159,7 +161,7 @@ ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
 
 static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
                             long len, const ASN1_ITEM *it, int tag, int aclass,
-                            char opt, int depth) {
+                            char opt, CRYPTO_BUFFER *buf, int depth) {
   const ASN1_TEMPLATE *tt, *errtt = NULL;
   const unsigned char *p = NULL, *q;
   unsigned char oclass;
@@ -170,6 +172,11 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
   ASN1_VALUE **pchptr;
   if (!pval) {
     return 0;
+  }
+
+  if (buf != NULL) {
+    assert(CRYPTO_BUFFER_data(buf) <= *in &&
+           *in + len <= CRYPTO_BUFFER_data(buf) + CRYPTO_BUFFER_len(buf));
   }
 
   // Bound |len| to comfortably fit in an int. Lengths in this module often
@@ -194,7 +201,8 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
           OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_OPTIONS_ON_ITEM_TEMPLATE);
           goto err;
         }
-        return asn1_template_ex_d2i(pval, in, len, it->templates, opt, depth);
+        return asn1_template_ex_d2i(pval, in, len, it->templates, opt, buf,
+                                    depth);
       }
       return asn1_d2i_ex_primitive(pval, in, len, it, tag, aclass, opt);
       break;
@@ -277,7 +285,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
       for (i = 0, tt = it->templates; i < it->tcount; i++, tt++) {
         pchptr = asn1_get_field_ptr(pval, tt);
         // We mark field as OPTIONAL so its absence can be recognised.
-        ret = asn1_template_ex_d2i(pchptr, &p, len, tt, 1, depth);
+        ret = asn1_template_ex_d2i(pchptr, &p, len, tt, 1, buf, depth);
         // If field not present, try the next one
         if (ret == -1) {
           continue;
@@ -383,7 +391,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         }
         // attempt to read in field, allowing each to be OPTIONAL
 
-        ret = asn1_template_ex_d2i(pseqval, &p, len, seqtt, isopt, depth);
+        ret = asn1_template_ex_d2i(pseqval, &p, len, seqtt, isopt, buf, depth);
         if (!ret) {
           errtt = seqtt;
           goto err;
@@ -422,7 +430,7 @@ static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
         }
       }
       // Save encoding
-      if (!asn1_enc_save(pval, *in, p - *in, it)) {
+      if (!asn1_enc_save(pval, *in, p - *in, it, buf)) {
         goto auxerr;
       }
       if (asn1_cb && !asn1_cb(ASN1_OP_D2I_POST, pval, it, NULL)) {
@@ -449,8 +457,9 @@ err:
 
 int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
                      const ASN1_ITEM *it, int tag, int aclass, char opt,
-                     ASN1_TLC *ctx) {
-  return asn1_item_ex_d2i(pval, in, len, it, tag, aclass, opt, 0);
+                     CRYPTO_BUFFER *buf) {
+  return asn1_item_ex_d2i(pval, in, len, it, tag, aclass, opt, buf,
+                          /*depth=*/0);
 }
 
 // Templates are handled with two separate functions. One handles any
@@ -458,7 +467,7 @@ int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
 
 static int asn1_template_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
                                 long inlen, const ASN1_TEMPLATE *tt, char opt,
-                                int depth) {
+                                CRYPTO_BUFFER *buf, int depth) {
   int aclass;
   int ret;
   long len;
@@ -490,7 +499,7 @@ static int asn1_template_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
       return 0;
     }
     // We've found the field so it can't be OPTIONAL now
-    ret = asn1_template_noexp_d2i(val, &p, len, tt, 0, depth);
+    ret = asn1_template_noexp_d2i(val, &p, len, tt, /*opt=*/0, buf, depth);
     if (!ret) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
       return 0;
@@ -503,7 +512,7 @@ static int asn1_template_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
       goto err;
     }
   } else {
-    return asn1_template_noexp_d2i(val, in, inlen, tt, opt, depth);
+    return asn1_template_noexp_d2i(val, in, inlen, tt, opt, buf, depth);
   }
 
   *in = p;
@@ -516,7 +525,7 @@ err:
 
 static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
                                    long len, const ASN1_TEMPLATE *tt, char opt,
-                                   int depth) {
+                                   CRYPTO_BUFFER *buf, int depth) {
   int aclass;
   int ret;
   const unsigned char *p;
@@ -574,8 +583,8 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
       ASN1_VALUE *skfield;
       const unsigned char *q = p;
       skfield = NULL;
-      if (!asn1_item_ex_d2i(&skfield, &p, len, ASN1_ITEM_ptr(tt->item), -1, 0,
-                            0, depth)) {
+      if (!asn1_item_ex_d2i(&skfield, &p, len, ASN1_ITEM_ptr(tt->item),
+                            /*tag=*/-1, /*aclass=*/0, /*opt=*/0, buf, depth)) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
         goto err;
       }
@@ -589,7 +598,7 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
   } else if (flags & ASN1_TFLG_IMPTAG) {
     // IMPLICIT tagging
     ret = asn1_item_ex_d2i(val, &p, len, ASN1_ITEM_ptr(tt->item), tt->tag,
-                           aclass, opt, depth);
+                           aclass, opt, buf, depth);
     if (!ret) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
       goto err;
@@ -598,8 +607,8 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
     }
   } else {
     // Nothing special
-    ret = asn1_item_ex_d2i(val, &p, len, ASN1_ITEM_ptr(tt->item), -1, 0, opt,
-                           depth);
+    ret = asn1_item_ex_d2i(val, &p, len, ASN1_ITEM_ptr(tt->item), /*tag=*/-1,
+                           /*aclass=*/0, opt, buf, depth);
     if (!ret) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
       goto err;
