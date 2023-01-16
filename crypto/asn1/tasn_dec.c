@@ -61,6 +61,7 @@
 #include <openssl/mem.h>
 #include <openssl/pool.h>
 
+#include <assert.h>
 #include <limits.h>
 #include <string.h>
 
@@ -144,20 +145,35 @@ unsigned long ASN1_tag2bit(int tag) {
 
 ASN1_VALUE *ASN1_item_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
                           const ASN1_ITEM *it) {
-  ASN1_VALUE *ptmpval = NULL;
-  if (!pval) {
-    pval = &ptmpval;
+  ASN1_VALUE *ret = NULL;
+  if (asn1_item_ex_d2i(&ret, in, len, it, /*tag=*/-1, /*aclass=*/0, /*opt=*/0,
+                       /*buf=*/NULL, /*depth=*/0) <= 0) {
+    // Clean up, in case the caller left a partial object.
+    //
+    // TODO(davidben): I don't think it can leave one, but the codepaths below
+    // are a bit inconsistent. Revisit this when rewriting this function.
+    ASN1_item_ex_free(&ret, it);
   }
 
-  if (asn1_item_ex_d2i(pval, in, len, it, /*tag=*/-1, /*aclass=*/0, /*opt=*/0,
-                       /*buf=*/NULL, /*depth=*/0) > 0) {
-    return *pval;
+  // If the caller supplied an output pointer, free the old one and replace it
+  // with |ret|. This differs from OpenSSL slightly in that we don't support
+  // object reuse. We run this on both success and failure. On failure, even
+  // with object reuse, OpenSSL destroys the previous object.
+  if (pval != NULL) {
+    ASN1_item_ex_free(pval, it);
+    *pval = ret;
   }
-  return NULL;
+  return ret;
 }
 
 // Decode an item, taking care of IMPLICIT tagging, if any. If 'opt' set and
 // tag mismatch return -1 to handle OPTIONAL
+//
+// TODO(davidben): Historically, all functions in this file had to account for
+// |*pval| containing an arbitrary existing value. This is no longer the case
+// because |ASN1_item_d2i| now always starts from NULL. As part of rewriting
+// this function, take the simplified assumptions into account. Though we must
+// still account for the internal calls to |ASN1_item_ex_new|.
 
 static int asn1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
                             long len, const ASN1_ITEM *it, int tag, int aclass,

@@ -146,7 +146,7 @@ OPENSSL_EXPORT X509 *X509_dup(X509 *x509);
 OPENSSL_EXPORT void X509_free(X509 *x509);
 
 // d2i_X509 parses up to |len| bytes from |*inp| as a DER-encoded X.509
-// Certificate (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+// Certificate (RFC 5280), as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT X509 *d2i_X509(X509 **out, const uint8_t **inp, long len);
 
 // X509_parse_from_buffer parses an X.509 structure from |buf| and returns a
@@ -398,8 +398,7 @@ OPENSSL_EXPORT int i2d_X509_AUX(X509 *x509, unsigned char **outp);
 
 // d2i_X509_AUX parses up to |length| bytes from |*inp| as a DER-encoded X.509
 // Certificate (RFC 5280), followed optionally by a separate, OpenSSL-specific
-// structure with auxiliary properties. It behaves as described in
-// |d2i_SAMPLE_with_reuse|.
+// structure with auxiliary properties. It behaves as described in |d2i_SAMPLE|.
 //
 // Some auxiliary properties affect trust decisions, so this function should not
 // be used with untrusted input.
@@ -485,7 +484,7 @@ OPENSSL_EXPORT X509_CRL *X509_CRL_dup(X509_CRL *crl);
 OPENSSL_EXPORT void X509_CRL_free(X509_CRL *crl);
 
 // d2i_X509_CRL parses up to |len| bytes from |*inp| as a DER-encoded X.509
-// CertificateList (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+// CertificateList (RFC 5280), as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT X509_CRL *d2i_X509_CRL(X509_CRL **out, const uint8_t **inp,
                                       long len);
 
@@ -699,7 +698,7 @@ OPENSSL_EXPORT X509_REQ *X509_REQ_dup(X509_REQ *req);
 OPENSSL_EXPORT void X509_REQ_free(X509_REQ *req);
 
 // d2i_X509_REQ parses up to |len| bytes from |*inp| as a DER-encoded
-// CertificateRequest (RFC 2986), as described in |d2i_SAMPLE_with_reuse|.
+// CertificateRequest (RFC 2986), as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT X509_REQ *d2i_X509_REQ(X509_REQ **out, const uint8_t **inp,
                                       long len);
 
@@ -850,7 +849,7 @@ OPENSSL_EXPORT X509_NAME *X509_NAME_new(void);
 OPENSSL_EXPORT void X509_NAME_free(X509_NAME *name);
 
 // d2i_X509_NAME parses up to |len| bytes from |*inp| as a DER-encoded X.509
-// Name (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+// Name (RFC 5280), as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT X509_NAME *d2i_X509_NAME(X509_NAME **out, const uint8_t **inp,
                                         long len);
 
@@ -970,7 +969,7 @@ OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_new(void);
 OPENSSL_EXPORT void X509_NAME_ENTRY_free(X509_NAME_ENTRY *entry);
 
 // d2i_X509_NAME_ENTRY parses up to |len| bytes from |*inp| as a DER-encoded
-// AttributeTypeAndValue (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+// AttributeTypeAndValue (RFC 5280), as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT X509_NAME_ENTRY *d2i_X509_NAME_ENTRY(X509_NAME_ENTRY **out,
                                                     const uint8_t **inp,
                                                     long len);
@@ -1073,7 +1072,7 @@ OPENSSL_EXPORT X509_EXTENSION *X509_EXTENSION_new(void);
 OPENSSL_EXPORT void X509_EXTENSION_free(X509_EXTENSION *ex);
 
 // d2i_X509_EXTENSION parses up to |len| bytes from |*inp| as a DER-encoded
-// X.509 Extension (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+// X.509 Extension (RFC 5280), as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT X509_EXTENSION *d2i_X509_EXTENSION(X509_EXTENSION **out,
                                                   const uint8_t **inp,
                                                   long len);
@@ -1149,7 +1148,7 @@ typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
 DECLARE_ASN1_ITEM(X509_EXTENSIONS)
 
 // d2i_X509_EXTENSIONS parses up to |len| bytes from |*inp| as a DER-encoded
-// SEQUENCE OF Extension (RFC 5280), as described in |d2i_SAMPLE_with_reuse|.
+// SEQUENCE OF Extension (RFC 5280), as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT X509_EXTENSIONS *d2i_X509_EXTENSIONS(X509_EXTENSIONS **out,
                                                     const uint8_t **inp,
                                                     long len);
@@ -1235,7 +1234,7 @@ OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(const X509_ALGOR *alg);
 OPENSSL_EXPORT void X509_ALGOR_free(X509_ALGOR *alg);
 
 // d2i_X509_ALGOR parses up to |len| bytes from |*inp| as a DER-encoded
-// AlgorithmIdentifier, as described in |d2i_SAMPLE_with_reuse|.
+// AlgorithmIdentifier, as described in |d2i_SAMPLE|.
 OPENSSL_EXPORT X509_ALGOR *d2i_X509_ALGOR(X509_ALGOR **out, const uint8_t **inp,
                                           long len);
 

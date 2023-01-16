@@ -2385,9 +2385,16 @@ TEST(X509Test, TestFromBufferReused) {
                             CRYPTO_BUFFER_data(buf.get()),
                             CRYPTO_BUFFER_len(buf.get())));
 
-  X509 *x509p = root.get();
+  // Historically, this function tested the interaction betweeen
+  // |X509_parse_from_buffer| and object reuse. We no longer support object
+  // reuse, so |d2i_X509| will replace |raw| with a new object. However, we
+  // retain this test to verify that releasing objects from |d2i_X509| works
+  // correctly.
+  X509 *raw = root.release();
   const uint8_t *inp = data2.get();
-  X509 *ret = d2i_X509(&x509p, &inp, data2_len);
+  X509 *ret = d2i_X509(&raw, &inp, data2_len);
+  root.reset(raw);
+
   ASSERT_EQ(root.get(), ret);
   ASSERT_EQ(nullptr, root->cert_info->enc.buf);
   EXPECT_FALSE(buffers_alias(root->cert_info->enc.enc, root->cert_info->enc.len,
