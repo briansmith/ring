@@ -28,6 +28,7 @@
 #include <type_traits>
 
 #include <openssl/base64.h>
+#include <openssl/hmac.h>
 #include <openssl/hpke.h>
 #include <openssl/rand.h>
 #include <openssl/span.h>
