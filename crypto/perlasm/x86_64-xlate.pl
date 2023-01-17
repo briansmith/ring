@@ -909,11 +909,11 @@ my %globals;
 				    map(s/(0b[0-1]+)/oct($1)/eig,@str);
 				    map(s/0x([0-9a-f]+)/0$1h/ig,@str) if ($masm);
 				    while ($#str>15) {
-					$self->{value}.="DB\t"
+					$self->{value}.="\tDB\t"
 						.join(",",@str[0..15])."\n";
 					foreach (0..15) { shift @str; }
 				    }
-				    $self->{value}.="DB\t"
+				    $self->{value}.="\tDB\t"
 						.join(",",@str) if (@str);
 				    last;
 				  };
