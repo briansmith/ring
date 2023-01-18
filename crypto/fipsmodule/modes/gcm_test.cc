@@ -173,17 +173,17 @@ TEST(GCMTest, ABI) {
 
         aes_hw_set_encrypt_key(kKey, 128, &aes_key);
         for (size_t blocks : kBlockCounts) {
-          CHECK_ABI(aesni_gcm_encrypt, buf, buf, blocks * 16, &aes_key, iv,
-                    gcm.Xi.u);
-          CHECK_ABI(aesni_gcm_encrypt, buf, buf, blocks * 16 + 7, &aes_key, iv,
-                    gcm.Xi.u);
+          CHECK_ABI_SEH(aesni_gcm_encrypt, buf, buf, blocks * 16, &aes_key, iv,
+                        gcm.Xi.u);
+          CHECK_ABI_SEH(aesni_gcm_encrypt, buf, buf, blocks * 16 + 7, &aes_key,
+                        iv, gcm.Xi.u);
         }
         aes_hw_set_decrypt_key(kKey, 128, &aes_key);
         for (size_t blocks : kBlockCounts) {
-          CHECK_ABI(aesni_gcm_decrypt, buf, buf, blocks * 16, &aes_key, iv,
-                    gcm.Xi.u);
-          CHECK_ABI(aesni_gcm_decrypt, buf, buf, blocks * 16 + 7, &aes_key, iv,
-                    gcm.Xi.u);
+          CHECK_ABI_SEH(aesni_gcm_decrypt, buf, buf, blocks * 16, &aes_key, iv,
+                        gcm.Xi.u);
+          CHECK_ABI_SEH(aesni_gcm_decrypt, buf, buf, blocks * 16 + 7, &aes_key,
+                        iv, gcm.Xi.u);
         }
       }
     }
