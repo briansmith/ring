@@ -257,7 +257,7 @@ void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
   CRYPTO_ghash_init(&gcm_key->gmult, &gcm_key->ghash, &gcm_key->H,
                     gcm_key->Htable, &is_avx, ghash_key);
 
-#if defined(OPENSSL_AARCH64)
+#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
     gcm_key->use_hw_gcm_crypt = (gcm_pmull_capable() && block_is_hwaes) ? 1 :
       0;
 #else
