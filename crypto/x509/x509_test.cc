@@ -5115,6 +5115,13 @@ TEST(X509Test, Policy) {
   bssl::UniquePtr<X509> root(
       CertFromPEM(GetTestData("crypto/x509/test/policy_root.pem").c_str()));
   ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> root_cross_inhibit_mapping(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_root_cross_inhibit_mapping.pem")
+          .c_str()));
+  ASSERT_TRUE(root_cross_inhibit_mapping);
+  bssl::UniquePtr<X509> root2(
+      CertFromPEM(GetTestData("crypto/x509/test/policy_root2.pem").c_str()));
+  ASSERT_TRUE(root2);
   bssl::UniquePtr<X509> intermediate(CertFromPEM(
       GetTestData("crypto/x509/test/policy_intermediate.pem").c_str()));
   ASSERT_TRUE(intermediate);
@@ -5515,6 +5522,25 @@ TEST(X509Test, Policy) {
              /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
              [&](X509_VERIFY_PARAM *param) {
                set_policies(param, {oid4.get()});
+             }));
+
+  // Policy mapping can be inhibited, either by the caller or a certificate in
+  // the chain, in which case mapped policies are unassertable (apart from some
+  // anyPolicy edge cases).
+  EXPECT_EQ(
+      X509_V_ERR_NO_EXPLICIT_POLICY,
+      Verify(leaf_oid1.get(), {root.get()}, {intermediate_mapped_oid3.get()},
+             /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY | X509_V_FLAG_INHIBIT_MAP,
+             [&](X509_VERIFY_PARAM *param) {
+               set_policies(param, {oid3.get()});
+             }));
+  EXPECT_EQ(
+      X509_V_ERR_NO_EXPLICIT_POLICY,
+      Verify(leaf_oid1.get(), {root2.get()},
+             {intermediate_mapped_oid3.get(), root_cross_inhibit_mapping.get()},
+             /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+             [&](X509_VERIFY_PARAM *param) {
+               set_policies(param, {oid3.get()});
              }));
 }
 

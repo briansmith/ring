@@ -103,6 +103,20 @@ func main() {
 		panic(err)
 	}
 
+	root2 := templateAndKey{
+		template: x509.Certificate{
+			SerialNumber:          new(big.Int).SetInt64(1),
+			Subject:               pkix.Name{CommonName: "Policy Root 2"},
+			NotBefore:             notBefore,
+			NotAfter:              notAfter,
+			BasicConstraintsValid: true,
+			IsCA:                  true,
+			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+			KeyUsage:              x509.KeyUsageCertSign,
+			SignatureAlgorithm:    x509.ECDSAWithSHA256,
+		},
+		key: rootKey,
+	}
 	root := templateAndKey{
 		template: x509.Certificate{
 			SerialNumber:          new(big.Int).SetInt64(1),
@@ -153,6 +167,10 @@ func main() {
 	mustGenerateCertificate("policy_root.pem", &root, &root)
 	mustGenerateCertificate("policy_intermediate.pem", &intermediate, &root)
 	mustGenerateCertificate("policy_leaf.pem", &leaf, &intermediate)
+
+	// root2 is used for tests that need a longer chain, using a Root/Root2
+	// cross-sign as one of the certificates.
+	mustGenerateCertificate("policy_root2.pem", &root2, &root2)
 
 	// Introduce syntax errors in the leaf and intermediate.
 	leafInvalid := leaf
@@ -284,9 +302,18 @@ func main() {
 	leafSingle.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID5}
 	mustGenerateCertificate("policy_leaf_oid5.pem", &leafSingle, &intermediate)
 
-	// TODO(davidben): Generate more certificates to test policy validation more
-	// extensively, including an intermediate with constraints. For now this
-	// just tests the basic case.
+	// Make version of Root, signed by Root 2, with policy mapping inhibited.
+	// This can be combined with intermediateMapped to test the combination.
+	b = cryptobyte.NewBuilder(nil)
+	b.AddASN1(cbasn1.SEQUENCE, func(seq *cryptobyte.Builder) {
+		seq.AddASN1Int64WithTag(0, cbasn1.Tag(1).ContextSpecific())
+	})
+	inhibitPolicyMapping0 := b.BytesOrPanic()
+
+	inhibitMapping := root
+	inhibitMapping.template.PolicyIdentifiers = []asn1.ObjectIdentifier{anyPolicyOID}
+	inhibitMapping.template.ExtraExtensions = []pkix.Extension{{Id: policyConstraintsOID, Value: inhibitPolicyMapping0}}
+	mustGenerateCertificate("policy_root_cross_inhibit_mapping.pem", &inhibitMapping, &root2)
 }
 
 const leafKeyPEM = `-----BEGIN PRIVATE KEY-----

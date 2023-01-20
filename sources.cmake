@@ -134,7 +134,9 @@ set(
   crypto/x509/test/policy_leaf_require.pem
   crypto/x509/test/policy_leaf_require1.pem
   crypto/x509/test/policy_leaf.pem
+  crypto/x509/test/policy_root_cross_inhibit_mapping.pem
   crypto/x509/test/policy_root.pem
+  crypto/x509/test/policy_root2.pem
   crypto/x509/test/pss_sha1_explicit.pem
   crypto/x509/test/pss_sha1_mgf1_syntax_error.pem
   crypto/x509/test/pss_sha1.pem

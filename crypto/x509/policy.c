@@ -563,7 +563,7 @@ static int process_policy_constraints(const X509 *x509, size_t *explicit_policy,
     }
     int ok =
         apply_skip_certs(constraints->requireExplicitPolicy, explicit_policy) &&
-        apply_skip_certs(constraints->inhibitPolicyMapping, inhibit_any_policy);
+        apply_skip_certs(constraints->inhibitPolicyMapping, policy_mapping);
     POLICY_CONSTRAINTS_free(constraints);
     if (!ok) {
       return 0;
