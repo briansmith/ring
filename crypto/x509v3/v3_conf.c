@@ -83,26 +83,22 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
 static unsigned char *generic_asn1(const char *value, const X509V3_CTX *ctx,
                                    long *ext_len);
 
-static void setup_ctx(X509V3_CTX *out, const CONF *conf,
-                      const X509V3_CTX *ctx_in) {
-  if (ctx_in == NULL) {
-    X509V3_set_ctx(out, NULL, NULL, NULL, NULL, 0);
-  } else {
-    *out = *ctx_in;
-  }
-  X509V3_set_nconf(out, conf);
-}
-
-X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf, const X509V3_CTX *ctx_in,
+X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf, const X509V3_CTX *ctx,
                                  const char *name, const char *value) {
-  X509V3_CTX ctx;
-  setup_ctx(&ctx, conf, ctx_in);
+  // If omitted, fill in an empty |X509V3_CTX|.
+  X509V3_CTX ctx_tmp;
+  if (ctx == NULL) {
+    X509V3_set_ctx(&ctx_tmp, NULL, NULL, NULL, NULL, 0);
+    X509V3_set_nconf(&ctx_tmp, conf);
+    ctx = &ctx_tmp;
+  }
+
   int crit = v3_check_critical(&value);
   int ext_type = v3_check_generic(&value);
   if (ext_type != 0) {
-    return v3_generic_extension(name, value, crit, ext_type, &ctx);
+    return v3_generic_extension(name, value, crit, ext_type, ctx);
   }
-  X509_EXTENSION *ret = do_ext_nconf(conf, &ctx, OBJ_sn2nid(name), crit, value);
+  X509_EXTENSION *ret = do_ext_nconf(conf, ctx, OBJ_sn2nid(name), crit, value);
   if (!ret) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_ERROR_IN_EXTENSION);
     ERR_add_error_data(4, "name=", name, ", value=", value);
@@ -110,17 +106,23 @@ X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf, const X509V3_CTX *ctx_in,
   return ret;
 }
 
-X509_EXTENSION *X509V3_EXT_nconf_nid(const CONF *conf, const X509V3_CTX *ctx_in,
+X509_EXTENSION *X509V3_EXT_nconf_nid(const CONF *conf, const X509V3_CTX *ctx,
                                      int ext_nid, const char *value) {
-  X509V3_CTX ctx;
-  setup_ctx(&ctx, conf, ctx_in);
+  // If omitted, fill in an empty |X509V3_CTX|.
+  X509V3_CTX ctx_tmp;
+  if (ctx == NULL) {
+    X509V3_set_ctx(&ctx_tmp, NULL, NULL, NULL, NULL, 0);
+    X509V3_set_nconf(&ctx_tmp, conf);
+    ctx = &ctx_tmp;
+  }
+
   int crit = v3_check_critical(&value);
   int ext_type = v3_check_generic(&value);
   if (ext_type != 0) {
     return v3_generic_extension(OBJ_nid2sn(ext_nid), value, crit, ext_type,
-                                &ctx);
+                                ctx);
   }
-  return do_ext_nconf(conf, &ctx, ext_nid, crit, value);
+  return do_ext_nconf(conf, ctx, ext_nid, crit, value);
 }
 
 // CONF *conf:  Config file
@@ -143,6 +145,9 @@ static X509_EXTENSION *do_ext_nconf(const CONF *conf, const X509V3_CTX *ctx,
   // Now get internal extension representation based on type
   if (method->v2i) {
     if (*value == '@') {
+      // TODO(davidben): This is the only place where |X509V3_EXT_nconf|'s
+      // |conf| parameter is used. All other codepaths use the copy inside
+      // |ctx|. Should this be switched and then the parameter ignored?
       if (conf == NULL) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_CONFIG_DATABASE);
         return NULL;
@@ -168,6 +173,10 @@ static X509_EXTENSION *do_ext_nconf(const CONF *conf, const X509V3_CTX *ctx,
       return NULL;
     }
   } else if (method->r2i) {
+    // TODO(davidben): Should this check be removed? This matches OpenSSL, but
+    // r2i-based extensions do not necessarily require a config database. The
+    // two built-in extensions only use it some of the time, and already handle
+    // |X509V3_get_section| returning NULL.
     if (!ctx->db) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_CONFIG_DATABASE);
       return NULL;
@@ -416,6 +425,7 @@ void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf) {
 
 void X509V3_set_ctx(X509V3_CTX *ctx, const X509 *issuer, const X509 *subj,
                     const X509_REQ *req, const X509_CRL *crl, int flags) {
+  OPENSSL_memset(ctx, 0, sizeof(*ctx));
   ctx->issuer_cert = issuer;
   ctx->subject_cert = subj;
   ctx->crl = crl;

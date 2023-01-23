@@ -565,8 +565,8 @@ OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
 
 // v3_ext_ctx, aka |X509V3_CTX|, contains additional context information for
 // constructing extensions. Some string formats reference additional values in
-// these objects. It must be initialized with both |X509V3_set_ctx| and
-// |X509V3_set_nconf| before use.
+// these objects. It must be initialized with |X509V3_set_ctx| or
+// |X509V3_set_ctx_test| before use.
 struct v3_ext_ctx {
   int flags;
   const X509 *issuer_cert;
@@ -578,16 +578,12 @@ struct v3_ext_ctx {
 
 #define X509V3_CTX_TEST 0x1
 
-// X509V3_set_ctx partially initializes |ctx| with the specified objects. Some
-// string formats will reference fields in these objects. Each object may be
-// NULL to omit it, in which case those formats cannot be used. |flags| should
-// be zero, unless called via |X509V3_set_ctx_test|.
+// X509V3_set_ctx initializes |ctx| with the specified objects. Some string
+// formats will reference fields in these objects. Each object may be NULL to
+// omit it, in which case those formats cannot be used. |flags| should be zero,
+// unless called via |X509V3_set_ctx_test|.
 //
 // |issuer|, |subject|, |req|, and |crl|, if non-NULL, must outlive |ctx|.
-//
-// WARNING: This function only partially initializes |ctx|. Unless otherwise
-// documented, callers must also call |X509V3_set_nconf| or
-// |X509V3_set_ctx_nodb|.
 OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, const X509 *issuer,
                                    const X509 *subject, const X509_REQ *req,
                                    const X509_CRL *crl, int flags);
@@ -597,21 +593,15 @@ OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, const X509 *issuer,
 // incomplete and should be discarded. This can be used to partially validate
 // syntax.
 //
-// WARNING: This function only partially initializes |ctx|. Unless otherwise
-// documented, callers must also call |X509V3_set_nconf| or
-// |X509V3_set_ctx_nodb|.
-//
 // TODO(davidben): Can we remove this?
 #define X509V3_set_ctx_test(ctx) \
   X509V3_set_ctx(ctx, NULL, NULL, NULL, NULL, X509V3_CTX_TEST)
 
-// X509V3_set_nconf partially initializes |ctx| with |conf| as the config
-// database. Some string formats will reference sections in |conf|. |conf| may
-// be NULL, in which case these formats cannot be used. If non-NULL, |conf| must
-// outlive |ctx|.
-//
-// WARNING: This function only partially initializes |ctx|. Callers must also
-// call |X509V3_set_ctx| or |X509V3_set_ctx_test|.
+// X509V3_set_nconf sets |ctx| to use |conf| as the config database. |ctx| must
+// have previously been initialized by |X509V3_set_ctx| or
+// |X509V3_set_ctx_test|. Some string formats will reference sections in |conf|.
+// |conf| may be NULL, in which case these formats cannot be used. If non-NULL,
+// |conf| must outlive |ctx|.
 OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf);
 
 // X509V3_set_ctx_nodb calls |X509V3_set_nconf| with no config database.
@@ -624,8 +614,11 @@ OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf);
 // in which case features which use it will be disabled.
 //
 // If non-NULL, |ctx| must be initialized with |X509V3_set_ctx| or
-// |X509V3_set_ctx_test|. This function implicitly calls |X509V3_set_nconf| with
-// |conf|, so it is safe to only call |X509V3_set_ctx|.
+// |X509V3_set_ctx_test|.
+//
+// Both |conf| and |ctx| provide a |CONF| object. When |ctx| is non-NULL, most
+// features use the |ctx| copy, configured with |X509V3_set_ctx|, but some use
+// |conf|. Callers should ensure the two match to avoid surprisingly behavior.
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf,
                                                 const X509V3_CTX *ctx,
                                                 const char *name,

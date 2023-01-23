@@ -6120,6 +6120,7 @@ key = FORMAT:HEX,OCTWRAP,OCT:9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703
     // Repeat the test with an explicit |X509V3_CTX|.
     X509V3_CTX ctx;
     X509V3_set_ctx(&ctx, nullptr, nullptr, nullptr, nullptr, 0);
+    X509V3_set_nconf(&ctx, conf.get());
     ext.reset(X509V3_EXT_nconf(conf.get(), &ctx, t.name, t.value));
     if (t.expected.empty()) {
       EXPECT_FALSE(ext);
