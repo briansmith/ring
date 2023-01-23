@@ -11901,17 +11901,36 @@ func addCurveTests() {
 		},
 	})
 
-	// ... but only if CECPQ2 is listed first.
+	// ... and the other way around
 	testCases = append(testCases, testCase{
-		name: "CECPQ2KeyShareNotIncludedSecond",
+		name: "CECPQ2KeyShareIncludedSecond",
 		config: Config{
 			MinVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveX25519},
+				ExpectedKeyShares: []CurveID{CurveX25519, CurveCECPQ2},
 			},
 		},
 		flags: []string{
 			"-curves", strconv.Itoa(int(CurveX25519)),
+			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
+		},
+	})
+
+        // ... and even if there's another curve in the middle because it's the
+        // first classical and first post-quantum "curves" that get key shares
+        // included.
+	testCases = append(testCases, testCase{
+		name: "CECPQ2KeyShareIncludedThird",
+		config: Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExpectedKeyShares: []CurveID{CurveX25519, CurveCECPQ2},
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveX25519)),
+			"-curves", strconv.Itoa(int(CurveP256)),
 			"-curves", strconv.Itoa(int(CurveCECPQ2)),
 			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
 		},

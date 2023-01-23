@@ -2307,11 +2307,13 @@ bool ssl_setup_key_shares(SSL_HANDSHAKE *hs, uint16_t override_group_id) {
 
     group_id = groups[0];
 
-    if (is_post_quantum_group(group_id) && groups.size() >= 2) {
-      // CECPQ2(b) is not sent as the only initial key share. We'll include the
-      // 2nd preference group too to avoid round-trips.
-      second_group_id = groups[1];
-      assert(second_group_id != group_id);
+    // We'll try to include one post-quantum and one classical initial key
+    // share.
+    for (size_t i = 1; i < groups.size() && second_group_id == 0; i++) {
+      if (is_post_quantum_group(group_id) != is_post_quantum_group(groups[i])) {
+        second_group_id = groups[i];
+        assert(second_group_id != group_id);
+      }
     }
   }
 
