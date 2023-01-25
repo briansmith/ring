@@ -290,7 +290,12 @@ ___
 \%ifidn __OUTPUT_FORMAT__, win32
 ___
         print @out;
-        print "\%endif\n";
+        print <<___ unless $masm;
+\%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
+\%endif
+___
     } else {
         my $target;
         if ($elf) {

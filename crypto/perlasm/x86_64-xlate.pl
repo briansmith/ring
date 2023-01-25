@@ -1609,7 +1609,12 @@ if ($masm) {
 #endif
 ___
 } elsif ($nasm) {
-    print "\%endif\n";
+    print <<___;
+\%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
+\%endif
+___
 } else {
     die "unknown assembler";
 }
