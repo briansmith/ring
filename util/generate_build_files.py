@@ -25,6 +25,9 @@ import json
 
 # OS_ARCH_COMBOS maps from OS and platform to the OpenSSL assembly "style" for
 # that platform and the extension used by asm files.
+#
+# TODO(https://crbug.com/boringssl/524): This probably should be a map, but some
+# downstream scripts import this to find what folders to add/remove from git.
 OS_ARCH_COMBOS = [
     ('apple', 'arm', 'ios32', [], 'S'),
     ('apple', 'aarch64', 'ios64', [], 'S'),
@@ -164,6 +167,9 @@ class Android(object):
     Returns:
       A copy of |asm| with files filtered according to |want_bcm|
     """
+    # TODO(https://crbug.com/boringssl/542): Rather than filtering by filename,
+    # use the variable listed in the CMake perlasm line, available in
+    # ExtractPerlAsmFromCMakeFile.
     return [(archinfo, filter(lambda p: ("/crypto/fipsmodule/" in p) == want_bcm, files))
             for (archinfo, files) in asm]
 
@@ -696,12 +702,12 @@ def ExtractPerlAsmFromCMakeFile(cmakefile):
         raise ValueError('Bad perlasm line in %s' % cmakefile)
       # Remove "perlasm(" from start and ")" from end
       params = line[8:-1].split()
-      if len(params) < 2:
+      if len(params) != 4:
         raise ValueError('Bad perlasm line in %s' % cmakefile)
       perlasms.append({
-          'extra_args': params[2:],
-          'input': os.path.join(os.path.dirname(cmakefile), params[1]),
-          'output': os.path.join(os.path.dirname(cmakefile), params[0]),
+          'arch': params[1],
+          'output': os.path.join(os.path.dirname(cmakefile), params[2]),
+          'input': os.path.join(os.path.dirname(cmakefile), params[3]),
       })
 
   return perlasms
@@ -728,51 +734,28 @@ def PerlAsm(output_filename, input_filename, perlasm_style, extra_args):
       ['perl', input_filename, perlasm_style] + extra_args + [output_filename])
 
 
-def ArchForAsmFilename(filename):
-  """Returns the architectures that a given asm file should be compiled for
-  based on substrings in the filename."""
-
-  if 'x86_64' in filename or 'avx2' in filename:
-    return ['x86_64']
-  elif ('x86' in filename and 'x86_64' not in filename) or '586' in filename:
-    return ['x86']
-  elif 'armx' in filename:
-    return ['arm', 'aarch64']
-  elif 'armv8' in filename:
-    return ['aarch64']
-  elif 'arm' in filename:
-    return ['arm']
-  elif 'ppc' in filename:
-    return ['ppc64le']
-  else:
-    raise ValueError('Unknown arch for asm filename: ' + filename)
-
-
 def WriteAsmFiles(perlasms):
   """Generates asm files from perlasm directives for each supported OS x
   platform combination."""
   asmfiles = {}
 
-  for osarch in OS_ARCH_COMBOS:
-    (osname, arch, perlasm_style, extra_args, asm_ext) = osarch
-    key = (osname, arch)
-    outDir = '%s-%s' % key
-
-    for perlasm in perlasms:
-      filename = os.path.basename(perlasm['input'])
+  for perlasm in perlasms:
+    for (osname, arch, perlasm_style, extra_args, asm_ext) in OS_ARCH_COMBOS:
+      if arch != perlasm['arch']:
+        continue
+      # TODO(https://crbug.com/boringssl/524): Now that we incorporate osname in
+      # the output filename, the asm files can just go in a single directory.
+      # For now, we keep them in target-specific directories to avoid breaking
+      # downstream scripts.
+      key = (osname, arch)
+      outDir = '%s-%s' % key
       output = perlasm['output']
       if not output.startswith('src'):
         raise ValueError('output missing src: %s' % output)
       output = os.path.join(outDir, output[4:])
-      if output.endswith('-armx.${ASM_EXT}'):
-        output = output.replace('-armx',
-                                '-armx64' if arch == 'aarch64' else '-armx32')
-      output = output.replace('${ASM_EXT}', asm_ext)
-
-      if arch in ArchForAsmFilename(filename):
-        PerlAsm(output, perlasm['input'], perlasm_style,
-                perlasm['extra_args'] + extra_args)
-        asmfiles.setdefault(key, []).append(output)
+      output = '%s-%s.%s' % (output, osname, asm_ext)
+      PerlAsm(output, perlasm['input'], perlasm_style, extra_args)
+      asmfiles.setdefault(key, []).append(output)
 
   for (key, non_perl_asm_files) in NON_PERL_FILES.items():
     asmfiles.setdefault(key, []).extend(non_perl_asm_files)

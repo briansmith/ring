@@ -1,95 +1,5 @@
 include_directories(../include)
 
-if(NOT OPENSSL_NO_ASM)
-  if(UNIX)
-    if(ARCH STREQUAL "aarch64")
-      # The "armx" Perl scripts look for "64" in the style argument
-      # in order to decide whether to generate 32- or 64-bit asm.
-      if(APPLE)
-        set(PERLASM_STYLE ios64)
-      else()
-        set(PERLASM_STYLE linux64)
-      endif()
-    elseif(ARCH STREQUAL "arm")
-      if(APPLE)
-        set(PERLASM_STYLE ios32)
-      else()
-        set(PERLASM_STYLE linux32)
-      endif()
-    elseif(ARCH STREQUAL "ppc64le")
-      set(PERLASM_STYLE linux64le)
-    else()
-      if(ARCH STREQUAL "x86")
-        set(PERLASM_FLAGS "-fPIC -DOPENSSL_IA32_SSE2")
-      endif()
-      if(APPLE)
-        set(PERLASM_STYLE macosx)
-      else()
-        set(PERLASM_STYLE elf)
-      endif()
-    endif()
-    set(ASM_EXT S)
-    enable_language(ASM)
-    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
-
-    # Clang's integerated assembler does not support debug symbols.
-    if(NOT CMAKE_ASM_COMPILER_ID MATCHES "Clang")
-      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
-    endif()
-
-    # CMake does not add -isysroot and -arch flags to assembly.
-    if(APPLE)
-      if(CMAKE_OSX_SYSROOT)
-        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -isysroot \"${CMAKE_OSX_SYSROOT}\"")
-      endif()
-      foreach(arch ${CMAKE_OSX_ARCHITECTURES})
-        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -arch ${arch}")
-      endforeach()
-    endif()
-  else()
-    if(ARCH STREQUAL "aarch64")
-      set(PERLASM_STYLE win64)
-      set(ASM_EXT S)
-      enable_language(ASM)
-    else()
-      if(ARCH STREQUAL "x86_64")
-        set(PERLASM_STYLE nasm)
-      else()
-        set(PERLASM_STYLE win32n)
-        set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
-      endif()
-      set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
-
-      # On Windows, we use the NASM output.
-      set(ASM_EXT asm)
-      enable_language(ASM_NASM)
-    endif()
-  endif()
-endif()
-
-function(perlasm dest src)
-  get_filename_component(dir ${dest} DIRECTORY)
-  if(dir STREQUAL "")
-    set(dir ".")
-  endif()
-
-  add_custom_command(
-    OUTPUT ${dest}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-    COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
-    DEPENDS
-    ${src}
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
-    WORKING_DIRECTORY .
-  )
-endfunction()
-
 add_subdirectory(fipsmodule)
 add_subdirectory(test)
 
@@ -104,67 +14,23 @@ if(FIPS_DELOCATE OR FIPS_SHARED)
   )
 endif()
 
-if(ARCH STREQUAL "arm")
-  set(
-    CRYPTO_ARCH_SOURCES
-
-    chacha/chacha-armv4.${ASM_EXT}
-    curve25519/asm/x25519-asm-arm.S
-    poly1305/poly1305_arm_asm.S
-    test/trampoline-armv4.${ASM_EXT}
-  )
-endif()
-
-if(ARCH STREQUAL "aarch64")
-  set(
-    CRYPTO_ARCH_SOURCES
-
-    chacha/chacha-armv8.${ASM_EXT}
-    test/trampoline-armv8.${ASM_EXT}
-    cipher_extra/chacha20_poly1305_armv8.${ASM_EXT}
-  )
-endif()
-
-if(ARCH STREQUAL "ppc64le")
-  set(
-    CRYPTO_ARCH_SOURCES
-
-    test/trampoline-ppc.${ASM_EXT}
-  )
-endif()
-
-if(ARCH STREQUAL "x86")
-  set(
-    CRYPTO_ARCH_SOURCES
-
-    chacha/chacha-x86.${ASM_EXT}
-    test/trampoline-x86.${ASM_EXT}
-  )
-endif()
-
-if(ARCH STREQUAL "x86_64")
-  set(
-    CRYPTO_ARCH_SOURCES
-
-    chacha/chacha-x86_64.${ASM_EXT}
-    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
-    cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
-    test/trampoline-x86_64.${ASM_EXT}
-  )
-endif()
-
-perlasm(chacha/chacha-armv4.${ASM_EXT} chacha/asm/chacha-armv4.pl)
-perlasm(chacha/chacha-armv8.${ASM_EXT} chacha/asm/chacha-armv8.pl)
-perlasm(chacha/chacha-x86.${ASM_EXT} chacha/asm/chacha-x86.pl)
-perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
-perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
-perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
-perlasm(cipher_extra/chacha20_poly1305_armv8.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_armv8.pl)
-perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
-perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
-perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
-perlasm(test/trampoline-x86.${ASM_EXT} test/asm/trampoline-x86.pl)
-perlasm(test/trampoline-x86_64.${ASM_EXT} test/asm/trampoline-x86_64.pl)
+set(
+  CRYPTO_SOURCES_ASM
+  curve25519/asm/x25519-asm-arm.S
+  poly1305/poly1305_arm_asm.S
+)
+perlasm(CRYPTO_SOURCES aarch64 chacha/chacha-armv8 chacha/asm/chacha-armv8.pl)
+perlasm(CRYPTO_SOURCES aarch64 cipher_extra/chacha20_poly1305_armv8 cipher_extra/asm/chacha20_poly1305_armv8.pl)
+perlasm(CRYPTO_SOURCES aarch64 test/trampoline-armv8 test/asm/trampoline-armv8.pl)
+perlasm(CRYPTO_SOURCES arm chacha/chacha-armv4 chacha/asm/chacha-armv4.pl)
+perlasm(CRYPTO_SOURCES arm test/trampoline-armv4 test/asm/trampoline-armv4.pl)
+perlasm(CRYPTO_SOURCES ppc64le test/trampoline-ppc test/asm/trampoline-ppc.pl)
+perlasm(CRYPTO_SOURCES x86 chacha/chacha-x86 chacha/asm/chacha-x86.pl)
+perlasm(CRYPTO_SOURCES x86 test/trampoline-x86 test/asm/trampoline-x86.pl)
+perlasm(CRYPTO_SOURCES x86_64 chacha/chacha-x86_64 chacha/asm/chacha-x86_64.pl)
+perlasm(CRYPTO_SOURCES x86_64 cipher_extra/aes128gcmsiv-x86_64 cipher_extra/asm/aes128gcmsiv-x86_64.pl)
+perlasm(CRYPTO_SOURCES x86_64 cipher_extra/chacha20_poly1305_x86_64 cipher_extra/asm/chacha20_poly1305_x86_64.pl)
+perlasm(CRYPTO_SOURCES x86_64 test/trampoline-x86_64 test/asm/trampoline-x86_64.pl)
 
 add_custom_command(
   OUTPUT err_data.c
@@ -425,13 +291,17 @@ add_library(
   x509v3/v3_utl.c
 
   $<TARGET_OBJECTS:fipsmodule>
-
-  ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
 )
+if(OPENSSL_ASM)
+  target_sources(crypto PRIVATE ${CRYPTO_SOURCES_ASM})
+endif()
+if(OPENSSL_NASM)
+  target_sources(crypto PRIVATE ${CRYPTO_SOURCES_NASM})
+endif()
 target_include_directories(crypto INTERFACE
- $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
- $<INSTALL_INTERFACE:include>
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
 )
 install(TARGETS crypto EXPORT OpenSSLTargets
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
