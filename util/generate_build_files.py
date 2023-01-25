@@ -60,24 +60,35 @@ def PathOf(x):
   return x if not PREFIX else os.path.join(PREFIX, x)
 
 
+LICENSE_TEMPLATE = """Copyright (c) 2015, Google Inc.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.""".split("\n")
+
+def LicenseHeader(comment):
+  lines = []
+  for line in LICENSE_TEMPLATE:
+    if not line:
+      lines.append(comment)
+    else:
+      lines.append("%s %s" % (comment, line))
+  lines.append("")
+  return "\n".join(lines)
+
+
 class Android(object):
 
   def __init__(self):
-    self.header = \
-"""# Copyright (C) 2015 The Android Open Source Project
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+    self.header = LicenseHeader("#") + """
 # This file is created by generate_build_files.py. Do not edit manually.
 """
 
@@ -163,21 +174,7 @@ class Android(object):
 class AndroidCMake(object):
 
   def __init__(self):
-    self.header = \
-"""# Copyright (C) 2019 The Android Open Source Project
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+    self.header = LicenseHeader("#") + """
 # This file is created by generate_build_files.py. Do not edit manually.
 # To specify a custom path prefix, set BORINGSSL_ROOT before including this
 # file, or use list(TRANSFORM ... PREPEND) from CMake 3.12.
@@ -282,21 +279,7 @@ class Bazel(object):
 class Eureka(object):
 
   def __init__(self):
-    self.header = \
-"""# Copyright (C) 2017 The Android Open Source Project
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+    self.header = LicenseHeader("#") + """
 # This file is created by generate_build_files.py. Do not edit manually.
 
 """
@@ -327,11 +310,7 @@ class GN(object):
 
   def __init__(self):
     self.firstSection = True
-    self.header = \
-"""# Copyright 2016 The Chromium Authors
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-
+    self.header = LicenseHeader("#") + """
 # This file is created by generate_build_files.py. Do not edit manually.
 
 """
@@ -386,11 +365,7 @@ class GN(object):
 class GYP(object):
 
   def __init__(self):
-    self.header = \
-"""# Copyright 2016 The Chromium Authors
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-
+    self.header = LicenseHeader("#") + """
 # This file is created by generate_build_files.py. Do not edit manually.
 
 """
@@ -421,11 +396,7 @@ class GYP(object):
 class CMake(object):
 
   def __init__(self):
-    self.header = \
-R'''# Copyright (c) 2019 The Chromium Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-
+    self.header = LicenseHeader("#") + R'''
 # This file is created by generate_build_files.py. Do not edit manually.
 
 cmake_minimum_required(VERSION 3.5)
