@@ -125,10 +125,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-if(MSVC AND NOT CLANG)
-  set(CMAKE_C_STANDARD 11)
-  set(CMAKE_C_STANDARD_REQUIRED ON)
-endif()
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
