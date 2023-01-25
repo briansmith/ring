@@ -401,21 +401,21 @@ class CMake(object):
     self.header = LicenseHeader("#") + R'''
 # This file is created by generate_build_files.py. Do not edit manually.
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 
 project(BoringSSL LANGUAGES C CXX)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CLANG 1)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fno-common -fno-exceptions -fno-rtti")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -fno-common")
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -fvisibility=hidden -fno-common -fno-exceptions -fno-rtti")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden -fno-common -std=c11")
-endif()
-
-# pthread_rwlock_t requires a feature flag.
-if(NOT WIN32)
+# pthread_rwlock_t requires a feature flag on glibc.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=700")
 endif()
 
@@ -425,73 +425,19 @@ if(WIN32)
   add_definitions(-DNOMINMAX)
   # Allow use of fopen.
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  # VS 2017 and higher supports STL-only warning suppressions.
-  # A bug in CMake < 3.13.0 may cause the space in this value to
-  # cause issues when building with NASM. In that case, update CMake.
-  add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
 
-# CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
-# architecture list from CMAKE_OSX_ARCHITECTURES, leaves CMAKE_SYSTEM_PROCESSOR
-# alone, and expects all architecture-specific logic to be conditioned within
-# the source files rather than the build. This does not work for our assembly
-# files, so we fix CMAKE_SYSTEM_PROCESSOR and only support single-architecture
-# builds.
-if(NOT OPENSSL_NO_ASM AND CMAKE_OSX_ARCHITECTURES)
-  list(LENGTH CMAKE_OSX_ARCHITECTURES NUM_ARCHES)
-  if(NOT NUM_ARCHES EQUAL 1)
-    message(FATAL_ERROR "Universal binaries not supported.")
-  endif()
-  list(GET CMAKE_OSX_ARCHITECTURES 0 CMAKE_SYSTEM_PROCESSOR)
-endif()
-
-if(OPENSSL_NO_ASM)
-  add_definitions(-DOPENSSL_NO_ASM)
-  set(ARCH "generic")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
-  set(ARCH "x86_64")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "amd64")
-  set(ARCH "x86_64")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
-  # cmake reports AMD64 on Windows, but we might be building for 32-bit.
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(ARCH "x86_64")
-  else()
-    set(ARCH "x86")
-  endif()
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86")
-  set(ARCH "x86")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "i386")
-  set(ARCH "x86")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "i686")
-  set(ARCH "x86")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
-  set(ARCH "aarch64")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
-  set(ARCH "aarch64")
-# Apple A12 Bionic chipset which is added in iPhone XS/XS Max/XR uses arm64e architecture.
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64e")
-  set(ARCH "aarch64")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
-  set(ARCH "arm")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "mips")
-  # Just to avoid the “unknown processor” error.
-  set(ARCH "generic")
-else()
-  message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
-endif()
-
 if(NOT OPENSSL_NO_ASM)
-  if(UNIX)
+  # On x86 and x86_64 Windows, we use the NASM output.
+  if(WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|amd64|x86|i[3-6]86")
+    enable_language(ASM_NASM)
+    set(OPENSSL_NASM TRUE)
+    set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
+  else()
     enable_language(ASM)
-
-    # Clang's integerated assembler does not support debug symbols.
-    if(NOT CMAKE_ASM_COMPILER_ID MATCHES "Clang")
-      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
-    endif()
-
+    set(OPENSSL_ASM TRUE)
     # CMake does not add -isysroot and -arch flags to assembly.
     if(APPLE)
       if(CMAKE_OSX_SYSROOT)
@@ -501,9 +447,13 @@ if(NOT OPENSSL_NO_ASM)
         set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -arch ${arch}")
       endforeach()
     endif()
-  else()
-    set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -gcv8")
-    enable_language(ASM_NASM)
+    if(NOT WIN32)
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
+    endif()
+    # Clang's integerated assembler does not support debug symbols.
+    if(NOT CMAKE_ASM_COMPILER_ID MATCHES "Clang")
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
+    endif()
   endif()
 endif()
 
@@ -537,7 +487,7 @@ include_directories(src/include)
     out.write(')\n\n')
     out.write('target_link_libraries(%s %s)\n\n' % (name, ' '.join(libs)))
 
-  def PrintSection(self, out, name, files):
+  def PrintVariable(self, out, name, files):
     out.write('set(\n')
     out.write('  %s\n\n' % name)
     for f in sorted(files):
@@ -548,29 +498,35 @@ include_directories(src/include)
     with open('CMakeLists.txt', 'w+') as cmake:
       cmake.write(self.header)
 
+      asm_sources = []
+      nasm_sources = []
       for ((osname, arch), asm_files) in asm_outputs:
-        self.PrintSection(cmake, 'CRYPTO_%s_%s_SOURCES' % (osname, arch),
-            asm_files)
+        if (osname, arch) in (('win', 'x86'), ('win', 'x86_64')):
+          nasm_sources.extend(asm_files)
+        else:
+          asm_sources.extend(asm_files)
+      self.PrintVariable(cmake, 'CRYPTO_SOURCES_ASM', sorted(asm_sources))
+      self.PrintVariable(cmake, 'CRYPTO_SOURCES_NASM', sorted(nasm_sources))
 
       cmake.write(
-R'''if(APPLE)
-  set(CRYPTO_ARCH_SOURCES ${CRYPTO_apple_${ARCH}_SOURCES})
-elseif(UNIX)
-  set(CRYPTO_ARCH_SOURCES ${CRYPTO_linux_${ARCH}_SOURCES})
-elseif(WIN32)
-  set(CRYPTO_ARCH_SOURCES ${CRYPTO_win_${ARCH}_SOURCES})
+R'''if(OPENSSL_ASM)
+  list(APPEND CRYPTO_SOURCES_ASM_USED ${CRYPTO_SOURCES_ASM})
+endif()
+if(OPENSSL_NASM)
+  list(APPEND CRYPTO_SOURCES_ASM_USED ${CRYPTO_SOURCES_NASM})
 endif()
 
 ''')
 
       self.PrintLibrary(cmake, 'crypto',
-          files['crypto'] + ['${CRYPTO_ARCH_SOURCES}'])
+          files['crypto'] + ['${CRYPTO_SOURCES_ASM_USED}'])
       self.PrintLibrary(cmake, 'ssl', files['ssl'])
       self.PrintExe(cmake, 'bssl', files['tool'], ['ssl', 'crypto'])
 
       cmake.write(
-R'''if(NOT WIN32 AND NOT ANDROID)
-  target_link_libraries(crypto pthread)
+R'''if(NOT ANDROID)
+  find_package(Threads REQUIRED)
+  target_link_libraries(crypto Threads::Threads)
 endif()
 
 if(WIN32)
