@@ -248,28 +248,6 @@ OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_issue(
     uint32_t public_metadata, uint8_t private_metadata, size_t max_issuance);
 
 // TRUST_TOKEN_ISSUER_redeem ingests a |request| for token redemption and
-// verifies the token. If the token is valid, a RR is produced with a lifetime
-// of |lifetime| (in seconds), signing over the requested data from the request
-// and the value of the token, storing the result into a newly-allocated buffer
-// and setting |*out| to that buffer and |*out_len| to its length. The extracted
-// |TRUST_TOKEN| is stored into a newly-allocated buffer and stored in
-// |*out_token|. The extracted client data is stored into a newly-allocated
-// buffer and stored in |*out_client_data|. In TrustTokenV1, the extracted
-// redemption time is stored in |*out_redemption_time|. The caller takes
-// ownership of each output buffer and must call |OPENSSL_free| when done. It
-// returns one on success or zero on error.
-//
-// The caller must keep track of all values of |*out_token| seen globally before
-// returning the SRR to the client. If the value has been reused, the caller
-// must discard the SRR and report an error to the caller. Returning an SRR with
-// replayed values allows an attacker to double-spend tokens.
-OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem(
-    const TRUST_TOKEN_ISSUER *ctx, uint8_t **out, size_t *out_len,
-    TRUST_TOKEN **out_token, uint8_t **out_client_data,
-    size_t *out_client_data_len, uint64_t *out_redemption_time,
-    const uint8_t *request, size_t request_len, uint64_t lifetime);
-
-// TRUST_TOKEN_ISSUER_redeem_raw ingests a |request| for token redemption and
 // verifies the token. The public metadata is stored in |*out_public|. The
 // private metadata (if any) is stored in |*out_private|. The extracted
 // |TRUST_TOKEN| is stored into a newly-allocated buffer and stored in
@@ -282,10 +260,14 @@ OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem(
 // returning a response to the client. If the value has been reused, the caller
 // must report an error to the client. Returning a response with replayed values
 // allows an attacker to double-spend tokens.
-OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem_raw(
+OPENSSL_EXPORT int TRUST_TOKEN_ISSUER_redeem(
     const TRUST_TOKEN_ISSUER *ctx, uint32_t *out_public, uint8_t *out_private,
     TRUST_TOKEN **out_token, uint8_t **out_client_data,
     size_t *out_client_data_len, const uint8_t *request, size_t request_len);
+
+// TRUST_TOKEN_ISSUER_redeem_raw is a legacy alias for
+// |TRUST_TOKEN_ISSUER_redeem|.
+#define TRUST_TOKEN_ISSUER_redeem_raw TRUST_TOKEN_ISSUER_redeem
 
 // TRUST_TOKEN_ISSUER_redeem_over_message ingests a |request| for token
 // redemption and a message and verifies the token and that it is derived from
