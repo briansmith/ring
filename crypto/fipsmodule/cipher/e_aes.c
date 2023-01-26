@@ -1468,8 +1468,6 @@ int EVP_has_aes_hardware(void) {
   return hwaes_capable() && crypto_gcm_clmul_enabled();
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
   return hwaes_capable() && CRYPTO_is_ARMv8_PMULL_capable();
-#elif defined(OPENSSL_PPC64LE)
-  return CRYPTO_is_PPC64LE_vcrypto_capable();
 #else
   return 0;
 #endif

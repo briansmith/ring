@@ -166,7 +166,7 @@ extern "C" {
 
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
-    defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
+    defined(OPENSSL_AARCH64)
 // OPENSSL_cpuid_setup initializes the platform-specific feature cache.
 void OPENSSL_cpuid_setup(void);
 #endif
@@ -1250,16 +1250,6 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
 }
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
-
-#if defined(OPENSSL_PPC64LE)
-
-// CRYPTO_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
-// the Vector.AES category of instructions.
-int CRYPTO_is_PPC64LE_vcrypto_capable(void);
-
-extern unsigned long OPENSSL_ppc64le_hwcap2;
-
-#endif  // OPENSSL_PPC64LE
 
 #if defined(BORINGSSL_DISPATCH_TEST)
 // Runtime CPU dispatch testing support

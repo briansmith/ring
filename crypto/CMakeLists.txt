@@ -24,7 +24,6 @@ perlasm(CRYPTO_SOURCES aarch64 cipher_extra/chacha20_poly1305_armv8 cipher_extra
 perlasm(CRYPTO_SOURCES aarch64 test/trampoline-armv8 test/asm/trampoline-armv8.pl)
 perlasm(CRYPTO_SOURCES arm chacha/chacha-armv4 chacha/asm/chacha-armv4.pl)
 perlasm(CRYPTO_SOURCES arm test/trampoline-armv4 test/asm/trampoline-armv4.pl)
-perlasm(CRYPTO_SOURCES ppc64le test/trampoline-ppc test/asm/trampoline-ppc.pl)
 perlasm(CRYPTO_SOURCES x86 chacha/chacha-x86 chacha/asm/chacha-x86.pl)
 perlasm(CRYPTO_SOURCES x86 test/trampoline-x86 test/asm/trampoline-x86.pl)
 perlasm(CRYPTO_SOURCES x86_64 chacha/chacha-x86_64 chacha/asm/chacha-x86_64.pl)
@@ -135,7 +134,6 @@ add_library(
   cpu_arm_linux.c
   cpu_arm.c
   cpu_intel.c
-  cpu_ppc64le.c
   crypto.c
   curve25519/curve25519.c
   curve25519/spake25519.c

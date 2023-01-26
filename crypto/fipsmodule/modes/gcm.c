@@ -230,13 +230,6 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     *out_hash = gcm_ghash_neon;
     return;
   }
-#elif defined(GHASH_ASM_PPC64LE)
-  if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
-    gcm_init_p8(out_table, H);
-    *out_mult = gcm_gmult_p8;
-    *out_hash = gcm_ghash_p8;
-    return;
-  }
 #endif
 
   gcm_init_nohw(out_table, H);

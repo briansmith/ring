@@ -59,12 +59,6 @@ OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 OPENSSL_INLINE int vpaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #endif
 
-#elif defined(OPENSSL_PPC64LE)
-#define HWAES
-
-OPENSSL_INLINE int hwaes_capable(void) {
-  return CRYPTO_is_PPC64LE_vcrypto_capable();
-}
 #endif
 
 #endif  // !NO_ASM

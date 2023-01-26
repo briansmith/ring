@@ -25,12 +25,10 @@ static_assert(sizeof(ossl_ssize_t) == sizeof(size_t),
               "ossl_ssize_t should be the same size as size_t");
 
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_STATIC_ARMCAP) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) || \
-     defined(OPENSSL_PPC64LE))
-// x86, x86_64, the ARMs and ppc64le need to record the result of a
-// cpuid/getauxval call for the asm to work correctly, unless compiled without
-// asm code.
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) ||            \
+     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
+// x86, x86_64, and the ARMs need to record the result of a cpuid/getauxval call
+// for the asm to work correctly, unless compiled without asm code.
 #define NEED_CPUID
 
 #else
@@ -41,8 +39,7 @@ static_assert(sizeof(ossl_ssize_t) == sizeof(size_t),
 #define BORINGSSL_NO_STATIC_INITIALIZER
 #endif
 
-#endif  // !NO_ASM && !STATIC_ARMCAP &&
-        // (X86 || X86_64 || ARM || AARCH64 || PPC64LE)
+#endif  // !NO_ASM && !STATIC_ARMCAP && (X86 || X86_64 || ARM || AARCH64)
 
 
 // Our assembly does not use the GOT to reference symbols, which means
@@ -80,10 +77,6 @@ HIDDEN uint8_t BORINGSSL_function_hit[7] = {0};
 
 // This value must be explicitly initialized to zero. See similar comment above.
 HIDDEN uint32_t OPENSSL_ia32cap_P[4] = {0};
-
-#elif defined(OPENSSL_PPC64LE)
-
-HIDDEN unsigned long OPENSSL_ppc64le_hwcap2 = 0;
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 

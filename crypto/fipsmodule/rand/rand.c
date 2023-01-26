@@ -416,11 +416,6 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // Take a read lock around accesses to |state->drbg|. This is needed to
     // avoid returning bad entropy if we race with
     // |rand_thread_state_clear_all|.
-    //
-    // This lock must be taken after any calls to |CRYPTO_sysrand| to avoid a
-    // bug on ppc64le. glibc may implement pthread locks by wrapping user code
-    // in a hardware transaction, but, on some older versions of glibc and the
-    // kernel, syscalls made with |syscall| did not abort the transaction.
     CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
 #endif
     if (!CTR_DRBG_reseed(&state->drbg, seed, reseed_additional_data,

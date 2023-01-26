@@ -17,7 +17,6 @@ function(add_perlasm_target dest src)
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/crypto/perlasm/arm-xlate.pl
-    ${PROJECT_SOURCE_DIR}/crypto/perlasm/ppc-xlate.pl
     ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
     ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
     ${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
@@ -41,9 +40,6 @@ function(perlasm var arch dest src)
     add_perlasm_target("${dest}-apple.S" ${src} ios32)
     add_perlasm_target("${dest}-linux.S" ${src} linux32)
     append_to_parent_scope("${var}_ASM" "${dest}-apple.S" "${dest}-linux.S")
-  elseif(arch STREQUAL "ppc64le")
-    add_perlasm_target("${dest}-linux.S" ${src} linux64le)
-    append_to_parent_scope("${var}_ASM" "${dest}-linux.S")
   elseif(arch STREQUAL "x86")
     add_perlasm_target("${dest}-apple.S" ${src} macosx -fPIC -DOPENSSL_IA32_SSE2)
     add_perlasm_target("${dest}-linux.S" ${src} elf -fPIC -DOPENSSL_IA32_SSE2)

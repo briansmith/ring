@@ -308,13 +308,6 @@ void aes_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
                         void *Xi, uint8_t *ivec, const AES_KEY *key);
 #endif
 
-#elif defined(OPENSSL_PPC64LE)
-#define GHASH_ASM_PPC64LE
-#define GCM_FUNCREF
-void gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_p8(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                  size_t len);
 #endif
 #endif  // OPENSSL_NO_ASM
 

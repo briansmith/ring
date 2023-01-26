@@ -12,7 +12,7 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-# This is a rough parser for x86-64 and ppc64le assembly designed to work with
+# This is a rough parser for x86-64 and aarch64 assembly designed to work with
 # https://github.com/pointlander/peg. delocate.go has a go:generate line for
 # rebuilding delocate.peg.go from this file.
 

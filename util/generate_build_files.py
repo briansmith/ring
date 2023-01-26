@@ -35,7 +35,6 @@ OS_ARCH_COMBOS = [
     ('apple', 'x86_64', 'macosx', [], 'S'),
     ('linux', 'arm', 'linux32', [], 'S'),
     ('linux', 'aarch64', 'linux64', [], 'S'),
-    ('linux', 'ppc64le', 'linux64le', [], 'S'),
     ('linux', 'x86', 'elf', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
     ('linux', 'x86_64', 'elf', [], 'S'),
     ('win', 'x86', 'win32n', ['-DOPENSSL_IA32_SSE2'], 'asm'),
@@ -142,7 +141,7 @@ class Android(object):
     if asm_outputs:
       blueprint.write('    target: {\n')
       for ((osname, arch), asm_files) in asm_outputs:
-        if osname != 'linux' or arch == 'ppc64le':
+        if osname != 'linux':
           continue
         if arch == 'aarch64':
           arch = 'arm64'
@@ -480,8 +479,6 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "mips")
   # Just to avoid the “unknown processor” error.
   set(ARCH "generic")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
-  set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
 endif()

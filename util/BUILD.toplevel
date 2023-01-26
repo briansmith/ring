@@ -24,7 +24,6 @@ load(
     "crypto_sources_apple_x86_64",
     "crypto_sources_linux_aarch64",
     "crypto_sources_linux_arm",
-    "crypto_sources_linux_ppc64le",
     "crypto_sources_linux_x86",
     "crypto_sources_linux_x86_64",
     "fips_fragments",
@@ -65,14 +64,6 @@ exports_files(["LICENSE"])
     ]
 ]
 
-config_setting(
-    name = "linux_ppc64le",
-    constraint_values = [
-        "@platforms//os:linux",
-        "@platforms//cpu:ppc",
-    ],
-)
-
 posix_copts = [
     # Assembler option --noexecstack adds .note.GNU-stack to each object to
     # ensure that binaries can be built with non-executable stack.
@@ -110,7 +101,6 @@ boringssl_copts = select({
 
 # These selects must be kept in sync.
 crypto_sources_asm = select({
-    ":linux_ppc64le": crypto_sources_linux_ppc64le,
     ":linux_armv7": crypto_sources_linux_arm,
     ":linux_arm64": crypto_sources_linux_aarch64,
     ":linux_x86_32": crypto_sources_linux_x86,
@@ -138,7 +128,6 @@ crypto_sources_asm = select({
     "//conditions:default": [],
 })
 boringssl_copts += select({
-    ":linux_ppc64le": [],
     ":linux_armv7": [],
     ":linux_arm64": [],
     ":linux_x86_32": [],
