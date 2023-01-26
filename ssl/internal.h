@@ -1062,14 +1062,6 @@ class SSLKeyShare {
   // nullptr on error.
   static UniquePtr<SSLKeyShare> Create(uint16_t group_id);
 
-  // Create deserializes an SSLKeyShare instance previously serialized by
-  // |Serialize|.
-  static UniquePtr<SSLKeyShare> Create(CBS *in);
-
-  // Serializes writes the group ID and private key, in a format that can be
-  // read by |Create|.
-  bool Serialize(CBB *out);
-
   // GroupID returns the group ID.
   virtual uint16_t GroupID() const PURE_VIRTUAL;
 

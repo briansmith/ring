@@ -376,31 +376,6 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
   }
 }
 
-UniquePtr<SSLKeyShare> SSLKeyShare::Create(CBS *in) {
-  uint64_t group;
-  CBS private_key;
-  if (!CBS_get_asn1_uint64(in, &group) || group > 0xffff ||
-      !CBS_get_asn1(in, &private_key, CBS_ASN1_OCTETSTRING)) {
-    return nullptr;
-  }
-  UniquePtr<SSLKeyShare> key_share = Create(static_cast<uint16_t>(group));
-  if (!key_share || !key_share->DeserializePrivateKey(&private_key)) {
-    return nullptr;
-  }
-  return key_share;
-}
-
-bool SSLKeyShare::Serialize(CBB *out) {
-  CBB private_key;
-  if (!CBB_add_asn1_uint64(out, GroupID()) ||
-      !CBB_add_asn1(out, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !SerializePrivateKey(&private_key) ||  //
-      !CBB_flush(out)) {
-    return false;
-  }
-  return true;
-}
-
 bool SSLKeyShare::Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
                          uint8_t *out_alert, Span<const uint8_t> peer_key) {
   *out_alert = SSL_AD_INTERNAL_ERROR;

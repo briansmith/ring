@@ -387,9 +387,14 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
       !CBB_add_asn1(&seq, &key_share, CBS_ASN1_SEQUENCE)) {
     return false;
   }
-  if (type == handback_after_ecdhe &&
-      !s3->hs->key_shares[0]->Serialize(&key_share)) {
-    return false;
+  if (type == handback_after_ecdhe) {
+    CBB private_key;
+    if (!CBB_add_asn1_uint64(&key_share, s3->hs->key_shares[0]->GroupID()) ||
+        !CBB_add_asn1(&key_share, &private_key, CBS_ASN1_OCTETSTRING) ||
+        !s3->hs->key_shares[0]->SerializePrivateKey(&private_key) ||
+        !CBB_flush(&key_share)) {
+      return false;
+    }
   }
   if (type == handback_tls13) {
     early_data_t early_data;
@@ -714,9 +719,19 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   }
   s3->read_sequence = CRYPTO_load_u64_be(read_sequence);
   s3->write_sequence = CRYPTO_load_u64_be(write_sequence);
-  if (type == handback_after_ecdhe &&
-      (hs->key_shares[0] = SSLKeyShare::Create(&key_share)) == nullptr) {
-    return false;
+  if (type == handback_after_ecdhe) {
+    uint64_t group_id;
+    CBS private_key;
+    if (!CBS_get_asn1_uint64(&key_share, &group_id) ||  //
+        group_id > 0xffff ||
+        !CBS_get_asn1(&key_share, &private_key, CBS_ASN1_OCTETSTRING)) {
+      return false;
+    }
+    hs->key_shares[0] = SSLKeyShare::Create(group_id);
+    if (!hs->key_shares[0] ||
+        !hs->key_shares[0]->DeserializePrivateKey(&private_key)) {
+      return false;
+    }
   }
   return true;  // Trailing data allowed for extensibility.
 }
