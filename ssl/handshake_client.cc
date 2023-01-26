@@ -1117,7 +1117,6 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
-    hs->new_session->group_id = group_id;
 
     // Ensure the group is consistent with preferences.
     if (!tls1_check_group_id(hs, group_id)) {
@@ -1126,10 +1125,9 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    // Initialize ECDH and save the peer public key for later.
-    hs->key_shares[0] = SSLKeyShare::Create(group_id);
-    if (!hs->key_shares[0] ||
-        !hs->peer_key.CopyFrom(point)) {
+    // Save the group and peer public key for later.
+    hs->new_session->group_id = group_id;
+    if (!hs->peer_key.CopyFrom(point)) {
       return ssl_hs_error;
     }
   } else if (!(alg_k & SSL_kPSK)) {
@@ -1465,15 +1463,16 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
   } else if (alg_k & SSL_kECDHE) {
-    // Generate a keypair and serialize the public half.
     CBB child;
     if (!CBB_add_u8_length_prefixed(&body, &child)) {
       return ssl_hs_error;
     }
 
-    // Compute the premaster.
+    // Generate the premaster secret.
+    bssl::UniquePtr<SSLKeyShare> key_share =
+        SSLKeyShare::Create(hs->new_session->group_id);
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!hs->key_shares[0]->Accept(&child, &pms, &alert, hs->peer_key)) {
+    if (!key_share || !key_share->Accept(&child, &pms, &alert, hs->peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
@@ -1481,9 +1480,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    // The key exchange state may now be discarded.
-    hs->key_shares[0].reset();
-    hs->key_shares[1].reset();
+    // The peer key can now be discarded.
     hs->peer_key.Reset();
   } else if (alg_k & SSL_kPSK) {
     // For plain PSK, other_secret is a block of 0s with the same length as
