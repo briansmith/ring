@@ -44,6 +44,7 @@
 # POWER9[be]	3.99/0.78	0.79	0.97
 
 $flavour = shift;
+$output = shift;
 
 if ($flavour =~ /64/) {
 	$SIZE_T	=8;
@@ -70,7 +71,8 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../../perlasm/ppc-xlate.pl" and -f $xlate) or
 die "can't locate ppc-xlate.pl";
 
-open STDOUT,"| $^X \"$xlate\" $flavour ".shift || die "can't call $xlate: $!";
+open OUT,"| $^X \"$xlate\" $flavour \"$output\"" || die "can't call $xlate: $!";
+*STDOUT=*OUT;
 
 $FRAME=8*$SIZE_T;
 $prefix="aes_hw";
