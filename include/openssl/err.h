@@ -163,12 +163,16 @@ OPENSSL_EXPORT void ERR_free_strings(void);
 
 // ERR_GET_LIB returns the library code for the error. This is one of
 // the |ERR_LIB_*| values.
-#define ERR_GET_LIB(packed_error) ((int)(((packed_error) >> 24) & 0xff))
+OPENSSL_INLINE int ERR_GET_LIB(uint32_t packed_error) {
+  return (int)((packed_error >> 24) & 0xff);
+}
 
 // ERR_GET_REASON returns the reason code for the error. This is one of
 // library-specific |LIB_R_*| values where |LIB| is the library (see
 // |ERR_GET_LIB|). Note that reason codes are specific to the library.
-#define ERR_GET_REASON(packed_error) ((int)((packed_error) & 0xfff))
+OPENSSL_INLINE int ERR_GET_REASON(uint32_t packed_error) {
+  return (int)(packed_error & 0xfff);
+}
 
 // ERR_get_error gets the packed error code for the least recent error and
 // removes that error from the queue. If there are no errors in the queue then
@@ -411,7 +415,10 @@ OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
 #define ERR_ERROR_STRING_BUF_LEN 120
 
 // ERR_GET_FUNC returns zero. BoringSSL errors do not report a function code.
-#define ERR_GET_FUNC(packed_error) 0
+OPENSSL_INLINE int ERR_GET_FUNC(uint32_t packed_error) {
+  (void)packed_error;
+  return 0;
+}
 
 // ERR_TXT_* are provided for compatibility with code that assumes that it's
 // using OpenSSL.
