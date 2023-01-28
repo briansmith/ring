@@ -800,11 +800,11 @@ fn get_command(var: &'static str, default: &str) -> String {
 // environment variables that affect the build.
 fn emit_rerun_if_changed() {
     for path in &["crypto", "include", "third_party/fiat"] {
-        walk_dir(&PathBuf::from(path), &|entry| {
-            let path = entry.path();
-            match path.extension().and_then(|ext| ext.to_str()) {
+        walk_dir(Path::new(path), &|entry| {
+            let file_name = PathBuf::from(entry.file_name());
+            match file_name.extension().and_then(|ext| ext.to_str()) {
                 Some("c") | Some("S") | Some("h") | Some("inl") | Some("pl") | None => {
-                    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+                    println!("cargo:rerun-if-changed={}", entry.path().display());
                 }
                 _ => {
                     // Ignore other types of files.
