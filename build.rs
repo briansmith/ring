@@ -642,11 +642,7 @@ fn cc(b: &cc::Build, file: &Path, ext: &str, out_file: &Path) -> Command {
     let mut c = cc.to_command();
     let _ = c
         .arg("-c")
-        .arg(format!(
-            "{}{}",
-            obj_opt,
-            out_file.to_str().expect("Invalid path")
-        ))
+        .arg(format!("{}{}", obj_opt, out_file.display()))
         .arg(file);
     c
 }
