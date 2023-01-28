@@ -447,10 +447,22 @@ OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it,
 // integer type. FALSE is zero, TRUE is 0xff, and an omitted OPTIONAL BOOLEAN is
 // -1.
 
+// ASN1_BOOLEAN_FALSE is FALSE as an |ASN1_BOOLEAN|.
+#define ASN1_BOOLEAN_FALSE 0
+
+// ASN1_BOOLEAN_TRUE is TRUE as an |ASN1_BOOLEAN|. Some code incorrectly uses
+// 1, so prefer |b != ASN1_BOOLEAN_FALSE| over |b == ASN1_BOOLEAN_TRUE|.
+#define ASN1_BOOLEAN_TRUE 0xff
+
+// ASN1_BOOLEAN_NONE, in contexts where the |ASN1_BOOLEAN| represents an
+// OPTIONAL BOOLEAN, is an omitted value. Using this value in other contexts is
+// undefined and may be misinterpreted as TRUE.
+#define ASN1_BOOLEAN_NONE (-1)
+
 // d2i_ASN1_BOOLEAN parses a DER-encoded ASN.1 BOOLEAN from up to |len| bytes at
 // |*inp|. On success, it advances |*inp| by the number of bytes read and
 // returns the result. If |out| is non-NULL, it additionally writes the result
-// to |*out|. On error, it returns -1.
+// to |*out|. On error, it returns |ASN1_BOOLEAN_NONE|.
 //
 // This function does not reject trailing data in the input. This allows the
 // caller to parse a sequence of concatenated structures. Callers parsing only
@@ -472,7 +484,8 @@ OPENSSL_EXPORT int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **outp);
 
 // The following |ASN1_ITEM|s have ASN.1 type BOOLEAN and C type |ASN1_BOOLEAN|.
 // |ASN1_TBOOLEAN| and |ASN1_FBOOLEAN| must be marked OPTIONAL. When omitted,
-// they are parsed as TRUE and FALSE, respectively, rather than -1.
+// they are parsed as TRUE and FALSE, respectively, rather than
+// |ASN1_BOOLEAN_NONE|.
 DECLARE_ASN1_ITEM(ASN1_BOOLEAN)
 DECLARE_ASN1_ITEM(ASN1_TBOOLEAN)
 DECLARE_ASN1_ITEM(ASN1_FBOOLEAN)

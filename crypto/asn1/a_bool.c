@@ -78,7 +78,7 @@ int i2d_ASN1_BOOLEAN(ASN1_BOOLEAN a, unsigned char **pp) {
   }
 
   ASN1_put_object(&p, 0, 1, V_ASN1_BOOLEAN, V_ASN1_UNIVERSAL);
-  *p = a ? 0xff : 0x00;
+  *p = a ? ASN1_BOOLEAN_TRUE : ASN1_BOOLEAN_FALSE;
 
   // If a new buffer was allocated, just return it back.
   // If not, return the incremented buffer pointer.
@@ -94,22 +94,22 @@ ASN1_BOOLEAN d2i_ASN1_BOOLEAN(ASN1_BOOLEAN *a, const unsigned char **pp,
   inf = ASN1_get_object(&p, &len, &tag, &xclass, length);
   if (inf & 0x80) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_OBJECT_HEADER);
-    return -1;
+    return ASN1_BOOLEAN_NONE;
   }
 
   if (inf & V_ASN1_CONSTRUCTED) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_TYPE_NOT_PRIMITIVE);
-    return -1;
+    return ASN1_BOOLEAN_NONE;
   }
 
   if (tag != V_ASN1_BOOLEAN || xclass != V_ASN1_UNIVERSAL) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_A_BOOLEAN);
-    return -1;
+    return ASN1_BOOLEAN_NONE;
   }
 
   if (len != 1) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_BOOLEAN_IS_WRONG_LENGTH);
-    return -1;
+    return ASN1_BOOLEAN_NONE;
   }
   ASN1_BOOLEAN ret = (ASN1_BOOLEAN) * (p++);
   if (a != NULL) {

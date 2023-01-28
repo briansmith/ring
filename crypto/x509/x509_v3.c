@@ -250,7 +250,9 @@ int X509_EXTENSION_set_critical(X509_EXTENSION *ex, int crit) {
   if (ex == NULL) {
     return 0;
   }
-  ex->critical = (crit) ? 0xFF : -1;
+  // The critical field is DEFAULT FALSE, so non-critical extensions should omit
+  // the value.
+  ex->critical = crit ? ASN1_BOOLEAN_TRUE : ASN1_BOOLEAN_NONE;
   return 1;
 }
 

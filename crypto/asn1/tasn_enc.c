@@ -631,7 +631,7 @@ static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *out_omit,
 
     case V_ASN1_BOOLEAN:
       tbool = (ASN1_BOOLEAN *)pval;
-      if (*tbool == -1) {
+      if (*tbool == ASN1_BOOLEAN_NONE) {
         *out_omit = 1;
         return 0;
       }
