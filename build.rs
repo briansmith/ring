@@ -338,7 +338,7 @@ fn ring_build_rs_main() {
         is_debug,
         force_warnings_into_errors,
     };
-    let pregenerated = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
+    let pregenerated = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
 
     build_c_code(
         &target,
