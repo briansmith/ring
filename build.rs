@@ -545,10 +545,16 @@ fn build_library(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(b: &cc::Build, p: &Path, target: &Target, include_dir: &Path, out_dir: &Path) -> String {
+fn compile(
+    b: &cc::Build,
+    p: &Path,
+    target: &Target,
+    include_dir: &Path,
+    out_dir: &Path,
+) -> PathBuf {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "o" {
-        p.to_str().expect("Invalid path").into()
+        p.into()
     } else {
         let out_file = obj_path(out_dir, p);
         let cmd = if target.os != WINDOWS || ext != "asm" {
@@ -558,7 +564,7 @@ fn compile(b: &cc::Build, p: &Path, target: &Target, include_dir: &Path, out_dir
         };
 
         run_command(cmd);
-        out_file.to_str().expect("Invalid path").into()
+        out_file
     }
 }
 
