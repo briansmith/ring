@@ -20,6 +20,7 @@
 // to log everything to stderr.
 
 use std::{
+    fmt::Write as FmtWrite,
     fs::{self, DirEntry},
     io::Write,
     path::{Path, PathBuf},
@@ -1023,25 +1024,27 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     let mut out = String::new();
 
     for (old, new) in SYMBOLS_TO_RENAME {
-        let line = format!(
-            "{pp}define {prefix_prefix}{old} {prefix_prefix}{new}\n",
+        writeln!(
+            &mut out,
+            "{pp}define {prefix_prefix}{old} {prefix_prefix}{new}",
             pp = pp,
             prefix_prefix = prefix_prefix,
             old = old,
             new = new
-        );
-        out += &line;
+        )
+        .unwrap();
     }
 
     for symbol in SYMBOLS_TO_PREFIX {
-        let line = format!(
-            "{pp}define {prefix_prefix}{symbol} {prefix_prefix}{prefix}{symbol}\n",
+        writeln!(
+            &mut out,
+            "{pp}define {prefix_prefix}{symbol} {prefix_prefix}{prefix}{symbol}",
             pp = pp,
             prefix_prefix = prefix_prefix,
             prefix = prefix,
             symbol = symbol
-        );
-        out += &line;
+        )
+        .unwrap();
     }
 
     out
