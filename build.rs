@@ -303,7 +303,7 @@ fn main() {
 fn ring_build_rs_main() {
     use std::env;
 
-    let out_dir = env::var("OUT_DIR").unwrap();
+    let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = PathBuf::from(out_dir);
 
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
