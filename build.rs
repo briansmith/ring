@@ -755,7 +755,7 @@ fn asm_srcs(perlasm_src_dsts: Vec<(PathBuf, PathBuf)>) -> Vec<PathBuf> {
         .collect::<Vec<_>>()
 }
 
-fn is_perlasm(path: &PathBuf) -> bool {
+fn is_perlasm(path: &Path) -> bool {
     path.extension().unwrap().to_str().unwrap() == "pl"
 }
 
@@ -877,7 +877,7 @@ fn generate_prefix_symbols_header(
     std::fs::create_dir_all(&dir)?;
 
     let path = dir.join(filename);
-    let mut file = std::fs::File::create(&path)?;
+    let mut file = std::fs::File::create(path)?;
 
     let filename_ident = filename.replace('.', "_").to_uppercase();
     writeln!(
