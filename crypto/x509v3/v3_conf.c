@@ -258,7 +258,7 @@ static int v3_check_critical(const char **value) {
     return 0;
   }
   p += 9;
-  while (isspace((unsigned char)*p)) {
+  while (OPENSSL_isspace((unsigned char)*p)) {
     p++;
   }
   *value = p;
@@ -279,7 +279,7 @@ static int v3_check_generic(const char **value) {
     return 0;
   }
 
-  while (isspace((unsigned char)*p)) {
+  while (OPENSSL_isspace((unsigned char)*p)) {
     p++;
   }
   *value = p;

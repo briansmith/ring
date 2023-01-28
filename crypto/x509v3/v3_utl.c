@@ -432,14 +432,14 @@ static char *strip_spaces(char *name) {
   char *p, *q;
   // Skip over leading spaces
   p = name;
-  while (*p && isspace((unsigned char)*p)) {
+  while (*p && OPENSSL_isspace((unsigned char)*p)) {
     p++;
   }
   if (!*p) {
     return NULL;
   }
   q = p + strlen(p) - 1;
-  while ((q != p) && isspace((unsigned char)*q)) {
+  while ((q != p) && OPENSSL_isspace((unsigned char)*q)) {
     q--;
   }
   if (p != q) {

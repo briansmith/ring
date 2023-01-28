@@ -443,12 +443,10 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
 
   len = out->length;
 
-  // Convert string in place to canonical form. Ultimately we may need to
-  // handle a wider range of characters but for now ignore anything with
-  // MSB set and rely on the isspace() and tolower() functions.
+  // Convert string in place to canonical form.
 
   // Ignore leading spaces
-  while ((len > 0) && !(*from & 0x80) && isspace(*from)) {
+  while ((len > 0) && OPENSSL_isspace(*from)) {
     from++;
     len--;
   }
@@ -456,7 +454,7 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
   to = from + len;
 
   // Ignore trailing spaces
-  while ((len > 0) && !(to[-1] & 0x80) && isspace(to[-1])) {
+  while ((len > 0) && OPENSSL_isspace(to[-1])) {
     to--;
     len--;
   }
@@ -465,13 +463,8 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
 
   i = 0;
   while (i < len) {
-    // If MSB set just copy across
-    if (*from & 0x80) {
-      *to++ = *from++;
-      i++;
-    }
     // Collapse multiple spaces
-    else if (isspace(*from)) {
+    if (OPENSSL_isspace(*from)) {
       // Copy one space across
       *to++ = ' ';
       // Ignore subsequent spaces. Note: don't need to check len here
@@ -480,7 +473,7 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
       do {
         from++;
         i++;
-      } while (!(*from & 0x80) && isspace(*from));
+      } while (OPENSSL_isspace(*from));
     } else {
       *to++ = OPENSSL_tolower(*from);
       from++;

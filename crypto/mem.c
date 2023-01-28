@@ -315,6 +315,11 @@ int OPENSSL_tolower(int c) {
   return c;
 }
 
+int OPENSSL_isspace(int c) {
+  return c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r' ||
+         c == ' ';
+}
+
 int OPENSSL_strcasecmp(const char *a, const char *b) {
   for (size_t i = 0;; i++) {
     const int aa = OPENSSL_tolower(a[i]);
