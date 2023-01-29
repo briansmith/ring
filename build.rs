@@ -313,7 +313,7 @@ fn ring_build_rs_main() {
     use std::env;
 
     let out_dir = env::var("OUT_DIR").unwrap();
-    let out_dir = PathBuf::from(out_dir);
+    let out_dir = Arc::new(PathBuf::from(out_dir));
 
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let os = env::var("CARGO_CFG_TARGET_OS").unwrap();
@@ -426,7 +426,7 @@ struct Target {
 fn build_c_code(
     target: Arc<Target>,
     pregenerated: PathBuf,
-    out_dir: &Path,
+    out_dir: &Arc<PathBuf>,
     ring_core_prefix: &str,
     use_pregenerated: bool,
 ) {
@@ -477,10 +477,7 @@ fn build_c_code(
 
     let test_srcs = RING_TEST_SRCS.iter().map(PathBuf::from).collect::<Vec<_>>();
 
-    let libs = [
-        ("", &core_srcs[..], &asm_srcs[..]),
-        ("test", &test_srcs[..], &[]),
-    ];
+    let libs = [("", core_srcs, asm_srcs), ("test", test_srcs, vec![])];
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
@@ -498,20 +495,17 @@ fn build_c_code(
 
 fn build_library(
     target: &Arc<Target>,
-    out_dir: &Path,
+    out_dir: &Arc<PathBuf>,
     lib_name: &str,
-    srcs: &[PathBuf],
-    additional_srcs: &[PathBuf],
+    srcs: Vec<PathBuf>,
+    additional_srcs: Vec<PathBuf>,
 ) {
-    let out_dir = Arc::new(out_dir.to_owned());
-
     // Compile all the (dirty) source files into object files.
     let tasks = additional_srcs
-        .iter()
-        .chain(srcs.iter())
+        .into_iter()
+        .chain(srcs)
         .map(|f| {
-            let out_dir = Arc::clone(&out_dir);
-            let f = f.to_owned();
+            let out_dir = Arc::clone(out_dir);
             let target = Arc::clone(target);
             spawn(move || compile(&f, &target, &out_dir, &out_dir))
         })
