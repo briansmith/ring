@@ -140,7 +140,7 @@ func checkKeys(t test, keys ...string) bool {
 		}
 	}
 
-	for k, _ := range t.Values {
+	for k := range t.Values {
 		var found bool
 		for _, k2 := range keys {
 			if k == k2 {
