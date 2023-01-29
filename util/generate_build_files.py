@@ -457,8 +457,9 @@ else()
   else()
     enable_language(ASM)
     set(OPENSSL_ASM TRUE)
-    # CMake does not add -isysroot and -arch flags to assembly.
-    if(APPLE)
+    # Work around https://gitlab.kitware.com/cmake/cmake/-/issues/20771 in older
+    # CMake versions.
+    if(APPLE AND CMAKE_VERSION VERSION_LESS 3.19)
       if(CMAKE_OSX_SYSROOT)
         set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -isysroot \"${CMAKE_OSX_SYSROOT}\"")
       endif()
