@@ -519,12 +519,6 @@ fn build_library(
         })
         .collect::<Vec<_>>();
 
-    let objs = tasks
-        .into_iter()
-        .map(thread::JoinHandle::join)
-        .map(Result::unwrap)
-        .collect::<Vec<_>>();
-
     // Rebuild the library if necessary.
     let lib_path = out_dir.join(format!("lib{}.a", lib_name));
 
@@ -542,12 +536,17 @@ fn build_library(
             let _ = c.flag("-Wl,--gc-sections");
         }
     }
-    for o in objs {
-        let _ = c.object(o);
-    }
 
     // Handled below.
     let _ = c.cargo_metadata(false);
+
+    tasks
+        .into_iter()
+        .map(thread::JoinHandle::join)
+        .map(Result::unwrap)
+        .for_each(|obj| {
+            c.object(obj);
+        });
 
     c.compile(
         lib_path
