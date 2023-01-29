@@ -512,25 +512,95 @@ fn build_library(
     srcs: Vec<PathBuf>,
     additional_srcs: Vec<PathBuf>,
 ) {
-    // Compile all the (dirty) source files into object files.
-    let tasks = additional_srcs
-        .into_iter()
-        .chain(srcs)
-        .map(|f| {
-            let out_dir = Arc::clone(out_dir);
-            let target = Arc::clone(target);
-            thread::spawn(move || compile(&f, &target, &out_dir, &out_dir))
-        })
-        .collect::<Vec<_>>();
-
-    // Rebuild the library if necessary.
-    let lib_path = out_dir.join(format!("lib{}.a", lib_name));
-
     let mut c = cc::Build::new();
+
+    additional_srcs.into_iter().chain(srcs).for_each(|f| {
+        let ext = f.extension().and_then(|ext| ext.to_str());
+
+        if ext == Some("o") {
+            c.object(f);
+        } else {
+            c.file(f);
+        }
+    });
+
+    // FIXME: On Windows AArch64 we currently must use Clang to compile C code
+    if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {
+        c.compiler("clang");
+    }
+
+    c.include("include");
+    c.include(&**out_dir);
+
+    let compiler = c.get_compiler();
+
+    for f in c_flags(&compiler) {
+        c.flag(f);
+    }
+
+    for f in cpp_flags(&compiler) {
+        c.flag(f);
+    }
+
+    if target.os != "none"
+        && target.os != "redox"
+        && target.os != "windows"
+        && target.arch != "wasm32"
+    {
+        c.flag("-fstack-protector");
+    }
+
+    if target.os.as_str() == "macos" {
+        // ``-gfull`` is required for Darwin's |-dead_strip|.
+        c.flag("-gfull");
+    } else if !compiler.is_like_msvc() {
+        c.flag("-g3");
+    };
+
+    if !target.is_debug {
+        c.define("NDEBUG", None);
+    }
+
+    if compiler.is_like_msvc() {
+        if std::env::var("OPT_LEVEL").unwrap() == "0" {
+            let _ = c.flag("/Od"); // Disable optimization for debug builds.
+                                   // run-time checking: (s)tack frame, (u)ninitialized variables
+            let _ = c.flag("/RTCsu");
+        } else {
+            let _ = c.flag("/Ox"); // Enable full optimization.
+        }
+    }
+
+    // Allow cross-compiling without a target sysroot for these targets.
+    //
+    // poly1305_vec.c requires <emmintrin.h> which requires <stdlib.h>.
+    if (target.arch == "wasm32" && target.os == "unknown")
+        || (target.os == "linux" && target.is_musl && target.arch != "x86_64")
+    {
+        // TODO: Expand this to non-clang compilers in 0.17.0 if practical.
+        if compiler.is_like_clang() {
+            let _ = c.flag("-nostdlibinc");
+            let _ = c.define("RING_CORE_NOSTDLIBINC", "1");
+        }
+    }
+
+    if target.force_warnings_into_errors {
+        c.warnings_into_errors(true)
+            .flag("-Wno-error=unused-command-line-argument");
+    }
+    if target.is_musl {
+        // Some platforms enable _FORTIFY_SOURCE by default, but musl
+        // libc doesn't support it yet. See
+        // http://wiki.musl-libc.org/wiki/Future_Ideas#Fortify
+        // http://www.openwall.com/lists/musl/2015/02/04/3
+        // http://www.openwall.com/lists/musl/2015/06/17/1
+        c.flag("-U_FORTIFY_SOURCE");
+    }
 
     for f in LD_FLAGS {
         let _ = c.flag(f);
     }
+
     match target.os.as_str() {
         "macos" => {
             let _ = c.flag("-fPIC");
@@ -544,20 +614,11 @@ fn build_library(
     // Handled below.
     let _ = c.cargo_metadata(false);
 
-    tasks
-        .into_iter()
-        .map(thread::JoinHandle::join)
-        .map(Result::unwrap)
-        .for_each(|obj| {
-            c.object(obj);
-        });
+    // Rebuild the library if necessary.
+    let lib_filename = format!("lib{}.a", lib_name);
 
-    c.compile(
-        lib_path
-            .file_name()
-            .and_then(|f| f.to_str())
-            .expect("No filename"),
-    );
+    c.out_dir(&**out_dir);
+    c.compile(&lib_filename);
 
     // Link the library. This works even when the library doesn't need to be
     // rebuilt.
