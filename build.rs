@@ -773,15 +773,6 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command
     c
 }
 
-fn run_command_with_args<S>(command_name: S, args: &[String])
-where
-    S: AsRef<std::ffi::OsStr> + Copy,
-{
-    let mut cmd = Command::new(command_name);
-    let _ = cmd.args(args);
-    run_command(cmd)
-}
-
 fn run_command(mut cmd: Command) {
     eprintln!("running {:?}", cmd);
     let status = cmd.status().unwrap_or_else(|e| {
@@ -852,24 +843,44 @@ fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
 }
 
 fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
-    for (src, dst) in src_dst {
-        let mut args = vec![
-            src.to_string_lossy().into_owned(),
-            asm_target.perlasm_format.to_owned(),
-        ];
-        if asm_target.arch == "x86" {
-            args.push("-fPIC".into());
-            args.push("-DOPENSSL_IA32_SSE2".into());
+    let children = src_dst
+        .iter()
+        .map(|(src, dst)| {
+            let mut cmd = Command::new(get_command("PERL_EXECUTABLE", "perl"));
+
+            cmd.arg(src).arg(asm_target.perlasm_format);
+
+            if asm_target.arch == "x86" {
+                cmd.arg("-fPIC");
+                cmd.arg("-DOPENSSL_IA32_SSE2");
+            }
+
+            // Work around PerlAsm issue for ARM and AAarch64 targets by replacing
+            // back slashes with forward slashes.
+            let dst = dst
+                .to_str()
+                .expect("Could not convert path")
+                .replace('\\', "/");
+
+            cmd.arg(dst);
+
+            (
+                cmd.spawn().unwrap_or_else(|e| {
+                    panic!("failed to execute [{:?}]: {}", cmd, e);
+                }),
+                cmd,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    children.into_iter().for_each(|(mut child, cmd)| {
+        let status = child.wait().unwrap_or_else(|e| {
+            panic!("failed to execute [{:?}]: {}", cmd, e);
+        });
+        if !status.success() {
+            panic!("execution failed");
         }
-        // Work around PerlAsm issue for ARM and AAarch64 targets by replacing
-        // back slashes with forward slashes.
-        let dst = dst
-            .to_str()
-            .expect("Could not convert path")
-            .replace('\\', "/");
-        args.push(dst);
-        run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"), &args);
-    }
+    });
 }
 
 fn get_command(var: &'static str, default: &str) -> String {
