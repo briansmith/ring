@@ -25,7 +25,7 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
     sync::Arc,
-    thread::{spawn, JoinHandle},
+    thread,
 };
 
 const X86: &str = "x86";
@@ -481,11 +481,19 @@ fn build_c_code(
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
-    libs.into_iter()
-        .for_each(|(lib_name_suffix, srcs, additional_srcs)| {
-            let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
-            build_library(&target, out_dir, &lib_name, srcs, additional_srcs)
-        });
+    let _res: Vec<_> = libs
+        .into_iter()
+        .map(|(lib_name_suffix, srcs, additional_srcs)| {
+            let lib_name = format!("{}{}", ring_core_prefix, lib_name_suffix);
+            let target = Arc::clone(&target);
+            let out_dir = Arc::clone(out_dir);
+            thread::spawn(move || {
+                build_library(&target, &out_dir, &lib_name, srcs, additional_srcs)
+            })
+        })
+        .map(thread::JoinHandle::join)
+        .map(Result::unwrap)
+        .collect::<Vec<_>>();
 
     println!(
         "cargo:rustc-link-search=native={}",
@@ -507,13 +515,13 @@ fn build_library(
         .map(|f| {
             let out_dir = Arc::clone(out_dir);
             let target = Arc::clone(target);
-            spawn(move || compile(&f, &target, &out_dir, &out_dir))
+            thread::spawn(move || compile(&f, &target, &out_dir, &out_dir))
         })
         .collect::<Vec<_>>();
 
     let objs = tasks
         .into_iter()
-        .map(JoinHandle::join)
+        .map(thread::JoinHandle::join)
         .map(Result::unwrap)
         .collect::<Vec<_>>();
 
