@@ -330,7 +330,7 @@ if(FIPS_DELOCATE OR FIPS_SHARED)
   add_dependencies(crypto bcm_o_target)
 endif()
 
-SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(crypto PROPERTIES LINKER_LANGUAGE C)
 
 if(WIN32)
   target_link_libraries(crypto ws2_32)
@@ -436,7 +436,4 @@ add_executable(
 add_dependencies(crypto_test global_target)
 
 target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
-if(WIN32)
-  target_link_libraries(crypto_test ws2_32)
-endif()
 add_dependencies(all_tests crypto_test)
