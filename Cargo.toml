@@ -183,7 +183,7 @@ wasm-bindgen-test = { version = "0.3.26", default-features = false }
 libc = { version = "0.2.100", default-features = false }
 
 [build-dependencies]
-cc = { version = "1.0.69", default-features = false }
+cc = { version = "1.0.69", default-features = false, features = ["parallel"] }
 
 [dev-dependencies]
 criterion = { version = "0.4", default-features = false }
