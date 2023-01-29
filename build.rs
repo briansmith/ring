@@ -483,13 +483,11 @@ fn build_c_code(
     // can't do that yet.
     let tasks: Vec<_> = libs
         .into_iter()
-        .map(|(lib_name_suffix, srcs, additional_srcs)| {
+        .map(|(lib_name_suffix, c_srcs, asm_srcs)| {
             let lib_name = format!("{}{}", ring_core_prefix, lib_name_suffix);
             let target = Arc::clone(&target);
             let out_dir = Arc::clone(out_dir);
-            thread::spawn(move || {
-                build_library(&target, &out_dir, &lib_name, srcs, additional_srcs)
-            })
+            thread::spawn(move || build_library(&target, &out_dir, &lib_name, c_srcs, asm_srcs))
         })
         .collect::<Vec<_>>();
 
@@ -509,12 +507,14 @@ fn build_library(
     target: &Arc<Target>,
     out_dir: &Arc<PathBuf>,
     lib_name: &str,
-    srcs: Vec<PathBuf>,
-    additional_srcs: Vec<PathBuf>,
+    c_srcs: Vec<PathBuf>,
+    asm_srcs: Vec<PathBuf>,
 ) {
     let mut c = cc::Build::new();
 
-    additional_srcs.into_iter().chain(srcs).for_each(|f| {
+    c.files(c_srcs);
+
+    asm_srcs.into_iter().for_each(|f| {
         let ext = f.extension().and_then(|ext| ext.to_str());
 
         if ext == Some("o") {
