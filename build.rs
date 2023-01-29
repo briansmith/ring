@@ -481,7 +481,7 @@ fn build_c_code(
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
-    let _res: Vec<_> = libs
+    let tasks: Vec<_> = libs
         .into_iter()
         .map(|(lib_name_suffix, srcs, additional_srcs)| {
             let lib_name = format!("{}{}", ring_core_prefix, lib_name_suffix);
@@ -491,9 +491,13 @@ fn build_c_code(
                 build_library(&target, &out_dir, &lib_name, srcs, additional_srcs)
             })
         })
+        .collect::<Vec<_>>();
+
+    tasks
+        .into_iter()
         .map(thread::JoinHandle::join)
         .map(Result::unwrap)
-        .collect::<Vec<_>>();
+        .for_each(|()| ());
 
     println!(
         "cargo:rustc-link-search=native={}",
