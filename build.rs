@@ -24,6 +24,8 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::Command,
+    sync::Arc,
+    thread::{spawn, JoinHandle},
 };
 
 const X86: &str = "x86";
@@ -341,17 +343,17 @@ fn ring_build_rs_main() {
     // don't do this for packaged builds.
     let force_warnings_into_errors = is_git;
 
-    let target = Target {
+    let target = Arc::new(Target {
         arch,
         os,
         is_musl,
         is_debug,
         force_warnings_into_errors,
-    };
+    });
     let pregenerated = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
 
     build_c_code(
-        &target,
+        target,
         pregenerated,
         &out_dir,
         &ring_core_prefix(),
@@ -422,7 +424,7 @@ struct Target {
 }
 
 fn build_c_code(
-    target: &Target,
+    target: Arc<Target>,
     pregenerated: PathBuf,
     out_dir: &Path,
     ring_core_prefix: &str,
@@ -482,10 +484,10 @@ fn build_c_code(
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
-    libs.iter()
-        .for_each(|&(lib_name_suffix, srcs, additional_srcs)| {
+    libs.into_iter()
+        .for_each(|(lib_name_suffix, srcs, additional_srcs)| {
             let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
-            build_library(target, out_dir, &lib_name, srcs, additional_srcs)
+            build_library(&target, out_dir, &lib_name, srcs, additional_srcs)
         });
 
     println!(
@@ -495,21 +497,34 @@ fn build_c_code(
 }
 
 fn build_library(
-    target: &Target,
+    target: &Arc<Target>,
     out_dir: &Path,
     lib_name: &str,
     srcs: &[PathBuf],
     additional_srcs: &[PathBuf],
 ) {
+    let out_dir = Arc::new(out_dir.to_owned());
+
     // Compile all the (dirty) source files into object files.
-    let objs = additional_srcs
+    let tasks = additional_srcs
         .iter()
         .chain(srcs.iter())
-        .map(|f| compile(f, target, out_dir, out_dir))
+        .map(|f| {
+            let out_dir = Arc::clone(&out_dir);
+            let f = f.to_owned();
+            let target = Arc::clone(target);
+            spawn(move || compile(&f, &target, &out_dir, &out_dir))
+        })
+        .collect::<Vec<_>>();
+
+    let objs = tasks
+        .into_iter()
+        .map(JoinHandle::join)
+        .map(Result::unwrap)
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
-    let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
+    let lib_path = out_dir.join(format!("lib{}.a", lib_name));
 
     let mut c = cc::Build::new();
 
