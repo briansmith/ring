@@ -611,4 +611,4 @@ install(EXPORT OpenSSLTargets
   NAMESPACE OpenSSL::
   DESTINATION lib/cmake/OpenSSL
 )
-install(FILES OpenSSLConfig.cmake DESTINATION lib/cmake/OpenSSL)
+install(FILES cmake/OpenSSLConfig.cmake DESTINATION lib/cmake/OpenSSL)
