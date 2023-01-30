@@ -308,6 +308,10 @@ char *OPENSSL_strdup(const char *s) {
   return ret;
 }
 
+int OPENSSL_isdigit(int c) {
+  return c >= '0' && c <= '9';
+}
+
 int OPENSSL_tolower(int c) {
   if (c >= 'A' && c <= 'Z') {
     return c + ('a' - 'A');

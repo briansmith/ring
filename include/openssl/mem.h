@@ -110,6 +110,10 @@ OPENSSL_EXPORT char *OPENSSL_strdup(const char *s);
 // OPENSSL_strnlen has the same behaviour as strnlen(3).
 OPENSSL_EXPORT size_t OPENSSL_strnlen(const char *s, size_t len);
 
+// OPENSSL_isdigit is a locale-independent version of isdigit(3), It
+// only recognizes '0' through '9' as digits.
+OPENSSL_EXPORT int OPENSSL_isdigit(int c);
+
 // OPENSSL_tolower is a locale-independent version of tolower(3). It only
 // lowercases ASCII values. Other values are returned as-is.
 OPENSSL_EXPORT int OPENSSL_tolower(int c);

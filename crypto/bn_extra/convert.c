@@ -310,7 +310,7 @@ err:
 }
 
 int BN_dec2bn(BIGNUM **outp, const char *in) {
-  return bn_x2bn(outp, in, decode_dec, isdigit);
+  return bn_x2bn(outp, in, decode_dec, OPENSSL_isdigit);
 }
 
 int BN_asc2bn(BIGNUM **outp, const char *in) {

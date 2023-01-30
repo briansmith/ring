@@ -63,7 +63,7 @@ bool StringToInt(T *out, const char *str) {
 
   // |strtoull| allows leading '-' with wraparound. Additionally, both
   // functions accept empty strings and leading whitespace.
-  if (!isdigit(static_cast<unsigned char>(*str)) &&
+  if (!OPENSSL_isdigit(static_cast<unsigned char>(*str)) &&
       (!std::is_signed<T>::value || *str != '-')) {
     return false;
   }

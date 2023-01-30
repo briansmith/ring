@@ -232,7 +232,7 @@ int CBS_get_u64_decimal(CBS *cbs, uint64_t *out) {
   int seen_digit = 0;
   while (CBS_len(cbs) != 0) {
     uint8_t c = CBS_data(cbs)[0];
-    if (!isdigit(c)) {
+    if (!OPENSSL_isdigit(c)) {
       break;
     }
     CBS_skip(cbs, 1);
@@ -753,13 +753,13 @@ static int cbs_get_two_digits(CBS *cbs, int *out) {
   if (!CBS_get_u8(cbs, &first_digit)) {
     return 0;
   }
-  if (!isdigit(first_digit)) {
+  if (!OPENSSL_isdigit(first_digit)) {
     return 0;
   }
   if (!CBS_get_u8(cbs, &second_digit)) {
     return 0;
   }
-  if (!isdigit(second_digit)) {
+  if (!OPENSSL_isdigit(second_digit)) {
     return 0;
   }
   *out = (first_digit - '0') * 10 + (second_digit - '0');
