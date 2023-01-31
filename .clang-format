@@ -10,7 +10,6 @@ PointerAlignment: Right
 IncludeBlocks: Preserve
 TypenameMacros: ['LHASH_OF', 'STACK_OF']
 StatementMacros:
-  - "ASN1_SEQUENCE_END"
   - "DECLARE_ASN1_ALLOC_FUNCTIONS"
   - "DECLARE_ASN1_ALLOC_FUNCTIONS_name"
   - "DECLARE_ASN1_ENCODE_FUNCTIONS"
@@ -69,6 +68,7 @@ StatementMacros:
   - "IMPLEMENT_PEM_write_fp_const"
   - "ASN1_ADB_END"
   - "ASN1_CHOICE_END"
+  - "ASN1_CHOICE_END_cb"
   - "ASN1_ITEM_TEMPLATE_END"
   - "ASN1_SEQUENCE_END"
   - "ASN1_SEQUENCE_END_cb"
