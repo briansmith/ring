@@ -5716,6 +5716,10 @@ TEST(X509Test, ExtensionFromConf) {
       // If no config is provided, this should fail.
       {"basicConstraints", "critical,@section", nullptr, {}},
 
+      // issuingDistributionPoint takes a list of name:value pairs. Omitting the
+      // value is not allowed.
+      {"issuingDistributionPoint", "fullname", nullptr, {}},
+
       // The "DER:" prefix just specifies an arbitrary byte string. Colons
       // separators are ignored.
       {kTestOID, "DER:0001020304", nullptr, {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86,
@@ -6206,7 +6210,7 @@ key = FORMAT:HEX,OCTWRAP,OCT:9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703
   }
 }
 
-TEST(X509, AddUnserializableExtension) {
+TEST(X509Test, AddUnserializableExtension) {
   bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
   ASSERT_TRUE(key);
   bssl::UniquePtr<X509> x509 =

@@ -129,6 +129,13 @@ static STACK_OF(GENERAL_NAME) *gnames_from_sectname(const X509V3_CTX *ctx,
 
 static int set_dist_point_name(DIST_POINT_NAME **pdp, const X509V3_CTX *ctx,
                                const CONF_VALUE *cnf) {
+  // If |cnf| comes from |X509V3_parse_list|, which is possible for a v2i
+  // function, |cnf->value| may be NULL.
+  if (cnf->value == NULL) {
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
+    return 0;
+  }
+
   STACK_OF(GENERAL_NAME) *fnm = NULL;
   STACK_OF(X509_NAME_ENTRY) *rnm = NULL;
   if (!strncmp(cnf->name, "fullname", 9)) {
