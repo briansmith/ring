@@ -459,14 +459,12 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
                                const X509V3_EXT_METHOD *method,
                                const X509V3_CTX *ctx, int gen_type,
                                const char *value, int is_nc) {
-  char is_string = 0;
-  GENERAL_NAME *gen = NULL;
-
   if (!value) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
     return NULL;
   }
 
+  GENERAL_NAME *gen = NULL;
   if (out) {
     gen = out;
   } else {
@@ -480,9 +478,17 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
   switch (gen_type) {
     case GEN_URI:
     case GEN_EMAIL:
-    case GEN_DNS:
-      is_string = 1;
+    case GEN_DNS: {
+      ASN1_IA5STRING *str = ASN1_IA5STRING_new();
+      if (str == NULL || !ASN1_STRING_set(str, value, strlen(value))) {
+        ASN1_STRING_free(str);
+        OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
+        goto err;
+      }
+      gen->type = gen_type;
+      gen->d.ia5 = str;
       break;
+    }
 
     case GEN_RID: {
       ASN1_OBJECT *obj;
@@ -491,10 +497,13 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
         ERR_add_error_data(2, "value=", value);
         goto err;
       }
+      gen->type = GEN_RID;
       gen->d.rid = obj;
-    } break;
+      break;
+    }
 
     case GEN_IPADD:
+      gen->type = GEN_IPADD;
       if (is_nc) {
         gen->d.ip = a2i_IPADDRESS_NC(value);
       } else {
@@ -524,16 +533,6 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNSUPPORTED_TYPE);
       goto err;
   }
-
-  if (is_string) {
-    if (!(gen->d.ia5 = ASN1_IA5STRING_new()) ||
-        !ASN1_STRING_set(gen->d.ia5, (unsigned char *)value, strlen(value))) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  }
-
-  gen->type = gen_type;
 
   return gen;
 
@@ -581,33 +580,40 @@ GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
 
 static int do_othername(GENERAL_NAME *gen, const char *value,
                         const X509V3_CTX *ctx) {
-  char *objtmp = NULL;
-  const char *p;
-  int objlen;
-  if (!(p = strchr(value, ';'))) {
+  const char *semicolon = strchr(value, ';');
+  if (semicolon == NULL) {
     return 0;
   }
-  if (!(gen->d.otherName = OTHERNAME_new())) {
+
+  OTHERNAME *name = OTHERNAME_new();
+  if (name == NULL) {
     return 0;
   }
-  // Free this up because we will overwrite it. no need to free type_id
-  // because it is static
-  ASN1_TYPE_free(gen->d.otherName->value);
-  if (!(gen->d.otherName->value = ASN1_generate_v3(p + 1, ctx))) {
-    return 0;
-  }
-  objlen = p - value;
-  objtmp = OPENSSL_malloc(objlen + 1);
+
+  char *objtmp = OPENSSL_strndup(value, semicolon - value);
   if (objtmp == NULL) {
-    return 0;
+    goto err;
   }
-  OPENSSL_strlcpy(objtmp, value, objlen + 1);
-  gen->d.otherName->type_id = OBJ_txt2obj(objtmp, 0);
+  ASN1_OBJECT_free(name->type_id);
+  name->type_id = OBJ_txt2obj(objtmp, /*dont_search_names=*/0);
   OPENSSL_free(objtmp);
-  if (!gen->d.otherName->type_id) {
-    return 0;
+  if (name->type_id == NULL) {
+    goto err;
   }
+
+  ASN1_TYPE_free(name->value);
+  name->value = ASN1_generate_v3(semicolon + 1, ctx);
+  if (name->value == NULL) {
+    goto err;
+  }
+
+  gen->type = GEN_OTHERNAME;
+  gen->d.otherName = name;
   return 1;
+
+err:
+  OTHERNAME_free(name);
+  return 0;
 }
 
 static int do_dirname(GENERAL_NAME *gen, const char *value,
@@ -627,6 +633,7 @@ static int do_dirname(GENERAL_NAME *gen, const char *value,
   if (!X509V3_NAME_from_section(nm, sk, MBSTRING_ASC)) {
     goto err;
   }
+  gen->type = GEN_DIRNAME;
   gen->d.dirn = nm;
   ret = 1;
 
