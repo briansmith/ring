@@ -3591,6 +3591,8 @@ TEST(X509Test, GeneralName)  {
       {0x82, 0x01, 0x61},
       // [2 PRIMITIVE] { "b" }
       {0x82, 0x01, 0x62},
+      // [3] {}
+      {0xa3, 0x00},
       // [4] {
       //   SEQUENCE {
       //     SET {

@@ -129,7 +129,7 @@ int GENERAL_NAME_cmp(const GENERAL_NAME *a, const GENERAL_NAME *b) {
 
   switch (a->type) {
     case GEN_X400:
-      return ASN1_TYPE_cmp(a->d.x400Address, b->d.x400Address);
+      return ASN1_STRING_cmp(a->d.x400Address, b->d.x400Address);
 
     case GEN_EDIPARTY:
       return edipartyname_cmp(a->d.ediPartyName, b->d.ediPartyName);
