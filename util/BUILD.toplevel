@@ -97,7 +97,9 @@ gcc_copts_cxx = [
     "-Wmissing-declarations",
 ]
 
-boringssl_copts = select({
+boringssl_copts = [
+    "-DBORINGSSL_IMPLEMENTATION",
+] + select({
     # We assume that non-Windows builds use a GCC-compatible toolchain and that
     # Windows builds do not.
     #
