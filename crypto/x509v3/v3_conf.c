@@ -357,13 +357,12 @@ int X509V3_EXT_add_nconf_sk(const CONF *conf, const X509V3_CTX *ctx,
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     const CONF_VALUE *val = sk_CONF_VALUE_value(nval, i);
     X509_EXTENSION *ext = X509V3_EXT_nconf(conf, ctx, val->name, val->value);
-    if (ext == NULL) {
+    int ok = ext != NULL &&  //
+             (sk == NULL || X509v3_add_ext(sk, ext, -1) != NULL);
+    X509_EXTENSION_free(ext);
+    if (!ok) {
       return 0;
     }
-    if (sk) {
-      X509v3_add_ext(sk, ext, -1);
-    }
-    X509_EXTENSION_free(ext);
   }
   return 1;
 }

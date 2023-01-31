@@ -148,6 +148,7 @@ STACK_OF(X509_EXTENSION) *X509v3_add_ext(STACK_OF(X509_EXTENSION) **x,
   X509_EXTENSION *new_ex = NULL;
   int n;
   STACK_OF(X509_EXTENSION) *sk = NULL;
+  int free_sk = 0;
 
   if (x == NULL) {
     OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
@@ -158,6 +159,7 @@ STACK_OF(X509_EXTENSION) *X509v3_add_ext(STACK_OF(X509_EXTENSION) **x,
     if ((sk = sk_X509_EXTENSION_new_null()) == NULL) {
       goto err;
     }
+    free_sk = 1;
   } else {
     sk = *x;
   }
@@ -183,7 +185,9 @@ err:
   OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 err2:
   X509_EXTENSION_free(new_ex);
-  sk_X509_EXTENSION_free(sk);
+  if (free_sk) {
+    sk_X509_EXTENSION_free(sk);
+  }
   return NULL;
 }
 
