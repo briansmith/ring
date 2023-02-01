@@ -133,18 +133,9 @@ static int decode_hex(BIGNUM *bn, const char *in, int in_len) {
     BN_ULONG word = 0;
     int j;
     for (j = todo; j > 0; j--) {
-      char c = in[in_len - j];
-
-      BN_ULONG hex;
-      if (c >= '0' && c <= '9') {
-        hex = c - '0';
-      } else if (c >= 'a' && c <= 'f') {
-        hex = c - 'a' + 10;
-      } else if (c >= 'A' && c <= 'F') {
-        hex = c - 'A' + 10;
-      } else {
-        hex = 0;
-        // This shouldn't happen. The caller checks |isxdigit|.
+      uint8_t hex = 0;
+      if (!OPENSSL_fromxdigit(&hex, in[in_len - j])) {
+        // This shouldn't happen. The caller checks |OPENSSL_isxdigit|.
         assert(0);
       }
       word = (word << 4) | hex;
@@ -240,7 +231,7 @@ err:
 }
 
 int BN_hex2bn(BIGNUM **outp, const char *in) {
-  return bn_x2bn(outp, in, decode_hex, isxdigit);
+  return bn_x2bn(outp, in, decode_hex, OPENSSL_isxdigit);
 }
 
 char *BN_bn2dec(const BIGNUM *a) {

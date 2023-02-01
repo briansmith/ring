@@ -308,8 +308,36 @@ char *OPENSSL_strdup(const char *s) {
   return ret;
 }
 
+int OPENSSL_isalpha(int c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
 int OPENSSL_isdigit(int c) {
   return c >= '0' && c <= '9';
+}
+
+int OPENSSL_isxdigit(int c) {
+  return OPENSSL_isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+int OPENSSL_fromxdigit(uint8_t *out, int c) {
+  if (OPENSSL_isdigit(c)) {
+    *out = c - '0';
+    return 1;
+  }
+  if ('a' <= c && c <= 'f') {
+    *out = c - 'a' + 10;
+    return 1;
+  }
+  if ('A' <= c && c <= 'F') {
+    *out = c - 'A' + 10;
+    return 1;
+  }
+  return 0;
+}
+
+int OPENSSL_isalnum(int c) {
+  return OPENSSL_isalpha(c) || OPENSSL_isdigit(c);
 }
 
 int OPENSSL_tolower(int c) {

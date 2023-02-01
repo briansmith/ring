@@ -75,7 +75,7 @@
 
 #define MIN_LENGTH 4
 
-static int load_iv(char **fromp, unsigned char *to, int num);
+static int load_iv(char **fromp, unsigned char *to, size_t num);
 static int check_pem(const char *nm, const char *name);
 
 void PEM_proc_type(char *buf, int type) {
@@ -464,8 +464,8 @@ int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher) {
   p = header;
   for (;;) {
     c = *header;
-    if (!(((c >= 'A') && (c <= 'Z')) || (c == '-') ||
-          ((c >= '0') && (c <= '9')))) {
+    if (!((c >= 'A' && c <= 'Z') || c == '-' ||
+          OPENSSL_isdigit(c))) {
       break;
     }
     header++;
@@ -493,28 +493,22 @@ int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher) {
   return 1;
 }
 
-static int load_iv(char **fromp, unsigned char *to, int num) {
-  int v, i;
+static int load_iv(char **fromp, unsigned char *to, size_t num) {
+  uint8_t v;
   char *from;
 
   from = *fromp;
-  for (i = 0; i < num; i++) {
+  for (size_t i = 0; i < num; i++) {
     to[i] = 0;
   }
   num *= 2;
-  for (i = 0; i < num; i++) {
-    if ((*from >= '0') && (*from <= '9')) {
-      v = *from - '0';
-    } else if ((*from >= 'A') && (*from <= 'F')) {
-      v = *from - 'A' + 10;
-    } else if ((*from >= 'a') && (*from <= 'f')) {
-      v = *from - 'a' + 10;
-    } else {
+  for (size_t i = 0; i < num; i++) {
+    if (!OPENSSL_fromxdigit(&v, *from)) {
       OPENSSL_PUT_ERROR(PEM, PEM_R_BAD_IV_CHARS);
       return 0;
     }
     from++;
-    to[i / 2] |= v << (long)((!(i & 1)) * 4);
+    to[i / 2] |= v << (!(i & 1)) * 4;
   }
 
   *fromp = from;

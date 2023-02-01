@@ -283,10 +283,7 @@ int asn1_is_printable(uint32_t value) {
   if (value > 0x7f) {
     return 0;
   }
-  // Note we cannot use |isalnum| because it is locale-dependent.
-  return ('a' <= value && value <= 'z') ||  //
-         ('A' <= value && value <= 'Z') ||  //
-         ('0' <= value && value <= '9') ||  //
+  return OPENSSL_isalnum(value) || //
          value == ' ' || value == '\'' || value == '(' || value == ')' ||
          value == '+' || value == ',' || value == '-' || value == '.' ||
          value == '/' || value == ':' || value == '=' || value == '?';

@@ -110,22 +110,42 @@ OPENSSL_EXPORT char *OPENSSL_strdup(const char *s);
 // OPENSSL_strnlen has the same behaviour as strnlen(3).
 OPENSSL_EXPORT size_t OPENSSL_strnlen(const char *s, size_t len);
 
-// OPENSSL_isdigit is a locale-independent version of isdigit(3), It
+// OPENSSL_isalpha is a locale-independent, ASCII-only version of isalpha(3), It
+// only recognizes 'a' through 'z' and 'A' through 'Z' as alphabetic.
+OPENSSL_EXPORT int OPENSSL_isalpha(int c);
+
+// OPENSSL_isdigit is a locale-independent, ASCII-only version of isdigit(3), It
 // only recognizes '0' through '9' as digits.
 OPENSSL_EXPORT int OPENSSL_isdigit(int c);
 
-// OPENSSL_tolower is a locale-independent version of tolower(3). It only
-// lowercases ASCII values. Other values are returned as-is.
+// OPENSSL_isxdigit is a locale-independent, ASCII-only version of isxdigit(3),
+// It only recognizes '0' through '9', 'a' through 'f', and 'A through 'F' as
+// digits.
+OPENSSL_EXPORT int OPENSSL_isxdigit(int c);
+
+// OPENSSL_fromxdigit returns one if |c| is a hexadecimal digit as recognized
+// by OPENSSL_isxdigit, and sets |out| to the corresponding value. Otherwise
+// zero is returned.
+OPENSSL_EXPORT int OPENSSL_fromxdigit(uint8_t *out, int c);
+
+// OPENSSL_isalnum is a locale-independent, ASCII-only version of isalnum(3), It
+// only recognizes what |OPENSSL_isalpha| and |OPENSSL_isdigit| recognize.
+OPENSSL_EXPORT int OPENSSL_isalnum(int c);
+
+// OPENSSL_tolower is a locale-independent, ASCII-only version of tolower(3). It
+// only lowercases ASCII values. Other values are returned as-is.
 OPENSSL_EXPORT int OPENSSL_tolower(int c);
 
-// OPENSSL_isspace is a locale-independent version of isspace(3). It only
-// recognizes '\t', '\n', '\v', '\f', '\r', and ' '.
+// OPENSSL_isspace is a locale-independent, ASCII-only version of isspace(3). It
+// only recognizes '\t', '\n', '\v', '\f', '\r', and ' '.
 OPENSSL_EXPORT int OPENSSL_isspace(int c);
 
-// OPENSSL_strcasecmp is a locale-independent version of strcasecmp(3).
+// OPENSSL_strcasecmp is a locale-independent, ASCII-only version of
+// strcasecmp(3).
 OPENSSL_EXPORT int OPENSSL_strcasecmp(const char *a, const char *b);
 
-// OPENSSL_strncasecmp is a locale-independent version of strncasecmp(3).
+// OPENSSL_strncasecmp is a locale-independent, ASCII-only version of
+// strncasecmp(3).
 OPENSSL_EXPORT int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
 
 // DECIMAL_SIZE returns an upper bound for the length of the decimal

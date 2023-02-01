@@ -494,6 +494,7 @@ err:
 unsigned char *x509v3_hex_to_bytes(const char *str, long *len) {
   unsigned char *hexbuf, *q;
   unsigned char ch, cl, *p;
+  uint8_t high, low;
   if (!str) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_ARGUMENT);
     return NULL;
@@ -512,28 +513,13 @@ unsigned char *x509v3_hex_to_bytes(const char *str, long *len) {
       OPENSSL_free(hexbuf);
       return NULL;
     }
-
-    if ((ch >= '0') && (ch <= '9')) {
-      ch -= '0';
-    } else if ((ch >= 'a') && (ch <= 'f')) {
-      ch -= 'a' - 10;
-    } else if ((ch >= 'A') && (ch <= 'F')) {
-      ch -= 'A' - 10;
-    } else {
+    if (!OPENSSL_fromxdigit(&high, ch)) {
       goto badhex;
     }
-
-    if ((cl >= '0') && (cl <= '9')) {
-      cl -= '0';
-    } else if ((cl >= 'a') && (cl <= 'f')) {
-      cl -= 'a' - 10;
-    } else if ((cl >= 'A') && (cl <= 'F')) {
-      cl -= 'A' - 10;
-    } else {
+    if (!OPENSSL_fromxdigit(&low, cl)) {
       goto badhex;
     }
-
-    *q++ = (ch << 4) | cl;
+    *q++ = (high << 4) | low;
   }
 
   if (len) {
@@ -710,13 +696,7 @@ static int equal_nocase(const unsigned char *pattern, size_t pattern_len,
       return 0;
     }
     if (l != r) {
-      if ('A' <= l && l <= 'Z') {
-        l = (l - 'A') + 'a';
-      }
-      if ('A' <= r && r <= 'Z') {
-        r = (r - 'A') + 'a';
-      }
-      if (l != r) {
+      if (OPENSSL_tolower(l) != OPENSSL_tolower(r)) {
         return 0;
       }
     }
@@ -806,8 +786,7 @@ static int wildcard_match(const unsigned char *prefix, size_t prefix_len,
   // Check that the part matched by the wildcard contains only
   // permitted characters and only matches a single label.
   for (p = wildcard_start; p != wildcard_end; ++p) {
-    if (!(('0' <= *p && *p <= '9') || ('A' <= *p && *p <= 'Z') ||
-          ('a' <= *p && *p <= 'z') || *p == '-')) {
+    if (!OPENSSL_isalnum(*p) && *p != '-') {
       return 0;
     }
   }
@@ -843,8 +822,7 @@ static const unsigned char *valid_star(const unsigned char *p, size_t len,
       }
       star = &p[i];
       state &= ~LABEL_START;
-    } else if (('a' <= p[i] && p[i] <= 'z') || ('A' <= p[i] && p[i] <= 'Z') ||
-               ('0' <= p[i] && p[i] <= '9')) {
+    } else if (OPENSSL_isalnum(p[i])) {
       if ((state & LABEL_START) != 0 && len - i >= 4 &&
           OPENSSL_strncasecmp((char *)&p[i], "xn--", 4) == 0) {
         state |= LABEL_IDNA;
@@ -918,8 +896,7 @@ int x509v3_looks_like_dns_name(const unsigned char *in, size_t len) {
   size_t label_start = 0;
   for (size_t i = 0; i < len; i++) {
     unsigned char c = in[i];
-    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-        (c >= 'A' && c <= 'Z') || (c == '-' && i > label_start) ||
+    if (OPENSSL_isalnum(c) || (c == '-' && i > label_start) ||
         // These are not valid characters in hostnames, but commonly found
         // in deployments outside the Web PKI.
         c == '_' || c == ':') {
@@ -1328,17 +1305,11 @@ static int ipv6_hex(unsigned char *out, const char *in, size_t inlen) {
   }
   uint16_t num = 0;
   while (inlen--) {
-    unsigned char c = *in++;
-    num <<= 4;
-    if ((c >= '0') && (c <= '9')) {
-      num |= c - '0';
-    } else if ((c >= 'A') && (c <= 'F')) {
-      num |= c - 'A' + 10;
-    } else if ((c >= 'a') && (c <= 'f')) {
-      num |= c - 'a' + 10;
-    } else {
+    uint8_t val;
+    if (!OPENSSL_fromxdigit(&val, *in++)) {
       return 0;
     }
+    num = (num << 4) | val;
   }
   out[0] = num >> 8;
   out[1] = num & 0xff;

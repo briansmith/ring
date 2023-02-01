@@ -334,8 +334,7 @@ static bool is_hex_component(Span<const uint8_t> in) {
     return false;
   }
   for (uint8_t b : in.subspan(2)) {
-    if (!('0' <= b && b <= '9') && !('a' <= b && b <= 'f') &&
-        !('A' <= b && b <= 'F')) {
+    if (!OPENSSL_isxdigit(b)) {
       return false;
     }
   }
@@ -387,8 +386,7 @@ bool ssl_is_valid_ech_public_name(Span<const uint8_t> public_name) {
       return false;
     }
     for (uint8_t c : component) {
-      if (!('a' <= c && c <= 'z') && !('A' <= c && c <= 'Z') &&
-          !('0' <= c && c <= '9') && c != '-') {
+      if (!OPENSSL_isalnum(c) && c != '-') {
         return false;
       }
     }
