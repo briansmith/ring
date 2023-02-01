@@ -1195,7 +1195,7 @@ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
   // Additionally, one can manually check this property for built-in curves. It
   // is enforced for legacy custom curves in |EC_GROUP_set_generator|.
   const BIGNUM *order = &group->order;
-  BN_ULONG words[EC_MAX_WORDS + 1];
+  BN_ULONG words[EC_MAX_WORDS + 1] = {0};
   bn_big_endian_to_words(words, order->width + 1, bytes, len);
   bn_reduce_once(out->words, words, /*carry=*/words[order->width], order->d,
                  order->width);
