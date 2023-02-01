@@ -232,9 +232,7 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
     (c0) = (BN_ULONG)Lw(t);             \
     hi = (BN_ULONG)Hw(t);               \
     (c1) += (hi);                       \
-    if ((c1) < hi) {                    \
-      (c2)++;                           \
-    }                                   \
+    (c2) += (c1) < hi;                  \
   } while (0)
 
 #define mul_add_c2(a, b, c0, c1, c2)        \
@@ -245,16 +243,12 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
     (c0) = (BN_ULONG)Lw(tt);                \
     hi = (BN_ULONG)Hw(tt);                  \
     (c1) += hi;                             \
-    if ((c1) < hi) {                        \
-      (c2)++;                               \
-    }                                       \
+    (c2) += (c1) < hi;                      \
     t += (c0); /* no carry */               \
     (c0) = (BN_ULONG)Lw(t);                 \
     hi = (BN_ULONG)Hw(t);                   \
     (c1) += hi;                             \
-    if ((c1) < hi) {                        \
-      (c2)++;                               \
-    }                                       \
+    (c2) += (c1) < hi;                      \
   } while (0)
 
 #define sqr_add_c(a, i, c0, c1, c2)           \
@@ -265,9 +259,7 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
     (c0) = (BN_ULONG)Lw(t);                   \
     hi = (BN_ULONG)Hw(t);                     \
     (c1) += hi;                               \
-    if ((c1) < hi) {                          \
-      (c2)++;                                 \
-    }                                         \
+    (c2) += (c1) < hi;                        \
   } while (0)
 
 #define sqr_add_c2(a, i, j, c0, c1, c2) mul_add_c2((a)[i], (a)[j], c0, c1, c2)
@@ -675,7 +667,7 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       size_t n) {
   BN_ULONG t1, t2;
-  int c = 0;
+  BN_ULONG c = 0;
 
   if (n == 0) {
     return (BN_ULONG)0;
@@ -685,27 +677,19 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
     t1 = a[0];
     t2 = b[0];
     r[0] = t1 - t2 - c;
-    if (t1 != t2) {
-      c = (t1 < t2);
-    }
+    c = (t1 < t2) | ((t1 == t2) & c);
     t1 = a[1];
     t2 = b[1];
     r[1] = t1 - t2 - c;
-    if (t1 != t2) {
-      c = (t1 < t2);
-    }
+    c = (t1 < t2) | ((t1 == t2) & c);
     t1 = a[2];
     t2 = b[2];
     r[2] = t1 - t2 - c;
-    if (t1 != t2) {
-      c = (t1 < t2);
-    }
+    c = (t1 < t2) | ((t1 == t2) & c);
     t1 = a[3];
     t2 = b[3];
     r[3] = t1 - t2 - c;
-    if (t1 != t2) {
-      c = (t1 < t2);
-    }
+    c = (t1 < t2) | ((t1 == t2) & c);
     a += 4;
     b += 4;
     r += 4;
@@ -715,9 +699,7 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
     t1 = a[0];
     t2 = b[0];
     r[0] = t1 - t2 - c;
-    if (t1 != t2) {
-      c = (t1 < t2);
-    }
+    c = (t1 < t2) | ((t1 == t2) & c);
     a++;
     b++;
     r++;
