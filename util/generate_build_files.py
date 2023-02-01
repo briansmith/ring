@@ -446,7 +446,9 @@ endif()
 
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
 
-if(NOT OPENSSL_NO_ASM)
+if(OPENSSL_NO_ASM)
+  add_definitions(-DOPENSSL_NO_ASM)
+else()
   # On x86 and x86_64 Windows, we use the NASM output.
   if(WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|amd64|x86|i[3-6]86")
     enable_language(ASM_NASM)
