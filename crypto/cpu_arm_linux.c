@@ -144,13 +144,12 @@ static unsigned long getauxval_proc(unsigned long type) {
 
 extern uint32_t OPENSSL_armcap_P;
 
-static int g_has_broken_neon, g_needs_hwcap2_workaround;
+static int g_needs_hwcap2_workaround;
 
 void OPENSSL_cpuid_setup(void) {
   // We ignore the return value of |read_file| and proceed with an empty
   // /proc/cpuinfo on error. If |getauxval| works, we will still detect
-  // capabilities. There may be a false positive due to
-  // |crypto_cpuinfo_has_broken_neon|, but this is now rare.
+  // capabilities.
   char *cpuinfo_data = NULL;
   size_t cpuinfo_len = 0;
   read_file(&cpuinfo_data, &cpuinfo_len, "/proc/cpuinfo");
@@ -174,18 +173,6 @@ void OPENSSL_cpuid_setup(void) {
   }
   if (hwcap == 0) {
     hwcap = crypto_get_arm_hwcap_from_cpuinfo(&cpuinfo);
-  }
-
-  // Clear NEON support if known broken. Note, if NEON is available statically,
-  // the non-NEON code is dropped and this workaround is a no-op.
-  //
-  // TODO(davidben): The Android NDK now builds with NEON statically available
-  // by default. Cronet still has some consumers that support NEON-less devices
-  // (b/150371744). Get metrics on whether they still see this CPU and, if not,
-  // remove this check entirely.
-  g_has_broken_neon = crypto_cpuinfo_has_broken_neon(&cpuinfo);
-  if (g_has_broken_neon) {
-    hwcap &= ~HWCAP_NEON;
   }
 
   // Matching OpenSSL, only report other features if NEON is present.
@@ -223,7 +210,7 @@ void OPENSSL_cpuid_setup(void) {
   OPENSSL_free(cpuinfo_data);
 }
 
-int CRYPTO_has_broken_NEON(void) { return g_has_broken_neon; }
+int CRYPTO_has_broken_NEON(void) { return 0; }
 
 int CRYPTO_needs_hwcap2_workaround(void) { return g_needs_hwcap2_workaround; }
 

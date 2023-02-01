@@ -183,16 +183,6 @@ static unsigned long crypto_get_arm_hwcap2_from_cpuinfo(
   return ret;
 }
 
-// crypto_cpuinfo_has_broken_neon returns one if |cpuinfo| matches a CPU known
-// to have broken NEON unit and zero otherwise. See https://crbug.com/341598.
-static int crypto_cpuinfo_has_broken_neon(const STRING_PIECE *cpuinfo) {
-  return cpuinfo_field_equals(cpuinfo, "CPU implementer", "0x51") &&
-         cpuinfo_field_equals(cpuinfo, "CPU architecture", "7") &&
-         cpuinfo_field_equals(cpuinfo, "CPU variant", "0x1") &&
-         cpuinfo_field_equals(cpuinfo, "CPU part", "0x04d") &&
-         cpuinfo_field_equals(cpuinfo, "CPU revision", "0");
-}
-
 
 #if defined(__cplusplus)
 }  // extern C
