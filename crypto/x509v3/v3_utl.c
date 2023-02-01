@@ -337,6 +337,7 @@ int X509V3_get_value_int(const CONF_VALUE *value, ASN1_INTEGER **aint) {
     X509V3_conf_err(value);
     return 0;
   }
+  ASN1_INTEGER_free(*aint);
   *aint = itmp;
   return 1;
 }
