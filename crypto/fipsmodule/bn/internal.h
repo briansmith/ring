@@ -217,8 +217,8 @@ extern "C" {
 #define Hw(t) ((BN_ULONG)((t) >> BN_BITS2))
 #endif
 
-// bn_minimal_width returns the minimal value of |bn->top| which fits the
-// value of |bn|.
+// bn_minimal_width returns the minimal number of words needed to represent
+// |bn|.
 int bn_minimal_width(const BIGNUM *bn);
 
 // bn_set_minimal_width sets |bn->width| to |bn_minimal_width(bn)|. If |bn| is
@@ -234,7 +234,7 @@ int bn_wexpand(BIGNUM *bn, size_t words);
 // than a number of words.
 int bn_expand(BIGNUM *bn, size_t bits);
 
-// bn_resize_words adjusts |bn->top| to be |words|. It returns one on success
+// bn_resize_words adjusts |bn->width| to be |words|. It returns one on success
 // and zero on allocation error or if |bn|'s value is too large.
 OPENSSL_EXPORT int bn_resize_words(BIGNUM *bn, size_t words);
 
@@ -262,6 +262,12 @@ int bn_fits_in_words(const BIGNUM *bn, size_t num);
 // bn_copy_words copies the value of |bn| to |out| and returns one if the value
 // is representable in |num| words. Otherwise, it returns zero.
 int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn);
+
+// bn_assert_fits_in_bytes asserts that |bn| fits in |num| bytes. This is a
+// no-op in release builds, but triggers an assert in debug builds, and
+// declassifies all bytes which are therefore known to be zero in constant-time
+// validation.
+void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num);
 
 // bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
