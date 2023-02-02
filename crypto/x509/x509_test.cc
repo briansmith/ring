@@ -5762,6 +5762,14 @@ TEST(X509Test, ExtensionFromConf) {
       {"subjectAltName", "otherName:invalid_oid;BOOLEAN:TRUE", nullptr, {}},
       {"subjectAltName", "otherName:1.2.3.4;invalid_value", nullptr, {}},
 
+      {"policyMappings",
+       "1.1.1.1:2.2.2.2",
+       nullptr,
+       {0x30, 0x15, 0x06, 0x03, 0x55, 0x1d, 0x21, 0x04, 0x0e, 0x30, 0x0c, 0x30,
+        0x0a, 0x06, 0x03, 0x29, 0x01, 0x01, 0x06, 0x03, 0x52, 0x02, 0x02}},
+      {"policyMappings", "invalid_oid:2.2.2.2", nullptr, {}},
+      {"policyMappings", "1.1.1.1:invalid_oid", nullptr, {}},
+
       // The "DER:" prefix just specifies an arbitrary byte string. Colons
       // separators are ignored.
       {kTestOID, "DER:0001020304", nullptr, {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86,

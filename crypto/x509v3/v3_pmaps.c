@@ -124,28 +124,29 @@ static void *v2i_POLICY_MAPPINGS(const X509V3_EXT_METHOD *method,
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     const CONF_VALUE *val = sk_CONF_VALUE_value(nval, i);
     if (!val->value || !val->name) {
-      sk_POLICY_MAPPING_pop_free(pmaps, POLICY_MAPPING_free);
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
       X509V3_conf_err(val);
-      return NULL;
+      goto err;
     }
-    ASN1_OBJECT *obj1 = OBJ_txt2obj(val->name, 0);
-    ASN1_OBJECT *obj2 = OBJ_txt2obj(val->value, 0);
-    if (!obj1 || !obj2) {
-      sk_POLICY_MAPPING_pop_free(pmaps, POLICY_MAPPING_free);
-      OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
-      X509V3_conf_err(val);
-      return NULL;
-    }
+
     POLICY_MAPPING *pmap = POLICY_MAPPING_new();
     if (pmap == NULL || !sk_POLICY_MAPPING_push(pmaps, pmap)) {
       POLICY_MAPPING_free(pmap);
-      sk_POLICY_MAPPING_pop_free(pmaps, POLICY_MAPPING_free);
       OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
-      return NULL;
+      goto err;
     }
-    pmap->issuerDomainPolicy = obj1;
-    pmap->subjectDomainPolicy = obj2;
+
+    pmap->issuerDomainPolicy = OBJ_txt2obj(val->name, 0);
+    pmap->subjectDomainPolicy = OBJ_txt2obj(val->value, 0);
+    if (!pmap->issuerDomainPolicy || !pmap->subjectDomainPolicy) {
+      OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
+      X509V3_conf_err(val);
+      goto err;
+    }
   }
   return pmaps;
+
+err:
+  sk_POLICY_MAPPING_pop_free(pmaps, POLICY_MAPPING_free);
+  return NULL;
 }
