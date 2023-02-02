@@ -541,7 +541,16 @@ static int bitstr_cb(const char *elem, size_t len, void *bitstr) {
   CBS_init(&cbs, (const uint8_t *)elem, len);
   uint64_t bitnum;
   if (!CBS_get_u64_decimal(&cbs, &bitnum) || CBS_len(&cbs) != 0 ||
-      bitnum > INT_MAX) {
+      // Cap the highest allowed bit so this mechanism cannot be used to create
+      // extremely large allocations with short inputs. The highest named bit in
+      // RFC 5280 is 8, so 256 should give comfortable margin but still only
+      // allow a 32-byte allocation.
+      //
+      // We do not consider this function to be safe with untrusted inputs (even
+      // without bugs, it is prone to string injection vulnerabilities), so DoS
+      // is not truly a concern, but the limit is necessary to keep fuzzing
+      // effective.
+      bitnum > 256) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_NUMBER);
     return 0;
   }
