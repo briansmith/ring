@@ -74,6 +74,11 @@
 #define BN_MUL_ASM
 #endif
 
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
+// See asm/bn-armv8.pl.
+#define BN_ADD_ASM
+#endif
+
 #if !defined(BN_MUL_ASM)
 
 #ifdef BN_ULLONG
