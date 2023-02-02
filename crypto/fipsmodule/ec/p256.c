@@ -30,10 +30,6 @@
 #include "../delocate.h"
 #include "./internal.h"
 
-#if defined(OPENSSL_NO_ASM)
-#define FIAT_P256_NO_ASM
-#endif
-
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_NISTP256_64BIT 1
 #include "../../../third_party/fiat/p256_64.h"
