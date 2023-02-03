@@ -787,7 +787,8 @@ int RSA_check_key(const RSA *key) {
 
   // Check that p * q == n. Before we multiply, we check that p and q are in
   // bounds, to avoid a DoS vector in |bn_mul_consttime| below. Note that
-  // n was bound by |rsa_check_public_key|.
+  // n was bound by |rsa_check_public_key|. This also implicitly checks p and q
+  // are odd, which is a necessary condition for Montgomery reduction.
   if (BN_is_negative(key->p) || BN_cmp(key->p, key->n) >= 0 ||
       BN_is_negative(key->q) || BN_cmp(key->q, key->n) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_N_NOT_EQUAL_P_Q);

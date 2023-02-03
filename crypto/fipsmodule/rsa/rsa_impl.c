@@ -85,6 +85,13 @@ int rsa_check_public_key(const RSA *rsa) {
     return 0;
   }
 
+  // RSA moduli must be odd. In addition to being necessary for RSA in general,
+  // we cannot setup Montgomery reduction with even moduli.
+  if (!BN_is_odd(rsa->n)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    return 0;
+  }
+
   // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
   // the limit based on the recommendations in [1] and [2]. Windows CryptoAPI
   // doesn't support values larger than 32 bits [3], so it is unlikely that
