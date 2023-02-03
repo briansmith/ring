@@ -306,7 +306,7 @@ untrusted = { version = "0.7.1" }
 [target.'cfg(any(target_arch = "x86",target_arch = "x86_64", all(any(target_arch = "aarch64", target_arch = "arm"), any(target_os = "android", target_os = "fuchsia", target_os = "linux"))))'.dependencies]
 spin = { version = "0.5.2", default-features = false }
 
-[target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
+[target.'cfg(any(target_os = "android", target_os = "linux", target_os = "espidf"))'.dependencies]
 libc = { version = "0.2.69", default-features = false }
 once_cell = { version = "1.5.2", default-features = false, features=["std"], optional = true }
 
@@ -339,6 +339,7 @@ slow_tests = []
 std = ["alloc"]
 test_logging = []
 wasm32_c = []
+size_optimized = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

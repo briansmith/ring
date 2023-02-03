@@ -43,12 +43,12 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/poly1305/poly1305.c"),
 
-    (&[AARCH64, ARM, X86_64, X86], "crypto/crypto.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/curve25519/curve25519.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/ecp_nistz256.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p256.c"),
-    (&[AARCH64, ARM, X86_64, X86], "crypto/fipsmodule/ec/gfp_p384.c"),
+    (&[], "crypto/crypto.c"),
+    (&[], "crypto/curve25519/curve25519.c"),
+    (&[], "crypto/fipsmodule/ec/ecp_nistz.c"),
+    (&[], "crypto/fipsmodule/ec/ecp_nistz256.c"),
+    (&[], "crypto/fipsmodule/ec/gfp_p256.c"),
+    (&[], "crypto/fipsmodule/ec/gfp_p384.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -168,7 +168,8 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             "-Wenum-compare",
             "-Wfloat-equal",
             "-Wformat=2",
-            "-Winline",
+            // #[cfg(not(feature = "size_optimized"))]
+            // "-Winline",
             "-Winvalid-pch",
             "-Wmissing-field-initializers",
             "-Wmissing-include-dirs",
@@ -227,6 +228,7 @@ const ASM_TARGETS: &[(&str, Option<&str>, Option<&str>)] = &[
     ("arm", Some("ios"), Some("ios32")),
     ("arm", None, Some("linux32")),
     ("wasm32", None, None),
+    ("xtensa", None, None),
 ];
 
 const WINDOWS: &str = "windows";
@@ -355,7 +357,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
             let &(entry_arch, entry_os, _) = *entry;
             entry_arch == target.arch && is_none_or_equals(entry_os, &target.os)
         })
-        .unwrap();
+        .unwrap_or_else(|| panic!("Invalid target {}", target.arch));
 
     let use_pregenerated = !target.is_git;
     let warnings_are_errors = target.is_git;
