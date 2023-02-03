@@ -5733,6 +5733,23 @@ TEST(X509Test, ExtensionFromConf) {
       // value is not allowed.
       {"issuingDistributionPoint", "fullname", nullptr, {}},
 
+      // Duplicate reason keys are an error. Reaching this case is interesting.
+      // The value can a string like "key:value,key:value", or it can be
+      // "@section" and reference a config section. If using a string, duplicate
+      // keys are possible, but then it is impossible to put commas in the
+      // value, as onlysomereasons expects. If using a section reference, it is
+      // impossible to have a duplicate key because the config file parser
+      // overrides the old value.
+      {"issuingDistributionPoint",
+       "onlysomereasons:keyCompromise",
+       nullptr,
+       {0x30, 0x0d, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x06, 0x30, 0x04, 0x83,
+        0x02, 0x06, 0x40}},
+      {"issuingDistributionPoint",
+       "onlysomereasons:keyCompromise,onlysomereasons:CACompromise\n",
+       nullptr,
+       {}},
+
       // subjectAltName has a series of string-based inputs for each name type.
       {"subjectAltName",
        "email:foo@example.com, URI:https://example.com, DNS:example.com, "

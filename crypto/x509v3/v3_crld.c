@@ -209,26 +209,25 @@ static const BIT_STRING_BITNAME reason_flags[] = {
     {-1, NULL, NULL}};
 
 static int set_reasons(ASN1_BIT_STRING **preas, const char *value) {
-  STACK_OF(CONF_VALUE) *rsk = NULL;
-  const BIT_STRING_BITNAME *pbn;
-  const char *bnam;
-  size_t i;
+  if (*preas) {
+    // Duplicate "reasons" or "onlysomereasons" key.
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_VALUE);
+    return 0;
+  }
   int ret = 0;
-  rsk = X509V3_parse_list(value);
+  STACK_OF(CONF_VALUE) *rsk = X509V3_parse_list(value);
   if (!rsk) {
     return 0;
   }
-  if (*preas) {
-    return 0;
-  }
-  for (i = 0; i < sk_CONF_VALUE_num(rsk); i++) {
-    bnam = sk_CONF_VALUE_value(rsk, i)->name;
+  for (size_t i = 0; i < sk_CONF_VALUE_num(rsk); i++) {
+    const char *bnam = sk_CONF_VALUE_value(rsk, i)->name;
     if (!*preas) {
       *preas = ASN1_BIT_STRING_new();
       if (!*preas) {
         goto err;
       }
     }
+    const BIT_STRING_BITNAME *pbn;
     for (pbn = reason_flags; pbn->lname; pbn++) {
       if (!strcmp(pbn->sname, bnam)) {
         if (!ASN1_BIT_STRING_set_bit(*preas, pbn->bitnum, 1)) {
@@ -292,6 +291,7 @@ static DIST_POINT *crldp_from_section(const X509V3_CTX *ctx,
         goto err;
       }
     } else if (!strcmp(cnf->name, "CRLissuer")) {
+      GENERAL_NAMES_free(point->CRLissuer);
       point->CRLissuer = gnames_from_sectname(ctx, cnf->value);
       if (!point->CRLissuer) {
         goto err;
