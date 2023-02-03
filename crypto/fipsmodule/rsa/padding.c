@@ -457,9 +457,15 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
 
   bad |= looking_for_one_byte;
 
-  if (bad) {
+  // Whether the overall padding was valid or not in OAEP is public.
+  if (constant_time_declassify_w(bad)) {
     goto decoding_err;
   }
+
+  // Once the padding is known to be valid, the output length is also public.
+  static_assert(sizeof(size_t) <= sizeof(crypto_word_t),
+                "size_t does not fit in crypto_word_t");
+  one_index = constant_time_declassify_w(one_index);
 
   one_index++;
   size_t mlen = dblen - one_index;
@@ -475,8 +481,8 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
   return 1;
 
 decoding_err:
-  // to avoid chosen ciphertext attacks, the error message should not reveal
-  // which kind of decoding error happened
+  // To avoid chosen ciphertext attacks, the error message should not reveal
+  // which kind of decoding error happened.
   OPENSSL_PUT_ERROR(RSA, RSA_R_OAEP_DECODING_ERROR);
  err:
   OPENSSL_free(db);

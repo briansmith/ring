@@ -479,7 +479,7 @@ static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
 
 #endif  // BORINGSSL_CONSTANT_TIME_VALIDATION
 
-static inline int constant_time_declassify_int(int v) {
+static inline crypto_word_t constant_time_declassify_w(crypto_word_t v) {
   // Return |v| through a value barrier to be safe. Valgrind-based constant-time
   // validation is partly to check the compiler has not undone any constant-time
   // work. Any place |BORINGSSL_CONSTANT_TIME_VALIDATION| influences
@@ -491,8 +491,14 @@ static inline int constant_time_declassify_int(int v) {
   //
   // Thus, to be safe, stick a value barrier, in hopes of comparably inhibiting
   // compiler analysis.
+  CONSTTIME_DECLASSIFY(&v, sizeof(v));
+  return value_barrier_w(v);
+}
+
+static inline int constant_time_declassify_int(int v) {
   static_assert(sizeof(uint32_t) == sizeof(int),
                 "int is not the same size as uint32_t");
+  // See comment above.
   CONSTTIME_DECLASSIFY(&v, sizeof(v));
   return value_barrier_u32(v);
 }
