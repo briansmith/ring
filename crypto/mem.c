@@ -58,6 +58,7 @@
 
 #include <assert.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include <openssl/err.h>
@@ -66,6 +67,12 @@
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
+#endif
+
+#if defined(BORINGSSL_MALLOC_FAILURE_TESTING)
+#include <errno.h>
+#include <signal.h>
+#include <unistd.h>
 #endif
 
 #include "internal.h"
@@ -134,7 +141,68 @@ static const uint8_t kBoringSSLBinaryTag[18] = {
     3, 0,
 };
 
+#if defined(BORINGSSL_MALLOC_FAILURE_TESTING)
+static struct CRYPTO_STATIC_MUTEX malloc_failure_lock =
+    CRYPTO_STATIC_MUTEX_INIT;
+static uint64_t current_malloc_count = 0;
+static uint64_t malloc_number_to_fail = 0;
+static int malloc_failure_enabled = 0, break_on_malloc_fail = 0;
+
+static void malloc_exit_handler(void) {
+  CRYPTO_STATIC_MUTEX_lock_read(&malloc_failure_lock);
+  if (malloc_failure_enabled && current_malloc_count > malloc_number_to_fail) {
+    _exit(88);
+  }
+  CRYPTO_STATIC_MUTEX_unlock_read(&malloc_failure_lock);
+}
+
+static void init_malloc_failure(void) {
+  const char *env = getenv("MALLOC_NUMBER_TO_FAIL");
+  if (env != NULL && env[0] != 0) {
+    char *endptr;
+    malloc_number_to_fail = strtoull(env, &endptr, 10);
+    if (*endptr == 0) {
+      malloc_failure_enabled = 1;
+      atexit(malloc_exit_handler);
+    }
+  }
+  break_on_malloc_fail = getenv("MALLOC_BREAK_ON_FAIL") != NULL;
+}
+
+// should_fail_allocation returns one if the current allocation should fail and
+// zero otherwise.
+static int should_fail_allocation() {
+  static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
+  CRYPTO_once(&once, init_malloc_failure);
+  if (!malloc_failure_enabled) {
+    return 0;
+  }
+
+  // We lock just so multi-threaded tests are still correct, but we won't test
+  // every malloc exhaustively.
+  CRYPTO_STATIC_MUTEX_lock_write(&malloc_failure_lock);
+  int should_fail = current_malloc_count == malloc_number_to_fail;
+  current_malloc_count++;
+  CRYPTO_STATIC_MUTEX_unlock_write(&malloc_failure_lock);
+
+  if (should_fail && break_on_malloc_fail) {
+    raise(SIGTRAP);
+  }
+  if (should_fail) {
+    errno = ENOMEM;
+  }
+  return should_fail;
+}
+
+#else
+static int should_fail_allocation(void) { return 0; }
+#endif
+
 void *OPENSSL_malloc(size_t size) {
+  if (should_fail_allocation()) {
+    return NULL;
+  }
+
   if (OPENSSL_memory_alloc != NULL) {
     assert(OPENSSL_memory_free != NULL);
     assert(OPENSSL_memory_get_size != NULL);
@@ -194,6 +262,10 @@ void OPENSSL_free(void *orig_ptr) {
 }
 
 void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
+  if (should_fail_allocation()) {
+    return NULL;
+  }
+
   if (orig_ptr == NULL) {
     return OPENSSL_malloc(new_size);
   }

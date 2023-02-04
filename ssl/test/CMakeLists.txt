@@ -15,7 +15,7 @@ add_executable(
 
 add_dependencies(bssl_shim global_target)
 
-target_link_libraries(bssl_shim test_support_lib ssl crypto)
+target_link_libraries(bssl_shim ssl crypto)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(
@@ -33,7 +33,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
   add_dependencies(handshaker global_target)
 
-  target_link_libraries(handshaker test_support_lib ssl crypto)
+  target_link_libraries(handshaker ssl crypto)
 else()
   # Declare a dummy target for run_tests to depend on.
   add_custom_target(handshaker)

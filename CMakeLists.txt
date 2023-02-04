@@ -364,6 +364,10 @@ if(CONSTANT_TIME_VALIDATION)
   add_definitions(-DNDEBUG)
 endif()
 
+if(MALLOC_FAILURE_TESTING)
+  add_definitions(-DBORINGSSL_MALLOC_FAILURE_TESTING)
+endif()
+
 function(go_executable dest package)
   set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
   if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
