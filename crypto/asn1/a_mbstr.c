@@ -85,11 +85,6 @@ OPENSSL_DECLARE_ERROR_REASON(ASN1, INVALID_UTF8STRING)
 int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
                         int inform, unsigned long mask, long minsize,
                         long maxsize) {
-  int str_type;
-  char free_out;
-  ASN1_STRING *dest;
-  size_t nchar = 0;
-  char strbuf[32];
   if (len == -1) {
     len = strlen((const char *)in);
   }
@@ -128,7 +123,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
   // Check |minsize| and |maxsize| and work out the minimal type, if any.
   CBS cbs;
   CBS_init(&cbs, in, len);
-  size_t utf8_len = 0;
+  size_t utf8_len = 0, nchar = 0;
   while (CBS_len(&cbs) != 0) {
     uint32_t c;
     if (!decode_func(&cbs, &c)) {
@@ -169,6 +164,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     utf8_len += cbb_get_utf8_len(c);
   }
 
+  char strbuf[32];
   if (minsize > 0 && nchar < (size_t)minsize) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_SHORT);
     BIO_snprintf(strbuf, sizeof strbuf, "%ld", minsize);
@@ -184,6 +180,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
   }
 
   // Now work out output format and string type
+  int str_type;
   int (*encode_func)(CBB *, uint32_t) = cbb_add_latin1;
   size_t size_estimate = nchar;
   int outform = MBSTRING_ASC;
@@ -216,31 +213,28 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
   if (!out) {
     return str_type;
   }
+
+  int free_dest = 0;
+  ASN1_STRING *dest;
   if (*out) {
-    free_out = 0;
     dest = *out;
-    if (dest->data) {
-      dest->length = 0;
-      OPENSSL_free(dest->data);
-      dest->data = NULL;
-    }
-    dest->type = str_type;
   } else {
-    free_out = 1;
+    free_dest = 1;
     dest = ASN1_STRING_type_new(str_type);
     if (!dest) {
       OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       return -1;
     }
-    *out = dest;
   }
 
   // If both the same type just copy across
   if (inform == outform) {
     if (!ASN1_STRING_set(dest, in, len)) {
       OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-      return -1;
+      goto err;
     }
+    dest->type = str_type;
+    *out = dest;
     return str_type;
   }
 
@@ -267,12 +261,13 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     OPENSSL_free(data);
     goto err;
   }
-  dest->length = (int)(data_len - 1);
-  dest->data = data;
+  dest->type = str_type;
+  ASN1_STRING_set0(dest, data, (int)data_len - 1);
+  *out = dest;
   return str_type;
 
 err:
-  if (free_out) {
+  if (free_dest) {
     ASN1_STRING_free(dest);
   }
   CBB_cleanup(&cbb);

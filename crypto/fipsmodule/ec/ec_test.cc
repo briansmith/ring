@@ -656,6 +656,7 @@ TEST_P(ECCurveTest, Compare) {
   bssl::UniquePtr<EC_POINT> inf1(EC_POINT_new(group())),
       inf2(EC_POINT_new(group()));
   ASSERT_TRUE(inf1);
+  ASSERT_TRUE(inf2);
   ASSERT_TRUE(EC_POINT_set_to_infinity(group(), inf1.get()));
   // |q| is currently -|pub2|.
   ASSERT_TRUE(EC_POINT_add(group(), inf2.get(), pub2, q.get(), nullptr));
@@ -843,8 +844,8 @@ TEST_P(ECCurveTest, SetInvalidPrivateKey) {
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
   ASSERT_TRUE(key);
 
-  bssl::UniquePtr<BIGNUM> bn(BN_new());
-  ASSERT_TRUE(BN_one(bn.get()));
+  bssl::UniquePtr<BIGNUM> bn(BN_dup(BN_value_one()));
+  ASSERT_TRUE(bn);
   BN_set_negative(bn.get(), 1);
   EXPECT_FALSE(EC_KEY_set_private_key(key.get(), bn.get()))
       << "Unexpectedly set a key of -1";
@@ -937,11 +938,13 @@ TEST_P(ECCurveTest, P224Bug) {
 
 TEST_P(ECCurveTest, GPlusMinusG) {
   const EC_POINT *g = EC_GROUP_get0_generator(group());
+
   bssl::UniquePtr<EC_POINT> p(EC_POINT_dup(g, group()));
   ASSERT_TRUE(p);
   ASSERT_TRUE(EC_POINT_invert(group(), p.get(), nullptr));
-  bssl::UniquePtr<EC_POINT> sum(EC_POINT_new(group()));
 
+  bssl::UniquePtr<EC_POINT> sum(EC_POINT_new(group()));
+  ASSERT_TRUE(sum);
   ASSERT_TRUE(EC_POINT_add(group(), sum.get(), g, p.get(), nullptr));
   EXPECT_TRUE(EC_POINT_is_at_infinity(group(), sum.get()));
 }

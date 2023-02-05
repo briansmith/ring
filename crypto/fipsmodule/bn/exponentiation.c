@@ -444,6 +444,7 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
     return BN_one(r);
   }
 
+  BN_RECP_CTX_init(&recp);
   BN_CTX_start(ctx);
   aa = BN_CTX_get(ctx);
   val[0] = BN_CTX_get(ctx);
@@ -451,7 +452,6 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
     goto err;
   }
 
-  BN_RECP_CTX_init(&recp);
   if (m->neg) {
     // ignore sign of 'm'
     if (!BN_copy(aa, m)) {

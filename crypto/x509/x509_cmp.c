@@ -284,10 +284,12 @@ int X509_check_private_key(X509 *x, const EVP_PKEY *k) {
 // count but it has the same effect by duping the STACK and upping the ref of
 // each X509 structure.
 STACK_OF(X509) *X509_chain_up_ref(STACK_OF(X509) *chain) {
-  STACK_OF(X509) *ret;
-  size_t i;
-  ret = sk_X509_dup(chain);
-  for (i = 0; i < sk_X509_num(ret); i++) {
+  STACK_OF(X509) *ret = sk_X509_dup(chain);
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  for (size_t i = 0; i < sk_X509_num(ret); i++) {
     X509_up_ref(sk_X509_value(ret, i));
   }
   return ret;

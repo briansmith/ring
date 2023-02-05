@@ -506,25 +506,37 @@ static int cmp_long_name(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
 // obj_add_object inserts |obj| into the various global hashes for run-time
 // added objects. It returns one on success or zero otherwise.
 static int obj_add_object(ASN1_OBJECT *obj) {
-  int ok;
-  ASN1_OBJECT *old_object;
-
   obj->flags &= ~(ASN1_OBJECT_FLAG_DYNAMIC | ASN1_OBJECT_FLAG_DYNAMIC_STRINGS |
                   ASN1_OBJECT_FLAG_DYNAMIC_DATA);
 
   CRYPTO_STATIC_MUTEX_lock_write(&global_added_lock);
   if (global_added_by_nid == NULL) {
     global_added_by_nid = lh_ASN1_OBJECT_new(hash_nid, cmp_nid);
+  }
+  if (global_added_by_data == NULL) {
     global_added_by_data = lh_ASN1_OBJECT_new(hash_data, cmp_data);
-    global_added_by_short_name = lh_ASN1_OBJECT_new(hash_short_name, cmp_short_name);
+  }
+  if (global_added_by_short_name == NULL) {
+    global_added_by_short_name =
+        lh_ASN1_OBJECT_new(hash_short_name, cmp_short_name);
+  }
+  if (global_added_by_long_name == NULL) {
     global_added_by_long_name = lh_ASN1_OBJECT_new(hash_long_name, cmp_long_name);
+  }
+
+  int ok = 0;
+  if (global_added_by_nid == NULL ||
+      global_added_by_data == NULL ||
+      global_added_by_short_name == NULL ||
+      global_added_by_long_name == NULL) {
+    goto err;
   }
 
   // We don't pay attention to |old_object| (which contains any previous object
   // that was evicted from the hashes) because we don't have a reference count
   // on ASN1_OBJECT values. Also, we should never have duplicates nids and so
   // should always have objects in |global_added_by_nid|.
-
+  ASN1_OBJECT *old_object;
   ok = lh_ASN1_OBJECT_insert(global_added_by_nid, &old_object, obj);
   if (obj->length != 0 && obj->data != NULL) {
     ok &= lh_ASN1_OBJECT_insert(global_added_by_data, &old_object, obj);
@@ -535,8 +547,9 @@ static int obj_add_object(ASN1_OBJECT *obj) {
   if (obj->ln != NULL) {
     ok &= lh_ASN1_OBJECT_insert(global_added_by_long_name, &old_object, obj);
   }
-  CRYPTO_STATIC_MUTEX_unlock_write(&global_added_lock);
 
+err:
+  CRYPTO_STATIC_MUTEX_unlock_write(&global_added_lock);
   return ok;
 }
 

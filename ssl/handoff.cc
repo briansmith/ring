@@ -124,6 +124,9 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
     return false;
   }
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> supported(sk_SSL_CIPHER_new_null());
+  if (!supported) {
+    return false;
+  }
   while (CBS_len(&ciphers)) {
     uint16_t id;
     if (!CBS_get_u16(&ciphers, &id)) {
@@ -141,6 +144,9 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
       ssl->config->cipher_list ? ssl->config->cipher_list->ciphers.get()
                                : ssl->ctx->cipher_list->ciphers.get();
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> unsupported(sk_SSL_CIPHER_new_null());
+  if (!unsupported) {
+    return false;
+  }
   for (const SSL_CIPHER *configured_cipher : configured) {
     if (sk_SSL_CIPHER_find(supported.get(), nullptr, configured_cipher)) {
       continue;
@@ -151,7 +157,8 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
   }
   if (sk_SSL_CIPHER_num(unsupported.get()) && !ssl->config->cipher_list) {
     ssl->config->cipher_list = bssl::MakeUnique<SSLCipherPreferenceList>();
-    if (!ssl->config->cipher_list->Init(*ssl->ctx->cipher_list)) {
+    if (!ssl->config->cipher_list ||
+        !ssl->config->cipher_list->Init(*ssl->ctx->cipher_list)) {
       return false;
     }
   }
@@ -488,6 +495,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   }
 
   s3->hs = ssl_handshake_new(ssl);
+  if (!s3->hs) {
+    return false;
+  }
   SSL_HANDSHAKE *const hs = s3->hs.get();
   if (!session_reused || type == handback_tls13) {
     hs->new_session =

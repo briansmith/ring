@@ -221,6 +221,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     new_session->certs.reset(sk_CRYPTO_BUFFER_deep_copy(
         session->certs.get(), buf_up_ref, CRYPTO_BUFFER_free));
     if (new_session->certs == nullptr) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return nullptr;
     }
   }

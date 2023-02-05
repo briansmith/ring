@@ -64,7 +64,7 @@ static int pkey_hkdf_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
 
   if (hctx_src->key_len != 0) {
     hctx_dst->key = OPENSSL_memdup(hctx_src->key, hctx_src->key_len);
-    if (hctx_src->key == NULL) {
+    if (hctx_dst->key == NULL) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -73,7 +73,7 @@ static int pkey_hkdf_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
 
   if (hctx_src->salt_len != 0) {
     hctx_dst->salt = OPENSSL_memdup(hctx_src->salt, hctx_src->salt_len);
-    if (hctx_src->salt == NULL) {
+    if (hctx_dst->salt == NULL) {
       OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
       return 0;
     }

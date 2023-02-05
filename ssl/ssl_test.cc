@@ -1100,6 +1100,12 @@ static bool GetClientHello(SSL *ssl, std::vector<uint8_t> *out) {
   if (!BIO_mem_contents(bio.get(), &client_hello, &client_hello_len)) {
     return false;
   }
+
+  // We did not get far enough to write a ClientHello.
+  if (client_hello_len == 0) {
+    return false;
+  }
+
   *out = std::vector<uint8_t>(client_hello, client_hello + client_hello_len);
   return true;
 }
@@ -1974,6 +1980,7 @@ TEST(SSLTest, UnsupportedECHConfig) {
 TEST(SSLTest, ECHClientRandomsMatch) {
   bssl::UniquePtr<SSL_CTX> server_ctx =
       CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(server_ctx);
   bssl::UniquePtr<SSL_ECH_KEYS> keys = MakeTestECHKeys();
   ASSERT_TRUE(keys);
   ASSERT_TRUE(SSL_CTX_set1_ech_keys(server_ctx.get(), keys.get()));
@@ -2342,6 +2349,7 @@ TEST(SSLTest, ECHThreads) {
 
   bssl::UniquePtr<SSL_CTX> server_ctx =
       CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(SSL_CTX_set1_ech_keys(server_ctx.get(), keys1.get()));
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -3249,7 +3257,7 @@ static void ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
   bssl::UniquePtr<SSL> client, server;
   ClientConfig config;
   config.session = session;
-  EXPECT_TRUE(
+  ASSERT_TRUE(
       ConnectClientAndServer(&client, &server, client_ctx, server_ctx, config));
 
   EXPECT_EQ(SSL_session_reused(client.get()), SSL_session_reused(server.get()));
@@ -3454,7 +3462,7 @@ TEST_P(SSLVersionTest, SessionTimeout) {
   for (bool server_test : {false, true}) {
     SCOPED_TRACE(server_test);
 
-    ResetContexts();
+    ASSERT_NO_FATAL_FAILURE(ResetContexts());
     SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
     SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
 
@@ -4170,7 +4178,7 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
 TEST_P(SSLVersionTest, RecordCallback) {
   for (bool test_server : {true, false}) {
     SCOPED_TRACE(test_server);
-    ResetContexts();
+    ASSERT_NO_FATAL_FAILURE(ResetContexts());
 
     bool read_seen = false;
     bool write_seen = false;
@@ -4735,6 +4743,7 @@ static void ConnectClientAndServerWithTicketMethod(
   state->retry_count = retry_count;
   state->failure_mode = failure_mode;
 
+  ASSERT_GE(ssl_test_ticket_aead_get_ex_index(), 0);
   ASSERT_TRUE(SSL_set_ex_data(server.get(), ssl_test_ticket_aead_get_ex_index(),
                               state));
 
@@ -4788,9 +4797,9 @@ TEST_P(TicketAEADMethodTest, Resume) {
   SSL_CTX_set_ticket_aead_method(server_ctx.get(), &kSSLTestTicketMethod);
 
   bssl::UniquePtr<SSL> client, server;
-  ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
-                                         server_ctx.get(), retry_count,
-                                         failure_mode, nullptr);
+  ASSERT_NO_FATAL_FAILURE(ConnectClientAndServerWithTicketMethod(
+      &client, &server, client_ctx.get(), server_ctx.get(), retry_count,
+      failure_mode, nullptr));
   switch (failure_mode) {
     case ssl_test_ticket_aead_ok:
     case ssl_test_ticket_aead_open_hard_fail:
@@ -4806,9 +4815,9 @@ TEST_P(TicketAEADMethodTest, Resume) {
 
   ASSERT_TRUE(FlushNewSessionTickets(client.get(), server.get()));
   bssl::UniquePtr<SSL_SESSION> session = std::move(g_last_session);
-  ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
-                                         server_ctx.get(), retry_count,
-                                         failure_mode, session.get());
+  ASSERT_NO_FATAL_FAILURE(ConnectClientAndServerWithTicketMethod(
+      &client, &server, client_ctx.get(), server_ctx.get(), retry_count,
+      failure_mode, session.get()));
   switch (failure_mode) {
     case ssl_test_ticket_aead_ok:
       ASSERT_TRUE(client);
@@ -5190,6 +5199,7 @@ TEST(SSLTest, Handoff) {
       ASSERT_TRUE(CBBFinishArray(cbb.get(), &handoff));
 
       bssl::UniquePtr<SSL> handshaker(SSL_new(handshaker_ctx.get()));
+      ASSERT_TRUE(handshaker);
       // Note split handshakes determines 0-RTT support, for both the current
       // handshake and newly-issued tickets, entirely by |handshaker|. There is
       // no need to call |SSL_set_early_data_enabled| on |server|.
@@ -5215,6 +5225,7 @@ TEST(SSLTest, Handoff) {
       ASSERT_TRUE(CBBFinishArray(cbb_handback.get(), &handback));
 
       bssl::UniquePtr<SSL> server2(SSL_new(server_ctx.get()));
+      ASSERT_TRUE(server2);
       ASSERT_TRUE(SSL_apply_handback(server2.get(), handback));
 
       MoveBIOs(server2.get(), handshaker.get());
@@ -5342,6 +5353,7 @@ TEST(SSLTest, SigAlgs) {
   };
 
   UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
 
   unsigned n = 1;
   for (const auto &test : kTests) {
@@ -5397,6 +5409,7 @@ TEST(SSLTest, SigAlgsList) {
   };
 
   UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
 
   unsigned n = 1;
   for (const auto &test : kTests) {
@@ -5422,7 +5435,9 @@ TEST(SSLTest, SigAlgsList) {
 
 TEST(SSLTest, ApplyHandoffRemovesUnsupportedCiphers) {
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
   bssl::UniquePtr<SSL> server(SSL_new(server_ctx.get()));
+  ASSERT_TRUE(server);
 
   // handoff is a handoff message that has been artificially modified to pretend
   // that only cipher 0x0A is supported.  When it is applied to |server|, all
@@ -5460,7 +5475,9 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCiphers) {
 
 TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
   bssl::UniquePtr<SSL> server(SSL_new(server_ctx.get()));
+  ASSERT_TRUE(server);
 
   // handoff is a handoff message that has been artificially modified to pretend
   // that only one curve is supported.  When it is applied to |server|, all
@@ -5500,10 +5517,12 @@ TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {
   // flush them.
   bssl::UniquePtr<SSL_CTX> server_ctx(
       CreateContextWithTestCertificate(TLS_method()));
+  ASSERT_TRUE(server_ctx);
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
 
@@ -5584,7 +5603,7 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
     ClientConfig config;
     config.session = session;
     UniquePtr<SSL> client, server;
-    EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
                                        server_ctx_.get(), config));
   };
 
@@ -5677,7 +5696,7 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
 TEST_P(SSLVersionTest, SessionTicketThreads) {
   for (bool renew_ticket : {false, true}) {
     SCOPED_TRACE(renew_ticket);
-    ResetContexts();
+    ASSERT_NO_FATAL_FAILURE(ResetContexts());
     SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
     SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
     if (renew_ticket) {
@@ -5696,7 +5715,7 @@ TEST_P(SSLVersionTest, SessionTicketThreads) {
       ClientConfig config;
       config.session = session;
       UniquePtr<SSL> client, server;
-      EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+      ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
                                          server_ctx_.get(), config));
     };
 
@@ -5733,6 +5752,8 @@ TEST(SSLTest, GetCertificateThreads) {
   X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
   thread.join();
 
+  ASSERT_TRUE(cert2);
+  ASSERT_TRUE(cert2_thread);
   EXPECT_EQ(cert2, cert2_thread);
   EXPECT_EQ(0, X509_cmp(cert.get(), cert2));
 }
@@ -6105,8 +6126,10 @@ class QUICMethodTest : public testing::Test {
     SSL_set_accept_state(server_.get());
 
     transport_.reset(new MockQUICTransportPair);
-    ex_data_.Set(client_.get(), transport_->client());
-    ex_data_.Set(server_.get(), transport_->server());
+    if (!ex_data_.Set(client_.get(), transport_->client()) ||
+        !ex_data_.Set(server_.get(), transport_->server())) {
+      return false;
+    }
     if (allow_out_of_order_writes_) {
       transport_->client()->AllowOutOfOrderWrites();
       transport_->server()->AllowOutOfOrderWrites();
@@ -6494,7 +6517,7 @@ TEST_F(QUICMethodTest, ZeroRTTRejectMismatchedParameters) {
   // The server will consume the ClientHello, but it will not accept 0-RTT.
   ASSERT_TRUE(ProvideHandshakeData(server_.get()));
   ASSERT_EQ(SSL_do_handshake(server_.get()), -1);
-  EXPECT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server_.get(), -1));
+  ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server_.get(), -1));
   EXPECT_FALSE(SSL_in_early_data(server_.get()));
   EXPECT_FALSE(transport_->server()->HasReadSecret(ssl_encryption_early_data));
 
@@ -6579,7 +6602,7 @@ TEST_F(QUICMethodTest, ZeroRTTReject) {
     // The server will consume the ClientHello, but it will not accept 0-RTT.
     ASSERT_TRUE(ProvideHandshakeData(server_.get()));
     ASSERT_EQ(SSL_do_handshake(server_.get()), -1);
-    EXPECT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server_.get(), -1));
+    ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(server_.get(), -1));
     EXPECT_FALSE(SSL_in_early_data(server_.get()));
     EXPECT_FALSE(
         transport_->server()->HasReadSecret(ssl_encryption_early_data));
@@ -6747,8 +6770,8 @@ TEST_F(QUICMethodTest, Buffered) {
   ASSERT_TRUE(CreateClientAndServer());
 
   BufferedFlight client_flight, server_flight;
-  buffered_flights.Set(client_.get(), &client_flight);
-  buffered_flights.Set(server_.get(), &server_flight);
+  ASSERT_TRUE(buffered_flights.Set(client_.get(), &client_flight));
+  ASSERT_TRUE(buffered_flights.Set(server_.get(), &server_flight));
 
   ASSERT_TRUE(CompleteHandshakesForQUIC());
 
@@ -6969,10 +6992,10 @@ TEST_F(QUICMethodTest, ForbidCrossProtocolResumptionClient) {
   EXPECT_FALSE(g_last_session);
   ASSERT_TRUE(ProvideHandshakeData(client_.get()));
   EXPECT_EQ(SSL_process_quic_post_handshake(client_.get()), 1);
-  EXPECT_TRUE(g_last_session);
+  ASSERT_TRUE(g_last_session);
 
   // Pretend that g_last_session came from a TLS-over-TCP connection.
-  g_last_session.get()->is_quic = false;
+  g_last_session->is_quic = false;
 
   // Create a second connection and verify that resumption does not occur with
   // a session from a non-QUIC connection. This tests that the client does not
@@ -7010,7 +7033,7 @@ TEST_F(QUICMethodTest, ForbidCrossProtocolResumptionServer) {
   EXPECT_FALSE(g_last_session);
   ASSERT_TRUE(ProvideHandshakeData(client_.get()));
   EXPECT_EQ(SSL_process_quic_post_handshake(client_.get()), 1);
-  EXPECT_TRUE(g_last_session);
+  ASSERT_TRUE(g_last_session);
 
   // Attempt a resumption with g_last_session using TLS_method.
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -7027,7 +7050,7 @@ TEST_F(QUICMethodTest, ForbidCrossProtocolResumptionServer) {
 
   // The TLS-over-TCP client will refuse to resume with a quic session, so
   // mark is_quic = false to bypass the client check to test the server check.
-  g_last_session.get()->is_quic = false;
+  g_last_session->is_quic = false;
   SSL_set_session(client.get(), g_last_session.get());
 
   BIO *bio1, *bio2;
@@ -7386,7 +7409,7 @@ TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
   bssl::UniquePtr<SSL> client, server;
   ClientConfig config;
   config.session = session.get();
-  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
                                      server_ctx_.get(), config));
   EXPECT_TRUE(SSL_session_reused(client.get()));
   EXPECT_TRUE(SSL_session_reused(server.get()));
@@ -7770,7 +7793,7 @@ TEST(SSLTest, ALPNConfig) {
   auto check_alpn_proto = [&](Span<const uint8_t> expected) {
     observed_alpn.clear();
     bssl::UniquePtr<SSL> client, server;
-    EXPECT_TRUE(ConnectClientAndServer(&client, &server, ctx.get(), ctx.get()));
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, ctx.get(), ctx.get()));
     EXPECT_EQ(Bytes(expected), Bytes(observed_alpn));
   };
 
@@ -8411,7 +8434,7 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   bssl::UniquePtr<SSL> client, server;
-  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
 
   // Replace the write |BIO| with |wbio_silent_error|.
@@ -8477,7 +8500,7 @@ TEST(SSLTest, QuietShutdown) {
   ASSERT_TRUE(server_ctx);
   SSL_CTX_set_quiet_shutdown(server_ctx.get(), 1);
   bssl::UniquePtr<SSL> client, server;
-  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
 
   // Quiet shutdown is enabled, so |SSL_shutdown| on the server should

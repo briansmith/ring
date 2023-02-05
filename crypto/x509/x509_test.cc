@@ -1391,6 +1391,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
 TEST(X509Test, ZeroLengthsWithCheckFunctions) {
   bssl::UniquePtr<X509> leaf(CertFromPEM(kSANTypesLeaf));
+  ASSERT_TRUE(leaf);
 
   EXPECT_EQ(
       1, X509_check_host(leaf.get(), kHostname, strlen(kHostname), 0, nullptr));
@@ -2467,7 +2468,9 @@ TEST(X509Test, TestPrintUTCTIME) {
   for (auto t : asn1_utctime_tests) {
     SCOPED_TRACE(t.val);
     bssl::UniquePtr<ASN1_UTCTIME> tm(ASN1_UTCTIME_new());
+    ASSERT_TRUE(tm);
     bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
 
     // Use this instead of ASN1_UTCTIME_set() because some callers get
     // type-confused and pass ASN1_GENERALIZEDTIME to ASN1_UTCTIME_print().
@@ -2525,6 +2528,7 @@ TEST(X509Test, PrettyPrintIntegers) {
 
 TEST(X509Test, X509NameSet) {
   bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  ASSERT_TRUE(name);
   EXPECT_TRUE(X509_NAME_add_entry_by_txt(
       name.get(), "C", MBSTRING_ASC, reinterpret_cast<const uint8_t *>("US"),
       -1, -1, 0));

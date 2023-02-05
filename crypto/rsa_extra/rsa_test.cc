@@ -513,6 +513,7 @@ TEST(RSATest, GenerateFIPS) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
+    ASSERT_TRUE(rsa);
     ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), bits, nullptr));
     EXPECT_EQ(bits, BN_num_bits(rsa->n));
   }

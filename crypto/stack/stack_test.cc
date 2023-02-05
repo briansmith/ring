@@ -317,6 +317,7 @@ TEST(StackTest, Sorted) {
 // sk_*_find should return the first matching element in all cases.
 TEST(StackTest, FindFirst) {
   bssl::UniquePtr<STACK_OF(TEST_INT)> sk(sk_TEST_INT_new(compare));
+  ASSERT_TRUE(sk);
   auto value = TEST_INT_new(1);
   ASSERT_TRUE(value);
   ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(value)));
@@ -397,6 +398,7 @@ TEST(StackTest, BinarySearch) {
 
 TEST(StackTest, DeleteIf) {
   bssl::UniquePtr<STACK_OF(TEST_INT)> sk(sk_TEST_INT_new(compare));
+  ASSERT_TRUE(sk);
   for (int v : {1, 9, 2, 8, 3, 7, 4, 6, 5}) {
     auto obj = TEST_INT_new(v);
     ASSERT_TRUE(obj);

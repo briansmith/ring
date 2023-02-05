@@ -111,6 +111,7 @@ static bool hkdf_expand_label(Span<uint8_t> out, const EVP_MD *digest,
       !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
       !CBB_add_bytes(&child, hash.data(), hash.size()) ||
       !CBBFinishArray(cbb.get(), &hkdf_label)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
