@@ -1,5 +1,3 @@
-include_directories(../include)
-
 add_library(
   decrepit
 
@@ -21,9 +19,7 @@ add_library(
   x509/x509_decrepit.c
   xts/xts.c
 )
-
 add_dependencies(decrepit global_target)
-
 target_link_libraries(decrepit crypto ssl)
 
 add_executable(
@@ -38,9 +34,7 @@ add_executable(
 
   $<TARGET_OBJECTS:boringssl_gtest_main>
 )
-
 add_dependencies(decrepit_test global_target)
-
 target_link_libraries(decrepit_test test_support_lib boringssl_gtest decrepit
                       crypto)
 add_dependencies(all_tests decrepit_test)

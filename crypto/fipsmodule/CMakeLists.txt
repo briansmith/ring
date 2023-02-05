@@ -1,5 +1,3 @@
-include_directories(../../include)
-
 perlasm(BCM_SOURCES aarch64 aesv8-armv8 aes/asm/aesv8-armx.pl)
 perlasm(BCM_SOURCES aarch64 aesv8-gcm-armv8 modes/asm/aesv8-gcm-armv8.pl)
 perlasm(BCM_SOURCES aarch64 armv8-mont bn/asm/armv8-mont.pl)
@@ -67,9 +65,8 @@ if(FIPS_DELOCATE)
 
     bcm.c
   )
-
   add_dependencies(bcm_c_generated_asm global_target)
-
+  target_include_directories(bcm_c_generated_asm PRIVATE ../../include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -104,9 +101,7 @@ if(FIPS_DELOCATE)
 
     bcm-delocated.S
   )
-
   add_dependencies(bcm_hashunset global_target)
-
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
@@ -131,9 +126,8 @@ if(FIPS_DELOCATE)
 
     fips_shared_support.c
   )
-
   add_dependencies(fipsmodule global_target)
-
+  target_include_directories(fipsmodule PRIVATE ../../include)
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
   if(NOT BUILD_SHARED_LIBS)
@@ -147,8 +141,8 @@ elseif(FIPS_SHARED)
 
     fips_shared_support.c
   )
-
   add_dependencies(fipsmodule global_target)
+  target_include_directories(fipsmodule PRIVATE ../../include)
 
   add_library(
     bcm_library
@@ -158,8 +152,8 @@ elseif(FIPS_SHARED)
     bcm.c
     ${BCM_SOURCES_ASM_USED}
   )
-
   add_dependencies(bcm_library global_target)
+  target_include_directories(bcm_library PRIVATE ../../include)
 
   add_custom_command(
     OUTPUT bcm.o
@@ -179,6 +173,6 @@ else()
     fips_shared_support.c
     ${BCM_SOURCES_ASM_USED}
   )
-
   add_dependencies(fipsmodule global_target)
+  target_include_directories(fipsmodule PRIVATE ../../include)
 endif()

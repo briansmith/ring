@@ -487,8 +487,6 @@ if(BUILD_SHARED_LIBS)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
-include_directories(src/include)
-
 '''
 
   def PrintLibrary(self, out, name, files):
@@ -543,6 +541,7 @@ endif()
 
       self.PrintLibrary(cmake, 'crypto',
           files['crypto'] + ['${CRYPTO_SOURCES_ASM_USED}'])
+      cmake.write('target_include_directories(crypto PUBLIC src/include)\n')
       self.PrintLibrary(cmake, 'ssl', files['ssl'])
       self.PrintExe(cmake, 'bssl', files['tool'], ['ssl', 'crypto'])
 

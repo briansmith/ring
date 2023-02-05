@@ -1,10 +1,7 @@
-include_directories(../include)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-prototypes")
-
 macro(fuzzer name)
   add_executable(${name} ${name}.cc)
   add_dependencies(${name} global_target)
+  target_compile_options(${name} PRIVATE "-Wno-missing-prototypes")
   target_link_libraries(${name} crypto ${ARGN})
   if(LIBFUZZER_FROM_DEPS)
     set_target_properties(${name} PROPERTIES LINK_FLAGS "-fsanitize=fuzzer-no-link")

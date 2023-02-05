@@ -1,5 +1,3 @@
-include_directories(../include)
-
 add_subdirectory(fipsmodule)
 add_subdirectory(test)
 
@@ -298,7 +296,7 @@ endif()
 if(OPENSSL_NASM)
   target_sources(crypto PRIVATE ${CRYPTO_SOURCES_NASM})
 endif()
-target_include_directories(crypto INTERFACE
+target_include_directories(crypto PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
