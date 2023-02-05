@@ -1,6 +1,5 @@
 macro(fuzzer name)
   add_executable(${name} ${name}.cc)
-  add_dependencies(${name} global_target)
   target_compile_options(${name} PRIVATE "-Wno-missing-prototypes")
   target_link_libraries(${name} crypto ${ARGN})
   if(LIBFUZZER_FROM_DEPS)

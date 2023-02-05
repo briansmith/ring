@@ -319,7 +319,7 @@ if(FIPS_SHARED)
   )
 endif()
 
-add_dependencies(crypto global_target)
+add_dependencies(crypto boringssl_prefix_symbols)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
   add_dependencies(crypto bcm_o_target)
@@ -350,10 +350,7 @@ add_executable(
 
   fipsmodule/rand/urandom_test.cc
 )
-
 target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
-
-add_dependencies(urandom_test global_target)
 add_dependencies(all_tests urandom_test)
 
 add_executable(
@@ -427,8 +424,5 @@ add_executable(
   $<TARGET_OBJECTS:crypto_test_data>
   $<TARGET_OBJECTS:boringssl_gtest_main>
 )
-
-add_dependencies(crypto_test global_target)
-
 target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
 add_dependencies(all_tests crypto_test)

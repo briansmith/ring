@@ -44,7 +44,6 @@ add_library(
 # here.
 install_if_enabled(TARGETS ssl EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})
 set_property(TARGET ssl PROPERTY EXPORT_NAME SSL)
-add_dependencies(ssl global_target)
 target_link_libraries(ssl crypto)
 
 add_executable(
@@ -56,6 +55,5 @@ add_executable(
 
   $<TARGET_OBJECTS:boringssl_gtest_main>
 )
-add_dependencies(ssl_test global_target)
 target_link_libraries(ssl_test test_support_lib boringssl_gtest ssl crypto)
 add_dependencies(all_tests ssl_test)

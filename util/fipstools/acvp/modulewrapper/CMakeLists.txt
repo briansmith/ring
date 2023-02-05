@@ -5,6 +5,5 @@ if(FIPS)
     main.cc
     modulewrapper.cc
   )
-  add_dependencies(modulewrapper global_target)
   target_link_libraries(modulewrapper crypto)
 endif()

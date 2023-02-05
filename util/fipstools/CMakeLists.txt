@@ -4,6 +4,5 @@ if(FIPS)
 
     test_fips.c
   )
-  add_dependencies(test_fips global_target)
   target_link_libraries(test_fips crypto)
 endif()

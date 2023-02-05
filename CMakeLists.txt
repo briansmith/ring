@@ -42,11 +42,6 @@ function(install_if_enabled)
   endif()
 endfunction()
 
-# This is a dummy target which all other targets depend on (manually - see other
-# CMakeLists.txt files). This gives us a hook to add any targets which need to
-# run before all other targets.
-add_custom_target(global_target)
-
 if(ANDROID)
   # Android-NDK CMake files reconfigure the path and so Perl won't be found.
   # However, ninja will still find them in $PATH if we just name them.
@@ -112,7 +107,7 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS)
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include
     COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include ${BORINGSSL_PREFIX_SYMBOLS}
     DEPENDS util/make_prefix_headers.go
-            ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+            ${BORINGSSL_PREFIX_SYMBOLS})
 
   # add_dependencies needs a target, not a file, so we add an intermediate
   # target.
@@ -121,9 +116,10 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS)
     DEPENDS symbol_prefix_include/boringssl_prefix_symbols.h
             symbol_prefix_include/boringssl_prefix_symbols_asm.h
             symbol_prefix_include/boringssl_prefix_symbols_nasm.inc)
-  add_dependencies(global_target boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+else()
+  add_custom_target(boringssl_prefix_symbols)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

@@ -65,7 +65,7 @@ if(FIPS_DELOCATE)
 
     bcm.c
   )
-  add_dependencies(bcm_c_generated_asm global_target)
+  add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
   target_include_directories(bcm_c_generated_asm PRIVATE ../../include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -101,7 +101,6 @@ if(FIPS_DELOCATE)
 
     bcm-delocated.S
   )
-  add_dependencies(bcm_hashunset global_target)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
@@ -126,7 +125,7 @@ if(FIPS_DELOCATE)
 
     fips_shared_support.c
   )
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
   target_include_directories(fipsmodule PRIVATE ../../include)
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
@@ -141,7 +140,7 @@ elseif(FIPS_SHARED)
 
     fips_shared_support.c
   )
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
   target_include_directories(fipsmodule PRIVATE ../../include)
 
   add_library(
@@ -152,7 +151,7 @@ elseif(FIPS_SHARED)
     bcm.c
     ${BCM_SOURCES_ASM_USED}
   )
-  add_dependencies(bcm_library global_target)
+  add_dependencies(bcm_library boringssl_prefix_symbols)
   target_include_directories(bcm_library PRIVATE ../../include)
 
   add_custom_command(
@@ -173,6 +172,6 @@ else()
     fips_shared_support.c
     ${BCM_SOURCES_ASM_USED}
   )
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
   target_include_directories(fipsmodule PRIVATE ../../include)
 endif()
