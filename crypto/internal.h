@@ -225,6 +225,16 @@ typedef __uint128_t uint128_t;
 #define OPENSSL_SSE2
 #endif
 
+#if defined(BORINGSSL_MALLOC_FAILURE_TESTING)
+// OPENSSL_reset_malloc_counter_for_testing, when malloc testing is enabled,
+// resets the internal malloc counter, to simulate further malloc failures. This
+// should be called in between independent tests, at a point where failure from
+// a previous test will not impact subsequent ones.
+OPENSSL_EXPORT void OPENSSL_reset_malloc_counter_for_testing(void);
+#else
+OPENSSL_INLINE void OPENSSL_reset_malloc_counter_for_testing(void) {}
+#endif
+
 
 // Pointer utility functions.
 
