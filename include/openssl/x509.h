@@ -938,7 +938,7 @@ OPENSSL_EXPORT int X509_NAME_add_entry(X509_NAME *name,
 // success or zero on error. The entry's attribute type is |obj|. The entry's
 // attribute value is determined by |type|, |bytes|, and |len|, as in
 // |X509_NAME_ENTRY_set_data|. The entry's position is determined by |loc| and
-// |set| as in |X509_NAME_entry|.
+// |set| as in |X509_NAME_add_entry|.
 OPENSSL_EXPORT int X509_NAME_add_entry_by_OBJ(X509_NAME *name,
                                               const ASN1_OBJECT *obj, int type,
                                               const uint8_t *bytes, int len,

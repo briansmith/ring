@@ -127,27 +127,30 @@ static STACK_OF(GENERAL_NAME) *gnames_from_sectname(const X509V3_CTX *ctx,
   return gens;
 }
 
+// set_dist_point_name decodes a DistributionPointName from |cnf| and writes the
+// result in |*pdp|. It returns 1 on success, -1 on error, and 0 if |cnf| used
+// an unrecognized input type. The zero return can be used by callers to support
+// additional syntax.
 static int set_dist_point_name(DIST_POINT_NAME **pdp, const X509V3_CTX *ctx,
                                const CONF_VALUE *cnf) {
-  // If |cnf| comes from |X509V3_parse_list|, which is possible for a v2i
-  // function, |cnf->value| may be NULL.
-  if (cnf->value == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
-    return 0;
-  }
-
   STACK_OF(GENERAL_NAME) *fnm = NULL;
   STACK_OF(X509_NAME_ENTRY) *rnm = NULL;
   if (!strncmp(cnf->name, "fullname", 9)) {
+    // If |cnf| comes from |X509V3_parse_list|, which is possible for a v2i
+    // function, |cnf->value| may be NULL.
+    if (cnf->value == NULL) {
+      OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
+      return -1;
+    }
     fnm = gnames_from_sectname(ctx, cnf->value);
     if (!fnm) {
       goto err;
     }
   } else if (!strcmp(cnf->name, "relativename")) {
-    int ret;
-    X509_NAME *nm;
-    nm = X509_NAME_new();
-    if (!nm) {
+    // If |cnf| comes from |X509V3_parse_list|, which is possible for a v2i
+    // function, |cnf->value| may be NULL.
+    if (cnf->value == NULL) {
+      OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
       return -1;
     }
     const STACK_OF(CONF_VALUE) *dnsect = X509V3_get_section(ctx, cnf->value);
@@ -155,14 +158,18 @@ static int set_dist_point_name(DIST_POINT_NAME **pdp, const X509V3_CTX *ctx,
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_SECTION_NOT_FOUND);
       return -1;
     }
-    ret = X509V3_NAME_from_section(nm, dnsect, MBSTRING_ASC);
+    X509_NAME *nm = X509_NAME_new();
+    if (!nm) {
+      return -1;
+    }
+    int ret = X509V3_NAME_from_section(nm, dnsect, MBSTRING_ASC);
     rnm = nm->entries;
     nm->entries = NULL;
     X509_NAME_free(nm);
     if (!ret || sk_X509_NAME_ENTRY_num(rnm) <= 0) {
       goto err;
     }
-    // Since its a name fragment can't have more than one RDNSequence
+    // There can only be one RDN in nameRelativeToCRLIssuer.
     if (sk_X509_NAME_ENTRY_value(rnm, sk_X509_NAME_ENTRY_num(rnm) - 1)->set) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_MULTIPLE_RDNS);
       goto err;

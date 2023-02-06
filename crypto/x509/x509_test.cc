@@ -5733,6 +5733,35 @@ TEST(X509Test, ExtensionFromConf) {
       // value is not allowed.
       {"issuingDistributionPoint", "fullname", nullptr, {}},
 
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\n",
+       {0x30, 0x1b, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x14, 0x30,
+        0x12, 0xa0, 0x10, 0xa1, 0x0e, 0x30, 0x0c, 0x06, 0x03, 0x55,
+        0x04, 0x03, 0x0c, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f}},
+
+      // relativename referencing a section which doesn't exist.
+      {"issuingDistributionPoint",
+       "relativename:wrong_section_name",
+       "[name]\nCN=Hello\n",
+       {}},
+
+      // relativename must be a single RDN. By default, the section-based name
+      // syntax puts each attribute into its own RDN.
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\nC=US\n",
+       {}},
+
+      // A single RDN with multiple attributes is allowed.
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\n+C=US\n",
+       {0x30, 0x26, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x1f, 0x30,
+        0x1d, 0xa0, 0x1b, 0xa1, 0x19, 0x30, 0x09, 0x06, 0x03, 0x55,
+        0x04, 0x06, 0x13, 0x02, 0x55, 0x53, 0x30, 0x0c, 0x06, 0x03,
+        0x55, 0x04, 0x03, 0x0c, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f}},
+
       // Duplicate reason keys are an error. Reaching this case is interesting.
       // The value can a string like "key:value,key:value", or it can be
       // "@section" and reference a config section. If using a string, duplicate
