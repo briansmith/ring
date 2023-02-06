@@ -2796,6 +2796,41 @@ TEST_F(BNTest, MontgomeryLarge) {
                                          ctx(), nullptr));
 }
 
+#if defined(SUPPORTS_ABI_TEST)
+// These functions are not always implemented in assembly, but they sometimes
+// are, so include ABI tests for each.
+TEST_F(BNTest, ArithmeticABI) {
+  EXPECT_EQ(0u, CHECK_ABI(bn_add_words, nullptr, nullptr, nullptr, 0));
+  EXPECT_EQ(0u, CHECK_ABI(bn_sub_words, nullptr, nullptr, nullptr, 0));
+
+  for (size_t num :
+       {1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65}) {
+    SCOPED_TRACE(num);
+    std::vector<BN_ULONG> a(num, 123456789);
+    std::vector<BN_ULONG> b(num, static_cast<BN_ULONG>(-1));
+    std::vector<BN_ULONG> r(num);
+
+    CHECK_ABI(bn_add_words, r.data(), a.data(), b.data(), num);
+    CHECK_ABI(bn_sub_words, r.data(), a.data(), b.data(), num);
+
+    CHECK_ABI(bn_mul_words, r.data(), a.data(), num, 42);
+    CHECK_ABI(bn_mul_add_words, r.data(), a.data(), num, 42);
+
+    r.resize(2 * num);
+    CHECK_ABI(bn_sqr_words, r.data(), a.data(), num);
+
+    if (num == 4) {
+      CHECK_ABI(bn_mul_comba4, r.data(), a.data(), b.data());
+      CHECK_ABI(bn_sqr_comba4, r.data(), a.data());
+    }
+    if (num == 8) {
+      CHECK_ABI(bn_mul_comba8, r.data(), a.data(), b.data());
+      CHECK_ABI(bn_sqr_comba8, r.data(), a.data());
+    }
+  }
+}
+#endif
+
 #if defined(OPENSSL_BN_ASM_MONT) && defined(SUPPORTS_ABI_TEST)
 TEST_F(BNTest, BNMulMontABI) {
   for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
