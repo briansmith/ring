@@ -417,40 +417,40 @@ DECLARE_PEM_rw_cb(PrivateKey, EVP_PKEY)
 
 DECLARE_PEM_rw(PUBKEY, EVP_PKEY)
 
-OPENSSL_EXPORT int PEM_write_bio_PKCS8PrivateKey_nid(BIO *bp, EVP_PKEY *x,
+OPENSSL_EXPORT int PEM_write_bio_PKCS8PrivateKey_nid(BIO *bp, const EVP_PKEY *x,
                                                      int nid, char *kstr,
                                                      int klen,
                                                      pem_password_cb *cb,
                                                      void *u);
-OPENSSL_EXPORT int PEM_write_bio_PKCS8PrivateKey(BIO *, EVP_PKEY *,
+OPENSSL_EXPORT int PEM_write_bio_PKCS8PrivateKey(BIO *, const EVP_PKEY *,
                                                  const EVP_CIPHER *, char *,
                                                  int, pem_password_cb *,
                                                  void *);
-OPENSSL_EXPORT int i2d_PKCS8PrivateKey_bio(BIO *bp, EVP_PKEY *x,
+OPENSSL_EXPORT int i2d_PKCS8PrivateKey_bio(BIO *bp, const EVP_PKEY *x,
                                            const EVP_CIPHER *enc, char *kstr,
                                            int klen, pem_password_cb *cb,
                                            void *u);
-OPENSSL_EXPORT int i2d_PKCS8PrivateKey_nid_bio(BIO *bp, EVP_PKEY *x, int nid,
-                                               char *kstr, int klen,
+OPENSSL_EXPORT int i2d_PKCS8PrivateKey_nid_bio(BIO *bp, const EVP_PKEY *x,
+                                               int nid, char *kstr, int klen,
                                                pem_password_cb *cb, void *u);
 OPENSSL_EXPORT EVP_PKEY *d2i_PKCS8PrivateKey_bio(BIO *bp, EVP_PKEY **x,
                                                  pem_password_cb *cb, void *u);
 
-OPENSSL_EXPORT int i2d_PKCS8PrivateKey_fp(FILE *fp, EVP_PKEY *x,
+OPENSSL_EXPORT int i2d_PKCS8PrivateKey_fp(FILE *fp, const EVP_PKEY *x,
                                           const EVP_CIPHER *enc, char *kstr,
                                           int klen, pem_password_cb *cb,
                                           void *u);
-OPENSSL_EXPORT int i2d_PKCS8PrivateKey_nid_fp(FILE *fp, EVP_PKEY *x, int nid,
-                                              char *kstr, int klen,
+OPENSSL_EXPORT int i2d_PKCS8PrivateKey_nid_fp(FILE *fp, const EVP_PKEY *x,
+                                              int nid, char *kstr, int klen,
                                               pem_password_cb *cb, void *u);
-OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey_nid(FILE *fp, EVP_PKEY *x, int nid,
-                                                 char *kstr, int klen,
+OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey_nid(FILE *fp, const EVP_PKEY *x,
+                                                 int nid, char *kstr, int klen,
                                                  pem_password_cb *cb, void *u);
 
 OPENSSL_EXPORT EVP_PKEY *d2i_PKCS8PrivateKey_fp(FILE *fp, EVP_PKEY **x,
                                                 pem_password_cb *cb, void *u);
 
-OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, EVP_PKEY *x,
+OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, const EVP_PKEY *x,
                                              const EVP_CIPHER *enc, char *kstr,
                                              int klen, pem_password_cb *cd,
                                              void *u);
