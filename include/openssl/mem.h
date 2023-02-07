@@ -75,18 +75,25 @@ extern "C" {
 // unless stated otherwise.
 
 
-// OPENSSL_malloc acts like a regular |malloc|.
+#ifndef _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
+// OPENSSL_malloc is similar to a regular |malloc|, but allocates additional
+// private data. The resulting pointer must be freed with |OPENSSL_free|. In
+// the case of a malloc failure, prior to returning NULL |OPENSSL_malloc| will
+// push |ERR_R_MALLOC_FAILURE| onto the openssl error stack.
 OPENSSL_EXPORT void *OPENSSL_malloc(size_t size);
+#endif // !_BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 
 // OPENSSL_free does nothing if |ptr| is NULL. Otherwise it zeros out the
 // memory allocated at |ptr| and frees it.
 OPENSSL_EXPORT void OPENSSL_free(void *ptr);
 
+#ifndef _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 // OPENSSL_realloc returns a pointer to a buffer of |new_size| bytes that
 // contains the contents of |ptr|. Unlike |realloc|, a new buffer is always
 // allocated and the data at |ptr| is always wiped and freed. Memory is
 // allocated with |OPENSSL_malloc| and must be freed with |OPENSSL_free|.
 OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size);
+#endif // !_BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 
 // OPENSSL_cleanse zeros out |len| bytes of memory at |ptr|. This is similar to
 // |memset_s| from C11.

@@ -188,8 +188,12 @@ OPENSSL_EXPORT uint32_t ERR_get_error_line(const char **file, int *line);
 #define ERR_FLAG_STRING 1
 
 // ERR_FLAG_MALLOCED is passed into |ERR_set_error_data| to indicate that |data|
-// was allocated with |OPENSSL_malloc|. It is never returned from
-// |ERR_get_error_line_data|.
+// was allocated with |OPENSSL_malloc|.
+//
+// It is, separately, returned in |*flags| from |ERR_get_error_line_data| to
+// indicate that |*data| has a non-static lifetime, but this lifetime is still
+// managed by the library. The caller must not call |OPENSSL_free| or |free| on
+// |data|.
 #define ERR_FLAG_MALLOCED 2
 
 // ERR_get_error_line_data acts like |ERR_get_error_line|, but also returns the

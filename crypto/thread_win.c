@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+// Ensure we can't call OPENSSL_malloc circularly.
+#define _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 #include "internal.h"
 
 #if defined(OPENSSL_WINDOWS_THREADS)
@@ -23,9 +25,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <openssl/mem.h>
-
 
 static_assert(sizeof(CRYPTO_MUTEX) >= sizeof(SRWLOCK),
               "CRYPTO_MUTEX is too small");
@@ -129,7 +128,7 @@ static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
     }
   }
 
-  OPENSSL_free(pointers);
+  free(pointers);
 }
 
 // Thread Termination Callbacks.
@@ -234,14 +233,14 @@ int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
 
   void **pointers = get_thread_locals();
   if (pointers == NULL) {
-    pointers = OPENSSL_malloc(sizeof(void *) * NUM_OPENSSL_THREAD_LOCALS);
+    pointers = malloc(sizeof(void *) * NUM_OPENSSL_THREAD_LOCALS);
     if (pointers == NULL) {
       destructor(value);
       return 0;
     }
     OPENSSL_memset(pointers, 0, sizeof(void *) * NUM_OPENSSL_THREAD_LOCALS);
     if (TlsSetValue(g_thread_local_key, pointers) == 0) {
-      OPENSSL_free(pointers);
+      free(pointers);
       destructor(value);
       return 0;
     }
