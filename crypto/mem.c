@@ -57,9 +57,11 @@
 #include <openssl/mem.h>
 
 #include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <openssl/err.h>
 
@@ -127,7 +129,7 @@ WEAK_SYMBOL_FUNC(void, sdallocx, (void *ptr, size_t size, int flags));
 // primitives used must tolerate every other synchronization primitive linked
 // into the process, including pthreads locks. Failing to meet these constraints
 // may result in deadlocks, crashes, or memory corruption.
-WEAK_SYMBOL_FUNC(void*, OPENSSL_memory_alloc, (size_t size));
+WEAK_SYMBOL_FUNC(void *, OPENSSL_memory_alloc, (size_t size));
 WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr));
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr));
 
@@ -135,10 +137,25 @@ WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr));
 // are linking in BoringSSL and, roughly, what version they are using.
 static const uint8_t kBoringSSLBinaryTag[18] = {
     // 16 bytes of magic tag.
-    0x8c, 0x62, 0x20, 0x0b, 0xd2, 0xa0, 0x72, 0x58,
-    0x44, 0xa8, 0x96, 0x69, 0xad, 0x55, 0x7e, 0xec,
+    0x8c,
+    0x62,
+    0x20,
+    0x0b,
+    0xd2,
+    0xa0,
+    0x72,
+    0x58,
+    0x44,
+    0xa8,
+    0x96,
+    0x69,
+    0xad,
+    0x55,
+    0x7e,
+    0xec,
     // Current source iteration. Incremented ~monthly.
-    3, 0,
+    3,
+    0,
 };
 
 #if defined(BORINGSSL_MALLOC_FAILURE_TESTING)
@@ -321,9 +338,7 @@ void OPENSSL_cleanse(void *ptr, size_t len) {
 #endif  // !OPENSSL_NO_ASM
 }
 
-void OPENSSL_clear_free(void *ptr, size_t unused) {
-  OPENSSL_free(ptr);
-}
+void OPENSSL_clear_free(void *ptr, size_t unused) { OPENSSL_free(ptr); }
 
 int CRYPTO_secure_malloc_init(size_t size, size_t min_size) { return 0; }
 
@@ -394,9 +409,7 @@ int OPENSSL_isalpha(int c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-int OPENSSL_isdigit(int c) {
-  return c >= '0' && c <= '9';
-}
+int OPENSSL_isdigit(int c) { return c >= '0' && c <= '9'; }
 
 int OPENSSL_isxdigit(int c) {
   return OPENSSL_isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
@@ -418,9 +431,7 @@ int OPENSSL_fromxdigit(uint8_t *out, int c) {
   return 0;
 }
 
-int OPENSSL_isalnum(int c) {
-  return OPENSSL_isalpha(c) || OPENSSL_isdigit(c);
-}
+int OPENSSL_isalnum(int c) { return OPENSSL_isalpha(c) || OPENSSL_isdigit(c); }
 
 int OPENSSL_tolower(int c) {
   if (c >= 'A' && c <= 'Z') {
@@ -476,6 +487,65 @@ int BIO_snprintf(char *buf, size_t n, const char *format, ...) {
 
 int BIO_vsnprintf(char *buf, size_t n, const char *format, va_list args) {
   return vsnprintf(buf, n, format, args);
+}
+
+int OPENSSL_vasprintf_internal(char **str, const char *format, va_list args,
+                               int system_malloc) {
+  void *(*allocate)(size_t) = system_malloc ? malloc : OPENSSL_malloc;
+  void (*deallocate)(void *) = system_malloc ? free : OPENSSL_free;
+  void *(*reallocate)(void *, size_t) =
+      system_malloc ? realloc : OPENSSL_realloc;
+  char *candidate = NULL;
+  size_t candidate_len = 64;  // TODO(bbe) what's the best initial size?
+
+  if ((candidate = allocate(candidate_len)) == NULL) {
+    goto err;
+  }
+  va_list args_copy;
+  va_copy(args_copy, args);
+  int ret = vsnprintf(candidate, candidate_len, format, args_copy);
+  va_end(args_copy);
+  if (ret == INT_MAX || ret < 0) {
+    // Failed, or size not int representable.
+    goto err;
+  }
+  if ((size_t)ret >= candidate_len) {
+    // Too big to fit in allocation.
+    char *tmp;
+
+    candidate_len = ret + 1;
+    if ((tmp = reallocate(candidate, candidate_len)) == NULL) {
+      goto err;
+    }
+    candidate = tmp;
+    va_copy(args_copy, args);
+    ret = vsnprintf(candidate, candidate_len, format, args_copy);
+    va_end(args_copy);
+  }
+  // At this point this can't happen unless vsnprintf is insane.
+  if (ret < 0 || (size_t)ret >= candidate_len) {
+    goto err;
+  }
+  *str = candidate;
+  return ret;
+
+ err:
+  deallocate(candidate);
+  *str = NULL;
+  errno = ENOMEM;
+  return -1;
+}
+
+int OPENSSL_vasprintf(char **str, const char *format, va_list args) {
+  return OPENSSL_vasprintf_internal(str, format, args, /*system_malloc=*/0);
+}
+
+int OPENSSL_asprintf(char **str, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  int ret = OPENSSL_vasprintf(str, format, args);
+  va_end(args);
+  return ret;
 }
 
 char *OPENSSL_strndup(const char *str, size_t size) {

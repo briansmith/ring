@@ -84,7 +84,8 @@ OPENSSL_EXPORT void OPENSSL_free(void *ptr);
 
 // OPENSSL_realloc returns a pointer to a buffer of |new_size| bytes that
 // contains the contents of |ptr|. Unlike |realloc|, a new buffer is always
-// allocated and the data at |ptr| is always wiped and freed.
+// allocated and the data at |ptr| is always wiped and freed. Memory is
+// allocated with |OPENSSL_malloc| and must be freed with |OPENSSL_free|.
 OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size);
 
 // OPENSSL_cleanse zeros out |len| bytes of memory at |ptr|. This is similar to
@@ -160,12 +161,25 @@ OPENSSL_EXPORT int BIO_snprintf(char *buf, size_t n, const char *format, ...)
 OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
                                  va_list args) OPENSSL_PRINTF_FORMAT_FUNC(3, 0);
 
+// OPENSSL_vasprintf has the same behavior as vasprintf(3), except that
+// memory allocated in a returned string must be freed with |OPENSSL_free|.
+OPENSSL_EXPORT int OPENSSL_vasprintf(char **str, const char *format,
+                                     va_list args)
+    OPENSSL_PRINTF_FORMAT_FUNC(2, 0);
+
+// OPENSSL_asprintf has the same behavior as asprintf(3), except that
+// memory allocated in a returned string must be freed with |OPENSSL_free|.
+OPENSSL_EXPORT int OPENSSL_asprintf(char **str, const char *format, ...)
+    OPENSSL_PRINTF_FORMAT_FUNC(2, 3);
+
 // OPENSSL_strndup returns an allocated, duplicate of |str|, which is, at most,
-// |size| bytes. The result is always NUL terminated.
+// |size| bytes. The result is always NUL terminated. The memory allocated
+// must be freed with |OPENSSL_free|.
 OPENSSL_EXPORT char *OPENSSL_strndup(const char *str, size_t size);
 
 // OPENSSL_memdup returns an allocated, duplicate of |size| bytes from |data| or
-// NULL on allocation failure.
+// NULL on allocation failure. The memory allocated must be freed with
+// |OPENSSL_free|.
 OPENSSL_EXPORT void *OPENSSL_memdup(const void *data, size_t size);
 
 // OPENSSL_strlcpy acts like strlcpy(3).
