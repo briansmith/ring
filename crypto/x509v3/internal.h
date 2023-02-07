@@ -181,6 +181,14 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
   ERR_add_error_data(6, "section:", (val)->section, ",name:", (val)->name, \
                      ",value:", (val)->value);
 
+// GENERAL_NAME_cmp returns zero if |a| and |b| are equal and a non-zero
+// value otherwise. Note this function does not provide a comparison suitable
+// for sorting.
+//
+// This function is exported for testing.
+OPENSSL_EXPORT int GENERAL_NAME_cmp(const GENERAL_NAME *a,
+                                    const GENERAL_NAME *b);
+
 
 #if defined(__cplusplus)
 }  // extern C
