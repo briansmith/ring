@@ -99,13 +99,8 @@ int X509_REQ_check_private_key(X509_REQ *x, EVP_PKEY *k) {
       OPENSSL_PUT_ERROR(X509, X509_R_KEY_TYPE_MISMATCH);
       break;
     case -2:
-      if (k->type == EVP_PKEY_EC) {
+      if (EVP_PKEY_id(k) == EVP_PKEY_EC) {
         OPENSSL_PUT_ERROR(X509, ERR_R_EC_LIB);
-        break;
-      }
-      if (k->type == EVP_PKEY_DH) {
-        // No idea
-        OPENSSL_PUT_ERROR(X509, X509_R_CANT_CHECK_DH_KEY);
         break;
       }
       OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);

@@ -65,11 +65,11 @@
 int i2d_PrivateKey(const EVP_PKEY *a, uint8_t **pp) {
   switch (EVP_PKEY_id(a)) {
     case EVP_PKEY_RSA:
-      return i2d_RSAPrivateKey(a->pkey.rsa, pp);
+      return i2d_RSAPrivateKey(EVP_PKEY_get0_RSA(a), pp);
     case EVP_PKEY_EC:
-      return i2d_ECPrivateKey(a->pkey.ec, pp);
+      return i2d_ECPrivateKey(EVP_PKEY_get0_EC_KEY(a), pp);
     case EVP_PKEY_DSA:
-      return i2d_DSAPrivateKey(a->pkey.dsa, pp);
+      return i2d_DSAPrivateKey(EVP_PKEY_get0_DSA(a), pp);
     default:
       // Although this file is in crypto/x509 for layering reasons, it emits
       // an error code from ASN1 for OpenSSL compatibility.

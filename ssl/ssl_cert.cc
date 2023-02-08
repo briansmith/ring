@@ -237,14 +237,14 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
     return leaf_cert_and_privkey_error;
   }
 
-  if (!ssl_is_key_type_supported(pubkey->type)) {
+  if (!ssl_is_key_type_supported(EVP_PKEY_id(pubkey.get()))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return leaf_cert_and_privkey_error;
   }
 
   // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
   // certificates, so sanity-check the key usage extension.
-  if (pubkey->type == EVP_PKEY_EC &&
+  if (EVP_PKEY_id(pubkey.get()) == EVP_PKEY_EC &&
       !ssl_cert_check_key_usage(&cert_cbs, key_usage_digital_signature)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return leaf_cert_and_privkey_error;

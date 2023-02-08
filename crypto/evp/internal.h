@@ -128,6 +128,25 @@ struct evp_pkey_asn1_method_st {
   void (*pkey_free)(EVP_PKEY *pkey);
 } /* EVP_PKEY_ASN1_METHOD */;
 
+struct evp_pkey_st {
+  CRYPTO_refcount_t references;
+
+  // type contains one of the EVP_PKEY_* values or NID_undef and determines
+  // which element (if any) of the |pkey| union is valid.
+  int type;
+
+  union {
+    void *ptr;
+    RSA *rsa;
+    DSA *dsa;
+    DH *dh;
+    EC_KEY *ec;
+  } pkey;
+
+  // ameth contains a pointer to a method table that contains many ASN.1
+  // methods for the key type.
+  const EVP_PKEY_ASN1_METHOD *ameth;
+} /* EVP_PKEY */;
 
 #define EVP_PKEY_OP_UNDEFINED 0
 #define EVP_PKEY_OP_KEYGEN (1 << 2)
