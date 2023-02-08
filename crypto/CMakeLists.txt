@@ -17,6 +17,7 @@ endif()
 set(
   CRYPTO_SOURCES_ASM
   curve25519/asm/x25519-asm-arm.S
+  hrss/asm/poly_rq_mul.S
   poly1305/poly1305_arm_asm.S
 )
 perlasm(CRYPTO_SOURCES aarch64 chacha/chacha-armv8 chacha/asm/chacha-armv8.pl)
