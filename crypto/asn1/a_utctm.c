@@ -58,6 +58,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/time.h>
 
 #include <string.h>
 #include <time.h>
@@ -98,14 +99,14 @@ int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str) {
   return 1;
 }
 
-ASN1_UTCTIME *ASN1_UTCTIME_set(ASN1_UTCTIME *s, time_t t) {
-  return ASN1_UTCTIME_adj(s, t, 0, 0);
+ASN1_UTCTIME *ASN1_UTCTIME_set(ASN1_UTCTIME *s, int64_t posix_time) {
+  return ASN1_UTCTIME_adj(s, posix_time, 0, 0);
 }
 
-ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t, int offset_day,
+ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, int64_t posix_time, int offset_day,
                                long offset_sec) {
   struct tm data;
-  if (!OPENSSL_gmtime(&t, &data)) {
+  if (!OPENSSL_posix_to_tm(posix_time, &data)) {
     return NULL;
   }
 
@@ -151,7 +152,7 @@ int ASN1_UTCTIME_cmp_time_t(const ASN1_UTCTIME *s, time_t t) {
     return -2;
   }
 
-  if (!OPENSSL_gmtime(&t, &ttm)) {
+  if (!OPENSSL_posix_to_tm(t, &ttm)) {
     return -2;
   }
 

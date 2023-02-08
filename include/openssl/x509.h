@@ -1837,6 +1837,14 @@ OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(const X509_REVOKED *rev);
 // error, not equality.
 OPENSSL_EXPORT int X509_cmp_time(const ASN1_TIME *s, time_t *t);
 
+// X509_cmp_time_posix compares |s| against |t|. On success, it returns a
+// negative number if |s| <= |t| and a positive number if |s| > |t|. On error,
+// it returns zero.
+//
+// WARNING: Unlike most comparison functions, this function returns zero on
+// error, not equality.
+OPENSSL_EXPORT int X509_cmp_time_posix(const ASN1_TIME *s, int64_t t);
+
 // X509_cmp_current_time behaves like |X509_cmp_time| but compares |s| against
 // the current time.
 OPENSSL_EXPORT int X509_cmp_current_time(const ASN1_TIME *s);
@@ -2770,6 +2778,9 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx,
                                              unsigned long flags);
 OPENSSL_EXPORT void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx,
                                             unsigned long flags, time_t t);
+OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
+                                                  unsigned long flags,
+                                                  int64_t t);
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
     X509_STORE_CTX *ctx, int (*verify_cb)(int, X509_STORE_CTX *));
 
@@ -2804,6 +2815,8 @@ OPENSSL_EXPORT void X509_VERIFY_PARAM_set_depth(X509_VERIFY_PARAM *param,
                                                 int depth);
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_time(X509_VERIFY_PARAM *param,
                                                time_t t);
+OPENSSL_EXPORT void X509_VERIFY_PARAM_set_time_posix(X509_VERIFY_PARAM *param,
+                                                     int64_t t);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
                                                  ASN1_OBJECT *policy);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_policies(
