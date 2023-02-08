@@ -298,7 +298,6 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
   // actually it needs the cipher block size extra...
   data = (unsigned char *)OPENSSL_malloc((unsigned int)dsize + 20);
   if (data == NULL) {
-    OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   p = data;
@@ -552,7 +551,6 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
 
   buf = OPENSSL_malloc(PEM_BUFSIZE * 8);
   if (buf == NULL) {
-    reason = ERR_R_MALLOC_FAILURE;
     goto err;
   }
 
@@ -615,7 +613,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
     BUF_MEM_free(nameB);
     BUF_MEM_free(headerB);
     BUF_MEM_free(dataB);
-    OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -641,7 +638,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
         continue;
       }
       if (!BUF_MEM_grow(nameB, i + 9)) {
-        OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
         goto err;
       }
       OPENSSL_memcpy(nameB->data, &(buf[11]), i - 6);
@@ -651,7 +647,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
   }
   hl = 0;
   if (!BUF_MEM_grow(headerB, 256)) {
-    OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   headerB->data[0] = '\0';
@@ -671,7 +666,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
       break;
     }
     if (!BUF_MEM_grow(headerB, hl + i + 9)) {
-      OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     if (strncmp(buf, "-----END ", 9) == 0) {
@@ -685,7 +679,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
 
   bl = 0;
   if (!BUF_MEM_grow(dataB, 1024)) {
-    OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   dataB->data[0] = '\0';
@@ -712,7 +705,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
         break;
       }
       if (!BUF_MEM_grow_clean(dataB, i + bl + 9)) {
-        OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
         goto err;
       }
       OPENSSL_memcpy(&(dataB->data[bl]), buf, i);

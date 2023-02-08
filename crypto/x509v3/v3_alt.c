@@ -275,7 +275,6 @@ static void *v2i_issuer_alt(const X509V3_EXT_METHOD *method,
                             const STACK_OF(CONF_VALUE) *nval) {
   GENERAL_NAMES *gens = sk_GENERAL_NAME_new_null();
   if (gens == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
@@ -326,7 +325,6 @@ static int copy_issuer(const X509V3_CTX *ctx, GENERAL_NAMES *gens) {
   for (size_t j = 0; j < sk_GENERAL_NAME_num(ialt); j++) {
     GENERAL_NAME *gen = sk_GENERAL_NAME_value(ialt, j);
     if (!sk_GENERAL_NAME_push(gens, gen)) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     // Ownership of |gen| has moved from |ialt| to |gens|.
@@ -345,7 +343,6 @@ static void *v2i_subject_alt(const X509V3_EXT_METHOD *method,
                              const STACK_OF(CONF_VALUE) *nval) {
   GENERAL_NAMES *gens = sk_GENERAL_NAME_new_null();
   if (gens == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
@@ -407,14 +404,12 @@ static int copy_email(const X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p) {
       i--;
     }
     if (!email || !(gen = GENERAL_NAME_new())) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     gen->d.ia5 = email;
     email = NULL;
     gen->type = GEN_EMAIL;
     if (!sk_GENERAL_NAME_push(gens, gen)) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     gen = NULL;
@@ -433,7 +428,6 @@ GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
                                  const STACK_OF(CONF_VALUE) *nval) {
   GENERAL_NAMES *gens = sk_GENERAL_NAME_new_null();
   if (gens == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
@@ -470,7 +464,6 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
   } else {
     gen = GENERAL_NAME_new();
     if (gen == NULL) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       return NULL;
     }
   }
@@ -482,7 +475,6 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
       ASN1_IA5STRING *str = ASN1_IA5STRING_new();
       if (str == NULL || !ASN1_STRING_set(str, value, strlen(value))) {
         ASN1_STRING_free(str);
-        OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
         goto err;
       }
       gen->type = gen_type;

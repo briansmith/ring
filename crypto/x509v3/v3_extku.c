@@ -129,7 +129,6 @@ static void *v2i_EXTENDED_KEY_USAGE(const X509V3_EXT_METHOD *method,
                                     const STACK_OF(CONF_VALUE) *nval) {
   EXTENDED_KEY_USAGE *extku = sk_ASN1_OBJECT_new_null();
   if (extku == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

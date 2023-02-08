@@ -182,7 +182,6 @@ STACK_OF(X509_EXTENSION) *X509v3_add_ext(STACK_OF(X509_EXTENSION) **x,
   }
   return sk;
 err:
-  OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 err2:
   X509_EXTENSION_free(new_ex);
   if (free_sk) {
@@ -213,7 +212,6 @@ X509_EXTENSION *X509_EXTENSION_create_by_OBJ(X509_EXTENSION **ex,
 
   if ((ex == NULL) || (*ex == NULL)) {
     if ((ret = X509_EXTENSION_new()) == NULL) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
       return NULL;
     }
   } else {

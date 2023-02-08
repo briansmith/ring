@@ -201,7 +201,6 @@ static void *v2i_AUTHORITY_KEYID(const X509V3_EXT_METHOD *method,
   if (isname) {
     if (!(gens = sk_GENERAL_NAME_new_null()) || !(gen = GENERAL_NAME_new()) ||
         !sk_GENERAL_NAME_push(gens, gen)) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     gen->type = GEN_DIRNAME;

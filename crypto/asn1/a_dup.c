@@ -75,7 +75,6 @@ void *ASN1_item_dup(const ASN1_ITEM *it, void *x) {
 
   i = ASN1_item_i2d(x, &b, it);
   if (b == NULL) {
-    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   p = b;

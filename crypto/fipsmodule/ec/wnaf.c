@@ -205,7 +205,6 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
     wNAF_alloc = OPENSSL_malloc(num * sizeof(wNAF_alloc[0]));
     precomp_alloc = OPENSSL_malloc(num * sizeof(precomp_alloc[0]));
     if (wNAF_alloc == NULL || precomp_alloc == NULL) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     wNAF = wNAF_alloc;

@@ -205,7 +205,6 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
   // the first entry is in place
   ctx->chain = sk_X509_new_null();
   if (ctx->chain == NULL || !sk_X509_push(ctx->chain, ctx->cert)) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     ctx->error = X509_V_ERR_OUT_OF_MEM;
     goto end;
   }
@@ -214,7 +213,6 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
 
   // We use a temporary STACK so we can chop and hack at it.
   if (ctx->untrusted != NULL && (sktmp = sk_X509_dup(ctx->untrusted)) == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     ctx->error = X509_V_ERR_OUT_OF_MEM;
     goto end;
   }
@@ -262,7 +260,6 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
       xtmp = find_issuer(ctx, sktmp, x);
       if (xtmp != NULL) {
         if (!sk_X509_push(ctx->chain, xtmp)) {
-          OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
           ctx->error = X509_V_ERR_OUT_OF_MEM;
           ok = 0;
           goto end;
@@ -358,7 +355,6 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
       x = xtmp;
       if (!sk_X509_push(ctx->chain, x)) {
         X509_free(xtmp);
-        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
         ctx->error = X509_V_ERR_OUT_OF_MEM;
         ok = 0;
         goto end;
@@ -1994,7 +1990,6 @@ X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer, EVP_PKEY *skey,
   return crl;
 
 memerr:
-  OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
   if (crl) {
     X509_CRL_free(crl);
   }
@@ -2145,7 +2140,6 @@ X509_STORE_CTX *X509_STORE_CTX_new(void) {
   X509_STORE_CTX *ctx;
   ctx = (X509_STORE_CTX *)OPENSSL_malloc(sizeof(X509_STORE_CTX));
   if (!ctx) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   X509_STORE_CTX_zero(ctx);
@@ -2265,7 +2259,6 @@ err:
   }
 
   OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
-  OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
   return 0;
 }
 

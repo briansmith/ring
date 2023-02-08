@@ -76,7 +76,6 @@ static char *i2s_ASN1_IA5STRING(const X509V3_EXT_METHOD *method, void *ext) {
     return NULL;
   }
   if (!(tmp = OPENSSL_malloc(ia5->length + 1))) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memcpy(tmp, ia5->data, ia5->length);
@@ -100,7 +99,6 @@ static void *s2i_ASN1_IA5STRING(const X509V3_EXT_METHOD *method,
   }
   return ia5;
 err:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   return NULL;
 }
 

@@ -581,7 +581,6 @@ static int bitstr_cb(const char *elem, size_t len, void *bitstr) {
     return 0;
   }
   if (!ASN1_BIT_STRING_set_bit(bitstr, (int)bitnum, 1)) {
-    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   return 1;

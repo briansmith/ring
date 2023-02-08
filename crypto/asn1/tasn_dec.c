@@ -590,7 +590,6 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
     }
 
     if (!*val) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       goto err;
     }
 
@@ -607,7 +606,6 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
       len -= p - q;
       if (!sk_ASN1_VALUE_push((STACK_OF(ASN1_VALUE) *)*val, skfield)) {
         ASN1_item_ex_free(&skfield, ASN1_ITEM_ptr(tt->item));
-        OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
         goto err;
       }
     }
@@ -872,7 +870,6 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
       if (!*pval) {
         stmp = ASN1_STRING_type_new(utype);
         if (!stmp) {
-          OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
           goto err;
         }
         *pval = (ASN1_VALUE *)stmp;
@@ -881,7 +878,6 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
         stmp->type = utype;
       }
       if (!ASN1_STRING_set(stmp, cont, len)) {
-        OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
         ASN1_STRING_free(stmp);
         *pval = NULL;
         goto err;

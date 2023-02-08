@@ -127,7 +127,7 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
   GENERAL_SUBTREE *sub = NULL;
   ncons = NAME_CONSTRAINTS_new();
   if (!ncons) {
-    goto memerr;
+    goto err;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     const CONF_VALUE *val = sk_CONF_VALUE_value(nval, i);
@@ -151,15 +151,13 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
       *ptree = sk_GENERAL_SUBTREE_new_null();
     }
     if (!*ptree || !sk_GENERAL_SUBTREE_push(*ptree, sub)) {
-      goto memerr;
+      goto err;
     }
     sub = NULL;
   }
 
   return ncons;
 
-memerr:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 err:
   NAME_CONSTRAINTS_free(ncons);
   GENERAL_SUBTREE_free(sub);

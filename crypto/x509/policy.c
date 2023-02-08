@@ -109,7 +109,6 @@ static X509_POLICY_NODE *x509_policy_node_new(const ASN1_OBJECT *policy) {
   assert(!is_any_policy(policy));
   X509_POLICY_NODE *node = OPENSSL_malloc(sizeof(X509_POLICY_NODE));
   if (node == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(node, 0, sizeof(X509_POLICY_NODE));
@@ -137,13 +136,11 @@ static void x509_policy_level_free(X509_POLICY_LEVEL *level) {
 static X509_POLICY_LEVEL *x509_policy_level_new(void) {
   X509_POLICY_LEVEL *level = OPENSSL_malloc(sizeof(X509_POLICY_LEVEL));
   if (level == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(level, 0, sizeof(X509_POLICY_LEVEL));
   level->nodes = sk_X509_POLICY_NODE_new(x509_policy_node_cmp);
   if (level->nodes == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     x509_policy_level_free(level);
     return NULL;
   }
@@ -188,7 +185,6 @@ static int x509_policy_level_add_nodes(X509_POLICY_LEVEL *level,
   for (size_t i = 0; i < sk_X509_POLICY_NODE_num(nodes); i++) {
     X509_POLICY_NODE *node = sk_X509_POLICY_NODE_value(nodes, i);
     if (!sk_X509_POLICY_NODE_push(level->nodes, node)) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     sk_X509_POLICY_NODE_set(nodes, i, NULL);
@@ -287,7 +283,6 @@ static int process_certificate_policies(const X509 *x509,
   if (previous_level_has_any_policy) {
     new_nodes = sk_X509_POLICY_NODE_new_null();
     if (new_nodes == NULL) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     for (size_t i = 0; i < sk_POLICYINFO_num(policies); i++) {
@@ -300,7 +295,6 @@ static int process_certificate_policies(const X509 *x509,
         if (node == NULL ||  //
             !sk_X509_POLICY_NODE_push(new_nodes, node)) {
           x509_policy_node_free(node);
-          OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
           goto err;
         }
       }
@@ -397,7 +391,6 @@ static X509_POLICY_LEVEL *process_policy_mappings(const X509 *cert,
       // as part of RFC 5280, section 6.1.4, step (b.1).
       new_nodes = sk_X509_POLICY_NODE_new_null();
       if (new_nodes == NULL) {
-        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
         goto err;
       }
       const ASN1_OBJECT *last_policy = NULL;
@@ -442,7 +435,6 @@ static X509_POLICY_LEVEL *process_policy_mappings(const X509 *cert,
   if (mappings == NULL) {
     mappings = sk_POLICY_MAPPING_new_null();
     if (mappings == NULL) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
       goto err;
     }
   }
@@ -471,7 +463,6 @@ static X509_POLICY_LEVEL *process_policy_mappings(const X509 *cert,
   // Convert |mappings| to our "expected_policy_set" representation.
   next = x509_policy_level_new();
   if (next == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   next->has_any_policy = level->has_any_policy;
@@ -689,7 +680,6 @@ int X509_policy_check(const STACK_OF(X509) *certs,
 
   levels = sk_X509_POLICY_LEVEL_new_null();
   if (levels == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -727,7 +717,6 @@ int X509_policy_check(const STACK_OF(X509) *certs,
 
     // Insert into the list.
     if (!sk_X509_POLICY_LEVEL_push(levels, level)) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     X509_POLICY_LEVEL *current_level = level;

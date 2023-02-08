@@ -69,7 +69,6 @@
 X509_PKEY *X509_PKEY_new(void) {
   X509_PKEY *ret = OPENSSL_malloc(sizeof(X509_PKEY));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   OPENSSL_memset(ret, 0, sizeof(X509_PKEY));

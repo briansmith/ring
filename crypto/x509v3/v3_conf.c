@@ -236,7 +236,6 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
   return ext;
 
 merr:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   return NULL;
 }
 
@@ -314,7 +313,6 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
   }
 
   if (!(oct = ASN1_OCTET_STRING_new())) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 

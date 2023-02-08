@@ -157,7 +157,6 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
 
   return tret;
 err:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   if (ret == NULL && tret != NULL) {
     sk_CONF_VALUE_pop_free(tret, X509V3_conf_free);
   }
@@ -171,14 +170,12 @@ static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
   ACCESS_DESCRIPTION *acc;
   char *objtmp, *ptmp;
   if (!(ainfo = sk_ACCESS_DESCRIPTION_new_null())) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     const CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
     if (!(acc = ACCESS_DESCRIPTION_new()) ||
         !sk_ACCESS_DESCRIPTION_push(ainfo, acc)) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     ptmp = strchr(cnf->name, ';');
@@ -194,7 +191,6 @@ static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
       goto err;
     }
     if (!(objtmp = OPENSSL_malloc(objlen + 1))) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     OPENSSL_strlcpy(objtmp, cnf->name, objlen + 1);

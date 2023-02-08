@@ -3944,7 +3944,6 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
     Span<const uint8_t> ticket) {
   Array<uint8_t> plaintext;
   if (!plaintext.Init(ticket.size())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return ssl_ticket_aead_error;
   }
 

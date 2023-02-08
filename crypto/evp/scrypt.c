@@ -177,7 +177,6 @@ int EVP_PBE_scrypt(const char *password, size_t password_len,
   size_t V_blocks = N * 2 * r;
   block_t *B = OPENSSL_malloc((B_blocks + T_blocks + V_blocks) * sizeof(block_t));
   if (B == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

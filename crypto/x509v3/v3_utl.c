@@ -96,7 +96,7 @@ static int x509V3_add_len_value(const char *name, const char *value,
   char *tname = NULL, *tvalue = NULL;
   int extlist_was_null = *extlist == NULL;
   if (name && !(tname = OPENSSL_strdup(name))) {
-    goto malloc_err;
+    goto err;
   }
   if (!omit_value) {
     // |CONF_VALUE| cannot represent strings with NULs.
@@ -106,24 +106,22 @@ static int x509V3_add_len_value(const char *name, const char *value,
     }
     tvalue = OPENSSL_strndup(value, value_len);
     if (tvalue == NULL) {
-      goto malloc_err;
+      goto err;
     }
   }
   if (!(vtmp = CONF_VALUE_new())) {
-    goto malloc_err;
+    goto err;
   }
   if (!*extlist && !(*extlist = sk_CONF_VALUE_new_null())) {
-    goto malloc_err;
+    goto err;
   }
   vtmp->section = NULL;
   vtmp->name = tname;
   vtmp->value = tvalue;
   if (!sk_CONF_VALUE_push(*extlist, vtmp)) {
-    goto malloc_err;
+    goto err;
   }
   return 1;
-malloc_err:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 err:
   if (extlist_was_null) {
     sk_CONF_VALUE_free(*extlist);
@@ -186,7 +184,6 @@ static char *bignum_to_string(const BIGNUM *bn) {
   len = strlen(tmp) + 3;
   ret = OPENSSL_malloc(len);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     OPENSSL_free(tmp);
     return NULL;
   }
@@ -212,7 +209,6 @@ char *i2s_ASN1_ENUMERATED(const X509V3_EXT_METHOD *method,
   }
   if (!(bntmp = ASN1_ENUMERATED_to_BN(a, NULL)) ||
       !(strtmp = bignum_to_string(bntmp))) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   }
   BN_free(bntmp);
   return strtmp;
@@ -226,7 +222,6 @@ char *i2s_ASN1_INTEGER(const X509V3_EXT_METHOD *method, const ASN1_INTEGER *a) {
   }
   if (!(bntmp = ASN1_INTEGER_to_BN(a, NULL)) ||
       !(strtmp = bignum_to_string(bntmp))) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   }
   BN_free(bntmp);
   return strtmp;
@@ -366,7 +361,6 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line) {
   // We are going to modify the line so copy it first
   linebuf = OPENSSL_strdup(line);
   if (linebuf == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   state = HDR_NAME;
@@ -496,7 +490,6 @@ char *x509v3_bytes_to_hex(const uint8_t *in, size_t len) {
   return (char *)ret;
 
 err:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   CBB_cleanup(&cbb);
   return NULL;
 }
@@ -540,7 +533,6 @@ unsigned char *x509v3_hex_to_bytes(const char *str, long *len) {
 
 err:
   OPENSSL_free(hexbuf);
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   return NULL;
 
 badhex:

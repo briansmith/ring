@@ -286,7 +286,6 @@ int X509_check_private_key(X509 *x, const EVP_PKEY *k) {
 STACK_OF(X509) *X509_chain_up_ref(STACK_OF(X509) *chain) {
   STACK_OF(X509) *ret = sk_X509_dup(chain);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   for (size_t i = 0; i < sk_X509_num(ret); i++) {

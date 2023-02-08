@@ -84,7 +84,8 @@ OPENSSL_EXPORT void *OPENSSL_malloc(size_t size);
 #endif // !_BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 
 // OPENSSL_free does nothing if |ptr| is NULL. Otherwise it zeros out the
-// memory allocated at |ptr| and frees it.
+// memory allocated at |ptr| and frees it along with the private data.
+// It must only be used on on |ptr| values obtained from |OPENSSL_malloc|
 OPENSSL_EXPORT void OPENSSL_free(void *ptr);
 
 #ifndef _BORINGSSL_PROHIBIT_OPENSSL_MALLOC

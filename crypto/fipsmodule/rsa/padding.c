@@ -358,7 +358,6 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
 
   dbmask = OPENSSL_malloc(emlen - mdlen);
   if (dbmask == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto out;
   }
 
@@ -413,7 +412,6 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
   FIPS_service_indicator_lock_state();
   db = OPENSSL_malloc(dblen);
   if (db == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -543,7 +541,6 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   const uint8_t *H = EM + maskedDBLen;
   DB = OPENSSL_malloc(maskedDBLen);
   if (!DB) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   if (!PKCS1_MGF1(DB, maskedDBLen, H, hLen, mgf1Hash)) {
@@ -653,7 +650,6 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
   if (sLen > 0) {
     salt = OPENSSL_malloc(sLen);
     if (!salt) {
-      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     if (!RAND_bytes(salt, sLen)) {

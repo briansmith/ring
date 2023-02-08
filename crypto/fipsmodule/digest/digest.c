@@ -144,7 +144,6 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
   if (in->pctx) {
     pctx = in->pctx_ops->dup(in->pctx);
     if (!pctx) {
-      OPENSSL_PUT_ERROR(DIGEST, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -158,7 +157,6 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
         if (pctx) {
           in->pctx_ops->free(pctx);
         }
-        OPENSSL_PUT_ERROR(DIGEST, ERR_R_MALLOC_FAILURE);
         return 0;
       }
     } else {
@@ -207,7 +205,6 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
     assert(type->ctx_size != 0);
     uint8_t *md_data = OPENSSL_malloc(type->ctx_size);
     if (md_data == NULL) {
-      OPENSSL_PUT_ERROR(DIGEST, ERR_R_MALLOC_FAILURE);
       return 0;
     }
 

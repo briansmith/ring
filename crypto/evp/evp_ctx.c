@@ -88,7 +88,6 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e,
                                       const EVP_PKEY_METHOD *pmeth) {
   EVP_PKEY_CTX *ret = OPENSSL_malloc(sizeof(EVP_PKEY_CTX));
   if (!ret) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(ret, 0, sizeof(EVP_PKEY_CTX));

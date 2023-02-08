@@ -362,7 +362,6 @@ static int probable_prime_dh_safe(BIGNUM *rnd, int bits, const BIGNUM *add,
 BN_GENCB *BN_GENCB_new(void) {
   BN_GENCB *callback = OPENSSL_malloc(sizeof(BN_GENCB));
   if (callback == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(callback, 0, sizeof(BN_GENCB));

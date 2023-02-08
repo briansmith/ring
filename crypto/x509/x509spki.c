@@ -90,7 +90,6 @@ NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str, int len) {
     return NULL;
   }
   if (!(spki_der = OPENSSL_malloc(spki_len))) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   if (!EVP_DecodeBase64(spki_der, &spki_len, spki_len, (const uint8_t *)str,
@@ -119,13 +118,11 @@ char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki) {
   }
   der_spki = OPENSSL_malloc(der_len);
   if (der_spki == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   b64_str = OPENSSL_malloc(b64_len);
   if (b64_str == NULL) {
     OPENSSL_free(der_spki);
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   p = der_spki;

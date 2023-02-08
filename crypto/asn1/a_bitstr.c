@@ -184,7 +184,6 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
   if (len > 0) {
     s = OPENSSL_memdup(p, len);
     if (s == NULL) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     p += len;
@@ -236,7 +235,6 @@ int ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value) {
       c = (unsigned char *)OPENSSL_realloc(a->data, w + 1);
     }
     if (c == NULL) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     if (w + 1 - a->length > 0) {

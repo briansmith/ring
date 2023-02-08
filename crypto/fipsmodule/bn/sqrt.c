@@ -445,7 +445,6 @@ int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx) {
   last_delta = BN_CTX_get(ctx);
   delta = BN_CTX_get(ctx);
   if (estimate == NULL || tmp == NULL || last_delta == NULL || delta == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 

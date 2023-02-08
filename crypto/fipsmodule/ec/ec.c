@@ -285,7 +285,6 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
 
   ret = OPENSSL_malloc(sizeof(EC_GROUP));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(ret, 0, sizeof(EC_GROUP));
@@ -447,7 +446,6 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -686,7 +684,6 @@ EC_POINT *EC_POINT_new(const EC_GROUP *group) {
 
   EC_POINT *ret = OPENSSL_malloc(sizeof *ret);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

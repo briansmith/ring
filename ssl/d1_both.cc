@@ -163,7 +163,6 @@ static UniquePtr<hm_fragment> dtls1_hm_fragment_new(
   frag->data =
       (uint8_t *)OPENSSL_malloc(DTLS1_HM_HEADER_LENGTH + msg_hdr->msg_len);
   if (frag->data == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
 
@@ -174,7 +173,6 @@ static UniquePtr<hm_fragment> dtls1_hm_fragment_new(
       !CBB_add_u24(cbb.get(), 0 /* frag_off */) ||
       !CBB_add_u24(cbb.get(), msg_hdr->msg_len) ||
       !CBB_finish(cbb.get(), NULL, NULL)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
 
@@ -188,7 +186,6 @@ static UniquePtr<hm_fragment> dtls1_hm_fragment_new(
     size_t bitmask_len = (msg_hdr->msg_len + 7) / 8;
     frag->reassembly = (uint8_t *)OPENSSL_malloc(bitmask_len);
     if (frag->reassembly == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return nullptr;
     }
     OPENSSL_memset(frag->reassembly, 0, bitmask_len);

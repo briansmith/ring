@@ -227,13 +227,17 @@ static int should_fail_allocation(void) { return 0; }
 
 void *OPENSSL_malloc(size_t size) {
   if (should_fail_allocation()) {
-    return NULL;
+    goto err;
   }
 
   if (OPENSSL_memory_alloc != NULL) {
     assert(OPENSSL_memory_free != NULL);
     assert(OPENSSL_memory_get_size != NULL);
-    return OPENSSL_memory_alloc(size);
+    void *ptr = OPENSSL_memory_alloc(size);
+    if (ptr == NULL && size != 0) {
+      goto err;
+    }
+    return ptr;
   }
 
   if (size + OPENSSL_MALLOC_PREFIX < size) {
@@ -245,18 +249,23 @@ void *OPENSSL_malloc(size_t size) {
     // rare code path.
     uint8_t unused = *(volatile uint8_t *)kBoringSSLBinaryTag;
     (void) unused;
-    return NULL;
+    goto err;
   }
 
   void *ptr = malloc(size + OPENSSL_MALLOC_PREFIX);
   if (ptr == NULL) {
-    return NULL;
+    goto err;
   }
 
   *(size_t *)ptr = size;
 
   __asan_poison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
   return ((uint8_t *)ptr) + OPENSSL_MALLOC_PREFIX;
+
+ err:
+  // This only works because ERR does not call OPENSSL_malloc.
+  OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
+  return NULL;
 }
 
 void OPENSSL_free(void *orig_ptr) {
@@ -289,10 +298,6 @@ void OPENSSL_free(void *orig_ptr) {
 }
 
 void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
-  if (should_fail_allocation()) {
-    return NULL;
-  }
-
   if (orig_ptr == NULL) {
     return OPENSSL_malloc(new_size);
   }
@@ -505,24 +510,21 @@ int OPENSSL_vasprintf_internal(char **str, const char *format, va_list args,
   va_copy(args_copy, args);
   int ret = vsnprintf(candidate, candidate_len, format, args_copy);
   va_end(args_copy);
-  if (ret == INT_MAX || ret < 0) {
-    // Failed, or size not int representable.
+  if (ret < 0) {
     goto err;
   }
   if ((size_t)ret >= candidate_len) {
     // Too big to fit in allocation.
     char *tmp;
 
-    candidate_len = ret + 1;
+    candidate_len = (size_t)ret + 1;
     if ((tmp = reallocate(candidate, candidate_len)) == NULL) {
       goto err;
     }
     candidate = tmp;
-    va_copy(args_copy, args);
-    ret = vsnprintf(candidate, candidate_len, format, args_copy);
-    va_end(args_copy);
+    ret = vsnprintf(candidate, candidate_len, format, args);
   }
-  // At this point this can't happen unless vsnprintf is insane.
+  // At this point this should not happen unless vsnprintf is insane.
   if (ret < 0 || (size_t)ret >= candidate_len) {
     goto err;
   }
@@ -559,7 +561,6 @@ char *OPENSSL_strndup(const char *str, size_t size) {
   }
   char *ret = OPENSSL_malloc(alloc_size);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -598,7 +599,6 @@ void *OPENSSL_memdup(const void *data, size_t size) {
 
   void *ret = OPENSSL_malloc(size);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

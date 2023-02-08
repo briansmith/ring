@@ -117,7 +117,6 @@ static void *v2i_POLICY_MAPPINGS(const X509V3_EXT_METHOD *method,
                                  const STACK_OF(CONF_VALUE) *nval) {
   POLICY_MAPPINGS *pmaps = sk_POLICY_MAPPING_new_null();
   if (pmaps == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -132,7 +131,6 @@ static void *v2i_POLICY_MAPPINGS(const X509V3_EXT_METHOD *method,
     POLICY_MAPPING *pmap = POLICY_MAPPING_new();
     if (pmap == NULL || !sk_POLICY_MAPPING_push(pmaps, pmap)) {
       POLICY_MAPPING_free(pmap);
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       goto err;
     }
 

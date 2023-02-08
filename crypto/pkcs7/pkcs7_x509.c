@@ -328,7 +328,6 @@ int i2d_PKCS7(const PKCS7 *p7, uint8_t **out) {
   if (*out == NULL) {
     *out = OPENSSL_malloc(p7->ber_len);
     if (*out == NULL) {
-      OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
       return -1;
     }
     OPENSSL_memcpy(*out, p7->ber_bytes, p7->ber_len);

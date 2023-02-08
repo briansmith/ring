@@ -250,7 +250,6 @@ void EVP_HPKE_KEY_cleanup(EVP_HPKE_KEY *key) {
 EVP_HPKE_KEY *EVP_HPKE_KEY_new(void) {
   EVP_HPKE_KEY *key = OPENSSL_malloc(sizeof(EVP_HPKE_KEY));
   if (key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   EVP_HPKE_KEY_zero(key);
@@ -465,7 +464,6 @@ void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx) {
 EVP_HPKE_CTX *EVP_HPKE_CTX_new(void) {
   EVP_HPKE_CTX *ctx = OPENSSL_malloc(sizeof(EVP_HPKE_CTX));
   if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   EVP_HPKE_CTX_zero(ctx);

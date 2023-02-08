@@ -58,13 +58,11 @@ bool tls13_get_cert_verify_signature_input(
     enum ssl_cert_verify_context_t cert_verify_context) {
   ScopedCBB cbb;
   if (!CBB_init(cbb.get(), 64 + 33 + 1 + 2 * EVP_MAX_MD_SIZE)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
   for (size_t i = 0; i < 64; i++) {
     if (!CBB_add_u8(cbb.get(), 0x20)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
   }
@@ -80,7 +78,6 @@ bool tls13_get_cert_verify_signature_input(
     static const char kContext[] = "TLS 1.3, Channel ID";
     context = kContext;
   } else {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -88,7 +85,6 @@ bool tls13_get_cert_verify_signature_input(
   if (!CBB_add_bytes(cbb.get(),
                      reinterpret_cast<const uint8_t *>(context.data()),
                      context.size())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -97,7 +93,6 @@ bool tls13_get_cert_verify_signature_input(
   if (!hs->transcript.GetHash(context_hash, &context_hash_len) ||
       !CBB_add_bytes(cbb.get(), context_hash, context_hash_len) ||
       !CBBFinishArray(cbb.get(), out)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -186,7 +181,6 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> certs(sk_CRYPTO_BUFFER_new_null());
   if (!certs) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -230,7 +224,6 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     if (!buf ||
         !PushToStack(certs.get(), std::move(buf))) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 

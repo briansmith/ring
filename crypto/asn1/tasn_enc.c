@@ -92,7 +92,6 @@ int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it) {
     }
     buf = OPENSSL_malloc(len);
     if (!buf) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       return -1;
     }
     p = buf;
@@ -461,7 +460,6 @@ static int asn1_set_seq_out(STACK_OF(ASN1_VALUE) *sk, unsigned char **out,
   unsigned char *const buf = OPENSSL_malloc(skcontlen);
   DER_ENC *encoded = OPENSSL_malloc(sk_ASN1_VALUE_num(sk) * sizeof(*encoded));
   if (encoded == NULL || buf == NULL) {
-    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 

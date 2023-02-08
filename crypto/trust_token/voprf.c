@@ -91,7 +91,6 @@ static int scalar_to_cbb(CBB *out, const EC_GROUP *group,
   uint8_t *buf;
   size_t scalar_len = BN_num_bytes(&group->order);
   if (!CBB_add_space(out, &buf, scalar_len)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   ec_scalar_to_bytes(group, buf, &scalar_len, scalar);
@@ -212,7 +211,6 @@ static STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_blind(const VOPRF_METHOD *method,
   STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens =
       sk_TRUST_TOKEN_PRETOKEN_new_null();
   if (pretokens == NULL) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -222,7 +220,6 @@ static STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_blind(const VOPRF_METHOD *method,
         OPENSSL_malloc(sizeof(TRUST_TOKEN_PRETOKEN));
     if (pretoken == NULL ||
         !sk_TRUST_TOKEN_PRETOKEN_push(pretokens, pretoken)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
       TRUST_TOKEN_PRETOKEN_free(pretoken);
       goto err;
     }
@@ -242,7 +239,6 @@ static STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_blind(const VOPRF_METHOD *method,
     EC_SCALAR r;
     if (!ec_random_nonzero_scalar(group, &r,
                                   kDefaultAdditionalData)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
       goto err;
     }
 
@@ -292,7 +288,6 @@ static int hash_to_scalar_dleq(const VOPRF_METHOD *method, EC_SCALAR *out,
       !cbb_add_point(&cbb, method->group, K1) ||
       !CBB_finish(&cbb, &buf, &len) ||
       !method->hash_to_scalar(method->group, out, buf, len)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -324,7 +319,6 @@ static int hash_to_scalar_batch(const VOPRF_METHOD *method, EC_SCALAR *out,
       !CBB_add_u16(&cbb, (uint16_t)index) ||
       !CBB_finish(&cbb, &buf, &len) ||
       !method->hash_to_scalar(method->group, out, buf, len)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -387,7 +381,6 @@ static int dleq_generate(const VOPRF_METHOD *method, CBB *cbb,
   // Store DLEQ proof in transcript.
   if (!scalar_to_cbb(cbb, group, &c) ||
       !scalar_to_cbb(cbb, group, &u)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -488,7 +481,6 @@ static int voprf_sign(const VOPRF_METHOD *method,
       !es ||
       !CBB_init(&batch_cbb, 0) ||
       !cbb_add_point(&batch_cbb, method->group, &key->pubs)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -508,7 +500,6 @@ static int voprf_sign(const VOPRF_METHOD *method,
 
     if (!cbb_add_point(&batch_cbb, group, &BT_affine) ||
         !cbb_add_point(&batch_cbb, group, &Z_affine)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     BTs[i] = BT;
@@ -575,7 +566,6 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
   int ok = 0;
   STACK_OF(TRUST_TOKEN) *ret = sk_TRUST_TOKEN_new_null();
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -594,7 +584,6 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
       !es ||
       !CBB_init(&batch_cbb, 0) ||
       !cbb_add_point(&batch_cbb, method->group, &key->pubs)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -613,7 +602,6 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
 
     if (!cbb_add_point(&batch_cbb, group, &pretoken->Tp) ||
         !cbb_add_point(&batch_cbb, group, &Z_affine)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
       goto err;
     }
 
@@ -644,7 +632,6 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
     CBB_cleanup(&token_cbb);
     if (token == NULL ||
         !sk_TRUST_TOKEN_push(ret, token)) {
-      OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_MALLOC_FAILURE);
       TRUST_TOKEN_free(token);
       goto err;
     }

@@ -112,7 +112,6 @@ static void *v2i_POLICY_CONSTRAINTS(const X509V3_EXT_METHOD *method,
                                     const STACK_OF(CONF_VALUE) *values) {
   POLICY_CONSTRAINTS *pcons = NULL;
   if (!(pcons = POLICY_CONSTRAINTS_new())) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(values); i++) {

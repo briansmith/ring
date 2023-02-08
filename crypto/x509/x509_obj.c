@@ -119,7 +119,7 @@ char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len) {
     num = ne->value->length;
     if (num > NAME_ONELINE_MAX) {
       OPENSSL_PUT_ERROR(X509, X509_R_NAME_TOO_LONG);
-      goto end;
+      goto err;
     }
     q = ne->value->data;
 
@@ -155,7 +155,7 @@ char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len) {
     l += 1 + l1 + 1 + l2;
     if (l > NAME_ONELINE_MAX) {
       OPENSSL_PUT_ERROR(X509, X509_R_NAME_TOO_LONG);
-      goto end;
+      goto err;
     }
     if (b != NULL) {
       if (!BUF_MEM_grow(b, l + 1)) {
@@ -201,8 +201,6 @@ char *X509_NAME_oneline(const X509_NAME *a, char *buf, int len) {
   }
   return p;
 err:
-  OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-end:
   BUF_MEM_free(b);
   return NULL;
 }

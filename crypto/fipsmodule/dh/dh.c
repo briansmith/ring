@@ -75,7 +75,6 @@
 DH *DH_new(void) {
   DH *dh = OPENSSL_malloc(sizeof(DH));
   if (dh == NULL) {
-    OPENSSL_PUT_ERROR(DH, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

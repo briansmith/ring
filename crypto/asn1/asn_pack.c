@@ -72,7 +72,6 @@ ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it, ASN1_STRING **out) {
   if (out == NULL || *out == NULL) {
     ret = ASN1_STRING_new();
     if (ret == NULL) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       OPENSSL_free(new_data);
       return NULL;
     }

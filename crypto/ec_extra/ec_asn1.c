@@ -504,7 +504,6 @@ EC_KEY *o2i_ECPublicKey(EC_KEY **keyp, const uint8_t **inp, long len) {
   ret = *keyp;
   if (ret->pub_key == NULL &&
       (ret->pub_key = EC_POINT_new(ret->group)) == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   if (!EC_POINT_oct2point(ret->group, ret->pub_key, *inp, len, NULL)) {

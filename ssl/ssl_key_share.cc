@@ -162,7 +162,6 @@ class X25519KeyShare : public SSLKeyShare {
 
     Array<uint8_t> secret;
     if (!secret.Init(32)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
@@ -227,7 +226,6 @@ class CECPQ2KeyShare : public SSLKeyShare {
               uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     Array<uint8_t> secret;
     if (!secret.Init(32 + HRSS_KEY_BYTES)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
@@ -265,7 +263,6 @@ class CECPQ2KeyShare : public SSLKeyShare {
 
     Array<uint8_t> secret;
     if (!secret.Init(32 + HRSS_KEY_BYTES)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 

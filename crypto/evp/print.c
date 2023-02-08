@@ -117,7 +117,6 @@ static int bn_print(BIO *bp, const char *name, const BIGNUM *num, int off) {
   size_t len = BN_num_bytes(num);
   uint8_t *buf = OPENSSL_malloc(len + 1);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

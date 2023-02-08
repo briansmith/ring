@@ -125,7 +125,7 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr(STACK_OF(X509_ATTRIBUTE) **x,
 
   if (x == NULL) {
     OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
-    goto err2;
+    goto err;
   }
 
   if (*x == NULL) {
@@ -137,7 +137,7 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr(STACK_OF(X509_ATTRIBUTE) **x,
   }
 
   if ((new_attr = X509_ATTRIBUTE_dup(attr)) == NULL) {
-    goto err2;
+    goto err;
   }
   if (!sk_X509_ATTRIBUTE_push(sk, new_attr)) {
     goto err;
@@ -147,8 +147,6 @@ STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr(STACK_OF(X509_ATTRIBUTE) **x,
   }
   return sk;
 err:
-  OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-err2:
   if (new_attr != NULL) {
     X509_ATTRIBUTE_free(new_attr);
   }
@@ -226,7 +224,6 @@ X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_OBJ(X509_ATTRIBUTE **attr,
 
   if ((attr == NULL) || (*attr == NULL)) {
     if ((ret = X509_ATTRIBUTE_new()) == NULL) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
       return NULL;
     }
   } else {
@@ -326,7 +323,6 @@ int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
   }
   return 1;
 err:
-  OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
   ASN1_TYPE_free(ttmp);
   ASN1_STRING_free(stmp);
   return 0;

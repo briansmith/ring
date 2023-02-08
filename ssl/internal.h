@@ -195,7 +195,6 @@ template <typename T, typename... Args>
 T *New(Args &&... args) {
   void *t = OPENSSL_malloc(sizeof(T));
   if (t == nullptr) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
   return new (t) T(std::forward<Args>(args)...);
@@ -315,7 +314,6 @@ class Array {
     }
     data_ = reinterpret_cast<T *>(OPENSSL_malloc(new_size * sizeof(T)));
     if (data_ == nullptr) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
     size_ = new_size;

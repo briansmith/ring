@@ -319,7 +319,7 @@ static void *v2i_crld(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
   GENERAL_NAMES *gens = NULL;
   GENERAL_NAME *gen = NULL;
   if (!(crld = sk_DIST_POINT_new_null())) {
-    goto merr;
+    goto err;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     DIST_POINT *point;
@@ -335,28 +335,28 @@ static void *v2i_crld(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
       }
       if (!sk_DIST_POINT_push(crld, point)) {
         DIST_POINT_free(point);
-        goto merr;
+        goto err;
       }
     } else {
       if (!(gen = v2i_GENERAL_NAME(method, ctx, cnf))) {
         goto err;
       }
       if (!(gens = GENERAL_NAMES_new())) {
-        goto merr;
+        goto err;
       }
       if (!sk_GENERAL_NAME_push(gens, gen)) {
-        goto merr;
+        goto err;
       }
       gen = NULL;
       if (!(point = DIST_POINT_new())) {
-        goto merr;
+        goto err;
       }
       if (!sk_DIST_POINT_push(crld, point)) {
         DIST_POINT_free(point);
-        goto merr;
+        goto err;
       }
       if (!(point->distpoint = DIST_POINT_NAME_new())) {
-        goto merr;
+        goto err;
       }
       point->distpoint->name.fullname = gens;
       point->distpoint->type = 0;
@@ -365,8 +365,6 @@ static void *v2i_crld(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
   }
   return crld;
 
-merr:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 err:
   GENERAL_NAME_free(gen);
   GENERAL_NAMES_free(gens);
@@ -449,7 +447,7 @@ static void *v2i_idp(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
                      const STACK_OF(CONF_VALUE) *nval) {
   ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
   if (!idp) {
-    goto merr;
+    goto err;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     const CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
@@ -490,8 +488,6 @@ static void *v2i_idp(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
   }
   return idp;
 
-merr:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 err:
   ISSUING_DIST_POINT_free(idp);
   return NULL;

@@ -317,7 +317,6 @@ static int bio_make_pair(BIO *bio1, BIO *bio2, size_t writebuf1_len,
     }
     b1->buf = OPENSSL_malloc(b1->size);
     if (b1->buf == NULL) {
-      OPENSSL_PUT_ERROR(BIO, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     b1->len = 0;
@@ -330,7 +329,6 @@ static int bio_make_pair(BIO *bio1, BIO *bio2, size_t writebuf1_len,
     }
     b2->buf = OPENSSL_malloc(b2->size);
     if (b2->buf == NULL) {
-      OPENSSL_PUT_ERROR(BIO, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     b2->len = 0;

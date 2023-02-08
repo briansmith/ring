@@ -36,7 +36,6 @@ static int ed25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
 
   ED25519_KEY *key = OPENSSL_malloc(sizeof(ED25519_KEY));
   if (key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -59,7 +58,6 @@ static int ed25519_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
 
   ED25519_KEY *key = OPENSSL_malloc(sizeof(ED25519_KEY));
   if (key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

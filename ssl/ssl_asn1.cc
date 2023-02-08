@@ -223,7 +223,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
       !CBB_add_asn1_uint64(&child, in->time) ||
       !CBB_add_asn1(&session, &child, kTimeoutTag) ||
       !CBB_add_asn1_uint64(&child, in->timeout)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -234,7 +233,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     if (!CBB_add_asn1(&session, &child, kPeerTag) ||
         !CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
                        CRYPTO_BUFFER_len(buffer))) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -243,14 +241,12 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   // historically always encoded the sid_ctx.
   if (!CBB_add_asn1(&session, &child, kSessionIDContextTag) ||
       !CBB_add_asn1_octet_string(&child, in->sid_ctx, in->sid_ctx_length)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   if (in->verify_result != X509_V_OK) {
     if (!CBB_add_asn1(&session, &child, kVerifyResultTag) ||
         !CBB_add_asn1_uint64(&child, in->verify_result)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -260,7 +256,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
         !CBB_add_asn1_octet_string(&child,
                                    (const uint8_t *)in->psk_identity.get(),
                                    strlen(in->psk_identity.get()))) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -268,7 +263,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   if (in->ticket_lifetime_hint > 0) {
     if (!CBB_add_asn1(&session, &child, kTicketLifetimeHintTag) ||
         !CBB_add_asn1_uint64(&child, in->ticket_lifetime_hint)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -277,7 +271,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     if (!CBB_add_asn1(&session, &child, kTicketTag) ||
         !CBB_add_asn1_octet_string(&child, in->ticket.data(),
                                    in->ticket.size())) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -286,7 +279,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     if (!CBB_add_asn1(&session, &child, kPeerSHA256Tag) ||
         !CBB_add_asn1_octet_string(&child, in->peer_sha256,
                                    sizeof(in->peer_sha256))) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -295,7 +287,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     if (!CBB_add_asn1(&session, &child, kOriginalHandshakeHashTag) ||
         !CBB_add_asn1_octet_string(&child, in->original_handshake_hash,
                                    in->original_handshake_hash_len)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -305,7 +296,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
         !CBB_add_asn1_octet_string(
             &child, CRYPTO_BUFFER_data(in->signed_cert_timestamp_list.get()),
             CRYPTO_BUFFER_len(in->signed_cert_timestamp_list.get()))) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -315,7 +305,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
         !CBB_add_asn1_octet_string(
             &child, CRYPTO_BUFFER_data(in->ocsp_response.get()),
             CRYPTO_BUFFER_len(in->ocsp_response.get()))) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -323,7 +312,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   if (in->extended_master_secret) {
     if (!CBB_add_asn1(&session, &child, kExtendedMasterSecretTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -331,7 +319,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   if (in->group_id > 0 &&
       (!CBB_add_asn1(&session, &child, kGroupIDTag) ||
        !CBB_add_asn1_uint64(&child, in->group_id))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -341,14 +328,12 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
       !in->peer_sha256_valid &&
       sk_CRYPTO_BUFFER_num(in->certs.get()) >= 2) {
     if (!CBB_add_asn1(&session, &child, kCertChainTag)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(in->certs.get()); i++) {
       const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs.get(), i);
       if (!CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
                          CRYPTO_BUFFER_len(buffer))) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         return 0;
       }
     }
@@ -358,7 +343,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     if (!CBB_add_asn1(&session, &child, kTicketAgeAddTag) ||
         !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
         !CBB_add_u32(&child2, in->ticket_age_add)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -366,7 +350,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   if (!in->is_server) {
     if (!CBB_add_asn1(&session, &child, kIsServerTag) ||
         !CBB_add_asn1_bool(&child, false)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -374,21 +357,18 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   if (in->peer_signature_algorithm != 0 &&
       (!CBB_add_asn1(&session, &child, kPeerSignatureAlgorithmTag) ||
        !CBB_add_asn1_uint64(&child, in->peer_signature_algorithm))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   if (in->ticket_max_early_data != 0 &&
       (!CBB_add_asn1(&session, &child, kTicketMaxEarlyDataTag) ||
        !CBB_add_asn1_uint64(&child, in->ticket_max_early_data))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   if (in->timeout != in->auth_timeout &&
       (!CBB_add_asn1(&session, &child, kAuthTimeoutTag) ||
        !CBB_add_asn1_uint64(&child, in->auth_timeout))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -396,7 +376,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     if (!CBB_add_asn1(&session, &child, kEarlyALPNTag) ||
         !CBB_add_asn1_octet_string(&child, in->early_alpn.data(),
                                    in->early_alpn.size())) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -404,7 +383,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   if (in->is_quic) {
     if (!CBB_add_asn1(&session, &child, kIsQuicTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -413,7 +391,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     if (!CBB_add_asn1(&session, &child, kQuicEarlyDataContextTag) ||
         !CBB_add_asn1_octet_string(&child, in->quic_early_data_context.data(),
                                    in->quic_early_data_context.size())) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -426,7 +403,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
         !CBB_add_asn1(&session, &child, kPeerALPSTag) ||
         !CBB_add_asn1_octet_string(&child, in->peer_application_settings.data(),
                                    in->peer_application_settings.size())) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -453,7 +429,6 @@ static int SSL_SESSION_parse_string(CBS *cbs, UniquePtr<char> *out,
     }
     char *raw = nullptr;
     if (!CBS_strdup(&value, &raw)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     out->reset(raw);
@@ -493,7 +468,6 @@ static int SSL_SESSION_parse_crypto_buffer(CBS *cbs,
   }
   out->reset(CRYPTO_BUFFER_new_from_CBS(&value, pool));
   if (*out == nullptr) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   return 1;
@@ -712,7 +686,6 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
   if (has_peer || has_cert_chain) {
     ret->certs.reset(sk_CRYPTO_BUFFER_new_null());
     if (ret->certs == nullptr) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return nullptr;
     }
 
@@ -720,7 +693,6 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
       UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new_from_CBS(&peer, pool));
       if (!buffer ||
           !PushToStack(ret->certs.get(), std::move(buffer))) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         return nullptr;
       }
     }
@@ -736,7 +708,6 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
       UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new_from_CBS(&cert, pool));
       if (buffer == nullptr ||
           !PushToStack(ret->certs.get(), std::move(buffer))) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         return nullptr;
       }
     }

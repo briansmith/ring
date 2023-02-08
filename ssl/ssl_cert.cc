@@ -365,7 +365,6 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain(sk_CRYPTO_BUFFER_new_null());
   if (!chain) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -397,7 +396,6 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
     if (!buf ||
         !PushToStack(chain.get(), std::move(buf))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
   }
@@ -623,7 +621,6 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ret(sk_CRYPTO_BUFFER_new_null());
   if (!ret) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
 
@@ -647,7 +644,6 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
     if (!buffer ||
         !PushToStack(ret.get(), std::move(buffer))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return nullptr;
     }
   }

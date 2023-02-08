@@ -85,7 +85,6 @@ EVP_PKEY *EVP_PKEY_new(void) {
 
   ret = OPENSSL_malloc(sizeof(EVP_PKEY));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

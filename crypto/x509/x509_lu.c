@@ -320,7 +320,6 @@ static int x509_store_add(X509_STORE *ctx, void *x, int is_crl) {
 
   X509_OBJECT *const obj = (X509_OBJECT *)OPENSSL_malloc(sizeof(X509_OBJECT));
   if (obj == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

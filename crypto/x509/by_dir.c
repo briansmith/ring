@@ -211,7 +211,6 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
       if (ctx->dirs == NULL) {
         ctx->dirs = sk_BY_DIR_ENTRY_new_null();
         if (!ctx->dirs) {
-          OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
           return 0;
         }
       }
@@ -300,7 +299,6 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
       ent = sk_BY_DIR_ENTRY_value(ctx->dirs, i);
       j = strlen(ent->dir) + 1 + 8 + 6 + 1 + 1;
       if (!BUF_MEM_grow(b, j)) {
-        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
         goto finish;
       }
       if (type == X509_LU_CRL && ent->hashes) {

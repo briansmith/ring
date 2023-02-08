@@ -224,7 +224,6 @@ int X509_PURPOSE_add(int id, int trust, int flags,
   // Need a new entry
   if (idx == -1) {
     if (!(ptmp = OPENSSL_malloc(sizeof(X509_PURPOSE)))) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     ptmp->flags = X509_PURPOSE_DYNAMIC;
@@ -236,7 +235,6 @@ int X509_PURPOSE_add(int id, int trust, int flags,
   name_dup = OPENSSL_strdup(name);
   sname_dup = OPENSSL_strdup(sname);
   if (name_dup == NULL || sname_dup == NULL) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     if (name_dup != NULL) {
       OPENSSL_free(name_dup);
     }
@@ -270,12 +268,10 @@ int X509_PURPOSE_add(int id, int trust, int flags,
   // If its a new entry manage the dynamic table
   if (idx == -1) {
     if (!xptable && !(xptable = sk_X509_PURPOSE_new(xp_cmp))) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       xptable_free(ptmp);
       return 0;
     }
     if (!sk_X509_PURPOSE_push(xptable, ptmp)) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       xptable_free(ptmp);
       return 0;
     }

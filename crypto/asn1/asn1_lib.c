@@ -299,7 +299,6 @@ int ASN1_STRING_set(ASN1_STRING *str, const void *_data, ossl_ssize_t len_s) {
     }
 
     if (str->data == NULL) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       str->data = c;
       return 0;
     }
@@ -331,7 +330,6 @@ ASN1_STRING *ASN1_STRING_type_new(int type) {
 
   ret = (ASN1_STRING *)OPENSSL_malloc(sizeof(ASN1_STRING));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   ret->length = 0;

@@ -107,7 +107,6 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
   buf_out = OPENSSL_malloc((unsigned int)outl);
   if ((buf_in == NULL) || (buf_out == NULL)) {
     outl = 0;
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 

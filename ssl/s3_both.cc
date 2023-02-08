@@ -439,7 +439,6 @@ static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
       // No session id.
       !CBB_add_u8(&hello_body, 0) ||
       !CBB_add_u16_length_prefixed(&hello_body, &cipher_suites)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return ssl_open_record_error;
   }
 

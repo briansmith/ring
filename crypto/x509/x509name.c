@@ -263,7 +263,6 @@ int X509_NAME_add_entry(X509_NAME *name, const X509_NAME_ENTRY *entry, int loc,
   }
   new_name->set = set;
   if (!sk_X509_NAME_ENTRY_insert(sk, new_name, loc)) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   if (inc) {

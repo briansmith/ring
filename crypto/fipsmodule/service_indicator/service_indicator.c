@@ -51,7 +51,6 @@ static struct fips_service_indicator_state *service_indicator_get(void) {
   if (indicator == NULL) {
     indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
     if (indicator == NULL) {
-      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
       return NULL;
     }
 

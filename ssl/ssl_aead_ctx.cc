@@ -91,7 +91,6 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
   UniquePtr<SSLAEADContext> aead_ctx =
       MakeUnique<SSLAEADContext>(version, is_dtls, cipher);
   if (!aead_ctx) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
 

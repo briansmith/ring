@@ -218,7 +218,6 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     free_dest = 1;
     dest = ASN1_STRING_type_new(str_type);
     if (!dest) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       return -1;
     }
   }
@@ -226,7 +225,6 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
   // If both the same type just copy across
   if (inform == outform) {
     if (!ASN1_STRING_set(dest, in, len)) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     dest->type = str_type;
@@ -236,7 +234,6 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 
   CBB cbb;
   if (!CBB_init(&cbb, size_estimate + 1)) {
-    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   CBS_init(&cbs, in, len);

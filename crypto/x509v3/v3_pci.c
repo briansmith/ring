@@ -122,7 +122,6 @@ static int process_pci_value(CONF_VALUE *val, ASN1_OBJECT **language,
     if (!*policy) {
       *policy = ASN1_OCTET_STRING_new();
       if (!*policy) {
-        OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
         X509V3_conf_err(val);
         return 0;
       }
@@ -150,7 +149,6 @@ static int process_pci_value(CONF_VALUE *val, ASN1_OBJECT **language,
         // too!
         (*policy)->data = NULL;
         (*policy)->length = 0;
-        OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
         X509V3_conf_err(val);
         goto err;
       }
@@ -170,7 +168,6 @@ static int process_pci_value(CONF_VALUE *val, ASN1_OBJECT **language,
         // too!
         (*policy)->data = NULL;
         (*policy)->length = 0;
-        OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
         X509V3_conf_err(val);
         goto err;
       }
@@ -180,7 +177,6 @@ static int process_pci_value(CONF_VALUE *val, ASN1_OBJECT **language,
       goto err;
     }
     if (!tmp_data) {
-      OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
       X509V3_conf_err(val);
       goto err;
     }
@@ -246,7 +242,6 @@ static void *r2i_pci(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
 
   pci = PROXY_CERT_INFO_EXTENSION_new();
   if (!pci) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 

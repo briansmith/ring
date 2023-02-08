@@ -155,7 +155,6 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
   return r;
 
 err:
-  OPENSSL_PUT_ERROR(OBJ, ERR_R_MALLOC_FAILURE);
   OPENSSL_free(ln);
   OPENSSL_free(sn);
   OPENSSL_free(data);

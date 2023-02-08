@@ -366,7 +366,6 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
   }
   Array<uint8_t> seed;
   if (!seed.Init(seed_len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
