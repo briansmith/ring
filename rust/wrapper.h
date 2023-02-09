@@ -40,6 +40,7 @@
 #include "../include/openssl/hpke.h"
 #include "../include/openssl/hrss.h"
 #include "../include/openssl/is_boringssl.h"
+#include "../include/openssl/kdf.h"
 #include "../include/openssl/lhash.h"
 #include "../include/openssl/md4.h"
 #include "../include/openssl/md5.h"
