@@ -102,7 +102,7 @@ err:
 }
 
 static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
-  const DSA *dsa = key->pkey.dsa;
+  const DSA *dsa = key->pkey;
   const int has_params = dsa->p != NULL && dsa->q != NULL && dsa->g != NULL;
 
   // See RFC 5480, section 2.
@@ -171,7 +171,7 @@ err:
 }
 
 static int dsa_priv_encode(CBB *out, const EVP_PKEY *key) {
-  const DSA *dsa = key->pkey.dsa;
+  const DSA *dsa = key->pkey;
   if (dsa == NULL || dsa->priv_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
     return 0;
@@ -196,17 +196,19 @@ static int dsa_priv_encode(CBB *out, const EVP_PKEY *key) {
 }
 
 static int int_dsa_size(const EVP_PKEY *pkey) {
-  return DSA_size(pkey->pkey.dsa);
+  const DSA *dsa = pkey->pkey;
+  return DSA_size(dsa);
 }
 
 static int dsa_bits(const EVP_PKEY *pkey) {
-  return BN_num_bits(pkey->pkey.dsa->p);
+  const DSA *dsa = pkey->pkey;
+  return BN_num_bits(DSA_get0_p(dsa));
 }
 
 static int dsa_missing_parameters(const EVP_PKEY *pkey) {
-  DSA *dsa;
-  dsa = pkey->pkey.dsa;
-  if (dsa->p == NULL || dsa->q == NULL || dsa->g == NULL) {
+  const DSA *dsa = pkey->pkey;
+  if (DSA_get0_p(dsa) == NULL || DSA_get0_q(dsa) == NULL ||
+      DSA_get0_g(dsa) == NULL) {
     return 1;
   }
   return 0;
@@ -226,9 +228,11 @@ static int dup_bn_into(BIGNUM **out, BIGNUM *src) {
 }
 
 static int dsa_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
-  if (!dup_bn_into(&to->pkey.dsa->p, from->pkey.dsa->p) ||
-      !dup_bn_into(&to->pkey.dsa->q, from->pkey.dsa->q) ||
-      !dup_bn_into(&to->pkey.dsa->g, from->pkey.dsa->g)) {
+  DSA *to_dsa = to->pkey;
+  const DSA *from_dsa = from->pkey;
+  if (!dup_bn_into(&to_dsa->p, from_dsa->p) ||
+      !dup_bn_into(&to_dsa->q, from_dsa->q) ||
+      !dup_bn_into(&to_dsa->g, from_dsa->g)) {
     return 0;
   }
 
@@ -236,16 +240,23 @@ static int dsa_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
 }
 
 static int dsa_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
-  return BN_cmp(a->pkey.dsa->p, b->pkey.dsa->p) == 0 &&
-         BN_cmp(a->pkey.dsa->q, b->pkey.dsa->q) == 0 &&
-         BN_cmp(a->pkey.dsa->g, b->pkey.dsa->g) == 0;
+  const DSA *a_dsa = a->pkey;
+  const DSA *b_dsa = b->pkey;
+  return BN_cmp(DSA_get0_p(a_dsa), DSA_get0_p(b_dsa)) == 0 &&
+         BN_cmp(DSA_get0_q(a_dsa), DSA_get0_q(b_dsa)) == 0 &&
+         BN_cmp(DSA_get0_g(a_dsa), DSA_get0_g(b_dsa)) == 0;
 }
 
 static int dsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
-  return BN_cmp(b->pkey.dsa->pub_key, a->pkey.dsa->pub_key) == 0;
+  const DSA *a_dsa = a->pkey;
+  const DSA *b_dsa = b->pkey;
+  return BN_cmp(DSA_get0_pub_key(b_dsa), DSA_get0_pub_key(a_dsa)) == 0;
 }
 
-static void int_dsa_free(EVP_PKEY *pkey) { DSA_free(pkey->pkey.dsa); }
+static void int_dsa_free(EVP_PKEY *pkey) {
+  DSA_free(pkey->pkey);
+  pkey->pkey = NULL;
+}
 
 const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
     EVP_PKEY_DSA,

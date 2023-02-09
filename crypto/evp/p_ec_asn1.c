@@ -66,7 +66,7 @@
 
 
 static int eckey_pub_encode(CBB *out, const EVP_PKEY *key) {
-  const EC_KEY *ec_key = key->pkey.ec;
+  const EC_KEY *ec_key = key->pkey;
   const EC_GROUP *group = EC_KEY_get0_group(ec_key);
   const EC_POINT *public_key = EC_KEY_get0_public_key(ec_key);
 
@@ -118,11 +118,12 @@ err:
 }
 
 static int eckey_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
-  int r;
-  const EC_GROUP *group = EC_KEY_get0_group(b->pkey.ec);
-  const EC_POINT *pa = EC_KEY_get0_public_key(a->pkey.ec),
-                 *pb = EC_KEY_get0_public_key(b->pkey.ec);
-  r = EC_POINT_cmp(group, pa, pb, NULL);
+  const EC_KEY *a_ec = a->pkey;
+  const EC_KEY *b_ec = b->pkey;
+  const EC_GROUP *group = EC_KEY_get0_group(b_ec);
+  const EC_POINT *pa = EC_KEY_get0_public_key(a_ec),
+                 *pb = EC_KEY_get0_public_key(b_ec);
+  int r = EC_POINT_cmp(group, pa, pb, NULL);
   if (r == 0) {
     return 1;
   } else if (r == 1) {
@@ -154,7 +155,7 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
 }
 
 static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
-  const EC_KEY *ec_key = key->pkey.ec;
+  const EC_KEY *ec_key = key->pkey;
 
   // Omit the redundant copy of the curve name. This contradicts RFC 5915 but
   // aligns with PKCS #11. SEC 1 only says they may be omitted if known by other
@@ -182,7 +183,7 @@ static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
 
 static int eckey_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
                                        size_t len) {
-  EC_KEY *ec_key = pkey->pkey.ec;
+  EC_KEY *ec_key = pkey->pkey;
   if (ec_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
@@ -193,7 +194,7 @@ static int eckey_set1_tls_encodedpoint(EVP_PKEY *pkey, const uint8_t *in,
 
 static size_t eckey_get1_tls_encodedpoint(const EVP_PKEY *pkey,
                                           uint8_t **out_ptr) {
-  const EC_KEY *ec_key = pkey->pkey.ec;
+  const EC_KEY *ec_key = pkey->pkey;
   if (ec_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
@@ -203,11 +204,13 @@ static size_t eckey_get1_tls_encodedpoint(const EVP_PKEY *pkey,
 }
 
 static int int_ec_size(const EVP_PKEY *pkey) {
-  return ECDSA_size(pkey->pkey.ec);
+  const EC_KEY *ec_key = pkey->pkey;
+  return ECDSA_size(ec_key);
 }
 
 static int ec_bits(const EVP_PKEY *pkey) {
-  const EC_GROUP *group = EC_KEY_get0_group(pkey->pkey.ec);
+  const EC_KEY *ec_key = pkey->pkey;
+  const EC_GROUP *group = EC_KEY_get0_group(ec_key);
   if (group == NULL) {
     ERR_clear_error();
     return 0;
@@ -216,34 +219,38 @@ static int ec_bits(const EVP_PKEY *pkey) {
 }
 
 static int ec_missing_parameters(const EVP_PKEY *pkey) {
-  return pkey->pkey.ec == NULL || EC_KEY_get0_group(pkey->pkey.ec) == NULL;
+  const EC_KEY *ec_key = pkey->pkey;
+  return ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL;
 }
 
 static int ec_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
-  if (from->pkey.ec == NULL) {
+  const EC_KEY *from_key = from->pkey;
+  if (from_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
-  const EC_GROUP *group = EC_KEY_get0_group(from->pkey.ec);
+  const EC_GROUP *group = EC_KEY_get0_group(from_key);
   if (group == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
     return 0;
   }
-  if (to->pkey.ec == NULL) {
-    to->pkey.ec = EC_KEY_new();
-    if (to->pkey.ec == NULL) {
+  if (to->pkey == NULL) {
+    to->pkey = EC_KEY_new();
+    if (to->pkey == NULL) {
       return 0;
     }
   }
-  return EC_KEY_set_group(to->pkey.ec, group);
+  return EC_KEY_set_group(to->pkey, group);
 }
 
 static int ec_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
-  if (a->pkey.ec == NULL || b->pkey.ec == NULL) {
+  const EC_KEY *a_ec = a->pkey;
+  const EC_KEY *b_ec = b->pkey;
+  if (a_ec == NULL || b_ec == NULL) {
     return -2;
   }
-  const EC_GROUP *group_a = EC_KEY_get0_group(a->pkey.ec),
-                 *group_b = EC_KEY_get0_group(b->pkey.ec);
+  const EC_GROUP *group_a = EC_KEY_get0_group(a_ec),
+                 *group_b = EC_KEY_get0_group(b_ec);
   if (group_a == NULL || group_b == NULL) {
     return -2;
   }
@@ -254,10 +261,14 @@ static int ec_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
   return 1;
 }
 
-static void int_ec_free(EVP_PKEY *pkey) { EC_KEY_free(pkey->pkey.ec); }
+static void int_ec_free(EVP_PKEY *pkey) {
+  EC_KEY_free(pkey->pkey);
+  pkey->pkey = NULL;
+}
 
 static int eckey_opaque(const EVP_PKEY *pkey) {
-  return EC_KEY_is_opaque(pkey->pkey.ec);
+  const EC_KEY *ec_key = pkey->pkey;
+  return EC_KEY_is_opaque(ec_key);
 }
 
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {

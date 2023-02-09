@@ -132,16 +132,11 @@ struct evp_pkey_st {
   CRYPTO_refcount_t references;
 
   // type contains one of the EVP_PKEY_* values or NID_undef and determines
-  // which element (if any) of the |pkey| union is valid.
+  // the type of |pkey|.
   int type;
 
-  union {
-    void *ptr;
-    RSA *rsa;
-    DSA *dsa;
-    DH *dh;
-    EC_KEY *ec;
-  } pkey;
+  // pkey contains a pointer to a structure dependent on |type|.
+  void *pkey;
 
   // ameth contains a pointer to a method table that contains many ASN.1
   // methods for the key type.

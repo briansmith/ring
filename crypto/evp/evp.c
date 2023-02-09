@@ -98,7 +98,7 @@ EVP_PKEY *EVP_PKEY_new(void) {
 static void free_it(EVP_PKEY *pkey) {
   if (pkey->ameth && pkey->ameth->pkey_free) {
     pkey->ameth->pkey_free(pkey);
-    pkey->pkey.ptr = NULL;
+    pkey->pkey = NULL;
     pkey->type = EVP_PKEY_NONE;
   }
 }
@@ -254,7 +254,7 @@ RSA *EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_RSA_KEY);
     return NULL;
   }
-  return pkey->pkey.rsa;
+  return pkey->pkey;
 }
 
 RSA *EVP_PKEY_get1_RSA(const EVP_PKEY *pkey) {
@@ -282,7 +282,7 @@ DSA *EVP_PKEY_get0_DSA(const EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DSA_KEY);
     return NULL;
   }
-  return pkey->pkey.dsa;
+  return pkey->pkey;
 }
 
 DSA *EVP_PKEY_get1_DSA(const EVP_PKEY *pkey) {
@@ -310,7 +310,7 @@ EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_EC_KEY_KEY);
     return NULL;
   }
-  return pkey->pkey.ec;
+  return pkey->pkey;
 }
 
 EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey) {
@@ -328,14 +328,14 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
   if (!EVP_PKEY_set_type(pkey, type)) {
     return 0;
   }
-  pkey->pkey.ptr = key;
+  pkey->pkey = key;
   return key != NULL;
 }
 
 int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   const EVP_PKEY_ASN1_METHOD *ameth;
 
-  if (pkey && pkey->pkey.ptr) {
+  if (pkey && pkey->pkey) {
     free_it(pkey);
   }
 
@@ -447,7 +447,7 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
 void *EVP_PKEY_get0(const EVP_PKEY *pkey) {
   // Node references, but never calls this function, so for now we return NULL.
   // If other projects require complete support, call |EVP_PKEY_get0_RSA|, etc.,
-  // rather than reading |pkey->pkey.ptr| directly. This avoids problems if our
+  // rather than reading |pkey->pkey| directly. This avoids problems if our
   // internal representation does not match the type the caller expects from
   // OpenSSL.
   return NULL;

@@ -238,8 +238,9 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
     }
   } else if (pkey_type == EVP_PKEY_EC) {
     // Check if the MD type and the elliptic curve are approved.
-    if (md_ok(md_type) && is_ec_fips_approved(EC_GROUP_get_curve_name(
-                              ctx->pctx->pkey->pkey.ec->group))) {
+    if (md_ok(md_type) &&
+        is_ec_fips_approved(EC_GROUP_get_curve_name(
+            EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(ctx->pctx->pkey))))) {
       FIPS_service_indicator_update_state();
     }
   }
