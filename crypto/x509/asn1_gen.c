@@ -79,6 +79,11 @@
 // ASN1_GEN_MAX_DEPTH is the maximum number of nested TLVs allowed.
 #define ASN1_GEN_MAX_DEPTH 50
 
+// ASN1_GEN_MAX_OUTPUT is the maximum output, in bytes, allowed. This limit is
+// necessary because the SEQUENCE and SET section reference mechanism allows the
+// output length to grow super-linearly with the input length.
+#define ASN1_GEN_MAX_OUTPUT (64 * 1024)
+
 // ASN1_GEN_FORMAT_* are the values for the format modifiers.
 #define ASN1_GEN_FORMAT_ASCII 1
 #define ASN1_GEN_FORMAT_UTF8 2
@@ -101,6 +106,15 @@ ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf) {
   if (!CBB_init(&cbb, 0) ||  //
       !generate_v3(&cbb, str, cnf, /*tag=*/0, ASN1_GEN_FORMAT_ASCII,
                    /*depth=*/0)) {
+    CBB_cleanup(&cbb);
+    return NULL;
+  }
+
+  // While not strictly necessary to avoid a DoS (we rely on any super-linear
+  // checks being performed internally), cap the overall output to
+  // |ASN1_GEN_MAX_OUTPUT| so the externally-visible behavior is consistent.
+  if (CBB_len(&cbb) > ASN1_GEN_MAX_OUTPUT) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
     CBB_cleanup(&cbb);
     return NULL;
   }
@@ -446,9 +460,14 @@ static int generate_v3(CBB *cbb, const char *str, const X509V3_CTX *cnf,
         return 0;
       }
 
+      // |maxsize| is measured in code points, rather than bytes, but pass it in
+      // as a loose cap so fuzzers can exit from excessively long inputs
+      // earlier. This limit is not load-bearing because |ASN1_mbstring_ncopy|'s
+      // output is already linear in the input.
       ASN1_STRING *obj = NULL;
-      if (ASN1_mbstring_copy(&obj, (const uint8_t *)value, -1, encoding,
-                             ASN1_tag2bit(type)) <= 0) {
+      if (ASN1_mbstring_ncopy(&obj, (const uint8_t *)value, -1, encoding,
+                              ASN1_tag2bit(type), /*minsize=*/0,
+                              /*maxsize=*/ASN1_GEN_MAX_OUTPUT) <= 0) {
         return 0;
       }
       int ok = CBB_add_bytes(&child, obj->data, obj->length) && CBB_flush(cbb);
@@ -520,6 +539,13 @@ static int generate_v3(CBB *cbb, const char *str, const X509V3_CTX *cnf,
           const CONF_VALUE *conf = sk_CONF_VALUE_value(section, i);
           if (!generate_v3(&child, conf->value, cnf, /*tag=*/0,
                            ASN1_GEN_FORMAT_ASCII, depth + 1)) {
+            return 0;
+          }
+          // This recursive call, by referencing |section|, is the one place
+          // where |generate_v3|'s output can be super-linear in the input.
+          // Check bounds here.
+          if (CBB_len(&child) > ASN1_GEN_MAX_OUTPUT) {
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
             return 0;
           }
         }

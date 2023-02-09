@@ -6293,6 +6293,65 @@ key = FORMAT:HEX,OCTWRAP,OCT:9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703
         0x20, 0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84,
         0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b,
         0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60}},
+
+      // Sections can be referenced multiple times.
+      {kTestOID,
+       "ASN1:SEQUENCE:seq1",
+       R"(
+[seq1]
+val1 = SEQUENCE:seq2
+val2 = SEQUENCE:seq2
+[seq2]
+val1 = INT:1
+val2 = INT:2
+)",
+       {0x30, 0x22, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x12,
+        0x30, 0x10, 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01,
+        0x02, 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02}},
+
+      // But we cap this before it blows up exponentially.
+      {kTestOID,
+       "ASN1:SEQ:seq1",
+       R"(
+[seq1]
+val1 = SEQ:seq2
+val2 = SEQ:seq2
+[seq2]
+val1 = SEQ:seq3
+val2 = SEQ:seq3
+[seq3]
+val1 = SEQ:seq4
+val2 = SEQ:seq4
+[seq4]
+val1 = SEQ:seq5
+val2 = SEQ:seq5
+[seq5]
+val1 = SEQ:seq6
+val2 = SEQ:seq6
+[seq6]
+val1 = SEQ:seq7
+val2 = SEQ:seq7
+[seq7]
+val1 = SEQ:seq8
+val2 = SEQ:seq8
+[seq8]
+val1 = SEQ:seq9
+val2 = SEQ:seq9
+[seq9]
+val1 = SEQ:seq10
+val2 = SEQ:seq10
+[seq10]
+val1 = SEQ:seq11
+val2 = SEQ:seq11
+[seq11]
+val1 = SEQ:seq12
+val2 = SEQ:seq12
+[seq12]
+val1 = IA5:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+val2 = IA5:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+)",
+       {}},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.name);
