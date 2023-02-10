@@ -313,9 +313,9 @@ class TrustTokenProtocolTestBase : public ::testing::Test {
     return static_cast<uint32_t>(7 + i);
   }
 
-  const TRUST_TOKEN_METHOD *method() { return method_; }
+  const TRUST_TOKEN_METHOD *method() const { return method_; }
 
-  const bool use_message() { return use_msg_; }
+  bool use_message() const { return use_msg_; }
 
  protected:
   void SetupContexts() {
