@@ -25,18 +25,18 @@ vars = {
   #  cipd describe PACKAGE_NAME -version latest
 
   # infra/3pp/tools/cmake/linux-amd64
-  'cmake_version': 'version:2@3.25.0.chromium.5',
+  'cmake_version': 'version:2@3.25.2.chromium.6',
   # infra/3pp/tools/go/linux-amd64
-  'go_version': 'version:2@1.19.3',
+  'go_version': 'version:2@1.20',
 
   # Update the following from
   # https://chromium.googlesource.com/chromium/src/+/main/DEPS
   'android_sdk_platform-tools_version': 'RSI3iwryh7URLGRgJHsCvUxj092woTPnKt4pwFcJ6L8C',
   'android_ndk_revision': '8388a2be5421311dc75c5f937aae13d821a27f3d',
   'libfuzzer_revision': 'debe7d2d1982e540fbd6bd78604bf001753f9e74',
-  'libcxx_revision': 'cd0a05047451dfbdef5ba85f97ac4888e432a377',
-  'libcxxabi_revision': '1a32724f721e1c3b6c590a07fe4a954344f15e48',
-  'ninja_version': 'version:2@1.8.2.chromium.3',
+  'libcxx_revision': '7f648d9b44c2876dfc4329256a6c0750e1e77c7f',
+  'libcxxabi_revision': 'b74d7716111d7eda5c03cb8f5dfc940e1c2c0030',
+  'ninja_version': 'version:2@1.11.1.chromium.6',
 }
 
 deps = {
