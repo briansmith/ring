@@ -36,6 +36,8 @@ extern "C" {
 // |group| and writes the result to |out|, implementing the
 // P384_XMD:SHA-512_SSWU_RO_ suite from draft-irtf-cfrg-hash-to-curve-07. It
 // returns one on success and zero on error.
+//
+// TODO(https://crbug.com/1414562): Migrate this to the final version.
 OPENSSL_EXPORT int ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
     const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
     size_t dst_len, const uint8_t *msg, size_t msg_len);
@@ -44,6 +46,8 @@ OPENSSL_EXPORT int ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
 // and writes the result to |out|, using the hash_to_field operation from the
 // P384_XMD:SHA-512_SSWU_RO_ suite from draft-irtf-cfrg-hash-to-curve-07, but
 // generating a value modulo the group order rather than a field element.
+//
+// TODO(https://crbug.com/1414562): Migrate this to the final version.
 OPENSSL_EXPORT int ec_hash_to_scalar_p384_xmd_sha512_draft07(
     const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
     const uint8_t *msg, size_t msg_len);

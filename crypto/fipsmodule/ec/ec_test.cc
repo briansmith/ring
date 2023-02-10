@@ -1286,6 +1286,12 @@ TEST(ECTest, HashToCurve) {
   static const uint8_t kMessage[] = {4, 5, 6, 7};
   EXPECT_FALSE(ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
       p224.get(), &p, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
+
+  // Zero-length DSTs are not allowed.
+  bssl::UniquePtr<EC_GROUP> p384(EC_GROUP_new_by_curve_name(NID_secp384r1));
+  ASSERT_TRUE(p384);
+  EXPECT_FALSE(ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
+      p384.get(), &p, nullptr, 0, kMessage, sizeof(kMessage)));
 }
 
 TEST(ECTest, HashToScalar) {
