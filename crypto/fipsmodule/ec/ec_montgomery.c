@@ -156,8 +156,8 @@ int ec_GFp_mont_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
   return 1;
 }
 
-static void ec_GFp_mont_felem_reduce(const EC_GROUP *group, EC_FELEM *out,
-                                     const BN_ULONG *words, size_t num) {
+void ec_GFp_mont_felem_reduce(const EC_GROUP *group, EC_FELEM *out,
+                              const BN_ULONG *words, size_t num) {
   // Convert "from" Montgomery form so the value is reduced mod p.
   bn_from_montgomery_small(out->words, group->field.width, words, num,
                            group->mont);
@@ -167,9 +167,9 @@ static void ec_GFp_mont_felem_reduce(const EC_GROUP *group, EC_FELEM *out,
   ec_GFp_mont_felem_to_montgomery(group, out, out);
 }
 
-static void ec_GFp_mont_felem_exp(const EC_GROUP *group, EC_FELEM *out,
-                                  const EC_FELEM *a, const BN_ULONG *exp,
-                                  size_t num_exp) {
+void ec_GFp_mont_felem_exp(const EC_GROUP *group, EC_FELEM *out,
+                           const EC_FELEM *a, const BN_ULONG *exp,
+                           size_t num_exp) {
   bn_mod_exp_mont_small(out->words, a->words, group->field.width, exp, num_exp,
                         group->mont);
 }

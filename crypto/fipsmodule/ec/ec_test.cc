@@ -1207,8 +1207,18 @@ TEST(ECTest, DeriveFromSecret) {
 }
 
 TEST(ECTest, HashToCurve) {
+  auto hash_to_curve_p384_sha512_draft07 =
+      [](const EC_GROUP *group, EC_POINT *out, const uint8_t *dst,
+         size_t dst_len, const uint8_t *msg, size_t msg_len) -> int {
+    if (EC_GROUP_cmp(group, out->group, NULL) != 0) {
+      return 0;
+    }
+    return ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(group, &out->raw, dst,
+                                                         dst_len, msg, msg_len);
+  };
+
   struct HashToCurveTest {
-    int (*hash_to_curve)(const EC_GROUP *group, EC_RAW_POINT *out,
+    int (*hash_to_curve)(const EC_GROUP *group, EC_POINT *out,
                          const uint8_t *dst, size_t dst_len, const uint8_t *msg,
                          size_t msg_len);
     int curve_nid;
@@ -1218,26 +1228,71 @@ TEST(ECTest, HashToCurve) {
     const char *y_hex;
   };
   static const HashToCurveTest kTests[] = {
+      // See draft-irtf-cfrg-hash-to-curve-16, appendix J.1.1.
+      {&EC_hash_to_curve_p256_xmd_sha256_sswu, NID_X9_62_prime256v1,
+       "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_", "",
+       "2c15230b26dbc6fc9a37051158c95b79656e17a1a920b11394ca91"
+       "c44247d3e4",
+       "8a7a74985cc5c776cdfe4b1f19884970453912e9d31528c060be9a"
+       "b5c43e8415"},
+      {&EC_hash_to_curve_p256_xmd_sha256_sswu, NID_X9_62_prime256v1,
+       "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_", "abc",
+       "0bb8b87485551aa43ed54f009230450b492fead5f1cc91658775da"
+       "c4a3388a0f",
+       "5c41b3d0731a27a7b14bc0bf0ccded2d8751f83493404c84a88e71"
+       "ffd424212e"},
+      {&EC_hash_to_curve_p256_xmd_sha256_sswu, NID_X9_62_prime256v1,
+       "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_", "abcdef0123456789",
+       "65038ac8f2b1def042a5df0b33b1f4eca6bff7cb0f9c6c15268118"
+       "64e544ed80",
+       "cad44d40a656e7aff4002a8de287abc8ae0482b5ae825822bb870d"
+       "6df9b56ca3"},
+      {&EC_hash_to_curve_p256_xmd_sha256_sswu, NID_X9_62_prime256v1,
+       "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_",
+       "q128_qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+       "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+       "qqqqqqqqqqqqqqqqqqqqqqqqq",
+       "4be61ee205094282ba8a2042bcb48d88dfbb609301c49aa8b07853"
+       "3dc65a0b5d",
+       "98f8df449a072c4721d241a3b1236d3caccba603f916ca680f4539"
+       "d2bfb3c29e"},
+      {&EC_hash_to_curve_p256_xmd_sha256_sswu, NID_X9_62_prime256v1,
+       "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_",
+       "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "457ae2981f70ca85d8e24c308b14db22f3e3862c5ea0f652ca38b5"
+       "e49cd64bc5",
+       "ecb9f0eadc9aeed232dabc53235368c1394c78de05dd96893eefa6"
+       "2b0f4757dc"},
+
       // See draft-irtf-cfrg-hash-to-curve-07, appendix G.2.1.
-      {&ec_hash_to_curve_p384_xmd_sha512_sswu_draft07, NID_secp384r1,
+      {hash_to_curve_p384_sha512_draft07, NID_secp384r1,
        "P384_XMD:SHA-512_SSWU_RO_TESTGEN", "",
        "2fc0b9efdd63a8e43b4db88dc12f03c798f6fd91bccac0c9096185"
        "4386e58fdc54fc2a01f0f358759054ce1f9b762025",
        "949b936fabb72cdb02cd7980b86cb6a3adf286658e81301648851d"
        "b8a49d9bec00ccb57698d559fc5960fa5030a8e54b"},
-      {&ec_hash_to_curve_p384_xmd_sha512_sswu_draft07, NID_secp384r1,
+      {hash_to_curve_p384_sha512_draft07, NID_secp384r1,
        "P384_XMD:SHA-512_SSWU_RO_TESTGEN", "abc",
        "4f3338035391e8ce8ce40c974136f0edc97f392ffd44a643338741"
        "8ed1b8c2603487e1688ec151f048fbc6b2c138c92f",
        "152b90aef6558be328a3168855fb1906452e7167b0f7c8a56ff9d4"
        "fa87d6fb522cdf8e409db54418b2c764fd26260757"},
-      {&ec_hash_to_curve_p384_xmd_sha512_sswu_draft07, NID_secp384r1,
+      {hash_to_curve_p384_sha512_draft07, NID_secp384r1,
        "P384_XMD:SHA-512_SSWU_RO_TESTGEN", "abcdef0123456789",
        "e9e5d7ac397e123d060ad44301cbc8eb972f6e64ebcff29dcc9b9a"
        "10357902aace2240c580fec85e5b427d98b4e80703",
        "916cb8963521ad75105be43cc4148e5a5bbb4fcf107f1577e4f7fa"
        "3ca58cd786aa76890c8e687d2353393bc16c78ec4d"},
-      {&ec_hash_to_curve_p384_xmd_sha512_sswu_draft07, NID_secp384r1,
+      {hash_to_curve_p384_sha512_draft07, NID_secp384r1,
        "P384_XMD:SHA-512_SSWU_RO_TESTGEN",
        "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -1264,7 +1319,7 @@ TEST(ECTest, HashToCurve) {
     bssl::UniquePtr<EC_POINT> p(EC_POINT_new(group.get()));
     ASSERT_TRUE(p);
     ASSERT_TRUE(test.hash_to_curve(
-        group.get(), &p->raw, reinterpret_cast<const uint8_t *>(test.dst),
+        group.get(), p.get(), reinterpret_cast<const uint8_t *>(test.dst),
         strlen(test.dst), reinterpret_cast<const uint8_t *>(test.msg),
         strlen(test.msg)));
 
@@ -1281,17 +1336,30 @@ TEST(ECTest, HashToCurve) {
   // hash-to-curve functions should check for the wrong group.
   bssl::UniquePtr<EC_GROUP> p224(EC_GROUP_new_by_curve_name(NID_secp224r1));
   ASSERT_TRUE(p224);
-  EC_RAW_POINT p;
-  static const uint8_t kDST[] = {0, 1, 2, 3};
-  static const uint8_t kMessage[] = {4, 5, 6, 7};
-  EXPECT_FALSE(ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
-      p224.get(), &p, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
-
-  // Zero-length DSTs are not allowed.
   bssl::UniquePtr<EC_GROUP> p384(EC_GROUP_new_by_curve_name(NID_secp384r1));
   ASSERT_TRUE(p384);
-  EXPECT_FALSE(ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
-      p384.get(), &p, nullptr, 0, kMessage, sizeof(kMessage)));
+  EC_RAW_POINT raw;
+  bssl::UniquePtr<EC_POINT> p_p384(EC_POINT_new(p384.get()));
+  ASSERT_TRUE(p_p384);
+  bssl::UniquePtr<EC_POINT> p_p224(EC_POINT_new(p224.get()));
+  ASSERT_TRUE(p_p224);
+  static const uint8_t kDST[] = {0, 1, 2, 3};
+  static const uint8_t kMessage[] = {4, 5, 6, 7};
+  EXPECT_FALSE(ec_hash_to_curve_p384_xmd_sha384_sswu(
+      p224.get(), &raw, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
+  EXPECT_FALSE(EC_hash_to_curve_p384_xmd_sha384_sswu(
+      p224.get(), p_p224.get(), kDST, sizeof(kDST), kMessage,
+      sizeof(kMessage)));
+  EXPECT_FALSE(EC_hash_to_curve_p384_xmd_sha384_sswu(
+      p224.get(), p_p384.get(), kDST, sizeof(kDST), kMessage,
+      sizeof(kMessage)));
+  EXPECT_FALSE(EC_hash_to_curve_p384_xmd_sha384_sswu(
+      p384.get(), p_p224.get(), kDST, sizeof(kDST), kMessage,
+      sizeof(kMessage)));
+
+  // Zero-length DSTs are not allowed.
+  EXPECT_FALSE(ec_hash_to_curve_p384_xmd_sha384_sswu(
+      p384.get(), &raw, nullptr, 0, kMessage, sizeof(kMessage)));
 }
 
 TEST(ECTest, HashToScalar) {

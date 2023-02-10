@@ -375,6 +375,18 @@ static int felem_from_u8(const EC_GROUP *group, EC_FELEM *out, uint8_t a) {
   return ec_felem_from_bytes(group, out, bytes, len);
 }
 
+// kP256Sqrt10 is sqrt(10) in P-256's field. It was computed as follows in
+// python3:
+//
+// p =  2**256 - 2**224 + 2**192 + 2**96 - 1
+// c2 = pow(10, (p+1)//4, p)
+// assert pow(c2, 2, p) == 10
+// ", ".join("0x%02x" % b for b in c2.to_bytes(256//8, 'big'))
+static const uint8_t kP256Sqrt10[] = {
+    0xda, 0x53, 0x8e, 0x3b, 0xe1, 0xd8, 0x9b, 0x99, 0xc9, 0x78, 0xfc,
+    0x67, 0x51, 0x80, 0xaa, 0xb2, 0x7b, 0x8d, 0x1f, 0xf8, 0x4c, 0x55,
+    0xd5, 0xb6, 0x2c, 0xcd, 0x34, 0x27, 0xe4, 0x33, 0xc4, 0x7f};
+
 // kP384Sqrt12 is sqrt(12) in P-384's field. It was computed as follows in
 // python3:
 //
@@ -387,6 +399,72 @@ static const uint8_t kP384Sqrt12[] = {
     0x83, 0xda, 0x2f, 0xdd, 0x7f, 0x98, 0xe3, 0x83, 0xd6, 0x8b, 0x53, 0x87,
     0x1f, 0x87, 0x2f, 0xcb, 0x9c, 0xcb, 0x80, 0xc5, 0x3c, 0x0d, 0xe1, 0xf8,
     0xa8, 0x0f, 0x7e, 0x19, 0x14, 0xe2, 0xec, 0x69, 0xf5, 0xa6, 0x26, 0xb3};
+
+int ec_hash_to_curve_p256_xmd_sha256_sswu(const EC_GROUP *group,
+                                          EC_RAW_POINT *out, const uint8_t *dst,
+                                          size_t dst_len, const uint8_t *msg,
+                                          size_t msg_len) {
+  // See section 8.3 of draft-irtf-cfrg-hash-to-curve-16.
+  if (EC_GROUP_get_curve_name(group) != NID_X9_62_prime256v1) {
+    OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
+    return 0;
+  }
+
+  // Z = -10, c2 = sqrt(10)
+  EC_FELEM Z, c2;
+  if (!felem_from_u8(group, &Z, 10) ||
+      !ec_felem_from_bytes(group, &c2, kP256Sqrt10, sizeof(kP256Sqrt10))) {
+    return 0;
+  }
+  ec_felem_neg(group, &Z, &Z);
+
+  return hash_to_curve(group, EVP_sha256(), &Z, &c2, /*k=*/128, out, dst,
+                       dst_len, msg, msg_len);
+}
+
+int EC_hash_to_curve_p256_xmd_sha256_sswu(const EC_GROUP *group, EC_POINT *out,
+                                          const uint8_t *dst, size_t dst_len,
+                                          const uint8_t *msg, size_t msg_len) {
+  if (EC_GROUP_cmp(group, out->group, NULL) != 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+  return ec_hash_to_curve_p256_xmd_sha256_sswu(group, &out->raw, dst, dst_len,
+                                               msg, msg_len);
+}
+
+int ec_hash_to_curve_p384_xmd_sha384_sswu(const EC_GROUP *group,
+                                          EC_RAW_POINT *out, const uint8_t *dst,
+                                          size_t dst_len, const uint8_t *msg,
+                                          size_t msg_len) {
+  // See section 8.3 of draft-irtf-cfrg-hash-to-curve-16.
+  if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
+    OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
+    return 0;
+  }
+
+  // Z = -12, c2 = sqrt(12)
+  EC_FELEM Z, c2;
+  if (!felem_from_u8(group, &Z, 12) ||
+      !ec_felem_from_bytes(group, &c2, kP384Sqrt12, sizeof(kP384Sqrt12))) {
+    return 0;
+  }
+  ec_felem_neg(group, &Z, &Z);
+
+  return hash_to_curve(group, EVP_sha384(), &Z, &c2, /*k=*/192, out, dst,
+                       dst_len, msg, msg_len);
+}
+
+int EC_hash_to_curve_p384_xmd_sha384_sswu(const EC_GROUP *group, EC_POINT *out,
+                                          const uint8_t *dst, size_t dst_len,
+                                          const uint8_t *msg, size_t msg_len) {
+  if (EC_GROUP_cmp(group, out->group, NULL) != 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+  return ec_hash_to_curve_p384_xmd_sha384_sswu(group, &out->raw, dst, dst_len,
+                                               msg, msg_len);
+}
 
 int ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
     const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,

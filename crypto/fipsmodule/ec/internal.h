@@ -560,6 +560,12 @@ struct ec_method_st {
   //
   // This function is used in hash-to-curve and may be NULL in curves not used
   // with hash-to-curve.
+  //
+  // TODO(https://crbug.com/boringssl/567): hash-to-curve uses this as part of
+  // computing a square root, which is what compressed coordinates ultimately
+  // needs to avoid |BIGNUM|. Can we unify this a bit? By generalizing to
+  // arbitrary exponentiation, we also miss an opportunity to use a specialized
+  // addition chain.
   void (*felem_exp)(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a,
                     const BN_ULONG *exp, size_t num_exp);
 
@@ -650,6 +656,11 @@ void ec_GFp_mont_mul_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
                              const EC_PRECOMP *p0, const EC_SCALAR *scalar0,
                              const EC_PRECOMP *p1, const EC_SCALAR *scalar1,
                              const EC_PRECOMP *p2, const EC_SCALAR *scalar2);
+void ec_GFp_mont_felem_reduce(const EC_GROUP *group, EC_FELEM *out,
+                              const BN_ULONG *words, size_t num);
+void ec_GFp_mont_felem_exp(const EC_GROUP *group, EC_FELEM *out,
+                           const EC_FELEM *a, const BN_ULONG *exp,
+                           size_t num_exp);
 
 // ec_compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
 // |scalar| to |out|. |out| must have room for |bits| + 1 elements, each of
