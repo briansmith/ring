@@ -856,6 +856,11 @@ TEST_P(ECCurveTest, SetInvalidPrivateKey) {
   EXPECT_FALSE(EC_KEY_set_private_key(key.get(), bn.get()))
       << "Unexpectedly set a key of the group order.";
   ERR_clear_error();
+
+  BN_zero(bn.get());
+  EXPECT_FALSE(EC_KEY_set_private_key(key.get(), bn.get()))
+      << "Unexpectedly set a key of 0";
+  ERR_clear_error();
 }
 
 TEST_P(ECCurveTest, IgnoreOct2PointReturnValue) {
