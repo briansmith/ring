@@ -69,6 +69,7 @@
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/pem.h>
 #include <openssl/span.h>
 
 #include "../test/test_util.h"
@@ -310,5 +311,28 @@ TEST(DSATest, ZeroPrivateKey) {
   std::vector<uint8_t> sig(DSA_size(dsa.get()));
   unsigned sig_len;
   EXPECT_FALSE(DSA_sign(0, kZeroDigest, sizeof(kZeroDigest), sig.data(),
+                        &sig_len, dsa.get()));
+}
+
+// If the "field" is actually a ring and the "generator" of the multiplicative
+// subgroup is actually nilpotent with low degree, DSA signing never completes.
+// Test that we give up in the infinite loop.
+TEST(DSATest, NilpotentGenerator) {
+  static const char kPEM[] = R"(
+-----BEGIN DSA PRIVATE KEY-----
+MGECAQACFQHH+MnFXh4NNlZiV/zUVb5a5ib3kwIVAOP8ZOKvDwabKzEr/moq3y1z
+E3vJAhUAl/2Ylx9fWbzHdh1URsc/c6IM/TECAQECFCsjU4AZRcuks45g1NMOUeCB
+Epvg
+-----END DSA PRIVATE KEY-----
+)";
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kPEM, sizeof(kPEM)));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<DSA> dsa(
+      PEM_read_bio_DSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(dsa);
+
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  EXPECT_FALSE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
                         &sig_len, dsa.get()));
 }

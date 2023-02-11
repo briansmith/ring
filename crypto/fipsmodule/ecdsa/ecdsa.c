@@ -333,7 +333,13 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   SHA512_Update(&sha, digest, digest_len);
   SHA512_Final(additional_data, &sha);
 
+  // Cap iterations so callers who supply invalid values as custom groups do not
+  // infinite loop. This does not impact valid parameters (e.g. those covered by
+  // FIPS) because the probability of requiring even one retry is negligible,
+  // let alone 32.
+  static const int kMaxIterations = 32;
   ECDSA_SIG *ret = NULL;
+  int iters = 0;
   for (;;) {
     EC_SCALAR k;
     if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
@@ -344,6 +350,12 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     int retry;
     ret = ecdsa_sign_impl(group, &retry, priv_key, &k, digest, digest_len);
     if (ret != NULL || !retry) {
+      goto out;
+    }
+
+    iters++;
+    if (iters > kMaxIterations) {
+      OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_TOO_MANY_ITERATIONS);
       goto out;
     }
   }
