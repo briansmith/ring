@@ -215,7 +215,7 @@ static int ec_bits(const EVP_PKEY *pkey) {
     ERR_clear_error();
     return 0;
   }
-  return BN_num_bits(EC_GROUP_get0_order(group));
+  return EC_GROUP_order_bits(group);
 }
 
 static int ec_missing_parameters(const EVP_PKEY *pkey) {

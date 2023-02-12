@@ -563,8 +563,8 @@ static int ecp_nistz256_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
   }
 #endif
 
-  assert(group->order.width == P256_LIMBS);
-  if (!beeu_mod_inverse_vartime(out->words, in->words, group->order.d)) {
+  assert(group->order->N.width == P256_LIMBS);
+  if (!beeu_mod_inverse_vartime(out->words, in->words, group->order->N.d)) {
     return 0;
   }
 
@@ -580,7 +580,7 @@ static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
     return 0;
   }
 
-  assert(group->order.width == P256_LIMBS);
+  assert(group->order->N.width == P256_LIMBS);
   assert(group->field.width == P256_LIMBS);
 
   // We wish to compare X/Z^2 with r. This is equivalent to comparing X with
@@ -602,7 +602,7 @@ static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
   if (bn_less_than_words(r->words, group->field_minus_order.words,
                          P256_LIMBS)) {
     // We can ignore the carry because: r + group_order < p < 2^256.
-    bn_add_words(r_Z2, r->words, group->order.d, P256_LIMBS);
+    bn_add_words(r_Z2, r->words, group->order->N.d, P256_LIMBS);
     ecp_nistz256_mul_mont(r_Z2, r_Z2, Z2_mont);
     if (OPENSSL_memcmp(r_Z2, X, sizeof(r_Z2)) == 0) {
       return 1;

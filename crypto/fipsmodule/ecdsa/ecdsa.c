@@ -71,7 +71,7 @@
 // ECDSA.
 static void digest_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
                              const uint8_t *digest, size_t digest_len) {
-  const BIGNUM *order = &group->order;
+  const BIGNUM *order = EC_GROUP_get0_order(group);
   size_t num_bits = BN_num_bits(order);
   // Need to truncate digest if it is too long: first truncate whole bytes.
   size_t num_bytes = (num_bits + 7) / 8;

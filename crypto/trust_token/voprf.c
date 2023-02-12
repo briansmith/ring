@@ -95,7 +95,7 @@ static int cbs_get_point(CBS *cbs, const EC_GROUP *group, EC_AFFINE *out) {
 static int scalar_to_cbb(CBB *out, const EC_GROUP *group,
                          const EC_SCALAR *scalar) {
   uint8_t *buf;
-  size_t scalar_len = BN_num_bytes(&group->order);
+  size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
   if (!CBB_add_space(out, &buf, scalar_len)) {
     return 0;
   }
@@ -104,7 +104,7 @@ static int scalar_to_cbb(CBB *out, const EC_GROUP *group,
 }
 
 static int scalar_from_cbs(CBS *cbs, const EC_GROUP *group, EC_SCALAR *out) {
-  size_t scalar_len = BN_num_bytes(&group->order);
+  size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
   CBS tmp;
   if (!CBS_get_bytes(cbs, &tmp, scalar_len)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);

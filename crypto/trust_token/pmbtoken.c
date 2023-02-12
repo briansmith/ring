@@ -201,7 +201,7 @@ static int pmbtoken_compute_keys(const PMBTOKEN_METHOD *method,
   }
 
   const EC_SCALAR *scalars[] = {x0, y0, x1, y1, xs, ys};
-  size_t scalar_len = BN_num_bytes(&group->order);
+  size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(scalars); i++) {
     uint8_t *buf;
     if (!CBB_add_space(out_private, &buf, scalar_len)) {
@@ -290,7 +290,7 @@ static int pmbtoken_issuer_key_from_bytes(const PMBTOKEN_METHOD *method,
   const EC_GROUP *group = method->group;
   CBS cbs, tmp;
   CBS_init(&cbs, in, len);
-  size_t scalar_len = BN_num_bytes(&group->order);
+  size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
   EC_SCALAR *scalars[] = {&key->x0, &key->y0, &key->x1,
                           &key->y1, &key->xs, &key->ys};
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(scalars); i++) {
@@ -390,7 +390,7 @@ err:
 static int scalar_to_cbb(CBB *out, const EC_GROUP *group,
                          const EC_SCALAR *scalar) {
   uint8_t *buf;
-  size_t scalar_len = BN_num_bytes(&group->order);
+  size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
   if (!CBB_add_space(out, &buf, scalar_len)) {
     return 0;
   }
@@ -399,7 +399,7 @@ static int scalar_to_cbb(CBB *out, const EC_GROUP *group,
 }
 
 static int scalar_from_cbs(CBS *cbs, const EC_GROUP *group, EC_SCALAR *out) {
-  size_t scalar_len = BN_num_bytes(&group->order);
+  size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
   CBS tmp;
   if (!CBS_get_bytes(cbs, &tmp, scalar_len)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);

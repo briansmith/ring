@@ -197,15 +197,16 @@ static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
 static int hash_to_scalar(const EC_GROUP *group, const EVP_MD *md,
                           EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
                           unsigned k, const uint8_t *msg, size_t msg_len) {
+  const BIGNUM *order = EC_GROUP_get0_order(group);
   size_t L;
   uint8_t buf[EC_MAX_BYTES * 2];
-  if (!num_bytes_to_derive(&L, &group->order, k) ||
+  if (!num_bytes_to_derive(&L, order, k) ||
       !expand_message_xmd(md, buf, L, msg, msg_len, dst, dst_len)) {
     return 0;
   }
 
   BN_ULONG words[2 * EC_MAX_WORDS];
-  size_t num_words = 2 * group->order.width;
+  size_t num_words = 2 * order->width;
   big_endian_to_words(words, num_words, buf, L);
   ec_scalar_reduce(group, out, words, num_words);
   return 1;

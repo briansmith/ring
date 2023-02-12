@@ -595,11 +595,10 @@ struct ec_group_st {
   // to avoid a reference cycle. Additionally, Z is guaranteed to be one, so X
   // and Y are suitable for use as an |EC_AFFINE|.
   EC_POINT *generator;
-  BIGNUM order;
 
   int curve_name;  // optional NID for named curve
 
-  BN_MONT_CTX *order_mont;  // data for ECDSA inverse
+  BN_MONT_CTX *order;
 
   // The following members are handled by the method functions,
   // even if they appear generic

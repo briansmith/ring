@@ -138,8 +138,8 @@ void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
     // we shift and add at most one copy of |bit|, this will continue to hold
     // afterwards.
     window_val >>= 1;
-    window_val +=
-        bit * bn_is_bit_set_words(scalar->words, group->order.width, j + w + 1);
+    window_val += bit * bn_is_bit_set_words(scalar->words,
+                                            group->order->N.width, j + w + 1);
     assert(window_val <= next_bit);
   }
 
@@ -183,7 +183,7 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
                                  const EC_SCALAR *g_scalar,
                                  const EC_JACOBIAN *points,
                                  const EC_SCALAR *scalars, size_t num) {
-  size_t bits = BN_num_bits(&group->order);
+  size_t bits = EC_GROUP_order_bits(group);
   size_t wNAF_len = bits + 1;
 
   int ret = 0;

@@ -457,7 +457,7 @@ static int ec_GFp_mont_cmp_x_coordinate(const EC_GROUP *group,
                                         const EC_JACOBIAN *p,
                                         const EC_SCALAR *r) {
   if (!group->field_greater_than_order ||
-      group->field.width != group->order.width) {
+      group->field.width != group->order->N.width) {
     // Do not bother optimizing this case. p > order in all commonly-used
     // curves.
     return ec_GFp_simple_cmp_x_coordinate(group, p, r);
@@ -488,7 +488,7 @@ static int ec_GFp_mont_cmp_x_coordinate(const EC_GROUP *group,
   if (bn_less_than_words(r->words, group->field_minus_order.words,
                          group->field.width)) {
     // We can ignore the carry because: r + group_order < p < 2^256.
-    bn_add_words(r_Z2.words, r->words, group->order.d, group->field.width);
+    bn_add_words(r_Z2.words, r->words, group->order->N.d, group->field.width);
     ec_GFp_mont_felem_mul(group, &r_Z2, &r_Z2, &Z2_mont);
     if (ec_felem_equal(group, &r_Z2, &X)) {
       return 1;
