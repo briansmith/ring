@@ -421,7 +421,7 @@ void ec_precomp_select(const EC_GROUP *group, EC_PRECOMP *out, BN_ULONG mask,
 
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
 // order, with |r|. It returns one if the values match and zero if |p| is the
-// point at infinity of the values do not match.
+// point at infinity of the values do not match. |p| is treated as public.
 int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_JACOBIAN *p,
                         const EC_SCALAR *r);
 
@@ -614,13 +614,6 @@ struct ec_group_st {
   // field_greater_than_order is one if |field| is greate than |order| and zero
   // otherwise.
   int field_greater_than_order;
-
-  // field_minus_order, if |field_greater_than_order| is true, is |field| minus
-  // |order| represented as an |EC_FELEM|. Otherwise, it is zero.
-  //
-  // Note: unlike |EC_FELEM|s used as intermediate values internal to the
-  // |EC_METHOD|, this value is not encoded in Montgomery form.
-  EC_FELEM field_minus_order;
 
   CRYPTO_refcount_t references;
 

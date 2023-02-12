@@ -485,10 +485,11 @@ static int ec_GFp_mont_cmp_x_coordinate(const EC_GROUP *group,
   // Therefore there is a small possibility, less than 1/2^128, that group_order
   // < p.x < P. in that case we need not only to compare against |r| but also to
   // compare against r+group_order.
-  if (bn_less_than_words(r->words, group->field_minus_order.words,
-                         group->field.width)) {
-    // We can ignore the carry because: r + group_order < p < 2^256.
-    bn_add_words(r_Z2.words, r->words, group->order->N.d, group->field.width);
+  BN_ULONG carry =
+      bn_add_words(r_Z2.words, r->words, group->order->N.d, group->field.width);
+  if (carry == 0 &&
+      bn_less_than_words(r_Z2.words, group->field.d, group->field.width)) {
+    // r + group_order < p, so compare (r + group_order) * Z^2 against X.
     ec_GFp_mont_felem_mul(group, &r_Z2, &r_Z2, &Z2_mont);
     if (ec_felem_equal(group, &r_Z2, &X)) {
       return 1;

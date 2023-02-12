@@ -311,17 +311,6 @@ static int ec_group_set_generator(EC_GROUP *group, const EC_AFFINE *generator,
   }
 
   group->field_greater_than_order = BN_cmp(&group->field, order) > 0;
-  if (group->field_greater_than_order) {
-    BIGNUM tmp;
-    BN_init(&tmp);
-    int ok =
-        BN_sub(&tmp, &group->field, order) &&
-        bn_copy_words(group->field_minus_order.words, group->field.width, &tmp);
-    BN_free(&tmp);
-    if (!ok) {
-      return 0;
-    }
-  }
 
   group->generator = EC_POINT_new(group);
   if (group->generator == NULL) {

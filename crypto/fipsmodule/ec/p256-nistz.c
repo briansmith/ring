@@ -599,10 +599,9 @@ static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
   // Therefore there is a small possibility, less than 1/2^128, that group_order
   // < p.x < P. in that case we need not only to compare against |r| but also to
   // compare against r+group_order.
-  if (bn_less_than_words(r->words, group->field_minus_order.words,
-                         P256_LIMBS)) {
-    // We can ignore the carry because: r + group_order < p < 2^256.
-    bn_add_words(r_Z2, r->words, group->order->N.d, P256_LIMBS);
+  BN_ULONG carry = bn_add_words(r_Z2, r->words, group->order->N.d, P256_LIMBS);
+  if (carry == 0 && bn_less_than_words(r_Z2, group->field.d, P256_LIMBS)) {
+    // r + group_order < p, so compare (r + group_order) * Z^2 against X.
     ecp_nistz256_mul_mont(r_Z2, r_Z2, Z2_mont);
     if (OPENSSL_memcmp(r_Z2, X, sizeof(r_Z2)) == 0) {
       return 1;
