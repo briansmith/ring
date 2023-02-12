@@ -23,6 +23,11 @@
 #include "../../internal.h"
 
 
+const EC_FELEM *ec_felem_one(const EC_GROUP *group) {
+  // We reuse generator.Z as a cache for 1 in the field.
+  return &group->generator.raw.Z;
+}
+
 int ec_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out, const BIGNUM *in) {
   uint8_t bytes[EC_MAX_BYTES];
   size_t len = BN_num_bytes(&group->field.N);

@@ -86,7 +86,7 @@ static int pmbtoken_init_method(PMBTOKEN_METHOD *method, int curve_nid,
   ec_affine_to_jacobian(method->group, &method->h, &h);
 
   if (!ec_init_precomp(method->group, &method->g_precomp,
-                       &method->group->generator->raw) ||
+                       &method->group->generator.raw) ||
       !ec_init_precomp(method->group, &method->h_precomp, &method->h)) {
     return 0;
   }
@@ -679,7 +679,7 @@ static int dleq_verify(const PMBTOKEN_METHOD *method, CBS *cbs,
                        const EC_JACOBIAN *S, const EC_JACOBIAN *W,
                        const EC_JACOBIAN *Ws) {
   const EC_GROUP *group = method->group;
-  const EC_JACOBIAN *g = &group->generator->raw;
+  const EC_JACOBIAN *g = &group->generator.raw;
 
   // We verify a DLEQ proof for the validity token and a DLEQOR2 proof for the
   // private metadata token. To allow amortizing Jacobian-to-affine conversions,

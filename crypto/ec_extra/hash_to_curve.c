@@ -286,12 +286,12 @@ static void map_to_curve_simple_swu(const EC_GROUP *group, const EC_FELEM *Z,
       group->meth->felem_sqr;
 
   EC_FELEM tv1, tv2, tv3, tv4, tv5, tv6, x, y, y1;
-  felem_sqr(group, &tv1, u);                     // 1. tv1 = u^2
-  felem_mul(group, &tv1, Z, &tv1);               // 2. tv1 = Z * tv1
-  felem_sqr(group, &tv2, &tv1);                  // 3. tv2 = tv1^2
-  ec_felem_add(group, &tv2, &tv2, &tv1);         // 4. tv2 = tv2 + tv1
-  ec_felem_add(group, &tv3, &tv2, &group->one);  // 5. tv3 = tv2 + 1
-  felem_mul(group, &tv3, &group->b, &tv3);       // 6. tv3 = B * tv3
+  felem_sqr(group, &tv1, u);                             // 1. tv1 = u^2
+  felem_mul(group, &tv1, Z, &tv1);                       // 2. tv1 = Z * tv1
+  felem_sqr(group, &tv2, &tv1);                          // 3. tv2 = tv1^2
+  ec_felem_add(group, &tv2, &tv2, &tv1);                 // 4. tv2 = tv2 + tv1
+  ec_felem_add(group, &tv3, &tv2, ec_felem_one(group));  // 5. tv3 = tv2 + 1
+  felem_mul(group, &tv3, &group->b, &tv3);               // 6. tv3 = B * tv3
 
   // 7. tv4 = CMOV(Z, -tv2, tv2 != 0)
   const BN_ULONG tv2_non_zero = ec_felem_non_zero_mask(group, &tv2);

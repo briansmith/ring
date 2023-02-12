@@ -107,7 +107,8 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   if (!BN_MONT_CTX_set(&group->field, p, ctx) ||
       !ec_bignum_to_felem(group, &group->a, a) ||
       !ec_bignum_to_felem(group, &group->b, b) ||
-      !ec_bignum_to_felem(group, &group->one, BN_value_one())) {
+      // Reuse Z from the generator to cache the value one.
+      !ec_bignum_to_felem(group, &group->generator.raw.Z, BN_value_one())) {
     goto err;
   }
 

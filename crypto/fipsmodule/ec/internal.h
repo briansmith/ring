@@ -197,6 +197,9 @@ typedef struct {
   BN_ULONG words[EC_MAX_WORDS];
 } EC_FELEM;
 
+// ec_felem_one returns one in |group|'s field.
+const EC_FELEM *ec_felem_one(const EC_GROUP *group);
+
 // ec_bignum_to_felem converts |in| to an |EC_FELEM|. It returns one on success
 // and zero if |in| is out of range.
 int ec_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out, const BIGNUM *in);
@@ -583,19 +586,30 @@ struct ec_method_st {
 
 const EC_METHOD *EC_GFp_mont_method(void);
 
+struct ec_point_st {
+  // group is an owning reference to |group|, unless this is
+  // |group->generator|.
+  EC_GROUP *group;
+  // raw is the group-specific point data. Functions that take |EC_POINT|
+  // typically check consistency with |EC_GROUP| while functions that take
+  // |EC_JACOBIAN| do not. Thus accesses to this field should be externally
+  // checked for consistency.
+  EC_JACOBIAN raw;
+} /* EC_POINT */;
+
 struct ec_group_st {
   const EC_METHOD *meth;
 
   // Unlike all other |EC_POINT|s, |generator| does not own |generator->group|
   // to avoid a reference cycle. Additionally, Z is guaranteed to be one, so X
-  // and Y are suitable for use as an |EC_AFFINE|.
-  EC_POINT *generator;
+  // and Y are suitable for use as an |EC_AFFINE|. Before |has_order| is set, Z
+  // is one, but X and Y are uninitialized.
+  EC_POINT generator;
 
   BN_MONT_CTX order;
   BN_MONT_CTX field;
 
   EC_FELEM a, b;  // Curve coefficients.
-  EC_FELEM one;  // The value one.
 
   int curve_name;  // optional NID for named curve
 
@@ -612,17 +626,6 @@ struct ec_group_st {
 
   CRYPTO_refcount_t references;
 } /* EC_GROUP */;
-
-struct ec_point_st {
-  // group is an owning reference to |group|, unless this is
-  // |group->generator|.
-  EC_GROUP *group;
-  // raw is the group-specific point data. Functions that take |EC_POINT|
-  // typically check consistency with |EC_GROUP| while functions that take
-  // |EC_JACOBIAN| do not. Thus accesses to this field should be externally
-  // checked for consistency.
-  EC_JACOBIAN raw;
-} /* EC_POINT */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth, const BIGNUM *p, const BIGNUM *a,
                        const BIGNUM *b, BN_CTX *ctx);

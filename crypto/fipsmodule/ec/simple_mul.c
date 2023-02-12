@@ -78,7 +78,7 @@ void ec_GFp_mont_mul(const EC_GROUP *group, EC_JACOBIAN *r,
 
 void ec_GFp_mont_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
                           const EC_SCALAR *scalar) {
-  ec_GFp_mont_mul(group, r, &group->generator->raw, scalar);
+  ec_GFp_mont_mul(group, r, &group->generator.raw, scalar);
 }
 
 static void ec_GFp_mont_batch_precomp(const EC_GROUP *group, EC_JACOBIAN *out,
@@ -230,7 +230,7 @@ static void ec_GFp_mont_get_comb_window(const EC_GROUP *group,
     ec_felem_select(group, &out->Y, match, &precomp->comb[j].Y, &out->Y);
   }
   BN_ULONG is_infinity = constant_time_is_zero_w(window);
-  ec_felem_select(group, &out->Z, is_infinity, &out->Z, &group->one);
+  ec_felem_select(group, &out->Z, is_infinity, &out->Z, ec_felem_one(group));
 }
 
 void ec_GFp_mont_mul_precomp(const EC_GROUP *group, EC_JACOBIAN *r,

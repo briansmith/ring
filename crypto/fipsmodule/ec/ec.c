@@ -283,6 +283,8 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth, const BIGNUM *p, const BIGNUM *a,
   bn_mont_ctx_init(&ret->field);
   bn_mont_ctx_init(&ret->order);
 
+  ret->generator.group = ret;
+
   if (!ec_GFp_simple_group_set_curve(ret, p, a, b, ctx)) {
     EC_GROUP_free(ret);
     return NULL;
@@ -300,19 +302,9 @@ static int ec_group_set_generator(EC_GROUP *group, const EC_AFFINE *generator,
   }
 
   group->field_greater_than_order = BN_cmp(&group->field.N, order) > 0;
-  group->generator = EC_POINT_new(group);
-  if (group->generator == NULL) {
-    return 0;
-  }
-  ec_affine_to_jacobian(group, &group->generator->raw, generator);
-  assert(ec_felem_equal(group, &group->one, &group->generator->raw.Z));
-
-  // Avoid a reference cycle. |group->generator| does not maintain an owning
-  // pointer to |group|.
-  int is_zero = CRYPTO_refcount_dec_and_test_zero(&group->references);
-
-  assert(!is_zero);
-  (void)is_zero;
+  group->generator.raw.X = generator->X;
+  group->generator.raw.Y = generator->Y;
+  // |raw.Z| was set to 1 by |ec_GFp_simple_group_set_curve|.
   group->has_order = 1;
   return 1;
 }
@@ -357,7 +349,7 @@ err:
 
 int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
                            const BIGNUM *order, const BIGNUM *cofactor) {
-  if (group->curve_name != NID_undef || group->generator != NULL ||
+  if (group->curve_name != NID_undef || group->has_order ||
       generator->group != group) {
     // |EC_GROUP_set_generator| may only be used with |EC_GROUP|s returned by
     // |EC_GROUP_new_curve_GFp| and may only used once on each group.
@@ -521,7 +513,6 @@ void EC_GROUP_free(EC_GROUP *group) {
     return;
   }
 
-  ec_point_free(group->generator, /*free_group=*/0);
   bn_mont_ctx_cleanup(&group->order);
   bn_mont_ctx_cleanup(&group->field);
   OPENSSL_free(group);
@@ -558,18 +549,17 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
   // structure. If |a| or |b| is incomplete (due to legacy OpenSSL mistakes,
   // custom curve construction is sadly done in two parts) but otherwise not the
   // same object, we consider them always unequal.
-  return a->meth != b->meth ||
-         a->generator == NULL ||
-         b->generator == NULL ||
+  return a->meth != b->meth ||  //
+         !a->has_order || !b->has_order ||
          BN_cmp(&a->order.N, &b->order.N) != 0 ||
          BN_cmp(&a->field.N, &b->field.N) != 0 ||
-         !ec_felem_equal(a, &a->a, &b->a) ||
+         !ec_felem_equal(a, &a->a, &b->a) ||  //
          !ec_felem_equal(a, &a->b, &b->b) ||
-         !ec_GFp_simple_points_equal(a, &a->generator->raw, &b->generator->raw);
+         !ec_GFp_simple_points_equal(a, &a->generator.raw, &b->generator.raw);
 }
 
 const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group) {
-  return group->generator;
+  return group->has_order ? &group->generator : NULL;
 }
 
 const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group) {
@@ -764,7 +754,7 @@ void ec_affine_to_jacobian(const EC_GROUP *group, EC_JACOBIAN *out,
                            const EC_AFFINE *p) {
   out->X = p->X;
   out->Y = p->Y;
-  out->Z = group->one;
+  out->Z = *ec_felem_one(group);
 }
 
 int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
@@ -801,10 +791,9 @@ int ec_point_set_affine_coordinates(const EC_GROUP *group, EC_AFFINE *out,
     // return value by setting a known safe value. Note this may not be possible
     // if the caller is in the process of constructing an arbitrary group and
     // the generator is missing.
-    if (group->generator != NULL) {
-      assert(ec_felem_equal(group, &group->one, &group->generator->raw.Z));
-      out->X = group->generator->raw.X;
-      out->Y = group->generator->raw.Y;
+    if (group->has_order) {
+      out->X = group->generator.raw.X;
+      out->Y = group->generator.raw.Y;
     }
     return 0;
   }
@@ -1180,8 +1169,8 @@ int ec_get_x_coordinate_as_bytes(const EC_GROUP *group, uint8_t *out,
 }
 
 void ec_set_to_safe_point(const EC_GROUP *group, EC_JACOBIAN *out) {
-  if (group->generator != NULL) {
-    ec_GFp_simple_point_copy(out, &group->generator->raw);
+  if (group->has_order) {
+    ec_GFp_simple_point_copy(out, &group->generator.raw);
   } else {
     // The generator can be missing if the caller is in the process of
     // constructing an arbitrary group. In this case, we give up and use the
