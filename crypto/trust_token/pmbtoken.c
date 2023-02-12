@@ -160,7 +160,7 @@ static int cbs_get_prefixed_point(CBS *cbs, const EC_GROUP *group,
       return 0;
     }
   } else {
-    size_t plen = 1 + 2 * BN_num_bytes(&group->field);
+    size_t plen = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
     if (!CBS_get_bytes(cbs, &child, plen)) {
       return 0;
     }
@@ -912,7 +912,7 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
   }
 
   // Skip over any unused requests.
-  size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
+  size_t point_len = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
   size_t token_len = point_len;
   if (method->prefix_point) {
     token_len += 2;
@@ -1015,7 +1015,7 @@ static STACK_OF(TRUST_TOKEN) *pmbtoken_unblind(
     // Serialize the token. Include |key_id| to avoid an extra copy in the layer
     // above.
     CBB token_cbb;
-    size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
+    size_t point_len = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
     if (!CBB_init(&token_cbb,
                   4 + TRUST_TOKEN_NONCE_SIZE + 3 * (2 + point_len)) ||
         !CBB_add_u32(&token_cbb, key_id) ||

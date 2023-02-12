@@ -1142,9 +1142,6 @@ static void ec_GFp_nistp224_felem_sqr(const EC_GROUP *group, EC_FELEM *r,
 }
 
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
-  out->group_init = ec_GFp_simple_group_init;
-  out->group_finish = ec_GFp_simple_group_finish;
-  out->group_set_curve = ec_GFp_simple_group_set_curve;
   out->point_get_affine_coordinates =
       ec_GFp_nistp224_point_get_affine_coordinates;
   out->add = ec_GFp_nistp224_add;

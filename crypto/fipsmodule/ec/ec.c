@@ -270,20 +270,9 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
 #endif
 }
 
-EC_GROUP *ec_group_new(const EC_METHOD *meth) {
-  EC_GROUP *ret;
-
-  if (meth == NULL) {
-    OPENSSL_PUT_ERROR(EC, EC_R_SLOT_FULL);
-    return NULL;
-  }
-
-  if (meth->group_init == 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return NULL;
-  }
-
-  ret = OPENSSL_malloc(sizeof(EC_GROUP));
+EC_GROUP *ec_group_new(const EC_METHOD *meth, const BIGNUM *p, const BIGNUM *a,
+                       const BIGNUM *b, BN_CTX *ctx) {
+  EC_GROUP *ret = OPENSSL_malloc(sizeof(EC_GROUP));
   if (ret == NULL) {
     return NULL;
   }
@@ -292,8 +281,8 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   ret->references = 1;
   ret->meth = meth;
 
-  if (!meth->group_init(ret)) {
-    OPENSSL_free(ret);
+  if (!ec_GFp_simple_group_set_curve(ret, p, a, b, ctx)) {
+    EC_GROUP_free(ret);
     return NULL;
   }
 
@@ -310,7 +299,7 @@ static int ec_group_set_generator(EC_GROUP *group, const EC_AFFINE *generator,
     return 0;
   }
 
-  group->field_greater_than_order = BN_cmp(&group->field, order) > 0;
+  group->field_greater_than_order = BN_cmp(&group->field->N, order) > 0;
 
   group->generator = EC_POINT_new(group);
   if (group->generator == NULL) {
@@ -355,11 +344,8 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
     goto err;
   }
 
-  ret = ec_group_new(EC_GFp_mont_method());
-  if (ret == NULL ||
-      !ret->meth->group_set_curve(ret, p, a_reduced, b_reduced, ctx)) {
-    EC_GROUP_free(ret);
-    ret = NULL;
+  ret = ec_group_new(EC_GFp_mont_method(), p, a_reduced, b_reduced, ctx);
+  if (ret == NULL) {
     goto err;
   }
 
@@ -403,7 +389,7 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
       !BN_lshift1(tmp, order)) {
     goto err;
   }
-  if (BN_cmp(tmp, &group->field) <= 0) {
+  if (BN_cmp(tmp, &group->field->N) <= 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_GROUP_ORDER);
     goto err;
   }
@@ -442,9 +428,8 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
     goto err;
   }
 
-  group = ec_group_new(curve->method);
-  if (group == NULL ||
-      !group->meth->group_set_curve(group, p, a, b, ctx)) {
+  group = ec_group_new(curve->method, p, a, b, ctx);
+  if (group == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     goto err;
   }
@@ -453,11 +438,8 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
   EC_FELEM x, y;
   if (!ec_felem_from_bytes(group, &x, params + 3 * param_len, param_len) ||
       !ec_felem_from_bytes(group, &y, params + 4 * param_len, param_len) ||
-      !ec_point_set_affine_coordinates(group, &G, &x, &y)) {
-    goto err;
-  }
-
-  if (!ec_group_set_generator(group, &G, order)) {
+      !ec_point_set_affine_coordinates(group, &G, &x, &y) ||
+      !ec_group_set_generator(group, &G, order)) {
     goto err;
   }
 
@@ -539,13 +521,9 @@ void EC_GROUP_free(EC_GROUP *group) {
     return;
   }
 
-  if (group->meth->group_finish != NULL) {
-    group->meth->group_finish(group);
-  }
-
   ec_point_free(group->generator, 0 /* don't free group */);
   BN_MONT_CTX_free(group->order);
-
+  BN_MONT_CTX_free(group->field);
   OPENSSL_free(group);
 }
 
@@ -584,7 +562,7 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
          a->generator == NULL ||
          b->generator == NULL ||
          BN_cmp(&a->order->N, &b->order->N) != 0 ||
-         BN_cmp(&a->field, &b->field) != 0 ||
+         BN_cmp(&a->field->N, &b->field->N) != 0 ||
          !ec_felem_equal(a, &a->a, &b->a) ||
          !ec_felem_equal(a, &a->b, &b->b) ||
          !ec_GFp_simple_points_equal(a, &a->generator->raw, &b->generator->raw);
@@ -624,7 +602,7 @@ int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *out_p, BIGNUM *out_a,
 int EC_GROUP_get_curve_name(const EC_GROUP *group) { return group->curve_name; }
 
 unsigned EC_GROUP_get_degree(const EC_GROUP *group) {
-  return BN_num_bits(&group->field);
+  return BN_num_bits(&group->field->N);
 }
 
 const char *EC_curve_nid2nist(int nid) {
@@ -1184,7 +1162,7 @@ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
 int ec_get_x_coordinate_as_bytes(const EC_GROUP *group, uint8_t *out,
                                  size_t *out_len, size_t max_out,
                                  const EC_JACOBIAN *p) {
-  size_t len = BN_num_bytes(&group->field);
+  size_t len = BN_num_bytes(&group->field->N);
   assert(len <= EC_MAX_BYTES);
   if (max_out < len) {
     OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);

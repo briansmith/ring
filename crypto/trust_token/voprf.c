@@ -83,7 +83,7 @@ static int cbb_serialize_point(CBB *out, const EC_GROUP *group,
 
 static int cbs_get_point(CBS *cbs, const EC_GROUP *group, EC_AFFINE *out) {
   CBS child;
-  size_t plen = 1 + 2 * BN_num_bytes(&group->field);
+  size_t plen = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
   if (!CBS_get_bytes(cbs, &child, plen) ||
       !ec_point_from_uncompressed(group, out, CBS_data(&child),
                                   CBS_len(&child))) {
@@ -567,7 +567,7 @@ static int voprf_sign_tt(const VOPRF_METHOD *method,
   }
 
   // Skip over any unused requests.
-  size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
+  size_t point_len = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
   if (!CBS_skip(cbs, point_len * (num_requested - num_to_issue))) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     goto err;
@@ -645,7 +645,7 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind_tt(
     // Serialize the token. Include |key_id| to avoid an extra copy in the layer
     // above.
     CBB token_cbb;
-    size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
+    size_t point_len = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
     if (!CBB_init(&token_cbb, 4 + TRUST_TOKEN_NONCE_SIZE + (2 + point_len)) ||
         !CBB_add_u32(&token_cbb, key_id) ||
         !CBB_add_bytes(&token_cbb, pretoken->salt, TRUST_TOKEN_NONCE_SIZE) ||
@@ -944,7 +944,7 @@ static int voprf_sign_impl(const VOPRF_METHOD *method,
   }
 
   // Skip over any unused requests.
-  size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
+  size_t point_len = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
   if (!CBS_skip(cbs, point_len * (num_requested - num_to_issue))) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
     goto err;
@@ -1044,7 +1044,7 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
     // Serialize the token. Include |key_id| to avoid an extra copy in the layer
     // above.
     CBB token_cbb;
-    size_t point_len = 1 + 2 * BN_num_bytes(&group->field);
+    size_t point_len = ec_point_byte_len(group, POINT_CONVERSION_UNCOMPRESSED);
     if (!CBB_init(&token_cbb, 4 + TRUST_TOKEN_NONCE_SIZE + (2 + point_len)) ||
         !CBB_add_u32(&token_cbb, key_id) ||
         !CBB_add_bytes(&token_cbb, pretoken->salt, TRUST_TOKEN_NONCE_SIZE) ||

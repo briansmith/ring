@@ -169,7 +169,7 @@ void ec_GFp_mont_mul_batch(const EC_GROUP *group, EC_JACOBIAN *r,
 }
 
 static unsigned ec_GFp_mont_comb_stride(const EC_GROUP *group) {
-  return (BN_num_bits(&group->field) + EC_MONT_PRECOMP_COMB_SIZE - 1) /
+  return (EC_GROUP_get_degree(group) + EC_MONT_PRECOMP_COMB_SIZE - 1) /
          EC_MONT_PRECOMP_COMB_SIZE;
 }
 
