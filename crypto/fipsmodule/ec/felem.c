@@ -25,10 +25,9 @@
 
 int ec_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out, const BIGNUM *in) {
   uint8_t bytes[EC_MAX_BYTES];
-  size_t len = BN_num_bytes(&group->field->N);
+  size_t len = BN_num_bytes(&group->field.N);
   assert(sizeof(bytes) >= len);
-  if (BN_is_negative(in) ||
-      BN_cmp(in, &group->field->N) >= 0 ||
+  if (BN_is_negative(in) || BN_cmp(in, &group->field.N) >= 0 ||
       !BN_bn2bin_padded(bytes, len, in)) {
     OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
     return 0;
@@ -57,11 +56,11 @@ int ec_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out, const uint8_t *in,
 void ec_felem_neg(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a) {
   // -a is zero if a is zero and p-a otherwise.
   BN_ULONG mask = ec_felem_non_zero_mask(group, a);
-  BN_ULONG borrow = bn_sub_words(out->words, group->field->N.d, a->words,
-                                 group->field->N.width);
+  BN_ULONG borrow = bn_sub_words(out->words, group->field.N.d, a->words,
+                                 group->field.N.width);
   assert(borrow == 0);
   (void)borrow;
-  for (int i = 0; i < group->field->N.width; i++) {
+  for (int i = 0; i < group->field.N.width; i++) {
     out->words[i] &= mask;
   }
 }
@@ -69,20 +68,20 @@ void ec_felem_neg(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a) {
 void ec_felem_add(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a,
                   const EC_FELEM *b) {
   EC_FELEM tmp;
-  bn_mod_add_words(out->words, a->words, b->words, group->field->N.d, tmp.words,
-                   group->field->N.width);
+  bn_mod_add_words(out->words, a->words, b->words, group->field.N.d, tmp.words,
+                   group->field.N.width);
 }
 
 void ec_felem_sub(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a,
                   const EC_FELEM *b) {
   EC_FELEM tmp;
-  bn_mod_sub_words(out->words, a->words, b->words, group->field->N.d, tmp.words,
-                   group->field->N.width);
+  bn_mod_sub_words(out->words, a->words, b->words, group->field.N.d, tmp.words,
+                   group->field.N.width);
 }
 
 BN_ULONG ec_felem_non_zero_mask(const EC_GROUP *group, const EC_FELEM *a) {
   BN_ULONG mask = 0;
-  for (int i = 0; i < group->field->N.width; i++) {
+  for (int i = 0; i < group->field.N.width; i++) {
     mask |= a->words[i];
   }
   return ~constant_time_is_zero_w(mask);
@@ -90,11 +89,11 @@ BN_ULONG ec_felem_non_zero_mask(const EC_GROUP *group, const EC_FELEM *a) {
 
 void ec_felem_select(const EC_GROUP *group, EC_FELEM *out, BN_ULONG mask,
                      const EC_FELEM *a, const EC_FELEM *b) {
-  bn_select_words(out->words, mask, a->words, b->words, group->field->N.width);
+  bn_select_words(out->words, mask, a->words, b->words, group->field.N.width);
 }
 
 int ec_felem_equal(const EC_GROUP *group, const EC_FELEM *a,
                    const EC_FELEM *b) {
   return CRYPTO_memcmp(a->words, b->words,
-                       group->field->N.width * sizeof(BN_ULONG)) == 0;
+                       group->field.N.width * sizeof(BN_ULONG)) == 0;
 }

@@ -599,6 +599,13 @@ OPENSSL_EXPORT int bn_is_relatively_prime(int *out_relatively_prime,
 OPENSSL_EXPORT int bn_lcm_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                                     BN_CTX *ctx);
 
+// bn_mont_ctx_init zero-initialies |mont|.
+void bn_mont_ctx_init(BN_MONT_CTX *mont);
+
+// bn_mont_ctx_cleanup releases memory associated with |mont|, without freeing
+// |mont| itself.
+void bn_mont_ctx_cleanup(BN_MONT_CTX *mont);
+
 
 // Constant-time modular arithmetic.
 //

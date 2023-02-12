@@ -591,8 +591,8 @@ struct ec_group_st {
   // and Y are suitable for use as an |EC_AFFINE|.
   EC_POINT *generator;
 
-  BN_MONT_CTX *order;
-  BN_MONT_CTX *field;
+  BN_MONT_CTX order;
+  BN_MONT_CTX field;
 
   EC_FELEM a, b;  // Curve coefficients.
   EC_FELEM one;  // The value one.
@@ -602,6 +602,9 @@ struct ec_group_st {
   // a_is_minus3 is one if |a| is -3 mod |field| and zero otherwise. Point
   // arithmetic is optimized for -3.
   int a_is_minus3;
+
+  // has_order is one if |generator| and |order| have been initialized.
+  int has_order;
 
   // field_greater_than_order is one if |field| is greate than |order| and zero
   // otherwise.

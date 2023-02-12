@@ -93,8 +93,8 @@ static EC_WRAPPED_SCALAR *ec_wrapped_scalar_new(const EC_GROUP *group) {
 
   OPENSSL_memset(wrapped, 0, sizeof(EC_WRAPPED_SCALAR));
   wrapped->bignum.d = wrapped->scalar.words;
-  wrapped->bignum.width = group->order->N.width;
-  wrapped->bignum.dmax = group->order->N.width;
+  wrapped->bignum.width = group->order.N.width;
+  wrapped->bignum.dmax = group->order.N.width;
   wrapped->bignum.flags = BN_FLG_STATIC_DATA;
   return wrapped;
 }

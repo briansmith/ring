@@ -710,12 +710,12 @@ static int ec_GFp_nistp256_cmp_x_coordinate(const EC_GROUP *group,
   // Therefore there is a small possibility, less than 1/2^128, that group_order
   // < p.x < P. in that case we need not only to compare against |r| but also to
   // compare against r+group_order.
-  assert(group->field->N.width == group->order->N.width);
+  assert(group->field.N.width == group->order.N.width);
   EC_FELEM tmp;
-  BN_ULONG carry = bn_add_words(tmp.words, r->words, group->order->N.d,
-                                group->field->N.width);
+  BN_ULONG carry =
+      bn_add_words(tmp.words, r->words, group->order.N.d, group->field.N.width);
   if (carry == 0 &&
-      bn_less_than_words(tmp.words, group->field->N.d, group->field->N.width)) {
+      bn_less_than_words(tmp.words, group->field.N.d, group->field.N.width)) {
     fiat_p256_from_generic(r_Z2, &tmp);
     fiat_p256_mul(r_Z2, r_Z2, Z2_mont);
     if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {

@@ -80,7 +80,7 @@ size_t ec_point_byte_len(const EC_GROUP *group, point_conversion_form_t form) {
     return 0;
   }
 
-  const size_t field_len = BN_num_bytes(&group->field->N);
+  const size_t field_len = BN_num_bytes(&group->field.N);
   size_t output_len = 1 /* type byte */ + field_len;
   if (form == POINT_CONVERSION_UNCOMPRESSED) {
     // Uncompressed points have a second coordinate.
@@ -100,11 +100,11 @@ size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
 
   size_t field_len;
   ec_felem_to_bytes(group, buf + 1, &field_len, &point->X);
-  assert(field_len == BN_num_bytes(&group->field->N));
+  assert(field_len == BN_num_bytes(&group->field.N));
 
   if (form == POINT_CONVERSION_UNCOMPRESSED) {
     ec_felem_to_bytes(group, buf + 1 + field_len, &field_len, &point->Y);
-    assert(field_len == BN_num_bytes(&group->field->N));
+    assert(field_len == BN_num_bytes(&group->field.N));
     buf[0] = form;
   } else {
     uint8_t y_buf[EC_MAX_BYTES];
@@ -117,7 +117,7 @@ size_t ec_point_to_bytes(const EC_GROUP *group, const EC_AFFINE *point,
 
 int ec_point_from_uncompressed(const EC_GROUP *group, EC_AFFINE *out,
                                const uint8_t *in, size_t len) {
-  const size_t field_len = BN_num_bytes(&group->field->N);
+  const size_t field_len = BN_num_bytes(&group->field.N);
   if (len != 1 + 2 * field_len || in[0] != POINT_CONVERSION_UNCOMPRESSED) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
     return 0;
@@ -155,7 +155,7 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
   }
 
   const int y_bit = form & 1;
-  const size_t field_len = BN_num_bytes(&group->field->N);
+  const size_t field_len = BN_num_bytes(&group->field.N);
   form = form & ~1u;
   if (form != POINT_CONVERSION_COMPRESSED ||
       len != 1 /* type byte */ + field_len) {
@@ -182,7 +182,7 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
   if (x == NULL || !BN_bin2bn(buf + 1, field_len, x)) {
     goto err;
   }
-  if (BN_ucmp(x, &group->field->N) >= 0) {
+  if (BN_ucmp(x, &group->field.N) >= 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
     goto err;
   }
@@ -260,7 +260,7 @@ int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
     return 0;
   }
 
-  const BIGNUM *field = &group->field->N;
+  const BIGNUM *field = &group->field.N;
   if (BN_is_negative(x) || BN_cmp(x, field) >= 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSED_POINT);
     return 0;

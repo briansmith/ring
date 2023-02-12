@@ -179,12 +179,12 @@ static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
                           size_t msg_len) {
   size_t L;
   uint8_t buf[4 * EC_MAX_BYTES];
-  if (!num_bytes_to_derive(&L, &group->field->N, k) ||
+  if (!num_bytes_to_derive(&L, &group->field.N, k) ||
       !expand_message_xmd(md, buf, 2 * L, msg, msg_len, dst, dst_len)) {
     return 0;
   }
   BN_ULONG words[2 * EC_MAX_WORDS];
-  size_t num_words = 2 * group->field->N.width;
+  size_t num_words = 2 * group->field.N.width;
   big_endian_to_words(words, num_words, buf, L);
   group->meth->felem_reduce(group, out1, words, num_words);
   big_endian_to_words(words, num_words, buf + L, L);
@@ -231,7 +231,7 @@ static BN_ULONG sgn0(const EC_GROUP *group, const EC_FELEM *a) {
 }
 
 OPENSSL_UNUSED static int is_3mod4(const EC_GROUP *group) {
-  return group->field->N.width > 0 && (group->field->N.d[0] & 3) == 3;
+  return group->field.N.width > 0 && (group->field.N.d[0] & 3) == 3;
 }
 
 // sqrt_ratio_3mod4 implements the operation described in appendix F.2.1.2
@@ -354,8 +354,8 @@ static int hash_to_curve(const EC_GROUP *group, const EVP_MD *md,
 
   // Compute |c1| = (p - 3) / 4.
   BN_ULONG c1[EC_MAX_WORDS];
-  size_t num_c1 = group->field->N.width;
-  if (!bn_copy_words(c1, num_c1, &group->field->N)) {
+  size_t num_c1 = group->field.N.width;
+  if (!bn_copy_words(c1, num_c1, &group->field.N)) {
     return 0;
   }
   bn_rshift_words(c1, c1, /*shift=*/2, /*num=*/num_c1);
@@ -371,7 +371,7 @@ static int hash_to_curve(const EC_GROUP *group, const EVP_MD *md,
 
 static int felem_from_u8(const EC_GROUP *group, EC_FELEM *out, uint8_t a) {
   uint8_t bytes[EC_MAX_BYTES] = {0};
-  size_t len = BN_num_bytes(&group->field->N);
+  size_t len = BN_num_bytes(&group->field.N);
   bytes[len - 1] = a;
   return ec_felem_from_bytes(group, out, bytes, len);
 }

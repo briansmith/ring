@@ -104,12 +104,8 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
     goto err;
   }
 
-  group->field = BN_MONT_CTX_new_for_modulus(p, ctx);
-  if (group->field == NULL) {
-    goto err;
-  }
-
-  if (!ec_bignum_to_felem(group, &group->a, a) ||
+  if (!BN_MONT_CTX_set(&group->field, p, ctx) ||
+      !ec_bignum_to_felem(group, &group->a, a) ||
       !ec_bignum_to_felem(group, &group->b, b) ||
       !ec_bignum_to_felem(group, &group->one, BN_value_one())) {
     goto err;
@@ -120,7 +116,7 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
       !BN_add_word(tmp, 3)) {
     goto err;
   }
-  group->a_is_minus3 = (0 == BN_cmp(tmp, &group->field->N));
+  group->a_is_minus3 = (0 == BN_cmp(tmp, &group->field.N));
 
   ret = 1;
 
@@ -131,7 +127,7 @@ err:
 
 int ec_GFp_simple_group_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a,
                                   BIGNUM *b) {
-  if ((p != NULL && !BN_copy(p, &group->field->N)) ||
+  if ((p != NULL && !BN_copy(p, &group->field.N)) ||
       (a != NULL && !ec_felem_to_bignum(group, a, &group->a)) ||
       (b != NULL && !ec_felem_to_bignum(group, b, &group->b))) {
     return 0;
@@ -316,22 +312,21 @@ int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_JACOBIAN *p,
 
 void ec_GFp_simple_felem_to_bytes(const EC_GROUP *group, uint8_t *out,
                                   size_t *out_len, const EC_FELEM *in) {
-  size_t len = BN_num_bytes(&group->field->N);
-  bn_words_to_big_endian(out, len, in->words, group->field->N.width);
+  size_t len = BN_num_bytes(&group->field.N);
+  bn_words_to_big_endian(out, len, in->words, group->field.N.width);
   *out_len = len;
 }
 
 int ec_GFp_simple_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
                                    const uint8_t *in, size_t len) {
-  if (len != BN_num_bytes(&group->field->N)) {
+  if (len != BN_num_bytes(&group->field.N)) {
     OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
     return 0;
   }
 
-  bn_big_endian_to_words(out->words, group->field->N.width, in, len);
+  bn_big_endian_to_words(out->words, group->field.N.width, in, len);
 
-  if (!bn_less_than_words(out->words, group->field->N.d,
-                          group->field->N.width)) {
+  if (!bn_less_than_words(out->words, group->field.N.d, group->field.N.width)) {
     OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
     return 0;
   }

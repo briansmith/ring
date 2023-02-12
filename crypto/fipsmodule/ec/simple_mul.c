@@ -48,7 +48,7 @@ void ec_GFp_mont_mul(const EC_GROUP *group, EC_JACOBIAN *r,
     }
     if (i % 5 == 0) {
       // Compute the next window value.
-      const size_t width = group->order->N.width;
+      const size_t width = group->order.N.width;
       uint8_t window = bn_is_bit_set_words(scalar->words, width, i + 4) << 4;
       window |= bn_is_bit_set_words(scalar->words, width, i + 3) << 3;
       window |= bn_is_bit_set_words(scalar->words, width, i + 2) << 2;
@@ -99,7 +99,7 @@ static void ec_GFp_mont_batch_get_window(const EC_GROUP *group,
                                          EC_JACOBIAN *out,
                                          const EC_JACOBIAN precomp[17],
                                          const EC_SCALAR *scalar, unsigned i) {
-  const size_t width = group->order->N.width;
+  const size_t width = group->order.N.width;
   uint8_t window = bn_is_bit_set_words(scalar->words, width, i + 4) << 5;
   window |= bn_is_bit_set_words(scalar->words, width, i + 3) << 4;
   window |= bn_is_bit_set_words(scalar->words, width, i + 2) << 3;
@@ -212,7 +212,7 @@ static void ec_GFp_mont_get_comb_window(const EC_GROUP *group,
                                         EC_JACOBIAN *out,
                                         const EC_PRECOMP *precomp,
                                         const EC_SCALAR *scalar, unsigned i) {
-  const size_t width = group->order->N.width;
+  const size_t width = group->order.N.width;
   unsigned stride = ec_GFp_mont_comb_stride(group);
   // Select the bits corresponding to the comb shifted up by |i|.
   unsigned window = 0;

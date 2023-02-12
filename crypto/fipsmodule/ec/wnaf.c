@@ -138,8 +138,8 @@ void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
     // we shift and add at most one copy of |bit|, this will continue to hold
     // afterwards.
     window_val >>= 1;
-    window_val += bit * bn_is_bit_set_words(scalar->words,
-                                            group->order->N.width, j + w + 1);
+    window_val += bit * bn_is_bit_set_words(scalar->words, group->order.N.width,
+                                            j + w + 1);
     assert(window_val <= next_bit);
   }
 
