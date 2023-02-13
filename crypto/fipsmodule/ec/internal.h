@@ -611,7 +611,12 @@ struct ec_group_st {
 
   EC_FELEM a, b;  // Curve coefficients.
 
+  // comment is a human-readable string describing the curve.
+  const char *comment;
+
   int curve_name;  // optional NID for named curve
+  uint8_t oid[9];
+  uint8_t oid_len;
 
   // a_is_minus3 is one if |a| is -3 mod |field| and zero otherwise. Point
   // arithmetic is optimized for -3.
@@ -743,31 +748,6 @@ struct ec_key_st {
   CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;
 
-struct built_in_curve {
-  int nid;
-  const uint8_t *oid;
-  uint8_t oid_len;
-  // comment is a human-readable string describing the curve.
-  const char *comment;
-  // param_len is the number of bytes needed to store a field element.
-  uint8_t param_len;
-  // params points to an array of 6*|param_len| bytes which hold the field
-  // elements of the following (in big-endian order): prime, a, b, generator x,
-  // generator y, order.
-  const uint8_t *params;
-  const EC_METHOD *method;
-};
-
-#define OPENSSL_NUM_BUILT_IN_CURVES 4
-
-struct built_in_curves {
-  struct built_in_curve curves[OPENSSL_NUM_BUILT_IN_CURVES];
-};
-
-// OPENSSL_built_in_curves returns a pointer to static information about
-// standard curves. The array is terminated with an entry where |nid| is
-// |NID_undef|.
-const struct built_in_curves *OPENSSL_built_in_curves(void);
 
 #if defined(__cplusplus)
 }  // extern C
