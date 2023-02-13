@@ -169,7 +169,7 @@ static const uint8_t fips_sig_bad_r[] = {
     0xdc, 0xd8, 0xc8,
 };
 
-static bssl::UniquePtr<DSA> GetFIPSDSA(void) {
+static bssl::UniquePtr<DSA> GetFIPSDSAGroup(void) {
   bssl::UniquePtr<DSA> dsa(DSA_new());
   if (!dsa) {
     return nullptr;
@@ -184,6 +184,14 @@ static bssl::UniquePtr<DSA> GetFIPSDSA(void) {
   p.release();
   q.release();
   g.release();
+  return dsa;
+}
+
+static bssl::UniquePtr<DSA> GetFIPSDSA(void) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSAGroup();
+  if (!dsa) {
+    return nullptr;
+  }
   bssl::UniquePtr<BIGNUM> pub_key(BN_bin2bn(fips_y, sizeof(fips_y), nullptr));
   bssl::UniquePtr<BIGNUM> priv_key(BN_bin2bn(fips_x, sizeof(fips_x), nullptr));
   if (!pub_key || !priv_key ||
@@ -258,4 +266,36 @@ TEST(DSATest, InvalidGroup) {
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_DSA, ERR_GET_LIB(err));
   EXPECT_EQ(DSA_R_INVALID_PARAMETERS, ERR_GET_REASON(err));
+}
+
+// Signing and verifying should cleanly fail when the DSA object is empty.
+TEST(DSATest, MissingParameters) {
+  bssl::UniquePtr<DSA> dsa(DSA_new());
+  ASSERT_TRUE(dsa);
+  EXPECT_EQ(-1, DSA_verify(0, fips_digest, sizeof(fips_digest), fips_sig,
+                           sizeof(fips_sig), dsa.get()));
+
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  EXPECT_FALSE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
+                        &sig_len, dsa.get()));
+}
+
+// Verifying should cleanly fail when the public key is missing.
+TEST(DSATest, MissingPublic) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSAGroup();
+  ASSERT_TRUE(dsa);
+  EXPECT_EQ(-1, DSA_verify(0, fips_digest, sizeof(fips_digest), fips_sig,
+                           sizeof(fips_sig), dsa.get()));
+}
+
+// Signing should cleanly fail when the private key is missing.
+TEST(DSATest, MissingPrivate) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSAGroup();
+  ASSERT_TRUE(dsa);
+
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  EXPECT_FALSE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
+                        &sig_len, dsa.get()));
 }

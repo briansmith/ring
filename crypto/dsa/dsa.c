@@ -592,6 +592,11 @@ DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len, const DSA *dsa) {
     return NULL;
   }
 
+  if (dsa->priv_key == NULL) {
+    OPENSSL_PUT_ERROR(DSA, DSA_R_MISSING_PARAMETERS);
+    return NULL;
+  }
+
   BIGNUM *kinv = NULL, *r = NULL, *s = NULL;
   BIGNUM m;
   BIGNUM xr;
@@ -684,6 +689,11 @@ int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
                            size_t digest_len, DSA_SIG *sig, const DSA *dsa) {
   *out_valid = 0;
   if (!dsa_check_parameters(dsa)) {
+    return 0;
+  }
+
+  if (dsa->pub_key == NULL) {
+    OPENSSL_PUT_ERROR(DSA, DSA_R_MISSING_PARAMETERS);
     return 0;
   }
 
@@ -842,6 +852,10 @@ static size_t der_len_len(size_t len) {
 }
 
 int DSA_size(const DSA *dsa) {
+  if (dsa->q == NULL) {
+    return 0;
+  }
+
   size_t order_len = BN_num_bytes(dsa->q);
   // Compute the maximum length of an |order_len| byte integer. Defensively
   // assume that the leading 0x00 is included.
@@ -864,11 +878,6 @@ int DSA_size(const DSA *dsa) {
 
 static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx, BIGNUM **out_kinv,
                           BIGNUM **out_r) {
-  if (!dsa->p || !dsa->q || !dsa->g) {
-    OPENSSL_PUT_ERROR(DSA, DSA_R_MISSING_PARAMETERS);
-    return 0;
-  }
-
   int ret = 0;
   BIGNUM k;
   BN_init(&k);
