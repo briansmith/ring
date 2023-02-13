@@ -61,6 +61,7 @@
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 
+#include "../dsa/internal.h"
 #include "internal.h"
 
 
@@ -136,25 +137,27 @@ static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   }
 
   dsa->priv_key = BN_new();
-  dsa->pub_key = BN_new();
-  if (dsa->priv_key == NULL || dsa->pub_key == NULL) {
+  if (dsa->priv_key == NULL) {
+    goto err;
+  }
+  if (!BN_parse_asn1_unsigned(key, dsa->priv_key) ||
+      CBS_len(key) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
 
-  // Decode the key. To avoid DoS attacks when importing private keys, we bound
-  // |dsa->priv_key| against |dsa->q|, which itself bound by
-  // |DSA_parse_parameters|. (We cannot call |BN_num_bits| on |dsa->priv_key|.
-  // That would leak a secret bit width.)
-  if (!BN_parse_asn1_unsigned(key, dsa->priv_key) ||
-      CBS_len(key) != 0 ||
-      BN_cmp(dsa->priv_key, dsa->q) >= 0) {
+  // To avoid DoS attacks when importing private keys, check bounds on |dsa|.
+  // This bounds |dsa->priv_key| against |dsa->q| and bounds |dsa->q|'s bit
+  // width.
+  if (!dsa_check_key(dsa)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
 
   // Calculate the public key.
   ctx = BN_CTX_new();
-  if (ctx == NULL ||
+  dsa->pub_key = BN_new();
+  if (ctx == NULL || dsa->pub_key == NULL ||
       !BN_mod_exp_mont_consttime(dsa->pub_key, dsa->g, dsa->priv_key, dsa->p,
                                  ctx, NULL)) {
     goto err;

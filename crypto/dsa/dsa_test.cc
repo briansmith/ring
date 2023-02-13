@@ -299,3 +299,16 @@ TEST(DSATest, MissingPrivate) {
   EXPECT_FALSE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
                         &sig_len, dsa.get()));
 }
+
+// A zero private key is invalid and can cause signing to loop forever.
+TEST(DSATest, ZeroPrivateKey) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSA();
+  ASSERT_TRUE(dsa);
+  BN_zero(dsa->priv_key);
+
+  static const uint8_t kZeroDigest[32] = {0};
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  EXPECT_FALSE(DSA_sign(0, kZeroDigest, sizeof(kZeroDigest), sig.data(),
+                        &sig_len, dsa.get()));
+}
