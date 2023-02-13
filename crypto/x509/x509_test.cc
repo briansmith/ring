@@ -5718,7 +5718,8 @@ TEST(X509Test, ExtensionFromConf) {
   static const char kTestOID[] = "1.2.840.113554.4.1.72585.2";
   const struct {
     const char *name;
-    const char *value;
+    std::string value;
+    // conf is the serialized confdb, or nullptr if none is to be provided.
     const char *conf;
     // expected is the resulting extension, encoded in DER, or the empty string
     // if an error is expected.
@@ -6352,6 +6353,9 @@ val1 = IA5:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 val2 = IA5:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 )",
        {}},
+
+      // Integer sizes are capped to mitigate quadratic behavior.
+      {kTestOID, "ASN1:INT:" + std::string(16384, '9'), nullptr, {}},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.name);
@@ -6370,7 +6374,7 @@ val2 = IA5:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
     }
 
     bssl::UniquePtr<X509_EXTENSION> ext(
-        X509V3_EXT_nconf(conf.get(), nullptr, t.name, t.value));
+        X509V3_EXT_nconf(conf.get(), nullptr, t.name, t.value.c_str()));
     if (t.expected.empty()) {
       EXPECT_FALSE(ext);
     } else {
@@ -6386,7 +6390,7 @@ val2 = IA5:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
     X509V3_CTX ctx;
     X509V3_set_ctx(&ctx, nullptr, nullptr, nullptr, nullptr, 0);
     X509V3_set_nconf(&ctx, conf.get());
-    ext.reset(X509V3_EXT_nconf(conf.get(), &ctx, t.name, t.value));
+    ext.reset(X509V3_EXT_nconf(conf.get(), &ctx, t.name, t.value.c_str()));
     if (t.expected.empty()) {
       EXPECT_FALSE(ext);
     } else {
