@@ -40,8 +40,8 @@ namespace {
 
 class ECKeyShare : public SSLKeyShare {
  public:
-  ECKeyShare(int nid, uint16_t group_id)
-      : group_(EC_GROUP_new_by_curve_name(nid)), group_id_(group_id) {}
+  ECKeyShare(const EC_GROUP *group, uint16_t group_id)
+      : group_(group), group_id_(group_id) {}
 
   uint16_t GroupID() const override { return group_id_; }
 
@@ -49,17 +49,16 @@ class ECKeyShare : public SSLKeyShare {
     assert(!private_key_);
     // Generate a private key.
     private_key_.reset(BN_new());
-    if (!group_ || !private_key_ ||
-        !BN_rand_range_ex(private_key_.get(), 1,
-                          EC_GROUP_get0_order(group_))) {
+    if (!private_key_ ||
+        !BN_rand_range_ex(private_key_.get(), 1, EC_GROUP_get0_order(group_))) {
       return false;
     }
 
     // Compute the corresponding public key and serialize it.
     UniquePtr<EC_POINT> public_key(EC_POINT_new(group_));
     if (!public_key ||
-        !EC_POINT_mul(group_, public_key.get(), private_key_.get(),
-                      nullptr, nullptr, /*ctx=*/nullptr) ||
+        !EC_POINT_mul(group_, public_key.get(), private_key_.get(), nullptr,
+                      nullptr, /*ctx=*/nullptr) ||
         !EC_POINT_point2cbb(out, group_, public_key.get(),
                             POINT_CONVERSION_UNCOMPRESSED, /*ctx=*/nullptr)) {
       return false;
@@ -98,11 +97,10 @@ class ECKeyShare : public SSLKeyShare {
     }
 
     // Compute the x-coordinate of |peer_key| * |private_key_|.
-    if (!EC_POINT_mul(group_, result.get(), NULL, peer_point.get(),
+    if (!EC_POINT_mul(group_, result.get(), nullptr, peer_point.get(),
                       private_key_.get(), /*ctx=*/nullptr) ||
         !EC_POINT_get_affine_coordinates_GFp(group_, result.get(), x.get(),
-                                             NULL,
-                                             /*ctx=*/nullptr)) {
+                                             nullptr, /*ctx=*/nullptr)) {
       return false;
     }
 
@@ -303,13 +301,13 @@ Span<const NamedGroup> NamedGroups() {
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
   switch (group_id) {
     case SSL_GROUP_SECP224R1:
-      return MakeUnique<ECKeyShare>(NID_secp224r1, SSL_GROUP_SECP224R1);
+      return MakeUnique<ECKeyShare>(EC_group_p224(), SSL_GROUP_SECP224R1);
     case SSL_GROUP_SECP256R1:
-      return MakeUnique<ECKeyShare>(NID_X9_62_prime256v1, SSL_GROUP_SECP256R1);
+      return MakeUnique<ECKeyShare>(EC_group_p256(), SSL_GROUP_SECP256R1);
     case SSL_GROUP_SECP384R1:
-      return MakeUnique<ECKeyShare>(NID_secp384r1, SSL_GROUP_SECP384R1);
+      return MakeUnique<ECKeyShare>(EC_group_p384(), SSL_GROUP_SECP384R1);
     case SSL_GROUP_SECP521R1:
-      return MakeUnique<ECKeyShare>(NID_secp521r1, SSL_GROUP_SECP521R1);
+      return MakeUnique<ECKeyShare>(EC_group_p521(), SSL_GROUP_SECP521R1);
     case SSL_GROUP_X25519:
       return MakeUnique<X25519KeyShare>();
     case SSL_GROUP_X25519_KYBER768_DRAFT00:

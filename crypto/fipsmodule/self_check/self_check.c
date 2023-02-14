@@ -249,11 +249,12 @@ static EC_KEY *self_test_ecdsa_key(void) {
       0x93, 0x8b, 0x74, 0xf2, 0xbc, 0xc5, 0x30, 0x52, 0xb0, 0x77,
   };
 
-  EC_KEY *ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+  EC_KEY *ec_key = EC_KEY_new();
   BIGNUM *qx = BN_bin2bn(kQx, sizeof(kQx), NULL);
   BIGNUM *qy = BN_bin2bn(kQy, sizeof(kQy), NULL);
   BIGNUM *d = BN_bin2bn(kD, sizeof(kD), NULL);
   if (ec_key == NULL || qx == NULL || qy == NULL || d == NULL ||
+      !EC_KEY_set_group(ec_key, EC_group_p256()) ||
       !EC_KEY_set_public_key_affine_coordinates(ec_key, qx, qy) ||
       !EC_KEY_set_private_key(ec_key, d)) {
     EC_KEY_free(ec_key);
@@ -411,7 +412,6 @@ err:
 static int boringssl_self_test_ecc(void) {
   int ret = 0;
   EC_KEY *ec_key = NULL;
-  EC_GROUP *ec_group = NULL;
   EC_POINT *ec_point_in = NULL;
   EC_POINT *ec_point_out = NULL;
   BIGNUM *ec_scalar = NULL;
@@ -506,11 +506,7 @@ static int boringssl_self_test_ecc(void) {
       0x7c, 0x41, 0x8f, 0xaf, 0x9c, 0x40, 0xaf, 0x2e, 0x4a, 0x0c,
   };
 
-  ec_group = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
-  if (ec_group == NULL) {
-    fprintf(stderr, "Failed to create P-256 group.\n");
-    goto err;
-  }
+  const EC_GROUP *ec_group = EC_group_p256();
   ec_point_in = EC_POINT_new(ec_group);
   ec_point_out = EC_POINT_new(ec_group);
   ec_scalar = BN_new();
@@ -535,7 +531,6 @@ err:
   EC_KEY_free(ec_key);
   EC_POINT_free(ec_point_in);
   EC_POINT_free(ec_point_out);
-  EC_GROUP_free(ec_group);
   BN_free(ec_scalar);
   ECDSA_SIG_free(sig);
 

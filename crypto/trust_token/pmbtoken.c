@@ -62,17 +62,13 @@ typedef struct {
 
 static const uint8_t kDefaultAdditionalData[32] = {0};
 
-static int pmbtoken_init_method(PMBTOKEN_METHOD *method, int curve_nid,
+static int pmbtoken_init_method(PMBTOKEN_METHOD *method, const EC_GROUP *group,
                                 const uint8_t *h_bytes, size_t h_len,
                                 hash_t_func_t hash_t, hash_s_func_t hash_s,
                                 hash_c_func_t hash_c,
                                 hash_to_scalar_func_t hash_to_scalar,
                                 int prefix_point) {
-  method->group = EC_GROUP_new_by_curve_name(curve_nid);
-  if (method->group == NULL) {
-    return 0;
-  }
-
+  method->group = group;
   method->hash_t = hash_t;
   method->hash_s = hash_s;
   method->hash_c = hash_c;
@@ -1230,7 +1226,7 @@ static void pmbtoken_exp1_init_method_impl(void) {
   };
 
   pmbtoken_exp1_ok = pmbtoken_init_method(
-      &pmbtoken_exp1_method, NID_secp384r1, kH, sizeof(kH),
+      &pmbtoken_exp1_method, EC_group_p384(), kH, sizeof(kH),
       pmbtoken_exp1_hash_t, pmbtoken_exp1_hash_s, pmbtoken_exp1_hash_c,
       pmbtoken_exp1_hash_to_scalar, 1);
 }
@@ -1403,7 +1399,7 @@ static void pmbtoken_exp2_init_method_impl(void) {
   };
 
   pmbtoken_exp2_ok = pmbtoken_init_method(
-      &pmbtoken_exp2_method, NID_secp384r1, kH, sizeof(kH),
+      &pmbtoken_exp2_method, EC_group_p384(), kH, sizeof(kH),
       pmbtoken_exp2_hash_t, pmbtoken_exp2_hash_s, pmbtoken_exp2_hash_c,
       pmbtoken_exp2_hash_to_scalar, 0);
 }
@@ -1577,7 +1573,7 @@ static void pmbtoken_pst1_init_method_impl(void) {
   };
 
   pmbtoken_pst1_ok = pmbtoken_init_method(
-      &pmbtoken_pst1_method, NID_secp384r1, kH, sizeof(kH),
+      &pmbtoken_pst1_method, EC_group_p384(), kH, sizeof(kH),
       pmbtoken_pst1_hash_t, pmbtoken_pst1_hash_s, pmbtoken_pst1_hash_c,
       pmbtoken_pst1_hash_to_scalar, 0);
 }

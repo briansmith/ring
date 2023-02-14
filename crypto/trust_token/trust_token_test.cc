@@ -250,9 +250,7 @@ TEST(TrustTokenTest, KeyGenExp2PMB) {
 
 // Test that H in |TRUST_TOKEN_experiment_v1| was computed correctly.
 TEST(TrustTokenTest, HExp1) {
-  const EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp384r1);
-  ASSERT_TRUE(group);
-
+  const EC_GROUP *group = EC_group_p384();
   const uint8_t kHGen[] = "generator";
   const uint8_t kHLabel[] = "PMBTokens Experiment V1 HashH";
 
@@ -272,9 +270,7 @@ TEST(TrustTokenTest, HExp1) {
 
 // Test that H in |TRUST_TOKEN_experiment_v2_pmb| was computed correctly.
 TEST(TrustTokenTest, HExp2) {
-  const EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp384r1);
-  ASSERT_TRUE(group);
-
+  const EC_GROUP *group = EC_group_p384();
   const uint8_t kHGen[] = "generator";
   const uint8_t kHLabel[] = "PMBTokens Experiment V2 HashH";
 

@@ -741,14 +741,15 @@ static bool SpeedRandom(const std::string &selected) {
   return true;
 }
 
-static bool SpeedECDHCurve(const std::string &name, int nid,
+static bool SpeedECDHCurve(const std::string &name, const EC_GROUP *group,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
-  bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new_by_curve_name(nid));
+  bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new());
   if (!peer_key ||
+      !EC_KEY_set_group(peer_key.get(), group) ||
       !EC_KEY_generate_key(peer_key.get())) {
     return false;
   }
@@ -769,12 +770,12 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
 
   TimeResults results;
   if (!TimeFunctionParallel(
-          &results, [nid, peer_value_len, &peer_value]() -> bool {
-            bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
-            if (!key || !EC_KEY_generate_key(key.get())) {
+          &results, [group, peer_value_len, &peer_value]() -> bool {
+            bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+            if (!key || !EC_KEY_set_group(key.get(), group) ||
+                !EC_KEY_generate_key(key.get())) {
               return false;
             }
-            const EC_GROUP *const group = EC_KEY_get0_group(key.get());
             bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group));
             bssl::UniquePtr<EC_POINT> peer_point(EC_POINT_new(group));
             bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
@@ -798,14 +799,15 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   return true;
 }
 
-static bool SpeedECDSACurve(const std::string &name, int nid,
+static bool SpeedECDSACurve(const std::string &name, const EC_GROUP *group,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
   if (!key ||
+      !EC_KEY_set_group(key.get(), group) ||
       !EC_KEY_generate_key(key.get())) {
     return false;
   }
@@ -849,17 +851,17 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
 }
 
 static bool SpeedECDH(const std::string &selected) {
-  return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
-         SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
-         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected);
+  return SpeedECDHCurve("ECDH P-224", EC_group_p224(), selected) &&
+         SpeedECDHCurve("ECDH P-256", EC_group_p256(), selected) &&
+         SpeedECDHCurve("ECDH P-384", EC_group_p384(), selected) &&
+         SpeedECDHCurve("ECDH P-521", EC_group_p521(), selected);
 }
 
 static bool SpeedECDSA(const std::string &selected) {
-  return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
-         SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
-         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected);
+  return SpeedECDSACurve("ECDSA P-224", EC_group_p224(), selected) &&
+         SpeedECDSACurve("ECDSA P-256", EC_group_p256(), selected) &&
+         SpeedECDSACurve("ECDSA P-384", EC_group_p384(), selected) &&
+         SpeedECDSACurve("ECDSA P-521", EC_group_p521(), selected);
 }
 
 static bool Speed25519(const std::string &selected) {
@@ -1139,28 +1141,22 @@ static bool SpeedHashToCurve(const std::string &selected) {
 
   TimeResults results;
   {
-    const EC_GROUP *p256 = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
-    if (p256 == NULL) {
-      return false;
-    }
     if (!TimeFunctionParallel(&results, [&]() -> bool {
           EC_JACOBIAN out;
-          return ec_hash_to_curve_p256_xmd_sha256_sswu(
-              p256, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+          return ec_hash_to_curve_p256_xmd_sha256_sswu(EC_group_p256(), &out,
+                                                       kLabel, sizeof(kLabel),
+                                                       input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-curve failed.\n");
       return false;
     }
     results.Print("hash-to-curve P256_XMD:SHA-256_SSWU_RO_");
 
-    const EC_GROUP *p384 = EC_GROUP_new_by_curve_name(NID_secp384r1);
-    if (p384 == NULL) {
-      return false;
-    }
     if (!TimeFunctionParallel(&results, [&]() -> bool {
           EC_JACOBIAN out;
-          return ec_hash_to_curve_p384_xmd_sha384_sswu(
-              p384, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+          return ec_hash_to_curve_p384_xmd_sha384_sswu(EC_group_p384(), &out,
+                                                       kLabel, sizeof(kLabel),
+                                                       input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-curve failed.\n");
       return false;
@@ -1170,7 +1166,8 @@ static bool SpeedHashToCurve(const std::string &selected) {
     if (!TimeFunctionParallel(&results, [&]() -> bool {
           EC_SCALAR out;
           return ec_hash_to_scalar_p384_xmd_sha512_draft07(
-              p384, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+              EC_group_p384(), &out, kLabel, sizeof(kLabel), input,
+              sizeof(input));
         })) {
       fprintf(stderr, "hash-to-scalar failed.\n");
       return false;

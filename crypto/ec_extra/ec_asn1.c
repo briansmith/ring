@@ -94,7 +94,6 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
   }
 
   // Parse the optional parameters field.
-  EC_GROUP *inner_group = NULL;
   EC_KEY *ret = NULL;
   BIGNUM *priv_key = NULL;
   if (CBS_peek_asn1_tag(&ec_private_key, kParametersTag)) {
@@ -107,7 +106,7 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
       OPENSSL_PUT_ERROR(EC, EC_R_DECODE_ERROR);
       goto err;
     }
-    inner_group = EC_KEY_parse_parameters(&child);
+    const EC_GROUP *inner_group = EC_KEY_parse_parameters(&child);
     if (inner_group == NULL) {
       goto err;
     }
@@ -189,13 +188,11 @@ EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
   }
 
   BN_free(priv_key);
-  EC_GROUP_free(inner_group);
   return ret;
 
 err:
   EC_KEY_free(ret);
   BN_free(priv_key);
-  EC_GROUP_free(inner_group);
   return NULL;
 }
 
@@ -353,8 +350,6 @@ EC_GROUP *EC_KEY_parse_curve_name(CBS *cbs) {
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kAllGroups); i++) {
     const EC_GROUP *group = kAllGroups[i]();
     if (CBS_mem_equal(&named_curve, group->oid, group->oid_len)) {
-      // TODO(davidben): Remove unnecessary calls to |EC_GROUP_free| within the
-      // library.
       return (EC_GROUP *)group;
     }
   }
@@ -433,8 +428,6 @@ err:
   BN_free(b);
   BN_free(x);
   BN_free(y);
-  // TODO(davidben): Remove unnecessary calls to |EC_GROUP_free| within the
-  // library.
   return (EC_GROUP *)ret;
 }
 
@@ -492,18 +485,16 @@ EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp, long len) {
 
   CBS cbs;
   CBS_init(&cbs, *inp, (size_t)len);
-  EC_GROUP *group = EC_KEY_parse_parameters(&cbs);
+  const EC_GROUP *group = EC_KEY_parse_parameters(&cbs);
   if (group == NULL) {
     return NULL;
   }
 
   EC_KEY *ret = EC_KEY_new();
   if (ret == NULL || !EC_KEY_set_group(ret, group)) {
-    EC_GROUP_free(group);
     EC_KEY_free(ret);
     return NULL;
   }
-  EC_GROUP_free(group);
 
   if (out_key != NULL) {
     EC_KEY_free(*out_key);

@@ -4102,12 +4102,7 @@ bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
     return false;
   }
 
-  UniquePtr<EC_GROUP> p256(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
-  if (!p256) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_P256_SUPPORT);
-    return false;
-  }
-
+  const EC_GROUP *p256 = EC_group_p256();
   UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
   UniquePtr<BIGNUM> x(BN_new()), y(BN_new());
   if (!sig || !x || !y) {
@@ -4123,11 +4118,11 @@ bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   }
 
   UniquePtr<EC_KEY> key(EC_KEY_new());
-  UniquePtr<EC_POINT> point(EC_POINT_new(p256.get()));
+  UniquePtr<EC_POINT> point(EC_POINT_new(p256));
   if (!key || !point ||
-      !EC_POINT_set_affine_coordinates_GFp(p256.get(), point.get(), x.get(),
-                                           y.get(), nullptr) ||
-      !EC_KEY_set_group(key.get(), p256.get()) ||
+      !EC_POINT_set_affine_coordinates_GFp(p256, point.get(), x.get(), y.get(),
+                                           nullptr) ||
+      !EC_KEY_set_group(key.get(), p256) ||
       !EC_KEY_set_public_key(key.get(), point.get())) {
     return false;
   }
