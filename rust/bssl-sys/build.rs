@@ -19,18 +19,21 @@ use std::path::Path;
 fn main() {
     let dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let crate_path = Path::new(&dir);
-    let parent_path = crate_path.parent().unwrap();
+
+    // building bssl-sys with: `mkdir build && cd build && cmake -G Ninja .. -DRUST_BINDINGS="$(gcc -dumpmachine)" && ninja`
+    // outputs this crate to /build/rust/bssl-sys/ so need to go up 3 levels to the root of the repo
+    let repo_root = crate_path.parent().unwrap().parent().unwrap();
 
     // Statically link libraries.
     println!(
         "cargo:rustc-link-search=native={}",
-        parent_path.join("crypto").display()
+        repo_root.join("crypto").display()
     );
     println!("cargo:rustc-link-lib=static=crypto");
 
     println!(
         "cargo:rustc-link-search=native={}",
-        parent_path.join("ssl").display()
+        repo_root.join("ssl").display()
     );
     println!("cargo:rustc-link-lib=static=ssl");
 
