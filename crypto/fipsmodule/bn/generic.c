@@ -567,145 +567,89 @@ void bn_sqr_comba4(BN_ULONG r[8], const BN_ULONG a[4]) {
 
 #if !defined(BN_ADD_ASM)
 
-#ifdef BN_ULLONG
+// bn_add_with_carry returns |x + y + carry|, and sets |*out_carry| to the
+// carry bit. |carry| must be zero or one.
+static inline BN_ULONG bn_add_with_carry(BN_ULONG x, BN_ULONG y, BN_ULONG carry,
+                                         BN_ULONG *out_carry) {
+  assert(carry == 0 || carry == 1);
+#if defined(BN_ULLONG)
+  BN_ULLONG ret = carry;
+  ret += (BN_ULLONG)x + y;
+  *out_carry = (BN_ULONG)(ret >> BN_BITS2);
+  return (BN_ULONG)ret;
+#else
+  x += carry;
+  carry = x < carry;
+  BN_ULONG ret = x + y;
+  carry += ret < x;
+  *out_carry = carry;
+  return ret;
+#endif
+}
+
+// bn_sub_with_borrow returns |x - y - borrow|, and sets |*out_borrow| to the
+// borrow bit. |borrow| must be zero or one.
+static inline BN_ULONG bn_sub_with_borrow(BN_ULONG x, BN_ULONG y,
+                                          BN_ULONG borrow,
+                                          BN_ULONG *out_borrow) {
+  assert(borrow == 0 || borrow == 1);
+  BN_ULONG ret = x - y - borrow;
+  *out_borrow = (x < y) | ((x == y) & borrow);
+  return ret;
+}
+
 BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       size_t n) {
-  BN_ULLONG ll = 0;
-
   if (n == 0) {
     return 0;
   }
 
+  BN_ULONG carry = 0;
   while (n & ~3) {
-    ll += (BN_ULLONG)a[0] + b[0];
-    r[0] = (BN_ULONG)ll;
-    ll >>= BN_BITS2;
-    ll += (BN_ULLONG)a[1] + b[1];
-    r[1] = (BN_ULONG)ll;
-    ll >>= BN_BITS2;
-    ll += (BN_ULLONG)a[2] + b[2];
-    r[2] = (BN_ULONG)ll;
-    ll >>= BN_BITS2;
-    ll += (BN_ULLONG)a[3] + b[3];
-    r[3] = (BN_ULONG)ll;
-    ll >>= BN_BITS2;
+    r[0] = bn_add_with_carry(a[0], b[0], carry, &carry);
+    r[1] = bn_add_with_carry(a[1], b[1], carry, &carry);
+    r[2] = bn_add_with_carry(a[2], b[2], carry, &carry);
+    r[3] = bn_add_with_carry(a[3], b[3], carry, &carry);
     a += 4;
     b += 4;
     r += 4;
     n -= 4;
   }
   while (n) {
-    ll += (BN_ULLONG)a[0] + b[0];
-    r[0] = (BN_ULONG)ll;
-    ll >>= BN_BITS2;
+    r[0] = bn_add_with_carry(a[0], b[0], carry, &carry);
     a++;
     b++;
     r++;
     n--;
   }
-  return (BN_ULONG)ll;
+  return carry;
 }
-
-#else  // !BN_ULLONG
-
-BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                      size_t n) {
-  BN_ULONG c, l, t;
-
-  if (n == 0) {
-    return (BN_ULONG)0;
-  }
-
-  c = 0;
-  while (n & ~3) {
-    t = a[0];
-    t += c;
-    c = (t < c);
-    l = t + b[0];
-    c += (l < t);
-    r[0] = l;
-    t = a[1];
-    t += c;
-    c = (t < c);
-    l = t + b[1];
-    c += (l < t);
-    r[1] = l;
-    t = a[2];
-    t += c;
-    c = (t < c);
-    l = t + b[2];
-    c += (l < t);
-    r[2] = l;
-    t = a[3];
-    t += c;
-    c = (t < c);
-    l = t + b[3];
-    c += (l < t);
-    r[3] = l;
-    a += 4;
-    b += 4;
-    r += 4;
-    n -= 4;
-  }
-  while (n) {
-    t = a[0];
-    t += c;
-    c = (t < c);
-    l = t + b[0];
-    c += (l < t);
-    r[0] = l;
-    a++;
-    b++;
-    r++;
-    n--;
-  }
-  return (BN_ULONG)c;
-}
-
-#endif  // !BN_ULLONG
 
 BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       size_t n) {
-  BN_ULONG t1, t2;
-  BN_ULONG c = 0;
-
   if (n == 0) {
     return (BN_ULONG)0;
   }
 
+  BN_ULONG borrow = 0;
   while (n & ~3) {
-    t1 = a[0];
-    t2 = b[0];
-    r[0] = t1 - t2 - c;
-    c = (t1 < t2) | ((t1 == t2) & c);
-    t1 = a[1];
-    t2 = b[1];
-    r[1] = t1 - t2 - c;
-    c = (t1 < t2) | ((t1 == t2) & c);
-    t1 = a[2];
-    t2 = b[2];
-    r[2] = t1 - t2 - c;
-    c = (t1 < t2) | ((t1 == t2) & c);
-    t1 = a[3];
-    t2 = b[3];
-    r[3] = t1 - t2 - c;
-    c = (t1 < t2) | ((t1 == t2) & c);
+    r[0] = bn_sub_with_borrow(a[0], b[0], borrow, &borrow);
+    r[1] = bn_sub_with_borrow(a[1], b[1], borrow, &borrow);
+    r[2] = bn_sub_with_borrow(a[2], b[2], borrow, &borrow);
+    r[3] = bn_sub_with_borrow(a[3], b[3], borrow, &borrow);
     a += 4;
     b += 4;
     r += 4;
     n -= 4;
   }
   while (n) {
-    t1 = a[0];
-    t2 = b[0];
-    r[0] = t1 - t2 - c;
-    c = (t1 < t2) | ((t1 == t2) & c);
+    r[0] = bn_sub_with_borrow(a[0], b[0], borrow, &borrow);
     a++;
     b++;
     r++;
     n--;
   }
-  return c;
+  return borrow;
 }
 
 #endif  // !BN_ADD_ASM
