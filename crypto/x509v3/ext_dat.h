@@ -69,7 +69,7 @@ extern const X509V3_EXT_METHOD v3_delta_crl, v3_cpols, v3_crld, v3_freshest_crl;
 extern const X509V3_EXT_METHOD v3_ocsp_nonce, v3_ocsp_accresp, v3_ocsp_acutoff;
 extern const X509V3_EXT_METHOD v3_ocsp_crlid, v3_ocsp_nocheck,
     v3_ocsp_serviceloc;
-extern const X509V3_EXT_METHOD v3_crl_hold, v3_pci;
+extern const X509V3_EXT_METHOD v3_crl_hold;
 extern const X509V3_EXT_METHOD v3_policy_mappings, v3_policy_constraints;
 extern const X509V3_EXT_METHOD v3_name_constraints, v3_inhibit_anyp, v3_idp;
 extern const X509V3_EXT_METHOD v3_addr, v3_asid;
@@ -116,7 +116,6 @@ static const X509V3_EXT_METHOD *const standard_exts[] = {
 #ifndef OPENSSL_NO_OCSP
     &v3_crl_hold,
 #endif
-    &v3_pci,
     &v3_name_constraints,
     &v3_policy_mappings,
     &v3_inhibit_anyp,

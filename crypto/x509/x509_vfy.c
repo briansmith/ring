@@ -543,22 +543,18 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
   X509 *x;
   int proxy_path_length = 0;
   int purpose;
-  int allow_proxy_certs;
 
   enum {
     // ca_or_leaf allows either type of certificate so that direct use of
     // self-signed certificates works.
     ca_or_leaf,
     must_be_ca,
-    must_not_be_ca,
   } ca_requirement;
 
   // CRL path validation
   if (ctx->parent) {
-    allow_proxy_certs = 0;
     purpose = X509_PURPOSE_CRL_SIGN;
   } else {
-    allow_proxy_certs = !!(ctx->param->flags & X509_V_FLAG_ALLOW_PROXY_CERTS);
     purpose = ctx->param->purpose;
   }
 
@@ -578,27 +574,10 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
         goto end;
       }
     }
-    if (!allow_proxy_certs && (x->ex_flags & EXFLAG_PROXY)) {
-      ctx->error = X509_V_ERR_PROXY_CERTIFICATES_NOT_ALLOWED;
-      ctx->error_depth = i;
-      ctx->current_cert = x;
-      ok = ctx->verify_cb(0, ctx);
-      if (!ok) {
-        goto end;
-      }
-    }
 
     switch (ca_requirement) {
       case ca_or_leaf:
         ret = 1;
-        break;
-      case must_not_be_ca:
-        if (X509_check_ca(x)) {
-          ret = 0;
-          ctx->error = X509_V_ERR_INVALID_NON_CA;
-        } else {
-          ret = 1;
-        }
         break;
       case must_be_ca:
         if (!X509_check_ca(x)) {
@@ -649,24 +628,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
     if (!(x->ex_flags & EXFLAG_SI)) {
       plen++;
     }
-    // If this certificate is a proxy certificate, the next certificate
-    // must be another proxy certificate or a EE certificate.  If not,
-    // the next certificate must be a CA certificate.
-    if (x->ex_flags & EXFLAG_PROXY) {
-      if (x->ex_pcpathlen != -1 && i > x->ex_pcpathlen) {
-        ctx->error = X509_V_ERR_PROXY_PATH_LENGTH_EXCEEDED;
-        ctx->error_depth = i;
-        ctx->current_cert = x;
-        ok = ctx->verify_cb(0, ctx);
-        if (!ok) {
-          goto end;
-        }
-      }
-      proxy_path_length++;
-      ca_requirement = must_not_be_ca;
-    } else {
-      ca_requirement = must_be_ca;
-    }
+    ca_requirement = must_be_ca;
   }
   ok = 1;
 end:

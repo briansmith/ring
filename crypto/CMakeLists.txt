@@ -278,8 +278,6 @@ add_library(
   x509v3/v3_lib.c
   x509v3/v3_ncons.c
   x509v3/v3_ocsp.c
-  x509v3/v3_pci.c
-  x509v3/v3_pcia.c
   x509v3/v3_pcons.c
   x509v3/v3_pmaps.c
   x509v3/v3_prn.c

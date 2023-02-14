@@ -2564,7 +2564,7 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_FLAG_IGNORE_CRITICAL 0x10
 // Does nothing as its functionality has been enabled by default.
 #define X509_V_FLAG_X509_STRICT 0x00
-// Enable proxy certificate validation
+// This flag does nothing as proxy certificate support has been removed.
 #define X509_V_FLAG_ALLOW_PROXY_CERTS 0x40
 // Enable policy checking
 #define X509_V_FLAG_POLICY_CHECK 0x80

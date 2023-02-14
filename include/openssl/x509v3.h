@@ -297,20 +297,6 @@ typedef struct POLICY_CONSTRAINTS_st {
   ASN1_INTEGER *inhibitPolicyMapping;
 } POLICY_CONSTRAINTS;
 
-// Proxy certificate structures, see RFC 3820
-typedef struct PROXY_POLICY_st {
-  ASN1_OBJECT *policyLanguage;
-  ASN1_OCTET_STRING *policy;
-} PROXY_POLICY;
-
-typedef struct PROXY_CERT_INFO_EXTENSION_st {
-  ASN1_INTEGER *pcPathLengthConstraint;
-  PROXY_POLICY *proxyPolicy;
-} PROXY_CERT_INFO_EXTENSION;
-
-DECLARE_ASN1_FUNCTIONS_const(PROXY_POLICY)
-DECLARE_ASN1_FUNCTIONS_const(PROXY_CERT_INFO_EXTENSION)
-
 struct ISSUING_DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
   int onlyuser;
@@ -352,7 +338,6 @@ struct ISSUING_DIST_POINT_st {
 #define EXFLAG_INVALID 0x80
 #define EXFLAG_SET 0x100
 #define EXFLAG_CRITICAL 0x200
-#define EXFLAG_PROXY 0x400
 
 #define EXFLAG_FRESHEST 0x1000
 // Self signed
