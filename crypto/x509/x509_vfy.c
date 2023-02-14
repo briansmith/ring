@@ -539,31 +539,15 @@ static int get_issuer_sk(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
 // purpose
 
 static int check_chain_extensions(X509_STORE_CTX *ctx) {
-  int i, ok = 0, plen = 0;
-  X509 *x;
-  int proxy_path_length = 0;
-  int purpose;
+  int ok = 0, plen = 0;
 
-  enum {
-    // ca_or_leaf allows either type of certificate so that direct use of
-    // self-signed certificates works.
-    ca_or_leaf,
-    must_be_ca,
-  } ca_requirement;
-
-  // CRL path validation
-  if (ctx->parent) {
-    purpose = X509_PURPOSE_CRL_SIGN;
-  } else {
-    purpose = ctx->param->purpose;
-  }
-
-  ca_requirement = ca_or_leaf;
+  // If |ctx->parent| is set, this is CRL path validation.
+  int purpose =
+      ctx->parent == NULL ? ctx->param->purpose : X509_PURPOSE_CRL_SIGN;
 
   // Check all untrusted certificates
-  for (i = 0; i < ctx->last_untrusted; i++) {
-    int ret;
-    x = sk_X509_value(ctx->chain, i);
+  for (int i = 0; i < ctx->last_untrusted; i++) {
+    X509 *x = sk_X509_value(ctx->chain, i);
     if (!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
         (x->ex_flags & EXFLAG_CRITICAL)) {
       ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION;
@@ -575,24 +559,9 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       }
     }
 
-    switch (ca_requirement) {
-      case ca_or_leaf:
-        ret = 1;
-        break;
-      case must_be_ca:
-        if (!X509_check_ca(x)) {
-          ret = 0;
-          ctx->error = X509_V_ERR_INVALID_CA;
-        } else {
-          ret = 1;
-        }
-        break;
-      default:
-        // impossible.
-        ret = 0;
-    }
-
-    if (ret == 0) {
+    int must_be_ca = i > 0;
+    if (must_be_ca && !X509_check_ca(x)) {
+      ctx->error = X509_V_ERR_INVALID_CA;
       ctx->error_depth = i;
       ctx->current_cert = x;
       ok = ctx->verify_cb(0, ctx);
@@ -600,22 +569,19 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
         goto end;
       }
     }
-    if (ctx->param->purpose > 0) {
-      ret = X509_check_purpose(x, purpose, ca_requirement == must_be_ca);
-      if (ret != 1) {
-        ret = 0;
-        ctx->error = X509_V_ERR_INVALID_PURPOSE;
-        ctx->error_depth = i;
-        ctx->current_cert = x;
-        ok = ctx->verify_cb(0, ctx);
-        if (!ok) {
-          goto end;
-        }
+    if (ctx->param->purpose > 0 &&
+        X509_check_purpose(x, purpose, must_be_ca) != 1) {
+      ctx->error = X509_V_ERR_INVALID_PURPOSE;
+      ctx->error_depth = i;
+      ctx->current_cert = x;
+      ok = ctx->verify_cb(0, ctx);
+      if (!ok) {
+        goto end;
       }
     }
     // Check pathlen if not self issued
-    if ((i > 1) && !(x->ex_flags & EXFLAG_SI) && (x->ex_pathlen != -1) &&
-        (plen > (x->ex_pathlen + proxy_path_length + 1))) {
+    if (i > 1 && !(x->ex_flags & EXFLAG_SI) && x->ex_pathlen != -1 &&
+        plen > x->ex_pathlen + 1) {
       ctx->error = X509_V_ERR_PATH_LENGTH_EXCEEDED;
       ctx->error_depth = i;
       ctx->current_cert = x;
@@ -628,7 +594,6 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
     if (!(x->ex_flags & EXFLAG_SI)) {
       plen++;
     }
-    ca_requirement = must_be_ca;
   }
   ok = 1;
 end:
