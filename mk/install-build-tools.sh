@@ -35,7 +35,6 @@ case $target in
     || echo $accept_android_license  >> "$android_license_file"
   "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "ndk;$ndk_version"
 
-  ANDROID_NDK_ROOT=
   # XXX: Older Rust toolchain versions link with `-lgcc` instead of `-lunwind`;
   # see https://github.com/rust-lang/rust/pull/85806.
   find -L ${ANDROID_NDK_ROOT:-${ANDROID_HOME}/ndk/$ndk_version} -name libunwind.a \
