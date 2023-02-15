@@ -482,6 +482,9 @@ endif()
 # Add minimal googletest targets. The provided one has many side-effects, and
 # googletest has a very straightforward build.
 add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+if(USE_CUSTOM_LIBCXX)
+  target_link_libraries(boringssl_gtest libcxx)
+endif()
 target_include_directories(
     boringssl_gtest
     PUBLIC third_party/googletest/include

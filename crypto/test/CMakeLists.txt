@@ -19,11 +19,5 @@ if(WIN32)
 endif()
 target_link_libraries(test_support_lib boringssl_gtest crypto)
 
-add_library(
-  boringssl_gtest_main
-
-  OBJECT
-
-  gtest_main.cc
-)
+add_library(boringssl_gtest_main STATIC gtest_main.cc)
 target_link_libraries(boringssl_gtest_main boringssl_gtest crypto test_support_lib)

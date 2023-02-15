@@ -30,9 +30,7 @@ add_executable(
   evp/evp_test.cc
   ripemd/ripemd_test.cc
   xts/xts_test.cc
-
-  $<TARGET_OBJECTS:boringssl_gtest_main>
 )
-target_link_libraries(decrepit_test test_support_lib boringssl_gtest decrepit
-                      crypto)
+target_link_libraries(decrepit_test test_support_lib boringssl_gtest_main
+                      decrepit crypto)
 add_dependencies(all_tests decrepit_test)

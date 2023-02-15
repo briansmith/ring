@@ -52,8 +52,6 @@ add_executable(
   span_test.cc
   ssl_test.cc
   ssl_c_test.c
-
-  $<TARGET_OBJECTS:boringssl_gtest_main>
 )
-target_link_libraries(ssl_test test_support_lib boringssl_gtest ssl crypto)
+target_link_libraries(ssl_test test_support_lib boringssl_gtest_main ssl crypto)
 add_dependencies(all_tests ssl_test)

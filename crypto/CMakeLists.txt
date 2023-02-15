@@ -420,7 +420,6 @@ add_executable(
   x509v3/tab_test.cc
 
   $<TARGET_OBJECTS:crypto_test_data>
-  $<TARGET_OBJECTS:boringssl_gtest_main>
 )
-target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
+target_link_libraries(crypto_test test_support_lib boringssl_gtest_main crypto)
 add_dependencies(all_tests crypto_test)
