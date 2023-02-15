@@ -1,7 +1,5 @@
 [advisories]
-# https://github.com/bheisler/criterion.rs/issues/534. serde_cbor is a
-# benchmark-only dependency.
-ignore = ["RUSTSEC-2021-0127"]
+ignore = []
 
 [output]
 deny = ["warnings", "yanked", "unsound", "unmaintained"]
