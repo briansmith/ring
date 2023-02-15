@@ -26,7 +26,8 @@ qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
 # directory like `clang` that would conflict with the same-named tools that may
 # be needed to compile the build script, or to compile for other targets.
 if [ -n "${ANDROID_HOME-}" ]; then
-  ndk_version=25.1.8937393
+  # Keep the next line in sync with the corresponding line in install-build-tools.sh.
+  ndk_version=25.2.9519653
   ANDROID_NDK_ROOT=${ANDROID_NDK_ROOT:-${ANDROID_HOME}/ndk/$ndk_version}
 fi
 if [ -n "${ANDROID_NDK_ROOT-}" ]; then
