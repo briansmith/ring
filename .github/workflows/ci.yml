@@ -59,10 +59,10 @@ jobs:
             ~/.cargo/bin/cargo-audit
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-v2-cargo-audit-0.15.0
+          key: ${{ runner.os }}-v2-cargo-audit-0.17.4
 
       # With `--locked` `cargo install` complains about using yanked crates.
-      - run: cargo install cargo-audit --vers "0.15.0"
+      - run: cargo install cargo-audit --vers "0.17.4"
 
       - uses: briansmith/actions-checkout@v2
         with:
