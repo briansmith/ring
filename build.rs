@@ -877,7 +877,7 @@ fn generate_prefix_symbols_header(
     std::fs::create_dir_all(&dir)?;
 
     let path = dir.join(filename);
-    let mut file = std::fs::File::create(&path)?;
+    let mut file = std::fs::File::create(path)?;
 
     let filename_ident = filename.replace('.', "_").to_uppercase();
     writeln!(
