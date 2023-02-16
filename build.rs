@@ -23,7 +23,7 @@ use std::{
     fs::{self, DirEntry},
     io::Write,
     path::{Path, PathBuf},
-    process::Command,
+    process::{self, Command},
     sync::Arc,
     thread,
 };
@@ -514,14 +514,30 @@ fn build_library(
 
     c.files(c_srcs);
 
-    asm_srcs.into_iter().for_each(|f| {
-        let ext = f.extension().and_then(|ext| ext.to_str());
+    let tasks = asm_srcs
+        .into_iter()
+        .filter_map(|f| {
+            let ext = f.extension().and_then(|ext| ext.to_str());
 
-        if ext == Some("o") {
-            c.object(f);
-        } else {
-            c.file(f);
-        }
+            if ext == Some("o") {
+                c.object(f);
+                None
+            } else if target.os == WINDOWS && ext == Some("asm") {
+                // On windows, we will use nasm to compile asm
+                let out_file = obj_path(out_dir, &f);
+                let mut cmd = nasm(&f, &target.arch, out_dir, &out_file);
+                Some((spawn_child(&mut cmd), cmd, out_file))
+            } else {
+                c.file(f);
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    tasks.into_iter().for_each(|(child, cmd, out_file)| {
+        wait_for_child(child, &cmd);
+
+        c.object(out_file);
     });
 
     configure_cc(&mut c, "c", target, out_dir);
@@ -712,12 +728,29 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command
 }
 
 fn run_command(mut cmd: Command) {
+    let child = spawn_child(&mut cmd);
+    wait_for_child(child, &cmd);
+}
+
+fn spawn_child(cmd: &mut Command) -> process::Child {
     eprintln!("running {:?}", cmd);
-    let status = cmd.status().unwrap_or_else(|e| {
+    cmd.spawn().unwrap_or_else(|e| {
         panic!("failed to execute [{:?}]: {}", cmd, e);
+    })
+}
+
+fn wait_for_child(mut child: process::Child, cmd: &Command) {
+    let status = child.wait().unwrap_or_else(|e| {
+        panic!(
+            "failed to wait on {:?} created by cmd [{:?}]: {}",
+            child, cmd, e
+        );
     });
     if !status.success() {
-        panic!("execution failed");
+        panic!(
+            "execution failed for {:?} created by cmd [{:?}]: {}",
+            child, cmd, status
+        );
     }
 }
 
@@ -802,22 +835,12 @@ fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
 
             cmd.arg(dst);
 
-            (
-                cmd.spawn().unwrap_or_else(|e| {
-                    panic!("failed to execute [{:?}]: {}", cmd, e);
-                }),
-                cmd,
-            )
+            (spawn_child(&mut cmd), cmd)
         })
         .collect::<Vec<_>>();
 
-    children.into_iter().for_each(|(mut child, cmd)| {
-        let status = child.wait().unwrap_or_else(|e| {
-            panic!("failed to execute [{:?}]: {}", cmd, e);
-        });
-        if !status.success() {
-            panic!("execution failed");
-        }
+    children.into_iter().for_each(|(child, cmd)| {
+        wait_for_child(child, &cmd);
     });
 }
 
