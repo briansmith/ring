@@ -530,14 +530,8 @@ fn build_library(
         let _ = c.flag(f);
     }
 
-    match target.os.as_str() {
-        "macos" => {
-            let _ = c.flag("-fPIC");
-            let _ = c.flag("-Wl,-dead_strip");
-        }
-        _ => {
-            let _ = c.flag("-Wl,--gc-sections");
-        }
+    if target.os.as_str() == "macos" {
+        c.flag("-fPIC");
     }
 
     // Handled below.
