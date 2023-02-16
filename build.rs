@@ -505,7 +505,7 @@ fn build_c_code(
 
 fn build_library(
     target: &Target,
-    out_dir: &PathBuf,
+    out_dir: &Path,
     lib_name: &str,
     c_srcs: Vec<PathBuf>,
     asm_srcs: Vec<PathBuf>,
@@ -556,7 +556,7 @@ fn build_library(
     // Rebuild the library if necessary.
     let lib_filename = format!("lib{}.a", lib_name);
 
-    c.out_dir(&**out_dir);
+    c.out_dir(out_dir);
     c.compile(&lib_filename);
 
     // Link the library. This works even when the library doesn't need to be
