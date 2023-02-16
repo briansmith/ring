@@ -504,8 +504,8 @@ fn build_c_code(
 }
 
 fn build_library(
-    target: &Arc<Target>,
-    out_dir: &Arc<PathBuf>,
+    target: &Target,
+    out_dir: &PathBuf,
     lib_name: &str,
     c_srcs: Vec<PathBuf>,
     asm_srcs: Vec<PathBuf>,
