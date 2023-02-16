@@ -1,5 +1,3 @@
-//go:build
-
 // break-kat corrupts a known-answer-test input in a binary and writes the
 // corrupted binary to stdout. This is used to demonstrate that the KATs in the
 // binary notice the error.

@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//go:build ignore
-
 // read_symbols scans one or more .a files and, for each object contained in
 // the .a files, reads the list of symbols in that object file.
 package main

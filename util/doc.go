@@ -1,5 +1,3 @@
-//go:build ignore
-
 // doc generates HTML files from the comments in header files.
 //
 // doc expects to be given the path to a JSON file via the --config option.

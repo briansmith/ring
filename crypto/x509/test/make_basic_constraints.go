@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//go:build ignore
-
 // make_basic_constraints.go generates self-signed certificates with the basic
 // constraints extension.
 package main
