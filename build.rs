@@ -814,10 +814,12 @@ fn asm_path(out_dir: &Path, src: &Path, asm_target: &AsmTarget) -> PathBuf {
 }
 
 fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
+    let perl = get_command("PERL_EXECUTABLE", "perl");
+
     let children = src_dst
         .iter()
         .map(|(src, dst)| {
-            let mut cmd = Command::new(get_command("PERL_EXECUTABLE", "perl"));
+            let mut cmd = Command::new(&perl);
 
             cmd.arg(src).arg(asm_target.perlasm_format);
 
