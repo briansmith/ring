@@ -171,6 +171,7 @@ add_library(
   hkdf/hkdf.c
   hpke/hpke.c
   hrss/hrss.c
+  kyber/keccak.c
   lhash/lhash.c
   mem.c
   obj/obj.c
@@ -398,6 +399,7 @@ add_executable(
   hmac_extra/hmac_test.cc
   hrss/hrss_test.cc
   impl_dispatch_test.cc
+  kyber/kyber_test.cc
   lhash/lhash_test.cc
   obj/obj_test.cc
   pem/pem_test.cc
