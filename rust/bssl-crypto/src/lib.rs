@@ -26,6 +26,9 @@
 extern crate core;
 use core::ops::Not;
 
+/// BoringSSL implemented plain aes operations.
+pub mod aes;
+
 /// BoringSSL implemented hmac operations.
 pub mod hmac;
 
