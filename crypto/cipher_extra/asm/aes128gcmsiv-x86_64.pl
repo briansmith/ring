@@ -32,7 +32,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 $code.=<<___;
-.data
+.section .rodata
 
 .align 16
 one:

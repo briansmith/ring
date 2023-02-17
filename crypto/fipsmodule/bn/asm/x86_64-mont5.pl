@@ -3576,11 +3576,13 @@ $code.=<<___;
 ___
 }
 $code.=<<___;
+.section .rodata
 .align	64
 .Linc:
 	.long	0,0, 1,1
 	.long	2,2, 2,2
 .asciz	"Montgomery Multiplication with scatter/gather for x86_64, CRYPTOGAMS by <appro\@openssl.org>"
+.text
 ___
 
 # EXCEPTION_DISPOSITION handler (EXCEPTION_RECORD *rec,ULONG64 frame,

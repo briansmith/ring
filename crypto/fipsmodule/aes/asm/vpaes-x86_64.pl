@@ -1288,6 +1288,7 @@ _vpaes_preheat:
 ##                                                    ##
 ########################################################
 .type	_vpaes_consts,\@object
+.section .rodata
 .align	64
 _vpaes_consts:
 .Lk_inv:	# inv, inva
@@ -1397,6 +1398,7 @@ _vpaes_consts:
 .asciz	"Vector Permutation AES for x86_64/SSSE3, Mike Hamburg (Stanford University)"
 .align	64
 .size	_vpaes_consts,.-_vpaes_consts
+.text
 ___
 
 if ($win64) {
