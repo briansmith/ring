@@ -118,13 +118,6 @@ static int extract_cpuinfo_field(STRING_PIECE *out, const STRING_PIECE *in,
   return 0;
 }
 
-static int cpuinfo_field_equals(const STRING_PIECE *cpuinfo, const char *field,
-                                const char *value) {
-  STRING_PIECE extracted;
-  return extract_cpuinfo_field(&extracted, cpuinfo, field) &&
-         STRING_PIECE_equals(&extracted, value);
-}
-
 // has_list_item treats |list| as a space-separated list of items and returns
 // one if |item| is contained in |list| and zero otherwise.
 static int has_list_item(const STRING_PIECE *list, const char *item) {
@@ -133,27 +126,6 @@ static int has_list_item(const STRING_PIECE *list, const char *item) {
     if (STRING_PIECE_equals(&feature, item)) {
       return 1;
     }
-  }
-  return 0;
-}
-
-// crypto_get_arm_hwcap_from_cpuinfo returns an equivalent ARM |AT_HWCAP| value
-// from |cpuinfo|.
-static unsigned long crypto_get_arm_hwcap_from_cpuinfo(
-    const STRING_PIECE *cpuinfo) {
-  if (cpuinfo_field_equals(cpuinfo, "CPU architecture", "8")) {
-    // This is a 32-bit ARM binary running on a 64-bit kernel. NEON is always
-    // available on ARMv8. Linux omits required features, so reading the
-    // "Features" line does not work. (For simplicity, use strict equality. We
-    // assume everything running on future ARM architectures will have a
-    // working |getauxval|.)
-    return HWCAP_NEON;
-  }
-
-  STRING_PIECE features;
-  if (extract_cpuinfo_field(&features, cpuinfo, "Features") &&
-      has_list_item(&features, "neon")) {
-    return HWCAP_NEON;
   }
   return 0;
 }

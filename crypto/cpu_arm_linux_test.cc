@@ -22,7 +22,6 @@
 TEST(ARMLinuxTest, CPUInfo) {
   struct CPUInfoTest {
     const char *cpuinfo;
-    unsigned long hwcap;
     unsigned long hwcap2;
   } kTests[] = {
       // Nexus 4 from https://crbug.com/341598#c43
@@ -51,7 +50,6 @@ TEST(ARMLinuxTest, CPUInfo) {
           "Hardware        : QCT APQ8064 MAKO\n"
           "Revision        : 000b\n"
           "Serial          : 0000000000000000\n",
-          HWCAP_NEON,
           0,
       },
       // Pixel 2 (truncated slightly)
@@ -95,13 +93,11 @@ TEST(ARMLinuxTest, CPUInfo) {
           // (Extra processors omitted.)
           "\n"
           "Hardware        : Qualcomm Technologies, Inc MSM8998\n",
-          HWCAP_NEON,  // CPU architecture 8 implies NEON.
           HWCAP2_AES | HWCAP2_PMULL | HWCAP2_SHA1 | HWCAP2_SHA2,
       },
       // Garbage should be tolerated.
       {
           "Blah blah blah this is definitely an ARM CPU",
-          0,
           0,
       },
       // A hypothetical ARMv8 CPU without crc32 (and thus no trailing space
@@ -109,44 +105,37 @@ TEST(ARMLinuxTest, CPUInfo) {
       {
           "Features        : aes pmull sha1 sha2\n"
           "CPU architecture: 8\n",
-          HWCAP_NEON,
           HWCAP2_AES | HWCAP2_PMULL | HWCAP2_SHA1 | HWCAP2_SHA2,
       },
       // Various combinations of ARMv8 flags.
       {
           "Features        : aes sha1 sha2\n"
           "CPU architecture: 8\n",
-          HWCAP_NEON,
           HWCAP2_AES | HWCAP2_SHA1 | HWCAP2_SHA2,
       },
       {
           "Features        : pmull sha2\n"
           "CPU architecture: 8\n",
-          HWCAP_NEON,
           HWCAP2_PMULL | HWCAP2_SHA2,
       },
       {
           "Features        : aes aes   aes not_aes aes aes \n"
           "CPU architecture: 8\n",
-          HWCAP_NEON,
           HWCAP2_AES,
       },
       {
           "Features        : \n"
           "CPU architecture: 8\n",
-          HWCAP_NEON,
           0,
       },
       {
           "Features        : nothing\n"
           "CPU architecture: 8\n",
-          HWCAP_NEON,
           0,
       },
       // If opening /proc/cpuinfo fails, we process the empty string.
       {
           "",
-          0,
           0,
       },
   };
@@ -154,7 +143,6 @@ TEST(ARMLinuxTest, CPUInfo) {
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.cpuinfo);
     STRING_PIECE sp = {t.cpuinfo, strlen(t.cpuinfo)};
-    EXPECT_EQ(t.hwcap, crypto_get_arm_hwcap_from_cpuinfo(&sp));
     EXPECT_EQ(t.hwcap2, crypto_get_arm_hwcap2_from_cpuinfo(&sp));
   }
 }
