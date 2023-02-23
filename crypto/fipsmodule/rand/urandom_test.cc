@@ -221,14 +221,14 @@ static bool regs_set_ret(int child_pid, int ret);
 // to fail to run.
 static bool regs_break_syscall(int child_pid, const struct regs *orig_regs);
 
-#if defined(OPENSSL_X86_64)
-
 struct regs {
   uintptr_t syscall;
   uintptr_t args[3];
   uintptr_t ret;
   struct user_regs_struct regs;
 };
+
+#if defined(OPENSSL_X86_64)
 
 static bool regs_read(struct regs *out_regs, int child_pid) {
   if (ptrace(PTRACE_GETREGS, child_pid, nullptr, &out_regs->regs) != 0) {
@@ -264,33 +264,26 @@ static bool regs_break_syscall(int child_pid, const struct regs *orig_regs) {
 
 #elif defined(OPENSSL_AARCH64)
 
-struct regs {
-  uintptr_t syscall;
-  uintptr_t args[3];
-  uintptr_t ret;
-  uint64_t regs[9];
-};
-
 static bool regs_read(struct regs *out_regs, int child_pid) {
   struct iovec io;
-  io.iov_base = out_regs->regs;
+  io.iov_base = &out_regs->regs;
   io.iov_len = sizeof(out_regs->regs);
   if (ptrace(PTRACE_GETREGSET, child_pid, NT_PRSTATUS, &io) != 0) {
     return false;
   }
 
-  out_regs->syscall = out_regs->regs[8];
-  out_regs->ret = out_regs->regs[0];
-  out_regs->args[0] = out_regs->regs[0];
-  out_regs->args[1] = out_regs->regs[1];
-  out_regs->args[2] = out_regs->regs[2];
+  out_regs->syscall = out_regs->regs.regs[8];
+  out_regs->ret = out_regs->regs.regs[0];
+  out_regs->args[0] = out_regs->regs.regs[0];
+  out_regs->args[1] = out_regs->regs.regs[1];
+  out_regs->args[2] = out_regs->regs.regs[2];
 
   return true;
 }
 
 static bool regs_set(int child_pid, const struct regs *new_regs) {
   struct iovec io;
-  io.iov_base = (void *) new_regs->regs;
+  io.iov_base = const_cast<struct user_regs_struct *>(&new_regs->regs);
   io.iov_len = sizeof(new_regs->regs);
   return ptrace(PTRACE_SETREGSET, child_pid, NT_PRSTATUS, &io) == 0;
 }
@@ -300,7 +293,7 @@ static bool regs_set_ret(int child_pid, int ret) {
   if (!regs_read(&regs, child_pid)) {
     return false;
   }
-  regs.regs[0] = ret;
+  regs.regs.regs[0] = ret;
   return regs_set(child_pid, &regs);
 }
 
@@ -309,7 +302,7 @@ static bool regs_break_syscall(int child_pid, const struct regs *orig_regs) {
   // the first argument to -1, which suffices to break the syscalls that we care
   // about here.
   struct regs copy = *orig_regs;
-  copy.regs[0] = -1;
+  copy.regs.regs[0] = -1;
   return regs_set(child_pid, orig_regs);
 }
 
