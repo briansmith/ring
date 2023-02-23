@@ -253,12 +253,9 @@ static bool regs_set_ret(int child_pid, int ret) {
 }
 
 static bool regs_break_syscall(int child_pid, const struct regs *orig_regs) {
-  // Replacing the syscall number with -1 doesn't work on AArch64 thus we set
-  // the first argument to -1, which suffices to break the syscalls that we care
-  // about here.
-  struct user_regs_struct regs;
-  memcpy(&regs, &orig_regs->regs, sizeof(regs));
-  regs.rdi = -1;
+  // Replace the syscall number with -1 to cause the kernel to fail the call.
+  struct user_regs_struct regs = orig_regs->regs;
+  regs.orig_rax = -1;
   return ptrace(PTRACE_SETREGS, child_pid, nullptr, &regs) == 0;
 }
 
@@ -281,11 +278,13 @@ static bool regs_read(struct regs *out_regs, int child_pid) {
   return true;
 }
 
-static bool regs_set(int child_pid, const struct regs *new_regs) {
+static bool set_regset(int child_pid, int regset, const void *data,
+                       size_t len) {
   struct iovec io;
-  io.iov_base = const_cast<struct user_regs_struct *>(&new_regs->regs);
-  io.iov_len = sizeof(new_regs->regs);
-  return ptrace(PTRACE_SETREGSET, child_pid, NT_PRSTATUS, &io) == 0;
+  io.iov_base = const_cast<void *>(data);
+  io.iov_len = len;
+  return ptrace(PTRACE_SETREGSET, child_pid, reinterpret_cast<void *>(regset),
+                &io) == 0;
 }
 
 static bool regs_set_ret(int child_pid, int ret) {
@@ -294,16 +293,13 @@ static bool regs_set_ret(int child_pid, int ret) {
     return false;
   }
   regs.regs.regs[0] = ret;
-  return regs_set(child_pid, &regs);
+  return set_regset(child_pid, NT_PRSTATUS, &regs.regs, sizeof(regs.regs));
 }
 
 static bool regs_break_syscall(int child_pid, const struct regs *orig_regs) {
-  // Replacing the syscall number with -1 doesn't work on AArch64 thus we set
-  // the first argument to -1, which suffices to break the syscalls that we care
-  // about here.
-  struct regs copy = *orig_regs;
-  copy.regs.regs[0] = -1;
-  return regs_set(child_pid, orig_regs);
+  // Replace the syscall number with -1 to cause the kernel to fail the call.
+  int syscall = -1;
+  return set_regset(child_pid, NT_ARM_SYSTEM_CALL, &syscall, sizeof(syscall));
 }
 
 #endif
