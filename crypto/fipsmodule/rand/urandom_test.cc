@@ -436,7 +436,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
   // Parent process
   int status;
   ASSERT_EQ(child_pid, waitpid(child_pid, &status, 0));
-  ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP);
+  ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP)
+      << "Child was not stopped with SIGSTOP: " << status;
 
   // Set options so that:
   //   a) the child process is killed once this process dies.
@@ -467,7 +468,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     }
 
     // Otherwise the only valid ptrace event is a system call stop.
-    ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
+    ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80))
+        << "Child was not stopped with a syscall stop: " << status;
 
     struct regs regs;
     ASSERT_TRUE(regs_read(&regs, child_pid));
