@@ -14,7 +14,7 @@
  */
 use crate::{
     digest::{Md, Sha256, Sha512},
-    CSlice, ForeignTypeRef as _, PanicResultHandler,
+    CSlice, ForeignTypeRef as _,
 };
 use core::{
     ffi::{c_uint, c_void},
@@ -22,25 +22,25 @@ use core::{
     ptr,
 };
 
-/// Computes the HMAC-SHA-256 of `data` as a one-shot operation.
+/// Computes the HMAC-SHA256 of `data` as a one-shot operation.
 ///
 /// Calculates the HMAC of data, using the given `key` and returns the result.
 /// It returns the computed hmac.
 /// Can panic if memory allocation fails in the underlying BoringSSL code.
-pub fn hmac_sha_256(key: &[u8], data: &[u8]) -> [u8; 32] {
+pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
     hmac::<32, Sha256>(key, data)
 }
 
-/// Computes the HMAC-SHA-512 of `data` as a one-shot operation.
+/// Computes the HMAC-SHA512 of `data` as a one-shot operation.
 ///
 /// Calculates the HMAC of data, using the given `key` and returns the result.
 /// It returns the computed hmac.
 /// Can panic if memory allocation fails in the underlying BoringSSL code.
-pub fn hmac_sha_512(key: &[u8], data: &[u8]) -> [u8; 64] {
+pub fn hmac_sha512(key: &[u8], data: &[u8]) -> [u8; 64] {
     hmac::<64, Sha512>(key, data)
 }
 
-/// The BoringSSL HMAC-SHA-256 implementation. The operations may panic if memory allocation fails
+/// The BoringSSL HMAC-SHA256 implementation. The operations may panic if memory allocation fails
 /// in BoringSSL.
 pub struct HmacSha256(Hmac<32, Sha256>);
 
@@ -81,7 +81,7 @@ impl HmacSha256 {
     }
 }
 
-/// The BoringSSL HMAC-SHA-512 implementation. The operations may panic if memory allocation fails
+/// The BoringSSL HMAC-SHA512 implementation. The operations may panic if memory allocation fails
 /// in BoringSSL.
 pub struct HmacSha512(Hmac<64, Sha512>);
 
@@ -139,7 +139,7 @@ fn hmac<const N: usize, M: Md>(key: &[u8], data: &[u8]) -> [u8; N] {
     // Safety:
     // - buf always contains N bytes of space
     // - If NULL is returned on error we panic immediately
-    unsafe {
+    let result = unsafe {
         bssl_sys::HMAC(
             M::get_md().as_ptr(),
             CSlice::from(key).as_ptr(),
@@ -149,8 +149,8 @@ fn hmac<const N: usize, M: Md>(key: &[u8], data: &[u8]) -> [u8; N] {
             out.as_mut_ptr(),
             &mut size as *mut c_uint,
         )
-    }
-    .panic_if_error();
+    };
+    assert!(!result.is_null(), "Result of bssl_sys::HMAC was null");
 
     out
 }
@@ -177,7 +177,10 @@ impl<const N: usize, M: Md> Hmac<N, M> {
         // Safety:
         // - HMAC_CTX_new panics if allocation fails
         let ctx = unsafe { bssl_sys::HMAC_CTX_new() };
-        ctx.panic_if_error();
+        assert!(
+            !ctx.is_null(),
+            "result of bssl_sys::HMAC_CTX_new() was null"
+        );
 
         // Safety:
         // - HMAC_Init_ex must be called with a context previously created with HMAC_CTX_new,
@@ -185,7 +188,7 @@ impl<const N: usize, M: Md> Hmac<N, M> {
         // - HMAC_Init_ex may return an error if key is null but the md is different from
         //   before. This is avoided here since key is guaranteed to be non-null.
         // - HMAC_Init_ex returns 0 on allocation failure in which case we panic
-        unsafe {
+        let result = unsafe {
             bssl_sys::HMAC_Init_ex(
                 ctx,
                 CSlice::from(key).as_ptr() as *const c_void,
@@ -193,8 +196,8 @@ impl<const N: usize, M: Md> Hmac<N, M> {
                 M::get_md().as_ptr(),
                 ptr::null_mut(),
             )
-        }
-        .panic_if_error();
+        };
+        assert!(result > 0, "Allocation failure in bssl_sys::HMAC_Init_ex");
 
         Self {
             ctx,
@@ -204,11 +207,11 @@ impl<const N: usize, M: Md> Hmac<N, M> {
 
     /// Update state using the provided data, can be called repeatedly.
     fn update(&mut self, data: &[u8]) {
-        unsafe {
+        let result = unsafe {
             // Safety: HMAC_Update will always return 1, in case it doesnt we panic
             bssl_sys::HMAC_Update(self.ctx, data.as_ptr(), data.len())
-        }
-        .panic_if_error()
+        };
+        assert_eq!(result, 1, "failure in bssl_sys::HMAC_Update");
     }
 
     /// Obtain the hmac computation consuming the hmac instance.
@@ -219,8 +222,9 @@ impl<const N: usize, M: Md> Hmac<N, M> {
         // - hmac has a fixed size output of N which will never exceed the length of an N
         // length array
         // - on allocation failure we panic
-        unsafe { bssl_sys::HMAC_Final(self.ctx, buf.as_mut_ptr(), &mut size as *mut c_uint) }
-            .panic_if_error();
+        let result =
+            unsafe { bssl_sys::HMAC_Final(self.ctx, buf.as_mut_ptr(), &mut size as *mut c_uint) };
+        assert!(result > 0, "Allocation failure in bssl_sys::HMAC_Final");
         buf
     }
 
@@ -338,7 +342,7 @@ mod tests {
         ];
         let key: [u8; 20] = [0x0b; 20];
         let data = b"Hi There";
-        let hmac_result = hmac_sha_256(&key, data);
+        let hmac_result = hmac_sha256(&key, data);
         assert_eq!(&hmac_result, &expected_hmac);
     }
 

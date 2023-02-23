@@ -26,19 +26,24 @@ pub struct Sha512 {}
 /// A reference to an [`Md`], which abstracts the details of a specific hash function allowing code
 /// to deal with the concept of a "hash function" without needing to know exactly which hash function
 /// it is.
-pub(crate) struct MdRef;
+pub struct MdRef;
 
 unsafe impl ForeignTypeRef for MdRef {
     type CType = bssl_sys::EVP_MD;
 }
 
 /// Used internally to get a BoringSSL internal MD
-pub(crate) trait Md {
-    /// gets a reference to a message digest algorithm to be used by the hkdf implementation
+pub trait Md {
+    /// The output size of the hash operation.
+    const OUTPUT_SIZE: usize;
+
+    /// Gets a reference to a message digest algorithm to be used by the hkdf implementation.
     fn get_md() -> &'static MdRef;
 }
 
 impl Md for Sha256 {
+    const OUTPUT_SIZE: usize = bssl_sys::SHA256_DIGEST_LENGTH as usize;
+
     fn get_md() -> &'static MdRef {
         // Safety:
         // - this always returns a valid pointer to an EVP_MD
@@ -47,6 +52,8 @@ impl Md for Sha256 {
 }
 
 impl Md for Sha512 {
+    const OUTPUT_SIZE: usize = bssl_sys::SHA512_DIGEST_LENGTH as usize;
+
     fn get_md() -> &'static MdRef {
         // Safety:
         // - this always returns a valid pointer to an EVP_MD

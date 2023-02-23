@@ -24,46 +24,30 @@
 //! Rust boringssl binding
 
 extern crate core;
-use core::ops::Not;
 
 /// BoringSSL implemented plain aes operations.
 pub mod aes;
 
-/// BoringSSL implemented hmac operations.
-pub mod hmac;
-
 /// BoringSSL implemented hash functions.
 pub mod digest;
 
-/// Used for handling result types from C APIs.
-trait PanicResultHandler {
-    /// Panics if a C api returns an invalid result
-    /// Used for APIs which return error codes for allocation failures.
-    fn panic_if_error(&self);
-}
+/// BoringSSL implemented hkdf operations.
+pub mod hkdf;
 
-impl PanicResultHandler for i32 {
-    /// BoringSSL APIs return 1 on success or 0 on allocation failure.
-    #[allow(clippy::expect_used)]
-    fn panic_if_error(&self) {
-        self.gt(&0).then_some(()).expect("allocation failed!")
-    }
-}
+/// BoringSSL implemented hmac operations.
+pub mod hmac;
 
-impl<T> PanicResultHandler for *mut T {
-    /// Boringssl APIs return NULL on allocation failure for APIs that return a CTX.
-    #[allow(clippy::expect_used)]
-    fn panic_if_error(&self) {
-        self.is_null()
-            .not()
-            .then_some(())
-            .expect("allocation failed!")
-    }
-}
-
+/// This is a helper struct which provides functions for passing slices over FFI.
 struct CSlice<'a>(&'a [u8]);
 
+impl<'a> From<&'a [u8]> for CSlice<'a> {
+    fn from(value: &'a [u8]) -> Self {
+        Self(value)
+    }
+}
+
 impl CSlice<'_> {
+    /// Returns a raw pointer to the value, which is safe to pass over FFI.
     pub fn as_ptr<T>(&self) -> *const T {
         if self.0.is_empty() {
             std::ptr::null()
@@ -73,8 +57,26 @@ impl CSlice<'_> {
     }
 }
 
-impl<'a> From<&'a [u8]> for CSlice<'a> {
-    fn from(value: &'a [u8]) -> Self {
+/// This is a helper struct which provides functions for passing mutable slices over FFI.
+struct CSliceMut<'a>(&'a mut [u8]);
+
+impl CSliceMut<'_> {
+    /// Returns a raw pointer to the value, which is safe to pass over FFI.
+    pub fn as_mut_ptr<T>(&mut self) -> *mut T {
+        if self.0.is_empty() {
+            std::ptr::null_mut()
+        } else {
+            self.0.as_mut_ptr() as *mut T
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl<'a> From<&'a mut [u8]> for CSliceMut<'a> {
+    fn from(value: &'a mut [u8]) -> Self {
         Self(value)
     }
 }
