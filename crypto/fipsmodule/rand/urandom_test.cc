@@ -36,6 +36,7 @@
 #include <sys/user.h>
 
 #include "fork_detect.h"
+#include "getrandom_fillin.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -776,6 +777,12 @@ static void CheckInvariants(const std::vector<Event> &events) {
 TEST(URandomTest, Test) {
   char buf[256];
 
+  // Some Android systems lack getrandom.
+  uint8_t scratch[1];
+  const bool has_getrandom =
+      (syscall(__NR_getrandom, scratch, sizeof(scratch), GRND_NONBLOCK) != -1 ||
+       errno != ENOSYS);
+
 #define TRACE_FLAG(flag)                                         \
   snprintf(buf, sizeof(buf), #flag ": %d", (flags & flag) != 0); \
   SCOPED_TRACE(buf);
@@ -786,6 +793,10 @@ TEST(URandomTest, Test) {
       // These cases are meaningless unless the code will try to use the entropy
       // daemon.
       continue;
+    }
+
+    if (!has_getrandom && !(flags & NO_GETRANDOM)) {
+        continue;
     }
 
     TRACE_FLAG(NO_GETRANDOM);
