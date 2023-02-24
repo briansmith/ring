@@ -71,6 +71,9 @@ def _GetDesiredVsToolchainHashes(version):
     # VS 2019 16.61 with 10.0.20348.0 SDK, 10.0.22621.755 version of Debuggers,
     # with ARM64 libraries and UWP support.
     return ['0b5ee4d2b1']
+  if version == '2022':
+    # VS 2022 17.4 with 10.0.22621.0 SDK with ARM64 libraries and UWP support.
+    return ['27370823e7']
   raise Exception('Unsupported VS version %s' % version)
 
 
