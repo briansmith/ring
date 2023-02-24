@@ -572,6 +572,13 @@ else()
   add_custom_target(fips_specific_tests_if_any)
 endif()
 
+# Read util/go_tests.txt into a CMake variable.
+file(READ util/go_tests.txt GO_TESTS)
+string(REPLACE "\n" ";" GO_TESTS "${GO_TESTS}")
+list(REMOVE_ITEM GO_TESTS "")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+             util/go_tests.txt)
+
 add_custom_target(
     run_tests
     COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
@@ -579,6 +586,7 @@ add_custom_target(
     COMMAND cd ssl/test/runner &&
             ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
               ${HANDSHAKER_ARGS} ${RUNNER_ARGS}
+    COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS all_tests bssl_shim handshaker fips_specific_tests_if_any
     USES_TERMINAL)
