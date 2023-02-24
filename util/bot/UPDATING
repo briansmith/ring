@@ -31,12 +31,6 @@ nasm-win32.exe: Update to the appropriate release of NASM, found at
 
     The current revision is nasm-2.13.03-win64.zip.
 
-perl-win32.zip: Update to the latest 64-bit prebuilt "Portable" edition of
-    Strawberry Perl, found at http://strawberryperl.com/releases.html. The
-    download will be named strawberry-perl-VERSION-64bit-portable.zip.
-
-    The current revision is strawberry-perl-5.26.2.1-64bit-portable.zip.
-
 Finally, update sde-linux64.tar.xz and sde-win32.tar.xz by downloading the
 latet release from Intel at
 https://software.intel.com/en-us/articles/intel-software-development-emulator,
