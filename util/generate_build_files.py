@@ -489,7 +489,7 @@ endif()
 
 '''
 
-  def PrintLibrary(self, out, name, files):
+  def PrintLibrary(self, out, name, files, libs=[]):
     out.write('add_library(\n')
     out.write('  %s\n\n' % name)
 
@@ -497,6 +497,8 @@ endif()
       out.write('  %s\n' % PathOf(f))
 
     out.write(')\n\n')
+    if libs:
+      out.write('target_link_libraries(%s %s)\n\n' % (name, ' '.join(libs)))
 
   def PrintExe(self, out, name, files, libs):
     out.write('add_executable(\n')
@@ -541,8 +543,8 @@ endif()
 
       self.PrintLibrary(cmake, 'crypto',
           files['crypto'] + ['${CRYPTO_SOURCES_ASM_USED}'])
-      cmake.write('target_include_directories(crypto PUBLIC src/include)\n')
-      self.PrintLibrary(cmake, 'ssl', files['ssl'])
+      cmake.write('target_include_directories(crypto PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/include>)\n\n')
+      self.PrintLibrary(cmake, 'ssl', files['ssl'], ['crypto'])
       self.PrintExe(cmake, 'bssl', files['tool'], ['ssl', 'crypto'])
 
       cmake.write(
