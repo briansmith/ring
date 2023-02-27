@@ -3,7 +3,7 @@ add_library(rust_wrapper STATIC rust_wrapper.c)
 target_link_libraries(rust_wrapper crypto)
 
 # Generate architecture-specific wrappers.
-set(WRAPPER_TARGET ${CMAKE_BINARY_DIR}/rust/src/wrapper_${RUST_BINDINGS}.rs)
+set(WRAPPER_TARGET ${CMAKE_CURRENT_BINARY_DIR}/src/wrapper_${RUST_BINDINGS}.rs)
 set(COMMAND ${BINDGEN_EXECUTABLE} "wrapper.h"
             -o ${WRAPPER_TARGET}
             --no-derive-default

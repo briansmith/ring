@@ -296,7 +296,7 @@ if(OPENSSL_NASM)
   target_sources(crypto PRIVATE ${CRYPTO_SOURCES_NASM})
 endif()
 target_include_directories(crypto PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
 install_if_enabled(TARGETS crypto EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})
