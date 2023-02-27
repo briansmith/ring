@@ -105,8 +105,12 @@ void BLAKE2B256_Init(BLAKE2B_CTX *b2b) {
 }
 
 void BLAKE2B256_Update(BLAKE2B_CTX *b2b, const void *in_data, size_t len) {
-  const uint8_t *data = (const uint8_t *)in_data;
+  if (len == 0) {
+    // Work around a C language bug. See https://crbug.com/1019588.
+    return;
+  }
 
+  const uint8_t *data = in_data;
   size_t todo = sizeof(b2b->block.bytes) - b2b->block_used;
   if (todo > len) {
     todo = len;
