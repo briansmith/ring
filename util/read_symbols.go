@@ -176,6 +176,9 @@ func listSymbolsELF(contents []byte) ([]string, error) {
 		return nil, err
 	}
 	syms, err := f.Symbols()
+	if err == elf.ErrNoSymbols {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
