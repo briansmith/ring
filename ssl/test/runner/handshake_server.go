@@ -957,7 +957,7 @@ ResendHelloRetryRequest:
 		// Once a curve has been selected and a key share identified,
 		// the server needs to generate a public value and send it in
 		// the ServerHello.
-		curve, ok := curveForCurveID(selectedCurve, config)
+		kem, ok := kemForCurveID(selectedCurve, config)
 		if !ok {
 			panic("tls: server failed to look up curve ID")
 		}
@@ -967,9 +967,9 @@ ResendHelloRetryRequest:
 		if config.Bugs.SkipHelloRetryRequest {
 			// If skipping HelloRetryRequest, use a random key to
 			// avoid crashing.
-			curve2, _ := curveForCurveID(selectedCurve, config)
+			kem2, _ := kemForCurveID(selectedCurve, config)
 			var err error
-			peerKey, err = curve2.offer(config.rand())
+			peerKey, err = kem2.generate(config.rand())
 			if err != nil {
 				return err
 			}
@@ -977,7 +977,7 @@ ResendHelloRetryRequest:
 			peerKey = selectedKeyShare.keyExchange
 		}
 
-		publicKey, ecdheSecret, err := curve.accept(config.rand(), peerKey)
+		ciphertext, ecdheSecret, err := kem.encap(config.rand(), peerKey)
 		if err != nil {
 			c.sendAlert(alertHandshakeFailure)
 			return err
@@ -991,19 +991,19 @@ ResendHelloRetryRequest:
 			curveID = config.Bugs.SendCurve
 		}
 		if c.config.Bugs.InvalidECDHPoint {
-			publicKey[0] ^= 0xff
+			ciphertext[0] ^= 0xff
 		}
 
 		hs.hello.keyShare = keyShareEntry{
 			group:       curveID,
-			keyExchange: publicKey,
+			keyExchange: ciphertext,
 		}
 
 		if config.Bugs.EncryptedExtensionsWithKeyShare {
 			encryptedExtensions.extensions.hasKeyShare = true
 			encryptedExtensions.extensions.keyShare = keyShareEntry{
 				group:       curveID,
-				keyExchange: publicKey,
+				keyExchange: ciphertext,
 			}
 		}
 	} else {

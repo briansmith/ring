@@ -824,7 +824,7 @@ int SSL_request_handshake_hints(SSL *ssl, const uint8_t *client_hello,
 //
 // KeyShareHint ::= SEQUENCE {
 //     groupId                 INTEGER,
-//     publicKey               OCTET STRING,
+//     ciphertext              OCTET STRING,
 //     secret                  OCTET STRING,
 // }
 //
@@ -886,12 +886,12 @@ int SSL_serialize_handshake_hints(const SSL *ssl, CBB *out) {
     }
   }
 
-  if (hints->key_share_group_id != 0 && !hints->key_share_public_key.empty() &&
+  if (hints->key_share_group_id != 0 && !hints->key_share_ciphertext.empty() &&
       !hints->key_share_secret.empty()) {
     if (!CBB_add_asn1(&seq, &child, kKeyShareHintTag) ||
         !CBB_add_asn1_uint64(&child, hints->key_share_group_id) ||
-        !CBB_add_asn1_octet_string(&child, hints->key_share_public_key.data(),
-                                   hints->key_share_public_key.size()) ||
+        !CBB_add_asn1_octet_string(&child, hints->key_share_ciphertext.data(),
+                                   hints->key_share_ciphertext.size()) ||
         !CBB_add_asn1_octet_string(&child, hints->key_share_secret.data(),
                                    hints->key_share_secret.size())) {
       return 0;
@@ -1040,11 +1040,11 @@ int SSL_set_handshake_hints(SSL *ssl, const uint8_t *hints, size_t hints_len) {
 
   if (has_key_share) {
     uint64_t group_id;
-    CBS public_key, secret;
+    CBS ciphertext, secret;
     if (!CBS_get_asn1_uint64(&key_share, &group_id) ||  //
         group_id == 0 || group_id > 0xffff ||
-        !CBS_get_asn1(&key_share, &public_key, CBS_ASN1_OCTETSTRING) ||
-        !hints_obj->key_share_public_key.CopyFrom(public_key) ||
+        !CBS_get_asn1(&key_share, &ciphertext, CBS_ASN1_OCTETSTRING) ||
+        !hints_obj->key_share_ciphertext.CopyFrom(ciphertext) ||
         !CBS_get_asn1(&key_share, &secret, CBS_ASN1_OCTETSTRING) ||
         !hints_obj->key_share_secret.CopyFrom(secret)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_COULD_NOT_PARSE_HINTS);

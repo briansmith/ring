@@ -1468,11 +1468,11 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    // Generate the premaster secret.
-    bssl::UniquePtr<SSLKeyShare> key_share =
+    // Generate a premaster secret and encapsulate it.
+    bssl::UniquePtr<SSLKeyShare> kem =
         SSLKeyShare::Create(hs->new_session->group_id);
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!key_share || !key_share->Accept(&child, &pms, &alert, hs->peer_key)) {
+    if (!kem || !kem->Encap(&child, &pms, &alert, hs->peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }

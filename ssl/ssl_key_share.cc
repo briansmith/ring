@@ -43,7 +43,7 @@ class ECKeyShare : public SSLKeyShare {
 
   uint16_t GroupID() const override { return group_id_; }
 
-  bool Offer(CBB *out) override {
+  bool Generate(CBB *out) override {
     assert(!private_key_);
     // Generate a private key.
     private_key_.reset(BN_new());
@@ -66,8 +66,16 @@ class ECKeyShare : public SSLKeyShare {
     return true;
   }
 
-  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
-              Span<const uint8_t> peer_key) override {
+  bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
+             uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+    // ECDH may be fit into a KEM-like abstraction by using a second keypair's
+    // public key as the ciphertext.
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return Generate(out_ciphertext) && Decap(out_secret, out_alert, peer_key);
+  }
+
+  bool Decap(Array<uint8_t> *out_secret, uint8_t *out_alert,
+             Span<const uint8_t> ciphertext) override {
     assert(group_);
     assert(private_key_);
     *out_alert = SSL_AD_INTERNAL_ERROR;
@@ -79,9 +87,9 @@ class ECKeyShare : public SSLKeyShare {
       return false;
     }
 
-    if (peer_key.empty() || peer_key[0] != POINT_CONVERSION_UNCOMPRESSED ||
-        !EC_POINT_oct2point(group_, peer_point.get(), peer_key.data(),
-                            peer_key.size(), /*ctx=*/nullptr)) {
+    if (ciphertext.empty() || ciphertext[0] != POINT_CONVERSION_UNCOMPRESSED ||
+        !EC_POINT_oct2point(group_, peer_point.get(), ciphertext.data(),
+                            ciphertext.size(), /*ctx=*/nullptr)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       *out_alert = SSL_AD_DECODE_ERROR;
       return false;
@@ -133,14 +141,22 @@ class X25519KeyShare : public SSLKeyShare {
 
   uint16_t GroupID() const override { return SSL_CURVE_X25519; }
 
-  bool Offer(CBB *out) override {
+  bool Generate(CBB *out) override {
     uint8_t public_key[32];
     X25519_keypair(public_key, private_key_);
     return !!CBB_add_bytes(out, public_key, sizeof(public_key));
   }
 
-  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
-              Span<const uint8_t> peer_key) override {
+  bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
+             uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+    // X25519 may be fit into a KEM-like abstraction by using a second keypair's
+    // public key as the ciphertext.
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return Generate(out_ciphertext) && Decap(out_secret, out_alert, peer_key);
+  }
+
+  bool Decap(Array<uint8_t> *out_secret, uint8_t *out_alert,
+             Span<const uint8_t> ciphertext) override {
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
     Array<uint8_t> secret;
@@ -148,8 +164,8 @@ class X25519KeyShare : public SSLKeyShare {
       return false;
     }
 
-    if (peer_key.size() != 32 ||
-        !X25519(secret.data(), private_key_, peer_key.data())) {
+    if (ciphertext.size() != 32 ||  //
+        !X25519(secret.data(), private_key_, ciphertext.data())) {
       *out_alert = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
@@ -181,7 +197,7 @@ class CECPQ2KeyShare : public SSLKeyShare {
 
   uint16_t GroupID() const override { return SSL_CURVE_CECPQ2; }
 
-  bool Offer(CBB *out) override {
+  bool Generate(CBB *out) override {
     uint8_t x25519_public_key[32];
     X25519_keypair(x25519_public_key, x25519_private_key_);
 
@@ -205,8 +221,8 @@ class CECPQ2KeyShare : public SSLKeyShare {
     return true;
   }
 
-  bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
-              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+  bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
+             uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     Array<uint8_t> secret;
     if (!secret.Init(32 + HRSS_KEY_BYTES)) {
       return false;
@@ -230,9 +246,9 @@ class CECPQ2KeyShare : public SSLKeyShare {
 
     if (!HRSS_encap(ciphertext, secret.data() + 32, &peer_public_key,
                     entropy) ||
-        !CBB_add_bytes(out_public_key, x25519_public_key,
+        !CBB_add_bytes(out_ciphertext, x25519_public_key,
                        sizeof(x25519_public_key)) ||
-        !CBB_add_bytes(out_public_key, ciphertext, sizeof(ciphertext))) {
+        !CBB_add_bytes(out_ciphertext, ciphertext, sizeof(ciphertext))) {
       return false;
     }
 
@@ -240,8 +256,8 @@ class CECPQ2KeyShare : public SSLKeyShare {
     return true;
   }
 
-  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
-              Span<const uint8_t> peer_key) override {
+  bool Decap(Array<uint8_t> *out_secret, uint8_t *out_alert,
+             Span<const uint8_t> ciphertext) override {
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
     Array<uint8_t> secret;
@@ -249,15 +265,15 @@ class CECPQ2KeyShare : public SSLKeyShare {
       return false;
     }
 
-    if (peer_key.size() != 32 + HRSS_CIPHERTEXT_BYTES ||
-        !X25519(secret.data(), x25519_private_key_, peer_key.data())) {
+    if (ciphertext.size() != 32 + HRSS_CIPHERTEXT_BYTES ||
+        !X25519(secret.data(), x25519_private_key_, ciphertext.data())) {
       *out_alert = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
 
     if (!HRSS_decap(secret.data() + 32, &hrss_private_key_,
-                    peer_key.data() + 32, peer_key.size() - 32)) {
+                    ciphertext.data() + 32, ciphertext.size() - 32)) {
       return false;
     }
 
@@ -276,20 +292,19 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
 
   uint16_t GroupID() const override { return SSL_CURVE_X25519KYBER768; }
 
-  bool Offer(CBB *out) override {
+  bool Generate(CBB *out) override {
     // There is no implementation on Kyber in BoringSSL. BoringSSL must be
-    // patched for this key agreement to be workable. It is not enabled by
-    // default.
+    // patched for this KEM to be workable. It is not enabled by default.
     return false;
   }
 
-  bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
-              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+  bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
+             uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     return false;
   }
 
-  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
-              Span<const uint8_t> peer_key) override {
+  bool Decap(Array<uint8_t> *out_secret, uint8_t *out_alert,
+             Span<const uint8_t> ciphertext) override {
     return false;
   }
 };
@@ -300,20 +315,19 @@ class P256Kyber768KeyShare : public SSLKeyShare {
 
   uint16_t GroupID() const override { return SSL_CURVE_P256KYBER768; }
 
-  bool Offer(CBB *out) override {
+  bool Generate(CBB *out) override {
     // There is no implementation on Kyber in BoringSSL. BoringSSL must be
-    // patched for this key agreement to be workable. It is not enabled by
-    // default.
+    // patched for this KEM to be workable. It is not enabled by default.
     return false;
   }
 
-  bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
-              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+  bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
+             uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     return false;
   }
 
-  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
-              Span<const uint8_t> peer_key) override {
+  bool Decap(Array<uint8_t> *out_secret, uint8_t *out_alert,
+             Span<const uint8_t> ciphertext) override {
     return false;
   }
 };
@@ -357,13 +371,6 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
     default:
       return nullptr;
   }
-}
-
-bool SSLKeyShare::Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
-                         uint8_t *out_alert, Span<const uint8_t> peer_key) {
-  *out_alert = SSL_AD_INTERNAL_ERROR;
-  return Offer(out_public_key) &&
-         Finish(out_secret, out_alert, peer_key);
 }
 
 bool ssl_nid_to_group_id(uint16_t *out_group_id, int nid) {

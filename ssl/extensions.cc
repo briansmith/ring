@@ -2322,7 +2322,7 @@ bool ssl_setup_key_shares(SSL_HANDSHAKE *hs, uint16_t override_group_id) {
   if (!hs->key_shares[0] ||  //
       !CBB_add_u16(cbb.get(), group_id) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &key_exchange) ||
-      !hs->key_shares[0]->Offer(&key_exchange)) {
+      !hs->key_shares[0]->Generate(&key_exchange)) {
     return false;
   }
 
@@ -2331,7 +2331,7 @@ bool ssl_setup_key_shares(SSL_HANDSHAKE *hs, uint16_t override_group_id) {
     if (!hs->key_shares[1] ||  //
         !CBB_add_u16(cbb.get(), second_group_id) ||
         !CBB_add_u16_length_prefixed(cbb.get(), &key_exchange) ||
-        !hs->key_shares[1]->Offer(&key_exchange)) {
+        !hs->key_shares[1]->Generate(&key_exchange)) {
       return false;
     }
   }
@@ -2363,10 +2363,10 @@ static bool ext_key_share_add_clienthello(const SSL_HANDSHAKE *hs, CBB *out,
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,
                                          uint8_t *out_alert, CBS *contents) {
-  CBS peer_key;
+  CBS ciphertext;
   uint16_t group_id;
   if (!CBS_get_u16(contents, &group_id) ||
-      !CBS_get_u16_length_prefixed(contents, &peer_key) ||
+      !CBS_get_u16_length_prefixed(contents, &ciphertext) ||
       CBS_len(contents) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     *out_alert = SSL_AD_DECODE_ERROR;
@@ -2383,7 +2383,7 @@ bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
     key_share = hs->key_shares[1].get();
   }
 
-  if (!key_share->Finish(out_secret, out_alert, peer_key)) {
+  if (!key_share->Decap(out_secret, out_alert, ciphertext)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
@@ -2448,13 +2448,13 @@ bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
 }
 
 bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
-  CBB kse_bytes, public_key;
+  CBB entry, ciphertext;
   if (!CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
-      !CBB_add_u16_length_prefixed(out, &kse_bytes) ||
-      !CBB_add_u16(&kse_bytes, hs->new_session->group_id) ||
-      !CBB_add_u16_length_prefixed(&kse_bytes, &public_key) ||
-      !CBB_add_bytes(&public_key, hs->ecdh_public_key.data(),
-                     hs->ecdh_public_key.size()) ||
+      !CBB_add_u16_length_prefixed(out, &entry) ||
+      !CBB_add_u16(&entry, hs->new_session->group_id) ||
+      !CBB_add_u16_length_prefixed(&entry, &ciphertext) ||
+      !CBB_add_bytes(&ciphertext, hs->key_share_ciphertext.data(),
+                     hs->key_share_ciphertext.size()) ||
       !CBB_flush(out)) {
     return false;
   }
