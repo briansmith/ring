@@ -657,7 +657,11 @@ out:
 static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   std::vector<Event> ret;
   bool getrandom_ready = false;
-  const bool used_daemon = kUsesDaemon && AppendDaemonEvents(&ret, flags);
+  bool used_daemon = false;
+
+  if (have_fork_detection()) {
+    used_daemon = kUsesDaemon && AppendDaemonEvents(&ret, flags);
+  }
 
   // Probe for getrandom support
   ret.push_back(Event::GetRandom(1, GRND_NONBLOCK));
@@ -714,8 +718,13 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   const size_t kAdditionalDataLength = 32;
 
   if (!have_rdrand()) {
-    if ((!have_fork_detection() && !sysrand(true, kAdditionalDataLength)) ||
-        // Initialise CRNGT.
+    if (!have_fork_detection()) {
+      if (!sysrand(true, kAdditionalDataLength)) {
+        return ret;
+      }
+      used_daemon = kUsesDaemon && AppendDaemonEvents(&ret, flags);
+    }
+    if (// Initialise CRNGT.
         (!used_daemon && !sysrand(true, kSeedLength + (kIsFIPS ? 16 : 0))) ||
         // Personalisation draw if the daemon was used.
         (used_daemon && !sysrand(false, CTR_DRBG_ENTROPY_LEN)) ||
@@ -816,7 +825,9 @@ int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
   if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
-    CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
+    CRYPTO_fork_detect_force_madv_wipeonfork_for_testing(0);
+  } else {
+    CRYPTO_fork_detect_force_madv_wipeonfork_for_testing(1);
   }
 
   return RUN_ALL_TESTS();
