@@ -222,6 +222,8 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     }
   }
 
+  CBB cbb;
+  CBB_zero(&cbb);
   // If both the same type just copy across
   if (inform == outform) {
     if (!ASN1_STRING_set(dest, in, len)) {
@@ -231,8 +233,6 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     *out = dest;
     return str_type;
   }
-
-  CBB cbb;
   if (!CBB_init(&cbb, size_estimate + 1)) {
     goto err;
   }
