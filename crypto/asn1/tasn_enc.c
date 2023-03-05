@@ -97,6 +97,7 @@ int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it) {
     p = buf;
     int len2 = ASN1_item_ex_i2d(&val, &p, it, /*tag=*/-1, /*aclass=*/0);
     if (len2 <= 0) {
+      OPENSSL_free(buf);
       return len2;
     }
     assert(len == len2);
