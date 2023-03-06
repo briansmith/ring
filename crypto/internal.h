@@ -264,6 +264,10 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   return __builtin_bswap32(x);
 }
+
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return __builtin_bswap64(x);
+}
 #elif defined(_MSC_VER)
 #pragma warning(push, 3)
 #include <stdlib.h>
@@ -272,7 +276,43 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   return _byteswap_ulong(x);
 }
+
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return _byteswap_uint64(x);
+}
+#else
+static inline uint32_t CRYPTO_bswap4(uint32_t x) {
+  x = (x >> 16) | (x << 16);
+  x = ((x & 0xff00ff00) >> 8) | ((x & 0x00ff00ff) << 8);
+  return x;
+}
+
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return CRYPTO_bswap4(x >> 32) | (((uint64_t)CRYPTO_bswap4(x)) << 32);
+}
 #endif
+
+
+// Convert LE or BE values to/from native endianness.
+
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define RING_BIG_ENDIAN
+#endif
+#endif
+
+#ifdef RING_BIG_ENDIAN
+#define CRYPTO_bswap4_le(x) CRYPTO_bswap4((x))
+#define CRYPTO_bswap8_le(x) CRYPTO_bswap8((x))
+#define CRYPTO_bswap4_be(x) (x)
+#define CRYPTO_bswap8_be(x) (x)
+#else
+#define CRYPTO_bswap4_le(x) (x)
+#define CRYPTO_bswap8_le(x) (x)
+#define CRYPTO_bswap4_be(x) CRYPTO_bswap4((x))
+#define CRYPTO_bswap8_be(x) CRYPTO_bswap8((x))
+#endif
+
 
 #if !defined(RING_CORE_NOSTDLIBINC)
 #include <string.h>

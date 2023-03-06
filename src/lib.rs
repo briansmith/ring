@@ -115,5 +115,3 @@ mod sealed {
     pub trait Sealed {}
 }
 
-// TODO: https://github.com/briansmith/ring/issues/1555.
-const _LITTLE_ENDIAN_ONLY: () = assert!(cfg!(target_endian = "little"));

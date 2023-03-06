@@ -21,6 +21,7 @@ rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
 qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
+qemu_s390x="qemu-s390x -L /usr/s390x-linux-gnu"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
 # directory like `clang` that would conflict with the same-named tools that may
@@ -108,6 +109,13 @@ case $target in
     else
       export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
     fi
+    ;;
+  s390x-unknown-linux-gnu)
+    export CC_s390x_unknown_linux_gnu=clang-$llvm_version
+    export AR_s390x_unknown_linux_gnu=llvm-ar-$llvm_version
+    export CFLAGS_s390x_unknown_linux_gnu="--sysroot=/usr/s390x-linux-gnu"
+    export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_LINKER=s390x-linux-gnu-gcc
+    export CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_RUNNER="$qemu_s390x"
     ;;
   wasm32-unknown-unknown)
     # The first two are only needed for when the "wasm_c" feature is enabled.
