@@ -389,6 +389,7 @@ $code.=<<___;
 	lea		0x40($inp),%r8		# next input block
 	paddd		@MSG[0],$E
 	cmovne		%r8,$inp
+	prefetcht0	512($inp)
 	movdqa		$ABCD,$ABCD_SAVE	# offload $ABCD
 ___
 for($i=0;$i<20-4;$i+=2) {
