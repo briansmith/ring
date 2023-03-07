@@ -66,6 +66,9 @@ extern "C" {
 #endif
 
 
+typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
+typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
+
 struct evp_pkey_asn1_method_st {
   int pkey_id;
   uint8_t oid[9];
