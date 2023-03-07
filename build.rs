@@ -611,14 +611,9 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
         let _ = c.define("NDEBUG", None);
     }
 
-    if compiler.is_like_msvc() {
-        if std::env::var("OPT_LEVEL").unwrap() == "0" {
-            let _ = c.flag("/Od"); // Disable optimization for debug builds.
-                                   // run-time checking: (s)tack frame, (u)ninitialized variables
-            let _ = c.flag("/RTCsu");
-        } else {
-            let _ = c.flag("/Ox"); // Enable full optimization.
-        }
+    if compiler.is_like_msvc() && std::env::var("OPT_LEVEL").unwrap() == "0" {
+        // run-time checking: (s)tack frame, (u)ninitialized variables
+        let _ = c.flag("/RTCsu");
     }
 
     // Allow cross-compiling without a target sysroot for these targets.
