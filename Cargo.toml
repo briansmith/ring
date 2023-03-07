@@ -174,7 +174,7 @@ spin = { version = "0.9.2", default-features = false, features = ["once"] }
 libc = { version = "0.2.100", default-features = false }
 
 [target.'cfg(all(target_arch = "aarch64", target_os = "windows"))'.dependencies]
-winapi = { version = "0.3.9", default-features = false, features = ["ntsecapi", "wtypesbase", "processthreadsapi"] }
+windows-sys = { version = "0.48", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = { version = "0.3.26", default-features = false }
