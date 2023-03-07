@@ -24,6 +24,7 @@
 #include <openssl/curve25519.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
+#include <openssl/kyber.h>
 #include <openssl/hrss.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
@@ -293,20 +294,86 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
   uint16_t GroupID() const override { return SSL_CURVE_X25519KYBER768; }
 
   bool Generate(CBB *out) override {
-    // There is no implementation on Kyber in BoringSSL. BoringSSL must be
-    // patched for this KEM to be workable. It is not enabled by default.
-    return false;
+    uint8_t x25519_public_key[32];
+    X25519_keypair(x25519_public_key, x25519_private_key_);
+
+    uint8_t kyber_public_key[KYBER_PUBLIC_KEY_BYTES];
+    KYBER_generate_key(kyber_public_key, &kyber_private_key_);
+
+    if (!CBB_add_bytes(out, x25519_public_key, sizeof(x25519_public_key)) ||
+        !CBB_add_bytes(out, kyber_public_key, sizeof(kyber_public_key))) {
+      return false;
+    }
+
+    return true;
   }
 
   bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
-    return false;
+    Array<uint8_t> secret;
+    if (!secret.Init(32 + 32)) {
+      return false;
+    }
+
+    uint8_t x25519_public_key[32];
+    X25519_keypair(x25519_public_key, x25519_private_key_);
+    KYBER_public_key peer_kyber_pub;
+    CBS peer_key_cbs;
+    CBS peer_x25519_cbs;
+    CBS peer_kyber_cbs;
+    CBS_init(&peer_key_cbs, peer_key.data(), peer_key.size());
+    if (!CBS_get_bytes(&peer_key_cbs, &peer_x25519_cbs, 32) ||
+        !CBS_get_bytes(&peer_key_cbs, &peer_kyber_cbs,
+                       KYBER_PUBLIC_KEY_BYTES) ||
+        CBS_len(&peer_key_cbs) != 0 ||
+        !X25519(secret.data(), x25519_private_key_,
+                CBS_data(&peer_x25519_cbs)) ||
+        !KYBER_parse_public_key(&peer_kyber_pub, &peer_kyber_cbs)) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
+      return false;
+    }
+
+    uint8_t kyber_ciphertext[KYBER_CIPHERTEXT_BYTES];
+    KYBER_encap(kyber_ciphertext, secret.data() + 32, secret.size() - 32,
+                &peer_kyber_pub);
+
+    if (!CBB_add_bytes(out_ciphertext, x25519_public_key,
+                       sizeof(x25519_public_key)) ||
+        !CBB_add_bytes(out_ciphertext, kyber_ciphertext,
+                       sizeof(kyber_ciphertext))) {
+      return false;
+    }
+
+    *out_secret = std::move(secret);
+    return true;
   }
 
   bool Decap(Array<uint8_t> *out_secret, uint8_t *out_alert,
              Span<const uint8_t> ciphertext) override {
-    return false;
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+
+    Array<uint8_t> secret;
+    if (!secret.Init(32 + 32)) {
+      return false;
+    }
+
+    if (ciphertext.size() != 32 + KYBER_CIPHERTEXT_BYTES ||
+        !X25519(secret.data(), x25519_private_key_, ciphertext.data())) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
+      return false;
+    }
+
+    KYBER_decap(secret.data() + 32, secret.size() - 32, ciphertext.data() + 32,
+                &kyber_private_key_);
+    *out_secret = std::move(secret);
+    return true;
   }
+
+ private:
+  uint8_t x25519_private_key_[32];
+  KYBER_private_key kyber_private_key_;
 };
 
 class P256Kyber768KeyShare : public SSLKeyShare {

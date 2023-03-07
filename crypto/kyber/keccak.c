@@ -56,19 +56,18 @@ static void keccak_f(uint64_t state[25]) {
     // and the sequence will repeat. All that remains is to handle the element
     // at (0, 0), but the rotation for that element is zero, and it goes to (0,
     // 0), so we can ignore it.
-    int pi_x = 1, pi_y = 0;
+    static const uint8_t kIndexes[24] = {10, 7,  11, 17, 18, 3,  5,  16,
+                                         8,  21, 24, 4,  15, 23, 19, 13,
+                                         12, 2,  20, 14, 22, 9,  6,  1};
+    static const uint8_t kRotations[24] = {1,  3,  6,  10, 15, 21, 28, 36,
+                                           45, 55, 2,  14, 27, 41, 56, 8,
+                                           25, 43, 62, 18, 39, 61, 20, 44};
     uint64_t prev_value = state[1];
-    int pi_rot = 1;
-    for (int i = 1; i < 25; i++) {
-      const int out_x = pi_y;
-      const int out_y = (2 * pi_x + 3 * pi_y) % 5;
-      const int index = out_y * 5 + out_x;
-      const uint64_t t = state[index];
-      state[index] = CRYPTO_rotl_u64(prev_value, pi_rot);
-      pi_rot = (pi_rot + i + 1) % 64;
-      prev_value = t;
-      pi_x = out_x;
-      pi_y = out_y;
+    for (int i = 0; i < 24; i++) {
+      const uint64_t value = CRYPTO_rotl_u64(prev_value, kRotations[i]);
+      const size_t index = kIndexes[i];
+      prev_value = state[index];
+      state[index] = value;
     }
 
     // χ step

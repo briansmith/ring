@@ -29,15 +29,17 @@
 #include <openssl/aes.h>
 #include <openssl/base64.h>
 #include <openssl/bn.h>
-#include <openssl/curve25519.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/curve25519.h>
 #include <openssl/digest.h>
-#include <openssl/err.h>
 #include <openssl/ec.h>
-#include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hrss.h>
+#include <openssl/kyber.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
@@ -956,6 +958,55 @@ static bool SpeedHRSS(const std::string &selected) {
   return true;
 }
 
+static bool SpeedKyber(const std::string &selected) {
+  if (!selected.empty() && selected != "Kyber") {
+    return true;
+  }
+
+  TimeResults results;
+
+  KYBER_private_key priv;
+  uint8_t encoded_public_key[KYBER_PUBLIC_KEY_BYTES];
+  uint8_t ciphertext[KYBER_CIPHERTEXT_BYTES];
+  // This ciphertext is nonsense, but Kyber decap is constant-time so, for the
+  // purposes of timing, it's fine.
+  memset(ciphertext, 42, sizeof(ciphertext));
+  if (!TimeFunction(&results,
+                    [&priv, &encoded_public_key, &ciphertext]() -> bool {
+                      uint8_t shared_secret[32];
+                      KYBER_generate_key(encoded_public_key, &priv);
+                      KYBER_decap(shared_secret, sizeof(shared_secret),
+                                  ciphertext, &priv);
+                      return true;
+                    })) {
+    fprintf(stderr, "Failed to time KYBER_generate_key + KYBER_decap.\n");
+    return false;
+  }
+
+  results.Print("Kyber generate + decap");
+
+  KYBER_public_key pub;
+  if (!TimeFunction(
+          &results, [&pub, &ciphertext, &encoded_public_key]() -> bool {
+            CBS encoded_public_key_cbs;
+            CBS_init(&encoded_public_key_cbs, encoded_public_key,
+                     sizeof(encoded_public_key));
+            if (!KYBER_parse_public_key(&pub, &encoded_public_key_cbs)) {
+              return false;
+            }
+            uint8_t shared_secret[32];
+            KYBER_encap(ciphertext, shared_secret, sizeof(shared_secret), &pub);
+            return true;
+          })) {
+    fprintf(stderr, "Failed to time KYBER_encap.\n");
+    return false;
+  }
+
+  results.Print("Kyber parse + encap");
+
+  return true;
+}
+
 static bool SpeedHashToCurve(const std::string &selected) {
   if (!selected.empty() && selected.find("hashtocurve") == std::string::npos) {
     return true;
@@ -1436,6 +1487,7 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedScrypt(selected) ||
       !SpeedRSAKeyGen(selected) ||
       !SpeedHRSS(selected) ||
+      !SpeedKyber(selected) ||
       !SpeedHashToCurve(selected) ||
       !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1,
                        selected) ||
