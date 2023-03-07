@@ -119,8 +119,8 @@ pub fn setup() {
     let mut features = NEON.mask;
 
     let result = unsafe {
-        winapi::um::processthreadsapi::IsProcessorFeaturePresent(
-            winapi::um::winnt::PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
+        windows_sys::Win32::System::Threading::IsProcessorFeaturePresent(
+            windows_sys::Win32::System::Threading::PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE,
         )
     };
 
