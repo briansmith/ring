@@ -78,6 +78,10 @@ typedef union crypto_mutex_st {
   void *handle;
 } CRYPTO_MUTEX;
 #elif !defined(__GLIBC__)
+#if defined(OPENSSL_OPENBSD)
+// OpenBSD does not guarantee pthread_rwlock_t in sys/types.h yet.
+#include <pthread.h>
+#endif
 typedef pthread_rwlock_t CRYPTO_MUTEX;
 #else
 // On glibc, |pthread_rwlock_t| is hidden under feature flags, and we can't

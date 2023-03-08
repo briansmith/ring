@@ -164,6 +164,10 @@ extern "C" {
 #define OPENSSL_FREEBSD
 #endif
 
+#if defined(__OpenBSD__)
+#define OPENSSL_OPENBSD
+#endif
+
 // BoringSSL requires platform's locking APIs to make internal global state
 // thread-safe, including the PRNG. On some single-threaded embedded platforms,
 // locking APIs may not exist, so this dependency may be disabled with the

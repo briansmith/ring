@@ -12,4 +12,5 @@ third_party {
   local_modifications:
       "Only googletest, not googlemock, is included."
       "Applied https://github.com/google/googletest/pull/3206."
+      "Applied cl/529512111"
 }

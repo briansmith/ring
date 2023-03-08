@@ -126,10 +126,12 @@ add_library(
   conf/conf.c
   cpu_aarch64_apple.c
   cpu_aarch64_freebsd.c
+  cpu_aarch64_openbsd.c
   cpu_aarch64_fuchsia.c
   cpu_aarch64_linux.c
   cpu_aarch64_win.c
   cpu_arm_freebsd.c
+  cpu_arm_openbsd.c
   cpu_arm_linux.c
   cpu_arm.c
   cpu_intel.c
