@@ -834,8 +834,9 @@ OPENSSL_EXPORT BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a,
 // Note this function may incorrectly report |a| has no inverse if the random
 // blinding value has no inverse. It should only be used when |n| has few
 // non-invertible elements, such as an RSA modulus.
-int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
-                           const BN_MONT_CTX *mont, BN_CTX *ctx);
+OPENSSL_EXPORT int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse,
+                                          const BIGNUM *a,
+                                          const BN_MONT_CTX *mont, BN_CTX *ctx);
 
 // BN_mod_inverse_odd sets |out| equal to |a|^-1, mod |n|. |a| must be
 // non-negative and must be less than |n|. |n| must be odd. This function
