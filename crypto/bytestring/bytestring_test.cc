@@ -1199,16 +1199,23 @@ TEST(CBBTest, AddOIDFromText) {
       "2.18446744073709551536",
   };
 
-  const std::vector<uint8_t> kInvalidDER[] = {
+  const struct {
+    std::vector<uint8_t> der;
+    // If true, |der| is valid but has a component that exceeds 2^64-1.
+    bool overflow;
+  } kInvalidDER[] = {
       // The empty string is not an OID.
-      {},
+      {{}, false},
       // Non-minimal representation.
-      {0x80, 0x01},
+      {{0x80, 0x01}, false},
+      // Unterminated integer.
+      {{0x01, 0x02, 0x83}, false},
       // Overflow. This is the DER representation of
       // 1.2.840.113554.4.1.72585.18446744073709551616. (The final value is
       // 2^64.)
-      {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09,
-       0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00},
+      {{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09,
+        0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00},
+       true},
   };
 
   for (const auto &t : kValidOIDs) {
@@ -1228,6 +1235,8 @@ TEST(CBBTest, AddOIDFromText) {
     bssl::UniquePtr<char> text(CBS_asn1_oid_to_text(&cbs));
     ASSERT_TRUE(text.get());
     EXPECT_STREQ(t.text, text.get());
+
+    EXPECT_TRUE(CBS_is_valid_asn1_oid(&cbs));
   }
 
   for (const char *t : kInvalidTexts) {
@@ -1238,11 +1247,12 @@ TEST(CBBTest, AddOIDFromText) {
   }
 
   for (const auto &t : kInvalidDER) {
-    SCOPED_TRACE(Bytes(t));
+    SCOPED_TRACE(Bytes(t.der));
     CBS cbs;
-    CBS_init(&cbs, t.data(), t.size());
+    CBS_init(&cbs, t.der.data(), t.der.size());
     bssl::UniquePtr<char> text(CBS_asn1_oid_to_text(&cbs));
     EXPECT_FALSE(text);
+    EXPECT_EQ(t.overflow ? 1 : 0, CBS_is_valid_asn1_oid(&cbs));
   }
 }
 

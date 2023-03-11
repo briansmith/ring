@@ -698,6 +698,29 @@ static int add_decimal(CBB *out, uint64_t v) {
   return CBB_add_bytes(out, (const uint8_t *)buf, strlen(buf));
 }
 
+int CBS_is_valid_asn1_oid(const CBS *cbs) {
+  if (CBS_len(cbs) == 0) {
+    return 0;  // OID encodings cannot be empty.
+  }
+
+  CBS copy = *cbs;
+  uint8_t v, prev = 0;
+  while (CBS_get_u8(&copy, &v)) {
+    // OID encodings are a sequence of minimally-encoded base-128 integers (see
+    // |parse_base128_integer|). If |prev|'s MSB was clear, it was the last byte
+    // of an integer (or |v| is the first byte). |v| is then the first byte of
+    // the next integer. If first byte of an integer is 0x80, it is not
+    // minimally-encoded.
+    if ((prev & 0x80) == 0 && v == 0x80) {
+      return 0;
+    }
+    prev = v;
+  }
+
+  // The last byte should must end an integer encoding.
+  return (prev & 0x80) == 0;
+}
+
 char *CBS_asn1_oid_to_text(const CBS *cbs) {
   CBB cbb;
   if (!CBB_init(&cbb, 32)) {

@@ -153,77 +153,32 @@ ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **out, const unsigned char **inp,
   return ret;
 }
 
-ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
+ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **out, const unsigned char **inp,
                              long len) {
-  ASN1_OBJECT *ret = NULL;
-  const unsigned char *p;
-  unsigned char *data;
-  int i, length;
-
-  // Sanity check OID encoding. Need at least one content octet. MSB must
-  // be clear in the last octet. can't have leading 0x80 in subidentifiers,
-  // see: X.690 8.19.2
-  if (len <= 0 || len > INT_MAX || pp == NULL || (p = *pp) == NULL ||
-      p[len - 1] & 0x80) {
+  if (len < 0) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
     return NULL;
   }
-  // Now 0 < len <= INT_MAX, so the cast is safe.
-  length = (int)len;
-  for (i = 0; i < length; i++, p++) {
-    if (*p == 0x80 && (!i || !(p[-1] & 0x80))) {
-      OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
-      return NULL;
-    }
+
+  CBS cbs;
+  CBS_init(&cbs, *inp, (size_t)len);
+  if (!CBS_is_valid_asn1_oid(&cbs)) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
+    return NULL;
   }
 
-  if ((a == NULL) || ((*a) == NULL) ||
-      !((*a)->flags & ASN1_OBJECT_FLAG_DYNAMIC)) {
-    if ((ret = ASN1_OBJECT_new()) == NULL) {
-      return NULL;
-    }
-  } else {
-    ret = (*a);
+  ASN1_OBJECT *ret = ASN1_OBJECT_create(NID_undef, *inp, (size_t)len,
+                                        /*sn=*/NULL, /*ln=*/NULL);
+  if (ret == NULL) {
+    return NULL;
   }
 
-  p = *pp;
-  // detach data from object
-  data = (unsigned char *)ret->data;
-  ret->data = NULL;
-  // once detached we can change it
-  if ((data == NULL) || (ret->length < length)) {
-    ret->length = 0;
-    OPENSSL_free(data);
-    data = (unsigned char *)OPENSSL_malloc(length);
-    if (data == NULL) {
-      goto err;
-    }
-    ret->flags |= ASN1_OBJECT_FLAG_DYNAMIC_DATA;
+  if (out != NULL) {
+    ASN1_OBJECT_free(*out);
+    *out = ret;
   }
-  OPENSSL_memcpy(data, p, length);
-  // If there are dynamic strings, free them here, and clear the flag
-  if ((ret->flags & ASN1_OBJECT_FLAG_DYNAMIC_STRINGS) != 0) {
-    OPENSSL_free((char *)ret->sn);
-    OPENSSL_free((char *)ret->ln);
-    ret->flags &= ~ASN1_OBJECT_FLAG_DYNAMIC_STRINGS;
-  }
-  // reattach data to object, after which it remains const
-  ret->data = data;
-  ret->length = length;
-  ret->sn = NULL;
-  ret->ln = NULL;
-  p += length;
-
-  if (a != NULL) {
-    (*a) = ret;
-  }
-  *pp = p;
+  *inp += len;  // All bytes were consumed.
   return ret;
-err:
-  if ((ret != NULL) && ((a == NULL) || (*a != ret))) {
-    ASN1_OBJECT_free(ret);
-  }
-  return NULL;
 }
 
 ASN1_OBJECT *ASN1_OBJECT_new(void) {
