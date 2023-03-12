@@ -2657,4 +2657,66 @@ TEST(ASN1Test, DoublyTagged) {
   TestSerialize(obj.get(), i2d_DOUBLY_TAGGED, kTrueEmpty);
 }
 
+#define CHOICE_TYPE_OCT 0
+#define CHOICE_TYPE_BOOL 1
+
+struct CHOICE_TYPE {
+  int type;
+  union {
+    ASN1_OCTET_STRING *oct;
+    ASN1_BOOLEAN b;
+  } value;
+};
+
+DECLARE_ASN1_FUNCTIONS(CHOICE_TYPE)
+ASN1_CHOICE(CHOICE_TYPE) = {
+    ASN1_SIMPLE(CHOICE_TYPE, value.oct, ASN1_OCTET_STRING),
+    ASN1_SIMPLE(CHOICE_TYPE, value.b, ASN1_BOOLEAN),
+} ASN1_CHOICE_END(CHOICE_TYPE)
+IMPLEMENT_ASN1_FUNCTIONS(CHOICE_TYPE)
+
+struct OPTIONAL_CHOICE {
+  CHOICE_TYPE *choice;
+};
+
+DECLARE_ASN1_FUNCTIONS(OPTIONAL_CHOICE)
+ASN1_SEQUENCE(OPTIONAL_CHOICE) = {
+    ASN1_OPT(OPTIONAL_CHOICE, choice, CHOICE_TYPE),
+} ASN1_SEQUENCE_END(OPTIONAL_CHOICE)
+IMPLEMENT_ASN1_FUNCTIONS(OPTIONAL_CHOICE)
+
+TEST(ASN1Test, OptionalChoice) {
+  std::unique_ptr<OPTIONAL_CHOICE, decltype(&OPTIONAL_CHOICE_free)> obj(
+      nullptr, OPTIONAL_CHOICE_free);
+
+  // Value omitted.
+  static const uint8_t kOmitted[] = {0x30, 0x00};
+  const uint8_t *inp = kOmitted;
+  obj.reset(d2i_OPTIONAL_CHOICE(nullptr, &inp, sizeof(kOmitted)));
+  ASSERT_TRUE(obj);
+  EXPECT_FALSE(obj->choice);
+  TestSerialize(obj.get(), i2d_OPTIONAL_CHOICE, kOmitted);
+
+  // Value is present as an OCTET STRING.
+  static const uint8_t kOct[] = {0x30, 0x02, 0x04, 0x00};
+  inp = kOct;
+  obj.reset(d2i_OPTIONAL_CHOICE(nullptr, &inp, sizeof(kOct)));
+  ASSERT_TRUE(obj);
+  ASSERT_TRUE(obj->choice);
+  ASSERT_EQ(obj->choice->type, CHOICE_TYPE_OCT);
+  ASSERT_TRUE(obj->choice->value.oct);
+  EXPECT_EQ(ASN1_STRING_length(obj->choice->value.oct), 0);
+  TestSerialize(obj.get(), i2d_OPTIONAL_CHOICE, kOct);
+
+  // Value is present as TRUE.
+  static const uint8_t kTrue[] = {0x30, 0x03, 0x01, 0x01, 0xff};
+  inp = kTrue;
+  obj.reset(d2i_OPTIONAL_CHOICE(nullptr, &inp, sizeof(kTrue)));
+  ASSERT_TRUE(obj);
+  ASSERT_TRUE(obj->choice);
+  ASSERT_EQ(obj->choice->type, CHOICE_TYPE_BOOL);
+  EXPECT_EQ(obj->choice->value.b, ASN1_BOOLEAN_TRUE);
+  TestSerialize(obj.get(), i2d_OPTIONAL_CHOICE, kTrue);
+}
+
 #endif  // !WINDOWS || !SHARED_LIBRARY
