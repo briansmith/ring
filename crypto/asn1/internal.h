@@ -210,6 +210,10 @@ void asn1_encoding_clear(ASN1_ENCODING *enc);
 // a pointer.
 const void *asn1_type_value_as_pointer(const ASN1_TYPE *a);
 
+// asn1_type_cleanup releases memory associated with |a|'s value, without
+// freeing |a| itself.
+void asn1_type_cleanup(ASN1_TYPE *a);
+
 // asn1_is_printable returns one if |value| is a valid Unicode codepoint for an
 // ASN.1 PrintableString, and zero otherwise.
 int asn1_is_printable(uint32_t value);

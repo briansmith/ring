@@ -161,12 +161,10 @@ void ASN1_item_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
 }
 
 void ASN1_template_free(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
-  size_t i;
   if (tt->flags & ASN1_TFLG_SK_MASK) {
     STACK_OF(ASN1_VALUE) *sk = (STACK_OF(ASN1_VALUE) *)*pval;
-    for (i = 0; i < sk_ASN1_VALUE_num(sk); i++) {
-      ASN1_VALUE *vtmp;
-      vtmp = sk_ASN1_VALUE_value(sk, i);
+    for (size_t i = 0; i < sk_ASN1_VALUE_num(sk); i++) {
+      ASN1_VALUE *vtmp = sk_ASN1_VALUE_value(sk, i);
       ASN1_item_ex_free(&vtmp, ASN1_ITEM_ptr(tt->item));
     }
     sk_ASN1_VALUE_free(sk);
@@ -177,30 +175,11 @@ void ASN1_template_free(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
 }
 
 void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
-  int utype;
   // Historically, |it->funcs| for primitive types contained an
   // |ASN1_PRIMITIVE_FUNCS| table of calbacks.
-  assert(it == NULL || it->funcs == NULL);
-  // Special case: if 'it' is NULL free contents of ASN1_TYPE
-  if (!it) {
-    ASN1_TYPE *typ = (ASN1_TYPE *)*pval;
-    utype = typ->type;
-    pval = &typ->value.asn1_value;
-    if (utype != V_ASN1_BOOLEAN && !*pval) {
-      return;
-    }
-  } else if (it->itype == ASN1_ITYPE_MSTRING) {
-    utype = -1;
-    if (!*pval) {
-      return;
-    }
-  } else {
-    utype = it->utype;
-    if ((utype != V_ASN1_BOOLEAN) && !*pval) {
-      return;
-    }
-  }
+  assert(it->funcs == NULL);
 
+  int utype = it->itype == ASN1_ITYPE_MSTRING ? -1 : it->utype;
   switch (utype) {
     case V_ASN1_OBJECT:
       ASN1_OBJECT_free((ASN1_OBJECT *)*pval);
@@ -210,7 +189,7 @@ void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       if (it) {
         *(ASN1_BOOLEAN *)pval = (ASN1_BOOLEAN)it->size;
       } else {
-        *(ASN1_BOOLEAN *)pval = -1;
+        *(ASN1_BOOLEAN *)pval = ASN1_BOOLEAN_NONE;
       }
       return;
 
@@ -218,8 +197,10 @@ void ASN1_primitive_free(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       break;
 
     case V_ASN1_ANY:
-      ASN1_primitive_free(pval, NULL);
-      OPENSSL_free(*pval);
+      if (*pval != NULL) {
+        asn1_type_cleanup((ASN1_TYPE *)*pval);
+        OPENSSL_free(*pval);
+      }
       break;
 
     default:
