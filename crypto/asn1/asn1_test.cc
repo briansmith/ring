@@ -40,45 +40,6 @@
 #endif
 
 
-// kTag128 is an ASN.1 structure with a universal tag with number 128.
-static const uint8_t kTag128[] = {
-    0x1f, 0x81, 0x00, 0x01, 0x00,
-};
-
-// kTag258 is an ASN.1 structure with a universal tag with number 258.
-static const uint8_t kTag258[] = {
-    0x1f, 0x82, 0x02, 0x01, 0x00,
-};
-
-static_assert(V_ASN1_NEG_INTEGER == 258,
-              "V_ASN1_NEG_INTEGER changed. Update kTag258 to collide with it.");
-
-// kTagOverflow is an ASN.1 structure with a universal tag with number 2^35-1,
-// which will not fit in an int.
-static const uint8_t kTagOverflow[] = {
-    0x1f, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x01, 0x00,
-};
-
-TEST(ASN1Test, LargeTags) {
-  const uint8_t *p = kTag258;
-  bssl::UniquePtr<ASN1_TYPE> obj(d2i_ASN1_TYPE(NULL, &p, sizeof(kTag258)));
-  EXPECT_FALSE(obj) << "Parsed value with illegal tag" << obj->type;
-  ERR_clear_error();
-
-  p = kTagOverflow;
-  obj.reset(d2i_ASN1_TYPE(NULL, &p, sizeof(kTagOverflow)));
-  EXPECT_FALSE(obj) << "Parsed value with tag overflow" << obj->type;
-  ERR_clear_error();
-
-  p = kTag128;
-  obj.reset(d2i_ASN1_TYPE(NULL, &p, sizeof(kTag128)));
-  ASSERT_TRUE(obj);
-  EXPECT_EQ(128, obj->type);
-  const uint8_t kZero = 0;
-  EXPECT_EQ(Bytes(&kZero, 1), Bytes(obj->value.asn1_string->data,
-                                    obj->value.asn1_string->length));
-}
-
 // |obj| and |i2d_func| require different template parameters because C++ may
 // deduce, say, |ASN1_STRING*| via |obj| and |const ASN1_STRING*| via
 // |i2d_func|. Template argument deduction then fails. The language is not able
@@ -105,6 +66,67 @@ void TestSerialize(T obj, int (*i2d_func)(U a, uint8_t **pp),
   ASSERT_EQ(len, static_cast<int>(expected.size()));
   EXPECT_EQ(ptr, buf.data() + buf.size());
   EXPECT_EQ(Bytes(expected), Bytes(buf));
+}
+
+// Historically, unknown universal tags were represented in |ASN1_TYPE| as
+// |ASN1_STRING|s with the type matching the tag number. This can collide with
+// |V_ASN_NEG|, which was one of the causes of CVE-2016-2108. We now represent
+// unsupported values with |V_ASN1_OTHER|, but retain the |V_ASN1_MAX_UNIVERSAL|
+// limit.
+TEST(ASN1Test, UnknownTags) {
+  // kTag258 is an ASN.1 structure with a universal tag with number 258.
+  static const uint8_t kTag258[] = {0x1f, 0x82, 0x02, 0x01, 0x00};
+  static_assert(
+      V_ASN1_NEG_INTEGER == 258,
+      "V_ASN1_NEG_INTEGER changed. Update kTag258 to collide with it.");
+  const uint8_t *p = kTag258;
+  bssl::UniquePtr<ASN1_TYPE> obj(d2i_ASN1_TYPE(NULL, &p, sizeof(kTag258)));
+  EXPECT_FALSE(obj) << "Parsed value with illegal tag" << obj->type;
+  ERR_clear_error();
+
+  // kTagOverflow is an ASN.1 structure with a universal tag with number 2^35-1,
+  // which will not fit in an int.
+  static const uint8_t kTagOverflow[] = {0x1f, 0xff, 0xff, 0xff,
+                                         0xff, 0x7f, 0x01, 0x00};
+  p = kTagOverflow;
+  obj.reset(d2i_ASN1_TYPE(NULL, &p, sizeof(kTagOverflow)));
+  EXPECT_FALSE(obj) << "Parsed value with tag overflow" << obj->type;
+  ERR_clear_error();
+
+  // kTag128 is an ASN.1 structure with a universal tag with number 128. It
+  // should be parsed as |V_ASN1_OTHER|.
+  static const uint8_t kTag128[] = {0x1f, 0x81, 0x00, 0x01, 0x00};
+  p = kTag128;
+  obj.reset(d2i_ASN1_TYPE(NULL, &p, sizeof(kTag128)));
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(V_ASN1_OTHER, obj->type);
+  EXPECT_EQ(Bytes(kTag128), Bytes(obj->value.asn1_string->data,
+                                  obj->value.asn1_string->length));
+  TestSerialize(obj.get(), i2d_ASN1_TYPE, kTag128);
+
+  // The historical in-memory representation of |kTag128| was for both
+  // |obj->type| and |obj->value.asn1_string->type| to be NULL. This is no
+  // longer used and should be rejected by the encoder.
+  obj.reset(ASN1_TYPE_new());
+  ASSERT_TRUE(obj);
+  obj->type = 128;
+  obj->value.asn1_string = ASN1_STRING_type_new(128);
+  ASSERT_TRUE(obj->value.asn1_string);
+  const uint8_t zero = 0;
+  ASSERT_TRUE(ASN1_STRING_set(obj->value.asn1_string, &zero, sizeof(zero)));
+  EXPECT_EQ(-1, i2d_ASN1_TYPE(obj.get(), nullptr));
+
+  // If a tag is known, but has the wrong constructed bit, it should be
+  // rejected, not placed in |V_ASN1_OTHER|.
+  static const uint8_t kConstructedOctetString[] = {0x24, 0x00};
+  p = kConstructedOctetString;
+  obj.reset(d2i_ASN1_TYPE(nullptr, &p, sizeof(kConstructedOctetString)));
+  EXPECT_FALSE(obj);
+
+  static const uint8_t kPrimitiveSequence[] = {0x10, 0x00};
+  p = kPrimitiveSequence;
+  obj.reset(d2i_ASN1_TYPE(nullptr, &p, sizeof(kPrimitiveSequence)));
+  EXPECT_FALSE(obj);
 }
 
 static bssl::UniquePtr<BIGNUM> BIGNUMPow2(unsigned bit) {

@@ -136,6 +136,23 @@ unsigned long ASN1_tag2bit(int tag) {
   return tag2bit[tag];
 }
 
+static int is_supported_universal_type(int tag, int aclass) {
+  if (aclass != V_ASN1_UNIVERSAL) {
+    return 0;
+  }
+  return tag == V_ASN1_OBJECT || tag == V_ASN1_NULL || tag == V_ASN1_BOOLEAN ||
+         tag == V_ASN1_BIT_STRING || tag == V_ASN1_INTEGER ||
+         tag == V_ASN1_ENUMERATED || tag == V_ASN1_OCTET_STRING ||
+         tag == V_ASN1_NUMERICSTRING || tag == V_ASN1_PRINTABLESTRING ||
+         tag == V_ASN1_T61STRING || tag == V_ASN1_VIDEOTEXSTRING ||
+         tag == V_ASN1_IA5STRING || tag == V_ASN1_UTCTIME ||
+         tag == V_ASN1_GENERALIZEDTIME || tag == V_ASN1_GRAPHICSTRING ||
+         tag == V_ASN1_VISIBLESTRING || tag == V_ASN1_GENERALSTRING ||
+         tag == V_ASN1_UNIVERSALSTRING || tag == V_ASN1_BMPSTRING ||
+         tag == V_ASN1_UTF8STRING || tag == V_ASN1_SET ||
+         tag == V_ASN1_SEQUENCE;
+}
+
 // Macro to initialize and invalidate the cache
 
 // Decode an ASN1 item, this currently behaves just like a standard 'd2i'
@@ -677,7 +694,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
       return 0;
     }
-    if (oclass != V_ASN1_UNIVERSAL) {
+    if (!is_supported_universal_type(utype, oclass)) {
       utype = V_ASN1_OTHER;
     }
   }
@@ -820,8 +837,7 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
     case V_ASN1_UTF8STRING:
     case V_ASN1_OTHER:
     case V_ASN1_SET:
-    case V_ASN1_SEQUENCE:
-    default: {
+    case V_ASN1_SEQUENCE: {
       CBS cbs;
       CBS_init(&cbs, cont, (size_t)len);
       if (utype == V_ASN1_BMPSTRING) {
@@ -884,6 +900,9 @@ static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
       }
       break;
     }
+    default:
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
+      goto err;
   }
   // If ASN1_ANY and NULL type fix up value
   if (typ && (utype == V_ASN1_NULL)) {

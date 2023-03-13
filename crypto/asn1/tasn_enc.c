@@ -691,13 +691,17 @@ static int asn1_ex_i2c(ASN1_VALUE **pval, unsigned char *cout, int *out_omit,
     case V_ASN1_UTF8STRING:
     case V_ASN1_SEQUENCE:
     case V_ASN1_SET:
-    default:
+    // This is not a valid |ASN1_ITEM| type, but it appears in |ASN1_TYPE|.
+    case V_ASN1_OTHER:
       // All based on ASN1_STRING and handled the same
       strtmp = (ASN1_STRING *)*pval;
       cont = strtmp->data;
       len = strtmp->length;
-
       break;
+
+    default:
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_BAD_TEMPLATE);
+      return -1;
   }
   if (cout && len) {
     OPENSSL_memcpy(cout, cont, len);

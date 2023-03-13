@@ -467,31 +467,39 @@ DECLARE_ASN1_ITEM(ASN1_FBOOLEAN)
 // |ASN1_STRING|, to represent most values.
 
 // An asn1_string_st (aka |ASN1_STRING|) represents a value of a string-like
-// ASN.1 type. It contains a type field, and a byte string data field with a
+// ASN.1 type. It contains a |type| field, and a byte string |data| field with a
 // type-specific representation.
 //
-// When representing a string value, the type field is one of
-// |V_ASN1_OCTET_STRING|, |V_ASN1_UTF8STRING|, |V_ASN1_NUMERICSTRING|,
-// |V_ASN1_PRINTABLESTRING|, |V_ASN1_T61STRING|, |V_ASN1_VIDEOTEXSTRING|,
-// |V_ASN1_IA5STRING|, |V_ASN1_GRAPHICSTRING|, |V_ASN1_ISO64STRING|,
-// |V_ASN1_VISIBLESTRING|, |V_ASN1_GENERALSTRING|, |V_ASN1_UNIVERSALSTRING|, or
-// |V_ASN1_BMPSTRING|. The data contains the byte representation of of the
+// If |type| is one of |V_ASN1_OCTET_STRING|, |V_ASN1_UTF8STRING|,
+// |V_ASN1_NUMERICSTRING|, |V_ASN1_PRINTABLESTRING|, |V_ASN1_T61STRING|,
+// |V_ASN1_VIDEOTEXSTRING|, |V_ASN1_IA5STRING|, |V_ASN1_GRAPHICSTRING|,
+// |V_ASN1_ISO64STRING|, |V_ASN1_VISIBLESTRING|, |V_ASN1_GENERALSTRING|,
+// |V_ASN1_UNIVERSALSTRING|, or |V_ASN1_BMPSTRING|, the object represents an
+// ASN.1 string type. The data contains the byte representation of the
 // string.
 //
-// When representing a BIT STRING value, the type field is |V_ASN1_BIT_STRING|.
-// See bit string documentation below for how the data and flags are used.
+// If |type| is |V_ASN1_BIT_STRING|, the object represents a BIT STRING value.
+// See bit string documentation below for the data and flags.
 //
-// When representing an INTEGER or ENUMERATED value, the type field is one of
-// |V_ASN1_INTEGER|, |V_ASN1_NEG_INTEGER|, |V_ASN1_ENUMERATED|, or
-// |V_ASN1_NEG_ENUMERATED|. See integer documentation below for details.
+// If |type| is one of |V_ASN1_INTEGER|, |V_ASN1_NEG_INTEGER|,
+// |V_ASN1_ENUMERATED|, or |V_ASN1_NEG_ENUMERATED|, the object represents an
+// INTEGER or ENUMERATED value. See integer documentation below for details.
 //
-// When representing a GeneralizedTime or UTCTime value, the type field is
-// |V_ASN1_GENERALIZEDTIME| or |V_ASN1_UTCTIME|, respectively. The data contains
-// the DER encoding of the value. For example, the UNIX epoch would be
+// If |type| is |V_ASN1_GENERALIZEDTIME| or |V_ASN1_UTCTIME|, the object
+// represents a GeneralizedTime or UTCTime value, respectively. The data
+// contains the DER encoding of the value. For example, the UNIX epoch would be
 // "19700101000000Z" for a GeneralizedTime and "700101000000Z" for a UTCTime.
 //
-// |ASN1_STRING|, when stored in an |ASN1_TYPE|, may also represent an element
-// with tag not directly supported by this library. See |ASN1_TYPE| for details.
+// If |type| is |V_ASN1_SEQUENCE|, |V_ASN1_SET|, or |V_ASN1_OTHER|, the object
+// represents a SEQUENCE, SET, or arbitrary ASN.1 value, respectively. Unlike
+// the above cases, the data contains the DER encoding of the entire structure,
+// including the header. If the value is explicitly or implicitly tagged, this
+// too will be reflected in the data field. As this case handles unknown types,
+// the contents are not checked when parsing or serializing.
+//
+// Other values of |type| do not represent a valid ASN.1 value, though
+// default-constructed objects may set |type| to -1. Such objects cannot be
+// serialized.
 //
 // |ASN1_STRING| additionally has the following typedefs: |ASN1_BIT_STRING|,
 // |ASN1_BMPSTRING|, |ASN1_ENUMERATED|, |ASN1_GENERALIZEDTIME|,
@@ -508,15 +516,14 @@ DECLARE_ASN1_ITEM(ASN1_FBOOLEAN)
 // |ASN1_STRING_length|.
 //
 // If a function returns an |ASN1_STRING| where the typedef or ASN.1 structure
-// implies constraints on the type field, callers may assume that the type field
-// is correct. However, if a function takes an |ASN1_STRING| as input, callers
-// must ensure the type field matches. These invariants are not captured by the
-// C type system and may not be checked at runtime. For example, callers may
-// assume the output of |X509_get0_serialNumber| has type |V_ASN1_INTEGER| or
-// |V_ASN1_NEG_INTEGER|. Callers must not pass a string of type
-// |V_ASN1_OCTET_STRING| to |X509_set_serialNumber|. Doing so may break
-// invariants on the |X509| object and break the |X509_get0_serialNumber|
-// invariant.
+// implies constraints on |type|, callers may assume that |type| is correct.
+// However, if a function takes an |ASN1_STRING| as input, callers must ensure
+// |type| matches. These invariants are not captured by the C type system and
+// may not be checked at runtime. For example, callers may assume the output of
+// |X509_get0_serialNumber| has type |V_ASN1_INTEGER| or |V_ASN1_NEG_INTEGER|.
+// Callers must not pass a string of type |V_ASN1_OCTET_STRING| to
+// |X509_set_serialNumber|. Doing so may break invariants on the |X509| object
+// and break the |X509_get0_serialNumber| invariant.
 //
 // TODO(https://crbug.com/boringssl/445): This is very unfriendly. Getting the
 // type field wrong should not cause memory errors, but it may do strange
@@ -1492,15 +1499,14 @@ DECLARE_ASN1_ITEM(ASN1_OBJECT)
 // |ASN1_BOOLEAN|.
 //
 // If |type| is |V_ASN1_SEQUENCE|, |V_ASN1_SET|, or |V_ASN1_OTHER|, the tag is
-// SEQUENCE, SET, or some non-universal tag, respectively. |value| is an
-// |ASN1_STRING| containing the entire element, including the tag and length.
-// The |ASN1_STRING|'s |type| field matches the containing |ASN1_TYPE|'s |type|.
+// SEQUENCE, SET, or some arbitrary tag, respectively. |value| uses the
+// corresponding |ASN1_STRING| representation. Although any type may be
+// represented in |V_ASN1_OTHER|, the parser will always return the more
+// specific encoding when available.
 //
-// Other positive values of |type|, up to |V_ASN1_MAX_UNIVERSAL|, correspond to
-// universal primitive tags not directly supported by this library. |value| is
-// an |ASN1_STRING| containing the body of the element, excluding the tag
-// and length. The |ASN1_STRING|'s |type| field matches the containing
-// |ASN1_TYPE|'s |type|.
+// Other values of |type| do not represent a valid ASN.1 value, though
+// default-constructed objects may set |type| to -1. Such objects cannot be
+// serialized.
 struct asn1_type_st {
   int type;
   union {
