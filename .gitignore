@@ -8,6 +8,7 @@ ssl/test/runner/runner
 doc/*.html
 doc/doc.css
 rust/Cargo.lock
+rust/bssl-crypto/Cargo.lock
 rust/target
 
 util/bot/android_ndk
