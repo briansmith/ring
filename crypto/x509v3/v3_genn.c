@@ -124,7 +124,7 @@ static int edipartyname_cmp(const EDIPARTYNAME *a, const EDIPARTYNAME *b) {
 }
 
 // Returns 0 if they are equal, != 0 otherwise.
-static int othername_cmp(OTHERNAME *a, OTHERNAME *b) {
+static int othername_cmp(const OTHERNAME *a, const OTHERNAME *b) {
   int result = -1;
 
   if (!a || !b) {

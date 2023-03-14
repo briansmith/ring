@@ -421,9 +421,15 @@ OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *a);
 // human-readable print functions. If extracting a SAN list from a certificate,
 // look at |gen| directly.
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(
-    const X509V3_EXT_METHOD *method, GENERAL_NAME *gen,
+    const X509V3_EXT_METHOD *method, const GENERAL_NAME *gen,
     STACK_OF(CONF_VALUE) *ret);
-OPENSSL_EXPORT int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen);
+
+// GENERAL_NAME_print prints a human-readable representation of |gen| to |out|.
+// It returns one on success and zero on error.
+//
+// TODO(davidben): Actually, it just returns one and doesn't check for I/O or
+// allocation errors. But it should return zero on error.
+OPENSSL_EXPORT int GENERAL_NAME_print(BIO *out, const GENERAL_NAME *gen);
 
 // TODO(https://crbug.com/boringssl/407): This is not const because it contains
 // an |X509_NAME|.
@@ -439,7 +445,7 @@ DECLARE_ASN1_FUNCTIONS(GENERAL_NAMES)
 // human-readable print functions. If extracting a SAN list from a certificate,
 // look at |gen| directly.
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(
-    const X509V3_EXT_METHOD *method, GENERAL_NAMES *gen,
+    const X509V3_EXT_METHOD *method, const GENERAL_NAMES *gen,
     STACK_OF(CONF_VALUE) *extlist);
 OPENSSL_EXPORT GENERAL_NAMES *v2i_GENERAL_NAMES(
     const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
@@ -457,8 +463,12 @@ OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(const GENERAL_NAME *gen,
                                                ASN1_OBJECT **poid,
                                                ASN1_TYPE **pvalue);
 
+// i2s_ASN1_OCTET_STRING returns a human-readable representation of |oct| as a
+// newly-allocated, NUL-terminated string, or NULL on error. |method| is
+// ignored. The caller must release the result with |OPENSSL_free| when done.
 OPENSSL_EXPORT char *i2s_ASN1_OCTET_STRING(const X509V3_EXT_METHOD *method,
-                                           const ASN1_OCTET_STRING *ia5);
+                                           const ASN1_OCTET_STRING *oct);
+
 OPENSSL_EXPORT ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(
     const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx, const char *str);
 

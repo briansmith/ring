@@ -97,11 +97,11 @@ const X509V3_EXT_METHOD v3_alt[] = {
 };
 
 STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
-                                        GENERAL_NAMES *gens,
+                                        const GENERAL_NAMES *gens,
                                         STACK_OF(CONF_VALUE) *ret) {
   int ret_was_null = ret == NULL;
   for (size_t i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
-    GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
+    const GENERAL_NAME *gen = sk_GENERAL_NAME_value(gens, i);
     STACK_OF(CONF_VALUE) *tmp = i2v_GENERAL_NAME(method, gen, ret);
     if (tmp == NULL) {
       if (ret_was_null) {
@@ -118,7 +118,7 @@ STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
 }
 
 STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(const X509V3_EXT_METHOD *method,
-                                       GENERAL_NAME *gen,
+                                       const GENERAL_NAME *gen,
                                        STACK_OF(CONF_VALUE) *ret) {
   // Note the error-handling for this function relies on there being at most
   // one |X509V3_add_value| call. If there were two and the second failed, we
@@ -207,9 +207,7 @@ STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(const X509V3_EXT_METHOD *method,
   return ret;
 }
 
-int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen) {
-  unsigned char *p;
-  int i;
+int GENERAL_NAME_print(BIO *out, const GENERAL_NAME *gen) {
   switch (gen->type) {
     case GEN_OTHERNAME:
       BIO_printf(out, "othername:<unsupported>");
@@ -244,13 +242,13 @@ int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen) {
       X509_NAME_print_ex(out, gen->d.dirn, 0, XN_FLAG_ONELINE);
       break;
 
-    case GEN_IPADD:
-      p = gen->d.ip->data;
+    case GEN_IPADD: {
+      const unsigned char *p = gen->d.ip->data;
       if (gen->d.ip->length == 4) {
         BIO_printf(out, "IP Address:%d.%d.%d.%d", p[0], p[1], p[2], p[3]);
       } else if (gen->d.ip->length == 16) {
         BIO_printf(out, "IP Address");
-        for (i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; i++) {
           uint16_t v = ((uint16_t)p[0] << 8) | p[1];
           BIO_printf(out, ":%X", v);
           p += 2;
@@ -261,6 +259,7 @@ int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen) {
         break;
       }
       break;
+    }
 
     case GEN_RID:
       BIO_printf(out, "Registered ID");
