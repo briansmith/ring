@@ -25,18 +25,18 @@ use core::{
 /// Computes the HMAC-SHA-256 of `data` as a one-shot operation.
 ///
 /// Calculates the HMAC of data, using the given `key` and returns the result.
-/// It returns the computed hmac or `InvalidLength` of the input key size is too large.
+/// It returns the computed hmac.
 /// Can panic if memory allocation fails in the underlying BoringSSL code.
-pub fn hmac_sha_256(key: &[u8], data: &[u8]) -> Result<[u8; 32], InvalidLength> {
+pub fn hmac_sha_256(key: &[u8], data: &[u8]) -> [u8; 32] {
     hmac::<32, Sha256>(key, data)
 }
 
 /// Computes the HMAC-SHA-512 of `data` as a one-shot operation.
 ///
 /// Calculates the HMAC of data, using the given `key` and returns the result.
-/// It returns the computed hmac or `InvalidLength` of the input key size is too large.
+/// It returns the computed hmac.
 /// Can panic if memory allocation fails in the underlying BoringSSL code.
-pub fn hmac_sha_512(key: &[u8], data: &[u8]) -> Result<[u8; 64], InvalidLength> {
+pub fn hmac_sha_512(key: &[u8], data: &[u8]) -> [u8; 64] {
     hmac::<64, Sha512>(key, data)
 }
 
@@ -51,8 +51,8 @@ impl HmacSha256 {
     }
 
     /// Create new hmac value from variable size key.
-    pub fn new_from_slice(key: &[u8]) -> Result<Self, InvalidLength> {
-        Hmac::new_from_slice(key).map(Self)
+    pub fn new_from_slice(key: &[u8]) -> Self {
+        Self(Hmac::new_from_slice(key))
     }
 
     /// Update state using the provided data.
@@ -92,8 +92,8 @@ impl HmacSha512 {
     }
 
     /// Create new hmac value from variable size key.
-    pub fn new_from_slice(key: &[u8]) -> Result<Self, InvalidLength> {
-        Hmac::new_from_slice(key).map(Self)
+    pub fn new_from_slice(key: &[u8]) -> Self {
+        Self(Hmac::new_from_slice(key))
     }
 
     /// Update state using the provided data.
@@ -122,10 +122,6 @@ impl HmacSha512 {
     }
 }
 
-/// Error type for when the provided key material length is invalid.
-#[derive(Debug)]
-pub struct InvalidLength;
-
 /// Error type for when the output of the hmac operation is not equal to the expected value.
 #[derive(Debug)]
 pub struct MacError;
@@ -136,7 +132,7 @@ pub struct MacError;
 /// but this is not possible until the Rust language can support the `min_const_generics` feature.
 /// Until then we will have to pass both separately: https://github.com/rust-lang/rust/issues/60551
 #[inline]
-fn hmac<const N: usize, M: Md>(key: &[u8], data: &[u8]) -> Result<[u8; N], InvalidLength> {
+fn hmac<const N: usize, M: Md>(key: &[u8], data: &[u8]) -> [u8; N] {
     let mut out = [0_u8; N];
     let mut size: c_uint = 0;
 
@@ -156,7 +152,7 @@ fn hmac<const N: usize, M: Md>(key: &[u8], data: &[u8]) -> Result<[u8; N], Inval
     }
     .panic_if_error();
 
-    Ok(out)
+    out
 }
 
 /// Private generically implemented hmac  instance given a generic hash function and a length `N`,
@@ -173,43 +169,37 @@ struct Hmac<const N: usize, M: Md> {
 impl<const N: usize, M: Md> Hmac<N, M> {
     /// Infallible HMAC creation from a fixed length key.
     fn new(key: [u8; N]) -> Self {
-        #[allow(clippy::expect_used)]
-        Self::new_from_slice(&key).expect("output length of hash is always a valid hmac key size")
+        Self::new_from_slice(&key)
     }
 
     /// Create new hmac value from variable size key. Panics on allocation failure
-    /// returns InvalidLength if the key length is greater than the max message digest block size.
-    fn new_from_slice(key: &[u8]) -> Result<Self, InvalidLength> {
-        (validate_key_len(key.len()))
-            .then(|| {
-                // Safety:
-                // - HMAC_CTX_new panics if allocation fails
-                let ctx = unsafe { bssl_sys::HMAC_CTX_new() };
-                ctx.panic_if_error();
+    fn new_from_slice(key: &[u8]) -> Self {
+        // Safety:
+        // - HMAC_CTX_new panics if allocation fails
+        let ctx = unsafe { bssl_sys::HMAC_CTX_new() };
+        ctx.panic_if_error();
 
-                // Safety:
-                // - HMAC_Init_ex must be called with a context previously created with HMAC_CTX_new,
-                //   which is the line above.
-                // - HMAC_Init_ex may return an error if key is null but the md is different from
-                //   before. This is avoided here since key is guaranteed to be non-null.
-                // - HMAC_Init_ex returns 0 on allocation failure in which case we panic
-                unsafe {
-                    bssl_sys::HMAC_Init_ex(
-                        ctx,
-                        CSlice::from(key).as_ptr() as *const c_void,
-                        key.len(),
-                        M::get_md().as_ptr(),
-                        ptr::null_mut(),
-                    )
-                }
-                .panic_if_error();
+        // Safety:
+        // - HMAC_Init_ex must be called with a context previously created with HMAC_CTX_new,
+        //   which is the line above.
+        // - HMAC_Init_ex may return an error if key is null but the md is different from
+        //   before. This is avoided here since key is guaranteed to be non-null.
+        // - HMAC_Init_ex returns 0 on allocation failure in which case we panic
+        unsafe {
+            bssl_sys::HMAC_Init_ex(
+                ctx,
+                CSlice::from(key).as_ptr() as *const c_void,
+                key.len(),
+                M::get_md().as_ptr(),
+                ptr::null_mut(),
+            )
+        }
+        .panic_if_error();
 
-                Self {
-                    ctx,
-                    _marker: Default::default(),
-                }
-            })
-            .ok_or(InvalidLength)
+        Self {
+            ctx,
+            _marker: Default::default(),
+        }
     }
 
     /// Update state using the provided data, can be called repeatedly.
@@ -282,14 +272,6 @@ impl<const N: usize, M: Md> Drop for Hmac<N, M> {
     }
 }
 
-// make sure key len is within a valid range
-fn validate_key_len(len: usize) -> bool {
-    if len > bssl_sys::EVP_MAX_MD_BLOCK_SIZE as usize {
-        return false;
-    }
-    true
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -305,7 +287,7 @@ mod tests {
         let key: [u8; 20] = [0x0b; 20];
         let data = b"Hi There";
 
-        let mut hmac = HmacSha256::new_from_slice(&key).expect("length is valid");
+        let mut hmac = HmacSha256::new_from_slice(&key);
         hmac.update(data);
         let hmac_result: [u8; 32] = hmac.finalize();
 
@@ -340,7 +322,7 @@ mod tests {
         ];
         let key: [u8; 20] = [0x0b; 20];
         let data = b"Hi There";
-        let mut hmac: HmacSha256 = HmacSha256::new_from_slice(&key).expect("");
+        let mut hmac: HmacSha256 = HmacSha256::new_from_slice(&key);
         hmac.update(data);
         let result = hmac.finalize();
         assert_eq!(&result, &expected_hmac);
@@ -356,7 +338,7 @@ mod tests {
         ];
         let key: [u8; 20] = [0x0b; 20];
         let data = b"Hi There";
-        let hmac_result = hmac_sha_256(&key, data).expect("Couldn't calculate sha256 hmac");
+        let hmac_result = hmac_sha_256(&key, data);
         assert_eq!(&hmac_result, &expected_hmac);
     }
 
@@ -368,7 +350,7 @@ mod tests {
             0x2e, 0x32, 0xcf, 0xf7,
         ];
         let key: [u8; 20] = [0x0b; 20];
-        let mut hmac = HmacSha256::new_from_slice(&key).expect("key is valid length");
+        let mut hmac = HmacSha256::new_from_slice(&key);
         hmac.update(b"Hi");
         hmac.update(b" There");
         let result = hmac.finalize();
@@ -384,7 +366,7 @@ mod tests {
         ];
         let key: [u8; 20] = [0x0b; 20];
         let data = b"Hi There";
-        let mut hmac: HmacSha256 = HmacSha256::new_from_slice(&key).expect("");
+        let mut hmac: HmacSha256 = HmacSha256::new_from_slice(&key);
         hmac.update(data);
         assert!(hmac.verify(expected_hmac).is_ok())
     }
