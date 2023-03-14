@@ -6414,3 +6414,83 @@ TEST(X509Test, AddUnserializableExtension) {
   ASSERT_TRUE(X509_EXTENSION_set_object(ext.get(), OBJ_nid2obj(NID_undef)));
   EXPECT_FALSE(X509_add_ext(x509.get(), ext.get(), /*loc=*/-1));
 }
+
+// Test that, when constructing an |X509_NAME|, names are sorted by DER order.
+TEST(X509Test, SortRDN) {
+  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  ASSERT_TRUE(name);
+
+  auto append_entry_new_rdn = [&](const char *str) {
+    return X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_ASC,
+                                      reinterpret_cast<const uint8_t *>(str),
+                                      strlen(str), /*loc=*/-1, /*set=*/0);
+  };
+  auto append_entry_prev_rdn = [&](const char *str) {
+    return X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_ASC,
+                                      reinterpret_cast<const uint8_t *>(str),
+                                      strlen(str), /*loc=*/-1, /*set=*/-1);
+  };
+
+  // This is the sort order to expect.
+  ASSERT_TRUE(append_entry_new_rdn("A"));
+  ASSERT_TRUE(append_entry_prev_rdn("B"));
+  ASSERT_TRUE(append_entry_prev_rdn("AA"));
+  ASSERT_TRUE(append_entry_prev_rdn("AB"));
+
+  // The same RDN, with entries added in a different order.
+  ASSERT_TRUE(append_entry_new_rdn("AB"));
+  ASSERT_TRUE(append_entry_prev_rdn("AA"));
+  ASSERT_TRUE(append_entry_prev_rdn("B"));
+  ASSERT_TRUE(append_entry_prev_rdn("A"));
+
+  // The same RDN, with entries added in a different order.
+  ASSERT_TRUE(append_entry_new_rdn("A"));
+  ASSERT_TRUE(append_entry_prev_rdn("AA"));
+  ASSERT_TRUE(append_entry_prev_rdn("B"));
+  ASSERT_TRUE(append_entry_prev_rdn("AB"));
+
+  uint8_t *der = nullptr;
+  int der_len = i2d_X509_NAME(name.get(), &der);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  // SEQUENCE {
+  //   SET {
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       UTF8String { "A" }
+  //     }
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       UTF8String { "B" }
+  //     }
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       UTF8String { "AA" }
+  //     }
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       UTF8String { "AB" }
+  //     }
+  //   }
+  //   ...two more copies of the above SET...
+  // }
+  static uint8_t kExpected[] = {
+      0x30, 0x81, 0x84, 0x31, 0x2a, 0x30, 0x08, 0x06, 0x03, 0x55, 0x04, 0x03,
+      0x0c, 0x01, 0x41, 0x30, 0x08, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x01,
+      0x42, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x02, 0x41, 0x41,
+      0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x02, 0x41, 0x42, 0x31,
+      0x2a, 0x30, 0x08, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x01, 0x41, 0x30,
+      0x08, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x01, 0x42, 0x30, 0x09, 0x06,
+      0x03, 0x55, 0x04, 0x03, 0x0c, 0x02, 0x41, 0x41, 0x30, 0x09, 0x06, 0x03,
+      0x55, 0x04, 0x03, 0x0c, 0x02, 0x41, 0x42, 0x31, 0x2a, 0x30, 0x08, 0x06,
+      0x03, 0x55, 0x04, 0x03, 0x0c, 0x01, 0x41, 0x30, 0x08, 0x06, 0x03, 0x55,
+      0x04, 0x03, 0x0c, 0x01, 0x42, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x03,
+      0x0c, 0x02, 0x41, 0x41, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c,
+      0x02, 0x41, 0x42};
+  EXPECT_EQ(Bytes(kExpected), Bytes(der, der_len));
+}
