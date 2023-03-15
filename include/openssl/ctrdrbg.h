@@ -71,6 +71,12 @@ OPENSSL_EXPORT void CTR_DRBG_clear(CTR_DRBG_STATE *drbg);
 
 #if defined(__cplusplus)
 }  // extern C
+
+extern "C++" {
+BSSL_NAMESPACE_BEGIN
+BORINGSSL_MAKE_DELETER(CTR_DRBG_STATE, CTR_DRBG_free)
+BSSL_NAMESPACE_END
+}  // extern C++
 #endif
 
 #endif  // OPENSSL_HEADER_CTRDRBG_H

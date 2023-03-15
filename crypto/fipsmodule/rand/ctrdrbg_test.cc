@@ -63,13 +63,11 @@ TEST(CTRDRBGTest, Basic) {
 TEST(CTRDRBGTest, Allocated) {
   const uint8_t kSeed[CTR_DRBG_ENTROPY_LEN] = {0};
 
-  CTR_DRBG_STATE *allocated = CTR_DRBG_new(kSeed, nullptr, 0);
+  bssl::UniquePtr<CTR_DRBG_STATE> allocated(CTR_DRBG_new(kSeed, nullptr, 0));
   ASSERT_TRUE(allocated);
-  CTR_DRBG_free(allocated);
 
-  allocated = CTR_DRBG_new(kSeed, nullptr, 1<<20);
+  allocated.reset(CTR_DRBG_new(kSeed, nullptr, 1<<20));
   ASSERT_FALSE(allocated);
-  CTR_DRBG_free(allocated);
 }
 
 TEST(CTRDRBGTest, Large) {
