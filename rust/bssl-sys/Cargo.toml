@@ -7,4 +7,3 @@ publish = false
 license = "MIT"
 
 [dependencies]
-libc = "0.2"
