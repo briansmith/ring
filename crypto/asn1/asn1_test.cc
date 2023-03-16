@@ -2235,10 +2235,24 @@ TEST(ASN1Test, GetObject) {
   EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
                                   sizeof(kTruncated)));
 
+  // Indefinite-length encoding is not allowed in DER.
   static const uint8_t kIndefinite[] = {0x30, 0x80, 0x00, 0x00};
   ptr = kIndefinite;
   EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
                                   sizeof(kIndefinite)));
+
+  // DER requires lengths be minimally-encoded. This should be {0x30, 0x00}.
+  static const uint8_t kNonMinimal[] = {0x30, 0x81, 0x00};
+  ptr = kNonMinimal;
+  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
+                                  sizeof(kNonMinimal)));
+
+  // This should be {0x04, 0x81, 0x80, ...}.
+  std::vector<uint8_t> non_minimal = {0x04, 0x82, 0x00, 0x80};
+  non_minimal.resize(non_minimal.size() + 0x80);
+  ptr = non_minimal.data();
+  EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
+                                  non_minimal.size()));
 }
 
 template <typename T>

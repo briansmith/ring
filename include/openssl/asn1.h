@@ -631,9 +631,6 @@ OPENSSL_EXPORT void ASN1_VISIBLESTRING_free(ASN1_VISIBLESTRING *str);
 // The following functions parse up to |len| bytes from |*inp| as a
 // DER-encoded ASN.1 value of the corresponding type, as described in
 // |d2i_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_BMPSTRING *d2i_ASN1_BMPSTRING(ASN1_BMPSTRING **out,
                                                   const uint8_t **inp,
                                                   long len);
@@ -917,9 +914,6 @@ OPENSSL_EXPORT void ASN1_BIT_STRING_free(ASN1_BIT_STRING *str);
 
 // d2i_ASN1_BIT_STRING parses up to |len| bytes from |*inp| as a DER-encoded
 // ASN.1 BIT STRING, as described in |d2i_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_BIT_STRING *d2i_ASN1_BIT_STRING(ASN1_BIT_STRING **out,
                                                     const uint8_t **inp,
                                                     long len);
@@ -932,9 +926,6 @@ OPENSSL_EXPORT int i2d_ASN1_BIT_STRING(const ASN1_BIT_STRING *in,
 // c2i_ASN1_BIT_STRING decodes |len| bytes from |*inp| as the contents of a
 // DER-encoded BIT STRING, excluding the tag and length. It behaves like
 // |d2i_SAMPLE| except, on success, it always consumes all |len| bytes.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **out,
                                                     const uint8_t **inp,
                                                     long len);
@@ -1027,9 +1018,6 @@ OPENSSL_EXPORT ASN1_INTEGER *ASN1_INTEGER_dup(const ASN1_INTEGER *x);
 
 // d2i_ASN1_INTEGER parses up to |len| bytes from |*inp| as a DER-encoded
 // ASN.1 INTEGER, as described in |d2i_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_INTEGER *d2i_ASN1_INTEGER(ASN1_INTEGER **out,
                                               const uint8_t **inp, long len);
 
@@ -1040,9 +1028,6 @@ OPENSSL_EXPORT int i2d_ASN1_INTEGER(const ASN1_INTEGER *in, uint8_t **outp);
 // c2i_ASN1_INTEGER decodes |len| bytes from |*inp| as the contents of a
 // DER-encoded INTEGER, excluding the tag and length. It behaves like
 // |d2i_SAMPLE| except, on success, it always consumes all |len| bytes.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// some invalid inputs, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **in,
                                               const uint8_t **outp, long len);
 
@@ -1111,9 +1096,6 @@ OPENSSL_EXPORT void ASN1_ENUMERATED_free(ASN1_ENUMERATED *str);
 
 // d2i_ASN1_ENUMERATED parses up to |len| bytes from |*inp| as a DER-encoded
 // ASN.1 ENUMERATED, as described in |d2i_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_ENUMERATED *d2i_ASN1_ENUMERATED(ASN1_ENUMERATED **out,
                                                     const uint8_t **inp,
                                                     long len);
@@ -1246,9 +1228,6 @@ OPENSSL_EXPORT void ASN1_GENERALIZEDTIME_free(ASN1_GENERALIZEDTIME *str);
 
 // d2i_ASN1_GENERALIZEDTIME parses up to |len| bytes from |*inp| as a
 // DER-encoded ASN.1 GeneralizedTime, as described in |d2i_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_GENERALIZEDTIME *d2i_ASN1_GENERALIZEDTIME(
     ASN1_GENERALIZEDTIME **out, const uint8_t **inp, long len);
 
@@ -1402,9 +1381,6 @@ OPENSSL_EXPORT void ASN1_NULL_free(ASN1_NULL *null);
 
 // d2i_ASN1_NULL parses a DER-encoded ASN.1 NULL value from up to |len| bytes
 // at |*inp|, as described in |d2i_SAMPLE|.
-//
-// TODO(https://crbug.com/boringssl/354): This function currently also accepts
-// BER, but this will be removed in the future.
 OPENSSL_EXPORT ASN1_NULL *d2i_ASN1_NULL(ASN1_NULL **out, const uint8_t **inp,
                                         long len);
 
@@ -1758,13 +1734,11 @@ OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf, int buf_len,
 // |*out_length|, |*out_tag|, and |*out_class| to the element's length, tag
 // number, and tag class, respectively,
 //
-// Unlike OpenSSL, this function does not support indefinite-length elements.
+// Unlike OpenSSL, this function only supports DER. Indefinite and non-minimal
+// lengths are rejected.
 //
 // This function is difficult to use correctly. Use |CBS_get_asn1| and related
 // functions from bytestring.h.
-//
-// TODO(https://crbug.com/boringssl/354): Remove support for non-minimal
-// lengths.
 OPENSSL_EXPORT int ASN1_get_object(const unsigned char **inp, long *out_length,
                                    int *out_tag, int *out_class, long max_len);
 

@@ -111,20 +111,10 @@ int ASN1_get_object(const unsigned char **inp, long *out_len, int *out_tag,
     return 0x80;
   }
 
-  // TODO(https://crbug.com/boringssl/354): This should use |CBS_get_asn1| to
-  // reject non-minimal lengths, which are only allowed in BER. However,
-  // Android sometimes needs allow a non-minimal length in certificate
-  // signature fields (see b/18228011). Make this only apply to that field,
-  // while requiring DER elsewhere. Better yet, it should be limited to an
-  // preprocessing step in that part of Android.
   CBS_ASN1_TAG tag;
-  size_t header_len;
-  int indefinite;
   CBS cbs, body;
   CBS_init(&cbs, *inp, (size_t)in_len);
-  if (!CBS_get_any_ber_asn1_element(&cbs, &body, &tag, &header_len,
-                                    /*out_ber_found=*/NULL, &indefinite) ||
-      indefinite || !CBS_skip(&body, header_len) ||
+  if (!CBS_get_any_asn1(&cbs, &body, &tag) ||
       // Bound the length to comfortably fit in an int. Lengths in this
       // module often switch between int and long without overflow checks.
       CBS_len(&body) > INT_MAX / 2) {

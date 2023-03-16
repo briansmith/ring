@@ -4148,8 +4148,8 @@ soBsxWI=
 -----END CERTIFICATE-----
 )";
 
-// kNonMinimalLengthSignature is an X.509 certificate where the signature
-// has a non-minimal length.
+// kNonMinimalLengthSignature is an X.509 certificate where the signature has a
+// non-minimal length.
 static const char kNonMinimalLengthSignature[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIBITCBxqADAgECAgIE0jAKBggqhkjOPQQDAjAPMQ0wCwYDVQQDEwRUZXN0MCAX
@@ -4157,6 +4157,20 @@ DTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAPMQ0wCwYDVQQDEwRUZXN0
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5itp4r9ln5e+Lx4NlIpM1Zdrt6ke
 DUb73ampHp3culoB59aXqAoY+cPEox5W4nyDSNsWGhz1HX7xlC1Lz3IiwaMQMA4w
 DAYDVR0TBAUwAwEB/zAKBggqhkjOPQQDAgOBSQAwRgIhAKnSIhfmzfQpeOKFHiAq
+cml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh4qnk
+soBsxWI=
+-----END CERTIFICATE-----
+)";
+
+// kNonMinimalLengthSerial is an X.509 certificate where the serial number has a
+// non-minimal length.
+static const char kNonMinimalLengthSerial[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBITCBx6ADAgECAoECBNIwCgYIKoZIzj0EAwIwDzENMAsGA1UEAxMEVGVzdDAg
+Fw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowDzENMAsGA1UEAxMEVGVz
+dDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOYraeK/ZZ+Xvi8eDZSKTNWXa7ep
+Hg1G+92pqR6d3LpaAefWl6gKGPnDxKMeVuJ8g0jbFhoc9R1+8ZQtS89yIsGjEDAO
+MAwGA1UdEwQFMAMBAf8wCgYIKoZIzj0EAwIDSQAwRgIhAKnSIhfmzfQpeOKFHiAq
 cml3ex6oaVVGoJWCsPQoZjVAAiEAqTHS9HzZBTQ20cMPXUpf8u5AXZP7adeh4qnk
 soBsxWI=
 -----END CERTIFICATE-----
@@ -4175,6 +4189,7 @@ TEST(X509Test, BER) {
   EXPECT_FALSE(CertFromPEM(kHighTagNumber));
   // Lengths must be minimal in DER.
   EXPECT_FALSE(CertFromPEM(kNonMinimalLengthOuter));
+  EXPECT_FALSE(CertFromPEM(kNonMinimalLengthSerial));
   // We, for now, accept a non-minimal length in the signature field. See
   // b/18228011.
   EXPECT_TRUE(CertFromPEM(kNonMinimalLengthSignature));
