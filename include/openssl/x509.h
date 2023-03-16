@@ -118,10 +118,6 @@ extern "C" {
 
 DEFINE_STACK_OF(X509)
 
-// X509 is an |ASN1_ITEM| whose ASN.1 type is X.509 Certificate (RFC 5280) and C
-// type is |X509*|.
-DECLARE_ASN1_ITEM(X509)
-
 // X509_up_ref adds one to the reference count of |x509| and returns one.
 OPENSSL_EXPORT int X509_up_ref(X509 *x509);
 

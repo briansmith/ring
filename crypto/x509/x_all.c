@@ -130,22 +130,6 @@ int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *spki, EVP_PKEY *pkey) {
                            spki->signature, spki->spkac, pkey));
 }
 
-X509 *d2i_X509_fp(FILE *fp, X509 **x509) {
-  return ASN1_item_d2i_fp(ASN1_ITEM_rptr(X509), fp, x509);
-}
-
-int i2d_X509_fp(FILE *fp, X509 *x509) {
-  return ASN1_item_i2d_fp(ASN1_ITEM_rptr(X509), fp, x509);
-}
-
-X509 *d2i_X509_bio(BIO *bp, X509 **x509) {
-  return ASN1_item_d2i_bio(ASN1_ITEM_rptr(X509), bp, x509);
-}
-
-int i2d_X509_bio(BIO *bp, X509 *x509) {
-  return ASN1_item_i2d_bio(ASN1_ITEM_rptr(X509), bp, x509);
-}
-
 X509_CRL *d2i_X509_CRL_fp(FILE *fp, X509_CRL **crl) {
   return ASN1_item_d2i_fp(ASN1_ITEM_rptr(X509_CRL), fp, crl);
 }
@@ -201,6 +185,9 @@ int i2d_X509_REQ_bio(BIO *bp, X509_REQ *req) {
     return ret;                                \
   }
 
+IMPLEMENT_D2I_FP(X509, d2i_X509_fp, d2i_X509_bio);
+IMPLEMENT_I2D_FP(X509, i2d_X509_fp, i2d_X509_bio);
+
 IMPLEMENT_D2I_FP(RSA, d2i_RSAPrivateKey_fp, d2i_RSAPrivateKey_bio)
 IMPLEMENT_I2D_FP(RSA, i2d_RSAPrivateKey_fp, i2d_RSAPrivateKey_bio)
 
@@ -234,6 +221,9 @@ IMPLEMENT_I2D_FP(RSA, i2d_RSA_PUBKEY_fp, i2d_RSA_PUBKEY_bio)
     OPENSSL_free(data);                         \
     return ret;                                 \
   }
+
+IMPLEMENT_D2I_BIO(X509, d2i_X509_bio, d2i_X509)
+IMPLEMENT_I2D_BIO(X509, i2d_X509_bio, i2d_X509)
 
 IMPLEMENT_D2I_BIO(RSA, d2i_RSAPrivateKey_bio, d2i_RSAPrivateKey)
 IMPLEMENT_I2D_BIO(RSA, i2d_RSAPrivateKey_bio, i2d_RSAPrivateKey)
@@ -278,9 +268,18 @@ int X509_pubkey_digest(const X509 *data, const EVP_MD *type, unsigned char *md,
   return EVP_Digest(key->data, key->length, md, len, type, NULL);
 }
 
-int X509_digest(const X509 *data, const EVP_MD *type, unsigned char *md,
-                unsigned int *len) {
-  return (ASN1_item_digest(ASN1_ITEM_rptr(X509), type, (char *)data, md, len));
+int X509_digest(const X509 *x509, const EVP_MD *md, uint8_t *out,
+                unsigned *out_len) {
+  uint8_t *der = NULL;
+  // TODO(https://crbug.com/boringssl/407): This function is not const-correct.
+  int der_len = i2d_X509((X509 *)x509, &der);
+  if (der_len < 0) {
+    return 0;
+  }
+
+  int ret = EVP_Digest(der, der_len, out, out_len, md, NULL);
+  OPENSSL_free(der);
+  return ret;
 }
 
 int X509_CRL_digest(const X509_CRL *data, const EVP_MD *type, unsigned char *md,
