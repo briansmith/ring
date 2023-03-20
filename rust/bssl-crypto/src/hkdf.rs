@@ -97,45 +97,45 @@ impl<M: Md> Hkdf<M> {
 #[cfg(test)]
 mod tests {
     use crate::hkdf::{HkdfSha256, HkdfSha512};
+    use crate::test_helpers::{decode_hex, decode_hex_into_vec};
     use core::iter;
-    use hex_literal::hex;
 
-    struct Test<'a> {
-        ikm: &'a [u8],
-        salt: &'a [u8],
-        info: &'a [u8],
-        okm: &'a [u8],
+    struct Test {
+        ikm: Vec<u8>,
+        salt: Vec<u8>,
+        info: Vec<u8>,
+        okm: Vec<u8>,
     }
 
     #[test]
     fn hkdf_sha_256_test() {
-        let ikm = hex!("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
-        let salt = hex!("000102030405060708090a0b0c");
-        let info = hex!("f0f1f2f3f4f5f6f7f8f9");
+        let ikm = decode_hex_into_vec("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        let salt = decode_hex_into_vec("000102030405060708090a0b0c");
+        let info = decode_hex_into_vec("f0f1f2f3f4f5f6f7f8f9");
 
-        let hk = HkdfSha256::new(Some(&salt[..]), &ikm);
+        let hk = HkdfSha256::new(Some(salt.as_slice()), ikm.as_slice());
         let mut okm = [0u8; 42];
         hk.expand(&info, &mut okm)
             .expect("42 is a valid length for Sha256 to output");
 
-        let expected = hex!(
-            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+        let expected = decode_hex(
+            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
         );
         assert_eq!(okm, expected);
     }
 
     #[test]
     fn hkdf_sha512_test() {
-        let ikm = hex!("5d3db20e8238a90b62a600fa57fdb318");
-        let salt = hex!("1d6f3b38a1e607b5e6bcd4af1800a9d3");
-        let info = hex!("2bc5f39032b6fc87da69ba8711ce735b169646fd");
+        let ikm = decode_hex_into_vec("5d3db20e8238a90b62a600fa57fdb318");
+        let salt = decode_hex_into_vec("1d6f3b38a1e607b5e6bcd4af1800a9d3");
+        let info = decode_hex_into_vec("2bc5f39032b6fc87da69ba8711ce735b169646fd");
 
-        let hk = HkdfSha512::new(Some(&salt[..]), &ikm);
+        let hk = HkdfSha512::new(Some(salt.as_slice()), ikm.as_slice());
         let mut okm = [0u8; 42];
         hk.expand(&info, &mut okm).expect("Should succeed");
 
-        let expected = hex!(
-            "8c3cf7122dcb5eb7efaf02718f1faf70bca20dcb75070e9d0871a413a6c05fc195a75aa9ffc349d70aae"
+        let expected = decode_hex(
+            "8c3cf7122dcb5eb7efaf02718f1faf70bca20dcb75070e9d0871a413a6c05fc195a75aa9ffc349d70aae",
         );
         assert_eq!(okm, expected);
     }
@@ -146,69 +146,50 @@ mod tests {
         let tests = [
             Test {
                 // Test Case 1
-                ikm: &hex!("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
-                salt: &hex!("000102030405060708090a0b0c"),
-                info: &hex!("f0f1f2f3f4f5f6f7f8f9"),
-                okm: &hex!(
-                    "
-                    3cb25f25faacd57a90434f64d0362f2a
-                    2d2d0a90cf1a5a4c5db02d56ecc4c5bf
-                    34007208d5b887185865
-                "
-                ),
+                ikm: decode_hex_into_vec("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
+                salt: decode_hex_into_vec("000102030405060708090a0b0c"),
+                info: decode_hex_into_vec("f0f1f2f3f4f5f6f7f8f9"),
+                okm: decode_hex_into_vec("3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865")
             },
             Test {
                 // Test Case 2
-                ikm: &hex!(
-                    "
-                    000102030405060708090a0b0c0d0e0f
-                    101112131415161718191a1b1c1d1e1f
-                    202122232425262728292a2b2c2d2e2f
-                    303132333435363738393a3b3c3d3e3f
-                    404142434445464748494a4b4c4d4e4f
-                "
+                ikm: decode_hex_into_vec(
+                    "000102030405060708090a0b0c0d0e0f\
+                    101112131415161718191a1b1c1d1e1f\
+                    202122232425262728292a2b2c2d2e2f\
+                    303132333435363738393a3b3c3d3e3f\
+                    404142434445464748494a4b4c4d4e4f",
                 ),
-                salt: &hex!(
-                    "
-                    606162636465666768696a6b6c6d6e6f
-                    707172737475767778797a7b7c7d7e7f
-                    808182838485868788898a8b8c8d8e8f
-                    909192939495969798999a9b9c9d9e9f
-                    a0a1a2a3a4a5a6a7a8a9aaabacadaeaf
-                "
+                salt: decode_hex_into_vec(
+                    "606162636465666768696a6b6c6d6e6f\
+                    707172737475767778797a7b7c7d7e7f\
+                    808182838485868788898a8b8c8d8e8f\
+                    909192939495969798999a9b9c9d9e9f\
+                    a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
                 ),
-                info: &hex!(
-                    "
-                    b0b1b2b3b4b5b6b7b8b9babbbcbdbebf
-                    c0c1c2c3c4c5c6c7c8c9cacbcccdcecf
-                    d0d1d2d3d4d5d6d7d8d9dadbdcdddedf
-                    e0e1e2e3e4e5e6e7e8e9eaebecedeeef
-                    f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
-                "
+                info: decode_hex_into_vec(
+                    "b0b1b2b3b4b5b6b7b8b9babbbcbdbebf\
+                    c0c1c2c3c4c5c6c7c8c9cacbcccdcecf\
+                    d0d1d2d3d4d5d6d7d8d9dadbdcdddedf\
+                    e0e1e2e3e4e5e6e7e8e9eaebecedeeef\
+                    f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
                 ),
-                okm: &hex!(
-                    "
-                    b11e398dc80327a1c8e7f78c596a4934
-                    4f012eda2d4efad8a050cc4c19afa97c
-                    59045a99cac7827271cb41c65e590e09
-                    da3275600c2f09b8367793a9aca3db71
-                    cc30c58179ec3e87c14c01d5c1f3434f
-                    1d87
-                "
-                ),
+                okm: decode_hex_into_vec(
+                    "b11e398dc80327a1c8e7f78c596a4934\
+                    4f012eda2d4efad8a050cc4c19afa97c\
+                    59045a99cac7827271cb41c65e590e09\
+                    da3275600c2f09b8367793a9aca3db71\
+                    cc30c58179ec3e87c14c01d5c1f3434f\
+                    1d87",
+                )
             },
             Test {
                 // Test Case 3
-                ikm: &hex!("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
-                salt: &hex!(""),
-                info: &hex!(""),
-                okm: &hex!(
-                    "
-                    8da4e775a563c18f715f802a063c5a31
-                    b8a11f5c5ee1879ec3454e5f3c738d2d
-                    9d201395faa4b61a96c8
-                "
-                ),
+                ikm: decode_hex_into_vec("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
+                salt: Vec::new(),
+                info: Vec::new(),
+                okm: decode_hex_into_vec(
+                    "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8"),
             },
         ];
         for Test {
@@ -221,12 +202,12 @@ mod tests {
             let salt = if salt.is_empty() {
                 None
             } else {
-                Some(&salt[..])
+                Some(salt.as_slice())
             };
-            let hkdf = HkdfSha256::new(salt, ikm);
+            let hkdf = HkdfSha256::new(salt, ikm.as_slice());
             let mut okm2 = vec![0u8; okm.len()];
-            assert!(hkdf.expand(&info[..], &mut okm2).is_ok());
-            assert_eq!(okm2[..], okm[..]);
+            assert!(hkdf.expand(info.as_slice(), &mut okm2).is_ok());
+            assert_eq!(okm2.as_slice(), okm.as_slice());
         }
     }
 

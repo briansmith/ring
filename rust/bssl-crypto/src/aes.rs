@@ -123,102 +123,102 @@ fn new_decrypt_key<const N: usize>(key: [u8; N]) -> AesDecryptKey {
 #[cfg(test)]
 mod tests {
     use crate::aes::{Aes, AesDecryptKey, AesEncryptKey};
-    use hex_literal::hex;
+    use crate::test_helpers::decode_hex;
 
     // test data from https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf F.1.1
     #[test]
     fn aes_128_test_encrypt() {
-        let key = AesEncryptKey::new_aes_128(hex!("2b7e151628aed2a6abf7158809cf4f3c"));
+        let key = AesEncryptKey::new_aes_128(decode_hex("2b7e151628aed2a6abf7158809cf4f3c"));
         let mut block = [0_u8; 16];
 
-        block.copy_from_slice(&hex!("6bc1bee22e409f96e93d7e117393172a"));
+        block.copy_from_slice(&decode_hex::<16>("6bc1bee22e409f96e93d7e117393172a"));
         Aes::encrypt(&key, &mut block);
-        assert_eq!(hex!("3ad77bb40d7a3660a89ecaf32466ef97"), block);
+        assert_eq!(decode_hex("3ad77bb40d7a3660a89ecaf32466ef97"), block);
 
-        block.copy_from_slice(&hex!("ae2d8a571e03ac9c9eb76fac45af8e51"));
+        block.copy_from_slice(&decode_hex::<16>("ae2d8a571e03ac9c9eb76fac45af8e51"));
         Aes::encrypt(&key, &mut block);
-        assert_eq!(hex!("f5d3d58503b9699de785895a96fdbaaf"), block);
+        assert_eq!(decode_hex("f5d3d58503b9699de785895a96fdbaaf"), block);
 
-        block.copy_from_slice(&hex!("30c81c46a35ce411e5fbc1191a0a52ef"));
+        block.copy_from_slice(&decode_hex::<16>("30c81c46a35ce411e5fbc1191a0a52ef"));
         Aes::encrypt(&key, &mut block);
-        assert_eq!(hex!("43b1cd7f598ece23881b00e3ed030688"), block);
+        assert_eq!(decode_hex("43b1cd7f598ece23881b00e3ed030688"), block);
 
-        block.copy_from_slice(&hex!("f69f2445df4f9b17ad2b417be66c3710"));
+        block.copy_from_slice(&decode_hex::<16>("f69f2445df4f9b17ad2b417be66c3710"));
         Aes::encrypt(&key, &mut block);
-        assert_eq!(hex!("7b0c785e27e8ad3f8223207104725dd4"), block);
+        assert_eq!(decode_hex("7b0c785e27e8ad3f8223207104725dd4"), block);
     }
 
     // test data from https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf F.1.2
     #[test]
     fn aes_128_test_decrypt() {
-        let key = AesDecryptKey::new_aes_128(hex!("2b7e151628aed2a6abf7158809cf4f3c"));
+        let key = AesDecryptKey::new_aes_128(decode_hex("2b7e151628aed2a6abf7158809cf4f3c"));
         let mut block = [0_u8; 16];
 
-        block.copy_from_slice(&hex!("3ad77bb40d7a3660a89ecaf32466ef97"));
+        block.copy_from_slice(&decode_hex::<16>("3ad77bb40d7a3660a89ecaf32466ef97"));
         Aes::decrypt(&key, &mut block);
-        assert_eq!(hex!("6bc1bee22e409f96e93d7e117393172a"), block);
+        assert_eq!(decode_hex::<16>("6bc1bee22e409f96e93d7e117393172a"), block);
 
-        block.copy_from_slice(&hex!("f5d3d58503b9699de785895a96fdbaaf"));
+        block.copy_from_slice(&decode_hex::<16>("f5d3d58503b9699de785895a96fdbaaf"));
         Aes::decrypt(&key, &mut block);
-        assert_eq!(hex!("ae2d8a571e03ac9c9eb76fac45af8e51"), block);
+        assert_eq!(decode_hex::<16>("ae2d8a571e03ac9c9eb76fac45af8e51"), block);
 
-        block.copy_from_slice(&hex!("43b1cd7f598ece23881b00e3ed030688"));
+        block.copy_from_slice(&decode_hex::<16>("43b1cd7f598ece23881b00e3ed030688"));
         Aes::decrypt(&key, &mut block);
-        assert_eq!(hex!("30c81c46a35ce411e5fbc1191a0a52ef"), block);
+        assert_eq!(decode_hex::<16>("30c81c46a35ce411e5fbc1191a0a52ef"), block);
 
-        block.copy_from_slice(&hex!("7b0c785e27e8ad3f8223207104725dd4"));
+        block.copy_from_slice(&decode_hex::<16>("7b0c785e27e8ad3f8223207104725dd4").as_slice());
         Aes::decrypt(&key, &mut block);
-        assert_eq!(hex!("f69f2445df4f9b17ad2b417be66c3710"), block);
+        assert_eq!(decode_hex::<16>("f69f2445df4f9b17ad2b417be66c3710"), block);
     }
 
     // test data from https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf F.1.5
     #[test]
     pub fn aes_256_test_encrypt() {
-        let key = AesEncryptKey::new_aes_256(hex!(
-            "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4"
+        let key = AesEncryptKey::new_aes_256(decode_hex(
+            "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
         ));
         let mut block: [u8; 16];
 
-        block = hex!("6bc1bee22e409f96e93d7e117393172a");
+        block = decode_hex("6bc1bee22e409f96e93d7e117393172a");
         Aes::encrypt(&key, &mut block);
-        assert_eq!(hex!("f3eed1bdb5d2a03c064b5a7e3db181f8"), block);
+        assert_eq!(decode_hex("f3eed1bdb5d2a03c064b5a7e3db181f8"), block);
 
-        block = hex!("ae2d8a571e03ac9c9eb76fac45af8e51");
+        block = decode_hex("ae2d8a571e03ac9c9eb76fac45af8e51");
         Aes::encrypt(&key, &mut block);
-        assert_eq!(hex!("591ccb10d410ed26dc5ba74a31362870"), block);
+        assert_eq!(decode_hex("591ccb10d410ed26dc5ba74a31362870"), block);
 
-        block = hex!("30c81c46a35ce411e5fbc1191a0a52ef");
+        block = decode_hex("30c81c46a35ce411e5fbc1191a0a52ef");
         Aes::encrypt(&key, &mut block);
-        assert_eq!(hex!("b6ed21b99ca6f4f9f153e7b1beafed1d"), block);
+        assert_eq!(decode_hex("b6ed21b99ca6f4f9f153e7b1beafed1d"), block);
 
-        block = hex!("f69f2445df4f9b17ad2b417be66c3710");
+        block = decode_hex("f69f2445df4f9b17ad2b417be66c3710");
         Aes::encrypt(&key, &mut block);
-        assert_eq!(hex!("23304b7a39f9f3ff067d8d8f9e24ecc7"), block);
+        assert_eq!(decode_hex("23304b7a39f9f3ff067d8d8f9e24ecc7"), block);
     }
 
     // test data from https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf F.1.6
     #[test]
     fn aes_256_test_decrypt() {
-        let key = AesDecryptKey::new_aes_256(hex!(
-            "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4"
+        let key = AesDecryptKey::new_aes_256(decode_hex(
+            "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4",
         ));
 
         let mut block: [u8; 16];
 
-        block = hex!("f3eed1bdb5d2a03c064b5a7e3db181f8");
+        block = decode_hex("f3eed1bdb5d2a03c064b5a7e3db181f8");
         Aes::decrypt(&key, &mut block);
-        assert_eq!(hex!("6bc1bee22e409f96e93d7e117393172a"), block);
+        assert_eq!(decode_hex("6bc1bee22e409f96e93d7e117393172a"), block);
 
-        block = hex!("591ccb10d410ed26dc5ba74a31362870");
+        block = decode_hex("591ccb10d410ed26dc5ba74a31362870");
         Aes::decrypt(&key, &mut block);
-        assert_eq!(hex!("ae2d8a571e03ac9c9eb76fac45af8e51"), block);
+        assert_eq!(decode_hex("ae2d8a571e03ac9c9eb76fac45af8e51"), block);
 
-        block = hex!("b6ed21b99ca6f4f9f153e7b1beafed1d");
+        block = decode_hex("b6ed21b99ca6f4f9f153e7b1beafed1d");
         Aes::decrypt(&key, &mut block);
-        assert_eq!(hex!("30c81c46a35ce411e5fbc1191a0a52ef"), block);
+        assert_eq!(decode_hex("30c81c46a35ce411e5fbc1191a0a52ef"), block);
 
-        block = hex!("23304b7a39f9f3ff067d8d8f9e24ecc7");
+        block = decode_hex("23304b7a39f9f3ff067d8d8f9e24ecc7");
         Aes::decrypt(&key, &mut block);
-        assert_eq!(hex!("f69f2445df4f9b17ad2b417be66c3710"), block);
+        assert_eq!(decode_hex("f69f2445df4f9b17ad2b417be66c3710"), block);
     }
 }

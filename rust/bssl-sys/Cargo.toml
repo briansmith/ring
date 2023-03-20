@@ -5,5 +5,3 @@ authors = ["Benjamin Brittain <bwb@google.com>"]
 edition = "2018"
 publish = false
 license = "MIT"
-
-[dependencies]

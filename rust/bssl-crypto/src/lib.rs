@@ -37,6 +37,9 @@ pub mod hkdf;
 /// BoringSSL implemented hmac operations.
 pub mod hmac;
 
+#[cfg(test)]
+mod test_helpers;
+
 /// This is a helper struct which provides functions for passing slices over FFI.
 struct CSlice<'a>(&'a [u8]);
 

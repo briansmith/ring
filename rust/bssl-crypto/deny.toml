@@ -77,7 +77,6 @@ unlicensed = "deny"
 # [possible values: any SPDX 3.11 short identifier (+ optional exception)].
 allow = [
     "MIT",
-    "Apache-2.0",
 ]
 # List of explicitly disallowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
@@ -168,8 +167,6 @@ allow = [
     { name = "bssl-crypto", version = "=0.1.0" },
     # bssl-sys should be allowed, version appropriately.
     { name = "bssl-sys", version = "=0.1.0" },
-    # hex-literal was added for ease of tests, but should be removed.
-    { name = "hex-literal", version = "=0.3.4" },
 ]
 # List of crates to deny
 deny = [
