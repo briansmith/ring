@@ -1508,3 +1508,177 @@ int pmbtoken_exp2_get_h_for_testing(uint8_t out[97]) {
          ec_point_to_bytes(pmbtoken_exp2_method.group, &h,
                            POINT_CONVERSION_UNCOMPRESSED, out, 97) == 97;
 }
+
+// PMBTokens PST v1.
+
+static int pmbtoken_pst1_hash_t(const EC_GROUP *group, EC_RAW_POINT *out,
+                                const uint8_t t[TRUST_TOKEN_NONCE_SIZE]) {
+  const uint8_t kHashTLabel[] = "PMBTokens PST V1 HashT";
+  return ec_hash_to_curve_p384_xmd_sha384_sswu(
+      group, out, kHashTLabel, sizeof(kHashTLabel), t, TRUST_TOKEN_NONCE_SIZE);
+}
+
+static int pmbtoken_pst1_hash_s(const EC_GROUP *group, EC_RAW_POINT *out,
+                                const EC_AFFINE *t,
+                                const uint8_t s[TRUST_TOKEN_NONCE_SIZE]) {
+  const uint8_t kHashSLabel[] = "PMBTokens PST V1 HashS";
+  int ret = 0;
+  CBB cbb;
+  uint8_t *buf = NULL;
+  size_t len;
+  if (!CBB_init(&cbb, 0) ||
+      !point_to_cbb(&cbb, group, t) ||
+      !CBB_add_bytes(&cbb, s, TRUST_TOKEN_NONCE_SIZE) ||
+      !CBB_finish(&cbb, &buf, &len) ||
+      !ec_hash_to_curve_p384_xmd_sha384_sswu(
+          group, out, kHashSLabel, sizeof(kHashSLabel), buf, len)) {
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  OPENSSL_free(buf);
+  CBB_cleanup(&cbb);
+  return ret;
+}
+
+static int pmbtoken_pst1_hash_c(const EC_GROUP *group, EC_SCALAR *out,
+                                uint8_t *buf, size_t len) {
+  const uint8_t kHashCLabel[] = "PMBTokens PST V1 HashC";
+  return ec_hash_to_scalar_p384_xmd_sha384(
+      group, out, kHashCLabel, sizeof(kHashCLabel), buf, len);
+}
+
+static int pmbtoken_pst1_hash_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                                        uint8_t *buf, size_t len) {
+  const uint8_t kHashLabel[] = "PMBTokens PST V1 HashToScalar";
+  return ec_hash_to_scalar_p384_xmd_sha384(
+      group, out, kHashLabel, sizeof(kHashLabel), buf, len);
+}
+
+static int pmbtoken_pst1_ok = 0;
+static PMBTOKEN_METHOD pmbtoken_pst1_method;
+static CRYPTO_once_t pmbtoken_pst1_method_once = CRYPTO_ONCE_INIT;
+
+static void pmbtoken_pst1_init_method_impl(void) {
+  // This is the output of |ec_hash_to_scalar_p384_xmd_sha384| with DST
+  // "PMBTokens PST V1 HashH" and message "generator".
+  static const uint8_t kH[] = {
+      0x04, 0x4c, 0xfa, 0xd4, 0x33, 0x6d, 0x8c, 0x4e, 0x18, 0xce, 0x1a,
+      0x82, 0x7b, 0x53, 0x8c, 0xf8, 0x63, 0x18, 0xe5, 0xa3, 0x96, 0x0d,
+      0x05, 0xde, 0xf4, 0x83, 0xa7, 0xd8, 0xde, 0x9c, 0x50, 0x81, 0x38,
+      0xc9, 0x38, 0x25, 0xa3, 0x70, 0x97, 0xc1, 0x1c, 0x33, 0x2e, 0x83,
+      0x68, 0x64, 0x9c, 0x53, 0x73, 0xc3, 0x03, 0xc1, 0xa9, 0xd8, 0x92,
+      0xa2, 0x32, 0xf4, 0x22, 0x40, 0x07, 0x2d, 0x9b, 0x6f, 0xab, 0xff,
+      0x2a, 0x92, 0x03, 0xb1, 0x73, 0x09, 0x1a, 0x6a, 0x4a, 0xc2, 0x4c,
+      0xac, 0x13, 0x59, 0xf4, 0x28, 0x0e, 0x78, 0x69, 0xa5, 0xdf, 0x0d,
+      0x74, 0xeb, 0x14, 0xca, 0x8a, 0x32, 0xbb, 0xd3, 0x91
+  };
+
+  pmbtoken_pst1_ok = pmbtoken_init_method(
+      &pmbtoken_pst1_method, NID_secp384r1, kH, sizeof(kH),
+      pmbtoken_pst1_hash_t, pmbtoken_pst1_hash_s, pmbtoken_pst1_hash_c,
+      pmbtoken_pst1_hash_to_scalar, 0);
+}
+
+static int pmbtoken_pst1_init_method(void) {
+  CRYPTO_once(&pmbtoken_pst1_method_once, pmbtoken_pst1_init_method_impl);
+  if (!pmbtoken_pst1_ok) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  return 1;
+}
+
+int pmbtoken_pst1_generate_key(CBB *out_private, CBB *out_public) {
+  if (!pmbtoken_pst1_init_method()) {
+    return 0;
+  }
+
+  return pmbtoken_generate_key(&pmbtoken_pst1_method, out_private, out_public);
+}
+
+
+int pmbtoken_pst1_derive_key_from_secret(CBB *out_private, CBB *out_public,
+                                         const uint8_t *secret,
+                                         size_t secret_len) {
+  if (!pmbtoken_pst1_init_method()) {
+    return 0;
+  }
+
+  return pmbtoken_derive_key_from_secret(&pmbtoken_pst1_method, out_private,
+                                         out_public, secret, secret_len);
+}
+
+int pmbtoken_pst1_client_key_from_bytes(TRUST_TOKEN_CLIENT_KEY *key,
+                                        const uint8_t *in, size_t len) {
+  if (!pmbtoken_pst1_init_method()) {
+    return 0;
+  }
+  return pmbtoken_client_key_from_bytes(&pmbtoken_pst1_method, key, in, len);
+}
+
+int pmbtoken_pst1_issuer_key_from_bytes(TRUST_TOKEN_ISSUER_KEY *key,
+                                        const uint8_t *in, size_t len) {
+  if (!pmbtoken_pst1_init_method()) {
+    return 0;
+  }
+  return pmbtoken_issuer_key_from_bytes(&pmbtoken_pst1_method, key, in, len);
+}
+
+STACK_OF(TRUST_TOKEN_PRETOKEN) *pmbtoken_pst1_blind(CBB *cbb, size_t count,
+                                                    int include_message,
+                                                    const uint8_t *msg,
+                                                    size_t msg_len) {
+  if (!pmbtoken_pst1_init_method()) {
+    return NULL;
+  }
+  return pmbtoken_blind(&pmbtoken_pst1_method, cbb, count, include_message, msg,
+                        msg_len);
+}
+
+int pmbtoken_pst1_sign(const TRUST_TOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
+                       size_t num_requested, size_t num_to_issue,
+                       uint8_t private_metadata) {
+  if (!pmbtoken_pst1_init_method()) {
+    return 0;
+  }
+  return pmbtoken_sign(&pmbtoken_pst1_method, key, cbb, cbs, num_requested,
+                       num_to_issue, private_metadata);
+}
+
+STACK_OF(TRUST_TOKEN) *pmbtoken_pst1_unblind(
+    const TRUST_TOKEN_CLIENT_KEY *key,
+    const STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens, CBS *cbs, size_t count,
+    uint32_t key_id) {
+  if (!pmbtoken_pst1_init_method()) {
+    return NULL;
+  }
+  return pmbtoken_unblind(&pmbtoken_pst1_method, key, pretokens, cbs, count,
+                          key_id);
+}
+
+int pmbtoken_pst1_read(const TRUST_TOKEN_ISSUER_KEY *key,
+                       uint8_t out_nonce[TRUST_TOKEN_NONCE_SIZE],
+                       uint8_t *out_private_metadata, const uint8_t *token,
+                       size_t token_len, int include_message,
+                       const uint8_t *msg, size_t msg_len) {
+  if (!pmbtoken_pst1_init_method()) {
+    return 0;
+  }
+  return pmbtoken_read(&pmbtoken_pst1_method, key, out_nonce,
+                       out_private_metadata, token, token_len, include_message,
+                       msg, msg_len);
+}
+
+int pmbtoken_pst1_get_h_for_testing(uint8_t out[97]) {
+  if (!pmbtoken_pst1_init_method()) {
+    return 0;
+  }
+  EC_AFFINE h;
+  return ec_jacobian_to_affine(pmbtoken_pst1_method.group, &h,
+                               &pmbtoken_pst1_method.h) &&
+         ec_point_to_bytes(pmbtoken_pst1_method.group, &h,
+                           POINT_CONVERSION_UNCOMPRESSED, out, 97) == 97;
+}

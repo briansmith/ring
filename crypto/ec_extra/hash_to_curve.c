@@ -466,6 +466,18 @@ int EC_hash_to_curve_p384_xmd_sha384_sswu(const EC_GROUP *group, EC_POINT *out,
                                                msg, msg_len);
 }
 
+int ec_hash_to_scalar_p384_xmd_sha384(
+    const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len) {
+  if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
+    OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
+    return 0;
+  }
+
+  return hash_to_scalar(group, EVP_sha384(), out, dst, dst_len, /*k=*/192, msg,
+                        msg_len);
+}
+
 int ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
     const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
     size_t dst_len, const uint8_t *msg, size_t msg_len) {

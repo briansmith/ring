@@ -48,6 +48,14 @@ OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v2_voprf(void);
 // PMBTokens and P-384 with up to 3 keys, without RR verification.
 OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v2_pmb(void);
 
+// TRUST_TOKEN_pst_v1_voprf is an experimental Trust Tokens protocol
+// using VOPRFs and P-384 with up to 6 keys, without RR verification.
+OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_pst_v1_voprf(void);
+
+// TRUST_TOKEN_pst_v1_pmb is an experimental Trust Tokens protocol using
+// PMBTokens and P-384 with up to 3 keys, without RR verification.
+OPENSSL_EXPORT const TRUST_TOKEN_METHOD *TRUST_TOKEN_pst_v1_pmb(void);
+
 // trust_token_st represents a single-use token for the Trust Token protocol.
 // For the client, this is the token and its corresponding signature. For the
 // issuer, this is the token itself.

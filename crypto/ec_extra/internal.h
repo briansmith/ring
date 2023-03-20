@@ -44,6 +44,14 @@ OPENSSL_EXPORT int ec_hash_to_curve_p384_xmd_sha384_sswu(
     const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
     size_t dst_len, const uint8_t *msg, size_t msg_len);
 
+// ec_hash_to_scalar_p384_xmd_sha384 hashes |msg| to a scalar on |group|
+// and writes the result to |out|, using the hash_to_field operation from the
+// P384_XMD:SHA-384_SSWU_RO_ suite from draft-irtf-cfrg-hash-to-curve-16, but
+// generating a value modulo the group order rather than a field element.
+OPENSSL_EXPORT int ec_hash_to_scalar_p384_xmd_sha384(
+    const EC_GROUP *group, EC_SCALAR *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len);
+
 // ec_hash_to_curve_p384_xmd_sha512_sswu_draft07 hashes |msg| to a point on
 // |group| and writes the result to |out|, implementing the
 // P384_XMD:SHA-512_SSWU_RO_ suite from draft-irtf-cfrg-hash-to-curve-07. It

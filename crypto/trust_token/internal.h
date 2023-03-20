@@ -154,6 +154,38 @@ int pmbtoken_exp2_read(const TRUST_TOKEN_ISSUER_KEY *key,
 // function is used to confirm H was computed as expected.
 OPENSSL_EXPORT int pmbtoken_exp2_get_h_for_testing(uint8_t out[97]);
 
+// The following functions implement the corresponding |TRUST_TOKENS_METHOD|
+// functions for |TRUST_TOKENS_pst_v1|'s PMBTokens construction which uses
+// P-384.
+int pmbtoken_pst1_generate_key(CBB *out_private, CBB *out_public);
+int pmbtoken_pst1_derive_key_from_secret(CBB *out_private, CBB *out_public,
+                                         const uint8_t *secret,
+                                         size_t secret_len);
+int pmbtoken_pst1_client_key_from_bytes(TRUST_TOKEN_CLIENT_KEY *key,
+                                        const uint8_t *in, size_t len);
+int pmbtoken_pst1_issuer_key_from_bytes(TRUST_TOKEN_ISSUER_KEY *key,
+                                        const uint8_t *in, size_t len);
+STACK_OF(TRUST_TOKEN_PRETOKEN) *pmbtoken_pst1_blind(CBB *cbb, size_t count,
+                                                    int include_message,
+                                                    const uint8_t *msg,
+                                                    size_t msg_len);
+int pmbtoken_pst1_sign(const TRUST_TOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
+                       size_t num_requested, size_t num_to_issue,
+                       uint8_t private_metadata);
+STACK_OF(TRUST_TOKEN) *pmbtoken_pst1_unblind(
+    const TRUST_TOKEN_CLIENT_KEY *key,
+    const STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens, CBS *cbs, size_t count,
+    uint32_t key_id);
+int pmbtoken_pst1_read(const TRUST_TOKEN_ISSUER_KEY *key,
+                       uint8_t out_nonce[TRUST_TOKEN_NONCE_SIZE],
+                       uint8_t *out_private_metadata, const uint8_t *token,
+                       size_t token_len, int include_message,
+                       const uint8_t *msg, size_t msg_len);
+
+// pmbtoken_pst1_get_h_for_testing returns H in uncompressed coordinates. This
+// function is used to confirm H was computed as expected.
+OPENSSL_EXPORT int pmbtoken_pst1_get_h_for_testing(uint8_t out[97]);
+
 
 // VOPRF.
 //
@@ -186,6 +218,32 @@ STACK_OF(TRUST_TOKEN) *voprf_exp2_unblind(
     const STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens, CBS *cbs, size_t count,
     uint32_t key_id);
 int voprf_exp2_read(const TRUST_TOKEN_ISSUER_KEY *key,
+                    uint8_t out_nonce[TRUST_TOKEN_NONCE_SIZE],
+                    uint8_t *out_private_metadata, const uint8_t *token,
+                    size_t token_len, int include_message, const uint8_t *msg,
+                    size_t msg_len);
+
+// The following functions implement the corresponding |TRUST_TOKENS_METHOD|
+// functions for |TRUST_TOKENS_pst_v1|'s VOPRF construction which uses P-384.
+int voprf_pst1_generate_key(CBB *out_private, CBB *out_public);
+int voprf_pst1_derive_key_from_secret(CBB *out_private, CBB *out_public,
+                                      const uint8_t *secret, size_t secret_len);
+int voprf_pst1_client_key_from_bytes(TRUST_TOKEN_CLIENT_KEY *key,
+                                     const uint8_t *in, size_t len);
+int voprf_pst1_issuer_key_from_bytes(TRUST_TOKEN_ISSUER_KEY *key,
+                                     const uint8_t *in, size_t len);
+STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_pst1_blind(CBB *cbb, size_t count,
+                                                 int include_message,
+                                                 const uint8_t *msg,
+                                                 size_t msg_len);
+int voprf_pst1_sign(const TRUST_TOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
+                    size_t num_requested, size_t num_to_issue,
+                    uint8_t private_metadata);
+STACK_OF(TRUST_TOKEN) *voprf_pst1_unblind(
+    const TRUST_TOKEN_CLIENT_KEY *key,
+    const STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens, CBS *cbs, size_t count,
+    uint32_t key_id);
+int voprf_pst1_read(const TRUST_TOKEN_ISSUER_KEY *key,
                     uint8_t out_nonce[TRUST_TOKEN_NONCE_SIZE],
                     uint8_t *out_private_metadata, const uint8_t *token,
                     size_t token_len, int include_message, const uint8_t *msg,

@@ -292,11 +292,35 @@ TEST(TrustTokenTest, HExp2) {
   EXPECT_EQ(Bytes(h), Bytes(expected_bytes, expected_len));
 }
 
+// Test that H in |TRUST_TOKEN_pst_v1_pmb| was computed correctly.
+TEST(TrustTokenTest, HPST1) {
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp384r1);
+  ASSERT_TRUE(group);
+
+  const uint8_t kHGen[] = "generator";
+  const uint8_t kHLabel[] = "PMBTokens PST V1 HashH";
+
+  bssl::UniquePtr<EC_POINT> expected_h(EC_POINT_new(group));
+  ASSERT_TRUE(expected_h);
+  ASSERT_TRUE(ec_hash_to_curve_p384_xmd_sha384_sswu(
+      group, &expected_h->raw, kHLabel, sizeof(kHLabel), kHGen, sizeof(kHGen)));
+  uint8_t expected_bytes[1 + 2 * EC_MAX_BYTES];
+  size_t expected_len =
+      EC_POINT_point2oct(group, expected_h.get(), POINT_CONVERSION_UNCOMPRESSED,
+                         expected_bytes, sizeof(expected_bytes), nullptr);
+
+  uint8_t h[97];
+  ASSERT_TRUE(pmbtoken_pst1_get_h_for_testing(h));
+  EXPECT_EQ(Bytes(h), Bytes(expected_bytes, expected_len));
+}
+
 static std::vector<const TRUST_TOKEN_METHOD *> AllMethods() {
   return {
     TRUST_TOKEN_experiment_v1(),
     TRUST_TOKEN_experiment_v2_voprf(),
-    TRUST_TOKEN_experiment_v2_pmb()
+    TRUST_TOKEN_experiment_v2_pmb(),
+    TRUST_TOKEN_pst_v1_voprf(),
+    TRUST_TOKEN_pst_v1_pmb()
   };
 }
 
@@ -773,7 +797,8 @@ TEST_P(TrustTokenMetadataTest, TruncatedProof) {
   if (method() == TRUST_TOKEN_experiment_v1()) {
     token_length += 4;
   }
-  if (method() == TRUST_TOKEN_experiment_v2_voprf()) {
+  if (method() == TRUST_TOKEN_experiment_v2_voprf() ||
+      method() == TRUST_TOKEN_pst_v1_voprf()) {
     token_length = 1 + 2 * BN_num_bytes(&group->field);
   }
   for (size_t i = 0; i < count; i++) {
@@ -841,7 +866,8 @@ TEST_P(TrustTokenMetadataTest, ExcessDataProof) {
   if (method() == TRUST_TOKEN_experiment_v1()) {
     token_length += 4;
   }
-  if (method() == TRUST_TOKEN_experiment_v2_voprf()) {
+  if (method() == TRUST_TOKEN_experiment_v2_voprf() ||
+      method() == TRUST_TOKEN_pst_v1_voprf()) {
     token_length = 1 + 2 * BN_num_bytes(&group->field);
   }
   for (size_t i = 0; i < count; i++) {

@@ -829,3 +829,116 @@ int voprf_exp2_read(const TRUST_TOKEN_ISSUER_KEY *key,
   return voprf_read(&voprf_exp2_method, key, out_nonce, token, token_len,
                     include_message, msg, msg_len);
 }
+
+// VOPRF PST v1.
+
+static int voprf_pst1_hash_to_group(const EC_GROUP *group, EC_RAW_POINT *out,
+                                    const uint8_t t[TRUST_TOKEN_NONCE_SIZE]) {
+  const uint8_t kHashTLabel[] = "TrustToken VOPRF PST V1 HashToGroup";
+  return ec_hash_to_curve_p384_xmd_sha384_sswu(
+      group, out, kHashTLabel, sizeof(kHashTLabel), t, TRUST_TOKEN_NONCE_SIZE);
+}
+
+static int voprf_pst1_hash_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                             uint8_t *buf, size_t len) {
+  const uint8_t kHashCLabel[] = "TrustToken VOPRF PST V1 HashToScalar";
+  return ec_hash_to_scalar_p384_xmd_sha384(
+      group, out, kHashCLabel, sizeof(kHashCLabel), buf, len);
+}
+
+static int voprf_pst1_ok = 0;
+static VOPRF_METHOD voprf_pst1_method;
+static CRYPTO_once_t voprf_pst1_method_once = CRYPTO_ONCE_INIT;
+
+static void voprf_pst1_init_method_impl(void) {
+  voprf_pst1_ok =
+      voprf_init_method(&voprf_pst1_method, NID_secp384r1,
+                        voprf_pst1_hash_to_group, voprf_pst1_hash_to_scalar);
+}
+
+static int voprf_pst1_init_method(void) {
+  CRYPTO_once(&voprf_pst1_method_once, voprf_pst1_init_method_impl);
+  if (!voprf_pst1_ok) {
+    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  return 1;
+}
+
+int voprf_pst1_generate_key(CBB *out_private, CBB *out_public) {
+  if (!voprf_pst1_init_method()) {
+    return 0;
+  }
+
+  return voprf_generate_key(&voprf_pst1_method, out_private, out_public);
+}
+
+int voprf_pst1_derive_key_from_secret(CBB *out_private, CBB *out_public,
+                                      const uint8_t *secret,
+                                      size_t secret_len) {
+  if (!voprf_pst1_init_method()) {
+    return 0;
+  }
+
+  return voprf_derive_key_from_secret(&voprf_pst1_method, out_private,
+                                      out_public, secret, secret_len);
+}
+
+int voprf_pst1_client_key_from_bytes(TRUST_TOKEN_CLIENT_KEY *key,
+                                     const uint8_t *in, size_t len) {
+  if (!voprf_pst1_init_method()) {
+    return 0;
+  }
+  return voprf_client_key_from_bytes(&voprf_pst1_method, key, in, len);
+}
+
+int voprf_pst1_issuer_key_from_bytes(TRUST_TOKEN_ISSUER_KEY *key,
+                                     const uint8_t *in, size_t len) {
+  if (!voprf_pst1_init_method()) {
+    return 0;
+  }
+  return voprf_issuer_key_from_bytes(&voprf_pst1_method, key, in, len);
+}
+
+STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_pst1_blind(CBB *cbb, size_t count,
+                                                 int include_message,
+                                                 const uint8_t *msg,
+                                                 size_t msg_len) {
+  if (!voprf_pst1_init_method()) {
+    return NULL;
+  }
+  return voprf_blind(&voprf_pst1_method, cbb, count, include_message, msg,
+                     msg_len);
+}
+
+int voprf_pst1_sign(const TRUST_TOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
+                    size_t num_requested, size_t num_to_issue,
+                    uint8_t private_metadata) {
+  if (!voprf_pst1_init_method() || private_metadata != 0) {
+    return 0;
+  }
+  return voprf_sign(&voprf_pst1_method, key, cbb, cbs, num_requested,
+                    num_to_issue);
+}
+
+STACK_OF(TRUST_TOKEN) *voprf_pst1_unblind(
+    const TRUST_TOKEN_CLIENT_KEY *key,
+    const STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens, CBS *cbs, size_t count,
+    uint32_t key_id) {
+  if (!voprf_pst1_init_method()) {
+    return NULL;
+  }
+  return voprf_unblind(&voprf_pst1_method, key, pretokens, cbs, count, key_id);
+}
+
+int voprf_pst1_read(const TRUST_TOKEN_ISSUER_KEY *key,
+                    uint8_t out_nonce[TRUST_TOKEN_NONCE_SIZE],
+                    uint8_t *out_private_metadata, const uint8_t *token,
+                    size_t token_len, int include_message, const uint8_t *msg,
+                    size_t msg_len) {
+  if (!voprf_pst1_init_method()) {
+    return 0;
+  }
+  return voprf_read(&voprf_pst1_method, key, out_nonce, token, token_len,
+                    include_message, msg, msg_len);
+}

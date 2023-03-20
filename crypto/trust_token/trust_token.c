@@ -78,6 +78,41 @@ const TRUST_TOKEN_METHOD *TRUST_TOKEN_experiment_v2_pmb(void) {
   return &kMethod;
 }
 
+const TRUST_TOKEN_METHOD *TRUST_TOKEN_pst_v1_voprf(void) {
+  static const TRUST_TOKEN_METHOD kMethod = {
+      voprf_pst1_generate_key,
+      voprf_pst1_derive_key_from_secret,
+      voprf_pst1_client_key_from_bytes,
+      voprf_pst1_issuer_key_from_bytes,
+      voprf_pst1_blind,
+      voprf_pst1_sign,
+      voprf_pst1_unblind,
+      voprf_pst1_read,
+      0, /* has_private_metadata */
+      6, /* max_keys */
+      0, /* has_srr */
+  };
+  return &kMethod;
+}
+
+const TRUST_TOKEN_METHOD *TRUST_TOKEN_pst_v1_pmb(void) {
+  static const TRUST_TOKEN_METHOD kMethod = {
+      pmbtoken_pst1_generate_key,
+      pmbtoken_pst1_derive_key_from_secret,
+      pmbtoken_pst1_client_key_from_bytes,
+      pmbtoken_pst1_issuer_key_from_bytes,
+      pmbtoken_pst1_blind,
+      pmbtoken_pst1_sign,
+      pmbtoken_pst1_unblind,
+      pmbtoken_pst1_read,
+      1, /* has_private_metadata */
+      3, /* max_keys */
+      0, /* has_srr */
+  };
+  return &kMethod;
+}
+
+
 void TRUST_TOKEN_PRETOKEN_free(TRUST_TOKEN_PRETOKEN *pretoken) {
   OPENSSL_free(pretoken);
 }
