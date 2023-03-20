@@ -37,6 +37,9 @@ pub mod hkdf;
 /// BoringSSL implemented hmac operations.
 pub mod hmac;
 
+/// BoringSSL implemented cryptographically secure pseudo-random number generation.
+pub mod rand;
+
 #[cfg(test)]
 mod test_helpers;
 
