@@ -1077,10 +1077,9 @@ OPENSSL_EXPORT X509_EXTENSION *d2i_X509_EXTENSION(X509_EXTENSION **out,
                                                   const uint8_t **inp,
                                                   long len);
 
-// i2d_X509_EXTENSION marshals |alg| as a DER-encoded X.509 Extension (RFC
+// i2d_X509_EXTENSION marshals |ex| as a DER-encoded X.509 Extension (RFC
 // 5280), as described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_X509_EXTENSION(const X509_EXTENSION *alg,
-                                      uint8_t **outp);
+OPENSSL_EXPORT int i2d_X509_EXTENSION(const X509_EXTENSION *ex, uint8_t **outp);
 
 // X509_EXTENSION_dup returns a newly-allocated copy of |ex|, or NULL on error.
 // This function works by serializing the structure, so if |ex| is incomplete,
