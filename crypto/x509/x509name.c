@@ -178,8 +178,8 @@ X509_NAME_ENTRY *X509_NAME_delete_entry(X509_NAME *name, int loc) {
 }
 
 int X509_NAME_add_entry_by_OBJ(X509_NAME *name, const ASN1_OBJECT *obj,
-                               int type, const unsigned char *bytes, int len,
-                               int loc, int set) {
+                               int type, const unsigned char *bytes,
+                               ossl_ssize_t len, int loc, int set) {
   X509_NAME_ENTRY *ne =
       X509_NAME_ENTRY_create_by_OBJ(NULL, obj, type, bytes, len);
   if (!ne) {
@@ -191,8 +191,8 @@ int X509_NAME_add_entry_by_OBJ(X509_NAME *name, const ASN1_OBJECT *obj,
 }
 
 int X509_NAME_add_entry_by_NID(X509_NAME *name, int nid, int type,
-                               const unsigned char *bytes, int len, int loc,
-                               int set) {
+                               const unsigned char *bytes, ossl_ssize_t len,
+                               int loc, int set) {
   X509_NAME_ENTRY *ne =
       X509_NAME_ENTRY_create_by_NID(NULL, nid, type, bytes, len);
   if (!ne) {
@@ -204,8 +204,8 @@ int X509_NAME_add_entry_by_NID(X509_NAME *name, int nid, int type,
 }
 
 int X509_NAME_add_entry_by_txt(X509_NAME *name, const char *field, int type,
-                               const unsigned char *bytes, int len, int loc,
-                               int set) {
+                               const unsigned char *bytes, ossl_ssize_t len,
+                               int loc, int set) {
   X509_NAME_ENTRY *ne =
       X509_NAME_ENTRY_create_by_txt(NULL, field, type, bytes, len);
   if (!ne) {
@@ -282,7 +282,7 @@ err:
 X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(X509_NAME_ENTRY **ne,
                                                const char *field, int type,
                                                const unsigned char *bytes,
-                                               int len) {
+                                               ossl_ssize_t len) {
   ASN1_OBJECT *obj;
   X509_NAME_ENTRY *nentry;
 
@@ -300,7 +300,7 @@ X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(X509_NAME_ENTRY **ne,
 X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_NID(X509_NAME_ENTRY **ne, int nid,
                                                int type,
                                                const unsigned char *bytes,
-                                               int len) {
+                                               ossl_ssize_t len) {
   const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
   if (obj == NULL) {
     OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_NID);
@@ -312,7 +312,7 @@ X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_NID(X509_NAME_ENTRY **ne, int nid,
 X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_OBJ(X509_NAME_ENTRY **ne,
                                                const ASN1_OBJECT *obj, int type,
                                                const unsigned char *bytes,
-                                               int len) {
+                                               ossl_ssize_t len) {
   X509_NAME_ENTRY *ret;
 
   if ((ne == NULL) || (*ne == NULL)) {
@@ -352,9 +352,7 @@ int X509_NAME_ENTRY_set_object(X509_NAME_ENTRY *ne, const ASN1_OBJECT *obj) {
 }
 
 int X509_NAME_ENTRY_set_data(X509_NAME_ENTRY *ne, int type,
-                             const unsigned char *bytes, int len) {
-  int i;
-
+                             const unsigned char *bytes, ossl_ssize_t len) {
   if ((ne == NULL) || ((bytes == NULL) && (len != 0))) {
     return 0;
   }
@@ -367,8 +365,7 @@ int X509_NAME_ENTRY_set_data(X509_NAME_ENTRY *ne, int type,
   if (len < 0) {
     len = strlen((const char *)bytes);
   }
-  i = ASN1_STRING_set(ne->value, bytes, len);
-  if (!i) {
+  if (!ASN1_STRING_set(ne->value, bytes, len)) {
     return 0;
   }
   if (type != V_ASN1_UNDEF) {

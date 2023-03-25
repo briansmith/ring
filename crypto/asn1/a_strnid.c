@@ -87,7 +87,7 @@ static const ASN1_STRING_TABLE *asn1_string_table_get(int nid);
 // a corresponding OID. For example certificates and certificate requests.
 
 ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out, const unsigned char *in,
-                                    int len, int inform, int nid) {
+                                    ossl_ssize_t len, int inform, int nid) {
   ASN1_STRING *str = NULL;
   int ret;
   if (!out) {

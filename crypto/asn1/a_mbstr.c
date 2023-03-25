@@ -73,18 +73,19 @@
 // horrible: it has to be :-( The 'ncopy' form checks minimum and maximum
 // size limits too.
 
-int ASN1_mbstring_copy(ASN1_STRING **out, const unsigned char *in, int len,
-                       int inform, unsigned long mask) {
-  return ASN1_mbstring_ncopy(out, in, len, inform, mask, 0, 0);
+int ASN1_mbstring_copy(ASN1_STRING **out, const unsigned char *in,
+                       ossl_ssize_t len, int inform, unsigned long mask) {
+  return ASN1_mbstring_ncopy(out, in, len, inform, mask, /*minsize=*/0,
+                             /*maxsize=*/0);
 }
 
 OPENSSL_DECLARE_ERROR_REASON(ASN1, INVALID_BMPSTRING)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, INVALID_UNIVERSALSTRING)
 OPENSSL_DECLARE_ERROR_REASON(ASN1, INVALID_UTF8STRING)
 
-int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
-                        int inform, unsigned long mask, long minsize,
-                        long maxsize) {
+int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in,
+                        ossl_ssize_t len, int inform, unsigned long mask,
+                        ossl_ssize_t minsize, ossl_ssize_t maxsize) {
   if (len == -1) {
     len = strlen((const char *)in);
   }
@@ -164,14 +165,14 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     utf8_len += cbb_get_utf8_len(c);
     if (maxsize > 0 && nchar > (size_t)maxsize) {
       OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
-      ERR_add_error_dataf("maxsize=%ld", maxsize);
+      ERR_add_error_dataf("maxsize=%zu", (size_t)maxsize);
       return -1;
     }
   }
 
   if (minsize > 0 && nchar < (size_t)minsize) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_SHORT);
-    ERR_add_error_dataf("minsize=%ld", minsize);
+    ERR_add_error_dataf("minsize=%zu", (size_t)minsize);
     return -1;
   }
 

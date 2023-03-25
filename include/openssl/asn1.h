@@ -740,15 +740,17 @@ OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out,
 // the result. If |out| is NULL, it returns the selected output type without
 // constructing an |ASN1_STRING|. On error, this function returns -1.
 OPENSSL_EXPORT int ASN1_mbstring_copy(ASN1_STRING **out, const uint8_t *in,
-                                      int len, int inform, unsigned long mask);
+                                      ossl_ssize_t len, int inform,
+                                      unsigned long mask);
 
 // ASN1_mbstring_ncopy behaves like |ASN1_mbstring_copy| but returns an error if
 // the input is less than |minsize| or greater than |maxsize| codepoints long. A
 // |maxsize| value of zero is ignored. Note the sizes are measured in
 // codepoints, not output bytes.
 OPENSSL_EXPORT int ASN1_mbstring_ncopy(ASN1_STRING **out, const uint8_t *in,
-                                       int len, int inform, unsigned long mask,
-                                       long minsize, long maxsize);
+                                       ossl_ssize_t len, int inform,
+                                       unsigned long mask, ossl_ssize_t minsize,
+                                       ossl_ssize_t maxsize);
 
 // ASN1_STRING_set_by_NID behaves like |ASN1_mbstring_ncopy|, but determines
 // |mask|, |minsize|, and |maxsize| based on |nid|. When |nid| is a recognized
@@ -774,7 +776,7 @@ OPENSSL_EXPORT int ASN1_mbstring_ncopy(ASN1_STRING **out, const uint8_t *in,
 // to call |ASN1_mbstring_ncopy| directly instead.
 OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out,
                                                    const unsigned char *in,
-                                                   int len, int inform,
+                                                   ossl_ssize_t len, int inform,
                                                    int nid);
 
 // STABLE_NO_MASK causes |ASN1_STRING_TABLE_add| to allow types other than
