@@ -57,6 +57,7 @@
 // extension creation utilities
 
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -81,7 +82,7 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
 static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
                                   int crit, void *ext_struc);
 static unsigned char *generic_asn1(const char *value, const X509V3_CTX *ctx,
-                                   long *ext_len);
+                                   size_t *ext_len);
 
 X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf, const X509V3_CTX *ctx,
                                  const char *name, const char *value) {
@@ -290,7 +291,7 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
                                             int crit, int gen_type,
                                             const X509V3_CTX *ctx) {
   unsigned char *ext_der = NULL;
-  long ext_len = 0;
+  size_t ext_len = 0;
   ASN1_OBJECT *obj = NULL;
   ASN1_OCTET_STRING *oct = NULL;
   X509_EXTENSION *extension = NULL;
@@ -312,12 +313,17 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
     goto err;
   }
 
-  if (!(oct = ASN1_OCTET_STRING_new())) {
+  if (ext_len > INT_MAX) {
+    OPENSSL_PUT_ERROR(X509V3, ERR_R_OVERFLOW);
     goto err;
   }
 
-  oct->data = ext_der;
-  oct->length = ext_len;
+  oct = ASN1_OCTET_STRING_new();
+  if (oct == NULL) {
+    goto err;
+  }
+
+  ASN1_STRING_set0(oct, ext_der, (int)ext_len);
   ext_der = NULL;
 
   extension = X509_EXTENSION_create_by_OBJ(NULL, obj, crit, oct);
@@ -330,15 +336,18 @@ err:
 }
 
 static unsigned char *generic_asn1(const char *value, const X509V3_CTX *ctx,
-                                   long *ext_len) {
-  ASN1_TYPE *typ;
-  unsigned char *ext_der = NULL;
-  typ = ASN1_generate_v3(value, ctx);
+                                   size_t *ext_len) {
+  ASN1_TYPE *typ = ASN1_generate_v3(value, ctx);
   if (typ == NULL) {
     return NULL;
   }
-  *ext_len = i2d_ASN1_TYPE(typ, &ext_der);
+  unsigned char *ext_der = NULL;
+  int len = i2d_ASN1_TYPE(typ, &ext_der);
   ASN1_TYPE_free(typ);
+  if (len < 0) {
+    return NULL;
+  }
+  *ext_len = len;
   return ext_der;
 }
 

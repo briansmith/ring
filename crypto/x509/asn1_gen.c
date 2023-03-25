@@ -509,7 +509,7 @@ static int generate_v3(CBB *cbb, const char *str, const X509V3_CTX *cnf,
                CBB_flush(cbb);
       }
       if (format == ASN1_GEN_FORMAT_HEX) {
-        long len;
+        size_t len;
         uint8_t *data = x509v3_hex_to_bytes(value, &len);
         if (data == NULL) {
           OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_HEX);

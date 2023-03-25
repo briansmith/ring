@@ -494,7 +494,7 @@ err:
   return NULL;
 }
 
-unsigned char *x509v3_hex_to_bytes(const char *str, long *len) {
+unsigned char *x509v3_hex_to_bytes(const char *str, size_t *len) {
   unsigned char *hexbuf, *q;
   unsigned char ch, cl, *p;
   uint8_t high, low;

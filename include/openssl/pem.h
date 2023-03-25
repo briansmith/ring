@@ -372,9 +372,6 @@ OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read(FILE *fp,
 // password.
 OPENSSL_EXPORT int PEM_def_callback(char *buf, int size, int rwflag,
                                     void *userdata);
-OPENSSL_EXPORT void PEM_proc_type(char *buf, int type);
-OPENSSL_EXPORT void PEM_dek_info(char *buf, const char *type, int len,
-                                 char *str);
 
 
 DECLARE_PEM_rw(X509, X509)

@@ -157,13 +157,11 @@ static int file_read(BIO *b, char *out, int outl) {
 }
 
 static int file_write(BIO *b, const char *in, int inl) {
-  int ret = 0;
-
   if (!b->init) {
     return 0;
   }
 
-  ret = fwrite(in, inl, 1, (FILE *)b->ptr);
+  int ret = (int)fwrite(in, inl, 1, (FILE *)b->ptr);
   if (ret > 0) {
     ret = inl;
   }
@@ -253,20 +251,18 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
 }
 
 static int file_gets(BIO *bp, char *buf, int size) {
-  int ret = 0;
-
   if (size == 0) {
     return 0;
   }
 
   if (!fgets(buf, size, (FILE *)bp->ptr)) {
     buf[0] = 0;
-    goto err;
+    // TODO(davidben): This doesn't distinguish error and EOF. This should check
+    // |ferror| as in |file_read|.
+    return 0;
   }
-  ret = strlen(buf);
 
-err:
-  return ret;
+  return (int)strlen(buf);
 }
 
 static const BIO_METHOD methods_filep = {

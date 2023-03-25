@@ -62,6 +62,8 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+#include <limits.h>
+
 #include "internal.h"
 
 int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1, X509_ALGOR *algor2,
@@ -83,16 +85,12 @@ int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1, X509_ALGOR *algor2,
 int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                        X509_ALGOR *algor2, ASN1_BIT_STRING *signature,
                        void *asn, EVP_MD_CTX *ctx) {
-  EVP_PKEY *pkey;
-  unsigned char *buf_in = NULL, *buf_out = NULL;
-  size_t inl = 0, outl = 0;
-
+  int ret = 0;
+  uint8_t *in = NULL, *out = NULL;
   if (signature->type != V_ASN1_BIT_STRING) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_TYPE);
     goto err;
   }
-
-  pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
 
   // Write out the requested copies of the AlgorithmIdentifier.
   if (algor1 && !x509_digest_sign_algorithm(ctx, algor1)) {
@@ -102,26 +100,37 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
     goto err;
   }
 
-  inl = ASN1_item_i2d(asn, &buf_in, it);
-  outl = EVP_PKEY_size(pkey);
-  buf_out = OPENSSL_malloc((unsigned int)outl);
-  if ((buf_in == NULL) || (buf_out == NULL)) {
-    outl = 0;
+  int in_len = ASN1_item_i2d(asn, &in, it);
+  if (in_len < 0) {
     goto err;
   }
 
-  if (!EVP_DigestSign(ctx, buf_out, &outl, buf_in, inl)) {
-    outl = 0;
+  EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
+  size_t out_len = EVP_PKEY_size(pkey);
+  if (out_len > INT_MAX) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_OVERFLOW);
+    goto err;
+  }
+
+  out = OPENSSL_malloc(out_len);
+  if (out == NULL) {
+    goto err;
+  }
+
+  if (!EVP_DigestSign(ctx, out, &out_len, in, in_len)) {
     OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
     goto err;
   }
-  ASN1_STRING_set0(signature, buf_out, outl);
-  buf_out = NULL;
+
+  ASN1_STRING_set0(signature, out, (int)out_len);
+  out = NULL;
   signature->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
   signature->flags |= ASN1_STRING_FLAG_BITS_LEFT;
+  ret = 1;
+
 err:
   EVP_MD_CTX_cleanup(ctx);
-  OPENSSL_free(buf_in);
-  OPENSSL_free(buf_out);
-  return outl;
+  OPENSSL_free(in);
+  OPENSSL_free(out);
+  return ret;
 }

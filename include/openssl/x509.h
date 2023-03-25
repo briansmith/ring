@@ -413,13 +413,13 @@ OPENSSL_EXPORT X509 *d2i_X509_AUX(X509 **x509, const unsigned char **inp,
 // NULL, the alias is cleared instead. Aliases are not part of the certificate
 // itself and will not be serialized by |i2d_X509|.
 OPENSSL_EXPORT int X509_alias_set1(X509 *x509, const unsigned char *name,
-                                   int len);
+                                   ossl_ssize_t len);
 
 // X509_keyid_set1 sets |x509|'s key ID to |len| bytes from |id|. If |id| is
 // NULL, the key ID is cleared instead. Key IDs are not part of the certificate
 // itself and will not be serialized by |i2d_X509|.
 OPENSSL_EXPORT int X509_keyid_set1(X509 *x509, const unsigned char *id,
-                                   int len);
+                                   ossl_ssize_t len);
 
 // X509_alias_get0 looks up |x509|'s alias. If found, it sets |*out_len| to the
 // alias's length and returns a pointer to a buffer containing the contents. If
@@ -1792,7 +1792,7 @@ OPENSSL_EXPORT int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *spki, EVP_PKEY *pkey);
 // If |len| is 0 or negative, the length is calculated with |strlen| and |str|
 // must be a NUL-terminated C string.
 OPENSSL_EXPORT NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str,
-                                                       int len);
+                                                       ossl_ssize_t len);
 
 // NETSCAPE_SPKI_b64_encode encodes |spki| as a base64-encoded Netscape signed
 // public key and challenge (SPKAC) structure. It returns a newly-allocated

@@ -208,8 +208,9 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   // pre-computed key schedule and a streaming operation.
   ASSERT_TRUE(MaybeCopyCipherContext(copy, &ctx));
   if (is_aead) {
-    ASSERT_TRUE(
-        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN, iv.size(), 0));
+    ASSERT_LE(iv.size(), size_t{INT_MAX});
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN,
+                                    static_cast<int>(iv.size()), 0));
   } else {
     ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx.get()));
   }

@@ -221,7 +221,8 @@ static int bio_read(BIO *bio, char *buf, int size_) {
     rest -= chunk;
   } while (rest);
 
-  return size;
+  // |size| is bounded by the buffer size, which fits in |int|.
+  return (int)size;
 }
 
 static int bio_write(BIO *bio, const char *buf, int num_) {
@@ -293,7 +294,8 @@ static int bio_write(BIO *bio, const char *buf, int num_) {
     buf += chunk;
   } while (rest);
 
-  return num;
+  // |num| is bounded by the buffer size, which fits in |int|.
+  return (int)num;
 }
 
 static int bio_make_pair(BIO *bio1, BIO *bio2, size_t writebuf1_len,

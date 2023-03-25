@@ -56,8 +56,8 @@
  *
  */
 
-#ifndef OPENSSL_HEADER_ASN1_ASN1_LOCL_H
-#define OPENSSL_HEADER_ASN1_ASN1_LOCL_H
+#ifndef OPENSSL_HEADER_ASN1_INTERNAL_H
+#define OPENSSL_HEADER_ASN1_INTERNAL_H
 
 #include <time.h>
 
@@ -266,4 +266,4 @@ typedef struct ASN1_EXTERN_FUNCS_st {
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_ASN1_ASN1_LOCL_H
+#endif  // OPENSSL_HEADER_ASN1_INTERNAL_H

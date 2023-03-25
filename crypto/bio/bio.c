@@ -423,7 +423,7 @@ int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent) {
 }
 
 static int print_bio(const char *str, size_t len, void *bio) {
-  return BIO_write((BIO *)bio, str, len);
+  return BIO_write_all((BIO *)bio, str, len);
 }
 
 void ERR_print_errors(BIO *bio) {
@@ -462,9 +462,11 @@ static int bio_read_all(BIO *bio, uint8_t **out, size_t *out_len,
       OPENSSL_free(*out);
       return 0;
     }
-    const size_t todo = len - done;
-    assert(todo < INT_MAX);
-    const int n = BIO_read(bio, *out + done, todo);
+    size_t todo = len - done;
+    if (todo > INT_MAX) {
+      todo = INT_MAX;
+    }
+    const int n = BIO_read(bio, *out + done, (int)todo);
     if (n == 0) {
       *out_len = done;
       return 1;

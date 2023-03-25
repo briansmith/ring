@@ -257,7 +257,8 @@ static int fd_gets(BIO *bp, char *buf, int size) {
 
   ptr[0] = '\0';
 
-  return ptr - buf;
+  // The output length is bounded by |size|.
+  return (int)(ptr - buf);
 }
 
 static const BIO_METHOD methods_fdp = {

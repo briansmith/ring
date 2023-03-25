@@ -168,7 +168,6 @@ static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
                                        const STACK_OF(CONF_VALUE) *nval) {
   AUTHORITY_INFO_ACCESS *ainfo = NULL;
   ACCESS_DESCRIPTION *acc;
-  char *objtmp, *ptmp;
   if (!(ainfo = sk_ACCESS_DESCRIPTION_new_null())) {
     return NULL;
   }
@@ -178,22 +177,21 @@ static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
         !sk_ACCESS_DESCRIPTION_push(ainfo, acc)) {
       goto err;
     }
-    ptmp = strchr(cnf->name, ';');
+    char *ptmp = strchr(cnf->name, ';');
     if (!ptmp) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SYNTAX);
       goto err;
     }
-    int objlen = ptmp - cnf->name;
     CONF_VALUE ctmp;
     ctmp.name = ptmp + 1;
     ctmp.value = cnf->value;
     if (!v2i_GENERAL_NAME_ex(acc->location, method, ctx, &ctmp, 0)) {
       goto err;
     }
-    if (!(objtmp = OPENSSL_malloc(objlen + 1))) {
+    char *objtmp = OPENSSL_strndup(cnf->name, ptmp - cnf->name);
+    if (objtmp == NULL) {
       goto err;
     }
-    OPENSSL_strlcpy(objtmp, cnf->name, objlen + 1);
     acc->method = OBJ_txt2obj(objtmp, 0);
     if (!acc->method) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_BAD_OBJECT);

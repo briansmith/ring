@@ -43,9 +43,11 @@ TEST(P256_NistzTest, SelectW5) {
   // Fill a table with some garbage input.
   alignas(64) P256_POINT table[16];
   for (size_t i = 0; i < 16; i++) {
-    OPENSSL_memset(table[i].X, 3 * i, sizeof(table[i].X));
-    OPENSSL_memset(table[i].Y, 3 * i + 1, sizeof(table[i].Y));
-    OPENSSL_memset(table[i].Z, 3 * i + 2, sizeof(table[i].Z));
+    OPENSSL_memset(table[i].X, static_cast<uint8_t>(3 * i), sizeof(table[i].X));
+    OPENSSL_memset(table[i].Y, static_cast<uint8_t>(3 * i + 1),
+                   sizeof(table[i].Y));
+    OPENSSL_memset(table[i].Z, static_cast<uint8_t>(3 * i + 2),
+                   sizeof(table[i].Z));
   }
 
   for (int i = 0; i <= 16; i++) {
@@ -73,8 +75,9 @@ TEST(P256_NistzTest, SelectW7) {
   // Fill a table with some garbage input.
   alignas(64) P256_POINT_AFFINE table[64];
   for (size_t i = 0; i < 64; i++) {
-    OPENSSL_memset(table[i].X, 2 * i, sizeof(table[i].X));
-    OPENSSL_memset(table[i].Y, 2 * i + 1, sizeof(table[i].Y));
+    OPENSSL_memset(table[i].X, static_cast<uint8_t>(2 * i), sizeof(table[i].X));
+    OPENSSL_memset(table[i].Y, static_cast<uint8_t>(2 * i + 1),
+                   sizeof(table[i].Y));
   }
 
   for (int i = 0; i <= 64; i++) {

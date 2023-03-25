@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -572,8 +573,13 @@ static int NextProtosAdvertisedCallback(SSL *ssl, const uint8_t **out,
     return SSL_TLSEXT_ERR_NOACK;
   }
 
-  *out = (const uint8_t *)config->advertise_npn.data();
-  *out_len = config->advertise_npn.size();
+  if (config->advertise_npn.size() > UINT_MAX) {
+    fprintf(stderr, "NPN value too large.\n");
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+
+  *out = reinterpret_cast<const uint8_t *>(config->advertise_npn.data());
+  *out_len = static_cast<unsigned>(config->advertise_npn.size());
   return SSL_TLSEXT_ERR_OK;
 }
 

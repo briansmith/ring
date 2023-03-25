@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -3431,8 +3432,10 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
   const uint8_t *iv = ticket + 16;
   bssl::ScopedEVP_CIPHER_CTX ctx;
   int len1, len2;
-  if (!EVP_DecryptInit_ex(ctx.get(), EVP_aes_128_cbc(), nullptr, kZeros, iv) ||
-      !EVP_DecryptUpdate(ctx.get(), plaintext.get(), &len1, ciphertext, len) ||
+  if (len > INT_MAX ||
+      !EVP_DecryptInit_ex(ctx.get(), EVP_aes_128_cbc(), nullptr, kZeros, iv) ||
+      !EVP_DecryptUpdate(ctx.get(), plaintext.get(), &len1, ciphertext,
+                         static_cast<int>(len)) ||
       !EVP_DecryptFinal_ex(ctx.get(), plaintext.get() + len1, &len2)) {
     return false;
   }
@@ -7751,8 +7754,8 @@ TEST(SSLTest, BIO) {
     // |BIO_should_write|.
     int ret;
     for (int i = 0; i < 1024; i++) {
-      std::vector<uint8_t> buffer(1024);
-      ret = BIO_write(client_bio.get(), buffer.data(), buffer.size());
+      const uint8_t kZeros[1024] = {0};
+      ret = BIO_write(client_bio.get(), kZeros, sizeof(kZeros));
       if (ret <= 0) {
         break;
       }
