@@ -688,14 +688,15 @@ OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED(const X509V3_EXT_METHOD *meth,
 // callers should simply handle the custom extension with the byte-based
 // |X509_EXTENSION| APIs directly. Registering |ext| with the library has little
 // practical value.
-OPENSSL_EXPORT int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
 
 // X509V3_EXT_add_alias registers a custom extension with NID |nid_to|. The
 // corresponding ASN.1 type is copied from |nid_from|. It returns one on success
 // and zero on error.
 //
 // WARNING: Do not use this function. See |X509V3_EXT_add|.
-OPENSSL_EXPORT int X509V3_EXT_add_alias(int nid_to, int nid_from);
+OPENSSL_EXPORT OPENSSL_DEPRECATED int X509V3_EXT_add_alias(int nid_to,
+                                                           int nid_from);
 
 OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(
     const X509_EXTENSION *ext);

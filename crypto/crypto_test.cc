@@ -158,3 +158,12 @@ TEST(Crypto, OnDemandIntegrityTest) {
   BORINGSSL_integrity_test();
 }
 #endif
+
+OPENSSL_DEPRECATED static void DeprecatedFunction() {}
+
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+TEST(CryptoTest, DeprecatedFunction) {
+  // This is deprecated, but should not trigger any warnings.
+  DeprecatedFunction();
+}
+OPENSSL_END_ALLOW_DEPRECATED
