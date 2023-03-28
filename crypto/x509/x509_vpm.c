@@ -547,77 +547,11 @@ static const X509_VERIFY_PARAM default_table[] = {
      NULL,                     // policies
      vpm_empty_id}};
 
-static STACK_OF(X509_VERIFY_PARAM) *param_table = NULL;
-
-static int param_cmp(const X509_VERIFY_PARAM *const *a,
-                     const X509_VERIFY_PARAM *const *b) {
-  return strcmp((*a)->name, (*b)->name);
-}
-
-int X509_VERIFY_PARAM_add0_table(X509_VERIFY_PARAM *param) {
-  // TODO(davidben): This should be locked. Alternatively, remove the dynamic
-  // registration mechanism entirely.
-  X509_VERIFY_PARAM *ptmp;
-  if (!param_table) {
-    param_table = sk_X509_VERIFY_PARAM_new(param_cmp);
-    if (!param_table) {
-      return 0;
-    }
-  } else {
-    size_t idx;
-    if (sk_X509_VERIFY_PARAM_find(param_table, &idx, param)) {
-      ptmp = sk_X509_VERIFY_PARAM_value(param_table, idx);
-      X509_VERIFY_PARAM_free(ptmp);
-      (void)sk_X509_VERIFY_PARAM_delete(param_table, idx);
-    }
-  }
-  if (!sk_X509_VERIFY_PARAM_push(param_table, param)) {
-    return 0;
-  }
-  sk_X509_VERIFY_PARAM_sort(param_table);
-  return 1;
-}
-
-int X509_VERIFY_PARAM_get_count(void) {
-  int num = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-  if (param_table) {
-    num += sk_X509_VERIFY_PARAM_num(param_table);
-  }
-  return num;
-}
-
-const X509_VERIFY_PARAM *X509_VERIFY_PARAM_get0(int id) {
-  int num = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-  if (id < num) {
-    return default_table + id;
-  }
-  return sk_X509_VERIFY_PARAM_value(param_table, id - num);
-}
-
 const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name) {
-  X509_VERIFY_PARAM pm;
-  unsigned i, limit;
-
-  pm.name = (char *)name;
-  if (param_table) {
-    size_t idx;
-    if (sk_X509_VERIFY_PARAM_find(param_table, &idx, &pm)) {
-      return sk_X509_VERIFY_PARAM_value(param_table, idx);
-    }
-  }
-
-  limit = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-  for (i = 0; i < limit; i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(default_table); i++) {
     if (strcmp(default_table[i].name, name) == 0) {
       return &default_table[i];
     }
   }
   return NULL;
-}
-
-void X509_VERIFY_PARAM_table_cleanup(void) {
-  if (param_table) {
-    sk_X509_VERIFY_PARAM_pop_free(param_table, X509_VERIFY_PARAM_free);
-  }
-  param_table = NULL;
 }

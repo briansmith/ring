@@ -2843,12 +2843,8 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param);
 OPENSSL_EXPORT const char *X509_VERIFY_PARAM_get0_name(
     const X509_VERIFY_PARAM *param);
 
-OPENSSL_EXPORT int X509_VERIFY_PARAM_add0_table(X509_VERIFY_PARAM *param);
-OPENSSL_EXPORT int X509_VERIFY_PARAM_get_count(void);
-OPENSSL_EXPORT const X509_VERIFY_PARAM *X509_VERIFY_PARAM_get0(int id);
 OPENSSL_EXPORT const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(
     const char *name);
-OPENSSL_EXPORT void X509_VERIFY_PARAM_table_cleanup(void);
 
 
 #if defined(__cplusplus)
