@@ -152,7 +152,6 @@ int X509_TRUST_get_by_id(int id) {
   if (!trtable) {
     return -1;
   }
-  sk_X509_TRUST_sort(trtable);
   if (!sk_X509_TRUST_find(trtable, &idx, &tmp)) {
     return -1;
   }
@@ -216,6 +215,10 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
 
   // If its a new entry manage the dynamic table
   if (idx == -1) {
+    // TODO(davidben): This should be locked. Alternatively, remove the dynamic
+    // registration mechanism entirely. The trouble is there no way to pass in
+    // the various parameters into an |X509_VERIFY_PARAM| directly. You can only
+    // register it in the global table and get an ID.
     if (!trtable && !(trtable = sk_X509_TRUST_new(tr_cmp))) {
       trtable_free(trtmp);
       return 0;
@@ -224,6 +227,7 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
       trtable_free(trtmp);
       return 0;
     }
+    sk_X509_TRUST_sort(trtable);
   }
   return 1;
 }
