@@ -5313,6 +5313,9 @@ TEST(X509Test, Policy) {
   bssl::UniquePtr<X509> leaf_invalid(CertFromPEM(
       GetTestData("crypto/x509/test/policy_leaf_invalid.pem").c_str()));
   ASSERT_TRUE(leaf_invalid);
+  bssl::UniquePtr<X509> leaf_none(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_leaf_none.pem").c_str()));
+  ASSERT_TRUE(leaf_none);
   bssl::UniquePtr<X509> leaf_oid1(CertFromPEM(
       GetTestData("crypto/x509/test/policy_leaf_oid1.pem").c_str()));
   ASSERT_TRUE(leaf_oid1);
@@ -5335,14 +5338,6 @@ TEST(X509Test, Policy) {
       GetTestData("crypto/x509/test/policy_leaf_require1.pem").c_str()));
   ASSERT_TRUE(leaf_require1);
 
-  // By default, OpenSSL does not check policies, so even syntax errors in the
-  // certificatePolicies extension go unnoticed. (This is probably not
-  // important.)
-  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
-                              {intermediate.get()}, /*crls=*/{}));
-  EXPECT_EQ(X509_V_OK, Verify(leaf_invalid.get(), {root.get()},
-                              {intermediate.get()}, /*crls=*/{}));
-
   auto set_policies = [](X509_VERIFY_PARAM *param,
                          std::vector<const ASN1_OBJECT *> oids) {
     for (const ASN1_OBJECT *oid : oids) {
@@ -5351,9 +5346,6 @@ TEST(X509Test, Policy) {
       ASSERT_TRUE(X509_VERIFY_PARAM_add0_policy(param, copy.get()));
       copy.release();  // |X509_VERIFY_PARAM_add0_policy| takes ownership on
                        // success.
-      // TODO(davidben): |X509_VERIFY_PARAM_add0_policy| does not set this flag,
-      // while |X509_VERIFY_PARAM_set1_policies| does. Is this a bug?
-      X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_POLICY_CHECK);
     }
   };
 
@@ -5399,6 +5391,9 @@ TEST(X509Test, Policy) {
                    [&](X509_VERIFY_PARAM *param) {
                      set_policies(param, {oid1.get()});
                    }));
+  EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+            Verify(leaf_invalid.get(), {root.get()}, {intermediate.get()},
+                   /*crls=*/{}));
 
   // There is a duplicate policy in the policy extension.
   EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
@@ -5443,10 +5438,17 @@ TEST(X509Test, Policy) {
                      set_policies(param, {oid3.get()});
                    }));
 
+  // requireExplicitPolicy applies even if the application does not configure a
+  // user-initial-policy-set. If the validation results in no policies, the
+  // chain is invalid.
+  EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
+            Verify(leaf_none.get(), {root.get()}, {intermediate_require.get()},
+                   /*crls=*/{}));
+
   // A leaf can also set requireExplicitPolicy.
   EXPECT_EQ(X509_V_OK,
             Verify(leaf_require.get(), {root.get()}, {intermediate.get()},
-                   /*crls=*/{}, X509_V_FLAG_POLICY_CHECK));
+                   /*crls=*/{}, /*flags=*/0));
   EXPECT_EQ(X509_V_OK, Verify(leaf_require.get(), {root.get()},
                               {intermediate.get()}, /*crls=*/{},
                               /*flags=*/0, [&](X509_VERIFY_PARAM *param) {

@@ -350,9 +350,6 @@ int X509_VERIFY_PARAM_set1_name(X509_VERIFY_PARAM *param, const char *name) {
 
 int X509_VERIFY_PARAM_set_flags(X509_VERIFY_PARAM *param, unsigned long flags) {
   param->flags |= flags;
-  if (flags & X509_V_FLAG_POLICY_MASK) {
-    param->flags |= X509_V_FLAG_POLICY_CHECK;
-  }
   return 1;
 }
 
@@ -398,8 +395,6 @@ int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
   if (!sk_ASN1_OBJECT_push(param->policies, policy)) {
     return 0;
   }
-  // TODO(davidben): This does not set |X509_V_FLAG_POLICY_CHECK|, while
-  // |X509_VERIFY_PARAM_set1_policies| does. Is this a bug?
   return 1;
 }
 
@@ -421,7 +416,6 @@ int X509_VERIFY_PARAM_set1_policies(X509_VERIFY_PARAM *param,
     return 0;
   }
 
-  param->flags |= X509_V_FLAG_POLICY_CHECK;
   return 1;
 }
 

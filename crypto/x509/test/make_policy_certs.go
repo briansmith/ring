@@ -302,6 +302,10 @@ func main() {
 	leafSingle.template.PolicyIdentifiers = []asn1.ObjectIdentifier{testOID5}
 	mustGenerateCertificate("policy_leaf_oid5.pem", &leafSingle, &intermediate)
 
+	leafNone := leaf
+	leafNone.template.PolicyIdentifiers = nil
+	mustGenerateCertificate("policy_leaf_none.pem", &leafNone, &intermediate)
+
 	// Make version of Root, signed by Root 2, with policy mapping inhibited.
 	// This can be combined with intermediateMapped to test the combination.
 	b = cryptobyte.NewBuilder(nil)

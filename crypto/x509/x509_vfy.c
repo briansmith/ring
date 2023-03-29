@@ -447,7 +447,6 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
 
   // Check revocation status: we do this after copying parameters because
   // they may be needed for CRL signature verification.
-
   ok = ctx->check_revocation(ctx);
   if (!ok) {
     goto end;
@@ -464,14 +463,13 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
   }
 
   // Check name constraints
-
   ok = check_name_constraints(ctx);
   if (!ok) {
     goto end;
   }
 
-  // If we get this far evaluate policies
-  if (!bad_chain && (ctx->param->flags & X509_V_FLAG_POLICY_CHECK)) {
+  // If we get this far, evaluate policies.
+  if (!bad_chain) {
     ok = ctx->check_policy(ctx);
   }
 
@@ -1612,6 +1610,7 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x) {
 }
 
 static int check_policy(X509_STORE_CTX *ctx) {
+  // TODO(davidben): Why do we disable policy validation for CRL paths?
   if (ctx->parent) {
     return 1;
   }

@@ -127,6 +127,7 @@ set(
   crypto/x509/test/policy_leaf_any.pem
   crypto/x509/test/policy_leaf_duplicate.pem
   crypto/x509/test/policy_leaf_invalid.pem
+  crypto/x509/test/policy_leaf_none.pem
   crypto/x509/test/policy_leaf_oid1.pem
   crypto/x509/test/policy_leaf_oid2.pem
   crypto/x509/test/policy_leaf_oid3.pem
