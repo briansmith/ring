@@ -57,6 +57,7 @@
 #include <string.h>
 
 #include <openssl/asn1.h>
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/obj.h>
@@ -86,13 +87,34 @@ int X509_NAME_get_text_by_OBJ(const X509_NAME *name, const ASN1_OBJECT *obj,
   }
   const ASN1_STRING *data =
       X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name, i));
-  i = (data->length > (len - 1)) ? (len - 1) : data->length;
-  if (buf == NULL) {
-    return data->length;
+  unsigned char *text = NULL;
+  int ret = -1;
+  int text_len = ASN1_STRING_to_UTF8(&text, data);
+  // Fail if we could not encode as UTF-8.
+  if (text_len < 0) {
+    goto out;
   }
-  OPENSSL_memcpy(buf, data->data, i);
-  buf[i] = '\0';
-  return i;
+  CBS cbs;
+  CBS_init(&cbs, text, text_len);
+  // Fail if the UTF-8 encoding constains a 0 byte because this is
+  // returned as a C string and callers very often do not check.
+  if (CBS_contains_zero_byte(&cbs)) {
+    goto out;
+  }
+  // We still support the "pass NULL to find out how much" API
+  if (buf != NULL) {
+    if (text_len >= len || len <= 0 ||
+        !CBS_copy_bytes(&cbs, (uint8_t *)buf, text_len)) {
+      goto out;
+    }
+    // It must be a C string
+    buf[text_len] = '\0';
+  }
+  ret = text_len;
+
+out:
+  OPENSSL_free(text);
+  return ret;
 }
 
 int X509_NAME_entry_count(const X509_NAME *name) {

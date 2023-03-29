@@ -6726,3 +6726,68 @@ TEST(X509Test, NameAttributeValues) {
     EXPECT_FALSE(name);
   }
 }
+
+TEST(X509Test, GetTextByOBJ) {
+  struct OBJTestCase {
+    const char *content;
+    int content_type;
+    int len;
+    int expected_result;
+    const char *expected_string;
+  } kTests[] = {
+      {"", V_ASN1_UTF8STRING, 0, 0, ""},
+      {"derp", V_ASN1_UTF8STRING, 4, 4, "derp"},
+      {"\x30\x00",  // Empty sequence can not be converted to UTF-8
+       V_ASN1_SEQUENCE, 2, -1, ""},
+      {
+          "der\0p",
+          V_ASN1_TELETEXSTRING,
+          5,
+          -1,
+          "",
+      },
+      {
+          "0123456789ABCDEF",
+          V_ASN1_IA5STRING,
+          16,
+          16,
+          "0123456789ABCDEF",
+      },
+      {
+          "\x07\xff",
+          V_ASN1_BMPSTRING,
+          2,
+          2,
+          "\xdf\xbf",
+      },
+      {
+          "\x00\xc3\x00\xaf",
+          V_ASN1_BMPSTRING,
+          4,
+          4,
+          "\xc3\x83\xc2\xaf",
+      },
+  };
+  for (const auto &test : kTests) {
+    bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+    ASSERT_TRUE(name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_NID(
+        name.get(), NID_commonName, test.content_type,
+        reinterpret_cast<const uint8_t *>(test.content), test.len, /*loc=*/-1,
+        /*set=*/0));
+    char text[256] = {};
+    EXPECT_EQ(test.expected_result,
+              X509_NAME_get_text_by_NID(name.get(), NID_commonName, text,
+                                        sizeof(text)));
+    EXPECT_STREQ(text, test.expected_string);
+    if (test.expected_result > 0) {
+      // Test truncation. The function writes a trailing NUL byte so the
+      // buffer needs to be one bigger than the expected result.
+      char small[2] = "a";
+      EXPECT_EQ(
+          -1, X509_NAME_get_text_by_NID(name.get(), NID_commonName, small, 1));
+      // The buffer should be unmodified by truncation failure.
+      EXPECT_STREQ(small, "a");
+    }
+  }
+}
