@@ -3132,8 +3132,9 @@ bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
                                        const EVP_PKEY *privkey);
 bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
 bool ssl_get_new_session(SSL_HANDSHAKE *hs);
-int ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out, const SSL_SESSION *session);
-int ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx);
+bool ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out,
+                        const SSL_SESSION *session);
+bool ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx);
 
 // ssl_session_new returns a newly-allocated blank |SSL_SESSION| or nullptr on
 // error.
@@ -3149,23 +3150,22 @@ OPENSSL_EXPORT UniquePtr<SSL_SESSION> SSL_SESSION_parse(
     CBS *cbs, const SSL_X509_METHOD *x509_method, CRYPTO_BUFFER_POOL *pool);
 
 // ssl_session_serialize writes |in| to |cbb| as if it were serialising a
-// session for Session-ID resumption. It returns one on success and zero on
+// session for Session-ID resumption. It returns true on success and false on
 // error.
-OPENSSL_EXPORT int ssl_session_serialize(const SSL_SESSION *in, CBB *cbb);
+OPENSSL_EXPORT bool ssl_session_serialize(const SSL_SESSION *in, CBB *cbb);
 
-// ssl_session_is_context_valid returns one if |session|'s session ID context
-// matches the one set on |hs| and zero otherwise.
-int ssl_session_is_context_valid(const SSL_HANDSHAKE *hs,
-                                 const SSL_SESSION *session);
+// ssl_session_is_context_valid returns whether |session|'s session ID context
+// matches the one set on |hs|.
+bool ssl_session_is_context_valid(const SSL_HANDSHAKE *hs,
+                                  const SSL_SESSION *session);
 
-// ssl_session_is_time_valid returns one if |session| is still valid and zero if
-// it has expired.
-int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session);
+// ssl_session_is_time_valid returns true if |session| is still valid and false
+// if it has expired.
+bool ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session);
 
-// ssl_session_is_resumable returns one if |session| is resumable for |hs| and
-// zero otherwise.
-int ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
-                             const SSL_SESSION *session);
+// ssl_session_is_resumable returns whether |session| is resumable for |hs|.
+bool ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
+                              const SSL_SESSION *session);
 
 // ssl_session_protocol_version returns the protocol version associated with
 // |session|. Note that despite the name, this is not the same as

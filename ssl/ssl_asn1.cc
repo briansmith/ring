@@ -782,7 +782,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
   return ret;
 }
 
-int ssl_session_serialize(const SSL_SESSION *in, CBB *cbb) {
+bool ssl_session_serialize(const SSL_SESSION *in, CBB *cbb) {
   return SSL_SESSION_to_bytes_full(in, cbb, 0);
 }
 
