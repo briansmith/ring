@@ -579,7 +579,7 @@ static int process_policy_constraints(const X509 *x509, size_t *explicit_policy,
 // evaluation.
 static int has_explicit_policy(STACK_OF(X509_POLICY_LEVEL) *levels,
                                const STACK_OF(ASN1_OBJECT) *user_policies) {
-  assert(sk_ASN1_OBJECT_is_sorted(user_policies));
+  assert(user_policies == NULL || sk_ASN1_OBJECT_is_sorted(user_policies));
 
   // Step (g.i). If the policy graph is empty, the intersection is empty.
   size_t num_levels = sk_X509_POLICY_LEVEL_num(levels);
@@ -763,12 +763,14 @@ int X509_policy_check(const STACK_OF(X509) *certs,
   // is only necessary to check if the user-constrained-policy-set is not empty.
   if (explicit_policy == 0) {
     // Build a sorted copy of |user_policies| for more efficient lookup.
-    user_policies_sorted = sk_ASN1_OBJECT_dup(user_policies);
-    if (user_policies_sorted == NULL) {
-      goto err;
+    if (user_policies != NULL) {
+      user_policies_sorted = sk_ASN1_OBJECT_dup(user_policies);
+      if (user_policies_sorted == NULL) {
+        goto err;
+      }
+      sk_ASN1_OBJECT_set_cmp_func(user_policies_sorted, asn1_object_cmp);
+      sk_ASN1_OBJECT_sort(user_policies_sorted);
     }
-    sk_ASN1_OBJECT_set_cmp_func(user_policies_sorted, asn1_object_cmp);
-    sk_ASN1_OBJECT_sort(user_policies_sorted);
 
     if (!has_explicit_policy(levels, user_policies_sorted)) {
       ret = X509_V_ERR_NO_EXPLICIT_POLICY;

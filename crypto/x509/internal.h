@@ -404,7 +404,8 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
 // Path-building functions.
 
 // X509_policy_check checks certificate policies in |certs|. |user_policies| is
-// the user-initial-policy-set. |flags| is a set of |X509_V_FLAG_*| values to
+// the user-initial-policy-set. If |user_policies| is NULL or empty, it is
+// interpreted as anyPolicy. |flags| is a set of |X509_V_FLAG_*| values to
 // apply. It returns |X509_V_OK| on success and |X509_V_ERR_*| on error. It
 // additionally sets |*out_current_cert| to the certificate where the error
 // occurred. If the function succeeded, or the error applies to the entire

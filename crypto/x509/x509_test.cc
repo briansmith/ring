@@ -5358,6 +5358,8 @@ TEST(X509Test, Policy) {
   };
 
   // The chain is good for |oid1| and |oid2|, but not |oid3|.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                              /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY));
   EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
                    X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
@@ -5442,6 +5444,9 @@ TEST(X509Test, Policy) {
                    }));
 
   // A leaf can also set requireExplicitPolicy.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf_require.get(), {root.get()}, {intermediate.get()},
+                   /*crls=*/{}, X509_V_FLAG_POLICY_CHECK));
   EXPECT_EQ(X509_V_OK, Verify(leaf_require.get(), {root.get()},
                               {intermediate.get()}, /*crls=*/{},
                               /*flags=*/0, [&](X509_VERIFY_PARAM *param) {
