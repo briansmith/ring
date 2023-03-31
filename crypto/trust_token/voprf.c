@@ -563,25 +563,23 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
     return NULL;
   }
 
-  int ok = 0;
-  STACK_OF(TRUST_TOKEN) *ret = sk_TRUST_TOKEN_new_null();
-  if (ret == NULL) {
-    return NULL;
-  }
-
   if (count > ((size_t)-1) / sizeof(EC_RAW_POINT) ||
       count > ((size_t)-1) / sizeof(EC_SCALAR)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
-    return 0;
+    return NULL;
   }
+
+  int ok = 0;
+  STACK_OF(TRUST_TOKEN) *ret = sk_TRUST_TOKEN_new_null();
   EC_RAW_POINT *BTs = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
   EC_RAW_POINT *Zs = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
   EC_SCALAR *es = OPENSSL_malloc(count * sizeof(EC_SCALAR));
   CBB batch_cbb;
   CBB_zero(&batch_cbb);
-  if (!BTs ||
-      !Zs ||
-      !es ||
+  if (ret == NULL ||
+      BTs == NULL ||
+      Zs == NULL ||
+      es == NULL ||
       !CBB_init(&batch_cbb, 0) ||
       !cbb_add_point(&batch_cbb, method->group, &key->pubs)) {
     goto err;
