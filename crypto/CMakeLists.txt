@@ -204,6 +204,7 @@ add_library(
   refcount_c11.c
   refcount_lock.c
   rsa_extra/rsa_asn1.c
+  rsa_extra/rsa_crypt.c
   rsa_extra/rsa_print.c
   stack/stack.c
   siphash/siphash.c

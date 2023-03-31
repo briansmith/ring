@@ -67,6 +67,8 @@ extern "C" {
 #endif
 
 
+#define RSA_PKCS1_PADDING_SIZE 11
+
 // Default implementations of RSA operations.
 
 const RSA_METHOD *RSA_default_method(void);
@@ -75,8 +77,6 @@ size_t rsa_default_size(const RSA *rsa);
 int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                          size_t max_out, const uint8_t *in, size_t in_len,
                          int padding);
-int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                        const uint8_t *in, size_t in_len, int padding);
 int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                                   size_t len);
 
@@ -90,21 +90,13 @@ int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont_ctx,
                        BN_CTX *ctx);
 
 
+int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed, size_t seed_len,
+               const EVP_MD *md);
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, size_t to_len,
                                  const uint8_t *from, size_t from_len);
 int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
                                    size_t max_out, const uint8_t *from,
                                    size_t from_len);
-int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
-                                 const uint8_t *from, size_t from_len);
-int RSA_padding_check_PKCS1_type_2(uint8_t *out, size_t *out_len,
-                                   size_t max_out, const uint8_t *from,
-                                   size_t from_len);
-int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
-                                      size_t max_out, const uint8_t *from,
-                                      size_t from_len, const uint8_t *param,
-                                      size_t param_len, const EVP_MD *md,
-                                      const EVP_MD *mgf1md);
 int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
                          size_t from_len);
 
@@ -112,10 +104,16 @@ int RSA_padding_add_none(uint8_t *to, size_t to_len, const uint8_t *from,
 // within DoS bounds.
 int rsa_check_public_key(const RSA *rsa);
 
-// RSA_private_transform calls either the method-specific |private_transform|
-// function (if given) or the generic one. See the comment for
-// |private_transform| in |rsa_meth_st|.
-int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+// rsa_private_transform_no_self_test calls either the method-specific
+// |private_transform| function (if given) or the generic one. See the comment
+// for |private_transform| in |rsa_meth_st|.
+int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
+                                       const uint8_t *in, size_t len);
+
+// rsa_private_transform acts the same as |rsa_private_transform_no_self_test|
+// but, in FIPS mode, performs an RSA self test before calling the default RSA
+// implementation.
+int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                           size_t len);
 
 
