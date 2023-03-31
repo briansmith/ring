@@ -16,6 +16,13 @@
 # https://github.com/pointlander/peg. delocate.go has a go:generate line for
 # rebuilding delocate.peg.go from this file.
 
+# To regenerate delocate.peg.go:
+#
+# go install github.com/pointlander/peg@latest
+# ~/go/bin/peg <path-to-this-file>
+#
+# this will generate delocate.peg.go next to delocate.peg.
+
 package main
 
 type Asm Peg {}
