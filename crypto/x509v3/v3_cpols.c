@@ -356,6 +356,7 @@ static POLICYQUALINFO *notice_section(const X509V3_CTX *ctx,
       if (!nos || !sk_CONF_VALUE_num(nos)) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NUMBERS);
         X509V3_conf_err(cnf);
+        sk_CONF_VALUE_pop_free(nos, X509V3_conf_free);
         goto err;
       }
       int ret = nref_nos(nref->noticenos, nos);
