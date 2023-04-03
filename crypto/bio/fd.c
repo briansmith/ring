@@ -241,15 +241,18 @@ static long fd_ctrl(BIO *b, int cmd, long num, void *ptr) {
 }
 
 static int fd_gets(BIO *bp, char *buf, int size) {
-  char *ptr = buf;
-  char *end = buf + size - 1;
-
   if (size <= 0) {
     return 0;
   }
 
-  while (ptr < end && fd_read(bp, ptr, 1) > 0 && ptr[0] != '\n') {
+  char *ptr = buf;
+  char *end = buf + size - 1;
+  while (ptr < end && fd_read(bp, ptr, 1) > 0) {
+    char c = ptr[0];
     ptr++;
+    if (c == '\n') {
+      break;
+    }
   }
 
   ptr[0] = '\0';

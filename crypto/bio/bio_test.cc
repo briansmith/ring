@@ -364,7 +364,7 @@ TEST(BIOTest, MemWritable) {
   EXPECT_EQ(BIO_eof(bio.get()), 1);
 }
 
-TEST(BIOTest, MemGets) {
+TEST(BIOTest, Gets) {
   const struct {
     std::string bio;
     int gets_len;
@@ -386,8 +386,6 @@ TEST(BIOTest, MemGets) {
       {"12345", 10, "12345"},
 
       // NUL bytes do not terminate gets.
-      // TODO(davidben): File BIOs don't get this right. It's unclear if it's
-      // even possible to use fgets correctly here.
       {std::string("abc\0def\nghi", 11), 256, std::string("abc\0def\n", 8)},
 
       // An output size of one means we cannot read any bytes. Only the trailing
@@ -403,22 +401,61 @@ TEST(BIOTest, MemGets) {
     SCOPED_TRACE(t.bio);
     SCOPED_TRACE(t.gets_len);
 
-    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(t.bio.data(), t.bio.size()));
-    ASSERT_TRUE(bio);
+    auto check_bio_gets = [&](BIO *bio) {
+      std::vector<char> buf(t.gets_len, 'a');
+      int ret = BIO_gets(bio, buf.data(), t.gets_len);
+      ASSERT_GE(ret, 0);
+      // |BIO_gets| should write a NUL terminator, not counted in the return
+      // value.
+      EXPECT_EQ(Bytes(buf.data(), ret + 1),
+                Bytes(t.gets_result.data(), t.gets_result.size() + 1));
 
-    std::vector<char> buf(t.gets_len, 'a');
-    int ret = BIO_gets(bio.get(), buf.data(), t.gets_len);
-    ASSERT_GE(ret, 0);
-    // |BIO_gets| should write a NUL terminator, not counted in the return
-    // value.
-    EXPECT_EQ(Bytes(buf.data(), ret + 1),
-              Bytes(t.gets_result.data(), t.gets_result.size() + 1));
+      // The remaining data should still be in the BIO.
+      buf.resize(t.bio.size() + 1);
+      ret = BIO_read(bio, buf.data(), static_cast<int>(buf.size()));
+      ASSERT_GE(ret, 0);
+      EXPECT_EQ(Bytes(buf.data(), ret),
+                Bytes(t.bio.substr(t.gets_result.size())));
+    };
 
-    // The remaining data should still be in the BIO.
-    const uint8_t *contents;
-    size_t len;
-    ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
-    EXPECT_EQ(Bytes(contents, len), Bytes(t.bio.substr(ret)));
+    {
+      SCOPED_TRACE("memory");
+      bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(t.bio.data(), t.bio.size()));
+      ASSERT_TRUE(bio);
+      check_bio_gets(bio.get());
+    }
+
+    using ScopedFILE = std::unique_ptr<FILE, decltype(&fclose)>;
+    ScopedFILE file(tmpfile(), fclose);
+    ASSERT_TRUE(file);
+    if (!t.bio.empty()) {
+      ASSERT_EQ(1u,
+                fwrite(t.bio.data(), t.bio.size(), /*nitems=*/1, file.get()));
+      ASSERT_EQ(0, fseek(file.get(), 0, SEEK_SET));
+    }
+
+    // TODO(crbug.com/boringssl/585): If the line has an embedded NUL, file
+    // BIOs do not currently report the answer correctly.
+    if (t.bio.find('\0') == std::string::npos) {
+      SCOPED_TRACE("file");
+      bssl::UniquePtr<BIO> bio(BIO_new_fp(file.get(), BIO_NOCLOSE));
+      ASSERT_TRUE(bio);
+      check_bio_gets(bio.get());
+    }
+
+    ASSERT_EQ(0, fseek(file.get(), 0, SEEK_SET));
+
+    {
+      SCOPED_TRACE("fd");
+#if defined(OPENSSL_WINDOWS)
+      int fd = _fileno(file.get());
+#else
+      int fd = fileno(file.get());
+#endif
+      bssl::UniquePtr<BIO> bio(BIO_new_fd(fd, BIO_NOCLOSE));
+      ASSERT_TRUE(bio);
+      check_bio_gets(bio.get());
+    }
   }
 
   // Negative and zero lengths should not output anything, even a trailing NUL.
