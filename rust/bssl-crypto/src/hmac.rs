@@ -79,6 +79,11 @@ impl HmacSha256 {
     pub fn verify_truncated_left(self, tag: &[u8]) -> Result<(), MacError> {
         self.0.verify_truncated_left(tag)
     }
+
+    /// Resets the hmac instance to its initial state
+    pub fn reset(&mut self) {
+        self.0.reset()
+    }
 }
 
 /// The BoringSSL HMAC-SHA512 implementation. The operations may panic if memory allocation fails
@@ -119,6 +124,11 @@ impl HmacSha512 {
     /// Check truncated tag correctness using left side bytes of the calculated tag.
     pub fn verify_truncated_left(self, tag: &[u8]) -> Result<(), MacError> {
         self.0.verify_truncated_left(tag)
+    }
+
+    /// Resets the hmac instance to its initial state
+    pub fn reset(&mut self) {
+        self.0.reset()
     }
 }
 
@@ -268,6 +278,27 @@ impl<const N: usize, M: Md> Hmac<N, M> {
         .then_some(())
         .ok_or(MacError)
     }
+
+    /// Resets the hmac instance to its original state
+    fn reset(&mut self) {
+        // Passing a null ptr for the key will re-use the existing key
+        // Safety:
+        // - HMAC_Init_ex must be called with a context previously created with HMAC_CTX_new,
+        //   which will always be the case if it is coming from self
+        // - HMAC_Init_ex may return an error if key is null but the md is different from
+        //   before. The MD is guaranteed to be the same because it comes from the same generic param
+        // - HMAC_Init_ex returns 0 on allocation failure in which case we panic
+        let result = unsafe {
+            bssl_sys::HMAC_Init_ex(
+                self.ctx,
+                ptr::null_mut(),
+                0,
+                M::get_md().as_ptr(),
+                ptr::null_mut(),
+            )
+        };
+        assert!(result > 0, "Allocation failure in bssl_sys::HMAC_Init_ex");
+    }
 }
 
 impl<const N: usize, M: Md> Drop for Hmac<N, M> {
@@ -295,8 +326,29 @@ mod tests {
         hmac.update(data);
         let hmac_result: [u8; 32] = hmac.finalize();
 
-        // let hmac_result =
-        //     hmac(Md::sha256(), &key, data, &mut out).expect("Couldn't calculate sha256 hmac");
+        assert_eq!(&hmac_result, &expected_hmac);
+    }
+
+    #[test]
+    fn hmac_sha256_reset_test() {
+        let expected_hmac = [
+            0xb0, 0x34, 0x4c, 0x61, 0xd8, 0xdb, 0x38, 0x53, 0x5c, 0xa8, 0xaf, 0xce, 0xaf, 0xb,
+            0xf1, 0x2b, 0x88, 0x1d, 0xc2, 0x0, 0xc9, 0x83, 0x3d, 0xa7, 0x26, 0xe9, 0x37, 0x6c,
+            0x2e, 0x32, 0xcf, 0xf7,
+        ];
+
+        let key: [u8; 20] = [0x0b; 20];
+        let data = b"Hi There";
+        let incorrect_data = b"This data does not match the expected mac";
+
+        let mut hmac = HmacSha256::new_from_slice(&key);
+        hmac.update(incorrect_data);
+        hmac.reset();
+
+        // hmac should be back to original state, so now when we update with the correct data it
+        // should work
+        hmac.update(data);
+        let hmac_result: [u8; 32] = hmac.finalize();
         assert_eq!(&hmac_result, &expected_hmac);
     }
 
