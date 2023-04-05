@@ -1148,7 +1148,8 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
 }
 
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
-                            const char *rule_str, bool strict) {
+                            const bool has_aes_hw, const char *rule_str,
+                            bool strict) {
   // Return with error if nothing to do.
   if (rule_str == NULL || out_cipher_list == NULL) {
     return false;
@@ -1179,7 +1180,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   // CHACHA20 unless there is hardware support for fast and constant-time
   // AES_GCM. Of the two CHACHA20 variants, the new one is preferred over the
   // old one.
-  if (EVP_has_aes_hardware()) {
+  if (has_aes_hw) {
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, 0, CIPHER_ADD, -1,
                           false, &head, &tail);
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, 0, CIPHER_ADD, -1,

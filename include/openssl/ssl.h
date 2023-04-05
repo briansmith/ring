@@ -5413,6 +5413,18 @@ OPENSSL_EXPORT bool SSL_get_traffic_secrets(
     const SSL *ssl, Span<const uint8_t> *out_read_traffic_secret,
     Span<const uint8_t> *out_write_traffic_secret);
 
+// SSL_CTX_set_aes_hw_override_for_testing sets |override_value| to
+// override checking for aes hardware support for testing. If |override_value|
+// is set to true, the library will behave as if aes hardware support is
+// present. If it is set to false, the library will behave as if aes hardware
+// support is not present.
+OPENSSL_EXPORT void SSL_CTX_set_aes_hw_override_for_testing(
+    SSL_CTX *ctx, bool override_value);
+
+// SSL_set_aes_hw_override_for_testing acts the same as
+// |SSL_CTX_set_aes_override_for_testing| but only configures a single |SSL*|.
+OPENSSL_EXPORT void SSL_set_aes_hw_override_for_testing(SSL *ssl,
+                                                        bool override_value);
 
 BSSL_NAMESPACE_END
 

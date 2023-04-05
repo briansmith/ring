@@ -663,7 +663,7 @@ void tls_next_message(SSL *ssl) {
 // the client.
 class CipherScorer {
  public:
-  CipherScorer() : aes_is_fine_(EVP_has_aes_hardware()) {}
+  CipherScorer(bool has_aes_hw) : aes_is_fine_(has_aes_hw) {}
 
   typedef std::tuple<bool, bool> Score;
 
@@ -702,14 +702,15 @@ bool ssl_tls13_cipher_meets_policy(uint16_t cipher_id, bool only_fips) {
   }
 }
 
-const SSL_CIPHER *ssl_choose_tls13_cipher(CBS cipher_suites, uint16_t version,
-                                          uint16_t group_id, bool only_fips) {
+const SSL_CIPHER *ssl_choose_tls13_cipher(CBS cipher_suites, bool has_aes_hw,
+                                          uint16_t version, uint16_t group_id,
+                                          bool only_fips) {
   if (CBS_len(&cipher_suites) % 2 != 0) {
     return nullptr;
   }
 
   const SSL_CIPHER *best = nullptr;
-  CipherScorer scorer;
+  CipherScorer scorer(has_aes_hw);
   CipherScorer::Score best_score = scorer.MinScore();
 
   while (CBS_len(&cipher_suites) > 0) {
