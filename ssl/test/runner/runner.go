@@ -11917,9 +11917,9 @@ func addCurveTests() {
 		},
 	})
 
-        // ... and even if there's another curve in the middle because it's the
-        // first classical and first post-quantum "curves" that get key shares
-        // included.
+	// ... and even if there's another curve in the middle because it's the
+	// first classical and first post-quantum "curves" that get key shares
+	// included.
 	testCases = append(testCases, testCase{
 		name: "CECPQ2KeyShareIncludedThird",
 		config: Config{

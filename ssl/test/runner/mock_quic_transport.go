@@ -54,16 +54,16 @@ func (e encryptionLevel) String() string {
 // Messages from TLS that are sent over a mockQUICTransport are a series of
 // records in the following format:
 //
-//   enum {
-//       initial(0), early_data(1), handshake(2), application(3), (255)
-//   } EncryptionLevel;
+//	enum {
+//	    initial(0), early_data(1), handshake(2), application(3), (255)
+//	} EncryptionLevel;
 //
-//   struct {
-//       ContentType record_type;
-//       EncryptionLevel level;
-//       CipherSuite cipher_suite;
-//       opaque encrypted_record<0..2^32-1>;
-//   } MockQUICRecord;
+//	struct {
+//	    ContentType record_type;
+//	    EncryptionLevel level;
+//	    CipherSuite cipher_suite;
+//	    opaque encrypted_record<0..2^32-1>;
+//	} MockQUICRecord;
 //
 // The "encrypted" record is the concatenation of the encryption key and
 // plaintext. It and the cipher suite exist only to check both sides agree on
