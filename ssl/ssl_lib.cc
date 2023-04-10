@@ -536,7 +536,6 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       false_start_allowed_without_alpn(false),
       handoff(false),
       enable_early_data(false),
-      only_fips_cipher_suites_in_tls13(false),
       aes_hw_override(false),
       aes_hw_override_value(false) {
   CRYPTO_MUTEX_init(&lock);
@@ -658,10 +657,9 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
   ssl->config->permute_extensions = ctx->permute_extensions;
-  ssl->config->only_fips_cipher_suites_in_tls13 =
-      ctx->only_fips_cipher_suites_in_tls13;
   ssl->config->aes_hw_override = ctx->aes_hw_override;
   ssl->config->aes_hw_override_value = ctx->aes_hw_override_value;
+  ssl->config->tls13_cipher_policy = ctx->tls13_cipher_policy;
 
   if (!ssl->config->supported_group_list.CopyFrom(ctx->supported_group_list) ||
       !ssl->config->alpn_client_proto_list.CopyFrom(
@@ -3175,7 +3173,7 @@ static const char kTLS12Ciphers[] =
     "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384";
 
 static int Configure(SSL_CTX *ctx) {
-  ctx->only_fips_cipher_suites_in_tls13 = true;
+  ctx->tls13_cipher_policy = ssl_compliance_policy_fips_202205;
 
   return
       // Section 3.1:
@@ -3198,7 +3196,7 @@ static int Configure(SSL_CTX *ctx) {
 }
 
 static int Configure(SSL *ssl) {
-  ssl->config->only_fips_cipher_suites_in_tls13 = true;
+  ssl->config->tls13_cipher_policy = ssl_compliance_policy_fips_202205;
 
   // See |Configure(SSL_CTX)|, above, for reasoning.
   return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
@@ -3213,11 +3211,59 @@ static int Configure(SSL *ssl) {
 
 }  // namespace fips202205
 
+namespace wpa202304 {
+
+// See WPA version 3.1, section 3.5.
+
+static const int kCurves[] = {NID_secp384r1};
+
+static const uint16_t kSigAlgs[] = {
+    SSL_SIGN_RSA_PKCS1_SHA384,        //
+    SSL_SIGN_RSA_PKCS1_SHA512,        //
+    SSL_SIGN_ECDSA_SECP384R1_SHA384,  //
+    SSL_SIGN_RSA_PSS_RSAE_SHA384,     //
+    SSL_SIGN_RSA_PSS_RSAE_SHA512,     //
+};
+
+static const char kTLS12Ciphers[] =
+    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:"
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384";
+
+static int Configure(SSL_CTX *ctx) {
+  ctx->tls13_cipher_policy = ssl_compliance_policy_wpa3_192_202304;
+
+  return SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) &&
+         SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION) &&
+         SSL_CTX_set_strict_cipher_list(ctx, kTLS12Ciphers) &&
+         SSL_CTX_set1_curves(ctx, kCurves, OPENSSL_ARRAY_SIZE(kCurves)) &&
+         SSL_CTX_set_signing_algorithm_prefs(ctx, kSigAlgs,
+                                             OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
+         SSL_CTX_set_verify_algorithm_prefs(ctx, kSigAlgs,
+                                            OPENSSL_ARRAY_SIZE(kSigAlgs));
+}
+
+static int Configure(SSL *ssl) {
+  ssl->config->tls13_cipher_policy = ssl_compliance_policy_wpa3_192_202304;
+
+  return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
+         SSL_set_max_proto_version(ssl, TLS1_3_VERSION) &&
+         SSL_set_strict_cipher_list(ssl, kTLS12Ciphers) &&
+         SSL_set1_curves(ssl, kCurves, OPENSSL_ARRAY_SIZE(kCurves)) &&
+         SSL_set_signing_algorithm_prefs(ssl, kSigAlgs,
+                                         OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
+         SSL_set_verify_algorithm_prefs(ssl, kSigAlgs,
+                                        OPENSSL_ARRAY_SIZE(kSigAlgs));
+}
+
+}  // namespace wpa202304
+
 int SSL_CTX_set_compliance_policy(SSL_CTX *ctx,
                                   enum ssl_compliance_policy_t policy) {
   switch (policy) {
     case ssl_compliance_policy_fips_202205:
       return fips202205::Configure(ctx);
+    case ssl_compliance_policy_wpa3_192_202304:
+      return wpa202304::Configure(ctx);
     default:
       return 0;
   }
@@ -3227,6 +3273,8 @@ int SSL_set_compliance_policy(SSL *ssl, enum ssl_compliance_policy_t policy) {
   switch (policy) {
     case ssl_compliance_policy_fips_202205:
       return fips202205::Configure(ssl);
+    case ssl_compliance_policy_wpa3_192_202304:
+      return wpa202304::Configure(ssl);
     default:
       return 0;
   }

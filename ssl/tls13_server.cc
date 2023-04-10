@@ -120,7 +120,7 @@ static const SSL_CIPHER *choose_tls13_cipher(
       cipher_suites,
       ssl->config->aes_hw_override ? ssl->config->aes_hw_override_value
                                    : EVP_has_aes_hardware(),
-      version, group_id, ssl->config->only_fips_cipher_suites_in_tls13);
+      version, group_id, ssl->config->tls13_cipher_policy);
 }
 
 static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {

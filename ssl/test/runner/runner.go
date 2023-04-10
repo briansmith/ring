@@ -19194,13 +19194,21 @@ func addCompliancePolicyTests() {
 				isFIPSCipherSuite = true
 			}
 
+			var isWPACipherSuite bool
+			switch suite.id {
+			case TLS_AES_256_GCM_SHA384,
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:
+				isWPACipherSuite = true
+			}
+
 			var certFile string
 			var keyFile string
 			var certs []Certificate
 			if hasComponent(suite.name, "ECDSA") {
-				certFile = ecdsaP256CertificateFile
-				keyFile = ecdsaP256KeyFile
-				certs = []Certificate{ecdsaP256Certificate}
+				certFile = ecdsaP384CertificateFile
+				keyFile = ecdsaP384KeyFile
+				certs = []Certificate{ecdsaP384Certificate}
 			} else {
 				certFile = rsaCertificateFile
 				keyFile = rsaKeyFile
@@ -19215,38 +19223,48 @@ func addCompliancePolicyTests() {
 				maxVersion = VersionTLS12
 			}
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				protocol: protocol,
-				name:     "Compliance-fips202205-" + protocol.String() + "-Server-" + suite.name,
-				config: Config{
-					MinVersion:   VersionTLS12,
-					MaxVersion:   maxVersion,
-					CipherSuites: []uint16{suite.id},
-				},
-				certFile: certFile,
-				keyFile:  keyFile,
-				flags: []string{
-					"-fips-202205",
-				},
-				shouldFail: !isFIPSCipherSuite,
-			})
+			policies := []struct {
+				flag          string
+				cipherSuiteOk bool
+			}{
+				{"-fips-202205", isFIPSCipherSuite},
+				{"-wpa-202304", isWPACipherSuite},
+			}
 
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				protocol: protocol,
-				name:     "Compliance-fips202205-" + protocol.String() + "-Client-" + suite.name,
-				config: Config{
-					MinVersion:   VersionTLS12,
-					MaxVersion:   maxVersion,
-					CipherSuites: []uint16{suite.id},
-					Certificates: certs,
-				},
-				flags: []string{
-					"-fips-202205",
-				},
-				shouldFail: !isFIPSCipherSuite,
-			})
+			for _, policy := range policies {
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					protocol: protocol,
+					name:     "Compliance" + policy.flag + "-" + protocol.String() + "-Server-" + suite.name,
+					config: Config{
+						MinVersion:   VersionTLS12,
+						MaxVersion:   maxVersion,
+						CipherSuites: []uint16{suite.id},
+					},
+					certFile: certFile,
+					keyFile:  keyFile,
+					flags: []string{
+						policy.flag,
+					},
+					shouldFail: !policy.cipherSuiteOk,
+				})
+
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					protocol: protocol,
+					name:     "Compliance" + policy.flag + "-" + protocol.String() + "-Client-" + suite.name,
+					config: Config{
+						MinVersion:   VersionTLS12,
+						MaxVersion:   maxVersion,
+						CipherSuites: []uint16{suite.id},
+						Certificates: certs,
+					},
+					flags: []string{
+						policy.flag,
+					},
+					shouldFail: !policy.cipherSuiteOk,
+				})
+			}
 		}
 
 		// Check that a TLS 1.3 client won't accept ChaCha20 even if the server
@@ -19276,35 +19294,51 @@ func addCompliancePolicyTests() {
 				isFIPSCurve = true
 			}
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				protocol: protocol,
-				name:     "Compliance-fips202205-" + protocol.String() + "-Server-" + curve.name,
-				config: Config{
-					MinVersion:       VersionTLS12,
-					MaxVersion:       VersionTLS13,
-					CurvePreferences: []CurveID{curve.id},
-				},
-				flags: []string{
-					"-fips-202205",
-				},
-				shouldFail: !isFIPSCurve,
-			})
+			var isWPACurve bool
+			switch curve.id {
+			case CurveP384:
+				isWPACurve = true
+			}
 
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				protocol: protocol,
-				name:     "Compliance-fips202205-" + protocol.String() + "-Client-" + curve.name,
-				config: Config{
-					MinVersion:       VersionTLS12,
-					MaxVersion:       VersionTLS13,
-					CurvePreferences: []CurveID{curve.id},
-				},
-				flags: []string{
-					"-fips-202205",
-				},
-				shouldFail: !isFIPSCurve,
-			})
+			policies := []struct {
+				flag    string
+				curveOk bool
+			}{
+				{"-fips-202205", isFIPSCurve},
+				{"-wpa-202304", isWPACurve},
+			}
+
+			for _, policy := range policies {
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					protocol: protocol,
+					name:     "Compliance" + policy.flag + "-" + protocol.String() + "-Server-" + curve.name,
+					config: Config{
+						MinVersion:       VersionTLS12,
+						MaxVersion:       VersionTLS13,
+						CurvePreferences: []CurveID{curve.id},
+					},
+					flags: []string{
+						policy.flag,
+					},
+					shouldFail: !policy.curveOk,
+				})
+
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					protocol: protocol,
+					name:     "Compliance" + policy.flag + "-" + protocol.String() + "-Client-" + curve.name,
+					config: Config{
+						MinVersion:       VersionTLS12,
+						MaxVersion:       VersionTLS13,
+						CurvePreferences: []CurveID{curve.id},
+					},
+					flags: []string{
+						policy.flag,
+					},
+					shouldFail: !policy.curveOk,
+				})
+			}
 		}
 
 		for _, sigalg := range testSignatureAlgorithms {
@@ -19321,6 +19355,16 @@ func addCompliancePolicyTests() {
 				isFIPSSigAlg = true
 			}
 
+			var isWPASigAlg bool
+			switch sigalg.id {
+			case signatureRSAPKCS1WithSHA384,
+				signatureRSAPKCS1WithSHA512,
+				signatureECDSAWithP384AndSHA384,
+				signatureRSAPSSWithSHA384,
+				signatureRSAPSSWithSHA512:
+				isWPASigAlg = true
+			}
+
 			if sigalg.cert == testCertECDSAP224 {
 				// This can work in TLS 1.2, but not with TLS 1.3.
 				// For consistency it's not permitted in FIPS mode.
@@ -19335,38 +19379,48 @@ func addCompliancePolicyTests() {
 				maxVersion = VersionTLS12
 			}
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				protocol: protocol,
-				name:     "Compliance-fips202205-" + protocol.String() + "-Server-" + sigalg.name,
-				config: Config{
-					MinVersion:                VersionTLS12,
-					MaxVersion:                maxVersion,
-					VerifySignatureAlgorithms: []signatureAlgorithm{sigalg.id},
-				},
-				flags: []string{
-					"-fips-202205",
-					"-cert-file", path.Join(*resourceDir, getShimCertificate(sigalg.cert)),
-					"-key-file", path.Join(*resourceDir, getShimKey(sigalg.cert)),
-				},
-				shouldFail: !isFIPSSigAlg,
-			})
+			policies := []struct {
+				flag     string
+				sigAlgOk bool
+			}{
+				{"-fips-202205", isFIPSSigAlg},
+				{"-wpa-202304", isWPASigAlg},
+			}
 
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				protocol: protocol,
-				name:     "Compliance-fips202205-" + protocol.String() + "-Client-" + sigalg.name,
-				config: Config{
-					MinVersion:              VersionTLS12,
-					MaxVersion:              maxVersion,
-					SignSignatureAlgorithms: []signatureAlgorithm{sigalg.id},
-					Certificates:            []Certificate{getRunnerCertificate(sigalg.cert)},
-				},
-				flags: []string{
-					"-fips-202205",
-				},
-				shouldFail: !isFIPSSigAlg,
-			})
+			for _, policy := range policies {
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					protocol: protocol,
+					name:     "Compliance" + policy.flag + "-" + protocol.String() + "-Server-" + sigalg.name,
+					config: Config{
+						MinVersion:                VersionTLS12,
+						MaxVersion:                maxVersion,
+						VerifySignatureAlgorithms: []signatureAlgorithm{sigalg.id},
+					},
+					flags: []string{
+						policy.flag,
+						"-cert-file", path.Join(*resourceDir, getShimCertificate(sigalg.cert)),
+						"-key-file", path.Join(*resourceDir, getShimKey(sigalg.cert)),
+					},
+					shouldFail: !policy.sigAlgOk,
+				})
+
+				testCases = append(testCases, testCase{
+					testType: clientTest,
+					protocol: protocol,
+					name:     "Compliance" + policy.flag + "-" + protocol.String() + "-Client-" + sigalg.name,
+					config: Config{
+						MinVersion:              VersionTLS12,
+						MaxVersion:              maxVersion,
+						SignSignatureAlgorithms: []signatureAlgorithm{sigalg.id},
+						Certificates:            []Certificate{getRunnerCertificate(sigalg.cert)},
+					},
+					flags: []string{
+						policy.flag,
+					},
+					shouldFail: !policy.sigAlgOk,
+				})
+			}
 		}
 	}
 }

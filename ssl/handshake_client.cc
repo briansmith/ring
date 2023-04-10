@@ -215,6 +215,14 @@ static void ssl_get_client_disabled(const SSL_HANDSHAKE *hs,
   }
 }
 
+static bool ssl_add_tls13_cipher(CBB *cbb, uint16_t cipher_id,
+                                 ssl_compliance_policy_t policy) {
+  if (ssl_tls13_cipher_meets_policy(cipher_id, policy)) {
+    return CBB_add_u16(cbb, cipher_id);
+  }
+  return true;
+}
+
 static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
                                          ssl_client_hello_type_t type) {
   const SSL *const ssl = hs->ssl;
@@ -235,26 +243,22 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
   // Add TLS 1.3 ciphers. Order ChaCha20-Poly1305 relative to AES-GCM based on
   // hardware support.
   if (hs->max_version >= TLS1_3_VERSION) {
-    const bool include_chacha20 = ssl_tls13_cipher_meets_policy(
-        TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
-        ssl->config->only_fips_cipher_suites_in_tls13);
-
     const bool has_aes_hw = ssl->config->aes_hw_override
                                 ? ssl->config->aes_hw_override_value
                                 : EVP_has_aes_hardware();
 
-    if (!has_aes_hw &&       //
-        include_chacha20 &&  //
-        !CBB_add_u16(&child, TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
-      return false;
-    }
-    if (!CBB_add_u16(&child, TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff) ||
-        !CBB_add_u16(&child, TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff)) {
-      return false;
-    }
-    if (has_aes_hw &&        //
-        include_chacha20 &&  //
-        !CBB_add_u16(&child, TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
+    if ((!has_aes_hw &&  //
+         !ssl_add_tls13_cipher(&child,
+                               TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
+                               ssl->config->tls13_cipher_policy)) ||
+        !ssl_add_tls13_cipher(&child, TLS1_3_CK_AES_128_GCM_SHA256 & 0xffff,
+                              ssl->config->tls13_cipher_policy) ||
+        !ssl_add_tls13_cipher(&child, TLS1_3_CK_AES_256_GCM_SHA384 & 0xffff,
+                              ssl->config->tls13_cipher_policy) ||
+        (has_aes_hw &&  //
+         !ssl_add_tls13_cipher(&child,
+                               TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff,
+                               ssl->config->tls13_cipher_policy))) {
       return false;
     }
   }
