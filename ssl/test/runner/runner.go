@@ -11371,13 +11371,12 @@ var testCurves = []struct {
 	{"P-384", CurveP384},
 	{"P-521", CurveP521},
 	{"X25519", CurveX25519},
-	{"CECPQ2", CurveCECPQ2},
 }
 
 const bogusCurve = 0x1234
 
 func isPqGroup(r CurveID) bool {
-	return r == CurveCECPQ2
+	return r == CurveX25519Kyber768
 }
 
 func addCurveTests() {
@@ -11841,78 +11840,79 @@ func addCurveTests() {
 		},
 	})
 
-	// CECPQ2 should not be offered by a TLS < 1.3 client.
+	// Kyber should not be offered by a TLS < 1.3 client.
 	testCases = append(testCases, testCase{
-		name: "CECPQ2NotInTLS12",
+		name: "KyberNotInTLS12",
 		config: Config{
 			Bugs: ProtocolBugs{
-				FailIfCECPQ2Offered: true,
+				FailIfKyberOffered: true,
 			},
 		},
 		flags: []string{
 			"-max-version", strconv.Itoa(VersionTLS12),
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-curves", strconv.Itoa(int(CurveX25519Kyber768)),
 			"-curves", strconv.Itoa(int(CurveX25519)),
 		},
 	})
 
-	// CECPQ2 should not crash a TLS < 1.3 client if the server mistakenly
+	// Kyber should not crash a TLS < 1.3 client if the server mistakenly
 	// selects it.
 	testCases = append(testCases, testCase{
-		name: "CECPQ2NotAcceptedByTLS12Client",
+		name: "KyberNotAcceptedByTLS12Client",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendCurve: CurveCECPQ2,
+				SendCurve: CurveX25519Kyber768,
 			},
 		},
 		flags: []string{
 			"-max-version", strconv.Itoa(VersionTLS12),
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-curves", strconv.Itoa(int(CurveX25519Kyber768)),
 			"-curves", strconv.Itoa(int(CurveX25519)),
 		},
 		shouldFail:    true,
 		expectedError: ":WRONG_CURVE:",
 	})
 
-	// CECPQ2 should not be offered by default as a client.
+	// Kyber should not be offered by default as a client.
 	testCases = append(testCases, testCase{
-		name: "CECPQ2NotEnabledByDefaultInClients",
+		name: "KyberNotEnabledByDefaultInClients",
 		config: Config{
 			MinVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				FailIfCECPQ2Offered: true,
+				FailIfKyberOffered: true,
 			},
 		},
 	})
 
-	// If CECPQ2 is offered, both X25519 and CECPQ2 should have a key-share.
+	// If Kyber is offered, both X25519 and Kyber should have a key-share.
 	testCases = append(testCases, testCase{
-		name: "NotJustCECPQ2KeyShare",
+		name: "NotJustKyberKeyShare",
 		config: Config{
 			MinVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveCECPQ2, CurveX25519},
+				ExpectedKeyShares: []CurveID{CurveX25519Kyber768, CurveX25519},
 			},
 		},
 		flags: []string{
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-curves", strconv.Itoa(int(CurveX25519Kyber768)),
 			"-curves", strconv.Itoa(int(CurveX25519)),
-			"-expect-curve-id", strconv.Itoa(int(CurveCECPQ2)),
+			// Cannot expect Kyber until we have a Go implementation of it.
+			// "-expect-curve-id", strconv.Itoa(int(CurveX25519Kyber768)),
 		},
 	})
 
 	// ... and the other way around
 	testCases = append(testCases, testCase{
-		name: "CECPQ2KeyShareIncludedSecond",
+		name: "KyberKeyShareIncludedSecond",
 		config: Config{
 			MinVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveX25519, CurveCECPQ2},
+				ExpectedKeyShares: []CurveID{CurveX25519, CurveX25519Kyber768},
 			},
 		},
 		flags: []string{
 			"-curves", strconv.Itoa(int(CurveX25519)),
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-curves", strconv.Itoa(int(CurveX25519Kyber768)),
 			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
 		},
 	})
@@ -11921,44 +11921,46 @@ func addCurveTests() {
 	// first classical and first post-quantum "curves" that get key shares
 	// included.
 	testCases = append(testCases, testCase{
-		name: "CECPQ2KeyShareIncludedThird",
+		name: "KyberKeyShareIncludedThird",
 		config: Config{
 			MinVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveX25519, CurveCECPQ2},
+				ExpectedKeyShares: []CurveID{CurveX25519, CurveX25519Kyber768},
 			},
 		},
 		flags: []string{
 			"-curves", strconv.Itoa(int(CurveX25519)),
 			"-curves", strconv.Itoa(int(CurveP256)),
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-curves", strconv.Itoa(int(CurveX25519Kyber768)),
 			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
 		},
 	})
 
-	// If CECPQ2 is the only configured curve, the key share is sent.
+	// If Kyber is the only configured curve, the key share is sent.
 	testCases = append(testCases, testCase{
-		name: "JustConfiguringCECPQ2Works",
+		name: "JustConfiguringKyberWorks",
 		config: Config{
 			MinVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveCECPQ2},
+				ExpectedKeyShares: []CurveID{CurveX25519Kyber768},
 			},
 		},
 		flags: []string{
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-expect-curve-id", strconv.Itoa(int(CurveCECPQ2)),
+			"-curves", strconv.Itoa(int(CurveX25519Kyber768)),
+			"-expect-curve-id", strconv.Itoa(int(CurveX25519Kyber768)),
 		},
+		shouldFail:         true,
+		expectedLocalError: "no curve supported by both client and server",
 	})
 
-	// As a server, CECPQ2 is not yet supported by default.
+	// As a server, Kyber is not yet supported by default.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "CECPQ2NotEnabledByDefaultForAServer",
+		name:     "KyberNotEnabledByDefaultForAServer",
 		config: Config{
 			MinVersion:       VersionTLS13,
-			CurvePreferences: []CurveID{CurveCECPQ2, CurveX25519},
-			DefaultCurves:    []CurveID{CurveCECPQ2},
+			CurvePreferences: []CurveID{CurveX25519Kyber768, CurveX25519},
+			DefaultCurves:    []CurveID{CurveX25519Kyber768},
 		},
 		flags: []string{
 			"-server-preference",

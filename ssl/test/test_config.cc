@@ -1909,8 +1909,8 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
           nids.push_back(NID_X25519);
           break;
 
-        case SSL_CURVE_CECPQ2:
-          nids.push_back(NID_CECPQ2);
+        case SSL_CURVE_X25519KYBER768:
+          nids.push_back(NID_X25519Kyber768);
           break;
       }
       if (!SSL_set1_curves(ssl.get(), &nids[0], nids.size())) {

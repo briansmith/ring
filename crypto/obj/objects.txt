@@ -1333,7 +1333,6 @@ secg-scheme 14 3 : dhSinglePass-cofactorDH-sha512kdf-scheme
                  : dh-cofactor-kdf
 
 # NIDs for post quantum key agreements (no corresponding OIDs).
- : CECPQ2
  : X25519Kyber768
  : P256Kyber768
  : P384Kyber768

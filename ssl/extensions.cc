@@ -206,7 +206,6 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
 
 static bool is_post_quantum_group(uint16_t id) {
   switch (id) {
-    case SSL_CURVE_CECPQ2:
     case SSL_CURVE_X25519KYBER768:
     case SSL_CURVE_P256KYBER768:
       return true;
@@ -414,7 +413,7 @@ bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves) {
 bool tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
   if (is_post_quantum_group(group_id) &&
       ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
-    // CECPQ2(b) requires TLS 1.3.
+    // Post-quantum "groups" require TLS 1.3.
     return false;
   }
 

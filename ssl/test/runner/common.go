@@ -148,12 +148,12 @@ var tls13HelloRetryRequest = []uint8{
 type CurveID uint16
 
 const (
-	CurveP224   CurveID = 21
-	CurveP256   CurveID = 23
-	CurveP384   CurveID = 24
-	CurveP521   CurveID = 25
-	CurveX25519 CurveID = 29
-	CurveCECPQ2 CurveID = 16696
+	CurveP224           CurveID = 21
+	CurveP256           CurveID = 23
+	CurveP384           CurveID = 24
+	CurveP521           CurveID = 25
+	CurveX25519         CurveID = 29
+	CurveX25519Kyber768 CurveID = 0x6399
 )
 
 // TLS Elliptic Curve Point Formats
@@ -1890,9 +1890,9 @@ type ProtocolBugs struct {
 	// hello retry.
 	FailIfHelloRetryRequested bool
 
-	// FailedIfCECPQ2Offered will cause a server to reject a ClientHello if CECPQ2
+	// FailedIfKyberOffered will cause a server to reject a ClientHello if Kyber
 	// is supported.
-	FailIfCECPQ2Offered bool
+	FailIfKyberOffered bool
 
 	// ExpectKeyShares, if not nil, lists (in order) the curves that a ClientHello
 	// should have key shares for.
@@ -1996,7 +1996,7 @@ func (c *Config) maxVersion(isDTLS bool) uint16 {
 	return ret
 }
 
-var defaultCurvePreferences = []CurveID{CurveCECPQ2, CurveX25519, CurveP256, CurveP384, CurveP521}
+var defaultCurvePreferences = []CurveID{CurveX25519, CurveP256, CurveP384, CurveP521}
 
 func (c *Config) curvePreferences() []CurveID {
 	if c == nil || len(c.CurvePreferences) == 0 {
