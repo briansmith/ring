@@ -1531,14 +1531,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
   }
 }
 
-char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher) {
-  if (cipher == NULL) {
-    return NULL;
-  }
-
-  return OPENSSL_strdup(SSL_CIPHER_standard_name(cipher));
-}
-
 int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher, int *out_alg_bits) {
   if (cipher == NULL) {
     return 0;

@@ -4528,13 +4528,6 @@ OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
 // SSL_CIPHER_get_version returns the string "TLSv1/SSLv3".
 OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
 
-// SSL_CIPHER_get_rfc_name returns a newly-allocated string containing the
-// result of |SSL_CIPHER_standard_name| or NULL on error. The caller is
-// responsible for calling |OPENSSL_free| on the result.
-//
-// Use |SSL_CIPHER_standard_name| instead.
-OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
-
 typedef void COMP_METHOD;
 typedef struct ssl_comp_st SSL_COMP;
 

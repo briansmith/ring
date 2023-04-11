@@ -1037,10 +1037,6 @@ TEST(SSLTest, CipherProperties) {
     ASSERT_TRUE(cipher);
     EXPECT_STREQ(t.standard_name, SSL_CIPHER_standard_name(cipher));
 
-    bssl::UniquePtr<char> rfc_name(SSL_CIPHER_get_rfc_name(cipher));
-    ASSERT_TRUE(rfc_name);
-    EXPECT_STREQ(t.standard_name, rfc_name.get());
-
     EXPECT_EQ(t.cipher_nid, SSL_CIPHER_get_cipher_nid(cipher));
     EXPECT_EQ(t.digest_nid, SSL_CIPHER_get_digest_nid(cipher));
     EXPECT_EQ(t.kx_nid, SSL_CIPHER_get_kx_nid(cipher));
