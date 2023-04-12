@@ -6549,3 +6549,103 @@ TEST(X509Test, SortRDN) {
       0x02, 0x41, 0x42};
   EXPECT_EQ(Bytes(kExpected), Bytes(der, der_len));
 }
+
+TEST(X509Test, NameAttributeValues) {
+  // 1.2.840.113554.4.1.72585.0. We use an unrecognized OID because using an
+  // arbitrary ASN.1 type as the value for commonName is invalid. Our parser
+  // does not check this, but best to avoid unrelated errors in tests, in case
+  // we decide to later.
+  static const uint8_t kOID[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x00};
+
+  const struct {
+    CBS_ASN1_TAG der_tag;
+    std::string der_contents;
+    int str_type;
+    std::string str_contents;
+  } kTests[] = {
+      // String types are parsed as string types.
+      {CBS_ASN1_BITSTRING, std::string("\0", 1), V_ASN1_BIT_STRING, ""},
+      {CBS_ASN1_UTF8STRING, "abc", V_ASN1_UTF8STRING, "abc"},
+      {CBS_ASN1_NUMERICSTRING, "123", V_ASN1_NUMERICSTRING, "123"},
+      {CBS_ASN1_PRINTABLESTRING, "abc", V_ASN1_PRINTABLESTRING, "abc"},
+      {CBS_ASN1_T61STRING, "abc", V_ASN1_T61STRING, "abc"},
+      {CBS_ASN1_IA5STRING, "abc", V_ASN1_IA5STRING, "abc"},
+      {CBS_ASN1_UNIVERSALSTRING, std::string("\0\0\0a", 4),
+       V_ASN1_UNIVERSALSTRING, std::string("\0\0\0a", 4)},
+      {CBS_ASN1_BMPSTRING, std::string("\0a", 2), V_ASN1_BMPSTRING,
+       std::string("\0a", 2)},
+
+      // ENUMERATED is supported but, currently, INTEGER is not.
+      {CBS_ASN1_ENUMERATED, "\x01", V_ASN1_ENUMERATED, "\x01"},
+
+      // SEQUENCE is supported but, currently, SET is not. Note the
+      // |ASN1_STRING| representation will include the tag and length.
+      {CBS_ASN1_SEQUENCE, "", V_ASN1_SEQUENCE, std::string("\x30\x00", 2)},
+
+      // These types are not actually supported by the library but,
+      // historically, we would parse them, and not other unsupported types, due
+      // to quirks of |ASN1_tag2bit|.
+      {7, "", V_ASN1_OBJECT_DESCRIPTOR, ""},
+      {8, "", V_ASN1_EXTERNAL, ""},
+      {9, "", V_ASN1_REAL, ""},
+      {11, "", 11 /* EMBEDDED PDV */, ""},
+      {13, "", 13 /* RELATIVE-OID */, ""},
+      {14, "", 14 /* TIME */, ""},
+      {15, "", 15 /* not a type; reserved value */, ""},
+      {29, "", 29 /* CHARACTER STRING */, ""},
+
+      // TODO(crbug.com/boringssl/412): Attribute values are an ANY DEFINED BY
+      // type, so we actually shoudl be accepting all ASN.1 types. We currently
+      // do not and only accept the above types. Extend this test when we fix
+      // this.
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.der_tag);
+    SCOPED_TRACE(Bytes(t.der_contents));
+
+    // Construct an X.509 name containing a single RDN with a single attribute:
+    // kOID with the specified value.
+    bssl::ScopedCBB cbb;
+    ASSERT_TRUE(CBB_init(cbb.get(), 128));
+    CBB seq, rdn, attr, attr_type, attr_value;
+    ASSERT_TRUE(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
+    ASSERT_TRUE(CBB_add_asn1(&seq, &rdn, CBS_ASN1_SET));
+    ASSERT_TRUE(CBB_add_asn1(&rdn, &attr, CBS_ASN1_SEQUENCE));
+    ASSERT_TRUE(CBB_add_asn1(&attr, &attr_type, CBS_ASN1_OBJECT));
+    ASSERT_TRUE(CBB_add_bytes(&attr_type, kOID, sizeof(kOID)));
+    ASSERT_TRUE(CBB_add_asn1(&attr, &attr_value, t.der_tag));
+    ASSERT_TRUE(CBB_add_bytes(
+        &attr_value, reinterpret_cast<const uint8_t *>(t.der_contents.data()),
+        t.der_contents.size()));
+    ASSERT_TRUE(CBB_flush(cbb.get()));
+    SCOPED_TRACE(Bytes(CBB_data(cbb.get()), CBB_len(cbb.get())));
+
+    // The input should parse.
+    const uint8_t *inp = CBB_data(cbb.get());
+    bssl::UniquePtr<X509_NAME> name(
+        d2i_X509_NAME(nullptr, &inp, CBB_len(cbb.get())));
+    ASSERT_TRUE(name);
+    EXPECT_EQ(inp, CBB_data(cbb.get()) + CBB_len(cbb.get()))
+        << "input was not fully consumed";
+
+    // Check there is a single attribute with the expected in-memory
+    // representation.
+    ASSERT_EQ(1, X509_NAME_entry_count(name.get()));
+    const X509_NAME_ENTRY *entry = X509_NAME_get_entry(name.get(), 0);
+    const ASN1_OBJECT *obj = X509_NAME_ENTRY_get_object(entry);
+    EXPECT_EQ(Bytes(OBJ_get0_data(obj), OBJ_length(obj)), Bytes(kOID));
+    const ASN1_STRING *value = X509_NAME_ENTRY_get_data(entry);
+    EXPECT_EQ(ASN1_STRING_type(value), t.str_type);
+    EXPECT_EQ(Bytes(ASN1_STRING_get0_data(value), ASN1_STRING_length(value)),
+              Bytes(t.str_contents));
+
+    // The name should re-encode with the same input.
+    uint8_t *der = nullptr;
+    int der_len = i2d_X509_NAME(name.get(), &der);
+    ASSERT_GE(der_len, 0);
+    bssl::UniquePtr<uint8_t> free_der(der);
+    EXPECT_EQ(Bytes(der, der_len),
+              (Bytes(CBB_data(cbb.get()), CBB_len(cbb.get()))));
+  }
+}

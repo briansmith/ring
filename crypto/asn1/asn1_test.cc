@@ -107,8 +107,12 @@ TEST(ASN1Test, UnknownTags) {
   TestSerialize(obj.get(), i2d_ASN1_TYPE, kTag128);
 
   // The historical in-memory representation of |kTag128| was for both
-  // |obj->type| and |obj->value.asn1_string->type| to be NULL. This is no
-  // longer used and should be rejected by the encoder.
+  // |obj->type| and |obj->value.asn1_string->type| to be 128. This is no
+  // longer used but is still accepted by the encoder.
+  //
+  // TODO(crbug.com/boringssl/412): The encoder should reject it. However, it is
+  // still needed to support some edge cases in |ASN1_PRINTABLE|. When that is
+  // fixed, test that we reject it.
   obj.reset(ASN1_TYPE_new());
   ASSERT_TRUE(obj);
   obj->type = 128;
@@ -116,7 +120,7 @@ TEST(ASN1Test, UnknownTags) {
   ASSERT_TRUE(obj->value.asn1_string);
   const uint8_t zero = 0;
   ASSERT_TRUE(ASN1_STRING_set(obj->value.asn1_string, &zero, sizeof(zero)));
-  EXPECT_EQ(-1, i2d_ASN1_TYPE(obj.get(), nullptr));
+  TestSerialize(obj.get(), i2d_ASN1_TYPE, kTag128);
 
   // If a tag is known, but has the wrong constructed bit, it should be
   // rejected, not placed in |V_ASN1_OTHER|.
