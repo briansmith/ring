@@ -20,9 +20,9 @@
 
 #include <gtest/gtest.h>
 
-#include "../test/file_test.h"
-#include "../test/test_util.h"
-#include "../test/wycheproof_util.h"
+#include "../../test/file_test.h"
+#include "../../test/test_util.h"
+#include "../../test/wycheproof_util.h"
 
 
 struct HKDFTestVector {

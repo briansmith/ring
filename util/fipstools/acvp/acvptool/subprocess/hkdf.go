@@ -173,6 +173,9 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			if err != nil {
 				return nil, fmt.Errorf("HKDF operation failed: %s", err)
 			}
+			if len(resp[0]) != int(outBytes) {
+				return nil, fmt.Errorf("HKDF operation resulted in %d bytes but wanted %d", len(resp[0]), outBytes)
+			}
 
 			if isValidationTest {
 				passed := bytes.Equal(expected, resp[0])

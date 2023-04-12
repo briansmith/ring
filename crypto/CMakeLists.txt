@@ -168,7 +168,6 @@ add_library(
   evp/scrypt.c
   evp/sign.c
   ex_data.c
-  hkdf/hkdf.c
   hpke/hpke.c
   hrss/hrss.c
   kyber/keccak.c
@@ -390,13 +389,13 @@ add_executable(
   fipsmodule/ec/ec_test.cc
   fipsmodule/ec/p256-nistz_test.cc
   fipsmodule/ecdsa/ecdsa_test.cc
+  fipsmodule/hkdf/hkdf_test.cc
   fipsmodule/md5/md5_test.cc
   fipsmodule/modes/gcm_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
   fipsmodule/rand/fork_detect_test.cc
   fipsmodule/service_indicator/service_indicator_test.cc
   fipsmodule/sha/sha_test.cc
-  hkdf/hkdf_test.cc
   hpke/hpke_test.cc
   hmac_extra/hmac_test.cc
   hrss/hrss_test.cc
