@@ -104,9 +104,13 @@ typedef void *(*X509V3_EXT_R2I)(const X509V3_EXT_METHOD *method,
 struct v3_ext_method {
   int ext_nid;
   int ext_flags;
-  // If this is set the following four fields are ignored
+
+  // it determines how values of this extension are allocated, released, parsed,
+  // and marshalled. This must be non-NULL.
   ASN1_ITEM_EXP *it;
-  // Old style ASN1 calls
+
+  // The following functions are ignored in favor of |it|. They are retained in
+  // the struct only for source compatibility with existing struct definitions.
   X509V3_EXT_NEW ext_new;
   X509V3_EXT_FREE ext_free;
   X509V3_EXT_D2I d2i;
@@ -663,9 +667,54 @@ OPENSSL_EXPORT ASN1_INTEGER *s2i_ASN1_INTEGER(const X509V3_EXT_METHOD *meth,
                                               const char *value);
 OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED(const X509V3_EXT_METHOD *meth,
                                          const ASN1_ENUMERATED *aint);
+
+// X509V3_EXT_add registers |ext| as a custom extension for the extension type
+// |ext->ext_nid|. |ext| must be valid for the remainder of the address space's
+// lifetime. It returns one on success and zero on error.
+//
+// WARNING: This function modifies global state. If other code in the same
+// address space also registers an extension with type |ext->ext_nid|, the two
+// registrations will conflict. Which registration takes effect is undefined. If
+// the two registrations use incompatible in-memory representations, code
+// expecting the other registration will then cast a type to the wrong type,
+// resulting in a potentially exploitable memory error. This conflict can also
+// occur if BoringSSL later adds support for |ext->ext_nid|, with a different
+// in-memory representation than the one expected by |ext|.
+//
+// This function, additionally, is not thread-safe and cannot be called
+// concurrently with any other BoringSSL function.
+//
+// As a result, it is impossible to safely use this function. Registering a
+// custom extension has no impact on certificate verification so, instead,
+// callers should simply handle the custom extension with the byte-based
+// |X509_EXTENSION| APIs directly. Registering |ext| with the library has little
+// practical value.
 OPENSSL_EXPORT int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
+
+// X509V3_EXT_add_list calls |X509V3_EXT_add| on |&extlist[0]|, |&extlist[1]|,
+// and so on, until some |extlist[i]->ext_nid| is -1. It returns one on success
+// and zero on error.
+//
+// WARNING: Do not use this function. See |X509V3_EXT_add|.
 OPENSSL_EXPORT int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist);
+
+// X509V3_EXT_add_alias registers a custom extension with NID |nid_to|. The
+// corresponding ASN.1 type is copied from |nid_from|. It returns one on success
+// and zero on error.
+//
+// WARNING: Do not use this function. See |X509V3_EXT_add|.
 OPENSSL_EXPORT int X509V3_EXT_add_alias(int nid_to, int nid_from);
+
+// X509V3_EXT_cleanup removes all custom extensions registered with
+// |X509V3_EXT_add*|.
+//
+// WARNING: This function modifies global state and will impact custom
+// extensions registered by any code in the same address space. It,
+// additionally, is not thread-safe and cannot be called concurrently with any
+// other BoringSSL function.
+//
+// Instead of calling this function, allow memory from custom extensions to be
+// released on process exit, along with other global program state.
 OPENSSL_EXPORT void X509V3_EXT_cleanup(void);
 
 OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(

@@ -105,59 +105,47 @@ void X509V3_EXT_val_prn(BIO *out, const STACK_OF(CONF_VALUE) *val, int indent,
 
 int X509V3_EXT_print(BIO *out, const X509_EXTENSION *ext, unsigned long flag,
                      int indent) {
-  void *ext_str = NULL;
-  char *value = NULL;
-  const X509V3_EXT_METHOD *method;
-  STACK_OF(CONF_VALUE) *nval = NULL;
-  int ok = 1;
-
-  if (!(method = X509V3_EXT_get(ext))) {
+  const X509V3_EXT_METHOD *method = X509V3_EXT_get(ext);
+  if (method == NULL) {
     return unknown_ext_print(out, ext, flag, indent, 0);
   }
   const ASN1_STRING *ext_data = X509_EXTENSION_get_data(ext);
   const unsigned char *p = ASN1_STRING_get0_data(ext_data);
-  if (method->it) {
-    ext_str = ASN1_item_d2i(NULL, &p, ASN1_STRING_length(ext_data),
-                            ASN1_ITEM_ptr(method->it));
-  } else {
-    ext_str = method->d2i(NULL, &p, ASN1_STRING_length(ext_data));
-  }
-
+  void *ext_str = ASN1_item_d2i(NULL, &p, ASN1_STRING_length(ext_data),
+                                ASN1_ITEM_ptr(method->it));
   if (!ext_str) {
     return unknown_ext_print(out, ext, flag, indent, 1);
   }
 
+  char *value = NULL;
+  STACK_OF(CONF_VALUE) *nval = NULL;
+  int ok = 0;
   if (method->i2s) {
     if (!(value = method->i2s(method, ext_str))) {
-      ok = 0;
       goto err;
     }
     BIO_printf(out, "%*s%s", indent, "", value);
   } else if (method->i2v) {
     if (!(nval = method->i2v(method, ext_str, NULL))) {
-      ok = 0;
       goto err;
     }
     X509V3_EXT_val_prn(out, nval, indent,
                        method->ext_flags & X509V3_EXT_MULTILINE);
   } else if (method->i2r) {
     if (!method->i2r(method, ext_str, out, indent)) {
-      ok = 0;
+      goto err;
     }
   } else {
-    ok = 0;
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
+    goto err;
   }
+
+  ok = 1;
 
 err:
   sk_CONF_VALUE_pop_free(nval, X509V3_conf_free);
-  if (value) {
-    OPENSSL_free(value);
-  }
-  if (method->it) {
-    ASN1_item_free(ext_str, ASN1_ITEM_ptr(method->it));
-  } else {
-    method->ext_free(ext_str);
-  }
+  OPENSSL_free(value);
+  ASN1_item_free(ext_str, ASN1_ITEM_ptr(method->it));
   return ok;
 }
 

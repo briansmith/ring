@@ -57,6 +57,7 @@
  */
 /* X509 v3 extension utilities */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include <openssl/conf.h>
@@ -78,6 +79,9 @@ static int ext_stack_cmp(const X509V3_EXT_METHOD *const *a,
 }
 
 int X509V3_EXT_add(X509V3_EXT_METHOD *ext) {
+  // We only support |ASN1_ITEM|-based extensions.
+  assert(ext->it != NULL);
+
   // TODO(davidben): This should be locked. Also check for duplicates.
   if (!ext_list && !(ext_list = sk_X509V3_EXT_METHOD_new(ext_stack_cmp))) {
     ext_list_free(ext);
@@ -136,15 +140,7 @@ int X509V3_EXT_free(int nid, void *ext_data) {
     return 0;
   }
 
-  if (ext_method->it != NULL) {
-    ASN1_item_free(ext_data, ASN1_ITEM_ptr(ext_method->it));
-  } else if (ext_method->ext_free != NULL) {
-    ext_method->ext_free(ext_data);
-  } else {
-    OPENSSL_PUT_ERROR(X509V3, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
-    return 0;
-  }
-
+  ASN1_item_free(ext_data, ASN1_ITEM_ptr(ext_method->it));
   return 1;
 }
 
@@ -201,23 +197,14 @@ void *X509V3_EXT_d2i(const X509_EXTENSION *ext) {
     return NULL;
   }
   p = ext->value->data;
-  void *ret;
-  if (method->it) {
-    ret =
-        ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
-  } else {
-    ret = method->d2i(NULL, &p, ext->value->length);
-  }
+  void *ret =
+      ASN1_item_d2i(NULL, &p, ext->value->length, ASN1_ITEM_ptr(method->it));
   if (ret == NULL) {
     return NULL;
   }
   // Check for trailing data.
   if (p != ext->value->data + ext->value->length) {
-    if (method->it) {
-      ASN1_item_free(ret, ASN1_ITEM_ptr(method->it));
-    } else {
-      method->ext_free(ret);
-    }
+    ASN1_item_free(ret, ASN1_ITEM_ptr(method->it));
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_TRAILING_DATA_IN_EXTENSION);
     return NULL;
   }

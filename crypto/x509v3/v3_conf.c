@@ -192,35 +192,17 @@ static X509_EXTENSION *do_ext_nconf(const CONF *conf, const X509V3_CTX *ctx,
   }
 
   ext = do_ext_i2d(method, ext_nid, crit, ext_struc);
-  if (method->it) {
-    ASN1_item_free(ext_struc, ASN1_ITEM_ptr(method->it));
-  } else {
-    method->ext_free(ext_struc);
-  }
+  ASN1_item_free(ext_struc, ASN1_ITEM_ptr(method->it));
   return ext;
 }
 
 static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
                                   int crit, void *ext_struc) {
   // Convert the extension's internal representation to DER.
-  unsigned char *ext_der;
-  int ext_len;
-  if (method->it) {
-    ext_der = NULL;
-    ext_len = ASN1_item_i2d(ext_struc, &ext_der, ASN1_ITEM_ptr(method->it));
-    if (ext_len < 0) {
-      return NULL;
-    }
-  } else {
-    // TODO(davidben): Remove support for the "old-style" ASN.1 callbacks. Every
-    // |X509V3_EXT_METHOD|, both inside and outside the library, has an
-    // |ASN1_ITEM|, and this codepath is missing handling.
-    ext_len = method->i2d(ext_struc, NULL);
-    if (!(ext_der = OPENSSL_malloc(ext_len))) {
-      return NULL;
-    }
-    unsigned char *p = ext_der;
-    method->i2d(ext_struc, &p);
+  unsigned char *ext_der = NULL;
+  int ext_len = ASN1_item_i2d(ext_struc, &ext_der, ASN1_ITEM_ptr(method->it));
+  if (ext_len < 0) {
+    return NULL;
   }
 
   ASN1_OCTET_STRING *ext_oct = ASN1_OCTET_STRING_new();
