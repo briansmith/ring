@@ -134,7 +134,6 @@ struct v3_ext_method {
 DEFINE_STACK_OF(X509V3_EXT_METHOD)
 
 // ext_flags values
-#define X509V3_EXT_DYNAMIC 0x1
 #define X509V3_EXT_CTX_DEP 0x2
 #define X509V3_EXT_MULTILINE 0x4
 
@@ -691,31 +690,12 @@ OPENSSL_EXPORT char *i2s_ASN1_ENUMERATED(const X509V3_EXT_METHOD *meth,
 // practical value.
 OPENSSL_EXPORT int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
 
-// X509V3_EXT_add_list calls |X509V3_EXT_add| on |&extlist[0]|, |&extlist[1]|,
-// and so on, until some |extlist[i]->ext_nid| is -1. It returns one on success
-// and zero on error.
-//
-// WARNING: Do not use this function. See |X509V3_EXT_add|.
-OPENSSL_EXPORT int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist);
-
 // X509V3_EXT_add_alias registers a custom extension with NID |nid_to|. The
 // corresponding ASN.1 type is copied from |nid_from|. It returns one on success
 // and zero on error.
 //
 // WARNING: Do not use this function. See |X509V3_EXT_add|.
 OPENSSL_EXPORT int X509V3_EXT_add_alias(int nid_to, int nid_from);
-
-// X509V3_EXT_cleanup removes all custom extensions registered with
-// |X509V3_EXT_add*|.
-//
-// WARNING: This function modifies global state and will impact custom
-// extensions registered by any code in the same address space. It,
-// additionally, is not thread-safe and cannot be called concurrently with any
-// other BoringSSL function.
-//
-// Instead of calling this function, allow memory from custom extensions to be
-// released on process exit, along with other global program state.
-OPENSSL_EXPORT void X509V3_EXT_cleanup(void);
 
 OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(
     const X509_EXTENSION *ext);

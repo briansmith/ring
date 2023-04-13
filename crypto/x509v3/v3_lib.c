@@ -71,8 +71,6 @@
 #include "ext_dat.h"
 static STACK_OF(X509V3_EXT_METHOD) *ext_list = NULL;
 
-static void ext_list_free(X509V3_EXT_METHOD *ext);
-
 static int ext_stack_cmp(const X509V3_EXT_METHOD *const *a,
                          const X509V3_EXT_METHOD *const *b) {
   return ((*a)->ext_nid - (*b)->ext_nid);
@@ -84,11 +82,9 @@ int X509V3_EXT_add(X509V3_EXT_METHOD *ext) {
 
   // TODO(davidben): This should be locked. Also check for duplicates.
   if (!ext_list && !(ext_list = sk_X509V3_EXT_METHOD_new(ext_stack_cmp))) {
-    ext_list_free(ext);
     return 0;
   }
   if (!sk_X509V3_EXT_METHOD_push(ext_list, ext)) {
-    ext_list_free(ext);
     return 0;
   }
   sk_X509V3_EXT_METHOD_sort(ext_list);
@@ -144,15 +140,6 @@ int X509V3_EXT_free(int nid, void *ext_data) {
   return 1;
 }
 
-int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist) {
-  for (; extlist->ext_nid != -1; extlist++) {
-    if (!X509V3_EXT_add(extlist)) {
-      return 0;
-    }
-  }
-  return 1;
-}
-
 int X509V3_EXT_add_alias(int nid_to, int nid_from) {
   const X509V3_EXT_METHOD *ext;
   X509V3_EXT_METHOD *tmpext;
@@ -167,19 +154,11 @@ int X509V3_EXT_add_alias(int nid_to, int nid_from) {
   }
   *tmpext = *ext;
   tmpext->ext_nid = nid_to;
-  tmpext->ext_flags |= X509V3_EXT_DYNAMIC;
-  return X509V3_EXT_add(tmpext);
-}
-
-void X509V3_EXT_cleanup(void) {
-  sk_X509V3_EXT_METHOD_pop_free(ext_list, ext_list_free);
-  ext_list = NULL;
-}
-
-static void ext_list_free(X509V3_EXT_METHOD *ext) {
-  if (ext->ext_flags & X509V3_EXT_DYNAMIC) {
-    OPENSSL_free(ext);
+  if (!X509V3_EXT_add(tmpext)) {
+    OPENSSL_free(tmpext);
+    return 0;
   }
+  return 1;
 }
 
 // Legacy function: we don't need to add standard extensions any more because
