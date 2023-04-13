@@ -914,6 +914,20 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "increment": 8
           }
         ]
+      },
+      {
+        "algorithm": "TLS-v1.3",
+        "mode": "KDF",
+        "revision": "RFC8446",
+        "hmacAlg": [
+          "SHA2-256",
+          "SHA2-384"
+        ],
+        "runningMode": [
+          "DHE",
+          "PSK",
+          "PSK-DHE"
+        ]
       }
     ])";
   return write_reply({Span<const uint8_t>(
@@ -1484,6 +1498,49 @@ static bool HKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({out});
 }
 
+template <const EVP_MD *HashFunc()>
+static bool HKDFExtract(const Span<const uint8_t> args[],
+                        ReplyCallback write_reply) {
+  const EVP_MD *const md = HashFunc();
+  const auto secret = args[0];
+  const auto salt = args[1];
+
+  std::vector<uint8_t> out(EVP_MD_size(md));
+  size_t out_len;
+  if (!HKDF_extract(out.data(), &out_len, md, secret.data(), secret.size(),
+                    salt.data(), salt.size())) {
+    return false;
+  }
+  assert(out_len == out.size());
+  return write_reply({out});
+}
+
+template <const EVP_MD *HashFunc()>
+static bool HKDFExpandLabel(const Span<const uint8_t> args[],
+                            ReplyCallback write_reply) {
+  const EVP_MD *const md = HashFunc();
+  const auto out_len_bytes = args[0];
+  const auto secret = args[1];
+  const auto label = args[2];
+  const auto hash = args[3];
+
+  if (out_len_bytes.size() != sizeof(uint32_t)) {
+    return false;
+  }
+  const uint32_t out_len = CRYPTO_load_u32_le(out_len_bytes.data());
+  if (out_len > (1 << 24)) {
+    return false;
+  }
+
+  std::vector<uint8_t> out(out_len);
+  if (!CRYPTO_tls13_hkdf_expand_label(out.data(), out_len, md, secret.data(),
+                                      secret.size(), label.data(), label.size(),
+                                      hash.data(), hash.size())) {
+    return false;
+  }
+  return write_reply({out});
+}
+
 template <bool WithReseed>
 static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   const auto out_len_bytes = args[0];
@@ -2029,6 +2086,10 @@ static constexpr struct {
     {"HKDF/SHA2-384", 4, HKDF<EVP_sha384>},
     {"HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
     {"HKDF/SHA2-512/256", 4, HKDF<EVP_sha512_256>},
+    {"HKDFExpandLabel/SHA2-256", 4, HKDFExpandLabel<EVP_sha256>},
+    {"HKDFExpandLabel/SHA2-384", 4, HKDFExpandLabel<EVP_sha384>},
+    {"HKDFExtract/SHA2-256", 2, HKDFExtract<EVP_sha256>},
+    {"HKDFExtract/SHA2-384", 2, HKDFExtract<EVP_sha384>},
     {"HMAC-SHA-1", 2, HMAC<EVP_sha1>},
     {"HMAC-SHA2-224", 2, HMAC<EVP_sha224>},
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},

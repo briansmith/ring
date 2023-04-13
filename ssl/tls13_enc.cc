@@ -27,6 +27,7 @@
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
 
+#include "../crypto/fipsmodule/tls/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 
@@ -95,27 +96,10 @@ static bool hkdf_expand_label(Span<uint8_t> out, const EVP_MD *digest,
                               Span<const uint8_t> secret,
                               Span<const char> label,
                               Span<const uint8_t> hash) {
-  Span<const char> protocol_label = label_to_span("tls13 ");
-  ScopedCBB cbb;
-  CBB child;
-  Array<uint8_t> hkdf_label;
-  if (!CBB_init(cbb.get(), 2 + 1 + protocol_label.size() + label.size() + 1 +
-                               hash.size()) ||
-      !CBB_add_u16(cbb.get(), out.size()) ||
-      !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
-      !CBB_add_bytes(&child,
-                     reinterpret_cast<const uint8_t *>(protocol_label.data()),
-                     protocol_label.size()) ||
-      !CBB_add_bytes(&child, reinterpret_cast<const uint8_t *>(label.data()),
-                     label.size()) ||
-      !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
-      !CBB_add_bytes(&child, hash.data(), hash.size()) ||
-      !CBBFinishArray(cbb.get(), &hkdf_label)) {
-    return false;
-  }
-
-  return HKDF_expand(out.data(), out.size(), digest, secret.data(),
-                     secret.size(), hkdf_label.data(), hkdf_label.size());
+  return CRYPTO_tls13_hkdf_expand_label(
+      out.data(), out.size(), digest, secret.data(), secret.size(),
+      reinterpret_cast<const uint8_t *>(label.data()), label.size(),
+      hash.data(), hash.size()) == 1;
 }
 
 static const char kTLS13LabelDerived[] = "derived";

@@ -30,5 +30,6 @@
 {"Wrapper": "modulewrapper", "In": "vectors/SHA2-224.bz2", "Out": "expected/SHA2-224.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/SHA2-256.bz2", "Out": "expected/SHA2-256.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/SHA2-384.bz2", "Out": "expected/SHA2-384.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/SHA2-512.bz2", "Out": "expected/SHA2-512.bz2"}
+{"Wrapper": "modulewrapper", "In": "vectors/SHA2-512.bz2", "Out": "expected/SHA2-512.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/TLS13.bz2", "Out": "expected/TLS13.bz2"}
 ]
