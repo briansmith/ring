@@ -20,8 +20,6 @@ set(COMMAND ${BINDGEN_EXECUTABLE} "wrapper.h"
             # https://doc.rust-lang.org/nightly/rustc/platform-support.html
             --target=${RUST_BINDINGS})
 
-set(INCLUDES "include!(\"wrapper_${RUST_BINDINGS}.rs\");\n")
-
 add_custom_target(
   bindgen_rust_${RUST_BINDINGS}
   ALL

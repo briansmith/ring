@@ -2,8 +2,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-// populated by cmake
-${INCLUDES}
+// Set in build.rs
+include!(env!("BINDGEN_RS_FILE"));
 
 pub fn ERR_GET_LIB(packed_error: u32) -> i32 {
     unsafe { ERR_GET_LIB_RUST(packed_error) }
@@ -18,5 +18,7 @@ pub fn ERR_GET_FUNC(packed_error: u32) -> i32 {
 }
 
 pub fn init() {
-    unsafe { CRYPTO_library_init(); }
+    unsafe {
+        CRYPTO_library_init();
+    }
 }

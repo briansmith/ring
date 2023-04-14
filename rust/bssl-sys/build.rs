@@ -20,6 +20,16 @@ fn main() {
     let dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let crate_path = Path::new(&dir);
 
+    // Find the bindgen generated target platform bindings file and set BINDGEN_RS_FILE
+    let bindgen_file = crate_path
+        .join("src")
+        .read_dir()
+        .unwrap()
+        .map(|file| file.unwrap().file_name().into_string().unwrap())
+        .find(|file| file.starts_with("wrapper_"))
+        .unwrap();
+    println!("cargo:rustc-env=BINDGEN_RS_FILE={}", bindgen_file);
+
     // building bssl-sys with: `mkdir build && cd build && cmake -G Ninja .. -DRUST_BINDINGS="$(gcc -dumpmachine)" && ninja`
     // outputs this crate to /build/rust/bssl-sys/ so need to go up 3 levels to the root of the repo
     let repo_root = crate_path.parent().unwrap().parent().unwrap();
