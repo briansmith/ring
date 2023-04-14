@@ -85,6 +85,9 @@ case $target in
 --target=i686-unknown-linux-musl|--target=x86_64-unknown-linux-musl)
   use_clang=1
   ;;
+--target=loongarch64-unknown-linux-gnu)
+  use_clang=1
+  ;;
 --target=mipsel-unknown-linux-gnu)
   install_packages \
     gcc-mipsel-linux-gnu \
