@@ -15,6 +15,7 @@
 
 #![deny(
     missing_docs,
+    unsafe_op_in_unsafe_fn,
     clippy::indexing_slicing,
     clippy::unwrap_used,
     clippy::panic,
@@ -107,7 +108,7 @@ unsafe trait ForeignTypeRef: Sized {
     #[inline]
     unsafe fn from_ptr<'a>(ptr: *mut Self::CType) -> &'a Self {
         debug_assert!(!ptr.is_null());
-        &*(ptr as *mut _)
+        unsafe { &*(ptr as *mut _) }
     }
 
     /// Constructs a mutable reference of this type from its raw type.
@@ -118,7 +119,7 @@ unsafe trait ForeignTypeRef: Sized {
     #[inline]
     unsafe fn from_ptr_mut<'a>(ptr: *mut Self::CType) -> &'a mut Self {
         debug_assert!(!ptr.is_null());
-        &mut *(ptr as *mut _)
+        unsafe { &mut *(ptr as *mut _) }
     }
 
     /// Returns a raw pointer to the wrapped value.
