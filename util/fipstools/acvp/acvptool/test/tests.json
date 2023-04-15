@@ -24,12 +24,12 @@
 {"Wrapper": "modulewrapper", "In": "vectors/KAS-ECC-SSC.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/KAS-FFC-SSC.bz2"},
 {"Wrapper": "testmodulewrapper", "In": "vectors/KDF.bz2"},
-{"Wrapper": "modulewrapper", "In": "vectors/kdf-components.bz2", "Out": "expected/kdf-components.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/RSA.bz2", "Out": "expected/RSA.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/SHA-1.bz2", "Out": "expected/SHA-1.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/SHA2-224.bz2", "Out": "expected/SHA2-224.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/SHA2-256.bz2", "Out": "expected/SHA2-256.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/SHA2-384.bz2", "Out": "expected/SHA2-384.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/SHA2-512.bz2", "Out": "expected/SHA2-512.bz2"},
+{"Wrapper": "modulewrapper", "In": "vectors/TLS12.bz2", "Out": "expected/TLS12.bz2"},
 {"Wrapper": "modulewrapper", "In": "vectors/TLS13.bz2", "Out": "expected/TLS13.bz2"}
 ]

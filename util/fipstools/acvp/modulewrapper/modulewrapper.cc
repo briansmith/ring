@@ -835,20 +835,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
-        "algorithm": "kdf-components",
-        "revision": "1.0",
-        "mode": "tls",
-        "tlsVersion": [
-          "v1.0/1.1",
-          "v1.2"
-        ],
-        "hashAlg": [
-          "SHA2-256",
-          "SHA2-384",
-          "SHA2-512"
-        ]
-      },
-      {
         "algorithm": "KAS-ECC-SSC",
         "revision": "Sp800-56Ar3",
         "scheme": {
@@ -913,6 +899,16 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "max": 65336,
             "increment": 8
           }
+        ]
+      },
+      {
+        "algorithm": "TLS-v1.2",
+        "mode": "KDF",
+        "revision": "RFC7627",
+        "hashAlg": [
+          "SHA2-256",
+          "SHA2-384",
+          "SHA2-512"
         ]
       },
       {
@@ -2127,7 +2123,6 @@ static constexpr struct {
     {"RSA/sigVer/SHA2-512/pss", 4, RSASigVer<EVP_sha512, true>},
     {"RSA/sigVer/SHA2-512/256/pss", 4, RSASigVer<EVP_sha512_256, true>},
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
-    {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
     {"TLSKDF/1.2/SHA2-256", 5, TLSKDF<EVP_sha256>},
     {"TLSKDF/1.2/SHA2-384", 5, TLSKDF<EVP_sha384>},
     {"TLSKDF/1.2/SHA2-512", 5, TLSKDF<EVP_sha512>},

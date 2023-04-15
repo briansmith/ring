@@ -106,7 +106,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | SHA2-384/MCT         | Initial seed¹             | Digest  |
 | SHA2-512/MCT         | Initial seed¹             | Digest  |
 | SHA2-512/256/MCT     | Initial seed¹             | Digest  |
-| TLSKDF/&lt;1.0\|1.2&gt;/&lt;HASH&gt; | Number output bytes, secret, label, seed1, seed2 | Output |
+| TLSKDF/1.2/&lt;HASH&gt; | Number output bytes, secret, label, seed1, seed2 | Output |
 
 ¹ The iterated tests would result in excessive numbers of round trips if the module wrapper handled only basic operations. Thus some ACVP logic is pushed down for these tests so that the inner loop can be handled locally. Either read the NIST documentation ([block-ciphers](https://pages.nist.gov/ACVP/draft-celi-acvp-symmetric.html#name-monte-carlo-tests-for-block) [hashes](https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-monte-carlo-tests-for-sha-1)) to understand the iteration count and return values or, probably more fruitfully, see how these functions are handled in the `modulewrapper` directory.
 
