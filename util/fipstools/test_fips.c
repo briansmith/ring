@@ -24,8 +24,9 @@
 #include <openssl/ctrdrbg.h>
 #include <openssl/des.h>
 #include <openssl/dh.h>
-#include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
+#include <openssl/hkdf.h>
 #include <openssl/hmac.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
@@ -278,18 +279,43 @@ int main(int argc, char **argv) {
   hexdump(output, sizeof(output));
   CTR_DRBG_clear(&drbg);
 
-  /* TLS KDF */
-  printf("About to run TLS KDF\n");
-  uint8_t tls_output[32];
-  if (!CRYPTO_tls1_prf(EVP_sha256(), tls_output, sizeof(tls_output), kAESKey,
-                       sizeof(kAESKey), "foo", 3, kPlaintextSHA256,
-                       sizeof(kPlaintextSHA256), kPlaintextSHA256,
-                       sizeof(kPlaintextSHA256))) {
-    fprintf(stderr, "TLS KDF failed.\n");
+  /* HKDF */
+  printf("About to run HKDF\n");
+  uint8_t hkdf_output[32];
+  if (!HKDF(hkdf_output, sizeof(hkdf_output), EVP_sha256(), kAESKey,
+            sizeof(kAESKey), (const uint8_t *)"salt", 4, kPlaintextSHA256,
+            sizeof(kPlaintextSHA256))) {
+    fprintf(stderr, "HKDF failed.\n");
     goto err;
   }
   printf("  got ");
-  hexdump(tls_output, sizeof(tls_output));
+  hexdump(hkdf_output, sizeof(hkdf_output));
+
+  /* TLS v1.2 KDF */
+  printf("About to run TLS v1.2 KDF\n");
+  uint8_t tls12_output[32];
+  if (!CRYPTO_tls1_prf(EVP_sha256(), tls12_output, sizeof(tls12_output),
+                       kAESKey, sizeof(kAESKey), "foo", 3, kPlaintextSHA256,
+                       sizeof(kPlaintextSHA256), kPlaintextSHA256,
+                       sizeof(kPlaintextSHA256))) {
+    fprintf(stderr, "TLS v1.2 KDF failed.\n");
+    goto err;
+  }
+  printf("  got ");
+  hexdump(tls12_output, sizeof(tls12_output));
+
+  /* TLS v1.3 KDF */
+  printf("About to run TLS v1.3 KDF\n");
+  uint8_t tls13_output[32];
+  if (!CRYPTO_tls13_hkdf_expand_label(
+          tls13_output, sizeof(tls13_output), EVP_sha256(), kAESKey,
+          sizeof(kAESKey), (const uint8_t *)"foo", 3, kPlaintextSHA256,
+          sizeof(kPlaintextSHA256))) {
+    fprintf(stderr, "TLS v1.3 KDF failed.\n");
+    goto err;
+  }
+  printf("  got ");
+  hexdump(tls13_output, sizeof(tls13_output));
 
   /* FFDH */
   printf("About to compute FFDH key-agreement:\n");
