@@ -427,7 +427,18 @@ TEST(BIOTest, Gets) {
 
     using ScopedFILE = std::unique_ptr<FILE, decltype(&fclose)>;
     ScopedFILE file(tmpfile(), fclose);
+#if defined(OPENSSL_ANDROID)
+    // On Android, when running from an APK, |tmpfile| does not work. See
+    // b/36991167#comment8.
+    if (!file) {
+      fprintf(stderr, "tmpfile failed: %s (%d). Skipping file-based tests.\n",
+              strerror(errno), errno);
+      continue;
+    }
+#else
     ASSERT_TRUE(file);
+#endif
+
     if (!t.bio.empty()) {
       ASSERT_EQ(1u,
                 fwrite(t.bio.data(), t.bio.size(), /*nitems=*/1, file.get()));
