@@ -239,6 +239,10 @@ STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_pst1_blind(CBB *cbb, size_t count,
 int voprf_pst1_sign(const TRUST_TOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs,
                     size_t num_requested, size_t num_to_issue,
                     uint8_t private_metadata);
+OPENSSL_EXPORT int voprf_pst1_sign_with_proof_scalar_for_testing(
+    const TRUST_TOKEN_ISSUER_KEY *key, CBB *cbb, CBS *cbs, size_t num_requested,
+    size_t num_to_issue, uint8_t private_metadata,
+    const uint8_t *proof_scalar_buf, size_t proof_scalar_len);
 STACK_OF(TRUST_TOKEN) *voprf_pst1_unblind(
     const TRUST_TOKEN_CLIENT_KEY *key,
     const STACK_OF(TRUST_TOKEN_PRETOKEN) *pretokens, CBS *cbs, size_t count,
