@@ -115,23 +115,8 @@ func (st *stringList) Add(key uint32, value string) error {
 	return nil
 }
 
-// keySlice is a type that implements sorting of entries values.
-type keySlice []uint32
-
-func (ks keySlice) Len() int {
-	return len(ks)
-}
-
-func (ks keySlice) Less(i, j int) bool {
-	return (ks[i] >> 15) < (ks[j] >> 15)
-}
-
-func (ks keySlice) Swap(i, j int) {
-	ks[i], ks[j] = ks[j], ks[i]
-}
-
 func (st *stringList) buildList() []uint32 {
-	sort.Sort(keySlice(st.entries))
+	sort.Slice(st.entries, func(i, j int) bool { return (st.entries[i] >> 15) < (st.entries[j] >> 15) })
 	return st.entries
 }
 
