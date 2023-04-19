@@ -277,6 +277,12 @@ OPENSSL_EXPORT int X509_get_signature_nid(const X509 *x509);
 // |i2d_re_X509_tbs| instead.
 OPENSSL_EXPORT int i2d_X509_tbs(X509 *x509, unsigned char **outp);
 
+// X509_verify checks that |x509| has a valid signature by |pkey|. It returns
+// one if the signature is valid and zero otherwise. Note this function only
+// checks the signature itself and does not perform a full certificate
+// validation.
+OPENSSL_EXPORT int X509_verify(X509 *x509, EVP_PKEY *pkey);
+
 
 // Issuing certificates.
 //
@@ -576,6 +582,10 @@ OPENSSL_EXPORT int X509_CRL_get_signature_nid(const X509_CRL *crl);
 // instead.
 OPENSSL_EXPORT int i2d_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp);
 
+// X509_CRL_verify checks that |crl| has a valid signature by |pkey|. It returns
+// one if the signature is valid and zero otherwise.
+OPENSSL_EXPORT int X509_CRL_verify(X509_CRL *crl, EVP_PKEY *pkey);
+
 
 // Issuing certificate revocation lists.
 //
@@ -710,7 +720,6 @@ OPENSSL_EXPORT X509_REQ *d2i_X509_REQ(X509_REQ **out, const uint8_t **inp,
 // mutated.
 OPENSSL_EXPORT int i2d_X509_REQ(X509_REQ *req, uint8_t **outp);
 
-
 // X509_REQ_VERSION_1 is the version constant for |X509_REQ| objects. No other
 // versions are defined.
 #define X509_REQ_VERSION_1 0
@@ -731,6 +740,46 @@ OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 // |EVP_PKEY_free| when done.
 OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
 
+// X509_REQ_get_attr_count returns the number of attributes in |req|.
+OPENSSL_EXPORT int X509_REQ_get_attr_count(const X509_REQ *req);
+
+// X509_REQ_get_attr returns the attribute at index |loc| in |req|, or NULL if
+// out of bounds.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_REQ_get_attr(const X509_REQ *req, int loc);
+
+// X509_REQ_get_attr_by_NID returns the index of the attribute in |req| of type
+// |nid|, or a negative number if not found. If found, callers can use
+// |X509_REQ_get_attr| to look up the attribute by index.
+//
+// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
+// can thus loop over all matching attributes by first passing -1 and then
+// passing the previously-returned value until no match is returned.
+OPENSSL_EXPORT int X509_REQ_get_attr_by_NID(const X509_REQ *req, int nid,
+                                            int lastpos);
+
+// X509_REQ_get_attr_by_OBJ behaves like |X509_REQ_get_attr_by_NID| but looks
+// for attributes of type |obj|.
+OPENSSL_EXPORT int X509_REQ_get_attr_by_OBJ(const X509_REQ *req,
+                                            const ASN1_OBJECT *obj,
+                                            int lastpos);
+
+// X509_REQ_extension_nid returns one if |nid| is a supported CSR attribute type
+// for carrying extensions and zero otherwise. The supported types are
+// |NID_ext_req| (pkcs-9-at-extensionRequest from RFC 2985) and |NID_ms_ext_req|
+// (a Microsoft szOID_CERT_EXTENSIONS variant).
+OPENSSL_EXPORT int X509_REQ_extension_nid(int nid);
+
+// X509_REQ_get_extensions decodes the list of requested extensions in |req| and
+// returns a newly-allocated |STACK_OF(X509_EXTENSION)| containing the result.
+// It returns NULL on error, or if |req| did not request extensions.
+//
+// CSRs do not store extensions directly. Instead there are attribute types
+// which are defined to hold extensions. See |X509_REQ_extension_nid|. This
+// function supports both pkcs-9-at-extensionRequest from RFC 2985 and the
+// Microsoft szOID_CERT_EXTENSIONS variant. If both are present,
+// pkcs-9-at-extensionRequest is preferred.
+OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req);
+
 // X509_REQ_get0_signature sets |*out_sig| and |*out_alg| to the signature and
 // signature algorithm of |req|, respectively. Either output pointer may be NULL
 // to ignore the value.
@@ -742,6 +791,10 @@ OPENSSL_EXPORT void X509_REQ_get0_signature(const X509_REQ *req,
 // algorithm, or |NID_undef| if the signature algorithm does not correspond to
 // a known NID.
 OPENSSL_EXPORT int X509_REQ_get_signature_nid(const X509_REQ *req);
+
+// X509_REQ_verify checks that |req| has a valid signature by |pkey|. It returns
+// one if the signature is valid and zero otherwise.
+OPENSSL_EXPORT int X509_REQ_verify(X509_REQ *req, EVP_PKEY *pkey);
 
 
 // Issuing certificate requests.
@@ -769,6 +822,56 @@ OPENSSL_EXPORT int X509_REQ_set_subject_name(X509_REQ *req, X509_NAME *name);
 // success and zero on error. This function does not take ownership of |pkey|
 // and internally copies and updates reference counts as needed.
 OPENSSL_EXPORT int X509_REQ_set_pubkey(X509_REQ *req, EVP_PKEY *pkey);
+
+// X509_REQ_delete_attr removes the attribute at index |loc| in |req|. It
+// returns the removed attribute to the caller, or NULL if |loc| was out of
+// bounds. If non-NULL, the caller must release the result with
+// |X509_ATTRIBUTE_free| when done. It is also safe, but not necessary, to call
+// |X509_ATTRIBUTE_free| if the result is NULL.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_REQ_delete_attr(X509_REQ *req, int loc);
+
+// X509_REQ_add1_attr appends a copy of |attr| to |req|'s list of attributes. It
+// returns one on success and zero on error.
+//
+// TODO(https://crbug.com/boringssl/407): |attr| should be const.
+OPENSSL_EXPORT int X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr);
+
+// X509_REQ_add1_attr_by_OBJ appends a new attribute to |req| with type |obj|.
+// It returns one on success and zero on error. The value is determined by
+// |X509_ATTRIBUTE_set1_data|.
+//
+// WARNING: The interpretation of |attrtype|, |data|, and |len| is complex and
+// error-prone. See |X509_ATTRIBUTE_set1_data| for details.
+OPENSSL_EXPORT int X509_REQ_add1_attr_by_OBJ(X509_REQ *req,
+                                             const ASN1_OBJECT *obj,
+                                             int attrtype,
+                                             const unsigned char *data,
+                                             int len);
+
+// X509_REQ_add1_attr_by_NID behaves like |X509_REQ_add1_attr_by_OBJ| except the
+// attribute type is determined by |nid|.
+OPENSSL_EXPORT int X509_REQ_add1_attr_by_NID(X509_REQ *req, int nid,
+                                             int attrtype,
+                                             const unsigned char *data,
+                                             int len);
+
+// X509_REQ_add1_attr_by_txt behaves like |X509_REQ_add1_attr_by_OBJ| except the
+// attribute type is determined by calling |OBJ_txt2obj| with |attrname|.
+OPENSSL_EXPORT int X509_REQ_add1_attr_by_txt(X509_REQ *req,
+                                             const char *attrname, int attrtype,
+                                             const unsigned char *data,
+                                             int len);
+
+// X509_REQ_add_extensions_nid adds an attribute to |req| of type |nid|, to
+// request the certificate extensions in |exts|. It returns one on success and
+// zero on error. |nid| should be |NID_ext_req| or |NID_ms_ext_req|.
+OPENSSL_EXPORT int X509_REQ_add_extensions_nid(
+    X509_REQ *req, const STACK_OF(X509_EXTENSION) *exts, int nid);
+
+// X509_REQ_add_extensions behaves like |X509_REQ_add_extensions_nid|, using the
+// standard |NID_ext_req| for the attribute type.
+OPENSSL_EXPORT int X509_REQ_add_extensions(
+    X509_REQ *req, const STACK_OF(X509_EXTENSION) *exts);
 
 // X509_REQ_sign signs |req| with |pkey| and replaces the signature algorithm
 // and signature fields. It returns one on success and zero on error. This
@@ -1296,6 +1399,196 @@ OPENSSL_EXPORT void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md);
 OPENSSL_EXPORT int X509_ALGOR_cmp(const X509_ALGOR *a, const X509_ALGOR *b);
 
 
+// Attributes.
+//
+// Unlike certificates and CRLs, CSRs use a separate Attribute structure (RFC
+// 2985, RFC 2986) for extensibility. This is represented by the library as
+// |X509_ATTRIBUTE|.
+
+DEFINE_STACK_OF(X509_ATTRIBUTE)
+
+// X509_ATTRIBUTE is an |ASN1_ITEM| whose ASN.1 type is Attribute (RFC 2986) and
+// C type is |X509_ATTRIBUTE*|.
+DECLARE_ASN1_ITEM(X509_ATTRIBUTE)
+
+// X509_ATTRIBUTE_new returns a newly-allocated, empty |X509_ATTRIBUTE| object,
+// or NULL on error. |X509_ATTRIBUTE_set1_*| may be used to finish initializing
+// it.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_new(void);
+
+// X509_ATTRIBUTE_dup returns a newly-allocated copy of |attr|, or NULL on
+// error. This function works by serializing the structure, so if |attr| is
+// incomplete, it may fail.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_dup(const X509_ATTRIBUTE *attr);
+
+// X509_ATTRIBUTE_free releases memory associated with |attr|.
+OPENSSL_EXPORT void X509_ATTRIBUTE_free(X509_ATTRIBUTE *attr);
+
+// d2i_X509_ATTRIBUTE parses up to |len| bytes from |*inp| as a DER-encoded
+// Attribute (RFC 2986), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT X509_ATTRIBUTE *d2i_X509_ATTRIBUTE(X509_ATTRIBUTE **out,
+                                                  const uint8_t **inp,
+                                                  long len);
+
+// i2d_X509_ATTRIBUTE marshals |alg| as a DER-encoded Attribute (RFC 2986), as
+// described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_X509_ATTRIBUTE(const X509_ATTRIBUTE *alg,
+                                      uint8_t **outp);
+
+// X509_ATTRIBUTE_create returns a newly-allocated |X509_ATTRIBUTE|, or NULL on
+// error. The attribute has type |nid| and contains a single value determined by
+// |attrtype| and |value|, which are interpreted as in |ASN1_TYPE_set|. Note
+// this function takes ownership of |value|.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int attrtype,
+                                                     void *value);
+
+// X509_ATTRIBUTE_create_by_NID returns a newly-allocated |X509_ATTRIBUTE| of
+// type |nid|, or NULL on error. The value is determined as in
+// |X509_ATTRIBUTE_set1_data|.
+//
+// If |attr| is non-NULL, the resulting |X509_ATTRIBUTE| is also written to
+// |*attr|. If |*attr| was non-NULL when the function was called, |*attr| is
+// reused instead of creating a new object.
+//
+// WARNING: The interpretation of |attrtype|, |data|, and |len| is complex and
+// error-prone. See |X509_ATTRIBUTE_set1_data| for details.
+//
+// WARNING: The object reuse form is deprecated and may be removed in the
+// future. It also currently incorrectly appends to the reused object's value
+// set rather than overwriting it.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_NID(
+    X509_ATTRIBUTE **attr, int nid, int attrtype, const void *data, int len);
+
+// X509_ATTRIBUTE_create_by_OBJ behaves like |X509_ATTRIBUTE_create_by_NID|
+// except the attribute's type is determined by |obj|.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_OBJ(
+    X509_ATTRIBUTE **attr, const ASN1_OBJECT *obj, int attrtype,
+    const void *data, int len);
+
+// X509_ATTRIBUTE_create_by_txt behaves like |X509_ATTRIBUTE_create_by_NID|
+// except the attribute's type is determined by calling |OBJ_txt2obj| with
+// |attrname|.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_txt(
+    X509_ATTRIBUTE **attr, const char *attrname, int type,
+    const unsigned char *bytes, int len);
+
+// X509_ATTRIBUTE_set1_object sets |attr|'s type to |obj|. It returns one on
+// success and zero on error.
+OPENSSL_EXPORT int X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr,
+                                              const ASN1_OBJECT *obj);
+
+// X509_ATTRIBUTE_set1_data appends a value to |attr|'s value set and returns
+// one on success or zero on error. The value is determined as follows:
+//
+// If |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1 string. The
+// string is determined by decoding |len| bytes from |data| in the encoding
+// specified by |attrtype|, and then re-encoding it in a form appropriate for
+// |attr|'s type. If |len| is -1, |strlen(data)| is used instead. See
+// |ASN1_STRING_set_by_NID| for details.
+//
+// Otherwise, if |len| is not -1, the value is an ASN.1 string. |attrtype| is an
+// |ASN1_STRING| type value and the |len| bytes from |data| are copied as the
+// type-specific representation of |ASN1_STRING|. See |ASN1_STRING| for details.
+//
+// WARNING: If this form is used to construct a negative INTEGER or ENUMERATED,
+// |attrtype| includes the |V_ASN1_NEG| flag for |ASN1_STRING|, but the function
+// forgets to clear the flag for |ASN1_TYPE|. This matches OpenSSL but is
+// probably a bug. For now, do not use this form with negative values.
+//
+// Otherwise, if |len| is -1, the value is constructed by passing |attrtype| and
+// |data| to |ASN1_TYPE_set1|. That is, |attrtype| is an |ASN1_TYPE| type value,
+// and |data| is cast to the corresponding pointer type.
+//
+// WARNING: Despite the name, this function appends to |attr|'s value set,
+// rather than overwriting it. To overwrite the value set, create a new
+// |X509_ATTRIBUTE| with |X509_ATTRIBUTE_new|.
+//
+// WARNING: If using the |MBSTRING_*| form, pass a length rather than relying on
+// |strlen|. In particular, |strlen| will not behave correctly if the input is
+// |MBSTRING_BMP| or |MBSTRING_UNIV|.
+//
+// WARNING: This function currently misinterprets |V_ASN1_OTHER| as an
+// |MBSTRING_*| constant. This matches OpenSSL but means it is impossible to
+// construct a value with a non-universal tag.
+OPENSSL_EXPORT int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
+                                            const void *data, int len);
+
+// X509_ATTRIBUTE_get0_data returns the |idx|th value of |attr| in a
+// type-specific representation to |attrtype|, or NULL if out of bounds or the
+// type does not match. |attrtype| is one of the type values in |ASN1_TYPE|. On
+// match, the return value uses the same representation as |ASN1_TYPE_set0|. See
+// |ASN1_TYPE| for details.
+OPENSSL_EXPORT void *X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx,
+                                              int attrtype, void *unused);
+
+// X509_ATTRIBUTE_count returns the number of values in |attr|.
+OPENSSL_EXPORT int X509_ATTRIBUTE_count(const X509_ATTRIBUTE *attr);
+
+// X509_ATTRIBUTE_get0_object returns the type of |attr|.
+OPENSSL_EXPORT ASN1_OBJECT *X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr);
+
+// X509_ATTRIBUTE_get0_type returns the |idx|th value in |attr|, or NULL if out
+// of bounds. Note this function returns one of |attr|'s values, not the type.
+OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
+                                                   int idx);
+
+// X509at_get_attr_count returns the number of attributes in |x|.
+OPENSSL_EXPORT int X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x);
+
+// X509at_get_attr_by_NID returns the index of the attribute in |x| of type
+// |nid|, or a negative number if not found. If found, callers can use
+// |X509at_get_attr| to look up the attribute by index.
+//
+// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
+// can thus loop over all matching attributes by first passing -1 and then
+// passing the previously-returned value until no match is returned.
+OPENSSL_EXPORT int X509at_get_attr_by_NID(const STACK_OF(X509_ATTRIBUTE) *x,
+                                          int nid, int lastpos);
+
+// X509at_get_attr_by_OBJ behaves like |X509at_get_attr_by_NID| but looks for
+// attributes of type |obj|.
+OPENSSL_EXPORT int X509at_get_attr_by_OBJ(const STACK_OF(X509_ATTRIBUTE) *sk,
+                                          const ASN1_OBJECT *obj, int lastpos);
+
+// X509at_get_attr returns the attribute at index |loc| in |x|, or NULL if
+// out of bounds.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509at_get_attr(
+    const STACK_OF(X509_ATTRIBUTE) *x, int loc);
+
+// X509at_delete_attr removes the attribute at index |loc| in |x|. It returns
+// the removed attribute to the caller, or NULL if |loc| was out of bounds. If
+// non-NULL, the caller must release the result with |X509_ATTRIBUTE_free| when
+// done.
+OPENSSL_EXPORT X509_ATTRIBUTE *X509at_delete_attr(STACK_OF(X509_ATTRIBUTE) *x,
+                                                  int loc);
+
+// X509at_add1_attr appends a copy of |attr| to the attribute list in |*x|. If
+// |*x| is NULL, it allocates a new |STACK_OF(X509_ATTRIBUTE)| to hold the copy
+// and sets |*x| to the new list. It returns |*x| on success and NULL on error.
+// The caller retains ownership of |attr| and can release it independently of
+// |*x|.
+OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr(
+    STACK_OF(X509_ATTRIBUTE) **x, X509_ATTRIBUTE *attr);
+
+// X509at_add1_attr_by_OBJ behaves like |X509at_add1_attr|, but adds an
+// attribute created by |X509_ATTRIBUTE_create_by_OBJ|.
+OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_OBJ(
+    STACK_OF(X509_ATTRIBUTE) **x, const ASN1_OBJECT *obj, int type,
+    const unsigned char *bytes, int len);
+
+// X509at_add1_attr_by_NID behaves like |X509at_add1_attr|, but adds an
+// attribute created by |X509_ATTRIBUTE_create_by_NID|.
+OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_NID(
+    STACK_OF(X509_ATTRIBUTE) **x, int nid, int type, const unsigned char *bytes,
+    int len);
+
+// X509at_add1_attr_by_txt behaves like |X509at_add1_attr|, but adds an
+// attribute created by |X509_ATTRIBUTE_create_by_txt|.
+OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_txt(
+    STACK_OF(X509_ATTRIBUTE) **x, const char *attrname, int type,
+    const unsigned char *bytes, int len);
+
+
 // Printing functions.
 //
 // The following functions output human-readable representations of
@@ -1789,8 +2082,6 @@ struct X509_algor_st {
 #define X509v3_KU_DECIPHER_ONLY 0x8000
 #define X509v3_KU_UNDEF 0xffff
 
-DEFINE_STACK_OF(X509_ATTRIBUTE)
-
 // This stuff is certificate "auxiliary info"
 // it contains details which are useful in certificate
 // stores and databases. When used this is tagged onto
@@ -1914,20 +2205,6 @@ OPENSSL_EXPORT void X509_SIG_getm(X509_SIG *sig, X509_ALGOR **out_alg,
 // a default description.
 OPENSSL_EXPORT const char *X509_verify_cert_error_string(long err);
 
-// X509_verify checks that |x509| has a valid signature by |pkey|. It returns
-// one if the signature is valid and zero otherwise. Note this function only
-// checks the signature itself and does not perform a full certificate
-// validation.
-OPENSSL_EXPORT int X509_verify(X509 *x509, EVP_PKEY *pkey);
-
-// X509_REQ_verify checks that |req| has a valid signature by |pkey|. It returns
-// one if the signature is valid and zero otherwise.
-OPENSSL_EXPORT int X509_REQ_verify(X509_REQ *req, EVP_PKEY *pkey);
-
-// X509_CRL_verify checks that |crl| has a valid signature by |pkey|. It returns
-// one if the signature is valid and zero otherwise.
-OPENSSL_EXPORT int X509_CRL_verify(X509_CRL *crl, EVP_PKEY *pkey);
-
 // NETSCAPE_SPKI_verify checks that |spki| has a valid signature by |pkey|. It
 // returns one if the signature is valid and zero otherwise.
 OPENSSL_EXPORT int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *spki, EVP_PKEY *pkey);
@@ -1963,11 +2240,6 @@ OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *spki,
 // signing parameters use |pkey|'s defaults.
 OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
                                       const EVP_MD *md);
-
-// X509_ATTRIBUTE_dup returns a newly-allocated copy of |xa|, or NULL on error.
-// This function works by serializing the structure, so if |xa| is incomplete,
-// it may fail.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_dup(const X509_ATTRIBUTE *xa);
 
 // X509_REVOKED_dup returns a newly-allocated copy of |rev|, or NULL on error.
 // This function works by serializing the structure, so if |rev| is incomplete,
@@ -2029,15 +2301,6 @@ OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
 
 DECLARE_ASN1_FUNCTIONS_const(X509_SIG)
 
-DECLARE_ASN1_FUNCTIONS_const(X509_ATTRIBUTE)
-
-// X509_ATTRIBUTE_create returns a newly-allocated |X509_ATTRIBUTE|, or NULL on
-// error. The attribute has type |nid| and contains a single value determined by
-// |attrtype| and |value|, which are interpreted as in |ASN1_TYPE_set|. Note
-// this function takes ownership of |value|.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create(int nid, int attrtype,
-                                                     void *value);
-
 OPENSSL_EXPORT int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj);
 OPENSSL_EXPORT int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj);
 OPENSSL_EXPORT void X509_trust_clear(X509 *x);
@@ -2083,93 +2346,6 @@ OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                       X509_ALGOR *algor2,
                                       ASN1_BIT_STRING *signature, void *asn,
                                       EVP_MD_CTX *ctx);
-
-// X509_REQ_extension_nid returns one if |nid| is a supported CSR attribute type
-// for carrying extensions and zero otherwise. The supported types are
-// |NID_ext_req| (pkcs-9-at-extensionRequest from RFC 2985) and |NID_ms_ext_req|
-// (a Microsoft szOID_CERT_EXTENSIONS variant).
-OPENSSL_EXPORT int X509_REQ_extension_nid(int nid);
-
-// X509_REQ_get_extensions decodes the list of requested extensions in |req| and
-// returns a newly-allocated |STACK_OF(X509_EXTENSION)| containing the result.
-// It returns NULL on error, or if |req| did not request extensions.
-//
-// This function supports both pkcs-9-at-extensionRequest from RFC 2985 and the
-// Microsoft szOID_CERT_EXTENSIONS variant.
-OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req);
-
-// X509_REQ_add_extensions_nid adds an attribute to |req| of type |nid|, to
-// request the certificate extensions in |exts|. It returns one on success and
-// zero on error. |nid| should be |NID_ext_req| or |NID_ms_ext_req|.
-OPENSSL_EXPORT int X509_REQ_add_extensions_nid(
-    X509_REQ *req, const STACK_OF(X509_EXTENSION) *exts, int nid);
-
-// X509_REQ_add_extensions behaves like |X509_REQ_add_extensions_nid|, using the
-// standard |NID_ext_req| for the attribute type.
-OPENSSL_EXPORT int X509_REQ_add_extensions(
-    X509_REQ *req, const STACK_OF(X509_EXTENSION) *exts);
-
-// X509_REQ_get_attr_count returns the number of attributes in |req|.
-OPENSSL_EXPORT int X509_REQ_get_attr_count(const X509_REQ *req);
-
-// X509_REQ_get_attr_by_NID returns the index of the attribute in |req| of type
-// |nid|, or a negative number if not found. If found, callers can use
-// |X509_REQ_get_attr| to look up the attribute by index.
-//
-// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
-// can thus loop over all matching attributes by first passing -1 and then
-// passing the previously-returned value until no match is returned.
-OPENSSL_EXPORT int X509_REQ_get_attr_by_NID(const X509_REQ *req, int nid,
-                                            int lastpos);
-
-// X509_REQ_get_attr_by_OBJ behaves like |X509_REQ_get_attr_by_NID| but looks
-// for attributes of type |obj|.
-OPENSSL_EXPORT int X509_REQ_get_attr_by_OBJ(const X509_REQ *req,
-                                            const ASN1_OBJECT *obj,
-                                            int lastpos);
-
-// X509_REQ_get_attr returns the attribute at index |loc| in |req|, or NULL if
-// out of bounds.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_REQ_get_attr(const X509_REQ *req, int loc);
-
-// X509_REQ_delete_attr removes the attribute at index |loc| in |req|. It
-// returns the removed attribute to the caller, or NULL if |loc| was out of
-// bounds. If non-NULL, the caller must release the result with
-// |X509_ATTRIBUTE_free| when done. It is also safe, but not necessary, to call
-// |X509_ATTRIBUTE_free| if the result is NULL.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_REQ_delete_attr(X509_REQ *req, int loc);
-
-// X509_REQ_add1_attr appends a copy of |attr| to |req|'s list of attributes. It
-// returns one on success and zero on error.
-//
-// TODO(https://crbug.com/boringssl/407): |attr| should be const.
-OPENSSL_EXPORT int X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr);
-
-// X509_REQ_add1_attr_by_OBJ appends a new attribute to |req| with type |obj|.
-// It returns one on success and zero on error. The value is determined by
-// |X509_ATTRIBUTE_set1_data|.
-//
-// WARNING: The interpretation of |attrtype|, |data|, and |len| is complex and
-// error-prone. See |X509_ATTRIBUTE_set1_data| for details.
-OPENSSL_EXPORT int X509_REQ_add1_attr_by_OBJ(X509_REQ *req,
-                                             const ASN1_OBJECT *obj,
-                                             int attrtype,
-                                             const unsigned char *data,
-                                             int len);
-
-// X509_REQ_add1_attr_by_NID behaves like |X509_REQ_add1_attr_by_OBJ| except the
-// attribute type is determined by |nid|.
-OPENSSL_EXPORT int X509_REQ_add1_attr_by_NID(X509_REQ *req, int nid,
-                                             int attrtype,
-                                             const unsigned char *data,
-                                             int len);
-
-// X509_REQ_add1_attr_by_txt behaves like |X509_REQ_add1_attr_by_OBJ| except the
-// attribute type is determined by calling |OBJ_txt2obj| with |attrname|.
-OPENSSL_EXPORT int X509_REQ_add1_attr_by_txt(X509_REQ *req,
-                                             const char *attrname, int attrtype,
-                                             const unsigned char *data,
-                                             int len);
 
 OPENSSL_EXPORT int X509_CRL_sort(X509_CRL *crl);
 
@@ -2316,153 +2492,6 @@ OPENSSL_EXPORT void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *revoked,
 OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
                                              void *value, int crit,
                                              unsigned long flags);
-
-// X509at_get_attr_count returns the number of attributes in |x|.
-OPENSSL_EXPORT int X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x);
-
-// X509at_get_attr_by_NID returns the index of the attribute in |x| of type
-// |nid|, or a negative number if not found. If found, callers can use
-// |X509at_get_attr| to look up the attribute by index.
-//
-// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
-// can thus loop over all matching attributes by first passing -1 and then
-// passing the previously-returned value until no match is returned.
-OPENSSL_EXPORT int X509at_get_attr_by_NID(const STACK_OF(X509_ATTRIBUTE) *x,
-                                          int nid, int lastpos);
-
-// X509at_get_attr_by_OBJ behaves like |X509at_get_attr_by_NID| but looks for
-// attributes of type |obj|.
-OPENSSL_EXPORT int X509at_get_attr_by_OBJ(const STACK_OF(X509_ATTRIBUTE) *sk,
-                                          const ASN1_OBJECT *obj, int lastpos);
-
-// X509at_get_attr returns the attribute at index |loc| in |x|, or NULL if
-// out of bounds.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509at_get_attr(
-    const STACK_OF(X509_ATTRIBUTE) *x, int loc);
-
-// X509at_delete_attr removes the attribute at index |loc| in |x|. It returns
-// the removed attribute to the caller, or NULL if |loc| was out of bounds. If
-// non-NULL, the caller must release the result with |X509_ATTRIBUTE_free| when
-// done. It is also safe, but not necessary, to call |X509_ATTRIBUTE_free| if
-// the result is NULL.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509at_delete_attr(STACK_OF(X509_ATTRIBUTE) *x,
-                                                  int loc);
-
-// X509at_add1_attr appends a copy of |attr| to the attribute list in |*x|. If
-// |*x| is NULL, it allocates a new |STACK_OF(X509_ATTRIBUTE)| to hold the copy
-// and sets |*x| to the new list. It returns |*x| on success and NULL on error.
-// The caller retains ownership of |attr| and can release it independently of
-// |*x|.
-OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr(
-    STACK_OF(X509_ATTRIBUTE) **x, X509_ATTRIBUTE *attr);
-
-// X509at_add1_attr_by_OBJ behaves like |X509at_add1_attr|, but adds an
-// attribute created by |X509_ATTRIBUTE_create_by_OBJ|.
-OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_OBJ(
-    STACK_OF(X509_ATTRIBUTE) **x, const ASN1_OBJECT *obj, int type,
-    const unsigned char *bytes, int len);
-
-// X509at_add1_attr_by_NID behaves like |X509at_add1_attr|, but adds an
-// attribute created by |X509_ATTRIBUTE_create_by_NID|.
-OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_NID(
-    STACK_OF(X509_ATTRIBUTE) **x, int nid, int type, const unsigned char *bytes,
-    int len);
-
-// X509at_add1_attr_by_txt behaves like |X509at_add1_attr|, but adds an
-// attribute created by |X509_ATTRIBUTE_create_by_txt|.
-OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_txt(
-    STACK_OF(X509_ATTRIBUTE) **x, const char *attrname, int type,
-    const unsigned char *bytes, int len);
-
-// X509_ATTRIBUTE_create_by_NID returns a newly-allocated |X509_ATTRIBUTE| of
-// type |nid|, or NULL on error. The value is determined as in
-// |X509_ATTRIBUTE_set1_data|.
-//
-// If |attr| is non-NULL, the resulting |X509_ATTRIBUTE| is also written to
-// |*attr|. If |*attr| was non-NULL when the function was called, |*attr| is
-// reused instead of creating a new object.
-//
-// WARNING: The interpretation of |attrtype|, |data|, and |len| is complex and
-// error-prone. See |X509_ATTRIBUTE_set1_data| for details.
-//
-// WARNING: The object reuse form is deprecated and may be removed in the
-// future. It also currently incorrectly appends to the reused object's value
-// set rather than overwriting it.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_NID(
-    X509_ATTRIBUTE **attr, int nid, int attrtype, const void *data, int len);
-
-// X509_ATTRIBUTE_create_by_OBJ behaves like |X509_ATTRIBUTE_create_by_NID|
-// except the attribute's type is determined by |obj|.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_OBJ(
-    X509_ATTRIBUTE **attr, const ASN1_OBJECT *obj, int attrtype,
-    const void *data, int len);
-
-// X509_ATTRIBUTE_create_by_txt behaves like |X509_ATTRIBUTE_create_by_NID|
-// except the attribute's type is determined by calling |OBJ_txt2obj| with
-// |attrname|.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_create_by_txt(
-    X509_ATTRIBUTE **attr, const char *attrname, int type,
-    const unsigned char *bytes, int len);
-
-// X509_ATTRIBUTE_set1_object sets |attr|'s type to |obj|. It returns one on
-// success and zero on error.
-OPENSSL_EXPORT int X509_ATTRIBUTE_set1_object(X509_ATTRIBUTE *attr,
-                                              const ASN1_OBJECT *obj);
-
-// X509_ATTRIBUTE_set1_data appends a value to |attr|'s value set and returns
-// one on success or zero on error. The value is determined as follows:
-//
-// If |attrtype| is a |MBSTRING_*| constant, the value is an ASN.1 string. The
-// string is determined by decoding |len| bytes from |data| in the encoding
-// specified by |attrtype|, and then re-encoding it in a form appropriate for
-// |attr|'s type. If |len| is -1, |strlen(data)| is used instead. See
-// |ASN1_STRING_set_by_NID| for details.
-//
-// Otherwise, if |len| is not -1, the value is an ASN.1 string. |attrtype| is an
-// |ASN1_STRING| type value and the |len| bytes from |data| are copied as the
-// type-specific representation of |ASN1_STRING|. See |ASN1_STRING| for details.
-//
-// WARNING: If this form is used to construct a negative INTEGER or ENUMERATED,
-// |attrtype| includes the |V_ASN1_NEG| flag for |ASN1_STRING|, but the function
-// forgets to clear the flag for |ASN1_TYPE|. This matches OpenSSL but is
-// probably a bug. For now, do not use this form with negative values.
-//
-// Otherwise, if |len| is -1, the value is constructed by passing |attrtype| and
-// |data| to |ASN1_TYPE_set1|. That is, |attrtype| is an |ASN1_TYPE| type value,
-// and |data| is cast to the corresponding pointer type.
-//
-// WARNING: Despite the name, this function appends to |attr|'s value set,
-// rather than overwriting it. To overwrite the value set, create a new
-// |X509_ATTRIBUTE| with |X509_ATTRIBUTE_new|.
-//
-// WARNING: If using the |MBSTRING_*| form, pass a length rather than relying on
-// |strlen|. In particular, |strlen| will not behave correctly if the input is
-// |MBSTRING_BMP| or |MBSTRING_UNIV|.
-//
-// WARNING: This function currently misinterprets |V_ASN1_OTHER| as an
-// |MBSTRING_*| constant. This matches OpenSSL but means it is impossible to
-// construct a value with a non-universal tag.
-OPENSSL_EXPORT int X509_ATTRIBUTE_set1_data(X509_ATTRIBUTE *attr, int attrtype,
-                                            const void *data, int len);
-
-// X509_ATTRIBUTE_get0_data returns the |idx|th value of |attr| in a
-// type-specific representation to |attrtype|, or NULL if out of bounds or the
-// type does not match. |attrtype| is one of the type values in |ASN1_TYPE|. On
-// match, the return value uses the same representation as |ASN1_TYPE_set0|. See
-// |ASN1_TYPE| for details.
-OPENSSL_EXPORT void *X509_ATTRIBUTE_get0_data(X509_ATTRIBUTE *attr, int idx,
-                                              int attrtype, void *unused);
-
-// X509_ATTRIBUTE_count returns the number of values in |attr|.
-OPENSSL_EXPORT int X509_ATTRIBUTE_count(const X509_ATTRIBUTE *attr);
-
-// X509_ATTRIBUTE_get0_object returns the type of |attr|.
-OPENSSL_EXPORT ASN1_OBJECT *X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr);
-
-// X509_ATTRIBUTE_get0_type returns the |idx|th value in |attr|, or NULL if out
-// of bounds. Note this function returns one of |attr|'s values, not the type.
-OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
-                                                   int idx);
 
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
