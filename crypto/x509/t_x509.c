@@ -91,14 +91,8 @@ int X509_print(BIO *bp, X509 *x) {
 
 int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
                   unsigned long cflag) {
-  long l;
-  int ret = 0, i;
-  char *m = NULL, mlch = ' ';
+  char mlch = ' ';
   int nmindent = 0;
-  X509_CINF *ci;
-  EVP_PKEY *pkey = NULL;
-  const char *neg;
-
   if ((nmflags & XN_FLAG_SEP_MASK) == XN_FLAG_SEP_MULTILINE) {
     mlch = '\n';
     nmindent = 12;
@@ -108,26 +102,26 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
     nmindent = 16;
   }
 
-  ci = x->cert_info;
+  const X509_CINF *ci = x->cert_info;
   if (!(cflag & X509_FLAG_NO_HEADER)) {
     if (BIO_write(bp, "Certificate:\n", 13) <= 0) {
-      goto err;
+      return 0;
     }
     if (BIO_write(bp, "    Data:\n", 10) <= 0) {
-      goto err;
+      return 0;
     }
   }
   if (!(cflag & X509_FLAG_NO_VERSION)) {
-    l = X509_get_version(x);
+    long l = X509_get_version(x);
     assert(X509_VERSION_1 <= l && l <= X509_VERSION_3);
     if (BIO_printf(bp, "%8sVersion: %ld (0x%lx)\n", "", l + 1,
                    (unsigned long)l) <= 0) {
-      goto err;
+      return 0;
     }
   }
   if (!(cflag & X509_FLAG_NO_SERIAL)) {
     if (BIO_write(bp, "        Serial Number:", 22) <= 0) {
-      goto err;
+      return 0;
     }
 
     const ASN1_INTEGER *serial = X509_get0_serialNumber(x);
@@ -136,19 +130,20 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
       assert(serial->type != V_ASN1_NEG_INTEGER);
       if (BIO_printf(bp, " %" PRIu64 " (0x%" PRIx64 ")\n", serial_u64,
                      serial_u64) <= 0) {
-        goto err;
+        return 0;
       }
     } else {
       ERR_clear_error();  // Clear |ASN1_INTEGER_get_uint64|'s error.
-      neg = (serial->type == V_ASN1_NEG_INTEGER) ? " (Negative)" : "";
+      const char *neg =
+          (serial->type == V_ASN1_NEG_INTEGER) ? " (Negative)" : "";
       if (BIO_printf(bp, "\n%12s%s", "", neg) <= 0) {
-        goto err;
+        return 0;
       }
 
-      for (i = 0; i < serial->length; i++) {
+      for (int i = 0; i < serial->length; i++) {
         if (BIO_printf(bp, "%02x%c", serial->data[i],
                        ((i + 1 == serial->length) ? '\n' : ':')) <= 0) {
-          goto err;
+          return 0;
         }
       }
     }
@@ -156,69 +151,69 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
 
   if (!(cflag & X509_FLAG_NO_SIGNAME)) {
     if (X509_signature_print(bp, ci->signature, NULL) <= 0) {
-      goto err;
+      return 0;
     }
   }
 
   if (!(cflag & X509_FLAG_NO_ISSUER)) {
     if (BIO_printf(bp, "        Issuer:%c", mlch) <= 0) {
-      goto err;
+      return 0;
     }
     if (X509_NAME_print_ex(bp, X509_get_issuer_name(x), nmindent, nmflags) <
         0) {
-      goto err;
+      return 0;
     }
     if (BIO_write(bp, "\n", 1) <= 0) {
-      goto err;
+      return 0;
     }
   }
   if (!(cflag & X509_FLAG_NO_VALIDITY)) {
     if (BIO_write(bp, "        Validity\n", 17) <= 0) {
-      goto err;
+      return 0;
     }
     if (BIO_write(bp, "            Not Before: ", 24) <= 0) {
-      goto err;
+      return 0;
     }
     if (!ASN1_TIME_print(bp, X509_get_notBefore(x))) {
-      goto err;
+      return 0;
     }
     if (BIO_write(bp, "\n            Not After : ", 25) <= 0) {
-      goto err;
+      return 0;
     }
     if (!ASN1_TIME_print(bp, X509_get_notAfter(x))) {
-      goto err;
+      return 0;
     }
     if (BIO_write(bp, "\n", 1) <= 0) {
-      goto err;
+      return 0;
     }
   }
   if (!(cflag & X509_FLAG_NO_SUBJECT)) {
     if (BIO_printf(bp, "        Subject:%c", mlch) <= 0) {
-      goto err;
+      return 0;
     }
     if (X509_NAME_print_ex(bp, X509_get_subject_name(x), nmindent, nmflags) <
         0) {
-      goto err;
+      return 0;
     }
     if (BIO_write(bp, "\n", 1) <= 0) {
-      goto err;
+      return 0;
     }
   }
   if (!(cflag & X509_FLAG_NO_PUBKEY)) {
     if (BIO_write(bp, "        Subject Public Key Info:\n", 33) <= 0) {
-      goto err;
+      return 0;
     }
     if (BIO_printf(bp, "%12sPublic Key Algorithm: ", "") <= 0) {
-      goto err;
+      return 0;
     }
     if (i2a_ASN1_OBJECT(bp, ci->key->algor->algorithm) <= 0) {
-      goto err;
+      return 0;
     }
     if (BIO_puts(bp, "\n") <= 0) {
-      goto err;
+      return 0;
     }
 
-    pkey = X509_get_pubkey(x);
+    EVP_PKEY *pkey = X509_get_pubkey(x);
     if (pkey == NULL) {
       BIO_printf(bp, "%12sUnable to load Public Key\n", "");
       ERR_print_errors(bp);
@@ -231,18 +226,18 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
   if (!(cflag & X509_FLAG_NO_IDS)) {
     if (ci->issuerUID) {
       if (BIO_printf(bp, "%8sIssuer Unique ID: ", "") <= 0) {
-        goto err;
+        return 0;
       }
       if (!X509_signature_dump(bp, ci->issuerUID, 12)) {
-        goto err;
+        return 0;
       }
     }
     if (ci->subjectUID) {
       if (BIO_printf(bp, "%8sSubject Unique ID: ", "") <= 0) {
-        goto err;
+        return 0;
       }
       if (!X509_signature_dump(bp, ci->subjectUID, 12)) {
-        goto err;
+        return 0;
       }
     }
   }
@@ -253,20 +248,16 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
 
   if (!(cflag & X509_FLAG_NO_SIGDUMP)) {
     if (X509_signature_print(bp, x->sig_alg, x->signature) <= 0) {
-      goto err;
+      return 0;
     }
   }
   if (!(cflag & X509_FLAG_NO_AUX)) {
     if (!X509_CERT_AUX_print(bp, x->aux, 0)) {
-      goto err;
+      return 0;
     }
   }
-  ret = 1;
-err:
-  if (m != NULL) {
-    OPENSSL_free(m);
-  }
-  return ret;
+
+  return 1;
 }
 
 int X509_signature_print(BIO *bp, const X509_ALGOR *sigalg,

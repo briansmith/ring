@@ -1300,7 +1300,216 @@ OPENSSL_EXPORT int X509_ALGOR_cmp(const X509_ALGOR *a, const X509_ALGOR *b);
 //
 // The following functions output human-readable representations of
 // X.509-related structures. They should only be used for debugging or logging
-// and not parsed programmatically.
+// and not parsed programmatically. In many cases, the outputs are ambiguous, so
+// attempting to parse them can lead to string injection vulnerabilities.
+
+// The following flags control |X509_print_ex| and |X509_REQ_print_ex|.
+
+// X509_FLAG_COMPAT disables all flags. It additionally causes names to be
+// printed with a 16-byte indent.
+#define X509_FLAG_COMPAT 0
+
+// X509_FLAG_NO_HEADER skips a header identifying the type of object printed.
+#define X509_FLAG_NO_HEADER 1L
+
+// X509_FLAG_NO_VERSION skips printing the X.509 version number.
+#define X509_FLAG_NO_VERSION (1L << 1)
+
+// X509_FLAG_NO_SERIAL skips printing the serial number. It is ignored in
+// |X509_REQ_print_fp|.
+#define X509_FLAG_NO_SERIAL (1L << 2)
+
+// X509_FLAG_NO_SIGNAME skips printing the signature algorithm in the
+// TBSCertificate. It is ignored in |X509_REQ_print_fp|.
+#define X509_FLAG_NO_SIGNAME (1L << 3)
+
+// X509_FLAG_NO_ISSUER skips printing the issuer.
+#define X509_FLAG_NO_ISSUER (1L << 4)
+
+// X509_FLAG_NO_ISSUER skips printing the notBefore and notAfter times. It is
+// ignored in |X509_REQ_print_fp|.
+#define X509_FLAG_NO_VALIDITY (1L << 5)
+
+// X509_FLAG_NO_ISSUER skips printing the subject.
+#define X509_FLAG_NO_SUBJECT (1L << 6)
+
+// X509_FLAG_NO_PUBKEY skips printing the public key.
+#define X509_FLAG_NO_PUBKEY (1L << 7)
+
+// X509_FLAG_NO_EXTENSIONS skips printing the extension list. It is ignored in
+// |X509_REQ_print_fp|. CSRs instead have attributes, which is controlled by
+// |X509_FLAG_NO_ATTRIBUTES|.
+#define X509_FLAG_NO_EXTENSIONS (1L << 8)
+
+// X509_FLAG_NO_SIGDUMP skips printing the signature and outer signature
+// algorithm.
+#define X509_FLAG_NO_SIGDUMP (1L << 9)
+
+// X509_FLAG_NO_AUX skips printing auxiliary properties. (See |d2i_X509_AUX| and
+// related functions.)
+#define X509_FLAG_NO_AUX (1L << 10)
+
+// X509_FLAG_NO_ATTRIBUTES skips printing CSR attributes. It does nothing for
+// certificates and CRLs.
+#define X509_FLAG_NO_ATTRIBUTES (1L << 11)
+
+// X509_FLAG_NO_IDS skips printing the issuerUniqueID and subjectUniqueID in a
+// certificate. It is ignored in |X509_REQ_print_fp|.
+#define X509_FLAG_NO_IDS (1L << 12)
+
+// X509_print_ex writes a human-readable representation of |x| to |bp|. It
+// returns one on success and zero on error. |nmflags| is the flags parameter
+// for |X509_NAME_print_ex| when printing the subject and issuer. |cflag| should
+// be some combination of the |X509_FLAG_*| constants.
+OPENSSL_EXPORT int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflag,
+                                 unsigned long cflag);
+
+// X509_print_ex_fp behaves like |X509_print_ex| but writes to |fp|.
+OPENSSL_EXPORT int X509_print_ex_fp(FILE *fp, X509 *x, unsigned long nmflag,
+                                    unsigned long cflag);
+
+// X509_print calls |X509_print_ex| with |XN_FLAG_COMPAT| and |X509_FLAG_COMPAT|
+// flags.
+OPENSSL_EXPORT int X509_print(BIO *bp, X509 *x);
+
+// X509_print_fp behaves like |X509_print| but writes to |fp|.
+OPENSSL_EXPORT int X509_print_fp(FILE *fp, X509 *x);
+
+// X509_CRL_print writes a human-readable representation of |x| to |bp|. It
+// returns one on success and zero on error.
+OPENSSL_EXPORT int X509_CRL_print(BIO *bp, X509_CRL *x);
+
+// X509_CRL_print_fp behaves like |X509_CRL_print| but writes to |fp|.
+OPENSSL_EXPORT int X509_CRL_print_fp(FILE *fp, X509_CRL *x);
+
+// X509_REQ_print_ex writes a human-readable representation of |x| to |bp|. It
+// returns one on success and zero on error. |nmflags| is the flags parameter
+// for |X509_NAME_print_ex|, when printing the subject. |cflag| should be some
+// combination of the |X509_FLAG_*| constants.
+OPENSSL_EXPORT int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflag,
+                                     unsigned long cflag);
+
+// X509_REQ_print calls |X509_REQ_print_ex| with |XN_FLAG_COMPAT| and
+// |X509_FLAG_COMPAT| flags.
+OPENSSL_EXPORT int X509_REQ_print(BIO *bp, X509_REQ *req);
+
+// X509_REQ_print_fp behaves like |X509_REQ_print| but writes to |fp|.
+OPENSSL_EXPORT int X509_REQ_print_fp(FILE *fp, X509_REQ *req);
+
+// The following flags are control |X509_NAME_print_ex|. They must not collide
+// with |ASN1_STRFLGS_*|.
+//
+// TODO(davidben): This is far, far too many options and most of them are
+// useless. Trim this down.
+
+// XN_FLAG_COMPAT prints with |X509_NAME_print|'s format and return value
+// convention.
+#define XN_FLAG_COMPAT 0
+
+// XN_FLAG_SEP_MASK determines the separators to use between attributes.
+#define XN_FLAG_SEP_MASK (0xf << 16)
+
+// XN_FLAG_SEP_COMMA_PLUS separates RDNs with "," and attributes within an RDN
+// with "+", as in RFC 2253.
+#define XN_FLAG_SEP_COMMA_PLUS (1 << 16)
+
+// XN_FLAG_SEP_CPLUS_SPC behaves like |XN_FLAG_SEP_COMMA_PLUS| but adds spaces
+// between the separators.
+#define XN_FLAG_SEP_CPLUS_SPC (2 << 16)
+
+// XN_FLAG_SEP_SPLUS_SPC separates RDNs with "; " and attributes within an RDN
+// with " + ".
+#define XN_FLAG_SEP_SPLUS_SPC (3 << 16)
+
+// XN_FLAG_SEP_MULTILINE prints each attribute on one line.
+#define XN_FLAG_SEP_MULTILINE (4 << 16)
+
+// XN_FLAG_DN_REV prints RDNs in reverse, from least significant to most
+// significant, as RFC 2253.
+#define XN_FLAG_DN_REV (1 << 20)
+
+// XN_FLAG_FN_MASK determines how attribute types are displayed.
+#define XN_FLAG_FN_MASK (0x3 << 21)
+
+// XN_FLAG_FN_SN uses the attribute type's short name, when available.
+#define XN_FLAG_FN_SN 0
+
+// XN_FLAG_FN_LN uses the attribute type's long name, when available.
+#define XN_FLAG_FN_LN (1 << 21)
+
+// XN_FLAG_FN_OID always prints attribute types as OIDs.
+#define XN_FLAG_FN_OID (2 << 21)
+
+// XN_FLAG_FN_NONE skips printing field names.
+#define XN_FLAG_FN_NONE (3 << 21)
+
+// XN_FLAG_SPC_EQ wraps the "=" operator with spaces when printing attributes.
+#define XN_FLAG_SPC_EQ (1 << 23)
+
+// XN_FLAG_DUMP_UNKNOWN_FIELDS causes unknown attribute types to be printed in
+// hex, as in RFC 2253.
+#define XN_FLAG_DUMP_UNKNOWN_FIELDS (1 << 24)
+
+// XN_FLAG_FN_ALIGN aligns attribute names to 10 characters if using short
+// names, and 25 characters if using long names.
+#define XN_FLAG_FN_ALIGN (1 << 25)
+
+// XN_FLAG_RFC2253 prints like RFC 2253.
+#define XN_FLAG_RFC2253                                             \
+  (ASN1_STRFLGS_RFC2253 | XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | \
+   XN_FLAG_FN_SN | XN_FLAG_DUMP_UNKNOWN_FIELDS)
+
+// XN_FLAG_ONELINE prints a one-line representation of the name.
+#define XN_FLAG_ONELINE                                                    \
+  (ASN1_STRFLGS_RFC2253 | ASN1_STRFLGS_ESC_QUOTE | XN_FLAG_SEP_CPLUS_SPC | \
+   XN_FLAG_SPC_EQ | XN_FLAG_FN_SN)
+
+// XN_FLAG_MULTILINE prints a multi-line representation of the name.
+#define XN_FLAG_MULTILINE                                                 \
+  (ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB | XN_FLAG_SEP_MULTILINE | \
+   XN_FLAG_SPC_EQ | XN_FLAG_FN_LN | XN_FLAG_FN_ALIGN)
+
+// X509_NAME_print_ex writes a human-readable representation of |nm| to |out|.
+// Each line of output is indented by |indent| spaces. It returns the number of
+// bytes written on success, and -1 on error. If |out| is NULL, it returns the
+// number of bytes it would have written but does not write anything. |flags|
+// should be some combination of |XN_FLAG_*| and |ASN1_STRFLGS_*| values and
+// determines the output. If unsure, use |XN_FLAG_RFC2253|.
+//
+// If |flags| is |XN_FLAG_COMPAT|, or zero, this function calls
+// |X509_NAME_print| instead. In that case, it returns one on success, rather
+// than the output length.
+OPENSSL_EXPORT int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
+                                      unsigned long flags);
+
+// X509_NAME_print prints a human-readable representation of |name| to |bp|. It
+// returns one on success and zero on error. |obase| is ignored.
+//
+// This function outputs a legacy format that does not correctly handle string
+// encodings and other cases. Prefer |X509_NAME_print_ex| if printing a name for
+// debugging purposes.
+OPENSSL_EXPORT int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase);
+
+// X509_NAME_oneline writes a human-readable representation to |name| to a
+// buffer as a NUL-terminated C string.
+//
+// If |buf| is NULL, returns a newly-allocated buffer containing the result on
+// success, or NULL on error. The buffer must be released with |OPENSSL_free|
+// when done.
+//
+// If |buf| is non-NULL, at most |size| bytes of output are written to |buf|
+// instead. |size| includes the trailing NUL. The function then returns |buf| on
+// success or NULL on error. If the output does not fit in |size| bytes, the
+// output is silently truncated at an attribute boundary.
+//
+// This function outputs a legacy format that does not correctly handle string
+// encodings and other cases. Prefer |X509_NAME_print_ex| if printing a name for
+// debugging purposes.
+OPENSSL_EXPORT char *X509_NAME_oneline(const X509_NAME *name, char *buf, int size);
+
+// X509_NAME_print_ex_fp behaves like |X509_NAME_print_ex| but writes to |fp|.
+OPENSSL_EXPORT int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm,
+                                         int indent, unsigned long flags);
 
 // X509_signature_dump writes a human-readable representation of |sig| to |bio|,
 // indented with |indent| spaces. It returns one on success and zero on error.
@@ -1631,74 +1840,6 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_TRUST_REJECTED 2
 #define X509_TRUST_UNTRUSTED 3
 
-// Flags for X509_print_ex()
-
-#define X509_FLAG_COMPAT 0
-#define X509_FLAG_NO_HEADER 1L
-#define X509_FLAG_NO_VERSION (1L << 1)
-#define X509_FLAG_NO_SERIAL (1L << 2)
-#define X509_FLAG_NO_SIGNAME (1L << 3)
-#define X509_FLAG_NO_ISSUER (1L << 4)
-#define X509_FLAG_NO_VALIDITY (1L << 5)
-#define X509_FLAG_NO_SUBJECT (1L << 6)
-#define X509_FLAG_NO_PUBKEY (1L << 7)
-#define X509_FLAG_NO_EXTENSIONS (1L << 8)
-#define X509_FLAG_NO_SIGDUMP (1L << 9)
-#define X509_FLAG_NO_AUX (1L << 10)
-#define X509_FLAG_NO_ATTRIBUTES (1L << 11)
-#define X509_FLAG_NO_IDS (1L << 12)
-
-// Flags specific to X509_NAME_print_ex(). These flags must not collide with
-// |ASN1_STRFLGS_*|.
-
-// The field separator information
-
-#define XN_FLAG_SEP_MASK (0xf << 16)
-
-#define XN_FLAG_COMPAT 0  // Traditional SSLeay: use old X509_NAME_print
-#define XN_FLAG_SEP_COMMA_PLUS (1 << 16)  // RFC 2253 ,+
-#define XN_FLAG_SEP_CPLUS_SPC (2 << 16)   // ,+ spaced: more readable
-#define XN_FLAG_SEP_SPLUS_SPC (3 << 16)   // ;+ spaced
-#define XN_FLAG_SEP_MULTILINE (4 << 16)   // One line per field
-
-#define XN_FLAG_DN_REV (1 << 20)  // Reverse DN order
-
-// How the field name is shown
-
-#define XN_FLAG_FN_MASK (0x3 << 21)
-
-#define XN_FLAG_FN_SN 0            // Object short name
-#define XN_FLAG_FN_LN (1 << 21)    // Object long name
-#define XN_FLAG_FN_OID (2 << 21)   // Always use OIDs
-#define XN_FLAG_FN_NONE (3 << 21)  // No field names
-
-#define XN_FLAG_SPC_EQ (1 << 23)  // Put spaces round '='
-
-// This determines if we dump fields we don't recognise:
-// RFC 2253 requires this.
-
-#define XN_FLAG_DUMP_UNKNOWN_FIELDS (1 << 24)
-
-#define XN_FLAG_FN_ALIGN (1 << 25)  // Align field names to 20 characters
-
-// Complete set of RFC 2253 flags
-
-#define XN_FLAG_RFC2253                                             \
-  (ASN1_STRFLGS_RFC2253 | XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | \
-   XN_FLAG_FN_SN | XN_FLAG_DUMP_UNKNOWN_FIELDS)
-
-// readable oneline form
-
-#define XN_FLAG_ONELINE                                                    \
-  (ASN1_STRFLGS_RFC2253 | ASN1_STRFLGS_ESC_QUOTE | XN_FLAG_SEP_CPLUS_SPC | \
-   XN_FLAG_SPC_EQ | XN_FLAG_FN_SN)
-
-// readable multiline form
-
-#define XN_FLAG_MULTILINE                                                 \
-  (ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB | XN_FLAG_SEP_MULTILINE | \
-   XN_FLAG_SPC_EQ | XN_FLAG_FN_LN | XN_FLAG_FN_ALIGN)
-
 DEFINE_STACK_OF(X509_REVOKED)
 
 DECLARE_STACK_OF(GENERAL_NAMES)
@@ -1921,7 +2062,6 @@ DECLARE_ASN1_FUNCTIONS_const(NETSCAPE_SPKAC)
 
 OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
-OPENSSL_EXPORT char *X509_NAME_oneline(const X509_NAME *a, char *buf, int size);
 
 OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
                                unsigned char *md, unsigned int *len);
@@ -2082,24 +2222,6 @@ OPENSSL_EXPORT unsigned long X509_NAME_hash_old(X509_NAME *x);
 
 OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
-OPENSSL_EXPORT int X509_print_ex_fp(FILE *bp, X509 *x, unsigned long nmflag,
-                                    unsigned long cflag);
-OPENSSL_EXPORT int X509_print_fp(FILE *bp, X509 *x);
-OPENSSL_EXPORT int X509_CRL_print_fp(FILE *bp, X509_CRL *x);
-OPENSSL_EXPORT int X509_REQ_print_fp(FILE *bp, X509_REQ *req);
-OPENSSL_EXPORT int X509_NAME_print_ex_fp(FILE *fp, const X509_NAME *nm,
-                                         int indent, unsigned long flags);
-
-OPENSSL_EXPORT int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase);
-OPENSSL_EXPORT int X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
-                                      unsigned long flags);
-OPENSSL_EXPORT int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflag,
-                                 unsigned long cflag);
-OPENSSL_EXPORT int X509_print(BIO *bp, X509 *x);
-OPENSSL_EXPORT int X509_CRL_print(BIO *bp, X509_CRL *x);
-OPENSSL_EXPORT int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflag,
-                                     unsigned long cflag);
-OPENSSL_EXPORT int X509_REQ_print(BIO *bp, X509_REQ *req);
 
 // X509_get_ext_d2i behaves like |X509V3_get_d2i| but looks for the extension in
 // |x509|'s extension list.
