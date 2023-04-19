@@ -2770,6 +2770,11 @@ OPENSSL_EXPORT void X509_STORE_set_verify(X509_STORE *ctx,
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify(X509_STORE_CTX *ctx,
                                               X509_STORE_CTX_verify_fn verify);
 OPENSSL_EXPORT X509_STORE_CTX_verify_fn X509_STORE_get_verify(X509_STORE *ctx);
+
+// X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
+// the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|
+//
+// Do not use this funciton. see |X509_STORE_CTX_set_verify_cb|.
 OPENSSL_EXPORT void X509_STORE_set_verify_cb(
     X509_STORE *ctx, X509_STORE_CTX_verify_cb verify_cb);
 #define X509_STORE_set_verify_cb_func(ctx, func) \
@@ -2910,8 +2915,27 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx,
 OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
                                                   unsigned long flags,
                                                   int64_t t);
+
+// X509_STORE_CTX_set_verify_cb configures a callback function for |ctx| that is
+// called multiple times during |X509_verify_cert|. The callback returns zero to
+// fail verification and non-zero to proceed. Typically, it will return |ok|,
+// which preserves the default behavior. Returning one when |ok| is zero will
+// proceed past some error. The callback may inspect |ctx| and the error queue
+// to attempt to determine the current stage of certificate verification, but
+// this is often unreliable.
+//
+// WARNING: Do not use this function. It is extremely fragile and unpredictable.
+// This callback exposes implementation details of certificate verification,
+// which change as the library evolves. Attempting to use it for security checks
+// can introduce vulnerabilities if making incorrect assumptions about when the
+// callback is called. Additionally, overriding |ok| may leave |ctx| in an
+// inconsistent state and break invariants.
+//
+// Instead, customize certificate verification by configuring options on the
+// |X509_STORE_CTX| before verification, or applying additional checks after
+// |X509_verify_cert| completes successfully.
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
-    X509_STORE_CTX *ctx, int (*verify_cb)(int, X509_STORE_CTX *));
+    X509_STORE_CTX *ctx, int (*verify_cb)(int ok, X509_STORE_CTX *ctx));
 
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(
     X509_STORE_CTX *ctx);
