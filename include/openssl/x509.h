@@ -1904,6 +1904,39 @@ OPENSSL_EXPORT X509 *X509_find_by_issuer_and_serial(const STACK_OF(X509) *sk,
 OPENSSL_EXPORT X509 *X509_find_by_subject(const STACK_OF(X509) *sk,
                                           X509_NAME *name);
 
+// X509_cmp_time compares |s| against |*t|. On success, it returns a negative
+// number if |s| <= |*t| and a positive number if |s| > |*t|. On error, it
+// returns zero. If |t| is NULL, it uses the current time instead of |*t|.
+//
+// WARNING: Unlike most comparison functions, this function returns zero on
+// error, not equality.
+OPENSSL_EXPORT int X509_cmp_time(const ASN1_TIME *s, time_t *t);
+
+// X509_cmp_time_posix compares |s| against |t|. On success, it returns a
+// negative number if |s| <= |t| and a positive number if |s| > |t|. On error,
+// it returns zero.
+//
+// WARNING: Unlike most comparison functions, this function returns zero on
+// error, not equality.
+OPENSSL_EXPORT int X509_cmp_time_posix(const ASN1_TIME *s, int64_t t);
+
+// X509_cmp_current_time behaves like |X509_cmp_time| but compares |s| against
+// the current time.
+OPENSSL_EXPORT int X509_cmp_current_time(const ASN1_TIME *s);
+
+// X509_time_adj calls |X509_time_adj_ex| with |offset_day| equal to zero.
+OPENSSL_EXPORT ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec,
+                                        time_t *t);
+
+// X509_time_adj_ex behaves like |ASN1_TIME_adj|, but adds an offset to |*t|. If
+// |t| is NULL, it uses the current time instead of |*t|.
+OPENSSL_EXPORT ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day,
+                                           long offset_sec, time_t *t);
+
+// X509_gmtime_adj behaves like |X509_time_adj_ex| but adds |offset_sec| to the
+// current time.
+OPENSSL_EXPORT ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec);
+
 
 // ex_data functions.
 //
@@ -2188,39 +2221,6 @@ OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
 // This function works by serializing the structure, so if |rev| is incomplete,
 // it may fail.
 OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(const X509_REVOKED *rev);
-
-// X509_cmp_time compares |s| against |*t|. On success, it returns a negative
-// number if |s| <= |*t| and a positive number if |s| > |*t|. On error, it
-// returns zero. If |t| is NULL, it uses the current time instead of |*t|.
-//
-// WARNING: Unlike most comparison functions, this function returns zero on
-// error, not equality.
-OPENSSL_EXPORT int X509_cmp_time(const ASN1_TIME *s, time_t *t);
-
-// X509_cmp_time_posix compares |s| against |t|. On success, it returns a
-// negative number if |s| <= |t| and a positive number if |s| > |t|. On error,
-// it returns zero.
-//
-// WARNING: Unlike most comparison functions, this function returns zero on
-// error, not equality.
-OPENSSL_EXPORT int X509_cmp_time_posix(const ASN1_TIME *s, int64_t t);
-
-// X509_cmp_current_time behaves like |X509_cmp_time| but compares |s| against
-// the current time.
-OPENSSL_EXPORT int X509_cmp_current_time(const ASN1_TIME *s);
-
-// X509_time_adj calls |X509_time_adj_ex| with |offset_day| equal to zero.
-OPENSSL_EXPORT ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec,
-                                        time_t *t);
-
-// X509_time_adj_ex behaves like |ASN1_TIME_adj|, but adds an offset to |*t|. If
-// |t| is NULL, it uses the current time instead of |*t|.
-OPENSSL_EXPORT ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day,
-                                           long offset_sec, time_t *t);
-
-// X509_gmtime_adj behaves like |X509_time_adj_ex| but adds |offset_sec| to the
-// current time.
-OPENSSL_EXPORT ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec);
 
 OPENSSL_EXPORT const char *X509_get_default_cert_area(void);
 OPENSSL_EXPORT const char *X509_get_default_cert_dir(void);
