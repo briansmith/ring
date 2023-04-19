@@ -1670,25 +1670,12 @@ OPENSSL_EXPORT int X509_REQ_print_fp(FILE *fp, X509_REQ *req);
 // XN_FLAG_FN_SN uses the attribute type's short name, when available.
 #define XN_FLAG_FN_SN 0
 
-// XN_FLAG_FN_LN uses the attribute type's long name, when available.
-#define XN_FLAG_FN_LN (1 << 21)
-
-// XN_FLAG_FN_OID always prints attribute types as OIDs.
-#define XN_FLAG_FN_OID (2 << 21)
-
-// XN_FLAG_FN_NONE skips printing field names.
-#define XN_FLAG_FN_NONE (3 << 21)
-
 // XN_FLAG_SPC_EQ wraps the "=" operator with spaces when printing attributes.
 #define XN_FLAG_SPC_EQ (1 << 23)
 
 // XN_FLAG_DUMP_UNKNOWN_FIELDS causes unknown attribute types to be printed in
 // hex, as in RFC 2253.
 #define XN_FLAG_DUMP_UNKNOWN_FIELDS (1 << 24)
-
-// XN_FLAG_FN_ALIGN aligns attribute names to 10 characters if using short
-// names, and 25 characters if using long names.
-#define XN_FLAG_FN_ALIGN (1 << 25)
 
 // XN_FLAG_RFC2253 prints like RFC 2253.
 #define XN_FLAG_RFC2253                                             \
@@ -1699,11 +1686,6 @@ OPENSSL_EXPORT int X509_REQ_print_fp(FILE *fp, X509_REQ *req);
 #define XN_FLAG_ONELINE                                                    \
   (ASN1_STRFLGS_RFC2253 | ASN1_STRFLGS_ESC_QUOTE | XN_FLAG_SEP_CPLUS_SPC | \
    XN_FLAG_SPC_EQ | XN_FLAG_FN_SN)
-
-// XN_FLAG_MULTILINE prints a multi-line representation of the name.
-#define XN_FLAG_MULTILINE                                                 \
-  (ASN1_STRFLGS_ESC_CTRL | ASN1_STRFLGS_ESC_MSB | XN_FLAG_SEP_MULTILINE | \
-   XN_FLAG_SPC_EQ | XN_FLAG_FN_LN | XN_FLAG_FN_ALIGN)
 
 // X509_NAME_print_ex writes a human-readable representation of |nm| to |out|.
 // Each line of output is indented by |indent| spaces. It returns the number of

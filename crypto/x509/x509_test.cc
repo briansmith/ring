@@ -4702,50 +4702,35 @@ TEST(X509Test, NamePrint) {
        "CN = \"Common "
        "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\", "
        "CN = \" spaces \""},
-      // |XN_FLAG_MULTILINE| is an OpenSSL-specific multi-line format that tries
-      // to vertically align the equal sizes. The vertical alignment doesn't
-      // quite handle multi-valued RDNs right and uses a non-RFC-2253 escaping.
+      // Callers can also customize the output, with both |XN_FLAG_*| and
+      // |ASN1_STRFLGS_*|. |XN_FLAG_SEP_SPLUS_SPC| uses semicolon separators.
       {/*indent=*/0,
-       /*flags=*/XN_FLAG_MULTILINE,
-       "countryName               = US\n"
-       "stateOrProvinceName       = Some State + "
-       "stateOrProvinceName       = Some Other State \\U2603 + "
-       "stateOrProvinceName       = Another State \\U2603 + "
-       "1.2.840.113554.4.1.72585.2 = \\U2603\n"
-       "1.2.840.113554.4.1.72585.3 = 0\\06\\02\\01\\01\\02\\01\\02\n"
-       "organizationName          = Org Name\n"
-       "commonName                = Common "
-       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\n"
-       "commonName                =  spaces "},
-      // The multiline format indents every line.
-      {/*indent=*/2,
-       /*flags=*/XN_FLAG_MULTILINE,
-       "  countryName               = US\n"
-       "  stateOrProvinceName       = Some State + "
-       "stateOrProvinceName       = Some Other State \\U2603 + "
-       "stateOrProvinceName       = Another State \\U2603 + "
-       "1.2.840.113554.4.1.72585.2 = \\U2603\n"
-       "  1.2.840.113554.4.1.72585.3 = 0\\06\\02\\01\\01\\02\\01\\02\n"
-       "  organizationName          = Org Name\n"
-       "  commonName                = Common "
-       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\n"
-       "  commonName                =  spaces "},
-      // Callers can also customize the output, wuith both |XN_FLAG_*| and
-      // |ASN1_STRFLGS_*|. |XN_FLAG_SEP_SPLUS_SPC| uses semicolon separators and
-      // |XN_FLAG_FN_OID| forces OIDs.
-      {/*indent=*/0,
-       /*flags=*/XN_FLAG_SEP_SPLUS_SPC | XN_FLAG_FN_OID | ASN1_STRFLGS_RFC2253 |
+       /*flags=*/XN_FLAG_SEP_SPLUS_SPC | ASN1_STRFLGS_RFC2253 |
            ASN1_STRFLGS_ESC_QUOTE,
-       "2.5.4.6=US; "
-       "2.5.4.8=Some State + "
-       "2.5.4.8=Some Other State \\E2\\98\\83 + "
-       "2.5.4.8=Another State \\E2\\98\\83 + "
+       "C=US; "
+       "ST=Some State + "
+       "ST=Some Other State \\E2\\98\\83 + "
+       "ST=Another State \\E2\\98\\83 + "
        "1.2.840.113554.4.1.72585.2=\\E2\\98\\83; "
        "1.2.840.113554.4.1.72585.3=#3006020101020102; "
-       "2.5.4.10=Org Name; "
-       "2.5.4.3=\"Common "
+       "O=Org Name; "
+       "CN=\"Common "
        "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\"; "
-       "2.5.4.3=\" spaces \""},
+       "CN=\" spaces \""},
+      // Node uses these parameters.
+      {/*indent=*/0,
+       /*flags=*/ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL |
+           ASN1_STRFLGS_UTF8_CONVERT | XN_FLAG_SEP_MULTILINE | XN_FLAG_FN_SN,
+       "C=US\n"
+       "ST=Some State + "
+       "ST=Some Other State \xE2\x98\x83 + "
+       "ST=Another State \xE2\x98\x83 + "
+       "1.2.840.113554.4.1.72585.2=\xE2\x98\x83\n"
+       "1.2.840.113554.4.1.72585.3=0\\06\\02\\01\\01\\02\\01\\02\n"
+       "O=Org Name\n"
+       "CN=Common "
+       "Name/CN=A/CN=B\\,CN=A\\,CN=B\\+CN=A\\+CN=B\\;CN=A\\;CN=B\\0ACN=A\\0A\n"
+       "CN=\\ spaces\\ "},
       // |XN_FLAG_COMPAT| matches |X509_NAME_print|, rather than
       // |X509_NAME_print_ex|.
       //
