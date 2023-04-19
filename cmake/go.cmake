@@ -34,10 +34,7 @@ function(go_executable dest package)
   else()
     # Ninja expects the target in the depfile to match the output. This is a
     # relative path from the build directory.
-    string(LENGTH "${CMAKE_BINARY_DIR}" root_dir_length)
-    math(EXPR root_dir_length "${root_dir_length} + 1")
-    string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
-    set(target "${target}/${dest}")
+    binary_dir_relative_path(${dest} target)
 
     set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
     add_custom_command(OUTPUT ${dest}

@@ -17,6 +17,7 @@ endif()
 
 include(sources.cmake)
 include(cmake/go.cmake)
+include(cmake/paths.cmake)
 include(cmake/perlasm.cmake)
 
 enable_language(C)
