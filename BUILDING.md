@@ -48,17 +48,13 @@ most recent stable version of each tool.
 
 Using Ninja (note the 'N' is capitalized in the cmake invocation):
 
-    mkdir build
-    cd build
-    cmake -GNinja ..
-    ninja
+    cmake -GNinja -B build
+    ninja -C build
 
 Using Make (does not work on Windows):
 
-    mkdir build
-    cd build
-    cmake ..
-    make
+    cmake -B build
+    make -C build
 
 You usually don't need to run `cmake` again after changing `CMakeLists.txt`
 files because the build scripts will detect changes to them and rebuild
@@ -69,10 +65,9 @@ debugging—optimisation isn't enabled. Pass `-DCMAKE_BUILD_TYPE=Release` to
 `cmake` to configure a release build.
 
 If you want to cross-compile then there is an example toolchain file for 32-bit
-Intel in `util/`. Wipe out the build directory, recreate it and run `cmake` like
-this:
+Intel in `util/`. Wipe out the build directory, run `cmake` like this:
 
-    cmake -DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake -GNinja ..
+    cmake -B build -DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake -GNinja
 
 If you want to build as a shared library, pass `-DBUILD_SHARED_LIBS=1`. On
 Windows, where functions need to be tagged with `dllimport` when coming from a
@@ -93,12 +88,12 @@ versions of the NDK include a CMake toolchain file which works with CMake 3.6.0
 or later. This has been tested with version r16b of the NDK.
 
 Unpack the Android NDK somewhere and export `ANDROID_NDK` to point to the
-directory. Then make a build directory as above and run CMake like this:
+directory. Then run CMake like this:
 
     cmake -DANDROID_ABI=armeabi-v7a \
           -DANDROID_PLATFORM=android-19 \
           -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
-          -GNinja ..
+          -GNinja -B build
 
 Once you've run that, Ninja should produce Android-compatible binaries.  You
 can replace `armeabi-v7a` in the above with `arm64-v8a` and use API level 21 or
@@ -140,7 +135,7 @@ In order to build with prefixed symbols, the `BORINGSSL_PREFIX` CMake variable
 should specify the prefix to add to all symbols, and the
 `BORINGSSL_PREFIX_SYMBOLS` CMake variable should specify the path to a file
 which contains a list of symbols which should be prefixed (one per line;
-comments are supported with `#`). In other words, `cmake ..
+comments are supported with `#`). In other words, `cmake -B build
 -DBORINGSSL_PREFIX=MY_CUSTOM_PREFIX
 -DBORINGSSL_PREFIX_SYMBOLS=/path/to/symbols.txt` will configure the build to add
 the prefix `MY_CUSTOM_PREFIX` to all of the symbols listed in

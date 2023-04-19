@@ -30,7 +30,7 @@ fn main() {
         .unwrap();
     println!("cargo:rustc-env=BINDGEN_RS_FILE={}", bindgen_file);
 
-    // building bssl-sys with: `mkdir build && cd build && cmake -G Ninja .. -DRUST_BINDINGS="$(gcc -dumpmachine)" && ninja`
+    // building bssl-sys with: `cmake -G Ninja -B build -DRUST_BINDINGS="$(gcc -dumpmachine)" && ninja -C build`
     // outputs this crate to /build/rust/bssl-sys/ so need to go up 3 levels to the root of the repo
     let repo_root = crate_path.parent().unwrap().parent().unwrap();
 
