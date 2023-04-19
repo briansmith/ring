@@ -223,6 +223,7 @@ const ASM_TARGETS: &[(&str, Option<&str>, Option<&str>)] = &[
     ("aarch64", None, Some("linux64")),
     ("x86", Some(WINDOWS), Some("win32n")),
     ("x86", Some("ios"), Some("macosx")),
+    ("x86", Some("macos"), Some("macosx")),
     ("x86", None, Some("elf")),
     ("arm", Some("ios"), Some("ios32")),
     ("arm", None, Some("linux32")),
