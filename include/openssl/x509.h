@@ -832,9 +832,8 @@ OPENSSL_EXPORT X509_ATTRIBUTE *X509_REQ_delete_attr(X509_REQ *req, int loc);
 
 // X509_REQ_add1_attr appends a copy of |attr| to |req|'s list of attributes. It
 // returns one on success and zero on error.
-//
-// TODO(https://crbug.com/boringssl/407): |attr| should be const.
-OPENSSL_EXPORT int X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr);
+OPENSSL_EXPORT int X509_REQ_add1_attr(X509_REQ *req,
+                                      const X509_ATTRIBUTE *attr);
 
 // X509_REQ_add1_attr_by_OBJ appends a new attribute to |req| with type |obj|.
 // It returns one on success and zero on error. The value is determined by
@@ -1531,62 +1530,6 @@ OPENSSL_EXPORT ASN1_OBJECT *X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr);
 // of bounds. Note this function returns one of |attr|'s values, not the type.
 OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
                                                    int idx);
-
-// X509at_get_attr_count returns the number of attributes in |x|.
-OPENSSL_EXPORT int X509at_get_attr_count(const STACK_OF(X509_ATTRIBUTE) *x);
-
-// X509at_get_attr_by_NID returns the index of the attribute in |x| of type
-// |nid|, or a negative number if not found. If found, callers can use
-// |X509at_get_attr| to look up the attribute by index.
-//
-// If |lastpos| is non-negative, it begins searching at |lastpos| + 1. Callers
-// can thus loop over all matching attributes by first passing -1 and then
-// passing the previously-returned value until no match is returned.
-OPENSSL_EXPORT int X509at_get_attr_by_NID(const STACK_OF(X509_ATTRIBUTE) *x,
-                                          int nid, int lastpos);
-
-// X509at_get_attr_by_OBJ behaves like |X509at_get_attr_by_NID| but looks for
-// attributes of type |obj|.
-OPENSSL_EXPORT int X509at_get_attr_by_OBJ(const STACK_OF(X509_ATTRIBUTE) *sk,
-                                          const ASN1_OBJECT *obj, int lastpos);
-
-// X509at_get_attr returns the attribute at index |loc| in |x|, or NULL if
-// out of bounds.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509at_get_attr(
-    const STACK_OF(X509_ATTRIBUTE) *x, int loc);
-
-// X509at_delete_attr removes the attribute at index |loc| in |x|. It returns
-// the removed attribute to the caller, or NULL if |loc| was out of bounds. If
-// non-NULL, the caller must release the result with |X509_ATTRIBUTE_free| when
-// done.
-OPENSSL_EXPORT X509_ATTRIBUTE *X509at_delete_attr(STACK_OF(X509_ATTRIBUTE) *x,
-                                                  int loc);
-
-// X509at_add1_attr appends a copy of |attr| to the attribute list in |*x|. If
-// |*x| is NULL, it allocates a new |STACK_OF(X509_ATTRIBUTE)| to hold the copy
-// and sets |*x| to the new list. It returns |*x| on success and NULL on error.
-// The caller retains ownership of |attr| and can release it independently of
-// |*x|.
-OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr(
-    STACK_OF(X509_ATTRIBUTE) **x, X509_ATTRIBUTE *attr);
-
-// X509at_add1_attr_by_OBJ behaves like |X509at_add1_attr|, but adds an
-// attribute created by |X509_ATTRIBUTE_create_by_OBJ|.
-OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_OBJ(
-    STACK_OF(X509_ATTRIBUTE) **x, const ASN1_OBJECT *obj, int type,
-    const unsigned char *bytes, int len);
-
-// X509at_add1_attr_by_NID behaves like |X509at_add1_attr|, but adds an
-// attribute created by |X509_ATTRIBUTE_create_by_NID|.
-OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_NID(
-    STACK_OF(X509_ATTRIBUTE) **x, int nid, int type, const unsigned char *bytes,
-    int len);
-
-// X509at_add1_attr_by_txt behaves like |X509at_add1_attr|, but adds an
-// attribute created by |X509_ATTRIBUTE_create_by_txt|.
-OPENSSL_EXPORT STACK_OF(X509_ATTRIBUTE) *X509at_add1_attr_by_txt(
-    STACK_OF(X509_ATTRIBUTE) **x, const char *attrname, int type,
-    const unsigned char *bytes, int len);
 
 
 // Printing functions.
