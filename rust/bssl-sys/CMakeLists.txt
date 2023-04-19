@@ -10,7 +10,6 @@ set(COMMAND ${BINDGEN_EXECUTABLE} "wrapper.h"
             --no-derive-default
             --enable-function-attribute-detection
             --use-core
-            --size_t-is-usize
             --default-macro-constant-type="signed"
             --rustified-enum="point_conversion_form_t"
             --allowlist-file=".*/include/openssl/.*\\.h"
