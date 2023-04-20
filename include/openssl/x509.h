@@ -1533,6 +1533,112 @@ OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
                                                    int idx);
 
 
+// SignedPublicKeyAndChallenge structures.
+//
+// The SignedPublicKeyAndChallenge (SPKAC) is a legacy structure to request
+// certificates, primarily in the legacy <keygen> HTML tag. An SPKAC structure
+// is represented by a |NETSCAPE_SPKI| structure.
+//
+// The structure is described in
+// https://developer.mozilla.org/en-US/docs/Web/HTML/Element/keygen
+
+// A Netscape_spki_st, or |NETSCAPE_SPKI|, represents a
+// SignedPublicKeyAndChallenge structure. Although this structure contains a
+// |spkac| field of type |NETSCAPE_SPKAC|, these are misnamed. The SPKAC is the
+// entire structure, not the signed portion.
+struct Netscape_spki_st {
+  NETSCAPE_SPKAC *spkac;
+  X509_ALGOR *sig_algor;
+  ASN1_BIT_STRING *signature;
+} /* NETSCAPE_SPKI */;
+
+// NETSCAPE_SPKI is an |ASN1_ITEM| whose ASN.1 type is
+// SignedPublicKeyAndChallenge and C type is |NETSCAPE_SPKI*|.
+DECLARE_ASN1_ITEM(NETSCAPE_SPKI)
+
+// NETSCAPE_SPKI_new returns a newly-allocated, empty |NETSCAPE_SPKI| object, or
+// NULL on error.
+OPENSSL_EXPORT NETSCAPE_SPKI *NETSCAPE_SPKI_new(void);
+
+// NETSCAPE_SPKI_free releases memory associated with |spki|.
+OPENSSL_EXPORT void NETSCAPE_SPKI_free(NETSCAPE_SPKI *spki);
+
+// d2i_NETSCAPE_SPKI parses up to |len| bytes from |*inp| as a DER-encoded
+// SignedPublicKeyAndChallenge structure, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT NETSCAPE_SPKI *d2i_NETSCAPE_SPKI(NETSCAPE_SPKI **out,
+                                                const uint8_t **inp, long len);
+
+// i2d_NETSCAPE_SPKI marshals |spki| as a DER-encoded
+// SignedPublicKeyAndChallenge structure, as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_NETSCAPE_SPKI(const NETSCAPE_SPKI *spki, uint8_t **outp);
+
+// NETSCAPE_SPKI_verify checks that |spki| has a valid signature by |pkey|. It
+// returns one if the signature is valid and zero otherwise.
+OPENSSL_EXPORT int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *spki, EVP_PKEY *pkey);
+
+// NETSCAPE_SPKI_b64_decode decodes |len| bytes from |str| as a base64-encoded
+// SignedPublicKeyAndChallenge structure. It returns a newly-allocated
+// |NETSCAPE_SPKI| structure with the result, or NULL on error. If |len| is 0 or
+// negative, the length is calculated with |strlen| and |str| must be a
+// NUL-terminated C string.
+OPENSSL_EXPORT NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str,
+                                                       ossl_ssize_t len);
+
+// NETSCAPE_SPKI_b64_encode encodes |spki| as a base64-encoded
+// SignedPublicKeyAndChallenge structure. It returns a newly-allocated
+// NUL-terminated C string with the result, or NULL on error. The caller must
+// release the memory with |OPENSSL_free| when done.
+OPENSSL_EXPORT char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki);
+
+// NETSCAPE_SPKI_get_pubkey decodes and returns the public key in |spki| as an
+// |EVP_PKEY|, or NULL on error. The caller takes ownership of the resulting
+// pointer and must call |EVP_PKEY_free| when done.
+OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *spki);
+
+// NETSCAPE_SPKI_set_pubkey sets |spki|'s public key to |pkey|. It returns one
+// on success or zero on error. This function does not take ownership of |pkey|,
+// so the caller may continue to manage its lifetime independently of |spki|.
+OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *spki,
+                                            EVP_PKEY *pkey);
+
+// NETSCAPE_SPKI_sign signs |spki| with |pkey| and replaces the signature
+// algorithm and signature fields. It returns the length of the signature on
+// success and zero on error. This function uses digest algorithm |md|, or
+// |pkey|'s default if NULL. Other signing parameters use |pkey|'s defaults.
+OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
+                                      const EVP_MD *md);
+
+// A Netscape_spkac_st, or |NETSCAPE_SPKAC|, represents a PublicKeyAndChallenge
+// structure. This type is misnamed. The full SPKAC includes the signature,
+// which is represented with the |NETSCAPE_SPKI| type.
+struct Netscape_spkac_st {
+  X509_PUBKEY *pubkey;
+  ASN1_IA5STRING *challenge;
+} /* NETSCAPE_SPKAC */;
+
+// NETSCAPE_SPKAC is an |ASN1_ITEM| whose ASN.1 type is PublicKeyAndChallenge
+// and C type is |NETSCAPE_SPKAC*|.
+DECLARE_ASN1_ITEM(NETSCAPE_SPKAC)
+
+// NETSCAPE_SPKAC_new returns a newly-allocated, empty |NETSCAPE_SPKAC| object,
+// or NULL on error.
+OPENSSL_EXPORT NETSCAPE_SPKAC *NETSCAPE_SPKAC_new(void);
+
+// NETSCAPE_SPKAC_free releases memory associated with |spkac|.
+OPENSSL_EXPORT void NETSCAPE_SPKAC_free(NETSCAPE_SPKAC *spkac);
+
+// d2i_NETSCAPE_SPKAC parses up to |len| bytes from |*inp| as a DER-encoded
+// PublicKeyAndChallenge structure, as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT NETSCAPE_SPKAC *d2i_NETSCAPE_SPKAC(NETSCAPE_SPKAC **out,
+                                                  const uint8_t **inp,
+                                                  long len);
+
+// i2d_NETSCAPE_SPKAC marshals |spkac| as a DER-encoded PublicKeyAndChallenge
+// structure, as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_NETSCAPE_SPKAC(const NETSCAPE_SPKAC *spkac,
+                                      uint8_t **outp);
+
+
 // Printing functions.
 //
 // The following functions output human-readable representations of
@@ -1563,11 +1669,11 @@ OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
 // X509_FLAG_NO_ISSUER skips printing the issuer.
 #define X509_FLAG_NO_ISSUER (1L << 4)
 
-// X509_FLAG_NO_ISSUER skips printing the notBefore and notAfter times. It is
+// X509_FLAG_NO_VALIDITY skips printing the notBefore and notAfter times. It is
 // ignored in |X509_REQ_print_fp|.
 #define X509_FLAG_NO_VALIDITY (1L << 5)
 
-// X509_FLAG_NO_ISSUER skips printing the subject.
+// X509_FLAG_NO_SUBJECT skips printing the subject.
 #define X509_FLAG_NO_SUBJECT (1L << 6)
 
 // X509_FLAG_NO_PUBKEY skips printing the public key.
@@ -2125,20 +2231,6 @@ struct X509_info_st {
 
 DEFINE_STACK_OF(X509_INFO)
 
-// The next 2 structures and their 8 routines were sent to me by
-// Pat Richard <patr@x509.com> and are used to manipulate
-// Netscapes spki structures - useful if you are writing a CA web page
-struct Netscape_spkac_st {
-  X509_PUBKEY *pubkey;
-  ASN1_IA5STRING *challenge;  // challenge sent in atlas >= PR2
-} /* NETSCAPE_SPKAC */;
-
-struct Netscape_spki_st {
-  NETSCAPE_SPKAC *spkac;  // signed public key and challenge
-  X509_ALGOR *sig_algor;
-  ASN1_BIT_STRING *signature;
-} /* NETSCAPE_SPKI */;
-
 // X509_get_pathlen returns path length constraint from the basic constraints
 // extension in |x509|. (See RFC 5280, section 4.2.1.9.) It returns -1 if the
 // constraint is not present, or if some extension in |x509| was invalid.
@@ -2163,42 +2255,6 @@ OPENSSL_EXPORT void X509_SIG_getm(X509_SIG *sig, X509_ALGOR **out_alg,
 // |err| should be one of the |X509_V_*| values. If |err| is unknown, it returns
 // a default description.
 OPENSSL_EXPORT const char *X509_verify_cert_error_string(long err);
-
-// NETSCAPE_SPKI_verify checks that |spki| has a valid signature by |pkey|. It
-// returns one if the signature is valid and zero otherwise.
-OPENSSL_EXPORT int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *spki, EVP_PKEY *pkey);
-
-// NETSCAPE_SPKI_b64_decode decodes |len| bytes from |str| as a base64-encoded
-// Netscape signed public key and challenge (SPKAC) structure. It returns a
-// newly-allocated |NETSCAPE_SPKI| structure with the result, or NULL on error.
-// If |len| is 0 or negative, the length is calculated with |strlen| and |str|
-// must be a NUL-terminated C string.
-OPENSSL_EXPORT NETSCAPE_SPKI *NETSCAPE_SPKI_b64_decode(const char *str,
-                                                       ossl_ssize_t len);
-
-// NETSCAPE_SPKI_b64_encode encodes |spki| as a base64-encoded Netscape signed
-// public key and challenge (SPKAC) structure. It returns a newly-allocated
-// NUL-terminated C string with the result, or NULL on error. The caller must
-// release the memory with |OPENSSL_free| when done.
-OPENSSL_EXPORT char *NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki);
-
-// NETSCAPE_SPKI_get_pubkey decodes and returns the public key in |spki| as an
-// |EVP_PKEY|, or NULL on error. The caller takes ownership of the resulting
-// pointer and must call |EVP_PKEY_free| when done.
-OPENSSL_EXPORT EVP_PKEY *NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *spki);
-
-// NETSCAPE_SPKI_set_pubkey sets |spki|'s public key to |pkey|. It returns one
-// on success or zero on error. This function does not take ownership of |pkey|,
-// so the caller may continue to manage its lifetime independently of |spki|.
-OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *spki,
-                                            EVP_PKEY *pkey);
-
-// NETSCAPE_SPKI_sign signs |spki| with |pkey| and replaces the signature
-// algorithm and signature fields. It returns the length of the signature on
-// success and zero on error. This function uses digest algorithm |md|, or
-// |pkey|'s default if NULL. Other signing parameters use |pkey|'s defaults.
-OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
-                                      const EVP_MD *md);
 
 // X509_REVOKED_dup returns a newly-allocated copy of |rev|, or NULL on error.
 // This function works by serializing the structure, so if |rev| is incomplete,
@@ -2245,9 +2301,6 @@ OPENSSL_EXPORT int X509_CRL_get0_by_cert(X509_CRL *crl, X509_REVOKED **ret,
 
 OPENSSL_EXPORT X509_PKEY *X509_PKEY_new(void);
 OPENSSL_EXPORT void X509_PKEY_free(X509_PKEY *a);
-
-DECLARE_ASN1_FUNCTIONS_const(NETSCAPE_SPKI)
-DECLARE_ASN1_FUNCTIONS_const(NETSCAPE_SPKAC)
 
 OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
