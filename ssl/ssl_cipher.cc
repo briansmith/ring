@@ -157,17 +157,6 @@ BSSL_NAMESPACE_BEGIN
 
 static constexpr SSL_CIPHER kCiphers[] = {
     // The RSA ciphers
-    // Cipher 02
-    {
-     SSL3_TXT_RSA_NULL_SHA,
-     "TLS_RSA_WITH_NULL_SHA",
-     SSL3_CK_RSA_NULL_SHA,
-     SSL_kRSA,
-     SSL_aRSA,
-     SSL_eNULL,
-     SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT,
-    },
 
     // Cipher 0A
     {
@@ -498,7 +487,6 @@ typedef struct cipher_alias_st {
 } CIPHER_ALIAS;
 
 static const CIPHER_ALIAS kCipherAliases[] = {
-    // "ALL" doesn't include eNULL. It must be explicitly enabled.
     {"ALL", ~0u, ~0u, ~0u, ~0u, 0},
 
     // The "COMPLEMENTOFDEFAULT" rule is omitted. It matches nothing.
@@ -599,9 +587,7 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
       *out_fixed_iv_len = EVP_AEAD_nonce_length(*out_aead);
     }
   } else if (cipher->algorithm_mac == SSL_SHA1) {
-    if (cipher->algorithm_enc == SSL_eNULL) {
-      *out_aead = EVP_aead_null_sha1_tls();
-    } else if (cipher->algorithm_enc == SSL_3DES) {
+    if (cipher->algorithm_enc == SSL_3DES) {
       if (version == TLS1_VERSION) {
         *out_aead = EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv();
         *out_fixed_iv_len = 8;
@@ -866,9 +852,7 @@ static void ssl_cipher_apply_rule(
           !(alg_auth & cp->algorithm_auth) ||
           !(alg_enc & cp->algorithm_enc) ||
           !(alg_mac & cp->algorithm_mac) ||
-          (min_version != 0 && SSL_CIPHER_get_min_version(cp) != min_version) ||
-          // The NULL cipher must be selected explicitly.
-          cp->algorithm_enc == SSL_eNULL) {
+          (min_version != 0 && SSL_CIPHER_get_min_version(cp) != min_version)) {
         continue;
       }
     }
@@ -1383,8 +1367,6 @@ int SSL_CIPHER_is_aead(const SSL_CIPHER *cipher) {
 
 int SSL_CIPHER_get_cipher_nid(const SSL_CIPHER *cipher) {
   switch (cipher->algorithm_enc) {
-    case SSL_eNULL:
-      return NID_undef;
     case SSL_3DES:
       return NID_des_ede3_cbc;
     case SSL_AES128:
@@ -1457,8 +1439,7 @@ int SSL_CIPHER_get_prf_nid(const SSL_CIPHER *cipher) {
 }
 
 int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_enc & SSL_eNULL) == 0 &&
-      cipher->algorithm_mac != SSL_AEAD;
+  return cipher->algorithm_mac != SSL_AEAD;
 }
 
 uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {
@@ -1557,11 +1538,6 @@ int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher, int *out_alg_bits) {
       strength_bits = 112;
       break;
 
-    case SSL_eNULL:
-      alg_bits = 0;
-      strength_bits = 0;
-      break;
-
     default:
       assert(0);
       alg_bits = 0;
@@ -1650,10 +1626,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
 
     case SSL_CHACHA20POLY1305:
       enc = "ChaCha20-Poly1305";
-      break;
-
-    case SSL_eNULL:
-      enc="None";
       break;
 
     default:

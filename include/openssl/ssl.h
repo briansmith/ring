@@ -1449,9 +1449,6 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
 //
 //   |SHA1|, and its alias |SHA|, match legacy cipher suites using HMAC-SHA1.
 //
-// Although implemented, authentication-only ciphers match no rules and must be
-// explicitly selected by name.
-//
 // Deprecated cipher rules:
 //
 //   |kEDH|, |EDH|, |kEECDH|, and |EECDH| are legacy aliases for |kDHE|, |DHE|,

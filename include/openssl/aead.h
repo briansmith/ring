@@ -408,8 +408,6 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls_implicit_iv(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(void);
 
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_null_sha1_tls(void);
-
 // EVP_aead_aes_128_gcm_tls12 is AES-128 in Galois Counter Mode using the TLS
 // 1.2 nonce construction.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_tls12(void);

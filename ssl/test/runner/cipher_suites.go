@@ -127,11 +127,6 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, ecdhePSKKA, suiteECDHE | suitePSK, cipherAES, macSHA1, nil},
 	{TLS_PSK_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, pskKA, suitePSK, cipherAES, macSHA1, nil},
 	{TLS_PSK_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, pskKA, suitePSK, cipherAES, macSHA1, nil},
-	{TLS_RSA_WITH_NULL_SHA, 0, 20, noIV, rsaKA, 0, cipherNull, macSHA1, nil},
-}
-
-func noIV(vers uint16) int {
-	return 0
 }
 
 func ivLenChaCha20Poly1305(vers uint16) int {
@@ -364,7 +359,6 @@ func cipherSuiteFromID(id uint16) *cipherSuite {
 // A list of the possible cipher suite ids. Taken from
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml
 const (
-	TLS_RSA_WITH_NULL_SHA                         uint16 = 0x0002
 	TLS_RSA_WITH_3DES_EDE_CBC_SHA                 uint16 = 0x000a
 	TLS_RSA_WITH_AES_128_CBC_SHA                  uint16 = 0x002f
 	TLS_RSA_WITH_AES_256_CBC_SHA                  uint16 = 0x0035

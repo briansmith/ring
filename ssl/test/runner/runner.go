@@ -1850,7 +1850,6 @@ var testCipherSuites = []testCipherSuite{
 	{"CHACHA20_POLY1305_SHA256", TLS_CHACHA20_POLY1305_SHA256},
 	{"AES_128_GCM_SHA256", TLS_AES_128_GCM_SHA256},
 	{"AES_256_GCM_SHA384", TLS_AES_256_GCM_SHA384},
-	{"RSA_WITH_NULL_SHA", TLS_RSA_WITH_NULL_SHA},
 }
 
 func hasComponent(suiteName, component string) bool {
@@ -3672,10 +3671,6 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 		flags = append(flags,
 			"-psk", psk,
 			"-psk-identity", pskIdentity)
-	}
-	if hasComponent(suite.name, "NULL") {
-		// NULL ciphers must be explicitly enabled.
-		flags = append(flags, "-cipher", "DEFAULT:NULL-SHA")
 	}
 
 	var shouldFail bool

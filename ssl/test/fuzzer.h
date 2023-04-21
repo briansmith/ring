@@ -414,7 +414,7 @@ class TLSFuzzer {
     SSL_CTX_enable_ocsp_stapling(ctx_.get());
 
     // Enable versions and ciphers that are off by default.
-    if (!SSL_CTX_set_strict_cipher_list(ctx_.get(), "ALL:NULL-SHA")) {
+    if (!SSL_CTX_set_strict_cipher_list(ctx_.get(), "ALL")) {
       return false;
     }
 
