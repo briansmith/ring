@@ -6,7 +6,7 @@ target_link_libraries(rust_wrapper crypto)
 # ${CMAKE_BINARY_DIR}, with the output path as a relative path. bindgen writes
 # the depfile using the same syntax as the command-line argument, and ninja
 # requires a path relative to the top-level build directory.
-set(wrapper src/wrapper_${RUST_BINDINGS}.rs)
+set(wrapper wrapper_${RUST_BINDINGS}.rs)
 binary_dir_relative_path(${wrapper} wrapper_relative)
 binary_dir_relative_path(${wrapper}.d depfile_relative)
 
@@ -47,12 +47,3 @@ add_custom_command(
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 add_custom_target(bssl_sys ALL DEPENDS ${wrapper})
-
-# move files into build directory
-configure_file("src/lib.rs" "src/lib.rs")
-
-if(NOT BUILD_SHARED_LIBS)
-  configure_file("build.rs" "build.rs" COPYONLY)
-endif()
-
-configure_file("Cargo.toml" "Cargo.toml" COPYONLY)
