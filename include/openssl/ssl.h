@@ -1430,7 +1430,8 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
 //
 // Available cipher rules are:
 //
-//   |ALL| matches all ciphers.
+//   |ALL| matches all ciphers, except for deprecated ciphers which must be
+//   named explicitly.
 //
 //   |kRSA|, |kDHE|, |kECDHE|, and |kPSK| match ciphers using plain RSA, DHE,
 //   ECDHE, and plain PSK key exchanges, respectively. Note that ECDHE_PSK is
@@ -1487,8 +1488,7 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
 //
 // TLS 1.3 ciphers do not participate in this mechanism and instead have a
 // built-in preference order. Functions to set cipher lists do not affect TLS
-// 1.3, and functions to query the cipher list do not include TLS 1.3
-// ciphers.
+// 1.3, and functions to query the cipher list do not include TLS 1.3 ciphers.
 
 // SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
 // substituted when a cipher string starts with 'DEFAULT'.

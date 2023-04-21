@@ -480,20 +480,23 @@ typedef struct cipher_order_st {
 
 typedef struct cipher_alias_st {
   // name is the name of the cipher alias.
-  const char *name;
+  const char *name = nullptr;
 
   // The following fields are bitmasks for the corresponding fields on
   // |SSL_CIPHER|. A cipher matches a cipher alias iff, for each bitmask, the
   // bit corresponding to the cipher's value is set to 1. If any bitmask is
   // all zeroes, the alias matches nothing. Use |~0u| for the default value.
-  uint32_t algorithm_mkey;
-  uint32_t algorithm_auth;
-  uint32_t algorithm_enc;
-  uint32_t algorithm_mac;
+  uint32_t algorithm_mkey = ~0u;
+  uint32_t algorithm_auth = ~0u;
+  uint32_t algorithm_enc = ~0u;
+  uint32_t algorithm_mac = ~0u;
 
   // min_version, if non-zero, matches all ciphers which were added in that
   // particular protocol version.
-  uint16_t min_version;
+  uint16_t min_version = 0;
+
+  // include_deprecated, if true, means this alias includes deprecated ciphers.
+  bool include_deprecated = false;
 } CIPHER_ALIAS;
 
 static const CIPHER_ALIAS kCipherAliases[] = {
@@ -745,6 +748,11 @@ void SSLCipherPreferenceList::Remove(const SSL_CIPHER *cipher) {
   sk_SSL_CIPHER_delete(ciphers.get(), index);
 }
 
+static bool ssl_cipher_is_deprecated(const SSL_CIPHER *cipher) {
+  // TODO(crbug.com/boringssl/599): Deprecate 3DES.
+  return false;
+}
+
 // ssl_cipher_apply_rule applies the rule type |rule| to ciphers matching its
 // parameters in the linked list from |*head_p| to |*tail_p|. It writes the new
 // head and tail of the list to |*head_p| and |*tail_p|, respectively.
@@ -752,19 +760,19 @@ void SSLCipherPreferenceList::Remove(const SSL_CIPHER *cipher) {
 // - If |cipher_id| is non-zero, only that cipher is selected.
 // - Otherwise, if |strength_bits| is non-negative, it selects ciphers
 //   of that strength.
-// - Otherwise, it selects ciphers that match each bitmasks in |alg_*| and
-//   |min_version|.
-static void ssl_cipher_apply_rule(
-    uint32_t cipher_id, uint32_t alg_mkey, uint32_t alg_auth,
-    uint32_t alg_enc, uint32_t alg_mac, uint16_t min_version, int rule,
-    int strength_bits, bool in_group, CIPHER_ORDER **head_p,
-    CIPHER_ORDER **tail_p) {
+// - Otherwise, |alias| must be non-null. It selects ciphers that matches
+//   |*alias|.
+static void ssl_cipher_apply_rule(uint32_t cipher_id, const CIPHER_ALIAS *alias,
+                                  int rule, int strength_bits, bool in_group,
+                                  CIPHER_ORDER **head_p,
+                                  CIPHER_ORDER **tail_p) {
   CIPHER_ORDER *head, *tail, *curr, *next, *last;
   const SSL_CIPHER *cp;
   bool reverse = false;
 
-  if (cipher_id == 0 && strength_bits == -1 && min_version == 0 &&
-      (alg_mkey == 0 || alg_auth == 0 || alg_enc == 0 || alg_mac == 0)) {
+  if (cipher_id == 0 && strength_bits == -1 && alias->min_version == 0 &&
+      (alias->algorithm_mkey == 0 || alias->algorithm_auth == 0 ||
+       alias->algorithm_enc == 0 || alias->algorithm_mac == 0)) {
     // The rule matches nothing, so bail early.
     return;
   }
@@ -810,11 +818,13 @@ static void ssl_cipher_apply_rule(
         continue;
       }
     } else {
-      if (!(alg_mkey & cp->algorithm_mkey) ||
-          !(alg_auth & cp->algorithm_auth) ||
-          !(alg_enc & cp->algorithm_enc) ||
-          !(alg_mac & cp->algorithm_mac) ||
-          (min_version != 0 && SSL_CIPHER_get_min_version(cp) != min_version)) {
+      if (!(alias->algorithm_mkey & cp->algorithm_mkey) ||
+          !(alias->algorithm_auth & cp->algorithm_auth) ||
+          !(alias->algorithm_enc & cp->algorithm_enc) ||
+          !(alias->algorithm_mac & cp->algorithm_mac) ||
+          (alias->min_version != 0 &&
+           SSL_CIPHER_get_min_version(cp) != alias->min_version) ||
+          (!alias->include_deprecated && ssl_cipher_is_deprecated(cp))) {
         continue;
       }
     }
@@ -906,8 +916,8 @@ static bool ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
   // Go through the list of used strength_bits values in descending order.
   for (int i = max_strength_bits; i >= 0; i--) {
     if (number_uses[i] > 0) {
-      ssl_cipher_apply_rule(0, 0, 0, 0, 0, 0, CIPHER_ORD, i, false, head_p,
-                            tail_p);
+      ssl_cipher_apply_rule(/*cipher_id=*/0, /*alias=*/nullptr, CIPHER_ORD, i,
+                            false, head_p, tail_p);
     }
   }
 
@@ -917,13 +927,9 @@ static bool ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
 static bool ssl_cipher_process_rulestr(const char *rule_str,
                                        CIPHER_ORDER **head_p,
                                        CIPHER_ORDER **tail_p, bool strict) {
-  uint32_t alg_mkey, alg_auth, alg_enc, alg_mac;
-  uint16_t min_version;
   const char *l, *buf;
-  int rule;
-  bool multi, skip_rule, in_group = false, has_group = false;
+  bool in_group = false, has_group = false;
   size_t j, buf_len;
-  uint32_t cipher_id;
   char ch;
 
   l = rule_str;
@@ -934,6 +940,7 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
       break;  // done
     }
 
+    int rule;
     if (in_group) {
       if (ch == ']') {
         if (*tail_p) {
@@ -988,14 +995,13 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
       continue;
     }
 
-    multi = false;
-    cipher_id = 0;
-    alg_mkey = ~0u;
-    alg_auth = ~0u;
-    alg_enc = ~0u;
-    alg_mac = ~0u;
-    min_version = 0;
-    skip_rule = false;
+    bool multi = false;
+    uint32_t cipher_id = 0;
+    CIPHER_ALIAS alias;
+    bool skip_rule = false;
+
+    // When adding, exclude deprecated ciphers by default.
+    alias.include_deprecated = rule != CIPHER_ADD;
 
     for (;;) {
       ch = *l;
@@ -1033,16 +1039,26 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
         // If not an exact cipher, look for a matching cipher alias.
         for (j = 0; j < kCipherAliasesLen; j++) {
           if (rule_equals(kCipherAliases[j].name, buf, buf_len)) {
-            alg_mkey &= kCipherAliases[j].algorithm_mkey;
-            alg_auth &= kCipherAliases[j].algorithm_auth;
-            alg_enc &= kCipherAliases[j].algorithm_enc;
-            alg_mac &= kCipherAliases[j].algorithm_mac;
+            alias.algorithm_mkey &= kCipherAliases[j].algorithm_mkey;
+            alias.algorithm_auth &= kCipherAliases[j].algorithm_auth;
+            alias.algorithm_enc &= kCipherAliases[j].algorithm_enc;
+            alias.algorithm_mac &= kCipherAliases[j].algorithm_mac;
 
-            if (min_version != 0 &&
-                min_version != kCipherAliases[j].min_version) {
+            // When specifying a combination of aliases, if any aliases
+            // enables deprecated ciphers, deprecated ciphers are included. This
+            // is slightly different from the bitmasks in that adding aliases
+            // can increase the set of matched ciphers. This is so that an alias
+            // like "RSA" will only specifiy AES-based RSA ciphers, but
+            // "RSA+3DES" will still specify 3DES.
+            //
+            // TODO(crbug.com/boringssl/599): Deprecate 3DES.
+            alias.include_deprecated |= kCipherAliases[j].include_deprecated;
+
+            if (alias.min_version != 0 &&
+                alias.min_version != kCipherAliases[j].min_version) {
               skip_rule = true;
             } else {
-              min_version = kCipherAliases[j].min_version;
+              alias.min_version = kCipherAliases[j].min_version;
             }
             break;
           }
@@ -1080,8 +1096,8 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
         l++;
       }
     } else if (!skip_rule) {
-      ssl_cipher_apply_rule(cipher_id, alg_mkey, alg_auth, alg_enc, alg_mac,
-                            min_version, rule, -1, in_group, head_p, tail_p);
+      ssl_cipher_apply_rule(cipher_id, &alias, rule, -1, in_group, head_p,
+                            tail_p);
     }
   }
 
