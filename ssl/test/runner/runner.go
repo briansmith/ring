@@ -3199,7 +3199,7 @@ read alert 1 0
 				// elliptic curves, so no extensions are
 				// involved.
 				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+				CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 				Bugs: ProtocolBugs{
 					SendV2ClientHello: true,
 				},
@@ -3221,7 +3221,7 @@ read alert 1 0
 				// elliptic curves, so no extensions are
 				// involved.
 				MaxVersion:   VersionTLS12,
-				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+				CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 				Bugs: ProtocolBugs{
 					SendV2ClientHello: true,
 				},
@@ -3681,6 +3681,11 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 		flags = append(flags,
 			"-psk", psk,
 			"-psk-identity", pskIdentity)
+	}
+
+	if hasComponent(suite.name, "3DES") {
+		// BoringSSL disables 3DES ciphers by default.
+		flags = append(flags, "-cipher", "3DES")
 	}
 
 	var shouldFail bool
@@ -4230,6 +4235,8 @@ func addCBCSplittingTests() {
 				"-async",
 				"-write-different-record-sizes",
 				"-cbc-record-splitting",
+				// BoringSSL disables 3DES by default.
+				"-cipher", "ALL:3DES",
 			},
 		})
 		testCases = append(testCases, testCase{
@@ -4248,6 +4255,8 @@ func addCBCSplittingTests() {
 				"-write-different-record-sizes",
 				"-cbc-record-splitting",
 				"-partial-write",
+				// BoringSSL disables 3DES by default.
+				"-cipher", "ALL:3DES",
 			},
 		})
 	}
@@ -5771,7 +5780,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					// elliptic curves, so no extensions are
 					// involved.
 					MaxVersion:   VersionTLS12,
-					CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+					CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 					Bugs: ProtocolBugs{
 						SendV2ClientHello:            true,
 						V2ClientHelloChallengeLength: challengeLength,
@@ -9321,7 +9330,7 @@ func addRenegotiationTests() {
 		renegotiate: 1,
 		config: Config{
 			MaxVersion:   VersionTLS12,
-			CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 		},
 		renegotiateCiphers: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 		flags: []string{
@@ -9336,7 +9345,7 @@ func addRenegotiationTests() {
 			MaxVersion:   VersionTLS12,
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 		},
-		renegotiateCiphers: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+		renegotiateCiphers: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 		flags: []string{
 			"-renegotiate-freely",
 			"-expect-total-renegotiations", "1",
@@ -11353,7 +11362,7 @@ func addRSAClientKeyExchangeTests() {
 				// version are different, to detect if the
 				// server uses the wrong one.
 				MaxVersion:   VersionTLS11,
-				CipherSuites: []uint16{TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+				CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 				Bugs: ProtocolBugs{
 					BadRSAClientKeyExchange: bad,
 				},

@@ -540,12 +540,16 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"PSK", SSL_kPSK, SSL_aPSK, ~0u, ~0u, 0},
 
     // symmetric encryption aliases
-    {"3DES", ~0u, ~0u, SSL_3DES, ~0u, 0},
-    {"AES128", ~0u, ~0u, SSL_AES128 | SSL_AES128GCM, ~0u, 0},
-    {"AES256", ~0u, ~0u, SSL_AES256 | SSL_AES256GCM, ~0u, 0},
+    {"3DES", ~0u, ~0u, SSL_3DES, ~0u, 0, /*include_deprecated=*/true},
+    {"AES128", ~0u, ~0u, SSL_AES128 | SSL_AES128GCM, ~0u, 0,
+     /*include_deprecated=*/false},
+    {"AES256", ~0u, ~0u, SSL_AES256 | SSL_AES256GCM, ~0u, 0,
+     /*include_deprecated=*/false},
     {"AES", ~0u, ~0u, SSL_AES, ~0u, 0},
-    {"AESGCM", ~0u, ~0u, SSL_AES128GCM | SSL_AES256GCM, ~0u, 0},
-    {"CHACHA20", ~0u, ~0u, SSL_CHACHA20POLY1305, ~0u, 0},
+    {"AESGCM", ~0u, ~0u, SSL_AES128GCM | SSL_AES256GCM, ~0u, 0,
+     /*include_deprecated=*/false},
+    {"CHACHA20", ~0u, ~0u, SSL_CHACHA20POLY1305, ~0u, 0,
+     /*include_deprecated=*/false},
 
     // MAC aliases
     {"SHA1", ~0u, ~0u, ~0u, SSL_SHA1, 0},
@@ -769,8 +773,8 @@ void SSLCipherPreferenceList::Remove(const SSL_CIPHER *cipher) {
 }
 
 bool ssl_cipher_is_deprecated(const SSL_CIPHER *cipher) {
-  // TODO(crbug.com/boringssl/599): Deprecate 3DES.
-  return cipher->id == TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA256;
+  return cipher->id == TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA256 ||
+         cipher->algorithm_enc == SSL_3DES;
 }
 
 // ssl_cipher_apply_rule applies the rule type |rule| to ciphers matching its
@@ -1070,8 +1074,6 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
             // can increase the set of matched ciphers. This is so that an alias
             // like "RSA" will only specifiy AES-based RSA ciphers, but
             // "RSA+3DES" will still specify 3DES.
-            //
-            // TODO(crbug.com/boringssl/599): Deprecate 3DES.
             alias.include_deprecated |= kCipherAliases[j].include_deprecated;
 
             if (alias.min_version != 0 &&
