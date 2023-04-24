@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//go:build ignore
+
 // check_stack.go checks that each of its arguments has a non-executable stack.
 // See https://www.airs.com/blog/archives/518 for details.
 package main

@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//go:build ignore
+
 // make_many_constraints.go generates test certificates many_constraints.pem,
 // many_names*.pem, and some_names*.pem for x509_test.cc
 package main

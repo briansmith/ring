@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//go:build ignore
+
 // This program takes a file containing newline-separated symbols, and generates
 // boringssl_prefix_symbols.h, boringssl_prefix_symbols_asm.h, and
 // boringssl_prefix_symbols_nasm.inc. These header files can be used to build
