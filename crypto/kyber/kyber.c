@@ -283,16 +283,23 @@ static void scalar_inner_product(scalar *out, const vector *lhs,
 // operates on public inputs.
 static void scalar_from_keccak_vartime(scalar *out,
                                        struct BORINGSSL_keccak_st *keccak_ctx) {
-  uint8_t bytes[3];
-  for (int i = 0; i < DEGREE;) {
-    BORINGSSL_keccak_squeeze(keccak_ctx, bytes, sizeof(bytes));
-    uint16_t d1 = bytes[0] + 256 * (bytes[1] % 16);
-    uint16_t d2 = bytes[1] / 16 + 16 * bytes[2];
-    if (d1 < kPrime) {
-      out->c[i++] = d1;
-    }
-    if (d2 < kPrime && i < DEGREE) {
-      out->c[i++] = d2;
+  assert(keccak_ctx->offset == 0);
+  assert(keccak_ctx->rate_bytes == 168);
+  static_assert(168 % 3 == 0, "block and coefficient boundaries do not align");
+
+  int done = 0;
+  while (done < DEGREE) {
+    uint8_t block[168];
+    BORINGSSL_keccak_squeeze(keccak_ctx, block, sizeof(block));
+    for (size_t i = 0; i < sizeof(block) && done < DEGREE; i += 3) {
+      uint16_t d1 = block[i] + 256 * (block[i + 1] % 16);
+      uint16_t d2 = block[i + 1] / 16 + 16 * block[i + 2];
+      if (d1 < kPrime) {
+        out->c[done++] = d1;
+      }
+      if (d2 < kPrime && done < DEGREE) {
+        out->c[done++] = d2;
+      }
     }
   }
 }
