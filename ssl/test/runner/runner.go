@@ -9724,26 +9724,29 @@ var testSignatureAlgorithms = []struct {
 	name string
 	id   signatureAlgorithm
 	cert testCert
+	// If non-zero, the curve that must be supported in TLS 1.2 for cert to be
+	// accepted.
+	curve CurveID
 }{
-	{"RSA_PKCS1_SHA1", signatureRSAPKCS1WithSHA1, testCertRSA},
-	{"RSA_PKCS1_SHA256", signatureRSAPKCS1WithSHA256, testCertRSA},
-	{"RSA_PKCS1_SHA384", signatureRSAPKCS1WithSHA384, testCertRSA},
-	{"RSA_PKCS1_SHA512", signatureRSAPKCS1WithSHA512, testCertRSA},
-	{"ECDSA_SHA1", signatureECDSAWithSHA1, testCertECDSAP256},
+	{"RSA_PKCS1_SHA1", signatureRSAPKCS1WithSHA1, testCertRSA, 0},
+	{"RSA_PKCS1_SHA256", signatureRSAPKCS1WithSHA256, testCertRSA, 0},
+	{"RSA_PKCS1_SHA384", signatureRSAPKCS1WithSHA384, testCertRSA, 0},
+	{"RSA_PKCS1_SHA512", signatureRSAPKCS1WithSHA512, testCertRSA, 0},
+	{"ECDSA_SHA1", signatureECDSAWithSHA1, testCertECDSAP256, CurveP256},
 	// The “P256” in the following line is not a mistake. In TLS 1.2 the
 	// hash function doesn't have to match the curve and so the same
 	// signature algorithm works with P-224.
-	{"ECDSA_P224_SHA256", signatureECDSAWithP256AndSHA256, testCertECDSAP224},
-	{"ECDSA_P256_SHA256", signatureECDSAWithP256AndSHA256, testCertECDSAP256},
-	{"ECDSA_P384_SHA384", signatureECDSAWithP384AndSHA384, testCertECDSAP384},
-	{"ECDSA_P521_SHA512", signatureECDSAWithP521AndSHA512, testCertECDSAP521},
-	{"RSA_PSS_SHA256", signatureRSAPSSWithSHA256, testCertRSA},
-	{"RSA_PSS_SHA384", signatureRSAPSSWithSHA384, testCertRSA},
-	{"RSA_PSS_SHA512", signatureRSAPSSWithSHA512, testCertRSA},
-	{"Ed25519", signatureEd25519, testCertEd25519},
+	{"ECDSA_P224_SHA256", signatureECDSAWithP256AndSHA256, testCertECDSAP224, CurveP224},
+	{"ECDSA_P256_SHA256", signatureECDSAWithP256AndSHA256, testCertECDSAP256, CurveP256},
+	{"ECDSA_P384_SHA384", signatureECDSAWithP384AndSHA384, testCertECDSAP384, CurveP384},
+	{"ECDSA_P521_SHA512", signatureECDSAWithP521AndSHA512, testCertECDSAP521, CurveP521},
+	{"RSA_PSS_SHA256", signatureRSAPSSWithSHA256, testCertRSA, 0},
+	{"RSA_PSS_SHA384", signatureRSAPSSWithSHA384, testCertRSA, 0},
+	{"RSA_PSS_SHA512", signatureRSAPSSWithSHA512, testCertRSA, 0},
+	{"Ed25519", signatureEd25519, testCertEd25519, 0},
 	// Tests for key types prior to TLS 1.2.
-	{"RSA", 0, testCertRSA},
-	{"ECDSA", 0, testCertECDSAP256},
+	{"RSA", 0, testCertRSA, 0},
+	{"ECDSA", 0, testCertECDSAP256, CurveP256},
 }
 
 const fakeSigAlg1 signatureAlgorithm = 0x2a01
@@ -9795,6 +9798,14 @@ func addSignatureAlgorithmTests() {
 				rejectByDefault = true
 			}
 
+			var curveFlags []string
+			if alg.curve != 0 && ver.version <= VersionTLS12 {
+				// In TLS 1.2, the ECDH curve list also constrains ECDSA keys. Ensure the
+				// corresponding curve is enabled on the shim. Also include X25519 to
+				// ensure the shim and runner have something in common for ECDH.
+				curveFlags = flagInts("-curves", []int{int(CurveX25519), int(alg.curve)})
+			}
+
 			var signError, signLocalError, verifyError, verifyLocalError, defaultError, defaultLocalError string
 			if shouldFail {
 				signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
@@ -9833,7 +9844,7 @@ func addSignatureAlgorithmTests() {
 							"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
 							"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
 						},
-						flagInts("-curves", shimConfig.AllCurves)...,
+						curveFlags...,
 					),
 					shouldFail:         shouldFail,
 					expectedError:      signError,
@@ -9857,7 +9868,7 @@ func addSignatureAlgorithmTests() {
 							"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
 							"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
 						},
-						flagInts("-curves", shimConfig.AllCurves)...,
+						curveFlags...,
 					),
 					expectations: connectionExpectations{
 						peerSignatureAlgorithm: alg.id,
@@ -9898,7 +9909,7 @@ func addSignatureAlgorithmTests() {
 							IgnorePeerSignatureAlgorithmPreferences: shouldFail,
 						},
 					},
-					flags: flagInts("-curves", shimConfig.AllCurves),
+					flags: curveFlags,
 					// Resume the session to assert the peer signature
 					// algorithm is reported on both handshakes.
 					resumeSession:      !shouldFail,
@@ -9931,7 +9942,7 @@ func addSignatureAlgorithmTests() {
 					},
 					flags: append(
 						[]string{"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id))},
-						flagInts("-curves", shimConfig.AllCurves)...,
+						curveFlags...,
 					),
 					// Resume the session to assert the peer signature
 					// algorithm is reported on both handshakes.
@@ -9955,7 +9966,7 @@ func addSignatureAlgorithmTests() {
 							InvalidSignature: true,
 						},
 					},
-					flags:         flagInts("-curves", shimConfig.AllCurves),
+					flags:         curveFlags,
 					shouldFail:    true,
 					expectedError: ":BAD_SIGNATURE:",
 				}
