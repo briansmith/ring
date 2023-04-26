@@ -26,6 +26,7 @@
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
+#include <openssl/hkdf.h>
 #include <openssl/hmac.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
