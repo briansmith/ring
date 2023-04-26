@@ -366,3 +366,64 @@ TEST(DHTest, LeadingZeros) {
   ASSERT_GT(len, 0);
   EXPECT_EQ(Bytes(buf.data(), len), Bytes(padded));
 }
+
+TEST(DHTest, Overwrite) {
+  // Generate a DH key with the 1536-bit MODP group.
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_1536(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  bssl::UniquePtr<DH> key1(DH_new());
+  ASSERT_TRUE(key1);
+  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_generate_key(key1.get()));
+
+  bssl::UniquePtr<BIGNUM> peer_key(BN_new());
+  ASSERT_TRUE(peer_key);
+  ASSERT_TRUE(BN_set_word(peer_key.get(), 42));
+
+  // Use the key to fill in cached values.
+  std::vector<uint8_t> buf1(DH_size(key1.get()));
+  ASSERT_GT(DH_compute_key_padded(buf1.data(), peer_key.get(), key1.get()), 0);
+
+  // Generate a different key with a different group.
+  p.reset(BN_get_rfc3526_prime_2048(nullptr));
+  ASSERT_TRUE(p);
+  g.reset(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  bssl::UniquePtr<DH> key2(DH_new());
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(DH_set0_pqg(key2.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_generate_key(key2.get()));
+
+  // Overwrite |key1|'s contents with |key2|.
+  p.reset(BN_dup(DH_get0_p(key2.get())));
+  ASSERT_TRUE(p);
+  g.reset(BN_dup(DH_get0_g(key2.get())));
+  ASSERT_TRUE(g);
+  bssl::UniquePtr<BIGNUM> pub(BN_dup(DH_get0_pub_key(key2.get())));
+  ASSERT_TRUE(pub);
+  bssl::UniquePtr<BIGNUM> priv(BN_dup(DH_get0_priv_key(key2.get())));
+  ASSERT_TRUE(priv);
+  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_set0_key(key1.get(), pub.get(), priv.get()));
+  pub.release();
+  priv.release();
+
+  // Verify that |key1| and |key2| behave equivalently.
+  buf1.resize(DH_size(key1.get()));
+  ASSERT_GT(DH_compute_key_padded(buf1.data(), peer_key.get(), key1.get()), 0);
+  std::vector<uint8_t> buf2(DH_size(key2.get()));
+  ASSERT_GT(DH_compute_key_padded(buf2.data(), peer_key.get(), key2.get()), 0);
+  EXPECT_EQ(Bytes(buf1), Bytes(buf2));
+}

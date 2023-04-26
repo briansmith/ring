@@ -60,6 +60,7 @@
 #include <openssl/base.h>
 
 #include <openssl/bn.h>
+#include <openssl/rsa.h>
 
 
 #if defined(__cplusplus)
@@ -115,6 +116,12 @@ int rsa_private_transform_no_self_test(RSA *rsa, uint8_t *out,
 // implementation.
 int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                           size_t len);
+
+// rsa_invalidate_key is called after |rsa| has been mutated, to invalidate
+// fields derived from the original structure. This function assumes exclusive
+// access to |rsa|. In particular, no other thread may be concurrently signing,
+// etc., with |rsa|.
+void rsa_invalidate_key(RSA *rsa);
 
 
 // This constant is exported for test purposes.

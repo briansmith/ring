@@ -336,3 +336,77 @@ Epvg
   EXPECT_FALSE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
                         &sig_len, dsa.get()));
 }
+
+TEST(DSATest, Overwrite) {
+  // Load an arbitrary DSA private key and use it.
+  static const char kPEM[] = R"(
+-----BEGIN DSA PRIVATE KEY-----
+MIIDTgIBAAKCAQEAyH68EuravtF+7PTFBtWJkwjmp0YJmh8e2Cdpu8ci3dZf87rk
+GwXzfqYkAEkW5H4Hp0cxdICKFiqfxjSaiEauOrNV+nXWZS634hZ9H47I8HnAVS0p
+5MmSmPJ7NNUowymMpyB6M6hfqHl/1pZd7avbTmnzb2SZ0kw0WLWJo6vMekepYWv9
+3o1Xove4ci00hnkr7Qo9Bh/+z84jgeT2/MTdsCVtbuMv/mbcYLhCKVWPBozDZr/D
+qwhGTlomsTRvP3WIbem3b5eYhQaPuMsKiAzntcinoxQXWrIoZB+xJyF/sI013uBI
+i9ePSxY3704U4QGxVM0aR/6fzORz5kh8ZjhhywIdAI9YBUR6eoGevUaLq++qXiYW
+TgXBXlyqE32ESbkCggEBAL/c5GerO5g25D0QsfgVIJtlZHQOwYauuWoUudaQiyf6
+VhWLBNNTAGldkFGdtxsA42uqqZSXCki25LvN6PscGGvFy8oPWaa9TGt+l9Z5ZZiV
+ShNpg71V9YuImsPB3BrQ4L6nZLfhBt6InzJ6KqjDNdg7u6lgnFKue7l6khzqNxbM
+RgxHWMq7PkhMcl+RzpqbiGcxSHqraxldutqCWsnZzhKh4d4GdunuRY8GiFo0Axkb
+Kn0Il3zm81ewv08F/ocu+IZQEzxTyR8YRQ99MLVbnwhVxndEdLjjetCX82l+/uEY
+5fdUy0thR8odcDsvUc/tT57I+yhnno80HbpUUNw2+/sCggEAdh1wp/9CifYIp6T8
+P/rIus6KberZ2Pv/n0bl+Gv8AoToA0zhZXIfY2l0TtanKmdLqPIvjqkN0v6zGSs+
++ahR1QzMQnK718mcsQmB4X6iP5LKgJ/t0g8LrDOxc/cNycmHq76MmF9RN5NEBz4+
+PAnRIftm/b0UQflP6uy3gRQP2X7P8ZebCytOPKTZC4oLyCtvPevSkCiiauq/RGjL
+k6xqRgLxMtmuyhT+dcVbtllV1p1xd9Bppnk17/kR5VCefo/e/7DHu163izRDW8tx
+SrEmiVyVkRijY3bVZii7LPfMz5eEAWEDJRuFwyNv3i6j7CKeZw2d/hzu370Ua28F
+s2lmkAIcLIFUDFrbC2nViaB5ATM9ARKk6F2QwnCfGCyZ6A==
+-----END DSA PRIVATE KEY-----
+)";
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kPEM, sizeof(kPEM)));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<DSA> dsa(
+      PEM_read_bio_DSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(dsa);
+
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  ASSERT_TRUE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
+                       &sig_len, dsa.get()));
+  sig.resize(sig_len);
+  EXPECT_EQ(1, DSA_verify(0, fips_digest, sizeof(fips_digest), sig.data(),
+                          sig.size(), dsa.get()));
+
+  // Overwrite it with the sample key.
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(fips_p, sizeof(fips_p), nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> q(BN_bin2bn(fips_q, sizeof(fips_q), nullptr));
+  ASSERT_TRUE(q);
+  bssl::UniquePtr<BIGNUM> g(BN_bin2bn(fips_g, sizeof(fips_g), nullptr));
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(DSA_set0_pqg(dsa.get(), p.get(), q.get(), g.get()));
+  // |DSA_set0_pqg| takes ownership on success.
+  p.release();
+  q.release();
+  g.release();
+  bssl::UniquePtr<BIGNUM> pub_key(BN_bin2bn(fips_y, sizeof(fips_y), nullptr));
+  ASSERT_TRUE(pub_key);
+  bssl::UniquePtr<BIGNUM> priv_key(BN_bin2bn(fips_x, sizeof(fips_x), nullptr));
+  ASSERT_TRUE(priv_key);
+  ASSERT_TRUE(DSA_set0_key(dsa.get(), pub_key.get(), priv_key.get()));
+  // |DSA_set0_key| takes ownership on success.
+  pub_key.release();
+  priv_key.release();
+
+  // The key should now work correctly for the new parameters.
+  EXPECT_EQ(1, DSA_verify(0, fips_digest, sizeof(fips_digest), fips_sig,
+                          sizeof(fips_sig), dsa.get()));
+
+  // Test signing by verifying it round-trips through the real key.
+  sig.resize(DSA_size(dsa.get()));
+  ASSERT_TRUE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
+                       &sig_len, dsa.get()));
+  sig.resize(sig_len);
+  dsa = GetFIPSDSA();
+  ASSERT_TRUE(dsa);
+  EXPECT_EQ(1, DSA_verify(0, fips_digest, sizeof(fips_digest), sig.data(),
+                          sig.size(), dsa.get()));
+}

@@ -1022,6 +1022,95 @@ TEST(RSATest, KeygenInternalRetry) {
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
 }
 
+// Test that, after a key has been used, it can still be modified into another
+// key.
+TEST(RSATest, OverwriteKey) {
+  // Make a key and perform public and private key operations with it, so that
+  // all derived values are filled in.
+  bssl::UniquePtr<RSA> key1(
+      RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(key1);
+
+  ASSERT_TRUE(RSA_check_key(key1.get()));
+  size_t len;
+  std::vector<uint8_t> ciphertext(RSA_size(key1.get()));
+  ASSERT_TRUE(RSA_encrypt(key1.get(), &len, ciphertext.data(),
+                          ciphertext.size(), kPlaintext, kPlaintextLen,
+                          RSA_PKCS1_OAEP_PADDING));
+  ciphertext.resize(len);
+
+  std::vector<uint8_t> plaintext(RSA_size(key1.get()));
+  ASSERT_TRUE(RSA_decrypt(key1.get(), &len, plaintext.data(),
+                          plaintext.size(), ciphertext.data(), ciphertext.size(),
+                          RSA_PKCS1_OAEP_PADDING));
+  plaintext.resize(len);
+  EXPECT_EQ(Bytes(plaintext), Bytes(kPlaintext, kPlaintextLen));
+
+  // Overwrite |key1| with the contents of |key2|.
+  bssl::UniquePtr<RSA> key2(
+      RSA_private_key_from_bytes(kKey2, sizeof(kKey2) - 1));
+  ASSERT_TRUE(key2);
+
+  auto copy_rsa_fields = [](RSA *dst, const RSA *src) {
+    bssl::UniquePtr<BIGNUM> n(BN_dup(RSA_get0_n(src)));
+    ASSERT_TRUE(n);
+    bssl::UniquePtr<BIGNUM> e(BN_dup(RSA_get0_e(src)));
+    ASSERT_TRUE(e);
+    bssl::UniquePtr<BIGNUM> d(BN_dup(RSA_get0_d(src)));
+    ASSERT_TRUE(d);
+    bssl::UniquePtr<BIGNUM> p(BN_dup(RSA_get0_p(src)));
+    ASSERT_TRUE(p);
+    bssl::UniquePtr<BIGNUM> q(BN_dup(RSA_get0_q(src)));
+    ASSERT_TRUE(q);
+    bssl::UniquePtr<BIGNUM> dmp1(BN_dup(RSA_get0_dmp1(src)));
+    ASSERT_TRUE(dmp1);
+    bssl::UniquePtr<BIGNUM> dmq1(BN_dup(RSA_get0_dmq1(src)));
+    ASSERT_TRUE(dmq1);
+    bssl::UniquePtr<BIGNUM> iqmp(BN_dup(RSA_get0_iqmp(src)));
+    ASSERT_TRUE(iqmp);
+    ASSERT_TRUE(RSA_set0_key(dst, n.release(), e.release(), d.release()));
+    ASSERT_TRUE(RSA_set0_factors(dst, p.release(), q.release()));
+    ASSERT_TRUE(RSA_set0_crt_params(dst, dmp1.release(), dmq1.release(),
+                                    iqmp.release()));
+  };
+  ASSERT_NO_FATAL_FAILURE(copy_rsa_fields(key1.get(), key2.get()));
+
+  auto check_rsa_compatible = [&](RSA *enc, RSA *dec) {
+    ciphertext.resize(RSA_size(enc));
+    ASSERT_TRUE(RSA_encrypt(enc, &len, ciphertext.data(),
+                            ciphertext.size(), kPlaintext, kPlaintextLen,
+                            RSA_PKCS1_OAEP_PADDING));
+    ciphertext.resize(len);
+
+    plaintext.resize(RSA_size(dec));
+    ASSERT_TRUE(RSA_decrypt(dec, &len, plaintext.data(),
+                            plaintext.size(), ciphertext.data(),
+                            ciphertext.size(), RSA_PKCS1_OAEP_PADDING));
+    plaintext.resize(len);
+    EXPECT_EQ(Bytes(plaintext), Bytes(kPlaintext, kPlaintextLen));
+  };
+
+  ASSERT_NO_FATAL_FAILURE(
+      check_rsa_compatible(/*enc=*/key1.get(), /*dec=*/key2.get()));
+  ASSERT_NO_FATAL_FAILURE(
+      check_rsa_compatible(/*enc=*/key2.get(), /*dec=*/key1.get()));
+
+  // If we generate a new key on top of |key1|, it should be usable and
+  // self-consistent. We test this by making a new key with the same parameters
+  // and checking they behave the same.
+  ASSERT_TRUE(
+      RSA_generate_key_ex(key1.get(), 1024, RSA_get0_e(key2.get()), nullptr));
+  EXPECT_NE(0, BN_cmp(RSA_get0_n(key1.get()), RSA_get0_n(key2.get())));
+
+  key2.reset(RSA_new());
+  ASSERT_TRUE(key2);
+  ASSERT_NO_FATAL_FAILURE(copy_rsa_fields(key2.get(), key1.get()));
+  ASSERT_NO_FATAL_FAILURE(
+      check_rsa_compatible(/*enc=*/key1.get(), /*dec=*/key2.get()));
+  ASSERT_NO_FATAL_FAILURE(
+      check_rsa_compatible(/*enc=*/key2.get(), /*dec=*/key1.get()));
+}
+
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(RSATest, SqrtTwo) {
   bssl::UniquePtr<BIGNUM> sqrt(BN_new()), pow2(BN_new());

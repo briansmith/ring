@@ -119,8 +119,6 @@ RSA *RSA_new_method(const ENGINE *engine) {
 }
 
 void RSA_free(RSA *rsa) {
-  unsigned u;
-
   if (rsa == NULL) {
     return;
   }
@@ -144,18 +142,7 @@ void RSA_free(RSA *rsa) {
   BN_free(rsa->dmp1);
   BN_free(rsa->dmq1);
   BN_free(rsa->iqmp);
-  BN_MONT_CTX_free(rsa->mont_n);
-  BN_MONT_CTX_free(rsa->mont_p);
-  BN_MONT_CTX_free(rsa->mont_q);
-  BN_free(rsa->d_fixed);
-  BN_free(rsa->dmp1_fixed);
-  BN_free(rsa->dmq1_fixed);
-  BN_free(rsa->inv_small_mod_large_mont);
-  for (u = 0; u < rsa->num_blindings; u++) {
-    BN_BLINDING_free(rsa->blindings[u]);
-  }
-  OPENSSL_free(rsa->blindings);
-  OPENSSL_free(rsa->blindings_inuse);
+  rsa_invalidate_key(rsa);
   CRYPTO_MUTEX_cleanup(&rsa->lock);
   OPENSSL_free(rsa);
 }
@@ -244,6 +231,7 @@ int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
     rsa->d = d;
   }
 
+  rsa_invalidate_key(rsa);
   return 1;
 }
 
@@ -262,6 +250,7 @@ int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q) {
     rsa->q = q;
   }
 
+  rsa_invalidate_key(rsa);
   return 1;
 }
 
@@ -285,6 +274,7 @@ int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
     rsa->iqmp = iqmp;
   }
 
+  rsa_invalidate_key(rsa);
   return 1;
 }
 

@@ -202,6 +202,10 @@ int DSA_set0_pqg(DSA *dsa, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
     dsa->g = g;
   }
 
+  BN_MONT_CTX_free(dsa->method_mont_p);
+  dsa->method_mont_p = NULL;
+  BN_MONT_CTX_free(dsa->method_mont_q);
+  dsa->method_mont_q = NULL;
   return 1;
 }
 

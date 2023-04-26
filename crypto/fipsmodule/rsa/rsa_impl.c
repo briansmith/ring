@@ -262,6 +262,36 @@ err:
   return ret;
 }
 
+void rsa_invalidate_key(RSA *rsa) {
+  rsa->private_key_frozen = 0;
+
+  BN_MONT_CTX_free(rsa->mont_n);
+  rsa->mont_n = NULL;
+  BN_MONT_CTX_free(rsa->mont_p);
+  rsa->mont_p = NULL;
+  BN_MONT_CTX_free(rsa->mont_q);
+  rsa->mont_q = NULL;
+
+  BN_free(rsa->d_fixed);
+  rsa->d_fixed = NULL;
+  BN_free(rsa->dmp1_fixed);
+  rsa->dmp1_fixed = NULL;
+  BN_free(rsa->dmq1_fixed);
+  rsa->dmq1_fixed = NULL;
+  BN_free(rsa->inv_small_mod_large_mont);
+  rsa->inv_small_mod_large_mont = NULL;
+
+  for (size_t i = 0; i < rsa->num_blindings; i++) {
+    BN_BLINDING_free(rsa->blindings[i]);
+  }
+  OPENSSL_free(rsa->blindings);
+  rsa->blindings = NULL;
+  rsa->num_blindings = 0;
+  OPENSSL_free(rsa->blindings_inuse);
+  rsa->blindings_inuse = NULL;
+  rsa->blinding_fork_generation = 0;
+}
+
 size_t rsa_default_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
 }
@@ -1229,6 +1259,7 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
     goto out;
   }
 
+  rsa_invalidate_key(rsa);
   replace_bignum(&rsa->n, &tmp->n);
   replace_bignum(&rsa->e, &tmp->e);
   replace_bignum(&rsa->d, &tmp->d);
