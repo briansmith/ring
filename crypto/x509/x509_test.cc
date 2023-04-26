@@ -2048,7 +2048,12 @@ TEST(X509Test, SignCertificate) {
         ASSERT_TRUE(
             X509_set1_signature_value(cert.get(), sig.data(), sig.size()));
       } else {
-        ASSERT_TRUE(X509_sign(cert.get(), pkey.get(), EVP_sha384()));
+        int ret = X509_sign(cert.get(), pkey.get(), EVP_sha384());
+        ASSERT_GT(ret, 0);
+        // |X509_sign| returns the length of the signature on success.
+        const ASN1_BIT_STRING *sig;
+        X509_get0_signature(&sig, /*out_alg=*/nullptr, cert.get());
+        EXPECT_EQ(ret, ASN1_STRING_length(sig));
       }
 
       // Check the signature.

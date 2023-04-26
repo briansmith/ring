@@ -348,16 +348,17 @@ OPENSSL_EXPORT X509_EXTENSION *X509_delete_ext(X509 *x, int loc);
 OPENSSL_EXPORT int X509_add_ext(X509 *x, const X509_EXTENSION *ex, int loc);
 
 // X509_sign signs |x509| with |pkey| and replaces the signature algorithm and
-// signature fields. It returns one on success and zero on error. This function
-// uses digest algorithm |md|, or |pkey|'s default if NULL. Other signing
-// parameters use |pkey|'s defaults. To customize them, use |X509_sign_ctx|.
+// signature fields. It returns the length of the signature on success and zero
+// on error. This function uses digest algorithm |md|, or |pkey|'s default if
+// NULL. Other signing parameters use |pkey|'s defaults. To customize them, use
+// |X509_sign_ctx|.
 OPENSSL_EXPORT int X509_sign(X509 *x509, EVP_PKEY *pkey, const EVP_MD *md);
 
 // X509_sign_ctx signs |x509| with |ctx| and replaces the signature algorithm
-// and signature fields. It returns one on success and zero on error. The
-// signature algorithm and parameters come from |ctx|, which must have been
-// initialized with |EVP_DigestSignInit|. The caller should configure the
-// corresponding |EVP_PKEY_CTX| before calling this function.
+// and signature fields. It returns the length of the signature on success and
+// zero on error. The signature algorithm and parameters come from |ctx|, which
+// must have been initialized with |EVP_DigestSignInit|. The caller should
+// configure the corresponding |EVP_PKEY_CTX| before calling this function.
 OPENSSL_EXPORT int X509_sign_ctx(X509 *x509, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_tbs serializes the TBSCertificate portion of |x509|, as described
@@ -634,18 +635,18 @@ OPENSSL_EXPORT int X509_CRL_add_ext(X509_CRL *x, const X509_EXTENSION *ex,
                                     int loc);
 
 // X509_CRL_sign signs |crl| with |pkey| and replaces the signature algorithm
-// and signature fields. It returns one on success and zero on error. This
-// function uses digest algorithm |md|, or |pkey|'s default if NULL. Other
-// signing parameters use |pkey|'s defaults. To customize them, use
-// |X509_CRL_sign_ctx|.
+// and signature fields. It returns the length of the signature on success and
+// zero on error. This function uses digest algorithm |md|, or |pkey|'s default
+// if NULL. Other signing parameters use |pkey|'s defaults. To customize them,
+// use |X509_CRL_sign_ctx|.
 OPENSSL_EXPORT int X509_CRL_sign(X509_CRL *crl, EVP_PKEY *pkey,
                                  const EVP_MD *md);
 
 // X509_CRL_sign_ctx signs |crl| with |ctx| and replaces the signature algorithm
-// and signature fields. It returns one on success and zero on error. The
-// signature algorithm and parameters come from |ctx|, which must have been
-// initialized with |EVP_DigestSignInit|. The caller should configure the
-// corresponding |EVP_PKEY_CTX| before calling this function.
+// and signature fields. It returns the length of the signature on success and
+// zero on error. The signature algorithm and parameters come from |ctx|, which
+// must have been initialized with |EVP_DigestSignInit|. The caller should
+// configure the corresponding |EVP_PKEY_CTX| before calling this function.
 OPENSSL_EXPORT int X509_CRL_sign_ctx(X509_CRL *crl, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_CRL_tbs serializes the TBSCertList portion of |crl|, as described
@@ -873,18 +874,18 @@ OPENSSL_EXPORT int X509_REQ_add_extensions(
     X509_REQ *req, const STACK_OF(X509_EXTENSION) *exts);
 
 // X509_REQ_sign signs |req| with |pkey| and replaces the signature algorithm
-// and signature fields. It returns one on success and zero on error. This
-// function uses digest algorithm |md|, or |pkey|'s default if NULL. Other
-// signing parameters use |pkey|'s defaults. To customize them, use
-// |X509_REQ_sign_ctx|.
+// and signature fields. It returns the length of the signature on success and
+// zero on error. This function uses digest algorithm |md|, or |pkey|'s default
+// if NULL. Other signing parameters use |pkey|'s defaults. To customize them,
+// use |X509_REQ_sign_ctx|.
 OPENSSL_EXPORT int X509_REQ_sign(X509_REQ *req, EVP_PKEY *pkey,
                                  const EVP_MD *md);
 
 // X509_REQ_sign_ctx signs |req| with |ctx| and replaces the signature algorithm
-// and signature fields. It returns one on success and zero on error. The
-// signature algorithm and parameters come from |ctx|, which must have been
-// initialized with |EVP_DigestSignInit|. The caller should configure the
-// corresponding |EVP_PKEY_CTX| before calling this function.
+// and signature fields. It returns the length of the signature on success and
+// zero on error. The signature algorithm and parameters come from |ctx|, which
+// must have been initialized with |EVP_DigestSignInit|. The caller should
+// configure the corresponding |EVP_PKEY_CTX| before calling this function.
 OPENSSL_EXPORT int X509_REQ_sign_ctx(X509_REQ *req, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_REQ_tbs serializes the CertificationRequestInfo (see RFC 2986)
@@ -2193,9 +2194,9 @@ OPENSSL_EXPORT int NETSCAPE_SPKI_set_pubkey(NETSCAPE_SPKI *spki,
                                             EVP_PKEY *pkey);
 
 // NETSCAPE_SPKI_sign signs |spki| with |pkey| and replaces the signature
-// algorithm and signature fields. It returns one on success and zero on error.
-// This function uses digest algorithm |md|, or |pkey|'s default if NULL. Other
-// signing parameters use |pkey|'s defaults.
+// algorithm and signature fields. It returns the length of the signature on
+// success and zero on error. This function uses digest algorithm |md|, or
+// |pkey|'s default if NULL. Other signing parameters use |pkey|'s defaults.
 OPENSSL_EXPORT int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *spki, EVP_PKEY *pkey,
                                       const EVP_MD *md);
 

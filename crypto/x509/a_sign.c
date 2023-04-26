@@ -126,7 +126,7 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
   out = NULL;
   signature->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
   signature->flags |= ASN1_STRING_FLAG_BITS_LEFT;
-  ret = 1;
+  ret = (int)out_len;
 
 err:
   EVP_MD_CTX_cleanup(ctx);
