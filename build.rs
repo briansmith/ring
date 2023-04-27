@@ -162,6 +162,7 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/wd4514", // C4514: <name>: unreferenced inline function has be
             "/wd4710", // C4710: function not inlined
             "/wd4711", // C4711: function 'function' selected for inline expansion
+            "/wd4819", // C4819: The file contains a character that cannot be represented in the current code page (xxx).
             "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
             "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
                         * /Qspectre switch specified */
@@ -677,6 +678,13 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command
     )));
 
     let mut c = Command::new("./target/tools/windows/nasm/nasm");
+    let mut c = if c.arg("-h").spawn().is_ok() {
+        Command::new("./target/tools/windows/nasm/nasm")
+    } else if Command::new("nasm").arg("-h").spawn().is_ok() {
+        Command::new("nasm")
+    } else {
+        panic!("nasm not found, please install it from https://www.nasm.us/ and add it to PATH");
+    };
     let _ = c
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
@@ -755,7 +763,7 @@ fn asm_srcs(perlasm_src_dsts: Vec<(PathBuf, PathBuf)>) -> Vec<PathBuf> {
         .collect::<Vec<_>>()
 }
 
-fn is_perlasm(path: &PathBuf) -> bool {
+fn is_perlasm(path: &Path) -> bool {
     path.extension().unwrap().to_str().unwrap() == "pl"
 }
 
