@@ -249,6 +249,34 @@ OPENSSL_EXPORT int EVP_HPKE_CTX_setup_recipient(
     const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
     const uint8_t *info, size_t info_len);
 
+// EVP_HPKE_CTX_setup_auth_sender implements the SetupAuthS HPKE operation. It
+// behaves like |EVP_HPKE_CTX_setup_sender| but authenticates the resulting
+// context with |key|.
+OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_sender(
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len);
+
+// EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing behaves like
+// |EVP_HPKE_CTX_setup_auth_sender|, but takes a seed to behave
+// deterministically. The seed's format depends on |kem|. For X25519, it is the
+// sender's ephemeral private key.
+OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_sender_with_seed_for_testing(
+    EVP_HPKE_CTX *ctx, uint8_t *out_enc, size_t *out_enc_len, size_t max_enc,
+    const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf, const EVP_HPKE_AEAD *aead,
+    const uint8_t *peer_public_key, size_t peer_public_key_len,
+    const uint8_t *info, size_t info_len, const uint8_t *seed, size_t seed_len);
+
+// EVP_HPKE_CTX_setup_auth_recipient implements the SetupAuthR HPKE operation.
+// It behaves like |EVP_HPKE_CTX_setup_recipient| but checks the resulting
+// context was authenticated with |peer_public_key|.
+OPENSSL_EXPORT int EVP_HPKE_CTX_setup_auth_recipient(
+    EVP_HPKE_CTX *ctx, const EVP_HPKE_KEY *key, const EVP_HPKE_KDF *kdf,
+    const EVP_HPKE_AEAD *aead, const uint8_t *enc, size_t enc_len,
+    const uint8_t *info, size_t info_len, const uint8_t *peer_public_key,
+    size_t peer_public_key_len);
+
 
 // Using an HPKE context.
 //
