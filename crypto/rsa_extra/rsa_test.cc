@@ -1215,8 +1215,10 @@ TEST(RSATest, Threads) {
 // platforms when running tests standalone via all_tests.go.
 //
 // Additionally, even when running disabled tests standalone, limit this to
-// x86_64. On other platforms, this test hits resource limits or is too slow.
-#if defined(OPENSSL_X86_64)
+// x86_64. On other platforms, this test hits resource limits or is too slow. We
+// also disable on FreeBSD. See https://crbug.com/boringssl/603.
+#if defined(OPENSSL_TSAN) || \
+    (defined(OPENSSL_X86_64) && !defined(OPENSSL_FREEBSD))
 TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
   bssl::UniquePtr<RSA> rsa(
       RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
@@ -1251,6 +1253,6 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
     thread.join();
   }
 }
-#endif  // X86_64
+#endif  // TSAN || (X86_64 && !FREEBSD)
 
 #endif  // THREADS
