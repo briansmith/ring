@@ -230,7 +230,7 @@ static void scalar_sub(scalar *lhs, const scalar *rhs) {
 static void scalar_mult(scalar *out, const scalar *lhs, const scalar *rhs) {
   for (int i = 0; i < DEGREE / 2; i++) {
     uint32_t real_real = (uint32_t)lhs->c[2 * i] * rhs->c[2 * i];
-    uint32_t img_img = (uint32_t)rhs->c[2 * i + 1] * lhs->c[2 * i + 1];
+    uint32_t img_img = (uint32_t)lhs->c[2 * i + 1] * rhs->c[2 * i + 1];
     uint32_t real_img = (uint32_t)lhs->c[2 * i] * rhs->c[2 * i + 1];
     uint32_t img_real = (uint32_t)lhs->c[2 * i + 1] * rhs->c[2 * i];
     out->c[2 * i] =

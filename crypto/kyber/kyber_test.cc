@@ -151,13 +151,17 @@ TEST(KyberTest, Basic) {
 
 static void KyberFileTest(FileTest *t) {
   std::vector<uint8_t> seed, public_key_expected, private_key_expected,
-      ciphertext_expected, shared_secret_expected;
+      ciphertext_expected, shared_secret_expected, given_generate_entropy,
+      given_encap_entropy_pre_hash;
   t->IgnoreAttribute("count");
   ASSERT_TRUE(t->GetBytes(&seed, "seed"));
   ASSERT_TRUE(t->GetBytes(&public_key_expected, "pk"));
   ASSERT_TRUE(t->GetBytes(&private_key_expected, "sk"));
   ASSERT_TRUE(t->GetBytes(&ciphertext_expected, "ct"));
   ASSERT_TRUE(t->GetBytes(&shared_secret_expected, "ss"));
+  ASSERT_TRUE(t->GetBytes(&given_generate_entropy, "generateEntropy"));
+  ASSERT_TRUE(
+      t->GetBytes(&given_encap_entropy_pre_hash, "encapEntropyPreHash"));
 
   KYBER_private_key priv;
   uint8_t encoded_private_key[KYBER_PRIVATE_KEY_BYTES];
@@ -182,6 +186,9 @@ static void KyberFileTest(FileTest *t) {
     ASSERT_TRUE(CTR_DRBG_generate(state.get(), encap_entropy,
                                   KYBER_ENCAP_ENTROPY, nullptr, 0));
   }
+
+  EXPECT_EQ(Bytes(gen_key_entropy), Bytes(given_generate_entropy));
+  EXPECT_EQ(Bytes(encap_entropy), Bytes(given_encap_entropy_pre_hash));
 
   BORINGSSL_keccak(encap_entropy, sizeof(encap_entropy), encap_entropy,
                    sizeof(encap_entropy), boringssl_sha3_256);

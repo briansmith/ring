@@ -11386,6 +11386,7 @@ var testCurves = []struct {
 	{"P-384", CurveP384},
 	{"P-521", CurveP521},
 	{"X25519", CurveX25519},
+	{"Kyber", CurveX25519Kyber768},
 }
 
 const bogusCurve = 0x1234
@@ -11964,8 +11965,6 @@ func addCurveTests() {
 			"-curves", strconv.Itoa(int(CurveX25519Kyber768)),
 			"-expect-curve-id", strconv.Itoa(int(CurveX25519Kyber768)),
 		},
-		shouldFail:         true,
-		expectedLocalError: "no curve supported by both client and server",
 	})
 
 	// As a server, Kyber is not yet supported by default.
