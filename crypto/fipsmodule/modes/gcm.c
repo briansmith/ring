@@ -136,17 +136,13 @@ void gcm_init_ssse3(u128 Htable[16], const uint64_t H[2]) {
 static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi,
                              const u128 Htable[16]) {
-  // TODO(davidben): |aesni_gcm_encrypt| accesses |Htable| but does so assuming
-  // it is a known offset from |Xi|.
-  return aesni_gcm_encrypt(in, out, len, key, ivec, Xi);
+  return aesni_gcm_encrypt(in, out, len, key, ivec, Htable, Xi);
 }
 
 static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi,
                              const u128 Htable[16]) {
-  // TODO(davidben): |aesni_gcm_decrypt| accesses |Htable| but does so assuming
-  // it is a known offset from |Xi|.
-  return aesni_gcm_decrypt(in, out, len, key, ivec, Xi);
+  return aesni_gcm_decrypt(in, out, len, key, ivec, Htable, Xi);
 }
 #endif  // HW_GCM && X86_64
 

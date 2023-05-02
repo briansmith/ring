@@ -269,9 +269,11 @@ void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
 
 #define HW_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                         const AES_KEY *key, uint8_t ivec[16],
+                         const u128 Htable[16], uint64_t *Xi);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                         const AES_KEY *key, uint8_t ivec[16],
+                         const u128 Htable[16], uint64_t *Xi);
 #endif  // OPENSSL_X86_64
 
 #if defined(OPENSSL_X86)
