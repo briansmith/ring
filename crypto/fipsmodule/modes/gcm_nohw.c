@@ -274,31 +274,29 @@ static void gcm_polyval_nohw(uint64_t Xi[2], const u128 *H) {
   Xi[1] = r3;
 }
 
-void gcm_gmult_nohw(uint64_t Xi[2], const u128 Htable[16]) {
+void gcm_gmult_nohw(uint8_t Xi[16], const u128 Htable[16]) {
   uint64_t swapped[2];
-  swapped[0] = CRYPTO_bswap8(Xi[1]);
-  swapped[1] = CRYPTO_bswap8(Xi[0]);
+  swapped[0] = CRYPTO_load_u64_be(Xi + 8);
+  swapped[1] = CRYPTO_load_u64_be(Xi);
   gcm_polyval_nohw(swapped, &Htable[0]);
-  Xi[0] = CRYPTO_bswap8(swapped[1]);
-  Xi[1] = CRYPTO_bswap8(swapped[0]);
+  CRYPTO_store_u64_be(Xi, swapped[1]);
+  CRYPTO_store_u64_be(Xi + 8, swapped[0]);
 }
 
-void gcm_ghash_nohw(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_ghash_nohw(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                     size_t len) {
   uint64_t swapped[2];
-  swapped[0] = CRYPTO_bswap8(Xi[1]);
-  swapped[1] = CRYPTO_bswap8(Xi[0]);
+  swapped[0] = CRYPTO_load_u64_be(Xi + 8);
+  swapped[1] = CRYPTO_load_u64_be(Xi);
 
   while (len >= 16) {
-    uint64_t block[2];
-    OPENSSL_memcpy(block, inp, 16);
-    swapped[0] ^= CRYPTO_bswap8(block[1]);
-    swapped[1] ^= CRYPTO_bswap8(block[0]);
+    swapped[0] ^= CRYPTO_load_u64_be(inp + 8);
+    swapped[1] ^= CRYPTO_load_u64_be(inp);
     gcm_polyval_nohw(swapped, &Htable[0]);
     inp += 16;
     len -= 16;
   }
 
-  Xi[0] = CRYPTO_bswap8(swapped[1]);
-  Xi[1] = CRYPTO_bswap8(swapped[0]);
+  CRYPTO_store_u64_be(Xi, swapped[1]);
+  CRYPTO_store_u64_be(Xi + 8, swapped[0]);
 }

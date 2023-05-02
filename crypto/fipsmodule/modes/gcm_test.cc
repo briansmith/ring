@@ -129,10 +129,8 @@ TEST(GCMTest, ABI) {
   uint8_t buf[16 * 32];
   OPENSSL_memset(buf, 42, sizeof(buf));
 
-  uint64_t X[2] = {
-      UINT64_C(0x0388dace60b6a392),
-      UINT64_C(0xf328c2b971b2fe78),
-  };
+  uint8_t X[16] = {0x92, 0xa3, 0xb3, 0x60, 0xce, 0xda, 0x88, 0x03,
+                   0x78, 0xfe, 0xb2, 0x71, 0xb9, 0xc2, 0x28, 0xf3};
 
   alignas(16) u128 Htable[16];
 #if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)

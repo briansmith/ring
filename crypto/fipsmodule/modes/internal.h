@@ -53,6 +53,7 @@
 
 #include <openssl/aes.h>
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -74,6 +75,20 @@ extern "C" {
 // These functions are called exclusively with AES, so we use the former.
 typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
                            const AES_KEY *key);
+
+OPENSSL_INLINE void CRYPTO_xor16(uint8_t out[16], const uint8_t a[16],
+                                 const uint8_t b[16]) {
+  // TODO(davidben): Ideally we'd leave this to the compiler, which could use
+  // vector registers, etc. But the compiler doesn't know that |in| and |out|
+  // cannot partially alias. |restrict| is slightly two strict (we allow exact
+  // aliasing), but perhaps in-place could be a separate function?
+  static_assert(16 % sizeof(crypto_word_t) == 0,
+                "block cannot be evenly divided into words");
+  for (size_t i = 0; i < 16; i += sizeof(crypto_word_t)) {
+    CRYPTO_store_word_le(
+        out + i, CRYPTO_load_word_le(a + i) ^ CRYPTO_load_word_le(b + i));
+  }
+}
 
 
 // CTR.
@@ -115,12 +130,12 @@ typedef struct { uint64_t hi,lo; } u128;
 
 // gmult_func multiplies |Xi| by the GCM key and writes the result back to
 // |Xi|.
-typedef void (*gmult_func)(uint64_t Xi[2], const u128 Htable[16]);
+typedef void (*gmult_func)(uint8_t Xi[16], const u128 Htable[16]);
 
 // ghash_func repeatedly multiplies |Xi| by the GCM key and adds in blocks from
 // |inp|. The result is written back to |Xi| and the |len| argument must be a
 // multiple of 16.
-typedef void (*ghash_func)(uint64_t Xi[2], const u128 Htable[16],
+typedef void (*ghash_func)(uint8_t Xi[16], const u128 Htable[16],
                            const uint8_t *inp, size_t len);
 
 typedef struct gcm128_key_st {
@@ -143,12 +158,14 @@ typedef struct gcm128_key_st {
 // should be zero-initialized before use.
 typedef struct {
   // The following 5 names follow names in GCM specification
-  union {
-    uint64_t u[2];
-    uint32_t d[4];
-    uint8_t c[16];
-    crypto_word_t t[16 / sizeof(crypto_word_t)];
-  } Yi, EKi, EK0, len, Xi;
+  uint8_t Yi[16];
+  uint8_t EKi[16];
+  uint8_t EK0[16];
+  struct {
+    uint64_t aad;
+    uint64_t msg;
+  } len;
+  uint8_t Xi[16];
 
   // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
   // TODO(crbug.com/boringssl/604): Revisit this.
@@ -236,8 +253,8 @@ OPENSSL_EXPORT void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag,
 // GCM assembly.
 
 void gcm_init_nohw(u128 Htable[16], const uint64_t H[2]);
-void gcm_gmult_nohw(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_nohw(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_gmult_nohw(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_nohw(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
 
 #if !defined(OPENSSL_NO_ASM)
@@ -245,31 +262,31 @@ void gcm_ghash_nohw(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 #define GCM_FUNCREF
 void gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_clmul(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_clmul(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                      size_t len);
 
 // |gcm_gmult_ssse3| and |gcm_ghash_ssse3| require |Htable| to be
 // 16-byte-aligned, but |gcm_init_ssse3| does not.
 void gcm_init_ssse3(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_ssse3(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_ssse3(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
+void gcm_gmult_ssse3(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_ssse3(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                      size_t len);
 
 #if defined(OPENSSL_X86_64)
 #define GHASH_ASM_X86_64
 void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
+void gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                    size_t len);
 
 #define HW_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16],
-                         const u128 Htable[16], uint64_t *Xi);
+                         const u128 Htable[16], uint8_t Xi[16]);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16],
-                         const u128 Htable[16], uint64_t *Xi);
+                         const u128 Htable[16], uint8_t Xi[16]);
 #endif  // OPENSSL_X86_64
 
 #if defined(OPENSSL_X86)
@@ -285,16 +302,16 @@ OPENSSL_INLINE int gcm_pmull_capable(void) {
   return CRYPTO_is_ARMv8_PMULL_capable();
 }
 
-void gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_v8(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_v8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_init_v8(u128 Htable[16], const uint64_t H[2]);
+void gcm_gmult_v8(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                   size_t len);
 
 OPENSSL_INLINE int gcm_neon_capable(void) { return CRYPTO_is_NEON_capable(); }
 
-void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_init_neon(u128 Htable[16], const uint64_t H[2]);
+void gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
 
 #if defined(OPENSSL_AARCH64)
@@ -383,7 +400,7 @@ size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
 // https://www.rfc-editor.org/rfc/rfc8452.html#section-3.
 
 struct polyval_ctx {
-  uint64_t S[2];
+  uint8_t S[16];
   // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
   // TODO(crbug.com/boringssl/604): Revisit this.
   alignas(16) u128 Htable[16];

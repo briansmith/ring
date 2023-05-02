@@ -70,14 +70,7 @@ void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
   while (len >= 16) {
     (*block)(ivec, ivec, key);
-    for (; n < 16; n += sizeof(size_t)) {
-      size_t a, b;
-      OPENSSL_memcpy(&a, in + n, sizeof(size_t));
-      OPENSSL_memcpy(&b, ivec + n, sizeof(size_t));
-
-      const size_t c = a ^ b;
-      OPENSSL_memcpy(out + n, &c, sizeof(size_t));
-    }
+    CRYPTO_xor16(out, in, ivec);
     len -= 16;
     out += 16;
     in += 16;
