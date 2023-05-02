@@ -382,13 +382,8 @@ size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
 // similar to the one that GHASH uses. See
 // https://www.rfc-editor.org/rfc/rfc8452.html#section-3.
 
-typedef union {
-  uint64_t u[2];
-  uint8_t c[16];
-} polyval_block;
-
 struct polyval_ctx {
-  polyval_block S;
+  uint64_t S[2];
   // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
   // TODO(crbug.com/boringssl/604): Revisit this.
   alignas(16) u128 Htable[16];
