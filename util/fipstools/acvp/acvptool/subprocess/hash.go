@@ -62,7 +62,7 @@ type hashPrimitive struct {
 	size int
 }
 
-func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed hashTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

@@ -72,7 +72,7 @@ type ecdsa struct {
 	primitives map[string]primitive
 }
 
-func (e *ecdsa) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (e *ecdsa) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed ecdsaTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

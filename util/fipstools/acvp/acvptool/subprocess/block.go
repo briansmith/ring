@@ -288,7 +288,7 @@ type blockCipherMCTResult struct {
 	Key3Hex string `json:"key3,omitempty"`
 }
 
-func (b *blockCipher) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (b *blockCipher) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed blockCipherVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

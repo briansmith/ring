@@ -2191,11 +2191,11 @@ type lruSessionCache struct {
 
 type lruSessionCacheEntry struct {
 	sessionKey string
-	state      interface{}
+	state      any
 }
 
 // Put adds the provided (sessionKey, cs) pair to the cache.
-func (c *lruSessionCache) Put(sessionKey string, cs interface{}) {
+func (c *lruSessionCache) Put(sessionKey string, cs any) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -2223,7 +2223,7 @@ func (c *lruSessionCache) Put(sessionKey string, cs interface{}) {
 
 // Get returns the value associated with a given key. It returns (nil,
 // false) if no value is found.
-func (c *lruSessionCache) Get(sessionKey string) (interface{}, bool) {
+func (c *lruSessionCache) Get(sessionKey string) (any, bool) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -2337,7 +2337,7 @@ func initDefaultCipherSuites() {
 	}
 }
 
-func unexpectedMessageError(wanted, got interface{}) error {
+func unexpectedMessageError(wanted, got any) error {
 	return fmt.Errorf("tls: received unexpected handshake message of type %T when waiting for %T", got, wanted)
 }
 

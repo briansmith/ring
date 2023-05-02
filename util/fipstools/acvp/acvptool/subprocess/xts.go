@@ -59,7 +59,7 @@ type xtsTestResponse struct {
 // encrypt/decrypt with AES-XTS.
 type xts struct{}
 
-func (h *xts) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (h *xts) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed xtsTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

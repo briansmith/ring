@@ -142,7 +142,7 @@ func (set ServerObjectSet) Action(action string, args []string) error {
 			return nil
 		}
 
-		var result map[string]interface{}
+		var result map[string]any
 		if err := set.env.server.Post(&result, "acvp/v1/"+set.name, newContents); err != nil {
 			return err
 		}
@@ -308,7 +308,7 @@ type Algorithms struct {
 
 func (algos Algorithms) String() (string, error) {
 	var result struct {
-		Algorithms []map[string]interface{} `json:"algorithms"`
+		Algorithms []map[string]any `json:"algorithms"`
 	}
 	if err := algos.env.server.Get(&result, "acvp/v1/algorithms"); err != nil {
 		return "", err
@@ -360,7 +360,7 @@ func (s stringLiteral) Action(action string, args []string) error {
 			return fmt.Errorf("found %d arguments but %q takes none", len(args), action)
 		}
 
-		var results map[string]interface{}
+		var results map[string]any
 		if err := s.env.server.Get(&results, s.contents); err != nil {
 			return err
 		}
@@ -379,7 +379,7 @@ type results struct {
 }
 
 func (r results) String() (string, error) {
-	var results map[string]interface{}
+	var results map[string]any
 	if err := r.env.server.Get(&results, "acvp/v1/"+r.prefix+"/results"); err != nil {
 		return "", err
 	}

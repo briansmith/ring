@@ -211,7 +211,7 @@ func (m *Subprocess) Config() ([]byte, error) {
 }
 
 // Process runs a set of test vectors and returns the result.
-func (m *Subprocess) Process(algorithm string, vectorSet []byte) (interface{}, error) {
+func (m *Subprocess) Process(algorithm string, vectorSet []byte) (any, error) {
 	prim, ok := m.primitives[algorithm]
 	if !ok {
 		return nil, fmt.Errorf("unknown algorithm %q", algorithm)
@@ -224,7 +224,7 @@ func (m *Subprocess) Process(algorithm string, vectorSet []byte) (interface{}, e
 }
 
 type primitive interface {
-	Process(vectorSet []byte, t Transactable) (interface{}, error)
+	Process(vectorSet []byte, t Transactable) (any, error)
 }
 
 func uint32le(n uint32) []byte {

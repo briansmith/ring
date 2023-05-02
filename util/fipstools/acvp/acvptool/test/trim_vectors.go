@@ -25,7 +25,7 @@ import (
 )
 
 func main() {
-	var vectorSets []interface{}
+	var vectorSets []any
 	decoder := json.NewDecoder(os.Stdin)
 	if err := decoder.Decode(&vectorSets); err != nil {
 		panic(err)
@@ -33,18 +33,18 @@ func main() {
 
 	// The first element is the metadata which is left unmodified.
 	for i := 1; i < len(vectorSets); i++ {
-		vectorSet := vectorSets[i].(map[string]interface{})
-		testGroups := vectorSet["testGroups"].([]interface{})
+		vectorSet := vectorSets[i].(map[string]any)
+		testGroups := vectorSet["testGroups"].([]any)
 		for _, testGroupInterface := range testGroups {
-			testGroup := testGroupInterface.(map[string]interface{})
-			tests := testGroup["tests"].([]interface{})
+			testGroup := testGroupInterface.(map[string]any)
+			tests := testGroup["tests"].([]any)
 
 			keepIndex := 10
 			if keepIndex >= len(tests) {
 				keepIndex = len(tests) - 1
 			}
 
-			testGroup["tests"] = []interface{}{tests[keepIndex]}
+			testGroup["tests"] = []any{tests[keepIndex]}
 		}
 	}
 

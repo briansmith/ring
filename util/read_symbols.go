@@ -61,7 +61,7 @@ func defaultObjFileFormat(goos string) string {
 	}
 }
 
-func printAndExit(format string, args ...interface{}) {
+func printAndExit(format string, args ...any) {
 	s := fmt.Sprintf(format, args...)
 	fmt.Fprintln(os.Stderr, s)
 	os.Exit(1)

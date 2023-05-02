@@ -84,7 +84,7 @@ type cipherSuite struct {
 	ka     func(version uint16) keyAgreement
 	// flags is a bitmask of the suite* values, above.
 	flags  int
-	cipher func(key, iv []byte, isRead bool) interface{}
+	cipher func(key, iv []byte, isRead bool) any
 	mac    func(version uint16, macKey []byte) macFunction
 	aead   func(version uint16, key, fixedNonce []byte) *tlsAead
 }
@@ -150,11 +150,11 @@ func ivLen3DES(vers uint16) int {
 
 type nullCipher struct{}
 
-func cipherNull(key, iv []byte, isRead bool) interface{} {
+func cipherNull(key, iv []byte, isRead bool) any {
 	return nullCipher{}
 }
 
-func cipher3DES(key, iv []byte, isRead bool) interface{} {
+func cipher3DES(key, iv []byte, isRead bool) any {
 	block, _ := des.NewTripleDESCipher(key)
 	if isRead {
 		return cipher.NewCBCDecrypter(block, iv)
@@ -162,7 +162,7 @@ func cipher3DES(key, iv []byte, isRead bool) interface{} {
 	return cipher.NewCBCEncrypter(block, iv)
 }
 
-func cipherAES(key, iv []byte, isRead bool) interface{} {
+func cipherAES(key, iv []byte, isRead bool) any {
 	block, _ := aes.NewCipher(key)
 	if isRead {
 		return cipher.NewCBCDecrypter(block, iv)

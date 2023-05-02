@@ -73,7 +73,7 @@ type drbg struct {
 	modes map[string]bool // the supported underlying primitives for the DRBG
 }
 
-func (d *drbg) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (d *drbg) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed drbgTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

@@ -272,7 +272,7 @@ func (e *ed25519Signer) verifyMessage(key crypto.PublicKey, msg, sig []byte) err
 	return nil
 }
 
-func getSigner(version uint16, key interface{}, config *Config, sigAlg signatureAlgorithm, isVerify bool) (signer, error) {
+func getSigner(version uint16, key any, config *Config, sigAlg signatureAlgorithm, isVerify bool) (signer, error) {
 	// TLS 1.1 and below use legacy signature algorithms.
 	if version < VersionTLS12 || (!isVerify && config.Bugs.AlwaysSignAsLegacyVersion) {
 		if config.Bugs.SigningAlgorithmForLegacyVersions == 0 || isVerify {

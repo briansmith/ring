@@ -174,13 +174,13 @@ type halfConn struct {
 	version     uint16 // protocol version
 	wireVersion uint16 // wire version
 	isDTLS      bool
-	cipher      interface{} // cipher algorithm
+	cipher      any // cipher algorithm
 	mac         macFunction
 	seq         [8]byte // 64-bit sequence number
 	outSeq      [8]byte // Mapped sequence number
 	bfree       *block  // list of free blocks
 
-	nextCipher interface{} // next encryption state
+	nextCipher any         // next encryption state
 	nextMac    macFunction // next MAC algorithm
 	nextSeq    [6]byte     // next epoch's starting sequence number in DTLS
 
@@ -207,7 +207,7 @@ func (hc *halfConn) error() error {
 
 // prepareCipherSpec sets the encryption and MAC states
 // that a subsequent changeCipherSpec will use.
-func (hc *halfConn) prepareCipherSpec(version uint16, cipher interface{}, mac macFunction) {
+func (hc *halfConn) prepareCipherSpec(version uint16, cipher any, mac macFunction) {
 	hc.wireVersion = version
 	protocolVersion, ok := wireToVersion(version, hc.isDTLS)
 	if !ok {
@@ -1336,7 +1336,7 @@ func (c *Conn) doReadHandshake() ([]byte, error) {
 // readHandshake reads the next handshake message from
 // the record layer.
 // c.in.Mutex < L; c.out.Mutex < L.
-func (c *Conn) readHandshake() (interface{}, error) {
+func (c *Conn) readHandshake() (any, error) {
 	data, err := c.doReadHandshake()
 	if err != nil {
 		return nil, err

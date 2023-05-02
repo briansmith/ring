@@ -68,7 +68,7 @@ type kasTestResponse struct {
 
 type kas struct{}
 
-func (k *kas) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (k *kas) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed kasVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

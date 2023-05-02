@@ -61,7 +61,7 @@ type aeadTestResponse struct {
 	Passed        *bool   `json:"testPassed,omitempty"`
 }
 
-func (a *aead) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (a *aead) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed aeadVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

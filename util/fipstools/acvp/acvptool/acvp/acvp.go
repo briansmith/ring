@@ -195,7 +195,7 @@ func parseReplyToBytes(in io.Reader) ([]byte, error) {
 // parseReply parses the contents of an ACVP reply (after removing the header
 // element) into out. See the documentation of the encoding/json package for
 // details of the parsing.
-func parseReply(out interface{}, in io.Reader) error {
+func parseReply(out any, in io.Reader) error {
 	if out == nil {
 		// No reply expected.
 		return nil
@@ -379,7 +379,7 @@ func (server *Server) newRequestWithToken(method, endpoint string, body io.Reade
 	return req, nil
 }
 
-func (server *Server) Get(out interface{}, endPoint string) error {
+func (server *Server) Get(out any, endPoint string) error {
 	req, err := server.newRequestWithToken("GET", endPoint, nil)
 	if err != nil {
 		return err
@@ -417,7 +417,7 @@ func (server *Server) GetBytes(endPoint string) ([]byte, error) {
 	return parseReplyToBytes(resp.Body)
 }
 
-func (server *Server) write(method string, reply interface{}, endPoint string, contents []byte) error {
+func (server *Server) write(method string, reply any, endPoint string, contents []byte) error {
 	var buf bytes.Buffer
 	buf.WriteString(requestPrefix)
 	buf.Write(contents)
@@ -442,7 +442,7 @@ func (server *Server) write(method string, reply interface{}, endPoint string, c
 	return parseReply(reply, resp.Body)
 }
 
-func (server *Server) postMessage(reply interface{}, endPoint string, request interface{}) error {
+func (server *Server) postMessage(reply any, endPoint string, request any) error {
 	contents, err := json.Marshal(request)
 	if err != nil {
 		return err
@@ -450,11 +450,11 @@ func (server *Server) postMessage(reply interface{}, endPoint string, request in
 	return server.write("POST", reply, endPoint, contents)
 }
 
-func (server *Server) Post(out interface{}, endPoint string, contents []byte) error {
+func (server *Server) Post(out any, endPoint string, contents []byte) error {
 	return server.write("POST", out, endPoint, contents)
 }
 
-func (server *Server) Put(out interface{}, endPoint string, contents []byte) error {
+func (server *Server) Put(out any, endPoint string, contents []byte) error {
 	return server.write("PUT", out, endPoint, contents)
 }
 
@@ -481,7 +481,7 @@ var (
 
 // GetPaged returns an array of records of some type using one or more requests to the server. See
 // https://pages.nist.gov/ACVP/draft-fussell-acvp-spec.html#paging_response
-func (server *Server) GetPaged(out interface{}, endPoint string, condition Query) error {
+func (server *Server) GetPaged(out any, endPoint string, condition Query) error {
 	output := reflect.ValueOf(out)
 	if output.Kind() != reflect.Ptr {
 		panic(fmt.Sprintf("GetPaged output parameter of non-pointer type %T", out))
@@ -618,22 +618,22 @@ type OperationalEnvironment struct {
 	Dependencies   []Dependency `json:"dependencies,omitempty"`
 }
 
-type Dependency map[string]interface{}
+type Dependency map[string]any
 
-type Algorithm map[string]interface{}
+type Algorithm map[string]any
 
 type TestSession struct {
-	URL           string                   `json:"url,omitempty"`
-	ACVPVersion   string                   `json:"acvpVersion,omitempty"`
-	Created       string                   `json:"createdOn,omitempty"`
-	Expires       string                   `json:"expiresOn,omitempty"`
-	VectorSetURLs []string                 `json:"vectorSetUrls,omitempty"`
-	AccessToken   string                   `json:"accessToken,omitempty"`
-	Algorithms    []map[string]interface{} `json:"algorithms,omitempty"`
-	EncryptAtRest bool                     `json:"encryptAtRest,omitempty"`
-	IsSample      bool                     `json:"isSample,omitempty"`
-	Publishable   bool                     `json:"publishable,omitempty"`
-	Passed        bool                     `json:"passed,omitempty"`
+	URL           string           `json:"url,omitempty"`
+	ACVPVersion   string           `json:"acvpVersion,omitempty"`
+	Created       string           `json:"createdOn,omitempty"`
+	Expires       string           `json:"expiresOn,omitempty"`
+	VectorSetURLs []string         `json:"vectorSetUrls,omitempty"`
+	AccessToken   string           `json:"accessToken,omitempty"`
+	Algorithms    []map[string]any `json:"algorithms,omitempty"`
+	EncryptAtRest bool             `json:"encryptAtRest,omitempty"`
+	IsSample      bool             `json:"isSample,omitempty"`
+	Publishable   bool             `json:"publishable,omitempty"`
+	Passed        bool             `json:"passed,omitempty"`
 }
 
 type Vectors struct {

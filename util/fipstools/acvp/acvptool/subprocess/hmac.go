@@ -76,7 +76,7 @@ func (h *hmacPrimitive) hmac(msg []byte, key []byte, outBits int, m Transactable
 	return result[0][:outBytes]
 }
 
-func (h *hmacPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (h *hmacPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed hmacTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err

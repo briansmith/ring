@@ -57,7 +57,7 @@ type keyedMACPrimitive struct {
 	algo string
 }
 
-func (k *keyedMACPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (k *keyedMACPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 	var vs keyedMACTestVectorSet
 	if err := json.Unmarshal(vectorSet, &vs); err != nil {
 		return nil, err

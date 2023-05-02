@@ -55,7 +55,7 @@ type tlsKDFTestResponse struct {
 
 type tlsKDF struct{}
 
-func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed tlsKDFVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
