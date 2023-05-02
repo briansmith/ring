@@ -173,15 +173,13 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 #endif  // HW_GCM && AARCH64
 
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
-                       u128 *out_key, u128 out_table[16], int *out_is_avx,
+                       u128 out_table[16], int *out_is_avx,
                        const uint8_t gcm_key[16]) {
   *out_is_avx = 0;
 
   // H is stored in host byte order.
   uint64_t H[2] = {CRYPTO_load_u64_be(gcm_key),
                    CRYPTO_load_u64_be(gcm_key + 8)};
-  out_key->hi = H[0];
-  out_key->lo = H[1];
 
 #if defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
@@ -247,14 +245,13 @@ void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
   (*block)(ghash_key, ghash_key, aes_key);
 
   int is_avx;
-  CRYPTO_ghash_init(&gcm_key->gmult, &gcm_key->ghash, &gcm_key->H,
-                    gcm_key->Htable, &is_avx, ghash_key);
+  CRYPTO_ghash_init(&gcm_key->gmult, &gcm_key->ghash, gcm_key->Htable, &is_avx,
+                    ghash_key);
 
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_NO_ASM)
-    gcm_key->use_hw_gcm_crypt = (gcm_pmull_capable() && block_is_hwaes) ? 1 :
-      0;
+  gcm_key->use_hw_gcm_crypt = (gcm_pmull_capable() && block_is_hwaes) ? 1 : 0;
 #else
-    gcm_key->use_hw_gcm_crypt = (is_avx && block_is_hwaes) ? 1 : 0;
+  gcm_key->use_hw_gcm_crypt = (is_avx && block_is_hwaes) ? 1 : 0;
 #endif
 }
 

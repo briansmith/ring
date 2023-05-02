@@ -124,12 +124,10 @@ typedef void (*ghash_func)(uint64_t Xi[2], const u128 Htable[16],
                            const uint8_t *inp, size_t len);
 
 typedef struct gcm128_key_st {
-  // Note the MOVBE-based, x86-64, GHASH assembly requires |H| and |Htable| to
-  // be the first two elements of this struct. Additionally, some assembly
-  // routines require a 16-byte-aligned |Htable| when hashing data, but not
+  // |gcm_*_ssse3| require a 16-byte-aligned |Htable| when hashing data, but not
   // initialization. |GCM128_KEY| is not itself aligned to simplify embedding in
   // |EVP_AEAD_CTX|, but |Htable|'s offset must be a multiple of 16.
-  u128 H;
+  // TODO(crbug.com/boringssl/604): Revisit this.
   u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;
@@ -152,10 +150,8 @@ typedef struct {
     crypto_word_t t[16 / sizeof(crypto_word_t)];
   } Yi, EKi, EK0, len, Xi;
 
-  // Note that the order of |Xi| and |gcm_key| is fixed by the MOVBE-based,
-  // x86-64, GHASH assembly. Additionally, some assembly routines require
-  // |gcm_key| to be 16-byte aligned. |GCM128_KEY| is not itself aligned to
-  // simplify embedding in |EVP_AEAD_CTX|.
+  // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
+  // TODO(crbug.com/boringssl/604): Revisit this.
   alignas(16) GCM128_KEY gcm_key;
 
   unsigned mres, ares;
@@ -172,7 +168,7 @@ int crypto_gcm_clmul_enabled(void);
 // accelerated) functions for performing operations in the GHASH field. If the
 // AVX implementation was used |*out_is_avx| will be true.
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
-                       u128 *out_key, u128 out_table[16], int *out_is_avx,
+                       u128 out_table[16], int *out_is_avx,
                        const uint8_t gcm_key[16]);
 
 // CRYPTO_gcm128_init_key initialises |gcm_key| to use |block| (typically AES)
@@ -392,11 +388,9 @@ typedef union {
 } polyval_block;
 
 struct polyval_ctx {
-  // Note that the order of |S|, |H| and |Htable| is fixed by the MOVBE-based,
-  // x86-64, GHASH assembly. Additionally, some assembly routines require
-  // |Htable| to be 16-byte aligned.
   polyval_block S;
-  u128 H;
+  // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
+  // TODO(crbug.com/boringssl/604): Revisit this.
   alignas(16) u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;
