@@ -380,7 +380,7 @@ size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
 //
 // POLYVAL is a polynomial authenticator that operates over a field very
 // similar to the one that GHASH uses. See
-// https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-02#section-3.
+// https://www.rfc-editor.org/rfc/rfc8452.html#section-3.
 
 typedef union {
   uint64_t u[2];

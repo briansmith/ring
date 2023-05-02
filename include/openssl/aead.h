@@ -138,12 +138,10 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ctr_hmac_sha256(void);
 // authentication. See |EVP_aead_aes_128_ctr_hmac_sha256| for details.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_ctr_hmac_sha256(void);
 
-// EVP_aead_aes_128_gcm_siv is AES-128 in GCM-SIV mode. See
-// https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-02
+// EVP_aead_aes_128_gcm_siv is AES-128 in GCM-SIV mode. See RFC 8452.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_siv(void);
 
-// EVP_aead_aes_256_gcm_siv is AES-256 in GCM-SIV mode. See
-// https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-02
+// EVP_aead_aes_256_gcm_siv is AES-256 in GCM-SIV mode. See RFC 8452.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void);
 
 // EVP_aead_aes_128_gcm_randnonce is AES-128 in Galois Counter Mode with

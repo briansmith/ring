@@ -48,7 +48,7 @@ static void reverse_and_mulX_ghash(polyval_block *b) {
 // ByteReverse(GHASH(mulX_GHASH(ByteReverse(H)), ByteReverse(X_1), ...,
 // ByteReverse(X_n))).
 //
-// See https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-02#appendix-A.
+// See https://www.rfc-editor.org/rfc/rfc8452.html#appendix-A.
 
 void CRYPTO_POLYVAL_init(struct polyval_ctx *ctx, const uint8_t key[16]) {
   polyval_block H;
