@@ -303,9 +303,11 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #define HW_GCM
 // These functions are defined in aesv8-gcm-armv8.pl.
 void aes_gcm_enc_kernel(const uint8_t *in, uint64_t in_bits, void *out,
-                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+                        void *Xi, uint8_t *ivec, const AES_KEY *key,
+                        const u128 Htable[16]);
 void aes_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
-                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+                        void *Xi, uint8_t *ivec, const AES_KEY *key,
+                        const u128 Htable[16]);
 #endif
 
 #endif

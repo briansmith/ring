@@ -206,6 +206,7 @@ $input_ptr="x0";  #argument block
 $bit_length="x1";
 $output_ptr="x2";
 $current_tag="x3";
+$Htable="x6";
 $counter="x16";
 $cc="x8";
 
@@ -281,7 +282,8 @@ my $rk4d="d22";
 #                           uint8_t *out,
 #                           u64 *Xi,
 #                           uint8_t ivec[16],
-#                           const void *key);
+#                           const void *key,
+#                           const void *Htable);
 #
 $code.=<<___;
 .global aes_gcm_enc_kernel
@@ -343,18 +345,18 @@ aes_gcm_enc_kernel:
 	aese    $ctr2b, $rk0  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 0
 	ldr     $rk5q, [$cc, #80]                                 // load rk5
 	aese    $ctr1b, $rk1  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 1
-	ldr     $h3q, [$current_tag, #80]                         // load h3l | h3h
+	ldr     $h3q, [$Htable, #48]                              // load h3l | h3h
 	ext     $h3b, $h3b, $h3b, #8
 	aese    $ctr3b, $rk0  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 0
 	aese    $ctr2b, $rk1  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 1
 	ldr     $rk4q, [$cc, #64]                                 // load rk4
 	aese    $ctr1b, $rk2  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 2
-	ldr     $h2q, [$current_tag, #64]                         // load h2l | h2h
+	ldr     $h2q, [$Htable, #32]                              // load h2l | h2h
 	ext     $h2b, $h2b, $h2b, #8
 	aese    $ctr3b, $rk1  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 1
 	ldr     $rk12q, [$cc, #192]                               // load rk12
 	aese    $ctr2b, $rk2  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 2
-	ldr     $h4q, [$current_tag, #112]                        // load h4l | h4h
+	ldr     $h4q, [$Htable, #80]                              // load h4l | h4h
 	ext     $h4b, $h4b, $h4b, #8
 	aese    $ctr1b, $rk3  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 3
 	ldr     $rk11q, [$cc, #176]                               // load rk11
@@ -381,7 +383,7 @@ aes_gcm_enc_kernel:
 	aese    $ctr3b, $rk6  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 6
 	ldr     $rk9q, [$cc, #144]                                // load rk9
 	aese    $ctr0b, $rk6  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 6
-	ldr     $h1q, [$current_tag, #32]                         // load h1l | h1h
+	ldr     $h1q, [$Htable]                                   // load h1l | h1h
 	ext     $h1b, $h1b, $h1b, #8
 	aese    $ctr2b, $rk6  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 6
 	ldr     $rk10q, [$cc, #160]                               // load rk10
@@ -967,13 +969,13 @@ aes_gcm_dec_kernel:
 	ldr     $rk4q, [$cc, #64]                                 // load rk4
 	ldr     $rk1q, [$cc, #16]                                 // load rk1
 	aese    $ctr0b, $rk0  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 0
-	ldr     $h3q, [$current_tag, #80]                         // load h3l | h3h
+	ldr     $h3q, [$Htable, #48]                              // load h3l | h3h
 	ext     $h3b, $h3b, $h3b, #8
 	aese    $ctr3b, $rk0  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 0
-	ldr     $h4q, [$current_tag, #112]                        // load h4l | h4h
+	ldr     $h4q, [$Htable, #80]                              // load h4l | h4h
 	ext     $h4b, $h4b, $h4b, #8
 	aese    $ctr1b, $rk0  \n  aesmc   $ctr1b, $ctr1b          // AES block 1 - round 0
-	ldr     $h2q, [$current_tag, #64]                         // load h2l | h2h
+	ldr     $h2q, [$Htable, #32]                              // load h2l | h2h
 	ext     $h2b, $h2b, $h2b, #8
 	aese    $ctr2b, $rk0  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 0
 	ldr     $rk2q, [$cc, #32]                                 // load rk2
@@ -987,7 +989,7 @@ aes_gcm_dec_kernel:
 	aese    $ctr3b, $rk1  \n  aesmc   $ctr3b, $ctr3b          // AES block 3 - round 1
 	ldr     $rk12q, [$cc, #192]                               // load rk12
 	aese    $ctr0b, $rk2  \n  aesmc   $ctr0b, $ctr0b          // AES block 0 - round 2
-	ldr     $h1q, [$current_tag, #32]                         // load h1l | h1h
+	ldr     $h1q, [$Htable]                                   // load h1l | h1h
 	ext     $h1b, $h1b, $h1b, #8
 	aese    $ctr2b, $rk2  \n  aesmc   $ctr2b, $ctr2b          // AES block 2 - round 2
 	ldr     $rk10q, [$cc, #160]                               // load rk10

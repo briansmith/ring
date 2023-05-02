@@ -217,8 +217,10 @@ TEST(GCMTest, ABI) {
     for (size_t key_bits = 128; key_bits <= 256; key_bits += 64) {
       AES_KEY aes_key;
       aes_hw_set_encrypt_key(kKey, key_bits, &aes_key);
-      CHECK_ABI(aes_gcm_enc_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key);
-      CHECK_ABI(aes_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key);
+      CHECK_ABI(aes_gcm_enc_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
+                Htable);
+      CHECK_ABI(aes_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
+                Htable);
     }
   }
 #endif
