@@ -181,7 +181,7 @@ int ecdsa_do_verify_no_self_test(const uint8_t *digest, size_t digest_len,
   ec_scalar_mul_montgomery(group, &u1, &m, &s_inv_mont);
   ec_scalar_mul_montgomery(group, &u2, &r, &s_inv_mont);
 
-  EC_RAW_POINT point;
+  EC_JACOBIAN point;
   if (!ec_point_mul_scalar_public(group, &point, &u1, &pub_key->raw, &u2)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     return 0;
@@ -216,7 +216,7 @@ static ECDSA_SIG *ecdsa_sign_impl(const EC_GROUP *group, int *out_retry,
   }
 
   // Compute r, the x-coordinate of k * generator.
-  EC_RAW_POINT tmp_point;
+  EC_JACOBIAN tmp_point;
   EC_SCALAR r;
   if (!ec_point_mul_scalar_base(group, &tmp_point, k) ||
       !ec_get_x_coordinate_as_scalar(group, &r, &tmp_point)) {

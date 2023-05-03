@@ -29,7 +29,7 @@
 #include "internal.h"
 
 
-typedef int (*hash_to_group_func_t)(const EC_GROUP *group, EC_RAW_POINT *out,
+typedef int (*hash_to_group_func_t)(const EC_GROUP *group, EC_JACOBIAN *out,
                                     const uint8_t t[TRUST_TOKEN_NONCE_SIZE]);
 typedef int (*hash_to_scalar_func_t)(const EC_GROUP *group, EC_SCALAR *out,
                                      uint8_t *buf, size_t len);
@@ -118,7 +118,7 @@ static int scalar_from_cbs(CBS *cbs, const EC_GROUP *group, EC_SCALAR *out) {
 static int voprf_calculate_key(const VOPRF_METHOD *method, CBB *out_private,
                                CBB *out_public, const EC_SCALAR *priv) {
   const EC_GROUP *group = method->group;
-  EC_RAW_POINT pub;
+  EC_JACOBIAN pub;
   EC_AFFINE pub_affine;
   if (!ec_point_mul_scalar_base(group, &pub, priv) ||
       !ec_jacobian_to_affine(group, &pub_affine, &pub)) {
@@ -197,7 +197,7 @@ static int voprf_issuer_key_from_bytes(const VOPRF_METHOD *method,
   }
 
   // Recompute the public key.
-  EC_RAW_POINT pub;
+  EC_JACOBIAN pub;
   if (!ec_point_mul_scalar_base(group, &pub, &key->xs) ||
       !ec_jacobian_to_affine(group, &key->pubs, &pub)) {
     return 0;
@@ -255,7 +255,7 @@ static STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_blind(const VOPRF_METHOD *method,
     ec_scalar_from_montgomery(group, &pretoken->r, &pretoken->r);
 
     // Tp is the blinded token in the VOPRF protocol.
-    EC_RAW_POINT P, Tp;
+    EC_JACOBIAN P, Tp;
     if (!method->hash_to_group(group, &P, pretoken->t) ||
         !ec_point_mul_scalar(group, &Tp, &P, &r) ||
         !ec_jacobian_to_affine(group, &pretoken->Tp, &Tp)) {
@@ -362,7 +362,7 @@ err:
 
 static int dleq_generate(const VOPRF_METHOD *method, CBB *cbb,
                          const TRUST_TOKEN_ISSUER_KEY *priv,
-                         const EC_RAW_POINT *T, const EC_RAW_POINT *W) {
+                         const EC_JACOBIAN *T, const EC_JACOBIAN *W) {
   const EC_GROUP *group = method->group;
 
   enum {
@@ -372,7 +372,7 @@ static int dleq_generate(const VOPRF_METHOD *method, CBB *cbb,
     idx_k1,
     num_idx,
   };
-  EC_RAW_POINT jacobians[num_idx];
+  EC_JACOBIAN jacobians[num_idx];
 
   // Setup the DLEQ proof.
   EC_SCALAR r;
@@ -417,18 +417,18 @@ static int dleq_generate(const VOPRF_METHOD *method, CBB *cbb,
   return 1;
 }
 
-static int mul_public_2(const EC_GROUP *group, EC_RAW_POINT *out,
-                        const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
-                        const EC_RAW_POINT *p1, const EC_SCALAR *scalar1) {
-  EC_RAW_POINT points[2] = {*p0, *p1};
+static int mul_public_2(const EC_GROUP *group, EC_JACOBIAN *out,
+                        const EC_JACOBIAN *p0, const EC_SCALAR *scalar0,
+                        const EC_JACOBIAN *p1, const EC_SCALAR *scalar1) {
+  EC_JACOBIAN points[2] = {*p0, *p1};
   EC_SCALAR scalars[2] = {*scalar0, *scalar1};
   return ec_point_mul_scalar_public_batch(group, out, /*g_scalar=*/NULL, points,
                                           scalars, 2);
 }
 
 static int dleq_verify(const VOPRF_METHOD *method, CBS *cbs,
-                       const TRUST_TOKEN_CLIENT_KEY *pub, const EC_RAW_POINT *T,
-                       const EC_RAW_POINT *W) {
+                       const TRUST_TOKEN_CLIENT_KEY *pub, const EC_JACOBIAN *T,
+                       const EC_JACOBIAN *W) {
   const EC_GROUP *group = method->group;
 
 
@@ -439,7 +439,7 @@ static int dleq_verify(const VOPRF_METHOD *method, CBS *cbs,
     idx_k1,
     num_idx,
   };
-  EC_RAW_POINT jacobians[num_idx];
+  EC_JACOBIAN jacobians[num_idx];
 
   // Decode the DLEQ proof.
   EC_SCALAR c, u;
@@ -450,7 +450,7 @@ static int dleq_verify(const VOPRF_METHOD *method, CBS *cbs,
   }
 
   // k0;k1 = u*(G;T) - c*(pub;W)
-  EC_RAW_POINT pubs;
+  EC_JACOBIAN pubs;
   ec_affine_to_jacobian(group, &pubs, &pub->pubs);
   EC_SCALAR minus_c;
   ec_scalar_neg(group, &minus_c, &c);
@@ -494,15 +494,15 @@ static int voprf_sign_tt(const VOPRF_METHOD *method,
     return 0;
   }
 
-  if (num_to_issue > ((size_t)-1) / sizeof(EC_RAW_POINT) ||
+  if (num_to_issue > ((size_t)-1) / sizeof(EC_JACOBIAN) ||
       num_to_issue > ((size_t)-1) / sizeof(EC_SCALAR)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
     return 0;
   }
 
   int ret = 0;
-  EC_RAW_POINT *BTs = OPENSSL_malloc(num_to_issue * sizeof(EC_RAW_POINT));
-  EC_RAW_POINT *Zs = OPENSSL_malloc(num_to_issue * sizeof(EC_RAW_POINT));
+  EC_JACOBIAN *BTs = OPENSSL_malloc(num_to_issue * sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Zs = OPENSSL_malloc(num_to_issue * sizeof(EC_JACOBIAN));
   EC_SCALAR *es = OPENSSL_malloc(num_to_issue * sizeof(EC_SCALAR));
   CBB batch_cbb;
   CBB_zero(&batch_cbb);
@@ -516,7 +516,7 @@ static int voprf_sign_tt(const VOPRF_METHOD *method,
 
   for (size_t i = 0; i < num_to_issue; i++) {
     EC_AFFINE BT_affine, Z_affine;
-    EC_RAW_POINT BT, Z;
+    EC_JACOBIAN BT, Z;
     if (!cbs_get_point(cbs, group, &BT_affine)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
       goto err;
@@ -549,7 +549,7 @@ static int voprf_sign_tt(const VOPRF_METHOD *method,
     }
   }
 
-  EC_RAW_POINT BT_batch, Z_batch;
+  EC_JACOBIAN BT_batch, Z_batch;
   if (!ec_point_mul_scalar_public_batch(group, &BT_batch,
                                         /*g_scalar=*/NULL, BTs, es,
                                         num_to_issue) ||
@@ -593,7 +593,7 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind_tt(
     return NULL;
   }
 
-  if (count > ((size_t)-1) / sizeof(EC_RAW_POINT) ||
+  if (count > ((size_t)-1) / sizeof(EC_JACOBIAN) ||
       count > ((size_t)-1) / sizeof(EC_SCALAR)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
     return NULL;
@@ -601,8 +601,8 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind_tt(
 
   int ok = 0;
   STACK_OF(TRUST_TOKEN) *ret = sk_TRUST_TOKEN_new_null();
-  EC_RAW_POINT *BTs = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
-  EC_RAW_POINT *Zs = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
+  EC_JACOBIAN *BTs = OPENSSL_malloc(count * sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Zs = OPENSSL_malloc(count * sizeof(EC_JACOBIAN));
   EC_SCALAR *es = OPENSSL_malloc(count * sizeof(EC_SCALAR));
   CBB batch_cbb;
   CBB_zero(&batch_cbb);
@@ -635,7 +635,7 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind_tt(
 
     // Unblind the token.
     // pretoken->r is rinv.
-    EC_RAW_POINT N;
+    EC_JACOBIAN N;
     EC_AFFINE N_affine;
     if (!ec_point_mul_scalar(group, &N, &Zs[i], &pretoken->r) ||
         !ec_jacobian_to_affine(group, &N_affine, &N)) {
@@ -674,7 +674,7 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind_tt(
     }
   }
 
-  EC_RAW_POINT BT_batch, Z_batch;
+  EC_JACOBIAN BT_batch, Z_batch;
   if (!ec_point_mul_scalar_public_batch(group, &BT_batch,
                                         /*g_scalar=*/NULL, BTs, es, count) ||
       !ec_point_mul_scalar_public_batch(group, &Z_batch,
@@ -767,8 +767,8 @@ static int compute_composite_element(const VOPRF_METHOD *method,
 
 static int generate_proof(const VOPRF_METHOD *method, CBB *cbb,
                           const TRUST_TOKEN_ISSUER_KEY *priv,
-                          const EC_SCALAR *r, const EC_RAW_POINT *M,
-                          const EC_RAW_POINT *Z) {
+                          const EC_SCALAR *r, const EC_JACOBIAN *M,
+                          const EC_JACOBIAN *Z) {
   const EC_GROUP *group = method->group;
 
   enum {
@@ -778,7 +778,7 @@ static int generate_proof(const VOPRF_METHOD *method, CBB *cbb,
     idx_t3,
     num_idx,
   };
-  EC_RAW_POINT jacobians[num_idx];
+  EC_JACOBIAN jacobians[num_idx];
 
   if (!ec_point_mul_scalar_base(group, &jacobians[idx_t2], r) ||
       !ec_point_mul_scalar(group, &jacobians[idx_t3], M, r)) {
@@ -819,7 +819,7 @@ static int generate_proof(const VOPRF_METHOD *method, CBB *cbb,
 
 static int verify_proof(const VOPRF_METHOD *method, CBS *cbs,
                         const TRUST_TOKEN_CLIENT_KEY *pub,
-                        const EC_RAW_POINT *M, const EC_RAW_POINT *Z) {
+                        const EC_JACOBIAN *M, const EC_JACOBIAN *Z) {
   const EC_GROUP *group = method->group;
 
   enum {
@@ -829,7 +829,7 @@ static int verify_proof(const VOPRF_METHOD *method, CBS *cbs,
     idx_t3,
     num_idx,
   };
-  EC_RAW_POINT jacobians[num_idx];
+  EC_JACOBIAN jacobians[num_idx];
 
   EC_SCALAR c, s;
   if (!scalar_from_cbs(cbs, group, &c) ||
@@ -838,7 +838,7 @@ static int verify_proof(const VOPRF_METHOD *method, CBS *cbs,
     return 0;
   }
 
-  EC_RAW_POINT pubs;
+  EC_JACOBIAN pubs;
   ec_affine_to_jacobian(group, &pubs, &pub->pubs);
   if (!ec_point_mul_scalar_public(group, &jacobians[idx_t2], &s, &pubs,
                                   &c) ||
@@ -879,15 +879,15 @@ static int voprf_sign_impl(const VOPRF_METHOD *method,
     return 0;
   }
 
-  if (num_to_issue > ((size_t)-1) / sizeof(EC_RAW_POINT) ||
+  if (num_to_issue > ((size_t)-1) / sizeof(EC_JACOBIAN) ||
       num_to_issue > ((size_t)-1) / sizeof(EC_SCALAR)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
     return 0;
   }
 
   int ret = 0;
-  EC_RAW_POINT *BTs = OPENSSL_malloc(num_to_issue * sizeof(EC_RAW_POINT));
-  EC_RAW_POINT *Zs = OPENSSL_malloc(num_to_issue * sizeof(EC_RAW_POINT));
+  EC_JACOBIAN *BTs = OPENSSL_malloc(num_to_issue * sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Zs = OPENSSL_malloc(num_to_issue * sizeof(EC_JACOBIAN));
   EC_SCALAR *dis = OPENSSL_malloc(num_to_issue * sizeof(EC_SCALAR));
   if (!BTs || !Zs || !dis) {
     goto err;
@@ -905,7 +905,7 @@ static int voprf_sign_impl(const VOPRF_METHOD *method,
   // the proof generation.
   for (size_t i = 0; i < num_to_issue; i++) {
     EC_AFFINE BT_affine, Z_affine;
-    EC_RAW_POINT BT, Z;
+    EC_JACOBIAN BT, Z;
     if (!cbs_get_point(cbs, group, &BT_affine)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
       goto err;
@@ -928,7 +928,7 @@ static int voprf_sign_impl(const VOPRF_METHOD *method,
     }
   }
 
-  EC_RAW_POINT M, Z;
+  EC_JACOBIAN M, Z;
   if (!ec_point_mul_scalar_public_batch(group, &M,
                                         /*g_scalar=*/NULL, BTs, dis,
                                         num_to_issue) ||
@@ -995,7 +995,7 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
     return NULL;
   }
 
-  if (count > ((size_t)-1) / sizeof(EC_RAW_POINT) ||
+  if (count > ((size_t)-1) / sizeof(EC_JACOBIAN) ||
       count > ((size_t)-1) / sizeof(EC_SCALAR)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
     return NULL;
@@ -1003,8 +1003,8 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
 
   int ok = 0;
   STACK_OF(TRUST_TOKEN) *ret = sk_TRUST_TOKEN_new_null();
-  EC_RAW_POINT *BTs = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
-  EC_RAW_POINT *Zs = OPENSSL_malloc(count * sizeof(EC_RAW_POINT));
+  EC_JACOBIAN *BTs = OPENSSL_malloc(count * sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Zs = OPENSSL_malloc(count * sizeof(EC_JACOBIAN));
   EC_SCALAR *dis = OPENSSL_malloc(count * sizeof(EC_SCALAR));
   if (ret == NULL || !BTs || !Zs || !dis) {
     goto err;
@@ -1034,7 +1034,7 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
 
     // Unblind the token.
     // pretoken->r is rinv.
-    EC_RAW_POINT N;
+    EC_JACOBIAN N;
     EC_AFFINE N_affine;
     if (!ec_point_mul_scalar(group, &N, &Zs[i], &pretoken->r) ||
         !ec_jacobian_to_affine(group, &N_affine, &N)) {
@@ -1064,7 +1064,7 @@ static STACK_OF(TRUST_TOKEN) *voprf_unblind(
     }
   }
 
-  EC_RAW_POINT M, Z;
+  EC_JACOBIAN M, Z;
   if (!ec_point_mul_scalar_public_batch(group, &M,
                                         /*g_scalar=*/NULL, BTs, dis,
                                         count) ||
@@ -1122,12 +1122,12 @@ static int voprf_read(const VOPRF_METHOD *method,
   }
 
 
-  EC_RAW_POINT T;
+  EC_JACOBIAN T;
   if (!method->hash_to_group(group, &T, out_nonce)) {
     return 0;
   }
 
-  EC_RAW_POINT Ws_calculated;
+  EC_JACOBIAN Ws_calculated;
   if (!ec_point_mul_scalar(group, &Ws_calculated, &T, &key->xs) ||
       !ec_affine_jacobian_equal(group, &Ws, &Ws_calculated)) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BAD_VALIDITY_CHECK);
@@ -1140,7 +1140,7 @@ static int voprf_read(const VOPRF_METHOD *method,
 
 // VOPRF experiment v2.
 
-static int voprf_exp2_hash_to_group(const EC_GROUP *group, EC_RAW_POINT *out,
+static int voprf_exp2_hash_to_group(const EC_GROUP *group, EC_JACOBIAN *out,
                                     const uint8_t t[TRUST_TOKEN_NONCE_SIZE]) {
   const uint8_t kHashTLabel[] = "TrustToken VOPRF Experiment V2 HashToGroup";
   return ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
@@ -1254,7 +1254,7 @@ int voprf_exp2_read(const TRUST_TOKEN_ISSUER_KEY *key,
 
 // VOPRF PST v1.
 
-static int voprf_pst1_hash_to_group(const EC_GROUP *group, EC_RAW_POINT *out,
+static int voprf_pst1_hash_to_group(const EC_GROUP *group, EC_JACOBIAN *out,
                                     const uint8_t t[TRUST_TOKEN_NONCE_SIZE]) {
   const uint8_t kHashTLabel[] = "HashToGroup-OPRFV1-\x01-P384-SHA384";
   return ec_hash_to_curve_p384_xmd_sha384_sswu(group, out, kHashTLabel,

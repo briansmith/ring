@@ -414,7 +414,7 @@ static crypto_word_t fiat_p256_get_bit(const EC_SCALAR *in, int i) {
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns (X', Y') =
 // (X/Z^2, Y/Z^3).
 static int ec_GFp_nistp256_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_RAW_POINT *point, EC_FELEM *x_out,
+    const EC_GROUP *group, const EC_JACOBIAN *point, EC_FELEM *x_out,
     EC_FELEM *y_out) {
   if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
@@ -444,8 +444,8 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(
   return 1;
 }
 
-static void ec_GFp_nistp256_add(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
+static void ec_GFp_nistp256_add(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a, const EC_JACOBIAN *b) {
   fiat_p256_felem x1, y1, z1, x2, y2, z2;
   fiat_p256_from_generic(x1, &a->X);
   fiat_p256_from_generic(y1, &a->Y);
@@ -460,8 +460,8 @@ static void ec_GFp_nistp256_add(const EC_GROUP *group, EC_RAW_POINT *r,
   fiat_p256_to_generic(&r->Z, z1);
 }
 
-static void ec_GFp_nistp256_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a) {
+static void ec_GFp_nistp256_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a) {
   fiat_p256_felem x, y, z;
   fiat_p256_from_generic(x, &a->X);
   fiat_p256_from_generic(y, &a->Y);
@@ -472,8 +472,8 @@ static void ec_GFp_nistp256_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
   fiat_p256_to_generic(&r->Z, z);
 }
 
-static void ec_GFp_nistp256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                                      const EC_RAW_POINT *p,
+static void ec_GFp_nistp256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
+                                      const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
   fiat_p256_felem p_pre_comp[17][3];
   OPENSSL_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
@@ -540,7 +540,7 @@ static void ec_GFp_nistp256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 }
 
 static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
-                                           EC_RAW_POINT *r,
+                                           EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {
   // Set nq to the point at infinity.
   fiat_p256_felem nq[3] = {{0}, {0}, {0}}, tmp[3];
@@ -588,9 +588,9 @@ static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
 }
 
 static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
-                                             EC_RAW_POINT *r,
+                                             EC_JACOBIAN *r,
                                              const EC_SCALAR *g_scalar,
-                                             const EC_RAW_POINT *p,
+                                             const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
 #define P256_WSIZE_PUBLIC 4
   // Precompute multiples of |p|. p_pre_comp[i] is (2*i+1) * |p|.
@@ -680,7 +680,7 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
 }
 
 static int ec_GFp_nistp256_cmp_x_coordinate(const EC_GROUP *group,
-                                            const EC_RAW_POINT *p,
+                                            const EC_JACOBIAN *p,
                                             const EC_SCALAR *r) {
   if (ec_GFp_simple_is_at_infinity(group, p)) {
     return 0;

@@ -1343,7 +1343,7 @@ TEST(ECTest, HashToCurve) {
   ASSERT_TRUE(p224);
   bssl::UniquePtr<EC_GROUP> p384(EC_GROUP_new_by_curve_name(NID_secp384r1));
   ASSERT_TRUE(p384);
-  EC_RAW_POINT raw;
+  EC_JACOBIAN raw;
   bssl::UniquePtr<EC_POINT> p_p384(EC_POINT_new(p384.get()));
   ASSERT_TRUE(p_p384);
   bssl::UniquePtr<EC_POINT> p_p224(EC_POINT_new(p224.get()));

@@ -860,7 +860,7 @@ static crypto_word_t p224_get_bit(const EC_SCALAR *in, size_t i) {
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns
 // (X', Y') = (X/Z^2, Y/Z^3)
 static int ec_GFp_nistp224_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_RAW_POINT *point, EC_FELEM *x,
+    const EC_GROUP *group, const EC_JACOBIAN *point, EC_FELEM *x,
     EC_FELEM *y) {
   if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
@@ -895,8 +895,8 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(
   return 1;
 }
 
-static void ec_GFp_nistp224_add(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
+static void ec_GFp_nistp224_add(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a, const EC_JACOBIAN *b) {
   p224_felem x1, y1, z1, x2, y2, z2;
   p224_generic_to_felem(x1, &a->X);
   p224_generic_to_felem(y1, &a->Y);
@@ -911,8 +911,8 @@ static void ec_GFp_nistp224_add(const EC_GROUP *group, EC_RAW_POINT *r,
   p224_felem_to_generic(&r->Z, z1);
 }
 
-static void ec_GFp_nistp224_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a) {
+static void ec_GFp_nistp224_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a) {
   p224_felem x, y, z;
   p224_generic_to_felem(x, &a->X);
   p224_generic_to_felem(y, &a->Y);
@@ -925,7 +925,7 @@ static void ec_GFp_nistp224_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
 }
 
 static void ec_GFp_nistp224_make_precomp(p224_felem out[17][3],
-                                         const EC_RAW_POINT *p) {
+                                         const EC_JACOBIAN *p) {
   OPENSSL_memset(out[0], 0, sizeof(p224_felem) * 3);
 
   p224_generic_to_felem(out[1][0], &p->X);
@@ -943,8 +943,8 @@ static void ec_GFp_nistp224_make_precomp(p224_felem out[17][3],
   }
 }
 
-static void ec_GFp_nistp224_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                                      const EC_RAW_POINT *p,
+static void ec_GFp_nistp224_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
+                                      const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
   p224_felem p_pre_comp[17][3];
   ec_GFp_nistp224_make_precomp(p_pre_comp, p);
@@ -992,7 +992,7 @@ static void ec_GFp_nistp224_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 }
 
 static void ec_GFp_nistp224_point_mul_base(const EC_GROUP *group,
-                                           EC_RAW_POINT *r,
+                                           EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {
   // Set nq to the point at infinity.
   p224_felem nq[3], tmp[3];
@@ -1039,9 +1039,9 @@ static void ec_GFp_nistp224_point_mul_base(const EC_GROUP *group,
 }
 
 static void ec_GFp_nistp224_point_mul_public(const EC_GROUP *group,
-                                             EC_RAW_POINT *r,
+                                             EC_JACOBIAN *r,
                                              const EC_SCALAR *g_scalar,
-                                             const EC_RAW_POINT *p,
+                                             const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
   // TODO(davidben): If P-224 ECDSA verify performance ever matters, using
   // |ec_compute_wNAF| for |p_scalar| would likely be an easy improvement.
