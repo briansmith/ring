@@ -382,7 +382,7 @@ static const char *kBadRules[] = {
   "[AES128-SHA | AES128-SHA256]",
 };
 
-static const char *kMustNotIncludeNull[] = {
+static const char *kMustNotIncludeDeprecated[] = {
   "ALL",
   "DEFAULT",
   "HIGH",
@@ -393,6 +393,11 @@ static const char *kMustNotIncludeNull[] = {
   "SSLv3",
   "TLSv1",
   "TLSv1.2",
+};
+
+static const char* kShouldIncludeCBCSHA256[] = {
+  "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+  "ALL:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
 };
 
 static const CurveTest kCurveTests[] = {
@@ -578,7 +583,7 @@ TEST(SSLTest, CipherRules) {
     ERR_clear_error();
   }
 
-  for (const char *rule : kMustNotIncludeNull) {
+  for (const char *rule : kMustNotIncludeDeprecated) {
     SCOPED_TRACE(rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
     ASSERT_TRUE(ctx);
@@ -586,6 +591,25 @@ TEST(SSLTest, CipherRules) {
     ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), rule));
     for (const SSL_CIPHER *cipher : SSL_CTX_get_ciphers(ctx.get())) {
       EXPECT_NE(NID_undef, SSL_CIPHER_get_cipher_nid(cipher));
+      EXPECT_FALSE(ssl_cipher_is_deprecated(cipher));
+    }
+  }
+
+  {
+    for (const char *rule : kShouldIncludeCBCSHA256) {
+      bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+      ASSERT_TRUE(ctx);
+      ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), rule));
+
+      bool found = false;
+      for (const SSL_CIPHER *cipher : SSL_CTX_get_ciphers(ctx.get())) {
+        if ((TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA256 & 0xffff) ==
+            SSL_CIPHER_get_protocol_id(cipher)) {
+          found = true;
+          break;
+        }
+      }
+      EXPECT_TRUE(found);
     }
   }
 }

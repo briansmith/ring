@@ -1391,7 +1391,7 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   SSL_CTX_set0_buffer_pool(ssl_ctx.get(), g_pool);
 
-  std::string cipher_list = "ALL";
+  std::string cipher_list = "ALL:TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256";
   if (!cipher.empty()) {
     cipher_list = cipher;
     SSL_CTX_set_options(ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);

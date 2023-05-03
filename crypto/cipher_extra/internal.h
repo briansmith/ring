@@ -109,6 +109,14 @@ OPENSSL_EXPORT int EVP_sha1_final_with_secret_suffix(
     SHA_CTX *ctx, uint8_t out[SHA_DIGEST_LENGTH], const uint8_t *in, size_t len,
     size_t max_len);
 
+// EVP_sha256_final_with_secret_suffix acts like
+// |EVP_sha1_final_with_secret_suffix|, but for SHA-256.
+//
+// This function is exported for unit tests.
+OPENSSL_EXPORT int EVP_sha256_final_with_secret_suffix(
+    SHA256_CTX *ctx, uint8_t out[SHA256_DIGEST_LENGTH], const uint8_t *in,
+    size_t len, size_t max_len);
+
 // EVP_tls_cbc_digest_record computes the MAC of a decrypted, padded TLS
 // record.
 //
