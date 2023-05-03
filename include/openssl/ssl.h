@@ -2331,8 +2331,7 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 #define SSL_CURVE_SECP384R1 24
 #define SSL_CURVE_SECP521R1 25
 #define SSL_CURVE_X25519 29
-#define SSL_CURVE_X25519KYBER768 0x6399
-#define SSL_CURVE_P256KYBER768 0xfe32
+#define SSL_CURVE_X25519_KYBER768_DRAFT00 0x6399
 
 // SSL_get_curve_id returns the ID of the curve used by |ssl|'s most recently
 // completed handshake or 0 if not applicable.

@@ -418,7 +418,7 @@ class TLSFuzzer {
       return false;
     }
 
-    static const int kCurves[] = {NID_X25519Kyber768, NID_X25519,
+    static const int kCurves[] = {NID_X25519Kyber768Draft00, NID_X25519,
                                   NID_X9_62_prime256v1, NID_secp384r1,
                                   NID_secp521r1};
     if (!SSL_CTX_set1_curves(ctx_.get(), kCurves,

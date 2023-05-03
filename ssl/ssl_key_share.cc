@@ -196,7 +196,9 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
  public:
   X25519Kyber768KeyShare() {}
 
-  uint16_t GroupID() const override { return SSL_CURVE_X25519KYBER768; }
+  uint16_t GroupID() const override {
+    return SSL_CURVE_X25519_KYBER768_DRAFT00;
+  }
 
   bool Generate(CBB *out) override {
     uint8_t x25519_public_key[32];
@@ -281,38 +283,14 @@ class X25519Kyber768KeyShare : public SSLKeyShare {
   KYBER_private_key kyber_private_key_;
 };
 
-class P256Kyber768KeyShare : public SSLKeyShare {
- public:
-  P256Kyber768KeyShare() {}
-
-  uint16_t GroupID() const override { return SSL_CURVE_P256KYBER768; }
-
-  bool Generate(CBB *out) override {
-    // There is no implementation on Kyber in BoringSSL. BoringSSL must be
-    // patched for this KEM to be workable. It is not enabled by default.
-    return false;
-  }
-
-  bool Encap(CBB *out_ciphertext, Array<uint8_t> *out_secret,
-             uint8_t *out_alert, Span<const uint8_t> peer_key) override {
-    return false;
-  }
-
-  bool Decap(Array<uint8_t> *out_secret, uint8_t *out_alert,
-             Span<const uint8_t> ciphertext) override {
-    return false;
-  }
-};
-
 constexpr NamedGroup kNamedGroups[] = {
     {NID_secp224r1, SSL_CURVE_SECP224R1, "P-224", "secp224r1"},
     {NID_X9_62_prime256v1, SSL_CURVE_SECP256R1, "P-256", "prime256v1"},
     {NID_secp384r1, SSL_CURVE_SECP384R1, "P-384", "secp384r1"},
     {NID_secp521r1, SSL_CURVE_SECP521R1, "P-521", "secp521r1"},
     {NID_X25519, SSL_CURVE_X25519, "X25519", "x25519"},
-    {NID_X25519Kyber768, SSL_CURVE_X25519KYBER768, "X25519KYBER",
-     "X25519Kyber"},
-    {NID_P256Kyber768, SSL_CURVE_P256KYBER768, "P256KYBER", "P256Kyber"},
+    {NID_X25519Kyber768Draft00, SSL_CURVE_X25519_KYBER768_DRAFT00,
+     "X25519Kyber768Draft00", ""},
 };
 
 }  // namespace
@@ -333,10 +311,8 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
       return MakeUnique<ECKeyShare>(NID_secp521r1, SSL_CURVE_SECP521R1);
     case SSL_CURVE_X25519:
       return MakeUnique<X25519KeyShare>();
-    case SSL_CURVE_X25519KYBER768:
+    case SSL_CURVE_X25519_KYBER768_DRAFT00:
       return MakeUnique<X25519Kyber768KeyShare>();
-    case SSL_CURVE_P256KYBER768:
-      return MakeUnique<P256Kyber768KeyShare>();
     default:
       return nullptr;
   }
@@ -359,7 +335,7 @@ bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len) 
       *out_group_id = group.group_id;
       return true;
     }
-    if (len == strlen(group.alias) &&
+    if (strlen(group.alias) > 0 && len == strlen(group.alias) &&
         !strncmp(group.alias, name, len)) {
       *out_group_id = group.group_id;
       return true;

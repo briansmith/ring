@@ -206,8 +206,7 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
 
 static bool is_post_quantum_group(uint16_t id) {
   switch (id) {
-    case SSL_CURVE_X25519KYBER768:
-    case SSL_CURVE_P256KYBER768:
+    case SSL_CURVE_X25519_KYBER768_DRAFT00:
       return true;
     default:
       return false;
