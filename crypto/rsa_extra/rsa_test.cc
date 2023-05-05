@@ -64,6 +64,7 @@
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
 
@@ -1185,6 +1186,112 @@ TEST(RSATest, MissingParameters) {
                           sig.size(), rsa.get()));
   EXPECT_FALSE(RSA_encrypt(rsa.get(), &len, out.data(), out.size(), kPlaintext,
                            kPlaintextLen, RSA_PKCS1_OAEP_PADDING));
+}
+
+TEST(RSATest, Negative) {
+  auto dup_neg = [](const BIGNUM *bn) -> bssl::UniquePtr<BIGNUM> {
+    bssl::UniquePtr<BIGNUM> ret(BN_dup(bn));
+    if (!ret) {
+      return nullptr;
+    }
+    BN_set_negative(ret.get(), 1);
+    return ret;
+  };
+
+  bssl::UniquePtr<RSA> key(
+      RSA_private_key_from_bytes(kFIPSKey, sizeof(kFIPSKey) - 1));
+  ASSERT_TRUE(key);
+  const BIGNUM *n = RSA_get0_n(key.get());
+  bssl::UniquePtr<BIGNUM> neg_n = dup_neg(n);
+  ASSERT_TRUE(neg_n);
+  const BIGNUM *e = RSA_get0_e(key.get());
+  bssl::UniquePtr<BIGNUM> neg_e = dup_neg(e);
+  ASSERT_TRUE(neg_e);
+  const BIGNUM *d = RSA_get0_d(key.get());
+  bssl::UniquePtr<BIGNUM> neg_d = dup_neg(d);
+  ASSERT_TRUE(neg_d);
+  const BIGNUM *p = RSA_get0_p(key.get());
+  bssl::UniquePtr<BIGNUM> neg_p = dup_neg(p);
+  ASSERT_TRUE(neg_p);
+  const BIGNUM *q = RSA_get0_q(key.get());
+  bssl::UniquePtr<BIGNUM> neg_q = dup_neg(q);
+  ASSERT_TRUE(neg_q);
+  const BIGNUM *dmp1 = RSA_get0_dmp1(key.get());
+  bssl::UniquePtr<BIGNUM> neg_dmp1 = dup_neg(dmp1);
+  ASSERT_TRUE(neg_dmp1);
+  const BIGNUM *dmq1 = RSA_get0_dmq1(key.get());
+  bssl::UniquePtr<BIGNUM> neg_dmq1 = dup_neg(dmq1);
+  ASSERT_TRUE(neg_dmq1);
+  const BIGNUM *iqmp = RSA_get0_iqmp(key.get());
+  bssl::UniquePtr<BIGNUM> neg_iqmp = dup_neg(iqmp);
+  ASSERT_TRUE(neg_iqmp);
+
+  EXPECT_FALSE(RSA_new_public_key(neg_n.get(), e));
+  EXPECT_FALSE(RSA_new_public_key(n, neg_e.get()));
+  EXPECT_FALSE(RSA_new_private_key(neg_n.get(), e, d, p, q, dmp1, dmq1, iqmp));
+  EXPECT_FALSE(RSA_new_private_key(n, neg_e.get(), d, p, q, dmp1, dmq1, iqmp));
+  EXPECT_FALSE(RSA_new_private_key(n, e, neg_d.get(), p, q, dmp1, dmq1, iqmp));
+  EXPECT_FALSE(RSA_new_private_key(n, e, d, neg_p.get(), q, dmp1, dmq1, iqmp));
+  EXPECT_FALSE(RSA_new_private_key(n, e, d, p, neg_q.get(), dmp1, dmq1, iqmp));
+  EXPECT_FALSE(RSA_new_private_key(n, e, d, p, q, neg_dmp1.get(), dmq1, iqmp));
+  EXPECT_FALSE(RSA_new_private_key(n, e, d, p, q, dmp1, neg_dmq1.get(), iqmp));
+  EXPECT_FALSE(RSA_new_private_key(n, e, d, p, q, dmp1, dmq1, neg_iqmp.get()));
+}
+
+TEST(RSATest, LargeE) {
+  // Test an RSA key with large e by swapping d and e in kFIPSKey. Since e is
+  // small, e mod (p-1) and e mod (q-1) will simply be e.
+  bssl::UniquePtr<RSA> key(
+      RSA_private_key_from_bytes(kFIPSKey, sizeof(kFIPSKey) - 1));
+  ASSERT_TRUE(key);
+  const BIGNUM *n = RSA_get0_n(key.get());
+  const BIGNUM *e = RSA_get0_e(key.get());
+  const BIGNUM *d = RSA_get0_d(key.get());
+  const BIGNUM *p = RSA_get0_p(key.get());
+  const BIGNUM *q = RSA_get0_q(key.get());
+  const BIGNUM *iqmp = RSA_get0_iqmp(key.get());
+
+  // By default, the large exponent is not allowed as e.
+  bssl::UniquePtr<RSA> pub(RSA_new_public_key(n, /*e=*/d));
+  EXPECT_FALSE(pub);
+  bssl::UniquePtr<RSA> priv(RSA_new_private_key(n, /*e=*/d, /*d=*/e, p, q,
+                                                /*dmp1=*/e, /*dmq1=*/e, iqmp));
+  EXPECT_FALSE(priv);
+
+  // But the "large e" APIs tolerate it.
+  pub.reset(RSA_new_public_key_large_e(n, /*e=*/d));
+  ASSERT_TRUE(pub);
+  priv.reset(RSA_new_private_key_large_e(n, /*e=*/d, /*d=*/e, p, q, /*dmp1=*/e,
+                                         /*dmq1=*/e, iqmp));
+  ASSERT_TRUE(priv);
+
+  // Test that operations work correctly.
+  static const uint8_t kDigest[32] = {0};
+  std::vector<uint8_t> sig(RSA_size(priv.get()));
+  size_t len;
+  ASSERT_TRUE(RSA_sign_pss_mgf1(priv.get(), &len, sig.data(), sig.size(),
+                                kDigest, sizeof(kDigest), EVP_sha256(),
+                                EVP_sha256(), /*salt_len=*/32));
+  sig.resize(len);
+
+  EXPECT_TRUE(RSA_verify_pss_mgf1(pub.get(), kDigest, sizeof(kDigest),
+                                  EVP_sha256(), EVP_sha256(), /*salt_len=*/32,
+                                  sig.data(), sig.size()));
+
+  // e = 1 is still invalid.
+  EXPECT_FALSE(RSA_new_public_key_large_e(n, BN_value_one()));
+
+  // e must still be odd.
+  bssl::UniquePtr<BIGNUM> bad_e(BN_dup(d));
+  ASSERT_TRUE(bad_e);
+  ASSERT_TRUE(BN_add_word(bad_e.get(), 1));
+  EXPECT_FALSE(RSA_new_public_key_large_e(n, bad_e.get()));
+
+  // e must still be bounded by n.
+  bad_e.reset(BN_dup(n));
+  ASSERT_TRUE(bad_e);
+  ASSERT_TRUE(BN_add_word(bad_e.get(), 2));  // Preserve parity.
+  EXPECT_FALSE(RSA_new_public_key_large_e(n, bad_e.get()));
 }
 
 #if !defined(BORINGSSL_SHARED_LIBRARY)

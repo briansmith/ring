@@ -85,31 +85,43 @@ int rsa_check_public_key(const RSA *rsa) {
     return 0;
   }
 
-  // RSA moduli must be odd. In addition to being necessary for RSA in general,
-  // we cannot setup Montgomery reduction with even moduli.
-  if (!BN_is_odd(rsa->n)) {
+  // RSA moduli must be positive and odd. In addition to being necessary for RSA
+  // in general, we cannot setup Montgomery reduction with even moduli.
+  if (!BN_is_odd(rsa->n) || BN_is_negative(rsa->n)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
   }
 
-  // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
-  // the limit based on the recommendations in [1] and [2]. Windows CryptoAPI
-  // doesn't support values larger than 32 bits [3], so it is unlikely that
-  // exponents larger than 32 bits are being used for anything Windows commonly
-  // does.
-  //
-  // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-  // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-  // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
   static const unsigned kMaxExponentBits = 33;
   if (rsa->e != NULL) {
+    // Reject e = 1, negative e, and even e. e must be odd to be relatively
+    // prime with phi(n).
     unsigned e_bits = BN_num_bits(rsa->e);
-    if (e_bits > kMaxExponentBits ||
-        // Additionally reject e = 1 or even e. e must be odd to be relatively
-        // prime with phi(n).
-        e_bits < 2 || !BN_is_odd(rsa->e)) {
+    if (e_bits < 2 || BN_is_negative(rsa->e) || !BN_is_odd(rsa->e)) {
       OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
       return 0;
+    }
+    if (rsa->flags & RSA_FLAG_LARGE_PUBLIC_EXPONENT) {
+      // The caller has requested disabling DoS protections. Still, e must be
+      // less than n.
+      if (BN_ucmp(rsa->n, rsa->e) <= 0) {
+        OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+        return 0;
+      }
+    } else {
+      // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen
+      // as the limit based on the recommendations in [1] and [2]. Windows
+      // CryptoAPI doesn't support values larger than 32 bits [3], so it is
+      // unlikely that exponents larger than 32 bits are being used for anything
+      // Windows commonly does.
+      //
+      // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
+      // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
+      // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
+      if (e_bits > kMaxExponentBits) {
+        OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+        return 0;
+      }
     }
   } else if (!(rsa->flags & RSA_FLAG_NO_PUBLIC_EXPONENT)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
