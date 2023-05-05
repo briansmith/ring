@@ -32,9 +32,9 @@ most recent stable version of each tool.
 
   * C and C++ compilers with C++14 support are required. If using a C compiler
     other than MSVC, C11 support is also requried. On Windows, MSVC from
-    Visual Studio 2017 or later with Platform SDK 8.1 or later are supported,
-    but newer versions are recommended. Recent versions of GCC (6.1+) and Clang
-    should work on non-Windows platforms, and maybe on Windows too.
+    Visual Studio 2019 or later with Windows 10 SDK 2104 or later are supported,
+    but using the latest versions is recommended. Recent versions of GCC (6.1+)
+    and Clang should work on non-Windows platforms, and maybe on Windows too.
 
   * The most recent stable version of [Go](https://golang.org/dl/) is required.
     Note Go is exempt from the five year support window. If not found by CMake,

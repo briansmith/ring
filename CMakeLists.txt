@@ -203,11 +203,6 @@ elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
       "C4100" # 'exarg' : unreferenced formal parameter
       "C4127" # conditional expression is constant
-      # C4204 and C4221 are C89-only restrictions which were dropped in C99, but
-      # VS2017 warns about it. They can be removed when we require VS2019.
-      "C4204" # nonstandard extension used: non-constant aggregate initializer
-      "C4221" # nonstandard extension used : 'identifier' : cannot be
-              # initialized using address of automatic variable
       "C4244" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
       "C4267" # conversion from 'size_t' to 'int', possible loss of data
