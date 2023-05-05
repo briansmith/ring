@@ -1694,3 +1694,25 @@ const char *SSL_COMP_get0_name(const SSL_COMP *comp) { return comp->name; }
 int SSL_COMP_get_id(const SSL_COMP *comp) { return comp->id; }
 
 void SSL_COMP_free_compression_methods(void) {}
+
+size_t SSL_get_all_cipher_names(const char **out, size_t max_out) {
+  auto span = MakeSpan(out, max_out);
+  if (!span.empty()) {
+    // |SSL_CIPHER_get_name| returns "(NONE)" for null.
+    span[0] = "(NONE)";
+    span = span.subspan(1);
+  }
+  span = span.subspan(0, OPENSSL_ARRAY_SIZE(kCiphers));
+  for (size_t i = 0; i < span.size(); i++) {
+    span[i] = kCiphers[i].name;
+  }
+  return 1 + OPENSSL_ARRAY_SIZE(kCiphers);
+}
+
+size_t SSL_get_all_standard_cipher_names(const char **out, size_t max_out) {
+  auto span = MakeSpan(out, max_out).subspan(0, OPENSSL_ARRAY_SIZE(kCiphers));
+  for (size_t i = 0; i < span.size(); i++) {
+    span[i] = kCiphers[i].standard_name;
+  }
+  return OPENSSL_ARRAY_SIZE(kCiphers);
+}

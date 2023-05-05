@@ -64,6 +64,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
+#include <openssl/span.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -525,6 +526,27 @@ const char *SSL_get_signature_algorithm_name(uint16_t sigalg,
   }
 
   return NULL;
+}
+
+size_t SSL_get_all_signature_algorithm_names(const char **out, size_t max_out) {
+  auto span = MakeSpan(out, max_out);
+  if (!span.empty()) {
+    span[0] = "ecdsa_sha256";
+    span = span.subspan(1);
+  }
+  if (!span.empty()) {
+    span[0] = "ecdsa_sha384";
+    span = span.subspan(1);
+  }
+  if (!span.empty()) {
+    span[0] = "ecdsa_sha512";
+    span = span.subspan(1);
+  }
+  span = span.subspan(0, OPENSSL_ARRAY_SIZE(kSignatureAlgorithmNames));
+  for (size_t i = 0; i < span.size(); i++) {
+    span[i] = kSignatureAlgorithmNames[i].name;
+  }
+  return 3 + OPENSSL_ARRAY_SIZE(kSignatureAlgorithmNames);
 }
 
 int SSL_get_signature_algorithm_key_type(uint16_t sigalg) {

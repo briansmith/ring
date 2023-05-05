@@ -278,6 +278,20 @@ static uint16_t GetProtocolVersion(const SSL *ssl) {
   return 0x0201 + ~version;
 }
 
+static bool CheckListContains(const char *type,
+                              size_t (*list_func)(const char **, size_t),
+                              const char *str) {
+  std::vector<const char *> list(list_func(nullptr, 0));
+  list_func(list.data(), list.size());
+  for (const char *expected : list) {
+    if (strcmp(expected, str) == 0) {
+      return true;
+    }
+  }
+  fprintf(stderr, "Unexpected %s: %s\n", type, str);
+  return false;
+}
+
 // CheckAuthProperties checks, after the initial handshake is completed or
 // after a renegotiation, that authentication-related properties match |config|.
 static bool CheckAuthProperties(SSL *ssl, bool is_resume,
@@ -667,6 +681,30 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   if (config->expect_key_usage_invalid != !!SSL_was_key_usage_invalid(ssl)) {
     fprintf(stderr, "X.509 key usage was %svalid, but wanted opposite.\n",
             SSL_was_key_usage_invalid(ssl) ? "in" : "");
+    return false;
+  }
+
+  // Check all the selected parameters are covered by the string APIs.
+  if (!CheckListContains("version", SSL_get_all_version_names,
+                         SSL_get_version(ssl)) ||
+      !CheckListContains(
+          "cipher", SSL_get_all_standard_cipher_names,
+          SSL_CIPHER_standard_name(SSL_get_current_cipher(ssl))) ||
+      !CheckListContains("OpenSSL cipher name", SSL_get_all_cipher_names,
+                         SSL_CIPHER_get_name(SSL_get_current_cipher(ssl))) ||
+      (SSL_get_curve_id(ssl) != 0 &&
+       !CheckListContains("curve", SSL_get_all_curve_names,
+                          SSL_get_curve_name(SSL_get_curve_id(ssl)))) ||
+      (SSL_get_peer_signature_algorithm(ssl) != 0 &&
+       !CheckListContains(
+           "sigalg", SSL_get_all_signature_algorithm_names,
+           SSL_get_signature_algorithm_name(
+               SSL_get_peer_signature_algorithm(ssl), /*include_curve=*/0))) ||
+      (SSL_get_peer_signature_algorithm(ssl) != 0 &&
+       !CheckListContains(
+           "sigalg with curve", SSL_get_all_signature_algorithm_names,
+           SSL_get_signature_algorithm_name(
+               SSL_get_peer_signature_algorithm(ssl), /*include_curve=*/1)))) {
     return false;
   }
 
