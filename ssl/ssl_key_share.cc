@@ -359,10 +359,6 @@ const char* SSL_get_curve_name(uint16_t group_id) {
 }
 
 size_t SSL_get_all_curve_names(const char **out, size_t max_out) {
-  auto span =
-      MakeSpan(out, max_out).subspan(0, OPENSSL_ARRAY_SIZE(kNamedGroups));
-  for (size_t i = 0; i < span.size(); i++) {
-    span[i] = kNamedGroups[i].name;
-  }
-  return OPENSSL_ARRAY_SIZE(kNamedGroups);
+  return GetAllNames(out, max_out, Span<const char *>(), &NamedGroup::name,
+                     MakeConstSpan(kNamedGroups));
 }

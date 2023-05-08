@@ -451,6 +451,27 @@ class GrowableArray {
 // CBBFinishArray behaves like |CBB_finish| but stores the result in an Array.
 OPENSSL_EXPORT bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out);
 
+// GetAllNames helps to implement |*_get_all_*_names| style functions. It
+// writes at most |max_out| string pointers to |out| and returns the number that
+// it would have liked to have written. The strings written consist of
+// |fixed_names_len| strings from |fixed_names| followed by |objects_len|
+// strings taken by projecting |objects| through |name|.
+template <typename T, typename Name>
+inline size_t GetAllNames(const char **out, size_t max_out,
+                          Span<const char *const> fixed_names, Name(T::*name),
+                          Span<const T> objects) {
+  auto span = bssl::MakeSpan(out, max_out);
+  for (size_t i = 0; !span.empty() && i < fixed_names.size(); i++) {
+    span[0] = fixed_names[i];
+    span = span.subspan(1);
+  }
+  span = span.subspan(0, objects.size());
+  for (size_t i = 0; i < span.size(); i++) {
+    span[i] = objects[i].*name;
+  }
+  return fixed_names.size() + objects.size();
+}
+
 
 // Protocol versions.
 //

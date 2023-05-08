@@ -205,6 +205,11 @@ auto MakeConstSpan(const C &c) -> decltype(MakeConstSpan(c.data(), c.size())) {
   return MakeConstSpan(c.data(), c.size());
 }
 
+template <typename T, size_t size>
+Span<const T> MakeConstSpan(T (&array)[size]) {
+  return array;
+}
+
 BSSL_NAMESPACE_END
 
 }  // extern C++
