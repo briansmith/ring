@@ -182,6 +182,7 @@ use self::sysrand_or_urandom::fill as fill_impl;
 #[cfg(any(
     target_os = "dragonfly",
     target_os = "freebsd",
+    target_os = "haiku",
     target_os = "illumos",
     target_os = "netbsd",
     target_os = "openbsd",
@@ -358,7 +359,8 @@ mod sysrand_or_urandom {
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris",
-    target_os = "illumos"
+    target_os = "illumos",
+    target_os = "haiku"
 ))]
 mod urandom {
     use crate::error;
