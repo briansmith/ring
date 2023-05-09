@@ -128,6 +128,7 @@ impl crate::sealed::Sealed for SystemRandom {}
     target_os = "android",
     target_os = "dragonfly",
     target_os = "freebsd",
+    target_os = "haiku",
     target_os = "illumos",
     target_os = "ios",
     target_os = "linux",
