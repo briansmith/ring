@@ -17,7 +17,14 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include <algorithm>
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+  // The string-based extensions APIs routinely produce output quadratic in
+  // their input. Cap the input size to mitigate this. See also
+  // https://crbug.com/boringssl/611.
+  len = std::min(len, size_t{8 * 1024});
+
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(buf, len));
   bssl::UniquePtr<CONF> conf(NCONF_new(nullptr));
   if (NCONF_load_bio(conf.get(), bio.get(), nullptr)) {

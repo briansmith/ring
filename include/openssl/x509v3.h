@@ -549,9 +549,11 @@ OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
 //
 // These functions are not safe to use with untrusted inputs. The string formats
 // may implicitly reference context information and, in OpenSSL (though not
-// BoringSSL), one even allows reading arbitrary files. They additionally see
-// much less testing and review than most of the library and may have bugs
-// including memory leaks or crashes.
+// BoringSSL), one even allows reading arbitrary files. Many formats can also
+// produce far larger outputs than their inputs, so untrusted inputs may lead to
+// denial-of-service attacks. Finally, the parsers see much less testing and
+// review than most of the library and may have bugs including memory leaks or
+// crashes.
 
 // v3_ext_ctx, aka |X509V3_CTX|, contains additional context information for
 // constructing extensions. Some string formats reference additional values in
