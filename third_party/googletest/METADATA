@@ -6,11 +6,10 @@ third_party {
     type: HOMEPAGE
     value: "https://github.com/google/googletest"
   }
-  version: "389cb68b87193358358ae87cc56d257fd0d80189"
-  last_upgrade_date { year: 2021 month: 1 day: 6 }
+  version: "bb2941fcc611b9e4eaf16f156e8c723348bf0931"
+  last_upgrade_date { year: 2023 month: 5 day: 11 }
 
   local_modifications:
       "Only googletest, not googlemock, is included."
-      "Applied https://github.com/google/googletest/pull/3206."
-      "Applied cl/529512111"
+      "CONTRIBUTORS and LICENSE files copied from the top-level."
 }

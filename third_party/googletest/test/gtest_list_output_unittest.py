@@ -40,7 +40,7 @@ This script tests such functionality by invoking gtest_list_output_unittest_
 
 import os
 import re
-import gtest_test_utils
+from googletest.test import gtest_test_utils
 
 GTEST_LIST_TESTS_FLAG = '--gtest_list_tests'
 GTEST_OUTPUT_FLAG = '--gtest_output'
@@ -56,20 +56,20 @@ EXPECTED_XML = """<\?xml version="1.0" encoding="UTF-8"\?>
     <testcase name="Test4" file=".*gtest_list_output_unittest_.cc" line="49" />
   </testsuite>
   <testsuite name="TypedTest/0" tests="2">
-    <testcase name="Test7" type_param="int" file=".*gtest_list_output_unittest_.cc" line="61" />
-    <testcase name="Test8" type_param="int" file=".*gtest_list_output_unittest_.cc" line="62" />
+    <testcase name="Test7" type_param="int" file=".*gtest_list_output_unittest_.cc" line="60" />
+    <testcase name="Test8" type_param="int" file=".*gtest_list_output_unittest_.cc" line="61" />
   </testsuite>
   <testsuite name="TypedTest/1" tests="2">
-    <testcase name="Test7" type_param="bool" file=".*gtest_list_output_unittest_.cc" line="61" />
-    <testcase name="Test8" type_param="bool" file=".*gtest_list_output_unittest_.cc" line="62" />
+    <testcase name="Test7" type_param="bool" file=".*gtest_list_output_unittest_.cc" line="60" />
+    <testcase name="Test8" type_param="bool" file=".*gtest_list_output_unittest_.cc" line="61" />
   </testsuite>
   <testsuite name="Single/TypeParameterizedTestSuite/0" tests="2">
-    <testcase name="Test9" type_param="int" file=".*gtest_list_output_unittest_.cc" line="69" />
-    <testcase name="Test10" type_param="int" file=".*gtest_list_output_unittest_.cc" line="70" />
+    <testcase name="Test9" type_param="int" file=".*gtest_list_output_unittest_.cc" line="66" />
+    <testcase name="Test10" type_param="int" file=".*gtest_list_output_unittest_.cc" line="67" />
   </testsuite>
   <testsuite name="Single/TypeParameterizedTestSuite/1" tests="2">
-    <testcase name="Test9" type_param="bool" file=".*gtest_list_output_unittest_.cc" line="69" />
-    <testcase name="Test10" type_param="bool" file=".*gtest_list_output_unittest_.cc" line="70" />
+    <testcase name="Test9" type_param="bool" file=".*gtest_list_output_unittest_.cc" line="66" />
+    <testcase name="Test10" type_param="bool" file=".*gtest_list_output_unittest_.cc" line="67" />
   </testsuite>
   <testsuite name="ValueParam/ValueParamTest" tests="4">
     <testcase name="Test5/0" value_param="33" file=".*gtest_list_output_unittest_.cc" line="52" />
@@ -124,13 +124,13 @@ EXPECTED_JSON = """{
           "name": "Test7",
           "type_param": "int",
           "file": ".*gtest_list_output_unittest_.cc",
-          "line": 61
+          "line": 60
         },
         {
           "name": "Test8",
           "type_param": "int",
           "file": ".*gtest_list_output_unittest_.cc",
-          "line": 62
+          "line": 61
         }
       \]
     },
@@ -142,13 +142,13 @@ EXPECTED_JSON = """{
           "name": "Test7",
           "type_param": "bool",
           "file": ".*gtest_list_output_unittest_.cc",
-          "line": 61
+          "line": 60
         },
         {
           "name": "Test8",
           "type_param": "bool",
           "file": ".*gtest_list_output_unittest_.cc",
-          "line": 62
+          "line": 61
         }
       \]
     },
@@ -160,13 +160,13 @@ EXPECTED_JSON = """{
           "name": "Test9",
           "type_param": "int",
           "file": ".*gtest_list_output_unittest_.cc",
-          "line": 69
+          "line": 66
         },
         {
           "name": "Test10",
           "type_param": "int",
           "file": ".*gtest_list_output_unittest_.cc",
-          "line": 70
+          "line": 67
         }
       \]
     },
@@ -178,13 +178,13 @@ EXPECTED_JSON = """{
           "name": "Test9",
           "type_param": "bool",
           "file": ".*gtest_list_output_unittest_.cc",
-          "line": 69
+          "line": 66
         },
         {
           "name": "Test10",
           "type_param": "bool",
           "file": ".*gtest_list_output_unittest_.cc",
-          "line": 70
+          "line": 67
         }
       \]
     },
@@ -224,8 +224,7 @@ EXPECTED_JSON = """{
 
 
 class GTestListTestsOutputUnitTest(gtest_test_utils.TestCase):
-  """Unit test for Google Test's list tests with output to file functionality.
-  """
+  """Unit test for Google Test's list tests with output to file functionality."""
 
   def testXml(self):
     """Verifies XML output for listing tests in a Google Test binary.
@@ -244,19 +243,22 @@ class GTestListTestsOutputUnitTest(gtest_test_utils.TestCase):
     self._TestOutput('json', EXPECTED_JSON)
 
   def _GetOutput(self, out_format):
-    file_path = os.path.join(gtest_test_utils.GetTempDir(),
-                             'test_out.' + out_format)
+    file_path = os.path.join(
+        gtest_test_utils.GetTempDir(), 'test_out.' + out_format
+    )
     gtest_prog_path = gtest_test_utils.GetTestExecutablePath(
-        'gtest_list_output_unittest_')
+        'gtest_list_output_unittest_'
+    )
 
-    command = ([
+    command = [
         gtest_prog_path,
         '%s=%s:%s' % (GTEST_OUTPUT_FLAG, out_format, file_path),
-        '--gtest_list_tests'
-    ])
+        '--gtest_list_tests',
+    ]
     environ_copy = os.environ.copy()
     p = gtest_test_utils.Subprocess(
-        command, env=environ_copy, working_dir=gtest_test_utils.GetTempDir())
+        command, env=environ_copy, working_dir=gtest_test_utils.GetTempDir()
+    )
 
     self.assertTrue(p.exited)
     self.assertEqual(0, p.exit_code)
@@ -275,9 +277,10 @@ class GTestListTestsOutputUnitTest(gtest_test_utils.TestCase):
       expected_line_re = re.compile(expected_line.strip())
       self.assertTrue(
           expected_line_re.match(actual_line.strip()),
-          ('actual output of "%s",\n'
-           'which does not match expected regex of "%s"\n'
-           'on line %d' % (actual, expected_output, line_count)))
+          'actual output of "%s",\n'
+          'which does not match expected regex of "%s"\n'
+          'on line %d' % (actual, expected_output, line_count),
+      )
       line_count = line_count + 1
 
 

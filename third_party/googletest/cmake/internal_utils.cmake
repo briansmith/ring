@@ -16,13 +16,18 @@ if (POLICY CMP0054)
   cmake_policy(SET CMP0054 NEW)
 endif (POLICY CMP0054)
 
+if (POLICY CMP0069)
+  cmake_policy(SET CMP0069 NEW)
+endif (POLICY CMP0069)
+
 # Tweaks CMake's default compiler/linker settings to suit Google Test's needs.
 #
 # This must be a macro(), as inside a function string() can only
 # update variables in the function scope.
 macro(fix_default_compiler_settings_)
-  if (MSVC)
-    # For MSVC, CMake sets certain flags to defaults we want to override.
+  if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC|Clang")
+    # For MSVC and Clang, CMake sets certain flags to defaults we want to
+    # override.
     # This replacement code is taken from sample in the CMake Wiki at
     # https://gitlab.kitware.com/cmake/community/wikis/FAQ#dynamic-replace.
     foreach (flag_var
@@ -39,6 +44,10 @@ macro(fix_default_compiler_settings_)
         # on CRT DLLs being available. CMake always defaults to using shared
         # CRT libraries, so we override that default here.
         string(REPLACE "/MD" "-MT" ${flag_var} "${${flag_var}}")
+
+        # When using Ninja with Clang, static builds pass -D_DLL on Windows.
+        # This is incorrect and should not happen, so we fix that here.
+        string(REPLACE "-D_DLL" "" ${flag_var} "${${flag_var}}")
       endif()
 
       # We prefer more strict warning checking for building Google Test.
@@ -72,7 +81,7 @@ macro(config_compiler_and_linker)
   if (MSVC)
     # Newlines inside flags variables break CMake's NMake generator.
     # TODO(vladl@google.com): Add -RTCs and -RTCu to debug builds.
-    set(cxx_base_flags "-GS -W4 -WX -wd4251 -wd4275 -nologo -J -Zi")
+    set(cxx_base_flags "-GS -W4 -WX -wd4251 -wd4275 -nologo -J")
     set(cxx_base_flags "${cxx_base_flags} -D_UNICODE -DUNICODE -DWIN32 -D_WIN32")
     set(cxx_base_flags "${cxx_base_flags} -DSTRICT -DWIN32_LEAN_AND_MEAN")
     set(cxx_exception_flags "-EHsc -D_HAS_EXCEPTIONS=1")
@@ -81,14 +90,18 @@ macro(config_compiler_and_linker)
     # Suppress "unreachable code" warning
     # http://stackoverflow.com/questions/3232669 explains the issue.
     set(cxx_base_flags "${cxx_base_flags} -wd4702")
+    # Ensure MSVC treats source files as UTF-8 encoded.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+      set(cxx_base_flags "${cxx_base_flags} -utf-8")
+    endif()
   elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(cxx_base_flags "-Wall -Wshadow -Werror -Wconversion")
+    set(cxx_base_flags "-Wall -Wshadow -Wconversion -Wundef")
     set(cxx_exception_flags "-fexceptions")
     set(cxx_no_exception_flags "-fno-exceptions")
     set(cxx_strict_flags "-W -Wpointer-arith -Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch -Wunused-parameter -Wcast-align -Wchar-subscripts -Winline -Wredundant-decls")
     set(cxx_no_rtti_flags "-fno-rtti")
   elseif (CMAKE_COMPILER_IS_GNUCXX)
-    set(cxx_base_flags "-Wall -Wshadow -Werror")
+    set(cxx_base_flags "-Wall -Wshadow -Wundef")
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0.0)
       set(cxx_base_flags "${cxx_base_flags} -Wno-error=dangling-else")
     endif()
@@ -148,20 +161,18 @@ function(cxx_library_with_type name type cxx_flags)
   # type can be either STATIC or SHARED to denote a static or shared library.
   # ARGN refers to additional arguments after 'cxx_flags'.
   add_library(${name} ${type} ${ARGN})
+  add_library(${cmake_package_name}::${name} ALIAS ${name})
   set_target_properties(${name}
     PROPERTIES
     COMPILE_FLAGS "${cxx_flags}")
-  # Generate debug library name with a postfix.
-  set_target_properties(${name}
-    PROPERTIES
-    DEBUG_POSTFIX "d")
   # Set the output directory for build artifacts
   set_target_properties(${name}
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
-    PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
   # make PDBs match library name
   get_target_property(pdb_debug_postfix ${name} DEBUG_POSTFIX)
   set_target_properties(${name}
@@ -190,7 +201,7 @@ function(cxx_library_with_type name type cxx_flags)
   endif()
 
   if (NOT "${CMAKE_VERSION}" VERSION_LESS "3.8")
-    target_compile_features(${name} PUBLIC cxx_std_11)
+    target_compile_features(${name} PUBLIC cxx_std_14)
   endif()
 endfunction()
 
@@ -243,13 +254,21 @@ function(cxx_executable name dir libs)
     ${name} "${cxx_default}" "${libs}" "${dir}/${name}.cc" ${ARGN})
 endfunction()
 
+# CMP0094 policy enables finding a Python executable in the LOCATION order, as
+# specified by the PATH environment variable.
+if (POLICY CMP0094)
+  cmake_policy(SET CMP0094 NEW)
+endif()
+
 # Sets PYTHONINTERP_FOUND and PYTHON_EXECUTABLE.
 if ("${CMAKE_VERSION}" VERSION_LESS "3.12.0")
   find_package(PythonInterp)
+  set(PYTHONINTERP_FOUND ${PYTHONINTERP_FOUND} CACHE INTERNAL "")
+  set(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} CACHE INTERNAL "")
 else()
   find_package(Python COMPONENTS Interpreter)
-  set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND})
-  set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+  set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND} CACHE INTERNAL "")
+  set(PYTHON_EXECUTABLE ${Python_EXECUTABLE} CACHE INTERNAL "")
 endif()
 
 # cxx_test_with_flags(name cxx_flags libs srcs...)
@@ -301,6 +320,8 @@ function(py_test name)
         COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test/${name}.py
           --build_dir=${CMAKE_CURRENT_BINARY_DIR}/\${CTEST_CONFIGURATION_TYPE} ${ARGN})
     endif()
+    # Make the Python import path consistent between Bazel and CMake.
+    set_tests_properties(${name} PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_SOURCE_DIR})
   endif(PYTHONINTERP_FOUND)
 endfunction()
 

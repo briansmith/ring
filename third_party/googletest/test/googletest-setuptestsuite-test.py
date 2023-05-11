@@ -1,4 +1,7 @@
-# Copyright 2013 Google Inc. All Rights Reserved.
+#!/usr/bin/env python
+#
+# Copyright 2019, Google Inc.
+# All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -26,58 +29,30 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Shared utilities for writing scripts for Google Test/Mock."""
+"""Verifies that SetUpTestSuite and TearDownTestSuite errors are noticed."""
 
-__author__ = 'wan@google.com (Zhanyong Wan)'
+from googletest.test import gtest_test_utils
 
-
-import os
-import re
-
-
-# Matches the line from 'svn info .' output that describes what SVN
-# path the current local directory corresponds to.  For example, in
-# a googletest SVN workspace's trunk/test directory, the output will be:
-#
-# URL: https://googletest.googlecode.com/svn/trunk/test
-_SVN_INFO_URL_RE = re.compile(r'^URL: https://(\w+)\.googlecode\.com/svn(.*)')
+COMMAND = gtest_test_utils.GetTestExecutablePath(
+    'googletest-setuptestsuite-test_'
+)
 
 
-def GetCommandOutput(command):
-  """Runs the shell command and returns its stdout as a list of lines."""
+class GTestSetUpTestSuiteTest(gtest_test_utils.TestCase):
 
-  f = os.popen(command, 'r')
-  lines = [line.strip() for line in f.readlines()]
-  f.close()
-  return lines
+  def testSetupErrorAndTearDownError(self):
+    p = gtest_test_utils.Subprocess(COMMAND)
+    self.assertNotEqual(p.exit_code, 0, msg=p.output)
 
-
-def GetSvnInfo():
-  """Returns the project name and the current SVN workspace's root path."""
-
-  for line in GetCommandOutput('svn info .'):
-    m = _SVN_INFO_URL_RE.match(line)
-    if m:
-      project = m.group(1)  # googletest or googlemock
-      rel_path = m.group(2)
-      root = os.path.realpath(rel_path.count('/') * '../')
-      return project, root
-
-  return None, None
+    self.assertIn(
+        (
+            '[  FAILED  ] SetupFailTest: SetUpTestSuite or TearDownTestSuite\n['
+            '  FAILED  ] TearDownFailTest: SetUpTestSuite or'
+            ' TearDownTestSuite\n\n 2 FAILED TEST SUITES\n'
+        ),
+        p.output,
+    )
 
 
-def GetSvnTrunk():
-  """Returns the current SVN workspace's trunk root path."""
-
-  _, root = GetSvnInfo()
-  return root + '/trunk' if root else None
-
-
-def IsInGTestSvn():
-  project, _ = GetSvnInfo()
-  return project == 'googletest'
-
-
-def IsInGMockSvn():
-  project, _ = GetSvnInfo()
-  return project == 'googlemock'
+if __name__ == '__main__':
+  gtest_test_utils.Main()
