@@ -32,6 +32,9 @@ pub mod aes;
 /// BoringSSL implemented hash functions.
 pub mod digest;
 
+/// BoringSSL implemented Ed25519 operations.
+pub mod ed25519;
+
 /// BoringSSL implemented hkdf operations.
 pub mod hkdf;
 
@@ -61,6 +64,10 @@ impl CSlice<'_> {
         } else {
             self.0.as_ptr() as *const T
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
