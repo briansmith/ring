@@ -740,22 +740,6 @@ TEST(RSATest, BlindingDisabled) {
       RSA_verify(NID_sha256, kZeros, sizeof(kZeros), sig, sig_len, rsa.get()));
 }
 
-// Test that decrypting with a public key fails gracefully rather than crashing.
-TEST(RSATest, DecryptPublic) {
-  bssl::UniquePtr<RSA> pub(
-      RSA_public_key_from_bytes(kFIPSPublicKey, sizeof(kFIPSPublicKey) - 1));
-  ASSERT_TRUE(pub);
-  ASSERT_EQ(1024u / 8u, RSA_size(pub.get()));
-
-  size_t len;
-  uint8_t in[1024 / 8] = {0}, out[1024 / 8];
-  EXPECT_FALSE(RSA_decrypt(pub.get(), &len, out, sizeof(out), in, sizeof(in),
-                           RSA_PKCS1_PADDING));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
-  EXPECT_EQ(RSA_R_VALUE_MISSING, ERR_GET_REASON(err));
-}
-
 TEST(RSATest, CheckKey) {
   static const char kN[] =
       "b5a5651bc2e15ce31d789f0984053a2ea0cf8f964a78068c45acfdf078c57fd62d5a287c"
@@ -1170,22 +1154,38 @@ TEST(RSATest, MissingParameters) {
   bssl::UniquePtr<RSA> rsa(
       RSA_new_public_key(RSA_get0_n(sample.get()), RSA_get0_e(sample.get())));
   ASSERT_TRUE(rsa);
+
   std::vector<uint8_t> out(RSA_size(sample.get()));
   EXPECT_FALSE(RSA_sign(NID_sha256, kZeros, sizeof(kZeros), out.data(), &len_u,
                         rsa.get()));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_VALUE_MISSING, ERR_GET_REASON(err));
+
   size_t len;
   EXPECT_FALSE(RSA_decrypt(rsa.get(), &len, out.data(), out.size(),
                            kOAEPCiphertext1, sizeof(kOAEPCiphertext1) - 1,
                            RSA_PKCS1_OAEP_PADDING));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_VALUE_MISSING, ERR_GET_REASON(err));
 
   // A private key without e cannot perform public key operations.
   rsa.reset(RSA_new_private_key_no_e(RSA_get0_n(sample.get()),
                                      RSA_get0_d(sample.get())));
   ASSERT_TRUE(rsa);
+
   EXPECT_FALSE(RSA_verify(NID_sha256, kZeros, sizeof(kZeros), sig.data(),
                           sig.size(), rsa.get()));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_VALUE_MISSING, ERR_GET_REASON(err));
+
   EXPECT_FALSE(RSA_encrypt(rsa.get(), &len, out.data(), out.size(), kPlaintext,
                            kPlaintextLen, RSA_PKCS1_OAEP_PADDING));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_VALUE_MISSING, ERR_GET_REASON(err));
 }
 
 TEST(RSATest, Negative) {
