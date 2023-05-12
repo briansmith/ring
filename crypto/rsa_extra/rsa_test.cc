@@ -584,51 +584,6 @@ TEST(RSATest, BadKey) {
   EXPECT_FALSE(key);
 }
 
-TEST(RSATest, OnlyDGiven) {
-  static const char kN[] =
-      "00e77bbf3889d4ef36a9a25d4d69f3f632eb4362214c74517da6d6aeaa9bd09ac42b2662"
-      "1cd88f3a6eb013772fc3bf9f83914b6467231c630202c35b3e5808c659";
-  static const char kE[] = "010001";
-  static const char kD[] =
-      "0365db9eb6d73b53b015c40cd8db4de7dd7035c68b5ac1bf786d7a4ee2cea316eaeca21a"
-      "73ac365e58713195f2ae9849348525ca855386b6d028e437a9495a01";
-
-  bssl::UniquePtr<RSA> key(RSA_new());
-  ASSERT_TRUE(key);
-  ASSERT_TRUE(BN_hex2bn(&key->n, kN));
-  ASSERT_TRUE(BN_hex2bn(&key->e, kE));
-  ASSERT_TRUE(BN_hex2bn(&key->d, kD));
-
-  // Keys with only n, e, and d are functional.
-  EXPECT_TRUE(RSA_check_key(key.get()));
-
-  const uint8_t kDummyHash[32] = {0};
-  uint8_t buf[64];
-  unsigned buf_len = sizeof(buf);
-  ASSERT_LE(RSA_size(key.get()), sizeof(buf));
-  EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
-                       &buf_len, key.get()));
-  EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
-                         buf_len, key.get()));
-
-  // Keys without the public exponent must continue to work when blinding is
-  // disabled to support Java's RSAPrivateKeySpec API. See
-  // https://bugs.chromium.org/p/boringssl/issues/detail?id=12.
-  bssl::UniquePtr<RSA> key2(RSA_new());
-  ASSERT_TRUE(key2);
-  ASSERT_TRUE(BN_hex2bn(&key2->n, kN));
-  ASSERT_TRUE(BN_hex2bn(&key2->d, kD));
-  key2->flags |= RSA_FLAG_NO_BLINDING;
-
-  ASSERT_LE(RSA_size(key2.get()), sizeof(buf));
-  EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
-                       &buf_len, key2.get()));
-
-  // Verify the signature with |key|. |key2| has no public exponent.
-  EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
-                         buf_len, key.get()));
-}
-
 TEST(RSATest, ASN1) {
   // Test that private keys may be decoded.
   bssl::UniquePtr<RSA> rsa(
@@ -1258,6 +1213,25 @@ TEST(RSATest, LargeE) {
                                                 /*dmp1=*/e, /*dmq1=*/e, iqmp));
   EXPECT_FALSE(priv);
 
+  // Constructing such a key piecemeal also would not work. This was only
+  // possible with private APIs, so when |RSA| is opaque, this case will be
+  // impossible.
+  priv.reset(RSA_new());
+  ASSERT_TRUE(priv);
+  priv->n = BN_dup(n);
+  ASSERT_TRUE(priv->n);
+  priv->e = BN_dup(d);  // Swapped
+  ASSERT_TRUE(priv->e);
+  priv->d = BN_dup(e);
+  ASSERT_TRUE(priv->d);
+
+  static const uint8_t kDigest[32] = {0};
+  std::vector<uint8_t> sig(RSA_size(priv.get()));
+  size_t len;
+  EXPECT_FALSE(RSA_sign_pss_mgf1(priv.get(), &len, sig.data(), sig.size(),
+                                 kDigest, sizeof(kDigest), EVP_sha256(),
+                                 EVP_sha256(), /*salt_len=*/32));
+
   // But the "large e" APIs tolerate it.
   pub.reset(RSA_new_public_key_large_e(n, /*e=*/d));
   ASSERT_TRUE(pub);
@@ -1266,9 +1240,7 @@ TEST(RSATest, LargeE) {
   ASSERT_TRUE(priv);
 
   // Test that operations work correctly.
-  static const uint8_t kDigest[32] = {0};
-  std::vector<uint8_t> sig(RSA_size(priv.get()));
-  size_t len;
+  sig.resize(RSA_size(priv.get()));
   ASSERT_TRUE(RSA_sign_pss_mgf1(priv.get(), &len, sig.data(), sig.size(),
                                 kDigest, sizeof(kDigest), EVP_sha256(),
                                 EVP_sha256(), /*salt_len=*/32));

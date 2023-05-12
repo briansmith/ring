@@ -79,6 +79,8 @@ int rsa_check_public_key(const RSA *rsa) {
     return 0;
   }
 
+  // TODO(davidben): 16384-bit RSA is huge. Can we bring this down to a limit of
+  // 8192-bit?
   unsigned n_bits = BN_num_bits(rsa->n);
   if (n_bits > 16 * 1024) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
@@ -173,6 +175,11 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
   CRYPTO_MUTEX_lock_write(&rsa->lock);
   if (rsa->private_key_frozen) {
     ret = 1;
+    goto err;
+  }
+
+  // Check the public components are within DoS bounds.
+  if (!rsa_check_public_key(rsa)) {
     goto err;
   }
 
