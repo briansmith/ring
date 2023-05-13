@@ -5839,6 +5839,81 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
     thread.join();
   }
 }
+
+static void SetValueOnFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
+                          int index, long argl, void *argp) {
+  if (ptr != nullptr) {
+    *static_cast<long *>(ptr) = argl;
+  }
+}
+
+// Test that one thread can register ex_data while another thread is destroying
+// an object that uses it.
+TEST(SSLTest, ExDataThreads) {
+  static bool already_run = false;
+  if (already_run) {
+    GTEST_SKIP() << "This test consumes process-global resources and can only "
+                    "be run once in a process. It is not compatible with "
+                    "--gtest_repeat.";
+  }
+  already_run = true;
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Register an initial index, so the threads can exercise having any ex_data.
+  int first_index =
+      SSL_get_ex_new_index(-1, nullptr, nullptr, nullptr, SetValueOnFree);
+  ASSERT_GE(first_index, 0);
+
+  // Callers may register indices concurrently with using other indices. This
+  // may happen if one part of an application is initializing while another part
+  // is already running.
+  static constexpr int kNumIndices = 3;
+  static constexpr int kNumSSLs = 10;
+  int index[kNumIndices];
+  long values[kNumSSLs];
+  std::fill(std::begin(values), std::end(values), -2);
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumIndices; i++) {
+    threads.emplace_back([&, i] {
+      index[i] = SSL_get_ex_new_index(static_cast<long>(i), nullptr, nullptr,
+                                      nullptr, SetValueOnFree);
+      ASSERT_GE(index[i], 0);
+    });
+  }
+  for (size_t i = 0; i < kNumSSLs; i++) {
+    threads.emplace_back([&, i] {
+      bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+      ASSERT_TRUE(ssl);
+      ASSERT_TRUE(SSL_set_ex_data(ssl.get(), first_index, &values[i]));
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  // Each of the SSL threads should have set their flag via ex_data.
+  for (size_t i = 0; i < kNumSSLs; i++) {
+    EXPECT_EQ(values[i], -1);
+  }
+
+  // Each of the newly-registered indices should be distinct and work correctly.
+  static_assert(kNumIndices <= kNumSSLs, "values buffer too small");
+  std::fill(std::begin(values), std::end(values), -2);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  for (size_t i = 0; i < kNumIndices; i++) {
+    for (size_t j = 0; j < i; j++) {
+      EXPECT_NE(index[i], index[j]);
+    }
+    ASSERT_TRUE(SSL_set_ex_data(ssl.get(), index[i], &values[i]));
+  }
+  ssl = nullptr;
+  for (size_t i = 0; i < kNumIndices; i++) {
+    EXPECT_EQ(values[i], static_cast<long>(i));
+  }
+}
 #endif  // OPENSSL_THREADS
 
 constexpr size_t kNumQUICLevels = 4;
