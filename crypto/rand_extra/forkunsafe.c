@@ -33,6 +33,10 @@ void RAND_enable_fork_unsafe_buffering(int fd) {
 
   CRYPTO_atomic_store_u32(&g_buffering_enabled, 1);
 }
+
+void RAND_disable_fork_unsafe_buffering(void) {
+  CRYPTO_atomic_store_u32(&g_buffering_enabled, 0);
+}
 #endif
 
 int rand_fork_unsafe_buffering_enabled(void) {
