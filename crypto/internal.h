@@ -165,6 +165,10 @@
 #define OPENSSL_C11_ATOMIC
 #endif
 
+#if defined(OPENSSL_C11_ATOMIC)
+#include <stdatomic.h>
+#endif
+
 // Older MSVC does not support C11 atomics, so we fallback to the Windows APIs.
 // When both are available (e.g. clang-cl), we prefer the C11 ones. The Windows
 // APIs don't allow some operations to be implemented as efficiently. This can
@@ -175,10 +179,6 @@
 #define OPENSSL_WINDOWS_ATOMIC
 #endif
 #endif  // !__cplusplus
-
-#if defined(OPENSSL_C11_ATOMIC)
-#include <stdatomic.h>
-#endif
 
 #if defined(OPENSSL_WINDOWS_THREADS) || defined(OPENSSL_WINDOWS_ATOMIC)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
