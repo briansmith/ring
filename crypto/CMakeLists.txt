@@ -15,6 +15,7 @@ endif()
 set(
   CRYPTO_SOURCES_ASM
   curve25519/asm/x25519-asm-arm.S
+  curve25519/asm/fiat_curve25519_adx.S
   hrss/asm/poly_rq_mul.S
   poly1305/poly1305_arm_asm.S
 )
@@ -137,6 +138,7 @@ add_library(
   cpu_intel.c
   crypto.c
   curve25519/curve25519.c
+  curve25519/curve25519_64_adx.c
   curve25519/spake25519.c
   des/des.c
   dh_extra/params.c

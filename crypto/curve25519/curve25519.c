@@ -19,8 +19,6 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
-#include <openssl/curve25519.h>
-
 #include <assert.h>
 #include <string.h>
 
@@ -30,7 +28,6 @@
 
 #include "internal.h"
 #include "../internal.h"
-
 
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
@@ -2067,6 +2064,12 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 #if defined(BORINGSSL_X25519_NEON)
   if (CRYPTO_is_NEON_capable()) {
     x25519_NEON(out, scalar, point);
+    return;
+  }
+#elif defined(BORINGSSL_FE25519_ADX)
+  if (CRYPTO_is_BMI1_capable() && CRYPTO_is_BMI2_capable() &&
+      CRYPTO_is_ADX_capable()) {
+    x25519_scalar_mult_adx(out, scalar, point);
     return;
   }
 #endif

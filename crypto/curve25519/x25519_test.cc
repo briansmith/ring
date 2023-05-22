@@ -20,6 +20,7 @@
 
 #include <openssl/curve25519.h>
 
+#include "internal.h"
 #include "../internal.h"
 #include "../test/abi_test.h"
 #include "../test/file_test.h"
@@ -231,3 +232,27 @@ TEST(X25519Test, NeonABI) {
   CHECK_ABI(x25519_NEON, secret, kScalar, kPoint);
 }
 #endif  // BORINGSSL_X25519_NEON && SUPPORTS_ABI_TEST
+
+#if defined(BORINGSSL_FE25519_ADX) && defined(SUPPORTS_ABI_TEST)
+TEST(X25519Test, AdxMulABI) {
+  static const uint64_t in1[4] = {0}, in2[4] = {0};
+  uint64_t out[4];
+  if (CRYPTO_is_BMI1_capable() && CRYPTO_is_BMI2_capable() &&
+      CRYPTO_is_ADX_capable()) {
+    CHECK_ABI(fiat_curve25519_adx_mul, out, in1, in2);
+  } else {
+    GTEST_SKIP() << "Can't test ABI of ADX code without ADX";
+  }
+}
+
+TEST(X25519Test, AdxSquareABI) {
+  static const uint64_t in[4] = {0};
+  uint64_t out[4];
+  if (CRYPTO_is_BMI1_capable() && CRYPTO_is_BMI2_capable() &&
+      CRYPTO_is_ADX_capable()) {
+    CHECK_ABI(fiat_curve25519_adx_square, out, in);
+  } else {
+    GTEST_SKIP() << "Can't test ABI of ADX code without ADX";
+  }
+}
+#endif  // BORINGSSL_FE25519_ADX && SUPPORTS_ABI_TEST
