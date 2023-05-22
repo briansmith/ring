@@ -850,22 +850,25 @@ OPENSSL_EXPORT int CRYPTO_set_thread_local(
 
 typedef struct crypto_ex_data_func_st CRYPTO_EX_DATA_FUNCS;
 
-DECLARE_STACK_OF(CRYPTO_EX_DATA_FUNCS)
-
 // CRYPTO_EX_DATA_CLASS tracks the ex_indices registered for a type which
 // supports ex_data. It should defined as a static global within the module
 // which defines that type.
 typedef struct {
   struct CRYPTO_STATIC_MUTEX lock;
-  STACK_OF(CRYPTO_EX_DATA_FUNCS) *meth;
+  // funcs is a linked list of |CRYPTO_EX_DATA_FUNCS| structures. It may be
+  // traversed without serialization only up to |num_funcs|. last points to the
+  // final entry of |funcs|, or NULL if empty.
+  CRYPTO_EX_DATA_FUNCS *funcs, *last;
+  // num_funcs is the number of entries in |funcs|.
+  CRYPTO_atomic_u32 num_funcs;
   // num_reserved is one if the ex_data index zero is reserved for legacy
   // |TYPE_get_app_data| functions.
   uint8_t num_reserved;
 } CRYPTO_EX_DATA_CLASS;
 
-#define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL, 0}
+#define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL, NULL, 0, 0}
 #define CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA \
-    {CRYPTO_STATIC_MUTEX_INIT, NULL, 1}
+    {CRYPTO_STATIC_MUTEX_INIT, NULL, NULL, 0, 1}
 
 // CRYPTO_get_ex_new_index allocates a new index for |ex_data_class| and writes
 // it to |*out_index|. Each class of object should provide a wrapper function
