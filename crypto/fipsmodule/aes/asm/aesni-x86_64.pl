@@ -1524,6 +1524,8 @@ $code.=<<___;
 	pxor		$rndkey0,$in3
 	movdqu		0x50($inp),$in5
 	pxor		$rndkey0,$in4
+	prefetcht0	0x1c0($inp)	# We process 128 bytes (8*16), so to prefetch 1 iteration
+	prefetcht0	0x200($inp)	# We need to prefetch 2 64 byte lines
 	pxor		$rndkey0,$in5
 	aesenc		$rndkey1,$inout0
 	aesenc		$rndkey1,$inout1
