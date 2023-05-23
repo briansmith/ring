@@ -94,7 +94,8 @@ static void ExpectConfEquals(const CONF *conf, const ConfModel &model) {
 
   // There should not be any other values in |conf|. |conf| currently stores
   // both sections and values in the same map.
-  EXPECT_EQ(lh_CONF_VALUE_num_items(conf->data), total_values + model.size());
+  EXPECT_EQ(lh_CONF_SECTION_num_items(conf->sections), model.size());
+  EXPECT_EQ(lh_CONF_VALUE_num_items(conf->values), total_values);
 }
 
 TEST(ConfTest, Parse) {

@@ -70,48 +70,51 @@
 #include "../internal.h"
 
 
+struct conf_section_st {
+  char *name;
+  // values contains non-owning pointers to the values in the section.
+  STACK_OF(CONF_VALUE) *values;
+};
+
 static const char kDefaultSectionName[] = "default";
 
+static uint32_t conf_section_hash(const CONF_SECTION *s) {
+  return OPENSSL_strhash(s->name);
+}
+
+static int conf_section_cmp(const CONF_SECTION *a, const CONF_SECTION *b) {
+  return strcmp(a->name, b->name);
+}
+
 static uint32_t conf_value_hash(const CONF_VALUE *v) {
-  const uint32_t section_hash = v->section ? OPENSSL_strhash(v->section) : 0;
-  const uint32_t name_hash = v->name ? OPENSSL_strhash(v->name) : 0;
+  const uint32_t section_hash = OPENSSL_strhash(v->section);
+  const uint32_t name_hash = OPENSSL_strhash(v->name);
   return (section_hash << 2) ^ name_hash;
 }
 
 static int conf_value_cmp(const CONF_VALUE *a, const CONF_VALUE *b) {
-  int i;
-
-  if (a->section != b->section) {
-    i = strcmp(a->section, b->section);
-    if (i) {
-      return i;
-    }
+  int cmp = strcmp(a->section, b->section);
+  if (cmp != 0) {
+    return cmp;
   }
 
-  if (a->name != NULL && b->name != NULL) {
-    return strcmp(a->name, b->name);
-  } else if (a->name == b->name) {
-    return 0;
-  } else {
-    return (a->name == NULL) ? -1 : 1;
-  }
+  return strcmp(a->name, b->name);
 }
 
 CONF *NCONF_new(void *method) {
-  CONF *conf;
-
   if (method != NULL) {
     return NULL;
   }
 
-  conf = OPENSSL_malloc(sizeof(CONF));
+  CONF *conf = OPENSSL_malloc(sizeof(CONF));
   if (conf == NULL) {
     return NULL;
   }
 
-  conf->data = lh_CONF_VALUE_new(conf_value_hash, conf_value_cmp);
-  if (conf->data == NULL) {
-    OPENSSL_free(conf);
+  conf->sections = lh_CONF_SECTION_new(conf_section_hash, conf_section_cmp);
+  conf->values = lh_CONF_VALUE_new(conf_value_hash, conf_value_cmp);
+  if (conf->sections == NULL || conf->values == NULL) {
+    NCONF_free(conf);
     return NULL;
   }
 
@@ -120,69 +123,64 @@ CONF *NCONF_new(void *method) {
 
 CONF_VALUE *CONF_VALUE_new(void) { return OPENSSL_zalloc(sizeof(CONF_VALUE)); }
 
-static void value_free_contents(CONF_VALUE *value) {
-  OPENSSL_free(value->section);
-  if (value->name) {
-    OPENSSL_free(value->name);
-    OPENSSL_free(value->value);
-  } else {
-    // TODO(davidben): When |value->name| is NULL, |CONF_VALUE| is actually an
-    // entirely different structure. This is fragile and confusing. Make a
-    // proper |CONF_SECTION| type that doesn't require this.
-    sk_CONF_VALUE_free((STACK_OF(CONF_VALUE) *)value->value);
+static void value_free(CONF_VALUE *value) {
+  if (value == NULL) {
+    return;
   }
+  OPENSSL_free(value->section);
+  OPENSSL_free(value->name);
+  OPENSSL_free(value->value);
+  OPENSSL_free(value);
 }
 
-static void value_free(CONF_VALUE *value) {
-  if (value != NULL) {
-    value_free_contents(value);
-    OPENSSL_free(value);
+static void section_free(CONF_SECTION *section) {
+  if (section == NULL) {
+    return;
   }
+  OPENSSL_free(section->name);
+  sk_CONF_VALUE_free(section->values);
+  OPENSSL_free(section);
 }
 
 static void value_free_arg(CONF_VALUE *value, void *arg) { value_free(value); }
 
+static void section_free_arg(CONF_SECTION *section, void *arg) {
+  section_free(section);
+}
+
 void NCONF_free(CONF *conf) {
-  if (conf == NULL || conf->data == NULL) {
+  if (conf == NULL) {
     return;
   }
 
-  lh_CONF_VALUE_doall_arg(conf->data, value_free_arg, NULL);
-  lh_CONF_VALUE_free(conf->data);
+  lh_CONF_SECTION_doall_arg(conf->sections, section_free_arg, NULL);
+  lh_CONF_SECTION_free(conf->sections);
+  lh_CONF_VALUE_doall_arg(conf->values, value_free_arg, NULL);
+  lh_CONF_VALUE_free(conf->values);
   OPENSSL_free(conf);
 }
 
-static CONF_VALUE *NCONF_new_section(const CONF *conf, const char *section) {
-  STACK_OF(CONF_VALUE) *sk = NULL;
-  int ok = 0;
-  CONF_VALUE *v = NULL, *old_value;
-
-  sk = sk_CONF_VALUE_new_null();
-  v = CONF_VALUE_new();
-  if (sk == NULL || v == NULL) {
-    goto err;
+static CONF_SECTION *NCONF_new_section(const CONF *conf, const char *section) {
+  CONF_SECTION *s = OPENSSL_malloc(sizeof(CONF_SECTION));
+  if (!s) {
+    return NULL;
   }
-  v->section = OPENSSL_strdup(section);
-  if (v->section == NULL) {
+  s->name = OPENSSL_strdup(section);
+  s->values = sk_CONF_VALUE_new_null();
+  if (s->name == NULL || s->values == NULL) {
     goto err;
   }
 
-  v->name = NULL;
-  v->value = (char *)sk;
-
-  if (!lh_CONF_VALUE_insert(conf->data, &old_value, v)) {
+  CONF_SECTION *old_section;
+  if (!lh_CONF_SECTION_insert(conf->sections, &old_section, s)) {
     goto err;
   }
-  value_free(old_value);
-  ok = 1;
+  section_free(old_section);
+  return s;
 
 err:
-  if (!ok) {
-    sk_CONF_VALUE_free(sk);
-    OPENSSL_free(v);
-    v = NULL;
-  }
-  return v;
+  section_free(s);
+  return NULL;
 }
 
 static int str_copy(CONF *conf, char *section, char **pto, char *from) {
@@ -254,21 +252,20 @@ err:
   return 0;
 }
 
-static CONF_VALUE *get_section(const CONF *conf, const char *section) {
-  CONF_VALUE template;
-
+static CONF_SECTION *get_section(const CONF *conf, const char *section) {
+  CONF_SECTION template;
   OPENSSL_memset(&template, 0, sizeof(template));
-  template.section = (char *) section;
-  return lh_CONF_VALUE_retrieve(conf->data, &template);
+  template.name = (char *) section;
+  return lh_CONF_SECTION_retrieve(conf->sections, &template);
 }
 
 const STACK_OF(CONF_VALUE) *NCONF_get_section(const CONF *conf,
                                               const char *section) {
-  const CONF_VALUE *section_value = get_section(conf, section);
-  if (section_value == NULL) {
+  const CONF_SECTION *section_obj = get_section(conf, section);
+  if (section_obj == NULL) {
     return NULL;
   }
-  return (STACK_OF(CONF_VALUE)*) section_value->value;
+  return section_obj->values;
 }
 
 const char *NCONF_get_string(const CONF *conf, const char *section,
@@ -280,30 +277,35 @@ const char *NCONF_get_string(const CONF *conf, const char *section,
   }
 
   OPENSSL_memset(&template, 0, sizeof(template));
-  template.section = (char *) section;
-  template.name = (char *) name;
-  value = lh_CONF_VALUE_retrieve(conf->data, &template);
+  template.section = (char *)section;
+  template.name = (char *)name;
+  value = lh_CONF_VALUE_retrieve(conf->values, &template);
   if (value == NULL) {
     return NULL;
   }
   return value->value;
 }
 
-static int add_string(const CONF *conf, CONF_VALUE *section,
+static int add_string(const CONF *conf, CONF_SECTION *section,
                       CONF_VALUE *value) {
-  STACK_OF(CONF_VALUE) *section_stack = (STACK_OF(CONF_VALUE)*) section->value;
-  CONF_VALUE *old_value;
-
-  value->section = OPENSSL_strdup(section->section);
-  if (!sk_CONF_VALUE_push(section_stack, value)) {
+  value->section = OPENSSL_strdup(section->name);
+  if (value->section == NULL) {
     return 0;
   }
 
-  if (!lh_CONF_VALUE_insert(conf->data, &old_value, value)) {
+  if (!sk_CONF_VALUE_push(section->values, value)) {
+    return 0;
+  }
+
+  CONF_VALUE *old_value;
+  if (!lh_CONF_VALUE_insert(conf->values, &old_value, value)) {
+    // Remove |value| from |section->values|, so we do not leave a dangling
+    // pointer.
+    sk_CONF_VALUE_pop(section->values);
     return 0;
   }
   if (old_value != NULL) {
-    (void)sk_CONF_VALUE_delete_ptr(section_stack, old_value);
+    (void)sk_CONF_VALUE_delete_ptr(section->values, old_value);
     value_free(old_value);
   }
 
@@ -388,8 +390,8 @@ int NCONF_load_bio(CONF *conf, BIO *in, long *out_error_line) {
   int again;
   long eline = 0;
   char btmp[DECIMAL_SIZE(eline) + 1];
-  CONF_VALUE *v = NULL, *tv;
-  CONF_VALUE *sv = NULL;
+  CONF_VALUE *v = NULL;
+  CONF_SECTION *sv = NULL;
   char *section = NULL, *buf;
   char *start, *psection, *pname;
 
@@ -540,6 +542,7 @@ int NCONF_load_bio(CONF *conf, BIO *in, long *out_error_line) {
         goto err;
       }
 
+      CONF_SECTION *tv;
       if (strcmp(psection, section) != 0) {
         if ((tv = get_section(conf, psection)) == NULL) {
           tv = NCONF_new_section(conf, psection);
@@ -569,12 +572,7 @@ err:
   }
   snprintf(btmp, sizeof btmp, "%ld", eline);
   ERR_add_error_data(2, "line ", btmp);
-
-  if (v != NULL) {
-    OPENSSL_free(v->name);
-    OPENSSL_free(v->value);
-    OPENSSL_free(v);
-  }
+  value_free(v);
   return 0;
 }
 
