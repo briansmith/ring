@@ -228,22 +228,6 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
       if (*from == q) {
         from++;
       }
-    } else if (IS_DQUOTE(conf, *from)) {
-      q = *from;
-      from++;
-      while (!IS_EOF(conf, *from)) {
-        if (*from == q) {
-          if (*(from + 1) == q) {
-            from++;
-          } else {
-            break;
-          }
-        }
-        buf->data[to++] = *(from++);
-      }
-      if (*from == q) {
-        from++;
-      }
     } else if (IS_ESC(conf, *from)) {
       from++;
       v = *(from++);
@@ -454,33 +438,8 @@ static char *scan_quote(CONF *conf, char *p) {
   return p;
 }
 
-
-static char *scan_dquote(CONF *conf, char *p) {
-  int q = *p;
-
-  p++;
-  while (!(IS_EOF(conf, *p))) {
-    if (*p == q) {
-      if (*(p + 1) == q) {
-        p++;
-      } else {
-        break;
-      }
-    }
-    p++;
-  }
-  if (*p == q) {
-    p++;
-  }
-  return p;
-}
-
 static void clear_comments(CONF *conf, char *p) {
   for (;;) {
-    if (IS_FCOMMENT(conf, *p)) {
-      *p = '\0';
-      return;
-    }
     if (!IS_WS(conf, *p)) {
       break;
     }
@@ -491,10 +450,6 @@ static void clear_comments(CONF *conf, char *p) {
     if (IS_COMMENT(conf, *p)) {
       *p = '\0';
       return;
-    }
-    if (IS_DQUOTE(conf, *p)) {
-      p = scan_dquote(conf, p);
-      continue;
     }
     if (IS_QUOTE(conf, *p)) {
       p = scan_quote(conf, p);
