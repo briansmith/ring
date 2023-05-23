@@ -138,7 +138,8 @@ STACK_OF(SAMPLE) *sk_SAMPLE_new(sk_SAMPLE_cmp_func comp);
 // NULL on allocation failure.
 STACK_OF(SAMPLE) *sk_SAMPLE_new_null(void);
 
-// sk_SAMPLE_num returns the number of elements in |sk|.
+// sk_SAMPLE_num returns the number of elements in |sk|. It is safe to cast this
+// value to |int|. |sk| is guaranteed to have at most |INT_MAX| elements.
 size_t sk_SAMPLE_num(const STACK_OF(SAMPLE) *sk);
 
 // sk_SAMPLE_zero resets |sk| to the empty state but does nothing to free the

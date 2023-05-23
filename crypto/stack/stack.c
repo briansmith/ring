@@ -57,7 +57,9 @@
 #include <openssl/stack.h>
 
 #include <assert.h>
+#include <limits.h>
 
+#include <openssl/err.h>
 #include <openssl/mem.h>
 
 #include "../internal.h"
@@ -158,6 +160,11 @@ void sk_pop_free(_STACK *sk, OPENSSL_sk_free_func free_func) {
 
 size_t sk_insert(_STACK *sk, void *p, size_t where) {
   if (sk == NULL) {
+    return 0;
+  }
+
+  if (sk->num >= INT_MAX) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
     return 0;
   }
 
