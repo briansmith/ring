@@ -132,24 +132,23 @@ CONF_VALUE *CONF_VALUE_new(void) {
 }
 
 static void value_free_contents(CONF_VALUE *value) {
-  if (value->section) {
-    OPENSSL_free(value->section);
-  }
+  OPENSSL_free(value->section);
   if (value->name) {
     OPENSSL_free(value->name);
-    if (value->value) {
-      OPENSSL_free(value->value);
-    }
+    OPENSSL_free(value->value);
   } else {
-    if (value->value) {
-      sk_CONF_VALUE_free((STACK_OF(CONF_VALUE)*)value->value);
-    }
+    // TODO(davidben): When |value->name| is NULL, |CONF_VALUE| is actually an
+    // entirely different structure. This is fragile and confusing. Make a
+    // proper |CONF_SECTION| type that doesn't require this.
+    sk_CONF_VALUE_free((STACK_OF(CONF_VALUE) *)value->value);
   }
 }
 
 static void value_free(CONF_VALUE *value) {
-  value_free_contents(value);
-  OPENSSL_free(value);
+  if (value != NULL) {
+    value_free_contents(value);
+    OPENSSL_free(value);
+  }
 }
 
 static void value_free_arg(CONF_VALUE *value, void *arg) { value_free(value); }
@@ -185,19 +184,13 @@ static CONF_VALUE *NCONF_new_section(const CONF *conf, const char *section) {
   if (!lh_CONF_VALUE_insert(conf->data, &old_value, v)) {
     goto err;
   }
-  if (old_value) {
-    value_free(old_value);
-  }
+  value_free(old_value);
   ok = 1;
 
 err:
   if (!ok) {
-    if (sk != NULL) {
-      sk_CONF_VALUE_free(sk);
-    }
-    if (v != NULL) {
-      OPENSSL_free(v);
-    }
+    sk_CONF_VALUE_free(sk);
+    OPENSSL_free(v);
     v = NULL;
   }
   return v;
@@ -354,17 +347,13 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
   }
 
   buf->data[to] = '\0';
-  if (*pto != NULL) {
-    OPENSSL_free(*pto);
-  }
+  OPENSSL_free(*pto);
   *pto = buf->data;
   OPENSSL_free(buf);
   return 1;
 
 err:
-  if (buf != NULL) {
-    BUF_MEM_free(buf);
-  }
+  BUF_MEM_free(buf);
   return 0;
 }
 
@@ -700,21 +689,13 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
       v = NULL;
     }
   }
-  if (buff != NULL) {
-    BUF_MEM_free(buff);
-  }
-  if (section != NULL) {
-    OPENSSL_free(section);
-  }
+  BUF_MEM_free(buff);
+  OPENSSL_free(section);
   return 1;
 
 err:
-  if (buff != NULL) {
-    BUF_MEM_free(buff);
-  }
-  if (section != NULL) {
-    OPENSSL_free(section);
-  }
+  BUF_MEM_free(buff);
+  OPENSSL_free(section);
   if (out_error_line != NULL) {
     *out_error_line = eline;
   }
@@ -722,15 +703,9 @@ err:
   ERR_add_error_data(2, "line ", btmp);
 
   if (v != NULL) {
-    if (v->name != NULL) {
-      OPENSSL_free(v->name);
-    }
-    if (v->value != NULL) {
-      OPENSSL_free(v->value);
-    }
-    if (v != NULL) {
-      OPENSSL_free(v);
-    }
+    OPENSSL_free(v->name);
+    OPENSSL_free(v->value);
+    OPENSSL_free(v);
   }
   return 0;
 }
