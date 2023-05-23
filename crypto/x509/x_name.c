@@ -230,7 +230,7 @@ static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
     entries = sk_STACK_OF_X509_NAME_ENTRY_value(intname, i);
     for (j = 0; j < sk_X509_NAME_ENTRY_num(entries); j++) {
       entry = sk_X509_NAME_ENTRY_value(entries, j);
-      entry->set = i;
+      entry->set = (int)i;
       if (!sk_X509_NAME_ENTRY_push(nm->entries, entry)) {
         goto err;
       }

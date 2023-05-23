@@ -423,9 +423,8 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
   }
 
   if (pnmatch != NULL) {
-    int tidx;
     *pnmatch = 1;
-    for (tidx = idx + 1; tidx < (int)sk_X509_OBJECT_num(h); tidx++) {
+    for (size_t tidx = idx + 1; tidx < sk_X509_OBJECT_num(h); tidx++) {
       const X509_OBJECT *tobj = sk_X509_OBJECT_value(h, tidx);
       if (x509_object_cmp(tobj, &stmp)) {
         break;
@@ -434,7 +433,7 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
     }
   }
 
-  return idx;
+  return (int)idx;
 }
 
 int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
