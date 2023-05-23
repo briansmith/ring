@@ -598,14 +598,14 @@ func main() {
 		}
 		os.Stdout.Write(regcapBytes)
 		os.Stdout.WriteString("\n")
-		os.Exit(0)
+		return
 	}
 
 	if len(*jsonInputFile) > 0 {
 		if err := processFile(*jsonInputFile, supportedAlgos, middle); err != nil {
 			log.Fatalf("failed to process input file: %s", err)
 		}
-		os.Exit(0)
+		return
 	}
 
 	var requestedAlgosFlag string
@@ -789,7 +789,7 @@ func main() {
 
 	if len(*fetchFlag) > 0 {
 		io.WriteString(fetchOutputTee, "]\n")
-		os.Exit(0)
+		return
 	}
 
 	if ok, err := getResultsWithRetry(server, url); err != nil {
