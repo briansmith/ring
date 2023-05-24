@@ -265,15 +265,15 @@ OPENSSL_INLINE void OPENSSL_reset_malloc_counter_for_testing(void) {}
 // Pointer utility functions.
 
 // buffers_alias returns one if |a| and |b| alias and zero otherwise.
-static inline int buffers_alias(const uint8_t *a, size_t a_len,
-                                const uint8_t *b, size_t b_len) {
+static inline int buffers_alias(const void *a, size_t a_bytes,
+                                const void *b, size_t b_bytes) {
   // Cast |a| and |b| to integers. In C, pointer comparisons between unrelated
   // objects are undefined whereas pointer to integer conversions are merely
   // implementation-defined. We assume the implementation defined it in a sane
   // way.
   uintptr_t a_u = (uintptr_t)a;
   uintptr_t b_u = (uintptr_t)b;
-  return a_u + a_len > b_u && b_u + b_len > a_u;
+  return a_u + a_bytes > b_u && b_u + b_bytes > a_u;
 }
 
 // align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
@@ -359,6 +359,9 @@ static inline uint64_t value_barrier_u64(uint64_t a) {
 #endif
   return a;
 }
+
+// |value_barrier_u8| could be defined as above, but compilers other than
+// clang seem to still materialize 0x00..00MM instead of reusing 0x??..??MM.
 
 // constant_time_msb_w returns the given value with the MSB copied to all the
 // other bits.
@@ -476,16 +479,23 @@ static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
   // to a cmov, it sometimes further transforms it into a branch, which we do
   // not want.
   //
-  // Adding barriers to both |mask| and |~mask| breaks the relationship between
-  // the two, which makes the compiler stick with bitmasks.
-  return (value_barrier_w(mask) & a) | (value_barrier_w(~mask) & b);
+  // Hiding the value of the mask from the compiler evades this transformation.
+  mask = value_barrier_w(mask);
+  return (mask & a) | (~mask & b);
 }
 
 // constant_time_select_8 acts like |constant_time_select| but operates on
 // 8-bit values.
-static inline uint8_t constant_time_select_8(uint8_t mask, uint8_t a,
+static inline uint8_t constant_time_select_8(crypto_word_t mask, uint8_t a,
                                              uint8_t b) {
-  return (uint8_t)(constant_time_select_w(mask, a, b));
+  // |mask| is a word instead of |uint8_t| to avoid materializing 0x000..0MM
+  // Making both |mask| and its value barrier |uint8_t| would allow the compiler
+  // to materialize 0x????..?MM instead, but only clang is that clever.
+  // However, vectorization of bitwise operations seems to work better on
+  // |uint8_t| than a mix of |uint64_t| and |uint8_t|, so |m| is cast to
+  // |uint8_t| after the value barrier but before the bitwise operations.
+  uint8_t m = value_barrier_w(mask);
+  return (m & a) | (~m & b);
 }
 
 // constant_time_select_int acts like |constant_time_select| but operates on
@@ -493,6 +503,34 @@ static inline uint8_t constant_time_select_8(uint8_t mask, uint8_t a,
 static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
   return (int)(constant_time_select_w(mask, (crypto_word_t)(a),
                                       (crypto_word_t)(b)));
+}
+
+// constant_time_conditional_memcpy copies |n| bytes from |src| to |dst| if
+// |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
+// ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
+static inline void constant_time_conditional_memcpy(void *dst, const void *src,
+                                                    const size_t n,
+                                                    const crypto_word_t mask) {
+  assert(!buffers_alias(dst, n, src, n));
+  uint8_t *out = (uint8_t *)dst;
+  const uint8_t *in = (const uint8_t *)src;
+  for (size_t i = 0; i < n; i++) {
+    out[i] = constant_time_select_8(mask, in[i], out[i]);
+  }
+}
+
+// constant_time_conditional_memxor xors |n| bytes from |src| to |dst| if
+// |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
+// ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
+static inline void constant_time_conditional_memxor(void *dst, const void *src,
+                                                    const size_t n,
+                                                    const crypto_word_t mask) {
+  assert(!buffers_alias(dst, n, src, n));
+  uint8_t *out = (uint8_t *)dst;
+  const uint8_t *in = (const uint8_t *)src;
+  for (size_t i = 0; i < n; i++) {
+    out[i] ^= value_barrier_w(mask) & in[i];
+  }
 }
 
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
