@@ -72,10 +72,6 @@
 
 static const char kDefaultSectionName[] = "default";
 
-// The maximum length we can grow a value to after variable expansion. 64k
-// should be more than enough for all reasonable uses.
-#define MAX_CONF_VALUE_LENGTH 65536
-
 static uint32_t conf_value_hash(const CONF_VALUE *v) {
   const uint32_t section_hash = v->section ? OPENSSL_strhash(v->section) : 0;
   const uint32_t name_hash = v->name ? OPENSSL_strhash(v->name) : 0;
@@ -197,9 +193,8 @@ err:
 }
 
 static int str_copy(CONF *conf, char *section, char **pto, char *from) {
-  int q, r, rr = 0, to = 0, len = 0;
-  char *s, *e, *rp, *rrp, *np, *cp, v;
-  const char *p;
+  int q, to = 0, len = 0;
+  char v;
   BUF_MEM *buf;
 
   buf = BUF_MEM_new();
@@ -246,85 +241,10 @@ static int str_copy(CONF *conf, char *section, char **pto, char *from) {
     } else if (IS_EOF(conf, *from)) {
       break;
     } else if (*from == '$') {
-      // try to expand it
-      rrp = NULL;
-      s = &(from[1]);
-      if (*s == '{') {
-        q = '}';
-      } else if (*s == '(') {
-        q = ')';
-      } else {
-        q = 0;
-      }
-
-      if (q) {
-        s++;
-      }
-      cp = section;
-      e = np = s;
-      while (IS_ALPHA_NUMERIC(conf, *e)) {
-        e++;
-      }
-      if (e[0] == ':' && e[1] == ':') {
-        cp = np;
-        rrp = e;
-        rr = *e;
-        *rrp = '\0';
-        e += 2;
-        np = e;
-        while (IS_ALPHA_NUMERIC(conf, *e)) {
-          e++;
-        }
-      }
-      r = *e;
-      *e = '\0';
-      rp = e;
-      if (q) {
-        if (r != q) {
-          OPENSSL_PUT_ERROR(CONF, CONF_R_NO_CLOSE_BRACE);
-          goto err;
-        }
-        e++;
-      }
-      // So at this point we have
-      // np which is the start of the name string which is
-      //   '\0' terminated.
-      // cp which is the start of the section string which is
-      //   '\0' terminated.
-      // e is the 'next point after'.
-      // r and rr are the chars replaced by the '\0'
-      // rp and rrp is where 'r' and 'rr' came from.
-      p = NCONF_get_string(conf, cp, np);
-      if (rrp != NULL) {
-        *rrp = rr;
-      }
-      *rp = r;
-      if (p == NULL) {
-        OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_HAS_NO_VALUE);
-        goto err;
-      }
-      size_t newsize = strlen(p) + buf->length - (e - from);
-      if (newsize > MAX_CONF_VALUE_LENGTH) {
-        OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_EXPANSION_TOO_LONG);
-        goto err;
-      }
-      if (!BUF_MEM_grow_clean(buf, newsize)) {
-        goto err;
-      }
-      while (*p) {
-        buf->data[to++] = *(p++);
-      }
-
-      /* Since we change the pointer 'from', we also have
-         to change the perceived length of the string it
-         points at.  /RL */
-      len -= e - from;
-      from = e;
-
-      /* In case there were no braces or parenthesis around
-         the variable reference, we have to put back the
-         character that was replaced with a '\0'.  /RL */
-      *rp = r;
+      // Historically, $foo would expand to a previously-parsed value. This
+      // feature has been removed as it was unused and is a DoS vector.
+      OPENSSL_PUT_ERROR(CONF, CONF_R_VARIABLE_EXPANSION_NOT_SUPPORTED);
+      goto err;
     } else {
       buf->data[to++] = *(from++);
     }

@@ -307,66 +307,11 @@ key7 = value7  # section1
           },
       },
 
-      // Values can refer to other values with $.
-      {
-          R"(
-key1 = value1
-key2 = $key1 ${key1} $(key1)
-
-[section1]
-key3 = value3
-
-[section2]
-key4 = value4
-key5 = $key4 ${key4} $(key4)
-key6 = $default::key1 ${default::key1} $(default::key1)
-key7 = $section1::key3 ${section1::key3} $(section1::key3)
-key8 = $section2::key4 ${section2::key4} $(section2::key4)
-)",
-          {
-              {"default",
-               {
-                   {"key1", "value1"},
-                   {"key2", "value1 value1 value1"},
-               }},
-              {"section1",
-               {
-                   {"key3", "value3"},
-               }},
-              {"section2",
-               {
-                   {"key4", "value4"},
-                   {"key5", "value4 value4 value4"},
-                   {"key6", "value1 value1 value1"},
-                   {"key7", "value3 value3 value3"},
-                   {"key8", "value4 value4 value4"},
-               }},
-          },
-      },
-
       // Punctuation is allowed in key names.
       {
           "key.1 = value\n",
           {
               {"default", {{"key.1", "value"}}},
-          },
-      },
-
-      // Punctuation is not allowed in $ references. The punctuation stops the
-      // parse.
-      {
-          R"(
-key = a
-key.1 = b
-ref = $key
-)",
-          {
-              {"default",
-               {
-                   {"key", "a"},
-                   {"key.1", "b"},
-                   {"ref", "a"},
-               }},
           },
       },
   };
@@ -392,17 +337,8 @@ ref = $key
       // Keys can only contain alphanumeric characters, punctuaion, and escapes.
       "key name = value",
       "\"key\" = value",
-      // Referencing a non-existent variable.
-      "key = $key2",
-      // key1 here is interpreted as a section name, not a key.
-      "key1 = value1\nkey2 = $key1::key",
-      // No self references.
-      "key = $key",
-      // Unterminated braced variable reference.
-      "key1 = value1\nkey2 = ${key1",
-      "key1 = value1\nkey2 = $(key1",
-      // Empty reference.
-      "key1 = $",
+      // Variable references have been removed.
+      "key1 = value1\nkey2 = $key1",
   };
   for (const auto &t : kInvalidTests) {
     SCOPED_TRACE(t);
