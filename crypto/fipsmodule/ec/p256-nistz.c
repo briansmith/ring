@@ -422,7 +422,8 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
 static int ecp_nistz256_get_affine(const EC_GROUP *group,
                                    const EC_JACOBIAN *point, EC_FELEM *x,
                                    EC_FELEM *y) {
-  if (ec_GFp_simple_is_at_infinity(group, point)) {
+  if (constant_time_declassify_int(
+          ec_GFp_simple_is_at_infinity(group, point))) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }

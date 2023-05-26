@@ -324,7 +324,7 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
   fiat_p256_limb_t is_nontrivial_double = constant_time_is_zero_w(xneq | yneq) &
                                           ~constant_time_is_zero_w(z1nz) &
                                           ~constant_time_is_zero_w(z2nz);
-  if (is_nontrivial_double) {
+  if (constant_time_declassify_w(is_nontrivial_double)) {
     fiat_p256_point_double(x3, y3, z3, x1, y1, z1);
     return;
   }
@@ -416,7 +416,8 @@ static crypto_word_t fiat_p256_get_bit(const EC_SCALAR *in, int i) {
 static int ec_GFp_nistp256_point_get_affine_coordinates(
     const EC_GROUP *group, const EC_JACOBIAN *point, EC_FELEM *x_out,
     EC_FELEM *y_out) {
-  if (ec_GFp_simple_is_at_infinity(group, point)) {
+  if (constant_time_declassify_int(
+          ec_GFp_simple_is_at_infinity(group, point))) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }

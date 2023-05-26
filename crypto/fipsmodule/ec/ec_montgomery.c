@@ -177,7 +177,8 @@ void ec_GFp_mont_felem_exp(const EC_GROUP *group, EC_FELEM *out,
 static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
                                                     const EC_JACOBIAN *point,
                                                     EC_FELEM *x, EC_FELEM *y) {
-  if (ec_GFp_simple_is_at_infinity(group, point)) {
+  if (constant_time_declassify_int(
+          ec_GFp_simple_is_at_infinity(group, point))) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
@@ -317,7 +318,7 @@ void ec_GFp_mont_add(const EC_GROUP *group, EC_JACOBIAN *out,
 
   // This case will never occur in the constant-time |ec_GFp_mont_mul|.
   BN_ULONG is_nontrivial_double = ~xneq & ~yneq & z1nz & z2nz;
-  if (is_nontrivial_double) {
+  if (constant_time_declassify_w(is_nontrivial_double)) {
     ec_GFp_mont_dbl(group, out, a);
     return;
   }
