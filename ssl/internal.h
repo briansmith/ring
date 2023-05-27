@@ -1148,6 +1148,10 @@ bool ssl_nid_to_group_id(uint16_t *out_group_id, int nid);
 // true. Otherwise, it returns false.
 bool ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
 
+// ssl_group_id_to_nid returns the NID corresponding to |group_id| or
+// |NID_undef| if unknown.
+int ssl_group_id_to_nid(uint16_t group_id);
+
 
 // Handshake messages.
 

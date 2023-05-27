@@ -1895,38 +1895,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   if (!check_close_notify) {
     SSL_set_quiet_shutdown(ssl.get(), 1);
   }
-  if (!curves.empty()) {
-    std::vector<int> nids;
-    for (auto curve : curves) {
-      switch (curve) {
-        case SSL_GROUP_SECP224R1:
-          nids.push_back(NID_secp224r1);
-          break;
-
-        case SSL_GROUP_SECP256R1:
-          nids.push_back(NID_X9_62_prime256v1);
-          break;
-
-        case SSL_GROUP_SECP384R1:
-          nids.push_back(NID_secp384r1);
-          break;
-
-        case SSL_GROUP_SECP521R1:
-          nids.push_back(NID_secp521r1);
-          break;
-
-        case SSL_GROUP_X25519:
-          nids.push_back(NID_X25519);
-          break;
-
-        case SSL_GROUP_X25519_KYBER768_DRAFT00:
-          nids.push_back(NID_X25519Kyber768Draft00);
-          break;
-      }
-      if (!SSL_set1_curves(ssl.get(), &nids[0], nids.size())) {
-        return nullptr;
-      }
-    }
+  if (!curves.empty() &&
+      !SSL_set1_group_ids(ssl.get(), curves.data(), curves.size())) {
+    return nullptr;
   }
   if (initial_timeout_duration_ms > 0) {
     DTLSv1_set_initial_timeout_duration(ssl.get(), initial_timeout_duration_ms);

@@ -417,6 +417,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_set1_groups(ctx, groups.data(), groups.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
+        std::vector<uint16_t> groups;
+        if (!GetVector(&groups, cbs)) {
+          return;
+        }
+        SSL_CTX_set1_group_ids(ctx, groups.data(), groups.size());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
         std::string groups;
         if (!GetString(&groups, cbs)) {
           return;

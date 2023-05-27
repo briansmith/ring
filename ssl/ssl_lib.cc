@@ -1939,6 +1939,32 @@ int SSL_CTX_set_tlsext_ticket_key_cb(
   return 1;
 }
 
+static bool check_group_ids(Span<const uint16_t> group_ids) {
+  for (uint16_t group_id : group_ids) {
+    if (ssl_group_id_to_nid(group_id) == NID_undef) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);
+      return false;
+    }
+  }
+  return true;
+}
+
+int SSL_CTX_set1_group_ids(SSL_CTX *ctx, const uint16_t *group_ids,
+                           size_t num_group_ids) {
+  auto span = MakeConstSpan(group_ids, num_group_ids);
+  return check_group_ids(span) && ctx->supported_group_list.CopyFrom(span);
+}
+
+int SSL_set1_group_ids(SSL *ssl, const uint16_t *group_ids,
+                       size_t num_group_ids) {
+  if (!ssl->config) {
+    return 0;
+  }
+  auto span = MakeConstSpan(group_ids, num_group_ids);
+  return check_group_ids(span) &&
+         ssl->config->supported_group_list.CopyFrom(span);
+}
+
 static bool ssl_nids_to_group_ids(Array<uint16_t> *out_group_ids,
                                   Span<const int> nids) {
   Array<uint16_t> group_ids;
@@ -1948,6 +1974,7 @@ static bool ssl_nids_to_group_ids(Array<uint16_t> *out_group_ids,
 
   for (size_t i = 0; i < nids.size(); i++) {
     if (!ssl_nid_to_group_id(&group_ids[i], nids[i])) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);
       return false;
     }
   }
@@ -1993,6 +2020,7 @@ static bool ssl_str_to_group_ids(Array<uint16_t> *out_group_ids,
     col = strchr(ptr, ':');
     if (!ssl_name_to_group_id(&group_ids[i++], ptr,
                               col ? (size_t)(col - ptr) : strlen(ptr))) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);
       return false;
     }
     if (col) {
@@ -2023,6 +2051,14 @@ uint16_t SSL_get_group_id(const SSL *ssl) {
   }
 
   return session->group_id;
+}
+
+int SSL_get_negotiated_group(const SSL *ssl) {
+  uint16_t group_id = SSL_get_group_id(ssl);
+  if (group_id == 0) {
+    return NID_undef;
+  }
+  return ssl_group_id_to_nid(group_id);
 }
 
 int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh) {
@@ -3188,7 +3224,7 @@ namespace fips202205 {
 // Section 3.3.1
 // "The server shall be configured to only use cipher suites that are
 // composed entirely of NIST approved algorithms"
-static const int kGroups[] = {NID_X9_62_prime256v1, NID_secp384r1};
+static const uint16_t kGroups[] = {SSL_GROUP_SECP256R1, SSL_GROUP_SECP384R1};
 
 static const uint16_t kSigAlgs[] = {
     SSL_SIGN_RSA_PKCS1_SHA256,
@@ -3225,7 +3261,7 @@ static int Configure(SSL_CTX *ctx) {
       // Encrypt-then-MAC extension is required for all CBC cipher suites and so
       // it's easier to drop them.
       SSL_CTX_set_strict_cipher_list(ctx, kTLS12Ciphers) &&
-      SSL_CTX_set1_groups(ctx, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
+      SSL_CTX_set1_group_ids(ctx, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
       SSL_CTX_set_signing_algorithm_prefs(ctx, kSigAlgs,
                                           OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
       SSL_CTX_set_verify_algorithm_prefs(ctx, kSigAlgs,
@@ -3239,7 +3275,7 @@ static int Configure(SSL *ssl) {
   return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
          SSL_set_max_proto_version(ssl, TLS1_3_VERSION) &&
          SSL_set_strict_cipher_list(ssl, kTLS12Ciphers) &&
-         SSL_set1_groups(ssl, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
+         SSL_set1_group_ids(ssl, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
          SSL_set_signing_algorithm_prefs(ssl, kSigAlgs,
                                          OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
          SSL_set_verify_algorithm_prefs(ssl, kSigAlgs,
@@ -3252,7 +3288,7 @@ namespace wpa202304 {
 
 // See WPA version 3.1, section 3.5.
 
-static const int kGroups[] = {NID_secp384r1};
+static const uint16_t kGroups[] = {SSL_GROUP_SECP384R1};
 
 static const uint16_t kSigAlgs[] = {
     SSL_SIGN_RSA_PKCS1_SHA384,        //
@@ -3272,7 +3308,7 @@ static int Configure(SSL_CTX *ctx) {
   return SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) &&
          SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION) &&
          SSL_CTX_set_strict_cipher_list(ctx, kTLS12Ciphers) &&
-         SSL_CTX_set1_groups(ctx, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
+         SSL_CTX_set1_group_ids(ctx, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
          SSL_CTX_set_signing_algorithm_prefs(ctx, kSigAlgs,
                                              OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
          SSL_CTX_set_verify_algorithm_prefs(ctx, kSigAlgs,
@@ -3285,7 +3321,7 @@ static int Configure(SSL *ssl) {
   return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
          SSL_set_max_proto_version(ssl, TLS1_3_VERSION) &&
          SSL_set_strict_cipher_list(ssl, kTLS12Ciphers) &&
-         SSL_set1_groups(ssl, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
+         SSL_set1_group_ids(ssl, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
          SSL_set_signing_algorithm_prefs(ssl, kSigAlgs,
                                          OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
          SSL_set_verify_algorithm_prefs(ssl, kSigAlgs,

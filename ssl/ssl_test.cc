@@ -7755,6 +7755,7 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
     EXPECT_EQ(SSL_CIPHER_get_id(cipher),
               uint32_t{TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256});
     EXPECT_EQ(SSL_get_group_id(client.get()), SSL_GROUP_X25519);
+    EXPECT_EQ(SSL_get_negotiated_group(client.get()), NID_X25519);
     EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()),
               SSL_SIGN_RSA_PKCS1_SHA256);
     bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
@@ -8714,6 +8715,20 @@ TEST(SSLTest, InvalidSignatureAlgorithm) {
       ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
   EXPECT_FALSE(SSL_CTX_set_verify_algorithm_prefs(
       ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
+}
+
+TEST(SSLTest, InvalidGroups) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  static const uint16_t kInvalidIDs[] = {1234};
+  EXPECT_FALSE(SSL_CTX_set1_group_ids(
+      ctx.get(), kInvalidIDs, OPENSSL_ARRAY_SIZE(kInvalidIDs)));
+
+  // This is a valid NID, but it is not a valid group.
+  static const int kInvalidNIDs[] = {NID_rsaEncryption};
+  EXPECT_FALSE(SSL_CTX_set1_groups(
+      ctx.get(), kInvalidNIDs, OPENSSL_ARRAY_SIZE(kInvalidNIDs)));
 }
 
 TEST(SSLTest, NameLists) {
