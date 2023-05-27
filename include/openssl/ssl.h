@@ -2353,7 +2353,7 @@ OPENSSL_EXPORT size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx);
 // element of |groups| should be a |NID_*| constant from nid.h. It returns one
 // on success and zero on failure.
 //
-// Note that this API does not use the |SSL_CURVE_*| values defined below.
+// Note that this API does not use the |SSL_GROUP_*| values defined below.
 OPENSSL_EXPORT int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups,
                                        size_t num_groups);
 
@@ -2361,7 +2361,7 @@ OPENSSL_EXPORT int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups,
 // element of |groups| should be a |NID_*| constant from nid.h. It returns one
 // on success and zero on failure.
 //
-// Note that this API does not use the |SSL_CURVE_*| values defined below.
+// Note that this API does not use the |SSL_GROUP_*| values defined below.
 OPENSSL_EXPORT int SSL_set1_groups(SSL *ssl, const int *groups,
                                    size_t num_groups);
 
@@ -2377,27 +2377,24 @@ OPENSSL_EXPORT int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups);
 // failure.
 OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 
-// SSL_CURVE_* define TLS curve IDs.
-#define SSL_CURVE_SECP224R1 21
-#define SSL_CURVE_SECP256R1 23
-#define SSL_CURVE_SECP384R1 24
-#define SSL_CURVE_SECP521R1 25
-#define SSL_CURVE_X25519 29
-#define SSL_CURVE_X25519_KYBER768_DRAFT00 0x6399
+// SSL_GROUP_* define TLS group IDs.
+#define SSL_GROUP_SECP224R1 21
+#define SSL_GROUP_SECP256R1 23
+#define SSL_GROUP_SECP384R1 24
+#define SSL_GROUP_SECP521R1 25
+#define SSL_GROUP_X25519 29
+#define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
-// SSL_get_curve_id returns the ID of the curve used by |ssl|'s most recently
-// completed handshake or 0 if not applicable.
-//
-// TODO(davidben): This API currently does not work correctly if there is a
-// renegotiation in progress. Fix this.
-OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
+// SSL_get_group_id returns the ID of the group used by |ssl|'s most recently
+// completed handshake, or 0 if not applicable.
+OPENSSL_EXPORT uint16_t SSL_get_group_id(const SSL *ssl);
 
-// SSL_get_curve_name returns a human-readable name for the curve specified by
-// the given TLS curve id, or NULL if the curve is unknown.
-OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
+// SSL_get_group_name returns a human-readable name for the group specified by
+// the given TLS group ID, or NULL if the group is unknown.
+OPENSSL_EXPORT const char *SSL_get_group_name(uint16_t group_id);
 
-// SSL_get_all_curve_names outputs a list of possible strings
-// |SSL_get_curve_name| may return in this version of BoringSSL. It writes at
+// SSL_get_all_group_names outputs a list of possible strings
+// |SSL_get_group_name| may return in this version of BoringSSL. It writes at
 // most |max_out| entries to |out| and returns the total number it would have
 // written, if |max_out| had been large enough. |max_out| may be initially set
 // to zero to size the output.
@@ -2408,7 +2405,7 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // placeholder, experimental, or deprecated values that do not apply to every
 // caller. Future versions of BoringSSL may also return strings not in this
 // list, so this does not apply if, say, sending strings across services.
-OPENSSL_EXPORT size_t SSL_get_all_curve_names(const char **out, size_t max_out);
+OPENSSL_EXPORT size_t SSL_get_all_group_names(const char **out, size_t max_out);
 
 
 // Certificate verification.
@@ -5243,6 +5240,15 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_set1_curves SSL_set1_groups
 #define SSL_CTX_set1_curves_list SSL_CTX_set1_groups_list
 #define SSL_set1_curves_list SSL_set1_groups_list
+#define SSL_get_curve_id SSL_get_group_id
+#define SSL_get_curve_name SSL_get_group_name
+#define SSL_get_all_curve_names SSL_get_all_group_names
+#define SSL_CURVE_SECP224R1 SSL_GROUP_SECP224R1
+#define SSL_CURVE_SECP256R1 SSL_GROUP_SECP256R1
+#define SSL_CURVE_SECP384R1 SSL_GROUP_SECP384R1
+#define SSL_CURVE_SECP521R1 SSL_GROUP_SECP521R1
+#define SSL_CURVE_X25519 SSL_GROUP_X25519
+#define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
 
 
 // Compliance policy configurations

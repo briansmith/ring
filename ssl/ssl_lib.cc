@@ -2016,7 +2016,7 @@ int SSL_set1_groups_list(SSL *ssl, const char *groups) {
   return ssl_str_to_group_ids(&ssl->config->supported_group_list, groups);
 }
 
-uint16_t SSL_get_curve_id(const SSL *ssl) {
+uint16_t SSL_get_group_id(const SSL *ssl) {
   SSL_SESSION *session = SSL_get_session(ssl);
   if (session == NULL) {
     return 0;

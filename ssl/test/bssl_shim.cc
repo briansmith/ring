@@ -692,9 +692,9 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
           SSL_CIPHER_standard_name(SSL_get_current_cipher(ssl))) ||
       !CheckListContains("OpenSSL cipher name", SSL_get_all_cipher_names,
                          SSL_CIPHER_get_name(SSL_get_current_cipher(ssl))) ||
-      (SSL_get_curve_id(ssl) != 0 &&
-       !CheckListContains("curve", SSL_get_all_curve_names,
-                          SSL_get_curve_name(SSL_get_curve_id(ssl)))) ||
+      (SSL_get_group_id(ssl) != 0 &&
+       !CheckListContains("group", SSL_get_all_group_names,
+                          SSL_get_group_name(SSL_get_group_id(ssl)))) ||
       (SSL_get_peer_signature_algorithm(ssl) != 0 &&
        !CheckListContains(
            "sigalg", SSL_get_all_signature_algorithm_names,

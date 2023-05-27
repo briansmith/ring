@@ -1899,27 +1899,27 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     std::vector<int> nids;
     for (auto curve : curves) {
       switch (curve) {
-        case SSL_CURVE_SECP224R1:
+        case SSL_GROUP_SECP224R1:
           nids.push_back(NID_secp224r1);
           break;
 
-        case SSL_CURVE_SECP256R1:
+        case SSL_GROUP_SECP256R1:
           nids.push_back(NID_X9_62_prime256v1);
           break;
 
-        case SSL_CURVE_SECP384R1:
+        case SSL_GROUP_SECP384R1:
           nids.push_back(NID_secp384r1);
           break;
 
-        case SSL_CURVE_SECP521R1:
+        case SSL_GROUP_SECP521R1:
           nids.push_back(NID_secp521r1);
           break;
 
-        case SSL_CURVE_X25519:
+        case SSL_GROUP_X25519:
           nids.push_back(NID_X25519);
           break;
 
-        case SSL_CURVE_X25519_KYBER768_DRAFT00:
+        case SSL_GROUP_X25519_KYBER768_DRAFT00:
           nids.push_back(NID_X25519Kyber768Draft00);
           break;
       }
