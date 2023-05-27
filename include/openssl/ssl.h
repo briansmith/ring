@@ -2331,45 +2331,51 @@ OPENSSL_EXPORT int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets);
 OPENSSL_EXPORT size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx);
 
 
-// Elliptic curve Diffie-Hellman.
+// Diffie-Hellman groups and ephemeral key exchanges.
 //
-// Cipher suites using an ECDHE key exchange perform Diffie-Hellman over an
-// elliptic curve negotiated by both endpoints. See RFC 4492. Only named curves
-// are supported. ECDHE is always enabled, but the curve preferences may be
-// configured with these functions.
+// Most TLS handshakes (ECDHE cipher suites in TLS 1.2, and all supported TLS
+// 1.3 modes) incorporate an ephemeral key exchange, most commonly using
+// Elliptic Curve Diffie-Hellman (ECDH), as described in RFC 8422. The key
+// exchange algorithm is negotiated separately from the cipher suite, using
+// NamedGroup values, which define Diffie-Hellman groups.
 //
-// Note that TLS 1.3 renames these from curves to groups. For consistency, we
-// currently use the TLS 1.2 name in the API.
+// Historically, these values were known as "curves", in reference to ECDH, and
+// some APIs refer to the original name. RFC 7919 renamed them to "groups" in
+// reference to Diffie-Hellman in general. These values are also used to select
+// experimental post-quantum KEMs. Though not Diffie-Hellman groups, KEMs can
+// fill a similar role in TLS, so they use the same codepoints.
+//
+// In TLS 1.2, the ECDH values also negotiate elliptic curves used in ECDSA. In
+// TLS 1.3 and later, ECDSA curves are part of the signature algorithm. See
+// |SSL_SIGN_*|.
 
-// SSL_CTX_set1_curves sets the preferred curves for |ctx| to be |curves|. Each
-// element of |curves| should be a curve nid. It returns one on success and
-// zero on failure.
+// SSL_CTX_set1_groups sets the preferred groups for |ctx| to be |groups|. Each
+// element of |groups| should be a |NID_*| constant from nid.h. It returns one
+// on success and zero on failure.
 //
-// Note that this API uses nid values from nid.h and not the |SSL_CURVE_*|
-// values defined below.
-OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
-                                       size_t curves_len);
+// Note that this API does not use the |SSL_CURVE_*| values defined below.
+OPENSSL_EXPORT int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups,
+                                       size_t num_groups);
 
-// SSL_set1_curves sets the preferred curves for |ssl| to be |curves|. Each
-// element of |curves| should be a curve nid. It returns one on success and
-// zero on failure.
+// SSL_set1_groups sets the preferred groups for |ssl| to be |groups|. Each
+// element of |groups| should be a |NID_*| constant from nid.h. It returns one
+// on success and zero on failure.
 //
-// Note that this API uses nid values from nid.h and not the |SSL_CURVE_*|
-// values defined below.
-OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
-                                   size_t curves_len);
+// Note that this API does not use the |SSL_CURVE_*| values defined below.
+OPENSSL_EXPORT int SSL_set1_groups(SSL *ssl, const int *groups,
+                                   size_t num_groups);
 
-// SSL_CTX_set1_curves_list sets the preferred curves for |ctx| to be the
-// colon-separated list |curves|. Each element of |curves| should be a curve
+// SSL_CTX_set1_groups_list sets the preferred groups for |ctx| to be the
+// colon-separated list |groups|. Each element of |groups| should be a curve
 // name (e.g. P-256, X25519, ...). It returns one on success and zero on
 // failure.
-OPENSSL_EXPORT int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves);
+OPENSSL_EXPORT int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups);
 
-// SSL_set1_curves_list sets the preferred curves for |ssl| to be the
-// colon-separated list |curves|. Each element of |curves| should be a curve
+// SSL_set1_groups_list sets the preferred groups for |ssl| to be the
+// colon-separated list |groups|. Each element of |groups| should be a curve
 // name (e.g. P-256, X25519, ...). It returns one on success and zero on
 // failure.
-OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
+OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 
 // SSL_CURVE_* define TLS curve IDs.
 #define SSL_CURVE_SECP224R1 21
@@ -2403,20 +2409,6 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // caller. Future versions of BoringSSL may also return strings not in this
 // list, so this does not apply if, say, sending strings across services.
 OPENSSL_EXPORT size_t SSL_get_all_curve_names(const char **out, size_t max_out);
-
-// SSL_CTX_set1_groups calls |SSL_CTX_set1_curves|.
-OPENSSL_EXPORT int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups,
-                                       size_t groups_len);
-
-// SSL_set1_groups calls |SSL_set1_curves|.
-OPENSSL_EXPORT int SSL_set1_groups(SSL *ssl, const int *groups,
-                                   size_t groups_len);
-
-// SSL_CTX_set1_groups_list calls |SSL_CTX_set1_curves_list|.
-OPENSSL_EXPORT int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups);
-
-// SSL_set1_groups_list calls |SSL_set1_curves_list|.
-OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 
 
 // Certificate verification.
@@ -5090,12 +5082,12 @@ OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 // Use |SSL_CTX_set_quiet_shutdown| instead.
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
 
-// SSL_CTX_set_tmp_ecdh calls |SSL_CTX_set1_curves| with a one-element list
-// containing |ec_key|'s curve.
+// SSL_CTX_set_tmp_ecdh calls |SSL_CTX_set1_groups| with a one-element list
+// containing |ec_key|'s curve. The remainder of |ec_key| is ignored.
 OPENSSL_EXPORT int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key);
 
-// SSL_set_tmp_ecdh calls |SSL_set1_curves| with a one-element list containing
-// |ec_key|'s curve.
+// SSL_set_tmp_ecdh calls |SSL_set1_groups| with a one-element list containing
+// |ec_key|'s curve. The remainder of |ec_key| is ignored.
 OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 
 // SSL_add_dir_cert_subjects_to_stack lists files in directory |dir|. It calls
@@ -5244,6 +5236,14 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
   SSL_R_TLSV1_ALERT_BAD_CERTIFICATE_HASH_VALUE
 #define SSL_R_TLSV1_CERTIFICATE_REQUIRED SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED
 
+// The following symbols are compatibility aliases for equivalent functions that
+// use the newer "group" terminology. New code should use the new functions for
+// consistency, but we do not plan to remove these aliases.
+#define SSL_CTX_set1_curves SSL_CTX_set1_groups
+#define SSL_set1_curves SSL_set1_groups
+#define SSL_CTX_set1_curves_list SSL_CTX_set1_groups_list
+#define SSL_set1_curves_list SSL_set1_groups_list
+
 
 // Compliance policy configurations
 //
@@ -5359,6 +5359,8 @@ OPENSSL_EXPORT int SSL_set_compliance_policy(
 #define SSL_CTRL_SESS_NUMBER doesnt_exist
 #define SSL_CTRL_SET_CURVES doesnt_exist
 #define SSL_CTRL_SET_CURVES_LIST doesnt_exist
+#define SSL_CTRL_SET_GROUPS doesnt_exist
+#define SSL_CTRL_SET_GROUPS_LIST doesnt_exist
 #define SSL_CTRL_SET_ECDH_AUTO doesnt_exist
 #define SSL_CTRL_SET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_SET_MAX_SEND_FRAGMENT doesnt_exist
@@ -5407,7 +5409,7 @@ OPENSSL_EXPORT int SSL_set_compliance_policy(
 #define SSL_CTX_sess_set_cache_size SSL_CTX_sess_set_cache_size
 #define SSL_CTX_set0_chain SSL_CTX_set0_chain
 #define SSL_CTX_set1_chain SSL_CTX_set1_chain
-#define SSL_CTX_set1_curves SSL_CTX_set1_curves
+#define SSL_CTX_set1_groups SSL_CTX_set1_groups
 #define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
 #define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
 #define SSL_CTX_set_mode SSL_CTX_set_mode
@@ -5440,7 +5442,7 @@ OPENSSL_EXPORT int SSL_set_compliance_policy(
 #define SSL_session_reused SSL_session_reused
 #define SSL_set0_chain SSL_set0_chain
 #define SSL_set1_chain SSL_set1_chain
-#define SSL_set1_curves SSL_set1_curves
+#define SSL_set1_groups SSL_set1_groups
 #define SSL_set_max_cert_list SSL_set_max_cert_list
 #define SSL_set_max_send_fragment SSL_set_max_send_fragment
 #define SSL_set_mode SSL_set_mode

@@ -358,57 +358,6 @@ bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
   return false;
 }
 
-bool tls1_set_curves(Array<uint16_t> *out_group_ids, Span<const int> curves) {
-  Array<uint16_t> group_ids;
-  if (!group_ids.Init(curves.size())) {
-    return false;
-  }
-
-  for (size_t i = 0; i < curves.size(); i++) {
-    if (!ssl_nid_to_group_id(&group_ids[i], curves[i])) {
-      return false;
-    }
-  }
-
-  *out_group_ids = std::move(group_ids);
-  return true;
-}
-
-bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves) {
-  // Count the number of curves in the list.
-  size_t count = 0;
-  const char *ptr = curves, *col;
-  do {
-    col = strchr(ptr, ':');
-    count++;
-    if (col) {
-      ptr = col + 1;
-    }
-  } while (col);
-
-  Array<uint16_t> group_ids;
-  if (!group_ids.Init(count)) {
-    return false;
-  }
-
-  size_t i = 0;
-  ptr = curves;
-  do {
-    col = strchr(ptr, ':');
-    if (!ssl_name_to_group_id(&group_ids[i++], ptr,
-                              col ? (size_t)(col - ptr) : strlen(ptr))) {
-      return false;
-    }
-    if (col) {
-      ptr = col + 1;
-    }
-  } while (col);
-
-  assert(i == count);
-  *out_group_ids = std::move(group_ids);
-  return true;
-}
-
 bool tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
   if (is_post_quantum_group(group_id) &&
       ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {

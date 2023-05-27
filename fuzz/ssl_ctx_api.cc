@@ -410,18 +410,18 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_set_tlsext_ticket_keys(ctx, keys.data(), keys.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::vector<int> curves;
-        if (!GetVector(&curves, cbs)) {
+        std::vector<int> groups;
+        if (!GetVector(&groups, cbs)) {
           return;
         }
-        SSL_CTX_set1_curves(ctx, curves.data(), curves.size());
+        SSL_CTX_set1_groups(ctx, groups.data(), groups.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string curves;
-        if (!GetString(&curves, cbs)) {
+        std::string groups;
+        if (!GetString(&groups, cbs)) {
           return;
         }
-        SSL_CTX_set1_curves_list(ctx, curves.c_str());
+        SSL_CTX_set1_groups_list(ctx, groups.c_str());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
         SSL_CTX_enable_signed_cert_timestamps(ctx);

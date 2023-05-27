@@ -1939,44 +1939,81 @@ int SSL_CTX_set_tlsext_ticket_key_cb(
   return 1;
 }
 
-int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves, size_t curves_len) {
-  return tls1_set_curves(&ctx->supported_group_list,
-                         MakeConstSpan(curves, curves_len));
+static bool ssl_nids_to_group_ids(Array<uint16_t> *out_group_ids,
+                                  Span<const int> nids) {
+  Array<uint16_t> group_ids;
+  if (!group_ids.Init(nids.size())) {
+    return false;
+  }
+
+  for (size_t i = 0; i < nids.size(); i++) {
+    if (!ssl_nid_to_group_id(&group_ids[i], nids[i])) {
+      return false;
+    }
+  }
+
+  *out_group_ids = std::move(group_ids);
+  return true;
 }
 
-int SSL_set1_curves(SSL *ssl, const int *curves, size_t curves_len) {
+int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups, size_t num_groups) {
+  return ssl_nids_to_group_ids(&ctx->supported_group_list,
+                               MakeConstSpan(groups, num_groups));
+}
+
+int SSL_set1_groups(SSL *ssl, const int *groups, size_t num_groups) {
   if (!ssl->config) {
     return 0;
   }
-  return tls1_set_curves(&ssl->config->supported_group_list,
-                         MakeConstSpan(curves, curves_len));
+  return ssl_nids_to_group_ids(&ssl->config->supported_group_list,
+                               MakeConstSpan(groups, num_groups));
 }
 
-int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves) {
-  return tls1_set_curves_list(&ctx->supported_group_list, curves);
-}
+static bool ssl_str_to_group_ids(Array<uint16_t> *out_group_ids,
+                                 const char *str) {
+  // Count the number of groups in the list.
+  size_t count = 0;
+  const char *ptr = str, *col;
+  do {
+    col = strchr(ptr, ':');
+    count++;
+    if (col) {
+      ptr = col + 1;
+    }
+  } while (col);
 
-int SSL_set1_curves_list(SSL *ssl, const char *curves) {
-  if (!ssl->config) {
-    return 0;
+  Array<uint16_t> group_ids;
+  if (!group_ids.Init(count)) {
+    return false;
   }
-  return tls1_set_curves_list(&ssl->config->supported_group_list, curves);
-}
 
-int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups, size_t groups_len) {
-  return SSL_CTX_set1_curves(ctx, groups, groups_len);
-}
+  size_t i = 0;
+  ptr = str;
+  do {
+    col = strchr(ptr, ':');
+    if (!ssl_name_to_group_id(&group_ids[i++], ptr,
+                              col ? (size_t)(col - ptr) : strlen(ptr))) {
+      return false;
+    }
+    if (col) {
+      ptr = col + 1;
+    }
+  } while (col);
 
-int SSL_set1_groups(SSL *ssl, const int *groups, size_t groups_len) {
-  return SSL_set1_curves(ssl, groups, groups_len);
+  assert(i == count);
+  *out_group_ids = std::move(group_ids);
+  return true;
 }
 
 int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups) {
-  return SSL_CTX_set1_curves_list(ctx, groups);
+  return ssl_str_to_group_ids(&ctx->supported_group_list, groups);
 }
 
 int SSL_set1_groups_list(SSL *ssl, const char *groups) {
-  return SSL_set1_curves_list(ssl, groups);
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_str_to_group_ids(&ssl->config->supported_group_list, groups);
 }
 
 uint16_t SSL_get_curve_id(const SSL *ssl) {
@@ -3040,7 +3077,7 @@ int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key) {
     return 0;
   }
   int nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
-  return SSL_CTX_set1_curves(ctx, &nid, 1);
+  return SSL_CTX_set1_groups(ctx, &nid, 1);
 }
 
 int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
@@ -3049,7 +3086,7 @@ int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
     return 0;
   }
   int nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
-  return SSL_set1_curves(ssl, &nid, 1);
+  return SSL_set1_groups(ssl, &nid, 1);
 }
 
 void SSL_CTX_set_ticket_aead_method(SSL_CTX *ctx,
@@ -3151,7 +3188,7 @@ namespace fips202205 {
 // Section 3.3.1
 // "The server shall be configured to only use cipher suites that are
 // composed entirely of NIST approved algorithms"
-static const int kCurves[] = {NID_X9_62_prime256v1, NID_secp384r1};
+static const int kGroups[] = {NID_X9_62_prime256v1, NID_secp384r1};
 
 static const uint16_t kSigAlgs[] = {
     SSL_SIGN_RSA_PKCS1_SHA256,
@@ -3188,7 +3225,7 @@ static int Configure(SSL_CTX *ctx) {
       // Encrypt-then-MAC extension is required for all CBC cipher suites and so
       // it's easier to drop them.
       SSL_CTX_set_strict_cipher_list(ctx, kTLS12Ciphers) &&
-      SSL_CTX_set1_curves(ctx, kCurves, OPENSSL_ARRAY_SIZE(kCurves)) &&
+      SSL_CTX_set1_groups(ctx, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
       SSL_CTX_set_signing_algorithm_prefs(ctx, kSigAlgs,
                                           OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
       SSL_CTX_set_verify_algorithm_prefs(ctx, kSigAlgs,
@@ -3202,7 +3239,7 @@ static int Configure(SSL *ssl) {
   return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
          SSL_set_max_proto_version(ssl, TLS1_3_VERSION) &&
          SSL_set_strict_cipher_list(ssl, kTLS12Ciphers) &&
-         SSL_set1_curves(ssl, kCurves, OPENSSL_ARRAY_SIZE(kCurves)) &&
+         SSL_set1_groups(ssl, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
          SSL_set_signing_algorithm_prefs(ssl, kSigAlgs,
                                          OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
          SSL_set_verify_algorithm_prefs(ssl, kSigAlgs,
@@ -3215,7 +3252,7 @@ namespace wpa202304 {
 
 // See WPA version 3.1, section 3.5.
 
-static const int kCurves[] = {NID_secp384r1};
+static const int kGroups[] = {NID_secp384r1};
 
 static const uint16_t kSigAlgs[] = {
     SSL_SIGN_RSA_PKCS1_SHA384,        //
@@ -3235,7 +3272,7 @@ static int Configure(SSL_CTX *ctx) {
   return SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) &&
          SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION) &&
          SSL_CTX_set_strict_cipher_list(ctx, kTLS12Ciphers) &&
-         SSL_CTX_set1_curves(ctx, kCurves, OPENSSL_ARRAY_SIZE(kCurves)) &&
+         SSL_CTX_set1_groups(ctx, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
          SSL_CTX_set_signing_algorithm_prefs(ctx, kSigAlgs,
                                              OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
          SSL_CTX_set_verify_algorithm_prefs(ctx, kSigAlgs,
@@ -3248,7 +3285,7 @@ static int Configure(SSL *ssl) {
   return SSL_set_min_proto_version(ssl, TLS1_2_VERSION) &&
          SSL_set_max_proto_version(ssl, TLS1_3_VERSION) &&
          SSL_set_strict_cipher_list(ssl, kTLS12Ciphers) &&
-         SSL_set1_curves(ssl, kCurves, OPENSSL_ARRAY_SIZE(kCurves)) &&
+         SSL_set1_groups(ssl, kGroups, OPENSSL_ARRAY_SIZE(kGroups)) &&
          SSL_set_signing_algorithm_prefs(ssl, kSigAlgs,
                                          OPENSSL_ARRAY_SIZE(kSigAlgs)) &&
          SSL_set_verify_algorithm_prefs(ssl, kSigAlgs,
