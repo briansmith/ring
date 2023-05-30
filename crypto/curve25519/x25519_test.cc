@@ -27,6 +27,28 @@
 #include "../test/wycheproof_util.h"
 #include "internal.h"
 
+static inline int ctwrapX25519(uint8_t out_shared_key[32],
+                               const uint8_t private_key[32],
+                               const uint8_t peer_public_value[32]) {
+  uint8_t scalar[32], point[32];
+  // Copy all the secrets into a temporary buffer, so we can run constant-time
+  // validation on them.
+  OPENSSL_memcpy(scalar, private_key, sizeof(scalar));
+  OPENSSL_memcpy(point, peer_public_value, sizeof(point));
+
+  // X25519 should not leak the private key.
+  CONSTTIME_SECRET(scalar, sizeof(scalar));
+  // All other inputs are also marked as secret. This is not to support any
+  // particular use case for calling X25519 with a secret *point*, but
+  // rather to ensure that the choice of the point cannot influence whether
+  // the scalar is leaked or not. Same for the initial contents of the
+  // output buffer. This conservative choice may be revised in the future.
+  CONSTTIME_SECRET(point, sizeof(point));
+  CONSTTIME_SECRET(out_shared_key, 32);
+  int r = X25519(out_shared_key, scalar, point);
+  CONSTTIME_DECLASSIFY(out_shared_key, 32);
+  return r;
+}
 
 TEST(X25519Test, TestVector) {
   // Taken from https://www.rfc-editor.org/rfc/rfc7748#section-5.2
@@ -41,14 +63,8 @@ TEST(X25519Test, TestVector) {
       0x35, 0x3b, 0x10, 0xa9, 0x03, 0xa6, 0xd0, 0xab, 0x1c, 0x4c,
   };
 
-  // Copy all the secrets into a temporary buffer, so we can run constant-time
-  // validation on them.
   uint8_t out[32], secret[32];
-  OPENSSL_memcpy(secret, kScalar1, sizeof(secret));
-  CONSTTIME_SECRET(secret, sizeof(secret));
-  EXPECT_TRUE(X25519(out, secret, kPoint1));
-  CONSTTIME_DECLASSIFY(out, sizeof(out));
-
+  EXPECT_TRUE(ctwrapX25519(out, kScalar1, kPoint1));
   static const uint8_t kExpected1[32] = {
       0xc3, 0xda, 0x55, 0x37, 0x9d, 0xe9, 0xc6, 0x90, 0x8e, 0x94, 0xea,
       0x4d, 0xf2, 0x8d, 0x08, 0x4f, 0x32, 0xec, 0xcf, 0x03, 0x49, 0x1c,
@@ -66,12 +82,7 @@ TEST(X25519Test, TestVector) {
       0x9d, 0x05, 0x38, 0xae, 0x2c, 0x31, 0xdb, 0xe7, 0x10, 0x6f, 0xc0,
       0x3c, 0x3e, 0xfc, 0x4c, 0xd5, 0x49, 0xc7, 0x15, 0xa4, 0x93,
   };
-
-  OPENSSL_memcpy(secret, kScalar2, sizeof(secret));
-  CONSTTIME_SECRET(secret, sizeof(secret));
-  EXPECT_TRUE(X25519(out, secret, kPoint2));
-  CONSTTIME_DECLASSIFY(out, sizeof(out));
-
+  EXPECT_TRUE(ctwrapX25519(out, kScalar2, kPoint2));
   static const uint8_t kExpected2[32] = {
       0x95, 0xcb, 0xde, 0x94, 0x76, 0xe8, 0x90, 0x7d, 0x7a, 0xad, 0xe4,
       0x5c, 0xb4, 0xb8, 0x73, 0xf8, 0x8b, 0x59, 0x5a, 0x68, 0x79, 0x9f,
@@ -118,16 +129,10 @@ TEST(X25519Test, TestVector) {
   CONSTTIME_DECLASSIFY(out, sizeof(out));
   EXPECT_EQ(Bytes(out), Bytes(kPublicB));
 
-  OPENSSL_memcpy(secret, kPrivateA, sizeof(secret));
-  CONSTTIME_SECRET(secret, sizeof(secret));
-  X25519(out, secret, kPublicB);
-  CONSTTIME_DECLASSIFY(out, sizeof(out));
+  ctwrapX25519(out, kPrivateA, kPublicB);
   EXPECT_EQ(Bytes(out), Bytes(kSecret));
 
-  OPENSSL_memcpy(secret, kPrivateB, sizeof(secret));
-  CONSTTIME_SECRET(secret, sizeof(secret));
-  X25519(out, secret, kPublicA);
-  CONSTTIME_DECLASSIFY(out, sizeof(out));
+  ctwrapX25519(out, kPrivateB, kPublicA);
   EXPECT_EQ(Bytes(out), Bytes(kSecret));
 }
 
@@ -142,7 +147,7 @@ TEST(X25519Test, SmallOrder) {
   OPENSSL_memset(private_key, 0x11, sizeof(private_key));
 
   OPENSSL_memset(out, 0xff, sizeof(out));
-  EXPECT_FALSE(X25519(out, private_key, kSmallOrderPoint))
+  EXPECT_FALSE(ctwrapX25519(out, private_key, kSmallOrderPoint))
       << "X25519 returned success with a small-order input.";
 
   // For callers which don't check, |out| should still be filled with zeros.
@@ -155,7 +160,7 @@ TEST(X25519Test, Iterated) {
   uint8_t scalar[32] = {9}, point[32] = {9}, out[32];
 
   for (unsigned i = 0; i < 1000; i++) {
-    EXPECT_TRUE(X25519(out, scalar, point));
+    EXPECT_TRUE(ctwrapX25519(out, scalar, point));
     OPENSSL_memcpy(point, scalar, sizeof(point));
     OPENSSL_memcpy(scalar, out, sizeof(scalar));
   }
@@ -174,7 +179,7 @@ TEST(X25519Test, DISABLED_IteratedLarge) {
   uint8_t scalar[32] = {9}, point[32] = {9}, out[32];
 
   for (unsigned i = 0; i < 1000000; i++) {
-    EXPECT_TRUE(X25519(out, scalar, point));
+    EXPECT_TRUE(ctwrapX25519(out, scalar, point));
     OPENSSL_memcpy(point, scalar, sizeof(point));
     OPENSSL_memcpy(scalar, out, sizeof(scalar));
   }
@@ -203,14 +208,9 @@ TEST(X25519Test, Wycheproof) {
       ASSERT_EQ(32u, priv.size());
       ASSERT_EQ(32u, pub.size());
 
-      // X25519 should not leak the private key.
-      CONSTTIME_SECRET(priv.data(), priv.size());
-
       uint8_t secret[32];
-      int ret = X25519(secret, priv.data(), pub.data());
+      int ret = ctwrapX25519(secret, priv.data(), pub.data());
       EXPECT_EQ(ret, result.IsValid({"NonCanonicalPublic", "Twist"}) ? 1 : 0);
-
-      CONSTTIME_DECLASSIFY(secret, sizeof(secret));
       EXPECT_EQ(Bytes(secret), Bytes(shared));
   });
 }
