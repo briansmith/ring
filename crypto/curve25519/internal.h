@@ -49,6 +49,7 @@ fiat_curve25519_adx_square(uint64_t out[4], const uint64_t in[4]);
 // x25519_scalar_mult_adx is defined in third_party/fiat/curve25519_64_adx.h
 void x25519_scalar_mult_adx(uint8_t out[32], const uint8_t scalar[32],
                             const uint8_t point[32]);
+void x25519_ge_scalarmult_base_adx(uint8_t h[4][32], const uint8_t a[32]);
 #endif
 
 #if defined(OPENSSL_64_BIT)
@@ -153,6 +154,8 @@ struct spake2_ctx_st {
   char disable_password_scalar_hack;
 };
 
+
+extern const uint8_t k25519Precomp[32][8][3][32];
 
 #if defined(__cplusplus)
 }  // extern C

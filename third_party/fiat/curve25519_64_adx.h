@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include <immintrin.h>
 #include <string.h>
@@ -525,4 +526,148 @@ void x25519_scalar_mult_adx(uint8_t out[32], const uint8_t scalar[32],
   fe4_mul(x2, x2, z2);
   fe4_canon(x2, x2);
   OPENSSL_memcpy(out, x2, sizeof(fe4));
+}
+
+typedef struct {
+  fe4 X;
+  fe4 Y;
+  fe4 Z;
+  fe4 T;
+} ge_p3_4;
+
+typedef struct {
+  fe4 yplusx;
+  fe4 yminusx;
+  fe4 xy2d;
+} ge_precomp_4;
+
+static void inline_x25519_ge_dbl_4(ge_p3_4 *r, const ge_p3_4 *p, bool skip_t) {
+  // Transcribed from a Coq function proven against affine coordinates.
+  // https://github.com/mit-plv/fiat-crypto/blob/9943ba9e7d8f3e1c0054b2c94a5edca46ea73ef8/src/Curves/Edwards/XYZT/Basic.v#L136-L165
+  fe4 trX, trZ, trT, t0, cX, cY, cZ, cT;
+  fe4_sq(trX, p->X);
+  fe4_sq(trZ, p->Y);
+  fe4_sq(trT, p->Z);
+  fe4_add(trT, trT, trT);
+  fe4_add(cY, p->X, p->Y);
+  fe4_sq(t0, cY);
+  fe4_add(cY, trZ, trX);
+  fe4_sub(cZ, trZ, trX);
+  fe4_sub(cX, t0, cY);
+  fe4_sub(cT, trT, cZ);
+  fe4_mul(r->X, cX, cT);
+  fe4_mul(r->Y, cY, cZ);
+  fe4_mul(r->Z, cZ, cT);
+  if (!skip_t) {
+    fe4_mul(r->T, cX, cY);
+  }
+}
+
+__attribute__((always_inline)) // 4% speedup with clang14 and zen2
+static inline void
+ge_p3_add_p3_precomp_4(ge_p3_4 *r, const ge_p3_4 *p, const ge_precomp_4 *q) {
+  fe4 A, B, C, YplusX, YminusX, D, X3, Y3, Z3, T3;
+  // Transcribed from a Coq function proven against affine coordinates.
+  // https://github.com/mit-plv/fiat-crypto/blob/a36568d1d73aff5d7accc79fd28be672882f9c17/src/Curves/Edwards/XYZT/Precomputed.v#L38-L56
+  fe4_add(YplusX, p->Y, p->X);
+  fe4_sub(YminusX, p->Y, p->X);
+  fe4_mul(A, YplusX, q->yplusx);
+  fe4_mul(B, YminusX, q->yminusx);
+  fe4_mul(C, q->xy2d, p->T);
+  fe4_add(D, p->Z, p->Z);
+  fe4_sub(X3, A, B);
+  fe4_add(Y3, A, B);
+  fe4_add(Z3, D, C);
+  fe4_sub(T3, D, C);
+  fe4_mul(r->X, X3, T3);
+  fe4_mul(r->Y, Y3, Z3);
+  fe4_mul(r->Z, Z3, T3);
+  fe4_mul(r->T, X3, Y3);
+}
+
+__attribute__((always_inline)) // 25% speedup with clang14 and zen2
+static inline void table_select_4(ge_precomp_4 *t, const int pos,
+                                  const signed char b) {
+  uint8_t bnegative = constant_time_msb_w(b);
+  uint8_t babs = b - ((bnegative & b) << 1);
+
+  uint8_t t_bytes[3][32] = {
+      {constant_time_is_zero_w(b) & 1}, {constant_time_is_zero_w(b) & 1}, {0}};
+#if defined(__clang__)
+  __asm__("" : "+m" (t_bytes) : /*no inputs*/);
+#endif
+  static_assert(sizeof(t_bytes) == sizeof(k25519Precomp[pos][0]), "");
+  for (int i = 0; i < 8; i++) {
+    constant_time_conditional_memxor(t_bytes, k25519Precomp[pos][i],
+                                     sizeof(t_bytes),
+                                     constant_time_eq_w(babs, 1 + i));
+  }
+
+  static_assert(sizeof(t_bytes) == sizeof(ge_precomp_4), "");
+
+  // fe4 uses saturated 64-bit limbs, so converting from bytes is just a copy.
+  OPENSSL_memcpy(t, t_bytes, sizeof(ge_precomp_4));
+
+  fe4 xy2d_neg = {0};
+  fe4_sub(xy2d_neg, xy2d_neg, t->xy2d);
+  constant_time_conditional_memcpy(t->yplusx, t_bytes[1], sizeof(fe4),
+                                   bnegative);
+  constant_time_conditional_memcpy(t->yminusx, t_bytes[0], sizeof(fe4),
+                                   bnegative);
+  constant_time_conditional_memcpy(t->xy2d, xy2d_neg, sizeof(fe4), bnegative);
+}
+
+// h = a * B
+// where a = a[0]+256*a[1]+...+256^31 a[31]
+// B is the Ed25519 base point (x,4/5) with x positive.
+//
+// Preconditions:
+//   a[31] <= 127
+void x25519_ge_scalarmult_base_adx(uint8_t h[4][32], const uint8_t a[32]) {
+  signed char e[64];
+  signed char carry;
+
+  for (unsigned i = 0; i < 32; ++i) {
+    e[2 * i + 0] = (a[i] >> 0) & 15;
+    e[2 * i + 1] = (a[i] >> 4) & 15;
+  }
+  // each e[i] is between 0 and 15
+  // e[63] is between 0 and 7
+
+  carry = 0;
+  for (unsigned i = 0; i < 63; ++i) {
+    e[i] += carry;
+    carry = e[i] + 8;
+    carry >>= 4;
+    e[i] -= carry << 4;
+  }
+  e[63] += carry;
+  // each e[i] is between -8 and 8
+
+  ge_p3_4 r = {{0}, {1}, {1}, {0}};
+  for (unsigned i = 1; i < 64; i += 2) {
+    ge_precomp_4 t;
+    table_select_4(&t, i / 2, e[i]);
+    ge_p3_add_p3_precomp_4(&r, &r, &t);
+  }
+
+  inline_x25519_ge_dbl_4(&r, &r, /*skip_t=*/true);
+  inline_x25519_ge_dbl_4(&r, &r, /*skip_t=*/true);
+  inline_x25519_ge_dbl_4(&r, &r, /*skip_t=*/true);
+  inline_x25519_ge_dbl_4(&r, &r, /*skip_t=*/false);
+
+  for (unsigned i = 0; i < 64; i += 2) {
+    ge_precomp_4 t;
+    table_select_4(&t, i / 2, e[i]);
+    ge_p3_add_p3_precomp_4(&r, &r, &t);
+  }
+
+  // fe4 uses saturated 64-bit limbs, so converting to bytes is just a copy.
+  // Satisfy stated precondition of fiat_25519_from_bytes; tests pass either way
+  fe4_canon(r.X, r.X);
+  fe4_canon(r.Y, r.Y);
+  fe4_canon(r.Z, r.Z);
+  fe4_canon(r.T, r.T);
+  static_assert(sizeof(ge_p3_4) == sizeof(uint8_t[4][32]), "");
+  OPENSSL_memcpy(h, &r, sizeof(ge_p3_4));
 }

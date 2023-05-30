@@ -797,6 +797,18 @@ static void table_select(ge_precomp *t, const int pos, const signed char b) {
 // Preconditions:
 //   a[31] <= 127
 void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
+#if defined(BORINGSSL_FE25519_ADX)
+  if (CRYPTO_is_BMI1_capable() && CRYPTO_is_BMI2_capable() &&
+      CRYPTO_is_ADX_capable()) {
+    uint8_t t[4][32];
+    x25519_ge_scalarmult_base_adx(t, a);
+    fiat_25519_from_bytes(h->X.v, t[0]);
+    fiat_25519_from_bytes(h->Y.v, t[1]);
+    fiat_25519_from_bytes(h->Z.v, t[2]);
+    fiat_25519_from_bytes(h->T.v, t[3]);
+    return;
+  }
+#endif
   signed char e[64];
   signed char carry;
   ge_p1p1 r;
