@@ -53,6 +53,13 @@ pub mod rand;
 /// Memory-manipulation operations.
 pub mod mem;
 
+/// Elliptic curve diffie-hellman operations.
+pub mod ecdh;
+
+pub(crate) mod bn;
+pub(crate) mod ec;
+pub(crate) mod pkey;
+
 #[cfg(test)]
 mod test_helpers;
 
@@ -111,7 +118,7 @@ impl<'a> From<&'a mut [u8]> for CSliceMut<'a> {
 /// Implementations of `ForeignTypeRef` must guarantee the following:
 ///
 /// - `Self::from_ptr(x).as_ptr() == x`
-/// - `Self::from_mut_ptr(x).as_ptr() == x`
+/// - `Self::from_ptr_mut(x).as_ptr() == x`
 unsafe trait ForeignTypeRef: Sized {
     /// The raw C type.
     type CType;
@@ -143,4 +150,27 @@ unsafe trait ForeignTypeRef: Sized {
     fn as_ptr(&self) -> *mut Self::CType {
         self as *const _ as *mut _
     }
+}
+
+/// A helper trait implemented by types which has an owned reference to foreign types.
+///
+/// # Safety
+///
+/// Implementations of `ForeignType` must guarantee the following:
+///
+/// - `Self::from_ptr(x).as_ptr() == x`
+unsafe trait ForeignType {
+    /// The raw C type.
+    type CType;
+
+    /// Constructs an instance of this type from its raw type.
+    ///
+    /// # Safety
+    ///
+    /// - `ptr` must be a valid, immutable, instance of `CType`.
+    /// - Ownership of `ptr` is passed to the implementation, and will free `ptr` when dropped.
+    unsafe fn from_ptr(ptr: *mut Self::CType) -> Self;
+
+    /// Returns a raw pointer to the wrapped value.
+    fn as_ptr(&self) -> *mut Self::CType;
 }

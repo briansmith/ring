@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
 pub(crate) fn decode_hex<const N: usize>(s: &str) -> [u8; N] {
     (0..s.len())
         .step_by(2)
@@ -23,6 +24,7 @@ pub(crate) fn decode_hex<const N: usize>(s: &str) -> [u8; N] {
         .unwrap()
 }
 
+#[allow(clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
 pub(crate) fn decode_hex_into_vec(s: &str) -> Vec<u8> {
     (0..s.len())
         .step_by(2)
