@@ -5268,6 +5268,11 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_CURVE_X25519 SSL_GROUP_X25519
 #define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
 
+// TLSEXT_nid_unknown is a constant used in OpenSSL for
+// |SSL_get_negotiated_group| to return an unrecognized group. BoringSSL never
+// returns this value, but we define this constant for compatibility.
+#define TLSEXT_nid_unknown 0x1000000
+
 
 // Compliance policy configurations
 //
