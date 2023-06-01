@@ -44,6 +44,9 @@ pub mod hmac;
 /// Random number generation.
 pub mod rand;
 
+/// BoringSSL implemented memory-manipulation operations.
+pub mod mem;
+
 #[cfg(test)]
 mod test_helpers;
 
