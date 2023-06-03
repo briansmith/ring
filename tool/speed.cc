@@ -367,13 +367,9 @@ static bool SpeedRSA(const std::string &selected) {
               // construct a new RSA key, with a new |BN_MONT_CTX| for the
               // public modulus. If we were to use |key| directly instead, then
               // these costs wouldn't be accounted for.
-              bssl::UniquePtr<RSA> verify_key(RSA_new());
+              bssl::UniquePtr<RSA> verify_key(RSA_new_public_key(
+                  RSA_get0_n(key.get()), RSA_get0_e(key.get())));
               if (!verify_key) {
-                return false;
-              }
-              verify_key->n = BN_dup(key->n);
-              verify_key->e = BN_dup(key->e);
-              if (!verify_key->n || !verify_key->e) {
                 return false;
               }
               return RSA_verify(NID_sha256, fake_sha256_hash,
