@@ -62,6 +62,7 @@
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

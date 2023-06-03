@@ -66,34 +66,6 @@ extern "C" {
 #endif
 
 
-#if !defined(OPENSSL_THREADS)
-typedef struct crypto_mutex_st {
-  char padding;  // Empty structs have different sizes in C and C++.
-} CRYPTO_MUTEX;
-#elif defined(OPENSSL_WINDOWS)
-// CRYPTO_MUTEX can appear in public header files so we really don't want to
-// pull in windows.h. It's statically asserted that this structure is large
-// enough to contain a Windows SRWLOCK by thread_win.c.
-typedef union crypto_mutex_st {
-  void *handle;
-} CRYPTO_MUTEX;
-#elif !defined(__GLIBC__)
-#if defined(OPENSSL_OPENBSD)
-// OpenBSD does not guarantee pthread_rwlock_t in sys/types.h yet.
-#include <pthread.h>
-#endif
-typedef pthread_rwlock_t CRYPTO_MUTEX;
-#else
-// On glibc, |pthread_rwlock_t| is hidden under feature flags, and we can't
-// ensure that we'll be able to get it from a public header. It's statically
-// asserted that this structure is large enough to contain a |pthread_rwlock_t|
-// by thread_pthread.c.
-typedef union crypto_mutex_st {
-  double alignment;
-  uint8_t padding[3*sizeof(int) + 5*sizeof(unsigned) + 16 + 8];
-} CRYPTO_MUTEX;
-#endif
-
 // CRYPTO_refcount_t is the type of a reference count.
 //
 // Since some platforms use C11 atomics to access this, it should have the

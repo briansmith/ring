@@ -520,9 +520,9 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
     return NULL;
   }
 
-  CRYPTO_STATIC_MUTEX_lock_read(built_in_groups_lock_bss_get());
+  CRYPTO_MUTEX_lock_read(built_in_groups_lock_bss_get());
   EC_GROUP *ret = *group_ptr;
-  CRYPTO_STATIC_MUTEX_unlock_read(built_in_groups_lock_bss_get());
+  CRYPTO_MUTEX_unlock_read(built_in_groups_lock_bss_get());
   if (ret != NULL) {
     return ret;
   }
@@ -533,7 +533,7 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
   }
 
   EC_GROUP *to_free = NULL;
-  CRYPTO_STATIC_MUTEX_lock_write(built_in_groups_lock_bss_get());
+  CRYPTO_MUTEX_lock_write(built_in_groups_lock_bss_get());
   if (*group_ptr == NULL) {
     *group_ptr = ret;
     // Filling in |ret->curve_name| makes |EC_GROUP_free| and |EC_GROUP_dup|
@@ -543,7 +543,7 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
     to_free = ret;
     ret = *group_ptr;
   }
-  CRYPTO_STATIC_MUTEX_unlock_write(built_in_groups_lock_bss_get());
+  CRYPTO_MUTEX_unlock_write(built_in_groups_lock_bss_get());
 
   EC_GROUP_free(to_free);
   return ret;

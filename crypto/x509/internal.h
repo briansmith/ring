@@ -64,6 +64,7 @@
 #include <openssl/x509.h>
 
 #include "../asn1/internal.h"
+#include "../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

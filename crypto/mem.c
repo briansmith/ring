@@ -159,21 +159,20 @@ static const uint8_t kBoringSSLBinaryTag[18] = {
 };
 
 #if defined(BORINGSSL_MALLOC_FAILURE_TESTING)
-static struct CRYPTO_STATIC_MUTEX malloc_failure_lock =
-    CRYPTO_STATIC_MUTEX_INIT;
+static CRYPTO_MUTEX malloc_failure_lock = CRYPTO_MUTEX_INIT;
 static uint64_t current_malloc_count = 0;
 static uint64_t malloc_number_to_fail = 0;
 static int malloc_failure_enabled = 0, break_on_malloc_fail = 0,
            any_malloc_failed = 0;
 
 static void malloc_exit_handler(void) {
-  CRYPTO_STATIC_MUTEX_lock_read(&malloc_failure_lock);
+  CRYPTO_MUTEX_lock_read(&malloc_failure_lock);
   if (any_malloc_failed) {
     // Signal to the test driver that some allocation failed, so it knows to
     // increment the counter and continue.
     _exit(88);
   }
-  CRYPTO_STATIC_MUTEX_unlock_read(&malloc_failure_lock);
+  CRYPTO_MUTEX_unlock_read(&malloc_failure_lock);
 }
 
 static void init_malloc_failure(void) {
@@ -200,11 +199,11 @@ static int should_fail_allocation() {
 
   // We lock just so multi-threaded tests are still correct, but we won't test
   // every malloc exhaustively.
-  CRYPTO_STATIC_MUTEX_lock_write(&malloc_failure_lock);
+  CRYPTO_MUTEX_lock_write(&malloc_failure_lock);
   int should_fail = current_malloc_count == malloc_number_to_fail;
   current_malloc_count++;
   any_malloc_failed = any_malloc_failed || should_fail;
-  CRYPTO_STATIC_MUTEX_unlock_write(&malloc_failure_lock);
+  CRYPTO_MUTEX_unlock_write(&malloc_failure_lock);
 
   if (should_fail && break_on_malloc_fail) {
     raise(SIGTRAP);
@@ -216,9 +215,9 @@ static int should_fail_allocation() {
 }
 
 void OPENSSL_reset_malloc_counter_for_testing(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(&malloc_failure_lock);
+  CRYPTO_MUTEX_lock_write(&malloc_failure_lock);
   current_malloc_count = 0;
-  CRYPTO_STATIC_MUTEX_unlock_write(&malloc_failure_lock);
+  CRYPTO_MUTEX_unlock_write(&malloc_failure_lock);
 }
 
 #else
