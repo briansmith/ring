@@ -2529,7 +2529,7 @@ OPENSSL_EXPORT X509_TRUST *X509_TRUST_get0(int idx);
 OPENSSL_EXPORT int X509_TRUST_get_by_id(int id);
 OPENSSL_EXPORT int X509_TRUST_add(int id, int flags,
                                   int (*ck)(X509_TRUST *, X509 *, int),
-                                  char *name, int arg1, void *arg2);
+                                  const char *name, int arg1, void *arg2);
 OPENSSL_EXPORT void X509_TRUST_cleanup(void);
 OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
