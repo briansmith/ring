@@ -173,7 +173,6 @@ X509_STORE *X509_STORE_new(void) {
   if (ret->objs == NULL) {
     goto err;
   }
-  ret->cache = 1;
   ret->get_cert_methods = sk_X509_LOOKUP_new_null();
   if (ret->get_cert_methods == NULL) {
     goto err;
