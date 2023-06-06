@@ -279,9 +279,8 @@ typedef int (*OPENSSL_sk_delete_if_func)(void *obj, void *data);
 // true types.
 typedef void (*OPENSSL_sk_call_free_func)(OPENSSL_sk_free_func, void *);
 typedef void *(*OPENSSL_sk_call_copy_func)(OPENSSL_sk_copy_func, const void *);
-typedef int (*OPENSSL_sk_call_cmp_func)(OPENSSL_sk_cmp_func,
-                                        const void *const *,
-                                        const void *const *);
+typedef int (*OPENSSL_sk_call_cmp_func)(OPENSSL_sk_cmp_func, const void *,
+                                        const void *);
 typedef int (*OPENSSL_sk_call_delete_if_func)(OPENSSL_sk_delete_if_func, void *,
                                               void *);
 
@@ -421,13 +420,10 @@ BSSL_NAMESPACE_END
   }                                                                            \
                                                                                \
   OPENSSL_INLINE int sk_##name##_call_cmp_func(OPENSSL_sk_cmp_func cmp_func,   \
-                                               const void *const *a,           \
-                                               const void *const *b) {         \
-    /* The data is actually stored as |void*| pointers, so read the pointer    \
-     * as |void*| and then pass the corrected type into the caller-supplied    \
-     * function, which expects |constptrtype*|. */                             \
-    constptrtype a_ptr = (constptrtype)*a;                                     \
-    constptrtype b_ptr = (constptrtype)*b;                                     \
+                                               const void *a, const void *b) { \
+    constptrtype a_ptr = (constptrtype)a;                                      \
+    constptrtype b_ptr = (constptrtype)b;                                      \
+    /* |cmp_func| expects an extra layer of pointers to match qsort. */        \
     return ((sk_##name##_cmp_func)cmp_func)(&a_ptr, &b_ptr);                   \
   }                                                                            \
                                                                                \

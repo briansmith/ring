@@ -297,8 +297,7 @@ int OPENSSL_sk_find(const OPENSSL_STACK *sk, size_t *out_index, const void *p,
 
   if (!OPENSSL_sk_is_sorted(sk)) {
     for (size_t i = 0; i < sk->num; i++) {
-      const void *elem = sk->data[i];
-      if (call_cmp_func(sk->comp, &p, &elem) == 0) {
+      if (call_cmp_func(sk->comp, p, sk->data[i]) == 0) {
         if (out_index) {
           *out_index = i;
         }
@@ -317,8 +316,7 @@ int OPENSSL_sk_find(const OPENSSL_STACK *sk, size_t *out_index, const void *p,
     // Bias |mid| towards |lo|. See the |r == 0| case below.
     size_t mid = lo + (hi - lo - 1) / 2;
     assert(lo <= mid && mid < hi);
-    const void *elem = sk->data[mid];
-    int r = call_cmp_func(sk->comp, &p, &elem);
+    int r = call_cmp_func(sk->comp, p, sk->data[mid]);
     if (r > 0) {
       lo = mid + 1;  // |mid| is too low.
     } else if (r < 0) {
@@ -403,7 +401,10 @@ struct sort_compare_ctx {
 
 static int sort_compare(void *ctx_v, const void *a, const void *b) {
   struct sort_compare_ctx *ctx = ctx_v;
-  return ctx->call_cmp_func(ctx->cmp_func, a, b);
+  // |a| and |b| point to |void*| pointers which contain the actual values.
+  const void *const *a_ptr = a;
+  const void *const *b_ptr = b;
+  return ctx->call_cmp_func(ctx->cmp_func, *a_ptr, *b_ptr);
 }
 #endif
 
