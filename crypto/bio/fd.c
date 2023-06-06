@@ -56,7 +56,7 @@
 
 #include <openssl/bio.h>
 
-#if !defined(OPENSSL_TRUSTY)
+#if !defined(OPENSSL_NO_POSIX_IO)
 
 #include <errno.h>
 #include <string.h>
@@ -276,4 +276,4 @@ int BIO_get_fd(BIO *bio, int *out_fd) {
   return (int)BIO_ctrl(bio, BIO_C_GET_FD, 0, (char *) out_fd);
 }
 
-#endif  // OPENSSL_TRUSTY
+#endif  // OPENSSL_NO_POSIX_IO

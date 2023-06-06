@@ -20,7 +20,7 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
-#if !defined(OPENSSL_TRUSTY)
+#if !defined(OPENSSL_NO_SOCK)
 
 #include <fcntl.h>
 #include <string.h>
@@ -121,4 +121,4 @@ int bio_sock_error(int sock) {
   return error;
 }
 
-#endif  // OPENSSL_TRUSTY
+#endif  // OPENSSL_NO_SOCK

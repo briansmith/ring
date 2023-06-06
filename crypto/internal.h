@@ -206,14 +206,17 @@ OPENSSL_EXPORT uint32_t *OPENSSL_get_armcap_pointer_for_test(void);
 #endif
 
 
+// On non-MSVC 64-bit targets, we expect __uint128_t support. This includes
+// clang-cl, which defines both __clang__ and _MSC_VER.
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
 
-// clang-cl supports __uint128_t but modulus and division don't work.
-// https://crbug.com/787617.
-#if !defined(_MSC_VER) || !defined(__clang__)
+// __uint128_t division depends on intrinsics in the compiler runtime. Those
+// intrinsics are missing in clang-cl (https://crbug.com/787617) and nanolibc.
+// These may be bugs in the toolchain definition, but just disable it for now.
+#if !defined(_MSC_VER) && !defined(OPENSSL_NANOLIBC)
 #define BORINGSSL_CAN_DIVIDE_UINT128
 #endif
 #endif
