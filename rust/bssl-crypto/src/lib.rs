@@ -32,6 +32,9 @@ pub mod aead;
 /// AES block operations.
 pub mod aes;
 
+/// Ciphers.
+pub mod cipher;
+
 /// Hash functions.
 pub mod digest;
 
