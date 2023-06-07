@@ -393,20 +393,52 @@ err:
   return NULL;
 }
 
-#if defined(_MSC_VER)
-struct sort_compare_ctx {
-  OPENSSL_sk_call_cmp_func call_cmp_func;
-  OPENSSL_sk_cmp_func cmp_func;
-};
-
-static int sort_compare(void *ctx_v, const void *a, const void *b) {
-  struct sort_compare_ctx *ctx = ctx_v;
-  // |a| and |b| point to |void*| pointers which contain the actual values.
-  const void *const *a_ptr = a;
-  const void *const *b_ptr = b;
-  return ctx->call_cmp_func(ctx->cmp_func, *a_ptr, *b_ptr);
+static size_t parent_idx(size_t idx) {
+  assert(idx > 0);
+  return (idx - 1) / 2;
 }
-#endif
+
+static size_t left_idx(size_t idx) {
+  // The largest possible index is |PTRDIFF_MAX|, not |SIZE_MAX|. If
+  // |ptrdiff_t|, a signed type, is the same size as |size_t|, this cannot
+  // overflow.
+  assert(idx <= PTRDIFF_MAX);
+  static_assert(PTRDIFF_MAX <= (SIZE_MAX - 1) / 2, "2 * idx + 1 may oveflow");
+  return 2 * idx + 1;
+}
+
+// down_heap fixes the subtree rooted at |i|. |i|'s children must each satisfy
+// the heap property. Only the first |num| elements of |sk| are considered.
+static void down_heap(OPENSSL_STACK *sk, OPENSSL_sk_call_cmp_func call_cmp_func,
+                      size_t i, size_t num) {
+  assert(i < num && num <= sk->num);
+  for (;;) {
+    size_t left = left_idx(i);
+    if (left >= num) {
+      break;  // No left child.
+    }
+
+    // Swap |i| with the largest of its children.
+    size_t next = i;
+    if (call_cmp_func(sk->comp, sk->data[next], sk->data[left]) < 0) {
+      next = left;
+    }
+    size_t right = left + 1;  // Cannot overflow because |left < num|.
+    if (right < num &&
+        call_cmp_func(sk->comp, sk->data[next], sk->data[right]) < 0) {
+      next = right;
+    }
+
+    if (i == next) {
+      break;  // |i| is already larger than its children.
+    }
+
+    void *tmp = sk->data[i];
+    sk->data[i] = sk->data[next];
+    sk->data[next] = tmp;
+    i = next;
+  }
+}
 
 void OPENSSL_sk_sort(OPENSSL_STACK *sk,
                      OPENSSL_sk_call_cmp_func call_cmp_func) {
@@ -415,25 +447,25 @@ void OPENSSL_sk_sort(OPENSSL_STACK *sk,
   }
 
   if (sk->num >= 2) {
-#if defined(_MSC_VER)
-    // MSVC's |qsort_s| is different from the C11 one.
-    // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/qsort-s?view=msvc-170
-    struct sort_compare_ctx ctx = {call_cmp_func, sk->comp};
-    qsort_s(sk->data, sk->num, sizeof(void *), sort_compare, &ctx);
-#else
-    // sk->comp is a function that takes pointers to pointers to elements, but
-    // qsort take a comparison function that just takes pointers to elements.
-    // However, since we're passing an array of pointers to qsort, we can just
-    // cast the comparison function and everything works.
-    //
-    // TODO(davidben): This is undefined behavior, but the call is in libc so,
-    // e.g., CFI does not notice. |qsort| is missing a void* parameter in its
-    // callback, while no one defines |qsort_r| or |qsort_s| consistently. See
+    // |qsort| lacks a context parameter in the comparison function for us to
+    // pass in |call_cmp_func| and |sk->comp|. While we could cast |sk->comp| to
+    // the expected type, it is undefined behavior in C can trip sanitizers.
+    // |qsort_r| and |qsort_s| avoid this, but using them is impractical. See
     // https://stackoverflow.com/a/39561369
-    int (*comp_func)(const void *, const void *) =
-        (int (*)(const void *, const void *))(sk->comp);
-    qsort(sk->data, sk->num, sizeof(void *), comp_func);
-#endif
+    //
+    // Use our own heap sort instead. This is not performance-sensitive, so we
+    // optimize for simplicity and size. First, build a max-heap in place.
+    for (size_t i = parent_idx(sk->num - 1); i < sk->num; i--) {
+      down_heap(sk, call_cmp_func, i, sk->num);
+    }
+
+    // Iteratively remove the maximum element to populate the result in reverse.
+    for (size_t i = sk->num - 1; i > 0; i--) {
+      void *tmp = sk->data[0];
+      sk->data[0] = sk->data[i];
+      sk->data[i] = tmp;
+      down_heap(sk, call_cmp_func, 0, i);
+    }
   }
   sk->sorted = 1;
 }
