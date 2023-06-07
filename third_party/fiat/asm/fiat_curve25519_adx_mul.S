@@ -1,3 +1,11 @@
+#if !defined(OPENSSL_NO_ASM) && defined(__x86_64__) && \
+    (defined(__APPLE__) || defined(__ELF__))
+
+#if defined(BORINGSSL_PREFIX)
+#include <boringssl_prefix_symbols_asm.h>
+#endif
+
+.intel_syntax noprefix
 .text
 #if defined(__APPLE__)
 .private_extern fiat_curve25519_adx_mul
@@ -158,4 +166,10 @@ ret
 .cfi_endproc
 #if defined(__ELF__)
 .size fiat_curve25519_adx_mul, .-fiat_curve25519_adx_mul
+#endif
+
+#endif
+
+#if defined(__ELF__)
+.section	.note.GNU-stack,"",%progbits
 #endif
