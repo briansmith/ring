@@ -255,29 +255,16 @@ class Bazel(object):
       self.PrintVariableSection(
           out, 'crypto_internal_headers', files['crypto_internal_headers'])
       self.PrintVariableSection(out, 'crypto_sources', files['crypto'])
+      self.PrintVariableSection(out, 'crypto_sources_asm', files['crypto_asm'])
+      self.PrintVariableSection(out, 'crypto_sources_nasm', files['crypto_nasm'])
       self.PrintVariableSection(out, 'tool_sources', files['tool'])
       self.PrintVariableSection(out, 'tool_headers', files['tool_headers'])
 
+      # TODO(crbug.com/boringssl/542): Migrate everyone to the combined asm
+      # source lists, so we don't need to generate both sets.
       for ((osname, arch), asm_files) in asm_outputs:
         self.PrintVariableSection(
             out, 'crypto_sources_%s_%s' % (osname, arch), asm_files)
-
-      # Generate combined source lists for gas and nasm. Consumers have a choice
-      # of using the per-platform ones or the combined ones. In the combined
-      # mode, Windows x86 and Windows x86_64 must still be special-cased, but
-      # otherwise all assembly files can be linked together.
-      out.write('\n')
-      out.write('crypto_sources_asm = []\n')
-      for (osname, arch, _, _, asm_ext) in OS_ARCH_COMBOS:
-        if asm_ext == 'S':
-          out.write('crypto_sources_asm.extend(crypto_sources_%s_%s)\n' %
-                    (osname, arch))
-      out.write('\n')
-      out.write('crypto_sources_nasm = []\n')
-      for (osname, arch, _, _, asm_ext) in OS_ARCH_COMBOS:
-        if asm_ext == 'asm':
-          out.write('crypto_sources_nasm.extend(crypto_sources_%s_%s)\n' %
-                    (osname, arch))
 
     with open('BUILD.generated_tests.bzl', 'w+') as out:
       out.write(self.header)
@@ -358,6 +345,9 @@ class GN(object):
       self.PrintVariableSection(out, 'crypto_sources',
                                 files['crypto'] +
                                 files['crypto_internal_headers'])
+      self.PrintVariableSection(out, 'crypto_sources_asm', files['crypto_asm'])
+      self.PrintVariableSection(out, 'crypto_sources_nasm',
+                                files['crypto_nasm'])
       self.PrintVariableSection(out, 'crypto_headers',
                                 files['crypto_headers'])
       self.PrintVariableSection(out, 'ssl_sources',
@@ -525,15 +515,8 @@ endif()
     with open('CMakeLists.txt', 'w+') as cmake:
       cmake.write(self.header)
 
-      asm_sources = []
-      nasm_sources = []
-      for ((osname, arch), asm_files) in asm_outputs:
-        if (osname, arch) in (('win', 'x86'), ('win', 'x86_64')):
-          nasm_sources.extend(asm_files)
-        else:
-          asm_sources.extend(asm_files)
-      self.PrintVariable(cmake, 'CRYPTO_SOURCES_ASM', sorted(asm_sources))
-      self.PrintVariable(cmake, 'CRYPTO_SOURCES_NASM', sorted(nasm_sources))
+      self.PrintVariable(cmake, 'CRYPTO_SOURCES_ASM', files['crypto_asm'])
+      self.PrintVariable(cmake, 'CRYPTO_SOURCES_NASM', files['crypto_nasm'])
 
       cmake.write(
 R'''if(OPENSSL_ASM)
@@ -854,9 +837,26 @@ def main(platforms):
       FindHeaderFiles(os.path.join('src', 'crypto'), NoTests) +
       FindHeaderFiles(os.path.join('src', 'third_party', 'fiat'), NoTests))
 
+  asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).items())
+
+  # Generate combined source lists for gas and nasm. Build files have a choice
+  # of using the per-platform ones or the combined ones. In the combined mode,
+  # Windows x86 and Windows x86_64 must still be special-cased, but otherwise
+  # all assembly files can be linked together. Some files appear in multiple
+  # per-platform lists, so we duplicate.
+  asm_sources = set()
+  nasm_sources = set()
+  for ((osname, arch), asm_files) in asm_outputs:
+    if (osname, arch) in (('win', 'x86'), ('win', 'x86_64')):
+      nasm_sources.update(asm_files)
+    else:
+      asm_sources.update(asm_files)
+
   files = {
       'bcm_crypto': bcm_crypto_c_files,
       'crypto': crypto_c_files,
+      'crypto_asm': sorted(list(asm_sources)),
+      'crypto_nasm': sorted(list(nasm_sources)),
       'crypto_headers': crypto_h_files,
       'crypto_internal_headers': crypto_internal_h_files,
       'crypto_test': crypto_test_files,
@@ -873,8 +873,6 @@ def main(platforms):
       'test_support_headers': test_support_h_files,
       'urandom_test': urandom_test_files,
   }
-
-  asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).items())
 
   for platform in platforms:
     platform.WriteFiles(files, asm_outputs)
