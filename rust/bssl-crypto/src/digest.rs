@@ -17,11 +17,11 @@ use core::marker::PhantomData;
 
 use crate::ForeignTypeRef;
 
-/// The BoringSSL implemented SHA-256 digest algorithm.
+/// The SHA-256 digest algorithm.
 #[derive(Clone)]
 pub struct Sha256 {}
 
-/// The BoringSSL implemented SHA-512 digest algorithm.
+/// The SHA-512 digest algorithm.
 #[derive(Clone)]
 pub struct Sha512 {}
 
@@ -40,7 +40,7 @@ pub trait Md {
     /// The output size of the hash operation.
     const OUTPUT_SIZE: usize;
 
-    /// Gets a reference to a message digest algorithm to be used by the hkdf implementation.
+    /// Gets a reference to a message digest algorithm to be used by the HKDF implementation.
     fn get_md() -> &'static MdRef;
 }
 
@@ -55,7 +55,7 @@ impl Md for Sha256 {
 }
 
 impl Sha256 {
-    /// Create a new [digest] to compute the SHA256 hash.
+    /// Creates a new [Digest] to compute a SHA-256 hash.
     pub fn new_digest() -> Digest<Self, { Self::OUTPUT_SIZE }> {
         // Note: This cannot be in the trait because using associated constants exprs there
         // requires nightly.
@@ -74,7 +74,7 @@ impl Md for Sha512 {
 }
 
 impl Sha512 {
-    /// Create a new [digest] to compute the SHA512 hash.
+    /// Create a new [Digest] to compute a SHA-512 hash.
     pub fn new_digest() -> Digest<Self, { Self::OUTPUT_SIZE }> {
         // Note: This cannot be in the trait because using associated constants exprs there
         // requires nightly.
@@ -82,12 +82,12 @@ impl Sha512 {
     }
 }
 
-/// A struct for computing the digest
+/// A pending digest operation.
 pub struct Digest<M: Md, const OUTPUT_SIZE: usize>(bssl_sys::EVP_MD_CTX, PhantomData<M>);
 
 impl<M: Md, const OUTPUT_SIZE: usize> Digest<M, OUTPUT_SIZE> {
 
-    /// Create a new Digest from the given `Md` type parameter.
+    /// Creates a new Digest from the given `Md` type parameter.
     ///
     /// Panics:
     /// - If `Md::OUTPUT_SIZE` is not the same as `OUTPUT_SIZE`.
@@ -108,7 +108,7 @@ impl<M: Md, const OUTPUT_SIZE: usize> Digest<M, OUTPUT_SIZE> {
         Self(md_ctx, PhantomData)
     }
 
-    /// Updates this digest computation using the given `data`.
+    /// Hashes the provided input into the current digest operation.
     pub fn update(&mut self, data: &[u8]) {
         // Safety:
         // - `data` is a slice from safe Rust.
@@ -118,7 +118,7 @@ impl<M: Md, const OUTPUT_SIZE: usize> Digest<M, OUTPUT_SIZE> {
         assert_eq!(result, 1, "bssl_sys::EVP_DigestUpdate failed");
     }
 
-    /// Consumes this digest and returns the output digest value.
+    /// Computes the final digest value, consuming the object.
     #[allow(clippy::expect_used)]
     pub fn finalize(mut self) -> [u8; OUTPUT_SIZE] {
         let mut digest_uninit =
