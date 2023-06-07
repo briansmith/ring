@@ -89,14 +89,15 @@ impl PrivateKey {
     pub fn sign(&self, msg: &[u8]) -> Signature {
         let mut sig_bytes = [0u8; SIGNATURE_LENGTH];
 
+        let msg_ffi = CSlice(msg);
         // Safety:
         // - On allocation failure we panic.
         // - Signature and private keys are always the correct length.
         let result = unsafe {
             bssl_sys::ED25519_sign(
                 sig_bytes.as_mut_ptr(),
-                msg.as_ptr(),
-                msg.len(),
+                msg_ffi.as_ptr(),
+                msg_ffi.len(),
                 self.0.as_ptr(),
             )
         };
