@@ -33,6 +33,9 @@
 //
 // - The file, on aarch64, uses the macros defined below to be compatible with
 //   BTI and PAC.
+//
+// - The file, on X86_64, requires the progrram to be compatible with Intel IBT
+//   and SHSTK
 
 #if defined(__ASSEMBLER__)
 
@@ -45,6 +48,22 @@
 // https://www.airs.com/blog/archives/518.
 .pushsection .note.GNU-stack, "", %progbits
 .popsection
+#endif
+
+#if defined(__CET__) && defined(OPENSSL_X86_64)
+// Clang and GCC define __CET__ and provide <cet.h> when they support Intel's
+// Indirect Branch Tracking.
+// https://lpc.events/event/7/contributions/729/attachments/496/903/CET-LPC-2020.pdf
+//
+// cet.h defines _CET_ENDBR which is used to mark function entry points for IBT.
+// and adds the assembly marker. The value of _CET_ENDBR is made dependant on if
+// '-fcf-protection' is passed to the compiler. _CET_ENDBR is only required when
+// the function is the target of an indirect jump, but BoringSSL chooses to mark
+// all assembly entry points because it is easier, and allows BoringSSL's ABI
+// tester to call the assembly entry points via an indirect jump.
+#include <cet.h>
+#else
+#define _CET_ENDBR
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)

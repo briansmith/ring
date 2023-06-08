@@ -301,6 +301,7 @@ mask_mod8192:
 .att_syntax prefix
 poly_Rq_mul:
 .cfi_startproc
+_CET_ENDBR
 push %rbp
 .cfi_adjust_cfa_offset 8
 .cfi_offset rbp, -16
