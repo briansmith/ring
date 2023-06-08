@@ -83,11 +83,14 @@ int ASN1_UTCTIME_check(const ASN1_UTCTIME *d) {
 }
 
 int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str) {
+  // Although elsewhere we allow timezone offsets with UTCTime, to be compatible
+  // with some existing misissued certificates, this function is used to
+  // construct new certificates and can be stricter.
   size_t len = strlen(str);
   CBS cbs;
   CBS_init(&cbs, (const uint8_t *)str, len);
   if (!CBS_parse_utc_time(&cbs, /*out_tm=*/NULL,
-                          /*allow_timezone_offset=*/1)) {
+                          /*allow_timezone_offset=*/0)) {
     return 0;
   }
   if (s != NULL) {

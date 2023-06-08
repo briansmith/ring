@@ -1116,6 +1116,12 @@ TEST(ASN1Test, TimeSetString) {
   EXPECT_FALSE(ASN1_UTCTIME_set_string(nullptr, "nope"));
   EXPECT_FALSE(ASN1_GENERALIZEDTIME_set_string(nullptr, "nope"));
   EXPECT_FALSE(ASN1_TIME_set_string(nullptr, "nope"));
+
+  // Timezone offsets are not allowed by DER.
+  EXPECT_FALSE(ASN1_UTCTIME_set_string(nullptr, "700101000000-0400"));
+  EXPECT_FALSE(ASN1_TIME_set_string(nullptr, "700101000000-0400"));
+  EXPECT_FALSE(ASN1_GENERALIZEDTIME_set_string(nullptr, "19700101000000-0400"));
+  EXPECT_FALSE(ASN1_TIME_set_string(nullptr, "19700101000000-0400"));
 }
 
 TEST(ASN1Test, AdjTime) {
