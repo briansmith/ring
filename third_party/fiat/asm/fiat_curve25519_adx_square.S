@@ -8,7 +8,7 @@
 .intel_syntax noprefix
 .text
 #if defined(__APPLE__)
-.private_extern fiat_curve25519_adx_square
+.private_extern _fiat_curve25519_adx_square
 .global _fiat_curve25519_adx_square
 _fiat_curve25519_adx_square:
 #else
