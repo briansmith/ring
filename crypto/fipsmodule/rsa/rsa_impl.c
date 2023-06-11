@@ -243,37 +243,24 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
       }
 
       // CRT components are only publicly bounded by their corresponding
-      // moduli's bit lengths. |rsa->iqmp| is unused outside of this one-time
-      // setup, so we do not compute a fixed-width version of it.
+      // moduli's bit lengths.
       if (!ensure_fixed_copy(&rsa->dmp1_fixed, rsa->dmp1, p_fixed->width) ||
           !ensure_fixed_copy(&rsa->dmq1_fixed, rsa->dmq1, q_fixed->width)) {
         goto err;
       }
 
-      // Compute |inv_small_mod_large_mont|. Note that it is always modulo the
-      // larger prime, independent of what is stored in |rsa->iqmp|.
-      if (rsa->inv_small_mod_large_mont == NULL) {
-        BIGNUM *inv_small_mod_large_mont = BN_new();
-        int ok;
-        if (BN_cmp(rsa->p, rsa->q) < 0) {
-          ok = inv_small_mod_large_mont != NULL &&
-               bn_mod_inverse_secret_prime(inv_small_mod_large_mont, rsa->p,
-                                           rsa->q, ctx, rsa->mont_q) &&
-               BN_to_montgomery(inv_small_mod_large_mont,
-                                inv_small_mod_large_mont, rsa->mont_q, ctx);
-        } else {
-          ok = inv_small_mod_large_mont != NULL &&
-               BN_to_montgomery(inv_small_mod_large_mont, rsa->iqmp,
-                                rsa->mont_p, ctx);
-        }
-        if (!ok) {
-          BN_free(inv_small_mod_large_mont);
+      // Compute |iqmp_mont|, which is |iqmp| in Montgomery form and with the
+      // correct bit width.
+      if (rsa->iqmp_mont == NULL) {
+        BIGNUM *iqmp_mont = BN_new();
+        if (iqmp_mont == NULL ||
+            !BN_to_montgomery(iqmp_mont, rsa->iqmp, rsa->mont_p, ctx)) {
+          BN_free(iqmp_mont);
           goto err;
         }
-        rsa->inv_small_mod_large_mont = inv_small_mod_large_mont;
-        CONSTTIME_SECRET(
-            rsa->inv_small_mod_large_mont->d,
-            sizeof(BN_ULONG) * rsa->inv_small_mod_large_mont->width);
+        rsa->iqmp_mont = iqmp_mont;
+        CONSTTIME_SECRET(rsa->iqmp_mont->d,
+                         sizeof(BN_ULONG) * rsa->iqmp_mont->width);
       }
     }
   }
@@ -302,8 +289,8 @@ void rsa_invalidate_key(RSA *rsa) {
   rsa->dmp1_fixed = NULL;
   BN_free(rsa->dmq1_fixed);
   rsa->dmq1_fixed = NULL;
-  BN_free(rsa->inv_small_mod_large_mont);
-  rsa->inv_small_mod_large_mont = NULL;
+  BN_free(rsa->iqmp_mont);
+  rsa->iqmp_mont = NULL;
 
   for (size_t i = 0; i < rsa->num_blindings; i++) {
     BN_BLINDING_free(rsa->blindings[i]);
@@ -798,42 +785,37 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  // Implementing RSA with CRT in constant-time is sensitive to which prime is
-  // larger. Canonicalize fields so that |p| is the larger prime.
-  const BIGNUM *dmp1 = rsa->dmp1_fixed, *dmq1 = rsa->dmq1_fixed;
-  const BN_MONT_CTX *mont_p = rsa->mont_p, *mont_q = rsa->mont_q;
-  if (BN_cmp(rsa->p, rsa->q) < 0) {
-    mont_p = rsa->mont_q;
-    mont_q = rsa->mont_p;
-    dmp1 = rsa->dmq1_fixed;
-    dmq1 = rsa->dmp1_fixed;
-  }
-
   // Use the minimal-width versions of |n|, |p|, and |q|. Either works, but if
   // someone gives us non-minimal values, these will be slightly more efficient
   // on the non-Montgomery operations.
   const BIGNUM *n = &rsa->mont_n->N;
-  const BIGNUM *p = &mont_p->N;
-  const BIGNUM *q = &mont_q->N;
+  const BIGNUM *p = &rsa->mont_p->N;
+  const BIGNUM *q = &rsa->mont_q->N;
 
   // This is a pre-condition for |mod_montgomery|. It was already checked by the
   // caller.
   assert(BN_ucmp(I, n) < 0);
 
   if (// |m1| is the result modulo |q|.
-      !mod_montgomery(r1, I, q, mont_q, p, ctx) ||
-      !BN_mod_exp_mont_consttime(m1, r1, dmq1, q, ctx, mont_q) ||
+      !mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
+      !BN_mod_exp_mont_consttime(m1, r1, rsa->dmq1_fixed, q, ctx,
+                                 rsa->mont_q) ||
       // |r0| is the result modulo |p|.
-      !mod_montgomery(r1, I, p, mont_p, q, ctx) ||
-      !BN_mod_exp_mont_consttime(r0, r1, dmp1, p, ctx, mont_p) ||
-      // Compute r0 = r0 - m1 mod p. |p| is the larger prime, so |m1| is already
-      // fully reduced mod |p|.
-      !bn_mod_sub_consttime(r0, r0, m1, p, ctx) ||
+      !mod_montgomery(r1, I, p, rsa->mont_p, q, ctx) ||
+      !BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1_fixed, p, ctx,
+                                 rsa->mont_p) ||
+      // Compute r0 = r0 - m1 mod p. |m1| is reduced mod |q|, not |p|, so we
+      // just run |mod_montgomery| again for simplicity. This could be more
+      // efficient with more cases: if |p > q|, |m1| is already reduced. If
+      // |p < q| but they have the same bit width, |bn_reduce_once| suffices.
+      // However, compared to over 2048 Montgomery multiplications above, this
+      // difference is not measurable.
+      !mod_montgomery(r1, m1, p, rsa->mont_p, q, ctx) ||
+      !bn_mod_sub_consttime(r0, r0, r1, p, ctx) ||
       // r0 = r0 * iqmp mod p. We use Montgomery multiplication to compute this
-      // in constant time. |inv_small_mod_large_mont| is in Montgomery form and
-      // r0 is not, so the result is taken out of Montgomery form.
-      !BN_mod_mul_montgomery(r0, r0, rsa->inv_small_mod_large_mont, mont_p,
-                             ctx) ||
+      // in constant time. |iqmp_mont| is in Montgomery form and r0 is not, so
+      // the result is taken out of Montgomery form.
+      !BN_mod_mul_montgomery(r0, r0, rsa->iqmp_mont, rsa->mont_p, ctx) ||
       // r0 = r0 * q + m1 gives the final result. Reducing modulo q gives m1, so
       // it is correct mod p. Reducing modulo p gives (r0-m1)*iqmp*q + m1 = r0,
       // so it is correct mod q. Finally, the result is bounded by [m1, n + m1),
@@ -1308,8 +1290,7 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
   replace_bignum(&rsa->d_fixed, &tmp->d_fixed);
   replace_bignum(&rsa->dmp1_fixed, &tmp->dmp1_fixed);
   replace_bignum(&rsa->dmq1_fixed, &tmp->dmq1_fixed);
-  replace_bignum(&rsa->inv_small_mod_large_mont,
-                 &tmp->inv_small_mod_large_mont);
+  replace_bignum(&rsa->iqmp_mont, &tmp->iqmp_mont);
   rsa->private_key_frozen = tmp->private_key_frozen;
   ret = 1;
 
