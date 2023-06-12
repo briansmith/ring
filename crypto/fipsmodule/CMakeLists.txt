@@ -85,12 +85,16 @@ if(FIPS_DELOCATE)
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${TARGET} $CMAKE_ASM_FLAGS"
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
     ${BCM_SOURCES_ASM_USED}
     DEPENDS
     bcm_c_generated_asm
     delocate
     ${BCM_SOURCES_ASM_USED}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 

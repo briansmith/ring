@@ -12,11 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && defined(__linux__) && defined(__x86_64__)
+#include <openssl/asm_base.h>
 
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && defined(OPENSSL_LINUX) && defined(OPENSSL_X86_64)
 
 // This is the polynomial multiplication function from [HRSS], provided by kind
 // permission of the authors.
@@ -8486,8 +8484,4 @@ ret
 .cfi_endproc
 .size poly_Rq_mul,.-poly_Rq_mul
 
-#endif
-
-#if defined(__ELF__)
-.section	.note.GNU-stack,"",%progbits
 #endif

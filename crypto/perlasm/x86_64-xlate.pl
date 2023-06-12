@@ -1522,16 +1522,9 @@ if ($gas) {
         die "unknown target: $flavour";
     }
     print <<___;
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
-#endif
+#include <openssl/asm_base.h>
 
-#if defined(__x86_64__) && !defined(OPENSSL_NO_ASM) && $target
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && $target
 ___
 }
 
@@ -1627,13 +1620,7 @@ print "\n$current_segment\tENDS\n"	if ($current_segment && $masm);
 if ($masm) {
     print "END\n";
 } elsif ($gas) {
-    print <<___;
-#endif
-#if defined(__ELF__)
-// See https://www.airs.com/blog/archives/518.
-.section .note.GNU-stack,"",\%progbits
-#endif
-___
+    print "#endif\n";
 } elsif ($nasm) {
     print <<___;
 \%else
