@@ -1637,9 +1637,6 @@ func main() {
 		// preprocessor, but we don't want the compiler complaining that
 		// "argument unused during compilation".
 		cppCommand = append(cppCommand, "-Wno-unused-command-line-argument")
-		// We are preprocessing for assembly output and need to simulate that
-		// environment for arm_arch.h.
-		cppCommand = append(cppCommand, "-D__ASSEMBLER__=1")
 
 		for includePath := range includePaths {
 			cppCommand = append(cppCommand, "-I"+includePath)
