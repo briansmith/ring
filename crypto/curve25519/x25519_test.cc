@@ -218,6 +218,10 @@ TEST(X25519Test, Wycheproof) {
 
 #if defined(BORINGSSL_X25519_NEON) && defined(SUPPORTS_ABI_TEST)
 TEST(X25519Test, NeonABI) {
+  if (!CRYPTO_is_NEON_capable()) {
+    GTEST_SKIP() << "Can't test ABI of NEON code without NEON";
+  }
+
   static const uint8_t kScalar[32] = {
       0xa5, 0x46, 0xe3, 0x6b, 0xf0, 0x52, 0x7c, 0x9d, 0x3b, 0x16, 0x15,
       0x4b, 0x82, 0x46, 0x5e, 0xdd, 0x62, 0x14, 0x4c, 0x0a, 0xc1, 0xfc,
