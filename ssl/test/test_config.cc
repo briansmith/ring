@@ -66,7 +66,6 @@ Flag BoolFlag(const char *name, bool TestConfig::*field,
 template <typename T>
 bool StringToInt(T *out, const char *str) {
   static_assert(std::is_integral<T>::value, "not an integral type");
-  static_assert(sizeof(T) <= sizeof(long long), "type too large for long long");
 
   // |strtoull| allows leading '-' with wraparound. Additionally, both
   // functions accept empty strings and leading whitespace.
@@ -78,15 +77,20 @@ bool StringToInt(T *out, const char *str) {
   errno = 0;
   char *end;
   if (std::is_signed<T>::value) {
+    static_assert(sizeof(T) <= sizeof(long long),
+                  "type too large for long long");
     long long value = strtoll(str, &end, 10);
-    if (value < std::numeric_limits<T>::min() ||
-        value > std::numeric_limits<T>::max()) {
+    if (value < static_cast<long long>(std::numeric_limits<T>::min()) ||
+        value > static_cast<long long>(std::numeric_limits<T>::max())) {
       return false;
     }
     *out = static_cast<T>(value);
   } else {
+    static_assert(sizeof(T) <= sizeof(unsigned long long),
+                  "type too large for unsigned long long");
     unsigned long long value = strtoull(str, &end, 10);
-    if (value > std::numeric_limits<T>::max()) {
+    if (value >
+        static_cast<unsigned long long>(std::numeric_limits<T>::max())) {
       return false;
     }
     *out = static_cast<T>(value);
@@ -200,6 +204,7 @@ std::vector<Flag> SortedFlags() {
   std::vector<Flag> flags = {
       IntFlag("-port", &TestConfig::port, /*skip_handshaker=*/true),
       BoolFlag("-ipv6", &TestConfig::ipv6, /*skip_handshaker=*/true),
+      IntFlag("-shim-id", &TestConfig::shim_id, /*skip_handshaker=*/true),
       BoolFlag("-server", &TestConfig::is_server),
       BoolFlag("-dtls", &TestConfig::is_dtls),
       BoolFlag("-quic", &TestConfig::is_quic),

@@ -829,6 +829,13 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (!bio) {
     return false;
   }
+
+  uint8_t shim_id[8];
+  CRYPTO_store_u64_le(shim_id, config->shim_id);
+  if (!BIO_write_all(bio.get(), shim_id, sizeof(shim_id))) {
+    return false;
+  }
+
   if (config->is_dtls) {
     bssl::UniquePtr<BIO> packeted = PacketedBioCreate(GetClock());
     if (!packeted) {
