@@ -77,7 +77,20 @@ static void PrintSocketError(const char *func) {
 }
 #else
 static void PrintSocketError(const char *func) {
-  fprintf(stderr, "%s: %d\n", func, WSAGetLastError());
+  int error = WSAGetLastError();
+  char *buffer;
+  DWORD len = FormatMessageA(
+      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, error, 0,
+      reinterpret_cast<char *>(&buffer), 0, nullptr);
+  std::string msg = "unknown error";
+  if (len > 0) {
+    msg.assign(buffer, len);
+    while (!msg.empty() && (msg.back() == '\r' || msg.back() == '\n')) {
+      msg.resize(msg.size() - 1);
+    }
+  }
+  LocalFree(buffer);
+  fprintf(stderr, "%s: %s (%d)\n", func, msg.c_str(), error);
 }
 #endif
 
@@ -93,56 +106,55 @@ struct Free {
   }
 };
 
-// Connect returns a new socket connected to localhost on |port| or -1 on
-// error.
-static int Connect(uint16_t port) {
-  for (int af : { AF_INET6, AF_INET }) {
-    int sock = socket(af, SOCK_STREAM, 0);
-    if (sock == -1) {
-      PrintSocketError("socket");
+// Connect returns a new socket connected to the runner, or -1 on error.
+static int Connect(const TestConfig *config) {
+  sockaddr_storage addr;
+  socklen_t addr_len = 0;
+  if (config->ipv6) {
+    sockaddr_in6 sin6;
+    OPENSSL_memset(&sin6, 0, sizeof(sin6));
+    sin6.sin6_family = AF_INET6;
+    sin6.sin6_port = htons(config->port);
+    if (!inet_pton(AF_INET6, "::1", &sin6.sin6_addr)) {
+      PrintSocketError("inet_pton");
       return -1;
     }
-    int nodelay = 1;
-    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
-            reinterpret_cast<const char*>(&nodelay), sizeof(nodelay)) != 0) {
-      PrintSocketError("setsockopt");
-      closesocket(sock);
+    addr_len = sizeof(sin6);
+    memcpy(&addr, &sin6, addr_len);
+  } else {
+    sockaddr_in sin;
+    OPENSSL_memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(config->port);
+    if (!inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr)) {
+      PrintSocketError("inet_pton");
       return -1;
     }
-
-    sockaddr_storage ss;
-    OPENSSL_memset(&ss, 0, sizeof(ss));
-    ss.ss_family = af;
-    socklen_t len = 0;
-
-    if (af == AF_INET6) {
-      sockaddr_in6 *sin6 = (sockaddr_in6 *) &ss;
-      len = sizeof(*sin6);
-      sin6->sin6_port = htons(port);
-      if (!inet_pton(AF_INET6, "::1", &sin6->sin6_addr)) {
-        PrintSocketError("inet_pton");
-        closesocket(sock);
-        return -1;
-      }
-    } else if (af == AF_INET) {
-      sockaddr_in *sin = (sockaddr_in *) &ss;
-      len = sizeof(*sin);
-      sin->sin_port = htons(port);
-      if (!inet_pton(AF_INET, "127.0.0.1", &sin->sin_addr)) {
-        PrintSocketError("inet_pton");
-        closesocket(sock);
-        return -1;
-      }
-    }
-
-    if (connect(sock, reinterpret_cast<const sockaddr*>(&ss), len) == 0) {
-      return sock;
-    }
-    closesocket(sock);
+    addr_len = sizeof(sin);
+    memcpy(&addr, &sin, addr_len);
   }
 
-  PrintSocketError("connect");
-  return -1;
+  int sock = socket(addr.ss_family, SOCK_STREAM, 0);
+  if (sock == -1) {
+    PrintSocketError("socket");
+    return -1;
+  }
+  int nodelay = 1;
+  if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+                 reinterpret_cast<const char *>(&nodelay),
+                 sizeof(nodelay)) != 0) {
+    PrintSocketError("setsockopt");
+    closesocket(sock);
+    return -1;
+  }
+
+  if (connect(sock, reinterpret_cast<const sockaddr *>(&addr), addr_len) != 0) {
+    PrintSocketError("connect");
+    closesocket(sock);
+    return -1;
+  }
+
+  return sock;
 }
 
 class SocketCloser {
@@ -775,7 +787,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
 #endif
   }
 
-  int sock = Connect(config->port);
+  int sock = Connect(config);
   if (sock == -1) {
     return false;
   }

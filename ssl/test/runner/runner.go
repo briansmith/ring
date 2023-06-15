@@ -1260,25 +1260,32 @@ type shimProcess struct {
 func newShimProcess(shimPath string, flags []string, env []string) (*shimProcess, error) {
 	shim := new(shimProcess)
 	var err error
+	useIPv6 := true
 	shim.listener, err = net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv6loopback})
 	if err != nil {
+		useIPv6 = false
 		shim.listener, err = net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	flags = append([]string{"-port", strconv.Itoa(shim.listener.Addr().(*net.TCPAddr).Port)}, flags...)
+	cmdFlags := []string{"-port", strconv.Itoa(shim.listener.Addr().(*net.TCPAddr).Port)}
+	if useIPv6 {
+		cmdFlags = append(cmdFlags, "-ipv6")
+	}
+	cmdFlags = append(cmdFlags, flags...)
+
 	if *useValgrind {
-		shim.cmd = valgrindOf(false, shimPath, flags...)
+		shim.cmd = valgrindOf(false, shimPath, cmdFlags...)
 	} else if *useGDB {
-		shim.cmd = gdbOf(shimPath, flags...)
+		shim.cmd = gdbOf(shimPath, cmdFlags...)
 	} else if *useLLDB {
-		shim.cmd = lldbOf(shimPath, flags...)
+		shim.cmd = lldbOf(shimPath, cmdFlags...)
 	} else if *useRR {
-		shim.cmd = rrOf(shimPath, flags...)
+		shim.cmd = rrOf(shimPath, cmdFlags...)
 	} else {
-		shim.cmd = exec.Command(shimPath, flags...)
+		shim.cmd = exec.Command(shimPath, cmdFlags...)
 	}
 	shim.cmd.Stdin = os.Stdin
 	shim.cmd.Stdout = &shim.stdout

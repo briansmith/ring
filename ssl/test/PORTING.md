@@ -20,14 +20,16 @@ The test runner integrates with the TLS stack under test through a
 “shim”: a command line program which encapsulates the stack. By
 default, the shim points to the BoringSSL shim in the same source
 tree, but any program can be supplied via the `-shim-path` flag. The
-runner opens up a server socket and provides the shim with a `-port`
-argument that points to that socket. The shim always connects to the
-runner as a TCP client even when acting as a TLS server. For DTLS,
-there is a small framing layer that gives packet boundaries over
-TCP. The shim can also pass a variety of command line arguments which
-are used to configure the stack under test. These can be found at
-`test_config.cc`.
+runner opens up a server socket and provides the shim with `-port` and
+optional `-ipv6` arguments.
 
+The shim should connect to loopback as a TCP client on the specified
+port, using IPv6 if `-ipv6` is specified and IPv4 otherwise. This is
+true even when the shim is speaking DTLS or acting as a TLS server.
+For DTLS, there is a small framing layer that gives packet boundaries
+over TCP. The shim can also pass a variety of command line arguments
+which are used to configure the stack under test. These can be found at
+`test_config.cc`.
 
 The shim reports success by exiting with a `0` error code and failure by
 reporting a non-zero error code and generally sending a textual error
