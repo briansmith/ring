@@ -70,11 +70,15 @@ void CRYPTO_sysrand(uint8_t *buf, size_t len);
 // depending on the vendor's configuration.
 void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
 
-#if defined(OPENSSL_URANDOM)
+#if defined(OPENSSL_URANDOM) || defined(OPENSSL_WINDOWS)
 // CRYPTO_init_sysrand initializes long-lived resources needed to draw entropy
 // from the operating system.
 void CRYPTO_init_sysrand(void);
+#else
+OPENSSL_INLINE void CRYPTO_init_sysrand(void) {}
+#endif  // defined(OPENSSL_URANDOM) || defined(OPENSSL_WINDOWS)
 
+#if defined(OPENSSL_URANDOM)
 // CRYPTO_sysrand_if_available fills |len| bytes at |buf| with entropy from the
 // operating system, or early /dev/urandom data, and returns 1, _if_ the entropy
 // pool is initialized or if getrandom() is not available and not in FIPS mode.
@@ -82,13 +86,11 @@ void CRYPTO_init_sysrand(void);
 // return 0.
 int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len);
 #else
-OPENSSL_INLINE void CRYPTO_init_sysrand(void) {}
-
 OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
   CRYPTO_sysrand(buf, len);
   return 1;
 }
-#endif
+#endif  // defined(OPENSSL_URANDOM)
 
 // rand_fork_unsafe_buffering_enabled returns whether fork-unsafe buffering has
 // been enabled via |RAND_enable_fork_unsafe_buffering|.
