@@ -68,14 +68,14 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 
 
 #if !defined(OPENSSL_WINDOWS)
-static int closesocket(int sock) {
-  return close(sock);
-}
+using Socket = int;
+#define INVALID_SOCKET (-1)
 
-static void PrintSocketError(const char *func) {
-  perror(func);
-}
+static int closesocket(int sock) { return close(sock); }
+static void PrintSocketError(const char *func) { perror(func); }
 #else
+using Socket = SOCKET;
+
 static void PrintSocketError(const char *func) {
   int error = WSAGetLastError();
   char *buffer;
@@ -94,6 +94,57 @@ static void PrintSocketError(const char *func) {
 }
 #endif
 
+class OwnedSocket {
+ public:
+  OwnedSocket() = default;
+  explicit OwnedSocket(Socket sock) : sock_(sock) {}
+  OwnedSocket(OwnedSocket &&other) { *this = std::move(other); }
+  ~OwnedSocket() { reset(); }
+  OwnedSocket &operator=(OwnedSocket &&other) {
+    drain_on_close_ = other.drain_on_close_;
+    reset(other.release());
+    return *this;
+  }
+
+  bool is_valid() const { return sock_ != INVALID_SOCKET; }
+  void set_drain_on_close(bool drain) { drain_on_close_ = drain; }
+
+  void reset(Socket sock = INVALID_SOCKET) {
+    if (is_valid()) {
+      if (drain_on_close_) {
+#if defined(OPENSSL_WINDOWS)
+        shutdown(sock_, SD_SEND);
+#else
+        shutdown(sock_, SHUT_WR);
+#endif
+        while (true) {
+          char buf[1024];
+          if (recv(sock_, buf, sizeof(buf), 0) <= 0) {
+            break;
+          }
+        }
+        closesocket(sock_);
+      }
+    }
+
+    drain_on_close_ = false;
+    sock_ = sock;
+  }
+
+  Socket get() const { return sock_; }
+
+  Socket release() {
+    Socket sock = sock_;
+    sock_ = INVALID_SOCKET;
+    drain_on_close_ = false;
+    return sock;
+  }
+
+ private:
+  Socket sock_ = INVALID_SOCKET;
+  bool drain_on_close_ = false;
+};
+
 static int Usage(const char *program) {
   fprintf(stderr, "Usage: %s [flags...]\n", program);
   return 1;
@@ -107,7 +158,7 @@ struct Free {
 };
 
 // Connect returns a new socket connected to the runner, or -1 on error.
-static int Connect(const TestConfig *config) {
+static OwnedSocket Connect(const TestConfig *config) {
   sockaddr_storage addr;
   socklen_t addr_len = 0;
   if (config->ipv6) {
@@ -117,7 +168,7 @@ static int Connect(const TestConfig *config) {
     sin6.sin6_port = htons(config->port);
     if (!inet_pton(AF_INET6, "::1", &sin6.sin6_addr)) {
       PrintSocketError("inet_pton");
-      return -1;
+      return OwnedSocket();
     }
     addr_len = sizeof(sin6);
     memcpy(&addr, &sin6, addr_len);
@@ -128,59 +179,33 @@ static int Connect(const TestConfig *config) {
     sin.sin_port = htons(config->port);
     if (!inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr)) {
       PrintSocketError("inet_pton");
-      return -1;
+      return OwnedSocket();
     }
     addr_len = sizeof(sin);
     memcpy(&addr, &sin, addr_len);
   }
 
-  int sock = socket(addr.ss_family, SOCK_STREAM, 0);
-  if (sock == -1) {
+  OwnedSocket sock(socket(addr.ss_family, SOCK_STREAM, 0));
+  if (!sock.is_valid()) {
     PrintSocketError("socket");
-    return -1;
+    return OwnedSocket();
   }
   int nodelay = 1;
-  if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+  if (setsockopt(sock.get(), IPPROTO_TCP, TCP_NODELAY,
                  reinterpret_cast<const char *>(&nodelay),
                  sizeof(nodelay)) != 0) {
     PrintSocketError("setsockopt");
-    closesocket(sock);
-    return -1;
+    return OwnedSocket();
   }
 
-  if (connect(sock, reinterpret_cast<const sockaddr *>(&addr), addr_len) != 0) {
+  if (connect(sock.get(), reinterpret_cast<const sockaddr *>(&addr),
+              addr_len) != 0) {
     PrintSocketError("connect");
-    closesocket(sock);
-    return -1;
+    return OwnedSocket();
   }
 
   return sock;
 }
-
-class SocketCloser {
- public:
-  explicit SocketCloser(int sock) : sock_(sock) {}
-  ~SocketCloser() {
-    // Half-close and drain the socket before releasing it. This seems to be
-    // necessary for graceful shutdown on Windows. It will also avoid write
-    // failures in the test runner.
-#if defined(OPENSSL_WINDOWS)
-    shutdown(sock_, SD_SEND);
-#else
-    shutdown(sock_, SHUT_WR);
-#endif
-    while (true) {
-      char buf[1024];
-      if (recv(sock_, buf, sizeof(buf), 0) <= 0) {
-        break;
-      }
-    }
-    closesocket(sock_);
-  }
-
- private:
-  const int sock_;
-};
 
 // DoRead reads from |ssl|, resolving any asynchronous operations. It returns
 // the result value of the final |SSL_read| call.
@@ -787,13 +812,20 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
 #endif
   }
 
-  int sock = Connect(config);
-  if (sock == -1) {
+  OwnedSocket sock = Connect(config);
+  if (!sock.is_valid()) {
     return false;
   }
-  SocketCloser closer(sock);
 
-  bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_NOCLOSE));
+  // Half-close and drain the socket before releasing it. This seems to be
+  // necessary for graceful shutdown on Windows. It will also avoid write
+  // failures in the test runner.
+  sock.set_drain_on_close(true);
+
+  // Windows uses |SOCKET| for socket types, but OpenSSL's API requires casting
+  // them to |int|.
+  bssl::UniquePtr<BIO> bio(
+      BIO_new_socket(static_cast<int>(sock.get()), BIO_NOCLOSE));
   if (!bio) {
     return false;
   }
