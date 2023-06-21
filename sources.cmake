@@ -68,6 +68,7 @@ set(
   crypto/self_test.cc
   crypto/stack/stack_test.cc
   crypto/siphash/siphash_test.cc
+  crypto/spx/spx_test.cc
   crypto/thread_test.cc
   # TODO(crbug.com/boringssl/542): This should be in TEST_SUPPORT_SOURCES, so
   # that all tests can use it. But it depends on GetTestData, which is not
@@ -156,6 +157,8 @@ set(
   crypto/pkcs8/test/windows.p12
   crypto/poly1305/poly1305_tests.txt
   crypto/siphash/siphash_tests.txt
+  crypto/spx/spx_tests.txt
+  crypto/spx/spx_tests_deterministic.txt
   crypto/x509/test/basic_constraints_ca.pem
   crypto/x509/test/basic_constraints_ca_pathlen_0.pem
   crypto/x509/test/basic_constraints_ca_pathlen_1.pem
