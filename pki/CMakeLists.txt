@@ -97,8 +97,7 @@ set_target_properties(
 target_compile_definitions(
   pki_test
   PRIVATE
-  _BORINGSSL_LIBPKI_
-  "_BORINGSSL_PKI_SRCDIR_=${CMAKE_CURRENT_SOURCE_DIR}")
+  _BORINGSSL_LIBPKI_)
 target_link_libraries(pki_test test_support_lib boringssl_gtest_main pki ssl crypto)
 add_dependencies(all_tests pki_test)
 

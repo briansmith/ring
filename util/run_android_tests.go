@@ -310,6 +310,20 @@ func main() {
 			"BUILDING.md",
 		)
 
+		err := filepath.Walk("pki/testdata/", func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+                        }
+			if info.Mode().IsRegular() {
+	                        files = append(files, path)
+                        }
+                        return nil
+                })
+                if err != nil {
+			fmt.Printf("Can't walk pki/testdata: %s\n", err)
+                        os.Exit(1);
+                }
+
 		tests, err := testconfig.ParseTestConfig("util/all_tests.json")
 		if err != nil {
 			fmt.Printf("Failed to parse input: %s\n", err)
@@ -374,6 +388,7 @@ func main() {
 			"crypto/libcrypto.so",
 			"decrepit/libdecrepit.so",
 			"ssl/libssl.so",
+			"pki/libpki.so",
 		}
 	} else if !os.IsNotExist(err) {
 		fmt.Printf("Failed to stat crypto/libcrypto.so: %s\n", err)

@@ -28,15 +28,11 @@ FilePath FilePath::AppendASCII(const std::string &ascii_path_element) const {
 
 // static
 void PathService::Get(PathKey key, FilePath *out) {
-#if defined(_BORINGSSL_PKI_SRCDIR_)
-  // We stringify the compile parameter because cmake. sigh.
-#define _boringssl_xstr(s) _boringssl_str(s)
-#define _boringssl_str(s) #s
-  const char pki_srcdir[] = _boringssl_xstr(_BORINGSSL_PKI_SRCDIR_);
-#else
-#error "No _BORINGSSL_PKI_SRCDIR"
-#endif  // defined(BORINGSSL_PKI_SRCDIR
-  *out = FilePath(pki_srcdir);
+  // We expect our test data to live in "pki" underneath a
+  // test root directory, or in the current directry.
+  char *root_from_env = getenv("BORINGSSL_TEST_DATA_ROOT");
+  std::string root = root_from_env ? root_from_env : ".";
+  *out = FilePath(root + "/pki");
 }
 
 }  // namespace fillins
