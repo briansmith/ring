@@ -3036,6 +3036,10 @@ OPENSSL_EXPORT void SSL_get0_peer_application_settings(const SSL *ssl,
 // connection and zero otherwise.
 OPENSSL_EXPORT int SSL_has_application_settings(const SSL *ssl);
 
+// SSL_set_alps_use_new_codepoint configures whether to use the new ALPS
+// codepoint. By default, the old codepoint is used.
+OPENSSL_EXPORT void SSL_set_alps_use_new_codepoint(SSL *ssl, int use_new);
+
 
 // Certificate compression.
 //

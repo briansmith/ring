@@ -20,20 +20,23 @@ import (
 // sessionState contains the information that is serialized into a session
 // ticket in order to later resume a connection.
 type sessionState struct {
-	vers                     uint16
-	cipherSuite              uint16
-	secret                   []byte
-	handshakeHash            []byte
-	certificates             [][]byte
-	extendedMasterSecret     bool
-	earlyALPN                []byte
-	ticketCreationTime       time.Time
-	ticketExpiration         time.Time
-	ticketFlags              uint32
-	ticketAgeAdd             uint32
-	hasApplicationSettings   bool
-	localApplicationSettings []byte
-	peerApplicationSettings  []byte
+	vers                        uint16
+	cipherSuite                 uint16
+	secret                      []byte
+	handshakeHash               []byte
+	certificates                [][]byte
+	extendedMasterSecret        bool
+	earlyALPN                   []byte
+	ticketCreationTime          time.Time
+	ticketExpiration            time.Time
+	ticketFlags                 uint32
+	ticketAgeAdd                uint32
+	hasApplicationSettings      bool
+	localApplicationSettings    []byte
+	peerApplicationSettings     []byte
+	hasApplicationSettingsOld   bool
+	localApplicationSettingsOld []byte
+	peerApplicationSettingsOld  []byte
 }
 
 func (s *sessionState) marshal() []byte {
@@ -66,6 +69,14 @@ func (s *sessionState) marshal() []byte {
 		msg.AddUint8(1)
 		addUint16LengthPrefixedBytes(msg, s.localApplicationSettings)
 		addUint16LengthPrefixedBytes(msg, s.peerApplicationSettings)
+	} else {
+		msg.AddUint8(0)
+	}
+
+	if s.hasApplicationSettingsOld {
+		msg.AddUint8(1)
+		addUint16LengthPrefixedBytes(msg, s.localApplicationSettingsOld)
+		addUint16LengthPrefixedBytes(msg, s.peerApplicationSettingsOld)
 	} else {
 		msg.AddUint8(0)
 	}
@@ -131,6 +142,17 @@ func (s *sessionState) unmarshal(data []byte) bool {
 	if s.hasApplicationSettings {
 		if !readUint16LengthPrefixedBytes(&reader, &s.localApplicationSettings) ||
 			!readUint16LengthPrefixedBytes(&reader, &s.peerApplicationSettings) {
+			return false
+		}
+	}
+
+	if !readBool(&reader, &s.hasApplicationSettingsOld) {
+		return false
+	}
+
+	if s.hasApplicationSettingsOld {
+		if !readUint16LengthPrefixedBytes(&reader, &s.localApplicationSettingsOld) ||
+			!readUint16LengthPrefixedBytes(&reader, &s.peerApplicationSettingsOld) {
 			return false
 		}
 	}

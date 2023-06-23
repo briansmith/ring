@@ -196,6 +196,7 @@ type clientHelloMsg struct {
 	compressedCertAlgs                       []uint16
 	delegatedCredentials                     bool
 	alpsProtocols                            []string
+	alpsProtocolsOld                         []string
 	outerExtensions                          []uint16
 	reorderOuterExtensionsWithoutCompressing bool
 	prefixExtensions                         []uint16
@@ -524,6 +525,18 @@ func (m *clientHelloMsg) marshalBody(hello *cryptobyte.Builder, typ clientHelloT
 			body: body.BytesOrPanic(),
 		})
 	}
+	if len(m.alpsProtocolsOld) > 0 {
+		body := cryptobyte.NewBuilder(nil)
+		body.AddUint16LengthPrefixed(func(protocolNameList *cryptobyte.Builder) {
+			for _, s := range m.alpsProtocolsOld {
+				addUint8LengthPrefixedBytes(protocolNameList, []byte(s))
+			}
+		})
+		extensions = append(extensions, extension{
+			id:   extensionApplicationSettingsOld,
+			body: body.BytesOrPanic(),
+		})
+	}
 
 	// The PSK extension must be last. See https://tools.ietf.org/html/rfc8446#section-4.2.11
 	if len(m.pskIdentities) > 0 {
@@ -745,6 +758,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.customExtension = ""
 	m.delegatedCredentials = false
 	m.alpsProtocols = nil
+	m.alpsProtocolsOld = nil
 
 	if len(reader) == 0 {
 		// ClientHello is optionally followed by extension data
@@ -1031,6 +1045,18 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 					return false
 				}
 				m.alpsProtocols = append(m.alpsProtocols, string(protocol))
+			}
+		case extensionApplicationSettingsOld:
+			var protocols cryptobyte.String
+			if !body.ReadUint16LengthPrefixed(&protocols) || len(body) != 0 {
+				return false
+			}
+			for len(protocols) > 0 {
+				var protocol []byte
+				if !readUint8LengthPrefixedBytes(&protocols, &protocol) || len(protocol) == 0 {
+					return false
+				}
+				m.alpsProtocolsOld = append(m.alpsProtocolsOld, string(protocol))
 			}
 		}
 
@@ -1412,6 +1438,8 @@ type serverExtensions struct {
 	serverNameAck             bool
 	applicationSettings       []byte
 	hasApplicationSettings    bool
+	applicationSettingsOld    []byte
+	hasApplicationSettingsOld bool
 	echRetryConfigs           []byte
 }
 
@@ -1539,6 +1567,10 @@ func (m *serverExtensions) marshal(extensions *cryptobyte.Builder) {
 		extensions.AddUint16(extensionApplicationSettings)
 		addUint16LengthPrefixedBytes(extensions, m.applicationSettings)
 	}
+	if m.hasApplicationSettingsOld {
+		extensions.AddUint16(extensionApplicationSettingsOld)
+		addUint16LengthPrefixedBytes(extensions, m.applicationSettingsOld)
+	}
 	if len(m.echRetryConfigs) > 0 {
 		extensions.AddUint16(extensionEncryptedClientHello)
 		addUint16LengthPrefixedBytes(extensions, m.echRetryConfigs)
@@ -1649,6 +1681,9 @@ func (m *serverExtensions) unmarshal(data cryptobyte.String, version uint16) boo
 		case extensionApplicationSettings:
 			m.hasApplicationSettings = true
 			m.applicationSettings = body
+		case extensionApplicationSettingsOld:
+			m.hasApplicationSettingsOld = true
+			m.applicationSettingsOld = body
 		case extensionEncryptedClientHello:
 			if version < VersionTLS13 {
 				return false
@@ -1681,10 +1716,12 @@ func (m *serverExtensions) unmarshal(data cryptobyte.String, version uint16) boo
 }
 
 type clientEncryptedExtensionsMsg struct {
-	raw                    []byte
-	applicationSettings    []byte
-	hasApplicationSettings bool
-	customExtension        []byte
+	raw                       []byte
+	applicationSettings       []byte
+	hasApplicationSettings    bool
+	applicationSettingsOld    []byte
+	hasApplicationSettingsOld bool
+	customExtension           []byte
 }
 
 func (m *clientEncryptedExtensionsMsg) marshal() (x []byte) {
@@ -1699,6 +1736,10 @@ func (m *clientEncryptedExtensionsMsg) marshal() (x []byte) {
 			if m.hasApplicationSettings {
 				extensions.AddUint16(extensionApplicationSettings)
 				addUint16LengthPrefixedBytes(extensions, m.applicationSettings)
+			}
+			if m.hasApplicationSettingsOld {
+				extensions.AddUint16(extensionApplicationSettingsOld)
+				addUint16LengthPrefixedBytes(extensions, m.applicationSettingsOld)
 			}
 			if len(m.customExtension) > 0 {
 				extensions.AddUint16(extensionCustom)
@@ -1736,6 +1777,9 @@ func (m *clientEncryptedExtensionsMsg) unmarshal(data []byte) bool {
 		case extensionApplicationSettings:
 			m.hasApplicationSettings = true
 			m.applicationSettings = body
+		case extensionApplicationSettingsOld:
+			m.hasApplicationSettingsOld = true
+			m.applicationSettingsOld = body
 		default:
 			// Unknown extensions are illegal in EncryptedExtensions.
 			return false

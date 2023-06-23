@@ -911,7 +911,9 @@ ResendHelloRetryRequest:
 			if hs.sessionState.cipherSuite == hs.suite.id &&
 				c.clientProtocol == string(hs.sessionState.earlyALPN) &&
 				c.hasApplicationSettings == hs.sessionState.hasApplicationSettings &&
-				bytes.Equal(c.localApplicationSettings, hs.sessionState.localApplicationSettings) {
+				bytes.Equal(c.localApplicationSettings, hs.sessionState.localApplicationSettings) &&
+				c.hasApplicationSettingsOld == hs.sessionState.hasApplicationSettingsOld &&
+				bytes.Equal(c.localApplicationSettingsOld, hs.sessionState.localApplicationSettingsOld) {
 				encryptedExtensions.extensions.hasEarlyData = true
 			}
 			if config.Bugs.AlwaysAcceptEarlyData {
@@ -926,6 +928,8 @@ ResendHelloRetryRequest:
 			if !config.Bugs.SendApplicationSettingsWithEarlyData {
 				encryptedExtensions.extensions.hasApplicationSettings = false
 				encryptedExtensions.extensions.applicationSettings = nil
+				encryptedExtensions.extensions.hasApplicationSettingsOld = false
+				encryptedExtensions.extensions.applicationSettingsOld = nil
 			}
 
 			sessionCipher := cipherSuiteFromID(hs.sessionState.cipherSuite)
@@ -1262,8 +1266,8 @@ ResendHelloRetryRequest:
 		return err
 	}
 
-	// If we sent an ALPS extension, the client must respond with one.
-	if encryptedExtensions.extensions.hasApplicationSettings {
+	// If we sent an ALPS extension, the client must respond with a single EncryptedExtensions.
+	if encryptedExtensions.extensions.hasApplicationSettings || encryptedExtensions.extensions.hasApplicationSettingsOld {
 		msg, err := c.readHandshake()
 		if err != nil {
 			return err
@@ -1275,14 +1279,35 @@ ResendHelloRetryRequest:
 		}
 		hs.writeClientHash(clientEncryptedExtensions.marshal())
 
-		if !clientEncryptedExtensions.hasApplicationSettings {
-			c.sendAlert(alertMissingExtension)
-			return errors.New("tls: client didn't provide application settings")
+		// Expect client send new application settings not old.
+		if encryptedExtensions.extensions.hasApplicationSettings {
+			if !clientEncryptedExtensions.hasApplicationSettings {
+				c.sendAlert(alertMissingExtension)
+				return errors.New("tls: client didn't provide new application settings")
+			}
+			if clientEncryptedExtensions.hasApplicationSettingsOld {
+				c.sendAlert(alertUnsupportedExtension)
+				return errors.New("tls: client shouldn't provide old application settings")
+			}
+			c.peerApplicationSettings = clientEncryptedExtensions.applicationSettings
 		}
-		c.peerApplicationSettings = clientEncryptedExtensions.applicationSettings
+
+		// Expect client send old application settings not new.
+		if encryptedExtensions.extensions.hasApplicationSettingsOld {
+			if !clientEncryptedExtensions.hasApplicationSettingsOld {
+				c.sendAlert(alertMissingExtension)
+				return errors.New("tls: client didn't provide old application settings")
+			}
+			if clientEncryptedExtensions.hasApplicationSettings {
+				c.sendAlert(alertUnsupportedExtension)
+				return errors.New("tls: client shouldn't provide new application settings")
+			}
+			c.peerApplicationSettingsOld = clientEncryptedExtensions.applicationSettingsOld
+		}
 	} else if encryptedExtensions.extensions.hasEarlyData {
 		// 0-RTT sessions carry application settings over.
 		c.peerApplicationSettings = hs.sessionState.peerApplicationSettings
+		c.peerApplicationSettingsOld = hs.sessionState.peerApplicationSettingsOld
 	}
 
 	// If we requested a client certificate, then the client must send a
@@ -1595,7 +1620,7 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 			c.usedALPN = true
 		}
 
-		var alpsAllowed bool
+		var alpsAllowed, alpsAllowedOld bool
 		if c.vers >= VersionTLS13 {
 			for _, proto := range hs.clientHello.alpsProtocols {
 				if proto == c.clientProtocol {
@@ -1603,9 +1628,23 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 					break
 				}
 			}
+			for _, proto := range hs.clientHello.alpsProtocolsOld {
+				if proto == c.clientProtocol {
+					alpsAllowedOld = true
+					break
+				}
+			}
 		}
-		if c.config.Bugs.AlwaysNegotiateApplicationSettings {
+
+		if c.config.Bugs.AlwaysNegotiateApplicationSettingsBoth {
 			alpsAllowed = true
+			alpsAllowedOld = true
+		}
+		if c.config.Bugs.AlwaysNegotiateApplicationSettingsNew {
+			alpsAllowed = true
+		}
+		if c.config.Bugs.AlwaysNegotiateApplicationSettingsOld {
+			alpsAllowedOld = true
 		}
 		if settings, ok := c.config.ApplicationSettings[c.clientProtocol]; ok && alpsAllowed {
 			c.hasApplicationSettings = true
@@ -1613,6 +1652,13 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 			// Note these fields may later be cleared we accept 0-RTT.
 			serverExtensions.hasApplicationSettings = true
 			serverExtensions.applicationSettings = settings
+		}
+		if settings, ok := c.config.ApplicationSettings[c.clientProtocol]; ok && alpsAllowedOld {
+			c.hasApplicationSettingsOld = true
+			c.localApplicationSettingsOld = settings
+			// Note these fields may later be cleared we accept 0-RTT.
+			serverExtensions.hasApplicationSettingsOld = true
+			serverExtensions.applicationSettingsOld = settings
 		}
 	}
 

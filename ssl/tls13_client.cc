@@ -811,10 +811,14 @@ static enum ssl_hs_wait_t do_send_client_encrypted_extensions(
       !ssl->s3->early_data_accepted) {
     ScopedCBB cbb;
     CBB body, extensions, extension;
+    uint16_t extension_type = TLSEXT_TYPE_application_settings_old;
+    if (hs->config->alps_use_new_codepoint) {
+      extension_type = TLSEXT_TYPE_application_settings;
+    }
     if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                    SSL3_MT_ENCRYPTED_EXTENSIONS) ||
         !CBB_add_u16_length_prefixed(&body, &extensions) ||
-        !CBB_add_u16(&extensions, TLSEXT_TYPE_application_settings) ||
+        !CBB_add_u16(&extensions, extension_type) ||
         !CBB_add_u16_length_prefixed(&extensions, &extension) ||
         !CBB_add_bytes(&extension,
                        hs->new_session->local_application_settings.data(),

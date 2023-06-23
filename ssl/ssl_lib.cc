@@ -707,7 +707,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       shed_handshake_config(false),
       jdk11_workaround(false),
       quic_use_legacy_codepoint(false),
-      permute_extensions(false) {
+      permute_extensions(false),
+      alps_use_new_codepoint(false) {
   assert(ssl);
 }
 
@@ -2400,6 +2401,13 @@ void SSL_get0_peer_application_settings(const SSL *ssl,
 int SSL_has_application_settings(const SSL *ssl) {
   const SSL_SESSION *session = SSL_get_session(ssl);
   return session && session->has_application_settings;
+}
+
+void SSL_set_alps_use_new_codepoint(SSL *ssl, int use_new) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->alps_use_new_codepoint = !!use_new;
 }
 
 int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,

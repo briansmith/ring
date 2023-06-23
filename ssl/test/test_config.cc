@@ -270,6 +270,8 @@ std::vector<Flag> SortedFlags() {
                            &TestConfig::application_settings),
       OptionalStringFlag("-expect-peer-application-settings",
                          &TestConfig::expect_peer_application_settings),
+      BoolFlag("-alps-use-new-codepoint",
+               &TestConfig::alps_use_new_codepoint),
       Base64Flag("-quic-transport-params", &TestConfig::quic_transport_params),
       Base64Flag("-expect-quic-transport-params",
                  &TestConfig::expect_quic_transport_params),
@@ -1944,6 +1946,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (max_send_fragment > 0) {
     SSL_set_max_send_fragment(ssl.get(), max_send_fragment);
+  }
+  if (alps_use_new_codepoint) {
+    SSL_set_alps_use_new_codepoint(ssl.get(), 1);
   }
   if (quic_use_legacy_codepoint != -1) {
     SSL_set_quic_use_legacy_codepoint(ssl.get(), quic_use_legacy_codepoint);
