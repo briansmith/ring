@@ -1,6 +1,6 @@
-project(pki)
-cmake_minimum_required(VERSION 3.25)
-set(CMAKE_CXX_STANDARD 17)
+if(APPLE)
+  set(PKI_CXX_FLAGS "-fno-aligned-new")
+endif()
 
 add_library(
   pki
@@ -47,16 +47,13 @@ add_library(
   cert_issuer_source_static.cc
   path_builder.cc
 )
-# Although libpki also provides headers that require an include directory, the
-# flag is already specified by libcrypto, so we omit target_include_directories
-# here.
-install_if_enabled(TARGETS pki EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})
-set_property(TARGET pki PROPERTY EXPORT_NAME PKI)
-set_property(TARGET pki PROPERTY CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_BORINGSSL_LIBPKI_")
-if (APPLE)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-aligned-new")
-endif()
+set_target_properties(
+  pki
+  PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  COMPILE_FLAGS "${PKI_CXX_FLAGS}")
+target_compile_definitions(pki PRIVATE _BORINGSSL_LIBPKI_)
 target_link_libraries(pki ssl crypto)
 
 add_executable(
@@ -91,13 +88,18 @@ add_executable(
 #  encode_values_unittest.cc  # Currently does a bunch of time goo..
 #  ocsp_unittest.cc           # Not sure we will keep this here.. 
 )
+set_target_properties(
+  pki_test
+  PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  COMPILE_FLAGS "${PKI_CXX_FLAGS}")
+target_compile_definitions(
+  pki_test
+  PRIVATE
+  _BORINGSSL_LIBPKI_
+  "_BORINGSSL_PKI_SRCDIR_=${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(pki_test test_support_lib boringssl_gtest_main pki ssl crypto)
-set_property(TARGET pki_test PROPERTY CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_BORINGSSL_LIBPKI_")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_BORINGSSL_PKI_SRCDIR_=${CMAKE_CURRENT_SOURCE_DIR}")
-if (APPLE)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-aligned-new")
-endif()
 add_dependencies(all_tests pki_test)
 
 
