@@ -26,9 +26,16 @@ extern "C" {
 #endif
 
 
-#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_FUCHSIA) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE) && !defined(OPENSSL_TRUSTY)
-#define OPENSSL_URANDOM
+#if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+#define OPENSSL_RAND_DETERMINISTIC
+#elif defined(OPENSSL_FUCHSIA)
+#define OPENSSL_RAND_FUCHSIA
+#elif defined(OPENSSL_TRUSTY)
+// Trusty's PRNG file is, for now, maintained outside the tree.
+#elif defined(OPENSSL_WINDOWS)
+#define OPENSSL_RAND_WINDOWS
+#else
+#define OPENSSL_RAND_URANDOM
 #endif
 
 // RAND_bytes_with_additional_data samples from the RNG after mixing 32 bytes
@@ -70,15 +77,15 @@ void CRYPTO_sysrand(uint8_t *buf, size_t len);
 // depending on the vendor's configuration.
 void CRYPTO_sysrand_for_seed(uint8_t *buf, size_t len);
 
-#if defined(OPENSSL_URANDOM) || defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
 // CRYPTO_init_sysrand initializes long-lived resources needed to draw entropy
 // from the operating system.
 void CRYPTO_init_sysrand(void);
 #else
 OPENSSL_INLINE void CRYPTO_init_sysrand(void) {}
-#endif  // defined(OPENSSL_URANDOM) || defined(OPENSSL_WINDOWS)
+#endif  // defined(OPENSSL_RAND_URANDOM) || defined(OPENSSL_RAND_WINDOWS)
 
-#if defined(OPENSSL_URANDOM)
+#if defined(OPENSSL_RAND_URANDOM)
 // CRYPTO_sysrand_if_available fills |len| bytes at |buf| with entropy from the
 // operating system, or early /dev/urandom data, and returns 1, _if_ the entropy
 // pool is initialized or if getrandom() is not available and not in FIPS mode.
@@ -90,7 +97,7 @@ OPENSSL_INLINE int CRYPTO_sysrand_if_available(uint8_t *buf, size_t len) {
   CRYPTO_sysrand(buf, len);
   return 1;
 }
-#endif  // defined(OPENSSL_URANDOM)
+#endif  // defined(OPENSSL_RAND_URANDOM)
 
 // rand_fork_unsafe_buffering_enabled returns whether fork-unsafe buffering has
 // been enabled via |RAND_enable_fork_unsafe_buffering|.

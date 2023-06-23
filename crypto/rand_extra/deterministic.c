@@ -14,14 +14,15 @@
 
 #include <openssl/rand.h>
 
-#if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+#include "../fipsmodule/rand/internal.h"
+
+#if defined(OPENSSL_RAND_DETERMINISTIC)
 
 #include <string.h>
 
 #include <openssl/chacha.h>
 
 #include "../internal.h"
-#include "../fipsmodule/rand/internal.h"
 
 
 // g_num_calls is the number of calls to |CRYPTO_sysrand| that have occurred.
@@ -53,4 +54,4 @@ void CRYPTO_sysrand_for_seed(uint8_t *out, size_t requested) {
   CRYPTO_sysrand(out, requested);
 }
 
-#endif  // BORINGSSL_UNSAFE_DETERMINISTIC_MODE
+#endif  // OPENSSL_RAND_DETERMINISTIC
