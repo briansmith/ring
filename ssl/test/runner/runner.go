@@ -47,6 +47,7 @@ import (
 
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
 	"boringssl.googlesource.com/boringssl/util/testresult"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 var (
@@ -819,10 +820,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 				if err := os.MkdirAll(dir, 0755); err != nil {
 					return err
 				}
-				bb := newByteBuilder()
-				bb.addU24LengthPrefixed().addBytes(encodedInner)
-				bb.addBytes(outer)
-				return os.WriteFile(filepath.Join(dir, name), bb.finish(), 0644)
+				bb := cryptobyte.NewBuilder(nil)
+				addUint24LengthPrefixedBytes(bb, encodedInner)
+				bb.AddBytes(outer)
+				return os.WriteFile(filepath.Join(dir, name), bb.BytesOrPanic(), 0644)
 			}
 		}
 

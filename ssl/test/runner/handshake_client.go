@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 const echBadPayloadByte = 0xff
@@ -71,9 +72,12 @@ func replaceClientHello(hello *clientHelloMsg, in []byte) (*clientHelloMsg, erro
 	// Replace |newHellos|'s key shares with those of |hello|. For simplicity,
 	// we require their lengths match, which is satisfied by matching the
 	// DefaultCurves setting to the selection in the replacement ClientHello.
-	bb := newByteBuilder()
+	bb := cryptobyte.NewBuilder(nil)
 	hello.marshalKeyShares(bb)
-	keyShares := bb.finish()
+	keyShares, err := bb.Bytes()
+	if err != nil {
+		return nil, err
+	}
 	if len(keyShares) != len(newHello.keySharesRaw) {
 		return nil, errors.New("tls: ClientHello key share length is inconsistent with DefaultCurves setting")
 	}
