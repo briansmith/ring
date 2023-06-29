@@ -5,7 +5,9 @@
 #include "path_builder.h"
 
 #include <cstdint>
+#include <iostream>
 
+#include "fillins/log.h"
 #include "fillins/net_errors.h"
 
 #include "cert_issuer_source_static.h"
@@ -233,12 +235,10 @@ class PathBuilderPkitsTestDelegate {
 
     if (info.should_validate != result.HasValidPath()) {
       for (size_t i = 0; i < result.paths.size(); ++i) {
-#if defined(DVLOG)
         const CertPathBuilderResultPath* result_path =
             result.paths[i].get();
-        LOG(ERROR) << "path " << i << " errors:\n"
+        std::cerr << "path " << i << " errors:\n"
                    << result_path->errors.ToDebugString(result_path->certs);
-#endif
       }
     }
 

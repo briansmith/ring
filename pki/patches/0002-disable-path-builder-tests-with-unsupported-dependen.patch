@@ -1,7 +1,7 @@
-From 9a38f227afca29cb3e373ca973d2f68126a0145e Mon Sep 17 00:00:00 2001
+From 0a1d630dbc33f63009aabb4907a1dbeb4c934415 Mon Sep 17 00:00:00 2001
 From: Bob Beck <bbe@google.com>
 Date: Fri, 2 Jun 2023 11:08:50 +0200
-Subject: [PATCH 3/3] disable path builder tests with unsupported dependencies
+Subject: [PATCH 2/2] disable path builder tests with unsupported dependencies
 
 ---
  net/cert/pki/path_builder_unittest.cc | 12 ++++++++++++

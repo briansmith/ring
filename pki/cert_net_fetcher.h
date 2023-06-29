@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <memory>
+#include "fillins/log.h"
 #include "fillins/net_errors.h"
 
 

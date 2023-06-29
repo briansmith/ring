@@ -9,6 +9,7 @@
 #include <set>
 #include <unordered_set>
 
+#include "fillins/log.h"
 #include "fillins/net_errors.h"
 
 #include "cert_issuer_source.h"
@@ -38,7 +39,6 @@ std::string FingerPrintParsedCertificate(const ParsedCertificate* cert) {
 }
 
 // TODO(mattm): decide how much debug logging to keep.
-// TODO(bbe): perhaps none - currently conditionalizing on DVLOG..
 std::string CertDebugString(const ParsedCertificate* cert) {
   RDNSequence subject;
   std::string subject_str;
@@ -49,7 +49,6 @@ std::string CertDebugString(const ParsedCertificate* cert) {
   return FingerPrintParsedCertificate(cert) + " " + subject_str;
 }
 
-#if defined(DVLOG)
 std::string PathDebugString(const ParsedCertificateList& certs) {
   std::string s;
   for (const auto& cert : certs) {
@@ -59,7 +58,6 @@ std::string PathDebugString(const ParsedCertificateList& certs) {
   }
   return s;
 }
-#endif
 
 // This structure describes a certificate and its trust level. Note that |cert|
 // may be null to indicate an "empty" entry.
@@ -253,9 +251,7 @@ CertIssuersIter::CertIssuersIter(
       cert_issuer_sources_(cert_issuer_sources),
       trust_store_(trust_store),
       debug_data_(debug_data) {
-#if defined(DVLOG)
   DVLOG(2) << "CertIssuersIter created for " << CertDebugString(cert());
-#endif
 }
 
 void CertIssuersIter::GetNextIssuer(IssuerEntry* out) {
@@ -295,10 +291,8 @@ void CertIssuersIter::GetNextIssuer(IssuerEntry* out) {
   if (HasCurrentIssuer()) {
     SortRemainingIssuers();
 
-#if defined(DVLOG)
     DVLOG(2) << "CertIssuersIter returning issuer " << cur_issuer_ << " of "
              << issuers_.size() << " for " << CertDebugString(cert());
-#endif
     // Still have issuers that haven't been returned yet, return the highest
     // priority one (head of remaining list). A reference to the returned issuer
     // is retained, since |present_issuers_| points to data owned by it.
@@ -306,10 +300,8 @@ void CertIssuersIter::GetNextIssuer(IssuerEntry* out) {
     return;
   }
 
-#if defined(DVLOG)
   DVLOG(2) << "CertIssuersIter reached the end of all available issuers for "
            << CertDebugString(cert());
-#endif
   // Reached the end of all available issuers.
   *out = IssuerEntry();
 }
@@ -341,9 +333,7 @@ void CertIssuersIter::DoAsyncIssuerQuery() {
     std::unique_ptr<CertIssuerSource::Request> request;
     cert_issuer_source->AsyncGetIssuersOf(cert(), &request);
     if (request) {
-#if defined(DVLOG)
       DVLOG(1) << "AsyncGetIssuersOf pending for " << CertDebugString(cert());
-#endif
       pending_async_requests_.push_back(std::move(request));
     }
   }
@@ -570,20 +560,16 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
         cur_path_.Length() >= max_path_building_depth) {
       cur_path_.CopyPath(out_certs);
       out_errors->GetOtherErrors()->AddError(cert_errors::kDepthLimitExceeded);
-#if defined(DVLOG)
       DVLOG(1) << "CertPathIter reached depth limit. Returning partial path "
                   "and backtracking:\n"
                << PathDebugString(*out_certs);
-#endif
       cur_path_.Pop();
       return true;
     }
 
     if (!next_issuer_.cert) {
       if (cur_path_.Empty()) {
-#if defined(DVLOG)
         DVLOG(1) << "CertPathIter exhausted all paths...";
-#endif
         return false;
       }
 
@@ -603,18 +589,14 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
           cur_path_.CopyPath(out_certs);
           out_errors->GetErrorsForCert(out_certs->size() - 1)
               ->AddError(cert_errors::kNoIssuersFound);
-#if defined(DVLOG)
           DVLOG(1) << "CertPathIter returning partial path and backtracking:\n"
                    << PathDebugString(*out_certs);
-#endif
           cur_path_.Pop();
           return true;
         } else {
           // No more issuers for current chain, go back up and see if there are
           // any more for the previous cert.
-#if defined(DVLOG)
           DVLOG(1) << "CertPathIter backtracking...";
-#endif
           cur_path_.Pop();
           continue;
         }
@@ -630,9 +612,7 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
         // unspecified trust. This may allow a successful path to be built to a
         // different root (or to the same cert if it's self-signed).
         if (cur_path_.Empty()) {
-#if defined(DVLOG)
           DVLOG(1) << "Leaf is a trust anchor, considering as UNSPECIFIED";
-#endif
           next_issuer_.trust = CertificateTrust::ForUnspecified();
         }
         break;
@@ -641,9 +621,7 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
         // unspecified trust. This may allow a successful path to be built to a
         // trusted root.
         if (!cur_path_.Empty()) {
-#if defined(DVLOG)
           DVLOG(1) << "Issuer is a trust leaf, considering as UNSPECIFIED";
-#endif
           next_issuer_.trust = CertificateTrust::ForUnspecified();
         }
         break;
@@ -663,10 +641,8 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
             !VerifyCertificateIsSelfSigned(*next_issuer_.cert,
                                            delegate->GetVerifyCache(),
                                            /*errors=*/nullptr)) {
-#if defined(DVLOG)
           DVLOG(1) << "Leaf is trusted with require_leaf_selfsigned but is "
                       "not self-signed, considering as UNSPECIFIED";
-#endif
           next_issuer_.trust = CertificateTrust::ForUnspecified();
         }
         break;
@@ -686,16 +662,12 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
       case CertificateTrustType::TRUSTED_ANCHOR_OR_LEAF:
       case CertificateTrustType::TRUSTED_LEAF: {
         // If the issuer has a known trust level, can stop building the path.
-#if defined(DVLOG)
         DVLOG(2) << "CertPathIter got anchor: "
                  << CertDebugString(next_issuer_.cert.get());
-#endif
         cur_path_.CopyPath(out_certs);
         out_certs->push_back(std::move(next_issuer_.cert));
-#if defined(DVLOG)
         DVLOG(1) << "CertPathIter returning path:\n"
                  << PathDebugString(*out_certs);
-#endif
         *out_last_cert_trust = next_issuer_.trust;
         next_issuer_ = IssuerEntry();
         return true;
@@ -704,10 +676,8 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
         // Skip this cert if it is already in the chain.
         if (cur_path_.IsPresent(next_issuer_.cert.get())) {
           cur_path_.back()->increment_skipped_issuer_count();
-#if defined(DVLOG)
           DVLOG(1) << "CertPathIter skipping dupe cert: "
                    << CertDebugString(next_issuer_.cert.get());
-#endif
           next_issuer_ = IssuerEntry();
           continue;
         }
@@ -716,9 +686,7 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
             std::move(next_issuer_.cert), &cert_issuer_sources_, trust_store_,
             debug_data_));
         next_issuer_ = IssuerEntry();
-#if defined(DVLOG)
         DVLOG(1) << "CertPathIter cur_path_ =\n" << cur_path_.PathDebugString();
-#endif
         // Continue descending the tree.
         continue;
       }
@@ -866,10 +834,8 @@ CertPathBuilder::Result CertPathBuilder::Run() {
           &result_path->user_constrained_policy_set, &result_path->errors);
     }
 
-#if defined(DVLOG)
     DVLOG(1) << "CertPathBuilder VerifyCertificateChain errors:\n"
              << result_path->errors.ToDebugString(result_path->certs);
-#endif
 
     // Give the delegate a chance to add errors to the path.
     delegate_->CheckPathAfterVerification(*this, result_path.get());
