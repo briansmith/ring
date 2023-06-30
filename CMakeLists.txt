@@ -515,7 +515,6 @@ add_library(crypto_test_data OBJECT crypto_test_data.cc)
 add_subdirectory(crypto)
 add_subdirectory(ssl)
 add_subdirectory(ssl/test)
-add_subdirectory(tool)
 add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
 add_subdirectory(decrepit)
@@ -572,12 +571,17 @@ set_target_properties(
   CXX_STANDARD_REQUIRED YES
   COMPILE_FLAGS "${PKI_CXX_FLAGS}")
 
+add_executable(bssl ${BSSL_SOURCES})
+install_if_enabled(TARGETS bssl DESTINATION ${INSTALL_DESTINATION_DEFAULT})
+target_link_libraries(bssl ssl crypto)
+
 # Historically, targets were built in subdirectories. For compatibility with
 # existing tools, we, for now, copy the targets into the subdirectories. This
 # will be removed sometime in 2024.
 copy_post_build(crypto crypto_test urandom_test)
 copy_post_build(ssl ssl_test)
 copy_post_build(decrepit decrepit_test)
+copy_post_build(tool bssl)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)

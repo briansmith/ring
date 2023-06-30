@@ -425,3 +425,25 @@ set(
   crypto/test/test_util.cc
   crypto/test/wycheproof_util.cc
 )
+
+set(
+  BSSL_SOURCES
+
+  tool/args.cc
+  tool/ciphers.cc
+  tool/client.cc
+  tool/const.cc
+  tool/digest.cc
+  tool/fd.cc
+  tool/file.cc
+  tool/generate_ech.cc
+  tool/generate_ed25519.cc
+  tool/genrsa.cc
+  tool/pkcs12.cc
+  tool/rand.cc
+  tool/server.cc
+  tool/sign.cc
+  tool/speed.cc
+  tool/tool.cc
+  tool/transport_common.cc
+)
