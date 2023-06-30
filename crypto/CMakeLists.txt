@@ -1,5 +1,4 @@
 add_subdirectory(fipsmodule)
-add_subdirectory(test)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)

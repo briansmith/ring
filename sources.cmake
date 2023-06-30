@@ -66,6 +66,7 @@ set(
   crypto/stack/stack_test.cc
   crypto/siphash/siphash_test.cc
   crypto/thread_test.cc
+  crypto/test/gtest_main.cc
   crypto/trust_token/trust_token_test.cc
   crypto/x509/x509_test.cc
   crypto/x509/x509_time_test.cc
@@ -317,14 +318,16 @@ set(
 set(
   SSL_TEST_SOURCES
 
+  crypto/test/gtest_main.cc
   ssl/span_test.cc
-  ssl/ssl_test.cc
   ssl/ssl_c_test.c
+  ssl/ssl_test.cc
 )
 
 set(
   DECREPIT_TEST_SOURCES
 
+  crypto/test/gtest_main.cc
   decrepit/blowfish/blowfish_test.cc
   decrepit/cast/cast_test.cc
   decrepit/cfb/cfb_test.cc
@@ -382,6 +385,7 @@ set(
 set(
   PKI_TEST_SOURCES
 
+  crypto/test/gtest_main.cc
   pki/cert_issuer_source_static_unittest.cc
   pki/certificate_policies_unittest.cc
   pki/encode_values_unittest.cc
@@ -410,4 +414,14 @@ set(
   pki/verify_certificate_chain_unittest.cc
   pki/verify_name_match_unittest.cc
   pki/verify_signed_data_unittest.cc
+)
+
+set(
+  TEST_SUPPORT_SOURCES
+
+  crypto/test/abi_test.cc
+  crypto/test/file_test.cc
+  crypto/test/file_test_gtest.cc
+  crypto/test/test_util.cc
+  crypto/test/wycheproof_util.cc
 )

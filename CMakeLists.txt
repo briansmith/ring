@@ -520,6 +520,17 @@ add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
 add_subdirectory(decrepit)
 
+add_library(test_support_lib STATIC ${TEST_SUPPORT_SOURCES})
+if (LIBUNWIND_FOUND)
+  target_compile_options(test_support_lib PRIVATE ${LIBUNWIND_CFLAGS_OTHER})
+  target_include_directories(test_support_lib PRIVATE ${LIBUNWIND_INCLUDE_DIRS})
+  target_link_libraries(test_support_lib ${LIBUNWIND_LDFLAGS})
+endif()
+if(WIN32)
+  target_link_libraries(test_support_lib dbghelp)
+endif()
+target_link_libraries(test_support_lib boringssl_gtest crypto)
+
 # urandom_test is a separate binary because it needs to be able to observe the
 # PRNG initialisation, which means that it can't have other tests running before
 # it does.
@@ -528,15 +539,15 @@ target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
 add_dependencies(all_tests urandom_test)
 
 add_executable(crypto_test ${CRYPTO_TEST_SOURCES} $<TARGET_OBJECTS:crypto_test_data>)
-target_link_libraries(crypto_test test_support_lib boringssl_gtest_main crypto)
+target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
 add_dependencies(all_tests crypto_test)
 
 add_executable(ssl_test ${SSL_TEST_SOURCES})
-target_link_libraries(ssl_test test_support_lib boringssl_gtest_main ssl crypto)
+target_link_libraries(ssl_test test_support_lib boringssl_gtest ssl crypto)
 add_dependencies(all_tests ssl_test)
 
 add_executable(decrepit_test ${DECREPIT_TEST_SOURCES})
-target_link_libraries(decrepit_test test_support_lib boringssl_gtest_main
+target_link_libraries(decrepit_test test_support_lib boringssl_gtest
                       decrepit crypto)
 add_dependencies(all_tests decrepit_test)
 
@@ -550,7 +561,7 @@ target_link_libraries(pki crypto)
 
 add_executable(pki_test ${PKI_TEST_SOURCES})
 target_compile_definitions(pki_test PRIVATE _BORINGSSL_LIBPKI_)
-target_link_libraries(pki_test test_support_lib boringssl_gtest_main pki crypto)
+target_link_libraries(pki_test test_support_lib boringssl_gtest pki crypto)
 add_dependencies(all_tests pki_test)
 
 # The PKI library requires C++17.
