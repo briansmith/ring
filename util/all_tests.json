@@ -47,6 +47,6 @@
     "cmd": ["ssl/ssl_test"]
   },
   {
-    "cmd": ["pki/pki_test"]
+    "cmd": ["pki_test"]
   }
 ]

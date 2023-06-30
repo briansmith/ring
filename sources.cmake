@@ -238,3 +238,82 @@ set(
   third_party/wycheproof_testvectors/x25519_test.txt
   third_party/wycheproof_testvectors/xchacha20_poly1305_test.txt
 )
+
+set(
+  PKI_SOURCES
+
+  pki/cert_error_id.cc
+  pki/cert_error_params.cc
+  pki/cert_errors.cc
+  pki/cert_errors.cc
+  pki/cert_issuer_source_static.cc
+  pki/certificate_policies.cc
+  pki/common_cert_errors.cc
+  pki/crl.cc
+  pki/encode_values.cc
+  pki/extended_key_usage.cc
+  pki/fillins/base64.cc
+  pki/fillins/ip_address.cc
+  pki/fillins/openssl_util.cc
+  pki/fillins/string_util.cc
+  pki/fillins/utf_string_conversions.cc
+  pki/general_names.cc
+  pki/input.cc
+  pki/name_constraints.cc
+  pki/parse_certificate.cc
+  pki/parse_certificate.cc
+  pki/parse_name.cc
+  pki/parse_values.cc
+  pki/parsed_certificate.cc
+  pki/parsed_certificate.cc
+  pki/parsed_certificate.cc
+  pki/parser.cc
+  pki/path_builder.cc
+  pki/pem.cc
+  pki/revocation_util.cc
+  pki/signature_algorithm.cc
+  pki/simple_path_builder_delegate.cc
+  pki/string_util.cc
+  pki/tag.cc
+  pki/trust_store_collection.cc
+  pki/trust_store_collection.cc
+  pki/trust_store_in_memory.cc
+  pki/trust_store.cc
+  pki/trust_store.cc
+  pki/verify_certificate_chain.cc
+  pki/verify_name_match.cc
+  pki/verify_signed_data.cc
+)
+
+set(
+  PKI_TEST_SOURCES
+
+  pki/cert_issuer_source_static_unittest.cc
+  pki/certificate_policies_unittest.cc
+  pki/encode_values_unittest.cc
+  pki/extended_key_usage_unittest.cc
+  pki/fillins/file_util.cc
+  pki/fillins/path_service.cc
+  pki/input_unittest.cc
+  pki/mock_signature_verify_cache.cc
+  pki/name_constraints_unittest.cc
+  pki/nist_pkits_unittest.cc
+  #  pki/ocsp_unittest.cc           # Not sure we will keep this here..
+  pki/parse_certificate_unittest.cc
+  pki/parse_name_unittest.cc
+  pki/parse_values_unittest.cc
+  pki/parsed_certificate_unittest.cc
+  pki/parser_unittest.cc
+  pki/path_builder_pkits_unittest.cc
+  pki/path_builder_unittest.cc
+  pki/path_builder_verify_certificate_chain_unittest.cc
+  pki/signature_algorithm_unittest.cc
+  pki/simple_path_builder_delegate_unittest.cc
+  pki/string_util_unittest.cc
+  pki/test_helpers.cc
+  pki/trust_store_collection_unittest.cc
+  pki/verify_certificate_chain_pkits_unittest.cc
+  pki/verify_certificate_chain_unittest.cc
+  pki/verify_name_match_unittest.cc
+  pki/verify_signed_data_unittest.cc
+)
