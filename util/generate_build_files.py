@@ -584,14 +584,6 @@ def NoTests(path, dent, is_dir):
   return 'test.' not in dent
 
 
-def OnlyTests(path, dent, is_dir):
-  """Filter function that can be passed to FindCFiles in order to remove
-  non-test sources."""
-  if is_dir:
-    return dent != 'test'
-  return '_test.' in dent
-
-
 def AllFiles(path, dent, is_dir):
   """Filter function that can be passed to FindCFiles in order to include all
   sources."""
@@ -761,6 +753,10 @@ def ExtractVariablesFromCMakeFile(cmakefile):
   return variables
 
 
+def PrefixWithSrc(files):
+  return ['src/' + x for x in files]
+
+
 def main(platforms):
   cmake = ExtractVariablesFromCMakeFile(os.path.join('src', 'sources.cmake'))
   crypto_c_files = (FindCFiles(os.path.join('src', 'crypto'), NoTestsNorFIPSFragments) +
@@ -799,30 +795,20 @@ def main(platforms):
           stdout=out)
     crypto_test_files += ['crypto_test_data.cc']
 
-  crypto_test_files += FindCFiles(os.path.join('src', 'crypto'), OnlyTests)
+  crypto_test_files += PrefixWithSrc(cmake['CRYPTO_TEST_SOURCES'])
   crypto_test_files += [
       'src/crypto/test/abi_test.cc',
       'src/crypto/test/file_test_gtest.cc',
       'src/crypto/test/gtest_main.cc',
   ]
-  # urandom_test.cc is in a separate binary so that it can be test PRNG
-  # initialisation.
-  crypto_test_files = [
-      file for file in crypto_test_files
-      if not file.endswith('/urandom_test.cc')
-  ]
   crypto_test_files.sort()
 
-  ssl_test_files = FindCFiles(os.path.join('src', 'ssl'), OnlyTests)
+  ssl_test_files = PrefixWithSrc(cmake['SSL_TEST_SOURCES'])
   ssl_test_files += [
       'src/crypto/test/abi_test.cc',
       'src/crypto/test/gtest_main.cc',
   ]
   ssl_test_files.sort()
-
-  urandom_test_files = [
-      'src/crypto/fipsmodule/rand/urandom_test.cc',
-  ]
 
   fuzz_c_files = FindCFiles(os.path.join('src', 'fuzz'), NoTests)
 
@@ -862,7 +848,7 @@ def main(platforms):
       'crypto_headers': crypto_h_files,
       'crypto_internal_headers': crypto_internal_h_files,
       'crypto_test': crypto_test_files,
-      'crypto_test_data': sorted('src/' + x for x in cmake['CRYPTO_TEST_DATA']),
+      'crypto_test_data': sorted(PrefixWithSrc(cmake['CRYPTO_TEST_DATA'])),
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
       'ssl': ssl_source_files,
@@ -873,7 +859,7 @@ def main(platforms):
       'tool_headers': tool_h_files,
       'test_support': test_support_c_files,
       'test_support_headers': test_support_h_files,
-      'urandom_test': urandom_test_files,
+      'urandom_test': PrefixWithSrc(cmake['URANDOM_TEST_SOURCES']),
   }
 
   for platform in platforms:

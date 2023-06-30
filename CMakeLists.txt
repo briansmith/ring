@@ -520,6 +520,26 @@ add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
 add_subdirectory(decrepit)
 
+# urandom_test is a separate binary because it needs to be able to observe the
+# PRNG initialisation, which means that it can't have other tests running before
+# it does.
+add_executable(urandom_test ${URANDOM_TEST_SOURCES})
+target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
+add_dependencies(all_tests urandom_test)
+
+add_executable(crypto_test ${CRYPTO_TEST_SOURCES} $<TARGET_OBJECTS:crypto_test_data>)
+target_link_libraries(crypto_test test_support_lib boringssl_gtest_main crypto)
+add_dependencies(all_tests crypto_test)
+
+add_executable(ssl_test ${SSL_TEST_SOURCES})
+target_link_libraries(ssl_test test_support_lib boringssl_gtest_main ssl crypto)
+add_dependencies(all_tests ssl_test)
+
+add_executable(decrepit_test ${DECREPIT_TEST_SOURCES})
+target_link_libraries(decrepit_test test_support_lib boringssl_gtest_main
+                      decrepit crypto)
+add_dependencies(all_tests decrepit_test)
+
 if(APPLE)
   set(PKI_CXX_FLAGS "-fno-aligned-new")
 endif()
@@ -540,6 +560,13 @@ set_target_properties(
   CXX_STANDARD 17
   CXX_STANDARD_REQUIRED YES
   COMPILE_FLAGS "${PKI_CXX_FLAGS}")
+
+# Historically, targets were built in subdirectories. For compatibility with
+# existing tools, we, for now, copy the targets into the subdirectories. This
+# will be removed sometime in 2024.
+copy_post_build(crypto crypto_test urandom_test)
+copy_post_build(ssl ssl_test)
+copy_post_build(decrepit decrepit_test)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)

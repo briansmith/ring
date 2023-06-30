@@ -5,6 +5,7 @@ add_library(
 
   abi_test.cc
   file_test.cc
+  file_test_gtest.cc
   test_util.cc
   wycheproof_util.cc
 )
