@@ -99,7 +99,10 @@ one which fails at the specified number of calls. If there are not
 enough calls to reach the number, the shim should fail with exit code
 `88`. This signals to the runner that the test has completed.
 
-See `crypto/test/malloc.cc` for an example malloc implementation.
+Historically, BoringSSL did this by replacing the actual `malloc`
+symbol, but we have found hooking the library's `malloc` wrapper, under a
+test-only build configuration, to be more straightforward. See `crypto/mem.c`
+for an example which handles the environment variables in `OPENSSL_malloc`.
 
 Note these tests are slow and will hit Go's test timeout. Pass `-timeout 72h` to
 avoid crashing after 10 minutes.

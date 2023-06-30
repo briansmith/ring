@@ -276,8 +276,6 @@ class Bazel(object):
                              files['test_support_headers'] +
                              files['crypto_internal_headers'] +
                              files['ssl_internal_headers']):
-        if os.path.basename(filename) == 'malloc.cc':
-          continue
         out.write('    "%s",\n' % PathOf(filename))
 
       out.write(']\n')
