@@ -570,10 +570,7 @@ else()
   add_custom_target(fips_specific_tests_if_any)
 endif()
 
-# Read util/go_tests.txt into a CMake variable.
-file(READ util/go_tests.txt GO_TESTS)
-string(REPLACE "\n" ";" GO_TESTS "${GO_TESTS}")
-list(REMOVE_ITEM GO_TESTS "")
+file(STRINGS util/go_tests.txt GO_TESTS)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
              util/go_tests.txt)
 
