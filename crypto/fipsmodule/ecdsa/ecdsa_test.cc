@@ -223,16 +223,15 @@ TEST(ECDSATest, BuiltinCurves) {
 
     // Test ASN.1-encoded signatures.
     // Create a signature.
-    unsigned sig_len = ECDSA_size(eckey.get());
-    std::vector<uint8_t> signature(sig_len);
+    std::vector<uint8_t> signature(ECDSA_size(eckey.get()));
+    unsigned sig_len;
     ASSERT_TRUE(
         ECDSA_sign(0, digest, 20, signature.data(), &sig_len, eckey.get()));
     signature.resize(sig_len);
 
     // ECDSA signing should be non-deterministic. This does not verify k is
     // generated securely but at least checks it was randomized at all.
-    sig_len = ECDSA_size(eckey.get());
-    std::vector<uint8_t> signature2(sig_len);
+    std::vector<uint8_t> signature2(ECDSA_size(eckey.get()));
     ASSERT_TRUE(
         ECDSA_sign(0, digest, 20, signature2.data(), &sig_len, eckey.get()));
     signature2.resize(sig_len);
