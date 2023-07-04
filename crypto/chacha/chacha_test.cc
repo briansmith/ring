@@ -320,7 +320,7 @@ TEST(ChaChaTest, TestVector) {
   for (size_t len = 0; len <= sizeof(kInput); len++) {
     SCOPED_TRACE(len);
 
-    std::unique_ptr<uint8_t[]> buf(new uint8_t[len]);
+    auto buf = std::make_unique<uint8_t[]>(len);
     CRYPTO_chacha_20(buf.get(), kInput, len, kKey, kNonce, kCounter);
     EXPECT_EQ(Bytes(kOutput, len), Bytes(buf.get(), len));
 
@@ -336,7 +336,7 @@ TEST(ChaChaTest, CounterOverflow) {
   for (size_t len = 0; len <= sizeof(kInput); len++) {
     SCOPED_TRACE(len);
 
-    std::unique_ptr<uint8_t[]> buf(new uint8_t[len]);
+    auto buf = std::make_unique<uint8_t[]>(len);
     CRYPTO_chacha_20(buf.get(), kInput, len, kKey, kNonce, kOverflowCounter);
     EXPECT_EQ(Bytes(kOverflowOutput, len), Bytes(buf.get(), len));
 
@@ -354,7 +354,7 @@ TEST(ChaChaTest, ABI) {
 
   static const uint32_t kCounterNonce[4] = {0};
 
-  std::unique_ptr<uint8_t[]> buf(new uint8_t[sizeof(kInput)]);
+  auto buf = std::make_unique<uint8_t[]>(sizeof(kInput));
   for (size_t len = 0; len <= 32; len++) {
     SCOPED_TRACE(len);
     CHECK_ABI(ChaCha20_ctr32, buf.get(), kInput, len, key, kCounterNonce);

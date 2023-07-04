@@ -476,22 +476,21 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
   const size_t nonce_len = EVP_AEAD_nonce_length(aead);
   const size_t overhead_len = EVP_AEAD_max_overhead(aead);
 
-  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  auto key = std::make_unique<uint8_t[]>(key_len);
   OPENSSL_memset(key.get(), 0, key_len);
-  std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
+  auto nonce = std::make_unique<uint8_t[]>(nonce_len);
   OPENSSL_memset(nonce.get(), 0, nonce_len);
-  std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
+  auto in_storage = std::make_unique<uint8_t[]>(chunk_len + kAlignment);
   // N.B. for EVP_AEAD_CTX_seal_scatter the input and output buffers may be the
   // same size. However, in the direction == evp_aead_open case we still use
   // non-scattering seal, hence we add overhead_len to the size of this buffer.
-  std::unique_ptr<uint8_t[]> out_storage(
-      new uint8_t[chunk_len + overhead_len + kAlignment]);
-  std::unique_ptr<uint8_t[]> in2_storage(
-      new uint8_t[chunk_len + overhead_len + kAlignment]);
-  std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
+  auto out_storage =
+      std::make_unique<uint8_t[]>(chunk_len + overhead_len + kAlignment);
+  auto in2_storage =
+      std::make_unique<uint8_t[]>(chunk_len + overhead_len + kAlignment);
+  auto ad = std::make_unique<uint8_t[]>(ad_len);
   OPENSSL_memset(ad.get(), 0, ad_len);
-  std::unique_ptr<uint8_t[]> tag_storage(
-      new uint8_t[overhead_len + kAlignment]);
+  auto tag_storage = std::make_unique<uint8_t[]>(overhead_len + kAlignment);
 
 
   uint8_t *const in =
@@ -760,7 +759,7 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   if (peer_value_len == 0) {
     return false;
   }
-  std::unique_ptr<uint8_t[]> peer_value(new uint8_t[peer_value_len]);
+  auto peer_value = std::make_unique<uint8_t[]>(peer_value_len);
   peer_value_len = EC_POINT_point2oct(
       EC_KEY_get0_group(peer_key.get()), EC_KEY_get0_public_key(peer_key.get()),
       POINT_CONVERSION_UNCOMPRESSED, peer_value.get(), peer_value_len, nullptr);

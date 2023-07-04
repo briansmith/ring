@@ -3522,7 +3522,7 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
 
   const uint8_t *ciphertext = ticket + 16 + 16;
   size_t len = ticket_len - 16 - 16 - SHA256_DIGEST_LENGTH;
-  std::unique_ptr<uint8_t[]> plaintext(new uint8_t[len]);
+  auto plaintext = std::make_unique<uint8_t[]>(len);
 
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   // Fuzzer-mode tickets are unencrypted.
@@ -6299,7 +6299,7 @@ class QUICMethodTest : public testing::Test {
     SSL_set_connect_state(client_.get());
     SSL_set_accept_state(server_.get());
 
-    transport_.reset(new MockQUICTransportPair);
+    transport_ = std::make_unique<MockQUICTransportPair>();
     if (!ex_data_.Set(client_.get(), transport_->client()) ||
         !ex_data_.Set(server_.get(), transport_->server())) {
       return false;

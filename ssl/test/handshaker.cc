@@ -153,9 +153,8 @@ bool GenerateHandshakeHint(const TestConfig *config,
     return false;
   }
 
-  UniquePtr<SSL> ssl =
-      config->NewSSL(ctx.get(), /*session=*/nullptr,
-                     std::unique_ptr<TestState>(new TestState));
+  UniquePtr<SSL> ssl = config->NewSSL(ctx.get(), /*session=*/nullptr,
+                                      std::make_unique<TestState>());
   if (!ssl) {
     fprintf(stderr, "Error creating SSL object in handshaker.\n");
     ERR_print_errors_fp(stderr);

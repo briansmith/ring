@@ -243,7 +243,7 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
   } while (RetryAsync(ssl, ret));
 
   if (config->peek_then_read && ret > 0) {
-    std::unique_ptr<uint8_t[]> buf(new uint8_t[static_cast<size_t>(ret)]);
+    auto buf = std::make_unique<uint8_t[]>(static_cast<size_t>(ret));
 
     // SSL_peek should synchronously return the same data.
     int ret2 = SSL_peek(ssl, buf.get(), ret);
@@ -790,8 +790,8 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
                          SSL_CTX *ssl_ctx, const TestConfig *config,
                          const TestConfig *retry_config, bool is_resume,
                          SSL_SESSION *session, SettingsWriter *writer) {
-  bssl::UniquePtr<SSL> ssl = config->NewSSL(
-      ssl_ctx, session, std::unique_ptr<TestState>(new TestState));
+  bssl::UniquePtr<SSL> ssl =
+      config->NewSSL(ssl_ctx, session, std::make_unique<TestState>());
   if (!ssl) {
     return false;
   }
@@ -858,8 +858,8 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     bio = std::move(async_scoped);
   }
   if (config->is_quic) {
-    GetTestState(ssl.get())->quic_transport.reset(
-        new MockQuicTransport(std::move(bio), ssl.get()));
+    GetTestState(ssl.get())->quic_transport =
+        std::make_unique<MockQuicTransport>(std::move(bio), ssl.get());
   } else {
     SSL_set_bio(ssl.get(), bio.get(), bio.get());
     bio.release();  // SSL_set_bio takes ownership.
@@ -1144,7 +1144,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     // This mode writes a number of different record sizes in an attempt to
     // trip up the CBC record splitting code.
     static const size_t kBufLen = 32769;
-    std::unique_ptr<uint8_t[]> buf(new uint8_t[kBufLen]);
+    auto buf = std::make_unique<uint8_t[]>(kBufLen);
     OPENSSL_memset(buf.get(), 0x42, kBufLen);
     static const size_t kRecordSizes[] = {
         0, 1, 255, 256, 257, 16383, 16384, 16385, 32767, 32768, 32769};
@@ -1194,7 +1194,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         if (config->read_size > 0) {
           read_size = config->read_size;
         }
-        std::unique_ptr<uint8_t[]> buf(new uint8_t[read_size]);
+        auto buf = std::make_unique<uint8_t[]>(read_size);
 
         int n = DoRead(ssl, buf.get(), read_size);
         int err = SSL_get_error(ssl, n);

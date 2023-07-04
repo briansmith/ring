@@ -139,7 +139,7 @@ Flag OptionalStringFlag(const char *name,
                         bool skip_handshaker = false) {
   return Flag{name, true, skip_handshaker,
               [=](TestConfig *config, const char *param) -> bool {
-                (config->*field).reset(new std::string(param));
+                (config->*field) = std::make_unique<std::string>(param);
                 return true;
               }};
 }
@@ -972,7 +972,7 @@ static bool HexDecode(std::string *out, const std::string &in) {
     return false;
   }
 
-  std::unique_ptr<uint8_t[]> buf(new uint8_t[in.size() / 2]);
+  auto buf = std::make_unique<uint8_t[]>(in.size() / 2);
   for (size_t i = 0; i < in.size() / 2; i++) {
     uint8_t high, low;
     if (!OPENSSL_fromxdigit(&high, in[i * 2]) ||
@@ -1584,7 +1584,7 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
             if (uncompressed_len != 2 + in_len) {
               return 0;
             }
-            std::unique_ptr<uint8_t[]> buf(new uint8_t[2 + in_len]);
+            auto buf = std::make_unique<uint8_t[]>(2 + in_len);
             buf[0] = 0;
             buf[1] = 0;
             OPENSSL_memcpy(&buf[2], in, in_len);
