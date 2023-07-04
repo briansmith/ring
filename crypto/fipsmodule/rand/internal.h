@@ -34,8 +34,15 @@ extern "C" {
 // Trusty's PRNG file is, for now, maintained outside the tree.
 #elif defined(OPENSSL_WINDOWS)
 #define OPENSSL_RAND_WINDOWS
-#else
+#elif defined(OPENSSL_LINUX)
 #define OPENSSL_RAND_URANDOM
+#elif defined(OPENSSL_APPLE) && !defined(OPENSSL_MACOS)
+// Unlike macOS, iOS and similar hide away getentropy().
+#define OPENSSL_RAND_IOS
+#else
+// By default if you are integrating BoringSSL we expect you to
+// provide getentropy from the <unistd.h> header file.
+#define OPENSSL_RAND_GETENTROPY
 #endif
 
 // RAND_bytes_with_additional_data samples from the RNG after mixing 32 bytes
