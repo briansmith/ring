@@ -475,7 +475,7 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 // returns one on success and zero on allocation failure or if iterations is 0.
 OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
                                      const uint8_t *salt, size_t salt_len,
-                                     unsigned iterations, const EVP_MD *digest,
+                                     uint32_t iterations, const EVP_MD *digest,
                                      size_t key_len, uint8_t *out_key);
 
 // PKCS5_PBKDF2_HMAC_SHA1 is the same as PKCS5_PBKDF2_HMAC, but with |digest|
@@ -483,7 +483,7 @@ OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
 OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
                                           size_t password_len,
                                           const uint8_t *salt, size_t salt_len,
-                                          unsigned iterations, size_t key_len,
+                                          uint32_t iterations, size_t key_len,
                                           uint8_t *out_key);
 
 // EVP_PBE_scrypt expands |password| into a secret key of length |key_len| using

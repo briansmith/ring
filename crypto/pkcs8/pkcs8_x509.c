@@ -87,6 +87,7 @@ int pkcs12_iterations_acceptable(uint64_t iterations) {
   static const uint64_t kIterationsLimit = 100 * 1000000;
 #endif
 
+  assert(kIterationsLimit <= UINT32_MAX);
   return 0 < iterations && iterations <= kIterationsLimit;
 }
 
@@ -554,7 +555,7 @@ err:
 
 static int pkcs12_check_mac(int *out_mac_ok, const char *password,
                             size_t password_len, const CBS *salt,
-                            unsigned iterations, const EVP_MD *md,
+                            uint32_t iterations, const EVP_MD *md,
                             const CBS *authsafes, const CBS *expected_mac) {
   int ret = 0;
   uint8_t hmac_key[EVP_MAX_MD_SIZE];
@@ -676,13 +677,15 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
     }
 
     // The iteration count is optional and the default is one.
-    uint64_t iterations = 1;
+    uint32_t iterations = 1;
     if (CBS_len(&mac_data) > 0) {
-      if (!CBS_get_asn1_uint64(&mac_data, &iterations) ||
-          !pkcs12_iterations_acceptable(iterations)) {
+      uint64_t iterations_u64;
+      if (!CBS_get_asn1_uint64(&mac_data, &iterations_u64) ||
+          !pkcs12_iterations_acceptable(iterations_u64)) {
         OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
         goto err;
       }
+      iterations = (uint32_t)iterations_u64;
     }
 
     int mac_ok;
@@ -1056,7 +1059,7 @@ static int add_cert_safe_contents(CBB *cbb, X509 *cert,
 }
 
 static int add_encrypted_data(CBB *out, int pbe_nid, const char *password,
-                              size_t password_len, unsigned iterations,
+                              size_t password_len, uint32_t iterations,
                               const uint8_t *in, size_t in_len) {
   uint8_t salt[PKCS5_SALT_LEN];
   if (!RAND_bytes(salt, sizeof(salt))) {
