@@ -121,7 +121,10 @@ boringssl_copts = [
 }) + asm_copts
 
 boringssl_copts_c11 = boringssl_copts + select({
-    "@platforms//os:windows": ["/std:c11"],
+    # TODO(crbug.com/boringssl/624): This should pass /std:c11 on MSVC. It was
+    # reverted due to https://github.com/bazelbuild/bazel/issues/15073. When
+    # Bazel 6.3.0 is released, restore it and require C11 on MSVC.
+    "@platforms//os:windows": [],
     "//conditions:default": gcc_copts_c11,
 })
 
