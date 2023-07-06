@@ -1775,7 +1775,7 @@ int X509_cmp_current_time(const ASN1_TIME *ctm) {
   return X509_cmp_time_posix(ctm, time(NULL));
 }
 
-int X509_cmp_time(const ASN1_TIME *ctm, time_t *cmp_time) {
+int X509_cmp_time(const ASN1_TIME *ctm, const time_t *cmp_time) {
   int64_t compare_time = (cmp_time == NULL) ? time(NULL) : *cmp_time;
   return X509_cmp_time_posix(ctm, compare_time);
 }
@@ -1793,12 +1793,12 @@ ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec) {
   return X509_time_adj(s, offset_sec, NULL);
 }
 
-ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec, time_t *in_tm) {
+ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec, const time_t *in_tm) {
   return X509_time_adj_ex(s, 0, offset_sec, in_tm);
 }
 
 ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day, long offset_sec,
-                            time_t *in_tm) {
+                            const time_t *in_tm) {
   int64_t t = 0;
 
   if (in_tm) {
