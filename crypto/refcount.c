@@ -15,7 +15,6 @@
 #include "internal.h"
 
 #include <assert.h>
-#include <stdalign.h>
 #include <stdlib.h>
 
 
