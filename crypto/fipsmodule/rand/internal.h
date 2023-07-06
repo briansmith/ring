@@ -28,8 +28,6 @@ extern "C" {
 
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define OPENSSL_RAND_DETERMINISTIC
-#elif defined(OPENSSL_FUCHSIA)
-#define OPENSSL_RAND_FUCHSIA
 #elif defined(OPENSSL_TRUSTY)
 // Trusty's PRNG file is, for now, maintained outside the tree.
 #elif defined(OPENSSL_WINDOWS)

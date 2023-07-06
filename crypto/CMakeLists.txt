@@ -199,7 +199,6 @@ add_library(
   pool/pool.c
   rand_extra/deterministic.c
   rand_extra/forkunsafe.c
-  rand_extra/fuchsia.c
   rand_extra/getentropy.c
   rand_extra/ios.c
   rand_extra/passive.c
