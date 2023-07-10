@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "fillins/file_util.h"
-#include "pem.h"
 #include "input.h"
 #include "parser.h"
 #include <gtest/gtest.h>

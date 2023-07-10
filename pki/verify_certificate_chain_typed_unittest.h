@@ -5,7 +5,6 @@
 #ifndef BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_TYPED_UNITTEST_H_
 #define BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_TYPED_UNITTEST_H_
 
-#include "pem.h"
 #include "parsed_certificate.h"
 #include "simple_path_builder_delegate.h"
 #include "test_helpers.h"
