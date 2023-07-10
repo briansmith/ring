@@ -140,8 +140,20 @@ void CRYPTO_fork_detect_force_madv_wipeonfork_for_testing(int on) {
   *g_force_madv_wipeonfork_enabled_bss_get() = on;
 }
 
-#else   // !OPENSSL_LINUX
+#elif defined(OPENSSL_WINDOWS) || defined(OPENSSL_TRUSTY)
 
+// These platforms are guaranteed not to fork, and therefore do not require
+// fork detection support. Returning a constant non zero value makes BoringSSL
+// assume address space duplication is not a concern and adding entropy to
+// every RAND_bytes call is not needed.
+uint64_t CRYPTO_get_fork_generation(void) { return 0xc0ffee; }
+
+#else
+
+// These platforms may fork, but we do not have a mitigation mechanism in
+// place.  Returning a constant zero value makes BoringSSL assume that address
+// space duplication could have occured on any call entropy must be added to
+// every RAND_bytes call.
 uint64_t CRYPTO_get_fork_generation(void) { return 0; }
 
-#endif  // OPENSSL_LINUX
+#endif
