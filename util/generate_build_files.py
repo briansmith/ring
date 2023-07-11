@@ -130,7 +130,11 @@ class Android(object):
       makefile.write(self.header)
       makefile.write('\n')
       self.PrintVariableSection(makefile, 'crypto_sources', files['crypto'])
+      self.PrintVariableSection(makefile, 'crypto_sources_asm',
+                                files['crypto_asm'])
 
+      # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
+      # lists, so we don't need to generate both sets.
       for ((osname, arch), asm_files) in asm_outputs:
         if osname != 'linux':
           continue
@@ -147,6 +151,7 @@ class Android(object):
       blueprint.write('        "%s",\n' % f)
     blueprint.write('    ],\n')
 
+    # TODO(crbug.com/boringssl/542): Migrate this to the combined source lists.
     if asm_outputs:
       blueprint.write('    target: {\n')
       for ((osname, arch), asm_files) in asm_outputs:
@@ -205,12 +210,15 @@ class AndroidCMake(object):
   def WriteFiles(self, files, asm_outputs):
     # The Android emulator uses a custom CMake buildsystem.
     #
-    # TODO(davidben): Move our various source lists into sources.cmake and have
-    # Android consume that directly.
+    # TODO(crbug.com/boringssl/542): Move our various source lists into
+    # sources.cmake and have Android consume that directly.
     with open('android-sources.cmake', 'w+') as out:
       out.write(self.header)
 
       self.PrintVariableSection(out, 'crypto_sources', files['crypto'])
+      self.PrintVariableSection(out, 'crypto_sources_asm', files['crypto_asm'])
+      self.PrintVariableSection(out, 'crypto_sources_nasm',
+                                files['crypto_nasm'])
       self.PrintVariableSection(out, 'ssl_sources', files['ssl'])
       self.PrintVariableSection(out, 'tool_sources', files['tool'])
       self.PrintVariableSection(out, 'test_support_sources',
@@ -219,6 +227,8 @@ class AndroidCMake(object):
                                 files['crypto_test'])
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
 
+      # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
+      # lists, so we don't need to generate both sets.
       for ((osname, arch), asm_files) in asm_outputs:
         self.PrintVariableSection(
             out, 'crypto_sources_%s_%s' % (osname, arch), asm_files)
@@ -303,9 +313,15 @@ class Eureka(object):
       makefile.write(self.header)
 
       self.PrintVariableSection(makefile, 'crypto_sources', files['crypto'])
+      self.PrintVariableSection(makefile, 'crypto_sources_asm',
+                                files['crypto_asm'])
+      self.PrintVariableSection(makefile, 'crypto_sources_nasm',
+                                files['crypto_nasm'])
       self.PrintVariableSection(makefile, 'ssl_sources', files['ssl'])
       self.PrintVariableSection(makefile, 'tool_sources', files['tool'])
 
+      # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
+      # lists, so we don't need to generate both sets.
       for ((osname, arch), asm_files) in asm_outputs:
         if osname != 'linux':
           continue
@@ -392,7 +408,13 @@ class GYP(object):
       self.PrintVariableSection(gypi, 'boringssl_crypto_sources',
                                 files['crypto'] + files['crypto_headers'] +
                                 files['crypto_internal_headers'])
+      self.PrintVariableSection(gypi, 'boringssl_crypto_asm_sources',
+                                files['crypto_asm'])
+      self.PrintVariableSection(gypi, 'boringssl_crypto_nasm_sources',
+                                files['crypto_nasm'])
 
+      # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
+      # lists, so we don't need to generate both sets.
       for ((osname, arch), asm_files) in asm_outputs:
         self.PrintVariableSection(gypi, 'boringssl_%s_%s_sources' %
                                   (osname, arch), asm_files)
@@ -539,6 +561,8 @@ endif()
 class JSON(object):
   def WriteFiles(self, files, asm_outputs):
     sources = dict(files)
+    # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
+    # lists, so we don't need to generate both sets.
     for ((osname, arch), asm_files) in asm_outputs:
       sources['crypto_%s_%s' % (osname, arch)] = asm_files
     with open('sources.json', 'w+') as f:
