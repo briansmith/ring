@@ -66,6 +66,10 @@ set(
   crypto/stack/stack_test.cc
   crypto/siphash/siphash_test.cc
   crypto/thread_test.cc
+  # TODO(crbug.com/boringssl/542): This should be in TEST_SUPPORT_SOURCES, so
+  # that all tests can use it. But it depends on GetTestData, which is not
+  # currently usable outside of crypto_test.
+  crypto/test/file_test_gtest.cc
   crypto/test/gtest_main.cc
   crypto/trust_token/trust_token_test.cc
   crypto/x509/x509_test.cc
@@ -421,7 +425,6 @@ set(
 
   crypto/test/abi_test.cc
   crypto/test/file_test.cc
-  crypto/test/file_test_gtest.cc
   crypto/test/test_util.cc
   crypto/test/wycheproof_util.cc
 )
