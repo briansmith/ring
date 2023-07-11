@@ -262,12 +262,6 @@ class Bazel(object):
       self.PrintVariableSection(out, 'tool_sources', files['tool'])
       self.PrintVariableSection(out, 'tool_headers', files['tool_headers'])
 
-      # TODO(crbug.com/boringssl/542): Migrate everyone to the combined asm
-      # source lists, so we don't need to generate both sets.
-      for ((osname, arch), asm_files) in asm_outputs:
-        self.PrintVariableSection(
-            out, 'crypto_sources_%s_%s' % (osname, arch), asm_files)
-
     with open('BUILD.generated_tests.bzl', 'w+') as out:
       out.write(self.header)
 
@@ -355,10 +349,6 @@ class GN(object):
       self.PrintVariableSection(out, 'ssl_headers', files['ssl_headers'])
       self.PrintVariableSection(out, 'tool_sources',
                                 files['tool'] + files['tool_headers'])
-
-      for ((osname, arch), asm_files) in asm_outputs:
-        self.PrintVariableSection(
-            out, 'crypto_sources_%s_%s' % (osname, arch), asm_files)
 
       fuzzers = [os.path.splitext(os.path.basename(fuzzer))[0]
                  for fuzzer in files['fuzz']]
