@@ -330,28 +330,19 @@ OPENSSL_EXPORT OPENSSL_STACK *OPENSSL_sk_deep_copy(
 //
 // TODO(crbug.com/boringssl/499): Migrate callers to the typed wrappers, or at
 // least the new names and remove the old ones.
+//
+// TODO(b/290792019, b/290785937): Ideally these would at least be inline
+// functions, so we do not squat the symbols.
 
 typedef OPENSSL_STACK _STACK;
 
-OPENSSL_INLINE OPENSSL_STACK *sk_new_null(void) {
-  return OPENSSL_sk_new_null();
-}
-
-OPENSSL_INLINE size_t sk_num(const OPENSSL_STACK *sk) {
-  return OPENSSL_sk_num(sk);
-}
-
-OPENSSL_INLINE void *sk_value(const OPENSSL_STACK *sk, size_t i) {
-  return OPENSSL_sk_value(sk, i);
-}
-
-OPENSSL_INLINE void sk_free(OPENSSL_STACK *sk) { OPENSSL_sk_free(sk); }
-
-OPENSSL_INLINE size_t sk_push(OPENSSL_STACK *sk, void *p) {
-  return OPENSSL_sk_push(sk, p);
-}
-
-OPENSSL_INLINE void *sk_pop(OPENSSL_STACK *sk) { return OPENSSL_sk_pop(sk); }
+// The following functions call the corresponding |OPENSSL_sk_*| function.
+OPENSSL_EXPORT OPENSSL_STACK *sk_new_null(void);
+OPENSSL_EXPORT size_t sk_num(const OPENSSL_STACK *sk);
+OPENSSL_EXPORT void *sk_value(const OPENSSL_STACK *sk, size_t i);
+OPENSSL_EXPORT void sk_free(OPENSSL_STACK *sk);
+OPENSSL_EXPORT size_t sk_push(OPENSSL_STACK *sk, void *p);
+OPENSSL_EXPORT void *sk_pop(OPENSSL_STACK *sk);
 
 // sk_pop_free behaves like |sk_pop_free_ex| but performs an invalid function
 // pointer cast. It exists because some existing callers called |sk_pop_free|

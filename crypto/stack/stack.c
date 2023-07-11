@@ -518,3 +518,17 @@ OPENSSL_STACK *OPENSSL_sk_deep_copy(const OPENSSL_STACK *sk,
 
   return ret;
 }
+
+OPENSSL_STACK *sk_new_null(void) { return OPENSSL_sk_new_null(); }
+
+size_t sk_num(const OPENSSL_STACK *sk) { return OPENSSL_sk_num(sk); }
+
+void *sk_value(const OPENSSL_STACK *sk, size_t i) {
+  return OPENSSL_sk_value(sk, i);
+}
+
+void sk_free(OPENSSL_STACK *sk) { OPENSSL_sk_free(sk); }
+
+size_t sk_push(OPENSSL_STACK *sk, void *p) { return OPENSSL_sk_push(sk, p); }
+
+void *sk_pop(OPENSSL_STACK *sk) { return OPENSSL_sk_pop(sk); }

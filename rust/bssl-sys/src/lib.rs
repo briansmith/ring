@@ -18,13 +18,6 @@ pub fn ERR_GET_FUNC(packed_error: u32) -> i32 {
     unsafe { ERR_GET_FUNC_RUST(packed_error) }
 }
 
-pub use OPENSSL_sk_free as sk_free;
-pub use OPENSSL_sk_new_null as sk_new_null;
-pub use OPENSSL_sk_num as sk_num;
-pub use OPENSSL_sk_pop as sk_pop;
-pub use OPENSSL_sk_push as sk_push;
-pub use OPENSSL_sk_value as sk_value;
-
 pub fn init() {
     unsafe {
         CRYPTO_library_init();
