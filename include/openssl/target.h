@@ -139,6 +139,9 @@
 #define OPENSSL_MSAN
 #define OPENSSL_ASM_INCOMPATIBLE
 #endif
+#if __has_feature(hwaddress_sanitizer)
+#define OPENSSL_HWASAN
+#endif
 #endif
 
 #if defined(OPENSSL_ASM_INCOMPATIBLE)
