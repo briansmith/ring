@@ -81,6 +81,11 @@
 #define OPENSSL_FUCHSIA
 #endif
 
+// Trusty is Android's TEE target. See
+// https://source.android.com/docs/security/features/trusty
+//
+// Defining this on any other platform is not supported. Other embedded
+// platforms must introduce their own defines.
 #if defined(__TRUSTY__)
 #define OPENSSL_TRUSTY
 #define OPENSSL_NO_POSIX_IO
@@ -88,6 +93,9 @@
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
+// nanolibc is a particular minimal libc implementation. Defining this on any
+// other platform is not supported. Other embedded platforms must introduce
+// their own defines.
 #if defined(OPENSSL_NANOLIBC)
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
