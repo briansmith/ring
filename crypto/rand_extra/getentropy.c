@@ -12,6 +12,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#if !defined(_DEFAULT_SOURCE)
+#define _DEFAULT_SOURCE  // Needed for getentropy on musl and glibc
+#endif
+
 #include <openssl/rand.h>
 
 #include "../fipsmodule/rand/internal.h"
