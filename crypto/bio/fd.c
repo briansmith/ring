@@ -268,6 +268,8 @@ static const BIO_METHOD methods_fdp = {
 
 const BIO_METHOD *BIO_s_fd(void) { return &methods_fdp; }
 
+#endif  // OPENSSL_NO_POSIX_IO
+
 int BIO_set_fd(BIO *bio, int fd, int close_flag) {
   return (int)BIO_int_ctrl(bio, BIO_C_SET_FD, close_flag, fd);
 }
@@ -275,5 +277,3 @@ int BIO_set_fd(BIO *bio, int fd, int close_flag) {
 int BIO_get_fd(BIO *bio, int *out_fd) {
   return (int)BIO_ctrl(bio, BIO_C_GET_FD, 0, (char *) out_fd);
 }
-
-#endif  // OPENSSL_NO_POSIX_IO
