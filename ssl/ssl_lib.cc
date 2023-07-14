@@ -1595,6 +1595,7 @@ int SSL_get_wfd(const SSL *ssl) {
   return ret;
 }
 
+#if !defined(OPENSSL_NO_SOCK)
 int SSL_set_fd(SSL *ssl, int fd) {
   BIO *bio = BIO_new(BIO_s_socket());
   if (bio == NULL) {
@@ -1644,6 +1645,7 @@ int SSL_set_rfd(SSL *ssl, int fd) {
   }
   return 1;
 }
+#endif  // !OPENSSL_NO_SOCK
 
 static size_t copy_finished(void *out, size_t out_len, const uint8_t *in,
                             size_t in_len) {

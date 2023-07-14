@@ -303,6 +303,7 @@ OPENSSL_EXPORT int SSL_get_rfd(const SSL *ssl);
 // socket |BIO|.
 OPENSSL_EXPORT int SSL_get_wfd(const SSL *ssl);
 
+#if !defined(OPENSSL_NO_SOCK)
 // SSL_set_fd configures |ssl| to read from and write to |fd|. It returns one
 // on success and zero on allocation error. The caller retains ownership of
 // |fd|.
@@ -321,6 +322,7 @@ OPENSSL_EXPORT int SSL_set_rfd(SSL *ssl, int fd);
 //
 // On Windows, |fd| is cast to a |SOCKET| and used with Winsock APIs.
 OPENSSL_EXPORT int SSL_set_wfd(SSL *ssl, int fd);
+#endif  // !OPENSSL_NO_SOCK
 
 // SSL_do_handshake continues the current handshake. If there is none or the
 // handshake has completed or False Started, it returns one. Otherwise, it
