@@ -70,10 +70,13 @@
 #define OPENSSL_WINDOWS
 #endif
 
-// Trusty isn't Linux but currently defines __linux__. As a workaround, we
-// exclude it here.
+// Trusty and Android baremetal aren't't Linux but currently define __linux__.
+// As a workaround, we exclude them here.
+//
 // TODO(b/169780122): Remove this workaround once Trusty no longer defines it.
-#if defined(__linux__) && !defined(__TRUSTY__)
+// TODO(b/291101350): Remove this workaround once Android baremetal no longer
+// defines it.
+#if defined(__linux__) && !defined(__TRUSTY__) && !defined(ANDROID_BAREMETAL)
 #define OPENSSL_LINUX
 #endif
 
@@ -88,6 +91,7 @@
 // platforms must introduce their own defines.
 #if defined(__TRUSTY__)
 #define OPENSSL_TRUSTY
+#define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
@@ -97,6 +101,17 @@
 // other platform is not supported. Other embedded platforms must introduce
 // their own defines.
 #if defined(OPENSSL_NANOLIBC)
+#define OPENSSL_NO_FILESYSTEM
+#define OPENSSL_NO_POSIX_IO
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
+// Android baremetal is an embedded target that uses a subset of bionic.
+// Defining this on any other platform is not supported. Other embedded
+// platforms must introduce their own defines.
+#if defined(ANDROID_BAREMETAL)
+#define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED

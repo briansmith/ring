@@ -387,7 +387,7 @@ static void clear_comments(CONF *conf, char *p) {
   }
 }
 
-static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
+int NCONF_load_bio(CONF *conf, BIO *in, long *out_error_line) {
   static const size_t CONFBUFSIZE = 512;
   int bufnum = 0, i, ii;
   BUF_MEM *buff = NULL;
@@ -585,6 +585,7 @@ err:
   return 0;
 }
 
+#if !defined(OPENSSL_NO_FILESYSTEM)
 int NCONF_load(CONF *conf, const char *filename, long *out_error_line) {
   BIO *in = BIO_new_file(filename, "rb");
   int ret;
@@ -594,15 +595,12 @@ int NCONF_load(CONF *conf, const char *filename, long *out_error_line) {
     return 0;
   }
 
-  ret = def_load_bio(conf, in, out_error_line);
+  ret = NCONF_load_bio(conf, in, out_error_line);
   BIO_free(in);
 
   return ret;
 }
-
-int NCONF_load_bio(CONF *conf, BIO *bio, long *out_error_line) {
-  return def_load_bio(conf, bio, out_error_line);
-}
+#endif  // !OPENSSL_NO_FILESYSTEM
 
 int CONF_parse_list(const char *list, char sep, int remove_whitespace,
                     int (*list_cb)(const char *elem, size_t len, void *usr),

@@ -695,6 +695,7 @@ void SSL_CTX_set_verify_depth(SSL_CTX *ctx, int depth) {
   X509_VERIFY_PARAM_set_depth(ctx->param, depth);
 }
 
+#if !defined(OPENSSL_NO_FILESYSTEM)
 int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx) {
   check_ssl_ctx_x509_method(ctx);
   return X509_STORE_set_default_paths(ctx->cert_store);
@@ -705,6 +706,7 @@ int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *ca_file,
   check_ssl_ctx_x509_method(ctx);
   return X509_STORE_load_locations(ctx->cert_store, ca_file, ca_dir);
 }
+#endif  // !OPENSSL_NO_FILESYSTEM
 
 long SSL_get_verify_result(const SSL *ssl) {
   check_ssl_x509_method(ssl);

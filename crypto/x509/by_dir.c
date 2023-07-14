@@ -64,7 +64,7 @@
 #include <openssl/thread.h>
 #include <openssl/x509.h>
 
-#if !defined(OPENSSL_TRUSTY)
+#if !defined(OPENSSL_NO_FILESYSTEM)
 
 #include "../internal.h"
 #include "internal.h"
@@ -403,4 +403,4 @@ finish:
   return ok;
 }
 
-#endif  // OPENSSL_TRUSTY
+#endif  // OPENSSL_NO_FILESYSTEM

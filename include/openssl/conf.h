@@ -99,12 +99,14 @@ OPENSSL_EXPORT CONF *NCONF_new(void *method);
 // NCONF_free frees all the data owned by |conf| and then |conf| itself.
 OPENSSL_EXPORT void NCONF_free(CONF *conf);
 
+#if !defined(OPENSSL_NO_FILESYSTEM)
 // NCONF_load parses the file named |filename| and adds the values found to
 // |conf|. It returns one on success and zero on error. In the event of an
 // error, if |out_error_line| is not NULL, |*out_error_line| is set to the
 // number of the line that contained the error.
 OPENSSL_EXPORT int NCONF_load(CONF *conf, const char *filename,
                               long *out_error_line);
+#endif
 
 // NCONF_load_bio acts like |NCONF_load| but reads from |bio| rather than from
 // a named file.

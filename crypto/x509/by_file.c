@@ -62,7 +62,7 @@
 
 #include "internal.h"
 
-#ifndef OPENSSL_NO_STDIO
+#if !defined(OPENSSL_NO_FILESYSTEM)
 
 static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
                         char **ret);
@@ -279,4 +279,4 @@ err:
   return count;
 }
 
-#endif  // OPENSSL_NO_STDIO
+#endif  // !OPENSSL_NO_FILESYSTEM

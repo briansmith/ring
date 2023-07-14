@@ -470,9 +470,11 @@ OPENSSL_EXPORT int BIO_get_fd(BIO *bio, int *out_fd);
 // BIO_s_file returns a BIO_METHOD that wraps a |FILE|.
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_file(void);
 
+#if !defined(OPENSSL_NO_FILESYSTEM)
 // BIO_new_file creates a file BIO by opening |filename| with the given mode.
 // See the |fopen| manual page for details of the mode argument.
 OPENSSL_EXPORT BIO *BIO_new_file(const char *filename, const char *mode);
+#endif
 
 // BIO_new_fp creates a new file BIO that wraps the given |FILE|. If
 // |close_flag| is |BIO_CLOSE|, then |fclose| will be called on |stream| when
@@ -488,6 +490,7 @@ OPENSSL_EXPORT int BIO_get_fp(BIO *bio, FILE **out_file);
 // success and zero otherwise.
 OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int close_flag);
 
+#if !defined(OPENSSL_NO_FILESYSTEM)
 // BIO_read_filename opens |filename| for reading and sets the result as the
 // |FILE| for |bio|. It returns one on success and zero otherwise. The |FILE|
 // will be closed when |bio| is freed.
@@ -507,6 +510,7 @@ OPENSSL_EXPORT int BIO_append_filename(BIO *bio, const char *filename);
 // as the |FILE| for |bio|. It returns one on success and zero otherwise. The
 // |FILE| will be closed when |bio| is freed.
 OPENSSL_EXPORT int BIO_rw_filename(BIO *bio, const char *filename);
+#endif  // OPENSSL_NO_FILESYSTEM
 
 // BIO_tell returns the file offset of |bio|, or a negative number on error or
 // if |bio| does not support the operation.

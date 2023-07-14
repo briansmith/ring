@@ -110,7 +110,8 @@
 
 #include <openssl/ssl.h>
 
-#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_PNACL)
+#if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_PNACL) && \
+    !defined(OPENSSL_NO_FILESYSTEM)
 
 #include <dirent.h>
 #include <errno.h>
@@ -162,4 +163,4 @@ int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
   return ret;
 }
 
-#endif  // !WINDOWS && !PNACL
+#endif  // !WINDOWS && !PNACL && !OPENSSL_NO_FILESYSTEM
