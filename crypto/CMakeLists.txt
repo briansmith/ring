@@ -96,6 +96,7 @@ add_library(
   bio/bio.c
   bio/bio_mem.c
   bio/connect.c
+  bio/errno.c
   bio/fd.c
   bio/file.c
   bio/hexdump.c

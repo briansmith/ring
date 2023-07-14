@@ -65,9 +65,6 @@
 #include <unistd.h>
 #else
 #include <io.h>
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <windows.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 #include <openssl/err.h>
@@ -77,58 +74,17 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "../internal.h"
 
 
-static int bio_fd_non_fatal_error(int err) {
-  if (
-#ifdef EWOULDBLOCK
-    err == EWOULDBLOCK ||
-#endif
-#ifdef WSAEWOULDBLOCK
-    err == WSAEWOULDBLOCK ||
-#endif
-#ifdef ENOTCONN
-    err == ENOTCONN ||
-#endif
-#ifdef EINTR
-    err == EINTR ||
-#endif
-#ifdef EAGAIN
-    err == EAGAIN ||
-#endif
-#ifdef EPROTO
-    err == EPROTO ||
-#endif
-#ifdef EINPROGRESS
-    err == EINPROGRESS ||
-#endif
-#ifdef EALREADY
-    err == EALREADY ||
-#endif
-    0) {
-    return 1;
-  }
-  return 0;
-}
-
 #if defined(OPENSSL_WINDOWS)
-  #define BORINGSSL_ERRNO (int)GetLastError()
   #define BORINGSSL_CLOSE _close
   #define BORINGSSL_LSEEK _lseek
   #define BORINGSSL_READ _read
   #define BORINGSSL_WRITE _write
 #else
-  #define BORINGSSL_ERRNO errno
   #define BORINGSSL_CLOSE close
   #define BORINGSSL_LSEEK lseek
   #define BORINGSSL_READ read
   #define BORINGSSL_WRITE write
 #endif
-
-int bio_fd_should_retry(int i) {
-  if (i == -1) {
-    return bio_fd_non_fatal_error(BORINGSSL_ERRNO);
-  }
-  return 0;
-}
 
 BIO *BIO_new_fd(int fd, int close_flag) {
   BIO *ret = BIO_new(BIO_s_fd());
@@ -161,7 +117,7 @@ static int fd_read(BIO *b, char *out, int outl) {
   ret = (int)BORINGSSL_READ(b->num, out, outl);
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
-    if (bio_fd_should_retry(ret)) {
+    if (bio_errno_should_retry(ret)) {
       BIO_set_retry_read(b);
     }
   }
@@ -173,7 +129,7 @@ static int fd_write(BIO *b, const char *in, int inl) {
   int ret = (int)BORINGSSL_WRITE(b->num, in, inl);
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
-    if (bio_fd_should_retry(ret)) {
+    if (bio_errno_should_retry(ret)) {
       BIO_set_retry_write(b);
     }
   }
