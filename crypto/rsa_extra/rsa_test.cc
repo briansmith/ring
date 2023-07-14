@@ -636,7 +636,7 @@ TEST(RSATest, BadKey) {
   ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
 
   // Generate a bad key.
-  ASSERT_TRUE(RSA_generate_key_ex(key.get(), 512, e.get(), nullptr));
+  ASSERT_TRUE(RSA_generate_key_ex(key.get(), 2048, e.get(), nullptr));
   ASSERT_TRUE(BN_add(key->p, key->p, BN_value_one()));
 
   // Bad keys are detected.
