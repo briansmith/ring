@@ -574,7 +574,7 @@ err:
   if (out_error_line != NULL) {
     *out_error_line = eline;
   }
-  BIO_snprintf(btmp, sizeof btmp, "%ld", eline);
+  snprintf(btmp, sizeof btmp, "%ld", eline);
   ERR_add_error_data(2, "line ", btmp);
 
   if (v != NULL) {

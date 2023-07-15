@@ -554,17 +554,17 @@ char *ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
 
   char lib_buf[64], reason_buf[64];
   if (lib_str == NULL) {
-    BIO_snprintf(lib_buf, sizeof(lib_buf), "lib(%u)", lib);
+    snprintf(lib_buf, sizeof(lib_buf), "lib(%u)", lib);
     lib_str = lib_buf;
   }
 
  if (reason_str == NULL) {
-    BIO_snprintf(reason_buf, sizeof(reason_buf), "reason(%u)", reason);
-    reason_str = reason_buf;
-  }
+   snprintf(reason_buf, sizeof(reason_buf), "reason(%u)", reason);
+   reason_str = reason_buf;
+ }
 
-  BIO_snprintf(buf, len, "error:%08" PRIx32 ":%s:OPENSSL_internal:%s",
-               packed_error, lib_str, reason_str);
+  snprintf(buf, len, "error:%08" PRIx32 ":%s:OPENSSL_internal:%s", packed_error,
+           lib_str, reason_str);
 
   if (strlen(buf) == len - 1) {
     // output may be truncated; make sure we always have 5 colon-separated
@@ -617,8 +617,8 @@ void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
     }
 
     ERR_error_string_n(packed_error, buf, sizeof(buf));
-    BIO_snprintf(buf2, sizeof(buf2), "%lu:%s:%s:%d:%s\n", thread_hash, buf,
-                 file, line, (flags & ERR_FLAG_STRING) ? data : "");
+    snprintf(buf2, sizeof(buf2), "%lu:%s:%s:%d:%s\n", thread_hash, buf, file,
+             line, (flags & ERR_FLAG_STRING) ? data : "");
     if (callback(buf2, strlen(buf2), ctx) <= 0) {
       break;
     }

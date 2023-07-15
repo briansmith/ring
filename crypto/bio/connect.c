@@ -532,7 +532,7 @@ int BIO_set_conn_port(BIO *bio, const char *port_str) {
 
 int BIO_set_conn_int_port(BIO *bio, const int *port) {
   char buf[DECIMAL_SIZE(int) + 1];
-  BIO_snprintf(buf, sizeof(buf), "%d", *port);
+  snprintf(buf, sizeof(buf), "%d", *port);
   return BIO_set_conn_port(bio, buf);
 }
 

@@ -194,7 +194,7 @@ static std::string FieldElementToString(const BN_ULONG a[P256_LIMBS]) {
   std::string ret;
   for (size_t i = P256_LIMBS-1; i < P256_LIMBS; i--) {
     char buf[2 * BN_BYTES + 1];
-    BIO_snprintf(buf, sizeof(buf), BN_HEX_FMT2, a[i]);
+    snprintf(buf, sizeof(buf), BN_HEX_FMT2, a[i]);
     ret += buf;
   }
   return ret;

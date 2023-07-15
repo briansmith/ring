@@ -48,7 +48,7 @@ static std::string LastSocketError() { return strerror(errno); }
 #else
 static std::string LastSocketError() {
   char buf[DECIMAL_SIZE(int) + 1];
-  BIO_snprintf(buf, sizeof(buf), "%d", WSAGetLastError());
+  snprintf(buf, sizeof(buf), "%d", WSAGetLastError());
   return buf;
 }
 #endif
@@ -99,11 +99,9 @@ TEST(BIOTest, SocketConnect) {
 
   char hostname[80];
   if (ss.ss_family == AF_INET6) {
-    BIO_snprintf(hostname, sizeof(hostname), "[::1]:%d",
-                 ntohs(sin6->sin6_port));
+    snprintf(hostname, sizeof(hostname), "[::1]:%d", ntohs(sin6->sin6_port));
   } else if (ss.ss_family == AF_INET) {
-    BIO_snprintf(hostname, sizeof(hostname), "127.0.0.1:%d",
-                 ntohs(sin->sin_port));
+    snprintf(hostname, sizeof(hostname), "127.0.0.1:%d", ntohs(sin->sin_port));
   }
 
   // Connect to it with a connect BIO.

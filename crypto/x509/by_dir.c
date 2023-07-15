@@ -312,8 +312,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         hent = NULL;
       }
       for (;;) {
-        BIO_snprintf(b->data, b->max, "%s/%08lx.%s%d", ent->dir, h, postfix,
-                     k);
+        snprintf(b->data, b->max, "%s/%08lx.%s%d", ent->dir, h, postfix, k);
 #ifndef OPENSSL_NO_POSIX_IO
 #if defined(_WIN32) && !defined(stat)
 #define stat _stat

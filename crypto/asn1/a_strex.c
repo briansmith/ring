@@ -89,18 +89,18 @@ static int do_esc_char(uint32_t c, unsigned long flags, char *do_quotes,
   char buf[16];  // Large enough for "\\W01234567".
   unsigned char u8 = (unsigned char)c;
   if (c > 0xffff) {
-    BIO_snprintf(buf, sizeof(buf), "\\W%08" PRIX32, c);
+    snprintf(buf, sizeof(buf), "\\W%08" PRIX32, c);
   } else if (c > 0xff) {
-    BIO_snprintf(buf, sizeof(buf), "\\U%04" PRIX32, c);
+    snprintf(buf, sizeof(buf), "\\U%04" PRIX32, c);
   } else if ((flags & ASN1_STRFLGS_ESC_MSB) && c > 0x7f) {
-    BIO_snprintf(buf, sizeof(buf), "\\%02X", c);
+    snprintf(buf, sizeof(buf), "\\%02X", c);
   } else if ((flags & ASN1_STRFLGS_ESC_CTRL) && is_control_character(c)) {
-    BIO_snprintf(buf, sizeof(buf), "\\%02X", c);
+    snprintf(buf, sizeof(buf), "\\%02X", c);
   } else if (flags & ASN1_STRFLGS_ESC_2253) {
     // See RFC 2253, sections 2.4 and 4.
     if (c == '\\' || c == '"') {
       // Quotes and backslashes are always escaped, quoted or not.
-      BIO_snprintf(buf, sizeof(buf), "\\%c", (int)c);
+      snprintf(buf, sizeof(buf), "\\%c", (int)c);
     } else if (c == ',' || c == '+' || c == '<' || c == '>' || c == ';' ||
                (is_first && (c == ' ' || c == '#')) ||
                (is_last && (c == ' '))) {
@@ -111,13 +111,13 @@ static int do_esc_char(uint32_t c, unsigned long flags, char *do_quotes,
         }
         return maybe_write(out, &u8, 1) ? 1 : -1;
       }
-      BIO_snprintf(buf, sizeof(buf), "\\%c", (int)c);
+      snprintf(buf, sizeof(buf), "\\%c", (int)c);
     } else {
       return maybe_write(out, &u8, 1) ? 1 : -1;
     }
   } else if ((flags & ESC_FLAGS) && c == '\\') {
     // If any escape flags are set, also escape backslashes.
-    BIO_snprintf(buf, sizeof(buf), "\\%c", (int)c);
+    snprintf(buf, sizeof(buf), "\\%c", (int)c);
   } else {
     return maybe_write(out, &u8, 1) ? 1 : -1;
   }
