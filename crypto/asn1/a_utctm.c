@@ -60,6 +60,7 @@
 #include <openssl/mem.h>
 #include <openssl/time.h>
 
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -124,9 +125,12 @@ ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, int64_t posix_time, int offset_d
   }
 
   char buf[14];
-  snprintf(buf, sizeof(buf), "%02d%02d%02d%02d%02d%02dZ", data.tm_year % 100,
-           data.tm_mon + 1, data.tm_mday, data.tm_hour, data.tm_min,
-           data.tm_sec);
+  int ret = snprintf(buf, sizeof(buf), "%02d%02d%02d%02d%02d%02dZ",
+                     data.tm_year % 100, data.tm_mon + 1, data.tm_mday,
+                     data.tm_hour, data.tm_min, data.tm_sec);
+  if (ret != (int)(sizeof(buf) - 1)) {
+    abort();  // |snprintf| should neither truncate nor write fewer bytes.
+  }
 
   int free_s = 0;
   if (s == NULL) {
