@@ -346,7 +346,6 @@ set(
   pki/cert_error_id.cc
   pki/cert_error_params.cc
   pki/cert_errors.cc
-  pki/cert_errors.cc
   pki/cert_issuer_source_static.cc
   pki/certificate_policies.cc
   pki/common_cert_errors.cc
@@ -362,11 +361,8 @@ set(
   pki/input.cc
   pki/name_constraints.cc
   pki/parse_certificate.cc
-  pki/parse_certificate.cc
   pki/parse_name.cc
   pki/parse_values.cc
-  pki/parsed_certificate.cc
-  pki/parsed_certificate.cc
   pki/parsed_certificate.cc
   pki/parser.cc
   pki/path_builder.cc
@@ -377,9 +373,7 @@ set(
   pki/string_util.cc
   pki/tag.cc
   pki/trust_store_collection.cc
-  pki/trust_store_collection.cc
   pki/trust_store_in_memory.cc
-  pki/trust_store.cc
   pki/trust_store.cc
   pki/verify_certificate_chain.cc
   pki/verify_name_match.cc
