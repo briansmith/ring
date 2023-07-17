@@ -269,6 +269,9 @@ class Bazel(object):
       self.PrintVariableSection(out, 'crypto_sources', files['crypto'])
       self.PrintVariableSection(out, 'crypto_sources_asm', files['crypto_asm'])
       self.PrintVariableSection(out, 'crypto_sources_nasm', files['crypto_nasm'])
+      self.PrintVariableSection(
+          out, 'pki_internal_headers', files['pki_internal_headers'])
+      self.PrintVariableSection(out, 'pki_sources', files['pki'])
       self.PrintVariableSection(out, 'tool_sources', files['tool'])
       self.PrintVariableSection(out, 'tool_headers', files['tool_headers'])
 
@@ -279,6 +282,7 @@ class Bazel(object):
       for filename in sorted(files['test_support'] +
                              files['test_support_headers'] +
                              files['crypto_internal_headers'] +
+                             files['pki_internal_headers'] +
                              files['ssl_internal_headers']):
         out.write('    "%s",\n' % PathOf(filename))
 
@@ -287,8 +291,12 @@ class Bazel(object):
       self.PrintVariableSection(out, 'crypto_test_sources',
                                 files['crypto_test'])
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
+      self.PrintVariableSection(out, 'pki_test_sources',
+                                files['pki_test'])
       self.PrintVariableSection(out, 'crypto_test_data',
                                 files['crypto_test_data'])
+      self.PrintVariableSection(out, 'pki_test_data',
+                                files['pki_test_data'])
       self.PrintVariableSection(out, 'urandom_test_sources',
                                 files['urandom_test'])
 
@@ -808,6 +816,8 @@ def main(platforms):
   ssl_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
                                 SSLHeaderFiles)
 
+  pki_internal_h_files = FindHeaderFiles(os.path.join('src', 'pki'), AllFiles);
+
   def NotSSLHeaderFiles(path, filename, is_dir):
     return not SSLHeaderFiles(path, filename, is_dir)
   crypto_h_files = FindHeaderFiles(os.path.join('src', 'include', 'openssl'),
@@ -844,6 +854,10 @@ def main(platforms):
       'crypto_test_data': sorted(PrefixWithSrc(cmake['CRYPTO_TEST_DATA'])),
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
+      'pki': PrefixWithSrc(cmake['PKI_SOURCES']),
+      'pki_internal_headers': sorted(list(pki_internal_h_files)),
+      'pki_test': PrefixWithSrc(cmake['PKI_TEST_SOURCES']),
+      'pki_test_data': PrefixWithSrc(cmake['PKI_TEST_DATA']),
       'ssl': ssl_source_files,
       'ssl_headers': ssl_h_files,
       'ssl_internal_headers': ssl_internal_h_files,
