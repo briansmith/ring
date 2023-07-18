@@ -1,5 +1,5 @@
 [package]
-authors = ["Brian Smith <brian@briansmith.org>"]
+authors = ["Christopher Philippe <kinou@christoc90.com>"]
 build = "build.rs"
 categories = ["cryptography", "no-std"]
 description = "Safe, fast, small crypto using Rust."
@@ -8,7 +8,7 @@ keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
 license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
-repository = "https://github.com/briansmith/ring"
+repository = "https://github.com/Christoc90/ring"
 
 # Keep in sync with .github/workflows/ci.yml ("MSRV").
 rust-version = "1.57"
