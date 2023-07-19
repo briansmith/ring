@@ -552,22 +552,21 @@ char *ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
   const char *lib_str = err_lib_error_string(packed_error);
   const char *reason_str = err_reason_error_string(packed_error);
 
-  char lib_buf[64], reason_buf[64];
+  char lib_buf[32], reason_buf[32];
   if (lib_str == NULL) {
     snprintf(lib_buf, sizeof(lib_buf), "lib(%u)", lib);
     lib_str = lib_buf;
   }
 
- if (reason_str == NULL) {
-   snprintf(reason_buf, sizeof(reason_buf), "reason(%u)", reason);
-   reason_str = reason_buf;
- }
+  if (reason_str == NULL) {
+    snprintf(reason_buf, sizeof(reason_buf), "reason(%u)", reason);
+    reason_str = reason_buf;
+  }
 
-  snprintf(buf, len, "error:%08" PRIx32 ":%s:OPENSSL_internal:%s", packed_error,
-           lib_str, reason_str);
-
-  if (strlen(buf) == len - 1) {
-    // output may be truncated; make sure we always have 5 colon-separated
+  int ret = snprintf(buf, len, "error:%08" PRIx32 ":%s:OPENSSL_internal:%s",
+                     packed_error, lib_str, reason_str);
+  if (ret >= 0 && (size_t)ret >= len) {
+    // The output was truncated; make sure we always have 5 colon-separated
     // fields, i.e. 4 colons.
     static const unsigned num_colons = 4;
     unsigned i;
