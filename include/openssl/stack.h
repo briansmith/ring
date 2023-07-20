@@ -344,9 +344,16 @@ OPENSSL_EXPORT void sk_free(OPENSSL_STACK *sk);
 OPENSSL_EXPORT size_t sk_push(OPENSSL_STACK *sk, void *p);
 OPENSSL_EXPORT void *sk_pop(OPENSSL_STACK *sk);
 
-// sk_pop_free behaves like |sk_pop_free_ex| but performs an invalid function
-// pointer cast. It exists because some existing callers called |sk_pop_free|
-// directly.
+// sk_pop_free_ex calls |OPENSSL_sk_pop_free_ex|.
+//
+// TODO(b/291994116): Remove this.
+OPENSSL_EXPORT void sk_pop_free_ex(OPENSSL_STACK *sk,
+                                   OPENSSL_sk_call_free_func call_free_func,
+                                   OPENSSL_sk_free_func free_func);
+
+// sk_pop_free behaves like |OPENSSL_sk_pop_free_ex| but performs an invalid
+// function pointer cast. It exists because some existing callers called
+// |sk_pop_free| directly.
 //
 // TODO(davidben): Migrate callers to bssl::UniquePtr and remove this.
 OPENSSL_EXPORT void sk_pop_free(OPENSSL_STACK *sk,

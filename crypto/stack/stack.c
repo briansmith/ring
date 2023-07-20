@@ -532,3 +532,8 @@ void sk_free(OPENSSL_STACK *sk) { OPENSSL_sk_free(sk); }
 size_t sk_push(OPENSSL_STACK *sk, void *p) { return OPENSSL_sk_push(sk, p); }
 
 void *sk_pop(OPENSSL_STACK *sk) { return OPENSSL_sk_pop(sk); }
+
+void sk_pop_free_ex(OPENSSL_STACK *sk, OPENSSL_sk_call_free_func call_free_func,
+                    OPENSSL_sk_free_func free_func) {
+  OPENSSL_sk_pop_free_ex(sk, call_free_func, free_func);
+}
