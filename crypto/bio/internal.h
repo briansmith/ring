@@ -59,6 +59,7 @@
 
 #include <openssl/base.h>
 
+#if !defined(OPENSSL_NO_SOCK)
 #if !defined(OPENSSL_WINDOWS)
 #if defined(OPENSSL_PNACL)
 // newlib uses u_short in socket.h without defining it.
@@ -72,6 +73,7 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 typedef int socklen_t;
 #endif
+#endif  // !OPENSSL_NO_SOCK
 
 #if defined(__cplusplus)
 extern "C" {
