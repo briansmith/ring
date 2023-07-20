@@ -117,6 +117,30 @@
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
+// CROS_EC is an embedded target for ChromeOS Embedded Controller. Defining
+// this on any other platform is not supported. Other embedded platforms must
+// introduce their own defines.
+//
+// https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md
+#if defined(CROS_EC)
+#define OPENSSL_NO_FILESYSTEM
+#define OPENSSL_NO_POSIX_IO
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
+// CROS_ZEPHYR is an embedded target for ChromeOS Zephyr Embedded Controller.
+// Defining this on any other platform is not supported. Other embedded
+// platforms must introduce their own defines.
+//
+// https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/zephyr/README.md
+#if defined(CROS_ZEPHYR)
+#define OPENSSL_NO_FILESYSTEM
+#define OPENSSL_NO_POSIX_IO
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
 #if defined(__ANDROID_API__)
 #define OPENSSL_ANDROID
 #endif
