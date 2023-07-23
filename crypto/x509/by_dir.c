@@ -64,8 +64,6 @@
 #include <openssl/thread.h>
 #include <openssl/x509.h>
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
-
 #include "../internal.h"
 #include "internal.h"
 
@@ -402,5 +400,3 @@ finish:
   BUF_MEM_free(b);
   return ok;
 }
-
-#endif  // OPENSSL_NO_FILESYSTEM

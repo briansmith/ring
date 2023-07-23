@@ -203,7 +203,6 @@ int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
   return add_bio_cert_subjects_to_stack(out, bio, /*allow_empty=*/true);
 }
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
   bssl::UniquePtr<BIO> in(BIO_new_file(file, "r"));
   if (in == nullptr) {
@@ -545,7 +544,6 @@ end:
   BIO_free(in);
   return ret;
 }
-#endif  // !OPENSSL_NO_FILESYSTEM
 
 void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb) {
   ctx->default_passwd_callback = cb;

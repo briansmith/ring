@@ -2852,10 +2852,8 @@ OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v,
                                                   X509_LOOKUP_METHOD *m);
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 OPENSSL_EXPORT X509_LOOKUP_METHOD *X509_LOOKUP_hash_dir(void);
 OPENSSL_EXPORT X509_LOOKUP_METHOD *X509_LOOKUP_file(void);
-#endif
 
 OPENSSL_EXPORT int X509_STORE_add_cert(X509_STORE *ctx, X509 *x);
 OPENSSL_EXPORT int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x);
@@ -2866,14 +2864,12 @@ OPENSSL_EXPORT int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type,
 OPENSSL_EXPORT int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc,
                                     long argl, char **ret);
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 OPENSSL_EXPORT int X509_load_cert_file(X509_LOOKUP *ctx, const char *file,
                                        int type);
 OPENSSL_EXPORT int X509_load_crl_file(X509_LOOKUP *ctx, const char *file,
                                       int type);
 OPENSSL_EXPORT int X509_load_cert_crl_file(X509_LOOKUP *ctx, const char *file,
                                            int type);
-#endif
 
 OPENSSL_EXPORT X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method);
 OPENSSL_EXPORT void X509_LOOKUP_free(X509_LOOKUP *ctx);
@@ -2882,11 +2878,9 @@ OPENSSL_EXPORT int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type,
                                           X509_NAME *name, X509_OBJECT *ret);
 OPENSSL_EXPORT int X509_LOOKUP_shutdown(X509_LOOKUP *ctx);
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 OPENSSL_EXPORT int X509_STORE_load_locations(X509_STORE *ctx, const char *file,
                                              const char *dir);
 OPENSSL_EXPORT int X509_STORE_set_default_paths(X509_STORE *ctx);
-#endif
 OPENSSL_EXPORT int X509_STORE_CTX_get_error(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_set_error(X509_STORE_CTX *ctx, int s);
 OPENSSL_EXPORT int X509_STORE_CTX_get_error_depth(X509_STORE_CTX *ctx);

@@ -585,7 +585,6 @@ err:
   return 0;
 }
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 int NCONF_load(CONF *conf, const char *filename, long *out_error_line) {
   BIO *in = BIO_new_file(filename, "rb");
   int ret;
@@ -600,7 +599,6 @@ int NCONF_load(CONF *conf, const char *filename, long *out_error_line) {
 
   return ret;
 }
-#endif  // !OPENSSL_NO_FILESYSTEM
 
 int CONF_parse_list(const char *list, char sep, int remove_whitespace,
                     int (*list_cb)(const char *elem, size_t len, void *usr),
