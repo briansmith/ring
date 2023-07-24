@@ -386,10 +386,12 @@ set(
   crypto/test/gtest_main.cc
   pki/cert_issuer_source_static_unittest.cc
   pki/certificate_policies_unittest.cc
+  pki/crl_unittest.cc
   pki/encode_values_unittest.cc
   pki/extended_key_usage_unittest.cc
   pki/fillins/file_util.cc
   pki/fillins/path_service.cc
+  pki/general_names_unittest.cc
   pki/input_unittest.cc
   pki/mock_signature_verify_cache.cc
   pki/name_constraints_unittest.cc
@@ -486,6 +488,73 @@ set(
   pki/testdata/certificate_policies_unittest/policy_1_2_3_and_1_2_4_with_qualifiers.pem
   pki/testdata/certificate_policies_unittest/policy_1_2_3_with_custom_qualifier.pem
   pki/testdata/certificate_policies_unittest/policy_1_2_3_with_qualifier.pem
+  pki/testdata/crl_unittest/bad_crldp_has_crlissuer.pem
+  pki/testdata/crl_unittest/bad_fake_critical_crlentryextension.pem
+  pki/testdata/crl_unittest/bad_fake_critical_extension.pem
+  pki/testdata/crl_unittest/bad_idp_contains_wrong_uri.pem
+  pki/testdata/crl_unittest/bad_idp_indirectcrl.pem
+  pki/testdata/crl_unittest/bad_idp_onlycontainscacerts.pem
+  pki/testdata/crl_unittest/bad_idp_onlycontainscacerts_no_basic_constraints.pem
+  pki/testdata/crl_unittest/bad_idp_onlycontainsusercerts.pem
+  pki/testdata/crl_unittest/bad_idp_uri_and_onlycontainscacerts.pem
+  pki/testdata/crl_unittest/bad_idp_uri_and_onlycontainsusercerts.pem
+  pki/testdata/crl_unittest/bad_key_rollover_signature.pem
+  pki/testdata/crl_unittest/bad_nextupdate_too_old.pem
+  pki/testdata/crl_unittest/bad_signature.pem
+  pki/testdata/crl_unittest/bad_thisupdate_in_future.pem
+  pki/testdata/crl_unittest/bad_thisupdate_too_old.pem
+  pki/testdata/crl_unittest/bad_wrong_issuer.pem
+  pki/testdata/crl_unittest/generate_crl_test_data.py
+  pki/testdata/crl_unittest/good.pem
+  pki/testdata/crl_unittest/good_fake_extension.pem
+  pki/testdata/crl_unittest/good_fake_extension_no_nextupdate.pem
+  pki/testdata/crl_unittest/good_generalizedtime.pem
+  pki/testdata/crl_unittest/good_idp_contains_uri.pem
+  pki/testdata/crl_unittest/good_idp_onlycontainscacerts.pem
+  pki/testdata/crl_unittest/good_idp_onlycontainsusercerts.pem
+  pki/testdata/crl_unittest/good_idp_onlycontainsusercerts_no_basic_constraints.pem
+  pki/testdata/crl_unittest/good_idp_uri_and_onlycontainscacerts.pem
+  pki/testdata/crl_unittest/good_idp_uri_and_onlycontainsusercerts.pem
+  pki/testdata/crl_unittest/good_issuer_name_normalization.pem
+  pki/testdata/crl_unittest/good_issuer_no_keyusage.pem
+  pki/testdata/crl_unittest/good_key_rollover.pem
+  pki/testdata/crl_unittest/good_no_crldp.pem
+  pki/testdata/crl_unittest/good_no_nextupdate.pem
+  pki/testdata/crl_unittest/good_no_version.pem
+  pki/testdata/crl_unittest/invalid_garbage_after_crlentryextensions.pem
+  pki/testdata/crl_unittest/invalid_garbage_after_extensions.pem
+  pki/testdata/crl_unittest/invalid_garbage_after_nextupdate.pem
+  pki/testdata/crl_unittest/invalid_garbage_after_revocationdate.pem
+  pki/testdata/crl_unittest/invalid_garbage_after_revokedcerts.pem
+  pki/testdata/crl_unittest/invalid_garbage_after_signaturevalue.pem
+  pki/testdata/crl_unittest/invalid_garbage_after_thisupdate.pem
+  pki/testdata/crl_unittest/invalid_garbage_crlentry.pem
+  pki/testdata/crl_unittest/invalid_garbage_issuer_name.pem
+  pki/testdata/crl_unittest/invalid_garbage_revocationdate.pem
+  pki/testdata/crl_unittest/invalid_garbage_revoked_serial_number.pem
+  pki/testdata/crl_unittest/invalid_garbage_signaturealgorithm.pem
+  pki/testdata/crl_unittest/invalid_garbage_signaturevalue.pem
+  pki/testdata/crl_unittest/invalid_garbage_tbs_signature_algorithm.pem
+  pki/testdata/crl_unittest/invalid_garbage_tbscertlist.pem
+  pki/testdata/crl_unittest/invalid_garbage_thisupdate.pem
+  pki/testdata/crl_unittest/invalid_garbage_version.pem
+  pki/testdata/crl_unittest/invalid_idp_dpname_choice_extra_data.pem
+  pki/testdata/crl_unittest/invalid_idp_empty_sequence.pem
+  pki/testdata/crl_unittest/invalid_idp_onlycontains_user_and_ca_certs.pem
+  pki/testdata/crl_unittest/invalid_idp_onlycontainsusercerts_v1_leaf.pem
+  pki/testdata/crl_unittest/invalid_issuer_keyusage_no_crlsign.pem
+  pki/testdata/crl_unittest/invalid_key_rollover_issuer_keyusage_no_crlsign.pem
+  pki/testdata/crl_unittest/invalid_mismatched_signature_algorithm.pem
+  pki/testdata/crl_unittest/invalid_revoked_empty_sequence.pem
+  pki/testdata/crl_unittest/invalid_v1_explicit.pem
+  pki/testdata/crl_unittest/invalid_v1_with_crlentryextension.pem
+  pki/testdata/crl_unittest/invalid_v1_with_extension.pem
+  pki/testdata/crl_unittest/invalid_v3.pem
+  pki/testdata/crl_unittest/revoked.pem
+  pki/testdata/crl_unittest/revoked_fake_crlentryextension.pem
+  pki/testdata/crl_unittest/revoked_generalized_revocationdate.pem
+  pki/testdata/crl_unittest/revoked_key_rollover.pem
+  pki/testdata/crl_unittest/revoked_no_nextupdate.pem
   pki/testdata/name_constraints_unittest/directoryname-excludeall.pem
   pki/testdata/name_constraints_unittest/directoryname-excluded.pem
   pki/testdata/name_constraints_unittest/directoryname.pem

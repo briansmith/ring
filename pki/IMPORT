@@ -14,6 +14,7 @@ tar -C $CHROMIUM_SRC/net/data -cf -  cert_issuer_source_static_unittest \
     certificate_policies_unittest \
     name_constraints_unittest \
     ocsp_unittest \
+    crl_unittest \
     parse_certificate_unittest \
     path_builder_unittest \
     verify_certificate_chain_unittest \
