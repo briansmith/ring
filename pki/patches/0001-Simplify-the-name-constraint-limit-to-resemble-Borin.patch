@@ -1,4 +1,4 @@
-From 6218984931c841f8e2939a94d58e7315a967fe68 Mon Sep 17 00:00:00 2001
+From 78f16e55f9d5cae7cf4b4bcf45c4af53db231cd9 Mon Sep 17 00:00:00 2001
 From: Bob Beck <bbe@google.com>
 Date: Wed, 17 May 2023 10:37:22 -0600
 Subject: [PATCH 1/2] Simplify the name constraint limit to resemble
@@ -45,7 +45,7 @@ index e9d834e1b51fa..ecf528b6e10a5 100644
    "+base/supports_user_data.h",
  ]
 diff --git a/net/cert/pki/name_constraints.cc b/net/cert/pki/name_constraints.cc
-index f6415dfbfec94..27d8638df87a7 100644
+index b1f4aa44e54e1..06703db78fb5b 100644
 --- a/net/cert/pki/name_constraints.cc
 +++ b/net/cert/pki/name_constraints.cc
 @@ -8,7 +8,6 @@
@@ -139,10 +139,10 @@ index f6415dfbfec94..27d8638df87a7 100644
  
    // Subject Alternative Name handling:
 diff --git a/net/cert/pki/verify_certificate_chain_typed_unittest.h b/net/cert/pki/verify_certificate_chain_typed_unittest.h
-index fffb5c0339df9..d4090be9b604c 100644
+index a1af7849ebcc1..32a5be319d00d 100644
 --- a/net/cert/pki/verify_certificate_chain_typed_unittest.h
 +++ b/net/cert/pki/verify_certificate_chain_typed_unittest.h
-@@ -276,10 +276,9 @@ TYPED_TEST_P(VerifyCertificateChainSingleRootTest, Policies) {
+@@ -275,10 +275,9 @@ TYPED_TEST_P(VerifyCertificateChainSingleRootTest, Policies) {
  }
  
  TYPED_TEST_P(VerifyCertificateChainSingleRootTest, ManyNames) {
@@ -155,7 +155,7 @@ index fffb5c0339df9..d4090be9b604c 100644
    this->RunTest("many-names/toomany-all-types.test");
    this->RunTest("many-names/toomany-dns-excluded.test");
    this->RunTest("many-names/toomany-dns-permitted.test");
-@@ -287,6 +286,7 @@ TYPED_TEST_P(VerifyCertificateChainSingleRootTest, ManyNames) {
+@@ -286,6 +285,7 @@ TYPED_TEST_P(VerifyCertificateChainSingleRootTest, ManyNames) {
    this->RunTest("many-names/toomany-ips-permitted.test");
    this->RunTest("many-names/toomany-dirnames-excluded.test");
    this->RunTest("many-names/toomany-dirnames-permitted.test");
@@ -164,10 +164,10 @@ index fffb5c0339df9..d4090be9b604c 100644
  
  TYPED_TEST_P(VerifyCertificateChainSingleRootTest, TargetOnly) {
 diff --git a/net/data/test_bundle_data.filelist b/net/data/test_bundle_data.filelist
-index 3eccfcb4a981a..baa64c0a92171 100644
+index a33bdbe30a0eb..00c635befd873 100644
 --- a/net/data/test_bundle_data.filelist
 +++ b/net/data/test_bundle_data.filelist
-@@ -751,12 +751,6 @@ data/verify_certificate_chain_unittest/key-rollover/rolloverchain.pem
+@@ -753,12 +753,6 @@ data/verify_certificate_chain_unittest/key-rollover/rolloverchain.pem
  data/verify_certificate_chain_unittest/key-rollover/rolloverchain.test
  data/verify_certificate_chain_unittest/many-names/ok-all-types.pem
  data/verify_certificate_chain_unittest/many-names/ok-all-types.test
@@ -41105,5 +41105,5 @@ index efdbd5eaca095..56bc9c89c4c42 100644
          Validity
              Not Before: Oct  5 12:00:00 2021 GMT
 -- 
-2.41.0.162.gfafddb0af9-goog
+2.41.0.694.ge786442a9b-goog
 

@@ -159,6 +159,6 @@ OPENSSL_EXPORT extern const CertErrorId kIterationLimitExceeded;
 // Depth limit was reached during path building.
 OPENSSL_EXPORT extern const CertErrorId kDepthLimitExceeded;
 
-}  // namespace net::cert_errors
+}  // namespace bssl::cert_errors
 
 #endif  // BSSL_PKI_COMMON_CERT_ERRORS_H_

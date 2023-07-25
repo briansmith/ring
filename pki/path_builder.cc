@@ -32,7 +32,7 @@ namespace {
 using CertIssuerSources = std::vector<CertIssuerSource*>;
 
 // Returns a hex-encoded sha256 of the DER-encoding of |cert|.
-std::string FingerPrintParsedCertificate(const ParsedCertificate* cert) {
+std::string FingerPrintParsedCertificate(const bssl::ParsedCertificate* cert) {
   uint8_t digest[SHA256_DIGEST_LENGTH];
   SHA256(cert->der_cert().UnsafeData(), cert->der_cert().Length(), digest);
   return bssl::string_util::HexEncode(digest, sizeof(digest));

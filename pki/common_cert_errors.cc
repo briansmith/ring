@@ -82,4 +82,4 @@ DEFINE_CERT_ERROR_ID(kDeadlineExceeded, "Deadline exceeded");
 DEFINE_CERT_ERROR_ID(kIterationLimitExceeded, "Iteration limit exceeded");
 DEFINE_CERT_ERROR_ID(kDepthLimitExceeded, "Depth limit exceeded");
 
-}  // namespace net::cert_errors
+}  // namespace bssl::cert_errors

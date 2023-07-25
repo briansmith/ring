@@ -282,7 +282,7 @@ std::shared_ptr<const ParsedCertificate> ParsedCertificate::Create(
 bool ParsedCertificate::CreateAndAddToVector(
     bssl::UniquePtr<CRYPTO_BUFFER> cert_data,
     const ParseCertificateOptions& options,
-    std::vector<std::shared_ptr<const ParsedCertificate>>* chain,
+    std::vector<std::shared_ptr<const bssl::ParsedCertificate>>* chain,
     CertErrors* errors) {
   std::shared_ptr<const ParsedCertificate> cert(
       Create(std::move(cert_data), options, errors));

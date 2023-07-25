@@ -70,7 +70,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   static bool CreateAndAddToVector(
       bssl::UniquePtr<CRYPTO_BUFFER> cert_data,
       const ParseCertificateOptions& options,
-      std::vector<std::shared_ptr<const ParsedCertificate>>* chain,
+      std::vector<std::shared_ptr<const bssl::ParsedCertificate>>* chain,
       CertErrors* errors);
 
   explicit ParsedCertificate(PrivateConstructor);

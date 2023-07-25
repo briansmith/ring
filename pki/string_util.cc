@@ -114,4 +114,4 @@ std::vector<std::string_view> SplitString(std::string_view str,
   return out;
 }
 
-}  // namespace net::string_util
+}  // namespace bssl::string_util

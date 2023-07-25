@@ -1,4 +1,4 @@
-From 0a1d630dbc33f63009aabb4907a1dbeb4c934415 Mon Sep 17 00:00:00 2001
+From 0c4866b5b94854983697ebc362efba8d05e5cb86 Mon Sep 17 00:00:00 2001
 From: Bob Beck <bbe@google.com>
 Date: Fri, 2 Jun 2023 11:08:50 +0200
 Subject: [PATCH 2/2] disable path builder tests with unsupported dependencies
@@ -8,10 +8,10 @@ Subject: [PATCH 2/2] disable path builder tests with unsupported dependencies
  1 file changed, 12 insertions(+)
 
 diff --git a/net/cert/pki/path_builder_unittest.cc b/net/cert/pki/path_builder_unittest.cc
-index d2cf0626cd474..112d0cafd811b 100644
+index 2ee48ce3f5ecc..3a9ead52f0d54 100644
 --- a/net/cert/pki/path_builder_unittest.cc
 +++ b/net/cert/pki/path_builder_unittest.cc
-@@ -34,6 +34,7 @@ namespace net {
+@@ -32,6 +32,7 @@ namespace net {
  
  namespace {
  
@@ -19,7 +19,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  using ::testing::_;
  using ::testing::ElementsAre;
  using ::testing::Exactly;
-@@ -43,6 +44,7 @@ using ::testing::Return;
+@@ -41,6 +42,7 @@ using ::testing::Return;
  using ::testing::SaveArg;
  using ::testing::SetArgPointee;
  using ::testing::StrictMock;
@@ -27,7 +27,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  
  class TestPathBuilderDelegate : public SimplePathBuilderDelegate {
   public:
-@@ -161,6 +163,7 @@ class AsyncCertIssuerSourceStatic : public CertIssuerSource {
+@@ -159,6 +161,7 @@ class AsyncCertIssuerSourceStatic : public CertIssuerSource {
  }
  
  const void* kKey = &kKey;
@@ -35,7 +35,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  class TrustStoreThatStoresUserData : public TrustStore {
   public:
    class Data : public base::SupportsUserData::Data {
-@@ -202,6 +205,7 @@ TEST(PathBuilderResultUserDataTest, ModifyUserDataInConstructor) {
+@@ -200,6 +203,7 @@ TEST(PathBuilderResultUserDataTest, ModifyUserDataInConstructor) {
    ASSERT_TRUE(data);
    EXPECT_EQ(1234, data->value);
  }
@@ -43,7 +43,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  
  class PathBuilderMultiRootTest : public ::testing::Test {
   public:
-@@ -1566,6 +1570,7 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateIntermediateAndRoot) {
+@@ -1564,6 +1568,7 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateIntermediateAndRoot) {
    EXPECT_EQ(newroot_->der_cert(), path.certs[2]->der_cert());
  }
  
@@ -51,7 +51,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  class MockCertIssuerSourceRequest : public CertIssuerSource::Request {
   public:
    MOCK_METHOD2(GetNext, void(ParsedCertificateList*, base::SupportsUserData*));
-@@ -1578,6 +1583,7 @@ class MockCertIssuerSource : public CertIssuerSource {
+@@ -1576,6 +1581,7 @@ class MockCertIssuerSource : public CertIssuerSource {
    MOCK_METHOD2(AsyncGetIssuersOf,
                 void(const ParsedCertificate*, std::unique_ptr<Request>*));
  };
@@ -59,7 +59,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  
  // Helper class to pass the Request to the PathBuilder when it calls
  // AsyncGetIssuersOf. (GoogleMock has a ByMove helper, but it apparently can
-@@ -1613,6 +1619,7 @@ class AppendCertToList {
+@@ -1611,6 +1617,7 @@ class AppendCertToList {
    std::shared_ptr<const ParsedCertificate> cert_;
  };
  
@@ -67,7 +67,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  // Test that a single CertIssuerSource returning multiple async batches of
  // issuers is handled correctly. Due to the StrictMocks, it also tests that path
  // builder does not request issuers of certs that it shouldn't.
-@@ -1782,6 +1789,7 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateAsyncIntermediates) {
+@@ -1780,6 +1787,7 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateAsyncIntermediates) {
    EXPECT_EQ(newintermediate_, path1.certs[1]);
    EXPECT_EQ(newroot_, path1.certs[2]);
  }
@@ -75,7 +75,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  
  class PathBuilderSimpleChainTest : public ::testing::Test {
   public:
-@@ -1936,6 +1944,7 @@ class CertPathBuilderDelegateBase : public SimplePathBuilderDelegate {
+@@ -1934,6 +1942,7 @@ class CertPathBuilderDelegateBase : public SimplePathBuilderDelegate {
    }
  };
  
@@ -83,7 +83,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  class MockPathBuilderDelegate : public CertPathBuilderDelegateBase {
   public:
    MOCK_METHOD2(CheckPathAfterVerification,
-@@ -1951,6 +1960,7 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, NoOpToValidPath) {
+@@ -1949,6 +1958,7 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, NoOpToValidPath) {
    CertPathBuilder::Result result = RunPathBuilder(nullptr, &delegate);
    EXPECT_TRUE(result.HasValidPath());
  }
@@ -91,7 +91,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  
  DEFINE_CERT_ERROR_ID(kWarningFromDelegate, "Warning from delegate");
  
-@@ -2002,6 +2012,7 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, AddsErrorToValidPath) {
+@@ -2000,6 +2010,7 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, AddsErrorToValidPath) {
    EXPECT_TRUE(cert2_errors->ContainsError(kErrorFromDelegate));
  }
  
@@ -99,7 +99,7 @@ index d2cf0626cd474..112d0cafd811b 100644
  TEST_F(PathBuilderCheckPathAfterVerificationTest, NoopToAlreadyInvalidPath) {
    StrictMock<MockPathBuilderDelegate> delegate;
    // Just verify that the hook is called (on an invalid path).
-@@ -2034,6 +2045,7 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, SetsDelegateData) {
+@@ -2032,6 +2043,7 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, SetsDelegateData) {
  
    EXPECT_EQ(0xB33F, data->value);
  }
@@ -108,5 +108,5 @@ index d2cf0626cd474..112d0cafd811b 100644
  TEST(PathBuilderPrioritizationTest, DatePrioritization) {
    std::string test_dir =
 -- 
-2.41.0.162.gfafddb0af9-goog
+2.41.0.694.ge786442a9b-goog
 

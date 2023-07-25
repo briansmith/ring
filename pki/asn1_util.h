@@ -70,6 +70,6 @@ OPENSSL_EXPORT bool ExtractExtensionFromDERCert(std::string_view cert,
                                             bool* out_extension_critical,
                                             std::string_view* out_contents);
 
-}  // namespace net::asn1
+}  // namespace bssl::asn1
 
 #endif // BSSL_PKI_ASN1_UTIL_H_

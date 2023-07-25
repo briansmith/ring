@@ -60,6 +60,6 @@ OPENSSL_EXPORT std::vector<std::string_view> SplitString(
     std::string_view str,
     char split_char);
 
-}  // namespace net::string_util
+}  // namespace bssl::string_util
 
 #endif  // BSSL_PKI_STRING_UTIL_H_

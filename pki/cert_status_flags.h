@@ -33,9 +33,9 @@ inline bool IsCertStatusError(CertStatus status) {
 
 // Maps a network error code to the equivalent certificate status flag. If
 // the error code is not a certificate error, it is mapped to 0.
-// Note: It is not safe to go net::CertStatus -> net::Error -> net::CertStatus,
+// Note: It is not safe to go bssl::CertStatus -> bssl::Error -> bssl::CertStatus,
 // as the CertStatus contains more information. Conversely, going from
-// net::Error -> net::CertStatus -> net::Error is not a lossy function, for the
+// bssl::Error -> bssl::CertStatus -> bssl::Error is not a lossy function, for the
 // same reason.
 // To avoid incorrect use, this is only exported for unittest helpers.
 OPENSSL_EXPORT CertStatus MapNetErrorToCertStatus(int error);

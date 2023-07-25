@@ -90,12 +90,12 @@ class PkitsTest : public ::testing::Test {
                const PkitsTestInfo& info) {
     std::vector<std::string> cert_ders;
     for (const std::string s : cert_names) {
-      cert_ders.push_back(ReadTestFileToString(
+      cert_ders.push_back(bssl::ReadTestFileToString(
           "testdata/nist-pkits/certs/" + s + ".crt"));
     }
     std::vector<std::string> crl_ders;
     for (const std::string s : crl_names) {
-      crl_ders.push_back(ReadTestFileToString(
+      crl_ders.push_back(bssl::ReadTestFileToString(
           "testdata/nist-pkits/crls/" + s + ".crl"));
     }
 

@@ -328,4 +328,4 @@ bool ExtractExtensionFromDERCert(std::string_view cert,
   return true;
 }
 
-}  // namespace net::asn1
+}  // namespace bssl::asn1

@@ -234,7 +234,7 @@ class PathBuilderPkitsTestDelegate {
 
     if (info.should_validate != result.HasValidPath()) {
       for (size_t i = 0; i < result.paths.size(); ++i) {
-        const CertPathBuilderResultPath* result_path =
+        const bssl::CertPathBuilderResultPath* result_path =
             result.paths[i].get();
         LOG(ERROR) << "path " << i << " errors:\n"
                    << result_path->errors.ToDebugString(result_path->certs);
