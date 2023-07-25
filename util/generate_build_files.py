@@ -114,8 +114,8 @@ class Android(object):
       #  Separate out BCM files to allow different compilation rules (specific to Android FIPS)
       bcm_c_files = files['bcm_crypto']
       non_bcm_c_files = [file for file in files['crypto'] if file not in bcm_c_files]
-      non_bcm_asm = self.FilterBcmAsm(asm_outputs, False)
-      bcm_asm = self.FilterBcmAsm(asm_outputs, True)
+      non_bcm_asm = self.FilterBcmAsm(files['crypto_asm'], False)
+      bcm_asm = self.FilterBcmAsm(files['crypto_asm'], True)
 
       self.PrintDefaults(blueprint, 'libcrypto_sources', non_bcm_c_files, non_bcm_asm)
       self.PrintDefaults(blueprint, 'libcrypto_bcm_sources', bcm_c_files, bcm_asm)
@@ -141,8 +141,15 @@ class Android(object):
         self.PrintVariableSection(
             makefile, '%s_%s_sources' % (osname, arch), asm_files)
 
-  def PrintDefaults(self, blueprint, name, files, asm_outputs={}):
+  def PrintDefaults(self, blueprint, name, files, asm_files=[]):
     """Print a cc_defaults section from a list of C files and optionally assembly outputs"""
+    if asm_files:
+      blueprint.write('\n')
+      blueprint.write('%s_asm = [\n' % name)
+      for f in sorted(asm_files):
+        blueprint.write('    "%s",\n' % f)
+      blueprint.write(']\n')
+
     blueprint.write('\n')
     blueprint.write('cc_defaults {\n')
     blueprint.write('    name: "%s",\n' % name)
@@ -151,21 +158,20 @@ class Android(object):
       blueprint.write('        "%s",\n' % f)
     blueprint.write('    ],\n')
 
-    # TODO(crbug.com/boringssl/542): Migrate this to the combined source lists.
-    if asm_outputs:
+    if asm_files:
       blueprint.write('    target: {\n')
-      for ((osname, arch), asm_files) in asm_outputs:
-        if osname != 'linux':
-          continue
-        if arch == 'aarch64':
-          arch = 'arm64'
-
-        blueprint.write('        linux_%s: {\n' % arch)
-        blueprint.write('            srcs: [\n')
-        for f in sorted(asm_files):
-          blueprint.write('                "%s",\n' % f)
-        blueprint.write('            ],\n')
-        blueprint.write('        },\n')
+      # Only emit asm for non-Windows. On Windows, BoringSSL requires NASM,
+      # which is not available in AOSP. Note that, despite the name,
+      # "not_windows" covers only non-Windows host devices.
+      blueprint.write('        android: {\n')
+      blueprint.write('            srcs: %s_asm,\n' % name)
+      blueprint.write('        },\n')
+      blueprint.write('        not_windows: {\n')
+      blueprint.write('            srcs: %s_asm,\n' % name)
+      blueprint.write('        },\n')
+      blueprint.write('        windows: {\n')
+      blueprint.write('            cflags: ["-DOPENSSL_NO_ASM"],\n')
+      blueprint.write('        },\n')
       blueprint.write('    },\n')
 
     blueprint.write('}\n')
@@ -174,7 +180,7 @@ class Android(object):
     """Filter a list of assembly outputs based on whether they belong in BCM
 
     Args:
-      asm: Assembly file lists to filter
+      asm: Assembly file list to filter
       want_bcm: If true then include BCM files, otherwise do not
 
     Returns:
@@ -183,8 +189,7 @@ class Android(object):
     # TODO(https://crbug.com/boringssl/542): Rather than filtering by filename,
     # use the variable listed in the CMake perlasm line, available in
     # ExtractPerlAsmFromCMakeFile.
-    return [(archinfo, filter(lambda p: ("/crypto/fipsmodule/" in p) == want_bcm, files))
-            for (archinfo, files) in asm]
+    return filter(lambda p: ("/crypto/fipsmodule/" in p) == want_bcm, asm)
 
 
 class AndroidCMake(object):
