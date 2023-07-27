@@ -14,8 +14,11 @@
 
 #include "internal.h"
 
+// While Arm system registers are normally not available to userspace, FreeBSD
+// expects userspace to simply read them. It traps the reads and fills in CPU
+// capabilities.
 #if defined(OPENSSL_AARCH64) && !defined(OPENSSL_STATIC_ARMCAP) && \
-    defined(ANDROID_BAREMETAL)
+    (defined(ANDROID_BAREMETAL) || defined(OPENSSL_FREEBSD))
 
 #include <openssl/arm_arch.h>
 
@@ -86,4 +89,5 @@ static uint32_t read_armcap(void) {
 
 void OPENSSL_cpuid_setup(void) { OPENSSL_armcap_P |= read_armcap(); }
 
-#endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP && ANDROID_BAREMETAL
+#endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP &&
+        // (ANDROID_BAREMETAL || OPENSSL_FREEBSD)
