@@ -70,8 +70,6 @@
 #include "internal.h"
 
 
-#define OPENSSL_DH_MAX_MODULUS_BITS 10000
-
 DH *DH_new(void) {
   DH *dh = OPENSSL_malloc(sizeof(DH));
   if (dh == NULL) {
@@ -191,15 +189,14 @@ int DH_set_length(DH *dh, unsigned priv_length) {
 int DH_generate_key(DH *dh) {
   boringssl_ensure_ffdh_self_test();
 
+  if (!dh_check_params_fast(dh)) {
+    return 0;
+  }
+
   int ok = 0;
   int generate_new_key = 0;
   BN_CTX *ctx = NULL;
   BIGNUM *pub_key = NULL, *priv_key = NULL;
-
-  if (BN_num_bits(dh->p) > OPENSSL_DH_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(DH, DH_R_MODULUS_TOO_LARGE);
-    goto err;
-  }
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -279,8 +276,7 @@ err:
 
 static int dh_compute_key(DH *dh, BIGNUM *out_shared_key,
                           const BIGNUM *peers_key, BN_CTX *ctx) {
-  if (BN_num_bits(dh->p) > OPENSSL_DH_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(DH, DH_R_MODULUS_TOO_LARGE);
+  if (!dh_check_params_fast(dh)) {
     return 0;
   }
 

@@ -71,7 +71,6 @@
 #include <openssl/mem.h>
 
 #include "../fipsmodule/dh/internal.h"
-#include "../internal.h"
 #include "../test/test_util.h"
 
 
@@ -195,15 +194,35 @@ static const uint8_t kRFC5114_2048_224BadY[] = {
     0x93, 0x74, 0x89, 0x59,
 };
 
-TEST(DHTest, BadY) {
+static bssl::UniquePtr<DH> NewDHGroup(const BIGNUM *p, const BIGNUM *q,
+                                      const BIGNUM *g) {
+  bssl::UniquePtr<BIGNUM> p_copy(BN_dup(p));
+  bssl::UniquePtr<BIGNUM> q_copy(q != nullptr ? BN_dup(q) : nullptr);
+  bssl::UniquePtr<BIGNUM> g_copy(BN_dup(g));
   bssl::UniquePtr<DH> dh(DH_new());
+  if (p_copy == nullptr || (q != nullptr && q_copy == nullptr) ||
+      g_copy == nullptr || dh == nullptr ||
+      !DH_set0_pqg(dh.get(), p_copy.get(), q_copy.get(), g_copy.get())) {
+    return nullptr;
+  }
+  p_copy.release();
+  q_copy.release();
+  g_copy.release();
+  return dh;
+}
+
+TEST(DHTest, BadY) {
+  bssl::UniquePtr<BIGNUM> p(
+      BN_bin2bn(kRFC5114_2048_224P, sizeof(kRFC5114_2048_224P), nullptr));
+  bssl::UniquePtr<BIGNUM> q(
+      BN_bin2bn(kRFC5114_2048_224Q, sizeof(kRFC5114_2048_224Q), nullptr));
+  bssl::UniquePtr<BIGNUM> g(
+      BN_bin2bn(kRFC5114_2048_224G, sizeof(kRFC5114_2048_224G), nullptr));
+  ASSERT_TRUE(p);
+  ASSERT_TRUE(q);
+  ASSERT_TRUE(g);
+  bssl::UniquePtr<DH> dh = NewDHGroup(p.get(), q.get(), g.get());
   ASSERT_TRUE(dh);
-  dh->p = BN_bin2bn(kRFC5114_2048_224P, sizeof(kRFC5114_2048_224P), nullptr);
-  dh->g = BN_bin2bn(kRFC5114_2048_224G, sizeof(kRFC5114_2048_224G), nullptr);
-  dh->q = BN_bin2bn(kRFC5114_2048_224Q, sizeof(kRFC5114_2048_224Q), nullptr);
-  ASSERT_TRUE(dh->p);
-  ASSERT_TRUE(dh->g);
-  ASSERT_TRUE(dh->q);
 
   bssl::UniquePtr<BIGNUM> pub_key(
       BN_bin2bn(kRFC5114_2048_224BadY, sizeof(kRFC5114_2048_224BadY), nullptr));
@@ -336,11 +355,8 @@ TEST(DHTest, LeadingZeros) {
   ASSERT_TRUE(g);
   ASSERT_TRUE(BN_set_word(g.get(), 2));
 
-  bssl::UniquePtr<DH> dh(DH_new());
+  bssl::UniquePtr<DH> dh = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
   ASSERT_TRUE(dh);
-  ASSERT_TRUE(DH_set0_pqg(dh.get(), p.get(), /*q=*/nullptr, g.get()));
-  p.release();
-  g.release();
 
   // These values are far too small to be reasonable Diffie-Hellman keys, but
   // they are an easy way to get a shared secret with leading zeros.
@@ -375,11 +391,8 @@ TEST(DHTest, Overwrite) {
   ASSERT_TRUE(g);
   ASSERT_TRUE(BN_set_word(g.get(), 2));
 
-  bssl::UniquePtr<DH> key1(DH_new());
+  bssl::UniquePtr<DH> key1 = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
   ASSERT_TRUE(key1);
-  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
-  p.release();
-  g.release();
   ASSERT_TRUE(DH_generate_key(key1.get()));
 
   bssl::UniquePtr<BIGNUM> peer_key(BN_new());
@@ -393,15 +406,8 @@ TEST(DHTest, Overwrite) {
   // Generate a different key with a different group.
   p.reset(BN_get_rfc3526_prime_2048(nullptr));
   ASSERT_TRUE(p);
-  g.reset(BN_new());
-  ASSERT_TRUE(g);
-  ASSERT_TRUE(BN_set_word(g.get(), 2));
-
-  bssl::UniquePtr<DH> key2(DH_new());
+  bssl::UniquePtr<DH> key2 = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
   ASSERT_TRUE(key2);
-  ASSERT_TRUE(DH_set0_pqg(key2.get(), p.get(), /*q=*/nullptr, g.get()));
-  p.release();
-  g.release();
   ASSERT_TRUE(DH_generate_key(key2.get()));
 
   // Overwrite |key1|'s contents with |key2|.
@@ -434,11 +440,8 @@ TEST(DHTest, GenerateKeyTwice) {
   bssl::UniquePtr<BIGNUM> g(BN_new());
   ASSERT_TRUE(g);
   ASSERT_TRUE(BN_set_word(g.get(), 2));
-  bssl::UniquePtr<DH> key1(DH_new());
+  bssl::UniquePtr<DH> key1 = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
   ASSERT_TRUE(key1);
-  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
-  p.release();
-  g.release();
   ASSERT_TRUE(DH_generate_key(key1.get()));
 
   // Copy the parameters and private key to a new DH object.
@@ -455,4 +458,66 @@ TEST(DHTest, GenerateKeyTwice) {
             0);
   EXPECT_EQ(BN_cmp(DH_get0_pub_key(key1.get()), DH_get0_pub_key(key2.get())),
             0);
+}
+
+// Bad parameters should be rejected, rather than cause a DoS risk in the
+// event that an application uses Diffie-Hellman incorrectly, with untrusted
+// domain parameters.
+TEST(DHTest, InvalidParameters) {
+  auto check_invalid_group = [](DH *dh) {
+    // All operations on egregiously invalid groups should fail.
+    EXPECT_FALSE(DH_generate_key(dh));
+    int check_result;
+    EXPECT_FALSE(DH_check(dh, &check_result));
+    bssl::UniquePtr<BIGNUM> pub_key(BN_new());
+    ASSERT_TRUE(pub_key);
+    ASSERT_TRUE(BN_set_u64(pub_key.get(), 42));
+    EXPECT_FALSE(DH_check_pub_key(dh, pub_key.get(), &check_result));
+    uint8_t buf[1024];
+    EXPECT_EQ(DH_compute_key(buf, pub_key.get(), dh), -1);
+    EXPECT_EQ(DH_compute_key_padded(buf, pub_key.get(), dh), -1);
+  };
+
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_2048(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  // p is negative.
+  BN_set_negative(p.get(), 1);
+  bssl::UniquePtr<DH> dh = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
+  ASSERT_TRUE(dh);
+  BN_set_negative(p.get(), 0);
+  check_invalid_group(dh.get());
+
+  // g is negative.
+  BN_set_negative(g.get(), 1);
+  dh = NewDHGroup(p.get(), /*q=*/nullptr, g.get());
+  ASSERT_TRUE(dh);
+  BN_set_negative(g.get(), 0);
+  check_invalid_group(dh.get());
+
+  // g is not reduced mod p.
+  dh = NewDHGroup(p.get(), /*q=*/nullptr, p.get());
+  ASSERT_TRUE(dh);
+  BN_set_negative(g.get(), 0);
+  check_invalid_group(dh.get());
+
+  // p is too large.
+  bssl::UniquePtr<BIGNUM> large(BN_new());
+  ASSERT_TRUE(BN_set_bit(large.get(), 0));
+  ASSERT_TRUE(BN_set_bit(large.get(), 10000000));
+  dh = NewDHGroup(large.get(), /*q=*/nullptr, g.get());
+  ASSERT_TRUE(dh);
+  check_invalid_group(dh.get());
+
+  // q is too large.
+  dh = NewDHGroup(p.get(), large.get(), g.get());
+  ASSERT_TRUE(dh);
+  check_invalid_group(dh.get());
+
+  // Attempting to generate too large of a Diffie-Hellman group should fail.
+  EXPECT_FALSE(
+      DH_generate_parameters_ex(dh.get(), 20000, DH_GENERATOR_5, nullptr));
 }
