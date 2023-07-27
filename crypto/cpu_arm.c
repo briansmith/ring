@@ -20,8 +20,6 @@
 #include <openssl/arm_arch.h>
 
 
-extern uint32_t OPENSSL_armcap_P;
-
 int CRYPTO_is_NEON_capable_at_runtime(void) {
   return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
 }

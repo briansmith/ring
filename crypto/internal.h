@@ -1353,6 +1353,8 @@ OPENSSL_INLINE int CRYPTO_is_ADX_capable(void) {
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
+extern uint32_t OPENSSL_armcap_P;
+
 #if defined(OPENSSL_APPLE) && defined(OPENSSL_ARM)
 // We do not detect any features at runtime for Apple's 32-bit ARM platforms. On
 // 64-bit ARM, we detect some post-ARMv8.0 features.

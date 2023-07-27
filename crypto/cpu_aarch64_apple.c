@@ -23,8 +23,6 @@
 #include <openssl/arm_arch.h>
 
 
-extern uint32_t OPENSSL_armcap_P;
-
 static int has_hw_feature(const char *name) {
   int value;
   size_t len = sizeof(value);

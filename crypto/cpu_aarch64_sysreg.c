@@ -84,8 +84,6 @@ static uint32_t read_armcap(void) {
   return armcap;
 }
 
-extern uint32_t OPENSSL_armcap_P;
-
 void OPENSSL_cpuid_setup(void) { OPENSSL_armcap_P |= read_armcap(); }
 
 #endif  // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP && ANDROID_BAREMETAL

@@ -22,7 +22,6 @@
 
 #include <openssl/arm_arch.h>
 
-extern uint32_t OPENSSL_armcap_P;
 
 // ID_AA64ISAR0_*_VAL are defined starting FreeBSD 13.0. When FreeBSD
 // 12.x is out of support, these compatibility macros can be removed.

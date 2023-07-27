@@ -19,7 +19,6 @@
 
 #include <openssl/arm_arch.h>
 
-extern uint32_t OPENSSL_armcap_P;
 
 void OPENSSL_cpuid_setup(void) {
   // OpenBSD does not support arm32 machines without NEON
