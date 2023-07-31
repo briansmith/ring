@@ -29,10 +29,7 @@ extern "C" {
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define OPENSSL_RAND_DETERMINISTIC
 #elif defined(OPENSSL_TRUSTY)
-// TODO(b/291102972): This should define OPENSSL_RAND_TRUSTY to activate the
-// Trusty RNG implementation. However, due to a different, non-Trusty target
-// incorrectly defining __TRUSTY__, things will break if we follow our standard
-// pattern here.
+#define OPENSSL_RAND_TRUSTY
 #elif defined(OPENSSL_WINDOWS)
 #define OPENSSL_RAND_WINDOWS
 #elif defined(OPENSSL_LINUX)
