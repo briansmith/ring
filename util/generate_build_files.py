@@ -133,14 +133,6 @@ class Android(object):
       self.PrintVariableSection(makefile, 'crypto_sources_asm',
                                 files['crypto_asm'])
 
-      # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
-      # lists, so we don't need to generate both sets.
-      for ((osname, arch), asm_files) in asm_outputs:
-        if osname != 'linux':
-          continue
-        self.PrintVariableSection(
-            makefile, '%s_%s_sources' % (osname, arch), asm_files)
-
   def PrintDefaults(self, blueprint, name, files, asm_files=[]):
     """Print a cc_defaults section from a list of C files and optionally assembly outputs"""
     if asm_files:
