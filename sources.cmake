@@ -60,6 +60,7 @@ set(
   crypto/poly1305/poly1305_test.cc
   crypto/pool/pool_test.cc
   crypto/rand_extra/rand_test.cc
+  crypto/rand_extra/getentropy_test.cc
   crypto/refcount_test.cc
   crypto/rsa_extra/rsa_test.cc
   crypto/self_test.cc
