@@ -224,12 +224,6 @@ class AndroidCMake(object):
                                 files['crypto_test'])
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
 
-      # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
-      # lists, so we don't need to generate both sets.
-      for ((osname, arch), asm_files) in asm_outputs:
-        self.PrintVariableSection(
-            out, 'crypto_sources_%s_%s' % (osname, arch), asm_files)
-
 
 class Bazel(object):
   """Bazel outputs files suitable for including in Bazel files."""
@@ -565,13 +559,8 @@ endif()
 
 class JSON(object):
   def WriteFiles(self, files, asm_outputs):
-    sources = dict(files)
-    # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
-    # lists, so we don't need to generate both sets.
-    for ((osname, arch), asm_files) in asm_outputs:
-      sources['crypto_%s_%s' % (osname, arch)] = asm_files
     with open('sources.json', 'w+') as f:
-      json.dump(sources, f, sort_keys=True, indent=2)
+      json.dump(files, f, sort_keys=True, indent=2)
 
 def FindCMakeFiles(directory):
   """Returns list of all CMakeLists.txt files recursively in directory."""
