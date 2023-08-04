@@ -152,14 +152,14 @@ class Android(object):
 
     if asm_files:
       blueprint.write('    target: {\n')
-      # Only emit asm for non-Windows. On Windows, BoringSSL requires NASM,
-      # which is not available in AOSP. Note that, despite the name,
-      # "not_windows" covers only non-Windows host devices.
-      blueprint.write('        android: {\n')
+      # Only emit asm for Linux. On Windows, BoringSSL requires NASM, which is
+      # not available in AOSP. On Darwin, the assembly works fine, but it
+      # conflicts with Android's FIPS build. See b/294399371.
+      blueprint.write('        linux: {\n')
       blueprint.write('            srcs: %s_asm,\n' % name)
       blueprint.write('        },\n')
-      blueprint.write('        not_windows: {\n')
-      blueprint.write('            srcs: %s_asm,\n' % name)
+      blueprint.write('        darwin: {\n')
+      blueprint.write('            cflags: ["-DOPENSSL_NO_ASM"],\n')
       blueprint.write('        },\n')
       blueprint.write('        windows: {\n')
       blueprint.write('            cflags: ["-DOPENSSL_NO_ASM"],\n')
