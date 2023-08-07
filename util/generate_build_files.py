@@ -26,7 +26,7 @@ import json
 # OS_ARCH_COMBOS maps from OS and platform to the OpenSSL assembly "style" for
 # that platform and the extension used by asm files.
 #
-# TODO(https://crbug.com/boringssl/524): This probably should be a map, but some
+# TODO(https://crbug.com/boringssl/542): This probably should be a map, but some
 # downstream scripts import this to find what folders to add/remove from git.
 OS_ARCH_COMBOS = [
     ('apple', 'arm', 'ios32', [], 'S'),
@@ -106,7 +106,7 @@ class Android(object):
       out.write('  %s\\\n' % f)
     out.write('\n')
 
-  def WriteFiles(self, files, asm_outputs):
+  def WriteFiles(self, files):
     # New Android.bp format
     with open('sources.bp', 'w+') as blueprint:
       blueprint.write(self.header.replace('#', '//'))
@@ -204,7 +204,7 @@ class AndroidCMake(object):
       out.write('  ${BORINGSSL_ROOT}%s\n' % f)
     out.write(')\n')
 
-  def WriteFiles(self, files, asm_outputs):
+  def WriteFiles(self, files):
     # The Android emulator uses a custom CMake buildsystem.
     #
     # TODO(crbug.com/boringssl/542): Move our various source lists into
@@ -245,7 +245,7 @@ class Bazel(object):
       out.write('    "%s",\n' % PathOf(f))
     out.write(']\n')
 
-  def WriteFiles(self, files, asm_outputs):
+  def WriteFiles(self, files):
     with open('BUILD.generated.bzl', 'w+') as out:
       out.write(self.header)
 
@@ -306,7 +306,7 @@ class Eureka(object):
       out.write('  %s\\\n' % f)
     out.write('\n')
 
-  def WriteFiles(self, files, asm_outputs):
+  def WriteFiles(self, files):
     # Legacy Android.mk format
     with open('eureka.mk', 'w+') as makefile:
       makefile.write(self.header)
@@ -318,14 +318,6 @@ class Eureka(object):
                                 files['crypto_nasm'])
       self.PrintVariableSection(makefile, 'ssl_sources', files['ssl'])
       self.PrintVariableSection(makefile, 'tool_sources', files['tool'])
-
-      # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
-      # lists, so we don't need to generate both sets.
-      for ((osname, arch), asm_files) in asm_outputs:
-        if osname != 'linux':
-          continue
-        self.PrintVariableSection(
-            makefile, '%s_%s_sources' % (osname, arch), asm_files)
 
 
 class GN(object):
@@ -347,7 +339,7 @@ class GN(object):
       out.write('  "%s",\n' % f)
     out.write(']\n')
 
-  def WriteFiles(self, files, asm_outputs):
+  def WriteFiles(self, files):
     with open('BUILD.generated.gni', 'w+') as out:
       out.write(self.header)
 
@@ -397,7 +389,7 @@ class GYP(object):
       out.write('      \'%s\',\n' % f)
     out.write('    ],\n')
 
-  def WriteFiles(self, files, asm_outputs):
+  def WriteFiles(self, files):
     with open('boringssl.gypi', 'w+') as gypi:
       gypi.write(self.header + '{\n  \'variables\': {\n')
 
@@ -411,12 +403,6 @@ class GYP(object):
                                 files['crypto_asm'])
       self.PrintVariableSection(gypi, 'boringssl_crypto_nasm_sources',
                                 files['crypto_nasm'])
-
-      # TODO(crbug.com/boringssl/542): Migrate users to the combined asm source
-      # lists, so we don't need to generate both sets.
-      for ((osname, arch), asm_files) in asm_outputs:
-        self.PrintVariableSection(gypi, 'boringssl_%s_%s_sources' %
-                                  (osname, arch), asm_files)
 
       gypi.write('  }\n}\n')
 
@@ -522,7 +508,7 @@ endif()
       out.write('  %s\n' % PathOf(f))
     out.write(')\n\n')
 
-  def WriteFiles(self, files, asm_outputs):
+  def WriteFiles(self, files):
     with open('CMakeLists.txt', 'w+') as cmake:
       cmake.write(self.header)
 
@@ -558,7 +544,7 @@ endif()
 ''')
 
 class JSON(object):
-  def WriteFiles(self, files, asm_outputs):
+  def WriteFiles(self, files):
     with open('sources.json', 'w+') as f:
       json.dump(files, f, sort_keys=True, indent=2)
 
@@ -703,7 +689,7 @@ def WriteAsmFiles(perlasms):
     for (osname, arch, perlasm_style, extra_args, asm_ext) in OS_ARCH_COMBOS:
       if arch != perlasm['arch']:
         continue
-      # TODO(https://crbug.com/boringssl/524): Now that we incorporate osname in
+      # TODO(https://crbug.com/boringssl/542): Now that we incorporate osname in
       # the output filename, the asm files can just go in a single directory.
       # For now, we keep them in target-specific directories to avoid breaking
       # downstream scripts.
@@ -816,11 +802,13 @@ def main(platforms):
 
   asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).items())
 
-  # Generate combined source lists for gas and nasm. Build files have a choice
-  # of using the per-platform ones or the combined ones. In the combined mode,
-  # Windows x86 and Windows x86_64 must still be special-cased, but otherwise
-  # all assembly files can be linked together. Some files appear in multiple
-  # per-platform lists, so we duplicate.
+  # Generate combined source lists for gas and nasm. Some files appear in
+  # multiple per-platform lists, so we de-duplicate.
+  #
+  # TODO(https://crbug.com/boringssl/542): It would be simpler to build the
+  # combined source lists directly. This is a remnant of the previous assembly
+  # strategy. When we move to pre-generated assembly files, this will be
+  # removed.
   asm_sources = set()
   nasm_sources = set()
   for ((osname, arch), asm_files) in asm_outputs:
@@ -856,7 +844,7 @@ def main(platforms):
   }
 
   for platform in platforms:
-    platform.WriteFiles(files, asm_outputs)
+    platform.WriteFiles(files)
 
   return 0
 
