@@ -676,7 +676,19 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command
         std::path::MAIN_SEPARATOR,
     )));
 
-    let mut c = Command::new("./target/tools/windows/nasm/nasm");
+    let nasm_path = "./target/tools/windows/nasm/nasm";
+    if !Path::new(nasm_path).exists() {
+        println!("No 'nasm' executable found, downloading automatically...");
+        let mut install_cmd = Command::new("powershell");
+        install_cmd
+            .arg("-ExecutionPolicy")
+            .arg("Bypass")
+            .arg("./mk/install-build-tools.ps1");
+
+        run_command(install_cmd);
+    }
+
+    let mut c = Command::new(nasm_path);
     let _ = c
         .arg("-o")
         .arg(out_file.to_str().expect("Invalid path"))
