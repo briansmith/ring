@@ -196,7 +196,7 @@ int DH_generate_key(DH *dh) {
   int ok = 0;
   int generate_new_key = 0;
   BN_CTX *ctx = NULL;
-  BIGNUM *pub_key = NULL, *priv_key = NULL;
+  BIGNUM *pub_key = NULL, *priv_key = NULL, *priv_key_limit = NULL;
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -239,18 +239,34 @@ int DH_generate_key(DH *dh) {
         goto err;
       }
     } else {
-      // secret exponent length
-      unsigned priv_bits = dh->priv_length;
-      if (priv_bits == 0) {
-        const unsigned p_bits = BN_num_bits(dh->p);
-        if (p_bits == 0) {
+      // If q is unspecified, we expect p to be a safe prime, with g generating
+      // the (p-1)/2 subgroup. So, we use q = (p-1)/2. (If g generates a smaller
+      // prime-order subgroup, q will still divide (p-1)/2.)
+      //
+      // We set N from |dh->priv_length|. Section 5.6.1.1.4 of SP 800-56A Rev3
+      // says to reject N > len(q), or N > num_bits(p) - 1. However, this logic
+      // originally aligned with PKCS#3, which allows num_bits(p). Instead, we
+      // clamp |dh->priv_length| before invoking the algorithm.
+
+      // Compute M = min(2^N, q).
+      priv_key_limit = BN_new();
+      if (priv_key_limit == NULL) {
+        goto err;
+      }
+      if (dh->priv_length == 0 || dh->priv_length >= BN_num_bits(dh->p) - 1) {
+        // M = q = (p - 1) / 2.
+        if (!BN_rshift1(priv_key_limit, dh->p)) {
           goto err;
         }
-
-        priv_bits = p_bits - 1;
+      } else {
+        // M = 2^N.
+        if (!BN_set_bit(priv_key_limit, dh->priv_length)) {
+          goto err;
+        }
       }
 
-      if (!BN_rand(priv_key, priv_bits, BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ANY)) {
+      // Choose a private key uniformly from [1, M-1].
+      if (!BN_rand_range_ex(priv_key, 1, priv_key_limit)) {
         goto err;
       }
     }
@@ -276,6 +292,7 @@ err:
   if (dh->priv_key == NULL) {
     BN_free(priv_key);
   }
+  BN_free(priv_key_limit);
   BN_CTX_free(ctx);
   return ok;
 }
