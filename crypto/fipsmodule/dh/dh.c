@@ -229,7 +229,13 @@ int DH_generate_key(DH *dh) {
 
   if (generate_new_key) {
     if (dh->q) {
-      if (!BN_rand_range_ex(priv_key, 2, dh->q)) {
+      // Section 5.6.1.1.4 of SP 800-56A Rev3 generates a private key uniformly
+      // from [1, min(2^N-1, q-1)].
+      //
+      // Although SP 800-56A Rev3 now permits a private key length N,
+      // |dh->priv_length| historically was ignored when q is available. We
+      // continue to ignore it and interpret such a configuration as N = len(q).
+      if (!BN_rand_range_ex(priv_key, 1, dh->q)) {
         goto err;
       }
     } else {
