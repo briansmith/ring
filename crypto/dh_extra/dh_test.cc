@@ -427,3 +427,32 @@ TEST(DHTest, Overwrite) {
   ASSERT_GT(DH_compute_key_padded(buf2.data(), peer_key.get(), key2.get()), 0);
   EXPECT_EQ(Bytes(buf1), Bytes(buf2));
 }
+
+TEST(DHTest, GenerateKeyTwice) {
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_2048(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+  bssl::UniquePtr<DH> key1(DH_new());
+  ASSERT_TRUE(key1);
+  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_generate_key(key1.get()));
+
+  // Copy the parameters and private key to a new DH object.
+  bssl::UniquePtr<DH> key2(DHparams_dup(key1.get()));
+  ASSERT_TRUE(key2);
+  bssl::UniquePtr<BIGNUM> priv_key(BN_dup(DH_get0_priv_key(key1.get())));
+  ASSERT_TRUE(DH_set0_key(key2.get(), /*pub_key=*/NULL, priv_key.get()));
+  priv_key.release();
+
+  // This time, calling |DH_generate_key| preserves the old key and recomputes
+  // the public key.
+  ASSERT_TRUE(DH_generate_key(key2.get()));
+  EXPECT_EQ(BN_cmp(DH_get0_priv_key(key1.get()), DH_get0_priv_key(key2.get())),
+            0);
+  EXPECT_EQ(BN_cmp(DH_get0_pub_key(key1.get()), DH_get0_pub_key(key2.get())),
+            0);
+}
