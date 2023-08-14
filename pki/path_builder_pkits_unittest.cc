@@ -5,7 +5,6 @@
 #include "path_builder.h"
 
 #include <cstdint>
-#include <iostream>
 
 #include "fillins/log.h"
 #include "fillins/net_errors.h"
@@ -237,7 +236,7 @@ class PathBuilderPkitsTestDelegate {
       for (size_t i = 0; i < result.paths.size(); ++i) {
         const CertPathBuilderResultPath* result_path =
             result.paths[i].get();
-        std::cerr << "path " << i << " errors:\n"
+        LOG(ERROR) << "path " << i << " errors:\n"
                    << result_path->errors.ToDebugString(result_path->certs);
       }
     }

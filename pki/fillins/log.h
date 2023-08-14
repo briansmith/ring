@@ -17,8 +17,10 @@
 
 #if defined(_BORINGSSL_LIBPKI_VERBOSE_)
 #define DVLOG(l) std::cerr
+#define LOG(l) std::cerr
 #else
 #define DVLOG(l) 0 && std::cerr
+#define LOG(l) 0 && std::cerr
 #endif  // _BORINGSSL_LIBPKI_VERBOSE_
 
 #endif  // BSSL_FILLINS_LOG_H_
