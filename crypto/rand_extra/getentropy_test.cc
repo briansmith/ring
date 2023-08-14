@@ -24,7 +24,7 @@
 
 #include <unistd.h>
 
-#include <sys/errno.h>
+#include <errno.h>
 
 #if defined(OPENSSL_MACOS) || defined(OPENSSL_FUCHSIA)
 #include <sys/random.h>
