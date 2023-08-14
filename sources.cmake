@@ -587,6 +587,7 @@ set(
   pki/testdata/name_constraints_unittest/ipaddress-invalid_mask_not_contiguous_2.pem
   pki/testdata/name_constraints_unittest/ipaddress-invalid_mask_not_contiguous_3.pem
   pki/testdata/name_constraints_unittest/ipaddress-invalid_mask_not_contiguous_4.pem
+  pki/testdata/name_constraints_unittest/ipaddress-mapped_addrs.pem
   pki/testdata/name_constraints_unittest/ipaddress-permit_all.pem
   pki/testdata/name_constraints_unittest/ipaddress-permit_prefix1.pem
   pki/testdata/name_constraints_unittest/ipaddress-permit_prefix31.pem
