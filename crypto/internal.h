@@ -1241,19 +1241,24 @@ OPENSSL_INLINE const uint32_t *OPENSSL_ia32cap_get(void) {
 }
 #endif
 
+OPENSSL_INLINE int OPENSSL_ia32cap_has_bit(int idx, int bit) {
+  CRYPTO_library_init();
+  return (OPENSSL_ia32cap_get()[idx] & (1u << bit)) != 0;
+}
+
 // See Intel manual, volume 2A, table 3-11.
 
 OPENSSL_INLINE int CRYPTO_is_FXSR_capable(void) {
 #if defined(__FXSR__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[0] & (1 << 24)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/0, /*bit=*/24);
 #endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_intel_cpu(void) {
   // The reserved bit 30 is used to indicate an Intel CPU.
-  return (OPENSSL_ia32cap_get()[0] & (1 << 30)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/0, /*bit=*/30);
 }
 
 // See Intel manual, volume 2A, table 3-10.
@@ -1262,7 +1267,7 @@ OPENSSL_INLINE int CRYPTO_is_PCLMUL_capable(void) {
 #if defined(__PCLMUL__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[1] & (1 << 1)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/1, /*bit=*/1);
 #endif
 }
 
@@ -1270,7 +1275,7 @@ OPENSSL_INLINE int CRYPTO_is_SSSE3_capable(void) {
 #if defined(__SSSE3__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[1] & (1 << 9)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/1, /*bit=*/9);
 #endif
 }
 
@@ -1278,7 +1283,7 @@ OPENSSL_INLINE int CRYPTO_is_SSE4_1_capable(void) {
 #if defined(__SSE4_1__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_P[1] & (1 << 19)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/1, /*bit=*/19);
 #endif
 }
 
@@ -1286,7 +1291,7 @@ OPENSSL_INLINE int CRYPTO_is_MOVBE_capable(void) {
 #if defined(__MOVBE__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[1] & (1 << 22)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/1, /*bit=*/22);
 #endif
 }
 
@@ -1294,7 +1299,7 @@ OPENSSL_INLINE int CRYPTO_is_AESNI_capable(void) {
 #if defined(__AES__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[1] & (1 << 25)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/1, /*bit=*/25);
 #endif
 }
 
@@ -1302,7 +1307,7 @@ OPENSSL_INLINE int CRYPTO_is_AVX_capable(void) {
 #if defined(__AVX__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[1] & (1 << 28)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/1, /*bit=*/28);
 #endif
 }
 
@@ -1312,7 +1317,7 @@ OPENSSL_INLINE int CRYPTO_is_RDRAND_capable(void) {
 #if defined(__RDRND__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[1] & (1u << 30)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/1, /*bit=*/30);
 #endif
 }
 
@@ -1322,7 +1327,7 @@ OPENSSL_INLINE int CRYPTO_is_BMI1_capable(void) {
 #if defined(__BMI1__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[2] & (1 << 3)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/2, /*bit=*/3);
 #endif
 }
 
@@ -1330,7 +1335,7 @@ OPENSSL_INLINE int CRYPTO_is_AVX2_capable(void) {
 #if defined(__AVX2__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[2] & (1 << 5)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/2, /*bit=*/5);
 #endif
 }
 
@@ -1338,7 +1343,7 @@ OPENSSL_INLINE int CRYPTO_is_BMI2_capable(void) {
 #if defined(__BMI2__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[2] & (1 << 8)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/2, /*bit=*/8);
 #endif
 }
 
@@ -1346,7 +1351,7 @@ OPENSSL_INLINE int CRYPTO_is_ADX_capable(void) {
 #if defined(__ADX__)
   return 1;
 #else
-  return (OPENSSL_ia32cap_get()[2] & (1 << 19)) != 0;
+  return OPENSSL_ia32cap_has_bit(/*idx=*/2, /*bit=*/19);
 #endif
 }
 
@@ -1355,6 +1360,11 @@ OPENSSL_INLINE int CRYPTO_is_ADX_capable(void) {
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
 extern uint32_t OPENSSL_armcap_P;
+
+OPENSSL_INLINE uint32_t OPENSSL_get_armcap(void) {
+  CRYPTO_library_init();
+  return OPENSSL_armcap_P;
+}
 
 // We do not detect any features at runtime on several 32-bit Arm platforms.
 // Apple platforms and OpenBSD require NEON and moved to 64-bit to pick up Armv8
@@ -1388,7 +1398,7 @@ OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;
 #else
-  return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
+  return (OPENSSL_get_armcap() & ARMV7_NEON) != 0;
 #endif
 }
 
@@ -1398,7 +1408,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;
 #else
-  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
+  return (OPENSSL_get_armcap() & ARMV8_AES) != 0;
 #endif
 }
 
@@ -1408,7 +1418,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;
 #else
-  return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
+  return (OPENSSL_get_armcap() & ARMV8_PMULL) != 0;
 #endif
 }
 
