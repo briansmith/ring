@@ -648,12 +648,13 @@ def ExtractPerlAsmFromCMakeFile(cmakefile):
         raise ValueError('Bad perlasm line in %s' % cmakefile)
       # Remove "perlasm(" from start and ")" from end
       params = line[8:-1].split()
-      if len(params) != 4:
+      if len(params) < 4:
         raise ValueError('Bad perlasm line in %s' % cmakefile)
       perlasms.append({
           'arch': params[1],
           'output': os.path.join(os.path.dirname(cmakefile), params[2]),
           'input': os.path.join(os.path.dirname(cmakefile), params[3]),
+          'extra_args': params[4:],
       })
 
   return perlasms
@@ -700,7 +701,8 @@ def WriteAsmFiles(perlasms):
         raise ValueError('output missing src: %s' % output)
       output = os.path.join(outDir, output[4:])
       output = '%s-%s.%s' % (output, osname, asm_ext)
-      PerlAsm(output, perlasm['input'], perlasm_style, extra_args)
+      PerlAsm(output, perlasm['input'], perlasm_style,
+              extra_args + perlasm['extra_args'])
       asmfiles.setdefault(key, []).append(output)
 
   for (key, non_perl_asm_files) in NON_PERL_FILES.items():
