@@ -109,6 +109,7 @@
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
+#include <openssl/arm_arch.h>
 #include <openssl/crypto.h>
 #include <openssl/ex_data.h>
 #include <openssl/stack.h>
@@ -1379,21 +1380,6 @@ extern uint32_t OPENSSL_armcap_P;
 #endif
 #endif
 
-#if !defined(OPENSSL_STATIC_ARMCAP)
-// CRYPTO_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
-// unit. Note that |OPENSSL_armcap_P| also exists and contains the same
-// information in a form that's easier for assembly to use.
-OPENSSL_EXPORT int CRYPTO_is_NEON_capable_at_runtime(void);
-
-// CRYPTO_is_ARMv8_AES_capable_at_runtime returns true if the current CPU
-// supports the ARMv8 AES instruction.
-int CRYPTO_is_ARMv8_AES_capable_at_runtime(void);
-
-// CRYPTO_is_ARMv8_PMULL_capable_at_runtime returns true if the current CPU
-// supports the ARMv8 PMULL instruction.
-int CRYPTO_is_ARMv8_PMULL_capable_at_runtime(void);
-#endif  // !OPENSSL_STATIC_ARMCAP
-
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
 // this is known statically, it is a constant inline function.
 OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
@@ -1402,7 +1388,7 @@ OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;
 #else
-  return CRYPTO_is_NEON_capable_at_runtime();
+  return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
 #endif
 }
 
@@ -1412,7 +1398,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;
 #else
-  return CRYPTO_is_ARMv8_AES_capable_at_runtime();
+  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
 #endif
 }
 
@@ -1422,7 +1408,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
 #elif defined(OPENSSL_STATIC_ARMCAP)
   return 0;
 #else
-  return CRYPTO_is_ARMv8_PMULL_capable_at_runtime();
+  return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
 #endif
 }
 

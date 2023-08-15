@@ -134,7 +134,6 @@ add_library(
   cpu_aarch64_win.c
   cpu_arm_freebsd.c
   cpu_arm_linux.c
-  cpu_arm.c
   cpu_intel.c
   crypto.c
   curve25519/curve25519.c
