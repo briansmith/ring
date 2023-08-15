@@ -26,8 +26,7 @@
 #include "../internal.h"
 
 
-// This file implements hash-to-curve, as described in
-// draft-irtf-cfrg-hash-to-curve-16.
+// This file implements hash-to-curve, as described in RFC 9380.
 //
 // This hash-to-curve implementation is written generically with the
 // expectation that we will eventually wish to support other curves. If it
@@ -48,8 +47,7 @@
 //   templates to make specializing more convenient.
 
 // expand_message_xmd implements the operation described in section 5.3.1 of
-// draft-irtf-cfrg-hash-to-curve-16. It returns one on success and zero on
-// error.
+// RFC 9380. It returns one on success and zero on error.
 static int expand_message_xmd(const EVP_MD *md, uint8_t *out, size_t out_len,
                               const uint8_t *msg, size_t msg_len,
                               const uint8_t *dst, size_t dst_len) {
@@ -138,7 +136,7 @@ err:
 
 // num_bytes_to_derive determines the number of bytes to derive when hashing to
 // a number modulo |modulus|. See the hash_to_field operation defined in
-// section 5.2 of draft-irtf-cfrg-hash-to-curve-16.
+// section 5.2 of RFC 9380.
 static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
   size_t bits = BN_num_bits(modulus);
   size_t L = (bits + k + 7) / 8;
@@ -171,8 +169,7 @@ static void big_endian_to_words(BN_ULONG *out, size_t num_words,
 }
 
 // hash_to_field implements the operation described in section 5.2
-// of draft-irtf-cfrg-hash-to-curve-16, with count = 2. |k| is the security
-// factor.
+// of RFC 9380, with count = 2. |k| is the security factor.
 static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
                           EC_FELEM *out1, EC_FELEM *out2, const uint8_t *dst,
                           size_t dst_len, unsigned k, const uint8_t *msg,
@@ -221,8 +218,7 @@ static inline void mul_A(const EC_GROUP *group, EC_FELEM *out,
   ec_felem_sub(group, out, in, &tmp);     // out = -3*in
 }
 
-// sgn0 implements the operation described in section 4.1.2 of
-// draft-irtf-cfrg-hash-to-curve-16.
+// sgn0 implements the operation described in section 4.1.2 of RFC 9380.
 static BN_ULONG sgn0(const EC_GROUP *group, const EC_FELEM *a) {
   uint8_t buf[EC_MAX_BYTES];
   size_t len;
@@ -235,7 +231,7 @@ OPENSSL_UNUSED static int is_3mod4(const EC_GROUP *group) {
 }
 
 // sqrt_ratio_3mod4 implements the operation described in appendix F.2.1.2
-// of draft-irtf-cfrg-hash-to-curve-16.
+// of RFC 9380.
 static BN_ULONG sqrt_ratio_3mod4(const EC_GROUP *group, const EC_FELEM *Z,
                                  const BN_ULONG *c1, size_t num_c1,
                                  const EC_FELEM *c2, EC_FELEM *out_y,
@@ -270,8 +266,7 @@ static BN_ULONG sqrt_ratio_3mod4(const EC_GROUP *group, const EC_FELEM *Z,
 }
 
 // map_to_curve_simple_swu implements the operation described in section 6.6.2
-// of draft-irtf-cfrg-hash-to-curve-16, using the straight-line implementation
-// in appendix F.2.
+// of RFC 9380, using the straight-line implementation in appendix F.2.
 static void map_to_curve_simple_swu(const EC_GROUP *group, const EC_FELEM *Z,
                                     const BN_ULONG *c1, size_t num_c1,
                                     const EC_FELEM *c2, EC_JACOBIAN *out,
@@ -405,7 +400,7 @@ int ec_hash_to_curve_p256_xmd_sha256_sswu(const EC_GROUP *group,
                                           EC_JACOBIAN *out, const uint8_t *dst,
                                           size_t dst_len, const uint8_t *msg,
                                           size_t msg_len) {
-  // See section 8.3 of draft-irtf-cfrg-hash-to-curve-16.
+  // See section 8.3 of RFC 9380.
   if (EC_GROUP_get_curve_name(group) != NID_X9_62_prime256v1) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
     return 0;
@@ -438,7 +433,7 @@ int ec_hash_to_curve_p384_xmd_sha384_sswu(const EC_GROUP *group,
                                           EC_JACOBIAN *out, const uint8_t *dst,
                                           size_t dst_len, const uint8_t *msg,
                                           size_t msg_len) {
-  // See section 8.3 of draft-irtf-cfrg-hash-to-curve-16.
+  // See section 8.3 of RFC 9380.
   if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
     OPENSSL_PUT_ERROR(EC, EC_R_GROUP_MISMATCH);
     return 0;

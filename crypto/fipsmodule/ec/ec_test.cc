@@ -1223,7 +1223,7 @@ TEST(ECTest, HashToCurve) {
     const char *y_hex;
   };
   const HashToCurveTest kTests[] = {
-      // See draft-irtf-cfrg-hash-to-curve-16, appendix J.1.1.
+      // See RFC 9380, appendix J.1.1.
       {&EC_hash_to_curve_p256_xmd_sha256_sswu, EC_group_p256(),
        "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_", "",
        "2c15230b26dbc6fc9a37051158c95b79656e17a1a920b11394ca91"
