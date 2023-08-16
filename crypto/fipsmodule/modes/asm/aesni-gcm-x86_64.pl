@@ -1064,7 +1064,7 @@ $code.=<<___;
 	ret
 .seh_endproc
 .cfi_endproc
-.size	aesni_gcm_decrypt,.-aesni_gcm_decrypt
+.size	aesni_gcm_encrypt,.-aesni_gcm_encrypt
 ___
 
 $code.=<<___;
