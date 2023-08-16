@@ -58,6 +58,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 #if defined(__MINGW32__)
@@ -383,6 +384,13 @@ typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
 
+// BSSL_CHECK aborts if |condition| is not true.
+#define BSSL_CHECK(condition) \
+  do {                        \
+    if (!(condition)) {       \
+      abort();                \
+    }                         \
+  } while (0);
 
 #if defined(__cplusplus)
 }  // extern C
