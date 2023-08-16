@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webutil/url/url.h"
 #include "ocsp.h"
 
-#include "asn1_util.h"
 #include "cert_errors.h"
 #include "extended_key_usage.h"
 #include "parsed_certificate.h"
@@ -13,12 +11,11 @@
 #include "string_util.h"
 #include "verify_name_match.h"
 #include "verify_signed_data.h"
-#include "fillins/x509_util.h"
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/mem.h>
+#include <openssl/pool.h>
 #include <openssl/sha.h>
-#include "webutil/url/url.h"
 
 namespace bssl {
 
@@ -532,13 +529,16 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
   ParseCertificateOptions parse_options;
   parse_options.allow_invalid_serial_numbers = true;
 
+  // The objects returned by this function only last for the duration of a
+  // single certificate verification, so there is no need to pool them to save
+  // memory.
+  //
   // TODO(eroman): Swallows the parsing errors. However uses a permissive
   // parsing model.
   CertErrors errors;
   return ParsedCertificate::Create(
-      bssl::UniquePtr<CRYPTO_BUFFER>(
-          CRYPTO_BUFFER_new(reinterpret_cast<const uint8_t*>(der.data()),
-                            der.size(), x509_util::GetBufferPool())),
+      bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
+          reinterpret_cast<const uint8_t*>(der.data()), der.size(), nullptr)),
       {}, &errors);
 }
 
@@ -1014,19 +1014,20 @@ bool CreateOCSPRequest(const ParsedCertificate* cert,
 //
 //    GET {url}/{url-encoding of base-64 encoding of the DER encoding of
 //    the OCSPRequest}
-URL CreateOCSPGetURL(const ParsedCertificate* cert,
-                      const ParsedCertificate* issuer,
-                      std::string_view ocsp_responder_url) {
+std::optional<std::string> CreateOCSPGetURL(
+    const ParsedCertificate* cert,
+    const ParsedCertificate* issuer,
+    std::string_view ocsp_responder_url) {
   std::vector<uint8_t> ocsp_request_der;
   if (!CreateOCSPRequest(cert, issuer, &ocsp_request_der)) {
     // Unexpected (means BoringSSL failed an operation).
-    return URL();
+    return std::nullopt;
   }
 
   // Base64 encode the request data.
   size_t len;
   if (!EVP_EncodedLength(&len, ocsp_request_der.size())) {
-    return URL();
+    return std::nullopt;
   }
   std::vector<uint8_t> encoded(len);
   len = EVP_EncodeBlock(encoded.data(), ocsp_request_der.data(),
@@ -1044,7 +1045,7 @@ URL CreateOCSPGetURL(const ParsedCertificate* cert,
 
   // No attempt is made to collapse double slashes for URLs that end in slash,
   // since the spec doesn't do that.
-  return URL(std::string(ocsp_responder_url) + "/" + b64_encoded);
+  return std::string(ocsp_responder_url) + "/" + b64_encoded;
 }
 
 }  // namespace net

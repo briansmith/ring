@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "webutil/url/url.h"
 #include "ocsp.h"
 
 #include "string_util.h"
@@ -11,7 +10,6 @@
 #include <gtest/gtest.h>
 #include <openssl/base64.h>
 #include <openssl/pool.h>
-#include "webutil/url/url.h"
 
 namespace bssl {
 
@@ -214,13 +212,15 @@ TEST_P(CreateOCSPGetURLTest, Basic) {
   std::shared_ptr<const ParsedCertificate> issuer = ParseCertificate(ca_data);
   ASSERT_TRUE(issuer);
 
-  URL url = CreateOCSPGetURL(cert.get(), issuer.get(), GetParam());
+  std::optional<std::string> url =
+      CreateOCSPGetURL(cert.get(), issuer.get(), GetParam());
+  ASSERT_TRUE(url);
 
   // Try to extract the encoded data and compare against |request_data|.
   //
   // A known answer output test would be better as this just reverses the logic
   // from the implementation file.
-  std::string b64 = url.spec().substr(GetParam().size() + 1);
+  std::string b64 = url->substr(GetParam().size() + 1);
 
   // Hex un-escape the data.
   b64 = bssl::string_util::FindAndReplace(b64, "%2B", "+");

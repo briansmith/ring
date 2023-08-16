@@ -6,21 +6,18 @@
 #define BSSL_PKI_OCSP_H_
 
 #include "fillins/openssl_util.h"
-#include "webutil/url/url.h"
 #include <memory>
+#include <string>
 #include <vector>
 
 
 #include "ocsp_revocation_status.h"
 #include "ocsp_verify_result.h"
-#include "parse_certificate.h"
 #include "signature_algorithm.h"
 #include "input.h"
 #include "parse_values.h"
 #include "parser.h"
-#include "tag.h"
-
-class URL;
+#include <optional>
 
 namespace bssl {
 
@@ -315,9 +312,10 @@ OPENSSL_EXPORT bool CreateOCSPRequest(const ParsedCertificate* cert,
                                   std::vector<uint8_t>* request_der);
 
 // Creates a URL to issue a GET request for OCSP information for |cert|.
-OPENSSL_EXPORT URL CreateOCSPGetURL(const ParsedCertificate* cert,
-                                 const ParsedCertificate* issuer,
-                                 std::string_view ocsp_responder_url);
+OPENSSL_EXPORT std::optional<std::string> CreateOCSPGetURL(
+    const ParsedCertificate* cert,
+    const ParsedCertificate* issuer,
+    std::string_view ocsp_responder_url);
 
 }  // namespace net
 
