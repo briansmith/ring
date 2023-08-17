@@ -10,7 +10,6 @@
 #include <memory>
 #include <vector>
 
-#include "fillins/check.h"
 
 #include "certificate_policies.h"
 #include "parse_certificate.h"
@@ -129,7 +128,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   // Returns the ParsedBasicConstraints struct. Caller must check
   // has_basic_constraints() before accessing this.
   const ParsedBasicConstraints& basic_constraints() const {
-    DCHECK(has_basic_constraints_);
+    BSSL_CHECK(has_basic_constraints_);
     return basic_constraints_;
   }
 
@@ -139,7 +138,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   // Returns the KeyUsage BitString. Caller must check
   // has_key_usage() before accessing this.
   const der::BitString& key_usage() const {
-    DCHECK(has_key_usage_);
+    BSSL_CHECK(has_key_usage_);
     return key_usage_;
   }
 
@@ -149,7 +148,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   // Returns the ExtendedKeyUsage key purpose OIDs. Caller must check
   // has_extended_key_usage() before accessing this.
   const std::vector<der::Input>& extended_key_usage() const {
-    DCHECK(has_extended_key_usage_);
+    BSSL_CHECK(has_extended_key_usage_);
     return extended_key_usage_;
   }
 
@@ -175,7 +174,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   // Returns the parsed NameConstraints extension. Must not be called if
   // has_name_constraints() is false.
   const NameConstraints& name_constraints() const {
-    DCHECK(name_constraints_);
+    BSSL_CHECK(name_constraints_);
     return *name_constraints_;
   }
 
@@ -201,7 +200,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   // Returns the policy OIDs. Caller must check has_policy_oids() before
   // accessing this.
   const std::vector<der::Input>& policy_oids() const {
-    DCHECK(has_policy_oids());
+    BSSL_CHECK(has_policy_oids());
     return policy_oids_;
   }
 
@@ -211,7 +210,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   // Returns the ParsedPolicyConstraints struct. Caller must check
   // has_policy_constraints() before accessing this.
   const ParsedPolicyConstraints& policy_constraints() const {
-    DCHECK(has_policy_constraints_);
+    BSSL_CHECK(has_policy_constraints_);
     return policy_constraints_;
   }
 
@@ -221,7 +220,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   // Returns the PolicyMappings extension. Caller must check
   // has_policy_mappings() before accessing this.
   const std::vector<ParsedPolicyMapping>& policy_mappings() const {
-    DCHECK(has_policy_mappings_);
+    BSSL_CHECK(has_policy_mappings_);
     return policy_mappings_;
   }
 
@@ -231,7 +230,7 @@ class OPENSSL_EXPORT ParsedCertificate {
   // Returns the Inhibit Any Policy extension. Caller must check
   // has_inhibit_any_policy() before accessing this.
   uint8_t inhibit_any_policy() const {
-    DCHECK(has_inhibit_any_policy_);
+    BSSL_CHECK(has_inhibit_any_policy_);
     return inhibit_any_policy_;
   }
 

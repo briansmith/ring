@@ -4,17 +4,17 @@
 
 #include "tag.h"
 
-#include "fillins/check.h"
+#include <openssl/base.h>
 
 namespace bssl::der {
 
 Tag ContextSpecificConstructed(uint8_t tag_number) {
-  DCHECK_EQ(tag_number, tag_number & kTagNumberMask);
+  BSSL_CHECK(tag_number == (tag_number & kTagNumberMask));
   return (tag_number & kTagNumberMask) | kTagConstructed | kTagContextSpecific;
 }
 
 Tag ContextSpecificPrimitive(uint8_t base) {
-  DCHECK_EQ(base, base & kTagNumberMask);
+  BSSL_CHECK(base == (base & kTagNumberMask));
   return (base & kTagNumberMask) | kTagPrimitive | kTagContextSpecific;
 }
 

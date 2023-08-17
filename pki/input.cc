@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-#include "fillins/check.h"
+#include <openssl/base.h>
 
 namespace bssl::der {
 
@@ -59,7 +59,7 @@ bool ByteReader::HasMore() {
 }
 
 void ByteReader::Advance(size_t len) {
-  CHECK_LE(len, len_);
+  BSSL_CHECK(len <= len_);
   data_ += len;
   len_ -= len;
 }

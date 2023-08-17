@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <iterator>
 
+#include <openssl/base.h>
+
 #include "cert_errors.h"
 #include "crl.h"
 #include "revocation_util.h"
@@ -370,7 +372,7 @@ CRLRevocationStatus CheckCRL(std::string_view raw_crl,
                              const ParsedDistributionPoint& cert_dp,
                              int64_t verify_time_epoch_seconds,
                              std::optional<int64_t> max_age_seconds) {
-  DCHECK_LT(target_cert_index, valid_chain.size());
+  BSSL_CHECK(target_cert_index < valid_chain.size());
 
   if (cert_dp.reasons) {
     // Reason codes are not supported. If the distribution point contains a

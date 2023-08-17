@@ -7,9 +7,9 @@
 
 #include <memory>
 
-#include "fillins/check.h"
 #include "string_util.h"
 #include "input.h"
+#include <openssl/base.h>
 
 namespace bssl {
 
@@ -111,7 +111,7 @@ CertErrorParams::~CertErrorParams() = default;
 std::unique_ptr<CertErrorParams> CreateCertErrorParams1Der(
     const char* name,
     const der::Input& der) {
-  DCHECK(name);
+  BSSL_CHECK(name);
   return std::make_unique<CertErrorParams2Der>(name, der, nullptr,
                                                der::Input());
 }
@@ -121,14 +121,14 @@ std::unique_ptr<CertErrorParams> CreateCertErrorParams2Der(
     const der::Input& der1,
     const char* name2,
     const der::Input& der2) {
-  DCHECK(name1);
-  DCHECK(name2);
+  BSSL_CHECK(name1);
+  BSSL_CHECK(name2);
   return std::make_unique<CertErrorParams2Der>(name1, der1, name2, der2);
 }
 
 std::unique_ptr<CertErrorParams> CreateCertErrorParams1SizeT(const char* name,
                                                              size_t value) {
-  DCHECK(name);
+  BSSL_CHECK(name);
   return std::make_unique<CertErrorParams1SizeT>(name, value);
 }
 
@@ -137,8 +137,8 @@ OPENSSL_EXPORT std::unique_ptr<CertErrorParams> CreateCertErrorParams2SizeT(
     size_t value1,
     const char* name2,
     size_t value2) {
-  DCHECK(name1);
-  DCHECK(name2);
+  BSSL_CHECK(name1);
+  BSSL_CHECK(name2);
   return std::make_unique<CertErrorParams2SizeT>(name1, value1, name2, value2);
 }
 

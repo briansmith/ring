@@ -8,7 +8,7 @@
 #include <string.h>
 #include <climits>
 
-#include "check.h"
+#include <openssl/base.h>
 
 namespace bssl {
 
@@ -52,7 +52,7 @@ IPAddress::IPAddress(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4,
 
 // static
 IPAddress IPAddress::AllZeros(size_t num_zero_bytes) {
-  CHECK_LE(num_zero_bytes, 16u);
+  BSSL_CHECK(num_zero_bytes <= 16u);
   IPAddress result;
   result.addr_.reserve(num_zero_bytes);
   for (size_t i = 0; i < num_zero_bytes; ++i) {
@@ -79,7 +79,7 @@ size_t IPAddress::size() const { return addr_.size(); }
 const IPAddressBytes &IPAddress::bytes() const { return addr_; }
 
 static IPAddress ConvertIPv4ToIPv4MappedIPv6(const IPAddress &address) {
-  CHECK(address.IsIPv4());
+  BSSL_CHECK(address.IsIPv4());
   // IPv4-mapped addresses are formed by:
   // <80 bits of zeros>  + <16 bits of ones> + <32-bit IPv4 address>.
   uint8_t bytes[16];
@@ -122,10 +122,10 @@ bool IPAddressMatchesPrefix(const IPAddress &ip_address,
                             size_t prefix_length_in_bits) {
   // Both the input IP address and the prefix IP address should be either IPv4
   // or IPv6.
-  DCHECK(ip_address.IsValid());
-  DCHECK(ip_prefix.IsValid());
+  BSSL_CHECK(ip_address.IsValid());
+  BSSL_CHECK(ip_prefix.IsValid());
 
-  DCHECK_LE(prefix_length_in_bits, ip_prefix.size() * 8);
+  BSSL_CHECK(prefix_length_in_bits <= ip_prefix.size() * 8);
 
   // In case we have an IPv6 / IPv4 mismatch, convert the IPv4 addresses to
   // IPv6 addresses in order to do the comparison.
@@ -144,7 +144,7 @@ bool IPAddressMatchesPrefix(const IPAddress &ip_address,
 }
 
 static unsigned CommonPrefixLength(const IPAddress &a1, const IPAddress &a2) {
-  DCHECK_EQ(a1.size(), a2.size());
+  BSSL_CHECK(a1.size() == a2.size());
   for (size_t i = 0; i < a1.size(); ++i) {
     uint8_t diff = a1.bytes()[i] ^ a2.bytes()[i];
     if (!diff)

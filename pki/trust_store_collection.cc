@@ -4,13 +4,15 @@
 
 #include "trust_store_collection.h"
 
+#include <openssl/base.h>
+
 namespace bssl {
 
 TrustStoreCollection::TrustStoreCollection() = default;
 TrustStoreCollection::~TrustStoreCollection() = default;
 
 void TrustStoreCollection::AddTrustStore(TrustStore* store) {
-  DCHECK(store);
+  BSSL_CHECK(store);
   stores_.push_back(store);
 }
 

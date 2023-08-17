@@ -4,8 +4,8 @@
 
 #include "parser.h"
 
-#include "fillins/check.h"
 #include "parse_values.h"
+#include <openssl/base.h>
 
 namespace bssl::der {
 
@@ -55,7 +55,7 @@ bool Parser::ReadRawTLV(Input* out) {
 bool Parser::ReadTagAndValue(Tag* tag, Input* out) {
   if (!PeekTagAndValue(tag, out))
     return false;
-  CHECK(Advance());
+  BSSL_CHECK(Advance());
   return true;
 }
 
@@ -70,7 +70,7 @@ bool Parser::ReadOptionalTag(Tag tag, std::optional<Input>* out) {
     return false;
   }
   if (actual_tag == tag) {
-    CHECK(Advance());
+    BSSL_CHECK(Advance());
     *out = value;
   } else {
     advance_len_ = 0;
@@ -99,7 +99,7 @@ bool Parser::ReadTag(Tag tag, Input* out) {
   if (!PeekTagAndValue(&actual_tag, &value) || actual_tag != tag) {
     return false;
   }
-  CHECK(Advance());
+  BSSL_CHECK(Advance());
   *out = value;
   return true;
 }

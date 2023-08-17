@@ -17,6 +17,7 @@
 #include "parser.h"
 #include "tag.h"
 #include <optional>
+#include <openssl/base.h>
 
 namespace bssl {
 
@@ -114,7 +115,7 @@ bool DNSNameMatches(std::string_view name,
 [[nodiscard]] bool ParseGeneralSubtrees(const der::Input& value,
                                         GeneralNames* subtrees,
                                         CertErrors* errors) {
-  DCHECK(errors);
+  BSSL_CHECK(errors);
 
   // GeneralSubtrees ::= SEQUENCE SIZE (1..MAX) OF GeneralSubtree
   //
@@ -272,7 +273,7 @@ std::unique_ptr<NameConstraints> NameConstraints::Create(
     const der::Input& extension_value,
     bool is_critical,
     CertErrors* errors) {
-  DCHECK(errors);
+  BSSL_CHECK(errors);
 
   auto name_constraints = std::make_unique<NameConstraints>();
   if (!name_constraints->Parse(extension_value, is_critical, errors))
@@ -283,7 +284,7 @@ std::unique_ptr<NameConstraints> NameConstraints::Create(
 bool NameConstraints::Parse(const der::Input& extension_value,
                             bool is_critical,
                             CertErrors* errors) {
-  DCHECK(errors);
+  BSSL_CHECK(errors);
 
   der::Parser extension_parser(extension_value);
   der::Parser sequence_parser;
