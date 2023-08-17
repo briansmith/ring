@@ -362,7 +362,6 @@ set(
   pki/input.cc
   pki/name_constraints.cc
   pki/ocsp.cc
-  pki/ocsp_revocation_status.h
   pki/ocsp_verify_result.cc
   pki/parse_certificate.cc
   pki/parse_name.cc
