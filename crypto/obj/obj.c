@@ -159,11 +159,10 @@ err:
 }
 
 int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
-  int ret;
-
-  ret = a->length - b->length;
-  if (ret) {
-    return ret;
+  if (a->length < b->length) {
+    return -1;
+  } else if (a->length > b->length) {
+    return 1;
   }
   return OPENSSL_memcmp(a->data, b->data, a->length);
 }
@@ -189,15 +188,7 @@ size_t OBJ_length(const ASN1_OBJECT *obj) {
 // unsigned int in the array.
 static int obj_cmp(const void *key, const void *element) {
   uint16_t nid = *((const uint16_t *)element);
-  const ASN1_OBJECT *a = key;
-  const ASN1_OBJECT *b = &kObjects[nid];
-
-  if (a->length < b->length) {
-    return -1;
-  } else if (a->length > b->length) {
-    return 1;
-  }
-  return OPENSSL_memcmp(a->data, b->data, a->length);
+  return OBJ_cmp(key, &kObjects[nid]);
 }
 
 int OBJ_obj2nid(const ASN1_OBJECT *obj) {
@@ -474,14 +465,6 @@ static uint32_t hash_data(const ASN1_OBJECT *obj) {
   return OPENSSL_hash32(obj->data, obj->length);
 }
 
-static int cmp_data(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
-  int i = a->length - b->length;
-  if (i) {
-    return i;
-  }
-  return OPENSSL_memcmp(a->data, b->data, a->length);
-}
-
 static uint32_t hash_short_name(const ASN1_OBJECT *obj) {
   return OPENSSL_strhash(obj->sn);
 }
@@ -509,7 +492,7 @@ static int obj_add_object(ASN1_OBJECT *obj) {
     global_added_by_nid = lh_ASN1_OBJECT_new(hash_nid, cmp_nid);
   }
   if (global_added_by_data == NULL) {
-    global_added_by_data = lh_ASN1_OBJECT_new(hash_data, cmp_data);
+    global_added_by_data = lh_ASN1_OBJECT_new(hash_data, OBJ_cmp);
   }
   if (global_added_by_short_name == NULL) {
     global_added_by_short_name =
