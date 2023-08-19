@@ -180,6 +180,7 @@ jobs:
           - i686-pc-windows-msvc
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
+          - riscv64gc-unknown-linux-gnu
           - x86_64-pc-windows-gnu
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
@@ -244,6 +245,9 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: i686-unknown-linux-musl
+            host_os: ubuntu-22.04
+
+          - target: riscv64gc-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: x86_64-pc-windows-gnu
