@@ -91,6 +91,13 @@ case $target in
     libc6-dev-mipsel-cross \
     qemu-user
   ;;
+--target=riscv64gc-unknown-linux-gnu)
+  use_clang=1
+  install_packages \
+    gcc-riscv64-linux-gnu \
+    libc6-dev-riscv64-cross \
+    qemu-user
+  ;;
 --target=wasm32-unknown-unknown)
   cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
   use_clang=1
