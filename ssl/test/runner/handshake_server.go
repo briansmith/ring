@@ -36,7 +36,7 @@ type serverHandshakeState struct {
 	finishedHash    finishedHash
 	masterSecret    []byte
 	certsFromClient [][]byte
-	cert            *Certificate
+	cert            *CertificateChain
 	finishedBytes   []byte
 	echHPKEContext  *hpke.Context
 	echConfigID     uint8
@@ -1587,11 +1587,11 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 	if len(hs.clientHello.serverName) > 0 {
 		c.serverName = hs.clientHello.serverName
 	}
-	if len(config.Certificates) == 0 {
+	if len(config.Chains) == 0 {
 		c.sendAlert(alertInternalError)
 		return errors.New("tls: no certificates configured")
 	}
-	hs.cert = &config.Certificates[0]
+	hs.cert = &config.Chains[0]
 	if len(hs.clientHello.serverName) > 0 {
 		hs.cert = config.getCertificateForName(hs.clientHello.serverName)
 	}

@@ -10,9 +10,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"math/big"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -439,18 +442,18 @@ type Config struct {
 	// If Time is nil, TLS uses time.Now.
 	Time func() time.Time
 
-	// Certificates contains one or more certificate chains
+	// Chains contains one or more certificate chains
 	// to present to the other side of the connection.
 	// Server configurations must include at least one certificate.
-	Certificates []Certificate
+	Chains []CertificateChain
 
-	// NameToCertificate maps from a certificate name to an element of
-	// Certificates. Note that a certificate name can be of the form
+	// NameToChain maps from a certificate name to an element of
+	// Chains. Note that a certificate name can be of the form
 	// '*.example.com' and so doesn't have to be a domain name as such.
 	// See Config.BuildNameToCertificate
-	// The nil value causes the first element of Certificates to be used
+	// The nil value causes the first element of Chains to be used
 	// for all connections.
-	NameToCertificate map[string]*Certificate
+	NameToChain map[string]*CertificateChain
 
 	// RootCAs defines the set of root certificate authorities
 	// that clients use when verifying server certificates.
@@ -1844,7 +1847,7 @@ type ProtocolBugs struct {
 
 	// RenegotiationCertificate, if not nil, is the certificate to use on
 	// renegotiation handshakes.
-	RenegotiationCertificate *Certificate
+	RenegotiationCertificate *CertificateChain
 
 	// ExpectNoCertificateAuthoritiesExtension, if true, causes the client to
 	// reject CertificateRequest with the CertificateAuthorities extension.
@@ -2132,12 +2135,12 @@ func (c *Config) supportedVersions(isDTLS, requireTLS13 bool) []uint16 {
 }
 
 // getCertificateForName returns the best certificate for the given name,
-// defaulting to the first element of c.Certificates if there are no good
+// defaulting to the first element of c.Chains if there are no good
 // options.
-func (c *Config) getCertificateForName(name string) *Certificate {
-	if len(c.Certificates) == 1 || c.NameToCertificate == nil {
+func (c *Config) getCertificateForName(name string) *CertificateChain {
+	if len(c.Chains) == 1 || c.NameToChain == nil {
 		// There's only one choice, so no point doing any work.
-		return &c.Certificates[0]
+		return &c.Chains[0]
 	}
 
 	name = strings.ToLower(name)
@@ -2145,7 +2148,7 @@ func (c *Config) getCertificateForName(name string) *Certificate {
 		name = name[:len(name)-1]
 	}
 
-	if cert, ok := c.NameToCertificate[name]; ok {
+	if cert, ok := c.NameToChain[name]; ok {
 		return cert
 	}
 
@@ -2155,13 +2158,13 @@ func (c *Config) getCertificateForName(name string) *Certificate {
 	for i := range labels {
 		labels[i] = "*"
 		candidate := strings.Join(labels, ".")
-		if cert, ok := c.NameToCertificate[candidate]; ok {
+		if cert, ok := c.NameToChain[candidate]; ok {
 			return cert
 		}
 	}
 
 	// If nothing matches, return the first certificate.
-	return &c.Certificates[0]
+	return &c.Chains[0]
 }
 
 func (c *Config) signSignatureAlgorithms() []signatureAlgorithm {
@@ -2178,28 +2181,28 @@ func (c *Config) verifySignatureAlgorithms() []signatureAlgorithm {
 	return supportedSignatureAlgorithms
 }
 
-// BuildNameToCertificate parses c.Certificates and builds c.NameToCertificate
+// BuildNameToCertificate parses c.Chains and builds c.NameToCertificate
 // from the CommonName and SubjectAlternateName fields of each of the leaf
 // certificates.
 func (c *Config) BuildNameToCertificate() {
-	c.NameToCertificate = make(map[string]*Certificate)
-	for i := range c.Certificates {
-		cert := &c.Certificates[i]
+	c.NameToChain = make(map[string]*CertificateChain)
+	for i := range c.Chains {
+		cert := &c.Chains[i]
 		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
 		if err != nil {
 			continue
 		}
 		if len(x509Cert.Subject.CommonName) > 0 {
-			c.NameToCertificate[x509Cert.Subject.CommonName] = cert
+			c.NameToChain[x509Cert.Subject.CommonName] = cert
 		}
 		for _, san := range x509Cert.DNSNames {
-			c.NameToCertificate[san] = cert
+			c.NameToChain[san] = cert
 		}
 	}
 }
 
-// A Certificate is a chain of one or more certificates, leaf first.
-type Certificate struct {
+// A CertificateChain is a chain of one or more certificates, leaf first.
+type CertificateChain struct {
 	Certificate [][]byte
 	PrivateKey  crypto.PrivateKey // supported types: *rsa.PrivateKey, *ecdsa.PrivateKey
 	// OCSPStaple contains an optional OCSP response which will be served
@@ -2214,6 +2217,15 @@ type Certificate struct {
 	// processing for TLS clients doing client authentication. If nil, the
 	// leaf certificate will be parsed as needed.
 	Leaf *x509.Certificate
+	// ChainPath is the path to the temporary on disk copy of the certificate
+	// chain.
+	ChainPath string
+	// KeyPath is the path to the temporary on disk copy of the key.
+	KeyPath string
+	// RootPath is the path to the temporary on disk copy of the root of the
+	// certificate chain. If the chain only contains one certificate ChainPath
+	// and RootPath will be the same.
+	RootPath string
 }
 
 // A TLS record.
@@ -2424,4 +2436,91 @@ func isAllZero(v []byte) bool {
 		}
 	}
 	return true
+}
+
+var baseCertTemplate = &x509.Certificate{
+	SerialNumber: big.NewInt(57005),
+	Subject: pkix.Name{
+		CommonName:   "test cert",
+		Country:      []string{"US"},
+		Province:     []string{"Some-State"},
+		Organization: []string{"Internet Widgits Pty Ltd"},
+	},
+	NotBefore:             time.Now().Add(-time.Hour),
+	NotAfter:              time.Now().Add(time.Hour),
+	DNSNames:              []string{"test"},
+	IsCA:                  true,
+	BasicConstraintsValid: true,
+}
+
+var tmpDir string
+
+func generateSingleCertChain(template *x509.Certificate, key crypto.Signer, ocspStaple, sctList []byte) CertificateChain {
+	cert := generateTestCert(template, nil, key, ocspStaple, sctList)
+	tmpCertPath, tmpKeyPath := writeTempCertFile([]*x509.Certificate{cert}), writeTempKeyFile(key)
+	return CertificateChain{
+		Certificate:                    [][]byte{cert.Raw},
+		PrivateKey:                     key,
+		OCSPStaple:                     ocspStaple,
+		SignedCertificateTimestampList: sctList,
+		Leaf:                           cert,
+		ChainPath:                      tmpCertPath,
+		KeyPath:                        tmpKeyPath,
+		RootPath:                       tmpCertPath,
+	}
+}
+
+func writeTempCertFile(certs []*x509.Certificate) string {
+	f, err := os.CreateTemp(tmpDir, "test-cert")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create temp file: %s", err))
+	}
+	for _, cert := range certs {
+		if _, err := f.Write(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})); err != nil {
+			panic(fmt.Sprintf("failed to write test certificate: %s", err))
+		}
+	}
+	tmpCertPath := f.Name()
+	if err := f.Close(); err != nil {
+		panic(fmt.Sprintf("failed to close test certificate temp file: %s", err))
+	}
+	return tmpCertPath
+}
+
+func writeTempKeyFile(privKey crypto.Signer) string {
+	f, err := os.CreateTemp(tmpDir, "test-key")
+	if err != nil {
+		panic(fmt.Sprintf("failed to create temp file: %s", err))
+	}
+	keyDER, err := x509.MarshalPKCS8PrivateKey(privKey)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal test key: %s", err))
+	}
+	if _, err := f.Write(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})); err != nil {
+		panic(fmt.Sprintf("failed to write test key: %s", err))
+	}
+	tmpKeyPath := f.Name()
+	if err := f.Close(); err != nil {
+		panic(fmt.Sprintf("failed to close test key temp file: %s", err))
+	}
+	return tmpKeyPath
+}
+
+func generateTestCert(template, issuer *x509.Certificate, key crypto.Signer, ocspStaple, sctList []byte) *x509.Certificate {
+	if template == nil {
+		template = baseCertTemplate
+	}
+	if issuer == nil {
+		issuer = template
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, issuer, key.Public(), key)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create test certificate: %s", err))
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse test certificate: %s", err))
+	}
+
+	return cert
 }

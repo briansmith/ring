@@ -40,6 +40,7 @@ struct TestConfig {
   std::vector<uint16_t> curves;
   std::string key_file;
   std::string cert_file;
+  std::string trust_cert;
   std::string expect_server_name;
   bool enable_ech_grease = false;
   std::vector<std::string> ech_server_configs;

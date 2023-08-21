@@ -218,6 +218,7 @@ std::vector<Flag> SortedFlags() {
       IntVectorFlag("-curves", &TestConfig::curves),
       StringFlag("-key-file", &TestConfig::key_file),
       StringFlag("-cert-file", &TestConfig::cert_file),
+      StringFlag("-trust-cert", &TestConfig::trust_cert),
       StringFlag("-expect-server-name", &TestConfig::expect_server_name),
       BoolFlag("-enable-ech-grease", &TestConfig::enable_ech_grease),
       Base64VectorFlag("-ech-server-config", &TestConfig::ech_server_configs),
