@@ -89,6 +89,9 @@
 #elif defined(__MIPSEL__) && defined(__LP64__)
 #define OPENSSL_64_BIT
 #define OPENSSL_MIPS64
+#elif defined(__PPC64__) && defined(__LITTLE_ENDIAN__)
+#define OPENSSL_64_BIT
+#define OPENSSL_NO_ASM
 #elif defined(__wasm__)
 #define OPENSSL_32_BIT
 #else
