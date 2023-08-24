@@ -1158,8 +1158,8 @@ TEST_F(BNTest, LittleEndian) {
   ASSERT_TRUE(BN_bn2le_padded(out, sizeof(out), x.get()));
   EXPECT_EQ(Bytes(zeros), Bytes(out));
 
-  ASSERT_TRUE(BN_le2bn(out, sizeof(out), y.get()));
-  EXPECT_BIGNUMS_EQUAL("BN_le2bn round-trip", x.get(), y.get());
+  ASSERT_TRUE(BN_lebin2bn(out, sizeof(out), y.get()));
+  EXPECT_BIGNUMS_EQUAL("BN_lebin2bn round-trip", x.get(), y.get());
 
   // Test random numbers at various byte lengths.
   for (size_t bytes = 128 - 7; bytes <= 128; bytes++) {
@@ -1182,8 +1182,8 @@ TEST_F(BNTest, LittleEndian) {
     EXPECT_EQ(Bytes(out), Bytes(expected));
 
     // Make sure the decoding produces the same BIGNUM.
-    ASSERT_TRUE(BN_le2bn(out, bytes, y.get()));
-    EXPECT_BIGNUMS_EQUAL("BN_le2bn round-trip", x.get(), y.get());
+    ASSERT_TRUE(BN_lebin2bn(out, bytes, y.get()));
+    EXPECT_BIGNUMS_EQUAL("BN_lebin2bn round-trip", x.get(), y.get());
   }
 }
 
