@@ -35,7 +35,7 @@
     {"match": "^#include \"net/base/net_export.h\"",
      "replace": ""},
     {"match": "^#include \"base/strings/string_util.h\"",
-     "replace": "#include \"fillins/string_util.h\""},
+     "replace": "#include \"fillins/fillins_string_util.h\""},
     {"match": "^#include \"base/base_paths.h\"",
      "replace": "#include \"fillins/path_service.h\"",
      "using": ["bssl::fillins::PathService"]},
