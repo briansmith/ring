@@ -70,13 +70,18 @@
 #define OPENSSL_WINDOWS
 #endif
 
-// Trusty and Android baremetal aren't't Linux but currently define __linux__.
-// As a workaround, we exclude them here.
+// Trusty and Android baremetal aren't Linux but currently define __linux__.
+// As a workaround, we exclude them here. We also exclude nanolibc. nanolibc
+// sometimes build for a non-Linux target (which should not define __linux__),
+// but also sometimes build for Linux. Although technically running in Linux
+// userspace, this lacks all the libc APIs we'd normally expect on Linux, so we
+// treat it as a non-Linux target.
 //
 // TODO(b/169780122): Remove this workaround once Trusty no longer defines it.
 // TODO(b/291101350): Remove this workaround once Android baremetal no longer
 // defines it.
-#if defined(__linux__) && !defined(__TRUSTY__) && !defined(ANDROID_BAREMETAL)
+#if defined(__linux__) && !defined(__TRUSTY__) && \
+    !defined(ANDROID_BAREMETAL) && !defined(OPENSSL_NANOLIBC)
 #define OPENSSL_LINUX
 #endif
 
