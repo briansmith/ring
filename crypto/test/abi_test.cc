@@ -208,7 +208,10 @@ template <typename... Args>
     WriteFile(stderr_handle, buf, strlen(buf), &unused, nullptr);
   }
 #else
-  write(STDERR_FILENO, buf, strlen(buf));
+  ssize_t ret = write(STDERR_FILENO, buf, strlen(buf));
+  // We'll abort soon anyway, so if we fail to write the message, there's
+  // nothing to do.
+  (void)ret;
 #endif
   abort();
 }
