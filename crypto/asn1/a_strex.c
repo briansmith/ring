@@ -137,19 +137,19 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
   int get_char_error;
   switch (encoding) {
     case MBSTRING_UNIV:
-      get_char = cbs_get_utf32_be;
+      get_char = CBS_get_utf32_be;
       get_char_error = ASN1_R_INVALID_UNIVERSALSTRING;
       break;
     case MBSTRING_BMP:
-      get_char = cbs_get_ucs2_be;
+      get_char = CBS_get_ucs2_be;
       get_char_error = ASN1_R_INVALID_BMPSTRING;
       break;
     case MBSTRING_ASC:
-      get_char = cbs_get_latin1;
+      get_char = CBS_get_latin1;
       get_char_error = ERR_R_INTERNAL_ERROR;  // Should not be possible.
       break;
     case MBSTRING_UTF8:
-      get_char = cbs_get_utf8;
+      get_char = CBS_get_utf8;
       get_char_error = ASN1_R_INVALID_UTF8STRING;
       break;
     default:
@@ -172,7 +172,7 @@ static int do_buf(const unsigned char *buf, int buflen, int encoding,
       uint8_t utf8_buf[6];
       CBB utf8_cbb;
       CBB_init_fixed(&utf8_cbb, utf8_buf, sizeof(utf8_buf));
-      if (!cbb_add_utf8(&utf8_cbb, c)) {
+      if (!CBB_add_utf8(&utf8_cbb, c)) {
         OPENSSL_PUT_ERROR(ASN1, ERR_R_INTERNAL_ERROR);
         return 1;
       }

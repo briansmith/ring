@@ -339,8 +339,8 @@ static int parse_bag_attributes(CBS *attrs, uint8_t **out_friendly_name,
       }
       while (CBS_len(&value) != 0) {
         uint32_t c;
-        if (!cbs_get_ucs2_be(&value, &c) ||
-            !cbb_add_utf8(&cbb, c)) {
+        if (!CBS_get_ucs2_be(&value, &c) ||
+            !CBB_add_utf8(&cbb, c)) {
           OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_INVALID_CHARACTERS);
           CBB_cleanup(&cbb);
           goto err;
@@ -972,8 +972,8 @@ static int add_bag_attributes(CBB *bag, const char *name, size_t name_len,
     CBS_init(&name_cbs, (const uint8_t *)name, name_len);
     while (CBS_len(&name_cbs) != 0) {
       uint32_t c;
-      if (!cbs_get_utf8(&name_cbs, &c) ||
-          !cbb_add_ucs2_be(&value, c)) {
+      if (!CBS_get_utf8(&name_cbs, &c) ||
+          !CBB_add_ucs2_be(&value, c)) {
         OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_INVALID_CHARACTERS);
         return 0;
       }

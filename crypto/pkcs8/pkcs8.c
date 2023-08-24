@@ -85,15 +85,15 @@ static int pkcs12_encode_password(const char *in, size_t in_len, uint8_t **out,
   CBS_init(&cbs, (const uint8_t *)in, in_len);
   while (CBS_len(&cbs) != 0) {
     uint32_t c;
-    if (!cbs_get_utf8(&cbs, &c) ||
-        !cbb_add_ucs2_be(&cbb, c)) {
+    if (!CBS_get_utf8(&cbs, &c) ||
+        !CBB_add_ucs2_be(&cbb, c)) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_INVALID_CHARACTERS);
       goto err;
     }
   }
 
   // Terminate the result with a UCS-2 NUL.
-  if (!cbb_add_ucs2_be(&cbb, 0) ||
+  if (!CBB_add_ucs2_be(&cbb, 0) ||
       !CBB_finish(&cbb, out, out_len)) {
     goto err;
   }
