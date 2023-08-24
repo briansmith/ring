@@ -82,7 +82,7 @@
     {"match": "^#include \"base/memory/ref_counted.h\"",
      "replace": "#include <memory>"},
     {"match": "^#include \"base/base64.h\"",
-     "replace": "#include \"fillins/base64.h\""},
+     "replace": "#include \"fillins/fillins_base64.h\""},
     {"match": "^#include \"base/strings/stringprintf.h\"",
      "replace": ""},
     {"match": "^#include \"third_party/boringssl/src/include/openssl/(.*).h\"",

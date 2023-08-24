@@ -353,7 +353,7 @@ set(
   pki/crl.cc
   pki/encode_values.cc
   pki/extended_key_usage.cc
-  pki/fillins/base64.cc
+  pki/fillins/fillins_base64.cc
   pki/fillins/ip_address.cc
   pki/fillins/openssl_util.cc
   pki/fillins/string_util.cc
