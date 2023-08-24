@@ -354,6 +354,8 @@ class GN(object):
       self.PrintVariableSection(out, 'ssl_sources',
                                 files['ssl'] + files['ssl_internal_headers'])
       self.PrintVariableSection(out, 'ssl_headers', files['ssl_headers'])
+      self.PrintVariableSection(out, 'pki_sources',
+                                files['pki'] + files['pki_internal_headers'])
       self.PrintVariableSection(out, 'tool_sources',
                                 files['tool'] + files['tool_headers'])
 
@@ -372,7 +374,10 @@ class GN(object):
                                 files['crypto_test'])
       self.PrintVariableSection(out, 'crypto_test_data',
                                 files['crypto_test_data'])
+      self.PrintVariableSection(out, 'pki_test_data',
+                                files['pki_test_data'])
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
+      self.PrintVariableSection(out, 'pki_test_sources', files['pki_test'])
 
 
 class GYP(object):
