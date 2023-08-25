@@ -9,7 +9,7 @@
 
 namespace bssl {
 
-enum OPENSSL_EXPORT Error {
+enum Error {
   OK = 0,
 };
 
