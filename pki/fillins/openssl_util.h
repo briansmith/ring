@@ -17,8 +17,8 @@ namespace fillins {
 // the OpenSSL error stack on function exit.
 class OPENSSL_EXPORT OpenSSLErrStackTracer {
  public:
-  OPENSSL_EXPORT OpenSSLErrStackTracer();
-  OPENSSL_EXPORT ~OpenSSLErrStackTracer();
+  OpenSSLErrStackTracer();
+  ~OpenSSLErrStackTracer();
 };
 
 }  // namespace fillins

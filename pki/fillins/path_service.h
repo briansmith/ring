@@ -15,13 +15,12 @@ namespace fillins {
 
 class OPENSSL_EXPORT FilePath {
  public:
-  OPENSSL_EXPORT FilePath();
-  OPENSSL_EXPORT FilePath(const std::string &path);
+  FilePath();
+  FilePath(const std::string &path);
 
-  OPENSSL_EXPORT const std::string &value() const;
+  const std::string &value() const;
 
-  OPENSSL_EXPORT FilePath
-  AppendASCII(const std::string &ascii_path_element) const;
+  FilePath AppendASCII(const std::string &ascii_path_element) const;
 
  private:
   std::string path_;
