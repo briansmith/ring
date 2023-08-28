@@ -15,7 +15,7 @@ namespace bssl {
 
 namespace fillins {
 
-OPENSSL_EXPORT bool ReadFileToString(const FilePath &path, std::string *out);
+bool ReadFileToString(const FilePath &path, std::string *out);
 
 }  // namespace fillins
 
