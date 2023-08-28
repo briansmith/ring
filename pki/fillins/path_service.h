@@ -26,7 +26,7 @@ class OPENSSL_EXPORT FilePath {
   std::string path_;
 };
 
-enum OPENSSL_EXPORT PathKey {
+enum PathKey {
   DIR_SOURCE_ROOT = 0,
 };
 
