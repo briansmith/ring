@@ -87,43 +87,6 @@ static void ForEachMismatch(const CallerState &a, const CallerState &b,
   LOOP_CALLER_STATE_REGISTERS()
 #undef CALLER_STATE_REGISTER
 }
-
-// ReadUnwindResult adds the results of the most recent unwind test to |out|.
-static void ReadUnwindResult(Result *out);
-
-crypto_word_t RunTrampoline(Result *out, crypto_word_t func,
-                            const crypto_word_t *argv, size_t argc,
-                            bool unwind) {
-  CallerState state;
-  RAND_bytes(reinterpret_cast<uint8_t *>(&state), sizeof(state));
-
-  unwind &= g_unwind_tests_enabled;
-  CallerState state2 = state;
-  crypto_word_t ret = abi_test_trampoline(func, &state2, argv, argc, unwind);
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
-  // Query and clear the direction flag early, so negative tests do not
-  // interfere with |malloc|.
-  bool direction_flag = abi_test_get_and_clear_direction_flag();
-#endif  // OPENSSL_X86_64 || OPENSSL_X86
-
-  *out = Result();
-  ForEachMismatch(state, state2, [&](const char *reg) {
-    out->errors.push_back(std::string(reg) + " was not restored after return");
-  });
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
-  // Linux and Windows ABIs for x86 require the direction flag be cleared on
-  // return. (Some OpenSSL assembly preserves it, which is stronger, but we only
-  // require what is specified by the ABI so |CHECK_ABI| works with C compiler
-  // output.)
-  if (direction_flag) {
-    out->errors.emplace_back("Direction flag set after return");
-  }
-#endif  // OPENSSL_X86_64 || OPENSSL_X86
-  if (unwind) {
-    ReadUnwindResult(out);
-  }
-  return ret;
-}
 #endif  // SUPPORTS_ABI_TEST
 
 #if defined(SUPPORTS_UNWIND_TEST)
@@ -474,8 +437,8 @@ static bool g_in_trampoline = false;
 // g_unwind_function_done, if |g_in_trampoline| is true, is whether the function
 // under test has returned. It is undefined otherwise.
 static bool g_unwind_function_done;
-// g_trampoline_state, if |g_in_trampoline| is true, is the state the function
-// under test must preserve. It is undefined otherwise.
+// g_trampoline_state, during an unwind-enabled ABI test, is the state the
+// function under test must preserve. It is undefined otherwise.
 static CallerState g_trampoline_state;
 // g_trampoline_sp, if |g_in_trampoline| is true, is the stack pointer of the
 // trampoline frame. It is undefined otherwise.
@@ -536,8 +499,6 @@ static void CheckUnwind(UnwindCursor *cursor) {
     g_in_trampoline = true;
     g_unwind_function_done = false;
     g_trampoline_sp = sp;
-    g_trampoline_state = cursor->GetCallerState().ValueOrDie(
-        "Error getting initial caller state");
   } else {
     if (sp == g_trampoline_sp || g_unwind_function_done) {
       // |g_unwind_function_done| should imply |sp| is |g_trampoline_sp|, but
@@ -608,6 +569,7 @@ static void CheckUnwind(UnwindCursor *cursor) {
   }
 }
 
+// ReadUnwindResult adds the results of the most recent unwind test to |out|.
 static void ReadUnwindResult(Result *out) {
   for (size_t i = 0; i < g_num_unwind_errors; i++) {
 #if defined(OPENSSL_WINDOWS)
@@ -783,6 +745,48 @@ static void ReadUnwindResult(Result *) {}
 static void EnableUnwindTestsImpl() {}
 
 #endif  // SUPPORTS_UNWIND_TEST
+
+#if defined(SUPPORTS_ABI_TEST)
+crypto_word_t RunTrampoline(Result *out, crypto_word_t func,
+                            const crypto_word_t *argv, size_t argc,
+                            bool unwind) {
+  CallerState state;
+  RAND_bytes(reinterpret_cast<uint8_t *>(&state), sizeof(state));
+
+  unwind &= g_unwind_tests_enabled;
+#if defined(SUPPORTS_UNWIND_TEST)
+  if (unwind) {
+    // Save the caller state for the unwind tester to check for.
+    g_trampoline_state = state;
+  }
+#endif
+  CallerState state2 = state;
+  crypto_word_t ret = abi_test_trampoline(func, &state2, argv, argc, unwind);
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
+  // Query and clear the direction flag early, so negative tests do not
+  // interfere with |malloc|.
+  bool direction_flag = abi_test_get_and_clear_direction_flag();
+#endif  // OPENSSL_X86_64 || OPENSSL_X86
+
+  *out = Result();
+  ForEachMismatch(state, state2, [&](const char *reg) {
+    out->errors.push_back(std::string(reg) + " was not restored after return");
+  });
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
+  // Linux and Windows ABIs for x86 require the direction flag be cleared on
+  // return. (Some OpenSSL assembly preserves it, which is stronger, but we only
+  // require what is specified by the ABI so |CHECK_ABI| works with C compiler
+  // output.)
+  if (direction_flag) {
+    out->errors.emplace_back("Direction flag set after return");
+  }
+#endif  // OPENSSL_X86_64 || OPENSSL_X86
+  if (unwind) {
+    ReadUnwindResult(out);
+  }
+  return ret;
+}
+#endif  // SUPPORTS_ABI_TEST
 
 }  // namespace internal
 
