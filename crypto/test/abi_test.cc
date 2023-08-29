@@ -302,7 +302,7 @@ class UnwindCursor {
 class UnwindCursor {
  public:
   explicit UnwindCursor(unw_context_t *ctx) : ctx_(ctx) {
-    int ret = InitAtSignalFrame(&cursor_);
+    int ret = unw_init_local2(&cursor_, ctx_, UNW_INIT_SIGNAL_FRAME);
     if (ret < 0) {
       FatalError("Error getting unwind context: ", unw_strerror(ret));
     }
@@ -367,7 +367,7 @@ class UnwindCursor {
     // constructor.
     unw_cursor_t cursor;
     unw_word_t off;
-    if (InitAtSignalFrame(&cursor) != 0 ||
+    if (unw_init_local2(&cursor, ctx_, UNW_INIT_SIGNAL_FRAME) != 0 ||
         unw_get_proc_name(&cursor, starting_ip_buf_, sizeof(starting_ip_buf_),
                           &off) != 0) {
       StrCatSignalSafe(starting_ip_buf_, "0x", WordToHex(starting_ip_).data());
@@ -387,30 +387,6 @@ class UnwindCursor {
     assert(ret < 0);
     const char *msg = unw_strerror(ret);
     return UnwindStatus(msg == nullptr ? "unknown error" : msg);
-  }
-
-  int InitAtSignalFrame(unw_cursor_t *cursor) {
-    // Work around a bug in libunwind which breaks rax and rdx recovery. This
-    // breaks functions which temporarily use rax as the CFA register. See
-    // https://git.savannah.gnu.org/gitweb/?p=libunwind.git;a=commit;h=819bf51bbd2da462c2ec3401e8ac9153b6e725e3
-    OPENSSL_memset(cursor, 0, sizeof(*cursor));
-    int ret = unw_init_local(cursor, ctx_);
-    if (ret < 0) {
-      return ret;
-    }
-    for (;;) {
-      ret = unw_is_signal_frame(cursor);
-      if (ret < 0) {
-        return ret;
-      }
-      if (ret != 0) {
-        return 0;  // Found the signal frame.
-      }
-      ret = unw_step(cursor);
-      if (ret < 0) {
-        return ret;
-      }
-    }
   }
 
   int GetReg(crypto_word_t *out, unw_regnum_t reg) {
@@ -694,10 +670,11 @@ static bool IsBeingDebugged() {
 
 static pthread_t g_main_thread;
 
-static void TrapHandler(int sig) {
+static void TrapHandler(int sig, siginfo_t *info, void *ucontext_v) {
   // Note this is a signal handler, so only async-signal-safe functions may be
   // used here. See signal-safety(7). libunwind promises local unwind is
   // async-signal-safe.
+  ucontext_t *ucontext = static_cast<ucontext_t*>(ucontext_v);
 
   // |pthread_equal| is not listed as async-signal-safe, but this is clearly an
   // oversight.
@@ -705,13 +682,7 @@ static void TrapHandler(int sig) {
     FatalError("SIGTRAP on background thread");
   }
 
-  unw_context_t ctx;
-  int ret = unw_getcontext(&ctx);
-  if (ret < 0) {
-    FatalError("Error getting unwind context: ", unw_strerror(ret));
-  }
-
-  UnwindCursor cursor(&ctx);
+  UnwindCursor cursor(ucontext);
   CheckUnwind(&cursor);
 }
 
@@ -727,7 +698,8 @@ static void EnableUnwindTestsImpl() {
   struct sigaction trap_action;
   OPENSSL_memset(&trap_action, 0, sizeof(trap_action));
   sigemptyset(&trap_action.sa_mask);
-  trap_action.sa_handler = TrapHandler;
+  trap_action.sa_flags = SA_SIGINFO;
+  trap_action.sa_sigaction = TrapHandler;
   if (sigaction(SIGTRAP, &trap_action, NULL) != 0) {
     perror("sigaction");
     abort();
