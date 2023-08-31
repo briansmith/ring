@@ -15,7 +15,7 @@
 
 use core::marker::PhantomData;
 
-use crate::{ForeignTypeRef, CSlice};
+use crate::{CSlice, ForeignTypeRef};
 
 /// The SHA-256 digest algorithm.
 #[derive(Clone)]
@@ -86,7 +86,6 @@ impl Sha512 {
 pub struct Digest<M: Md, const OUTPUT_SIZE: usize>(bssl_sys::EVP_MD_CTX, PhantomData<M>);
 
 impl<M: Md, const OUTPUT_SIZE: usize> Digest<M, OUTPUT_SIZE> {
-
     /// Creates a new Digest from the given `Md` type parameter.
     ///
     /// Panics:

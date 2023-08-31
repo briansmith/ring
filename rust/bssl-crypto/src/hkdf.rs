@@ -45,7 +45,7 @@ impl<M: Md> Hkdf<M> {
         Self {
             salt: salt.map(Vec::from),
             ikm: Vec::from(ikm),
-            _marker: PhantomData::default(),
+            _marker: PhantomData,
         }
     }
 
