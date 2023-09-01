@@ -73,6 +73,7 @@ include = [
     "crypto/fipsmodule/ec/gfp.h",
     "crypto/fipsmodule/ec/gfp_p256.c",
     "crypto/fipsmodule/ec/gfp_p384.c",
+    "crypto/fipsmodule/ec/gfp_p521.c",
     "crypto/fipsmodule/ec/p256.c",
     "crypto/fipsmodule/ec/p256-nistz-table.h",
     "crypto/fipsmodule/ec/p256-nistz.c",

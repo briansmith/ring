@@ -348,7 +348,7 @@ c_template = """
 
 #define BITS %(bits)d
 
-#define P%(bits)d_LIMBS (%(bits)du / LIMB_BITS)
+#define P%(bits)d_LIMBS ((%(bits)d + LIMB_BITS - 1) / LIMB_BITS)
 
 #define FE_LIMBS P%(bits)d_LIMBS
 

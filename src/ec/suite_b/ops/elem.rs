@@ -128,4 +128,4 @@ pub fn unary_op_from_binary_op_assign<M, E: Encoding>(
     unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), a.limbs.as_ptr()) }
 }
 
-pub const MAX_LIMBS: usize = (384 + (LIMB_BITS - 1)) / LIMB_BITS;
+pub const MAX_LIMBS: usize = (521 + (LIMB_BITS - 1)) / LIMB_BITS;

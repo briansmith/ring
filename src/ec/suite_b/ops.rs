@@ -53,6 +53,7 @@ impl Point {
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
     num_limbs: usize,
+    order_bits: usize,
     q: Modulus,
     n: Elem<Unencoded>,
 
@@ -70,7 +71,11 @@ impl CommonOps {
     // The length of a field element, which is the same as the length of a
     // scalar, in bytes.
     pub fn len(&self) -> usize {
-        self.num_limbs * LIMB_BYTES
+        (self.order_bits + 7) / 8
+    }
+
+    pub fn order_bits(&self) -> usize {
+        self.order_bits
     }
 
     #[cfg(test)]
@@ -1014,6 +1019,15 @@ mod tests {
         );
     }
 
+    #[test]
+    fn p521_point_mul_base_test() {
+        point_mul_base_tests(
+            &p521::PRIVATE_KEY_OPS,
+            |s| p521::PRIVATE_KEY_OPS.point_mul_base(s),
+            test_file!("ops/p521_point_mul_base_tests.txt"),
+        );
+    }
+
     pub(super) fn point_mul_base_tests(
         ops: &PrivateKeyOps,
         f: impl Fn(&Scalar) -> Point,
@@ -1216,3 +1230,4 @@ mod tests {
 mod elem;
 pub mod p256;
 pub mod p384;
+pub mod p521;
