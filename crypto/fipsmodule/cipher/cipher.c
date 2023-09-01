@@ -586,6 +586,16 @@ unsigned EVP_CIPHER_CTX_key_length(const EVP_CIPHER_CTX *ctx) {
 }
 
 unsigned EVP_CIPHER_CTX_iv_length(const EVP_CIPHER_CTX *ctx) {
+  if (EVP_CIPHER_mode(ctx->cipher) == EVP_CIPH_GCM_MODE) {
+    int length;
+    int res = EVP_CIPHER_CTX_ctrl((EVP_CIPHER_CTX *)ctx, EVP_CTRL_GET_IVLEN, 0,
+                                  &length);
+    // EVP_CIPHER_CTX_ctrl returning an error should be impossible under this
+    // circumstance. If it somehow did, fallback to the static cipher iv_len.
+    if (res == 1) {
+      return length;
+    }
+  }
   return ctx->cipher->iv_len;
 }
 
