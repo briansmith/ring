@@ -997,6 +997,10 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	if haveHelloRetryRequest {
 		hs.writeServerHash(helloRetryRequest.marshal())
 
+		if !bytes.Equal(hs.hello.sessionID, helloRetryRequest.sessionID) {
+			return errors.New("tls: ClientHello and HelloRetryRequest session IDs did not match.")
+		}
+
 		if c.config.Bugs.FailIfHelloRetryRequested {
 			return errors.New("tls: unexpected HelloRetryRequest")
 		}
@@ -1097,7 +1101,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	}
 
 	if !bytes.Equal(hs.hello.sessionID, hs.serverHello.sessionID) {
-		return errors.New("tls: session IDs did not match.")
+		return errors.New("tls: ClientHello and ServerHello session IDs did not match.")
 	}
 
 	// Resolve PSK and compute the early secret.
