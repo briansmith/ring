@@ -478,14 +478,22 @@ endif()
 
 # Add minimal googletest targets. The provided one has many side-effects, and
 # googletest has a very straightforward build.
-add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+add_library(
+  boringssl_gtest
+  third_party/googletest/googlemock/src/gmock-all.cc
+  third_party/googletest/googletest/src/gtest-all.cc
+)
 if(USE_CUSTOM_LIBCXX)
   target_link_libraries(boringssl_gtest libcxx)
 endif()
 target_include_directories(
     boringssl_gtest
-    PUBLIC third_party/googletest/include
-    PRIVATE third_party/googletest
+    PUBLIC
+    third_party/googletest/googlemock/include
+    third_party/googletest/googletest/include
+    PRIVATE
+    third_party/googletest/googlemock
+    third_party/googletest/googletest
 )
 
 # Declare a dummy target to build all unit tests. Test targets should inject
