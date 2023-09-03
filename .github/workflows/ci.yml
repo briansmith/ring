@@ -194,7 +194,8 @@ jobs:
         rust_channel:
           - stable
           - nightly
-          - 1.57 # MSRV
+          # Some benchmarking dependencies require 1.60.
+          - 1.60.0 # MSRV
           - beta
 
         include:
