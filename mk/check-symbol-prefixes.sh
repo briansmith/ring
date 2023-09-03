@@ -22,7 +22,7 @@ darwin*)
   nm_exe=nm
   ;;
 *)
-  llvm_version=15
+  llvm_version=16
   nm_exe=llvm-nm-$llvm_version
   ;;
 esac
