@@ -88,11 +88,10 @@ That oldest version known to work is documented as the MSRV in
 Bug Reporting
 -------------
 
-Please report bugs either as pull requests or as issues in [the issue
-tracker](https://github.com/briansmith/ring/issues). *ring* has a
-**full disclosure** vulnerability policy. **Please do NOT attempt to report
-any security vulnerability in this code privately to anybody.**
+Please see [SECURITY.md](SECURITY.md) for help on reporting security vulnerabilities.
 
+Please report bugs that aren't security vulnerabilities either as pull requests or as issues in
+[the issue tracker](https://github.com/briansmith/ring/issues).
 
 
 License
