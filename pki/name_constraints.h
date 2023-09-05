@@ -6,11 +6,8 @@
 #define BSSL_PKI_NAME_CONSTRAINTS_H_
 
 #include "fillins/openssl_util.h"
-#include <stdint.h>
-
 #include <memory>
 
-#include "fillins/ip_address.h"
 
 #include "general_names.h"
 
@@ -70,7 +67,7 @@ class OPENSSL_EXPORT NameConstraints {
   bool IsPermittedDirectoryName(const der::Input& name_rdn_sequence) const;
 
   // Returns true if the iPAddress |ip| is permitted.
-  bool IsPermittedIP(const fillins::IPAddress& ip) const;
+  bool IsPermittedIP(const der::Input& ip) const;
 
   // Returns a bitfield of GeneralNameTypes of all the types constrained by this
   // NameConstraints. Name types that aren't supported will only be present if

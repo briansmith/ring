@@ -354,12 +354,12 @@ set(
   pki/encode_values.cc
   pki/extended_key_usage.cc
   pki/fillins/fillins_base64.cc
-  pki/fillins/ip_address.cc
   pki/fillins/openssl_util.cc
   pki/fillins/fillins_string_util.cc
   pki/fillins/utf_string_conversions.cc
   pki/general_names.cc
   pki/input.cc
+  pki/ip_util.cc
   pki/name_constraints.cc
   pki/ocsp.cc
   pki/ocsp_verify_result.cc
@@ -396,6 +396,7 @@ set(
   pki/fillins/path_service.cc
   pki/general_names_unittest.cc
   pki/input_unittest.cc
+  pki/ip_util_unittest.cc
   pki/mock_signature_verify_cache.cc
   pki/name_constraints_unittest.cc
   pki/nist_pkits_unittest.cc

@@ -9,7 +9,6 @@
 #include <memory>
 #include <vector>
 
-#include "fillins/ip_address.h"
 
 #include "cert_error_id.h"
 
@@ -94,12 +93,21 @@ struct OPENSSL_EXPORT GeneralNames {
   std::vector<std::string_view> uniform_resource_identifiers;
 
   // iPAddresses as sequences of octets in network byte order. This will be
-  // populated if the GeneralNames represents a Subject Alternative Name.
-  std::vector<fillins::IPAddress> ip_addresses;
+  // populated if the GeneralNames represents a Subject Alternative Name. Each
+  // address is guaranteed to be either 4 bytes (IPv4) or 16 bytes (IPv6) long.
+  std::vector<der::Input> ip_addresses;
 
-  // iPAddress ranges, as <IP, prefix length> pairs. This will be populated
-  // if the GeneralNames represents a Name Constraints.
-  std::vector<std::pair<fillins::IPAddress, unsigned>> ip_address_ranges;
+  // iPAddress ranges, as <IP, mask> pairs. This will be populated
+  // if the GeneralNames represents a Name Constraints. Each address is
+  // guaranteed to be either 4 bytes (IPv4) or 16 bytes (IPv6) long. The mask
+  // half is guaranteed to be the same size, and consist of some number of 1
+  // bits, followed by some number of 0 bits.
+  //
+  // WARNING: It is not guaranteed that the masked portions of the address are
+  // zero.
+  //
+  // TODO(davidben): Should addresses with non-zero masked portions be rejected?
+  std::vector<std::pair<der::Input, der::Input>> ip_address_ranges;
 
   // DER-encoded OBJECT IDENTIFIERs.
   std::vector<der::Input> registered_ids;
