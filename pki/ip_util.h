@@ -14,9 +14,9 @@ namespace bssl {
 inline constexpr size_t kIPv4AddressSize = 4;
 inline constexpr size_t kIPv6AddressSize = 16;
 
-// Returns whether `mask` is a valid netmask. I.e., whether it the length of an
-// IPv4 or IPv6 address, and is some number of ones, followed by some number of
-// zeros.
+// Returns whether `mask` is a valid netmask. I.e., whether it is the length of
+// an IPv4 or IPv6 address, and is some number of ones, followed by some number
+// of zeros.
 OPENSSL_EXPORT bool IsValidNetmask(der::Input mask);
 
 // Returns whether `addr1` and `addr2` are equal under the netmask `mask`.

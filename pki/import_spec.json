@@ -281,6 +281,7 @@
     "net/cert/pki/parsed_certificate.h",
     "net/cert/pki/parse_certificate_fuzzer.cc",
     "net/cert/pki/parsed_certificate_unittest.cc",
+    "net/cert/pki/parse_crldp_fuzzer.cc",
     "net/cert/pki/parse_name.cc",
     "net/cert/pki/parse_name.h",
     "net/cert/pki/parse_name_unittest.cc",
