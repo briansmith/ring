@@ -507,7 +507,9 @@ jobs:
           wget -O ./wasi-sdk-linux.tar.gz $WASI_URL
           mkdir wasi-sdk
           tar -C ./wasi-sdk -xf wasi-sdk-linux.tar.gz --strip-components=1
-          echo "WASI_SDK_PATH=`pwd`/wasi-sdk" >> $GITHUB_ENV
+          export WASI_SDK_PATH=`pwd`/wasi-sdk
+          echo "WASI_SDK_PATH=${WASI_SDK_PATH}" >> $GITHUB_ENV
+          echo "CC=${WASI_SDK_PATH}/bin/clang --sysroot=${WASI_SDK_PATH}/share/wasi-sysroot" >> $GITHUB_ENV
       
       - name: Install precompiled wasmtime
         run: |
