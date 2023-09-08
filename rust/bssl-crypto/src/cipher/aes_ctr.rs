@@ -13,7 +13,9 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-use crate::cipher::{Cipher, CipherError, EvpAes128Ctr, EvpAes256Ctr, StreamCipher};
+use crate::cipher::{
+    Cipher, CipherError, CipherInitPurpose, EvpAes128Ctr, EvpAes256Ctr, StreamCipher,
+};
 
 /// AES-CTR-128 Cipher implementation.
 pub struct Aes128Ctr(Cipher<EvpAes128Ctr>);
@@ -24,7 +26,7 @@ impl StreamCipher for Aes128Ctr {
 
     /// Creates a new AES-128-CTR cipher instance from key material.
     fn new(key: &Self::Key, nonce: &Self::Nonce) -> Self {
-        Self(Cipher::new(key, nonce))
+        Self(Cipher::new(key, nonce, CipherInitPurpose::Encrypt))
     }
 
     /// Applies the keystream in-place, advancing the counter state appropriately.
@@ -42,7 +44,7 @@ impl StreamCipher for Aes256Ctr {
 
     /// Creates a new AES-256-CTR cipher instance from key material.
     fn new(key: &Self::Key, nonce: &Self::Nonce) -> Self {
-        Self(Cipher::new(key, nonce))
+        Self(Cipher::new(key, nonce, CipherInitPurpose::Encrypt))
     }
 
     /// Applies the keystream in-place, advancing the counter state appropriately.
