@@ -21,6 +21,8 @@ use crate::{
     CSliceMut, ForeignType,
 };
 
+pub use crate::ec::P256;
+
 /// Private key used in a elliptic curve Diffie-Hellman.
 pub struct PrivateKey<C: Curve> {
     /// An EcKey containing the private-public key pair
