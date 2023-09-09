@@ -940,7 +940,7 @@ mod tests {
                 let base = consume_elem(test_case, "A", &m);
                 let e = {
                     let bytes = test_case.consume_bytes("E");
-                    PrivateExponent::from_be_bytes_padded(untrusted::Input::from(&bytes), &m)
+                    PrivateExponent::from_be_bytes_for_test_only(untrusted::Input::from(&bytes), &m)
                         .expect("valid exponent")
                 };
                 let base = into_encoded(base, &m);
