@@ -45,6 +45,23 @@ impl PrivateExponent {
         })
     }
 
+    #[cfg(test)]
+    pub fn from_be_bytes_for_test_only<M>(
+        input: untrusted::Input,
+        p: &Modulus<M>,
+    ) -> Result<Self, error::Unspecified> {
+        // Do exactly what `from_be_bytes_padded` does for any inputs it accepts.
+        if let r @ Ok(_) = Self::from_be_bytes_padded(input, p) {
+            return r;
+        }
+
+        let dP = BoxedLimbs::<M>::positive_minimal_width_from_be_bytes(input)?;
+
+        Ok(Self {
+            limbs: dP.into_limbs(),
+        })
+    }
+
     #[inline]
     pub(super) fn limbs(&self) -> &[Limb] {
         &self.limbs
