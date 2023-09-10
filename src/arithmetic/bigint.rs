@@ -170,6 +170,10 @@ impl<M> BoxedLimbs<M> {
             m: PhantomData,
         }
     }
+
+    fn into_limbs(self) -> Box<[Limb]> {
+        self.limbs
+    }
 }
 
 /// A modulus *s* that is smaller than another modulus *l* so every element of
@@ -534,7 +538,7 @@ pub(crate) fn elem_exp_vartime<M>(
 #[cfg(not(target_arch = "x86_64"))]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
-    exponent: &PrivateExponent<M>,
+    exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     use crate::limb::Window;
@@ -629,7 +633,7 @@ pub fn elem_inverse_consttime<M: Prime>(
 #[cfg(target_arch = "x86_64")]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
-    exponent: &PrivateExponent<M>,
+    exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     // Pretty much all the math here requires CPU feature detection to have
