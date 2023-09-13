@@ -266,7 +266,7 @@ impl Key {
                 ctr32_encrypt_blocks!(vpaes_ctr32_encrypt_blocks, in_out, src, &self.inner, ctr)
             }
 
-            #[cfg(any(target_arch = "x86"))]
+            #[cfg(target_arch = "x86")]
             Implementation::VPAES_BSAES => {
                 super::shift::shift_full_blocks(in_out, src, |input| {
                     self.encrypt_iv_xor_block(ctr.increment(), Block::from(input))
