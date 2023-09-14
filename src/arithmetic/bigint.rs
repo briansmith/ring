@@ -432,6 +432,14 @@ pub(crate) fn elem_exp_vartime<M>(
     acc
 }
 
+/// Uses Fermat's Little Theorem to calculate modular inverse in constant time.
+pub fn elem_inverse_consttime<M: Prime>(
+    a: Elem<M, R>,
+    m: &Modulus<M>,
+) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    elem_exp_consttime(a, &PrivateExponent::for_flt(m), m)
+}
+
 #[cfg(not(target_arch = "x86_64"))]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
@@ -517,14 +525,6 @@ pub fn elem_exp_consttime<M>(
     let r = r.into_unencoded(m);
 
     Ok(r)
-}
-
-/// Uses Fermat's Little Theorem to calculate modular inverse in constant time.
-pub fn elem_inverse_consttime<M: Prime>(
-    a: Elem<M, R>,
-    m: &Modulus<M>,
-) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    elem_exp_consttime(a, &PrivateExponent::for_flt(m), m)
 }
 
 #[cfg(target_arch = "x86_64")]
