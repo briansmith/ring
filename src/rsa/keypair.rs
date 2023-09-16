@@ -420,7 +420,10 @@ impl KeyPair {
         bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
-        let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, n).into_modulus::<QQ>(cpu_features)?;
+        let qq = bigint::Modulus::from_elem(
+            bigint::elem_mul(&q_mod_n, q_mod_n_decoded, n),
+            cpu_features,
+        )?;
 
         // This should never fail since `n` and `e` were validated above.
 
@@ -459,7 +462,7 @@ impl signature::KeyPair for KeyPair {
 
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
-    exponent: bigint::PrivateExponent<M>,
+    exponent: bigint::PrivateExponent,
 }
 
 impl<M: Prime> PrivatePrime<M> {

@@ -1,4 +1,4 @@
-// Copyright 2017-2023 Brian Smith.
+// Copyright 2015-2022 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,13 +12,25 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[macro_use]
-pub mod constant;
+use super::{Limb, LIMB_BITS};
 
-#[cfg(feature = "alloc")]
-pub mod bigint;
+#[derive(Clone)]
+#[repr(transparent)]
+pub(super) struct N0([Limb; 2]);
 
-pub mod montgomery;
+pub(super) const N0_LIMBS_USED: usize = 64 / LIMB_BITS;
 
-#[cfg(feature = "alloc")]
-mod nonnegative;
+impl From<u64> for N0 {
+    #[inline]
+    fn from(n0: u64) -> Self {
+        #[cfg(target_pointer_width = "64")]
+        {
+            Self([n0, 0])
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            Self([n0 as Limb, (n0 >> LIMB_BITS) as Limb])
+        }
+    }
+}

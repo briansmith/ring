@@ -953,7 +953,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "aes_nohw_set_encrypt_key",
         "aesni_gcm_decrypt",
         "aesni_gcm_encrypt",
-        "bn_from_montgomery",
         "bn_from_montgomery_in_place",
         "bn_gather5",
         "bn_mul_mont",
