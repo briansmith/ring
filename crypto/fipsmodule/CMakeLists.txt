@@ -55,7 +55,7 @@ endif()
 
 if(FIPS_DELOCATE)
   if(FIPS_SHARED)
-    error("Can't set both delocate and shared mode for FIPS build")
+    message(FATAL_ERROR "Can't set both delocate and shared mode for FIPS build")
   endif()
 
   add_library(
@@ -134,7 +134,7 @@ if(FIPS_DELOCATE)
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
   if(NOT BUILD_SHARED_LIBS)
-    error("FIPS_SHARED set but not BUILD_SHARED_LIBS")
+    message(FATAL_ERROR "FIPS_SHARED set but not BUILD_SHARED_LIBS")
   endif()
 
   add_library(
