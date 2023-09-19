@@ -27,7 +27,7 @@ use crate::{
 use core::ops::RangeFrom;
 
 #[derive(Clone)]
-pub(crate) struct Key {
+pub(super) struct Key {
     inner: AES_KEY,
     cpu_features: cpu::Features,
 }
