@@ -252,13 +252,13 @@ impl Key {
                     }
                     ctr32_encrypt_blocks!(
                         bsaes_ctr32_encrypt_blocks,
-                        &mut in_out[src.clone()][bsaes_in_out_len..],
+                        &mut in_out[..(src.start + bsaes_in_out_len)],
                         src.clone(),
                         &bsaes_key,
                         ctr
                     );
 
-                    &mut in_out[src.clone()][bsaes_in_out_len..]
+                    &mut in_out[bsaes_in_out_len..]
                 } else {
                     in_out
                 };
