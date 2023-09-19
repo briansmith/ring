@@ -210,11 +210,6 @@ static void ecp_nistz256_windowed_mul(P256_POINT *r,
   ecp_nistz256_point_add(r, r, &h);
 }
 
-typedef union {
-  P256_POINT p;
-  P256_POINT_AFFINE a;
-} p256_point_union_t;
-
 static crypto_word calc_first_wvalue(size_t *index, const uint8_t p_str[33]) {
   static const size_t kWindowSize = 7;
   static const crypto_word kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
@@ -249,8 +244,6 @@ void p256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
 }
 
 void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
-  alignas(32) p256_point_union_t t, p;
-
   P256_SCALAR_BYTES p_str;
   p256_scalar_bytes_from_limbs(p_str, scalar);
 
@@ -258,32 +251,37 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   size_t index = 0;
   crypto_word wvalue = calc_first_wvalue(&index, p_str);
 
-  ecp_nistz256_select_w7(&p.a, ecp_nistz256_precomputed[0], (int)(wvalue >> 1));
-  ecp_nistz256_neg(p.p.Z, p.p.Y);
-  copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
+  alignas(32) P256_POINT_AFFINE t;
+  alignas(32) P256_POINT p;
+  ecp_nistz256_select_w7(&t, ecp_nistz256_precomputed[0], (int)(wvalue >> 1));
+  ecp_nistz256_neg(p.Z, t.Y);
+  copy_conditional(t.Y, p.Z, wvalue & 1);
 
-  // Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
-  // is infinity and |ONE| otherwise. |p| was computed from the table, so it
+  // Convert |t| from affine to Jacobian coordinates. We set Z to zero if |t|
+  // is infinity and |ONE| otherwise. |t| was computed from the table, so it
   // is infinity iff |wvalue >> 1| is zero.
-  OPENSSL_memset(p.p.Z, 0, sizeof(p.p.Z));
-  copy_conditional(p.p.Z, ONE, is_not_zero(wvalue >> 1));
+  limbs_copy(p.X, t.X, P256_LIMBS);
+  limbs_copy(p.Y, t.Y, P256_LIMBS);
+  limbs_zero(p.Z, P256_LIMBS);
+  copy_conditional(p.Z, ONE, is_not_zero(wvalue >> 1));
 
   for (int i = 1; i < 37; i++) {
     wvalue = calc_wvalue(&index, p_str);
 
-    ecp_nistz256_select_w7(&t.a, ecp_nistz256_precomputed[i], (int)(wvalue >> 1));
+    ecp_nistz256_select_w7(&t, ecp_nistz256_precomputed[i], (int)(wvalue >> 1));
 
-    ecp_nistz256_neg(t.p.Z, t.a.Y);
-    copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
+    alignas(32) BN_ULONG neg_Y[P256_LIMBS];
+    ecp_nistz256_neg(neg_Y, t.Y);
+    copy_conditional(t.Y, neg_Y, wvalue & 1);
 
-    // Note |ecp_nistz256_point_add_affine| does not work if |p.p| and |t.a|
-    // are the same non-infinity point.
-    ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
+    // Note |ecp_nistz256_point_add_affine| does not work if |p| and |t| are the
+    // same non-infinity point.
+    ecp_nistz256_point_add_affine(&p, &p, &t);
   }
 
-  limbs_copy(r->X, p.p.X, P256_LIMBS);
-  limbs_copy(r->Y, p.p.Y, P256_LIMBS);
-  limbs_copy(r->Z, p.p.Z, P256_LIMBS);
+  limbs_copy(r->X, p.X, P256_LIMBS);
+  limbs_copy(r->Y, p.Y, P256_LIMBS);
+  limbs_copy(r->Z, p.Z, P256_LIMBS);
 }
 
 #endif /* defined(OPENSSL_USE_NISTZ256) */
