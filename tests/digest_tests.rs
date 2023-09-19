@@ -46,8 +46,6 @@ fn digest_misc() {
     });
 }
 
-// wasm_bindgen doesn't build this correctly.
-#[cfg(not(target_arch = "wsam32"))]
 mod digest_shavs {
     use ring::{digest, test};
 
