@@ -17,8 +17,11 @@
 //! intended for internal use within this crate only, to create higher-level abstractions suitable
 //! to be exposed externally.
 
+use alloc::borrow::ToOwned;
+use alloc::vec;
+use alloc::vec::Vec;
 use core::panic;
-use std::{borrow::Borrow, fmt::Debug, ops::Deref};
+use core::{borrow::Borrow, fmt::Debug, ops::Deref};
 
 use crate::{bn::BigNum, CSlice, CSliceMut, ForeignType, ForeignTypeRef};
 

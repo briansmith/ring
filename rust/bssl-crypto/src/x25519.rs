@@ -17,6 +17,8 @@
 //! “curve25519”, but “X25519” is a more precise name. See http://cr.yp.to/ecdh.html and
 //! https://tools.ietf.org/html/rfc7748.
 
+use alloc::borrow::ToOwned;
+
 /// Number of bytes in a private key in X25519
 pub const PRIVATE_KEY_LEN: usize = bssl_sys::X25519_PRIVATE_KEY_LEN as usize;
 /// Number of bytes in a public key in X25519

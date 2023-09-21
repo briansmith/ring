@@ -12,7 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
 use crate::{CSlice, CSliceMut};
+use alloc::vec::Vec;
 use bssl_sys::{EVP_AEAD, EVP_AEAD_CTX};
 
 /// Error returned in the event of an unsuccessful AEAD operation.

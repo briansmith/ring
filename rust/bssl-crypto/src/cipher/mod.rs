@@ -15,8 +15,8 @@
 
 use crate::{CSlice, CSliceMut};
 use bssl_sys::EVP_CIPHER;
-use std::ffi::c_int;
-use std::marker::PhantomData;
+use core::ffi::c_int;
+use core::marker::PhantomData;
 
 /// AES-CTR stream cipher operations.
 pub mod aes_ctr;
@@ -98,7 +98,7 @@ impl<C: EvpCipherType> Cipher<C> {
             bssl_sys::EVP_EncryptInit_ex(
                 ctx,
                 C::evp_cipher(),
-                std::ptr::null_mut(),
+                core::ptr::null_mut(),
                 key_cslice.as_ptr(),
                 iv_cslice.as_ptr(),
             )

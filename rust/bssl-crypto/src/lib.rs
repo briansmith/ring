@@ -21,8 +21,10 @@
     clippy::panic,
     clippy::expect_used
 )]
+#![cfg_attr(not(any(feature = "std", test)), no_std)]
 
 //! Rust BoringSSL bindings
+extern crate alloc;
 
 extern crate core;
 
@@ -79,7 +81,7 @@ impl CSlice<'_> {
     /// Returns a raw pointer to the value, which is safe to pass over FFI.
     pub fn as_ptr<T>(&self) -> *const T {
         if self.0.is_empty() {
-            std::ptr::null()
+            core::ptr::null()
         } else {
             self.0.as_ptr() as *const T
         }
@@ -97,7 +99,7 @@ impl CSliceMut<'_> {
     /// Returns a raw pointer to the value, which is safe to pass over FFI.
     pub fn as_mut_ptr<T>(&mut self) -> *mut T {
         if self.0.is_empty() {
-            std::ptr::null_mut()
+            core::ptr::null_mut()
         } else {
             self.0.as_mut_ptr() as *mut T
         }

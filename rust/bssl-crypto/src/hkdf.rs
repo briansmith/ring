@@ -15,6 +15,7 @@
 use crate::digest::Md;
 use crate::digest::{Sha256, Sha512};
 use crate::{CSlice, CSliceMut, ForeignTypeRef};
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 /// Implementation of HKDF-SHA-256

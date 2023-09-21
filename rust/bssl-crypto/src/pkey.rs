@@ -18,6 +18,8 @@
 //! externally.
 
 use crate::{ec::EcKey, CSliceMut, ForeignType};
+use alloc::borrow::ToOwned;
+use alloc::string::String;
 
 pub(crate) struct Pkey {
     ptr: *mut bssl_sys::EVP_PKEY,
@@ -45,8 +47,7 @@ impl From<&EcKey> for Pkey {
         // - pkey is just allocated and is null-checked
         // - EcKey ensures eckey.ptr is valid during its lifetime
         // - EVP_PKEY_set1_EC_KEY doesn't take ownership
-        let result =
-            unsafe { bssl_sys::EVP_PKEY_set1_EC_KEY(pkey, eckey.as_ptr()) };
+        let result = unsafe { bssl_sys::EVP_PKEY_set1_EC_KEY(pkey, eckey.as_ptr()) };
         assert_eq!(result, 1, "bssl_sys::EVP_PKEY_set1_EC_KEY failed");
         Self { ptr: pkey }
     }
