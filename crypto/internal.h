@@ -264,6 +264,10 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   return __builtin_bswap32(x);
 }
+
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return __builtin_bswap64(x);
+}
 #elif defined(_MSC_VER)
 #pragma warning(push, 3)
 #include <stdlib.h>
@@ -271,6 +275,10 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 #pragma intrinsic(_byteswap_uint64, _byteswap_ulong)
 static inline uint32_t CRYPTO_bswap4(uint32_t x) {
   return _byteswap_ulong(x);
+}
+
+static inline uint64_t CRYPTO_bswap8(uint64_t x) {
+  return _byteswap_uint64(x);
 }
 #endif
 
@@ -307,6 +315,65 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
   }
   return dst;
 #endif
+}
+
+
+// Loads and stores.
+//
+// The following functions load and store sized integers with the specified
+// endianness. They use |memcpy|, and so avoid alignment or strict aliasing
+// requirements on the input and output pointers.
+
+static inline uint32_t CRYPTO_load_u32_le(const void *in) {
+  uint32_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+  return v;
+}
+
+static inline void CRYPTO_store_u32_le(void *out, uint32_t v) {
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline uint32_t CRYPTO_load_u32_be(const void *in) {
+  uint32_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+  return CRYPTO_bswap4(v);
+}
+
+static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
+  v = CRYPTO_bswap4(v);
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline uint64_t CRYPTO_load_u64_le(const void *in) {
+  uint64_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+  return v;
+}
+
+static inline void CRYPTO_store_u64_le(void *out, uint64_t v) {
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline uint64_t CRYPTO_load_u64_be(const void *ptr) {
+  uint64_t ret;
+  OPENSSL_memcpy(&ret, ptr, sizeof(ret));
+  return CRYPTO_bswap8(ret);
+}
+
+static inline void CRYPTO_store_u64_be(void *out, uint64_t v) {
+  v = CRYPTO_bswap8(v);
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
+static inline crypto_word CRYPTO_load_word_le(const void *in) {
+  crypto_word v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+  return v;
+}
+
+static inline void CRYPTO_store_word_le(void *out, crypto_word v) {
+  OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
 
