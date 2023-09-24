@@ -29,17 +29,6 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #endif
 
-// We can assume little-endian.
-static uint32_t U8TO32_LE(const uint8_t *m) {
-  uint32_t r;
-  OPENSSL_memcpy(&r, m, sizeof(r));
-  return r;
-}
-
-static void U32TO8_LE(uint8_t *m, uint32_t v) {
-  OPENSSL_memcpy(m, &v, sizeof(v));
-}
-
 static uint64_t mul32x32_64(uint32_t a, uint32_t b) { return (uint64_t)a * b; }
 
 struct poly1305_state_st {
@@ -78,10 +67,10 @@ static void poly1305_update(struct poly1305_state_st *state, const uint8_t *in,
   }
 
 poly1305_donna_16bytes:
-  t0 = U8TO32_LE(in);
-  t1 = U8TO32_LE(in + 4);
-  t2 = U8TO32_LE(in + 8);
-  t3 = U8TO32_LE(in + 12);
+  t0 = CRYPTO_load_u32_le(in);
+  t1 = CRYPTO_load_u32_le(in + 4);
+  t2 = CRYPTO_load_u32_le(in + 8);
+  t3 = CRYPTO_load_u32_le(in + 12);
 
   in += 16;
   len -= 16;
@@ -144,10 +133,10 @@ poly1305_donna_atmost15bytes:
   }
   len = 0;
 
-  t0 = U8TO32_LE(mp + 0);
-  t1 = U8TO32_LE(mp + 4);
-  t2 = U8TO32_LE(mp + 8);
-  t3 = U8TO32_LE(mp + 12);
+  t0 = CRYPTO_load_u32_le(mp + 0);
+  t1 = CRYPTO_load_u32_le(mp + 4);
+  t2 = CRYPTO_load_u32_le(mp + 8);
+  t3 = CRYPTO_load_u32_le(mp + 12);
 
   state->h0 += t0 & 0x3ffffff;
   state->h1 += ((((uint64_t)t1 << 32) | t0) >> 26) & 0x3ffffff;
@@ -162,10 +151,10 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   struct poly1305_state_st *state = poly1305_aligned_state(statep);
   uint32_t t0, t1, t2, t3;
 
-  t0 = U8TO32_LE(key + 0);
-  t1 = U8TO32_LE(key + 4);
-  t2 = U8TO32_LE(key + 8);
-  t3 = U8TO32_LE(key + 12);
+  t0 = CRYPTO_load_u32_le(key + 0);
+  t1 = CRYPTO_load_u32_le(key + 4);
+  t2 = CRYPTO_load_u32_le(key + 8);
+  t3 = CRYPTO_load_u32_le(key + 12);
 
   // precompute multipliers
   state->r0 = t0 & 0x3ffffff;
@@ -287,21 +276,22 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   state->h3 = (state->h3 & nb) | (g3 & b);
   state->h4 = (state->h4 & nb) | (g4 & b);
 
-  f0 = ((state->h0) | (state->h1 << 26)) + (uint64_t)U8TO32_LE(&state->key[0]);
+  f0 = ((state->h0) | (state->h1 << 26)) +
+       (uint64_t)CRYPTO_load_u32_le(&state->key[0]);
   f1 = ((state->h1 >> 6) | (state->h2 << 20)) +
-       (uint64_t)U8TO32_LE(&state->key[4]);
+       (uint64_t)CRYPTO_load_u32_le(&state->key[4]);
   f2 = ((state->h2 >> 12) | (state->h3 << 14)) +
-       (uint64_t)U8TO32_LE(&state->key[8]);
+       (uint64_t)CRYPTO_load_u32_le(&state->key[8]);
   f3 = ((state->h3 >> 18) | (state->h4 << 8)) +
-       (uint64_t)U8TO32_LE(&state->key[12]);
+       (uint64_t)CRYPTO_load_u32_le(&state->key[12]);
 
-  U32TO8_LE(&mac[0], (uint32_t)f0);
+  CRYPTO_store_u32_le(&mac[0], (uint32_t)f0);
   f1 += (f0 >> 32);
-  U32TO8_LE(&mac[4], (uint32_t)f1);
+  CRYPTO_store_u32_le(&mac[4], (uint32_t)f1);
   f2 += (f1 >> 32);
-  U32TO8_LE(&mac[8], (uint32_t)f2);
+  CRYPTO_store_u32_le(&mac[8], (uint32_t)f2);
   f3 += (f2 >> 32);
-  U32TO8_LE(&mac[12], (uint32_t)f3);
+  CRYPTO_store_u32_le(&mac[12], (uint32_t)f3);
 }
 
 #endif  // !BORINGSSL_HAS_UINT128 || !OPENSSL_X86_64
