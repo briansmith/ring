@@ -754,7 +754,7 @@ static void aes_nohw_encrypt_batch(const AES_NOHW_SCHEDULE *key,
 
 static void aes_nohw_expand_round_keys(AES_NOHW_SCHEDULE *out,
                                        const AES_KEY *key) {
-  for (unsigned i = 0; i <= key->rounds; i++) {
+  for (size_t i = 0; i <= key->rounds; i++) {
     // Copy the round key into each block in the batch.
     for (size_t j = 0; j < AES_NOHW_BATCH_SIZE; j++) {
       aes_word_t tmp[AES_NOHW_BLOCK_WORDS];
@@ -921,8 +921,8 @@ void aes_nohw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
   uint32_t ctr = CRYPTO_load_u32_be(ivs + 12);
   for (;;) {
     // Update counters.
-    for (uint32_t i = 0; i < AES_NOHW_BATCH_SIZE; i++) {
-      CRYPTO_store_u32_be(ivs + 16 * i + 12, ctr + i);
+    for (size_t i = 0; i < AES_NOHW_BATCH_SIZE; i++) {
+      CRYPTO_store_u32_be(ivs + 16 * i + 12, ctr + (uint32_t)i);
     }
 
     size_t todo = blocks >= AES_NOHW_BATCH_SIZE ? AES_NOHW_BATCH_SIZE : blocks;
