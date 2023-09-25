@@ -38,6 +38,7 @@ set(
   crypto/fipsmodule/cmac/cmac_test.cc
   crypto/fipsmodule/ec/ec_test.cc
   crypto/fipsmodule/ec/p256-nistz_test.cc
+  crypto/fipsmodule/ec/p256_test.cc
   crypto/fipsmodule/ecdsa/ecdsa_test.cc
   crypto/fipsmodule/hkdf/hkdf_test.cc
   crypto/fipsmodule/md5/md5_test.cc
