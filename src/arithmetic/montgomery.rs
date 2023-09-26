@@ -1,4 +1,4 @@
-// Copyright 2017 Brian Smith.
+// Copyright 2017-2023 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -85,4 +85,158 @@ impl ProductEncoding for (RR, Unencoded) {
 }
 impl ProductEncoding for (RR, RInverse) {
     type Output = <(RInverse, RR) as ProductEncoding>::Output;
+}
+
+#[allow(unused_imports)]
+use {
+    super::n0::N0,
+    crate::{bssl, c, limb::Limb},
+};
+
+#[cfg(not(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86",
+    target_arch = "x86_64"
+)))]
+prefixed_export! {
+    unsafe fn bn_mul_mont(
+        r: *mut Limb,
+        a: *const Limb,
+        b: *const Limb,
+        n: *const Limb,
+        n0: &N0,
+        num_limbs: c::size_t,
+    ) {
+        // The mutable pointer `r` may alias `a` and/or `b`, so the lifetimes of
+        // any slices for `a` or `b` must not overlap with the lifetime of any
+        // mutable for `r`.
+
+        // Nothing aliases `n`
+        let n = unsafe { core::slice::from_raw_parts(n, num_limbs) };
+
+        let mut tmp = [0; 2 * super::BIGINT_MODULUS_MAX_LIMBS];
+        let tmp = &mut tmp[..(2 * num_limbs)];
+        {
+            let a: &[Limb] = unsafe { core::slice::from_raw_parts(a, num_limbs) };
+            let b: &[Limb] = unsafe { core::slice::from_raw_parts(b, num_limbs) };
+            limbs_mul(tmp, a, b);
+        }
+        let r: &mut [Limb] = unsafe { core::slice::from_raw_parts_mut(r, num_limbs) };
+        limbs_from_mont_in_place(r, tmp, n, n0);
+    }
+}
+
+// `bigint` needs then when the `alloc` feature is enabled. `bn_mul_mont` above needs this when
+// we are using the platforms for which we don't have `bn_mul_mont` in assembly.
+#[cfg(any(
+    feature = "alloc",
+    not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86",
+        target_arch = "x86_64"
+    ))
+))]
+pub(super) fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N0) {
+    prefixed_extern! {
+        fn bn_from_montgomery_in_place(
+            r: *mut Limb,
+            num_r: c::size_t,
+            a: *mut Limb,
+            num_a: c::size_t,
+            n: *const Limb,
+            num_n: c::size_t,
+            n0: &N0,
+        ) -> bssl::Result;
+    }
+    Result::from(unsafe {
+        bn_from_montgomery_in_place(
+            r.as_mut_ptr(),
+            r.len(),
+            tmp.as_mut_ptr(),
+            tmp.len(),
+            m.as_ptr(),
+            m.len(),
+            n0,
+        )
+    })
+    .unwrap()
+}
+
+#[cfg(not(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "x86",
+    target_arch = "x86_64"
+)))]
+fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
+    debug_assert_eq!(r.len(), 2 * a.len());
+    debug_assert_eq!(a.len(), b.len());
+    let ab_len = a.len();
+
+    r[..ab_len].fill(0);
+    for (i, &b_limb) in b.iter().enumerate() {
+        r[ab_len + i] = unsafe {
+            limbs_mul_add_limb(
+                (&mut r[i..][..ab_len]).as_mut_ptr(),
+                a.as_ptr(),
+                b_limb,
+                ab_len,
+            )
+        };
+    }
+}
+
+#[cfg(any(
+    test,
+    not(any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "x86_64",
+        target_arch = "x86"
+    ))
+))]
+prefixed_extern! {
+    // `r` must not alias `a`
+    #[must_use]
+    fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::limb::Limb;
+
+    #[test]
+    // TODO: wasm
+    fn test_mul_add_words() {
+        const ZERO: Limb = 0;
+        const MAX: Limb = ZERO.wrapping_sub(1);
+        static TEST_CASES: &[(&[Limb], &[Limb], Limb, Limb, &[Limb])] = &[
+            (&[0], &[0], 0, 0, &[0]),
+            (&[MAX], &[0], MAX, 0, &[MAX]),
+            (&[0], &[MAX], MAX, MAX - 1, &[1]),
+            (&[MAX], &[MAX], MAX, MAX, &[0]),
+            (&[0, 0], &[MAX, MAX], MAX, MAX - 1, &[1, MAX]),
+            (&[1, 0], &[MAX, MAX], MAX, MAX - 1, &[2, MAX]),
+            (&[MAX, 0], &[MAX, MAX], MAX, MAX, &[0, 0]),
+            (&[0, 1], &[MAX, MAX], MAX, MAX, &[1, 0]),
+            (&[MAX, MAX], &[MAX, MAX], MAX, MAX, &[0, MAX]),
+        ];
+
+        for (i, (r_input, a, w, expected_retval, expected_r)) in TEST_CASES.iter().enumerate() {
+            extern crate std;
+            let mut r = std::vec::Vec::from(*r_input);
+            assert_eq!(r.len(), a.len()); // Sanity check
+            let actual_retval =
+                unsafe { limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
+            assert_eq!(&r, expected_r, "{}: {:x?} != {:x?}", i, &r[..], expected_r);
+            assert_eq!(
+                actual_retval, *expected_retval,
+                "{}: {:x?} != {:x?}",
+                i, actual_retval, *expected_retval
+            );
+        }
+    }
 }

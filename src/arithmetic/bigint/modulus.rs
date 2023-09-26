@@ -13,8 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::montgomery::{Unencoded, R, RR},
-    n0::{N0, N0_LIMBS_USED},
+    super::{
+        montgomery::{Unencoded, R, RR},
+        n0::N0,
+    },
     BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SlightlySmallerModulus, SmallerModulus,
     Width,
 };
@@ -32,7 +34,7 @@ use core::marker::PhantomData;
 /// same.
 pub const MODULUS_MIN_LIMBS: usize = 4;
 
-pub const MODULUS_MAX_LIMBS: usize = 8192 / LIMB_BITS;
+pub const MODULUS_MAX_LIMBS: usize = super::super::BIGINT_MODULUS_MAX_LIMBS;
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
@@ -43,10 +45,10 @@ pub struct Modulus<M> {
 
     // n0 * N == -1 (mod r).
     //
-    // r == 2**(N0_LIMBS_USED * LIMB_BITS) and LG_LITTLE_R == lg(r). This
+    // r == 2**(N0::LIMBS_USED * LIMB_BITS) and LG_LITTLE_R == lg(r). This
     // ensures that we can do integer division by |r| by simply ignoring
-    // `N0_LIMBS_USED` limbs. Similarly, we can calculate values modulo `r` by
-    // just looking at the lowest `N0_LIMBS_USED` limbs. This is what makes
+    // `N0::LIMBS_USED` limbs. Similarly, we can calculate values modulo `r` by
+    // just looking at the lowest `N0::LIMBS_USED` limbs. This is what makes
     // Montgomery multiplication efficient.
     //
     // As shown in Algorithm 1 of "Fast Prime Field Elliptic Curve Cryptography
@@ -151,7 +153,7 @@ impl<M> Modulus<M> {
         }
 
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
-        // done by taking the lowest `N0_LIMBS_USED` limbs of `n`.
+        // done by taking the lowest `N0::LIMBS_USED` limbs of `n`.
         #[allow(clippy::useless_conversion)]
         let n0 = {
             prefixed_extern! {
@@ -161,7 +163,7 @@ impl<M> Modulus<M> {
             // XXX: u64::from isn't guaranteed to be constant time.
             let mut n_mod_r: u64 = u64::from(n[0]);
 
-            if N0_LIMBS_USED == 2 {
+            if N0::LIMBS_USED == 2 {
                 // XXX: If we use `<< LIMB_BITS` here then 64-bit builds
                 // fail to compile because of `deny(exceeding_bitshifts)`.
                 debug_assert_eq!(LIMB_BITS, 32);

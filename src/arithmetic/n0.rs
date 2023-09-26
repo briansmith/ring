@@ -12,13 +12,16 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Limb, LIMB_BITS};
+use crate::limb::Limb;
 
 #[derive(Clone)]
 #[repr(transparent)]
-pub(super) struct N0([Limb; 2]);
+pub(in super::super) struct N0([Limb; 2]);
 
-pub(super) const N0_LIMBS_USED: usize = 64 / LIMB_BITS;
+impl N0 {
+    #[cfg(feature = "alloc")]
+    pub(super) const LIMBS_USED: usize = 64 / crate::limb::LIMB_BITS;
+}
 
 impl From<u64> for N0 {
     #[inline]
@@ -30,7 +33,7 @@ impl From<u64> for N0 {
 
         #[cfg(target_pointer_width = "32")]
         {
-            Self([n0 as Limb, (n0 >> LIMB_BITS) as Limb])
+            Self([n0 as Limb, (n0 >> crate::limb::LIMB_BITS) as Limb])
         }
     }
 }
