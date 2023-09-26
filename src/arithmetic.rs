@@ -19,6 +19,10 @@ pub mod constant;
 pub mod bigint;
 
 pub mod montgomery;
+mod n0;
 
 #[cfg(feature = "alloc")]
 mod nonnegative;
+
+#[allow(dead_code)]
+const BIGINT_MODULUS_MAX_LIMBS: usize = 8192 / crate::limb::LIMB_BITS;

@@ -36,25 +36,24 @@
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
-use self::{boxed_limbs::BoxedLimbs, n0::N0};
+use self::boxed_limbs::BoxedLimbs;
 pub(crate) use self::{
     modulus::{Modulus, PartialModulus, MODULUS_MAX_LIMBS},
     private_exponent::PrivateExponent,
 };
+use super::n0::N0;
 pub(crate) use super::nonnegative::Nonnegative;
 use crate::{
     arithmetic::montgomery::*,
-    bits, bssl, c, cpu, error,
+    bits, c, cpu, error,
     limb::{self, Limb, LimbMask, LIMB_BITS},
     polyfill::u64_from_usize,
 };
 use alloc::vec;
 use core::{marker::PhantomData, num::NonZeroU64};
 
-mod bn_mul_mont_fallback;
 mod boxed_limbs;
 mod modulus;
-mod n0;
 mod private_exponent;
 
 /// A prime modulus.
@@ -321,9 +320,9 @@ impl<M> One<M, RR> {
     // 2**LIMB_BITS such that R > m.
     //
     // Even though the assembly on some 32-bit platforms works with 64-bit
-    // values, using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`,
+    // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
-    // `N0_LIMBS_USED` is either one or two.
+    // `N0::LIMBS_USED` is either one or two.
     fn newRR(m: &PartialModulus<M>, m_bits: bits::BitLength) -> Self {
         let m_bits = m_bits.as_usize_bits();
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
@@ -445,7 +444,7 @@ pub fn elem_exp_consttime<M>(
     exponent: &PrivateExponent,
     m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    use crate::limb::Window;
+    use crate::{bssl, limb::Window};
 
     const WINDOW_BITS: usize = 5;
     const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
@@ -779,56 +778,6 @@ fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0, _cpu_features
     }
 }
 
-fn limbs_from_mont_in_place(r: &mut [Limb], tmp: &mut [Limb], m: &[Limb], n0: &N0) {
-    prefixed_extern! {
-        fn bn_from_montgomery_in_place(
-            r: *mut Limb,
-            num_r: c::size_t,
-            a: *mut Limb,
-            num_a: c::size_t,
-            n: *const Limb,
-            num_n: c::size_t,
-            n0: &N0,
-        ) -> bssl::Result;
-    }
-    Result::from(unsafe {
-        bn_from_montgomery_in_place(
-            r.as_mut_ptr(),
-            r.len(),
-            tmp.as_mut_ptr(),
-            tmp.len(),
-            m.as_ptr(),
-            m.len(),
-            n0,
-        )
-    })
-    .unwrap()
-}
-
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "arm",
-    target_arch = "x86",
-    target_arch = "x86_64"
-)))]
-fn limbs_mul(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
-    debug_assert_eq!(r.len(), 2 * a.len());
-    debug_assert_eq!(a.len(), b.len());
-    let ab_len = a.len();
-
-    r[..ab_len].fill(0);
-    for (i, &b_limb) in b.iter().enumerate() {
-        r[ab_len + i] = unsafe {
-            limbs_mul_add_limb(
-                (&mut r[i..][..ab_len]).as_mut_ptr(),
-                a.as_ptr(),
-                b_limb,
-                ab_len,
-            )
-        };
-    }
-}
-
 /// r = a * b
 #[cfg(not(target_arch = "x86_64"))]
 fn limbs_mont_product(
@@ -880,21 +829,6 @@ prefixed_extern! {
         n0: &N0,
         num_limbs: c::size_t,
     );
-}
-
-#[cfg(any(
-    test,
-    not(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "x86_64",
-        target_arch = "x86"
-    ))
-))]
-prefixed_extern! {
-    // `r` must not alias `a`
-    #[must_use]
-    fn limbs_mul_add_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t) -> Limb;
 }
 
 #[cfg(test)]
@@ -1099,37 +1033,5 @@ mod tests {
 
     fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
         elem_mul(m.oneRR().as_ref(), a, m)
-    }
-
-    #[test]
-    // TODO: wasm
-    fn test_mul_add_words() {
-        const ZERO: Limb = 0;
-        const MAX: Limb = ZERO.wrapping_sub(1);
-        static TEST_CASES: &[(&[Limb], &[Limb], Limb, Limb, &[Limb])] = &[
-            (&[0], &[0], 0, 0, &[0]),
-            (&[MAX], &[0], MAX, 0, &[MAX]),
-            (&[0], &[MAX], MAX, MAX - 1, &[1]),
-            (&[MAX], &[MAX], MAX, MAX, &[0]),
-            (&[0, 0], &[MAX, MAX], MAX, MAX - 1, &[1, MAX]),
-            (&[1, 0], &[MAX, MAX], MAX, MAX - 1, &[2, MAX]),
-            (&[MAX, 0], &[MAX, MAX], MAX, MAX, &[0, 0]),
-            (&[0, 1], &[MAX, MAX], MAX, MAX, &[1, 0]),
-            (&[MAX, MAX], &[MAX, MAX], MAX, MAX, &[0, MAX]),
-        ];
-
-        for (i, (r_input, a, w, expected_retval, expected_r)) in TEST_CASES.iter().enumerate() {
-            extern crate std;
-            let mut r = std::vec::Vec::from(*r_input);
-            assert_eq!(r.len(), a.len()); // Sanity check
-            let actual_retval =
-                unsafe { limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
-            assert_eq!(&r, expected_r, "{}: {:x?} != {:x?}", i, &r[..], expected_r);
-            assert_eq!(
-                actual_retval, *expected_retval,
-                "{}: {:x?} != {:x?}",
-                i, actual_retval, *expected_retval
-            );
-        }
     }
 }
