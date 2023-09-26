@@ -10,7 +10,6 @@
 #include <vector>
 
 
-
 #include "cert_errors.h"
 #include "parsed_certificate.h"
 #include "trust_store.h"
@@ -112,7 +111,7 @@ class OPENSSL_EXPORT CertPathBuilder {
  public:
   // Provides the overall result of path building. This includes the paths that
   // were attempted.
-  struct OPENSSL_EXPORT Result  {
+  struct OPENSSL_EXPORT Result {
     Result();
     Result(Result&&);
 

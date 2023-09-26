@@ -166,12 +166,11 @@ int TrustAndKeyIdentifierMatchToOrder(const ParsedCertificate* target,
 // which may be issuers of |cert|.
 class CertIssuersIter {
  public:
-  // Constructs the CertIssuersIter. |*cert_issuer_sources|, |*trust_store|,
-  // and |*debug_data| must be valid for the lifetime of the CertIssuersIter.
+  // Constructs the CertIssuersIter. |*cert_issuer_sources|, and
+  // |*trust_store| must be valid for the lifetime of the CertIssuersIter.
   CertIssuersIter(std::shared_ptr<const ParsedCertificate> cert,
                   CertIssuerSources* cert_issuer_sources,
-                  TrustStore* trust_store,
-                  void* debug_data);
+                  TrustStore* trust_store);
 
   CertIssuersIter(const CertIssuersIter&) = delete;
   CertIssuersIter& operator=(const CertIssuersIter&) = delete;
@@ -239,19 +238,15 @@ class CertIssuersIter {
   // cancelled if CertIssuersIter is destroyed.
   std::vector<std::unique_ptr<CertIssuerSource::Request>>
       pending_async_requests_;
-
-  void* debug_data_;
 };
 
 CertIssuersIter::CertIssuersIter(
     std::shared_ptr<const ParsedCertificate> in_cert,
     CertIssuerSources* cert_issuer_sources,
-    TrustStore* trust_store,
-    void* debug_data)
+    TrustStore* trust_store)
     : cert_(std::move(in_cert)),
       cert_issuer_sources_(cert_issuer_sources),
-      trust_store_(trust_store),
-      debug_data_(debug_data) {
+      trust_store_(trust_store) {
   DVLOG(2) << "CertIssuersIter created for " << CertDebugString(cert());
 }
 
@@ -277,8 +272,7 @@ void CertIssuersIter::GetNextIssuer(IssuerEntry* out) {
     while (!HasCurrentIssuer() &&
            cur_async_request_ < pending_async_requests_.size()) {
       ParsedCertificateList new_issuers;
-      pending_async_requests_[cur_async_request_]->GetNext(&new_issuers,
-                                                           debug_data_);
+      pending_async_requests_[cur_async_request_]->GetNext(&new_issuers);
       if (new_issuers.empty()) {
         // Request is exhausted, no more results pending from that
         // CertIssuerSource.
@@ -317,7 +311,7 @@ void CertIssuersIter::AddIssuers(ParsedCertificateList new_issuers) {
     // Look up the trust for this issuer.
     IssuerEntry entry;
     entry.cert = std::move(issuer);
-    entry.trust = trust_store_->GetTrust(entry.cert.get(), debug_data_);
+    entry.trust = trust_store_->GetTrust(entry.cert.get());
     entry.trust_and_key_id_match_ordering = TrustAndKeyIdentifierMatchToOrder(
         cert(), entry.cert.get(), entry.trust);
 
@@ -472,8 +466,7 @@ const ParsedCertificate* CertPathBuilderResultPath::GetTrustedCert() const {
 class CertPathIter {
  public:
   CertPathIter(std::shared_ptr<const ParsedCertificate> cert,
-               TrustStore* trust_store,
-               void* debug_data);
+               TrustStore* trust_store);
 
   CertPathIter(const CertPathIter&) = delete;
   CertPathIter& operator=(const CertPathIter&) = delete;
@@ -512,18 +505,14 @@ class CertPathIter {
   CertIssuerSources cert_issuer_sources_;
   // The TrustStore for checking if a path ends in a trust anchor.
   TrustStore* trust_store_;
-
-  void* debug_data_;
 };
 
 CertPathIter::CertPathIter(std::shared_ptr<const ParsedCertificate> cert,
-                           TrustStore* trust_store,
-                           void* debug_data)
-    : trust_store_(trust_store), debug_data_(debug_data) {
+                           TrustStore* trust_store)
+    : trust_store_(trust_store) {
   // Initialize |next_issuer_| to the target certificate.
   next_issuer_.cert = std::move(cert);
-  next_issuer_.trust =
-      trust_store_->GetTrust(next_issuer_.cert.get(), debug_data_);
+  next_issuer_.trust = trust_store_->GetTrust(next_issuer_.cert.get());
 }
 
 void CertPathIter::AddCertIssuerSource(CertIssuerSource* cert_issuer_source) {
@@ -684,8 +673,7 @@ bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
         }
 
         cur_path_.Append(std::make_unique<CertIssuersIter>(
-            std::move(next_issuer_.cert), &cert_issuer_sources_, trust_store_,
-            debug_data_));
+            std::move(next_issuer_.cert), &cert_issuer_sources_, trust_store_));
         next_issuer_ = IssuerEntry();
         DVLOG(1) << "CertPathIter cur_path_ =\n" << cur_path_.PathDebugString();
         // Continue descending the tree.
@@ -752,9 +740,7 @@ CertPathBuilder::CertPathBuilder(
     InitialPolicyMappingInhibit initial_policy_mapping_inhibit,
     InitialAnyPolicyInhibit initial_any_policy_inhibit)
     : cert_path_iter_(
-          std::make_unique<CertPathIter>(std::move(cert),
-                                         trust_store,
-                                         /*debug_data=*/&out_result_)),
+          std::make_unique<CertPathIter>(std::move(cert), trust_store)),
       delegate_(delegate),
       time_(time),
       key_purpose_(key_purpose),

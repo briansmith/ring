@@ -94,7 +94,7 @@
     {"match": "^#include \"testing/gtest/include/gtest/gtest.h\"",
      "replace": "#include <gtest/gtest.h>"},
     {"match": "^#include \"testing/gmock/include/gmock/gmock.h\"",
-     "replace": "#include <gtest/gtest.h>"},
+     "replace": "#include <gmock/gmock.h>"},
     {"match": "^#include \"base/containers/span.h\"",
      "replace": "#include <openssl/span.h>"},
     {"match": "^#include \"third_party/abseil-cpp/absl/types/optional.h\"",

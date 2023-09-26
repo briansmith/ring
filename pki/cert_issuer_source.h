@@ -10,7 +10,6 @@
 #include <vector>
 
 
-
 #include "parsed_certificate.h"
 
 namespace bssl {
@@ -41,8 +40,7 @@ class OPENSSL_EXPORT CertIssuerSource {
     // If no issuers are left then |issuers| will not be modified. This
     // indicates that the issuers have been exhausted and GetNext() should
     // not be called again.
-    virtual void GetNext(ParsedCertificateList* issuers,
-                         void* debug_data) = 0;
+    virtual void GetNext(ParsedCertificateList* issuers) = 0;
   };
 
   virtual ~CertIssuerSource() = default;

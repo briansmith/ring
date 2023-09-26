@@ -22,7 +22,7 @@
 #include "input.h"
 
 #include "testdata/test_certificate_data.h"
-#include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/pool.h>
 
@@ -32,7 +32,6 @@ namespace bssl {
 
 namespace {
 
-#if !defined(_BORINGSSL_LIBPKI_)
 using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::Exactly;
@@ -42,7 +41,6 @@ using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
-#endif  // !_BORINGSSL_LIBPKI_
 
 class TestPathBuilderDelegate : public SimplePathBuilderDelegate {
  public:
@@ -87,8 +85,7 @@ class AsyncCertIssuerSourceStatic : public CertIssuerSource {
 
     ~StaticAsyncRequest() override = default;
 
-    void GetNext(ParsedCertificateList* out_certs,
-                 void* debug_data) override {
+    void GetNext(ParsedCertificateList* out_certs) override {
       if (issuers_iter_ != issuers_.end())
         out_certs->push_back(std::move(*issuers_iter_++));
     }
@@ -159,51 +156,6 @@ class AsyncCertIssuerSourceStatic : public CertIssuerSource {
   }
   return ::testing::AssertionSuccess();
 }
-
-const void* kKey = &kKey;
-#if !defined(_BORINGSSL_LIBPKI_)
-class TrustStoreThatStoresUserData : public TrustStore {
- public:
-  class Data ::Data {
-   public:
-    explicit Data(int value) : value(value) {}
-
-    int value = 0;
-  };
-
-  // TrustStore implementation:
-  void SyncGetIssuersOf(const ParsedCertificate* cert,
-                        ParsedCertificateList* issuers) override {}
-  CertificateTrust GetTrust(const ParsedCertificate* cert,
-                            void* debug_data) override {
-    debug_data->SetUserData(kKey, std::make_unique<Data>(1234));
-    return CertificateTrust::ForUnspecified();
-  }
-};
-
-TEST(PathBuilderResultUserDataTest, ModifyUserDataInConstructor) {
-  std::shared_ptr<const ParsedCertificate> a_by_b;
-  ASSERT_TRUE(ReadTestCert("multi-root-A-by-B.pem", &a_by_b));
-  SimplePathBuilderDelegate delegate(
-      1024, SimplePathBuilderDelegate::DigestPolicy::kWeakAllowSha1);
-  der::GeneralizedTime verify_time = {2017, 3, 1, 0, 0, 0};
-  TrustStoreThatStoresUserData trust_store;
-
-  // |trust_store| will unconditionally store user data in the
-  // CertPathBuilder::Result. This ensures that the Result object has been
-  // initialized before the first GetTrust call occurs (otherwise the test will
-  // crash or fail on ASAN bots).
-  CertPathBuilder path_builder(
-      a_by_b, &trust_store, &delegate, verify_time, KeyPurpose::ANY_EKU,
-      InitialExplicitPolicy::kFalse, {der::Input(kAnyPolicyOid)},
-      InitialPolicyMappingInhibit::kFalse, InitialAnyPolicyInhibit::kFalse);
-  CertPathBuilder::Result result = path_builder.Run();
-  auto* data = static_cast<TrustStoreThatStoresUserData::Data*>(
-      result.GetUserData(kKey));
-  ASSERT_TRUE(data);
-  EXPECT_EQ(1234, data->value);
-}
-#endif  // !_BORINGSSL_LIBPKI_
 
 class PathBuilderMultiRootTest : public ::testing::Test {
  public:
@@ -1568,10 +1520,9 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateIntermediateAndRoot) {
   EXPECT_EQ(newroot_->der_cert(), path.certs[2]->der_cert());
 }
 
-#if !defined(_BORINGSSL_LIBPKI_)
 class MockCertIssuerSourceRequest : public CertIssuerSource::Request {
  public:
-  MOCK_METHOD2(GetNext, void(ParsedCertificateList*, void*));
+  MOCK_METHOD1(GetNext, void(ParsedCertificateList*));
 };
 
 class MockCertIssuerSource : public CertIssuerSource {
@@ -1581,7 +1532,6 @@ class MockCertIssuerSource : public CertIssuerSource {
   MOCK_METHOD2(AsyncGetIssuersOf,
                void(const ParsedCertificate*, std::unique_ptr<Request>*));
 };
-#endif  // !_BORINGSSL_LIBPKI_
 
 // Helper class to pass the Request to the PathBuilder when it calls
 // AsyncGetIssuersOf. (GoogleMock has a ByMove helper, but it apparently can
@@ -1608,16 +1558,12 @@ class AppendCertToList {
       const std::shared_ptr<const ParsedCertificate>& cert)
       : cert_(cert) {}
 
-  void operator()(ParsedCertificateList* out,
-                  void* debug_data) {
-    out->push_back(cert_);
-  }
+  void operator()(ParsedCertificateList* out) { out->push_back(cert_); }
 
  private:
   std::shared_ptr<const ParsedCertificate> cert_;
 };
 
-#if !defined(_BORINGSSL_LIBPKI_)
 // Test that a single CertIssuerSource returning multiple async batches of
 // issuers is handled correctly. Due to the StrictMocks, it also tests that path
 // builder does not request issuers of certs that it shouldn't.
@@ -1650,7 +1596,7 @@ TEST_F(PathBuilderKeyRolloverTest, TestMultipleAsyncIssuersFromSingleSource) {
         .WillOnce(Invoke(&req_mover, &CertIssuerSourceRequestMover::MoveIt));
   }
 
-  EXPECT_CALL(*target_issuers_req, GetNext(_, _))
+  EXPECT_CALL(*target_issuers_req, GetNext(_))
       // First async batch: return oldintermediate_.
       .WillOnce(Invoke(AppendCertToList(oldintermediate_)))
       // Second async batch: return newintermediate_.
@@ -1737,7 +1683,7 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateAsyncIntermediates) {
               oldintermediate_->der_cert().Length(), nullptr)),
           {}, nullptr));
 
-  EXPECT_CALL(*target_issuers_req, GetNext(_, _))
+  EXPECT_CALL(*target_issuers_req, GetNext(_))
       // First async batch: return oldintermediate_.
       .WillOnce(Invoke(AppendCertToList(oldintermediate_)))
       // Second async batch: return a different copy of oldintermediate_ again.
@@ -1787,7 +1733,6 @@ TEST_F(PathBuilderKeyRolloverTest, TestDuplicateAsyncIntermediates) {
   EXPECT_EQ(newintermediate_, path1.certs[1]);
   EXPECT_EQ(newroot_, path1.certs[2]);
 }
-#endif  // !_BORINGSSL_LIBPKI_
 
 class PathBuilderSimpleChainTest : public ::testing::Test {
  public:
@@ -1942,7 +1887,6 @@ class CertPathBuilderDelegateBase : public SimplePathBuilderDelegate {
   }
 };
 
-#if !defined(_BORINGSSL_LIBPKI_)
 class MockPathBuilderDelegate : public CertPathBuilderDelegateBase {
  public:
   MOCK_METHOD2(CheckPathAfterVerification,
@@ -1958,7 +1902,6 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, NoOpToValidPath) {
   CertPathBuilder::Result result = RunPathBuilder(nullptr, &delegate);
   EXPECT_TRUE(result.HasValidPath());
 }
-#endif  // !_BORINGSSL_LIBPKI_
 
 DEFINE_CERT_ERROR_ID(kWarningFromDelegate, "Warning from delegate");
 
@@ -2010,7 +1953,6 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, AddsErrorToValidPath) {
   EXPECT_TRUE(cert2_errors->ContainsError(kErrorFromDelegate));
 }
 
-#if !defined(_BORINGSSL_LIBPKI_)
 TEST_F(PathBuilderCheckPathAfterVerificationTest, NoopToAlreadyInvalidPath) {
   StrictMock<MockPathBuilderDelegate> delegate;
   // Just verify that the hook is called (on an invalid path).
@@ -2043,7 +1985,6 @@ TEST_F(PathBuilderCheckPathAfterVerificationTest, SetsDelegateData) {
 
   EXPECT_EQ(0xB33F, data->value);
 }
-#endif  // !_BORINGSSL_LIBPKI_
 
 TEST(PathBuilderPrioritizationTest, DatePrioritization) {
   std::string test_dir =

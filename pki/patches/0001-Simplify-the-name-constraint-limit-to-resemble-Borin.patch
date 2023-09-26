@@ -1,8 +1,8 @@
-From 78f16e55f9d5cae7cf4b4bcf45c4af53db231cd9 Mon Sep 17 00:00:00 2001
+From be12ef3a1c4d74dfba98641b1d565451424c6aa2 Mon Sep 17 00:00:00 2001
 From: Bob Beck <bbe@google.com>
 Date: Wed, 17 May 2023 10:37:22 -0600
-Subject: [PATCH 1/2] Simplify the name constraint limit to resemble
- BoringSSL's Disable the name constraint manynames check for now
+Subject: [PATCH] Simplify the name constraint limit to resemble BoringSSL's
+ Disable the name constraint manynames check for now
 
 ---
  net/cert/pki/DEPS                             |    1 -
@@ -33,19 +33,18 @@ Subject: [PATCH 1/2] Simplify the name constraint limit to resemble
  delete mode 100644 net/data/verify_certificate_chain_unittest/many-names/ok-different-types-ips.test
 
 diff --git a/net/cert/pki/DEPS b/net/cert/pki/DEPS
-index e9d834e1b51fa..ecf528b6e10a5 100644
+index cac7a02e057dc..e0bfd7b2c2045 100644
 --- a/net/cert/pki/DEPS
 +++ b/net/cert/pki/DEPS
-@@ -6,7 +6,6 @@ include_rules = [
+@@ -5,6 +5,5 @@ include_rules = [
+   "-base",
    "+base/base_paths.h",
-   "+base/check.h",
    "+base/files/file_util.h",
 -  "+base/numerics/clamped_math.h",
    "+base/path_service.h",
-   "+base/supports_user_data.h",
  ]
 diff --git a/net/cert/pki/name_constraints.cc b/net/cert/pki/name_constraints.cc
-index b1f4aa44e54e1..06703db78fb5b 100644
+index 123996d7c5d61..e09f4a6da74a9 100644
 --- a/net/cert/pki/name_constraints.cc
 +++ b/net/cert/pki/name_constraints.cc
 @@ -8,7 +8,6 @@
@@ -56,7 +55,7 @@ index b1f4aa44e54e1..06703db78fb5b 100644
  #include "net/cert/pki/cert_errors.h"
  #include "net/cert/pki/common_cert_errors.h"
  #include "net/cert/pki/general_names.h"
-@@ -343,32 +342,42 @@ void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
+@@ -345,32 +344,42 @@ void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
                                        CertErrors* errors) const {
    // Checking NameConstraints is O(number_of_names * number_of_constraints).
    // Impose a hard limit to mitigate the use of name constraints as a DoS
@@ -122,7 +121,7 @@ index b1f4aa44e54e1..06703db78fb5b 100644
    }
  
    std::vector<std::string> subject_email_addresses_to_check;
-@@ -380,15 +389,6 @@ void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
+@@ -382,15 +391,6 @@ void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
        errors->AddError(cert_errors::kNotPermittedByNameConstraints);
        return;
      }
@@ -164,7 +163,7 @@ index a1af7849ebcc1..32a5be319d00d 100644
  
  TYPED_TEST_P(VerifyCertificateChainSingleRootTest, TargetOnly) {
 diff --git a/net/data/test_bundle_data.filelist b/net/data/test_bundle_data.filelist
-index a33bdbe30a0eb..00c635befd873 100644
+index 88fe51f7db6b5..849e421233ef8 100644
 --- a/net/data/test_bundle_data.filelist
 +++ b/net/data/test_bundle_data.filelist
 @@ -753,12 +753,6 @@ data/verify_certificate_chain_unittest/key-rollover/rolloverchain.pem
@@ -41105,5 +41104,5 @@ index efdbd5eaca095..56bc9c89c4c42 100644
          Validity
              Not Before: Oct  5 12:00:00 2021 GMT
 -- 
-2.41.0.694.ge786442a9b-goog
+2.42.0.515.g380fc7ccd1-goog
 
