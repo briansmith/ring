@@ -912,7 +912,7 @@ mod tests {
     fn test_elem_exp_consttime() {
         let cpu_features = cpu::features();
         test::run(
-            test_file!("bigint_elem_exp_consttime_tests.txt"),
+            test_file!("../../crypto/fipsmodule/bn/test/mod_exp_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -941,7 +941,7 @@ mod tests {
     fn test_elem_mul() {
         let cpu_features = cpu::features();
         test::run(
-            test_file!("bigint_elem_mul_tests.txt"),
+            test_file!("../../crypto/fipsmodule/bn/test/mod_mul_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
