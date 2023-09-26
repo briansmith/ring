@@ -21,6 +21,7 @@ rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
 qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
+qemu_powerpc64le="qemu-ppc64le -L /usr/powerpc64le-linux-gnu"
 qemu_riscv64="qemu-riscv64 -L /usr/riscv64-linux-gnu"
 
 # Avoid putting the Android tools in `$PATH` because there are tools in this
@@ -99,6 +100,13 @@ case $target in
     export AR_mipsel_unknown_linux_gnu=mipsel-linux-gnu-gcc-ar
     export CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_LINKER=mipsel-linux-gnu-gcc
     export CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_GNU_RUNNER="$qemu_mipsel"
+    ;;
+  powerpc64le-unknown-linux-gnu)
+    export CC_powerpc64le_unknown_linux_gnu=clang-$llvm_version
+    export AR_powerpc64le_unknown_linux_gnu=llvm-ar-$llvm_version
+    export CFLAGS_powerpc64le_unknown_linux_gnu="--sysroot=/usr/powerpc64le-linux-gnu"
+    export CARGO_TARGET_POWERPC64LE_UNKNOWN_LINUX_GNU_LINKER=powerpc64le-linux-gnu-gcc
+    export CARGO_TARGET_POWERPC64LE_UNKNOWN_LINUX_GNU_RUNNER="$qemu_powerpc64le"
     ;;
   riscv64gc-unknown-linux-gnu)
     export CC_riscv64gc_unknown_linux_gnu=clang-$llvm_version

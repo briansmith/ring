@@ -91,6 +91,13 @@ case $target in
     libc6-dev-mipsel-cross \
     qemu-user
   ;;
+--target=powerpc64le-unknown-linux-gnu)
+  use_clang=1
+  install_packages \
+    gcc-powerpc64le-linux-gnu \
+    libc6-dev-ppc64el-cross \
+    qemu-user
+  ;;
 --target=riscv64gc-unknown-linux-gnu)
   use_clang=1
   install_packages \
