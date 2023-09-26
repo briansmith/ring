@@ -540,13 +540,11 @@ pub fn elem_exp_consttime<M>(
     let cpu_features = m.cpu_features();
 
     // The x86_64 assembly was written under the assumption that the input data
-    // is aligned to `MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH` bytes, which was/is
-    // 64 in OpenSSL. Similarly, OpenSSL uses the x86_64 assembly functions by
-    // giving it only inputs `tmp`, `am`, and `np` that immediately follow the
-    // table. The code seems to "work" even when the inputs aren't exactly
-    // like that but the side channel defenses might not be as effective. All
-    // the awkwardness here stems from trying to use the assembly code like
-    // OpenSSL does.
+    // is aligned to `MOD_EXP_CTIME_ALIGN` bytes, which was/is 64 in OpenSSL.
+    // Similarly, OpenSSL uses the x86_64 assembly functions by giving it only
+    // inputs `tmp`, `am`, and `np` that immediately follow the table. All the
+    // awkwardness here stems from trying to use the assembly code like OpenSSL
+    // does.
 
     use crate::limb::Window;
 
