@@ -100,6 +100,16 @@ typedef enum {
 
 
 // Elliptic curve groups.
+//
+// Elliptic curve groups are represented by |EC_GROUP| objects. Unlike OpenSSL,
+// if limited to the APIs in this section, callers may treat |EC_GROUP|s as
+// static, immutable objects which do not need to be copied or released. In
+// BoringSSL, only custom |EC_GROUP|s created by |EC_GROUP_new_curve_GFp|
+// (deprecated) are dynamic.
+//
+// Callers may cast away |const| and use |EC_GROUP_dup| and |EC_GROUP_free| with
+// static groups, for compatibility with OpenSSL or dynamic groups, but it is
+// otherwise unnecessary.
 
 // EC_group_p224 returns an |EC_GROUP| for P-224, also known as secp224r1.
 OPENSSL_EXPORT const EC_GROUP *EC_group_p224(void);
@@ -132,12 +142,6 @@ OPENSSL_EXPORT const EC_GROUP *EC_group_p521(void);
 // If in doubt, use |NID_X9_62_prime256v1|, or see the curve25519.h header for
 // more modern primitives.
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
-
-// EC_GROUP_free releases a reference to |group|.
-OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
-
-// EC_GROUP_dup takes a reference to |a| and returns it.
-OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
 
 // EC_GROUP_cmp returns zero if |a| and |b| are the same group and non-zero
 // otherwise.
@@ -363,9 +367,27 @@ OPENSSL_EXPORT int EC_hash_to_curve_p384_xmd_sha384_sswu(
 
 // Deprecated functions.
 
+// EC_GROUP_free releases a reference to |group|, if |group| was created by
+// |EC_GROUP_new_curve_GFp|. If |group| is static, it does nothing.
+//
+// This function exists for OpenSSL compatibilty, and to manage dynamic
+// |EC_GROUP|s constructed by |EC_GROUP_new_curve_GFp|. Callers that do not need
+// either may ignore this function.
+OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
+
+// EC_GROUP_dup increments |group|'s reference count and returns it, if |group|
+// was created by |EC_GROUP_new_curve_GFp|. If |group| is static, it simply
+// returns |group|.
+//
+// This function exists for OpenSSL compatibilty, and to manage dynamic
+// |EC_GROUP|s constructed by |EC_GROUP_new_curve_GFp|. Callers that do not need
+// either may ignore this function.
+OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *group);
+
 // EC_GROUP_new_curve_GFp creates a new, arbitrary elliptic curve group based
 // on the equation y² = x³ + a·x + b. It returns the new group or NULL on
-// error.
+// error. The lifetime of the resulting object must be managed with
+// |EC_GROUP_dup| and |EC_GROUP_free|.
 //
 // This new group has no generator. It is an error to use a generator-less group
 // with any functions except for |EC_GROUP_free|, |EC_POINT_new|,
