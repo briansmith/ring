@@ -1,10 +1,12 @@
-use core::num::Wrapping;
+use core::{mem, num::Wrapping};
+
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 /// An `Encoding` of a type `T` can be converted to/from its byte
 /// representation without any byte swapping or other computation.
 ///
 /// The `Self: Copy` constraint addresses `clippy::declare_interior_mutable_const`.
-pub trait Encoding<T>: From<T> + Into<T>
+pub trait Encoding<T>: From<T> + Into<T> + FromBytes + AsBytes
 where
     Self: Copy,
 {
@@ -25,7 +27,7 @@ pub trait FromByteArray<T> {
 
 macro_rules! define_endian {
     ($endian:ident) => {
-        #[derive(Clone, Copy)]
+        #[derive(Clone, Copy, FromZeroes, FromBytes, AsBytes)]
         #[repr(transparent)]
         pub struct $endian<T>(T);
 
@@ -48,7 +50,7 @@ macro_rules! impl_from_byte_array {
         {
             #[inline]
             fn from_byte_array(a: &[u8; $elems * core::mem::size_of::<$base>()]) -> Self {
-                unsafe { core::mem::transmute_copy(a) }
+                zerocopy::transmute!(*a)
             }
         }
     };
@@ -58,11 +60,24 @@ macro_rules! impl_array_encoding {
     ($endian:ident, $base:ident, $elems:expr) => {
         impl ArrayEncoding<[u8; $elems * core::mem::size_of::<$base>()]>
             for [$endian<$base>; $elems]
+        where
+            Self: AsBytes,
         {
             #[inline]
             fn as_byte_array(&self) -> &[u8; $elems * core::mem::size_of::<$base>()] {
+                const _: () = assert!(
+                    mem::size_of::<[$endian<$base>; $elems]>()
+                        == $elems * core::mem::size_of::<$base>()
+                );
                 let as_bytes_ptr =
                     self.as_ptr() as *const [u8; $elems * core::mem::size_of::<$base>()];
+                // SAFETY:
+                // - `Self: AsBytes`, so it's sound to observe the bytes of
+                //   `self` and to have a reference to those bytes alive at the
+                //   same time as `&self`.
+                // - As confirmed by the preceding assertion, the sizes of
+                //   `Self` and the return type are equal.
+                // - `[u8; N]` has no alignment requirement.
                 unsafe { &*as_bytes_ptr }
             }
         }

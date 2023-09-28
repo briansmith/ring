@@ -126,6 +126,12 @@ impl Context {
         debug_assert!(input_bytes > 0);
 
         let input = input.as_ptr() as *const [u8; BLOCK_LEN];
+        // SAFETY:
+        // - `[[u8; BLOCK_LEN]]` has the same bit validity as `[u8]`.
+        // - `[[u8; BLOCK_LEN]]` has the same alignment requirement as `[u8]`.
+        // - `input_bytes / BLOCK_LEN` ensures that the total length in bytes of
+        //   the new `[[u8; BLOCK_LEN]]` will not be longer than the original
+        //   `[u8]`.
         let input = unsafe { core::slice::from_raw_parts(input, input_bytes / BLOCK_LEN) };
 
         // Although these functions take `Xi` and `h_table` as separate
