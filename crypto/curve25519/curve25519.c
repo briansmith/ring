@@ -43,14 +43,16 @@
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
 
-#if defined(BORINGSSL_CURVE25519_64BIT)
+#if defined(BORINGSSL_HAS_UINT128)
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #include "../../third_party/fiat/curve25519_64.h"
+#elif defined(OPENSSL_64_BIT)
+#include "../../third_party/fiat/curve25519_64_msvc.h"
 #else
 #include "../../third_party/fiat/curve25519_32.h"
-#endif  // BORINGSSL_CURVE25519_64BIT
+#endif
 
 
 // Low-level intrinsic operations
@@ -75,7 +77,7 @@ static uint64_t load_4(const uint8_t *in) {
 
 // Field operations.
 
-#if defined(BORINGSSL_CURVE25519_64BIT)
+#if defined(OPENSSL_64_BIT)
 
 // assert_fe asserts that |f| satisfies bounds:
 //
@@ -149,7 +151,7 @@ static uint64_t load_4(const uint8_t *in) {
     }                                                                    \
   } while (0)
 
-#endif  // BORINGSSL_CURVE25519_64BIT
+#endif  // OPENSSL_64_BIT
 
 OPENSSL_STATIC_ASSERT(sizeof(fe) == sizeof(fe_limb_t) * FE_NUM_LIMBS,
                       "fe_limb_t[FE_NUM_LIMBS] is inconsistent with fe");

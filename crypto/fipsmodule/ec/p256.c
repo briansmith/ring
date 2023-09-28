@@ -50,8 +50,9 @@
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
-#define BORINGSSL_NISTP256_64BIT 1
 #include "../../../third_party/fiat/p256_64.h"
+#elif defined(OPENSSL_64_BIT)
+#include "../../../third_party/fiat/p256_64_msvc.h"
 #else
 #include "../../../third_party/fiat/p256_32.h"
 #endif
@@ -59,7 +60,7 @@
 
 // utility functions, handwritten
 
-#if defined(BORINGSSL_NISTP256_64BIT)
+#if defined(OPENSSL_64_BIT)
 #define FIAT_P256_NLIMBS 4
 typedef uint64_t fiat_p256_limb_t;
 typedef uint64_t fiat_p256_felem[FIAT_P256_NLIMBS];
@@ -493,6 +494,4 @@ void p256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                       b_x, b_y, b_z);
 }
 
-#undef BORINGSSL_NISTP256_64BIT
-
-#endif /* !defined(OPENSSL_USE_NISTZ256) */
+#endif

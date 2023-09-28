@@ -28,11 +28,7 @@ void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                      const uint8_t point[32]);
 #endif
 
-#if defined(BORINGSSL_HAS_UINT128)
-#define BORINGSSL_CURVE25519_64BIT
-#endif
-
-#if defined(BORINGSSL_CURVE25519_64BIT)
+#if defined(OPENSSL_64_BIT)
 // An element t,
 // entries t[0]...t[4], represents the integer t[0]+2^51 t[1]+2^102 t[2]+2^153
 // t[3]+2^204 t[4].

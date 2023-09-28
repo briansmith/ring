@@ -151,7 +151,7 @@ func writeP256Table(path string) error {
 // Tables for other points have table[i] = iG for i in 0 .. 16.
 
 // fiat_p256_g_pre_comp is the table of precomputed base points
-#if defined(BORINGSSL_NISTP256_64BIT)
+#if defined(OPENSSL_64_BIT)
 static const fiat_p256_felem fiat_p256_g_pre_comp[2][15][2] = `
 	if _, err := f.WriteString(fileHeader); err != nil {
 		return err
