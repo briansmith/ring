@@ -85,15 +85,18 @@ fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mu
             in_out
         } else {
             use crate::c;
+            let (htable, xi) = auth.inner();
             prefixed_extern! {
+                // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
+                // assembly says it needs just nine values in that array.
                 fn aesni_gcm_encrypt(
                     input: *const u8,
                     output: *mut u8,
                     len: c::size_t,
                     key: &aes::AES_KEY,
                     ivec: &mut Counter,
-                    gcm: &mut gcm::ContextInner,
-                ) -> c::size_t;
+                    Htable: &gcm::HTable,
+                    Xi: &mut gcm::Xi) -> c::size_t;
             }
             let processed = unsafe {
                 aesni_gcm_encrypt(
@@ -102,7 +105,8 @@ fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mu
                     in_out.len(),
                     aes_key.inner_less_safe(),
                     &mut ctr,
-                    auth.inner(),
+                    htable,
+                    xi,
                 )
             };
 
@@ -161,16 +165,18 @@ fn aes_gcm_open(
             in_out
         } else {
             use crate::c;
-
+            let (htable, xi) = auth.inner();
             prefixed_extern! {
+                // `HTable` and `Xi` should be 128-bit aligned. TODO: Can we shrink `HTable`? The
+                // assembly says it needs just nine values in that array.
                 fn aesni_gcm_decrypt(
                     input: *const u8,
                     output: *mut u8,
                     len: c::size_t,
                     key: &aes::AES_KEY,
                     ivec: &mut Counter,
-                    gcm: &mut gcm::ContextInner,
-                ) -> c::size_t;
+                    Htable: &gcm::HTable,
+                    Xi: &mut gcm::Xi) -> c::size_t;
             }
 
             let processed = unsafe {
@@ -180,7 +186,8 @@ fn aes_gcm_open(
                     in_out.len() - src.start,
                     aes_key.inner_less_safe(),
                     &mut ctr,
-                    auth.inner(),
+                    htable,
+                    xi,
                 )
             };
             &mut in_out[processed..]
