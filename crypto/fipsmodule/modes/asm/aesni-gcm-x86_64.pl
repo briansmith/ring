@@ -375,6 +375,9 @@ _aesni_ctr32_ghash_6x:
 	 vpaddb		$T2,$T1,$Ii
 	mov		%r13,0x70+8(%rsp)
 	lea		0x60($inp),$inp
+	# These two prefetches were added in BoringSSL. See change that added them.
+	 prefetcht0	512($inp)		# We use 96-byte block so prefetch 2 lines (128 bytes)
+	 prefetcht0	576($inp)
 	  vaesenclast	$Z1,$inout2,$inout2
 	 vpaddb		$T2,$Ii,$Z1
 	mov		%r12,0x78+8(%rsp)
