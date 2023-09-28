@@ -46,10 +46,6 @@
 #pragma GCC diagnostic ignored "-Winline"
 #endif
 
-#if defined(OPENSSL_NO_ASM)
-#define FIAT_P256_NO_ASM
-#endif
-
 #if defined(BORINGSSL_HAS_UINT128)
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wpedantic"

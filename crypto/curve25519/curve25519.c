@@ -43,10 +43,6 @@
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
 
-#if defined(OPENSSL_NO_ASM)
-#define FIAT_25519_NO_ASM
-#endif
-
 #if defined(BORINGSSL_CURVE25519_64BIT)
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wpedantic"
