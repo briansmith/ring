@@ -96,7 +96,6 @@ impl Context {
         let mut ctx = Self {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),
-                _unused: Block::zero(),
                 Htable: key.h_table.clone(),
             },
             cpu_features: key.cpu_features,
@@ -289,7 +288,6 @@ impl From<Xi> for Block {
 #[repr(C, align(16))]
 struct ContextInner {
     Xi: Xi,
-    _unused: Block,
     Htable: HTable,
 }
 
