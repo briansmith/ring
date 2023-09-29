@@ -146,6 +146,20 @@ typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
 #endif
 
+// Pointer utility functions.
+
+// buffers_alias returns one if |a| and |b| alias and zero otherwise.
+static inline int buffers_alias(const uint8_t *a, size_t a_len,
+                                const uint8_t *b, size_t b_len) {
+  // Cast |a| and |b| to integers. In C, pointer comparisons between unrelated
+  // objects are undefined whereas pointer to integer conversions are merely
+  // implementation-defined. We assume the implementation defined it in a sane
+  // way.
+  uintptr_t a_u = (uintptr_t)a;
+  uintptr_t b_u = (uintptr_t)b;
+  return a_u + a_len > b_u && b_u + b_len > a_u;
+}
+
 
 // Constant-time utility functions.
 //
@@ -258,6 +272,13 @@ static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
   // Adding barriers to both |mask| and |~mask| breaks the relationship between
   // the two, which makes the compiler stick with bitmasks.
   return (value_barrier_w(mask) & a) | (value_barrier_w(~mask) & b);
+}
+
+// constant_time_select_8 acts like |constant_time_select| but operates on
+// 8-bit values.
+static inline uint8_t constant_time_select_8(uint8_t mask, uint8_t a,
+                                             uint8_t b) {
+  return (uint8_t)(constant_time_select_w(mask, a, b));
 }
 
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
