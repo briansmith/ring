@@ -1,8 +1,11 @@
 .text
 #if defined(__APPLE__)
+.private_extern fiat_curve25519_adx_square
 .global _fiat_curve25519_adx_square
 _fiat_curve25519_adx_square:
 #else
+.type fiat_curve25519_adx_square, @function
+.hidden fiat_curve25519_adx_square
 .global fiat_curve25519_adx_square
 fiat_curve25519_adx_square:
 #endif
@@ -121,3 +124,6 @@ mov r15, [ rsp - 0x58 ]
 mov rbp, [rsp - 0x08]
 ret
 .cfi_endproc
+#if defined(__ELF__)
+.size fiat_curve25519_adx_square, .-fiat_curve25519_adx_square
+#endif
