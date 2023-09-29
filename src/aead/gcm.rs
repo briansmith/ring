@@ -127,9 +127,6 @@ impl Context {
         let input = input.as_ptr() as *const [u8; BLOCK_LEN];
         let input = unsafe { core::slice::from_raw_parts(input, input_bytes / BLOCK_LEN) };
 
-        // Although these functions take `Xi` and `h_table` as separate
-        // parameters, one or more of them might assume that they are part of
-        // the same `ContextInner` structure.
         let xi = &mut self.inner.Xi;
         let h_table = &self.inner.Htable;
 
