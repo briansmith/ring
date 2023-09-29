@@ -278,6 +278,22 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
 
 #endif  // BORINGSSL_CONSTANT_TIME_VALIDATION
 
+static inline crypto_word constant_time_declassify_w(crypto_word v) {
+  // Return |v| through a value barrier to be safe. Valgrind-based constant-time
+  // validation is partly to check the compiler has not undone any constant-time
+  // work. Any place |BORINGSSL_CONSTANT_TIME_VALIDATION| influences
+  // optimizations, this validation is inaccurate.
+  //
+  // However, by sending pointers through valgrind, we likely inhibit escape
+  // analysis. On local variables, particularly booleans, we likely
+  // significantly impact optimizations.
+  //
+  // Thus, to be safe, stick a value barrier, in hopes of comparably inhibiting
+  // compiler analysis.
+  CONSTTIME_DECLASSIFY(&v, sizeof(v));
+  return value_barrier_w(v);
+}
+
 // Endianness conversions.
 
 #if defined(__GNUC__) && __GNUC__ >= 2

@@ -254,7 +254,7 @@ static void fiat_p256_point_add(fiat_p256_felem x3, fiat_p256_felem y3,
   fiat_p256_limb_t is_nontrivial_double = constant_time_is_zero_w(xneq | yneq) &
                                           ~constant_time_is_zero_w(z1nz) &
                                           ~constant_time_is_zero_w(z2nz);
-  if (is_nontrivial_double) {
+  if (constant_time_declassify_w(is_nontrivial_double)) {
     fiat_p256_point_double(x3, y3, z3, x1, y1, z1);
     return;
   }
