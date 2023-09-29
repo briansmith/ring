@@ -134,7 +134,7 @@
 
 #include "../../internal.h"
 
-typedef crypto_word BN_ULONG;
+typedef crypto_word_t BN_ULONG;
 
 #if defined(OPENSSL_64_BIT)
 

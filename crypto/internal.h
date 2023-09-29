@@ -161,25 +161,27 @@ typedef __uint128_t uint128_t;
 //
 // can be written as
 //
-// crypto_word lt = constant_time_lt_w(a, b);
+// crypto_word_t lt = constant_time_lt_w(a, b);
 // c = constant_time_select_w(lt, a, b);
 
-// crypto_word is the type that most constant-time functions use. Ideally we
+// crypto_word_t is the type that most constant-time functions use. Ideally we
 // would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
-// pointers, which means that |size_t| can be 32 bits when |crypto_word| is 64
-// bits.
+// pointers, which means that |size_t| can be 32 bits when |BN_ULONG| is 64
+// bits. Since we want to be able to do constant-time operations on a
+// |BN_ULONG|, |crypto_word_t| is defined as an unsigned value with the native
+// word length.
 #if defined(OPENSSL_64_BIT)
-typedef uint64_t crypto_word;
+typedef uint64_t crypto_word_t;
 #define CRYPTO_WORD_BITS (64u)
 #elif defined(OPENSSL_32_BIT)
-typedef uint32_t crypto_word;
+typedef uint32_t crypto_word_t;
 #define CRYPTO_WORD_BITS (32u)
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
-#define CONSTTIME_TRUE_W ~((crypto_word)0)
-#define CONSTTIME_FALSE_W ((crypto_word)0)
+#define CONSTTIME_TRUE_W ~((crypto_word_t)0)
+#define CONSTTIME_FALSE_W ((crypto_word_t)0)
 
 // value_barrier_w returns |a|, but prevents GCC and Clang from reasoning about
 // the returned value. This is used to mitigate compilers undoing constant-time
@@ -188,7 +190,7 @@ typedef uint32_t crypto_word;
 // Note the compiler is aware that |value_barrier_w| has no side effects and
 // always has the same output for a given input. This allows it to eliminate
 // dead code, move computations across loops, and vectorize.
-static inline crypto_word value_barrier_w(crypto_word a) {
+static inline crypto_word_t value_barrier_w(crypto_word_t a) {
 #if defined(__GNUC__) || defined(__clang__)
   __asm__("" : "+r"(a) : /* no inputs */);
 #endif
@@ -213,12 +215,12 @@ static inline uint64_t value_barrier_u64(uint64_t a) {
 
 // constant_time_msb_w returns the given value with the MSB copied to all the
 // other bits.
-static inline crypto_word constant_time_msb_w(crypto_word a) {
+static inline crypto_word_t constant_time_msb_w(crypto_word_t a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
 // constant_time_is_zero_w returns 0xff..f if a == 0 and 0 otherwise.
-static inline crypto_word constant_time_is_zero_w(crypto_word a) {
+static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
   // Here is an SMT-LIB verification of this formula:
   //
   // (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
@@ -233,22 +235,22 @@ static inline crypto_word constant_time_is_zero_w(crypto_word a) {
   return constant_time_msb_w(~a & (a - 1));
 }
 
-static inline crypto_word constant_time_is_nonzero_w(crypto_word a) {
+static inline crypto_word_t constant_time_is_nonzero_w(crypto_word_t a) {
   return ~constant_time_is_zero_w(a);
 }
 
 // constant_time_eq_w returns 0xff..f if a == b and 0 otherwise.
-static inline crypto_word constant_time_eq_w(crypto_word a,
-                                               crypto_word b) {
+static inline crypto_word_t constant_time_eq_w(crypto_word_t a,
+                                               crypto_word_t b) {
   return constant_time_is_zero_w(a ^ b);
 }
 
 // constant_time_select_w returns (mask & a) | (~mask & b). When |mask| is all
 // 1s or all 0s (as returned by the methods above), the select methods return
 // either |a| (if |mask| is nonzero) or |b| (if |mask| is zero).
-static inline crypto_word constant_time_select_w(crypto_word mask,
-                                                   crypto_word a,
-                                                   crypto_word b) {
+static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
+                                                   crypto_word_t a,
+                                                   crypto_word_t b) {
   // Clang recognizes this pattern as a select. While it usually transforms it
   // to a cmov, it sometimes further transforms it into a branch, which we do
   // not want.
@@ -278,7 +280,7 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
 
 #endif  // BORINGSSL_CONSTANT_TIME_VALIDATION
 
-static inline crypto_word constant_time_declassify_w(crypto_word v) {
+static inline crypto_word_t constant_time_declassify_w(crypto_word_t v) {
   // Return |v| through a value barrier to be safe. Valgrind-based constant-time
   // validation is partly to check the compiler has not undone any constant-time
   // work. Any place |BORINGSSL_CONSTANT_TIME_VALIDATION| influences
@@ -402,13 +404,13 @@ static inline void CRYPTO_store_u64_be(void *out, uint64_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
-static inline crypto_word CRYPTO_load_word_le(const void *in) {
-  crypto_word v;
+static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
+  crypto_word_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
   return v;
 }
 
-static inline void CRYPTO_store_word_le(void *out, crypto_word v) {
+static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 

@@ -221,7 +221,7 @@ static void p384_point_select_w5(P384_POINT *out,
 
   // TODO: Rewrite in terms of |limbs_select|.
   for (size_t i = 0; i < 16; ++i) {
-    crypto_word equal = constant_time_eq_w(index, (crypto_word)i + 1);
+    crypto_word_t equal = constant_time_eq_w(index, (crypto_word_t)i + 1);
     for (size_t j = 0; j < P384_LIMBS; ++j) {
       x[j] = constant_time_select_w(equal, table[i].X[j], x[j]);
       y[j] = constant_time_select_w(equal, table[i].Y[j], y[j]);

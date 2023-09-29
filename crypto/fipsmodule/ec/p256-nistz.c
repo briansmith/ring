@@ -39,8 +39,8 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 
 // Recode window to a signed digit, see |nistp_recode_scalar_bits| in
 // util.c for details
-static crypto_word booth_recode_w5(crypto_word in) {
-  crypto_word s, d;
+static crypto_word_t booth_recode_w5(crypto_word_t in) {
+  crypto_word_t s, d;
 
   s = ~((in >> 5) - 1);
   d = (1 << 6) - in - 1;
@@ -50,8 +50,8 @@ static crypto_word booth_recode_w5(crypto_word in) {
   return (d << 1) + (s & 1);
 }
 
-static crypto_word booth_recode_w7(crypto_word in) {
-  crypto_word s, d;
+static crypto_word_t booth_recode_w7(crypto_word_t in) {
+  crypto_word_t s, d;
 
   s = ~((in >> 7) - 1);
   d = (1 << 8) - in - 1;
@@ -128,7 +128,7 @@ static void ecp_nistz256_windowed_mul(P256_POINT *r,
   debug_assert_nonsecret(p_y != NULL);
 
   static const size_t kWindowSize = 5;
-  static const crypto_word kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
+  static const crypto_word_t kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
   // A |P256_POINT| is (3 * 32) = 96 bytes, and the 64-byte alignment should
   // add no more than 63 bytes of overhead. Thus, |table| should require
@@ -165,7 +165,7 @@ static void ecp_nistz256_windowed_mul(P256_POINT *r,
   BN_ULONG tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
   size_t index = 255;
-  crypto_word wvalue = p_str[(index - 1) / 8];
+  crypto_word_t wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
   ecp_nistz256_select_w5(r, table, (int)(booth_recode_w5(wvalue) >> 1));
@@ -174,7 +174,7 @@ static void ecp_nistz256_windowed_mul(P256_POINT *r,
     if (index != 255) {
       size_t off = (index - 1) / 8;
 
-      wvalue = (crypto_word)p_str[off] | (crypto_word)p_str[off + 1] << 8;
+      wvalue = (crypto_word_t)p_str[off] | (crypto_word_t)p_str[off + 1] << 8;
       wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
       wvalue = booth_recode_w5(wvalue);
@@ -210,22 +210,22 @@ static void ecp_nistz256_windowed_mul(P256_POINT *r,
   ecp_nistz256_point_add(r, r, &h);
 }
 
-static crypto_word calc_first_wvalue(size_t *index, const uint8_t p_str[33]) {
+static crypto_word_t calc_first_wvalue(size_t *index, const uint8_t p_str[33]) {
   static const size_t kWindowSize = 7;
-  static const crypto_word kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
+  static const crypto_word_t kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
   *index = kWindowSize;
 
-  crypto_word wvalue = ((crypto_word)p_str[0] << 1) & kMask;
+  crypto_word_t wvalue = ((crypto_word_t)p_str[0] << 1) & kMask;
   return booth_recode_w7(wvalue);
 }
 
-static crypto_word calc_wvalue(size_t *index, const uint8_t p_str[33]) {
+static crypto_word_t calc_wvalue(size_t *index, const uint8_t p_str[33]) {
   static const size_t kWindowSize = 7;
-  static const crypto_word kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
+  static const crypto_word_t kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
   const size_t off = (*index - 1) / 8;
-  crypto_word wvalue =
-      (crypto_word)p_str[off] | (crypto_word)p_str[off + 1] << 8;
+  crypto_word_t wvalue =
+      (crypto_word_t)p_str[off] | (crypto_word_t)p_str[off + 1] << 8;
   wvalue = (wvalue >> ((*index - 1) % 8)) & kMask;
   *index += kWindowSize;
 
@@ -249,7 +249,7 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
 
   // First window
   size_t index = 0;
-  crypto_word wvalue = calc_first_wvalue(&index, p_str);
+  crypto_word_t wvalue = calc_first_wvalue(&index, p_str);
 
   alignas(32) P256_POINT_AFFINE t;
   alignas(32) P256_POINT p;

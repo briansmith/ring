@@ -157,10 +157,10 @@ void nistz384_point_add(P384_POINT *r, const P384_POINT *a,
   limbs_copy(r->Z, res_z, P384_LIMBS);
 }
 
-static void add_precomputed_w5(P384_POINT *r, crypto_word wvalue,
+static void add_precomputed_w5(P384_POINT *r, crypto_word_t wvalue,
                                const P384_POINT table[16]) {
-  crypto_word recoded_is_negative;
-  crypto_word recoded;
+  crypto_word_t recoded_is_negative;
+  crypto_word_t recoded;
   booth_recode(&recoded_is_negative, &recoded, wvalue, 5);
 
   alignas(64) P384_POINT h;
@@ -178,7 +178,7 @@ void nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
                             const BN_ULONG p_x[P384_LIMBS],
                             const BN_ULONG p_y[P384_LIMBS]) {
   static const size_t kWindowSize = 5;
-  static const crypto_word kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
+  static const crypto_word_t kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
   uint8_t p_str[(P384_LIMBS * sizeof(Limb)) + 1];
   little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
@@ -218,9 +218,9 @@ void nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   size_t index = START_INDEX;
 
   BN_ULONG recoded_is_negative;
-  crypto_word recoded;
+  crypto_word_t recoded;
 
-  crypto_word wvalue = p_str[(index - 1) / 8];
+  crypto_word_t wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
   booth_recode(&recoded_is_negative, &recoded, wvalue, 5);

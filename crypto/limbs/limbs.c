@@ -151,7 +151,7 @@ void LIMBS_shl_mod(Limb r[], const Limb a[], const Limb m[], size_t num_limbs) {
 }
 
 int LIMBS_select_512_32(Limb r[], const Limb table[], size_t num_limbs,
-                        crypto_word index) {
+                        crypto_word_t index) {
   if (num_limbs % (512 / LIMB_BITS) != 0) {
     return 0;
   }
@@ -161,7 +161,7 @@ int LIMBS_select_512_32(Limb r[], const Limb table[], size_t num_limbs,
 
 static const Limb FIVE_BITS_MASK = 0x1f;
 
-crypto_word LIMBS_window5_split_window(Limb lower_limb, Limb higher_limb, size_t index_within_word) {
+crypto_word_t LIMBS_window5_split_window(Limb lower_limb, Limb higher_limb, size_t index_within_word) {
   Limb high_bits = (higher_limb << (LIMB_BITS - index_within_word))
     & FIVE_BITS_MASK;
   // There are no bits outside the window above |index_within_word| (if there
@@ -171,7 +171,7 @@ crypto_word LIMBS_window5_split_window(Limb lower_limb, Limb higher_limb, size_t
   return low_bits | high_bits;
 }
 
-crypto_word LIMBS_window5_unsplit_window(Limb limb, size_t index_within_word) {
+crypto_word_t LIMBS_window5_unsplit_window(Limb limb, size_t index_within_word) {
   return (limb >> index_within_word) & FIVE_BITS_MASK;
 }
 

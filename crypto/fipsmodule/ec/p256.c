@@ -326,7 +326,7 @@ static void fiat_p256_select_point(const fiat_p256_limb_t idx, size_t size,
 }
 
 // fiat_p256_get_bit returns the |i|th bit in |in|
-static crypto_word fiat_p256_get_bit(const Limb in[P256_LIMBS], int i) {
+static crypto_word_t fiat_p256_get_bit(const Limb in[P256_LIMBS], int i) {
   if (i < 0 || i >= 256) {
     return 0;
   }
@@ -379,13 +379,13 @@ void p256_point_mul(P256_POINT *r, const Limb scalar[P256_LIMBS],
 
     // do other additions every 5 doublings
     if (i % 5 == 0) {
-      crypto_word bits = fiat_p256_get_bit(scalar, i + 4) << 5;
+      crypto_word_t bits = fiat_p256_get_bit(scalar, i + 4) << 5;
       bits |= fiat_p256_get_bit(scalar, i + 3) << 4;
       bits |= fiat_p256_get_bit(scalar, i + 2) << 3;
       bits |= fiat_p256_get_bit(scalar, i + 1) << 2;
       bits |= fiat_p256_get_bit(scalar, i) << 1;
       bits |= fiat_p256_get_bit(scalar, i - 1);
-      crypto_word sign, digit;
+      crypto_word_t sign, digit;
       recode_scalar_bits(&sign, &digit, bits);
 
       // select the point to add or subtract, in constant time.
@@ -423,7 +423,7 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
     }
 
     // First, look 32 bits upwards.
-    crypto_word bits = fiat_p256_get_bit(scalar, i + 224) << 3;
+    crypto_word_t bits = fiat_p256_get_bit(scalar, i + 224) << 3;
     bits |= fiat_p256_get_bit(scalar, i + 160) << 2;
     bits |= fiat_p256_get_bit(scalar, i + 96) << 1;
     bits |= fiat_p256_get_bit(scalar, i + 32);
@@ -485,7 +485,7 @@ void p256_point_add_affine(P256_POINT *r, const P256_POINT *a,
   const Limb *b_x = &b[0];
   const Limb *b_y = &b[P256_LIMBS];
   fiat_p256_felem b_z = {0};
-  crypto_word b_is_inf = constant_time_select_w(
+  crypto_word_t b_is_inf = constant_time_select_w(
       LIMBS_are_zero(b_x, P256_LIMBS), LIMBS_are_zero(b_y, P256_LIMBS), 0);
   fiat_p256_cmovznz(b_z, constant_time_is_zero_w(b_is_inf), b_z, fiat_p256_one);
   fiat_p256_point_add(r->X, r->Y, r->Z,
