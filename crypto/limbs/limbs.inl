@@ -142,7 +142,7 @@ static inline void limbs_copy(Limb r[], const Limb a[], size_t num_limbs) {
 
 static inline void limbs_select(Limb r[], const Limb table[],
                                 size_t num_limbs, size_t num_entries,
-                                crypto_word index) {
+                                crypto_word_t index) {
   for (size_t i = 0; i < num_limbs; ++i) {
     r[i] = 0;
   }

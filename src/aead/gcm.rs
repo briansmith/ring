@@ -96,7 +96,6 @@ impl Context {
         let mut ctx = Self {
             inner: ContextInner {
                 Xi: Xi(Block::zero()),
-                _unused: Block::zero(),
                 Htable: key.h_table.clone(),
             },
             cpu_features: key.cpu_features,
@@ -114,8 +113,8 @@ impl Context {
     /// Access to `inner` for the integrated AES-GCM implementations only.
     #[cfg(target_arch = "x86_64")]
     #[inline]
-    pub(super) fn inner(&mut self) -> &mut ContextInner {
-        &mut self.inner
+    pub(super) fn inner(&mut self) -> (&HTable, &mut Xi) {
+        (&self.inner.Htable, &mut self.inner.Xi)
     }
 
     pub fn update_blocks(&mut self, input: &[u8]) {
@@ -128,9 +127,6 @@ impl Context {
         let input = input.as_ptr() as *const [u8; BLOCK_LEN];
         let input = unsafe { core::slice::from_raw_parts(input, input_bytes / BLOCK_LEN) };
 
-        // Although these functions take `Xi` and `h_table` as separate
-        // parameters, one or more of them might assume that they are part of
-        // the same `ContextInner` structure.
         let xi = &mut self.inner.Xi;
         let h_table = &self.inner.Htable;
 
@@ -253,7 +249,7 @@ impl Context {
 // The alignment is required by non-Rust code that uses `GCM128_CONTEXT`.
 #[derive(Clone)]
 #[repr(C, align(16))]
-struct HTable {
+pub(super) struct HTable {
     Htable: [u128; HTABLE_LEN],
 }
 
@@ -287,9 +283,8 @@ impl From<Xi> for Block {
 // Some assembly language code, in particular the MOVEBE+AVX2 X86-64
 // implementation, requires this exact layout.
 #[repr(C, align(16))]
-pub(super) struct ContextInner {
+struct ContextInner {
     Xi: Xi,
-    _unused: Block,
     Htable: HTable,
 }
 

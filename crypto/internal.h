@@ -146,6 +146,20 @@ typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
 #endif
 
+// Pointer utility functions.
+
+// buffers_alias returns one if |a| and |b| alias and zero otherwise.
+static inline int buffers_alias(const void *a, size_t a_bytes,
+                                const void *b, size_t b_bytes) {
+  // Cast |a| and |b| to integers. In C, pointer comparisons between unrelated
+  // objects are undefined whereas pointer to integer conversions are merely
+  // implementation-defined. We assume the implementation defined it in a sane
+  // way.
+  uintptr_t a_u = (uintptr_t)a;
+  uintptr_t b_u = (uintptr_t)b;
+  return a_u + a_bytes > b_u && b_u + b_bytes > a_u;
+}
+
 
 // Constant-time utility functions.
 //
@@ -161,25 +175,39 @@ typedef __uint128_t uint128_t;
 //
 // can be written as
 //
-// crypto_word lt = constant_time_lt_w(a, b);
+// crypto_word_t lt = constant_time_lt_w(a, b);
 // c = constant_time_select_w(lt, a, b);
 
-// crypto_word is the type that most constant-time functions use. Ideally we
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#endif
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(push)
+// '=': conversion from 'crypto_word_t' to 'uint8_t', possible loss of data
+#pragma warning(disable: 4242)
+//  'initializing': conversion from 'crypto_word_t' to 'uint8_t', ...
+#pragma warning(disable: 4244)
+#endif
+
+// crypto_word_t is the type that most constant-time functions use. Ideally we
 // would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
-// pointers, which means that |size_t| can be 32 bits when |crypto_word| is 64
-// bits.
+// pointers, which means that |size_t| can be 32 bits when |BN_ULONG| is 64
+// bits. Since we want to be able to do constant-time operations on a
+// |BN_ULONG|, |crypto_word_t| is defined as an unsigned value with the native
+// word length.
 #if defined(OPENSSL_64_BIT)
-typedef uint64_t crypto_word;
+typedef uint64_t crypto_word_t;
 #define CRYPTO_WORD_BITS (64u)
 #elif defined(OPENSSL_32_BIT)
-typedef uint32_t crypto_word;
+typedef uint32_t crypto_word_t;
 #define CRYPTO_WORD_BITS (32u)
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
-#define CONSTTIME_TRUE_W ~((crypto_word)0)
-#define CONSTTIME_FALSE_W ((crypto_word)0)
+#define CONSTTIME_TRUE_W ~((crypto_word_t)0)
+#define CONSTTIME_FALSE_W ((crypto_word_t)0)
 
 // value_barrier_w returns |a|, but prevents GCC and Clang from reasoning about
 // the returned value. This is used to mitigate compilers undoing constant-time
@@ -188,7 +216,7 @@ typedef uint32_t crypto_word;
 // Note the compiler is aware that |value_barrier_w| has no side effects and
 // always has the same output for a given input. This allows it to eliminate
 // dead code, move computations across loops, and vectorize.
-static inline crypto_word value_barrier_w(crypto_word a) {
+static inline crypto_word_t value_barrier_w(crypto_word_t a) {
 #if defined(__GNUC__) || defined(__clang__)
   __asm__("" : "+r"(a) : /* no inputs */);
 #endif
@@ -211,14 +239,17 @@ static inline uint64_t value_barrier_u64(uint64_t a) {
   return a;
 }
 
+// |value_barrier_u8| could be defined as above, but compilers other than
+// clang seem to still materialize 0x00..00MM instead of reusing 0x??..??MM.
+
 // constant_time_msb_w returns the given value with the MSB copied to all the
 // other bits.
-static inline crypto_word constant_time_msb_w(crypto_word a) {
+static inline crypto_word_t constant_time_msb_w(crypto_word_t a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
-// constant_time_is_zero_w returns 0xff..f if a == 0 and 0 otherwise.
-static inline crypto_word constant_time_is_zero_w(crypto_word a) {
+// constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise.
+static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
   // Here is an SMT-LIB verification of this formula:
   //
   // (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
@@ -233,29 +264,87 @@ static inline crypto_word constant_time_is_zero_w(crypto_word a) {
   return constant_time_msb_w(~a & (a - 1));
 }
 
-static inline crypto_word constant_time_is_nonzero_w(crypto_word a) {
+static inline crypto_word_t constant_time_is_nonzero_w(crypto_word_t a) {
   return ~constant_time_is_zero_w(a);
 }
 
 // constant_time_eq_w returns 0xff..f if a == b and 0 otherwise.
-static inline crypto_word constant_time_eq_w(crypto_word a,
-                                               crypto_word b) {
+static inline crypto_word_t constant_time_eq_w(crypto_word_t a,
+                                               crypto_word_t b) {
   return constant_time_is_zero_w(a ^ b);
 }
 
 // constant_time_select_w returns (mask & a) | (~mask & b). When |mask| is all
 // 1s or all 0s (as returned by the methods above), the select methods return
 // either |a| (if |mask| is nonzero) or |b| (if |mask| is zero).
-static inline crypto_word constant_time_select_w(crypto_word mask,
-                                                   crypto_word a,
-                                                   crypto_word b) {
+static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
+                                                   crypto_word_t a,
+                                                   crypto_word_t b) {
   // Clang recognizes this pattern as a select. While it usually transforms it
   // to a cmov, it sometimes further transforms it into a branch, which we do
   // not want.
   //
-  // Adding barriers to both |mask| and |~mask| breaks the relationship between
-  // the two, which makes the compiler stick with bitmasks.
-  return (value_barrier_w(mask) & a) | (value_barrier_w(~mask) & b);
+  // Hiding the value of the mask from the compiler evades this transformation.
+  mask = value_barrier_w(mask);
+  return (mask & a) | (~mask & b);
+}
+
+// constant_time_conditional_memxor xors |n| bytes from |src| to |dst| if
+// |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
+// ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
+static inline void constant_time_conditional_memxor(void *dst, const void *src,
+                                                    const size_t n,
+                                                    const crypto_word_t mask) {
+  debug_assert_nonsecret(!buffers_alias(dst, n, src, n));
+  uint8_t *out = (uint8_t *)dst;
+  const uint8_t *in = (const uint8_t *)src;
+  for (size_t i = 0; i < n; i++) {
+    out[i] ^= value_barrier_w(mask) & in[i];
+  }
+}
+
+#if defined(_MSC_VER) && !defined(__clang__)
+// '=': conversion from 'int64_t' to 'int32_t', possible loss of data
+#pragma warning(pop)
+#endif
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
+#if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
+
+// CONSTTIME_SECRET takes a pointer and a number of bytes and marks that region
+// of memory as secret. Secret data is tracked as it flows to registers and
+// other parts of a memory. If secret data is used as a condition for a branch,
+// or as a memory index, it will trigger warnings in valgrind.
+#define CONSTTIME_SECRET(ptr, len) VALGRIND_MAKE_MEM_UNDEFINED(ptr, len)
+
+// CONSTTIME_DECLASSIFY takes a pointer and a number of bytes and marks that
+// region of memory as public. Public data is not subject to constant-time
+// rules.
+#define CONSTTIME_DECLASSIFY(ptr, len) VALGRIND_MAKE_MEM_DEFINED(ptr, len)
+
+#else
+
+#define CONSTTIME_SECRET(ptr, len)
+#define CONSTTIME_DECLASSIFY(ptr, len)
+
+#endif  // BORINGSSL_CONSTANT_TIME_VALIDATION
+
+static inline crypto_word_t constant_time_declassify_w(crypto_word_t v) {
+  // Return |v| through a value barrier to be safe. Valgrind-based constant-time
+  // validation is partly to check the compiler has not undone any constant-time
+  // work. Any place |BORINGSSL_CONSTANT_TIME_VALIDATION| influences
+  // optimizations, this validation is inaccurate.
+  //
+  // However, by sending pointers through valgrind, we likely inhibit escape
+  // analysis. On local variables, particularly booleans, we likely
+  // significantly impact optimizations.
+  //
+  // Thus, to be safe, stick a value barrier, in hopes of comparably inhibiting
+  // compiler analysis.
+  CONSTTIME_DECLASSIFY(&v, sizeof(v));
+  return value_barrier_w(v);
 }
 
 // Endianness conversions.
@@ -366,13 +455,13 @@ static inline void CRYPTO_store_u64_be(void *out, uint64_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
-static inline crypto_word CRYPTO_load_word_le(const void *in) {
-  crypto_word v;
+static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
+  crypto_word_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
   return v;
 }
 
-static inline void CRYPTO_store_word_le(void *out, crypto_word v) {
+static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 

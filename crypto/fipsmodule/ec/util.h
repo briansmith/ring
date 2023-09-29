@@ -243,9 +243,9 @@
 //   P-384: ...01110011; w = 2, 5, 6, 7 are okay
 //   P-256: ...01010001; w = 5, 7 are okay
 //   P-224: ...00111101; w = 3, 4, 5, 6 are okay
-static inline void recode_scalar_bits(crypto_word *sign, crypto_word *digit,
-                                      crypto_word in) {
-  crypto_word s, d;
+static inline void recode_scalar_bits(crypto_word_t *sign, crypto_word_t *digit,
+                                      crypto_word_t in) {
+  crypto_word_t s, d;
 
   s = ~((in >> 5) - 1); /* sets all bits to MSB(in), 'in' seen as
                           * 6-bit value */
