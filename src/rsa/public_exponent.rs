@@ -12,14 +12,8 @@ impl PublicExponent {
 
     // TODO: Use `NonZeroU64::new(...).unwrap()` when `feature(const_panic)` is
     // stable.
-    pub(super) const _3: Self = Self(match NonZeroU64::new(3) {
-        Some(nz) => nz,
-        None => unreachable!(),
-    });
-    pub(super) const _65537: Self = Self(match NonZeroU64::new(65537) {
-        Some(nz) => nz,
-        None => unreachable!(),
-    });
+    pub(super) const _3: Self = Self(unsafe { NonZeroU64::new_unchecked(3) });
+    pub(super) const _65537: Self = Self(unsafe { NonZeroU64::new_unchecked(65537) });
 
     // This limit was chosen to bound the performance of the simple
     // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
@@ -35,10 +29,7 @@ impl PublicExponent {
     //
     // TODO: Use `NonZeroU64::new(...).unwrap()` when `feature(const_panic)` is
     // stable.
-    const MAX: Self = Self(match NonZeroU64::new((1u64 << 33) - 1) {
-        Some(nz) => nz,
-        None => unreachable!(),
-    });
+    const MAX: Self = Self(unsafe { NonZeroU64::new_unchecked((1u64 << 33) - 1) });
 
     pub(super) fn from_be_bytes(
         input: untrusted::Input,
