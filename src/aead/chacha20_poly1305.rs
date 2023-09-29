@@ -16,8 +16,9 @@ use super::{
     chacha::{self, Counter, Iv},
     poly1305, Aad, Nonce, Tag,
 };
-use crate::{aead, cpu, endian::*, error, polyfill};
+use crate::{aead, cpu, error, polyfill};
 use core::ops::RangeFrom;
+use zerocopy::{byteorder::little_endian::U64 as LEU64, AsBytes as _};
 
 /// ChaCha20-Poly1305 as described in [RFC 8439].
 ///
@@ -209,10 +210,10 @@ fn chacha20_poly1305_open(
 fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag {
     auth.update(
         [
-            LittleEndian::from(polyfill::u64_from_usize(aad_len)),
-            LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
+            LEU64::from(polyfill::u64_from_usize(aad_len)),
+            LEU64::from(polyfill::u64_from_usize(in_out_len)),
         ]
-        .as_byte_array(),
+        .as_bytes(),
     );
     auth.finish()
 }

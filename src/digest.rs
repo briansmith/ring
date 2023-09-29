@@ -24,12 +24,12 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use crate::{
-    c, cpu, debug,
-    endian::{ArrayEncoding, BigEndian},
-    polyfill,
-};
+use crate::{c, cpu, debug, polyfill};
 use core::num::Wrapping;
+use zerocopy::{
+    byteorder::big_endian::{U32 as BEU32, U64 as BEU64},
+    AsBytes, FromBytes,
+};
 
 mod sha1;
 mod sha2;
@@ -114,7 +114,8 @@ impl BlockContext {
 
         Digest {
             algorithm: self.algorithm,
-            value: (self.algorithm.format_output)(self.state),
+            // SAFETY: TODO
+            value: unsafe { (self.algorithm.format_output)(self.state) },
         }
     }
 }
@@ -249,7 +250,7 @@ impl AsRef<[u8]> for Digest {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
         let as64 = unsafe { &self.value.as64 };
-        &as64.as_byte_array()[..self.algorithm.output_len]
+        &as64.as_bytes()[..self.algorithm.output_len]
     }
 }
 
@@ -270,7 +271,7 @@ pub struct Algorithm {
     len_len: usize,
 
     block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
-    format_output: fn(input: State) -> Output,
+    format_output: unsafe fn(input: State) -> Output,
 
     initial_state: State,
 
@@ -458,8 +459,8 @@ union State {
 #[derive(Clone, Copy)]
 #[repr(C)]
 union Output {
-    as64: [BigEndian<u64>; 512 / 8 / core::mem::size_of::<BigEndian<u64>>()],
-    as32: [BigEndian<u32>; 256 / 8 / core::mem::size_of::<BigEndian<u32>>()],
+    as64: [BEU64; 512 / 8 / core::mem::size_of::<BEU64>()],
+    as32: [BEU32; 256 / 8 / core::mem::size_of::<BEU32>()],
 }
 
 /// The maximum block length ([`Algorithm::block_len()`]) of all the algorithms
@@ -474,17 +475,41 @@ pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 /// algorithms in this module.
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
-fn sha256_format_output(input: State) -> Output {
+fn sha256_format_output(input: State) -> Output
+where
+    [BEU32; 256 / 8 / core::mem::size_of::<BEU32>()]: FromBytes,
+    [BEU64; 512 / 8 / core::mem::size_of::<BEU64>()]: AsBytes,
+{
+    // SAFETY: There are two cases:
+    // - The union is initialized as `as32`, in which case this is trivially
+    //   sound.
+    // - The union is initialized as `as64`. In this case, the `as64` variant is
+    //   longer than the `as32` variant, so all bytes of `as32` are initialized
+    //   as they are in the prefix of `as64`. Since `as64`'s type is `AsBytes`
+    //   (see the where bound on this function), all of its bytes are
+    //   initialized (ie, none are padding). Since `as32`'s type is `FromBytes`,
+    //   any initialized sequence of bytes constitutes a valid instance of the
+    //   type, so this is sound.
     let input = unsafe { &input.as32 };
     Output {
-        as32: input.map(BigEndian::from),
+        as32: input.map(|n| BEU32::new(n.0)),
     }
 }
 
-fn sha512_format_output(input: State) -> Output {
+/// # Safety
+///
+/// The caller must ensure that all bytes of `State` have been initialized.
+unsafe fn sha512_format_output(input: State) -> Output
+where
+    [BEU64; 512 / 8 / core::mem::size_of::<BEU64>()]: FromBytes,
+{
+    // SAFETY: Caller has promised that all bytes are initialized. Since
+    // `input.as64` is `FromBytes`, we know that this is sufficient to guarantee
+    // that the input has been initialized to a valid instance of the type of
+    // `input.as64`.
     let input = unsafe { &input.as64 };
     Output {
-        as64: input.map(BigEndian::from),
+        as64: input.map(|n| BEU64::new(n.0)),
     }
 }
 

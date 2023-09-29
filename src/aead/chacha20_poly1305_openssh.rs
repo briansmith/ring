@@ -36,7 +36,8 @@ use super::{
     polyfill::ChunksFixed,
     Nonce, Tag,
 };
-use crate::{constant_time, endian::*, error};
+use crate::{constant_time, error};
+use zerocopy::byteorder::big_endian::U32 as BEU32;
 
 /// A key for sealing packets.
 pub struct SealingKey {
@@ -161,12 +162,8 @@ impl Key {
 }
 
 fn make_counter(sequence_number: u32) -> Counter {
-    let nonce = [
-        BigEndian::ZERO,
-        BigEndian::ZERO,
-        BigEndian::from(sequence_number),
-    ];
-    Counter::zero(Nonce::assume_unique_for_key(*(nonce.as_byte_array())))
+    let nonce = [BEU32::ZERO, BEU32::ZERO, BEU32::from(sequence_number)];
+    Counter::zero(Nonce::assume_unique_for_key(zerocopy::transmute!(nonce)))
 }
 
 /// The length of key.

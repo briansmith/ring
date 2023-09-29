@@ -12,19 +12,19 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::endian::*;
 use core::ops::{BitXor, BitXorAssign};
+use zerocopy::byteorder::big_endian::U64 as BEU64;
 
 #[repr(transparent)]
 #[derive(Copy, Clone)]
-pub struct Block([BigEndian<u64>; 2]);
+pub struct Block([BEU64; 2]);
 
 pub const BLOCK_LEN: usize = 16;
 
 impl Block {
     #[inline]
     pub fn zero() -> Self {
-        Self([Encoding::ZERO; 2])
+        Self([BEU64::ZERO; 2])
     }
 
     #[inline]
@@ -79,13 +79,13 @@ impl BitXor for Block {
 impl From<&'_ [u8; BLOCK_LEN]> for Block {
     #[inline]
     fn from(bytes: &[u8; BLOCK_LEN]) -> Self {
-        Self(FromByteArray::from_byte_array(bytes))
+        Self(zerocopy::transmute!(*bytes))
     }
 }
 
 impl AsRef<[u8; BLOCK_LEN]> for Block {
     #[inline]
     fn as_ref(&self) -> &[u8; BLOCK_LEN] {
-        self.0.as_byte_array()
+        zerocopy::transmute_ref!(&self.0)
     }
 }

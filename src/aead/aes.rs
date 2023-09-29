@@ -19,12 +19,11 @@ use super::{
 };
 use crate::{
     bits::BitLength,
-    c, cpu,
-    endian::{ArrayEncoding, BigEndian},
-    error,
+    c, cpu, error,
     polyfill::{self, ChunksFixed},
 };
 use core::ops::RangeFrom;
+use zerocopy::byteorder::big_endian::U32 as BEU32;
 
 #[derive(Clone)]
 pub(super) struct Key {
@@ -323,7 +322,7 @@ pub enum Variant {
 
 /// Nonce || Counter, all big-endian.
 #[repr(transparent)]
-pub(super) struct Counter([BigEndian<u32>; 4]);
+pub(super) struct Counter([BEU32; 4]);
 
 impl Counter {
     pub fn one(nonce: Nonce) -> Self {
@@ -346,7 +345,7 @@ impl Counter {
 /// The IV for a single block encryption.
 ///
 /// Intentionally not `Clone` to ensure each is used only once.
-pub struct Iv([BigEndian<u32>; 4]);
+pub struct Iv([BEU32; 4]);
 
 impl From<Counter> for Iv {
     fn from(counter: Counter) -> Self {
@@ -356,7 +355,7 @@ impl From<Counter> for Iv {
 
 impl Iv {
     pub(super) fn as_bytes_less_safe(&self) -> &[u8; 16] {
-        self.0.as_byte_array()
+        zerocopy::transmute_ref!(&self.0)
     }
 }
 
