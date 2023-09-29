@@ -153,9 +153,9 @@ sub expand_line {
 
 my ($arch_defines, $target_defines);
 if ($flavour =~ /32/) {
-    $arch_defines = "defined(__ARMEL__)";
+    $arch_defines = "defined(OPENSSL_ARM)";
 } elsif ($flavour =~ /64/) {
-    $arch_defines = "defined(__AARCH64EL__)";
+    $arch_defines = "defined(OPENSSL_AARCH64)";
 } else {
     die "unknown architecture: $flavour";
 }
@@ -177,17 +177,10 @@ print <<___;
 // This file is generated from a similarly-named Perl script in the BoringSSL
 // source tree. Do not edit by hand.
 
-#if !defined(__has_feature)
-#define __has_feature(x) 0
-#endif
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
-#define OPENSSL_NO_ASM
-#endif
+#include <ring-core/asm_base.h>
 
 #if !defined(OPENSSL_NO_ASM) && $arch_defines && $target_defines
 ___
-
-print "#include \"ring_core_generated/prefix_symbols_asm.h\"\n";
 
 while(my $line=<>) {
 
@@ -258,10 +251,6 @@ while(my $line=<>) {
 
 print <<___;
 #endif  // !OPENSSL_NO_ASM && $arch_defines && $target_defines
-#if defined(__ELF__)
-// See https://www.airs.com/blog/archives/518.
-.section .note.GNU-stack,"",\%progbits
-#endif
 ___
 
 close STDOUT or die "error closing STDOUT: $!";

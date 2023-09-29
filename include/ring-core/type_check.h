@@ -71,5 +71,4 @@
 #define OPENSSL_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
 #endif
 
-
 #endif  // OPENSSL_HEADER_TYPE_CHECK_H

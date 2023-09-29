@@ -223,22 +223,6 @@ static inline crypto_word_t value_barrier_w(crypto_word_t a) {
   return a;
 }
 
-// value_barrier_u32 behaves like |value_barrier_w| but takes a |uint32_t|.
-static inline uint32_t value_barrier_u32(uint32_t a) {
-#if defined(__GNUC__) || defined(__clang__)
-  __asm__("" : "+r"(a) : /* no inputs */);
-#endif
-  return a;
-}
-
-// value_barrier_u64 behaves like |value_barrier_w| but takes a |uint64_t|.
-static inline uint64_t value_barrier_u64(uint64_t a) {
-#if defined(__GNUC__) || defined(__clang__)
-  __asm__("" : "+r"(a) : /* no inputs */);
-#endif
-  return a;
-}
-
 // |value_barrier_u8| could be defined as above, but compilers other than
 // clang seem to still materialize 0x00..00MM instead of reusing 0x??..??MM.
 
