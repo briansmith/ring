@@ -149,15 +149,15 @@ typedef __uint128_t uint128_t;
 // Pointer utility functions.
 
 // buffers_alias returns one if |a| and |b| alias and zero otherwise.
-static inline int buffers_alias(const uint8_t *a, size_t a_len,
-                                const uint8_t *b, size_t b_len) {
+static inline int buffers_alias(const void *a, size_t a_bytes,
+                                const void *b, size_t b_bytes) {
   // Cast |a| and |b| to integers. In C, pointer comparisons between unrelated
   // objects are undefined whereas pointer to integer conversions are merely
   // implementation-defined. We assume the implementation defined it in a sane
   // way.
   uintptr_t a_u = (uintptr_t)a;
   uintptr_t b_u = (uintptr_t)b;
-  return a_u + a_len > b_u && b_u + b_len > a_u;
+  return a_u + a_bytes > b_u && b_u + b_bytes > a_u;
 }
 
 
@@ -177,6 +177,18 @@ static inline int buffers_alias(const uint8_t *a, size_t a_len,
 //
 // crypto_word_t lt = constant_time_lt_w(a, b);
 // c = constant_time_select_w(lt, a, b);
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#endif
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(push)
+// '=': conversion from 'crypto_word_t' to 'uint8_t', possible loss of data
+#pragma warning(disable: 4242)
+//  'initializing': conversion from 'crypto_word_t' to 'uint8_t', ...
+#pragma warning(disable: 4244)
+#endif
 
 // crypto_word_t is the type that most constant-time functions use. Ideally we
 // would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
@@ -227,13 +239,70 @@ static inline uint64_t value_barrier_u64(uint64_t a) {
   return a;
 }
 
+// |value_barrier_u8| could be defined as above, but compilers other than
+// clang seem to still materialize 0x00..00MM instead of reusing 0x??..??MM.
+
 // constant_time_msb_w returns the given value with the MSB copied to all the
 // other bits.
 static inline crypto_word_t constant_time_msb_w(crypto_word_t a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
-// constant_time_is_zero_w returns 0xff..f if a == 0 and 0 otherwise.
+// constant_time_lt_w returns 0xff..f if a < b and 0 otherwise.
+static inline crypto_word_t constant_time_lt_w(crypto_word_t a,
+                                               crypto_word_t b) {
+  // Consider the two cases of the problem:
+  //   msb(a) == msb(b): a < b iff the MSB of a - b is set.
+  //   msb(a) != msb(b): a < b iff the MSB of b is set.
+  //
+  // If msb(a) == msb(b) then the following evaluates as:
+  //   msb(a^((a^b)|((a-b)^a))) ==
+  //   msb(a^((a-b) ^ a))       ==   (because msb(a^b) == 0)
+  //   msb(a^a^(a-b))           ==   (rearranging)
+  //   msb(a-b)                      (because ∀x. x^x == 0)
+  //
+  // Else, if msb(a) != msb(b) then the following evaluates as:
+  //   msb(a^((a^b)|((a-b)^a))) ==
+  //   msb(a^(𝟙 | ((a-b)^a)))   ==   (because msb(a^b) == 1 and 𝟙
+  //                                  represents a value s.t. msb(𝟙) = 1)
+  //   msb(a^𝟙)                 ==   (because ORing with 1 results in 1)
+  //   msb(b)
+  //
+  //
+  // Here is an SMT-LIB verification of this formula:
+  //
+  // (define-fun lt ((a (_ BitVec 32)) (b (_ BitVec 32))) (_ BitVec 32)
+  //   (bvxor a (bvor (bvxor a b) (bvxor (bvsub a b) a)))
+  // )
+  //
+  // (declare-fun a () (_ BitVec 32))
+  // (declare-fun b () (_ BitVec 32))
+  //
+  // (assert (not (= (= #x00000001 (bvlshr (lt a b) #x0000001f)) (bvult a b))))
+  // (check-sat)
+  // (get-model)
+  return constant_time_msb_w(a^((a^b)|((a-b)^a)));
+}
+
+// constant_time_lt_8 acts like |constant_time_lt_w| but returns an 8-bit
+// mask.
+static inline uint8_t constant_time_lt_8(crypto_word_t a, crypto_word_t b) {
+  return (uint8_t)(constant_time_lt_w(a, b));
+}
+
+// constant_time_ge_w returns 0xff..f if a >= b and 0 otherwise.
+static inline crypto_word_t constant_time_ge_w(crypto_word_t a,
+                                               crypto_word_t b) {
+  return ~constant_time_lt_w(a, b);
+}
+
+// constant_time_ge_8 acts like |constant_time_ge_w| but returns an 8-bit
+// mask.
+static inline uint8_t constant_time_ge_8(crypto_word_t a, crypto_word_t b) {
+  return (uint8_t)(constant_time_ge_w(a, b));
+}
+
+// constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise.
 static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
   // Here is an SMT-LIB verification of this formula:
   //
@@ -253,10 +322,22 @@ static inline crypto_word_t constant_time_is_nonzero_w(crypto_word_t a) {
   return ~constant_time_is_zero_w(a);
 }
 
+// constant_time_is_zero_8 acts like |constant_time_is_zero_w| but returns an
+// 8-bit mask.
+static inline uint8_t constant_time_is_zero_8(crypto_word_t a) {
+  return (uint8_t)(constant_time_is_zero_w(a));
+}
+
 // constant_time_eq_w returns 0xff..f if a == b and 0 otherwise.
 static inline crypto_word_t constant_time_eq_w(crypto_word_t a,
                                                crypto_word_t b) {
   return constant_time_is_zero_w(a ^ b);
+}
+
+// constant_time_eq_8 acts like |constant_time_eq_w| but returns an 8-bit
+// mask.
+static inline uint8_t constant_time_eq_8(crypto_word_t a, crypto_word_t b) {
+  return (uint8_t)(constant_time_eq_w(a, b));
 }
 
 // constant_time_select_w returns (mask & a) | (~mask & b). When |mask| is all
@@ -269,17 +350,67 @@ static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
   // to a cmov, it sometimes further transforms it into a branch, which we do
   // not want.
   //
-  // Adding barriers to both |mask| and |~mask| breaks the relationship between
-  // the two, which makes the compiler stick with bitmasks.
-  return (value_barrier_w(mask) & a) | (value_barrier_w(~mask) & b);
+  // Hiding the value of the mask from the compiler evades this transformation.
+  mask = value_barrier_w(mask);
+  return (mask & a) | (~mask & b);
 }
 
 // constant_time_select_8 acts like |constant_time_select| but operates on
 // 8-bit values.
-static inline uint8_t constant_time_select_8(uint8_t mask, uint8_t a,
+static inline uint8_t constant_time_select_8(crypto_word_t mask, uint8_t a,
                                              uint8_t b) {
-  return (uint8_t)(constant_time_select_w(mask, a, b));
+  // |mask| is a word instead of |uint8_t| to avoid materializing 0x000..0MM
+  // Making both |mask| and its value barrier |uint8_t| would allow the compiler
+  // to materialize 0x????..?MM instead, but only clang is that clever.
+  // However, vectorization of bitwise operations seems to work better on
+  // |uint8_t| than a mix of |uint64_t| and |uint8_t|, so |m| is cast to
+  // |uint8_t| after the value barrier but before the bitwise operations.
+  uint8_t m = value_barrier_w(mask);
+  return (m & a) | (~m & b);
 }
+
+// constant_time_select_int acts like |constant_time_select| but operates on
+// ints.
+static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
+  return (int)(constant_time_select_w(mask, (crypto_word_t)(a),
+                                      (crypto_word_t)(b)));
+}
+
+// constant_time_conditional_memcpy copies |n| bytes from |src| to |dst| if
+// |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
+// ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
+static inline void constant_time_conditional_memcpy(void *dst, const void *src,
+                                                    const size_t n,
+                                                    const crypto_word_t mask) {
+  debug_assert_nonsecret(!buffers_alias(dst, n, src, n));
+  uint8_t *out = (uint8_t *)dst;
+  const uint8_t *in = (const uint8_t *)src;
+  for (size_t i = 0; i < n; i++) {
+    out[i] = constant_time_select_8(mask, in[i], out[i]);
+  }
+}
+
+// constant_time_conditional_memxor xors |n| bytes from |src| to |dst| if
+// |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
+// ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
+static inline void constant_time_conditional_memxor(void *dst, const void *src,
+                                                    const size_t n,
+                                                    const crypto_word_t mask) {
+  debug_assert_nonsecret(!buffers_alias(dst, n, src, n));
+  uint8_t *out = (uint8_t *)dst;
+  const uint8_t *in = (const uint8_t *)src;
+  for (size_t i = 0; i < n; i++) {
+    out[i] ^= value_barrier_w(mask) & in[i];
+  }
+}
+
+#if defined(_MSC_VER) && !defined(__clang__)
+// '=': conversion from 'int64_t' to 'int32_t', possible loss of data
+#pragma warning(pop)
+#endif
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
 
