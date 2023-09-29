@@ -258,6 +258,26 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
   return (value_barrier_w(mask) & a) | (value_barrier_w(~mask) & b);
 }
 
+#if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
+
+// CONSTTIME_SECRET takes a pointer and a number of bytes and marks that region
+// of memory as secret. Secret data is tracked as it flows to registers and
+// other parts of a memory. If secret data is used as a condition for a branch,
+// or as a memory index, it will trigger warnings in valgrind.
+#define CONSTTIME_SECRET(ptr, len) VALGRIND_MAKE_MEM_UNDEFINED(ptr, len)
+
+// CONSTTIME_DECLASSIFY takes a pointer and a number of bytes and marks that
+// region of memory as public. Public data is not subject to constant-time
+// rules.
+#define CONSTTIME_DECLASSIFY(ptr, len) VALGRIND_MAKE_MEM_DEFINED(ptr, len)
+
+#else
+
+#define CONSTTIME_SECRET(ptr, len)
+#define CONSTTIME_DECLASSIFY(ptr, len)
+
+#endif  // BORINGSSL_CONSTANT_TIME_VALIDATION
+
 // Endianness conversions.
 
 #if defined(__GNUC__) && __GNUC__ >= 2

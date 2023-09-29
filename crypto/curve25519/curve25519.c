@@ -1870,6 +1870,7 @@ void x25519_public_from_private_generic_masked(uint8_t out_public_value[32],
   fe_loose_invert(&zminusy_inv, &zminusy);
   fe_mul_tlt(&zminusy_inv, &zplusy, &zminusy_inv);
   fe_tobytes(out_public_value, &zminusy_inv);
+  CONSTTIME_DECLASSIFY(out_public_value, 32);
 }
 
 void x25519_fe_invert(fe *out, const fe *z) {
