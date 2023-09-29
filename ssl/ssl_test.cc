@@ -1677,6 +1677,38 @@ static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
   return std::move(g_last_session);
 }
 
+static void SetUpExpectedNewCodePoint(SSL_CTX *ctx) {
+  SSL_CTX_set_select_certificate_cb(
+      ctx,
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_application_settings, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find alps new codepoint.";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
+}
+
+static void SetUpExpectedOldCodePoint(SSL_CTX *ctx) {
+  SSL_CTX_set_select_certificate_cb(
+      ctx,
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_application_settings_old, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find alps old codepoint.";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
+}
+
 // Test that |SSL_get_client_CA_list| echoes back the configured parameter even
 // before configuring as a server.
 TEST(SSLTest, ClientCAList) {
@@ -5231,7 +5263,11 @@ void MoveBIOs(SSL *dest, SSL *src) {
   SSL_set0_wbio(src, nullptr);
 }
 
-TEST(SSLTest, Handoff) {
+void VerifyHandoff(bool use_new_alps_codepoint) {
+  static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
+  static const uint8_t proto[] = {'f', 'o', 'o'};
+  static const uint8_t alps[] = {0x04, 'a', 'l', 'p', 's'};
+
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> handshaker_ctx(
@@ -5239,6 +5275,12 @@ TEST(SSLTest, Handoff) {
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(handshaker_ctx);
+
+  if (!use_new_alps_codepoint) {
+    SetUpExpectedOldCodePoint(server_ctx.get());
+  } else {
+    SetUpExpectedNewCodePoint(server_ctx.get());
+  }
 
   SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_CLIENT);
   SSL_CTX_sess_set_new_cb(client_ctx.get(), SaveLastSession);
@@ -5255,6 +5297,12 @@ TEST(SSLTest, Handoff) {
       ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
                                         server_ctx.get()));
       SSL_set_early_data_enabled(client.get(), early_data);
+
+      // Set up client ALPS settings.
+      SSL_set_alps_use_new_codepoint(client.get(), use_new_alps_codepoint);
+      ASSERT_TRUE(SSL_set_alpn_protos(client.get(), alpn, sizeof(alpn)) == 0);
+      ASSERT_TRUE(SSL_add_application_settings(client.get(), proto,
+                                              sizeof(proto), nullptr, 0));
       if (is_resume) {
         ASSERT_TRUE(g_last_session);
         SSL_set_session(client.get(), g_last_session.get());
@@ -5295,6 +5343,23 @@ TEST(SSLTest, Handoff) {
       // handshake and newly-issued tickets, entirely by |handshaker|. There is
       // no need to call |SSL_set_early_data_enabled| on |server|.
       SSL_set_early_data_enabled(handshaker.get(), 1);
+
+      // Set up handshaker ALPS settings.
+      SSL_set_alps_use_new_codepoint(handshaker.get(), use_new_alps_codepoint);
+      SSL_CTX_set_alpn_select_cb(
+          handshaker_ctx.get(),
+          [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+              unsigned in_len, void *arg) -> int {
+            return SSL_select_next_proto(
+                        const_cast<uint8_t **>(out), out_len, in, in_len,
+                        alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
+                        ? SSL_TLSEXT_ERR_OK
+                        : SSL_TLSEXT_ERR_NOACK;
+          },
+          nullptr);
+      ASSERT_TRUE(SSL_add_application_settings(handshaker.get(), proto,
+                                              sizeof(proto), alps, sizeof(alps)));
+
       ASSERT_TRUE(SSL_apply_handoff(handshaker.get(), handoff));
 
       MoveBIOs(handshaker.get(), server.get());
@@ -5322,6 +5387,8 @@ TEST(SSLTest, Handoff) {
       MoveBIOs(server2.get(), handshaker.get());
       ASSERT_TRUE(CompleteHandshakes(client.get(), server2.get()));
       EXPECT_EQ(is_resume, SSL_session_reused(client.get()));
+      // Verify application settings.
+      ASSERT_TRUE(SSL_has_application_settings(client.get()));
 
       if (early_data && is_resume) {
         // In this case, one byte of early data has already been written above.
@@ -5339,6 +5406,13 @@ TEST(SSLTest, Handoff) {
       EXPECT_EQ(SSL_read(client.get(), &byte, 1), 1);
       EXPECT_EQ(44, byte);
     }
+  }
+}
+
+TEST(SSLTest, Handoff) {
+  for (bool use_new_alps_codepoint : {false, true}) {
+    SCOPED_TRACE(use_new_alps_codepoint);
+    VerifyHandoff(use_new_alps_codepoint);
   }
 }
 
@@ -7994,38 +8068,6 @@ class AlpsNewCodepointTest : public testing::Test {
     ASSERT_TRUE(server_ctx_);
   }
 
-  void SetUpExpectedNewCodePoint() {
-    SSL_CTX_set_select_certificate_cb(
-      server_ctx_.get(),
-      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
-        if (!SSL_early_callback_ctx_extension_get(
-                client_hello, TLSEXT_TYPE_application_settings, &data,
-                &len)) {
-          ADD_FAILURE() << "Could not find alps new codpoint.";
-          return ssl_select_cert_error;
-        }
-        return ssl_select_cert_success;
-      });
-  }
-
-  void SetUpExpectedOldCodePoint() {
-    SSL_CTX_set_select_certificate_cb(
-      server_ctx_.get(),
-      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
-        const uint8_t *data;
-        size_t len;
-        if (!SSL_early_callback_ctx_extension_get(
-                client_hello, TLSEXT_TYPE_application_settings_old, &data,
-                &len)) {
-          ADD_FAILURE() << "Could not find alps old codpoint.";
-          return ssl_select_cert_error;
-        }
-        return ssl_select_cert_success;
-      });
-  }
-
   void SetUpApplicationSetting() {
     static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
     static const uint8_t proto[] = {'f', 'o', 'o'};
@@ -8058,7 +8100,7 @@ class AlpsNewCodepointTest : public testing::Test {
 };
 
 TEST_F(AlpsNewCodepointTest, Enabled) {
-  SetUpExpectedNewCodePoint();
+  SetUpExpectedNewCodePoint(server_ctx_.get());
 
   ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
                                     server_ctx_.get()));
@@ -8073,7 +8115,7 @@ TEST_F(AlpsNewCodepointTest, Enabled) {
 
 TEST_F(AlpsNewCodepointTest, Disabled) {
   // Both client and server disable alps new codepoint.
-  SetUpExpectedOldCodePoint();
+  SetUpExpectedOldCodePoint(server_ctx_.get());
 
   ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
                                     server_ctx_.get()));
@@ -8088,7 +8130,7 @@ TEST_F(AlpsNewCodepointTest, Disabled) {
 
 TEST_F(AlpsNewCodepointTest, ClientOnly) {
   // If client set new codepoint but server doesn't set, server ignores it.
-  SetUpExpectedNewCodePoint();
+  SetUpExpectedNewCodePoint(server_ctx_.get());
 
   ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
                                     server_ctx_.get()));
@@ -8103,7 +8145,7 @@ TEST_F(AlpsNewCodepointTest, ClientOnly) {
 
 TEST_F(AlpsNewCodepointTest, ServerOnly) {
   // If client doesn't set new codepoint, while server set.
-  SetUpExpectedOldCodePoint();
+  SetUpExpectedOldCodePoint(server_ctx_.get());
 
   ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
                                     server_ctx_.get()));
