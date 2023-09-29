@@ -56,10 +56,6 @@
 
 // This file should be the first included by all BoringSSL headers.
 
-#include <ring_core_generated/prefix_symbols.h>
-
-#include <ring-core/type_check.h>
-
 #if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)
 #endif
@@ -71,40 +67,25 @@
 #pragma warning(pop)
 #endif
 
-#if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
-#define OPENSSL_64_BIT
-#define OPENSSL_X86_64
-#elif defined(__x86) || defined(__i386) || defined(__i386__) || defined(_M_IX86)
-#define OPENSSL_32_BIT
-#define OPENSSL_X86
-#elif defined(__AARCH64EL__) || defined(_M_ARM64)
-#define OPENSSL_64_BIT
-#define OPENSSL_AARCH64
-#elif defined(__ARMEL__) || defined(_M_ARM)
-#define OPENSSL_32_BIT
-#define OPENSSL_ARM
-#elif defined(__MIPSEL__) && !defined(__LP64__)
-#define OPENSSL_32_BIT
-#define OPENSSL_MIPS
-#elif defined(__MIPSEL__) && defined(__LP64__)
-#define OPENSSL_64_BIT
-#define OPENSSL_MIPS64
-#elif defined(__wasm__)
-#define OPENSSL_32_BIT
-#else
-// Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
-// little-endian architectures. Functions will not produce the correct answer
-// on other systems. Run the crypto_test binary, notably
-// crypto/compiler_test.cc, before adding a new architecture.
-#error "Unknown target CPU"
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
 #endif
+
+#include <ring-core/target.h>  // IWYU pragma: export
+
+#include <ring_core_generated/prefix_symbols.h>
+
+#include <ring-core/type_check.h>
 
 #if defined(__APPLE__)
-#define OPENSSL_APPLE
+// Note |TARGET_OS_MAC| is set for all Apple OS variants. |TARGET_OS_OSX|
+// targets macOS specifically.
+#if defined(TARGET_OS_OSX) && TARGET_OS_OSX
+#define OPENSSL_MACOS
 #endif
-
-#if defined(_WIN32)
-#define OPENSSL_WINDOWS
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#define OPENSSL_IOS
+#endif
 #endif
 
 // *ring* doesn't support the `BORINGSSL_SHARED_LIBRARY` configuration, so
