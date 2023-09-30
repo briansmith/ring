@@ -34,7 +34,7 @@
 // - The file, on aarch64, uses the macros defined below to be compatible with
 //   BTI and PAC.
 //
-// - The file, on X86_64, requires the progrram to be compatible with Intel IBT
+// - The file, on x86_64, requires the program to be compatible with Intel IBT
 //   and SHSTK
 
 #if defined(__ASSEMBLER__)
