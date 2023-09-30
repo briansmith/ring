@@ -192,10 +192,11 @@ jobs:
 
         rust_channel:
           - stable
-          - nightly
           # Some benchmarking dependencies require 1.60.
           - 1.60.0 # MSRV
-          - beta
+          # TODO: Move these to a daily/pre-release job.
+          # - nightly
+          # - beta
 
         include:
           - target: aarch64-apple-darwin
