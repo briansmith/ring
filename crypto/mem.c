@@ -133,31 +133,6 @@ WEAK_SYMBOL_FUNC(void *, OPENSSL_memory_alloc, (size_t size));
 WEAK_SYMBOL_FUNC(void, OPENSSL_memory_free, (void *ptr));
 WEAK_SYMBOL_FUNC(size_t, OPENSSL_memory_get_size, (void *ptr));
 
-// kBoringSSLBinaryTag is a distinctive byte sequence to identify binaries that
-// are linking in BoringSSL and, roughly, what version they are using.
-static const uint8_t kBoringSSLBinaryTag[18] = {
-    // 16 bytes of magic tag.
-    0x8c,
-    0x62,
-    0x20,
-    0x0b,
-    0xd2,
-    0xa0,
-    0x72,
-    0x58,
-    0x44,
-    0xa8,
-    0x96,
-    0x69,
-    0xad,
-    0x55,
-    0x7e,
-    0xec,
-    // Current source iteration. Incremented ~monthly.
-    3,
-    0,
-};
-
 #if defined(BORINGSSL_MALLOC_FAILURE_TESTING)
 static CRYPTO_MUTEX malloc_failure_lock = CRYPTO_MUTEX_INIT;
 static uint64_t current_malloc_count = 0;
@@ -240,14 +215,6 @@ void *OPENSSL_malloc(size_t size) {
   }
 
   if (size + OPENSSL_MALLOC_PREFIX < size) {
-    // |OPENSSL_malloc| is a central function in BoringSSL thus a reference to
-    // |kBoringSSLBinaryTag| is created here so that the tag isn't discarded by
-    // the linker. The following is sufficient to stop GCC, Clang, and MSVC
-    // optimising away the reference at the time of writing. Since this
-    // probably results in an actual memory reference, it is put in this very
-    // rare code path.
-    uint8_t unused = *(volatile uint8_t *)kBoringSSLBinaryTag;
-    (void) unused;
     goto err;
   }
 
