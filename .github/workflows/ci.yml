@@ -340,14 +340,12 @@ jobs:
           - x86_64-unknown-linux-gnu
 
         mode:
-          - # debug
           - --release
 
         rust_channel:
           - stable
           - nightly
           - 1.60.0 # MSRV
-          - beta
 
         include:
           - target: aarch64-unknown-linux-musl
