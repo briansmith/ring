@@ -17,8 +17,10 @@ fiat_curve25519_adx_mul:
 #endif
 
 .cfi_startproc
-mov [rsp - 0x08], rbp
-.cfi_offset rbp, -8-0x08
+_CET_ENDBR
+push rbp
+.cfi_adjust_cfa_offset 8
+.cfi_offset rbp, -16
 mov rbp, rsp
 
 mov rax, rdx
@@ -26,21 +28,21 @@ mov rdx, [ rsi + 0x18 ]
 mulx r11, r10, [ rax + 0x8 ]
 mov rdx, [ rax + 0x0 ]
 mov [ rsp - 0x58 ], r15
-.cfi_offset r15, -8-0x58
+.cfi_offset r15, -16-0x58
 mulx r8, rcx, [ rsi + 0x18 ]
 mov rdx, [ rsi + 0x8 ]
 mov [ rsp - 0x80 ], rbx
-.cfi_offset rbx, -8-0x80
+.cfi_offset rbx, -16-0x80
 mulx rbx, r9, [ rax + 0x18 ]
 mov rdx, [ rsi + 0x8 ]
 mov [ rsp - 0x70 ], r12
-.cfi_offset r12, -8-0x70
+.cfi_offset r12, -16-0x70
 mulx r15, r12, [ rax + 0x8 ]
 mov rdx, [ rsi + 0x0 ]
 mov [ rsp - 0x68 ], r13
-.cfi_offset r13, -8-0x68
+.cfi_offset r13, -16-0x68
 mov [ rsp - 0x60 ], r14
-.cfi_offset r14, -8-0x60
+.cfi_offset r14, -16-0x60
 mulx r14, r13, [ rax + 0x0 ]
 mov rdx, [ rax + 0x10 ]
 mov [ rsp - 0x18 ], r15
@@ -154,12 +156,19 @@ adcx r15, r14
 mov [ r8 + 0x0 ], r15
 mov [ r8 + 0x10 ], rcx
 mov rbx, [ rsp - 0x80 ]
+.cfi_restore rbx
 mov r12, [ rsp - 0x70 ]
+.cfi_restore r12
 mov r13, [ rsp - 0x68 ]
+.cfi_restore r13
 mov r14, [ rsp - 0x60 ]
+.cfi_restore r14
 mov r15, [ rsp - 0x58 ]
+.cfi_restore r15
 
-mov rbp, [rsp - 0x08]
+pop rbp
+.cfi_restore rbp
+.cfi_adjust_cfa_offset -8
 ret
 .cfi_endproc
 #if defined(__ELF__)
