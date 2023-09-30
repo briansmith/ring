@@ -140,6 +140,10 @@
 #define RING_CORE_POINTLESS_ARRAY_CONST_CAST(cast) cast
 #endif
 
+// `uint8_t` isn't guaranteed to be 'unsigned char' and only 'char' and
+// 'unsigned char' are allowed to alias according to ISO C.
+typedef unsigned char aliasing_uint8_t;
+
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
@@ -280,8 +284,8 @@ static inline void constant_time_conditional_memxor(void *dst, const void *src,
                                                     const size_t n,
                                                     const crypto_word_t mask) {
   debug_assert_nonsecret(!buffers_alias(dst, n, src, n));
-  uint8_t *out = (uint8_t *)dst;
-  const uint8_t *in = (const uint8_t *)src;
+  aliasing_uint8_t *out = dst;
+  const aliasing_uint8_t *in = src;
   for (size_t i = 0; i < n; i++) {
     out[i] ^= value_barrier_w(mask) & in[i];
   }
@@ -366,8 +370,8 @@ static inline void *OPENSSL_memcpy(void *dst, const void *src, size_t n) {
   }
   return memcpy(dst, src, n);
 #else
-  unsigned char *d = dst;
-  const unsigned char *s = src;
+  aliasing_uint8_t *d = dst;
+  const aliasing_uint8_t *s = src;
   for (size_t i = 0; i < n; ++i) {
     d[i] = s[i];
   }
@@ -382,9 +386,9 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
   }
   return memset(dst, c, n);
 #else
-  unsigned char *d = dst;
+  aliasing_uint8_t *d = dst;
   for (size_t i = 0; i < n; ++i) {
-    d[i] = (unsigned char)c;
+    d[i] = (aliasing_uint8_t)c;
   }
   return dst;
 #endif

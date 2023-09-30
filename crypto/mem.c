@@ -55,9 +55,12 @@
  * [including the GNU Public Licence.] */
 
 #include <ring-core/mem.h>
+#include "internal.h"
 
-int OPENSSL_memcmp(const uint8_t *a, const uint8_t *b, size_t len) {
+int OPENSSL_memcmp(const void *av, const void *bv, size_t len) {
   uint8_t x = 0;
+  const aliasing_uint8_t *a = av;
+  const aliasing_uint8_t *b = bv;
   for (size_t i = 0; i < len; i++) {
     x |= a[i] ^ b[i];
   }
