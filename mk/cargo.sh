@@ -103,7 +103,7 @@ case $target in
   riscv64gc-unknown-linux-gnu)
     export CC_riscv64gc_unknown_linux_gnu=clang-$llvm_version
     export AR_riscv64gc_unknown_linux_gnu=llvm-ar-$llvm_version
-    export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=clang-$llvm_version
+    export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc
     export CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_RUNNER="$qemu_riscv64"
     ;;
   x86_64-unknown-linux-musl)
