@@ -39,21 +39,7 @@
 #	generated with -mgeneral-regs-only is significantly faster
 #	and the gap is only 40-90%.
 
-$output=pop;
-$flavour=pop;
-
-if ($flavour && $flavour ne "void") {
-    $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-    ( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
-    ( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
-    die "can't locate arm-xlate.pl";
-
-    open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
-    *STDOUT=*OUT;
-} else {
-    open OUT,">$output";
-    *STDOUT=*OUT;
-}
+my ($flavour, $output) = @ARGV;
 
 if ($output =~ /sha512-armv8/) {
 	$BITS=512;
@@ -73,6 +59,19 @@ if ($output =~ /sha512-armv8/) {
 	@sigma1=(17,19,10);
 	$rounds=64;
 	$reg_t="w";
+}
+
+if ($flavour && $flavour ne "void") {
+    $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
+    ( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
+    ( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
+    die "can't locate arm-xlate.pl";
+
+    open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
+    *STDOUT=*OUT;
+} else {
+    open OUT,">$output";
+    *STDOUT=*OUT;
 }
 
 $func="sha${BITS}_block_data_order";

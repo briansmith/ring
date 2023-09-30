@@ -111,30 +111,7 @@
 #
 # Modified from upstream OpenSSL to remove the XOP code.
 
-$flavour = shift;
-$output  = shift;
-if ($flavour =~ /\./) { $output = $flavour; undef $flavour; }
-
-$win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
-
-$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
-( $xlate="${dir}../../../perlasm/x86_64-xlate.pl" and -f $xlate) or
-die "can't locate x86_64-xlate.pl";
-
-# In upstream, this is controlled by shelling out to the compiler to check
-# versions, but BoringSSL is intended to be used with pre-generated perlasm
-# output, so this isn't useful anyway.
-#
-# This file also has an AVX2 implementation, controlled by setting $avx to 2.
-# For now, we intentionally disable it. While it gives a 13-16% perf boost, the
-# CFI annotations are wrong. It allocates stack in a loop and should be
-# rewritten to avoid this.
-$avx = 1;
-$shaext = 1;
-
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
-*STDOUT=*OUT;
+my ($flavour, $output) = @ARGV;
 
 if ($output =~ /sha512-x86_64/) {
 	$func="sha512_block_data_order";
@@ -161,6 +138,27 @@ if ($output =~ /sha512-x86_64/) {
 	@sigma1=(17,19,10);
 	$rounds=64;
 }
+
+$win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
+
+$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
+( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
+( $xlate="${dir}../../../perlasm/x86_64-xlate.pl" and -f $xlate) or
+die "can't locate x86_64-xlate.pl";
+
+# In upstream, this is controlled by shelling out to the compiler to check
+# versions, but BoringSSL is intended to be used with pre-generated perlasm
+# output, so this isn't useful anyway.
+#
+# This file also has an AVX2 implementation, controlled by setting $avx to 2.
+# For now, we intentionally disable it. While it gives a 13-16% perf boost, the
+# CFI annotations are wrong. It allocates stack in a loop and should be
+# rewritten to avoid this.
+$avx = 1;
+$shaext = 1;
+
+open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
+*STDOUT=*OUT;
 
 $ctx="%rdi";	# 1st arg, zapped by $a3
 $inp="%rsi";	# 2nd arg
