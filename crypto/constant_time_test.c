@@ -88,36 +88,36 @@ static int test_select_w(crypto_word_t a, crypto_word_t b) {
   return 0;
 }
 
-static crypto_word_t test_values_s[] = {
-  0,
-  1,
-  1024,
-  12345,
-  32000,
+static crypto_word_t test_values_w[] = {
+    0,
+    1,
+    1024,
+    12345,
+    32000,
 #if defined(OPENSSL_64_BIT)
-  0xffffffff / 2 - 1,
-  0xffffffff / 2,
-  0xffffffff / 2 + 1,
-  0xffffffff - 1,
-  0xffffffff,
+    0xffffffff / 2 - 1,
+    0xffffffff / 2,
+    0xffffffff / 2 + 1,
+    0xffffffff - 1,
+    0xffffffff,
 #endif
-  SIZE_MAX / 2 - 1,
-  SIZE_MAX / 2,
-  SIZE_MAX / 2 + 1,
-  SIZE_MAX - 1,
-  SIZE_MAX
+    SIZE_MAX / 2 - 1,
+    SIZE_MAX / 2,
+    SIZE_MAX / 2 + 1,
+    SIZE_MAX - 1,
+    SIZE_MAX
 };
 
 int bssl_constant_time_test_main(void) {
   int num_failed = 0;
 
   for (size_t i = 0;
-       i < sizeof(test_values_s) / sizeof(test_values_s[0]); ++i) {
-    crypto_word_t a = test_values_s[i];
+       i < sizeof(test_values_w) / sizeof(test_values_w[0]); ++i) {
+    crypto_word_t a = test_values_w[i];
     num_failed += test_is_zero_w(a);
     for (size_t j = 0;
-         j < sizeof(test_values_s) / sizeof(test_values_s[0]); ++j) {
-      crypto_word_t b = test_values_s[j];
+         j < sizeof(test_values_w) / sizeof(test_values_w[0]); ++j) {
+      crypto_word_t b = test_values_w[j];
       num_failed += test_binary_op_w(&constant_time_eq_w, a, b, a == b);
       num_failed += test_binary_op_w(&constant_time_eq_w, b, a, b == a);
       num_failed += test_select_w(a, b);
@@ -125,4 +125,11 @@ int bssl_constant_time_test_main(void) {
   }
 
   return num_failed == 0;
+}
+
+// Exposes `constant_time_conditional_memxor` to Rust for tests only.
+void bssl_constant_time_test_conditional_memxor(uint8_t dst[256],
+                                               const uint8_t src[256],
+                                               crypto_word_t b) {
+  constant_time_conditional_memxor(dst, src, 256, b);
 }

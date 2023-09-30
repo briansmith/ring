@@ -962,6 +962,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "bn_sqr8x_internal",
         "bn_sqrx8x_internal",
         "bsaes_ctr32_encrypt_blocks",
+        "bssl_constant_time_test_conditional_memxor",
         "bssl_constant_time_test_main",
         "chacha20_poly1305_open",
         "chacha20_poly1305_seal",
