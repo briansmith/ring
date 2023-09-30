@@ -17,6 +17,7 @@ fiat_curve25519_adx_mul:
 #endif
 
 .cfi_startproc
+_CET_ENDBR
 mov [rsp - 0x08], rbp
 .cfi_offset rbp, -8-0x08
 mov rbp, rsp

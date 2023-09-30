@@ -641,6 +641,7 @@ _vpaes_schedule_mangle:
 .align	16
 ${PREFIX}_set_encrypt_key:
 .cfi_startproc
+	_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
        movb \$1, BORINGSSL_function_hit+5(%rip)
@@ -696,6 +697,7 @@ $code.=<<___;
 .align	16
 ${PREFIX}_encrypt:
 .cfi_startproc
+	_CET_ENDBR
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
        movb \$1, BORINGSSL_function_hit+4(%rip)
@@ -751,6 +753,7 @@ $code.=<<___;
 .align	16
 ${PREFIX}_ctr32_encrypt_blocks:
 .cfi_startproc
+	_CET_ENDBR
 	# _vpaes_encrypt_core and _vpaes_encrypt_core_2x expect the key in %rdx.
 	xchg	$key, $blocks
 ___

@@ -1499,6 +1499,7 @@ default	rel
 \%define XMMWORD
 \%define YMMWORD
 \%define ZMMWORD
+\%define _CET_ENDBR
 
 \%include "ring_core_generated/prefix_symbols_nasm.inc"
 ___
