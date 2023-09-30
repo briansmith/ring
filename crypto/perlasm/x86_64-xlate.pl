@@ -47,7 +47,6 @@
 #    (sorry about latter).
 # 6. Don't use [or hand-code with .byte] "rep ret." "ret" mnemonic is
 #    required to identify the spots, where to inject Win64 epilogue!
-#    But on the pros, it's then prefixed with rep automatically:-)
 # 7. Stick to explicit ip-relative addressing. If you have to use
 #    GOTPCREL addressing, stick to mov symbol@GOTPCREL(%rip),%r??.
 #    Both are recognized and translated to proper Win64 addressing
@@ -157,7 +156,7 @@ my %globals;
 		    $epilogue = "movq	8(%rsp),%rdi\n\t" .
 				"movq	16(%rsp),%rsi\n\t";
 		}
-	    	$epilogue . ".byte	0xf3,0xc3";
+	    	$epilogue . "ret";
 	    } elsif ($self->{op} eq "call" && !$elf && $current_segment eq ".init") {
 		".p2align\t3\n\t.quad";
 	    } else {
@@ -171,7 +170,7 @@ my %globals;
 		    $self->{op} = "mov	rdi,QWORD$PTR\[8+rsp\]\t;WIN64 epilogue\n\t".
 				  "mov	rsi,QWORD$PTR\[16+rsp\]\n\t";
 	    	}
-		$self->{op} .= "DB\t0F3h,0C3h\t\t;repret";
+		$self->{op} .= "ret";
 	    } elsif ($self->{op} =~ /^(pop|push)f/) {
 		$self->{op} .= $self->{sz};
 	    } elsif ($self->{op} eq "call" && $current_segment eq ".CRT\$XCU") {
