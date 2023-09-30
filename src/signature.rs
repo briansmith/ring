@@ -296,7 +296,6 @@ pub use crate::rsa::{
 
 /// An RSA key pair, used for signing.
 #[cfg(feature = "alloc")]
-#[deprecated = "Use `rsa::KeyPair`"]
 pub type RsaKeyPair = crate::rsa::KeyPair;
 
 /// A public key signature returned from a signing operation.
