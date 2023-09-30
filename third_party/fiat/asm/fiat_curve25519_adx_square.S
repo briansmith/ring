@@ -124,12 +124,18 @@ adcx r13, rcx
 mov [ rdi + 0x0 ], r13
 mov [ rdi + 0x18 ], r10
 mov rbx, [ rsp - 0x80 ]
+.cfi_restore rbx
 mov r12, [ rsp - 0x70 ]
+.cfi_restore r12
 mov r13, [ rsp - 0x68 ]
+.cfi_restore r13
 mov r14, [ rsp - 0x60 ]
+.cfi_restore r14
 mov r15, [ rsp - 0x58 ]
+.cfi_restore r15
 
 pop rbp
+.cfi_restore rbp
 .cfi_adjust_cfa_offset -8
 ret
 .cfi_endproc
