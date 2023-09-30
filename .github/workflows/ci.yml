@@ -488,6 +488,7 @@ jobs:
         target:
           - aarch64-unknown-linux-gnu
           - i686-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
           - x86_64-unknown-linux-musl
 
         mode:
@@ -509,6 +510,9 @@ jobs:
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: i686-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: riscv64gc-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: x86_64-unknown-linux-musl
