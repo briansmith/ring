@@ -2459,6 +2459,23 @@ TEST(ASN1Test, POSIXTime) {
   }
 }
 
+TEST(ASN1Test, LargeString) {
+  bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(V_ASN1_OCTET_STRING));
+  ASSERT_TRUE(str);
+  // Very large strings should be rejected by |ASN1_STRING_set|. Strictly
+  // speaking, this is an invalid call because the buffer does not have that
+  // much size available. |ASN1_STRING_set| should cleanly fail before it
+  // crashes, and actually allocating 512 MiB in a test is likely to break.
+  char b = 0;
+  EXPECT_FALSE(ASN1_STRING_set(str.get(), &b, INT_MAX / 4));
+
+#if defined(OPENSSL_64_BIT)
+  // |ASN1_STRING_set| should tolerate lengths that exceed |int| without
+  // overflow.
+  EXPECT_FALSE(ASN1_STRING_set(str.get(), &b, 1 + (ossl_ssize_t{1} << 48)));
+#endif
+}
+
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
 // |OPENSSL_EXPORT| is a bit stricter.
 #if !defined(OPENSSL_WINDOWS) || !defined(BORINGSSL_SHARED_LIBRARY)
