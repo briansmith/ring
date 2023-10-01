@@ -114,10 +114,3 @@ mod sealed {
     // ```
     pub trait Sealed {}
 }
-
-// XXX: 64-bit big endian is tested; 32-bit is not.
-// TODO: Add 32-bit big endian test coverage to CI.
-const _ENDIAN_TESTING: () = assert!(cfg!(any(
-    target_endian = "little",
-    target_pointer_width = "64"
-)));

@@ -504,6 +504,7 @@ jobs:
         target:
           - aarch64-unknown-linux-gnu
           - i686-unknown-linux-gnu
+          - powerpc-unknown-linux-gnu
           - powerpc64le-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
           - s390x-unknown-linux-gnu
@@ -528,6 +529,9 @@ jobs:
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: i686-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: powerpc-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: powerpc64le-unknown-linux-gnu
