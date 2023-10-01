@@ -62,7 +62,7 @@ pub(crate) fn features() -> Features {
                 )
             ))]
             {
-                arm::setup();
+                unsafe { arm::initialize_OPENSSL_armcap_P() }
             }
         });
     }
