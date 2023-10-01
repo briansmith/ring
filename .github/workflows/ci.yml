@@ -175,7 +175,7 @@ jobs:
           - aarch64-pc-windows-msvc
           - aarch64-unknown-linux-gnu
           - aarch64-unknown-linux-musl
-          - arm-unknown-linux-gnueabihf
+          - arm-unknown-linux-gnueabi
           - armv7-linux-androideabi
           - armv7-unknown-linux-musleabihf
           - i686-pc-windows-msvc
@@ -228,7 +228,7 @@ jobs:
           - target: aarch64-unknown-linux-musl
             host_os: ubuntu-22.04
 
-          - target: arm-unknown-linux-gnueabihf
+          - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-22.04
 
           - target: armv7-linux-androideabi

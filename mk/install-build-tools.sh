@@ -70,7 +70,13 @@ case $target in
   install_packages \
     qemu-user
   ;;
---target=arm-unknown-linux-gnueabihf)
+--target=arm-unknown-linux-gnueabi)
+  install_packages \
+    qemu-user \
+    gcc-arm-linux-gnueabi \
+    libc6-dev-armel-cross
+  ;;
+--target=arm-unknown-linux-gnueabihf|--target=armv7-unknown-linux-gnueabihf)
   install_packages \
     qemu-user \
     gcc-arm-linux-gnueabihf \
