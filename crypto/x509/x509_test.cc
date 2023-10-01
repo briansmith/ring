@@ -6547,6 +6547,30 @@ TEST(X509Test, NameAttributeValues) {
   // we decide to later.
   static const uint8_t kOID[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
                                  0x04, 0x01, 0x84, 0xb7, 0x09, 0x00};
+  static const char kOIDText[] = "1.2.840.113554.4.1.72585.0";
+
+  auto encode_single_attribute_name =
+      [](CBS_ASN1_TAG tag,
+         const std::string &contents) -> std::vector<uint8_t> {
+    bssl::ScopedCBB cbb;
+    CBB seq, rdn, attr, attr_type, attr_value;
+    if (!CBB_init(cbb.get(), 128) ||
+        !CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE) ||
+        !CBB_add_asn1(&seq, &rdn, CBS_ASN1_SET) ||
+        !CBB_add_asn1(&rdn, &attr, CBS_ASN1_SEQUENCE) ||
+        !CBB_add_asn1(&attr, &attr_type, CBS_ASN1_OBJECT) ||
+        !CBB_add_bytes(&attr_type, kOID, sizeof(kOID)) ||
+        !CBB_add_asn1(&attr, &attr_value, tag) ||
+        !CBB_add_bytes(&attr_value,
+                       reinterpret_cast<const uint8_t *>(contents.data()),
+                       contents.size()) ||
+        !CBB_flush(cbb.get())) {
+      ADD_FAILURE() << "Could not encode name";
+      return {};
+    };
+    return std::vector<uint8_t>(CBB_data(cbb.get()),
+                                CBB_data(cbb.get()) + CBB_len(cbb.get()));
+  };
 
   const struct {
     CBS_ASN1_TAG der_tag;
@@ -6568,6 +6592,11 @@ TEST(X509Test, NameAttributeValues) {
 
       // ENUMERATED is supported but, currently, INTEGER is not.
       {CBS_ASN1_ENUMERATED, "\x01", V_ASN1_ENUMERATED, "\x01"},
+
+      // Test negative values. These are interesting because, when encoding, the
+      // ASN.1 type must be determined from the string type, but the string type
+      // has an extra |V_ASN1_NEG| bit.
+      {CBS_ASN1_ENUMERATED, "\xff", V_ASN1_NEG_ENUMERATED, "\x01"},
 
       // SEQUENCE is supported but, currently, SET is not. Note the
       // |ASN1_STRING| representation will include the tag and length.
@@ -6596,27 +6625,16 @@ TEST(X509Test, NameAttributeValues) {
 
     // Construct an X.509 name containing a single RDN with a single attribute:
     // kOID with the specified value.
-    bssl::ScopedCBB cbb;
-    ASSERT_TRUE(CBB_init(cbb.get(), 128));
-    CBB seq, rdn, attr, attr_type, attr_value;
-    ASSERT_TRUE(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
-    ASSERT_TRUE(CBB_add_asn1(&seq, &rdn, CBS_ASN1_SET));
-    ASSERT_TRUE(CBB_add_asn1(&rdn, &attr, CBS_ASN1_SEQUENCE));
-    ASSERT_TRUE(CBB_add_asn1(&attr, &attr_type, CBS_ASN1_OBJECT));
-    ASSERT_TRUE(CBB_add_bytes(&attr_type, kOID, sizeof(kOID)));
-    ASSERT_TRUE(CBB_add_asn1(&attr, &attr_value, t.der_tag));
-    ASSERT_TRUE(CBB_add_bytes(
-        &attr_value, reinterpret_cast<const uint8_t *>(t.der_contents.data()),
-        t.der_contents.size()));
-    ASSERT_TRUE(CBB_flush(cbb.get()));
-    SCOPED_TRACE(Bytes(CBB_data(cbb.get()), CBB_len(cbb.get())));
+    auto encoded = encode_single_attribute_name(t.der_tag, t.der_contents);
+    ASSERT_FALSE(encoded.empty());
+    SCOPED_TRACE(Bytes(encoded));
 
     // The input should parse.
-    const uint8_t *inp = CBB_data(cbb.get());
+    const uint8_t *inp = encoded.data();
     bssl::UniquePtr<X509_NAME> name(
-        d2i_X509_NAME(nullptr, &inp, CBB_len(cbb.get())));
+        d2i_X509_NAME(nullptr, &inp, encoded.size()));
     ASSERT_TRUE(name);
-    EXPECT_EQ(inp, CBB_data(cbb.get()) + CBB_len(cbb.get()))
+    EXPECT_EQ(inp, encoded.data() + encoded.size())
         << "input was not fully consumed";
 
     // Check there is a single attribute with the expected in-memory
@@ -6635,7 +6653,76 @@ TEST(X509Test, NameAttributeValues) {
     int der_len = i2d_X509_NAME(name.get(), &der);
     ASSERT_GE(der_len, 0);
     bssl::UniquePtr<uint8_t> free_der(der);
-    EXPECT_EQ(Bytes(der, der_len),
-              (Bytes(CBB_data(cbb.get()), CBB_len(cbb.get()))));
+    EXPECT_EQ(Bytes(der, der_len), Bytes(encoded));
+
+    // X509_NAME internally caches its encoding, which means the check above
+    // does not fully test re-encoding. Repeat the test by constructing an
+    // |X509_NAME| from the string representation.
+    name.reset(X509_NAME_new());
+    ASSERT_TRUE(name);
+    ASSERT_TRUE(X509_NAME_add_entry_by_txt(
+        name.get(), kOIDText, t.str_type,
+        reinterpret_cast<const uint8_t *>(t.str_contents.data()),
+        t.str_contents.size(), /*loc=*/-1, /*set=*/0));
+
+    // The name should re-encode with the same input.
+    der = nullptr;
+    der_len = i2d_X509_NAME(name.get(), &der);
+    ASSERT_GE(der_len, 0);
+    free_der.reset(der);
+    EXPECT_EQ(Bytes(der, der_len), Bytes(encoded));
+  }
+
+  const struct {
+    CBS_ASN1_TAG der_tag;
+    std::string der_contents;
+  } kInvalidTests[] = {
+      // Errors in supported universal types should be handled.
+      {CBS_ASN1_NULL, "not null"},
+      {CBS_ASN1_BOOLEAN, "not bool"},
+      {CBS_ASN1_OBJECT, ""},
+      {CBS_ASN1_INTEGER, std::string("\0\0", 2)},
+      {CBS_ASN1_ENUMERATED, std::string("\0\0", 2)},
+      {CBS_ASN1_BITSTRING, ""},
+      {CBS_ASN1_UTF8STRING, "not utf-8 \xff"},
+      {CBS_ASN1_BMPSTRING, "not utf-16 "},
+      {CBS_ASN1_UNIVERSALSTRING, "not utf-32"},
+      {CBS_ASN1_UTCTIME, "not utctime"},
+      {CBS_ASN1_GENERALIZEDTIME, "not generalizedtime"},
+      {CBS_ASN1_UTF8STRING | CBS_ASN1_CONSTRUCTED, ""},
+      {CBS_ASN1_SEQUENCE & ~CBS_ASN1_CONSTRUCTED, ""},
+
+      // TODO(crbug.com/boringssl/412): The following inputs should parse, but
+      // are currently rejected because they cannot be represented in
+      // |ASN1_PRINTABLE|, either because they don't fit in |ASN1_STRING| or
+      // simply in the |B_ASN1_PRINTABLE| bitmask.
+      {CBS_ASN1_NULL, ""},
+      {CBS_ASN1_BOOLEAN, std::string("\x00", 1)},
+      {CBS_ASN1_BOOLEAN, "\xff"},
+      {CBS_ASN1_OBJECT, "\x01\x02\x03\x04"},
+      {CBS_ASN1_INTEGER, "\x01"},
+      {CBS_ASN1_INTEGER, "\xff"},
+      {CBS_ASN1_OCTETSTRING, ""},
+      {CBS_ASN1_UTCTIME, "700101000000Z"},
+      {CBS_ASN1_GENERALIZEDTIME, "19700101000000Z"},
+      {CBS_ASN1_SET, ""},
+      {CBS_ASN1_APPLICATION | CBS_ASN1_CONSTRUCTED | 42, ""},
+      {CBS_ASN1_APPLICATION | 42, ""},
+  };
+  for (const auto &t : kInvalidTests) {
+    SCOPED_TRACE(t.der_tag);
+    SCOPED_TRACE(Bytes(t.der_contents));
+
+    // Construct an X.509 name containing a single RDN with a single attribute:
+    // kOID with the specified value.
+    auto encoded = encode_single_attribute_name(t.der_tag, t.der_contents);
+    ASSERT_FALSE(encoded.empty());
+    SCOPED_TRACE(Bytes(encoded));
+
+    // The input should not parse.
+    const uint8_t *inp = encoded.data();
+    bssl::UniquePtr<X509_NAME> name(
+        d2i_X509_NAME(nullptr, &inp, encoded.size()));
+    EXPECT_FALSE(name);
   }
 }
