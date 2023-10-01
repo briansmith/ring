@@ -56,6 +56,9 @@ TEST(ObjTest, TestBasic) {
   };
   CBS_init(&cbs, kUnknownDER, sizeof(kUnknownDER));
   ASSERT_EQ(NID_undef, OBJ_cbs2nid(&cbs));
+
+  EXPECT_EQ(NID_undef, OBJ_sn2nid("UNDEF"));
+  EXPECT_EQ(NID_undef, OBJ_ln2nid("undefined"));
 }
 
 TEST(ObjTest, TestSignatureAlgorithms) {

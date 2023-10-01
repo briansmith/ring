@@ -640,7 +640,11 @@ func writeData(path string, objs *objects) error {
 
 	fmt.Fprintf(&b, "\nstatic const uint16_t kNIDsInShortNameOrder[] = {\n")
 	for _, nid := range nids {
-		fmt.Fprintf(&b, "%d /* %s */,\n", nid, objs.byNID[nid].shortName)
+		// Including NID_undef in the table does not do anything. Whether OBJ_sn2nid
+		// finds the object or not, it will return NID_undef.
+		if nid != 0 {
+			fmt.Fprintf(&b, "%d /* %s */,\n", nid, objs.byNID[nid].shortName)
+		}
 	}
 	fmt.Fprintf(&b, "};\n")
 
@@ -656,7 +660,11 @@ func writeData(path string, objs *objects) error {
 
 	fmt.Fprintf(&b, "\nstatic const uint16_t kNIDsInLongNameOrder[] = {\n")
 	for _, nid := range nids {
-		fmt.Fprintf(&b, "%d /* %s */,\n", nid, objs.byNID[nid].longName)
+		// Including NID_undef in the table does not do anything. Whether OBJ_ln2nid
+		// finds the object or not, it will return NID_undef.
+		if nid != 0 {
+			fmt.Fprintf(&b, "%d /* %s */,\n", nid, objs.byNID[nid].longName)
+		}
 	}
 	fmt.Fprintf(&b, "};\n")
 
