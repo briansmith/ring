@@ -266,9 +266,6 @@ prefixed_export! {
 // target_feature="sha3"
 // ```
 #[allow(clippy::assertions_on_constants)]
-const _NON_AARCH64_HAS_ZERO_ARMCAP_STATIC: () =
-    assert!((ARMCAP_STATIC == 0) || cfg!(target_arch = "aarch64"));
-#[allow(clippy::assertions_on_constants)]
 const _AARCH64_HAS_NEON: () =
     assert!(((ARMCAP_STATIC & NEON.mask) == NEON.mask) || !cfg!(target_arch = "aarch64"));
 #[allow(clippy::assertions_on_constants)]
