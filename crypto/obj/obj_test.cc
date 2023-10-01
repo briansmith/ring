@@ -59,6 +59,7 @@ TEST(ObjTest, TestBasic) {
 
   EXPECT_EQ(NID_undef, OBJ_sn2nid("UNDEF"));
   EXPECT_EQ(NID_undef, OBJ_ln2nid("undefined"));
+  EXPECT_EQ(OBJ_get_undef(), OBJ_nid2obj(NID_undef));
 }
 
 TEST(ObjTest, TestSignatureAlgorithms) {

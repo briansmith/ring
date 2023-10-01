@@ -267,7 +267,7 @@ static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
   }
   switch (utype) {
     case V_ASN1_OBJECT:
-      *pval = (ASN1_VALUE *)OBJ_nid2obj(NID_undef);
+      *pval = (ASN1_VALUE *)OBJ_get_undef();
       return 1;
 
     case V_ASN1_BOOLEAN:

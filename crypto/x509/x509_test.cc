@@ -6456,7 +6456,7 @@ TEST(X509Test, AddUnserializableExtension) {
       MakeTestCert("Issuer", "Subject", key.get(), /*is_ca=*/true);
   ASSERT_TRUE(x509);
   bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_new());
-  ASSERT_TRUE(X509_EXTENSION_set_object(ext.get(), OBJ_nid2obj(NID_undef)));
+  ASSERT_TRUE(X509_EXTENSION_set_object(ext.get(), OBJ_get_undef()));
   EXPECT_FALSE(X509_add_ext(x509.get(), ext.get(), /*loc=*/-1));
 }
 

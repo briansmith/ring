@@ -179,12 +179,19 @@ size_t OBJ_length(const ASN1_OBJECT *obj) {
   return (size_t)obj->length;
 }
 
+static const ASN1_OBJECT *get_builtin_object(int nid) {
+  // |NID_undef| is stored separately, so all the indices are off by one. The
+  // caller of this function must have a valid built-in, non-undef NID.
+  BSSL_CHECK(nid > 0 && nid < NUM_NID);
+  return &kObjects[nid - 1];
+}
+
 // obj_cmp is called to search the kNIDsInOIDOrder array. The |key| argument is
 // an |ASN1_OBJECT|* that we're looking for and |element| is a pointer to an
 // unsigned int in the array.
 static int obj_cmp(const void *key, const void *element) {
   uint16_t nid = *((const uint16_t *)element);
-  return OBJ_cmp(key, &kObjects[nid]);
+  return OBJ_cmp(key, get_builtin_object(nid));
 }
 
 int OBJ_obj2nid(const ASN1_OBJECT *obj) {
@@ -215,7 +222,7 @@ int OBJ_obj2nid(const ASN1_OBJECT *obj) {
     return NID_undef;
   }
 
-  return kObjects[*nid_ptr].nid;
+  return get_builtin_object(*nid_ptr)->nid;
 }
 
 int OBJ_cbs2nid(const CBS *cbs) {
@@ -238,7 +245,7 @@ static int short_name_cmp(const void *key, const void *element) {
   const char *name = (const char *)key;
   uint16_t nid = *((const uint16_t *)element);
 
-  return strcmp(name, kObjects[nid].sn);
+  return strcmp(name, get_builtin_object(nid)->sn);
 }
 
 int OBJ_sn2nid(const char *short_name) {
@@ -263,7 +270,7 @@ int OBJ_sn2nid(const char *short_name) {
     return NID_undef;
   }
 
-  return kObjects[*nid_ptr].nid;
+  return get_builtin_object(*nid_ptr)->nid;
 }
 
 // long_name_cmp is called to search the kNIDsInLongNameOrder array. The
@@ -273,7 +280,7 @@ static int long_name_cmp(const void *key, const void *element) {
   const char *name = (const char *)key;
   uint16_t nid = *((const uint16_t *)element);
 
-  return strcmp(name, kObjects[nid].ln);
+  return strcmp(name, get_builtin_object(nid)->ln);
 }
 
 int OBJ_ln2nid(const char *long_name) {
@@ -297,7 +304,7 @@ int OBJ_ln2nid(const char *long_name) {
     return NID_undef;
   }
 
-  return kObjects[*nid_ptr].nid;
+  return get_builtin_object(*nid_ptr)->nid;
 }
 
 int OBJ_txt2nid(const char *s) {
@@ -324,12 +331,29 @@ OPENSSL_EXPORT int OBJ_nid2cbb(CBB *out, int nid) {
   return 1;
 }
 
+const ASN1_OBJECT *OBJ_get_undef(void) {
+  static const ASN1_OBJECT kUndef = {
+      /*sn=*/SN_undef,
+      /*ln=*/LN_undef,
+      /*nid=*/NID_undef,
+      /*length=*/0,
+      /*data=*/NULL,
+      /*flags=*/0,
+  };
+  return &kUndef;
+}
+
 ASN1_OBJECT *OBJ_nid2obj(int nid) {
-  if (nid >= 0 && nid < NUM_NID) {
-    if (nid != NID_undef && kObjects[nid].nid == NID_undef) {
+  if (nid == NID_undef) {
+    return (ASN1_OBJECT *)OBJ_get_undef();
+  }
+
+  if (nid > 0 && nid < NUM_NID) {
+    const ASN1_OBJECT *obj = get_builtin_object(nid);
+    if (nid != NID_undef && obj->nid == NID_undef) {
       goto err;
     }
-    return (ASN1_OBJECT *)&kObjects[nid];
+    return (ASN1_OBJECT *)obj;
   }
 
   CRYPTO_MUTEX_lock_read(&global_added_lock);

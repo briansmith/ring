@@ -614,6 +614,12 @@ func writeData(path string, objs *objects) error {
 	// Emit an ASN1_OBJECT for each object.
 	fmt.Fprintf(&b, "\nstatic const ASN1_OBJECT kObjects[NUM_NID] = {\n")
 	for nid, obj := range objs.byNID {
+		// Skip the entry for NID_undef. It is stored separately, so that
+		// OBJ_get_undef avoids pulling in the table.
+		if nid == 0 {
+			continue
+		}
+
 		if len(obj.name) == 0 {
 			fmt.Fprintf(&b, "{NULL, NULL, NID_undef, 0, NULL, 0},\n")
 			continue
