@@ -19,7 +19,8 @@ IFS=$'\n\t'
 
 rustflags_self_contained="-Clink-self-contained=yes -Clinker=rust-lld"
 qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
-qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
+qemu_arm_gnueabi="qemu-arm -L /usr/arm-linux-gnueabi"
+qemu_arm_gnueabihf="qemu-arm -L /usr/arm-linux-gnueabihf"
 qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
 qemu_powerpc="qemu-ppc -L /usr/powerpc-linux-gnu"
 qemu_powerpc64="qemu-ppc64 -L /usr/powerpc64-linux-gnu"
@@ -71,22 +72,35 @@ case $target in
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="$rustflags_self_contained"
     export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUNNER="$qemu_aarch64"
     ;;
+  arm-unknown-linux-gnueabi)
+    export CC_arm_unknown_linux_gnueabi=arm-linux-gnueabi-gcc
+    export AR_arm_unknown_linux_gnueabi=arm-linux-gnueabi-gcc-ar
+    export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABI_LINKER=arm-linux-gnueabi-gcc
+    export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABI_RUNNER="$qemu_arm_gnueabi"
+    ;;
   arm-unknown-linux-gnueabihf)
+    # XXX: clang cannot build the sha256 and x25519 assembly.
     export CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
     export AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc-ar
     export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
-    export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="$qemu_arm"
+    export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_RUNNER="$qemu_arm_gnueabihf"
     ;;
   armv7-linux-androideabi)
     export CC_armv7_linux_androideabi=$android_tools/armv7a-linux-androideabi19-clang
     export AR_armv7_linux_androideabi=$android_tools/llvm-ar
     export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$android_tools/armv7a-linux-androideabi19-clang
     ;;
+  armv7-unknown-linux-gnueabihf)
+    export CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
+    export AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc-ar
+    export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+    export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER="$qemu_arm_gnueabihf"
+    ;;
   armv7-unknown-linux-musleabihf)
     export CC_armv7_unknown_linux_musleabihf=clang-$llvm_version
     export AR_armv7_unknown_linux_musleabihf=llvm-ar-$llvm_version
     export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUSTFLAGS="$rustflags_self_contained"
-    export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUNNER="$qemu_arm"
+    export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_RUNNER="$qemu_arm_gnueabihf"
     ;;
   i686-unknown-linux-gnu)
     export CC_i686_unknown_linux_gnu=clang-$llvm_version
