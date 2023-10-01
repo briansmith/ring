@@ -21,7 +21,7 @@
     any(target_os = "android", target_os = "linux"),
     any(target_arch = "aarch64", target_arch = "arm")
 ))]
-pub fn setup() {
+fn detect_features() -> u32 {
     use libc::c_ulong;
 
     // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
@@ -45,10 +45,12 @@ pub fn setup() {
     #[cfg(target_arch = "aarch64")]
     debug_assert!(caps & HWCAP_NEON == HWCAP_NEON);
 
+    let mut features = 0;
+
     // OpenSSL and BoringSSL don't enable any other features if NEON isn't
     // available.
     if caps & HWCAP_NEON == HWCAP_NEON {
-        let mut features = NEON.mask;
+        features = NEON.mask;
 
         #[cfg(target_arch = "aarch64")]
         const OFFSET: c_ulong = 3;
@@ -75,13 +77,13 @@ pub fn setup() {
         if caps & HWCAP_SHA2 == HWCAP_SHA2 {
             features |= SHA256.mask;
         }
-
-        unsafe { OPENSSL_armcap_P = features };
     }
+
+    features
 }
 
 #[cfg(all(target_os = "fuchsia", target_arch = "aarch64"))]
-pub fn setup() {
+fn detect_features() -> u32 {
     type zx_status_t = i32;
 
     #[link(name = "zircon")]
@@ -99,10 +101,12 @@ pub fn setup() {
     let mut caps = 0;
     let rc = unsafe { zx_system_get_features(ZX_FEATURE_KIND_CPU, &mut caps) };
 
+    let mut features = 0;
+
     // OpenSSL and BoringSSL don't enable any other features if NEON isn't
     // available.
     if rc == ZX_OK && (caps & ZX_ARM64_FEATURE_ISA_ASIMD == ZX_ARM64_FEATURE_ISA_ASIMD) {
-        let mut features = NEON.mask;
+        features = NEON.mask;
 
         if caps & ZX_ARM64_FEATURE_ISA_AES == ZX_ARM64_FEATURE_ISA_AES {
             features |= AES.mask;
@@ -113,13 +117,13 @@ pub fn setup() {
         if caps & ZX_ARM64_FEATURE_ISA_SHA2 == ZX_ARM64_FEATURE_ISA_SHA2 {
             features |= 1 << 4;
         }
-
-        unsafe { OPENSSL_armcap_P = features };
     }
+
+    features
 }
 
 #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
-pub fn setup() {
+fn detect_features() -> u32 {
     // We do not need to check for the presence of NEON, as Armv8-A always has it
     const _ASSERT_NEON_DETECTED: () = assert!((ARMCAP_STATIC & NEON.mask) == NEON.mask);
     let mut features = ARMCAP_STATIC;
@@ -137,7 +141,7 @@ pub fn setup() {
         features |= SHA256.mask;
     }
 
-    unsafe { OPENSSL_armcap_P = features };
+    features
 }
 
 macro_rules! features {
@@ -198,6 +202,7 @@ impl Feature {
             any(target_arch = "arm", target_arch = "aarch64")
         ))]
         {
+            // SAFETY: See `OPENSSL_armcap_P`'s safety documentation.
             if self.mask == self.mask & unsafe { OPENSSL_armcap_P } {
                 return true;
             }
@@ -237,6 +242,23 @@ features! {
     },
 }
 
+// SAFETY:
+// - This may only be called from within `cpu::features()` and only while it is initializing its
+//   `INIT`.
+// - See the safety invariants of `OPENSSL_armcap_P` below.
+#[cfg(all(
+    any(target_arch = "aarch64", target_arch = "arm"),
+    any(
+        target_os = "android",
+        target_os = "fuchsia",
+        target_os = "linux",
+        target_os = "windows"
+    )
+))]
+pub unsafe fn initialize_OPENSSL_armcap_P() {
+    OPENSSL_armcap_P = ARMCAP_STATIC | detect_features();
+}
+
 // Some non-Rust code still checks this even when it is statically known
 // the given feature is available, so we have to ensure that this is
 // initialized properly. Keep this in sync with the initialization in
@@ -244,6 +266,19 @@ features! {
 //
 // TODO: This should have "hidden" visibility but we don't have a way of
 // controlling that yet: https://github.com/rust-lang/rust/issues/73958.
+//
+// SAFETY:
+// - Rust code only accesses this through `cpu::Features`, which acts as a witness that
+//   `cpu::features()` was called to initialize this.
+// - Some assembly language functions access `OPENSSL_armcap_P` directly. Callers of those functions
+//   must obtain a `cpu::Features` before calling them.
+// - An instance of `cpu::Features` is a witness that this was initialized.
+// - The initialization of the `INIT` in `cpu::features()` initializes this, and that `OnceCell`
+//   implements acquire/release semantics that allow all the otherwise-apparently-unsynchronized
+//   access.
+// - `OPENSSL_armcap_P` must always be a superset of `ARMCAP_STATIC`.
+// TODO: Remove all the direct accesses of this from assembly language code, and then replace this
+// with a `OnceCell<u32>` that will provide all the necessary safety guarantees.
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 prefixed_export! {
     #[allow(non_upper_case_globals)]
