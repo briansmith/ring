@@ -502,13 +502,15 @@ jobs:
 
         # TODO: targets
         target:
-          - aarch64-unknown-linux-gnu
-          - i686-unknown-linux-gnu
-          - powerpc-unknown-linux-gnu
-          - powerpc64le-unknown-linux-gnu
-          - riscv64gc-unknown-linux-gnu
-          - s390x-unknown-linux-gnu
-          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-gnu      # Has assembly
+          - i686-unknown-linux-gnu         # Has assembly
+          # TODO: arm-unknown-linux-gnueabi # Has assembly but doesn't build w/ clang
+          # TODO: armv7-unknown-linux-gnueabihf # Has assembly but doesn't have profiler builtins
+          - powerpc-unknown-linux-gnu      # No assembly 32-bit big-endian
+          - powerpc64le-unknown-linux-gnu  # No assembly 64-bit little-endian with flags
+          - riscv64gc-unknown-linux-gnu    # No assembly 64-bit little-endian without flags
+          - s390x-unknown-linux-gnu        # No assembly 64-bit big-endian
+          - x86_64-unknown-linux-musl      # Has assembly
 
         mode:
           - # debug
