@@ -193,7 +193,7 @@ fn ed25519_test_generate_pkcs8() {
     let generated = signature::Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
     let generated = generated.as_ref();
 
-    let _ronudtripped = signature::Ed25519KeyPair::from_pkcs8(generated.as_ref()).unwrap();
+    let _ronudtripped = signature::Ed25519KeyPair::from_pkcs8(generated).unwrap();
 
     // Regression test: Verify we're generating the correct encoding, as
     // `Ed25519KeyPair::from_pkcs8` also accepts our old wrong encoding.
