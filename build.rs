@@ -457,7 +457,7 @@ fn build_c_code(
 
         // For Windows we also pregenerate the object files for non-Git builds so
         // the user doesn't need to install the assembler.
-        if use_pregenerated && target.os == WINDOWS {
+        if use_pregenerated && target.os == WINDOWS && asm_target.preassemble {
             asm_srcs = asm_srcs
                 .iter()
                 .map(|src| obj_path(&pregenerated, src.as_path()))
