@@ -56,6 +56,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86], "crypto/fipsmodule/modes/asm/ghash-x86.pl"),
 
     (&[X86_64], "crypto/chacha/asm/chacha-x86_64.pl"),
+    (&[X86_64], "crypto/curve25519/curve25519_64_adx.c"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont.pl"),
@@ -66,6 +67,8 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], "crypto/poly1305/poly1305_vec.c"),
     (&[X86_64], SHA512_X86_64),
     (&[X86_64], "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl"),
+    (&[X86_64], "third_party/fiat/asm/fiat_curve25519_adx_mul.S"),
+    (&[X86_64], "third_party/fiat/asm/fiat_curve25519_adx_square.S"),
 
     (&[AARCH64, X86_64], "crypto/fipsmodule/ec/p256-nistz.c"),
 
@@ -976,10 +979,13 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "bn_sqr8x_internal",
         "bn_sqrx8x_internal",
         "bsaes_ctr32_encrypt_blocks",
+        "bssl_constant_time_test_conditional_memcpy",
         "bssl_constant_time_test_conditional_memxor",
         "bssl_constant_time_test_main",
         "chacha20_poly1305_open",
         "chacha20_poly1305_seal",
+        "fiat_curve25519_adx_mul",
+        "fiat_curve25519_adx_square",
         "gcm_ghash_avx",
         "gcm_ghash_clmul",
         "gcm_ghash_neon",
@@ -988,6 +994,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "gcm_init_avx",
         "gcm_init_clmul",
         "gcm_init_neon",
+        "k25519Precomp",
         "limbs_mul_add_limb",
         "little_endian_bytes_from_scalar",
         "ecp_nistz256_neg",
@@ -1027,10 +1034,12 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "x25519_ge_double_scalarmult_vartime",
         "x25519_ge_frombytes_vartime",
         "x25519_ge_scalarmult_base",
+        "x25519_ge_scalarmult_base_adx",
         "x25519_public_from_private_generic_masked",
         "x25519_sc_mask",
         "x25519_sc_muladd",
         "x25519_sc_reduce",
+        "x25519_scalar_mult_adx",
         "x25519_scalar_mult_generic_masked",
     ];
 

@@ -142,7 +142,7 @@ static const uint8_t k25519SmallPrecomp[15 * 2 * 32] = {
 #else
 
 // k25519Precomp[i][j] = (j+1)*256^i*B
-static const uint8_t k25519Precomp[32][8][3][32] = {
+const uint8_t k25519Precomp[32][8][3][32] = {
     {
         {
             {0x85, 0x3b, 0x8c, 0xf5, 0xc6, 0x93, 0xbc, 0x2f, 0x19, 0xe,  0x8c,

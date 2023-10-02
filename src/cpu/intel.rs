@@ -41,6 +41,21 @@ impl Feature {
     }
 }
 
+pub(crate) const ADX: Feature = Feature {
+    word: 2,
+    mask: 1 << 19,
+};
+
+pub(crate) const BMI1: Feature = Feature {
+    word: 2,
+    mask: 1 << 3,
+};
+
+pub(crate) const BMI2: Feature = Feature {
+    word: 2,
+    mask: 1 << 8,
+};
+
 pub(crate) const FXSR: Feature = Feature {
     word: 0,
     mask: 1 << 24,

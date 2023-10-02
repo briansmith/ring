@@ -17,7 +17,7 @@
 
 pub use super::scalar::{MaskedScalar, Scalar, SCALAR_LEN};
 use crate::{
-    bssl, error,
+    bssl, c, cpu, error,
     limb::{Limb, LIMB_BITS},
 };
 use core::marker::PhantomData;
@@ -74,7 +74,7 @@ pub struct ExtPoint {
 
 impl ExtPoint {
     // Returns the result of multiplying the base point by the scalar in constant time.
-    pub fn from_scalarmult_base_consttime(scalar: &Scalar) -> Self {
+    pub(super) fn from_scalarmult_base_consttime(scalar: &Scalar, cpu: cpu::Features) -> Self {
         let mut r = Self {
             x: Elem::zero(),
             y: Elem::zero(),
@@ -82,10 +82,10 @@ impl ExtPoint {
             t: Elem::zero(),
         };
         prefixed_extern! {
-            fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar);
+            fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar, has_fe25519_adx: c::int);
         }
         unsafe {
-            x25519_ge_scalarmult_base(&mut r, scalar);
+            x25519_ge_scalarmult_base(&mut r, scalar, has_fe25519_adx(cpu).into());
         }
         r
     }
@@ -155,6 +155,14 @@ fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>) -> EncodedPoint {
     bytes[ELEM_LEN - 1] ^= sign_bit << 7;
 
     bytes
+}
+
+#[inline]
+pub(super) fn has_fe25519_adx(cpu: cpu::Features) -> bool {
+    cfg!(all(target_arch = "x86_64", not(target_os = "windows")))
+        && cpu::intel::ADX.available(cpu)
+        && cpu::intel::BMI1.available(cpu)
+        && cpu::intel::BMI2.available(cpu)
 }
 
 prefixed_extern! {

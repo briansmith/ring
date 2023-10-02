@@ -16,7 +16,7 @@
 
 use super::{super::ops::*, eddsa_digest, ED25519_PUBLIC_KEY_LEN};
 use crate::{
-    digest, error,
+    cpu, digest, error,
     io::der,
     pkcs8, rand,
     signature::{self, KeyPair as SigningKeyPair},
@@ -176,7 +176,7 @@ impl Ed25519KeyPair {
         let private_scalar =
             MaskedScalar::from_bytes_masked(private_scalar.try_into().unwrap()).into();
 
-        let a = ExtPoint::from_scalarmult_base_consttime(&private_scalar);
+        let a = ExtPoint::from_scalarmult_base_consttime(&private_scalar, cpu::features());
 
         Self {
             private_scalar,
@@ -207,7 +207,7 @@ impl Ed25519KeyPair {
             };
             let nonce = Scalar::from_sha512_digest_reduced(nonce);
 
-            let r = ExtPoint::from_scalarmult_base_consttime(&nonce);
+            let r = ExtPoint::from_scalarmult_base_consttime(&nonce, cpu::features());
             signature_r.copy_from_slice(&r.into_encoded_point());
             let hram_digest = eddsa_digest(signature_r, self.public_key.as_ref(), msg);
             let hram = Scalar::from_sha512_digest_reduced(hram_digest);
