@@ -345,6 +345,7 @@ jobs:
         target:
           - aarch64-unknown-linux-musl
           - i686-pc-windows-msvc
+          - powerpc-unknown-linux-gnu
           - powerpc64le-unknown-linux-gnu
           - s390x-unknown-linux-gnu
           - x86_64-unknown-linux-gnu
@@ -364,6 +365,9 @@ jobs:
 
           - target: i686-pc-windows-msvc
             host_os: windows-latest
+
+          - target: powerpc-unknown-linux-gnu
+            host_os: ubuntu-22.04
 
           - target: powerpc64le-unknown-linux-gnu
             host_os: ubuntu-22.04
@@ -506,7 +510,7 @@ jobs:
           - i686-unknown-linux-gnu         # Has assembly
           # TODO: arm-unknown-linux-gnueabi # Has assembly but doesn't build w/ clang
           # TODO: armv7-unknown-linux-gnueabihf # Has assembly but doesn't have profiler builtins
-          - powerpc-unknown-linux-gnu      # No assembly 32-bit big-endian
+          # TODO: powerpc-unknown-linux-gnu  No assembly 32-bit big-endian but doesn't have profiler builtins
           - powerpc64le-unknown-linux-gnu  # No assembly 64-bit little-endian with flags
           - riscv64gc-unknown-linux-gnu    # No assembly 64-bit little-endian without flags
           - s390x-unknown-linux-gnu        # No assembly 64-bit big-endian
@@ -531,9 +535,6 @@ jobs:
           # https://github.com/rust-lang/rust/issues/79556 and
           # https://github.com/rust-lang/rust/issues/79555 are fixed.
           - target: i686-unknown-linux-gnu
-            host_os: ubuntu-22.04
-
-          - target: powerpc-unknown-linux-gnu
             host_os: ubuntu-22.04
 
           - target: powerpc64le-unknown-linux-gnu
