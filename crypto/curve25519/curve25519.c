@@ -733,7 +733,8 @@ static void x25519_ge_scalarmult_small_precomp(
   }
 }
 
-void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
+void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32], int use_adx) {
+  (void)use_adx;
   x25519_ge_scalarmult_small_precomp(h, a, k25519SmallPrecomp);
 }
 
@@ -777,10 +778,9 @@ static void table_select(ge_precomp *t, const int pos, const signed char b) {
 //
 // Preconditions:
 //   a[31] <= 127
-void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
+void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32], int use_adx) {
 #if defined(BORINGSSL_FE25519_ADX)
-  if (CRYPTO_is_BMI1_capable() && CRYPTO_is_BMI2_capable() &&
-      CRYPTO_is_ADX_capable()) {
+  if (use_adx) {
     uint8_t t[4][32];
     x25519_ge_scalarmult_base_adx(t, a);
     fiat_25519_from_bytes(h->X.v, t[0]);
@@ -789,6 +789,8 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
     fiat_25519_from_bytes(h->T.v, t[3]);
     return;
   }
+#else
+  (void)use_adx;
 #endif
   signed char e[64];
   signed char carry;
@@ -1864,12 +1866,13 @@ void x25519_scalar_mult_generic_masked(uint8_t out[32],
 }
 
 void x25519_public_from_private_generic_masked(uint8_t out_public_value[32],
-                                                   const uint8_t private_key_masked[32]) {
+                                               const uint8_t private_key_masked[32],
+                                               int use_adx) {
   uint8_t e[32];
   OPENSSL_memcpy(e, private_key_masked, 32);
 
   ge_p3 A;
-  x25519_ge_scalarmult_base(&A, e);
+  x25519_ge_scalarmult_base(&A, e, use_adx);
 
   // We only need the u-coordinate of the curve25519 point. The map is
   // u=(y+1)/(1-y). Since y=Y/Z, this gives u=(Z+Y)/(Z-Y).

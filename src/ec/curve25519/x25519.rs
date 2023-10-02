@@ -15,7 +15,7 @@
 //! X25519 Key agreement.
 
 use super::{ops, scalar::SCALAR_LEN};
-use crate::{agreement, constant_time, cpu, ec, error, rand};
+use crate::{agreement, c, constant_time, cpu, ec, error, rand};
 
 static CURVE25519: ec::Curve = ec::Curve {
     public_key_len: PUBLIC_KEY_LEN,
@@ -58,7 +58,6 @@ fn x25519_public_from_private(
 ) -> Result<(), error::Unspecified> {
     let public_out = public_out.try_into()?;
 
-    #[cfg(target_arch = "arm")]
     let cpu_features = private_key.cpu_features;
 
     let private_key: &[u8; SCALAR_LEN] = private_key.bytes_less_safe().try_into()?;
@@ -80,10 +79,15 @@ fn x25519_public_from_private(
         fn x25519_public_from_private_generic_masked(
             public_key_out: &mut PublicKey,
             private_key: &PrivateKey,
+            use_adx: c::int,
         );
     }
     unsafe {
-        x25519_public_from_private_generic_masked(public_out, &private_key);
+        x25519_public_from_private_generic_masked(
+            public_out,
+            &private_key,
+            ops::has_fe25519_adx(cpu_features).into(),
+        );
     }
 
     Ok(())
