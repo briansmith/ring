@@ -236,7 +236,7 @@ const ASM_TARGETS: &[AsmTarget] = &[
         arch: "aarch64",
         perlasm_format: "win64",
         asm_extension: "S",
-        preassemble: true,
+        preassemble: false,
     },
 ];
 
