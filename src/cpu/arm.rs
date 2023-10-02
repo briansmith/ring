@@ -256,7 +256,18 @@ features! {
     )
 ))]
 pub unsafe fn initialize_OPENSSL_armcap_P() {
-    OPENSSL_armcap_P = ARMCAP_STATIC | detect_features();
+    let detected = detect_features();
+    let filtered = (if cfg!(feature = "unstable-testing-arm-no-hw") {
+        AES.mask | SHA256.mask | PMULL.mask
+    } else {
+        0
+    }) | (if cfg!(feature = "unstable-testing-arm-no-neon") {
+        NEON.mask
+    } else {
+        0
+    });
+    let detected = detected & !filtered;
+    OPENSSL_armcap_P = ARMCAP_STATIC | detected;
 }
 
 // Some non-Rust code still checks this even when it is statically known
