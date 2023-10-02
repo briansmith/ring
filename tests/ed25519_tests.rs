@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use ring::{
-    error,
+    error, rand,
     signature::{self, Ed25519KeyPair, KeyPair},
     test, test_file,
 };
@@ -185,6 +185,20 @@ fn test_ed25519_from_pkcs8_(
             Ok(())
         },
     );
+}
+
+#[test]
+fn ed25519_test_generate_pkcs8() {
+    let rng = rand::SystemRandom::new();
+    let generated = signature::Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
+    let generated = generated.as_ref();
+
+    let _ronudtripped = signature::Ed25519KeyPair::from_pkcs8(generated.as_ref()).unwrap();
+
+    // Regression test: Verify we're generating the correct encoding, as
+    // `Ed25519KeyPair::from_pkcs8` also accepts our old wrong encoding.
+    assert_eq!(generated.len(), 19 + 32 + 32);
+    assert_eq!(&generated[..2], &[0x30, 0x51]);
 }
 
 #[test]
