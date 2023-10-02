@@ -176,10 +176,7 @@ impl Ed25519KeyPair {
         let private_scalar =
             MaskedScalar::from_bytes_masked(private_scalar.try_into().unwrap()).into();
 
-        let mut a = ExtPoint::new_at_infinity();
-        unsafe {
-            x25519_ge_scalarmult_base(&mut a, &private_scalar);
-        }
+        let a = ExtPoint::from_scalarmult_base_consttime(&private_scalar);
 
         Self {
             private_scalar,
@@ -210,10 +207,7 @@ impl Ed25519KeyPair {
             };
             let nonce = Scalar::from_sha512_digest_reduced(nonce);
 
-            let mut r = ExtPoint::new_at_infinity();
-            unsafe {
-                x25519_ge_scalarmult_base(&mut r, &nonce);
-            }
+            let r = ExtPoint::from_scalarmult_base_consttime(&nonce);
             signature_r.copy_from_slice(&r.into_encoded_point());
             let hram_digest = eddsa_digest(signature_r, self.public_key.as_ref(), msg);
             let hram = Scalar::from_sha512_digest_reduced(hram_digest);
@@ -261,10 +255,6 @@ fn unwrap_pkcs8(
         })
         .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
     Ok((private_key, public_key))
-}
-
-prefixed_extern! {
-    fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar);
 }
 
 type Prefix = [u8; PREFIX_LEN];

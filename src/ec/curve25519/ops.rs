@@ -73,17 +73,30 @@ pub struct ExtPoint {
 }
 
 impl ExtPoint {
-    pub fn new_at_infinity() -> Self {
-        Self {
+    // Returns the result of multiplying the base point by the scalar in constant time.
+    pub fn from_scalarmult_base_consttime(scalar: &Scalar) -> Self {
+        let mut r = Self {
             x: Elem::zero(),
             y: Elem::zero(),
             z: Elem::zero(),
             t: Elem::zero(),
+        };
+        prefixed_extern! {
+            fn x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar);
         }
+        unsafe {
+            x25519_ge_scalarmult_base(&mut r, scalar);
+        }
+        r
     }
 
     pub fn from_encoded_point_vartime(encoded: &EncodedPoint) -> Result<Self, error::Unspecified> {
-        let mut point = Self::new_at_infinity();
+        let mut point = Self {
+            x: Elem::zero(),
+            y: Elem::zero(),
+            z: Elem::zero(),
+            t: Elem::zero(),
+        };
 
         Result::from(unsafe { x25519_ge_frombytes_vartime(&mut point, encoded) }).map(|()| point)
     }
