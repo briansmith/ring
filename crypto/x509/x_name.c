@@ -122,7 +122,6 @@ ASN1_ITEM_TEMPLATE_END(X509_NAME_INTERNAL)
 static const ASN1_EXTERN_FUNCS x509_name_ff = {
     x509_name_ex_new,
     x509_name_ex_free,
-    0,  // Default clear behaviour is OK
     x509_name_ex_d2i,
     x509_name_ex_i2d,
 };

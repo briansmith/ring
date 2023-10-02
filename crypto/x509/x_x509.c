@@ -342,7 +342,6 @@ static int x509_i2d_cb(ASN1_VALUE **pval, unsigned char **out,
 static const ASN1_EXTERN_FUNCS x509_extern_funcs = {
     x509_new_cb,
     x509_free_cb,
-    /*asn1_ex_clear=*/NULL,
     x509_d2i_cb,
     x509_i2d_cb,
 };

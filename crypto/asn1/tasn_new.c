@@ -183,16 +183,9 @@ auxerr:
 }
 
 static void asn1_item_clear(ASN1_VALUE **pval, const ASN1_ITEM *it) {
-  const ASN1_EXTERN_FUNCS *ef;
-
   switch (it->itype) {
     case ASN1_ITYPE_EXTERN:
-      ef = it->funcs;
-      if (ef && ef->asn1_ex_clear) {
-        ef->asn1_ex_clear(pval, it);
-      } else {
-        *pval = NULL;
-      }
+      *pval = NULL;
       break;
 
     case ASN1_ITYPE_PRIMITIVE:
