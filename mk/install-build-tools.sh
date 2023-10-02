@@ -98,6 +98,13 @@ case $target in
     libc6-dev-powerpc-cross \
     qemu-user
   ;;
+--target=powerpc64-unknown-linux-gnu)
+  use_clang=1
+  install_packages \
+    gcc-powerpc64-linux-gnu \
+    libc6-dev-ppc64-cross \
+    qemu-user
+  ;;
 --target=powerpc64le-unknown-linux-gnu)
   use_clang=1
   install_packages \

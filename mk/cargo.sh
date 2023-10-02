@@ -22,6 +22,7 @@ qemu_aarch64="qemu-aarch64 -L /usr/aarch64-linux-gnu"
 qemu_arm="qemu-arm -L /usr/arm-linux-gnueabihf"
 qemu_mipsel="qemu-mipsel -L /usr/mipsel-linux-gnu"
 qemu_powerpc="qemu-ppc -L /usr/powerpc-linux-gnu"
+qemu_powerpc64="qemu-ppc64 -L /usr/powerpc64-linux-gnu"
 qemu_powerpc64le="qemu-ppc64le -L /usr/powerpc64le-linux-gnu"
 qemu_riscv64="qemu-riscv64 -L /usr/riscv64-linux-gnu"
 qemu_s390x="qemu-s390x -L /usr/s390x-linux-gnu"
@@ -109,6 +110,13 @@ case $target in
     export CFLAGS_powerpc_unknown_linux_gnu="--sysroot=/usr/powerpc-linux-gnu"
     export CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_LINKER=powerpc-linux-gnu-gcc
     export CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER="$qemu_powerpc"
+    ;;
+  powerpc64-unknown-linux-gnu)
+    export CC_powerpc64_unknown_linux_gnu=clang-$llvm_version
+    export AR_powerpc64_unknown_linux_gnu=llvm-ar-$llvm_version
+    export CFLAGS_powerpc64_unknown_linux_gnu="--sysroot=/usr/powerpc64-linux-gnu"
+    export CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_LINKER=powerpc64-linux-gnu-gcc
+    export CARGO_TARGET_POWERPC64_UNKNOWN_LINUX_GNU_RUNNER="$qemu_powerpc64"
     ;;
   powerpc64le-unknown-linux-gnu)
     export CC_powerpc64le_unknown_linux_gnu=clang-$llvm_version
