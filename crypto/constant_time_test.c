@@ -127,6 +127,12 @@ int bssl_constant_time_test_main(void) {
   return num_failed == 0;
 }
 
+// Exposes `constant_time_conditional_memcpy` to Rust for tests only.
+void bssl_constant_time_test_conditional_memcpy(uint8_t dst[256], const uint8_t src[256],
+                                                crypto_word_t b) {
+    constant_time_conditional_memcpy(dst, src, 256, b);
+ }
+
 // Exposes `constant_time_conditional_memxor` to Rust for tests only.
 void bssl_constant_time_test_conditional_memxor(uint8_t dst[256],
                                                const uint8_t src[256],

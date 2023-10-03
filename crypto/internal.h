@@ -277,6 +277,34 @@ static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
   return (mask & a) | (~mask & b);
 }
 
+// constant_time_select_8 acts like |constant_time_select| but operates on
+// 8-bit values.
+static inline uint8_t constant_time_select_8(crypto_word_t mask, uint8_t a,
+                                             uint8_t b) {
+  // |mask| is a word instead of |uint8_t| to avoid materializing 0x000..0MM
+  // Making both |mask| and its value barrier |uint8_t| would allow the compiler
+  // to materialize 0x????..?MM instead, but only clang is that clever.
+  // However, vectorization of bitwise operations seems to work better on
+  // |uint8_t| than a mix of |uint64_t| and |uint8_t|, so |m| is cast to
+  // |uint8_t| after the value barrier but before the bitwise operations.
+  uint8_t m = value_barrier_w(mask);
+  return (m & a) | (~m & b);
+}
+
+// constant_time_conditional_memcpy copies |n| bytes from |src| to |dst| if
+// |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
+// ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
+static inline void constant_time_conditional_memcpy(void *dst, const void *src,
+                                                    const size_t n,
+                                                    const crypto_word_t mask) {
+  debug_assert_nonsecret(!buffers_alias(dst, n, src, n));
+  uint8_t *out = (uint8_t *)dst;
+  const uint8_t *in = (const uint8_t *)src;
+  for (size_t i = 0; i < n; i++) {
+    out[i] = constant_time_select_8(mask, in[i], out[i]);
+  }
+}
+
 // constant_time_conditional_memxor xors |n| bytes from |src| to |dst| if
 // |mask| is 0xff..ff and does nothing if |mask| is 0. The |n|-byte memory
 // ranges at |dst| and |src| must not overlap, as when calling |memcpy|.
