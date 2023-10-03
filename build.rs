@@ -472,6 +472,19 @@ fn build_c_code(
     let core_srcs = sources_for_arch(&target.arch)
         .into_iter()
         .filter(|p| !is_perlasm(p))
+        .filter(|p| {
+            if let Some(extension) = p.extension() {
+                // We don't (and can't) use any .S on Windows since MSVC and NASM can't assemble
+                // them.
+                if extension == "S"
+                    && (target.arch == X86_64 || target.arch == X86)
+                    && target.os == WINDOWS
+                {
+                    return false;
+                }
+            }
+            true
+        })
         .collect::<Vec<_>>();
 
     let test_srcs = RING_TEST_SRCS.iter().map(PathBuf::from).collect::<Vec<_>>();
