@@ -113,12 +113,11 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
   OPENSSL_memcpy(out, in, sizeof(EVP_CIPHER_CTX));
 
   if (in->cipher_data && in->cipher->ctx_size) {
-    out->cipher_data = OPENSSL_malloc(in->cipher->ctx_size);
+    out->cipher_data = OPENSSL_memdup(in->cipher_data, in->cipher->ctx_size);
     if (!out->cipher_data) {
       out->cipher = NULL;
       return 0;
     }
-    OPENSSL_memcpy(out->cipher_data, in->cipher_data, in->cipher->ctx_size);
   }
 
   if (in->cipher->flags & EVP_CIPH_CUSTOM_COPY) {

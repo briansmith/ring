@@ -115,16 +115,12 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
   }
   r->ln = r->sn = NULL;
 
-  data = OPENSSL_malloc(o->length);
-  if (data == NULL) {
+  // once data is attached to an object, it remains const
+  r->data = OPENSSL_memdup(o->data, o->length);
+  if (o->length != 0 && r->data == NULL) {
     goto err;
   }
-  if (o->data != NULL) {
-    OPENSSL_memcpy(data, o->data, o->length);
-  }
 
-  // once data is attached to an object, it remains const
-  r->data = data;
   r->length = o->length;
   r->nid = o->nid;
 

@@ -250,11 +250,10 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
     goto err;
   }
 
-  ret = OPENSSL_malloc(sizeof(EC_GROUP));
+  ret = OPENSSL_zalloc(sizeof(EC_GROUP));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(EC_GROUP));
   ret->references = 1;
   ret->meth = EC_GFp_mont_method();
   bn_mont_ctx_init(&ret->field);

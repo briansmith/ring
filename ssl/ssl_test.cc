@@ -4725,8 +4725,8 @@ enum ssl_test_ticket_aead_failure_mode {
 };
 
 struct ssl_test_ticket_aead_state {
-  unsigned retry_count;
-  ssl_test_ticket_aead_failure_mode failure_mode;
+  unsigned retry_count = 0;
+  ssl_test_ticket_aead_failure_mode failure_mode = ssl_test_ticket_aead_ok;
 };
 
 static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
@@ -4739,12 +4739,7 @@ static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
 static void ssl_test_ticket_aead_ex_index_free(void *parent, void *ptr,
                                                CRYPTO_EX_DATA *ad, int index,
                                                long argl, void *argp) {
-  auto state = reinterpret_cast<ssl_test_ticket_aead_state*>(ptr);
-  if (state == nullptr) {
-    return;
-  }
-
-  OPENSSL_free(state);
+  delete reinterpret_cast<ssl_test_ticket_aead_state*>(ptr);
 }
 
 static CRYPTO_once_t g_ssl_test_ticket_aead_ex_index_once = CRYPTO_ONCE_INIT;
@@ -4835,10 +4830,7 @@ static void ConnectClientAndServerWithTicketMethod(
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 
-  auto state = reinterpret_cast<ssl_test_ticket_aead_state *>(
-      OPENSSL_malloc(sizeof(ssl_test_ticket_aead_state)));
-  ASSERT_TRUE(state);
-  OPENSSL_memset(state, 0, sizeof(ssl_test_ticket_aead_state));
+  auto state = new ssl_test_ticket_aead_state;
   state->retry_count = retry_count;
   state->failure_mode = failure_mode;
 

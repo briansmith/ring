@@ -164,10 +164,9 @@ static int x509_object_cmp_sk(const X509_OBJECT *const *a,
 X509_STORE *X509_STORE_new(void) {
   X509_STORE *ret;
 
-  if ((ret = (X509_STORE *)OPENSSL_malloc(sizeof(X509_STORE))) == NULL) {
+  if ((ret = (X509_STORE *)OPENSSL_zalloc(sizeof(X509_STORE))) == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(*ret));
   CRYPTO_MUTEX_init(&ret->objs_lock);
   ret->objs = sk_X509_OBJECT_new(x509_object_cmp_sk);
   if (ret->objs == NULL) {

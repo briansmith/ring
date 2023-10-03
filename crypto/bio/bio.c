@@ -70,12 +70,11 @@
 
 
 BIO *BIO_new(const BIO_METHOD *method) {
-  BIO *ret = OPENSSL_malloc(sizeof(BIO));
+  BIO *ret = OPENSSL_zalloc(sizeof(BIO));
   if (ret == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(ret, 0, sizeof(BIO));
   ret->method = method;
   ret->shutdown = 1;
   ret->references = 1;
@@ -640,11 +639,10 @@ int BIO_get_new_index(void) {
 }
 
 BIO_METHOD *BIO_meth_new(int type, const char *name) {
-  BIO_METHOD *method = OPENSSL_malloc(sizeof(BIO_METHOD));
+  BIO_METHOD *method = OPENSSL_zalloc(sizeof(BIO_METHOD));
   if (method == NULL) {
     return NULL;
   }
-  OPENSSL_memset(method, 0, sizeof(BIO_METHOD));
   method->type = type;
   method->name = name;
   return method;

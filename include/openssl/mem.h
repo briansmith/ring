@@ -81,6 +81,10 @@ extern "C" {
 // the case of a malloc failure, prior to returning NULL |OPENSSL_malloc| will
 // push |ERR_R_MALLOC_FAILURE| onto the openssl error stack.
 OPENSSL_EXPORT void *OPENSSL_malloc(size_t size);
+
+// OPENSSL_zalloc behaves like |OPENSSL_malloc| except it also initializes the
+// resulting memory to zero.
+OPENSSL_EXPORT void *OPENSSL_zalloc(size_t size);
 #endif // !_BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 
 // OPENSSL_free does nothing if |ptr| is NULL. Otherwise it zeros out the

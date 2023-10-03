@@ -296,13 +296,10 @@ end:
 }
 
 static BIO_CONNECT *BIO_CONNECT_new(void) {
-  BIO_CONNECT *ret = OPENSSL_malloc(sizeof(BIO_CONNECT));
-
+  BIO_CONNECT *ret = OPENSSL_zalloc(sizeof(BIO_CONNECT));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(BIO_CONNECT));
-
   ret->state = BIO_CONN_S_BEFORE;
   return ret;
 }

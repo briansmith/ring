@@ -108,11 +108,10 @@ static long AsyncCtrl(BIO *bio, int cmd, long num, void *ptr) {
 }
 
 static int AsyncNew(BIO *bio) {
-  AsyncBio *a = (AsyncBio *)OPENSSL_malloc(sizeof(*a));
+  AsyncBio *a = (AsyncBio *)OPENSSL_zalloc(sizeof(*a));
   if (a == NULL) {
     return 0;
   }
-  OPENSSL_memset(a, 0, sizeof(*a));
   a->enforce_write_quota = true;
   bio->init = 1;
   bio->ptr = (char *)a;

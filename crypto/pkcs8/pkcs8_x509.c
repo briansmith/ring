@@ -741,26 +741,22 @@ struct pkcs12_st {
 
 PKCS12 *d2i_PKCS12(PKCS12 **out_p12, const uint8_t **ber_bytes,
                    size_t ber_len) {
-  PKCS12 *p12;
-
-  p12 = OPENSSL_malloc(sizeof(PKCS12));
+  PKCS12 *p12 = OPENSSL_malloc(sizeof(PKCS12));
   if (!p12) {
     return NULL;
   }
 
-  p12->ber_bytes = OPENSSL_malloc(ber_len);
+  p12->ber_bytes = OPENSSL_memdup(*ber_bytes, ber_len);
   if (!p12->ber_bytes) {
     OPENSSL_free(p12);
     return NULL;
   }
 
-  OPENSSL_memcpy(p12->ber_bytes, *ber_bytes, ber_len);
   p12->ber_len = ber_len;
   *ber_bytes += ber_len;
 
   if (out_p12) {
     PKCS12_free(*out_p12);
-
     *out_p12 = p12;
   }
 
@@ -843,11 +839,10 @@ int i2d_PKCS12(const PKCS12 *p12, uint8_t **out) {
   }
 
   if (*out == NULL) {
-    *out = OPENSSL_malloc(p12->ber_len);
+    *out = OPENSSL_memdup(p12->ber_bytes, p12->ber_len);
     if (*out == NULL) {
       return -1;
     }
-    OPENSSL_memcpy(*out, p12->ber_bytes, p12->ber_len);
   } else {
     OPENSSL_memcpy(*out, p12->ber_bytes, p12->ber_len);
     *out += p12->ber_len;

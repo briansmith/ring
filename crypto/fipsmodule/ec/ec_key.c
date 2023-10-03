@@ -86,12 +86,11 @@
 DEFINE_STATIC_EX_DATA_CLASS(g_ec_ex_data_class)
 
 static EC_WRAPPED_SCALAR *ec_wrapped_scalar_new(const EC_GROUP *group) {
-  EC_WRAPPED_SCALAR *wrapped = OPENSSL_malloc(sizeof(EC_WRAPPED_SCALAR));
+  EC_WRAPPED_SCALAR *wrapped = OPENSSL_zalloc(sizeof(EC_WRAPPED_SCALAR));
   if (wrapped == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(wrapped, 0, sizeof(EC_WRAPPED_SCALAR));
   wrapped->bignum.d = wrapped->scalar.words;
   wrapped->bignum.width = group->order.N.width;
   wrapped->bignum.dmax = group->order.N.width;
@@ -106,12 +105,10 @@ static void ec_wrapped_scalar_free(EC_WRAPPED_SCALAR *scalar) {
 EC_KEY *EC_KEY_new(void) { return EC_KEY_new_method(NULL); }
 
 EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
-  EC_KEY *ret = OPENSSL_malloc(sizeof(EC_KEY));
+  EC_KEY *ret = OPENSSL_zalloc(sizeof(EC_KEY));
   if (ret == NULL) {
     return NULL;
   }
-
-  OPENSSL_memset(ret, 0, sizeof(EC_KEY));
 
   if (engine) {
     ret->ecdsa_meth = ENGINE_get_ECDSA_method(engine);

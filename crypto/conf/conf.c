@@ -118,14 +118,7 @@ CONF *NCONF_new(void *method) {
   return conf;
 }
 
-CONF_VALUE *CONF_VALUE_new(void) {
-  CONF_VALUE *v = OPENSSL_malloc(sizeof(CONF_VALUE));
-  if (!v) {
-    return NULL;
-  }
-  OPENSSL_memset(v, 0, sizeof(CONF_VALUE));
-  return v;
-}
+CONF_VALUE *CONF_VALUE_new(void) { return OPENSSL_zalloc(sizeof(CONF_VALUE)); }
 
 static void value_free_contents(CONF_VALUE *value) {
   OPENSSL_free(value->section);

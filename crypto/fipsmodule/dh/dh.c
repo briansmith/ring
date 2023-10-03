@@ -71,17 +71,13 @@
 
 
 DH *DH_new(void) {
-  DH *dh = OPENSSL_malloc(sizeof(DH));
+  DH *dh = OPENSSL_zalloc(sizeof(DH));
   if (dh == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(dh, 0, sizeof(DH));
-
   CRYPTO_MUTEX_init(&dh->method_mont_p_lock);
-
   dh->references = 1;
-
   return dh;
 }
 

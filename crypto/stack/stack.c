@@ -84,18 +84,15 @@ struct stack_st {
 static const size_t kMinSize = 4;
 
 OPENSSL_STACK *OPENSSL_sk_new(OPENSSL_sk_cmp_func comp) {
-  OPENSSL_STACK *ret = OPENSSL_malloc(sizeof(OPENSSL_STACK));
+  OPENSSL_STACK *ret = OPENSSL_zalloc(sizeof(OPENSSL_STACK));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(OPENSSL_STACK));
 
-  ret->data = OPENSSL_malloc(sizeof(void *) * kMinSize);
+  ret->data = OPENSSL_zalloc(sizeof(void *) * kMinSize);
   if (ret->data == NULL) {
     goto err;
   }
-
-  OPENSSL_memset(ret->data, 0, sizeof(void *) * kMinSize);
 
   ret->comp = comp;
   ret->num_alloc = kMinSize;
@@ -370,19 +367,17 @@ OPENSSL_STACK *OPENSSL_sk_dup(const OPENSSL_STACK *sk) {
     return NULL;
   }
 
-  OPENSSL_STACK *ret = OPENSSL_malloc(sizeof(OPENSSL_STACK));
+  OPENSSL_STACK *ret = OPENSSL_zalloc(sizeof(OPENSSL_STACK));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(OPENSSL_STACK));
 
-  ret->data = OPENSSL_malloc(sizeof(void *) * sk->num_alloc);
+  ret->data = OPENSSL_memdup(sk->data, sizeof(void *) * sk->num_alloc);
   if (ret->data == NULL) {
     goto err;
   }
 
   ret->num = sk->num;
-  OPENSSL_memcpy(ret->data, sk->data, sizeof(void *) * sk->num);
   ret->sorted = sk->sorted;
   ret->num_alloc = sk->num_alloc;
   ret->comp = sk->comp;

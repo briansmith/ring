@@ -80,15 +80,12 @@ typedef struct {
 
 
 static int pkey_ec_init(EVP_PKEY_CTX *ctx) {
-  EC_PKEY_CTX *dctx;
-  dctx = OPENSSL_malloc(sizeof(EC_PKEY_CTX));
+  EC_PKEY_CTX *dctx = OPENSSL_zalloc(sizeof(EC_PKEY_CTX));
   if (!dctx) {
     return 0;
   }
-  OPENSSL_memset(dctx, 0, sizeof(EC_PKEY_CTX));
 
   ctx->data = dctx;
-
   return 1;
 }
 
