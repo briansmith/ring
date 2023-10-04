@@ -99,15 +99,11 @@ fn x25519_ecdh(
     let my_private_key = ops::MaskedScalar::from_bytes_masked(*my_private_key);
     let peer_public_key: &[u8; PUBLIC_KEY_LEN] = peer_public_key.as_slice_less_safe().try_into()?;
 
-    #[cfg_attr(
-        not(all(not(target_os = "ios"), target_arch = "arm")),
-        allow(unused_variables)
-    )]
     fn scalar_mult(
         out: &mut ops::EncodedPoint,
         scalar: &ops::MaskedScalar,
         point: &ops::EncodedPoint,
-        cpu_features: cpu::Features,
+        #[allow(unused_variables)] cpu_features: cpu::Features,
     ) {
         #[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
         {
