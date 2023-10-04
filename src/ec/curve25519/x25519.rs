@@ -116,6 +116,20 @@ fn x25519_ecdh(
             }
         }
 
+        #[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
+        {
+            if ops::has_fe25519_adx(cpu_features) {
+                prefixed_extern! {
+                    fn x25519_scalar_mult_adx(
+                        out: &mut ops::EncodedPoint,
+                        scalar: &ops::MaskedScalar,
+                        point: &ops::EncodedPoint,
+                    );
+                }
+                return unsafe { x25519_scalar_mult_adx(out, scalar, point) };
+            }
+        }
+
         prefixed_extern! {
             fn x25519_scalar_mult_generic_masked(
                 out: &mut ops::EncodedPoint,
