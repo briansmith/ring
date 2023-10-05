@@ -511,7 +511,6 @@ fn build_library(
 
     match target.os.as_str() {
         "macos" => {
-            let _ = c.flag("-fPIC");
             let _ = c.flag("-Wl,-dead_strip");
         }
         _ => {
