@@ -89,7 +89,7 @@ OPENSSL_STACK *OPENSSL_sk_new(OPENSSL_sk_cmp_func comp) {
     return NULL;
   }
 
-  ret->data = OPENSSL_zalloc(sizeof(void *) * kMinSize);
+  ret->data = OPENSSL_calloc(kMinSize, sizeof(void *));
   if (ret->data == NULL) {
     goto err;
   }

@@ -376,7 +376,7 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, size_t *index_used,
   assert(new_num_blindings > rsa->num_blindings);
 
   BN_BLINDING **new_blindings =
-      OPENSSL_malloc(sizeof(BN_BLINDING *) * new_num_blindings);
+      OPENSSL_calloc(new_num_blindings, sizeof(BN_BLINDING *));
   uint8_t *new_blindings_inuse = OPENSSL_malloc(new_num_blindings);
   if (new_blindings == NULL || new_blindings_inuse == NULL) {
     goto err;

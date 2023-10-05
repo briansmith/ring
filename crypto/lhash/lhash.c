@@ -110,7 +110,7 @@ _LHASH *OPENSSL_lh_new(lhash_hash_func hash, lhash_cmp_func comp) {
   }
 
   ret->num_buckets = kMinNumBuckets;
-  ret->buckets = OPENSSL_zalloc(sizeof(LHASH_ITEM *) * ret->num_buckets);
+  ret->buckets = OPENSSL_calloc(ret->num_buckets, sizeof(LHASH_ITEM *));
   if (ret->buckets == NULL) {
     OPENSSL_free(ret);
     return NULL;

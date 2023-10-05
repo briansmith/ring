@@ -197,13 +197,8 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
     wNAF = wNAF_stack;
     precomp = precomp_stack;
   } else {
-    if (num >= ((size_t)-1) / sizeof(wNAF_alloc[0]) ||
-        num >= ((size_t)-1) / sizeof(precomp_alloc[0])) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_OVERFLOW);
-      goto err;
-    }
-    wNAF_alloc = OPENSSL_malloc(num * sizeof(wNAF_alloc[0]));
-    precomp_alloc = OPENSSL_malloc(num * sizeof(precomp_alloc[0]));
+    wNAF_alloc = OPENSSL_calloc(num, sizeof(wNAF_alloc[0]));
+    precomp_alloc = OPENSSL_calloc(num, sizeof(precomp_alloc[0]));
     if (wNAF_alloc == NULL || precomp_alloc == NULL) {
       goto err;
     }

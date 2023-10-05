@@ -649,16 +649,13 @@ int CBB_flush_asn1_set_of(CBB *cbb) {
   if (num_children < 2) {
     return 1;  // Nothing to do. This is the common case for X.509.
   }
-  if (num_children > ((size_t)-1) / sizeof(CBS)) {
-    return 0;  // Overflow.
-  }
 
   // Parse out the children and sort. We alias them into a copy of so they
   // remain valid as we rewrite |cbb|.
   int ret = 0;
   size_t buf_len = CBB_len(cbb);
   uint8_t *buf = OPENSSL_memdup(CBB_data(cbb), buf_len);
-  CBS *children = OPENSSL_malloc(num_children * sizeof(CBS));
+  CBS *children = OPENSSL_calloc(num_children, sizeof(CBS));
   if (buf == NULL || children == NULL) {
     goto err;
   }

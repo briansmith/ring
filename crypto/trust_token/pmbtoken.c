@@ -799,18 +799,12 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
     return 0;
   }
 
-  if (num_to_issue > ((size_t)-1) / sizeof(EC_JACOBIAN) ||
-      num_to_issue > ((size_t)-1) / sizeof(EC_SCALAR)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
-    return 0;
-  }
-
   int ret = 0;
-  EC_JACOBIAN *Tps = OPENSSL_malloc(num_to_issue * sizeof(EC_JACOBIAN));
-  EC_JACOBIAN *Sps = OPENSSL_malloc(num_to_issue * sizeof(EC_JACOBIAN));
-  EC_JACOBIAN *Wps = OPENSSL_malloc(num_to_issue * sizeof(EC_JACOBIAN));
-  EC_JACOBIAN *Wsps = OPENSSL_malloc(num_to_issue * sizeof(EC_JACOBIAN));
-  EC_SCALAR *es = OPENSSL_malloc(num_to_issue * sizeof(EC_SCALAR));
+  EC_JACOBIAN *Tps = OPENSSL_calloc(num_to_issue, sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Sps = OPENSSL_calloc(num_to_issue, sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Wps = OPENSSL_calloc(num_to_issue, sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Wsps = OPENSSL_calloc(num_to_issue, sizeof(EC_JACOBIAN));
+  EC_SCALAR *es = OPENSSL_calloc(num_to_issue, sizeof(EC_SCALAR));
   CBB batch_cbb;
   CBB_zero(&batch_cbb);
   if (!Tps ||
@@ -940,19 +934,13 @@ static STACK_OF(TRUST_TOKEN) *pmbtoken_unblind(
     return NULL;
   }
 
-  if (count > ((size_t)-1) / sizeof(EC_JACOBIAN) ||
-      count > ((size_t)-1) / sizeof(EC_SCALAR)) {
-    OPENSSL_PUT_ERROR(TRUST_TOKEN, ERR_R_OVERFLOW);
-    return NULL;
-  }
-
   int ok = 0;
   STACK_OF(TRUST_TOKEN) *ret = sk_TRUST_TOKEN_new_null();
-  EC_JACOBIAN *Tps = OPENSSL_malloc(count * sizeof(EC_JACOBIAN));
-  EC_JACOBIAN *Sps = OPENSSL_malloc(count * sizeof(EC_JACOBIAN));
-  EC_JACOBIAN *Wps = OPENSSL_malloc(count * sizeof(EC_JACOBIAN));
-  EC_JACOBIAN *Wsps = OPENSSL_malloc(count * sizeof(EC_JACOBIAN));
-  EC_SCALAR *es = OPENSSL_malloc(count * sizeof(EC_SCALAR));
+  EC_JACOBIAN *Tps = OPENSSL_calloc(count, sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Sps = OPENSSL_calloc(count, sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Wps = OPENSSL_calloc(count, sizeof(EC_JACOBIAN));
+  EC_JACOBIAN *Wsps = OPENSSL_calloc(count, sizeof(EC_JACOBIAN));
+  EC_SCALAR *es = OPENSSL_calloc(count, sizeof(EC_SCALAR));
   CBB batch_cbb;
   CBB_zero(&batch_cbb);
   if (ret == NULL ||
