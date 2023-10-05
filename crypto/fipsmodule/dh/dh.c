@@ -394,7 +394,7 @@ int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
 int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
                           size_t max_out_len, const BIGNUM *peers_key,
                           const EVP_MD *digest) {
-  *out_len = (size_t)-1;
+  *out_len = SIZE_MAX;
 
   const size_t digest_len = EVP_MD_size(digest);
   if (digest_len > max_out_len) {
