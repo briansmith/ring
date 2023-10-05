@@ -102,27 +102,15 @@ const RING_TEST_SRCS: &[&str] = &[("crypto/constant_time_test.c")];
 
 const PREGENERATED: &str = "pregenerated";
 
-fn c_flags(compiler: &cc::Tool) -> &'static [&'static str] {
-    if !compiler.is_like_msvc() {
-        static NON_MSVC_FLAGS: &[&str] = &[
-            "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
-            "-Wbad-function-cast",
-            "-Wnested-externs",
-            "-Wstrict-prototypes",
-        ];
-        NON_MSVC_FLAGS
-    } else {
-        &[]
-    }
-}
-
 fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
     if !compiler.is_like_msvc() {
         static NON_MSVC_FLAGS: &[&str] = &[
+            "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
             "-pedantic",
             "-pedantic-errors",
             "-Wall",
             "-Wextra",
+            "-Wbad-function-cast",
             "-Wcast-align",
             "-Wcast-qual",
             "-Wconversion",
@@ -133,10 +121,12 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "-Winvalid-pch",
             "-Wmissing-field-initializers",
             "-Wmissing-include-dirs",
+            "-Wnested-externs",
             "-Wredundant-decls",
             "-Wshadow",
             "-Wsign-compare",
             "-Wsign-conversion",
+            "-Wstrict-prototypes",
             "-Wundef",
             "-Wuninitialized",
             "-Wwrite-strings",
@@ -584,12 +574,7 @@ fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Pa
     let _ = c.include("include");
     let _ = c.include(include_dir);
     match ext {
-        "c" => {
-            for f in c_flags(&compiler) {
-                let _ = c.flag(f);
-            }
-        }
-        "S" => (),
+        "c" | "S" => (),
         e => panic!("Unsupported file extension: {:?}", e),
     };
     for f in cpp_flags(&compiler) {
