@@ -226,3 +226,7 @@ codegen-units = 1
 [[bench]]
 name = "aead"
 harness = false
+
+[[bench]]
+name = "x25519"
+harness = false
