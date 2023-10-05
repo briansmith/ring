@@ -509,14 +509,6 @@ fn build_library(
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
 
-    match target.os.as_str() {
-        "macos" => {
-            let _ = c.flag("-Wl,-dead_strip");
-        }
-        _ => {
-            let _ = c.flag("-Wl,--gc-sections");
-        }
-    }
     for o in objs {
         let _ = c.object(o);
     }
