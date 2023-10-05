@@ -439,27 +439,28 @@ fn build_c_code(
 
     generate_prefix_symbols_asm_headers(out_dir, ring_core_prefix).unwrap();
 
-    let asm_srcs = if let Some(asm_target) = asm_target {
+    let (asm_srcs, obj_srcs) = if let Some(asm_target) = asm_target {
         let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
 
         if !use_pregenerated {
             perlasm(&perlasm_src_dsts[..], asm_target);
         }
 
-        let mut asm_srcs = asm_srcs(perlasm_src_dsts);
+        let asm_srcs = asm_srcs(perlasm_src_dsts);
 
         // For Windows we also pregenerate the object files for non-Git builds so
         // the user doesn't need to install the assembler.
         if use_pregenerated && target.os == WINDOWS && asm_target.preassemble {
-            asm_srcs = asm_srcs
+            let obj_srcs = asm_srcs
                 .iter()
                 .map(|src| obj_path(&pregenerated, src.as_path()))
                 .collect::<Vec<_>>();
+            (vec![], obj_srcs)
+        } else {
+            (asm_srcs, vec![])
         }
-
-        asm_srcs
     } else {
-        Vec::new()
+        (vec![], vec![])
     };
 
     let core_srcs = sources_for_arch(&target.arch)
@@ -483,16 +484,17 @@ fn build_c_code(
     let test_srcs = RING_TEST_SRCS.iter().map(PathBuf::from).collect::<Vec<_>>();
 
     let libs = [
-        ("", &core_srcs[..], &asm_srcs[..]),
-        ("test", &test_srcs[..], &[]),
+        ("", &core_srcs[..], &asm_srcs[..], &obj_srcs[..]),
+        ("test", &test_srcs[..], &[], &[]),
     ];
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     libs.iter()
-        .for_each(|&(lib_name_suffix, srcs, additional_srcs)| {
+        .for_each(|&(lib_name_suffix, srcs, asm_srcs, obj_srcs)| {
             let lib_name = String::from(ring_core_prefix) + lib_name_suffix;
-            build_library(target, out_dir, &lib_name, srcs, additional_srcs)
+            let srcs = srcs.iter().chain(asm_srcs);
+            build_library(target, out_dir, &lib_name, srcs, obj_srcs)
         });
 
     println!(
@@ -507,28 +509,26 @@ fn new_build(target: &Target, include_dir: &Path) -> cc::Build {
     b
 }
 
-fn build_library(
+fn build_library<'a>(
     target: &Target,
     out_dir: &Path,
     lib_name: &str,
-    srcs: &[PathBuf],
-    additional_srcs: &[PathBuf],
+    srcs: impl Iterator<Item = &'a PathBuf>,
+    preassembled_objs: &[PathBuf],
 ) {
     let mut c = new_build(target, out_dir);
 
     // Compile all the (dirty) source files into object files.
-    let objs = additional_srcs
-        .iter()
-        .chain(srcs.iter())
-        .map(|f| compile(&c, f, target, out_dir, out_dir))
-        .collect::<Vec<_>>();
+    srcs.for_each(|src| {
+        compile(&mut c, src, target, out_dir, out_dir);
+    });
+
+    preassembled_objs.iter().for_each(|obj| {
+        c.object(obj);
+    });
 
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
-
-    for o in objs {
-        let _ = c.object(o);
-    }
 
     // Handled below.
     let _ = c.cargo_metadata(false);
