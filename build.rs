@@ -160,8 +160,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
     }
 }
 
-const LD_FLAGS: &[&str] = &[];
-
 // None means "any OS" or "any target". The first match in sequence order is
 // taken.
 const ASM_TARGETS: &[AsmTarget] = &[
@@ -504,9 +502,6 @@ fn build_library(
 
     let mut c = cc::Build::new();
 
-    for f in LD_FLAGS {
-        let _ = c.flag(f);
-    }
     match target.os.as_str() {
         "macos" => {
             let _ = c.flag("-fPIC");
