@@ -387,8 +387,9 @@ fn pregenerate_asm_main() {
                 force_warnings_into_errors: true,
             };
 
+            let b = new_build(&target, &pregenerated_tmp);
             for src in srcs {
-                compile(&src, &target, &pregenerated_tmp, &pregenerated);
+                compile(&b, &src, &target, &pregenerated_tmp, &pregenerated);
             }
         }
     }
@@ -483,6 +484,12 @@ fn build_c_code(
     );
 }
 
+fn new_build(target: &Target, include_dir: &Path) -> cc::Build {
+    let mut b = cc::Build::new();
+    configure_cc(&mut b, target, include_dir);
+    b
+}
+
 fn build_library(
     target: &Target,
     out_dir: &Path,
@@ -490,17 +497,17 @@ fn build_library(
     srcs: &[PathBuf],
     additional_srcs: &[PathBuf],
 ) {
+    let mut c = new_build(target, out_dir);
+
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs
         .iter()
         .chain(srcs.iter())
-        .map(|f| compile(f, target, out_dir, out_dir))
+        .map(|f| compile(&c, f, target, out_dir, out_dir))
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
-
-    let mut c = cc::Build::new();
 
     match target.os.as_str() {
         "macos" => {
@@ -530,14 +537,14 @@ fn build_library(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(p: &Path, target: &Target, include_dir: &Path, out_dir: &Path) -> String {
+fn compile(b: &cc::Build, p: &Path, target: &Target, include_dir: &Path, out_dir: &Path) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "o" {
         p.to_str().expect("Invalid path").into()
     } else {
         let out_file = obj_path(out_dir, p);
         let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(p, ext, target, include_dir, &out_file)
+            cc(b, p, ext, &out_file)
         } else {
             nasm(p, &target.arch, include_dir, &out_file)
         };
@@ -556,9 +563,7 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
     out_path
 }
 
-fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Path) -> Command {
-    let mut c = cc::Build::new();
-
+fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
     // FIXME: On Windows AArch64 we currently must use Clang to compile C code
     if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {
         let _ = c.compiler("clang");
@@ -568,10 +573,6 @@ fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Pa
 
     let _ = c.include("include");
     let _ = c.include(include_dir);
-    match ext {
-        "c" | "S" => (),
-        e => panic!("Unsupported file extension: {:?}", e),
-    };
     for f in cpp_flags(&compiler) {
         let _ = c.flag(f);
     }
@@ -630,9 +631,17 @@ fn cc(file: &Path, ext: &str, target: &Target, include_dir: &Path, out_file: &Pa
         // http://www.openwall.com/lists/musl/2015/06/17/1
         let _ = c.flag("-U_FORTIFY_SOURCE");
     }
+}
 
-    let obj_opt = if compiler.is_like_msvc() { "/Fo" } else { "-o" };
-    let mut c = c.get_compiler().to_command();
+fn cc(b: &cc::Build, file: &Path, ext: &str, out_file: &Path) -> Command {
+    match ext {
+        "c" | "S" => (),
+        e => panic!("Unsupported file extension: {:?}", e),
+    };
+
+    let cc = b.get_compiler();
+    let obj_opt = if cc.is_like_msvc() { "/Fo" } else { "-o" };
+    let mut c = cc.to_command();
     let _ = c
         .arg("-c")
         .arg(format!(
