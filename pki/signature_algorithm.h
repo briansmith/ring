@@ -80,7 +80,7 @@ OPENSSL_EXPORT std::optional<SignatureAlgorithm> ParseSignatureAlgorithm(
 
 // Returns the hash to be used with the tls-server-end-point channel binding
 // (RFC 5929) or `std::nullopt`, if not supported for this signature algorithm.
-std::optional<DigestAlgorithm> GetTlsServerEndpointDigestAlgorithm(
+OPENSSL_EXPORT std::optional<DigestAlgorithm> GetTlsServerEndpointDigestAlgorithm(
     SignatureAlgorithm alg);
 
 }  // namespace net
