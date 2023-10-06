@@ -48,6 +48,8 @@ NON_PERL_FILES = {
     ('apple', 'x86_64'): [
         'src/third_party/fiat/asm/fiat_curve25519_adx_mul.S',
         'src/third_party/fiat/asm/fiat_curve25519_adx_square.S',
+        'src/third_party/fiat/asm/fiat_p256_adx_mul.S',
+        'src/third_party/fiat/asm/fiat_p256_adx_sqr.S',
     ],
     ('linux', 'arm'): [
         'src/crypto/curve25519/asm/x25519-asm-arm.S',
@@ -57,6 +59,8 @@ NON_PERL_FILES = {
         'src/crypto/hrss/asm/poly_rq_mul.S',
         'src/third_party/fiat/asm/fiat_curve25519_adx_mul.S',
         'src/third_party/fiat/asm/fiat_curve25519_adx_square.S',
+        'src/third_party/fiat/asm/fiat_p256_adx_mul.S',
+        'src/third_party/fiat/asm/fiat_p256_adx_sqr.S',
     ],
 }
 
