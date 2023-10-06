@@ -393,7 +393,7 @@ fn pregenerate_asm_main() {
 
             let b = new_build(&target, &pregenerated_tmp);
             for src in srcs {
-                compile(&b, &src, &target, &pregenerated_tmp, &pregenerated);
+                win_asm(&b, &src, &target, &pregenerated_tmp, &pregenerated);
             }
         }
     }
@@ -520,7 +520,15 @@ fn build_library<'a>(
 
     // Compile all the (dirty) source files into object files.
     srcs.for_each(|src| {
-        compile(&mut c, src, target, out_dir, out_dir);
+        // XXX: `b.file(p)` isn't enough to assemble an '.S' with clang on aarch64-pc-windows-msvc
+        // presumably due to a bug in cc-rs; it doesn't pass clang `-c` like it does for other
+        // targets.
+        if target.os != WINDOWS || !matches!(src.extension(), Some(e) if e == "S" || e == "asm") {
+            c.file(src);
+        } else {
+            let obj = win_asm(&c, src, target, out_dir, out_dir);
+            c.object(obj);
+        }
     });
 
     preassembled_objs.iter().for_each(|obj| {
@@ -545,7 +553,7 @@ fn build_library<'a>(
     println!("cargo:rustc-link-lib=static={}", lib_name);
 }
 
-fn compile(
+fn win_asm(
     b: &cc::Build,
     p: &Path,
     target: &Target,
@@ -553,19 +561,15 @@ fn compile(
     out_dir: &Path,
 ) -> PathBuf {
     let ext = p.extension().unwrap().to_str().unwrap();
-    if ext == "o" {
-        p.into()
+    let out_file = obj_path(out_dir, p);
+    let cmd = if target.os != WINDOWS || ext != "asm" {
+        cc_asm(b, p, &out_file)
     } else {
-        let out_file = obj_path(out_dir, p);
-        let cmd = if target.os != WINDOWS || ext != "asm" {
-            cc(b, p, ext, &out_file)
-        } else {
-            nasm(p, &target.arch, include_dir, &out_file)
-        };
+        nasm(p, &target.arch, include_dir, &out_file)
+    };
 
-        run_command(cmd);
-        out_file
-    }
+    run_command(cmd);
+    out_file
 }
 
 fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
@@ -647,12 +651,9 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
     }
 }
 
-fn cc(b: &cc::Build, file: &Path, ext: &str, out_file: &Path) -> Command {
-    match ext {
-        "c" | "S" => (),
-        e => panic!("Unsupported file extension: {:?}", e),
-    };
-
+/// Assembles the assemply language source `file` into the object file
+/// `out_file`.
+fn cc_asm(b: &cc::Build, file: &Path, out_file: &Path) -> Command {
     let cc = b.get_compiler();
     let obj_opt = if cc.is_like_msvc() { "/Fo" } else { "-o" };
     let mut arg = OsString::from(obj_opt);
