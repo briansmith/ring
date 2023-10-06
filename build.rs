@@ -639,11 +639,11 @@ fn cc(b: &cc::Build, file: &Path, ext: &str, out_file: &Path) -> Command {
 
     let cc = b.get_compiler();
     let obj_opt = if cc.is_like_msvc() { "/Fo" } else { "-o" };
+    let mut arg = OsString::from(obj_opt);
+    arg.push(out_file);
+
     let mut c = cc.to_command();
-    let _ = c
-        .arg("-c")
-        .arg(format!("{}{}", obj_opt, out_file.display()))
-        .arg(file);
+    let _ = c.arg("-c").arg(arg).arg(file);
     c
 }
 
