@@ -7,7 +7,6 @@ edition = "2021"
 keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
 license-file = "LICENSE"
 name = "ring"
-readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
 
 # Keep in sync with .github/workflows/ci.yml ("MSRV") and see the MSRV note
@@ -107,7 +106,6 @@ include = [
     "crypto/poly1305/poly1305_vec.c",
     "crypto/cipher_extra/asm/chacha20_poly1305_armv8.pl",
     "crypto/cipher_extra/asm/chacha20_poly1305_x86_64.pl",
-    "doc/link-to-readme.md",
     "examples/**/*.rs",
     "include/ring-core/aes.h",
     "include/ring-core/arm_arch.h",
