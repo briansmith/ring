@@ -16,53 +16,17 @@ use super::{
     elem::{binary_op, binary_op_assign},
     elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
 };
-use core::marker::PhantomData;
-
-macro_rules! p256_limbs {
-    [ $($limb:expr),+ ] => {
-        limbs![$($limb),+, 0, 0, 0, 0]
-    };
-}
 
 pub static COMMON_OPS: CommonOps = CommonOps {
     num_limbs: 256 / LIMB_BITS,
 
     q: Modulus {
-        p: p256_limbs![
-            0xffffffff, 0xffffffff, 0xffffffff, 0x00000000, 0x00000000, 0x00000000, 0x00000001,
-            0xffffffff
-        ],
-        rr: p256_limbs![
-            0x00000003, 0x00000000, 0xffffffff, 0xfffffffb, 0xfffffffe, 0xffffffff, 0xfffffffd,
-            0x00000004
-        ],
+        p: limbs_from_hex("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),
+        rr: limbs_from_hex("4fffffffdfffffffffffffffefffffffbffffffff0000000000000003"),
     },
-
-    n: Elem {
-        limbs: p256_limbs![
-            0xfc632551, 0xf3b9cac2, 0xa7179e84, 0xbce6faad, 0xffffffff, 0xffffffff, 0x00000000,
-            0xffffffff
-        ],
-        m: PhantomData,
-        encoding: PhantomData, // Unencoded
-    },
-
-    a: Elem {
-        limbs: p256_limbs![
-            0xfffffffc, 0xffffffff, 0xffffffff, 0x00000003, 0x00000000, 0x00000000, 0x00000004,
-            0xfffffffc
-        ],
-        m: PhantomData,
-        encoding: PhantomData, // R
-    },
-    b: Elem {
-        limbs: p256_limbs![
-            0x29c4bddf, 0xd89cdf62, 0x78843090, 0xacf005cd, 0xf7212ed6, 0xe5a220ab, 0x04874834,
-            0xdc30061d
-        ],
-        m: PhantomData,
-        encoding: PhantomData, // R
-    },
+    n: Elem::from_hex("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"),
+    a: Elem::from_hex("fffffffc00000004000000000000000000000003fffffffffffffffffffffffc"),
+    b: Elem::from_hex("dc30061d04874834e5a220abf7212ed6acf005cd78843090d89cdf6229c4bddf"),
 
     elem_mul_mont: p256_mul_mont,
     elem_sqr_mont: p256_sqr_mont,
@@ -151,25 +115,15 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
     private_key_ops: &PRIVATE_KEY_OPS,
-
-    q_minus_n: Elem {
-        limbs: p256_limbs![0x039cdaae, 0x0c46353d, 0x58e8617b, 0x43190553, 0, 0, 0, 0],
-        m: PhantomData,
-        encoding: PhantomData, // Unencoded
-    },
+    q_minus_n: Elem::from_hex("4319055358e8617b0c46353d039cdaae"),
 };
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
-    oneRR_mod_n: Scalar {
-        limbs: p256_limbs![
-            0xbe79eea2, 0x83244c95, 0x49bd6fa6, 0x4699799c, 0x2b6bec59, 0x2845b239, 0xf3d95620,
-            0x66e12d94
-        ],
-        m: PhantomData,
-        encoding: PhantomData, // R
-    },
+    oneRR_mod_n: Scalar::from_hex(
+        "66e12d94f3d956202845b2392b6bec594699799c49bd6fa683244c95be79eea2",
+    ),
 };
 
 fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
@@ -210,14 +164,8 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     }
 
     fn to_mont(a: &Scalar) -> Scalar<R> {
-        static N_RR: Scalar<Unencoded> = Scalar {
-            limbs: p256_limbs![
-                0xbe79eea2, 0x83244c95, 0x49bd6fa6, 0x4699799c, 0x2b6bec59, 0x2845b239, 0xf3d95620,
-                0x66e12d94
-            ],
-            m: PhantomData,
-            encoding: PhantomData,
-        };
+        const N_RR: Scalar<Unencoded> =
+            Scalar::from_hex("66e12d94f3d956202845b2392b6bec594699799c49bd6fa683244c95be79eea2");
         binary_op(p256_scalar_mul_mont, a, &N_RR)
     }
 
