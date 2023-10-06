@@ -478,6 +478,7 @@ jobs:
     runs-on: ${{ matrix.host_os }}
 
     strategy:
+      fail-fast: false
       matrix:
         features:
           # Enable all the library features so we can measure all the coverage.
