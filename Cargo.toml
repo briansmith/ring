@@ -141,6 +141,7 @@ include = [
     "third_party/fiat/asm/fiat_curve25519_adx_square.S",
     "third_party/fiat/curve25519_32.h",
     "third_party/fiat/curve25519_64.h",
+    "third_party/fiat/curve25519_64_adx.h",
     "third_party/fiat/curve25519_64_msvc.h",
     "third_party/fiat/p256_32.h",
     "third_party/fiat/p256_64.h",
