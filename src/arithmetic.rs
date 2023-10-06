@@ -12,8 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[macro_use]
-pub mod constant;
+mod constant;
 
 #[cfg(feature = "alloc")]
 pub mod bigint;
@@ -26,3 +25,5 @@ mod nonnegative;
 
 #[allow(dead_code)]
 const BIGINT_MODULUS_MAX_LIMBS: usize = 8192 / crate::limb::LIMB_BITS;
+
+pub use constant::limbs_from_hex;

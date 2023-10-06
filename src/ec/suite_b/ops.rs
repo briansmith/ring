@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::montgomery::*, c, error, limb::*};
+use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, c, error, limb::*};
 use core::marker::PhantomData;
 
 pub use self::elem::*;
@@ -50,11 +50,7 @@ impl Point {
     }
 }
 
-static ONE: Elem<Unencoded> = Elem {
-    limbs: limbs![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    m: PhantomData,
-    encoding: PhantomData,
-};
+const ONE: Elem<Unencoded> = Elem::from_hex("1");
 
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
