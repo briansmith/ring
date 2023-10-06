@@ -180,28 +180,11 @@ static void fe_0(fe *h) {
   OPENSSL_memset(h, 0, sizeof(fe));
 }
 
-#if defined(OPENSSL_SMALL)
-
-static void fe_loose_0(fe_loose *h) {
-  OPENSSL_memset(h, 0, sizeof(fe_loose));
-}
-
-#endif
-
 // h = 1
 static void fe_1(fe *h) {
   OPENSSL_memset(h, 0, sizeof(fe));
   h->v[0] = 1;
 }
-
-#if defined(OPENSSL_SMALL)
-
-static void fe_loose_1(fe_loose *h) {
-  OPENSSL_memset(h, 0, sizeof(fe_loose));
-  h->v[0] = 1;
-}
-
-#endif
 
 // h = f + g
 // Can overlap h with f or g.
@@ -535,16 +518,6 @@ static void ge_p3_0(ge_p3 *h) {
   fe_0(&h->T);
 }
 
-#if defined(OPENSSL_SMALL)
-
-static void ge_precomp_0(ge_precomp *h) {
-  fe_loose_1(&h->yplusx);
-  fe_loose_1(&h->yminusx);
-  fe_loose_0(&h->xy2d);
-}
-
-#endif
-
 // r = p
 static void ge_p3_to_p2(ge_p2 *r, const ge_p3 *p) {
   fe_copy(&r->X, &p->X);
@@ -677,68 +650,6 @@ static void cmov(ge_precomp *t, const ge_precomp *u, uint8_t b) {
   fe_cmov(&t->xy2d, &u->xy2d, b);
 }
 
-#if defined(OPENSSL_SMALL)
-
-static void x25519_ge_scalarmult_small_precomp(
-    ge_p3 *h, const uint8_t a[32], const uint8_t precomp_table[15 * 2 * 32]) {
-  // precomp_table is first expanded into matching |ge_precomp|
-  // elements.
-  ge_precomp multiples[15];
-
-  unsigned i;
-  for (i = 0; i < 15; i++) {
-    // The precomputed table is assumed to already clear the top bit, so
-    // |fe_frombytes_strict| may be used directly.
-    const uint8_t *bytes = &precomp_table[i*(2 * 32)];
-    fe x, y;
-    fe_frombytes_strict(&x, bytes);
-    fe_frombytes_strict(&y, bytes + 32);
-
-    ge_precomp *out = &multiples[i];
-    fe_add(&out->yplusx, &y, &x);
-    fe_sub(&out->yminusx, &y, &x);
-    fe_mul_ltt(&out->xy2d, &x, &y);
-    fe_mul_llt(&out->xy2d, &out->xy2d, &d2);
-  }
-
-  // See the comment above |k25519SmallPrecomp| about the structure of the
-  // precomputed elements. This loop does 64 additions and 64 doublings to
-  // calculate the result.
-  ge_p3_0(h);
-
-  for (i = 63; i < 64; i--) {
-    unsigned j;
-    signed char index = 0;
-
-    for (j = 0; j < 4; j++) {
-      const uint8_t bit = 1 & (a[(8 * j) + (i / 8)] >> (i & 7));
-      index |= (bit << j);
-    }
-
-    ge_precomp e;
-    ge_precomp_0(&e);
-
-    for (j = 1; j < 16; j++) {
-      cmov(&e, &multiples[j-1], 1&constant_time_eq_w(index, j));
-    }
-
-    ge_cached cached;
-    ge_p1p1 r;
-    x25519_ge_p3_to_cached(&cached, h);
-    x25519_ge_add(&r, h, &cached);
-    x25519_ge_p1p1_to_p3(h, &r);
-
-    ge_madd(&r, h, &e);
-    x25519_ge_p1p1_to_p3(h, &r);
-  }
-}
-
-void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
-  x25519_ge_scalarmult_small_precomp(h, a, k25519SmallPrecomp);
-}
-
-#else
-
 static void table_select(ge_precomp *t, const int pos, const signed char b) {
   uint8_t bnegative = constant_time_msb_w(b);
   uint8_t babs = b - ((bnegative & b) << 1);
@@ -836,8 +747,6 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
     x25519_ge_p1p1_to_p3(h, &r);
   }
 }
-
-#endif
 
 static void slide(signed char *r, const uint8_t *a) {
   int i;
