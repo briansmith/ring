@@ -20,6 +20,7 @@
 // to log everything to stderr.
 
 use std::{
+    ffi::{OsStr, OsString},
     fs::{self, DirEntry},
     io::Write,
     path::{Path, PathBuf},
@@ -278,18 +279,18 @@ const WINDOWS: &str = "windows";
 ///
 /// The name is static since we intend to only read a static set of environment
 /// variables.
-fn read_env_var(name: &'static str) -> Result<String, std::env::VarError> {
+fn read_env_var(name: &'static str) -> Option<OsString> {
     println!("cargo:rerun-if-env-changed={}", name);
-    std::env::var(name)
+    std::env::var_os(name)
 }
 
 fn main() {
     const RING_PREGENERATE_ASM: &str = "RING_PREGENERATE_ASM";
     match read_env_var(RING_PREGENERATE_ASM).as_deref() {
-        Ok("1") => {
+        Some(s) if s == "1" => {
             pregenerate_asm_main();
         }
-        Err(std::env::VarError::NotPresent) => ring_build_rs_main(),
+        None => ring_build_rs_main(),
         _ => {
             panic!("${} has an invalid value", RING_PREGENERATE_ASM);
         }
@@ -673,10 +674,7 @@ fn nasm(file: &Path, arch: &str, include_dir: &Path, out_file: &Path) -> Command
     c
 }
 
-fn run_command_with_args<S>(command_name: S, args: &[String])
-where
-    S: AsRef<std::ffi::OsStr> + Copy,
-{
+fn run_command_with_args(command_name: &OsStr, args: &[String]) {
     let mut cmd = Command::new(command_name);
     let _ = cmd.args(args);
     run_command(cmd)
@@ -772,8 +770,8 @@ fn perlasm(src_dst: &[(PathBuf, PathBuf)], asm_target: &AsmTarget) {
     }
 }
 
-fn get_command(var: &'static str, default: &str) -> String {
-    read_env_var(var).unwrap_or_else(|_| default.into())
+fn get_command(var: &'static str, default: &str) -> OsString {
+    read_env_var(var).unwrap_or_else(|| default.into())
 }
 
 // TODO: We should emit `cargo:rerun-if-changed-env` for the various
