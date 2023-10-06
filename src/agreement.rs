@@ -202,13 +202,13 @@ impl<B> UnparsedPublicKey<B> {
         Self { algorithm, bytes }
     }
 
-    /// TODO: doc
+    /// The key agreement algorithm of the unparsed public key
     #[inline]
     pub fn algorithm(&self) -> &'static Algorithm {
         self.algorithm
     }
 
-    /// TODO: doc
+    /// The bytes of the unparsed public key
     #[inline]
     pub fn bytes(&self) -> &B {
         &self.bytes
