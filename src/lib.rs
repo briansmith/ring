@@ -35,7 +35,6 @@
 
 // When running mk/package.sh, don't actually build any code.
 #![cfg(not(pregenerate_asm_only))]
-#![doc(html_root_url = "https://briansmith.org/rustdoc/")]
 #![allow(
     missing_copy_implementations,
     missing_debug_implementations,
