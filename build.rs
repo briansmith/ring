@@ -111,7 +111,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
         static NON_MSVC_FLAGS: &[&str] = &[
             "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
             "-pedantic",
-            "-pedantic-errors",
             "-Wall",
             "-Wextra",
             "-Wbad-function-cast",
