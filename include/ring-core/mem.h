@@ -59,11 +59,11 @@
 
 #include <ring-core/base.h>
 
-// OPENSSL_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
+// CRYPTO_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
 // takes an amount of time dependent on |len|, but independent of the contents
 // of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
 // defined order as the return value when a != b is undefined, other than to be
 // non-zero.
-OPENSSL_EXPORT int OPENSSL_memcmp(const void *a, const void *b, size_t len);
+OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 
 #endif  // OPENSSL_HEADER_MEM_H

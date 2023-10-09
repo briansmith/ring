@@ -915,6 +915,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
     ];
 
     static SYMBOLS_TO_PREFIX: &[&str] = &[
+        "CRYPTO_memcmp",
         "CRYPTO_poly1305_finish",
         "CRYPTO_poly1305_finish_neon",
         "CRYPTO_poly1305_init",
@@ -939,7 +940,6 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "OPENSSL_armcap_P",
         "OPENSSL_cpuid_setup",
         "OPENSSL_ia32cap_P",
-        "OPENSSL_memcmp",
         "aes_hw_ctr32_encrypt_blocks",
         "aes_hw_encrypt",
         "aes_hw_set_encrypt_key",
