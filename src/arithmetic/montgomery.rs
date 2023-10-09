@@ -226,12 +226,16 @@ mod tests {
         ];
 
         for (i, (r_input, a, w, expected_retval, expected_r)) in TEST_CASES.iter().enumerate() {
-            extern crate std;
-            let mut r = std::vec::Vec::from(*r_input);
+            let mut r = [0; super::super::BIGINT_MODULUS_MAX_LIMBS];
+            let r = {
+                let r = &mut r[..r_input.len()];
+                r.copy_from_slice(r_input);
+                r
+            };
             assert_eq!(r.len(), a.len()); // Sanity check
             let actual_retval =
                 unsafe { limbs_mul_add_limb(r.as_mut_ptr(), a.as_ptr(), *w, a.len()) };
-            assert_eq!(&r, expected_r, "{}: {:x?} != {:x?}", i, &r[..], expected_r);
+            assert_eq!(&r, expected_r, "{}: {:x?} != {:x?}", i, r, expected_r);
             assert_eq!(
                 actual_retval, *expected_retval,
                 "{}: {:x?} != {:x?}",
