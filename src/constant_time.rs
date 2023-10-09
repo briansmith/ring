@@ -24,7 +24,7 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecif
     if a.len() != b.len() {
         return Err(error::Unspecified);
     }
-    let result = unsafe { OPENSSL_memcmp(a.as_ptr(), b.as_ptr(), a.len()) };
+    let result = unsafe { CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len()) };
     match result {
         0 => Ok(()),
         _ => Err(error::Unspecified),
@@ -32,7 +32,7 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecif
 }
 
 prefixed_extern! {
-    fn OPENSSL_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
+    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
 }
 
 #[cfg(test)]

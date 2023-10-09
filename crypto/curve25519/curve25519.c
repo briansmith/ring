@@ -401,7 +401,7 @@ static int fe_isnonzero(const fe_loose *f) {
   fe_tobytes(s, &tight);
 
   static const uint8_t zero[32] = {0};
-  return OPENSSL_memcmp(s, zero, sizeof(zero)) != 0;
+  return CRYPTO_memcmp(s, zero, sizeof(zero)) != 0;
 }
 
 // return 1 if f is in {1,3,5,...,q-2}
