@@ -120,7 +120,7 @@ macro_rules! bench {
                     in_out
                 };
 
-                let num_batches = (std::cmp::max(1, 8192 / ciphertext.len()) * 10) as u64;
+                let num_batches = (core::cmp::max(1, 8192 / ciphertext.len()) * 10) as u64;
 
                 c.bench_function(
                     &function_bench_name!($benchmark_name, $algorithm, open),
