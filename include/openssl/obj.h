@@ -60,7 +60,7 @@
 #include <openssl/base.h>
 
 #include <openssl/bytestring.h>
-#include <openssl/nid.h>
+#include <openssl/nid.h>  // IWYU pragma: export
 
 #if defined(__cplusplus)
 extern "C" {
