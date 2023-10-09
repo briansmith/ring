@@ -357,9 +357,7 @@ jobs:
       matrix:
         features:
           - --no-default-features
-          - --no-default-features --features=alloc
-          - --no-default-features --features=dev_urandom_fallback
-          - --all-features
+          - --features=std,slow_tests
 
         target:
           - aarch64-unknown-linux-musl
@@ -509,7 +507,7 @@ jobs:
           # unuseful, or even counterproductive, for coverage testing.
           # `slow_tests` is slow and it is running code that is already intended
           # to be covered without it being enabled.
-          - --features=alloc,dev_urandom_fallback,std
+          - --features=std
 
         # TODO: targets
         target:
