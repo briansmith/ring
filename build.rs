@@ -134,7 +134,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "-Wundef",
             "-Wuninitialized",
             "-Wwrite-strings",
-            "-fno-strict-aliasing",
             "-fvisibility=hidden",
         ];
         NON_MSVC_FLAGS
