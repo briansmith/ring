@@ -148,7 +148,7 @@ else # Device mode
   TEST_FIPS_BIN="$ANDROID_PRODUCT_OUT/system/bin/test_fips"
   check_file "$TEST_FIPS_BIN"
   LIBCRYPTO_BIN="$ANDROID_PRODUCT_OUT/system/lib64/libcrypto.so"
-  LIBCRYPTO_BREAK_BIN="libcrypto.so"
+  LIBCRYPTO_BREAK_BIN="$ANDROID_PRODUCT_OUT/system/lib64/libcrypto_for_testing.so"
   check_file "$LIBCRYPTO_BIN"
   check_file "$LIBCRYPTO_BREAK_BIN"
 
