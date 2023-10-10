@@ -614,14 +614,14 @@ static inline void table_select_4(ge_precomp_4 *t, const int pos,
 #if defined(__clang__)
   __asm__("" : "+m" (t_bytes) : /*no inputs*/);
 #endif
-  static_assert(sizeof(t_bytes) == sizeof(k25519Precomp[pos][0]), "");
+  OPENSSL_STATIC_ASSERT(sizeof(t_bytes) == sizeof(k25519Precomp[pos][0]), "");
   for (int i = 0; i < 8; i++) {
     constant_time_conditional_memxor(t_bytes, k25519Precomp[pos][i],
                                      sizeof(t_bytes),
                                      constant_time_eq_w(babs, 1 + i));
   }
 
-  static_assert(sizeof(t_bytes) == sizeof(ge_precomp_4), "");
+  OPENSSL_STATIC_ASSERT(sizeof(t_bytes) == sizeof(ge_precomp_4), "");
 
   // fe4 uses saturated 64-bit limbs, so converting from bytes is just a copy.
   OPENSSL_memcpy(t, t_bytes, sizeof(ge_precomp_4));
@@ -688,6 +688,6 @@ void x25519_ge_scalarmult_base_adx(uint8_t h[4][32], const uint8_t a[32]) {
   fe4_canon(r.Y, r.Y);
   fe4_canon(r.Z, r.Z);
   fe4_canon(r.T, r.T);
-  static_assert(sizeof(ge_p3_4) == sizeof(uint8_t[4][32]), "");
+  OPENSSL_STATIC_ASSERT(sizeof(ge_p3_4) == sizeof(uint8_t[4][32]), "");
   OPENSSL_memcpy(h, &r, sizeof(ge_p3_4));
 }
