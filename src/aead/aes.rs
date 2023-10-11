@@ -202,7 +202,7 @@ impl Key {
 
     #[inline]
     pub fn encrypt_iv_xor_block(&self, iv: Iv, input: Block) -> Block {
-        let encrypted_iv = self.encrypt_block(Block::from(iv.as_bytes_less_safe()));
+        let encrypted_iv = self.encrypt_block(iv.into_block_less_safe());
         encrypted_iv ^ input
     }
 
@@ -355,8 +355,10 @@ impl From<Counter> for Iv {
 }
 
 impl Iv {
-    pub(super) fn as_bytes_less_safe(&self) -> &[u8; 16] {
-        self.0.as_byte_array()
+    /// "Less safe" because it defeats attempts to use the type system to prevent reuse of the IV.
+    #[inline]
+    pub(super) fn into_block_less_safe(self) -> Block {
+        Block::from(self.0.as_byte_array())
     }
 }
 

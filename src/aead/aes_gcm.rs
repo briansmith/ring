@@ -251,7 +251,7 @@ fn finish(
 
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag| {
-        let encrypted_iv = aes_key.encrypt_block(Block::from(tag_iv.as_bytes_less_safe()));
+        let encrypted_iv = aes_key.encrypt_block(tag_iv.into_block_less_safe());
         let tag = pre_tag ^ encrypted_iv;
         Tag(*tag.as_ref())
     })
