@@ -36,7 +36,7 @@ use super::{
     polyfill::ChunksFixed,
     Nonce, Tag,
 };
-use crate::{constant_time, endian::*, error};
+use crate::{constant_time, error};
 
 /// A key for sealing packets.
 pub struct SealingKey {
@@ -161,12 +161,9 @@ impl Key {
 }
 
 fn make_counter(sequence_number: u32) -> Counter {
-    let nonce = [
-        BigEndian::ZERO,
-        BigEndian::ZERO,
-        BigEndian::from(sequence_number),
-    ];
-    Counter::zero(Nonce::assume_unique_for_key(*(nonce.as_byte_array())))
+    let [s0, s1, s2, s3] = sequence_number.to_be_bytes();
+    let nonce = [0, 0, 0, 0, 0, 0, 0, 0, s0, s1, s2, s3];
+    Counter::zero(Nonce::assume_unique_for_key(nonce))
 }
 
 /// The length of key.
