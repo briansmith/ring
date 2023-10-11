@@ -20,7 +20,7 @@ use super::{
 use crate::{
     bits::BitLength,
     c, cpu,
-    endian::{ArrayEncoding, BigEndian},
+    endian::BigEndian,
     error,
     polyfill::{self, ChunksFixed},
 };
@@ -332,7 +332,8 @@ impl Counter {
     }
 
     pub fn increment(&mut self) -> Iv {
-        let iv = Iv(self.0);
+        let iv: [[u8; 4]; 4] = self.0.map(Into::into);
+        let iv = Iv(Block::from(iv));
         self.increment_by_less_safe(1);
         iv
     }
@@ -346,11 +347,12 @@ impl Counter {
 /// The IV for a single block encryption.
 ///
 /// Intentionally not `Clone` to ensure each is used only once.
-pub struct Iv([BigEndian<u32>; 4]);
+pub struct Iv(Block);
 
 impl From<Counter> for Iv {
     fn from(counter: Counter) -> Self {
-        Self(counter.0)
+        let iv: [[u8; 4]; 4] = counter.0.map(Into::into);
+        Self(Block::from(iv))
     }
 }
 
@@ -358,7 +360,7 @@ impl Iv {
     /// "Less safe" because it defeats attempts to use the type system to prevent reuse of the IV.
     #[inline]
     pub(super) fn into_block_less_safe(self) -> Block {
-        Block::from(self.0.as_byte_array())
+        self.0
     }
 }
 

@@ -12,6 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use crate::polyfill::ArrayFlatten;
 use core::ops::{BitXor, BitXorAssign};
 
 #[repr(transparent)]
@@ -60,6 +61,16 @@ impl BitXor for Block {
         let mut r = self;
         r.bitxor_assign(a);
         r
+    }
+}
+
+impl<T> From<T> for Block
+where
+    T: ArrayFlatten<Output = [u8; 16]>,
+{
+    #[inline]
+    fn from(bytes: T) -> Self {
+        Self(bytes.array_flatten())
     }
 }
 
