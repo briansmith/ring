@@ -22,16 +22,6 @@ macro_rules! define_endian {
         #[derive(Clone, Copy)]
         #[repr(transparent)]
         pub struct $endian<T>(T);
-
-        impl<T> core::ops::BitXorAssign for $endian<T>
-        where
-            T: core::ops::BitXorAssign,
-        {
-            #[inline(always)]
-            fn bitxor_assign(&mut self, a: Self) {
-                self.0 ^= a.0;
-            }
-        }
     };
 }
 
