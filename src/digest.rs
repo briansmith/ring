@@ -456,7 +456,6 @@ union State {
 }
 
 #[derive(Clone, Copy)]
-#[repr(C)]
 union Output {
     as64: [BigEndian<u64>; 512 / 8 / core::mem::size_of::<BigEndian<u64>>()],
     as32: [BigEndian<u32>; 256 / 8 / core::mem::size_of::<BigEndian<u32>>()],
