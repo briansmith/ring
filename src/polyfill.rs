@@ -39,7 +39,7 @@ mod test;
 mod unwrap_const;
 
 pub use self::{
-    array_flat_map::ArrayFlatMap, array_flatten::array_flatten, chunks_fixed::*,
+    array_flat_map::ArrayFlatMap, array_flatten::ArrayFlatten, chunks_fixed::*,
     unwrap_const::unwrap_const,
 };
 

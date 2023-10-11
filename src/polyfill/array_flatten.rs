@@ -12,11 +12,21 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-/// Returns the flattened form of `a`
-#[inline(always)]
-pub fn array_flatten<T>(a: [[T; 8]; 2]) -> [T; 16] {
-    let [[a0, a1, a2, a3, a4, a5, a6, a7], [b0, b1, b2, b3, b4, b5, b6, b7]] = a;
-    [
-        a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7,
-    ]
+pub trait ArrayFlatten {
+    type Output;
+
+    /// Returns the flattened form of `a`
+    fn array_flatten(self) -> Self::Output;
+}
+
+impl<T> ArrayFlatten for [[T; 8]; 2] {
+    type Output = [T; 16];
+
+    #[inline(always)]
+    fn array_flatten(self) -> Self::Output {
+        let [[a0, a1, a2, a3, a4, a5, a6, a7], [b0, b1, b2, b3, b4, b5, b6, b7]] = self;
+        [
+            a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7,
+        ]
+    }
 }
