@@ -121,11 +121,8 @@ macro_rules! impl_endian {
 }
 
 define_endian!(BigEndian);
-define_endian!(LittleEndian);
 impl_endian!(BigEndian, u32, to_be, from_be, 4);
 impl_endian!(BigEndian, u64, to_be, from_be, 8);
-impl_endian!(LittleEndian, u32, to_le, from_le, 4);
-impl_endian!(LittleEndian, u64, to_le, from_le, 8);
 
 #[cfg(test)]
 mod tests {
