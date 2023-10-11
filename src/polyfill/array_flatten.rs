@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2023 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,36 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Polyfills for functionality that will (hopefully) be added to Rust's
-//! standard library soon.
-
+/// Returns the flattened form of `a`
 #[inline(always)]
-pub const fn u64_from_usize(x: usize) -> u64 {
-    x as u64
+pub fn array_flatten<T>(a: [[T; 8]; 2]) -> [T; 16] {
+    let [[a0, a1, a2, a3, a4, a5, a6, a7], [b0, b1, b2, b3, b4, b5, b6, b7]] = a;
+    [
+        a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7,
+    ]
 }
-
-pub fn usize_from_u32(x: u32) -> usize {
-    x as usize
-}
-
-#[macro_use]
-mod chunks_fixed;
-
-mod array_flat_map;
-mod array_flatten;
-
-#[cfg(feature = "alloc")]
-mod leading_zeros_skipped;
-
-#[cfg(test)]
-mod test;
-
-mod unwrap_const;
-
-pub use self::{
-    array_flat_map::ArrayFlatMap, array_flatten::array_flatten, chunks_fixed::*,
-    unwrap_const::unwrap_const,
-};
-
-#[cfg(feature = "alloc")]
-pub use leading_zeros_skipped::LeadingZerosStripped;
