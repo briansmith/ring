@@ -17,7 +17,10 @@ use super::{
     block::{Block, BLOCK_LEN},
     gcm, shift, Aad, Nonce, Tag,
 };
-use crate::{aead, cpu, error, polyfill};
+use crate::{
+    aead, cpu, error,
+    polyfill::{self, array_flatten},
+};
 use core::ops::RangeFrom;
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
@@ -242,7 +245,9 @@ fn finish(
     // Authenticate the final block containing the input lengths.
     let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
     let ciphertext_bits = polyfill::u64_from_usize(in_out_len) << 3;
-    gcm_ctx.update_block(Block::from([aad_bits, ciphertext_bits]));
+    gcm_ctx.update_block(Block::from(&array_flatten(
+        [aad_bits, ciphertext_bits].map(u64::to_be_bytes),
+    )));
 
     // Finalize the tag and return it.
     gcm_ctx.pre_finish(|pre_tag| {

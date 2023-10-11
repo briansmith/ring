@@ -42,13 +42,6 @@ impl Block {
     }
 }
 
-impl From<[u64; 2]> for Block {
-    #[inline]
-    fn from(other: [u64; 2]) -> Self {
-        Self([other[0].into(), other[1].into()])
-    }
-}
-
 impl BitXorAssign for Block {
     #[inline]
     fn bitxor_assign(&mut self, a: Self) {
