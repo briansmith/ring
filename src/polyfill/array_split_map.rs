@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2023 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,37 +12,18 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! Polyfills for functionality that will (hopefully) be added to Rust's
-//! standard library soon.
-
-#[inline(always)]
-pub const fn u64_from_usize(x: usize) -> u64 {
-    x as u64
+pub trait ArraySplitMap<I, O, const CN: usize, const ON: usize> {
+    fn array_split_map(self, f: impl Fn([I; CN]) -> O) -> [O; ON];
 }
 
-pub fn usize_from_u32(x: u32) -> usize {
-    x as usize
+impl<I, O> ArraySplitMap<I, O, 4, 3> for [I; 12] {
+    #[inline]
+    fn array_split_map(self, f: impl Fn([I; 4]) -> O) -> [O; 3] {
+        let [a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3] = self;
+        [
+            f([a0, a1, a2, a3]),
+            f([b0, b1, b2, b3]),
+            f([c0, c1, c2, c3]),
+        ]
+    }
 }
-
-#[macro_use]
-mod chunks_fixed;
-
-mod array_flat_map;
-mod array_flatten;
-mod array_split_map;
-
-#[cfg(feature = "alloc")]
-mod leading_zeros_skipped;
-
-#[cfg(test)]
-mod test;
-
-mod unwrap_const;
-
-pub use self::{
-    array_flat_map::ArrayFlatMap, array_flatten::ArrayFlatten, array_split_map::ArraySplitMap,
-    chunks_fixed::*, unwrap_const::unwrap_const,
-};
-
-#[cfg(feature = "alloc")]
-pub use leading_zeros_skipped::LeadingZerosStripped;
