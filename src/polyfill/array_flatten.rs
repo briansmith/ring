@@ -30,3 +30,15 @@ impl<T> ArrayFlatten for [[T; 8]; 2] {
         ]
     }
 }
+
+impl<T> ArrayFlatten for [[T; 4]; 4] {
+    type Output = [T; 16];
+
+    #[inline(always)]
+    fn array_flatten(self) -> Self::Output {
+        let [[a0, a1, a2, a3], [b0, b1, b2, b3], [c0, c1, c2, c3], [d0, d1, d2, d3]] = self;
+        [
+            a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3, d0, d1, d2, d3,
+        ]
+    }
+}

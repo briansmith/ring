@@ -19,7 +19,7 @@ use super::{
 };
 use crate::{
     aead, cpu, error,
-    polyfill::{self, ArrayFlatten},
+    polyfill::{self},
 };
 use core::ops::RangeFrom;
 
@@ -246,9 +246,7 @@ fn finish(
     let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
     let ciphertext_bits = polyfill::u64_from_usize(in_out_len) << 3;
     gcm_ctx.update_block(Block::from(
-        &[aad_bits, ciphertext_bits]
-            .map(u64::to_be_bytes)
-            .array_flatten(),
+        [aad_bits, ciphertext_bits].map(u64::to_be_bytes),
     ));
 
     // Finalize the tag and return it.
