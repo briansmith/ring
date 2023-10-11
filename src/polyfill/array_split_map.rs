@@ -27,3 +27,16 @@ impl<I, O> ArraySplitMap<I, O, 4, 3> for [I; 12] {
         ]
     }
 }
+
+impl<I, O> ArraySplitMap<I, O, 4, 4> for [I; 16] {
+    #[inline]
+    fn array_split_map(self, f: impl Fn([I; 4]) -> O) -> [O; 4] {
+        let [a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3, d0, d1, d2, d3] = self;
+        [
+            f([a0, a1, a2, a3]),
+            f([b0, b1, b2, b3]),
+            f([c0, c1, c2, c3]),
+            f([d0, d1, d2, d3]),
+        ]
+    }
+}

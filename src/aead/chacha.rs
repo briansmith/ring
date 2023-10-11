@@ -193,8 +193,7 @@ pub struct Iv([u32; 4]);
 
 impl Iv {
     fn assume_unique_for_key(value: [u8; 16]) -> Self {
-        let value: &[[u8; 4]; 4] = value.chunks_fixed();
-        Self(value.map(u32::from_le_bytes))
+        Self(value.array_split_map(u32::from_le_bytes))
     }
 
     fn into_counter_for_single_block_less_safe(self) -> Counter {
