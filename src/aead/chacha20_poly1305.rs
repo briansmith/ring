@@ -18,7 +18,7 @@ use super::{
 };
 use crate::{
     aead, cpu, error,
-    polyfill::{self, array_flatten},
+    polyfill::{self, ArrayFlatten},
 };
 use core::ops::RangeFrom;
 
@@ -213,7 +213,7 @@ fn finish(mut auth: poly1305::Context, aad_len: usize, in_out_len: usize) -> Tag
     let block: [[u8; 8]; 2] = [aad_len, in_out_len]
         .map(polyfill::u64_from_usize)
         .map(u64::to_le_bytes);
-    auth.update(&array_flatten(block));
+    auth.update(&block.array_flatten());
     auth.finish()
 }
 
