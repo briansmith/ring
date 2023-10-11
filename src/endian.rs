@@ -11,33 +11,11 @@ where
     const ZERO: Self;
 }
 
-/// Work around the inability to implement `AsRef` for arrays of `Encoding`s
-/// due to the coherence rules.
-pub trait ArrayEncoding<T> {
-    fn as_byte_array(&self) -> &T;
-}
-
 macro_rules! define_endian {
     ($endian:ident) => {
         #[derive(Clone, Copy)]
         #[repr(transparent)]
         pub struct $endian<T>(T);
-    };
-}
-
-macro_rules! impl_array_encoding {
-    ($endian:ident, $base:ident, $elems:expr) => {
-        impl ArrayEncoding<[u8; $elems * core::mem::size_of::<$base>()]>
-            for [$endian<$base>; $elems]
-        {
-            #[inline]
-            fn as_byte_array(&self) -> &[u8; $elems * core::mem::size_of::<$base>()] {
-                let as_bytes_ptr = self
-                    .as_ptr()
-                    .cast::<[u8; $elems * core::mem::size_of::<$base>()]>();
-                unsafe { &*as_bytes_ptr }
-            }
-        }
     };
 }
 
@@ -81,18 +59,11 @@ macro_rules! impl_endian {
                 $base::$from_endian(value)
             }
         }
-
-        impl_array_encoding!($endian, $base, 1);
-        impl_array_encoding!($endian, $base, 2);
-        impl_array_encoding!($endian, $base, 3);
-        impl_array_encoding!($endian, $base, 4);
-        impl_array_encoding!($endian, $base, 8);
     };
 }
 
 define_endian!(BigEndian);
 impl_endian!(BigEndian, u32, to_be, from_be, 4);
-impl_endian!(BigEndian, u64, to_be, from_be, 8);
 
 #[cfg(test)]
 mod tests {
