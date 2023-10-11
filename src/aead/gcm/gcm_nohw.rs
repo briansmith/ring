@@ -235,7 +235,10 @@ pub(super) fn ghash(xi: &mut Xi, h: super::u128, input: &[[u8; BLOCK_LEN]]) {
 
 #[inline]
 fn with_swapped_xi(Xi(xi): &mut Xi, f: impl FnOnce(&mut [u64; 2])) {
-    let unswapped: [u64; 2] = (*xi).into();
+    let unswapped: [u64; 2] = {
+        let xi: &[[u8; 8]; 2] = xi.as_ref().chunks_fixed();
+        xi.map(u64::from_be_bytes)
+    };
     let mut swapped: [u64; 2] = [unswapped[1], unswapped[0]];
     f(&mut swapped);
     *xi = Block::from([swapped[1], swapped[0]])
