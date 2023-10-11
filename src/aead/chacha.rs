@@ -27,6 +27,7 @@ use crate::{cpu, polyfill::ChunksFixed};
 ))]
 mod fallback;
 
+use crate::polyfill::ArraySplitMap;
 use core::ops::RangeFrom;
 
 #[derive(Clone)]
@@ -159,13 +160,8 @@ impl Counter {
     }
 
     fn from_nonce_and_ctr(nonce: Nonce, ctr: u32) -> Self {
-        let nonce = nonce.as_ref().chunks_fixed();
-        Self([
-            ctr,
-            u32::from_le_bytes(nonce[0]),
-            u32::from_le_bytes(nonce[1]),
-            u32::from_le_bytes(nonce[2]),
-        ])
+        let [n0, n1, n2] = nonce.as_ref().array_split_map(u32::from_le_bytes);
+        Self([ctr, n0, n1, n2])
     }
 
     pub fn increment(&mut self) -> Iv {

@@ -22,7 +22,7 @@ use crate::{
     c, cpu,
     endian::BigEndian,
     error,
-    polyfill::{self, ChunksFixed},
+    polyfill::{self, ArraySplitMap},
 };
 use core::ops::RangeFrom;
 
@@ -327,8 +327,8 @@ pub(super) struct Counter([BigEndian<u32>; 4]);
 
 impl Counter {
     pub fn one(nonce: Nonce) -> Self {
-        let nonce = nonce.as_ref().chunks_fixed();
-        Self([nonce[0].into(), nonce[1].into(), nonce[2].into(), 1.into()])
+        let [n0, n1, n2] = nonce.as_ref().array_split_map(BigEndian::<u32>::from);
+        Self([n0, n1, n2, 1.into()])
     }
 
     pub fn increment(&mut self) -> Iv {
