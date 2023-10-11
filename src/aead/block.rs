@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::endian::*;
+use crate::{endian::*, polyfill::ChunksFixed};
 use core::ops::{BitXor, BitXorAssign};
 
 #[repr(transparent)]
@@ -79,7 +79,8 @@ impl BitXor for Block {
 impl From<&'_ [u8; BLOCK_LEN]> for Block {
     #[inline]
     fn from(bytes: &[u8; BLOCK_LEN]) -> Self {
-        Self(FromByteArray::from_byte_array(bytes))
+        let bytes: &[[u8; BLOCK_LEN / 2]; 2] = bytes.chunks_fixed();
+        Self(bytes.map(Into::into))
     }
 }
 
