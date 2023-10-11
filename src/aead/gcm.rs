@@ -16,7 +16,7 @@ use super::{
     block::{Block, BLOCK_LEN},
     Aad,
 };
-use crate::cpu;
+use crate::{cpu, polyfill::ChunksFixed};
 use core::ops::BitXorAssign;
 
 #[cfg(not(target_arch = "aarch64"))]
@@ -30,7 +30,8 @@ pub struct Key {
 
 impl Key {
     pub(super) fn new(h_be: Block, cpu_features: cpu::Features) -> Self {
-        let h: [u64; 2] = h_be.into();
+        let h_be: &[[u8; 8]; 2] = h_be.as_ref().chunks_fixed();
+        let h: [u64; 2] = h_be.map(u64::from_be_bytes);
 
         let mut key = Self {
             h_table: HTable {
