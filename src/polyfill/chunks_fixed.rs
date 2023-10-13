@@ -27,5 +27,4 @@ macro_rules! define_chunks_fixed {
 }
 
 // Sorted by the first value, then the second value.
-define_chunks_fixed!(64, 32);
 define_chunks_fixed!(80, 20);
