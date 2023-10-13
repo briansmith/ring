@@ -14,7 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::sha2::{ch, maj, Word};
-use crate::{c, polyfill::ChunksFixed};
+use crate::c;
 use core::num::Wrapping;
 
 pub const BLOCK_LEN: usize = 512 / 8;
@@ -63,11 +63,10 @@ fn block_data_order_(mut H: State, M: &[[<W32 as Word>::InputBytes; 16]]) -> Sta
         let [a, b, c, d, e] = H;
 
         // FIPS 180-4 6.1.2 Step 3 with constants and functions from FIPS 180-4 {4.1.1, 4.2.1}
-        let W: &[[W32; 20]; 4] = W.chunks_fixed();
-        let (a, b, c, d, e) = step3(a, b, c, d, e, W[0], Wrapping(0x5a827999), ch);
-        let (a, b, c, d, e) = step3(a, b, c, d, e, W[1], Wrapping(0x6ed9eba1), parity);
-        let (a, b, c, d, e) = step3(a, b, c, d, e, W[2], Wrapping(0x8f1bbcdc), maj);
-        let (a, b, c, d, e) = step3(a, b, c, d, e, W[3], Wrapping(0xca62c1d6), parity);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, &W, 0, Wrapping(0x5a827999), ch);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, &W, 20, Wrapping(0x6ed9eba1), parity);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, &W, 40, Wrapping(0x8f1bbcdc), maj);
+        let (a, b, c, d, e) = step3(a, b, c, d, e, &W, 60, Wrapping(0xca62c1d6), parity);
 
         // FIPS 180-4 6.1.2 Step 4
         H[0] += a;
@@ -87,10 +86,12 @@ fn step3(
     mut c: W32,
     mut d: W32,
     mut e: W32,
-    W: [W32; 20],
+    W: &[W32; 80],
+    t: usize,
     k: W32,
     f: impl Fn(W32, W32, W32) -> W32,
 ) -> (W32, W32, W32, W32, W32) {
+    let W = &W[t..(t + 20)];
     for W_t in W.iter() {
         let T = rotl(a, 5) + f(b, c, d) + e + k + W_t;
         e = d;

@@ -24,9 +24,6 @@ pub fn usize_from_u32(x: u32) -> usize {
     x as usize
 }
 
-#[macro_use]
-mod chunks_fixed;
-
 mod array_flat_map;
 mod array_flatten;
 mod array_split_map;
@@ -41,7 +38,7 @@ mod unwrap_const;
 
 pub use self::{
     array_flat_map::ArrayFlatMap, array_flatten::ArrayFlatten, array_split_map::ArraySplitMap,
-    chunks_fixed::*, unwrap_const::unwrap_const,
+    unwrap_const::unwrap_const,
 };
 
 #[cfg(feature = "alloc")]
