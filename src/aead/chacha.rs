@@ -14,7 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{quic::Sample, Nonce};
-use crate::{cpu, polyfill::ChunksFixed};
+use crate::cpu;
 
 #[cfg(any(
     test,
@@ -38,9 +38,8 @@ pub struct Key {
 
 impl Key {
     pub(super) fn new(value: [u8; KEY_LEN], cpu_features: cpu::Features) -> Self {
-        let value: &[[u8; 4]; KEY_LEN / 4] = value.chunks_fixed();
         Self {
-            words: value.map(u32::from_le_bytes),
+            words: value.array_split_map(u32::from_le_bytes),
             cpu_features,
         }
     }
