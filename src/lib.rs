@@ -36,6 +36,14 @@
 // When running mk/package.sh, don't actually build any code.
 #![cfg(not(pregenerate_asm_only))]
 #![allow(
+    clippy::collapsible_if,
+    clippy::identity_op,
+    clippy::len_without_is_empty,
+    clippy::let_unit_value,
+    clippy::new_without_default,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::too_many_arguments,
+    clippy::type_complexity,
     missing_copy_implementations,
     missing_debug_implementations,
     non_camel_case_types,
