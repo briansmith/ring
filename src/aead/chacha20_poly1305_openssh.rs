@@ -32,9 +32,7 @@
 use super::{
     chacha::{self, *},
     chacha20_poly1305::derive_poly1305_key,
-    cpu, poly1305,
-    polyfill::ChunksFixed,
-    Nonce, Tag,
+    cpu, poly1305, Nonce, Tag,
 };
 use crate::{constant_time, error};
 
@@ -152,10 +150,10 @@ struct Key {
 impl Key {
     fn new(key_material: &[u8; KEY_LEN], cpu_features: cpu::Features) -> Self {
         // The first half becomes K_2 and the second half becomes K_1.
-        let &[k_2, k_1]: &[[u8; chacha::KEY_LEN]; 2] = key_material.chunks_fixed();
+        let (k_2, k_1) = key_material.split_at(chacha::KEY_LEN);
         Self {
-            k_1: chacha::Key::new(k_1, cpu_features),
-            k_2: chacha::Key::new(k_2, cpu_features),
+            k_1: chacha::Key::new(k_1.try_into().unwrap(), cpu_features),
+            k_2: chacha::Key::new(k_2.try_into().unwrap(), cpu_features),
         }
     }
 }
