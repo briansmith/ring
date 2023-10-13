@@ -675,15 +675,20 @@ pub fn elem_exp_consttime<M>(
         }
     }
 
-    // table[0] = base**0.
+    // All entries in `table` will be Montgomery encoded.
+
+    // acc = table[0] = base**0 (i.e. 1).
     {
         let acc = entry_mut(state, ACC, num_limbs);
+        // `acc` was initialized to zero and hasn't changed. Change it to 1 and then Montgomery
+        // encode it.
+        debug_assert!(acc.iter().all(|&value| value == 0));
         acc[0] = 1;
         limbs_mont_mul(acc, &m.oneRR().0.limbs, m.limbs(), m.n0(), cpu_features);
     }
     scatter(table, state, 0, num_limbs);
 
-    // table[1] = base**1.
+    // acc = table[1] = base**1 (i.e. base).
     entry_mut(state, ACC, num_limbs).copy_from_slice(&base.limbs);
     scatter(table, state, 1, num_limbs);
 
