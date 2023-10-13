@@ -294,6 +294,7 @@ struct ContextInner {
     Htable: HTable,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 enum Implementation {
     #[cfg(any(
         target_arch = "aarch64",

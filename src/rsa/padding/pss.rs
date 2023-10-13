@@ -21,6 +21,7 @@ use crate::{bits, digest, error, rand};
 /// documentation for more details.
 ///
 /// [RFC 3447 Section 8.1]: https://tools.ietf.org/html/rfc3447#section-8.1
+#[allow(clippy::upper_case_acronyms)] // TODO: Until we implement cargo-semver-checks
 #[derive(Debug)]
 pub struct PSS {
     digest_alg: &'static digest::Algorithm,

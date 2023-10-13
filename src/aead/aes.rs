@@ -366,6 +366,7 @@ impl Iv {
 
 #[repr(C)] // Only so `Key` can be `#[repr(C)]`
 #[derive(Clone, Copy)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum Implementation {
     #[cfg(any(
         target_arch = "aarch64",
