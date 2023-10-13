@@ -751,7 +751,7 @@ fn asm_srcs(perlasm_src_dsts: Vec<(PathBuf, PathBuf)>) -> Vec<PathBuf> {
         .collect::<Vec<_>>()
 }
 
-fn is_perlasm(path: &PathBuf) -> bool {
+fn is_perlasm(path: &Path) -> bool {
     path.extension().unwrap().to_str().unwrap() == "pl"
 }
 
