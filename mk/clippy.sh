@@ -31,5 +31,4 @@ cargo clippy \
   --allow clippy::neg_cmp_op_on_partial_ord \
   --allow clippy::too_many_arguments \
   --allow clippy::type_complexity \
-  --allow clippy::upper_case_acronyms \
   $NULL
