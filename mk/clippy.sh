@@ -25,15 +25,12 @@ cargo clippy \
   --deny missing_docs \
   --deny warnings \
   --allow clippy::collapsible_if \
-  --allow clippy::derive_partial_eq_without_eq \
   --allow clippy::identity_op \
   --allow clippy::len_without_is_empty \
   --allow clippy::let_unit_value \
-  --allow clippy::many_single_char_names \
   --allow clippy::new_without_default \
   --allow clippy::neg_cmp_op_on_partial_ord \
   --allow clippy::too_many_arguments \
   --allow clippy::type_complexity \
-  --allow clippy::unreadable_literal \
   --allow clippy::upper_case_acronyms \
   $NULL
