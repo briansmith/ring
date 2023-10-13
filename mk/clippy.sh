@@ -27,7 +27,6 @@ cargo clippy \
   --allow clippy::derive_partial_eq_without_eq \
   --allow clippy::identity_op \
   --allow clippy::len_without_is_empty \
-  --allow clippy::ptr_arg \
   --allow clippy::let_unit_value \
   --allow clippy::many_single_char_names \
   --allow clippy::new_without_default \
