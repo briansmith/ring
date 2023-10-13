@@ -22,5 +22,6 @@ cargo clippy \
   --all-features --all-targets \
   -- \
   --deny missing_docs \
+  --deny unused_qualifications \
   --deny warnings \
   $NULL

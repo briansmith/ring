@@ -48,7 +48,7 @@
     non_snake_case,
     unsafe_code
 )]
-#![deny(missing_docs, unused_qualifications, variant_size_differences)]
+#![deny(variant_size_differences)]
 #![forbid(unused_results)]
 #![no_std]
 
