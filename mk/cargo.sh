@@ -179,9 +179,9 @@ case $target in
     ;;
   wasm32-wasi)
     # The first two are only needed for when the "wasm_c" feature is enabled.
-    export CC_wasm32_wasi=$WASI_SDK_PATH/bin/clang
-    export AR_wasm32_wasi=$WASI_SDK_PATH/bin/llvm-ar
-    export CARGO_TARGET_WASM32_WASI_RUNNER=wasmtime
+    export CC_wasm32_wasi=clang-$llvm_version
+    export AR_wasm32_wasi=llvm-ar-$llvm_version
+    export CARGO_TARGET_WASM32_WASI_RUNNER=target/tools/linux-x86_64/wasmtime/wasmtime
     ;;
   *)
     ;;
