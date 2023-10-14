@@ -240,9 +240,11 @@ static void fe_mul_ltt(fe_loose *h, const fe *f, const fe *g) {
   fe_mul_impl(h->v, f->v, g->v);
 }
 
-// static void fe_mul_llt(fe_loose *h, const fe_loose *f, const fe *g) was
-// removed. This comment is here to make diffs vs. BoringSSL easier to read.
-
+#if defined(OPENSSL_SMALL)
+static void fe_mul_llt(fe_loose *h, const fe_loose *f, const fe *g) {
+  fe_mul_impl(h->v, f->v, g->v);
+}
+#endif
 
 static void fe_mul_ttt(fe *h, const fe *f, const fe *g) {
   fe_mul_impl(h->v, f->v, g->v);
