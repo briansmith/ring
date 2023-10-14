@@ -16,7 +16,6 @@
 
 pub mod ed25519;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub mod x25519;
 
 mod ops;

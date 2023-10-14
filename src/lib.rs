@@ -75,7 +75,6 @@ mod polyfill;
 
 pub mod aead;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub mod agreement;
 
 mod bits;

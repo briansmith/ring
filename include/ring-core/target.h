@@ -152,4 +152,8 @@
 #endif
 #endif  // OPENSSL_ASM_INCOMPATIBLE
 
+#if !defined(OPENSSL_X86_64) && !defined(OPENSSL_AARCH64)
+#define OPENSSL_SMALL
+#endif
+
 #endif  // OPENSSL_HEADER_TARGET_H

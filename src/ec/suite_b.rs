@@ -229,7 +229,6 @@ pub(crate) fn key_pair_from_bytes(
 
 pub mod curve;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub mod ecdh;
 
 pub mod ecdsa;
