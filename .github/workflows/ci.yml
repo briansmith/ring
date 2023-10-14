@@ -238,8 +238,6 @@ jobs:
 
           - target: armv7-unknown-linux-musleabihf
             host_os: ubuntu-22.04
-            # TODO: https://github.com/briansmith/ring/issues/1115
-            cargo_options: --no-run
 
           - target: i686-pc-windows-msvc
             host_os: windows-latest
