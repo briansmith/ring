@@ -140,6 +140,14 @@ case $target in
   cargo install wasm-bindgen-cli --bin wasm-bindgen-test-runner
   use_clang=1
   ;;
+--target=wasm32-wasi)
+  use_clang=1
+  git clone \
+      --branch linux-x86_64 \
+      --depth 1 \
+      https://github.com/briansmith/ring-toolchain \
+      target/tools/linux-x86_64
+  ;;
 --target=*)
   ;;
 esac

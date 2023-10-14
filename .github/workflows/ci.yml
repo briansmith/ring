@@ -183,6 +183,7 @@ jobs:
           - i686-unknown-linux-musl
           - powerpc-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
+          - wasm32-wasi
           - x86_64-pc-windows-gnu
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
@@ -252,6 +253,9 @@ jobs:
             host_os: ubuntu-22.04
 
           - target: riscv64gc-unknown-linux-gnu
+            host_os: ubuntu-22.04
+
+          - target: wasm32-wasi
             host_os: ubuntu-22.04
 
           - target: x86_64-pc-windows-gnu
@@ -435,7 +439,7 @@ jobs:
 
   # The wasm32-unknown-unknown targets have a different set of feature sets and
   # an additional `webdriver` dimension.
-  test-wasm32:
+  test-wasm32-browser:
     # Don't run duplicate `push` jobs for the repo owner's PRs.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
