@@ -143,7 +143,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/Zc:forScope",
             "/Zc:inline",
             // Warnings.
-            "/sdl",
             "/Wall",
             "/wd4127", // C4127: conditional expression is constant
             "/wd4464", // C4464: relative include path contains '..'
