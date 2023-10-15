@@ -138,13 +138,10 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
         NON_MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &[&str] = &[
-            "/Gy",   // Enable function-level linking.
-            "/EHsc", // C++ exceptions only, only in C++.
-            "/GR-",  // Disable RTTI.
+            "/Gy", // Enable function-level linking.
             "/Zc:wchar_t",
             "/Zc:forScope",
             "/Zc:inline",
-            "/Zc:rvalueCast",
             // Warnings.
             "/sdl",
             "/Wall",
