@@ -180,8 +180,6 @@ mod digest_shavs {
 macro_rules! test_i_u_f {
     ( $test_name:ident, $alg:expr) => {
         #[cfg(not(debug_assertions))]
-        // TODO: Get this working on WebAssembly
-        #[cfg(not(target_arch = "wasm32"))]
         #[test]
         fn $test_name() {
             let mut input = [0; (digest::MAX_BLOCK_LEN + 1) * 3];
@@ -241,9 +239,7 @@ test_i_u_f!(digest_test_i_u_f_sha512, digest::SHA512);
 /// This is not run in dev (debug) builds because it is too slow.
 macro_rules! test_large_digest {
     ( $test_name:ident, $alg:expr, $len:expr, $expected:expr) => {
-        // TODO: get this working on WebAssembly.
         #[cfg(not(debug_assertions))]
-        #[cfg(not(target_arch = "wasm32"))]
         #[test]
         fn $test_name() {
             let chunk = vec![123u8; 16 * 1024];
