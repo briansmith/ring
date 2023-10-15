@@ -138,7 +138,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
         NON_MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &[&str] = &[
-            "/GS",   // Buffer security checks.
             "/Gy",   // Enable function-level linking.
             "/EHsc", // C++ exceptions only, only in C++.
             "/GR-",  // Disable RTTI.
@@ -592,13 +591,6 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
     for f in cpp_flags(&compiler) {
         let _ = c.flag(f);
     }
-    if target.os != "none"
-        && target.os != "redox"
-        && target.os != "windows"
-        && target.arch != "wasm32"
-    {
-        let _ = c.flag("-fstack-protector");
-    }
 
     if target.os.as_str() == "macos" {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
@@ -609,11 +601,6 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
 
     if !target.is_debug {
         let _ = c.define("NDEBUG", None);
-    }
-
-    if compiler.is_like_msvc() && std::env::var("OPT_LEVEL").unwrap() == "0" {
-        // run-time checking: (s)tack frame, (u)ninitialized variables
-        let _ = c.flag("/RTCsu");
     }
 
     // Allow cross-compiling without a target sysroot for these targets.
@@ -633,14 +620,6 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
 
     if target.force_warnings_into_errors {
         c.warnings_into_errors(true);
-    }
-    if target.is_musl {
-        // Some platforms enable _FORTIFY_SOURCE by default, but musl
-        // libc doesn't support it yet. See
-        // http://wiki.musl-libc.org/wiki/Future_Ideas#Fortify
-        // http://www.openwall.com/lists/musl/2015/02/04/3
-        // http://www.openwall.com/lists/musl/2015/06/17/1
-        let _ = c.flag("-U_FORTIFY_SOURCE");
     }
 }
 
