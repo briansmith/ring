@@ -109,6 +109,7 @@ const PREGENERATED: &str = "pregenerated";
 fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
     if !compiler.is_like_msvc() {
         static NON_MSVC_FLAGS: &[&str] = &[
+            "-fvisibility=hidden",
             "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
             "-pedantic",
             "-Wall",
@@ -133,7 +134,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "-Wundef",
             "-Wuninitialized",
             "-Wwrite-strings",
-            "-fvisibility=hidden",
         ];
         NON_MSVC_FLAGS
     } else {
