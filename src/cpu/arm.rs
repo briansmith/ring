@@ -122,6 +122,24 @@ fn detect_features() -> u32 {
     features
 }
 
+#[cfg(all(target_os = "windows", target_arch = "arm"))]
+fn detect_features() -> u32 {
+    extern "C" {
+        fn IsProcessorFeaturePresent(ProcessorFeature: u32) -> i32;
+    }
+    const PF_ARM_VFP_32_REGISTERS_AVAILABLE: u32 = 18;
+
+    let mut features = 0;
+
+    let result = unsafe { IsProcessorFeaturePresent(PF_ARM_VFP_32_REGISTERS_AVAILABLE) };
+
+    if result != 0 {
+        features |= NEON.mask;
+    }
+
+    features
+}
+
 #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
 fn detect_features() -> u32 {
     // We do not need to check for the presence of NEON, as Armv8-A always has it

@@ -152,6 +152,13 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
             "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
                         * /Qspectre switch specified */
+            "/wd4163", // C4163: '_addcarry_u32': not available as an intrinsic function
+            "/wd4013", // C4013: '_addcarry_u32' undefined; assuming extern returning int
+            "/wd4242", // C4242: '=': conversion from 'int' to 'Carry', possible loss of data
+            "/wd4244", // C4244: '=': conversion from 'int' to 'Carry', possible loss of data
+            "/wd4068", // C4068: unknown pragma 'GCC'
+            "/wd4146", // C4146: unary minus operator applied to unsigned type, result still unsigned
+            "/wd4132", // C4132: 'zero': const object should be initialized
         ];
         MSVC_FLAGS
     }
@@ -223,6 +230,13 @@ const ASM_TARGETS: &[AsmTarget] = &[
         asm_extension: "S",
         preassemble: false,
     },
+    AsmTarget {
+        oss: &[WINDOWS],
+        arch: "arm",
+        perlasm_format: "win64",
+        asm_extension: "S",
+        preassemble: false,
+    }
 ];
 
 struct AsmTarget {
@@ -576,7 +590,10 @@ fn obj_path(out_dir: &Path, src: &Path) -> PathBuf {
 
 fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
     // FIXME: On Windows AArch64 we currently must use Clang to compile C code
-    if target.os == WINDOWS && target.arch == AARCH64 && !c.get_compiler().is_like_clang() {
+    if target.os == WINDOWS
+        && (target.arch == AARCH64 || target.arch == ARM)
+        && !c.get_compiler().is_like_clang()
+    {
         let _ = c.compiler("clang");
     }
 
@@ -619,7 +636,7 @@ fn configure_cc(c: &mut cc::Build, target: &Target, include_dir: &Path) {
     }
 }
 
-/// Assembles the assemply language source `file` into the object file
+/// Assembles the assembly language source `file` into the object file
 /// `out_file`.
 fn cc_asm(b: &cc::Build, file: &Path, out_file: &Path) -> Command {
     let cc = b.get_compiler();
