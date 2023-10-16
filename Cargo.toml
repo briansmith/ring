@@ -197,6 +197,7 @@ cc = { version = "1.0.83", default-features = false }
 default = ["alloc", "dev_urandom_fallback"]
 alloc = []
 dev_urandom_fallback = []
+less-safe-getrandom-custom = ["getrandom/custom"]
 slow_tests = []
 std = ["alloc"]
 unstable-testing-arm-no-hw = []
