@@ -130,7 +130,8 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
-    oneRR_mod_n: Scalar::from_hex(N_RR_HEX),
+    oneRR_mod_n: Scalar::from_hex("c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9"),
+
 };
 
 fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
@@ -176,7 +177,11 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     }
 
     fn to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
-        const N_RR: Scalar<Unencoded> = Scalar::from_hex(N_RR_HEX);
+        static N_RR: Scalar<Unencoded> = Scalar {
+            limbs: PRIVATE_SCALAR_OPS.oneRR_mod_n.limbs,
+            m: PhantomData,
+            encoding: PhantomData,
+        };
         binary_op(p384_scalar_mul_mont, a, &N_RR)
     }
 
@@ -271,8 +276,6 @@ unsafe extern "C" fn p384_elem_sqr_mont(
     // XXX: Inefficient. TODO: Make a dedicated squaring routine.
     p384_elem_mul_mont(r, a, a);
 }
-
-const N_RR_HEX: &str = "0c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9";
 
 prefixed_extern! {
     fn p384_elem_mul_mont(
