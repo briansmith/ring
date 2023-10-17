@@ -1,4 +1,4 @@
-// Copyright 2016 Brian Smith.
+// Copyright 2016-2023 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -11,8 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use crate::arithmetic::limbs_from_hex;
 
 use super::{
     elem::{binary_op, binary_op_assign},
@@ -27,9 +25,10 @@ pub static COMMON_OPS: CommonOps = CommonOps {
         rr: limbs_from_hex("10000000200000000fffffffe000000000000000200000000fffffffe00000001"),
     },
     n: Elem::from_hex("ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973"),
+
     a: Elem::from_hex("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffffffc0000000000000003fffffffc"),
-    b: Elem::from_hex("cd08114b604fbff9b62b21f41f022094e3374bee94938ae277f2209b1920022ef729add87a4c32ec081188719d412dcc")
-,
+    b: Elem::from_hex("cd08114b604fbff9b62b21f41f022094e3374bee94938ae277f2209b1920022ef729add87a4c32ec081188719d412dcc"),
+
     elem_mul_mont: p384_elem_mul_mont,
     elem_sqr_mont: p384_elem_sqr_mont,
 
@@ -133,19 +132,18 @@ pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
     oneRR_mod_n: Scalar::from_hex("c84ee012b39bf213fb05b7a28266895d40d49174aab1cc5bc3e483afcb82947ff3d81e5df1aa4192d319b2419b409a9"),
-
 };
 
 fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
     //
-    //   a**-1 (mod n) == a**(n - 2) (mod n)
+    //    a**-1 (mod n) == a**(n - 2) (mod n)
     //
     // The exponent (n - 2) is:
     //
-    //     0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf\
-    //       581a0db248b0a77aecec196accc52971.
+    //    0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf\
+    //      581a0db248b0a77aecec196accc52971
 
     fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
         binary_op(p384_scalar_mul_mont, a, b)
