@@ -473,6 +473,102 @@ void p256_point_mul_base(Limb r[3][P256_LIMBS], const Limb scalar[P256_LIMBS]) {
   fiat_p256_to_words(r[2], nq[2]);
 }
 
+#if 0
+
+static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
+                                             EC_JACOBIAN *r,
+                                             const EC_SCALAR *g_scalar,
+                                             const EC_JACOBIAN *p,
+                                             const EC_SCALAR *p_scalar) {
+#define P256_WSIZE_PUBLIC 4
+  // Precompute multiples of |p|. p_pre_comp[i] is (2*i+1) * |p|.
+  fiat_p256_felem p_pre_comp[1 << (P256_WSIZE_PUBLIC - 1)][3];
+  fiat_p256_from_generic(p_pre_comp[0][0], &p->X);
+  fiat_p256_from_generic(p_pre_comp[0][1], &p->Y);
+  fiat_p256_from_generic(p_pre_comp[0][2], &p->Z);
+  fiat_p256_felem p2[3];
+  fiat_p256_point_double(p2[0], p2[1], p2[2], p_pre_comp[0][0],
+                         p_pre_comp[0][1], p_pre_comp[0][2]);
+  for (size_t i = 1; i < OPENSSL_ARRAY_SIZE(p_pre_comp); i++) {
+    fiat_p256_point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
+                        p_pre_comp[i - 1][0], p_pre_comp[i - 1][1],
+                        p_pre_comp[i - 1][2], 0 /* not mixed */, p2[0], p2[1],
+                        p2[2]);
+  }
+
+  // Set up the coefficients for |p_scalar|.
+  int8_t p_wNAF[257];
+  ec_compute_wNAF(group, p_wNAF, p_scalar, 256, P256_WSIZE_PUBLIC);
+
+  // Set |ret| to the point at infinity.
+  int skip = 1;  // Save some point operations.
+  fiat_p256_felem ret[3] = {{0}, {0}, {0}};
+  for (int i = 256; i >= 0; i--) {
+    if (!skip) {
+      fiat_p256_point_double(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2]);
+    }
+
+    // For the |g_scalar|, we use the precomputed table without the
+    // constant-time lookup.
+    if (i <= 31) {
+      // First, look 32 bits upwards.
+      crypto_word_t bits = fiat_p256_get_bit(g_scalar, i + 224) << 3;
+      bits |= fiat_p256_get_bit(g_scalar, i + 160) << 2;
+      bits |= fiat_p256_get_bit(g_scalar, i + 96) << 1;
+      bits |= fiat_p256_get_bit(g_scalar, i + 32);
+      if (bits != 0) {
+        size_t index = (size_t)(bits - 1);
+        fiat_p256_point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2],
+                            1 /* mixed */, fiat_p256_g_pre_comp[1][index][0],
+                            fiat_p256_g_pre_comp[1][index][1],
+                            fiat_p256_one);
+        skip = 0;
+      }
+
+      // Second, look at the current position.
+      bits = fiat_p256_get_bit(g_scalar, i + 192) << 3;
+      bits |= fiat_p256_get_bit(g_scalar, i + 128) << 2;
+      bits |= fiat_p256_get_bit(g_scalar, i + 64) << 1;
+      bits |= fiat_p256_get_bit(g_scalar, i);
+      if (bits != 0) {
+        size_t index = (size_t)(bits - 1);
+        fiat_p256_point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2],
+                            1 /* mixed */, fiat_p256_g_pre_comp[0][index][0],
+                            fiat_p256_g_pre_comp[0][index][1],
+                            fiat_p256_one);
+        skip = 0;
+      }
+    }
+
+    int digit = p_wNAF[i];
+    if (digit != 0) {
+      assert(digit & 1);
+      size_t idx = (size_t)(digit < 0 ? (-digit) >> 1 : digit >> 1);
+      fiat_p256_felem *y = &p_pre_comp[idx][1], tmp;
+      if (digit < 0) {
+        fiat_p256_opp(tmp, p_pre_comp[idx][1]);
+        y = &tmp;
+      }
+      if (!skip) {
+        fiat_p256_point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2],
+                            0 /* not mixed */, p_pre_comp[idx][0], *y,
+                            p_pre_comp[idx][2]);
+      } else {
+        fiat_p256_copy(ret[0], p_pre_comp[idx][0]);
+        fiat_p256_copy(ret[1], *y);
+        fiat_p256_copy(ret[2], p_pre_comp[idx][2]);
+        skip = 0;
+      }
+    }
+  }
+
+  fiat_p256_to_generic(&r->X, ret[0]);
+  fiat_p256_to_generic(&r->Y, ret[1]);
+  fiat_p256_to_generic(&r->Z, ret[2]);
+}
+
+#endif
+
 void p256_mul_mont(Limb r[P256_LIMBS], const Limb a[P256_LIMBS],
                    const Limb b[P256_LIMBS]) {
   fiat_p256_felem a_, b_;

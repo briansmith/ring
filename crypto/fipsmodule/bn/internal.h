@@ -165,6 +165,9 @@ typedef crypto_word_t BN_ULONG;
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
+// bn_is_bit_set_words returns one if bit |bit| is set in |a| and zero
+// otherwise.
+int bn_is_bit_set_words(const BN_ULONG *a, size_t num, size_t bit);
 
 // |num| must be at least 4, at least on x86.
 //
