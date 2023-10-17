@@ -164,8 +164,11 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     }
 
     fn to_mont(a: &Scalar) -> Scalar<R> {
-        const N_RR: Scalar<Unencoded> =
-            Scalar::from_hex("66e12d94f3d956202845b2392b6bec594699799c49bd6fa683244c95be79eea2");
+        static N_RR: Scalar<Unencoded> = Scalar {
+            limbs: PRIVATE_SCALAR_OPS.oneRR_mod_n.limbs,
+            m: PhantomData,
+            encoding: PhantomData,
+        };
         binary_op(p256_scalar_mul_mont, a, &N_RR)
     }
 
