@@ -979,6 +979,7 @@ mod tests {
     fn p256_point_mul_base_test() {
         point_mul_base_tests(
             &p256::PRIVATE_KEY_OPS,
+            |s| p256::PRIVATE_KEY_OPS.point_mul_base(s),
             test_file!("ops/p256_point_mul_base_tests.txt"),
         );
     }
@@ -987,16 +988,21 @@ mod tests {
     fn p384_point_mul_base_test() {
         point_mul_base_tests(
             &p384::PRIVATE_KEY_OPS,
+            |s| p384::PRIVATE_KEY_OPS.point_mul_base(s),
             test_file!("ops/p384_point_mul_base_tests.txt"),
         );
     }
 
-    fn point_mul_base_tests(ops: &PrivateKeyOps, test_file: test::File) {
+    pub(super) fn point_mul_base_tests(
+        ops: &PrivateKeyOps,
+        f: impl Fn(&Scalar) -> Point,
+        test_file: test::File,
+    ) {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let g_scalar = consume_scalar(ops.common, test_case, "g_scalar");
             let expected_result = consume_point(ops, test_case, "r");
-            let actual_result = ops.point_mul_base(&g_scalar);
+            let actual_result = f(&g_scalar);
             assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
             Ok(())
         })
