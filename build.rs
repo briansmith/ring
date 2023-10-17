@@ -958,6 +958,7 @@ fn prefix_all_symbols(pp: char, prefix_prefix: &str, prefix: &str) -> String {
         "p256_point_double",
         "p256_point_mul",
         "p256_point_mul_base",
+        "p256_points_mul_public",
         "p256_scalar_mul_mont",
         "p256_scalar_sqr_rep_mont",
         "p256_sqr_mont",

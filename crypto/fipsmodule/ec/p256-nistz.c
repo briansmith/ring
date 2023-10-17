@@ -284,18 +284,14 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   limbs_copy(r->Z, p.Z, P256_LIMBS);
 }
 
-#if 0
-
-static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
-                                           EC_JACOBIAN *r,
-                                           const EC_SCALAR *g_scalar,
-                                           const EC_JACOBIAN *p_,
-                                           const EC_SCALAR *p_scalar) {
-  assert(p_ != NULL && p_scalar != NULL && g_scalar != NULL);
-
+void p256_points_mul_public(Limb r[3][P256_LIMBS],
+                            const Limb g_scalar[P256_LIMBS],
+                            const Limb p_scalar[P256_LIMBS],
+                            const Limb p_x[P256_LIMBS],
+                            const Limb p_y[P256_LIMBS]) {
   alignas(32) P256_POINT p;
   uint8_t p_str[33];
-  OPENSSL_memcpy(p_str, g_scalar->words, 32);
+  OPENSSL_memcpy(p_str, g_scalar, 32);
   p_str[32] = 0;
 
   // First window
@@ -341,15 +337,12 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   }
 
   alignas(32) P256_POINT tmp;
-  ecp_nistz256_windowed_mul(group, &tmp, p_, p_scalar);
+  ecp_nistz256_windowed_mul(&tmp, p_scalar, p_x, p_y);
   ecp_nistz256_point_add(&p, &p, &tmp);
 
-  assert(group->field.N.width == P256_LIMBS);
-  OPENSSL_memcpy(r->X.words, p.X, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Y.words, p.Y, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Z.words, p.Z, P256_LIMBS * sizeof(BN_ULONG));
+  limbs_copy(r[0], p.X, P256_LIMBS);
+  limbs_copy(r[1], p.Y, P256_LIMBS);
+  limbs_copy(r[2], p.Z, P256_LIMBS);
 }
-
-#endif
 
 #endif /* defined(OPENSSL_USE_NISTZ256) */
