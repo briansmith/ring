@@ -270,10 +270,7 @@ pub struct PublicScalarOps {
     pub scalar_ops: &'static ScalarOps,
     pub public_key_ops: &'static PublicKeyOps,
 
-    // XXX: `PublicScalarOps` shouldn't depend on `PrivateKeyOps`, but it does
-    // temporarily until `twin_mul` is rewritten.
-    pub private_key_ops: &'static PrivateKeyOps,
-
+    pub twin_mul: fn(g_scalar: &Scalar, p_scalar: &Scalar, p_xy: &(Elem<R>, Elem<R>)) -> Point,
     pub q_minus_n: Elem<Unencoded>,
 }
 
@@ -303,6 +300,19 @@ pub struct PrivateScalarOps {
     pub scalar_ops: &'static ScalarOps,
 
     pub oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
+}
+
+// XXX: Inefficient and unnecessarily depends on `PrivateKeyOps`. TODO: implement interleaved wNAF
+// multiplication.
+fn twin_mul_inefficient(
+    ops: &PrivateKeyOps,
+    g_scalar: &Scalar,
+    p_scalar: &Scalar,
+    p_xy: &(Elem<R>, Elem<R>),
+) -> Point {
+    let scaled_g = ops.point_mul_base(g_scalar);
+    let scaled_p = ops.point_mul(p_scalar, p_xy);
+    ops.common.point_sum(&scaled_g, &scaled_p)
 }
 
 // This assumes n < q < 2*n.

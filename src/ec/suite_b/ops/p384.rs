@@ -122,7 +122,9 @@ pub static SCALAR_OPS: ScalarOps = ScalarOps {
 pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
-    private_key_ops: &PRIVATE_KEY_OPS,
+    twin_mul: |g_scalar, p_scalar, p_xy| {
+        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy)
+    },
 
     q_minus_n: Elem::from_hex("389cb27e0bc8d21fa7e5f24cb74f58851313e696333ad68c"),
 };

@@ -123,7 +123,7 @@ impl EcdsaVerificationAlgorithm {
         // NSA Guide Step 6: "Compute the elliptic curve point
         // R = (xR, yR) = u1*G + u2*Q, using EC scalar multiplication and EC
         // addition. If R is equal to the point at infinity, output INVALID."
-        let product = twin_mul(self.ops.private_key_ops, &u1, &u2, &peer_pub_key);
+        let product = (self.ops.twin_mul)(&u1, &u2, &peer_pub_key);
 
         // Verify that the point we computed is on the curve; see
         // `verify_affine_point_is_on_the_curve_scaled` for details on why. It
@@ -158,7 +158,7 @@ impl EcdsaVerificationAlgorithm {
         }
         if self.ops.elem_less_than(&r, &self.ops.q_minus_n) {
             self.ops
-                .private_key_ops
+                .scalar_ops
                 .common
                 .elem_add(&mut r, &public_key_ops.common.n);
             if sig_r_equals_x(self.ops, &r, &x, &z2) {
@@ -191,18 +191,6 @@ fn split_rs_asn1<'a>(
         let s = der::positive_integer(input)?.big_endian_without_leading_zero_as_input();
         Ok((r, s))
     })
-}
-
-fn twin_mul(
-    ops: &PrivateKeyOps,
-    g_scalar: &Scalar,
-    p_scalar: &Scalar,
-    p_xy: &(Elem<R>, Elem<R>),
-) -> Point {
-    // XXX: Inefficient. TODO: implement interleaved wNAF multiplication.
-    let scaled_g = ops.point_mul_base(g_scalar);
-    let scaled_p = ops.point_mul(p_scalar, p_xy);
-    ops.common.point_sum(&scaled_g, &scaled_p)
 }
 
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
