@@ -23,6 +23,7 @@
 
 #include "p256_shared.h"
 
+#include "internal.h"
 #include "../../internal.h"
 #include "./util.h"
 
@@ -473,19 +474,17 @@ void p256_point_mul_base(Limb r[3][P256_LIMBS], const Limb scalar[P256_LIMBS]) {
   fiat_p256_to_words(r[2], nq[2]);
 }
 
-#if 0
-
-static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
-                                             EC_JACOBIAN *r,
-                                             const EC_SCALAR *g_scalar,
-                                             const EC_JACOBIAN *p,
-                                             const EC_SCALAR *p_scalar) {
+void p256_point_mul_public(Limb r[3][P256_LIMBS],
+                           const Limb g_scalar[P256_LIMBS],
+                           const Limb p_scalar[P256_LIMBS],
+                           const Limb p_x[P256_LIMBS],
+                           const Limb p_y[P256_LIMBS]) {
 #define P256_WSIZE_PUBLIC 4
   // Precompute multiples of |p|. p_pre_comp[i] is (2*i+1) * |p|.
   fiat_p256_felem p_pre_comp[1 << (P256_WSIZE_PUBLIC - 1)][3];
-  fiat_p256_from_generic(p_pre_comp[0][0], &p->X);
-  fiat_p256_from_generic(p_pre_comp[0][1], &p->Y);
-  fiat_p256_from_generic(p_pre_comp[0][2], &p->Z);
+  fiat_p256_from_words(p_pre_comp[0][0], p_x);
+  fiat_p256_from_words(p_pre_comp[0][1], p_y);
+  fiat_p256_copy(p_pre_comp[0][2], fiat_p256_one);
   fiat_p256_felem p2[3];
   fiat_p256_point_double(p2[0], p2[1], p2[2], p_pre_comp[0][0],
                          p_pre_comp[0][1], p_pre_comp[0][2]);
@@ -498,7 +497,7 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
 
   // Set up the coefficients for |p_scalar|.
   int8_t p_wNAF[257];
-  ec_compute_wNAF(group, p_wNAF, p_scalar, 256, P256_WSIZE_PUBLIC);
+  ec_compute_wNAF(p_wNAF, p_scalar, P256_LIMBS, 256, P256_WSIZE_PUBLIC);
 
   // Set |ret| to the point at infinity.
   int skip = 1;  // Save some point operations.
@@ -542,7 +541,7 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
 
     int digit = p_wNAF[i];
     if (digit != 0) {
-      assert(digit & 1);
+      debug_assert_nonsecret(digit & 1);
       size_t idx = (size_t)(digit < 0 ? (-digit) >> 1 : digit >> 1);
       fiat_p256_felem *y = &p_pre_comp[idx][1], tmp;
       if (digit < 0) {
@@ -562,12 +561,10 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
     }
   }
 
-  fiat_p256_to_generic(&r->X, ret[0]);
-  fiat_p256_to_generic(&r->Y, ret[1]);
-  fiat_p256_to_generic(&r->Z, ret[2]);
+  fiat_p256_to_words(r[0], ret[0]);
+  fiat_p256_to_words(r[1], ret[1]);
+  fiat_p256_to_words(r[2], ret[2]);
 }
-
-#endif
 
 void p256_mul_mont(Limb r[P256_LIMBS], const Limb a[P256_LIMBS],
                    const Limb b[P256_LIMBS]) {

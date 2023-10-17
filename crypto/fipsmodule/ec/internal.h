@@ -68,7 +68,7 @@
 #ifndef OPENSSL_HEADER_EC_INTERNAL_H
 #define OPENSSL_HEADER_EC_INTERNAL_H
 
-#include <openssl/base.h>
+#include <ring-core/base.h>
 
 // ec_compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
 // |scalar| to |out|. |out| must have room for |bits| + 1 elements, each of
@@ -78,7 +78,6 @@
 // where at most one of any  w+1  consecutive digits is non-zero
 // with the exception that the most significant digit may be only
 // w-1 zeros away from that next non-zero digit.
-void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
-                     const EC_SCALAR *scalar, size_t bits, int w);
+void ec_compute_wNAF(int8_t *out, const BN_ULONG *scalar, size_t scalar_limbs, size_t bits, int w);
 
 #endif  // OPENSSL_HEADER_EC_INTERNAL_H

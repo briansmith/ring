@@ -119,9 +119,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     twin_mul: twin_mul_nistz256,
 
     #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
-    twin_mul: |g_scalar, p_scalar, p_xy| {
-        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy)
-    },
+    twin_mul: twin_mul_fiat,
 
     q_minus_n: Elem::from_hex("4319055358e8617b0c46353d039cdaae"),
 };
@@ -145,6 +143,28 @@ fn point_mul_base_vartime(g_scalar: &Scalar) -> Point {
         p256_point_mul_base_vartime(scaled_g.xyz.as_mut_ptr(), g_scalar.limbs.as_ptr());
     }
     scaled_g
+}
+
+#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+fn twin_mul_fiat(g_scalar: &Scalar, p_scalar: &Scalar, &(p_x, p_y): &(Elem<R>, Elem<R>)) -> Point {
+    prefixed_extern! {
+        fn p256_point_mul_public(r: *mut Limb,
+                                g_scalar: *const Limb,
+                                p_scalar: *const Limb,
+                                p_x: *const Limb,
+                                p_y: *const Limb);
+    }
+    let mut r = Point::new_at_infinity();
+    unsafe {
+        p256_point_mul_public(
+            r.xyz.as_mut_ptr(),
+            g_scalar.limbs.as_ptr(),
+            p_scalar.limbs.as_ptr(),
+            p_x.limbs.as_ptr(),
+            p_y.limbs.as_ptr(),
+        );
+    }
+    r
 }
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
