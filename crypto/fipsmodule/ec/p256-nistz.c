@@ -284,4 +284,72 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   limbs_copy(r->Z, p.Z, P256_LIMBS);
 }
 
+#if 0
+
+static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
+                                           EC_JACOBIAN *r,
+                                           const EC_SCALAR *g_scalar,
+                                           const EC_JACOBIAN *p_,
+                                           const EC_SCALAR *p_scalar) {
+  assert(p_ != NULL && p_scalar != NULL && g_scalar != NULL);
+
+  alignas(32) P256_POINT p;
+  uint8_t p_str[33];
+  OPENSSL_memcpy(p_str, g_scalar->words, 32);
+  p_str[32] = 0;
+
+  // First window
+  size_t index = 0;
+  size_t wvalue = calc_first_wvalue(&index, p_str);
+
+  // Convert |p| from affine to Jacobian coordinates. We set Z to zero if |p|
+  // is infinity and |ONE| otherwise. |p| was computed from the table, so it
+  // is infinity iff |wvalue >> 1| is zero.
+  if ((wvalue >> 1) != 0) {
+    OPENSSL_memcpy(p.X, &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1].X,
+                   sizeof(p.X));
+    OPENSSL_memcpy(p.Y, &ecp_nistz256_precomputed[0][(wvalue >> 1) - 1].Y,
+                   sizeof(p.Y));
+    OPENSSL_memcpy(p.Z, ONE, sizeof(p.Z));
+  } else {
+    OPENSSL_memset(p.X, 0, sizeof(p.X));
+    OPENSSL_memset(p.Y, 0, sizeof(p.Y));
+    OPENSSL_memset(p.Z, 0, sizeof(p.Z));
+  }
+
+  if ((wvalue & 1) == 1) {
+    ecp_nistz256_neg(p.Y, p.Y);
+  }
+
+  for (int i = 1; i < 37; i++) {
+    wvalue = calc_wvalue(&index, p_str);
+    if ((wvalue >> 1) == 0) {
+      continue;
+    }
+
+    alignas(32) P256_POINT_AFFINE t;
+    OPENSSL_memcpy(&t, &ecp_nistz256_precomputed[i][(wvalue >> 1) - 1],
+                   sizeof(t));
+    if ((wvalue & 1) == 1) {
+      ecp_nistz256_neg(t.Y, t.Y);
+    }
+
+    // Note |ecp_nistz256_point_add_affine| does not work if |p| and |t| are
+    // the same non-infinity point, so it is important that we compute the
+    // |g_scalar| term before the |p_scalar| term.
+    ecp_nistz256_point_add_affine(&p, &p, &t);
+  }
+
+  alignas(32) P256_POINT tmp;
+  ecp_nistz256_windowed_mul(group, &tmp, p_, p_scalar);
+  ecp_nistz256_point_add(&p, &p, &tmp);
+
+  assert(group->field.N.width == P256_LIMBS);
+  OPENSSL_memcpy(r->X.words, p.X, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Y.words, p.Y, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Z.words, p.Z, P256_LIMBS * sizeof(BN_ULONG));
+}
+
+#endif
+
 #endif /* defined(OPENSSL_USE_NISTZ256) */
