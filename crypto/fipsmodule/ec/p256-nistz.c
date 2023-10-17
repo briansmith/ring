@@ -232,18 +232,18 @@ static crypto_word_t calc_wvalue(size_t *index, const uint8_t p_str[33]) {
   return booth_recode_w7(wvalue);
 }
 
-void p256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
+void p256_point_mul(Limb r[3][P256_LIMBS], const Limb p_scalar[P256_LIMBS],
                         const Limb p_x[P256_LIMBS],
                         const Limb p_y[P256_LIMBS]) {
   alignas(32) P256_POINT out;
   ecp_nistz256_windowed_mul(&out, p_scalar, p_x, p_y);
 
-  limbs_copy(r->X, out.X, P256_LIMBS);
-  limbs_copy(r->Y, out.Y, P256_LIMBS);
-  limbs_copy(r->Z, out.Z, P256_LIMBS);
+  limbs_copy(r[0], out.X, P256_LIMBS);
+  limbs_copy(r[1], out.Y, P256_LIMBS);
+  limbs_copy(r[2], out.Z, P256_LIMBS);
 }
 
-void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
+void p256_point_mul_base(Limb r[3][P256_LIMBS], const Limb scalar[P256_LIMBS]) {
   P256_SCALAR_BYTES p_str;
   p256_scalar_bytes_from_limbs(p_str, scalar);
 
@@ -279,9 +279,9 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
     ecp_nistz256_point_add_affine(&p, &p, &t);
   }
 
-  limbs_copy(r->X, p.X, P256_LIMBS);
-  limbs_copy(r->Y, p.Y, P256_LIMBS);
-  limbs_copy(r->Z, p.Z, P256_LIMBS);
+  limbs_copy(r[0], p.X, P256_LIMBS);
+  limbs_copy(r[1], p.Y, P256_LIMBS);
+  limbs_copy(r[2], p.Z, P256_LIMBS);
 }
 
 void p256_point_mul_base_vartime(Limb r[3][P256_LIMBS],
