@@ -856,14 +856,14 @@ mod tests {
     #[test]
     fn p384_point_double_test() {
         prefixed_extern! {
-            fn nistz384_point_double(
+            fn p384_point_double(
                 r: *mut Limb,   // [p384::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p384::COMMON_OPS.num_limbs*3]
             );
         }
         point_double_test(
             &p384::PRIVATE_KEY_OPS,
-            nistz384_point_double,
+            p384_point_double,
             test_file!("ops/p384_point_double_tests.txt"),
         );
     }

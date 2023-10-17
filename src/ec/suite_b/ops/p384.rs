@@ -33,14 +33,14 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     elem_mul_mont: p384_elem_mul_mont,
     elem_sqr_mont: p384_elem_sqr_mont,
 
-    point_add_jacobian_impl: nistz384_point_add,
+    point_add_jacobian_impl: p384_point_add,
 };
 
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv_squared: p384_elem_inv_squared,
     point_mul_base_impl: p384_point_mul_base_impl,
-    point_mul_impl: nistz384_point_mul,
+    point_mul_impl: p384_point_mul,
 };
 
 fn p384_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
@@ -286,12 +286,12 @@ prefixed_extern! {
         b: *const Limb, // [COMMON_OPS.num_limbs]
     );
 
-    fn nistz384_point_add(
+    fn p384_point_add(
         r: *mut Limb,   // [3][COMMON_OPS.num_limbs]
         a: *const Limb, // [3][COMMON_OPS.num_limbs]
         b: *const Limb, // [3][COMMON_OPS.num_limbs]
     );
-    fn nistz384_point_mul(
+    fn p384_point_mul(
         r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
         p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         p_x: *const Limb,      // [COMMON_OPS.num_limbs]

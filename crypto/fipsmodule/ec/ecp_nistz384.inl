@@ -29,7 +29,7 @@
 #endif
 
 /* Point double: r = 2*a */
-void nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
+static void nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
   BN_ULONG S[P384_LIMBS];
   BN_ULONG M[P384_LIMBS];
   BN_ULONG Zsqr[P384_LIMBS];
@@ -74,8 +74,8 @@ void nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
 }
 
 /* Point addition: r = a+b */
-void nistz384_point_add(P384_POINT *r, const P384_POINT *a,
-                            const P384_POINT *b) {
+static void nistz384_point_add(P384_POINT *r, const P384_POINT *a,
+                               const P384_POINT *b) {
   BN_ULONG U2[P384_LIMBS], S2[P384_LIMBS];
   BN_ULONG U1[P384_LIMBS], S1[P384_LIMBS];
   BN_ULONG Z1sqr[P384_LIMBS];
@@ -174,9 +174,10 @@ static void add_precomputed_w5(P384_POINT *r, crypto_word_t wvalue,
 }
 
 /* r = p * p_scalar */
-void nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
-                            const BN_ULONG p_x[P384_LIMBS],
-                            const BN_ULONG p_y[P384_LIMBS]) {
+static void nistz384_point_mul(P384_POINT *r,
+                               const BN_ULONG p_scalar[P384_LIMBS],
+                               const Limb p_x[P384_LIMBS],
+                               const Limb p_y[P384_LIMBS]) {
   static const size_t kWindowSize = 5;
   static const crypto_word_t kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
@@ -250,6 +251,48 @@ void nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   wvalue = p_str[0];
   wvalue = (wvalue << 1) & kMask;
   add_precomputed_w5(r, wvalue, table);
+}
+
+void p384_point_double(Limb r[3][P384_LIMBS], const Limb a[3][P384_LIMBS])
+{
+  P384_POINT t;
+  limbs_copy(t.X, a[0], P384_LIMBS);
+  limbs_copy(t.Y, a[1], P384_LIMBS);
+  limbs_copy(t.Z, a[2], P384_LIMBS);
+  nistz384_point_double(&t, &t);
+  limbs_copy(r[0], t.X, P384_LIMBS);
+  limbs_copy(r[1], t.Y, P384_LIMBS);
+  limbs_copy(r[2], t.Z, P384_LIMBS);
+}
+
+void p384_point_add(Limb r[3][P384_LIMBS],
+                    const Limb a[3][P384_LIMBS],
+                    const Limb b[3][P384_LIMBS])
+{
+  P384_POINT t1;
+  limbs_copy(t1.X, a[0], P384_LIMBS);
+  limbs_copy(t1.Y, a[1], P384_LIMBS);
+  limbs_copy(t1.Z, a[2], P384_LIMBS);
+
+  P384_POINT t2;
+  limbs_copy(t2.X, b[0], P384_LIMBS);
+  limbs_copy(t2.Y, b[1], P384_LIMBS);
+  limbs_copy(t2.Z, b[2], P384_LIMBS);
+
+  nistz384_point_add(&t1, &t1, &t2);
+
+  limbs_copy(r[0], t1.X, P384_LIMBS);
+  limbs_copy(r[1], t1.Y, P384_LIMBS);
+  limbs_copy(r[2], t1.Z, P384_LIMBS);
+}
+
+void p384_point_mul(Limb r[3][P384_LIMBS], const BN_ULONG p_scalar[P384_LIMBS],
+                    const Limb p_x[P384_LIMBS], const Limb p_y[P384_LIMBS]) {
+  alignas(64) P384_POINT acc;
+  nistz384_point_mul(&acc, p_scalar, p_x, p_y);
+  limbs_copy(r[0], acc.X, P384_LIMBS);
+  limbs_copy(r[1], acc.Y, P384_LIMBS);
+  limbs_copy(r[2], acc.Z, P384_LIMBS);
 }
 
 #if defined(__GNUC__) || defined(__clang__)
