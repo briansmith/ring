@@ -284,11 +284,8 @@ void p256_point_mul_base(P256_POINT *r, const Limb scalar[P256_LIMBS]) {
   limbs_copy(r->Z, p.Z, P256_LIMBS);
 }
 
-void p256_points_mul_public(Limb r[3][P256_LIMBS],
-                            const Limb g_scalar[P256_LIMBS],
-                            const Limb p_scalar[P256_LIMBS],
-                            const Limb p_x[P256_LIMBS],
-                            const Limb p_y[P256_LIMBS]) {
+void p256_point_mul_base_vartime(Limb r[3][P256_LIMBS],
+                                 const Limb g_scalar[P256_LIMBS]) {
   alignas(32) P256_POINT p;
   uint8_t p_str[33];
   OPENSSL_memcpy(p_str, g_scalar, 32);
@@ -336,9 +333,6 @@ void p256_points_mul_public(Limb r[3][P256_LIMBS],
     ecp_nistz256_point_add_affine(&p, &p, &t);
   }
 
-  alignas(32) P256_POINT tmp;
-  ecp_nistz256_windowed_mul(&tmp, p_scalar, p_x, p_y);
-  ecp_nistz256_point_add(&p, &p, &tmp);
 
   limbs_copy(r[0], p.X, P256_LIMBS);
   limbs_copy(r[1], p.Y, P256_LIMBS);

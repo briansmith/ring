@@ -127,30 +127,24 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 };
 
 #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
-fn twin_mul_nistz256(
-    g_scalar: &Scalar,
-    p_scalar: &Scalar,
-    (p_x, p_y): &(Elem<R>, Elem<R>),
-) -> Point {
+fn twin_mul_nistz256(g_scalar: &Scalar, p_scalar: &Scalar, p_xy: &(Elem<R>, Elem<R>)) -> Point {
+    let scaled_g = point_mul_base_vartime(g_scalar);
+    let scaled_p = PRIVATE_KEY_OPS.point_mul(p_scalar, p_xy);
+    PRIVATE_KEY_OPS.common.point_sum(&scaled_g, &scaled_p)
+}
+
+#[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+fn point_mul_base_vartime(g_scalar: &Scalar) -> Point {
     prefixed_extern! {
-        fn p256_points_mul_public(r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
-                                  g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
-                                  p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
-                                  p_x: *const Limb,      // [COMMON_OPS.num_limbs]
-                                  p_y: *const Limb,      // [COMMON_OPS.num_limbs]
+        fn p256_point_mul_base_vartime(r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
+                                       g_scalar: *const Limb, // [COMMON_OPS.num_limbs]
         );
     }
-    let mut r = Point::new_at_infinity();
+    let mut scaled_g = Point::new_at_infinity();
     unsafe {
-        p256_points_mul_public(
-            r.xyz.as_mut_ptr(),
-            g_scalar.limbs.as_ptr(),
-            p_scalar.limbs.as_ptr(),
-            p_x.limbs.as_ptr(),
-            p_y.limbs.as_ptr(),
-        );
+        p256_point_mul_base_vartime(scaled_g.xyz.as_mut_ptr(), g_scalar.limbs.as_ptr());
     }
-    r
+    scaled_g
 }
 
 pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
@@ -316,4 +310,18 @@ prefixed_extern! {
         a: *const Limb, // [COMMON_OPS.num_limbs]
         rep: Limb,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(any(target_arch = "aarch64", target_arch = "x86_64"))]
+    #[test]
+    fn p256_point_mul_base_vartime_test() {
+        use super::{super::tests::point_mul_base_tests, *};
+        point_mul_base_tests(
+            &PRIVATE_KEY_OPS,
+            point_mul_base_vartime,
+            test_file!("p256_point_mul_base_tests.txt"),
+        );
+    }
 }
