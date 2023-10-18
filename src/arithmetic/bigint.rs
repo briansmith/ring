@@ -290,25 +290,7 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<
 
 // TODO: Document why this works for all Montgomery factors.
 pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
-    prefixed_extern! {
-        // `r` and `a` may alias.
-        fn LIMBS_sub_mod(
-            r: *mut Limb,
-            a: *const Limb,
-            b: *const Limb,
-            m: *const Limb,
-            num_limbs: c::size_t,
-        );
-    }
-    unsafe {
-        LIMBS_sub_mod(
-            a.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
-            b.limbs.as_ptr(),
-            m.limbs().as_ptr(),
-            m.limbs().len(),
-        );
-    }
+    limb::limbs_sub_assign_mod(&mut a.limbs, &b.limbs, m.limbs());
     a
 }
 

@@ -68,6 +68,16 @@ pub struct CommonOps {
 
 impl CommonOps {
     #[inline]
+    fn new_point(&self, x: &Elem<R>, y: &Elem<R>, z: &Elem<R>) -> Point {
+        let mut r = Point::new_at_infinity();
+        r.xyz[..self.num_limbs].copy_from_slice(&x.limbs[..self.num_limbs]);
+        r.xyz[self.num_limbs..(2 * self.num_limbs)].copy_from_slice(&y.limbs[..self.num_limbs]);
+        r.xyz[(2 * self.num_limbs)..(3 * self.num_limbs)]
+            .copy_from_slice(&z.limbs[..self.num_limbs]);
+        r
+    }
+
+    #[inline]
     pub fn elem_add<E: Encoding>(&self, a: &mut Elem<E>, b: &Elem<E>) {
         let num_limbs = self.num_limbs;
         limbs_add_assign_mod(
@@ -847,7 +857,7 @@ mod tests {
         }
         point_double_test(
             &p256::PRIVATE_KEY_OPS,
-            p256_point_double,
+            |p| unsafe_point_double(p256_point_double, p),
             test_file!("ops/p256_point_double_tests.txt"),
         );
     }
@@ -862,17 +872,28 @@ mod tests {
         }
         point_double_test(
             &p384::PRIVATE_KEY_OPS,
-            p384_point_double,
+            |p| unsafe_point_double(p384_point_double, p),
             test_file!("ops/p384_point_double_tests.txt"),
         );
     }
 
-    fn point_double_test(
-        ops: &PrivateKeyOps,
-        point_double: unsafe extern "C" fn(
+    fn unsafe_point_double(
+        f: unsafe extern "C" fn(
             r: *mut Limb,   // [ops.num_limbs*3]
             a: *const Limb, // [ops.num_limbs*3]
         ),
+        a: &Point,
+    ) -> Point {
+        let mut r = Point::new_at_infinity();
+        unsafe {
+            f(r.xyz.as_mut_ptr(), a.xyz.as_ptr());
+        }
+        r
+    }
+
+    pub(super) fn point_double_test(
+        ops: &PrivateKeyOps,
+        point_double: impl Fn(&Point) -> Point,
         test_file: test::File,
     ) {
         test::run(test_file, |section, test_case| {
@@ -881,10 +902,7 @@ mod tests {
             let a = consume_jacobian_point(ops, test_case, "a");
             let r_expected = consume_point(ops, test_case, "r");
 
-            let mut r_actual = Point::new_at_infinity();
-            unsafe {
-                point_double(r_actual.xyz.as_mut_ptr(), a.xyz.as_ptr());
-            }
+            let r_actual = point_double(&a);
 
             assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
 
@@ -1182,5 +1200,6 @@ mod tests {
 }
 
 mod elem;
+mod fallback;
 pub mod p256;
 pub mod p384;
