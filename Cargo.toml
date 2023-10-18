@@ -14,7 +14,7 @@ repository = "https://github.com/briansmith/ring"
 rust-version = "1.61.0"
 
 # Keep in sync with `links` below.
-version = "0.17.5-alpha.1"
+version = "0.17.5"
 
 # Keep in sync with `version` above.
 #
@@ -23,7 +23,7 @@ version = "0.17.5-alpha.1"
 # build.rs uses this to derive the prefix for FFI symbols and the file names
 # of the FFI libraries, so it must be a valid identifier prefix and a valid
 # filename prefix.
-links = "ring_core_0_17_5_alpha_1"
+links = "ring_core_0_17_5"
 
 include = [
     "LICENSE",
