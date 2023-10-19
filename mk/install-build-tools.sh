@@ -94,6 +94,12 @@ case $target in
 --target=loongarch64-unknown-linux-gnu)
   use_clang=1
   ;;
+--target=mips-unknown-linux-gnu)
+  install_packages \
+    gcc-mips-linux-gnu \
+    libc6-dev-mips-cross \
+    qemu-user
+  ;;
 --target=mipsel-unknown-linux-gnu)
   install_packages \
     gcc-mipsel-linux-gnu \
