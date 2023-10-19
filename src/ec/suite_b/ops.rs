@@ -33,6 +33,7 @@ pub type Scalar<E = Unencoded> = elem::Elem<N, E>;
 #[derive(Clone, Copy)]
 pub enum N {}
 
+#[derive(Clone)]
 pub struct Point {
     // The coordinates are stored in a contiguous array, where the first
     // `ops.num_limbs` elements are the X coordinate, the next
@@ -775,6 +776,7 @@ mod tests {
     fn p256_point_sum_test() {
         point_sum_test(
             &p256::PRIVATE_KEY_OPS,
+            |a, b| p256::COMMON_OPS.point_sum(a, b),
             test_file!("ops/p256_point_sum_tests.txt"),
         );
     }
@@ -783,11 +785,16 @@ mod tests {
     fn p384_point_sum_test() {
         point_sum_test(
             &p384::PRIVATE_KEY_OPS,
+            |a, b| p384::COMMON_OPS.point_sum(a, b),
             test_file!("ops/p384_point_sum_tests.txt"),
         );
     }
 
-    fn point_sum_test(ops: &PrivateKeyOps, test_file: test::File) {
+    pub(super) fn point_sum_test(
+        ops: &PrivateKeyOps,
+        point_sum: impl Fn(&Point, &Point) -> Point,
+        test_file: test::File,
+    ) {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
@@ -795,7 +802,7 @@ mod tests {
             let b = consume_jacobian_point(ops, test_case, "b");
             let r_expected = consume_point(ops, test_case, "r");
 
-            let r_actual = ops.common.point_sum(&a, &b);
+            let r_actual = point_sum(&a, &b);
             assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
 
             Ok(())
