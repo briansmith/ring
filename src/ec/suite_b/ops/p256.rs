@@ -35,6 +35,12 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     point_add_jacobian_impl: p256_point_add,
 };
 
+#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
+static GENERATOR: (Elem<R>, Elem<R>) = (
+    Elem::from_hex("18905f76a53755c679fb732b7762251075ba95fc5fedb60179e730d418a9143c"),
+    Elem::from_hex("8571ff1825885d85d2e88688dd21f3258b4ab8e4ba19e45cddf25357ce95560a"),
+);
+
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv_squared: p256_elem_inv_squared,
@@ -121,7 +127,8 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 
     #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
     twin_mul: |g_scalar, p_scalar, p_xy| {
-        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy)
+        // TODO: need to tell this to use the good point addition/doubling.
+        vartime::points_mul_vartime(&COMMON_OPS, g_scalar, &GENERATOR, p_scalar, p_xy)
     },
 
     q_minus_n: Elem::from_hex("4319055358e8617b0c46353d039cdaae"),
