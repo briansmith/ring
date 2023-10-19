@@ -25,22 +25,30 @@ pub(super) fn points_mul_vartime(
     p_scalar: &Scalar,
     p: &(Elem<R>, Elem<R>),
 ) -> Point {
-    let mut acc = point_mul_vartime(ops, g_scalar, g);
-    let [x2, y2, z2] = point_mul_vartime(ops, p_scalar, p);
-    points_add_vartime(ops, InOut::InPlace(&mut acc), &x2, &y2, &z2);
-    ops.new_point(&acc[0], &acc[1], &acc[2])
+    let mut g_wnaf: [i8; WNAF_MAX_LEN] = [0; WNAF_MAX_LEN];
+    let mut g_precomp = [[Elem::zero(); 3]; PRECOMP_SIZE];
+    let (g_wnaf, g_precomp) = prepare(ops, g_scalar, g, &mut g_wnaf, &mut g_precomp);
+
+    let mut p_wnaf: [i8; WNAF_MAX_LEN] = [0; WNAF_MAX_LEN];
+    let mut p_precomp = [[Elem::zero(); 3]; PRECOMP_SIZE];
+    let (p_wnaf, p_precomp) = prepare(ops, p_scalar, p, &mut p_wnaf, &mut p_precomp);
+
+    let r = point_mul_vartime(ops, g_wnaf, g_precomp, p_wnaf, p_precomp);
+    ops.new_point(&r[0], &r[1], &r[2])
 }
 
-fn point_mul_vartime(
+const WINDOW_BITS: u32 = 4;
+const WNAF_MAX_LEN: usize = MAX_BITS.as_usize_bits() + 1;
+const PRECOMP_SIZE: usize = 1 << (WINDOW_BITS - 1);
+
+fn prepare<'a>(
     ops: &'static CommonOps,
     a: &Scalar,
     (x, y): &(Elem<R>, Elem<R>),
-) -> [Elem<R>; 3] {
-    const WINDOW_BITS: u32 = 4;
-
+    wnaf: &'a mut [i8; WNAF_MAX_LEN],
+    precomp: &'a mut [[Elem<R>; 3]; PRECOMP_SIZE],
+) -> (&'a [i8], &'a [[Elem<R>; 3]; PRECOMP_SIZE]) {
     // Fill `precomp` with `p` and all odd multiples (1 * p, 3 * p, 5 * p, etc.).
-    const PRECOMP_SIZE: usize = 1 << (WINDOW_BITS - 1);
-    let mut precomp = [[Elem::zero(); 3]; PRECOMP_SIZE];
     precomp[0][0] = *x;
     precomp[0][1] = *y;
     precomp[0][2] = {
@@ -78,7 +86,6 @@ fn point_mul_vartime(
         );
     }
 
-    let mut wnaf: [i8; MAX_BITS.as_usize_bits() + 1] = [0; MAX_BITS.as_usize_bits() + 1];
     let order_bits = ops.order_bits().as_usize_bits();
     let wnaf = &mut wnaf[..(order_bits + 1)];
     prefixed_extern! {
@@ -95,9 +102,23 @@ fn point_mul_vartime(
         );
     }
 
+    (wnaf, precomp)
+}
+fn point_mul_vartime(
+    ops: &'static CommonOps,
+    g_wnaf: &[i8],
+    g_precomp: &[[Elem<R>; 3]; PRECOMP_SIZE],
+    p_wnaf: &[i8],
+    p_precomp: &[[Elem<R>; 3]; PRECOMP_SIZE],
+) -> [Elem<R>; 3] {
     let mut acc = PointVartime::new_at_infinity(ops);
 
-    wnaf.iter().enumerate().rev().for_each(|(i, &digit)| {
+    fn process_bit(
+        ops: &CommonOps,
+        acc: &mut PointVartime,
+        digit: i8,
+        precomp: &[[Elem<R>; 3]; PRECOMP_SIZE],
+    ) {
         if digit != 0 {
             debug_assert_eq!(digit & 1, 1);
             let neg = digit < 0;
@@ -113,10 +134,20 @@ fn point_mul_vartime(
             };
             acc.add_assign(&entry[0], y, &entry[2]);
         }
-        if i != 0 {
-            acc.double_assign();
-        }
-    });
+    }
+
+    g_wnaf
+        .iter()
+        .zip(p_wnaf)
+        .enumerate()
+        .rev()
+        .for_each(|(i, (&g_digit, &p_digit))| {
+            process_bit(ops, &mut acc, g_digit, g_precomp);
+            process_bit(ops, &mut acc, p_digit, p_precomp);
+            if i != 0 {
+                acc.double_assign();
+            }
+        });
     acc.value.unwrap_or_else(|| [Elem::zero(); 3])
 }
 
@@ -157,7 +188,24 @@ mod tests {
             test_file!("p384_point_mul_tests.txt"),
             |s, p| {
                 let ops = &p384::COMMON_OPS;
-                let [x, y, z] = point_mul_vartime(ops, s, p);
+
+                // Dummy `g_scalar`.
+                let g_scalar = Scalar::zero();
+                let mut g_wnaf = [0; WNAF_MAX_LEN];
+                let mut g_precomp = [[Elem::zero(); 3]; PRECOMP_SIZE];
+                let (g_wnaf, g_precomp) = prepare(
+                    ops,
+                    &g_scalar,
+                    &p384::GENERATOR,
+                    &mut g_wnaf,
+                    &mut g_precomp,
+                );
+
+                let mut wnaf: [i8; WNAF_MAX_LEN] = [0; WNAF_MAX_LEN];
+                let mut precomp = [[Elem::zero(); 3]; PRECOMP_SIZE];
+                let (wnaf, precomp) = prepare(ops, s, p, &mut wnaf, &mut precomp);
+
+                let [x, y, z] = point_mul_vartime(ops, g_wnaf, g_precomp, wnaf, precomp);
                 ops.new_point(&x, &y, &z)
             },
         );
