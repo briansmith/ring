@@ -312,19 +312,6 @@ pub struct PrivateScalarOps {
     pub oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
 }
 
-// XXX: Inefficient and unnecessarily depends on `PrivateKeyOps`. TODO: implement interleaved wNAF
-// multiplication.
-fn twin_mul_inefficient(
-    ops: &PrivateKeyOps,
-    g_scalar: &Scalar,
-    p_scalar: &Scalar,
-    p_xy: &(Elem<R>, Elem<R>),
-) -> Point {
-    let scaled_g = ops.point_mul_base(g_scalar);
-    let scaled_p = ops.point_mul(p_scalar, p_xy);
-    ops.common.point_sum(&scaled_g, &scaled_p)
-}
-
 // This assumes n < q < 2*n.
 pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>) -> Scalar<Unencoded> {
     let num_limbs = ops.num_limbs;
@@ -922,6 +909,7 @@ mod tests {
         point_mul_tests(
             &p256::PRIVATE_KEY_OPS,
             test_file!("ops/p256_point_mul_tests.txt"),
+            |s, p| p256::PRIVATE_KEY_OPS.point_mul(s, p),
         );
     }
 
@@ -930,10 +918,15 @@ mod tests {
         point_mul_tests(
             &p384::PRIVATE_KEY_OPS,
             test_file!("ops/p384_point_mul_tests.txt"),
+            |s, p| p384::PRIVATE_KEY_OPS.point_mul(s, p),
         );
     }
 
-    fn point_mul_tests(ops: &PrivateKeyOps, test_file: test::File) {
+    pub(super) fn point_mul_tests(
+        ops: &PrivateKeyOps,
+        test_file: test::File,
+        point_mul: impl Fn(&Scalar, &(Elem<R>, Elem<R>)) -> Point,
+    ) {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let p_scalar = consume_scalar(ops.common, test_case, "p_scalar");
@@ -944,7 +937,7 @@ mod tests {
                 TestPoint::Affine(x, y) => (x, y),
             };
             let expected_result = consume_point(ops, test_case, "r");
-            let actual_result = ops.point_mul(&p_scalar, &(x, y));
+            let actual_result = point_mul(&p_scalar, &(x, y));
             assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
             Ok(())
         })
@@ -1210,3 +1203,4 @@ mod elem;
 mod fallback;
 pub mod p256;
 pub mod p384;
+mod vartime;

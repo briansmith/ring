@@ -23,6 +23,7 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     q: Modulus {
         p: limbs_from_hex("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),
         rr: limbs_from_hex("4fffffffdfffffffffffffffefffffffbffffffff0000000000000003"),
+        // 0x1, 0x0, 0x0, 0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffe, 0x0};
     },
     n: Elem::from_hex("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"),
     a: Elem::from_hex("fffffffc00000004000000000000000000000003fffffffffffffffffffffffc"),
