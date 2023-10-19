@@ -358,20 +358,6 @@ pub struct PrivateScalarOps {
     pub oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
 }
 
-// XXX: Inefficient and unnecessarily depends on `PrivateKeyOps`. TODO: implement interleaved wNAF
-// multiplication.
-#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
-fn twin_mul_inefficient(
-    ops: &PrivateKeyOps,
-    g_scalar: &Scalar,
-    p_scalar: &Scalar,
-    p_xy: &(Elem<R>, Elem<R>),
-) -> Point {
-    let scaled_g = ops.point_mul_base(g_scalar);
-    let scaled_p = ops.point_mul(p_scalar, p_xy);
-    ops.common.point_sum(&scaled_g, &scaled_p)
-}
-
 // This assumes n < q < 2*n.
 pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>) -> Scalar<Unencoded> {
     let num_limbs = ops.num_limbs;
@@ -948,6 +934,17 @@ mod tests {
         );
     }
 
+    #[test]
+    fn p256_point_mul_p_test() {
+        point_mul_tests(
+            &p256::PRIVATE_KEY_OPS,
+            test_file!("ops/p256_point_mul_tests.txt"),
+            |p_scalar, p| {
+                let g_scalar = Scalar::zero();
+                points_mul_vartime(&p256::COMMON_OPS, &g_scalar, &p256::GENERATOR, p_scalar, p)
+            },
+        );
+    }
     #[test]
     fn p384_point_mul_test() {
         point_mul_tests(
