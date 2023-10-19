@@ -50,8 +50,6 @@ impl Point {
     }
 }
 
-const ONE: Elem<Unencoded> = Elem::from_hex("1");
-
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
     pub num_limbs: usize,
@@ -86,6 +84,7 @@ impl CommonOps {
 
     #[inline]
     pub fn elem_unencoded(&self, a: &Elem<R>) -> Elem<Unencoded> {
+        const ONE: Elem<Unencoded> = Elem::from_hex("1");
         self.elem_product(a, &ONE)
     }
 
