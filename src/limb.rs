@@ -350,6 +350,23 @@ pub(crate) fn limbs_add_assign_mod(a: &mut [Limb], b: &[Limb], m: &[Limb]) {
     unsafe { LIMBS_add_mod(a.as_mut_ptr(), a.as_ptr(), b.as_ptr(), m.as_ptr(), m.len()) }
 }
 
+// a := m - a, assuming a < m.
+#[inline]
+pub(crate) fn limbs_sub_from_assign_vartime(a: &mut [Limb], m: &[Limb]) {
+    debug_assert_eq!(a.len(), m.len());
+    if a.iter().any(|&x| x != 0) {
+        prefixed_extern! {
+            // `r` and `a` may alias.
+            fn LIMBS_sub_from_assign(
+                r: *mut Limb,
+                a: *const Limb,
+                num_limbs: c::size_t,
+            );
+        }
+        unsafe { LIMBS_sub_from_assign(a.as_mut_ptr(), m.as_ptr(), m.len()) }
+    }
+}
+
 #[inline]
 pub(crate) fn limbs_sub_mod(r: &mut [Limb], a: &[Limb], b: &[Limb], m: &[Limb]) {
     debug_assert_eq!(r.len(), m.len());

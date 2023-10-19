@@ -12,6 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use crate::bits::BitLength;
 use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, c, error, limb::*};
 use core::marker::PhantomData;
 
@@ -78,6 +79,10 @@ impl CommonOps {
         r
     }
 
+    pub fn order_bits(&self) -> BitLength {
+        BitLength::from_usize_bits(self.num_limbs * LIMB_BITS)
+    }
+
     #[inline]
     pub fn elem_add<E: Encoding>(&self, a: &mut Elem<E>, b: &Elem<E>) {
         let num_limbs = self.num_limbs;
@@ -86,6 +91,12 @@ impl CommonOps {
             &b.limbs[..num_limbs],
             &self.q.p[..num_limbs],
         );
+    }
+
+    #[inline]
+    pub fn elem_negate_vartime<E: Encoding>(&self, a: &mut Elem<E>) {
+        let num_limbs = self.num_limbs;
+        limbs_sub_from_assign_vartime(&mut a.limbs[..num_limbs], &self.q.p[..num_limbs]);
     }
 
     #[inline]

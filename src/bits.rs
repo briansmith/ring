@@ -49,7 +49,7 @@ impl BitLength {
 
     /// The number of bits this bit length represents, as a `usize`.
     #[inline]
-    pub fn as_usize_bits(&self) -> usize {
+    pub const fn as_usize_bits(&self) -> usize {
         self.0
     }
 

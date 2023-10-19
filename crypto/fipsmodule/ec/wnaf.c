@@ -65,47 +65,44 @@
  * Sheueling Chang Shantz and Douglas Stebila of Sun Microsystems
  * Laboratories. */
 
-#include <openssl/ec.h>
-
-#include <assert.h>
-#include <string.h>
-
-#include <openssl/bn.h>
-#include <openssl/err.h>
-#include <openssl/mem.h>
-#include <openssl/thread.h>
-
-#include "internal.h"
 #include "../bn/internal.h"
 #include "../../internal.h"
+#include "../../limbs/limbs.h"
 
+static int is_bit_set(const Limb limbs[], size_t num_limbs, size_t bit) {
+    size_t i = bit / LIMB_BITS;
+    if (i >= num_limbs) {
+        return 0;
+    }
+    size_t shift = bit % LIMB_BITS;
+    return (limbs[i] >> shift) & 1;
+}
 
 // This file implements the wNAF-based interleaving multi-exponentiation method
 // at:
 //   http://link.springer.com/chapter/10.1007%2F3-540-45537-X_13
 //   http://www.bmoeller.de/pdf/TI-01-08.multiexp.pdf
 
-void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
-                     const EC_SCALAR *scalar, size_t bits, int w) {
+void ec_compute_wNAF(int8_t *out, const Limb scalar[], size_t scalar_limbs, size_t bits, int w) {
   // 'int8_t' can represent integers with absolute values less than 2^7.
-  assert(0 < w && w <= 7);
-  assert(bits != 0);
+  debug_assert_nonsecret(0 < w && w <= 7);
+  debug_assert_nonsecret(bits != 0);
   int bit = 1 << w;         // 2^w, at most 128
   int next_bit = bit << 1;  // 2^(w+1), at most 256
   int mask = next_bit - 1;  // at most 255
 
-  int window_val = scalar->words[0] & mask;
+  int window_val = ((int)scalar[0]) & mask;
   for (size_t j = 0; j < bits + 1; j++) {
-    assert(0 <= window_val && window_val <= next_bit);
+    debug_assert_nonsecret(0 <= window_val && window_val <= next_bit);
     int digit = 0;
     if (window_val & 1) {
-      assert(0 < window_val && window_val < next_bit);
+      debug_assert_nonsecret(0 < window_val && window_val < next_bit);
       if (window_val & bit) {
         digit = window_val - next_bit;
         // We know -next_bit < digit < 0 and window_val - digit = next_bit.
 
         // modified wNAF
-        if (j + w + 1 >= bits) {
+        if (j + ((size_t)w) + 1 >= bits) {
           // special case for generating modified wNAFs:
           // no new bits will be added into window_val,
           // so using a positive digit here will decrease
@@ -125,24 +122,23 @@ void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
       // For modified window NAFs, it may also be 2^w.
       //
       // See the comments above for the derivation of each of these bounds.
-      assert(window_val == 0 || window_val == next_bit || window_val == bit);
-      assert(-bit < digit && digit < bit);
+      debug_assert_nonsecret(window_val == 0 || window_val == next_bit || window_val == bit);
+      debug_assert_nonsecret(-bit < digit && digit < bit);
 
       // window_val was odd, so digit is also odd.
-      assert(digit & 1);
+      debug_assert_nonsecret(digit & 1);
     }
 
-    out[j] = digit;
+    out[j] = (int8_t)digit;
 
     // Incorporate the next bit. Previously, |window_val| <= |next_bit|, so if
     // we shift and add at most one copy of |bit|, this will continue to hold
     // afterwards.
     window_val >>= 1;
-    window_val += bit * bn_is_bit_set_words(scalar->words, group->order.N.width,
-                                            j + w + 1);
-    assert(window_val <= next_bit);
+    window_val += bit * is_bit_set(scalar, scalar_limbs, j + (size_t)w + 1);
+    debug_assert_nonsecret(window_val <= next_bit);
   }
 
   // bits + 1 entries should be sufficient to consume all bits.
-  assert(window_val == 0);
+  debug_assert_nonsecret(window_val == 0);
 }
