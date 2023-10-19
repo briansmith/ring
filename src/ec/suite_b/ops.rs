@@ -12,7 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::limbs_from_hex, arithmetic::montgomery::*, c, error, limb::*};
+use crate::{
+    arithmetic::{limbs_from_hex, montgomery::*},
+    bits::BitLength,
+    c, error,
+    limb::*,
+};
 use core::marker::PhantomData;
 
 pub use self::elem::*;
@@ -33,6 +38,7 @@ pub type Scalar<E = Unencoded> = elem::Elem<N, E>;
 #[derive(Clone, Copy)]
 pub enum N {}
 
+#[derive(Clone, Copy)]
 pub struct Point {
     // The coordinates are stored in a contiguous array, where the first
     // `ops.num_limbs` elements are the X coordinate, the next
@@ -62,11 +68,15 @@ pub struct CommonOps {
     // In all cases, `r`, `a`, and `b` may all alias each other.
     elem_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
     elem_sqr_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
-
+    point_double_jacobian_impl: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
     point_add_jacobian_impl: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
 }
 
 impl CommonOps {
+    fn order_bits(&self) -> BitLength {
+        BitLength::from_usize_bits(self.num_limbs * LIMB_BITS)
+    }
+
     #[inline]
     pub fn elem_add<E: Encoding>(&self, a: &mut Elem<E>, b: &Elem<E>) {
         let num_limbs = self.num_limbs;
@@ -125,6 +135,36 @@ impl CommonOps {
             Err(error::Unspecified)
         } else {
             Ok(())
+        }
+    }
+
+    fn point_new_affine(&self, x: &Elem<R>, y: &Elem<R>) -> Point {
+        // `z` is 1 in the Montgomery domain.
+        let z = {
+            let mut acc = Elem::zero();
+            acc.limbs[0] = 1;
+            let mut rr = Elem::zero();
+            rr.limbs[..self.num_limbs].copy_from_slice(&self.q.rr[..self.num_limbs]);
+
+            self.elem_mul(&mut acc, &rr);
+            acc
+        };
+
+        let mut r = Point::new_at_infinity();
+        r.xyz[..self.num_limbs].copy_from_slice(&x.limbs[..self.num_limbs]);
+        r.xyz[self.num_limbs..(2 * self.num_limbs)].copy_from_slice(&y.limbs[..self.num_limbs]);
+        r.xyz[(2 * self.num_limbs)..(3 * self.num_limbs)]
+            .copy_from_slice(&z.limbs[..self.num_limbs]);
+        r
+    }
+
+    fn point_double_assign(&self, r: &mut Point) {
+        unsafe { (self.point_double_jacobian_impl)(r.xyz.as_mut_ptr(), r.xyz.as_ptr()) }
+    }
+
+    fn point_add_assign(&self, r: &mut Point, a: &Point) {
+        unsafe {
+            (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), r.xyz.as_ptr(), a.xyz.as_ptr())
         }
     }
 
@@ -303,6 +343,7 @@ pub struct PrivateScalarOps {
 
 // XXX: Inefficient and unnecessarily depends on `PrivateKeyOps`. TODO: implement interleaved wNAF
 // multiplication.
+#[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
 fn twin_mul_inefficient(
     ops: &PrivateKeyOps,
     g_scalar: &Scalar,
@@ -839,52 +880,28 @@ mod tests {
 
     #[test]
     fn p256_point_double_test() {
-        prefixed_extern! {
-            fn p256_point_double(
-                r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
-                a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
-            );
-        }
         point_double_test(
             &p256::PRIVATE_KEY_OPS,
-            p256_point_double,
             test_file!("ops/p256_point_double_tests.txt"),
         );
     }
 
     #[test]
     fn p384_point_double_test() {
-        prefixed_extern! {
-            fn p384_point_double(
-                r: *mut Limb,   // [p384::COMMON_OPS.num_limbs*3]
-                a: *const Limb, // [p384::COMMON_OPS.num_limbs*3]
-            );
-        }
         point_double_test(
             &p384::PRIVATE_KEY_OPS,
-            p384_point_double,
             test_file!("ops/p384_point_double_tests.txt"),
         );
     }
 
-    fn point_double_test(
-        ops: &PrivateKeyOps,
-        point_double: unsafe extern "C" fn(
-            r: *mut Limb,   // [ops.num_limbs*3]
-            a: *const Limb, // [ops.num_limbs*3]
-        ),
-        test_file: test::File,
-    ) {
+    fn point_double_test(ops: &PrivateKeyOps, test_file: test::File) {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
-            let a = consume_jacobian_point(ops, test_case, "a");
+            let mut r_actual = consume_jacobian_point(ops, test_case, "a");
             let r_expected = consume_point(ops, test_case, "r");
 
-            let mut r_actual = Point::new_at_infinity();
-            unsafe {
-                point_double(r_actual.xyz.as_mut_ptr(), a.xyz.as_ptr());
-            }
+            ops.common.point_double_assign(&mut r_actual);
 
             assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
 
@@ -897,6 +914,7 @@ mod tests {
         point_mul_tests(
             &p256::PRIVATE_KEY_OPS,
             test_file!("ops/p256_point_mul_tests.txt"),
+            |s, p| p256::PRIVATE_KEY_OPS.point_mul(s, p),
         );
     }
 
@@ -905,10 +923,15 @@ mod tests {
         point_mul_tests(
             &p384::PRIVATE_KEY_OPS,
             test_file!("ops/p384_point_mul_tests.txt"),
+            |s, p| p384::PRIVATE_KEY_OPS.point_mul(s, p),
         );
     }
 
-    fn point_mul_tests(ops: &PrivateKeyOps, test_file: test::File) {
+    pub(super) fn point_mul_tests(
+        ops: &PrivateKeyOps,
+        test_file: test::File,
+        point_mul: impl Fn(&Scalar, &(Elem<R>, Elem<R>)) -> Point,
+    ) {
         test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let p_scalar = consume_scalar(ops.common, test_case, "p_scalar");
@@ -919,7 +942,7 @@ mod tests {
                 TestPoint::Affine(x, y) => (x, y),
             };
             let expected_result = consume_point(ops, test_case, "r");
-            let actual_result = ops.point_mul(&p_scalar, &(x, y));
+            let actual_result = point_mul(&p_scalar, &(x, y));
             assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
             Ok(())
         })
@@ -1184,3 +1207,4 @@ mod tests {
 mod elem;
 pub mod p256;
 pub mod p384;
+mod vartime;

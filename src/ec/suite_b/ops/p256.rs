@@ -30,7 +30,7 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
     elem_mul_mont: p256_mul_mont,
     elem_sqr_mont: p256_sqr_mont,
-
+    point_double_jacobian_impl: p256_point_double,
     point_add_jacobian_impl: p256_point_add,
 };
 
@@ -292,6 +292,10 @@ prefixed_extern! {
         r: *mut Limb,   // [3][COMMON_OPS.num_limbs]
         a: *const Limb, // [3][COMMON_OPS.num_limbs]
         b: *const Limb, // [3][COMMON_OPS.num_limbs]
+    );
+    fn p256_point_double(
+         r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
+         a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
     );
     fn p256_point_mul(
         r: *mut Limb,          // [3][COMMON_OPS.num_limbs]

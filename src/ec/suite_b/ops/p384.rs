@@ -32,9 +32,14 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 ,
     elem_mul_mont: p384_elem_mul_mont,
     elem_sqr_mont: p384_elem_sqr_mont,
-
+    point_double_jacobian_impl: p384_point_double,
     point_add_jacobian_impl: p384_point_add,
 };
+
+static GENERATOR: (Elem<R>, Elem<R>) = (
+    Elem::from_hex("4d3aadc2299e1513812ff723614ede2b6454868459a30eff879c3afc541b4d6e20e378e2a0d6ce383dd0756649c0b528"),
+    Elem::from_hex("2b78abc25a15c5e9dd8002263969a840c6c3521968f4ffd98bade7562e83b050a1bfa8bf7bb4a9ac23043dad4b03a4fe"),
+);
 
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
@@ -101,11 +106,6 @@ fn p384_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
 
 fn p384_point_mul_base_impl(a: &Scalar) -> Point {
     // XXX: Not efficient. TODO: Precompute multiples of the generator.
-    const GENERATOR: (Elem<R>, Elem<R>) = (
-        Elem::from_hex("4d3aadc2299e1513812ff723614ede2b6454868459a30eff879c3afc541b4d6e20e378e2a0d6ce383dd0756649c0b528"),
-        Elem::from_hex("2b78abc25a15c5e9dd8002263969a840c6c3521968f4ffd98bade7562e83b050a1bfa8bf7bb4a9ac23043dad4b03a4fe"),
-    );
-
     PRIVATE_KEY_OPS.point_mul(a, &GENERATOR)
 }
 
@@ -123,7 +123,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
     twin_mul: |g_scalar, p_scalar, p_xy| {
-        twin_mul_inefficient(&PRIVATE_KEY_OPS, g_scalar, p_scalar, p_xy)
+        vartime::points_mul_vartime(&COMMON_OPS, g_scalar, &GENERATOR, p_scalar, p_xy)
     },
 
     q_minus_n: Elem::from_hex("389cb27e0bc8d21fa7e5f24cb74f58851313e696333ad68c"),
@@ -290,6 +290,10 @@ prefixed_extern! {
         r: *mut Limb,   // [3][COMMON_OPS.num_limbs]
         a: *const Limb, // [3][COMMON_OPS.num_limbs]
         b: *const Limb, // [3][COMMON_OPS.num_limbs]
+    );
+    fn p384_point_double(
+        r: *mut Limb,   // [p384::COMMON_OPS.num_limbs*3]
+        a: *const Limb, // [p384::COMMON_OPS.num_limbs*3]
     );
     fn p384_point_mul(
         r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
