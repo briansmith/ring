@@ -479,7 +479,7 @@ prefixed_extern! {
 #[cfg(test)]
 mod tests {
     extern crate alloc;
-    use super::*;
+    use super::{vartime::points_mul_vartime, *};
     use crate::test;
     use alloc::{format, vec, vec::Vec};
 
@@ -919,6 +919,19 @@ mod tests {
     }
 
     #[test]
+    fn p256_point_mul_g_test() {
+        point_mul_tests(
+            &p256::PRIVATE_KEY_OPS,
+            test_file!("ops/p256_point_mul_tests.txt"),
+            |g_scalar, g| {
+                let p_scalar = Scalar::zero();
+                let p = (Elem::zero(), Elem::zero());
+                points_mul_vartime(&p256::COMMON_OPS, g_scalar, g, &p_scalar, &p)
+            },
+        );
+    }
+
+    #[test]
     fn p384_point_mul_test() {
         point_mul_tests(
             &p384::PRIVATE_KEY_OPS,
@@ -927,7 +940,32 @@ mod tests {
         );
     }
 
-    pub(super) fn point_mul_tests(
+    #[test]
+    fn p384_point_mul_g_test() {
+        point_mul_tests(
+            &p384::PRIVATE_KEY_OPS,
+            test_file!("ops/p384_point_mul_tests.txt"),
+            |g_scalar, g| {
+                let p_scalar = Scalar::zero();
+                let p = (Elem::zero(), Elem::zero());
+                points_mul_vartime(&p384::COMMON_OPS, g_scalar, g, &p_scalar, &p)
+            },
+        );
+    }
+
+    #[test]
+    fn p384_point_mul_p_test() {
+        point_mul_tests(
+            &p384::PRIVATE_KEY_OPS,
+            test_file!("ops/p384_point_mul_tests.txt"),
+            |s, p| {
+                let g_scalar = Scalar::zero();
+                points_mul_vartime(&p384::COMMON_OPS, &g_scalar, &p384::GENERATOR, s, p)
+            },
+        );
+    }
+
+    fn point_mul_tests(
         ops: &PrivateKeyOps,
         test_file: test::File,
         point_mul: impl Fn(&Scalar, &(Elem<R>, Elem<R>)) -> Point,

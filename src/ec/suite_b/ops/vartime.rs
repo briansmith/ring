@@ -21,23 +21,21 @@ use crate::{
 pub(super) fn points_mul_vartime(
     ops: &'static CommonOps,
     g_scalar: &Scalar,
-    g: &(Elem<R>, Elem<R>),
+    (gx, gy): &(Elem<R>, Elem<R>),
     p_scalar: &Scalar,
-    p: &(Elem<R>, Elem<R>),
+    (px, py): &(Elem<R>, Elem<R>),
 ) -> Point {
-    let a_scaled = point_mul_vartime(ops, g_scalar, g);
-    let b_scaled = point_mul_vartime(ops, p_scalar, p);
-    ops.point_sum(&a_scaled, &b_scaled)
-}
-
-fn point_mul_vartime(ops: &'static CommonOps, a: &Scalar, (x, y): &(Elem<R>, Elem<R>)) -> Point {
-    let p = ops.point_new_affine(x, y);
+    let g = ops.point_new_affine(gx, gy);
+    let p = ops.point_new_affine(px, py);
 
     let mut acc = PointVartime::new_at_infinity(ops);
 
     // Iterate from the highest bit to the lowest bit.
     (0..ops.order_bits().as_usize_bits()).rev().for_each(|i| {
-        if is_bit_set(&a.limbs, i) {
+        if is_bit_set(&g_scalar.limbs, i) {
+            acc.add_assign(&g);
+        }
+        if is_bit_set(&p_scalar.limbs, i) {
             acc.add_assign(&p);
         }
         if i > 0 {
@@ -83,29 +81,4 @@ fn is_bit_set(limbs: &[Limb], bit: usize) -> bool {
     let shift = bit % LIMB_BITS;
     let bit = (limb >> shift) & 1;
     bit != 0
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{
-        super::{p256, p384, tests::point_mul_tests},
-        *,
-    };
-    #[test]
-    fn p256_point_mul_test() {
-        point_mul_tests(
-            &p256::PRIVATE_KEY_OPS,
-            test_file!("p256_point_mul_tests.txt"),
-            |s, p| point_mul_vartime(&p256::COMMON_OPS, s, p),
-        );
-    }
-
-    #[test]
-    fn p384_point_mul_test() {
-        point_mul_tests(
-            &p384::PRIVATE_KEY_OPS,
-            test_file!("p384_point_mul_tests.txt"),
-            |s, p| point_mul_vartime(&p384::COMMON_OPS, s, p),
-        );
-    }
 }
