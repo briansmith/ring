@@ -175,7 +175,7 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
-  kyber/keccak.c
+  keccak/keccak.c
   kyber/kyber.c
   lhash/lhash.c
   mem.c

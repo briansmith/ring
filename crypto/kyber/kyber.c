@@ -21,6 +21,7 @@
 #include <openssl/rand.h>
 
 #include "../internal.h"
+#include "../keccak/internal.h"
 #include "./internal.h"
 
 
@@ -283,7 +284,7 @@ static void scalar_inner_product(scalar *out, const vector *lhs,
 // operates on public inputs.
 static void scalar_from_keccak_vartime(scalar *out,
                                        struct BORINGSSL_keccak_st *keccak_ctx) {
-  assert(keccak_ctx->offset == 0);
+  assert(keccak_ctx->squeeze_offset == 0);
   assert(keccak_ctx->rate_bytes == 168);
   static_assert(168 % 3 == 0, "block and coefficient boundaries do not align");
 
@@ -354,8 +355,8 @@ static void matrix_expand(matrix *out, const uint8_t rho[32]) {
       input[32] = i;
       input[33] = j;
       struct BORINGSSL_keccak_st keccak_ctx;
-      BORINGSSL_keccak_init(&keccak_ctx, input, sizeof(input),
-                            boringssl_shake128);
+      BORINGSSL_keccak_init(&keccak_ctx, boringssl_shake128);
+      BORINGSSL_keccak_absorb(&keccak_ctx, input, sizeof(input));
       scalar_from_keccak_vartime(&out->v[i][j], &keccak_ctx);
     }
   }
