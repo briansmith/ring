@@ -20,6 +20,7 @@ use crate::{
     limb::LIMB_BYTES,
 };
 use alloc::boxed::Box;
+use core::num::NonZeroU64;
 
 /// An RSA Public Key.
 #[derive(Clone)]
@@ -137,14 +138,23 @@ impl PublicKey {
     ///
     /// This is constant-time with respect to `base` only.
     pub(super) fn exponentiate_elem(&self, base: bigint::Elem<N>) -> bigint::Elem<N> {
+        // The exponent was already checked to be at least 3.
+        let exponent_without_low_bit = NonZeroU64::try_from(self.e.value().get() & !1).unwrap();
+        // The exponent was already checked to be odd.
+        debug_assert_ne!(exponent_without_low_bit, self.e.value());
+
         let n = self.n.value();
 
-        let base = bigint::elem_mul(n.oneRR().as_ref(), base, n);
+        let base_r = bigint::elem_mul(n.oneRR().as_ref(), base.clone(), n);
+
         // During RSA public key operations the exponent is almost always either
         // 65537 (0b10000000000000001) or 3 (0b11), both of which have a Hamming
         // weight of 2. The maximum bit length and maximum Hamming weight of the
         // exponent is bounded by the value of `PublicExponent::MAX`.
-        bigint::elem_exp_vartime(base, self.e.value(), &n.as_partial()).into_unencoded(n)
+        let acc = bigint::elem_exp_vartime(base_r, exponent_without_low_bit, &n.as_partial());
+
+        // Now do the multiplication for the low bit and convert out of the Montgomery domain.
+        bigint::elem_mul(&base, acc, n)
     }
 }
 
