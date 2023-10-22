@@ -82,7 +82,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[ARM], "crypto/chacha/asm/chacha-armv4.pl"),
     (&[ARM], "crypto/curve25519/asm/x25519-asm-arm.S"),
     (&[ARM], "crypto/fipsmodule/modes/asm/ghash-armv4.pl"),
-    (&[ARM], "crypto/poly1305/poly1305_arm.c"),
+    (&[ARM], "crypto/poly1305/poly1305.c"), // For Windows ARM32 only
     (&[ARM], "crypto/poly1305/poly1305_arm_asm.S"),
     (&[ARM], "crypto/fipsmodule/sha/asm/sha256-armv4.pl"),
     (&[ARM], "crypto/fipsmodule/sha/asm/sha512-armv4.pl"),
@@ -233,10 +233,10 @@ const ASM_TARGETS: &[AsmTarget] = &[
     AsmTarget {
         oss: &[WINDOWS],
         arch: "arm",
-        perlasm_format: "win64",
+        perlasm_format: "win32",
         asm_extension: "S",
         preassemble: false,
-    }
+    },
 ];
 
 struct AsmTarget {
@@ -446,8 +446,17 @@ fn build_c_code(
 
     generate_prefix_symbols_asm_headers(out_dir, ring_core_prefix).unwrap();
 
+    let is_win_arm32 = target.arch == ARM && target.os == WINDOWS;
     let (asm_srcs, obj_srcs) = if let Some(asm_target) = asm_target {
-        let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target);
+        let perlasm_src_dsts = perlasm_src_dsts(asm_dir, asm_target)
+            .into_iter()
+            .filter(|(src, _)| {
+                if !is_win_arm32 {
+                    return true;
+                }
+                !src.to_string_lossy().contains("armx")
+            })
+            .collect::<Vec<_>>();
 
         if !use_pregenerated {
             perlasm(&perlasm_src_dsts[..], asm_target);
@@ -485,6 +494,18 @@ fn build_c_code(
                 }
             }
             true
+        })
+        .filter(|p| {
+            let file_name = p.file_name().unwrap().to_string_lossy();
+            if file_name.contains("poly1305.c") {
+                return is_win_arm32;
+            }
+            if !is_win_arm32 {
+                return true;
+            }
+            !["poly1305"]
+                .into_iter()
+                .any(|keyword| file_name.contains(keyword))
         })
         .collect::<Vec<_>>();
 

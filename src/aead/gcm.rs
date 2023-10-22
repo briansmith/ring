@@ -53,7 +53,7 @@ impl Key {
 
             #[cfg(any(
                 target_arch = "aarch64",
-                target_arch = "arm",
+                all(target_arch = "arm", not(target_os = "windows")),
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
@@ -154,7 +154,7 @@ impl Context {
 
             #[cfg(any(
                 target_arch = "aarch64",
-                target_arch = "arm",
+                all(target_arch = "arm", not(target_os = "windows")),
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
@@ -206,7 +206,7 @@ impl Context {
         match detect_implementation(self.cpu_features) {
             #[cfg(any(
                 target_arch = "aarch64",
-                target_arch = "arm",
+                all(target_arch = "arm", not(target_os = "windows")),
                 target_arch = "x86_64",
                 target_arch = "x86"
             ))]
@@ -298,7 +298,7 @@ struct ContextInner {
 enum Implementation {
     #[cfg(any(
         target_arch = "aarch64",
-        target_arch = "arm",
+        all(target_arch = "arm", not(target_os = "windows")),
         target_arch = "x86_64",
         target_arch = "x86"
     ))]
@@ -324,7 +324,7 @@ fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
 
     #[cfg(any(
         target_arch = "aarch64",
-        target_arch = "arm",
+        all(target_arch = "arm", not(target_os = "windows")),
         target_arch = "x86_64",
         target_arch = "x86"
     ))]

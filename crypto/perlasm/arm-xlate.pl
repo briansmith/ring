@@ -31,7 +31,7 @@ my $fpu = sub {
 };
 my $hidden = sub {
     if ($flavour =~ /ios/)	{ ".private_extern\t".join(',',@_); }
-    elsif ($flavour =~ /win64/) { ""; }
+    elsif ($flavour =~ /win/) { ""; }
     else			{ ".hidden\t".join(',',@_); }
 };
 my $comm = sub {
