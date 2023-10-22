@@ -152,13 +152,6 @@ fn cpp_flags(compiler: &cc::Tool) -> &'static [&'static str] {
             "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
             "/wd5045", /* C5045: Compiler will insert Spectre mitigation for memory load if
                         * /Qspectre switch specified */
-            "/wd4163", // C4163: '_addcarry_u32': not available as an intrinsic function
-            "/wd4013", // C4013: '_addcarry_u32' undefined; assuming extern returning int
-            "/wd4242", // C4242: '=': conversion from 'int' to 'Carry', possible loss of data
-            "/wd4244", // C4244: '=': conversion from 'int' to 'Carry', possible loss of data
-            "/wd4068", // C4068: unknown pragma 'GCC'
-            "/wd4146", // C4146: unary minus operator applied to unsigned type, result still unsigned
-            "/wd4132", // C4132: 'zero': const object should be initialized
         ];
         MSVC_FLAGS
     }
