@@ -122,6 +122,11 @@ void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
   }
 }
 
+// r := a - r.
+void LIMBS_sub_from_assign(Limb r[], const Limb a[], size_t num_limbs) {
+    (void)limbs_sub(r, a, r, num_limbs);
+}
+
 void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs) {
   Limb underflow =

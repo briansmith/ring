@@ -149,7 +149,10 @@ impl CommonOps {
             self.elem_mul(&mut acc, &rr);
             acc
         };
+        self.point_new_jacobian(x, y, &z)
+    }
 
+    fn point_new_jacobian(&self, x: &Elem<R>, y: &Elem<R>, z: &Elem<R>) -> Point {
         let mut r = Point::new_at_infinity();
         r.xyz[..self.num_limbs].copy_from_slice(&x.limbs[..self.num_limbs]);
         r.xyz[self.num_limbs..(2 * self.num_limbs)].copy_from_slice(&y.limbs[..self.num_limbs]);
@@ -173,6 +176,20 @@ impl CommonOps {
         unsafe {
             (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr(), b.xyz.as_ptr())
         }
+        r
+    }
+
+    fn point_neg_vartime(&self, a: &Point) -> Point {
+        let mut r = *a;
+        let y = &mut r.xyz[self.num_limbs..(2 * self.num_limbs)];
+        // Negate y.
+        // TODO(perf): The way this is used, `y` is never zero; none of the
+        // curves we support have a point with y == 0, and the caller never
+        // calls this on the point at infinity.
+        let is_nonzero = !y.iter().all(|&limb| limb == 0);
+        if is_nonzero {
+            limbs_sub_from_assign(y, &self.q.p[..self.num_limbs]);
+        };
         r
     }
 
