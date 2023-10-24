@@ -34,6 +34,12 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     point_add_jacobian_impl: p256_point_add,
 };
 
+#[cfg(test)]
+pub(super) static GENERATOR: (Elem<R>, Elem<R>) = (
+    Elem::from_hex("18905f76a53755c679fb732b7762251075ba95fc5fedb60179e730d418a9143c"),
+    Elem::from_hex("8571ff1825885d85d2e88688dd21f3258b4ab8e4ba19e45cddf25357ce95560a"),
+);
+
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv_squared: p256_elem_inv_squared,

@@ -1,7 +1,3 @@
-# Similar to p256_point_mul_tests.txt, but tests point decoding and point
-# encoding too. In particular, the inputs coordinates here are not Montgomery
-# encoded, but the inputs in p256_point_mul_tests.txt are.
-
 # Regression Test from https://github.com/golang/go/issues/20040
 
 p_scalar = 2a265f8bcbdcaf94d58519141e578124cb40d64a501fba9c11847b28965bc737

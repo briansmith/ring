@@ -36,6 +36,11 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     point_add_jacobian_impl: p384_point_add,
 };
 
+pub(super) static GENERATOR: (Elem<R>, Elem<R>) = (
+    Elem::from_hex("4d3aadc2299e1513812ff723614ede2b6454868459a30eff879c3afc541b4d6e20e378e2a0d6ce383dd0756649c0b528"),
+    Elem::from_hex("2b78abc25a15c5e9dd8002263969a840c6c3521968f4ffd98bade7562e83b050a1bfa8bf7bb4a9ac23043dad4b03a4fe"),
+);
+
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv_squared: p384_elem_inv_squared,
@@ -101,11 +106,6 @@ fn p384_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
 
 fn p384_point_mul_base_impl(a: &Scalar) -> Point {
     // XXX: Not efficient. TODO: Precompute multiples of the generator.
-    const GENERATOR: (Elem<R>, Elem<R>) = (
-        Elem::from_hex("4d3aadc2299e1513812ff723614ede2b6454868459a30eff879c3afc541b4d6e20e378e2a0d6ce383dd0756649c0b528"),
-        Elem::from_hex("2b78abc25a15c5e9dd8002263969a840c6c3521968f4ffd98bade7562e83b050a1bfa8bf7bb4a9ac23043dad4b03a4fe"),
-    );
-
     PRIVATE_KEY_OPS.point_mul(a, &GENERATOR)
 }
 

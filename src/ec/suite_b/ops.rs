@@ -892,37 +892,24 @@ mod tests {
         });
     }
 
+    /// TODO: We should be testing `point_mul` with points other than the generator.
     #[test]
     fn p256_point_mul_test() {
-        point_mul_tests(
+        point_mul_base_tests(
             &p256::PRIVATE_KEY_OPS,
-            test_file!("ops/p256_point_mul_tests.txt"),
+            |s| p256::PRIVATE_KEY_OPS.point_mul(s, &p256::GENERATOR),
+            test_file!("ops/p256_point_mul_base_tests.txt"),
         );
     }
 
+    /// TODO: We should be testing `point_mul` with points other than the generator.
     #[test]
     fn p384_point_mul_test() {
-        point_mul_tests(
+        point_mul_base_tests(
             &p384::PRIVATE_KEY_OPS,
-            test_file!("ops/p384_point_mul_tests.txt"),
+            |s| p384::PRIVATE_KEY_OPS.point_mul(s, &p384::GENERATOR),
+            test_file!("ops/p384_point_mul_base_tests.txt"),
         );
-    }
-
-    fn point_mul_tests(ops: &PrivateKeyOps, test_file: test::File) {
-        test::run(test_file, |section, test_case| {
-            assert_eq!(section, "");
-            let p_scalar = consume_scalar(ops.common, test_case, "p_scalar");
-            let (x, y) = match consume_point(ops, test_case, "p") {
-                TestPoint::Infinity => {
-                    panic!("can't be inf.");
-                }
-                TestPoint::Affine(x, y) => (x, y),
-            };
-            let expected_result = consume_point(ops, test_case, "r");
-            let actual_result = ops.point_mul(&p_scalar, &(x, y));
-            assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
-            Ok(())
-        })
     }
 
     #[test]
