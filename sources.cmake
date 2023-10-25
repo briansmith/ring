@@ -410,6 +410,7 @@ set(
   pki/path_builder_pkits_unittest.cc
   pki/path_builder_unittest.cc
   pki/path_builder_verify_certificate_chain_unittest.cc
+  pki/pem_unittest.cc
   pki/signature_algorithm_unittest.cc
   pki/simple_path_builder_delegate_unittest.cc
   pki/string_util_unittest.cc

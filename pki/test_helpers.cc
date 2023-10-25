@@ -415,7 +415,7 @@ bool ReadVerifyCertChainTestFromFile(const std::string& file_path_ascii,
 std::string ReadTestFileToString(const std::string& file_path_ascii) {
   // Compute the full path, relative to the src/ directory.
   fillins::FilePath src_root;
-  bssl::fillins::PathService::Get(fillins::DIR_SOURCE_ROOT, &src_root);
+  bssl::fillins::PathService::Get(fillins::BSSL_TEST_DATA_ROOT, &src_root);
   fillins::FilePath filepath = src_root.AppendASCII(file_path_ascii);
 
   // Read the full contents of the file.
