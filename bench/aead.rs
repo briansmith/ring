@@ -13,8 +13,27 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![allow(missing_docs)]
 
-use criterion::criterion_main;
-use ring::{aead, error};
+use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use ring::{
+    aead::{self, BoundKey},
+    error,
+    rand::{SecureRandom, SystemRandom},
+};
+
+static ALGORITHMS: &[(&str, &aead::Algorithm)] = &[
+    ("aes128_gcm", &aead::AES_128_GCM),
+    ("aes256_gcm", &aead::AES_256_GCM),
+    ("chacha20_poly1305", &aead::CHACHA20_POLY1305),
+];
+
+static RECORD_LENGTHS: &[usize] = &[
+    TLS12_FINISHED_LEN,
+    TLS13_FINISHED_LEN,
+    16,
+    // ~1 packet of data in TLS.
+    1350,
+    8192,
+];
 
 // All the AEADs we're testing use 96-bit nonces.
 pub const NONCE: [u8; 96 / 8] = [0u8; 96 / 8];
@@ -26,21 +45,12 @@ const TLS12_FINISHED_LEN: usize = 12;
 // Hash used for the handshake," which is usually SHA-256.
 const TLS13_FINISHED_LEN: usize = 32;
 
-// In TLS 1.2, 13 bytes of additional data are used for AEAD cipher suites.
-const TLS12_AD: [u8; 13] = [
+// In TLS, 13 bytes of additional data are used for AEAD cipher suites.
+const TLS_AD: &[u8; 13] = &[
     23, // Type: application_data
     3, 3, // Version = TLS 1.2.
     0x12, 0x34, // Length = 0x1234.
     0, 0, 0, 0, 0, 0, 0, 1, // Record #1
-];
-
-// In TLS 1.3, 5 bytes of additional data are used for AEAD cihper suites.
-const TLS13_AD: [u8; 5] = [
-    0x17, // app data type
-    0x3,  // version
-    0x3,  // ..
-    0x0,  // Length
-    0x7,  // ..
 ];
 
 struct NonceSequence(u64);
@@ -59,143 +69,76 @@ impl aead::NonceSequence for NonceSequence {
     }
 }
 
-macro_rules! function_bench_name {
-    ( $benchmark_name:ident, $algorithm:expr, $operation:ident) => {{
-        const FUNC_NAME_BASE: &str = concat!(
-            "aead_",
-            stringify!($operation),
-            "_",
-            stringify!($benchmark_name),
-            "_",
-            stringify!($algorithm)
-        );
+fn seal_in_place_separate_tag(c: &mut Criterion) {
+    let rng = SystemRandom::new();
 
-        FUNC_NAME_BASE.replace("&aead::", "")
-    }};
+    for ((alg_name, algorithm), record_len) in ALGORITHMS.iter().zip(RECORD_LENGTHS.iter()) {
+        c.bench_with_input(
+            bench_id("seal_in_place_separate_tag", alg_name, *record_len),
+            record_len,
+            |b, record_len| {
+                let mut key_bytes = vec![0u8; algorithm.key_len()];
+                rng.fill(&mut key_bytes).unwrap();
+                let unbound_key = aead::UnboundKey::new(algorithm, &key_bytes).unwrap();
+                let mut key = aead::SealingKey::new(unbound_key, NonceSequence::new());
+
+                let mut in_out = vec![0u8; *record_len];
+
+                b.iter(|| -> Result<(), ring::error::Unspecified> {
+                    let aad = aead::Aad::from(black_box(TLS_AD));
+                    let _tag = key.seal_in_place_separate_tag(aad, &mut in_out).unwrap();
+                    Ok(())
+                })
+            },
+        );
+    }
 }
 
-macro_rules! bench {
-    ( $benchmark_name:ident, $algorithm:expr, $chunk_len:expr, $ad:expr ) => {
-        pub(super) fn $benchmark_name(c: &mut criterion::Criterion) {
-            use super::{NonceSequence, NONCE};
-            use criterion::{black_box, BatchSize};
-            use ring::{
-                aead::{self, BoundKey},
-                rand::{SecureRandom, SystemRandom},
-            };
+fn open_in_place(c: &mut Criterion) {
+    let rng = SystemRandom::new();
 
-            let rng = SystemRandom::new();
-
-            let mut key_bytes = vec![0u8; $algorithm.key_len()];
-            rng.fill(&mut key_bytes).unwrap();
-
-            {
-                let key = aead::UnboundKey::new($algorithm, &key_bytes).unwrap();
-                let mut key = aead::SealingKey::new(key, NonceSequence::new());
-
-                let mut in_out = black_box(vec![0u8; $chunk_len + $algorithm.tag_len()]);
-
-                c.bench_function(
-                    &function_bench_name!($benchmark_name, $algorithm, seal),
-                    |b| {
-                        b.iter(|| -> Result<(), ring::error::Unspecified> {
-                            let aad = aead::Aad::from(black_box($ad));
-                            let _tag = key.seal_in_place_separate_tag(aad, &mut in_out)?;
-                            Ok(())
-                        })
-                    },
-                );
-            }
-
-            {
-                let key =
-                    aead::LessSafeKey::new(aead::UnboundKey::new($algorithm, &key_bytes).unwrap());
+    for ((alg_name, algorithm), record_len) in ALGORITHMS.iter().zip(RECORD_LENGTHS.iter()) {
+        c.bench_with_input(
+            bench_id("open_in_place", alg_name, *record_len),
+            record_len,
+            |b, _record_len| {
+                let mut key_bytes = vec![0u8; algorithm.key_len()];
+                rng.fill(&mut key_bytes).unwrap();
+                let unbound_key = aead::UnboundKey::new(algorithm, &key_bytes).unwrap();
+                let key = aead::LessSafeKey::new(unbound_key);
 
                 let ciphertext = {
                     let nonce = aead::Nonce::assume_unique_for_key(NONCE);
-                    let mut in_out = vec![0u8; $chunk_len + $algorithm.tag_len()];
-                    let aad = aead::Aad::from($ad);
+                    let aad = aead::Aad::from(&TLS_AD);
+                    let mut in_out = vec![0u8; *record_len];
                     key.seal_in_place_append_tag(nonce, aad, &mut in_out)
                         .unwrap();
                     in_out
                 };
-
                 let num_batches = (core::cmp::max(1, 8192 / ciphertext.len()) * 10) as u64;
 
-                c.bench_function(
-                    &function_bench_name!($benchmark_name, $algorithm, open),
-                    |b| {
-                        b.iter_batched(
-                            || ciphertext.clone(),
-                            |mut ciphertext| -> Result<(), ring::error::Unspecified> {
-                                // Optimizes out
-                                let nonce = aead::Nonce::assume_unique_for_key(NONCE);
+                b.iter_batched(
+                    || ciphertext.clone(),
+                    |mut ciphertext| -> Result<(), ring::error::Unspecified> {
+                        // Optimizes out
+                        let nonce = aead::Nonce::assume_unique_for_key(NONCE);
 
-                                let aad = aead::Aad::from(black_box($ad));
-                                let _result = key.open_in_place(nonce, aad, &mut ciphertext)?;
+                        let aad = aead::Aad::from(black_box(&TLS_AD));
+                        let _result = key.open_in_place(nonce, aad, &mut ciphertext)?;
 
-                                Ok(())
-                            },
-                            BatchSize::NumBatches(num_batches),
-                        )
+                        Ok(())
                     },
-                );
-            }
-        }
-    };
+                    BatchSize::NumBatches(num_batches),
+                )
+            },
+        );
+    }
 }
 
-macro_rules! benches {
-    ( $name:ident, $algorithm:expr ) => {
-        mod $name {
-            use criterion::criterion_group;
-
-            // A TLS 1.2 finished message.
-            bench!(
-                tls12_finished,
-                $algorithm,
-                super::TLS12_FINISHED_LEN,
-                super::TLS12_AD
-            );
-
-            // A TLS 1.3 finished message.
-            bench!(
-                tls13_finished,
-                $algorithm,
-                super::TLS13_FINISHED_LEN,
-                super::TLS13_AD
-            );
-
-            // For comparison with BoringSSL.
-            bench!(tls12_16, $algorithm, 16, super::TLS12_AD);
-
-            // ~1 packet of data in TLS.
-            bench!(tls12_1350, $algorithm, 1350, super::TLS12_AD);
-            bench!(tls13_1350, $algorithm, 1350, super::TLS13_AD);
-
-            // For comparison with BoringSSL.
-            bench!(tls12_8192, $algorithm, 8192, super::TLS12_AD);
-            bench!(tls13_8192, $algorithm, 8192, super::TLS13_AD);
-
-            criterion_group!(
-                $name,
-                tls12_finished,
-                tls13_finished,
-                tls12_16,
-                tls12_1350,
-                tls13_1350,
-                tls12_8192,
-                tls13_8192
-            );
-        }
-
-        // Export Criterion benchmark groups
-        pub use $name::*;
-    };
+fn bench_id(func_name: &str, alg_name: &str, record_len: usize) -> BenchmarkId {
+    BenchmarkId::new(format!("aead::{}::{}", alg_name, func_name), record_len)
 }
 
-benches!(aes_128_gcm, &aead::AES_128_GCM);
-benches!(aes_256_gcm, &aead::AES_256_GCM);
-benches!(chacha20_poly1305, &aead::CHACHA20_POLY1305);
+criterion_group!(aead, seal_in_place_separate_tag, open_in_place);
 
-criterion_main!(aes_128_gcm, aes_256_gcm, chacha20_poly1305);
+criterion_main!(aead);
