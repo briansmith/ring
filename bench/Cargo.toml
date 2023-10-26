@@ -16,9 +16,9 @@ harness = false
 path = "aead.rs"
 
 [[bench]]
-name = "x25519"
+name = "agreement"
 harness = false
-path = "x25519.rs"
+path = "agreement.rs"
 
 [[bench]]
 name = "ecdsa"
