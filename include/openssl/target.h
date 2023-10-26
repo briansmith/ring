@@ -55,10 +55,22 @@
 #elif defined(__myriad2__)
 #define OPENSSL_32_BIT
 #else
-// Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
-// little-endian architectures. Functions will not produce the correct answer
-// on other systems. Run the crypto_test binary, notably
-// crypto/compiler_test.cc, before adding a new architecture.
+// The list above enumerates the platforms that BoringSSL supports. For these
+// platforms we keep a reasonable bar of not breaking them: automated test
+// coverage, for one, but also we need access to these types for machines for
+// fixing them.
+//
+// However, we know that anything that seems to work will soon be expected
+// to work and, quickly, the implicit expectation is that every machine will
+// always work. So this list serves to mark the boundary of what we guarantee.
+// Of course, you can run the code any many more machines, but then you're
+// taking on the burden of fixing it and, if you're doing that, then you must
+// be able to carry local patches. In which case patching this list is trivial.
+//
+// BoringSSL will only possibly work on standard 32-bit and 64-bit
+// two's-complement, little-endian architectures. Functions will not produce
+// the correct answer on other systems. Run the crypto_test binary, notably
+// crypto/compiler_test.cc, before trying a new architecture.
 #error "Unknown target CPU"
 #endif
 
