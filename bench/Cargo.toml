@@ -19,3 +19,8 @@ path = "aead.rs"
 name = "x25519"
 harness = false
 path = "x25519.rs"
+
+[[bench]]
+name = "ecdsa"
+harness = false
+path = "ecdsa.rs"
