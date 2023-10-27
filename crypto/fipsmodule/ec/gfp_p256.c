@@ -23,17 +23,19 @@ typedef Limb Scalar[P256_LIMBS];
 
 #include "../bn/internal.h"
 
+static const BN_ULONG N[P256_LIMBS] = {
+  TOBN(0xf3b9cac2, 0xfc632551),
+  TOBN(0xbce6faad, 0xa7179e84),
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0xffffffff, 0)
+};
+
+static const BN_ULONG N_N0[] = {
+  BN_MONT_CTX_N0(0xccd1c8aa, 0xee00bc4f)
+};
+
 void p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
-  static const BN_ULONG N[] = {
-    TOBN(0xf3b9cac2, 0xfc632551),
-    TOBN(0xbce6faad, 0xa7179e84),
-    TOBN(0xffffffff, 0xffffffff),
-    TOBN(0xffffffff, 0x00000000),
-  };
-  static const BN_ULONG N_N0[] = {
-    BN_MONT_CTX_N0(0xccd1c8aa, 0xee00bc4f)
-  };
   /* XXX: Inefficient. TODO: optimize with dedicated multiplication routine. */
   bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
 }

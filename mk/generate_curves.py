@@ -16,7 +16,7 @@
 
 from textwrap import wrap
 
-curve_template = """
+rs_template = """
 // Copyright 2016-2023 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
@@ -243,8 +243,11 @@ import sys
 def whole_bit_length(p, limb_bits):
     return (p.bit_length() + limb_bits - 1) // limb_bits * limb_bits
 
+def to_montgomery_value(x, p, limb_bits):
+    return (x * 2**whole_bit_length(p, limb_bits)) % p
+
 def to_montgomery_(x, p, limb_bits):
-    value = (x * 2**whole_bit_length(p, limb_bits)) % p
+    value = to_montgomery_value(x, p, limb_bits)
     return '"%x"' % value
 
 def to_montgomery(x, p):
@@ -296,25 +299,16 @@ def modinv(a, m):
 def format_curve_name(g):
     return "p%d" % g["q"].bit_length()
 
-def format_prime_curve(g):
+def generate_rs(g, out_dir):
     q = g["q"]
     n = g["n"]
-    if g["a"] != -3:
-        raise ValueError("Only curves where a == -3 are supported.")
-    if g["cofactor"] != 1:
-        raise ValueError("Only curves with cofactor 1 are supported.")
-    if q != g["q_formula"]:
-        raise ValueError("Polynomial representation of q doesn't match the "
-                         "literal version given in the specification.")
-    if n != g["n_formula"]:
-        raise ValueError("Polynomial representation of n doesn't match the "
-                         "literal version given in the specification.")
+
     name = format_curve_name(g)
 
     q_minus_3 = "\\\n//      ".join(wrap(hex(q - 3), 66))
     n_minus_2 = "\\\n//      ".join(wrap(hex(n - 2), 66))
 
-    return curve_template % {
+    output = rs_template % {
         "bits": g["q"].bit_length(),
         "name": name,
         "q" : q,
@@ -330,6 +324,133 @@ def format_prime_curve(g):
         "oneRR_mod_n": rr(n),
         "n_minus_2": n_minus_2,
     }
+
+    out_path = os.path.join(out_dir, "%s.rs" % name)
+    with open(out_path, "wb") as f:
+        f.write(output.encode("utf-8"))
+    subprocess.run(["rustfmt", out_path])
+
+c_template = """
+/* Copyright 2016-2023 Brian Smith.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+
+#include "../../limbs/limbs.h"
+#include "../bn/internal.h"
+#include "../../internal.h"
+
+#include "../../limbs/limbs.inl"
+
+typedef Limb Elem[P%(bits)d_LIMBS];
+typedef Limb ScalarMont[P%(bits)d_LIMBS];
+typedef Limb Scalar[P%(bits)d_LIMBS];
+
+static const BN_ULONG Q[P%(bits)d_LIMBS] = {
+  %(q)s
+};
+
+static const BN_ULONG N[P%(bits)d_LIMBS] = {
+  %(n)s
+};
+
+static const BN_ULONG ONE[P%(bits)d_LIMBS] = {
+  %(q_one)s
+};
+
+static const Elem Q_PLUS_1_SHR_1 = {
+  %(q_plus_1_shr_1)s
+};
+
+static const BN_ULONG Q_N0[] = {
+  %(q_n0)s
+};
+
+static const BN_ULONG N_N0[] = {
+  %(n_n0)s
+};
+
+"""
+
+# Given a number |x|, return a generator of a sequence |a| such that
+#
+#     x == a[0] + a[1]*2**limb_bits + ...
+#
+def little_endian_limbs(x):
+    if x < 0:
+        raise ValueError("x must be positive");
+    if x == 0:
+        yield [0]
+        return
+
+    while x != 0:
+        x, digit = divmod(x, 2**64)
+        yield digit
+
+def format_bn(x, tobn):
+    def format_limb(val):
+        if val < 10:
+            return "%d" % val
+        else:
+            return "0x%x" % val
+    hi = format_limb(x // (2**32))
+    lo = format_limb(x % (2**32))
+    return "%s(%s, %s)" % (tobn, hi, lo)
+
+tobn = lambda limb: format_bn(limb, "TOBN")
+bn_mont_ctx_n0 = lambda limb: format_bn(limb, "BN_MONT_CTX_N0")
+
+def format_big_int(x, limb_count, f = tobn):
+    limbs = list(little_endian_limbs(x))
+    limbs += (limb_count - len(limbs)) * [0]
+    return ",\n  ".join([f(limb) for limb in limbs])
+
+def generate_c(g, out_dir):
+    q = g["q"]
+    n = g["n"]
+
+    name = format_curve_name(g)
+    limb_bits = 64
+    limb_count = (q.bit_length() + limb_bits - 1) // limb_bits
+
+    output = c_template % {
+        "bits": q.bit_length(),
+        "q" : format_big_int(q, limb_count),
+        "q_n0": format_big_int(modinv(-q, 2**limb_bits), 1, bn_mont_ctx_n0),
+        "q_one" : format_big_int(to_montgomery_value(1, q, limb_bits), limb_count),
+        "q_plus_1_shr_1": format_big_int((q + 1) >> 1, limb_count),
+        "n" : format_big_int(n, limb_count),
+        "n_n0": format_big_int(modinv(-n, 2**64), 1, bn_mont_ctx_n0),
+    }
+
+    out_path = os.path.join(out_dir, "gfp_%s.c" % name)
+    with open(out_path, "wb") as f:
+        f.write(output.encode("utf-8"))
+
+def generate(g, out_dir):
+    if g["a"] != -3:
+        raise ValueError("Only curves where a == -3 are supported.")
+    if g["cofactor"] != 1:
+        raise ValueError("Only curves with cofactor 1 are supported.")
+    if g["q"] != g["q_formula"]:
+        raise ValueError("Polynomial representation of q doesn't match the "
+                         "literal version given in the specification.")
+    if g["n"] != g["n_formula"]:
+        raise ValueError("Polynomial representation of n doesn't match the "
+                         "literal version given in the specification.")
+
+    generate_rs(g, out_dir)
+    generate_c(g, out_dir)
+
 
 # The curve parameters are from
 # https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf.
@@ -377,14 +498,7 @@ p521 = {
 import os
 import subprocess
 
-def generate_prime_curve_file(g, out_dir):
-    code = format_prime_curve(g)
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "%s.rs" % format_curve_name(g))
-    with open(out_path, "wb") as f:
-        f.write(code.encode("utf-8"))
-    subprocess.run(["rustfmt", out_path])
-
-
+out_dir = "target/curves"
+os.makedirs(out_dir, exist_ok=True)
 for curve in [p256, p384, p521]:
-    generate_prime_curve_file(curve, "target/curves")
+    generate(curve, out_dir)
