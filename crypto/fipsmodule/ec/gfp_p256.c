@@ -24,10 +24,12 @@ typedef Limb Scalar[P256_LIMBS];
 #include "../bn/internal.h"
 
 static const BN_ULONG N[P256_LIMBS] = {
-  TOBN(0xf3b9cac2, 0xfc632551),
-  TOBN(0xbce6faad, 0xa7179e84),
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0xffffffff, 0)
+#if defined(OPENSSL_64_BIT)
+  0xf3b9cac2fc632551, 0xbce6faada7179e84, 0xffffffffffffffff, 0xffffffff00000000
+#else
+  0xfc632551, 0xf3b9cac2, 0xa7179e84, 0xbce6faad, 0xffffffff, 0xffffffff, 0,
+  0xffffffff
+#endif
 };
 
 static const BN_ULONG N_N0[] = {
