@@ -356,19 +356,19 @@ typedef Limb ScalarMont[P%(bits)d_LIMBS];
 typedef Limb Scalar[P%(bits)d_LIMBS];
 
 static const BN_ULONG Q[P%(bits)d_LIMBS] = {
-  %(q)s
+%(q)s
 };
 
 static const BN_ULONG N[P%(bits)d_LIMBS] = {
-  %(n)s
+%(n)s
 };
 
 static const BN_ULONG ONE[P%(bits)d_LIMBS] = {
-  %(q_one)s
+%(q_one)s
 };
 
 static const Elem Q_PLUS_1_SHR_1 = {
-  %(q_plus_1_shr_1)s
+%(q_plus_1_shr_1)s
 };
 
 static const BN_ULONG Q_N0[] = {
@@ -385,7 +385,7 @@ static const BN_ULONG N_N0[] = {
 #
 #     x == a[0] + a[1]*2**limb_bits + ...
 #
-def little_endian_limbs(x):
+def little_endian_limbs(x, limb_bits):
     if x < 0:
         raise ValueError("x must be positive");
     if x == 0:
@@ -393,43 +393,56 @@ def little_endian_limbs(x):
         return
 
     while x != 0:
-        x, digit = divmod(x, 2**64)
+        x, digit = divmod(x, 2**limb_bits)
         yield digit
 
-def format_bn(x, tobn):
-    def format_limb(val):
-        if val < 10:
-            return "%d" % val
-        else:
-            return "0x%x" % val
-    hi = format_limb(x // (2**32))
-    lo = format_limb(x % (2**32))
-    return "%s(%s, %s)" % (tobn, hi, lo)
+def format_limb(x):
+    if x < 10:
+        return "%d" % x
+    else:
+        return "0x%x" % x
 
-tobn = lambda limb: format_bn(limb, "TOBN")
-bn_mont_ctx_n0 = lambda limb: format_bn(limb, "BN_MONT_CTX_N0")
+def format_big_int_(x, limb_count, limb_bits):
+    num_limbs = limb_count(limb_bits)
+    limbs = list(little_endian_limbs(x(limb_bits), limb_bits))
+    limbs += (num_limbs - len(limbs)) * [0]
+    return "\n  ".join(wrap(", ".join([format_limb(limb) for limb in limbs]), 80))
 
-def format_big_int(x, limb_count, f = tobn):
-    limbs = list(little_endian_limbs(x))
-    limbs += (limb_count - len(limbs)) * [0]
-    return ",\n  ".join([f(limb) for limb in limbs])
+def format_big_int(x, limb_count):
+    big = format_big_int_(x, limb_count, 64)
+    small = format_big_int_(x, limb_count, 32)
+    return """#if defined(OPENSSL_64_BIT)
+  %s
+#else
+  %s
+#endif""" % (big, small)
+
+def format_n0(p):
+    value = modinv(-p, 2**64)
+    hi = value // (2**32)
+    lo = value % (2**32)
+    return "BN_MONT_CTX_N0(%s, %s)" % (format_limb(hi), format_limb(lo))
+
+def const(value):
+    return lambda _limb_bits: value
+
+def big_int_limbs(p):
+    return lambda limb_bits: (p.bit_count() + limb_bits - 1) // limb_bits
 
 def generate_c(g, out_dir):
     q = g["q"]
     n = g["n"]
 
     name = format_curve_name(g)
-    limb_bits = 64
-    limb_count = (q.bit_length() + limb_bits - 1) // limb_bits
 
     output = c_template % {
         "bits": q.bit_length(),
-        "q" : format_big_int(q, limb_count),
-        "q_n0": format_big_int(modinv(-q, 2**limb_bits), 1, bn_mont_ctx_n0),
-        "q_one" : format_big_int(to_montgomery_value(1, q, limb_bits), limb_count),
-        "q_plus_1_shr_1": format_big_int((q + 1) >> 1, limb_count),
-        "n" : format_big_int(n, limb_count),
-        "n_n0": format_big_int(modinv(-n, 2**64), 1, bn_mont_ctx_n0),
+        "q" : format_big_int(const(q), big_int_limbs(q)),
+        "q_n0": format_n0(q),
+        "q_one" : format_big_int(lambda limb_bits: to_montgomery_value(1, q, limb_bits), big_int_limbs(q)),
+        "q_plus_1_shr_1": format_big_int(const((q + 1) >> 1), big_int_limbs(q)),
+        "n" : format_big_int(const(n), big_int_limbs(q)),
+        "n_n0": format_n0(n),
     }
 
     out_path = os.path.join(out_dir, "gfp_%s.c" % name)

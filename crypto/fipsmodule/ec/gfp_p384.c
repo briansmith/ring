@@ -30,39 +30,41 @@ typedef Limb ScalarMont[P384_LIMBS];
 typedef Limb Scalar[P384_LIMBS];
 
 static const BN_ULONG Q[P384_LIMBS] = {
-  TOBN(0, 0xffffffff),
-  TOBN(0xffffffff, 0),
-  TOBN(0xffffffff, 0xfffffffe),
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0xffffffff, 0xffffffff)
+#if defined(OPENSSL_64_BIT)
+  0xffffffff, 0xffffffff00000000, 0xfffffffffffffffe, 0xffffffffffffffff,
+  0xffffffffffffffff, 0xffffffffffffffff
+#else
+  0xffffffff, 0, 0, 0xffffffff, 0xfffffffe, 0xffffffff, 0xffffffff, 0xffffffff,
+  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
+#endif
 };
 
 static const BN_ULONG N[P384_LIMBS] = {
-  TOBN(0xecec196a, 0xccc52973),
-  TOBN(0x581a0db2, 0x48b0a77a),
-  TOBN(0xc7634d81, 0xf4372ddf),
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0xffffffff, 0xffffffff)
+#if defined(OPENSSL_64_BIT)
+  0xecec196accc52973, 0x581a0db248b0a77a, 0xc7634d81f4372ddf, 0xffffffffffffffff,
+  0xffffffffffffffff, 0xffffffffffffffff
+#else
+  0xccc52973, 0xecec196a, 0x48b0a77a, 0x581a0db2, 0xf4372ddf, 0xc7634d81,
+  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
+#endif
 };
 
 static const BN_ULONG ONE[P384_LIMBS] = {
-  TOBN(0xffffffff, 1),
-  TOBN(0, 0xffffffff),
-  TOBN(0, 1),
-  TOBN(0, 0),
-  TOBN(0, 0),
-  TOBN(0, 0)
+#if defined(OPENSSL_64_BIT)
+  0xffffffff00000001, 0xffffffff, 1, 0, 0
+#else
+  1, 0xffffffff, 0xffffffff, 0, 1, 0, 0, 0, 0, 0
+#endif
 };
 
 static const Elem Q_PLUS_1_SHR_1 = {
-  TOBN(0, 0x80000000),
-  TOBN(0x7fffffff, 0x80000000),
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0x7fffffff, 0xffffffff)
+#if defined(OPENSSL_64_BIT)
+  0x80000000, 0x7fffffff80000000, 0xffffffffffffffff, 0xffffffffffffffff,
+  0xffffffffffffffff, 0x7fffffffffffffff
+#else
+  0x80000000, 0, 0x80000000, 0x7fffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+  0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0x7fffffff
+#endif
 };
 
 static const BN_ULONG Q_N0[] = {
