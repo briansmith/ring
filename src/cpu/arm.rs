@@ -25,9 +25,60 @@ fn detect_features() -> u32 {
     use libc::c_ulong;
 
     // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
-    // across all Android/Linux targets, e.g. musl.
+    // across all Android/Linux targets, e.g. uclibc.
+    // If weak linking of extern symbols becomes available, this code could
+    // choose to dynamically fall back to the procfs version below.
+    #[cfg(not(target_env = "uclibc"))]
     extern "C" {
         fn getauxval(type_: c_ulong) -> c_ulong;
+    }
+
+    #[cfg(not(target_env = "uclibc"))]
+    fn getauxval_safe(type_: c_ulong) -> c_ulong {
+        // safety: getauxval seems to have no safety concerns
+        unsafe { getauxval(type_) }
+    }
+
+    // Provide a compatible implementation for uclibc based on procfs.
+    #[cfg(all(target_env = "uclibc"))]
+    fn getauxval_safe(type_: c_ulong) -> c_ulong {
+        let fd = unsafe {
+            // safety: static string has interned NUL terminator
+            libc::open(b"/proc/self/auxv\0".as_ptr(), libc::O_RDONLY)
+        };
+        if fd == -1 {
+            return 0;
+        }
+        const AUXV_LEN: usize = core::mem::size_of::<c_ulong>();
+
+        let val = 'done: loop {
+            let mut keyval = [0u8; AUXV_LEN * 2];
+            let mut read = 0;
+            let total = core::mem::size_of_val(&keyval);
+            while read < total {
+                let block = &mut keyval[read..];
+                let cnt = unsafe {
+                    // safety: memory block length is managed by rust.
+                    libc::read(fd, block.as_mut_ptr() as *mut libc::c_void, block.len())
+                };
+                if cnt <= 0 {
+                    break 'done 0;
+                }
+                read += cnt as usize;
+            }
+            let key = c_ulong::from_ne_bytes(keyval[0..AUXV_LEN].try_into().unwrap());
+            let val = c_ulong::from_ne_bytes(keyval[AUXV_LEN..].try_into().unwrap());
+            if key == type_ {
+                break 'done val;
+            }
+        };
+
+        let _ = unsafe {
+            // safety: fd was valid above, so it is still valid.
+            libc::close(fd)
+        };
+
+        val
     }
 
     const AT_HWCAP: c_ulong = 16;
@@ -38,7 +89,7 @@ fn detect_features() -> u32 {
     #[cfg(target_arch = "arm")]
     const HWCAP_NEON: c_ulong = 1 << 12;
 
-    let caps = unsafe { getauxval(AT_HWCAP) };
+    let caps = getauxval_safe(AT_HWCAP);
 
     // We assume NEON is available on AARCH64 because it is a required
     // feature.
@@ -61,7 +112,7 @@ fn detect_features() -> u32 {
         #[cfg(target_arch = "arm")]
         let caps = {
             const AT_HWCAP2: c_ulong = 26;
-            unsafe { getauxval(AT_HWCAP2) }
+            getauxval_safe(AT_HWCAP2)
         };
 
         const HWCAP_AES: c_ulong = 1 << 0 + OFFSET;
