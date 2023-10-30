@@ -111,6 +111,7 @@
 
 #include <ring-core/base.h> // Must be first.
 
+#include "ring-core/string_polyfill.h"
 #include "ring-core/check.h"
 
 #if defined(__clang__)
@@ -139,10 +140,6 @@
 #else
 #define RING_CORE_POINTLESS_ARRAY_CONST_CAST(cast) cast
 #endif
-
-// `uint8_t` isn't guaranteed to be 'unsigned char' and only 'char' and
-// 'unsigned char' are allowed to alias according to ISO C.
-typedef unsigned char aliasing_uint8_t;
 
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
@@ -387,39 +384,20 @@ static inline uint64_t CRYPTO_bswap8(uint64_t x) {
 }
 #endif
 
-#if !defined(RING_CORE_NOSTDLIBINC)
-#include <string.h>
-#endif
-
 static inline void *OPENSSL_memcpy(void *dst, const void *src, size_t n) {
-#if !defined(RING_CORE_NOSTDLIBINC)
   if (n == 0) {
     return dst;
   }
-  return memcpy(dst, src, n);
-#else
-  aliasing_uint8_t *d = dst;
-  const aliasing_uint8_t *s = src;
-  for (size_t i = 0; i < n; ++i) {
-    d[i] = s[i];
-  }
-  return dst;
-#endif
+
+  return RING_memcpy(dst, src, n);
 }
 
 static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
-#if !defined(RING_CORE_NOSTDLIBINC)
   if (n == 0) {
     return dst;
   }
-  return memset(dst, c, n);
-#else
-  aliasing_uint8_t *d = dst;
-  for (size_t i = 0; i < n; ++i) {
-    d[i] = (aliasing_uint8_t)c;
-  }
-  return dst;
-#endif
+
+  return RING_memset(dst, c, n);
 }
 
 

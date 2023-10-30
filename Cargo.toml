@@ -115,6 +115,7 @@ include = [
     "include/ring-core/check.h",
     "include/ring-core/mem.h",
     "include/ring-core/poly1305.h",
+    "include/ring-core/string_polyfill.h",
     "include/ring-core/target.h",
     "include/ring-core/type_check.h",
     "src/**/*.rs",
