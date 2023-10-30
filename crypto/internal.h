@@ -111,6 +111,7 @@
 
 #include <ring-core/base.h> // Must be first.
 
+#include "ring-core/arm_arch.h"
 #include "ring-core/check.h"
 
 #if defined(__clang__)
