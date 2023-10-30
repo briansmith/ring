@@ -1,7 +1,9 @@
+#include <openssl/base.h>
+#include "../../crypto/internal.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <immintrin.h>
-#include <string.h>
 
 typedef uint64_t fe4[4];
 typedef uint8_t fiat_uint1;
@@ -468,7 +470,7 @@ __attribute__((target("adx,bmi2")))
 void x25519_scalar_mult_adx(uint8_t out[32], const uint8_t scalar[32],
                             const uint8_t point[32]) {
   uint8_t e[32];
-  memcpy(e, scalar, 32);
+  OPENSSL_memcpy(e, scalar, 32);
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;

@@ -1,3 +1,4 @@
+#include <openssl/base.h>
 #include "../../crypto/internal.h"
 #if !defined(OPENSSL_NO_ASM) && defined(__GNUC__) && defined(__x86_64__)
 void fiat_p256_adx_mul(uint64_t*, const uint64_t*, const uint64_t*);
