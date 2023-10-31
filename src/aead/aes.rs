@@ -114,8 +114,8 @@ fn ctr32_encrypt_blocks_(
     let blocks_u32 = blocks as u32;
     assert_eq!(blocks, polyfill::usize_from_u32(blocks_u32));
 
-    let input = in_out[src].as_ptr() as *const [u8; BLOCK_LEN];
-    let output = in_out.as_mut_ptr() as *mut [u8; BLOCK_LEN];
+    let input = in_out[src].as_ptr().cast::<[u8; BLOCK_LEN]>();
+    let output = in_out.as_mut_ptr().cast::<[u8; BLOCK_LEN]>();
 
     unsafe {
         f(input, output, blocks, key, ctr);

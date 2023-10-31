@@ -54,7 +54,8 @@
     invalid_reference_casting,
     clippy::char_lit_as_u8,
     clippy::fn_to_numeric_cast,
-    clippy::fn_to_numeric_cast_with_truncation
+    clippy::fn_to_numeric_cast_with_truncation,
+    clippy::ptr_as_ptr
 )]
 #![warn(
     clippy::unnecessary_cast,

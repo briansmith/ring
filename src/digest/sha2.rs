@@ -48,7 +48,7 @@ fn block_data_order<S: Sha2>(
     M: *const u8,
     num: c::size_t,
 ) -> [S; CHAINING_WORDS] {
-    let M = M as *const [S::InputBytes; 16];
+    let M = M.cast::<[S::InputBytes; 16]>();
     let M: &[[S::InputBytes; 16]] = unsafe { core::slice::from_raw_parts(M, num) };
 
     for M in M {

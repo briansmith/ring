@@ -124,7 +124,7 @@ impl Context {
         debug_assert_eq!(input_bytes % BLOCK_LEN, 0);
         debug_assert!(input_bytes > 0);
 
-        let input = input.as_ptr() as *const [u8; BLOCK_LEN];
+        let input = input.as_ptr().cast::<[u8; BLOCK_LEN]>();
         // SAFETY:
         // - `[[u8; BLOCK_LEN]]` has the same bit validity as `[u8]`.
         // - `[[u8; BLOCK_LEN]]` has the same alignment requirement as `[u8]`.
