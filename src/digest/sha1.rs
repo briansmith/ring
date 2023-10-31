@@ -40,7 +40,7 @@ pub(super) extern "C" fn block_data_order(
 ) {
     let state = unsafe { &mut state.as32 };
     let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
-    let data = data as *const [<W32 as Word>::InputBytes; 16];
+    let data = data.cast::<[<W32 as Word>::InputBytes; 16]>();
     let blocks = unsafe { core::slice::from_raw_parts(data, num) };
     *state = block_data_order_(*state, blocks)
 }

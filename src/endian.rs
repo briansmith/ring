@@ -32,8 +32,9 @@ macro_rules! impl_array_encoding {
         {
             #[inline]
             fn as_byte_array(&self) -> &[u8; $elems * core::mem::size_of::<$base>()] {
-                let as_bytes_ptr =
-                    self.as_ptr() as *const [u8; $elems * core::mem::size_of::<$base>()];
+                let as_bytes_ptr = self
+                    .as_ptr()
+                    .cast::<[u8; $elems * core::mem::size_of::<$base>()]>();
                 unsafe { &*as_bytes_ptr }
             }
         }

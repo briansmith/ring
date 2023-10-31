@@ -18,8 +18,8 @@ macro_rules! define_chunks_fixed {
         {
             #[inline(always)]
             fn chunks_fixed(self) -> &'a [[T; $chunk_len]; $chunked_len] {
-                let as_ptr: *const [T; $chunk_len] = self.as_ptr() as *const [T; $chunk_len];
-                let as_ptr = as_ptr as *const [[T; $chunk_len]; $chunked_len];
+                let as_ptr = self.as_ptr().cast::<[T; $chunk_len]>();
+                let as_ptr = as_ptr.cast::<[[T; $chunk_len]; $chunked_len]>();
                 unsafe { &*as_ptr }
             }
         }
