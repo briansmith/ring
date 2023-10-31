@@ -39,6 +39,7 @@ pub(crate) fn write_all(tag: Tag, write_value: &dyn Fn(&mut dyn Accumulator)) ->
     output.into()
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn write_tlv<F>(output: &mut dyn Accumulator, tag: Tag, write_value: F)
 where
     F: Fn(&mut dyn Accumulator),

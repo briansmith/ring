@@ -220,6 +220,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     //    0101100000011010000011011011001001001000101100001010011101111010
     //    1110110011101100000110010110101011001100110001010010100101110001
 
+    #[allow(clippy::cast_possible_truncation)]
     static REMAINING_WINDOWS: [(u8, u8); 39] = [
         (2, B_11 as u8),
         (3 + 3, B_111 as u8),

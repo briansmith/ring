@@ -14,6 +14,8 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
+#![allow(clippy::cast_possible_truncation)] // XXX
+
 use super::digest_scalar::digest_scalar;
 use crate::{
     arithmetic::montgomery::*,

@@ -60,6 +60,7 @@
 #![warn(
     clippy::unnecessary_cast,
     clippy::cast_lossless,
+    clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss

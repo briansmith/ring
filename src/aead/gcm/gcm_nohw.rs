@@ -27,6 +27,7 @@ use crate::polyfill::ArraySplitMap;
 
 #[cfg(target_pointer_width = "64")]
 fn gcm_mul64_nohw(a: u64, b: u64) -> (u64, u64) {
+    #[allow(clippy::cast_possible_truncation)]
     #[inline(always)]
     fn lo(a: u128) -> u64 {
         a as u64
