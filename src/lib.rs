@@ -49,7 +49,20 @@
     unsafe_code
 )]
 #![deny(variant_size_differences)]
-#![forbid(unused_results)]
+#![forbid(
+    unused_results,
+    invalid_reference_casting,
+    clippy::char_lit_as_u8,
+    clippy::fn_to_numeric_cast,
+    clippy::fn_to_numeric_cast_with_truncation
+)]
+#![warn(
+    clippy::unnecessary_cast,
+    clippy::cast_lossless,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
 #![no_std]
 
 #[cfg(feature = "alloc")]
