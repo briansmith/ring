@@ -272,6 +272,7 @@ mod tests {
             // behavior of ChaCha20 implementation changes dependent on the
             // length of the input.
             for len in 0..=input.len() {
+                #[allow(clippy::cast_possible_truncation)]
                 chacha20_test_case_inner(
                     &key,
                     &nonce,

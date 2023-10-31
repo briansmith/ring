@@ -248,6 +248,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     //    1011110011100110111110101010110110100111000101111001111010000100
     //    1111001110111001110010101100001011111100011000110010010101001111
 
+    #[allow(clippy::cast_possible_truncation)]
     static REMAINING_WINDOWS: [(u8, u8); 26] = [
         (6, B_101111 as u8),
         (2 + 3, B_111 as u8),
