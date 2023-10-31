@@ -18,7 +18,8 @@
 
 // TSAN cannot cope with this test and complains that "starting new threads
 // after multi-threaded fork is not supported".
-#if defined(OPENSSL_FORK_DETECTION) && !defined(OPENSSL_TSAN)
+#if defined(OPENSSL_FORK_DETECTION) && !defined(OPENSSL_TSAN) && \
+    !defined(OPENSSL_IOS)
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -173,4 +174,4 @@ TEST(ForkDetect, Test) {
   EXPECT_EQ(start, CRYPTO_get_fork_generation());
 }
 
-#endif  // OPENSSL_FORK_DETECTION && !OPENSSL_TSAN
+#endif  // OPENSSL_FORK_DETECTION && !OPENSSL_TSAN && !OPENSSL_IOS
