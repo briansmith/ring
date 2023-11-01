@@ -484,16 +484,22 @@ pub fn elem_exp_consttime<M>(
         (acc, tmp)
     }
 
-    let tmp = m.one();
-    let tmp = elem_mul(m.oneRR().as_ref(), tmp, m);
-
     fn entry(table: &[Limb], i: usize, num_limbs: usize) -> &[Limb] {
         &table[(i * num_limbs)..][..num_limbs]
     }
     fn entry_mut(table: &mut [Limb], i: usize, num_limbs: usize) -> &mut [Limb] {
         &mut table[(i * num_limbs)..][..num_limbs]
     }
-    entry_mut(&mut table, 0, num_limbs).copy_from_slice(&tmp.limbs);
+
+    // table[0] = base**0 (i.e. 1).
+    {
+        let acc = entry_mut(&mut table, 0, num_limbs);
+        // `table` was initialized to zero and hasn't changed.
+        debug_assert!(acc.iter().all(|&value| value == 0));
+        acc[0] = 1;
+        limbs_mont_mul(acc, &m.oneRR().0.limbs, m.limbs(), m.n0(), m.cpu_features());
+    }
+
     entry_mut(&mut table, 1, num_limbs).copy_from_slice(&base.limbs);
     for i in 2..TABLE_ENTRIES {
         let (src1, src2) = if i % 2 == 0 {
@@ -508,6 +514,7 @@ pub fn elem_exp_consttime<M>(
         limbs_mont_product(dst, src1, src2, m.limbs(), m.n0(), m.cpu_features());
     }
 
+    let tmp = m.zero();
     let (r, _) = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
