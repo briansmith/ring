@@ -25,8 +25,7 @@ use core::num::NonZeroU64;
 /// An RSA Public Key.
 #[derive(Clone)]
 pub struct PublicKey {
-    n: PublicModulus,
-    e: PublicExponent,
+    inner: Inner,
     serialized: Box<[u8]>,
 }
 
@@ -41,9 +40,64 @@ impl PublicKey {
         e_min_value: PublicExponent,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::KeyRejected> {
+        let inner = Inner::from_modulus_and_exponent(
+            n,
+            e,
+            n_min_bits,
+            n_max_bits,
+            e_min_value,
+            cpu_features,
+        )?;
+
         let n_bytes = n;
         let e_bytes = e;
 
+        // TODO: Remove this re-parsing, and stop allocating this here.
+        // Instead we should serialize on demand without allocation, from
+        // `Modulus::be_bytes()` and `Exponent::be_bytes()`. Once this is
+        // fixed, merge `Inner` back into `PublicKey`.
+        let n_bytes = io::Positive::from_be_bytes(n_bytes)
+            .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
+        let e_bytes = io::Positive::from_be_bytes(e_bytes)
+            .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
+        let serialized = der_writer::write_all(der::Tag::Sequence, &|output| {
+            der_writer::write_positive_integer(output, &n_bytes);
+            der_writer::write_positive_integer(output, &e_bytes);
+        });
+
+        Ok(Self { inner, serialized })
+    }
+
+    /// The length, in bytes, of the public modulus.
+    ///
+    /// The modulus length is rounded up to a whole number of bytes if its
+    /// bit length isn't a multiple of 8.
+    pub fn modulus_len(&self) -> usize {
+        self.inner.n().len_bits().as_usize_bytes_rounded_up()
+    }
+
+    pub(super) fn inner(&self) -> &Inner {
+        &self.inner
+    }
+}
+
+/// `PublicKey` but without any superfluous allocations, optimized for one-shot
+/// RSA signature verification.
+#[derive(Clone)]
+pub(crate) struct Inner {
+    n: PublicModulus,
+    e: PublicExponent,
+}
+
+impl Inner {
+    pub(super) fn from_modulus_and_exponent(
+        n: untrusted::Input,
+        e: untrusted::Input,
+        n_min_bits: bits::BitLength,
+        n_max_bits: bits::BitLength,
+        e_min_value: PublicExponent,
+        cpu_features: cpu::Features,
+    ) -> Result<Self, error::KeyRejected> {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
         // to NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key
@@ -64,27 +118,7 @@ impl PublicKey {
         // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
         // case in most other commonly-used crypto libraries.
 
-        // TODO: Remove this re-parsing, and stop allocating this here.
-        // Instead we should serialize on demand without allocation, from
-        // `Modulus::be_bytes()` and `Exponent::be_bytes()`.
-        let n_bytes = io::Positive::from_be_bytes(n_bytes)
-            .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
-        let e_bytes = io::Positive::from_be_bytes(e_bytes)
-            .map_err(|_: error::Unspecified| error::KeyRejected::unexpected_error())?;
-        let serialized = der_writer::write_all(der::Tag::Sequence, &|output| {
-            der_writer::write_positive_integer(output, &n_bytes);
-            der_writer::write_positive_integer(output, &e_bytes);
-        });
-
-        Ok(Self { n, e, serialized })
-    }
-
-    /// The length, in bytes, of the public modulus.
-    ///
-    /// The modulus length is rounded up to a whole number of bytes if its
-    /// bit length isn't a multiple of 8.
-    pub fn modulus_len(&self) -> usize {
-        self.n().len_bits().as_usize_bytes_rounded_up()
+        Ok(Self { n, e })
     }
 
     /// The public modulus.
