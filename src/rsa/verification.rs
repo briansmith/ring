@@ -15,7 +15,7 @@
 //! Verification of RSA signatures.
 
 use super::{
-    parse_public_key, PublicExponent, PublicKey, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
+    parse_public_key, public_key, PublicExponent, RsaParameters, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN,
 };
 use crate::{bits, cpu, digest, error, sealed, signature};
 
@@ -201,7 +201,7 @@ pub(crate) fn verify_rsa_(
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let key = PublicKey::from_modulus_and_exponent(
+    let key = public_key::Inner::from_modulus_and_exponent(
         n,
         e,
         params.min_bits,

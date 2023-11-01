@@ -302,7 +302,7 @@ impl KeyPair {
             cpu_features,
         )?;
 
-        let n = public_key.n().value();
+        let n = public_key.inner().n().value();
 
         // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
@@ -323,7 +323,7 @@ impl KeyPair {
         // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
         //
         // Second, stop if `p > 2**(nBits/2) - 1`.
-        let half_n_bits = public_key.n().len_bits().half_rounded_up();
+        let half_n_bits = public_key.inner().n().len_bits().half_rounded_up();
         if p_bits != half_n_bits {
             return Err(KeyRejected::inconsistent_components());
         }
@@ -580,7 +580,7 @@ impl KeyPair {
 
         // Use the output buffer as the scratch space for the signature to
         // reduce the required stack space.
-        padding_alg.encode(m_hash, signature, self.public().n().len_bits(), rng)?;
+        padding_alg.encode(m_hash, signature, self.public().inner().n().len_bits(), rng)?;
 
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
@@ -607,7 +607,7 @@ impl KeyPair {
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
-        let n = self.public.n().value();
+        let n = self.public.inner().n().value();
 
         // Step 1. The value zero is also rejected.
         let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(base), n)?;
@@ -648,7 +648,7 @@ impl KeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = self.public.exponentiate_elem(m.clone());
+            let verify = self.public.inner().exponentiate_elem(m.clone());
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
 

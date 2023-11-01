@@ -45,8 +45,8 @@ where
 {
     fn from(public_key: &PublicKey) -> Self {
         Self {
-            n: public_key.n().be_bytes().collect(),
-            e: public_key.e().be_bytes().collect(),
+            n: public_key.inner().n().be_bytes().collect(),
+            e: public_key.inner().e().be_bytes().collect(),
         }
     }
 }
