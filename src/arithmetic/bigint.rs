@@ -446,7 +446,7 @@ pub fn elem_exp_consttime<M>(
 
     let mut table = vec![0; TABLE_ENTRIES * num_limbs];
 
-    fn gather<M>(table: &[Limb], i: Window, r: &mut Elem<M, R>) {
+    fn gather<M>(table: &[Limb], acc: &mut Elem<M, R>, i: Window) {
         prefixed_extern! {
             fn LIMBS_select_512_32(
                 r: *mut Limb,
@@ -456,22 +456,22 @@ pub fn elem_exp_consttime<M>(
             ) -> bssl::Result;
         }
         Result::from(unsafe {
-            LIMBS_select_512_32(r.limbs.as_mut_ptr(), table.as_ptr(), r.limbs.len(), i)
+            LIMBS_select_512_32(acc.limbs.as_mut_ptr(), table.as_ptr(), acc.limbs.len(), i)
         })
         .unwrap();
     }
 
     fn power<M>(
         table: &[Limb],
-        i: Window,
         mut acc: Elem<M, R>,
-        mut tmp: Elem<M, R>,
         m: &Modulus<M>,
+        i: Window,
+        mut tmp: Elem<M, R>,
     ) -> (Elem<M, R>, Elem<M, R>) {
         for _ in 0..WINDOW_BITS {
             acc = elem_squared(acc, &m.as_partial());
         }
-        gather(table, i, &mut tmp);
+        gather(table, &mut tmp, i);
         let acc = elem_mul(&tmp, acc, m);
         (acc, tmp)
     }
@@ -507,22 +507,20 @@ pub fn elem_exp_consttime<M>(
     }
 
     let tmp = m.zero();
-    let (r, _) = limb::fold_5_bit_windows(
+    let mut acc = Elem {
+        limbs: base.limbs,
+        encoding: PhantomData,
+    };
+    let (acc, _) = limb::fold_5_bit_windows(
         exponent.limbs(),
         |initial_window| {
-            let mut r = Elem {
-                limbs: base.limbs,
-                encoding: PhantomData,
-            };
-            gather(&table, initial_window, &mut r);
-            (r, tmp)
+            gather(&table, &mut acc, initial_window);
+            (acc, tmp)
         },
-        |(acc, tmp), window| power(&table, window, acc, tmp, m),
+        |(acc, tmp), window| power(&table, acc, m, window, tmp),
     );
 
-    let r = r.into_unencoded(m);
-
-    Ok(r)
+    Ok(acc.into_unencoded(m))
 }
 
 #[cfg(target_arch = "x86_64")]
