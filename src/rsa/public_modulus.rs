@@ -4,7 +4,7 @@ use core::ops::RangeInclusive;
 /// The modulus (n) of an RSA public key.
 #[derive(Clone)]
 pub struct PublicModulus {
-    value: bigint::Modulus<N>,
+    value: bigint::OwnedModulusWithOne<N>,
     bits: bits::BitLength,
 }
 
@@ -33,7 +33,8 @@ impl PublicModulus {
         const MIN_BITS: bits::BitLength = bits::BitLength::from_usize_bits(1024);
 
         // Step 3 / Step c for `n` (out of order).
-        let (value, bits) = bigint::Modulus::from_be_bytes_with_bit_length(n, cpu_features)?;
+        let (value, bits) =
+            bigint::OwnedModulusWithOne::from_be_bytes_with_bit_length(n, cpu_features)?;
 
         // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
         // the public modulus to be exactly 2048 or 3072 bits, but we are more
@@ -63,7 +64,7 @@ impl PublicModulus {
         self.bits
     }
 
-    pub(super) fn value(&self) -> &bigint::Modulus<N> {
+    pub(super) fn value(&self) -> &bigint::OwnedModulusWithOne<N> {
         &self.value
     }
 }

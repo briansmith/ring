@@ -14,7 +14,7 @@
 
 use super::{
     super::{
-        montgomery::{Unencoded, R, RR},
+        montgomery::{Unencoded, RR},
         n0::N0,
     },
     BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SlightlySmallerModulus, SmallerModulus,
@@ -39,7 +39,7 @@ pub const MODULUS_MAX_LIMBS: usize = super::super::BIGINT_MODULUS_MAX_LIMBS;
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
-pub struct Modulus<M> {
+pub struct OwnedModulusWithOne<M> {
     limbs: BoxedLimbs<M>, // Also `value >= 3`.
 
     // n0 * N == -1 (mod r).
@@ -84,7 +84,7 @@ pub struct Modulus<M> {
     cpu_features: cpu::Features,
 }
 
-impl<M: PublicModulus> Clone for Modulus<M> {
+impl<M: PublicModulus> Clone for OwnedModulusWithOne<M> {
     fn clone(&self) -> Self {
         Self {
             limbs: self.limbs.clone(),
@@ -95,7 +95,7 @@ impl<M: PublicModulus> Clone for Modulus<M> {
     }
 }
 
-impl<M: PublicModulus> core::fmt::Debug for Modulus<M> {
+impl<M: PublicModulus> core::fmt::Debug for OwnedModulusWithOne<M> {
     fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
         fmt.debug_struct("Modulus")
             // TODO: Print modulus value.
@@ -103,7 +103,7 @@ impl<M: PublicModulus> core::fmt::Debug for Modulus<M> {
     }
 }
 
-impl<M> Modulus<M> {
+impl<M> OwnedModulusWithOne<M> {
     pub(crate) fn from_be_bytes_with_bit_length(
         input: untrusted::Input,
         cpu_features: cpu::Features,
@@ -173,7 +173,7 @@ impl<M> Modulus<M> {
 
         let bits = limb::limbs_minimal_bits(&n);
         let oneRR = {
-            let partial = PartialModulus {
+            let partial = Modulus {
                 limbs: &n,
                 n0: n0.clone(),
                 m: PhantomData,
@@ -194,35 +194,6 @@ impl<M> Modulus<M> {
         ))
     }
 
-    #[inline]
-    pub(super) fn cpu_features(&self) -> cpu::Features {
-        self.cpu_features
-    }
-
-    #[inline]
-    pub(super) fn limbs(&self) -> &[Limb] {
-        &self.limbs
-    }
-
-    #[inline]
-    pub(super) fn n0(&self) -> &N0 {
-        &self.n0
-    }
-
-    pub(super) fn zero<E>(&self) -> Elem<M, E> {
-        Elem {
-            limbs: BoxedLimbs::zero(self.limbs().len()),
-            encoding: PhantomData,
-        }
-    }
-
-    // TODO: Get rid of this
-    pub(super) fn one(&self) -> Elem<M, Unencoded> {
-        let mut r = self.zero();
-        r.limbs[0] = 1;
-        r
-    }
-
     pub fn oneRR(&self) -> &One<M, RR> {
         &self.oneRR
     }
@@ -232,15 +203,14 @@ impl<M> Modulus<M> {
         M: SmallerModulus<L>,
     {
         // TODO: Encode this assertion into the `where` above.
-        assert_eq!(self.limbs().len(), l.limbs().len());
+        assert_eq!(self.limbs.len(), l.limbs.len());
         Elem {
             limbs: BoxedLimbs::new_unchecked(self.limbs.clone().into_limbs()),
             encoding: PhantomData,
         }
     }
-
-    pub(crate) fn as_partial(&self) -> PartialModulus<M> {
-        PartialModulus {
+    pub fn modulus(&self) -> Modulus<M> {
+        Modulus {
             limbs: &self.limbs,
             n0: self.n0.clone(),
             m: PhantomData,
@@ -249,26 +219,33 @@ impl<M> Modulus<M> {
     }
 }
 
-impl<M: PublicModulus> Modulus<M> {
+impl<M: PublicModulus> OwnedModulusWithOne<M> {
     pub fn be_bytes(&self) -> LeadingZerosStripped<impl ExactSizeIterator<Item = u8> + Clone + '_> {
         LeadingZerosStripped::new(limb::unstripped_be_bytes(&self.limbs))
     }
 }
 
-pub(crate) struct PartialModulus<'a, M> {
+pub struct Modulus<'a, M> {
     limbs: &'a [Limb],
     n0: N0,
     m: PhantomData<M>,
     cpu_features: cpu::Features,
 }
 
-impl<M> PartialModulus<'_, M> {
+impl<M> Modulus<'_, M> {
     // TODO: XXX Avoid duplication with `Modulus`.
-    pub(super) fn zero(&self) -> Elem<M, R> {
+    pub(super) fn zero<E>(&self) -> Elem<M, E> {
         Elem {
             limbs: BoxedLimbs::zero(self.limbs.len()),
             encoding: PhantomData,
         }
+    }
+
+    // TODO: Get rid of this
+    pub(super) fn one(&self) -> Elem<M, Unencoded> {
+        let mut r = self.zero();
+        r.limbs[0] = 1;
+        r
     }
 
     #[inline]
@@ -282,7 +259,7 @@ impl<M> PartialModulus<'_, M> {
     }
 
     #[inline]
-    pub fn cpu_features(&self) -> cpu::Features {
+    pub(crate) fn cpu_features(&self) -> cpu::Features {
         self.cpu_features
     }
 }
