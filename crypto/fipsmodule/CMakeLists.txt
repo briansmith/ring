@@ -83,7 +83,7 @@ if(FIPS_DELOCATE)
     -a $<TARGET_FILE:bcm_c_generated_asm>
     -o bcm-delocated.S
     -cc ${CMAKE_ASM_COMPILER}
-    -cc-flags "${TARGET} $CMAKE_ASM_FLAGS"
+    -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS}"
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
     ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
     ${PROJECT_SOURCE_DIR}/include/openssl/target.h
