@@ -125,10 +125,7 @@ impl crate::sealed::Sealed for SystemRandom {}
 // system's) CSPRNG. Avoid using it on targets where it uses the `rdrand`
 // implementation.
 #[cfg(any(
-    // NOTE `getrandom`'s (v0.2.10) docs state that a custom implementation will
-    // NOT override the implementation of supported targets, like the ones
-    // listed below.
-    feature = "less-safe-getrandom-custom",
+    all(feature = "less-safe-getrandom-custom-or-rdrand", target_os = "none"),
     target_os = "aix",
     target_os = "android",
     target_os = "dragonfly",
