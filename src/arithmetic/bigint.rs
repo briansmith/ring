@@ -68,13 +68,6 @@ mod private_exponent;
 /// preemptively.)
 pub unsafe trait Prime {}
 
-struct Width<M> {
-    num_limbs: usize,
-
-    /// The modulus *m* that the width originated from.
-    m: PhantomData<M>,
-}
-
 /// A modulus *s* that is smaller than another modulus *l* so every element of
 /// ℤ/sℤ is also an element of ℤ/lℤ.
 ///
@@ -152,10 +145,9 @@ fn from_montgomery_amm<M>(limbs: BoxedLimbs<M>, m: &Modulus<M>) -> Elem<M, Unenc
     debug_assert_eq!(limbs.len(), m.limbs().len());
 
     let mut limbs = limbs;
-    let num_limbs = m.width().num_limbs;
     let mut one = [0; MODULUS_MAX_LIMBS];
     one[0] = 1;
-    let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
+    let one = &one[..m.limbs().len()];
     limbs_mont_mul(&mut limbs, one, m.limbs(), m.n0(), m.cpu_features());
     Elem {
         limbs,
@@ -1001,10 +993,7 @@ mod tests {
         num_limbs: usize,
     ) -> Elem<M, Unencoded> {
         let value = consume_nonnegative(test_case, name);
-        let mut limbs = BoxedLimbs::zero(Width {
-            num_limbs,
-            m: PhantomData,
-        });
+        let mut limbs = BoxedLimbs::zero(num_limbs);
         limbs[0..value.limbs().len()].copy_from_slice(value.limbs());
         Elem {
             limbs,

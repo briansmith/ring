@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Modulus, Width};
+use super::Modulus;
 use crate::{
     error,
     limb::{self, Limb, LimbMask, LIMB_BYTES},
@@ -76,10 +76,7 @@ impl<M> BoxedLimbs<M> {
             return Err(error::KeyRejected::invalid_encoding());
         }
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
-        let mut r = Self::zero(Width {
-            num_limbs,
-            m: PhantomData,
-        });
+        let mut r = Self::zero(num_limbs);
         limb::parse_big_endian_and_pad_consttime(input, &mut r)
             .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
         Ok(r)
@@ -97,7 +94,7 @@ impl<M> BoxedLimbs<M> {
         input: untrusted::Input,
         m: &Modulus<M>,
     ) -> Result<Self, error::Unspecified> {
-        let mut r = Self::zero(m.width());
+        let mut r = Self::zero(m.limbs().len());
         limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
         if limb::limbs_less_than_limbs_consttime(&r, m.limbs()) != LimbMask::True {
             return Err(error::Unspecified);
@@ -110,16 +107,9 @@ impl<M> BoxedLimbs<M> {
         limb::limbs_are_zero_constant_time(&self.limbs) == LimbMask::True
     }
 
-    pub(super) fn zero(width: Width<M>) -> Self {
+    pub(super) fn zero(len: usize) -> Self {
         Self {
-            limbs: vec![0; width.num_limbs].into_boxed_slice(),
-            m: PhantomData,
-        }
-    }
-
-    pub(super) fn width(&self) -> Width<M> {
-        Width {
-            num_limbs: self.limbs.len(),
+            limbs: vec![0; len].into_boxed_slice(),
             m: PhantomData,
         }
     }
