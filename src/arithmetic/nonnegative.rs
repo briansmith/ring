@@ -41,14 +41,6 @@ impl Nonnegative {
     pub fn is_odd(&self) -> bool {
         limb::limbs_are_even_constant_time(&self.limbs) != LimbMask::True
     }
-
-    pub fn verify_less_than(&self, other: &Self) -> Result<(), error::Unspecified> {
-        if !greater_than(other, self) {
-            return Err(error::Unspecified);
-        }
-        Ok(())
-    }
-
     #[inline]
     pub fn limbs(&self) -> &[Limb] {
         &self.limbs
@@ -57,14 +49,5 @@ impl Nonnegative {
     #[inline]
     pub fn into_limbs(self) -> Box<[Limb]> {
         self.limbs.into_boxed_slice()
-    }
-}
-
-// Returns a > b.
-fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
-    if a.limbs.len() == b.limbs.len() {
-        limb::limbs_less_than_limbs_vartime(&b.limbs, &a.limbs)
-    } else {
-        a.limbs.len() > b.limbs.len()
     }
 }

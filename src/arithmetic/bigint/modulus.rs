@@ -13,11 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{
-    super::{
-        montgomery::{Unencoded, RR},
-        n0::N0,
-    },
-    BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SmallerModulus,
+    super::{montgomery::RR, n0::N0},
+    BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SmallerModulus, Unencoded,
 };
 use crate::{
     bits::BitLength,
@@ -234,13 +231,6 @@ impl<M> Modulus<'_, M> {
             limbs: BoxedLimbs::zero(self.limbs.len()),
             encoding: PhantomData,
         }
-    }
-
-    // TODO: Get rid of this
-    pub(super) fn one(&self) -> Elem<M, Unencoded> {
-        let mut r = self.zero();
-        r.limbs[0] = 1;
-        r
     }
 
     #[inline]

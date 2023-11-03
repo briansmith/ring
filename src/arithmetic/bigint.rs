@@ -57,18 +57,6 @@ mod boxed_limbs;
 mod modulus;
 mod private_exponent;
 
-/// A prime modulus.
-///
-/// # Safety
-///
-/// Some logic may assume a `Prime` number is non-zero, and thus a non-empty
-/// array of limbs, or make similar assumptions. TODO: Any such logic should
-/// be encapsulated here, or this trait should be made non-`unsafe`. TODO:
-/// non-zero-ness and non-empty-ness should be factored out into a separate
-/// trait. (In retrospect, this shouldn't have been made an `unsafe` trait
-/// preemptively.)
-pub unsafe trait Prime {}
-
 /// A modulus *s* that is smaller than another modulus *l* so every element of
 /// ℤ/sℤ is also an element of ℤ/lℤ.
 ///
@@ -194,14 +182,12 @@ fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &Modulus<M>) {
 // reduce elements (x mod q) mod p in the RSA CRT. If/when we do so, we
 // should update the testing so it is reflective of that usage, instead of
 // the old usage.
-#[cfg(test)]
-pub fn elem_reduced_once<Larger, Smaller>(
-    a: &Elem<Larger, Unencoded>,
-    m: &Modulus<Smaller>,
-) -> Elem<Smaller, Unencoded> {
-    // `limbs_reduce_once_constant_time` requires `r` and `m` to have the same
-    // number of limbs.
-    assert_eq!(a.limbs.len(), m.limbs().len());
+pub fn elem_reduced_once<A, M>(
+    a: &Elem<A, Unencoded>,
+    m: &Modulus<M>,
+    other_modulus_len_bits: BitLength,
+) -> Elem<M, Unencoded> {
+    assert_eq!(m.len_bits(), other_modulus_len_bits);
 
     let mut r = a.limbs.clone();
     limb::limbs_reduce_once_constant_time(&mut r, m.limbs());
@@ -403,14 +389,6 @@ pub(crate) fn elem_exp_vartime<M>(
         }
     }
     acc
-}
-
-/// Uses Fermat's Little Theorem to calculate modular inverse in constant time.
-pub fn elem_inverse_consttime<M: Prime>(
-    a: Elem<M, R>,
-    m: &OwnedModulusWithOne<M>,
-) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    elem_exp_consttime(a, &PrivateExponent::for_flt(&m.modulus()), m)
 }
 
 #[cfg(not(target_arch = "x86_64"))]
@@ -939,16 +917,14 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                struct N {}
-                struct QQ {}
-                unsafe impl SmallerModulus<N> for QQ {}
+                struct M {}
+                struct O {}
+                let m = consume_modulus::<M>(test_case, "m", cpu_features);
+                let a = consume_elem_unchecked::<O>(test_case, "a", m.modulus().limbs().len());
+                let expected_result = consume_elem::<M>(test_case, "r", &m.modulus());
+                let other_modulus_len_bits = m.modulus().len_bits();
 
-                let qq = consume_modulus::<QQ>(test_case, "QQ", cpu_features);
-                let expected_result = consume_elem::<QQ>(test_case, "R", &qq.modulus());
-                let n = consume_modulus::<N>(test_case, "N", cpu_features);
-                let a = consume_elem::<N>(test_case, "A", &n.modulus());
-
-                let actual_result = elem_reduced_once(&a, &qq.modulus());
+                let actual_result = elem_reduced_once(&a, &m.modulus(), other_modulus_len_bits);
                 assert_elem_eq(&actual_result, &expected_result);
 
                 Ok(())
