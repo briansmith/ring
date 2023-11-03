@@ -18,7 +18,6 @@ use super::{
         n0::N0,
     },
     BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SlightlySmallerModulus, SmallerModulus,
-    Width,
 };
 use crate::{
     bits, cpu, error,
@@ -210,14 +209,9 @@ impl<M> Modulus<M> {
         &self.n0
     }
 
-    #[inline]
-    pub(super) fn width(&self) -> Width<M> {
-        self.limbs.width()
-    }
-
     pub(super) fn zero<E>(&self) -> Elem<M, E> {
         Elem {
-            limbs: BoxedLimbs::zero(self.width()),
+            limbs: BoxedLimbs::zero(self.limbs().len()),
             encoding: PhantomData,
         }
     }
@@ -238,7 +232,7 @@ impl<M> Modulus<M> {
         M: SmallerModulus<L>,
     {
         // TODO: Encode this assertion into the `where` above.
-        assert_eq!(self.width().num_limbs, l.width().num_limbs);
+        assert_eq!(self.limbs().len(), l.limbs().len());
         Elem {
             limbs: BoxedLimbs::new_unchecked(self.limbs.clone().into_limbs()),
             encoding: PhantomData,
@@ -271,12 +265,8 @@ pub(crate) struct PartialModulus<'a, M> {
 impl<M> PartialModulus<'_, M> {
     // TODO: XXX Avoid duplication with `Modulus`.
     pub(super) fn zero(&self) -> Elem<M, R> {
-        let width = Width {
-            num_limbs: self.limbs.len(),
-            m: PhantomData,
-        };
         Elem {
-            limbs: BoxedLimbs::zero(width),
+            limbs: BoxedLimbs::zero(self.limbs.len()),
             encoding: PhantomData,
         }
     }
