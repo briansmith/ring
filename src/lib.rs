@@ -22,14 +22,16 @@
 //!     <th>Description
 //! <tr><td><code>alloc (default)</code>
 //!     <td>Enable features that require use of the heap, RSA in particular.
-//! <tr><td><code>less-safe-getrandom-custom</code>
-//!     <td>Treat a user-provided ("custom") <code>getrandom</code>
-//!         implementation as a secure random number generator (see
-//!         <code>SecureRandom</code>). Only has effect on targets
-//!         <strong>not</strong> supported by <code>getrandom</code>.
-//!         See <a href="https://docs.rs/getrandom/0.2.10/getrandom/macro.register_custom_getrandom.html">
+//! <tr><td><code>less-safe-getrandom-custom-or-rdrand</code>
+//!     <td>Treat user-provided ("custom") and RDRAND-based <code>getrandom</code>
+//!         implementations as secure random number generators (see
+//!         <code>SecureRandom</code>). This feature only works with
+//!         <code>os = "none"</code> targets. See
+//!         <a href="https://docs.rs/getrandom/0.2.10/getrandom/macro.register_custom_getrandom.html">
 //!             <code>register_custom_getrandom</code>
-//!         </a> for details.
+//!         </a> and <a href="https://docs.rs/getrandom/0.2.10/getrandom/#rdrand-on-x86">
+//!             RDRAND on x86
+//!         </a> for additional details.
 //! <tr><td><code>std</code>
 //!     <td>Enable features that use libstd, in particular
 //!         <code>std::error::Error</code> integration. Implies `alloc`.
