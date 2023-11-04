@@ -162,7 +162,7 @@ impl Inner {
         }
 
         // Step 2.
-        let m = self.exponentiate_elem(s);
+        let m = self.exponentiate_elem(&s);
 
         // Step 3.
         Ok(fill_be_bytes_n(m, self.n.len_bits(), out_buffer))
@@ -171,7 +171,7 @@ impl Inner {
     /// Calculates base**e (mod n).
     ///
     /// This is constant-time with respect to `base` only.
-    pub(super) fn exponentiate_elem(&self, base: bigint::Elem<N>) -> bigint::Elem<N> {
+    pub(super) fn exponentiate_elem(&self, base: &bigint::Elem<N>) -> bigint::Elem<N> {
         // The exponent was already checked to be at least 3.
         let exponent_without_low_bit = NonZeroU64::try_from(self.e.value().get() & !1).unwrap();
         // The exponent was already checked to be odd.
@@ -189,7 +189,7 @@ impl Inner {
         let acc = bigint::elem_exp_vartime(base_r, exponent_without_low_bit, n);
 
         // Now do the multiplication for the low bit and convert out of the Montgomery domain.
-        bigint::elem_mul(&base, acc, n)
+        bigint::elem_mul(base, acc, n)
     }
 }
 
