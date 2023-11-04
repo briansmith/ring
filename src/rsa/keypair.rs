@@ -663,7 +663,7 @@ impl KeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = self.public.inner().exponentiate_elem(m.clone());
+            let verify = self.public.inner().exponentiate_elem(&m);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
 
