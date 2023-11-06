@@ -485,9 +485,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       if (arg < 4 || (gctx->ivlen - arg) < 8) {
         return 0;
       }
-      if (arg) {
-        OPENSSL_memcpy(gctx->iv, ptr, arg);
-      }
+      OPENSSL_memcpy(gctx->iv, ptr, arg);
       if (c->encrypt) {
         // |RAND_bytes| calls within the fipsmodule should be wrapped with state
         // lock functions to avoid updating the service indicator with the DRBG
