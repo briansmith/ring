@@ -33,8 +33,19 @@ pub struct KeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
+
+    // XXX: qq's `oneRR` isn't used and thus this is about twice as large as
+    // it needs to be, according to how it is used. Further, it appears to be
+    // completely unnecessary since `elem_reduced` seems to be able to reduce
+    // an `Elem<N>` directly to an `Elem<Q>`. TODO: Verify that is true and
+    // eliminate this.
     qq: bigint::Modulus<QQ>,
+
+    // TODO: Eliminate `q_mod_n` entirely since it is a bad space:time trade-off.
+    // Also, this is the only non-temporary `Elem` so if we eliminate this, we
+    // can make all `Elem`s temporary (borrowed) values.
     q_mod_n: bigint::Elem<N, R>,
+
     public: PublicKey,
 }
 
