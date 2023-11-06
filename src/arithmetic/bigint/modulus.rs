@@ -88,7 +88,7 @@ impl<M: PublicModulus> Clone for OwnedModulusWithOne<M> {
     fn clone(&self) -> Self {
         Self {
             limbs: self.limbs.clone(),
-            n0: self.n0.clone(),
+            n0: self.n0,
             oneRR: self.oneRR.clone(),
             len_bits: self.len_bits,
             cpu_features: self.cpu_features,
@@ -162,7 +162,7 @@ impl<M> OwnedModulusWithOne<M> {
         let oneRR = {
             let partial = Modulus {
                 limbs: &n,
-                n0: n0.clone(),
+                n0,
                 len_bits,
                 m: PhantomData,
                 cpu_features,
@@ -198,7 +198,7 @@ impl<M> OwnedModulusWithOne<M> {
     pub fn modulus(&self) -> Modulus<M> {
         Modulus {
             limbs: &self.limbs,
-            n0: self.n0.clone(),
+            n0: self.n0,
             len_bits: self.len_bits,
             m: PhantomData,
             cpu_features: self.cpu_features,

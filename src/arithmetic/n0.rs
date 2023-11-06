@@ -14,7 +14,7 @@
 
 use crate::limb::Limb;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub(in super::super) struct N0([Limb; 2]);
 
