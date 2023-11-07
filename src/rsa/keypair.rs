@@ -22,7 +22,8 @@ use crate::{
         bigint::{self, Prime},
         montgomery::R,
     },
-    bits, cpu, digest,
+    bits::BitLength,
+    cpu, digest,
     error::{self, KeyRejected},
     io::der,
     pkcs8, rand, signature,
@@ -267,20 +268,20 @@ impl KeyPair {
         let dQ = untrusted::Input::from(dQ);
         let qInv = untrusted::Input::from(qInv);
 
-        let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)
+        let (p, _p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)
             .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
-        let (q, q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)
+        let (q, _q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)
             .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
 
         // Our implementation of CRT-based modular exponentiation used requires
         // that `p > q` so swap them if `p < q`. If swapped, `qInv` is
         // recalculated below. `p != q` is verified implicitly below, e.g. when
         // `q_mod_p` is constructed.
-        let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) = match q.verify_less_than(&p) {
-            Ok(_) => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
+        let ((p, dP), (q, dQ, qInv)) = match q.verify_less_than(&p) {
+            Ok(_) => ((p, dP), (q, dQ, Some(qInv))),
             Err(error::Unspecified) => {
                 // TODO: verify `q` and `qInv` are inverses (mod p).
-                ((q, q_bits, dQ), (p, p_bits, dP, None))
+                ((q, dQ), (p, dP, None))
             }
         };
 
@@ -307,7 +308,7 @@ impl KeyPair {
         let public_key = PublicKey::from_modulus_and_exponent(
             n,
             e,
-            bits::BitLength::from_usize_bits(2048),
+            BitLength::from_usize_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             PublicExponent::_65537,
             cpu_features,
@@ -330,34 +331,12 @@ impl KeyPair {
 
         // Steps 5.a and 5.b are omitted, as explained above.
 
-        // Step 5.c.
-        //
-        // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
-        //
-        // Second, stop if `p > 2**(nBits/2) - 1`.
-        let half_n_bits = public_key.inner().n().len_bits().half_rounded_up();
-        if p_bits != half_n_bits {
-            return Err(KeyRejected::inconsistent_components());
-        }
+        let n_bits = public_key.inner().n().len_bits();
 
-        // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
+        let p = PrivatePrime::new(p, dP, n_bits, cpu_features)?;
+        let q = PrivatePrime::new(q, dQ, n_bits, cpu_features)?;
 
-        // Steps 5.e and 5.f are omitted as explained above.
-
-        // Step 5.g.
-        //
-        // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
-        //
-        // Second, stop if `q > 2**(nBits/2) - 1`.
-        if p_bits != q_bits {
-            return Err(KeyRejected::inconsistent_components());
-        }
-
-        // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
-
-        let q_mod_n_decoded = q
-            .to_elem(n)
-            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
+        let q_mod_n_decoded = q.modulus.to_elem(n);
 
         // TODO: Step 5.i
         //
@@ -371,9 +350,7 @@ impl KeyPair {
         // assume that these preconditions are enough to let us assume that
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
         let q_mod_n = bigint::elem_mul(n_one.as_ref(), q_mod_n_decoded.clone(), n);
-        let p_mod_n = p
-            .to_elem(n)
-            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
+        let p_mod_n = p.modulus.to_elem(n);
         let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
         if !pq_mod_n.is_zero() {
             return Err(KeyRejected::inconsistent_components());
@@ -388,7 +365,7 @@ impl KeyPair {
         // and knowing d is odd makes the inequality strict.
         let (d, d_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(d)
             .map_err(|_| error::KeyRejected::invalid_encoding())?;
-        if !(half_n_bits < d_bits) {
+        if !(n_bits.half_rounded_up() < d_bits) {
             return Err(KeyRejected::inconsistent_components());
         }
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
@@ -401,14 +378,9 @@ impl KeyPair {
 
         // Step 6.b is omitted as explained above.
 
-        // 6.4.1.4.3 - Step 7.
-
-        // Step 7.a.
-        let p = PrivatePrime::new(p, dP, cpu_features)?;
         let pm = &p.modulus.modulus();
 
-        // Step 7.b.
-        let q = PrivatePrime::new(q, dQ, cpu_features)?;
+        // 6.4.1.4.3 - Step 7.
 
         let q_mod_p = q.modulus.to_elem(pm);
 
@@ -484,12 +456,26 @@ impl<M: Prime> PrivatePrime<M> {
     fn new(
         p: bigint::Nonnegative,
         dP: untrusted::Input,
+        n_bits: BitLength,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
         let p = bigint::OwnedModulusWithOne::from_nonnegative(p, cpu_features)?;
-        if p.len_bits().as_usize_bits() % 512 != 0 {
-            return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
+
+        // 5.c / 5.g:
+        //
+        // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
+        // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
+        //
+        // Second, stop if `p > 2**(nBits/2) - 1`.
+        // Second, stop if `q > 2**(nBits/2) - 1`.
+        if p.len_bits() != n_bits.half_rounded_up() {
+            return Err(KeyRejected::inconsistent_components());
         }
+
+        // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
+        // TODO: Step 5.h: Verify GCD(q - 1, e) == 1.
+
+        // Steps 5.e and 5.f are omitted as explained above.
 
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
         let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p.modulus())
@@ -503,6 +489,10 @@ impl<M: Prime> PrivatePrime<M> {
         // private key operation using the CRT parameters is consistent with `n`
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
+
+        if p.len_bits().as_usize_bits() % 512 != 0 {
+            return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
+        }
 
         Ok(Self {
             modulus: p,

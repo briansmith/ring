@@ -203,10 +203,10 @@ impl<M> OwnedModulusWithOne<M> {
     where
         M: SmallerModulus<L>,
     {
-        // TODO: Encode this assertion into the `where` above.
-        assert_eq!(self.limbs.len(), l.limbs.len());
+        let mut limbs = BoxedLimbs::zero(l.limbs.len());
+        limbs[..self.limbs.len()].copy_from_slice(&self.limbs);
         Elem {
-            limbs: BoxedLimbs::new_unchecked(self.limbs.clone().into_limbs()),
+            limbs,
             encoding: PhantomData,
         }
     }
