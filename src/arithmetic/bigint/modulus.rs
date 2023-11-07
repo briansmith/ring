@@ -179,11 +179,12 @@ impl<M> OwnedModulusWithOne<M> {
             let partial = Modulus {
                 limbs: &n,
                 n0: n0.clone(),
+                len_bits,
                 m: PhantomData,
                 cpu_features,
             };
 
-            One::newRR(&partial, len_bits)
+            One::newRR(&partial)
         };
 
         Ok(Self {
@@ -214,6 +215,7 @@ impl<M> OwnedModulusWithOne<M> {
         Modulus {
             limbs: &self.limbs,
             n0: self.n0.clone(),
+            len_bits: self.len_bits,
             m: PhantomData,
             cpu_features: self.cpu_features,
         }
@@ -233,6 +235,7 @@ impl<M: PublicModulus> OwnedModulusWithOne<M> {
 pub struct Modulus<'a, M> {
     limbs: &'a [Limb],
     n0: N0,
+    len_bits: BitLength,
     m: PhantomData<M>,
     cpu_features: cpu::Features,
 }
@@ -261,6 +264,10 @@ impl<M> Modulus<'_, M> {
     #[inline]
     pub(super) fn n0(&self) -> &N0 {
         &self.n0
+    }
+
+    pub fn len_bits(&self) -> BitLength {
+        self.len_bits
     }
 
     #[inline]
