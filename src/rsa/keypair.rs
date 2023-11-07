@@ -35,13 +35,6 @@ pub struct KeyPair {
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
 
-    // XXX: qq's `oneRR` isn't used and thus this is about twice as large as
-    // it needs to be, according to how it is used. Further, it appears to be
-    // completely unnecessary since `elem_reduced` seems to be able to reduce
-    // an `Elem<N>` directly to an `Elem<Q>`. TODO: Verify that is true and
-    // eliminate this.
-    qq: bigint::OwnedModulusWithOne<QQ>,
-
     // TODO: Eliminate `q_mod_n` entirely since it is a bad space:time trade-off.
     // Also, this is the only non-temporary `Elem` so if we eliminate this, we
     // can make all `Elem`s temporary (borrowed) values.
@@ -336,8 +329,6 @@ impl KeyPair {
         let p = PrivatePrime::new(p, dP, n_bits, cpu_features)?;
         let q = PrivatePrime::new(q, dQ, n_bits, cpu_features)?;
 
-        let q_mod_n_decoded = q.modulus.to_elem(n);
-
         // TODO: Step 5.i
         //
         // 3.b is unneeded since `n_bits` is derived here from `n`.
@@ -349,7 +340,8 @@ impl KeyPair {
         // 0 < q < p < n. We check that q and p are close to sqrt(n) and then
         // assume that these preconditions are enough to let us assume that
         // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
-        let q_mod_n = bigint::elem_mul(n_one.as_ref(), q_mod_n_decoded.clone(), n);
+        let q_mod_n = q.modulus.to_elem(n);
+        let q_mod_n = bigint::elem_mul(n_one.as_ref(), q_mod_n, n);
         let p_mod_n = p.modulus.to_elem(n);
         let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, n);
         if !pq_mod_n.is_zero() {
@@ -405,11 +397,6 @@ impl KeyPair {
         bigint::verify_inverses_consttime(&qInv, q_mod_p, pm)
             .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
-        let qq = bigint::OwnedModulusWithOne::from_elem(
-            bigint::elem_mul(&q_mod_n, q_mod_n_decoded, n),
-            cpu_features,
-        )?;
-
         // This should never fail since `n` and `e` were validated above.
 
         Ok(Self {
@@ -417,7 +404,6 @@ impl KeyPair {
             q,
             qInv,
             q_mod_n,
-            qq,
             public: public_key,
         })
     }
@@ -501,16 +487,16 @@ impl<M: Prime> PrivatePrime<M> {
     }
 }
 
-fn elem_exp_consttime<M, MM>(
-    c: &bigint::Elem<MM>,
+fn elem_exp_consttime<M>(
+    c: &bigint::Elem<N>,
     p: &PrivatePrime<M>,
+    other_prime_len_bits: BitLength,
 ) -> Result<bigint::Elem<M>, error::Unspecified>
 where
-    M: bigint::NotMuchSmallerModulus<MM>,
     M: Prime,
 {
     let m = &p.modulus.modulus();
-    let c_mod_m = bigint::elem_reduced(c, m);
+    let c_mod_m = bigint::elem_reduced(c, m, other_prime_len_bits);
     // We could precompute `oneRRR = elem_squared(&p.oneRR`) as mentioned
     // in the Smooth CRT-RSA paper.
     let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, m);
@@ -525,31 +511,12 @@ where
 enum P {}
 unsafe impl Prime for P {}
 unsafe impl bigint::SmallerModulus<N> for P {}
-unsafe impl bigint::NotMuchSmallerModulus<N> for P {}
-
-#[derive(Copy, Clone)]
-enum QQ {}
-unsafe impl bigint::SmallerModulus<N> for QQ {}
-unsafe impl bigint::NotMuchSmallerModulus<N> for QQ {}
-
-// `q < p < 2*q` since `q` is slightly smaller than `p` (see below). Thus:
-//
-//                         q <  p  < 2*q
-//                       q*q < p*q < 2*q*q.
-//                      q**2 <  n  < 2*(q**2).
-unsafe impl bigint::SlightlySmallerModulus<N> for QQ {}
 
 #[derive(Copy, Clone)]
 enum Q {}
 unsafe impl Prime for Q {}
 unsafe impl bigint::SmallerModulus<N> for Q {}
 unsafe impl bigint::SmallerModulus<P> for Q {}
-
-// q < p && `p.bit_length() == q.bit_length()` implies `q < p < 2*q`.
-unsafe impl bigint::SlightlySmallerModulus<P> for Q {}
-
-unsafe impl bigint::SmallerModulus<QQ> for Q {}
-unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
 impl KeyPair {
     /// Computes the signature of `msg` and writes it into `signature`.
@@ -620,9 +587,8 @@ impl KeyPair {
         let c = base;
 
         // Step 2.b.i.
-        let m_1 = elem_exp_consttime(&c, &self.p)?;
-        let c_mod_qq = bigint::elem_reduced_once(&c, &self.qq.modulus());
-        let m_2 = elem_exp_consttime(&c_mod_qq, &self.q)?;
+        let m_1 = elem_exp_consttime(&c, &self.p, self.q.modulus.len_bits())?;
+        let m_2 = elem_exp_consttime(&c, &self.q, self.p.modulus.len_bits())?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 

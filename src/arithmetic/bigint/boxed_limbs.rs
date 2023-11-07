@@ -17,7 +17,7 @@ use crate::{
     error,
     limb::{self, Limb, LimbMask, LIMB_BYTES},
 };
-use alloc::{borrow::ToOwned, boxed::Box, vec};
+use alloc::{boxed::Box, vec};
 use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
@@ -80,14 +80,6 @@ impl<M> BoxedLimbs<M> {
         limb::parse_big_endian_and_pad_consttime(input, &mut r)
             .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
         Ok(r)
-    }
-
-    pub(super) fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
-        debug_assert_ne!(limbs.last(), Some(&0));
-        Self {
-            limbs: limbs.to_owned().into_boxed_slice(),
-            m: PhantomData,
-        }
     }
 
     pub(super) fn from_be_bytes_padded_less_than(
