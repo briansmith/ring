@@ -974,7 +974,7 @@ mod tests {
 
     #[test]
     fn test_modulus_debug() {
-        let (modulus, _) = OwnedModulusWithOne::<M>::from_be_bytes_with_bit_length(
+        let modulus = OwnedModulusWithOne::<M>::from_be_bytes(
             untrusted::Input::from(&[0xff; LIMB_BYTES * MODULUS_MIN_LIMBS]),
             cpu::features(),
         )
@@ -1011,12 +1011,7 @@ mod tests {
         cpu_features: cpu::Features,
     ) -> OwnedModulusWithOne<M> {
         let value = test_case.consume_bytes(name);
-        let (value, _) = OwnedModulusWithOne::from_be_bytes_with_bit_length(
-            untrusted::Input::from(&value),
-            cpu_features,
-        )
-        .unwrap();
-        value
+        OwnedModulusWithOne::from_be_bytes(untrusted::Input::from(&value), cpu_features).unwrap()
     }
 
     fn consume_nonnegative(test_case: &mut test::TestCase, name: &str) -> Nonnegative {

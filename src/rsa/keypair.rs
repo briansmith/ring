@@ -486,9 +486,8 @@ impl<M: Prime> PrivatePrime<M> {
         dP: untrusted::Input,
         cpu_features: cpu::Features,
     ) -> Result<Self, KeyRejected> {
-        let (p, p_bits) =
-            bigint::OwnedModulusWithOne::from_nonnegative_with_bit_length(p, cpu_features)?;
-        if p_bits.as_usize_bits() % 512 != 0 {
+        let p = bigint::OwnedModulusWithOne::from_nonnegative(p, cpu_features)?;
+        if p.len_bits().as_usize_bits() % 512 != 0 {
             return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
         }
 

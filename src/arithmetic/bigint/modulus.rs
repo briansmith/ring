@@ -20,7 +20,8 @@ use super::{
     BoxedLimbs, Elem, Nonnegative, One, PublicModulus, SlightlySmallerModulus, SmallerModulus,
 };
 use crate::{
-    bits, cpu, error,
+    bits::BitLength,
+    cpu, error,
     limb::{self, Limb, LimbMask, LIMB_BITS},
     polyfill::LeadingZerosStripped,
 };
@@ -81,6 +82,8 @@ pub struct OwnedModulusWithOne<M> {
 
     oneRR: One<M, RR>,
 
+    len_bits: BitLength,
+
     cpu_features: cpu::Features,
 }
 
@@ -90,6 +93,7 @@ impl<M: PublicModulus> Clone for OwnedModulusWithOne<M> {
             limbs: self.limbs.clone(),
             n0: self.n0.clone(),
             oneRR: self.oneRR.clone(),
+            len_bits: self.len_bits,
             cpu_features: self.cpu_features,
         }
     }
@@ -104,18 +108,18 @@ impl<M: PublicModulus> core::fmt::Debug for OwnedModulusWithOne<M> {
 }
 
 impl<M> OwnedModulusWithOne<M> {
-    pub(crate) fn from_be_bytes_with_bit_length(
+    pub(crate) fn from_be_bytes(
         input: untrusted::Input,
         cpu_features: cpu::Features,
-    ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
+    ) -> Result<Self, error::KeyRejected> {
         let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
         Self::from_boxed_limbs(limbs, cpu_features)
     }
 
-    pub(crate) fn from_nonnegative_with_bit_length(
+    pub(crate) fn from_nonnegative(
         n: Nonnegative,
         cpu_features: cpu::Features,
-    ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
+    ) -> Result<Self, error::KeyRejected> {
         let limbs = BoxedLimbs::new_unchecked(n.into_limbs());
         Self::from_boxed_limbs(limbs, cpu_features)
     }
@@ -127,17 +131,16 @@ impl<M> OwnedModulusWithOne<M> {
     where
         M: SlightlySmallerModulus<L>,
     {
-        let (m, _bits) = Self::from_boxed_limbs(
+        Self::from_boxed_limbs(
             BoxedLimbs::minimal_width_from_unpadded(&elem.limbs),
             cpu_features,
-        )?;
-        Ok(m)
+        )
     }
 
     fn from_boxed_limbs(
         n: BoxedLimbs<M>,
         cpu_features: cpu::Features,
-    ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
+    ) -> Result<Self, error::KeyRejected> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
@@ -171,7 +174,7 @@ impl<M> OwnedModulusWithOne<M> {
             N0::from(unsafe { bn_neg_inv_mod_r_u64(n_mod_r) })
         };
 
-        let bits = limb::limbs_minimal_bits(&n);
+        let len_bits = limb::limbs_minimal_bits(&n);
         let oneRR = {
             let partial = Modulus {
                 limbs: &n,
@@ -180,18 +183,16 @@ impl<M> OwnedModulusWithOne<M> {
                 cpu_features,
             };
 
-            One::newRR(&partial, bits)
+            One::newRR(&partial, len_bits)
         };
 
-        Ok((
-            Self {
-                limbs: n,
-                n0,
-                oneRR,
-                cpu_features,
-            },
-            bits,
-        ))
+        Ok(Self {
+            limbs: n,
+            n0,
+            oneRR,
+            len_bits,
+            cpu_features,
+        })
     }
 
     pub fn oneRR(&self) -> &One<M, RR> {
@@ -216,6 +217,10 @@ impl<M> OwnedModulusWithOne<M> {
             m: PhantomData,
             cpu_features: self.cpu_features,
         }
+    }
+
+    pub fn len_bits(&self) -> BitLength {
+        self.len_bits
     }
 }
 
