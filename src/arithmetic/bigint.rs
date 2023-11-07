@@ -45,7 +45,7 @@ use super::n0::N0;
 pub(crate) use super::nonnegative::Nonnegative;
 use crate::{
     arithmetic::montgomery::*,
-    bits, c, cpu, error,
+    c, cpu, error,
     limb::{self, Limb, LimbMask, LIMB_BITS},
     polyfill::u64_from_usize,
 };
@@ -305,8 +305,8 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0::LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0::LIMBS_USED` is either one or two.
-    fn newRR(m: &Modulus<M>, m_bits: bits::BitLength) -> Self {
-        let m_bits = m_bits.as_usize_bits();
+    fn newRR(m: &Modulus<M>) -> Self {
+        let m_bits = m.len_bits().as_usize_bits();
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
 
         // base = 2**(lg m - 1).
