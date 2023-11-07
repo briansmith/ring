@@ -45,6 +45,7 @@ use super::n0::N0;
 pub(crate) use super::nonnegative::Nonnegative;
 use crate::{
     arithmetic::montgomery::*,
+    bits::BitLength,
     c, cpu, error,
     limb::{self, Limb, LimbMask, LIMB_BITS},
     polyfill::u64_from_usize,
@@ -79,31 +80,6 @@ pub unsafe trait Prime {}
 /// made non-`unsafe`. (In retrospect, this shouldn't have been made an `unsafe`
 /// trait preemptively.)
 pub unsafe trait SmallerModulus<L> {}
-
-/// A modulus *s* where s < l < 2*s for the given larger modulus *l*. This is
-/// the precondition for reduction by conditional subtraction,
-/// `elem_reduce_once()`.
-///
-/// # Safety
-///
-/// Some logic may assume that the invariant holds when accessing limbs within
-/// a value, e.g. by assuming that the smaller modulus is at most one limb
-/// smaller than the larger modulus. TODO: Any such logic should be
-/// encapsulated here, or this trait should be made non-`unsafe`. (In retrospect,
-/// this shouldn't have been made an `unsafe` trait preemptively.)
-pub unsafe trait SlightlySmallerModulus<L>: SmallerModulus<L> {}
-
-/// A modulus *s* where √l <= s < l for the given larger modulus *l*. This is
-/// the precondition for the more general Montgomery reduction from ℤ/lℤ to
-/// ℤ/sℤ.
-///
-/// # Safety
-///
-/// Some logic may assume that the invariant holds when accessing limbs within
-/// a value. TODO: Any such logic should be encapsulated here, or this trait
-/// should be made non-`unsafe`. (In retrospect, this shouldn't have been made
-/// an `unsafe` trait preemptively.)
-pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
 pub trait PublicModulus {}
 
@@ -214,12 +190,20 @@ fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &Modulus<M>) {
     }
 }
 
-pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
+// TODO: This is currently unused, but we intend to eventually use this to
+// reduce elements (x mod q) mod p in the RSA CRT. If/when we do so, we
+// should update the testing so it is reflective of that usage, instead of
+// the old usage.
+#[cfg(test)]
+pub fn elem_reduced_once<Larger, Smaller>(
     a: &Elem<Larger, Unencoded>,
     m: &Modulus<Smaller>,
 ) -> Elem<Smaller, Unencoded> {
+    // `limbs_reduce_once_constant_time` requires `r` and `m` to have the same
+    // number of limbs.
+    assert_eq!(a.limbs.len(), m.limbs().len());
+
     let mut r = a.limbs.clone();
-    assert!(r.len() <= m.limbs().len());
     limb::limbs_reduce_once_constant_time(&mut r, m.limbs());
     Elem {
         limbs: BoxedLimbs::new_unchecked(r.into_limbs()),
@@ -228,10 +212,19 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
 }
 
 #[inline]
-pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
+pub fn elem_reduced<Larger, Smaller>(
     a: &Elem<Larger, Unencoded>,
     m: &Modulus<Smaller>,
+    other_prime_len_bits: BitLength,
 ) -> Elem<Smaller, RInverse> {
+    // This is stricter than required mathematically but this is what we
+    // guarantee and this is easier to check. The real requirement is that
+    // that `a < m*R` where `R` is the Montgomery `R` for `m`.
+    assert_eq!(other_prime_len_bits, m.len_bits());
+
+    // `limbs_from_mont_in_place` requires this.
+    assert_eq!(a.limbs.len(), m.limbs().len() * 2);
+
     let mut tmp = [0; MODULUS_MAX_LIMBS];
     let tmp = &mut tmp[..a.limbs.len()];
     tmp.copy_from_slice(&a.limbs);
@@ -919,17 +912,16 @@ mod tests {
             |section, test_case| {
                 assert_eq!(section, "");
 
-                struct MM {}
-                unsafe impl SmallerModulus<MM> for M {}
-                unsafe impl NotMuchSmallerModulus<MM> for M {}
+                struct M {}
 
                 let m_ = consume_modulus::<M>(test_case, "M", cpu_features);
                 let m = m_.modulus();
                 let expected_result = consume_elem(test_case, "R", &m);
                 let a =
-                    consume_elem_unchecked::<MM>(test_case, "A", expected_result.limbs.len() * 2);
+                    consume_elem_unchecked::<M>(test_case, "A", expected_result.limbs.len() * 2);
+                let other_modulus_len_bits = m_.len_bits();
 
-                let actual_result = elem_reduced(&a, &m);
+                let actual_result = elem_reduced(&a, &m, other_modulus_len_bits);
                 let oneRR = m_.oneRR();
                 let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
                 assert_elem_eq(&actual_result, &expected_result);
@@ -950,7 +942,6 @@ mod tests {
                 struct N {}
                 struct QQ {}
                 unsafe impl SmallerModulus<N> for QQ {}
-                unsafe impl SlightlySmallerModulus<N> for QQ {}
 
                 let qq = consume_modulus::<QQ>(test_case, "QQ", cpu_features);
                 let expected_result = consume_elem::<QQ>(test_case, "R", &qq.modulus());
