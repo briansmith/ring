@@ -740,13 +740,6 @@ pub fn elem_verify_equal_consttime<M, E>(
 
 // TODO: Move these methods from `Nonnegative` to `Modulus`.
 impl Nonnegative {
-    pub fn to_elem<M>(&self, m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        self.verify_less_than_modulus(m)?;
-        let mut r = m.zero();
-        r.limbs[0..self.limbs().len()].copy_from_slice(self.limbs());
-        Ok(r)
-    }
-
     pub fn verify_less_than_modulus<M>(&self, m: &Modulus<M>) -> Result<(), error::Unspecified> {
         if self.limbs().len() > m.limbs().len() {
             return Err(error::Unspecified);
