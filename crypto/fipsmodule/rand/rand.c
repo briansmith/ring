@@ -119,7 +119,10 @@ static void rand_thread_state_free(void *state_in) {
 
   if (state->prev != NULL) {
     state->prev->next = state->next;
-  } else {
+  } else if (*thread_states_list_bss_get() == state) {
+    // |state->prev| may be NULL either if it is the head of the list,
+    // or if |state| is freed before it was added to the list at all.
+    // Compare against the head of the list to distinguish these cases.
     *thread_states_list_bss_get() = state->next;
   }
 
@@ -371,7 +374,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
 
   if (state == NULL) {
-    state = OPENSSL_malloc(sizeof(struct rand_thread_state));
+    state = OPENSSL_zalloc(sizeof(struct rand_thread_state));
     if (state == NULL ||
         !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_RAND, state,
                                  rand_thread_state_free)) {
