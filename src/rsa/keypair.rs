@@ -34,12 +34,6 @@ pub struct KeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
-
-    // TODO: Eliminate `q_mod_n` entirely since it is a bad space:time trade-off.
-    // Also, this is the only non-temporary `Elem` so if we eliminate this, we
-    // can make all `Elem`s temporary (borrowed) values.
-    q_mod_n: bigint::Elem<N, R>,
-
     public: PublicKey,
 }
 
@@ -403,7 +397,6 @@ impl KeyPair {
             p,
             q,
             qInv,
-            q_mod_n,
             public: public_key,
         })
     }
@@ -578,7 +571,9 @@ impl KeyPair {
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
-        let n = &self.public.inner().n().value().modulus();
+        let n = self.public.inner().n().value();
+        let n_one = n.oneRR();
+        let n = &n.modulus();
 
         // Step 1. The value zero is also rejected.
         let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(base), n)?;
@@ -603,7 +598,9 @@ impl KeyPair {
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
         let h = bigint::elem_widen(h, n);
-        let q_times_h = bigint::elem_mul(&self.q_mod_n, h, n);
+        let q_mod_n = self.q.modulus.to_elem(n);
+        let q_mod_n = bigint::elem_mul(n_one.as_ref(), q_mod_n, n);
+        let q_times_h = bigint::elem_mul(&q_mod_n, h, n);
         let m_2 = bigint::elem_widen(m_2, n);
         let m = bigint::elem_add(m_2, q_times_h, n);
 
