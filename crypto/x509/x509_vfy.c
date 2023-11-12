@@ -128,8 +128,6 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer,
                          unsigned int *preasons, X509_CRL *crl, X509 *x);
 static int get_crl_delta(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509_CRL **pdcrl,
                          X509 *x);
-static void get_delta_sk(X509_STORE_CTX *ctx, X509_CRL **dcrl, int *pcrl_score,
-                         X509_CRL *base, STACK_OF(X509_CRL) *crls);
 static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
                            int *pcrl_score);
 static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score,
@@ -193,9 +191,20 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
     ctx->error = X509_V_ERR_INVALID_CALL;
     return -1;
   }
+
   if (ctx->chain != NULL) {
     // This X509_STORE_CTX has already been used to verify a cert. We
     // cannot do another one.
+    OPENSSL_PUT_ERROR(X509, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    ctx->error = X509_V_ERR_INVALID_CALL;
+    return -1;
+  }
+
+  if (ctx->param->flags &
+      (X509_V_FLAG_EXTENDED_CRL_SUPPORT | X509_V_FLAG_USE_DELTAS)) {
+    // We do not support indirect or delta CRLs. The flags still exist for
+    // compatibility with bindings libraries, but to ensure we do not
+    // inadvertently skip a CRL check that the caller expects, fail closed.
     OPENSSL_PUT_ERROR(X509, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     ctx->error = X509_V_ERR_INVALID_CALL;
     return -1;
@@ -1002,11 +1011,11 @@ static int get_crl_sk(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509_CRL **pdcrl,
     *pscore = best_score;
     *preasons = best_reasons;
     X509_CRL_up_ref(best_crl);
+    // TODO(crbug.com/boringssl/601): Remove remnants of delta CRL support.
     if (*pdcrl) {
       X509_CRL_free(*pdcrl);
       *pdcrl = NULL;
     }
-    get_delta_sk(ctx, pdcrl, pscore, best_crl, crls);
   }
 
   if (best_score >= CRL_SCORE_VALID) {
@@ -1014,109 +1023,6 @@ static int get_crl_sk(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509_CRL **pdcrl,
   }
 
   return 0;
-}
-
-// Compare two CRL extensions for delta checking purposes. They should be
-// both present or both absent. If both present all fields must be identical.
-
-static int crl_extension_match(X509_CRL *a, X509_CRL *b, int nid) {
-  const ASN1_OCTET_STRING *exta, *extb;
-  int i;
-  i = X509_CRL_get_ext_by_NID(a, nid, -1);
-  if (i >= 0) {
-    // Can't have multiple occurrences
-    if (X509_CRL_get_ext_by_NID(a, nid, i) != -1) {
-      return 0;
-    }
-    exta = X509_EXTENSION_get_data(X509_CRL_get_ext(a, i));
-  } else {
-    exta = NULL;
-  }
-
-  i = X509_CRL_get_ext_by_NID(b, nid, -1);
-
-  if (i >= 0) {
-    if (X509_CRL_get_ext_by_NID(b, nid, i) != -1) {
-      return 0;
-    }
-    extb = X509_EXTENSION_get_data(X509_CRL_get_ext(b, i));
-  } else {
-    extb = NULL;
-  }
-
-  if (!exta && !extb) {
-    return 1;
-  }
-
-  if (!exta || !extb) {
-    return 0;
-  }
-
-  if (ASN1_OCTET_STRING_cmp(exta, extb)) {
-    return 0;
-  }
-
-  return 1;
-}
-
-// See if a base and delta are compatible
-
-static int check_delta_base(X509_CRL *delta, X509_CRL *base) {
-  // Delta CRL must be a delta
-  if (!delta->base_crl_number) {
-    return 0;
-  }
-  // Base must have a CRL number
-  if (!base->crl_number) {
-    return 0;
-  }
-  // Issuer names must match
-  if (X509_NAME_cmp(X509_CRL_get_issuer(base), X509_CRL_get_issuer(delta))) {
-    return 0;
-  }
-  // AKID and IDP must match
-  if (!crl_extension_match(delta, base, NID_authority_key_identifier)) {
-    return 0;
-  }
-  if (!crl_extension_match(delta, base, NID_issuing_distribution_point)) {
-    return 0;
-  }
-  // Delta CRL base number must not exceed Full CRL number.
-  if (ASN1_INTEGER_cmp(delta->base_crl_number, base->crl_number) > 0) {
-    return 0;
-  }
-  // Delta CRL number must exceed full CRL number
-  if (ASN1_INTEGER_cmp(delta->crl_number, base->crl_number) > 0) {
-    return 1;
-  }
-  return 0;
-}
-
-// For a given base CRL find a delta... maybe extend to delta scoring or
-// retrieve a chain of deltas...
-
-static void get_delta_sk(X509_STORE_CTX *ctx, X509_CRL **dcrl, int *pscore,
-                         X509_CRL *base, STACK_OF(X509_CRL) *crls) {
-  X509_CRL *delta;
-  size_t i;
-  if (!(ctx->param->flags & X509_V_FLAG_USE_DELTAS)) {
-    return;
-  }
-  if (!((ctx->current_cert->ex_flags | base->flags) & EXFLAG_FRESHEST)) {
-    return;
-  }
-  for (i = 0; i < sk_X509_CRL_num(crls); i++) {
-    delta = sk_X509_CRL_value(crls, i);
-    if (check_delta_base(delta, base)) {
-      if (check_crl_time(ctx, delta, 0)) {
-        *pscore |= CRL_SCORE_TIME_DELTA;
-      }
-      X509_CRL_up_ref(delta);
-      *dcrl = delta;
-      return;
-    }
-  }
-  *dcrl = NULL;
 }
 
 // For a given CRL return how suitable it is for the supplied certificate
@@ -1136,19 +1042,14 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer,
   if (crl->idp_flags & IDP_INVALID) {
     return 0;
   }
-  // Reason codes or indirect CRLs need extended CRL support
-  if (!(ctx->param->flags & X509_V_FLAG_EXTENDED_CRL_SUPPORT)) {
-    if (crl->idp_flags & (IDP_INDIRECT | IDP_REASONS)) {
-      return 0;
-    }
-  } else if (crl->idp_flags & IDP_REASONS) {
-    // If no new reasons reject
-    if (!(crl->idp_reasons & ~tmp_reasons)) {
-      return 0;
-    }
+  // Reason codes and indirect CRLs are not supported.
+  if (crl->idp_flags & (IDP_INDIRECT | IDP_REASONS)) {
+    return 0;
   }
-  // Don't process deltas at this stage
-  else if (crl->base_crl_number) {
+  if (crl->base_crl_number) {
+    // Don't process deltas at this stage
+    //
+    // TODO(crbug.com/boringssl/601): Clean up remnants of delta CRL support.
     return 0;
   }
   // If issuer name doesn't match certificate need indirect CRL
@@ -1199,7 +1100,6 @@ static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
   X509 *crl_issuer = NULL;
   X509_NAME *cnm = X509_CRL_get_issuer(crl);
   int cidx = ctx->error_depth;
-  size_t i;
 
   if ((size_t)cidx != sk_X509_num(ctx->chain) - 1) {
     cidx++;
@@ -1223,26 +1123,6 @@ static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
     if (X509_check_akid(crl_issuer, crl->akid) == X509_V_OK) {
       *pcrl_score |= CRL_SCORE_AKID | CRL_SCORE_SAME_PATH;
       *pissuer = crl_issuer;
-      return;
-    }
-  }
-
-  // Anything else needs extended CRL support
-
-  if (!(ctx->param->flags & X509_V_FLAG_EXTENDED_CRL_SUPPORT)) {
-    return;
-  }
-
-  // Otherwise the CRL issuer is not on the path. Look for it in the set of
-  // untrusted certificates.
-  for (i = 0; i < sk_X509_num(ctx->untrusted); i++) {
-    crl_issuer = sk_X509_value(ctx->untrusted, i);
-    if (X509_NAME_cmp(X509_get_subject_name(crl_issuer), cnm)) {
-      continue;
-    }
-    if (X509_check_akid(crl_issuer, crl->akid) == X509_V_OK) {
-      *pissuer = crl_issuer;
-      *pcrl_score |= CRL_SCORE_AKID;
       return;
     }
   }
