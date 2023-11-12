@@ -570,9 +570,8 @@ OPENSSL_EXPORT const ASN1_TIME *X509_CRL_get0_nextUpdate(const X509_CRL *crl);
 OPENSSL_EXPORT X509_NAME *X509_CRL_get_issuer(const X509_CRL *crl);
 
 // X509_CRL_get0_by_serial finds the entry in |crl| whose serial number is
-// |serial|. If found, it sets |*out| to the entry. It then returns two if the
-// reason code is removeFromCRL and one if it was revoked. If not found, it
-// returns zero.
+// |serial|. If found, it sets |*out| to the entry and returns one. If not
+// found, it returns zero.
 //
 // On success, |*out| continues to be owned by |crl|. It is an error to free or
 // otherwise modify |*out|.
@@ -580,9 +579,6 @@ OPENSSL_EXPORT X509_NAME *X509_CRL_get_issuer(const X509_CRL *crl);
 // TODO(crbug.com/boringssl/600): Ideally |crl| would be const. It is broadly
 // thread-safe, but changes the order of entries in |crl|. It cannot be called
 // concurrently with |i2d_X509_CRL|.
-//
-// TODO(crbug.com/boringssl/601): removeFromCRL is part of delta CRLs. Remove
-// this special case.
 OPENSSL_EXPORT int X509_CRL_get0_by_serial(X509_CRL *crl, X509_REVOKED **out,
                                            const ASN1_INTEGER *serial);
 

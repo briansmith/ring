@@ -1432,12 +1432,8 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x) {
       return 0;
     }
   }
-  // Look for serial number of certificate in CRL If found make sure reason
-  // is not removeFromCRL.
+  // Look for serial number of certificate in CRL.
   if (X509_CRL_get0_by_cert(crl, &rev, x)) {
-    if (rev->reason == CRL_REASON_REMOVE_FROM_CRL) {
-      return 2;
-    }
     ctx->error = X509_V_ERR_CERT_REVOKED;
     ok = ctx->verify_cb(0, ctx);
     if (!ok) {

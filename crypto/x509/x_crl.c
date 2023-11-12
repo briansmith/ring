@@ -440,9 +440,6 @@ static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret,
       if (ret) {
         *ret = rev;
       }
-      if (rev->reason == CRL_REASON_REMOVE_FROM_CRL) {
-        return 2;
-      }
       return 1;
     }
   }
