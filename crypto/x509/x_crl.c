@@ -190,8 +190,6 @@ static int crl_set_issuers(X509_CRL *crl) {
 static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                   void *exarg) {
   X509_CRL *crl = (X509_CRL *)*pval;
-  STACK_OF(X509_EXTENSION) *exts;
-  X509_EXTENSION *ext;
   size_t idx;
   int i;
 
@@ -266,20 +264,14 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       // this in a flag. We only currently handle IDP so anything else
       // critical sets the flag. This code accesses the X509_CRL structure
       // directly: applications shouldn't do this.
-
-      exts = crl->crl->extensions;
-
+      const STACK_OF(X509_EXTENSION) *exts = crl->crl->extensions;
       for (idx = 0; idx < sk_X509_EXTENSION_num(exts); idx++) {
-        int nid;
-        ext = sk_X509_EXTENSION_value(exts, idx);
-        nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
-        if (nid == NID_freshest_crl) {
-          crl->flags |= EXFLAG_FRESHEST;
-        }
+        const X509_EXTENSION *ext = sk_X509_EXTENSION_value(exts, idx);
+        int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
         if (X509_EXTENSION_get_critical(ext)) {
           // We handle IDP and deltas
-          if ((nid == NID_issuing_distribution_point) ||
-              (nid == NID_authority_key_identifier) || (nid == NID_delta_crl)) {
+          if (nid == NID_issuing_distribution_point ||
+              nid == NID_authority_key_identifier || nid == NID_delta_crl) {
             continue;
           }
           crl->flags |= EXFLAG_CRITICAL;

@@ -554,9 +554,6 @@ int x509v3_cache_extensions(X509 *x) {
 
   for (j = 0; j < X509_get_ext_count(x); j++) {
     const X509_EXTENSION *ex = X509_get_ext(x, j);
-    if (OBJ_obj2nid(X509_EXTENSION_get_object(ex)) == NID_freshest_crl) {
-      x->ex_flags |= EXFLAG_FRESHEST;
-    }
     if (!X509_EXTENSION_get_critical(ex)) {
       continue;
     }

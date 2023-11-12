@@ -342,7 +342,6 @@ struct ISSUING_DIST_POINT_st {
 #define EXFLAG_SET 0x100
 #define EXFLAG_CRITICAL 0x200
 
-#define EXFLAG_FRESHEST 0x1000
 // Self signed
 #define EXFLAG_SS 0x2000
 
