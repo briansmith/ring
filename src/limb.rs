@@ -350,6 +350,19 @@ pub(crate) fn limbs_add_assign_mod(a: &mut [Limb], b: &[Limb], m: &[Limb]) {
     unsafe { LIMBS_add_mod(a.as_mut_ptr(), a.as_ptr(), b.as_ptr(), m.as_ptr(), m.len()) }
 }
 
+// *r = -a, assuming a is odd.
+pub(crate) fn limbs_negative_odd(r: &mut [Limb], a: &[Limb]) {
+    debug_assert_eq!(r.len(), a.len());
+    // Two's complement step 1: flip all the bits.
+    // The compiler should optimize this to vectorized (a ^ !0).
+    r.iter_mut().zip(a.iter()).for_each(|(r, &a)| {
+        *r = !a;
+    });
+    // Two's complement step 2: Add one. Since `a` is odd, `r` is even. Thus we
+    // can use a bitwise or for addition.
+    r[0] |= 1;
+}
+
 prefixed_extern! {
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;

@@ -289,10 +289,19 @@ impl<M> One<M, RR> {
         let m_bits = m.len_bits().as_usize_bits();
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
 
-        // base = 2**(lg m - 1).
-        let bit = m_bits - 1;
+        // base = 2**r - m.
         let mut base = m.zero();
-        base.limbs[bit / LIMB_BITS] = 1 << (bit % LIMB_BITS);
+        limb::limbs_negative_odd(&mut base.limbs, m.limbs());
+
+        // Correct base to 2**(lg m) (mod m).
+        let lg_m = m.len_bits().as_usize_bits();
+        let leading_zero_bits_in_m = r - lg_m;
+        if leading_zero_bits_in_m != 0 {
+            debug_assert!(leading_zero_bits_in_m < LIMB_BITS);
+            // `limbs_negative_odd` flipped all the leading zero bits to ones.
+            // Flip them back.
+            *base.limbs.last_mut().unwrap() &= (!0) >> leading_zero_bits_in_m;
+        }
 
         // Double `base` so that base == R == 2**r (mod m). For normal moduli
         // that have the high bit of the highest limb set, this requires one
@@ -312,7 +321,7 @@ impl<M> One<M, RR> {
         const LG_BASE: usize = 2; // Doubling vs. squaring trade-off.
         debug_assert_eq!(LG_BASE.count_ones(), 1); // Must be 2**n for n >= 0.
 
-        let doublings = r - bit + LG_BASE;
+        let doublings = leading_zero_bits_in_m + LG_BASE;
         // `m_bits >= LG_BASE` (for the currently chosen value of `LG_BASE`)
         // since we require the modulus to have at least `MODULUS_MIN_LIMBS`
         // limbs. `r >= m_bits` as seen above. So `r >= LG_BASE` and thus
