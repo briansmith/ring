@@ -308,24 +308,6 @@ struct ISSUING_DIST_POINT_st {
   int onlyattr;
 };
 
-// Values in idp_flags field
-// IDP present
-#define IDP_PRESENT 0x1
-// IDP values inconsistent
-#define IDP_INVALID 0x2
-// onlyuser true
-#define IDP_ONLYUSER 0x4
-// onlyCA true
-#define IDP_ONLYCA 0x8
-// onlyattr true
-#define IDP_ONLYATTR 0x10
-// indirectCRL true
-#define IDP_INDIRECT 0x20
-// onlysomereasons present
-#define IDP_REASONS 0x40
-
-
-
 // X509_PURPOSE stuff
 
 #define EXFLAG_BCONS 0x1
