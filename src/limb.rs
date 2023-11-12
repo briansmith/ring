@@ -350,6 +350,17 @@ pub(crate) fn limbs_add_assign_mod(a: &mut [Limb], b: &[Limb], m: &[Limb]) {
     unsafe { LIMBS_add_mod(a.as_mut_ptr(), a.as_ptr(), b.as_ptr(), m.as_ptr(), m.len()) }
 }
 
+// r *= 2 (mod m).
+pub(crate) fn limbs_double_mod(r: &mut [Limb], m: &[Limb]) {
+    assert_eq!(r.len(), m.len());
+    prefixed_extern! {
+        fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
+    }
+    unsafe {
+        LIMBS_shl_mod(r.as_mut_ptr(), r.as_ptr(), m.as_ptr(), m.len());
+    }
+}
+
 // *r = -a, assuming a is odd.
 pub(crate) fn limbs_negative_odd(r: &mut [Limb], a: &[Limb]) {
     debug_assert_eq!(r.len(), a.len());

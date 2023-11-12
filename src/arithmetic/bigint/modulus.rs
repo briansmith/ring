@@ -225,6 +225,36 @@ pub struct Modulus<'a, M> {
 }
 
 impl<M> Modulus<'_, M> {
+    pub(super) fn oneR(&self, out: &mut [Limb]) {
+        assert_eq!(self.limbs.len(), out.len());
+
+        let r = self.limbs.len() * LIMB_BITS;
+
+        // out = 2**r - m where m = self.
+        limb::limbs_negative_odd(out, self.limbs);
+
+        let lg_m = self.len_bits().as_usize_bits();
+        let leading_zero_bits_in_m = r - lg_m;
+
+        // When m's length is a multiple of LIMB_BITS, which is the case we
+        // most want to optimize for, then we already have
+        // out == 2**r - m == 2**r (mod m).
+        if leading_zero_bits_in_m != 0 {
+            debug_assert!(leading_zero_bits_in_m < LIMB_BITS);
+            // Correct out to 2**(lg m) (mod m). `limbs_negative_odd` flipped
+            // all the leading zero bits to ones. Flip them back.
+            *out.last_mut().unwrap() &= (!0) >> leading_zero_bits_in_m;
+
+            // Now we have out == 2**(lg m) (mod m). Keep doubling until we get
+            // to 2**r (mod m).
+            for _ in 0..leading_zero_bits_in_m {
+                limb::limbs_double_mod(out, self.limbs)
+            }
+        }
+
+        // Now out == 2**r (mod m) == 1*R.
+    }
+
     // TODO: XXX Avoid duplication with `Modulus`.
     pub(super) fn zero<E>(&self) -> Elem<M, E> {
         Elem {
