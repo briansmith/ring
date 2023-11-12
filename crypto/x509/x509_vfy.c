@@ -77,41 +77,29 @@ static CRYPTO_EX_DATA_CLASS g_ex_data_class =
 // CRL score values
 
 // No unhandled critical extensions
-
 #define CRL_SCORE_NOCRITICAL 0x100
 
 // certificate is within CRL scope
-
 #define CRL_SCORE_SCOPE 0x080
 
 // CRL times valid
-
 #define CRL_SCORE_TIME 0x040
 
 // Issuer name matches certificate
-
 #define CRL_SCORE_ISSUER_NAME 0x020
 
 // If this score or above CRL is probably valid
-
 #define CRL_SCORE_VALID \
   (CRL_SCORE_NOCRITICAL | CRL_SCORE_TIME | CRL_SCORE_SCOPE)
 
 // CRL issuer is certificate issuer
-
 #define CRL_SCORE_ISSUER_CERT 0x018
 
 // CRL issuer is on certificate path
-
 #define CRL_SCORE_SAME_PATH 0x008
 
 // CRL issuer matches CRL AKID
-
 #define CRL_SCORE_AKID 0x004
-
-// Have a delta CRL with valid times
-
-#define CRL_SCORE_TIME_DELTA 0x002
 
 static int null_callback(int ok, X509_STORE_CTX *e);
 static int check_issued(X509_STORE_CTX *ctx, X509 *x, X509 *issuer);
@@ -910,8 +898,7 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
         return 0;
       }
     }
-    // Ignore expiry of base CRL is delta is valid
-    if ((i < 0) && !(ctx->current_crl_score & CRL_SCORE_TIME_DELTA)) {
+    if (i < 0) {
       if (!notify) {
         return 0;
       }
