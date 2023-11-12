@@ -2560,10 +2560,6 @@ OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                       ASN1_BIT_STRING *signature, void *asn,
                                       EVP_MD_CTX *ctx);
 
-OPENSSL_EXPORT X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer,
-                                       EVP_PKEY *skey, const EVP_MD *md,
-                                       unsigned int flags);
-
 OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *x509, EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
