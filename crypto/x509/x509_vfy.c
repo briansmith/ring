@@ -981,14 +981,11 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
   if (crl->idp_flags & (IDP_INDIRECT | IDP_REASONS)) {
     return 0;
   }
-  // If issuer name doesn't match certificate need indirect CRL
+  // We do not support indirect CRLs, so the issuer names must match.
   if (X509_NAME_cmp(X509_get_issuer_name(x), X509_CRL_get_issuer(crl))) {
-    if (!(crl->idp_flags & IDP_INDIRECT)) {
-      return 0;
-    }
-  } else {
-    crl_score |= CRL_SCORE_ISSUER_NAME;
+    return 0;
   }
+  crl_score |= CRL_SCORE_ISSUER_NAME;
 
   if (!(crl->flags & EXFLAG_CRITICAL)) {
     crl_score |= CRL_SCORE_NOCRITICAL;
@@ -1029,11 +1026,9 @@ static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
   crl_issuer = sk_X509_value(ctx->chain, cidx);
 
   if (X509_check_akid(crl_issuer, crl->akid) == X509_V_OK) {
-    if (*pcrl_score & CRL_SCORE_ISSUER_NAME) {
-      *pcrl_score |= CRL_SCORE_AKID | CRL_SCORE_ISSUER_CERT;
-      *pissuer = crl_issuer;
-      return;
-    }
+    *pcrl_score |= CRL_SCORE_AKID | CRL_SCORE_ISSUER_CERT;
+    *pissuer = crl_issuer;
+    return;
   }
 
   for (cidx++; cidx < (int)sk_X509_num(ctx->chain); cidx++) {
@@ -1174,27 +1169,7 @@ static int idp_check_dp(DIST_POINT_NAME *a, DIST_POINT_NAME *b) {
   return 0;
 }
 
-static int crldp_check_crlissuer(DIST_POINT *dp, X509_CRL *crl, int crl_score) {
-  size_t i;
-  X509_NAME *nm = X509_CRL_get_issuer(crl);
-  // If no CRLissuer return is successful iff don't need a match
-  if (!dp->CRLissuer) {
-    return !!(crl_score & CRL_SCORE_ISSUER_NAME);
-  }
-  for (i = 0; i < sk_GENERAL_NAME_num(dp->CRLissuer); i++) {
-    GENERAL_NAME *gen = sk_GENERAL_NAME_value(dp->CRLissuer, i);
-    if (gen->type != GEN_DIRNAME) {
-      continue;
-    }
-    if (!X509_NAME_cmp(gen->d.directoryName, nm)) {
-      return 1;
-    }
-  }
-  return 0;
-}
-
 // Check CRLDP and IDP
-
 static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
   if (crl->idp_flags & IDP_ONLYATTR) {
     return 0;
@@ -1210,20 +1185,26 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
   }
   for (size_t i = 0; i < sk_DIST_POINT_num(x->crldp); i++) {
     DIST_POINT *dp = sk_DIST_POINT_value(x->crldp, i);
-    // Skip distribution points with a reasons field. We do not support CRLs
-    // partitioned by reason code. RFC 5280 requires CAs include at least one
-    // DistributionPoint that covers all reasons.
-    if (dp->reasons != NULL &&  //
-        crldp_check_crlissuer(dp, crl, crl_score) &&
+    // Skip distribution points with a reasons field or a CRL issuer:
+    //
+    // We do not support CRLs partitioned by reason code. RFC 5280 requires CAs
+    // include at least one DistributionPoint that covers all reasons.
+    //
+    // We also do not support indirect CRLs, and a CRL issuer can only match
+    // indirect CRLs (RFC 5280, section 6.3.3, step b.1).
+    // support.
+    if (dp->reasons != NULL && dp->CRLissuer != NULL &&
         (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint))) {
       return 1;
     }
   }
-  if ((!crl->idp || !crl->idp->distpoint) &&
-      (crl_score & CRL_SCORE_ISSUER_NAME)) {
-    return 1;
-  }
-  return 0;
+
+  // If the CRL does not specify an issuing distribution point, allow it to
+  // match anything.
+  //
+  // TODO(davidben): Does this match RFC 5280? It's hard to follow because RFC
+  // 5280 starts from distribution points, while this starts from CRLs.
+  return !crl->idp || !crl->idp->distpoint;
 }
 
 // Retrieve CRL corresponding to current certificate.
