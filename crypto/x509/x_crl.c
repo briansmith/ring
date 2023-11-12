@@ -190,7 +190,6 @@ static int crl_set_issuers(X509_CRL *crl) {
 static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                   void *exarg) {
   X509_CRL *crl = (X509_CRL *)*pval;
-  size_t idx;
   int i;
 
   switch (operation) {
@@ -199,7 +198,6 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       crl->akid = NULL;
       crl->flags = 0;
       crl->idp_flags = 0;
-      crl->idp_reasons = CRLDP_ALL_REASONS;
       crl->issuers = NULL;
       break;
 
@@ -248,7 +246,7 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       // critical sets the flag. This code accesses the X509_CRL structure
       // directly: applications shouldn't do this.
       const STACK_OF(X509_EXTENSION) *exts = crl->crl->extensions;
-      for (idx = 0; idx < sk_X509_EXTENSION_num(exts); idx++) {
+      for (size_t idx = 0; idx < sk_X509_EXTENSION_num(exts); idx++) {
         const X509_EXTENSION *ext = sk_X509_EXTENSION_value(exts, idx);
         int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
         if (X509_EXTENSION_get_critical(ext)) {
@@ -306,13 +304,6 @@ static int setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp) {
 
   if (idp->onlysomereasons) {
     crl->idp_flags |= IDP_REASONS;
-    if (idp->onlysomereasons->length > 0) {
-      crl->idp_reasons = idp->onlysomereasons->data[0];
-    }
-    if (idp->onlysomereasons->length > 1) {
-      crl->idp_reasons |= (idp->onlysomereasons->data[1] << 8);
-    }
-    crl->idp_reasons &= CRLDP_ALL_REASONS;
   }
 
   return DIST_POINT_set_dpname(idp->distpoint, X509_CRL_get_issuer(crl));

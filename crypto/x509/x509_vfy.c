@@ -1257,7 +1257,7 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score,
       return 0;
     }
   }
-  *preasons = crl->idp_reasons;
+  *preasons = CRLDP_ALL_REASONS;
   for (i = 0; i < sk_DIST_POINT_num(x->crldp); i++) {
     DIST_POINT *dp = sk_DIST_POINT_value(x->crldp, i);
     if (crldp_check_crlissuer(dp, crl, crl_score)) {

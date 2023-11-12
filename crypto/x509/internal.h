@@ -218,7 +218,6 @@ struct X509_crl_st {
   ISSUING_DIST_POINT *idp;
   // Convenient breakdown of IDP
   int idp_flags;
-  int idp_reasons;
   unsigned char crl_hash[SHA256_DIGEST_LENGTH];
   STACK_OF(GENERAL_NAMES) *issuers;
 } /* X509_CRL */;
