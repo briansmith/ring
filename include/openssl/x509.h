@@ -1858,6 +1858,48 @@ OPENSSL_EXPORT int i2d_NETSCAPE_SPKAC(const NETSCAPE_SPKAC *spkac,
                                       uint8_t **outp);
 
 
+// RSASSA-PSS Parameters.
+//
+// In X.509, RSASSA-PSS signatures and keys use a complex parameter structure,
+// defined in RFC 4055. The following functions are provided for compatibility
+// with some OpenSSL APIs relating to this. Use of RSASSA-PSS in X.509 is
+// discouraged. The parameters structure is very complex, and it takes more
+// bytes to merely encode parameters than an entire P-256 ECDSA signature.
+
+// An RSA_PSS_PARAMS represents a parsed RSASSA-PSS-params structure, as defined
+// in (RFC 4055).
+struct rsa_pss_params_st {
+  X509_ALGOR *hashAlgorithm;
+  X509_ALGOR *maskGenAlgorithm;
+  ASN1_INTEGER *saltLength;
+  ASN1_INTEGER *trailerField;
+  // OpenSSL caches the MGF hash on |RSA_PSS_PARAMS| in some cases. None of the
+  // cases apply to BoringSSL, so this is always NULL, but Node expects the
+  // field to be present.
+  X509_ALGOR *maskHash;
+} /* RSA_PSS_PARAMS */;
+
+// RSA_PSS_PARAMS is an |ASN1_ITEM| whose ASN.1 type is RSASSA-PSS-params (RFC
+// 4055) and C type is |RSA_PSS_PARAMS*|.
+DECLARE_ASN1_ITEM(RSA_PSS_PARAMS)
+
+// RSA_PSS_PARAMS_new returns a new, empty |RSA_PSS_PARAMS|, or NULL on error.
+OPENSSL_EXPORT RSA_PSS_PARAMS *RSA_PSS_PARAMS_new(void);
+
+// RSA_PSS_PARAMS_free releases memory associated with |params|.
+OPENSSL_EXPORT void RSA_PSS_PARAMS_free(RSA_PSS_PARAMS *params);
+
+// d2i_RSA_PSS_PARAMS parses up to |len| bytes from |*inp| as a DER-encoded
+// RSASSA-PSS-params (RFC 4055), as described in |d2i_SAMPLE|.
+OPENSSL_EXPORT RSA_PSS_PARAMS *d2i_RSA_PSS_PARAMS(RSA_PSS_PARAMS **out,
+                                                  const uint8_t **inp,
+                                                  long len);
+
+// i2d_RSA_PSS_PARAMS marshals |in| as a DER-encoded RSASSA-PSS-params (RFC
+// 4055), as described in |i2d_SAMPLE|.
+OPENSSL_EXPORT int i2d_RSA_PSS_PARAMS(const RSA_PSS_PARAMS *in, uint8_t **outp);
+
+
 // Printing functions.
 //
 // The following functions output human-readable representations of
@@ -2606,19 +2648,6 @@ OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
 OPENSSL_EXPORT int X509_TRUST_get_trust(const X509_TRUST *xp);
 
-
-struct rsa_pss_params_st {
-  X509_ALGOR *hashAlgorithm;
-  X509_ALGOR *maskGenAlgorithm;
-  ASN1_INTEGER *saltLength;
-  ASN1_INTEGER *trailerField;
-  // OpenSSL caches the MGF hash on |RSA_PSS_PARAMS| in some cases. None of the
-  // cases apply to BoringSSL, so this is always NULL, but Node expects the
-  // field to be present.
-  X509_ALGOR *maskHash;
-} /* RSA_PSS_PARAMS */;
-
-DECLARE_ASN1_FUNCTIONS_const(RSA_PSS_PARAMS)
 
 /*
 SSL_CTX -> X509_STORE
