@@ -166,17 +166,7 @@ where
 
 // r *= 2.
 fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Modulus<M>) {
-    prefixed_extern! {
-        fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
-    }
-    unsafe {
-        LIMBS_shl_mod(
-            r.limbs.as_mut_ptr(),
-            r.limbs.as_ptr(),
-            m.limbs().as_ptr(),
-            m.limbs().len(),
-        );
-    }
+    limb::limbs_double_mod(&mut r.limbs, m.limbs())
 }
 
 // TODO: This is currently unused, but we intend to eventually use this to
@@ -289,28 +279,13 @@ impl<M> One<M, RR> {
         let m_bits = m.len_bits().as_usize_bits();
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
 
-        // base = 2**r - m.
+        // base = 2**r (mod m) == R (mod m).
         let mut base = m.zero();
-        limb::limbs_negative_odd(&mut base.limbs, m.limbs());
+        m.oneR(&mut base.limbs);
 
-        // Correct base to 2**(lg m) (mod m).
-        let lg_m = m.len_bits().as_usize_bits();
-        let leading_zero_bits_in_m = r - lg_m;
-        if leading_zero_bits_in_m != 0 {
-            debug_assert!(leading_zero_bits_in_m < LIMB_BITS);
-            // `limbs_negative_odd` flipped all the leading zero bits to ones.
-            // Flip them back.
-            *base.limbs.last_mut().unwrap() &= (!0) >> leading_zero_bits_in_m;
-        }
-
-        // Double `base` so that base == R == 2**r (mod m). For normal moduli
-        // that have the high bit of the highest limb set, this requires one
-        // doubling. Unusual moduli require more doublings but we are less
-        // concerned about the performance of those.
-        //
-        // Then double `base` again so that base == 2*R (mod m), i.e. `2` in
-        // Montgomery form (`elem_exp_vartime()` requires the base to be in
-        // Montgomery form). Then compute
+        // Double `base` so that base == 2*R (mod m), i.e. `2` in Montgomery
+        // form (`elem_exp_vartime()` requires the base to be in Montgomery
+        // form). Then compute
         // RR = R**2 == base**r == R**r == (2**r)**r (mod m).
         //
         // Take advantage of the fact that `elem_double` is faster than
@@ -321,7 +296,7 @@ impl<M> One<M, RR> {
         const LG_BASE: usize = 2; // Doubling vs. squaring trade-off.
         debug_assert_eq!(LG_BASE.count_ones(), 1); // Must be 2**n for n >= 0.
 
-        let doublings = leading_zero_bits_in_m + LG_BASE;
+        let doublings = LG_BASE;
         // `m_bits >= LG_BASE` (for the currently chosen value of `LG_BASE`)
         // since we require the modulus to have at least `MODULUS_MIN_LIMBS`
         // limbs. `r >= m_bits` as seen above. So `r >= LG_BASE` and thus
@@ -407,11 +382,8 @@ pub(crate) fn elem_exp_vartime<M>(
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
-    m: &OwnedModulusWithOne<M>,
+    m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    let oneRR = m.oneRR();
-    let m = &m.modulus();
-
     use crate::{bssl, limb::Window};
 
     const WINDOW_BITS: usize = 5;
@@ -459,13 +431,7 @@ pub fn elem_exp_consttime<M>(
     }
 
     // table[0] = base**0 (i.e. 1).
-    {
-        let acc = entry_mut(&mut table, 0, num_limbs);
-        // `table` was initialized to zero and hasn't changed.
-        debug_assert!(acc.iter().all(|&value| value == 0));
-        acc[0] = 1;
-        limbs_mont_mul(acc, &oneRR.0.limbs, m.limbs(), m.n0(), m.cpu_features());
-    }
+    m.oneR(entry_mut(&mut table, 0, num_limbs));
 
     entry_mut(&mut table, 1, num_limbs).copy_from_slice(&base.limbs);
     for i in 2..TABLE_ENTRIES {
@@ -502,12 +468,9 @@ pub fn elem_exp_consttime<M>(
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>,
     exponent: &PrivateExponent,
-    m: &OwnedModulusWithOne<M>,
+    m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     use crate::limb::LIMB_BYTES;
-
-    let oneRR = m.oneRR();
-    let m = &m.modulus();
 
     // Pretty much all the math here requires CPU feature detection to have
     // been done. `cpu_features` isn't threaded through all the internal
@@ -659,11 +622,7 @@ pub fn elem_exp_consttime<M>(
     // All entries in `table` will be Montgomery encoded.
 
     // acc = table[0] = base**0 (i.e. 1).
-    // `acc` was initialized to zero and hasn't changed. Change it to 1 and then Montgomery
-    // encode it.
-    debug_assert!(acc.iter().all(|&value| value == 0));
-    acc[0] = 1;
-    limbs_mont_mul(acc, &oneRR.0.limbs, m_cached, n0, cpu_features);
+    m.oneR(acc);
     scatter(table, acc, 0, num_limbs);
 
     // acc = base**1 (i.e. base).
@@ -834,7 +793,7 @@ mod tests {
                         .expect("valid exponent")
                 };
                 let base = into_encoded(base, &m_);
-                let actual_result = elem_exp_consttime(base, &e, &m_).unwrap();
+                let actual_result = elem_exp_consttime(base, &e, &m).unwrap();
                 assert_elem_eq(&actual_result, &expected_result);
 
                 Ok(())

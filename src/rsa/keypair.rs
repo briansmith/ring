@@ -468,7 +468,7 @@ fn elem_exp_consttime<M>(
     // in the Smooth CRT-RSA paper.
     let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, m);
     let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, m);
-    bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.modulus)
+    bigint::elem_exp_consttime(c_mod_m, &p.exponent, m)
 }
 
 // Type-level representations of the different moduli used in RSA signing, in
