@@ -452,6 +452,24 @@ OPENSSL_EXPORT unsigned char *X509_alias_get0(X509 *x509, int *out_len);
 // to zero before calling this function.
 OPENSSL_EXPORT unsigned char *X509_keyid_get0(X509 *x509, int *out_len);
 
+// X509_add1_trust_object configures |x509| as a valid trust anchor for |obj|.
+// It returns one on success and zero on error. |obj| should be a certificate
+// usage OID associated with an |X509_TRUST| object.
+OPENSSL_EXPORT int X509_add1_trust_object(X509 *x509, const ASN1_OBJECT *obj);
+
+// X509_add1_reject_object configures |x509| as distrusted for |obj|. It returns
+// one on success and zero on error. |obj| should be a certificate usage OID
+// associated with an |X509_TRUST| object.
+OPENSSL_EXPORT int X509_add1_reject_object(X509 *x509, const ASN1_OBJECT *obj);
+
+// X509_reject_clear clears the list of OIDs for which |x509| is trusted. See
+// also |X509_add1_trust_object|.
+OPENSSL_EXPORT void X509_trust_clear(X509 *x509);
+
+// X509_reject_clear clears the list of OIDs for which |x509| is distrusted. See
+// also |X509_add1_reject_object|.
+OPENSSL_EXPORT void X509_reject_clear(X509 *x509);
+
 
 // Certificate revocation lists.
 //
@@ -2284,11 +2302,6 @@ OPENSSL_EXPORT int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key);
 
 DECLARE_ASN1_FUNCTIONS_const(X509_SIG)
-
-OPENSSL_EXPORT int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj);
-OPENSSL_EXPORT int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj);
-OPENSSL_EXPORT void X509_trust_clear(X509 *x);
-OPENSSL_EXPORT void X509_reject_clear(X509 *x);
 
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);

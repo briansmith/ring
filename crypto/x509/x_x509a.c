@@ -150,7 +150,7 @@ unsigned char *X509_keyid_get0(X509 *x, int *out_len) {
   return keyid != NULL ? keyid->data : NULL;
 }
 
-int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj) {
+int X509_add1_trust_object(X509 *x, const ASN1_OBJECT *obj) {
   ASN1_OBJECT *objtmp = OBJ_dup(obj);
   if (objtmp == NULL) {
     goto err;
@@ -172,7 +172,7 @@ err:
   return 0;
 }
 
-int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj) {
+int X509_add1_reject_object(X509 *x, const ASN1_OBJECT *obj) {
   ASN1_OBJECT *objtmp = OBJ_dup(obj);
   if (objtmp == NULL) {
     goto err;
