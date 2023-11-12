@@ -81,8 +81,8 @@ ASN1_SEQUENCE(X509_REVOKED) = {
     ASN1_SEQUENCE_OF_OPT(X509_REVOKED, extensions, X509_EXTENSION),
 } ASN1_SEQUENCE_END(X509_REVOKED)
 
-static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *serial,
-                      X509_NAME *issuer);
+static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret,
+                      const ASN1_INTEGER *serial, X509_NAME *issuer);
 
 // The X509_CRL_INFO structure needs a bit of customisation. Since we cache
 // the original encoding the signature wont be affected by reordering of the
@@ -391,7 +391,7 @@ int X509_CRL_verify(X509_CRL *crl, EVP_PKEY *pkey) {
 }
 
 int X509_CRL_get0_by_serial(X509_CRL *crl, X509_REVOKED **ret,
-                            ASN1_INTEGER *serial) {
+                            const ASN1_INTEGER *serial) {
   return crl_lookup(crl, ret, serial, NULL);
 }
 
@@ -432,14 +432,14 @@ static int crl_revoked_issuer_match(X509_CRL *crl, X509_NAME *nm,
 
 static CRYPTO_MUTEX g_crl_sort_lock = CRYPTO_MUTEX_INIT;
 
-static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret, ASN1_INTEGER *serial,
-                      X509_NAME *issuer) {
+static int crl_lookup(X509_CRL *crl, X509_REVOKED **ret,
+                      const ASN1_INTEGER *serial, X509_NAME *issuer) {
   // Use an assert, rather than a runtime error, because returning nothing for a
   // CRL is arguably failing open, rather than closed.
   assert(serial->type == V_ASN1_INTEGER || serial->type == V_ASN1_NEG_INTEGER);
   X509_REVOKED rtmp, *rev;
   size_t idx;
-  rtmp.serialNumber = serial;
+  rtmp.serialNumber = (ASN1_INTEGER *)serial;
   // Sort revoked into serial number order if not already sorted. Do this
   // under a lock to avoid race condition.
 
