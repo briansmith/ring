@@ -349,7 +349,6 @@ struct x509_store_ctx_st {
   X509_CRL *current_crl;  // current CRL
 
   int current_crl_score;         // score of current CRL
-  unsigned int current_reasons;  // Reason mask
 
   X509_STORE_CTX *parent;  // For CRL path validation: parent context
 

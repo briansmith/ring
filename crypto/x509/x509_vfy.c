@@ -825,49 +825,33 @@ static int check_revocation(X509_STORE_CTX *ctx) {
 
 static int check_cert(X509_STORE_CTX *ctx) {
   X509_CRL *crl = NULL;
-  X509 *x;
-  int ok = 0, cnum;
-  unsigned int last_reasons;
-  cnum = ctx->error_depth;
-  x = sk_X509_value(ctx->chain, cnum);
+  int ok = 0, cnum = ctx->error_depth;
+  X509 *x = sk_X509_value(ctx->chain, cnum);
   ctx->current_cert = x;
   ctx->current_issuer = NULL;
   ctx->current_crl_score = 0;
-  ctx->current_reasons = 0;
-  while (ctx->current_reasons != CRLDP_ALL_REASONS) {
-    last_reasons = ctx->current_reasons;
-    // Try to retrieve relevant CRL
-    if (ctx->get_crl) {
-      ok = ctx->get_crl(ctx, &crl, x);
-    } else {
-      ok = get_crl(ctx, &crl, x);
-    }
-    // If error looking up CRL, nothing we can do except notify callback
-    if (!ok) {
-      ctx->error = X509_V_ERR_UNABLE_TO_GET_CRL;
-      ok = ctx->verify_cb(0, ctx);
-      goto err;
-    }
-    ctx->current_crl = crl;
-    ok = ctx->check_crl(ctx, crl);
-    if (!ok) {
-      goto err;
-    }
 
-    ok = ctx->cert_crl(ctx, crl, x);
-    if (!ok) {
-      goto err;
-    }
+  // Try to retrieve relevant CRL
+  if (ctx->get_crl) {
+    ok = ctx->get_crl(ctx, &crl, x);
+  } else {
+    ok = get_crl(ctx, &crl, x);
+  }
+  // If error looking up CRL, nothing we can do except notify callback
+  if (!ok) {
+    ctx->error = X509_V_ERR_UNABLE_TO_GET_CRL;
+    ok = ctx->verify_cb(0, ctx);
+    goto err;
+  }
+  ctx->current_crl = crl;
+  ok = ctx->check_crl(ctx, crl);
+  if (!ok) {
+    goto err;
+  }
 
-    X509_CRL_free(crl);
-    crl = NULL;
-    // If reasons not updated we wont get anywhere by another iteration,
-    // so exit loop.
-    if (last_reasons == ctx->current_reasons) {
-      ctx->error = X509_V_ERR_UNABLE_TO_GET_CRL;
-      ok = ctx->verify_cb(0, ctx);
-      goto err;
-    }
+  ok = ctx->cert_crl(ctx, crl, x);
+  if (!ok) {
+    goto err;
   }
 
 err:
@@ -1264,7 +1248,6 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x) {
   STACK_OF(X509_CRL) *skcrl;
   X509_NAME *nm = X509_get_issuer_name(x);
   ok = get_crl_sk(ctx, &crl, &issuer, &crl_score, ctx->crls);
-
   if (ok) {
     goto done;
   }
@@ -1287,8 +1270,6 @@ done:
   if (crl) {
     ctx->current_issuer = issuer;
     ctx->current_crl_score = crl_score;
-    // TODO(crbug.com/boringssl/601): Clean up remnants of partitioned CRLs.
-    ctx->current_reasons = CRLDP_ALL_REASONS;
     *pcrl = crl;
     return 1;
   }
