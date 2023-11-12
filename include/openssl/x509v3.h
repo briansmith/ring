@@ -230,7 +230,6 @@ struct DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
   ASN1_BIT_STRING *reasons;
   GENERAL_NAMES *CRLissuer;
-  int dp_reasons;
 };
 
 typedef STACK_OF(DIST_POINT) CRL_DIST_POINTS;

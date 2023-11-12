@@ -124,13 +124,12 @@ static int check_revocation(X509_STORE_CTX *ctx);
 static int check_cert(X509_STORE_CTX *ctx);
 static int check_policy(X509_STORE_CTX *ctx);
 
-static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer,
-                         unsigned int *preasons, X509_CRL *crl, X509 *x);
+static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
+                         X509 *x);
 static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x);
 static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
                            int *pcrl_score);
-static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score,
-                           unsigned int *preasons);
+static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score);
 static int check_crl_path(X509_STORE_CTX *ctx, X509 *x);
 static int check_crl_chain(X509_STORE_CTX *ctx, STACK_OF(X509) *cert_path,
                            STACK_OF(X509) *crl_path);
@@ -947,18 +946,15 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
 }
 
 static int get_crl_sk(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 **pissuer,
-                      int *pscore, unsigned *preasons,
-                      STACK_OF(X509_CRL) *crls) {
+                      int *pscore, STACK_OF(X509_CRL) *crls) {
   int crl_score, best_score = *pscore;
-  unsigned best_reasons = 0;
   X509 *x = ctx->current_cert;
   X509_CRL *best_crl = NULL;
   X509 *crl_issuer = NULL, *best_crl_issuer = NULL;
 
   for (size_t i = 0; i < sk_X509_CRL_num(crls); i++) {
     X509_CRL *crl = sk_X509_CRL_value(crls, i);
-    unsigned reasons = *preasons;
-    crl_score = get_crl_score(ctx, &crl_issuer, &reasons, crl, x);
+    crl_score = get_crl_score(ctx, &crl_issuer, crl, x);
     if (crl_score < best_score || crl_score == 0) {
       continue;
     }
@@ -978,7 +974,6 @@ static int get_crl_sk(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 **pissuer,
     best_crl = crl;
     best_crl_issuer = crl_issuer;
     best_score = crl_score;
-    best_reasons = reasons;
   }
 
   if (best_crl) {
@@ -988,7 +983,6 @@ static int get_crl_sk(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 **pissuer,
     *pcrl = best_crl;
     *pissuer = best_crl_issuer;
     *pscore = best_score;
-    *preasons = best_reasons;
     X509_CRL_up_ref(best_crl);
   }
 
@@ -1001,14 +995,10 @@ static int get_crl_sk(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 **pissuer,
 
 // For a given CRL return how suitable it is for the supplied certificate
 // 'x'. The return value is a mask of several criteria. If the issuer is not
-// the certificate issuer this is returned in *pissuer. The reasons mask is
-// also used to determine if the CRL is suitable: if no new reasons the CRL
-// is rejected, otherwise reasons is updated.
-
-static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer,
-                         unsigned int *preasons, X509_CRL *crl, X509 *x) {
+// the certificate issuer this is returned in *pissuer.
+static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
+                         X509 *x) {
   int crl_score = 0;
-  unsigned int tmp_reasons = *preasons, crl_reasons;
 
   // First see if we can reject CRL straight away
 
@@ -1048,17 +1038,9 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer,
   }
 
   // Check cert for matching CRL distribution points
-
-  if (crl_crldp_check(x, crl, crl_score, &crl_reasons)) {
-    // If no new reasons reject
-    if (!(crl_reasons & ~tmp_reasons)) {
-      return 0;
-    }
-    tmp_reasons |= crl_reasons;
+  if (crl_crldp_check(x, crl, crl_score)) {
     crl_score |= CRL_SCORE_SCOPE;
   }
-
-  *preasons = tmp_reasons;
 
   return crl_score;
 }
@@ -1242,9 +1224,7 @@ static int crldp_check_crlissuer(DIST_POINT *dp, X509_CRL *crl, int crl_score) {
 
 // Check CRLDP and IDP
 
-static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score,
-                           unsigned int *preasons) {
-  size_t i;
+static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score) {
   if (crl->idp_flags & IDP_ONLYATTR) {
     return 0;
   }
@@ -1257,14 +1237,15 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score,
       return 0;
     }
   }
-  *preasons = CRLDP_ALL_REASONS;
-  for (i = 0; i < sk_DIST_POINT_num(x->crldp); i++) {
+  for (size_t i = 0; i < sk_DIST_POINT_num(x->crldp); i++) {
     DIST_POINT *dp = sk_DIST_POINT_value(x->crldp, i);
-    if (crldp_check_crlissuer(dp, crl, crl_score)) {
-      if (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint)) {
-        *preasons &= dp->dp_reasons;
-        return 1;
-      }
+    // Skip distribution points with a reasons field. We do not support CRLs
+    // partitioned by reason code. RFC 5280 requires CAs include at least one
+    // DistributionPoint that covers all reasons.
+    if (dp->reasons != NULL &&  //
+        crldp_check_crlissuer(dp, crl, crl_score) &&
+        (!crl->idp || idp_check_dp(dp->distpoint, crl->idp->distpoint))) {
+      return 1;
     }
   }
   if ((!crl->idp || !crl->idp->distpoint) &&
@@ -1279,12 +1260,10 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x) {
   int ok;
   X509 *issuer = NULL;
   int crl_score = 0;
-  unsigned int reasons;
   X509_CRL *crl = NULL;
   STACK_OF(X509_CRL) *skcrl;
   X509_NAME *nm = X509_get_issuer_name(x);
-  reasons = ctx->current_reasons;
-  ok = get_crl_sk(ctx, &crl, &issuer, &crl_score, &reasons, ctx->crls);
+  ok = get_crl_sk(ctx, &crl, &issuer, &crl_score, ctx->crls);
 
   if (ok) {
     goto done;
@@ -1298,7 +1277,7 @@ static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x) {
     goto done;
   }
 
-  get_crl_sk(ctx, &crl, &issuer, &crl_score, &reasons, skcrl);
+  get_crl_sk(ctx, &crl, &issuer, &crl_score, skcrl);
 
   sk_X509_CRL_pop_free(skcrl, X509_CRL_free);
 
@@ -1308,7 +1287,8 @@ done:
   if (crl) {
     ctx->current_issuer = issuer;
     ctx->current_crl_score = crl_score;
-    ctx->current_reasons = reasons;
+    // TODO(crbug.com/boringssl/601): Clean up remnants of partitioned CRLs.
+    ctx->current_reasons = CRLDP_ALL_REASONS;
     *pcrl = crl;
     return 1;
   }
