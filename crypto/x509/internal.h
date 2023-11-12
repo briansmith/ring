@@ -363,8 +363,6 @@ struct x509_store_ctx_st {
 
   int current_crl_score;         // score of current CRL
 
-  X509_STORE_CTX *parent;  // For CRL path validation: parent context
-
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
 

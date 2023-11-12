@@ -115,12 +115,9 @@ static int check_policy(X509_STORE_CTX *ctx);
 static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
                          X509 *x);
 static int get_crl(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509 *x);
-static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
-                           int *pcrl_score);
+static int crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
+                          int *pcrl_score);
 static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score);
-static int check_crl_path(X509_STORE_CTX *ctx, X509 *x);
-static int check_crl_chain(X509_STORE_CTX *ctx, STACK_OF(X509) *cert_path,
-                           STACK_OF(X509) *crl_path);
 
 static int internal_verify(X509_STORE_CTX *ctx);
 
@@ -533,10 +530,7 @@ static int get_issuer_sk(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
 
 static int check_chain_extensions(X509_STORE_CTX *ctx) {
   int ok = 0, plen = 0;
-
-  // If |ctx->parent| is set, this is CRL path validation.
-  int purpose =
-      ctx->parent == NULL ? ctx->param->purpose : X509_PURPOSE_CRL_SIGN;
+  int purpose = ctx->param->purpose;
 
   // Check all untrusted certificates
   for (int i = 0; i < ctx->last_untrusted; i++) {
@@ -795,10 +789,6 @@ static int check_revocation(X509_STORE_CTX *ctx) {
   if (ctx->param->flags & X509_V_FLAG_CRL_CHECK_ALL) {
     last = (int)sk_X509_num(ctx->chain) - 1;
   } else {
-    // If checking CRL paths this isn't the EE certificate
-    if (ctx->parent) {
-      return 1;
-    }
     last = 0;
   }
   for (int i = 0; i <= last; i++) {
@@ -849,7 +839,6 @@ err:
 }
 
 // Check CRL times against values in X509_STORE_CTX
-
 static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
   if (ctx->param->flags & X509_V_FLAG_NO_CHECK_TIME) {
     return 1;
@@ -997,11 +986,8 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
   }
 
   // Check authority key ID and locate certificate issuer
-  crl_akid_check(ctx, crl, pissuer, &crl_score);
-
-  // If we can't locate certificate issuer at this point forget it
-
-  if (!(crl_score & CRL_SCORE_AKID)) {
+  if (!crl_akid_check(ctx, crl, pissuer, &crl_score)) {
+    // If we can't locate certificate issuer at this point forget it
     return 0;
   }
 
@@ -1013,8 +999,8 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer, X509_CRL *crl,
   return crl_score;
 }
 
-static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
-                           int *pcrl_score) {
+static int crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
+                          int *pcrl_score) {
   X509 *crl_issuer = NULL;
   X509_NAME *cnm = X509_CRL_get_issuer(crl);
   int cidx = ctx->error_depth;
@@ -1028,7 +1014,7 @@ static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
   if (X509_check_akid(crl_issuer, crl->akid) == X509_V_OK) {
     *pcrl_score |= CRL_SCORE_AKID | CRL_SCORE_ISSUER_CERT;
     *pissuer = crl_issuer;
-    return;
+    return 1;
   }
 
   for (cidx++; cidx < (int)sk_X509_num(ctx->chain); cidx++) {
@@ -1039,64 +1025,10 @@ static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl, X509 **pissuer,
     if (X509_check_akid(crl_issuer, crl->akid) == X509_V_OK) {
       *pcrl_score |= CRL_SCORE_AKID | CRL_SCORE_SAME_PATH;
       *pissuer = crl_issuer;
-      return;
+      return 1;
     }
   }
-}
 
-// Check the path of a CRL issuer certificate. This creates a new
-// X509_STORE_CTX and populates it with most of the parameters from the
-// parent. This could be optimised somewhat since a lot of path checking will
-// be duplicated by the parent, but this will rarely be used in practice.
-
-static int check_crl_path(X509_STORE_CTX *ctx, X509 *x) {
-  X509_STORE_CTX crl_ctx;
-  int ret;
-  // Don't allow recursive CRL path validation
-  if (ctx->parent) {
-    return 0;
-  }
-  if (!X509_STORE_CTX_init(&crl_ctx, ctx->ctx, x, ctx->untrusted)) {
-    return -1;
-  }
-
-  crl_ctx.crls = ctx->crls;
-  // Copy verify params across
-  X509_STORE_CTX_set0_param(&crl_ctx, ctx->param);
-
-  crl_ctx.parent = ctx;
-  crl_ctx.verify_cb = ctx->verify_cb;
-
-  // Verify CRL issuer
-  ret = X509_verify_cert(&crl_ctx);
-
-  if (ret <= 0) {
-    goto err;
-  }
-
-  // Check chain is acceptable
-
-  ret = check_crl_chain(ctx, ctx->chain, crl_ctx.chain);
-err:
-  X509_STORE_CTX_cleanup(&crl_ctx);
-  return ret;
-}
-
-// RFC 3280 says nothing about the relationship between CRL path and
-// certificate path, which could lead to situations where a certificate could
-// be revoked or validated by a CA not authorised to do so. RFC 5280 is more
-// strict and states that the two paths must end in the same trust anchor,
-// though some discussions remain... until this is resolved we use the
-// RFC 5280 version
-
-static int check_crl_chain(X509_STORE_CTX *ctx, STACK_OF(X509) *cert_path,
-                           STACK_OF(X509) *crl_path) {
-  X509 *cert_ta, *crl_ta;
-  cert_ta = sk_X509_value(cert_path, sk_X509_num(cert_path) - 1);
-  crl_ta = sk_X509_value(crl_path, sk_X509_num(crl_path) - 1);
-  if (!X509_cmp(cert_ta, crl_ta)) {
-    return 1;
-  }
   return 0;
 }
 
@@ -1104,7 +1036,6 @@ static int check_crl_chain(X509_STORE_CTX *ctx, STACK_OF(X509) *cert_path,
 // Both are relative names and compare X509_NAME types. 2. One full, one
 // relative. Compare X509_NAME to GENERAL_NAMES. 3. Both are full names and
 // compare two GENERAL_NAMES. 4. One is NULL: automatic match.
-
 static int idp_check_dp(DIST_POINT_NAME *a, DIST_POINT_NAME *b) {
   X509_NAME *nm = NULL;
   GENERAL_NAMES *gens = NULL;
@@ -1292,16 +1223,6 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
       }
     }
 
-    if (!(ctx->current_crl_score & CRL_SCORE_SAME_PATH)) {
-      if (check_crl_path(ctx, ctx->current_issuer) <= 0) {
-        ctx->error = X509_V_ERR_CRL_PATH_VALIDATION_ERROR;
-        ok = ctx->verify_cb(0, ctx);
-        if (!ok) {
-          goto err;
-        }
-      }
-    }
-
     if (crl->idp_flags & IDP_INVALID) {
       ctx->error = X509_V_ERR_INVALID_EXTENSION;
       ok = ctx->verify_cb(0, ctx);
@@ -1374,11 +1295,6 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x) {
 }
 
 static int check_policy(X509_STORE_CTX *ctx) {
-  // TODO(davidben): Why do we disable policy validation for CRL paths?
-  if (ctx->parent) {
-    return 1;
-  }
-
   X509 *current_cert = NULL;
   int ret = X509_policy_check(ctx->chain, ctx->param->policies,
                               ctx->param->flags, &current_cert);
@@ -1635,7 +1551,10 @@ X509_CRL *X509_STORE_CTX_get0_current_crl(X509_STORE_CTX *ctx) {
 }
 
 X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(X509_STORE_CTX *ctx) {
-  return ctx->parent;
+  // In OpenSSL, an |X509_STORE_CTX| sometimes has a parent context during CRL
+  // path validation for indirect CRLs. We require the CRL to be issued
+  // somewhere along the certificate path, so this is always NULL.
+  return NULL;
 }
 
 void X509_STORE_CTX_set_cert(X509_STORE_CTX *ctx, X509 *x) { ctx->cert = x; }
@@ -1861,16 +1780,10 @@ void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx) {
     ctx->cleanup(ctx);
     ctx->cleanup = NULL;
   }
-  if (ctx->param != NULL) {
-    if (ctx->parent == NULL) {
-      X509_VERIFY_PARAM_free(ctx->param);
-    }
-    ctx->param = NULL;
-  }
-  if (ctx->chain != NULL) {
-    sk_X509_pop_free(ctx->chain, X509_free);
-    ctx->chain = NULL;
-  }
+  X509_VERIFY_PARAM_free(ctx->param);
+  ctx->param = NULL;
+  sk_X509_pop_free(ctx->chain, X509_free);
+  ctx->chain = NULL;
   CRYPTO_free_ex_data(&g_ex_data_class, ctx, &(ctx->ex_data));
   OPENSSL_memset(&ctx->ex_data, 0, sizeof(CRYPTO_EX_DATA));
 }
