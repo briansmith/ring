@@ -164,14 +164,15 @@ where
     }
 }
 
-fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &Modulus<M>) {
+// r *= 2.
+fn elem_double<M, AF>(r: &mut Elem<M, AF>, m: &Modulus<M>) {
     prefixed_extern! {
         fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
     }
     unsafe {
         LIMBS_shl_mod(
-            a.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
+            r.limbs.as_mut_ptr(),
+            r.limbs.as_ptr(),
             m.limbs().as_ptr(),
             m.limbs().len(),
         );
@@ -303,13 +304,15 @@ impl<M> One<M, RR> {
         // Montgomery form). Then compute
         // RR = R**2 == base**r == R**r == (2**r)**r (mod m).
         //
-        // Take advantage of the fact that `elem_mul_by_2` is faster than
-        // `elem_squared` by replacing some of the early squarings with shifts.
-        // TODO: Benchmark shift vs. squaring performance to determine the
+        // Take advantage of the fact that `elem_double` is faster than
+        // `elem_squared` by replacing some of the early squarings with
+        // doublings.
+        // TODO: Benchmark doubling vs. squaring performance to determine the
         // optimal value of `LG_BASE`.
-        const LG_BASE: usize = 2; // Shifts vs. squaring trade-off.
+        const LG_BASE: usize = 2; // Doubling vs. squaring trade-off.
         debug_assert_eq!(LG_BASE.count_ones(), 1); // Must be 2**n for n >= 0.
-        let shifts = r - bit + LG_BASE;
+
+        let doublings = r - bit + LG_BASE;
         // `m_bits >= LG_BASE` (for the currently chosen value of `LG_BASE`)
         // since we require the modulus to have at least `MODULUS_MIN_LIMBS`
         // limbs. `r >= m_bits` as seen above. So `r >= LG_BASE` and thus
@@ -322,8 +325,8 @@ impl<M> One<M, RR> {
         // moduli the Hamming weight is 1. For the other common case of 3072
         // the Hamming weight is 2.
         let exponent = NonZeroU64::new(u64_from_usize(r / LG_BASE)).unwrap();
-        for _ in 0..shifts {
-            elem_mul_by_2(&mut base, m)
+        for _ in 0..doublings {
+            elem_double(&mut base, m)
         }
         let RR = elem_exp_vartime(base, exponent, m);
 
