@@ -185,8 +185,6 @@ struct x509_revoked_st {
   ASN1_INTEGER *serialNumber;
   ASN1_TIME *revocationDate;
   STACK_OF(X509_EXTENSION) /* optional */ *extensions;
-  // Set up if indirect CRL
-  STACK_OF(GENERAL_NAME) *issuer;
   // Revocation reason
   int reason;
 } /* X509_REVOKED */;
@@ -235,7 +233,6 @@ struct X509_crl_st {
   // Convenient breakdown of IDP
   int idp_flags;
   unsigned char crl_hash[SHA256_DIGEST_LENGTH];
-  STACK_OF(GENERAL_NAMES) *issuers;
 } /* X509_CRL */;
 
 struct X509_VERIFY_PARAM_st {
