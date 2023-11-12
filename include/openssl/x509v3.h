@@ -301,11 +301,11 @@ typedef struct POLICY_CONSTRAINTS_st {
 
 struct ISSUING_DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
-  int onlyuser;
-  int onlyCA;
+  ASN1_BOOLEAN onlyuser;
+  ASN1_BOOLEAN onlyCA;
   ASN1_BIT_STRING *onlysomereasons;
-  int indirectCRL;
-  int onlyattr;
+  ASN1_BOOLEAN indirectCRL;
+  ASN1_BOOLEAN onlyattr;
 };
 
 // X509_PURPOSE stuff

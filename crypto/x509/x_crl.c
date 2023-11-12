@@ -276,7 +276,9 @@ static int crl_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 }
 
 // Convert IDP into a more convenient form
-
+//
+// TODO(davidben): Each of these flags are already booleans, so this is not
+// really more convenient. We can probably remove |idp_flags|.
 static int setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp) {
   int idp_only = 0;
   // Set various flags according to IDP
@@ -294,6 +296,11 @@ static int setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp) {
     crl->idp_flags |= IDP_ONLYATTR;
   }
 
+  // Per RFC 5280, section 5.2.5, at most one of onlyContainsUserCerts,
+  // onlyContainsCACerts, and onlyContainsAttributeCerts may be true.
+  //
+  // TODO(crbug.com/boringssl/443): Move this check to the |ISSUING_DIST_POINT|
+  // parser.
   if (idp_only > 1) {
     crl->idp_flags |= IDP_INVALID;
   }
@@ -306,6 +313,8 @@ static int setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp) {
     crl->idp_flags |= IDP_REASONS;
   }
 
+  // TODO(davidben): The new verifier does not support nameRelativeToCRLIssuer.
+  // Remove this?
   return DIST_POINT_set_dpname(idp->distpoint, X509_CRL_get_issuer(crl));
 }
 
