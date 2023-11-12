@@ -86,11 +86,19 @@ struct X509_pubkey_st {
   EVP_PKEY *pkey;
 } /* X509_PUBKEY */;
 
+// X509_PUBKEY is an |ASN1_ITEM| whose ASN.1 type is SubjectPublicKeyInfo and C
+// type is |X509_PUBKEY*|.
+DECLARE_ASN1_ITEM(X509_PUBKEY)
+
 struct X509_name_entry_st {
   ASN1_OBJECT *object;
   ASN1_STRING *value;
   int set;
 } /* X509_NAME_ENTRY */;
+
+// X509_NAME_ENTRY is an |ASN1_ITEM| whose ASN.1 type is AttributeTypeAndValue
+// (RFC 5280) and C type is |X509_NAME_ENTRY*|.
+DECLARE_ASN1_ITEM(X509_NAME_ENTRY)
 
 // we always keep X509_NAMEs in 2 forms.
 struct X509_name_st {
@@ -107,6 +115,10 @@ struct x509_attributes_st {
   STACK_OF(ASN1_TYPE) *set;
 } /* X509_ATTRIBUTE */;
 
+// X509_ATTRIBUTE is an |ASN1_ITEM| whose ASN.1 type is Attribute (RFC 2986) and
+// C type is |X509_ATTRIBUTE*|.
+DECLARE_ASN1_ITEM(X509_ATTRIBUTE)
+
 typedef struct x509_cert_aux_st {
   STACK_OF(ASN1_OBJECT) *trust;   // trusted uses
   STACK_OF(ASN1_OBJECT) *reject;  // rejected uses
@@ -121,6 +133,14 @@ struct X509_extension_st {
   ASN1_BOOLEAN critical;
   ASN1_OCTET_STRING *value;
 } /* X509_EXTENSION */;
+
+// X509_EXTENSION is an |ASN1_ITEM| whose ASN.1 type is X.509 Extension (RFC
+// 5280) and C type is |X509_EXTENSION*|.
+DECLARE_ASN1_ITEM(X509_EXTENSION)
+
+// X509_EXTENSIONS is an |ASN1_ITEM| whose ASN.1 type is SEQUENCE of Extension
+// (RFC 5280) and C type is |STACK_OF(X509_EXTENSION)*|.
+DECLARE_ASN1_ITEM(X509_EXTENSIONS)
 
 typedef struct {
   ASN1_INTEGER *version;  // [ 0 ] default of v1
@@ -162,6 +182,10 @@ struct x509_st {
   CRYPTO_MUTEX lock;
 } /* X509 */;
 
+// X509 is an |ASN1_ITEM| whose ASN.1 type is X.509 Certificate (RFC 5280) and C
+// type is |X509*|.
+DECLARE_ASN1_ITEM(X509)
+
 typedef struct {
   ASN1_ENCODING enc;
   ASN1_INTEGER *version;
@@ -181,6 +205,10 @@ struct X509_req_st {
   ASN1_BIT_STRING *signature;
 } /* X509_REQ */;
 
+// X509_REQ is an |ASN1_ITEM| whose ASN.1 type is CertificateRequest (RFC 2986)
+// and C type is |X509_REQ*|.
+DECLARE_ASN1_ITEM(X509_REQ)
+
 struct x509_revoked_st {
   ASN1_INTEGER *serialNumber;
   ASN1_TIME *revocationDate;
@@ -188,6 +216,11 @@ struct x509_revoked_st {
   // Revocation reason
   int reason;
 } /* X509_REVOKED */;
+
+// X509_REVOKED is an |ASN1_ITEM| whose ASN.1 type is an element of the
+// revokedCertificates field of TBSCertList (RFC 5280) and C type is
+// |X509_REVOKED*|.
+DECLARE_ASN1_ITEM(X509_REVOKED)
 
 typedef struct {
   ASN1_INTEGER *version;
@@ -235,6 +268,10 @@ struct X509_crl_st {
   unsigned char crl_hash[SHA256_DIGEST_LENGTH];
 } /* X509_CRL */;
 
+// X509_CRL is an |ASN1_ITEM| whose ASN.1 type is X.509 CertificateList (RFC
+// 5280) and C type is |X509_CRL*|.
+DECLARE_ASN1_ITEM(X509_CRL)
+
 struct X509_VERIFY_PARAM_st {
   char *name;
   int64_t check_time;               // POSIX time to use
@@ -265,6 +302,14 @@ struct x509_object_st {
     EVP_PKEY *pkey;
   } data;
 } /* X509_OBJECT */;
+
+// NETSCAPE_SPKI is an |ASN1_ITEM| whose ASN.1 type is
+// SignedPublicKeyAndChallenge and C type is |NETSCAPE_SPKI*|.
+DECLARE_ASN1_ITEM(NETSCAPE_SPKI)
+
+// NETSCAPE_SPKAC is an |ASN1_ITEM| whose ASN.1 type is PublicKeyAndChallenge
+// and C type is |NETSCAPE_SPKAC*|.
+DECLARE_ASN1_ITEM(NETSCAPE_SPKAC)
 
 // This is a static that defines the function interface
 struct x509_lookup_method_st {

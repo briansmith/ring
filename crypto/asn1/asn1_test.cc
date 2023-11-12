@@ -2823,93 +2823,109 @@ TEST(ASN1Test, OptionalChoice) {
   TestSerialize(obj.get(), i2d_OPTIONAL_CHOICE, kTrue);
 }
 
-struct EMBED_X509 {
-  X509 *x509;
-  X509 *x509_opt;
-  STACK_OF(X509) *x509_seq;
+struct EMBED_X509_ALGOR {
+  X509_ALGOR *simple;
+  X509_ALGOR *opt;
+  STACK_OF(X509_ALGOR) *seq;
 };
 
-DECLARE_ASN1_FUNCTIONS(EMBED_X509)
-ASN1_SEQUENCE(EMBED_X509) = {
-    ASN1_SIMPLE(EMBED_X509, x509, X509),
-    ASN1_EXP_OPT(EMBED_X509, x509_opt, X509, 0),
-    ASN1_IMP_SEQUENCE_OF_OPT(EMBED_X509, x509_seq, X509, 1),
-} ASN1_SEQUENCE_END(EMBED_X509)
-IMPLEMENT_ASN1_FUNCTIONS(EMBED_X509)
+struct EMBED_X509_NAME {
+  X509_NAME *simple;
+  X509_NAME *opt;
+  STACK_OF(X509_NAME) *seq;
+};
 
-// Test that X.509 types defined in this library can be embedded into other
-// types, as we rewrite them away from the templating system.
-TEST(ASN1Test, EmbedX509) {
-  // Set up a test certificate.
-  static const char kTestCert[] = R"(
------BEGIN CERTIFICATE-----
-MIIBzzCCAXagAwIBAgIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC
-QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp
-dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ
-BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l
-dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni
-v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa
-HPUdfvGULUvPciLBo1AwTjAdBgNVHQ4EFgQUq4TSrKuV8IJOFngHVVdf5CaNgtEw
-HwYDVR0jBBgwFoAUq4TSrKuV8IJOFngHVVdf5CaNgtEwDAYDVR0TBAUwAwEB/zAJ
-BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E
-BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=
------END CERTIFICATE-----
-)";
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kTestCert, sizeof(kTestCert)));
-  ASSERT_TRUE(bio);
-  bssl::UniquePtr<X509> cert(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
-  ASSERT_TRUE(cert);
-  uint8_t *cert_der = nullptr;
-  int cert_len = i2d_X509(cert.get(), &cert_der);
-  ASSERT_GT(cert_len, 0);
-  bssl::UniquePtr<uint8_t> free_cert_der(cert_der);
+DECLARE_ASN1_FUNCTIONS(EMBED_X509_ALGOR)
+ASN1_SEQUENCE(EMBED_X509_ALGOR) = {
+    ASN1_SIMPLE(EMBED_X509_ALGOR, simple, X509_ALGOR),
+    ASN1_EXP_OPT(EMBED_X509_ALGOR, opt, X509_ALGOR, 0),
+    ASN1_IMP_SEQUENCE_OF_OPT(EMBED_X509_ALGOR, seq, X509_ALGOR, 1),
+} ASN1_SEQUENCE_END(EMBED_X509_ALGOR)
+IMPLEMENT_ASN1_FUNCTIONS(EMBED_X509_ALGOR)
 
-  std::unique_ptr<EMBED_X509, decltype(&EMBED_X509_free)> obj(nullptr,
-                                                              EMBED_X509_free);
+DECLARE_ASN1_FUNCTIONS(EMBED_X509_NAME)
+ASN1_SEQUENCE(EMBED_X509_NAME) = {
+    ASN1_SIMPLE(EMBED_X509_NAME, simple, X509_NAME),
+    ASN1_EXP_OPT(EMBED_X509_NAME, opt, X509_NAME, 0),
+    ASN1_IMP_SEQUENCE_OF_OPT(EMBED_X509_NAME, seq, X509_NAME, 1),
+} ASN1_SEQUENCE_END(EMBED_X509_NAME)
+IMPLEMENT_ASN1_FUNCTIONS(EMBED_X509_NAME)
+
+template <typename EmbedT, typename T, typename MaybeConstT, typename StackT>
+void TestEmbedType(bssl::Span<const uint8_t> inp,
+                   int (*i2d)(MaybeConstT *, uint8_t **),
+                   EmbedT *(*embed_new)(), void (*embed_free)(EmbedT *),
+                   EmbedT *(*d2i_embed)(EmbedT **, const uint8_t **, long),
+                   int (*i2d_embed)(EmbedT *, uint8_t **),
+                   size_t (*sk_num)(const StackT *),
+                   T *(*sk_value)(const StackT *, size_t)) {
+  std::unique_ptr<EmbedT, decltype(embed_free)> obj(nullptr, embed_free);
 
   // Test only the first field present.
   bssl::ScopedCBB cbb;
   ASSERT_TRUE(CBB_init(cbb.get(), 64));
   CBB seq;
   ASSERT_TRUE(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
-  ASSERT_TRUE(CBB_add_bytes(&seq, cert_der, cert_len));
+  ASSERT_TRUE(CBB_add_bytes(&seq, inp.data(), inp.size()));
   ASSERT_TRUE(CBB_flush(cbb.get()));
   const uint8_t *ptr = CBB_data(cbb.get());
-  obj.reset(d2i_EMBED_X509(nullptr, &ptr, CBB_len(cbb.get())));
+  obj.reset(d2i_embed(nullptr, &ptr, CBB_len(cbb.get())));
   ASSERT_TRUE(obj);
-  ASSERT_TRUE(obj->x509);
-  EXPECT_EQ(X509_cmp(obj->x509, cert.get()), 0);
-  EXPECT_FALSE(obj->x509_opt);
-  EXPECT_FALSE(obj->x509_seq);
-  TestSerialize(obj.get(), i2d_EMBED_X509,
+  ASSERT_TRUE(obj->simple);
+  // Test the field was parsed correctly by reserializing it.
+  TestSerialize(obj->simple, i2d, inp);
+  EXPECT_FALSE(obj->opt);
+  EXPECT_FALSE(obj->seq);
+  TestSerialize(obj.get(), i2d_embed,
                 {CBB_data(cbb.get()), CBB_len(cbb.get())});
 
   // Test all fields present.
   cbb.Reset();
   ASSERT_TRUE(CBB_init(cbb.get(), 64));
   ASSERT_TRUE(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
-  ASSERT_TRUE(CBB_add_bytes(&seq, cert_der, cert_len));
+  ASSERT_TRUE(CBB_add_bytes(&seq, inp.data(), inp.size()));
   CBB child;
   ASSERT_TRUE(CBB_add_asn1(
       &seq, &child, CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0));
-  ASSERT_TRUE(CBB_add_bytes(&child, cert_der, cert_len));
+  ASSERT_TRUE(CBB_add_bytes(&child, inp.data(), inp.size()));
   ASSERT_TRUE(CBB_add_asn1(
       &seq, &child, CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1));
-  ASSERT_TRUE(CBB_add_bytes(&child, cert_der, cert_len));
-  ASSERT_TRUE(CBB_add_bytes(&child, cert_der, cert_len));
+  ASSERT_TRUE(CBB_add_bytes(&child, inp.data(), inp.size()));
+  ASSERT_TRUE(CBB_add_bytes(&child, inp.data(), inp.size()));
   ASSERT_TRUE(CBB_flush(cbb.get()));
   ptr = CBB_data(cbb.get());
-  obj.reset(d2i_EMBED_X509(nullptr, &ptr, CBB_len(cbb.get())));
+  obj.reset(d2i_embed(nullptr, &ptr, CBB_len(cbb.get())));
   ASSERT_TRUE(obj);
-  ASSERT_TRUE(obj->x509);
-  EXPECT_EQ(X509_cmp(obj->x509, cert.get()), 0);
-  ASSERT_TRUE(obj->x509_opt);
-  EXPECT_EQ(X509_cmp(obj->x509_opt, cert.get()), 0);
-  ASSERT_EQ(sk_X509_num(obj->x509_seq), 2u);
-  EXPECT_EQ(X509_cmp(sk_X509_value(obj->x509_seq, 0), cert.get()), 0);
-  EXPECT_EQ(X509_cmp(sk_X509_value(obj->x509_seq, 1), cert.get()), 0);
-  TestSerialize(obj.get(), i2d_EMBED_X509,
+  ASSERT_TRUE(obj->simple);
+  TestSerialize(obj->simple, i2d, inp);
+  ASSERT_TRUE(obj->opt);
+  TestSerialize(obj->opt, i2d, inp);
+  ASSERT_EQ(sk_num(obj->seq), 2u);
+  TestSerialize(sk_value(obj->seq, 0), i2d, inp);
+  TestSerialize(sk_value(obj->seq, 1), i2d, inp);
+  TestSerialize(obj.get(), i2d_embed,
                 {CBB_data(cbb.get()), CBB_len(cbb.get())});
+}
+
+// Test that X.509 types defined in this library can be embedded into other
+// types, as we rewrite them away from the templating system.
+TEST(ASN1Test, EmbedTypes) {
+  static const uint8_t kTestAlg[] = {0x30, 0x09, 0x06, 0x07, 0x2a, 0x86,
+                                     0x48, 0xce, 0x3d, 0x04, 0x01};
+  TestEmbedType(kTestAlg, i2d_X509_ALGOR, EMBED_X509_ALGOR_new,
+                EMBED_X509_ALGOR_free, d2i_EMBED_X509_ALGOR,
+                i2d_EMBED_X509_ALGOR, sk_X509_ALGOR_num, sk_X509_ALGOR_value);
+
+  static const uint8_t kTestName[] = {
+      0x30, 0x45, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x06, 0x13,
+      0x02, 0x41, 0x55, 0x31, 0x13, 0x30, 0x11, 0x06, 0x03, 0x55, 0x04, 0x08,
+      0x0c, 0x0a, 0x53, 0x6f, 0x6d, 0x65, 0x2d, 0x53, 0x74, 0x61, 0x74, 0x65,
+      0x31, 0x21, 0x30, 0x1f, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x18, 0x49,
+      0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x20, 0x57, 0x69, 0x64, 0x67,
+      0x69, 0x74, 0x73, 0x20, 0x50, 0x74, 0x79, 0x20, 0x4c, 0x74, 0x64};
+  TestEmbedType(kTestName, i2d_X509_NAME, EMBED_X509_NAME_new,
+                EMBED_X509_NAME_free, d2i_EMBED_X509_NAME, i2d_EMBED_X509_NAME,
+                sk_X509_NAME_num, sk_X509_NAME_value);
 }
 
 #endif  // !WINDOWS || !SHARED_LIBRARY

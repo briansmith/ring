@@ -118,10 +118,6 @@ extern "C" {
 
 DEFINE_STACK_OF(X509)
 
-// X509 is an |ASN1_ITEM| whose ASN.1 type is X.509 Certificate (RFC 5280) and C
-// type is |X509*|.
-DECLARE_ASN1_ITEM(X509)
-
 // X509_up_ref adds one to the reference count of |x509| and returns one.
 OPENSSL_EXPORT int X509_up_ref(X509 *x509);
 
@@ -517,10 +513,6 @@ OPENSSL_EXPORT void X509_reject_clear(X509 *x509);
 DEFINE_STACK_OF(X509_CRL)
 DEFINE_STACK_OF(X509_REVOKED)
 
-// X509_CRL is an |ASN1_ITEM| whose ASN.1 type is X.509 CertificateList (RFC
-// 5280) and C type is |X509_CRL*|.
-DECLARE_ASN1_ITEM(X509_CRL)
-
 // X509_CRL_up_ref adds one to the reference count of |crl| and returns one.
 OPENSSL_EXPORT int X509_CRL_up_ref(X509_CRL *crl);
 
@@ -779,11 +771,6 @@ OPENSSL_EXPORT int X509_CRL_set1_signature_value(X509_CRL *crl,
 // to mutate the object. Doing so may break |X509_CRL|'s and cause the library
 // to behave incorrectly.
 
-// X509_REVOKED is an |ASN1_ITEM| whose ASN.1 type is an element of the
-// revokedCertificates field of TBSCertList (RFC 5280) and C type is
-// |X509_REVOKED*|.
-DECLARE_ASN1_ITEM(X509_REVOKED)
-
 // X509_REVOKED_new returns a newly-allocated, empty |X509_REVOKED| object, or
 // NULL on allocation error.
 OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_new(void);
@@ -906,10 +893,6 @@ OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
 //
 // Instead, mutation functions should only be used when issuing new CRLs, as
 // described in a later section.
-
-// X509_REQ is an |ASN1_ITEM| whose ASN.1 type is CertificateRequest (RFC 2986)
-// and C type is |X509_REQ*|.
-DECLARE_ASN1_ITEM(X509_REQ)
 
 // X509_REQ_dup returns a newly-allocated copy of |req|, or NULL on error. This
 // function works by serializing the structure, so if |req| is incomplete, it
@@ -1291,27 +1274,12 @@ OPENSSL_EXPORT int X509_NAME_add_entry_by_txt(X509_NAME *name,
                                               ossl_ssize_t len, int loc,
                                               int set);
 
-// X509_NAME_ENTRY is an |ASN1_ITEM| whose ASN.1 type is AttributeTypeAndValue
-// (RFC 5280) and C type is |X509_NAME_ENTRY*|.
-DECLARE_ASN1_ITEM(X509_NAME_ENTRY)
-
 // X509_NAME_ENTRY_new returns a new, empty |X509_NAME_ENTRY_new|, or NULL on
 // error.
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_new(void);
 
 // X509_NAME_ENTRY_free releases memory associated with |entry|.
 OPENSSL_EXPORT void X509_NAME_ENTRY_free(X509_NAME_ENTRY *entry);
-
-// d2i_X509_NAME_ENTRY parses up to |len| bytes from |*inp| as a DER-encoded
-// AttributeTypeAndValue (RFC 5280), as described in |d2i_SAMPLE|.
-OPENSSL_EXPORT X509_NAME_ENTRY *d2i_X509_NAME_ENTRY(X509_NAME_ENTRY **out,
-                                                    const uint8_t **inp,
-                                                    long len);
-
-// i2d_X509_NAME_ENTRY marshals |in| as a DER-encoded AttributeTypeAndValue (RFC
-// 5280), as described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_X509_NAME_ENTRY(const X509_NAME_ENTRY *in,
-                                       uint8_t **outp);
 
 // X509_NAME_ENTRY_dup returns a newly-allocated copy of |entry|, or NULL on
 // error.
@@ -1393,10 +1361,6 @@ OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(
 // X.509 encodes public keys as SubjectPublicKeyInfo (RFC 5280), sometimes
 // referred to as SPKI. These are represented in this library by |X509_PUBKEY|.
 
-// X509_PUBKEY is an |ASN1_ITEM| whose ASN.1 type is SubjectPublicKeyInfo and C
-// type is |X509_PUBKEY*|.
-DECLARE_ASN1_ITEM(X509_PUBKEY)
-
 // X509_PUBKEY_new returns a newly-allocated, empty |X509_PUBKEY| object, or
 // NULL on error.
 OPENSSL_EXPORT X509_PUBKEY *X509_PUBKEY_new(void);
@@ -1469,10 +1433,6 @@ OPENSSL_EXPORT const ASN1_BIT_STRING *X509_PUBKEY_get0_public_key(
 // a byte string value, which should a DER-encoded structure whose type is
 // determined by the extension type. This library represents extensions with the
 // |X509_EXTENSION| type.
-
-// X509_EXTENSION is an |ASN1_ITEM| whose ASN.1 type is X.509 Extension (RFC
-// 5280) and C type is |X509_EXTENSION*|.
-DECLARE_ASN1_ITEM(X509_EXTENSION)
 
 // X509_EXTENSION_new returns a newly-allocated, empty |X509_EXTENSION| object
 // or NULL on error.
@@ -1551,10 +1511,6 @@ OPENSSL_EXPORT int X509_EXTENSION_set_data(X509_EXTENSION *ex,
 
 DEFINE_STACK_OF(X509_EXTENSION)
 typedef STACK_OF(X509_EXTENSION) X509_EXTENSIONS;
-
-// X509_EXTENSIONS is an |ASN1_ITEM| whose ASN.1 type is SEQUENCE of Extension
-// (RFC 5280) and C type is |STACK_OF(X509_EXTENSION)*|.
-DECLARE_ASN1_ITEM(X509_EXTENSIONS)
 
 // d2i_X509_EXTENSIONS parses up to |len| bytes from |*inp| as a DER-encoded
 // SEQUENCE OF Extension (RFC 5280), as described in |d2i_SAMPLE|.
@@ -1709,10 +1665,6 @@ OPENSSL_EXPORT int X509_ALGOR_cmp(const X509_ALGOR *a, const X509_ALGOR *b);
 
 DEFINE_STACK_OF(X509_ATTRIBUTE)
 
-// X509_ATTRIBUTE is an |ASN1_ITEM| whose ASN.1 type is Attribute (RFC 2986) and
-// C type is |X509_ATTRIBUTE*|.
-DECLARE_ASN1_ITEM(X509_ATTRIBUTE)
-
 // X509_ATTRIBUTE_new returns a newly-allocated, empty |X509_ATTRIBUTE| object,
 // or NULL on error. |X509_ATTRIBUTE_set1_*| may be used to finish initializing
 // it.
@@ -1854,10 +1806,6 @@ struct Netscape_spki_st {
   ASN1_BIT_STRING *signature;
 } /* NETSCAPE_SPKI */;
 
-// NETSCAPE_SPKI is an |ASN1_ITEM| whose ASN.1 type is
-// SignedPublicKeyAndChallenge and C type is |NETSCAPE_SPKI*|.
-DECLARE_ASN1_ITEM(NETSCAPE_SPKI)
-
 // NETSCAPE_SPKI_new returns a newly-allocated, empty |NETSCAPE_SPKI| object, or
 // NULL on error.
 OPENSSL_EXPORT NETSCAPE_SPKI *NETSCAPE_SPKI_new(void);
@@ -1917,10 +1865,6 @@ struct Netscape_spkac_st {
   X509_PUBKEY *pubkey;
   ASN1_IA5STRING *challenge;
 } /* NETSCAPE_SPKAC */;
-
-// NETSCAPE_SPKAC is an |ASN1_ITEM| whose ASN.1 type is PublicKeyAndChallenge
-// and C type is |NETSCAPE_SPKAC*|.
-DECLARE_ASN1_ITEM(NETSCAPE_SPKAC)
 
 // NETSCAPE_SPKAC_new returns a newly-allocated, empty |NETSCAPE_SPKAC| object,
 // or NULL on error.
@@ -1992,10 +1936,6 @@ OPENSSL_EXPORT int i2d_RSA_PSS_PARAMS(const RSA_PSS_PARAMS *in, uint8_t **outp);
 //
 // TODO(davidben): Do these functions really belong in this header?
 
-// PKCS8_PRIV_KEY_INFO is an |ASN1_ITEM| whose ASN.1 type is PrivateKeyInfo and
-// C type is |PKCS8_PRIV_KEY_INFO*|.
-DECLARE_ASN1_ITEM(PKCS8_PRIV_KEY_INFO)
-
 // PKCS8_PRIV_KEY_INFO_new returns a newly-allocated, empty
 // |PKCS8_PRIV_KEY_INFO| object, or NULL on error.
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_PRIV_KEY_INFO_new(void);
@@ -2034,10 +1974,6 @@ OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8(const EVP_PKEY *pkey);
 // AlgorithmIdentifier and an OCTET STRING. Although named |X509_SIG|, there is
 // no type in X.509 which matches this format. The two common types which do are
 // DigestInfo (RFC 2315 and RFC 8017), and EncryptedPrivateKeyInfo (RFC 5208).
-
-// X509_SIG is an |ASN1_ITEM| whose ASN.1 type is the SEQUENCE described above
-// and C type is |X509_SIG*|.
-DECLARE_ASN1_ITEM(X509_SIG)
 
 // X509_SIG_new returns a newly-allocated, empty |X509_SIG| object, or NULL on
 // error.
