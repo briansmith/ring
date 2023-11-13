@@ -1186,6 +1186,19 @@ OPENSSL_EXPORT int i2d_X509_NAME(X509_NAME *in, uint8_t **outp);
 // mutated.
 OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *name);
 
+// X509_NAME_cmp compares |a| and |b|'s canonicalized forms. It returns zero if
+// they are equal, one if |a| sorts after |b|, -1 if |b| sorts after |a|, and -2
+// on error.
+//
+// TODO(https://crbug.com/boringssl/407): This function is const, but it is not
+// always thread-safe, notably if |name| was mutated.
+//
+// TODO(https://crbug.com/boringssl/355): The -2 return is very inconvenient to
+// pass to a sorting function. Can we make this infallible? In the meantime,
+// prefer to use this function only for equality checks rather than comparisons.
+// Although even the library itself passes this to a sorting function.
+OPENSSL_EXPORT int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);
+
 // X509_NAME_get0_der sets |*out_der| and |*out_der_len|
 //
 // Avoid this function and prefer |i2d_X509_NAME|. It is one of the reasons
@@ -2441,6 +2454,21 @@ OPENSSL_EXPORT ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day,
 // current time.
 OPENSSL_EXPORT ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec);
 
+// X509_issuer_name_cmp behaves like |X509_NAME_cmp|, but compares |a| and |b|'s
+// issuer names.
+OPENSSL_EXPORT int X509_issuer_name_cmp(const X509 *a, const X509 *b);
+
+// X509_subject_name_cmp behaves like |X509_NAME_cmp|, but compares |a| and
+// |b|'s subject names.
+OPENSSL_EXPORT int X509_subject_name_cmp(const X509 *a, const X509 *b);
+
+// X509_CRL_cmp behaves like |X509_NAME_cmp|, but compares |a| and |b|'s
+// issuer names.
+//
+// WARNING: This function is misnamed. It does not compare other parts of the
+// CRL, only the issuer fields using |X509_NAME_cmp|.
+OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
+
 
 // ex_data functions.
 //
@@ -2696,21 +2724,17 @@ OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *x509, EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int X509_issuer_name_cmp(const X509 *a, const X509 *b);
 OPENSSL_EXPORT unsigned long X509_issuer_name_hash(X509 *a);
 
-OPENSSL_EXPORT int X509_subject_name_cmp(const X509 *a, const X509 *b);
 OPENSSL_EXPORT unsigned long X509_subject_name_hash(X509 *x);
 
 OPENSSL_EXPORT unsigned long X509_issuer_name_hash_old(X509 *a);
 OPENSSL_EXPORT unsigned long X509_subject_name_hash_old(X509 *x);
 
 OPENSSL_EXPORT int X509_cmp(const X509 *a, const X509 *b);
-OPENSSL_EXPORT int X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);
 OPENSSL_EXPORT unsigned long X509_NAME_hash(X509_NAME *x);
 OPENSSL_EXPORT unsigned long X509_NAME_hash_old(X509_NAME *x);
 
-OPENSSL_EXPORT int X509_CRL_cmp(const X509_CRL *a, const X509_CRL *b);
 OPENSSL_EXPORT int X509_CRL_match(const X509_CRL *a, const X509_CRL *b);
 
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
