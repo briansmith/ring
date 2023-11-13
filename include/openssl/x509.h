@@ -381,6 +381,9 @@ OPENSSL_EXPORT int X509_sign(X509 *x509, EVP_PKEY *pkey, const EVP_MD *md);
 // zero on error. The signature algorithm and parameters come from |ctx|, which
 // must have been initialized with |EVP_DigestSignInit|. The caller should
 // configure the corresponding |EVP_PKEY_CTX| before calling this function.
+//
+// On success or failure, this function mutates |ctx| and resets it to the empty
+// state. Caller should not rely on its contents after the function returns.
 OPENSSL_EXPORT int X509_sign_ctx(X509 *x509, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_tbs serializes the TBSCertificate portion of |x509|, as described
@@ -732,6 +735,9 @@ OPENSSL_EXPORT int X509_CRL_sign(X509_CRL *crl, EVP_PKEY *pkey,
 // zero on error. The signature algorithm and parameters come from |ctx|, which
 // must have been initialized with |EVP_DigestSignInit|. The caller should
 // configure the corresponding |EVP_PKEY_CTX| before calling this function.
+//
+// On success or failure, this function mutates |ctx| and resets it to the empty
+// state. Caller should not rely on its contents after the function returns.
 OPENSSL_EXPORT int X509_CRL_sign_ctx(X509_CRL *crl, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_CRL_tbs serializes the TBSCertList portion of |crl|, as described
@@ -1084,6 +1090,9 @@ OPENSSL_EXPORT int X509_REQ_sign(X509_REQ *req, EVP_PKEY *pkey,
 // zero on error. The signature algorithm and parameters come from |ctx|, which
 // must have been initialized with |EVP_DigestSignInit|. The caller should
 // configure the corresponding |EVP_PKEY_CTX| before calling this function.
+//
+// On success or failure, this function mutates |ctx| and resets it to the empty
+// state. Caller should not rely on its contents after the function returns.
 OPENSSL_EXPORT int X509_REQ_sign_ctx(X509_REQ *req, EVP_MD_CTX *ctx);
 
 // i2d_re_X509_REQ_tbs serializes the CertificationRequestInfo (see RFC 2986)
@@ -2426,6 +2435,73 @@ OPENSSL_EXPORT int X509_STORE_CTX_set_ex_data(X509_STORE_CTX *ctx, int idx,
 OPENSSL_EXPORT void *X509_STORE_CTX_get_ex_data(X509_STORE_CTX *ctx, int idx);
 
 
+// Hashing and signing ASN.1 structures.
+
+// ASN1_digest serializes |data| with |i2d| and then hashes the result with
+// |type|. On success, it returns one, writes the digest to |md|, and sets
+// |*len| to the digest length if non-NULL. On error, it returns zero.
+//
+// |EVP_MD_CTX_size| bytes are written, which is at most |EVP_MAX_MD_SIZE|. The
+// buffer must have sufficient space for this output.
+OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
+                               unsigned char *md, unsigned int *len);
+
+// ASN1_item_digest serializes |data| with |it| and then hashes the result with
+// |type|. On success, it returns one, writes the digest to |md|, and sets
+// |*len| to the digest length if non-NULL. On error, it returns zero.
+//
+// |EVP_MD_CTX_size| bytes are written, which is at most |EVP_MAX_MD_SIZE|. The
+// buffer must have sufficient space for this output.
+//
+// WARNING: |data| must be a pointer with the same type as |it|'s corresponding
+// C type. Using the wrong type is a potentially exploitable memory error.
+OPENSSL_EXPORT int ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type,
+                                    void *data, unsigned char *md,
+                                    unsigned int *len);
+
+// ASN1_item_verify serializes |data| with |it| and then verifies |signature| is
+// a valid signature for the result with |algor1| and |pkey|. It returns one on
+// success and zero on error. The signature and algorithm are interpreted as in
+// X.509.
+//
+// WARNING: |data| must be a pointer with the same type as |it|'s corresponding
+// C type. Using the wrong type is a potentially exploitable memory error.
+OPENSSL_EXPORT int ASN1_item_verify(const ASN1_ITEM *it,
+                                    const X509_ALGOR *algor1,
+                                    const ASN1_BIT_STRING *signature,
+                                    void *data, EVP_PKEY *pkey);
+
+// ASN1_item_sign serializes |data| with |it| and then signs the result with
+// the private key |pkey|. It returns the length of the signature on success and
+// zero on error. On success, it writes the signature to |signature| and the
+// signature algorithm to each of |algor1| and |algor2|. Either of |algor1| or
+// |algor2| may be NULL to ignore them. This function uses digest algorithm
+// |md|, or |pkey|'s default if NULL. Other signing parameters use |pkey|'s
+// defaults. To customize them, use |ASN1_item_sign_ctx|.
+//
+// WARNING: |data| must be a pointer with the same type as |it|'s corresponding
+// C type. Using the wrong type is a potentially exploitable memory error.
+OPENSSL_EXPORT int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1,
+                                  X509_ALGOR *algor2,
+                                  ASN1_BIT_STRING *signature, void *data,
+                                  EVP_PKEY *pkey, const EVP_MD *type);
+
+// ASN1_item_sign_ctx behaves like |ASN1_item_sign| except the signature is
+// signed with |ctx|, |ctx|, which must have been initialized with
+// |EVP_DigestSignInit|. The caller should configure the corresponding
+// |EVP_PKEY_CTX| with any additional parameters before calling this function.
+//
+// On success or failure, this function mutates |ctx| and resets it to the empty
+// state. Caller should not rely on its contents after the function returns.
+//
+// WARNING: |data| must be a pointer with the same type as |it|'s corresponding
+// C type. Using the wrong type is a potentially exploitable memory error.
+OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
+                                      X509_ALGOR *algor2,
+                                      ASN1_BIT_STRING *signature, void *asn,
+                                      EVP_MD_CTX *ctx);
+
+
 // Deprecated functions.
 
 // X509_get_notBefore returns |x509|'s notBefore time. Note this function is not
@@ -2634,27 +2710,6 @@ OPENSSL_EXPORT void X509_PKEY_free(X509_PKEY *a);
 
 OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
-
-OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
-                               unsigned char *md, unsigned int *len);
-
-OPENSSL_EXPORT int ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type,
-                                    void *data, unsigned char *md,
-                                    unsigned int *len);
-
-OPENSSL_EXPORT int ASN1_item_verify(const ASN1_ITEM *it,
-                                    const X509_ALGOR *algor1,
-                                    const ASN1_BIT_STRING *signature,
-                                    void *data, EVP_PKEY *pkey);
-
-OPENSSL_EXPORT int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1,
-                                  X509_ALGOR *algor2,
-                                  ASN1_BIT_STRING *signature, void *data,
-                                  EVP_PKEY *pkey, const EVP_MD *type);
-OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
-                                      X509_ALGOR *algor2,
-                                      ASN1_BIT_STRING *signature, void *asn,
-                                      EVP_MD_CTX *ctx);
 
 OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *x509, EVP_PKEY *pkey);
 
