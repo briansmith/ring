@@ -266,9 +266,7 @@ add_library(
   x509/x_attrib.c
   x509/x_crl.c
   x509/x_exten.c
-  x509/x_info.c
   x509/x_name.c
-  x509/x_pkey.c
   x509/x_pubkey.c
   x509/x_req.c
   x509/x_sig.c

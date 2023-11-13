@@ -2659,37 +2659,6 @@ DEFINE_STACK_OF(X509_TRUST)
 
 DECLARE_STACK_OF(GENERAL_NAMES)
 
-struct private_key_st {
-  int version;
-  // The PKCS#8 data types
-  X509_ALGOR *enc_algor;
-  ASN1_OCTET_STRING *enc_pkey;  // encrypted pub key
-
-  // When decrypted, the following will not be NULL
-  EVP_PKEY *dec_pkey;
-
-  // used to encrypt and decrypt
-  int key_length;
-  char *key_data;
-  int key_free;  // true if we should auto free key_data
-
-  // expanded version of 'enc_algor'
-  EVP_CIPHER_INFO cipher;
-} /* X509_PKEY */;
-
-struct X509_info_st {
-  X509 *x509;
-  X509_CRL *crl;
-  X509_PKEY *x_pkey;
-
-  EVP_CIPHER_INFO enc_cipher;
-  int enc_len;
-  char *enc_data;
-
-} /* X509_INFO */;
-
-DEFINE_STACK_OF(X509_INFO)
-
 // X509_verify_cert_error_string returns |err| as a human-readable string, where
 // |err| should be one of the |X509_V_*| values. If |err| is unknown, it returns
 // a default description.
@@ -2704,12 +2673,6 @@ OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
-
-OPENSSL_EXPORT X509_PKEY *X509_PKEY_new(void);
-OPENSSL_EXPORT void X509_PKEY_free(X509_PKEY *a);
-
-OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
-OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
 
 OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *x509, EVP_PKEY *pkey);
 
@@ -3207,11 +3170,9 @@ BORINGSSL_MAKE_DELETER(X509_ATTRIBUTE, X509_ATTRIBUTE_free)
 BORINGSSL_MAKE_DELETER(X509_CRL, X509_CRL_free)
 BORINGSSL_MAKE_UP_REF(X509_CRL, X509_CRL_up_ref)
 BORINGSSL_MAKE_DELETER(X509_EXTENSION, X509_EXTENSION_free)
-BORINGSSL_MAKE_DELETER(X509_INFO, X509_INFO_free)
 BORINGSSL_MAKE_DELETER(X509_LOOKUP, X509_LOOKUP_free)
 BORINGSSL_MAKE_DELETER(X509_NAME, X509_NAME_free)
 BORINGSSL_MAKE_DELETER(X509_NAME_ENTRY, X509_NAME_ENTRY_free)
-BORINGSSL_MAKE_DELETER(X509_PKEY, X509_PKEY_free)
 BORINGSSL_MAKE_DELETER(X509_PUBKEY, X509_PUBKEY_free)
 BORINGSSL_MAKE_DELETER(X509_REQ, X509_REQ_free)
 BORINGSSL_MAKE_DELETER(X509_REVOKED, X509_REVOKED_free)

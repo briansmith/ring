@@ -347,6 +347,25 @@ OPENSSL_EXPORT int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name,
                                       unsigned char *kstr, int klen,
                                       pem_password_cb *cb, void *u);
 
+struct private_key_st {
+  EVP_PKEY *dec_pkey;
+} /* X509_PKEY */;
+
+struct X509_info_st {
+  X509 *x509;
+  X509_CRL *crl;
+  X509_PKEY *x_pkey;
+
+  EVP_CIPHER_INFO enc_cipher;
+  int enc_len;
+  char *enc_data;
+} /* X509_INFO */;
+
+DEFINE_STACK_OF(X509_INFO)
+
+// X509_INFO_free releases memory associated with |info|.
+OPENSSL_EXPORT void X509_INFO_free(X509_INFO *info);
+
 OPENSSL_EXPORT STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(
     BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
 
@@ -454,7 +473,18 @@ OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, const EVP_PKEY *x,
 
 
 #ifdef __cplusplus
-}
+}  // extern "C"
+
+#if !defined(BORINGSSL_NO_CXX)
+extern "C++" {
+BSSL_NAMESPACE_BEGIN
+
+BORINGSSL_MAKE_DELETER(X509_INFO, X509_INFO_free)
+
+BSSL_NAMESPACE_END
+}  // extern "C++"
+#endif  // !BORINGSSL_NO_CXX
+
 #endif
 
 #define PEM_R_BAD_BASE64_DECODE 100
