@@ -1046,12 +1046,6 @@ static int get_crl_score(X509_STORE_CTX *ctx, X509 **pissuer,
   if (crl->idp_flags & (IDP_INDIRECT | IDP_REASONS)) {
     return 0;
   }
-  if (crl->base_crl_number) {
-    // Don't process deltas at this stage
-    //
-    // TODO(crbug.com/boringssl/601): Clean up remnants of delta CRL support.
-    return 0;
-  }
   // If issuer name doesn't match certificate need indirect CRL
   if (X509_NAME_cmp(X509_get_issuer_name(x), X509_CRL_get_issuer(crl))) {
     if (!(crl->idp_flags & IDP_INDIRECT)) {
@@ -1306,9 +1300,7 @@ static int crl_crldp_check(X509 *x, X509_CRL *crl, int crl_score,
   return 0;
 }
 
-// Retrieve CRL corresponding to current certificate. If deltas enabled try
-// to find a delta CRL too
-
+// Retrieve CRL corresponding to current certificate.
 static int get_crl_delta(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509_CRL **pdcrl,
                          X509 *x) {
   int ok;
@@ -1326,7 +1318,6 @@ static int get_crl_delta(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509_CRL **pdcrl,
   }
 
   // Lookup CRLs from store
-
   skcrl = ctx->lookup_crls(ctx, nm);
 
   // If no CRLs found and a near match from get_crl_sk use that
@@ -1382,42 +1373,39 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
   }
 
   if (issuer) {
-    // Skip most tests for deltas because they have already been done
-    if (!crl->base_crl_number) {
-      // Check for cRLSign bit if keyUsage present
-      if ((issuer->ex_flags & EXFLAG_KUSAGE) &&
-          !(issuer->ex_kusage & KU_CRL_SIGN)) {
-        ctx->error = X509_V_ERR_KEYUSAGE_NO_CRL_SIGN;
+    // Check for cRLSign bit if keyUsage present
+    if ((issuer->ex_flags & EXFLAG_KUSAGE) &&
+        !(issuer->ex_kusage & KU_CRL_SIGN)) {
+      ctx->error = X509_V_ERR_KEYUSAGE_NO_CRL_SIGN;
+      ok = ctx->verify_cb(0, ctx);
+      if (!ok) {
+        goto err;
+      }
+    }
+
+    if (!(ctx->current_crl_score & CRL_SCORE_SCOPE)) {
+      ctx->error = X509_V_ERR_DIFFERENT_CRL_SCOPE;
+      ok = ctx->verify_cb(0, ctx);
+      if (!ok) {
+        goto err;
+      }
+    }
+
+    if (!(ctx->current_crl_score & CRL_SCORE_SAME_PATH)) {
+      if (check_crl_path(ctx, ctx->current_issuer) <= 0) {
+        ctx->error = X509_V_ERR_CRL_PATH_VALIDATION_ERROR;
         ok = ctx->verify_cb(0, ctx);
         if (!ok) {
           goto err;
         }
       }
+    }
 
-      if (!(ctx->current_crl_score & CRL_SCORE_SCOPE)) {
-        ctx->error = X509_V_ERR_DIFFERENT_CRL_SCOPE;
-        ok = ctx->verify_cb(0, ctx);
-        if (!ok) {
-          goto err;
-        }
-      }
-
-      if (!(ctx->current_crl_score & CRL_SCORE_SAME_PATH)) {
-        if (check_crl_path(ctx, ctx->current_issuer) <= 0) {
-          ctx->error = X509_V_ERR_CRL_PATH_VALIDATION_ERROR;
-          ok = ctx->verify_cb(0, ctx);
-          if (!ok) {
-            goto err;
-          }
-        }
-      }
-
-      if (crl->idp_flags & IDP_INVALID) {
-        ctx->error = X509_V_ERR_INVALID_EXTENSION;
-        ok = ctx->verify_cb(0, ctx);
-        if (!ok) {
-          goto err;
-        }
+    if (crl->idp_flags & IDP_INVALID) {
+      ctx->error = X509_V_ERR_INVALID_EXTENSION;
+      ok = ctx->verify_cb(0, ctx);
+      if (!ok) {
+        goto err;
       }
     }
 

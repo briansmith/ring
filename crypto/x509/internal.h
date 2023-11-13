@@ -219,9 +219,6 @@ struct X509_crl_st {
   // Convenient breakdown of IDP
   int idp_flags;
   int idp_reasons;
-  // CRL and base CRL numbers for delta processing
-  ASN1_INTEGER *crl_number;
-  ASN1_INTEGER *base_crl_number;
   unsigned char crl_hash[SHA256_DIGEST_LENGTH];
   STACK_OF(GENERAL_NAMES) *issuers;
 } /* X509_CRL */;
