@@ -17,9 +17,18 @@
     allow(dead_code)
 )]
 
+// uclibc: When linked statically, uclibc doesn't provide getauxval.
+// When linked dynamically, recent versions do provide it, but we
+// want to support older versions too. Assume that if uclibc is being
+// used, this is an embedded target where the user cares a lot about
+// minimizing code size and also that they know in advance exactly
+// what target features are supported, so rely only on static feature
+// detection.
+
 #[cfg(all(
     any(target_os = "android", target_os = "linux"),
-    any(target_arch = "aarch64", target_arch = "arm")
+    any(target_arch = "aarch64", target_arch = "arm"),
+    not(target_env = "uclibc")
 ))]
 fn detect_features() -> u32 {
     use libc::c_ulong;
@@ -196,7 +205,7 @@ impl Feature {
             any(
                 target_os = "android",
                 target_os = "fuchsia",
-                target_os = "linux",
+                all(target_os = "linux", not(target_env = "uclibc")),
                 target_os = "windows"
             ),
             any(target_arch = "arm", target_arch = "aarch64")
@@ -251,7 +260,7 @@ features! {
     any(
         target_os = "android",
         target_os = "fuchsia",
-        target_os = "linux",
+        all(target_os = "linux", not(target_env = "uclibc")),
         target_os = "windows"
     )
 ))]

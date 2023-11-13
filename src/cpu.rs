@@ -57,7 +57,7 @@ pub(crate) fn features() -> Features {
                 any(
                     target_os = "android",
                     target_os = "fuchsia",
-                    target_os = "linux",
+                    all(target_os = "linux", not(target_env = "uclibc")),
                     target_os = "windows"
                 )
             ))]
