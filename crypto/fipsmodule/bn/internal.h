@@ -149,6 +149,7 @@ extern "C" {
 #endif
 
 #define BN_BITS2 64
+#define BN_BITS2_LG 6
 #define BN_BYTES 8
 #define BN_BITS4 32
 #define BN_MASK2 (0xffffffffffffffffUL)
@@ -165,6 +166,7 @@ extern "C" {
 #define BN_ULLONG uint64_t
 #define BN_CAN_DIVIDE_ULLONG
 #define BN_BITS2 32
+#define BN_BITS2_LG 5
 #define BN_BYTES 4
 #define BN_BITS4 16
 #define BN_MASK2 (0xffffffffUL)

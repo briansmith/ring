@@ -179,40 +179,41 @@ int bn_mont_ctx_set_RR_consttime(BN_MONT_CTX *mont, BN_CTX *ctx) {
   // Montgomery domain, 2R or 2^(lgBigR+1), and then use Montgomery
   // square-and-multiply to exponentiate.
   //
-  // The multiply steps take 2^n R to 2^(n+1) R. It is faster to double
-  // the value instead. The square steps take 2^n R to 2^(2n) R. This is
-  // equivalent to doubling n times. When n is below some threshold, doubling is
-  // faster. When above, squaring is faster.
+  // The square steps take 2^n R to (2^n)*(2^n) R = 2^2n R. This is the same as
+  // doubling 2^n R, n times (doubling any x, n times, computes 2^n * x). When n
+  // is below some threshold, doubling is faster; when above, squaring is
+  // faster. From benchmarking various 32-bit and 64-bit architectures, the word
+  // count seems to work well as a threshold. (Doubling scales linearly and
+  // Montgomery reduction scales quadratically, so the threshold should scale
+  // roughly linearly.)
   //
-  // We double to this threshold, then switch to Montgomery squaring. From
-  // benchmarking various 32-bit and 64-bit architectures, the word count seems
-  // to work well as a threshold. (Doubling scales linearly and Montgomery
-  // reduction scales quadratically, so the threshold should scale roughly
-  // linearly.)
-  unsigned threshold = mont->N.width;
-  unsigned iters;
-  for (iters = 0; iters < sizeof(lgBigR) * 8; iters++) {
-    if ((lgBigR >> iters) <= threshold) {
-      break;
-    }
-  }
+  // The multiply steps take 2^n R to 2*2^n R = 2^(n+1) R. It is faster to
+  // double the value instead, so the square-and-multiply exponentiation would
+  // become square-and-double. However, when using the word count as the
+  // threshold, it turns out that no multiply/double steps will be needed at
+  // all, because squaring any x, i times, computes x^(2^i):
+  //
+  //   (2^threshold)^(2^BN_BITS2_LG) R
+  //   (2^mont->N.width)^BN_BITS2 R
+  // = 2^(mont->N.width*BN_BITS2) R
+  // = 2^lgBigR R
+  // = RR
+  int threshold = mont->N.width;
 
-  // Compute 2^(lgBigR >> iters) R, or 2^((lgBigR >> iters) + lgBigR), by
-  // doubling. The first n_bits - 1 doubles can be skipped because we don't need
-  // to reduce.
+  // Calculate 2^threshold R = 2^(threshold + lgBigR) by doubling. The
+  // first n_bits - 1 doubles can be skipped because we don't need to reduce.
   if (!BN_set_bit(&mont->RR, n_bits - 1) ||
       !bn_mod_lshift_consttime(&mont->RR, &mont->RR,
-                               (lgBigR >> iters) + lgBigR - (n_bits - 1),
+                               threshold + (lgBigR - (n_bits - 1)),
                                &mont->N, ctx)) {
     return 0;
   }
 
-  for (unsigned i = iters - 1; i < iters; i--) {
+  // The above steps are the same regardless of the threshold. The steps below
+  // need to be modified if the threshold changes.
+  assert(threshold == mont->N.width);
+  for (unsigned i = 0; i < BN_BITS2_LG; i++) {
     if (!BN_mod_mul_montgomery(&mont->RR, &mont->RR, &mont->RR, mont, ctx)) {
-      return 0;
-    }
-    if ((lgBigR & (1u << i)) != 0 &&
-        !bn_mod_lshift1_consttime(&mont->RR, &mont->RR, &mont->N, ctx)) {
       return 0;
     }
   }
