@@ -298,10 +298,10 @@ impl<M> One<M, RR> {
         // doubling. Unusual moduli require more doublings but we are less
         // concerned about the performance of those.
         //
-        // Then double `base` again so that base == 2*R (mod n), i.e. `2` in
+        // Then double `base` again so that base == 2*R (mod m), i.e. `2` in
         // Montgomery form (`elem_exp_vartime()` requires the base to be in
         // Montgomery form). Then compute
-        // RR = R**2 == base**r == R**r == (2**r)**r (mod n).
+        // RR = R**2 == base**r == R**r == (2**r)**r (mod m).
         //
         // Take advantage of the fact that `elem_mul_by_2` is faster than
         // `elem_squared` by replacing some of the early squarings with shifts.
