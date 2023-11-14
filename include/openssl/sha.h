@@ -97,11 +97,12 @@ OPENSSL_EXPORT void SHA1_Transform(SHA_CTX *sha,
                                    const uint8_t block[SHA_CBLOCK]);
 
 struct sha_state_st {
-#if defined(OPENSSL_WINDOWS)
+#if defined(__cplusplus) || defined(OPENSSL_WINDOWS)
   uint32_t h[5];
 #else
-  // wpa_supplicant accesses |h0|..|h4| so we must support those names
-  // for compatibility with it until it can be updated.
+  // wpa_supplicant accesses |h0|..|h4| so we must support those names for
+  // compatibility with it until it can be updated. Anonymous unions are only
+  // standard in C11, so disable this workaround in C++.
   union {
     uint32_t h[5];
     struct {
