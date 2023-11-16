@@ -240,6 +240,11 @@ void BORINGSSL_keccak_squeeze(struct BORINGSSL_keccak_st *ctx, uint8_t *out,
   // because we require |uint8_t| to be a character type.
   const uint8_t *state_bytes = (const uint8_t *)ctx->state;
   while (out_len) {
+    if (ctx->squeeze_offset == ctx->rate_bytes) {
+      keccak_f(ctx->state);
+      ctx->squeeze_offset = 0;
+    }
+
     size_t remaining = ctx->rate_bytes - ctx->squeeze_offset;
     size_t todo = out_len;
     if (todo > remaining) {
@@ -249,9 +254,5 @@ void BORINGSSL_keccak_squeeze(struct BORINGSSL_keccak_st *ctx, uint8_t *out,
     out += todo;
     out_len -= todo;
     ctx->squeeze_offset += todo;
-    if (ctx->squeeze_offset == ctx->rate_bytes) {
-      keccak_f(ctx->state);
-      ctx->squeeze_offset = 0;
-    }
   }
 }
