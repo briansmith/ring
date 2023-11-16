@@ -56,19 +56,40 @@ static void keccak_f(uint64_t state[25]) {
     // and the sequence will repeat. All that remains is to handle the element
     // at (0, 0), but the rotation for that element is zero, and it goes to (0,
     // 0), so we can ignore it.
-    static const uint8_t kIndexes[24] = {10, 7,  11, 17, 18, 3,  5,  16,
-                                         8,  21, 24, 4,  15, 23, 19, 13,
-                                         12, 2,  20, 14, 22, 9,  6,  1};
-    static const uint8_t kRotations[24] = {1,  3,  6,  10, 15, 21, 28, 36,
-                                           45, 55, 2,  14, 27, 41, 56, 8,
-                                           25, 43, 62, 18, 39, 61, 20, 44};
     uint64_t prev_value = state[1];
-    for (int i = 0; i < 24; i++) {
-      const uint64_t value = CRYPTO_rotl_u64(prev_value, kRotations[i]);
-      const size_t index = kIndexes[i];
-      prev_value = state[index];
-      state[index] = value;
-    }
+#define PI_RHO_STEP(index, rotation)                              \
+  do {                                                            \
+    const uint64_t value = CRYPTO_rotl_u64(prev_value, rotation); \
+    prev_value = state[index];                                    \
+    state[index] = value;                                         \
+  } while (0)
+
+    PI_RHO_STEP(10, 1);
+    PI_RHO_STEP(7, 3);
+    PI_RHO_STEP(11, 6);
+    PI_RHO_STEP(17, 10);
+    PI_RHO_STEP(18, 15);
+    PI_RHO_STEP(3, 21);
+    PI_RHO_STEP(5, 28);
+    PI_RHO_STEP(16, 36);
+    PI_RHO_STEP(8, 45);
+    PI_RHO_STEP(21, 55);
+    PI_RHO_STEP(24, 2);
+    PI_RHO_STEP(4, 14);
+    PI_RHO_STEP(15, 27);
+    PI_RHO_STEP(23, 41);
+    PI_RHO_STEP(19, 56);
+    PI_RHO_STEP(13, 8);
+    PI_RHO_STEP(12, 25);
+    PI_RHO_STEP(2, 43);
+    PI_RHO_STEP(20, 62);
+    PI_RHO_STEP(14, 18);
+    PI_RHO_STEP(22, 39);
+    PI_RHO_STEP(9, 61);
+    PI_RHO_STEP(6, 20);
+    PI_RHO_STEP(1, 44);
+
+#undef PI_RHO_STEP
 
     // χ step
     for (int y = 0; y < 5; y++) {
