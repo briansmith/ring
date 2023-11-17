@@ -563,11 +563,9 @@ if(APPLE)
 endif()
 
 add_library(pki ${PKI_SOURCES})
-target_compile_definitions(pki PRIVATE _BORINGSSL_LIBPKI_)
 target_link_libraries(pki crypto)
 
 add_executable(pki_test ${PKI_TEST_SOURCES})
-target_compile_definitions(pki_test PRIVATE _BORINGSSL_LIBPKI_)
 target_link_libraries(pki_test test_support_lib boringssl_gtest pki crypto)
 add_dependencies(all_tests pki_test)
 
