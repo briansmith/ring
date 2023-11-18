@@ -1635,17 +1635,7 @@ int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
 }
 
 X509_STORE_CTX *X509_STORE_CTX_new(void) {
-  X509_STORE_CTX *ctx;
-  ctx = (X509_STORE_CTX *)OPENSSL_malloc(sizeof(X509_STORE_CTX));
-  if (!ctx) {
-    return NULL;
-  }
-  X509_STORE_CTX_zero(ctx);
-  return ctx;
-}
-
-void X509_STORE_CTX_zero(X509_STORE_CTX *ctx) {
-  OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
+  return OPENSSL_zalloc(sizeof(X509_STORE_CTX));
 }
 
 void X509_STORE_CTX_free(X509_STORE_CTX *ctx) {
@@ -1658,7 +1648,13 @@ void X509_STORE_CTX_free(X509_STORE_CTX *ctx) {
 
 int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
                         STACK_OF(X509) *chain) {
-  X509_STORE_CTX_zero(ctx);
+  // TODO(davidben): This is a remnant of when |X509_STORE_CTX| was a
+  // stack-allocatable function. Now that it is heap-allocated, we don't need to
+  // worry about uninitialized memory in |ctx|. Move the memset to
+  // |X509_STORE_CTX_cleanup| and call |X509_STORE_CTX_cleanup| here so callers
+  // don't leak memory when re-initializing a previously initialized
+  // |X509_STORE_CTX|.
+  OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
   ctx->ctx = store;
   ctx->cert = x509;
   ctx->untrusted = chain;
