@@ -65,20 +65,28 @@
 #include "../internal.h"
 #include "internal.h"
 
-X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method) {
-  X509_LOOKUP *ret;
 
-  ret = (X509_LOOKUP *)OPENSSL_malloc(sizeof(X509_LOOKUP));
+static int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
+                                      X509_NAME *name);
+static X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h,
+                                                    int type, X509_NAME *name);
+static X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
+                                               X509_OBJECT *x);
+static int X509_OBJECT_up_ref_count(X509_OBJECT *a);
+
+static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method);
+static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
+                                  X509_OBJECT *ret);
+static int X509_LOOKUP_shutdown(X509_LOOKUP *ctx);
+
+static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method) {
+  X509_LOOKUP *ret = OPENSSL_zalloc(sizeof(X509_LOOKUP));
   if (ret == NULL) {
     return NULL;
   }
 
-  ret->init = 0;
-  ret->skip = 0;
   ret->method = method;
-  ret->method_data = NULL;
-  ret->store_ctx = NULL;
-  if ((method->new_item != NULL) && !method->new_item(ret)) {
+  if (method->new_item != NULL && !method->new_item(ret)) {
     OPENSSL_free(ret);
     return NULL;
   }
@@ -95,18 +103,7 @@ void X509_LOOKUP_free(X509_LOOKUP *ctx) {
   OPENSSL_free(ctx);
 }
 
-int X509_LOOKUP_init(X509_LOOKUP *ctx) {
-  if (ctx->method == NULL) {
-    return 0;
-  }
-  if (ctx->method->init != NULL) {
-    return ctx->method->init(ctx);
-  } else {
-    return 1;
-  }
-}
-
-int X509_LOOKUP_shutdown(X509_LOOKUP *ctx) {
+static int X509_LOOKUP_shutdown(X509_LOOKUP *ctx) {
   if (ctx->method == NULL) {
     return 0;
   }
@@ -129,14 +126,18 @@ int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
   }
 }
 
-int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
-                           X509_OBJECT *ret) {
+static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
+                                  X509_OBJECT *ret) {
   if ((ctx->method == NULL) || (ctx->method->get_by_subject == NULL)) {
     return 0;
   }
   if (ctx->skip) {
     return 0;
   }
+  // Note |get_by_subject| leaves |ret| in an inconsistent state. It has
+  // pointers to an |X509| or |X509_CRL|, but has not bumped the refcount yet.
+  // For now, the caller is expected to fix this, but ideally we'd fix the
+  // |X509_LOOKUP| convention itself.
   return ctx->method->get_by_subject(ctx, type, name, ret) > 0;
 }
 
@@ -353,7 +354,7 @@ void X509_OBJECT_free(X509_OBJECT *obj) {
   OPENSSL_free(obj);
 }
 
-int X509_OBJECT_up_ref_count(X509_OBJECT *a) {
+static int X509_OBJECT_up_ref_count(X509_OBJECT *a) {
   switch (a->type) {
     case X509_LU_X509:
       X509_up_ref(a->data.x509);
@@ -432,13 +433,13 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
   return (int)idx;
 }
 
-int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
-                               X509_NAME *name) {
+static int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h, int type,
+                                      X509_NAME *name) {
   return x509_object_idx_cnt(h, type, name, NULL);
 }
 
-X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h, int type,
-                                             X509_NAME *name) {
+static X509_OBJECT *X509_OBJECT_retrieve_by_subject(STACK_OF(X509_OBJECT) *h,
+                                                    int type, X509_NAME *name) {
   int idx;
   idx = X509_OBJECT_idx_by_subject(h, type, name);
   if (idx == -1) {
@@ -533,8 +534,8 @@ STACK_OF(X509_CRL) *X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm) {
   return sk;
 }
 
-X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
-                                        X509_OBJECT *x) {
+static X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
+                                               X509_OBJECT *x) {
   sk_X509_OBJECT_sort(h);
   size_t idx;
   if (!sk_X509_OBJECT_find(h, &idx, x)) {
