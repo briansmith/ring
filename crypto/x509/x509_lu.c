@@ -205,21 +205,6 @@ int X509_STORE_up_ref(X509_STORE *store) {
   return 1;
 }
 
-static void cleanup(X509_OBJECT *a) {
-  if (a == NULL) {
-    return;
-  }
-  if (a->type == X509_LU_X509) {
-    X509_free(a->data.x509);
-  } else if (a->type == X509_LU_CRL) {
-    X509_CRL_free(a->data.crl);
-  } else {
-    // abort();
-  }
-
-  OPENSSL_free(a);
-}
-
 void X509_STORE_free(X509_STORE *vfy) {
   size_t j;
   STACK_OF(X509_LOOKUP) *sk;
@@ -242,7 +227,7 @@ void X509_STORE_free(X509_STORE *vfy) {
     X509_LOOKUP_free(lu);
   }
   sk_X509_LOOKUP_free(sk);
-  sk_X509_OBJECT_pop_free(vfy->objs, cleanup);
+  sk_X509_OBJECT_pop_free(vfy->objs, X509_OBJECT_free);
 
   if (vfy->param) {
     X509_VERIFY_PARAM_free(vfy->param);
@@ -316,7 +301,7 @@ static int x509_store_add(X509_STORE *ctx, void *x, int is_crl) {
     return 0;
   }
 
-  X509_OBJECT *const obj = (X509_OBJECT *)OPENSSL_malloc(sizeof(X509_OBJECT));
+  X509_OBJECT *const obj = X509_OBJECT_new();
   if (obj == NULL) {
     return 0;
   }
@@ -342,8 +327,7 @@ static int x509_store_add(X509_STORE *ctx, void *x, int is_crl) {
   CRYPTO_MUTEX_unlock_write(&ctx->objs_lock);
 
   if (!added) {
-    X509_OBJECT_free_contents(obj);
-    OPENSSL_free(obj);
+    X509_OBJECT_free(obj);
   }
 
   return ret;
@@ -355,6 +339,18 @@ int X509_STORE_add_cert(X509_STORE *ctx, X509 *x) {
 
 int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x) {
   return x509_store_add(ctx, x, /*is_crl=*/1);
+}
+
+X509_OBJECT *X509_OBJECT_new(void) {
+  return OPENSSL_zalloc(sizeof(X509_OBJECT));
+}
+
+void X509_OBJECT_free(X509_OBJECT *obj) {
+  if (obj == NULL) {
+    return;
+  }
+  X509_OBJECT_free_contents(obj);
+  OPENSSL_free(obj);
 }
 
 int X509_OBJECT_up_ref_count(X509_OBJECT *a) {
@@ -378,6 +374,8 @@ void X509_OBJECT_free_contents(X509_OBJECT *a) {
       X509_CRL_free(a->data.crl);
       break;
   }
+
+  OPENSSL_memset(a, 0, sizeof(X509_OBJECT));
 }
 
 int X509_OBJECT_get_type(const X509_OBJECT *a) { return a->type; }
