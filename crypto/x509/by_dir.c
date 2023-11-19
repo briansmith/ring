@@ -93,11 +93,8 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type);
 static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                                X509_OBJECT *ret);
 static X509_LOOKUP_METHOD x509_dir_lookup = {
-    "Load certs from files in a directory",
     new_dir,              // new
     free_dir,             // free
-    NULL,                 // init
-    NULL,                 // shutdown
     dir_ctrl,             // ctrl
     get_cert_by_subject,  // get_by_subject
 };

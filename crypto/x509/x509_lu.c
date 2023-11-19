@@ -77,7 +77,6 @@ static int X509_OBJECT_up_ref_count(X509_OBJECT *a);
 static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method);
 static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
                                   X509_OBJECT *ret);
-static int X509_LOOKUP_shutdown(X509_LOOKUP *ctx);
 
 static X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method) {
   X509_LOOKUP *ret = OPENSSL_zalloc(sizeof(X509_LOOKUP));
@@ -97,21 +96,10 @@ void X509_LOOKUP_free(X509_LOOKUP *ctx) {
   if (ctx == NULL) {
     return;
   }
-  if ((ctx->method != NULL) && (ctx->method->free != NULL)) {
+  if (ctx->method != NULL && ctx->method->free != NULL) {
     (*ctx->method->free)(ctx);
   }
   OPENSSL_free(ctx);
-}
-
-static int X509_LOOKUP_shutdown(X509_LOOKUP *ctx) {
-  if (ctx->method == NULL) {
-    return 0;
-  }
-  if (ctx->method->shutdown != NULL) {
-    return ctx->method->shutdown(ctx);
-  } else {
-    return 1;
-  }
 }
 
 int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
@@ -128,10 +116,7 @@ int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
 
 static int X509_LOOKUP_by_subject(X509_LOOKUP *ctx, int type, X509_NAME *name,
                                   X509_OBJECT *ret) {
-  if ((ctx->method == NULL) || (ctx->method->get_by_subject == NULL)) {
-    return 0;
-  }
-  if (ctx->skip) {
+  if (ctx->method == NULL || ctx->method->get_by_subject == NULL) {
     return 0;
   }
   // Note |get_by_subject| leaves |ret| in an inconsistent state. It has
@@ -224,7 +209,6 @@ void X509_STORE_free(X509_STORE *vfy) {
   sk = vfy->get_cert_methods;
   for (j = 0; j < sk_X509_LOOKUP_num(sk); j++) {
     lu = sk_X509_LOOKUP_value(sk, j);
-    X509_LOOKUP_shutdown(lu);
     X509_LOOKUP_free(lu);
   }
   sk_X509_LOOKUP_free(sk);
