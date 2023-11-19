@@ -123,7 +123,6 @@ static void x509_verify_param_zero(X509_VERIFY_PARAM *param) {
   if (!param) {
     return;
   }
-  param->name = NULL;
   param->purpose = 0;
   param->trust = 0;
   // param->inh_flags = X509_VP_FLAG_DEFAULT;
@@ -335,17 +334,6 @@ static int int_x509_param_set1(char **pdest, size_t *pdestlen, const char *src,
   return 1;
 }
 
-int X509_VERIFY_PARAM_set1_name(X509_VERIFY_PARAM *param, const char *name) {
-  if (param->name) {
-    OPENSSL_free(param->name);
-  }
-  param->name = OPENSSL_strdup(name);
-  if (param->name) {
-    return 1;
-  }
-  return 0;
-}
-
 int X509_VERIFY_PARAM_set_flags(X509_VERIFY_PARAM *param, unsigned long flags) {
   param->flags |= flags;
   return 1;
@@ -482,68 +470,54 @@ int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param) {
   return param->depth;
 }
 
-const char *X509_VERIFY_PARAM_get0_name(const X509_VERIFY_PARAM *param) {
-  return param->name;
-}
+static const X509_VERIFY_PARAM kDefaultParam = {
+    /*check_time=*/0,
+    /*inh_flags=*/0,
+    /*flags=*/X509_V_FLAG_TRUSTED_FIRST,
+    /*purpose=*/0,
+    /*trust=*/0,
+    /*depth=*/100};
 
-#define vpm_empty_id NULL, 0U, NULL, NULL, 0, NULL, 0, 0
+static const X509_VERIFY_PARAM kSMIMESignParam = {
+    /*check_time=*/0,
+    /*inh_flags=*/0,
+    /*flags=*/0,
+    /*purpose=*/X509_PURPOSE_SMIME_SIGN,
+    /*trust=*/X509_TRUST_EMAIL,
+    /*depth=*/-1};
 
-// Default verify parameters: these are used for various applications and can
-// be overridden by the user specified table. NB: the 'name' field *must* be
-// in alphabetical order because it will be searched using OBJ_search.
+static const X509_VERIFY_PARAM kSSLClientParam = {
+    /*check_time=*/0,
+    /*inh_flags=*/0,
+    /*flags=*/0,
+    /*purpose=*/X509_PURPOSE_SSL_CLIENT,
+    /*trust=*/X509_TRUST_SSL_CLIENT,
+    /*depth=*/-1};
 
-static const X509_VERIFY_PARAM default_table[] = {
-    {(char *)"default",          // X509 default parameters
-     0,                          // Check time
-     0,                          // internal flags
-     X509_V_FLAG_TRUSTED_FIRST,  // flags
-     0,                          // purpose
-     0,                          // trust
-     100,                        // depth
-     NULL,                       // policies
-     vpm_empty_id},
-    {(char *)"pkcs7",          // S/MIME sign parameters
-     0,                        // Check time
-     0,                        // internal flags
-     0,                        // flags
-     X509_PURPOSE_SMIME_SIGN,  // purpose
-     X509_TRUST_EMAIL,         // trust
-     -1,                       // depth
-     NULL,                     // policies
-     vpm_empty_id},
-    {(char *)"smime_sign",     // S/MIME sign parameters
-     0,                        // Check time
-     0,                        // internal flags
-     0,                        // flags
-     X509_PURPOSE_SMIME_SIGN,  // purpose
-     X509_TRUST_EMAIL,         // trust
-     -1,                       // depth
-     NULL,                     // policies
-     vpm_empty_id},
-    {(char *)"ssl_client",     // SSL/TLS client parameters
-     0,                        // Check time
-     0,                        // internal flags
-     0,                        // flags
-     X509_PURPOSE_SSL_CLIENT,  // purpose
-     X509_TRUST_SSL_CLIENT,    // trust
-     -1,                       // depth
-     NULL,                     // policies
-     vpm_empty_id},
-    {(char *)"ssl_server",     // SSL/TLS server parameters
-     0,                        // Check time
-     0,                        // internal flags
-     0,                        // flags
-     X509_PURPOSE_SSL_SERVER,  // purpose
-     X509_TRUST_SSL_SERVER,    // trust
-     -1,                       // depth
-     NULL,                     // policies
-     vpm_empty_id}};
+static const X509_VERIFY_PARAM kSSLServerParam = {
+    /*check_time=*/0,
+    /*inh_flags=*/0,
+    /*flags=*/0,
+    /*purpose=*/X509_PURPOSE_SSL_SERVER,
+    /*trust=*/X509_TRUST_SSL_SERVER,
+    /*depth=*/-1};
 
 const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name) {
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(default_table); i++) {
-    if (strcmp(default_table[i].name, name) == 0) {
-      return &default_table[i];
-    }
+  if (strcmp(name, "default") == 0) {
+    return &kDefaultParam;
+  }
+  if (strcmp(name, "pkcs7") == 0) {
+    // PKCS#7 and S/MIME signing use the same defaults.
+    return &kSMIMESignParam;
+  }
+  if (strcmp(name, "smime_sign") == 0) {
+    return &kSMIMESignParam;
+  }
+  if (strcmp(name, "ssl_client") == 0) {
+    return &kSSLClientParam;
+  }
+  if (strcmp(name, "ssl_server") == 0) {
+    return &kSSLServerParam;
   }
   return NULL;
 }
