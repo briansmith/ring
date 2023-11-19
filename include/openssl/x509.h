@@ -203,6 +203,10 @@ OPENSSL_EXPORT EVP_PKEY *X509_get_pubkey(X509 *x509);
 // internal invariants in |x509|.
 OPENSSL_EXPORT ASN1_BIT_STRING *X509_get0_pubkey_bitstr(const X509 *x509);
 
+// X509_check_private_key returns one if |x509|'s public key matches |pkey| and
+// zero otherwise.
+OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
+
 // X509_get0_uids sets |*out_issuer_uid| to a non-owning pointer to the
 // issuerUID field of |x509|, or NULL if |x509| has no issuerUID. It similarly
 // outputs |x509|'s subjectUID field to |*out_subject_uid|.
@@ -944,6 +948,11 @@ OPENSSL_EXPORT X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req);
 // a reference to the |EVP_PKEY|. The caller must release the result with
 // |EVP_PKEY_free| when done.
 OPENSSL_EXPORT EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
+
+// X509_REQ_check_private_key returns one if |req|'s public key matches |pkey|
+// and zero otherwise.
+OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *req,
+                                              const EVP_PKEY *pkey);
 
 // X509_REQ_get_attr_count returns the number of attributes in |req|.
 OPENSSL_EXPORT int X509_REQ_get_attr_count(const X509_REQ *req);
@@ -2623,6 +2632,14 @@ OPENSSL_EXPORT void X509_OBJECT_free_contents(X509_OBJECT *obj);
 // longer call it.
 OPENSSL_EXPORT void X509_LOOKUP_free(X509_LOOKUP *ctx);
 
+// X509_STORE_CTX_cleanup resets |ctx| to the empty state.
+//
+// This function is a remnant of when |X509_STORE_CTX| was stack-allocated and
+// should not be used. If releasing |ctx|, call |X509_STORE_CTX_free|. If
+// reusing |ctx| for a new verification, release the old one and create a new
+// one.
+OPENSSL_EXPORT void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx);
+
 
 // Private structures.
 
@@ -2714,10 +2731,6 @@ OPENSSL_EXPORT const char *X509_get_default_private_dir(void);
 
 
 OPENSSL_EXPORT int X509_TRUST_set(int *t, int trust);
-
-OPENSSL_EXPORT int X509_REQ_check_private_key(X509_REQ *x509, EVP_PKEY *pkey);
-
-OPENSSL_EXPORT int X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
 
 OPENSSL_EXPORT unsigned long X509_issuer_name_hash(X509 *a);
 
@@ -2939,9 +2952,14 @@ OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *obj);
 // a certificate.
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *obj);
 
+// X509_STORE_new returns a newly-allocated |X509_STORE|, or NULL on error.
 OPENSSL_EXPORT X509_STORE *X509_STORE_new(void);
+
+// X509_STORE_up_ref adds one to the reference count of |store| and returns one.
 OPENSSL_EXPORT int X509_STORE_up_ref(X509_STORE *store);
-OPENSSL_EXPORT void X509_STORE_free(X509_STORE *v);
+
+// X509_STORE_free releases memory associated with |store|.
+OPENSSL_EXPORT void X509_STORE_free(X509_STORE *store);
 
 OPENSSL_EXPORT STACK_OF(X509_OBJECT) *X509_STORE_get0_objects(X509_STORE *st);
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_get1_certs(X509_STORE_CTX *st,
@@ -2953,7 +2971,13 @@ OPENSSL_EXPORT int X509_STORE_set_purpose(X509_STORE *ctx, int purpose);
 OPENSSL_EXPORT int X509_STORE_set_trust(X509_STORE *ctx, int trust);
 OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *ctx,
                                          X509_VERIFY_PARAM *pm);
-OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *ctx);
+
+// X509_STORE_get0_param returns |store|'s default verification parameters. This
+// object is mutable and may be modified by the caller.
+//
+// TODO(crbug.com/boringssl/441): Discuss the semantics of this notion of
+// "default".
+OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *store);
 
 // X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
 // the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|
@@ -2983,7 +3007,9 @@ OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_new(void);
 OPENSSL_EXPORT int X509_STORE_CTX_get1_issuer(X509 **issuer,
                                               X509_STORE_CTX *ctx, X509 *x);
 
+// X509_STORE_CTX_free releases memory associated with |ctx|.
 OPENSSL_EXPORT void X509_STORE_CTX_free(X509_STORE_CTX *ctx);
+
 OPENSSL_EXPORT int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
                                        X509 *x509, STACK_OF(X509) *chain);
 
@@ -3001,9 +3027,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_set0_trusted_stack(X509_STORE_CTX *ctx,
 OPENSSL_EXPORT void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx,
                                                  STACK_OF(X509) *sk);
 
-OPENSSL_EXPORT void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx);
-
+// X509_STORE_CTX_get0_store returns the |X509_STORE| that |ctx| uses.
 OPENSSL_EXPORT X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_get0_cert returns the leaf certificate that |ctx| is
+// verifying.
 OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT X509_LOOKUP *X509_STORE_add_lookup(X509_STORE *v,
@@ -3054,8 +3082,15 @@ OPENSSL_EXPORT int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx,
                                                   int trust);
 OPENSSL_EXPORT void X509_STORE_CTX_set_flags(X509_STORE_CTX *ctx,
                                              unsigned long flags);
+
+// X509_STORE_CTX_set_time configures certificate verification to use |t|
+// instead of the current time. |flags| is ignored and should be zero.
 OPENSSL_EXPORT void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx,
                                             unsigned long flags, time_t t);
+
+// X509_STORE_CTX_set_time_posix configures certificate verification to use |t|
+// instead of the current time. |t| is interpreted as a POSIX timestamp in
+// seconds. |flags| is ignored and should be zero.
 OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
                                                   unsigned long flags,
                                                   int64_t t);
@@ -3081,17 +3116,32 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
     X509_STORE_CTX *ctx, int (*verify_cb)(int ok, X509_STORE_CTX *ctx));
 
+// X509_STORE_CTX_get0_param returns |ctx|'s verification parameters. This
+// object is mutable and may be modified by the caller.
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(
     X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_set0_param returns |ctx|'s verification parameters to |param|
+// and takes ownership of |param|. After this function returns, the caller
+// should not free |param|.
+//
+// TODO(crbug.com/boringssl/441): The bug notes some odd interactions with
+// the different notions of default. Discuss this.
 OPENSSL_EXPORT void X509_STORE_CTX_set0_param(X509_STORE_CTX *ctx,
                                               X509_VERIFY_PARAM *param);
+
 OPENSSL_EXPORT int X509_STORE_CTX_set_default(X509_STORE_CTX *ctx,
                                               const char *name);
 
 // X509_VERIFY_PARAM functions
 
+// X509_VERIFY_PARAM_new returns a newly-allocated |X509_VERIFY_PARAM|, or NULL
+// on error.
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_VERIFY_PARAM_new(void);
+
+// X509_VERIFY_PARAM_free releases memory associated with |param|.
 OPENSSL_EXPORT void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param);
+
 OPENSSL_EXPORT int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *to,
                                              const X509_VERIFY_PARAM *from);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
@@ -3110,30 +3160,67 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set_trust(X509_VERIFY_PARAM *param,
                                                int trust);
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_depth(X509_VERIFY_PARAM *param,
                                                 int depth);
+
+// X509_VERIFY_PARAM_set_time configures certificate verification to use |t|
+// instead of the current time.
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_time(X509_VERIFY_PARAM *param,
                                                time_t t);
+
+// X509_VERIFY_PARAM_set_time_posix configures certificate verification to use
+// |t| instead of the current time. |t| is interpreted as a POSIX timestamp in
+// seconds.
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_time_posix(X509_VERIFY_PARAM *param,
                                                      int64_t t);
+
+// X509_VERIFY_PARAM_add0_policy adds |policy| to the user-initial-policy-set
+// (see Section 6.1.1 of RFC 5280). On success, it takes ownership of
+// |policy| and returns one. Otherwise, it returns zero and the caller retains
+// owneship of |policy|.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
                                                  ASN1_OBJECT *policy);
+
+// X509_VERIFY_PARAM_set1_policies sets the user-initial-policy-set (see
+// Section 6.1.1 of RFC 5280) to a copy of |policies|. It returns one on success
+// and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_policies(
     X509_VERIFY_PARAM *param, const STACK_OF(ASN1_OBJECT) *policies);
 
+// X509_VERIFY_PARAM_set1_host configures |param| to check for the DNS name
+// specified by |name|. It returns one on success and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
-                                               size_t namelen);
+                                               size_t name_len);
+
+// X509_VERIFY_PARAM_add1_host adds |name| to the list of names checked by
+// |param|. If any configured DNS name matches the certificate, verification
+// succeeds. It returns one on success and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
-                                               size_t namelen);
+                                               size_t name_len);
+
+// X509_VERIFY_PARAM_set_hostflags sets the name-checking flags on |param| to
+// |flags|. |flags| should be a combination of |X509_CHECK_FLAG_*| constants.
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
                                                     unsigned int flags);
-OPENSSL_EXPORT char *X509_VERIFY_PARAM_get0_peername(X509_VERIFY_PARAM *);
+
+OPENSSL_EXPORT char *X509_VERIFY_PARAM_get0_peername(X509_VERIFY_PARAM *param);
+
+// X509_VERIFY_PARAM_set1_email configures |param| to check for the email
+// address specified by |email|. It returns one on success and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param,
                                                 const char *email,
-                                                size_t emaillen);
+                                                size_t email_len);
+
+// X509_VERIFY_PARAM_set1_ip configures |param| to check for the IP address
+// specified by |ip|. It returns one on success and zero on error. The IP
+// address is specified in its binary representation. |ip_len| must be 4 for an
+// IPv4 address and 16 for an IPv6 address.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param,
-                                             const unsigned char *ip,
-                                             size_t iplen);
+                                             const uint8_t *ip, size_t ip_len);
+
+// X509_VERIFY_PARAM_set1_ip_asc decodes |ipasc| as the ASCII representation of
+// an IPv4 or IPv6 address, and configures |param| to check for it. It returns
+// one on success and zero on error.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param,
                                                  const char *ipasc);
 
