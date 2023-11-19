@@ -2774,23 +2774,11 @@ DEFINE_STACK_OF(X509_OBJECT)
 DEFINE_STACK_OF(X509_VERIFY_PARAM)
 
 typedef int (*X509_STORE_CTX_verify_cb)(int, X509_STORE_CTX *);
-typedef int (*X509_STORE_CTX_verify_fn)(X509_STORE_CTX *);
 typedef int (*X509_STORE_CTX_get_issuer_fn)(X509 **issuer, X509_STORE_CTX *ctx,
                                             X509 *x);
-typedef int (*X509_STORE_CTX_check_issued_fn)(X509_STORE_CTX *ctx, X509 *x,
-                                              X509 *issuer);
-typedef int (*X509_STORE_CTX_check_revocation_fn)(X509_STORE_CTX *ctx);
 typedef int (*X509_STORE_CTX_get_crl_fn)(X509_STORE_CTX *ctx, X509_CRL **crl,
                                          X509 *x);
 typedef int (*X509_STORE_CTX_check_crl_fn)(X509_STORE_CTX *ctx, X509_CRL *crl);
-typedef int (*X509_STORE_CTX_cert_crl_fn)(X509_STORE_CTX *ctx, X509_CRL *crl,
-                                          X509 *x);
-typedef int (*X509_STORE_CTX_check_policy_fn)(X509_STORE_CTX *ctx);
-typedef STACK_OF(X509) *(*X509_STORE_CTX_lookup_certs_fn)(X509_STORE_CTX *ctx,
-                                                          X509_NAME *nm);
-typedef STACK_OF(X509_CRL) *(*X509_STORE_CTX_lookup_crls_fn)(
-    X509_STORE_CTX *ctx, X509_NAME *nm);
-typedef int (*X509_STORE_CTX_cleanup_fn)(X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT int X509_STORE_set_depth(X509_STORE *store, int depth);
 
@@ -2967,14 +2955,6 @@ OPENSSL_EXPORT int X509_STORE_set1_param(X509_STORE *ctx,
                                          X509_VERIFY_PARAM *pm);
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_get0_param(X509_STORE *ctx);
 
-OPENSSL_EXPORT void X509_STORE_set_verify(X509_STORE *ctx,
-                                          X509_STORE_CTX_verify_fn verify);
-#define X509_STORE_set_verify_func(ctx, func) \
-  X509_STORE_set_verify((ctx), (func))
-OPENSSL_EXPORT void X509_STORE_CTX_set_verify(X509_STORE_CTX *ctx,
-                                              X509_STORE_CTX_verify_fn verify);
-OPENSSL_EXPORT X509_STORE_CTX_verify_fn X509_STORE_get_verify(X509_STORE *ctx);
-
 // X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
 // the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|
 //
@@ -2989,14 +2969,6 @@ OPENSSL_EXPORT void X509_STORE_set_get_issuer(
     X509_STORE *ctx, X509_STORE_CTX_get_issuer_fn get_issuer);
 OPENSSL_EXPORT X509_STORE_CTX_get_issuer_fn
 X509_STORE_get_get_issuer(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_check_issued(
-    X509_STORE *ctx, X509_STORE_CTX_check_issued_fn check_issued);
-OPENSSL_EXPORT X509_STORE_CTX_check_issued_fn
-X509_STORE_get_check_issued(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_check_revocation(
-    X509_STORE *ctx, X509_STORE_CTX_check_revocation_fn check_revocation);
-OPENSSL_EXPORT X509_STORE_CTX_check_revocation_fn
-X509_STORE_get_check_revocation(X509_STORE *ctx);
 OPENSSL_EXPORT void X509_STORE_set_get_crl(X509_STORE *ctx,
                                            X509_STORE_CTX_get_crl_fn get_crl);
 OPENSSL_EXPORT X509_STORE_CTX_get_crl_fn
@@ -3005,24 +2977,6 @@ OPENSSL_EXPORT void X509_STORE_set_check_crl(
     X509_STORE *ctx, X509_STORE_CTX_check_crl_fn check_crl);
 OPENSSL_EXPORT X509_STORE_CTX_check_crl_fn
 X509_STORE_get_check_crl(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_cert_crl(
-    X509_STORE *ctx, X509_STORE_CTX_cert_crl_fn cert_crl);
-OPENSSL_EXPORT X509_STORE_CTX_cert_crl_fn
-X509_STORE_get_cert_crl(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_lookup_certs(
-    X509_STORE *ctx, X509_STORE_CTX_lookup_certs_fn lookup_certs);
-OPENSSL_EXPORT X509_STORE_CTX_lookup_certs_fn
-X509_STORE_get_lookup_certs(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_lookup_crls(
-    X509_STORE *ctx, X509_STORE_CTX_lookup_crls_fn lookup_crls);
-#define X509_STORE_set_lookup_crls_cb(ctx, func) \
-  X509_STORE_set_lookup_crls((ctx), (func))
-OPENSSL_EXPORT X509_STORE_CTX_lookup_crls_fn
-X509_STORE_get_lookup_crls(X509_STORE *ctx);
-OPENSSL_EXPORT void X509_STORE_set_cleanup(X509_STORE *ctx,
-                                           X509_STORE_CTX_cleanup_fn cleanup);
-OPENSSL_EXPORT X509_STORE_CTX_cleanup_fn
-X509_STORE_get_cleanup(X509_STORE *ctx);
 
 OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_new(void);
 

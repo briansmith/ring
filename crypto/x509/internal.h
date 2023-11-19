@@ -335,18 +335,10 @@ struct x509_store_st {
   X509_VERIFY_PARAM *param;
 
   // Callbacks for various operations
-  X509_STORE_CTX_verify_fn verify;          // called to verify a certificate
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
   X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
-  X509_STORE_CTX_check_issued_fn check_issued;  // check issued
-  X509_STORE_CTX_check_revocation_fn
-      check_revocation;                   // Check revocation status of chain
-  X509_STORE_CTX_get_crl_fn get_crl;      // retrieve CRL
-  X509_STORE_CTX_check_crl_fn check_crl;  // Check CRL validity
-  X509_STORE_CTX_cert_crl_fn cert_crl;    // Check certificate against CRL
-  X509_STORE_CTX_lookup_certs_fn lookup_certs;
-  X509_STORE_CTX_lookup_crls_fn lookup_crls;
-  X509_STORE_CTX_cleanup_fn cleanup;
+  X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
+  X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   CRYPTO_refcount_t references;
 } /* X509_STORE */;
@@ -375,19 +367,10 @@ struct x509_store_ctx_st {
   void *other_ctx;  // Other info for use with get_issuer()
 
   // Callbacks for various operations
-  X509_STORE_CTX_verify_fn verify;          // called to verify a certificate
   X509_STORE_CTX_verify_cb verify_cb;       // error callback
   X509_STORE_CTX_get_issuer_fn get_issuer;  // get issuers cert from ctx
-  X509_STORE_CTX_check_issued_fn check_issued;  // check issued
-  X509_STORE_CTX_check_revocation_fn
-      check_revocation;                   // Check revocation status of chain
-  X509_STORE_CTX_get_crl_fn get_crl;      // retrieve CRL
-  X509_STORE_CTX_check_crl_fn check_crl;  // Check CRL validity
-  X509_STORE_CTX_cert_crl_fn cert_crl;    // Check certificate against CRL
-  X509_STORE_CTX_check_policy_fn check_policy;
-  X509_STORE_CTX_lookup_certs_fn lookup_certs;
-  X509_STORE_CTX_lookup_crls_fn lookup_crls;
-  X509_STORE_CTX_cleanup_fn cleanup;
+  X509_STORE_CTX_get_crl_fn get_crl;        // retrieve CRL
+  X509_STORE_CTX_check_crl_fn check_crl;    // Check CRL validity
 
   // The following is built up
   int valid;               // if 0, rebuild chain
@@ -459,6 +442,15 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
 int X509_policy_check(const STACK_OF(X509) *certs,
                       const STACK_OF(ASN1_OBJECT) *user_policies,
                       unsigned long flags, X509 **out_current_cert);
+
+// x509_check_issued_with_callback calls |X509_check_issued|, but allows the
+// verify callback to override the result. It returns one on success and zero on
+// error.
+//
+// TODO(davidben): Reduce the scope of the verify callback and remove this. The
+// callback only runs with |X509_V_FLAG_CB_ISSUER_CHECK|, which is only used by
+// one internal project and rust-openssl, who use it by mistake.
+int x509_check_issued_with_callback(X509_STORE_CTX *ctx, X509 *x, X509 *issuer);
 
 
 #if defined(__cplusplus)
