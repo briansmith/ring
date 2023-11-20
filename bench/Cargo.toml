@@ -24,3 +24,8 @@ path = "agreement.rs"
 name = "ecdsa"
 harness = false
 path = "ecdsa.rs"
+
+[[bench]]
+name = "rsa"
+harness = false
+path = "rsa.rs"
