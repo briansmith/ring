@@ -164,6 +164,17 @@ extern const uint32_t kOpenSSLReasonValues[];
 extern const size_t kOpenSSLReasonValuesLen;
 extern const char kOpenSSLReasonStringData[];
 
+static char *strdup_libc_malloc(const char *str) {
+  // |strdup| is not in C until C23, so MSVC triggers deprecation warnings, and
+  // glibc and musl gate it on a feature macro. Reimplementing it is easier.
+  size_t len = strlen(str);
+  char *ret = malloc(len + 1);
+  if (ret != NULL) {
+    memcpy(ret, str, len + 1);
+  }
+  return ret;
+}
+
 // err_clear clears the given queued error.
 static void err_clear(struct err_error_st *error) {
   free(error->data);
@@ -174,13 +185,9 @@ static void err_copy(struct err_error_st *dst, const struct err_error_st *src) {
   err_clear(dst);
   dst->file = src->file;
   if (src->data != NULL) {
-    // Disable deprecated functions on msvc so it doesn't complain about strdup.
-    OPENSSL_MSVC_PRAGMA(warning(push))
-    OPENSSL_MSVC_PRAGMA(warning(disable : 4996))
     // We can't use OPENSSL_strdup because we don't want to call OPENSSL_malloc,
     // which can affect the error stack.
-    dst->data = strdup(src->data);
-    OPENSSL_MSVC_PRAGMA(warning(pop))
+    dst->data = strdup_libc_malloc(src->data);
   }
   dst->packed = src->packed;
   dst->line = src->line;
@@ -767,13 +774,9 @@ void ERR_set_error_data(char *data, int flags) {
     assert(0);
     return;
   }
-  // Disable deprecated functions on msvc so it doesn't complain about strdup.
-  OPENSSL_MSVC_PRAGMA(warning(push))
-  OPENSSL_MSVC_PRAGMA(warning(disable : 4996))
   // We can not use OPENSSL_strdup because we don't want to call OPENSSL_malloc,
   // which can affect the error stack.
-  char *copy = strdup(data);
-  OPENSSL_MSVC_PRAGMA(warning(pop))
+  char *copy = strdup_libc_malloc(data);
   if (copy != NULL) {
     err_set_error_data(copy);
   }
