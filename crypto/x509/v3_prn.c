@@ -69,9 +69,8 @@ static int unknown_ext_print(BIO *out, const X509_EXTENSION *ext,
                              unsigned long flag, int indent, int supported);
 
 // Print out a name+value stack
-
-void X509V3_EXT_val_prn(BIO *out, const STACK_OF(CONF_VALUE) *val, int indent,
-                        int ml) {
+static void X509V3_EXT_val_prn(BIO *out, const STACK_OF(CONF_VALUE) *val,
+                               int indent, int ml) {
   if (!val) {
     return;
   }
