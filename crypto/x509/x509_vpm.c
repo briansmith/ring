@@ -74,8 +74,6 @@
 
 static void str_free(char *s) { OPENSSL_free(s); }
 
-#define string_stack_free(sk) sk_OPENSSL_STRING_pop_free(sk, str_free)
-
 static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
                                     const char *name, size_t namelen) {
   char *copy;
@@ -92,7 +90,7 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
   }
 
   if (mode == SET_HOST && param->hosts) {
-    string_stack_free(param->hosts);
+    sk_OPENSSL_STRING_pop_free(param->hosts, str_free);
     param->hosts = NULL;
   }
 
@@ -119,47 +117,15 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
   return 1;
 }
 
-static void x509_verify_param_zero(X509_VERIFY_PARAM *param) {
-  if (!param) {
-    return;
-  }
-  param->purpose = 0;
-  param->trust = 0;
-  // param->inh_flags = X509_VP_FLAG_DEFAULT;
-  param->inh_flags = 0;
-  param->flags = 0;
-  param->depth = -1;
-  if (param->policies) {
-    sk_ASN1_OBJECT_pop_free(param->policies, ASN1_OBJECT_free);
-    param->policies = NULL;
-  }
-  if (param->hosts) {
-    string_stack_free(param->hosts);
-    param->hosts = NULL;
-  }
-  if (param->peername) {
-    OPENSSL_free(param->peername);
-    param->peername = NULL;
-  }
-  if (param->email) {
-    OPENSSL_free(param->email);
-    param->email = NULL;
-    param->emaillen = 0;
-  }
-  if (param->ip) {
-    OPENSSL_free(param->ip);
-    param->ip = NULL;
-    param->iplen = 0;
-  }
-  param->poison = 0;
-}
-
 X509_VERIFY_PARAM *X509_VERIFY_PARAM_new(void) {
   X509_VERIFY_PARAM *param = OPENSSL_zalloc(sizeof(X509_VERIFY_PARAM));
   if (!param) {
     return NULL;
   }
-  x509_verify_param_zero(param);
+  param->depth = -1;
+  // TODO(crbug.com/boringssl/441): This line was commented out. Figure out what
+  // this was for:
+  // param->inh_flags = X509_VP_FLAG_DEFAULT;
   return param;
 }
 
@@ -167,7 +133,11 @@ void X509_VERIFY_PARAM_free(X509_VERIFY_PARAM *param) {
   if (param == NULL) {
     return;
   }
-  x509_verify_param_zero(param);
+  sk_ASN1_OBJECT_pop_free(param->policies, ASN1_OBJECT_free);
+  sk_OPENSSL_STRING_pop_free(param->hosts, str_free);
+  OPENSSL_free(param->peername);
+  OPENSSL_free(param->email);
+  OPENSSL_free(param->ip);
   OPENSSL_free(param);
 }
 
@@ -270,7 +240,7 @@ int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
   // Copy the host flags if and only if we're copying the host list
   if (test_x509_verify_param_copy(hosts, NULL)) {
     if (dest->hosts) {
-      string_stack_free(dest->hosts);
+      sk_OPENSSL_STRING_pop_free(dest->hosts, str_free);
       dest->hosts = NULL;
     }
     if (src->hosts) {
