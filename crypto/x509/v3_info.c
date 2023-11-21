@@ -65,7 +65,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
-#include <openssl/x509v3.h>
+#include <openssl/x509.h>
 
 static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
     const X509V3_EXT_METHOD *method, void *ext, STACK_OF(CONF_VALUE) *ret);

@@ -32,7 +32,6 @@
 #include <openssl/span.h>
 #include <openssl/time.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../test/test_util.h"
 #include "internal.h"

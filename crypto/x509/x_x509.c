@@ -65,7 +65,6 @@
 #include <openssl/pool.h>
 #include <openssl/thread.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../asn1/internal.h"
 #include "../bytestring/internal.h"

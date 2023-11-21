@@ -15,7 +15,6 @@
 #include <openssl/bio.h>
 #include <openssl/conf.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include <algorithm>
 

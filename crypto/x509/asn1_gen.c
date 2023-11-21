@@ -65,7 +65,6 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
-#include <openssl/x509v3.h>
 
 #include "../conf/internal.h"
 #include "../internal.h"

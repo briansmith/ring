@@ -31,7 +31,6 @@
 #include <openssl/pem.h>
 #include <openssl/pool.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "internal.h"
 #include "../internal.h"

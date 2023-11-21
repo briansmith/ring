@@ -62,7 +62,6 @@
 #include <openssl/base.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "../asn1/internal.h"
 #include "../internal.h"

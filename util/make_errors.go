@@ -60,6 +60,7 @@ func getLibraryInfo(lib string) libraryInfo {
 	}
 
 	if lib == "x509v3" {
+		info.headerName = "x509v3_errors.h"
 		info.sourceDirs = append(info.sourceDirs, filepath.Join("crypto", "x509"))
 	}
 
