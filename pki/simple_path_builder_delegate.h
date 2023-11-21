@@ -64,6 +64,12 @@ class OPENSSL_EXPORT SimplePathBuilderDelegate
   // No-op implementation.
   SignatureVerifyCache *GetVerifyCache() override;
 
+  // No-op implementation.
+  bool IsDebugLogEnabled() override;
+
+  // No-op implementation.
+  void DebugLog(std::string_view msg) override;
+
  private:
   const size_t min_rsa_modulus_length_bits_;
   const DigestPolicy digest_policy_;

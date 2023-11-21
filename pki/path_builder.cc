@@ -555,16 +555,21 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
         cur_path_.Length() >= max_path_building_depth) {
       cur_path_.CopyPath(out_certs);
       out_errors->GetOtherErrors()->AddError(cert_errors::kDepthLimitExceeded);
-      DVLOG(1) << "CertPathIter reached depth limit. Returning partial path "
-                  "and backtracking:\n"
-               << PathDebugString(*out_certs);
+      if (delegate->IsDebugLogEnabled()) {
+        delegate->DebugLog(
+            "CertPathIter reached depth limit. Returning "
+            "partial path and backtracking:\n" +
+            PathDebugString(*out_certs));
+      }
       cur_path_.Pop();
       return true;
     }
 
     if (!next_issuer_.cert) {
       if (cur_path_.Empty()) {
-        DVLOG(1) << "CertPathIter exhausted all paths...";
+        if (delegate->IsDebugLogEnabled()) {
+          delegate->DebugLog("CertPathIter exhausted all paths...");
+        }
         return false;
       }
 
@@ -584,14 +589,19 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
           cur_path_.CopyPath(out_certs);
           out_errors->GetErrorsForCert(out_certs->size() - 1)
               ->AddError(cert_errors::kNoIssuersFound);
-          DVLOG(1) << "CertPathIter returning partial path and backtracking:\n"
-                   << PathDebugString(*out_certs);
+          if (delegate->IsDebugLogEnabled()) {
+            delegate->DebugLog(
+                "CertPathIter returning partial path and backtracking:\n" +
+                PathDebugString(*out_certs));
+          }
           cur_path_.Pop();
           return true;
         } else {
           // No more issuers for current chain, go back up and see if there are
           // any more for the previous cert.
-          DVLOG(1) << "CertPathIter backtracking...";
+          if (delegate->IsDebugLogEnabled()) {
+            delegate->DebugLog("CertPathIter backtracking...");
+          }
           cur_path_.Pop();
           continue;
         }
@@ -607,7 +617,10 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
         // unspecified trust. This may allow a successful path to be built to a
         // different root (or to the same cert if it's self-signed).
         if (cur_path_.Empty()) {
-          DVLOG(1) << "Leaf is a trust anchor, considering as UNSPECIFIED";
+          if (delegate->IsDebugLogEnabled()) {
+            delegate->DebugLog(
+                "Leaf is a trust anchor, considering as UNSPECIFIED");
+          }
           next_issuer_.trust = CertificateTrust::ForUnspecified();
         }
         break;
@@ -616,7 +629,9 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
         // unspecified trust. This may allow a successful path to be built to a
         // trusted root.
         if (!cur_path_.Empty()) {
-          DVLOG(1) << "Issuer is a trust leaf, considering as UNSPECIFIED";
+          if (delegate->IsDebugLogEnabled()) {
+            delegate->DebugLog("Issuer is a trust leaf, considering as UNSPECIFIED");
+          }
           next_issuer_.trust = CertificateTrust::ForUnspecified();
         }
         break;
@@ -636,8 +651,11 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
             !VerifyCertificateIsSelfSigned(*next_issuer_.cert,
                                            delegate->GetVerifyCache(),
                                            /*errors=*/nullptr)) {
-          DVLOG(1) << "Leaf is trusted with require_leaf_selfsigned but is "
-                      "not self-signed, considering as UNSPECIFIED";
+          if (delegate->IsDebugLogEnabled()) {
+            delegate->DebugLog(
+                "Leaf is trusted with require_leaf_selfsigned but is "
+                "not self-signed, considering as UNSPECIFIED");
+          }
           next_issuer_.trust = CertificateTrust::ForUnspecified();
         }
         break;
@@ -657,12 +675,12 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
       case CertificateTrustType::TRUSTED_ANCHOR_OR_LEAF:
       case CertificateTrustType::TRUSTED_LEAF: {
         // If the issuer has a known trust level, can stop building the path.
-        DVLOG(2) << "CertPathIter got anchor: "
-                 << CertDebugString(next_issuer_.cert.get());
         cur_path_.CopyPath(out_certs);
         out_certs->push_back(std::move(next_issuer_.cert));
-        DVLOG(1) << "CertPathIter returning path:\n"
-                 << PathDebugString(*out_certs);
+        if (delegate->IsDebugLogEnabled()) {
+          delegate->DebugLog("CertPathIter returning path:\n" +
+                             PathDebugString(*out_certs));
+        }
         *out_last_cert_trust = next_issuer_.trust;
         next_issuer_ = IssuerEntry();
         return true;
@@ -671,8 +689,10 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
         // Skip this cert if it is already in the chain.
         if (cur_path_.IsPresent(next_issuer_.cert.get())) {
           cur_path_.back()->increment_skipped_issuer_count();
-          DVLOG(1) << "CertPathIter skipping dupe cert: "
-                   << CertDebugString(next_issuer_.cert.get());
+          if (delegate->IsDebugLogEnabled()) {
+            delegate->DebugLog("CertPathIter skipping dupe cert: " +
+                               CertDebugString(next_issuer_.cert.get()));
+          }
           next_issuer_ = IssuerEntry();
           continue;
         }
@@ -680,7 +700,9 @@ bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
         cur_path_.Append(std::make_unique<CertIssuersIter>(
             std::move(next_issuer_.cert), &cert_issuer_sources_, trust_store_));
         next_issuer_ = IssuerEntry();
-        DVLOG(1) << "CertPathIter cur_path_ =\n" << cur_path_.PathDebugString();
+        if (delegate->IsDebugLogEnabled()) {
+          delegate->DebugLog("CertPathIter cur_path_ =\n" + cur_path_.PathDebugString());
+        }
         // Continue descending the tree.
         continue;
       }
@@ -827,8 +849,10 @@ CertPathBuilder::Result CertPathBuilder::Run() {
           &result_path->user_constrained_policy_set, &result_path->errors);
     }
 
-    DVLOG(1) << "CertPathBuilder VerifyCertificateChain errors:\n"
-             << result_path->errors.ToDebugString(result_path->certs);
+    if (delegate_->IsDebugLogEnabled()) {
+      delegate_->DebugLog("CertPathBuilder VerifyCertificateChain errors:\n" +
+                 result_path->errors.ToDebugString(result_path->certs));
+    }
 
     // Give the delegate a chance to add errors to the path.
     delegate_->CheckPathAfterVerification(*this, result_path.get());
