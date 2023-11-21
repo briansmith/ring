@@ -16,8 +16,8 @@ constexpr int64_t kMaxValidTime = 253402300799;  // 9999-12-31 23:59:59 UTC
 
 }  // namespace
 
-bool CheckRevocationDateValid(const der::GeneralizedTime& this_update,
-                              const der::GeneralizedTime* next_update,
+bool CheckRevocationDateValid(const der::GeneralizedTime &this_update,
+                              const der::GeneralizedTime *next_update,
                               int64_t verify_time_epoch_seconds,
                               std::optional<int64_t> max_age_seconds) {
   if (verify_time_epoch_seconds > kMaxValidTime ||
@@ -56,4 +56,4 @@ bool CheckRevocationDateValid(const der::GeneralizedTime& this_update,
   return true;
 }
 
-}  // namespace net
+}  // namespace bssl

@@ -4,6 +4,11 @@
 
 #include "ocsp.h"
 
+#include <openssl/bytestring.h>
+#include <openssl/digest.h>
+#include <openssl/mem.h>
+#include <openssl/pool.h>
+#include <openssl/sha.h>
 #include "cert_errors.h"
 #include "extended_key_usage.h"
 #include "parsed_certificate.h"
@@ -11,11 +16,6 @@
 #include "string_util.h"
 #include "verify_name_match.h"
 #include "verify_signed_data.h"
-#include <openssl/bytestring.h>
-#include <openssl/digest.h>
-#include <openssl/mem.h>
-#include <openssl/pool.h>
-#include <openssl/sha.h>
 
 namespace bssl {
 
@@ -37,7 +37,7 @@ OCSPResponse::~OCSPResponse() = default;
 //    issuerKeyHash           OCTET STRING, -- Hash of issuer's public key
 //    serialNumber            CertificateSerialNumber
 // }
-bool ParseOCSPCertID(const der::Input& raw_tlv, OCSPCertID* out) {
+bool ParseOCSPCertID(const der::Input &raw_tlv, OCSPCertID *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser))
@@ -73,7 +73,7 @@ namespace {
 //      revocationTime              GeneralizedTime,
 //      revocationReason    [0]     EXPLICIT CRLReason OPTIONAL
 // }
-bool ParseRevokedInfo(const der::Input& raw_tlv, OCSPCertStatus* out) {
+bool ParseRevokedInfo(const der::Input &raw_tlv, OCSPCertStatus *out) {
   der::Parser parser(raw_tlv);
   if (!parser.ReadGeneralizedTime(&(out->revocation_time)))
     return false;
@@ -116,7 +116,7 @@ bool ParseRevokedInfo(const der::Input& raw_tlv, OCSPCertStatus* out) {
 // }
 //
 // UnknownInfo ::= NULL
-bool ParseCertStatus(const der::Input& raw_tlv, OCSPCertStatus* out) {
+bool ParseCertStatus(const der::Input &raw_tlv, OCSPCertStatus *out) {
   der::Parser parser(raw_tlv);
   der::Tag status_tag;
   der::Input status;
@@ -141,9 +141,8 @@ bool ParseCertStatus(const der::Input& raw_tlv, OCSPCertStatus* out) {
 
 // Writes the hash of |value| as an OCTET STRING to |cbb|, using |hash_type| as
 // the algorithm. Returns true on success.
-bool AppendHashAsOctetString(const EVP_MD* hash_type,
-                             CBB* cbb,
-                             const der::Input& value) {
+bool AppendHashAsOctetString(const EVP_MD *hash_type, CBB *cbb,
+                             const der::Input &value) {
   CBB octet_string;
   unsigned hash_len;
   uint8_t hash_buffer[EVP_MAX_MD_SIZE];
@@ -163,8 +162,8 @@ bool AppendHashAsOctetString(const EVP_MD* hash_type,
 //      nextUpdate         [0]       EXPLICIT GeneralizedTime OPTIONAL,
 //      singleExtensions   [1]       EXPLICIT Extensions OPTIONAL
 // }
-bool ParseOCSPSingleResponse(const der::Input& raw_tlv,
-                             OCSPSingleResponse* out) {
+bool ParseOCSPSingleResponse(const der::Input &raw_tlv,
+                             OCSPSingleResponse *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser))
@@ -212,8 +211,8 @@ namespace {
 //      byName               [1] Name,
 //      byKey                [2] KeyHash
 // }
-bool ParseResponderID(const der::Input& raw_tlv,
-                      OCSPResponseData::ResponderID* out) {
+bool ParseResponderID(const der::Input &raw_tlv,
+                      OCSPResponseData::ResponderID *out) {
   der::Parser parser(raw_tlv);
   der::Tag id_tag;
   der::Input id_input;
@@ -250,7 +249,7 @@ bool ParseResponderID(const der::Input& raw_tlv,
 //      responses                SEQUENCE OF SingleResponse,
 //      responseExtensions   [1] EXPLICIT Extensions OPTIONAL
 // }
-bool ParseOCSPResponseData(const der::Input& raw_tlv, OCSPResponseData* out) {
+bool ParseOCSPResponseData(const der::Input &raw_tlv, OCSPResponseData *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser))
@@ -320,7 +319,7 @@ namespace {
 //      signature            BIT STRING,
 //      certs            [0] EXPLICIT SEQUENCE OF Certificate OPTIONAL
 // }
-bool ParseBasicOCSPResponse(const der::Input& raw_tlv, OCSPResponse* out) {
+bool ParseBasicOCSPResponse(const der::Input &raw_tlv, OCSPResponse *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser))
@@ -379,7 +378,7 @@ bool ParseBasicOCSPResponse(const der::Input& raw_tlv, OCSPResponse* out) {
 //      responseType   OBJECT IDENTIFIER,
 //      response       OCTET STRING
 // }
-bool ParseOCSPResponse(const der::Input& raw_tlv, OCSPResponse* out) {
+bool ParseOCSPResponse(const der::Input &raw_tlv, OCSPResponse *out) {
   der::Parser outer_parser(raw_tlv);
   der::Parser parser;
   if (!outer_parser.ReadSequence(&parser))
@@ -436,9 +435,8 @@ bool ParseOCSPResponse(const der::Input& raw_tlv, OCSPResponse* out) {
 namespace {
 
 // Checks that the |type| hash of |value| is equal to |hash|
-bool VerifyHash(const EVP_MD* type,
-                const der::Input& hash,
-                const der::Input& value) {
+bool VerifyHash(const EVP_MD *type, const der::Input &hash,
+                const der::Input &value) {
   unsigned value_hash_len;
   uint8_t value_hash[EVP_MAX_MD_SIZE];
   if (!EVP_Digest(value.UnsafeData(), value.Length(), value_hash,
@@ -464,7 +462,7 @@ bool VerifyHash(const EVP_MD* type,
 //     algorithm               OBJECT IDENTIFIER,
 //     parameters              ANY DEFINED BY algorithm OPTIONAL  }
 //
-bool GetSubjectPublicKeyBytes(const der::Input& spki_tlv, der::Input* spk_tlv) {
+bool GetSubjectPublicKeyBytes(const der::Input &spki_tlv, der::Input *spk_tlv) {
   CBS outer, inner, alg, spk;
   uint8_t unused_bit_count;
   CBS_init(&outer, spki_tlv.UnsafeData(), spki_tlv.Length());
@@ -484,10 +482,9 @@ bool GetSubjectPublicKeyBytes(const der::Input& spki_tlv, der::Input* spk_tlv) {
 
 // Checks the OCSPCertID |id| identifies |certificate|.
 bool CheckCertIDMatchesCertificate(
-    const OCSPCertID& id,
-    const ParsedCertificate* certificate,
-    const ParsedCertificate* issuer_certificate) {
-  const EVP_MD* type = nullptr;
+    const OCSPCertID &id, const ParsedCertificate *certificate,
+    const ParsedCertificate *issuer_certificate) {
+  const EVP_MD *type = nullptr;
   switch (id.hash_algorithm) {
     case DigestAlgorithm::Md2:
     case DigestAlgorithm::Md4:
@@ -538,7 +535,7 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
   CertErrors errors;
   return ParsedCertificate::Create(
       bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-          reinterpret_cast<const uint8_t*>(der.data()), der.size(), nullptr)),
+          reinterpret_cast<const uint8_t *>(der.data()), der.size(), nullptr)),
       {}, &errors);
 }
 
@@ -546,8 +543,7 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
 // by verifying the name matches that of the certificate or that the hash
 // matches the certificate's public key hash (RFC 6960, 4.2.2.3).
 [[nodiscard]] bool CheckResponderIDMatchesCertificate(
-    const OCSPResponseData::ResponderID& id,
-    const ParsedCertificate* cert) {
+    const OCSPResponseData::ResponderID &id, const ParsedCertificate *cert) {
   switch (id.type) {
     case OCSPResponseData::ResponderType::NAME: {
       der::Input name_rdn;
@@ -579,8 +575,8 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
 //     signature and EKU. Can full RFC 5280 validation be used, or are there
 //     compatibility concerns?
 [[nodiscard]] bool VerifyAuthorizedResponderCert(
-    const ParsedCertificate* responder_certificate,
-    const ParsedCertificate* issuer_certificate) {
+    const ParsedCertificate *responder_certificate,
+    const ParsedCertificate *issuer_certificate) {
   // The Authorized Responder must be directly signed by the issuer of the
   // certificate being checked.
   // TODO(eroman): Must check the signature algorithm against policy.
@@ -598,7 +594,7 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
   if (!responder_certificate->has_extended_key_usage())
     return false;
 
-  for (const auto& key_purpose_oid :
+  for (const auto &key_purpose_oid :
        responder_certificate->extended_key_usage()) {
     if (key_purpose_oid == der::Input(kOCSPSigning))
       return true;
@@ -607,8 +603,7 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
 }
 
 [[nodiscard]] bool VerifyOCSPResponseSignatureGivenCert(
-    const OCSPResponse& response,
-    const ParsedCertificate* cert) {
+    const OCSPResponse &response, const ParsedCertificate *cert) {
   // TODO(eroman): Must check the signature algorithm against policy.
   return VerifySignedData(response.signature_algorithm, response.data,
                           response.signature, cert->tbs().spki_tlv,
@@ -619,9 +614,8 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
 // |issuer_certificate|, or an authorized responder issued by
 // |issuer_certificate| for OCSP signing.
 [[nodiscard]] bool VerifyOCSPResponseSignature(
-    const OCSPResponse& response,
-    const OCSPResponseData& response_data,
-    const ParsedCertificate* issuer_certificate) {
+    const OCSPResponse &response, const OCSPResponseData &response_data,
+    const ParsedCertificate *issuer_certificate) {
   // In order to verify the OCSP signature, a valid responder matching the OCSP
   // Responder ID must be located (RFC 6960, 4.2.2.2). The responder is allowed
   // to be either the certificate issuer or a delegated authority directly
@@ -637,7 +631,7 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
   //  (1) Matches the OCSP Responder ID.
   //  (2) Has been given authority for OCSP signing by |issuer_certificate|.
   //  (3) Has signed the OCSP response using its public key.
-  for (const auto& responder_cert_tlv : response.certs) {
+  for (const auto &responder_cert_tlv : response.certs) {
     std::shared_ptr<const ParsedCertificate> cur_responder_certificate =
         OCSPParseCertificate(responder_cert_tlv.AsStringView());
 
@@ -674,15 +668,15 @@ std::shared_ptr<const ParsedCertificate> OCSPParseCertificate(
 // Parse ResponseData and return false if any unhandled critical extensions are
 // found. No known critical ResponseData extensions exist.
 bool ParseOCSPResponseDataExtensions(
-    const der::Input& response_extensions,
-    OCSPVerifyResult::ResponseStatus* response_details) {
+    const der::Input &response_extensions,
+    OCSPVerifyResult::ResponseStatus *response_details) {
   std::map<der::Input, ParsedExtension> extensions;
   if (!ParseExtensions(response_extensions, &extensions)) {
     *response_details = OCSPVerifyResult::PARSE_RESPONSE_DATA_ERROR;
     return false;
   }
 
-  for (const auto& ext : extensions) {
+  for (const auto &ext : extensions) {
     // TODO: handle ResponseData extensions
 
     if (ext.second.critical) {
@@ -699,8 +693,8 @@ bool ParseOCSPResponseDataExtensions(
 // to be marked critical, but since it is handled by Chrome, we will overlook
 // the flag setting.
 bool ParseOCSPSingleResponseExtensions(
-    const der::Input& single_extensions,
-    OCSPVerifyResult::ResponseStatus* response_details) {
+    const der::Input &single_extensions,
+    OCSPVerifyResult::ResponseStatus *response_details) {
   std::map<der::Input, ParsedExtension> extensions;
   if (!ParseExtensions(single_extensions, &extensions)) {
     *response_details = OCSPVerifyResult::PARSE_RESPONSE_DATA_ERROR;
@@ -714,7 +708,7 @@ bool ParseOCSPSingleResponseExtensions(
                                      0xD6, 0x79, 0x02, 0x04, 0x05};
   der::Input ct_ext_oid(ct_ocsp_ext_oid);
 
-  for (const auto& ext : extensions) {
+  for (const auto &ext : extensions) {
     // The CT OCSP extension is handled in ct::ExtractSCTListFromOCSPResponse
     if (ext.second.oid == ct_ext_oid)
       continue;
@@ -732,16 +726,14 @@ bool ParseOCSPSingleResponseExtensions(
 
 // Loops through the OCSPSingleResponses to find the best match for |cert|.
 OCSPRevocationStatus GetRevocationStatusForCert(
-    const OCSPResponseData& response_data,
-    const ParsedCertificate* cert,
-    const ParsedCertificate* issuer_certificate,
-    int64_t verify_time_epoch_seconds,
-    std::optional<int64_t> max_age_seconds,
-    OCSPVerifyResult::ResponseStatus* response_details) {
+    const OCSPResponseData &response_data, const ParsedCertificate *cert,
+    const ParsedCertificate *issuer_certificate,
+    int64_t verify_time_epoch_seconds, std::optional<int64_t> max_age_seconds,
+    OCSPVerifyResult::ResponseStatus *response_details) {
   OCSPRevocationStatus result = OCSPRevocationStatus::UNKNOWN;
   *response_details = OCSPVerifyResult::NO_MATCHING_RESPONSE;
 
-  for (const auto& single_response_der : response_data.responses) {
+  for (const auto &single_response_der : response_data.responses) {
     // In the common case, there should only be one SingleResponse in the
     // ResponseData (matching the certificate requested and used on this
     // connection). However, it is possible for the OCSP responder to provide
@@ -795,14 +787,12 @@ OCSPRevocationStatus GetRevocationStatusForCert(
 }
 
 OCSPRevocationStatus CheckOCSP(
-    std::string_view raw_response,
-    std::string_view certificate_der,
-    const ParsedCertificate* certificate,
+    std::string_view raw_response, std::string_view certificate_der,
+    const ParsedCertificate *certificate,
     std::string_view issuer_certificate_der,
-    const ParsedCertificate* issuer_certificate,
-    int64_t verify_time_epoch_seconds,
-    std::optional<int64_t> max_age_seconds,
-    OCSPVerifyResult::ResponseStatus* response_details) {
+    const ParsedCertificate *issuer_certificate,
+    int64_t verify_time_epoch_seconds, std::optional<int64_t> max_age_seconds,
+    OCSPVerifyResult::ResponseStatus *response_details) {
   *response_details = OCSPVerifyResult::NOT_CHECKED;
 
   if (raw_response.empty()) {
@@ -899,33 +889,29 @@ OCSPRevocationStatus CheckOCSP(
 }  // namespace
 
 OCSPRevocationStatus CheckOCSP(
-    std::string_view raw_response,
-    std::string_view certificate_der,
-    std::string_view issuer_certificate_der,
-    int64_t verify_time_epoch_seconds,
+    std::string_view raw_response, std::string_view certificate_der,
+    std::string_view issuer_certificate_der, int64_t verify_time_epoch_seconds,
     std::optional<int64_t> max_age_seconds,
-    OCSPVerifyResult::ResponseStatus* response_details) {
+    OCSPVerifyResult::ResponseStatus *response_details) {
   return CheckOCSP(raw_response, certificate_der, nullptr,
                    issuer_certificate_der, nullptr, verify_time_epoch_seconds,
                    max_age_seconds, response_details);
 }
 
 OCSPRevocationStatus CheckOCSP(
-    std::string_view raw_response,
-    const ParsedCertificate* certificate,
-    const ParsedCertificate* issuer_certificate,
-    int64_t verify_time_epoch_seconds,
-    std::optional<int64_t> max_age_seconds,
-    OCSPVerifyResult::ResponseStatus* response_details) {
+    std::string_view raw_response, const ParsedCertificate *certificate,
+    const ParsedCertificate *issuer_certificate,
+    int64_t verify_time_epoch_seconds, std::optional<int64_t> max_age_seconds,
+    OCSPVerifyResult::ResponseStatus *response_details) {
   return CheckOCSP(raw_response, std::string_view(), certificate,
                    std::string_view(), issuer_certificate,
                    verify_time_epoch_seconds, max_age_seconds,
                    response_details);
 }
 
-bool CreateOCSPRequest(const ParsedCertificate* cert,
-                       const ParsedCertificate* issuer,
-                       std::vector<uint8_t>* request_der) {
+bool CreateOCSPRequest(const ParsedCertificate *cert,
+                       const ParsedCertificate *issuer,
+                       std::vector<uint8_t> *request_der) {
   request_der->clear();
 
   bssl::ScopedCBB cbb;
@@ -979,7 +965,7 @@ bool CreateOCSPRequest(const ParsedCertificate* cert,
   //       serialNumber        CertificateSerialNumber }
 
   // TODO(eroman): Don't use SHA1.
-  const EVP_MD* md = EVP_sha1();
+  const EVP_MD *md = EVP_sha1();
   if (!EVP_marshal_digest_algorithm(&req_cert, md))
     return false;
 
@@ -998,7 +984,7 @@ bool CreateOCSPRequest(const ParsedCertificate* cert,
     return false;
   }
 
-  uint8_t* result_bytes;
+  uint8_t *result_bytes;
   size_t result_bytes_length;
   if (!CBB_finish(cbb.get(), &result_bytes, &result_bytes_length))
     return false;
@@ -1015,8 +1001,7 @@ bool CreateOCSPRequest(const ParsedCertificate* cert,
 //    GET {url}/{url-encoding of base-64 encoding of the DER encoding of
 //    the OCSPRequest}
 std::optional<std::string> CreateOCSPGetURL(
-    const ParsedCertificate* cert,
-    const ParsedCertificate* issuer,
+    const ParsedCertificate *cert, const ParsedCertificate *issuer,
     std::string_view ocsp_responder_url) {
   std::vector<uint8_t> ocsp_request_der;
   if (!CreateOCSPRequest(cert, issuer, &ocsp_request_der)) {
@@ -1048,4 +1033,4 @@ std::optional<std::string> CreateOCSPGetURL(
   return std::string(ocsp_responder_url) + "/" + b64_encoded;
 }
 
-}  // namespace net
+}  // namespace bssl

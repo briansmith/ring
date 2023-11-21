@@ -5,9 +5,9 @@
 #ifndef BSSL_DER_INPUT_H_
 #define BSSL_DER_INPUT_H_
 
-#include "fillins/openssl_util.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "fillins/openssl_util.h"
 
 #include <string>
 #include <string_view>
@@ -38,14 +38,14 @@ class OPENSSL_EXPORT Input {
   constexpr explicit Input(bssl::Span<const uint8_t> data) : data_(data) {}
 
   // Creates an Input from the given |data| and |len|.
-  constexpr explicit Input(const uint8_t* data, size_t len)
+  constexpr explicit Input(const uint8_t *data, size_t len)
       : data_(bssl::MakeConstSpan(data, len)) {}
 
   // Creates an Input from a std::string_view. The constructed Input is only
   // valid as long as |data| points to live memory. If constructed from, say, a
   // |std::string|, mutating the vector will invalidate the Input.
   explicit Input(std::string_view str)
-      : data_(bssl::MakeConstSpan(reinterpret_cast<const uint8_t*>(str.data()),
+      : data_(bssl::MakeConstSpan(reinterpret_cast<const uint8_t *>(str.data()),
                                   str.size())) {}
 
   // Returns the length in bytes of an Input's data.
@@ -55,7 +55,7 @@ class OPENSSL_EXPORT Input {
   // because access to the Input's data should be done through ByteReader
   // instead. This method should only be used where using a ByteReader truly
   // is not an option.
-  constexpr const uint8_t* UnsafeData() const { return data_.data(); }
+  constexpr const uint8_t *UnsafeData() const { return data_.data(); }
 
   constexpr uint8_t operator[](size_t idx) const { return data_[idx]; }
 
@@ -77,20 +77,19 @@ class OPENSSL_EXPORT Input {
 };
 
 // Return true if |lhs|'s data and |rhs|'s data are byte-wise equal.
-OPENSSL_EXPORT bool operator==(const Input& lhs, const Input& rhs);
+OPENSSL_EXPORT bool operator==(const Input &lhs, const Input &rhs);
 
 // Return true if |lhs|'s data and |rhs|'s data are not byte-wise equal.
-OPENSSL_EXPORT bool operator!=(const Input& lhs, const Input& rhs);
+OPENSSL_EXPORT bool operator!=(const Input &lhs, const Input &rhs);
 
 // Returns true if |lhs|'s data is lexicographically less than |rhs|'s data.
-OPENSSL_EXPORT constexpr bool operator<(const Input& lhs,
-                                            const Input& rhs) {
+OPENSSL_EXPORT constexpr bool operator<(const Input &lhs, const Input &rhs) {
   // This is `std::lexicographical_compare`, but that's not `constexpr` until
   // C++-20.
-  auto* it1 = lhs.UnsafeData();
-  auto* it2 = rhs.UnsafeData();
-  const auto* end1 = lhs.UnsafeData() + lhs.Length();
-  const auto* end2 = rhs.UnsafeData() + rhs.Length();
+  auto *it1 = lhs.UnsafeData();
+  auto *it2 = rhs.UnsafeData();
+  const auto *end1 = lhs.UnsafeData() + lhs.Length();
+  const auto *end2 = rhs.UnsafeData() + rhs.Length();
   for (; it1 != end1 && it2 != end2; ++it1, ++it2) {
     if (*it1 < *it2) {
       return true;
@@ -121,17 +120,17 @@ OPENSSL_EXPORT constexpr bool operator<(const Input& lhs,
 class OPENSSL_EXPORT ByteReader {
  public:
   // Creates a ByteReader to read the data represented by an Input.
-  explicit ByteReader(const Input& in);
+  explicit ByteReader(const Input &in);
 
   // Reads a single byte from the input source, putting the byte read in
   // |*byte_p|. If a byte cannot be read from the input (because there is
   // no input left), then this method returns false.
-  [[nodiscard]] bool ReadByte(uint8_t* out);
+  [[nodiscard]] bool ReadByte(uint8_t *out);
 
   // Reads |len| bytes from the input source, and initializes an Input to
   // point to that data. If there aren't enough bytes left in the input source,
   // then this method returns false.
-  [[nodiscard]] bool ReadBytes(size_t len, Input* out);
+  [[nodiscard]] bool ReadBytes(size_t len, Input *out);
 
   // Returns how many bytes are left to read.
   size_t BytesLeft() const { return len_; }
@@ -142,7 +141,7 @@ class OPENSSL_EXPORT ByteReader {
  private:
   void Advance(size_t len);
 
-  const uint8_t* data_;
+  const uint8_t *data_;
   size_t len_;
 };
 

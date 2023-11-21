@@ -4,14 +4,14 @@
 
 #include "verify_name_match.h"
 
-#include "cert_error_params.h"
-#include "cert_errors.h"
-#include "parse_name.h"
-#include "input.h"
-#include "parser.h"
-#include "tag.h"
 #include <openssl/base.h>
 #include <openssl/bytestring.h>
+#include "cert_error_params.h"
+#include "cert_errors.h"
+#include "input.h"
+#include "parse_name.h"
+#include "parser.h"
+#include "tag.h"
 
 namespace bssl {
 
@@ -55,8 +55,7 @@ enum CharsetEnforcement {
 //
 // NOTE: |output| will be modified regardless of the return.
 [[nodiscard]] bool NormalizeDirectoryString(
-    CharsetEnforcement charset_enforcement,
-    std::string* output) {
+    CharsetEnforcement charset_enforcement, std::string *output) {
   // Normalized version will always be equal or shorter than input.
   // Normalize in place and then truncate the output if necessary.
   std::string::const_iterator read_iter = output->begin();
@@ -113,8 +112,7 @@ enum CharsetEnforcement {
 // is invalid, returns false.
 // NOTE: |output| will be modified regardless of the return.
 [[nodiscard]] bool NormalizeValue(X509NameAttribute attribute,
-                                  std::string* output,
-                                  CertErrors* errors) {
+                                  std::string *output, CertErrors *errors) {
   BSSL_CHECK(errors);
 
   if (!attribute.ValueAsStringUnsafe(output)) {
@@ -193,7 +191,7 @@ bool VerifyValueMatch(X509NameAttribute a, X509NameAttribute b) {
 // Verifies that |a_parser| and |b_parser| are the same length and that every
 // AttributeTypeAndValue in |a_parser| has a matching AttributeTypeAndValue in
 // |b_parser|.
-bool VerifyRdnMatch(der::Parser* a_parser, der::Parser* b_parser) {
+bool VerifyRdnMatch(der::Parser *a_parser, der::Parser *b_parser) {
   RelativeDistinguishedName a_type_and_values, b_type_and_values;
   if (!ReadRdn(a_parser, &a_type_and_values) ||
       !ReadRdn(b_parser, &b_type_and_values))
@@ -210,10 +208,10 @@ bool VerifyRdnMatch(der::Parser* a_parser, der::Parser* b_parser) {
   // differently in the DER encoding. Since the number of elements should be
   // small, a naive linear search for each element should be fine. (Hostile
   // certificates already have ways to provoke pathological behavior.)
-  for (const auto& a : a_type_and_values) {
+  for (const auto &a : a_type_and_values) {
     auto b_iter = b_type_and_values.begin();
     for (; b_iter != b_type_and_values.end(); ++b_iter) {
-      const auto& b = *b_iter;
+      const auto &b = *b_iter;
       if (a.type == b.type && VerifyValueMatch(a, b)) {
         break;
       }
@@ -251,8 +249,7 @@ enum NameMatchType {
 //
 // RelativeDistinguishedName ::=
 //   SET SIZE (1..MAX) OF AttributeTypeAndValue
-bool VerifyNameMatchInternal(const der::Input& a,
-                             const der::Input& b,
+bool VerifyNameMatchInternal(const der::Input &a, const der::Input &b,
                              NameMatchType match_type) {
   // Empty Names are allowed.  RFC 5280 section 4.1.2.4 requires "The issuer
   // field MUST contain a non-empty distinguished name (DN)", while section
@@ -299,9 +296,8 @@ bool VerifyNameMatchInternal(const der::Input& a,
 
 }  // namespace
 
-bool NormalizeName(const der::Input& name_rdn_sequence,
-                   std::string* normalized_rdn_sequence,
-                   CertErrors* errors) {
+bool NormalizeName(const der::Input &name_rdn_sequence,
+                   std::string *normalized_rdn_sequence, CertErrors *errors) {
   BSSL_CHECK(errors);
 
   // RFC 5280 section 4.1.2.4
@@ -325,7 +321,7 @@ bool NormalizeName(const der::Input& name_rdn_sequence,
     if (!CBB_add_asn1(cbb.get(), &rdn_cbb, CBS_ASN1_SET))
       return false;
 
-    for (const auto& type_and_value : type_and_values) {
+    for (const auto &type_and_value : type_and_values) {
       // AttributeTypeAndValue ::= SEQUENCE {
       //   type     AttributeType,
       //   value    AttributeValue }
@@ -352,7 +348,7 @@ bool NormalizeName(const der::Input& name_rdn_sequence,
                           CBS_ASN1_UTF8STRING) ||
             !CBB_add_bytes(
                 &value_cbb,
-                reinterpret_cast<const uint8_t*>(normalized_value.data()),
+                reinterpret_cast<const uint8_t *>(normalized_value.data()),
                 normalized_value.size()))
           return false;
       } else {
@@ -377,20 +373,20 @@ bool NormalizeName(const der::Input& name_rdn_sequence,
   return true;
 }
 
-bool VerifyNameMatch(const der::Input& a_rdn_sequence,
-                     const der::Input& b_rdn_sequence) {
+bool VerifyNameMatch(const der::Input &a_rdn_sequence,
+                     const der::Input &b_rdn_sequence) {
   return VerifyNameMatchInternal(a_rdn_sequence, b_rdn_sequence, EXACT_MATCH);
 }
 
-bool VerifyNameInSubtree(const der::Input& name_rdn_sequence,
-                         const der::Input& parent_rdn_sequence) {
+bool VerifyNameInSubtree(const der::Input &name_rdn_sequence,
+                         const der::Input &parent_rdn_sequence) {
   return VerifyNameMatchInternal(name_rdn_sequence, parent_rdn_sequence,
                                  SUBTREE_MATCH);
 }
 
 bool FindEmailAddressesInName(
-    const der::Input& name_rdn_sequence,
-    std::vector<std::string>* contained_email_addresses) {
+    const der::Input &name_rdn_sequence,
+    std::vector<std::string> *contained_email_addresses) {
   contained_email_addresses->clear();
 
   der::Parser rdn_sequence_parser(name_rdn_sequence);
@@ -403,7 +399,7 @@ bool FindEmailAddressesInName(
     if (!ReadRdn(&rdn_parser, &type_and_values))
       return false;
 
-    for (const auto& type_and_value : type_and_values) {
+    for (const auto &type_and_value : type_and_values) {
       if (type_and_value.type == der::Input(kTypeEmailAddressOid)) {
         std::string email_address;
         if (!type_and_value.ValueAsString(&email_address)) {
@@ -417,4 +413,4 @@ bool FindEmailAddressesInName(
   return true;
 }
 
-}  // namespace net
+}  // namespace bssl

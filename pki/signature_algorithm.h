@@ -5,12 +5,12 @@
 #ifndef BSSL_PKI_SIGNATURE_ALGORITHM_H_
 #define BSSL_PKI_SIGNATURE_ALGORITHM_H_
 
-#include "fillins/openssl_util.h"
 #include <stdint.h>
+#include "fillins/openssl_util.h"
 
 
-#include <optional>
 #include <openssl/evp.h>
+#include <optional>
 
 namespace bssl {
 
@@ -53,9 +53,8 @@ enum class SignatureAlgorithm {
 //     AlgorithmIdentifier  ::=  SEQUENCE  {
 //          algorithm               OBJECT IDENTIFIER,
 //          parameters              ANY DEFINED BY algorithm OPTIONAL  }
-[[nodiscard]] OPENSSL_EXPORT bool ParseAlgorithmIdentifier(const der::Input& input,
-                                                       der::Input* algorithm,
-                                                       der::Input* parameters);
+[[nodiscard]] OPENSSL_EXPORT bool ParseAlgorithmIdentifier(
+    const der::Input &input, der::Input *algorithm, der::Input *parameters);
 
 // Parses a HashAlgorithm as defined by RFC 5912:
 //
@@ -69,20 +68,20 @@ enum class SignatureAlgorithm {
 //         { IDENTIFIER id-sha384 PARAMS TYPE NULL ARE preferredPresent } |
 //         { IDENTIFIER id-sha512 PARAMS TYPE NULL ARE preferredPresent }
 //     }
-[[nodiscard]] bool ParseHashAlgorithm(const der::Input& input,
-                                      DigestAlgorithm* out);
+[[nodiscard]] bool ParseHashAlgorithm(const der::Input &input,
+                                      DigestAlgorithm *out);
 
 // Parses an AlgorithmIdentifier into a signature algorithm and returns it, or
 // returns `std::nullopt` if `algorithm_identifer` either cannot be parsed or
 // is not a recognized signature algorithm.
 OPENSSL_EXPORT std::optional<SignatureAlgorithm> ParseSignatureAlgorithm(
-    const der::Input& algorithm_identifier);
+    const der::Input &algorithm_identifier);
 
 // Returns the hash to be used with the tls-server-end-point channel binding
 // (RFC 5929) or `std::nullopt`, if not supported for this signature algorithm.
-OPENSSL_EXPORT std::optional<DigestAlgorithm> GetTlsServerEndpointDigestAlgorithm(
-    SignatureAlgorithm alg);
+OPENSSL_EXPORT std::optional<DigestAlgorithm>
+GetTlsServerEndpointDigestAlgorithm(SignatureAlgorithm alg);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_SIGNATURE_ALGORITHM_H_

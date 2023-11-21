@@ -39,8 +39,7 @@ bool StartsWithNoCase(std::string_view str, std::string_view prefix) {
          IsEqualNoCase(prefix, str.substr(0, prefix.size()));
 }
 
-std::string FindAndReplace(std::string_view str,
-                           std::string_view find,
+std::string FindAndReplace(std::string_view str, std::string_view find,
                            std::string_view replace) {
   std::string ret;
 
@@ -71,7 +70,7 @@ bool StartsWith(std::string_view str, std::string_view prefix) {
   return prefix.size() <= str.size() && prefix == str.substr(0, prefix.size());
 }
 
-std::string HexEncode(const uint8_t* data, size_t length) {
+std::string HexEncode(const uint8_t *data, size_t length) {
   std::ostringstream out;
   for (size_t i = 0; i < length; i++) {
     out << std::hex << std::setfill('0') << std::setw(2) << std::uppercase

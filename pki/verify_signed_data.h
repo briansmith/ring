@@ -6,11 +6,10 @@
 #define BSSL_PKI_VERIFY_SIGNED_DATA_H_
 
 #include "fillins/openssl_util.h"
-#include "fillins/openssl_util.h"
 
+#include <openssl/evp.h>
 #include "signature_algorithm.h"
 #include "signature_verify_cache.h"
-#include <openssl/evp.h>
 
 namespace bssl {
 
@@ -29,25 +28,20 @@ class Input;
 //
 // Returns true if verification was successful.
 [[nodiscard]] OPENSSL_EXPORT bool VerifySignedData(
-    SignatureAlgorithm algorithm,
-    const der::Input& signed_data,
-    const der::BitString& signature_value,
-    EVP_PKEY* public_key,
-    SignatureVerifyCache* cache);
+    SignatureAlgorithm algorithm, const der::Input &signed_data,
+    const der::BitString &signature_value, EVP_PKEY *public_key,
+    SignatureVerifyCache *cache);
 
 // Same as above overload, only the public key is inputted as an SPKI and will
 // be parsed internally.
 [[nodiscard]] OPENSSL_EXPORT bool VerifySignedData(
-    SignatureAlgorithm algorithm,
-    const der::Input& signed_data,
-    const der::BitString& signature_value,
-    const der::Input& public_key_spki,
-    SignatureVerifyCache* cache);
+    SignatureAlgorithm algorithm, const der::Input &signed_data,
+    const der::BitString &signature_value, const der::Input &public_key_spki,
+    SignatureVerifyCache *cache);
 
 [[nodiscard]] OPENSSL_EXPORT bool ParsePublicKey(
-    const der::Input& public_key_spki,
-    bssl::UniquePtr<EVP_PKEY>* public_key);
+    const der::Input &public_key_spki, bssl::UniquePtr<EVP_PKEY> *public_key);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_VERIFY_SIGNED_DATA_H_

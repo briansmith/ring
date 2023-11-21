@@ -6,13 +6,13 @@
 
 #include "certificate_policies.h"
 
+#include <openssl/base.h>
 #include "cert_error_params.h"
 #include "cert_errors.h"
 #include "input.h"
 #include "parse_values.h"
 #include "parser.h"
 #include "tag.h"
-#include <openssl/base.h>
 
 namespace bssl {
 
@@ -41,9 +41,9 @@ DEFINE_CERT_ERROR_ID(kPolicyQualifierInfoTrailingData,
 // If a policy qualifier other than User Notice/CPS is present, parsing
 // will fail if |restrict_to_known_qualifiers| was set to true.
 bool ParsePolicyQualifiers(bool restrict_to_known_qualifiers,
-                           der::Parser* policy_qualifiers_sequence_parser,
-                           std::vector<PolicyQualifierInfo>* policy_qualifiers,
-                           CertErrors* errors) {
+                           der::Parser *policy_qualifiers_sequence_parser,
+                           std::vector<PolicyQualifierInfo> *policy_qualifiers,
+                           CertErrors *errors) {
   BSSL_CHECK(errors);
 
   // If it is present, the policyQualifiers sequence should have at least 1
@@ -128,11 +128,9 @@ bool ParsePolicyQualifiers(bool restrict_to_known_qualifiers,
 //      bmpString        BMPString      (SIZE (1..200)),
 //      utf8String       UTF8String     (SIZE (1..200)) }
 bool ParseCertificatePoliciesExtensionImpl(
-    const der::Input& extension_value,
-    bool fail_parsing_unknown_qualifier_oids,
-    std::vector<der::Input>* policy_oids,
-    std::vector<PolicyInformation>* policy_informations,
-    CertErrors* errors) {
+    const der::Input &extension_value, bool fail_parsing_unknown_qualifier_oids,
+    std::vector<der::Input> *policy_oids,
+    std::vector<PolicyInformation> *policy_informations, CertErrors *errors) {
   BSSL_CHECK(policy_oids);
   BSSL_CHECK(errors);
   // certificatePolicies ::= SEQUENCE SIZE (1..MAX) OF PolicyInformation
@@ -165,7 +163,7 @@ bool ParseCertificatePoliciesExtensionImpl(
 
     policy_oids->push_back(policy_oid);
 
-    std::vector<PolicyQualifierInfo>* policy_qualifiers = nullptr;
+    std::vector<PolicyQualifierInfo> *policy_qualifiers = nullptr;
     if (policy_informations) {
       policy_informations->emplace_back();
       policy_informations->back().policy_oid = policy_oid;
@@ -218,12 +216,12 @@ bool ParseCertificatePoliciesExtensionImpl(
 
 PolicyInformation::PolicyInformation() = default;
 PolicyInformation::~PolicyInformation() = default;
-PolicyInformation::PolicyInformation(const PolicyInformation&) = default;
-PolicyInformation::PolicyInformation(PolicyInformation&&) = default;
+PolicyInformation::PolicyInformation(const PolicyInformation &) = default;
+PolicyInformation::PolicyInformation(PolicyInformation &&) = default;
 
-bool ParseCertificatePoliciesExtension(const der::Input& extension_value,
-                                       std::vector<PolicyInformation>* policies,
-                                       CertErrors* errors) {
+bool ParseCertificatePoliciesExtension(const der::Input &extension_value,
+                                       std::vector<PolicyInformation> *policies,
+                                       CertErrors *errors) {
   std::vector<der::Input> unused_policy_oids;
   return ParseCertificatePoliciesExtensionImpl(
       extension_value, /*fail_parsing_unknown_qualifier_oids=*/false,
@@ -231,10 +229,8 @@ bool ParseCertificatePoliciesExtension(const der::Input& extension_value,
 }
 
 bool ParseCertificatePoliciesExtensionOids(
-    const der::Input& extension_value,
-    bool fail_parsing_unknown_qualifier_oids,
-    std::vector<der::Input>* policy_oids,
-    CertErrors* errors) {
+    const der::Input &extension_value, bool fail_parsing_unknown_qualifier_oids,
+    std::vector<der::Input> *policy_oids, CertErrors *errors) {
   return ParseCertificatePoliciesExtensionImpl(
       extension_value, fail_parsing_unknown_qualifier_oids, policy_oids,
       nullptr, errors);
@@ -247,8 +243,8 @@ bool ParseCertificatePoliciesExtensionOids(
 //        inhibitPolicyMapping            [1] SkipCerts OPTIONAL }
 //
 //   SkipCerts ::= INTEGER (0..MAX)
-bool ParsePolicyConstraints(const der::Input& policy_constraints_tlv,
-                            ParsedPolicyConstraints* out) {
+bool ParsePolicyConstraints(const der::Input &policy_constraints_tlv,
+                            ParsedPolicyConstraints *out) {
   der::Parser parser(policy_constraints_tlv);
 
   //   PolicyConstraints ::= SEQUENCE {
@@ -311,7 +307,7 @@ bool ParsePolicyConstraints(const der::Input& policy_constraints_tlv,
 //
 //   SkipCerts ::= INTEGER (0..MAX)
 std::optional<uint8_t> ParseInhibitAnyPolicy(
-    const der::Input& inhibit_any_policy_tlv) {
+    const der::Input &inhibit_any_policy_tlv) {
   der::Parser parser(inhibit_any_policy_tlv);
   std::optional<uint8_t> num_certs = std::make_optional<uint8_t>();
 
@@ -333,8 +329,8 @@ std::optional<uint8_t> ParseInhibitAnyPolicy(
 //   PolicyMappings ::= SEQUENCE SIZE (1..MAX) OF SEQUENCE {
 //        issuerDomainPolicy      CertPolicyId,
 //        subjectDomainPolicy     CertPolicyId }
-bool ParsePolicyMappings(const der::Input& policy_mappings_tlv,
-                         std::vector<ParsedPolicyMapping>* mappings) {
+bool ParsePolicyMappings(const der::Input &policy_mappings_tlv,
+                         std::vector<ParsedPolicyMapping> *mappings) {
   mappings->clear();
 
   der::Parser parser(policy_mappings_tlv);
@@ -373,4 +369,4 @@ bool ParsePolicyMappings(const der::Input& policy_mappings_tlv,
   return true;
 }
 
-}  // namespace net
+}  // namespace bssl

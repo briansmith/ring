@@ -5,8 +5,8 @@
 #ifndef BSSL_PKI_SIMPLE_PATH_BUILDER_DELEGATE_H_
 #define BSSL_PKI_SIMPLE_PATH_BUILDER_DELEGATE_H_
 
-#include "fillins/openssl_util.h"
 #include <stddef.h>
+#include "fillins/openssl_util.h"
 
 
 #include "path_builder.h"
@@ -26,7 +26,8 @@ class CertErrors;
 //       * If the |digest_policy| was set to kAllowSha1, then SHA1 is
 //         additionally accepted.
 //   * EC named curve can be P-256, P-384, P-521.
-class OPENSSL_EXPORT SimplePathBuilderDelegate : public CertPathBuilderDelegate {
+class OPENSSL_EXPORT SimplePathBuilderDelegate
+    : public CertPathBuilderDelegate {
  public:
   enum class DigestPolicy {
     // Accepts digests of SHA256, SHA348 or SHA512
@@ -48,26 +49,26 @@ class OPENSSL_EXPORT SimplePathBuilderDelegate : public CertPathBuilderDelegate 
   // Accepts RSA PKCS#1, RSASSA-PSS or ECDA using any of the SHA* digests
   // (including SHA1).
   bool IsSignatureAlgorithmAcceptable(SignatureAlgorithm signature_algorithm,
-                                      CertErrors* errors) override;
+                                      CertErrors *errors) override;
 
   // Requires RSA keys be >= |min_rsa_modulus_length_bits_|.
-  bool IsPublicKeyAcceptable(EVP_PKEY* public_key, CertErrors* errors) override;
+  bool IsPublicKeyAcceptable(EVP_PKEY *public_key, CertErrors *errors) override;
 
   // No-op implementation.
-  void CheckPathAfterVerification(const CertPathBuilder& path_builder,
-                                  CertPathBuilderResultPath* path) override;
+  void CheckPathAfterVerification(const CertPathBuilder &path_builder,
+                                  CertPathBuilderResultPath *path) override;
 
   // No-op implementation.
   bool IsDeadlineExpired() override;
 
   // No-op implementation.
-  SignatureVerifyCache* GetVerifyCache() override;
+  SignatureVerifyCache *GetVerifyCache() override;
 
  private:
   const size_t min_rsa_modulus_length_bits_;
   const DigestPolicy digest_policy_;
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_SIMPLE_PATH_BUILDER_DELEGATE_H_

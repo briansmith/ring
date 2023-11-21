@@ -33,8 +33,7 @@ bool IsValidNetmask(der::Input mask) {
   return true;
 }
 
-bool IPAddressMatchesWithNetmask(der::Input addr1,
-                                 der::Input addr2,
+bool IPAddressMatchesWithNetmask(der::Input addr1, der::Input addr2,
                                  der::Input mask) {
   if (addr1.Length() != addr2.Length() || addr1.Length() != mask.Length()) {
     return false;
@@ -47,4 +46,4 @@ bool IPAddressMatchesWithNetmask(der::Input addr1,
   return true;
 }
 
-}  // namespace net
+}  // namespace bssl

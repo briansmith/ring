@@ -22,11 +22,11 @@ TEST(StringUtilTest, IsEqualNoCase) {
   EXPECT_TRUE(
       bssl::string_util::IsEqualNoCase("mail.google.com", "maIL.GOoGlE.cOm"));
   EXPECT_TRUE(bssl::string_util::IsEqualNoCase("MAil~-.google.cOm",
-                                              "maIL~-.gOoGlE.CoM"));
+                                               "maIL~-.gOoGlE.CoM"));
   EXPECT_TRUE(bssl::string_util::IsEqualNoCase("mail\x80.google.com",
-                                              "maIL\x80.GOoGlE.cOm"));
+                                               "maIL\x80.GOoGlE.cOm"));
   EXPECT_TRUE(bssl::string_util::IsEqualNoCase("mail\xFF.google.com",
-                                              "maIL\xFF.GOoGlE.cOm"));
+                                               "maIL\xFF.GOoGlE.cOm"));
   EXPECT_FALSE(
       bssl::string_util::IsEqualNoCase("mail.google.co", "maIL.GOoGlE.cOm"));
   EXPECT_FALSE(
@@ -43,11 +43,11 @@ TEST(StringUtilTest, EndsWithNoCase) {
   EXPECT_TRUE(
       bssl::string_util::EndsWithNoCase("MAil~-.google.cOm", "-.gOoGlE.CoM"));
   EXPECT_TRUE(bssl::string_util::EndsWithNoCase("mail\x80.google.com",
-                                               "\x80.GOoGlE.cOm"));
+                                                "\x80.GOoGlE.cOm"));
   EXPECT_FALSE(
       bssl::string_util::EndsWithNoCase("mail.google.com", "pOoGlE.com"));
   EXPECT_FALSE(bssl::string_util::EndsWithNoCase("mail\x80.google.com",
-                                                "\x81.GOoGlE.cOm"));
+                                                 "\x81.GOoGlE.cOm"));
   EXPECT_FALSE(
       bssl::string_util::EndsWithNoCase("mail.google.co", ".GOoGlE.cOm"));
   EXPECT_FALSE(
@@ -77,8 +77,8 @@ TEST(StringUtilTest, FindAndReplace) {
 TEST(StringUtilTest, StartsWithNoCase) {
   EXPECT_TRUE(bssl::string_util::StartsWithNoCase("", ""));
   EXPECT_TRUE(bssl::string_util::StartsWithNoCase("mail.google.com", ""));
-  EXPECT_TRUE(
-      bssl::string_util::StartsWithNoCase("mail.google.com", "maIL.GOoGlE.cOm"));
+  EXPECT_TRUE(bssl::string_util::StartsWithNoCase("mail.google.com",
+                                                  "maIL.GOoGlE.cOm"));
   EXPECT_TRUE(bssl::string_util::StartsWithNoCase("mail.google.com", "MaIL."));
   EXPECT_TRUE(
       bssl::string_util::StartsWithNoCase("MAil~-.google.cOm", "maiL~-.Goo"));
@@ -93,9 +93,9 @@ TEST(StringUtilTest, StartsWithNoCase) {
   EXPECT_FALSE(
       bssl::string_util::StartsWithNoCase("mail.google.com", "MaI.GooGLE"));
   EXPECT_FALSE(bssl::string_util::StartsWithNoCase("mail.google.com",
-                                                  "mail.google.com1"));
+                                                   "mail.google.com1"));
   EXPECT_FALSE(bssl::string_util::StartsWithNoCase("mail.google.com",
-                                                  "1mail.google.com"));
+                                                   "1mail.google.com"));
 }
 
 TEST(StringUtilTest, HexEncode) {
@@ -152,4 +152,4 @@ TEST(StringUtilTest, SplitString) {
 
 }  // namespace
 
-}  // namespace net
+}  // namespace bssl

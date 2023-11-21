@@ -202,4 +202,4 @@ TEST(PEMEncodeTest, Wrapping) {
                 "WRAPPED LINE"));
 }
 
-}  // namespace net
+}  // namespace bssl

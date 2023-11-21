@@ -21,9 +21,9 @@ OPENSSL_EXPORT bool IsValidNetmask(der::Input mask);
 
 // Returns whether `addr1` and `addr2` are equal under the netmask `mask`.
 OPENSSL_EXPORT bool IPAddressMatchesWithNetmask(der::Input addr1,
-                                                    der::Input addr2,
-                                                    der::Input mask);
+                                                der::Input addr2,
+                                                der::Input mask);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_IP_UTIL_H_

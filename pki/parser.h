@@ -5,14 +5,14 @@
 #ifndef BSSL_DER_PARSER_H_
 #define BSSL_DER_PARSER_H_
 
-#include "fillins/openssl_util.h"
 #include <stdint.h>
+#include "fillins/openssl_util.h"
 
 
+#include <openssl/bytestring.h>
+#include <optional>
 #include "input.h"
 #include "tag.h"
-#include <optional>
-#include <openssl/bytestring.h>
 
 namespace bssl::der {
 
@@ -92,10 +92,10 @@ class OPENSSL_EXPORT Parser {
   // Creates a parser to parse over the data represented by input. This class
   // assumes that the underlying data will not change over the lifetime of
   // the Parser object.
-  explicit Parser(const Input& input);
+  explicit Parser(const Input &input);
 
-  Parser(const Parser&) = default;
-  Parser& operator=(const Parser&) = default;
+  Parser(const Parser &) = default;
+  Parser &operator=(const Parser &) = default;
 
   // Returns whether there is any more data left in the input to parse. This
   // does not guarantee that the data is parseable.
@@ -105,12 +105,12 @@ class OPENSSL_EXPORT Parser {
   // encoding for the current value is invalid, this method returns false and
   // does not advance the input. Otherwise, it returns true, putting the
   // read tag in |tag| and the value in |out|.
-  [[nodiscard]] bool ReadTagAndValue(Tag* tag, Input* out);
+  [[nodiscard]] bool ReadTagAndValue(Tag *tag, Input *out);
 
   // Reads the current TLV from the input and advances. Unlike ReadTagAndValue
   // where only the value is put in |out|, this puts the raw bytes from the
   // tag, length, and value in |out|.
-  [[nodiscard]] bool ReadRawTLV(Input* out);
+  [[nodiscard]] bool ReadRawTLV(Input *out);
 
   // Basic methods for reading or skipping the current TLV, with an
   // expectation of what the current tag should be. It should be possible
@@ -122,7 +122,7 @@ class OPENSSL_EXPORT Parser {
   // something else, then |out| is set to nullopt and the input is not
   // advanced. Like ReadTagAndValue, it returns false if the encoding is
   // invalid and does not advance the input.
-  [[nodiscard]] bool ReadOptionalTag(Tag tag, std::optional<Input>* out);
+  [[nodiscard]] bool ReadOptionalTag(Tag tag, std::optional<Input> *out);
 
   // If the current tag in the input is |tag|, it puts the corresponding value
   // in |out|, sets |was_present| to true, and advances the input to the next
@@ -131,14 +131,14 @@ class OPENSSL_EXPORT Parser {
   // false if the encoding is invalid and does not advance the input.
   // DEPRECATED: use the std::optional version above in new code.
   // TODO(mattm): convert the existing callers and remove this override.
-  [[nodiscard]] bool ReadOptionalTag(Tag tag, Input* out, bool* was_present);
+  [[nodiscard]] bool ReadOptionalTag(Tag tag, Input *out, bool *was_present);
 
   // Like ReadOptionalTag, but the value is discarded.
-  [[nodiscard]] bool SkipOptionalTag(Tag tag, bool* was_present);
+  [[nodiscard]] bool SkipOptionalTag(Tag tag, bool *was_present);
 
   // If the current tag matches |tag|, it puts the current value in |out|,
   // advances the input, and returns true. Otherwise, it returns false.
-  [[nodiscard]] bool ReadTag(Tag tag, Input* out);
+  [[nodiscard]] bool ReadTag(Tag tag, Input *out);
 
   // Advances the input and returns true if the current tag matches |tag|;
   // otherwise it returns false.
@@ -149,11 +149,11 @@ class OPENSSL_EXPORT Parser {
 
   // Reads the current TLV from the input, checks that the tag matches |tag|
   // and is a constructed tag, and creates a new Parser from the value.
-  [[nodiscard]] bool ReadConstructed(Tag tag, Parser* out);
+  [[nodiscard]] bool ReadConstructed(Tag tag, Parser *out);
 
   // A more specific form of ReadConstructed that expects the current tag
   // to be 0x30 (SEQUENCE).
-  [[nodiscard]] bool ReadSequence(Parser* out);
+  [[nodiscard]] bool ReadSequence(Parser *out);
 
   // Expects the current tag to be kInteger, and calls ParseUint8 on the
   // current value. Note that DER-encoded integers are arbitrary precision,
@@ -162,7 +162,7 @@ class OPENSSL_EXPORT Parser {
   //
   // Note that on failure the Parser is left in an undefined state (the
   // input may or may not have been advanced).
-  [[nodiscard]] bool ReadUint8(uint8_t* out);
+  [[nodiscard]] bool ReadUint8(uint8_t *out);
 
   // Expects the current tag to be kInteger, and calls ParseUint64 on the
   // current value. Note that DER-encoded integers are arbitrary precision,
@@ -171,7 +171,7 @@ class OPENSSL_EXPORT Parser {
   //
   // Note that on failure the Parser is left in an undefined state (the
   // input may or may not have been advanced).
-  [[nodiscard]] bool ReadUint64(uint64_t* out);
+  [[nodiscard]] bool ReadUint64(uint64_t *out);
 
   // Reads a BIT STRING. On success returns BitString. On failure, returns
   // std::nullopt.
@@ -184,7 +184,7 @@ class OPENSSL_EXPORT Parser {
   //
   // Note that on failure the Parser is left in an undefined state (the
   // input may or may not have been advanced).
-  [[nodiscard]] bool ReadGeneralizedTime(GeneralizedTime* out);
+  [[nodiscard]] bool ReadGeneralizedTime(GeneralizedTime *out);
 
   // Lower level methods. The previous methods couple reading data from the
   // input with advancing the Parser's internal pointer to the next TLV; these
@@ -195,7 +195,7 @@ class OPENSSL_EXPORT Parser {
   // Reads the current TLV from the input, putting the tag in |tag| and the raw
   // value in |out|, but does not advance the input. Returns true if the tag
   // and length are successfully read and the output exists.
-  [[nodiscard]] bool PeekTagAndValue(Tag* tag, Input* out);
+  [[nodiscard]] bool PeekTagAndValue(Tag *tag, Input *out);
 
   // Advances the input to the next TLV. This method only needs to be called
   // after PeekTagAndValue; all other methods will advance the input if they

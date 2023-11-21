@@ -6,12 +6,12 @@
 
 #include <string_view>
 
+#include <gtest/gtest.h>
+#include <openssl/pool.h>
 #include "cert_errors.h"
 #include "parsed_certificate.h"
 #include "string_util.h"
 #include "test_helpers.h"
-#include <gtest/gtest.h>
-#include <openssl/pool.h>
 
 namespace bssl {
 
@@ -27,12 +27,13 @@ std::shared_ptr<const ParsedCertificate> ParseCertificate(
     std::string_view data) {
   CertErrors errors;
   return ParsedCertificate::Create(
-      bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-          reinterpret_cast<const uint8_t*>(data.data()), data.size(), nullptr)),
+      bssl::UniquePtr<CRYPTO_BUFFER>(
+          CRYPTO_BUFFER_new(reinterpret_cast<const uint8_t *>(data.data()),
+                            data.size(), nullptr)),
       {}, &errors);
 }
 
-class CheckCRLTest : public ::testing::TestWithParam<const char*> {};
+class CheckCRLTest : public ::testing::TestWithParam<const char *> {};
 
 // Test prefix naming scheme:
 //   good = valid CRL, cert affirmatively not revoked
@@ -40,7 +41,7 @@ class CheckCRLTest : public ::testing::TestWithParam<const char*> {};
 //   bad = valid CRL, but cert status is unknown (cases like unhandled features,
 //           mismatching issuer or signature, etc)
 //   invalid = corrupt or violates some spec requirement
-constexpr char const* kTestParams[] = {
+constexpr char const *kTestParams[] = {
     "good.pem",
     "good_issuer_name_normalization.pem",
     "good_issuer_no_keyusage.pem",
@@ -111,7 +112,7 @@ constexpr char const* kTestParams[] = {
 
 struct PrintTestName {
   std::string operator()(
-      const testing::TestParamInfo<const char*>& info) const {
+      const testing::TestParamInfo<const char *> &info) const {
     std::string_view name(info.param);
     // Strip ".pem" from the end as GTest names cannot contain period.
     name.remove_suffix(4);
@@ -119,9 +120,7 @@ struct PrintTestName {
   }
 };
 
-INSTANTIATE_TEST_SUITE_P(All,
-                         CheckCRLTest,
-                         ::testing::ValuesIn(kTestParams),
+INSTANTIATE_TEST_SUITE_P(All, CheckCRLTest, ::testing::ValuesIn(kTestParams),
                          PrintTestName());
 
 TEST_P(CheckCRLTest, FromFile) {
@@ -162,7 +161,7 @@ TEST_P(CheckCRLTest, FromFile) {
   // TODO(https://crbug.com/749276): This seems slightly hacky. Maybe the
   // distribution point to use should be specified separately in the test PEM?
   ParsedDistributionPoint fake_cert_dp;
-  ParsedDistributionPoint* cert_dp = &fake_cert_dp;
+  ParsedDistributionPoint *cert_dp = &fake_cert_dp;
   std::vector<ParsedDistributionPoint> distribution_points;
   ParsedExtension crl_dp_extension;
   if (cert->GetExtension(der::Input(kCrlDistributionPointsOid),
@@ -206,4 +205,4 @@ TEST_P(CheckCRLTest, FromFile) {
 
 }  // namespace
 
-}  // namespace net
+}  // namespace bssl

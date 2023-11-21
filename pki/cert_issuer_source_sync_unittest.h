@@ -7,19 +7,19 @@
 
 #include <algorithm>
 
+#include <gtest/gtest.h>
+#include <openssl/pool.h>
 #include "cert_errors.h"
 #include "cert_issuer_source.h"
 #include "test_helpers.h"
-#include <gtest/gtest.h>
-#include <openssl/pool.h>
 
 namespace bssl {
 
 namespace {
 
-::testing::AssertionResult ReadTestPem(const std::string& file_name,
-                                       const std::string& block_name,
-                                       std::string* result) {
+::testing::AssertionResult ReadTestPem(const std::string &file_name,
+                                       const std::string &block_name,
+                                       std::string *result) {
   const PemBlockMapping mappings[] = {
       {block_name.c_str(), result},
   };
@@ -28,8 +28,8 @@ namespace {
 }
 
 ::testing::AssertionResult ReadTestCert(
-    const std::string& file_name,
-    std::shared_ptr<const ParsedCertificate>* result) {
+    const std::string &file_name,
+    std::shared_ptr<const ParsedCertificate> *result) {
   std::string der;
   ::testing::AssertionResult r =
       ReadTestPem("testdata/cert_issuer_source_static_unittest/" + file_name,
@@ -39,7 +39,7 @@ namespace {
   CertErrors errors;
   *result = ParsedCertificate::Create(
       bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-          reinterpret_cast<const uint8_t*>(der.data()), der.size(), nullptr)),
+          reinterpret_cast<const uint8_t *>(der.data()), der.size(), nullptr)),
       {}, &errors);
   if (!*result) {
     return ::testing::AssertionFailure()
@@ -86,7 +86,7 @@ class CertIssuerSourceSyncTest : public ::testing::Test {
     AddCert(e2_);
   }
 
-  CertIssuerSource& source() { return delegate_.source(); }
+  CertIssuerSource &source() { return delegate_.source(); }
 
  protected:
   bool IssuersMatch(std::shared_ptr<const ParsedCertificate> cert,
@@ -95,12 +95,12 @@ class CertIssuerSourceSyncTest : public ::testing::Test {
     source().SyncGetIssuersOf(cert.get(), &matches);
 
     std::vector<der::Input> der_result_matches;
-    for (const auto& it : matches)
+    for (const auto &it : matches)
       der_result_matches.push_back(it->der_cert());
     std::sort(der_result_matches.begin(), der_result_matches.end());
 
     std::vector<der::Input> der_expected_matches;
-    for (const auto& it : expected_matches)
+    for (const auto &it : expected_matches)
       der_expected_matches.push_back(it->der_cert());
     std::sort(der_expected_matches.begin(), der_expected_matches.end());
 
@@ -168,12 +168,8 @@ TYPED_TEST_P(CertIssuerSourceSyncTest, IsNotAsync) {
 
 // These are all the tests that should have the same result with or without
 // normalization.
-REGISTER_TYPED_TEST_SUITE_P(CertIssuerSourceSyncTest,
-                            NoMatch,
-                            OneMatch,
-                            MultipleMatches,
-                            SelfIssued,
-                            IsNotAsync);
+REGISTER_TYPED_TEST_SUITE_P(CertIssuerSourceSyncTest, NoMatch, OneMatch,
+                            MultipleMatches, SelfIssued, IsNotAsync);
 
 template <typename TestDelegate>
 class CertIssuerSourceSyncNormalizationTest
@@ -211,6 +207,6 @@ TYPED_TEST_P(CertIssuerSourceSyncNotNormalizedTest,
 REGISTER_TYPED_TEST_SUITE_P(CertIssuerSourceSyncNotNormalizedTest,
                             OneMatchWithoutNormalization);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_CERT_ISSUER_SOURCE_SYNC_UNITTEST_H_

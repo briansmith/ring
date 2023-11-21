@@ -4,11 +4,11 @@
 
 #include "signature_algorithm.h"
 
+#include <openssl/bytestring.h>
+#include <openssl/digest.h>
 #include "input.h"
 #include "parse_values.h"
 #include "parser.h"
-#include <openssl/bytestring.h>
-#include <openssl/digest.h>
 
 namespace bssl {
 
@@ -123,12 +123,12 @@ const uint8_t kOidMgf1[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
                             0x0d, 0x01, 0x01, 0x08};
 
 // Returns true if |input| is empty.
-[[nodiscard]] bool IsEmpty(const der::Input& input) {
+[[nodiscard]] bool IsEmpty(const der::Input &input) {
   return input.Length() == 0;
 }
 
 // Returns true if the entirety of the input is a NULL value.
-[[nodiscard]] bool IsNull(const der::Input& input) {
+[[nodiscard]] bool IsNull(const der::Input &input) {
   der::Parser parser(input);
   der::Input null_value;
   if (!parser.ReadTag(der::kNull, &null_value))
@@ -142,7 +142,7 @@ const uint8_t kOidMgf1[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
   return !parser.HasMore();
 }
 
-[[nodiscard]] bool IsNullOrEmpty(const der::Input& input) {
+[[nodiscard]] bool IsNullOrEmpty(const der::Input &input) {
   return IsNull(input) || IsEmpty(input);
 }
 
@@ -172,7 +172,7 @@ const uint8_t kOidMgf1[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
 // the only function supported is MGF1, as that is the singular mask gen
 // function defined by RFC 4055 / RFC 5912.
 [[nodiscard]] bool ParseMaskGenAlgorithm(const der::Input input,
-                                         DigestAlgorithm* mgf1_hash) {
+                                         DigestAlgorithm *mgf1_hash) {
   der::Input oid;
   der::Input params;
   if (!ParseAlgorithmIdentifier(input, &oid, &params))
@@ -211,7 +211,7 @@ const uint8_t kOidMgf1[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
 // Note also that DER encoding (ITU-T X.690 section 11.5) prohibits
 // specifying default values explicitly. The parameter should instead be
 // omitted to indicate a default value.
-std::optional<SignatureAlgorithm> ParseRsaPss(const der::Input& params) {
+std::optional<SignatureAlgorithm> ParseRsaPss(const der::Input &params) {
   der::Parser parser(params);
   der::Parser params_parser;
   if (!parser.ReadSequence(&params_parser)) {
@@ -269,9 +269,9 @@ std::optional<SignatureAlgorithm> ParseRsaPss(const der::Input& params) {
 
 }  // namespace
 
-[[nodiscard]] bool ParseAlgorithmIdentifier(const der::Input& input,
-                                            der::Input* algorithm,
-                                            der::Input* parameters) {
+[[nodiscard]] bool ParseAlgorithmIdentifier(const der::Input &input,
+                                            der::Input *algorithm,
+                                            der::Input *parameters) {
   der::Parser parser(input);
 
   der::Parser algorithm_identifier_parser;
@@ -301,11 +301,11 @@ std::optional<SignatureAlgorithm> ParseRsaPss(const der::Input& params) {
   return !algorithm_identifier_parser.HasMore();
 }
 
-[[nodiscard]] bool ParseHashAlgorithm(const der::Input& input,
-                                      DigestAlgorithm* out) {
+[[nodiscard]] bool ParseHashAlgorithm(const der::Input &input,
+                                      DigestAlgorithm *out) {
   CBS cbs;
   CBS_init(&cbs, input.UnsafeData(), input.Length());
-  const EVP_MD* md = EVP_parse_digest_algorithm(&cbs);
+  const EVP_MD *md = EVP_parse_digest_algorithm(&cbs);
 
   if (md == EVP_sha1()) {
     *out = DigestAlgorithm::Sha1;
@@ -325,7 +325,7 @@ std::optional<SignatureAlgorithm> ParseRsaPss(const der::Input& params) {
 }
 
 std::optional<SignatureAlgorithm> ParseSignatureAlgorithm(
-    const der::Input& algorithm_identifier) {
+    const der::Input &algorithm_identifier) {
   der::Input oid;
   der::Input params;
   if (!ParseAlgorithmIdentifier(algorithm_identifier, &oid, &params)) {
@@ -417,4 +417,4 @@ std::optional<DigestAlgorithm> GetTlsServerEndpointDigestAlgorithm(
   return std::nullopt;
 }
 
-}  // namespace net
+}  // namespace bssl

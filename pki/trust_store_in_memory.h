@@ -5,8 +5,8 @@
 #ifndef BSSL_PKI_TRUST_STORE_IN_MEMORY_H_
 #define BSSL_PKI_TRUST_STORE_IN_MEMORY_H_
 
-#include "fillins/openssl_util.h"
 #include <unordered_map>
+#include "fillins/openssl_util.h"
 
 
 #include "trust_store.h"
@@ -19,8 +19,8 @@ class OPENSSL_EXPORT TrustStoreInMemory : public TrustStore {
  public:
   TrustStoreInMemory();
 
-  TrustStoreInMemory(const TrustStoreInMemory&) = delete;
-  TrustStoreInMemory& operator=(const TrustStoreInMemory&) = delete;
+  TrustStoreInMemory(const TrustStoreInMemory &) = delete;
+  TrustStoreInMemory &operator=(const TrustStoreInMemory &) = delete;
 
   ~TrustStoreInMemory() override;
 
@@ -33,7 +33,7 @@ class OPENSSL_EXPORT TrustStoreInMemory : public TrustStore {
   // Adds a certificate with the specified trust settings. Both trusted and
   // distrusted certificates require a full DER match.
   void AddCertificate(std::shared_ptr<const ParsedCertificate> cert,
-                      const CertificateTrust& trust);
+                      const CertificateTrust &trust);
 
   // Adds a certificate as a trust anchor (only the SPKI and subject will be
   // used during verification).
@@ -60,18 +60,18 @@ class OPENSSL_EXPORT TrustStoreInMemory : public TrustStore {
       std::shared_ptr<const ParsedCertificate> cert);
 
   // TrustStore implementation:
-  void SyncGetIssuersOf(const ParsedCertificate* cert,
-                        ParsedCertificateList* issuers) override;
-  CertificateTrust GetTrust(const ParsedCertificate* cert) override;
+  void SyncGetIssuersOf(const ParsedCertificate *cert,
+                        ParsedCertificateList *issuers) override;
+  CertificateTrust GetTrust(const ParsedCertificate *cert) override;
 
   // Returns true if the trust store contains the given ParsedCertificate
   // (matches by DER).
-  bool Contains(const ParsedCertificate* cert) const;
+  bool Contains(const ParsedCertificate *cert) const;
 
  private:
   struct Entry {
     Entry();
-    Entry(const Entry& other);
+    Entry(const Entry &other);
     ~Entry();
 
     std::shared_ptr<const ParsedCertificate> cert;
@@ -83,9 +83,9 @@ class OPENSSL_EXPORT TrustStoreInMemory : public TrustStore {
 
   // Returns the `Entry` matching `cert`, or `nullptr` if not in the trust
   // store.
-  const Entry* GetEntry(const ParsedCertificate* cert) const;
+  const Entry *GetEntry(const ParsedCertificate *cert) const;
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_TRUST_STORE_IN_MEMORY_H_

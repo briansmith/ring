@@ -4,9 +4,9 @@
 
 #include "verify_name_match.h"
 
+#include <gtest/gtest.h>
 #include "string_util.h"
 #include "test_helpers.h"
-#include <gtest/gtest.h>
 
 namespace bssl {
 namespace {
@@ -17,10 +17,10 @@ namespace {
 // |value_type| indicates what ASN.1 type is used to encode the data.
 // |suffix| indicates any additional modifications, such as caseswapping,
 // whitespace adding, etc.
-::testing::AssertionResult LoadTestData(const std::string& prefix,
-                                        const std::string& value_type,
-                                        const std::string& suffix,
-                                        std::string* result) {
+::testing::AssertionResult LoadTestData(const std::string &prefix,
+                                        const std::string &value_type,
+                                        const std::string &suffix,
+                                        std::string *result) {
   std::string path = "testdata/verify_name_match_unittest/names/" + prefix +
                      "-" + value_type + "-" + suffix + ".pem";
 
@@ -31,7 +31,7 @@ namespace {
   return ReadTestDataFromPemFile(path, mappings);
 }
 
-bool TypesAreComparable(const std::string& type_1, const std::string& type_2) {
+bool TypesAreComparable(const std::string &type_1, const std::string &type_2) {
   if (type_1 == type_2)
     return true;
   if ((type_1 == "PRINTABLESTRING" || type_1 == "UTF8" ||
@@ -44,23 +44,23 @@ bool TypesAreComparable(const std::string& type_1, const std::string& type_2) {
 }
 
 // All string types.
-static const char* kValueTypes[] = {"PRINTABLESTRING", "T61STRING", "UTF8",
+static const char *kValueTypes[] = {"PRINTABLESTRING", "T61STRING", "UTF8",
                                     "BMPSTRING", "UNIVERSALSTRING"};
 // String types that can encode the Unicode Basic Multilingual Plane.
-static const char* kUnicodeBMPValueTypes[] = {"UTF8", "BMPSTRING",
+static const char *kUnicodeBMPValueTypes[] = {"UTF8", "BMPSTRING",
                                               "UNIVERSALSTRING"};
 // String types that can encode the Unicode Supplementary Planes.
-static const char* kUnicodeSupplementaryValueTypes[] = {"UTF8",
+static const char *kUnicodeSupplementaryValueTypes[] = {"UTF8",
                                                         "UNIVERSALSTRING"};
 
-static const char* kMangleTypes[] = {"unmangled", "case_swap",
+static const char *kMangleTypes[] = {"unmangled", "case_swap",
                                      "extra_whitespace"};
 
 }  // namespace
 
 class VerifyNameMatchSimpleTest
     : public ::testing::TestWithParam<
-          ::testing::tuple<const char*, const char*>> {
+          ::testing::tuple<const char *, const char *>> {
  public:
   std::string value_type() const { return ::testing::get<0>(GetParam()); }
   std::string suffix() const { return ::testing::get<1>(GetParam()); }
@@ -136,13 +136,12 @@ TEST_P(VerifyNameMatchSimpleTest, ExtraRdnDoesNotMatch) {
 
 // Runs VerifyNameMatchSimpleTest for all combinations of value_type and and
 // suffix.
-INSTANTIATE_TEST_SUITE_P(InstantiationName,
-                         VerifyNameMatchSimpleTest,
+INSTANTIATE_TEST_SUITE_P(InstantiationName, VerifyNameMatchSimpleTest,
                          ::testing::Combine(::testing::ValuesIn(kValueTypes),
                                             ::testing::ValuesIn(kMangleTypes)));
 
 class VerifyNameMatchNormalizationTest
-    : public ::testing::TestWithParam<::testing::tuple<bool, const char*>> {
+    : public ::testing::TestWithParam<::testing::tuple<bool, const char *>> {
  public:
   bool expected_result() const { return ::testing::get<0>(GetParam()); }
   std::string value_type() const { return ::testing::get<1>(GetParam()); }
@@ -182,20 +181,19 @@ TEST_P(VerifyNameMatchNormalizationTest, CollapseWhitespace) {
 // Runs VerifyNameMatchNormalizationTest for each (expected_result, value_type)
 // tuple.
 INSTANTIATE_TEST_SUITE_P(
-    InstantiationName,
-    VerifyNameMatchNormalizationTest,
+    InstantiationName, VerifyNameMatchNormalizationTest,
     ::testing::Values(
         ::testing::make_tuple(true,
-                              static_cast<const char*>("PRINTABLESTRING")),
-        ::testing::make_tuple(false, static_cast<const char*>("T61STRING")),
-        ::testing::make_tuple(true, static_cast<const char*>("UTF8")),
-        ::testing::make_tuple(true, static_cast<const char*>("BMPSTRING")),
+                              static_cast<const char *>("PRINTABLESTRING")),
+        ::testing::make_tuple(false, static_cast<const char *>("T61STRING")),
+        ::testing::make_tuple(true, static_cast<const char *>("UTF8")),
+        ::testing::make_tuple(true, static_cast<const char *>("BMPSTRING")),
         ::testing::make_tuple(true,
-                              static_cast<const char*>("UNIVERSALSTRING"))));
+                              static_cast<const char *>("UNIVERSALSTRING"))));
 
 class VerifyNameMatchDifferingTypesTest
     : public ::testing::TestWithParam<
-          ::testing::tuple<const char*, const char*>> {
+          ::testing::tuple<const char *, const char *>> {
  public:
   std::string value_type_1() const { return ::testing::get<0>(GetParam()); }
   std::string value_type_2() const { return ::testing::get<1>(GetParam()); }
@@ -269,15 +267,13 @@ TEST_P(VerifyNameMatchDifferingTypesTest, NormalizableTypesInSubtrees) {
 
 // Runs VerifyNameMatchDifferingTypesTest for all combinations of value types in
 // value_type1 and value_type_2.
-INSTANTIATE_TEST_SUITE_P(InstantiationName,
-                         VerifyNameMatchDifferingTypesTest,
+INSTANTIATE_TEST_SUITE_P(InstantiationName, VerifyNameMatchDifferingTypesTest,
                          ::testing::Combine(::testing::ValuesIn(kValueTypes),
                                             ::testing::ValuesIn(kValueTypes)));
 
 class VerifyNameMatchUnicodeConversionTest
-    : public ::testing::TestWithParam<
-          ::testing::tuple<const char*,
-                           ::testing::tuple<const char*, const char*>>> {
+    : public ::testing::TestWithParam<::testing::tuple<
+          const char *, ::testing::tuple<const char *, const char *>>> {
  public:
   std::string prefix() const { return ::testing::get<0>(GetParam()); }
   std::string value_type_1() const {
@@ -301,8 +297,7 @@ TEST_P(VerifyNameMatchUnicodeConversionTest, UnicodeConversionsAreEqual) {
 // combinations of Basic Multilingual Plane-capable value types in value_type1
 // and value_type_2.
 INSTANTIATE_TEST_SUITE_P(
-    BMPConversion,
-    VerifyNameMatchUnicodeConversionTest,
+    BMPConversion, VerifyNameMatchUnicodeConversionTest,
     ::testing::Combine(
         ::testing::Values("unicode_bmp"),
         ::testing::Combine(::testing::ValuesIn(kUnicodeBMPValueTypes),
@@ -312,8 +307,7 @@ INSTANTIATE_TEST_SUITE_P(
 // for all combinations of Unicode Supplementary Plane-capable value types in
 // value_type1 and value_type_2.
 INSTANTIATE_TEST_SUITE_P(
-    SMPConversion,
-    VerifyNameMatchUnicodeConversionTest,
+    SMPConversion, VerifyNameMatchUnicodeConversionTest,
     ::testing::Combine(
         ::testing::Values("unicode_supplementary"),
         ::testing::Combine(
@@ -610,4 +604,4 @@ TEST(NameNormalizationTest, NormalizeCustom) {
   EXPECT_EQ(SequenceValueFromString(raw_der), der::Input(normalized_der));
 }
 
-}  // namespace net
+}  // namespace bssl

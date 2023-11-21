@@ -7,9 +7,9 @@
 
 #include <set>
 
-#include "test_helpers.h"
-#include "parse_values.h"
 #include <gtest/gtest.h>
+#include "parse_values.h"
+#include "test_helpers.h"
 
 namespace bssl {
 
@@ -18,7 +18,7 @@ namespace bssl {
 struct PkitsTestInfo {
   // Default construction results in the "default settings".
   PkitsTestInfo();
-  PkitsTestInfo(const PkitsTestInfo& other);
+  PkitsTestInfo(const PkitsTestInfo &other);
   ~PkitsTestInfo();
 
   // Sets |initial_policy_set| to the specified policies. The
@@ -26,14 +26,14 @@ struct PkitsTestInfo {
   // "anyPolicy" and "NIST-test-policy-1".
   //
   // If this isn't called, the default is "anyPolicy".
-  void SetInitialPolicySet(const char* const policy_names);
+  void SetInitialPolicySet(const char *const policy_names);
 
   // Sets |user_constrained_policy_set| to the specified policies. The
   // policies are described as comma-separated symbolic strings like
   // "anyPolicy" and "NIST-test-policy-1".
   //
   // If this isn't called, the default is "NIST-test-policy-1".
-  void SetUserConstrainedPolicySet(const char* const policy_names);
+  void SetUserConstrainedPolicySet(const char *const policy_names);
 
   void SetInitialExplicitPolicy(bool b);
   void SetInitialPolicyMappingInhibit(bool b);
@@ -44,7 +44,7 @@ struct PkitsTestInfo {
   // ----------------
 
   // The PKITS test number. For example, "4.1.1".
-  const char* test_number = nullptr;
+  const char *test_number = nullptr;
 
   // ----------------
   // Inputs
@@ -85,9 +85,9 @@ template <typename PkitsTestDelegate>
 class PkitsTest : public ::testing::Test {
  public:
   template <size_t num_certs, size_t num_crls>
-  void RunTest(const char* const (&cert_names)[num_certs],
-               const char* const (&crl_names)[num_crls],
-               const PkitsTestInfo& info) {
+  void RunTest(const char *const (&cert_names)[num_certs],
+               const char *const (&crl_names)[num_crls],
+               const PkitsTestInfo &info) {
     std::vector<std::string> cert_ders;
     for (const std::string s : cert_names) {
       cert_ders.push_back(bssl::ReadTestFileToString(
@@ -95,8 +95,8 @@ class PkitsTest : public ::testing::Test {
     }
     std::vector<std::string> crl_ders;
     for (const std::string s : crl_names) {
-      crl_ders.push_back(bssl::ReadTestFileToString(
-          "testdata/nist-pkits/crls/" + s + ".crl"));
+      crl_ders.push_back(
+          bssl::ReadTestFileToString("testdata/nist-pkits/crls/" + s + ".crl"));
     }
 
     std::string_view test_number = info.test_number;
@@ -144,6 +144,6 @@ class PkitsTest : public ::testing::Test {
 // Inline the generated test code:
 #include "testdata/nist-pkits/pkits_testcases-inl.h"
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_NIST_PKITS_UNITTEST_H_

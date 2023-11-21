@@ -5,9 +5,9 @@
 #ifndef BSSL_PKI_CERT_ISSUER_SOURCE_H_
 #define BSSL_PKI_CERT_ISSUER_SOURCE_H_
 
-#include "fillins/openssl_util.h"
 #include <memory>
 #include <vector>
+#include "fillins/openssl_util.h"
 
 
 #include "parsed_certificate.h"
@@ -27,8 +27,8 @@ class OPENSSL_EXPORT CertIssuerSource {
    public:
     Request() = default;
 
-    Request(const Request&) = delete;
-    Request& operator=(const Request&) = delete;
+    Request(const Request &) = delete;
+    Request &operator=(const Request &) = delete;
 
     // Destruction of the Request cancels it.
     virtual ~Request() = default;
@@ -40,7 +40,7 @@ class OPENSSL_EXPORT CertIssuerSource {
     // If no issuers are left then |issuers| will not be modified. This
     // indicates that the issuers have been exhausted and GetNext() should
     // not be called again.
-    virtual void GetNext(ParsedCertificateList* issuers) = 0;
+    virtual void GetNext(ParsedCertificateList *issuers) = 0;
   };
 
   virtual ~CertIssuerSource() = default;
@@ -49,8 +49,8 @@ class OPENSSL_EXPORT CertIssuerSource {
   // Matches are appended to |issuers|. Any existing contents of |issuers| will
   // not be modified. If the implementation does not support synchronous
   // lookups, or if there are no matches, |issuers| is not modified.
-  virtual void SyncGetIssuersOf(const ParsedCertificate* cert,
-                                ParsedCertificateList* issuers) = 0;
+  virtual void SyncGetIssuersOf(const ParsedCertificate *cert,
+                                ParsedCertificateList *issuers) = 0;
 
   // Finds certificates whose Subject matches |cert|'s Issuer.
   // If the implementation does not support asynchronous lookups or can
@@ -59,10 +59,10 @@ class OPENSSL_EXPORT CertIssuerSource {
   //
   // Otherwise a request is started and saved to |out_req|. The results can be
   // read through the Request interface.
-  virtual void AsyncGetIssuersOf(const ParsedCertificate* cert,
-                                 std::unique_ptr<Request>* out_req) = 0;
+  virtual void AsyncGetIssuersOf(const ParsedCertificate *cert,
+                                 std::unique_ptr<Request> *out_req) = 0;
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_CERT_ISSUER_SOURCE_H_

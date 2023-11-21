@@ -4,12 +4,12 @@
 
 #include "parsed_certificate.h"
 
-#include "cert_errors.h"
-#include "parse_certificate.h"
-#include "test_helpers.h"
-#include "input.h"
 #include <gtest/gtest.h>
 #include <openssl/pool.h>
+#include "cert_errors.h"
+#include "input.h"
+#include "parse_certificate.h"
+#include "test_helpers.h"
 
 // TODO(eroman): Add tests for parsing of policy mappings.
 
@@ -17,7 +17,7 @@ namespace bssl {
 
 namespace {
 
-std::string GetFilePath(const std::string& file_name) {
+std::string GetFilePath(const std::string &file_name) {
   return std::string("testdata/parse_certificate_unittest/") + file_name;
 }
 
@@ -26,8 +26,7 @@ std::string GetFilePath(const std::string& file_name) {
 // Returns nullptr if the certificate parsing failed, and verifies that any
 // errors match the ERRORS block in the .pem file.
 std::shared_ptr<const ParsedCertificate> ParseCertificateFromFile(
-    const std::string& file_name,
-    const ParseCertificateOptions& options) {
+    const std::string &file_name, const ParseCertificateOptions &options) {
   std::string data;
   std::string expected_errors;
 
@@ -41,8 +40,9 @@ std::shared_ptr<const ParsedCertificate> ParseCertificateFromFile(
 
   CertErrors errors;
   std::shared_ptr<const ParsedCertificate> cert = ParsedCertificate::Create(
-      bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-          reinterpret_cast<const uint8_t*>(data.data()), data.size(), nullptr)),
+      bssl::UniquePtr<CRYPTO_BUFFER>(
+          CRYPTO_BUFFER_new(reinterpret_cast<const uint8_t *>(data.data()),
+                            data.size(), nullptr)),
       options, &errors);
 
   // The errors are baselined for |!allow_invalid_serial_numbers|. So if
@@ -590,4 +590,4 @@ TEST(ParsedCertificateTest, AuthourityKeyIdentifierNotSequence) {
 
 }  // namespace
 
-}  // namespace net
+}  // namespace bssl

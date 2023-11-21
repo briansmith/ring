@@ -12,14 +12,14 @@ MockSignatureVerifyCache::MockSignatureVerifyCache() = default;
 
 MockSignatureVerifyCache::~MockSignatureVerifyCache() = default;
 
-void MockSignatureVerifyCache::Store(const std::string& key,
+void MockSignatureVerifyCache::Store(const std::string &key,
                                      SignatureVerifyCache::Value value) {
   cache_.insert_or_assign(key, value);
   stores_++;
 }
 
 SignatureVerifyCache::Value MockSignatureVerifyCache::Check(
-    const std::string& key) {
+    const std::string &key) {
   auto iter = cache_.find(key);
   if (iter == cache_.end()) {
     misses_++;
@@ -29,4 +29,4 @@ SignatureVerifyCache::Value MockSignatureVerifyCache::Check(
   return iter->second;
 }
 
-}  // namespace net
+}  // namespace bssl

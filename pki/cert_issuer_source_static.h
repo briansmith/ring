@@ -5,8 +5,8 @@
 #ifndef BSSL_PKI_CERT_ISSUER_SOURCE_STATIC_H_
 #define BSSL_PKI_CERT_ISSUER_SOURCE_STATIC_H_
 
-#include "fillins/openssl_util.h"
 #include <unordered_map>
+#include "fillins/openssl_util.h"
 
 
 #include "cert_issuer_source.h"
@@ -18,8 +18,8 @@ class OPENSSL_EXPORT CertIssuerSourceStatic : public CertIssuerSource {
  public:
   CertIssuerSourceStatic();
 
-  CertIssuerSourceStatic(const CertIssuerSourceStatic&) = delete;
-  CertIssuerSourceStatic& operator=(const CertIssuerSourceStatic&) = delete;
+  CertIssuerSourceStatic(const CertIssuerSourceStatic &) = delete;
+  CertIssuerSourceStatic &operator=(const CertIssuerSourceStatic &) = delete;
 
   ~CertIssuerSourceStatic() override;
 
@@ -33,10 +33,10 @@ class OPENSSL_EXPORT CertIssuerSourceStatic : public CertIssuerSource {
   size_t size() const { return intermediates_.size(); }
 
   // CertIssuerSource implementation:
-  void SyncGetIssuersOf(const ParsedCertificate* cert,
-                        ParsedCertificateList* issuers) override;
-  void AsyncGetIssuersOf(const ParsedCertificate* cert,
-                         std::unique_ptr<Request>* out_req) override;
+  void SyncGetIssuersOf(const ParsedCertificate *cert,
+                        ParsedCertificateList *issuers) override;
+  void AsyncGetIssuersOf(const ParsedCertificate *cert,
+                         std::unique_ptr<Request> *out_req) override;
 
  private:
   // The certificates that the CertIssuerSourceStatic can return, keyed on the
@@ -46,6 +46,6 @@ class OPENSSL_EXPORT CertIssuerSourceStatic : public CertIssuerSource {
       intermediates_;
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_CERT_ISSUER_SOURCE_STATIC_H_

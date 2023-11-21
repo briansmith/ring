@@ -4,11 +4,11 @@
 
 #include "verify_certificate_chain.h"
 
+#include <openssl/pool.h>
+#include "input.h"
 #include "parsed_certificate.h"
 #include "simple_path_builder_delegate.h"
 #include "trust_store.h"
-#include "input.h"
-#include <openssl/pool.h>
 
 // These require CRL support, which is not implemented at the
 // VerifyCertificateChain level.
@@ -27,7 +27,7 @@ class VerifyCertificateChainPkitsTestDelegate {
  public:
   static void RunTest(std::vector<std::string> cert_ders,
                       std::vector<std::string> crl_ders,
-                      const PkitsTestInfo& info) {
+                      const PkitsTestInfo &info) {
     ASSERT_FALSE(cert_ders.empty());
 
     // PKITS lists chains from trust anchor to target, whereas
@@ -37,8 +37,9 @@ class VerifyCertificateChainPkitsTestDelegate {
     CertErrors parsing_errors;
     for (auto i = cert_ders.rbegin(); i != cert_ders.rend(); ++i) {
       ASSERT_TRUE(ParsedCertificate::CreateAndAddToVector(
-          bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-              reinterpret_cast<const uint8_t*>(i->data()), i->size(), nullptr)),
+          bssl::UniquePtr<CRYPTO_BUFFER>(
+              CRYPTO_BUFFER_new(reinterpret_cast<const uint8_t *>(i->data()),
+                                i->size(), nullptr)),
           {}, &input_chain, &parsing_errors))
           << parsing_errors.ToDebugString();
     }
@@ -95,8 +96,7 @@ INSTANTIATE_TYPED_TEST_SUITE_P(VerifyCertificateChain,
 INSTANTIATE_TYPED_TEST_SUITE_P(VerifyCertificateChain,
                                PkitsTest06VerifyingBasicConstraints,
                                VerifyCertificateChainPkitsTestDelegate);
-INSTANTIATE_TYPED_TEST_SUITE_P(VerifyCertificateChain,
-                               PkitsTest07KeyUsage,
+INSTANTIATE_TYPED_TEST_SUITE_P(VerifyCertificateChain, PkitsTest07KeyUsage,
                                VerifyCertificateChainPkitsTestDelegate);
 INSTANTIATE_TYPED_TEST_SUITE_P(VerifyCertificateChain,
                                PkitsTest08CertificatePolicies,
@@ -126,4 +126,4 @@ INSTANTIATE_TYPED_TEST_SUITE_P(VerifyCertificateChain,
 // PkitsTest05VerifyingPathswithSelfIssuedCertificates,
 // PkitsTest14DistributionPoints, PkitsTest15DeltaCRLs
 
-}  // namespace net
+}  // namespace bssl

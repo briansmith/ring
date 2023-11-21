@@ -4,8 +4,8 @@
 
 #include "parse_name.h"
 
-#include "test_helpers.h"
 #include <gtest/gtest.h>
+#include "test_helpers.h"
 
 namespace bssl {
 
@@ -16,10 +16,10 @@ namespace {
 // |value_type| indicates what ASN.1 type is used to encode the data.
 // |suffix| indicates any additional modifications, such as caseswapping,
 // whitespace adding, etc.
-::testing::AssertionResult LoadTestData(const std::string& prefix,
-                                        const std::string& value_type,
-                                        const std::string& suffix,
-                                        std::string* result) {
+::testing::AssertionResult LoadTestData(const std::string &prefix,
+                                        const std::string &value_type,
+                                        const std::string &suffix,
+                                        std::string *result) {
   std::string path = "testdata/verify_name_match_unittest/names/" + prefix +
                      "-" + value_type + "-" + suffix + ".pem";
 
@@ -358,4 +358,4 @@ TEST(ParseNameTest, RFC2253FormatUTF8) {
   ASSERT_EQ("SN=Lu\\C4\\8Di\\C4\\87", output);
 }
 
-}  // namespace net
+}  // namespace bssl

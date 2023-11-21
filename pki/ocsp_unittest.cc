@@ -4,12 +4,12 @@
 
 #include "ocsp.h"
 
-#include "string_util.h"
-#include "test_helpers.h"
-#include "encode_values.h"
 #include <gtest/gtest.h>
 #include <openssl/base64.h>
 #include <openssl/pool.h>
+#include "encode_values.h"
+#include "string_util.h"
+#include "test_helpers.h"
 
 namespace bssl {
 
@@ -17,7 +17,7 @@ namespace {
 
 constexpr int64_t kOCSPAgeOneWeek = 7 * 24 * 60 * 60;
 
-std::string GetFilePath(const std::string& file_name) {
+std::string GetFilePath(const std::string &file_name) {
   return std::string("testdata/ocsp_unittest/") + file_name;
 }
 
@@ -25,13 +25,14 @@ std::shared_ptr<const ParsedCertificate> ParseCertificate(
     std::string_view data) {
   CertErrors errors;
   return ParsedCertificate::Create(
-      bssl::UniquePtr<CRYPTO_BUFFER>(CRYPTO_BUFFER_new(
-          reinterpret_cast<const uint8_t*>(data.data()), data.size(), nullptr)),
+      bssl::UniquePtr<CRYPTO_BUFFER>(
+          CRYPTO_BUFFER_new(reinterpret_cast<const uint8_t *>(data.data()),
+                            data.size(), nullptr)),
       {}, &errors);
 }
 
 struct TestParams {
-  const char* file_name;
+  const char *file_name;
   OCSPRevocationStatus expected_revocation_status;
   OCSPVerifyResult::ResponseStatus expected_response_status;
 };
@@ -122,7 +123,7 @@ const TestParams kTestParams[] = {
 
 // Parameterised test name generator for tests depending on RenderTextBackend.
 struct PrintTestName {
-  std::string operator()(const testing::TestParamInfo<TestParams>& info) const {
+  std::string operator()(const testing::TestParamInfo<TestParams> &info) const {
     std::string_view name(info.param.file_name);
     // Strip ".pem" from the end as GTest names cannot contain period.
     name.remove_suffix(4);
@@ -130,13 +131,11 @@ struct PrintTestName {
   }
 };
 
-INSTANTIATE_TEST_SUITE_P(All,
-                         CheckOCSPTest,
-                         ::testing::ValuesIn(kTestParams),
+INSTANTIATE_TEST_SUITE_P(All, CheckOCSPTest, ::testing::ValuesIn(kTestParams),
                          PrintTestName());
 
 TEST_P(CheckOCSPTest, FromFile) {
-  const TestParams& params = GetParam();
+  const TestParams &params = GetParam();
 
   std::string ocsp_data;
   std::string ca_data;
@@ -187,8 +186,7 @@ std::string_view kGetURLTestParams[] = {
 class CreateOCSPGetURLTest : public ::testing::TestWithParam<std::string_view> {
 };
 
-INSTANTIATE_TEST_SUITE_P(All,
-                         CreateOCSPGetURLTest,
+INSTANTIATE_TEST_SUITE_P(All, CreateOCSPGetURLTest,
                          ::testing::ValuesIn(kGetURLTestParams));
 
 TEST_P(CreateOCSPGetURLTest, Basic) {
@@ -232,7 +230,7 @@ TEST_P(CreateOCSPGetURLTest, Basic) {
   EXPECT_TRUE(EVP_DecodedLength(&len, b64.size()));
   std::vector<uint8_t> decoded(len);
   EXPECT_TRUE(EVP_DecodeBase64(decoded.data(), &len, len,
-                               reinterpret_cast<const uint8_t*>(b64.data()),
+                               reinterpret_cast<const uint8_t *>(b64.data()),
                                b64.size()));
   std::string decoded_string(decoded.begin(), decoded.begin() + len);
 
@@ -241,4 +239,4 @@ TEST_P(CreateOCSPGetURLTest, Basic) {
 
 }  // namespace
 
-}  // namespace net
+}  // namespace bssl

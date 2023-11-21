@@ -10,8 +10,8 @@
 
 namespace bssl {
 
-bool ParseEKUExtension(const der::Input& extension_value,
-                       std::vector<der::Input>* eku_oids) {
+bool ParseEKUExtension(const der::Input &extension_value,
+                       std::vector<der::Input> *eku_oids) {
   der::Parser extension_parser(extension_value);
   der::Parser sequence_parser;
   if (!extension_parser.ReadSequence(&sequence_parser))
@@ -37,4 +37,4 @@ bool ParseEKUExtension(const der::Input& extension_value,
   return true;
 }
 
-}  // namespace net
+}  // namespace bssl

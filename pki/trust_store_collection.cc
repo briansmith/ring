@@ -11,23 +11,23 @@ namespace bssl {
 TrustStoreCollection::TrustStoreCollection() = default;
 TrustStoreCollection::~TrustStoreCollection() = default;
 
-void TrustStoreCollection::AddTrustStore(TrustStore* store) {
+void TrustStoreCollection::AddTrustStore(TrustStore *store) {
   BSSL_CHECK(store);
   stores_.push_back(store);
 }
 
-void TrustStoreCollection::SyncGetIssuersOf(const ParsedCertificate* cert,
-                                            ParsedCertificateList* issuers) {
-  for (auto* store : stores_) {
+void TrustStoreCollection::SyncGetIssuersOf(const ParsedCertificate *cert,
+                                            ParsedCertificateList *issuers) {
+  for (auto *store : stores_) {
     store->SyncGetIssuersOf(cert, issuers);
   }
 }
 
-CertificateTrust TrustStoreCollection::GetTrust(const ParsedCertificate* cert) {
+CertificateTrust TrustStoreCollection::GetTrust(const ParsedCertificate *cert) {
   // The current aggregate result.
   CertificateTrust result = CertificateTrust::ForUnspecified();
 
-  for (auto* store : stores_) {
+  for (auto *store : stores_) {
     CertificateTrust cur_trust = store->GetTrust(cert);
 
     // * If any stores distrust the certificate, consider it untrusted.
@@ -43,4 +43,4 @@ CertificateTrust TrustStoreCollection::GetTrust(const ParsedCertificate* cert) {
   return result;
 }
 
-}  // namespace net
+}  // namespace bssl

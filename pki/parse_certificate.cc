@@ -2,19 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fillins/openssl_util.h"
 #include "parse_certificate.h"
+#include "fillins/openssl_util.h"
 
 #include <utility>
 
+#include <optional>
 #include "cert_error_params.h"
 #include "cert_errors.h"
 #include "general_names.h"
-#include "string_util.h"
 #include "input.h"
 #include "parse_values.h"
 #include "parser.h"
-#include <optional>
+#include "string_util.h"
 
 namespace bssl {
 
@@ -73,7 +73,7 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
                      "Serial number is not a valid INTEGER");
 
 // Returns true if |input| is a SEQUENCE and nothing else.
-[[nodiscard]] bool IsSequenceTLV(const der::Input& input) {
+[[nodiscard]] bool IsSequenceTLV(const der::Input &input) {
   der::Parser parser(input);
   der::Parser unused_sequence_parser;
   if (!parser.ReadSequence(&unused_sequence_parser))
@@ -84,7 +84,7 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
 
 // Reads a SEQUENCE from |parser| and writes the full tag-length-value into
 // |out|. On failure |parser| may or may not have been advanced.
-[[nodiscard]] bool ReadSequenceTLV(der::Parser* parser, der::Input* out) {
+[[nodiscard]] bool ReadSequenceTLV(der::Parser *parser, der::Input *out) {
   return parser->ReadRawTLV(out) && IsSequenceTLV(*out);
 }
 
@@ -99,8 +99,8 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
 //     Implementations SHOULD be prepared to accept any version certificate.
 //     At a minimum, conforming implementations MUST recognize version 3
 //     certificates.
-[[nodiscard]] bool ParseVersion(const der::Input& in,
-                                CertificateVersion* version) {
+[[nodiscard]] bool ParseVersion(const der::Input &in,
+                                CertificateVersion *version) {
   der::Parser parser(in);
   uint64_t version64;
   if (!parser.ReadUint64(&version64))
@@ -127,7 +127,7 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
 }
 
 // Returns true if every bit in |bits| is zero (including empty).
-[[nodiscard]] bool BitStringIsAllZeros(const der::BitString& bits) {
+[[nodiscard]] bool BitStringIsAllZeros(const der::BitString &bits) {
   // Note that it is OK to read from the unused bits, since BitString parsing
   // guarantees they are all zero.
   for (size_t i = 0; i < bits.bytes().Length(); ++i) {
@@ -145,8 +145,8 @@ DEFINE_CERT_ERROR_ID(kSerialNumberNotValidInteger,
 //    DistributionPointName ::= CHOICE {
 //      fullName                [0]     GeneralNames,
 //      nameRelativeToCRLIssuer [1]     RelativeDistinguishedName }
-bool ParseDistributionPointName(const der::Input& dp_name,
-                                ParsedDistributionPoint* distribution_point) {
+bool ParseDistributionPointName(const der::Input &dp_name,
+                                ParsedDistributionPoint *distribution_point) {
   der::Parser parser(dp_name);
   std::optional<der::Input> der_full_name;
   if (!parser.ReadOptionalTag(
@@ -185,8 +185,8 @@ bool ParseDistributionPointName(const der::Input& dp_name,
 //  reasons                 [1]     ReasonFlags OPTIONAL,
 //  cRLIssuer               [2]     GeneralNames OPTIONAL }
 bool ParseAndAddDistributionPoint(
-    der::Parser* parser,
-    std::vector<ParsedDistributionPoint>* distribution_points) {
+    der::Parser *parser,
+    std::vector<ParsedDistributionPoint> *distribution_points) {
   ParsedDistributionPoint distribution_point;
 
   // DistributionPoint ::= SEQUENCE {
@@ -238,14 +238,13 @@ bool ParseAndAddDistributionPoint(
 
 ParsedTbsCertificate::ParsedTbsCertificate() = default;
 
-ParsedTbsCertificate::ParsedTbsCertificate(ParsedTbsCertificate&& other) =
+ParsedTbsCertificate::ParsedTbsCertificate(ParsedTbsCertificate &&other) =
     default;
 
 ParsedTbsCertificate::~ParsedTbsCertificate() = default;
 
-bool VerifySerialNumber(const der::Input& value,
-                        bool warnings_only,
-                        CertErrors* errors) {
+bool VerifySerialNumber(const der::Input &value, bool warnings_only,
+                        CertErrors *errors) {
   // If |warnings_only| was set to true, the exact same errors will be logged,
   // only they will be logged with a lower severity (warning rather than error).
   CertError::Severity error_severity =
@@ -282,7 +281,7 @@ bool VerifySerialNumber(const der::Input& value,
   return true;
 }
 
-bool ReadUTCOrGeneralizedTime(der::Parser* parser, der::GeneralizedTime* out) {
+bool ReadUTCOrGeneralizedTime(der::Parser *parser, der::GeneralizedTime *out) {
   der::Input value;
   der::Tag tag;
 
@@ -299,9 +298,9 @@ bool ReadUTCOrGeneralizedTime(der::Parser* parser, der::GeneralizedTime* out) {
   return false;
 }
 
-bool ParseValidity(const der::Input& validity_tlv,
-                   der::GeneralizedTime* not_before,
-                   der::GeneralizedTime* not_after) {
+bool ParseValidity(const der::Input &validity_tlv,
+                   der::GeneralizedTime *not_before,
+                   der::GeneralizedTime *not_after) {
   der::Parser parser(validity_tlv);
 
   //     Validity ::= SEQUENCE {
@@ -333,11 +332,11 @@ bool ParseValidity(const der::Input& validity_tlv,
   return true;
 }
 
-bool ParseCertificate(const der::Input& certificate_tlv,
-                      der::Input* out_tbs_certificate_tlv,
-                      der::Input* out_signature_algorithm_tlv,
-                      der::BitString* out_signature_value,
-                      CertErrors* out_errors) {
+bool ParseCertificate(const der::Input &certificate_tlv,
+                      der::Input *out_tbs_certificate_tlv,
+                      der::Input *out_signature_algorithm_tlv,
+                      der::BitString *out_signature_value,
+                      CertErrors *out_errors) {
   // |out_errors| is optional. But ensure it is non-null for the remainder of
   // this function.
   CertErrors unused_errors;
@@ -407,10 +406,9 @@ bool ParseCertificate(const der::Input& certificate_tlv,
 //        extensions      [3]  EXPLICIT Extensions OPTIONAL
 //                             -- If present, version MUST be v3
 //        }
-bool ParseTbsCertificate(const der::Input& tbs_tlv,
-                         const ParseCertificateOptions& options,
-                         ParsedTbsCertificate* out,
-                         CertErrors* errors) {
+bool ParseTbsCertificate(const der::Input &tbs_tlv,
+                         const ParseCertificateOptions &options,
+                         ParsedTbsCertificate *out, CertErrors *errors) {
   // The rest of this function assumes that |errors| is non-null.
   CertErrors unused_errors;
   if (!errors)
@@ -590,7 +588,7 @@ bool ParseTbsCertificate(const der::Input& tbs_tlv,
 //                        -- corresponding to the extension type identified
 //                        -- by extnID
 //            }
-bool ParseExtension(const der::Input& extension_tlv, ParsedExtension* out) {
+bool ParseExtension(const der::Input &extension_tlv, ParsedExtension *out) {
   der::Parser parser(extension_tlv);
 
   //    Extension  ::=  SEQUENCE  {
@@ -633,8 +631,8 @@ bool ParseExtension(const der::Input& extension_tlv, ParsedExtension* out) {
 }
 
 OPENSSL_EXPORT bool ParseExtensions(
-    const der::Input& extensions_tlv,
-    std::map<der::Input, ParsedExtension>* extensions) {
+    const der::Input &extensions_tlv,
+    std::map<der::Input, ParsedExtension> *extensions) {
   der::Parser parser(extensions_tlv);
 
   //    Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
@@ -676,9 +674,9 @@ OPENSSL_EXPORT bool ParseExtensions(
 }
 
 OPENSSL_EXPORT bool ConsumeExtension(
-    const der::Input& oid,
-    std::map<der::Input, ParsedExtension>* unconsumed_extensions,
-    ParsedExtension* extension) {
+    const der::Input &oid,
+    std::map<der::Input, ParsedExtension> *unconsumed_extensions,
+    ParsedExtension *extension) {
   auto it = unconsumed_extensions->find(oid);
   if (it == unconsumed_extensions->end())
     return false;
@@ -688,8 +686,8 @@ OPENSSL_EXPORT bool ConsumeExtension(
   return true;
 }
 
-bool ParseBasicConstraints(const der::Input& basic_constraints_tlv,
-                           ParsedBasicConstraints* out) {
+bool ParseBasicConstraints(const der::Input &basic_constraints_tlv,
+                           ParsedBasicConstraints *out) {
   der::Parser parser(basic_constraints_tlv);
 
   //    BasicConstraints ::= SEQUENCE {
@@ -741,7 +739,7 @@ bool ParseBasicConstraints(const der::Input& basic_constraints_tlv,
 
 // TODO(crbug.com/1314019): return std::optional<BitString> when converting
 // has_key_usage_ and key_usage_ into single std::optional field.
-bool ParseKeyUsage(const der::Input& key_usage_tlv, der::BitString* key_usage) {
+bool ParseKeyUsage(const der::Input &key_usage_tlv, der::BitString *key_usage) {
   der::Parser parser(key_usage_tlv);
   std::optional<der::BitString> key_usage_internal = parser.ReadBitString();
   if (!key_usage_internal)
@@ -763,8 +761,8 @@ bool ParseKeyUsage(const der::Input& key_usage_tlv, der::BitString* key_usage) {
 }
 
 bool ParseAuthorityInfoAccess(
-    const der::Input& authority_info_access_tlv,
-    std::vector<AuthorityInfoAccessDescription>* out_access_descriptions) {
+    const der::Input &authority_info_access_tlv,
+    std::vector<AuthorityInfoAccessDescription> *out_access_descriptions) {
   der::Parser parser(authority_info_access_tlv);
 
   out_access_descriptions->clear();
@@ -807,16 +805,16 @@ bool ParseAuthorityInfoAccess(
 }
 
 bool ParseAuthorityInfoAccessURIs(
-    const der::Input& authority_info_access_tlv,
-    std::vector<std::string_view>* out_ca_issuers_uris,
-    std::vector<std::string_view>* out_ocsp_uris) {
+    const der::Input &authority_info_access_tlv,
+    std::vector<std::string_view> *out_ca_issuers_uris,
+    std::vector<std::string_view> *out_ocsp_uris) {
   std::vector<AuthorityInfoAccessDescription> access_descriptions;
   if (!ParseAuthorityInfoAccess(authority_info_access_tlv,
                                 &access_descriptions)) {
     return false;
   }
 
-  for (const auto& access_description : access_descriptions) {
+  for (const auto &access_description : access_descriptions) {
     der::Parser access_location_parser(access_description.access_location);
     der::Tag access_location_tag;
     der::Input access_location_value;
@@ -843,12 +841,12 @@ bool ParseAuthorityInfoAccessURIs(
 
 ParsedDistributionPoint::ParsedDistributionPoint() = default;
 ParsedDistributionPoint::ParsedDistributionPoint(
-    ParsedDistributionPoint&& other) = default;
+    ParsedDistributionPoint &&other) = default;
 ParsedDistributionPoint::~ParsedDistributionPoint() = default;
 
 bool ParseCrlDistributionPoints(
-    const der::Input& extension_value,
-    std::vector<ParsedDistributionPoint>* distribution_points) {
+    const der::Input &extension_value,
+    std::vector<ParsedDistributionPoint> *distribution_points) {
   distribution_points->clear();
 
   // RFC 5280, section 4.2.1.13.
@@ -877,13 +875,13 @@ bool ParseCrlDistributionPoints(
 ParsedAuthorityKeyIdentifier::ParsedAuthorityKeyIdentifier() = default;
 ParsedAuthorityKeyIdentifier::~ParsedAuthorityKeyIdentifier() = default;
 ParsedAuthorityKeyIdentifier::ParsedAuthorityKeyIdentifier(
-    ParsedAuthorityKeyIdentifier&& other) = default;
-ParsedAuthorityKeyIdentifier& ParsedAuthorityKeyIdentifier::operator=(
-    ParsedAuthorityKeyIdentifier&& other) = default;
+    ParsedAuthorityKeyIdentifier &&other) = default;
+ParsedAuthorityKeyIdentifier &ParsedAuthorityKeyIdentifier::operator=(
+    ParsedAuthorityKeyIdentifier &&other) = default;
 
 bool ParseAuthorityKeyIdentifier(
-    const der::Input& extension_value,
-    ParsedAuthorityKeyIdentifier* authority_key_identifier) {
+    const der::Input &extension_value,
+    ParsedAuthorityKeyIdentifier *authority_key_identifier) {
   // RFC 5280, section 4.2.1.1.
   //    AuthorityKeyIdentifier ::= SEQUENCE {
   //       keyIdentifier             [0] KeyIdentifier           OPTIONAL,
@@ -937,8 +935,8 @@ bool ParseAuthorityKeyIdentifier(
   return true;
 }
 
-bool ParseSubjectKeyIdentifier(const der::Input& extension_value,
-                               der::Input* subject_key_identifier) {
+bool ParseSubjectKeyIdentifier(const der::Input &extension_value,
+                               der::Input *subject_key_identifier) {
   //    SubjectKeyIdentifier ::= KeyIdentifier
   //
   //    KeyIdentifier ::= OCTET STRING
@@ -955,4 +953,4 @@ bool ParseSubjectKeyIdentifier(const der::Input& extension_value,
   return true;
 }
 
-}  // namespace net
+}  // namespace bssl

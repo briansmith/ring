@@ -6,8 +6,8 @@
 
 #include <string.h>
 
-#include "input.h"
 #include <gtest/gtest.h>
+#include "input.h"
 
 namespace bssl {
 
@@ -104,4 +104,4 @@ TEST(IPUtilTest, IPAddressMatchesWithNetmask) {
   }
 }
 
-}  // namespace net
+}  // namespace bssl

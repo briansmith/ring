@@ -28,8 +28,8 @@ const uint8_t kTestPolicy3[] = {0x60, 0x86, 0x48, 0x01, 0x65,
 const uint8_t kTestPolicy6[] = {0x60, 0x86, 0x48, 0x01, 0x65,
                                 0x03, 0x02, 0x01, 0x30, 0x06};
 
-void SetPolicySetFromString(const char* const policy_names,
-                            std::set<der::Input>* out) {
+void SetPolicySetFromString(const char *const policy_names,
+                            std::set<der::Input> *out) {
   out->clear();
   std::istringstream stream(policy_names);
   for (std::string line; std::getline(stream, line, ',');) {
@@ -69,7 +69,7 @@ PkitsTestInfo::PkitsTestInfo() {
   SetUserConstrainedPolicySet("NIST-test-policy-1");
 }
 
-PkitsTestInfo::PkitsTestInfo(const PkitsTestInfo& other) = default;
+PkitsTestInfo::PkitsTestInfo(const PkitsTestInfo &other) = default;
 
 PkitsTestInfo::~PkitsTestInfo() = default;
 
@@ -88,13 +88,13 @@ void PkitsTestInfo::SetInitialInhibitAnyPolicy(bool b) {
       b ? InitialAnyPolicyInhibit::kTrue : InitialAnyPolicyInhibit::kFalse;
 }
 
-void PkitsTestInfo::SetInitialPolicySet(const char* const policy_names) {
+void PkitsTestInfo::SetInitialPolicySet(const char *const policy_names) {
   SetPolicySetFromString(policy_names, &initial_policy_set);
 }
 
 void PkitsTestInfo::SetUserConstrainedPolicySet(
-    const char* const policy_names) {
+    const char *const policy_names) {
   SetPolicySetFromString(policy_names, &user_constrained_policy_set);
 }
 
-}  // namespace net
+}  // namespace bssl

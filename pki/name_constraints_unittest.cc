@@ -7,16 +7,16 @@
 #include <array>
 #include <memory>
 
+#include <gtest/gtest.h>
 #include "common_cert_errors.h"
 #include "test_helpers.h"
-#include <gtest/gtest.h>
 
 namespace bssl {
 namespace {
 
-::testing::AssertionResult LoadTestData(const char* token,
-                                        const std::string& basename,
-                                        std::string* result) {
+::testing::AssertionResult LoadTestData(const char *token,
+                                        const std::string &basename,
+                                        std::string *result) {
   std::string path = "testdata/name_constraints_unittest/" + basename;
 
   const PemBlockMapping mappings[] = {
@@ -26,26 +26,24 @@ namespace {
   return ReadTestDataFromPemFile(path, mappings);
 }
 
-::testing::AssertionResult LoadTestName(const std::string& basename,
-                                        std::string* result) {
+::testing::AssertionResult LoadTestName(const std::string &basename,
+                                        std::string *result) {
   return LoadTestData("NAME", basename, result);
 }
 
-::testing::AssertionResult LoadTestNameConstraint(const std::string& basename,
-                                                  std::string* result) {
+::testing::AssertionResult LoadTestNameConstraint(const std::string &basename,
+                                                  std::string *result) {
   return LoadTestData("NAME CONSTRAINTS", basename, result);
 }
 
 ::testing::AssertionResult LoadTestSubjectAltNameData(
-    const std::string& basename,
-    std::string* result) {
+    const std::string &basename, std::string *result) {
   return LoadTestData("SUBJECT ALTERNATIVE NAME", basename, result);
 }
 
 ::testing::AssertionResult LoadTestSubjectAltName(
-    const std::string& basename,
-    std::unique_ptr<GeneralNames>* result,
-    std::string* result_der) {
+    const std::string &basename, std::unique_ptr<GeneralNames> *result,
+    std::string *result_der) {
   ::testing::AssertionResult load_result =
       LoadTestSubjectAltNameData(basename, result_der);
   if (!load_result) {
@@ -60,9 +58,9 @@ namespace {
 }
 
 ::testing::AssertionResult IsPermittedCert(
-    const NameConstraints* name_constraints,
-    const der::Input& subject_rdn_sequence,
-    const GeneralNames* subject_alt_names) {
+    const NameConstraints *name_constraints,
+    const der::Input &subject_rdn_sequence,
+    const GeneralNames *subject_alt_names) {
   CertErrors errors;
   name_constraints->IsPermittedCert(subject_rdn_sequence, subject_alt_names,
                                     &errors);
@@ -73,27 +71,15 @@ namespace {
   return ::testing::AssertionFailure();
 }
 
-std::array<uint8_t, 4> IPAddress(uint8_t b0,
-                                 uint8_t b1,
-                                 uint8_t b2,
+std::array<uint8_t, 4> IPAddress(uint8_t b0, uint8_t b1, uint8_t b2,
                                  uint8_t b3) {
   return {b0, b1, b2, b3};
 }
-std::array<uint8_t, 16> IPAddress(uint8_t b0,
-                                  uint8_t b1,
-                                  uint8_t b2,
-                                  uint8_t b3,
-                                  uint8_t b4,
-                                  uint8_t b5,
-                                  uint8_t b6,
-                                  uint8_t b7,
-                                  uint8_t b8,
-                                  uint8_t b9,
-                                  uint8_t b10,
-                                  uint8_t b11,
-                                  uint8_t b12,
-                                  uint8_t b13,
-                                  uint8_t b14,
+std::array<uint8_t, 16> IPAddress(uint8_t b0, uint8_t b1, uint8_t b2,
+                                  uint8_t b3, uint8_t b4, uint8_t b5,
+                                  uint8_t b6, uint8_t b7, uint8_t b8,
+                                  uint8_t b9, uint8_t b10, uint8_t b11,
+                                  uint8_t b12, uint8_t b13, uint8_t b14,
                                   uint8_t b15) {
   return {b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15};
 }
@@ -108,8 +94,7 @@ class ParseNameConstraints
 
 // Run the tests with the name constraints marked critical and non-critical. For
 // supported name types, the results should be the same for both.
-INSTANTIATE_TEST_SUITE_P(InstantiationName,
-                         ParseNameConstraints,
+INSTANTIATE_TEST_SUITE_P(InstantiationName, ParseNameConstraints,
                          ::testing::Values(true, false));
 
 TEST_P(ParseNameConstraints, DNSNames) {
@@ -1915,4 +1900,4 @@ TEST_P(ParseNameConstraints, IsPermittedCertSubjectIpAddresses) {
                               nullptr /* subject_alt_names */));
 }
 
-}  // namespace net
+}  // namespace bssl

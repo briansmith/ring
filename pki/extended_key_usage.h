@@ -5,8 +5,8 @@
 #ifndef BSSL_PKI_EXTENDED_KEY_USAGE_H_
 #define BSSL_PKI_EXTENDED_KEY_USAGE_H_
 
-#include "fillins/openssl_util.h"
 #include <vector>
+#include "fillins/openssl_util.h"
 
 
 #include "input.h"
@@ -81,9 +81,9 @@ inline constexpr uint8_t kNetscapeServerGatedCrypto[] = {
 //
 // Note: The returned OIDs are only as valid as long as the data pointed to by
 // |extension_value| is valid.
-OPENSSL_EXPORT bool ParseEKUExtension(const der::Input& extension_value,
-                                  std::vector<der::Input>* eku_oids);
+OPENSSL_EXPORT bool ParseEKUExtension(const der::Input &extension_value,
+                                      std::vector<der::Input> *eku_oids);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_EXTENDED_KEY_USAGE_H_

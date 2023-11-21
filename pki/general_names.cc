@@ -11,10 +11,10 @@
 
 #include "cert_error_params.h"
 #include "cert_errors.h"
-#include "ip_util.h"
-#include "string_util.h"
 #include "input.h"
+#include "ip_util.h"
 #include "parser.h"
+#include "string_util.h"
 #include "tag.h"
 
 namespace bssl {
@@ -45,8 +45,7 @@ GeneralNames::~GeneralNames() = default;
 
 // static
 std::unique_ptr<GeneralNames> GeneralNames::Create(
-    const der::Input& general_names_tlv,
-    CertErrors* errors) {
+    const der::Input &general_names_tlv, CertErrors *errors) {
   BSSL_CHECK(errors);
 
   // RFC 5280 section 4.2.1.6:
@@ -67,8 +66,7 @@ std::unique_ptr<GeneralNames> GeneralNames::Create(
 
 // static
 std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
-    const der::Input& general_names_value,
-    CertErrors* errors) {
+    const der::Input &general_names_value, CertErrors *errors) {
   BSSL_CHECK(errors);
 
   auto general_names = std::make_unique<GeneralNames>();
@@ -98,10 +96,9 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
 }
 
 [[nodiscard]] bool ParseGeneralName(
-    const der::Input& input,
+    const der::Input &input,
     GeneralNames::ParseGeneralNameIPAddressType ip_address_type,
-    GeneralNames* subtrees,
-    CertErrors* errors) {
+    GeneralNames *subtrees, CertErrors *errors) {
   BSSL_CHECK(errors);
   der::Parser parser(input);
   der::Tag tag;
@@ -217,4 +214,4 @@ std::unique_ptr<GeneralNames> GeneralNames::CreateFromValue(
   return true;
 }
 
-}  // namespace net
+}  // namespace bssl

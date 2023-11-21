@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "../string_util.h"
+#include "fillins_string_util.h"
 #include <string>
 #include <string_view>
-#include "fillins_string_util.h"
+#include "../string_util.h"
 
 
 namespace bssl {

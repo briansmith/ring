@@ -20,10 +20,10 @@ namespace bssl {
 // verification process, and should not be modified at other layers.
 struct OPENSSL_EXPORT OCSPVerifyResult {
   OCSPVerifyResult();
-  OCSPVerifyResult(const OCSPVerifyResult&);
+  OCSPVerifyResult(const OCSPVerifyResult &);
   ~OCSPVerifyResult();
 
-  bool operator==(const OCSPVerifyResult& other) const;
+  bool operator==(const OCSPVerifyResult &other) const;
 
   // This value is histogrammed, so do not re-order or change values, and add
   // new values at the end.
@@ -71,6 +71,6 @@ struct OPENSSL_EXPORT OCSPVerifyResult {
   OCSPRevocationStatus revocation_status = OCSPRevocationStatus::UNKNOWN;
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_OCSP_VERIFY_RESULT_H_

@@ -4,11 +4,6 @@
 
 #include "simple_path_builder_delegate.h"
 
-#include "cert_error_params.h"
-#include "cert_errors.h"
-#include "signature_algorithm.h"
-#include "signature_verify_cache.h"
-#include "verify_signed_data.h"
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
@@ -17,6 +12,11 @@
 #include <openssl/evp.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
+#include "cert_error_params.h"
+#include "cert_errors.h"
+#include "signature_algorithm.h"
+#include "signature_verify_cache.h"
+#include "verify_signed_data.h"
 
 namespace bssl {
 
@@ -42,28 +42,23 @@ bool IsAcceptableCurveForEcdsa(int curve_nid) {
 }  // namespace
 
 SimplePathBuilderDelegate::SimplePathBuilderDelegate(
-    size_t min_rsa_modulus_length_bits,
-    DigestPolicy digest_policy)
+    size_t min_rsa_modulus_length_bits, DigestPolicy digest_policy)
     : min_rsa_modulus_length_bits_(min_rsa_modulus_length_bits),
       digest_policy_(digest_policy) {}
 
 void SimplePathBuilderDelegate::CheckPathAfterVerification(
-    const CertPathBuilder& path_builder,
-    CertPathBuilderResultPath* path) {
+    const CertPathBuilder &path_builder, CertPathBuilderResultPath *path) {
   // Do nothing - consider all candidate paths valid.
 }
 
-bool SimplePathBuilderDelegate::IsDeadlineExpired() {
-  return false;
-}
+bool SimplePathBuilderDelegate::IsDeadlineExpired() { return false; }
 
-SignatureVerifyCache* SimplePathBuilderDelegate::GetVerifyCache() {
+SignatureVerifyCache *SimplePathBuilderDelegate::GetVerifyCache() {
   return nullptr;
 }
 
 bool SimplePathBuilderDelegate::IsSignatureAlgorithmAcceptable(
-    SignatureAlgorithm algorithm,
-    CertErrors* errors) {
+    SignatureAlgorithm algorithm, CertErrors *errors) {
   switch (algorithm) {
     case SignatureAlgorithm::kRsaPkcs1Sha1:
     case SignatureAlgorithm::kEcdsaSha1:
@@ -83,12 +78,12 @@ bool SimplePathBuilderDelegate::IsSignatureAlgorithmAcceptable(
   return false;
 }
 
-bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY* public_key,
-                                                      CertErrors* errors) {
+bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY *public_key,
+                                                      CertErrors *errors) {
   int pkey_id = EVP_PKEY_id(public_key);
   if (pkey_id == EVP_PKEY_RSA) {
     // Extract the modulus length from the key.
-    RSA* rsa = EVP_PKEY_get0_RSA(public_key);
+    RSA *rsa = EVP_PKEY_get0_RSA(public_key);
     if (!rsa)
       return false;
     unsigned int modulus_length_bits = RSA_bits(rsa);
@@ -106,7 +101,7 @@ bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY* public_key,
 
   if (pkey_id == EVP_PKEY_EC) {
     // Extract the curve name.
-    EC_KEY* ec = EVP_PKEY_get0_EC_KEY(public_key);
+    EC_KEY *ec = EVP_PKEY_get0_EC_KEY(public_key);
     if (!ec)
       return false;  // Unexpected.
     int curve_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
@@ -123,4 +118,4 @@ bool SimplePathBuilderDelegate::IsPublicKeyAcceptable(EVP_PKEY* public_key,
   return false;
 }
 
-}  // namespace net
+}  // namespace bssl

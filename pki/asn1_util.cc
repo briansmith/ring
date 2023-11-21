@@ -4,10 +4,10 @@
 
 #include "asn1_util.h"
 
-#include "parse_certificate.h"
-#include "input.h"
-#include "parser.h"
 #include <optional>
+#include "input.h"
+#include "parse_certificate.h"
+#include "parser.h"
 
 namespace bssl::asn1 {
 
@@ -17,7 +17,7 @@ namespace {
 // sets |*tbs_certificate| ready to parse the Subject. If parsing
 // fails, this function returns false and |*tbs_certificate| is left in an
 // undefined state.
-bool SeekToSubject(der::Input in, der::Parser* tbs_certificate) {
+bool SeekToSubject(der::Input in, der::Parser *tbs_certificate) {
   // From RFC 5280, section 4.1
   //    Certificate  ::=  SEQUENCE  {
   //      tbsCertificate       TBSCertificate,
@@ -71,7 +71,7 @@ bool SeekToSubject(der::Input in, der::Parser* tbs_certificate) {
 // sets |*tbs_certificate| ready to parse the SubjectPublicKeyInfo. If parsing
 // fails, this function returns false and |*tbs_certificate| is left in an
 // undefined state.
-bool SeekToSPKI(der::Input in, der::Parser* tbs_certificate) {
+bool SeekToSPKI(der::Input in, der::Parser *tbs_certificate) {
   return SeekToSubject(in, tbs_certificate) &&
          // Skip over Subject.
          tbs_certificate->SkipTag(der::kSequence);
@@ -85,9 +85,8 @@ bool SeekToSPKI(der::Input in, der::Parser* tbs_certificate) {
 // ready to parse the Extensions. If extensions are not present, it sets
 // |*extensions_present| to false and |*extensions_parser| is left in an
 // undefined state.
-bool SeekToExtensions(der::Input in,
-                      bool* extensions_present,
-                      der::Parser* extensions_parser) {
+bool SeekToExtensions(der::Input in, bool *extensions_present,
+                      der::Parser *extensions_parser) {
   bool present;
   der::Parser tbs_cert_parser;
   if (!SeekToSPKI(in, &tbs_cert_parser))
@@ -150,10 +149,9 @@ bool SeekToExtensions(der::Input in,
 // successful. |*out_extension_present| will be true iff the extension was
 // found. In the case where it was found, |*out_extension| will describe the
 // extension, or is undefined on parse error or if the extension is missing.
-bool ExtractExtensionWithOID(std::string_view cert,
-                             der::Input extension_oid,
-                             bool* out_extension_present,
-                             ParsedExtension* out_extension) {
+bool ExtractExtensionWithOID(std::string_view cert, der::Input extension_oid,
+                             bool *out_extension_present,
+                             ParsedExtension *out_extension) {
   der::Parser extensions;
   bool extensions_present;
   if (!SeekToExtensions(der::Input(cert), &extensions_present, &extensions))
@@ -183,7 +181,7 @@ bool ExtractExtensionWithOID(std::string_view cert,
 }  // namespace
 
 bool ExtractSubjectFromDERCert(std::string_view cert,
-                               std::string_view* subject_out) {
+                               std::string_view *subject_out) {
   der::Parser parser;
   if (!SeekToSubject(der::Input(cert), &parser))
     return false;
@@ -194,8 +192,7 @@ bool ExtractSubjectFromDERCert(std::string_view cert,
   return true;
 }
 
-bool ExtractSPKIFromDERCert(std::string_view cert,
-                            std::string_view* spki_out) {
+bool ExtractSPKIFromDERCert(std::string_view cert, std::string_view *spki_out) {
   der::Parser parser;
   if (!SeekToSPKI(der::Input(cert), &parser))
     return false;
@@ -207,7 +204,7 @@ bool ExtractSPKIFromDERCert(std::string_view cert,
 }
 
 bool ExtractSubjectPublicKeyFromSPKI(std::string_view spki,
-                                     std::string_view* spk_out) {
+                                     std::string_view *spk_out) {
   // From RFC 5280, Section 4.1
   //   SubjectPublicKeyInfo  ::=  SEQUENCE  {
   //     algorithm            AlgorithmIdentifier,
@@ -256,9 +253,8 @@ bool HasCanSignHttpExchangesDraftExtension(std::string_view cert) {
 }
 
 bool ExtractSignatureAlgorithmsFromDERCert(
-    std::string_view cert,
-    std::string_view* cert_signature_algorithm_sequence,
-    std::string_view* tbs_signature_algorithm_sequence) {
+    std::string_view cert, std::string_view *cert_signature_algorithm_sequence,
+    std::string_view *tbs_signature_algorithm_sequence) {
   // From RFC 5280, section 4.1
   //    Certificate  ::=  SEQUENCE  {
   //      tbsCertificate       TBSCertificate,
@@ -309,9 +305,9 @@ bool ExtractSignatureAlgorithmsFromDERCert(
 
 bool ExtractExtensionFromDERCert(std::string_view cert,
                                  std::string_view extension_oid,
-                                 bool* out_extension_present,
-                                 bool* out_extension_critical,
-                                 std::string_view* out_contents) {
+                                 bool *out_extension_present,
+                                 bool *out_extension_critical,
+                                 std::string_view *out_contents) {
   *out_extension_present = false;
   *out_extension_critical = false;
   *out_contents = std::string_view();

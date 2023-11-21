@@ -18,7 +18,7 @@ namespace bssl {
 // Equality of CertErrorId can be done using the == operator.
 //
 // To define new error IDs use the macro DEFINE_CERT_ERROR_ID().
-using CertErrorId = const void*;
+using CertErrorId = const void *;
 
 // DEFINE_CERT_ERROR_ID() creates a CertErrorId given a non-null C-string
 // literal. The string should be a textual name for the error which will appear
@@ -31,8 +31,8 @@ using CertErrorId = const void*;
 
 // Returns a debug string for a CertErrorId. In practice this returns the
 // string literal given to DEFINE_CERT_ERROR_ID(), which is human-readable.
-OPENSSL_EXPORT const char* CertErrorIdToDebugString(CertErrorId id);
+OPENSSL_EXPORT const char *CertErrorIdToDebugString(CertErrorId id);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_CERT_ERROR_ID_H_

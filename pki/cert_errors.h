@@ -66,11 +66,10 @@ struct OPENSSL_EXPORT CertError {
   };
 
   CertError();
-  CertError(Severity severity,
-            CertErrorId id,
+  CertError(Severity severity, CertErrorId id,
             std::unique_ptr<CertErrorParams> params);
-  CertError(CertError&& other);
-  CertError& operator=(CertError&&);
+  CertError(CertError &&other);
+  CertError &operator=(CertError &&);
   ~CertError();
 
   // Pretty-prints the error and its parameters.
@@ -86,13 +85,12 @@ struct OPENSSL_EXPORT CertError {
 class OPENSSL_EXPORT CertErrors {
  public:
   CertErrors();
-  CertErrors(CertErrors&& other);
-  CertErrors& operator=(CertErrors&&);
+  CertErrors(CertErrors &&other);
+  CertErrors &operator=(CertErrors &&);
   ~CertErrors();
 
   // Adds an error/warning. |params| may be null.
-  void Add(CertError::Severity severity,
-           CertErrorId id,
+  void Add(CertError::Severity severity, CertErrorId id,
            std::unique_ptr<CertErrorParams> params);
 
   // Adds a high severity error.
@@ -123,24 +121,24 @@ class OPENSSL_EXPORT CertErrors {
 class OPENSSL_EXPORT CertPathErrors {
  public:
   CertPathErrors();
-  CertPathErrors(CertPathErrors&& other);
-  CertPathErrors& operator=(CertPathErrors&&);
+  CertPathErrors(CertPathErrors &&other);
+  CertPathErrors &operator=(CertPathErrors &&);
   ~CertPathErrors();
 
   // Gets a bucket to put errors in for |cert_index|. This will lookup and
   // return the existing error bucket if one exists, or create a new one for the
   // specified index. It is expected that |cert_index| is the corresponding
   // index in a certificate chain (with 0 being the target).
-  CertErrors* GetErrorsForCert(size_t cert_index);
+  CertErrors *GetErrorsForCert(size_t cert_index);
 
   // Const version of the above, with the difference that if there is no
   // existing bucket for |cert_index| returns nullptr rather than lazyily
   // creating one.
-  const CertErrors* GetErrorsForCert(size_t cert_index) const;
+  const CertErrors *GetErrorsForCert(size_t cert_index) const;
 
   // Returns a bucket to put errors that are not associated with a particular
   // certificate.
-  CertErrors* GetOtherErrors();
+  CertErrors *GetOtherErrors();
 
   // Returns true if CertPathErrors contains the specified error (of any
   // severity).
@@ -156,13 +154,13 @@ class OPENSSL_EXPORT CertPathErrors {
 
   // Pretty-prints all the errors in the CertPathErrors. If there were no
   // errors/warnings, returns an empty string.
-  std::string ToDebugString(const ParsedCertificateList& certs) const;
+  std::string ToDebugString(const ParsedCertificateList &certs) const;
 
  private:
   std::vector<CertErrors> cert_errors_;
   CertErrors other_errors_;
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_CERT_ERRORS_H_

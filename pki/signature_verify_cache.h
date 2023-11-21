@@ -5,8 +5,8 @@
 #ifndef BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_
 #define BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_
 
-#include "fillins/openssl_util.h"
 #include <string>
+#include "fillins/openssl_util.h"
 
 namespace bssl {
 
@@ -27,15 +27,15 @@ class OPENSSL_EXPORT SignatureVerifyCache {
 
   // |Store| is called to store the result of a verification for |key| as kValid
   // or kInvalid after a signature check.
-  virtual void Store(const std::string& key, Value value) = 0;
+  virtual void Store(const std::string &key, Value value) = 0;
 
   // |Check| is called to fetch a cached value for a verification for |key|. If
   // the result is kValid, or kInvalid, signature checking is skipped and the
   // corresponding cached result is used.  If the result is kUnknown signature
   // checking is performed and the corresponding result saved using |Store|.
-  virtual Value Check(const std::string& key) = 0;
+  virtual Value Check(const std::string &key) = 0;
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_SIGNATURE_VERIFY_CACHE_H_

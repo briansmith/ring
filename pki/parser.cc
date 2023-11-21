@@ -4,20 +4,18 @@
 
 #include "parser.h"
 
-#include "parse_values.h"
 #include <openssl/base.h>
+#include "parse_values.h"
 
 namespace bssl::der {
 
-Parser::Parser() {
-  CBS_init(&cbs_, nullptr, 0);
-}
+Parser::Parser() { CBS_init(&cbs_, nullptr, 0); }
 
-Parser::Parser(const Input& input) {
+Parser::Parser(const Input &input) {
   CBS_init(&cbs_, input.UnsafeData(), input.Length());
 }
 
-bool Parser::PeekTagAndValue(Tag* tag, Input* out) {
+bool Parser::PeekTagAndValue(Tag *tag, Input *out) {
   CBS peeker = cbs_;
   CBS tmp_out;
   size_t header_len;
@@ -40,11 +38,9 @@ bool Parser::Advance() {
   return ret;
 }
 
-bool Parser::HasMore() {
-  return CBS_len(&cbs_) > 0;
-}
+bool Parser::HasMore() { return CBS_len(&cbs_) > 0; }
 
-bool Parser::ReadRawTLV(Input* out) {
+bool Parser::ReadRawTLV(Input *out) {
   CBS tmp_out;
   if (!CBS_get_any_asn1_element(&cbs_, &tmp_out, nullptr, nullptr))
     return false;
@@ -52,14 +48,14 @@ bool Parser::ReadRawTLV(Input* out) {
   return true;
 }
 
-bool Parser::ReadTagAndValue(Tag* tag, Input* out) {
+bool Parser::ReadTagAndValue(Tag *tag, Input *out) {
   if (!PeekTagAndValue(tag, out))
     return false;
   BSSL_CHECK(Advance());
   return true;
 }
 
-bool Parser::ReadOptionalTag(Tag tag, std::optional<Input>* out) {
+bool Parser::ReadOptionalTag(Tag tag, std::optional<Input> *out) {
   if (!HasMore()) {
     *out = std::nullopt;
     return true;
@@ -79,7 +75,7 @@ bool Parser::ReadOptionalTag(Tag tag, std::optional<Input>* out) {
   return true;
 }
 
-bool Parser::ReadOptionalTag(Tag tag, Input* out, bool* present) {
+bool Parser::ReadOptionalTag(Tag tag, Input *out, bool *present) {
   std::optional<Input> tmp_out;
   if (!ReadOptionalTag(tag, &tmp_out))
     return false;
@@ -88,12 +84,12 @@ bool Parser::ReadOptionalTag(Tag tag, Input* out, bool* present) {
   return true;
 }
 
-bool Parser::SkipOptionalTag(Tag tag, bool* present) {
+bool Parser::SkipOptionalTag(Tag tag, bool *present) {
   Input out;
   return ReadOptionalTag(tag, &out, present);
 }
 
-bool Parser::ReadTag(Tag tag, Input* out) {
+bool Parser::ReadTag(Tag tag, Input *out) {
   Tag actual_tag;
   Input value;
   if (!PeekTagAndValue(&actual_tag, &value) || actual_tag != tag) {
@@ -111,7 +107,7 @@ bool Parser::SkipTag(Tag tag) {
 
 // Type-specific variants of ReadTag
 
-bool Parser::ReadConstructed(Tag tag, Parser* out) {
+bool Parser::ReadConstructed(Tag tag, Parser *out) {
   if (!IsConstructed(tag))
     return false;
   Input data;
@@ -121,18 +117,18 @@ bool Parser::ReadConstructed(Tag tag, Parser* out) {
   return true;
 }
 
-bool Parser::ReadSequence(Parser* out) {
+bool Parser::ReadSequence(Parser *out) {
   return ReadConstructed(kSequence, out);
 }
 
-bool Parser::ReadUint8(uint8_t* out) {
+bool Parser::ReadUint8(uint8_t *out) {
   Input encoded_int;
   if (!ReadTag(kInteger, &encoded_int))
     return false;
   return ParseUint8(encoded_int, out);
 }
 
-bool Parser::ReadUint64(uint64_t* out) {
+bool Parser::ReadUint64(uint64_t *out) {
   Input encoded_int;
   if (!ReadTag(kInteger, &encoded_int))
     return false;
@@ -146,7 +142,7 @@ std::optional<BitString> Parser::ReadBitString() {
   return ParseBitString(value);
 }
 
-bool Parser::ReadGeneralizedTime(GeneralizedTime* out) {
+bool Parser::ReadGeneralizedTime(GeneralizedTime *out) {
   Input value;
   if (!ReadTag(kGeneralizedTime, &value))
     return false;

@@ -16,7 +16,7 @@ namespace bssl::der {
 
 namespace {
 
-bool ParseBoolInternal(const Input& in, bool* out, bool relaxed) {
+bool ParseBoolInternal(const Input &in, bool *out, bool relaxed) {
   // According to ITU-T X.690 section 8.2, a bool is encoded as a single octet
   // where the octet of all zeroes is FALSE and a non-zero value for the octet
   // is TRUE.
@@ -44,7 +44,7 @@ bool ParseBoolInternal(const Input& in, bool* out, bool relaxed) {
 // enough to hold 10^digits - 1; the caller must choose an appropriate type
 // based on the number of digits they wish to parse.
 template <typename UINT>
-bool DecimalStringToUint(ByteReader& in, size_t digits, UINT* out) {
+bool DecimalStringToUint(ByteReader &in, size_t digits, UINT *out) {
   UINT value = 0;
   for (size_t i = 0; i < digits; ++i) {
     uint8_t digit;
@@ -66,7 +66,7 @@ bool DecimalStringToUint(ByteReader& in, size_t digits, UINT* out) {
 // hours are between 0 and 23, minutes between 0 and 59, and seconds between
 // 0 and 60 (to allow for leap seconds; no validation is done that a leap
 // second is on a day that could be a leap second).
-bool ValidateGeneralizedTime(const GeneralizedTime& time) {
+bool ValidateGeneralizedTime(const GeneralizedTime &time) {
   if (time.month < 1 || time.month > 12)
     return false;
   if (time.day < 1)
@@ -126,7 +126,7 @@ bool ValidateGeneralizedTime(const GeneralizedTime& time) {
 //
 // For instance a 160-bit positive number might take 21 bytes to encode. This
 // function will return 20 in such a case.
-size_t GetUnsignedIntegerLength(const Input& in) {
+size_t GetUnsignedIntegerLength(const Input &in) {
   der::ByteReader reader(in);
   uint8_t first_byte;
   if (!reader.ReadByte(&first_byte))
@@ -139,7 +139,7 @@ size_t GetUnsignedIntegerLength(const Input& in) {
 
 }  // namespace
 
-bool ParseBool(const Input& in, bool* out) {
+bool ParseBool(const Input &in, bool *out) {
   return ParseBoolInternal(in, out, false /* relaxed */);
 }
 
@@ -147,7 +147,7 @@ bool ParseBool(const Input& in, bool* out) {
 // have either all bits zero (false) or all bits one (true). To support
 // malformed certs, we recognized the BER encoding instead of failing to
 // parse.
-bool ParseBoolRelaxed(const Input& in, bool* out) {
+bool ParseBoolRelaxed(const Input &in, bool *out) {
   return ParseBoolInternal(in, out, true /* relaxed */);
 }
 
@@ -155,7 +155,7 @@ bool ParseBoolRelaxed(const Input& in, bool* out) {
 // in the smallest number of octets. If the encoding consists of more than
 // one octet, then the bits of the first octet and the most significant bit
 // of the second octet must not be all zeroes or all ones.
-bool IsValidInteger(const Input& in, bool* negative) {
+bool IsValidInteger(const Input &in, bool *negative) {
   CBS cbs;
   CBS_init(&cbs, in.UnsafeData(), in.Length());
   int negative_int;
@@ -167,7 +167,7 @@ bool IsValidInteger(const Input& in, bool* negative) {
   return true;
 }
 
-bool ParseUint64(const Input& in, uint64_t* out) {
+bool ParseUint64(const Input &in, uint64_t *out) {
   // Reject non-minimally encoded numbers and negative numbers.
   bool negative;
   if (!IsValidInteger(in, &negative) || negative)
@@ -189,7 +189,7 @@ bool ParseUint64(const Input& in, uint64_t* out) {
   return true;
 }
 
-bool ParseUint8(const Input& in, uint8_t* out) {
+bool ParseUint8(const Input &in, uint8_t *out) {
   // TODO(eroman): Implement this more directly.
   uint64_t value;
   if (!ParseUint64(in, &value))
@@ -202,7 +202,7 @@ bool ParseUint8(const Input& in, uint8_t* out) {
   return true;
 }
 
-BitString::BitString(const Input& bytes, uint8_t unused_bits)
+BitString::BitString(const Input &bytes, uint8_t unused_bits)
     : bytes_(bytes), unused_bits_(unused_bits) {
   BSSL_CHECK(unused_bits < 8);
   BSSL_CHECK(unused_bits == 0 || bytes.Length() != 0);
@@ -232,7 +232,7 @@ bool BitString::AssertsBit(size_t bit_index) const {
   return 0 != (byte & (1 << bit_index_in_byte));
 }
 
-std::optional<BitString> ParseBitString(const Input& in) {
+std::optional<BitString> ParseBitString(const Input &in) {
   ByteReader reader(in);
 
   // From ITU-T X.690, section 8.6.2.2 (applies to BER, CER, DER):
@@ -276,25 +276,25 @@ bool GeneralizedTime::InUTCTimeRange() const {
   return 1950 <= year && year < 2050;
 }
 
-bool operator<(const GeneralizedTime& lhs, const GeneralizedTime& rhs) {
+bool operator<(const GeneralizedTime &lhs, const GeneralizedTime &rhs) {
   return std::tie(lhs.year, lhs.month, lhs.day, lhs.hours, lhs.minutes,
                   lhs.seconds) < std::tie(rhs.year, rhs.month, rhs.day,
                                           rhs.hours, rhs.minutes, rhs.seconds);
 }
 
-bool operator>(const GeneralizedTime& lhs, const GeneralizedTime& rhs) {
+bool operator>(const GeneralizedTime &lhs, const GeneralizedTime &rhs) {
   return rhs < lhs;
 }
 
-bool operator<=(const GeneralizedTime& lhs, const GeneralizedTime& rhs) {
+bool operator<=(const GeneralizedTime &lhs, const GeneralizedTime &rhs) {
   return !(lhs > rhs);
 }
 
-bool operator>=(const GeneralizedTime& lhs, const GeneralizedTime& rhs) {
+bool operator>=(const GeneralizedTime &lhs, const GeneralizedTime &rhs) {
   return !(lhs < rhs);
 }
 
-bool ParseUTCTime(const Input& in, GeneralizedTime* value) {
+bool ParseUTCTime(const Input &in, GeneralizedTime *value) {
   ByteReader reader(in);
   GeneralizedTime time;
   if (!DecimalStringToUint(reader, 2, &time.year) ||
@@ -319,7 +319,7 @@ bool ParseUTCTime(const Input& in, GeneralizedTime* value) {
   return true;
 }
 
-bool ParseGeneralizedTime(const Input& in, GeneralizedTime* value) {
+bool ParseGeneralizedTime(const Input &in, GeneralizedTime *value) {
   ByteReader reader(in);
   GeneralizedTime time;
   if (!DecimalStringToUint(reader, 4, &time.year) ||
@@ -339,7 +339,7 @@ bool ParseGeneralizedTime(const Input& in, GeneralizedTime* value) {
   return true;
 }
 
-bool ParseIA5String(Input in, std::string* out) {
+bool ParseIA5String(Input in, std::string *out) {
   for (char c : in.AsStringView()) {
     if (static_cast<uint8_t>(c) > 127)
       return false;
@@ -348,7 +348,7 @@ bool ParseIA5String(Input in, std::string* out) {
   return true;
 }
 
-bool ParseVisibleString(Input in, std::string* out) {
+bool ParseVisibleString(Input in, std::string *out) {
   // ITU-T X.680:
   // VisibleString : "Defining registration number 6" + SPACE
   // 6 includes all the characters from '!' .. '~' (33 .. 126), space is 32.
@@ -363,7 +363,7 @@ bool ParseVisibleString(Input in, std::string* out) {
   return true;
 }
 
-bool ParsePrintableString(Input in, std::string* out) {
+bool ParsePrintableString(Input in, std::string *out) {
   for (char c : in.AsStringView()) {
     if (!(OPENSSL_isalpha(c) || c == ' ' || (c >= '\'' && c <= ':') ||
           c == '=' || c == '?')) {
@@ -374,7 +374,7 @@ bool ParsePrintableString(Input in, std::string* out) {
   return true;
 }
 
-bool ParseTeletexStringAsLatin1(Input in, std::string* out) {
+bool ParseTeletexStringAsLatin1(Input in, std::string *out) {
   out->clear();
   // Convert from Latin-1 to UTF-8.
   size_t utf8_length = in.Length();
@@ -397,7 +397,7 @@ bool ParseTeletexStringAsLatin1(Input in, std::string* out) {
   return true;
 }
 
-bool ParseUniversalString(Input in, std::string* out) {
+bool ParseUniversalString(Input in, std::string *out) {
   if (in.Length() % 4 != 0) {
     return false;
   }
@@ -421,7 +421,7 @@ bool ParseUniversalString(Input in, std::string* out) {
   return true;
 }
 
-bool ParseBmpString(Input in, std::string* out) {
+bool ParseBmpString(Input in, std::string *out) {
   if (in.Length() % 2 != 0) {
     return false;
   }

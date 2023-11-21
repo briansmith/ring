@@ -8,17 +8,17 @@
 
 #include <memory>
 
+#include <openssl/base.h>
+#include <optional>
 #include "cert_errors.h"
 #include "common_cert_errors.h"
 #include "general_names.h"
-#include "ip_util.h"
-#include "string_util.h"
-#include "verify_name_match.h"
 #include "input.h"
+#include "ip_util.h"
 #include "parser.h"
+#include "string_util.h"
 #include "tag.h"
-#include <optional>
-#include <openssl/base.h>
+#include "verify_name_match.h"
 
 namespace bssl {
 
@@ -53,8 +53,7 @@ enum WildcardMatchType { WILDCARD_PARTIAL_MATCH, WILDCARD_FULL_MATCH };
 // |wildcard_matching| controls handling of wildcard names (|name| starts with
 // "*."). Wildcard handling is not specified by RFC 5280, but certificate
 // verification allows it, name constraints must check it similarly.
-bool DNSNameMatches(std::string_view name,
-                    std::string_view dns_constraint,
+bool DNSNameMatches(std::string_view name, std::string_view dns_constraint,
                     WildcardMatchType wildcard_matching) {
   // Everything matches the empty DNS name constraint.
   if (dns_constraint.empty())
@@ -79,7 +78,7 @@ bool DNSNameMatches(std::string_view name,
           dns_constraint.substr(dns_constraint_dot_pos + 1);
       std::string_view wildcard_domain = name.substr(2);
       if (bssl::string_util::IsEqualNoCase(wildcard_domain,
-                                          dns_constraint_domain)) {
+                                           dns_constraint_domain)) {
         return true;
       }
     }
@@ -113,9 +112,9 @@ bool DNSNameMatches(std::string_view name,
 // NOTE: |subtrees| is not pre-initialized by the function(it is expected to be
 // a default initialized object), and it will be modified regardless of the
 // return value.
-[[nodiscard]] bool ParseGeneralSubtrees(const der::Input& value,
-                                        GeneralNames* subtrees,
-                                        CertErrors* errors) {
+[[nodiscard]] bool ParseGeneralSubtrees(const der::Input &value,
+                                        GeneralNames *subtrees,
+                                        CertErrors *errors) {
   BSSL_CHECK(errors);
 
   // GeneralSubtrees ::= SEQUENCE SIZE (1..MAX) OF GeneralSubtree
@@ -206,8 +205,7 @@ bool IsAllowedRfc822Domain(std::string_view domain) {
 }
 
 enum class Rfc822NameMatchType { kPermitted, kExcluded };
-bool Rfc822NameMatches(std::string_view local_part,
-                       std::string_view domain,
+bool Rfc822NameMatches(std::string_view local_part, std::string_view domain,
                        std::string_view rfc822_constraint,
                        Rfc822NameMatchType match_type,
                        bool case_insensitive_local_part) {
@@ -271,9 +269,7 @@ NameConstraints::~NameConstraints() = default;
 
 // static
 std::unique_ptr<NameConstraints> NameConstraints::Create(
-    const der::Input& extension_value,
-    bool is_critical,
-    CertErrors* errors) {
+    const der::Input &extension_value, bool is_critical, CertErrors *errors) {
   BSSL_CHECK(errors);
 
   auto name_constraints = std::make_unique<NameConstraints>();
@@ -282,9 +278,8 @@ std::unique_ptr<NameConstraints> NameConstraints::Create(
   return name_constraints;
 }
 
-bool NameConstraints::Parse(const der::Input& extension_value,
-                            bool is_critical,
-                            CertErrors* errors) {
+bool NameConstraints::Parse(const der::Input &extension_value, bool is_critical,
+                            CertErrors *errors) {
   BSSL_CHECK(errors);
 
   der::Parser extension_parser(extension_value);
@@ -339,9 +334,9 @@ bool NameConstraints::Parse(const der::Input& extension_value,
   return true;
 }
 
-void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
-                                      const GeneralNames* subject_alt_names,
-                                      CertErrors* errors) const {
+void NameConstraints::IsPermittedCert(const der::Input &subject_rdn_sequence,
+                                      const GeneralNames *subject_alt_names,
+                                      CertErrors *errors) const {
   // Checking NameConstraints is O(number_of_names * number_of_constraints).
   // Impose a hard limit to mitigate the use of name constraints as a DoS
   // mechanism. This mimics the similar check in BoringSSL x509/v_ncons.c
@@ -426,7 +421,7 @@ void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
     // might fail if there are email addresses we don't know how to parse but
     // are technically correct.
     if (constrained_name_types() & GENERAL_NAME_RFC822_NAME) {
-      for (const auto& rfc822_name : subject_alt_names->rfc822_names) {
+      for (const auto &rfc822_name : subject_alt_names->rfc822_names) {
         if (!IsPermittedRfc822Name(
                 rfc822_name, /*case_insensitive_exclude_localpart=*/false)) {
           errors->AddError(cert_errors::kNotPermittedByNameConstraints);
@@ -435,21 +430,21 @@ void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
       }
     }
 
-    for (const auto& dns_name : subject_alt_names->dns_names) {
+    for (const auto &dns_name : subject_alt_names->dns_names) {
       if (!IsPermittedDNSName(dns_name)) {
         errors->AddError(cert_errors::kNotPermittedByNameConstraints);
         return;
       }
     }
 
-    for (const auto& directory_name : subject_alt_names->directory_names) {
+    for (const auto &directory_name : subject_alt_names->directory_names) {
       if (!IsPermittedDirectoryName(directory_name)) {
         errors->AddError(cert_errors::kNotPermittedByNameConstraints);
         return;
       }
     }
 
-    for (const auto& ip_address : subject_alt_names->ip_addresses) {
+    for (const auto &ip_address : subject_alt_names->ip_addresses) {
       if (!IsPermittedIP(ip_address)) {
         errors->AddError(cert_errors::kNotPermittedByNameConstraints);
         return;
@@ -466,7 +461,7 @@ void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
   // form, but the certificate does not include a subject alternative name, the
   // rfc822Name constraint MUST be applied to the attribute of type emailAddress
   // in the subject distinguished name.
-  for (const auto& rfc822_name : subject_email_addresses_to_check) {
+  for (const auto &rfc822_name : subject_email_addresses_to_check) {
     // Whether local_part should be matched case-sensitive or not is somewhat
     // unclear. RFC 2821 says that it should be case-sensitive. RFC 2985 says
     // that emailAddress attributes in a Name are fully case-insensitive.
@@ -503,8 +498,7 @@ void NameConstraints::IsPermittedCert(const der::Input& subject_rdn_sequence,
 }
 
 bool NameConstraints::IsPermittedRfc822Name(
-    std::string_view name,
-    bool case_insensitive_exclude_localpart) const {
+    std::string_view name, bool case_insensitive_exclude_localpart) const {
   // RFC 5280 4.2.1.6.  Subject Alternative Name
   //
   // When the subjectAltName extension contains an Internet mail address,
@@ -584,7 +578,7 @@ bool NameConstraints::IsPermittedRfc822Name(
     return false;
   }
 
-  for (const auto& excluded_name : excluded_subtrees_.rfc822_names) {
+  for (const auto &excluded_name : excluded_subtrees_.rfc822_names) {
     if (Rfc822NameMatches(name_components[0], name_components[1], excluded_name,
                           Rfc822NameMatchType::kExcluded,
                           case_insensitive_exclude_localpart)) {
@@ -598,7 +592,7 @@ bool NameConstraints::IsPermittedRfc822Name(
     return true;
   }
 
-  for (const auto& permitted_name : permitted_subtrees_.rfc822_names) {
+  for (const auto &permitted_name : permitted_subtrees_.rfc822_names) {
     if (Rfc822NameMatches(name_components[0], name_components[1],
                           permitted_name, Rfc822NameMatchType::kPermitted,
                           /*case_insenitive_local_part=*/false)) {
@@ -610,7 +604,7 @@ bool NameConstraints::IsPermittedRfc822Name(
 }
 
 bool NameConstraints::IsPermittedDNSName(std::string_view name) const {
-  for (const auto& excluded_name : excluded_subtrees_.dns_names) {
+  for (const auto &excluded_name : excluded_subtrees_.dns_names) {
     // When matching wildcard hosts against excluded subtrees, consider it a
     // match if the constraint would match any expansion of the wildcard. Eg,
     // *.bar.com should match a constraint of foo.bar.com.
@@ -623,7 +617,7 @@ bool NameConstraints::IsPermittedDNSName(std::string_view name) const {
   if (!(permitted_subtrees_.present_name_types & GENERAL_NAME_DNS_NAME))
     return true;
 
-  for (const auto& permitted_name : permitted_subtrees_.dns_names) {
+  for (const auto &permitted_name : permitted_subtrees_.dns_names) {
     // When matching wildcard hosts against permitted subtrees, consider it a
     // match only if the constraint would match all expansions of the wildcard.
     // Eg, *.bar.com should match a constraint of bar.com, but not foo.bar.com.
@@ -635,8 +629,8 @@ bool NameConstraints::IsPermittedDNSName(std::string_view name) const {
 }
 
 bool NameConstraints::IsPermittedDirectoryName(
-    const der::Input& name_rdn_sequence) const {
-  for (const auto& excluded_name : excluded_subtrees_.directory_names) {
+    const der::Input &name_rdn_sequence) const {
+  for (const auto &excluded_name : excluded_subtrees_.directory_names) {
     if (VerifyNameInSubtree(name_rdn_sequence, excluded_name))
       return false;
   }
@@ -646,7 +640,7 @@ bool NameConstraints::IsPermittedDirectoryName(
   if (!(permitted_subtrees_.present_name_types & GENERAL_NAME_DIRECTORY_NAME))
     return true;
 
-  for (const auto& permitted_name : permitted_subtrees_.directory_names) {
+  for (const auto &permitted_name : permitted_subtrees_.directory_names) {
     if (VerifyNameInSubtree(name_rdn_sequence, permitted_name))
       return true;
   }
@@ -654,8 +648,8 @@ bool NameConstraints::IsPermittedDirectoryName(
   return false;
 }
 
-bool NameConstraints::IsPermittedIP(const der::Input& ip) const {
-  for (const auto& excluded_ip : excluded_subtrees_.ip_address_ranges) {
+bool NameConstraints::IsPermittedIP(const der::Input &ip) const {
+  for (const auto &excluded_ip : excluded_subtrees_.ip_address_ranges) {
     if (IPAddressMatchesWithNetmask(ip, excluded_ip.first,
                                     excluded_ip.second)) {
       return false;
@@ -668,7 +662,7 @@ bool NameConstraints::IsPermittedIP(const der::Input& ip) const {
     return true;
   }
 
-  for (const auto& permitted_ip : permitted_subtrees_.ip_address_ranges) {
+  for (const auto &permitted_ip : permitted_subtrees_.ip_address_ranges) {
     if (IPAddressMatchesWithNetmask(ip, permitted_ip.first,
                                     permitted_ip.second)) {
       return true;
@@ -678,4 +672,4 @@ bool NameConstraints::IsPermittedIP(const der::Input& ip) const {
   return false;
 }
 
-}  // namespace net
+}  // namespace bssl

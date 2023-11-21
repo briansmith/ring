@@ -5,15 +5,15 @@
 #ifndef BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_H_
 #define BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_H_
 
-#include "fillins/openssl_util.h"
 #include <set>
+#include "fillins/openssl_util.h"
 
 
+#include <openssl/evp.h>
 #include "cert_errors.h"
+#include "input.h"
 #include "parsed_certificate.h"
 #include "signature_verify_cache.h"
-#include "input.h"
-#include <openssl/evp.h>
 
 namespace bssl {
 
@@ -58,8 +58,7 @@ class OPENSSL_EXPORT VerifyCertificateChainDelegate {
   // can optionally add high-severity errors to |errors| with details on why it
   // was rejected.
   virtual bool IsSignatureAlgorithmAcceptable(
-      SignatureAlgorithm signature_algorithm,
-      CertErrors* errors) = 0;
+      SignatureAlgorithm signature_algorithm, CertErrors *errors) = 0;
 
   // Implementations should return true if |public_key| is acceptable. This is
   // called for each certificate in the chain, including the target certificate.
@@ -67,13 +66,13 @@ class OPENSSL_EXPORT VerifyCertificateChainDelegate {
   // errors to |errors| with details on why it was rejected.
   //
   // |public_key| can be assumed to be non-null.
-  virtual bool IsPublicKeyAcceptable(EVP_PKEY* public_key,
-                                     CertErrors* errors) = 0;
+  virtual bool IsPublicKeyAcceptable(EVP_PKEY *public_key,
+                                     CertErrors *errors) = 0;
 
   // This is called during verification to obtain a pointer to a signature
   // verification cache if one exists. nullptr may be returned indicating there
   // is no verification cache.
-  virtual SignatureVerifyCache* GetVerifyCache() = 0;
+  virtual SignatureVerifyCache *GetVerifyCache() = 0;
 
   virtual ~VerifyCertificateChainDelegate();
 };
@@ -241,26 +240,23 @@ class OPENSSL_EXPORT VerifyCertificateChainDelegate {
 // The presence of any other unrecognized extension marked as critical fails
 // validation.
 OPENSSL_EXPORT void VerifyCertificateChain(
-    const ParsedCertificateList& certs,
-    const CertificateTrust& last_cert_trust,
-    VerifyCertificateChainDelegate* delegate,
-    const der::GeneralizedTime& time,
+    const ParsedCertificateList &certs, const CertificateTrust &last_cert_trust,
+    VerifyCertificateChainDelegate *delegate, const der::GeneralizedTime &time,
     KeyPurpose required_key_purpose,
     InitialExplicitPolicy initial_explicit_policy,
-    const std::set<der::Input>& user_initial_policy_set,
+    const std::set<der::Input> &user_initial_policy_set,
     InitialPolicyMappingInhibit initial_policy_mapping_inhibit,
     InitialAnyPolicyInhibit initial_any_policy_inhibit,
-    std::set<der::Input>* user_constrained_policy_set,
-    CertPathErrors* errors);
+    std::set<der::Input> *user_constrained_policy_set, CertPathErrors *errors);
 
 // Returns true if `cert` is self-signed. Returns false `cert` is not
 // self-signed or there was an error. If `errors` is non-null, it will contain
 // additional information about the problem. If `cache` is non-null, it will be
 // used to cache the signature verification step.
-OPENSSL_EXPORT bool VerifyCertificateIsSelfSigned(const ParsedCertificate& cert,
-                                              SignatureVerifyCache* cache,
-                                              CertErrors* errors);
+OPENSSL_EXPORT bool VerifyCertificateIsSelfSigned(const ParsedCertificate &cert,
+                                                  SignatureVerifyCache *cache,
+                                                  CertErrors *errors);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_H_

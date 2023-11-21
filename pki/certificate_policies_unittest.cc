@@ -4,16 +4,16 @@
 
 #include "certificate_policies.h"
 
-#include "test_helpers.h"
+#include <gtest/gtest.h>
 #include "input.h"
 #include "parser.h"
-#include <gtest/gtest.h>
+#include "test_helpers.h"
 
 namespace bssl {
 namespace {
 
-::testing::AssertionResult LoadTestData(const std::string& name,
-                                        std::string* result) {
+::testing::AssertionResult LoadTestData(const std::string &name,
+                                        std::string *result) {
   std::string path = "testdata/certificate_policies_unittest/" + name;
 
   const PemBlockMapping mappings[] = {
@@ -34,8 +34,7 @@ class ParseCertificatePoliciesExtensionOidsTest
 
 // Run the tests with all possible values for
 // |fail_parsing_unknown_qualifier_oids|.
-INSTANTIATE_TEST_SUITE_P(All,
-                         ParseCertificatePoliciesExtensionOidsTest,
+INSTANTIATE_TEST_SUITE_P(All, ParseCertificatePoliciesExtensionOidsTest,
                          testing::Bool());
 
 TEST_P(ParseCertificatePoliciesExtensionOidsTest, InvalidEmpty) {
@@ -237,11 +236,11 @@ TEST(ParseCertificatePoliciesExtensionTest, OnePolicyWithCustomQualifier) {
   EXPECT_TRUE(
       ParseCertificatePoliciesExtension(der::Input(der), &policies, &errors));
   ASSERT_EQ(1U, policies.size());
-  PolicyInformation& policy = policies[0];
+  PolicyInformation &policy = policies[0];
   EXPECT_EQ(der::Input(policy_1_2_3_der), policy.policy_oid);
 
   ASSERT_EQ(1U, policy.policy_qualifiers.size());
-  PolicyQualifierInfo& qualifier = policy.policy_qualifiers[0];
+  PolicyQualifierInfo &qualifier = policy.policy_qualifiers[0];
   // 1.2.3.4
   const uint8_t kExpectedQualifierOid[] = {0x2a, 0x03, 0x04};
   EXPECT_EQ(der::Input(kExpectedQualifierOid), qualifier.qualifier_oid);
@@ -259,12 +258,12 @@ TEST(ParseCertificatePoliciesExtensionTest, TwoPolicies) {
       ParseCertificatePoliciesExtension(der::Input(der), &policies, &errors));
   ASSERT_EQ(2U, policies.size());
   {
-    PolicyInformation& policy = policies[0];
+    PolicyInformation &policy = policies[0];
     EXPECT_EQ(der::Input(policy_1_2_3_der), policy.policy_oid);
     EXPECT_EQ(0U, policy.policy_qualifiers.size());
   }
   {
-    PolicyInformation& policy = policies[1];
+    PolicyInformation &policy = policies[1];
     EXPECT_EQ(der::Input(policy_1_2_4_der), policy.policy_oid);
     EXPECT_EQ(0U, policy.policy_qualifiers.size());
   }
@@ -279,10 +278,10 @@ TEST(ParseCertificatePoliciesExtensionTest, TwoPoliciesWithQualifiers) {
       ParseCertificatePoliciesExtension(der::Input(der), &policies, &errors));
   ASSERT_EQ(2U, policies.size());
   {
-    PolicyInformation& policy = policies[0];
+    PolicyInformation &policy = policies[0];
     EXPECT_EQ(der::Input(policy_1_2_3_der), policy.policy_oid);
     ASSERT_EQ(1U, policy.policy_qualifiers.size());
-    PolicyQualifierInfo& qualifier = policy.policy_qualifiers[0];
+    PolicyQualifierInfo &qualifier = policy.policy_qualifiers[0];
     EXPECT_EQ(der::Input(kCpsPointerId), qualifier.qualifier_oid);
     // IA5String { "https://example.com/1_2_3" }
     const uint8_t kExpectedQualifier[] = {
@@ -292,10 +291,10 @@ TEST(ParseCertificatePoliciesExtensionTest, TwoPoliciesWithQualifiers) {
     EXPECT_EQ(der::Input(kExpectedQualifier), qualifier.qualifier);
   }
   {
-    PolicyInformation& policy = policies[1];
+    PolicyInformation &policy = policies[1];
     EXPECT_EQ(der::Input(policy_1_2_4_der), policy.policy_oid);
     ASSERT_EQ(1U, policy.policy_qualifiers.size());
-    PolicyQualifierInfo& qualifier = policy.policy_qualifiers[0];
+    PolicyQualifierInfo &qualifier = policy.policy_qualifiers[0];
     EXPECT_EQ(der::Input(kCpsPointerId), qualifier.qualifier_oid);
     // IA5String { "http://example.com/1_2_4" }
     const uint8_t kExpectedQualifier[] = {
@@ -310,4 +309,4 @@ TEST(ParseCertificatePoliciesExtensionTest, TwoPoliciesWithQualifiers) {
 // parsed_certificate_unittest.cc
 
 }  // namespace
-}  // namespace net
+}  // namespace bssl

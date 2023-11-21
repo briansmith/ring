@@ -25,10 +25,10 @@ class MockSignatureVerifyCache : public SignatureVerifyCache {
 
   ~MockSignatureVerifyCache() override;
 
-  void Store(const std::string& key,
+  void Store(const std::string &key,
              SignatureVerifyCache::Value value) override;
 
-  SignatureVerifyCache::Value Check(const std::string& key) override;
+  SignatureVerifyCache::Value Check(const std::string &key) override;
 
   size_t CacheHits() { return hits_; }
 
@@ -43,6 +43,6 @@ class MockSignatureVerifyCache : public SignatureVerifyCache {
   size_t stores_ = 0;
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_MOCK_PATH_BUILDER_DELEGATE_H_

@@ -4,9 +4,9 @@
 
 #include "parser.h"
 
+#include <gtest/gtest.h>
 #include "input.h"
 #include "parse_values.h"
-#include <gtest/gtest.h>
 
 namespace bssl::der::test {
 

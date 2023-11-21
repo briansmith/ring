@@ -16,6 +16,6 @@ enum class OCSPRevocationStatus {
   MAX_VALUE = UNKNOWN
 };
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_OCSP_REVOCATION_STATUS_H_

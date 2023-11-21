@@ -5,8 +5,8 @@
 #ifndef BSSL_PKI_CERT_STATUS_FLAGS_H_
 #define BSSL_PKI_CERT_STATUS_FLAGS_H_
 
-#include "fillins/openssl_util.h"
 #include <stdint.h>
+#include "fillins/openssl_util.h"
 
 
 
@@ -20,7 +20,7 @@ typedef uint32_t CertStatus;
 // MACRO_STYLE for continuity, instead of renaming them to kConstantStyle as
 // befits most static consts.
 #define CERT_STATUS_FLAG(label, value) \
-    CertStatus static const CERT_STATUS_##label = value;
+  CertStatus static const CERT_STATUS_##label = value;
 #include "cert_status_flags_list.h"
 #undef CERT_STATUS_FLAG
 
@@ -33,17 +33,17 @@ inline bool IsCertStatusError(CertStatus status) {
 
 // Maps a network error code to the equivalent certificate status flag. If
 // the error code is not a certificate error, it is mapped to 0.
-// Note: It is not safe to go bssl::CertStatus -> bssl::Error -> bssl::CertStatus,
-// as the CertStatus contains more information. Conversely, going from
-// bssl::Error -> bssl::CertStatus -> bssl::Error is not a lossy function, for the
-// same reason.
-// To avoid incorrect use, this is only exported for unittest helpers.
+// Note: It is not safe to go bssl::CertStatus -> bssl::Error ->
+// bssl::CertStatus, as the CertStatus contains more information. Conversely,
+// going from bssl::Error -> bssl::CertStatus -> bssl::Error is not a lossy
+// function, for the same reason. To avoid incorrect use, this is only exported
+// for unittest helpers.
 OPENSSL_EXPORT CertStatus MapNetErrorToCertStatus(int error);
 
 // Maps the most serious certificate error in the certificate status flags
 // to the equivalent network error code.
 OPENSSL_EXPORT int MapCertStatusToNetError(CertStatus cert_status);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_CERT_STATUS_FLAGS_H_

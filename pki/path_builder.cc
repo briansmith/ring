@@ -11,35 +11,35 @@
 
 #include "fillins/log.h"
 
+#include <openssl/base.h>
+#include <openssl/sha.h>
 #include "cert_issuer_source.h"
 #include "certificate_policies.h"
 #include "common_cert_errors.h"
 #include "parse_certificate.h"
 #include "parse_name.h"  // For CertDebugString.
+#include "parser.h"
 #include "string_util.h"
+#include "tag.h"
 #include "trust_store.h"
 #include "verify_certificate_chain.h"
 #include "verify_name_match.h"
-#include "parser.h"
-#include "tag.h"
-#include <openssl/base.h>
-#include <openssl/sha.h>
 
 namespace bssl {
 
 namespace {
 
-using CertIssuerSources = std::vector<CertIssuerSource*>;
+using CertIssuerSources = std::vector<CertIssuerSource *>;
 
 // Returns a hex-encoded sha256 of the DER-encoding of |cert|.
-std::string FingerPrintParsedCertificate(const bssl::ParsedCertificate* cert) {
+std::string FingerPrintParsedCertificate(const bssl::ParsedCertificate *cert) {
   uint8_t digest[SHA256_DIGEST_LENGTH];
   SHA256(cert->der_cert().UnsafeData(), cert->der_cert().Length(), digest);
   return bssl::string_util::HexEncode(digest, sizeof(digest));
 }
 
 // TODO(mattm): decide how much debug logging to keep.
-std::string CertDebugString(const ParsedCertificate* cert) {
+std::string CertDebugString(const ParsedCertificate *cert) {
   RDNSequence subject;
   std::string subject_str;
   if (!ParseName(cert->tbs().subject_tlv, &subject) ||
@@ -49,9 +49,9 @@ std::string CertDebugString(const ParsedCertificate* cert) {
   return FingerPrintParsedCertificate(cert) + " " + subject_str;
 }
 
-std::string PathDebugString(const ParsedCertificateList& certs) {
+std::string PathDebugString(const ParsedCertificateList &certs) {
   std::string s;
-  for (const auto& cert : certs) {
+  for (const auto &cert : certs) {
     if (!s.empty())
       s += "\n";
     s += " " + CertDebugString(cert.get());
@@ -83,8 +83,7 @@ enum KeyIdentifierMatch {
 // subjectKeyIdentifier and |target|'s authorityKeyIdentifier. Lower return
 // values indicate higer priority.
 KeyIdentifierMatch CalculateKeyIdentifierMatch(
-    const ParsedCertificate* target,
-    const ParsedCertificate* issuer) {
+    const ParsedCertificate *target, const ParsedCertificate *issuer) {
   if (!target->authority_key_identifier())
     return kNoData;
 
@@ -107,9 +106,9 @@ KeyIdentifierMatch CalculateKeyIdentifierMatch(
 // Returns an integer that represents the relative ordering of |issuer| based
 // on |issuer_trust| and authorityKeyIdentifier matching for prioritizing
 // certificates in path building. Lower return values indicate higer priority.
-int TrustAndKeyIdentifierMatchToOrder(const ParsedCertificate* target,
-                                      const ParsedCertificate* issuer,
-                                      const CertificateTrust& issuer_trust) {
+int TrustAndKeyIdentifierMatchToOrder(const ParsedCertificate *target,
+                                      const ParsedCertificate *issuer,
+                                      const CertificateTrust &issuer_trust) {
   enum {
     kTrustedAndKeyIdMatch = 0,
     kTrustedAndKeyIdNoData = 1,
@@ -168,15 +167,15 @@ class CertIssuersIter {
   // Constructs the CertIssuersIter. |*cert_issuer_sources|, and
   // |*trust_store| must be valid for the lifetime of the CertIssuersIter.
   CertIssuersIter(std::shared_ptr<const ParsedCertificate> cert,
-                  CertIssuerSources* cert_issuer_sources,
-                  TrustStore* trust_store);
+                  CertIssuerSources *cert_issuer_sources,
+                  TrustStore *trust_store);
 
-  CertIssuersIter(const CertIssuersIter&) = delete;
-  CertIssuersIter& operator=(const CertIssuersIter&) = delete;
+  CertIssuersIter(const CertIssuersIter &) = delete;
+  CertIssuersIter &operator=(const CertIssuersIter &) = delete;
 
   // Gets the next candidate issuer, or clears |*out| when all issuers have been
   // exhausted.
-  void GetNextIssuer(IssuerEntry* out);
+  void GetNextIssuer(IssuerEntry *out);
 
   // Returns true if candidate issuers were found for |cert_|.
   bool had_non_skipped_issuers() const {
@@ -186,7 +185,7 @@ class CertIssuersIter {
   void increment_skipped_issuer_count() { skipped_issuer_count_++; }
 
   // Returns the |cert| for which issuers are being retrieved.
-  const ParsedCertificate* cert() const { return cert_.get(); }
+  const ParsedCertificate *cert() const { return cert_.get(); }
   std::shared_ptr<const ParsedCertificate> reference_cert() const {
     return cert_;
   }
@@ -203,8 +202,8 @@ class CertIssuersIter {
   void SortRemainingIssuers();
 
   std::shared_ptr<const ParsedCertificate> cert_;
-  CertIssuerSources* cert_issuer_sources_;
-  TrustStore* trust_store_;
+  CertIssuerSources *cert_issuer_sources_;
+  TrustStore *trust_store_;
 
   // The list of issuers for |cert_|. This is added to incrementally (first
   // synchronous results, then possibly multiple times as asynchronous results
@@ -241,18 +240,17 @@ class CertIssuersIter {
 
 CertIssuersIter::CertIssuersIter(
     std::shared_ptr<const ParsedCertificate> in_cert,
-    CertIssuerSources* cert_issuer_sources,
-    TrustStore* trust_store)
+    CertIssuerSources *cert_issuer_sources, TrustStore *trust_store)
     : cert_(std::move(in_cert)),
       cert_issuer_sources_(cert_issuer_sources),
       trust_store_(trust_store) {
   DVLOG(2) << "CertIssuersIter created for " << CertDebugString(cert());
 }
 
-void CertIssuersIter::GetNextIssuer(IssuerEntry* out) {
+void CertIssuersIter::GetNextIssuer(IssuerEntry *out) {
   if (!did_initial_query_) {
     did_initial_query_ = true;
-    for (auto* cert_issuer_source : *cert_issuer_sources_) {
+    for (auto *cert_issuer_source : *cert_issuer_sources_) {
       ParsedCertificateList new_issuers;
       cert_issuer_source->SyncGetIssuersOf(cert(), &new_issuers);
       AddIssuers(std::move(new_issuers));
@@ -301,7 +299,7 @@ void CertIssuersIter::GetNextIssuer(IssuerEntry* out) {
 }
 
 void CertIssuersIter::AddIssuers(ParsedCertificateList new_issuers) {
-  for (std::shared_ptr<const ParsedCertificate>& issuer : new_issuers) {
+  for (std::shared_ptr<const ParsedCertificate> &issuer : new_issuers) {
     if (present_issuers_.find(issuer->der_cert().AsStringView()) !=
         present_issuers_.end())
       continue;
@@ -323,7 +321,7 @@ void CertIssuersIter::DoAsyncIssuerQuery() {
   BSSL_CHECK(!did_async_issuer_query_);
   did_async_issuer_query_ = true;
   cur_async_request_ = 0;
-  for (auto* cert_issuer_source : *cert_issuer_sources_) {
+  for (auto *cert_issuer_source : *cert_issuer_sources_) {
     std::unique_ptr<CertIssuerSource::Request> request;
     cert_issuer_source->AsyncGetIssuersOf(cert(), &request);
     if (request) {
@@ -339,7 +337,7 @@ void CertIssuersIter::SortRemainingIssuers() {
 
   std::stable_sort(
       issuers_.begin() + cur_issuer_, issuers_.end(),
-      [](const IssuerEntry& issuer1, const IssuerEntry& issuer2) {
+      [](const IssuerEntry &issuer1, const IssuerEntry &issuer2) {
         // TODO(crbug.com/635205): Add other prioritization hints. (See big list
         // of possible sorting hints in RFC 4158.)
         const bool issuer1_self_issued = issuer1.cert->normalized_subject() ==
@@ -371,7 +369,7 @@ void CertIssuersIter::SortRemainingIssuers() {
 class CertIssuerIterPath {
  public:
   // Returns true if |cert| is already present in the path.
-  bool IsPresent(const ParsedCertificate* cert) const {
+  bool IsPresent(const ParsedCertificate *cert) const {
     return present_certs_.find(GetKey(cert)) != present_certs_.end();
   }
 
@@ -392,9 +390,9 @@ class CertIssuerIterPath {
   }
 
   // Copies the ParsedCertificate elements of the current path to |*out_path|.
-  void CopyPath(ParsedCertificateList* out_path) {
+  void CopyPath(ParsedCertificateList *out_path) {
     out_path->clear();
-    for (const auto& node : cur_path_)
+    for (const auto &node : cur_path_)
       out_path->push_back(node->reference_cert());
   }
 
@@ -402,14 +400,14 @@ class CertIssuerIterPath {
   bool Empty() const { return cur_path_.empty(); }
 
   // Returns the last CertIssuersIter in the path.
-  CertIssuersIter* back() { return cur_path_.back().get(); }
+  CertIssuersIter *back() { return cur_path_.back().get(); }
 
   // Returns the length of the path.
   size_t Length() const { return cur_path_.size(); }
 
   std::string PathDebugString() {
     std::string s;
-    for (const auto& node : cur_path_) {
+    for (const auto &node : cur_path_) {
       if (!s.empty())
         s += "\n";
       s += " " + CertDebugString(node->cert());
@@ -420,7 +418,7 @@ class CertIssuerIterPath {
  private:
   using Key = std::tuple<std::string_view, std::string_view, std::string_view>;
 
-  static Key GetKey(const ParsedCertificate* cert) {
+  static Key GetKey(const ParsedCertificate *cert) {
     // TODO(mattm): ideally this would use a normalized version of
     // SubjectAltName, but it's not that important just for LoopChecker.
     //
@@ -441,7 +439,7 @@ class CertIssuerIterPath {
 
 }  // namespace
 
-const ParsedCertificate* CertPathBuilderResultPath::GetTrustedCert() const {
+const ParsedCertificate *CertPathBuilderResultPath::GetTrustedCert() const {
   if (certs.empty())
     return nullptr;
 
@@ -465,15 +463,15 @@ const ParsedCertificate* CertPathBuilderResultPath::GetTrustedCert() const {
 class CertPathIter {
  public:
   CertPathIter(std::shared_ptr<const ParsedCertificate> cert,
-               TrustStore* trust_store);
+               TrustStore *trust_store);
 
-  CertPathIter(const CertPathIter&) = delete;
-  CertPathIter& operator=(const CertPathIter&) = delete;
+  CertPathIter(const CertPathIter &) = delete;
+  CertPathIter &operator=(const CertPathIter &) = delete;
 
   // Adds a CertIssuerSource to provide intermediates for use in path building.
   // The |*cert_issuer_source| must remain valid for the lifetime of the
   // CertPathIter.
-  void AddCertIssuerSource(CertIssuerSource* cert_issuer_source);
+  void AddCertIssuerSource(CertIssuerSource *cert_issuer_source);
 
   // Gets the next candidate path, and fills it into |out_certs| and
   // |out_last_cert_trust|. Note that the returned path is unverified and must
@@ -484,11 +482,10 @@ class CertPathIter {
   // and continue path building. Once all paths have been exhausted returns
   // false. If deadline or iteration limit is exceeded, sets |out_certs| to the
   // current path being explored and returns false.
-  bool GetNextPath(ParsedCertificateList* out_certs,
-                   CertificateTrust* out_last_cert_trust,
-                   CertPathErrors* out_errors,
-                   CertPathBuilderDelegate* delegate,
-                   uint32_t* iteration_count,
+  bool GetNextPath(ParsedCertificateList *out_certs,
+                   CertificateTrust *out_last_cert_trust,
+                   CertPathErrors *out_errors,
+                   CertPathBuilderDelegate *delegate, uint32_t *iteration_count,
                    const uint32_t max_iteration_count,
                    const uint32_t max_path_building_depth);
 
@@ -503,26 +500,26 @@ class CertPathIter {
   // The CertIssuerSources for retrieving candidate issuers.
   CertIssuerSources cert_issuer_sources_;
   // The TrustStore for checking if a path ends in a trust anchor.
-  TrustStore* trust_store_;
+  TrustStore *trust_store_;
 };
 
 CertPathIter::CertPathIter(std::shared_ptr<const ParsedCertificate> cert,
-                           TrustStore* trust_store)
+                           TrustStore *trust_store)
     : trust_store_(trust_store) {
   // Initialize |next_issuer_| to the target certificate.
   next_issuer_.cert = std::move(cert);
   next_issuer_.trust = trust_store_->GetTrust(next_issuer_.cert.get());
 }
 
-void CertPathIter::AddCertIssuerSource(CertIssuerSource* cert_issuer_source) {
+void CertPathIter::AddCertIssuerSource(CertIssuerSource *cert_issuer_source) {
   cert_issuer_sources_.push_back(cert_issuer_source);
 }
 
-bool CertPathIter::GetNextPath(ParsedCertificateList* out_certs,
-                               CertificateTrust* out_last_cert_trust,
-                               CertPathErrors* out_errors,
-                               CertPathBuilderDelegate* delegate,
-                               uint32_t* iteration_count,
+bool CertPathIter::GetNextPath(ParsedCertificateList *out_certs,
+                               CertificateTrust *out_last_cert_trust,
+                               CertPathErrors *out_errors,
+                               CertPathBuilderDelegate *delegate,
+                               uint32_t *iteration_count,
                                const uint32_t max_iteration_count,
                                const uint32_t max_path_building_depth) {
   out_certs->clear();
@@ -690,16 +687,17 @@ bool CertPathBuilderResultPath::IsValid() const {
 }
 
 CertPathBuilder::Result::Result() = default;
-CertPathBuilder::Result::Result(Result&&) = default;
+CertPathBuilder::Result::Result(Result &&) = default;
 CertPathBuilder::Result::~Result() = default;
-CertPathBuilder::Result& CertPathBuilder::Result::operator=(Result&&) = default;
+CertPathBuilder::Result &CertPathBuilder::Result::operator=(Result &&) =
+    default;
 
 bool CertPathBuilder::Result::HasValidPath() const {
   return GetBestValidPath() != nullptr;
 }
 
 bool CertPathBuilder::Result::AnyPathContainsError(CertErrorId error_id) const {
-  for (const auto& path : paths) {
+  for (const auto &path : paths) {
     if (path->errors.ContainsError(error_id))
       return true;
   }
@@ -707,9 +705,9 @@ bool CertPathBuilder::Result::AnyPathContainsError(CertErrorId error_id) const {
   return false;
 }
 
-const CertPathBuilderResultPath* CertPathBuilder::Result::GetBestValidPath()
+const CertPathBuilderResultPath *CertPathBuilder::Result::GetBestValidPath()
     const {
-  const CertPathBuilderResultPath* result_path = GetBestPathPossiblyInvalid();
+  const CertPathBuilderResultPath *result_path = GetBestPathPossiblyInvalid();
 
   if (result_path && result_path->IsValid())
     return result_path;
@@ -717,7 +715,7 @@ const CertPathBuilderResultPath* CertPathBuilder::Result::GetBestValidPath()
   return nullptr;
 }
 
-const CertPathBuilderResultPath*
+const CertPathBuilderResultPath *
 CertPathBuilder::Result::GetBestPathPossiblyInvalid() const {
   BSSL_CHECK((paths.empty() && best_result_index == 0) ||
              best_result_index < paths.size());
@@ -729,13 +727,10 @@ CertPathBuilder::Result::GetBestPathPossiblyInvalid() const {
 }
 
 CertPathBuilder::CertPathBuilder(
-    std::shared_ptr<const ParsedCertificate> cert,
-    TrustStore* trust_store,
-    CertPathBuilderDelegate* delegate,
-    const der::GeneralizedTime& time,
-    KeyPurpose key_purpose,
-    InitialExplicitPolicy initial_explicit_policy,
-    const std::set<der::Input>& user_initial_policy_set,
+    std::shared_ptr<const ParsedCertificate> cert, TrustStore *trust_store,
+    CertPathBuilderDelegate *delegate, const der::GeneralizedTime &time,
+    KeyPurpose key_purpose, InitialExplicitPolicy initial_explicit_policy,
+    const std::set<der::Input> &user_initial_policy_set,
     InitialPolicyMappingInhibit initial_policy_mapping_inhibit,
     InitialAnyPolicyInhibit initial_any_policy_inhibit)
     : cert_path_iter_(
@@ -755,7 +750,7 @@ CertPathBuilder::CertPathBuilder(
 CertPathBuilder::~CertPathBuilder() = default;
 
 void CertPathBuilder::AddCertIssuerSource(
-    CertIssuerSource* cert_issuer_source) {
+    CertIssuerSource *cert_issuer_source) {
   cert_path_iter_->AddCertIssuerSource(cert_issuer_source);
 }
 
@@ -846,7 +841,7 @@ void CertPathBuilder::AddResultPath(
   // best_result_index based on prioritization (since due to AIA and such, the
   // actual order results were discovered may not match the ideal).
   if (!out_result_.HasValidPath()) {
-    const CertPathBuilderResultPath* old_best_path =
+    const CertPathBuilderResultPath *old_best_path =
         out_result_.GetBestPathPossiblyInvalid();
     // If |result_path| is a valid path or if the previous best result did not
     // end in a trust anchor but the |result_path| does, then update the best
@@ -863,4 +858,4 @@ void CertPathBuilder::AddResultPath(
   out_result_.paths.push_back(std::move(result_path));
 }
 
-}  // namespace net
+}  // namespace bssl

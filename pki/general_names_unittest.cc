@@ -4,15 +4,15 @@
 
 #include "general_names.h"
 
-#include "test_helpers.h"
 #include <gtest/gtest.h>
+#include "test_helpers.h"
 
 namespace bssl {
 namespace {
 
-::testing::AssertionResult LoadTestData(const char* token,
-                                        const std::string& basename,
-                                        std::string* result) {
+::testing::AssertionResult LoadTestData(const char *token,
+                                        const std::string &basename,
+                                        std::string *result) {
   std::string path = "testdata/name_constraints_unittest/" + basename;
 
   const PemBlockMapping mappings[] = {
@@ -23,13 +23,11 @@ namespace {
 }
 
 ::testing::AssertionResult LoadTestSubjectAltNameData(
-    const std::string& basename,
-    std::string* result) {
+    const std::string &basename, std::string *result) {
   return LoadTestData("SUBJECT ALTERNATIVE NAME", basename, result);
 }
 
-void ReplaceFirstSubstring(std::string* str,
-                           std::string_view substr,
+void ReplaceFirstSubstring(std::string *str, std::string_view substr,
                            std::string_view replacement) {
   size_t idx = str->find(substr);
   if (idx != std::string::npos) {
@@ -225,4 +223,4 @@ TEST(GeneralNames, RegisteredIDs) {
   EXPECT_EQ(der::Input(expected_der), general_names->registered_ids[0]);
 }
 
-}  // namespace net
+}  // namespace bssl

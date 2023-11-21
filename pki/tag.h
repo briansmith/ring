@@ -5,8 +5,8 @@
 #ifndef BSSL_DER_TAG_H_
 #define BSSL_DER_TAG_H_
 
-#include "fillins/openssl_util.h"
 #include <stdint.h>
+#include "fillins/openssl_util.h"
 
 
 #include <openssl/bytestring.h>

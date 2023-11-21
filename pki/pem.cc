@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "string_util.h"
 #include "pem.h"
+#include "string_util.h"
 
-#include "fillins/fillins_base64.h"
 #include <string_view>
+#include "fillins/fillins_base64.h"
 
 #include "fillins/fillins_string_util.h"
 
@@ -29,8 +29,7 @@ struct PEMTokenizer::PEMType {
 };
 
 PEMTokenizer::PEMTokenizer(
-    std::string_view str,
-    const std::vector<std::string>& allowed_block_types) {
+    std::string_view str, const std::vector<std::string> &allowed_block_types) {
   Init(str, allowed_block_types);
 }
 
@@ -62,9 +61,10 @@ bool PEMTokenizer::GetNext() {
       pos_ = footer_pos + it->footer.size();
       block_type_ = it->type;
 
-      std::string_view encoded = str_.substr(data_begin, footer_pos - data_begin);
-      if (!fillins::Base64Decode(fillins::CollapseWhitespaceASCII(encoded, true),
-                              &data_)) {
+      std::string_view encoded =
+          str_.substr(data_begin, footer_pos - data_begin);
+      if (!fillins::Base64Decode(
+              fillins::CollapseWhitespaceASCII(encoded, true), &data_)) {
         // The most likely cause for a decode failure is a datatype that
         // includes PEM headers, which are not supported.
         break;
@@ -85,13 +85,13 @@ bool PEMTokenizer::GetNext() {
 }
 
 void PEMTokenizer::Init(std::string_view str,
-                        const std::vector<std::string>& allowed_block_types) {
+                        const std::vector<std::string> &allowed_block_types) {
   str_ = str;
   pos_ = 0;
 
   // Construct PEM header/footer strings for all the accepted types, to
   // reduce parsing later.
-  for (const auto& allowed_block_type : allowed_block_types) {
+  for (const auto &allowed_block_type : allowed_block_types) {
     PEMType allowed_type;
     allowed_type.type = allowed_block_type;
     allowed_type.header = kPEMHeaderBeginBlock;
@@ -104,7 +104,7 @@ void PEMTokenizer::Init(std::string_view str,
   }
 }
 
-std::string PEMEncode(std::string_view data, const std::string& type) {
+std::string PEMEncode(std::string_view data, const std::string &type) {
   std::string b64_encoded;
   fillins::Base64Encode(data, &b64_encoded);
 
@@ -140,4 +140,4 @@ std::string PEMEncode(std::string_view data, const std::string& type) {
   return pem_encoded;
 }
 
-}  // namespace net
+}  // namespace bssl

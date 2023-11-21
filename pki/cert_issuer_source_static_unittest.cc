@@ -4,9 +4,9 @@
 
 #include "cert_issuer_source_static.h"
 
+#include <gtest/gtest.h>
 #include "cert_issuer_source_sync_unittest.h"
 #include "parsed_certificate.h"
-#include <gtest/gtest.h>
 
 namespace bssl {
 
@@ -18,7 +18,7 @@ class CertIssuerSourceStaticTestDelegate {
     source_.AddCert(std::move(cert));
   }
 
-  CertIssuerSource& source() { return source_; }
+  CertIssuerSource &source() { return source_; }
 
  protected:
   CertIssuerSourceStatic source_;
@@ -37,4 +37,4 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(
 
 }  // namespace
 
-}  // namespace net
+}  // namespace bssl

@@ -4,9 +4,9 @@
 
 #include "trust_store_collection.h"
 
+#include <gtest/gtest.h>
 #include "test_helpers.h"
 #include "trust_store_in_memory.h"
-#include <gtest/gtest.h>
 
 namespace bssl {
 
@@ -185,4 +185,4 @@ TEST_F(TrustStoreCollectionTest, DistrustTakesPriority) {
 
 }  // namespace
 
-}  // namespace net
+}  // namespace bssl

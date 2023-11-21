@@ -5,20 +5,20 @@
 #ifndef BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_TYPED_UNITTEST_H_
 #define BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_TYPED_UNITTEST_H_
 
+#include <gtest/gtest.h>
+#include "input.h"
 #include "parsed_certificate.h"
 #include "simple_path_builder_delegate.h"
 #include "test_helpers.h"
 #include "trust_store.h"
 #include "verify_certificate_chain.h"
-#include "input.h"
-#include <gtest/gtest.h>
 
 namespace bssl {
 
 template <typename TestDelegate>
 class VerifyCertificateChainTest : public ::testing::Test {
  public:
-  void RunTest(const char* file_name) {
+  void RunTest(const char *file_name) {
     VerifyCertChainTest test;
 
     std::string path =
@@ -318,29 +318,17 @@ TYPED_TEST_P(VerifyCertificateChainSingleRootTest, TargetSelfSigned) {
 // TODO(eroman): Add test that invalid validity dates where the day or month
 // ordinal not in range, like "March 39, 2016" are rejected.
 
-REGISTER_TYPED_TEST_SUITE_P(VerifyCertificateChainSingleRootTest,
-                            Simple,
-                            BasicConstraintsCa,
-                            BasicConstraintsPathlen,
-                            UnknownExtension,
-                            MSApplicationPolicies,
-                            WeakSignature,
-                            WrongSignature,
-                            LastCertificateNotTrusted,
-                            WeakPublicKey,
-                            TargetSignedUsingEcdsa,
-                            Expired,
-                            TargetNotEndEntity,
-                            KeyUsage,
-                            ExtendedKeyUsage,
+REGISTER_TYPED_TEST_SUITE_P(VerifyCertificateChainSingleRootTest, Simple,
+                            BasicConstraintsCa, BasicConstraintsPathlen,
+                            UnknownExtension, MSApplicationPolicies,
+                            WeakSignature, WrongSignature,
+                            LastCertificateNotTrusted, WeakPublicKey,
+                            TargetSignedUsingEcdsa, Expired, TargetNotEndEntity,
+                            KeyUsage, ExtendedKeyUsage,
                             IssuerAndSubjectNotByteForByteEqual,
-                            TrustAnchorNotSelfSigned,
-                            KeyRollover,
-                            Policies,
-                            ManyNames,
-                            TargetOnly,
-                            TargetSelfSigned);
+                            TrustAnchorNotSelfSigned, KeyRollover, Policies,
+                            ManyNames, TargetOnly, TargetSelfSigned);
 
-}  // namespace net
+}  // namespace bssl
 
 #endif  // BSSL_PKI_VERIFY_CERTIFICATE_CHAIN_TYPED_UNITTEST_H_

@@ -6,10 +6,10 @@
 
 #include <cassert>
 
-#include "string_util.h"
-#include "parse_values.h"
 #include <openssl/bytestring.h>
 #include <openssl/mem.h>
+#include "parse_values.h"
+#include "string_util.h"
 
 namespace bssl {
 
@@ -28,7 +28,7 @@ std::string OidToString(der::Input oid) {
 
 }  // namespace
 
-bool X509NameAttribute::ValueAsString(std::string* out) const {
+bool X509NameAttribute::ValueAsString(std::string *out) const {
   switch (value_tag) {
     case der::kTeletexString:
       return der::ParseTeletexStringAsLatin1(value, out);
@@ -49,8 +49,7 @@ bool X509NameAttribute::ValueAsString(std::string* out) const {
 }
 
 bool X509NameAttribute::ValueAsStringWithUnsafeOptions(
-    PrintableStringHandling printable_string_handling,
-    std::string* out) const {
+    PrintableStringHandling printable_string_handling, std::string *out) const {
   if (printable_string_handling == PrintableStringHandling::kAsUTF8Hack &&
       value_tag == der::kPrintableString) {
     *out = value.AsString();
@@ -59,7 +58,7 @@ bool X509NameAttribute::ValueAsStringWithUnsafeOptions(
   return ValueAsString(out);
 }
 
-bool X509NameAttribute::ValueAsStringUnsafe(std::string* out) const {
+bool X509NameAttribute::ValueAsStringUnsafe(std::string *out) const {
   switch (value_tag) {
     case der::kIA5String:
     case der::kPrintableString:
@@ -77,7 +76,7 @@ bool X509NameAttribute::ValueAsStringUnsafe(std::string* out) const {
   }
 }
 
-bool X509NameAttribute::AsRFC2253String(std::string* out) const {
+bool X509NameAttribute::AsRFC2253String(std::string *out) const {
   std::string type_string;
   std::string value_string;
   // TODO(mattm): Add streetAddress and domainComponent here?
@@ -131,7 +130,7 @@ bool X509NameAttribute::AsRFC2253String(std::string* out) const {
         h += c;
         value_string +=
             "\\" + bssl::string_util::HexEncode(
-                       reinterpret_cast<const uint8_t*>(h.data()), h.length());
+                       reinterpret_cast<const uint8_t *>(h.data()), h.length());
       } else {
         value_string += c;
       }
@@ -140,15 +139,15 @@ bool X509NameAttribute::AsRFC2253String(std::string* out) const {
     // If we have non-printable characters in a TeletexString, we hex encode
     // since we don't handle Teletex control codes.
     if (nonprintable && value_tag == der::kTeletexString)
-      value_string =
-          "#" + bssl::string_util::HexEncode(value.UnsafeData(), value.Length());
+      value_string = "#" + bssl::string_util::HexEncode(value.UnsafeData(),
+                                                        value.Length());
   }
 
   *out = type_string + "=" + value_string;
   return true;
 }
 
-bool ReadRdn(der::Parser* parser, RelativeDistinguishedName* out) {
+bool ReadRdn(der::Parser *parser, RelativeDistinguishedName *out) {
   while (parser->HasMore()) {
     der::Parser attr_type_and_value;
     if (!parser->ReadSequence(&attr_type_and_value))
@@ -177,7 +176,7 @@ bool ReadRdn(der::Parser* parser, RelativeDistinguishedName* out) {
   return out->size() != 0;
 }
 
-bool ParseName(const der::Input& name_tlv, RDNSequence* out) {
+bool ParseName(const der::Input &name_tlv, RDNSequence *out) {
   der::Parser name_parser(name_tlv);
   der::Input name_value;
   if (!name_parser.ReadTag(der::kSequence, &name_value))
@@ -185,7 +184,7 @@ bool ParseName(const der::Input& name_tlv, RDNSequence* out) {
   return ParseNameValue(name_value, out);
 }
 
-bool ParseNameValue(const der::Input& name_value, RDNSequence* out) {
+bool ParseNameValue(const der::Input &name_value, RDNSequence *out) {
   der::Parser rdn_sequence_parser(name_value);
   while (rdn_sequence_parser.HasMore()) {
     der::Parser rdn_parser;
@@ -200,13 +199,13 @@ bool ParseNameValue(const der::Input& name_value, RDNSequence* out) {
   return true;
 }
 
-bool ConvertToRFC2253(const RDNSequence& rdn_sequence, std::string* out) {
+bool ConvertToRFC2253(const RDNSequence &rdn_sequence, std::string *out) {
   std::string rdns_string;
   size_t size = rdn_sequence.size();
   for (size_t i = 0; i < size; ++i) {
     RelativeDistinguishedName rdn = rdn_sequence[size - i - 1];
     std::string rdn_string;
-    for (const auto& atv : rdn) {
+    for (const auto &atv : rdn) {
       if (!rdn_string.empty())
         rdn_string += "+";
       std::string atv_string;
@@ -223,4 +222,4 @@ bool ConvertToRFC2253(const RDNSequence& rdn_sequence, std::string* out) {
   return true;
 }
 
-}  // namespace net
+}  // namespace bssl

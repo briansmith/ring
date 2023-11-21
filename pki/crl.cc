@@ -9,14 +9,14 @@
 
 #include "cert_errors.h"
 #include "crl.h"
-#include "revocation_util.h"
-#include "signature_algorithm.h"
-#include "verify_name_match.h"
-#include "verify_signed_data.h"
 #include "input.h"
 #include "parse_values.h"
 #include "parser.h"
+#include "revocation_util.h"
+#include "signature_algorithm.h"
 #include "tag.h"
+#include "verify_name_match.h"
+#include "verify_signed_data.h"
 
 namespace bssl {
 
@@ -26,8 +26,8 @@ namespace {
 // In dotted notation: 2.5.29.28
 inline constexpr uint8_t kIssuingDistributionPointOid[] = {0x55, 0x1d, 0x1c};
 
-[[nodiscard]] bool NormalizeNameTLV(const der::Input& name_tlv,
-                                    std::string* out_normalized_name) {
+[[nodiscard]] bool NormalizeNameTLV(const der::Input &name_tlv,
+                                    std::string *out_normalized_name) {
   der::Parser parser(name_tlv);
   der::Input name_rdn;
   bssl::CertErrors unused_errors;
@@ -48,10 +48,10 @@ bool ContainsExactMatchingName(std::vector<std::string_view> a,
 
 }  // namespace
 
-bool ParseCrlCertificateList(const der::Input& crl_tlv,
-                             der::Input* out_tbs_cert_list_tlv,
-                             der::Input* out_signature_algorithm_tlv,
-                             der::BitString* out_signature_value) {
+bool ParseCrlCertificateList(const der::Input &crl_tlv,
+                             der::Input *out_tbs_cert_list_tlv,
+                             der::Input *out_signature_algorithm_tlv,
+                             der::BitString *out_signature_value) {
   der::Parser parser(crl_tlv);
 
   //   CertificateList  ::=  SEQUENCE  {
@@ -86,7 +86,7 @@ bool ParseCrlCertificateList(const der::Input& crl_tlv,
   return true;
 }
 
-bool ParseCrlTbsCertList(const der::Input& tbs_tlv, ParsedCrlTbsCertList* out) {
+bool ParseCrlTbsCertList(const der::Input &tbs_tlv, ParsedCrlTbsCertList *out) {
   der::Parser parser(tbs_tlv);
 
   //   TBSCertList  ::=  SEQUENCE  {
@@ -179,9 +179,9 @@ bool ParseCrlTbsCertList(const der::Input& tbs_tlv, ParsedCrlTbsCertList* out) {
 }
 
 bool ParseIssuingDistributionPoint(
-    const der::Input& extension_value,
-    std::unique_ptr<GeneralNames>* out_distribution_point_names,
-    ContainedCertsType* out_only_contains_cert_type) {
+    const der::Input &extension_value,
+    std::unique_ptr<GeneralNames> *out_distribution_point_names,
+    ContainedCertsType *out_only_contains_cert_type) {
   der::Parser idp_extension_value_parser(extension_value);
   // IssuingDistributionPoint ::= SEQUENCE {
   der::Parser idp_parser;
@@ -278,9 +278,8 @@ bool ParseIssuingDistributionPoint(
 }
 
 CRLRevocationStatus GetCRLStatusForCert(
-    const der::Input& cert_serial,
-    CrlVersion crl_version,
-    const std::optional<der::Input>& revoked_certificates_tlv) {
+    const der::Input &cert_serial, CrlVersion crl_version,
+    const std::optional<der::Input> &revoked_certificates_tlv) {
   if (!revoked_certificates_tlv.has_value()) {
     // RFC 5280 Section 5.1.2.6: "When there are no revoked certificates, the
     // revoked certificates list MUST be absent."
@@ -340,7 +339,7 @@ CRLRevocationStatus GetCRLStatusForCert(
       // RFC 5280 Section 5.3: "If a CRL contains a critical CRL entry
       // extension that the application cannot process, then the application
       // MUST NOT use that CRL to determine the status of any certificates."
-      for (const auto& ext : extensions) {
+      for (const auto &ext : extensions) {
         if (ext.second.critical)
           return CRLRevocationStatus::UNKNOWN;
       }
@@ -367,9 +366,9 @@ ParsedCrlTbsCertList::ParsedCrlTbsCertList() = default;
 ParsedCrlTbsCertList::~ParsedCrlTbsCertList() = default;
 
 CRLRevocationStatus CheckCRL(std::string_view raw_crl,
-                             const ParsedCertificateList& valid_chain,
+                             const ParsedCertificateList &valid_chain,
                              size_t target_cert_index,
-                             const ParsedDistributionPoint& cert_dp,
+                             const ParsedDistributionPoint &cert_dp,
                              int64_t verify_time_epoch_seconds,
                              std::optional<int64_t> max_age_seconds) {
   BSSL_CHECK(target_cert_index < valid_chain.size());
@@ -385,7 +384,7 @@ CRLRevocationStatus CheckCRL(std::string_view raw_crl,
     return CRLRevocationStatus::UNKNOWN;
   }
 
-  const ParsedCertificate* target_cert = valid_chain[target_cert_index].get();
+  const ParsedCertificate *target_cert = valid_chain[target_cert_index].get();
 
   // 6.3.3 (a) Update the local CRL cache by obtaining a complete CRL, a
   //           delta CRL, or both, as required.
@@ -558,7 +557,7 @@ CRLRevocationStatus CheckCRL(std::string_view raw_crl,
       }
     }
 
-    for (const auto& ext : extensions) {
+    for (const auto &ext : extensions) {
       // Fail if any unhandled critical CRL extensions are present.
       if (ext.second.critical)
         return CRLRevocationStatus::UNKNOWN;
@@ -578,7 +577,7 @@ CRLRevocationStatus CheckCRL(std::string_view raw_crl,
   // PKITS 4.5.3 to pass when it seems like it would not be intended to (since
   // issuingDistributionPoint CRL extension is not handled).
   for (size_t i = target_cert_index + 1; i < valid_chain.size(); ++i) {
-    const ParsedCertificate* issuer_cert = valid_chain[i].get();
+    const ParsedCertificate *issuer_cert = valid_chain[i].get();
 
     // 6.3.3 (f) Obtain and validate the certification path for the issuer of
     //           the complete CRL.  The trust anchor for the certification
@@ -628,4 +627,4 @@ CRLRevocationStatus CheckCRL(std::string_view raw_crl,
   return CRLRevocationStatus::UNKNOWN;
 }
 
-}  // namespace net
+}  // namespace bssl
