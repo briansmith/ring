@@ -72,25 +72,27 @@ impl aead::NonceSequence for NonceSequence {
 fn seal_in_place_separate_tag(c: &mut Criterion) {
     let rng = SystemRandom::new();
 
-    for ((alg_name, algorithm), record_len) in ALGORITHMS.iter().zip(RECORD_LENGTHS.iter()) {
-        c.bench_with_input(
-            bench_id("seal_in_place_separate_tag", alg_name, *record_len),
-            record_len,
-            |b, record_len| {
-                let mut key_bytes = vec![0u8; algorithm.key_len()];
-                rng.fill(&mut key_bytes).unwrap();
-                let unbound_key = aead::UnboundKey::new(algorithm, &key_bytes).unwrap();
-                let mut key = aead::SealingKey::new(unbound_key, NonceSequence::new());
+    for &(alg_name, algorithm) in ALGORITHMS {
+        for record_len in RECORD_LENGTHS {
+            c.bench_with_input(
+                bench_id("seal_in_place_separate_tag", alg_name, *record_len),
+                record_len,
+                |b, record_len| {
+                    let mut key_bytes = vec![0u8; algorithm.key_len()];
+                    rng.fill(&mut key_bytes).unwrap();
+                    let unbound_key = aead::UnboundKey::new(algorithm, &key_bytes).unwrap();
+                    let mut key = aead::SealingKey::new(unbound_key, NonceSequence::new());
 
-                let mut in_out = vec![0u8; *record_len];
+                    let mut in_out = vec![0u8; *record_len];
 
-                b.iter(|| -> Result<(), ring::error::Unspecified> {
-                    let aad = aead::Aad::from(black_box(TLS_AD));
-                    let _tag = key.seal_in_place_separate_tag(aad, &mut in_out).unwrap();
-                    Ok(())
-                })
-            },
-        );
+                    b.iter(|| -> Result<(), ring::error::Unspecified> {
+                        let aad = aead::Aad::from(black_box(TLS_AD));
+                        let _tag = key.seal_in_place_separate_tag(aad, &mut in_out).unwrap();
+                        Ok(())
+                    })
+                },
+            );
+        }
     }
 }
 
