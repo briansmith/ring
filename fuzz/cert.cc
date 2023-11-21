@@ -16,7 +16,7 @@
 #include <openssl/mem.h>
 #include <openssl/x509.h>
 
-#include "../crypto/x509v3/internal.h"
+#include "../crypto/x509/internal.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   X509 *x509 = d2i_X509(NULL, &buf, len);

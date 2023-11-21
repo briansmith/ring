@@ -76,9 +76,9 @@ set(
   crypto/test/file_test_gtest.cc
   crypto/test/gtest_main.cc
   crypto/trust_token/trust_token_test.cc
+  crypto/x509/tab_test.cc
   crypto/x509/x509_test.cc
   crypto/x509/x509_time_test.cc
-  crypto/x509v3/tab_test.cc
 )
 
 set(

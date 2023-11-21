@@ -242,7 +242,42 @@ add_library(
   x509/t_req.c
   x509/t_x509.c
   x509/t_x509a.c
-  x509/x509.c
+  x509/v3_akey.c
+  x509/v3_akeya.c
+  x509/v3_alt.c
+  x509/v3_bcons.c
+  x509/v3_bitst.c
+  x509/v3_conf.c
+  x509/v3_cpols.c
+  x509/v3_crld.c
+  x509/v3_enum.c
+  x509/v3_extku.c
+  x509/v3_genn.c
+  x509/v3_ia5.c
+  x509/v3_info.c
+  x509/v3_int.c
+  x509/v3_lib.c
+  x509/v3_ncons.c
+  x509/v3_ocsp.c
+  x509/v3_pcons.c
+  x509/v3_pmaps.c
+  x509/v3_prn.c
+  x509/v3_purp.c
+  x509/v3_skey.c
+  x509/v3_utl.c
+  x509/x_algor.c
+  x509/x_all.c
+  x509/x_attrib.c
+  x509/x_crl.c
+  x509/x_exten.c
+  x509/x_name.c
+  x509/x_pubkey.c
+  x509/x_req.c
+  x509/x_sig.c
+  x509/x_spki.c
+  x509/x_val.c
+  x509/x_x509.c
+  x509/x_x509a.c
   x509/x509_att.c
   x509/x509_cmp.c
   x509/x509_d2.c
@@ -257,46 +292,11 @@ add_library(
   x509/x509_v3.c
   x509/x509_vfy.c
   x509/x509_vpm.c
+  x509/x509.c
   x509/x509cset.c
   x509/x509name.c
   x509/x509rset.c
   x509/x509spki.c
-  x509/x_algor.c
-  x509/x_all.c
-  x509/x_attrib.c
-  x509/x_crl.c
-  x509/x_exten.c
-  x509/x_name.c
-  x509/x_pubkey.c
-  x509/x_req.c
-  x509/x_sig.c
-  x509/x_spki.c
-  x509/x_val.c
-  x509/x_x509.c
-  x509/x_x509a.c
-  x509v3/v3_akey.c
-  x509v3/v3_akeya.c
-  x509v3/v3_alt.c
-  x509v3/v3_bcons.c
-  x509v3/v3_bitst.c
-  x509v3/v3_conf.c
-  x509v3/v3_cpols.c
-  x509v3/v3_crld.c
-  x509v3/v3_enum.c
-  x509v3/v3_extku.c
-  x509v3/v3_genn.c
-  x509v3/v3_ia5.c
-  x509v3/v3_info.c
-  x509v3/v3_int.c
-  x509v3/v3_lib.c
-  x509v3/v3_ncons.c
-  x509v3/v3_ocsp.c
-  x509v3/v3_pcons.c
-  x509v3/v3_pmaps.c
-  x509v3/v3_prn.c
-  x509v3/v3_purp.c
-  x509v3/v3_skey.c
-  x509v3/v3_utl.c
 
   $<TARGET_OBJECTS:fipsmodule>
   ${CRYPTO_FIPS_OBJECTS}
