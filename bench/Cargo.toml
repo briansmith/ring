@@ -21,6 +21,11 @@ harness = false
 path = "agreement.rs"
 
 [[bench]]
+name = "digest"
+harness = false
+path = "digest.rs"
+
+[[bench]]
 name = "ecdsa"
 harness = false
 path = "ecdsa.rs"
