@@ -1648,13 +1648,8 @@ void X509_STORE_CTX_free(X509_STORE_CTX *ctx) {
 
 int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
                         STACK_OF(X509) *chain) {
-  // TODO(davidben): This is a remnant of when |X509_STORE_CTX| was a
-  // stack-allocatable function. Now that it is heap-allocated, we don't need to
-  // worry about uninitialized memory in |ctx|. Move the memset to
-  // |X509_STORE_CTX_cleanup| and call |X509_STORE_CTX_cleanup| here so callers
-  // don't leak memory when re-initializing a previously initialized
-  // |X509_STORE_CTX|.
-  OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
+  X509_STORE_CTX_cleanup(ctx);
+
   ctx->ctx = store;
   ctx->cert = x509;
   ctx->untrusted = chain;
@@ -1781,7 +1776,7 @@ void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx) {
   sk_X509_pop_free(ctx->chain, X509_free);
   ctx->chain = NULL;
   CRYPTO_free_ex_data(&g_ex_data_class, ctx, &(ctx->ex_data));
-  OPENSSL_memset(&ctx->ex_data, 0, sizeof(CRYPTO_EX_DATA));
+  OPENSSL_memset(ctx, 0, sizeof(X509_STORE_CTX));
 }
 
 void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth) {
